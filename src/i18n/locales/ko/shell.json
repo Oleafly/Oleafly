@@ -320,6 +320,28 @@
       "keywords": "pdf 미리보기 보이기 숨기기 분할 편집기만",
       "label": "PDF 미리보기 전환"
     },
+    "swapEditorPreview": {
+      "keywords": "바꾸기 교체 편집기 미리보기 pdf 좌우 패널 순서 레이아웃",
+      "label": "편집기와 미리보기 위치 바꾸기"
+    },
+    "movePaneToEdge": {
+      "bottom": "{{pane}}을(를) 아래쪽 가장자리로 이동",
+      "keywords": "이동 패널 가장자리 독 측면 분할 쌓기 레이아웃",
+      "left": "{{pane}}을(를) 왼쪽 가장자리로 이동",
+      "right": "{{pane}}을(를) 오른쪽 가장자리로 이동",
+      "top": "{{pane}}을(를) 위쪽 가장자리로 이동"
+    },
+    "paneNames": {
+      "assistant": "어시스턴트",
+      "editor": "편집기",
+      "pdf": "미리보기",
+      "sidebar": "사이드바",
+      "terminal": "터미널"
+    },
+    "resetPaneLayout": {
+      "keywords": "초기화 패널 레이아웃 순서 이동 사이드바 어시스턴트 편집기 미리보기 터미널 기본값",
+      "label": "패널 레이아웃 초기화"
+    },
     "zoomIn": {
       "keywords": "확대 크게",
       "label": "확대"
@@ -347,6 +369,16 @@
     "insertFileLink": {
       "label": "파일 링크 삽입",
       "keywords": "링크 파일 경로 노트 참조"
+    },
+    "projectNotes": {
+      "open": "이 프로젝트의 노트 열기",
+      "newShared": "새 프로젝트 노트",
+      "newPersonal": "이 프로젝트의 새 개인 노트",
+      "keywords": "노트 연구 연결 관련 프로젝트"
+    },
+    "notes": {
+      "label": "노트 열기",
+      "keywords": "노트 노트북 지식 아이디어 연구 일지 저널 notes notebook knowledge ideas research journal"
     }
   },
   "community": {
@@ -643,7 +675,6 @@
   "home": {
     "ariaLabel": "홈",
     "label": "홈",
-    "title": "라이브러리로 돌아가기",
     "tooltip": "프로젝트 라이브러리로 돌아갑니다"
   },
   "importDestination": {
@@ -788,7 +819,8 @@
     "research": "연구 작업 공간",
     "search": "프로젝트 검색",
     "sourceControl": "소스 관리",
-    "withShortcut": "{{label}}({{shortcut}})"
+    "withShortcut": "{{label}}({{shortcut}})",
+    "notes": "노트"
   },
   "remoteMenu": {
     "accountLabel": "{{host}}의 {{login}}",
@@ -880,7 +912,8 @@
           "folders_other": "폴더 {{count}}개",
           "images": "이미지",
           "pdfs": "PDF",
-          "projects": "프로젝트"
+          "projects": "프로젝트",
+          "projectsAndNotes": "프로젝트와 노트"
         },
         "subtitle": "프로젝트, 미리보기, 이력, 앱 데이터",
         "title": "저장 공간 사용량",
@@ -923,8 +956,8 @@
         "label": "LaTeX 도구"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
+        "description": "홈 독에 노트를 추가합니다. 노트는 다이어그램, 차트, 수식을 넣을 수 있는 Markdown 파일로, 사용자와 에이전트가 함께 편집할 수 있습니다. 노트는 프로젝트 라이브러리에 포함되지 않으며, 각 노트를 프로젝트에 연결할 수 있습니다. 아직 베타라서 기본적으로 꺼져 있습니다.",
+        "label": "노트"
       },
       "researchTasks": {
         "description": "에이전트가 프로젝트 사본에서 혼자 작업하고, 바뀐 내용은 검토할 수 있도록 남겨 둡니다. 매우 불안정합니다. 실행이 멈추거나 실패할 수 있고, 직접 정리해야 하는 변경이 남을 수도 있으며, 실행하는 동안 내내 제공자의 할당량을 사용합니다. 설정에 연구 섹션이 추가됩니다. 끄면 실행 중인 모든 작업이 중지됩니다. 기본은 꺼짐입니다. 위험을 감수하고 켜세요.",
@@ -1261,6 +1294,7 @@
       "split": "분할 보기"
     },
     "moreActions": "추가 작업",
+    "resetPaneLayout": "패널 레이아웃 초기화",
     "renameFailed": "프로젝트 이름을 바꾸지 못했습니다."
   },
   "tour": {

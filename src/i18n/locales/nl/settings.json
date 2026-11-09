@@ -993,7 +993,8 @@
       "editor": "Editor",
       "files": "Project",
       "pdf": "PDF-voorbeeld",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Notities"
     },
     "terminal": {
       "colorTheme": {
@@ -1126,6 +1127,146 @@
         "label": "PDF tonen bij het compileren"
       },
       "title": "Zenmodus"
+    },
+    "notes": {
+      "sectionName": "Weergave van notities",
+      "resetAriaLabel": "{{setting}} terugzetten naar standaard",
+      "text": {
+        "title": "Tekst"
+      },
+      "typeface": {
+        "label": "Lettersoort",
+        "description": "Kies een lettersoort voor de tekst van notities.",
+        "options": {
+          "sans": "Schreefloos",
+          "serif": "Met schreef",
+          "mono": "Vaste breedte"
+        }
+      },
+      "font": {
+        "label": "Lettertype van notities",
+        "description": "Kies een willekeurig geïnstalleerd lettertype voor de tekst van notities. Laat het leeg om de instelling Lettersoort te gebruiken."
+      },
+      "fontSize": {
+        "label": "Tekstgrootte van notities",
+        "description": "Stel de grootte van de tekst in notities in.",
+        "custom": "Aangepast",
+        "customLabel": "Aangepaste tekstgrootte van notities in pixels"
+      },
+      "lineHeight": {
+        "label": "Regelhoogte van notities",
+        "description": "Stel de ruimte tussen de regels van notitietekst in.",
+        "customLabel": "Aangepaste regelhoogte van notities"
+      },
+      "paragraphSpacing": {
+        "label": "Alinea-afstand",
+        "description": "Stel de ruimte tussen alinea's, lijsten en andere blokken in.",
+        "options": {
+          "compact": "Compact",
+          "normal": "Normaal",
+          "relaxed": "Luchtig",
+          "spacious": "Ruim"
+        }
+      },
+      "headings": {
+        "title": "Koppen en titel"
+      },
+      "headingTypeface": {
+        "label": "Lettersoort van koppen",
+        "description": "Kies een lettersoort voor koppen en de titel van de notitie.",
+        "options": {
+          "text": "Zelfde als tekst"
+        }
+      },
+      "headingFont": {
+        "label": "Lettertype van koppen",
+        "description": "Kies een geïnstalleerd lettertype voor koppen en de titel van de notitie. Laat het leeg om de instelling Lettersoort van koppen te gebruiken."
+      },
+      "headingSize": {
+        "label": "Grootte van koppen",
+        "description": "Stel in hoe groot koppen zijn ten opzichte van de tekst.",
+        "options": {
+          "small": "Kleiner",
+          "normal": "Normaal",
+          "large": "Groter"
+        }
+      },
+      "titleSize": {
+        "label": "Grootte van de titel",
+        "description": "Stel de grootte in van de titel bovenaan elke notitie."
+      },
+      "layout": {
+        "title": "Indeling"
+      },
+      "width": {
+        "label": "Breedte van notities",
+        "description": "Hoe breed notities openen. Het breedtemenu in een notitie wijzigt dit ook.",
+        "options": {
+          "standard": "Standaard",
+          "wide": "Breed",
+          "full": "Volledige breedte"
+        }
+      },
+      "wordCount": {
+        "label": "Aantal woorden tonen",
+        "description": "Toon het aantal woorden van een notitie in de werkbalk."
+      },
+      "spellcheck": {
+        "label": "Spelling in notities controleren",
+        "description": "Onderstreep verkeerd gespelde woorden terwijl je een notitie schrijft."
+      },
+      "code": {
+        "title": "Code"
+      },
+      "codeFont": {
+        "label": "Lettertype voor code",
+        "description": "Kies een geïnstalleerd lettertype voor codeblokken en code in de tekst."
+      },
+      "codeTheme": {
+        "label": "Kleuren van codeblokken",
+        "description": "Kies de syntaxkleuren voor codeblokken in notities.",
+        "options": {
+          "editor": "Zelfde als editor"
+        }
+      },
+      "colors": {
+        "title": "Kleuren"
+      },
+      "accent": {
+        "label": "Accentkleur van notities",
+        "description": "Gebruikt voor links, tags en taakvakjes in notities.",
+        "matchApp": "Zelfde als app",
+        "customAriaLabel": "Een eigen accentkleur voor notities kiezen"
+      },
+      "highlight": {
+        "label": "Markeerkleur",
+        "description": "De kleur achter gemarkeerde tekst.",
+        "options": {
+          "yellow": "Geel",
+          "green": "Groen",
+          "blue": "Blauw",
+          "pink": "Roze",
+          "purple": "Paars",
+          "accent": "Accent"
+        }
+      },
+      "callouts": {
+        "label": "Stijl van kaders",
+        "description": "Hoe kaders er in notities uitzien.",
+        "options": {
+          "tinted": "Getint",
+          "filled": "Gevuld",
+          "outlined": "Omlijnd",
+          "bar": "Zijbalk"
+        }
+      },
+      "remoteImages": {
+        "title": "Afbeeldingen van het web",
+        "description": "Notities laden afbeeldingen van deze sites zonder te vragen.",
+        "empty": "Notities vragen het eerst voordat ze een afbeelding van het web laden. Sites die je altijd toestaat, verschijnen hier.",
+        "remove": "{{host}} verwijderen"
+      },
+      "resetAll": "Weergave van notities terugzetten"
     }
   },
   "checkpoints": {
@@ -2337,6 +2478,30 @@
       "resetZoom": {
         "description": "Zet de app terug op 100%.",
         "label": "Zoom herstellen"
+      },
+      "notesQuickSwitcher": {
+        "description": "Zoek een notitie op naam en open die.",
+        "label": "Notities: naar notitie gaan"
+      },
+      "notesTodayNote": {
+        "description": "Open de notitie van vandaag, of begin eraan.",
+        "label": "Notities: notitie van vandaag"
+      },
+      "notesGraph": {
+        "description": "Open de graaf van al je notities.",
+        "label": "Notities: graaf"
+      },
+      "notesLocalGraph": {
+        "description": "Toon of verberg de links rond de geopende notitie.",
+        "label": "Notities: lokale graaf"
+      },
+      "notesOutline": {
+        "description": "Toon of verberg het overzicht van de geopende notitie.",
+        "label": "Notities: overzicht"
+      },
+      "notesAskAgent": {
+        "description": "Vraag de agent iets over de geselecteerde tekst, of open en sluit de agent van de notitie.",
+        "label": "Notities: agent vragen"
       }
     },
     "application": {
@@ -2506,5 +2671,17 @@
       "loadFailed": "De lijst met MCP-servers kon niet worden gelezen.",
       "missing": "{{name}} (niet gevonden)"
     }
+  },
+  "notesPreview": {
+    "label": "Voorbeeld van een notitie met deze instellingen",
+    "title": "Veldnotities",
+    "heading": "Ochtendopname",
+    "paragraph": "Lichte regen tot negen uur, daarna een heldere lucht boven de noordelijke heuvelrug. Om twaalf uur was de bodem nog vochtig.",
+    "links": "Zie <note>Bemonsteringsmethode</note> voor alle stappen, of blader door <tag>#veldwerk</tag>.",
+    "highlight": "De zaailingen zijn in één week twee keer zo hoog geworden.",
+    "calloutTitle": "Volgend bezoek",
+    "calloutBody": "Controleer de bodemsensoren voordat je nieuwe monsters neemt.",
+    "taskDone": "De monsters labelen",
+    "task": "De foto's uploaden"
   }
 }

@@ -44,14 +44,16 @@
       "externalTool": "外部ツールの操作を確認",
       "internet": "インターネットへのアクセスを確認",
       "edit": "AI の編集を確認",
-      "researchTask": "調査タスクを確認"
+      "researchTask": "調査タスクを確認",
+      "note": "新しいノートを確認"
     },
     "headline": {
       "command": "アシスタントがこのコマンドを実行しようとしています",
       "externalTool": "アシスタントが外部ツールを使おうとしています",
       "internet": "アシスタントがインターネットにアクセスしようとしています",
       "edit": "アシスタントがファイルを変更しようとしています",
-      "researchTask": "アシスタントが調査タスクを作成しようとしています"
+      "researchTask": "アシスタントが調査タスクを作成しようとしています",
+      "note": "アシスタントがノートを作成しようとしています"
     },
     "mcpNote": "以下の引数が、設定済みの MCP サーバーに送信されます。",
     "line": "{{line}} 行目",
@@ -86,6 +88,14 @@
       "minutes_other": "{{count}} 分",
       "planFirst": "先にプランを確認する",
       "startNow": "今すぐ開始"
+    },
+    "noteDraft": {
+      "title": "タイトル",
+      "project": "リンク先のプロジェクト",
+      "tags": "タグ",
+      "text": "本文",
+      "empty": "本文はありません",
+      "more": "ノートはこの先も続きます。"
     }
   },
   "attachments": {
@@ -1082,5 +1092,19 @@
     "replaceConfirm": "回答を置き換える",
     "forked": "編集したメッセージから新しいチャットを始めました。",
     "failed": "メッセージを送信し直せませんでした。"
+  },
+  "noteScope": {
+    "notesOnly": "ノートのアシスタントでのみ使えます。",
+    "tools": {
+      "readNote": "開いているノートを、確認待ちの提案も含めて読みます。",
+      "proposeNoteEdits": "開いているノートへの変更を提案し、あなたが承認または却下します。",
+      "searchNotes": "すべてのノートを検索します。",
+      "listKnowledgeNotes": "ノートをタグまたはプロジェクトごとに一覧表示します。",
+      "readNoteById": "別のノートを読みます。",
+      "createNote": "新しいノートを作成します。",
+      "relatedProjectFiles": "ノートのリンク先プロジェクトにあるファイルを一覧表示します。",
+      "readRelatedProjectFile": "ノートのリンク先プロジェクトにあるファイルを読みます。",
+      "searchRelatedProject": "ノートのリンク先プロジェクトを検索します。"
+    }
   }
 }

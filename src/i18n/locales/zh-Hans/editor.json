@@ -221,7 +221,13 @@
     "closeRight": "关闭右侧所有标签页",
     "closeAll": "关闭全部标签页",
     "closeAssistantTabs": "关闭助手打开的文件",
-    "closeAssistantTabsCount_other": "关闭助手打开的 {{count}} 个文件"
+    "closeAssistantTabsCount_other": "关闭助手打开的 {{count}} 个文件",
+    "editAsMarkdown": "以 Markdown 编辑",
+    "editAsNote": "以笔记编辑",
+    "noteAsMarkdown": "你正在以 Markdown 编辑这篇笔记。",
+    "openInNotes": "在笔记中打开",
+    "moveIntoProject": "移入项目",
+    "copyToMyNotes": "复制到我的笔记"
   },
   "projectInfo": {
     "trigger": "项目信息",
@@ -376,7 +382,7 @@
     "fontPack": "{{family}} 在免费字体包“{{pack}}”中。",
     "fontPackGlyphs": "免费字体包“{{pack}}”包含这些字符。",
     "fontPackSealed": "{{family}} 在免费字体包“{{pack}}”中，但此项目只使用项目字体，因此字体包在这里不适用。请把该字体的文件添加到项目的字体文件夹。",
-    "fontPackAction":"下载并编译",
+    "fontPackAction": "下载并编译",
     "fontPackDownloading": "正在下载…",
     "fontPackFailed": "无法下载字体包。请检查网络连接后重试。"
   },
@@ -1493,7 +1499,7 @@
     "onDemand": "Tectonic 会在文档首次用到宏包时下载它们。无需安装任何内容。",
     "checking": "正在检查已安装的宏包",
     "systemManaged": "此 TeX Live 随你的 Linux 发行版一起安装，因此请用 {{manager}} 安装宏包。",
-    "unknownInstall":"Oleafly 无法判断你的 TeX 环境中有哪些宏包。",
+    "unknownInstall": "Oleafly 无法判断你的 TeX 环境中有哪些宏包。",
     "noProject": "请打开一个 LaTeX 项目以添加宏包。",
     "added": "已将 {{name}} 添加到 {{file}}。",
     "noPreamble": "{{file}} 没有可添加宏包的导言区。",

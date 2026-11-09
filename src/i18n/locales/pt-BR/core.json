@@ -346,6 +346,7 @@
   },
   "mermaid": {
     "diagram": "Diagrama",
+    "remoteBlocked": "Este diagrama não foi renderizado porque carrega imagens ou estilos da internet.",
     "renderFailed": "Não foi possível renderizar o diagrama.",
     "rendering": "Renderizando o diagrama"
   },

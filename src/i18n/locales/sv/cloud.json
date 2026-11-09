@@ -110,6 +110,8 @@
     "conflictsHelp_one": "Den här filen ändrades både här och på en annan dator innan ändringarna hann synkroniseras, så Oleafly behöll båda versionerna. Behåll det du behöver och radera sedan kopian.",
     "conflictsHelp_other": "De här filerna ändrades både här och på en annan dator innan ändringarna hann synkroniseras, så Oleafly behöll båda versionerna. Behåll det du behöver och radera sedan kopiorna.",
     "conflictsLabel": "Konfliktkopior i {{name}}",
+    "compare": "Jämför",
+    "compareLabel": "Jämför {{path}} med anteckningen",
     "dismiss": "Stäng",
     "skipped_one": "{{count}} fil hoppades över",
     "skipped_other": "{{count}} filer hoppades över",

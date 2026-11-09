@@ -341,6 +341,7 @@
   },
   "mermaid": {
     "diagram": "Diagram",
+    "remoteBlocked": "Diagrammet blev ikke tegnet, fordi det indlæser billeder eller typografier fra internettet.",
     "renderFailed": "Diagrammet kunne ikke gengives.",
     "rendering": "Gengiver diagram"
   },

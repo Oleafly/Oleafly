@@ -84,5 +84,9 @@
     "more_few": "ще {{count}} особи",
     "more_many": "ще {{count}} осіб",
     "more_other": "ще {{count}} особи"
+  },
+  "remoteImage": {
+    "blocked": "Зображення з {{host}}",
+    "load": "Завантажити зображення"
   }
 }

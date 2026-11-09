@@ -320,6 +320,28 @@
       "keywords": "xem trước pdf hiện ẩn chia đôi chỉ trình soạn thảo",
       "label": "Bật tắt Xem trước PDF"
     },
+    "swapEditorPreview": {
+      "keywords": "đổi chỗ trình soạn thảo xem trước pdf bên khung thứ tự bố cục",
+      "label": "Đổi chỗ trình soạn thảo và bản xem trước"
+    },
+    "movePaneToEdge": {
+      "bottom": "Chuyển {{pane}} xuống cạnh dưới",
+      "keywords": "chuyển khung cạnh gắn bên chia xếp chồng bố cục",
+      "left": "Chuyển {{pane}} sang cạnh trái",
+      "right": "Chuyển {{pane}} sang cạnh phải",
+      "top": "Chuyển {{pane}} lên cạnh trên"
+    },
+    "paneNames": {
+      "assistant": "trợ lý",
+      "editor": "trình soạn thảo",
+      "pdf": "bản xem trước",
+      "sidebar": "thanh bên",
+      "terminal": "terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "đặt lại bố cục khung thứ tự chuyển bảng thanh bên trợ lý trình soạn thảo xem trước terminal mặc định",
+      "label": "Đặt lại bố cục khung"
+    },
     "zoomIn": {
       "keywords": "to hơn lớn hơn phóng to",
       "label": "Phóng to"
@@ -347,6 +369,16 @@
     "insertFileLink": {
       "label": "Chèn liên kết tới tệp",
       "keywords": "liên kết tệp đường dẫn ghi chú tham chiếu"
+    },
+    "projectNotes": {
+      "open": "Mở ghi chú của dự án này",
+      "newShared": "Ghi chú dự án mới",
+      "newPersonal": "Ghi chú cá nhân mới cho dự án này",
+      "keywords": "ghi chú nghiên cứu liên kết liên quan dự án"
+    },
+    "notes": {
+      "label": "Mở Ghi chú",
+      "keywords": "ghi chú sổ tay kiến thức ý tưởng nghiên cứu nhật ký notes notebook knowledge ideas research journal"
     }
   },
   "community": {
@@ -643,7 +675,6 @@
   "home": {
     "ariaLabel": "Trang chủ",
     "label": "Trang chủ",
-    "title": "Về thư viện",
     "tooltip": "Quay về thư viện dự án"
   },
   "importDestination": {
@@ -788,7 +819,8 @@
     "research": "Không gian nghiên cứu",
     "search": "Tìm trong dự án",
     "sourceControl": "Quản lý mã nguồn",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Ghi chú"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} trên {{host}}",
@@ -880,7 +912,8 @@
           "folders_other": "{{count}} thư mục",
           "images": "Hình ảnh",
           "pdfs": "PDF",
-          "projects": "Dự án"
+          "projects": "Dự án",
+          "projectsAndNotes": "Dự án và ghi chú"
         },
         "subtitle": "Dự án, bản xem trước, lịch sử và dữ liệu ứng dụng",
         "title": "Dung lượng lưu trữ",
@@ -923,8 +956,8 @@
         "label": "Công cụ LaTeX"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
+        "description": "Thêm Ghi chú vào thanh dock ở Trang chủ. Mỗi ghi chú là một tệp Markdown có sơ đồ, biểu đồ và công thức toán mà cả bạn và các agent đều có thể chỉnh sửa. Ghi chú nằm ngoài thư viện dự án của bạn và mỗi ghi chú có thể liên kết với một dự án. Mặc định tắt vì vẫn đang trong giai đoạn beta.",
+        "label": "Ghi chú"
       },
       "researchTasks": {
         "description": "Một agent làm việc tự động trong bản sao của dự án và để lại thay đổi cho bạn xem lại. Rất không ổn định: các lần chạy có thể kẹt, lỗi hoặc để lại thay đổi phải xử lý tay, và chúng dùng hạn mức của nhà cung cấp suốt thời gian đó. Thêm mục Nghiên cứu vào Cài đặt. Tắt sẽ dừng mọi tác vụ đang chạy. Mặc định tắt. Bật với rủi ro của bạn.",
@@ -1261,6 +1294,7 @@
       "split": "Chế độ chia đôi"
     },
     "moreActions": "Thao tác khác",
+    "resetPaneLayout": "Đặt lại bố cục khung",
     "renameFailed": "Không đổi tên được dự án."
   },
   "tour": {

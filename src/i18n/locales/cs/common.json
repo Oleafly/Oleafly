@@ -84,5 +84,9 @@
     "more_few": "{{count}} další osoby",
     "more_many": "{{count}} další osoby",
     "more_other": "{{count}} dalších osob"
+  },
+  "remoteImage": {
+    "blocked": "Obrázek z {{host}}",
+    "load": "Načíst obrázek"
   }
 }

@@ -3,7 +3,7 @@
     "newProject": "Neues Projekt",
     "search": "Dokumente durchsuchen ({{shortcut}})",
     "diagramComposer": "Diagramm-Editor",
-    "notes": "Notes",
+    "notes": "Notizen",
     "tools": "Oleafly Tools",
     "settings": "Einstellungen"
   },
@@ -55,7 +55,7 @@
       "kindDocument": "Dokument",
       "kindImage": "Bild",
       "kindDiagram": "Diagramm",
-      "kindNote": "Note",
+      "kindNote": "Notiz",
       "bookmark": "Lesezeichen",
       "bookmarkAll": "Beliebiger Status",
       "bookmarkYes": "Mit Lesezeichen",
@@ -139,7 +139,7 @@
       "document": "Dokument",
       "image": "Bild",
       "diagram": "Diagramm",
-      "note": "note",
+      "note": "Notiz",
       "external": "Extern",
       "overleaf": "Overleaf"
     },

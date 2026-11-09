@@ -987,7 +987,8 @@
       "editor": "Trình biên tập",
       "files": "Dự án",
       "pdf": "Xem trước PDF",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Ghi chú"
     },
     "terminal": {
       "colorTheme": {
@@ -1119,6 +1120,146 @@
         "label": "Hiện PDF khi biên dịch"
       },
       "title": "Chế độ Zen"
+    },
+    "notes": {
+      "sectionName": "Giao diện ghi chú",
+      "resetAriaLabel": "Đặt lại {{setting}} về mặc định",
+      "text": {
+        "title": "Văn bản"
+      },
+      "typeface": {
+        "label": "Kiểu chữ",
+        "description": "Chọn kiểu chữ cho văn bản ghi chú.",
+        "options": {
+          "sans": "Không chân",
+          "serif": "Có chân",
+          "mono": "Đơn cách"
+        }
+      },
+      "font": {
+        "label": "Phông chữ ghi chú",
+        "description": "Chọn bất kỳ phông chữ nào đã cài cho văn bản ghi chú. Để trống để dùng cài đặt Kiểu chữ."
+      },
+      "fontSize": {
+        "label": "Cỡ chữ ghi chú",
+        "description": "Đặt cỡ chữ của văn bản ghi chú.",
+        "custom": "Tuỳ chỉnh",
+        "customLabel": "Cỡ chữ ghi chú tuỳ chỉnh theo pixel"
+      },
+      "lineHeight": {
+        "label": "Chiều cao dòng ghi chú",
+        "description": "Đặt khoảng cách giữa các dòng văn bản ghi chú.",
+        "customLabel": "Chiều cao dòng ghi chú tuỳ chỉnh"
+      },
+      "paragraphSpacing": {
+        "label": "Khoảng cách đoạn",
+        "description": "Đặt khoảng cách giữa các đoạn, danh sách và các khối khác.",
+        "options": {
+          "compact": "Gọn",
+          "normal": "Bình thường",
+          "relaxed": "Thoáng",
+          "spacious": "Rộng rãi"
+        }
+      },
+      "headings": {
+        "title": "Tiêu đề mục và tiêu đề ghi chú"
+      },
+      "headingTypeface": {
+        "label": "Kiểu chữ tiêu đề",
+        "description": "Chọn kiểu chữ cho các tiêu đề mục và tiêu đề ghi chú.",
+        "options": {
+          "text": "Giống văn bản"
+        }
+      },
+      "headingFont": {
+        "label": "Phông chữ tiêu đề",
+        "description": "Chọn một phông chữ đã cài cho các tiêu đề mục và tiêu đề ghi chú. Để trống để dùng cài đặt Kiểu chữ tiêu đề."
+      },
+      "headingSize": {
+        "label": "Cỡ tiêu đề",
+        "description": "Đặt độ lớn của tiêu đề so với văn bản.",
+        "options": {
+          "small": "Nhỏ hơn",
+          "normal": "Bình thường",
+          "large": "Lớn hơn"
+        }
+      },
+      "titleSize": {
+        "label": "Cỡ tiêu đề ghi chú",
+        "description": "Đặt cỡ của tiêu đề ở đầu mỗi ghi chú."
+      },
+      "layout": {
+        "title": "Bố cục"
+      },
+      "width": {
+        "label": "Độ rộng ghi chú",
+        "description": "Độ rộng khi mở ghi chú. Menu độ rộng trong ghi chú cũng thay đổi giá trị này.",
+        "options": {
+          "standard": "Chuẩn",
+          "wide": "Rộng",
+          "full": "Toàn chiều rộng"
+        }
+      },
+      "wordCount": {
+        "label": "Hiện số từ",
+        "description": "Hiện số từ của ghi chú trên thanh công cụ."
+      },
+      "spellcheck": {
+        "label": "Kiểm tra chính tả trong ghi chú",
+        "description": "Gạch chân các từ sai chính tả khi bạn viết ghi chú."
+      },
+      "code": {
+        "title": "Mã"
+      },
+      "codeFont": {
+        "label": "Phông chữ mã",
+        "description": "Chọn một phông chữ đã cài cho khối mã và mã trong dòng."
+      },
+      "codeTheme": {
+        "label": "Màu khối mã",
+        "description": "Chọn màu cú pháp cho khối mã trong ghi chú.",
+        "options": {
+          "editor": "Giống trình biên tập"
+        }
+      },
+      "colors": {
+        "title": "Màu sắc"
+      },
+      "accent": {
+        "label": "Màu nhấn của ghi chú",
+        "description": "Dùng cho liên kết, thẻ và ô công việc trong ghi chú.",
+        "matchApp": "Theo ứng dụng",
+        "customAriaLabel": "Chọn màu nhấn tuỳ chỉnh cho ghi chú"
+      },
+      "highlight": {
+        "label": "Màu tô sáng",
+        "description": "Màu nền phía sau văn bản được tô sáng.",
+        "options": {
+          "yellow": "Vàng",
+          "green": "Xanh lá",
+          "blue": "Xanh dương",
+          "pink": "Hồng",
+          "purple": "Tím",
+          "accent": "Màu nhấn"
+        }
+      },
+      "callouts": {
+        "label": "Kiểu hộp chú thích",
+        "description": "Cách hiển thị hộp chú thích trong ghi chú.",
+        "options": {
+          "tinted": "Nền nhạt",
+          "filled": "Tô đầy",
+          "outlined": "Có viền",
+          "bar": "Vạch bên"
+        }
+      },
+      "remoteImages": {
+        "title": "Ảnh từ web",
+        "description": "Ghi chú tải ảnh từ các trang này mà không cần hỏi.",
+        "empty": "Ghi chú sẽ hỏi trước khi tải ảnh từ web. Các trang bạn luôn cho phép sẽ hiện ở đây.",
+        "remove": "Gỡ {{host}}"
+      },
+      "resetAll": "Đặt lại giao diện ghi chú"
     }
   },
   "checkpoints": {
@@ -2316,6 +2457,30 @@
       "resetZoom": {
         "description": "Đặt ứng dụng về 100%.",
         "label": "Đặt lại thu phóng"
+      },
+      "notesQuickSwitcher": {
+        "description": "Tìm ghi chú theo tên và mở nó.",
+        "label": "Ghi chú: đi tới ghi chú"
+      },
+      "notesTodayNote": {
+        "description": "Mở ghi chú hôm nay, hoặc tạo mới.",
+        "label": "Ghi chú: ghi chú hôm nay"
+      },
+      "notesGraph": {
+        "description": "Mở đồ thị của tất cả ghi chú.",
+        "label": "Ghi chú: đồ thị"
+      },
+      "notesLocalGraph": {
+        "description": "Hiện hoặc ẩn các liên kết quanh ghi chú đang mở.",
+        "label": "Ghi chú: đồ thị cục bộ"
+      },
+      "notesOutline": {
+        "description": "Hiện hoặc ẩn dàn ý của ghi chú đang mở.",
+        "label": "Ghi chú: dàn ý"
+      },
+      "notesAskAgent": {
+        "description": "Hỏi agent về đoạn văn bản đã chọn, hoặc mở và đóng agent của ghi chú.",
+        "label": "Ghi chú: hỏi agent"
       }
     },
     "application": {
@@ -2483,5 +2648,17 @@
       "loadFailed": "Không thể đọc danh sách máy chủ MCP.",
       "missing": "{{name}} (không tìm thấy)"
     }
+  },
+  "notesPreview": {
+    "label": "Xem trước một ghi chú với các cài đặt này",
+    "title": "Ghi chép thực địa",
+    "heading": "Khảo sát buổi sáng",
+    "paragraph": "Mưa nhẹ đến chín giờ, sau đó trời quang trên sườn núi phía bắc. Đến trưa đất vẫn còn ẩm.",
+    "links": "Xem <note>Phương pháp lấy mẫu</note> để biết đầy đủ các bước, hoặc duyệt <tag>#thực-địa</tag>.",
+    "highlight": "Cây con cao gấp đôi chỉ sau một tuần.",
+    "calloutTitle": "Lần đến tiếp theo",
+    "calloutBody": "Kiểm tra cảm biến đất trước khi lấy mẫu mới.",
+    "taskDone": "Dán nhãn mẫu",
+    "task": "Tải ảnh lên"
   }
 }

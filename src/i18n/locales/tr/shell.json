@@ -321,6 +321,28 @@
       "keywords": "pdf önizleme göster gizle böl yalnızca düzenleyici",
       "label": "PDF önizlemesini aç/kapat"
     },
+    "swapEditorPreview": {
+      "keywords": "değiştir düzenleyici önizleme pdf taraf panel sıra düzen",
+      "label": "Düzenleyici ile önizlemenin yerini değiştir"
+    },
+    "movePaneToEdge": {
+      "bottom": "{{pane}} panelini alt kenara taşı",
+      "keywords": "taşı panel kenar yerleştir taraf böl yığın düzen",
+      "left": "{{pane}} panelini sol kenara taşı",
+      "right": "{{pane}} panelini sağ kenara taşı",
+      "top": "{{pane}} panelini üst kenara taşı"
+    },
+    "paneNames": {
+      "assistant": "asistan",
+      "editor": "düzenleyici",
+      "pdf": "önizleme",
+      "sidebar": "kenar çubuğu",
+      "terminal": "terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "sıfırla panel düzeni sıra taşı kenar çubuğu asistan düzenleyici önizleme terminal varsayılan",
+      "label": "Panel düzenini sıfırla"
+    },
     "zoomIn": {
       "keywords": "büyüt büyük",
       "label": "Yakınlaştır"
@@ -348,6 +370,16 @@
     "insertFileLink": {
       "label": "Dosyaya bağlantı ekle",
       "keywords": "bağlantı dosya yol not kaynak"
+    },
+    "projectNotes": {
+      "open": "Bu projenin notlarını aç",
+      "newShared": "Yeni proje notu",
+      "newPersonal": "Bu proje için yeni kişisel not",
+      "keywords": "notlar araştırma bağlı ilgili proje"
+    },
+    "notes": {
+      "label": "Notlar'ı aç",
+      "keywords": "notlar not defteri bilgi fikirler araştırma günlük notes notebook knowledge ideas research journal"
     }
   },
   "community": {
@@ -645,7 +677,6 @@
   "home": {
     "ariaLabel": "Ana ekran",
     "label": "Ana ekran",
-    "title": "Kitaplığa dön",
     "tooltip": "Proje kitaplığına geri dön"
   },
   "importDestination": {
@@ -791,7 +822,8 @@
     "research": "Araştırma çalışma alanı",
     "search": "Projede Ara",
     "sourceControl": "Kaynak Denetimi",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notlar"
   },
   "remoteMenu": {
     "accountLabel": "{{host}} üzerinde {{login}}",
@@ -893,7 +925,8 @@
           "folders_other": "{{count}} klasör",
           "images": "Görseller",
           "pdfs": "PDF'ler",
-          "projects": "Projeler"
+          "projects": "Projeler",
+          "projectsAndNotes": "Projeler ve notlar"
         },
         "subtitle": "Projeler, önizlemeler, geçmiş ve uygulama verileri",
         "title": "Depolama kullanımı",
@@ -937,8 +970,8 @@
         "label": "LaTeX araçları"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
+        "description": "Notlar'ı ana ekran yuvasına ekler. Bir not, sizin ve ajanlarınızın birlikte düzenleyebildiği, diyagram, grafik ve matematik içeren bir Markdown dosyasıdır. Notlar proje kitaplığınızın dışında durur ve her not bir projeye bağlanabilir. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır.",
+        "label": "Notlar"
       },
       "researchTasks": {
         "description": "Bir ajan, projenin bir kopyasında kendi başına çalışır ve değişikliklerini sizin incelemeniz için bırakır. Çok kararsızdır: çalıştırmalar takılabilir, başarısız olabilir veya elle düzeltmeniz gereken değişiklikler bırakabilir, üstelik sağlayıcınızın kotasını baştan sona kullanır. Ayarlar'a bir Araştırma bölümü ekler. Kapatmak, çalışan tüm görevleri durdurur. Varsayılan olarak kapalıdır. Açarsanız sorumluluk size aittir.",
@@ -1281,6 +1314,7 @@
       "split": "Bölünmüş Görünüm"
     },
     "moreActions": "Diğer işlemler",
+    "resetPaneLayout": "Panel düzenini sıfırla",
     "renameFailed": "Proje yeniden adlandırılamadı."
   },
   "tour": {

@@ -509,6 +509,7 @@
     "copyAndShare": "Kopiér til Oleafly og del",
     "title": "Del {{name}}",
     "description": "Arbejd sammen med andre om dette projekt via en samarbejdsserver.",
+    "noteDescription": "Skriv denne note sammen med andre via en samarbejdsserver.",
     "loading": "Indlæser…",
     "linked": "Dette projekt er en mappe uden for Oleafly. Oleafly kopierer den til dit bibliotek og deler kopien. Den oprindelige mappe bliver ikke rørt.",
     "editCopy": "Dette er den delte kopi. Rediger denne fra nu af, ikke den oprindelige mappe.",
@@ -526,12 +527,15 @@
     "tooLarge": "Disse filer overskrider serverens grænse på {{size}} MB. Gør dem mindre, eller fjern dem, før du deler.",
     "renamed": "Nogle navne virker ikke på alle computere. Andre får disse filer under et lidt andet navn.",
     "excluded": "Ikke delt: andre byggefiler, Oleafly-indstillinger og Git-historik. Den nyeste kompilerede PDF deles, så medforfattere kan læse den i en browser.",
+    "noteExcluded": "Ikke delt: Oleafly-indstillinger og Git-historik.",
     "start": "Del",
     "preparing": "Gør projektet klar…",
     "uploading": "Uploader figurer og andre filer: {{done}} af {{total}}",
     "saving": "Gemmer projektet på serveren…",
     "failed": "Delingen blev ikke færdig, så intet blev delt.",
-    "trustAgain": "Alle, du tilføjer til projektet, kan ændre dets filer, så Oleafly beder dig stole på det igen på denne computer, før det kører agenter, terminalkommandoer eller shell escape for det."
+    "trustAgain": "Alle, du tilføjer til projektet, kan ændre dets filer, så Oleafly beder dig stole på det igen på denne computer, før det kører agenter, terminalkommandoer eller shell escape for det.",
+    "projectNotesShared": "Projektets noter deles med alle i dette projekt. Personlige noter forbliver private.",
+    "personalNotesPrivate": "Personlige noter forbliver private. Kun noter i projektets notemappe deles."
   },
   "manage": {
     "sharedOn": "Delt på {{server}}",
@@ -736,7 +740,7 @@
       "serverError": "Serveren tog ikke imod den kompilerede PDF, så andre ser stadig den forrige."
     },
     "texNeeded": "Dette projekt kompileres med en TeX-distribution, og denne computer har ingen. Installer TinyTeX under Indstillinger > Motorer > LaTeX for at kompilere det her.",
-    "mentioned":"{{name}} nævnte dig i en kommentar i {{path}}",
+    "mentioned": "{{name}} nævnte dig i en kommentar i {{path}}",
     "mentionedHere": "{{name}} nævnte dig i en kommentar",
     "showComment": "Vis kommentar",
     "settings": {

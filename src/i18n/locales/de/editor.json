@@ -222,7 +222,13 @@
     "closeAll": "Alle schließen",
     "closeAssistantTabs": "Vom Assistenten geöffnete Dateien schließen",
     "closeAssistantTabsCount_one": "Die vom Assistenten geöffnete Datei schließen",
-    "closeAssistantTabsCount_other": "Die {{count}} vom Assistenten geöffneten Dateien schließen"
+    "closeAssistantTabsCount_other": "Die {{count}} vom Assistenten geöffneten Dateien schließen",
+    "editAsMarkdown": "Als Markdown bearbeiten",
+    "editAsNote": "Als Notiz bearbeiten",
+    "noteAsMarkdown": "Sie bearbeiten diese Notiz als Markdown.",
+    "openInNotes": "In Notizen öffnen",
+    "moveIntoProject": "In das Projekt verschieben",
+    "copyToMyNotes": "In meine Notizen kopieren"
   },
   "projectInfo": {
     "trigger": "Projektinfo",

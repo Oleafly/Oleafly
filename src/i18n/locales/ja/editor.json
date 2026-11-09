@@ -221,7 +221,13 @@
     "closeRight": "右側をすべて閉じる",
     "closeAll": "すべて閉じる",
     "closeAssistantTabs": "アシスタントが開いたファイルを閉じる",
-    "closeAssistantTabsCount_other": "アシスタントが開いた {{count}} 個のファイルを閉じる"
+    "closeAssistantTabsCount_other": "アシスタントが開いた {{count}} 個のファイルを閉じる",
+    "editAsMarkdown": "Markdown として編集",
+    "editAsNote": "ノートとして編集",
+    "noteAsMarkdown": "このノートを Markdown として編集しています。",
+    "openInNotes": "ノートで開く",
+    "moveIntoProject": "プロジェクトに移動",
+    "copyToMyNotes": "自分のノートにコピー"
   },
   "projectInfo": {
     "trigger": "プロジェクト情報",

@@ -223,7 +223,13 @@
     "closeAssistantTabs": "Fechar os arquivos abertos pelo assistente",
     "closeAssistantTabsCount_one": "Fechar o arquivo aberto pelo assistente",
     "closeAssistantTabsCount_many": "Fechar os {{count}} arquivos abertos pelo assistente",
-    "closeAssistantTabsCount_other": "Fechar os {{count}} arquivos abertos pelo assistente"
+    "closeAssistantTabsCount_other": "Fechar os {{count}} arquivos abertos pelo assistente",
+    "editAsMarkdown": "Editar como Markdown",
+    "editAsNote": "Editar como nota",
+    "noteAsMarkdown": "Você está editando esta nota como Markdown.",
+    "openInNotes": "Abrir em Notas",
+    "moveIntoProject": "Mover para o projeto",
+    "copyToMyNotes": "Copiar para as minhas notas"
   },
   "projectInfo": {
     "trigger": "Informações do projeto",
@@ -371,7 +377,7 @@
     "clearAria": "Limpar o log de compilação",
     "clearHint": "Oculta este log e os erros dele até a próxima compilação. Os arquivos da compilação ficam como estão.",
     "cleared": "Log limpo. A próxima compilação grava um novo.",
-    "empty":"A saída da compilação vai aparecer aqui.",
+    "empty": "A saída da compilação vai aparecer aqui.",
     "scrollToTop": "Rolar para o topo",
     "scrollToBottom": "Rolar para o fim",
     "locationFileLineColumn": "{{file}} · linha {{line}}, coluna {{column}}",

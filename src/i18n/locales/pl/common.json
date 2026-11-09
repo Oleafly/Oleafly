@@ -84,5 +84,9 @@
     "more_few": "jeszcze {{count}} osoby",
     "more_many": "jeszcze {{count}} osób",
     "more_other": "jeszcze {{count}} osoby"
+  },
+  "remoteImage": {
+    "blocked": "Obraz z {{host}}",
+    "load": "Wczytaj obraz"
   }
 }

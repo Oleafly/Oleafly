@@ -509,6 +509,7 @@
     "copyAndShare": "Naar Oleafly kopiëren en delen",
     "title": "{{name}} delen",
     "description": "Werk via een samenwerkingsserver met anderen aan dit project.",
+    "noteDescription": "Schrijf via een samenwerkingsserver samen met anderen aan deze notitie.",
     "loading": "Laden…",
     "linked": "Dit project is een map buiten Oleafly. Oleafly kopieert hem naar je bibliotheek en deelt die kopie. De oorspronkelijke map blijft ongemoeid.",
     "editCopy": "Dit is de gedeelde kopie. Bewerk vanaf nu deze en niet de oorspronkelijke map.",
@@ -526,12 +527,15 @@
     "tooLarge": "Deze bestanden gaan over de limiet van {{size}} MB van de server. Maak ze kleiner of haal ze weg voordat je deelt.",
     "renamed": "Sommige namen werken niet op elke computer. Anderen krijgen deze bestanden onder een iets andere naam.",
     "excluded": "Niet gedeeld: andere buildbestanden, Oleafly-instellingen en Git-geschiedenis. De nieuwste gecompileerde PDF wordt wel gedeeld, zodat coauteurs hem in een browser kunnen lezen.",
+    "noteExcluded": "Niet gedeeld: Oleafly-instellingen en Git-geschiedenis.",
     "start": "Delen",
     "preparing": "Het project wordt voorbereid…",
     "uploading": "Figuren en andere bestanden uploaden: {{done}} van {{total}}",
     "saving": "Het project wordt op de server opgeslagen…",
     "failed": "Het delen is niet afgerond, dus er is niets gedeeld.",
-    "trustAgain": "Iedereen die je aan dit project toevoegt, kan de bestanden wijzigen, dus vraagt Oleafly je op deze computer het project opnieuw te vertrouwen voordat het er agents, terminalopdrachten of shell escape voor uitvoert."
+    "trustAgain": "Iedereen die je aan dit project toevoegt, kan de bestanden wijzigen, dus vraagt Oleafly je op deze computer het project opnieuw te vertrouwen voordat het er agents, terminalopdrachten of shell escape voor uitvoert.",
+    "projectNotesShared": "De notities van het project worden gedeeld met iedereen in dit project. Persoonlijke notities blijven privé.",
+    "personalNotesPrivate": "Persoonlijke notities blijven privé. Alleen notities in de notitiemap van het project worden gedeeld."
   },
   "manage": {
     "sharedOn": "Gedeeld via {{server}}",
@@ -736,7 +740,7 @@
       "serverError": "De server heeft de gecompileerde PDF niet geaccepteerd, dus anderen zien nog de vorige."
     },
     "texNeeded": "Dit project wordt met een TeX-distributie gecompileerd en deze computer heeft er geen. Installeer TinyTeX via Instellingen > Engines > LaTeX om het hier te compileren.",
-    "mentioned":"{{name}} heeft je genoemd in een opmerking in {{path}}",
+    "mentioned": "{{name}} heeft je genoemd in een opmerking in {{path}}",
     "mentionedHere": "{{name}} heeft je genoemd in een opmerking",
     "showComment": "Opmerking tonen",
     "settings": {

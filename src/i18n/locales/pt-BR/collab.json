@@ -509,6 +509,7 @@
     "copyAndShare": "Copiar para o Oleafly e compartilhar",
     "title": "Compartilhar {{name}}",
     "description": "Trabalhe neste projeto com outras pessoas por um servidor de colaboração.",
+    "noteDescription": "Escreva esta nota com outras pessoas por meio de um servidor de colaboração.",
     "loading": "Carregando…",
     "linked": "Este projeto é uma pasta fora do Oleafly. O Oleafly copia a pasta para a sua biblioteca e compartilha essa cópia. A pasta original não é alterada.",
     "editCopy": "Esta é a cópia compartilhada. De agora em diante, edite esta, não a pasta original.",
@@ -526,12 +527,15 @@
     "tooLarge": "Estes arquivos passam do limite do servidor, que é de {{size}} MB. Diminua ou remova os arquivos antes de compartilhar.",
     "renamed": "Alguns nomes não funcionam em todos os computadores. As outras pessoas recebem esses arquivos com um nome um pouco diferente.",
     "excluded": "Não compartilhados: outros arquivos de compilação, configurações do Oleafly e histórico do Git. O PDF compilado mais recente é compartilhado, para que os coautores possam lê-lo em um navegador.",
+    "noteExcluded": "Não compartilhados: configurações do Oleafly e histórico do Git.",
     "start": "Compartilhar",
     "preparing": "Preparando o projeto…",
     "uploading": "Enviando figuras e outros arquivos: {{done}} de {{total}}",
     "saving": "Salvando o projeto no servidor…",
     "failed": "O compartilhamento não terminou, então nada foi compartilhado.",
-    "trustAgain": "Qualquer pessoa que você adicionar a este projeto pode mudar os arquivos dele, então o Oleafly pede que você confie nele de novo neste computador antes de executar agentes, comandos do terminal ou o shell escape para ele."
+    "trustAgain": "Qualquer pessoa que você adicionar a este projeto pode mudar os arquivos dele, então o Oleafly pede que você confie nele de novo neste computador antes de executar agentes, comandos do terminal ou o shell escape para ele.",
+    "projectNotesShared": "As notas do projeto são compartilhadas com todos neste projeto. As notas pessoais continuam privadas.",
+    "personalNotesPrivate": "As notas pessoais continuam privadas. Só as notas da pasta de notas do projeto são compartilhadas."
   },
   "manage": {
     "sharedOn": "Compartilhado em {{server}}",
@@ -736,7 +740,7 @@
       "serverError": "O servidor não aceitou o PDF compilado, então as outras pessoas continuam vendo o anterior."
     },
     "texNeeded": "Este projeto compila com uma distribuição TeX, e este computador não tem uma. Instale o TinyTeX em Configurações > Motores > LaTeX para compilá-lo aqui.",
-    "mentioned":"{{name}} mencionou você em um comentário em {{path}}",
+    "mentioned": "{{name}} mencionou você em um comentário em {{path}}",
     "mentionedHere": "{{name}} mencionou você em um comentário",
     "showComment": "Ver comentário",
     "settings": {

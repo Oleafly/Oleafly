@@ -321,6 +321,28 @@
       "keywords": "pdf esikatselu näytä piilota jaa vain editori",
       "label": "Näytä tai piilota PDF-esikatselu"
     },
+    "swapEditorPreview": {
+      "keywords": "vaihda editori esikatselu pdf puolet paneeli järjestys asettelu",
+      "label": "Vaihda editorin ja esikatselun paikkaa"
+    },
+    "movePaneToEdge": {
+      "bottom": "Siirrä {{pane}} alareunaan",
+      "keywords": "siirrä paneeli reuna telakoi sivu jaa pinoa asettelu",
+      "left": "Siirrä {{pane}} vasempaan reunaan",
+      "right": "Siirrä {{pane}} oikeaan reunaan",
+      "top": "Siirrä {{pane}} yläreunaan"
+    },
+    "paneNames": {
+      "assistant": "avustajapaneeli",
+      "editor": "editori",
+      "pdf": "esikatselu",
+      "sidebar": "sivupalkki",
+      "terminal": "pääte"
+    },
+    "resetPaneLayout": {
+      "keywords": "palauta paneelien asettelu järjestys siirrä paneelit sivupalkki avustaja editori esikatselu pääte oletus",
+      "label": "Palauta paneelien asettelu"
+    },
     "zoomIn": {
       "keywords": "suurenna isompi",
       "label": "Lähennä"
@@ -348,6 +370,16 @@
     "insertFileLink": {
       "label": "Lisää linkki tiedostoon",
       "keywords": "linkki tiedosto polku muistiinpano viittaus"
+    },
+    "projectNotes": {
+      "open": "Avaa tämän projektin muistiinpanot",
+      "newShared": "Uusi projektin muistiinpano",
+      "newPersonal": "Uusi henkilökohtainen muistiinpano tähän projektiin",
+      "keywords": "muistiinpanot tutkimus linkitetty liittyvä projekti"
+    },
+    "notes": {
+      "label": "Avaa Muistiinpanot",
+      "keywords": "muistiinpanot muistiinpano muistikirja tieto tietämys ideat tutkimus päiväkirja notes notebook knowledge ideas research journal"
     }
   },
   "community": {
@@ -645,7 +677,6 @@
   "home": {
     "ariaLabel": "Aloitusnäkymä",
     "label": "Aloitus",
-    "title": "Takaisin kirjastoon",
     "tooltip": "Palaa projektikirjastoon"
   },
   "importDestination": {
@@ -791,7 +822,8 @@
     "research": "Tutkimustyötila",
     "search": "Hae projektista",
     "sourceControl": "Versionhallinta",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Muistiinpanot"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} palvelussa {{host}}",
@@ -893,7 +925,8 @@
           "folders_other": "{{count}} kansiota",
           "images": "Kuvat",
           "pdfs": "PDF-tiedostot",
-          "projects": "Projektit"
+          "projects": "Projektit",
+          "projectsAndNotes": "Projektit ja muistiinpanot"
         },
         "subtitle": "Projektit, esikatselut, historia ja sovellustiedot",
         "title": "Tallennustilan käyttö",
@@ -937,8 +970,8 @@
         "label": "LaTeX-työkalut"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
+        "description": "Lisää Muistiinpanot aloitusnäkymän telakkaan. Muistiinpano on Markdown-tiedosto, jossa voi olla kaavioita, diagrammeja ja matematiikkaa ja jota sekä sinä että agenttisi voitte muokata. Muistiinpanot eivät kuulu projektikirjastoon, ja jokaisen muistiinpanon voi linkittää projektiin. Oletuksena pois käytöstä beta-vaiheen ajan.",
+        "label": "Muistiinpanot"
       },
       "researchTasks": {
         "description": "Agentti työskentelee itsenäisesti projektin kopiossa ja jättää muutokset sinun tarkistettavaksesi. Erittäin epävakaa: ajot voivat jumittua, epäonnistua tai jättää muutoksia, jotka pitää selvittää käsin, ja ne kuluttavat tekoälypalvelusi kiintiötä koko ajan. Lisää asetuksiin Tutkimus-osion. Kun kytket sen pois, kaikki käynnissä olevat tehtävät pysähtyvät. Oletuksena pois. Ota käyttöön omalla vastuullasi.",
@@ -1281,6 +1314,7 @@
       "split": "Jaettu näkymä"
     },
     "moreActions": "Lisää toimintoja",
+    "resetPaneLayout": "Palauta paneelien asettelu",
     "renameFailed": "Projektia ei voitu nimetä uudelleen."
   },
   "tour": {

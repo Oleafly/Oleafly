@@ -341,6 +341,7 @@
   },
   "mermaid": {
     "diagram": "Diagram",
+    "remoteBlocked": "Dit diagram is niet getekend omdat het afbeeldingen of stijlen van internet laadt.",
     "renderFailed": "Kan het diagram niet weergeven.",
     "rendering": "Diagram wordt getekend"
   },

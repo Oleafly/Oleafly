@@ -222,7 +222,13 @@
     "closeAll": "Luk alle",
     "closeAssistantTabs": "Luk filer, som assistenten har åbnet",
     "closeAssistantTabsCount_one": "Luk filen, som assistenten har åbnet",
-    "closeAssistantTabsCount_other": "Luk de {{count}} filer, som assistenten har åbnet"
+    "closeAssistantTabsCount_other": "Luk de {{count}} filer, som assistenten har åbnet",
+    "editAsMarkdown": "Rediger som Markdown",
+    "editAsNote": "Rediger som note",
+    "noteAsMarkdown": "Du redigerer denne note som Markdown.",
+    "openInNotes": "Åbn i Noter",
+    "moveIntoProject": "Flyt ind i projektet",
+    "copyToMyNotes": "Kopier til mine noter"
   },
   "projectInfo": {
     "trigger": "Projektoplysninger",

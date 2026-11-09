@@ -155,6 +155,9 @@
       "spacesMessage": "Agenti, kteří používají Cua Spaces, budou moci:",
       "spacesChanges": "Vytvářet a mazat Spaces a spouštět v nich příkazy",
       "spacesSignIns": "Používat ve Space vaše přihlášení ke Claude Code nebo Codex"
+    },
+    "assistantNetwork": {
+      "message": "Asistent chce použít nástroj {{tool}}, který odesílá text do online služby."
     }
   },
   "errors": {

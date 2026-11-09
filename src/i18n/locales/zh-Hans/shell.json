@@ -320,6 +320,28 @@
       "keywords": "pdf 预览 显示 隐藏 分屏 仅编辑器",
       "label": "切换 PDF 预览"
     },
+    "swapEditorPreview": {
+      "keywords": "交换 编辑器 预览 pdf 两侧 面板 顺序 布局",
+      "label": "交换编辑器和预览的位置"
+    },
+    "movePaneToEdge": {
+      "bottom": "将{{pane}}移到底部",
+      "keywords": "移动 面板 边缘 停靠 侧边 拆分 堆叠 布局",
+      "left": "将{{pane}}移到左侧",
+      "right": "将{{pane}}移到右侧",
+      "top": "将{{pane}}移到顶部"
+    },
+    "paneNames": {
+      "assistant": "助手",
+      "editor": "编辑器",
+      "pdf": "预览",
+      "sidebar": "侧边栏",
+      "terminal": "终端"
+    },
+    "resetPaneLayout": {
+      "keywords": "重置 面板 布局 顺序 移动 侧边栏 助手 编辑器 预览 终端 默认",
+      "label": "重置面板布局"
+    },
     "zoomIn": {
       "keywords": "放大 变大",
       "label": "放大"
@@ -347,6 +369,16 @@
     "insertFileLink": {
       "label": "插入文件链接",
       "keywords": "链接 文件 路径 笔记 引用"
+    },
+    "projectNotes": {
+      "open": "打开此项目的笔记",
+      "newShared": "新建项目笔记",
+      "newPersonal": "为此项目新建个人笔记",
+      "keywords": "笔记 研究 关联 相关 项目"
+    },
+    "notes": {
+      "label": "打开笔记",
+      "keywords": "笔记 笔记本 知识 想法 灵感 研究 日志 notes notebook knowledge ideas research journal"
     }
   },
   "community": {
@@ -643,7 +675,6 @@
   "home": {
     "ariaLabel": "主页",
     "label": "主页",
-    "title": "返回项目库",
     "tooltip": "返回项目库。"
   },
   "importDestination": {
@@ -788,7 +819,8 @@
     "research": "研究工作区",
     "search": "搜索项目",
     "sourceControl": "源代码管理",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "笔记"
   },
   "remoteMenu": {
     "accountLabel": "{{host}} 上的 {{login}}",
@@ -880,7 +912,8 @@
           "folders_other": "{{count}} 个文件夹",
           "images": "图片",
           "pdfs": "PDF 文件",
-          "projects": "项目"
+          "projects": "项目",
+          "projectsAndNotes": "项目和笔记"
         },
         "subtitle": "项目、预览、历史记录和应用数据",
         "title": "存储占用",
@@ -923,8 +956,8 @@
         "label": "LaTeX 工具"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
+        "description": "在主页程序坞中添加“笔记”。笔记是一个 Markdown 文件，可以包含图表、统计图和公式，你和你的代理都能编辑。笔记不会出现在项目库中，每篇笔记都可以关联到一个项目。仍处于测试阶段，默认关闭。",
+        "label": "笔记"
       },
       "researchTasks": {
         "description": "代理会在项目的副本中自行工作，并把修改留给你审阅。极不稳定：运行可能卡住、失败，或留下需要手动处理的修改，而且全程都会占用你的提供商额度。会在设置中添加“研究”分区。关闭后会停止所有正在运行的任务。默认关闭，开启后风险自负。",
@@ -1261,6 +1294,7 @@
       "split": "分屏视图"
     },
     "moreActions": "更多操作",
+    "resetPaneLayout": "重置面板布局",
     "renameFailed": "无法重命名项目。"
   },
   "tour": {

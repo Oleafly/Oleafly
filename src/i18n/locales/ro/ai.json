@@ -44,14 +44,16 @@
       "externalTool": "Confirmă acțiunea instrumentului extern",
       "internet": "Confirmă accesul la internet",
       "edit": "Confirmă modificarea făcută de AI",
-      "researchTask": "Confirmă sarcina de cercetare"
+      "researchTask": "Confirmă sarcina de cercetare",
+      "note": "Confirmă notița nouă"
     },
     "headline": {
       "command": "Asistentul vrea să ruleze această comandă",
       "externalTool": "Asistentul vrea să folosească un instrument extern",
       "internet": "Asistentul vrea să acceseze internetul",
       "edit": "Asistentul vrea să îți modifice fișierele",
-      "researchTask": "Asistentul vrea să creeze o sarcină de cercetare"
+      "researchTask": "Asistentul vrea să creeze o sarcină de cercetare",
+      "note": "Asistentul vrea să creeze o notiță"
     },
     "mcpNote": "Aceasta trimite argumentele de mai jos către serverul MCP configurat.",
     "line": "linia {{line}}",
@@ -86,10 +88,18 @@
       "timeBudget": "Buget de timp",
       "timeBudgetDefault": "Implicit",
       "minutes_one": "{{count}} minut",
+      "minutes_few": "{{count}} minute",
       "minutes_other": "{{count}} de minute",
       "planFirst": "Planifică mai întâi",
-      "startNow": "Pornește imediat",
-      "minutes_few": "{{count}} minute"
+      "startNow": "Pornește imediat"
+    },
+    "noteDraft": {
+      "title": "Titlu",
+      "project": "Proiect asociat",
+      "tags": "Etichete",
+      "text": "Text",
+      "empty": "Fără text",
+      "more": "Notița continuă după acest punct."
     }
   },
   "attachments": {
@@ -1124,5 +1134,19 @@
     "replaceConfirm": "Înlocuiește răspunsul",
     "forked": "A pornit o conversație nouă de la mesajul editat.",
     "failed": "Mesajul nu a putut fi trimis din nou."
+  },
+  "noteScope": {
+    "notesOnly": "Doar în asistentul unei notițe.",
+    "tools": {
+      "readNote": "Citește notița deschisă, inclusiv sugestiile care așteaptă revizuirea.",
+      "proposeNoteEdits": "Propune modificări la notița deschisă, pe care tu le accepți sau le respingi.",
+      "searchNotes": "Caută în toate notițele tale.",
+      "listKnowledgeNotes": "Listează notițele tale, după etichetă sau proiect.",
+      "readNoteById": "Citește o altă notiță.",
+      "createNote": "Creează o notiță nouă.",
+      "relatedProjectFiles": "Listează fișierele proiectului asociat notiței.",
+      "readRelatedProjectFile": "Citește un fișier din proiectul asociat notiței.",
+      "searchRelatedProject": "Caută în proiectul asociat notiței."
+    }
   }
 }

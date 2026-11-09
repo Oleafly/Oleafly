@@ -323,6 +323,28 @@
       "keywords": "pdf náhled zobrazit skrýt rozdělit jen editor",
       "label": "Přepnout náhled PDF"
     },
+    "swapEditorPreview": {
+      "keywords": "prohodit editor náhled pdf strany panel pořadí rozvržení",
+      "label": "Prohodit editor a náhled"
+    },
+    "movePaneToEdge": {
+      "bottom": "Přesunout {{pane}} k dolnímu okraji",
+      "keywords": "přesunout panel okraj ukotvit strana rozdělit naskládat rozvržení",
+      "left": "Přesunout {{pane}} k levému okraji",
+      "right": "Přesunout {{pane}} k pravému okraji",
+      "top": "Přesunout {{pane}} k hornímu okraji"
+    },
+    "paneNames": {
+      "assistant": "panel asistenta",
+      "editor": "editor",
+      "pdf": "náhled",
+      "sidebar": "postranní panel",
+      "terminal": "terminál"
+    },
+    "resetPaneLayout": {
+      "keywords": "obnovit rozvržení panelů pořadí přesunout panely postranní panel asistent editor náhled terminál výchozí",
+      "label": "Obnovit rozvržení panelů"
+    },
     "zoomIn": {
       "keywords": "zvětšit větší lupa",
       "label": "Přiblížit"
@@ -350,6 +372,16 @@
     "insertFileLink": {
       "label": "Vložit odkaz na soubor",
       "keywords": "odkaz soubor cesta poznámka"
+    },
+    "projectNotes": {
+      "open": "Otevřít poznámky k tomuto projektu",
+      "newShared": "Nová poznámka projektu",
+      "newPersonal": "Nová osobní poznámka k tomuto projektu",
+      "keywords": "poznámky výzkum propojený související projekt"
+    },
+    "notes": {
+      "label": "Otevřít Poznámky",
+      "keywords": "poznámky poznámka zápisník znalosti nápady výzkum deník notes notebook knowledge ideas research journal"
     }
   },
   "community": {
@@ -649,7 +681,6 @@
   "home": {
     "ariaLabel": "Domů",
     "label": "Domů",
-    "title": "Zpět do knihovny",
     "tooltip": "Zpět do knihovny projektů"
   },
   "importDestination": {
@@ -797,7 +828,8 @@
     "research": "Výzkumný prostor",
     "search": "Hledat v projektu",
     "sourceControl": "Správa verzí",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Poznámky"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} na {{host}}",
@@ -919,7 +951,8 @@
           "folders_other": "{{count}} složek",
           "images": "Obrázky",
           "pdfs": "Soubory PDF",
-          "projects": "Projekty"
+          "projects": "Projekty",
+          "projectsAndNotes": "Projekty a poznámky"
         },
         "subtitle": "Projekty, náhledy, historie a data aplikace",
         "title": "Využití úložiště",
@@ -965,8 +998,8 @@
         "label": "Nástroje LaTeX"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
+        "description": "Přidá Poznámky do doku na domovské obrazovce. Poznámka je soubor Markdown s diagramy, grafy a matematikou, který můžete upravovat vy i vaši agenti. Poznámky nejsou součástí knihovny projektů a každou poznámku lze propojit s projektem. Během bety je ve výchozím stavu vypnuté.",
+        "label": "Poznámky"
       },
       "researchTasks": {
         "description": "Agent pracuje sám v kopii projektu a své změny nechá vám k posouzení. Velmi nestabilní: spuštění se mohou zaseknout, selhat nebo po sobě nechat změny, které budete muset vyřešit ručně, a po celou dobu spotřebovávají limit vašeho poskytovatele. Přidá do Nastavení sekci „Výzkum“. Po vypnutí se zastaví všechny běžící úlohy. Ve výchozím stavu vypnuto. Zapněte to na vlastní riziko.",
@@ -1321,6 +1354,7 @@
       "split": "Rozdělené zobrazení"
     },
     "moreActions": "Další akce",
+    "resetPaneLayout": "Obnovit rozvržení panelů",
     "renameFailed": "Projekt se nepodařilo přejmenovat."
   },
   "tour": {

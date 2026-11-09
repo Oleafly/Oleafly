@@ -322,6 +322,28 @@
       "keywords": "pdf prévia mostrar ocultar dividir só editor",
       "label": "Alternar a prévia do PDF"
     },
+    "swapEditorPreview": {
+      "keywords": "trocar editor prévia pdf lados painel ordem layout",
+      "label": "Trocar editor e prévia"
+    },
+    "movePaneToEdge": {
+      "bottom": "Mover {{pane}} para a borda inferior",
+      "keywords": "mover painel borda encaixar lado dividir empilhar layout",
+      "left": "Mover {{pane}} para a borda esquerda",
+      "right": "Mover {{pane}} para a borda direita",
+      "top": "Mover {{pane}} para a borda superior"
+    },
+    "paneNames": {
+      "assistant": "o assistente",
+      "editor": "o editor",
+      "pdf": "a prévia",
+      "sidebar": "a barra lateral",
+      "terminal": "o terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "redefinir layout painéis ordem mover barra lateral assistente editor prévia terminal padrão",
+      "label": "Redefinir o layout dos painéis"
+    },
     "zoomIn": {
       "keywords": "aumentar maior",
       "label": "Aumentar o zoom"
@@ -349,6 +371,16 @@
     "insertFileLink": {
       "label": "Inserir link para arquivo",
       "keywords": "link arquivo caminho nota referência"
+    },
+    "projectNotes": {
+      "open": "Abrir as notas deste projeto",
+      "newShared": "Nova nota do projeto",
+      "newPersonal": "Nova nota pessoal para este projeto",
+      "keywords": "notas pesquisa vinculadas relacionadas projeto"
+    },
+    "notes": {
+      "label": "Abrir Notas",
+      "keywords": "notas caderno conhecimento ideias pesquisa diário notes notebook knowledge ideas research journal"
     }
   },
   "community": {
@@ -647,7 +679,6 @@
   "home": {
     "ariaLabel": "Início",
     "label": "Início",
-    "title": "Voltar para a biblioteca",
     "tooltip": "Voltar para a biblioteca de projetos"
   },
   "importDestination": {
@@ -794,7 +825,8 @@
     "research": "Espaço de pesquisa",
     "search": "Buscar no projeto",
     "sourceControl": "Controle de versão",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notas"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} em {{host}}",
@@ -906,7 +938,8 @@
           "folders_other": "{{count}} pastas",
           "images": "Imagens",
           "pdfs": "PDFs",
-          "projects": "Projetos"
+          "projects": "Projetos",
+          "projectsAndNotes": "Projetos e notas"
         },
         "subtitle": "Projetos, prévias, histórico e dados do aplicativo",
         "title": "Uso de armazenamento",
@@ -951,8 +984,8 @@
         "label": "Ferramentas LaTeX"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
+        "description": "Adiciona Notas ao painel da tela inicial. Uma nota é um arquivo Markdown com diagramas, gráficos e matemática que você e seus agentes podem editar. As notas ficam fora da sua biblioteca de projetos, e cada nota pode ser vinculada a um projeto. Desligado por padrão enquanto está em beta.",
+        "label": "Notas"
       },
       "researchTasks": {
         "description": "Um agente trabalha sozinho em uma cópia do projeto e deixa as alterações para você revisar. Muito instável: as execuções podem travar, falhar ou deixar alterações para resolver à mão, e usam a cota do seu provedor o tempo todo. Adiciona uma seção Pesquisa às Configurações. Ao desligar, todas as tarefas em andamento são interrompidas. Desligado por padrão. Ligue por sua conta e risco.",
@@ -1301,6 +1334,7 @@
       "split": "Visão dividida"
     },
     "moreActions": "Mais ações",
+    "resetPaneLayout": "Redefinir o layout dos painéis",
     "renameFailed": "Não foi possível renomear o projeto."
   },
   "tour": {

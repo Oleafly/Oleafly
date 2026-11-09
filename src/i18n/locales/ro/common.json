@@ -83,5 +83,9 @@
     "more_one": "încă {{count}} persoană",
     "more_few": "încă {{count}} persoane",
     "more_other": "încă {{count}} de persoane"
+  },
+  "remoteImage": {
+    "blocked": "Imagine de la {{host}}",
+    "load": "Încarcă imaginea"
   }
 }

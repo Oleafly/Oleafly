@@ -321,6 +321,28 @@
       "keywords": "pdf vorschau anzeigen ausblenden geteilt nur editor",
       "label": "PDF-Vorschau ein- oder ausblenden"
     },
+    "swapEditorPreview": {
+      "keywords": "tauschen editor vorschau pdf seiten bereich reihenfolge layout",
+      "label": "Editor und Vorschau tauschen"
+    },
+    "movePaneToEdge": {
+      "bottom": "{{pane}} an den unteren Rand verschieben",
+      "keywords": "verschieben bereich rand andocken seite teilen stapeln layout",
+      "left": "{{pane}} an den linken Rand verschieben",
+      "right": "{{pane}} an den rechten Rand verschieben",
+      "top": "{{pane}} an den oberen Rand verschieben"
+    },
+    "paneNames": {
+      "assistant": "Assistent",
+      "editor": "Editor",
+      "pdf": "Vorschau",
+      "sidebar": "Seitenleiste",
+      "terminal": "Terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "zurücksetzen bereich layout reihenfolge verschieben bereiche seitenleiste assistent editor vorschau terminal standard",
+      "label": "Layout der Bereiche zurücksetzen"
+    },
     "zoomIn": {
       "keywords": "größer vergrößern lupe",
       "label": "Vergrößern"
@@ -348,6 +370,16 @@
     "insertFileLink": {
       "label": "Link zu Datei einfügen",
       "keywords": "link datei pfad notiz verweis"
+    },
+    "projectNotes": {
+      "open": "Notizen für dieses Projekt öffnen",
+      "newShared": "Neue Projektnotiz",
+      "newPersonal": "Neue persönliche Notiz für dieses Projekt",
+      "keywords": "notizen forschung verknüpft zugehörig projekt"
+    },
+    "notes": {
+      "label": "Notizen öffnen",
+      "keywords": "Notizen Notizbuch Wissen Ideen Forschung Tagebuch notes notebook knowledge ideas research journal"
     }
   },
   "community": {
@@ -645,7 +677,6 @@
   "home": {
     "ariaLabel": "Start",
     "label": "Start",
-    "title": "Zurück zur Bibliothek",
     "tooltip": "Zurück zur Projektbibliothek"
   },
   "importDestination": {
@@ -791,7 +822,8 @@
     "research": "Forschungsbereich",
     "search": "Projekt durchsuchen",
     "sourceControl": "Versionsverwaltung",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notizen"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} auf {{host}}",
@@ -893,7 +925,8 @@
           "folders_other": "{{count}} Ordner",
           "images": "Bilder",
           "pdfs": "PDFs",
-          "projects": "Projekte"
+          "projects": "Projekte",
+          "projectsAndNotes": "Projekte und Notizen"
         },
         "subtitle": "Projekte, Vorschauen, Historie und App-Daten",
         "title": "Speicherbelegung",
@@ -937,8 +970,8 @@
         "label": "LaTeX-Werkzeuge"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
+        "description": "Fügt Notizen zum Dock der Startseite hinzu. Eine Notiz ist eine Markdown-Datei mit Diagrammen, Grafiken und Formeln, die Sie und Ihre Agenten gemeinsam bearbeiten können. Notizen bleiben außerhalb Ihrer Projektbibliothek, und jede Notiz lässt sich mit einem Projekt verknüpfen. Standardmäßig aus, solange die Funktion in der Beta ist.",
+        "label": "Notizen"
       },
       "researchTasks": {
         "description": "Ein Agent arbeitet eigenständig in einer Kopie des Projekts und hinterlässt seine Änderungen, damit Sie sie prüfen können. Sehr instabil: Läufe können hängen bleiben, fehlschlagen oder Änderungen hinterlassen, die Sie von Hand bereinigen müssen, und sie verbrauchen während der gesamten Laufzeit das Kontingent Ihres Anbieters. Fügt den Einstellungen den Bereich Forschung hinzu. Beim Ausschalten werden alle laufenden Aufgaben beendet. Standardmäßig aus. Schalten Sie es auf eigenes Risiko ein.",
@@ -1281,6 +1314,7 @@
       "split": "Geteilte Ansicht"
     },
     "moreActions": "Weitere Aktionen",
+    "resetPaneLayout": "Layout der Bereiche zurücksetzen",
     "renameFailed": "Das Projekt konnte nicht umbenannt werden."
   },
   "tour": {

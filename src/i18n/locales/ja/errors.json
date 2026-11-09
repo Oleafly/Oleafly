@@ -270,7 +270,6 @@
     "tls_failed": "Oleafly は {{host}} の証明書を検証できませんでした。組織で独自の認証局を運用している場合は、設定でその証明書ファイルをアカウントに追加してください。",
     "tracked_secret_files": "このプロジェクトの Git 履歴にあるファイルに鍵やパスワードが含まれている可能性があるため、公開を中止しました: {{files}}"
   },
-  "approvals": {},
   "trust": {
     "git": "ソース管理を使うには、このフォルダを信頼してください。",
     "repository": "ここでソース管理を使うには、リポジトリ {{name}} を信頼してください。",
@@ -593,5 +592,36 @@
     "needs_permissions": "Cua Driver が macOS の権限を待っています。システム設定で CuaDriver の「アクセシビリティ」と「画面収録」をオンにしてから、もう一度お試しください。",
     "task_unattended": "スケジュールで実行するタスクや、Oleafly を閉じたあとに実行するタスクでは、デスクトップアプリを使えません。",
     "main_window": "Computer Use の設定はメインウィンドウで変更してください。"
+  },
+  "notes": {
+    "typst_empty": "この Typst ブロックは空です。",
+    "typst_too_large": "この Typst ブロックは大きすぎてプレビューできません。",
+    "typst_image_too_large": "この Typst ブロックが描く画像は大きすぎて表示できません。",
+    "typst_no_svg": "Typst が SVG を出力しませんでした。",
+    "typst_failed": "Typst でこのブロックをコンパイルできませんでした。",
+    "typst_line": "{{line}} 行目: {{message}}",
+    "import_folder_unreadable": "Oleafly はこのフォルダを読み込めませんでした。",
+    "import_too_many_files": "このフォルダはファイルが多すぎて読み込めません。ファイル数の少ないフォルダを選んでください。",
+    "import_files_in_library": "Oleafly のライブラリの外にあるファイルを選んでください。",
+    "import_no_space": "この読み込みに必要な空き容量がディスクにありません。約 {{size}} GB が必要です。空き容量を増やしてから、もう一度お試しください。",
+    "import_stopped": "読み込みが予期せず停止しました。もう一度お試しください。",
+    "import_invalid_run": "この読み込みの ID が無効です。もう一度お試しください。",
+    "import_running": "この読み込みはすでに実行中です。",
+    "export_note_missing": "このノートはもうライブラリにありません。",
+    "export_too_many_titles": "同じタイトルのノートが多すぎます。いくつかの名前を変更してから、もう一度書き出してください。",
+    "export_attachments_failed": "Oleafly は添付ファイルのフォルダを作成できませんでした。",
+    "export_copy_failed": "Oleafly は {{name}} をコピーできませんでした。",
+    "export_write_failed": "Oleafly は {{name}} を書き込めませんでした。",
+    "export_stopped": "書き出しが予期せず停止しました。もう一度お試しください。",
+    "folder_in_library": "Oleafly のライブラリの外にあるフォルダを選んでください。",
+    "folder_unopenable": "Oleafly はフォルダを開けませんでした。",
+    "folder_not_folder": "Oleafly はその場所を使えません。フォルダを選んでください。",
+    "folder_create_failed": "Oleafly はフォルダを作成できませんでした。",
+    "folder_no_free_name": "Oleafly はそこで使われていないフォルダ名を見つけられませんでした。別のフォルダを選んでください。",
+    "picker_closed": "選択画面が予期せず閉じました。もう一度お試しください。",
+    "folder_not_local": "このコンピュータ上のフォルダを選んでください。",
+    "files_not_local": "このコンピュータ上のファイルを選んでください。",
+    "related_missing": "このプロジェクトはもうライブラリにないため、ノートをリンクできません。",
+    "related_is_note": "ノートのリンク先にできるのはプロジェクトだけで、ほかのノートは指定できません。"
   }
 }

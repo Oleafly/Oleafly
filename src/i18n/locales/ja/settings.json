@@ -987,7 +987,8 @@
       "editor": "エディタ",
       "files": "プロジェクト",
       "pdf": "PDF プレビュー",
-      "terminal": "ターミナル"
+      "terminal": "ターミナル",
+      "notes": "ノート"
     },
     "terminal": {
       "colorTheme": {
@@ -1119,6 +1120,146 @@
         "label": "コンパイル時に PDF を表示"
       },
       "title": "Zen モード"
+    },
+    "notes": {
+      "sectionName": "ノートの外観",
+      "resetAriaLabel": "{{setting}} を既定に戻す",
+      "text": {
+        "title": "テキスト"
+      },
+      "typeface": {
+        "label": "書体",
+        "description": "ノートの本文の書体を選びます。",
+        "options": {
+          "sans": "サンセリフ",
+          "serif": "セリフ",
+          "mono": "等幅"
+        }
+      },
+      "font": {
+        "label": "ノートのフォント",
+        "description": "ノートの本文に使うフォントを、インストール済みのものから選びます。空欄にすると「書体」の設定を使います。"
+      },
+      "fontSize": {
+        "label": "ノートの文字サイズ",
+        "description": "ノートの本文の文字サイズを設定します。",
+        "custom": "カスタム",
+        "customLabel": "ノートの文字サイズ（カスタム、ピクセル）"
+      },
+      "lineHeight": {
+        "label": "ノートの行の高さ",
+        "description": "ノートの本文の行間を設定します。",
+        "customLabel": "ノートの行の高さ（カスタム）"
+      },
+      "paragraphSpacing": {
+        "label": "段落の間隔",
+        "description": "段落、リスト、その他のブロックの間隔を設定します。",
+        "options": {
+          "compact": "狭い",
+          "normal": "標準",
+          "relaxed": "ゆったり",
+          "spacious": "広い"
+        }
+      },
+      "headings": {
+        "title": "見出しとタイトル"
+      },
+      "headingTypeface": {
+        "label": "見出しの書体",
+        "description": "見出しとノートのタイトルの書体を選びます。",
+        "options": {
+          "text": "本文と同じ"
+        }
+      },
+      "headingFont": {
+        "label": "見出しのフォント",
+        "description": "見出しとノートのタイトルに使うフォントを、インストール済みのものから選びます。空欄にすると「見出しの書体」の設定を使います。"
+      },
+      "headingSize": {
+        "label": "見出しのサイズ",
+        "description": "本文に対する見出しの大きさを設定します。",
+        "options": {
+          "small": "小さめ",
+          "normal": "標準",
+          "large": "大きめ"
+        }
+      },
+      "titleSize": {
+        "label": "タイトルのサイズ",
+        "description": "各ノートの先頭にあるタイトルのサイズを設定します。"
+      },
+      "layout": {
+        "title": "レイアウト"
+      },
+      "width": {
+        "label": "ノートの幅",
+        "description": "ノートを開いたときの幅です。ノート内の幅メニューからも変更できます。",
+        "options": {
+          "standard": "標準",
+          "wide": "広い",
+          "full": "全幅"
+        }
+      },
+      "wordCount": {
+        "label": "単語数を表示",
+        "description": "ノートのツールバーに単語数を表示します。"
+      },
+      "spellcheck": {
+        "label": "ノートのスペルチェック",
+        "description": "ノートを書いている間、スペルの誤りに下線を引きます。"
+      },
+      "code": {
+        "title": "コード"
+      },
+      "codeFont": {
+        "label": "コードのフォント",
+        "description": "コードブロックとインラインコードに使うフォントを、インストール済みのものから選びます。"
+      },
+      "codeTheme": {
+        "label": "コードブロックの色",
+        "description": "ノートのコードブロックに使うシンタックスカラーを選びます。",
+        "options": {
+          "editor": "エディタと同じ"
+        }
+      },
+      "colors": {
+        "title": "色"
+      },
+      "accent": {
+        "label": "ノートのアクセントカラー",
+        "description": "ノート内のリンク、タグ、タスクのチェックボックスに使われます。",
+        "matchApp": "アプリに合わせる",
+        "customAriaLabel": "ノートのアクセントカラーを自由に選ぶ"
+      },
+      "highlight": {
+        "label": "ハイライトの色",
+        "description": "ハイライトしたテキストの背景の色です。",
+        "options": {
+          "yellow": "黄",
+          "green": "緑",
+          "blue": "青",
+          "pink": "ピンク",
+          "purple": "紫",
+          "accent": "アクセント"
+        }
+      },
+      "callouts": {
+        "label": "コールアウトのスタイル",
+        "description": "ノート内のコールアウトボックスの見た目です。",
+        "options": {
+          "tinted": "淡い色",
+          "filled": "塗りつぶし",
+          "outlined": "枠線",
+          "bar": "縦線"
+        }
+      },
+      "remoteImages": {
+        "title": "Web 上の画像",
+        "description": "ノートは、これらのサイトの画像を確認せずに読み込みます。",
+        "empty": "ノートは Web から画像を読み込む前に確認します。常に許可したサイトがここに表示されます。",
+        "remove": "{{host}} を削除"
+      },
+      "resetAll": "ノートの外観をリセット"
     }
   },
   "checkpoints": {
@@ -2316,6 +2457,30 @@
       "resetZoom": {
         "description": "アプリを 100% に戻します。",
         "label": "ズームをリセット"
+      },
+      "notesQuickSwitcher": {
+        "description": "名前でノートを探して開きます。",
+        "label": "ノート: ノートへ移動"
+      },
+      "notesTodayNote": {
+        "description": "今日のノートを開くか、新しく作成します。",
+        "label": "ノート: 今日のノート"
+      },
+      "notesGraph": {
+        "description": "すべてのノートのグラフを開きます。",
+        "label": "ノート: グラフ"
+      },
+      "notesLocalGraph": {
+        "description": "開いているノートの周りのリンクを表示または非表示にします。",
+        "label": "ノート: ローカルグラフ"
+      },
+      "notesOutline": {
+        "description": "開いているノートのアウトラインを表示または非表示にします。",
+        "label": "ノート: アウトライン"
+      },
+      "notesAskAgent": {
+        "description": "選択したテキストについてエージェントに尋ねるか、ノートのエージェントを開いたり閉じたりします。",
+        "label": "ノート: エージェントに依頼"
       }
     },
     "application": {
@@ -2483,5 +2648,17 @@
       "loadFailed": "MCP サーバーの一覧を読み取れませんでした。",
       "missing": "{{name}}（見つかりません）"
     }
+  },
+  "notesPreview": {
+    "label": "この設定でのノートのプレビュー",
+    "title": "フィールドノート",
+    "heading": "朝の調査",
+    "paragraph": "9 時まで小雨、その後は北の尾根の上に晴れ間が広がりました。正午になっても土はまだ湿っていました。",
+    "links": "詳しい手順は <note>サンプリングの方法</note> を参照するか、<tag>#フィールドワーク</tag> を見てください。",
+    "highlight": "苗の高さが 1 週間で 2 倍になりました。",
+    "calloutTitle": "次回の訪問",
+    "calloutBody": "新しいサンプルを採る前に、土壌センサーを確認します。",
+    "taskDone": "サンプルにラベルを付ける",
+    "task": "写真をアップロードする"
   }
 }

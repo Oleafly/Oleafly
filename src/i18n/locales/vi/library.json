@@ -3,7 +3,7 @@
     "newProject": "Dự án mới",
     "search": "Tìm kiếm tài liệu ({{shortcut}})",
     "diagramComposer": "Trình tạo sơ đồ",
-    "notes": "Notes",
+    "notes": "Ghi chú",
     "tools": "Công cụ Oleafly",
     "settings": "Cài đặt"
   },
@@ -54,7 +54,7 @@
       "kindDocument": "Tài liệu",
       "kindImage": "Hình ảnh",
       "kindDiagram": "Sơ đồ",
-      "kindNote": "Note",
+      "kindNote": "Ghi chú",
       "bookmark": "Dấu trang",
       "bookmarkAll": "Mọi trạng thái",
       "bookmarkYes": "Đã đánh dấu",
@@ -138,7 +138,7 @@
       "document": "tài liệu",
       "image": "hình ảnh",
       "diagram": "sơ đồ",
-      "note": "note",
+      "note": "ghi chú",
       "external": "bên ngoài",
       "overleaf": "Overleaf"
     },

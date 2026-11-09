@@ -84,5 +84,9 @@
     "more_few": "ещё {{count}} человека",
     "more_many": "ещё {{count}} человек",
     "more_other": "ещё {{count}} человека"
+  },
+  "remoteImage": {
+    "blocked": "Изображение с {{host}}",
+    "load": "Загрузить изображение"
   }
 }

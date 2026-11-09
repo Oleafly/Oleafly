@@ -509,6 +509,7 @@
     "copyAndShare": "Skopiuj do Oleafly i udostępnij",
     "title": "Udostępnij projekt {{name}}",
     "description": "Pracuj nad tym projektem z innymi osobami za pośrednictwem serwera współpracy.",
+    "noteDescription": "Pisz tę notatkę z innymi osobami za pośrednictwem serwera współpracy.",
     "loading": "Wczytywanie…",
     "linked": "Ten projekt jest folderem poza Oleafly. Oleafly skopiuje go do biblioteki i udostępni tę kopię. Oryginalny folder pozostanie nienaruszony.",
     "editCopy": "To jest udostępniona kopia. Od teraz edytuj ją, a nie oryginalny folder.",
@@ -526,12 +527,15 @@
     "tooLarge": "Te pliki przekraczają limit serwera wynoszący {{size}} MB. Zmniejsz je lub usuń przed udostępnieniem.",
     "renamed": "Niektóre nazwy nie działają na każdym komputerze. Inne osoby otrzymają te pliki pod nieco zmienioną nazwą.",
     "excluded": "Nie są udostępniane: pozostałe wyniki kompilacji, ustawienia Oleafly i historia Git. Najnowszy skompilowany PDF jest udostępniany, żeby współautorzy mogli go przeczytać w przeglądarce.",
+    "noteExcluded": "Nie są udostępniane: ustawienia Oleafly i historia Git.",
     "start": "Udostępnij",
     "preparing": "Przygotowywanie projektu…",
     "uploading": "Przesyłanie rysunków i innych plików: {{done}} z {{total}}",
     "saving": "Zapisywanie projektu na serwerze…",
     "failed": "Udostępnianie nie zostało dokończone, więc nic nie udostępniono.",
-    "trustAgain": "Każdy, kogo dodasz do tego projektu, może zmieniać jego pliki, więc Oleafly poprosi Cię na tym komputerze o ponowne zaufanie, zanim uruchomi dla niego agentów, polecenia terminala lub shell escape."
+    "trustAgain": "Każdy, kogo dodasz do tego projektu, może zmieniać jego pliki, więc Oleafly poprosi Cię na tym komputerze o ponowne zaufanie, zanim uruchomi dla niego agentów, polecenia terminala lub shell escape.",
+    "projectNotesShared": "Notatki projektu są udostępniane wszystkim uczestnikom tego projektu. Notatki osobiste pozostają prywatne.",
+    "personalNotesPrivate": "Notatki osobiste pozostają prywatne. Udostępniane są tylko notatki z folderu notatek projektu."
   },
   "manage": {
     "sharedOn": "Udostępniono na serwerze {{server}}",

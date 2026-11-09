@@ -82,5 +82,9 @@
   "avatar": {
     "more_one": "{{count}} muu henkilö",
     "more_other": "{{count}} muuta henkilöä"
+  },
+  "remoteImage": {
+    "blocked": "Kuva palvelimelta {{host}}",
+    "load": "Lataa kuva"
   }
 }

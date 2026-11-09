@@ -110,6 +110,8 @@
     "conflictsHelp_one": "Dit bestand is hier en op een andere computer gewijzigd voordat de wijzigingen waren gesynchroniseerd, dus Oleafly heeft beide versies bewaard. Bewaar wat je nodig hebt en verwijder daarna de conflictkopie.",
     "conflictsHelp_other": "Deze bestanden zijn hier en op een andere computer gewijzigd voordat de wijzigingen waren gesynchroniseerd, dus Oleafly heeft beide versies bewaard. Bewaar wat je nodig hebt en verwijder daarna de conflictkopieën.",
     "conflictsLabel": "Conflictkopieën in {{name}}",
+    "compare": "Vergelijken",
+    "compareLabel": "{{path}} vergelijken met de notitie",
     "dismiss": "Sluiten",
     "skipped_one": "{{count}} bestand is overgeslagen",
     "skipped_other": "{{count}} bestanden zijn overgeslagen",

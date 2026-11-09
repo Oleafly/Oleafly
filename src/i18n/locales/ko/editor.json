@@ -221,7 +221,13 @@
     "closeRight": "오른쪽 탭 모두 닫기",
     "closeAll": "모두 닫기",
     "closeAssistantTabs": "어시스턴트가 연 파일 닫기",
-    "closeAssistantTabsCount_other": "어시스턴트가 연 파일 {{count}}개 닫기"
+    "closeAssistantTabsCount_other": "어시스턴트가 연 파일 {{count}}개 닫기",
+    "editAsMarkdown": "Markdown으로 편집",
+    "editAsNote": "노트로 편집",
+    "noteAsMarkdown": "이 노트를 Markdown으로 편집하고 있습니다.",
+    "openInNotes": "노트에서 열기",
+    "moveIntoProject": "프로젝트로 이동",
+    "copyToMyNotes": "내 노트로 복사"
   },
   "projectInfo": {
     "trigger": "프로젝트 정보",

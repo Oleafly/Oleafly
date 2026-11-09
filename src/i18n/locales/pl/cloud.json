@@ -120,6 +120,8 @@
     "conflictsHelp_many": "Te pliki zostały zmienione tutaj i na innym komputerze, zanim zmiany zostały zsynchronizowane, więc Oleafly zachował obie wersje. Zostaw to, czego potrzebujesz, a potem usuń kopie konfliktowe.",
     "conflictsHelp_other": "Te pliki zostały zmienione tutaj i na innym komputerze, zanim zmiany zostały zsynchronizowane, więc Oleafly zachował obie wersje. Zostaw to, czego potrzebujesz, a potem usuń kopie konfliktowe.",
     "conflictsLabel": "Kopie konfliktowe w projekcie {{name}}",
+    "compare": "Porównaj",
+    "compareLabel": "Porównaj {{path}} z notatką",
     "dismiss": "Zamknij",
     "skipped_one": "Pominięto {{count}} plik",
     "skipped_few": "Pominięto {{count}} pliki",

@@ -44,14 +44,16 @@
       "externalTool": "Vahvista ulkoisen työkalun toiminto",
       "internet": "Vahvista verkkoyhteys",
       "edit": "Vahvista tekoälyn muokkaus",
-      "researchTask": "Vahvista tutkimustehtävä"
+      "researchTask": "Vahvista tutkimustehtävä",
+      "note": "Vahvista uusi muistiinpano"
     },
     "headline": {
       "command": "Avustaja haluaa suorittaa tämän komennon",
       "externalTool": "Avustaja haluaa käyttää ulkoista työkalua",
       "internet": "Avustaja haluaa käyttää verkkoyhteyttä",
       "edit": "Avustaja haluaa muuttaa tiedostoja",
-      "researchTask": "Avustaja haluaa luoda tutkimustehtävän"
+      "researchTask": "Avustaja haluaa luoda tutkimustehtävän",
+      "note": "Avustaja haluaa luoda muistiinpanon"
     },
     "mcpNote": "Tämä lähettää alla olevat argumentit määritetylle MCP-palvelimelle.",
     "line": "rivi {{line}}",
@@ -88,6 +90,14 @@
       "minutes_other": "{{count}} minuuttia",
       "planFirst": "Suunnitelma ensin",
       "startNow": "Aloita heti"
+    },
+    "noteDraft": {
+      "title": "Otsikko",
+      "project": "Linkitetty projekti",
+      "tags": "Tunnisteet",
+      "text": "Teksti",
+      "empty": "Ei tekstiä",
+      "more": "Muistiinpano jatkuu tämän kohdan jälkeen."
     }
   },
   "attachments": {
@@ -1103,5 +1113,19 @@
     "replaceConfirm": "Korvaa vastaus",
     "forked": "Muokatusta viestistä aloitettiin uusi keskustelu.",
     "failed": "Viestiä ei voitu lähettää uudelleen."
+  },
+  "noteScope": {
+    "notesOnly": "Vain muistiinpanon avustajassa.",
+    "tools": {
+      "readNote": "Lue avoin muistiinpano, myös tarkistusta odottavat ehdotukset.",
+      "proposeNoteEdits": "Ehdota avoimeen muistiinpanoon muutoksia, jotka voit hyväksyä tai hylätä.",
+      "searchNotes": "Hae kaikista muistiinpanoistasi.",
+      "listKnowledgeNotes": "Listaa muistiinpanosi tunnisteen tai projektin mukaan.",
+      "readNoteById": "Lue toinen muistiinpano.",
+      "createNote": "Luo uusi muistiinpano.",
+      "relatedProjectFiles": "Listaa sen projektin tiedostot, johon muistiinpano on linkitetty.",
+      "readRelatedProjectFile": "Lue tiedosto projektista, johon muistiinpano on linkitetty.",
+      "searchRelatedProject": "Hae projektista, johon muistiinpano on linkitetty."
+    }
   }
 }

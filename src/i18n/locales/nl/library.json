@@ -3,7 +3,7 @@
     "newProject": "Nieuw project",
     "search": "Documenten zoeken ({{shortcut}})",
     "diagramComposer": "Diagrameditor",
-    "notes": "Notes",
+    "notes": "Notities",
     "tools": "Oleafly Tools",
     "settings": "Instellingen"
   },
@@ -55,7 +55,7 @@
       "kindDocument": "Document",
       "kindImage": "Afbeelding",
       "kindDiagram": "Diagram",
-      "kindNote": "Note",
+      "kindNote": "Notitie",
       "bookmark": "Bladwijzer",
       "bookmarkAll": "Elke status",
       "bookmarkYes": "Met bladwijzer",
@@ -139,7 +139,7 @@
       "document": "document",
       "image": "afbeelding",
       "diagram": "diagram",
-      "note": "note",
+      "note": "notitie",
       "external": "extern",
       "overleaf": "Overleaf"
     },

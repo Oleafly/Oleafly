@@ -322,6 +322,28 @@
       "keywords": "pdf vista previa mostrar ocultar dividir solo editor",
       "label": "Alternar la vista previa del PDF"
     },
+    "swapEditorPreview": {
+      "keywords": "intercambiar editor vista previa pdf lados panel orden disposición",
+      "label": "Intercambiar el editor y la vista previa"
+    },
+    "movePaneToEdge": {
+      "bottom": "Mover {{pane}} al borde inferior",
+      "keywords": "mover panel borde acoplar lado dividir apilar disposición",
+      "left": "Mover {{pane}} al borde izquierdo",
+      "right": "Mover {{pane}} al borde derecho",
+      "top": "Mover {{pane}} al borde superior"
+    },
+    "paneNames": {
+      "assistant": "el asistente",
+      "editor": "el editor",
+      "pdf": "la vista previa",
+      "sidebar": "la barra lateral",
+      "terminal": "el terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "restablecer disposición paneles orden mover barra lateral asistente editor vista previa terminal predeterminado",
+      "label": "Restablecer la disposición de los paneles"
+    },
     "zoomIn": {
       "keywords": "agrandar más grande",
       "label": "Acercar"
@@ -349,6 +371,16 @@
     "insertFileLink": {
       "label": "Insertar enlace a un archivo",
       "keywords": "enlace archivo ruta nota referencia"
+    },
+    "projectNotes": {
+      "open": "Abrir las notas de este proyecto",
+      "newShared": "Nota nueva del proyecto",
+      "newPersonal": "Nota personal nueva para este proyecto",
+      "keywords": "notas investigación vinculado relacionado proyecto"
+    },
+    "notes": {
+      "label": "Abrir Notas",
+      "keywords": "notas cuaderno conocimiento ideas investigación diario notes notebook knowledge research journal"
     }
   },
   "community": {
@@ -647,7 +679,6 @@
   "home": {
     "ariaLabel": "Inicio",
     "label": "Inicio",
-    "title": "Volver a la biblioteca",
     "tooltip": "Volver a la biblioteca de proyectos"
   },
   "importDestination": {
@@ -794,7 +825,8 @@
     "research": "Espacio de investigación",
     "search": "Buscar en el proyecto",
     "sourceControl": "Control de versiones",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notas"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} en {{host}}",
@@ -906,7 +938,8 @@
           "folders_other": "{{count}} carpetas",
           "images": "Imágenes",
           "pdfs": "PDF",
-          "projects": "Proyectos"
+          "projects": "Proyectos",
+          "projectsAndNotes": "Proyectos y notas"
         },
         "subtitle": "Proyectos, vistas previas, historial y datos de la aplicación",
         "title": "Uso de almacenamiento",
@@ -951,8 +984,8 @@
         "label": "Herramientas de LaTeX"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
+        "description": "Añade Notas al panel de inicio. Una nota es un archivo Markdown con diagramas, gráficos y fórmulas que pueden editar tanto tú como tus agentes. Las notas quedan fuera de tu biblioteca de proyectos y cada nota se puede vincular a un proyecto. Desactivado por omisión mientras siga en beta.",
+        "label": "Notas"
       },
       "researchTasks": {
         "description": "Un agente trabaja por su cuenta en una copia del proyecto y deja sus cambios para que los revises. Muy inestable: las ejecuciones pueden quedarse atascadas, fallar o dejar cambios que tendrás que arreglar a mano, y consumen la cuota de tu proveedor todo el tiempo. Añade una sección Investigación a los Ajustes. Al desactivarlo se detienen todas las tareas en curso. Desactivado por omisión. Actívalo por tu cuenta y riesgo.",
@@ -1301,6 +1334,7 @@
       "split": "Vista dividida"
     },
     "moreActions": "Más acciones",
+    "resetPaneLayout": "Restablecer la disposición de los paneles",
     "renameFailed": "No se pudo cambiar el nombre del proyecto."
   },
   "tour": {

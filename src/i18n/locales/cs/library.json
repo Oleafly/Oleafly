@@ -3,7 +3,7 @@
     "newProject": "Nový projekt",
     "search": "Hledat v dokumentech ({{shortcut}})",
     "diagramComposer": "Skladatel diagramů",
-    "notes": "Notes",
+    "notes": "Poznámky",
     "tools": "Oleafly Tools",
     "settings": "Nastavení"
   },
@@ -57,7 +57,7 @@
       "kindDocument": "Dokument",
       "kindImage": "Obrázek",
       "kindDiagram": "Diagram",
-      "kindNote": "Note",
+      "kindNote": "Poznámka",
       "bookmark": "Záložka",
       "bookmarkAll": "Libovolný stav",
       "bookmarkYes": "Se záložkou",
@@ -141,7 +141,7 @@
       "document": "dokument",
       "image": "obrázek",
       "diagram": "diagram",
-      "note": "note",
+      "note": "poznámka",
       "external": "externí",
       "overleaf": "Overleaf"
     },

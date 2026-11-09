@@ -82,5 +82,9 @@
   "avatar": {
     "more_one": "nog {{count}} persoon",
     "more_other": "nog {{count}} personen"
+  },
+  "remoteImage": {
+    "blocked": "Afbeelding van {{host}}",
+    "load": "Afbeelding laden"
   }
 }

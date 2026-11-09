@@ -110,6 +110,8 @@
     "conflictsHelp_one": "Diese Datei wurde hier und auf einem anderen Computer geändert, bevor die Änderungen abgeglichen waren, daher hat Oleafly beide Versionen behalten. Behalten Sie, was Sie brauchen, und löschen Sie dann die Kopie.",
     "conflictsHelp_other": "Diese Dateien wurden hier und auf einem anderen Computer geändert, bevor die Änderungen abgeglichen waren, daher hat Oleafly beide Versionen behalten. Behalten Sie, was Sie brauchen, und löschen Sie dann die Kopien.",
     "conflictsLabel": "Konfliktkopien in {{name}}",
+    "compare": "Vergleichen",
+    "compareLabel": "{{path}} mit der Notiz vergleichen",
     "dismiss": "Schließen",
     "skipped_one": "{{count}} Datei wurde übersprungen",
     "skipped_other": "{{count}} Dateien wurden übersprungen",

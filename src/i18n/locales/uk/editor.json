@@ -224,7 +224,13 @@
     "closeAssistantTabsCount_one": "Закрити файл, відкритий асистентом",
     "closeAssistantTabsCount_few": "Закрити {{count}} файли, відкриті асистентом",
     "closeAssistantTabsCount_many": "Закрити {{count}} файлів, відкритих асистентом",
-    "closeAssistantTabsCount_other": "Закрити {{count}} файлу, відкритого асистентом"
+    "closeAssistantTabsCount_other": "Закрити {{count}} файлу, відкритого асистентом",
+    "editAsMarkdown": "Редагувати як Markdown",
+    "editAsNote": "Редагувати як нотатку",
+    "noteAsMarkdown": "Ви редагуєте цю нотатку як Markdown.",
+    "openInNotes": "Відкрити в нотатках",
+    "moveIntoProject": "Перенести в проєкт",
+    "copyToMyNotes": "Скопіювати до моїх нотаток"
   },
   "projectInfo": {
     "trigger": "Відомості про проєкт",

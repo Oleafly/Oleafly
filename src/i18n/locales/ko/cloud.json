@@ -105,6 +105,8 @@
     "conflicts_other": "충돌 사본 {{count}}개를 만들었습니다",
     "conflictsHelp_other": "동기화되기 전에 여기와 다른 컴퓨터에서 모두 변경된 파일이 있어 Oleafly가 두 버전을 모두 보관했습니다. 필요한 내용을 남긴 다음 사본을 삭제하세요.",
     "conflictsLabel": "{{name}}의 충돌 사본",
+    "compare": "비교",
+    "compareLabel": "{{path}}을(를) 노트와 비교",
     "dismiss": "닫기",
     "skipped_other": "파일 {{count}}개를 건너뛰었습니다",
     "skippedMore_other": "그 외 파일 {{count}}개",

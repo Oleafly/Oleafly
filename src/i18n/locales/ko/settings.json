@@ -987,7 +987,8 @@
       "editor": "편집기",
       "files": "프로젝트",
       "pdf": "PDF 미리보기",
-      "terminal": "터미널"
+      "terminal": "터미널",
+      "notes": "노트"
     },
     "terminal": {
       "colorTheme": {
@@ -1119,6 +1120,146 @@
         "label": "컴파일할 때 PDF 표시"
       },
       "title": "Zen 모드"
+    },
+    "notes": {
+      "sectionName": "노트 모양",
+      "resetAriaLabel": "{{setting}}을(를) 기본값으로 되돌리기",
+      "text": {
+        "title": "텍스트"
+      },
+      "typeface": {
+        "label": "서체",
+        "description": "노트 본문의 서체를 고르세요.",
+        "options": {
+          "sans": "산세리프",
+          "serif": "세리프",
+          "mono": "고정폭"
+        }
+      },
+      "font": {
+        "label": "노트 글꼴",
+        "description": "노트 본문에 쓸 글꼴을 설치된 글꼴 중에서 고르세요. 비워 두면 서체 설정을 따릅니다."
+      },
+      "fontSize": {
+        "label": "노트 글자 크기",
+        "description": "노트 본문의 글자 크기를 정합니다.",
+        "custom": "사용자 지정",
+        "customLabel": "사용자 지정 노트 글자 크기(픽셀)"
+      },
+      "lineHeight": {
+        "label": "노트 줄 높이",
+        "description": "노트 본문의 줄 간격을 정합니다.",
+        "customLabel": "사용자 지정 노트 줄 높이"
+      },
+      "paragraphSpacing": {
+        "label": "문단 간격",
+        "description": "문단, 목록, 기타 블록 사이의 간격을 정합니다.",
+        "options": {
+          "compact": "좁게",
+          "normal": "보통",
+          "relaxed": "여유 있게",
+          "spacious": "넓게"
+        }
+      },
+      "headings": {
+        "title": "제목과 노트 제목"
+      },
+      "headingTypeface": {
+        "label": "제목 서체",
+        "description": "제목과 노트 제목의 서체를 고르세요.",
+        "options": {
+          "text": "본문과 같게"
+        }
+      },
+      "headingFont": {
+        "label": "제목 글꼴",
+        "description": "제목과 노트 제목에 쓸 글꼴을 설치된 글꼴 중에서 고르세요. 비워 두면 제목 서체 설정을 따릅니다."
+      },
+      "headingSize": {
+        "label": "제목 크기",
+        "description": "본문과 비교해 제목을 얼마나 크게 표시할지 정합니다.",
+        "options": {
+          "small": "작게",
+          "normal": "보통",
+          "large": "크게"
+        }
+      },
+      "titleSize": {
+        "label": "노트 제목 크기",
+        "description": "각 노트 맨 위에 있는 제목의 크기를 정합니다."
+      },
+      "layout": {
+        "title": "레이아웃"
+      },
+      "width": {
+        "label": "노트 너비",
+        "description": "노트가 열릴 때의 너비입니다. 노트의 너비 메뉴에서도 바꿀 수 있습니다.",
+        "options": {
+          "standard": "표준",
+          "wide": "넓게",
+          "full": "전체 너비"
+        }
+      },
+      "wordCount": {
+        "label": "단어 수 표시",
+        "description": "노트 도구 모음에 단어 수를 표시합니다."
+      },
+      "spellcheck": {
+        "label": "노트 맞춤법 검사",
+        "description": "노트를 쓰는 동안 철자가 틀린 단어에 밑줄을 긋습니다."
+      },
+      "code": {
+        "title": "코드"
+      },
+      "codeFont": {
+        "label": "코드 글꼴",
+        "description": "코드 블록과 인라인 코드에 쓸 글꼴을 설치된 글꼴 중에서 고르세요."
+      },
+      "codeTheme": {
+        "label": "코드 블록 색상",
+        "description": "노트의 코드 블록에 쓸 구문 강조 색상을 고르세요.",
+        "options": {
+          "editor": "편집기와 같게"
+        }
+      },
+      "colors": {
+        "title": "색상"
+      },
+      "accent": {
+        "label": "노트 강조 색상",
+        "description": "노트의 링크, 태그, 할 일 상자에 쓰입니다.",
+        "matchApp": "앱과 같게",
+        "customAriaLabel": "사용자 지정 노트 강조 색상 고르기"
+      },
+      "highlight": {
+        "label": "형광펜 색상",
+        "description": "형광펜으로 표시한 텍스트 뒤에 깔리는 색상입니다.",
+        "options": {
+          "yellow": "노란색",
+          "green": "초록색",
+          "blue": "파란색",
+          "pink": "분홍색",
+          "purple": "보라색",
+          "accent": "강조 색상"
+        }
+      },
+      "callouts": {
+        "label": "콜아웃 스타일",
+        "description": "노트에서 콜아웃 상자가 보이는 모양입니다.",
+        "options": {
+          "tinted": "옅은 색",
+          "filled": "채우기",
+          "outlined": "테두리",
+          "bar": "세로선"
+        }
+      },
+      "remoteImages": {
+        "title": "웹 이미지",
+        "description": "노트는 이 사이트들의 이미지를 묻지 않고 불러옵니다.",
+        "empty": "노트는 웹에서 이미지를 불러오기 전에 먼저 묻습니다. 항상 허용한 사이트가 여기에 표시됩니다.",
+        "remove": "{{host}} 제거"
+      },
+      "resetAll": "노트 모양 초기화"
     }
   },
   "checkpoints": {
@@ -2316,6 +2457,30 @@
       "resetZoom": {
         "description": "앱을 100%로 되돌립니다.",
         "label": "확대/축소 초기화"
+      },
+      "notesQuickSwitcher": {
+        "description": "이름으로 노트를 찾아 엽니다.",
+        "label": "노트: 노트로 이동"
+      },
+      "notesTodayNote": {
+        "description": "오늘의 노트를 열거나 새로 시작합니다.",
+        "label": "노트: 오늘의 노트"
+      },
+      "notesGraph": {
+        "description": "모든 노트의 그래프를 엽니다.",
+        "label": "노트: 그래프"
+      },
+      "notesLocalGraph": {
+        "description": "열린 노트 주변의 링크를 표시하거나 숨깁니다.",
+        "label": "노트: 로컬 그래프"
+      },
+      "notesOutline": {
+        "description": "열린 노트의 개요를 표시하거나 숨깁니다.",
+        "label": "노트: 개요"
+      },
+      "notesAskAgent": {
+        "description": "선택한 텍스트에 대해 에이전트에게 묻거나, 노트의 에이전트를 열고 닫습니다.",
+        "label": "노트: 에이전트에게 요청"
       }
     },
     "application": {
@@ -2483,5 +2648,17 @@
       "loadFailed": "MCP 서버 목록을 읽지 못했습니다.",
       "missing": "{{name}} (찾을 수 없음)"
     }
+  },
+  "notesPreview": {
+    "label": "이 설정을 적용한 노트 미리보기",
+    "title": "현장 기록",
+    "heading": "아침 조사",
+    "paragraph": "9시까지 약한 비가 내리다가 이후 북쪽 능선 위로 하늘이 맑게 개었습니다. 정오에도 흙은 여전히 축축했습니다.",
+    "links": "전체 단계는 <note>샘플링 방법</note>을 참고하거나 <tag>#현장조사</tag>를 둘러보세요.",
+    "highlight": "모종의 키가 일주일 만에 두 배가 되었습니다.",
+    "calloutTitle": "다음 방문",
+    "calloutBody": "새 시료를 채취하기 전에 토양 센서를 확인합니다.",
+    "taskDone": "시료에 라벨 붙이기",
+    "task": "사진 업로드하기"
   }
 }

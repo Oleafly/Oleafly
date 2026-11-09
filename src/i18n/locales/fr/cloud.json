@@ -115,6 +115,8 @@
     "conflictsHelp_many": "Ces fichiers ont été modifiés ici et sur un autre ordinateur avant que les modifications soient synchronisées, Oleafly a donc conservé les deux versions. Gardez ce dont vous avez besoin, puis supprimez les copies.",
     "conflictsHelp_other": "Ces fichiers ont été modifiés ici et sur un autre ordinateur avant que les modifications soient synchronisées, Oleafly a donc conservé les deux versions. Gardez ce dont vous avez besoin, puis supprimez les copies.",
     "conflictsLabel": "Copies de conflit dans le projet {{name}}",
+    "compare": "Comparer",
+    "compareLabel": "Comparer {{path}} avec la note",
     "dismiss": "Fermer",
     "skipped_one": "{{count}} fichier a été ignoré",
     "skipped_many": "{{count}} fichiers ont été ignorés",

@@ -509,6 +509,7 @@
     "copyAndShare": "Kopioi Oleaflyhin ja jaa",
     "title": "Jaa projekti {{name}}",
     "description": "Työstä tätä projektia muiden kanssa yhteistyöpalvelimen kautta.",
+    "noteDescription": "Kirjoita tätä muistiinpanoa muiden kanssa yhteistyöpalvelimen kautta.",
     "loading": "Ladataan…",
     "linked": "Tämä projekti on Oleaflyn ulkopuolinen kansio. Oleafly kopioi sen kirjastoosi ja jakaa kopion. Alkuperäiseen kansioon ei kosketa.",
     "editCopy": "Tämä on jaettu kopio. Muokkaa tästä lähtien tätä kopiota, älä alkuperäistä kansiota.",
@@ -526,12 +527,15 @@
     "tooLarge": "Nämä tiedostot ylittävät palvelimen rajan, joka on {{size}} MB. Pienennä tai poista ne ennen jakamista.",
     "renamed": "Kaikki nimet eivät toimi jokaisella koneella. Muut saavat nämä tiedostot hieman eri nimellä.",
     "excluded": "Ei jaeta: muut käännöstulosteet, Oleafly-asetukset ja Git-historia. Uusin käännetty PDF jaetaan, jotta kanssakirjoittajat voivat lukea sen selaimessa.",
+    "noteExcluded": "Ei jaeta: Oleafly-asetukset ja Git-historia.",
     "start": "Jaa",
     "preparing": "Valmistellaan projektia…",
     "uploading": "Lähetetään kuvia ja muita tiedostoja: {{done}}/{{total}}",
     "saving": "Tallennetaan projektia palvelimelle…",
     "failed": "Jakaminen ei valmistunut, joten mitään ei jaettu.",
-    "trustAgain": "Kuka tahansa, jonka lisäät projektiin, voi muuttaa sen tiedostoja, joten Oleafly pyytää sinua luottamaan siihen uudelleen tällä koneella ennen kuin se ajaa sille agentteja, päätteen komentoja tai shell escapea."
+    "trustAgain": "Kuka tahansa, jonka lisäät projektiin, voi muuttaa sen tiedostoja, joten Oleafly pyytää sinua luottamaan siihen uudelleen tällä koneella ennen kuin se ajaa sille agentteja, päätteen komentoja tai shell escapea.",
+    "projectNotesShared": "Projektin muistiinpanot jaetaan kaikille tämän projektin jäsenille. Henkilökohtaiset muistiinpanot pysyvät yksityisinä.",
+    "personalNotesPrivate": "Henkilökohtaiset muistiinpanot pysyvät yksityisinä. Vain projektin muistiinpanokansiossa olevat muistiinpanot jaetaan."
   },
   "manage": {
     "sharedOn": "Jaettu palvelimella {{server}}",

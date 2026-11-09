@@ -1005,7 +1005,8 @@
       "editor": "Editor",
       "files": "Projekt",
       "pdf": "Náhled PDF",
-      "terminal": "Terminál"
+      "terminal": "Terminál",
+      "notes": "Poznámky"
     },
     "terminal": {
       "colorTheme": {
@@ -1140,6 +1141,146 @@
         "label": "Zobrazit PDF při kompilaci"
       },
       "title": "Režim Zen"
+    },
+    "notes": {
+      "sectionName": "Vzhled poznámek",
+      "resetAriaLabel": "Obnovit výchozí hodnotu: {{setting}}",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Řez písma",
+        "description": "Zvolte řez písma pro text poznámek.",
+        "options": {
+          "sans": "Bezpatkové",
+          "serif": "Patkové",
+          "mono": "Neproporcionální"
+        }
+      },
+      "font": {
+        "label": "Písmo poznámek",
+        "description": "Vyberte pro text poznámek libovolné nainstalované písmo. Když pole necháte prázdné, použije se nastavení Řez písma."
+      },
+      "fontSize": {
+        "label": "Velikost textu poznámek",
+        "description": "Nastavte velikost textu poznámek.",
+        "custom": "Vlastní",
+        "customLabel": "Vlastní velikost textu poznámek v pixelech"
+      },
+      "lineHeight": {
+        "label": "Výška řádku poznámek",
+        "description": "Nastavte rozestup mezi řádky textu poznámek.",
+        "customLabel": "Vlastní výška řádku poznámek"
+      },
+      "paragraphSpacing": {
+        "label": "Mezery mezi odstavci",
+        "description": "Nastavte mezery mezi odstavci, seznamy a dalšími bloky.",
+        "options": {
+          "compact": "Kompaktní",
+          "normal": "Normální",
+          "relaxed": "Volnější",
+          "spacious": "Prostorné"
+        }
+      },
+      "headings": {
+        "title": "Nadpisy a název"
+      },
+      "headingTypeface": {
+        "label": "Řez písma nadpisů",
+        "description": "Zvolte řez písma pro nadpisy a název poznámky.",
+        "options": {
+          "text": "Stejné jako text"
+        }
+      },
+      "headingFont": {
+        "label": "Písmo nadpisů",
+        "description": "Vyberte nainstalované písmo pro nadpisy a název poznámky. Když pole necháte prázdné, použije se nastavení Řez písma nadpisů."
+      },
+      "headingSize": {
+        "label": "Velikost nadpisů",
+        "description": "Nastavte, jak velké mají být nadpisy oproti textu.",
+        "options": {
+          "small": "Menší",
+          "normal": "Normální",
+          "large": "Větší"
+        }
+      },
+      "titleSize": {
+        "label": "Velikost názvu",
+        "description": "Nastavte velikost názvu v horní části každé poznámky."
+      },
+      "layout": {
+        "title": "Rozvržení"
+      },
+      "width": {
+        "label": "Šířka poznámky",
+        "description": "Jak široké jsou poznámky po otevření. Mění to i nabídka šířky v poznámce.",
+        "options": {
+          "standard": "Standardní",
+          "wide": "Široká",
+          "full": "Plná šířka"
+        }
+      },
+      "wordCount": {
+        "label": "Zobrazit počet slov",
+        "description": "Zobrazit počet slov poznámky na jejím panelu nástrojů."
+      },
+      "spellcheck": {
+        "label": "Kontrolovat pravopis v poznámkách",
+        "description": "Podtrhávat chybně napsaná slova při psaní poznámky."
+      },
+      "code": {
+        "title": "Kód"
+      },
+      "codeFont": {
+        "label": "Písmo kódu",
+        "description": "Vyberte nainstalované písmo pro bloky kódu a kód v řádku."
+      },
+      "codeTheme": {
+        "label": "Barvy bloků kódu",
+        "description": "Vyberte barvy syntaxe pro bloky kódu v poznámkách.",
+        "options": {
+          "editor": "Stejné jako editor"
+        }
+      },
+      "colors": {
+        "title": "Barvy"
+      },
+      "accent": {
+        "label": "Barva zvýraznění poznámek",
+        "description": "Používá se pro odkazy, štítky a zaškrtávací políčka úkolů v poznámkách.",
+        "matchApp": "Podle aplikace",
+        "customAriaLabel": "Vybrat vlastní barvu zvýraznění poznámek"
+      },
+      "highlight": {
+        "label": "Barva zvýrazňovače",
+        "description": "Barva pod zvýrazněným textem.",
+        "options": {
+          "yellow": "Žlutá",
+          "green": "Zelená",
+          "blue": "Modrá",
+          "pink": "Růžová",
+          "purple": "Fialová",
+          "accent": "Barva zvýraznění"
+        }
+      },
+      "callouts": {
+        "label": "Styl rámečků",
+        "description": "Jak v poznámkách vypadají zvýrazněné rámečky.",
+        "options": {
+          "tinted": "Tónované",
+          "filled": "Vyplněné",
+          "outlined": "Ohraničené",
+          "bar": "Postranní pruh"
+        }
+      },
+      "remoteImages": {
+        "title": "Obrázky z webu",
+        "description": "Poznámky načítají obrázky z těchto webů bez ptaní.",
+        "empty": "Před načtením obrázku z webu se poznámky nejdřív zeptají. Weby, kterým načítání vždy povolíte, se zobrazí tady.",
+        "remove": "Odebrat {{host}}"
+      },
+      "resetAll": "Obnovit vzhled poznámek"
     }
   },
   "checkpoints": {
@@ -2379,6 +2520,30 @@
       "resetZoom": {
         "description": "Vrátí aplikaci na 100 %.",
         "label": "Obnovit přiblížení"
+      },
+      "notesQuickSwitcher": {
+        "description": "Najít poznámku podle názvu a otevřít ji.",
+        "label": "Poznámky: přejít na poznámku"
+      },
+      "notesTodayNote": {
+        "description": "Otevřít dnešní poznámku, nebo ji založit.",
+        "label": "Poznámky: dnešní poznámka"
+      },
+      "notesGraph": {
+        "description": "Otevřít graf všech vašich poznámek.",
+        "label": "Poznámky: graf"
+      },
+      "notesLocalGraph": {
+        "description": "Zobrazit nebo skrýt odkazy kolem otevřené poznámky.",
+        "label": "Poznámky: místní graf"
+      },
+      "notesOutline": {
+        "description": "Zobrazit nebo skrýt osnovu otevřené poznámky.",
+        "label": "Poznámky: osnova"
+      },
+      "notesAskAgent": {
+        "description": "Zeptat se agenta na vybraný text, nebo otevřít a zavřít agenta poznámky.",
+        "label": "Poznámky: zeptat se agenta"
       }
     },
     "application": {
@@ -2552,5 +2717,17 @@
       "loadFailed": "Seznam serverů MCP se nepodařilo přečíst.",
       "missing": "{{name}} (nenalezeno)"
     }
+  },
+  "notesPreview": {
+    "label": "Náhled poznámky s tímto nastavením",
+    "title": "Terénní poznámky",
+    "heading": "Ranní průzkum",
+    "paragraph": "Do deváté slabě pršelo, pak se nad severním hřebenem vyjasnilo. V poledne byla půda ještě vlhká.",
+    "links": "Celý postup najdete v poznámce <note>Metoda odběru vzorků</note>, nebo procházejte <tag>#terénní-práce</tag>.",
+    "highlight": "Semenáčky za týden zdvojnásobily výšku.",
+    "calloutTitle": "Příští návštěva",
+    "calloutBody": "Před odběrem nových vzorků zkontrolujte půdní čidla.",
+    "taskDone": "Označit vzorky",
+    "task": "Nahrát fotky"
   }
 }

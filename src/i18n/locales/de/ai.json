@@ -44,14 +44,16 @@
       "externalTool": "Aktion eines externen Werkzeugs bestätigen",
       "internet": "Internetzugriff bestätigen",
       "edit": "Änderung der KI bestätigen",
-      "researchTask": "Forschungsaufgabe bestätigen"
+      "researchTask": "Forschungsaufgabe bestätigen",
+      "note": "Neue Notiz bestätigen"
     },
     "headline": {
       "command": "Der Assistent möchte diesen Befehl ausführen",
       "externalTool": "Der Assistent möchte ein externes Werkzeug nutzen",
       "internet": "Der Assistent möchte auf das Internet zugreifen",
       "edit": "Der Assistent möchte Ihre Dateien ändern",
-      "researchTask": "Der Assistent möchte eine Forschungsaufgabe anlegen"
+      "researchTask": "Der Assistent möchte eine Forschungsaufgabe anlegen",
+      "note": "Der Assistent möchte eine Notiz anlegen"
     },
     "mcpNote": "Damit gehen die Argumente unten an den eingerichteten MCP-Server.",
     "line": "Zeile {{line}}",
@@ -88,6 +90,14 @@
       "minutes_other": "{{count}} Minuten",
       "planFirst": "Zuerst planen",
       "startNow": "Sofort starten"
+    },
+    "noteDraft": {
+      "title": "Titel",
+      "project": "Verknüpftes Projekt",
+      "tags": "Tags",
+      "text": "Text",
+      "empty": "Kein Text",
+      "more": "Die Notiz geht über diese Stelle hinaus weiter."
     }
   },
   "attachments": {
@@ -1103,5 +1113,19 @@
     "replaceConfirm": "Antwort ersetzen",
     "forked": "Ein neuer Chat wurde ab der bearbeiteten Nachricht begonnen.",
     "failed": "Die Nachricht konnte nicht erneut gesendet werden."
+  },
+  "noteScope": {
+    "notesOnly": "Nur im Assistenten einer Notiz.",
+    "tools": {
+      "readNote": "Liest die geöffnete Notiz, einschließlich der Vorschläge, die auf Prüfung warten.",
+      "proposeNoteEdits": "Schlägt Änderungen an der geöffneten Notiz vor, die Sie annehmen oder ablehnen.",
+      "searchNotes": "Durchsucht alle Ihre Notizen.",
+      "listKnowledgeNotes": "Listet Ihre Notizen auf, nach Tag oder Projekt.",
+      "readNoteById": "Liest eine andere Notiz.",
+      "createNote": "Legt eine neue Notiz an.",
+      "relatedProjectFiles": "Listet die Dateien des Projekts auf, mit dem die Notiz verknüpft ist.",
+      "readRelatedProjectFile": "Liest eine Datei aus dem Projekt, mit dem die Notiz verknüpft ist.",
+      "searchRelatedProject": "Durchsucht das Projekt, mit dem die Notiz verknüpft ist."
+    }
   }
 }

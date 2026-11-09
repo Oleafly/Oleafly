@@ -222,7 +222,13 @@
     "closeAll": "Stäng alla",
     "closeAssistantTabs": "Stäng filer som assistenten har öppnat",
     "closeAssistantTabsCount_one": "Stäng filen som assistenten har öppnat",
-    "closeAssistantTabsCount_other": "Stäng de {{count}} filerna som assistenten har öppnat"
+    "closeAssistantTabsCount_other": "Stäng de {{count}} filerna som assistenten har öppnat",
+    "editAsMarkdown": "Redigera som Markdown",
+    "editAsNote": "Redigera som anteckning",
+    "noteAsMarkdown": "Du redigerar den här anteckningen som Markdown.",
+    "openInNotes": "Öppna i Anteckningar",
+    "moveIntoProject": "Flytta till projektet",
+    "copyToMyNotes": "Kopiera till mina anteckningar"
   },
   "projectInfo": {
     "trigger": "Projektinfo",

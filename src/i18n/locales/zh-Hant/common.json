@@ -81,5 +81,9 @@
   },
   "avatar": {
     "more_other": "另外 {{count}} 人"
+  },
+  "remoteImage": {
+    "blocked": "來自 {{host}} 的圖片",
+    "load": "載入圖片"
   }
 }

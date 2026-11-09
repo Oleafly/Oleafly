@@ -3,7 +3,7 @@
     "newProject": "新增專案",
     "search": "搜尋文件（{{shortcut}}）",
     "diagramComposer": "圖表編排器",
-    "notes": "Notes",
+    "notes": "筆記",
     "tools": "Oleafly 工具",
     "settings": "設定"
   },
@@ -54,7 +54,7 @@
       "kindDocument": "文件",
       "kindImage": "圖片",
       "kindDiagram": "圖表",
-      "kindNote": "Note",
+      "kindNote": "筆記",
       "bookmark": "書籤",
       "bookmarkAll": "不限狀態",
       "bookmarkYes": "已加書籤",
@@ -138,7 +138,7 @@
       "document": "文件",
       "image": "圖片",
       "diagram": "圖表",
-      "note": "note",
+      "note": "筆記",
       "external": "外部",
       "overleaf": "Overleaf"
     },

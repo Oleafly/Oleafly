@@ -1005,7 +1005,8 @@
       "editor": "Edytor",
       "files": "Projekt",
       "pdf": "Podgląd PDF",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Notatki"
     },
     "terminal": {
       "colorTheme": {
@@ -1140,6 +1141,146 @@
         "label": "Pokaż PDF przy kompilacji"
       },
       "title": "Tryb Zen"
+    },
+    "notes": {
+      "sectionName": "Wygląd notatek",
+      "resetAriaLabel": "Przywróć domyślne ustawienie: {{setting}}",
+      "text": {
+        "title": "Tekst"
+      },
+      "typeface": {
+        "label": "Krój pisma",
+        "description": "Wybierz krój pisma dla tekstu notatek.",
+        "options": {
+          "sans": "Bezszeryfowy",
+          "serif": "Szeryfowy",
+          "mono": "Stałej szerokości"
+        }
+      },
+      "font": {
+        "label": "Czcionka notatek",
+        "description": "Wybierz dowolną zainstalowaną czcionkę dla tekstu notatek. Pozostaw pole puste, aby używać ustawienia Krój pisma."
+      },
+      "fontSize": {
+        "label": "Rozmiar tekstu notatek",
+        "description": "Ustaw rozmiar tekstu notatek.",
+        "custom": "Niestandardowy",
+        "customLabel": "Niestandardowy rozmiar tekstu notatek w pikselach"
+      },
+      "lineHeight": {
+        "label": "Wysokość wiersza notatek",
+        "description": "Ustaw odstęp między wierszami tekstu notatek.",
+        "customLabel": "Niestandardowa wysokość wiersza notatek"
+      },
+      "paragraphSpacing": {
+        "label": "Odstępy między akapitami",
+        "description": "Ustaw odstęp między akapitami, listami i innymi blokami.",
+        "options": {
+          "compact": "Zwarte",
+          "normal": "Zwykłe",
+          "relaxed": "Swobodne",
+          "spacious": "Przestronne"
+        }
+      },
+      "headings": {
+        "title": "Nagłówki i tytuł"
+      },
+      "headingTypeface": {
+        "label": "Krój pisma nagłówków",
+        "description": "Wybierz krój pisma dla nagłówków i tytułu notatki.",
+        "options": {
+          "text": "Taki jak tekst"
+        }
+      },
+      "headingFont": {
+        "label": "Czcionka nagłówków",
+        "description": "Wybierz zainstalowaną czcionkę dla nagłówków i tytułu notatki. Pozostaw pole puste, aby używać ustawienia Krój pisma nagłówków."
+      },
+      "headingSize": {
+        "label": "Rozmiar nagłówków",
+        "description": "Ustaw rozmiar nagłówków względem tekstu.",
+        "options": {
+          "small": "Mniejszy",
+          "normal": "Zwykły",
+          "large": "Większy"
+        }
+      },
+      "titleSize": {
+        "label": "Rozmiar tytułu",
+        "description": "Ustaw rozmiar tytułu na początku każdej notatki."
+      },
+      "layout": {
+        "title": "Układ"
+      },
+      "width": {
+        "label": "Szerokość notatki",
+        "description": "Z jaką szerokością otwierają się notatki. To ustawienie zmienia też menu szerokości w notatce.",
+        "options": {
+          "standard": "Standardowa",
+          "wide": "Szeroka",
+          "full": "Pełna szerokość"
+        }
+      },
+      "wordCount": {
+        "label": "Pokazuj liczbę słów",
+        "description": "Pokazuj liczbę słów notatki na jej pasku narzędzi."
+      },
+      "spellcheck": {
+        "label": "Sprawdzaj pisownię w notatkach",
+        "description": "Podkreślaj błędnie napisane słowa podczas pisania notatki."
+      },
+      "code": {
+        "title": "Kod"
+      },
+      "codeFont": {
+        "label": "Czcionka kodu",
+        "description": "Wybierz zainstalowaną czcionkę dla bloków kodu i kodu w tekście."
+      },
+      "codeTheme": {
+        "label": "Kolory bloków kodu",
+        "description": "Wybierz kolory składni dla bloków kodu w notatkach.",
+        "options": {
+          "editor": "Takie jak w edytorze"
+        }
+      },
+      "colors": {
+        "title": "Kolory"
+      },
+      "accent": {
+        "label": "Kolor akcentu notatek",
+        "description": "Używany w linkach, tagach i polach zadań w notatkach.",
+        "matchApp": "Taki jak w aplikacji",
+        "customAriaLabel": "Wybierz własny kolor akcentu notatek"
+      },
+      "highlight": {
+        "label": "Kolor wyróżnienia",
+        "description": "Kolor tła pod wyróżnionym tekstem.",
+        "options": {
+          "yellow": "Żółty",
+          "green": "Zielony",
+          "blue": "Niebieski",
+          "pink": "Różowy",
+          "purple": "Fioletowy",
+          "accent": "Akcent"
+        }
+      },
+      "callouts": {
+        "label": "Styl ramek",
+        "description": "Jak wyglądają ramki z informacjami w notatkach.",
+        "options": {
+          "tinted": "Barwione",
+          "filled": "Wypełnione",
+          "outlined": "Z obramowaniem",
+          "bar": "Z paskiem z boku"
+        }
+      },
+      "remoteImages": {
+        "title": "Obrazy z internetu",
+        "description": "Notatki wczytują obrazy z tych witryn bez pytania.",
+        "empty": "Notatki pytają przed wczytaniem obrazu z internetu. Tutaj pojawią się witryny, z których zawsze zezwalasz wczytywać obrazy.",
+        "remove": "Usuń {{host}}"
+      },
+      "resetAll": "Przywróć domyślny wygląd notatek"
     }
   },
   "checkpoints": {
@@ -2379,6 +2520,30 @@
       "resetZoom": {
         "description": "Przywraca aplikację do 100%.",
         "label": "Resetuj powiększenie"
+      },
+      "notesQuickSwitcher": {
+        "description": "Znajdź notatkę po nazwie i ją otwórz.",
+        "label": "Notatki: przejdź do notatki"
+      },
+      "notesTodayNote": {
+        "description": "Otwórz dzisiejszą notatkę albo ją zacznij.",
+        "label": "Notatki: dzisiejsza notatka"
+      },
+      "notesGraph": {
+        "description": "Otwórz graf wszystkich Twoich notatek.",
+        "label": "Notatki: graf"
+      },
+      "notesLocalGraph": {
+        "description": "Pokaż albo ukryj powiązania wokół otwartej notatki.",
+        "label": "Notatki: graf lokalny"
+      },
+      "notesOutline": {
+        "description": "Pokaż albo ukryj konspekt otwartej notatki.",
+        "label": "Notatki: konspekt"
+      },
+      "notesAskAgent": {
+        "description": "Zapytaj agenta o zaznaczony tekst albo otwórz i zamknij agenta notatki.",
+        "label": "Notatki: zapytaj agenta"
       }
     },
     "application": {
@@ -2552,5 +2717,17 @@
       "loadFailed": "Nie udało się odczytać listy serwerów MCP.",
       "missing": "{{name}} (nie znaleziono)"
     }
+  },
+  "notesPreview": {
+    "label": "Podgląd notatki z tymi ustawieniami",
+    "title": "Notatki terenowe",
+    "heading": "Poranny obchód",
+    "paragraph": "Do dziewiątej lekko padało, potem nad północnym grzbietem się przejaśniło. W południe gleba była jeszcze wilgotna.",
+    "links": "Wszystkie kroki opisuje notatka <note>Metoda pobierania prób</note>, a inne wpisy znajdziesz pod tagiem <tag>#teren</tag>.",
+    "highlight": "W ciągu tygodnia siewki podwoiły wysokość.",
+    "calloutTitle": "Następna wizyta",
+    "calloutBody": "Przed pobraniem nowych prób sprawdź czujniki glebowe.",
+    "taskDone": "Opisz próbki",
+    "task": "Prześlij zdjęcia"
   }
 }

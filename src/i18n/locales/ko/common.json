@@ -81,5 +81,9 @@
   },
   "avatar": {
     "more_other": "외 {{count}}명"
+  },
+  "remoteImage": {
+    "blocked": "{{host}}의 이미지",
+    "load": "이미지 불러오기"
   }
 }

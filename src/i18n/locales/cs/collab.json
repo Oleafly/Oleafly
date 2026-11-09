@@ -509,6 +509,7 @@
     "copyAndShare": "Zkopírovat do Oleafly a sdílet",
     "title": "Sdílet {{name}}",
     "description": "Pracujte na tomto projektu s dalšími lidmi přes server pro spolupráci.",
+    "noteDescription": "Pište tuto poznámku s dalšími lidmi přes server pro spolupráci.",
     "loading": "Načítání…",
     "linked": "Tento projekt je složka mimo Oleafly. Oleafly ho zkopíruje do vaší knihovny a bude sdílet tuto kopii. Původní složka zůstane beze změny.",
     "editCopy": "Toto je sdílená kopie. Od teď upravujte ji, ne původní složku.",
@@ -526,12 +527,15 @@
     "tooLarge": "Tyto soubory překračují limit serveru {{size}} MB. Před sdílením je zmenšete nebo odeberte.",
     "renamed": "Některé názvy nefungují na každém počítači. Ostatní dostanou tyto soubory pod mírně odlišným názvem.",
     "excluded": "Nesdílí se: ostatní výstup sestavení, nastavení Oleafly a historie Gitu. Nejnovější zkompilované PDF se sdílí, aby si ho spoluautoři mohli přečíst v prohlížeči.",
+    "noteExcluded": "Nesdílí se: nastavení Oleafly a historie Gitu.",
     "start": "Sdílet",
     "preparing": "Připravuje se projekt…",
     "uploading": "Nahrávání obrázků a dalších souborů: {{done}} z {{total}}",
     "saving": "Projekt se ukládá na server…",
     "failed": "Sdílení se nedokončilo, takže se nic nesdílelo.",
-    "trustAgain": "Kdokoli, koho do projektu přidáte, může měnit jeho soubory, a proto vás Oleafly v tomto počítači znovu požádá o důvěru, než pro něj spustí agenty, příkazy terminálu nebo shell escape."
+    "trustAgain": "Kdokoli, koho do projektu přidáte, může měnit jeho soubory, a proto vás Oleafly v tomto počítači znovu požádá o důvěru, než pro něj spustí agenty, příkazy terminálu nebo shell escape.",
+    "projectNotesShared": "Poznámky projektu se sdílejí se všemi, kdo na tomto projektu pracují. Osobní poznámky zůstávají soukromé.",
+    "personalNotesPrivate": "Osobní poznámky zůstávají soukromé. Sdílejí se jen poznámky ve složce s poznámkami projektu."
   },
   "manage": {
     "sharedOn": "Sdíleno na serveru {{server}}",

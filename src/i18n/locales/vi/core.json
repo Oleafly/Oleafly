@@ -336,6 +336,7 @@
   },
   "mermaid": {
     "diagram": "Sơ đồ",
+    "remoteBlocked": "Sơ đồ này không được vẽ vì nó tải ảnh hoặc kiểu định dạng từ internet.",
     "renderFailed": "Không hiển thị được sơ đồ.",
     "rendering": "Đang hiển thị sơ đồ"
   },

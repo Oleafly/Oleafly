@@ -223,7 +223,13 @@
     "closeAssistantTabs": "Închide fișierele deschise de asistent",
     "closeAssistantTabsCount_one": "Închide fișierul deschis de asistent",
     "closeAssistantTabsCount_few": "Închide cele {{count}} fișiere deschise de asistent",
-    "closeAssistantTabsCount_other": "Închide cele {{count}} de fișiere deschise de asistent"
+    "closeAssistantTabsCount_other": "Închide cele {{count}} de fișiere deschise de asistent",
+    "editAsMarkdown": "Editează ca Markdown",
+    "editAsNote": "Editează ca notiță",
+    "noteAsMarkdown": "Editezi această notiță ca Markdown.",
+    "openInNotes": "Deschide în Notițe",
+    "moveIntoProject": "Mută în proiect",
+    "copyToMyNotes": "Copiază în notițele mele"
   },
   "projectInfo": {
     "trigger": "Informații despre proiect",

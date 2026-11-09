@@ -272,7 +272,6 @@
     "tls_failed": "Oleafly kunne ikke bekrefte sertifikatet til {{host}}. Hvis organisasjonen din har sin egen sertifiseringsinstans, legger du til sertifikatfilen dens i kontoen i Innstillinger.",
     "tracked_secret_files": "Publiseringen stoppet fordi filer i Git-historikken til prosjektet kan inneholde nøkler eller passord: {{files}}"
   },
-  "approvals": {},
   "trust": {
     "git": "Stol på denne mappen for å bruke versjonskontroll.",
     "repository": "Stol på repositoriet {{name}} for å bruke versjonskontroll her.",
@@ -597,5 +596,36 @@
     "needs_permissions": "Cua Driver venter på macOS-tillatelsene sine. Slå på Tilgjengelighet og Skjermopptak for CuaDriver i Systeminnstillinger, og prøv igjen.",
     "task_unattended": "Oppgaver som kjører etter en tidsplan eller etter at Oleafly er lukket, kan ikke bruke skrivebordsapper.",
     "main_window": "Endre Computer Use fra hovedvinduet."
+  },
+  "notes": {
+    "typst_empty": "Denne Typst-blokken er tom.",
+    "typst_too_large": "Denne Typst-blokken er for stor til å forhåndsvises.",
+    "typst_image_too_large": "Denne Typst-blokken tegner et bilde som er for stort til å vises.",
+    "typst_no_svg": "Typst tegnet ingen SVG.",
+    "typst_failed": "Typst kunne ikke kompilere denne blokken.",
+    "typst_line": "Linje {{line}}: {{message}}",
+    "import_folder_unreadable": "Oleafly kunne ikke lese denne mappen.",
+    "import_too_many_files": "Denne mappen har for mange filer til å importeres. Velg en mindre mappe.",
+    "import_files_in_library": "Velg filer utenfor Oleafly-biblioteket.",
+    "import_no_space": "Det er ikke nok diskplass til denne importen. Den trenger omtrent {{size}} GB. Frigjør litt plass og prøv igjen.",
+    "import_stopped": "Importen stoppet uventet. Prøv igjen.",
+    "import_invalid_run": "Denne importen har en ugyldig ID. Prøv igjen.",
+    "import_running": "Denne importen kjører allerede.",
+    "export_note_missing": "Dette notatet er ikke lenger i biblioteket ditt.",
+    "export_too_many_titles": "For mange notater har samme tittel. Gi noen av dem nytt navn, og eksporter på nytt.",
+    "export_attachments_failed": "Oleafly kunne ikke opprette vedleggsmappen.",
+    "export_copy_failed": "Oleafly kunne ikke kopiere {{name}}.",
+    "export_write_failed": "Oleafly kunne ikke skrive {{name}}.",
+    "export_stopped": "Eksporten stoppet uventet. Prøv igjen.",
+    "folder_in_library": "Velg en mappe utenfor Oleafly-biblioteket.",
+    "folder_unopenable": "Oleafly kunne ikke åpne mappen.",
+    "folder_not_folder": "Oleafly kan ikke bruke den plasseringen. Velg en mappe.",
+    "folder_create_failed": "Oleafly kunne ikke opprette mappen.",
+    "folder_no_free_name": "Oleafly fant ikke noe ledig mappenavn der. Velg en annen mappe.",
+    "picker_closed": "Velgeren ble lukket uventet. Prøv igjen.",
+    "folder_not_local": "Velg en mappe på denne datamaskinen.",
+    "files_not_local": "Velg filer på denne datamaskinen.",
+    "related_missing": "Dette prosjektet er ikke lenger i biblioteket ditt, så notatet kan ikke knyttes til det.",
+    "related_is_note": "Et notat kan bare knyttes til et prosjekt, ikke til et annet notat."
   }
 }

@@ -322,6 +322,28 @@
       "keywords": "pdf anteprima mostra nascondi dividi solo editor",
       "label": "Mostra o nascondi l'anteprima PDF"
     },
+    "swapEditorPreview": {
+      "keywords": "scambia inverti editor anteprima pdf lati pannello ordine layout",
+      "label": "Scambia editor e anteprima"
+    },
+    "movePaneToEdge": {
+      "bottom": "Sposta {{pane}} sul bordo inferiore",
+      "keywords": "sposta pannello bordo aggancia lato dividi impila layout",
+      "left": "Sposta {{pane}} sul bordo sinistro",
+      "right": "Sposta {{pane}} sul bordo destro",
+      "top": "Sposta {{pane}} sul bordo superiore"
+    },
+    "paneNames": {
+      "assistant": "l'assistente",
+      "editor": "l'editor",
+      "pdf": "l'anteprima",
+      "sidebar": "la barra laterale",
+      "terminal": "il terminale"
+    },
+    "resetPaneLayout": {
+      "keywords": "ripristina layout pannelli ordine sposta pannelli barra laterale assistente editor anteprima terminale predefinito",
+      "label": "Ripristina il layout dei pannelli"
+    },
     "zoomIn": {
       "keywords": "ingrandisci più grande",
       "label": "Ingrandisci"
@@ -349,6 +371,16 @@
     "insertFileLink": {
       "label": "Inserisci un collegamento a un file",
       "keywords": "collegamento file percorso nota riferimento"
+    },
+    "projectNotes": {
+      "open": "Apri le note di questo progetto",
+      "newShared": "Nuova nota di progetto",
+      "newPersonal": "Nuova nota personale per questo progetto",
+      "keywords": "note ricerca collegate correlate progetto"
+    },
+    "notes": {
+      "label": "Apri Note",
+      "keywords": "note taccuino conoscenza idee ricerca diario notes notebook knowledge ideas research journal"
     }
   },
   "community": {
@@ -647,7 +679,6 @@
   "home": {
     "ariaLabel": "Home",
     "label": "Home",
-    "title": "Torna alla libreria",
     "tooltip": "Torna alla libreria dei progetti"
   },
   "importDestination": {
@@ -794,7 +825,8 @@
     "research": "Area di lavoro per la ricerca",
     "search": "Cerca nel progetto",
     "sourceControl": "Controllo del codice",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Note"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} su {{host}}",
@@ -906,7 +938,8 @@
           "folders_other": "{{count}} cartelle",
           "images": "Immagini",
           "pdfs": "PDF",
-          "projects": "Progetti"
+          "projects": "Progetti",
+          "projectsAndNotes": "Progetti e note"
         },
         "subtitle": "Progetti, anteprime, cronologia e dati dell'app",
         "title": "Spazio occupato",
@@ -951,8 +984,8 @@
         "label": "Strumenti LaTeX"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
+        "description": "Aggiunge Note alla barra della Home. Una nota è un file Markdown con diagrammi, grafici e formule che puoi modificare sia tu sia i tuoi agenti. Le note restano fuori dalla libreria dei progetti e ogni nota può essere collegata a un progetto. Disattivata per impostazione predefinita finché è in beta.",
+        "label": "Note"
       },
       "researchTasks": {
         "description": "Un agente lavora in autonomia su una copia del progetto e lascia a te le modifiche da rivedere. Molto instabile: le esecuzioni possono bloccarsi, fallire o lasciare modifiche da sistemare a mano, e consumano di continuo la quota del tuo provider. Aggiunge la sezione Ricerca alle Impostazioni. Disattivandola si interrompono tutte le attività in corso. Disattivata per impostazione predefinita, attivala a tuo rischio.",
@@ -1301,6 +1334,7 @@
       "split": "Vista divisa"
     },
     "moreActions": "Altre azioni",
+    "resetPaneLayout": "Ripristina il layout dei pannelli",
     "renameFailed": "Impossibile rinominare il progetto."
   },
   "tour": {

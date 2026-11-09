@@ -509,6 +509,7 @@
     "copyAndShare": "复制到 Oleafly 并共享",
     "title": "共享 {{name}}",
     "description": "通过协作服务器与他人一起编辑此项目。",
+    "noteDescription": "通过协作服务器与他人一起编写这篇笔记。",
     "loading": "正在加载…",
     "linked": "此项目是 Oleafly 之外的文件夹。Oleafly 会将其复制到你的库中，并共享该副本。原文件夹不会被改动。",
     "editCopy": "这是共享的副本。从现在起请编辑这个副本，而不是原文件夹。",
@@ -526,12 +527,15 @@
     "tooLarge": "这些文件超出了服务器 {{size}} MB 的上限。请在共享前缩小或移除这些文件。",
     "renamed": "有些名称并非在所有电脑上都可用。其他人收到的这些文件，名称会略有不同。",
     "excluded": "不会共享：其他构建输出、Oleafly 设置和 Git 历史。最新编译的 PDF 会共享，方便合作者在浏览器中阅读。",
+    "noteExcluded": "不会共享：Oleafly 设置和 Git 历史。",
     "start": "共享",
     "preparing": "正在准备项目…",
     "uploading": "正在上传图片和其他文件：{{done}}/{{total}}",
     "saving": "正在把项目保存到服务器…",
     "failed": "共享未完成，因此没有共享任何内容。",
-    "trustAgain": "你加入这个项目的任何人都能更改它的文件，所以 Oleafly 在这台电脑上为它运行代理、终端命令或 shell escape 之前，会请你再次信任这个项目。"
+    "trustAgain": "你加入这个项目的任何人都能更改它的文件，所以 Oleafly 在这台电脑上为它运行代理、终端命令或 shell escape 之前，会请你再次信任这个项目。",
+    "projectNotesShared": "项目笔记会与此项目中的所有人共享，个人笔记仍然只有你能看到。",
+    "personalNotesPrivate": "个人笔记仍然只有你能看到。只有项目笔记文件夹中的笔记会被共享。"
   },
   "manage": {
     "sharedOn": "已在 {{server}} 上共享",
@@ -736,7 +740,7 @@
       "serverError": "服务器没有接受编译出的 PDF，因此其他人看到的仍是之前的版本。"
     },
     "texNeeded": "此项目需要用 TeX 发行版编译，而这台电脑上没有。请在设置 > 引擎 > LaTeX 中安装 TinyTeX，以便在这里编译。",
-    "mentioned":"{{name}} 在 {{path}} 的评论中提及了你",
+    "mentioned": "{{name}} 在 {{path}} 的评论中提及了你",
     "mentionedHere": "{{name}} 在评论中提及了你",
     "showComment": "查看评论",
     "settings": {

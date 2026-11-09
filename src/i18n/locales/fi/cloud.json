@@ -110,6 +110,8 @@
     "conflictsHelp_one": "Tätä tiedostoa muutettiin täällä ja toisella tietokoneella, ennen kuin muutokset ehdittiin synkronoida, joten Oleafly säilytti molemmat versiot. Säilytä tarvitsemasi ja poista sitten kopio.",
     "conflictsHelp_other": "Näitä tiedostoja muutettiin täällä ja toisella tietokoneella, ennen kuin muutokset ehdittiin synkronoida, joten Oleafly säilytti molemmat versiot. Säilytä tarvitsemasi ja poista sitten kopiot.",
     "conflictsLabel": "Ristiriitakopiot projektissa {{name}}",
+    "compare": "Vertaa",
+    "compareLabel": "Vertaa kohdetta {{path}} muistiinpanoon",
     "dismiss": "Sulje",
     "skipped_one": "{{count}} tiedosto ohitettiin",
     "skipped_other": "{{count}} tiedostoa ohitettiin",

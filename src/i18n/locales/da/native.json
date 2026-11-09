@@ -155,6 +155,9 @@
       "spacesMessage": "Agenter, der bruger Cua Spaces, vil kunne:",
       "spacesChanges": "Oprette og slette Spaces og køre kommandoer i dem",
       "spacesSignIns": "Bruge dit login til Claude Code eller Codex i et Space"
+    },
+    "assistantNetwork": {
+      "message": "Assistenten vil bruge {{tool}}, som sender tekst til en onlinetjeneste."
     }
   },
   "errors": {

@@ -81,5 +81,9 @@
   },
   "avatar": {
     "more_other": "{{count}} người khác"
+  },
+  "remoteImage": {
+    "blocked": "Ảnh từ {{host}}",
+    "load": "Tải ảnh"
   }
 }

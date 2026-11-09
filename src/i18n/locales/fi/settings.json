@@ -993,7 +993,8 @@
       "editor": "Editori",
       "files": "Projekti",
       "pdf": "PDF-esikatselu",
-      "terminal": "Pääte"
+      "terminal": "Pääte",
+      "notes": "Muistiinpanot"
     },
     "terminal": {
       "colorTheme": {
@@ -1126,6 +1127,146 @@
         "label": "Näytä PDF käännettäessä"
       },
       "title": "Zen-tila"
+    },
+    "notes": {
+      "sectionName": "Muistiinpanojen ulkoasu",
+      "resetAriaLabel": "Palauta oletusarvo: {{setting}}",
+      "text": {
+        "title": "Teksti"
+      },
+      "typeface": {
+        "label": "Kirjaintyyppi",
+        "description": "Valitse muistiinpanojen tekstin kirjaintyyppi.",
+        "options": {
+          "sans": "Groteski",
+          "serif": "Antiikva",
+          "mono": "Tasalevyinen"
+        }
+      },
+      "font": {
+        "label": "Muistiinpanojen fontti",
+        "description": "Valitse muistiinpanojen tekstille mikä tahansa asennettu fontti. Jos jätät kentän tyhjäksi, käytetään Kirjaintyyppi-asetusta."
+      },
+      "fontSize": {
+        "label": "Muistiinpanojen tekstikoko",
+        "description": "Aseta muistiinpanojen tekstin koko.",
+        "custom": "Mukautettu",
+        "customLabel": "Mukautettu muistiinpanojen tekstikoko pikseleinä"
+      },
+      "lineHeight": {
+        "label": "Muistiinpanojen riviväli",
+        "description": "Aseta muistiinpanojen tekstirivien välinen tila.",
+        "customLabel": "Mukautettu muistiinpanojen riviväli"
+      },
+      "paragraphSpacing": {
+        "label": "Kappaleväli",
+        "description": "Aseta kappaleiden, luetteloiden ja muiden lohkojen välinen tila.",
+        "options": {
+          "compact": "Tiivis",
+          "normal": "Normaali",
+          "relaxed": "Väljä",
+          "spacious": "Tilava"
+        }
+      },
+      "headings": {
+        "title": "Otsikot ja nimi"
+      },
+      "headingTypeface": {
+        "label": "Otsikoiden kirjaintyyppi",
+        "description": "Valitse otsikoiden ja muistiinpanon nimen kirjaintyyppi.",
+        "options": {
+          "text": "Sama kuin tekstissä"
+        }
+      },
+      "headingFont": {
+        "label": "Otsikoiden fontti",
+        "description": "Valitse otsikoille ja muistiinpanon nimelle asennettu fontti. Jos jätät kentän tyhjäksi, käytetään Otsikoiden kirjaintyyppi -asetusta."
+      },
+      "headingSize": {
+        "label": "Otsikoiden koko",
+        "description": "Aseta, kuinka suuria otsikot ovat tekstiin verrattuna.",
+        "options": {
+          "small": "Pienempi",
+          "normal": "Normaali",
+          "large": "Suurempi"
+        }
+      },
+      "titleSize": {
+        "label": "Nimen koko",
+        "description": "Aseta kunkin muistiinpanon yläreunassa olevan nimen koko."
+      },
+      "layout": {
+        "title": "Asettelu"
+      },
+      "width": {
+        "label": "Muistiinpanon leveys",
+        "description": "Kuinka leveinä muistiinpanot avautuvat. Myös muistiinpanon leveysvalikko muuttaa tätä.",
+        "options": {
+          "standard": "Tavallinen",
+          "wide": "Leveä",
+          "full": "Täysi leveys"
+        }
+      },
+      "wordCount": {
+        "label": "Näytä sanamäärä",
+        "description": "Näytä muistiinpanon sanamäärä sen työkalurivillä."
+      },
+      "spellcheck": {
+        "label": "Tarkista oikeinkirjoitus muistiinpanoissa",
+        "description": "Alleviivaa väärin kirjoitetut sanat, kun kirjoitat muistiinpanoa."
+      },
+      "code": {
+        "title": "Koodi"
+      },
+      "codeFont": {
+        "label": "Koodin fontti",
+        "description": "Valitse asennettu fontti koodilohkoille ja tekstin sisäiselle koodille."
+      },
+      "codeTheme": {
+        "label": "Koodilohkojen värit",
+        "description": "Valitse muistiinpanojen koodilohkojen syntaksivärit.",
+        "options": {
+          "editor": "Sama kuin editorissa"
+        }
+      },
+      "colors": {
+        "title": "Värit"
+      },
+      "accent": {
+        "label": "Muistiinpanojen korostusväri",
+        "description": "Käytetään muistiinpanojen linkeissä, tunnisteissa ja tehtävien valintaruuduissa.",
+        "matchApp": "Sama kuin sovelluksessa",
+        "customAriaLabel": "Valitse muistiinpanoille mukautettu korostusväri"
+      },
+      "highlight": {
+        "label": "Korostuskynän väri",
+        "description": "Korostetun tekstin taustaväri.",
+        "options": {
+          "yellow": "Keltainen",
+          "green": "Vihreä",
+          "blue": "Sininen",
+          "pink": "Vaaleanpunainen",
+          "purple": "Violetti",
+          "accent": "Korostusväri"
+        }
+      },
+      "callouts": {
+        "label": "Huomiolaatikoiden tyyli",
+        "description": "Miltä huomiolaatikot näyttävät muistiinpanoissa.",
+        "options": {
+          "tinted": "Sävytetty",
+          "filled": "Täytetty",
+          "outlined": "Reunaviiva",
+          "bar": "Sivupalkki"
+        }
+      },
+      "remoteImages": {
+        "title": "Kuvat verkosta",
+        "description": "Muistiinpanot lataavat kuvia näiltä sivustoilta kysymättä.",
+        "empty": "Muistiinpanot kysyvät ennen kuin lataavat kuvan verkosta. Sivustot, jotka sallit aina, näkyvät tässä.",
+        "remove": "Poista {{host}}"
+      },
+      "resetAll": "Palauta muistiinpanojen ulkoasu"
     }
   },
   "checkpoints": {
@@ -2337,6 +2478,30 @@
       "resetZoom": {
         "description": "Palauttaa sovelluksen 100 prosenttiin.",
         "label": "Palauta zoomaus"
+      },
+      "notesQuickSwitcher": {
+        "description": "Etsi muistiinpano nimen perusteella ja avaa se.",
+        "label": "Muistiinpanot: siirry muistiinpanoon"
+      },
+      "notesTodayNote": {
+        "description": "Avaa tämän päivän muistiinpano tai aloita se.",
+        "label": "Muistiinpanot: tämän päivän muistiinpano"
+      },
+      "notesGraph": {
+        "description": "Avaa kaikkien muistiinpanojesi graafi.",
+        "label": "Muistiinpanot: graafi"
+      },
+      "notesLocalGraph": {
+        "description": "Näytä tai piilota avoimen muistiinpanon ympärillä olevat linkit.",
+        "label": "Muistiinpanot: paikallinen graafi"
+      },
+      "notesOutline": {
+        "description": "Näytä tai piilota avoimen muistiinpanon jäsennys.",
+        "label": "Muistiinpanot: jäsennys"
+      },
+      "notesAskAgent": {
+        "description": "Kysy agentilta valitusta tekstistä tai avaa ja sulje muistiinpanon agentti.",
+        "label": "Muistiinpanot: kysy agentilta"
       }
     },
     "application": {
@@ -2506,5 +2671,17 @@
       "loadFailed": "MCP-palvelinten luetteloa ei voitu lukea.",
       "missing": "{{name}} (ei löytynyt)"
     }
+  },
+  "notesPreview": {
+    "label": "Esikatselu muistiinpanosta näillä asetuksilla",
+    "title": "Maastomuistiinpanot",
+    "heading": "Aamun kartoitus",
+    "paragraph": "Kevyttä sadetta yhdeksään asti, sitten pohjoisrinteen yllä selkeni. Maa oli vielä keskipäivällä kostea.",
+    "links": "Katso koko menetelmä muistiinpanosta <note>Näytteenottomenetelmä</note> tai selaa tunnistetta <tag>#maastotyö</tag>.",
+    "highlight": "Taimien pituus kaksinkertaistui viikossa.",
+    "calloutTitle": "Seuraava käynti",
+    "calloutBody": "Tarkista maaperäanturit ennen uusien näytteiden ottamista.",
+    "taskDone": "Merkitse näytteet",
+    "task": "Lähetä kuvat"
   }
 }

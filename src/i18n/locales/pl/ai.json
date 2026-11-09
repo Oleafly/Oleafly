@@ -44,14 +44,16 @@
       "externalTool": "Potwierdź działanie narzędzia zewnętrznego",
       "internet": "Potwierdź dostęp do internetu",
       "edit": "Potwierdź zmianę wprowadzaną przez AI",
-      "researchTask": "Potwierdź zadanie badawcze"
+      "researchTask": "Potwierdź zadanie badawcze",
+      "note": "Potwierdź nową notatkę"
     },
     "headline": {
       "command": "Asystent chce uruchomić to polecenie",
       "externalTool": "Asystent chce użyć narzędzia zewnętrznego",
       "internet": "Asystent chce uzyskać dostęp do internetu",
       "edit": "Asystent chce zmienić Twoje pliki",
-      "researchTask": "Asystent chce utworzyć zadanie badawcze"
+      "researchTask": "Asystent chce utworzyć zadanie badawcze",
+      "note": "Asystent chce utworzyć notatkę"
     },
     "mcpNote": "Spowoduje to wysłanie poniższych argumentów do skonfigurowanego serwera MCP.",
     "line": "wiersz {{line}}",
@@ -87,11 +89,19 @@
       "timeBudget": "Budżet czasu",
       "timeBudgetDefault": "Domyślnie",
       "minutes_one": "{{count}} minuta",
+      "minutes_few": "{{count}} minuty",
+      "minutes_many": "{{count}} minut",
       "minutes_other": "{{count}} minuty",
       "planFirst": "Plan najpierw",
-      "startNow": "Start od razu",
-      "minutes_many": "{{count}} minut",
-      "minutes_few": "{{count}} minuty"
+      "startNow": "Start od razu"
+    },
+    "noteDraft": {
+      "title": "Tytuł",
+      "project": "Powiązany projekt",
+      "tags": "Tagi",
+      "text": "Tekst",
+      "empty": "Brak tekstu",
+      "more": "Dalej notatka jest kontynuowana."
     }
   },
   "attachments": {
@@ -1145,5 +1155,19 @@
     "replaceConfirm": "Zastąp odpowiedź",
     "forked": "Rozpoczęto nowy czat od edytowanej wiadomości.",
     "failed": "Nie udało się ponownie wysłać wiadomości."
+  },
+  "noteScope": {
+    "notesOnly": "Tylko w asystencie notatek.",
+    "tools": {
+      "readNote": "Czyta otwartą notatkę razem z sugestiami, które czekają na przejrzenie.",
+      "proposeNoteEdits": "Proponuje zmiany w otwartej notatce, które możesz przyjąć lub odrzucić.",
+      "searchNotes": "Przeszukuje wszystkie Twoje notatki.",
+      "listKnowledgeNotes": "Wypisuje Twoje notatki według tagu lub projektu.",
+      "readNoteById": "Czyta inną notatkę.",
+      "createNote": "Tworzy nową notatkę.",
+      "relatedProjectFiles": "Wypisuje pliki projektu, z którym powiązana jest notatka.",
+      "readRelatedProjectFile": "Czyta plik z projektu, z którym powiązana jest notatka.",
+      "searchRelatedProject": "Przeszukuje projekt, z którym powiązana jest notatka."
+    }
   }
 }

@@ -44,14 +44,16 @@
       "externalTool": "Bekräfta åtgärden i det externa verktyget",
       "internet": "Bekräfta internetåtkomst",
       "edit": "Bekräfta AI-ändringen",
-      "researchTask": "Bekräfta forskningsuppgiften"
+      "researchTask": "Bekräfta forskningsuppgiften",
+      "note": "Bekräfta ny anteckning"
     },
     "headline": {
       "command": "Assistenten vill köra det här kommandot",
       "externalTool": "Assistenten vill använda ett externt verktyg",
       "internet": "Assistenten vill komma åt internet",
       "edit": "Assistenten vill ändra dina filer",
-      "researchTask": "Assistenten vill skapa en forskningsuppgift"
+      "researchTask": "Assistenten vill skapa en forskningsuppgift",
+      "note": "Assistenten vill skapa en anteckning"
     },
     "mcpNote": "Det här skickar argumenten nedan till den konfigurerade MCP-servern.",
     "line": "rad {{line}}",
@@ -88,6 +90,14 @@
       "minutes_other": "{{count}} minuter",
       "planFirst": "Planera först",
       "startNow": "Starta nu"
+    },
+    "noteDraft": {
+      "title": "Titel",
+      "project": "Länkat projekt",
+      "tags": "Taggar",
+      "text": "Text",
+      "empty": "Ingen text",
+      "more": "Anteckningen fortsätter efter den här punkten."
     }
   },
   "attachments": {
@@ -1103,5 +1113,19 @@
     "replaceConfirm": "Ersätt svaret",
     "forked": "Startade en ny chatt från det redigerade meddelandet.",
     "failed": "Det gick inte att skicka meddelandet igen."
+  },
+  "noteScope": {
+    "notesOnly": "Bara i en anteckningsassistent.",
+    "tools": {
+      "readNote": "Läser den öppna anteckningen, inklusive förslag som väntar på granskning.",
+      "proposeNoteEdits": "Föreslår ändringar i den öppna anteckningen som du kan godkänna eller avvisa.",
+      "searchNotes": "Söker i alla dina anteckningar.",
+      "listKnowledgeNotes": "Listar dina anteckningar efter tagg eller projekt.",
+      "readNoteById": "Läser en annan anteckning.",
+      "createNote": "Skapar en ny anteckning.",
+      "relatedProjectFiles": "Listar filerna i projektet som anteckningen är länkad till.",
+      "readRelatedProjectFile": "Läser en fil från projektet som anteckningen är länkad till.",
+      "searchRelatedProject": "Söker i projektet som anteckningen är länkad till."
+    }
   }
 }

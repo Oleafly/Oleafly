@@ -81,5 +81,9 @@
   },
   "avatar": {
     "more_other": "ほか {{count}} 人"
+  },
+  "remoteImage": {
+    "blocked": "{{host}} の画像",
+    "load": "画像を読み込む"
   }
 }

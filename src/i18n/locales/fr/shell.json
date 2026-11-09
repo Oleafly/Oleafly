@@ -322,6 +322,28 @@
       "keywords": "pdf aperçu afficher masquer partager éditeur seul",
       "label": "Afficher ou masquer l'aperçu PDF"
     },
+    "swapEditorPreview": {
+      "keywords": "permuter inverser éditeur aperçu pdf côtés panneau ordre disposition",
+      "label": "Permuter l'éditeur et l'aperçu"
+    },
+    "movePaneToEdge": {
+      "bottom": "Déplacer {{pane}} vers le bord inférieur",
+      "keywords": "déplacer panneau bord ancrer côté diviser empiler disposition",
+      "left": "Déplacer {{pane}} vers le bord gauche",
+      "right": "Déplacer {{pane}} vers le bord droit",
+      "top": "Déplacer {{pane}} vers le bord supérieur"
+    },
+    "paneNames": {
+      "assistant": "l'assistant",
+      "editor": "l'éditeur",
+      "pdf": "l'aperçu",
+      "sidebar": "la barre latérale",
+      "terminal": "le terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "réinitialiser disposition panneaux ordre déplacer barre latérale assistant éditeur aperçu terminal défaut",
+      "label": "Réinitialiser la disposition des panneaux"
+    },
     "zoomIn": {
       "keywords": "agrandir plus grand loupe",
       "label": "Zoom avant"
@@ -349,6 +371,16 @@
     "insertFileLink": {
       "label": "Insérer un lien vers un fichier",
       "keywords": "lien fichier chemin note référence"
+    },
+    "projectNotes": {
+      "open": "Ouvrir les notes de ce projet",
+      "newShared": "Nouvelle note de projet",
+      "newPersonal": "Nouvelle note personnelle pour ce projet",
+      "keywords": "notes recherche lié associé projet"
+    },
+    "notes": {
+      "label": "Ouvrir Notes",
+      "keywords": "notes carnet connaissances idées recherche journal notebook knowledge ideas research"
     }
   },
   "community": {
@@ -647,7 +679,6 @@
   "home": {
     "ariaLabel": "Accueil",
     "label": "Accueil",
-    "title": "Retour à la bibliothèque",
     "tooltip": "Revenir à la bibliothèque de projets"
   },
   "importDestination": {
@@ -794,7 +825,8 @@
     "research": "Espace de recherche",
     "search": "Rechercher dans le projet",
     "sourceControl": "Contrôle de version",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notes"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} sur {{host}}",
@@ -906,7 +938,8 @@
           "folders_other": "{{count}} dossiers",
           "images": "Images",
           "pdfs": "PDF",
-          "projects": "Projets"
+          "projects": "Projets",
+          "projectsAndNotes": "Projets et notes"
         },
         "subtitle": "Projets, aperçus, historique et données de l'application",
         "title": "Espace utilisé",
@@ -951,7 +984,7 @@
         "label": "Outils LaTeX"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
+        "description": "Ajoute Notes au dock de l'accueil. Une note est un fichier Markdown avec diagrammes, graphiques et maths, que vous et vos agents pouvez modifier tous les deux. Les notes restent en dehors de votre bibliothèque de projets, et chaque note peut être liée à un projet. Désactivé par défaut tant que c'est en bêta.",
         "label": "Notes"
       },
       "researchTasks": {
@@ -1301,6 +1334,7 @@
       "split": "Vue partagée"
     },
     "moreActions": "Autres actions",
+    "resetPaneLayout": "Réinitialiser la disposition des panneaux",
     "renameFailed": "Impossible de renommer le projet."
   },
   "tour": {

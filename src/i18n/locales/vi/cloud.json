@@ -105,6 +105,8 @@
     "conflicts_other": "Đã tạo {{count}} bản sao xung đột",
     "conflictsHelp_other": "Các tệp này đã thay đổi ở đây và trên máy tính khác trước khi đồng bộ, nên Oleafly giữ cả hai. Hãy giữ những gì bạn cần, rồi xoá các bản sao.",
     "conflictsLabel": "Bản sao xung đột trong {{name}}",
+    "compare": "So sánh",
+    "compareLabel": "So sánh {{path}} với ghi chú",
     "dismiss": "Bỏ qua",
     "skipped_other": "Đã bỏ qua {{count}} tệp",
     "skippedMore_other": "Và thêm {{count}} tệp khác",

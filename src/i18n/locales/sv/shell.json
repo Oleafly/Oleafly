@@ -321,6 +321,28 @@
       "keywords": "pdf förhandsvisning visa dölj delad bara redigerare",
       "label": "Visa eller dölj PDF-förhandsvisning"
     },
+    "swapEditorPreview": {
+      "keywords": "byt plats redigerare förhandsvisning pdf sidor panel ordning layout",
+      "label": "Byt plats på redigeraren och förhandsvisningen"
+    },
+    "movePaneToEdge": {
+      "bottom": "Flytta {{pane}} till nederkanten",
+      "keywords": "flytta panel kant docka sida dela stapla layout",
+      "left": "Flytta {{pane}} till vänsterkanten",
+      "right": "Flytta {{pane}} till högerkanten",
+      "top": "Flytta {{pane}} till överkanten"
+    },
+    "paneNames": {
+      "assistant": "assistenten",
+      "editor": "redigeraren",
+      "pdf": "förhandsvisningen",
+      "sidebar": "sidofältet",
+      "terminal": "terminalen"
+    },
+    "resetPaneLayout": {
+      "keywords": "återställ panellayout ordning flytta paneler sidofält assistent redigerare förhandsvisning terminal standard",
+      "label": "Återställ panellayouten"
+    },
     "zoomIn": {
       "keywords": "större förstora",
       "label": "Zooma in"
@@ -348,6 +370,16 @@
     "insertFileLink": {
       "label": "Infoga länk till fil",
       "keywords": "länk fil sökväg anteckning referens"
+    },
+    "projectNotes": {
+      "open": "Öppna anteckningar för det här projektet",
+      "newShared": "Ny projektanteckning",
+      "newPersonal": "Ny personlig anteckning för det här projektet",
+      "keywords": "anteckningar forskning länkat relaterat projekt"
+    },
+    "notes": {
+      "label": "Öppna Anteckningar",
+      "keywords": "anteckningar anteckningsbok kunskap idéer forskning dagbok notes notebook knowledge ideas research journal"
     }
   },
   "community": {
@@ -645,7 +677,6 @@
   "home": {
     "ariaLabel": "Start",
     "label": "Start",
-    "title": "Tillbaka till biblioteket",
     "tooltip": "Gå tillbaka till projektbiblioteket"
   },
   "importDestination": {
@@ -791,7 +822,8 @@
     "research": "Forskningsyta",
     "search": "Sök i projektet",
     "sourceControl": "Versionshantering",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Anteckningar"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} på {{host}}",
@@ -893,7 +925,8 @@
           "folders_other": "{{count}} mappar",
           "images": "Bilder",
           "pdfs": "PDF-filer",
-          "projects": "Projekt"
+          "projects": "Projekt",
+          "projectsAndNotes": "Projekt och anteckningar"
         },
         "subtitle": "Projekt, förhandsvisningar, historik och appdata",
         "title": "Lagringsanvändning",
@@ -937,8 +970,8 @@
         "label": "LaTeX-verktyg"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
+        "description": "Lägger till Anteckningar i dockan på startsidan. En anteckning är en Markdown-fil med diagram, grafer och matematik som både du och dina agenter kan redigera. Anteckningar hålls utanför ditt projektbibliotek, och varje anteckning kan länkas till ett projekt. Av som standard under betaperioden.",
+        "label": "Anteckningar"
       },
       "researchTasks": {
         "description": "En agent arbetar på egen hand i en kopia av projektet och lämnar sina ändringar åt dig att granska. Mycket instabilt: körningar kan hänga sig, misslyckas eller lämna ändringar att ordna upp för hand, och de använder din leverantörs kvot hela tiden. Lägger till avsnittet Forskning i Inställningar. Avstängning stoppar alla pågående uppgifter. Av som standard. Slå på det på egen risk.",
@@ -1281,6 +1314,7 @@
       "split": "Delad vy"
     },
     "moreActions": "Fler åtgärder",
+    "resetPaneLayout": "Återställ panellayouten",
     "renameFailed": "Det gick inte att byta namn på projektet."
   },
   "tour": {

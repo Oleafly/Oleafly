@@ -222,7 +222,13 @@
     "closeAll": "Sulje kaikki",
     "closeAssistantTabs": "Sulje avustajan avaamat tiedostot",
     "closeAssistantTabsCount_one": "Sulje avustajan avaama tiedosto",
-    "closeAssistantTabsCount_other": "Sulje {{count}} avustajan avaamaa tiedostoa"
+    "closeAssistantTabsCount_other": "Sulje {{count}} avustajan avaamaa tiedostoa",
+    "editAsMarkdown": "Muokkaa Markdownina",
+    "editAsNote": "Muokkaa muistiinpanona",
+    "noteAsMarkdown": "Muokkaat tätä muistiinpanoa Markdownina.",
+    "openInNotes": "Avaa Muistiinpanoissa",
+    "moveIntoProject": "Siirrä projektiin",
+    "copyToMyNotes": "Kopioi omiin muistiinpanoihin"
   },
   "projectInfo": {
     "trigger": "Projektin tiedot",

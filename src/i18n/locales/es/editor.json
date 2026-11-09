@@ -223,7 +223,13 @@
     "closeAssistantTabs": "Cerrar los archivos que abrió el asistente",
     "closeAssistantTabsCount_one": "Cerrar el archivo que abrió el asistente",
     "closeAssistantTabsCount_many": "Cerrar los {{count}} archivos que abrió el asistente",
-    "closeAssistantTabsCount_other": "Cerrar los {{count}} archivos que abrió el asistente"
+    "closeAssistantTabsCount_other": "Cerrar los {{count}} archivos que abrió el asistente",
+    "editAsMarkdown": "Editar como Markdown",
+    "editAsNote": "Editar como nota",
+    "noteAsMarkdown": "Estás editando esta nota como Markdown.",
+    "openInNotes": "Abrir en Notas",
+    "moveIntoProject": "Mover al proyecto",
+    "copyToMyNotes": "Copiar a mis notas"
   },
   "projectInfo": {
     "trigger": "Información del proyecto",

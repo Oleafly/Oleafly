@@ -999,7 +999,8 @@
       "editor": "Editor",
       "files": "Progetto",
       "pdf": "Anteprima PDF",
-      "terminal": "Terminale"
+      "terminal": "Terminale",
+      "notes": "Note"
     },
     "terminal": {
       "colorTheme": {
@@ -1133,6 +1134,146 @@
         "label": "Mostra il PDF quando compili"
       },
       "title": "Modalità Zen"
+    },
+    "notes": {
+      "sectionName": "Aspetto delle note",
+      "resetAriaLabel": "Ripristina il valore predefinito dell'impostazione {{setting}}",
+      "text": {
+        "title": "Testo"
+      },
+      "typeface": {
+        "label": "Tipo di carattere",
+        "description": "Scegli un tipo di carattere per il testo delle note.",
+        "options": {
+          "sans": "Senza grazie",
+          "serif": "Con grazie",
+          "mono": "Monospaziato"
+        }
+      },
+      "font": {
+        "label": "Font delle note",
+        "description": "Scegli qualsiasi font installato per il testo delle note. Lascia il campo vuoto per usare l'impostazione Tipo di carattere."
+      },
+      "fontSize": {
+        "label": "Dimensione del testo delle note",
+        "description": "Imposta la dimensione del testo delle note.",
+        "custom": "Personalizzata",
+        "customLabel": "Dimensione personalizzata del testo delle note, in pixel"
+      },
+      "lineHeight": {
+        "label": "Altezza della riga delle note",
+        "description": "Imposta lo spazio tra le righe del testo delle note.",
+        "customLabel": "Altezza della riga delle note personalizzata"
+      },
+      "paragraphSpacing": {
+        "label": "Spaziatura dei paragrafi",
+        "description": "Imposta lo spazio tra paragrafi, elenchi e altri blocchi.",
+        "options": {
+          "compact": "Compatta",
+          "normal": "Normale",
+          "relaxed": "Ariosa",
+          "spacious": "Ampia"
+        }
+      },
+      "headings": {
+        "title": "Titoli di sezione e titolo"
+      },
+      "headingTypeface": {
+        "label": "Tipo di carattere dei titoli",
+        "description": "Scegli un tipo di carattere per i titoli di sezione e il titolo della nota.",
+        "options": {
+          "text": "Come il testo"
+        }
+      },
+      "headingFont": {
+        "label": "Font dei titoli",
+        "description": "Scegli un font installato per i titoli di sezione e il titolo della nota. Lascia il campo vuoto per usare l'impostazione Tipo di carattere dei titoli."
+      },
+      "headingSize": {
+        "label": "Dimensione dei titoli di sezione",
+        "description": "Imposta la dimensione dei titoli di sezione rispetto al testo.",
+        "options": {
+          "small": "Più piccoli",
+          "normal": "Normale",
+          "large": "Più grandi"
+        }
+      },
+      "titleSize": {
+        "label": "Dimensione del titolo",
+        "description": "Imposta la dimensione del titolo in cima a ogni nota."
+      },
+      "layout": {
+        "title": "Layout"
+      },
+      "width": {
+        "label": "Larghezza delle note",
+        "description": "La larghezza con cui si aprono le note. Anche il menu della larghezza in una nota cambia questa impostazione.",
+        "options": {
+          "standard": "Standard",
+          "wide": "Ampia",
+          "full": "Larghezza piena"
+        }
+      },
+      "wordCount": {
+        "label": "Mostra il numero di parole",
+        "description": "Mostra il numero di parole di una nota nella sua barra degli strumenti."
+      },
+      "spellcheck": {
+        "label": "Controlla l'ortografia nelle note",
+        "description": "Sottolinea le parole scritte in modo errato mentre scrivi una nota."
+      },
+      "code": {
+        "title": "Codice"
+      },
+      "codeFont": {
+        "label": "Font del codice",
+        "description": "Scegli un font installato per i blocchi di codice e il codice in linea."
+      },
+      "codeTheme": {
+        "label": "Colori dei blocchi di codice",
+        "description": "Scegli i colori della sintassi per i blocchi di codice nelle note.",
+        "options": {
+          "editor": "Come l'editor"
+        }
+      },
+      "colors": {
+        "title": "Colori"
+      },
+      "accent": {
+        "label": "Colore d'accento delle note",
+        "description": "Usato per collegamenti, tag e caselle delle attività nelle note.",
+        "matchApp": "Come l'app",
+        "customAriaLabel": "Scegli un colore d'accento personalizzato per le note"
+      },
+      "highlight": {
+        "label": "Colore di evidenziazione",
+        "description": "Il colore dietro il testo evidenziato.",
+        "options": {
+          "yellow": "Giallo",
+          "green": "Verde",
+          "blue": "Blu",
+          "pink": "Rosa",
+          "purple": "Viola",
+          "accent": "Accento"
+        }
+      },
+      "callouts": {
+        "label": "Stile dei riquadri",
+        "description": "L'aspetto dei riquadri nelle note.",
+        "options": {
+          "tinted": "Tinta tenue",
+          "filled": "Pieno",
+          "outlined": "Contorno",
+          "bar": "Barra laterale"
+        }
+      },
+      "remoteImages": {
+        "title": "Immagini dal web",
+        "description": "Le note caricano le immagini da questi siti senza chiedere.",
+        "empty": "Le note chiedono prima di caricare un'immagine dal web. Qui compaiono i siti che consenti sempre.",
+        "remove": "Rimuovi {{host}}"
+      },
+      "resetAll": "Ripristina l'aspetto delle note"
     }
   },
   "checkpoints": {
@@ -2358,6 +2499,30 @@
       "resetZoom": {
         "description": "Riporta l'app al 100%.",
         "label": "Reimposta zoom"
+      },
+      "notesQuickSwitcher": {
+        "description": "Trova una nota per nome e aprila.",
+        "label": "Note: vai a una nota"
+      },
+      "notesTodayNote": {
+        "description": "Apri la nota di oggi, o creala.",
+        "label": "Note: nota di oggi"
+      },
+      "notesGraph": {
+        "description": "Apri il grafo di tutte le tue note.",
+        "label": "Note: grafo"
+      },
+      "notesLocalGraph": {
+        "description": "Mostra o nascondi i collegamenti attorno alla nota aperta.",
+        "label": "Note: grafo locale"
+      },
+      "notesOutline": {
+        "description": "Mostra o nascondi la struttura della nota aperta.",
+        "label": "Note: struttura"
+      },
+      "notesAskAgent": {
+        "description": "Fai una domanda all'agente sul testo selezionato, oppure apri e chiudi l'agente della nota.",
+        "label": "Note: chiedi all'agente"
       }
     },
     "application": {
@@ -2529,5 +2694,17 @@
       "loadFailed": "Non è stato possibile leggere l'elenco dei server MCP.",
       "missing": "{{name}} (non trovato)"
     }
+  },
+  "notesPreview": {
+    "label": "Anteprima di una nota con queste impostazioni",
+    "title": "Appunti di campo",
+    "heading": "Rilievo del mattino",
+    "paragraph": "Pioggia leggera fino alle nove, poi cielo sereno sulla cresta nord. A mezzogiorno il terreno era ancora umido.",
+    "links": "Vedi <note>Metodo di campionamento</note> per tutti i passaggi, oppure sfoglia <tag>#lavorosulcampo</tag>.",
+    "highlight": "Le piantine hanno raddoppiato l'altezza in una settimana.",
+    "calloutTitle": "Prossima visita",
+    "calloutBody": "Controlla i sensori del terreno prima di prelevare nuovi campioni.",
+    "taskDone": "Etichettare i campioni",
+    "task": "Caricare le foto"
   }
 }

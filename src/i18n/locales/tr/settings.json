@@ -993,7 +993,8 @@
       "editor": "Düzenleyici",
       "files": "Proje",
       "pdf": "PDF Önizleme",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Notlar"
     },
     "terminal": {
       "colorTheme": {
@@ -1126,6 +1127,146 @@
         "label": "Derlerken PDF'yi göster"
       },
       "title": "Zen kipi"
+    },
+    "notes": {
+      "sectionName": "Not görünümü",
+      "resetAriaLabel": "{{setting}} ayarını varsayılana sıfırla",
+      "text": {
+        "title": "Metin"
+      },
+      "typeface": {
+        "label": "Yazı stili",
+        "description": "Not metni için bir yazı stili seçin.",
+        "options": {
+          "sans": "Tırnaksız",
+          "serif": "Tırnaklı",
+          "mono": "Eş aralıklı"
+        }
+      },
+      "font": {
+        "label": "Not yazı tipi",
+        "description": "Not metni için yüklü herhangi bir yazı tipini seçin. Yazı stili ayarını kullanmak için boş bırakın."
+      },
+      "fontSize": {
+        "label": "Not metni boyutu",
+        "description": "Not metninin boyutunu ayarlayın.",
+        "custom": "Özel",
+        "customLabel": "Piksel cinsinden özel not metni boyutu"
+      },
+      "lineHeight": {
+        "label": "Not satır yüksekliği",
+        "description": "Not metnindeki satırlar arasındaki boşluğu ayarlayın.",
+        "customLabel": "Özel not satır yüksekliği"
+      },
+      "paragraphSpacing": {
+        "label": "Paragraf aralığı",
+        "description": "Paragraflar, listeler ve diğer bloklar arasındaki boşluğu ayarlayın.",
+        "options": {
+          "compact": "Sıkışık",
+          "normal": "Normal",
+          "relaxed": "Rahat",
+          "spacious": "Ferah"
+        }
+      },
+      "headings": {
+        "title": "Başlıklar ve not başlığı"
+      },
+      "headingTypeface": {
+        "label": "Başlık yazı stili",
+        "description": "Başlıklar ve not başlığı için bir yazı stili seçin.",
+        "options": {
+          "text": "Metinle aynı"
+        }
+      },
+      "headingFont": {
+        "label": "Başlık yazı tipi",
+        "description": "Başlıklar ve not başlığı için yüklü bir yazı tipi seçin. Başlık yazı stili ayarını kullanmak için boş bırakın."
+      },
+      "headingSize": {
+        "label": "Başlık boyutu",
+        "description": "Başlıkların metne göre ne kadar büyük olacağını ayarlayın.",
+        "options": {
+          "small": "Daha küçük",
+          "normal": "Normal",
+          "large": "Daha büyük"
+        }
+      },
+      "titleSize": {
+        "label": "Not başlığı boyutu",
+        "description": "Her notun en üstündeki başlığın boyutunu ayarlayın."
+      },
+      "layout": {
+        "title": "Düzen"
+      },
+      "width": {
+        "label": "Not genişliği",
+        "description": "Notların hangi genişlikte açılacağı. Bir notun içindeki genişlik menüsü de bu ayarı değiştirir.",
+        "options": {
+          "standard": "Standart",
+          "wide": "Geniş",
+          "full": "Tam genişlik"
+        }
+      },
+      "wordCount": {
+        "label": "Sözcük sayısını göster",
+        "description": "Notun sözcük sayısını araç çubuğunda gösterir."
+      },
+      "spellcheck": {
+        "label": "Notlarda yazımı denetle",
+        "description": "Not yazarken yanlış yazılan sözcüklerin altını çizer."
+      },
+      "code": {
+        "title": "Kod"
+      },
+      "codeFont": {
+        "label": "Kod yazı tipi",
+        "description": "Kod blokları ve satır içi kod için yüklü bir yazı tipi seçin."
+      },
+      "codeTheme": {
+        "label": "Kod bloğu renkleri",
+        "description": "Notlardaki kod blokları için söz dizimi renklerini seçin.",
+        "options": {
+          "editor": "Düzenleyiciyle aynı"
+        }
+      },
+      "colors": {
+        "title": "Renkler"
+      },
+      "accent": {
+        "label": "Not vurgu rengi",
+        "description": "Notlardaki bağlantılar, etiketler ve görev kutuları için kullanılır.",
+        "matchApp": "Uygulamayla aynı",
+        "customAriaLabel": "Özel bir not vurgu rengi seçin"
+      },
+      "highlight": {
+        "label": "İşaretleme rengi",
+        "description": "İşaretlenmiş metnin arkasındaki renk.",
+        "options": {
+          "yellow": "Sarı",
+          "green": "Yeşil",
+          "blue": "Mavi",
+          "pink": "Pembe",
+          "purple": "Mor",
+          "accent": "Vurgu rengi"
+        }
+      },
+      "callouts": {
+        "label": "Bilgi kutusu stili",
+        "description": "Notlardaki bilgi kutularının görünümü.",
+        "options": {
+          "tinted": "Renk tonlu",
+          "filled": "Dolgulu",
+          "outlined": "Çerçeveli",
+          "bar": "Yan çubuk"
+        }
+      },
+      "remoteImages": {
+        "title": "Web'deki görseller",
+        "description": "Notlar bu sitelerdeki görselleri sormadan yükler.",
+        "empty": "Notlar, web'den bir görsel yüklemeden önce sorar. Her zaman izin verdiğiniz siteler burada görünür.",
+        "remove": "Kaldır: {{host}}"
+      },
+      "resetAll": "Not görünümünü sıfırla"
     }
   },
   "checkpoints": {
@@ -2337,6 +2478,30 @@
       "resetZoom": {
         "description": "Uygulamayı %100'e döndürür.",
         "label": "Yakınlaştırmayı sıfırla"
+      },
+      "notesQuickSwitcher": {
+        "description": "Bir notu adıyla bulun ve açın.",
+        "label": "Notlar: nota git"
+      },
+      "notesTodayNote": {
+        "description": "Bugünün notunu açın veya başlatın.",
+        "label": "Notlar: bugünün notu"
+      },
+      "notesGraph": {
+        "description": "Tüm notlarınızın çizgesini açın.",
+        "label": "Notlar: çizge"
+      },
+      "notesLocalGraph": {
+        "description": "Açık notun çevresindeki bağlantıları gösterin veya gizleyin.",
+        "label": "Notlar: yerel çizge"
+      },
+      "notesOutline": {
+        "description": "Açık notun anahattını gösterin veya gizleyin.",
+        "label": "Notlar: anahat"
+      },
+      "notesAskAgent": {
+        "description": "Seçili metin hakkında ajana sorun veya notun ajanını açıp kapatın.",
+        "label": "Notlar: ajana sor"
       }
     },
     "application": {
@@ -2506,5 +2671,17 @@
       "loadFailed": "MCP sunucu listesi okunamadı.",
       "missing": "{{name}} (bulunamadı)"
     }
+  },
+  "notesPreview": {
+    "label": "Bu ayarlarla bir not önizlemesi",
+    "title": "Saha notları",
+    "heading": "Sabah gözlemi",
+    "paragraph": "Saat dokuza kadar hafif yağmur, sonra kuzey sırtında açık gökyüzü. Öğlen toprak hâlâ nemliydi.",
+    "links": "Tüm adımlar için <note>Örnekleme yöntemi</note> notuna bakın veya <tag>#sahaçalışması</tag> etiketine göz atın.",
+    "highlight": "Fideler bir haftada iki kat uzadı.",
+    "calloutTitle": "Sonraki ziyaret",
+    "calloutBody": "Yeni örnek almadan önce toprak sensörlerini denetleyin.",
+    "taskDone": "Örnekleri etiketle",
+    "task": "Fotoğrafları yükle"
   }
 }

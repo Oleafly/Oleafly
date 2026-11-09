@@ -222,7 +222,13 @@
     "closeAll": "Lukk alle",
     "closeAssistantTabs": "Lukk filer som assistenten har åpnet",
     "closeAssistantTabsCount_one": "Lukk filen som assistenten har åpnet",
-    "closeAssistantTabsCount_other": "Lukk de {{count}} filene som assistenten har åpnet"
+    "closeAssistantTabsCount_other": "Lukk de {{count}} filene som assistenten har åpnet",
+    "editAsMarkdown": "Rediger som Markdown",
+    "editAsNote": "Rediger som notat",
+    "noteAsMarkdown": "Du redigerer dette notatet som Markdown.",
+    "openInNotes": "Åpne i Notater",
+    "moveIntoProject": "Flytt inn i prosjektet",
+    "copyToMyNotes": "Kopier til notatene mine"
   },
   "projectInfo": {
     "trigger": "Prosjektinfo",

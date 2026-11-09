@@ -3,7 +3,7 @@
     "newProject": "새 프로젝트",
     "search": "문서 검색({{shortcut}})",
     "diagramComposer": "다이어그램 작성기",
-    "notes": "Notes",
+    "notes": "노트",
     "tools": "Oleafly 도구",
     "settings": "설정"
   },
@@ -54,7 +54,7 @@
       "kindDocument": "문서",
       "kindImage": "이미지",
       "kindDiagram": "다이어그램",
-      "kindNote": "Note",
+      "kindNote": "노트",
       "bookmark": "북마크",
       "bookmarkAll": "모든 상태",
       "bookmarkYes": "북마크됨",
@@ -138,7 +138,7 @@
       "document": "문서",
       "image": "이미지",
       "diagram": "다이어그램",
-      "note": "note",
+      "note": "노트",
       "external": "외부",
       "overleaf": "Overleaf"
     },

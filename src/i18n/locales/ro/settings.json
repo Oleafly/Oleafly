@@ -999,7 +999,8 @@
       "editor": "Editor",
       "files": "Proiect",
       "pdf": "Previzualizare PDF",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Notițe"
     },
     "terminal": {
       "colorTheme": {
@@ -1133,6 +1134,146 @@
         "label": "Arată PDF-ul la compilare"
       },
       "title": "Modul Zen"
+    },
+    "notes": {
+      "sectionName": "Aspectul notițelor",
+      "resetAriaLabel": "Resetează {{setting}} la valoarea implicită",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Tip de literă",
+        "description": "Alege un tip de literă pentru textul notițelor.",
+        "options": {
+          "sans": "Fără serife",
+          "serif": "Cu serife",
+          "mono": "Monospațiat"
+        }
+      },
+      "font": {
+        "label": "Fontul notițelor",
+        "description": "Alege orice font instalat pentru textul notițelor. Lasă câmpul gol ca să folosești setarea Tip de literă."
+      },
+      "fontSize": {
+        "label": "Dimensiunea textului din notițe",
+        "description": "Setează dimensiunea textului din notițe.",
+        "custom": "Personalizată",
+        "customLabel": "Dimensiune personalizată a textului din notițe, în pixeli"
+      },
+      "lineHeight": {
+        "label": "Înălțimea liniei în notițe",
+        "description": "Setează spațiul dintre liniile textului din notițe.",
+        "customLabel": "Înălțime personalizată a liniei în notițe"
+      },
+      "paragraphSpacing": {
+        "label": "Spațierea paragrafelor",
+        "description": "Setează spațiul dintre paragrafe, liste și alte blocuri.",
+        "options": {
+          "compact": "Compactă",
+          "normal": "Normală",
+          "relaxed": "Relaxată",
+          "spacious": "Aerisită"
+        }
+      },
+      "headings": {
+        "title": "Titluri și titlul notiței"
+      },
+      "headingTypeface": {
+        "label": "Tipul de literă al titlurilor",
+        "description": "Alege un tip de literă pentru titluri și pentru titlul notiței.",
+        "options": {
+          "text": "La fel ca textul"
+        }
+      },
+      "headingFont": {
+        "label": "Fontul titlurilor",
+        "description": "Alege un font instalat pentru titluri și pentru titlul notiței. Lasă câmpul gol ca să folosești setarea Tipul de literă al titlurilor."
+      },
+      "headingSize": {
+        "label": "Dimensiunea titlurilor",
+        "description": "Setează cât de mari sunt titlurile față de text.",
+        "options": {
+          "small": "Mai mici",
+          "normal": "Normale",
+          "large": "Mai mari"
+        }
+      },
+      "titleSize": {
+        "label": "Dimensiunea titlului",
+        "description": "Setează dimensiunea titlului din partea de sus a fiecărei notițe."
+      },
+      "layout": {
+        "title": "Aranjare"
+      },
+      "width": {
+        "label": "Lățimea notiței",
+        "description": "Cât de late se deschid notițele. Meniul de lățime dintr-o notiță schimbă și el această setare.",
+        "options": {
+          "standard": "Standard",
+          "wide": "Lată",
+          "full": "Lățime completă"
+        }
+      },
+      "wordCount": {
+        "label": "Arată numărul de cuvinte",
+        "description": "Arată numărul de cuvinte al notiței în bara ei de instrumente."
+      },
+      "spellcheck": {
+        "label": "Verifică ortografia în notițe",
+        "description": "Subliniază cuvintele scrise greșit cât timp scrii o notiță."
+      },
+      "code": {
+        "title": "Cod"
+      },
+      "codeFont": {
+        "label": "Fontul codului",
+        "description": "Alege un font instalat pentru blocurile de cod și pentru codul din text."
+      },
+      "codeTheme": {
+        "label": "Culorile blocurilor de cod",
+        "description": "Alege culorile de sintaxă pentru blocurile de cod din notițe.",
+        "options": {
+          "editor": "La fel ca editorul"
+        }
+      },
+      "colors": {
+        "title": "Culori"
+      },
+      "accent": {
+        "label": "Culoarea de accent a notițelor",
+        "description": "Folosită pentru legături, etichete și casetele de sarcini din notițe.",
+        "matchApp": "La fel ca aplicația",
+        "customAriaLabel": "Alege o culoare de accent personalizată pentru notițe"
+      },
+      "highlight": {
+        "label": "Culoarea de evidențiere",
+        "description": "Culoarea din spatele textului evidențiat.",
+        "options": {
+          "yellow": "Galben",
+          "green": "Verde",
+          "blue": "Albastru",
+          "pink": "Roz",
+          "purple": "Mov",
+          "accent": "Accent"
+        }
+      },
+      "callouts": {
+        "label": "Stilul casetelor de evidențiere",
+        "description": "Cum arată casetele de evidențiere în notițe.",
+        "options": {
+          "tinted": "Nuanțat",
+          "filled": "Umplut",
+          "outlined": "Conturat",
+          "bar": "Bară laterală"
+        }
+      },
+      "remoteImages": {
+        "title": "Imagini de pe web",
+        "description": "Notițele încarcă imagini de pe aceste site-uri fără să întrebe.",
+        "empty": "Notițele întreabă înainte să încarce o imagine de pe web. Site-urile pe care le permiți mereu apar aici.",
+        "remove": "Elimină {{host}}"
+      },
+      "resetAll": "Resetează aspectul notițelor"
     }
   },
   "checkpoints": {
@@ -2358,6 +2499,30 @@
       "resetZoom": {
         "description": "Readuce aplicația la 100%.",
         "label": "Resetează zoomul"
+      },
+      "notesQuickSwitcher": {
+        "description": "Găsește o notiță după nume și deschide-o.",
+        "label": "Notițe: mergi la o notiță"
+      },
+      "notesTodayNote": {
+        "description": "Deschide notița de azi sau începe-o.",
+        "label": "Notițe: notița de azi"
+      },
+      "notesGraph": {
+        "description": "Deschide graful tuturor notițelor tale.",
+        "label": "Notițe: graf"
+      },
+      "notesLocalGraph": {
+        "description": "Arată sau ascunde legăturile din jurul notiței deschise.",
+        "label": "Notițe: graf local"
+      },
+      "notesOutline": {
+        "description": "Arată sau ascunde cuprinsul notiței deschise.",
+        "label": "Notițe: cuprins"
+      },
+      "notesAskAgent": {
+        "description": "Întreabă agentul despre textul selectat sau deschide și închide agentul notiței.",
+        "label": "Notițe: întreabă agentul"
       }
     },
     "application": {
@@ -2529,5 +2694,17 @@
       "loadFailed": "Lista serverelor MCP nu a putut fi citită.",
       "missing": "{{name}} (nu a fost găsit)"
     }
+  },
+  "notesPreview": {
+    "label": "Previzualizarea unei notițe cu aceste setări",
+    "title": "Notițe de teren",
+    "heading": "Observații de dimineață",
+    "paragraph": "Ploaie ușoară până la nouă, apoi cer senin deasupra crestei nordice. Solul era încă umed la prânz.",
+    "links": "Vezi <note>Metoda de eșantionare</note> pentru toți pașii sau răsfoiește <tag>#teren</tag>.",
+    "highlight": "Răsadurile și-au dublat înălțimea într-o săptămână.",
+    "calloutTitle": "Următoarea vizită",
+    "calloutBody": "Verifică senzorii de sol înainte să iei probe noi.",
+    "taskDone": "Etichetează probele",
+    "task": "Încarcă fotografiile"
   }
 }

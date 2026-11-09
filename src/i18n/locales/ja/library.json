@@ -3,7 +3,7 @@
     "newProject": "新規プロジェクト",
     "search": "文書を検索（{{shortcut}}）",
     "diagramComposer": "ダイアグラムコンポーザー",
-    "notes": "Notes",
+    "notes": "ノート",
     "tools": "Oleafly ツール",
     "settings": "設定"
   },
@@ -54,7 +54,7 @@
       "kindDocument": "文書",
       "kindImage": "画像",
       "kindDiagram": "ダイアグラム",
-      "kindNote": "Note",
+      "kindNote": "ノート",
       "bookmark": "ブックマーク",
       "bookmarkAll": "すべての状態",
       "bookmarkYes": "ブックマーク済み",
@@ -138,7 +138,7 @@
       "document": "文書",
       "image": "画像",
       "diagram": "ダイアグラム",
-      "note": "note",
+      "note": "ノート",
       "external": "外部",
       "overleaf": "Overleaf"
     },

@@ -346,6 +346,7 @@
   },
   "mermaid": {
     "diagram": "Diagramă",
+    "remoteBlocked": "Diagrama nu a fost randată pentru că încarcă imagini sau stiluri de pe internet.",
     "renderFailed": "Diagrama nu a putut fi randată.",
     "rendering": "Se randează diagrama"
   },

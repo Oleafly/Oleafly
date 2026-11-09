@@ -83,5 +83,9 @@
     "more_one": "{{count}} persona más",
     "more_many": "{{count}} personas más",
     "more_other": "{{count}} personas más"
+  },
+  "remoteImage": {
+    "blocked": "Imagen alojada en {{host}}",
+    "load": "Cargar la imagen"
   }
 }

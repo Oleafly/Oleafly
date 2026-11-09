@@ -509,6 +509,7 @@
     "copyAndShare": "Oleafly'ye kopyala ve paylaş",
     "title": "{{name}} projesini paylaş",
     "description": "Bu proje üzerinde bir iş birliği sunucusu aracılığıyla başkalarıyla birlikte çalışın.",
+    "noteDescription": "Bu notu bir iş birliği sunucusu üzerinden başkalarıyla birlikte yazın.",
     "loading": "Yükleniyor…",
     "linked": "Bu proje, Oleafly dışındaki bir klasör. Oleafly onu kitaplığınıza kopyalar ve bu kopyayı paylaşır. Özgün klasöre dokunulmaz.",
     "editCopy": "Bu, paylaşılan kopyadır. Bundan sonra özgün klasörü değil, bu kopyayı düzenleyin.",
@@ -526,12 +527,15 @@
     "tooLarge": "Bu dosyalar sunucunun {{size}} MB sınırını aşıyor. Paylaşmadan önce dosyaları küçültün veya kaldırın.",
     "renamed": "Bazı adlar her bilgisayarda çalışmaz. Diğer kişiler bu dosyaları biraz farklı bir adla alır.",
     "excluded": "Paylaşılmayanlar: diğer derleme çıktıları, Oleafly ayarları ve Git geçmişi. En son derlenen PDF paylaşılır, böylece ortak yazarlar onu tarayıcıda okuyabilir.",
+    "noteExcluded": "Paylaşılmayanlar: Oleafly ayarları ve Git geçmişi.",
     "start": "Paylaş",
     "preparing": "Proje hazırlanıyor…",
     "uploading": "Şekiller ve diğer dosyalar yükleniyor: {{done}} / {{total}}",
     "saving": "Proje sunucuya kaydediliyor…",
     "failed": "Paylaşım tamamlanmadı, bu yüzden hiçbir şey paylaşılmadı.",
-    "trustAgain": "Bu projeye eklediğiniz herkes dosyalarını değiştirebilir, bu yüzden Oleafly bu bilgisayarda proje için ajanlar, terminal komutları veya shell escape çalıştırmadan önce projeye yeniden güvenmenizi ister."
+    "trustAgain": "Bu projeye eklediğiniz herkes dosyalarını değiştirebilir, bu yüzden Oleafly bu bilgisayarda proje için ajanlar, terminal komutları veya shell escape çalıştırmadan önce projeye yeniden güvenmenizi ister.",
+    "projectNotesShared": "Projenin notları bu projedeki herkesle paylaşılır. Kişisel notlar gizli kalır.",
+    "personalNotesPrivate": "Kişisel notlar gizli kalır. Yalnızca projenin notlar klasöründeki notlar paylaşılır."
   },
   "manage": {
     "sharedOn": "{{server}} sunucusunda paylaşıldı",

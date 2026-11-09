@@ -44,14 +44,16 @@
       "externalTool": "Xác nhận thao tác công cụ ngoài",
       "internet": "Xác nhận truy cập internet",
       "edit": "Xác nhận sửa của AI",
-      "researchTask": "Xác nhận tác vụ nghiên cứu"
+      "researchTask": "Xác nhận tác vụ nghiên cứu",
+      "note": "Xác nhận ghi chú mới"
     },
     "headline": {
       "command": "Trợ lý muốn chạy lệnh này",
       "externalTool": "Trợ lý muốn dùng công cụ ngoài",
       "internet": "Trợ lý muốn truy cập internet",
       "edit": "Trợ lý muốn thay đổi tệp của bạn",
-      "researchTask": "Trợ lý muốn tạo tác vụ nghiên cứu"
+      "researchTask": "Trợ lý muốn tạo tác vụ nghiên cứu",
+      "note": "Trợ lý muốn tạo một ghi chú"
     },
     "mcpNote": "Thao tác này gửi các đối số bên dưới tới máy chủ MCP đã cấu hình.",
     "line": "dòng {{line}}",
@@ -86,6 +88,14 @@
       "minutes_other": "{{count}} phút",
       "planFirst": "Lập kế hoạch trước",
       "startNow": "Bắt đầu ngay"
+    },
+    "noteDraft": {
+      "title": "Tiêu đề",
+      "project": "Dự án liên kết",
+      "tags": "Thẻ",
+      "text": "Nội dung",
+      "empty": "Không có nội dung",
+      "more": "Ghi chú còn tiếp sau đoạn này."
     }
   },
   "attachments": {
@@ -1082,5 +1092,19 @@
     "replaceConfirm": "Thay câu trả lời",
     "forked": "Đã bắt đầu trò chuyện mới từ tin nhắn đã sửa.",
     "failed": "Không thể gửi lại tin nhắn."
+  },
+  "noteScope": {
+    "notesOnly": "Chỉ dùng trong trợ lý ghi chú.",
+    "tools": {
+      "readNote": "Đọc ghi chú đang mở, kể cả các đề xuất đang chờ xem xét.",
+      "proposeNoteEdits": "Đề xuất thay đổi cho ghi chú đang mở để bạn chấp nhận hoặc từ chối.",
+      "searchNotes": "Tìm trong tất cả ghi chú của bạn.",
+      "listKnowledgeNotes": "Liệt kê ghi chú của bạn theo thẻ hoặc dự án.",
+      "readNoteById": "Đọc một ghi chú khác.",
+      "createNote": "Tạo ghi chú mới.",
+      "relatedProjectFiles": "Liệt kê các tệp của dự án mà ghi chú được liên kết.",
+      "readRelatedProjectFile": "Đọc một tệp trong dự án mà ghi chú được liên kết.",
+      "searchRelatedProject": "Tìm trong dự án mà ghi chú được liên kết."
+    }
   }
 }

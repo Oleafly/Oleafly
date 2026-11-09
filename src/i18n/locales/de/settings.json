@@ -993,7 +993,8 @@
       "editor": "Editor",
       "files": "Projekt",
       "pdf": "PDF-Vorschau",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Notizen"
     },
     "terminal": {
       "colorTheme": {
@@ -1126,6 +1127,146 @@
         "label": "PDF beim Kompilieren anzeigen"
       },
       "title": "Zen-Modus"
+    },
+    "notes": {
+      "sectionName": "Darstellung der Notizen",
+      "resetAriaLabel": "{{setting}} auf Standard zurücksetzen",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Schriftart",
+        "description": "Wählen Sie eine Schriftart für den Text von Notizen.",
+        "options": {
+          "sans": "Serifenlos",
+          "serif": "Serif",
+          "mono": "Monospace"
+        }
+      },
+      "font": {
+        "label": "Schrift für Notizen",
+        "description": "Wählen Sie eine beliebige installierte Schrift für den Text von Notizen. Lassen Sie das Feld leer, um die Einstellung Schriftart zu verwenden."
+      },
+      "fontSize": {
+        "label": "Textgröße in Notizen",
+        "description": "Legen Sie die Größe des Notiztexts fest.",
+        "custom": "Benutzerdefiniert",
+        "customLabel": "Benutzerdefinierte Textgröße in Notizen in Pixeln"
+      },
+      "lineHeight": {
+        "label": "Zeilenhöhe in Notizen",
+        "description": "Legen Sie den Abstand zwischen den Zeilen im Notiztext fest.",
+        "customLabel": "Benutzerdefinierte Zeilenhöhe in Notizen"
+      },
+      "paragraphSpacing": {
+        "label": "Absatzabstand",
+        "description": "Legen Sie den Abstand zwischen Absätzen, Listen und anderen Blöcken fest.",
+        "options": {
+          "compact": "Kompakt",
+          "normal": "Normal",
+          "relaxed": "Locker",
+          "spacious": "Großzügig"
+        }
+      },
+      "headings": {
+        "title": "Überschriften und Titel"
+      },
+      "headingTypeface": {
+        "label": "Schriftart für Überschriften",
+        "description": "Wählen Sie eine Schriftart für Überschriften und den Titel der Notiz.",
+        "options": {
+          "text": "Wie der Text"
+        }
+      },
+      "headingFont": {
+        "label": "Schrift für Überschriften",
+        "description": "Wählen Sie eine installierte Schrift für Überschriften und den Titel der Notiz. Lassen Sie das Feld leer, um die Einstellung Schriftart für Überschriften zu verwenden."
+      },
+      "headingSize": {
+        "label": "Größe der Überschriften",
+        "description": "Legen Sie fest, wie groß Überschriften im Vergleich zum Text sind.",
+        "options": {
+          "small": "Kleiner",
+          "normal": "Normal",
+          "large": "Größer"
+        }
+      },
+      "titleSize": {
+        "label": "Größe des Titels",
+        "description": "Legen Sie die Größe des Titels oben in jeder Notiz fest."
+      },
+      "layout": {
+        "title": "Layout"
+      },
+      "width": {
+        "label": "Breite der Notiz",
+        "description": "Wie breit Notizen geöffnet werden. Das Breitenmenü in einer Notiz ändert dies ebenfalls.",
+        "options": {
+          "standard": "Standard",
+          "wide": "Breit",
+          "full": "Volle Breite"
+        }
+      },
+      "wordCount": {
+        "label": "Wortzahl anzeigen",
+        "description": "Zeigt die Wortzahl einer Notiz in ihrer Werkzeugleiste."
+      },
+      "spellcheck": {
+        "label": "Rechtschreibung in Notizen prüfen",
+        "description": "Falsch geschriebene Wörter beim Schreiben einer Notiz unterstreichen."
+      },
+      "code": {
+        "title": "Code"
+      },
+      "codeFont": {
+        "label": "Schrift für Code",
+        "description": "Wählen Sie eine installierte Schrift für Codeblöcke und Code im Text."
+      },
+      "codeTheme": {
+        "label": "Farben der Codeblöcke",
+        "description": "Wählen Sie die Syntaxfarben für Codeblöcke in Notizen.",
+        "options": {
+          "editor": "Wie im Editor"
+        }
+      },
+      "colors": {
+        "title": "Farben"
+      },
+      "accent": {
+        "label": "Akzentfarbe der Notizen",
+        "description": "Wird für Links, Tags und Aufgabenkästchen in Notizen verwendet.",
+        "matchApp": "Wie die App",
+        "customAriaLabel": "Eigene Akzentfarbe für Notizen wählen"
+      },
+      "highlight": {
+        "label": "Hervorhebungsfarbe",
+        "description": "Die Farbe hinter hervorgehobenem Text.",
+        "options": {
+          "yellow": "Gelb",
+          "green": "Grün",
+          "blue": "Blau",
+          "pink": "Rosa",
+          "purple": "Lila",
+          "accent": "Akzent"
+        }
+      },
+      "callouts": {
+        "label": "Stil der Hinweisboxen",
+        "description": "Wie Hinweisboxen in Notizen aussehen.",
+        "options": {
+          "tinted": "Getönt",
+          "filled": "Gefüllt",
+          "outlined": "Umrandet",
+          "bar": "Seitenbalken"
+        }
+      },
+      "remoteImages": {
+        "title": "Bilder aus dem Web",
+        "description": "Notizen laden Bilder von diesen Websites ohne Nachfrage.",
+        "empty": "Notizen fragen nach, bevor sie ein Bild aus dem Web laden. Websites, die Sie immer zulassen, erscheinen hier.",
+        "remove": "{{host}} entfernen"
+      },
+      "resetAll": "Darstellung der Notizen zurücksetzen"
     }
   },
   "checkpoints": {
@@ -2337,6 +2478,30 @@
       "resetZoom": {
         "description": "Setzt die App auf 100 % zurück.",
         "label": "Zoom zurücksetzen"
+      },
+      "notesQuickSwitcher": {
+        "description": "Eine Notiz nach Namen suchen und öffnen.",
+        "label": "Notizen: zu Notiz wechseln"
+      },
+      "notesTodayNote": {
+        "description": "Die heutige Notiz öffnen oder anlegen.",
+        "label": "Notizen: heutige Notiz"
+      },
+      "notesGraph": {
+        "description": "Den Graphen aller Ihrer Notizen öffnen.",
+        "label": "Notizen: Graph"
+      },
+      "notesLocalGraph": {
+        "description": "Die Links rund um die geöffnete Notiz ein- oder ausblenden.",
+        "label": "Notizen: lokaler Graph"
+      },
+      "notesOutline": {
+        "description": "Die Gliederung der geöffneten Notiz ein- oder ausblenden.",
+        "label": "Notizen: Gliederung"
+      },
+      "notesAskAgent": {
+        "description": "Den Agenten zum markierten Text fragen oder den Agenten der Notiz öffnen und schließen.",
+        "label": "Notizen: Agenten fragen"
       }
     },
     "application": {
@@ -2506,5 +2671,17 @@
       "loadFailed": "Die Liste der MCP-Server konnte nicht gelesen werden.",
       "missing": "{{name}} (nicht gefunden)"
     }
+  },
+  "notesPreview": {
+    "label": "Vorschau einer Notiz mit diesen Einstellungen",
+    "title": "Feldnotizen",
+    "heading": "Morgendliche Erhebung",
+    "paragraph": "Leichter Regen bis neun, danach klarer Himmel über dem Nordkamm. Der Boden war mittags noch feucht.",
+    "links": "Die einzelnen Schritte stehen in <note>Probenahmeverfahren</note>, oder stöbern Sie in <tag>#feldarbeit</tag>.",
+    "highlight": "Die Keimlinge sind in einer Woche doppelt so hoch geworden.",
+    "calloutTitle": "Nächster Besuch",
+    "calloutBody": "Prüfen Sie die Bodensensoren, bevor Sie neue Proben nehmen.",
+    "taskDone": "Proben beschriften",
+    "task": "Fotos hochladen"
   }
 }

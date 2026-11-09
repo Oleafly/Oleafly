@@ -105,6 +105,8 @@
     "conflicts_other": "已创建 {{count}} 个冲突副本",
     "conflictsHelp_other": "文件在同步之前已分别在这里和另一台电脑上被更改，因此 Oleafly 保留了两个版本。保留你需要的内容，然后删除副本。",
     "conflictsLabel": "{{name}} 中的冲突副本",
+    "compare": "比较",
+    "compareLabel": "将 {{path}} 与笔记比较",
     "dismiss": "忽略",
     "skipped_other": "已跳过 {{count}} 个文件",
     "skippedMore_other": "还有 {{count}} 个文件",

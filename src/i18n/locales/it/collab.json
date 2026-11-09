@@ -509,6 +509,7 @@
     "copyAndShare": "Copia in Oleafly e condividi",
     "title": "Condividi {{name}}",
     "description": "Lavora a questo progetto con altre persone tramite un server di collaborazione.",
+    "noteDescription": "Scrivi questa nota insieme ad altre persone tramite un server di collaborazione.",
     "loading": "Caricamento…",
     "linked": "Questo progetto è una cartella esterna a Oleafly. Oleafly la copia nella tua libreria e condivide quella copia. La cartella originale resta invariata.",
     "editCopy": "Questa è la copia condivisa. D'ora in poi modifica questa, non la cartella originale.",
@@ -526,12 +527,15 @@
     "tooLarge": "Questi file superano il limite del server, che è di {{size}} MB. Riducili o rimuovili prima di condividere.",
     "renamed": "Alcuni nomi non funzionano su tutti i computer. Le altre persone ricevono questi file con un nome leggermente diverso.",
     "excluded": "Non condivisi: altri file di compilazione, impostazioni di Oleafly e cronologia Git. L'ultimo PDF compilato viene condiviso, così i coautori possono leggerlo in un browser.",
+    "noteExcluded": "Non condivisi: le impostazioni di Oleafly e la cronologia Git.",
     "start": "Condividi",
     "preparing": "Preparazione del progetto…",
     "uploading": "Caricamento di figure e altri file: {{done}} di {{total}}",
     "saving": "Salvataggio del progetto sul server…",
     "failed": "La condivisione non è stata completata, quindi non è stato condiviso nulla.",
-    "trustAgain": "Chiunque aggiungi a questo progetto può modificarne i file, quindi Oleafly ti chiede di considerarlo di nuovo affidabile su questo computer prima di eseguire per esso agenti, comandi del terminale o lo shell escape."
+    "trustAgain": "Chiunque aggiungi a questo progetto può modificarne i file, quindi Oleafly ti chiede di considerarlo di nuovo affidabile su questo computer prima di eseguire per esso agenti, comandi del terminale o lo shell escape.",
+    "projectNotesShared": "Le note del progetto sono condivise con tutti i membri di questo progetto. Le note personali restano private.",
+    "personalNotesPrivate": "Le note personali restano private. Vengono condivise solo le note nella cartella delle note del progetto."
   },
   "manage": {
     "sharedOn": "Condiviso su {{server}}",

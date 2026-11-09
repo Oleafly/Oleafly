@@ -993,7 +993,8 @@
       "editor": "Redigerare",
       "files": "Projekt",
       "pdf": "PDF-förhandsvisning",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Anteckningar"
     },
     "terminal": {
       "colorTheme": {
@@ -1062,6 +1063,22 @@
         "lines_one": "{{value}} rad",
         "lines_other": "{{value}} rader"
       },
+      "openWith": {
+        "ariaLabel": "Terminal för att öppna mappar och kommandon",
+        "builtin": "Inbyggd terminal",
+        "cmd": "Kommandotolken",
+        "description": "Var Oleafly öppnar en mapp eller kör ett kommando när du väljer Öppna i terminalen.",
+        "gnome-terminal": "GNOME Terminal",
+        "iterm": "iTerm",
+        "konsole": "Konsole",
+        "label": "Öppna i",
+        "mac-terminal": "Terminal",
+        "notFound": "{{name}} (hittades inte)",
+        "powershell": "PowerShell",
+        "systemDefault": "Systemstandard ({{name}})",
+        "windows-terminal": "Windows Terminal",
+        "x-terminal-emulator": "Systemets standardterminal"
+      },
       "shell": {
         "ariaLabel": "Terminalens shell",
         "description": "Nya terminaler startar det här shellet. Öppna terminaler behåller sitt.",
@@ -1098,22 +1115,6 @@
       "startWithProject": {
         "description": "Starta shell när ett projekt öppnas i stället för första gången du visar terminalen.",
         "label": "Starta shell med projektet"
-      },
-      "openWith": {
-        "ariaLabel": "Terminal för att öppna mappar och kommandon",
-        "builtin": "Inbyggd terminal",
-        "cmd": "Kommandotolken",
-        "description": "Var Oleafly öppnar en mapp eller kör ett kommando när du väljer Öppna i terminalen.",
-        "gnome-terminal": "GNOME Terminal",
-        "iterm": "iTerm",
-        "konsole": "Konsole",
-        "label": "Öppna i",
-        "mac-terminal": "Terminal",
-        "notFound": "{{name}} (hittades inte)",
-        "powershell": "PowerShell",
-        "systemDefault": "Systemstandard ({{name}})",
-        "windows-terminal": "Windows Terminal",
-        "x-terminal-emulator": "Systemets standardterminal"
       }
     },
     "zen": {
@@ -1126,6 +1127,146 @@
         "label": "Visa PDF:en vid kompilering"
       },
       "title": "Zen-läge"
+    },
+    "notes": {
+      "sectionName": "Anteckningarnas utseende",
+      "resetAriaLabel": "Återställ {{setting}} till standard",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Typsnittsstil",
+        "description": "Välj typsnittsstil för anteckningstext.",
+        "options": {
+          "sans": "Sans serif",
+          "serif": "Serif",
+          "mono": "Fast bredd"
+        }
+      },
+      "font": {
+        "label": "Typsnitt för anteckningar",
+        "description": "Välj valfritt installerat typsnitt för anteckningstext. Lämna tomt för att använda inställningen Typsnittsstil."
+      },
+      "fontSize": {
+        "label": "Textstorlek i anteckningar",
+        "description": "Ange storleken på anteckningstexten.",
+        "custom": "Anpassad",
+        "customLabel": "Anpassad textstorlek i anteckningar i pixlar"
+      },
+      "lineHeight": {
+        "label": "Radhöjd i anteckningar",
+        "description": "Ange avståndet mellan raderna i anteckningstexten.",
+        "customLabel": "Anpassad radhöjd i anteckningar"
+      },
+      "paragraphSpacing": {
+        "label": "Styckeavstånd",
+        "description": "Ange avståndet mellan stycken, listor och andra block.",
+        "options": {
+          "compact": "Kompakt",
+          "normal": "Normal",
+          "relaxed": "Luftig",
+          "spacious": "Rymlig"
+        }
+      },
+      "headings": {
+        "title": "Rubriker och titel"
+      },
+      "headingTypeface": {
+        "label": "Typsnittsstil för rubriker",
+        "description": "Välj typsnittsstil för rubriker och anteckningens titel.",
+        "options": {
+          "text": "Samma som texten"
+        }
+      },
+      "headingFont": {
+        "label": "Typsnitt för rubriker",
+        "description": "Välj ett installerat typsnitt för rubriker och anteckningens titel. Lämna tomt för att använda inställningen Typsnittsstil för rubriker."
+      },
+      "headingSize": {
+        "label": "Rubrikstorlek",
+        "description": "Ange hur stora rubrikerna är jämfört med texten.",
+        "options": {
+          "small": "Mindre",
+          "normal": "Normal",
+          "large": "Större"
+        }
+      },
+      "titleSize": {
+        "label": "Titelstorlek",
+        "description": "Ange storleken på titeln högst upp i varje anteckning."
+      },
+      "layout": {
+        "title": "Layout"
+      },
+      "width": {
+        "label": "Anteckningsbredd",
+        "description": "Hur breda anteckningar är när de öppnas. Breddmenyn i en anteckning ändrar också detta.",
+        "options": {
+          "standard": "Standard",
+          "wide": "Bred",
+          "full": "Full bredd"
+        }
+      },
+      "wordCount": {
+        "label": "Visa antal ord",
+        "description": "Visa antalet ord i en anteckning i dess verktygsfält."
+      },
+      "spellcheck": {
+        "label": "Kontrollera stavningen i anteckningar",
+        "description": "Stryk under felstavade ord medan du skriver en anteckning."
+      },
+      "code": {
+        "title": "Kod"
+      },
+      "codeFont": {
+        "label": "Typsnitt för kod",
+        "description": "Välj ett installerat typsnitt för kodblock och kod i löptext."
+      },
+      "codeTheme": {
+        "label": "Färger i kodblock",
+        "description": "Välj syntaxfärger för kodblock i anteckningar.",
+        "options": {
+          "editor": "Samma som redigeraren"
+        }
+      },
+      "colors": {
+        "title": "Färger"
+      },
+      "accent": {
+        "label": "Accentfärg för anteckningar",
+        "description": "Används för länkar, taggar och uppgiftsrutor i anteckningar.",
+        "matchApp": "Följ appen",
+        "customAriaLabel": "Välj en anpassad accentfärg för anteckningar"
+      },
+      "highlight": {
+        "label": "Markeringsfärg",
+        "description": "Färgen bakom markerad text.",
+        "options": {
+          "yellow": "Gul",
+          "green": "Grön",
+          "blue": "Blå",
+          "pink": "Rosa",
+          "purple": "Lila",
+          "accent": "Accentfärg"
+        }
+      },
+      "callouts": {
+        "label": "Stil för faktarutor",
+        "description": "Hur faktarutor ser ut i anteckningar.",
+        "options": {
+          "tinted": "Tonad",
+          "filled": "Fylld",
+          "outlined": "Kantlinje",
+          "bar": "Sidolist"
+        }
+      },
+      "remoteImages": {
+        "title": "Bilder från webben",
+        "description": "Anteckningar läser in bilder från de här webbplatserna utan att fråga.",
+        "empty": "Anteckningar frågar innan de läser in en bild från webben. Webbplatser som du alltid tillåter visas här.",
+        "remove": "Ta bort {{host}}"
+      },
+      "resetAll": "Återställ anteckningarnas utseende"
     }
   },
   "checkpoints": {
@@ -1434,6 +1575,7 @@
       "use": "Använd för kompileringar"
     },
     "latexmkMissing": "ingen latexmk hittades",
+    "latexmkNeedsPerl": "latexmk behöver Perl",
     "markdown": {
       "downloading": "Laddar ner…",
       "heading": "Markdown-kompilator",
@@ -1449,7 +1591,6 @@
       "tectonicDetail": "Sätter den LaTeX som pandoc producerar. Följer med Oleafly, inget att konfigurera.",
       "tooltip": "Markdown-projekt konverteras med pandoc (Pandoc Markdown: tabeller, fotnoter, citeringar, matematik) till LaTeX och sätts sedan till PDF av den medföljande Tectonic. Pandoc följer med Oleafly."
     },
-    "latexmkNeedsPerl": "latexmk behöver Perl",
     "packages": {
       "ariaLabel": "LaTeX-paket",
       "badge": {
@@ -2337,6 +2478,30 @@
       "resetZoom": {
         "description": "Återställer appen till 100 %.",
         "label": "Återställ zoom"
+      },
+      "notesQuickSwitcher": {
+        "description": "Hitta en anteckning efter namn och öppna den.",
+        "label": "Anteckningar: gå till anteckning"
+      },
+      "notesTodayNote": {
+        "description": "Öppna dagens anteckning eller påbörja den.",
+        "label": "Anteckningar: dagens anteckning"
+      },
+      "notesGraph": {
+        "description": "Öppna grafen över alla dina anteckningar.",
+        "label": "Anteckningar: graf"
+      },
+      "notesLocalGraph": {
+        "description": "Visa eller dölj länkarna runt den öppna anteckningen.",
+        "label": "Anteckningar: lokal graf"
+      },
+      "notesOutline": {
+        "description": "Visa eller dölj dispositionen för den öppna anteckningen.",
+        "label": "Anteckningar: disposition"
+      },
+      "notesAskAgent": {
+        "description": "Fråga agenten om den markerade texten, eller öppna och stäng anteckningens agent.",
+        "label": "Anteckningar: fråga agenten"
       }
     },
     "application": {
@@ -2506,5 +2671,17 @@
       "loadFailed": "Listan över MCP-servrar kunde inte läsas.",
       "missing": "{{name}} (hittades inte)"
     }
+  },
+  "notesPreview": {
+    "label": "Förhandsvisning av en anteckning med de här inställningarna",
+    "title": "Fältanteckningar",
+    "heading": "Morgoninventering",
+    "paragraph": "Lätt regn fram till nio, sedan klart väder över norra åsen. Marken var fortfarande fuktig vid lunch.",
+    "links": "Se <note>Provtagningsmetod</note> för alla steg, eller bläddra i <tag>#fältarbete</tag>.",
+    "highlight": "Plantorna fördubblade sin höjd på en vecka.",
+    "calloutTitle": "Nästa besök",
+    "calloutBody": "Kontrollera markgivarna innan du tar nya prover.",
+    "taskDone": "Märk proverna",
+    "task": "Ladda upp fotona"
   }
 }

@@ -336,6 +336,7 @@
   },
   "mermaid": {
     "diagram": "圖表",
+    "remoteBlocked": "這張圖表會從網際網路載入圖片或樣式，因此沒有繪製。",
     "renderFailed": "無法繪製圖表。",
     "rendering": "正在繪製圖表"
   },

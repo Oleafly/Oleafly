@@ -323,6 +323,28 @@
       "keywords": "pdf podgląd pokaż ukryj podziel tylko edytor",
       "label": "Przełącz podgląd PDF"
     },
+    "swapEditorPreview": {
+      "keywords": "zamień edytor podgląd pdf strony kolejność paneli układ",
+      "label": "Zamień miejscami edytor i podgląd"
+    },
+    "movePaneToEdge": {
+      "bottom": "Przenieś {{pane}} do dolnej krawędzi",
+      "keywords": "przenieś panel krawędź zadokuj strona podziel stos układ",
+      "left": "Przenieś {{pane}} do lewej krawędzi",
+      "right": "Przenieś {{pane}} do prawej krawędzi",
+      "top": "Przenieś {{pane}} do górnej krawędzi"
+    },
+    "paneNames": {
+      "assistant": "asystenta",
+      "editor": "edytor",
+      "pdf": "podgląd",
+      "sidebar": "panel boczny",
+      "terminal": "terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "resetuj układ paneli kolejność przenieś panele panel boczny asystent edytor podgląd terminal domyślny",
+      "label": "Resetuj układ paneli"
+    },
     "zoomIn": {
       "keywords": "powiększ większe",
       "label": "Powiększ"
@@ -350,6 +372,16 @@
     "insertFileLink": {
       "label": "Wstaw odsyłacz do pliku",
       "keywords": "odsyłacz plik ścieżka notatka"
+    },
+    "projectNotes": {
+      "open": "Otwórz notatki tego projektu",
+      "newShared": "Nowa notatka projektu",
+      "newPersonal": "Nowa notatka osobista dla tego projektu",
+      "keywords": "notatki badania powiązane projekt"
+    },
+    "notes": {
+      "label": "Otwórz Notatki",
+      "keywords": "notatki notatka notatnik wiedza pomysły badania dziennik notes notebook knowledge ideas research journal"
     }
   },
   "community": {
@@ -649,7 +681,6 @@
   "home": {
     "ariaLabel": "Ekran główny",
     "label": "Biblioteka",
-    "title": "Powrót do biblioteki",
     "tooltip": "Wróć do biblioteki projektów"
   },
   "importDestination": {
@@ -797,7 +828,8 @@
     "research": "Badawczy obszar roboczy",
     "search": "Szukaj w projekcie",
     "sourceControl": "Kontrola wersji",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notatki"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} na {{host}}",
@@ -919,7 +951,8 @@
           "folders_other": "{{count}} folderu",
           "images": "Obrazy",
           "pdfs": "Pliki PDF",
-          "projects": "Projekty"
+          "projects": "Projekty",
+          "projectsAndNotes": "Projekty i notatki"
         },
         "subtitle": "Projekty, podglądy, historia i dane aplikacji",
         "title": "Zajętość miejsca",
@@ -965,8 +998,8 @@
         "label": "Narzędzia LaTeX"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
+        "description": "Dodaje Notatki do doku ekranu głównego. Notatka to plik Markdown z diagramami, wykresami i wzorami, który możesz edytować Ty i Twoi agenci. Notatki nie trafiają do biblioteki projektów, a każdą notatkę można powiązać z projektem. Domyślnie wyłączone, dopóki funkcja jest w wersji beta.",
+        "label": "Notatki"
       },
       "researchTasks": {
         "description": "Agent pracuje samodzielnie w kopii projektu, a zmiany zostawia Tobie do przejrzenia. Bardzo niestabilne: uruchomienia mogą się zawiesić, zakończyć błędem albo zostawić zmiany do ręcznego uporządkowania, a przez cały czas zużywają limit Twojego dostawcy. Dodaje do Ustawień sekcję Badania. Wyłączenie zatrzymuje wszystkie trwające zadania. Domyślnie wyłączone. Włącz na własne ryzyko.",
@@ -1321,6 +1354,7 @@
       "split": "Widok dzielony"
     },
     "moreActions": "Więcej działań",
+    "resetPaneLayout": "Resetuj układ paneli",
     "renameFailed": "Nie udało się zmienić nazwy projektu."
   },
   "tour": {

@@ -509,6 +509,7 @@
     "copyAndShare": "Copier dans Oleafly et partager",
     "title": "Partager {{name}}",
     "description": "Travaillez sur ce projet avec d'autres personnes via un serveur de collaboration.",
+    "noteDescription": "Rédigez cette note avec d'autres personnes grâce à un serveur de collaboration.",
     "loading": "Chargement…",
     "linked": "Ce projet est un dossier situé hors d'Oleafly. Oleafly le copie dans votre bibliothèque et partage cette copie. Le dossier d'origine n'est pas modifié.",
     "editCopy": "Ceci est la copie partagée. Désormais, modifiez celle-ci et non le dossier d'origine.",
@@ -526,12 +527,15 @@
     "tooLarge": "Ces fichiers dépassent la limite du serveur, qui est de {{size}} MB. Réduisez-les ou retirez-les avant de partager.",
     "renamed": "Certains noms ne fonctionnent pas sur tous les ordinateurs. Les autres personnes reçoivent ces fichiers sous un nom légèrement différent.",
     "excluded": "Non partagés : autres fichiers de compilation, paramètres d'Oleafly et historique Git. Le dernier PDF compilé est partagé, pour que les coauteurs puissent le lire dans un navigateur.",
+    "noteExcluded": "Non partagés : les réglages d'Oleafly et l'historique Git.",
     "start": "Partager",
     "preparing": "Préparation du projet…",
     "uploading": "Envoi des figures et autres fichiers : {{done}} sur {{total}}",
     "saving": "Enregistrement du projet sur le serveur…",
     "failed": "Le partage n'a pas abouti, rien n'a donc été partagé.",
-    "trustAgain": "Toute personne que vous ajoutez à ce projet peut modifier ses fichiers, donc Oleafly vous demande de lui faire de nouveau confiance sur cet ordinateur avant d'exécuter pour lui des agents, des commandes du terminal ou le shell escape."
+    "trustAgain": "Toute personne que vous ajoutez à ce projet peut modifier ses fichiers, donc Oleafly vous demande de lui faire de nouveau confiance sur cet ordinateur avant d'exécuter pour lui des agents, des commandes du terminal ou le shell escape.",
+    "projectNotesShared": "Les notes du projet sont partagées avec tous les membres de ce projet. Les notes personnelles restent privées.",
+    "personalNotesPrivate": "Les notes personnelles restent privées. Seules les notes du dossier de notes du projet sont partagées."
   },
   "manage": {
     "sharedOn": "Partagé sur {{server}}",

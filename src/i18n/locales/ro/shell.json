@@ -322,6 +322,28 @@
       "keywords": "pdf previzualizare afișează ascunde împarte doar editor",
       "label": "Arată sau ascunde previzualizarea PDF"
     },
+    "swapEditorPreview": {
+      "keywords": "inversează editor previzualizare pdf laturi panou ordine aranjare",
+      "label": "Inversează editorul și previzualizarea"
+    },
+    "movePaneToEdge": {
+      "bottom": "Mută {{pane}} la marginea de jos",
+      "keywords": "mută panou margine andocare latură împărțire stivă aranjare",
+      "left": "Mută {{pane}} la marginea din stânga",
+      "right": "Mută {{pane}} la marginea din dreapta",
+      "top": "Mută {{pane}} la marginea de sus"
+    },
+    "paneNames": {
+      "assistant": "asistentul",
+      "editor": "editorul",
+      "pdf": "previzualizarea",
+      "sidebar": "bara laterală",
+      "terminal": "terminalul"
+    },
+    "resetPaneLayout": {
+      "keywords": "resetează aranjare panouri ordine mută bară laterală asistent editor previzualizare terminal implicit",
+      "label": "Resetează aranjarea panourilor"
+    },
     "zoomIn": {
       "keywords": "mărește mai mare",
       "label": "Mărește"
@@ -349,6 +371,16 @@
     "insertFileLink": {
       "label": "Inserează o legătură către un fișier",
       "keywords": "legătură fișier cale notă referință"
+    },
+    "projectNotes": {
+      "open": "Deschide notițele acestui proiect",
+      "newShared": "Notiță nouă de proiect",
+      "newPersonal": "Notiță personală nouă pentru acest proiect",
+      "keywords": "notițe cercetare asociate legate proiect"
+    },
+    "notes": {
+      "label": "Deschide Notițe",
+      "keywords": "notițe caiet cunoștințe idei cercetare jurnal notes notebook knowledge ideas research journal"
     }
   },
   "community": {
@@ -647,7 +679,6 @@
   "home": {
     "ariaLabel": "Acasă",
     "label": "Acasă",
-    "title": "Înapoi la bibliotecă",
     "tooltip": "Revino la biblioteca de proiecte"
   },
   "importDestination": {
@@ -794,7 +825,8 @@
     "research": "Spațiu de cercetare",
     "search": "Caută în proiect",
     "sourceControl": "Control al versiunilor",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notițe"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} pe {{host}}",
@@ -906,7 +938,8 @@
           "folders_other": "{{count}} de foldere",
           "images": "Imagini",
           "pdfs": "Fișiere PDF",
-          "projects": "Proiecte"
+          "projects": "Proiecte",
+          "projectsAndNotes": "Proiecte și notițe"
         },
         "subtitle": "Proiecte, previzualizări, istoric și datele aplicației",
         "title": "Spațiu folosit",
@@ -951,8 +984,8 @@
         "label": "Instrumente LaTeX"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
+        "description": "Adaugă Notițele în bara de pe ecranul principal. O notiță este un fișier Markdown cu diagrame, grafice și formule matematice, pe care îl puteți edita atât tu, cât și agenții tăi. Notițele stau în afara bibliotecii de proiecte, iar fiecare notiță poate fi asociată cu un proiect. Dezactivată implicit, cât timp este în beta.",
+        "label": "Notițe"
       },
       "researchTasks": {
         "description": "Un agent lucrează singur într-o copie a proiectului și îți lasă modificările spre revizuire. Foarte instabilă: rulările se pot bloca, pot eșua sau pot lăsa modificări de rezolvat manual și folosesc cota furnizorului tău pe toată durata lor. Adaugă secțiunea Cercetare în Setări. Dezactivarea oprește toate sarcinile în curs. Dezactivată implicit. Activeaz-o pe propria răspundere.",
@@ -1301,6 +1334,7 @@
       "split": "Vizualizare împărțită"
     },
     "moreActions": "Mai multe acțiuni",
+    "resetPaneLayout": "Resetează aranjarea panourilor",
     "renameFailed": "Proiectul nu a putut fi redenumit."
   },
   "tour": {

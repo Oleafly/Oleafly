@@ -509,6 +509,7 @@
     "copyAndShare": "Copiază în Oleafly și partajează",
     "title": "Partajează {{name}}",
     "description": "Lucrează la acest proiect cu alte persoane printr-un server de colaborare.",
+    "noteDescription": "Scrie această notiță împreună cu alte persoane, printr-un server de colaborare.",
     "loading": "Se încarcă…",
     "linked": "Acest proiect este un folder din afara Oleafly. Oleafly îl copiază în biblioteca ta și partajează copia. Folderul original nu este modificat.",
     "editCopy": "Aceasta este copia partajată. De acum înainte editează această copie, nu folderul original.",
@@ -526,12 +527,15 @@
     "tooLarge": "Aceste fișiere depășesc limita serverului, de {{size}} MB. Micșorează-le sau elimină-le înainte să partajezi.",
     "renamed": "Unele nume nu funcționează pe toate computerele. Celelalte persoane primesc aceste fișiere cu un nume puțin diferit.",
     "excluded": "Nu se partajează: celelalte fișiere de compilare, setările Oleafly și istoricul Git. Cel mai recent PDF compilat se partajează, ca coautorii să îl poată citi într-un browser.",
+    "noteExcluded": "Nu se partajează: setările Oleafly și istoricul Git.",
     "start": "Partajează",
     "preparing": "Se pregătește proiectul…",
     "uploading": "Se încarcă figurile și celelalte fișiere: {{done}} din {{total}}",
     "saving": "Se salvează proiectul pe server…",
     "failed": "Partajarea nu s-a terminat, așa că nu s-a partajat nimic.",
-    "trustAgain": "Oricine adaugi la acest proiect îi poate modifica fișierele, așa că Oleafly îți cere să ai din nou încredere în el pe acest computer înainte să ruleze pentru el agenți, comenzi în terminal sau shell escape."
+    "trustAgain": "Oricine adaugi la acest proiect îi poate modifica fișierele, așa că Oleafly îți cere să ai din nou încredere în el pe acest computer înainte să ruleze pentru el agenți, comenzi în terminal sau shell escape.",
+    "projectNotesShared": "Notițele proiectului sunt partajate cu toți cei din acest proiect. Notițele personale rămân private.",
+    "personalNotesPrivate": "Notițele personale rămân private. Se partajează doar notițele din folderul de notițe al proiectului."
   },
   "manage": {
     "sharedOn": "Partajat pe {{server}}",

@@ -509,6 +509,7 @@
     "copyAndShare": "Kopier til Oleafly og del",
     "title": "Del {{name}}",
     "description": "Jobb sammen med andre om dette prosjektet via en samarbeidsserver.",
+    "noteDescription": "Skriv dette notatet sammen med andre via en samarbeidsserver.",
     "loading": "Laster…",
     "linked": "Dette prosjektet er en mappe utenfor Oleafly. Oleafly kopierer den til biblioteket ditt og deler kopien. Den opprinnelige mappen røres ikke.",
     "editCopy": "Dette er den delte kopien. Rediger denne fra nå av, ikke den opprinnelige mappen.",
@@ -526,12 +527,15 @@
     "tooLarge": "Disse filene går over servergrensen på {{size}} MB. Gjør dem mindre eller fjern dem før du deler.",
     "renamed": "Noen navn fungerer ikke på alle maskiner. Andre får disse filene under et litt annet navn.",
     "excluded": "Deles ikke: andre byggefiler, Oleafly-innstillinger og Git-historikk. Den nyeste kompilerte PDF-en deles, slik at medforfattere kan lese den i en nettleser.",
+    "noteExcluded": "Deles ikke: Oleafly-innstillinger og Git-historikk.",
     "start": "Del",
     "preparing": "Gjør prosjektet klart…",
     "uploading": "Laster opp figurer og andre filer: {{done}} av {{total}}",
     "saving": "Lagrer prosjektet på serveren…",
     "failed": "Delingen ble ikke fullført, så ingenting ble delt.",
-    "trustAgain": "Alle du legger til i prosjektet, kan endre filene, så Oleafly ber deg stole på det igjen på denne maskinen før det kjører agenter, terminalkommandoer eller shell escape for det."
+    "trustAgain": "Alle du legger til i prosjektet, kan endre filene, så Oleafly ber deg stole på det igjen på denne maskinen før det kjører agenter, terminalkommandoer eller shell escape for det.",
+    "projectNotesShared": "Prosjektets notater deles med alle i dette prosjektet. Personlige notater forblir private.",
+    "personalNotesPrivate": "Personlige notater forblir private. Bare notater i prosjektets notatmappe deles."
   },
   "manage": {
     "sharedOn": "Delt på {{server}}",

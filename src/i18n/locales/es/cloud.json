@@ -115,6 +115,8 @@
     "conflictsHelp_many": "Estos archivos cambiaron aquí y en otro ordenador antes de que se sincronizaran los cambios, así que Oleafly conservó las dos versiones. Quédate con lo que necesites y luego elimina las copias.",
     "conflictsHelp_other": "Estos archivos cambiaron aquí y en otro ordenador antes de que se sincronizaran los cambios, así que Oleafly conservó las dos versiones. Quédate con lo que necesites y luego elimina las copias.",
     "conflictsLabel": "Copias de conflicto en {{name}}",
+    "compare": "Comparar",
+    "compareLabel": "Comparar {{path}} con la nota",
     "dismiss": "Descartar",
     "skipped_one": "Se omitió {{count}} archivo",
     "skipped_many": "Se omitieron {{count}} archivos",

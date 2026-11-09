@@ -44,14 +44,16 @@
       "externalTool": "Potvrdit akci externího nástroje",
       "internet": "Potvrdit přístup na internet",
       "edit": "Potvrdit úpravu od AI",
-      "researchTask": "Potvrdit výzkumnou úlohu"
+      "researchTask": "Potvrdit výzkumnou úlohu",
+      "note": "Potvrdit novou poznámku"
     },
     "headline": {
       "command": "Asistent chce spustit tento příkaz",
       "externalTool": "Asistent chce použít externí nástroj",
       "internet": "Asistent chce přístup na internet",
       "edit": "Asistent chce změnit vaše soubory",
-      "researchTask": "Asistent chce vytvořit výzkumnou úlohu"
+      "researchTask": "Asistent chce vytvořit výzkumnou úlohu",
+      "note": "Asistent chce vytvořit poznámku"
     },
     "mcpNote": "Tím se níže uvedené argumenty odešlou nastavenému serveru MCP.",
     "line": "řádek {{line}}",
@@ -87,11 +89,19 @@
       "timeBudget": "Časový rozpočet",
       "timeBudgetDefault": "Výchozí",
       "minutes_one": "{{count}} minuta",
+      "minutes_few": "{{count}} minuty",
+      "minutes_many": "{{count}} minuty",
       "minutes_other": "{{count}} minut",
       "planFirst": "Nejdřív plán",
-      "startNow": "Spustit hned",
-      "minutes_many": "{{count}} minuty",
-      "minutes_few": "{{count}} minuty"
+      "startNow": "Spustit hned"
+    },
+    "noteDraft": {
+      "title": "Název",
+      "project": "Propojený projekt",
+      "tags": "Štítky",
+      "text": "Text",
+      "empty": "Bez textu",
+      "more": "Poznámka za tímto místem pokračuje."
     }
   },
   "attachments": {
@@ -1145,5 +1155,19 @@
     "replaceConfirm": "Nahradit odpověď",
     "forked": "Z upravené zprávy začal nový chat.",
     "failed": "Zprávu se nepodařilo odeslat znovu."
+  },
+  "noteScope": {
+    "notesOnly": "Jen v asistentovi poznámky.",
+    "tools": {
+      "readNote": "Přečíst otevřenou poznámku včetně návrhů, které čekají na posouzení.",
+      "proposeNoteEdits": "Navrhnout změny otevřené poznámky, které můžete přijmout nebo odmítnout.",
+      "searchNotes": "Prohledat všechny vaše poznámky.",
+      "listKnowledgeNotes": "Vypsat vaše poznámky podle štítku nebo projektu.",
+      "readNoteById": "Přečíst jinou poznámku.",
+      "createNote": "Vytvořit novou poznámku.",
+      "relatedProjectFiles": "Vypsat soubory projektu, se kterým je poznámka propojená.",
+      "readRelatedProjectFile": "Přečíst soubor z projektu, se kterým je poznámka propojená.",
+      "searchRelatedProject": "Prohledat projekt, se kterým je poznámka propojená."
+    }
   }
 }

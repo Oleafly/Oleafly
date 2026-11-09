@@ -509,6 +509,7 @@
     "copyAndShare": "複製到 Oleafly 並分享",
     "title": "分享 {{name}}",
     "description": "透過協作伺服器，與其他人一起編輯這個專案。",
+    "noteDescription": "透過協作伺服器，與其他人一起撰寫這篇筆記。",
     "loading": "正在載入…",
     "linked": "這個專案是位於 Oleafly 之外的資料夾。Oleafly 會將它複製到你的專案庫，並分享該副本。原本的資料夾不會被更動。",
     "editCopy": "這是分享的副本。從現在起請編輯這份副本，而不是原本的資料夾。",
@@ -526,12 +527,15 @@
     "tooLarge": "這些檔案超過伺服器 {{size}} MB 的上限。請在分享前縮小或移除這些檔案。",
     "renamed": "有些名稱無法在每台電腦上使用。其他人收到這些檔案時，名稱會略有不同。",
     "excluded": "不會分享：其他建置輸出、Oleafly 設定與 Git 歷史記錄。最新編譯的 PDF 會分享，方便共同作者在瀏覽器中閱讀。",
+    "noteExcluded": "不會分享：Oleafly 設定與 Git 歷史記錄。",
     "start": "分享",
     "preparing": "正在準備專案…",
     "uploading": "正在上傳圖片和其他檔案：{{done}}/{{total}}",
     "saving": "正在把專案儲存到伺服器…",
     "failed": "分享未完成，因此沒有分享任何內容。",
-    "trustAgain": "你加入這個專案的任何人都能變更它的檔案，所以 Oleafly 在這台電腦上為它執行代理程式、終端機命令或 shell escape 之前，會請你再次信任這個專案。"
+    "trustAgain": "你加入這個專案的任何人都能變更它的檔案，所以 Oleafly 在這台電腦上為它執行代理程式、終端機命令或 shell escape 之前，會請你再次信任這個專案。",
+    "projectNotesShared": "專案筆記會分享給這個專案的每個人，個人筆記則只有你看得到。",
+    "personalNotesPrivate": "個人筆記只有你看得到。只有專案筆記資料夾中的筆記會被分享。"
   },
   "manage": {
     "sharedOn": "已在 {{server}} 上分享",

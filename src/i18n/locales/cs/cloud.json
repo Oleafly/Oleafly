@@ -120,6 +120,8 @@
     "conflictsHelp_many": "Tyto soubory se změnily tady i na jiném počítači ještě před synchronizací, proto Oleafly zachoval obě verze. Ponechte si, co potřebujete, a pak kopie smažte.",
     "conflictsHelp_other": "Tyto soubory se změnily tady i na jiném počítači ještě před synchronizací, proto Oleafly zachoval obě verze. Ponechte si, co potřebujete, a pak kopie smažte.",
     "conflictsLabel": "Konfliktní kopie v projektu {{name}}",
+    "compare": "Porovnat",
+    "compareLabel": "Porovnat {{path}} s poznámkou",
     "dismiss": "Zavřít",
     "skipped_one": "{{count}} soubor byl přeskočen",
     "skipped_few": "{{count}} soubory byly přeskočeny",

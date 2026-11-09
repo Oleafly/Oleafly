@@ -320,6 +320,28 @@
       "keywords": "pdf 預覽 顯示 隱藏 分割 僅編輯器",
       "label": "切換 PDF 預覽"
     },
+    "swapEditorPreview": {
+      "keywords": "交換 編輯器 預覽 pdf 兩側 面板 順序 版面配置 swap editor preview pdf sides pane order layout",
+      "label": "交換編輯器與預覽的位置"
+    },
+    "movePaneToEdge": {
+      "bottom": "將{{pane}}移到下方",
+      "keywords": "移動 面板 邊緣 停駐 側邊 分割 堆疊 版面配置 move pane edge dock side split stack layout",
+      "left": "將{{pane}}移到左側",
+      "right": "將{{pane}}移到右側",
+      "top": "將{{pane}}移到上方"
+    },
+    "paneNames": {
+      "assistant": "助理",
+      "editor": "編輯器",
+      "pdf": "預覽",
+      "sidebar": "側邊欄",
+      "terminal": "終端機"
+    },
+    "resetPaneLayout": {
+      "keywords": "重設 面板 版面配置 順序 移動 側邊欄 助理 編輯器 預覽 終端機 預設 reset pane layout order move panels sidebar assistant editor preview terminal default",
+      "label": "重設面板版面配置"
+    },
     "zoomIn": {
       "keywords": "放大 變大",
       "label": "放大"
@@ -347,6 +369,16 @@
     "insertFileLink": {
       "label": "插入檔案連結",
       "keywords": "連結 檔案 路徑 筆記 參照"
+    },
+    "projectNotes": {
+      "open": "開啟這個專案的筆記",
+      "newShared": "新增專案筆記",
+      "newPersonal": "為這個專案新增個人筆記",
+      "keywords": "筆記 研究 連結 相關 專案 notes research linked related project"
+    },
+    "notes": {
+      "label": "開啟筆記",
+      "keywords": "筆記 筆記本 知識 想法 點子 研究 日誌 notes notebook knowledge ideas research journal"
     }
   },
   "community": {
@@ -643,7 +675,6 @@
   "home": {
     "ariaLabel": "首頁",
     "label": "首頁",
-    "title": "返回專案庫",
     "tooltip": "返回專案庫"
   },
   "importDestination": {
@@ -788,7 +819,8 @@
     "research": "研究工作區",
     "search": "搜尋專案",
     "sourceControl": "原始檔控制",
-    "withShortcut": "{{label}}（{{shortcut}}）"
+    "withShortcut": "{{label}}（{{shortcut}}）",
+    "notes": "筆記"
   },
   "remoteMenu": {
     "accountLabel": "{{host}} 上的 {{login}}",
@@ -880,7 +912,8 @@
           "folders_other": "{{count}} 個資料夾",
           "images": "圖片",
           "pdfs": "PDF 檔案",
-          "projects": "專案"
+          "projects": "專案",
+          "projectsAndNotes": "專案與筆記"
         },
         "subtitle": "專案、預覽、歷史記錄與應用程式資料",
         "title": "儲存空間用量",
@@ -923,8 +956,8 @@
         "label": "LaTeX 工具"
       },
       "notes": {
-        "description": "Adds Notes to the Home dock. A note is a Markdown file that you and your agents can both edit, with diagrams, charts and math. Each note is a project in your library. Off by default while still in beta.",
-        "label": "Notes"
+        "description": "在首頁 Dock 中加入「筆記」。筆記是一個 Markdown 檔案，可以包含圖表、統計圖與數學式，你和你的代理程式都能編輯。筆記不會出現在專案庫中，每篇筆記都可以連結到一個專案。仍在 beta 階段，預設為關閉。",
+        "label": "筆記"
       },
       "researchTasks": {
         "description": "代理程式會在專案的副本中自行運作，並把修改留給你審閱。極不穩定：執行可能卡住、失敗，或留下需要手動處理的修改，而且全程都會用掉你的供應商額度。會在「設定」中新增「研究」分區。關閉後會停止所有執行中的任務。預設為關閉，開啟後風險自負。",
@@ -1261,6 +1294,7 @@
       "split": "分割檢視"
     },
     "moreActions": "更多操作",
+    "resetPaneLayout": "重設面板版面配置",
     "renameFailed": "無法重新命名專案。"
   },
   "tour": {

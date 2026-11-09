@@ -115,6 +115,8 @@
     "conflictsHelp_few": "Aceste fișiere s-au modificat aici și pe alt computer înainte ca modificările să fie sincronizate, așa că Oleafly a păstrat ambele versiuni. Păstrează ce îți trebuie, apoi șterge copiile de conflict.",
     "conflictsHelp_other": "Aceste fișiere s-au modificat aici și pe alt computer înainte ca modificările să fie sincronizate, așa că Oleafly a păstrat ambele versiuni. Păstrează ce îți trebuie, apoi șterge copiile de conflict.",
     "conflictsLabel": "Copii de conflict în proiectul {{name}}",
+    "compare": "Compară",
+    "compareLabel": "Compară {{path}} cu notița",
     "dismiss": "Închide",
     "skipped_one": "{{count}} fișier a fost omis",
     "skipped_few": "{{count}} fișiere au fost omise",

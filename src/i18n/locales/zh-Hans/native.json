@@ -155,6 +155,9 @@
       "spacesMessage": "使用 Cua Spaces 的代理将能够：",
       "spacesChanges": "创建和删除 Space，并在其中运行命令",
       "spacesSignIns": "在 Space 中使用你的 Claude Code 或 Codex 登录"
+    },
+    "assistantNetwork": {
+      "message": "助手想要使用 {{tool}}，它会把文本发送到在线服务。"
     }
   },
   "errors": {

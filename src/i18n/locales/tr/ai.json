@@ -44,14 +44,16 @@
       "externalTool": "Dış araç eylemini onayla",
       "internet": "İnternet erişimini onayla",
       "edit": "Yapay zeka düzenlemesini onayla",
-      "researchTask": "Araştırma görevini onayla"
+      "researchTask": "Araştırma görevini onayla",
+      "note": "Yeni notu onayla"
     },
     "headline": {
       "command": "Asistan bu komutu çalıştırmak istiyor",
       "externalTool": "Asistan bir dış aracı kullanmak istiyor",
       "internet": "Asistan internete erişmek istiyor",
       "edit": "Asistan dosyalarınızı değiştirmek istiyor",
-      "researchTask": "Asistan bir araştırma görevi oluşturmak istiyor"
+      "researchTask": "Asistan bir araştırma görevi oluşturmak istiyor",
+      "note": "Asistan bir not oluşturmak istiyor"
     },
     "mcpNote": "Bu işlem, aşağıdaki argümanları yapılandırılmış MCP sunucusuna gönderir.",
     "line": "satır {{line}}",
@@ -88,6 +90,14 @@
       "minutes_other": "{{count}} dakika",
       "planFirst": "Önce planla",
       "startNow": "Hemen başlat"
+    },
+    "noteDraft": {
+      "title": "Başlık",
+      "project": "Bağlı proje",
+      "tags": "Etiketler",
+      "text": "Metin",
+      "empty": "Metin yok",
+      "more": "Not bu noktadan sonra da devam ediyor."
     }
   },
   "attachments": {
@@ -1103,5 +1113,19 @@
     "replaceConfirm": "Yanıtı değiştir",
     "forked": "Düzenlenen iletiden yeni bir sohbet başlatıldı.",
     "failed": "İleti yeniden gönderilemedi."
+  },
+  "noteScope": {
+    "notesOnly": "Yalnızca bir not asistanında.",
+    "tools": {
+      "readNote": "Açık notu, incelenmeyi bekleyen önerilerle birlikte okur.",
+      "proposeNoteEdits": "Açık nota, kabul edip reddedebileceğiniz değişiklikler önerir.",
+      "searchNotes": "Tüm notlarınızda arar.",
+      "listKnowledgeNotes": "Notlarınızı etikete veya projeye göre listeler.",
+      "readNoteById": "Başka bir notu okur.",
+      "createNote": "Yeni bir not oluşturur.",
+      "relatedProjectFiles": "Notun bağlı olduğu projenin dosyalarını listeler.",
+      "readRelatedProjectFile": "Notun bağlı olduğu projeden bir dosya okur.",
+      "searchRelatedProject": "Notun bağlı olduğu projede arar."
+    }
   }
 }

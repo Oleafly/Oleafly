@@ -993,7 +993,8 @@
       "editor": "Editor",
       "files": "Prosjekt",
       "pdf": "PDF-forhåndsvisning",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Notater"
     },
     "terminal": {
       "colorTheme": {
@@ -1126,6 +1127,146 @@
         "label": "Vis PDF-en ved kompilering"
       },
       "title": "Zen-modus"
+    },
+    "notes": {
+      "sectionName": "Utseende for notater",
+      "resetAriaLabel": "Tilbakestill {{setting}} til standard",
+      "text": {
+        "title": "Tekst"
+      },
+      "typeface": {
+        "label": "Skrifttype",
+        "description": "Velg en skrifttype for notattekst.",
+        "options": {
+          "sans": "Uten seriffer",
+          "serif": "Med seriffer",
+          "mono": "Fast bredde"
+        }
+      },
+      "font": {
+        "label": "Notatskrift",
+        "description": "Velg hvilken som helst installert skrift for notattekst. La feltet stå tomt for å bruke innstillingen Skrifttype."
+      },
+      "fontSize": {
+        "label": "Tekststørrelse i notater",
+        "description": "Angi størrelsen på notattekst.",
+        "custom": "Egendefinert",
+        "customLabel": "Egendefinert tekststørrelse i notater i piksler"
+      },
+      "lineHeight": {
+        "label": "Linjeavstand i notater",
+        "description": "Angi avstanden mellom linjene i notattekst.",
+        "customLabel": "Egendefinert linjeavstand i notater"
+      },
+      "paragraphSpacing": {
+        "label": "Avsnittsavstand",
+        "description": "Angi avstanden mellom avsnitt, lister og andre blokker.",
+        "options": {
+          "compact": "Kompakt",
+          "normal": "Vanlig",
+          "relaxed": "Luftig",
+          "spacious": "Romslig"
+        }
+      },
+      "headings": {
+        "title": "Overskrifter og tittel"
+      },
+      "headingTypeface": {
+        "label": "Skrifttype for overskrifter",
+        "description": "Velg en skrifttype for overskrifter og notattittelen.",
+        "options": {
+          "text": "Samme som teksten"
+        }
+      },
+      "headingFont": {
+        "label": "Overskriftsskrift",
+        "description": "Velg en installert skrift for overskrifter og notattittelen. La feltet stå tomt for å bruke innstillingen Skrifttype for overskrifter."
+      },
+      "headingSize": {
+        "label": "Overskriftsstørrelse",
+        "description": "Angi hvor store overskriftene er sammenlignet med teksten.",
+        "options": {
+          "small": "Mindre",
+          "normal": "Vanlig",
+          "large": "Større"
+        }
+      },
+      "titleSize": {
+        "label": "Tittelstørrelse",
+        "description": "Angi størrelsen på tittelen øverst i hvert notat."
+      },
+      "layout": {
+        "title": "Oppsett"
+      },
+      "width": {
+        "label": "Notatbredde",
+        "description": "Hvor brede notater er når de åpnes. Breddemenyen i et notat endrer også dette.",
+        "options": {
+          "standard": "Standard",
+          "wide": "Bred",
+          "full": "Full bredde"
+        }
+      },
+      "wordCount": {
+        "label": "Vis antall ord",
+        "description": "Vis antall ord i et notat i verktøylinjen."
+      },
+      "spellcheck": {
+        "label": "Stavekontroll i notater",
+        "description": "Understrek feilstavede ord mens du skriver et notat."
+      },
+      "code": {
+        "title": "Kode"
+      },
+      "codeFont": {
+        "label": "Kodeskrift",
+        "description": "Velg en installert skrift for kodeblokker og kode i teksten."
+      },
+      "codeTheme": {
+        "label": "Farger i kodeblokker",
+        "description": "Velg syntaksfargene for kodeblokker i notater.",
+        "options": {
+          "editor": "Samme som editoren"
+        }
+      },
+      "colors": {
+        "title": "Farger"
+      },
+      "accent": {
+        "label": "Aksentfarge for notater",
+        "description": "Brukes på lenker, etiketter og avkrysningsbokser i notater.",
+        "matchApp": "Samme som appen",
+        "customAriaLabel": "Velg en egendefinert aksentfarge for notater"
+      },
+      "highlight": {
+        "label": "Uthevingsfarge",
+        "description": "Fargen bak uthevet tekst.",
+        "options": {
+          "yellow": "Gul",
+          "green": "Grønn",
+          "blue": "Blå",
+          "pink": "Rosa",
+          "purple": "Lilla",
+          "accent": "Aksent"
+        }
+      },
+      "callouts": {
+        "label": "Stil på infobokser",
+        "description": "Hvordan infobokser ser ut i notater.",
+        "options": {
+          "tinted": "Tonet",
+          "filled": "Fylt",
+          "outlined": "Med kantlinje",
+          "bar": "Sidestrek"
+        }
+      },
+      "remoteImages": {
+        "title": "Bilder fra nettet",
+        "description": "Notater laster inn bilder fra disse nettstedene uten å spørre.",
+        "empty": "Notater spør før de laster inn et bilde fra nettet. Nettsteder du alltid tillater, vises her.",
+        "remove": "Fjern {{host}}"
+      },
+      "resetAll": "Tilbakestill utseendet for notater"
     }
   },
   "checkpoints": {
@@ -2337,6 +2478,30 @@
       "resetZoom": {
         "description": "Setter appen tilbake til 100 %.",
         "label": "Tilbakestill zoom"
+      },
+      "notesQuickSwitcher": {
+        "description": "Finn et notat etter navn og åpne det.",
+        "label": "Notater: gå til notat"
+      },
+      "notesTodayNote": {
+        "description": "Åpne dagens notat, eller start det.",
+        "label": "Notater: dagens notat"
+      },
+      "notesGraph": {
+        "description": "Åpne grafen over alle notatene dine.",
+        "label": "Notater: graf"
+      },
+      "notesLocalGraph": {
+        "description": "Vis eller skjul lenkene rundt det åpne notatet.",
+        "label": "Notater: lokal graf"
+      },
+      "notesOutline": {
+        "description": "Vis eller skjul disposisjonen til det åpne notatet.",
+        "label": "Notater: disposisjon"
+      },
+      "notesAskAgent": {
+        "description": "Spør agenten om den merkede teksten, eller åpne og lukk agenten for notatet.",
+        "label": "Notater: spør agenten"
       }
     },
     "application": {
@@ -2506,5 +2671,17 @@
       "loadFailed": "Listen over MCP-servere kunne ikke leses.",
       "missing": "{{name}} (ikke funnet)"
     }
+  },
+  "notesPreview": {
+    "label": "Forhåndsvisning av et notat med disse innstillingene",
+    "title": "Feltnotater",
+    "heading": "Morgenregistrering",
+    "paragraph": "Lett regn til klokken ni, så klarvær over nordryggen. Jorden var fortsatt fuktig ved middagstid.",
+    "links": "Se <note>Prøvetakingsmetode</note> for alle trinnene, eller bla gjennom <tag>#feltarbeid</tag>.",
+    "highlight": "Frøplantene ble dobbelt så høye på én uke.",
+    "calloutTitle": "Neste besøk",
+    "calloutBody": "Sjekk jordsensorene før du tar nye prøver.",
+    "taskDone": "Merk prøvene",
+    "task": "Last opp bildene"
   }
 }

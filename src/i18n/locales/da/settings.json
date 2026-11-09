@@ -993,7 +993,8 @@
       "editor": "Editor",
       "files": "Projekt",
       "pdf": "PDF-forhåndsvisning",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Noter"
     },
     "terminal": {
       "colorTheme": {
@@ -1126,6 +1127,146 @@
         "label": "Vis PDF'en ved kompilering"
       },
       "title": "Zen-tilstand"
+    },
+    "notes": {
+      "sectionName": "Udseende for noter",
+      "resetAriaLabel": "Nulstil {{setting}} til standard",
+      "text": {
+        "title": "Tekst"
+      },
+      "typeface": {
+        "label": "Skriftstil",
+        "description": "Vælg en skriftstil til tekst i noter.",
+        "options": {
+          "sans": "Uden seriffer",
+          "serif": "Med seriffer",
+          "mono": "Monospace"
+        }
+      },
+      "font": {
+        "label": "Skrifttype i noter",
+        "description": "Vælg en hvilken som helst installeret skrifttype til tekst i noter. Lad feltet være tomt for at bruge indstillingen Skriftstil."
+      },
+      "fontSize": {
+        "label": "Tekststørrelse i noter",
+        "description": "Indstil størrelsen på tekst i noter.",
+        "custom": "Brugerdefineret",
+        "customLabel": "Brugerdefineret tekststørrelse i noter i pixel"
+      },
+      "lineHeight": {
+        "label": "Linjehøjde i noter",
+        "description": "Indstil afstanden mellem linjerne i tekst i noter.",
+        "customLabel": "Brugerdefineret linjehøjde i noter"
+      },
+      "paragraphSpacing": {
+        "label": "Afstand mellem afsnit",
+        "description": "Indstil afstanden mellem afsnit, lister og andre blokke.",
+        "options": {
+          "compact": "Kompakt",
+          "normal": "Normal",
+          "relaxed": "Luftig",
+          "spacious": "Rummelig"
+        }
+      },
+      "headings": {
+        "title": "Overskrifter og titel"
+      },
+      "headingTypeface": {
+        "label": "Skriftstil til overskrifter",
+        "description": "Vælg en skriftstil til overskrifter og notens titel.",
+        "options": {
+          "text": "Samme som teksten"
+        }
+      },
+      "headingFont": {
+        "label": "Skrifttype til overskrifter",
+        "description": "Vælg en installeret skrifttype til overskrifter og notens titel. Lad feltet være tomt for at bruge indstillingen Skriftstil til overskrifter."
+      },
+      "headingSize": {
+        "label": "Størrelse på overskrifter",
+        "description": "Indstil, hvor store overskrifter er i forhold til teksten.",
+        "options": {
+          "small": "Mindre",
+          "normal": "Normal",
+          "large": "Større"
+        }
+      },
+      "titleSize": {
+        "label": "Størrelse på titel",
+        "description": "Indstil størrelsen på titlen øverst i hver note."
+      },
+      "layout": {
+        "title": "Layout"
+      },
+      "width": {
+        "label": "Notebredde",
+        "description": "Hvor brede noter er, når de åbnes. Breddemenuen i en note ændrer også dette.",
+        "options": {
+          "standard": "Standard",
+          "wide": "Bred",
+          "full": "Fuld bredde"
+        }
+      },
+      "wordCount": {
+        "label": "Vis antal ord",
+        "description": "Vis antallet af ord i en note på dens værktøjslinje."
+      },
+      "spellcheck": {
+        "label": "Stavekontrol i noter",
+        "description": "Understreg forkert stavede ord, mens du skriver en note."
+      },
+      "code": {
+        "title": "Kode"
+      },
+      "codeFont": {
+        "label": "Skrifttype til kode",
+        "description": "Vælg en installeret skrifttype til kodeblokke og kode i linjen."
+      },
+      "codeTheme": {
+        "label": "Farver i kodeblokke",
+        "description": "Vælg syntaksfarverne til kodeblokke i noter.",
+        "options": {
+          "editor": "Samme som editoren"
+        }
+      },
+      "colors": {
+        "title": "Farver"
+      },
+      "accent": {
+        "label": "Accentfarve i noter",
+        "description": "Bruges til links, tags og afkrydsningsfelter til opgaver i noter.",
+        "matchApp": "Samme som appen",
+        "customAriaLabel": "Vælg en brugerdefineret accentfarve til noter"
+      },
+      "highlight": {
+        "label": "Farve til fremhævning",
+        "description": "Farven bag fremhævet tekst.",
+        "options": {
+          "yellow": "Gul",
+          "green": "Grøn",
+          "blue": "Blå",
+          "pink": "Lyserød",
+          "purple": "Lilla",
+          "accent": "Accent"
+        }
+      },
+      "callouts": {
+        "label": "Stil for infobokse",
+        "description": "Hvordan infobokse ser ud i noter.",
+        "options": {
+          "tinted": "Tonet",
+          "filled": "Udfyldt",
+          "outlined": "Med kant",
+          "bar": "Sidebjælke"
+        }
+      },
+      "remoteImages": {
+        "title": "Billeder fra nettet",
+        "description": "Noter indlæser billeder fra disse websteder uden at spørge.",
+        "empty": "Noter spørger, før de indlæser et billede fra nettet. Websteder, du altid tillader, vises her.",
+        "remove": "Fjern {{host}}"
+      },
+      "resetAll": "Nulstil udseende for noter"
     }
   },
   "checkpoints": {
@@ -2337,6 +2478,30 @@
       "resetZoom": {
         "description": "Sætter appen tilbage til 100 %.",
         "label": "Nulstil zoom"
+      },
+      "notesQuickSwitcher": {
+        "description": "Find en note ud fra navnet, og åbn den.",
+        "label": "Noter: gå til note"
+      },
+      "notesTodayNote": {
+        "description": "Åbn dagens note, eller start den.",
+        "label": "Noter: dagens note"
+      },
+      "notesGraph": {
+        "description": "Åbn grafen over alle dine noter.",
+        "label": "Noter: graf"
+      },
+      "notesLocalGraph": {
+        "description": "Vis eller skjul linkene omkring den åbne note.",
+        "label": "Noter: lokal graf"
+      },
+      "notesOutline": {
+        "description": "Vis eller skjul dispositionen for den åbne note.",
+        "label": "Noter: disposition"
+      },
+      "notesAskAgent": {
+        "description": "Spørg agenten om den markerede tekst, eller åbn og luk notens agent.",
+        "label": "Noter: spørg agenten"
       }
     },
     "application": {
@@ -2506,5 +2671,17 @@
       "loadFailed": "Listen over MCP-servere kunne ikke læses.",
       "missing": "{{name}} (ikke fundet)"
     }
+  },
+  "notesPreview": {
+    "label": "Forhåndsvisning af en note med disse indstillinger",
+    "title": "Feltnoter",
+    "heading": "Morgenregistrering",
+    "paragraph": "Let regn indtil klokken ni, derefter klar himmel over den nordlige højderyg. Jorden var stadig fugtig ved middagstid.",
+    "links": "Se <note>Prøvetagningsmetode</note> for alle trinene, eller gennemse <tag>#feltarbejde</tag>.",
+    "highlight": "Kimplanterne blev dobbelt så høje på én uge.",
+    "calloutTitle": "Næste besøg",
+    "calloutBody": "Tjek jordsensorerne, før du tager nye prøver.",
+    "taskDone": "Mærk prøverne",
+    "task": "Upload billederne"
   }
 }

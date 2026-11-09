@@ -987,7 +987,8 @@
       "editor": "编辑器",
       "files": "项目",
       "pdf": "PDF 预览",
-      "terminal": "终端"
+      "terminal": "终端",
+      "notes": "笔记"
     },
     "terminal": {
       "colorTheme": {
@@ -1119,6 +1120,146 @@
         "label": "编译时显示 PDF"
       },
       "title": "禅模式"
+    },
+    "notes": {
+      "sectionName": "笔记外观",
+      "resetAriaLabel": "将{{setting}}恢复为默认值",
+      "text": {
+        "title": "正文"
+      },
+      "typeface": {
+        "label": "字体类型",
+        "description": "选择笔记正文的字体类型。",
+        "options": {
+          "sans": "无衬线",
+          "serif": "衬线",
+          "mono": "等宽"
+        }
+      },
+      "font": {
+        "label": "笔记字体",
+        "description": "为笔记正文选择任意已安装的字体。留空则使用“字体类型”设置。"
+      },
+      "fontSize": {
+        "label": "笔记字号",
+        "description": "设置笔记正文的文字大小。",
+        "custom": "自定义",
+        "customLabel": "自定义笔记字号（像素）"
+      },
+      "lineHeight": {
+        "label": "笔记行高",
+        "description": "设置笔记正文的行间距。",
+        "customLabel": "自定义笔记行高"
+      },
+      "paragraphSpacing": {
+        "label": "段落间距",
+        "description": "设置段落、列表和其他块之间的间距。",
+        "options": {
+          "compact": "紧凑",
+          "normal": "标准",
+          "relaxed": "宽松",
+          "spacious": "宽敞"
+        }
+      },
+      "headings": {
+        "title": "标题与笔记标题"
+      },
+      "headingTypeface": {
+        "label": "标题字体类型",
+        "description": "为标题和笔记标题选择字体类型。",
+        "options": {
+          "text": "与正文相同"
+        }
+      },
+      "headingFont": {
+        "label": "标题字体",
+        "description": "为标题和笔记标题选择已安装的字体。留空则使用“标题字体类型”设置。"
+      },
+      "headingSize": {
+        "label": "标题大小",
+        "description": "设置标题相对于正文的大小。",
+        "options": {
+          "small": "较小",
+          "normal": "标准",
+          "large": "较大"
+        }
+      },
+      "titleSize": {
+        "label": "笔记标题大小",
+        "description": "设置每篇笔记顶部标题的大小。"
+      },
+      "layout": {
+        "title": "布局"
+      },
+      "width": {
+        "label": "笔记宽度",
+        "description": "笔记打开时的宽度。也可以在笔记中的宽度菜单里更改。",
+        "options": {
+          "standard": "标准",
+          "wide": "宽",
+          "full": "全宽"
+        }
+      },
+      "wordCount": {
+        "label": "显示字数",
+        "description": "在笔记的工具栏中显示字数。"
+      },
+      "spellcheck": {
+        "label": "在笔记中检查拼写",
+        "description": "编写笔记时为拼错的单词加下划线。"
+      },
+      "code": {
+        "title": "代码"
+      },
+      "codeFont": {
+        "label": "代码字体",
+        "description": "为代码块和行内代码选择已安装的字体。"
+      },
+      "codeTheme": {
+        "label": "代码块配色",
+        "description": "选择笔记中代码块的语法配色。",
+        "options": {
+          "editor": "与编辑器相同"
+        }
+      },
+      "colors": {
+        "title": "颜色"
+      },
+      "accent": {
+        "label": "笔记强调色",
+        "description": "用于笔记中的链接、标签和任务复选框。",
+        "matchApp": "跟随应用",
+        "customAriaLabel": "选择自定义笔记强调色"
+      },
+      "highlight": {
+        "label": "高亮颜色",
+        "description": "高亮文本的背景色。",
+        "options": {
+          "yellow": "黄色",
+          "green": "绿色",
+          "blue": "蓝色",
+          "pink": "粉色",
+          "purple": "紫色",
+          "accent": "强调色"
+        }
+      },
+      "callouts": {
+        "label": "标注样式",
+        "description": "笔记中标注框的外观。",
+        "options": {
+          "tinted": "浅色底",
+          "filled": "填充",
+          "outlined": "描边",
+          "bar": "侧边条"
+        }
+      },
+      "remoteImages": {
+        "title": "来自网络的图片",
+        "description": "笔记会直接加载这些网站的图片，不会先询问。",
+        "empty": "笔记从网络加载图片前会先询问。你设为始终允许的网站会显示在这里。",
+        "remove": "移除 {{host}}"
+      },
+      "resetAll": "重置笔记外观"
     }
   },
   "checkpoints": {
@@ -2316,6 +2457,30 @@
       "resetZoom": {
         "description": "将应用恢复为 100%。",
         "label": "重置缩放"
+      },
+      "notesQuickSwitcher": {
+        "description": "按名称查找笔记并打开。",
+        "label": "笔记：转到笔记"
+      },
+      "notesTodayNote": {
+        "description": "打开今天的笔记，如果还没有则新建。",
+        "label": "笔记：今日笔记"
+      },
+      "notesGraph": {
+        "description": "打开所有笔记的关系图谱。",
+        "label": "笔记：关系图谱"
+      },
+      "notesLocalGraph": {
+        "description": "显示或隐藏打开的笔记周围的链接。",
+        "label": "笔记：局部关系图谱"
+      },
+      "notesOutline": {
+        "description": "显示或隐藏打开的笔记的大纲。",
+        "label": "笔记：大纲"
+      },
+      "notesAskAgent": {
+        "description": "就所选文本询问代理，或打开和关闭笔记的代理。",
+        "label": "笔记：询问代理"
       }
     },
     "application": {
@@ -2483,5 +2648,17 @@
       "loadFailed": "无法读取 MCP 服务器列表。",
       "missing": "{{name}}（未找到）"
     }
+  },
+  "notesPreview": {
+    "label": "使用这些设置的笔记预览",
+    "title": "野外笔记",
+    "heading": "晨间调查",
+    "paragraph": "小雨一直下到九点，之后北岭上空放晴。到中午土壤仍然潮湿。",
+    "links": "完整步骤见<note>采样方法</note>，也可以浏览<tag>#野外工作</tag>。",
+    "highlight": "幼苗一周内长高了一倍。",
+    "calloutTitle": "下次考察",
+    "calloutBody": "采集新样本前先检查土壤传感器。",
+    "taskDone": "给样本贴标签",
+    "task": "上传照片"
   }
 }

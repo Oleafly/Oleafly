@@ -44,14 +44,16 @@
       "externalTool": "確認外部工具動作",
       "internet": "確認網際網路存取",
       "edit": "確認 AI 編輯",
-      "researchTask": "確認研究任務"
+      "researchTask": "確認研究任務",
+      "note": "確認建立新筆記"
     },
     "headline": {
       "command": "助理想要執行這個指令",
       "externalTool": "助理想要使用外部工具",
       "internet": "助理想要存取網際網路",
       "edit": "助理想要修改你的檔案",
-      "researchTask": "助理想要建立一項研究任務"
+      "researchTask": "助理想要建立一項研究任務",
+      "note": "助理想要建立一篇筆記"
     },
     "mcpNote": "這會把下方的引數傳送到已設定的 MCP 伺服器。",
     "line": "第 {{line}} 行",
@@ -86,6 +88,14 @@
       "minutes_other": "{{count}} 分鐘",
       "planFirst": "先審閱計畫",
       "startNow": "立即開始"
+    },
+    "noteDraft": {
+      "title": "標題",
+      "project": "連結的專案",
+      "tags": "標籤",
+      "text": "內文",
+      "empty": "沒有內文",
+      "more": "筆記在這之後還有更多內容。"
     }
   },
   "attachments": {
@@ -1082,5 +1092,19 @@
     "replaceConfirm": "取代回覆",
     "forked": "已從編輯後的訊息開始新的聊天。",
     "failed": "無法重新傳送訊息。"
+  },
+  "noteScope": {
+    "notesOnly": "僅限筆記助理。",
+    "tools": {
+      "readNote": "讀取開啟中的筆記，包括等待審閱的建議。",
+      "proposeNoteEdits": "為開啟中的筆記提出修改建議，由你決定接受或拒絕。",
+      "searchNotes": "搜尋你的所有筆記。",
+      "listKnowledgeNotes": "依標籤或專案列出你的筆記。",
+      "readNoteById": "讀取另一篇筆記。",
+      "createNote": "建立一篇新筆記。",
+      "relatedProjectFiles": "列出筆記所連結專案中的檔案。",
+      "readRelatedProjectFile": "讀取筆記所連結專案中的檔案。",
+      "searchRelatedProject": "搜尋筆記所連結的專案。"
+    }
   }
 }

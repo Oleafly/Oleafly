@@ -351,6 +351,7 @@
   },
   "mermaid": {
     "diagram": "Diagram",
+    "remoteBlocked": "Tento diagram se nevykreslil, protože načítá obrázky nebo styly z internetu.",
     "renderFailed": "Diagram nelze vykreslit.",
     "rendering": "Vykresluje se diagram"
   },

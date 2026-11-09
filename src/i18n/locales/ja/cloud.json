@@ -105,6 +105,8 @@
     "conflicts_other": "競合コピーを {{count}} 件作成しました",
     "conflictsHelp_other": "同期される前に、ここと別のコンピューターの両方で変更されたファイルがあったため、Oleafly は両方のバージョンを残しました。必要な内容を残してから、コピーを削除してください。",
     "conflictsLabel": "{{name}} の競合コピー",
+    "compare": "比較",
+    "compareLabel": "{{path}} をノートと比較",
     "dismiss": "閉じる",
     "skipped_other": "{{count}} 件のファイルをスキップしました",
     "skippedMore_other": "ほか {{count}} 件のファイル",

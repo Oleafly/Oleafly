@@ -110,6 +110,8 @@
     "conflictsHelp_one": "Denne fil blev ændret både her og på en anden computer, før ændringerne blev synkroniseret, så Oleafly beholdt begge versioner. Behold det, du har brug for, og slet derefter kopien.",
     "conflictsHelp_other": "Disse filer blev ændret både her og på en anden computer, før ændringerne blev synkroniseret, så Oleafly beholdt begge versioner. Behold det, du har brug for, og slet derefter kopierne.",
     "conflictsLabel": "Konfliktkopier i {{name}}",
+    "compare": "Sammenlign",
+    "compareLabel": "Sammenlign {{path}} med noten",
     "dismiss": "Luk",
     "skipped_one": "{{count}} fil blev sprunget over",
     "skipped_other": "{{count}} filer blev sprunget over",

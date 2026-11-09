@@ -3,7 +3,7 @@
     "newProject": "Nytt projekt",
     "search": "Sök dokument ({{shortcut}})",
     "diagramComposer": "Diagramverktyg",
-    "notes": "Notes",
+    "notes": "Anteckningar",
     "tools": "Oleafly Tools",
     "settings": "Inställningar"
   },
@@ -55,7 +55,7 @@
       "kindDocument": "Dokument",
       "kindImage": "Bild",
       "kindDiagram": "Diagram",
-      "kindNote": "Note",
+      "kindNote": "Anteckning",
       "bookmark": "Bokmärke",
       "bookmarkAll": "Oavsett status",
       "bookmarkYes": "Bokmärkta",
@@ -139,7 +139,7 @@
       "document": "dokument",
       "image": "bild",
       "diagram": "diagram",
-      "note": "note",
+      "note": "anteckning",
       "external": "extern",
       "overleaf": "Overleaf"
     },

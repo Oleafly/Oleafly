@@ -110,6 +110,8 @@
     "conflictsHelp_one": "Bu dosya, eşitlenmeden önce hem burada hem de başka bir bilgisayarda değiştiği için Oleafly iki sürümü de sakladı. İhtiyacınız olanı koruyun, ardından kopyayı silin.",
     "conflictsHelp_other": "Bu dosyalar, eşitlenmeden önce hem burada hem de başka bir bilgisayarda değiştiği için Oleafly iki sürümü de sakladı. İhtiyacınız olanı koruyun, ardından kopyaları silin.",
     "conflictsLabel": "{{name}} projesindeki çakışma kopyaları",
+    "compare": "Karşılaştır",
+    "compareLabel": "{{path}} dosyasını notla karşılaştır",
     "dismiss": "Kapat",
     "skipped_one": "{{count}} dosya atlandı",
     "skipped_other": "{{count}} dosya atlandı",

@@ -509,6 +509,7 @@
     "copyAndShare": "Sao chép vào Oleafly và chia sẻ",
     "title": "Chia sẻ {{name}}",
     "description": "Làm việc trên dự án này cùng người khác qua một máy chủ cộng tác.",
+    "noteDescription": "Cùng viết ghi chú này với người khác qua một máy chủ cộng tác.",
     "loading": "Đang tải…",
     "linked": "Dự án này là một thư mục bên ngoài Oleafly. Oleafly sao chép nó vào thư viện của bạn và chia sẻ bản sao đó. Thư mục gốc không bị đụng tới.",
     "editCopy": "Đây là bản sao được chia sẻ. Từ giờ hãy chỉnh sửa bản này, không sửa thư mục gốc.",
@@ -526,12 +527,15 @@
     "tooLarge": "Các tệp này vượt quá giới hạn {{size}} MB của máy chủ. Hãy làm chúng nhỏ hơn hoặc gỡ bớt trước khi chia sẻ.",
     "renamed": "Một số tên không dùng được trên mọi máy tính. Người khác sẽ nhận những tệp này dưới tên hơi khác.",
     "excluded": "Không được chia sẻ: các tệp build khác, cài đặt Oleafly và lịch sử Git. PDF đã biên dịch gần nhất được chia sẻ để đồng tác giả có thể đọc trong trình duyệt.",
+    "noteExcluded": "Không được chia sẻ: cài đặt Oleafly và lịch sử Git.",
     "start": "Chia sẻ",
     "preparing": "Đang chuẩn bị dự án…",
     "uploading": "Đang tải hình và các tệp khác: {{done}} trên {{total}}",
     "saving": "Đang lưu dự án trên máy chủ…",
     "failed": "Chia sẻ chưa hoàn tất nên chưa có gì được chia sẻ.",
-    "trustAgain": "Bất kỳ ai bạn thêm vào dự án này đều có thể thay đổi tệp của nó, nên Oleafly yêu cầu bạn tin cậy lại dự án trên máy tính này trước khi chạy agent, lệnh terminal hay lệnh shell cho nó."
+    "trustAgain": "Bất kỳ ai bạn thêm vào dự án này đều có thể thay đổi tệp của nó, nên Oleafly yêu cầu bạn tin cậy lại dự án trên máy tính này trước khi chạy agent, lệnh terminal hay lệnh shell cho nó.",
+    "projectNotesShared": "Ghi chú của dự án được chia sẻ với mọi người trong dự án này. Ghi chú cá nhân vẫn là riêng tư.",
+    "personalNotesPrivate": "Ghi chú cá nhân vẫn là riêng tư. Chỉ những ghi chú trong thư mục ghi chú của dự án mới được chia sẻ."
   },
   "manage": {
     "sharedOn": "Được chia sẻ trên {{server}}",

@@ -336,6 +336,7 @@
   },
   "mermaid": {
     "diagram": "图表",
+    "remoteBlocked": "此图表会从互联网加载图片或样式，因此没有绘制。",
     "renderFailed": "无法渲染图表。",
     "rendering": "正在渲染图表"
   },

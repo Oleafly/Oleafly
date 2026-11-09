@@ -155,6 +155,9 @@
       "spacesMessage": "Gli agenti che usano Cua Spaces potranno:",
       "spacesChanges": "Creare ed eliminare Spaces ed eseguire comandi al loro interno",
       "spacesSignIns": "Usare il tuo accesso a Claude Code o Codex all'interno di uno Space"
+    },
+    "assistantNetwork": {
+      "message": "L'assistente vuole usare {{tool}}, che invia testo a un servizio online."
     }
   },
   "errors": {

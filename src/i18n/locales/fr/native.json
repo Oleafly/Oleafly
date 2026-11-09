@@ -155,6 +155,9 @@
       "spacesMessage": "Les agents qui utilisent Cua Spaces pourront :",
       "spacesChanges": "Créer et supprimer des Spaces, et y exécuter des commandes",
       "spacesSignIns": "Utiliser votre connexion Claude Code ou Codex dans un Space"
+    },
+    "assistantNetwork": {
+      "message": "L'assistant veut utiliser {{tool}}, qui envoie du texte à un service en ligne."
     }
   },
   "errors": {
