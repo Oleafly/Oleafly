@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@oleafly/i18n-contract": "workspace:*",
-    "pdfjs-dist": "6.3.289",
+    "pdfjs-dist": "6.5.438",
     "react": "*"
   }
 }
