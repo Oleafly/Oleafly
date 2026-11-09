@@ -1,3 +1,4 @@
+import { stripTags } from "@/lib/citation/text";
 import { backtickRunEnd, codeSpanEnd, type FencedLine, fencedLines } from "@/lib/code-fences";
 import { frontMatterBody } from "@/lib/front-matter";
 
@@ -71,11 +72,12 @@ export function uniqueSlugs(texts: readonly string[]): string[] {
 }
 
 export function plainHeading(source: string): string {
-  let text = source
-    .replace(/!\[([^\]]*)\]\([^)]*\)/gu, "$1")
-    .replace(/\[([^\]]*)\]\([^)]*\)/gu, "$1")
-    .replace(/`([^`]*)`/gu, "$1")
-    .replace(/<[^>]+>/gu, "");
+  let text = stripTags(
+    source
+      .replace(/!\[([^\]]*)\]\([^)]*\)/gu, "$1")
+      .replace(/\[([^\]]*)\]\([^)]*\)/gu, "$1")
+      .replace(/`([^`]*)`/gu, "$1"),
+  );
   for (let previous = ""; previous !== text; ) {
     previous = text;
     text = text.replace(/(\*\*|__|\*|_|~~|==)(\S(?:.*?\S)?)\1/gu, "$2");

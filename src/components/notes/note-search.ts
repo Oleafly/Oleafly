@@ -291,7 +291,7 @@ export function linkFirstMention(source: string, names: readonly string[], href:
     const found = firstMention(line, names);
     if (!found) continue;
     const [start, end] = found;
-    const label = line.slice(start, end).replace(/[[\]]/gu, "\\$&");
+    const label = line.slice(start, end).replace(/[\\[\]]/gu, "\\$&");
     lines[index] = `${line.slice(0, start)}[${label}](${href})${line.slice(end)}`;
     return head + lines.join("\n");
   }

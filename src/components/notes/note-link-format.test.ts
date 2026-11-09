@@ -176,6 +176,12 @@ describe("heading links", () => {
     expect(plainHeading("a   b")).toBe("a b");
   });
 
+  it("leaves no tag behind when tags are nested inside each other", () => {
+    expect(plainHeading("Intro <scr<b>ipt>alert(1)</scr</b>ipt> end")).not.toContain("<");
+    expect(plainHeading("<<b>script>Bold</b>")).not.toContain("<");
+    expect(plainHeading("A <i>very</i> <b>bold</b> claim")).toBe("A very bold claim");
+  });
+
   it("lists ATX headings outside fences and front matter", () => {
     const text = "---\ntitle: x\n---\n# One\n```\n# not\n```\n## Two ##\n#nospace\n###\n## Two\n~~~\n# also not\n";
     expect(noteHeadings(text)).toEqual([

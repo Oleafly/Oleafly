@@ -299,7 +299,7 @@ export default defineConfig(async () => ({
       : undefined,
     watch: {
       // Don't watch the Rust source; handled by tauri.
-      ignored: ["**/src-tauri/**", "**/crates/**", "**/*.test.ts", "**/*.test.tsx"],
+      ignored: ["**/src-tauri/**", "**/crates/**", "**/coverage/**", "**/*.test.ts", "**/*.test.tsx"],
     },
   },
 }));

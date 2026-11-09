@@ -193,6 +193,10 @@ describe("linking the first mention", () => {
     expect(linkFirstMention("été x", ["ete"], href)).toBe("[été](oleafly://note/n-1) x");
   });
 
+  it("escapes a backslash in the linked words so the link label stays closed", () => {
+    expect(linkFirstMention("See C:\\ now", ["C:\\"], href)).toBe("See [C:\\\\](oleafly://note/n-1) now");
+  });
+
   it("matches inside words for scripts without spaces", () => {
     expect(linkFirstMention("今日の研究ノート", ["研究"], href)).toBe("今日の[研究](oleafly://note/n-1)ノート");
   });
