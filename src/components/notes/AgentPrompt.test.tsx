@@ -401,7 +401,7 @@ describe("the assistant dock", () => {
 });
 
 describe("the working glow", () => {
-  const css = readFileSync(join(process.cwd(), "src/components/notes/notes.css"), "utf8");
+  const css = readFileSync(join(process.cwd(), "src/components/notes/notes.css"), "utf8").replace(/\r\n/gu, "\n");
 
   it("spins a gradient layer with a transform instead of repainting a custom property", () => {
     expect(css).not.toContain("@property --note-glow-angle");

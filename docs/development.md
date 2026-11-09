@@ -202,15 +202,15 @@ The minimum Rust versions are separate promises. The shared crates
 (`oleafly-core`, `oleafly-secrets`, `oleafly-doctools`, `oleafly-synctex`,
 `oleafly-synctex-wasm`, `oleafly-sandbox`, `oleafly-forge`) and the agent
 crate `oleafly-agent` build on Rust 1.87.
-`oleafly-preflight` and
-`oleafly-research` need 1.88 because they read PDFs with lopdf 0.42, which uses
-let chains (it declares 1.85, which is too low); research gets it through
-pdf-extract. `oleafly-acp` needs 1.88 for the official Agent Client Protocol
-crates. `oleafly-downloads` needs 1.88 for zip 9, the first zip release with
-the fixes for its 2026 advisories. `oleafly-lint` builds on 1.88 without its
-`proofread` feature.
+`oleafly-preflight` needs 1.88 because it reads PDFs with lopdf 0.42, which
+uses let chains (it declares 1.85, which is too low). `oleafly-acp` needs 1.88
+for the official Agent Client Protocol crates. `oleafly-downloads` needs 1.88
+for zip 9, the first zip release with the fixes for its 2026 advisories.
+`oleafly-lint` builds on 1.88 without its `proofread` feature.
 `oleafly-online` needs 1.89 for the `aes` crate that decrypts copied browser
 cookies, and `oleaflyc` needs 1.89 because it links the collaboration client.
+`oleafly-history` and `oleafly-research` need 1.89 for rusqlite 0.41. It is the
+first release that bundles SQLite 3.54, which fixes RUSTSEC-2026-0459.
 CI checks each group with explicit `cargo +1.87.0`, `cargo +1.88.0` and
 `cargo +1.89.0` runs, which take priority over the pin.
 

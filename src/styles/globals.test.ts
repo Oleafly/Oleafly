@@ -1,12 +1,15 @@
 import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const styles = readFileSync(new URL("./globals.css", import.meta.url), "utf8");
+const styles = readFileSync(new URL("./globals.css", import.meta.url), "utf8").replace(/\r\n/gu, "\n");
 
 function sourceFiles(root: URL): string[] {
-  return readdirSync(root, { recursive: true, encoding: "utf8" })
+  const directory = fileURLToPath(root);
+  return readdirSync(directory, { recursive: true, encoding: "utf8" })
     .filter((path) => /\.(css|tsx?)$/.test(path) && !path.includes("node_modules") && !/\.test\.tsx?$/.test(path))
-    .map((path) => new URL(path, root).pathname);
+    .map((path) => join(directory, path));
 }
 
 describe("desktop scrollbars", () => {
@@ -17,7 +20,8 @@ describe("desktop scrollbars", () => {
     expect(styles).toContain(
       ":where(body, body *):hover {\n  --ofl-scroll-thumb: color-mix(in srgb, var(--foreground) var(--ofl-scroll-thumb-mix), transparent);",
     );
-    expect(styles).toContain("background-color: color-mix(in srgb, var(--foreground) var(--ofl-scroll-thumb-active-mix), transparent);");    expect(styles).toContain("border: 2px solid transparent;\n  border-radius: 999px;\n  background: var(--ofl-scroll-thumb) padding-box;");
+    expect(styles).toContain("background-color: color-mix(in srgb, var(--foreground) var(--ofl-scroll-thumb-active-mix), transparent);");
+    expect(styles).toContain("border: 2px solid transparent;\n  border-radius: 999px;\n  background: var(--ofl-scroll-thumb) padding-box;");
     expect(styles).toContain(":where(body, body *)::-webkit-scrollbar-thumb:hover,");
   });
 

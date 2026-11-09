@@ -426,31 +426,33 @@ jobs:
           -p oleafly-sandbox -p oleafly-forge
           -p oleafly-agent
 
-      # Preflight and research read PDFs with lopdf 0.42 (research through
-      # pdf-extract), which uses let chains, so they need Rust 1.88 although
-      # lopdf declares 1.85. The ACP client needs 1.88 for the official ACP SDK
-      # and schema crates. Lint builds on 1.88 without its proofread feature;
-      # harper-core's dependencies need 1.90. Downloads needs 1.88 for zip 9,
-      # the first zip release with the fixes for its 2026 advisories.
-      - name: Install the PDF crates' minimum supported Rust toolchain
+      # Preflight reads PDFs with lopdf 0.42, which uses let chains, so it
+      # needs Rust 1.88 although lopdf declares 1.85. The ACP client needs 1.88
+      # for the official ACP SDK and schema crates. Lint builds on 1.88 without
+      # its proofread feature; harper-core's dependencies need 1.90. Downloads
+      # needs 1.88 for zip 9, the first zip release with the fixes for its 2026
+      # advisories.
+      - name: Install the PDF crate's minimum supported Rust toolchain
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
         with:
           toolchain: 1.88.0
 
-      - name: Check the PDF crates, the ACP client, downloads and lint against their Rust 1.88 MSRV
+      - name: Check the PDF crate, the ACP client, downloads and lint against their Rust 1.88 MSRV
         run: |
-          cargo +1.88.0 check -p oleafly-preflight -p oleafly-research -p oleafly-acp -p oleafly-downloads --all-targets
+          cargo +1.88.0 check -p oleafly-preflight -p oleafly-acp -p oleafly-downloads --all-targets
           cargo +1.88.0 check -p oleafly-lint --no-default-features --all-targets
 
       # The CLI links the collaboration client, and online import decrypts
-      # browser cookies with aes 0.9. Both need Rust 1.89.
+      # browser cookies with aes 0.9. Research and history store their data
+      # with rusqlite 0.41, the first release that bundles SQLite 3.54 with the
+      # fix for RUSTSEC-2026-0459. All of them need Rust 1.89.
       - name: Install the CLI's minimum supported Rust toolchain
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
         with:
           toolchain: 1.89.0
 
-      - name: Check the CLI and online import against their Rust 1.89 MSRV
-        run: cargo +1.89.0 check -p oleafly-cli -p oleafly-online --all-targets
+      - name: Check the CLI, online import and research against their Rust 1.89 MSRV
+        run: cargo +1.89.0 check -p oleafly-cli -p oleafly-online -p oleafly-research --all-targets
 
   server-web:
     name: Server with browser access
@@ -531,10 +533,10 @@ jobs:
       - name: Install minimum supported Rust toolchain
         uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
         with:
-          toolchain: 1.87.0
+          toolchain: 1.89.0
 
-      - name: Test history on Rust 1.87
-        run: cargo +1.87.0 test -p oleafly-history --all-targets
+      - name: Test history on Rust 1.89
+        run: cargo +1.89.0 test -p oleafly-history --all-targets
 
   cargo-deny:
     # RustSec advisories plus a permissive-only license gate for the Rust workspace.
