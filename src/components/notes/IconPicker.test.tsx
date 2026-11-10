@@ -113,14 +113,17 @@ describe("IconPicker", () => {
 
   it("lists every line icon and picks one by its lucide id", async () => {
     const { onChange, user } = setup();
-    await open(user);
+    const dialog = await open(user);
     expect(screen.getByRole("textbox", { name: enNotes.icons.search })).toHaveAttribute(
       "placeholder",
       enNotes.icons.search,
     );
-    for (const entry of Object.values(LINE_ICONS)) {
-      expect(lineIcon(enNotes.icons.names[entry.name])).toBeInTheDocument();
-    }
+    const labels = within(dialog)
+      .getAllByRole("button")
+      .map((cell) => cell.getAttribute("aria-label"));
+    expect(labels).toEqual(
+      expect.arrayContaining(Object.values(LINE_ICONS).map((entry) => enNotes.icons.names[entry.name])),
+    );
     await user.click(lineIcon(enNotes.icons.names.rocket));
     expect(onChange).toHaveBeenCalledWith("lucide:rocket");
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());

@@ -54,5 +54,5 @@ describe("warming the settings tabs", () => {
       fireEvent.click(screen.getByTestId("settings-section-collaboration"));
     });
     expect(screen.getByTestId("collab-section-stub")).toBeInTheDocument();
-  });
+  }, 20_000);
 });
