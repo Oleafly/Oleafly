@@ -1,0 +1,96 @@
+name: Comment commands
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions: {}
+
+jobs:
+  command:
+    name: Apply comment command
+    if: >-
+      startsWith(github.event.comment.body, '/')
+      && contains(fromJSON('["palmtenor"]'), github.event.comment.user.login)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    permissions:
+      issues: write
+      pull-requests: write
+    steps:
+      - name: Assign, unassign or request reviews
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LC_ALL: C
+          ACTOR: ${{ github.event.comment.user.login }}
+          BODY: ${{ github.event.comment.body }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          NUMBER: ${{ github.event.issue.number }}
+          IS_PR: ${{ github.event.issue.pull_request && 'true' || 'false' }}
+        run: |
+          set -euo pipefail
+          repo="${GITHUB_REPOSITORY}"
+          errf="$(mktemp)"
+          login_re='^[A-Za-z0-9][A-Za-z0-9-]{0,38}$'
+
+          note() { printf '%s\n' "$1" >> "$GITHUB_STEP_SUMMARY"; }
+          react() { gh api -X POST "repos/${repo}/issues/comments/${COMMENT_ID}/reactions" -f "content=$1" --silent; }
+          reject() { note "Rejected: $1"; react confused; exit 0; }
+          broken() { note "Failed: $1"; react confused; exit 1; }
+          has_login() { grep -Fxiq -- "$1" <<< "$2"; }
+
+          body="${BODY#"${BODY%%[![:space:]]*}"}"
+          body="${body%"${body##*[![:space:]]}"}"
+          case "$body" in
+            *$'\n'* | *$'\r'*) reject "the command must be the whole comment, on one line" ;;
+          esac
+          read -r -a words <<< "$body"
+          cmd="${words[0]:-}"
+          args=("${words[@]:1}")
+
+          case "$cmd" in
+            /assign | /unassign)
+              [ "${#args[@]}" -eq 0 ] || reject "${cmd} takes no arguments"
+              method=POST
+              [ "$cmd" = /assign ] || method=DELETE
+              if ! out=$(gh api -X "$method" "repos/${repo}/issues/${NUMBER}/assignees" -f "assignees[]=${ACTOR}" --jq '.assignees[].login' 2>"$errf"); then
+                broken "the assignees call failed: $(<"$errf")"
+              fi
+              if [ "$cmd" = /assign ] && ! has_login "$ACTOR" "$out"; then
+                reject "GitHub did not assign ${ACTOR}, who may not be assignable here"
+              fi
+              if [ "$cmd" = /unassign ] && has_login "$ACTOR" "$out"; then
+                reject "GitHub did not unassign ${ACTOR}"
+              fi
+              ;;
+            /review)
+              [ "$IS_PR" = true ] || reject "/review only works on pull requests"
+              if [ "${#args[@]}" -lt 1 ] || [ "${#args[@]}" -gt 10 ]; then
+                reject "/review takes between 1 and 10 users"
+              fi
+              fields=()
+              for word in "${args[@]}"; do
+                login="${word#@}"
+                if [ "$word" = "$login" ] || [[ ! $login =~ $login_re ]]; then
+                  reject "each reviewer must be written as @login with a valid GitHub login"
+                fi
+                fields+=(-f "reviewers[]=${login}")
+              done
+              if ! out=$(gh api -X POST "repos/${repo}/pulls/${NUMBER}/requested_reviewers" "${fields[@]}" --jq '.requested_reviewers[].login' 2>"$errf"); then
+                err="$(<"$errf")"
+                case "$err" in
+                  *"(HTTP 422)"*) reject "GitHub refused the review request: ${err}" ;;
+                  *) broken "the review request failed: ${err}" ;;
+                esac
+              fi
+              for word in "${args[@]}"; do
+                has_login "${word#@}" "$out" || reject "GitHub did not request a review from ${word#@}"
+              done
+              ;;
+            *)
+              reject "unknown command"
+              ;;
+          esac
+
+          note "Applied ${cmd} for ${ACTOR} on #${NUMBER}"
+          react +1
