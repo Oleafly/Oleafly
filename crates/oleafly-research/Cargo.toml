@@ -5,7 +5,7 @@ description = "Research tasks for Oleafly: task store, isolation, scheduler, tas
 license = "AGPL-3.0-or-later"
 publish = false
 edition = "2021"
-rust-version = "1.88"
+rust-version = "1.89"
 
 [features]
 # Test helpers other crates use in their own tests (owner overrides, counters).
@@ -18,7 +18,7 @@ oleafly-agent = { path = "../oleafly-agent" }
 oleafly-sandbox = { path = "../oleafly-sandbox" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
 rand = "0.8"
 sha2 = "0.10"
 tempfile = { workspace = true }

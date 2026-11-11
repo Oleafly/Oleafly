@@ -51,7 +51,7 @@ toml = "0.8"
 # Package names follow Typst's identifier rule (XID_Start, XID_Continue).
 unicode-ident = "1"
 unicode-normalization = "0.1"
-rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.41", features = ["bundled", "fallible_uint"] }
 portable-pty = "0.9"
 base64 = "0.23"
 png = "0.18"
