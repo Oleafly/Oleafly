@@ -16,8 +16,8 @@ use oleafly_core::build_output::{BuildLock, OutputStaging};
 #[cfg(unix)]
 use oleafly_core::engine_spec::compiler_crash_note;
 use oleafly_core::engine_spec::{
-    self, is_bundle_fetch_failure, latex_entry_source, tex_bundle_url, ENTRY_STEM, ENTRY_TEX,
-    MERMAID_FIGURES_FILTER, MERMAID_FIGURES_FILTER_NAME,
+    self, is_bundle_fetch_failure, latex_entry_source, tex_bundle_url, DOCUMENT_KIND_FILTER_NAME,
+    ENTRY_STEM, ENTRY_TEX, MERMAID_FIGURES_FILTER, MERMAID_FIGURES_FILTER_NAME,
 };
 use oleafly_core::tex_distro::find_tool_in_dir;
 #[cfg(unix)]
@@ -1025,14 +1025,51 @@ fn markdown_builds_sandbox_pandoc_and_add_the_mermaid_filter() {
             std::fs::read_to_string(command.working_directory.join(name)).unwrap(),
             filter
         );
-        assert!(
-            arguments
-                .iter()
-                .any(|argument| argument == &format!("--lua-filter={name}")),
+        let passed = arguments
+            .iter()
+            .any(|argument| argument == &format!("--lua-filter={name}"));
+        assert_eq!(
+            passed,
+            name != DOCUMENT_KIND_FILTER_NAME,
             "{name} {arguments:?}"
         );
     }
+    assert!(!arguments
+        .iter()
+        .any(|argument| argument.starts_with("--to=")));
     assert!(command.bundle_pinned);
+}
+
+#[test]
+fn a_markdown_slide_deck_builds_as_beamer_through_the_kind_filter() {
+    let tools_directory = TempDir::new().unwrap();
+    let compiler = fake_markdown_compiler(tools_directory.path());
+    let project = TempDir::new().unwrap();
+    let workspace = workspace_for_engine(&project, Engine::Markdown, None);
+    let main_document = Engine::Markdown.default_main_document();
+    std::fs::write(
+        project.path().join(main_document),
+        "---\ntype: slides\n---\n## One\n",
+    )
+    .unwrap();
+    let build = workspace.prepare_build().unwrap();
+    let command = compiler
+        .command_with(
+            &build,
+            BuildOptions::default(),
+            &injected_scratch_bases(project.path(), build.build_directory()),
+            true,
+        )
+        .unwrap();
+    let arguments = arguments(&command);
+    for expected in [
+        "--to=beamer".to_string(),
+        "--slide-level=2".to_string(),
+        "--metadata=oleafly-document-kind=slides".to_string(),
+        format!("--lua-filter={DOCUMENT_KIND_FILTER_NAME}"),
+    ] {
+        assert!(arguments.contains(&expected), "{expected} {arguments:?}");
+    }
 }
 
 #[test]

@@ -1429,7 +1429,8 @@
     "fields": {
       "secnumdepth": "Numerowane poziomy",
       "numberSections": "Numery sekcji",
-      "documentClass": "Klasa dokumentu"
+      "documentClass": "Klasa dokumentu",
+      "documentType": "Typ dokumentu"
     },
     "placeholders": {
       "latexLang": "polish",
@@ -1454,6 +1455,15 @@
       "depthSubsubsections": "Do podpodsekcji",
       "depthParagraphs": "Do paragrafów",
       "depthSubparagraphs": "Do podparagrafów"
+    },
+    "documentTypes": {
+      "article": "Artykuł",
+      "report": "Raport lub praca dyplomowa",
+      "book": "Książka",
+      "slides": "Slajdy",
+      "poster": "Plakat",
+      "letter": "List",
+      "cv": "CV"
     },
     "locked": {
       "class": "Ustawione przez klasę {{name}}",

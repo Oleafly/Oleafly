@@ -376,7 +376,7 @@
     "fontPack": "{{family}} 在免费字体包“{{pack}}”中。",
     "fontPackGlyphs": "免费字体包“{{pack}}”包含这些字符。",
     "fontPackSealed": "{{family}} 在免费字体包“{{pack}}”中，但此项目只使用项目字体，因此字体包在这里不适用。请把该字体的文件添加到项目的字体文件夹。",
-    "fontPackAction":"下载并编译",
+    "fontPackAction": "下载并编译",
     "fontPackDownloading": "正在下载…",
     "fontPackFailed": "无法下载字体包。请检查网络连接后重试。"
   },
@@ -1381,7 +1381,8 @@
     "fields": {
       "secnumdepth": "编号层级",
       "numberSections": "章节编号",
-      "documentClass": "文档类"
+      "documentClass": "文档类",
+      "documentType": "文档类型"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1406,6 +1407,15 @@
       "depthSubsubsections": "至子小节",
       "depthParagraphs": "至段落",
       "depthSubparagraphs": "至子段落"
+    },
+    "documentTypes": {
+      "article": "文章",
+      "report": "报告或学位论文",
+      "book": "书籍",
+      "slides": "幻灯片",
+      "poster": "海报",
+      "letter": "信函",
+      "cv": "简历"
     },
     "locked": {
       "class": "由 {{name}} 文档类设置",
@@ -1493,7 +1503,7 @@
     "onDemand": "Tectonic 会在文档首次用到宏包时下载它们。无需安装任何内容。",
     "checking": "正在检查已安装的宏包",
     "systemManaged": "此 TeX Live 随你的 Linux 发行版一起安装，因此请用 {{manager}} 安装宏包。",
-    "unknownInstall":"Oleafly 无法判断你的 TeX 环境中有哪些宏包。",
+    "unknownInstall": "Oleafly 无法判断你的 TeX 环境中有哪些宏包。",
     "noProject": "请打开一个 LaTeX 项目以添加宏包。",
     "added": "已将 {{name}} 添加到 {{file}}。",
     "noPreamble": "{{file}} 没有可添加宏包的导言区。",

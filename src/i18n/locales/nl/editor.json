@@ -1397,7 +1397,8 @@
     "fields": {
       "secnumdepth": "Genummerde niveaus",
       "numberSections": "Sectienummers",
-      "documentClass": "Documentklasse"
+      "documentClass": "Documentklasse",
+      "documentType": "Documenttype"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1422,6 +1423,15 @@
       "depthSubsubsections": "Tot en met subsubsecties",
       "depthParagraphs": "Tot en met paragrafen",
       "depthSubparagraphs": "Tot en met subparagrafen"
+    },
+    "documentTypes": {
+      "article": "Artikel",
+      "report": "Rapport of scriptie",
+      "book": "Boek",
+      "slides": "Dia's",
+      "poster": "Poster",
+      "letter": "Brief",
+      "cv": "Cv"
     },
     "locked": {
       "class": "Ingesteld door de klasse {{name}}",

@@ -19,6 +19,22 @@ There are five engines: LaTeX through Tectonic or latexmk, Typst, Markdown throu
 
 Typst projects get their own source rules, checked against the project's Typst version: unresolved references and citations, missing alt text, document metadata, missing images, privacy, and blind review. Markdown source checks are not simulated with LaTeX regular expressions. Compile-log and PDF checks remain shared when the engine provides those inputs. LaTeX projects also receive source-level submission, reference, accessibility, privacy, and ATS checks.
 
+## Markdown document types
+
+A Markdown document picks what it builds with a `type` field in its front matter, the way a LaTeX document picks its class. Without one, or with a value Oleafly doesn't know, it builds an article as before.
+
+| `type` | Builds | Filled in when the front matter leaves it out |
+|---|---|---|
+| `article` | Pandoc's LaTeX article | Nothing |
+| `report`, `thesis` | The report class; `#` headings start chapters | `documentclass: report` |
+| `book` | The book class; `#` headings start chapters | `documentclass: book` |
+| `slides` | Beamer slides: `#` opens a section, `##` a slide | `aspectratio: 169` and slide level 2 (`slide-level` changes it) |
+| `poster` | One beamerposter page: `##` headings become blocks and `:::: columns` sets the layout | A0 portrait, changed with `papersize: a1` to `a4` and `orientation: landscape`. The title becomes the poster's header |
+| `letter` | A KOMA letter | `documentclass: scrlttr2`. It reads `to`, `from`, `subject`, `opening` and `closing` |
+| `cv` | A compact article | `geometry: margin=2cm` and `pagestyle: empty` |
+
+Front matter always wins: `documentclass`, `aspectratio`, `classoption` and the rest keep their usual Pandoc meaning. A LaTeX export writes the same Beamer, report or letter source, and a PPTX export uses the deck's slide level. Document settings has a Document type field that writes the `type` line.
+
 Preflight reports coverage separately for compile, submission, ATS,
 accessibility, references, and privacy. A check is `not_run` when its required
 input is missing, `partial` when source checks ran without a current PDF, and
@@ -51,7 +67,9 @@ A `.typ` document switches between the Typst and Calepin engines from the
 compile menu. An opened folder whose main `.typ` file imports the Calepin
 runtime opens on Calepin. Both engines need a trusted folder.
 
-HTML output stays in the build folder, and the preview pane has an
-**Open in browser** button for it. PDF output goes where the other engines
-write theirs, so the viewer, export and the shared project PDF need nothing
-new.
+HTML output, reveal.js decks included, shows in the preview pane. Oleafly
+serves the build folder on a loopback-only address under a random path and
+shows it in a sandboxed frame on its own origin, so the page cannot call the
+app. **Open in browser** stays in the preview toolbar. PDF output goes where
+the other engines write theirs, so the viewer, export and the shared project
+PDF need nothing new.

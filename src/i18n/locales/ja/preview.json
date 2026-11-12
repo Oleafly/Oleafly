@@ -106,12 +106,8 @@
     "useTectonicForEveryone": "全員で Tectonic を使う"
   },
   "html": {
-    "builtTitle": "ウェブページとしてビルドしました",
-    "builtDetail": "{{time}} にビルドしました。ウェブページはブラウザで開きます。",
     "building": "ウェブページをビルドしています",
-    "buildingDetail": "完了したら、ブラウザで開けます。",
     "pendingTitle": "この文書はウェブページとしてビルドされます",
-    "pendingDetail": "コンパイルしてから、ブラウザで開いてください。",
     "open": "ブラウザで開く",
     "compile": "コンパイル"
   },

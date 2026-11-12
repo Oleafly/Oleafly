@@ -31,7 +31,10 @@ pub const MARKDOWN_BIBLIOGRAPHY_FILTER: &str =
     include_str!("../resources/pandoc/markdown-bibliography.lua");
 pub const DEFAULT_FONTS_FILTER_NAME: &str = "oleafly-default-fonts.lua";
 pub const DEFAULT_FONTS_FILTER: &str = include_str!("../resources/pandoc/default-fonts.lua");
-pub const MARKDOWN_FILTERS: [(&str, &str); 4] = [
+pub const DOCUMENT_KIND_FILTER_NAME: &str = "oleafly-document-kind.lua";
+pub const DOCUMENT_KIND_FILTER: &str = include_str!("../resources/pandoc/document-kind.lua");
+const DOCUMENT_KIND_METADATA: &str = "oleafly-document-kind";
+pub const MARKDOWN_FILTERS: [(&str, &str); 5] = [
     (MERMAID_FIGURES_FILTER_NAME, MERMAID_FIGURES_FILTER),
     (IMAGE_COMPAT_FILTER_NAME, IMAGE_COMPAT_FILTER),
     (
@@ -39,6 +42,7 @@ pub const MARKDOWN_FILTERS: [(&str, &str); 4] = [
         MARKDOWN_BIBLIOGRAPHY_FILTER,
     ),
     (DEFAULT_FONTS_FILTER_NAME, DEFAULT_FONTS_FILTER),
+    (DOCUMENT_KIND_FILTER_NAME, DOCUMENT_KIND_FILTER),
 ];
 pub const MARKDOWN_TYPST_VARIABLE: &str = "OLEAFLY_PANDOC_TYPST";
 const FALLBACK_BIBLIOGRAPHY_METADATA: &str = "oleafly-fallback-bibliography";
@@ -507,6 +511,142 @@ pub struct MarkdownPdfArgs<'a> {
     pub main: &'a Path,
     pub bibliographies: &'a [PathBuf],
     pub bundle_url: Option<&'a str>,
+    pub layout: MarkdownLayout,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum MarkdownKind {
+    #[default]
+    Article,
+    Report,
+    Book,
+    Slides,
+    Poster,
+    Letter,
+    Cv,
+}
+
+impl MarkdownKind {
+    fn parse(value: &str) -> Option<Self> {
+        Some(match value.to_lowercase().as_str() {
+            "article" | "paper" => Self::Article,
+            "report" | "thesis" | "dissertation" => Self::Report,
+            "book" => Self::Book,
+            "slide" | "slides" | "presentation" | "talk" => Self::Slides,
+            "poster" => Self::Poster,
+            "letter" => Self::Letter,
+            "cv" | "resume" | "r\u{e9}sum\u{e9}" => Self::Cv,
+            _ => return None,
+        })
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Article => "article",
+            Self::Report => "report",
+            Self::Book => "book",
+            Self::Slides => "slides",
+            Self::Poster => "poster",
+            Self::Letter => "letter",
+            Self::Cv => "cv",
+        }
+    }
+
+    pub fn writer(self) -> &'static str {
+        match self {
+            Self::Slides | Self::Poster => "beamer",
+            _ => "latex",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct MarkdownLayout {
+    pub kind: MarkdownKind,
+    pub slide_level: Option<u8>,
+    pub declares_class: bool,
+}
+
+impl MarkdownLayout {
+    pub fn beamer_slide_level(self) -> Option<u8> {
+        match self.kind {
+            MarkdownKind::Slides => Some(self.slide_level.unwrap_or(2)),
+            MarkdownKind::Poster => Some(0),
+            _ => None,
+        }
+    }
+
+    pub fn args(self, filter: &OsStr) -> Vec<OsString> {
+        if self.kind == MarkdownKind::Article {
+            return Vec::new();
+        }
+        let mut args: Vec<OsString> = self
+            .beamer_slide_level()
+            .map(|level| format!("--slide-level={level}").into())
+            .into_iter()
+            .collect();
+        if matches!(self.kind, MarkdownKind::Report | MarkdownKind::Book) && !self.declares_class {
+            args.push("--top-level-division=chapter".into());
+        }
+        args.push(format!("--metadata={DOCUMENT_KIND_METADATA}={}", self.kind.name()).into());
+        args.push(joined("--lua-filter=", filter));
+        args
+    }
+}
+
+const FRONT_MATTER_READ_LIMIT: u64 = 64 * 1024;
+
+pub fn front_matter(source: &str) -> Option<&str> {
+    let source = source.strip_prefix('\u{feff}').unwrap_or(source);
+    let mut lines = source.split_inclusive('\n');
+    let first = lines.next()?;
+    if first.trim_end() != "---" {
+        return None;
+    }
+    let start = first.len();
+    let mut end = start;
+    for line in lines {
+        let trimmed = line.trim_end();
+        if trimmed == "---" || trimmed == "..." {
+            return Some(&source[start..end]);
+        }
+        end += line.len();
+    }
+    None
+}
+
+fn top_level_value<'a>(front_matter: &'a str, key: &str) -> Option<&'a str> {
+    front_matter.lines().find_map(|line| {
+        let value = line.strip_prefix(key)?.strip_prefix(':')?;
+        let value = value.split_once(" #").map_or(value, |(value, _)| value);
+        Some(
+            value
+                .trim()
+                .trim_matches(|quote| quote == '"' || quote == '\''),
+        )
+    })
+}
+
+fn layout_in(source: &str) -> MarkdownLayout {
+    let Some(front_matter) = front_matter(source) else {
+        return MarkdownLayout::default();
+    };
+    MarkdownLayout {
+        kind: top_level_value(front_matter, "type")
+            .and_then(MarkdownKind::parse)
+            .unwrap_or_default(),
+        slide_level: top_level_value(front_matter, "slide-level")
+            .and_then(|level| level.parse::<u8>().ok())
+            .filter(|level| *level <= 6),
+        declares_class: top_level_value(front_matter, "documentclass")
+            .is_some_and(|class| !class.is_empty()),
+    }
+}
+
+pub fn markdown_layout(document: &Path) -> MarkdownLayout {
+    crate::read_bounded(document, FRONT_MATTER_READ_LIMIT)
+        .map(|read| layout_in(&read.lossy_text()))
+        .unwrap_or_default()
 }
 
 fn joined(prefix: &str, value: &OsStr) -> OsString {
@@ -516,12 +656,12 @@ fn joined(prefix: &str, value: &OsStr) -> OsString {
 }
 
 pub fn markdown_pdf_args(spec: &MarkdownPdfArgs<'_>) -> Vec<OsString> {
-    let mut args: Vec<OsString> = vec![
-        spec.resource_argument.to_owned(),
-        "--from=markdown".into(),
-        "--standalone".into(),
-        joined("--pdf-engine=", spec.tectonic.as_os_str()),
-    ];
+    let mut args: Vec<OsString> = vec![spec.resource_argument.to_owned(), "--from=markdown".into()];
+    if spec.layout.kind.writer() == "beamer" {
+        args.push("--to=beamer".into());
+    }
+    args.push("--standalone".into());
+    args.push(joined("--pdf-engine=", spec.tectonic.as_os_str()));
     if let Some(url) = spec.bundle_url {
         args.push("--pdf-engine-opt=--bundle".into());
         args.push(joined("--pdf-engine-opt=", OsStr::new(url)));
@@ -546,6 +686,7 @@ pub fn markdown_pdf_args(spec: &MarkdownPdfArgs<'_>) -> Vec<OsString> {
         ));
     }
     args.push("--citeproc".into());
+    args.extend(spec.layout.args(OsStr::new(DOCUMENT_KIND_FILTER_NAME)));
     args.push(format!("--lua-filter={DEFAULT_FONTS_FILTER_NAME}").into());
     args.push("--".into());
     args.push(spec.main.as_os_str().to_owned());

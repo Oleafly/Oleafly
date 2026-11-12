@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   writeBytesFile: vi.fn(),
   logError: vi.fn(),
   openCompiledHtml: vi.fn(async (_projectId: string) => {}),
+  compiledHtmlPreviewUrl: vi.fn(async (_projectId: string) => "http://127.0.0.1:4321/0123abcd/report.html"),
 }));
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => mocks.native }));
@@ -30,7 +31,10 @@ vi.mock("@/lib/tauri", () => ({
 }));
 vi.mock("@/lib/native-file-dialog", () => ({ pickSavePath: mocks.pickSavePath }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
-vi.mock("@/lib/notebook-commands", () => ({ openCompiledHtml: mocks.openCompiledHtml }));
+vi.mock("@/lib/notebook-commands", () => ({
+  openCompiledHtml: mocks.openCompiledHtml,
+  compiledHtmlPreviewUrl: mocks.compiledHtmlPreviewUrl,
+}));
 
 vi.mock("@tauri-apps/api/event", () => ({
   emitTo: vi.fn(async () => {}),
@@ -593,13 +597,16 @@ describe("detached preview of a notebook", () => {
     htmlOutput: { projectId: "alpha", path: "/alpha/.oleafly/build/report.html", builtAt: Date.UTC(2026, 9, 24, 9) },
   };
 
-  it("opens the built page in the browser and sends the code choice to the main window", async () => {
+  it("shows the built page, opens it in the browser and sends the code choice to the main window", async () => {
     mocks.native = true;
     render(<PreviewWindow />);
     await vi.waitFor(() => expect(mocks.listeners.has("preview:workspace")).toBe(true));
     act(() => mocks.listeners.get("preview:workspace")?.({ payload: quartoWorkspace }));
     const user = userEvent.setup();
-    expect(screen.getByTestId("html-output-panel")).toHaveTextContent(enPreview.html.builtTitle);
+    expect(await screen.findByTitle("report.html")).toHaveAttribute(
+      "src",
+      `http://127.0.0.1:4321/0123abcd/report.html?v=${Date.UTC(2026, 9, 24, 9)}`,
+    );
     await user.click(screen.getByRole("button", { name: enPreview.html.open }));
     expect(mocks.openCompiledHtml).toHaveBeenCalledExactlyOnceWith("alpha");
 

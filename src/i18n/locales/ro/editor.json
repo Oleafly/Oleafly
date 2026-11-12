@@ -1413,7 +1413,8 @@
     "fields": {
       "secnumdepth": "Niveluri numerotate",
       "numberSections": "Numerotarea secțiunilor",
-      "documentClass": "Clasa documentului"
+      "documentClass": "Clasa documentului",
+      "documentType": "Tipul documentului"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1438,6 +1439,15 @@
       "depthSubsubsections": "Până la subsubsecțiuni",
       "depthParagraphs": "Până la paragrafe",
       "depthSubparagraphs": "Până la subparagrafe"
+    },
+    "documentTypes": {
+      "article": "Articol",
+      "report": "Raport sau teză",
+      "book": "Carte",
+      "slides": "Diapozitive",
+      "poster": "Poster",
+      "letter": "Scrisoare",
+      "cv": "CV"
     },
     "locked": {
       "class": "Setat de clasa {{name}}",

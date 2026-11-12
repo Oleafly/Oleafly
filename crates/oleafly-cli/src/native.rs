@@ -1203,6 +1203,7 @@ impl NativeCompiler {
                     main: &main,
                     bibliographies: &bibliographies,
                     bundle_url: bundle_url.as_deref(),
+                    layout: engine_spec::markdown_layout(build.source_path()),
                 });
                 environment.extend(
                     TEMP_DIRECTORY_VARIABLES

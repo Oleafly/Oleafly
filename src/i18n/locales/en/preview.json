@@ -107,12 +107,8 @@
     "useTectonicForEveryone": "Use Tectonic for everyone"
   },
   "html": {
-    "builtTitle": "Built as a web page",
-    "builtDetail": "Built at {{time}}. Web pages open in your browser.",
     "building": "Building the web page",
-    "buildingDetail": "When it's done, you can open it in your browser.",
     "pendingTitle": "This document builds to a web page",
-    "pendingDetail": "Compile it, then open it in your browser.",
     "open": "Open in browser",
     "compile": "Compile"
   },

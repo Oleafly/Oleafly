@@ -1429,7 +1429,8 @@
     "fields": {
       "secnumdepth": "Нумеровані рівні",
       "numberSections": "Номери розділів",
-      "documentClass": "Клас документа"
+      "documentClass": "Клас документа",
+      "documentType": "Тип документа"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1454,6 +1455,15 @@
       "depthSubsubsections": "До підпідрозділів",
       "depthParagraphs": "До параграфів",
       "depthSubparagraphs": "До підпараграфів"
+    },
+    "documentTypes": {
+      "article": "Стаття",
+      "report": "Звіт або дисертація",
+      "book": "Книга",
+      "slides": "Слайди",
+      "poster": "Постер",
+      "letter": "Лист",
+      "cv": "Резюме"
     },
     "locked": {
       "class": "Задано класом {{name}}",

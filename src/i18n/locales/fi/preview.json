@@ -107,12 +107,8 @@
     "useTectonicForEveryone": "Käytä Tectonicia kaikille"
   },
   "html": {
-    "builtTitle": "Käännetty verkkosivuksi",
-    "builtDetail": "Käännetty klo {{time}}. Verkkosivut avautuvat selaimessa.",
     "building": "Käännetään verkkosivua",
-    "buildingDetail": "Kun se on valmis, voit avata sen selaimessa.",
     "pendingTitle": "Tästä dokumentista käännetään verkkosivu",
-    "pendingDetail": "Käännä se ja avaa se sitten selaimessa.",
     "open": "Avaa selaimessa",
     "compile": "Käännä"
   },

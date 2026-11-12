@@ -22,6 +22,7 @@ import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
 import { usePreviewGeometry } from "@/lib/preview-geometry";
 import type { PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
 import { HtmlOutputPanel } from "./HtmlOutputPanel";
+import { openHtmlInBrowser } from "./open-compiled-html";
 import {
   useCallback,
   useDeferredValue,
@@ -958,11 +959,7 @@ export function PreviewWindow({
           : undefined
       }
     >
-      {htmlBuiltAt !== null && (
-        <div className="flex h-full items-center justify-center px-6">
-          <HtmlOutputPanel projectId={projectId} builtAt={htmlBuiltAt} />
-        </div>
-      )}
+      {htmlBuiltAt !== null && <HtmlOutputPanel projectId={projectId} builtAt={htmlBuiltAt} />}
       {htmlBuiltAt === null && (previewDocument ? (
         <ErrorBoundary
           resetKey={`${previewDocument.identity}:${viewerReload}`}
@@ -1175,6 +1172,7 @@ export function PreviewWindow({
           isFs={isFs} setFsToolbarHidden={setFsToolbarHidden} toggleFullscreen={toggleFullscreen}
           detached onWindow={() => void getCurrentWindow().close()}
           onSettings={() => void command({ action: "pdf-settings" })}
+          onOpenInBrowser={htmlBuiltAt === null ? undefined : () => void openHtmlInBrowser(projectId)}
           onPresent={(mode) =>
             void present({
               projectId,

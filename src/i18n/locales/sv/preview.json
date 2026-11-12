@@ -107,12 +107,8 @@
     "useTectonicForEveryone": "Använd Tectonic för alla"
   },
   "html": {
-    "builtTitle": "Byggd som webbsida",
-    "builtDetail": "Byggd kl. {{time}}. Webbsidor öppnas i webbläsaren.",
     "building": "Bygger webbsidan",
-    "buildingDetail": "När den är klar kan du öppna den i webbläsaren.",
     "pendingTitle": "Det här dokumentet byggs som en webbsida",
-    "pendingDetail": "Kompilera det och öppna det sedan i webbläsaren.",
     "open": "Öppna i webbläsaren",
     "compile": "Kompilera"
   },

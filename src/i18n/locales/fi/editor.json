@@ -1397,7 +1397,8 @@
     "fields": {
       "secnumdepth": "Numeroidut tasot",
       "numberSections": "Lukujen numerot",
-      "documentClass": "Dokumenttiluokka"
+      "documentClass": "Dokumenttiluokka",
+      "documentType": "Asiakirjan tyyppi"
     },
     "placeholders": {
       "latexLang": "finnish",
@@ -1422,6 +1423,15 @@
       "depthSubsubsections": "Alialalukuihin asti",
       "depthParagraphs": "Kappaleisiin asti",
       "depthSubparagraphs": "Alikappaleisiin asti"
+    },
+    "documentTypes": {
+      "article": "Artikkeli",
+      "report": "Raportti tai opinnäyte",
+      "book": "Kirja",
+      "slides": "Diat",
+      "poster": "Posteri",
+      "letter": "Kirje",
+      "cv": "Ansioluettelo"
     },
     "locked": {
       "class": "Luokan {{name}} asettama",

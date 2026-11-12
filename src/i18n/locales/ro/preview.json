@@ -108,12 +108,8 @@
     "useTectonicForEveryone": "Folosește Tectonic pentru toți"
   },
   "html": {
-    "builtTitle": "Compilat ca pagină web",
-    "builtDetail": "Compilat la {{time}}. Paginile web se deschid în browser.",
     "building": "Se compilează pagina web",
-    "buildingDetail": "Când pagina e gata, o poți deschide în browser.",
     "pendingTitle": "Acest document se compilează într-o pagină web",
-    "pendingDetail": "Compilează-l, apoi deschide-l în browser.",
     "open": "Deschide în browser",
     "compile": "Compilează"
   },

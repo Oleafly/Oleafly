@@ -109,12 +109,8 @@
     "useTectonicForEveryone": "Użyj Tectonic dla wszystkich"
   },
   "html": {
-    "builtTitle": "Skompilowano jako stronę internetową",
-    "builtDetail": "Skompilowano o {{time}}. Strony internetowe otwierają się w przeglądarce.",
     "building": "Kompilowanie strony internetowej",
-    "buildingDetail": "Gdy będzie gotowa, możesz otworzyć ją w przeglądarce.",
     "pendingTitle": "Ten dokument kompiluje się do strony internetowej",
-    "pendingDetail": "Skompiluj go, a potem otwórz w przeglądarce.",
     "open": "Otwórz w przeglądarce",
     "compile": "Kompiluj"
   },
