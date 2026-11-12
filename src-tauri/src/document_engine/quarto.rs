@@ -12,6 +12,7 @@ use crate::notebook_toolchain::NotebookTool;
 mod code_off;
 mod siblings;
 
+pub(crate) use oleafly_core::engine_spec::front_matter;
 pub(crate) use siblings::SiblingHold;
 
 pub(super) struct QuartoEngine;
@@ -715,25 +716,6 @@ pub(crate) fn target_for_file(input: &Path, project_dir: Option<&Path>) -> Quart
         None => Vec::new(),
     };
     quarto_target(&source, &yaml)
-}
-
-pub(crate) fn front_matter(source: &str) -> Option<&str> {
-    let source = source.strip_prefix('\u{feff}').unwrap_or(source);
-    let mut lines = source.split_inclusive('\n');
-    let first = lines.next()?;
-    if first.trim_end() != "---" {
-        return None;
-    }
-    let start = first.len();
-    let mut end = start;
-    for line in lines {
-        let trimmed = line.trim_end();
-        if trimmed == "---" || trimmed == "..." {
-            return Some(&source[start..end]);
-        }
-        end += line.len();
-    }
-    None
 }
 
 fn yaml_mapping(text: &str) -> Option<serde_norway::Mapping> {

@@ -107,12 +107,8 @@
     "useTectonicForEveryone": "Tectonic gebruiken voor iedereen"
   },
   "html": {
-    "builtTitle": "Gebouwd als webpagina",
-    "builtDetail": "Gebouwd om {{time}}. Webpagina's openen in je browser.",
     "building": "De webpagina bouwen",
-    "buildingDetail": "Als het klaar is, kun je de pagina openen in je browser.",
     "pendingTitle": "Dit document wordt gebouwd als webpagina",
-    "pendingDetail": "Compileer het en open het daarna in je browser.",
     "open": "Openen in browser",
     "compile": "Compileren"
   },

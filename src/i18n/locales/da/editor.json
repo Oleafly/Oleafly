@@ -1397,7 +1397,8 @@
     "fields": {
       "secnumdepth": "Nummererede niveauer",
       "numberSections": "Afsnitsnumre",
-      "documentClass": "Dokumentklasse"
+      "documentClass": "Dokumentklasse",
+      "documentType": "Dokumenttype"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1422,6 +1423,15 @@
       "depthSubsubsections": "Ned til underunderafsnit",
       "depthParagraphs": "Ned til paragraffer",
       "depthSubparagraphs": "Ned til underparagraffer"
+    },
+    "documentTypes": {
+      "article": "Artikel",
+      "report": "Rapport eller afhandling",
+      "book": "Bog",
+      "slides": "Slides",
+      "poster": "Plakat",
+      "letter": "Brev",
+      "cv": "CV"
     },
     "locked": {
       "class": "Angivet af klassen {{name}}",

@@ -6128,6 +6128,7 @@ dependencies = [
  "oleafly-secrets",
  "oleafly-server",
  "open",
+ "percent-encoding",
  "plist",
  "png 0.18.1",
  "portable-pty",

@@ -829,7 +829,7 @@ fn compiled_html_in(build: &Path, document: Option<&Path>) -> Option<PathBuf> {
         .find(|html| is_plain_file(html))
 }
 
-fn compiled_html(project_id: &str) -> Result<PathBuf, String> {
+pub(crate) fn compiled_html(project_id: &str) -> Result<PathBuf, String> {
     let build = crate::paths::existing_build_dir(project_id)?
         .ok_or_else(|| String::from(AppError::new("notebook.no_html_output")))?;
     let document = crate::project::read_meta(project_id)

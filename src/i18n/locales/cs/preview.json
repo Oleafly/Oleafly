@@ -109,12 +109,8 @@
     "useTectonicForEveryone": "Použít Tectonic pro všechny"
   },
   "html": {
-    "builtTitle": "Sestaveno jako webová stránka",
-    "builtDetail": "Sestaveno v {{time}}. Webové stránky se otevírají v prohlížeči.",
     "building": "Sestavuje se webová stránka",
-    "buildingDetail": "Až bude hotová, můžete ji otevřít v prohlížeči.",
     "pendingTitle": "Výstupem tohoto dokumentu je webová stránka",
-    "pendingDetail": "Zkompilujte ho a pak ho otevřete v prohlížeči.",
     "open": "Otevřít v prohlížeči",
     "compile": "Kompilovat"
   },

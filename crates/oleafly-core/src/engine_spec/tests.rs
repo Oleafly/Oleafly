@@ -677,6 +677,7 @@ fn markdown_pdf_args_sandbox_filter_citeproc_and_bundle_pin() {
         main: Path::new("/p/main.md"),
         bibliographies: &[PathBuf::from("sources/refs.bib")],
         bundle_url: Some("https://m/x.tar"),
+        layout: MarkdownLayout::default(),
     }));
     let bibliography = format!(
         "--metadata=oleafly-fallback-bibliography={}",
@@ -717,6 +718,7 @@ fn markdown_pdf_args_search_the_main_folder_before_the_project() {
         main: Path::new("/p/notes/main.md"),
         bibliographies: &[],
         bundle_url: None,
+        layout: MarkdownLayout::default(),
     }));
     let position = |wanted: &str| args.iter().position(|arg| arg == wanted).unwrap();
     assert!(
@@ -737,11 +739,185 @@ fn the_bibliography_filter_runs_before_citeproc_and_fonts_after_it() {
         main: Path::new("/p/main.md"),
         bibliographies: &[],
         bundle_url: None,
+        layout: MarkdownLayout::default(),
     }));
     let position = |wanted: String| args.iter().position(|arg| *arg == wanted).unwrap();
     let citeproc = position("--citeproc".to_owned());
     assert!(position(format!("--lua-filter={MARKDOWN_BIBLIOGRAPHY_FILTER_NAME}")) < citeproc);
     assert!(position(format!("--lua-filter={DEFAULT_FONTS_FILTER_NAME}")) > citeproc);
+}
+
+fn layout_args(layout: MarkdownLayout) -> Vec<String> {
+    strings(markdown_pdf_args(&MarkdownPdfArgs {
+        resource_argument: OsStr::new("--resource-path=/p"),
+        tectonic: Path::new("/t/tectonic"),
+        project: Path::new("/p"),
+        search_folders: &[PathBuf::from("/p")],
+        output: Path::new("/b/out.pdf"),
+        main: Path::new("/p/main.md"),
+        bibliographies: &[],
+        bundle_url: None,
+        layout,
+    }))
+}
+
+fn of_kind(kind: MarkdownKind) -> MarkdownLayout {
+    MarkdownLayout {
+        kind,
+        ..MarkdownLayout::default()
+    }
+}
+
+fn after_citeproc(args: &[String]) -> Vec<&str> {
+    let citeproc = args.iter().position(|arg| arg == "--citeproc").unwrap();
+    args[citeproc + 1..args.len() - 3]
+        .iter()
+        .map(String::as_str)
+        .collect()
+}
+
+#[test]
+fn an_article_keeps_the_plain_pandoc_arguments() {
+    for layout in [MarkdownLayout::default(), of_kind(MarkdownKind::Article)] {
+        let args = layout_args(layout);
+        assert!(!args.iter().any(|arg| arg.starts_with("--to=")));
+        assert_eq!(after_citeproc(&args), Vec::<&str>::new());
+    }
+}
+
+#[test]
+fn slides_and_posters_are_written_as_beamer() {
+    let slides = layout_args(of_kind(MarkdownKind::Slides));
+    assert_eq!(
+        slides[1..4],
+        ["--from=markdown", "--to=beamer", "--standalone"]
+    );
+    assert_eq!(
+        after_citeproc(&slides),
+        [
+            "--slide-level=2",
+            "--metadata=oleafly-document-kind=slides",
+            "--lua-filter=oleafly-document-kind.lua"
+        ]
+    );
+    let poster = layout_args(of_kind(MarkdownKind::Poster));
+    assert!(poster.iter().any(|arg| arg == "--to=beamer"));
+    assert_eq!(
+        after_citeproc(&poster)[..2],
+        ["--slide-level=0", "--metadata=oleafly-document-kind=poster"]
+    );
+    let tuned = layout_args(MarkdownLayout {
+        kind: MarkdownKind::Slides,
+        slide_level: Some(1),
+        declares_class: false,
+    });
+    assert_eq!(after_citeproc(&tuned)[0], "--slide-level=1");
+}
+
+#[test]
+fn reports_and_books_open_with_chapters_unless_the_class_is_named() {
+    for (kind, name) in [
+        (MarkdownKind::Report, "report"),
+        (MarkdownKind::Book, "book"),
+    ] {
+        let args = layout_args(of_kind(kind));
+        assert!(!args.iter().any(|arg| arg.starts_with("--to=")));
+        assert_eq!(
+            after_citeproc(&args),
+            [
+                "--top-level-division=chapter",
+                format!("--metadata=oleafly-document-kind={name}").as_str(),
+                "--lua-filter=oleafly-document-kind.lua"
+            ]
+        );
+        let named = layout_args(MarkdownLayout {
+            declares_class: true,
+            ..of_kind(kind)
+        });
+        assert!(!named
+            .iter()
+            .any(|arg| arg.starts_with("--top-level-division")));
+    }
+}
+
+#[test]
+fn letters_and_cvs_only_add_the_kind_filter() {
+    for (kind, name) in [(MarkdownKind::Letter, "letter"), (MarkdownKind::Cv, "cv")] {
+        let args = layout_args(of_kind(kind));
+        assert!(!args.iter().any(|arg| arg.starts_with("--to=")));
+        assert_eq!(
+            after_citeproc(&args),
+            [
+                format!("--metadata=oleafly-document-kind={name}").as_str(),
+                "--lua-filter=oleafly-document-kind.lua"
+            ]
+        );
+    }
+}
+
+#[test]
+fn front_matter_type_names_the_kind() {
+    for (source, expected) in [
+        ("---\ntype: slide\n---\n# A\n", MarkdownKind::Slides),
+        (
+            "---\ntitle: T\ntype: \"slides\"\n---\n",
+            MarkdownKind::Slides,
+        ),
+        (
+            "\u{feff}---\ntype: 'Presentation' # talk\n...\n",
+            MarkdownKind::Slides,
+        ),
+        (
+            "---\r\ntitle: T\r\ntype: thesis\r\n---\r\n",
+            MarkdownKind::Report,
+        ),
+        ("---\ntype: report\n---\n", MarkdownKind::Report),
+        ("---\ntype: book\n---\n", MarkdownKind::Book),
+        ("---\ntype: poster\n---\n", MarkdownKind::Poster),
+        ("---\ntype: letter\n---\n", MarkdownKind::Letter),
+        ("---\ntype: R\u{e9}sum\u{e9}\n---\n", MarkdownKind::Cv),
+        ("---\ntype: cv\n---\n", MarkdownKind::Cv),
+        ("---\ntype: article\n---\n", MarkdownKind::Article),
+    ] {
+        assert_eq!(layout_in(source).kind, expected, "{source:?}");
+    }
+    for source in [
+        "# type: slide\n",
+        "---\ntype: chapter\n---\n",
+        "---\nmeta:\n  type: slide\n---\n",
+        "---\ntypes: slide\n---\n",
+        "---\ntype: slide\n",
+        "text\n---\ntype: slide\n---\n",
+    ] {
+        assert_eq!(layout_in(source), MarkdownLayout::default(), "{source:?}");
+    }
+    assert_eq!(
+        layout_in("---\ntype: slides\nslide-level: 1\ndocumentclass: memoir\n---\n"),
+        MarkdownLayout {
+            kind: MarkdownKind::Slides,
+            slide_level: Some(1),
+            declares_class: true,
+        }
+    );
+    assert_eq!(
+        layout_in("---\ntype: slides\nslide-level: 9\n---\n").slide_level,
+        None
+    );
+}
+
+#[test]
+fn the_layout_is_read_from_the_document_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let talk = dir.path().join("talk.md");
+    std::fs::write(&talk, "---\ntype: slide\n---\n## One\n").unwrap();
+    assert_eq!(markdown_layout(&talk).kind, MarkdownKind::Slides);
+    let paper = dir.path().join("paper.md");
+    std::fs::write(&paper, "# Paper\n").unwrap();
+    assert_eq!(markdown_layout(&paper), MarkdownLayout::default());
+    assert_eq!(
+        markdown_layout(&dir.path().join("missing.md")),
+        MarkdownLayout::default()
+    );
 }
 
 #[test]
@@ -766,6 +942,7 @@ fn markdown_filters_stay_free_of_lua_comments() {
             MARKDOWN_BIBLIOGRAPHY_FILTER,
         ),
         (DEFAULT_FONTS_FILTER_NAME, DEFAULT_FONTS_FILTER),
+        (DOCUMENT_KIND_FILTER_NAME, DOCUMENT_KIND_FILTER),
     ] {
         assert!(
             !filter

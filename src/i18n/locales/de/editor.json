@@ -1397,7 +1397,8 @@
     "fields": {
       "secnumdepth": "Nummerierte Ebenen",
       "numberSections": "Abschnittsnummern",
-      "documentClass": "Dokumentklasse"
+      "documentClass": "Dokumentklasse",
+      "documentType": "Dokumenttyp"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1422,6 +1423,15 @@
       "depthSubsubsections": "Bis zu Unterunterabschnitten",
       "depthParagraphs": "Bis zu Paragraphen",
       "depthSubparagraphs": "Bis zu Unterparagraphen"
+    },
+    "documentTypes": {
+      "article": "Artikel",
+      "report": "Bericht oder Abschlussarbeit",
+      "book": "Buch",
+      "slides": "Folien",
+      "poster": "Poster",
+      "letter": "Brief",
+      "cv": "Lebenslauf"
     },
     "locked": {
       "class": "Durch die Klasse {{name}} gesetzt",

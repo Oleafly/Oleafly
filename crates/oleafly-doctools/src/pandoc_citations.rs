@@ -546,6 +546,10 @@ fn write_staged(filter: &ExportFilter, data: &str) -> Result<(), String> {
             oleafly_core::engine_spec::DEFAULT_FONTS_FILTER_NAME,
             oleafly_core::engine_spec::DEFAULT_FONTS_FILTER,
         ),
+        (
+            oleafly_core::engine_spec::DOCUMENT_KIND_FILTER_NAME,
+            oleafly_core::engine_spec::DOCUMENT_KIND_FILTER,
+        ),
     ] {
         std::fs::write(dir.join(name), filter)
             .map_err(|error| format!("Could not prepare the citation filter: {error}"))?;

@@ -10,6 +10,7 @@ import {
   type LatexSettingKey,
 } from "@/features/latex-document-settings";
 import {
+  MARKDOWN_DOCUMENT_TYPES,
   markdownSettingsEdits,
   readMarkdownDocumentSettings,
   validateMarkdownSetting,
@@ -159,6 +160,8 @@ function sharedLabel(key: string): string {
       return i18n.t(($) => $.editor.documentSettings.fields.secnumdepth);
     case "numberSections":
       return i18n.t(($) => $.editor.documentSettings.fields.numberSections);
+    case "documentType":
+      return i18n.t(($) => $.editor.documentSettings.fields.documentType);
     default:
       return i18n.t(($) => $.editor.documentSettings.fields.documentClass);
   }
@@ -193,6 +196,18 @@ const SHARED_OPTION_LABELS: ReadonlyMap<string, ReadonlyMap<string, () => string
     new Map([
       ["true", () => i18n.t(($) => $.editor.documentSettings.options.numbered)],
       ["false", () => i18n.t(($) => $.editor.documentSettings.options.unnumbered)],
+    ]),
+  ],
+  [
+    "documentType",
+    new Map([
+      ["article", () => i18n.t(($) => $.editor.documentSettings.documentTypes.article)],
+      ["report", () => i18n.t(($) => $.editor.documentSettings.documentTypes.report)],
+      ["book", () => i18n.t(($) => $.editor.documentSettings.documentTypes.book)],
+      ["slides", () => i18n.t(($) => $.editor.documentSettings.documentTypes.slides)],
+      ["poster", () => i18n.t(($) => $.editor.documentSettings.documentTypes.poster)],
+      ["letter", () => i18n.t(($) => $.editor.documentSettings.documentTypes.letter)],
+      ["cv", () => i18n.t(($) => $.editor.documentSettings.documentTypes.cv)],
     ]),
   ],
 ]);
@@ -311,12 +326,13 @@ const markdownProvider: DocumentSettingsProvider = {
   id: "markdown",
   file: /\.(?:md|markdown)$/iu,
   sections: [
-    { id: "page", fields: ["documentClass", "paper", "columns", "margin"] },
+    { id: "page", fields: ["documentType", "documentClass", "paper", "columns", "margin"] },
     { id: "text", fields: ["font", "fontSize", "lang"] },
     { id: "paragraph", fields: ["lineSpacing"] },
     { id: "numbering", fields: ["numberSections"] },
   ],
   selectOptions: {
+    documentType: MARKDOWN_DOCUMENT_TYPES,
     documentClass: ["article", "report", "book", "scrartcl", "scrreprt", "memoir"],
     paper: ["a4", "letter", "a5", "legal"],
     columns: ["onecolumn", "twocolumn"],

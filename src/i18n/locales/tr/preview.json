@@ -107,12 +107,8 @@
     "useTectonicForEveryone": "Herkes için Tectonic kullan"
   },
   "html": {
-    "builtTitle": "Web sayfası olarak derlendi",
-    "builtDetail": "Derleme saati: {{time}}. Web sayfaları tarayıcınızda açılır.",
     "building": "Web sayfası derleniyor",
-    "buildingDetail": "Derleme bitince sayfayı tarayıcınızda açabilirsiniz.",
     "pendingTitle": "Bu belge bir web sayfası olarak derlenir",
-    "pendingDetail": "Belgeyi derleyin, sonra tarayıcınızda açın.",
     "open": "Tarayıcıda aç",
     "compile": "Derle"
   },

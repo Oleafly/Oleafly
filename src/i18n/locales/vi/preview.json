@@ -106,12 +106,8 @@
     "useTectonicForEveryone": "Dùng Tectonic cho tất cả mọi người"
   },
   "html": {
-    "builtTitle": "Đã dựng thành trang web",
-    "builtDetail": "Dựng lúc {{time}}. Trang web mở trong trình duyệt của bạn.",
     "building": "Đang dựng trang web",
-    "buildingDetail": "Khi xong, bạn có thể mở nó trong trình duyệt.",
     "pendingTitle": "Tài liệu này dựng thành trang web",
-    "pendingDetail": "Hãy biên dịch, rồi mở nó trong trình duyệt.",
     "open": "Mở trong trình duyệt",
     "compile": "Biên dịch"
   },

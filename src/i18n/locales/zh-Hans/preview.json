@@ -106,12 +106,8 @@
     "useTectonicForEveryone": "为所有人使用 Tectonic"
   },
   "html": {
-    "builtTitle": "已构建为网页",
-    "builtDetail": "构建于 {{time}}。网页会在你的浏览器中打开。",
     "building": "正在构建网页",
-    "buildingDetail": "完成后，你可以在浏览器中打开它。",
     "pendingTitle": "此文档会构建为网页",
-    "pendingDetail": "请先编译，然后在浏览器中打开。",
     "open": "在浏览器中打开",
     "compile": "编译"
   },

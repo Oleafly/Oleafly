@@ -1324,6 +1324,7 @@ fn markdown_compile_spec(
             main: &main,
             bibliographies: &bibliographies,
             bundle_url: Some(&bundle_url),
+            layout: oleafly_core::engine_spec::markdown_layout(&input),
         })
         .into_iter()
         .map(|arg| arg.to_string_lossy().into_owned())
@@ -6452,6 +6453,23 @@ mod tests {
             spec.environment.time_limit(),
             oleafly_core::compile_limit::MARKDOWN_PDF_TIME_LIMIT
         );
+    }
+
+    #[test]
+    fn a_markdown_deck_compiles_to_beamer_slides() {
+        let bases = tempfile::tempdir().unwrap();
+        let project = tempfile::tempdir().unwrap();
+        std::fs::write(
+            project.path().join("main.md"),
+            "---\ntype: slide\n---\n## One\n",
+        )
+        .unwrap();
+        let spec = markdown_spec_with(
+            Path::new("/build"),
+            project.path(),
+            test_scratch(bases.path()),
+        );
+        assert!(spec.args.iter().any(|arg| arg == "--to=beamer"));
     }
 
     #[test]

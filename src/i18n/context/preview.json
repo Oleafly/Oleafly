@@ -75,7 +75,6 @@
     }
   },
   "html": {
-    "builtDetail": "{{time}} is a clock time such as 14:05.",
     "open": "Button that opens the compiled HTML page in the default web browser."
   }
 }

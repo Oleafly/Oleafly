@@ -108,12 +108,8 @@
     "useTectonicForEveryone": "Usar Tectonic para todos"
   },
   "html": {
-    "builtTitle": "Gerado como página da web",
-    "builtDetail": "Gerado às {{time}}. Páginas da web abrem no seu navegador.",
     "building": "Gerando a página da web",
-    "buildingDetail": "Quando terminar, você pode abri-la no seu navegador.",
     "pendingTitle": "Este documento gera uma página da web",
-    "pendingDetail": "Compile-o e depois abra-o no seu navegador.",
     "open": "Abrir no navegador",
     "compile": "Compilar"
   },
