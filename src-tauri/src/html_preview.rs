@@ -106,7 +106,7 @@ fn preview_url(html: &Path) -> Result<String, String> {
         .ok_or_else(missing)?;
     let name = html
         .file_name()
-        .and_then(|name| name.to_str())
+        .and_then(std::ffi::OsStr::to_str)
         .ok_or_else(missing)?;
     let port = port()
         .map_err(|error| String::from(AppError::new("notebook.open_html_failed").detail(error)))?;
