@@ -104,6 +104,7 @@ export function ProjectSearch() {
         {shownHits.map((hit) => (
           <button type="button"
             key={objectKey(hit, "search-hit")}
+            data-testid="project-search-hit"
             onClick={() => void open(hit)}
             className="block w-full cursor-pointer rounded-md px-2 py-1.5 text-left hover:bg-sidebar-accent"
           >

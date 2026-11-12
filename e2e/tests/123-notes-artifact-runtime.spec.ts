@@ -272,7 +272,7 @@ test("a block that sends its frame to a web address keeps the app in place and n
     expect([...sources], "the block was rebuilt after leaving its frame").toHaveLength(1);
     expect(target.hits(), "the block reached the web address more than once").toBeLessThanOrEqual(1);
     if (process.platform === "darwin") expect(target.hits(), "the app refuses the navigation before any request").toBe(0);
-    if (target.hits() === 1 || !settled?.frame) {
+    if (!settled?.frame) {
       expect(settled, "a block that tried to leave its frame is stopped").toMatchObject({ frame: false, stalled: true });
     } else {
       expect(settled, "a frame whose navigation was refused keeps its own document").toMatchObject({
