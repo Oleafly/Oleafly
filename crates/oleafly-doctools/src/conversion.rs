@@ -1,7 +1,8 @@
 use std::path::{Path, PathBuf};
 
 use oleafly_core::engine_spec::{
-    DEFAULT_FONTS_FILTER, DEFAULT_FONTS_FILTER_NAME, MERMAID_FIGURES_FILTER_NAME,
+    MarkdownKind, MarkdownLayout, DEFAULT_FONTS_FILTER, DEFAULT_FONTS_FILTER_NAME,
+    DOCUMENT_KIND_FILTER_NAME, MERMAID_FIGURES_FILTER_NAME,
 };
 
 pub struct ImportPlan {
@@ -527,6 +528,44 @@ pub fn export_reads_raw_frames(format: &str, file_name: &str, source: &str) -> b
         && export_reader(file_name) == "latex"
         && is_beamer_source(source)
         && has_frame_shorthand(source)
+}
+
+pub fn apply_markdown_layout(
+    args: &mut Vec<String>,
+    format: &str,
+    layout: MarkdownLayout,
+    filter: Option<&Path>,
+) {
+    match format {
+        "tex" => {
+            let Some(filter) = filter.filter(|_| layout.kind != MarkdownKind::Article) else {
+                return;
+            };
+            if let Some(writer) = args.iter_mut().find(|arg| arg.starts_with("--to=")) {
+                *writer = format!("--to={}", layout.kind.writer());
+            }
+            let at = args
+                .iter()
+                .rposition(|arg| arg == "--")
+                .unwrap_or(args.len());
+            let kind_filter = filter.with_file_name(DOCUMENT_KIND_FILTER_NAME);
+            let added = layout
+                .args(kind_filter.as_os_str())
+                .into_iter()
+                .map(|arg| arg.to_string_lossy().into_owned());
+            args.splice(at..at, added);
+        }
+        "pptx" => {
+            let level = layout
+                .slide_level
+                .filter(|_| layout.kind == MarkdownKind::Slides);
+            let at = args.iter().position(|arg| arg == "--slide-level");
+            if let (Some(level), Some(at)) = (level, at) {
+                args[at + 1] = level.to_string();
+            }
+        }
+        _ => {}
+    }
 }
 
 pub fn export_args(

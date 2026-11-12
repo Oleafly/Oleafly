@@ -3,8 +3,9 @@ use std::path::{Path, PathBuf};
 use oleafly_core::Engine;
 
 use crate::conversion::{
-    export_args, export_reads_raw_frames, export_renders_citations, export_settles_source_images,
-    export_uses_filter, fixup_typst_source, ExportCitations, ExportSource,
+    apply_markdown_layout, export_args, export_reads_raw_frames, export_renders_citations,
+    export_settles_source_images, export_uses_filter, fixup_typst_source, ExportCitations,
+    ExportSource,
 };
 use crate::pandoc_citations::{
     declared_bibliographies, export_failure, prepare_export_filter, BibliographySource,
@@ -357,7 +358,12 @@ pub async fn run_export_with_media(
     };
     let renders = export_renders_citations(job.format);
     let staged = export_uses_filter(job.format, job.main_doc);
-    let (filter, bibliographies, raw_frames): (Option<ExportFilter>, Vec<PathBuf>, bool) = {
+    let (filter, bibliographies, raw_frames, layout): (
+        Option<ExportFilter>,
+        Vec<PathBuf>,
+        bool,
+        oleafly_core::engine_spec::MarkdownLayout,
+    ) = {
         let root = job.root.to_path_buf();
         let main_doc = job.main_doc.to_string();
         let build_dir = job.build_dir.clone();
@@ -398,7 +404,12 @@ pub async fn run_export_with_media(
             };
             let raw_frames = std::fs::read_to_string(root.join(&main_doc))
                 .is_ok_and(|text| export_reads_raw_frames(&format, &main_doc, &text));
-            Ok((filter, bibliographies, raw_frames))
+            let layout = if is_markdown_document(&main_doc) {
+                oleafly_core::engine_spec::markdown_layout(&root.join(&main_doc))
+            } else {
+                oleafly_core::engine_spec::MarkdownLayout::default()
+            };
+            Ok((filter, bibliographies, raw_frames, layout))
         })
         .await
         .map_err(|error| DocError::other(error.to_string()))??
@@ -415,6 +426,12 @@ pub async fn run_export_with_media(
             )
             .param("format", job.format)
         })?;
+    apply_markdown_layout(
+        &mut args,
+        job.format,
+        layout,
+        filter.as_ref().map(ExportFilter::argument),
+    );
     if raw_frames {
         args.insert(0, RAW_FRAMES_READER.to_string());
     }
@@ -887,6 +904,75 @@ mod tests {
                 "{main} {format}"
             );
         }
+    }
+
+    #[tokio::test]
+    async fn markdown_exports_follow_the_document_kind() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        std::fs::write(
+            root.join("talk.md"),
+            "---\ntype: slides\nslide-level: 1\n---\n# A\n",
+        )
+        .unwrap();
+        std::fs::write(root.join("letter.md"), "---\ntype: letter\n---\nHello\n").unwrap();
+        std::fs::write(root.join("paper.md"), "# Paper\n").unwrap();
+        let exported = |main: &'static str, format: &'static str| {
+            let root = root.to_path_buf();
+            async move {
+                let runner = RecordingRunner::default();
+                let output = root.join("out").to_string_lossy().into_owned();
+                run_export_pandoc(
+                    &runner,
+                    Path::new("pandoc"),
+                    job(&root, main, format, &output),
+                )
+                .await
+                .unwrap();
+                let args = runner.args.lock().unwrap().clone();
+                args
+            }
+        };
+        let talk = exported("talk.md", "tex").await;
+        assert!(talk.iter().any(|arg| arg == "--to=beamer"), "{talk:?}");
+        assert!(!talk.iter().any(|arg| arg == "--to=latex"), "{talk:?}");
+        assert!(talk.iter().any(|arg| arg == "--slide-level=1"), "{talk:?}");
+        assert!(talk
+            .iter()
+            .any(|arg| arg == "--metadata=oleafly-document-kind=slides"));
+        let kind_filter = talk
+            .iter()
+            .filter_map(|arg| arg.strip_prefix("--lua-filter="))
+            .find(|path| path.ends_with("oleafly-document-kind.lua"));
+        assert!(kind_filter.is_some(), "{talk:?}");
+        let separator = talk.iter().rposition(|arg| arg == "--").unwrap();
+        assert!(
+            talk.iter()
+                .position(|arg| arg == "--slide-level=1")
+                .unwrap()
+                < separator
+        );
+        let letter = exported("letter.md", "tex").await;
+        assert!(letter.iter().any(|arg| arg == "--to=latex"), "{letter:?}");
+        assert!(letter
+            .iter()
+            .any(|arg| arg == "--metadata=oleafly-document-kind=letter"));
+        let pptx = exported("talk.md", "pptx").await;
+        let level = pptx.iter().position(|arg| arg == "--slide-level").unwrap();
+        assert_eq!(pptx[level + 1], "1");
+        let paper = exported("paper.md", "tex").await;
+        assert!(
+            !paper
+                .iter()
+                .any(|arg| arg.contains("oleafly-document-kind")),
+            "{paper:?}"
+        );
+        assert!(paper.iter().any(|arg| arg == "--to=latex"));
+        let docx = exported("talk.md", "docx").await;
+        assert!(
+            !docx.iter().any(|arg| arg.contains("oleafly-document-kind")),
+            "{docx:?}"
+        );
     }
 
     #[tokio::test]

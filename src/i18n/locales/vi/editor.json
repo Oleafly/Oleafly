@@ -1388,7 +1388,8 @@
     "fields": {
       "secnumdepth": "Cấp được đánh số",
       "numberSections": "Số mục",
-      "documentClass": "Lớp tài liệu"
+      "documentClass": "Lớp tài liệu",
+      "documentType": "Loại tài liệu"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1413,6 +1414,15 @@
       "depthSubsubsections": "Tới tiểu mục con",
       "depthParagraphs": "Tới đoạn",
       "depthSubparagraphs": "Tới đoạn con"
+    },
+    "documentTypes": {
+      "article": "Bài báo",
+      "report": "Báo cáo hoặc luận văn",
+      "book": "Sách",
+      "slides": "Trang chiếu",
+      "poster": "Áp phích",
+      "letter": "Thư",
+      "cv": "CV"
     },
     "locked": {
       "class": "Do lớp {{name}} đặt",

@@ -1388,7 +1388,8 @@
     "fields": {
       "secnumdepth": "番号を付ける階層",
       "numberSections": "節番号",
-      "documentClass": "ドキュメントクラス"
+      "documentClass": "ドキュメントクラス",
+      "documentType": "文書の種類"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1413,6 +1414,15 @@
       "depthSubsubsections": "小々節まで",
       "depthParagraphs": "段落見出しまで",
       "depthSubparagraphs": "小段落見出しまで"
+    },
+    "documentTypes": {
+      "article": "論文",
+      "report": "レポート・学位論文",
+      "book": "書籍",
+      "slides": "スライド",
+      "poster": "ポスター",
+      "letter": "手紙",
+      "cv": "履歴書"
     },
     "locked": {
       "class": "{{name}} クラスで設定",

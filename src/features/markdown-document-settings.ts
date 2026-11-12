@@ -9,6 +9,7 @@ import {
 } from "./document-settings";
 
 export type MarkdownSettingKey =
+  | "documentType"
   | "documentClass"
   | "paper"
   | "columns"
@@ -20,6 +21,7 @@ export type MarkdownSettingKey =
   | "numberSections";
 
 export const MARKDOWN_SETTING_KEYS: readonly MarkdownSettingKey[] = [
+  "documentType",
   "documentClass",
   "paper",
   "columns",
@@ -42,7 +44,10 @@ export interface MarkdownDocumentSettings {
 
 type ScalarKey = Exclude<MarkdownSettingKey, "columns" | "margin">;
 
+export const MARKDOWN_DOCUMENT_TYPES = ["article", "report", "book", "slides", "poster", "letter", "cv"] as const;
+
 const YAML_KEYS: Record<ScalarKey, string> = {
+  documentType: "type",
   documentClass: "documentclass",
   paper: "papersize",
   font: "mainfont",
@@ -324,6 +329,8 @@ export function readMarkdownDocumentSettings(text: string): MarkdownDocumentSett
 export function validateMarkdownSetting(key: MarkdownSettingKey, value: string): boolean {
   const trimmed = value.trim();
   switch (key) {
+    case "documentType":
+      return (MARKDOWN_DOCUMENT_TYPES as readonly string[]).includes(trimmed);
     case "documentClass":
       return /^[A-Za-z][A-Za-z0-9-]*$/u.test(trimmed);
     case "paper":

@@ -35,8 +35,6 @@ const PLAIN_TEXT_BLOCKS: Record<string, string> = {
 };
 const NATIVE_TITLE_ALLOWED: Record<string, string> = {
   "src/components/editor/MarkdownPreview.tsx": "a previewed image keeps the title its author wrote in the Markdown source",
-  "src/components/notes/NotebookView.tsx": "a sandboxed notebook output frame is named by its title, which is the iframe's accessible name",
-  "src/components/notes/ArtifactFrame.tsx": "a sandboxed block frame is named by its title, which is the iframe's accessible name",
 };
 const NATIVE_TITLE_BACKLOG: Record<string, number> = {
   "src/components/ai/AiToolManager.tsx": 1,
@@ -88,6 +86,7 @@ const NATIVE_TITLE_BACKLOG: Record<string, number> = {
   "src/components/ui/copyable-block.tsx": 1,
 };
 const INTRINSIC_TAG = /<([a-z][a-z0-9]*)(?=[\s/>])/g;
+const NAMED_BY_TITLE = new Set(["iframe"]);
 const PILL_ALLOWLIST: Record<string, string> = {
   "src/components/ai/chat-parts.tsx":
     "the plan approval pill uses the violet plan tone the rest of the chat uses for plan mode",
@@ -110,6 +109,7 @@ function lineOf(text: string, index: number): number {
 function nativeTitleLines(text: string): number[] {
   const lines: number[] = [];
   for (const match of text.matchAll(INTRINSIC_TAG)) {
+    if (NAMED_BY_TITLE.has(match[1])) continue;
     let depth = 0;
     let quote: string | null = null;
     for (let index = match.index + match[0].length; index < text.length; index += 1) {
@@ -248,6 +248,7 @@ describe("design system guards", () => {
     expect(nativeTitleLines("<Tooltip label={exact}><time dateTime={iso}>{when}</time></Tooltip>")).toEqual([]);
     expect(nativeTitleLines("<SidebarSection title={name} titleHint={path} />")).toEqual([]);
     expect(nativeTitleLines('<svg aria-hidden><title>{"Google"}</title></svg>')).toEqual([]);
+    expect(nativeTitleLines("<iframe title={page} src={url} />")).toEqual([]);
     expect(nativeTitleLines('<div data-title="a" aria-label={title} onClick={() => go(a > b, { title: c })} />')).toEqual([]);
   });
 

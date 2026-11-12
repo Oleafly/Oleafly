@@ -3,6 +3,7 @@ import { SavePreviewDialog } from "./SavePreviewDialog";
 import { currentOutputId, usePdfSync } from "./use-pdf-sync";
 import { CompileLogControls } from "./CompileLogControls";
 import { PdfToolbarControls } from "./PdfToolbarControls";
+import { openHtmlInBrowser } from "./open-compiled-html";
 import { present } from "@/features/presentation/launch";
 import { PdfOutlinePanel } from "./PdfOutlinePanel";
 import { PdfSearchBar } from "./PdfSearchBar";
@@ -1327,6 +1328,11 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
               .catch((error) => void logError("open preview window", error));
           }}
           onSettings={() => useSettingsStore.getState().openSettingsAt("appearance", "pdf")}
+          onOpenInBrowser={
+            showHtmlOutput && htmlBuiltAt !== null && projectId
+              ? () => void openHtmlInBrowser(projectId)
+              : undefined
+          }
           onPresent={(mode) =>
             void present({
               projectId,
@@ -1490,7 +1496,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   );
 
   const renderHtmlOutput = () => (
-    <div className="flex h-full flex-col items-center justify-center bg-sidebar px-6">
+    <div className="h-full bg-sidebar">
       {projectId && (
         <Suspense fallback={null}>
           <HtmlOutputPanel

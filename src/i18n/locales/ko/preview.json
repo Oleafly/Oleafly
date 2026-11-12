@@ -106,12 +106,8 @@
     "useTectonicForEveryone": "모두에게 Tectonic 사용"
   },
   "html": {
-    "builtTitle": "웹 페이지로 빌드됨",
-    "builtDetail": "{{time}}에 빌드했습니다. 웹 페이지는 브라우저에서 열립니다.",
     "building": "웹 페이지를 빌드하는 중",
-    "buildingDetail": "완료되면 브라우저에서 열 수 있습니다.",
     "pendingTitle": "이 문서는 웹 페이지로 빌드됩니다",
-    "pendingDetail": "컴파일한 다음 브라우저에서 여세요.",
     "open": "브라우저에서 열기",
     "compile": "컴파일"
   },

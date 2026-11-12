@@ -190,7 +190,7 @@ fn read_existing(root: &PreviewRoot, path: &Path) -> Result<TaskPreviewContent, 
     if size > 64 * 1024 * 1024 {
         return Err("The saved task file is larger than the 64 MiB limit.".into());
     }
-    let media_type = media_type(path);
+    let media_type = crate::media_type::media_type(path).map(str::to_owned);
     let mut hasher = Sha256::new();
     let bytes = if size <= MAX_IMAGE_BYTES {
         let mut bytes = Vec::with_capacity(size as usize);
@@ -345,26 +345,6 @@ fn missing() -> TaskPreviewContent {
         size: None,
         sha256: None,
     }
-}
-
-fn media_type(path: &Path) -> Option<String> {
-    let extension = path.extension()?.to_str()?.to_ascii_lowercase();
-    let value = match extension.as_str() {
-        "gif" => "image/gif",
-        "jpeg" | "jpg" => "image/jpeg",
-        "png" => "image/png",
-        "svg" => "image/svg+xml",
-        "webp" => "image/webp",
-        "pdf" => "application/pdf",
-        "json" => "application/json",
-        "csv" => "text/csv",
-        "html" => "text/html",
-        "md" => "text/markdown",
-        "tex" => "application/x-tex",
-        "txt" => "text/plain",
-        _ => return None,
-    };
-    Some(value.to_string())
 }
 
 #[cfg(test)]

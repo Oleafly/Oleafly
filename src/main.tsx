@@ -38,6 +38,7 @@ import { registerContributions } from "@/contributions";
 import { installDesktopViewportGuard } from "@/lib/desktop-viewport";
 import { installSelectAllRouting } from "@/lib/select-all";
 import { installPlainFieldHistory } from "@/lib/field-history";
+import { installFunctionKeyTextGuard } from "@/lib/function-key-text";
 import { installExternalDropGuard } from "@/lib/external-drop-guard";
 import "@/styles/globals.css";
 import { isTauri } from "@tauri-apps/api/core";
@@ -336,6 +337,7 @@ async function bootstrap(): Promise<void> {
   installErrorLogging();
   installSelectAllRouting();
   installPlainFieldHistory();
+  installFunctionKeyTextGuard();
   installExternalDropGuard();
   prepareWindow(view);
   const root = document.getElementById("root");

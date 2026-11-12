@@ -7,7 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A Markdown document can say what it is with `type:` in its front matter:
+  `article`, `report` (or `thesis`), `book`, `slides`, `poster`, `letter` or
+  `cv`. Slides build as 16:9 Beamer slides that the Present button can show, a
+  poster is one beamerposter page with its title as the header, a letter is a
+  KOMA letter built from `to`, `from`, `opening` and `closing`, and a report or
+  book starts chapters at `#` headings. Your own front matter still wins, LaTeX
+  and PowerPoint exports follow the type, and Document settings has a Document
+  type field for it. The same works in `oleafly build`.
+
 ### Fixed
+
+- Web pages built by Quarto, such as `format: html` and reveal.js decks, show
+  in the preview pane instead of asking you to open a browser. The page runs in
+  a sandboxed frame that cannot reach the app, and Open in browser is still in
+  the preview toolbar.
+- On macOS, pressing Left or Right at the start or end of a text field, such
+  as a file name you are renaming in the explorer, added box characters. The
+  webview typed the arrow key's hidden Apple code point as text. Every field in
+  Oleafly now drops those code points (#445).
 
 - After a research project was created, New project did nothing until Oleafly
   restarted. Setup tried to add the project's first research task while

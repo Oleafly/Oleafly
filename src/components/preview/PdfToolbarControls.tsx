@@ -8,6 +8,7 @@ import {
   Contrast,
   Download,
   FileText,
+  Globe,
   ListTree,
   Maximize,
   Minimize,
@@ -84,6 +85,7 @@ export interface PdfToolbarControlsProps {
   onWindow: () => void;
   onSettings: () => void;
   onPresent?: (mode: PresentMode) => void;
+  onOpenInBrowser?: () => void;
 }
 
 export type PresentMode = "start" | "page" | "presenter";
@@ -114,7 +116,7 @@ const PAGE_LAYOUTS: readonly {
 ];
 
 export function PdfToolbarControls({
-  isImage, hasDocument, numPages, page, pageInput, setPageInput, jumpToPage, pdfRef, layout, setLayout, outlineOpen, setOutlineOpen, searchOpen, setSearchOpen, searchInputRef, setSearchInput, scale, setScale, setClampedScale, userZoom, fitPreview, exporting, exportDisplayedPreview, downloadActionLabel, onSave, pdfSync = null, inverted, setInverted, screenReaderMode, setScreenReaderMode, rotation, rotationPending, onRotate, isFs, setFsToolbarHidden, toggleFullscreen, detached = false, onWindow, onSettings, onPresent
+  isImage, hasDocument, numPages, page, pageInput, setPageInput, jumpToPage, pdfRef, layout, setLayout, outlineOpen, setOutlineOpen, searchOpen, setSearchOpen, searchInputRef, setSearchInput, scale, setScale, setClampedScale, userZoom, fitPreview, exporting, exportDisplayedPreview, downloadActionLabel, onSave, pdfSync = null, inverted, setInverted, screenReaderMode, setScreenReaderMode, rotation, rotationPending, onRotate, isFs, setFsToolbarHidden, toggleFullscreen, detached = false, onWindow, onSettings, onPresent, onOpenInBrowser
 }: Readonly<PdfToolbarControlsProps>) {
   const { t } = useTranslation(["preview", "ai"]);
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
@@ -653,6 +655,11 @@ export function PdfToolbarControls({
         { disabled: !hasDocument },
       ),
     );
+    if (onOpenInBrowser) {
+      viewGroup.push(
+        iconControl("open-browser", Globe, t(($) => $.preview.html.open), onOpenInBrowser),
+      );
+    }
     if (onPresent && hasDocument && !isImage && numPages > 0) {
       viewGroup.push({
         id: "present",

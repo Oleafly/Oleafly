@@ -107,12 +107,8 @@
     "useTectonicForEveryone": "Tectonic für alle verwenden"
   },
   "html": {
-    "builtTitle": "Als Webseite erstellt",
-    "builtDetail": "Erstellt um {{time}}. Webseiten öffnen sich in Ihrem Browser.",
     "building": "Webseite wird erstellt",
-    "buildingDetail": "Wenn sie fertig ist, können Sie sie in Ihrem Browser öffnen.",
     "pendingTitle": "Dieses Dokument wird als Webseite erstellt",
-    "pendingDetail": "Kompilieren Sie es und öffnen Sie es dann in Ihrem Browser.",
     "open": "Im Browser öffnen",
     "compile": "Kompilieren"
   },

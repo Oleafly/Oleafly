@@ -31,6 +31,7 @@ oleafly-history = { path = "../crates/oleafly-history" }
 tauri = { version = "2", features = ["macos-private-api", "unstable"] }
 tokio = { version = "1", features = ["time", "sync", "macros", "process", "io-util", "fs", "net"] }
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
+percent-encoding = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-playwright = { version = "0.4", optional = true }
 tauri-plugin-dialog = "2"

@@ -28,6 +28,7 @@ const UPDATE: &[&str] = &[
 ];
 
 const PREVIEW: &[&str] = &[
+    "compiled_html_preview_url",
     "grant_test_save_path",
     "open_compiled_html",
     "pick_save_path",

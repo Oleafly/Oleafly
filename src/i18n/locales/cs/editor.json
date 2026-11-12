@@ -1436,7 +1436,8 @@
     "fields": {
       "secnumdepth": "Číslované úrovně",
       "numberSections": "Čísla sekcí",
-      "documentClass": "Třída dokumentu"
+      "documentClass": "Třída dokumentu",
+      "documentType": "Typ dokumentu"
     },
     "placeholders": {
       "latexLang": "czech",
@@ -1461,6 +1462,15 @@
       "depthSubsubsections": "Až po podpodsekce",
       "depthParagraphs": "Až po odstavce",
       "depthSubparagraphs": "Až po pododstavce"
+    },
+    "documentTypes": {
+      "article": "Článek",
+      "report": "Zpráva nebo práce",
+      "book": "Kniha",
+      "slides": "Snímky",
+      "poster": "Plakát",
+      "letter": "Dopis",
+      "cv": "Životopis"
     },
     "locked": {
       "class": "Nastaveno třídou {{name}}",

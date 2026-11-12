@@ -39,6 +39,7 @@ describe("readMarkdownDocumentSettings", () => {
     const settings = readMarkdownDocumentSettings(FULL);
     expect(settings.frontMatter).toBe("present");
     expect(settings.fields).toEqual({
+      documentType: { status: "unset" },
       documentClass: { status: "set", value: "article" },
       paper: { status: "unset" },
       columns: { status: "set", value: "twocolumn" },
@@ -267,6 +268,24 @@ describe("markdownSettingsEdits", () => {
   });
 });
 
+describe("document type", () => {
+  it("reads the type key", () => {
+    expect(readMarkdownDocumentSettings(front("type: report")).fields.documentType).toEqual({
+      status: "set",
+      value: "report",
+    });
+  });
+
+  it("writes the type key that picks how the document is built", () => {
+    const text = front("title: Talk");
+    expect(edited(text, { documentType: "slides" })).toBe(front("title: Talk", "type: slides"));
+    expect(edited(front("title: Talk", "type: slides"), { documentType: "poster" })).toBe(
+      front("title: Talk", "type: poster"),
+    );
+    expect(edited(front("title: Talk", "type: slides"), { documentType: null })).toBe(front("title: Talk"));
+  });
+});
+
 describe("validateMarkdownSetting", () => {
   it("accepts pandoc values and rejects the rest", () => {
     expect(validateMarkdownSetting("paper", "a4")).toBe(true);
@@ -278,6 +297,8 @@ describe("validateMarkdownSetting", () => {
     expect(validateMarkdownSetting("lineSpacing", "1.25")).toBe(true);
     expect(validateMarkdownSetting("lineSpacing", "wide")).toBe(false);
     expect(validateMarkdownSetting("numberSections", "true")).toBe(true);
+    expect(validateMarkdownSetting("documentType", "slides")).toBe(true);
+    expect(validateMarkdownSetting("documentType", "chapter")).toBe(false);
     expect(validateMarkdownSetting("documentClass", "scrartcl")).toBe(true);
     expect(validateMarkdownSetting("documentClass", "my class")).toBe(false);
     expect(validateMarkdownSetting("font", "Inter\nBold")).toBe(false);

@@ -1388,7 +1388,8 @@
     "fields": {
       "secnumdepth": "번호를 매길 수준",
       "numberSections": "절 번호",
-      "documentClass": "문서 클래스"
+      "documentClass": "문서 클래스",
+      "documentType": "문서 유형"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1413,6 +1414,15 @@
       "depthSubsubsections": "소소절까지",
       "depthParagraphs": "단락까지",
       "depthSubparagraphs": "소단락까지"
+    },
+    "documentTypes": {
+      "article": "논문",
+      "report": "보고서 또는 학위논문",
+      "book": "책",
+      "slides": "슬라이드",
+      "poster": "포스터",
+      "letter": "편지",
+      "cv": "이력서"
     },
     "locked": {
       "class": "{{name}} 클래스에서 설정됨",

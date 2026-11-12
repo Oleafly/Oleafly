@@ -1404,7 +1404,8 @@
     "fields": {
       "secnumdepth": "Numbered levels",
       "numberSections": "Section numbers",
-      "documentClass": "Document class"
+      "documentClass": "Document class",
+      "documentType": "Document type"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1429,6 +1430,15 @@
       "depthSubsubsections": "Down to subsubsections",
       "depthParagraphs": "Down to paragraphs",
       "depthSubparagraphs": "Down to subparagraphs"
+    },
+    "documentTypes": {
+      "article": "Article",
+      "report": "Report or thesis",
+      "book": "Book",
+      "slides": "Slides",
+      "poster": "Poster",
+      "letter": "Letter",
+      "cv": "CV"
     },
     "locked": {
       "class": "Set by the {{name}} class",

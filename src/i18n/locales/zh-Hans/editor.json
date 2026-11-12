@@ -1388,7 +1388,8 @@
     "fields": {
       "secnumdepth": "编号层级",
       "numberSections": "章节编号",
-      "documentClass": "文档类"
+      "documentClass": "文档类",
+      "documentType": "文档类型"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1413,6 +1414,15 @@
       "depthSubsubsections": "至子小节",
       "depthParagraphs": "至段落",
       "depthSubparagraphs": "至子段落"
+    },
+    "documentTypes": {
+      "article": "文章",
+      "report": "报告或学位论文",
+      "book": "书籍",
+      "slides": "幻灯片",
+      "poster": "海报",
+      "letter": "信函",
+      "cv": "简历"
     },
     "locked": {
       "class": "由 {{name}} 文档类设置",

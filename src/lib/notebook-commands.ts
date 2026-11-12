@@ -72,3 +72,6 @@ export const removeNotebookTool = (tool: NotebookTool) =>
 
 export const openCompiledHtml = (projectId: string) =>
   invoke<void>("open_compiled_html", { projectId });
+
+export const compiledHtmlPreviewUrl = (projectId: string) =>
+  invoke<string>("compiled_html_preview_url", { projectId });

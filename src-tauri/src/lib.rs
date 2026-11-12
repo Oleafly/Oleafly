@@ -55,6 +55,7 @@ mod forge;
 mod fs_identity;
 mod fsperm;
 mod git;
+mod html_preview;
 mod i18n;
 mod initial_state;
 mod known_folders;
@@ -70,6 +71,7 @@ mod literature;
 mod logsafe;
 mod mathpix;
 mod mcp;
+mod media_type;
 mod menu;
 mod native_drop;
 mod navigation_guard;
@@ -1022,6 +1024,7 @@ pub fn run() {
             notebook_toolchain::install_notebook_tool,
             notebook_toolchain::remove_notebook_tool,
             notebook_toolchain::open_compiled_html,
+            html_preview::compiled_html_preview_url,
             typst_watch::typst_watch_start,
             typst_watch::typst_watch_compile,
             typst_watch::typst_watch_stop,

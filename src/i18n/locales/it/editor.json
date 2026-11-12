@@ -1420,7 +1420,8 @@
     "fields": {
       "secnumdepth": "Livelli numerati",
       "numberSections": "Numeri di sezione",
-      "documentClass": "Classe del documento"
+      "documentClass": "Classe del documento",
+      "documentType": "Tipo di documento"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1445,6 +1446,15 @@
       "depthSubsubsections": "Fino alle sotto-sottosezioni",
       "depthParagraphs": "Fino ai paragrafi",
       "depthSubparagraphs": "Fino ai sottoparagrafi"
+    },
+    "documentTypes": {
+      "article": "Articolo",
+      "report": "Relazione o tesi",
+      "book": "Libro",
+      "slides": "Diapositive",
+      "poster": "Poster",
+      "letter": "Lettera",
+      "cv": "Curriculum"
     },
     "locked": {
       "class": "Impostato dalla classe {{name}}",

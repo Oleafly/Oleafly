@@ -1404,7 +1404,8 @@
     "fields": {
       "secnumdepth": "Nummererte nivåer",
       "numberSections": "Seksjonsnumre",
-      "documentClass": "Dokumentklasse"
+      "documentClass": "Dokumentklasse",
+      "documentType": "Dokumenttype"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1429,6 +1430,15 @@
       "depthSubsubsections": "Ned til underunderseksjoner",
       "depthParagraphs": "Ned til avsnittsoverskrifter",
       "depthSubparagraphs": "Ned til underavsnittsoverskrifter"
+    },
+    "documentTypes": {
+      "article": "Artikkel",
+      "report": "Rapport eller avhandling",
+      "book": "Bok",
+      "slides": "Lysbilder",
+      "poster": "Plakat",
+      "letter": "Brev",
+      "cv": "CV"
     },
     "locked": {
       "class": "Satt av klassen {{name}}",

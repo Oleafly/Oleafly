@@ -1436,7 +1436,8 @@
     "fields": {
       "secnumdepth": "Нумеруемые уровни",
       "numberSections": "Номера разделов",
-      "documentClass": "Класс документа"
+      "documentClass": "Класс документа",
+      "documentType": "Тип документа"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1461,6 +1462,15 @@
       "depthSubsubsections": "До подподразделов",
       "depthParagraphs": "До параграфов",
       "depthSubparagraphs": "До подпараграфов"
+    },
+    "documentTypes": {
+      "article": "Статья",
+      "report": "Отчёт или диссертация",
+      "book": "Книга",
+      "slides": "Слайды",
+      "poster": "Постер",
+      "letter": "Письмо",
+      "cv": "Резюме"
     },
     "locked": {
       "class": "Задано классом {{name}}",

@@ -39,6 +39,24 @@ describe("shared document setting options", () => {
   });
 });
 
+describe("Markdown document type", () => {
+  it("offers every kind with its own label right after the page section opens", () => {
+    expect(markdown.sections[0]?.fields[0]).toBe("documentType");
+    expect(markdown.label("documentType")).toBe(settings.fields.documentType);
+    const kinds = markdown.selectOptions.documentType ?? [];
+    expect(kinds.map((kind) => markdown.option("documentType", kind))).toEqual([
+      settings.documentTypes.article,
+      settings.documentTypes.report,
+      settings.documentTypes.book,
+      settings.documentTypes.slides,
+      settings.documentTypes.poster,
+      settings.documentTypes.letter,
+      settings.documentTypes.cv,
+    ]);
+    expect(markdown.option("documentType", "thesis")).toBe("thesis");
+  });
+});
+
 describe("LaTeX and Markdown provider reads and edits", () => {
   it("reads a LaTeX preamble", async () => {
     const read = latex.read(LATEX_SOURCE, {});

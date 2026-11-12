@@ -1404,7 +1404,8 @@
     "fields": {
       "secnumdepth": "Numaralı düzeyler",
       "numberSections": "Bölüm numaraları",
-      "documentClass": "Belge sınıfı"
+      "documentClass": "Belge sınıfı",
+      "documentType": "Belge türü"
     },
     "placeholders": {
       "latexLang": "english",
@@ -1429,6 +1430,15 @@
       "depthSubsubsections": "Üçüncü düzey alt bölümlere kadar",
       "depthParagraphs": "Paragraf başlıklarına kadar",
       "depthSubparagraphs": "İkinci düzey paragraf başlıklarına kadar"
+    },
+    "documentTypes": {
+      "article": "Makale",
+      "report": "Rapor veya tez",
+      "book": "Kitap",
+      "slides": "Slaytlar",
+      "poster": "Poster",
+      "letter": "Mektup",
+      "cv": "Özgeçmiş"
     },
     "locked": {
       "class": "{{name}} sınıfı tarafından ayarlandı",
