@@ -303,7 +303,7 @@ export function replaceNextMatch(view: EditorView, keepCase: boolean): NoteFindM
   const text = replacementFor(query, current, keepCase);
   const tr = view.state.tr;
   replaceRange(tr, current, text);
-  view.dispatch(tr.setMeta(noteFindKey, { after: current.from + text.length }));
+  view.dispatch(tr.setMeta(noteFindKey, { after: current.from + text.length }).setMeta("preventAutolink", true));
   const next = noteFindState(view.state);
   return next.matches[next.active] ?? null;
 }
@@ -317,7 +317,7 @@ export function replaceAllMatches(view: EditorView, keepCase: boolean): number {
   for (let index = matches.length - 1; index >= 0; index--) {
     replaceRange(tr, matches[index], replacementFor(query, matches[index], keepCase));
   }
-  view.dispatch(tr);
+  view.dispatch(tr.setMeta("preventAutolink", true));
   return matches.length;
 }
 

@@ -213,7 +213,18 @@ describe("replacing matches", () => {
     expect(noteFindState(editor.state).matches).toHaveLength(MAX_FIND_MATCHES);
     expect(replaceAllMatches(editor.view, false)).toBe(MAX_FIND_MATCHES + 500);
     expect(kbMarkdown(editor)).not.toContain("a");
-  }, 60_000);
+  }, 20_000);
+
+  it("writes a replacement as plain text, even when it looks like a link", () => {
+    const editor = finding("see SITE now", query("SITE ", { replace: "https://example.com " }));
+    replaceAllMatches(editor.view, false);
+    expect(kbMarkdown(editor)).toBe("see https://example.com now");
+    const marks: string[] = [];
+    editor.state.doc.descendants((node) => {
+      for (const mark of node.marks) marks.push(mark.type.name);
+    });
+    expect(marks).not.toContain("link");
+  });
 
   it("deletes a match when the replacement is empty", () => {
     const editor = finding("keep drop keep", query(" drop"));
