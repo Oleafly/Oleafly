@@ -10,7 +10,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
-import { useTheme, type ThemePreference } from "@/lib/theme";
+import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
+import { requestThemeToggle, useAppTheme, useTheme, type ThemePreference } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { i18n } from "@/i18n";
 
@@ -121,6 +122,22 @@ export function ThemeMenu({
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+export function ThemeToggleButton({ side, className }: Readonly<{ side?: Side; className?: string }>) {
+  const { t } = useTranslation(["shell"]);
+  const dark = useAppTheme() === "dark";
+  const Icon = dark ? Sun : Moon;
+  return (
+    <TooltipIconButton
+      label={dark ? t(($) => $.shell.commands.theme.toLight) : t(($) => $.shell.commands.theme.toDark)}
+      side={side}
+      className={className}
+      onClick={requestThemeToggle}
+    >
+      <Icon aria-hidden />
+    </TooltipIconButton>
   );
 }
 

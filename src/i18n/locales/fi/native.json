@@ -218,5 +218,10 @@
       "title": "Lupatarkistukset ovat pois päältä ({{mode}})",
       "description": "Agentti voi muokata tiedostoja ja suorittaa komentoja kysymättä. Oleafly ei voinut vaihtaa sitä toiseen tilaan. Vaihda tila agentin omista asetuksista."
     }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Pikakirjaus"
+    }
   }
 }

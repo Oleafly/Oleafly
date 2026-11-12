@@ -230,7 +230,11 @@
     "history_unavailable": "Projektets historik finns inte på den här datorn än. Försök igen när den har synkats.",
     "account_storage_full": "Projektägarens konto har slut på lagringsutrymme på den här servern. Ta bort några filer för att frigöra utrymme, eller be serverns administratör om mer utrymme.",
     "too_many_projects": "Du har redan så många delade projekt som den här servern tillåter. Sluta dela ett projekt innan du delar ett till.",
-    "too_many_uploads": "Du har laddat upp för många filer den senaste timmen. Försök igen senare."
+    "too_many_uploads": "Du har laddat upp för många filer den senaste timmen. Försök igen senare.",
+    "public_notes_off": "Den här servern tillåter inte offentliga länkar till anteckningar. En administratör kan slå på dem i serverns inställningar.",
+    "too_many_pages": "Du har så många offentliga sidor som den här servern tillåter. Avpublicera en och försök sedan igen.",
+    "page_too_large": "Anteckningen är för stor för att publiceras. Ta bort några bilder och försök sedan igen.",
+    "page_taken_down": "En administratör har tagit ned den här sidan, så anteckningen kan inte publiceras igen förrän sidan har återställts."
   },
   "roles": {
     "admin": "Administratör",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "Inloggning via e-post",
         "description": "Personer kan logga in med en länk som skickas till deras e-postadress. Det kräver serverns e-postinställningar. Dina åtkomstregler avgör fortfarande vem som kommer in."
+      },
+      "publicNotesAllowed": {
+        "label": "Tillåt offentliga länkar till anteckningar",
+        "description": "Medlemmar kan publicera en skrivskyddad kopia av en anteckning via en länk som vem som helst kan öppna utan att logga in."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "Avböjde en gästinbjudan",
         "guestInvitationRevoked": "Drog tillbaka en gästinbjudan",
         "guestAdmissionEnded": "Avslutade en gästs åtkomst till servern",
-        "unknown": "Annan serverhändelse"
+        "unknown": "Annan serverhändelse",
+        "notePublished": "Publicerade en anteckning via en offentlig länk",
+        "noteUnpublished": "Avpublicerade en anteckning",
+        "noteTakenDown": "Tog ned en publicerad anteckning",
+        "noteRestored": "Återställde en publicerad anteckning"
       },
       "details": {
         "project": "Projekt: {{title}}",
@@ -455,7 +467,8 @@
         "device": "Enhet: {{name}}",
         "byAdmin": "Från administratörskonsolen",
         "settingOn": "{{setting}}: på",
-        "settingOff": "{{setting}}: av"
+        "settingOff": "{{setting}}: av",
+        "note": "Anteckning: {{title}}"
       }
     },
     "email": {
@@ -793,7 +806,8 @@
       "settings": "Serverinställningar",
       "email": "E-post",
       "log": "Säkerhetslogg",
-      "checks": "Anslutningskontroller"
+      "checks": "Anslutningskontroller",
+      "pages": "Publicerade anteckningar"
     },
     "health": {
       "label": "Serverns hälsa: {{status}}",
@@ -960,6 +974,30 @@
     },
     "checks": {
       "description": "Kontrollera anslutningen från den här datorn till servern."
+    },
+    "pages": {
+      "description": "Skrivskyddade sidor som personer har skapat av sina anteckningar. Alla som har länken till en sida kan läsa den.",
+      "loading": "Läser in publicerade anteckningar…",
+      "empty": "Ingen har publicerat en anteckning på den här servern än.",
+      "limit": "Visar de {{shown}} senaste sidorna.",
+      "columns": {
+        "title": "Anteckning",
+        "author": "Författare",
+        "updated": "Publicerad",
+        "actions": "Åtgärder"
+      },
+      "noAuthor": "Borttaget konto",
+      "takenDown": "Nedtagen",
+      "openNamed": "Öppna {{title}}",
+      "takeDown": "Ta ned",
+      "takeDownNamed": "Ta ned {{title}}",
+      "restore": "Återställ",
+      "restoreNamed": "Återställ {{title}}",
+      "takeDownConfirm": {
+        "title": "Vill du ta ned {{title}}?",
+        "description": "Den offentliga länken slutar fungera tills du återställer sidan. Författaren behåller anteckningen men kan inte publicera den igen under tiden.",
+        "confirm": "Ta ned"
+      }
     }
   },
   "links": {
@@ -1233,5 +1271,41 @@
     "broughtIn": "Dina ändringar från {{name}} finns nu i det här projektet.",
     "retry": "Försök igen",
     "dismiss": "Stäng"
+  },
+  "publish": {
+    "tabs": {
+      "people": "Personer",
+      "publish": "Publicera"
+    },
+    "intro": "När du publicerar läggs en skrivskyddad kopia av anteckningen ut på en offentlig länk. Alla som har länken kan läsa den utan att logga in.",
+    "contents": "Bilder, grafer, diagram, matematik, Typst och molekyler tas med. Block med HTML, React, CSV, sekvenser och anteckningsböcker utelämnas.",
+    "checking": "Letar efter en offentlig sida…",
+    "loadFailed": "Oleafly kunde inte kontrollera anteckningens offentliga sida.",
+    "notAllowed": "{{server}} tillåter inte offentliga länkar till anteckningar. En administratör kan slå på dem i serverns inställningar.",
+    "ownerOnly": "Bara anteckningens ägare kan publicera den.",
+    "linkLabel": "Offentlig länk",
+    "open": "Öppna",
+    "publishedAt": "Senast publicerad {{date}}",
+    "stale": "Du har ändrat anteckningen sedan du publicerade den senast. Publicera igen för att uppdatera sidan.",
+    "publish": "Publicera",
+    "republish": "Publicera igen",
+    "unpublish": "Avpublicera",
+    "failed": "Publiceringen slutfördes inte.",
+    "unpublishConfirm": {
+      "title": "Vill du avpublicera {{name}}?",
+      "description": "Den offentliga länken slutar fungera direkt. Den som har sparat en kopia av sidan behåller den.",
+      "confirm": "Avpublicera"
+    },
+    "list": {
+      "title": "Publicerade anteckningar",
+      "description": "Skrivskyddade sidor med dina anteckningar på den här servern. Alla som har en länk kan läsa dem.",
+      "loadFailed": "Oleafly kunde inte läsa in dina publicerade anteckningar.",
+      "empty": "Du har inte publicerat några anteckningar här.",
+      "openNamed": "Öppna {{name}}",
+      "unpublishNamed": "Avpublicera {{name}}",
+      "updated": "Publicerad {{date}}"
+    },
+    "takenDown": "En administratör har tagit ned den här sidan. Läsare kan inte öppna den, och du kan inte publicera den igen förrän den har återställts. Du kan fortfarande avpublicera den.",
+    "tooOld": "{{server}} är för gammal för offentliga länkar till anteckningar. Dess administratör behöver uppdatera Oleafly Server."
   }
 }

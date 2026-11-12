@@ -1,4 +1,4 @@
-import { Maximize, Minus, Plus, RotateCcw, Search } from "lucide-react";
+import { Maximize, Minus, Plus, RotateCcw } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -6,20 +6,20 @@ import {
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
-import { Input } from "@/components/ui/input";
+import { EmptyState, ErrorState, LoadingState } from "@/components/ui/empty";
+import { SearchField } from "@/components/ui/search-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
 import { compareText } from "@/lib/intl";
 import { readJson, writeJson } from "@/lib/local-storage";
 import { logError } from "@/lib/log";
-import { hexLuminance } from "@/lib/peer-colors";
+import { readableForeground } from "@/lib/notes-appearance-style";
 import { useReducedMotion } from "@/lib/reduced-motion";
-import type { NoteLinkRecord, NoteTagCount } from "@/lib/tauri";
+import type { NoteTagCount } from "@/lib/tauri";
 import { useAppTheme } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import { isSelectionModifier } from "@/store/library-selection";
@@ -43,14 +43,16 @@ import {
   toWorld,
   zoomAt,
   type GraphData,
+  type GraphEdge,
   type LayoutRequest,
   type LayoutUpdate,
   type View,
 } from "./note-graph-layout";
 import { LINE_ICON_PREFIX, LINE_ICONS, NOTE_COLOR_HEX } from "./note-icons";
-import { useNotesData } from "./notes-data";
+import { tagTone } from "./note-tags";
+import { useNotesData, useVaultLoad } from "./notes-data";
+import { useNoteLinkRecords } from "./use-note-links";
 import { useNotesByLook } from "./note-signature";
-import { useVaultKey, vaultLoad } from "./vault-loads";
 
 export type GraphMode = "global" | "local";
 
@@ -62,7 +64,7 @@ export interface NoteGraphProps {
   onOpenProject?: (projectId: string) => void;
 }
 
-export interface LayoutRunner {
+interface LayoutRunner {
   send(request: LayoutRequest): void;
   dispose(): void;
 }
@@ -89,6 +91,14 @@ export interface GraphFrame {
   active: number;
   neighbours: readonly (readonly number[])[];
   matches: ReadonlySet<number> | null;
+}
+
+interface NodeGesture {
+  kind: "node";
+  index: number;
+  x: number;
+  y: number;
+  moved: boolean;
 }
 
 interface GraphPrefs {
@@ -131,34 +141,8 @@ function savePrefs(prefs: GraphPrefs): void {
   writeJson(PREFS_KEY, prefs);
 }
 
-interface VaultRead<T> {
-  value: T;
-  failed: boolean;
-}
-
-function useVaultRead<T>(load: (() => Promise<T>) | undefined, empty: T, what: string): VaultRead<T> {
-  const vault = useVaultKey();
-  const [read, setRead] = useState<VaultRead<T>>({ value: empty, failed: false });
-  useEffect(() => {
-    if (!load) return;
-    let live = true;
-    vaultLoad(load, vault).then(
-      (value) => {
-        if (live) setRead({ value, failed: false });
-      },
-      (error: unknown) => {
-        void logError(what, error);
-        if (live) setRead((current) => ({ value: current.value, failed: true }));
-      },
-    );
-    return () => {
-      live = false;
-    };
-  }, [load, vault, what]);
-  return read;
-}
-
 const NO_TAGS: readonly NoteTagCount[] = [];
+const SILENT_WORKER_MS = 2000;
 
 
 function defaultWorker(): Worker | null {
@@ -170,19 +154,7 @@ function defaultWorker(): Worker | null {
   }
 }
 
-export function createLayoutRunner(
-  onUpdate: (update: LayoutUpdate) => void,
-  makeWorker: () => Worker | null = defaultWorker,
-): LayoutRunner {
-  const worker = makeWorker();
-  if (worker) {
-    worker.onmessage = (event: MessageEvent<LayoutUpdate>) => onUpdate(event.data);
-    worker.onerror = (event: ErrorEvent) => void logError("lay out the note graph", event.message);
-    return {
-      send: (request) => worker.postMessage(request),
-      dispose: () => worker.terminate(),
-    };
-  }
+function pageLayoutRunner(onUpdate: (update: LayoutUpdate) => void): LayoutRunner {
   const engine = createLayoutEngine(onUpdate, {
     set: (callback) => window.setTimeout(callback, FRAME_MS),
     clear: (handle) => window.clearTimeout(handle as number),
@@ -193,7 +165,56 @@ export function createLayoutRunner(
   };
 }
 
-export function readPalette(element: HTMLElement): Palette {
+function createLayoutRunner(onUpdate: (update: LayoutUpdate) => void): LayoutRunner {
+  const worker = defaultWorker();
+  if (!worker) return pageLayoutRunner(onUpdate);
+  let onPage: LayoutRunner | null = null;
+  let started: LayoutRequest | null = null;
+  let answered = false;
+  let silence: number | null = null;
+  const stopWaiting = () => {
+    if (silence !== null) window.clearTimeout(silence);
+    silence = null;
+  };
+  const moveToPage = (reason: string) => {
+    void logError("lay out the note graph", reason);
+    stopWaiting();
+    if (onPage) return;
+    worker.terminate();
+    onPage = pageLayoutRunner(onUpdate);
+    if (started) onPage.send(started);
+  };
+  worker.onmessage = (event: MessageEvent<LayoutUpdate>) => {
+    answered = true;
+    stopWaiting();
+    if (!onPage) onUpdate(event.data);
+  };
+  worker.onerror = (event: ErrorEvent) => moveToPage(event.message);
+  return {
+    send: (request) => {
+      if (request.type === "start") started = request;
+      else if (request.type === "stop") started = null;
+      if (onPage) {
+        onPage.send(request);
+        return;
+      }
+      worker.postMessage(request);
+      if (request.type === "start" && !answered && silence === null) {
+        silence = window.setTimeout(() => {
+          silence = null;
+          moveToPage("the layout worker did not answer");
+        }, SILENT_WORKER_MS);
+      }
+    },
+    dispose: () => {
+      stopWaiting();
+      if (onPage) onPage.dispose();
+      else worker.terminate();
+    },
+  };
+}
+
+function readPalette(element: HTMLElement): Palette {
   const probe = document.createElement("span");
   probe.style.display = "none";
   element.appendChild(probe);
@@ -211,12 +232,6 @@ export function readPalette(element: HTMLElement): Palette {
   };
   probe.remove();
   return palette;
-}
-
-export function inkFor(hex: string): string {
-  const luminance = hexLuminance(hex);
-  if (luminance === null) return FALLBACK_PALETTE.foreground;
-  return luminance > 0.4 ? "#1f2328" : "#ffffff";
 }
 
 export function iconNodeOf(component: unknown): IconNode | null {
@@ -237,15 +252,18 @@ export function shapePath(name: string, attrs: Readonly<Record<string, string>>)
   else if (name === "line") {
     path.moveTo(number("x1"), number("y1"));
     path.lineTo(number("x2"), number("y2"));
-  } else if (name === "polyline" || name === "polygon") {
-    const points = (attrs.points ?? "").trim().split(/[\s,]+/u).map(Number);
-    for (let index = 0; index + 1 < points.length; index += 2) {
-      if (index === 0) path.moveTo(points[0], points[1]);
-      else path.lineTo(points[index], points[index + 1]);
-    }
-    if (name === "polygon") path.closePath();
-  } else return null;
+  } else if (name === "polyline" || name === "polygon") tracePoints(path, attrs.points, name === "polygon");
+  else return null;
   return path;
+}
+
+function tracePoints(path: Path2D, list: string | undefined, close: boolean): void {
+  const points = (list ?? "").trim().split(/[\s,]+/u).map(Number);
+  for (let index = 0; index + 1 < points.length; index += 2) {
+    if (index === 0) path.moveTo(points[0], points[1]);
+    else path.lineTo(points[index], points[index + 1]);
+  }
+  if (close) path.closePath();
 }
 
 export function lineIconPaths(icon: string | undefined): Path2D[] | null {
@@ -267,7 +285,7 @@ function initialOf(title: string): string {
 }
 
 function drawGlyph(ctx: CanvasRenderingContext2D, node: GraphData["nodes"][number], x: number, y: number, r: number, font: string) {
-  const ink = node.kind === "project" ? "#ffffff" : inkFor(node.color);
+  const ink = node.kind === "project" ? "#ffffff" : readableForeground(node.color);
   const paths = lineIconPaths(node.icon);
   if (paths) {
     const size = r * 1.15;
@@ -299,103 +317,132 @@ function traceNode(ctx: CanvasRenderingContext2D, kind: string, x: number, y: nu
   ctx.arc(x, y, r, 0, Math.PI * 2);
 }
 
-export function drawGraph(ctx: CanvasRenderingContext2D, frame: GraphFrame): void {
-  const { width, height, dpr, view, graph, positions, palette, hover, focus, active, neighbours, matches } = frame;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, width, height);
-  if (!positions || graph.nodes.length === 0) return;
-  const count = Math.min(graph.nodes.length, positions.length / 2);
-  const [left, top] = toWorld(view, -40, -40);
-  const [right, bottom] = toWorld(view, width + 40, height + 40);
-  const visible = (index: number) => {
-    const x = positions[index * 2];
-    const y = positions[index * 2 + 1];
-    return x >= left && x <= right && y >= top && y <= bottom;
-  };
-  const lit = hover >= 0 ? new Set<number>([hover, ...(neighbours[hover] ?? [])]) : null;
-  const dimmed = (index: number) => (lit !== null && !lit.has(index)) || (matches !== null && !matches.has(index));
+interface GraphScene {
+  ctx: CanvasRenderingContext2D;
+  frame: GraphFrame;
+  positions: Float32Array;
+  count: number;
+  lit: ReadonlySet<number> | null;
+  visible: (index: number) => boolean;
+  dimmed: (index: number) => boolean;
+}
 
-  ctx.setTransform(dpr * view.k, 0, 0, dpr * view.k, dpr * view.x, dpr * view.y);
+function traceEdges(scene: GraphScene, include: (edge: GraphEdge) => boolean): void {
+  const { ctx, positions, count } = scene;
+  for (const edge of scene.frame.graph.edges) {
+    if (edge.source >= count || edge.target >= count || !include(edge)) continue;
+    ctx.moveTo(positions[edge.source * 2], positions[edge.source * 2 + 1]);
+    ctx.lineTo(positions[edge.target * 2], positions[edge.target * 2 + 1]);
+  }
+}
+
+function drawEdges(scene: GraphScene): void {
+  const { ctx, frame, lit, visible } = scene;
+  const { view, palette, hover, matches } = frame;
   ctx.lineWidth = 1 / view.k;
   ctx.strokeStyle = palette.muted;
   ctx.globalAlpha = lit || matches ? 0.14 : 0.4;
   ctx.beginPath();
-  for (const edge of graph.edges) {
-    if (edge.source >= count || edge.target >= count) continue;
-    if (!visible(edge.source) && !visible(edge.target)) continue;
-    ctx.moveTo(positions[edge.source * 2], positions[edge.source * 2 + 1]);
-    ctx.lineTo(positions[edge.target * 2], positions[edge.target * 2 + 1]);
-  }
+  traceEdges(scene, (edge) => visible(edge.source) || visible(edge.target));
   ctx.stroke();
-  if (lit) {
-    ctx.globalAlpha = 0.9;
-    ctx.strokeStyle = palette.primary;
-    ctx.lineWidth = 1.6 / view.k;
-    ctx.beginPath();
-    for (const edge of graph.edges) {
-      if (edge.source !== hover && edge.target !== hover) continue;
-      if (edge.source >= count || edge.target >= count) continue;
-      ctx.moveTo(positions[edge.source * 2], positions[edge.source * 2 + 1]);
-      ctx.lineTo(positions[edge.target * 2], positions[edge.target * 2 + 1]);
-    }
-    ctx.stroke();
-  }
+  if (!lit) return;
+  ctx.globalAlpha = 0.9;
+  ctx.strokeStyle = palette.primary;
+  ctx.lineWidth = 1.6 / view.k;
+  ctx.beginPath();
+  traceEdges(scene, (edge) => edge.source === hover || edge.target === hover);
+  ctx.stroke();
+}
 
+function compareKeys(left: string, right: string): number {
+  return left < right ? -1 : Number(left > right);
+}
+
+function nodeGroups(scene: GraphScene): { groups: Map<string, number[]>; shown: number[] } {
+  const { frame, count, visible, dimmed } = scene;
   const groups = new Map<string, number[]>();
   const shown: number[] = [];
   for (let index = 0; index < count; index++) {
     if (!visible(index)) continue;
     shown.push(index);
-    const node = graph.nodes[index];
-    const key = `${dimmed(index) ? "d" : "n"}|${node.kind}|${node.kind === "project" ? palette.muted : node.color}`;
+    const node = frame.graph.nodes[index];
+    const key = `${dimmed(index) ? "d" : "n"}|${node.kind}|${node.kind === "project" ? frame.palette.muted : node.color}`;
     const group = groups.get(key);
     if (group) group.push(index);
     else groups.set(key, [index]);
   }
-  for (const [key, members] of [...groups.entries()].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) {
+  return { groups, shown };
+}
+
+function groupAlpha(state: string, kind: string): number {
+  if (state === "d") return 0.2;
+  return kind === "project" ? 0.65 : 1;
+}
+
+function drawNodes(scene: GraphScene, groups: ReadonlyMap<string, readonly number[]>): void {
+  const { ctx, frame, positions } = scene;
+  for (const [key, members] of [...groups.entries()].sort(([a], [b]) => compareKeys(a, b))) {
     const [state, kind, color] = key.split("|");
-    ctx.globalAlpha = state === "d" ? 0.2 : kind === "project" ? 0.65 : 1;
+    ctx.globalAlpha = groupAlpha(state, kind);
     ctx.fillStyle = color;
     ctx.beginPath();
     for (const index of members) {
-      traceNode(ctx, kind, positions[index * 2], positions[index * 2 + 1], nodeRadius(graph.nodes[index]));
+      traceNode(ctx, kind, positions[index * 2], positions[index * 2 + 1], nodeRadius(frame.graph.nodes[index]));
     }
     ctx.fill();
-    ctx.strokeStyle = palette.foreground;
+    ctx.strokeStyle = frame.palette.foreground;
     ctx.globalAlpha = state === "d" ? 0.08 : 0.25;
-    ctx.lineWidth = 1 / view.k;
+    ctx.lineWidth = 1 / frame.view.k;
     ctx.stroke();
   }
-  for (const [index, width] of [
-    [active, 2.5],
-    [focus, 3],
+}
+
+function drawRings(scene: GraphScene): void {
+  const { ctx, frame, positions, count } = scene;
+  const { view, palette } = frame;
+  for (const [index, ring] of [
+    [frame.active, 2.5],
+    [frame.focus, 3],
   ] as const) {
     if (index < 0 || index >= count) continue;
-    const node = graph.nodes[index];
+    const node = frame.graph.nodes[index];
     ctx.globalAlpha = 1;
     ctx.strokeStyle = palette.primary;
-    ctx.lineWidth = width / view.k;
+    ctx.lineWidth = ring / view.k;
     ctx.beginPath();
-    traceNode(ctx, node.kind, positions[index * 2], positions[index * 2 + 1], nodeRadius(node) + width / view.k);
+    traceNode(ctx, node.kind, positions[index * 2], positions[index * 2 + 1], nodeRadius(node) + ring / view.k);
     ctx.stroke();
   }
+}
 
+function drawGlyphs(scene: GraphScene, shown: readonly number[]): void {
+  const { ctx, frame, positions, dimmed } = scene;
   for (const index of shown) {
-    const node = graph.nodes[index];
+    const node = frame.graph.nodes[index];
     const r = nodeRadius(node);
-    if (r * view.k < ICON_MIN_PX) continue;
+    if (r * frame.view.k < ICON_MIN_PX) continue;
     ctx.globalAlpha = dimmed(index) ? 0.3 : 1;
-    drawGlyph(ctx, node, positions[index * 2], positions[index * 2 + 1], r, palette.font);
+    drawGlyph(ctx, node, positions[index * 2], positions[index * 2 + 1], r, frame.palette.font);
   }
+}
 
+function labelledNodes(scene: GraphScene, shown: readonly number[]): Set<number> {
+  const { frame, lit, dimmed } = scene;
   const labelled = new Set<number>();
   if (lit) for (const index of lit) labelled.add(index);
-  if (focus >= 0) labelled.add(focus);
-  if (active >= 0) labelled.add(active);
-  if (view.k >= LABEL_ZOOM) {
-    const ranked = shown.filter((index) => !dimmed(index)).sort((a, b) => graph.nodes[b].degree - graph.nodes[a].degree);
+  if (frame.focus >= 0) labelled.add(frame.focus);
+  if (frame.active >= 0) labelled.add(frame.active);
+  if (frame.view.k >= LABEL_ZOOM) {
+    const nodes = frame.graph.nodes;
+    const ranked = shown.filter((index) => !dimmed(index)).sort((a, b) => nodes[b].degree - nodes[a].degree);
     for (const index of ranked.slice(0, LABEL_LIMIT)) labelled.add(index);
   }
+  return labelled;
+}
+
+function drawLabels(scene: GraphScene, labelled: ReadonlySet<number>): void {
+  const { ctx, frame, positions, count, lit, dimmed } = scene;
+  const { dpr, view, palette } = frame;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.font = `${palette.labelSize ?? LABEL_PX}px ${palette.font}`;
   ctx.textAlign = "center";
@@ -403,7 +450,7 @@ export function drawGraph(ctx: CanvasRenderingContext2D, frame: GraphFrame): voi
   ctx.lineJoin = "round";
   for (const index of labelled) {
     if (index < 0 || index >= count) continue;
-    const node = graph.nodes[index];
+    const node = frame.graph.nodes[index];
     const x = positions[index * 2] * view.k + view.x;
     const y = positions[index * 2 + 1] * view.k + view.y + nodeRadius(node) * view.k + 4;
     const title = node.title.length > 48 ? `${node.title.slice(0, 47)}…` : node.title;
@@ -414,6 +461,36 @@ export function drawGraph(ctx: CanvasRenderingContext2D, frame: GraphFrame): voi
     ctx.fillStyle = palette.foreground;
     ctx.fillText(title, x, y);
   }
+}
+
+export function drawGraph(ctx: CanvasRenderingContext2D, frame: GraphFrame): void {
+  const { width, height, dpr, view, graph, positions, hover, neighbours, matches } = frame;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, width, height);
+  if (!positions || graph.nodes.length === 0) return;
+  const [left, top] = toWorld(view, -40, -40);
+  const [right, bottom] = toWorld(view, width + 40, height + 40);
+  const lit = hover >= 0 ? new Set<number>([hover, ...(neighbours[hover] ?? [])]) : null;
+  const scene: GraphScene = {
+    ctx,
+    frame,
+    positions,
+    count: Math.min(graph.nodes.length, positions.length / 2),
+    lit,
+    visible: (index) => {
+      const x = positions[index * 2];
+      const y = positions[index * 2 + 1];
+      return x >= left && x <= right && y >= top && y <= bottom;
+    },
+    dimmed: (index) => (lit !== null && !lit.has(index)) || (matches !== null && !matches.has(index)),
+  };
+  ctx.setTransform(dpr * view.k, 0, 0, dpr * view.k, dpr * view.x, dpr * view.y);
+  drawEdges(scene);
+  const { groups, shown } = nodeGroups(scene);
+  drawNodes(scene, groups);
+  drawRings(scene);
+  drawGlyphs(scene, shown);
+  drawLabels(scene, labelledNodes(scene, shown));
   ctx.globalAlpha = 1;
 }
 
@@ -429,10 +506,10 @@ function ControlSwitch({ id, label, checked, onChange }: Readonly<{ id: string; 
 export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, onOpenProject }: Readonly<NoteGraphProps>) {
   const { t } = useTranslation(["notes"]);
   const data = useNotesData();
-  const linkRead = useVaultRead<readonly NoteLinkRecord[] | null>(data.noteLinks, null, "read note links for the graph");
-  const tagRead = useVaultRead(data.noteTags, NO_TAGS, "read note tags for the graph");
-  const records = linkRead.value;
-  const tags = tagRead.value;
+  const linkRead = useNoteLinkRecords();
+  const tagRead = useVaultLoad("tags", data.noteTags);
+  const records = linkRead.data;
+  const tags = tagRead.data ?? NO_TAGS;
   const notes = useNotesByLook(data.notes);
   const theme = useAppTheme();
   const reduced = useReducedMotion();
@@ -443,6 +520,7 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
   const [tag, setTag] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
 
+  const sectionRef = useRef<HTMLElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const runnerRef = useRef<LayoutRunner | null>(null);
@@ -459,7 +537,7 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
   const knownRef = useRef<Map<string, [number, number]>>(new Map());
   const gestureRef = useRef<
     | { kind: "pan"; x: number; y: number; viewX: number; viewY: number }
-    | { kind: "node"; index: number; x: number; y: number; moved: boolean }
+    | NodeGesture
     | { kind: "pinch"; distance: number; k: number }
     | null
   >(null);
@@ -583,12 +661,9 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
         const { width, height } = sizeRef.current;
         viewRef.current = fitView(update.positions, graphRef.current.nodes, width, height);
       }
-      if (update.settled && mode === "global") {
-        savedRef.current = savePositions(graphRef.current.nodes, update.positions, savedRef.current);
-      }
       requestDraw();
     },
-    [mode, requestDraw],
+    [requestDraw],
   );
   const onUpdateRef = useRef(onUpdate);
   onUpdateRef.current = onUpdate;
@@ -601,14 +676,18 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
       runnerRef.current = null;
       if (frameRef.current !== 0) window.cancelAnimationFrame(frameRef.current);
       frameRef.current = 0;
+      const positions = positionsRef.current;
+      if (mode === "global" && positions) {
+        savePositions(graphRef.current.nodes, positions, new Map([...savedRef.current, ...knownRef.current]));
+      }
     };
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
     const previous = graphRef.current;
     graphRef.current = graph;
     const last = startedRef.current;
-    if (last && last.signature === signature && last.reduced === reduced) {
+    if (last?.signature === signature && last.reduced === reduced) {
       requestDraw();
       return;
     }
@@ -760,6 +839,22 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
         : { kind: "pan", x, y, viewX: viewRef.current.x, viewY: viewRef.current.y };
   };
 
+  const dragNode = (gesture: NodeGesture, x: number, y: number) => {
+    if (!gesture.moved && Math.hypot(x - gesture.x, y - gesture.y) < DRAG_THRESHOLD_PX) return;
+    if (!gesture.moved) {
+      gesture.moved = true;
+      runnerRef.current?.send({ type: "drag", generation: generationRef.current, active: true });
+    }
+    const [wx, wy] = toWorld(viewRef.current, x, y);
+    const positions = positionsRef.current;
+    if (positions && gesture.index * 2 + 1 < positions.length) {
+      positions[gesture.index * 2] = wx;
+      positions[gesture.index * 2 + 1] = wy;
+    }
+    runnerRef.current?.send({ type: "pin", generation: generationRef.current, index: gesture.index, x: wx, y: wy });
+    requestDraw();
+  };
+
   const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
     const [x, y] = pointAt(event);
     if (pointersRef.current.has(event.pointerId)) pointersRef.current.set(event.pointerId, { x, y });
@@ -777,19 +872,7 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
       return;
     }
     if (gesture?.kind === "node") {
-      if (!gesture.moved && Math.hypot(x - gesture.x, y - gesture.y) < DRAG_THRESHOLD_PX) return;
-      if (!gesture.moved) {
-        gesture.moved = true;
-        runnerRef.current?.send({ type: "drag", generation: generationRef.current, active: true });
-      }
-      const [wx, wy] = toWorld(viewRef.current, x, y);
-      const positions = positionsRef.current;
-      if (positions && gesture.index * 2 + 1 < positions.length) {
-        positions[gesture.index * 2] = wx;
-        positions[gesture.index * 2 + 1] = wy;
-      }
-      runnerRef.current?.send({ type: "pin", generation: generationRef.current, index: gesture.index, x: wx, y: wy });
-      requestDraw();
+      dragNode(gesture, x, y);
       return;
     }
     const hit = hitTest(positionsRef.current, graphRef.current.nodes, viewRef.current, x, y);
@@ -840,28 +923,45 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
     requestDraw();
   };
 
-  const onKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const mod = isSelectionModifier(event);
-    const onCanvas = event.target === canvasRef.current;
-    let handled = true;
-    if (event.key === "0" && (mod || onCanvas)) {
+  const zoomKey = (key: string): boolean => {
+    if (key === "0") {
       movedRef.current = false;
       fitToView();
-    } else if ((event.key === "=" || event.key === "+") && (mod || onCanvas)) zoomBy(KEY_ZOOM);
-    else if (event.key === "-" && (mod || onCanvas)) zoomBy(1 / KEY_ZOOM);
-    else if (onCanvas && (event.key === "ArrowRight" || event.key === "ArrowDown")) moveFocus(1);
-    else if (onCanvas && (event.key === "ArrowLeft" || event.key === "ArrowUp")) moveFocus(-1);
-    else if (onCanvas && event.key === "Enter" && focusRef.current >= 0) open(focusRef.current, mod);
-    else if (onCanvas && event.key === "Escape" && focusRef.current >= 0) {
+    } else if (key === "=" || key === "+") zoomBy(KEY_ZOOM);
+    else if (key === "-") zoomBy(1 / KEY_ZOOM);
+    else return false;
+    return true;
+  };
+
+  const canvasKey = (key: string, mod: boolean): boolean => {
+    if (key === "ArrowRight" || key === "ArrowDown") moveFocus(1);
+    else if (key === "ArrowLeft" || key === "ArrowUp") moveFocus(-1);
+    else if (key === "Enter" && focusRef.current >= 0) open(focusRef.current, mod);
+    else if (key === "Escape" && focusRef.current >= 0) {
       focusRef.current = -1;
       hoverRef.current = -1;
       requestDraw();
-    } else handled = false;
-    if (handled) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
+    } else return false;
+    return true;
   };
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    const mod = isSelectionModifier(event);
+    const onCanvas = event.target === canvasRef.current;
+    if (!((mod || onCanvas) && zoomKey(event.key)) && !(onCanvas && canvasKey(event.key, mod))) return;
+    event.preventDefault();
+    event.stopPropagation();
+  };
+  const onKeyDownRef = useRef(onKeyDown);
+  onKeyDownRef.current = onKeyDown;
+
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+    const listener = (event: KeyboardEvent) => onKeyDownRef.current(event);
+    section.addEventListener("keydown", listener);
+    return () => section.removeEventListener("keydown", listener);
+  }, []);
 
   const resetLayout = () => {
     savedRef.current = new Map();
@@ -881,36 +981,29 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
   };
 
   const noteCount = graph.nodes.filter((node) => node.kind === "note").length;
-  const emptyMessage =
-    mode === "local" && !centerId
-      ? t(($) => $.notes.graph.noNote)
-      : graph.nodes.length === 0
-        ? full.nodes.length === 0
-          ? t(($) => $.notes.graph.empty)
-          : t(($) => $.notes.graph.emptyFiltered)
-        : null;
+  const loading = data.noteLinks !== undefined && records === null && !linkRead.failed;
+  let emptyMessage: string | null = null;
+  if (mode === "local" && !centerId) emptyMessage = t(($) => $.notes.graph.noNote);
+  else if (graph.nodes.length === 0 && !loading) {
+    emptyMessage = full.nodes.length === 0 ? t(($) => $.notes.graph.empty) : t(($) => $.notes.graph.emptyFiltered);
+  }
+  const blank = emptyMessage !== null || (loading && graph.nodes.length === 0);
   const helpId = `${baseId}-help`;
   const sortedTags = [...tags].sort((a, b) => b.count - a.count || compareText(a.tag, b.tag));
 
+  const title = mode === "local" ? t(($) => $.notes.graph.localTitle) : t(($) => $.notes.graph.title);
+
   return (
-    <section
-      aria-label={mode === "local" ? t(($) => $.notes.graph.localTitle) : t(($) => $.notes.graph.title)}
-      className="flex h-full min-h-0 flex-col"
-      onKeyDown={onKeyDown}
-      data-note-graph={mode}
-    >
+    <section ref={sectionRef} aria-label={title} className="flex h-full min-h-0 flex-col" data-note-graph={mode}>
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-2 py-1.5">
-        <div className="relative min-w-[8rem] max-w-56 flex-1">
-          <Search aria-hidden className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            type="search"
-            aria-label={t(($) => $.notes.graph.search)}
-            placeholder={t(($) => $.notes.graph.search)}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            className="h-7 pl-8 text-xs focus-visible:bg-accent/40"
-          />
-        </div>
+        <SearchField
+          className="min-w-[8rem] max-w-56 flex-1"
+          value={query}
+          onChange={setQuery}
+          label={t(($) => $.notes.graph.search)}
+          placeholder={t(($) => $.notes.graph.search)}
+          clearLabel={t(($) => $.notes.vault.search.clear)}
+        />
         {mode === "global" && sortedTags.length > 0 && (
           <Select value={tag ?? ALL_TAGS} onValueChange={(value) => setTag(value === ALL_TAGS ? null : value)}>
             <SelectTrigger aria-label={t(($) => $.notes.graph.tag)} className="h-7 w-40 text-xs">
@@ -920,7 +1013,7 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
               <SelectItem value={ALL_TAGS}>{t(($) => $.notes.graph.allTags)}</SelectItem>
               {sortedTags.map((entry) => (
                 <SelectItem key={entry.tag} value={entry.tag}>
-                  #{entry.label || entry.tag} ({entry.count})
+                  <span className={tagTone(entry.tag).text}>#{entry.label || entry.tag}</span> ({entry.count})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -972,34 +1065,40 @@ export function NoteGraph({ mode, centerId = null, activeId = null, onOpenNote, 
           </TooltipIconButton>
         </div>
       </div>
-      <div ref={wrapRef} className="relative min-h-0 flex-1 overflow-hidden">
-        {/* biome-ignore lint/a11y/noInteractiveElementToNoninteractiveRole: the graph is a keyboard widget, and ARIA's application role tells screen readers to pass its arrow keys through */}
-        <canvas
-          ref={canvasRef}
-          tabIndex={0}
-          role="application"
-          aria-label={t(($) => $.notes.graph.canvas, { count: noteCount })}
-          aria-describedby={helpId}
-          className={cn("absolute inset-0 block size-full cursor-grab touch-none select-none focus-visible:bg-accent/20", emptyMessage && "invisible")}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          onPointerLeave={onPointerLeave}
-          onBlur={() => {
-            if (focusRef.current < 0) return;
-            focusRef.current = -1;
-            hoverRef.current = -1;
-            requestDraw();
-          }}
-        />
-        {emptyMessage && (
-          <p className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-muted-foreground">{emptyMessage}</p>
+      <div
+        ref={wrapRef}
+        className="relative min-h-0 flex-1 overflow-hidden bg-[radial-gradient(circle,var(--border)_1px,transparent_1px)] bg-size-[1.25rem_1.25rem]"
+      >
+        <div role="application" aria-label={title} className={cn("absolute inset-0", blank && "invisible")}>
+          <canvas
+            ref={canvasRef}
+            tabIndex={0}
+            aria-label={t(($) => $.notes.graph.canvas, { count: noteCount })}
+            aria-describedby={helpId}
+            className="absolute inset-0 block size-full cursor-grab touch-none select-none focus-visible:bg-accent/20"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            onPointerLeave={onPointerLeave}
+            onBlur={() => {
+              if (focusRef.current < 0) return;
+              focusRef.current = -1;
+              hoverRef.current = -1;
+              requestDraw();
+            }}
+          />
+        </div>
+        {emptyMessage && <EmptyState title={emptyMessage} className="absolute inset-0 p-6" />}
+        {loading && graph.nodes.length === 0 && (
+          <LoadingState label={t(($) => $.notes.graph.loading)} className="absolute inset-0 justify-center" />
         )}
         {(linkRead.failed || tagRead.failed) && (
-          <p role="status" className="absolute inset-x-0 bottom-2 mx-auto w-fit max-w-[90%] rounded-md border bg-background px-2 py-1 text-center text-xs text-muted-foreground">
-            {linkRead.failed ? t(($) => $.notes.graph.linksFailed) : t(($) => $.notes.graph.tagsFailed)}
-          </p>
+          <ErrorState
+            size="compact"
+            message={linkRead.failed ? t(($) => $.notes.graph.linksFailed) : t(($) => $.notes.graph.tagsFailed)}
+            className="absolute inset-x-0 bottom-2 mx-auto w-fit max-w-[90%] rounded-md border bg-background px-2 py-1"
+          />
         )}
         <p id={helpId} className="sr-only">
           {t(($) => $.notes.graph.keyboardHelp)}

@@ -215,6 +215,11 @@ export default defineConfig(async () => ({
       "@citation-js/core",
       "@citation-js/plugin-bibtex",
       "@citation-js/plugin-csl",
+      // Vite finds a worker's imports only when the worker first loads, and the
+      // Notes graph worker is the only importer of d3-force. Pre-bundle it so
+      // opening the graph in dev cannot fail the worker on a re-optimized dep.
+      "d3-force",
+      "@terrastruct/d2/wasm-exec",
     ],
   },
   // pdf.js v6 loads its worker as an ES module; build ours the same way so the
@@ -299,7 +304,17 @@ export default defineConfig(async () => ({
       : undefined,
     watch: {
       // Don't watch the Rust source; handled by tauri.
-      ignored: ["**/src-tauri/**", "**/crates/**", "**/coverage/**", "**/*.test.ts", "**/*.test.tsx"],
+      ignored: [
+        "**/src-tauri/**",
+        "**/crates/**",
+        "**/coverage/**",
+        "**/.vitest-reports/**",
+        "**/test-results/**",
+        "**/docs/**",
+        "**/e2e/tests/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+      ],
     },
   },
 }));

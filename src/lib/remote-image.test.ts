@@ -1,6 +1,16 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
-import { remoteImageHost } from "./remote-image";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  heldRemoteImage,
+  REMOTE_IMAGE_HOSTS_KEY,
+  remoteImageAllowed,
+  remoteImageHost,
+  resetRemoteImagesForTest,
+  subscribeRemoteImages,
+  trustedRemoteImageHosts,
+  trustRemoteImageHost,
+  untrustRemoteImageHost,
+} from "./remote-image";
 
 const MAC = "tauri://localhost/index.html";
 const WINDOWS = "http://tauri.localhost/index.html";
@@ -33,5 +43,41 @@ describe("remote image hosts", () => {
   it("reads against the page address by default", () => {
     expect(remoteImageHost(`${window.location.origin}/a.png`)).toBeNull();
     expect(remoteImageHost("https://elsewhere.example/a.png")).toBe("elsewhere.example");
+  });
+});
+
+describe("trusted remote image hosts", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    resetRemoteImagesForTest();
+  });
+
+  it("lists trusted hosts and holds a host's images again once it is removed", () => {
+    const seen = vi.fn();
+    const stop = subscribeRemoteImages(seen);
+    trustRemoteImageHost("x.org");
+    trustRemoteImageHost("y.org");
+    const listed = trustedRemoteImageHosts();
+    expect(listed).toEqual(["x.org", "y.org"]);
+    expect(trustedRemoteImageHosts()).toBe(listed);
+
+    untrustRemoteImageHost("x.org");
+    untrustRemoteImageHost("x.org");
+    stop();
+    expect(trustedRemoteImageHosts()).toEqual(["y.org"]);
+    expect(seen).toHaveBeenCalledTimes(3);
+    expect(heldRemoteImage("https://x.org/a.png")).toEqual({ url: "https://x.org/a.png", host: "x.org" });
+    expect(JSON.parse(localStorage.getItem(REMOTE_IMAGE_HOSTS_KEY) ?? "null")).toEqual(["y.org"]);
+    resetRemoteImagesForTest();
+    expect(trustedRemoteImageHosts()).toEqual(["y.org"]);
+  });
+
+  it("ignores a broken saved host list", () => {
+    localStorage.setItem(REMOTE_IMAGE_HOSTS_KEY, '{"x.org": true}');
+    resetRemoteImagesForTest();
+    expect(remoteImageAllowed("https://x.org/a.png")).toBe(false);
+    trustRemoteImageHost("x.org");
+    trustRemoteImageHost("x.org");
+    expect(JSON.parse(localStorage.getItem(REMOTE_IMAGE_HOSTS_KEY) ?? "[]")).toEqual(["x.org"]);
   });
 });

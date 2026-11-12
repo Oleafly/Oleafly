@@ -4,14 +4,13 @@ import { scheduleIdle } from "@/lib/idle";
 export const IDLE_FALLBACK_MS = 1_200;
 export const QUIET_MS = 1_500;
 export const STARTUP_MS = 4_000;
-export const HEAVY_QUIET_MS = 8_000;
 export const MIN_IDLE_MS = 15;
 export const LATE_MS = 50;
-export const BUSY_PATIENCE_MS = 10_000;
-export const HEAVY = -1;
+const RETRY_GAP_MS = 1_000;
 
 export interface LazyOptions {
   warm?: boolean | (() => boolean);
+  intent?: string;
   priority?: number;
 }
 
@@ -36,7 +35,8 @@ let report: (error: unknown) => void = () => {};
 let lastInput = Number.NEGATIVE_INFINITY;
 let pressed = false;
 let captured = false;
-let busySince: number | null = null;
+const intents = new Map<string, Array<() => Promise<void>>>();
+const signalled = new Set<string>();
 const INPUT_EVENTS = [
   "pointerdown",
   "pointerup",
@@ -45,6 +45,8 @@ const INPUT_EVENTS = [
   "gotpointercapture",
   "lostpointercapture",
   "keydown",
+  "beforeinput",
+  "input",
   "wheel",
   "scroll",
   "resize",
@@ -96,19 +98,14 @@ function enqueue(warmer: Warmer): void {
   else queue.splice(at, 0, warmer);
 }
 
-function holdOff(warmer: Warmer, now: number): number {
-  const quiet = warmer.priority <= HEAVY ? HEAVY_QUIET_MS : QUIET_MS;
+function holdOff(now: number): number {
   const sinceInput = pressed || captured ? 0 : now - lastInput;
-  return Math.max(0, quiet - sinceInput, STARTUP_MS - (now - startedAt));
+  return Math.max(0, QUIET_MS - sinceInput, STARTUP_MS - (now - startedAt));
 }
 
 function idleEnough(deadline: IdleDeadline | undefined, due: number): boolean {
-  const now = Date.now();
-  const roomy = deadline ? !deadline.didTimeout && deadline.timeRemaining() >= MIN_IDLE_MS : now - due <= LATE_MS;
-  busySince ??= now;
-  if (!roomy && now - busySince < BUSY_PATIENCE_MS) return false;
-  busySince = null;
-  return true;
+  if (deadline) return !deadline.didTimeout && deadline.timeRemaining() >= MIN_IDLE_MS;
+  return Date.now() - due <= LATE_MS;
 }
 
 function take(): void {
@@ -130,10 +127,8 @@ function take(): void {
 }
 
 function pump(): void {
-  if (!started || loading || cancelWait) return;
-  const next = queue[0];
-  if (!next) return;
-  const wait = holdOff(next, Date.now());
+  if (!started || loading || cancelWait || queue.length === 0) return;
+  const wait = holdOff(Date.now());
   if (wait > 0) {
     const timer = globalThis.setTimeout(() => {
       cancelWait = null;
@@ -146,8 +141,7 @@ function pump(): void {
   cancelWait = scheduleIdle(
     (deadline) => {
       cancelWait = null;
-      const head = queue[0];
-      if (head && (holdOff(head, Date.now()) > 0 || !idleEnough(deadline, due))) pump();
+      if (holdOff(Date.now()) > 0 || !idleEnough(deadline, due)) pump();
       else take();
     },
     { fallbackMs: IDLE_FALLBACK_MS },
@@ -163,6 +157,22 @@ function reschedule(): void {
 export function warmDeferred(): void {
   for (const warmer of deferred.splice(0)) enqueue(warmer);
   reschedule();
+}
+
+export function preloadIntent(intent: string): void {
+  for (const preload of intents.get(intent) ?? []) preload().catch(report);
+  if (signalled.has(intent)) return;
+  signalled.add(intent);
+  warmDeferred();
+}
+
+export function intended(intent: string): boolean {
+  return signalled.has(intent);
+}
+
+export function intentProps(intent: string): { onPointerEnter: () => void; onFocus: () => void } {
+  const signal = () => preloadIntent(intent);
+  return { onPointerEnter: signal, onFocus: signal };
 }
 
 export function startWarming(onError: (error: unknown) => void): () => void {
@@ -181,7 +191,6 @@ export function stopWarming(): void {
   started = false;
   pressed = false;
   captured = false;
-  busySince = null;
   cancelWait?.();
   cancelWait = null;
 }
@@ -197,6 +206,8 @@ export function lazy<T extends ElementType>(
   type P = ComponentProps<T>;
   let ready: ComponentType<P> | null = null;
   let pending: Promise<ComponentType<P>> | null = null;
+  let failedAt: number | null = null;
+  const fresh = () => reactLazy(() => start().then((component) => ({ default: component })));
   const start = () => {
     pending ??= load().then(
       (module) => {
@@ -206,19 +217,28 @@ export function lazy<T extends ElementType>(
       },
       (error: unknown) => {
         pending = null;
+        failedAt = Date.now();
         throw error;
       },
     );
     return pending;
   };
-  const Lazy = reactLazy(() => start().then((component) => ({ default: component })));
+  let Lazy = fresh();
+  const mounting = () => {
+    if (failedAt !== null && Date.now() - failedAt >= RETRY_GAP_MS) {
+      failedAt = null;
+      Lazy = fresh();
+    }
+    return Lazy;
+  };
   function Preloadable(props: P) {
-    const [Chosen] = useState<ComponentType<P>>(() => ready ?? Lazy);
+    const [Chosen] = useState<ComponentType<P>>(() => ready ?? mounting());
     return <Chosen {...props} />;
   }
   const preload = () => start().then(() => undefined);
   const component = Object.assign(Preloadable, { preload, loaded: () => ready !== null });
-  const { warm, priority = 0 } = options;
+  const { warm, intent, priority = 0 } = options;
+  if (intent) intents.set(intent, [...(intents.get(intent) ?? []), preload]);
   if (warm) {
     enqueue({ preload, wanted: typeof warm === "function" ? warm : () => true, priority });
     reschedule();

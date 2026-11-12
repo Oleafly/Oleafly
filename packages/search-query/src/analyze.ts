@@ -16,8 +16,10 @@ export type TermCode =
   | "invalid-range"
   | "sort-negated";
 
+export type PlanCode = "too-many-branches";
+
 export interface Diagnostic {
-  readonly code: SyntaxCode | TermCode;
+  readonly code: SyntaxCode | TermCode | PlanCode;
   readonly span: Span;
   readonly key?: string;
   readonly value?: string;

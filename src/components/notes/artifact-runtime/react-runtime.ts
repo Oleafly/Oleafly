@@ -2,7 +2,7 @@ import tailwindSource from "@tailwindcss/browser?raw";
 import { Chart, registerables } from "chart.js";
 import * as ChartModule from "chart.js";
 import * as d3 from "d3";
-import lodash from "lodash";
+import * as lodashNamespace from "lodash";
 import * as Lucide from "lucide-react";
 import Papa from "papaparse";
 import * as React from "react";
@@ -12,6 +12,8 @@ import * as JsxRuntime from "react/jsx-runtime";
 import * as Recharts from "recharts";
 import { transform } from "sucrase";
 import { createArtifactRuntime, esm, type RuntimeModule, type TransformOptions } from "./runtime-core";
+
+const lodash = lodashNamespace.default;
 
 let chartReady = false;
 

@@ -1,8 +1,10 @@
 import type { Editor } from "@tiptap/core";
 import type { EditorState } from "@tiptap/pm/state";
-import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useReducer, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Listbox } from "@/components/ui/listbox";
 import { cn } from "@/lib/utils";
+import { sameValue } from "@/lib/same-value";
 
 export interface MenuSize {
   width: number;
@@ -29,41 +31,49 @@ export function anchoredPlacement(rect: AnchorRect, size: MenuSize, gap: number,
   return { left, top: below };
 }
 
+export function fittedPlacement(rect: AnchorRect, size: MenuSize, gap: number, viewport: MenuSize): CSSProperties {
+  const below = viewport.height - rect.bottom - gap;
+  const above = rect.top - gap;
+  const placement = anchoredPlacement(rect, size, gap, viewport);
+  if (below >= size.height || above >= size.height) return placement;
+  if (above > below) return { left: placement.left, bottom: viewport.height - rect.top + gap, maxHeight: Math.max(0, above - MARGIN) };
+  return { left: placement.left, top: rect.bottom + gap, maxHeight: Math.max(0, below - MARGIN) };
+}
+
 export function windowViewport(): MenuSize {
   return { width: window.innerWidth, height: window.innerHeight };
 }
 
-export function menuPlacement(editor: Editor, from: number, size: MenuSize): CSSProperties {
-  let rect: AnchorRect;
+function anchorOf(editor: Editor, from: number): AnchorRect | null {
   try {
-    rect = editor.view.coordsAtPos(from);
+    return editor.view.coordsAtPos(from);
   } catch {
-    return { top: MARGIN, left: MARGIN };
+    return null;
   }
-  return anchoredPlacement(rect, size, MENU_GAP, windowViewport());
 }
 
-export function sameSuggestion(left: unknown, right: unknown): boolean {
-  if (Object.is(left, right)) return true;
-  if (typeof left !== "object" || typeof right !== "object" || left === null || right === null) return false;
-  if (Array.isArray(left) !== Array.isArray(right)) return false;
-  const leftKeys = Object.keys(left);
-  if (leftKeys.length !== Object.keys(right).length) return false;
-  return leftKeys.every(
-    (key) => Object.hasOwn(right, key) && sameSuggestion((left as Record<string, unknown>)[key], (right as Record<string, unknown>)[key]),
-  );
+const CORNER = { top: MARGIN, left: MARGIN };
+
+export function menuPlacement(editor: Editor, from: number, size: MenuSize): CSSProperties {
+  const rect = anchorOf(editor, from);
+  return rect ? anchoredPlacement(rect, size, MENU_GAP, windowViewport()) : CORNER;
+}
+
+function listPlacement(editor: Editor, from: number, size: MenuSize): CSSProperties {
+  const rect = anchorOf(editor, from);
+  return rect ? fittedPlacement(rect, size, MENU_GAP, windowViewport()) : CORNER;
 }
 
 export function useEditorSuggestion<T>(editor: Editor, read: (state: EditorState) => T | null): T | null {
   const [suggestion, setSuggestion] = useState<T | null>(() => read(editor.state));
   const shownRef = useRef(suggestion);
   const [focused, setFocused] = useState(true);
-  const [, setMoved] = useState(0);
+  const [, follow] = useReducer((tick: number) => tick + 1, 0);
 
   useEffect(() => {
     const update = () => {
       const next = read(editor.state);
-      if (sameSuggestion(shownRef.current, next)) return;
+      if (sameValue(shownRef.current, next)) return;
       shownRef.current = next;
       setSuggestion(next);
     };
@@ -83,12 +93,11 @@ export function useEditorSuggestion<T>(editor: Editor, read: (state: EditorState
   const open = focused && suggestion !== null;
   useEffect(() => {
     if (!open) return;
-    const move = () => setMoved((count) => count + 1);
-    window.addEventListener("scroll", move, true);
-    window.addEventListener("resize", move);
+    window.addEventListener("scroll", follow, true);
+    window.addEventListener("resize", follow);
     return () => {
-      window.removeEventListener("scroll", move, true);
-      window.removeEventListener("resize", move);
+      window.removeEventListener("scroll", follow, true);
+      window.removeEventListener("resize", follow);
     };
   }, [open]);
 
@@ -112,51 +121,16 @@ export function SuggestionListbox({ editor, id, label, from, size, activeId, cla
   }, [activeId]);
 
   return createPortal(
-    <div
+    <Listbox
       {...data}
       id={id}
-      role="listbox"
       aria-label={label}
-      style={menuPlacement(editor, from, size)}
-      className={cn(
-        "fixed z-50 overflow-y-auto rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl",
-        className,
-      )}
+      style={listPlacement(editor, from, size)}
+      className={cn("fixed z-50", className)}
       onMouseDown={(event) => event.preventDefault()}
     >
       {children}
-    </div>,
+    </Listbox>,
     document.body,
-  );
-}
-
-interface SuggestionOptionProps {
-  id: string;
-  selected: boolean;
-  onHighlight: () => void;
-  onChoose: () => void;
-  children: ReactNode;
-}
-
-export function SuggestionOption({ id, selected, onHighlight, onChoose, children, ...data }: Readonly<SuggestionOptionProps>) {
-  return (
-    <button
-      {...data}
-      id={id}
-      type="button"
-      role="option"
-      aria-selected={selected}
-      tabIndex={-1}
-      onMouseEnter={() => {
-        if (!selected) onHighlight();
-      }}
-      onClick={onChoose}
-      className={cn(
-        "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left transition-colors motion-reduce:transition-none",
-        selected && "bg-accent text-accent-foreground",
-      )}
-    >
-      {children}
-    </button>
   );
 }

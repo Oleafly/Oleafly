@@ -61,6 +61,7 @@ pub struct AppState {
     pub comment_guard: CommentGuard,
     pub mentions: Mentions,
     pub transfers: Transfers,
+    pub published: Arc<crate::published::Limits>,
     #[cfg(feature = "web")]
     pub web: Arc<crate::web::Hub>,
     #[cfg(feature = "web")]
@@ -179,6 +180,7 @@ impl AppState {
             comment_guard: CommentGuard::default(),
             mentions: Mentions::default(),
             transfers: Transfers::with_budget(transfer_budget),
+            published: Arc::default(),
             #[cfg(feature = "web")]
             web,
             #[cfg(feature = "web")]

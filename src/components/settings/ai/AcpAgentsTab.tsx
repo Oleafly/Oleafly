@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { lazy } from "@/lib/preloadable";
+import { intended, lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import {
   ChevronRight,
@@ -51,9 +51,9 @@ import { i18n } from "@/i18n";
 import { Spinner } from "@/components/ui/spinner";
 import { CodeBlock } from "@/components/ui/code-block";
 
-const AcpAgentPreferenceSections = lazy(() => import("./acp/AcpAgentPreferenceSections"), { warm: true });
-const AcpExperimentalSection = lazy(() => import("./acp/AcpExperimentalSection"), { warm: true });
-const HermesSection = lazy(() => import("./acp/HermesSection"), { warm: true });
+const AcpAgentPreferenceSections = lazy(() => import("./acp/AcpAgentPreferenceSections"), { warm: () => intended("settings") });
+const AcpExperimentalSection = lazy(() => import("./acp/AcpExperimentalSection"), { warm: () => intended("settings") });
+const HermesSection = lazy(() => import("./acp/HermesSection"), { warm: () => intended("settings") });
 
 const example = JSON.stringify(
   {

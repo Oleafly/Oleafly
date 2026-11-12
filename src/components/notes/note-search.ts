@@ -1,12 +1,17 @@
+import { useQueries } from "@tanstack/react-query";
+import { normalizeText } from "@oleafly/search-query";
 import { defaultFilter } from "cmdk";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef } from "react";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { fencedLines } from "@/lib/code-fences";
 import { splitFrontMatter } from "@/lib/front-matter";
-import { logError } from "@/lib/log";
-import type { NoteSearchHit, NoteTagCount } from "@/lib/tauri";
+import { describeError } from "@/lib/app-error";
+import { appQueryClient } from "@/lib/query";
+import type { NoteSearchHit, NoteSearchOptions, NoteTagCount } from "@/lib/tauri";
+import { scanToCharOrLineBreak } from "./note-link-format";
 import { mergeHits, type VaultPlan } from "./note-query";
-import { useNotesData } from "./notes-data";
+import { useNotesData, useVaultKey, useVaultLoad, VAULT_QUERY } from "./notes-data";
 import type { NoteItem } from "./types";
-import { useVaultKey, vaultLoad, vaultQuery } from "./vault-loads";
 
 export const SEARCH_DEBOUNCE_MS = 120;
 export const SEARCH_LIMIT = 50;
@@ -14,12 +19,7 @@ export const SWITCHER_LIMIT = 50;
 
 const ALIAS_WEIGHT = 0.98;
 const QUERY_SEPARATOR = "\u0001";
-
-export interface HighlightPart {
-  text: string;
-  start: number;
-  match: boolean;
-}
+const NO_HITS: readonly NoteSearchHit[] = [];
 
 export interface TagNode {
   tag: string;
@@ -34,26 +34,8 @@ export interface SwitcherMatch {
 }
 
 export function phraseQuery(text: string): string {
-  const phrase = text.replace(/"/gu, " ").replace(/\s+/gu, " ").trim();
+  const phrase = text.replaceAll('"', " ").replaceAll(/\s+/gu, " ").trim();
   return phrase ? `"${phrase}"` : "";
-}
-
-export function highlightParts(text: string, ranges: readonly (readonly [number, number])[]): HighlightPart[] {
-  const sorted = ranges
-    .map(([start, end]) => [Math.max(0, start), Math.min(text.length, end)] as const)
-    .filter(([start, end]) => end > start)
-    .sort((left, right) => left[0] - right[0]);
-  const parts: HighlightPart[] = [];
-  let at = 0;
-  for (const [start, end] of sorted) {
-    if (end <= at) continue;
-    const from = Math.max(start, at);
-    if (from > at) parts.push({ text: text.slice(at, from), start: at, match: false });
-    parts.push({ text: text.slice(from, end), start: from, match: true });
-    at = end;
-  }
-  if (at < text.length || parts.length === 0) parts.push({ text: text.slice(at), start: at, match: false });
-  return parts;
 }
 
 export function tagTree(tags: readonly NoteTagCount[]): TagNode[] {
@@ -83,8 +65,15 @@ export function tagTree(tags: readonly NoteTagCount[]): TagNode[] {
   return roots;
 }
 
-export function fold(text: string): string {
-  return text.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+const FOLDED = new WeakMap<NoteItem, readonly [string, ...string[]]>();
+
+function foldedNames(note: NoteItem): readonly [string, ...string[]] {
+  let names = FOLDED.get(note);
+  if (!names) {
+    names = [normalizeText(note.title), ...(note.aliases ?? []).map(normalizeText)];
+    FOLDED.set(note, names);
+  }
+  return names;
 }
 
 function recency(note: NoteItem, opened: Readonly<Record<string, number>>): number {
@@ -97,7 +86,7 @@ export function switcherMatches(
   opened: Readonly<Record<string, number>>,
   limit = SWITCHER_LIMIT,
 ): SwitcherMatch[] {
-  const search = fold(query.trim());
+  const search = normalizeText(query.trim());
   if (search === "") {
     return [...notes]
       .sort((left, right) => recency(right, opened) - recency(left, opened) || right.updatedAt - left.updatedAt)
@@ -105,126 +94,87 @@ export function switcherMatches(
       .map((note) => ({ note, alias: null }));
   }
   const scored: { note: NoteItem; alias: string | null; score: number }[] = [];
+  const lead = /[\s-]/.test(search[0]) ? "" : search[0];
   for (const note of notes) {
-    let best = { alias: null as string | null, score: defaultFilter(fold(note.title), search) };
-    for (const alias of note.aliases ?? []) {
-      const score = defaultFilter(fold(alias), search) * ALIAS_WEIGHT;
-      if (score > best.score) best = { alias, score };
-    }
+    const [title, ...aliases] = foldedNames(note);
+    let best = { alias: null as string | null, score: title.includes(lead) ? defaultFilter(title, search) : 0 };
+    aliases.forEach((alias, index) => {
+      if (!alias.includes(lead)) return;
+      const score = defaultFilter(alias, search) * ALIAS_WEIGHT;
+      if (score > best.score) best = { alias: note.aliases?.[index] ?? null, score };
+    });
     if (best.score > 0) scored.push({ note, ...best });
   }
-  return scored
-    .sort(
-      (left, right) =>
-        right.score - left.score ||
-        recency(right.note, opened) - recency(left.note, opened) ||
-        right.note.updatedAt - left.note.updatedAt,
-    )
-    .slice(0, limit)
-    .map(({ note, alias }) => ({ note, alias }));
+  scored.sort(
+    (left, right) =>
+      right.score - left.score || recency(right.note, opened) - recency(left.note, opened) || right.note.updatedAt - left.note.updatedAt,
+  );
+  return scored.slice(0, limit).map(({ note, alias }) => ({ note, alias }));
 }
 
 export function hasExactTitle(notes: readonly NoteItem[], query: string): boolean {
-  const wanted = fold(query.trim());
-  return notes.some((note) => fold(note.title) === wanted || (note.aliases ?? []).some((alias) => fold(alias) === wanted));
+  const wanted = normalizeText(query.trim());
+  return notes.some((note) => normalizeText(note.title) === wanted || (note.aliases ?? []).some((alias) => normalizeText(alias) === wanted));
 }
 
 export function useNoteTagCounts(): readonly NoteTagCount[] | null {
-  const { noteTags } = useNotesData();
-  const vault = useVaultKey();
-  const [tags, setTags] = useState<readonly NoteTagCount[] | null>(null);
-  useEffect(() => {
-    if (!noteTags) return;
-    let live = true;
-    vaultLoad(noteTags, vault).then(
-      (loaded) => {
-        if (live) setTags(loaded);
-      },
-      (error: unknown) => void logError("read note tags", error),
-    );
-    return () => {
-      live = false;
-    };
-  }, [noteTags, vault]);
-  return tags;
+  return useVaultLoad("tags", useNotesData().noteTags).data;
 }
 
 export interface NoteSearchState {
   hits: readonly NoteSearchHit[] | null;
   pending: boolean;
+  error?: string | null;
 }
 
 interface SearchAnswer {
-  readonly key: string;
   readonly plan: VaultPlan;
   readonly results: readonly (readonly NoteSearchHit[])[];
 }
 
-export function useVaultSearch(plan: VaultPlan, enabled: boolean, limit = SEARCH_LIMIT): NoteSearchState {
+const NO_OPTIONS: NoteSearchOptions = {};
+
+export function useVaultSearch(plan: VaultPlan, enabled: boolean, limit = SEARCH_LIMIT, options: NoteSearchOptions = NO_OPTIONS): NoteSearchState {
   const { notes, searchNotes } = useNotesData();
-  const vault = useVaultKey();
-  const [answer, setAnswer] = useState<SearchAnswer | null>(null);
-  const [pending, setPending] = useState(false);
-  const sequence = useRef(0);
-  const flight = useRef<Promise<unknown> | null>(null);
-  const planRef = useRef(plan);
-  planRef.current = plan;
   const active = enabled && searchNotes !== undefined && plan.branches.length > 0;
-  const key = active ? plan.searches.join(QUERY_SEPARATOR) : "";
-  useEffect(() => {
-    const run = ++sequence.current;
-    if (!active || !searchNotes) {
-      setAnswer(null);
-      setPending(false);
-      return;
-    }
-    setPending(true);
-    const queries = key === "" ? [] : key.split(QUERY_SEPARATOR);
-    const start = () => {
-      if (sequence.current !== run) return;
-      const asked = planRef.current;
-      const settle = (results: readonly (readonly NoteSearchHit[])[]) => {
-        setAnswer({ key, plan: asked, results });
-        setPending(false);
-      };
-      const running = Promise.all(
-        queries.map((query) => vaultQuery(searchNotes, vault, `${limit}\u0000${query}`, () => searchNotes(query, limit))),
-      ).then(
-        (results) => {
-          if (sequence.current === run) settle(results);
+  const mode = options.mode ?? "ranked";
+  const blocks = options.blocks === true;
+  const key = active ? `${mode}${QUERY_SEPARATOR}${String(blocks)}${QUERY_SEPARATOR}${plan.searches.join(QUERY_SEPARATOR)}` : "";
+  const settled = useDebouncedValue(key, SEARCH_DEBOUNCE_MS);
+  const ready = active && settled === key;
+  const base = useVaultKey("search", searchNotes, limit, mode, blocks);
+  const results = useQueries(
+    {
+      queries: (ready ? plan.searches : []).map((search) => ({
+        queryKey: [...base, search],
+        queryFn: () => {
+          if (!searchNotes) return Promise.resolve([]);
+          return mode === "ranked" && !blocks ? searchNotes(search, limit) : searchNotes(search, limit, { mode, blocks });
         },
-        (error: unknown) => {
-          if (sequence.current !== run) return;
-          void logError("search notes", error);
-          settle(queries.map(() => []));
-        },
-      );
-      flight.current = running;
-      void running.finally(() => {
-        if (flight.current === running) flight.current = null;
-      });
-    };
-    const timer = window.setTimeout(() => {
-      const busy = flight.current;
-      if (busy) void busy.then(start);
-      else start();
-    }, SEARCH_DEBOUNCE_MS);
-    return () => window.clearTimeout(timer);
-  }, [active, key, limit, searchNotes, vault]);
-  const hits = useMemo(() => {
-    if (!active || !answer) return null;
-    return mergeHits(answer.key === key ? plan : answer.plan, answer.results, notes, limit);
-  }, [active, answer, key, limit, notes, plan]);
-  return { hits, pending: active && pending };
+        ...VAULT_QUERY,
+        retry: false,
+      })),
+    },
+    appQueryClient(),
+  );
+  const done = ready && results.every((result) => !result.isPending);
+  const answer = useRef<SearchAnswer | null>(null);
+  const found = results.map((result) => result.data ?? NO_HITS);
+  if (!active) answer.current = null;
+  else if (done && (answer.current?.plan !== plan || found.some((hits, index) => hits !== answer.current?.results[index]))) {
+    answer.current = { plan, results: found };
+  }
+  const shown = answer.current;
+  const hits = useMemo(() => (shown ? mergeHits(shown.plan, shown.results, notes, limit) : null), [limit, notes, shown]);
+  const failed = ready ? results.find((result) => result.error)?.error : undefined;
+  return failed ? { hits, pending: active && !done, error: describeError(failed) } : { hits, pending: active && !done };
 }
 
-const PROTECTED = [
-  /`+[^`]*`+/gu,
-  /!?\[[^\]\n]*\]\([^)\n]*\)/gu,
-  /<[A-Za-z][A-Za-z0-9+.-]*:[^\s<>]*>/gu,
-  /[A-Za-z][A-Za-z0-9+.-]*:\/\/\S+/gu,
-];
-const FENCE_LINE = /^[ \t]*(`{3,}|~{3,})/u;
+const CODE_SPAN = /`+[^`]*`+/gu;
+const AUTOLINK = /<[A-Za-z][A-Za-z0-9+.-]*:[^\s<>]*>/gu;
+const ASCII_LETTER = /[A-Za-z]/u;
+const SCHEME_CHAR = /[A-Za-z0-9+.-]/u;
+const NON_SPACE = /\S/u;
 const CJK_START = 0x2e80;
 
 function isWordy(char: string | undefined): boolean {
@@ -236,17 +186,68 @@ function foldedWithOrigin(line: string): { folded: string; origin: number[] } {
   const origin: number[] = [];
   let index = 0;
   for (const char of line) {
-    const part = fold(char);
+    const part = normalizeText(char);
     folded += part;
-    for (let unit = 0; unit < part.length; unit++) origin.push(index);
+    origin.push(...Array.from({ length: part.length }, () => index));
     index += char.length;
   }
   origin.push(line.length);
   return { folded, origin };
 }
 
+function matchRanges(line: string, pattern: RegExp): [number, number][] {
+  return [...line.matchAll(pattern)].map((match): [number, number] => [match.index, match.index + match[0].length]);
+}
+
+function linkRanges(line: string): [number, number][] {
+  const ranges: [number, number][] = [];
+  let from = 0;
+  let open = line.indexOf("[");
+  while (open >= 0) {
+    const close = scanToCharOrLineBreak(line, open + 1, "]");
+    let next = close + 1;
+    if (line[close] === "]" && line[close + 1] === "(") {
+      const end = scanToCharOrLineBreak(line, close + 2, ")");
+      if (line[end] === ")") {
+        ranges.push([open > from && line[open - 1] === "!" ? open - 1 : open, end + 1]);
+        from = end + 1;
+      }
+      next = end + 1;
+    }
+    open = line.indexOf("[", next);
+  }
+  return ranges;
+}
+
+function runEnd(text: string, from: number, pattern: RegExp): number {
+  let end = from;
+  while (end < text.length && pattern.test(text[end])) end += 1;
+  return end;
+}
+
+function schemeStart(line: string, floor: number, mark: number): number {
+  let start = mark;
+  while (start > floor && SCHEME_CHAR.test(line[start - 1])) start -= 1;
+  while (start < mark && !ASCII_LETTER.test(line[start])) start += 1;
+  return start < mark ? start : -1;
+}
+
+function urlRanges(line: string): [number, number][] {
+  const ranges: [number, number][] = [];
+  let from = 0;
+  for (let mark = line.indexOf("://"); mark >= 0; mark = line.indexOf("://", Math.max(mark + 1, from))) {
+    const start = schemeStart(line, from, mark);
+    if (start < 0) continue;
+    const end = runEnd(line, mark + 3, NON_SPACE);
+    if (end === mark + 3) continue;
+    ranges.push([start, end]);
+    from = end;
+  }
+  return ranges;
+}
+
 function protectedRanges(line: string): [number, number][] {
-  return PROTECTED.flatMap((pattern) => [...line.matchAll(pattern)].map((match): [number, number] => [match.index, match.index + match[0].length]));
+  return [...matchRanges(line, CODE_SPAN), ...linkRanges(line), ...matchRanges(line, AUTOLINK), ...urlRanges(line)];
 }
 
 function firstMention(line: string, names: readonly string[]): [number, number] | null {
@@ -254,7 +255,7 @@ function firstMention(line: string, names: readonly string[]): [number, number] 
   const blocked = protectedRanges(line);
   let best: [number, number] | null = null;
   for (const name of names) {
-    const needle = fold(name.trim());
+    const needle = normalizeText(name.trim());
     if (!needle) continue;
     let at = folded.indexOf(needle);
     while (at >= 0) {
@@ -276,24 +277,13 @@ function firstMention(line: string, names: readonly string[]): [number, number] 
 
 export function linkFirstMention(source: string, names: readonly string[], href: string): string | null {
   const head = source.slice(0, splitFrontMatter(source)?.bodyFrom ?? 0);
-  const lines = source.slice(head.length).split("\n");
-  let fence: string | null = null;
-  for (const [index, line] of lines.entries()) {
-    const marker = FENCE_LINE.exec(line)?.[1];
-    if (fence !== null) {
-      if (marker && marker[0] === fence[0] && marker.length >= fence.length) fence = null;
-      continue;
-    }
-    if (marker) {
-      fence = marker;
-      continue;
-    }
-    const found = firstMention(line, names);
+  const body = source.slice(head.length);
+  for (const line of fencedLines(body)) {
+    const found = line.fenced ? null : firstMention(line.text, names);
     if (!found) continue;
-    const [start, end] = found;
-    const label = line.slice(start, end).replace(/[\\[\]]/gu, "\\$&");
-    lines[index] = `${line.slice(0, start)}[${label}](${href})${line.slice(end)}`;
-    return head + lines.join("\n");
+    const [start, end] = found.map((at) => line.from + at);
+    const label = body.slice(start, end).replaceAll(/[\\[\]]/gu, String.raw`\$&`);
+    return `${head}${body.slice(0, start)}[${label}](${href})${body.slice(end)}`;
   }
   return null;
 }

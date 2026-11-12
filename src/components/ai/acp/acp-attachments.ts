@@ -1,5 +1,6 @@
 import type { Text } from "@codemirror/state";
 import type { DraftAttachment } from "@/components/ai/composer/types";
+import { noteLinkSelections } from "@/components/notes/note-link-context";
 import { i18n } from "@/i18n";
 import type { AcpImage, AcpPromptFile, AcpPromptInput, AcpSession } from "@/lib/acp";
 import { attachmentRead } from "@/lib/attachments";
@@ -88,10 +89,13 @@ export async function toPromptInput(
     files.push({ kind: "stored", sha256: item.sha256, name: item.name, mime: item.mime });
   }
   for (const path of mentioned) files.push({ kind: "project", path });
-  const selections = draft.selections.map((selection) => ({
-    path: selection.path,
-    text: selection.text.slice(0, MAX_SELECTION_CHARS),
-  }));
+  const selections = [
+    ...draft.selections.map((selection) => ({
+      path: selection.path,
+      text: selection.text.slice(0, MAX_SELECTION_CHARS),
+    })),
+    ...(await noteLinkSelections(draft.text)).map((selection) => ({ ...selection, text: selection.text.slice(0, MAX_SELECTION_CHARS) })),
+  ];
   if (draft.attachments.length + mentioned.length + selections.length > MAX_ACP_ATTACHMENTS) {
     throw new AcpPromptError("tooMany");
   }

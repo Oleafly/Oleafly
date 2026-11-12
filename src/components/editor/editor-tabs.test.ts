@@ -11,6 +11,7 @@ import {
   editorTabKey,
   editorTabs,
   openAssistantTabs,
+  reorderEditorTabs,
   tabsToClose,
 } from "./editor-tabs";
 
@@ -165,6 +166,12 @@ describe("personal note tabs in the strip", () => {
   it("closes a single note tab", () => {
     closeEditorTab({ kind: "note", id: "note-a", order: 6 });
     expect(useNoteTabsStore.getState().tabs.map((tab) => tab.id)).toEqual(["note-b"]);
+  });
+
+  it("reorders files, diffs and notes together and leaves other projects' notes alone", () => {
+    reorderEditorTabs(["n:note-a", "f:c.tex", "d:staged:refs.bib", "f:a.tex", "d:working:a.tex", "f:b.tex"]);
+    expect(stripKeys()).toEqual(["n:note-a", "f:c.tex", "d:staged:refs.bib", "f:a.tex", "d:working:a.tex", "f:b.tex"]);
+    expect(useNoteTabsStore.getState().tabs.find((tab) => tab.id === "note-b")?.order).toBe(7);
   });
 
   it("closes every tab, notes included", () => {

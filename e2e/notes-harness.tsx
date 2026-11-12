@@ -3,8 +3,11 @@ import { useSyncExternalStore } from "react";
 import { createRoot } from "react-dom/client";
 import { NotesDataProvider } from "/src/components/notes/notes-data";
 import { NotesWorkspace } from "/src/components/notes/NotesWorkspace";
+import { createStarterNote } from "/src/components/notes/starter-note";
+import { NoteLinkIndexProvider } from "/src/components/notes/use-note-links";
 import { createAppQueryClient } from "/src/lib/query";
-import { loadNamespace } from "/src/i18n";
+import { i18n, loadNamespace } from "/src/i18n";
+import { useSettingsStore } from "/src/store/settings";
 import { prepareHarnessI18n } from "./harness-i18n";
 import { installNotesAgentMock } from "./notes-agent-mock";
 import { createNotesFixture } from "./notes-fixtures";
@@ -24,7 +27,13 @@ document.documentElement.style.setProperty("--primary", params.get("accent") ?? 
 document.documentElement.style.setProperty("--primary-foreground", "#ffffff");
 
 const fixture = createNotesFixture(Date.now());
-Object.assign(window, { __notes: fixture });
+const exits = { count: 0 };
+Object.assign(window, { __notes: fixture, __exits: exits, __settings: useSettingsStore });
+const onExit = params.has("exit")
+  ? () => {
+      exits.count += 1;
+    }
+  : undefined;
 
 const queryClient = createAppQueryClient();
 
@@ -34,14 +43,29 @@ function Harness() {
     <div className="h-screen">
       <QueryClientProvider client={queryClient}>
         <NotesDataProvider value={data}>
-          <NotesWorkspace onNewNote={() => (data.createNote ? data.createNote() : Promise.resolve(null))} />
+          <NoteLinkIndexProvider>
+            <NotesWorkspace onExit={onExit} onNewNote={() => (data.createNote ? data.createNote() : Promise.resolve(null))} />
+          </NoteLinkIndexProvider>
         </NotesDataProvider>
       </QueryClientProvider>
     </div>
   );
 }
 
-await prepareHarnessI18n();
+function openStarterTwice(): Promise<unknown> {
+  let taken = false;
+  const claim = async () => {
+    const first = !taken;
+    taken = true;
+    return first;
+  };
+  const t = i18n.getFixedT(null, ["notes"]);
+  const open = () => createStarterNote({ createNoteFrom: fixture.snapshot().createNoteFrom, t, notes: () => fixture.snapshot().notes, claim });
+  return Promise.all([open(), open()]);
+}
+
+await prepareHarnessI18n((params.get("lang") ?? "en") as Parameters<typeof prepareHarnessI18n>[0]);
 await loadNamespace("notes");
+if (params.has("starter")) await openStarterTwice();
 createRoot(root).render(<Harness />);
 document.body.dataset.fixtureState = "mounted";

@@ -197,4 +197,14 @@ describe("Calendar", () => {
     expect(day(/September 16th, 2026/)).toHaveClass("size-8", "p-0", "font-normal");
     expect(screen.getByRole("status")).toHaveClass("text-sm", "font-medium");
   });
+
+  it("pins the month arrows to the caption row whatever padding the grid has", () => {
+    render(<Calendar mode="single" today={TODAY} defaultMonth={SEPTEMBER} className="p-1" />);
+    const nav = screen.getByRole("navigation");
+    expect(nav).toHaveClass("absolute", "inset-x-0", "top-0", "h-8");
+    expect(nav.parentElement).toHaveClass("relative");
+    expect(nav.parentElement).not.toHaveClass("p-1");
+    expect(nav.parentElement?.contains(screen.getByRole("status"))).toBe(true);
+    expect(screen.getByRole("status").parentElement).toHaveClass("h-8");
+  });
 });

@@ -1,8 +1,10 @@
 import { initializeI18n } from "/src/i18n";
 
-export async function prepareHarnessI18n(): Promise<void> {
+type LocalePreference = Parameters<typeof initializeI18n>[0]["preference"];
+
+export async function prepareHarnessI18n(preference: LocalePreference = "en"): Promise<void> {
   await initializeI18n({
-    preference: "en",
+    preference,
     systemLocale: async () => null,
     missingKeyMode: "throw",
   });

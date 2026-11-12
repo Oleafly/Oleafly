@@ -64,7 +64,7 @@ function notesProofreadingMode(): ReturnType<typeof proofreadingModeFor> {
 function homeLocale(home: NoteItem["home"]): string {
   const files = useFilesStore.getState();
   return effectiveDictionaryLocale({
-    project: home && files.projectId === home.projectId ? files.projectDictionaryLocale : null,
+    project: files.projectId === home?.projectId ? files.projectDictionaryLocale : null,
     global: useSettingsStore.getState().dictionaryLocale,
   });
 }

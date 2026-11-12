@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-import { beforeAll, describe, expect, it } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { describe, expect, it } from "vitest";
 import {
   curvePath,
   MAX_CURVES,
@@ -15,10 +14,7 @@ import {
   sampleCurve,
   splitTopLevel,
 } from "./plot-block";
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+import "./tests/setup";
 
 function paint(source: string): HTMLElement {
   const preview = document.createElement("div");
@@ -240,7 +236,7 @@ describe("plot drawing", () => {
     expect(preview.querySelectorAll(".note-plot-curve")).toHaveLength(2);
     expect(
       [...preview.querySelectorAll(".note-plot-curve")].map((path) => path.getAttribute("style")),
-    ).toEqual(["stroke: var(--note-chart-1)", "stroke: var(--note-chart-2)"]);
+    ).toEqual(["stroke: var(--chart-1)", "stroke: var(--chart-2)"]);
     expect(preview.querySelectorAll(".note-plot-axis")).toHaveLength(2);
     expect(preview.querySelectorAll(".note-plot-grid").length).toBeGreaterThan(6);
     expect([...preview.querySelectorAll(".note-chart-legend li")].map((item) => item.textContent)).toEqual([
@@ -288,7 +284,7 @@ describe("plot drawing", () => {
   it("says when nothing can be drawn and still lists the problems", () => {
     const preview = paint("y = (x");
     expect(preview.querySelector("svg")).toBeNull();
-    expect(preview.querySelector(".note-drawn-empty")?.textContent).toBe(
+    expect(preview.querySelector("p")?.textContent).toBe(
       "Nothing to plot yet. Add a line such as y = sin(x).",
     );
     expect(preview.querySelector(".note-plot-problems")?.textContent).toBe("Line 1: The parentheses don't match.");

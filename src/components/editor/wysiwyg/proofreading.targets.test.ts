@@ -5,6 +5,7 @@ import { StarterKit } from "@tiptap/starter-kit";
 import type { ProofreadingDiagnostic, ProofreadingMode, ProofreadingResult } from "@oleafly/editor";
 import { useDictionary } from "@/lib/dictionary";
 import { useProofreadingStore } from "@/store/proofreading";
+import { useSettingsStore } from "@/store/settings";
 
 interface Request {
   identity: ProofreadingResult["identity"];
@@ -130,7 +131,10 @@ beforeEach(() => {
   useProofreadingStore.getState().clear("notes");
 });
 
+const initialSettings = useSettingsStore.getState();
+
 afterEach(() => {
+  useSettingsStore.setState(initialSettings, true);
   for (const editor of editors.splice(0)) editor.destroy();
   document.body.replaceChildren();
   vi.useRealTimers();
@@ -242,13 +246,28 @@ describe("what a target can change", () => {
     expect(findings(editor).map((node) => node.textContent)).toEqual(["Speling"]);
   });
 
-  it("turns the WebView's own spell check off when it is asked to, as the visual editor does", () => {
-    const own = mount(probe("notes/1/a", { replacesNativeSpellcheck: true }).target, "<p>Text.</p>");
-    const visual = mount(null, "<p>Text.</p>");
+  it("turns the WebView's own spell check off only while the app checks spelling", () => {
+    const own = probe("notes/1/a", { replacesNativeSpellcheck: true });
+    const editor = mount(own.target, "<p>Text.</p>");
     const plain = mount(probe("notes/1/b").target, "<p>Text.</p>");
-    expect(own.view.dom.getAttribute("spellcheck")).toBe("false");
-    expect(visual.view.dom.getAttribute("spellcheck")).toBe("false");
+    const native = () => editor.view.dom.getAttribute("spellcheck");
+    expect(native()).toBe("false");
     expect(plain.view.dom.hasAttribute("spellcheck")).toBe(false);
+    for (const [mode, expected] of [["grammar", null], [null, null], ["combined", "false"]] as const) {
+      own.mode = mode;
+      editor.view.dispatch(editor.state.tr);
+      expect(native()).toBe(expected);
+    }
+  });
+
+  it.each([
+    [true, false, "false"],
+    [true, true, "false"],
+    [false, true, null],
+    [false, false, null],
+  ] as const)("leaves the system spell check to the visual editor with spelling %s and grammar %s", (spellcheck, harper, expected) => {
+    useSettingsStore.setState({ spellcheck, harper });
+    expect(mount(null, "<p>Text.</p>").view.dom.getAttribute("spellcheck")).toBe(expected);
   });
 });
 

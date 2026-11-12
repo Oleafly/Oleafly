@@ -50,7 +50,7 @@ beforeEach(() => {
   theme.mode = "light";
   theme.listeners.clear();
   resetCodePalettesForTest();
-  useSettingsStore.getState().resetNotesAppearance();
+  useSettingsStore.getState().resetAppearancePreferences();
   useSettingsStore.setState({ editorThemeLight: "system", editorThemeDark: "system" });
 });
 
@@ -142,6 +142,12 @@ describe("attaching to a Notes root", () => {
     expect(element.style.getPropertyValue("--notes-text-size")).toBe("1.25rem");
     act(() => useSettingsStore.getState().setNotesAppearance("notesSpellcheck", false));
     expect(element.getAttribute("spellcheck")).toBe("false");
+    expect(element.hasAttribute("data-notes-task-box")).toBe(false);
+    act(() => useSettingsStore.getState().setNotesAppearance("notesTaskBox", "square"));
+    expect(element.getAttribute("data-notes-task-box")).toBe("square");
+    expect(element.hasAttribute("data-notes-field-style")).toBe(false);
+    act(() => useSettingsStore.getState().setNotesAppearance("notesFieldStyle", "outline"));
+    expect(element.getAttribute("data-notes-field-style")).toBe("outline");
 
     useSettingsStore.setState({ editorThemeLight: "paper", editorThemeDark: "dracula" });
     act(() => useSettingsStore.getState().setNotesAppearance("notesCodeTheme", "editor"));
@@ -155,6 +161,8 @@ describe("attaching to a Notes root", () => {
     expect(theme.listeners.size).toBe(0);
     expect(element.style.getPropertyValue("--notes-text-size")).toBe("");
     expect(element.hasAttribute("spellcheck")).toBe(false);
+    expect(element.hasAttribute("data-notes-task-box")).toBe(false);
+    expect(element.hasAttribute("data-notes-field-style")).toBe(false);
     expect(element.hasAttribute("data-notes-code-theme")).toBe(false);
     act(() => useSettingsStore.getState().setNotesAppearance("notesFontSize", 12));
     expect(element.style.getPropertyValue("--notes-text-size")).toBe("");

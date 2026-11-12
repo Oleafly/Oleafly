@@ -8,6 +8,7 @@ describe("console sections", () => {
       "people",
       "access",
       "projects",
+      "pages",
       "settings",
       "email",
       "log",

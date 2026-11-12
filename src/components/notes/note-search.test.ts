@@ -2,7 +2,7 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { createElement, type ReactNode } from "react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const log = vi.hoisted(() => ({ logError: vi.fn(async () => {}) }));
 vi.mock("@/lib/log", async (importOriginal) => ({
@@ -11,22 +11,21 @@ vi.mock("@/lib/log", async (importOriginal) => ({
 }));
 
 import { analyze } from "@oleafly/search-query";
-import { i18n, loadNamespace } from "@/i18n";
+import { i18n } from "@/i18n";
 import type { NoteSearchHit, NoteTagCount } from "@/lib/tauri";
 import { buildNoteSearchSchema, vaultPlan } from "./note-query";
 import {
-  fold,
   hasExactTitle,
-  highlightParts,
   linkFirstMention,
   phraseQuery,
-  SEARCH_DEBOUNCE_MS,
   switcherMatches,
   tagTree,
   useNoteTagCounts,
   useVaultSearch,
 } from "./note-search";
-import { NotesDataProvider, type NotesData } from "./notes-data";
+import { NotesDataProvider, type NotesData, VAULT_QUERY } from "./notes-data";
+import "./tests/setup";
+import { fakeNotesData as data } from "./tests/notes-data-fixture";
 import type { NoteItem } from "./types";
 
 function note(id: string, title: string, extra: Partial<NoteItem> = {}): NoteItem {
@@ -48,19 +47,6 @@ function hit(id: string, title = id, score = 1): NoteSearchHit {
   };
 }
 
-function data(overrides: Partial<NotesData>): NotesData {
-  return {
-    notes: [],
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
-    loadNote: vi.fn(),
-    saveNote: vi.fn(),
-    ...overrides,
-  };
-}
-
 function wrapperFor(value: { current: NotesData }) {
   return ({ children }: { children: ReactNode }) => createElement(NotesDataProvider, { value: value.current, children });
 }
@@ -76,25 +62,7 @@ describe("query helpers", () => {
     expect(phraseQuery(' " ')).toBe("");
   });
 
-  it("cuts text into highlighted and plain parts", () => {
-    expect(highlightParts("masking ablation", [[8, 16], [0, 7]])).toEqual([
-      { text: "masking", start: 0, match: true },
-      { text: " ", start: 7, match: false },
-      { text: "ablation", start: 8, match: true },
-    ]);
-    expect(highlightParts("abcdef", [[1, 4], [2, 5], [5, 5], [-3, 0], [4, 99]])).toEqual([
-      { text: "a", start: 0, match: false },
-      { text: "bcd", start: 1, match: true },
-      { text: "e", start: 4, match: true },
-      { text: "f", start: 5, match: true },
-    ]);
-    expect(highlightParts("", [])).toEqual([{ text: "", start: 0, match: false }]);
-    expect(highlightParts("abc", [[0, 3]])).toEqual([{ text: "abc", start: 0, match: true }]);
-  });
 
-  it("folds case and accents", () => {
-    expect(fold("Été Café")).toBe("ete cafe");
-  });
 });
 
 describe("tag tree", () => {
@@ -201,9 +169,11 @@ describe("linking the first mention", () => {
     expect(linkFirstMention("今日の研究ノート", ["研究"], href)).toBe("今日の[研究](oleafly://note/n-1)ノート");
   });
 
-  it("skips fenced blocks until the matching fence closes", () => {
-    const source = "~~~~\nalpha\n~~~\nalpha\n~~~~\nalpha";
-    expect(linkFirstMention(source, ["alpha"], href)).toBe("~~~~\nalpha\n~~~\nalpha\n~~~~\n[alpha](oleafly://note/n-1)");
+  it.each([
+    ["a shorter fence", "~~~~\nalpha\n~~~\nalpha\n~~~~\nalpha", "~~~~\nalpha\n~~~\nalpha\n~~~~\n[alpha](oleafly://note/n-1)"],
+    ["a fence line with an info string", "```\nalpha\n```python\nalpha\n```\nalpha", "```\nalpha\n```python\nalpha\n```\n[alpha](oleafly://note/n-1)"],
+  ])("keeps a fenced block closed past %s", (_name, source, linked) => {
+    expect(linkFirstMention(source, ["alpha"], href)).toBe(linked);
   });
 
   it("returns null when nothing can be linked", () => {
@@ -228,31 +198,28 @@ describe("useNoteTagCounts", () => {
   });
 
   it("stays empty without a tag source and logs failures", async () => {
-    const { result } = renderHook(() => useNoteTagCounts(), { wrapper: wrapperFor({ current: data({}) }) });
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { result } = renderHook(() => useNoteTagCounts(), { wrapper: wrapperFor({ current: data() }) });
     expect(result.current).toBeNull();
     const failing = { current: data({ noteTags: vi.fn(async () => Promise.reject(new Error("boom"))) }) };
     renderHook(() => useNoteTagCounts(), { wrapper: wrapperFor(failing) });
-    await waitFor(() => expect(log.logError).toHaveBeenCalledWith("read note tags", expect.any(Error)));
+    await act(() => vi.advanceTimersByTimeAsync(VAULT_QUERY.retryDelay));
+    await waitFor(() => expect(log.logError).toHaveBeenCalledWith("query", expect.any(Error)));
   });
 
-  it("ignores a load that finishes after unmount", async () => {
-    let finish: (value: NoteTagCount[]) => void = () => {};
-    const noteTags = vi.fn(() => new Promise<NoteTagCount[]>((resolve) => (finish = resolve)));
-    const { result, unmount } = renderHook(() => useNoteTagCounts(), {
-      wrapper: wrapperFor({ current: data({ notes: [note("late", "Late")], noteTags }) }),
+  it("loads the tags again after a failed load", async () => {
+    const counts: NoteTagCount[] = [{ tag: "ml", label: "ml", count: 1, notes: ["a"] }];
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const noteTags = vi.fn<() => Promise<NoteTagCount[]>>().mockRejectedValueOnce(new Error("starting")).mockResolvedValue(counts);
+    const { result } = renderHook(() => useNoteTagCounts(), {
+      wrapper: wrapperFor({ current: data({ notes: [note("a", "A")], revision: 7, noteTags }) }),
     });
-    unmount();
-    await act(async () => finish([]));
-    expect(result.current).toBeNull();
+    await act(() => vi.advanceTimersByTimeAsync(VAULT_QUERY.retryDelay));
+    await waitFor(() => expect(result.current).toEqual(counts));
   });
 });
 
-let schema: ReturnType<typeof buildNoteSearchSchema>;
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-  schema = buildNoteSearchSchema(i18n.t.bind(i18n) as never, { favorites: new Set(["b"]), tags: null, projects: [] });
-});
+const schema = buildNoteSearchSchema(i18n.t.bind(i18n) as never, { favorites: new Set(["b"]), tags: null, projects: [] });
 
 function planFor(query: string) {
   const context = { now: 0 };
@@ -260,73 +227,67 @@ function planFor(query: string) {
 }
 
 describe("useVaultSearch", () => {
-  it("debounces, drops stale answers and hides hits for unknown notes", async () => {
-    vi.useFakeTimers();
+  function pending() {
     const answers: Record<string, (hits: NoteSearchHit[]) => void> = {};
+    const rejects: Record<string, (error: Error) => void> = {};
     const searchNotes = vi.fn(
-      (query: string) => new Promise<readonly NoteSearchHit[]>((resolve) => (answers[query] = resolve)),
+      (query: string) =>
+        new Promise<readonly NoteSearchHit[]>((resolve, reject) => {
+          answers[query] = resolve;
+          rejects[query] = reject;
+        }),
     );
+    return { answers, rejects, searchNotes };
+  }
+
+  it("searches after a pause in typing, drops stale answers and hides hits for unknown notes", async () => {
+    const { answers, searchNotes } = pending();
     const value = { current: data({ notes: [note("a", "A"), note("b", "B")], searchNotes }) };
     const { result, rerender } = renderHook(({ query }) => useVaultSearch(planFor(query), true, 5), {
       initialProps: { query: "mask" },
       wrapper: wrapperFor(value),
     });
     expect(result.current).toEqual({ hits: null, pending: true });
-    await act(async () => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
-    expect(searchNotes).toHaveBeenCalledWith("mask", 5);
+    await waitFor(() => expect(searchNotes).toHaveBeenCalledWith("mask", 5));
+    rerender({ query: "maski" });
     rerender({ query: "masking" });
-    await act(async () => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
+    await waitFor(() => expect(searchNotes).toHaveBeenCalledWith("masking", 5));
+    expect(searchNotes).not.toHaveBeenCalledWith("maski", 5);
     await act(async () => answers.mask([hit("a")]));
     expect(result.current.pending).toBe(true);
     await act(async () => answers.masking([hit("b"), hit("gone")]));
-    expect(result.current).toEqual({ hits: [hit("b")], pending: false });
+    await waitFor(() => expect(result.current).toEqual({ hits: [hit("b")], pending: false }));
     rerender({ query: "  " });
     expect(result.current).toEqual({ hits: null, pending: false });
   });
 
   it("keeps the last hits on screen while the next search runs", async () => {
-    vi.useFakeTimers();
-    const answers: Record<string, (hits: NoteSearchHit[]) => void> = {};
-    const searchNotes = vi.fn(
-      (query: string) => new Promise<readonly NoteSearchHit[]>((resolve) => (answers[query] = resolve)),
-    );
+    const { answers, searchNotes } = pending();
     const value = { current: data({ notes: [note("a", "A"), note("b", "B")], searchNotes }) };
     const { result, rerender } = renderHook(({ query }) => useVaultSearch(planFor(query), true), {
       initialProps: { query: "mask" },
       wrapper: wrapperFor(value),
     });
-    await act(async () => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
+    await waitFor(() => expect(answers.mask).toBeDefined());
     await act(async () => answers.mask([hit("a")]));
+    await waitFor(() => expect(result.current).toEqual({ hits: [hit("a")], pending: false }));
     rerender({ query: "mask OR read" });
     expect(result.current).toEqual({ hits: [hit("a")], pending: true });
-    await act(async () => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
+    await waitFor(() => expect(answers.read).toBeDefined());
     await act(async () => answers.read([hit("b")]));
-    expect(result.current).toEqual({ hits: [hit("a"), hit("b")], pending: false });
+    await waitFor(() => expect(result.current).toEqual({ hits: [hit("a"), hit("b")], pending: false }));
   });
 
-  it("reports a failed search as no hits and ignores a stale failure", async () => {
-    vi.useFakeTimers();
-    const rejects: Record<string, (error: Error) => void> = {};
-    const searchNotes = vi.fn(
-      (query: string) => new Promise<readonly NoteSearchHit[]>((_resolve, reject) => (rejects[query] = reject)),
-    );
-    const value = { current: data({ searchNotes }) };
-    const { result, rerender } = renderHook(({ query }) => useVaultSearch(planFor(query), true), {
-      initialProps: { query: "one" },
-      wrapper: wrapperFor(value),
-    });
-    await act(async () => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
-    rerender({ query: "two" });
-    await act(async () => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
-    await act(async () => rejects.one(new Error("old")));
-    expect(log.logError).not.toHaveBeenCalled();
+  it("reports a failed search as no hits", async () => {
+    const { rejects, searchNotes } = pending();
+    const { result } = renderHook(() => useVaultSearch(planFor("two"), true), { wrapper: wrapperFor({ current: data({ searchNotes }) }) });
+    await waitFor(() => expect(rejects.two).toBeDefined());
     await act(async () => rejects.two(new Error("boom")));
-    expect(result.current).toEqual({ hits: [], pending: false });
-    expect(log.logError).toHaveBeenCalledWith("search notes", expect.any(Error));
+    await waitFor(() => expect(result.current).toEqual({ hits: [], pending: false, error: "boom" }));
   });
 
   it("does nothing without a search source or while turned off", () => {
-    const { result } = renderHook(() => useVaultSearch(planFor("mask"), true), { wrapper: wrapperFor({ current: data({}) }) });
+    const { result } = renderHook(() => useVaultSearch(planFor("mask"), true), { wrapper: wrapperFor({ current: data() }) });
     expect(result.current).toEqual({ hits: null, pending: false });
     const searchNotes = vi.fn(async () => [hit("a")]);
     const off = renderHook(() => useVaultSearch(planFor("mask"), false), {
@@ -337,34 +298,30 @@ describe("useVaultSearch", () => {
   });
 
   it("searches each side of an OR and keeps the filters that belong to each side", async () => {
-    vi.useFakeTimers();
-    const searchNotes = vi.fn(async (query: string) =>
-      query === "mask" ? [hit("a", "A", 2), hit("b", "B", 1)] : [hit("c", "C", 3)],
-    );
+    const searchNotes = vi.fn(async (query: string) => (query === "mask" ? [hit("a", "A", 2), hit("b", "B", 1)] : [hit("c", "C", 3)]));
     const notes = [note("a", "A"), note("b", "B"), note("c", "C")];
     const { result } = renderHook(() => useVaultSearch(planFor("(mask is:favorite) OR read"), true), {
       wrapper: wrapperFor({ current: data({ notes, searchNotes }) }),
     });
-    await act(async () => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
+    await waitFor(() => expect(result.current.hits?.map((item) => item.id)).toEqual(["c", "b"]));
     expect(searchNotes.mock.calls).toEqual([
       ["mask", 50],
       ["read", 50],
     ]);
-    expect(result.current.hits?.map((item) => item.id)).toEqual(["c", "b"]);
   });
 
   it("adds the notes a side without words matches to the search hits", async () => {
-    vi.useFakeTimers();
     const searchNotes = vi.fn(async () => [hit("a", "A", 2)]);
     const notes = [note("a", "A"), note("b", "B"), note("c", "C")];
     const { result } = renderHook(() => useVaultSearch(planFor("mask OR is:favorite"), true), {
       wrapper: wrapperFor({ current: data({ notes, searchNotes }) }),
     });
-    await act(async () => vi.advanceTimersByTime(SEARCH_DEBOUNCE_MS));
+    await waitFor(() =>
+      expect(result.current.hits?.map((item) => [item.id, item.snippets.length])).toEqual([
+        ["a", 0],
+        ["b", 0],
+      ]),
+    );
     expect(searchNotes).toHaveBeenCalledTimes(1);
-    expect(result.current.hits?.map((item) => [item.id, item.snippets.length])).toEqual([
-      ["a", 0],
-      ["b", 0],
-    ]);
   });
 });

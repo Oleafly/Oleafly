@@ -218,5 +218,10 @@
       "title": "Kiểm tra quyền đang tắt ({{mode}})",
       "description": "Agent có thể sửa tệp và chạy lệnh mà không hỏi. Oleafly không thể chuyển nó sang chế độ khác. Hãy đổi chế độ trong cài đặt riêng của agent."
     }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Ghi nhanh"
+    }
   }
 }

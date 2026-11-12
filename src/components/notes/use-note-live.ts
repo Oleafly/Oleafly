@@ -15,6 +15,7 @@ import {
   useCollabLiveProject,
   useCollabNoteLivePort,
 } from "@/lib/collab-live-bridge";
+import { canEditProjectRole } from "@/lib/collab-roles";
 import { logError } from "@/lib/log";
 import { NOTE_FILE } from "@/lib/project-notes";
 import { scrollBehavior } from "@/lib/reduced-motion";
@@ -71,10 +72,18 @@ export function useLiveNoteClaim(layout: WorkspaceLayout, focusedNoteId: string 
   useEffect(() => () => claimLiveNote(null), []);
 }
 
+function useViewerRole(projectId: string | null): boolean {
+  const live = useCollabEditorGate((gate) => projectId !== null && gate.projectId === projectId);
+  const shared = useFilesStore((state) => state.projects.find((project) => project.id === projectId)?.shared ?? null);
+  return !live && shared !== null && !canEditProjectRole(shared.role);
+}
+
 export function useNoteReadOnly(noteId: string | null): boolean {
-  return useCollabEditorGate(
+  const viewer = useViewerRole(noteId);
+  const gated = useCollabEditorGate(
     (gate) => noteId !== null && gate.projectId === noteId && (gate.connecting || gate.locked),
   );
+  return viewer || gated;
 }
 
 export function makeNoteLive(noteId: string): void {
@@ -133,6 +142,7 @@ function mainDocOf(noteId: string): string {
 export interface NoteLiveAdapter extends NoteLiveEditor {
   parse(text: string): SharedNote;
   invalidate(): void;
+  shownChanged(): void;
 }
 
 export const PARSED_NOTES_KEPT = 3;
@@ -146,8 +156,10 @@ export function createNoteLiveEditor(
   editor: Editor,
   host: () => Pick<NoteLiveHost, "sourceOf" | "adopt">,
   start: string,
+  shown: () => boolean = () => true,
 ): NoteLiveAdapter {
   const parsed = new Map<string, SharedNote>();
+  const caretListeners = new Set<() => void>();
   let latest: SharedNote | null = null;
   const parse = (text: string): SharedNote => {
     const known = parsed.get(text);
@@ -182,6 +194,10 @@ export function createNoteLiveEditor(
     parse,
     invalidate: () => {
       current = null;
+    },
+    shown,
+    shownChanged: () => {
+      for (const listener of caretListeners) listener();
     },
     batch: (run) => {
       if (batching) {
@@ -245,9 +261,11 @@ export function createNoteLiveEditor(
     onCaret: (listener) => {
       editor.on("selectionUpdate", listener);
       editor.on("update", listener);
+      caretListeners.add(listener);
       return () => {
         editor.off("selectionUpdate", listener);
         editor.off("update", listener);
+        caretListeners.delete(listener);
       };
     },
   };
@@ -318,6 +336,10 @@ function throttled(ms: number, run: (text: string) => void) {
   };
 }
 
+function logLiveNoteError(error: unknown): void {
+  void logError("live note", error);
+}
+
 function acceptDiskChanges(editor: Editor): void {
   if (!hasPending(editor, "disk")) return;
   const target = docWithPending(editor, "disk");
@@ -330,11 +352,13 @@ export function useNoteLiveEditor(
   editor: Editor,
   host: NoteLiveHost,
   target?: NoteLiveTarget | null,
+  shown = true,
 ): { state: NoteLiveEditorState; control: NoteLiveControl } {
   const liveId = target?.projectId ?? noteId;
   const livePath = target?.path ?? null;
   const hostRef = useRef(host);
   hostRef.current = host;
+  const shownRef = useRef(shown);
   const textChanged = useOptionalNotesData()?.noteTextChanged;
   const textChangedRef = useRef(textChanged);
   textChangedRef.current = textChanged;
@@ -359,7 +383,8 @@ export function useNoteLiveEditor(
       locked: state.projectId === liveId && state.locked,
     })),
   );
-  const viewOnly = gate.locked;
+  const viewer = useViewerRole(liveId);
+  const viewOnly = gate.locked || viewer;
   const readOnly = gate.connecting || viewOnly;
 
   const control = useMemo<NoteLiveControl>(
@@ -412,7 +437,7 @@ export function useNoteLiveEditor(
           remoteHead.push(shared.text);
         },
       };
-      const adapter = createNoteLiveEditor(editor, () => liveHost, baseline.text);
+      const adapter = createNoteLiveEditor(editor, () => liveHost, baseline.text, () => shownRef.current);
       const bound: NoteLiveHandle = port.bind({
         noteId: liveId,
         noticeId: noteId,
@@ -434,7 +459,7 @@ export function useNoteLiveEditor(
           attempts += 1;
           retry = setTimeout(() => {
             retry = null;
-            if (!disposed) begin().catch((error: unknown) => void logError("live note", error));
+            if (!disposed) begin().catch(logLiveNoteError);
           }, delay);
         },
       });
@@ -443,13 +468,18 @@ export function useNoteLiveEditor(
       adapterRef.current = adapter;
       setLive(true);
     };
-    begin().catch((error: unknown) => void logError("live note", error));
+    begin().catch(logLiveNoteError);
     return () => {
       disposed = true;
       if (retry !== null) clearTimeout(retry);
       handle?.end();
     };
   }, [editor, inert, liveId, livePath, noteId, port, remoteHead, session]);
+
+  useEffect(() => {
+    shownRef.current = shown;
+    adapterRef.current?.shownChanged();
+  }, [shown]);
 
   useEffect(() => {
     if (!editor.isDestroyed) editor.setEditable(!readOnly, false);

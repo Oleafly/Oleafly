@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { receiveChunkedText } from "@/lib/chunked-ipc";
 import { createEmitter } from "@/lib/emitter";
 import type { OpenedFolder } from "@/lib/folder-detection";
+import type { SearchMode } from "@/lib/search-modes";
 
 export interface McpRegistrySearchRequest {
   query: string;
@@ -52,6 +53,7 @@ import type {
   CheckpointFileSummary,
   PdfSyncStatus,
   CheckpointIntegrity,
+  CheckpointPublicationOutcome,
   CheckpointStoreInspection,
   CheckpointStoreStats,
   CheckpointSummary,
@@ -260,6 +262,12 @@ export const checkpointFiles = (projectId: string, snapshotRoot: string) =>
 export const checkpointSaveFile = (projectId: string, snapshotRoot: string, path: string, dest: string) =>
   invoke<void>("checkpoint_save_file", { projectId, snapshotRoot, path, dest });
 
+export const checkpointReadText = (projectId: string, snapshotRoot: string, path: string) =>
+  invoke<string>("checkpoint_read_text", { projectId, snapshotRoot, path });
+
+export const checkpointSave = (projectId: string, text?: string) =>
+  invoke<CheckpointPublicationOutcome>("checkpoint_save", { projectId, text: text ?? null });
+
 export const pdfSyncStatus = (projectId: string) =>
   invoke<PdfSyncStatus>("pdf_sync_status", { projectId });
 
@@ -322,6 +330,9 @@ export const readIsolatedPdf = (projectId: string) =>
 
 export const readProjectBytes = (projectId: string, relPath: string) =>
   invoke<ArrayBuffer>("read_project_bytes", { projectId, relPath });
+
+export const readNoteFile = (projectId: string, path: string) =>
+  invoke<ArrayBuffer>("read_note_file", { projectId, relPath: path });
 
 export const projectFileSizes = (projectId: string, paths: readonly string[]) =>
   invoke<Record<string, number>>("project_file_sizes", { projectId, paths });
@@ -597,7 +608,7 @@ export interface AdHocArtifact {
 }
 
 export interface AdHocConversionRequest {
-  source: "latex" | "markdown" | "typst" | "html" | "docx" | "equation" | "ocr-markdown" | "ocr-fragment";
+  source: "latex" | "markdown" | "typst" | "html" | "docx" | "equation" | "ocr-markdown" | "ocr-fragment" | "markdown-fragment" | "markdown-note";
   target: "latex" | "markdown" | "typst" | "html" | "docx";
   text?: string;
   dataBase64?: string;
@@ -661,12 +672,26 @@ export const renderTypstSnippet = (request: TypstSnippetRequest) =>
   invoke<TypstSnippetRender>("render_typst_snippet", { request });
 
 export const notesRenderTypst = (source: string) => invoke<string>("notes_render_typst", { source });
+export const notesRenderTikz = (document: string) => invoke<string>("notes_render_tikz", { document });
 
 export const artifactFrameOpen = (html: string) => invoke<string>("artifact_frame_open", { html });
 
 export const artifactFrameClose = (token: string) => invoke<boolean>("artifact_frame_close", { token });
 
 export const artifactFrameRuntimeUrl = () => invoke<string>("artifact_frame_runtime_url");
+
+export const noteVideoFrameOrigin = () => invoke<string>("note_video_frame_origin");
+
+export interface NoteLinkPreview {
+  url: string;
+  title: string | null;
+  description: string | null;
+  siteName: string | null;
+  image: string | null;
+  favicon: string | null;
+}
+
+export const noteLinkPreview = (url: string) => invoke<NoteLinkPreview>("note_link_preview", { url });
 
 export interface ArxivSourceRequest {
   arxivId?: string;
@@ -866,23 +891,77 @@ export const createDiagramProject = (name: string, source: string, language?: "t
 export const createNoteProject = (name: string, source: string, relatedProject?: string | null) =>
   invoke<string>("create_note_project", { name, source, relatedProject: relatedProject ?? null });
 
-export interface NoteHead {
+export type NotePropertyValue = string | number | boolean | null | (string | number | boolean | null)[];
+
+export interface NoteFacts {
   id: string;
-  head: string;
+  noteId: string | null;
+  title: string;
+  icon: string | null;
+  color: string | null;
+  agent: string | null;
+  tags: string[];
+  aliases: string[];
+  properties: Record<string, NotePropertyValue>;
+  preview: string;
+  relatedProject: string | null;
+  updatedAt: number;
+  knowledge: string;
+  taskDigest: string;
 }
 
-export const noteHeads = () => invoke<NoteHead[]>("note_heads");
+export const noteFacts =(filter: { ids?: readonly string[]; relatedProject?: string } = {}) =>
+  invoke<NoteFacts[]>("note_facts", { ids: filter.ids ?? null, relatedProject: filter.relatedProject ?? null });
+
+export const releaseNoteCaches = () => invoke<void>("notes_release_caches");
 
 export interface NoteLinkRecord {
   projectId: string;
   noteId: string | null;
   title: string;
-  links: { kind: "note" | "project"; id: string; snippet: string }[];
+  links: { kind: "note" | "project"; id: string; snippet: string; block?: string; line?: number }[];
+  blocks?: string[];
 }
 
-export const noteLinks = () => invoke<NoteLinkRecord[]>("note_links");
+export const noteLinks = (ids?: readonly string[]) => invoke<NoteLinkRecord[]>("note_links", { ids: ids ?? null });
 
 export interface NoteSearchSnippet {
+  text: string;
+  ranges: [number, number][];
+}
+
+export type { SearchMode } from "@/lib/search-modes";
+
+export interface TextTerm {
+  kind: "text" | "path" | "ext" | "project";
+  value: string;
+}
+
+export interface TextBranch {
+  all: TextTerm[];
+  none: TextTerm[];
+}
+
+export interface TextQuery {
+  branches: TextBranch[];
+  mode: SearchMode;
+  limit?: number;
+}
+
+export type TextSearchHit = SearchHit & { ranges: [number, number][] };
+
+export const textSearch = (projectId: string | null, query: TextQuery) =>
+  invoke<TextSearchHit[]>("text_search", { projectId, query });
+
+export interface NoteSearchOptions {
+  mode?: SearchMode;
+  blocks?: boolean;
+}
+
+export interface NoteBlockHit {
+  line: number;
+  block?: string;
+  kind: "paragraph" | "item" | "row" | "heading" | "quote" | "code";
   text: string;
   ranges: [number, number][];
 }
@@ -898,10 +977,11 @@ export interface NoteSearchHit {
   aliases: string[];
   relatedProject: string | null;
   updatedAt: number;
+  blocks?: NoteBlockHit[];
 }
 
-export const noteSearch = (query: string, limit?: number | null) =>
-  invoke<NoteSearchHit[]>("note_search", { query, limit: limit ?? null });
+export const noteSearch = (query: string, limit?: number | null, options: NoteSearchOptions = {}) =>
+  invoke<NoteSearchHit[]>("note_search", { query, limit: limit ?? null, mode: options.mode ?? null, blocks: options.blocks ?? null });
 
 export interface NoteTagCount {
   tag: string;
@@ -912,8 +992,33 @@ export interface NoteTagCount {
 
 export const listNoteTags = () => invoke<NoteTagCount[]>("note_tags");
 
+export interface NoteTaskRecord {
+  projectId: string;
+  tasks: { line: number; checked: boolean; text: string }[];
+}
+
+export const listNoteTasks = () => invoke<NoteTaskRecord[]>("note_tasks");
+
 export const setNoteRelatedProject = (noteId: string, relatedProject: string | null) =>
   invoke<void>("set_note_related_project", { noteId, relatedProject });
+
+export type QuickCaptureFailure = "taken" | "invalid" | "failed";
+
+export interface QuickCaptureStatus {
+  supported: boolean;
+  registered: boolean;
+  command: string | null;
+  failure: QuickCaptureFailure | null;
+}
+
+export const quickCaptureConfigure = (enabled: boolean, accelerator: string | null) =>
+  invoke<QuickCaptureStatus>("quick_capture_configure", { enabled, accelerator });
+
+export const quickCaptureOpen = () => invoke<void>("quick_capture_open");
+
+export const quickCaptureWindowButtons = (shown: boolean) => invoke<void>("quick_capture_window_buttons", { shown });
+
+export const quickCaptureOpenNotes = () => invoke<void>("quick_capture_open_notes");
 
 export interface NoteFileCopy {
   path: string;
@@ -937,11 +1042,13 @@ export interface NotesImportSummary {
   skipped: number;
   cancelled: boolean;
   notCopied: string[];
+  skippedNotes: string[];
 }
 
 export type NotesImportOutcome =
   | { kind: "dismissed" }
   | { kind: "seen"; importedAt: number; notes: number }
+  | { kind: "large"; notes: number }
   | ({ kind: "done" } & NotesImportSummary);
 
 export interface NotesImportRequest {
@@ -949,6 +1056,7 @@ export interface NotesImportRequest {
   folderTags: boolean;
   again: boolean;
   files?: boolean;
+  confirmLarge?: boolean;
   title: string;
 }
 
@@ -972,6 +1080,7 @@ export interface NotesExportSummary {
   notes: number;
   attachments: number;
   skipped: number;
+  paperLinks: string[];
 }
 
 export const notesExportFolder = (request: { noteId: string | null; folderName: string; title: string }) =>
@@ -1622,6 +1731,7 @@ export const setAiToolsModel = (choice: ToolsModelChoice | null) =>
   invoke<void>("set_ai_tools_model", { choice });
 export const seedStarterPersonas = (starters: Persona[]) =>
   invoke<AppConfig>("seed_starter_personas", { starters });
+export const claimStarterNote = () => invoke<boolean>("claim_starter_note");
 
 export const mcpStatus = () => invoke<McpStatus>("mcp_status");
 export const mcpSetEnabled = (enabled: boolean) =>

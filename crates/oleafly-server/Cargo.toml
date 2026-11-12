@@ -13,6 +13,7 @@ test-support = []
 web = ["dep:oleafly-collab", "dep:rust-embed"]
 
 [dependencies]
+ammonia = "4.2"
 async-trait = "0.1"
 axum = { version = "0.8", default-features = false, features = ["form", "http1", "json", "query", "tokio", "ws"] }
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }

@@ -23,14 +23,14 @@ export interface StackBodyProps {
   onStartDrag: (event: ReactPointerEvent<HTMLElement>, viewId: string, title: string) => void;
   onResize: (first: string, second: string, delta: number, size: number) => void;
   onEven: (first: string, second: string) => void;
-  onResizing: (active: boolean) => void;
+  onResizing: (active: boolean, cancelled?: boolean) => void;
 }
 
 function expandedExtent(element: HTMLElement): number {
   const host = element.closest("[data-stack]");
   if (!host) return 0;
   return childrenWith(host, "data-section")
-    .filter((section) => section.getAttribute("data-expanded") === "true")
+    .filter((section) => section.dataset.expanded === "true")
     .reduce((sum, section) => sum + section.getBoundingClientRect().height, 0);
 }
 

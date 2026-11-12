@@ -145,6 +145,16 @@
       "uploadFailed": "Kunde inte laddas upp"
     }
   },
+  "conflictCopy": {
+    "title": "Två versioner av \"{{name}}\"",
+    "description": "Den här anteckningen ändrades både här och på en annan dator innan ändringarna hann synkroniseras, så Oleafly behöll båda versionerna. Behåll en version. Den andra hamnar i papperskorgen.",
+    "diffLabel": "Skillnader mellan de två versionerna",
+    "loading": "Läser båda versionerna…",
+    "readFailed": "Det gick inte att läsa konfliktkopian.",
+    "resolveFailed": "Det gick inte att behålla den versionen.",
+    "keepMine": "Behåll den här datorns version",
+    "useCopy": "Använd den andra datorns version"
+  },
   "confirm": {
     "removeTitle": "Vill du ta bort {{name}} från {{provider}}?",
     "removeDescription": "Det här raderar kopian i {{provider}} för att frigöra utrymme. Projektet finns kvar på den här datorn och slutar synkroniseras här. Dina andra datorer behåller sina kopior och slutar också synkronisera det.",
@@ -209,6 +219,76 @@
     "pathStyle": "Använd adresser i sökvägsstil",
     "pathStyleHint": "MinIO och de flesta egenhostade servrar behöver det här."
   },
+  "backups": {
+    "title": "Säkerhetskopior",
+    "none": "Inga säkerhetskopior än",
+    "last": "Senaste säkerhetskopia {{time}} · {{contents}} · {{size}}",
+    "notes_one": "{{count}} anteckning",
+    "notes_other": "{{count}} anteckningar",
+    "projects_one": "{{count}} projekt",
+    "projects_other": "{{count}} projekt",
+    "running": "Säkerhetskopierar",
+    "failed": "Den senaste säkerhetskopieringen slutfördes inte. {{reason}}",
+    "backUpNow": "Säkerhetskopiera nu",
+    "auto": {
+      "label": "Säkerhetskopiera automatiskt",
+      "description": "Sparar daterade kopior av dina anteckningar i {{provider}}. Senare ändringar och raderingar, även sådana som synkroniseras, påverkar dem inte."
+    },
+    "every": {
+      "label": "Hur ofta",
+      "description": "En säkerhetskopia laddar bara upp det som har ändrats sedan den förra.",
+      "options": {
+        "6": "Var 6:e timme",
+        "24": "Varje dag",
+        "168": "Varje vecka"
+      }
+    },
+    "keep": {
+      "label": "Behåll",
+      "description": "Äldre säkerhetskopior raderas från {{provider}} för att spara utrymme.",
+      "option_one": "Den senaste säkerhetskopian",
+      "option_other": "De senaste {{count}} säkerhetskopiorna"
+    },
+    "includeProjects": {
+      "label": "Ta med projekt",
+      "description": "Projekt synkroniseras redan med sina kontrollpunkter. Slå på det här för att även spara daterade kopior av dem. Den första säkerhetskopian av ett stort projekt kan ta en stund och ta mycket utrymme."
+    },
+    "list": {
+      "title": "Säkerhetskopior i {{provider}}",
+      "label": "Säkerhetskopior",
+      "loading": "Läser säkerhetskopiorna",
+      "failed": "Det gick inte att läsa säkerhetskopiorna. {{reason}}",
+      "empty": "Inga säkerhetskopior i {{provider}} än."
+    },
+    "row": {
+      "thisComputer": "Den här datorn",
+      "manual": "Manuellt",
+      "restore": "Återställ",
+      "restoreLabel": "Återställ säkerhetskopian från {{date}}"
+    },
+    "restore": {
+      "title": "Återställ från {{date}}",
+      "description": "En återställning ersätter aldrig det du har. En anteckning eller ett projekt som finns kvar kommer tillbaka som en kopia bredvid, så att du kan jämföra dem.",
+      "loading": "Läser säkerhetskopian",
+      "loadFailed": "Det gick inte att läsa den här säkerhetskopian. {{reason}}",
+      "search": "Sök i den här säkerhetskopian",
+      "clearSearch": "Rensa sökningen",
+      "noMatch": "Inget i den här säkerhetskopian matchar.",
+      "listLabel": "Anteckningar och projekt i den här säkerhetskopian",
+      "here": "Finns kvar",
+      "missing": "Finns inte på den här datorn",
+      "restored": "Återställd",
+      "restoredCopy": "Återställd som kopia",
+      "files_one": "{{count}} fil",
+      "files_other": "{{count}} filer",
+      "one": "Återställ",
+      "oneLabel": "Återställ {{name}}",
+      "allMissing_one": "Återställ den som saknas",
+      "allMissing_other": "Återställ de {{count}} som saknas",
+      "nothingMissing": "Inget saknas",
+      "copyName": "(återställd {{date}})"
+    }
+  },
   "errors": {
     "clock_skew": "Klockan på den här datorn går fel, så {{provider}} godtar inte förfrågningar från datorn. Ställ in rätt datum och tid för att fortsätta synkronisera.",
     "code_invalid": "Den koden fungerade inte. Försök igen.",
@@ -237,6 +317,8 @@
     "sign_in_timeout": "Inloggningen tog för lång tid. Försök igen.",
     "too_many_files": "Det här projektet har mer än 100 000 filer. Det är för många för att kunna synkroniseras.",
     "traffic_limit": "{{provider}} har nått sin uppladdningsgräns. Nya ändringar stannar på den här datorn tills {{provider}} tillåter uppladdningar igen.",
-    "verify_failed": "En fil från {{provider}} stämde inte med det som Oleafly förväntade sig, så den lämnades orörd. Synkroniseringen försöker igen."
+    "verify_failed": "En fil från {{provider}} stämde inte med det som Oleafly förväntade sig, så den lämnades orörd. Synkroniseringen försöker igen.",
+    "backup_missing": "Den här säkerhetskopian finns inte längre i {{provider}}.",
+    "backup_label": "Oleafly kunde inte namnge den återställda kopian."
   }
 }

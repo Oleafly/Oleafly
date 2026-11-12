@@ -46,6 +46,7 @@ export interface FrameMessages {
 export interface FrameOptions {
   theme: FrameTheme;
   channel: string;
+  parentOrigin: string;
   messages: FrameMessages;
 }
 
@@ -56,12 +57,20 @@ export interface PreparedHtml {
   scripts: boolean;
 }
 
-export function framePrelude(channel: string): string {
+export function framePrelude(channel: string, parentOrigin: string): string {
   return `(() => {
 "use strict";
 const channel = ${JSON.stringify(channel)};
-const host = window.parent;
-const send = (message) => { try { host.postMessage(Object.assign({ channel }, message), "*"); } catch (error) {} };
+const port = (() => {
+  try {
+    const link = new MessageChannel();
+    window.parent.postMessage({ channel, type: "port" }, ${inlineJson(parentOrigin)}, [link.port2]);
+    return link.port1;
+  } catch (error) {
+    return null;
+  }
+})();
+const send = (message) => { try { port.postMessage(Object.assign({ channel }, message)); } catch (error) {} };
 ${frameSealScript()}
 let queued = false;
 const measure = () => {
@@ -85,8 +94,7 @@ else observe();
 window.addEventListener("load", schedule);
 setInterval(() => send({ type: "beat" }), 1000);
 send({ type: "beat" });
-window.addEventListener("message", (event) => {
-  if (event.source !== host) return;
+if (port) port.onmessage = (event) => {
   const data = event.data;
   if (!data || data.channel !== channel || data.type !== "theme") return;
   const dark = data.theme === "dark";
@@ -94,7 +102,7 @@ window.addEventListener("message", (event) => {
   root.classList.toggle("dark", dark);
   root.style.colorScheme = dark ? "dark" : "light";
   root.dataset.theme = dark ? "dark" : "light";
-});
+};
 })();`;
 }
 
@@ -119,7 +127,7 @@ function headStart(options: FrameOptions, runtime: string | null): string {
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     `<meta http-equiv="Content-Security-Policy" content="${escapeAttribute(framePolicy(runtime))}">`,
-    `<script>${framePrelude(options.channel)}</script>`,
+    `<script>${framePrelude(options.channel, options.parentOrigin)}</script>`,
     `<style>${baseStyle(options.theme)}</style>`,
   ].join("");
 }
@@ -203,7 +211,11 @@ const MEDIA_ATTRIBUTES = ["src", "poster", "data", "background"];
 const REMOVED_ELEMENTS = "iframe, frame, frameset, object, embed, portal, fencedframe, base, applet, noscript";
 const SHADOW_ROOT_ATTRIBUTES = ["shadowrootmode", "shadowroot", "shadowrootdelegatesfocus", "shadowrootclonable", "shadowrootserializable"];
 const LOAD_CHANGES = `${REMOVED_ELEMENTS}, meta[http-equiv], template[shadowrootmode], template[shadowroot]`;
-const CSS_URL = /@import\s+(?:url\()?\s*["']?([^"')\s;]+)|url\(\s*["']?((?:https?:)?\/\/[^"')\s]+)/giu;
+const CSS_URL_START = /@import|url\(/giu;
+const CSS_SPACE = /\s*/uy;
+const CSS_URL_OPEN = /url\(/iuy;
+const IMPORT_TARGET = /[^"')\s;]+/uy;
+const REMOTE_TARGET = /(?:https?:)?\/\/[^"')\s]+/iuy;
 
 function remember(removed: Set<string>, url: string): void {
   const trimmed = url.trim();
@@ -220,10 +232,50 @@ function stripSrcset(element: Element, removed: Set<string>): void {
   element.removeAttribute("srcset");
 }
 
+interface CssTarget {
+  url: string;
+  end: number;
+}
+
+function afterSpace(text: string, at: number): number {
+  CSS_SPACE.lastIndex = at;
+  CSS_SPACE.exec(text);
+  return CSS_SPACE.lastIndex;
+}
+
+function quotedTarget(pattern: RegExp, text: string, at: number): CssTarget | null {
+  const start = text[at] === '"' || text[at] === "'" ? at + 1 : at;
+  pattern.lastIndex = start;
+  const url = pattern.exec(text)?.[0];
+  return url === undefined ? null : { url, end: start + url.length };
+}
+
+function importTarget(text: string, at: number): CssTarget | null {
+  const start = afterSpace(text, at);
+  if (start === at) return null;
+  CSS_URL_OPEN.lastIndex = start;
+  const opened = CSS_URL_OPEN.exec(text);
+  const inner = opened ? quotedTarget(IMPORT_TARGET, text, afterSpace(text, start + opened[0].length)) : null;
+  return inner ?? quotedTarget(IMPORT_TARGET, text, start);
+}
+
+export function cssUrlTargets(text: string): string[] {
+  const urls: string[] = [];
+  CSS_URL_START.lastIndex = 0;
+  let start = CSS_URL_START.exec(text);
+  while (start !== null) {
+    const after = start.index + start[0].length;
+    const target = start[0].startsWith("@") ? importTarget(text, after) : quotedTarget(REMOTE_TARGET, text, afterSpace(text, after));
+    if (target) urls.push(target.url);
+    CSS_URL_START.lastIndex = target ? target.end : start.index + 1;
+    start = CSS_URL_START.exec(text);
+  }
+  return urls;
+}
+
 function cssUrls(text: string, removed: Set<string>): void {
-  for (const match of text.matchAll(CSS_URL)) {
-    const url = match[1] ?? match[2];
-    if (url && !isInline(url)) remember(removed, url);
+  for (const url of cssUrlTargets(text)) {
+    if (!isInline(url)) remember(removed, url);
   }
 }
 
@@ -247,10 +299,10 @@ function isDataScript(script: Element): boolean {
 
 function urlText(value: string): string {
   let text = "";
-  for (let index = 0; index < value.length; index += 1) {
-    const code = value.charCodeAt(index);
+  for (const char of value) {
+    const code = char.codePointAt(0) ?? 0;
     if (code === 9 || code === 10 || code === 13) continue;
-    text += code < 32 ? " " : String.fromCharCode(code);
+    text += code < 32 ? " " : char;
   }
   return text.toLowerCase();
 }
@@ -268,10 +320,7 @@ export function runsScripts(document: Document): boolean {
   return false;
 }
 
-export function prepareHtml(source: string): PreparedHtml {
-  const document = new DOMParser().parseFromString(source, "text/html");
-  const libraries = new Set<FrameLibrary>();
-  const removed = new Set<string>();
+function swapLibraryScripts(document: Document, libraries: Set<FrameLibrary>, removed: Set<string>): void {
   for (const script of document.querySelectorAll("script[src]")) {
     const src = script.getAttribute("src") ?? "";
     const library = libraryFor(src);
@@ -279,34 +328,56 @@ export function prepareHtml(source: string): PreparedHtml {
     else if (!isInline(src)) remember(removed, src);
     script.remove();
   }
+}
+
+function removeEmbeds(document: Document, removed: Set<string>): void {
   for (const element of document.querySelectorAll(REMOVED_ELEMENTS)) {
     const url = element.getAttribute("src") ?? element.getAttribute("data") ?? element.getAttribute("href");
     if (url && !isInline(url)) remember(removed, url);
     element.remove();
   }
+}
+
+function disarmLoadChanges(document: Document): void {
   for (const meta of document.querySelectorAll("meta[http-equiv]")) meta.remove();
   for (const template of document.querySelectorAll("template")) {
     for (const name of SHADOW_ROOT_ATTRIBUTES) template.removeAttribute(name);
   }
-  for (const link of document.querySelectorAll("link")) {
-    const href = link.getAttribute("href") ?? "";
-    if (href && !isInline(href)) {
-      const library = /stylesheet/iu.test(link.getAttribute("rel") ?? "") ? undefined : libraryFor(href);
-      if (!library) remember(removed, href);
-      link.remove();
-    }
+}
+
+function removeRemoteLink(link: Element, removed: Set<string>): void {
+  const href = link.getAttribute("href") ?? "";
+  if (!href || isInline(href)) return;
+  const library = /stylesheet/iu.test(link.getAttribute("rel") ?? "") ? undefined : libraryFor(href);
+  if (!library) remember(removed, href);
+  link.remove();
+}
+
+function stripMediaSources(element: Element, removed: Set<string>): void {
+  stripSrcset(element, removed);
+  for (const name of MEDIA_ATTRIBUTES) {
+    const value = element.getAttribute(name);
+    if (value === null || isInline(value) || (name === "data" && element.tagName !== "OBJECT")) continue;
+    remember(removed, value);
+    element.removeAttribute(name);
   }
-  for (const element of document.querySelectorAll("[src], [poster], [data], [background], [srcset]")) {
-    stripSrcset(element, removed);
-    for (const name of MEDIA_ATTRIBUTES) {
-      const value = element.getAttribute(name);
-      if (value === null || isInline(value) || (name === "data" && element.tagName !== "OBJECT")) continue;
-      remember(removed, value);
-      element.removeAttribute(name);
-    }
-  }
+}
+
+function collectStyleUrls(document: Document, removed: Set<string>): void {
   for (const style of document.querySelectorAll("style")) cssUrls(style.textContent ?? "", removed);
   for (const element of document.querySelectorAll("[style]")) cssUrls(element.getAttribute("style") ?? "", removed);
+}
+
+export function prepareHtml(source: string): PreparedHtml {
+  const document = new DOMParser().parseFromString(source, "text/html");
+  const libraries = new Set<FrameLibrary>();
+  const removed = new Set<string>();
+  swapLibraryScripts(document, libraries, removed);
+  removeEmbeds(document, removed);
+  disarmLoadChanges(document);
+  for (const link of document.querySelectorAll("link")) removeRemoteLink(link, removed);
+  for (const element of document.querySelectorAll("[src], [poster], [data], [background], [srcset]")) stripMediaSources(element, removed);
+  collectStyleUrls(document, removed);
   if (document.querySelector(BABEL_SCRIPTS)) libraries.add("babel");
   const scripts = libraries.size > 0 || runsScripts(document) || changesWhenLoaded(document);
   return { document, libraries: [...libraries], removed: [...removed], scripts };
@@ -336,28 +407,29 @@ export function globalsFor(libraries: readonly FrameLibrary[]): string[] {
   return [...new Set(libraries.flatMap((library) => LIBRARY_GLOBALS[library]))];
 }
 
+function babelStart(prepared: PreparedHtml, messages: FrameMessages): string {
+  if (!prepared.libraries.includes("babel")) return "";
+  return `document.addEventListener("DOMContentLoaded", () => __oleaflyArtifact.runScripts(${inlineJson(messages)}), { once: true });`;
+}
+
+function libraryBoot(prepared: PreparedHtml, globals: readonly string[], messages: FrameMessages, runtime: string): string {
+  const start = `__oleaflyArtifact.expose(${inlineJson(globals)});${babelStart(prepared, messages)}`;
+  return `${runtimeScript(runtime)}${withRuntime(start, messages)}`;
+}
+
 export function htmlFrameDocument(prepared: PreparedHtml, options: FrameOptions, runtime: string | null): string {
   const { document } = prepared;
   themed(document, options.theme);
   const globals = globalsFor(prepared.libraries);
   const loaded = globals.length > 0 ? runtime : null;
-  const boot =
-    loaded === null
-      ? ""
-      : `${runtimeScript(loaded)}${withRuntime(
-          `__oleaflyArtifact.expose(${inlineJson(globals)});${
-            prepared.libraries.includes("babel")
-              ? `document.addEventListener("DOMContentLoaded", () => __oleaflyArtifact.runScripts(${inlineJson(options.messages)}), { once: true });`
-              : ""
-          }`,
-          options.messages,
-        )}`;
+  const boot = loaded === null ? "" : libraryBoot(prepared, globals, options.messages, loaded);
   return `<!doctype html>${shellOpen(document)}<head>${headStart(options, loaded)}${boot}${document.head.innerHTML}</head>${document.body.outerHTML}</html>`;
 }
 
 export function reactFrameDocument(code: string, options: FrameOptions, runtime: string): string {
-  const dark = options.theme === "dark";
-  return `<!doctype html><html lang="en" data-theme="${options.theme}"${dark ? ' class="dark"' : ""} style="color-scheme:${options.theme}"><head>${headStart(options, runtime)}<style>:where(body){padding:0}</style>${runtimeScript(runtime)}</head><body><div id="root"></div>${withRuntime(`__oleaflyArtifact.runReact(${inlineJson(code)}, ${inlineJson(options.messages)});`, options.messages)}</body></html>`;
+  const darkClass = options.theme === "dark" ? ' class="dark"' : "";
+  const start = `__oleaflyArtifact.runReact(${inlineJson(code)}, ${inlineJson(options.messages)});`;
+  return `<!doctype html><html lang="en" data-theme="${options.theme}"${darkClass} style="color-scheme:${options.theme}"><head>${headStart(options, runtime)}<style>:where(body){padding:0}</style>${runtimeScript(runtime)}</head><body><div id="root"></div>${withRuntime(start, options.messages)}</body></html>`;
 }
 
 export function staticFrameDocument(cleanHtml: string, theme: FrameTheme): string {
@@ -377,10 +449,19 @@ export interface FrameSize {
 
 export type FrameMessage = { type: "beat" } | FrameSize;
 
-export function readFrameMessage(data: unknown, channel: string): FrameMessage | null {
+function onChannel(data: unknown, channel: string): Record<string, unknown> | null {
   if (typeof data !== "object" || data === null) return null;
   const record = data as Record<string, unknown>;
-  if (record.channel !== channel) return null;
+  return record.channel === channel ? record : null;
+}
+
+export function isPortOffer(data: unknown, channel: string): boolean {
+  return onChannel(data, channel)?.type === "port";
+}
+
+export function readFrameMessage(data: unknown, channel: string): FrameMessage | null {
+  const record = onChannel(data, channel);
+  if (record === null) return null;
   if (record.type === "beat") return { type: "beat" };
   if (record.type === "size" && typeof record.height === "number" && Number.isFinite(record.height) && record.height >= 0)
     return { type: "size", height: record.height };

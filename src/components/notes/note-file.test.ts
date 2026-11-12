@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { frontMatterBody } from "@/lib/front-matter";
 import { BOOK_COLOR_OPTIONS } from "@/components/library/Book";
 import { LINE_ICON_PREFIX, LINE_ICONS } from "./note-icons";
 import {
   isNoteColor,
   NOTE_COLORS,
   newNoteSource,
-  noteBody,
   noteColorFor,
   noteSummary,
   readNoteFacts,
@@ -68,6 +68,16 @@ describe("note files", () => {
     expect(noteSummary(body)).toBe("The real paragraph.");
   });
 
+  it("writes highlights and sized pictures as plain text in a summary", () => {
+    expect(noteSummary('Some <mark data-color="green">green **words**</mark> and ==yellow== ones.')).toBe(
+      "Some green words and yellow ones.",
+    );
+    expect(noteSummary('<mark data-color="red">Red</mark> starts it.\n\nsecond')).toBe("Red starts it.");
+    expect(noteSummary("See ![loss](assets/loss.png){width=50%} here, where x == y == z.")).toBe(
+      "See loss here, where x == y == z.",
+    );
+  });
+
   it("keeps a backtick line inside a tilde fence out of the summary", () => {
     expect(noteSummary("~~~\n```\nnot prose\n~~~\n\nThe real paragraph.\n")).toBe("The real paragraph.");
     expect(noteSummary("````md\n```\ninside\n```\n````\nAfter the fence.")).toBe("After the fence.");
@@ -83,14 +93,11 @@ describe("note files", () => {
     expect(noteSummary("Opening words\n- a list item\n")).toBe("Opening words");
   });
 
-  it("cuts a long summary without spaces at the limit", () => {
-    const summary = noteSummary("x".repeat(240));
-    expect(summary).toBe(`${"x".repeat(180)}…`);
-  });
-
-  it("cuts mid-word when the last space comes too early", () => {
-    const summary = noteSummary(`short ${"y".repeat(240)}`);
-    expect(summary).toBe(`${`short ${"y".repeat(240)}`.slice(0, 180)}…`);
+  it.each([
+    ["has no spaces", "x".repeat(240)],
+    ["has its last space too early", `short ${"y".repeat(240)}`],
+  ])("cuts a long summary that %s at the limit", (_name, text) => {
+    expect(noteSummary(text)).toBe(`${text.slice(0, 180)}…`);
   });
 
   it("reads an empty title as missing and keeps a note with no body as front matter only", () => {
@@ -107,17 +114,18 @@ describe("note files", () => {
     expect(summary).not.toContain("wor…");
   });
 
-  it("drops the front matter from the body", () => {
-    expect(noteBody(NOTE).startsWith("\n## Where things stand")).toBe(true);
-    expect(noteBody("No front matter\n")).toBe("No front matter\n");
-    expect(noteBody("---\n---\nkind: note\n---\nBody")).toBe("kind: note\n---\nBody");
-  });
-
   it("reads quoted keys and plain values with a colon the way the vault does", () => {
     const facts = readNoteFacts("---\n\"title\": Paper: draft\nid : abc # old\ncolor: '#mint'\n---\n");
     expect(facts.title).toBe("Paper: draft");
     expect(facts.id).toBe("abc");
     expect(facts.color).toBe(noteColorFor("abc"));
+  });
+
+  it("renames a note whose front matter starts with a blank line inside that block, keeping its id", () => {
+    const text = "---\n\ntitle: A\nid: x\n---\nBody";
+    expect(withNoteTitle(text, "B")).toBe("---\n\ntitle: B\nid: x\n---\nBody");
+    expect(readNoteFacts(withNoteTitle(text, "B"))).toMatchObject({ title: "B", id: "x" });
+    expect(withNoteIdentity(text, ID)).toBe("---\n\ntitle: A\nid: x\nkind: note\n---\nBody");
   });
 
   it("writes a new note with its title and keeps other keys when the icon changes", () => {
@@ -131,7 +139,7 @@ describe("note files", () => {
     expect(withIcon).toContain("bibliography: refs.bib");
     expect(readNoteFacts(withNoteIcon(withIcon, undefined)).icon).toBeUndefined();
     expect(readNoteFacts(withNoteTitle(NOTE, "Renamed")).title).toBe("Renamed");
-    expect(noteBody(withNoteTitle(NOTE, "Renamed"))).toBe(noteBody(NOTE));
+    expect(frontMatterBody(withNoteTitle(NOTE, "Renamed"))).toBe(frontMatterBody(NOTE));
   });
 
   it("writes a colour into the front matter, replaces one already there, and keeps the other keys", () => {
@@ -142,7 +150,7 @@ describe("note files", () => {
     expect(replaced).toBe(NOTE.replace("bibliography: refs.bib\n", "bibliography: refs.bib\ncolor: peach\n"));
     expect(replaced.match(/^color:/gmu)).toHaveLength(1);
     expect(readNoteFacts(replaced)).toMatchObject({ title: "Masking strategy", id: ID, icon: "🧪", agent: "Claude Code", color: "peach" });
-    expect(noteBody(replaced)).toBe(noteBody(NOTE));
+    expect(frontMatterBody(replaced)).toBe(frontMatterBody(NOTE));
     const fresh = newNoteSource("Run 3", "", undefined, ID);
     expect(withNoteColor(fresh, "cream")).toBe(fresh.replace("color: spring\n", "color: cream\n"));
   });
@@ -254,7 +262,7 @@ describe("note identity", () => {
   it("adds front matter to a note that has none", () => {
     expect(withNoteIdentity("Just a line.\n", ID)).toBe(`---\nkind: note\nid: ${ID}\n---\n\nJust a line.\n`);
     expect(withNoteIdentity("\nStarts with a blank line.", ID)).toBe(`---\nkind: note\nid: ${ID}\n---\n\nStarts with a blank line.`);
-    expect(withNoteIdentity("", ID)).toBe(`---\nkind: note\nid: ${ID}\n---\n`);
+    expect(withNoteIdentity("", ID)).toBe(`---\nkind: note\nid: ${ID}\n---\n\n`);
     expect(withNoteIdentity("----\nA heavy rule.\n", ID)).toBe(`---\nkind: note\nid: ${ID}\n---\n\n----\nA heavy rule.\n`);
   });
 

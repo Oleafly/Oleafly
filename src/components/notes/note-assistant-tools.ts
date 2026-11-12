@@ -10,12 +10,11 @@ import {
   type NoteSearchHit,
   type NoteTagCount,
 } from "@/lib/tauri";
+import { trimTrailingCharacters } from "@/lib/trim-character";
 import { noteLinkHref } from "./note-link-format";
 import type { NoteEdit } from "./note-edits";
 import type { NoteItem, NoteSource } from "./types";
 import { untrusted } from "./untrusted-data";
-
-export { NOTE_FILE };
 
 export const NOTE_WORKSPACE_ONLY_TOOLS: readonly string[] = [
   "compile",
@@ -45,6 +44,8 @@ export const NOTE_FILE_MUTATION_TOOLS: readonly string[] = [
 ];
 
 const FILE_MUTATIONS = new Set(NOTE_FILE_MUTATION_TOOLS);
+const VIEW_ONLY =
+  "The person can only view this note, so you cannot change it. Tell them what you would change instead.";
 const MAX_EDITS = 50;
 const MAX_TEXT = 200_000;
 const MAX_LIST = 100;
@@ -86,6 +87,7 @@ export interface NoteToolDeps {
   relatedProjectId: string | null;
   readSource: () => string | Promise<string>;
   propose: (edits: readonly NoteEdit[]) => number;
+  viewOnly?: () => boolean;
   notes: () => readonly NoteItem[];
   projects: () => readonly { id: string; name: string }[];
   loadNote: (id: string) => Promise<NoteSource>;
@@ -97,6 +99,12 @@ export interface NoteToolDeps {
 
 export interface NoteToolRun {
   confirm: ConfirmFn;
+}
+
+export interface VaultToolDeps
+  extends Pick<NoteToolDeps, "notes" | "projects" | "searchNotes" | "noteTags" | "linkIds" | "createNote"> {
+  readNote: (id: string) => string | Promise<string>;
+  openNoteId?: string;
 }
 
 const SKIP_TEXT: Readonly<Record<SkipReason, string>> = {
@@ -115,7 +123,7 @@ function normalizedPath(value: unknown): string | null {
       resolved.pop();
       continue;
     }
-    const segment = trimmed.replace(/[. ]+$/u, "");
+    const segment = trimTrailingCharacters(trimmed, ". ");
     if (segment) resolved.push(segment);
   }
   return resolved.join("/").toLowerCase();
@@ -224,14 +232,15 @@ function tagMatches(tags: readonly string[], wanted: string): boolean {
 
 const NO_INPUT = { type: "object", properties: {}, additionalProperties: false };
 
-function knowledgeTools(deps: NoteToolDeps, run: NoteToolRun): ToolSet {
-  const findNote = async (id: string): Promise<NoteItem | undefined> => {
-    const notes = deps.notes();
-    const direct = notes.find((note) => note.id === id);
-    if (direct) return direct;
-    const links = await deps.linkIds();
-    return notes.find((note) => links.get(note.id) === id);
-  };
+export async function findVaultNote(deps: Pick<VaultToolDeps, "notes" | "linkIds">, id: string): Promise<NoteItem | undefined> {
+  const notes = deps.notes();
+  const direct = notes.find((note) => note.id === id);
+  if (direct) return direct;
+  const links = await deps.linkIds();
+  return notes.find((note) => links.get(note.id) === id);
+}
+
+function openNoteTools(deps: NoteToolDeps): ToolSet {
   return {
     read_note: {
       description:
@@ -267,6 +276,7 @@ function knowledgeTools(deps: NoteToolDeps, run: NoteToolRun): ToolSet {
         additionalProperties: false,
       },
       execute: async (input) => {
+        if (deps.viewOnly?.()) return { error: VIEW_ONLY };
         const edits = parseEdits(input);
         if (typeof edits === "string") return { error: edits };
         const plan = planNoteEdits(await deps.readSource(), edits);
@@ -287,6 +297,11 @@ function knowledgeTools(deps: NoteToolDeps, run: NoteToolRun): ToolSet {
         };
       },
     },
+  };
+}
+
+export function vaultTools(deps: VaultToolDeps, run: NoteToolRun): ToolSet {
+  return {
     search_notes: {
       description:
         'Search the person\'s knowledge base: every note they have written. Words must all match; use "exact phrase", -word to exclude, tag:name, title:word and project:<id>. Returns note ids, titles, tags, a Markdown link to each note and matching snippets. Search before writing something the person may already know.',
@@ -351,7 +366,7 @@ function knowledgeTools(deps: NoteToolDeps, run: NoteToolRun): ToolSet {
             relatedProject: note.relatedProjectId,
             updated: new Date(note.updatedAt).toISOString(),
             summary: note.summary,
-            ...(note.id === deps.noteId ? { open: true } : {}),
+            ...(note.id === deps.openNoteId ? { open: true } : {}),
           })),
         });
       },
@@ -368,10 +383,9 @@ function knowledgeTools(deps: NoteToolDeps, run: NoteToolRun): ToolSet {
       execute: async (input) => {
         const id = stringField(input, "id")?.trim() ?? "";
         if (!id) return { error: "id must not be empty" };
-        const note = await findNote(id);
+        const note = await findVaultNote(deps, id);
         if (!note) return { error: `No note has the id ${id}. Use list_knowledge_notes or search_notes to find it.` };
-        const text = note.id === deps.noteId ? await deps.readSource() : (await deps.loadNote(note.id)).text;
-        const markdown = capped(text);
+        const markdown = capped(await deps.readNote(note.id));
         return untrusted({
           id: note.id,
           title: note.title,
@@ -384,8 +398,13 @@ function knowledgeTools(deps: NoteToolDeps, run: NoteToolRun): ToolSet {
   };
 }
 
+function knowledgeTools(deps: NoteToolDeps, run: NoteToolRun): ToolSet {
+  const readNote = async (id: string) => (id === deps.noteId ? deps.readSource() : (await deps.loadNote(id)).text);
+  return { ...openNoteTools(deps), ...vaultTools({ ...deps, readNote, openNoteId: deps.noteId }, run) };
+}
+
 function createNoteTool(
-  deps: NoteToolDeps,
+  deps: Pick<VaultToolDeps, "projects" | "linkIds">,
   create: NonNullable<NoteToolDeps["createNote"]>,
   run: NoteToolRun,
 ): ToolSet[string] {
@@ -524,7 +543,7 @@ export function noteExcludedTools(relatedProjectId: string | null, inProject = f
   return [
     ...NOTE_WORKSPACE_ONLY_TOOLS,
     ...(relatedProjectId ? [] : NOTE_TASK_TOOLS),
-    ...(inProject ? NOTE_FILE_MUTATION_TOOLS : []),
+    ...(inProject ? [...NOTE_FILE_MUTATION_TOOLS, "run_command"] : []),
     ...(shared ? NOTE_KNOWLEDGE_TOOLS : []),
   ];
 }

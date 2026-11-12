@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   collabServerDevices: vi.fn(),
   collabServerSignOutDevice: vi.fn(),
   collabEmailPreferences: vi.fn(),
+  collabPublishedNotes: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
@@ -62,6 +63,7 @@ beforeAll(async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.collabServerDevices.mockResolvedValue([]);
+  mocks.collabPublishedNotes.mockResolvedValue({ allowed: false, notes: [] });
   mocks.collabEmailPreferences.mockResolvedValue({
     shared_with_you: true,
     mail_configured: true,

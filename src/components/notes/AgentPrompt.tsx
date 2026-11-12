@@ -11,13 +11,14 @@ import {
   type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
+import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { prefersReducedMotion } from "@/lib/reduced-motion";
 import { cn } from "@/lib/utils";
 import { matchesShortcut, shortcutLabel, useShortcutStore } from "@/store/shortcuts";
-import { readPromptCollapsed, savePromptCollapsed } from "./note-prefs";
+import { useNotesPrefsStore } from "@/store/notes-prefs";
 
 export interface PromptDockHandle {
   expand: (focus: boolean) => void;
@@ -31,6 +32,7 @@ interface PromptDockProps {
   working: boolean;
   onStop?: () => void;
   focusComposer: () => void;
+  keepMounted?: boolean;
   children: ReactNode;
 }
 
@@ -59,6 +61,11 @@ function boxOf(element: Element, origin: DOMRect): Box {
     height: rect.height,
     radius: Math.min(radius, rect.width / 2, rect.height / 2),
   };
+}
+
+function focusOutOfPanel(panel: HTMLElement, back: HTMLElement | null, fallback: HTMLElement | null) {
+  if (!panel.contains(document.activeElement)) return;
+  (back?.isConnected ? back : fallback)?.focus({ preventScroll: true });
 }
 
 function shellFrame(box: Box): Keyframe {
@@ -90,15 +97,17 @@ export function CollapsePromptButton({ onCollapse }: Readonly<{ onCollapse: () =
   return (
     <div className="absolute right-2 top-2 z-10">
       <Tooltip label={<ShortcutLabel label={t(($) => $.notes.prompt.collapse)} />} side="top">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="xs"
           aria-label={t(($) => $.notes.prompt.collapse)}
           aria-expanded
           onClick={onCollapse}
-          className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent"
+          className="size-6 rounded-full p-0 text-muted-foreground"
         >
-          <ChevronDown aria-hidden className="size-3.5" />
-        </button>
+          <ChevronDown aria-hidden />
+        </Button>
       </Tooltip>
     </div>
   );
@@ -116,10 +125,12 @@ export function PromptDock({
   working,
   onStop,
   focusComposer,
+  keepMounted = false,
   children,
 }: Readonly<PromptDockProps>) {
   const { t } = useTranslation(["notes", "ai"]);
-  const [collapsed, setCollapsed] = useState(readPromptCollapsed);
+  const [collapsed, setCollapsed] = useState(() => useNotesPrefsStore.getState().promptCollapsed);
+  const [opened, setOpened] = useState(() => !collapsed);
   const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const pillRef = useRef<HTMLDivElement>(null);
@@ -128,22 +139,49 @@ export function PromptDock({
   const motion = useRef<Animation[]>([]);
   const pending = useRef<{ focus: boolean } | null>(null);
   const returnFocus = useRef<HTMLElement | null>(null);
+  const awaited = useRef<MutationObserver | null>(null);
   const collapsedRef = useRef(collapsed);
   collapsedRef.current = collapsed;
   const focusRef = useRef(focusComposer);
   focusRef.current = focusComposer;
 
-  const change = useCallback((next: boolean, focus: boolean) => {
-    if (next === collapsedRef.current) {
-      if (focus) focusRef.current();
-      return;
-    }
-    const active = document.activeElement;
-    if (!next && active instanceof HTMLElement && !rootRef.current?.contains(active)) returnFocus.current = active;
-    pending.current = { focus };
-    setCollapsed(next);
-    savePromptCollapsed(next);
+  const stopAwaiting = useCallback(() => {
+    awaited.current?.disconnect();
+    awaited.current = null;
   }, []);
+
+  const focusWhenMounted = useCallback(() => {
+    const root = rootRef.current;
+    const panel = panelRef.current;
+    stopAwaiting();
+    focusRef.current();
+    if (!root || !panel || panel.contains(document.activeElement)) return;
+    const from = document.activeElement;
+    const observer = new MutationObserver(() => {
+      const active = document.activeElement;
+      const movedOn = active !== from && active !== document.body && !root.contains(active);
+      if (!movedOn) focusRef.current();
+      if (movedOn || panel.contains(document.activeElement)) stopAwaiting();
+    });
+    observer.observe(panel, { childList: true, subtree: true });
+    awaited.current = observer;
+  }, [stopAwaiting]);
+
+  const change = useCallback(
+    (next: boolean, focus: boolean) => {
+      if (next === collapsedRef.current) {
+        if (focus) focusWhenMounted();
+        return;
+      }
+      const active = document.activeElement;
+      if (!next && active instanceof HTMLElement && !rootRef.current?.contains(active)) returnFocus.current = active;
+      pending.current = { focus };
+      if (!next) setOpened(true);
+      setCollapsed(next);
+      useNotesPrefsStore.getState().set("promptCollapsed", next);
+    },
+    [focusWhenMounted],
+  );
 
   useImperativeHandle(
     handle,
@@ -165,18 +203,17 @@ export function PromptDock({
     const shell = panel.querySelector("[data-chat-composer]")?.lastElementChild ?? panel;
     const origin = root.getBoundingClientRect();
     const running = motion.current.length > 0;
-    const from = boxOf(running ? morph : collapsed ? shell : pill, origin);
+    const resting = collapsed ? shell : pill;
+    const from = boxOf(running ? morph : resting, origin);
     const to = boxOf(collapsed ? pill : shell, origin);
     for (const animation of motion.current) animation.cancel();
     motion.current = [];
     if (collapsed) {
-      if (panel.contains(document.activeElement)) {
-        const back = returnFocus.current;
-        (back?.isConnected ? back : expandRef.current)?.focus({ preventScroll: true });
-      }
+      stopAwaiting();
+      focusOutOfPanel(panel, returnFocus.current, expandRef.current);
       returnFocus.current = null;
     } else if (request.focus) {
-      focusRef.current();
+      focusWhenMounted();
     }
     if (prefersReducedMotion() || typeof morph.animate !== "function") return;
     const leaving = collapsed ? panel : pill;
@@ -212,13 +249,14 @@ export function PromptDock({
       },
       () => undefined,
     );
-  }, [collapsed]);
+  }, [collapsed, focusWhenMounted, stopAwaiting]);
 
   useEffect(
     () => () => {
+      stopAwaiting();
       for (const animation of motion.current) animation.cancel();
     },
-    [],
+    [stopAwaiting],
   );
 
   useEffect(() => {
@@ -251,7 +289,7 @@ export function PromptDock({
           collapsed ? "pointer-events-none opacity-0" : "pointer-events-auto",
         )}
       >
-        {children}
+        {(opened || keepMounted) && children}
       </div>
       <div
         ref={pillRef}
@@ -263,28 +301,30 @@ export function PromptDock({
         )}
       >
         <Tooltip label={<ShortcutLabel label={t(($) => $.notes.prompt.expand)} />} side="top" className="min-w-0">
-          <button
+          <Button
             ref={expandRef}
             type="button"
+            variant="ghost"
             aria-label={`${t(($) => $.notes.assistant.label)} ${detail}`}
             aria-expanded={false}
             onClick={() => change(false, true)}
-            className="flex h-7 min-w-0 items-center gap-1.5 rounded-full px-2.5 text-sm transition-colors hover:bg-accent focus-visible:bg-accent"
+            className="h-7 min-w-0 gap-1.5 rounded-full px-2.5 font-normal [&_svg]:size-3.5"
           >
-            {working ? <Spinner size="sm" /> : <Sparkles aria-hidden className="size-3.5 shrink-0 text-primary" />}
+            {working ? <Spinner size="sm" /> : <Sparkles aria-hidden className="text-primary" />}
             <span className="shrink-0 font-medium">{t(($) => $.notes.assistant.label)}</span>
             {detail && <span className="min-w-0 truncate text-muted-foreground">{detail}</span>}
-          </button>
+          </Button>
         </Tooltip>
         {working && onStop && (
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={onStop}
-            className="flex h-7 shrink-0 items-center gap-1 rounded-full px-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent"
+            className="h-7 gap-1 rounded-full px-2.5 font-normal text-muted-foreground [&_svg]:size-3"
           >
-            <Square aria-hidden className="size-3 fill-current" />
+            <Square aria-hidden className="fill-current" />
             {t(($) => $.ai.composer.stop)}
-          </button>
+          </Button>
         )}
       </div>
     </div>

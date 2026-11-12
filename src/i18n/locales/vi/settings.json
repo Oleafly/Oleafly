@@ -1120,146 +1120,6 @@
         "label": "Hiện PDF khi biên dịch"
       },
       "title": "Chế độ Zen"
-    },
-    "notes": {
-      "sectionName": "Giao diện ghi chú",
-      "resetAriaLabel": "Đặt lại {{setting}} về mặc định",
-      "text": {
-        "title": "Văn bản"
-      },
-      "typeface": {
-        "label": "Kiểu chữ",
-        "description": "Chọn kiểu chữ cho văn bản ghi chú.",
-        "options": {
-          "sans": "Không chân",
-          "serif": "Có chân",
-          "mono": "Đơn cách"
-        }
-      },
-      "font": {
-        "label": "Phông chữ ghi chú",
-        "description": "Chọn bất kỳ phông chữ nào đã cài cho văn bản ghi chú. Để trống để dùng cài đặt Kiểu chữ."
-      },
-      "fontSize": {
-        "label": "Cỡ chữ ghi chú",
-        "description": "Đặt cỡ chữ của văn bản ghi chú.",
-        "custom": "Tuỳ chỉnh",
-        "customLabel": "Cỡ chữ ghi chú tuỳ chỉnh theo pixel"
-      },
-      "lineHeight": {
-        "label": "Chiều cao dòng ghi chú",
-        "description": "Đặt khoảng cách giữa các dòng văn bản ghi chú.",
-        "customLabel": "Chiều cao dòng ghi chú tuỳ chỉnh"
-      },
-      "paragraphSpacing": {
-        "label": "Khoảng cách đoạn",
-        "description": "Đặt khoảng cách giữa các đoạn, danh sách và các khối khác.",
-        "options": {
-          "compact": "Gọn",
-          "normal": "Bình thường",
-          "relaxed": "Thoáng",
-          "spacious": "Rộng rãi"
-        }
-      },
-      "headings": {
-        "title": "Tiêu đề mục và tiêu đề ghi chú"
-      },
-      "headingTypeface": {
-        "label": "Kiểu chữ tiêu đề",
-        "description": "Chọn kiểu chữ cho các tiêu đề mục và tiêu đề ghi chú.",
-        "options": {
-          "text": "Giống văn bản"
-        }
-      },
-      "headingFont": {
-        "label": "Phông chữ tiêu đề",
-        "description": "Chọn một phông chữ đã cài cho các tiêu đề mục và tiêu đề ghi chú. Để trống để dùng cài đặt Kiểu chữ tiêu đề."
-      },
-      "headingSize": {
-        "label": "Cỡ tiêu đề",
-        "description": "Đặt độ lớn của tiêu đề so với văn bản.",
-        "options": {
-          "small": "Nhỏ hơn",
-          "normal": "Bình thường",
-          "large": "Lớn hơn"
-        }
-      },
-      "titleSize": {
-        "label": "Cỡ tiêu đề ghi chú",
-        "description": "Đặt cỡ của tiêu đề ở đầu mỗi ghi chú."
-      },
-      "layout": {
-        "title": "Bố cục"
-      },
-      "width": {
-        "label": "Độ rộng ghi chú",
-        "description": "Độ rộng khi mở ghi chú. Menu độ rộng trong ghi chú cũng thay đổi giá trị này.",
-        "options": {
-          "standard": "Chuẩn",
-          "wide": "Rộng",
-          "full": "Toàn chiều rộng"
-        }
-      },
-      "wordCount": {
-        "label": "Hiện số từ",
-        "description": "Hiện số từ của ghi chú trên thanh công cụ."
-      },
-      "spellcheck": {
-        "label": "Kiểm tra chính tả trong ghi chú",
-        "description": "Gạch chân các từ sai chính tả khi bạn viết ghi chú."
-      },
-      "code": {
-        "title": "Mã"
-      },
-      "codeFont": {
-        "label": "Phông chữ mã",
-        "description": "Chọn một phông chữ đã cài cho khối mã và mã trong dòng."
-      },
-      "codeTheme": {
-        "label": "Màu khối mã",
-        "description": "Chọn màu cú pháp cho khối mã trong ghi chú.",
-        "options": {
-          "editor": "Giống trình biên tập"
-        }
-      },
-      "colors": {
-        "title": "Màu sắc"
-      },
-      "accent": {
-        "label": "Màu nhấn của ghi chú",
-        "description": "Dùng cho liên kết, thẻ và ô công việc trong ghi chú.",
-        "matchApp": "Theo ứng dụng",
-        "customAriaLabel": "Chọn màu nhấn tuỳ chỉnh cho ghi chú"
-      },
-      "highlight": {
-        "label": "Màu tô sáng",
-        "description": "Màu nền phía sau văn bản được tô sáng.",
-        "options": {
-          "yellow": "Vàng",
-          "green": "Xanh lá",
-          "blue": "Xanh dương",
-          "pink": "Hồng",
-          "purple": "Tím",
-          "accent": "Màu nhấn"
-        }
-      },
-      "callouts": {
-        "label": "Kiểu hộp chú thích",
-        "description": "Cách hiển thị hộp chú thích trong ghi chú.",
-        "options": {
-          "tinted": "Nền nhạt",
-          "filled": "Tô đầy",
-          "outlined": "Có viền",
-          "bar": "Vạch bên"
-        }
-      },
-      "remoteImages": {
-        "title": "Ảnh từ web",
-        "description": "Ghi chú tải ảnh từ các trang này mà không cần hỏi.",
-        "empty": "Ghi chú sẽ hỏi trước khi tải ảnh từ web. Các trang bạn luôn cho phép sẽ hiện ở đây.",
-        "remove": "Gỡ {{host}}"
-      },
-      "resetAll": "Đặt lại giao diện ghi chú"
     }
   },
   "checkpoints": {
@@ -2481,6 +2341,42 @@
       "notesAskAgent": {
         "description": "Hỏi agent về đoạn văn bản đã chọn, hoặc mở và đóng agent của ghi chú.",
         "label": "Ghi chú: hỏi agent"
+      },
+      "notesNewNote": {
+        "label": "Ghi chú: ghi chú mới",
+        "description": "Tạo một ghi chú mới trong khung hiện tại."
+      },
+      "notesSearch": {
+        "label": "Ghi chú: tìm ghi chú",
+        "description": "Nhảy tới ô tìm kiếm ở đầu thanh bên Ghi chú."
+      },
+      "notesBookmark": {
+        "label": "Ghi chú: đánh dấu ghi chú",
+        "description": "Thêm ghi chú đang mở vào Yêu thích, hoặc bỏ ra khỏi đó."
+      },
+      "notesCopyLink": {
+        "label": "Ghi chú: sao chép liên kết tới ghi chú",
+        "description": "Sao chép liên kết tới ghi chú đang mở để dán vào ghi chú khác hoặc cuộc trò chuyện."
+      },
+      "notesProperties": {
+        "label": "Ghi chú: hiện hoặc ẩn thuộc tính",
+        "description": "Mở hoặc đóng phần thuộc tính bên dưới tiêu đề ghi chú."
+      },
+      "notesQuickCapture": {
+        "description": "Mở một cửa sổ nhỏ để ghi nhanh từ bất kỳ ứng dụng nào, kể cả khi Oleafly đang chạy nền.",
+        "label": "Ghi chú: ghi nhanh"
+      },
+      "notesCopyBlockLink": {
+        "description": "Sao chép liên kết tới đoạn văn, mục danh sách hoặc bảng nơi con trỏ đang đứng.",
+        "label": "Ghi chú: sao chép liên kết tới khối"
+      },
+      "notesBack": {
+        "description": "Quay lại chỗ bạn vừa ở trong tab này.",
+        "label": "Ghi chú: quay lại"
+      },
+      "notesForward": {
+        "description": "Tiến tới lại sau khi đã quay lại.",
+        "label": "Ghi chú: tiến tới"
       }
     },
     "application": {
@@ -2506,14 +2402,41 @@
         "renameSymbol": "Đổi tên ký hiệu hoặc tệp trong toàn dự án",
         "slashCommandMenu": "Menu chèn bằng lệnh gạch chéo",
         "triggerAutocomplete": "Kích hoạt tự động hoàn thành",
-        "undo": "Hoàn tác"
+        "undo": "Hoàn tác",
+        "noteBold": "In đậm",
+        "noteItalic": "In nghiêng",
+        "noteUnderline": "Gạch chân",
+        "noteStrike": "Gạch ngang",
+        "noteCode": "Mã trong dòng",
+        "noteHighlight": "Tô sáng bằng màu dùng gần nhất",
+        "noteSuperscript": "Chỉ số trên",
+        "noteSubscript": "Chỉ số dưới",
+        "noteHeadings": "Tiêu đề 1 đến 6",
+        "noteText": "Chuyển thành văn bản",
+        "noteQuote": "Trích dẫn",
+        "noteCodeBlock": "Khối mã",
+        "noteBulletList": "Danh sách dấu đầu dòng",
+        "noteNumberedList": "Danh sách đánh số",
+        "noteTaskList": "Danh sách công việc",
+        "noteToggleTask": "Đánh dấu hoặc bỏ đánh dấu công việc",
+        "noteIndent": "Thụt lề mục danh sách",
+        "noteOutdent": "Giảm thụt lề mục danh sách",
+        "noteLineBreak": "Xuống dòng trong cùng đoạn",
+        "noteFind": "Tìm và thay thế",
+        "noteSelectAll": "Chọn toàn bộ ghi chú",
+        "noteUndo": "Hoàn tác",
+        "noteRedo": "Làm lại",
+        "noteInsertMenu": "Mở menu chèn ở đầu dòng",
+        "noteLinkMenu": "Liên kết tới ghi chú",
+        "noteTag": "Thêm thẻ"
       },
       "managed": "Do trình biên tập quản lý"
     },
     "categories": {
       "codeIntelligence": "Hiểu mã",
       "editor": "Trình biên tập",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Ghi chú"
     },
     "error": {
       "conflict": "Đã được gán cho {{action}}.",
@@ -2559,6 +2482,15 @@
         "uppercase": "Chữ hoa"
       },
       "unbound": "Chưa đặt"
+    },
+    "quickCapture": {
+      "label": "Ghi nhanh từ mọi nơi",
+      "description": "Phím tắt ghi nhanh hoạt động trong mọi ứng dụng trên máy tính này.",
+      "ready": "Nhấn {{shortcut}} trong bất kỳ ứng dụng nào để mở ghi nhanh.",
+      "taken": "Một ứng dụng khác đã dùng {{shortcut}}. Hãy chọn phím tắt khác cho Ghi chú: ghi nhanh.",
+      "invalid": "{{shortcut}} không thể hoạt động bên ngoài Oleafly. Hãy chọn phím tắt kết thúc bằng một chữ cái, chữ số hoặc phím chức năng.",
+      "failed": "Oleafly không thể thiết lập phím tắt. Hãy tắt rồi bật lại ghi nhanh để thử lại.",
+      "wayland": "Wayland không cho ứng dụng nhận phím bên ngoài cửa sổ của chính nó. Để mở ghi nhanh bằng phím, hãy thêm một phím tắt tuỳ chỉnh trong cài đặt bàn phím của hệ thống để chạy lệnh này:"
     }
   },
   "systemIntegration": {
@@ -2648,17 +2580,5 @@
       "loadFailed": "Không thể đọc danh sách máy chủ MCP.",
       "missing": "{{name}} (không tìm thấy)"
     }
-  },
-  "notesPreview": {
-    "label": "Xem trước một ghi chú với các cài đặt này",
-    "title": "Ghi chép thực địa",
-    "heading": "Khảo sát buổi sáng",
-    "paragraph": "Mưa nhẹ đến chín giờ, sau đó trời quang trên sườn núi phía bắc. Đến trưa đất vẫn còn ẩm.",
-    "links": "Xem <note>Phương pháp lấy mẫu</note> để biết đầy đủ các bước, hoặc duyệt <tag>#thực-địa</tag>.",
-    "highlight": "Cây con cao gấp đôi chỉ sau một tuần.",
-    "calloutTitle": "Lần đến tiếp theo",
-    "calloutBody": "Kiểm tra cảm biến đất trước khi lấy mẫu mới.",
-    "taskDone": "Dán nhãn mẫu",
-    "task": "Tải ảnh lên"
   }
 }

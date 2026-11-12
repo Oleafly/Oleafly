@@ -1,13 +1,9 @@
-import type { Language } from "@codemirror/language";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
-import { highlightLanguageName, loadHighlightLanguage } from "@/components/ui/code-highlighter";
+import { highlightLanguageName, loadHighlightLanguage, type TokenSpan, tokenSpans } from "@/components/ui/code-highlighter";
 import { touchedTextblocks } from "./touched-textblocks";
 
-export { HIGHLIGHT_LANGUAGES } from "@/components/ui/code-highlighter";
-
-export const MAX_HIGHLIGHT_CHARS = 50_000;
 export const DEFER_HIGHLIGHT_CHARS = 4_000;
 export const DEFER_HIGHLIGHT_MS = 250;
 
@@ -15,65 +11,7 @@ export function codeLanguage(info: string): string | undefined {
   return highlightLanguageName(info.trim().split(/\s+/u)[0] ?? "");
 }
 
-export interface TokenSpan {
-  from: number;
-  to: number;
-  classes: string;
-}
-
-interface Highlighter {
-  highlight: (text: string) => TokenSpan[];
-}
-
-type HighlightCode = typeof import("@lezer/highlight");
-
-const languages = new Map<string, Promise<Highlighter | null>>();
-const ready = new Map<string, Highlighter>();
 const nodeSpans = new WeakMap<ProseMirrorNode, { name: string; spans: TokenSpan[] }>();
-
-function highlighterFor(language: Language, lezer: HighlightCode): Highlighter {
-  return {
-    highlight: (text) => {
-      const found: TokenSpan[] = [];
-      let position = 0;
-      lezer.highlightCode(
-        text,
-        language.parser.parse(text),
-        lezer.classHighlighter,
-        (piece, classes) => {
-          if (classes) found.push({ from: position, to: position + piece.length, classes });
-          position += piece.length;
-        },
-        () => {
-          position += 1;
-        },
-      );
-      return found;
-    },
-  };
-}
-
-export function loadHighlighter(name: string): Promise<Highlighter | null> {
-  const cached = languages.get(name);
-  if (cached) return cached;
-  const pending = Promise.all([loadHighlightLanguage(name), import("@lezer/highlight")])
-    .then(([language, lezer]) => {
-      if (!language) return null;
-      const highlighter = highlighterFor(language, lezer);
-      ready.set(name, highlighter);
-      return highlighter;
-    })
-    .catch(() => null);
-  languages.set(name, pending);
-  return pending;
-}
-
-export function tokenSpans(name: string, text: string): TokenSpan[] | null {
-  const highlighter = ready.get(name);
-  if (!highlighter) return null;
-  if (text.length > MAX_HIGHLIGHT_CHARS) return [];
-  return highlighter.highlight(text);
-}
 
 export function blockSpans(node: ProseMirrorNode, name: string): TokenSpan[] | null {
   const cached = nodeSpans.get(node);
@@ -110,7 +48,7 @@ function decorate(doc: ProseMirrorNode, missing: Set<string>, typeName: string):
 function deferred(node: ProseMirrorNode): boolean {
   if (node.textContent.length <= DEFER_HIGHLIGHT_CHARS) return false;
   const name = codeLanguage(String(node.attrs.language ?? ""));
-  return Boolean(name && ready.has(name) && nodeSpans.get(node)?.name !== name);
+  return Boolean(name && nodeSpans.get(node)?.name !== name && tokenSpans(name, "") !== null);
 }
 
 interface Redecorated {
@@ -149,8 +87,8 @@ export function codeHighlightPlugin(typeName = "codeBlock"): Plugin<DecorationSe
     for (const name of missing) {
       if (requested.has(name)) continue;
       requested.add(name);
-      void loadHighlighter(name).then((highlighter) => {
-        if (highlighter) refresh();
+      void loadHighlightLanguage(name).then((language) => {
+        if (language) refresh();
       });
     }
   };
@@ -196,9 +134,4 @@ export function codeHighlightPlugin(typeName = "codeBlock"): Plugin<DecorationSe
       };
     },
   });
-}
-
-export function clearHighlightCache(): void {
-  languages.clear();
-  ready.clear();
 }

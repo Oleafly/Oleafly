@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { useState } from "react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import type { LinkableNote } from "./note-links";
+import { NotePanelSections } from "./NoteListItem";
 import { NoteProperties } from "./NoteProperties";
+import "./tests/setup";
+import { useNotesPrefsStore } from "@/store/notes-prefs";
 
 const NOTES: LinkableNote[] = [
   { noteId: "n2", projectId: "lib-2", title: "Baseline", icon: "🧪" },
@@ -31,16 +33,38 @@ function openMenu(name: string | RegExp) {
   fireEvent.pointerDown(screen.getByRole("button", { name }), { button: 0, ctrlKey: false, pointerType: "mouse" });
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+const initialPrefs = useNotesPrefsStore.getState();
 
 afterEach(() => {
+  useNotesPrefsStore.setState(initialPrefs, true);
   localStorage.clear();
   vi.restoreAllMocks();
 });
 
 describe("adding properties", () => {
+  it("keeps a Properties section in the info panel even with no properties, and says so when it can't add one", () => {
+    const { unmount } = render(
+      <NotePanelSections>
+        <Harness initial={"---\ntitle: A\nid: n1\n---"} />
+      </NotePanelSections>,
+    );
+    const section = screen.getByRole("region", { name: P.title });
+    expect(within(section).getByRole("button", { name: `${P.title} 0` })).toHaveAttribute("aria-expanded", "true");
+    fireEvent.click(within(section).getByRole("button", { name: P.add }));
+    fireEvent.change(screen.getByRole("textbox", { name: P.newName }), { target: { value: "status" } });
+    fireEvent.keyDown(screen.getByRole("textbox", { name: P.newName }), { key: "Enter" });
+    expect(frontMatter()).toBe("---\ntitle: A\nid: n1\nstatus: null\n---");
+    expect(within(section).getByRole("button", { name: `${P.title} 1` })).toBeInTheDocument();
+    unmount();
+    render(
+      <NotePanelSections>
+        <Harness initial="" editable={false} />
+      </NotePanelSections>,
+    );
+    expect(screen.getByRole("region", { name: P.title })).toHaveTextContent(enNotes.info.noProperties);
+    expect(screen.queryByRole("button", { name: P.add })).not.toBeInTheDocument();
+  });
+
   it("shows only an add button until a property exists, then adds one", () => {
     render(<Harness initial={"---\ntitle: A\nid: n1\n---"} />);
     expect(screen.queryByRole("region")).toBeNull();
@@ -68,7 +92,7 @@ describe("adding properties", () => {
   });
 
   it("uses the remembered type for a new property", () => {
-    localStorage.setItem("oleafly.notes.propertyTypes", JSON.stringify({ reviewed: "checkbox" }));
+    useNotesPrefsStore.getState().set("propertyTypes", { reviewed: "checkbox" });
     render(<Harness initial={""} />);
     fireEvent.click(screen.getByRole("button", { name: P.add }));
     const name = screen.getByRole("textbox", { name: P.newName });
@@ -92,9 +116,10 @@ describe("editing values", () => {
     const score = screen.getByRole("spinbutton", { name: "Value of score" });
     fireEvent.change(score, { target: { value: "4.5" } });
     fireEvent.blur(score);
-    const when = screen.getByLabelText("Value of when");
-    fireEvent.change(when, { target: { value: "" } });
-    fireEvent.blur(when);
+    const when = screen.getByRole("button", { name: "Value of when" });
+    expect(when).toHaveTextContent("Jan 1, 2024");
+    fireEvent.click(when);
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Value of done" }));
     expect(frontMatter()).toBe("---\nstatus: final\nscore: 4.5\nwhen: null\ndone: true\n---");
     fireEvent.change(status, { target: { value: "" } });
@@ -105,24 +130,40 @@ describe("editing values", () => {
   it("adds, removes and pops list items", () => {
     render(<Harness initial={"---\ntags: [a]\n---"} />);
     const input = screen.getByRole("textbox", { name: "Value of tags" });
-    fireEvent.change(input, { target: { value: "b, a" } });
+    fireEvent.change(input, { target: { value: "a" } });
     fireEvent.keyDown(input, { key: "Enter" });
-    expect(frontMatter()).toBe("---\ntags: [a, b]\n---");
+    expect(frontMatter()).toBe("---\ntags: [a]\n---");
     fireEvent.change(input, { target: { value: "c" } });
-    fireEvent.keyDown(input, { key: "," });
+    fireEvent.keyDown(input, { key: "Enter" });
     fireEvent.click(screen.getByRole("button", { name: "Remove a" }));
-    expect(frontMatter()).toBe("---\ntags: [b, c]\n---");
+    expect(frontMatter()).toBe("---\ntags: [c]\n---");
     fireEvent.keyDown(input, { key: "Backspace" });
-    expect(frontMatter()).toBe("---\ntags: [b]\n---");
+    expect(frontMatter()).toBe("---\ntags: []\n---");
     fireEvent.change(input, { target: { value: "d" } });
     fireEvent.blur(input);
-    fireEvent.keyDown(input, { key: "x" });
-    expect(frontMatter()).toBe("---\ntags: [b, d]\n---");
+    expect(frontMatter()).toBe("---\ntags: [d]\n---");
+  });
+
+  it("keeps commas inside a list item, so an author stays one entry", () => {
+    render(<Harness initial={"---\nauthors: [Ana]\n---"} />);
+    const input = screen.getByRole("textbox", { name: "Value of authors" });
+    fireEvent.change(input, { target: { value: "Lee, K." } });
+    fireEvent.keyDown(input, { key: "," });
+    expect(frontMatter()).toBe("---\nauthors: [Ana]\n---");
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(frontMatter()).toBe('---\nauthors: [Ana, "Lee, K."]\n---');
+  });
+
+  it("keeps a text value as one item when it becomes a list", async () => {
+    render(<Harness initial={"---\nauthors: Smith, J.\n---"} />);
+    openMenu("authors type: Text");
+    fireEvent.click(screen.getByRole("menuitemradio", { name: P.types.list }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Remove Smith, J." })).toBeTruthy());
   });
 
   it("links to a note, opens it and clears the link", () => {
     const onOpenNote = vi.fn();
-    localStorage.setItem("oleafly.notes.propertyTypes", JSON.stringify({ source: "link" }));
+    useNotesPrefsStore.getState().set("propertyTypes", { source: "link" });
     render(<Harness initial={"---\nsource:\n---"} onOpenNote={onOpenNote} />);
     expect(screen.getByRole("button", { name: "Value of source" }).textContent).toBe(P.chooseNote);
     openMenu("Value of source");
@@ -158,7 +199,7 @@ describe("property menu", () => {
     fireEvent.click(screen.getByRole("menuitemradio", { name: P.types.number }));
     await waitFor(() => expect(frontMatter()).toBe("---\nrank: 3\n---"));
     expect(screen.queryByRole("alertdialog")).toBeNull();
-    expect(JSON.parse(localStorage.getItem("oleafly.notes.propertyTypes") ?? "{}")).toEqual({ rank: "number" });
+    expect(useNotesPrefsStore.getState().propertyTypes).toEqual({ rank: "number" });
   });
 
   it("asks before a type change that would drop list items, and keeps them when cancelled", async () => {
@@ -173,7 +214,7 @@ describe("property menu", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: /Cancel/u }));
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(frontMatter()).toBe("---\nauthors: [Ana, Bo]\n---");
-    expect(localStorage.getItem("oleafly.notes.propertyTypes")).toBeNull();
+    expect(useNotesPrefsStore.getState().propertyTypes).toEqual({});
 
     openMenu("authors type: List");
     fireEvent.click(screen.getByRole("menuitemradio", { name: P.types.text }));
@@ -266,7 +307,7 @@ describe("panel state", () => {
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(toggle);
     expect(screen.queryByRole("list")).toBeNull();
-    expect(localStorage.getItem("oleafly.notes.propertiesOpen")).toBe("false");
+    expect(useNotesPrefsStore.getState().propertiesOpen).toBe(false);
     unmount();
     render(<Harness initial={"---\na: 1\n---"} />);
     expect(screen.getByRole("button", { name: new RegExp(P.title, "u") }).getAttribute("aria-expanded")).toBe("false");
@@ -287,19 +328,18 @@ describe("panel state", () => {
   });
 
   it("shows the new property field even while the list is folded", () => {
-    localStorage.setItem("oleafly.notes.propertiesOpen", "false");
+    useNotesPrefsStore.getState().set("propertiesOpen", false);
     render(<Harness initial={"---\ntitle: A\n---"} />);
     fireEvent.click(screen.getByRole("button", { name: P.add }));
     expect(document.activeElement).toBe(screen.getByRole("textbox", { name: P.newName }));
-    expect(localStorage.getItem("oleafly.notes.propertiesOpen")).toBe("true");
+    expect(useNotesPrefsStore.getState().propertiesOpen).toBe(true);
   });
 
-  it("leaves Enter and commas to the input method while it composes text", () => {
+  it("leaves Enter to the input method while it composes text", () => {
     render(<Harness initial={"---\ntags: [a]\nstatus: x\n---"} />);
     const tags = screen.getByRole("textbox", { name: "Value of tags" });
     fireEvent.change(tags, { target: { value: "b" } });
     fireEvent.keyDown(tags, { key: "Enter", keyCode: 229 });
-    fireEvent.keyDown(tags, { key: ",", isComposing: true });
     expect(frontMatter()).toBe("---\ntags: [a]\nstatus: x\n---");
     const status = screen.getByRole("textbox", { name: "Value of status" });
     fireEvent.change(status, { target: { value: "y" } });

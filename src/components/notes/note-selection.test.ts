@@ -1,15 +1,13 @@
 // @vitest-environment jsdom
-import { type AnyExtension, Editor } from "@tiptap/core";
+import type { AnyExtension, Editor } from "@tiptap/core";
 import { Fragment, Slice } from "@tiptap/pm/model";
 import { AllSelection, NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { Network } from "lucide-react";
-import { DecorationSet } from "@tiptap/pm/view";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { registerNoteBlock } from "./note-blocks";
-import { noteBaseExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "./note-markdown";
+import { serializeNoteMarkdown } from "./note-markdown";
 import {
   COVERED_CLASS,
-  coveredBlocks,
   NoteSelection,
   noteClipboardText,
   SELECTING,
@@ -20,6 +18,7 @@ import {
   singleTextblock,
   watchStraySelection,
 } from "./note-selection";
+import { destroyKbEditors, kbEditor, positionOf } from "./tests/kb-editor-fixtures";
 
 const FENCE = "```";
 const NOTE = `## Plan
@@ -46,30 +45,8 @@ $$
 Last line.
 `;
 
-const editors: Editor[] = [];
-
 function build(markdown = NOTE, selection: AnyExtension = NoteSelection): Editor {
-  const element = document.createElement("div");
-  document.body.append(element);
-  const editor = new Editor({
-    element,
-    extensions: [...noteBaseExtensions(), selection],
-    content: parseNoteMarkdown(markdown).doc,
-  });
-  editors.push(editor);
-  return editor;
-}
-
-function positionOf(editor: Editor, text: string): number {
-  let found = -1;
-  editor.state.doc.descendants((node, pos) => {
-    if (found >= 0 || !node.isText) return found < 0;
-    const at = (node.text ?? "").indexOf(text);
-    if (at >= 0) found = pos + at;
-    return false;
-  });
-  if (found < 0) throw new Error(`no text ${text}`);
-  return found;
+  return kbEditor(markdown, null, [selection]);
 }
 
 function select(editor: Editor, from: string, to: string, toOffset = 0): void {
@@ -79,10 +56,12 @@ function select(editor: Editor, from: string, to: string, toOffset = 0): void {
 }
 
 function coveredTypes(editor: Editor): string[] {
-  return coveredBlocks(editor.state)
-    .find()
-    .sort((left, right) => left.from - right.from)
-    .map((decoration) => editor.state.doc.nodeAt(decoration.from)?.type.name ?? "");
+  const types: string[] = [];
+  editor.state.doc.descendants((node, pos) => {
+    const dom = editor.view.nodeDOM(pos);
+    if (dom instanceof HTMLElement && dom.classList.contains(COVERED_CLASS)) types.push(node.type.name);
+  });
+  return types;
 }
 
 function copiedText(editor: Editor): string {
@@ -95,11 +74,7 @@ beforeAll(() => {
 });
 
 afterEach(() => {
-  for (const editor of editors.splice(0)) {
-    if (editor.isDestroyed) continue;
-    editor.view.dom.parentElement?.remove();
-    editor.destroy();
-  }
+  destroyKbEditors();
   vi.restoreAllMocks();
   document.getSelection()?.removeAllRanges();
 });
@@ -166,13 +141,13 @@ describe("blocks that select as a whole", () => {
   it("marks nothing for an empty selection or a selected node", () => {
     const editor = build();
     select(editor, "A step", "A step");
-    expect(coveredBlocks(editor.state)).toBe(DecorationSet.empty);
+    expect(coveredTypes(editor)).toEqual([]);
     let image = -1;
     editor.state.doc.descendants((node, pos) => {
       if (node.type.name === "image") image = pos;
     });
     editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, image)));
-    expect(coveredBlocks(editor.state).find()).toEqual([]);
+    expect(coveredTypes(editor)).toEqual([]);
     expect(editor.view.dom.querySelector(`.${COVERED_CLASS}`)).toBeNull();
   });
 
@@ -312,10 +287,7 @@ describe("selections that leave the note text", () => {
     selectNode(second.view.dom.querySelector("p")?.firstChild as Node);
     expect(first.view.dom.hasAttribute(STRAY_SELECTION)).toBe(true);
     extra.destroy();
-    for (const editor of editors.splice(0)) {
-      editor.view.dom.parentElement?.remove();
-      editor.destroy();
-    }
+    destroyKbEditors();
     expect(remove.mock.calls.filter(([name, listener]) => name === "selectionchange" && typeof listener === "function" && listener.name === "syncStraySelections")).toHaveLength(1);
   });
 

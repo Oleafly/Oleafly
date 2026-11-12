@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "Zoekmodus: {{mode}}",
+    "heading": "Zoekmodus",
+    "ranked": {
+      "label": "Beste overeenkomst",
+      "description": "Rangschikt resultaten op hoe goed ze overeenkomen. Woorden mogen overal staan."
+    },
+    "exact": {
+      "label": "Exacte tekst",
+      "description": "Vindt precies deze tekens. Met een hoofdletter wordt het zoeken hoofdlettergevoelig."
+    },
+    "regex": {
+      "label": "Reguliere expressie",
+      "description": "Gebruikt de patroonsyntaxis van ripgrep. Zet een patroon tussen aanhalingstekens als het spaties of haakjes bevat."
+    },
+    "fuzzy": {
+      "label": "Benaderend",
+      "description": "Vindt namen met je letters in volgorde, zoals fzf dat doet. Accepteert ook 'exact, ^start, end$ en !leave-out."
+    },
+    "invalid": "Dit patroon is niet geldig: {{error}}"
+  },
   "querySearch": {
     "suggestions": "Zoeksuggesties",
     "exclude": "Uitsluiten",
@@ -76,7 +97,8 @@
       "invalidValue": "{{value}} is geen geldige waarde voor {{key}}",
       "invalidDate": "{{value}} is geen datum. Probeer 2026-10-02 of @today-7d",
       "invalidNumber": "{{value}} is geen getal",
-      "sortNegated": "{{key}} kan niet worden uitgesloten"
+      "sortNegated": "{{key}} kan niet worden uitgesloten",
+      "tooManyBranches": "Deze zoekopdracht heeft te veel OR-combinaties, dus er kunnen resultaten ontbreken"
     }
   },
   "avatar": {

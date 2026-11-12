@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
-import { Editor } from "@tiptap/core";
+import type { Editor } from "@tiptap/core";
 import type { Transaction } from "@tiptap/pm/state";
 import { DecorationSet } from "@tiptap/pm/view";
-import { createWysiwygExtensions, parseMarkdownBody, serializeMarkdownBody } from "@oleafly/wysiwyg";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { diffNoteDocs } from "./note-diff";
 import { applyNoteEdits } from "./note-edits";
+import { parseNoteMarkdown, serializeNoteMarkdown } from "./note-markdown";
+import { destroyKbEditors, kbEditor, kbMarkdown, positionOf, pressKey, typeBefore } from "./tests/kb-editor-fixtures";
 import {
   acceptActive,
   acceptAll,
@@ -23,7 +23,8 @@ import {
   showSuggestions,
   undoReject,
 } from "./note-suggestions";
-import { resetRemoteImagesForTest } from "./note-remote-images";
+import { resetRemoteImagesForTest } from "@/lib/remote-image";
+import "./tests/setup";
 
 const BODY = `## Results
 
@@ -36,40 +37,24 @@ Masks are sampled per pixel.
 | 1 | 0.75 |
 `;
 
-let editors: Editor[] = [];
-
 function build(body = BODY): Editor {
-  const editor = new Editor({
-    element: document.createElement("div"),
-    extensions: [...createWysiwygExtensions(), NoteSuggestions],
-    content: parseMarkdownBody(body).doc,
-  });
-  editors.push(editor);
-  return editor;
+  return kbEditor(body, null, [NoteSuggestions]);
 }
 
 function propose(editor: Editor, text: string, origin: "agent" | "disk" = "agent") {
-  const drafts = diffNoteDocs(editor.state.doc, editor.schema.nodeFromJSON(parseMarkdownBody(text).doc));
+  const drafts = diffNoteDocs(editor.state.doc, editor.schema.nodeFromJSON(parseNoteMarkdown(text).doc));
   showSuggestions(editor, drafts, origin);
   return drafts;
 }
 
-function markdown(editor: Editor): string {
-  return serializeMarkdownBody(editor.getJSON());
-}
+const markdown = kbMarkdown;
 
 function normalized(text: string): string {
-  const editor = build(text);
-  return markdown(editor);
+  return markdown(build(text));
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 afterEach(() => {
-  for (const editor of editors) editor.destroy();
-  editors = [];
+  destroyKbEditors();
   resetRemoteImagesForTest();
 });
 
@@ -85,10 +70,10 @@ describe("note changes", () => {
     const proposed = BODY.replace("0.75 and", "0.60 and");
     const drafts = propose(editor, proposed);
     expect(drafts).toHaveLength(1);
-    expect(drafts[0]).toMatchObject({ kind: "text", text: "0.60 " });
+    expect(drafts[0]).toMatchObject({ kind: "text", text: "0.60" });
     expect(editor.state.doc.toJSON()).toEqual(before);
-    expect(editor.view.dom.querySelector(".note-diff-delete")?.textContent).toBe("0.75 ");
-    expect(editor.view.dom.querySelector(".note-diff-insert")?.textContent).toBe("0.60 ");
+    expect(editor.view.dom.querySelector(".note-diff-delete")?.textContent).toBe("0.75");
+    expect(editor.view.dom.querySelector(".note-diff-insert")?.textContent).toBe("0.60");
   });
 
   it.each([
@@ -139,17 +124,40 @@ describe("note changes", () => {
     expect(markdown(editor)).toContain("per patch");
   });
 
-  it("drops a change when the person edits the same words", () => {
+  it("keeps a change and compares it again when the person types inside it", () => {
+    const editor = build();
+    propose(editor, BODY.replace("per pixel", "per patch"), "disk");
+    const before = reviewSummary(editor).activeId;
+    editor.chain().insertContentAt(positionOf(editor, "pixel") + 2, "x").run();
+    expect(reviewSummary(editor)).toMatchObject({ count: 1, activeId: before });
+    expect(editor.view.dom.querySelector(".note-diff-delete")?.textContent).toBe("pixxel.");
+    expect(serializeNoteMarkdown(docWithPending(editor, "disk").toJSON())).toContain("per patch.");
+    acceptAll(editor);
+    expect(markdown(editor)).toContain("per patch.");
+  });
+
+  it("inserts the formatting the comparison checked, not the formatting waiting at the cursor", () => {
     const editor = build();
     propose(editor, BODY.replace("per pixel", "per patch"));
-    const at = editor.state.doc.textContent.indexOf("pixel");
-    let position = 0;
-    editor.state.doc.descendants((node, pos) => {
-      if (node.isText && node.text?.includes("pixel")) position = pos + (node.text.indexOf("pixel"));
-    });
-    expect(at).toBeGreaterThan(0);
-    editor.chain().insertContentAt(position + 2, "x").run();
-    expect(reviewSummary(editor).count).toBe(0);
+    editor.view.dispatch(editor.state.tr.setStoredMarks([editor.schema.marks.bold.create()]));
+    expect(serializeNoteMarkdown(docWithPending(editor, "agent").toJSON())).toContain("per patch.");
+    acceptAll(editor);
+    expect(markdown(editor)).toContain("Masks are sampled per patch.");
+  });
+
+  it.each([
+    ["a callout", "> [!warning] Watch out\n> Small batches drift.\n", "drift", "wander"],
+    ["a task item", "- [ ] Rerun the seeds\n- [x] Plot the loss\n", "seeds", "trials"],
+    ["a nested list", "- Runs\n  - first run\n  - second run\n", "second", "third"],
+    ["a highlight", "Read ==this part== carefully.\n", "part", "section"],
+  ])("accepts a word change inside %s and keeps it while the person types beside it", (_where, body, word, replacement) => {
+    const editor = build(body);
+    propose(editor, body.replace(word, replacement));
+    expect(reviewSummary(editor).count).toBe(1);
+    typeBefore(editor, word, "x");
+    expect(reviewSummary(editor).count).toBe(1);
+    acceptAll(editor);
+    expect(markdown(editor)).toBe(normalized(body.replace(word, `x${replacement}`)));
   });
 
   it("keeps agent and disk changes apart and applies only disk ones to the saved text", () => {
@@ -158,7 +166,7 @@ describe("note changes", () => {
     propose(editor, BODY.replace("0.75 and", "0.60 and"), "disk");
     expect(reviewSummary(editor).count).toBe(2);
     expect(hasPending(editor, "disk")).toBe(true);
-    const saved = serializeMarkdownBody(docWithPending(editor, "disk").toJSON());
+    const saved = serializeNoteMarkdown(docWithPending(editor, "disk").toJSON());
     expect(saved).toContain("0.60 and");
     expect(saved).toContain("per pixel");
     propose(editor, BODY, "disk");
@@ -167,9 +175,8 @@ describe("note changes", () => {
   });
 });
 
-function press(editor: Editor, init: KeyboardEventInit): boolean {
-  const event = new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
-  return editor.view.someProp("handleKeyDown", (handle) => handle(editor.view, event)) ?? false;
+function press(editor: Editor, init: KeyboardEventInit & { key: string }): boolean {
+  return pressKey(editor, init.key, init);
 }
 
 function transactions(editor: Editor): Transaction[] {
@@ -180,22 +187,9 @@ function transactions(editor: Editor): Transaction[] {
   return seen;
 }
 
-function positionOf(editor: Editor, word: string): number {
-  let position = -1;
-  editor.state.doc.descendants((node, pos) => {
-    if (position < 0 && node.isText && node.text?.includes(word)) position = pos + node.text.indexOf(word);
-  });
-  return position;
-}
-
 describe("reviewing note changes", () => {
   it("reports nothing to review on an editor without suggestions", () => {
-    const editor = new Editor({
-      element: document.createElement("div"),
-      extensions: createWysiwygExtensions(),
-      content: parseMarkdownBody(BODY).doc,
-    });
-    editors.push(editor);
+    const editor = kbEditor(BODY, null);
     expect(reviewSummary(editor)).toEqual({ count: 0, index: -1, activeId: null });
     expect(hasPending(editor, "disk")).toBe(false);
   });
@@ -211,12 +205,13 @@ describe("reviewing note changes", () => {
     expect(markdown(editor)).toBe(before);
   });
 
-  it("tells review transactions apart from typing", () => {
+  it("tells a settled review apart from typing and from only showing changes", () => {
     const editor = build();
     const seen = transactions(editor);
     propose(editor, BODY.replace("per pixel", "per patch"));
     editor.chain().insertContentAt(1, "Draft ").run();
-    expect(seen.map(isReviewTransaction)).toEqual([true, false]);
+    rejectActive(editor);
+    expect(seen.map(isReviewTransaction)).toEqual([false, false, true]);
   });
 
   it("keeps the review as it is when the selection moves or nothing is pending", () => {
@@ -229,22 +224,21 @@ describe("reviewing note changes", () => {
     expect(reviewSummary(editor)).toEqual(before);
   });
 
-  it("accepts the active change with Mod-Enter and rejects it with Escape", () => {
+  it("accepts the active change with Mod-Enter and leaves Escape alone", () => {
     const editor = build();
     propose(editor, BODY.replace("0.75 and", "0.60 and").replace("per pixel", "per patch"));
     expect(press(editor, { key: "Enter", ctrlKey: true })).toBe(true);
     expect(markdown(editor)).toContain("ratio of 0.60 and");
     expect(reviewSummary(editor).count).toBe(1);
-    expect(press(editor, { key: "Escape" })).toBe(true);
-    expect(markdown(editor)).toContain("per pixel");
-    expect(reviewSummary(editor).count).toBe(0);
+    expect(press(editor, { key: "Escape" })).toBe(false);
+    expect(reviewSummary(editor).count).toBe(1);
   });
 
   it("brings back a rejected change with Mod-z until the note changes", () => {
     const editor = build();
     propose(editor, BODY.replace("0.75 and", "0.60 and").replace("per pixel", "per patch"));
     expect(canUndoReject(editor)).toBe(false);
-    expect(press(editor, { key: "Escape" })).toBe(true);
+    rejectActive(editor);
     expect(reviewSummary(editor).count).toBe(1);
     expect(canUndoReject(editor)).toBe(true);
     expect(press(editor, { key: "z", ctrlKey: true })).toBe(true);
@@ -300,13 +294,6 @@ describe("reviewing note changes", () => {
     expect(holder.dataset.remoteImage).toBe("tracker.example");
     holder.querySelector("button")?.click();
     expect(block.querySelector("img")?.getAttribute("src")).toBe("https://tracker.example/pixel.png");
-  });
-
-  it("leaves Escape to others when no change is active", () => {
-    const editor = build();
-    const before = markdown(editor);
-    expect(press(editor, { key: "Escape" })).toBe(false);
-    expect(markdown(editor)).toBe(before);
   });
 
   it("orders changes at the same place by where they end", () => {
@@ -365,12 +352,12 @@ describe("reviewing note changes", () => {
     expect(markdown(editor)).toContain("All Masks are sampled per patch.");
   });
 
-  it("moves to the next change when the active one is dropped by typing", () => {
+  it("moves to the next change when the person types the active one's text", () => {
     const editor = build();
     propose(editor, BODY.replace("0.75 and", "0.60 and").replace("per pixel", "per patch"));
     const first = reviewSummary(editor).activeId;
     const at = positionOf(editor, "0.75");
-    editor.chain().insertContentAt(at + 1, "9").run();
+    editor.view.dispatch(editor.state.tr.insertText("0.60", at, at + "0.75".length));
     const summary = reviewSummary(editor);
     expect(summary.count).toBe(1);
     expect(summary.activeId).not.toBe(first);

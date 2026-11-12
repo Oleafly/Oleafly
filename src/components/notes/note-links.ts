@@ -1,3 +1,4 @@
+import { normalizeText } from "@oleafly/search-query";
 import { Extension, type AnyExtension } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { PluginKey, TextSelection, type EditorState } from "@tiptap/pm/state";
@@ -5,11 +6,21 @@ import { Decoration, type EditorView } from "@tiptap/pm/view";
 import type { CSSProperties } from "react";
 import { i18n } from "@/i18n";
 import { notifyError } from "@/lib/toast";
+import { blockFragment, blockOfFragment, shortText, textOfFragment } from "./note-block-ids";
+import {
+  blockFlashPlugin,
+  docBlocks,
+  ensureDocBlockId,
+  revealBlock,
+  revealTextBlock,
+  type NoteBlock,
+  type NoteBlockKind,
+} from "./note-block-links";
 import { readNoteFacts } from "./note-file";
 import { noteColorStyle } from "./note-icons";
-import { isLinkableId, noteLinkHref, parseNoteLink, uniqueSlugs, type NoteHeading, type NoteLinkTarget } from "./note-link-format";
+import { isLinkableId, isSpaceOrTab, noteLinkHref, parseNoteLink, uniqueSlugs, type NoteHeading, type NoteLinkTarget } from "./note-link-format";
 import { isSelectionModifier } from "@/store/library-selection";
-import { sendSuggestMeta, suggestionKey, suggestOptionId, suggestPlugin, type SuggestState } from "./note-suggest-plugin";
+import { sendSuggestMeta, suggestionKey, suggestPlugin, type SuggestState } from "./note-suggest-plugin";
 import { projectStyle } from "./project-color";
 
 export interface LinkableNote {
@@ -27,10 +38,20 @@ export interface LinkableProject {
   color: string | null;
 }
 
+export interface BlockChoice {
+  id: string | null;
+  kind: NoteBlockKind;
+  text: string;
+  at: number;
+  trailing: boolean;
+  live: boolean;
+}
+
 export type LinkCandidate =
   | { kind: "note"; id: string; projectId: string; title: string; color?: string; icon?: string; alias?: string }
   | { kind: "project"; id: string; title: string; color: string | null }
   | { kind: "heading"; id: string; projectId: string; title: string; heading: NoteHeading; self: boolean; color?: string; icon?: string }
+  | { kind: "block"; id: string; projectId: string; title: string; block: BlockChoice; self: boolean; color?: string; icon?: string }
   | { kind: "create"; id: string; title: string };
 
 type LinkTarget = Exclude<LinkCandidate, { kind: "create" }>;
@@ -48,6 +69,8 @@ export interface NoteLinkOptions {
   getNotes: () => readonly LinkableNote[] | null;
   getProjects: () => readonly LinkableProject[] | null;
   getHeadings?: (projectId: string) => readonly NoteHeading[] | null;
+  getBlocks?: (projectId: string) => readonly BlockChoice[] | null;
+  assignBlockId?: (projectId: string, block: BlockChoice) => Promise<string | null>;
   onOpenNote: OpenNoteHandler;
   onOpenProject: OpenProjectHandler;
   currentProjectId?: string | null;
@@ -70,6 +93,7 @@ export interface NoteLinkSuggestion {
   embed: boolean;
   alias: string | null;
   headings: boolean;
+  blocks: boolean;
   loading: boolean;
   items: readonly LinkCandidate[];
 }
@@ -94,20 +118,17 @@ export interface DocHeading extends NoteHeading {
 export const NOTE_LIMIT = 6;
 export const PROJECT_LIMIT = 4;
 export const HEADING_LIMIT = 12;
+export const BLOCK_LIMIT = 12;
 const TRIGGER = /(!?)\[\[([^[\]\n￼]{0,80})$/u;
 const LOOK_BEHIND = 96;
 const linkKey = new PluginKey<SuggestState<SuggestRange>>("noteLinks");
 const foldedNames = new WeakMap<object, readonly string[]>();
 let menuCount = 0;
 
-function fold(text: string): string {
-  return text.normalize("NFC").toLocaleLowerCase();
-}
-
 function namesOf(item: { title: string; aliases?: readonly string[] }): readonly string[] {
   let names = foldedNames.get(item);
   if (!names) {
-    names = [item.title, ...(item.aliases ?? [])].map(fold);
+    names = [item.title, ...(item.aliases ?? [])].map(normalizeText);
     foldedNames.set(item, names);
   }
   return names;
@@ -174,7 +195,7 @@ export function linkCandidates(
   currentProjectId?: string | null,
   embed = false,
 ): LinkCandidate[] {
-  const needle = fold(parseLinkQuery(query).name);
+  const needle = normalizeText(parseLinkQuery(query).name);
   const others = notes.filter((note) => note.projectId !== currentProjectId);
   const found = ranked(others, needle, NOTE_LIMIT).map(({ item, alias }) => noteCandidate(item, alias));
   if (embed) return found;
@@ -192,7 +213,7 @@ export function headingTarget(
   currentProjectId?: string | null,
 ): LinkableNote | null {
   if (!name) return notes.find((note) => note.projectId === currentProjectId) ?? null;
-  const wanted = fold(name);
+  const wanted = normalizeText(name);
   const exact = notes.find((note) => namesOf(note).includes(wanted));
   if (exact) return exact;
   const others = notes.filter((note) => note.projectId !== currentProjectId);
@@ -203,7 +224,7 @@ export function docHeadings(doc: ProseMirrorNode): DocHeading[] {
   const found: { level: number; text: string; pos: number }[] = [];
   doc.descendants((node, pos) => {
     if (node.type.name !== "heading") return true;
-    found.push({ level: Number(node.attrs.level ?? 1), text: node.textContent.replace(/\s+/gu, " ").trim(), pos });
+    found.push({ level: Number(node.attrs.level ?? 1), text: node.textContent.replaceAll(/\s+/gu, " ").trim(), pos });
     return false;
   });
   const slugs = uniqueSlugs(found.map((heading) => heading.text));
@@ -216,9 +237,9 @@ export function headingCandidates(
   query: string,
   self: boolean,
 ): LinkCandidate[] {
-  const needle = fold(query);
+  const needle = normalizeText(query);
   return headings
-    .filter((heading) => !needle || fold(heading.text).includes(needle))
+    .filter((heading) => !needle || normalizeText(heading.text).includes(needle))
     .slice(0, HEADING_LIMIT)
     .map((heading) => ({
       kind: "heading",
@@ -226,6 +247,33 @@ export function headingCandidates(
       projectId: target.projectId,
       title: target.title,
       heading: { level: heading.level, text: heading.text, slug: heading.slug },
+      self,
+      color: target.color,
+      icon: target.icon,
+    }));
+}
+
+export function blockChoices(blocks: readonly NoteBlock[]): BlockChoice[] {
+  return blocks.map((block) => ({ id: block.id, kind: block.kind, text: block.text, at: block.idLine, trailing: block.trailing, live: false }));
+}
+
+export function docBlockChoices(doc: ProseMirrorNode, skip = -1): BlockChoice[] {
+  return docBlocks(doc)
+    .filter((block) => skip < block.pos || skip >= block.pos + block.node.nodeSize)
+    .map((block) => ({ id: block.id, kind: block.kind, text: block.text, at: block.pos, trailing: false, live: true }));
+}
+
+export function blockCandidates(target: LinkableNote, blocks: readonly BlockChoice[], query: string, self: boolean): LinkCandidate[] {
+  const needle = normalizeText(query);
+  return blocks
+    .filter((block) => !needle || normalizeText(block.text).includes(needle) || block.id?.includes(needle) === true)
+    .slice(0, BLOCK_LIMIT)
+    .map((block) => ({
+      kind: "block",
+      id: target.noteId,
+      projectId: target.projectId,
+      title: target.title,
+      block,
       self,
       color: target.color,
       icon: target.icon,
@@ -340,6 +388,11 @@ function headingItems(state: EditorState, options: NoteLinkOptions, query: LinkQ
   const target = headingTarget(notes, query.name, options.currentProjectId);
   if (!target) return { items: [], loading: options.getNotes() === null };
   const self = target.projectId === options.currentProjectId;
+  if (query.heading?.startsWith("^")) {
+    const blocks = self ? docBlockChoices(state.doc, state.selection.from) : (options.getBlocks?.(target.projectId) ?? null);
+    if (!blocks) return { items: [], loading: true };
+    return { items: blockCandidates(target, blocks, query.heading.slice(1), self), loading: false };
+  }
   const headings = self ? docHeadings(state.doc) : (options.getHeadings?.(target.projectId) ?? null);
   if (!headings) return { items: [], loading: true };
   return { items: headingCandidates(target, headings, query.heading ?? "", self), loading: false };
@@ -364,7 +417,7 @@ export function linkedNoteCreator(
 export function createCandidate(options: NoteLinkOptions, query: LinkQuery, embed: boolean): LinkCandidate | null {
   const notes = options.getNotes();
   if (!options.createNote || !notes || embed || query.heading !== null || query.name === "") return null;
-  const wanted = fold(query.name);
+  const wanted = normalizeText(query.name);
   const exists = notes.some((note) => namesOf(note).some((name) => name.trim() === wanted));
   return exists ? null : { kind: "create", id: query.name, title: query.name };
 }
@@ -384,7 +437,7 @@ export function noteLinkSuggestion(state: EditorState): NoteLinkSuggestion | nul
   const notes = spec.noteLinks.getNotes();
   const projects = spec.noteLinks.getProjects();
   const cached = suggestions.get(state);
-  if (cached && cached.notes === notes && cached.projects === projects) return cached.suggestion;
+  if (cached?.notes === notes && cached.projects === projects) return cached.suggestion;
   const suggestion = buildSuggestion(state, spec, suggest);
   suggestions.set(state, { notes, projects, suggestion });
   return suggestion;
@@ -409,13 +462,12 @@ function buildSuggestion(state: EditorState, spec: LinkPluginSpec, suggest: Sugg
     menuId: spec.menuId,
     alias: query.alias,
     headings: query.heading !== null,
+    blocks: query.heading?.startsWith("^") === true,
     loading: found.loading,
     index: Math.min(suggest.index, Math.max(0, found.items.length - 1)),
     items: found.items,
   };
 }
-
-export const noteLinkOptionId = suggestOptionId;
 
 export function highlightNoteLink(view: EditorView, index: number): void {
   sendSuggestMeta(view, linkKey, { index });
@@ -425,21 +477,23 @@ export function closeNoteLinkMenu(view: EditorView): void {
   sendSuggestMeta(view, linkKey, { dismiss: true });
 }
 
-export function candidateHref(candidate: LinkTarget): string {
+export function candidateHref(candidate: LinkTarget, blockId?: string): string {
   if (candidate.kind === "heading") return noteLinkHref("note", candidate.id, candidate.heading.slug);
+  if (candidate.kind === "block") return noteLinkHref("note", candidate.id, blockFragment(blockId ?? candidate.block.id ?? ""));
   return noteLinkHref(candidate.kind, candidate.id);
 }
 
 export function candidateText(candidate: LinkTarget, alias: string | null): string {
   if (alias) return alias;
-  if (candidate.kind === "heading") {
-    return candidate.self ? candidate.heading.text : `${candidate.title.trim() || candidate.id} > ${candidate.heading.text}`;
+  if (candidate.kind === "heading" || candidate.kind === "block") {
+    const part = candidate.kind === "heading" ? candidate.heading.text : shortText(candidate.block.text) || blockFragment(candidate.block.id ?? "");
+    return candidate.self ? part : `${candidate.title.trim() || candidate.id} > ${part}`;
   }
   return candidate.title.trim() || candidate.id;
 }
 
 export function canEmbed(candidate: LinkCandidate): boolean {
-  return candidate.kind === "note" || (candidate.kind === "heading" && !candidate.self);
+  return candidate.kind === "note" || ((candidate.kind === "heading" || candidate.kind === "block") && !candidate.self);
 }
 
 const creating = new WeakSet<EditorView>();
@@ -460,19 +514,56 @@ function createAndLink(view: EditorView, suggestion: NoteLinkSuggestion, title: 
   return true;
 }
 
+function blockIdFor(view: EditorView, candidate: Extract<LinkCandidate, { kind: "block" }>): string | null {
+  if (candidate.block.id) return candidate.block.id;
+  if (!candidate.self) return null;
+  const block = docBlocks(view.state.doc).find((entry) => entry.pos === candidate.block.at);
+  return block ? ensureDocBlockId(view, block) : null;
+}
+
+function assignAndLink(view: EditorView, suggestion: NoteLinkSuggestion, candidate: Extract<LinkCandidate, { kind: "block" }>, asEmbed?: boolean): boolean {
+  const assign = specOf(view.state)?.noteLinks.assignBlockId;
+  if (!assign) return false;
+  if (creating.has(view)) return true;
+  creating.add(view);
+  const { from, query } = suggestion;
+  assign(candidate.projectId, candidate.block)
+    .then((id) => {
+      const current = view.isDestroyed ? null : noteLinkSuggestion(view.state);
+      if (id && current?.from === from && current.query === query) {
+        insertNoteLink(view, { ...candidate, block: { ...candidate.block, id } }, asEmbed);
+      }
+    })
+    .catch(() => undefined)
+    .finally(() => creating.delete(view));
+  return true;
+}
+
+function trailingSpaceCount(text: string): number {
+  let start = text.length;
+  while (start > 0 && isSpaceOrTab(text[start - 1])) start -= 1;
+  return text.length - start;
+}
+
 export function insertNoteLink(view: EditorView, candidate: LinkCandidate, asEmbed?: boolean): boolean {
   const suggestion = noteLinkSuggestion(view.state);
-  const { state } = view;
-  const link = state.schema.marks.link;
+  const link = view.state.schema.marks.link;
   if (!suggestion || !link) return false;
   if (candidate.kind === "create") return createAndLink(view, suggestion, candidate.title);
+  let blockId: string | undefined;
+  if (candidate.kind === "block") {
+    const id = blockIdFor(view, candidate);
+    if (!id) return assignAndLink(view, suggestion, candidate, asEmbed);
+    blockId = id;
+  }
+  const { state } = view;
   const { from, to } = suggestion;
   const text = candidateText(candidate, suggestion.alias);
-  const href = candidateHref(candidate);
+  const href = candidateHref(candidate, blockId);
   const embed = (asEmbed ?? suggestion.embed) && canEmbed(candidate) && state.schema.nodes.image !== undefined;
   if (embed) {
     const $from = state.doc.resolve(from);
-    const lead = /[ \t]*$/u.exec($from.parent.textBetween(0, $from.parentOffset, undefined, "￼"))?.[0].length ?? 0;
+    const lead = trailingSpaceCount($from.parent.textBetween(0, $from.parentOffset, undefined, "￼"));
     const tr = state.tr.replaceRangeWith(from - lead, to, state.schema.nodes.image.create({ src: href, alt: text }));
     view.dispatch(tr.scrollIntoView());
     view.focus();
@@ -494,6 +585,10 @@ export function chooseNoteLink(view: EditorView, index: number, asEmbed?: boolea
 }
 
 export function scrollViewToHeading(view: EditorView, slug: string): boolean {
+  const block = blockOfFragment(slug);
+  if (block) return revealBlock(view, block);
+  const text = textOfFragment(slug);
+  if (text) return revealTextBlock(view, text);
   const heading = docHeadings(view.state.doc).find((candidate) => candidate.slug === slug);
   if (!heading) return false;
   const tr = view.state.tr.setSelection(TextSelection.create(view.state.doc, heading.pos + 1));
@@ -560,6 +655,22 @@ function recreateMissing(view: EditorView, anchor: Element, href: string, option
     .finally(() => creating.delete(view));
 }
 
+function openNoteTarget(view: EditorView, anchor: Element, target: NoteLinkTarget, options: NoteLinkOptions, newTab: boolean): void {
+  const notes = options.getNotes();
+  const note = notes?.find((candidate) => candidate.noteId === target.id);
+  if (!note) {
+    if (notes) recreateMissing(view, anchor, anchor.getAttribute("href") ?? "", options, newTab);
+    return;
+  }
+  if (target.heading && note.projectId === options.currentProjectId && !newTab) {
+    scrollViewToHeading(view, target.heading);
+    return;
+  }
+  const opened: OpenNoteOptions = { newTab, projectId: note.projectId };
+  if (target.heading) opened.heading = target.heading;
+  options.onOpenNote(target.id, opened);
+}
+
 function openClicked(view: EditorView, event: MouseEvent, options: NoteLinkOptions): boolean {
   if (event.button !== 0 || !(event.target instanceof Element)) return false;
   const anchor = event.target.closest("a");
@@ -570,19 +681,7 @@ function openClicked(view: EditorView, event: MouseEvent, options: NoteLinkOptio
   if (!view.state.selection.empty) return true;
   const newTab = isSelectionModifier(event);
   if (target.kind === "note") {
-    const notes = options.getNotes();
-    const note = notes?.find((candidate) => candidate.noteId === target.id);
-    if (!note) {
-      if (notes) recreateMissing(view, anchor, anchor.getAttribute("href") ?? "", options, newTab);
-      return true;
-    }
-    if (target.heading && note.projectId === options.currentProjectId && !newTab) {
-      scrollViewToHeading(view, target.heading);
-      return true;
-    }
-    const opened: OpenNoteOptions = { newTab, projectId: note.projectId };
-    if (target.heading) opened.heading = target.heading;
-    options.onOpenNote(target.id, opened);
+    openNoteTarget(view, anchor, target, options, newTab);
     return true;
   }
   const projects = options.getProjects();
@@ -642,7 +741,7 @@ export function noteLinkExtensions(options: NoteLinkOptions): AnyExtension[] {
       priority: 1000,
       addOptions: () => options,
       addProseMirrorPlugins() {
-        return [linkPlugin(this.options)];
+        return [linkPlugin(this.options), blockFlashPlugin()];
       },
     }),
   ];

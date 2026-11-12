@@ -17,7 +17,7 @@ function inlineSource(node: ProseMirrorNode): string | null {
 
 export function blockCharMap(block: ProseMirrorNode, start: number, source: string, from = 0): CharMap {
   const known = maps.get(block);
-  if (known && known.start === start && known.source === source && known.from === from) return known.map;
+  if (known?.start === start && known.source === source && known.from === from) return known.map;
   const pm: number[] = [];
   const src: number[] = [];
   let cursor = from;

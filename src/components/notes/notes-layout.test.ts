@@ -6,6 +6,7 @@ import {
   ARTIFACTS_SHARE,
   ARTIFACTS_VIEW,
   cleanNotesLayout,
+  closeSavedNoteView,
   defaultNotesLayout,
   HOME_VIEW,
   holdsNotes,
@@ -17,6 +18,7 @@ import {
   noteView,
   noteViewId,
   openHomeIn,
+  openHomeInPlace,
   openNoteIn,
   openNoteInPlace,
   openNoteViews,
@@ -190,24 +192,14 @@ describe("cleanNotesLayout", () => {
 });
 
 describe("readNotesLayout", () => {
-  it("gives the default layout when nothing is saved", () => {
-    expect(readNotesLayout()).toEqual(defaultNotesLayout());
-  });
-
-  it("gives the default layout for an empty saved value", () => {
-    localStorage.setItem(NOTES_LAYOUT_KEY, "");
-    expect(readNotesLayout()).toEqual(defaultNotesLayout());
-  });
-
-  it("gives the default layout for a saved value that is not JSON", () => {
-    localStorage.setItem(NOTES_LAYOUT_KEY, "{not json");
-    expect(readNotesLayout()).toEqual(defaultNotesLayout());
-  });
-
-  it("gives the default layout for JSON that is not a layout", () => {
-    localStorage.setItem(NOTES_LAYOUT_KEY, JSON.stringify({ schema: 2, root: null, views: {} }));
-    expect(readNotesLayout()).toEqual(defaultNotesLayout());
-    localStorage.setItem(NOTES_LAYOUT_KEY, "null");
+  it.each([
+    ["nothing is saved", null],
+    ["an empty saved value", ""],
+    ["a saved value that is not JSON", "{not json"],
+    ["JSON that is not a layout", JSON.stringify({ schema: 2, root: null, views: {} })],
+    ["a saved null", "null"],
+  ])("gives the default layout when %s", (_case, saved) => {
+    if (saved !== null) localStorage.setItem(NOTES_LAYOUT_KEY, saved);
     expect(readNotesLayout()).toEqual(defaultNotesLayout());
   });
 
@@ -282,6 +274,22 @@ describe("saveNotesLayout", () => {
     expect(() => saveNotesLayout(notesLayout())).not.toThrow();
     expect(setItem).toHaveBeenCalledOnce();
     expect(localStorage.getItem(NOTES_LAYOUT_KEY)).toBeNull();
+  });
+});
+
+describe("closeSavedNoteView", () => {
+  it("closes the saved tab of a note that left the library", () => {
+    saveNotesLayout(notesLayout());
+    closeSavedNoteView("n1");
+    expect(readNotesLayout()).toEqual(closeView(notesLayout(), "note:n1"));
+  });
+
+  it("leaves the saved layout alone when the note has no tab", () => {
+    const setItem = vi.spyOn(Storage.prototype, "setItem");
+    closeSavedNoteView("n9");
+    saveNotesLayout(notesLayout());
+    closeSavedNoteView("n9");
+    expect(setItem).toHaveBeenCalledOnce();
   });
 });
 
@@ -468,10 +476,40 @@ describe("openNoteInPlace", () => {
     expect(openNoteInPlace(toggleMaximize(homeTabs(), "g2"), "home:2", "n3").maximized).toBeNull();
   });
 
+  it("keeps a note asked to open in its own place", () => {
+    const layout = homeTabs();
+    expect(openNoteInPlace(layout, "note:n1", "n1")).toBe(layout);
+  });
+
   it("opens in the stage group when the Home tab is gone", () => {
     const next = openNoteInPlace(homeTabs(), "home:9", "n3");
     expect(groupOfView(next, "note:n3")?.id).toBe("g2");
     expect(next.views).toHaveProperty(HOME_VIEW);
     expect(next.views).toHaveProperty("home:2");
+  });
+});
+
+describe("openHomeInPlace", () => {
+  it("puts a new Home tab where the note was and closes the note", () => {
+    const layout = notesLayout();
+    const homeId = newHomeViewId(layout);
+    const next = openHomeInPlace(layout, "note:n2", homeId);
+    expect(groupOfView(next, homeId)).toMatchObject({ id: "g2", views: [homeId, ARTIFACTS_VIEW], active: homeId });
+    expect(next.views[homeId]).toEqual(home);
+    expect(next.views).not.toHaveProperty("note:n2");
+    expect(groupOfView(next, HOME_VIEW)).toMatchObject({ id: "g1", views: [HOME_VIEW, "note:n1"] });
+  });
+
+  it("uses the first Home id once no Home is open", () => {
+    const layout = createLayout(group("g1", ["note:n1", "note:n2"], "note:n1"), { "note:n1": noteView("n1"), "note:n2": noteView("n2") });
+    const next = openHomeInPlace(layout, "note:n1", newHomeViewId(layout));
+    expect(next.root).toEqual({ kind: "group", id: "g1", views: [HOME_VIEW, "note:n2"], active: HOME_VIEW });
+  });
+
+  it("opens Home in the stage group when the note's tab is gone", () => {
+    const next = openHomeInPlace(notesLayout(), "note:n9", "home:2");
+    expect(groupOfView(next, "home:2")?.id).toBe(stageGroup(notesLayout(), null).id);
+    expect(next.views).toHaveProperty("note:n1");
+    expect(next.views).toHaveProperty("note:n2");
   });
 });

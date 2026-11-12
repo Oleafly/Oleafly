@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import {
   ArtifactFrame,
@@ -11,21 +10,23 @@ import {
   INITIAL_HEIGHT,
   loadArtifactRuntime,
   MAX_HEIGHT,
+  MAX_LIVE_FRAMES,
   MIN_HEIGHT,
   mountScriptedBlock,
   nextHeight,
-  noteRunsBlocks,
-  RUN_BLOCKS_KEY,
+  RELEASE_MS,
   resetArtifactRuntime,
+  SETTLED_MS,
   ScriptedBlock,
   type ScriptedBlockProps,
   START_GRACE_MS,
-  setNoteRunsBlocks,
   staticHtml,
   tokenOf,
   WATCHDOG_MS,
 } from "./ArtifactFrame";
 import { framePolicy, STATIC_POLICY } from "./artifact-runtime/frame-document";
+import { blockHash, blockTrusted, forgetNoteBlocks, setBlockTrusted } from "./block-trust";
+import "./tests/setup";
 
 const tauri = vi.hoisted(() => ({
   open: vi.fn(async (_html: string) => "oleafly-artifact://localhost/0123456789abcdef0123456789abcdef"),
@@ -37,6 +38,13 @@ vi.mock("@/lib/tauri", () => ({
   artifactFrameOpen: tauri.open,
   artifactFrameClose: tauri.close,
   artifactFrameRuntimeUrl: tauri.runtime,
+}));
+
+const paused = vi.hoisted(() => new Set<string>());
+
+vi.mock("./block-trust", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./block-trust")>()),
+  notePaused: (note: string) => paused.has(note),
 }));
 
 const RUNTIME_URL = `oleafly-artifact://localhost/runtime/${"ab".repeat(32)}.js`;
@@ -87,20 +95,49 @@ function channelOf(html: string): string {
   return /const channel = "([0-9a-f]+)"/u.exec(html)?.[1] ?? "";
 }
 
-function post(data: unknown, source: MessageEventSource | null = frame().contentWindow) {
+interface FramePort {
+  onmessage: ((event: { data: unknown }) => void) | null;
+  postMessage: ReturnType<typeof vi.fn>;
+  close: ReturnType<typeof vi.fn>;
+}
+
+function offerPort(
+  channel: string,
+  { source = frame().contentWindow, origin = "null" }: { source?: MessageEventSource | null; origin?: string } = {},
+): FramePort {
+  const port: FramePort = { onmessage: null, postMessage: vi.fn(), close: vi.fn() };
   act(() => {
-    window.dispatchEvent(new MessageEvent("message", { data, source }));
+    window.dispatchEvent(
+      new MessageEvent("message", { data: { channel, type: "port" }, origin, source, ports: [port as unknown as MessagePort] }),
+    );
+  });
+  return port;
+}
+
+function post(port: FramePort, data: unknown) {
+  act(() => {
+    port.onmessage?.({ data });
   });
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+async function trust(source = SCRIPTED, kind: "html" | "react" = "html", note = "note-1") {
+  const key = { note, hash: await blockHash(kind, source) };
+  setBlockTrusted(key, true);
+  return key;
+}
+
+async function hashed() {
+  for (let tick = 0; tick < 500 && !screen.queryByRole("checkbox"); tick += 1) {
+    await act(() => new Promise((resolve) => setImmediate(resolve)));
+  }
+  expect(screen.getByRole("checkbox")).toBeInTheDocument();
+}
 
 beforeEach(() => {
   Object.assign(globalThis, { isTauri: true });
   localStorage.clear();
-  setNoteRunsBlocks("note-1", false);
+  for (const note of ["note-1", "note-2"]) forgetNoteBlocks(note);
+  paused.clear();
   tauri.open.mockClear();
   tauri.close.mockClear();
   tauri.runtime.mockClear();
@@ -203,43 +240,6 @@ describe("helpers", () => {
   });
 });
 
-describe("trust setting", () => {
-  it("remembers notes that always run their blocks on this computer", () => {
-    setNoteRunsBlocks("note-a", true);
-    setNoteRunsBlocks("note-b", true);
-    expect(noteRunsBlocks("note-a")).toBe(true);
-    expect(JSON.parse(localStorage.getItem(RUN_BLOCKS_KEY) ?? "[]")).toEqual(["note-a", "note-b"]);
-    setNoteRunsBlocks("note-a", false);
-    expect(noteRunsBlocks("note-a")).toBe(false);
-  });
-
-  it("keeps working in memory when storage refuses writes, and rereads after a storage event", () => {
-    const setItem = vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("quota");
-    });
-    setNoteRunsBlocks("note-c", true);
-    expect(noteRunsBlocks("note-c")).toBe(true);
-    setItem.mockRestore();
-    render(<ScriptedBlock {...props({ noteId: "note-d" })} />);
-    localStorage.setItem(RUN_BLOCKS_KEY, '["note-d"]');
-    act(() => {
-      window.dispatchEvent(new StorageEvent("storage", { key: RUN_BLOCKS_KEY }));
-    });
-    expect(screen.getByRole("checkbox")).toBeChecked();
-    act(() => {
-      window.dispatchEvent(new StorageEvent("storage", { key: "other" }));
-    });
-    localStorage.setItem(RUN_BLOCKS_KEY, "not json");
-    act(() => {
-      window.dispatchEvent(new StorageEvent("storage", { key: null }));
-    });
-    expect(noteRunsBlocks("note-d")).toBe(false);
-    localStorage.setItem(RUN_BLOCKS_KEY, '{"a":1}');
-    window.dispatchEvent(new StorageEvent("storage", { key: RUN_BLOCKS_KEY }));
-    expect(noteRunsBlocks("note-d")).toBe(false);
-  });
-});
-
 describe("ScriptedBlock", () => {
   it("shows a static preview and explains that running needs the desktop app outside Tauri", () => {
     Reflect.deleteProperty(globalThis, "isTauri");
@@ -278,7 +278,7 @@ describe("ScriptedBlock", () => {
     expect(tauri.open).toHaveBeenCalledOnce();
   });
 
-  it("runs, stops and trusts blocks in a note", async () => {
+  it("runs, stops and trusts one block", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "performance"] });
     const onRunningChange = vi.fn();
     const view = render(<ScriptedBlock {...props({ running: true, onRunningChange })} />);
@@ -287,19 +287,98 @@ describe("ScriptedBlock", () => {
     expect(frame().getAttribute("src")).toBe(`oleafly-artifact://localhost/${TOKEN}`);
     fireEvent.click(screen.getByRole("button", { name: enNotes.blocks.artifact.stop }));
     expect(onRunningChange).toHaveBeenCalledWith(false);
+    await hashed();
     fireEvent.click(screen.getByRole("checkbox", { name: enNotes.blocks.artifact.alwaysRun }));
-    expect(noteRunsBlocks("note-1")).toBe(true);
+    const key = { note: "note-1", hash: await blockHash("html", SCRIPTED) };
+    expect(blockTrusted(key)).toBe(true);
     expect(screen.queryByRole("button", { name: enNotes.blocks.artifact.stop })).toBeNull();
     view.rerender(<ScriptedBlock {...props({ running: false, onRunningChange })} />);
     expect(frame()).toBeTruthy();
     fireEvent.click(screen.getByRole("checkbox", { name: enNotes.blocks.artifact.alwaysRun }));
-    expect(noteRunsBlocks("note-1")).toBe(false);
+    expect(blockTrusted(key)).toBe(false);
     expect(screen.getByRole("button", { name: enNotes.blocks.artifact.run })).toBeInTheDocument();
   });
 
-  it("hides the trust setting when the note is unknown", () => {
+  it("runs a trusted block on mount, asks again once its source changes, and trusts no other block", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "performance"] });
+    await trust();
+    const view = render(<ScriptedBlock {...props()} />);
+    await hashed();
+    expect(screen.getByRole("checkbox")).toBeChecked();
+    expect(screen.queryByRole("button", { name: enNotes.blocks.artifact.run })).toBeNull();
+    await advance(BUILD_DELAY_MS);
+    expect(frame()).toBeTruthy();
+    const edited = `${SCRIPTED}<script>leak()</script>`;
+    view.rerender(<ScriptedBlock {...props({ source: edited })} />);
+    expect(frame()).toBeNull();
+    expect(screen.getByRole("button", { name: enNotes.blocks.artifact.run })).toBeInTheDocument();
+    await hashed();
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    await advance(BUILD_DELAY_MS);
+    expect(tauri.open).toHaveBeenCalledOnce();
+    view.unmount();
+    render(<ScriptedBlock {...props({ kind: "react", source: "export default () => null" })} />);
+    await hashed();
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(screen.getByRole("button", { name: enNotes.blocks.artifact.run })).toBeInTheDocument();
+  });
+
+  it("does not run a trusted block of another note", async () => {
+    await trust(SCRIPTED, "html", "note-2");
+    render(<ScriptedBlock {...props()} />);
+    await hashed();
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(screen.getByRole("button", { name: enNotes.blocks.artifact.run })).toBeInTheDocument();
+  });
+
+  it("hides the trust setting when the note is unknown or shared", () => {
     render(<ScriptedBlock {...props({ noteId: null })} />);
     expect(screen.queryByRole("checkbox")).toBeNull();
+  });
+});
+
+describe("a block that froze the app last time", () => {
+  it("opens paused with a reason, and still runs on Run", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "performance"] });
+    await trust();
+    paused.add("note-1");
+    const onRunningChange = vi.fn();
+    const view = render(<ScriptedBlock {...props({ onRunningChange })} />);
+    await hashed();
+    expect(screen.getByRole("checkbox")).toBeChecked();
+    expect(screen.getByText(enNotes.blocks.artifact.paused)).toBeInTheDocument();
+    await advance(BUILD_DELAY_MS);
+    expect(tauri.open).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: enNotes.blocks.artifact.run }));
+    expect(onRunningChange).toHaveBeenCalledWith(true);
+    view.rerender(<ScriptedBlock {...props({ running: true, onRunningChange })} />);
+    expect(screen.queryByText(enNotes.blocks.artifact.paused)).toBeNull();
+    await advance(BUILD_DELAY_MS);
+    expect(tauri.open).toHaveBeenCalledOnce();
+  });
+
+  it("marks a scripted block as starting until it has kept beating, then clears the mark", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "performance"] });
+    const key = await trust();
+    render(<ScriptedBlock {...props()} />);
+    await hashed();
+    await advance(BUILD_DELAY_MS);
+    const channel = channelOf(tauri.open.mock.calls[0][0]);
+    expect(localStorage.getItem("oleafly.notes.startingBlocks")).toContain(key.hash);
+    const port = offerPort(channel);
+    post(port, { channel, type: "beat" });
+    expect(localStorage.getItem("oleafly.notes.startingBlocks")).toContain(key.hash);
+    await advance(SETTLED_MS);
+    post(port, { channel, type: "beat" });
+    expect(localStorage.getItem("oleafly.notes.startingBlocks") ?? "").not.toContain(key.hash);
+  });
+
+  it("marks nothing for a block without scripts", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "performance"] });
+    render(<ScriptedBlock {...props({ source: "<p>static</p>", scripted: false })} />);
+    await advance(BUILD_DELAY_MS);
+    expect(tauri.open).toHaveBeenCalledOnce();
+    expect(localStorage.getItem("oleafly.notes.startingBlocks") ?? "").toBe("");
   });
 });
 
@@ -363,28 +442,56 @@ describe("ArtifactFrame", () => {
     render(<ArtifactFrame kind="html" source={SCRIPTED} label={HTML_LABEL} />);
     await advance(BUILD_DELAY_MS);
     const channel = channelOf(tauri.open.mock.calls[0][0]);
-    post({ channel, type: "size", height: 300 });
+    const port = offerPort(channel);
+    post(port, { channel, type: "size", height: 300 });
     expect(frame().style.height).toBe("300px");
-    post({ channel, type: "size", height: 900 }, window);
-    post({ channel: "other", type: "size", height: 900 });
-    post({ channel, type: "size", height: "900" });
-    post({ channel, type: "resize", height: 900 });
+    post(port, { channel: "other", type: "size", height: 900 });
+    post(port, { channel, type: "size", height: "900" });
+    post(port, { channel, type: "resize", height: 900 });
     expect(frame().style.height).toBe("300px");
-    post({ channel, type: "size", height: 99_999 });
+    post(port, { channel, type: "size", height: 99_999 });
     expect(frame().style.height).toBe(`${MAX_HEIGHT}px`);
+  });
+
+  it("takes a message port only from its own sandboxed frame on its channel", async () => {
+    const view = render(<ArtifactFrame kind="html" source={SCRIPTED} label={HTML_LABEL} />);
+    await advance(BUILD_DELAY_MS);
+    const channel = channelOf(tauri.open.mock.calls[0][0]);
+    expect(tauri.open.mock.calls[0][0]).toContain(`, ${JSON.stringify(window.location.origin)}, [link.port2]`);
+    for (const stranger of [
+      offerPort(channel, { source: window }),
+      offerPort(channel, { source: null }),
+      offerPort(channel, { origin: window.location.origin }),
+      offerPort(channel, { origin: "oleafly-artifact://localhost" }),
+      offerPort("other"),
+    ]) {
+      expect(stranger.onmessage).toBeNull();
+    }
+    act(() => {
+      window.dispatchEvent(new MessageEvent("message", { data: { channel, type: "port" }, origin: "null", source: frame().contentWindow }));
+    });
+    const first = offerPort(channel);
+    expect(first.onmessage).not.toBeNull();
+    const second = offerPort(channel);
+    expect(first.close).toHaveBeenCalledOnce();
+    post(second, { channel, type: "size", height: 300 });
+    expect(frame().style.height).toBe("300px");
+    view.unmount();
+    expect(second.close).toHaveBeenCalledOnce();
   });
 
   it("stops growing when the content grows with the frame itself", async () => {
     render(<ArtifactFrame kind="react" source="export default () => null" label={REACT_LABEL} />);
     await advance(BUILD_DELAY_MS);
     const channel = channelOf(tauri.open.mock.calls[0][0]);
-    for (const height of [200, 232, 264, 296, 328, 360]) post({ channel, type: "size", height });
+    const port = offerPort(channel);
+    for (const height of [200, 232, 264, 296, 328, 360]) post(port, { channel, type: "size", height });
     expect(frame().style.height).toBe("296px");
-    post({ channel, type: "size", height: 900 });
+    post(port, { channel, type: "size", height: 900 });
     expect(frame().style.height).toBe("296px");
-    post({ channel, type: "size", height: 120 });
+    post(port, { channel, type: "size", height: 120 });
     expect(frame().style.height).toBe("120px");
-    post({ channel, type: "size", height: 400 });
+    post(port, { channel, type: "size", height: 400 });
     expect(frame().style.height).toBe("400px");
   });
 
@@ -404,11 +511,13 @@ describe("ArtifactFrame", () => {
     const channel = channelOf(tauri.open.mock.calls[0][0]);
     const target = frame().contentWindow as Window;
     const posted = vi.spyOn(target, "postMessage");
+    const port = offerPort(channel);
     await act(async () => {
       document.documentElement.classList.add("dark");
       await Promise.resolve();
     });
-    expect(posted).toHaveBeenCalledWith({ channel, type: "theme", theme: "dark" }, "*");
+    expect(port.postMessage).toHaveBeenCalledWith({ channel, type: "theme", theme: "dark" });
+    expect(posted).not.toHaveBeenCalled();
     expect(frame().style.colorScheme).toBe("dark");
   });
 
@@ -416,9 +525,10 @@ describe("ArtifactFrame", () => {
     render(<ArtifactFrame kind="html" source={SCRIPTED} label={HTML_LABEL} />);
     await advance(BUILD_DELAY_MS);
     const channel = channelOf(tauri.open.mock.calls[0][0]);
-    post({ channel, type: "beat" });
+    const port = offerPort(channel);
+    post(port, { channel, type: "beat" });
     await advance(WATCHDOG_MS - 1000);
-    post({ channel, type: "beat" });
+    post(port, { channel, type: "beat" });
     await advance(WATCHDOG_MS - 1000);
     expect(frame()).toBeTruthy();
     await advance(2000);
@@ -490,7 +600,7 @@ describe("ArtifactFrame", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
-  it("releases its document once loaded and registers a new one when the frame reloads", async () => {
+  it("releases its document once loaded and rebuilds a frame whose element was moved", async () => {
     const next = "fedcba9876543210fedcba9876543210";
     const view = render(<ArtifactFrame kind="html" source="<p>x</p>" label={HTML_LABEL} />);
     await advance(BUILD_DELAY_MS);
@@ -499,7 +609,11 @@ describe("ArtifactFrame", () => {
     expect(tauri.close).toHaveBeenCalledOnce();
     expect(tauri.close).toHaveBeenCalledWith(TOKEN);
     tauri.open.mockResolvedValueOnce(`oleafly-artifact://localhost/${next}`);
-    fireEvent.load(frame());
+    const element = frame();
+    const parent = element.parentElement as HTMLElement;
+    element.remove();
+    parent.prepend(element);
+    fireEvent.load(element);
     await advance(0);
     expect(tauri.open).toHaveBeenCalledTimes(2);
     expect(tauri.open.mock.calls[1][0]).toBe(tauri.open.mock.calls[0][0]);
@@ -509,6 +623,79 @@ describe("ArtifactFrame", () => {
     expect(tauri.close).toHaveBeenLastCalledWith(next);
     view.unmount();
     expect(tauri.close).toHaveBeenCalledTimes(2);
+  });
+
+  it("stops a frame that loads a second document, and ignores what that document sends", async () => {
+    render(<ArtifactFrame kind="html" source={SCRIPTED} label={HTML_LABEL} />);
+    await advance(BUILD_DELAY_MS);
+    const channel = channelOf(tauri.open.mock.calls[0][0]);
+    const element = frame();
+    const navigated = element.contentWindow;
+    fireEvent.load(element);
+    const port = offerPort(channel, { source: navigated });
+    post(port, { channel, type: "size", height: 300 });
+    expect(element.style.height).toBe("300px");
+    fireEvent.load(element);
+    post(port, { channel, type: "size", height: 500 });
+    post(port, { channel, type: "beat" });
+    expect(offerPort(channel, { source: navigated }).onmessage).toBeNull();
+    await advance(BUILD_DELAY_MS * 2);
+    expect(frame()).toBeNull();
+    expect(screen.getByText(enNotes.blocks.artifact.stopped)).toBeInTheDocument();
+    expect(tauri.open).toHaveBeenCalledOnce();
+    expect(element.style.height).toBe("300px");
+  });
+
+  it("parks a frame that stays out of view and rebuilds it when it returns", async () => {
+    render(<ArtifactFrame kind="react" source="export default () => null" label={REACT_LABEL} />);
+    await advance(BUILD_DELAY_MS);
+    const channel = channelOf(tauri.open.mock.calls[0][0]);
+    const first = offerPort(channel);
+    post(first, { channel, type: "size", height: 420 });
+    act(() => setVisible(false));
+    await advance(RELEASE_MS - 1000);
+    act(() => setVisible(true));
+    act(() => setVisible(false));
+    await advance(RELEASE_MS - 1000);
+    expect(frame()).toBeTruthy();
+    await advance(1000);
+    expect(frame()).toBeNull();
+    expect(tauri.close).toHaveBeenCalledWith(TOKEN);
+    const parked = document.querySelector("[data-artifact-frame]") as HTMLElement;
+    post(first, { channel, type: "size", height: 900 });
+    expect(parked.style.minHeight).toBe("420px");
+    await advance(WATCHDOG_MS * 3);
+    expect(tauri.open).toHaveBeenCalledOnce();
+    act(() => setVisible(true));
+    await advance(BUILD_DELAY_MS);
+    expect(tauri.open).toHaveBeenCalledTimes(2);
+    expect(frame()).toBeTruthy();
+    post(first, { channel, type: "size", height: 600 });
+    expect(frame().style.height).toBe("420px");
+    post(offerPort(channel), { channel, type: "size", height: 500 });
+    expect(frame().style.height).toBe("500px");
+  });
+
+  it(`keeps at most ${MAX_LIVE_FRAMES} frames running and parks the ones out of view first`, async () => {
+    const sources = Array.from({ length: MAX_LIVE_FRAMES + 2 }, (_, index) => `<p>${index}</p>`);
+    const views = sources.map((source) => render(<ArtifactFrame kind="html" source={source} label={HTML_LABEL} />));
+    await advance(BUILD_DELAY_MS);
+    expect(document.querySelectorAll("[data-artifact-frame] iframe")).toHaveLength(MAX_LIVE_FRAMES + 2);
+    for (const view of views.slice(0, 3)) view.unmount();
+    expect(document.querySelectorAll("[data-artifact-frame] iframe")).toHaveLength(MAX_LIVE_FRAMES - 1);
+    const hidden = render(<ArtifactFrame kind="html" source="<p>hidden</p>" label={HTML_LABEL} />);
+    await advance(BUILD_DELAY_MS);
+    act(() => {
+      for (const observer of observers) {
+        const target = hidden.container.querySelector("[data-artifact-frame]");
+        if (target && observer.targets.has(target)) observer.callback([entry(target, false)], {} as IntersectionObserver);
+      }
+    });
+    render(<ArtifactFrame kind="html" source="<p>new</p>" label={HTML_LABEL} />);
+    render(<ArtifactFrame kind="html" source="<p>newer</p>" label={HTML_LABEL} />);
+    await advance(BUILD_DELAY_MS);
+    expect(hidden.container.querySelector("iframe")).toBeNull();
+    expect(document.querySelectorAll("[data-artifact-frame] iframe")).toHaveLength(MAX_LIVE_FRAMES + 1);
   });
 
   it("opens nothing for a frame that went away while the runtime was loading", async () => {

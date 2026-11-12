@@ -23,7 +23,7 @@ export function markdownOutline(markdown: string): OutlineHeading[] {
 
 export function domOutline(root: ParentNode): { headings: OutlineHeading[]; elements: HTMLElement[] } {
   const found = [...root.querySelectorAll<HTMLElement>(HEADING_SELECTOR)]
-    .map((element) => ({ element, text: `${element.textContent}`.replace(/\s+/gu, " ").trim() }))
+    .map((element) => ({ element, text: `${element.textContent}`.replaceAll(/\s+/gu, " ").trim() }))
     .filter((entry) => entry.text !== "");
   const elements = found.map((entry) => entry.element);
   const texts = found.map((entry) => entry.text);

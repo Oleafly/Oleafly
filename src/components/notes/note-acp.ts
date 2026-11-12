@@ -38,7 +38,7 @@ function noteAttribute(value: string): string {
 }
 
 function noteBody(source: string): string {
-  return source.replaceAll(/<\/note/giu, (match) => `<\\/${match.slice(2)}`);
+  return source.replaceAll(/<\/note/giu, (match) => String.raw`<\/${match.slice(2)}`);
 }
 
 export function noteContextSelection(

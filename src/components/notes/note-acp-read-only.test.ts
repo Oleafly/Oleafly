@@ -270,7 +270,7 @@ describe("useNoteAcpWriteGuard", () => {
     expect(acp.acpSetMode).not.toHaveBeenCalled();
   });
 
-  it("asks before sending to an agent with no read-only mode and remembers a yes for the session", async () => {
+  it("asks before each message to an agent with no read-only mode, and a yes covers only the waiting messages", async () => {
     const shown = session(legacy("default", ["default"]), { id: "g2", agentId: "gemini" });
     show(shown);
     const { result } = renderHook(() => useNoteAcpWriteGuard("paper", SLOT, true));
@@ -284,9 +284,32 @@ describe("useNoteAcpWriteGuard", () => {
     await vi.waitFor(() => expect(result.current).not.toBeNull());
     act(() => result.current?.allow());
     expect(await Promise.all([first, second])).toEqual([true, true]);
-    expect(await gate()(shown)).toBe(true);
     expect(result.current).toBeNull();
+    const later = gate()(shown);
+    await vi.waitFor(() => expect(result.current).toMatchObject({ sessionId: "g2" }));
+    act(() => result.current?.decline());
+    expect(await later).toBe(false);
     expect(acp.acpSetMode).not.toHaveBeenCalled();
+  });
+
+  it("does not carry a yes over to another note on the same session", async () => {
+    const shown = session(legacy("default", ["default"]), { id: "g5" });
+    show(shown);
+    const { result, rerender } = renderHook(({ slot }) => useNoteAcpWriteGuard("paper", slot, true), {
+      initialProps: { slot: SLOT },
+    });
+    const first = gate()(shown);
+    await vi.waitFor(() => expect(result.current).not.toBeNull());
+    act(() => result.current?.allow());
+    expect(await first).toBe(true);
+    const other = "paper#note-note-2";
+    useAcpSessionsStore.setState({ activeByProject: { [other]: shown.id } });
+    rerender({ slot: other });
+    const entry = gates.registered.find((registered) => registered.slot === other);
+    const next = entry?.gate(shown);
+    await vi.waitFor(() => expect(result.current).not.toBeNull());
+    act(() => result.current?.decline());
+    expect(await next).toBe(false);
   });
 
   it("asks when the switch to reading fails", async () => {

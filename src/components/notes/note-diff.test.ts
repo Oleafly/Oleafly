@@ -1,20 +1,22 @@
 // @vitest-environment jsdom
 import { getSchema } from "@tiptap/core";
 import { Fragment, Schema, type Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { createWysiwygExtensions, parseMarkdownBody } from "@oleafly/wysiwyg";
+import { Transform } from "@tiptap/pm/transform";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { myersEditScript } from "@/lib/myers-diff";
 import { diffNoteDocs } from "./note-diff";
+import { noteBaseExtensions, parseNoteMarkdown } from "./note-markdown";
+import { applyDraft } from "./note-suggestions";
 
 vi.mock("@/lib/myers-diff", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/myers-diff")>();
   return { ...actual, myersEditScript: vi.fn(actual.myersEditScript) };
 });
 
-const schema = getSchema(createWysiwygExtensions());
+const schema = getSchema(noteBaseExtensions());
 
 function doc(markdown: string): ProseMirrorNode {
-  return schema.nodeFromJSON(parseMarkdownBody(markdown).doc);
+  return schema.nodeFromJSON(parseNoteMarkdown(markdown).doc);
 }
 
 const inlineSchema = new Schema({
@@ -49,7 +51,29 @@ describe("note diff", () => {
 
   it("proposes a word insertion without removing anything", () => {
     const changes = diffNoteDocs(doc("Masks are sampled per pixel.\n"), doc("Masks are sampled per single pixel.\n"));
-    expect(changes).toEqual([{ kind: "text", from: 23, to: 23, text: "single " }]);
+    expect(changes).toEqual([{ kind: "text", from: 23, to: 23, text: "single ", marks: [] }]);
+  });
+
+  it.each([
+    ["a callout", "> [!warning] Watch out\n> Small batches drift.\n", "drift", "wander"],
+    ["a task item", "- [ ] Rerun the seeds\n- [x] Plot the loss\n", "seeds", "trials"],
+    ["a nested list", "- Runs\n  - first run\n  - second run\n", "second", "third"],
+    ["a highlight", "Read ==this part== carefully.\n", "part", "section"],
+  ])("changes one word inside %s and reaches the proposal", (_where, markdown, word, replacement) => {
+    const before = doc(markdown);
+    const after = doc(markdown.replace(word, replacement));
+    const changes = diffNoteDocs(before, after);
+    expect(changes).toEqual([expect.objectContaining({ kind: "text", text: expect.stringContaining(replacement) })]);
+    const transform = new Transform(before);
+    for (const change of [...changes].reverse()) applyDraft(transform, change);
+    expect(transform.doc.eq(after)).toBe(true);
+  });
+
+  it("diffs only the blocks whose content changed when both notes were read separately", () => {
+    const before = doc("Intro.\n\nMiddle.\n\nOutro.\n");
+    diffNoteDocs(before, doc("Intro.\n\nMiddle, edited.\n\nOutro.\n"));
+    const [oldKeys, newKeys] = vi.mocked(myersEditScript).mock.calls[0];
+    expect([oldKeys.length, newKeys.length]).toEqual([1, 1]);
   });
 
   it("adds a block after the last one at the end of the note", () => {
@@ -122,10 +146,8 @@ describe("note diff", () => {
     if (!replaced) throw new Error("No paragraph was parsed.");
     const after = before.copy(Fragment.from([before.child(0), replaced, before.child(2)]));
     const changes = diffNoteDocs(before, after);
-    const [oldKeys, newKeys] = vi.mocked(myersEditScript).mock.calls[0];
-    expect([oldKeys.length, newKeys.length]).toEqual([1, 1]);
     const from = before.child(0).nodeSize + 1;
-    expect(changes).toEqual([{ kind: "text", from, to: from + "Middle.".length, text: "Middle, edited." }]);
+    expect(changes).toEqual([{ kind: "text", from, to: from + "Middle.".length, text: "Middle, edited.", marks: [] }]);
   });
 
   it("replaces only the blocks between the shared ones when the block diff gives up", () => {

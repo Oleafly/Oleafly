@@ -3,23 +3,26 @@ import { useTranslation } from "react-i18next";
 import { History, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
-import { CheckpointsPanel } from "@/components/editor/CheckpointsPanel";
+import { type CheckpointSource, CheckpointsPanel } from "@/components/editor/CheckpointsPanel";
 import { useSettingsStore } from "@/store/settings";
 
-export function VersioningModal() {
+export function VersioningModal({ source, title }: Readonly<{ source?: CheckpointSource; title?: string }>) {
   const { t } = useTranslation(["common", "editor"]);
-  const open = useSettingsStore((state) => state.versioningOpen);
+  const versioningOpen = useSettingsStore((state) => state.versioningOpen);
   const closeVersioning = useSettingsStore((state) => state.closeVersioning);
   const [checkpointsBusy, setCheckpointsBusy] = useState(false);
+  const open = source ? true : versioningOpen;
+  const closeSource = source?.close;
   const close = useCallback(() => {
-    if (!checkpointsBusy) closeVersioning();
-  }, [checkpointsBusy, closeVersioning]);
+    if (!checkpointsBusy) (closeSource ?? closeVersioning)();
+  }, [checkpointsBusy, closeSource, closeVersioning]);
 
   if (!open) return null;
 
   return (
     <ModalShell
       open
+      portal={source !== undefined}
       onClose={close}
       closeLabel={t(($) => $.editor.versioning.dismiss)}
       width="2xl"
@@ -34,7 +37,7 @@ export function VersioningModal() {
           <History className="size-4" />
         </span>
         <h2 id="versioning-title" className="min-w-0 flex-1 text-base font-semibold">
-          {t(($) => $.editor.versioning.title)}
+          {title ?? t(($) => $.editor.versioning.title)}
         </h2>
         <Button
           variant="ghost"
@@ -52,7 +55,7 @@ export function VersioningModal() {
         data-testid="versioning-panel-checkpoints"
         className="flex min-h-0 flex-1 flex-col"
       >
-        <CheckpointsPanel onBusyChange={setCheckpointsBusy} />
+        <CheckpointsPanel onBusyChange={setCheckpointsBusy} source={source} />
       </div>
     </ModalShell>
   );

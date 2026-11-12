@@ -111,7 +111,7 @@ export function suggestPlugin<R extends SuggestRange>(config: SuggestPluginConfi
         const trigger = config.trigger(state);
         const mapped = previous.dismissed === null ? null : tr.mapping.map(previous.dismissed);
         let dismissed = meta?.dismiss ? (trigger?.from ?? null) : mapped;
-        if (!trigger || trigger.from !== dismissed) dismissed = null;
+        if (trigger?.from !== dismissed) dismissed = null;
         if (!trigger || dismissed !== null) return { decorations, suggest: null, dismissed };
         const kept = previous.suggest?.from === trigger.from && previous.suggest.query === trigger.query ? previous.suggest.index : 0;
         return { decorations, suggest: { ...trigger, index: meta?.index ?? kept } as R, dismissed };

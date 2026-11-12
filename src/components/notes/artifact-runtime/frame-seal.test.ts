@@ -108,6 +108,63 @@ describe("the Tauri bridge in a frame", () => {
   });
 });
 
+describe("leaving the frame's document", () => {
+  function clicked(window: FrameWindow, selector: string, init: MouseEventInit = {}): boolean {
+    const target = window.document.querySelector(selector) as Element;
+    return !target.dispatchEvent(new window.MouseEvent(init.button === 1 ? "auxclick" : "click", { bubbles: true, cancelable: true, composed: true, ...init }));
+  }
+
+  const LINKS =
+    '<a id="away" href="https://evil.example/c?d=1"><span id="inner">go</span></a><a id="jump" href="#part">part</a><map><area id="spot" href="http://192.168.1.1/"></map><svg><a id="vector" href="https://evil.example/"><text id="label">x</text></a></svg><div id="host"></div>';
+
+  it.each([
+    ["a link", "#away"],
+    ["text inside a link", "#inner"],
+    ["an image map area", "#spot"],
+    ["an SVG link", "#label"],
+  ])("cancels a click on %s that would load another page", (_label, selector) => {
+    const window = frame(LINKS);
+    window.eval(frameSealScript());
+    expect(clicked(window, selector)).toBe(true);
+    expect(clicked(window, selector, { button: 1 })).toBe(true);
+  });
+
+  it("keeps in-page links working", () => {
+    const window = frame(LINKS);
+    window.eval(frameSealScript());
+    expect(clicked(window, "#jump")).toBe(false);
+  });
+
+  it("cancels a link inside a shadow root and one whose page tries to undo the guard", () => {
+    const window = frame(LINKS);
+    window.eval(frameSealScript());
+    window.eval(`
+      const root = document.getElementById("host").attachShadow({ mode: "closed" });
+      root.innerHTML = '<a id="hidden" href="https://evil.example/">x</a>';
+      window.shadowLink = root.getElementById("hidden");
+      window.awayLink = document.getElementById("away");
+      Object.setPrototypeOf(window.awayLink, HTMLElement.prototype);
+      Event.prototype.composedPath = () => [];
+      Event.prototype.preventDefault = () => {};
+      Element.prototype.getAttribute = () => "#safe";
+      RegExp.prototype.test = () => true;
+      Reflect.apply = () => null;
+    `);
+    for (const link of [window.shadowLink, window.awayLink] as Element[]) {
+      expect(link.dispatchEvent(new window.MouseEvent("click", { bubbles: true, cancelable: true, composed: true }))).toBe(false);
+    }
+  });
+
+  it("takes away window.open and history steps", () => {
+    const window = frame();
+    window.eval(frameSealScript());
+    expect(window.eval("typeof window.open")).toBe("undefined");
+    for (const step of ["history.back()", "history.forward()", "history.go(-1)"]) {
+      expect(() => window.eval(step)).toThrow(/not available/u);
+    }
+  });
+});
+
 describe("child frames", () => {
   it("never connects a frame and hides child windows from the element", () => {
     const window = frame();
@@ -130,7 +187,7 @@ describe("child frames", () => {
     expect(window.document.querySelector("iframe, frame")).toBeNull();
     expect(window.document.querySelector("span")).not.toBeNull();
     expect(window.document.querySelector("p")?.textContent).toBe("inside");
-    expect(window.length).toBe(0);
+    expect(window).toHaveLength(0);
     expect(window.eval("frames.length")).toBe(0);
     expect(window.eval("frames[0]")).toBeUndefined();
     expect(window.eval("document.createElement('embed').getSVGDocument()")).toBeNull();

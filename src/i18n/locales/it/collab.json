@@ -230,7 +230,11 @@
     "history_unavailable": "La cronologia di questo progetto non è ancora su questo computer. Riprova quando si sarà sincronizzata.",
     "account_storage_full": "L'account del proprietario del progetto ha esaurito lo spazio di archiviazione su questo server. Rimuovi alcuni file per liberare spazio, oppure chiedi più spazio all'amministratore del server.",
     "too_many_projects": "Hai già il numero massimo di progetti condivisi consentito da questo server. Interrompi la condivisione di un progetto prima di condividerne un altro.",
-    "too_many_uploads": "Hai caricato troppi file nell'ultima ora. Riprova più tardi."
+    "too_many_uploads": "Hai caricato troppi file nell'ultima ora. Riprova più tardi.",
+    "public_notes_off": "Questo server non consente link pubblici alle note. Un amministratore può attivarli nelle impostazioni del server.",
+    "too_many_pages": "Hai già tutte le pagine pubbliche che questo server consente. Annulla la pubblicazione di una pagina, poi riprova.",
+    "page_too_large": "Questa nota è troppo grande per essere pubblicata. Rimuovi alcune immagini, poi riprova.",
+    "page_taken_down": "Un amministratore ha oscurato questa pagina, quindi questa nota non può essere pubblicata di nuovo finché non la ripristina."
   },
   "roles": {
     "admin": "Amministratore",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "Accesso via email",
         "description": "Le persone possono accedere con un link inviato al loro indirizzo email. Servono le impostazioni email del server. Chi può entrare lo decidono sempre le tue regole di accesso."
+      },
+      "publicNotesAllowed": {
+        "label": "Consenti link pubblici alle note",
+        "description": "I membri possono pubblicare una copia di sola lettura di una nota a un link che chiunque può aprire senza accedere."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "Ha rifiutato un invito per un ospite",
         "guestInvitationRevoked": "Ha ritirato un invito per un ospite",
         "guestAdmissionEnded": "Ha chiuso l'accesso di un ospite al server",
-        "unknown": "Altro evento del server"
+        "unknown": "Altro evento del server",
+        "notePublished": "Ha pubblicato una nota a un link pubblico",
+        "noteUnpublished": "Ha annullato la pubblicazione di una nota",
+        "noteTakenDown": "Ha oscurato una nota pubblicata",
+        "noteRestored": "Ha ripristinato una nota pubblicata"
       },
       "details": {
         "project": "Progetto: {{title}}",
@@ -455,7 +467,8 @@
         "device": "Dispositivo: {{name}}",
         "byAdmin": "Dalla console di amministrazione",
         "settingOn": "{{setting}}: attivo",
-        "settingOff": "{{setting}}: disattivato"
+        "settingOff": "{{setting}}: disattivato",
+        "note": "Nota: {{title}}"
       }
     },
     "email": {
@@ -793,7 +806,8 @@
       "settings": "Impostazioni del server",
       "email": "Email",
       "log": "Registro di sicurezza",
-      "checks": "Verifiche della connessione"
+      "checks": "Verifiche della connessione",
+      "pages": "Note pubblicate"
     },
     "health": {
       "label": "Stato del server: {{status}}",
@@ -960,6 +974,30 @@
     },
     "checks": {
       "description": "Verifica la connessione tra questo computer e il server."
+    },
+    "pages": {
+      "description": "Pagine di sola lettura che le persone hanno creato dalle loro note. Chiunque abbia il link di una pagina può leggerla.",
+      "loading": "Caricamento delle note pubblicate…",
+      "empty": "Nessuno ha ancora pubblicato una nota su questo server.",
+      "limit": "Vengono mostrate le {{shown}} pagine più recenti.",
+      "columns": {
+        "title": "Nota",
+        "author": "Autore",
+        "updated": "Pubblicata",
+        "actions": "Azioni"
+      },
+      "noAuthor": "Account rimosso",
+      "takenDown": "Oscurata",
+      "openNamed": "Apri {{title}}",
+      "takeDown": "Oscura",
+      "takeDownNamed": "Oscura {{title}}",
+      "restore": "Ripristina",
+      "restoreNamed": "Ripristina {{title}}",
+      "takeDownConfirm": {
+        "title": "Vuoi oscurare {{title}}?",
+        "description": "Il link pubblico smette di funzionare finché non ripristini la pagina. L'autore conserva la nota, ma nel frattempo non può pubblicarla di nuovo.",
+        "confirm": "Oscura"
+      }
     }
   },
   "links": {
@@ -1233,5 +1271,41 @@
     "broughtIn": "Le tue modifiche da {{name}} ora sono in questo progetto.",
     "retry": "Riprova",
     "dismiss": "Ignora"
+  },
+  "publish": {
+    "tabs": {
+      "people": "Persone",
+      "publish": "Pubblica"
+    },
+    "intro": "La pubblicazione mette una copia di sola lettura di questa nota a un link pubblico. Chiunque abbia il link può leggerla senza accedere.",
+    "contents": "Immagini, grafici, diagrammi, formule, Typst e molecole sono inclusi. I blocchi HTML, React, CSV, sequenza e notebook vengono esclusi.",
+    "checking": "Verifica della pagina pubblica…",
+    "loadFailed": "Oleafly non è riuscito a verificare la pagina pubblica di questa nota.",
+    "notAllowed": "{{server}} non consente link pubblici alle note. Un amministratore può attivarli nelle impostazioni del server.",
+    "ownerOnly": "Solo il proprietario della nota può pubblicarla.",
+    "linkLabel": "Link pubblico",
+    "open": "Apri",
+    "publishedAt": "Ultima pubblicazione: {{date}}",
+    "stale": "Hai modificato questa nota dopo l'ultima pubblicazione. Pubblicala di nuovo per aggiornare la pagina.",
+    "publish": "Pubblica",
+    "republish": "Pubblica di nuovo",
+    "unpublish": "Annulla pubblicazione",
+    "failed": "La pubblicazione non è stata completata.",
+    "unpublishConfirm": {
+      "title": "Vuoi ritirare {{name}} dalla pubblicazione?",
+      "description": "Il link pubblico smette subito di funzionare. Chi ha salvato una copia della pagina la conserva.",
+      "confirm": "Annulla pubblicazione"
+    },
+    "list": {
+      "title": "Note pubblicate",
+      "description": "Pagine di sola lettura delle tue note su questo server. Chiunque abbia un link può leggerle.",
+      "loadFailed": "Oleafly non è riuscito a caricare le tue note pubblicate.",
+      "empty": "Non hai pubblicato nessuna nota qui.",
+      "openNamed": "Apri {{name}}",
+      "unpublishNamed": "Ritira {{name}} dalla pubblicazione",
+      "updated": "Pubblicata: {{date}}"
+    },
+    "takenDown": "Un amministratore ha oscurato questa pagina. I lettori non possono aprirla e non puoi pubblicarla di nuovo finché non la ripristina. Puoi comunque annullarne la pubblicazione.",
+    "tooOld": "{{server}} è troppo vecchio per i link pubblici alle note. Il suo amministratore deve aggiornare Oleafly Server."
   }
 }

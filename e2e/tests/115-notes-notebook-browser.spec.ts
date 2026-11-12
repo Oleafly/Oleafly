@@ -1,38 +1,16 @@
-import { expect, type Page, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "../notes-page";
 
-const BASE_URL = process.env.OLEAFLY_BROWSER_TEST_URL ?? "http://localhost:1420";
 const FENCE = "```";
-const SANDBOXED_FRAME_PROBE = "Blocked script execution in 'about:srcdoc'";
-
-async function open(page: Page, query = ""): Promise<string[]> {
-  const errors: string[] = [];
-  page.on("console", (message) => {
-    if (message.type() === "error" && !message.text().startsWith(SANDBOXED_FRAME_PROBE)) errors.push(message.text());
-  });
-  page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(`${BASE_URL}/e2e/notes-harness.html${query}`);
-  await page.waitForFunction(() => document.body.dataset.fixtureState === "mounted", null, { timeout: 60_000 });
-  return errors;
-}
-
-async function openNote(page: Page, title: string): Promise<void> {
-  await page.locator("aside").getByRole("button", { name: new RegExp(title) }).click();
-  await expect(page.getByRole("textbox", { name: "Note title" })).toHaveValue(title);
-  await expect(page.locator(".ProseMirror:visible")).toBeVisible();
-}
-
-function noteText(page: Page, id: string): Promise<string> {
-  return page.evaluate((noteId) => (window as unknown as { __notes: { text(id: string): string } }).__notes.text(noteId), id);
-}
 
 function notebookBlock(page: Page) {
   return page.locator('.ProseMirror:visible .note-drawn[data-block="notebook"]');
 }
 
 test.describe("Notes notebooks", () => {
-  test("previews a task notebook and inserts it as a block that draws every kind of output", async ({ page }) => {
-    const errors = await open(page);
-    await openNote(page, "Dataloader rewrite: what changed");
+  test("previews a task notebook and inserts it as a block that draws every kind of output", async ({ notes }) => {
+    const { page } = await notes.open();
+    await notes.openNote("Dataloader rewrite: what changed");
     await page.getByRole("button", { name: "Artifacts, 1" }).click();
     const panel = page.getByRole("complementary", { name: "Artifacts" });
     await expect(panel.locator("section").getByText("Notebook", { exact: true })).toBeVisible();
@@ -41,7 +19,7 @@ test.describe("Notes notebooks", () => {
     await expect(preview.getByText("[4]")).toBeVisible();
 
     await panel.getByRole("button", { name: "Insert in note" }).click();
-    await expect.poll(() => noteText(page, "dataloader")).toContain(`${FENCE}notebook\nassets/mask-sweep.ipynb\n${FENCE}`);
+    await expect.poll(() => notes.text("dataloader")).toContain(`${FENCE}notebook\nassets/mask-sweep.ipynb\n${FENCE}`);
 
     const block = notebookBlock(page);
     await expect(block.locator(".note-drawn-label")).toHaveText("Jupyter notebook");
@@ -66,18 +44,17 @@ test.describe("Notes notebooks", () => {
     await block.getByRole("button", { name: "Source" }).click();
     await expect(block.locator(":scope > pre")).toBeVisible();
     await expect(block.locator(":scope > pre code")).toHaveText("assets/mask-sweep.ipynb");
-    expect(errors).toEqual([]);
   });
 
-  test("copies a notebook in from the toolbar and narrows it to the cells asked for", async ({ page }) => {
-    const errors = await open(page);
-    await openNote(page, "Abstract draft");
+  test("copies a notebook in from the toolbar and narrows it to the cells asked for", async ({ notes }) => {
+    const { page } = await notes.open();
+    await notes.openNote("Abstract draft");
     await page.locator(".ProseMirror:visible > p").first().click();
-    await page.getByRole("toolbar", { name: "Formatting" }).getByRole("button", { name: "Insert notebook" }).click();
+    await page.getByRole("toolbar", { name: "Formatting" }).getByRole("button", { name: "Attach file" }).click();
     const block = notebookBlock(page);
     await expect(block.getByRole("img", { name: "Output of cell 2" })).toBeVisible();
     await expect(block.locator("[data-notebook-cell]")).toHaveCount(5);
-    await expect.poll(() => noteText(page, "abstract")).toContain(`${FENCE}notebook\nassets/sweep-1a2b3c4d.ipynb\n${FENCE}`);
+    await expect.poll(() => notes.text("abstract")).toContain(`${FENCE}notebook\nassets/sweep-1a2b3c4d.ipynb\n${FENCE}`);
 
     await block.getByRole("button", { name: "Source" }).click();
     const source = block.locator(":scope > pre code");
@@ -93,19 +70,18 @@ test.describe("Notes notebooks", () => {
     await expect(block.getByRole("img", { name: "Output of cell 2" })).toBeVisible();
     await expect(block.getByText("best ratio: 0.60")).toBeVisible();
     await expect(block.getByText("ratios = [0.75, 0.60]")).toHaveCount(0);
-    await expect.poll(() => noteText(page, "abstract")).toContain("assets/sweep-1a2b3c4d.ipynb\ncells: 2-3\ncode: hide\n");
+    await expect.poll(() => notes.text("abstract")).toContain("assets/sweep-1a2b3c4d.ipynb\ncells: 2-3\ncode: hide\n");
 
     await block.getByRole("button", { name: "Source" }).click();
     await source.click({ position: { x: 1, y: 4 } });
     await page.keyboard.type("../");
     await expect(block.locator(".note-drawn-preview")).toContainText("Put the notebook's path on the first line");
-    expect(errors).toEqual([]);
   });
 
-  test("lists notebooks under their own tag and draws them in dark mode", async ({ page }) => {
-    const errors = await open(page, "?theme=dark");
+  test("lists notebooks under their own tag and draws them in dark mode", async ({ notes }) => {
+    const { page } = await notes.open("?theme=dark");
     const sidebar = page.locator("aside");
-    await sidebar.getByRole("button", { name: "Filters" }).click();
+    await sidebar.getByRole("button", { name: "Tags" }).click();
     const kinds = sidebar.getByRole("group", { name: "Kind" });
     await kinds.getByRole("button", { name: "Notebooks", exact: true }).click();
     await expect(kinds.getByRole("button", { name: "Notebooks", exact: true })).toHaveAttribute("aria-pressed", "true");
@@ -114,10 +90,9 @@ test.describe("Notes notebooks", () => {
     await expect(sidebar.locator('[data-kind-dot="notebook"]')).toBeVisible();
     await kinds.getByRole("button", { name: "All", exact: true }).click();
 
-    await openNote(page, "Dataloader rewrite: what changed");
+    await notes.openNote("Dataloader rewrite: what changed");
     await page.getByRole("button", { name: "Artifacts, 1" }).click();
     await page.getByRole("complementary", { name: "Artifacts" }).getByRole("button", { name: "Insert in note" }).click();
     await expect(notebookBlock(page).getByRole("img", { name: "Output of cell 2" })).toBeVisible();
-    expect(errors).toEqual([]);
   });
 });

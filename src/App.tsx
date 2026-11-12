@@ -1,13 +1,12 @@
 import { startPreviewWorkspaceBridge } from "@/lib/preview-workspace";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
-import { restoreWorkspaceLayout, workspacePanelId } from "@/lib/workspace-layout";
+import { restoreWorkspaceLayout } from "@/lib/workspace-layout";
 import { useTranslation } from "react-i18next";
 import { CiteOleaflyDialog } from "@/components/layout/CiteOleaflyDialog";
 import { memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { HEAVY, lazy, startWarming, warmDeferred } from "@/lib/preloadable";
+import { lazy, preloadIntent, startWarming, warmDeferred } from "@/lib/preloadable";
 import { logError } from "@/lib/log";
 import { createPortal } from "react-dom";
-import type { PanelImperativeHandle } from "react-resizable-panels";
 import { RefreshCw } from "lucide-react";
 import { EditorView } from "@codemirror/view";
 import { redo as cmRedo, undo as cmUndo } from "@codemirror/commands";
@@ -43,13 +42,7 @@ import { PreviewPane } from "@/components/preview/PreviewPane";
 import { useKeptAliveHost } from "@/components/layout/KeptAliveSlot";
 import { PaneReorderProvider } from "@/components/layout/pane-reorder";
 import { PaneTreeGroup, PaneTreeProvider, type PaneTreeConfig } from "@/components/layout/PaneTree";
-import {
-  groupNameOf,
-  parentSplitOf,
-  usePaneLayoutStore,
-  type PaneId,
-  type PaneShown,
-} from "@/store/pane-layout";
+import { paneVisibility, usePaneLayoutStore, type PaneId } from "@/store/pane-layout";
 import { PdfImportView } from "@/components/import/PdfImportView";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { CommandPalette } from "@/components/layout/CommandPalette";
@@ -79,6 +72,8 @@ import {
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
 import { editorLetterSpacingValue, editorLineHeightValue, useSettingsStore, type ViewMode } from "@/store/settings";
+import { useNoteTabsStore } from "@/store/note-tabs";
+import { useResearchTasksFlagStore } from "@/store/research-tasks-flag";
 import { editorCjkFontStack, fontFamilyName, fontFamilyStack, quotedFontFamily } from "@/lib/font-families";
 import { applyAppTypography } from "@/lib/app-typography";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
@@ -107,15 +102,7 @@ import { checkForUpdatesOnStartup, openUpdateWindow } from "@/lib/updater";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTauriEvent, useTauriSubscription } from "@/hooks/use-tauri-event";
-import { cn } from "@/lib/utils";
-import {
-  afterPanelLayout,
-  collapsePanel,
-  expandPanel,
-  hasStoredPanelLayout,
-  useSeparatorHitArea,
-  useSteadyPanelWidth,
-} from "@/lib/panel-layout";
+import { useSeparatorHitArea } from "@/lib/panel-layout";
 import { AssistantOutputsBridge } from "@/components/ai/AssistantOutputsBridge";
 import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
 import { ChatPanel } from "@/components/ai/ChatPanel";
@@ -135,6 +122,7 @@ import {
 
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 import { startDefaultLatexEngineSync } from "@/lib/default-latex-engine";
+import { startKeptUndoTidy } from "@/components/notes/note-undo-tidy";
 import { applyEditorColors } from "@/lib/editor-themes";
 import { useEditorColorKey } from "@/hooks/use-editor-theme";
 import { handleDockShortcut, handleTerminalTabShortcut } from "@/lib/dock-shortcuts";
@@ -152,11 +140,6 @@ import {
   usesNativeDockMenu,
 } from "@/lib/native-dock-shortcuts";
 import type { ProjectStateChanged } from "@/lib/tauri";
-import {
-  assistantMinimumWidth,
-  sidebarMinimumPercent,
-  sidebarPanelGroupWidth,
-} from "@/lib/assistant-layout";
 import {
   applyExternalFileChange,
   refreshOpenFilesFromDisk,
@@ -187,6 +170,7 @@ const SettingsModal = mountOnFirstOpen(
   lazy(() => import("@/components/layout/SettingsModal").then((m) => ({ default: m.SettingsModal })), {
     warm: true,
     priority: 1,
+    intent: "settings",
   }),
   () => useSettingsStore((s) => s.settingsOpen),
   () => useSettingsStore.getState().setSettingsOpen(false),
@@ -194,7 +178,7 @@ const SettingsModal = mountOnFirstOpen(
 );
 const DiagramComposer = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/diagram/DiagramComposer").then((m) => ({ default: m.DiagramComposer })), { warm: true, priority: HEAVY }),
+    import("@/components/diagram/DiagramComposer").then((m) => ({ default: m.DiagramComposer })), { intent: "diagram-composer" }),
   () => useHomeViewStore((s) => s.page === "diagram-composer"),
   () => useHomeViewStore.getState().goTo("library"),
   { loading: <OpeningIndicator /> },
@@ -203,7 +187,7 @@ const NotesHost = mountOnFirstOpen(
   lazy(() =>
     Promise.all([import("@/components/notes/NotesHost"), loadNamespace("notes")]).then(([module]) => ({
       default: module.NotesHost,
-    })), { warm: () => useSettingsStore.getState().notes }),
+    })), { intent: "notes" }),
   () => useHomeViewStore((s) => s.page === "notes"),
   () => useHomeViewStore.getState().goTo("library"),
   { loading: <OpeningIndicator /> },
@@ -258,24 +242,25 @@ const LanguageServiceRuntime = mountOnFirstOpen(
     fallback: <LanguageServiceRuntimeUnavailable />,
   },
 );
+const latexToolsOn = () => useSettingsStore.getState().latexTools;
 const StatsToolView = lazy(() =>
-  import("@/components/tools/StatsToolView").then((m) => ({ default: m.StatsToolView })), { warm: true });
+  import("@/components/tools/StatsToolView").then((m) => ({ default: m.StatsToolView })), { warm: latexToolsOn });
 const GeneratorsToolView = lazy(() =>
-  import("@/components/tools/GeneratorsToolView").then((m) => ({ default: m.GeneratorsToolView })), { warm: true });
+  import("@/components/tools/GeneratorsToolView").then((m) => ({ default: m.GeneratorsToolView })), { warm: latexToolsOn });
 const SymbolsToolView = lazy(() =>
-  import("@/components/tools/SymbolsToolView").then((m) => ({ default: m.SymbolsToolView })), { warm: true });
+  import("@/components/tools/SymbolsToolView").then((m) => ({ default: m.SymbolsToolView })), { warm: latexToolsOn });
 const EquationToolView = lazy(() =>
-  import("@/components/tools/EquationToolView").then((m) => ({ default: m.EquationToolView })), { warm: true, priority: HEAVY });
+  import("@/components/tools/EquationToolView").then((m) => ({ default: m.EquationToolView })), { intent: "equation" });
 const ConverterToolView = lazy(() =>
-  import("@/components/tools/ConverterToolView").then((m) => ({ default: m.ConverterToolView })), { warm: true });
+  import("@/components/tools/ConverterToolView").then((m) => ({ default: m.ConverterToolView })), { warm: latexToolsOn });
 const ReferenceToolView = lazy(() =>
-  import("@/components/tools/ReferenceToolView").then((m) => ({ default: m.ReferenceToolView })), { warm: true, priority: HEAVY });
+  import("@/components/tools/ReferenceToolView").then((m) => ({ default: m.ReferenceToolView })), { intent: "reference" });
 const LiteratureSearchToolView = lazy(() =>
   import("@/components/tools/LiteratureSearchToolView").then((m) => ({
     default: m.LiteratureSearchToolView,
   })), { warm: true });
 const TerminalDock = lazy(() =>
-  import("@/components/dock/TerminalDock").then((m) => ({ default: memo(m.TerminalDock) })), { warm: true, priority: HEAVY });
+  import("@/components/dock/TerminalDock").then((m) => ({ default: memo(m.TerminalDock) })));
 const EnginePickerModal = lazy(() =>
   import("@/components/layout/EnginePickerModal").then((m) => ({ default: m.EnginePickerModal })), { warm: true });
 const MainDocumentPicker = lazy(() =>
@@ -344,14 +329,6 @@ function closeAssistant() {
 
 function closeTerminal() {
   if (useSettingsStore.getState().terminalOpen) useSettingsStore.getState().setTerminalOpen(false);
-}
-
-function openTerminal() {
-  if (!useSettingsStore.getState().terminalOpen) useSettingsStore.getState().setTerminalOpen(true);
-}
-
-function workspaceGroupId(projectId: string | null, group: string): string | undefined {
-  return projectId ? workspacePanelId(projectId, group) : undefined;
 }
 
 const AUTO_COMPILE_DEBOUNCE_MS = 2500;
@@ -457,29 +434,16 @@ function loadStuckWindowRestore(): Promise<() => void> {
   return import("@/lib/stuck-window-restore").then((m) => m.startStuckWindowRestore());
 }
 
+function loadQuickCaptureBridge(): Promise<() => void> {
+  return import("@/components/notes/quick-capture-bridge").then((m) => m.startQuickCaptureBridge());
+}
+
 function loadResearchPdfBridge(): Promise<() => void> {
   return import("@/lib/research-pdf-bridge").then((m) => m.mountResearchPdfBridge());
 }
 
-const SIDEBAR_DEFAULT_PX = 340;
-
 function shownViewMode(detached: boolean, selected: ViewMode): ViewMode {
   return detached ? "editor" : selected;
-}
-
-function horizontalPanelSizes(groupWidth: number, appFontSize: number, workspaceHidden: boolean) {
-  const sidebarDefaultSize =
-    groupWidth > 0 ? Math.min(65, (SIDEBAR_DEFAULT_PX / groupWidth) * 100) : 15;
-  const assistantMinSize =
-    groupWidth > 0
-      ? Math.min(55, (assistantMinimumWidth(appFontSize) / groupWidth) * 100)
-      : 22;
-  const assistantDefaultSize = workspaceHidden ? 100 : Math.max(28, assistantMinSize);
-  return { sidebarDefaultSize, assistantMinSize, assistantDefaultSize };
-}
-
-function splitPanelDefaultSize(viewMode: ViewMode): number {
-  return viewMode === "split" ? 50 : 100;
 }
 
 function AppContent() {
@@ -527,34 +491,16 @@ function AppContent() {
     !detached && projectId !== null && (previewShown || previewKeptFor === projectId);
   const homePage = useHomeViewStore((state) => state.page);
   const projectToolOpen = homePage === "generators" || homePage === "symbols";
-  const sidebarPanelRef = useRef<PanelImperativeHandle>(null);
-  const editorPanelRef = useRef<PanelImperativeHandle>(null);
-  const pdfPanelRef = useRef<PanelImperativeHandle>(null);
-  const terminalPanelRef = useRef<PanelImperativeHandle>(null);
-  const assistantPanelRef = useRef<PanelImperativeHandle>(null);
   const sidebarHost = useKeptAliveHost("h-full min-h-0 min-w-0");
   const editorHost = useKeptAliveHost("h-full min-h-0 min-w-0");
   const terminalHost = useKeptAliveHost("h-full min-h-0 min-w-0");
   const assistantHost = useKeptAliveHost("h-full min-h-0 min-w-0");
   const paneLayout = usePaneLayoutStore((s) => s.layout);
+  const paneEpoch = usePaneLayoutStore((s) => s.epoch);
   const paneRootElement = useRef<HTMLDivElement>(null);
-  const sidebarParent = parentSplitOf(paneLayout, "sidebar");
-  const sidebarGroupId = workspaceGroupId(projectId, sidebarParent ? groupNameOf(sidebarParent) : "horizontal");
-  const terminalParent = parentSplitOf(paneLayout, "terminal");
-  const terminalGroupName = terminalParent ? groupNameOf(terminalParent) : "vertical";
-  const shownPanes = useMemo<PaneShown>(
-    () => ({
-      sidebar: showTree,
-      editor: !workspaceHidden && viewMode !== "pdf",
-      pdf: !workspaceHidden && viewMode !== "editor",
-      terminal: terminalOpen,
-      assistant: assistantOpen,
-    }),
+  const shownPanes = useMemo(
+    () => paneVisibility({ viewMode, showTree, assistantOpen, workspaceHidden, terminalOpen }),
     [assistantOpen, showTree, terminalOpen, viewMode, workspaceHidden],
-  );
-  const hasStoredSidebarLayout = useMemo(
-    () => (sidebarGroupId ? hasStoredPanelLayout(sidebarGroupId) : false),
-    [sidebarGroupId],
   );
   const separatorHitArea = useSeparatorHitArea(0.375);
 
@@ -566,58 +512,15 @@ function AppContent() {
     if (zenProjectId !== null && zenProjectId !== projectId) exitZenMode({ restoreLayout: false });
   }, [projectId, zenProjectId]);
 
-  useLayoutEffect(() => {
-    if (!projectId) return;
-    const groupId = workspacePanelId(projectId, terminalGroupName);
-    return afterPanelLayout(
-      () => terminalPanelRef.current,
-      (panel) => {
-        if (terminalOpen) expandPanel(groupId, "terminal", panel, 30);
-        else collapsePanel(groupId, "terminal", panel);
-      },
-    );
-  }, [terminalOpen, projectId, terminalGroupName]);
-
   useOpenFolderIntake();
   useTemplateLinkIntake();
 
-  const panelAreaRef = useRef<HTMLDivElement>(null);
-  const [panelAreaWidth, setPanelAreaWidth] = useState(0);
-  useEffect(() => {
-    if (!projectId) return;
-    const el = panelAreaRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width;
-      if (width) setPanelAreaWidth(width);
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [projectId]);
-  const panelGroupWidth = sidebarPanelGroupWidth(panelAreaWidth, appFontSize);
-  const sidebarMinSize = sidebarMinimumPercent(
-    panelGroupWidth,
-    false,
-    appFontSize,
-  );
-  const { sidebarDefaultSize, assistantMinSize, assistantDefaultSize } = horizontalPanelSizes(
-    panelGroupWidth,
-    appFontSize,
-    workspaceHidden,
-  );
-  const workspacePanelDefaultSize = splitPanelDefaultSize(viewMode);
   const paneTree = useMemo<PaneTreeConfig>(
     () => ({
       projectId,
       shown: shownPanes,
-      terminalOpen,
       workspaceHidden,
-      showTree,
-      documentDefaultSize: workspacePanelDefaultSize,
-      sidebarDefaultSize,
-      sidebarMinSize,
-      assistantMinSize,
-      assistantDefaultSize,
+      appFontSize,
       hosts: {
         sidebar: sidebarHost,
         editor: editorHost,
@@ -625,36 +528,22 @@ function AppContent() {
         terminal: terminalHost,
         assistant: assistantHost,
       },
-      panelRefs: {
-        sidebar: sidebarPanelRef,
-        editor: editorPanelRef,
-        pdf: pdfPanelRef,
-        terminal: terminalPanelRef,
-        assistant: assistantPanelRef,
-      },
       separatorHitArea,
       rootRef: paneRootElement,
       onAssistantDismiss: closeAssistant,
-      onTerminalCollapse: closeTerminal,
-      onTerminalExpand: openTerminal,
+      onTerminalDismiss: closeTerminal,
     }),
     [
-      assistantDefaultSize,
+      appFontSize,
       assistantHost,
-      assistantMinSize,
       editorHost,
       previewHost,
       projectId,
       separatorHitArea,
       shownPanes,
-      showTree,
-      sidebarDefaultSize,
       sidebarHost,
-      sidebarMinSize,
       terminalHost,
-      terminalOpen,
       workspaceHidden,
-      workspacePanelDefaultSize,
     ],
   );
   const visiblePanes = useMemo(
@@ -676,14 +565,6 @@ function AppContent() {
     }
   }, [projectId]);
 
-  useSteadyPanelWidth({
-    panelRef: sidebarPanelRef,
-    active: showTree && sidebarParent?.direction === "row",
-    groupWidth: panelGroupWidth,
-    defaultSize: sidebarDefaultSize,
-    applyDefault: !hasStoredSidebarLayout,
-  });
-
   useEffect(() => {
     const id = window.setTimeout(() => checkForUpdatesOnStartup(), 3000);
     return () => window.clearTimeout(id);
@@ -694,6 +575,7 @@ function AppContent() {
   useTauriEvent("menu://check-updates", () => void openUpdateWindow({ manual: true }), native);
   useTauriEvent("menu://about", () => setAboutOpen(true), native);
   useTauriSubscription(startNativeDockShortcutBridge, "start the dock shortcut bridge");
+  useTauriSubscription(startKeptUndoTidy, "tidy the kept note undo");
 
   useEffect(() => {
     if (!native) return;
@@ -702,6 +584,7 @@ function AppContent() {
   }, [native]);
   useTauriSubscription(native ? loadMcpBridge : null, "start the MCP bridge");
   useTauriSubscription(native ? loadResearchPdfBridge : null, "start the research PDF bridge");
+  useTauriSubscription(native ? loadQuickCaptureBridge : null, "start quick capture");
   useTauriSubscription(
     native ? loadStuckWindowRestore : null,
     "reopen the work after a stuck window reload",
@@ -1103,7 +986,7 @@ function AppContent() {
         <Contained resetKey={projectId}>
           <TypstCjkFontSlot />
         </Contained>
-        <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
+        <div className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
           <PaneReorderProvider rootRef={paneRootElement} visiblePanes={visiblePanes}>
           <ErrorBoundary
             resetKey={projectId}
@@ -1122,7 +1005,7 @@ function AppContent() {
             }
           >
             <PaneTreeProvider value={paneTree}>
-              <PaneTreeGroup key={`${projectId}:${groupNameOf(paneLayout)}`} node={paneLayout} root />
+              <PaneTreeGroup key={`${projectId}:${paneEpoch}:${paneLayout.id}`} node={paneLayout} root />
             </PaneTreeProvider>
             {shownPanes.sidebar && createPortal(<WorkspaceSidebar />, sidebarHost, `sidebar:${projectId}`)}
             {shownPanes.editor &&
@@ -1146,13 +1029,11 @@ function AppContent() {
                 `assistant:${projectId}`,
               )}
             {createPortal(
-              <div className={cn("h-full min-h-0 min-w-0", !terminalOpen && "invisible pointer-events-none")}>
-                <ErrorBoundary surface="terminal dock" resetKey={projectId}>
-                  <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.terminal)} />}>
-                    <TerminalDock projectId={projectId} visible={terminalOpen} />
-                  </Suspense>
-                </ErrorBoundary>
-              </div>,
+              <ErrorBoundary surface="terminal dock" resetKey={projectId}>
+                <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.terminal)} />}>
+                  <TerminalDock projectId={projectId} visible={terminalOpen} />
+                </Suspense>
+              </ErrorBoundary>,
               terminalHost,
               `terminal:${projectId}`,
             )}
@@ -1449,16 +1330,30 @@ function OpenCompileKeeper() {
   return null;
 }
 
+function leaveNotes(): void {
+  const home = useHomeViewStore.getState();
+  if (home.page === "notes") home.goTo("library");
+  const noteTabs = useNoteTabsStore.getState();
+  noteTabs.closeMany(noteTabs.tabs.map((tab) => tab.id));
+}
+
 export default function App() {
   const projectId = useFilesStore((state) => state.projectId);
   useEffect(() => startWarming((error) => void logError("load a view ahead of time", error)), []);
-  useEffect(
-    () =>
-      useSettingsStore.subscribe((state, previous) => {
-        if (state.notes && !previous.notes) warmDeferred();
-      }),
-    [],
-  );
+  useEffect(() => {
+    const stopSettings = useSettingsStore.subscribe((state, previous) => {
+      if (state.settingsOpen && !previous.settingsOpen) preloadIntent("settings");
+      if ((state.notes && !previous.notes) || (state.latexTools && !previous.latexTools)) warmDeferred();
+      if (!state.notes && previous.notes) leaveNotes();
+    });
+    const stopResearch = useResearchTasksFlagStore.subscribe((state, previous) => {
+      if (state.enabled && !previous.enabled) warmDeferred();
+    });
+    return () => {
+      stopSettings();
+      stopResearch();
+    };
+  }, []);
   return (
     <>
       <LanguageServiceRuntime />

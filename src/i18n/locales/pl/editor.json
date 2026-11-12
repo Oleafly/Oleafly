@@ -1030,13 +1030,14 @@
         "environment": "Środowisko {{environment}}",
         "command": "Polecenie \\{{command}}",
         "latexSource": "Kod LaTeX",
+        "html": "HTML",
         "maketitlePreview": "Wygenerowane z tytułu dokumentu i metadanych autora.",
         "figurePreserved": "Zachowano dokładny kod rysunku.",
         "tablePreserved": "Zachowano dokładny kod tabeli.",
         "sourcePreserved": "Zachowano dokładny kod źródłowy",
         "editSource": "Edytuj kod źródłowy",
-        "summaryLabel": "{{label}}. Zachowano dokładny kod LaTeX.",
-        "inputLabel": "Dokładny kod bloku LaTeX"
+        "summaryLabel": "{{label}}. Zachowano dokładny kod źródłowy.",
+        "inputLabel": "Dokładny kod źródłowy bloku"
       },
       "inline": {
         "label": "Surowy kod w wierszu",

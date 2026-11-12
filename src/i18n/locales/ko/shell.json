@@ -340,7 +340,15 @@
     },
     "resetPaneLayout": {
       "keywords": "초기화 패널 레이아웃 순서 이동 사이드바 어시스턴트 편집기 미리보기 터미널 기본값",
-      "label": "패널 레이아웃 초기화"
+      "label": "모든 프로젝트에서 패널 배치 초기화"
+    },
+    "saveLayout": {
+      "keywords": "레이아웃 저장 사용자 지정 배치 패널 크기 이름",
+      "label": "현재 레이아웃 저장"
+    },
+    "applySavedLayout": {
+      "keywords": "레이아웃 저장됨 사용자 지정 배치 패널 전환 적용",
+      "label": "레이아웃: {{name}}"
     },
     "zoomIn": {
       "keywords": "확대 크게",
@@ -379,6 +387,10 @@
     "notes": {
       "label": "노트 열기",
       "keywords": "노트 노트북 지식 아이디어 연구 일지 저널 notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "빠른 캡처",
+      "keywords": "빠른 캡처 메모 노트 받은편지함 오늘 quick capture jot note inbox today"
     }
   },
   "community": {
@@ -483,6 +495,11 @@
   },
   "datePicker": {
     "placeholder": "날짜 선택"
+  },
+  "monthPicker": {
+    "label": "월 선택",
+    "previousYear": "이전 연도",
+    "nextYear": "다음 연도"
   },
   "devMenu": {
     "inspect": "검사",
@@ -702,6 +719,7 @@
     "groups": {
       "action": "동작",
       "documents": "문서",
+      "notes": "노트",
       "references": "참고문헌"
     },
     "label": "검색",
@@ -709,11 +727,13 @@
     "openReferences": "이 프로젝트의 참고문헌 열기",
     "placeholder": "프로젝트나 문서를 검색하거나 /를 입력해 명령을 쓰세요…",
     "placeholderDocuments": "문서 안에서 검색…",
+    "placeholderNotes": "노트와 노트 안의 블록 검색…",
     "placeholderProjects": "이름, 엔진, 종류, 날짜, 메타데이터로 프로젝트 검색…",
     "referencesNeedProject": "참고문헌을 보려면 먼저 프로젝트를 여세요.",
     "slash": {
       "create": "템플릿 갤러리 열기",
       "docs": "문서 안에서 검색",
+      "notes": "노트와 노트 안의 블록 검색",
       "projects": "내 프로젝트 검색",
       "refs": "이 프로젝트의 참고문헌 열기",
       "settings": "설정 열기",
@@ -1294,7 +1314,24 @@
       "split": "분할 보기"
     },
     "moreActions": "추가 작업",
-    "resetPaneLayout": "패널 레이아웃 초기화",
+    "resetPaneLayout": "패널 배치 초기화",
+    "resetPaneLayoutScope": "모든 프로젝트",
+    "savedLayouts": {
+      "close": "닫기",
+      "delete": "삭제",
+      "deleteConfirm": "레이아웃 {{name}}을(를) 삭제할까요?",
+      "limit": "레이아웃은 최대 {{count}}개까지 보관할 수 있습니다. 다른 레이아웃을 저장하려면 하나를 삭제하세요.",
+      "manage": "레이아웃 관리",
+      "name": "레이아웃 이름",
+      "rename": "이름 바꾸기",
+      "renameTitle": "레이아웃 이름 바꾸기",
+      "replace": "덮어쓰기",
+      "replaceConfirm": "이름이 {{name}}인 레이아웃이 이미 있습니다. 덮어쓸까요?",
+      "save": "현재 레이아웃 저장",
+      "saveButton": "저장",
+      "saveTitle": "레이아웃 저장",
+      "update": "현재 상태로 업데이트"
+    },
     "renameFailed": "프로젝트 이름을 바꾸지 못했습니다."
   },
   "tour": {

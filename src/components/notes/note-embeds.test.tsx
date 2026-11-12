@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
 import { Editor } from "@tiptap/core";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { isMac } from "@/lib/utils";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { withImageView } from "./block-views";
 import { destroyKbEditors, kbEditor, kbMarkdown } from "./tests/kb-editor-fixtures";
 import { EmbedCard, embedNodeView, embedSource, embedTarget, plainImageView, withNoteEmbeds, type EmbedOptions } from "./note-embeds";
+import { NOTE_COLOR_HEX } from "./note-icons";
 import type { LinkableNote } from "./note-links";
 import { noteBaseExtensions, parseNoteMarkdown } from "./note-markdown";
-import { resetRemoteImagesForTest } from "./note-remote-images";
+import { resetRemoteImagesForTest } from "@/lib/remote-image";
+import "./tests/setup";
 
 const E = enNotes.kb.embeds;
 const NOTES: LinkableNote[] = [
@@ -33,10 +34,6 @@ function options(overrides: Partial<EmbedOptions> = {}): EmbedOptions {
     ...overrides,
   };
 }
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 afterEach(() => {
   destroyKbEditors();
@@ -72,11 +69,26 @@ describe("embed cards", () => {
     expect(opts.onOpen).toHaveBeenCalledWith("n-1", { newTab: true, projectId: "lib-1" });
   });
 
+  it("draws the embedded note in its own colour, as its tile shows it", async () => {
+    const colored = NOTES.map((note) => (note.noteId === "n-1" ? { ...note, color: "spring" } : note));
+    const { unmount } = render(<EmbedCard target={{ kind: "note", id: "n-1" }} alt="" options={options({ getNotes: () => colored })} />);
+    await screen.findByText("three");
+    const body = document.querySelector<HTMLElement>(".note-embed-content");
+    expect(body).toHaveClass("note-body");
+    expect(body?.style.getPropertyValue("--note-color")).toBe(NOTE_COLOR_HEX.spring);
+    expect(document.querySelector<HTMLElement>(".note-embed-head [data-note-color]")).toHaveAttribute("data-note-color", "spring");
+    unmount();
+    render(<EmbedCard target={{ kind: "note", id: "n-1" }} alt="" options={options()} />);
+    await screen.findByText("three");
+    expect(document.querySelector<HTMLElement>(".note-embed-content")?.style.getPropertyValue("--note-color")).toBe(NOTE_COLOR_HEX.blue);
+    expect(document.querySelector<HTMLElement>(".note-embed-head [data-note-color]")).toHaveAttribute("data-note-color", "blue");
+  });
+
   it("shows one section with its heading and opens at that heading", async () => {
     const opts = options();
     render(<EmbedCard target={{ kind: "note", id: "n-1", heading: "results" }} alt="" options={opts} />);
     expect(await screen.findByText("All good.")).toBeTruthy();
-    expect(document.querySelector(".note-embed-crumb")?.textContent).toBe("Results");
+    expect(screen.getAllByText("Results")).toHaveLength(2);
     expect(screen.queryByText("three")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Open Method" }));
     expect(opts.onOpen).toHaveBeenCalledWith("n-1", { newTab: false, projectId: "lib-1", heading: "results" });
@@ -90,7 +102,7 @@ describe("embed cards", () => {
   ])("explains %j", async (target, message, state) => {
     render(<EmbedCard target={target} alt="Alt" options={options()} />);
     expect(await screen.findByText(message)).toBeTruthy();
-    expect(document.querySelector(".note-embed-card")?.getAttribute("data-state")).toBe(state);
+    expect(document.querySelector("[data-state]")?.getAttribute("data-state")).toBe(state);
   });
 
   it("says when a note can't be read and when the index is loading", async () => {
@@ -100,7 +112,7 @@ describe("embed cards", () => {
     unmount();
     render(<EmbedCard target={{ kind: "note", id: "n-1" }} alt="Alt title" options={options({ getNotes: () => null })} />);
     expect(screen.getByText("Alt title")).toBeTruthy();
-    expect(document.querySelector(".note-embed-card")?.getAttribute("data-state")).toBe("loading");
+    expect(document.querySelector("[data-state]")?.getAttribute("data-state")).toBe("loading");
   });
 
   it("folds, and loads only when it scrolls into view", async () => {
@@ -165,7 +177,7 @@ describe("embeds in the editor", () => {
       },
     });
     const editor = editorWith("![Method](oleafly://note/n-1)\n\n![pic](assets/a.png)", opts);
-    await waitFor(() => expect(editor.view.dom.querySelector(".note-embed-card")).toBeTruthy());
+    await waitFor(() => expect(editor.view.dom.querySelector("[data-state]")).toBeTruthy());
     expect(editor.view.dom.querySelector("figure.note-image")).toBeTruthy();
     act(() => listener?.());
     act(() => {
@@ -175,7 +187,7 @@ describe("embeds in the editor", () => {
     act(() => {
       editor.view.dispatch(editor.state.tr.setNodeMarkup(0, undefined, { ...editor.state.doc.child(0).attrs, src: "oleafly://note/n-1" }));
     });
-    await waitFor(() => expect(editor.view.dom.querySelector(".note-embed-card")).toBeTruthy());
+    await waitFor(() => expect(editor.view.dom.querySelector("[data-state]")).toBeTruthy());
     act(() => {
       editor.view.dispatch(editor.state.tr.setNodeMarkup(0, undefined, { ...editor.state.doc.child(0).attrs, alt: "New alt" }));
     });

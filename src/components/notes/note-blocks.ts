@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import { BLOCK_CARD, BLOCK_MESSAGE } from "@/components/ui/block-frame";
 
 export type NoteFile = (path: string) => Promise<string | null>;
 
@@ -49,19 +50,85 @@ export function noteBlock(name: string): NoteBlockKind | undefined {
   return kinds.get(names.get(name) ?? "");
 }
 
-export function noteBlockKinds(): NoteBlockKind[] {
-  return [...kinds.values()];
+export function inSharedNote(context: PaintContext): boolean {
+  return !context.still && context.noteId === undefined;
 }
 
 export function currentTheme(): "dark" | "light" {
   return document.documentElement.classList.contains("dark") ? "dark" : "light";
 }
 
+const SVG_NS = "http://www.w3.org/2000/svg";
+
+export function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+export function svgNode(tag: string, attributes: Record<string, string | number>): SVGElement {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, String(value));
+  return node;
+}
+
+export function svgText(text: string, attributes: Record<string, string | number>): SVGElement {
+  const node = svgNode("text", attributes);
+  node.textContent = text;
+  return node;
+}
+
+type IconNode = readonly (readonly [string, Readonly<Record<string, string>>])[];
+
+export function iconSvg(icon: LucideIcon, className: string): SVGElement {
+  const render = (icon as unknown as { render: (props: object, ref: null) => { props: { iconNode: IconNode } } }).render;
+  const svg = svgNode("svg", {
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    "stroke-width": 2,
+    "stroke-linecap": "round",
+    "stroke-linejoin": "round",
+    "aria-hidden": "true",
+    class: className,
+  });
+  for (const [tag, { key: _key, ...attributes }] of render({}, null).props.iconNode) svg.append(svgNode(tag, attributes));
+  return svg;
+}
+
 export function blockMessage(preview: HTMLElement, text: string): void {
-  const paragraph = document.createElement("p");
-  paragraph.className = "note-drawn-empty";
-  paragraph.textContent = text;
-  preview.replaceChildren(paragraph);
+  preview.replaceChildren(element("p", BLOCK_MESSAGE, text));
+}
+
+export function paintAsync<T>(
+  preview: HTMLElement,
+  steps: {
+    loading?: string;
+    load: () => Promise<T>;
+    show: (value: T, alive: () => boolean) => Dispose | undefined | Promise<void>;
+    error: (problem: unknown) => string;
+  },
+): Dispose {
+  let live = true;
+  let dispose: Dispose | undefined;
+  const alive = () => live;
+  if (steps.loading) blockMessage(preview, steps.loading);
+  steps
+    .load()
+    .then(async (value) => {
+      if (!live) return;
+      const shown = steps.show(value, alive);
+      if (typeof shown === "function") dispose = shown;
+      else await shown;
+    })
+    .catch((error: unknown) => {
+      if (live) blockMessage(preview, steps.error(error));
+    });
+  return () => {
+    live = false;
+    dispose?.();
+  };
 }
 
 const CARD_SUMMARY = 120;
@@ -76,19 +143,10 @@ export function blockSummary(source: string): string {
 }
 
 export function paintBlockCard(preview: HTMLElement, label: string, source: string): void {
-  const card = document.createElement("div");
-  card.className = "note-block-card";
-  const title = document.createElement("p");
-  title.className = "note-block-card-title";
-  title.textContent = label;
-  card.append(title);
+  const card = element("div", BLOCK_CARD);
+  card.append(element("p", "text-xs font-semibold", label));
   const summary = blockSummary(source);
-  if (summary) {
-    const text = document.createElement("p");
-    text.className = "note-block-card-text";
-    text.textContent = summary;
-    card.append(text);
-  }
+  if (summary) card.append(element("p", "mt-1 truncate font-mono text-[0.6875rem] text-muted-foreground", summary));
   preview.replaceChildren(card);
 }
 
@@ -106,7 +164,7 @@ export function dataUrlBytes(url: string, maxBytes: number): Uint8Array | null {
   if (!match) return null;
   const body = url.slice(match[0].length);
   if (/;base64$/iu.test(match[1])) {
-    const encoded = body.replace(/\s+/gu, "");
+    const encoded = body.replaceAll(/\s+/gu, "");
     if (Math.floor((encoded.length * 3) / 4) > maxBytes + 2) throw new BlockFileTooLargeError();
     let binary: string;
     try {
@@ -114,9 +172,7 @@ export function dataUrlBytes(url: string, maxBytes: number): Uint8Array | null {
     } catch {
       return null;
     }
-    const bytes = new Uint8Array(binary.length);
-    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-    return bytes;
+    return Uint8Array.from(binary, (byte) => byte.codePointAt(0) ?? 0);
   }
   let text: string;
   try {
@@ -134,7 +190,21 @@ export function dataUrlText(url: string, maxBytes: number): string | null {
   return bytes ? new TextDecoder().decode(bytes) : null;
 }
 
-export const OPTION_LINE = /^([a-z][a-z0-9_-]*)\s*:\s*(.*)$/iu;
+const OPTION_NAME = /^[a-z][a-z0-9_-]*$/iu;
+export const LINE_BREAK = /[\n\r\u2028\u2029]/u;
+
+export interface OptionLine {
+  name: string;
+  value: string;
+}
+
+export function parseOptionLine(line: string): OptionLine | null {
+  const colon = line.indexOf(":");
+  if (colon < 0) return null;
+  const name = line.slice(0, colon).trimEnd();
+  const value = line.slice(colon + 1).trimStart();
+  return OPTION_NAME.test(name) && !LINE_BREAK.test(value) ? { name, value } : null;
+}
 
 export interface BlockOptions {
   options: Map<string, string>;
@@ -151,9 +221,9 @@ export function splitBlockOptions(source: string, keys: ReadonlySet<string>): Bl
       index += 1;
       continue;
     }
-    const match = OPTION_LINE.exec(line);
-    if (!match || !keys.has(match[1].toLowerCase())) break;
-    options.set(match[1].toLowerCase(), match[2].trim());
+    const option = parseOptionLine(line);
+    if (!option || !keys.has(option.name.toLowerCase())) break;
+    options.set(option.name.toLowerCase(), option.value);
     index += 1;
   }
   return { options, body: lines.slice(index).join("\n") };

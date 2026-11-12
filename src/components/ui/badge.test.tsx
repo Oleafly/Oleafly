@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { Badge, type BadgeVariant } from "./badge";
 
 const LABEL = "Connected";
@@ -34,5 +34,24 @@ describe("Badge", () => {
     const badge = screen.getByText(LABEL);
     expect(badge).toHaveClass("px-1.5", "text-[0.625rem]", "gap-1");
     expect(badge).not.toHaveClass("px-2", "text-xs");
+  });
+
+  it("renders as its child, so a tag can be a button and a count can be announced", () => {
+    const onClick = vi.fn();
+    render(
+      <>
+        <Badge asChild variant="primaryGhost" size="sm">
+          <button type="button" onClick={onClick}>
+            {"#draft"}
+          </button>
+        </Badge>
+        <Badge asChild size="count">
+          <output aria-label={"3 pending"}>{"3"}</output>
+        </Badge>
+      </>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "#draft" }));
+    expect(onClick).toHaveBeenCalledOnce();
+    expect(screen.getByRole("status", { name: "3 pending" })).toHaveTextContent("3");
   });
 });

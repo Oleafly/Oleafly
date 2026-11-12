@@ -46,12 +46,9 @@ export default defineConfig({
         "src/lib/e2e-probe.ts",
         "src/lib/e2e-import-registry.ts",
       ],
-      thresholds: {
-        lines: 98,
-        branches: 92,
-        functions: 96,
-        statements: 96,
-      },
+      ...(process.env.OLEAFLY_COVERAGE_SHARD === "1"
+        ? {}
+        : { thresholds: { lines: 98, branches: 92, functions: 96, statements: 96 } }),
     },
   },
 });

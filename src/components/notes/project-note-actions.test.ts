@@ -1,7 +1,6 @@
 import type { ProjectInfo } from "@oleafly/backend-port";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
 
 const mocks = vi.hoisted(() => ({
   createNoteProject: vi.fn<(name: string, source: string, related?: string | null) => Promise<string>>(),
@@ -16,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   success: vi.fn(),
   askInApp: vi.fn(),
   flushOpenNotes: vi.fn(async () => []),
+  closeSavedNoteView: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
@@ -39,6 +39,10 @@ vi.mock("@/lib/open-note-editors", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/open-note-editors")>()),
   flushOpenNotes: mocks.flushOpenNotes,
 }));
+vi.mock("./notes-layout", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./notes-layout")>()),
+  closeSavedNoteView: mocks.closeSavedNoteView,
+}));
 
 import { registerNoteEditor } from "@/lib/open-note-editors";
 import { noteEditorHandle } from "@/lib/tests/open-note-editor-fixtures";
@@ -52,6 +56,7 @@ import {
   openPersonalNoteTab,
   renameProjectNote,
 } from "./project-note-actions";
+import "./tests/setup";
 
 const NOTE_PROJECT: ProjectInfo = {
   id: "mine",
@@ -73,10 +78,6 @@ const PERSONAL_NOTE =
 let writeProjectFile = vi.fn(async (_projectId: string, _path: string, _content: string) => {});
 let openFile = vi.fn(async (_path: string) => {});
 let refreshProjects = vi.fn(async () => {});
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -159,6 +160,7 @@ describe("moving a personal note into the project", () => {
     );
     expect(writeProjectFile).toHaveBeenCalledWith("paper", "notes/Reading list-2.md", expect.stringContaining("Body"));
     expect(mocks.recycleProject).toHaveBeenCalledWith("mine");
+    expect(mocks.closeSavedNoteView).toHaveBeenCalledExactlyOnceWith("mine");
     expect(useNoteTabsStore.getState().tabs).toEqual([]);
     expect(refreshProjects).toHaveBeenCalled();
     expect(openFile).toHaveBeenCalledWith("notes/Reading list-2.md");
@@ -218,6 +220,7 @@ describe("moving a personal note into the project", () => {
     await expect(moveNoteIntoProject("missing", "paper")).resolves.toBeNull();
     await expect(moveNoteIntoProject("mine", "thesis")).resolves.toBeNull();
     expect(mocks.recycleProject).not.toHaveBeenCalled();
+    expect(mocks.closeSavedNoteView).not.toHaveBeenCalled();
   });
 
   it("stops when the project closes while it reads the note", async () => {

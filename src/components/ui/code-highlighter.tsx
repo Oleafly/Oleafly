@@ -102,6 +102,8 @@ const aliases: Record<string, string> = {
 export const HIGHLIGHT_LANGUAGES: readonly string[] = Object.keys(parserLoaders);
 
 const languageCache = new Map<string, Promise<Language | null>>();
+const loadedLanguages = new Map<string, Language>();
+let lezer: typeof import("@lezer/highlight") | null = null;
 const highlightCache = new RenderCache<ReactNode[]>(MAX_CACHED_BLOCKS, MAX_CACHED_BLOCK_CHARS);
 
 export function highlightLanguageName(language: string): string | undefined {
@@ -120,12 +122,15 @@ export function loadHighlightLanguage(language: string): Promise<Language | null
     import("@lezer/highlight"),
     parserLoaders[name](),
   ])
-    .then(([{ StreamLanguage }, lezerHighlight, parser]) =>
-      StreamLanguage.define({
+    .then(([{ StreamLanguage }, lezerHighlight, parser]) => {
+      const language = StreamLanguage.define({
         ...parser,
         tokenTable: { ...legacyTokenTags(lezerHighlight.tags), ...parser.tokenTable },
-      }),
-    )
+      });
+      lezer = lezerHighlight;
+      loadedLanguages.set(name, language);
+      return language;
+    })
     .catch(() => null);
   languageCache.set(name, pending);
   return pending;
@@ -148,56 +153,50 @@ export function legacyTokenTags(t: typeof tags) {
   };
 }
 
-const tokenColors: Record<string, string> = {
-  "tok-atom": "text-[var(--cm-number)]",
-  "tok-bool": "text-[var(--cm-number)]",
-  "tok-bracket": "text-[var(--cm-bracket)]",
-  "tok-comment": "text-[var(--cm-comment)] italic",
-  "tok-heading": "text-[var(--cm-meta)]",
-  "tok-keyword": "text-[var(--cm-keyword)]",
-  "tok-labelName": "text-[var(--cm-meta)]",
-  "tok-link": "text-[var(--cm-string)] underline",
-  "tok-meta": "text-[var(--cm-meta)]",
-  "tok-number": "text-[var(--cm-number)]",
-  "tok-operator": "text-[var(--cm-operator)]",
-  "tok-propertyName": "text-[var(--cm-variable)]",
-  "tok-string": "text-[var(--cm-string)]",
-  "tok-string2": "text-[var(--cm-string)]",
-  "tok-tagName": "text-[var(--cm-tag)]",
-  "tok-typeName": "text-[var(--cm-tag)]",
-  "tok-variableName": "text-[var(--cm-variable)]",
-};
+export interface TokenSpan {
+  readonly from: number;
+  readonly to: number;
+  readonly classes: string;
+}
 
-function styledTokenClasses(classes: string) {
-  return cn(
-    classes,
-    classes.split(" ").map((className) => tokenColors[className]),
+export function tokenSpans(language: string, text: string): TokenSpan[] | null {
+  const name = highlightLanguageName(language);
+  const loaded = name ? loadedLanguages.get(name) : undefined;
+  if (!loaded || !lezer) return null;
+  if (text.length > MAX_HIGHLIGHT_LENGTH) return [];
+  const spans: TokenSpan[] = [];
+  let position = 0;
+  lezer.highlightCode(
+    text,
+    loaded.parser.parse(text),
+    lezer.classHighlighter,
+    (piece, classes) => {
+      if (classes) spans.push({ from: position, to: position + piece.length, classes });
+      position += piece.length;
+    },
+    () => {
+      position += 1;
+    },
   );
+  return spans;
 }
 
 async function highlight(source: string, languageName: string) {
-  const language = await loadHighlightLanguage(languageName);
-  if (!language) return null;
-  const { classHighlighter, highlightCode } = await import("@lezer/highlight");
+  await loadHighlightLanguage(languageName);
+  const spans = tokenSpans(languageName, source);
+  if (!spans) return null;
   const nodes: ReactNode[] = [];
-  let key = 0;
-  highlightCode(
-    source,
-    language.parser.parse(source),
-    classHighlighter,
-    (text, classes) => {
-      nodes.push(
-        classes ? (
-          <span key={key++} className={styledTokenClasses(classes)}>
-            {text}
-          </span>
-        ) : (
-          text
-        ),
-      );
-    },
-    () => nodes.push("\n"),
-  );
+  let at = 0;
+  for (const span of spans) {
+    if (span.from > at) nodes.push(source.slice(at, span.from));
+    nodes.push(
+      <span key={span.from} className={span.classes}>
+        {source.slice(span.from, span.to)}
+      </span>,
+    );
+    at = span.to;
+  }
+  if (at < source.length) nodes.push(source.slice(at));
   return nodes;
 }
 
@@ -253,7 +252,7 @@ export const HighlightedCode = memo(function HighlightedCode({
     cachedNodes ?? (highlighted?.key === highlightKey ? highlighted.nodes : null);
 
   return (
-    <code className={cn("font-mono", className)} data-language={language}>
+    <code className={cn("code-tokens font-mono", className)} data-language={language}>
       {nodes ? <span>{nodes}</span> : source}
     </code>
   );

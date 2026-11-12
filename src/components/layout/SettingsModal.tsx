@@ -112,7 +112,7 @@ import {
 import { isLibraryProject } from "@/lib/project-location";
 import { libraryProjects as projectsOutsideNotes } from "@/lib/library-projects";
 import { logError } from "@/lib/log";
-import { lazy } from "@/lib/preloadable";
+import { intended, lazy } from "@/lib/preloadable";
 import { notifyError, toast } from "@/lib/toast";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { startTour } from "@/lib/tour";
@@ -125,6 +125,7 @@ import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
 import { DictionaryLocalePicker } from "@/components/settings/DictionaryLocalePicker";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
+import { SettingsWidthContext, useRoomySettings } from "@/components/settings/settings-width";
 import { CheckpointToggles } from "@/components/settings/CheckpointToggles";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { SettingsRow } from "@/components/settings/SettingsRow";
@@ -155,7 +156,7 @@ const SettingsFileCard = lazy(
       loadNamespace("settingsFile"),
       loadNamespace("cloud"),
     ]).then(([module]) => module),
-  { warm: true },
+  { warm: () => intended("settings") },
 );
 const CloudTab = lazy(
   () =>
@@ -163,11 +164,11 @@ const CloudTab = lazy(
       import("@/components/settings/cloud/CloudTab"),
       loadNamespace("cloud").catch((error: unknown) => logError("load cloud sync strings", error)),
     ]).then(([module]) => ({ default: module.CloudTab })),
-  { warm: true },
+  { warm: () => intended("settings") },
 );
 const ChangelogDialog = lazy(
   () => import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
-  { warm: true },
+  { warm: () => intended("settings") },
 );
 
 const ResearchSettingsSection = lazy(
@@ -176,7 +177,7 @@ const ResearchSettingsSection = lazy(
       import("@/components/settings/research/ResearchSettingsSection"),
       loadNamespace("researchTools"),
     ]).then(([module]) => ({ default: module.ResearchSettingsSection })),
-  { warm: true },
+  { warm: () => intended("settings") && useResearchTasksFlagStore.getState().enabled },
 );
 
 const CollaborationSection = lazy(
@@ -184,7 +185,7 @@ const CollaborationSection = lazy(
     Promise.all([import("@/features/collab/CollaborationSection"), loadNamespace("collab")]).then(([module]) => ({
       default: module.CollaborationSection,
     })),
-  { warm: true },
+  { warm: () => intended("settings") },
 );
 
 type Section = SettingsSearchSection;
@@ -429,6 +430,8 @@ export function SettingsModal() {
     useSettingsStore.getState().setSettingsInitialSection("general");
   };
   const settingsBodyRef = useScrollTopOnChange(section);
+  const [wide, setWide] = useState(false);
+  const roomy = useRoomySettings();
   const sectionListId = useId();
   const settingsTourActive = useTourStore((s) => s.activeTourId === "settings");
   const search = useSettingsSearch({
@@ -849,7 +852,7 @@ export function SettingsModal() {
     <div
       ref={settingsBodyRef}
       data-testid="settings-body"
-      className={cn("flex-1 select-text overflow-auto p-5", SETTINGS_SEARCH_HIT_CLASSES)}
+      className={cn("relative flex-1 select-text overflow-auto p-5", SETTINGS_SEARCH_HIT_CLASSES)}
     >
       {section === "appearance" && <AppearanceSection />}
 
@@ -1336,7 +1339,11 @@ export function SettingsModal() {
         onClose={closeSettings}
         closeLabel={t(($) => $.shell.settings.close)}
         label={t(($) => $.shell.settings.title)}
-        className="flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(1040px,94vw)] min-w-[min(640px,94vw)] overflow-hidden"
+        animateWidth={roomy}
+        className={cn(
+          "flex h-(--settings-height) min-h-[min(540px,88vh)] min-w-[min(640px,94vw)] overflow-hidden [--settings-height:min(900px,88vh)]",
+          wide ? "w-[min(1380px,94vw)]" : "w-[min(1040px,94vw)]",
+        )}
       >
         <nav
           aria-label={t(($) => $.shell.settings.sectionsNav)}
@@ -1408,7 +1415,7 @@ export function SettingsModal() {
               <X className="size-4" />
             </Button>
           </div>
-          {renderSettingsBody()}
+          <SettingsWidthContext.Provider value={setWide}>{renderSettingsBody()}</SettingsWidthContext.Provider>
         </div>
       </ModalShell>
       <ConfirmationDialog

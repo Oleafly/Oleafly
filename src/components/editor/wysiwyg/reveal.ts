@@ -1,4 +1,4 @@
-import { markdownBlockAt } from "@oleafly/wysiwyg";
+import { markdownBlockAt, type ParseMarkdownBodyOptions } from "@oleafly/wysiwyg";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Selection } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
@@ -30,6 +30,14 @@ export function blockCount(doc: ProseMirrorNode): number {
     : doc.childCount;
 }
 
+export function blockPosition(doc: ProseMirrorNode, source: string, target: VisualLocation, extensions?: ParseMarkdownBodyOptions["extensions"]): number | null {
+  const block = markdownBlockAt(source, sourceOffset(source, target), { preservedInlineRanges: markdownMathRanges(source), extensions });
+  if (block?.count !== blockCount(doc)) return null;
+  let pos = 0;
+  for (let index = 0; index < block.index; index++) pos += doc.child(index).nodeSize;
+  return pos;
+}
+
 function centreBlock(editor: Editor, pos: number) {
   const scroller = editor.view.dom.closest<HTMLElement>(".wysiwyg-content");
   const block = editor.view.nodeDOM(pos);
@@ -54,13 +62,9 @@ export async function revealVisualLocation(
   if (!editor || editor.isDestroyed || signal.aborted) return false;
   const source = useFilesStore.getState().files[target.path]?.content;
   if (source === undefined) return false;
-  const block = markdownBlockAt(source, sourceOffset(source, target), {
-    preservedInlineRanges: markdownMathRanges(source),
-  });
   const { doc } = editor.state;
-  if (block?.count !== blockCount(doc)) return false;
-  let pos = 0;
-  for (let index = 0; index < block.index; index++) pos += doc.child(index).nodeSize;
+  const pos = blockPosition(doc, source, target);
+  if (pos === null) return false;
   if (options.focus) editor.view.focus();
   if (options.select) {
     editor.view.dispatch(editor.state.tr.setSelection(Selection.near(doc.resolve(pos))));

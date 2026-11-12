@@ -2,14 +2,14 @@
 
 import type { ProjectInfo } from "@oleafly/backend-port";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
+import "./tests/setup";
 
 const mocks = vi.hoisted(() => ({
-  noteHeads: vi.fn(),
+  noteFacts: vi.fn(),
   createNoteProject: vi.fn(),
   readFileContent: vi.fn(),
   logError: vi.fn(),
@@ -20,11 +20,12 @@ const mocks = vi.hoisted(() => ({
   deleteProjectEntry: vi.fn(),
   confirmAction: vi.fn(),
   setNoteRelatedProject: vi.fn(),
+  forgetNoteLeftovers: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
-  noteHeads: mocks.noteHeads,
+  noteFacts: mocks.noteFacts,
   createNoteProject: mocks.createNoteProject,
   readFileContent: mocks.readFileContent,
   setNoteRelatedProject: mocks.setNoteRelatedProject,
@@ -41,6 +42,10 @@ vi.mock("@/lib/log", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/log")>()),
   logError: mocks.logError,
 }));
+vi.mock("./note-pending-suggestions", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./note-pending-suggestions")>()),
+  forgetNoteLeftovers: mocks.forgetNoteLeftovers,
+}));
 vi.mock("./project-note-actions", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./project-note-actions")>()),
   createProjectNoteFile: mocks.createProjectNoteFile,
@@ -50,6 +55,7 @@ vi.mock("./project-note-actions", async (importOriginal) => ({
 }));
 
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { projectNoteKey } from "@/lib/project-notes";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useNoteTabsStore } from "@/store/note-tabs";
@@ -81,7 +87,21 @@ const MASKING = project("masking", { name: "Masking ablation", updated_at: NOW -
 const READING = project("reading", { name: "Reading list", updated_at: NOW - 7200 });
 const OTHER = project("other", { name: "Unrelated idea", related_project: "thesis" });
 
-const HEAD = "---\ntitle: Masking ablation\nicon: lucide:atom\ncolor: mint\n---\n\nSweep over masking ratios.\n";
+const MASKING_FACTS = {
+  id: "masking",
+  noteId: null,
+  title: "Masking ablation",
+  icon: "lucide:atom",
+  color: "mint",
+  agent: null,
+  tags: [],
+  aliases: [],
+  properties: {},
+  preview: "Sweep over masking ratios.",
+  relatedProject: "paper",
+  updatedAt: 1,
+  knowledge: "k",
+};
 const PLAN = "---\ntitle: Lab plan\nkind: note\nid: p1\ncolor: rose\nicon: lucide:atom\n---\n\nRun the sweep twice.\n";
 const AGENDA = "---\nkind: note\n---\n\nWeekly agenda.\n";
 const PLAIN = "# Not a note\n";
@@ -106,14 +126,10 @@ function openMenu(button: HTMLElement) {
   fireEvent.pointerDown(button, { button: 0, ctrlKey: false, pointerType: "mouse" });
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 beforeEach(() => {
   vi.clearAllMocks();
   refreshProjects = vi.fn(async () => {});
-  mocks.noteHeads.mockResolvedValue([{ id: "masking", head: HEAD }]);
+  mocks.noteFacts.mockResolvedValue([MASKING_FACTS]);
   mocks.readFileContent.mockImplementation(async (_projectId: string, path: string) => {
     if (path === "notes/Plan.md") return PLAN;
     if (path === "notes/Agenda.md") return AGENDA;
@@ -257,7 +273,8 @@ describe("ProjectNotesPanel", () => {
 
     openMenu(screen.getAllByTestId("project-note-file-menu")[1]);
     fireEvent.click(await screen.findByTestId("project-note-file-delete"));
-    await waitFor(() => expect(mocks.deleteProjectEntry).toHaveBeenCalledWith("notes/Plan.md"));
+    await waitFor(() => expect(mocks.forgetNoteLeftovers).toHaveBeenCalledWith(projectNoteKey("paper", "notes/Plan.md")));
+    expect(mocks.deleteProjectEntry).toHaveBeenCalledWith("notes/Plan.md");
     expect(mocks.confirmAction).toHaveBeenCalledWith({
       title: enNotes.projectNotes.deleteTitle.replace("{{name}}", "Lab plan"),
       message: enNotes.projectNotes.deleteMessage,
@@ -342,7 +359,7 @@ describe("ProjectNotesPanel", () => {
     render(<ProjectNotesPanel />);
     expect(screen.getByTestId("project-files-empty")).toHaveTextContent(enNotes.projectNotes.projectEmpty);
     expect(screen.getByTestId("project-notes-empty")).toHaveTextContent(enNotes.projectNotes.mineEmpty);
-    expect(mocks.noteHeads).not.toHaveBeenCalled();
+    expect(mocks.noteFacts).not.toHaveBeenCalled();
     expect(mocks.readFileContent).not.toHaveBeenCalled();
   });
 
@@ -417,45 +434,46 @@ describe("ProjectNotesPanel", () => {
 
   it("re-reads the personal notes when Notes closes, and not while it is open", async () => {
     const view = render(<ProjectNotesPanel />);
-    await waitFor(() => expect(mocks.noteHeads).toHaveBeenCalledOnce());
+    await waitFor(() => expect(mocks.noteFacts).toHaveBeenCalledOnce());
     act(() => useHomeViewStore.setState({ page: "notes" }));
     view.rerender(<ProjectNotesPanel />);
-    expect(mocks.noteHeads).toHaveBeenCalledOnce();
+    expect(mocks.noteFacts).toHaveBeenCalledOnce();
     expect(refreshProjects).not.toHaveBeenCalled();
 
     act(() => useHomeViewStore.setState({ page: "library" }));
-    await waitFor(() => expect(mocks.noteHeads).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(mocks.noteFacts).toHaveBeenCalledTimes(2));
     expect(refreshProjects).toHaveBeenCalledOnce();
   });
 
-  it("logs heads and project lists it cannot read", async () => {
-    const heads = new Error("no heads");
+  it("logs facts and project lists it cannot read", async () => {
+    const heads = new Error("no facts");
     const list = new Error("no list");
-    mocks.noteHeads.mockRejectedValue(heads);
+    mocks.noteFacts.mockRejectedValue(heads);
     refreshProjects.mockRejectedValue(list);
     useHomeViewStore.setState({ page: "notes" });
     render(<ProjectNotesPanel />);
     act(() => useHomeViewStore.setState({ page: "library" }));
-    await waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("read project note heads", heads));
+    await waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("read project note facts", heads));
     expect(mocks.logError).toHaveBeenCalledWith("refresh projects after closing notes", list);
     expect(mineRows()).toHaveLength(2);
   });
 
-  it("ignores heads that arrive after it closes", async () => {
-    let deliver: (value: { id: string; head: string }[]) => void = () => {};
-    mocks.noteHeads.mockImplementation(() => new Promise((resolve) => (deliver = resolve)));
+  it("ignores facts that arrive after it closes", async () => {
+    let deliver: (value: (typeof MASKING_FACTS)[]) => void = () => {};
+    mocks.noteFacts.mockImplementation(() => new Promise((resolve) => (deliver = resolve)));
     const { unmount } = render(<ProjectNotesPanel />);
     unmount();
     await act(async () => {
-      deliver([{ id: "masking", head: HEAD }]);
+      deliver([MASKING_FACTS]);
     });
     expect(mocks.logError).not.toHaveBeenCalled();
   });
 
-  it("shows a spinner while project notes load", () => {
+  it("announces that project notes are loading", () => {
     mocks.readFileContent.mockImplementation(() => new Promise(() => {}));
     render(<ProjectNotesPanel />);
     const group = screen.getByTestId("project-notes-files");
+    expect(within(group).getByRole("status")).toHaveTextContent(enNotes.projectNotes.loading);
     expect(within(group).queryByTestId("project-files-empty")).toBeNull();
     expect(fileRows()).toHaveLength(0);
   });

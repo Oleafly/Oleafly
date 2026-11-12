@@ -10,10 +10,14 @@ async function openDesktopAppsTab(page: import("../helpers").Page) {
 test("without Cua Driver the tab shows the install line and keeps the switch off", async ({ tauriPage }) => {
   const section = '[data-testid="desktop-apps-section"]';
   const install = '[data-testid="desktop-apps-install"]';
+  const installed = '[data-testid="desktop-apps-installed"]';
 
   await openSettings(tauriPage, "integrations");
   await openDesktopAppsTab(tauriPage);
-  await waitLong(tauriPage, `!!document.querySelector(${JSON.stringify(install)})`, 30_000);
+  await waitLong(tauriPage, `!!document.querySelector(${JSON.stringify(`${install}, ${installed}`)})`, 30_000);
+  const driverPresent = await tauriPage.evaluate<boolean>(`!!document.querySelector(${JSON.stringify(installed)})`);
+  // Cua Driver is installed on this machine, so the app has no install line to show.
+  test.skip(driverPresent, "Cua Driver is installed on this machine");
 
   const line = await tauriPage.evaluate<string>(
     `document.querySelector(${JSON.stringify(`${install} pre`)})?.textContent ?? ""`,

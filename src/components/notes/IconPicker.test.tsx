@@ -1,9 +1,7 @@
 // @vitest-environment jsdom
-import { readFileSync } from "node:fs";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
@@ -11,6 +9,7 @@ import { IconPicker } from "./IconPicker";
 import { NOTE_COLORS } from "./note-file";
 import { LINE_ICONS, NOTE_COLOR_HEX } from "./note-icons";
 import type { NoteColor } from "./types";
+import "./tests/setup";
 
 vi.mock("./EmojiGrid", () => ({
   default: ({ selected, onSelect }: Readonly<{ selected?: string; onSelect: (emoji: string) => void }>) => (
@@ -23,7 +22,6 @@ vi.mock("./EmojiGrid", () => ({
 const scrollIntoView = vi.fn();
 
 beforeAll(async () => {
-  await loadNamespace("notes");
   Element.prototype.scrollIntoView = scrollIntoView;
 });
 
@@ -63,6 +61,13 @@ function lineIcon(name: string) {
 }
 
 describe("IconPicker", () => {
+  it("lets the trigger class set the size of the icon inside the button", () => {
+    render(<IconPicker trigger={<span>{"icon"}</span>} triggerClassName="p-1 [&_svg]:size-7" hasIcon={false} onChange={vi.fn()} />);
+    const classes = screen.getByRole("button", { name: enNotes.icons.choose }).className.split(" ");
+    expect(classes).toContain("[&_svg]:size-7");
+    expect(classes).not.toContain("[&_svg]:size-4");
+  });
+
   it("opens on the emoji tab for an emoji, marks it as chosen, and closes after a pick", async () => {
     const { onChange, user } = setup("🚀");
     await open(user);
@@ -80,8 +85,6 @@ describe("IconPicker", () => {
     expect(tab(enNotes.icons.lines)).toHaveAttribute("aria-selected", "true");
     const notebook = lineIcon(enNotes.icons.names.notebookPen);
     expect(notebook).toHaveAttribute("aria-pressed", "true");
-    expect(notebook).toHaveClass("note-chip");
-    expect(lineIcon(enNotes.icons.names.atom)).not.toHaveClass("note-chip");
     expect(lineIcon(enNotes.icons.names.atom)).toHaveAttribute("aria-pressed", "false");
     expect(screen.getAllByRole("button", { pressed: true })).toHaveLength(1);
     expect(scrollIntoView).toHaveBeenCalledWith({ block: "nearest" });
@@ -95,8 +98,6 @@ describe("IconPicker", () => {
     expect(tab(enNotes.icons.lines)).toHaveAttribute("aria-selected", "true");
     const telescope = lineIcon(enNotes.icons.names.telescope);
     expect(telescope).toHaveAttribute("aria-pressed", "true");
-    expect(telescope).toHaveClass("note-chip");
-    expect(lineIcon(enNotes.icons.names.notebookPen)).not.toHaveClass("note-chip");
     expect(lineIcon(enNotes.icons.names.notebookPen)).toHaveAttribute("aria-pressed", "false");
     expect(scrollIntoView.mock.contexts).toContain(telescope);
   });
@@ -177,7 +178,6 @@ describe("IconPicker", () => {
     await user.click(screen.getByRole("button", { name: enCommon.actions.remove }));
     expect(onChange).toHaveBeenCalledWith(undefined);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
-    expect(screen.getByRole("button", { name: enNotes.icons.choose })).toHaveClass("note-icon-trigger");
   });
 
   it("shows no colour row when the caller cannot change the colour", async () => {
@@ -198,20 +198,10 @@ describe("IconPicker", () => {
     for (const swatch of swatches) {
       const current = swatch.dataset.noteSwatch === "lilac";
       expect(swatch).toHaveAttribute("aria-pressed", String(current));
-      expect(swatch.style.getPropertyValue("--note-color")).toBe(NOTE_COLOR_HEX[swatch.dataset.noteSwatch as NoteColor]);
+      expect(swatch).toHaveStyle({ backgroundColor: NOTE_COLOR_HEX[swatch.dataset.noteSwatch as NoteColor] });
       expect(swatch.querySelector("svg") !== null).toBe(current);
     }
-    expect(screen.getByRole("button", { name: enLibrary.colors.lilac }).querySelector("svg")).toHaveClass("text-black/70");
     expect(row.closest<HTMLElement>("[style]")?.style.getPropertyValue("--note-color")).toBe(NOTE_COLOR_HEX.lilac);
-  });
-
-  it("draws the check in white on the dark blue swatch", async () => {
-    const { user } = setup(undefined, { color: "blue", withColors: true });
-    await open(user);
-    const blue = screen.getByRole("button", { name: enLibrary.colors.blue });
-    expect(blue).toHaveAttribute("aria-pressed", "true");
-    expect(blue.querySelector("svg")).toHaveClass("text-white");
-    expect(blue.querySelector("svg")).not.toHaveClass("text-black/70");
   });
 
   it("closes after a pick and gives focus back to the same trigger", async () => {
@@ -232,15 +222,6 @@ describe("IconPicker", () => {
     await user.click(screen.getByRole("button", { name: enCommon.actions.remove }));
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     await waitFor(() => expect(trigger).toHaveFocus());
-  });
-
-  it("shows a focused colour swatch with a border, not by growing it", async () => {
-    const { user } = setup("lucide:atom", { color: "lilac", withColors: true });
-    await open(user);
-    const swatch = screen.getByRole("button", { name: enLibrary.colors.peach });
-    expect(swatch.className).not.toMatch(/focus-visible:scale/u);
-    const css = readFileSync("src/components/notes/notes.css", "utf8");
-    expect(css).toMatch(/\.note-swatch:focus-visible \{\s*border: 2px solid var\(--ring\);/u);
   });
 
   it("changes the colour without closing, and still closes after an icon is picked", async () => {

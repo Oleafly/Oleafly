@@ -1120,146 +1120,6 @@
         "label": "編譯時顯示 PDF"
       },
       "title": "禪模式"
-    },
-    "notes": {
-      "sectionName": "筆記外觀",
-      "resetAriaLabel": "將{{setting}}重設為預設值",
-      "text": {
-        "title": "內文"
-      },
-      "typeface": {
-        "label": "字型類型",
-        "description": "選擇筆記內文的字型類型。",
-        "options": {
-          "sans": "無襯線",
-          "serif": "襯線",
-          "mono": "等寬"
-        }
-      },
-      "font": {
-        "label": "筆記字型",
-        "description": "為筆記內文選擇任何已安裝的字型。留空則使用「字型類型」設定。"
-      },
-      "fontSize": {
-        "label": "筆記文字大小",
-        "description": "設定筆記內文的文字大小。",
-        "custom": "自訂",
-        "customLabel": "自訂筆記文字大小（像素）"
-      },
-      "lineHeight": {
-        "label": "筆記行高",
-        "description": "設定筆記內文的行距。",
-        "customLabel": "自訂筆記行高"
-      },
-      "paragraphSpacing": {
-        "label": "段落間距",
-        "description": "設定段落、清單與其他區塊之間的間距。",
-        "options": {
-          "compact": "緊密",
-          "normal": "標準",
-          "relaxed": "寬鬆",
-          "spacious": "寬敞"
-        }
-      },
-      "headings": {
-        "title": "標題與筆記標題"
-      },
-      "headingTypeface": {
-        "label": "標題字型類型",
-        "description": "為標題與筆記標題選擇字型類型。",
-        "options": {
-          "text": "與內文相同"
-        }
-      },
-      "headingFont": {
-        "label": "標題字型",
-        "description": "為標題與筆記標題選擇已安裝的字型。留空則使用「標題字型類型」設定。"
-      },
-      "headingSize": {
-        "label": "標題大小",
-        "description": "設定標題相對於內文的大小。",
-        "options": {
-          "small": "較小",
-          "normal": "標準",
-          "large": "較大"
-        }
-      },
-      "titleSize": {
-        "label": "筆記標題大小",
-        "description": "設定每篇筆記頂端標題的大小。"
-      },
-      "layout": {
-        "title": "版面配置"
-      },
-      "width": {
-        "label": "筆記寬度",
-        "description": "筆記開啟時的寬度。也可以在筆記的寬度選單中變更。",
-        "options": {
-          "standard": "標準",
-          "wide": "寬",
-          "full": "全寬"
-        }
-      },
-      "wordCount": {
-        "label": "顯示字數",
-        "description": "在筆記的工具列中顯示字數。"
-      },
-      "spellcheck": {
-        "label": "在筆記中檢查拼字",
-        "description": "撰寫筆記時，在拼錯的字下方加上底線。"
-      },
-      "code": {
-        "title": "程式碼"
-      },
-      "codeFont": {
-        "label": "程式碼字型",
-        "description": "為程式碼區塊與行內程式碼選擇已安裝的字型。"
-      },
-      "codeTheme": {
-        "label": "程式碼區塊配色",
-        "description": "選擇筆記中程式碼區塊的語法配色。",
-        "options": {
-          "editor": "與編輯器相同"
-        }
-      },
-      "colors": {
-        "title": "顏色"
-      },
-      "accent": {
-        "label": "筆記強調色",
-        "description": "用於筆記中的連結、標籤與待辦核取方塊。",
-        "matchApp": "與應用程式一致",
-        "customAriaLabel": "選擇自訂的筆記強調色"
-      },
-      "highlight": {
-        "label": "醒目提示顏色",
-        "description": "醒目提示文字的背景顏色。",
-        "options": {
-          "yellow": "黃色",
-          "green": "綠色",
-          "blue": "藍色",
-          "pink": "粉紅色",
-          "purple": "紫色",
-          "accent": "強調色"
-        }
-      },
-      "callouts": {
-        "label": "標註樣式",
-        "description": "筆記中標註方塊的外觀。",
-        "options": {
-          "tinted": "淺色底",
-          "filled": "填滿",
-          "outlined": "外框",
-          "bar": "側邊線"
-        }
-      },
-      "remoteImages": {
-        "title": "來自網路的圖片",
-        "description": "筆記會直接載入這些網站的圖片，不會先詢問。",
-        "empty": "筆記從網路載入圖片前會先詢問。你設為一律允許的網站會顯示在這裡。",
-        "remove": "移除 {{host}}"
-      },
-      "resetAll": "重設筆記外觀"
     }
   },
   "checkpoints": {
@@ -2481,6 +2341,42 @@
       "notesAskAgent": {
         "description": "就選取的文字詢問代理程式，或開啟和關閉筆記的代理程式。",
         "label": "筆記：詢問代理程式"
+      },
+      "notesNewNote": {
+        "label": "筆記：新增筆記",
+        "description": "在目前的面板中新增一篇筆記。"
+      },
+      "notesSearch": {
+        "label": "筆記：搜尋筆記",
+        "description": "跳到筆記側邊欄頂端的搜尋方塊。"
+      },
+      "notesBookmark": {
+        "label": "筆記：將筆記加入書籤",
+        "description": "將開啟中的筆記加入我的最愛，或從中移除。"
+      },
+      "notesCopyLink": {
+        "label": "筆記：複製筆記連結",
+        "description": "複製開啟中筆記的連結，可以貼到另一篇筆記或對話中。"
+      },
+      "notesProperties": {
+        "label": "筆記：顯示或隱藏屬性",
+        "description": "開啟或關閉筆記標題下方的屬性。"
+      },
+      "notesQuickCapture": {
+        "description": "開啟一個小視窗，在任何應用程式中隨手記錄，即使 Oleafly 在背景執行也可以。",
+        "label": "筆記：快速記錄"
+      },
+      "notesCopyBlockLink": {
+        "description": "複製游標所在段落、清單項目或表格的連結。",
+        "label": "筆記：複製區塊連結"
+      },
+      "notesBack": {
+        "description": "回到你在這個分頁中的上一個位置。",
+        "label": "筆記：返回"
+      },
+      "notesForward": {
+        "description": "返回後再次前進。",
+        "label": "筆記：前進"
       }
     },
     "application": {
@@ -2506,14 +2402,41 @@
         "renameSymbol": "在整個專案中重新命名符號或檔案",
         "slashCommandMenu": "斜線指令插入選單",
         "triggerAutocomplete": "觸發自動完成",
-        "undo": "復原"
+        "undo": "復原",
+        "noteBold": "粗體",
+        "noteItalic": "斜體",
+        "noteUnderline": "底線",
+        "noteStrike": "刪除線",
+        "noteCode": "行內程式碼",
+        "noteHighlight": "以上次使用的顏色醒目提示",
+        "noteSuperscript": "上標",
+        "noteSubscript": "下標",
+        "noteHeadings": "標題 1 至 6",
+        "noteText": "轉為內文",
+        "noteQuote": "引文",
+        "noteCodeBlock": "程式碼區塊",
+        "noteBulletList": "項目符號清單",
+        "noteNumberedList": "編號清單",
+        "noteTaskList": "待辦清單",
+        "noteToggleTask": "勾選或取消勾選待辦事項",
+        "noteIndent": "增加清單項目縮排",
+        "noteOutdent": "減少清單項目縮排",
+        "noteLineBreak": "在同一段落中換行",
+        "noteFind": "尋找與取代",
+        "noteSelectAll": "選取整篇筆記",
+        "noteUndo": "復原",
+        "noteRedo": "重做",
+        "noteInsertMenu": "在行首開啟插入選單",
+        "noteLinkMenu": "連結到筆記",
+        "noteTag": "新增標籤"
       },
       "managed": "由編輯器管理"
     },
     "categories": {
       "codeIntelligence": "程式碼智慧",
       "editor": "編輯器",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "筆記"
     },
     "error": {
       "conflict": "已指派給 {{action}}。",
@@ -2559,6 +2482,15 @@
         "uppercase": "轉為大寫"
       },
       "unbound": "未設定"
+    },
+    "quickCapture": {
+      "label": "隨處快速記錄",
+      "description": "快速記錄快捷鍵可在這台電腦上的所有應用程式中使用。",
+      "ready": "在任何應用程式中按 {{shortcut}} 即可開啟快速記錄。",
+      "taken": "另一個應用程式已在使用 {{shortcut}}。請為「筆記：快速記錄」選擇其他快捷鍵。",
+      "invalid": "{{shortcut}} 無法在 Oleafly 以外使用。請選擇以字母、數字或功能鍵結尾的快捷鍵。",
+      "failed": "Oleafly 無法設定快捷鍵。請關閉快速記錄再重新開啟以重試。",
+      "wayland": "Wayland 不允許應用程式監聽自身視窗以外的按鍵。若要用按鍵開啟快速記錄，請在系統鍵盤設定中新增一個執行以下指令的自訂快捷鍵："
     }
   },
   "systemIntegration": {
@@ -2648,17 +2580,5 @@
       "loadFailed": "無法讀取 MCP 伺服器清單。",
       "missing": "{{name}}（找不到）"
     }
-  },
-  "notesPreview": {
-    "label": "套用這些設定的筆記預覽",
-    "title": "野外筆記",
-    "heading": "早晨調查",
-    "paragraph": "小雨下到九點，之後北邊山脊上空放晴。到了中午，土壤仍然潮濕。",
-    "links": "完整步驟請見<note>採樣方法</note>，也可以瀏覽<tag>#野外調查</tag>。",
-    "highlight": "幼苗在一週內長高了一倍。",
-    "calloutTitle": "下次造訪",
-    "calloutBody": "採集新樣本前，先檢查土壤感測器。",
-    "taskDone": "為樣本貼上標籤",
-    "task": "上傳照片"
   }
 }

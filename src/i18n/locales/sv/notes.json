@@ -17,9 +17,37 @@
     "resize": "Ändra storlek på paneler",
     "closePanel": "Stäng panelen",
     "newTab": "Ny flik",
-    "emptyPanel": "Den här panelen är tom.",
+    "empty": {
+      "greetings": {
+        "begin": "Var ska vi börja?",
+        "ready": "Redo när du är det.",
+        "mind": "Vad tänker du på i dag?",
+        "resume": "Vill du fortsätta där du slutade?",
+        "working": "Vad arbetar du med?",
+        "first": "Vad vill du skriva först?",
+        "blank": "Börja med en tom sida eller en mall."
+      },
+      "hints": {
+        "daily": "En plan och en logg för i dag",
+        "experimentLog": "Körningar och vad de visade",
+        "paperReading": "Vad en artikel påstår",
+        "literatureMatrix": "Jämför artiklar sida vid sida",
+        "meeting": "Dagordning och beslut",
+        "labProtocol": "Steg som någon annan kan följa",
+        "weeklyLog": "Vad som blev gjort den här veckan",
+        "proposal": "Syften, metoder och en tidsplan"
+      },
+      "moreTemplates": "Fler mallar",
+      "continue": "Fortsätt",
+      "searchAll": "Sök i alla anteckningar"
+    },
     "closeMissing": "Stäng fliken",
-    "notesHome": "Gå till startsidan i Anteckningar"
+    "notesHome": "Gå till startsidan i Anteckningar",
+    "breadcrumb": "Brödsmulor",
+    "breadcrumbHome": "Startsidan i Anteckningar",
+    "brand": "Oleafly Notes",
+    "back": "Tillbaka",
+    "forward": "Framåt"
   },
   "saveStatus": {
     "saved": "Sparad",
@@ -40,7 +68,7 @@
       "notebook": "Anteckningsböcker"
     },
     "author": {
-      "all": "Vem som helst",
+      "all": "Alla",
       "agent": "Agenter",
       "you": "Du"
     },
@@ -52,15 +80,18 @@
       "data": "Inga datafiler matchar de här filtren.",
       "notebook": "Inga anteckningsböcker matchar de här filtren."
     },
-    "noNotes": "Inga anteckningar än. Börja med Ny anteckning.",
+    "start": {
+      "title": "Inga anteckningar än"
+    },
     "ungrouped": "Anteckningar",
     "agentFallback": "Agent",
     "settings": "Inställningar",
     "filters": {
-      "title": "Filter",
+      "title": "Taggar",
       "active_one": "{{count}} filter aktivt",
       "active_other": "{{count}} filter aktiva",
-      "clear": "Rensa filter"
+      "clear": "Rensa filter",
+      "writtenBy": "Skriven av"
     },
     "menu": {
       "more": "Mer",
@@ -81,18 +112,31 @@
       "templateOn": "\"{{name}}\" är nu en av dina mallar.",
       "templateOff": "\"{{name}}\" är inte längre en mall.",
       "linkProject": "Länka till projekt",
-      "compareConflict": "Jämför konfliktkopian"
+      "compareConflict": "Jämför konfliktkopian",
+      "copyLink": "Kopiera länk",
+      "linkCopied": "Kopierade länken till \"{{name}}\".",
+      "copyLinkFailed": "Det gick inte att kopiera länken till \"{{name}}\".",
+      "duplicate": "Duplicera",
+      "copyTitle": "Kopia av {{name}}",
+      "duplicateFailed": "Det gick inte att duplicera \"{{name}}\".",
+      "export": "Exportera",
+      "exportAs": {
+        "markdown": "Mapp med Markdown (.md)",
+        "docx": "Word-dokument (.docx)",
+        "html": "Webbsida (.html)",
+        "latex": "LaTeX (.tex)",
+        "typst": "Typst (.typ)"
+      },
+      "exportFailed": "Det gick inte att exportera \"{{name}}\".",
+      "copyMarkdown": "Kopiera som Markdown",
+      "markdownCopied": "Kopierade \"{{name}}\" som Markdown.",
+      "copyMarkdownFailed": "Det gick inte att kopiera \"{{name}}\" som Markdown."
     },
     "conflicts": {
-      "title": "Två versioner av \"{{name}}\"",
-      "description": "Den här anteckningen ändrades både här och på en annan dator innan ändringarna hann synkroniseras, så Oleafly behöll båda versionerna. Behåll en version. Den andra hamnar i papperskorgen.",
-      "diffLabel": "Skillnader mellan de två versionerna",
-      "loading": "Läser båda versionerna…",
-      "readFailed": "Det gick inte att läsa konfliktkopian.",
-      "resolveFailed": "Det gick inte att behålla den versionen.",
-      "keepMine": "Behåll den här datorns version",
-      "useCopy": "Använd den andra datorns version",
       "badge": "Den här anteckningen har en konfliktkopia"
+    },
+    "suggestions": {
+      "badge": "Föreslagna ändringar väntar i den här anteckningen"
     }
   },
   "home": {
@@ -101,7 +145,9 @@
     "tabs": {
       "label": "Anteckningar som visas",
       "mine": "Mina anteckningar",
-      "favorites": "Favoriter"
+      "favorites": "Favoriter",
+      "tasks": "Uppgifter",
+      "attachments": "Bilagor"
     },
     "sortBy": "Sortera efter",
     "sort": {
@@ -111,8 +157,7 @@
       "title": "Titel"
     },
     "layout": "Anteckningslayout",
-    "empty": "Inga anteckningar än. Påbörja en och be agenten hjälpa dig att skriva den.",
-    "noFavorites": "Inga favoriter än. Stjärnmärk en anteckning så hamnar den här.",
+    "noFavorites": "Inga favoriter än. Lägg till en anteckning i favoriter så hamnar den här.",
     "noMatches": "Inga anteckningar matchar \"{{query}}\".",
     "author": "Författare"
   },
@@ -125,8 +170,9 @@
     "loadFailed": "Det gick inte att öppna anteckningen. Dess projekt kan ha flyttats eller raderats.",
     "retryLoad": "Försök igen",
     "closeTab": "Stäng fliken",
-    "imageFailed": "Det gick inte att spara bilden i anteckningen.",
-    "onlyImages": "Du kan bara lägga till bilder i formaten PNG, JPEG och SVG i en anteckning.",
+    "fileFailed": "Det gick inte att lägga till filen i anteckningen: {{error}}",
+    "fileTooLarge": "{{name}} är större än 64 MB och lades därför inte till.",
+    "unsupportedFile": "En anteckning kan bara innehålla bilder, ljud, video, PDF:er, tabeller (CSV, TSV eller Excel), molekylfiler och anteckningsböcker från Jupyter.",
     "remoteImages": {
       "more": "Fler sätt att läsa in bilder",
       "loadAll": "Läs in alla bilder i anteckningen",
@@ -149,6 +195,10 @@
       "figure": "Lägg till en figur",
       "abstract": "Sammanfatta för abstraktet"
     },
+    "wholeNote": {
+      "proofread": "Korrekturläs anteckningen",
+      "rewrite": "Skriv om anteckningen"
+    },
     "collapse": "Dölj prompten",
     "expand": "Visa prompten"
   },
@@ -157,6 +207,22 @@
     "acceptAll": "Acceptera alla",
     "position": "Ändring {{current}} av {{total}}",
     "undo": "Ångra"
+  },
+  "versions": {
+    "title": "Versionshistorik",
+    "summary": "Oleafly sparar en version varje gång du godkänner alla föreslagna ändringar, och innan en äldre version återställs. Du kan också spara en själv.",
+    "empty": "Inga versioner än. Spara en version för att behålla anteckningen som den är nu.",
+    "save": "Spara en version",
+    "saved": "Versionen sparades.",
+    "unchanged": "Inget har ändrats sedan den senaste versionen.",
+    "saveFailed": "Det gick inte att spara en version av anteckningen.",
+    "restore": "Återställ den här versionen",
+    "restored": "Versionen återställdes. Texten den ersatte har också sparats som en version.",
+    "restoreFailed": "Det gick inte att återställa versionen.",
+    "comparing": "Jämför med anteckningen",
+    "readFailed": "Det gick inte att läsa versionen.",
+    "changes": "Vad återställningen av den här versionen ändrar",
+    "textOnly": "Återställningen ändrar bara anteckningens text. Bifogade filer förblir som de är."
   },
   "toolbar": {
     "label": "Formatering",
@@ -172,9 +238,6 @@
     "displayMath": "Matematik på egen rad",
     "citation": "Citering",
     "noCitations": "Inga referenser i det här projektet än",
-    "tableSize": "Tabell {{cols}} × {{rows}}",
-    "addRow": "Lägg till rad",
-    "addColumn": "Lägg till kolumn",
     "chart": "Diagram",
     "mermaid": "Mermaid-diagram",
     "outline": "Disposition",
@@ -188,7 +251,12 @@
       "wide": "Bred",
       "full": "Full bredd"
     },
-    "notebook": "Infoga anteckningsbok"
+    "attach": "Bifoga fil",
+    "attachFilter": "Bilder, ljud, video, PDF:er, tabeller, molekyler och anteckningsböcker",
+    "codeLanguage": "Språk",
+    "plainCode": "Oformaterad text",
+    "imageSize": "Bildstorlek",
+    "originalSize": "Originalstorlek"
   },
   "blocks": {
     "chart": "Diagram",
@@ -197,9 +265,28 @@
     "diagramError": "Det här diagrammet innehåller ett fel. Öppna källan för att rätta det.",
     "chartError": "Diagrammets data är ogiltiga. Öppna källan för att rätta dem.",
     "noPreview": "Det här blocket har ingen förhandsvisning än. Öppna källan för att redigera det.",
+    "syntax": {
+      "help": "Så skriver du blocket \"{{block}}\"",
+      "chart": "JSON med en typ, kategorier och serier:\n{\"type\": \"bar\", \"categories\": [\"A\", \"B\"], \"series\": [{\"name\": \"Run 1\", \"values\": [1, 2]}]}\nAndra typer: line, area, scatter, pie, donut, histogram.",
+      "plot": "En kurva eller ett alternativ per rad:\ny = x^2 - 1 eller x = cos(t), y = sin(t)\ndomain: -5, 5 och point: 1, 0, Nollställe",
+      "csv": "Rader med värden, och första raden är rubrikraden:\nRun, Ratio\nEller läs en fil med path: assets/results.csv",
+      "latex": "LaTeX på egen rad, till exempel en ekvation eller en align-miljö:\n\\begin{align} a &= b + c \\end{align}\nKemi med \\ce{H2O} och enheter med \\pu{5 mg}.",
+      "typst": "Ett utdrag i Typst, ritat som en bild:\n$ E = m c^2 $\nPaket från internet är inte tillgängliga.",
+      "mermaid": "Ett diagram i Mermaid, till exempel:\nflowchart LR\nA --> B",
+      "d2": "Ett D2-diagram, till exempel:\nclient -> server: request\nserver.shape: cylinder",
+      "tikz": "Kommandon i TikZ, eller en hel tikzpicture:\n{{example}}\nRader ovanför bilden, till exempel \\usetikzlibrary{positioning}, hör hemma i ingressen.",
+      "circuitikz": "Kommandon i CircuiTikZ, eller en hel circuitikz-miljö:\n{{example}}\nRader ovanför kretsen, till exempel \\ctikzset{resistors/scale=0.8}, hör hemma i ingressen.",
+      "svg": "Ett enda svg-element, till exempel:\n<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" /></svg>\nSkript, länkar och bilder från internet tas bort.",
+      "html": "En hel HTML-sida eller ett fragment med CSS och skript.\nDen har ingen internetåtkomst, så lägg dina data i blocket.\nSkript startar när du klickar på Kör.",
+      "jsx": "En React-komponentfil med en standardexport:\nexport default function App() { return <p>Hello</p> }\nDen kan importera react, recharts, d3, lodash, papaparse, chart.js och lucide-react.",
+      "smiles": "En SMILES-sträng per rad, med ett valfritt namn:\nAspirin: CC(=O)OC1=CC=CC=C1C(=O)O\nUpp till 24 per block.",
+      "molecule": "Först alternativrader, till exempel format: pdb och style: cartoon.\nSedan filens text, eller path: assets/1abc.pdb",
+      "sequence": "FASTA-poster eller en rå sekvens:\n>sample 1\nATGGCCATTGTAATG",
+      "notebook": "Anteckningsbokens sökväg på första raden:\nassets/analysis.ipynb\nDärefter valfria rader som cells: 2-5 och code: hide.",
+      "bookmark": "Ett fält per rad, med webbadressen först:\nurl: https://example.com/article\nSedan valfria rader med title:, description:, image:, site: och favicon:."
+    },
     "newChart": {
       "title": "Nytt diagram",
-      "description": "Be agenten fylla i det här eller redigera källan.",
       "series": "Värden"
     },
     "newHtml": {
@@ -236,6 +323,7 @@
     },
     "sequence": {
       "label": "Sekvens",
+      "template": "Exempel på kodande sekvens",
       "empty": "Klistra in en FASTA-post eller en rå sekvens.",
       "character": "Rad {{line}}, kolumn {{column}}: \"{{character}}\" är ingen giltig rest.",
       "untitled": "Namnlös sekvens",
@@ -375,7 +463,8 @@
     "artifact": {
       "run": "Kör",
       "stop": "Stoppa",
-      "alwaysRun": "Kör alltid block i den här anteckningen",
+      "alwaysRun": "Kör alltid det här blocket",
+      "paused": "Pausad eftersom ett block i den här anteckningen låste sig eller stängde appen förra gången.",
       "desktopOnly": "Körning kräver skrivbordsappen",
       "loading": "Läser in…",
       "loadFailed": "Det gick inte att läsa in blocket.",
@@ -383,7 +472,7 @@
       "stopped": "Blocket slutade svara.",
       "reload": "Läs in igen",
       "failed": "Det gick inte att starta blocket: {{error}}",
-      "offline": "Block kan inte läsa in filer från internet, så de här utelämnades:",
+      "offline": "De här filerna från internet utelämnades:",
       "more_one": "och {{count}} till",
       "more_other": "och {{count}} till",
       "frameTitle": "Utdata från {{label}}",
@@ -394,7 +483,6 @@
       "noComponent": "Komponenten har ingen standardexport."
     },
     "code": {
-      "copy": "Kopiera",
       "copied": "Kopierat",
       "copyFailed": "Det gick inte att kopiera",
       "copyLabel": "Kopiera koden"
@@ -404,6 +492,22 @@
       "empty": "Det här SVG-blocket är tomt.",
       "invalid": "Den här SVG-koden är ogiltig. Öppna källan för att rätta den.",
       "tooLarge": "Den här SVG-bilden är för stor för att visas."
+    },
+    "d2": {
+      "alt": "D2-diagram",
+      "empty": "Det här D2-blocket är tomt.",
+      "loading": "Ritar…",
+      "error": "D2 kunde inte rita diagrammet: {{error}}",
+      "line": "Rad {{line}}: {{message}}"
+    },
+    "tikz": {
+      "alt": "Ritning i TikZ",
+      "circuitAlt": "Kretsschema",
+      "empty": "Blocket \"{{block}}\" är tomt.",
+      "desktopOnly": "Förhandsvisningar av {{block}} kräver skrivbordsappen.",
+      "sharedNotice": "Anteckningen är delad. LaTeX körs på den här datorn och kan läsa dina filer, så kontrollera källan innan du ritar den.",
+      "draw": "Rita",
+      "error": "LaTeX kunde inte kompilera blocket: {{error}}"
     },
     "typst": {
       "alt": "Typst-utdata",
@@ -433,7 +537,33 @@
       "code": "Kod",
       "math": "Matematik",
       "divider": "Avdelare",
+      "footnote": "Fotnot",
       "basic": "Grundläggande"
+    },
+    "media": {
+      "play": "Spela upp {{name}}",
+      "pdfPage": "{{name}}, sida {{page}}",
+      "openPdf": "Öppna PDF",
+      "openFailed": "Det gick inte att öppna filen: {{error}}",
+      "missing": "Filen hittades inte: {{path}}",
+      "unreadable": "Det gick inte att läsa {{name}}.",
+      "cantPlay": "{{name}} kan inte spelas upp här. Datorn kanske saknar en kodek för formatet.",
+      "embed": "Spela upp videon från {{site}}",
+      "embedTitle": "Video från {{site}}",
+      "embedFailed": "Spelaren startade inte. Försök igen, eller öppna videon på {{site}}.",
+      "watch": "Titta",
+      "watchOn": "Titta på {{site}}",
+      "pasteChoice": "Hur videolänken ska visas",
+      "embedChoice": "Bädda in video",
+      "linkChoice": "Behåll som länk"
+    },
+    "bookmark": {
+      "label": "Bokmärke",
+      "pasteChoice": "Hur länken ska visas",
+      "cardChoice": "Bokmärkeskort",
+      "ask": "Bokmärk en webbsida",
+      "loading": "Läser in förhandsvisningen av sidan",
+      "noUrl": "Lägg till en rad url: med en webbadress som börjar med https:// eller http://."
     }
   },
   "notebook": {
@@ -455,10 +585,7 @@
     "showAllCells_one": "Visa {{count}} cell",
     "showAllCells_other": "Visa alla {{count}} celler",
     "outputImage": "Utdata från cell {{number}}",
-    "outputFrame": "HTML-utdata från cell {{number}}",
-    "pickTitle": "Infoga en anteckningsbok",
-    "filter": "Jupyter-anteckningsböcker",
-    "importFailed": "Det gick inte att lägga till anteckningsboken: {{error}}"
+    "outputFrame": "HTML-utdata från cell {{number}}"
   },
   "icons": {
     "choose": "Välj ikon",
@@ -612,7 +739,7 @@
     "inserting": "Kopierar",
     "insertFailed": "Det gick inte att kopiera filen till anteckningen: {{error}}",
     "newProject": "Nytt projekt",
-    "htmlPreview": "Interaktiva figurer kan inte köras i Oleafly än.",
+    "htmlPreview": "Om du vill köra den här figuren klistrar du in koden i ett HTML-block i en anteckning och klickar på Kör.",
     "kind": {
       "figure": "Figur",
       "html": "Interaktiv figur",
@@ -626,7 +753,14 @@
   "sendToPaper": {
     "title": "Skicka till en artikel",
     "description": "Oleafly konverterar det här en gång och lägger till det vid markören. Kopian i artikeln förblir inte länkad till anteckningen.",
-    "send": "Skicka"
+    "send": "Skicka",
+    "leftOut": "Blocket \"{{block}}\" finns bara i anteckningen."
+  },
+  "citations": {
+    "references": "Referenser",
+    "fromReference": "Från en referens",
+    "unknown": "Finns inte i det länkade projektets bibliografi: {{keys}}",
+    "openNote": "Öppna anteckningen om den här artikeln: {{title}}"
   },
   "links": {
     "menu": "Länka till en anteckning eller ett projekt",
@@ -636,13 +770,54 @@
     "missingNote": "Anteckningen finns inte längre",
     "missingNoteCreate": "Anteckningen finns inte längre. Klicka för att skapa en ny anteckning med det här namnet.",
     "missingProject": "Projektet finns inte längre",
-    "linkedFrom": "Länkad från"
+    "linkedFrom": "Länkad från",
+    "showAll": "Visa alla {{total}}"
+  },
+  "linksSearch": {
+    "blocks": {
+      "loading": "Läser in block",
+      "none": "Inga matchande block",
+      "missingBlock": "Det blocket finns inte i anteckningen",
+      "assignFailed": "Det gick inte att lägga till ett block-ID i anteckningen.",
+      "handle": "Blockalternativ",
+      "copyLink": "Kopiera länk till blocket",
+      "linkCopied": "Kopierade en länk till blocket.",
+      "copyFailed": "Det gick inte att kopiera en länk till blocket.",
+      "noId": "Blocket har inget ID än, och du kan inte redigera den här anteckningen.",
+      "linkedFrom": "Länkad från",
+      "links_one": "{{count}} anteckning länkar hit",
+      "links_other": "{{count}} anteckningar länkar hit",
+      "openLinked": "Öppna {{title}}",
+      "toBlock": "Gå till blocket: {{text}}"
+    },
+    "tagBlocks": {
+      "more_one": "Visa {{count}} block till",
+      "more_other": "Visa {{count}} block till"
+    },
+    "dead": {
+      "menu": "Döda länkar",
+      "title": "Döda länkar",
+      "summary_one": "{{count}} länk pekar på en anteckning eller ett block som inte längre finns.",
+      "summary_other": "{{count}} länkar pekar på anteckningar eller block som inte längre finns.",
+      "none": "Inga döda länkar. Alla länkar pekar på en anteckning eller ett block som fortfarande finns.",
+      "loading": "Kontrollerar länkar",
+      "failed": "Det gick inte att läsa länkarna i dina anteckningar.",
+      "missingNotes": "Anteckningar som saknas",
+      "missingBlocks": "Block som saknas",
+      "noteMeta": "Rad {{line}}: anteckningen finns inte längre",
+      "blockMeta": "Rad {{line}}: {{block}} finns inte längre i {{title}}",
+      "create": "Skapa anteckning",
+      "relink": "Länka till {{title}} i stället",
+      "remove": "Ta bort länken",
+      "fixFailed": "Det gick inte att ändra länken."
+    }
   },
   "projectNotes": {
     "searchLabel": "Sök i projektets anteckningar",
     "searchPlaceholder": "Sök anteckningar",
     "clearSearch": "Rensa sökningen",
     "noMatches": "Inga anteckningar matchar sökningen",
+    "loading": "Läser projektets anteckningar",
     "edited": "Redigerad {{when}}",
     "createFailed": "Det gick inte att skapa anteckningen.",
     "projectGroup": "Projektanteckningar",
@@ -689,7 +864,33 @@
     "callouts": {
       "type": "Typ av faktaruta: {{type}}",
       "fold": "Fäll ihop faktarutan",
-      "unfold": "Fäll ut faktarutan"
+      "unfold": "Fäll ut faktarutan",
+      "types": {
+        "note": "Anteckning",
+        "abstract": "Sammanfattning",
+        "info": "Info",
+        "todo": "Att göra",
+        "tip": "Tips",
+        "success": "Framgång",
+        "question": "Fråga",
+        "warning": "Varning",
+        "failure": "Misslyckande",
+        "danger": "Fara",
+        "bug": "Bugg",
+        "example": "Exempel",
+        "quote": "Citat",
+        "theorem": "Sats",
+        "lemma": "Lemma",
+        "corollary": "Korollarium",
+        "proposition": "Proposition",
+        "definition": "Definition",
+        "proof": "Bevis",
+        "hypothesis": "Hypotes",
+        "assumption": "Antagande",
+        "result": "Resultat",
+        "method": "Metod",
+        "remark": "Anmärkning"
+      }
     },
     "links": {
       "loadingHeadings": "Läser in rubriker",
@@ -752,6 +953,209 @@
       }
     }
   },
+  "fields": {
+    "today": "I dag",
+    "tomorrow": "I morgon",
+    "yesterday": "I går",
+    "chip": "{{key}}: {{value}}",
+    "empty": "inget värde",
+    "edit": "Ändra eller ta bort",
+    "keys": {
+      "due": "Förfaller",
+      "scheduled": "Planerad",
+      "priority": "Prioritet",
+      "start": "Börjar",
+      "created": "Skapad",
+      "completed": "Klar",
+      "date": "Datum",
+      "cancelled": "Avbruten"
+    },
+    "priorities": {
+      "highest": "Högsta",
+      "high": "Hög",
+      "medium": "Medel",
+      "low": "Låg",
+      "lowest": "Lägsta"
+    },
+    "editor": {
+      "label": "Redigera {{key}}",
+      "key": "Namn",
+      "value": "Värde",
+      "brackets": "Använd hakparenteser bara för en länk, som [[Note]].",
+      "save": "Spara",
+      "remove": "Ta bort"
+    }
+  },
+  "at": {
+    "menu": "Infoga ett datum, ett fält, en tagg eller en anteckning",
+    "groups": {
+      "dates": "Datum",
+      "due": "Förfallodatum",
+      "fields": "Uppgiftsfält",
+      "tags": "Taggar",
+      "notes": "Anteckningar"
+    },
+    "today": "I dag",
+    "tomorrow": "I morgon",
+    "yesterday": "I går",
+    "next": "Nästa {{weekday}}",
+    "pick": "Välj ett datum",
+    "pickerLabel": "Välj ett datum",
+    "due": "Förfallodatum",
+    "scheduled": "Planerat datum",
+    "priority": "Prioritet",
+    "priorityValue": "Prioritet: {{priority}}",
+    "custom": "Eget fält",
+    "addField": "Lägg till fältet \"{{key}}\"",
+    "setField": "Sätt {{key}} till \"{{value}}\"",
+    "typeValue": "Skriv ett värde för {{key}} och tryck sedan på Enter."
+  },
+  "tasks": {
+    "filters": "Uppgiftsfilter",
+    "loading": "Läser dina uppgifter",
+    "failed": "Det gick inte att läsa dina uppgifter.",
+    "empty": "Inga uppgifter än. Börja en rad med - [ ] i valfri anteckning så visas den här.",
+    "noMatches": "Inga uppgifter matchar filtren.",
+    "clear": "Rensa filter",
+    "list": "Uppgifter",
+    "count_one": "{{count}} uppgift",
+    "count_other": "{{count}} uppgifter",
+    "complete": "Markera \"{{text}}\" som klar",
+    "reopen": "Markera \"{{text}}\" som inte klar",
+    "openNote": "Öppna {{title}}",
+    "toggleFailed": "Det gick inte att uppdatera uppgiften.",
+    "moved": "Uppgiften har ändrats i sin anteckning. Öppna anteckningen för att uppdatera den.",
+    "state": {
+      "label": "Visa",
+      "open": "Öppna",
+      "done": "Klara",
+      "all": "Öppna och klara"
+    },
+    "due": {
+      "label": "Förfaller",
+      "any": "Alla förfallodatum",
+      "overdue": "Försenade",
+      "today": "Förfaller i dag",
+      "week": "Förfaller inom 7 dagar",
+      "none": "Inget förfallodatum"
+    },
+    "priority": {
+      "label": "Prioritet",
+      "any": "Alla prioriteter",
+      "high": "Hög prioritet",
+      "medium": "Medelhög prioritet",
+      "low": "Låg prioritet",
+      "none": "Ingen prioritet"
+    },
+    "tag": {
+      "label": "Tagg",
+      "any": "Alla taggar"
+    },
+    "project": {
+      "label": "Projekt",
+      "any": "Alla projekt"
+    },
+    "sort": {
+      "label": "Sortera uppgifter efter",
+      "due": "Förfallodatum",
+      "priority": "Prioritet"
+    }
+  },
+  "attachments": {
+    "filters": "Bilagefilter",
+    "loading": "Letar efter bilagor",
+    "failed": "Det gick inte att läsa dina bilagor.",
+    "empty": "Inga bilagor än. Släpp en bild eller en fil i en anteckning så visas den här.",
+    "noMatches": "Inga bilagor matchar filtren.",
+    "clear": "Rensa filter",
+    "list": "Bilagor",
+    "count_one": "{{count}} fil",
+    "count_other": "{{count}} filer",
+    "openNote": "Öppna {{title}}",
+    "copyLink": "Kopiera länk",
+    "linkCopied": "Kopierade en länk till \"{{name}}\".",
+    "copyFailed": "Det gick inte att kopiera länken till \"{{name}}\".",
+    "unused": "Används inte",
+    "type": {
+      "label": "Typ",
+      "all": "Alla typer",
+      "image": "Bilder",
+      "audio": "Ljud",
+      "video": "Video",
+      "pdf": "PDF:er",
+      "other": "Övrigt"
+    },
+    "use": {
+      "label": "Användning",
+      "all": "Alla filer",
+      "unused": "Används inte"
+    }
+  },
+  "info": {
+    "title": "Info",
+    "show": "Anteckningsinfo",
+    "noNote": "Öppna en anteckning för att se dess info.",
+    "details": "Detaljer om anteckningen",
+    "created": "Skapad",
+    "updated": "Uppdaterad",
+    "words": "Ord",
+    "characters": "Tecken",
+    "lines": "Rader",
+    "readingTime": "Lästid",
+    "underMinute": "under en minut",
+    "noProperties": "Inga egenskaper",
+    "noBacklinks": "Inga anteckningar länkar hit",
+    "noMentions": "Inga andra anteckningar nämner den",
+    "noReferences": "Inga källhänvisningar i den här anteckningen",
+    "noDeadLinks": "Inga döda länkar",
+    "noAttachments": "Inga bifogade filer"
+  },
+  "calendar": {
+    "title": "Kalender",
+    "week": "Vecka",
+    "hasNote": "har en daglig anteckning",
+    "due_one": "{{count}} uppgift förfaller",
+    "due_other": "{{count}} uppgifter förfaller",
+    "openWeek": "Öppna veckoanteckningen för vecka {{week}}",
+    "openMonthNote": "Öppna månadsanteckning",
+    "createMonthNote": "Skapa månadsanteckning",
+    "today": "I dag",
+    "failed": {
+      "weekly": "Det gick inte att öppna veckoanteckningen.",
+      "monthly": "Det gick inte att öppna månadsanteckningen."
+    }
+  },
+  "periodic": {
+    "title": "Dagliga anteckningar, veckoanteckningar och månadsanteckningar",
+    "daily": {
+      "label": "Dagliga anteckningar",
+      "description": "Dagens anteckning och dagarna i kalendern i sidofältet."
+    },
+    "weekly": {
+      "label": "Veckoanteckningar",
+      "description": "Veckonumren i kalendern i sidofältet."
+    },
+    "monthly": {
+      "label": "Månadsanteckningar",
+      "description": "Månadsnamnet högst upp i kalendern i sidofältet."
+    },
+    "weekStart": {
+      "label": "Veckan börjar på",
+      "description": "Den första kolumnen i kalendern i sidofältet. Veckonummer räknas från den här dagen, och med måndag blir de ISO-veckonummer.",
+      "locale": "Regionens standard ({{day}})",
+      "monday": "Måndag",
+      "sunday": "Söndag",
+      "saturday": "Lördag"
+    },
+    "format": "Titelformat",
+    "preview": "Exempel: {{title}}",
+    "invalidFormat": "Lägg till en datumdel, till exempel YYYY eller WW.",
+    "template": "Mall",
+    "savedTemplate": "Din sparade mall",
+    "tag": "Tagg",
+    "noTag": "Ingen tagg",
+    "formatHelp": "Titelformat använder YYYY för året, MM för månaden, MMMM för dess namn, DD för dagen, dddd för veckodagen, WW för veckonumret och GGGG för året som veckan hör till. Text inom hakparenteser, som [W], blir kvar som den är skriven. Anteckningar som du redan har behåller sina titlar, så ändra ett format innan du börjar använda det."
+  },
   "live": {
     "share": "Dela",
     "shared": "Delad",
@@ -793,7 +1197,9 @@
     "outline": {
       "title": "Disposition",
       "empty": "Anteckningen har inga rubriker",
+      "emptyDetail": "Börja en rad med # för att lägga till en rubrik.",
       "noNote": "Öppna en anteckning för att se dess disposition",
+      "noNoteDetail": "Dispositionen följer anteckningen du redigerar.",
       "levels": "Rubriknivåer",
       "allLevels": "Alla nivåer",
       "upTo": "Upp till H{{level}}",
@@ -801,7 +1207,8 @@
       "expand": "Fäll ut {{title}}"
     },
     "linksFailed": "Det gick inte att läsa länkarna mellan anteckningarna.",
-    "tagsFailed": "Det gick inte att läsa taggarna."
+    "tagsFailed": "Det gick inte att läsa taggarna.",
+    "loading": "Läser länkarna mellan anteckningar"
   },
   "vault": {
     "import": {
@@ -821,6 +1228,9 @@
       "seenDescription_one": "Den {{date}} lade den till {{count}} anteckning. En ny import lägger till nya kopior och lämnar de tidigare anteckningarna som de är.",
       "seenDescription_other": "Den {{date}} lade den till {{count}} anteckningar. En ny import lägger till nya kopior och lämnar de tidigare anteckningarna som de är.",
       "again": "Importera igen som nya anteckningar",
+      "largeTitle": "Mappen innehåller {{total}} anteckningar",
+      "largeDescription": "Att importera alla kan ta en stund, och varje anteckning blir en egen anteckning i ditt bibliotek. Du kan stoppa importen när som helst.",
+      "largeConfirm": "Importera alla",
       "doneTitle": "Importen är klar",
       "notes_one": "{{count}} anteckning importerad",
       "notes_other": "{{count}} anteckningar importerade",
@@ -849,6 +1259,8 @@
         "done_other": "Exporterade {{count}} anteckningar",
         "skipped_one": "{{count}} bilaga kunde inte exporteras",
         "skipped_other": "{{count}} bilagor kunde inte exporteras",
+        "paperLinks_one": "{{count}} länk till en artikel blev vanlig text",
+        "paperLinks_other": "{{count}} länkar till artiklar blev vanlig text",
         "doneSkipped": "{{done}}. {{skipped}}.",
         "showFolder": "Visa mappen",
         "failed": "Det gick inte att exportera anteckningarna."
@@ -876,8 +1288,10 @@
       "empty": "Inga taggar än. Lägg till #taggar i en anteckning, eller taggar i dess egenskaper.",
       "filter": "Visa anteckningar taggade med {{tag}}",
       "clear": "Sluta filtrera efter {{tag}}",
-      "expand": "Visa taggar under {{tag}}",
-      "collapse": "Dölj taggar under {{tag}}"
+      "search": "Filtrera taggar",
+      "noMatch": "Inga taggar matchar \"{{query}}\".",
+      "showAll": "Visa alla {{total}}",
+      "showFewer": "Visa färre"
     },
     "switcher": {
       "open": "Gå till anteckning",
@@ -895,7 +1309,9 @@
     },
     "daily": {
       "open": "Dagens anteckning",
-      "failed": "Det gick inte att öppna dagens anteckning."
+      "failed": "Det gick inte att öppna dagens anteckning.",
+      "previous": "Föregående dagliga anteckning: {{date}}",
+      "next": "Nästa dagliga anteckning: {{date}}"
     },
     "templates": {
       "open": "Ny från mall",
@@ -919,7 +1335,9 @@
         "proposal": "Forskningsplan",
         "proof": "Bevis eller härledning",
         "dataAnalysis": "Rapport om dataanalys",
-        "interview": "Intervjuanteckningar"
+        "interview": "Intervjuanteckningar",
+        "screeningLog": "Screeninglogg",
+        "labNotebook": "Post i labbjournalen"
       },
       "descriptions": {
         "daily": "En plan och en löpande logg för en dag",
@@ -932,7 +1350,9 @@
         "proposal": "Syften, metoder och en tidsplan för ett anslag eller en avhandling",
         "proof": "Ett resultat, idén bakom det och hela argumentet",
         "dataAnalysis": "Vad du körde på vilka data och vad det visade",
-        "interview": "Svar, citat och teman från ett samtal"
+        "interview": "Svar, citat och teman från ett samtal",
+        "screeningLog": "Granskningsfrågan, kriterierna och antalet i varje screeningsteg",
+        "labNotebook": "En dag vid labbänken: syfte, prover, utförande, observationer och underskrift"
       },
       "bodies": {
         "daily": "**{{weekday}}**\n\n## Plan\n- [ ] Viktigaste uppgiften\n- [ ] Andra uppgiften\n\n## Logg\n- {{time}} Dagen började\n\n## Anteckningar\n\n## Klart i dag\n- Inget än\n\n## I morgon\n- [ ] Det första att ta tag i",
@@ -943,9 +1363,11 @@
         "labProtocol": "> [!warning] Säkerhet\n> Kontrollera risker, skyddsutrustning och avfallshantering innan du börjar.\n\n## Syfte\nVad protokollet ger och när det ska användas.\n\n## Material\n| Artikel | Mängd | Leverantör eller katalognummer | Anteckningar |\n| --- | --- | --- | --- |\n| | | | |\n\n## Utrustning\n- Instrument och inställningar\n\n## Utförande\n1. Förbered\n2. Kör\n3. Städa\n\n## Kontroller\n- [ ] Kontroller förberedda\n- [ ] Inställningar noterade\n- [ ] Prover märkta med datum och körning\n\n## Felsökning\n| Problem | Trolig orsak | Åtgärd |\n| --- | --- | --- |\n| | | |\n\n## Versionshistorik\n| Version | Datum | Ändring |\n| --- | --- | --- |\n| 1 | {{date}} | Första versionen |",
         "weeklyLog": "## Mål för veckan\n- [ ] Första målet\n- [ ] Andra målet\n- [ ] Tredje målet\n\n## Framsteg\n| Dag | Utfört arbete | Anteckningar |\n| --- | --- | --- |\n| Måndag | | |\n| Tisdag | | |\n| Onsdag | | |\n| Torsdag | | |\n| Fredag | | |\n\n## Resultat och figurer\n- Vad veckan gav\n\n## Hinder\n> [!warning] Behöver hjälp\n> Vad som har fastnat, och vem som kan lösa det.\n\n## Läsning\n- Artiklar som lästs den här veckan\n\n## Nästa vecka\n- [ ] Första målet för nästa vecka",
         "proposal": "> [!abstract] Sammanfattning\n> I tre meningar: problemet, angreppssättet och det förväntade resultatet.\n\n## Bakgrund och motivering\nVarför det här är viktigt nu, och vad som redan är känt.\n\n## Forskningsfrågor\n1. Första frågan\n\n## Syften\n| Syfte | Angreppssätt | Förväntat utfall |\n| --- | --- | --- |\n| 1 | | |\n\n## Metoder\nDesign, data, analys och hur framgång mäts.\n\n## Tidsplan\n| Fas | Månader | Milstolpe |\n| --- | --- | --- |\n| | | |\n\n## Risker och åtgärder\n| Risk | Sannolikhet | Åtgärd |\n| --- | --- | --- |\n| | | |\n\n## Resurser och budget\n\n## Genomslag\nVem som har nytta av resultaten och hur de ska spridas.\n\n## Referenser",
-        "proof": "> [!note] Påstående\n> Resultatet, exakt formulerat med alla antaganden.\n\n## Definitioner och beteckningar\n- Symboler och vad de betyder\n\n## Idé\nHuvudidén med enkla ord, före detaljerna.\n\n## Bevis\n**Steg 1.** Lägg upp argumentet.\n\n**Steg 2.** Genomför huvuduppskattningen.\n\n**Steg 3.** Dra slutsatsen.\n\n## Kontroller\n- [ ] Varje antagande används\n- [ ] Gränsfallen är täckta\n- [ ] Konstanter och gränser är redovisade\n\n## Kommentarer\nGeneraliseringar, motexempel och relaterade resultat.",
-        "dataAnalysis": "> [!info] Fråga\n> Beslutet som analysen ger underlag för.\n\n## Data\n| Fält | Värde |\n| --- | --- |\n| Källa | |\n| Version eller datum | |\n| Rader och kolumner | |\n| Exkluderingar | |\n\n## Metoder\n- Rensningssteg\n- Modell eller test, och varför\n- Kontrollerade antaganden\n\n## Resultat\n| Mått | Skattning | Intervall | Anteckningar |\n| --- | --- | --- | --- |\n| | | | |\n\n## Figurer\n- Figur och vad den visar\n\n## Tolkning\nVad resultaten betyder för frågan.\n\n## Begränsningar\n- Bias, saknade data och vad som skulle kunna ändra slutsatsen\n\n## Reproducerbarhet\n- [ ] Koden sparad och länkad\n- [ ] Slumpfrön noterade\n- [ ] Paketversioner antecknade",
-        "interview": "> [!warning] Samtycke och integritet\n> Bekräfta samtycke innan du spelar in, och använd en deltagarkod i stället för ett namn.\n\n## Sammanhang\n| Post | Värde |\n| --- | --- |\n| Deltagarkod | |\n| Roll | |\n| Längd | |\n| Inspelning | |\n\n## Frågor och svar\n### Fråga 1\n- Svar\n\n### Fråga 2\n- Svar\n\n## Citat\n> Ett citat värt att spara.\n\n## Teman\n- Tema och svar som stöder det\n\n## Uppföljning\n- [ ] Skicka ett tack\n- [ ] Transkribera och anonymisera"
+        "proof": "## Definitioner och beteckningar\n> [!definition] Beteckningar\n> Symbolerna du använder och vad var och en betyder.\n\n## Påstående\n> [!theorem] Huvudresultat\n> Resultatet, exakt formulerat med alla antaganden.\n\n## Idé\nHuvudidén med enkla ord, före detaljerna.\n\n## Lemman\n> [!lemma] Lemma 1\n> Ett mindre påstående som huvudbeviset behöver.\n\n> [!proof] Bevis av Lemma 1\n> Varför lemmat gäller.\n\n## Bevis\n> [!proof] Bevis av huvudresultatet\n> **Steg 1.** Lägg upp argumentet.\n>\n> **Steg 2.** Genomför huvuduppskattningen med hjälp av Lemma 1.\n>\n> **Steg 3.** Dra slutsatsen.\n\n## Kontroller\n- [ ] Varje antagande används\n- [ ] Gränsfallen är täckta\n- [ ] Konstanter och gränser är redovisade\n\n## Kommentarer\nGeneraliseringar, motexempel och relaterade resultat.",
+        "dataAnalysis": "> [!info] Fråga\n> Beslutet som analysen ger underlag för.\n\n## Data\n| Fält | Värde |\n| --- | --- |\n| Källa | |\n| Version eller datum | |\n| Rader och kolumner | |\n| Exkluderingar | |\n\n## Metoder\n- Rensningssteg\n- Modell eller test, och varför\n- Kontrollerade antaganden\n\n## Resultat\nTabellen nedan är ett block i formatet CSV. Ersätt exempelraderna med dina resultat.\n\n```csv\nMått,Skattning,Nedre gräns 95 %,Övre gräns 95 %,n\nMedelvärde grupp A,0,0,0,0\nMedelvärde grupp B,0,0,0,0\nSkillnad,0,0,0,0\n```\n\n## Figurer\n- Figur och vad den visar\n\n## Tolkning\nVad resultaten betyder för frågan.\n\n## Begränsningar\n- Snedvridning, saknade data och vad som kan ändra slutsatsen\n\n## Reproducerbarhet\n- [ ] Kod sparad och länkad\n- [ ] Slumpfrön noterade\n- [ ] Paketversioner noterade",
+        "interview": "> [!warning] Samtycke och integritet\n> Bekräfta samtycke innan du spelar in, och använd en deltagarkod i stället för ett namn.\n\n## Sammanhang\n| Post | Värde |\n| --- | --- |\n| Deltagarkod | |\n| Roll | |\n| Längd | |\n| Inspelning | |\n\n## Frågor och svar\n### Fråga 1\n- Svar\n\n### Fråga 2\n- Svar\n\n## Citat\n> Ett citat värt att spara.\n\n## Teman\n- Tema och svar som stöder det\n\n## Uppföljning\n- [ ] Skicka ett tack\n- [ ] Transkribera och anonymisera",
+        "screeningLog": "> [!question] Granskningsfråga (PICO)\n> - **Population:** vem eller vad som studeras\n> - **Intervention eller exponering:** vad som testas\n> - **Jämförelse:** vad den jämförs med\n> - **Utfall:** vad som mäts\n\n## Inklusionskriterier\n- Studiedesign\n- Population och miljö\n- Språk och år\n\n## Exklusionskriterier\n- Orsak och hur du känner igen den\n\n## Sökningar\n| Datum | Databas | Sökfråga | Poster |\n| --- | --- | --- | --- |\n| {{date}} | | | |\n\n## Antal i varje steg\n| Steg | Poster | Borttagna | Huvudskäl |\n| --- | --- | --- | --- |\n| Hittade i sökningar | | | |\n| Efter borttagning av dubbletter | | | |\n| Titlar och sammanfattningar screenade | | | |\n| Fulltexter bedömda | | | |\n| Inkluderade i granskningen | | | |\n\n## Exkluderade på fulltextnivå\n| Artikel | Orsak |\n| --- | --- |\n| | |\n\n## Meningsskiljaktigheter\n- Artikel, varje granskares beslut och hur det avgjordes\n\n## Nästa steg\n- [ ] Screena nästa omgång\n- [ ] Kontrollera att antalen stämmer",
+        "labNotebook": "**{{weekday}}, {{date}}**\n\n## Syfte\nVad du tänkte göra i dag, och varför.\n\n## Material\n| Material | Prov-ID | Lot eller batch | Mängd |\n| --- | --- | --- | --- |\n| | | | |\n\n## Utförande\n1. Vad du gjorde, i ordning, med tider och inställningar\n2. Varje avvikelse från protokollet, och varför\n\n## Observationer\n- {{time}} Vad du såg\n\n## Resultat\n- Mätvärden, och var rådata sparas\n\n## Nästa steg\n- [ ] Uppföljning till nästa tillfälle\n\n## Underskrift\n**Undertecknad av:** namn, {{date}}\n\n**Bevittnad av:** namn, datum"
       }
     },
     "mentions": {
@@ -984,8 +1406,8 @@
     "actionHint": "Arbetar med den här anteckningen",
     "agentCanEdit": "Den här agenten kan ändra filer i det länkade projektet.",
     "allowWritesLabel": "Låt agenten ändra filer",
-    "allowWritesAsk": "{{agent}} har inget skrivskyddat läge, så den kan ändra filer i {{project}}. Vill du skicka meddelandet ändå?",
-    "allowWrites": "Tillåt i den här chatten",
+    "allowWritesAsk": "{{agent}} har inget skrivskyddat läge, så den kan ändra filer i {{project}}. Oleafly kan inte lägga till ett åt den. Vill du skicka meddelandet ändå?",
+    "allowWrites": "Skicka ändå",
     "dontSend": "Skicka inte",
     "viewOnly": "Du kan bara visa den här anteckningen, så assistenten kan inte ändra den."
   },
@@ -1002,6 +1424,7 @@
     "template": "Det gick inte att ändra mallinställningen för \"{{name}}\"."
   },
   "noteTab": {
+    "loading": "Öppnar anteckningen",
     "projectNote": "Projektanteckning",
     "sharedProject": "Alla i projektet kan se och redigera den",
     "localProject": "Sparas med projektets filer",
@@ -1013,5 +1436,248 @@
     "copyToMine": "Kopiera till mina anteckningar",
     "missing": "Anteckningen är inte tillgänglig längre. Den kan ha flyttats eller raderats.",
     "writeRefused": "Det gick inte att spara anteckningen. Projektet är skrivskyddat just nu."
+  },
+  "appearance": {
+    "notes": {
+      "sectionName": "Anteckningarnas utseende",
+      "resetAriaLabel": "Återställ {{setting}} till standard",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Typsnittsstil",
+        "description": "Välj typsnittsstil för anteckningstext.",
+        "options": {
+          "sans": "Sans serif",
+          "serif": "Serif",
+          "mono": "Fast bredd"
+        }
+      },
+      "font": {
+        "label": "Typsnitt för anteckningar",
+        "description": "Välj valfritt installerat typsnitt för anteckningstext. Lämna tomt för att använda inställningen Typsnittsstil."
+      },
+      "fontSize": {
+        "label": "Textstorlek i anteckningar",
+        "description": "Ange storleken på anteckningstexten.",
+        "custom": "Anpassad",
+        "customLabel": "Anpassad textstorlek i anteckningar i pixlar"
+      },
+      "lineHeight": {
+        "label": "Radhöjd i anteckningar",
+        "description": "Ange avståndet mellan raderna i anteckningstexten.",
+        "customLabel": "Anpassad radhöjd i anteckningar"
+      },
+      "paragraphSpacing": {
+        "label": "Styckeavstånd",
+        "description": "Ange avståndet mellan stycken, listor och andra block.",
+        "options": {
+          "compact": "Kompakt",
+          "normal": "Normal",
+          "relaxed": "Luftig",
+          "spacious": "Rymlig"
+        }
+      },
+      "headings": {
+        "title": "Rubriker och titel"
+      },
+      "headingTypeface": {
+        "label": "Typsnittsstil för rubriker",
+        "description": "Välj typsnittsstil för rubriker och anteckningens titel.",
+        "options": {
+          "text": "Samma som texten"
+        }
+      },
+      "headingFont": {
+        "label": "Typsnitt för rubriker",
+        "description": "Välj ett installerat typsnitt för rubriker och anteckningens titel. Lämna tomt för att använda inställningen Typsnittsstil för rubriker."
+      },
+      "headingSize": {
+        "label": "Rubrikstorlek",
+        "description": "Ange hur stora rubrikerna är jämfört med texten.",
+        "options": {
+          "small": "Mindre",
+          "normal": "Normal",
+          "large": "Större"
+        }
+      },
+      "titleSize": {
+        "label": "Titelstorlek",
+        "description": "Ange storleken på titeln högst upp i varje anteckning."
+      },
+      "layout": {
+        "title": "Layout"
+      },
+      "width": {
+        "label": "Anteckningsbredd",
+        "description": "Hur breda anteckningar är när de öppnas. Breddmenyn i en anteckning ändrar också detta.",
+        "options": {
+          "standard": "Standard",
+          "wide": "Bred",
+          "full": "Full bredd"
+        }
+      },
+      "info": {
+        "label": "Anteckningsinfo",
+        "description": "Var en antecknings egenskaper och länkar visas. Med Sidopanel visas de i panelen Info, tillsammans med anteckningens statistik och bilagor. Med I texten stannar de kvar på sidan.",
+        "options": {
+          "side": "Sidopanel",
+          "inline": "I texten"
+        }
+      },
+      "taskBox": {
+        "label": "Kryssrutor för uppgifter",
+        "description": "Formen på rutorna i uppgiftslistor.",
+        "options": {
+          "square": "Fyrkantig",
+          "round": "Rund"
+        }
+      },
+      "wordCount": {
+        "label": "Visa antal ord",
+        "description": "Visa antalet ord i en anteckning i dess verktygsfält."
+      },
+      "spellcheck": {
+        "label": "Kontrollera stavningen i anteckningar",
+        "description": "Stryk under felstavade ord medan du skriver en anteckning."
+      },
+      "replacements": {
+        "label": "Ersätt medan du skriver",
+        "description": "Byter ut par som -> mot → medan du skriver. Kod och matematik blir kvar som du skrev dem, och Backspace direkt efter ett byte återställer din text.",
+        "list": "Textersättningar",
+        "type": "Skriv",
+        "becomes": "Blir",
+        "add": "Lägg till",
+        "remove": "Ta bort {{from}}",
+        "removeTooltip": "Ta bort",
+        "empty": "Inga par än. Lägg till ett nedan.",
+        "full": "Du kan ha upp till {{limit}} par. Ta bort ett för att lägga till ett nytt."
+      },
+      "keepUndo": {
+        "label": "Behåll ångra efter stängning",
+        "description": "Ångra fungerar fortfarande i en anteckning efter att du har stängt den eller avslutat appen. Historiken stannar på den här datorn, och om du stänger av det här raderas den."
+      },
+      "code": {
+        "title": "Kod"
+      },
+      "drawings": {
+        "title": "Ritningar med LaTeX"
+      },
+      "tikzPreamble": {
+        "label": "Ingress för TikZ",
+        "description": "Rader som \\usetikzlibrary{positioning} som läggs först i ingressen i varje block med TikZ och CircuiTikZ."
+      },
+      "codeFont": {
+        "label": "Typsnitt för kod",
+        "description": "Välj ett installerat typsnitt för kodblock och kod i löptext."
+      },
+      "codeTheme": {
+        "label": "Färger i kodblock",
+        "description": "Välj syntaxfärger för kodblock i anteckningar.",
+        "options": {
+          "editor": "Samma som redigeraren"
+        }
+      },
+      "colors": {
+        "title": "Färger"
+      },
+      "accent": {
+        "label": "Accentfärg för anteckningar",
+        "description": "Används för länkar, taggar och uppgiftsrutor i anteckningar.",
+        "matchApp": "Följ appen",
+        "customAriaLabel": "Välj en anpassad accentfärg för anteckningar"
+      },
+      "callouts": {
+        "label": "Stil för faktarutor",
+        "description": "Hur faktarutor ser ut i anteckningar.",
+        "options": {
+          "tinted": "Tonad",
+          "filled": "Fylld",
+          "outlined": "Kantlinje",
+          "bar": "Sidolist"
+        }
+      },
+      "fieldStyle": {
+        "label": "Etiketter för datum och fält",
+        "description": "Hur datum och fält som förfallodatum eller prioritet ser ut i anteckningar.",
+        "options": {
+          "tint": "Färgton",
+          "outline": "Kantlinje",
+          "underline": "Understrykning"
+        }
+      },
+      "remoteImages": {
+        "title": "Bilder från webben",
+        "description": "Anteckningar och assistentens svar läser in bilder från de här webbplatserna utan att fråga.",
+        "empty": "Anteckningar och assistentens svar frågar innan de läser in en bild från webben. Webbplatser som du alltid tillåter visas här.",
+        "remove": "Ta bort {{host}}"
+      }
+    }
+  },
+  "notesPreview": {
+    "label": "Förhandsvisning av en anteckning med de här inställningarna",
+    "title": "Fältanteckningar",
+    "heading": "Morgoninventering",
+    "paragraph": "Lätt regn fram till nio, sedan klart väder över norra åsen. Marken var fortfarande fuktig vid lunch.",
+    "links": "Se <note>Provtagningsmetod</note> för alla steg, eller bläddra i <tag>#fältarbete</tag>.",
+    "highlight": "Plantorna fördubblade sin höjd på en vecka.",
+    "calloutTitle": "Nästa besök",
+    "calloutBody": "Kontrollera markgivarna innan du tar nya prover.",
+    "taskDone": "Märk proverna",
+    "task": "Ladda upp fotona",
+    "taskLate": "Skicka markrapporten"
+  },
+  "highlight": {
+    "colors": {
+      "yellow": "Gul",
+      "orange": "Orange",
+      "red": "Röd",
+      "pink": "Rosa",
+      "purple": "Lila",
+      "blue": "Blå",
+      "green": "Grön"
+    },
+    "remove": "Ta bort markering"
+  },
+  "quickCapture": {
+    "title": "Snabbanteckning",
+    "untitled": "Namnlös",
+    "placeholder": "Börja skriva…",
+    "field": "Text att spara",
+    "characters_one": "{{count}} tecken",
+    "characters_other": "{{count}} tecken",
+    "failed": "Det gick inte att spara. Din text finns kvar, så du kan försöka igen.",
+    "actions": {
+      "label": "Åtgärder",
+      "saveNew": "Spara som ny anteckning",
+      "saveToday": "Lägg till i dagens anteckning",
+      "copy": "Kopiera som Markdown",
+      "discard": "Släng utkastet"
+    },
+    "openNotes": "Öppna anteckningar",
+    "newNote": "Ny anteckning",
+    "format": "Visa formatering",
+    "closeFormat": "Dölj formatering"
+  },
+  "starter": {
+    "blocksGallery": {
+      "title": "Blockgalleri",
+      "intro": "Alla block som en anteckning kan innehålla. Klicka på {{source}} i ett block för att se och redigera det som ritar det, och skriv {{slash}} på en tom rad för att infoga ett nytt.",
+      "charts": "Diagram",
+      "functionPlots": "Funktionsgrafer",
+      "tables": "Tabeller",
+      "csvTable": "Ett csv-block går att sortera och filtrera, och har en summeringsrad:",
+      "markdownTable": "Vanliga Markdown-tabeller fungerar också:",
+      "math": "Matematik och kemi",
+      "typst": "Typst",
+      "diagrams": "Scheman",
+      "svg": "SVG",
+      "html": "HTML, klicka på {{run}}",
+      "react": "React, klicka på {{run}}",
+      "structures": "Kemiska strukturer",
+      "molecule": "3D-molekyl",
+      "sequences": "Sekvenser",
+      "code": "Kod"
+    }
   }
 }

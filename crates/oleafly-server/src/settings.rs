@@ -15,6 +15,7 @@ pub fn defaults() -> RuntimeSettings {
         email_notifications: true,
         comments_allowed: true,
         email_link_sign_in: false,
+        public_notes_allowed: false,
     }
 }
 
@@ -45,6 +46,7 @@ pub fn patch(
         ("email_notifications", patch.email_notifications),
         ("comments_allowed", patch.comments_allowed),
         ("email_link_sign_in", patch.email_link_sign_in),
+        ("public_notes_allowed", patch.public_notes_allowed),
     ];
     for (key, value) in changes {
         if let Some(value) = value {
@@ -66,7 +68,7 @@ pub fn differences(before: &RuntimeSettings, after: &RuntimeSettings) -> Map<Str
         .collect()
 }
 
-fn pairs(settings: &RuntimeSettings) -> [(&'static str, bool); 9] {
+fn pairs(settings: &RuntimeSettings) -> [(&'static str, bool); 10] {
     [
         ("guests_enabled", settings.guests_enabled),
         ("guest_approval_required", settings.guest_approval_required),
@@ -77,6 +79,7 @@ fn pairs(settings: &RuntimeSettings) -> [(&'static str, bool); 9] {
         ("email_notifications", settings.email_notifications),
         ("comments_allowed", settings.comments_allowed),
         ("email_link_sign_in", settings.email_link_sign_in),
+        ("public_notes_allowed", settings.public_notes_allowed),
     ]
 }
 
@@ -91,6 +94,7 @@ fn set_field(settings: &mut RuntimeSettings, key: &str, value: bool) {
         "email_notifications" => settings.email_notifications = value,
         "comments_allowed" => settings.comments_allowed = value,
         "email_link_sign_in" => settings.email_link_sign_in = value,
+        "public_notes_allowed" => settings.public_notes_allowed = value,
         _ => {}
     }
 }
@@ -114,6 +118,7 @@ mod tests {
             email_notifications: None,
             comments_allowed,
             email_link_sign_in: None,
+            public_notes_allowed: None,
         }
     }
 
@@ -158,6 +163,7 @@ mod tests {
         assert!(loaded.access_logs_allowed);
         assert!(loaded.email_notifications);
         assert!(loaded.comments_allowed);
+        assert!(!loaded.public_notes_allowed);
     }
 
     #[tokio::test]

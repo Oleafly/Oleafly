@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "搜尋模式：{{mode}}",
+    "heading": "搜尋模式",
+    "ranked": {
+      "label": "最佳符合",
+      "description": "依符合程度排列結果。字詞可以出現在任何位置。"
+    },
+    "exact": {
+      "label": "精確文字",
+      "description": "尋找完全相同的字元。包含大寫字母時會區分大小寫。"
+    },
+    "regex": {
+      "label": "規則運算式",
+      "description": "使用 ripgrep 的模式語法。如果模式中有空格或括號，請用引號括起來。"
+    },
+    "fuzzy": {
+      "label": "模糊",
+      "description": "像 fzf 一樣，比對依序包含你輸入字母的名稱。也支援 'exact、^start、end$ 和 !leave-out。"
+    },
+    "invalid": "這個模式無效：{{error}}"
+  },
   "querySearch": {
     "suggestions": "搜尋建議",
     "exclude": "排除",
@@ -76,7 +97,8 @@
       "invalidValue": "{{value}} 不是 {{key}} 的有效值",
       "invalidDate": "{{value}} 不是日期。請試試 2026-10-02 或 @today-7d",
       "invalidNumber": "{{value}} 不是數字",
-      "sortNegated": "{{key}} 無法排除"
+      "sortNegated": "{{key}} 無法排除",
+      "tooManyBranches": "這個搜尋的 OR 組合太多，可能會缺少部分結果"
     }
   },
   "avatar": {

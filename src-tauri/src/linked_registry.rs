@@ -468,7 +468,7 @@ fn write_record(directory: &Path, record: &LinkRecord) -> Result<(), String> {
         .map_err(|error| format!("could not encode folder link: {error}"))?;
     let path = directory.join(LINK_FILE);
     let written = crate::sandbox::atomic_write(&path, &bytes);
-    crate::note_index::invalidate();
+    crate::note_index::relocate();
     written?;
     crate::fsperm::harden_file(&path);
     Ok(())

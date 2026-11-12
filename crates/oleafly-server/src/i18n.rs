@@ -68,6 +68,8 @@ keys! {
     LandingOpen => "landing.open",
     LandingGet => "landing.get",
     LandingOpenBrowser => "landing.open_browser",
+    PublishedGoneTitle => "published.gone_title",
+    PublishedGoneBody => "published.gone_body",
     WebSignInBody => "web.sign_in_body",
     WebTryAgain => "web.try_again",
     WebOtherBrowser => "web.other_browser",

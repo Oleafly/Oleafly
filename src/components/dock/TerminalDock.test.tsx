@@ -735,7 +735,6 @@ describe("TerminalDock tab strip", () => {
     dragTab(0, 400);
     const drop = strip().querySelector<HTMLElement>("[data-reorder-drop]");
     expect(drop).toHaveAttribute("data-reorder-drop", "2");
-    expect(drop).toHaveClass("rounded-md", "border-primary/60", "bg-primary/10");
     expect(drop?.style.left).toBe("249px");
     fireEvent.pointerUp(window);
     fireEvent.click(tabs()[2]);
@@ -780,8 +779,20 @@ describe("TerminalDock tab strip", () => {
     fireEvent.pointerMove(window, { clientX: 2, clientY: 16 });
     expect(strip().querySelector("[data-reorder-drop]")).toBeNull();
     fireEvent.pointerUp(window);
+    fireEvent.keyDown(input, { key: "ArrowLeft", altKey: true });
     fireEvent.keyDown(input, { key: "Escape" });
     expect(titles()).toEqual(["Terminal 1", "Terminal 2"]);
+  });
+
+  it("moves the focused tab with Alt and the arrow keys", () => {
+    render(<TerminalDock projectId="project-1" visible />);
+    fireEvent.click(screen.getByLabelText("New terminal"));
+    tabs()[0].focus();
+
+    fireEvent.keyDown(tabs()[0], { key: "ArrowRight", altKey: true });
+
+    expect(titles()).toEqual(["Terminal 2", "Terminal 1"]);
+    expect(tabs()[1]).toHaveFocus();
   });
 
   it("hides the terminal from the button at the end of the strip", () => {

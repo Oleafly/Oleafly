@@ -314,6 +314,7 @@
   },
   "mcp": {
     "deniedByRules": "approvals.toml の deny ルールにより拒否されました",
+    "createTodaySummary": "今日のノート「{{title}}」を作成",
     "openProjectSummary": "プロジェクト {{id}} を開く",
     "rulesUnreadable": "approvals.toml を読み込めなかったため拒否されました",
     "useToolSummary": "{{server}} の MCP サーバーの {{tool}} を使う"

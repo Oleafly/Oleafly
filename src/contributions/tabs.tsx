@@ -32,13 +32,13 @@ const ReferencesPanel = lazy(() =>
   })), { warm: true });
 
 const ResearchWorkspacePanel = lazy(() =>
-  import("@/components/research/ResearchWorkspacePanel").then((module) => ({ default: module.ResearchWorkspacePanel })), { warm: true });
+  import("@/components/research/ResearchWorkspacePanel").then((module) => ({ default: module.ResearchWorkspacePanel })), { warm: researchTasksEnabled });
 
 const ProjectNotesPanel = lazy(() =>
   import("@/components/notes/ProjectNotesPanel").then(async (module) => {
     await loadNamespace("notes");
     return { default: module.ProjectNotesPanel };
-  }), { warm: () => useSettingsStore.getState().notes });
+  }));
 
 export function registerRailTabs() {
   registerRailTab({

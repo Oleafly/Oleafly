@@ -54,6 +54,7 @@ describe("RuntimeSettingsTab", () => {
       "directory_visible",
       "directory_shows_email",
       "link_sharing_allowed",
+      "public_notes_allowed",
       "access_logs_allowed",
       "comments_allowed",
       "email_link_sign_in",
@@ -83,6 +84,19 @@ describe("RuntimeSettingsTab", () => {
     await user.click(emailSwitch);
     expect(mocks.collabAdminPatchSettings).toHaveBeenCalledWith(SERVER_ID, { email_link_sign_in: true });
     await waitFor(() => expect(toggle("email_link_sign_in")).toHaveAttribute("aria-checked", "true"));
+  });
+
+  it("lets an admin allow public note links, which start off", async () => {
+    mocks.collabAdminSettings.mockResolvedValue(runtimeSettings());
+    mocks.collabAdminPatchSettings.mockResolvedValue(runtimeSettings({ public_notes_allowed: true }));
+    const user = userEvent.setup();
+    render(<RuntimeSettingsTab serverId={SERVER_ID} actor="admin" />);
+    const publicNotes = await screen.findByRole("switch", { name: copy.publicNotesAllowed.label });
+    expect(publicNotes).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByText(copy.publicNotesAllowed.description)).toBeInTheDocument();
+    await user.click(publicNotes);
+    expect(mocks.collabAdminPatchSettings).toHaveBeenCalledWith(SERVER_ID, { public_notes_allowed: true });
+    await waitFor(() => expect(toggle("public_notes_allowed")).toHaveAttribute("aria-checked", "true"));
   });
 
   it("lets an admin allow guests and asks for approval only once guests are allowed", async () => {

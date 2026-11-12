@@ -3,6 +3,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   activate,
@@ -257,8 +258,8 @@ function groupElement(groupId: string): HTMLElement {
   return found;
 }
 
-function separators(): HTMLElement[] {
-  return screen.queryAllByRole("separator");
+function splitters(): HTMLElement[] {
+  return screen.queryAllByRole("slider");
 }
 
 function pointer(type: string, clientX: number, clientY: number) {
@@ -355,29 +356,15 @@ describe("Workspace rendering", () => {
     expect(renderView).toHaveBeenCalledTimes(2);
     expect(panel("a")).toHaveAttribute("data-shown", "true");
     expect(panel("b")).toHaveAttribute("data-shown", "false");
-    expect(panel("b")).toHaveClass("invisible", "[content-visibility:hidden]");
     expect(panel("c")).toHaveAttribute("data-shown", "true");
-    expect(panel("c")).not.toHaveClass("[content-visibility:hidden]");
     update(activate(twoGroups(), "b"));
     expect(screen.getByTestId("content-b")).toBeInTheDocument();
-    expect(panel("a")).toHaveClass("[content-visibility:hidden]");
+    expect(panel("a")).toHaveAttribute("data-shown", "false");
     update(twoGroups());
     expect(screen.getByTestId("content-b")).toBeInTheDocument();
-    expect(panel("b")).toHaveClass("[content-visibility:hidden]");
+    expect(panel("b")).toHaveAttribute("data-shown", "false");
     expect(panel("a").style).toMatchObject({ left: "0px", top: "36px", width: "400px", height: "564px" });
     expect(panel("c").style).toMatchObject({ left: "400px", top: "36px", width: "400px", height: "564px" });
-  });
-
-  it("hides a hidden view with display none where content-visibility is unsupported", () => {
-    twoGroupGeometry();
-    vi.stubGlobal("CSS", { supports: () => false });
-    const { update } = renderStatic(twoGroups());
-    update(activate(twoGroups(), "b"));
-    expect(panel("a")).toHaveClass("hidden");
-    expect(panel("a")).not.toHaveClass("flex", "invisible", "[content-visibility:hidden]");
-    expect(panel("b")).toHaveClass("flex");
-    expect(panel("b")).not.toHaveClass("hidden");
-    expect(screen.getByTestId("content-a")).toBeInTheDocument();
   });
 
   it("hides the panel of a view that no group shows", () => {
@@ -518,6 +505,42 @@ describe("Workspace tabs", () => {
     flushFrames();
     expect(tab("b")).toHaveFocus();
   });
+
+  it("moves focus on from a tab closed with its button only when the focus was on that tab or in its view", () => {
+    renderHarness(createLayout(split("s1", "row", [group("g1", ["a", "b", "c"]), group("g2", ["d"])]), views("a", "b", "c", "d")));
+    tab("a").focus();
+    fireEvent.click(screen.getByRole("button", { name: "Close Title a" }));
+    flushFrames();
+    expect(tab("b")).toHaveFocus();
+    expect(tab("b")).toHaveAttribute("aria-selected", "true");
+    screen.getByRole("textbox", { name: "Field b" }).focus();
+    fireEvent.click(screen.getByRole("button", { name: "Close Title b" }));
+    flushFrames();
+    expect(tab("c")).toHaveFocus();
+    const field = screen.getByRole("textbox", { name: "Field d" });
+    field.focus();
+    fireEvent.click(screen.getByRole("button", { name: "Close Title c" }));
+    flushFrames();
+    expect(field).toHaveFocus();
+  });
+
+  it("scrolls the selected tab into view in an overflowing strip", () => {
+    geometry = {
+      "tab:a": { left: 0, top: 0, width: 100, height: 36 },
+      "tab:b": { left: 100, top: 0, width: 100, height: 36 },
+      "tab:c": { left: 200, top: 0, width: 100, height: 36 },
+    };
+    renderHarness(createLayout(group("g1", ["a", "b", "c"]), views("a", "b", "c")));
+    const list = strip("g1");
+    let scrolled = 0;
+    Object.defineProperty(list, "scrollLeft", { configurable: true, get: () => scrolled, set: (value: number) => (scrolled = value) });
+    list.getBoundingClientRect = () => domRect({ left: 0, top: 0, width: 150, height: 36 });
+    fireEvent.click(tab("c"));
+    expect(scrolled).toBe(150);
+    geometry["tab:a"] = { left: -150, top: 0, width: 100, height: 36 };
+    fireEvent.click(tab("a"));
+    expect(scrolled).toBe(0);
+  });
 });
 
 describe("Workspace maximize", () => {
@@ -539,7 +562,7 @@ describe("Workspace maximize", () => {
     expect(screen.queryByRole("tab", { name: "Title a" })).toBeNull();
     expect(panel("c")).toHaveAttribute("data-shown", "true");
     expect(panel("a")).toHaveAttribute("data-shown", "false");
-    expect(separators()).toHaveLength(0);
+    expect(splitters()).toHaveLength(0);
     const restore = screen.getByRole("button", { name: "Restore group" });
     expect(restore).toHaveAttribute("aria-pressed", "true");
     expect(restore).not.toHaveAttribute("title");
@@ -698,22 +721,6 @@ describe("Workspace views stay mounted", () => {
     renderHarness(twoGroups());
     expect(() => fireEvent.pointerDown(screen.getByTestId("content-c"))).not.toThrow();
   });
-
-  it("joins the selected tab to its panel with no accent bar, focused or not", () => {
-    renderHarness(twoGroups());
-    const classes = (id: string) => tab(id).parentElement?.className.split(" ") ?? [];
-    fireEvent.pointerDown(screen.getByTestId("content-a"));
-    expect(classes("a")).toEqual(expect.arrayContaining(["border-border", "bg-background", "border-x", "border-t"]));
-    expect(classes("a")).not.toContain("border");
-    expect(classes("a")).not.toEqual(expect.arrayContaining(["border-b"]));
-    expect(classes("a")).not.toEqual(expect.arrayContaining(["border-b-0"]));
-    expect(classes("b")).toContain("border-transparent");
-    const accents = [...document.querySelectorAll("[data-group] *")].filter((element) =>
-      /primary|before:|data-\[focused/u.test(element.getAttribute("class") ?? ""),
-    );
-    expect(accents).toEqual([]);
-    expect(document.querySelector("[data-focused]")).toBeNull();
-  });
 });
 
 describe("Workspace new tabs", () => {
@@ -743,11 +750,6 @@ describe("Workspace new tabs", () => {
   it("offers no new tab button without a handler", () => {
     renderHarness(twoGroups());
     expect(screen.queryByRole("button", { name: "New tab" })).toBeNull();
-  });
-
-  it("hides the tab strip's scrollbar on WebKit builds that ignore scrollbar-width", () => {
-    renderStatic(twoGroups());
-    expect(strip("g1")).toHaveClass("[scrollbar-width:none]", "[&::-webkit-scrollbar]:hidden");
   });
 
   it("marks the new tab area with the chrome attributes of its strip", () => {
@@ -940,12 +942,12 @@ describe("Workspace splitters", () => {
     return (node as SplitNode).weights.map((weight) => Number(weight.toFixed(4)));
   }
 
-  it("renders one labelled separator between each pair of panes", () => {
+  it("renders one labelled splitter between each pair of panes", () => {
     renderHarness(threeColumns());
-    const found = separators();
+    const found = splitters();
     expect(found).toHaveLength(2);
     expect(found[0]).toHaveAttribute("aria-label", "Resize panes");
-    expect(found[0]).toHaveAttribute("aria-orientation", "vertical");
+    expect(found[0]).toHaveAttribute("aria-orientation", "horizontal");
     expect(found[0]).toHaveAttribute("aria-valuenow", "50");
     expect(found[1]).toHaveAttribute("aria-valuenow", "43");
     expect(found[0]).toHaveAttribute("aria-valuemin", "0");
@@ -955,46 +957,59 @@ describe("Workspace splitters", () => {
 
   it("resizes a row with the left and right arrows", () => {
     const { latest } = renderHarness(threeColumns());
-    fireEvent.keyDown(separators()[1], { key: "ArrowRight" });
+    fireEvent.keyDown(splitters()[1], { key: "ArrowRight" });
     expect(weightsOf(latest())).toEqual([0.3, 0.32, 0.38]);
-    fireEvent.keyDown(separators()[1], { key: "ArrowLeft" });
-    fireEvent.keyDown(separators()[1], { key: "ArrowLeft" });
+    fireEvent.keyDown(splitters()[1], { key: "ArrowLeft" });
+    fireEvent.keyDown(splitters()[1], { key: "ArrowLeft" });
     expect(weightsOf(latest())).toEqual([0.3, 0.28, 0.42]);
-    expect(separators()[1]).toHaveAttribute("aria-valuenow", "40");
+    expect(splitters()[1]).toHaveAttribute("aria-valuenow", "40");
   });
 
   it("resizes a column with the up and down arrows and ignores the other axis", () => {
     const layout = createLayout(split("s1", "column", [group("g1", ["a"]), group("g2", ["b"])]), views("a", "b"));
     const { onChange, latest } = renderHarness(layout);
-    const separator = separators()[0];
-    expect(separator).toHaveAttribute("aria-orientation", "horizontal");
-    fireEvent.keyDown(separator, { key: "ArrowRight" });
-    fireEvent.keyDown(separator, { key: "Enter" });
+    const splitter = splitters()[0];
+    expect(splitter).toHaveAttribute("aria-orientation", "vertical");
+    fireEvent.keyDown(splitter, { key: "ArrowRight" });
+    fireEvent.keyDown(splitter, { key: "Enter" });
     expect(onChange).not.toHaveBeenCalled();
-    fireEvent.keyDown(separator, { key: "ArrowDown" });
+    fireEvent.keyDown(splitter, { key: "ArrowDown" });
     expect(weightsOf(latest())).toEqual([0.52, 0.48]);
-    fireEvent.keyDown(separator, { key: "ArrowUp" });
+    fireEvent.keyDown(splitter, { key: "ArrowUp" });
     expect(weightsOf(latest())).toEqual([0.5, 0.5]);
   });
 
   it("stops at the minimum pane size", () => {
     const layout = createLayout(split("s1", "row", [group("g1", ["a"]), group("g2", ["b"])], [0.09, 0.91]), views("a", "b"));
     const { latest } = renderHarness(layout);
-    fireEvent.keyDown(separators()[0], { key: "ArrowLeft" });
+    fireEvent.keyDown(splitters()[0], { key: "ArrowLeft" });
     expect(weightsOf(latest())).toEqual([MIN_WEIGHT, 1 - MIN_WEIGHT]);
   });
 
   it("takes 10% steps with Shift", () => {
     const { latest } = renderHarness(threeColumns());
-    fireEvent.keyDown(separators()[1], { key: "ArrowRight", shiftKey: true });
+    fireEvent.keyDown(splitters()[1], { key: "ArrowRight", shiftKey: true });
     expect(weightsOf(latest())).toEqual([0.3, 0.4, 0.3]);
+  });
+
+  it("takes 10% steps with Page Up and Page Down and goes to either end with Home and End", () => {
+    const { latest } = renderHarness(threeColumns());
+    fireEvent.keyDown(splitters()[1], { key: "PageUp" });
+    expect(weightsOf(latest())).toEqual([0.3, 0.4, 0.3]);
+    fireEvent.keyDown(splitters()[1], { key: "PageDown" });
+    expect(weightsOf(latest())).toEqual([0.3, 0.3, 0.4]);
+    fireEvent.keyDown(splitters()[1], { key: "End" });
+    expect(weightsOf(latest())).toEqual([0.3, 0.62, MIN_WEIGHT]);
+    expect(splitters()[1]).toHaveAttribute("aria-valuenow", "89");
+    fireEvent.keyDown(splitters()[1], { key: "Home" });
+    expect(weightsOf(latest())).toEqual([0.3, MIN_WEIGHT, 0.62]);
   });
 
   it("keeps a pane at least 160px wide in a row", () => {
     geometry = { "split:s1": { left: 0, top: 0, width: 800, height: 600 } };
     const layout = createLayout(split("s1", "row", [group("g1", ["a"]), group("g2", ["b"])], [0.3, 0.7]), views("a", "b"));
     const { latest } = renderHarness(layout);
-    fireEvent.keyDown(separators()[0], { key: "ArrowLeft", shiftKey: true });
+    fireEvent.keyDown(splitters()[0], { key: "ArrowLeft", shiftKey: true });
     expect(weightsOf(latest())).toEqual([0.2, 0.8]);
   });
 
@@ -1002,7 +1017,7 @@ describe("Workspace splitters", () => {
     geometry = { "split:s1": { left: 0, top: 0, width: 800, height: 600 } };
     const layout = createLayout(split("s1", "column", [group("g1", ["a"]), group("g2", ["b"])], [0.75, 0.25]), views("a", "b"));
     const { latest } = renderHarness(layout);
-    fireEvent.keyDown(separators()[0], { key: "ArrowDown", shiftKey: true });
+    fireEvent.keyDown(splitters()[0], { key: "ArrowDown", shiftKey: true });
     expect(weightsOf(latest())).toEqual([0.8, 0.2]);
   });
 
@@ -1010,37 +1025,41 @@ describe("Workspace splitters", () => {
     geometry = { "split:s1": { left: 0, top: 0, width: 200, height: 600 } };
     const layout = createLayout(split("s1", "row", [group("g1", ["a"]), group("g2", ["b"])]), views("a", "b"));
     const { onChange } = renderHarness(layout);
-    fireEvent.keyDown(separators()[0], { key: "ArrowRight" });
+    fireEvent.keyDown(splitters()[0], { key: "ArrowRight" });
     expect(onChange).not.toHaveBeenCalled();
   });
 
   it("evens out a pair on double-click", () => {
     const { onChange, latest } = renderHarness(threeColumns());
-    fireEvent.doubleClick(separators()[1]);
+    fireEvent.doubleClick(splitters()[1]);
     expect(weightsOf(latest())).toEqual([0.3, 0.35, 0.35]);
-    fireEvent.doubleClick(separators()[1]);
+    fireEvent.doubleClick(splitters()[1]);
     expect(onChange).toHaveBeenCalledTimes(1);
   });
 
-  it("stops views from taking pointer input while a divider moves", () => {
+  it("waits for a real drag, and Escape puts the sizes back", () => {
     geometry = { "split:s1": { left: 0, top: 0, width: 800, height: 600 } };
     const layout = createLayout(split("s1", "row", [group("g1", ["a"]), group("g2", ["b"])]), views("a", "b"));
-    renderHarness(layout);
-    fireEvent.pointerDown(separators()[0], { button: 0, clientX: 400, clientY: 10 });
-    expect(panel("a")).toHaveClass("pointer-events-none");
-    pointer("pointerup", 400, 10);
-    expect(panel("a")).not.toHaveClass("pointer-events-none");
+    const { onChange, latest } = renderHarness(layout);
+    fireEvent.pointerDown(splitters()[0], { button: 0, clientX: 400, clientY: 10 });
+    dragTo(403, 10);
+    expect(onChange).not.toHaveBeenCalled();
+    dragTo(480, 10);
+    expect(weightsOf(latest())).toEqual([0.6, 0.4]);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(weightsOf(latest())).toEqual([0.5, 0.5]);
+    dragTo(600, 10);
+    expect(onChange).toHaveBeenCalledTimes(2);
   });
 
   it("ends a divider drag when the window loses focus", () => {
     geometry = { "split:s1": { left: 0, top: 0, width: 800, height: 600 } };
     const layout = createLayout(split("s1", "row", [group("g1", ["a"]), group("g2", ["b"])]), views("a", "b"));
     const { onChange } = renderHarness(layout);
-    fireEvent.pointerDown(separators()[0], { button: 0, clientX: 400, clientY: 10 });
+    fireEvent.pointerDown(splitters()[0], { button: 0, clientX: 400, clientY: 10 });
     act(() => {
       window.dispatchEvent(new Event("blur"));
     });
-    expect(panel("a")).not.toHaveClass("pointer-events-none");
     pointer("pointermove", 600, 10);
     flushFrames();
     expect(onChange).not.toHaveBeenCalled();
@@ -1050,7 +1069,7 @@ describe("Workspace splitters", () => {
     geometry = { "split:s1": { left: 0, top: 0, width: 800, height: 600 } };
     const layout = createLayout(split("s1", "row", [group("g1", ["a"]), group("g2", ["b"])]), views("a", "b"));
     const { onChange, latest } = renderHarness(layout);
-    fireEvent.pointerDown(separators()[0], { button: 0, clientX: 400, clientY: 10 });
+    fireEvent.pointerDown(splitters()[0], { button: 0, clientX: 400, clientY: 10 });
     pointer("pointermove", 480, 300);
     pointer("pointermove", 500, 300);
     expect(onChange).not.toHaveBeenCalled();
@@ -1068,29 +1087,29 @@ describe("Workspace splitters", () => {
     expect(onChange).toHaveBeenCalledTimes(2);
   });
 
-  it("resizes a column by pointer drag and ends on pointer cancel", () => {
+  it("resizes a column by pointer drag and puts the sizes back on pointer cancel", () => {
     geometry = { "split:s1": { left: 0, top: 0, width: 800, height: 400 } };
     const layout = createLayout(split("s1", "column", [group("g1", ["a"]), group("g2", ["b"])]), views("a", "b"));
     const { onChange, latest } = renderHarness(layout);
-    fireEvent.pointerDown(separators()[0], { button: 0, clientX: 5, clientY: 200 });
+    fireEvent.pointerDown(splitters()[0], { button: 0, clientX: 5, clientY: 200 });
     pointer("pointermove", 300, 160);
     flushFrames();
     expect(weightsOf(latest())).toEqual([0.4, 0.6]);
     pointer("pointercancel", 300, 160);
-    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(weightsOf(latest())).toEqual([0.5, 0.5]);
     pointer("pointermove", 300, 100);
     flushFrames();
-    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledTimes(2);
   });
 
   it("ignores a secondary button and a container with no size", () => {
     const layout = createLayout(split("s1", "row", [group("g1", ["a"]), group("g2", ["b"])]), views("a", "b"));
     const { onChange } = renderHarness(layout);
-    fireEvent.pointerDown(separators()[0], { button: 0, clientX: 400, clientY: 10 });
+    fireEvent.pointerDown(splitters()[0], { button: 0, clientX: 400, clientY: 10 });
     pointer("pointermove", 500, 10);
     flushFrames();
     geometry = { "split:s1": { left: 0, top: 0, width: 800, height: 600 } };
-    fireEvent.pointerDown(separators()[0], { button: 2, clientX: 400, clientY: 10 });
+    fireEvent.pointerDown(splitters()[0], { button: 2, clientX: 400, clientY: 10 });
     pointer("pointermove", 500, 10);
     flushFrames();
     expect(onChange).not.toHaveBeenCalled();
@@ -1100,7 +1119,7 @@ describe("Workspace splitters", () => {
     geometry = { "split:s1": { left: 0, top: 0, width: 800, height: 600 } };
     const layout = createLayout(split("s1", "row", [group("g1", ["a"]), group("g2", ["b"])]), views("a", "b"));
     const { onLayoutChange, update } = renderStatic(layout);
-    fireEvent.pointerDown(separators()[0], { button: 0, clientX: 400, clientY: 10 });
+    fireEvent.pointerDown(splitters()[0], { button: 0, clientX: 400, clientY: 10 });
     update(createLayout(group("s1", ["a"]), views("a")));
     pointer("pointermove", 500, 10);
     flushFrames();
@@ -1166,7 +1185,6 @@ describe("Workspace tab drag", () => {
     dragTo(250, 60);
     expect(indicator()).toHaveAttribute("data-drop-indicator", "center");
     expect(indicator()?.style).toMatchObject({ left: "159px", top: "0px", width: "2px", height: "36px" });
-    expect(indicator()).toHaveClass("bg-primary");
     await release(250, 60);
     expect(groupOfView(latest(), "a")).toMatchObject({ id: "g1", views: ["b", "a"], active: "a" });
     expect(within(strip("g1")).getAllByRole("tab").map((node) => node.textContent)).toEqual(["Title b", "Title a"]);
@@ -1365,6 +1383,54 @@ describe("Workspace panel cycling", () => {
     expect(tab("a")).toHaveFocus();
   });
 
+  it("leaves a panel key that a view's own key handler took", () => {
+    const ownKeys = (id: string): ReactNode => (
+      <button
+        type="button"
+        onKeyDown={(event) => {
+          if (event.key === "F6" || event.key === "Tab") event.preventDefault();
+        }}
+      >
+        {`Inside ${id}`}
+      </button>
+    );
+    renderHarness(twoGroups(), { renderView: ownKeys });
+    const inside = screen.getByRole("button", { name: "Inside a" });
+    inside.focus();
+    fireEvent.keyDown(inside, { key: "F6" });
+    expect(inside).toHaveFocus();
+    fireEvent.keyDown(inside, { key: "Tab", ctrlKey: true });
+    expect(inside).toHaveFocus();
+  });
+
+  it("leaves a panel key that a view stopped from bubbling", () => {
+    const stopsKeys = (id: string): ReactNode => (
+      <button type="button" onKeyDown={(event) => event.stopPropagation()}>
+        {`Inside ${id}`}
+      </button>
+    );
+    renderHarness(twoGroups(), { renderView: stopsKeys });
+    const inside = screen.getByRole("button", { name: "Inside a" });
+    inside.focus();
+    fireEvent.keyDown(inside, { key: "F6" });
+    expect(inside).toHaveFocus();
+  });
+
+  it("keeps F6 inside a dialog that a view renders outside the workspace", () => {
+    const dialogView = (id: string): ReactNode =>
+      createPortal(
+        <div role="dialog" aria-modal="true" aria-label={`Dialog ${id}`}>
+          <button type="button">{`Confirm ${id}`}</button>
+        </div>,
+        document.body,
+      );
+    renderHarness(twoGroups(), { renderView: dialogView });
+    const confirm = screen.getByRole("button", { name: "Confirm a" });
+    confirm.focus();
+    fireEvent.keyDown(confirm, { key: "F6" });
+    expect(confirm).toHaveFocus();
+  });
+
   it("starts at the first panel when nothing in the workspace has focus, and ignores other keys", () => {
     renderHarness(twoGroups());
     fireEvent.keyDown(panel("c"), { key: "F5" });
@@ -1537,7 +1603,7 @@ describe("Workspace stacks", () => {
     const stackPanel = screen.getByRole("tabpanel", { name: "Files" });
     expect(screen.getByRole("tab", { name: "Files" })).toHaveAttribute("aria-controls", stackPanel.id);
     expect(within(header("outline")).getByRole("button", { name: "Refresh outline" })).toBeInTheDocument();
-    expect(screen.getAllByRole("separator", { name: "Resize panes" })).toHaveLength(2);
+    expect(screen.getAllByRole("slider", { name: "Resize panes" })).toHaveLength(2);
     expect(header("explorer").parentElement?.style.flex).toBe("0.4 1 0px");
     expect(header("structure").parentElement?.style.flex).toBe("0 0 auto");
   });
@@ -1616,7 +1682,6 @@ describe("Workspace stacks", () => {
       labels: { ...labels, collapseSection: (title) => `Collapse ${title}`, expandSection: (title) => `Expand ${title}` },
     });
     expect(toggle("explorer").closest("[data-tooltip]")).toHaveAttribute("data-tooltip", "Collapse Title explorer");
-    expect(toggle("explorer").closest("[data-tooltip]")).toHaveClass("flex-1");
     expect(toggle("structure").closest("[data-tooltip]")).toHaveAttribute("data-tooltip", "Expand Title structure");
     cleanup();
     renderHarness(dockLayout(), { renderTooltip: tooltip });
@@ -1626,53 +1691,51 @@ describe("Workspace stacks", () => {
   it("resizes sections with the keyboard and evens them on double-click", () => {
     dockGeometry();
     const { onChange, latest } = renderHarness(dockLayout(), { labels: { ...labels, resizeSections: "Resize sections" } });
-    const separator = screen.getByRole("separator", { name: "Resize sections" });
-    expect(separator).toHaveAttribute("aria-orientation", "horizontal");
-    expect(separator).toHaveAttribute("aria-valuenow", "50");
-    fireEvent.keyDown(separator, { key: "ArrowDown" });
+    const splitter = screen.getByRole("slider", { name: "Resize sections" });
+    expect(splitter).toHaveAttribute("aria-orientation", "vertical");
+    expect(splitter).toHaveAttribute("aria-valuenow", "50");
+    fireEvent.keyDown(splitter, { key: "ArrowDown" });
     expect(weightsOf(latest())).toEqual([0.416, 0.384, 0.2]);
-    fireEvent.keyDown(separator, { key: "ArrowUp", shiftKey: true });
+    fireEvent.keyDown(splitter, { key: "ArrowUp", shiftKey: true });
     expect(weightsOf(latest())).toEqual([0.336, 0.464, 0.2]);
-    fireEvent.keyDown(separator, { key: "ArrowLeft" });
+    fireEvent.keyDown(splitter, { key: "ArrowLeft" });
     expect(onChange).toHaveBeenCalledTimes(2);
-    fireEvent.doubleClick(separator);
+    fireEvent.doubleClick(splitter);
     expect(weightsOf(latest())).toEqual([0.4, 0.4, 0.2]);
-    fireEvent.doubleClick(separator);
+    fireEvent.doubleClick(splitter);
     expect(onChange).toHaveBeenCalledTimes(3);
   });
 
   it("stops a section at its minimum height", () => {
     dockGeometry();
     const { latest } = renderHarness(dockLayout(), { describeView: dockDescribe });
-    const sectionSeparator = document.querySelector<HTMLElement>("[data-section-splitter]");
-    if (!sectionSeparator) throw new Error("no section separator");
-    fireEvent.keyDown(sectionSeparator, { key: "ArrowDown", shiftKey: true });
+    const sectionSplitter = document.querySelector<HTMLElement>("[data-section-splitter]");
+    if (!sectionSplitter) throw new Error("no section splitter");
+    fireEvent.keyDown(sectionSplitter, { key: "ArrowDown", shiftKey: true });
     expect(weightsOf(latest())).toEqual([0.336, 0.464, 0.2]);
-    fireEvent.keyDown(sectionSeparator, { key: "ArrowUp", shiftKey: true });
-    fireEvent.keyDown(sectionSeparator, { key: "ArrowUp", shiftKey: true });
+    fireEvent.keyDown(sectionSplitter, { key: "ArrowUp", shiftKey: true });
+    fireEvent.keyDown(sectionSplitter, { key: "ArrowUp", shiftKey: true });
     expect(weightsOf(latest())).toEqual([0.24, 0.56, 0.2]);
   });
 
   it("resizes sections by pointer drag", () => {
     dockGeometry();
     const { latest } = renderHarness(dockLayout());
-    const separator = document.querySelector<HTMLElement>("[data-section-splitter]");
-    if (!separator) throw new Error("no section separator");
-    fireEvent.pointerDown(separator, { button: 0, clientX: 150, clientY: 236 });
-    expect(host("explorer")).toHaveClass("pointer-events-none");
+    const splitter = document.querySelector<HTMLElement>("[data-section-splitter]");
+    if (!splitter) throw new Error("no section splitter");
+    fireEvent.pointerDown(splitter, { button: 0, clientX: 150, clientY: 236 });
     pointer("pointermove", 150, 276);
     flushFrames();
     expect(weightsOf(latest())).toEqual([0.48, 0.32, 0.2]);
     pointer("pointerup", 150, 276);
-    expect(host("explorer")).not.toHaveClass("pointer-events-none");
   });
 
   it("ignores a section resize once the stack or its sections are gone", () => {
     dockGeometry();
     const { onLayoutChange, update } = renderStatic(dockLayout());
-    const separator = document.querySelector<HTMLElement>("[data-section-splitter]");
-    if (!separator) throw new Error("no section separator");
-    fireEvent.pointerDown(separator, { button: 0, clientX: 150, clientY: 236 });
+    const splitter = document.querySelector<HTMLElement>("[data-section-splitter]");
+    if (!splitter) throw new Error("no section splitter");
+    fireEvent.pointerDown(splitter, { button: 0, clientX: 150, clientY: 236 });
     update(moveView(dockLayout(), "outline", { groupId: "g2", zone: "center" }));
     pointer("pointermove", 150, 276);
     flushFrames();
@@ -1723,7 +1786,6 @@ describe("Workspace section drag", () => {
     fireEvent.pointerDown(header("outline"), { button: 0, clientX: 150, clientY: 250 });
     dragTo(150, 40);
     expect(ghost()).toHaveTextContent("Title outline");
-    expect(header("outline")).toHaveClass("opacity-50");
     expect(indicator()).toHaveAttribute("data-drop-indicator", "stack");
     expect(indicator()?.style).toMatchObject({ left: "0px", top: "36px", width: "300px", height: "2px" });
     dragTo(150, 460);
@@ -1904,7 +1966,7 @@ describe("Workspace hidden groups", () => {
     expect(host("explorer")).toHaveAttribute("data-shown", "true");
     update(setGroupHidden(dockLayout(), "g1", true));
     expect(document.querySelector('[data-group="g1"]')).toBeNull();
-    expect(separators()).toHaveLength(0);
+    expect(splitters()).toHaveLength(0);
     expect(host("explorer")).toHaveAttribute("data-shown", "false");
     expect(host("explorer")).not.toHaveAttribute("hidden");
     expect(host("explorer").style.top).toBe("68px");
@@ -1929,7 +1991,7 @@ describe("Workspace hidden groups", () => {
     renderStatic(layout, { trailing: <span>{"Trail"}</span> });
     expect(screen.getAllByRole("tablist")).toHaveLength(1);
     expect(within(groupElement("g1")).getByText("Trail")).toBeInTheDocument();
-    expect(separators()).toHaveLength(0);
+    expect(splitters()).toHaveLength(0);
     cleanup();
     renderStatic(createLayout(group("g1", ["a"], "a", { hidden: true }), views("a")));
     expect(screen.queryByRole("tablist")).toBeNull();
@@ -1942,12 +2004,12 @@ describe("Workspace hidden groups", () => {
       views("a", "b", "c"),
     );
     const { latest } = renderHarness(layout);
-    expect(separators()).toHaveLength(1);
-    expect(separators()[0]).toHaveAttribute("aria-valuenow", "43");
-    fireEvent.keyDown(separators()[0], { key: "ArrowRight" });
+    expect(splitters()).toHaveLength(1);
+    expect(splitters()[0]).toHaveAttribute("aria-valuenow", "43");
+    fireEvent.keyDown(splitters()[0], { key: "ArrowRight" });
     const weights = (latest().root as SplitNode).weights.map((weight) => Number(weight.toFixed(4)));
     expect(weights).toEqual([0.314, 0.3, 0.386]);
-    fireEvent.doubleClick(separators()[0]);
+    fireEvent.doubleClick(splitters()[0]);
     expect((latest().root as SplitNode).weights.map((weight) => Number(weight.toFixed(4)))).toEqual([0.35, 0.3, 0.35]);
   });
 
@@ -1972,9 +2034,9 @@ describe("Workspace minimum sizes", () => {
   it("keeps a pane as wide as the widest view in it needs", () => {
     dockGeometry();
     const { latest } = renderHarness(dockLayout([0.45, 0.55]), { describeView: dockDescribe });
-    const separator = document.querySelector<HTMLElement>('[data-splitter="s1"]');
-    if (!separator) throw new Error("no separator");
-    fireEvent.keyDown(separator, { key: "ArrowRight", shiftKey: true });
+    const splitter = document.querySelector<HTMLElement>('[data-splitter="s1"]');
+    if (!splitter) throw new Error("no splitter");
+    fireEvent.keyDown(splitter, { key: "ArrowRight", shiftKey: true });
     expect((latest().root as SplitNode).weights.map((weight) => Number(weight.toFixed(4)))).toEqual([0.52, 0.48]);
   });
 
@@ -1988,11 +2050,11 @@ describe("Workspace minimum sizes", () => {
       { k: stack(["a", "b"], { collapsed: ["b"] }) },
     );
     const { latest } = renderHarness(layout, { describeView: describe });
-    fireEvent.keyDown(separators().find((element) => element.hasAttribute("data-splitter")) as HTMLElement, { key: "ArrowDown", shiftKey: true });
+    fireEvent.keyDown(splitters().find((element) => element.hasAttribute("data-splitter")) as HTMLElement, { key: "ArrowDown", shiftKey: true });
     expect((latest().root as SplitNode).weights.map((weight) => Number(weight.toFixed(4)))).toEqual([0.44, 0.56]);
-    fireEvent.keyDown(separators().find((element) => element.hasAttribute("data-splitter")) as HTMLElement, { key: "ArrowUp", shiftKey: true });
-    fireEvent.keyDown(separators().find((element) => element.hasAttribute("data-splitter")) as HTMLElement, { key: "ArrowUp", shiftKey: true });
-    fireEvent.keyDown(separators().find((element) => element.hasAttribute("data-splitter")) as HTMLElement, { key: "ArrowUp", shiftKey: true });
+    fireEvent.keyDown(splitters().find((element) => element.hasAttribute("data-splitter")) as HTMLElement, { key: "ArrowUp", shiftKey: true });
+    fireEvent.keyDown(splitters().find((element) => element.hasAttribute("data-splitter")) as HTMLElement, { key: "ArrowUp", shiftKey: true });
+    fireEvent.keyDown(splitters().find((element) => element.hasAttribute("data-splitter")) as HTMLElement, { key: "ArrowUp", shiftKey: true });
     expect((latest().root as SplitNode).weights.map((weight) => Number(weight.toFixed(4)))).toEqual([0.31, 0.69]);
   });
 });
@@ -2065,7 +2127,6 @@ describe("Workspace tooltips", () => {
     expect(hint(tab("a"))).toBe("Title a");
     expect(hint(tab("b"))).toBe("Title b");
     expect(hint(screen.getByRole("button", { name: "Close Title a" }))).toBe("Close Title a");
-    expect(tab("a").closest("[data-tooltip]")).toHaveClass("min-w-0");
     expect(document.querySelectorAll("[title]")).toHaveLength(0);
   });
 
@@ -2084,11 +2145,10 @@ describe("Workspace trailing content", () => {
     renderHarness(twoGroups(), { chromeAttributes, trailing: <button type="button" aria-label={windowMenu} /> });
     const menu = within(groupElement("g2")).getByRole("button", { name: windowMenu });
     const holder = menu.closest("[data-trailing]");
-    expect(holder).toHaveClass("shrink-0");
     expect(holder).toHaveAttribute("data-chrome", "drag");
     expect(menu.closest("[data-group-actions]")).toBeNull();
     const maximize = within(groupElement("g2")).getByRole("button", { name: "Maximize group" });
-    expect(maximize.closest("[data-group-actions]")).toHaveClass("min-w-0", "overflow-hidden");
+    expect(maximize.closest("[data-group-actions]")).not.toBeNull();
     expect(within(groupElement("g1")).queryByRole("button", { name: windowMenu })).toBeNull();
     expect(groupElement("g1").querySelector("[data-trailing]")).toBeNull();
   });
@@ -2255,14 +2315,6 @@ describe("Workspace dock edge cases", () => {
     expect(indicator()?.style).toMatchObject({ left: "500px", width: "2px" });
     await release(700, 18);
     expect(groupOfView(latest(), "a")?.id).toBe("g2");
-  });
-
-  it("dims an icon tab while it is dragged", () => {
-    dockGeometry();
-    renderHarness(dockLayout());
-    fireEvent.pointerDown(screen.getByRole("tab", { name: "Title search" }), { button: 0, clientX: 48, clientY: 18 });
-    dragTo(700, 300);
-    expect(screen.getByRole("tab", { name: "Title search" })).toHaveClass("opacity-50");
   });
 
   it("describes a section's count badge and shows nothing for an empty title", () => {

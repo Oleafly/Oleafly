@@ -5,6 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { SidebarSection } from "@/components/layout/SidebarSection";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useNow } from "@/hooks/use-now";
 import { formatDateTime, formatRelativeTimeFrom } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import type { CollabTrashEntry } from "@/lib/tauri";
@@ -149,14 +150,10 @@ const DeletedList = memo(function DeletedList({
   onRestore: (entry: CollabTrashEntry) => void;
 }>) {
   const { t } = useTranslation(["collab"]);
-  const [now, setNow] = useState(() => Date.now());
+  const now = useNow(TICK_MS);
   const people = useCollabLiveStore(
     useShallow((state) => ({ members: state.members, selfId: state.share?.account_id ?? null })),
   );
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), TICK_MS);
-    return () => window.clearInterval(timer);
-  }, []);
   const names = useMemo(
     () => new Map(people.members.map((member) => [member.person.account_id, member.person.display_name])),
     [people.members],

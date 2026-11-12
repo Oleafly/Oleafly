@@ -218,5 +218,10 @@
       "title": "İzin denetimleri kapalı ({{mode}})",
       "description": "Ajan sormadan dosya düzenleyebilir ve komut çalıştırabilir. Oleafly onu başka bir kipe geçiremedi. Kipi ajanın kendi ayarlarından değiştirin."
     }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Hızlı not"
+    }
   }
 }

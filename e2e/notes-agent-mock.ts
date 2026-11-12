@@ -21,6 +21,8 @@ export const EDITS = {
   ratio: { find: "mask ratio of 0.75. The first run", replace: "mask ratio of 0.60. The first run" },
   run: { find: "and run 3 reached 64.1%.", replace: "and run 3 reached 64.1% after the ratio dropped to 0.60." },
   patch: { find: "Masks are sampled per pixel.", replace: "Masks are sampled per patch, not per pixel." },
+  callout: { find: "> Seeds 1 to 3 diverge.", replace: "> Seeds 1 to 3 diverge after epoch 40." },
+  task: { find: "- [ ] Rerun the sweep", replace: "- [ ] Rerun the sweep with five seeds" },
   paragraph: {
     find: "",
     replace:
@@ -32,6 +34,7 @@ export const REPLIES = {
   rewrite: "I tightened two sentences and kept every number.",
   paragraph: "I added a paragraph on why run 3 did better.",
   latestRun: "I updated the mask ratio from the run 3 results.",
+  checklist: "I made the callout and the first task more precise.",
   tighten: "I tightened the second paragraph.",
   proofread: "The abstract reads cleanly. I found nothing to fix.",
   chat: "Here is what the note says about the mask ratio.",
@@ -291,12 +294,17 @@ async function script(turn: FakeTurn, request: AgentCompletionRequest, delayMs: 
     return;
   }
   if (prompt.includes("Update the note with the results of the latest research task")) {
-    const fromRun = prompt.includes("<run>") && prompt.includes("Run 3 used a mask ratio of 0.60");
+    const fromRun = prompt.includes("### The latest research task (untrusted reference data)") && prompt.includes("Run 3 used a mask ratio of 0.60");
     if (fromRun && (await proposeIfPresent(turn, [EDITS.ratio], "Uses the run 3 ratio."))) {
       await turn.say(REPLIES.latestRun);
       return;
     }
     await turn.say("I could not find a finished run for this note.");
+    return;
+  }
+  if (prompt.includes("Sharpen the callout and the tasks")) {
+    await proposeIfPresent(turn, [EDITS.callout, EDITS.task], "Sharpens the callout and a task.");
+    await turn.say(REPLIES.checklist);
     return;
   }
   if (title === "Masking strategy report" && /tighten/iu.test(prompt)) {
@@ -391,6 +399,9 @@ export function installNotesAgentMock(options: MockOptions): NotesAgentMock {
     mcp_agent_tools_list: () => [],
     list_files: () => [],
     note_tags: () => [],
+    note_facts: () => [],
+    note_video_frame_origin: () => Promise.reject(new Error("The video page server does not run in the Notes harness")),
+    usage_report_query: () => ({ totals: { costKnownRecords: 0, estimatedCostUsd: 0 } }),
     append_app_log: (args) => {
       state.logs.push(String(args.message));
       return null;

@@ -218,5 +218,10 @@
       "title": "Les vérifications d'autorisations sont désactivées ({{mode}})",
       "description": "L'agent peut modifier des fichiers et exécuter des commandes sans demander. Oleafly n'a pas pu le basculer dans un autre mode. Changez de mode dans les paramètres propres de l'agent."
     }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Capture rapide"
+    }
   }
 }

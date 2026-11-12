@@ -1,6 +1,7 @@
 import type { Editor } from "@tiptap/core";
 import type { EditorState } from "@tiptap/pm/state";
 import { useTranslation } from "react-i18next";
+import { ListboxHeading, ListboxOption } from "@/components/ui/listbox";
 import {
   chooseSlash,
   moveSlash,
@@ -12,7 +13,7 @@ import {
   slashState,
   visibleSlashItems,
 } from "./note-slash";
-import { type MenuSize, SuggestionListbox, SuggestionOption, useEditorSuggestion } from "./SuggestionListbox";
+import { type MenuSize, SuggestionListbox, useEditorSuggestion } from "./SuggestionListbox";
 
 const SLASH_MENU: MenuSize = { width: 256, height: 320 };
 
@@ -56,11 +57,9 @@ export function NoteSlashMenu({ editor }: Readonly<{ editor: Editor }>) {
       )}
       {groupsOf(items).map(({ group, items: members }) => (
         <fieldset key={`${group}-${members[0].position}`} aria-label={groupLabel(group)} className="m-0 min-w-0 border-0 p-0">
-          <p aria-hidden className="px-2.5 pb-1 pt-1.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
-            {groupLabel(group)}
-          </p>
+          <ListboxHeading aria-hidden>{groupLabel(group)}</ListboxHeading>
           {members.map(({ item, position }) => (
-            <SuggestionOption
+            <ListboxOption
               key={item.id}
               id={slashOptionId(menuId, position)}
               selected={position === index}
@@ -70,7 +69,7 @@ export function NoteSlashMenu({ editor }: Readonly<{ editor: Editor }>) {
             >
               <item.icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0 flex-1 truncate text-xs font-medium">{item.label}</span>
-            </SuggestionOption>
+            </ListboxOption>
           ))}
         </fieldset>
       ))}

@@ -341,7 +341,15 @@
     },
     "resetPaneLayout": {
       "keywords": "tilbakestill ruteoppsett rekkefølge flytt paneler sidepanel assistent editor forhåndsvisning terminal standard reset pane layout order move panels sidebar assistant preview default",
-      "label": "Tilbakestill ruteoppsettet"
+      "label": "Tilbakestill plasseringen av rutene i hvert prosjekt"
+    },
+    "saveLayout": {
+      "keywords": "lagre oppsett gjeldende tilpasset ordning ruter størrelser navn save layout custom arrangement panes sizes name",
+      "label": "Lagre gjeldende oppsett"
+    },
+    "applySavedLayout": {
+      "keywords": "oppsett lagret tilpasset ordning ruter bytt bruk layout saved custom arrangement panes switch apply",
+      "label": "Oppsett: {{name}}"
     },
     "zoomIn": {
       "keywords": "større forstørr",
@@ -380,6 +388,10 @@
     "notes": {
       "label": "Åpne Notater",
       "keywords": "notater notatbok kunnskap ideer forskning dagbok notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Hurtignotat",
+      "keywords": "hurtignotat skriv ned notat innboks i dag quick capture jot note inbox today"
     }
   },
   "community": {
@@ -484,6 +496,11 @@
   },
   "datePicker": {
     "placeholder": "Velg en dato"
+  },
+  "monthPicker": {
+    "label": "Velg en måned",
+    "previousYear": "Forrige år",
+    "nextYear": "Neste år"
   },
   "devMenu": {
     "inspect": "Inspiser",
@@ -704,6 +721,7 @@
     "groups": {
       "action": "Handling",
       "documents": "Dokumenter",
+      "notes": "Notater",
       "references": "Referanser"
     },
     "label": "Søk",
@@ -711,11 +729,13 @@
     "openReferences": "Åpne referansene for dette prosjektet",
     "placeholder": "Søk i prosjekter og dokumenter, eller skriv / for kommandoer…",
     "placeholderDocuments": "Søk inne i dokumenter…",
+    "placeholderNotes": "Søk i notater og blokkene i dem…",
     "placeholderProjects": "Søk i prosjekter på navn, motor, type, dato eller metadata…",
     "referencesNeedProject": "Åpne et prosjekt først for å bla i referansene.",
     "slash": {
       "create": "åpne malgalleriet",
       "docs": "søk inne i dokumenter",
+      "notes": "søk i notater og blokkene i dem",
       "projects": "søk i prosjektene dine",
       "refs": "åpne referansene for dette prosjektet",
       "settings": "åpne innstillingene",
@@ -1314,7 +1334,24 @@
       "split": "Delt visning"
     },
     "moreActions": "Flere handlinger",
-    "resetPaneLayout": "Tilbakestill ruteoppsettet",
+    "resetPaneLayout": "Tilbakestill plasseringen av rutene",
+    "resetPaneLayoutScope": "Alle prosjekter",
+    "savedLayouts": {
+      "close": "Lukk",
+      "delete": "Slett",
+      "deleteConfirm": "Slette oppsettet «{{name}}»?",
+      "limit": "Du kan beholde opptil {{count}} oppsett. Slett ett for å lagre et nytt.",
+      "manage": "Administrer oppsett",
+      "name": "Navn på oppsettet",
+      "rename": "Gi nytt navn",
+      "renameTitle": "Gi oppsettet nytt navn",
+      "replace": "Erstatt",
+      "replaceConfirm": "Det finnes allerede et oppsett som heter «{{name}}». Erstatte det?",
+      "save": "Lagre gjeldende oppsett",
+      "saveButton": "Lagre",
+      "saveTitle": "Lagre oppsett",
+      "update": "Oppdater til gjeldende"
+    },
     "renameFailed": "Kunne ikke gi prosjektet nytt navn."
   },
   "tour": {

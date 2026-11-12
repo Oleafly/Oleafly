@@ -218,5 +218,10 @@
       "title": "Behörighetskontrollerna är av ({{mode}})",
       "description": "Agenten kan ändra filer och köra kommandon utan att fråga. Oleafly kunde inte växla den till ett annat läge. Ändra läget i agentens egna inställningar."
     }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Snabbanteckning"
+    }
   }
 }

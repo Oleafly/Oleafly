@@ -7,6 +7,7 @@ import { ThemeMenu } from "@/components/layout/ThemeControls";
 import { isNoteProject } from "@/lib/library-projects";
 import { cn, isMac, shortcut } from "@/lib/utils";
 import { useFullscreen } from "@/lib/use-fullscreen";
+import { intentProps } from "@/lib/preloadable";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
@@ -36,6 +37,7 @@ function DockButton({
   tour,
   describedBy,
   tooltipSide,
+  intent,
 }: Readonly<{
   label: string;
   tooltip?: string;
@@ -47,6 +49,7 @@ function DockButton({
   tour?: string;
   describedBy?: string;
   tooltipSide: "top" | "left" | "right";
+  intent?: string;
 }>) {
   return (
     <Tooltip label={tooltip} side={tooltipSide}>
@@ -60,6 +63,7 @@ function DockButton({
         aria-describedby={describedBy}
         className={primary ? DOCK_BUTTON_SHAPE : dockButtonClass(active)}
         onClick={onClick}
+        {...(intent ? intentProps(intent) : {})}
       >
         {icon}
       </Button>
@@ -121,6 +125,7 @@ export function HomeDock() {
           onClick={() => void openNotes()}
           active={page === "notes"}
           testId="open-notes"
+          intent="notes"
           tooltipSide={tooltipSide}
         />
       )}
@@ -149,6 +154,7 @@ export function HomeDock() {
         icon={<SettingsIcon className="size-4" />}
         onClick={() => setSettingsOpen(true)}
         testId="open-settings"
+        intent="settings"
         tour="settings"
         describedBy={CLOUD_ATTENTION_HINT_ID}
         tooltipSide={tooltipSide}

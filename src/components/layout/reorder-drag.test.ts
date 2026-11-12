@@ -1,12 +1,8 @@
 // @vitest-environment jsdom
 import { fireEvent } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DRAG_THRESHOLD_PX, placeAmong, slotAlong, swallowNextClick, trackReorderDrag } from "./reorder-drag";
+import { DRAG_THRESHOLD_PX, placeAmong, swallowNextClick, trackReorderDrag } from "./reorder-drag";
 import * as sectionReorder from "./section-reorder";
-
-function rect(left: number, top: number, width: number, height: number): DOMRect {
-  return { left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) } as DOMRect;
-}
 
 afterEach(async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -31,19 +27,6 @@ describe("placeAmong", () => {
     expect(placeAmong(order, ["ghost", "a", "b", "c"], "c", 0)).toEqual(["c", "a", "hidden", "b", "late"]);
     expect(placeAmong(order, visible, "ghost", 0)).toEqual(order);
     expect(placeAmong(order, ["a"], "a", 0)).toEqual(order);
-  });
-});
-
-describe("slotAlong", () => {
-  const rects = [rect(0, 0, 20, 20), rect(30, 30, 20, 20)];
-
-  it("counts the items whose middle is before the pointer on either axis", () => {
-    expect(slotAlong(rects, 5, "x")).toBe(0);
-    expect(slotAlong(rects, 15, "x")).toBe(1);
-    expect(slotAlong(rects, 45, "x")).toBe(2);
-    expect(slotAlong(rects, 15, "y")).toBe(1);
-    expect(slotAlong(rects, 39, "y")).toBe(1);
-    expect(slotAlong(rects, 41, "y")).toBe(2);
   });
 });
 

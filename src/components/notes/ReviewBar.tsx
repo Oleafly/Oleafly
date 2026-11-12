@@ -81,7 +81,7 @@ export function ReviewBar({
             keyShortcut="Control+Enter Meta+Enter"
             onClick={onAccept}
           />
-          <DiffAction icon={X} label={t(($) => $.editor.inlineAi.reject)} keyShortcut="Escape" onClick={onReject} />
+          <DiffAction icon={X} label={t(($) => $.editor.inlineAi.reject)} onClick={onReject} />
         </div>
       )}
     </AiChrome>

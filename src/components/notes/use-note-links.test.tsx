@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NoteLinkRecord } from "@/lib/tauri";
 import { useProjectColorsStore } from "@/store/project-colors";
-import { NotesDataProvider, type NotesData } from "./notes-data";
+import { NotesDataProvider, type NotesData, VAULT_QUERY } from "./notes-data";
 import type { NoteLinkOptions } from "./note-links";
+import { fakeNotesData } from "./tests/notes-data-fixture";
 import type { NoteItem } from "./types";
 import {
   buildNoteLinkIndex,
@@ -57,26 +58,26 @@ const PROJECTS = [
 ];
 
 function data(overrides: Partial<NotesData> = {}): NotesData {
-  return {
-    notes: NOTES,
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
-    projects: PROJECTS,
-    loadNote: vi.fn(),
-    saveNote: vi.fn(),
-    ...overrides,
-  };
+  return fakeNotesData({ notes: NOTES, projects: PROJECTS, ...overrides });
 }
 
-function wrapperFor(value: { current: NotesData }) {
-  return ({ children }: { children: ReactNode }) => <NotesDataProvider value={value.current}>{children}</NotesDataProvider>;
+function wrapperFor(value: { current: NotesData }, live?: { current: boolean }) {
+  return ({ children }: { children: ReactNode }) => (
+    <NotesDataProvider value={value.current}>
+      <NoteLinkIndexProvider>
+        {live ? <FrozenNoteLinkIndex live={live.current}>{children}</FrozenNoteLinkIndex> : children}
+      </NoteLinkIndexProvider>
+    </NotesDataProvider>
+  );
 }
 
 beforeEach(() => {
   mocks.logError.mockReset();
   useProjectColorsStore.setState({ colors: { ssl: "#ff0000" } });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe("the link index", () => {
@@ -113,11 +114,12 @@ describe("useNoteLinkIndex", () => {
     const noteLinks = vi.fn(() => Promise.resolve(RECORDS));
     const value = { current: data({ noteLinks }) };
     const { result, rerender } = renderHook(
-      () => ({ index: useNoteLinkIndex(), backlinks: useNoteBacklinks("n-1") }),
+      () => ({ index: useNoteLinkIndex(), again: useNoteLinkIndex(), backlinks: useNoteBacklinks("n-1") }),
       { wrapper: wrapperFor(value) },
     );
     expect(result.current.index.notes).toBeNull();
     await waitFor(() => expect(result.current.index.notes).toHaveLength(3));
+    expect(result.current.again).toBe(result.current.index);
     expect(result.current.backlinks.map((link) => link.projectId)).toEqual(["lib-2", "lib-3"]);
     expect(result.current.index.backlinks.get("project:ssl")?.map((link) => link.projectId)).toEqual(["lib-3"]);
     expect(result.current.index.projects?.[0].color).toBe("#ff0000");
@@ -138,23 +140,35 @@ describe("useNoteLinkIndex", () => {
     expect(result.current.every((list) => list.length === 0)).toBe(true);
   });
 
-  it("stays empty without an adapter and logs a failed load", async () => {
+  it("stays empty without a provider or an adapter, and logs a failed load", async () => {
+    const outside = renderHook(() => useNoteLinkIndex());
+    expect(outside.result.current.notes).toBeNull();
     const none = renderHook(() => useNoteLinkIndex(), { wrapper: wrapperFor({ current: data() }) });
     expect(none.result.current.notes).toBeNull();
 
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     const failing = vi.fn(() => Promise.reject(new Error("no disk")));
     const failed = renderHook(() => useNoteLinkIndex(), { wrapper: wrapperFor({ current: data({ noteLinks: failing }) }) });
-    await waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("read note links", expect.any(Error)));
+    await act(() => vi.advanceTimersByTimeAsync(VAULT_QUERY.retryDelay));
+    await waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("query", expect.any(Error)));
     expect(failed.result.current.notes).toBeNull();
   });
 
-  it("ignores a load that finishes after unmount", async () => {
-    let finish: (records: NoteLinkRecord[]) => void = () => undefined;
-    const noteLinks = vi.fn(() => new Promise<NoteLinkRecord[]>((resolve) => (finish = resolve)));
-    const { unmount } = renderHook(() => useNoteLinkIndex(), { wrapper: wrapperFor({ current: data({ noteLinks }) }) });
-    unmount();
-    await act(async () => finish(RECORDS));
-    expect(noteLinks).toHaveBeenCalledTimes(1);
+  it("reads only the notes a save changed and patches their links into the last list", async () => {
+    const noteLinks = vi.fn((ids?: readonly string[]) =>
+      Promise.resolve(
+        ids
+          ? [{ projectId: "lib-2", noteId: "n-2", title: "Abstract draft", links: [] }, ...RECORDS.filter((record) => record.projectId !== "lib-2")]
+          : RECORDS,
+      ),
+    );
+    const value = { current: data({ noteLinks, revision: 40 }) };
+    const { result, rerender } = renderHook(() => useNoteBacklinks("n-1"), { wrapper: wrapperFor(value) });
+    await waitFor(() => expect(result.current.map((link) => link.projectId)).toEqual(["lib-2", "lib-3"]));
+    value.current = data({ noteLinks, revision: 41, changedNotes: ["lib-2"] });
+    rerender();
+    await waitFor(() => expect(result.current.map((link) => link.projectId)).toEqual(["lib-3"]));
+    expect(noteLinks.mock.calls).toEqual([[], [["lib-2"]]]);
   });
 });
 
@@ -205,31 +219,10 @@ describe("useNoteLinkExtensions", () => {
 });
 
 describe("the shared link index", () => {
-  function sharedWrapper(value: { current: NotesData }, live?: { current: boolean }) {
-    return ({ children }: { children: ReactNode }) => (
-      <NotesDataProvider value={value.current}>
-        <NoteLinkIndexProvider>
-          {live ? <FrozenNoteLinkIndex live={live.current}>{children}</FrozenNoteLinkIndex> : children}
-        </NoteLinkIndexProvider>
-      </NotesDataProvider>
-    );
-  }
-
-  it("builds the index once at the host for every hook below it", async () => {
-    const noteLinks = vi.fn(() => Promise.resolve(RECORDS));
-    const { result } = renderHook(() => [useNoteLinkIndex(), useNoteLinkIndex(), useNoteBacklinks("n-1")] as const, {
-      wrapper: sharedWrapper({ current: data({ noteLinks }) }),
-    });
-    await waitFor(() => expect(result.current[0].notes).toHaveLength(3));
-    expect(result.current[1]).toBe(result.current[0]);
-    expect(result.current[2]).toHaveLength(2);
-    expect(noteLinks).toHaveBeenCalledTimes(1);
-  });
-
   it("keeps the same index when a note changes in a way links do not see", async () => {
     const noteLinks = vi.fn(() => Promise.resolve(RECORDS));
     const value = { current: data({ noteLinks }) };
-    const { result, rerender } = renderHook(() => useNoteLinkIndex(), { wrapper: sharedWrapper(value) });
+    const { result, rerender } = renderHook(() => useNoteLinkIndex(), { wrapper: wrapperFor(value) });
     await waitFor(() => expect(result.current.notes).toHaveLength(3));
     const first = result.current;
     value.current = data({ noteLinks, notes: NOTES.map((note) => ({ ...note, preview: "Edited body" })) });
@@ -245,7 +238,7 @@ describe("the shared link index", () => {
     const noteLinks = vi.fn(() => Promise.resolve(RECORDS));
     const value = { current: data({ noteLinks }) };
     const live = { current: true };
-    const { result, rerender } = renderHook(() => useNoteLinkIndex(), { wrapper: sharedWrapper(value, live) });
+    const { result, rerender } = renderHook(() => useNoteLinkIndex(), { wrapper: wrapperFor(value, live) });
     await waitFor(() => expect(result.current.notes).toHaveLength(3));
     live.current = false;
     value.current = data({ noteLinks, notes: NOTES.slice(0, 1) });
@@ -262,7 +255,7 @@ describe("the shared link index", () => {
     const value = { current: data({ noteLinks }) };
     const { result, rerender } = renderHook(
       () => useNoteLinkExtensions({ onOpenNote: vi.fn(), onOpenProject: vi.fn(), currentProjectId: "lib-1" }),
-      { wrapper: sharedWrapper(value) },
+      { wrapper: wrapperFor(value) },
     );
     const options = result.current.extensions[0].options as NoteLinkOptions;
     await waitFor(() => expect(options.getNotes()).toHaveLength(3));

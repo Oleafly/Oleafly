@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "Modo de busca: {{mode}}",
+    "heading": "Modo de busca",
+    "ranked": {
+      "label": "Melhor correspondência",
+      "description": "Ordena os resultados pela qualidade da correspondência. As palavras podem estar em qualquer lugar."
+    },
+    "exact": {
+      "label": "Texto exato",
+      "description": "Encontra exatamente estes caracteres. Uma letra maiúscula faz a busca diferenciar maiúsculas de minúsculas."
+    },
+    "regex": {
+      "label": "Expressão regular",
+      "description": "Usa a sintaxe de padrões do ripgrep. Coloque o padrão entre aspas se ele tiver espaços ou colchetes."
+    },
+    "fuzzy": {
+      "label": "Aproximada",
+      "description": "Encontra nomes que têm as suas letras na mesma ordem, como o fzf. Também aceita 'exato, ^início, fim$ e !excluir."
+    },
+    "invalid": "Este padrão não é válido: {{error}}"
+  },
   "querySearch": {
     "suggestions": "Sugestões de busca",
     "exclude": "Excluir",
@@ -76,7 +97,8 @@
       "invalidValue": "{{value}} não é um valor válido para {{key}}",
       "invalidDate": "{{value}} não é uma data. Tente 2026-10-02 ou @today-7d",
       "invalidNumber": "{{value}} não é um número",
-      "sortNegated": "{{key}} não pode ser excluído"
+      "sortNegated": "{{key}} não pode ser excluído",
+      "tooManyBranches": "Esta busca tem combinações OR demais, então alguns resultados podem faltar"
     }
   },
   "avatar": {

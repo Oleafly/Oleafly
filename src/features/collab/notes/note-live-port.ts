@@ -16,7 +16,7 @@ import { collabPresenceLeave, collabPresenceSet } from "@/lib/tauri-collab";
 import type { CollabProjectRole } from "@/lib/tauri";
 import { settledWithin } from "../live/live-sessions";
 import { type LivePeer, useCollabLiveStore } from "../live/live-store";
-import { createPresencePublisher, inOrder, peerCursors } from "../live/presence";
+import { createPresencePublisher, inOrder, type PresencePublisher, peerCursors } from "../live/presence";
 import { RemoteDocumentSession, type RemoteSessionTransport } from "../live/remote-session";
 import { collabSessionTransport } from "../live/transport";
 import { canEditProjectRole } from "../roles";
@@ -52,7 +52,7 @@ function bindingKey(noteId: string, path: string): string {
 
 function setJumper(key: string, jump: Jumper): void {
   jumpers.set(key, jump);
-  for (const waiter of [...jumperWaiters]) waiter();
+  for (const waiter of jumperWaiters) waiter();
 }
 
 export function jumpToNotePeer(noteId: string, accountId: string, path?: string): boolean {
@@ -103,7 +103,6 @@ function roleTracker(noteId: string, start: CollabProjectRole) {
 
 export function peerMarksFor(
   peers: Readonly<Record<string, LivePeer>>,
-  selfId: string | null,
   path: string,
   blockAt: (offset: number) => number,
   unknownName: string,
@@ -111,7 +110,7 @@ export function peerMarksFor(
   const marks: NotePeerMark[] = [];
   const seen = new Set<string>();
   for (const peer of Object.values(peers)) {
-    if (peer.accountId === selfId || peer.path !== path || peer.cursor === null) continue;
+    if (peer.path !== path || peer.cursor === null) continue;
     const index = blockAt(peer.cursor);
     const key = `${peer.accountId}:${index}`;
     if (seen.has(key)) continue;
@@ -121,43 +120,50 @@ export function peerMarksFor(
   return marks.sort((left, right) => left.index - right.index || left.name.localeCompare(right.name));
 }
 
-export function peerCaretsFor(peers: Readonly<Record<string, LivePeer>>, path: string, selfId: string | null): NotePeerCaret[] {
-  const others = selfId === null ? peers : Object.fromEntries(Object.entries(peers).filter(([, peer]) => peer.accountId !== selfId));
-  return peerCursors(others, path).sort((left, right) => left.id.localeCompare(right.id));
+export function peerCaretsFor(peers: Readonly<Record<string, LivePeer>>, path: string): NotePeerCaret[] {
+  return peerCursors(peers, path).sort((left, right) => left.id.localeCompare(right.id));
 }
 
 function presenceFor(noteId: string, path: string, editor: NoteLiveEditor, send: NotePresenceSender) {
   const key = bindingKey(noteId, path);
   const queue = inOrder("live note presence");
-  const publisher = createPresencePublisher(
-    () => {
-      const { head, anchor } = editor.selectionOffsets();
-      return { path, cursor: head, anchor };
-    },
-    (presence) => {
-      const cursor = presence.cursor ?? 0;
-      queue(() => send.set(noteId, path, cursor, presence.anchor ?? cursor));
-    },
-    () => queue(() => send.leave(noteId)),
-  );
+  let publisher: PresencePublisher | null = null;
+  const publish = () => {
+    if (editor.shown?.() === false) {
+      publisher?.dispose();
+      publisher = null;
+      return;
+    }
+    publisher ??= createPresencePublisher(
+      () => {
+        const { head, anchor } = editor.selectionOffsets();
+        return { path, cursor: head, anchor };
+      },
+      (presence) => {
+        const cursor = presence.cursor ?? 0;
+        queue(() => send.set(noteId, path, cursor, presence.anchor ?? cursor));
+      },
+      () => queue(() => send.leave(noteId)),
+    );
+    publisher.schedule();
+  };
   const unknownName = () => i18n.t(($) => $.notes.live.someone);
-  const marks = (selfId: string | null) => {
+  const marks = () => {
     const state = useCollabLiveStore.getState();
-    return state.projectId === noteId ? peerMarksFor(state.peers, selfId, path, editor.blockAt, unknownName()) : [];
+    return state.projectId === noteId ? peerMarksFor(state.peers, path, editor.blockAt, unknownName()) : [];
   };
   let applied = 0;
   const reports = new Map<string, { head: number; anchor: number; applied: number }>();
   const refresh = (remoteEdit = false) => {
     const state = useCollabLiveStore.getState();
-    const selfId = state.share?.account_id ?? null;
-    const carets = state.projectId === noteId ? peerCaretsFor(state.peers, path, selfId) : [];
+    const carets = state.projectId === noteId ? peerCaretsFor(state.peers, path) : [];
     if (remoteEdit) applied += 1;
     const replace = new Set<string>();
     const present = new Set<string>();
     for (const caret of carets) {
       present.add(caret.id);
       const seen = reports.get(caret.id);
-      if (!seen || seen.head !== caret.head || seen.anchor !== caret.anchor) {
+      if (seen?.head !== caret.head || seen.anchor !== caret.anchor) {
         reports.set(caret.id, { head: caret.head, anchor: caret.anchor, applied });
       } else if (remoteEdit && seen.applied === applied - 1) {
         replace.add(caret.id);
@@ -168,7 +174,7 @@ function presenceFor(noteId: string, path: string, editor: NoteLiveEditor, send:
       if (!present.has(id)) reports.delete(id);
     }
     editor.batch(() => {
-      editor.setPeerMarks(marks(selfId));
+      editor.setPeerMarks(marks());
       editor.setPeerCarets(carets, replace);
     });
   };
@@ -177,23 +183,23 @@ function presenceFor(noteId: string, path: string, editor: NoteLiveEditor, send:
     if (deferred !== null) return;
     deferred = setTimeout(() => {
       deferred = null;
-      publisher.schedule();
+      publish();
     }, 0);
   });
   const unsubscribe = useCollabLiveStore.subscribe((state, previous) => {
     if (state.peers !== previous.peers || state.projectId !== previous.projectId) refresh();
   });
   const jump = (accountId: string) => {
-    const mark = marks(null).find((entry) => entry.id === accountId);
+    const mark = marks().find((entry) => entry.id === accountId);
     if (mark) editor.revealBlock(mark.index);
   };
   setJumper(key, jump);
-  publisher.schedule();
+  publish();
   refresh();
   return {
     refresh,
     dispose: (leave: boolean) => {
-      publisher.dispose();
+      publisher?.dispose();
       stopCaret();
       if (deferred !== null) clearTimeout(deferred);
       unsubscribe();
@@ -269,7 +275,10 @@ export function bindNoteLive(request: NoteLiveBindRequest, deps: NoteLiveDeps = 
     editor: surface,
     baseline: request.baseline.serialized,
     clock: deps.clock,
-    onError: (error) => void logError("live note", error),
+    onError: (error) => {
+      void logError("live note", error);
+      showNoteLiveNotice(request.noticeId ?? noteId, "refused");
+    },
   });
   binding.start();
   const presence = presenceFor(noteId, path, editor, deps.presence ?? tauriPresence);
@@ -295,7 +304,7 @@ export function bindNoteLive(request: NoteLiveBindRequest, deps: NoteLiveDeps = 
 
 export async function handBackNote(noteId: string, waitMs: number = NOTE_HAND_BACK_MS): Promise<void> {
   const held = [...bound.values()].filter((entry) => entry.noteId === noteId);
-  await Promise.all(held.map((entry) => entry.handle?.flush(waitMs)));
+  await Promise.all(held.flatMap((entry) => (entry.handle ? [entry.handle.flush(waitMs)] : [])));
 }
 
 export function installNoteLive(deps: NoteLiveDeps = {}): () => void {

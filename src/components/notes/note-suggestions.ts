@@ -1,9 +1,9 @@
-import { Extension } from "@tiptap/core";
-import type { Editor } from "@tiptap/core";
+import { type Editor, Extension } from "@tiptap/core";
 import { Fragment, type Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, type EditorState, type Transaction } from "@tiptap/pm/state";
+import { Transform } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-import type { NoteChangeDraft } from "./note-diff";
+import { diffNoteDocs, type NoteChangeDraft } from "./note-diff";
 import { destroyRemoteImageNotices, remoteSafeSerializer } from "./note-remote-images";
 
 export type ChangeOrigin = "agent" | "disk";
@@ -23,6 +23,7 @@ interface ReviewState extends ReviewSnapshot {
 interface ReviewMeta extends ReviewSnapshot {
   undo?: ReviewSnapshot | null;
   navigate?: boolean;
+  shown?: boolean;
 }
 
 export interface ReviewSummary {
@@ -48,18 +49,27 @@ export function reviewSummary(editor: Editor): ReviewSummary {
   return { count: items.length, index: items.findIndex((item) => item.id === activeId), activeId };
 }
 
-export function showSuggestions(editor: Editor, drafts: readonly NoteChangeDraft[], origin: ChangeOrigin): void {
+function withIds(drafts: readonly NoteChangeDraft[], origin: ChangeOrigin, firstId?: string): NoteChange[] {
+  return drafts.map((draft, index) => ({ ...draft, id: index === 0 && firstId ? firstId : `change-${++nextId}`, origin }));
+}
+
+const overlapping = (left: NoteChangeDraft, right: NoteChangeDraft) => left.from < right.to && right.from < left.to;
+
+export function showSuggestions(editor: Editor, drafts: readonly NoteChangeDraft[], origin: ChangeOrigin, add = false): void {
   const { items: current, activeId } = review(editor);
-  const fresh = drafts.map((draft) => ({ ...draft, id: `change-${++nextId}`, origin }));
-  const items = [...current.filter((item) => item.origin !== origin), ...fresh].sort(
-    (left, right) => left.from - right.from || left.to - right.to,
+  const fresh = withIds(drafts, origin);
+  const kept = current.filter(
+    (item) => item.origin !== origin || (add && !fresh.some((draft) => overlapping(item, draft))),
   );
-  const keep = items.some((item) => item.id === activeId) && origin === "disk";
-  dispatchReview(editor, editor.state.tr, { items, activeId: keep ? activeId : (fresh[0]?.id ?? items[0]?.id ?? null), undo: null });
+  const items = [...kept, ...fresh].sort((left, right) => left.from - right.from || left.to - right.to);
+  const keep = items.some((item) => item.id === activeId) && (origin === "disk" || add);
+  const active = keep ? activeId : (fresh[0]?.id ?? items[0]?.id ?? null);
+  dispatchReview(editor, editor.state.tr, { items, activeId: active, undo: null, shown: true });
 }
 
 export function isReviewTransaction(tr: Transaction): boolean {
-  return tr.getMeta(reviewKey) !== undefined;
+  const meta = tr.getMeta(reviewKey) as ReviewMeta | undefined;
+  return meta !== undefined && meta.shown !== true;
 }
 
 export function isReviewNavigation(tr: Transaction): boolean {
@@ -84,7 +94,7 @@ export function hasPending(editor: Editor, origin: ChangeOrigin): boolean {
 export function docWithPending(editor: Editor, origin: ChangeOrigin): ProseMirrorNode {
   const { tr } = editor.state;
   const pending = review(editor).items.filter((item) => item.origin === origin);
-  for (const item of [...pending].reverse()) apply(tr, item);
+  for (const item of [...pending].reverse()) applyDraft(tr, item);
   return tr.doc;
 }
 
@@ -96,18 +106,19 @@ export function moveReview(editor: Editor, step: number): void {
   dispatchReview(editor, editor.state.tr, { items, activeId: target.id, undo, navigate: true });
 }
 
-function apply(tr: Transaction, item: NoteChange): void {
+export function applyDraft(tr: Transform, item: NoteChangeDraft): void {
   const from = tr.mapping.map(item.from, 1);
   const to = Math.max(from, tr.mapping.map(item.to, -1));
-  if (item.kind === "text") tr.insertText(item.text, from, to);
-  else tr.replaceWith(from, to, Fragment.from(item.nodes));
+  if (item.kind === "blocks") tr.replaceWith(from, to, Fragment.from(item.nodes));
+  else if (item.text) tr.replaceWith(from, to, tr.doc.type.schema.text(item.text, item.marks ?? tr.doc.resolve(from).marks()));
+  else tr.delete(from, to);
 }
 
 function settle(editor: Editor, ids: ReadonlySet<string>, accept: boolean): void {
   const { items, activeId } = review(editor);
   const { tr } = editor.state;
   if (accept) {
-    for (const item of [...items].filter((candidate) => ids.has(candidate.id)).reverse()) apply(tr, item);
+    for (const item of [...items].filter((candidate) => ids.has(candidate.id)).reverse()) applyDraft(tr, item);
   }
   const left = items
     .filter((item) => !ids.has(item.id))
@@ -151,15 +162,23 @@ function touches(tr: Transaction, from: number, to: number): boolean {
   return hit;
 }
 
-function mapItems(tr: Transaction, state: ReviewSnapshot): ReviewSnapshot {
-  const items = state.items
-    .filter((item) => item.from === item.to || !touches(tr, item.from, item.to))
-    .map((item) => {
-      const from = tr.mapping.map(item.from, 1);
-      return { ...item, from, to: Math.max(from, tr.mapping.map(item.to, -1)) };
-    });
+function rediffed(doc: ProseMirrorNode, item: NoteChange): NoteChange[] {
+  const target = new Transform(doc);
+  applyDraft(target, item);
+  return withIds(diffNoteDocs(doc, target.doc), item.origin, item.id);
+}
+
+function mapItems(tr: Transaction, state: ReviewSnapshot): ReviewSnapshot & { touched: boolean } {
+  let touched = false;
+  const items = state.items.flatMap((item) => {
+    const from = tr.mapping.map(item.from, 1);
+    const moved = { ...item, from, to: Math.max(from, tr.mapping.map(item.to, -1)) };
+    if (item.from === item.to || !touches(tr, item.from, item.to)) return [moved];
+    touched = true;
+    return rediffed(tr.doc, moved);
+  });
   const activeId = items.some((item) => item.id === state.activeId) ? state.activeId : (items[0]?.id ?? null);
-  return { items, activeId };
+  return { items, activeId, touched };
 }
 
 function insertedText(item: NoteChange & { kind: "text" }, active: boolean): HTMLElement {
@@ -192,9 +211,8 @@ function decorationsFor(state: EditorState, item: NoteChange, active: boolean): 
     return out;
   }
   state.doc.nodesBetween(item.from, item.to, (node, position) => {
-    if (position >= item.from && position + node.nodeSize <= item.to) {
-      out.push(Decoration.node(position, position + node.nodeSize, { class: `note-diff-delete-block${suffix}` }));
-    }
+    if (position < item.from || position + node.nodeSize > item.to) return true;
+    out.push(Decoration.node(position, position + node.nodeSize, { class: `note-diff-delete-block${suffix}` }));
     return false;
   });
   if (item.nodes.length > 0) {
@@ -225,8 +243,8 @@ function nextReview(tr: Transaction, state: ReviewState, next: EditorState): Rev
   }
   if (!tr.docChanged) return state;
   if (state.items.length === 0) return state.undo ? { ...state, undo: null } : state;
-  const mapped = mapItems(tr, state);
-  const kept = mapped.activeId === state.activeId && mapped.items.length === state.items.length;
+  const { touched, ...mapped } = mapItems(tr, state);
+  const kept = !touched && mapped.activeId === state.activeId && mapped.items.length === state.items.length;
   return {
     ...mapped,
     undo: null,
@@ -253,15 +271,12 @@ export const NoteSuggestions = Extension.create({
   },
 
   addKeyboardShortcuts() {
-    const settleActive = (accept: boolean) => {
-      if (!review(this.editor).activeId) return false;
-      if (accept) acceptActive(this.editor);
-      else rejectActive(this.editor);
-      return true;
-    };
     return {
-      "Mod-Enter": () => settleActive(true),
-      Escape: () => settleActive(false),
+      "Mod-Enter": () => {
+        if (!review(this.editor).activeId) return false;
+        acceptActive(this.editor);
+        return true;
+      },
     };
   },
 

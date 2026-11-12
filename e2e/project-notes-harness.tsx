@@ -1,5 +1,6 @@
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import type { FileEntry, ProjectInfo } from "@oleafly/backend-port";
+import { diskHash } from "/src/lib/disk-hash";
 import { installNotesAgentMock } from "./notes-agent-mock";
 import { prepareHarnessI18n } from "./harness-i18n";
 import "/src/styles/globals.css";
@@ -46,6 +47,30 @@ const disk = new Map<string, string>([
   ["mine/note.md", PERSONAL],
 ]);
 const writes: { projectId: string; path: string; content: string }[] = [];
+const created: { name: string; source: string; relatedProject: string | null }[] = [];
+const recycled: string[] = [];
+
+function personalFacts() {
+  return PROJECTS.filter((entry) => entry.kind === "note").map((entry) => {
+    const text = disk.get(`${entry.id}/note.md`) ?? "";
+    return {
+      id: entry.id,
+      noteId: null,
+      title: entry.name,
+      icon: /\nicon: (.+)\n/u.exec(text)?.[1] ?? null,
+      color: /\ncolor: (.+)\n/u.exec(text)?.[1] ?? null,
+      agent: null,
+      tags: [],
+      aliases: [],
+      properties: {},
+      preview: text.split("\n---\n").at(-1)?.trim() ?? "",
+      relatedProject: entry.related_project ?? null,
+      updatedAt: 0,
+      knowledge: `${entry.id}:${text.length}`,
+      taskDigest: `${entry.id}:${text.length}`,
+    };
+  });
+}
 
 function tree(projectId: string): FileEntry[] {
   return [...disk.keys()]
@@ -68,16 +93,51 @@ const handlers: Record<string, (args: Record<string, unknown>) => unknown> = {
     const projectId = String(args.projectId);
     const path = String(args.path);
     const content = String(args.content);
+    const stored = disk.get(`${projectId}/${path}`);
+    if (typeof args.expectedHash === "string" && stored !== undefined && args.expectedHash !== diskHash(stored)) {
+      throw new Error("file changed on disk");
+    }
     disk.set(`${projectId}/${path}`, content);
     writes.push({ projectId, path, content });
     return { generation: writes.length + 1 };
   },
   project_mutation_generation: () => writes.length + 1,
-  note_heads: () => [{ id: "mine", head: disk.get("mine/note.md") ?? "" }],
+  note_facts: () => personalFacts(),
+  rename_file: (args) => {
+    const projectId = String(args.projectId);
+    const from = `${projectId}/${String(args.from)}`;
+    const to = String(args.to);
+    const text = disk.get(from);
+    if (text === undefined) throw new Error(`missing ${String(args.from)}`);
+    disk.delete(from);
+    disk.set(`${projectId}/${to}`, text);
+    return { status: "renamed", path: to, generation: writes.length + 1 };
+  },
+  create_note_project: (args) => {
+    const id = `copy-${created.length + 1}`;
+    const name = String(args.name);
+    const source = String(args.source);
+    const relatedProject = (args.relatedProject as string | null) ?? null;
+    created.push({ name, source, relatedProject });
+    PROJECTS.push(project(id, { name, kind: "note", main_doc: "note.md", related_project: relatedProject ?? undefined }));
+    disk.set(`${id}/note.md`, source);
+    return id;
+  },
+  recycle_project: (args) => {
+    const id = String(args.projectId);
+    recycled.push(id);
+    PROJECTS.splice(
+      PROJECTS.findIndex((entry) => entry.id === id),
+      1,
+    );
+    return null;
+  },
+  notes_release_caches: () => null,
   note_links: () => [],
   note_tags: () => [],
   note_search: () => [],
   list_files: (args) => tree(String(args.projectId)),
+  list_file_tree: (args) => ({ entries: tree(String(args.projectId)), truncated: false }),
   watch_project_folder: () => 1,
   unwatch_project_folder: () => null,
   project_citations: () => [],
@@ -93,10 +153,10 @@ mockIPC(
   { shouldMockEvents: true },
 );
 
-Object.assign(window, { __writes: writes, __disk: disk });
+Object.assign(window, { __writes: writes, __disk: disk, __created: created, __recycled: recycled });
 
 await prepareHarnessI18n();
-const [{ createRoot }, { loadNamespace }, files, settings, { Editor }, { ProjectNotesPanel }, { ThemeProvider }, query, react] =
+const [{ createRoot }, { loadNamespace }, files, settings, { Editor }, { ProjectNotesPanel }, { ThemeProvider }, query, react, { ConfirmHost }] =
   await Promise.all([
     import("react-dom/client"),
     import("/src/i18n"),
@@ -107,6 +167,7 @@ const [{ createRoot }, { loadNamespace }, files, settings, { Editor }, { Project
     import("/src/lib/theme"),
     import("@tanstack/react-query"),
     import("react"),
+    import("/src/components/ui/confirm-host"),
   ]);
 await Promise.all(["notes", "editor", "common", "ai", "collab", "shell"].map((namespace) => loadNamespace(namespace)));
 
@@ -145,8 +206,15 @@ createRoot(root).render(
         { className: "flex h-screen" },
         react.createElement("aside", { className: "w-72 shrink-0 border-r" }, react.createElement(ProjectNotesPanel)),
         react.createElement("main", { className: "min-w-0 flex-1" }, react.createElement(Editor)),
+        react.createElement(ConfirmHost),
       ),
     ),
   ),
 );
+Object.assign(window, {
+  __writeFromDisk: (path: string, text: string) => {
+    disk.set(`paper/${path}`, text);
+    files.useFilesStore.setState((state) => ({ files: { ...state.files, [path]: { content: text, dirty: false } } }));
+  },
+});
 document.body.dataset.fixtureState = "mounted";

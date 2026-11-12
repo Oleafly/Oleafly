@@ -11,12 +11,16 @@ import type { AcpAgentStatus, AcpEvent, AcpSession } from "@/lib/acp";
 import { useAcpSessionsStore, type AcpSelection } from "@/store/acp-sessions";
 import { selectScopeRuntime, useAssistantRuntimeStore } from "@/store/assistant-runtime";
 import { useChatsStore } from "@/store/chats";
+import { useComposerDrafts } from "@/store/composer-drafts";
 import { beginChatRun, activeChatRun, endChatRun } from "@/components/ai/chat-run-registry";
 import { NoteAssistant, type NoteAssistantHandle, type NoteEditorBridge } from "./NoteAssistant";
+import { registerNoteEditor as registerOpenEditor } from "@/lib/open-note-editors";
 import { pendingBatches, registerNoteEditor, resetPendingSuggestionsForTest } from "./note-pending-suggestions";
-import { PROMPT_COLLAPSED_KEY } from "./note-prefs";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import type { NoteItem } from "./types";
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
+import { useNotesPrefsStore } from "@/store/notes-prefs";
 
 const ui = vi.hoisted(() => ({
   scope: null as AssistantScopeValue | null,
@@ -40,7 +44,7 @@ const ui = vi.hoisted(() => ({
 const tauri = vi.hoisted(() => ({
   listFiles: vi.fn(async () => [{ path: "assets/plot.png", is_dir: false }]),
   listNoteTags: vi.fn(async () => []),
-  noteHeads: vi.fn(async () => [{ id: "note-1", head: "---\nid: link-1\n---\n" }]),
+  noteFacts: vi.fn(async () => [{ id: "note-1", noteId: "link-1" }]),
   noteSearch: vi.fn(async () => []),
 }));
 const acpLib = vi.hoisted(() => ({ acpCancel: vi.fn(async () => {}) }));
@@ -51,6 +55,11 @@ vi.mock("@/lib/acp", async (importOriginal) => ({ ...(await importOriginal<typeo
 vi.mock("@/store/acp-sessions", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/store/acp-sessions")>()),
   attachAcpListeners: listeners.attach,
+}));
+
+vi.mock("./note-selection", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./note-selection")>()),
+  noteClipboardText: () => "Ratio 0.75.",
 }));
 
 vi.mock("@/components/ai/ChatCore", async () => {
@@ -78,6 +87,7 @@ vi.mock("@/components/ai/ChatCore", async () => {
         chatCount: 0,
         canStartChat: true,
         setup: null,
+        tools: null,
         ...ui.parts,
       };
       return createElement("div", { "data-testid": "chat-core" }, scope?.layout?.render(parts));
@@ -101,17 +111,12 @@ const AGENT = {
 } as unknown as AcpAgentStatus;
 
 function data(extra: Partial<NotesData> = {}): NotesData {
-  return {
+  return fakeNotesData({
     notes: [NOTE, { ...NOTE, id: "note-2", title: "Ablations" }],
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
     projects: [{ id: "paper", name: "Encoder paper" }],
     loadNote: vi.fn(async (id: string) => ({ text: `# ${id}`, version: "v" })),
-    saveNote: vi.fn(),
     ...extra,
-  } as NotesData;
+  });
 }
 
 function bridge(): NoteEditorBridge & { propose: ReturnType<typeof vi.fn> } {
@@ -142,11 +147,13 @@ function session(id: string, status: AcpSession["status"]): AcpSession {
 }
 
 beforeAll(async () => {
-  await loadNamespace("notes");
   await loadNamespace("ai");
 });
 
+const initialPrefs = useNotesPrefsStore.getState();
+
 beforeEach(() => {
+  useNotesPrefsStore.setState(initialPrefs, true);
   localStorage.clear();
   ui.scope = null;
   ui.parts = {};
@@ -157,6 +164,7 @@ beforeEach(() => {
   useAcpSessionsStore.setState({ catalog: [], sessions: {}, activeByProject: {}, events: {}, composers: {} });
   vi.spyOn(useAcpSessionsStore.getState(), "refreshCatalog").mockResolvedValue(true);
   useChatsStore.setState({ shownByScope: {} });
+  useComposerDrafts.setState({ drafts: {} });
 });
 
 afterEach(() => {
@@ -203,9 +211,25 @@ describe("the note assistant", () => {
     expect(commands.map((command) => command.id)).toContain("research:latestRun");
     expect(commands.map((command) => command.id)).toContain("research:claims");
     commands.find((command) => command.id === "research:latestRun")?.action();
-    expect(send).toHaveBeenCalledWith(expect.stringContaining("<run>\nBest ratio 0.6\n</run>"));
+    expect(send).toHaveBeenCalledWith(expect.stringContaining("```markdown\nBest ratio 0.6\n```"));
     expect(ui.scope?.excludedNames).not.toContain("research_task_create");
     expect(latestRun).toHaveBeenCalledWith("note-1");
+  });
+
+  it("proofreads and rewrites the selected passage, or the whole note when nothing is selected", async () => {
+    show();
+    await waitFor(() => expect(ui.scope).not.toBeNull());
+    const command = (id: string, send = vi.fn()) => ({ send, found: ui.scope?.composer?.slashCommands?.(send).find((entry) => entry.id === id) });
+    expect(command("research:proofread").found?.label).toBe(enNotes.prompt.wholeNote.proofread);
+    expect(command("research:rewrite").found?.label).toBe(enNotes.prompt.wholeNote.rewrite);
+    const selection = { empty: false, content: () => ({}) };
+    const stop = registerOpenEditor("note-1", { editor: { state: { selection, doc: {} } } } as never);
+    const { send, found } = command("research:rewrite");
+    expect(found?.label).toBe(enNotes.prompt.actions.rewrite);
+    found?.action();
+    expect(send).toHaveBeenCalledWith(expect.stringContaining("Rewrite only the passage below"));
+    expect(send).toHaveBeenCalledWith(expect.stringContaining("It starts on line 6 of the note."));
+    stop();
   });
 
   it("hides the latest run and claims actions until they can work", async () => {
@@ -251,11 +275,41 @@ describe("the note assistant", () => {
   it("keeps the glow on while a turn runs and stops it from the pill", async () => {
     const stop = vi.fn();
     ui.parts = { working: true, hasMessages: true, stop };
-    localStorage.setItem(PROMPT_COLLAPSED_KEY, "true");
+    useNotesPrefsStore.getState().set("promptCollapsed", true);
+    const run = beginChatRun(new AbortController(), "note-1", "note:note-1");
     show();
     const stopButton = await screen.findByRole("button", { name: enAi.composer.stop });
     fireEvent.click(stopButton);
     expect(stop).toHaveBeenCalledOnce();
+    endChatRun(run);
+  });
+
+  it("mounts the chat only once the folded prompt opens, unless the note has a chat", async () => {
+    useNotesPrefsStore.getState().set("promptCollapsed", true);
+    const refresh = vi.mocked(useAcpSessionsStore.getState().refreshCatalog);
+    refresh.mockClear();
+    tauri.listFiles.mockClear();
+    const view = show();
+    await act(async () => {});
+    expect(screen.queryByTestId("chat-core")).toBeNull();
+    expect(refresh).not.toHaveBeenCalled();
+    expect(tauri.listFiles).not.toHaveBeenCalled();
+    act(() => view.ref.current?.focus());
+    expect(await screen.findByTestId("chat-core")).toBeInTheDocument();
+    view.unmount();
+    useChatsStore.setState({
+      shownByScope: { "note:note-1": { projectId: "note-1", chats: [], activeId: "chat-1", skippedOnLoad: 0 } },
+    });
+    show();
+    expect(await screen.findByTestId("chat-core")).toBeInTheDocument();
+  });
+
+  it("puts a quote into the draft of a prompt that was never opened", async () => {
+    useNotesPrefsStore.getState().set("promptCollapsed", true);
+    const { ref } = show();
+    act(() => ref.current?.quote("mask ratio"));
+    expect(useComposerDrafts.getState().drafts["note-1:builtin"]?.text).toBe("> mask ratio\n\n");
+    expect(await screen.findByTestId("chat-core")).toBeInTheDocument();
   });
 
   it("folds into the pill from the composer's collapse button", async () => {
@@ -324,7 +378,7 @@ describe("the note assistant", () => {
     });
     const stopButtons = () => screen.queryAllByRole("button", { name: enAi.composer.stop });
     act(() => {
-      localStorage.setItem(PROMPT_COLLAPSED_KEY, "true");
+      useNotesPrefsStore.getState().set("promptCollapsed", true);
     });
     expect(document.querySelector("[data-working]")).not.toBeNull();
     const now = Date.now() + 1000;
@@ -343,14 +397,12 @@ describe("the note assistant", () => {
 
   it("stops a running CLI turn from the pill", async () => {
     useAssistantRuntimeStore.getState().setScopeRuntime("note:note-1", "acp");
-    localStorage.setItem(PROMPT_COLLAPSED_KEY, "true");
+    useNotesPrefsStore.getState().set("promptCollapsed", true);
+    useAcpSessionsStore.setState({ sessions: { s2: session("s2", "running") }, activeByProject: { "note-1": "s2" } });
     show();
     await screen.findByTestId("acp-assistant");
     expect(ui.acpProps).toMatchObject({ projectId: "note-1", slot: "note-1" });
     expect(ui.acpProps?.tree).toEqual(expect.any(Array));
-    act(() => {
-      useAcpSessionsStore.setState({ sessions: { s2: session("s2", "running") }, activeByProject: { "note-1": "s2" } });
-    });
     fireEvent.click(await screen.findByRole("button", { name: enAi.composer.stop }));
     expect(acpLib.acpCancel).toHaveBeenCalledWith("note-1", "s2");
   });
@@ -373,14 +425,17 @@ describe("the note assistant", () => {
     });
   }
 
-  it("keeps its run going when the note closes and forgets the scope once the run ends", async () => {
+  it("stops its run when the note closes and forgets the scope once the run ends", async () => {
     const view = show();
     await waitFor(() => expect(ui.scope).not.toBeNull());
     seedScope();
     const controller = new AbortController();
     const run = beginChatRun(controller, "note-1", "note:note-1");
+    const approval = vi.fn();
+    run.pendingApproval = { req: {} as never, resolve: approval, mode: "ask" as never };
     view.unmount();
-    expect(controller.signal.aborted).toBe(false);
+    expect(controller.signal.aborted).toBe(true);
+    expect(approval).toHaveBeenCalledWith(false);
     expect(activeChatRun("note:note-1")).toBe(run);
     expect(useChatsStore.getState().shownByScope["note:note-1"]).toBeDefined();
     endChatRun(run);
@@ -505,7 +560,7 @@ describe("the note assistant", () => {
   });
 
   it("keeps personal notes out of a shared note's assistant", async () => {
-    for (const fn of [tauri.noteSearch, tauri.listNoteTags, tauri.noteHeads]) fn.mockClear();
+    for (const fn of [tauri.noteSearch, tauri.listNoteTags, tauri.noteFacts]) fn.mockClear();
     show({ note: { ...NOTE, shared: true } });
     await waitFor(() => expect(ui.scope).not.toBeNull());
     const scope = ui.scope as AssistantScopeValue;
@@ -520,7 +575,7 @@ describe("the note assistant", () => {
     expect(await tools.read_note_by_id.execute?.({ id: "note-2" })).toHaveProperty("error");
     expect(tauri.noteSearch).not.toHaveBeenCalled();
     expect(tauri.listNoteTags).not.toHaveBeenCalled();
-    expect(tauri.noteHeads).not.toHaveBeenCalled();
+    expect(tauri.noteFacts).not.toHaveBeenCalled();
   });
 
   it("turns the composer into a plain notice for a note the person can only view", async () => {
@@ -536,6 +591,21 @@ describe("the note assistant", () => {
     );
     expect(await screen.findByRole("textbox", { name: "Box" })).toBeInTheDocument();
     expect(screen.queryByText(enNotes.assistant.viewOnly)).toBeNull();
+  });
+
+  it("tells a shared note's CLI agent to stay in the note's folder", async () => {
+    useAssistantRuntimeStore.getState().setScopeRuntime("note:note-1", "acp");
+    show({ note: { ...NOTE, shared: true } });
+    await screen.findByTestId("acp-assistant");
+    const texts = (ui.acpProps?.extraSelections?.() ?? []).map((selection) => selection.text);
+    expect(texts.at(-1)).toMatch(/don't read, list or search any file outside it/u);
+  });
+
+  it("refuses edits from the assistant while the person can only view the note", async () => {
+    show({ viewOnly: true });
+    await waitFor(() => expect(ui.scope).not.toBeNull());
+    const tools = ui.scope?.toolAdditions?.({ projectId: "note-1", confirm: vi.fn(), onImage: vi.fn(), runId: () => null, isActive: () => true })[0].tools ?? {};
+    expect(await tools.propose_note_edits.execute?.({ edits: [{ find: "Ratio 0.75.", replace: "Ratio 0.6." }] })).toHaveProperty("error");
   });
 
   it("shows the view-only notice in place of a CLI agent", async () => {

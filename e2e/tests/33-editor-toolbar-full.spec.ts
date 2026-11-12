@@ -110,7 +110,7 @@ async function pickListItem(page: Page, label: "Bulleted list" | "Numbered list"
       .waitForFunction(
         `(() => {
           const button = Array.from(
-            document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+            document.querySelectorAll('[data-radix-popper-content-wrapper] button, [data-radix-popper-content-wrapper] [role="menuitem"]')
           )
             .filter((candidate) => candidate.closest('[data-state="open"]'))
             .find((candidate) => {
@@ -137,7 +137,7 @@ async function pickListItem(page: Page, label: "Bulleted list" | "Numbered list"
 
 function codeIntelligenceButtonExpression(label: string) {
   return `Array.from(
-    document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+    document.querySelectorAll('[data-radix-popper-content-wrapper] button, [data-radix-popper-content-wrapper] [role="menuitem"]')
   ).find((candidate) => {
     if (!candidate.textContent?.trim().startsWith(${JSON.stringify(label)})) return false;
     const style = getComputedStyle(candidate);

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { mergeSequences } from "./note-merge";
+import { mergeOrRefuse, mergeSequences } from "./note-merge";
 
 describe("mergeSequences", () => {
   const key = (item: string) => item;
@@ -52,6 +52,23 @@ describe("mergeSequences", () => {
     const spy = vi.spyOn(myers, "myersEditScript").mockReturnValueOnce(null);
     try {
       expect(mergeSequences(["a"], ["b"], ["c"], key)).toEqual(["c"]);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("refuses to pick a side when asked not to, and asks a resolver what to keep", async () => {
+    const base = ["a", "b", "c"];
+    expect(mergeOrRefuse(base, ["a", "B1", "c"], ["a", "B2", "c"], key, "none")).toBeNull();
+    expect(mergeOrRefuse(base, ["a", "B1", "c"], ["a", "B2", "c"], key, "ours")).toEqual(["a", "B1", "c"]);
+    expect(mergeOrRefuse(base, ["a", "B", "c"], ["a", "B", "c"], key, "none")).toEqual(["a", "B", "c"]);
+    expect(mergeOrRefuse(base, ["A", "b", "c"], ["a", "b", "C"], key, "none")).toEqual(["A", "b", "C"]);
+    const resolve = vi.fn((ours: string[], theirs: string[], within: string[]) => [`${within}:${ours}:${theirs}`]);
+    expect(mergeOrRefuse(base, ["a", "B1", "c"], ["a", "B2", "c"], key, resolve)).toEqual(["a", "b:B1:B2", "c"]);
+    const myers = await import("@/lib/myers-diff");
+    const spy = vi.spyOn(myers, "myersEditScript").mockReturnValueOnce(null);
+    try {
+      expect(mergeOrRefuse(["a"], ["b", "x"], ["c"], key, "theirs")).toBeNull();
     } finally {
       spy.mockRestore();
     }

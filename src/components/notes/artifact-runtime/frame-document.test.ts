@@ -6,9 +6,11 @@ import {
   frameChannel,
   framePolicy,
   framePrelude,
+  cssUrlTargets,
   globalsFor,
   htmlFrameDocument,
   inlineJson,
+  isPortOffer,
   libraryFor,
   prepareHtml,
   reactFrameDocument,
@@ -26,7 +28,8 @@ const MESSAGES = {
   noComponent: "None",
   loadFailed: "Couldn't load",
 };
-const OPTIONS = { theme: "light" as const, channel: "abc", messages: MESSAGES };
+const PARENT_ORIGIN = "tauri://localhost";
+const OPTIONS = { theme: "light" as const, channel: "abc", parentOrigin: PARENT_ORIGIN, messages: MESSAGES };
 const HASH = "0123456789abcdef".repeat(4);
 const RUNTIME = `oleafly-artifact://localhost/runtime/${HASH}.js`;
 const WINDOWS_RUNTIME = `http://oleafly-artifact.localhost/runtime/${HASH}.js`;
@@ -55,6 +58,27 @@ function frameWindow() {
   return dom.window;
 }
 
+interface FakePort {
+  onmessage: ((event: { data: unknown }) => void) | null;
+  postMessage: (message: unknown) => void;
+}
+
+function connectFrame(window: Window) {
+  const sent: unknown[] = [];
+  const offers: { message: unknown; origin: string; transfer: unknown[] }[] = [];
+  const port1: FakePort = { onmessage: null, postMessage: (message) => sent.push(message) };
+  const port2 = { end: "parent" };
+  Object.assign(window, {
+    MessageChannel: class {
+      readonly port1 = port1;
+      readonly port2 = port2;
+    },
+  });
+  window.postMessage = ((message: unknown, origin: string, transfer: unknown[]) =>
+    offers.push({ message, origin, transfer })) as unknown as typeof window.postMessage;
+  return { sent, offers, port1, port2 };
+}
+
 afterEach(() => {
   vi.useRealTimers();
 });
@@ -70,7 +94,7 @@ describe("framePrelude", () => {
       Object.defineProperty(window, "ipc", { value: Object.freeze({ postMessage: (s) => window.chrome.webview.postMessage(s) }) });
       window.RTCPeerConnection = class {};
     `);
-    window.eval(framePrelude("abc"));
+    window.eval(framePrelude("abc", PARENT_ORIGIN));
     expect(window.eval("typeof __TAURI_INTERNALS__")).toBe("object");
     expect(() => window.eval("__TAURI_INTERNALS__.invoke('read_file')")).toThrow();
     expect(() => window.eval("ipc.postMessage('x')")).toThrow();
@@ -83,45 +107,59 @@ describe("framePrelude", () => {
     expect(window.eval("typeof RTCPeerConnection")).toBe("undefined");
   });
 
-  it("reports heartbeats and size to the parent with its channel", async () => {
+  it("hands the parent a message port, addressed to the parent's origin only", () => {
     const window = frameWindow();
-    const posts: unknown[] = [];
-    window.postMessage = ((message: unknown) => posts.push(message)) as typeof window.postMessage;
-    window.eval(framePrelude("chan"));
-    expect(posts).toContainEqual({ channel: "chan", type: "beat" });
-    await vi.waitFor(() => expect(posts.some((post) => (post as { type: string }).type === "size")).toBe(true));
-    const size = posts.find((post) => (post as { type: string }).type === "size") as { height: number };
+    const { offers, port2 } = connectFrame(window as unknown as Window);
+    window.eval(framePrelude("chan", PARENT_ORIGIN));
+    expect(offers).toEqual([{ message: { channel: "chan", type: "port" }, origin: PARENT_ORIGIN, transfer: [port2] }]);
+  });
+
+  it("reports heartbeats and size over its port with its channel", async () => {
+    const window = frameWindow();
+    const { sent, offers } = connectFrame(window as unknown as Window);
+    window.eval(framePrelude("chan", PARENT_ORIGIN));
+    expect(sent).toContainEqual({ channel: "chan", type: "beat" });
+    await vi.waitFor(() => expect(sent.some((post) => (post as { type: string }).type === "size")).toBe(true));
+    const size = sent.find((post) => (post as { type: string }).type === "size") as { height: number };
     expect(typeof size.height).toBe("number");
+    expect(offers).toHaveLength(1);
   });
 
   it("measures after the document finishes loading when it starts early", async () => {
     const dom = new JSDOM("<!doctype html><html><head></head><body></body></html>", SCRIPTED_DOM);
-    const posts: unknown[] = [];
+    const { sent } = connectFrame(dom.window as unknown as Window);
     Object.defineProperty(dom.window.document, "readyState", { value: "loading", configurable: true });
-    dom.window.postMessage = ((message: unknown) => posts.push(message)) as typeof dom.window.postMessage;
-    dom.window.eval(framePrelude("late"));
-    expect(posts.some((post) => (post as { type: string }).type === "size")).toBe(false);
+    dom.window.eval(framePrelude("late", PARENT_ORIGIN));
+    expect(sent.some((post) => (post as { type: string }).type === "size")).toBe(false);
     dom.window.document.dispatchEvent(new dom.window.Event("DOMContentLoaded"));
-    await vi.waitFor(() => expect(posts.some((post) => (post as { type: string }).type === "size")).toBe(true));
+    await vi.waitFor(() => expect(sent.some((post) => (post as { type: string }).type === "size")).toBe(true));
   });
 
-  it("follows theme messages from the parent only", () => {
+  it("follows theme messages that arrive on its port only", () => {
     const window = frameWindow();
-    window.postMessage = (() => undefined) as typeof window.postMessage;
-    window.eval(framePrelude("chan"));
-    const send = (data: unknown, source: unknown = window) =>
-      window.dispatchEvent(new window.MessageEvent("message", { data, source: source as Window }));
+    const { port1 } = connectFrame(window as unknown as Window);
+    window.eval(framePrelude("chan", PARENT_ORIGIN));
+    const send = (data: unknown) => port1.onmessage?.({ data });
     send({ channel: "chan", type: "theme", theme: "dark" });
     expect(window.document.documentElement.classList.contains("dark")).toBe(true);
     expect(window.document.documentElement.dataset.theme).toBe("dark");
     send({ channel: "other", type: "theme", theme: "light" });
     send({ channel: "chan", type: "size", theme: "light" });
     send(null);
-    send({ channel: "chan", type: "theme", theme: "light" }, null);
+    window.dispatchEvent(new window.MessageEvent("message", { data: { channel: "chan", type: "theme", theme: "light" }, source: window }));
     expect(window.document.documentElement.classList.contains("dark")).toBe(true);
     send({ channel: "chan", type: "theme", theme: "light" });
     expect(window.document.documentElement.classList.contains("dark")).toBe(false);
     expect(window.document.documentElement.style.colorScheme).toBe("light");
+  });
+
+  it("still seals the frame when it cannot open a port", () => {
+    const window = frameWindow();
+    const offers: unknown[] = [];
+    window.postMessage = ((message: unknown) => offers.push(message)) as typeof window.postMessage;
+    window.eval(framePrelude("chan", PARENT_ORIGIN));
+    expect(offers).toEqual([]);
+    expect(window.eval("typeof WebSocket")).toBe("undefined");
   });
 });
 
@@ -300,6 +338,29 @@ describe("prepareHtml", () => {
   });
 });
 
+describe("cssUrlTargets", () => {
+  it.each([
+    ['@import url("https://a.example/x.css");', ["https://a.example/x.css"]],
+    ["@import 'b.css' screen;", ["b.css"]],
+    ["@IMPORT URL( //c.example/y.css )", ["//c.example/y.css"]],
+    ['@import url("")', ["url("]],
+    ["@importurl(//d.example/z.png)", ["//d.example/z.png"]],
+    ["a { background: url( 'https://e.example/p.png' ) } b { background: url(local.png) }", ["https://e.example/p.png"]],
+    ["c { background: url(HTTP://f.example/a;b.png) }", ["HTTP://f.example/a;b.png"]],
+    ["@import\t\n  ;", []],
+    ["", []],
+  ])("reads %j", (text, urls) => {
+    expect(cssUrlTargets(text)).toEqual(urls);
+  });
+
+  it("stays fast on long runs of spaces", () => {
+    const started = performance.now();
+    expect(cssUrlTargets(`@import${" ".repeat(100_000)}"`)).toEqual([]);
+    expect(cssUrlTargets(`url(${" ".repeat(100_000)}'`)).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(1000);
+  });
+});
+
 describe("frame documents", () => {
   it("escapes JSON so it cannot close the script element", () => {
     const text = inlineJson("</script><script>alert(1)</script>\u2028\u2029");
@@ -436,6 +497,13 @@ describe("frame documents", () => {
 });
 
 describe("frame messages", () => {
+  it("recognises a port offer on the channel only", () => {
+    expect(isPortOffer({ channel: "a", type: "port" }, "a")).toBe(true);
+    for (const data of [null, "port", { channel: "b", type: "port" }, { channel: "a", type: "beat" }]) {
+      expect(isPortOffer(data, "a")).toBe(false);
+    }
+  });
+
   it("accepts only well-formed heartbeat and size messages on the channel", () => {
     expect(readFrameMessage({ channel: "a", type: "beat" }, "a")).toEqual({ type: "beat" });
     expect(readFrameMessage({ channel: "a", type: "size", height: 120 }, "a")).toEqual({ type: "size", height: 120 });

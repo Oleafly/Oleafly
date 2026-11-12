@@ -3,19 +3,8 @@
 import { renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { NotesDataProvider, type NotesData, useNotesData } from "./notes-data";
-
-function fakeData(): NotesData {
-  return {
-    notes: [],
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
-    loadNote: vi.fn(),
-    saveNote: vi.fn(),
-  };
-}
+import { NotesDataProvider, useNotesData } from "./notes-data";
+import { fakeNotesData } from "./tests/notes-data-fixture";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -28,7 +17,7 @@ describe("useNotesData", () => {
   });
 
   it("returns the data the provider supplies", () => {
-    const data = fakeData();
+    const data = fakeNotesData();
     const wrapper = ({ children }: { children: ReactNode }) => (
       <NotesDataProvider value={data}>{children}</NotesDataProvider>
     );

@@ -9,6 +9,7 @@ mod http;
 mod loopback;
 mod loopback_text;
 mod poll;
+mod published;
 mod session;
 mod sign_in;
 #[cfg(test)]

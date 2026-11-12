@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock, PoisonError};
 
 use oleafly_core::encoding::hex_lower;
 use rand::{rngs::OsRng, RngCore};
@@ -79,7 +79,7 @@ fn with_documents<T>(apply: impl FnOnce(&mut Documents) -> T) -> T {
     let mut guard = DOCUMENTS
         .get_or_init(|| Mutex::new(Documents::default()))
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
+        .unwrap_or_else(PoisonError::into_inner);
     apply(&mut guard)
 }
 
@@ -96,7 +96,7 @@ fn valid_token(token: &str) -> bool {
             .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
 }
 
-fn frame_origin() -> String {
+pub(crate) fn frame_origin() -> String {
     if cfg!(windows) {
         format!("http://{SCHEME}.localhost")
     } else {

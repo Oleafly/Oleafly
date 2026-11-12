@@ -143,6 +143,10 @@ describe("SecurityLogTab", () => {
       "guest_admission_ended",
       "project_rejoin_refused",
       "comments_changed_while_off",
+      "note_published",
+      "note_unpublished",
+      "note_taken_down",
+      "note_restored",
     ]) {
       expect(eventKindKey(kind), kind).not.toBe("unknown");
       expect(Object.keys(copy.kinds)).toContain(eventKindKey(kind));
@@ -150,6 +154,29 @@ describe("SecurityLogTab", () => {
     expect(eventKindKey("unknown")).toBe("unknown");
     expect(eventKindKey("kind_from_a_later_server")).toBe("unknown");
     expect(eventKindKey("hasOwnProperty")).toBe("unknown");
+  });
+
+  it("names the note of each publishing event and never shows the page id", async () => {
+    const page = "0192a0b0-0000-7000-8000-0000000000f1";
+    mocks.collabAdminSecurityLog.mockResolvedValueOnce({
+      items: [
+        securityEvent({ id: 1, kind: "note_published", target: page, detail: { title: "Reef survey" } }),
+        securityEvent({ id: 2, kind: "note_taken_down", target: page, detail: { title: "Reef survey", by_admin: true } }),
+        securityEvent({ id: 3, kind: "note_restored", target: page, detail: { title: "Reef survey", by_admin: true } }),
+        securityEvent({ id: 4, kind: "note_unpublished", target: page, detail: { title: "Reef survey" } }),
+      ],
+      next_cursor: null,
+    });
+    render(<SecurityLogTab serverId={SERVER_ID} members={members} />);
+    const items = await screen.findAllByRole("listitem");
+    const note = fill(copy.details.note, { title: "Reef survey" });
+    expect(items[0]).toHaveTextContent(copy.kinds.notePublished);
+    expect(items[0]).toHaveTextContent(note);
+    expect(items[1]).toHaveTextContent(`${copy.kinds.noteTakenDown}`);
+    expect(items[1]).toHaveTextContent(`${note} · ${copy.details.byAdmin}`);
+    expect(items[2]).toHaveTextContent(copy.kinds.noteRestored);
+    expect(items[3]).toHaveTextContent(copy.kinds.noteUnpublished);
+    for (const item of items) expect(item).not.toHaveTextContent(page);
   });
 
   it("says which project and guest each project event was about", async () => {

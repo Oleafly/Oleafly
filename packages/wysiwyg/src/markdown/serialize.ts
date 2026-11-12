@@ -1,5 +1,4 @@
-import { createDocument } from "@tiptap/core";
-import type { AnyExtension, JSONContent } from "@tiptap/core";
+import { createDocument, type AnyExtension, type JSONContent } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { WYSIWYG_EXTENSIONS } from "../schema";
 import { markdownEngine, markdownOfDoc } from "./engine";

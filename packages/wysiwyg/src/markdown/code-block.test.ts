@@ -5,39 +5,9 @@ import { serializeLatexBody } from "../latex/serialize";
 import { WYSIWYG_EXTENSIONS } from "../schema";
 import { parseMarkdownBody } from "./parse";
 import { serializeMarkdownBody } from "./serialize";
-import { createMarkdownSourceSnapshot } from "./source-layout";
+import { destroyOpenedEditors, openMarkdown, typeAtEndOf } from "../test-helpers";
 
-const editors: Editor[] = [];
-
-afterEach(() => {
-  for (const editor of editors.splice(0)) editor.destroy();
-});
-
-function open(source: string): { editor: Editor; save: () => string } {
-  const { doc, frontmatter, layout } = parseMarkdownBody(source);
-  const editor = new Editor({
-    element: document.createElement("div"),
-    extensions: WYSIWYG_EXTENSIONS,
-    content: doc,
-  });
-  editors.push(editor);
-  const snapshot = createMarkdownSourceSnapshot(layout, editor.getJSON());
-  return {
-    editor,
-    save: () => frontmatter + serializeMarkdownBody(editor.getJSON(), snapshot),
-  };
-}
-
-function typeAtEndOf(editor: Editor, needle: string, text: string): void {
-  let at = -1;
-  editor.state.doc.descendants((node, position) => {
-    if (at < 0 && node.isText && node.text?.includes(needle)) {
-      at = position + node.text.indexOf(needle) + needle.length;
-    }
-  });
-  expect(at, needle).toBeGreaterThan(-1);
-  editor.view.dispatch(editor.state.tr.insertText(text, at));
-}
+afterEach(destroyOpenedEditors);
 
 const MERMAID = "```mermaid\nflowchart TD\n  A --> B\n```";
 const PAGE = `# Report\n\nBefore.\n\n${MERMAID}\n\nAfter.\n`;
@@ -133,13 +103,13 @@ describe("fenced code in the Markdown visual editor", () => {
 
   it("leaves an untouched fence byte for byte when a neighbour changes", () => {
     const source = "Before.\n\n~~~~python title=\"x\"\nprint( 1 )\n~~~~\n\nAfter.\n";
-    const { editor, save } = open(source);
+    const { editor, save } = openMarkdown(source);
     typeAtEndOf(editor, "Before", " now");
     expect(save()).toBe(source.replace("Before.", "Before now."));
   });
 
   it.each(EDITS)("%s", (_name, source, needle, typed, saved) => {
-    const { editor, save } = open(source);
+    const { editor, save } = openMarkdown(source);
     typeAtEndOf(editor, needle, typed);
     expect(save()).toBe(saved);
   });
@@ -151,12 +121,12 @@ describe("fenced code in the Markdown visual editor", () => {
 
   it("keeps a fence inside a list and a quote when it is edited", () => {
     const list = "- item\n\n  ```js\n  one\n  ```\n";
-    const listed = open(list);
+    const listed = openMarkdown(list);
     typeAtEndOf(listed.editor, "one", "!");
     expect(listed.save()).toContain("  ```js\n  one!\n  ```");
 
     const quote = "> ```js\n> one\n> ```\n";
-    const quoted = open(quote);
+    const quoted = openMarkdown(quote);
     typeAtEndOf(quoted.editor, "one", "!");
     expect(quoted.save()).toBe("> ```js\n> one!\n> ```\n");
   });
@@ -167,7 +137,7 @@ describe("fenced code in the Markdown visual editor", () => {
   });
 
   it("starts a block from ``` with the language typed after it", () => {
-    const { editor, save } = open("Text.\n");
+    const { editor, save } = openMarkdown("Text.\n");
     editor.commands.setContent("<p></p>");
     editor.view.dispatch(editor.state.tr.insertText("```js"));
     const { from, to } = editor.state.selection;
@@ -181,14 +151,14 @@ describe("fenced code in the Markdown visual editor", () => {
   });
 
   it("indents with Tab at the caret and keeps focus in the block", () => {
-    const { editor, save } = open("```js\none\n```\n");
+    const { editor, save } = openMarkdown("```js\none\n```\n");
     editor.commands.setTextSelection(1);
     expect(editor.commands.keyboardShortcut("Tab")).toBe(true);
     expect(save()).toBe("```js\n    one\n```\n");
   });
 
   it("keeps a block and its info string when it moves", () => {
-    const { editor, save } = open("Top.\n\n```{.js}\nx\n```\n\nEnd.\n");
+    const { editor, save } = openMarkdown("Top.\n\n```{.js}\nx\n```\n\nEnd.\n");
     const { doc, tr } = editor.state;
     const block = doc.child(1);
     const from = doc.child(0).nodeSize;
@@ -198,7 +168,7 @@ describe("fenced code in the Markdown visual editor", () => {
   });
 
   it("copies the whole info string with the block", () => {
-    const { editor } = open("```{.python .numberLines}\nx\n```\n");
+    const { editor } = openMarkdown("```{.python .numberLines}\nx\n```\n");
     const html = editor.getHTML();
     expect(html).toContain('data-info="{.python .numberLines}"');
     const pasted = new Editor({
@@ -206,8 +176,8 @@ describe("fenced code in the Markdown visual editor", () => {
       extensions: WYSIWYG_EXTENSIONS,
       content: html,
     });
-    editors.push(pasted);
     expect(pasted.getJSON().content?.[0].attrs?.language).toBe("{.python .numberLines}");
+    pasted.destroy();
   });
 
   it("reads the language of code pasted from a web page", () => {
@@ -216,8 +186,8 @@ describe("fenced code in the Markdown visual editor", () => {
       extensions: WYSIWYG_EXTENSIONS,
       content: '<pre><code class="language-rust">fn main() {}</code></pre>',
     });
-    editors.push(pasted);
     expect(pasted.getJSON().content?.[0].attrs?.language).toBe("rust");
+    pasted.destroy();
   });
 
   it("writes a code block as verbatim in LaTeX", () => {

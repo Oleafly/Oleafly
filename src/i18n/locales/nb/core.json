@@ -319,6 +319,7 @@
   },
   "mcp": {
     "deniedByRules": "Avvist av en deny-regel i approvals.toml",
+    "createTodaySummary": "Opprett dagens notat «{{title}}»",
     "openProjectSummary": "Åpne prosjektet {{id}}",
     "rulesUnreadable": "Avvist fordi approvals.toml ikke kunne leses",
     "useToolSummary": "Bruk {{tool}} fra MCP-serveren {{server}}"

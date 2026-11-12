@@ -76,7 +76,6 @@ describe("reordering the sidebar rail", () => {
     dragIcon(enShell.rail.files, 100);
     const drop = strip().querySelector<HTMLElement>("[data-reorder-drop]");
     expect(drop).toHaveAttribute("data-reorder-drop", "2");
-    expect(drop).toHaveClass("rounded-md", "border-primary/60", "bg-primary/10");
     expect(drop?.style.left).toBe("98.5px");
     expect(drop?.style.width).toBe("28px");
     expect(drop?.style.height).toBe("28px");
@@ -89,6 +88,15 @@ describe("reordering the sidebar rail", () => {
     expect(screen.getByLabelText(enShell.rail.files)).toHaveAttribute("data-tour", "rail-files");
     expect(screen.getByLabelText(enShell.rail.search)).toHaveAttribute("aria-current", "page");
     expect(strip().querySelector("[data-reorder-drop]")).toBeNull();
+  });
+
+  it("moves the focused icon with Alt and the arrow keys", () => {
+    renderRail();
+    const files = screen.getByLabelText(enShell.rail.files);
+    files.focus();
+    fireEvent.keyDown(files, { key: "ArrowRight", altKey: true });
+    expect(rail()).toEqual(["rail-search", "rail-files", "rail-source", "rail-preflight", "rail-refs"]);
+    expect(screen.getByLabelText(enShell.rail.files)).toHaveFocus();
   });
 
   it("still switches views on a plain click", () => {

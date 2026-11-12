@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { createWysiwygExtensions } from "@oleafly/wysiwyg";
 import { Editor, type JSONContent } from "@tiptap/core";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { COPIED_FEEDBACK_MS } from "@/components/ui/copyable-block";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import {
   BUILT_IN_BLOCKS,
@@ -13,7 +14,8 @@ import {
   withBlockViews,
   withImageView,
 } from "./block-views";
-import { noteBlock, noteBlockKinds } from "./note-blocks";
+import { noteBlock } from "./note-blocks";
+import "./tests/setup";
 
 const clipboard = vi.hoisted(() => ({ write: vi.fn(async (_text: string) => undefined) }));
 
@@ -41,10 +43,6 @@ function codeBlock(language: string, text: string): JSONContent {
   return { type: "codeBlock", attrs: { language }, content: [{ type: "text", text }] };
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 afterEach(() => {
   for (const editor of editors.splice(0)) editor.destroy();
   vi.useRealTimers();
@@ -61,11 +59,10 @@ describe("block registry", () => {
 
   it("groups every insertable block for the menus", () => {
     const grouped = blockGroups().flatMap((group) => group.kinds.map((kind) => kind.name));
-    const insertable = noteBlockKinds()
-      .filter((kind) => kind.template)
+    const insertable = BUILT_IN_BLOCKS.filter((kind) => kind.template)
       .map((kind) => kind.name);
     expect(new Set(grouped)).toEqual(new Set(insertable.filter((name) => grouped.includes(name))));
-    expect(grouped).toEqual(["csv", "chart", "plot", "latex", "typst", "mermaid", "svg", "html", "jsx", "smiles", "molecule", "sequence"]);
+    expect(grouped).toEqual(["csv", "chart", "plot", "latex", "typst", "mermaid", "d2", "tikz", "circuitikz", "svg", "html", "jsx", "smiles", "molecule", "sequence"]);
     expect(insertable).not.toContain("notebook");
   });
 
@@ -76,11 +73,10 @@ describe("block registry", () => {
 
 describe("Home previews", () => {
   it("draws cards for scripted and heavy blocks without running anything", () => {
-    for (const kind of ["html", "jsx", "molecule", "notebook"]) {
+    for (const kind of ["html", "jsx", "molecule", "notebook", "d2", "tikz", "circuitikz"]) {
       const preview = document.createElement("div");
       paintStillBlock(kind, preview, "first line\nsecond");
-      expect(preview.querySelector(".note-block-card-title")?.textContent).toBe(blockLabel(kind));
-      expect(preview.querySelector(".note-block-card-text")?.textContent).toBe("first line");
+      expect([...preview.querySelectorAll("p")].map((line) => line.textContent)).toEqual([blockLabel(kind), "first line"]);
       expect(preview.querySelector("iframe, canvas")).toBeNull();
     }
   });
@@ -125,29 +121,45 @@ describe("editor block views", () => {
   it("copies highlighted code and says so", async () => {
     vi.useFakeTimers();
     const editor = build([codeBlock("python", "print(1)")]);
-    const button = editor.view.dom.querySelector(".note-code-copy") as HTMLButtonElement;
-    expect(button.textContent).toBe(enNotes.blocks.code.copy);
+    const button = within(editor.view.dom).getByRole("button", { name: enNotes.blocks.code.copyLabel });
     button.dispatchEvent(new MouseEvent("mousedown", { bubbles: true, cancelable: true }));
     button.click();
-    await vi.waitFor(() => expect(button.textContent).toBe(enNotes.blocks.code.copied));
+    await vi.waitFor(() => expect(button).toHaveAccessibleName(enNotes.blocks.code.copied));
     expect(clipboard.write).toHaveBeenCalledWith("print(1)");
     button.click();
-    await vi.advanceTimersByTimeAsync(1500);
-    expect(button.textContent).toBe(enNotes.blocks.code.copy);
+    await vi.advanceTimersByTimeAsync(COPIED_FEEDBACK_MS);
+    expect(button).toHaveAccessibleName(enNotes.blocks.code.copyLabel);
     clipboard.write.mockRejectedValueOnce(new Error("denied"));
     button.click();
-    await vi.waitFor(() => expect(button.textContent).toBe(enNotes.blocks.code.copyFailed));
-    expect(button.getAttribute("aria-label")).toBe(enNotes.blocks.code.copyFailed);
-    await vi.advanceTimersByTimeAsync(1500);
-    expect(button.textContent).toBe(enNotes.blocks.code.copy);
-    expect(button.getAttribute("aria-label")).toBe(enNotes.blocks.code.copyLabel);
+    await vi.waitFor(() => expect(button).toHaveAccessibleName(enNotes.blocks.code.copyFailed));
+    await vi.advanceTimersByTimeAsync(COPIED_FEEDBACK_MS);
+    expect(button).toHaveAccessibleName(enNotes.blocks.code.copyLabel);
+  });
+
+  it("offers a copy button on a drawn block's source", async () => {
+    const editor = build([codeBlock("mermaid", "flowchart LR\n  A --> B")]);
+    const view = within(editor.view.dom);
+    expect(view.queryByRole("button", { name: enNotes.blocks.code.copyLabel })).toBeNull();
+    view.getByRole("button", { name: enNotes.blocks.source }).click();
+    view.getByRole("button", { name: enNotes.blocks.code.copyLabel }).click();
+    await vi.waitFor(() => expect(clipboard.write).toHaveBeenLastCalledWith("flowchart LR\n  A --> B"));
+  });
+
+  it("offers how to write a drawn block while its source is shown", () => {
+    const editor = build([codeBlock("fasta", ">sample\nATG")]);
+    const view = within(editor.view.dom);
+    const name = enNotes.blocks.syntax.help.replace("{{block}}", blockLabel("sequence"));
+    expect(view.queryByRole("button", { name })).toBeNull();
+    view.getByRole("button", { name: enNotes.blocks.source }).click();
+    expect(view.getByRole("button", { name })).toHaveAttribute("data-tooltip", enNotes.blocks.syntax.sequence);
+    view.getByRole("button", { name: enNotes.blocks.preview }).click();
+    expect(view.queryByRole("button", { name })).toBeNull();
   });
 
   it("copies the latest text and rebuilds when the language changes", async () => {
     const editor = build([codeBlock("python", "a = 1")]);
     editor.commands.insertContentAt(1, "b");
-    const button = editor.view.dom.querySelector(".note-code-copy") as HTMLButtonElement;
-    button.click();
+    within(editor.view.dom).getByRole("button", { name: enNotes.blocks.code.copyLabel }).click();
     await vi.waitFor(() => expect(clipboard.write).toHaveBeenLastCalledWith("ba = 1"));
     editor.commands.command(({ tr }) => {
       tr.setNodeMarkup(0, undefined, { language: "rust" });

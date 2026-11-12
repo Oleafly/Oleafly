@@ -2,12 +2,12 @@ use super::{
     acquire_request_slot, agent_tool_result, allowlisted_tool_runner, approval_classifier,
     assistant_network_message, await_tool_result, begin_request, cancel_all_requests,
     cancel_for_update, cancel_request, drop_pending_tools, endpoint_override_allowed,
-    fetch_approval_runner, fetch_needs_approval, finish_request, hosted_web_for, lock_or_recover,
-    native_agent_tool, native_dispatch_allowed, pause_for_update, project_is_note, provider_config,
-    restricted_tool_runner, resume_after_failed_update, run_registered, sanitized_run_config,
-    tool_error, tool_key, tool_pipeline, tool_reply_id, tool_risk, unwrap_mcp_text, Abortable,
-    AgentState, AppConfig, CompletionRequest, Duration, PendingTool, ProviderConfig,
-    RestrictedConfirm, RunConfig, ToolOutput, MAX_CONCURRENT_AGENT_REQUESTS,
+    fetch_approval_runner, fetch_needs_approval, fetch_requested, finish_request, hosted_web_for,
+    lock_or_recover, native_agent_tool, native_dispatch_allowed, pause_for_update, project_is_note,
+    provider_config, restricted_tool_runner, resume_after_failed_update, run_registered,
+    sanitized_run_config, tool_error, tool_key, tool_pipeline, tool_reply_id, tool_risk,
+    unwrap_mcp_text, Abortable, AgentState, AppConfig, CompletionRequest, Duration, PendingTool,
+    ProviderConfig, RestrictedConfirm, RunConfig, ToolOutput, MAX_CONCURRENT_AGENT_REQUESTS,
     MAX_EARLY_CANCELLATIONS, MAX_RETRY_BASE_MS, MAX_RUN_RETRIES, MAX_RUN_STEPS, MIN_RETRY_BASE_MS,
 };
 
@@ -524,6 +524,10 @@ async fn native_dispatch_reads_note_projects_but_not_other_closed_projects() {
         "a note folder passes the folder trust check that agents need, like any library project"
     );
     assert!(!project_is_note("missing-project"));
+    assert!(fetch_requested(false, Some(&note)));
+    assert!(!fetch_requested(false, Some(&paper)));
+    assert!(fetch_requested(true, Some(&paper)));
+    assert!(!fetch_requested(false, None));
     assert!(native_dispatch_allowed(
         &note,
         Some(&paper),

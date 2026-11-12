@@ -1,8 +1,12 @@
 import type { ReactNode } from "react";
 import { Check, Copy } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { BLOCK_REVEAL, BlockFrame } from "@/components/ui/block-frame";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
-import { cn } from "@/lib/utils";
+
+export { COPIED_FEEDBACK_MS } from "@/components/ui/use-copy-status";
+
+export const COPY_BUTTON_CLASS = `relative rounded-md border border-border/60 bg-background/90 p-1.5 text-muted-foreground shadow-sm backdrop-blur-sm after:absolute after:-inset-2 after:content-[''] hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground ${BLOCK_REVEAL}`;
 
 export function CopyableBlock({
   children,
@@ -26,17 +30,16 @@ export function CopyableBlock({
     : (copyLabel ?? t(($) => $.common.actions.copy));
 
   return (
-    <div className={cn("group/code-block relative min-w-0", className)}>
+    <BlockFrame
+      framed={false}
+      className={className}
+      actions={
+        <button type="button" aria-label={label} title={label} onClick={() => void copy(source)} className={COPY_BUTTON_CLASS}>
+          {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+        </button>
+      }
+    >
       {children}
-      <button
-        type="button"
-        aria-label={label}
-        title={label}
-        onClick={() => void copy(source)}
-        className="absolute right-1.5 top-1.5 z-10 rounded-md border border-border/60 bg-background/90 p-1.5 text-muted-foreground opacity-0 shadow-sm backdrop-blur-sm transition-colors transition-opacity after:absolute after:-inset-2 after:content-[''] hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-focus-within/code-block:opacity-100 group-hover/code-block:opacity-100 motion-reduce:transition-none [@media(pointer:coarse)]:opacity-100 focus-visible:border-ring"
-      >
-        {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
-      </button>
-    </div>
+    </BlockFrame>
   );
 }

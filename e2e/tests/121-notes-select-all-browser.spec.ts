@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { type Browser, expect, type Page, test, webkit } from "@playwright/test";
+import { NotesPage } from "../notes-page";
 
-const BASE_URL = process.env.OLEAFLY_BROWSER_TEST_URL ?? "http://localhost:1420";
 const SHOTS = process.env.NOTES_SELECT_ALL_SHOTS ?? "";
 const FENCE = "```";
 const MASKING_ID = "8d3f2a61-4b7c-4e9d-a1f0-5c6b7d8e9f01";
@@ -140,11 +140,9 @@ interface Copied {
 }
 
 async function open(page: Page): Promise<string[]> {
-  const errors: string[] = [];
-  page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto(`${BASE_URL}/e2e/notes-harness.html`);
-  await page.waitForFunction(() => document.body.dataset.fixtureState === "mounted", null, { timeout: 60_000 });
-  return errors;
+  const notes = new NotesPage(page);
+  await notes.placeInfo("inline");
+  return (await notes.open()).errors;
 }
 
 function editor(page: Page) {
@@ -160,8 +158,11 @@ async function openEveryBlock(page: Page): Promise<void> {
   const body = editor(page);
   await expect(body.locator('.note-drawn[data-block="mermaid"] .note-drawn-preview svg').first()).toBeVisible();
   await expect(body.locator(".note-embed-content")).toBeVisible();
-  await expect(body.locator(':scope > .note-drawn[data-block="chart"] .note-chart')).toBeVisible();
-  await expect(body.locator(':scope > .note-drawn[data-block="csv"] table')).toBeVisible();
+  for (const [block, drawing] of [["chart", ".note-chart"], ["csv", "table"]]) {
+    const drawn = body.locator(`:scope > .note-drawn[data-block="${block}"]`);
+    await drawn.scrollIntoViewIfNeeded();
+    await expect(drawn.locator(drawing)).toBeVisible();
+  }
   await expect(body.locator(":scope > .note-image img")).toBeVisible();
 }
 
@@ -368,7 +369,117 @@ async function selectAllOutsideEditor(page: Page, engine: string): Promise<void>
   expect(errors).toEqual([]);
 }
 
+interface TableColours {
+  csvHead: number[];
+  csvFoot: number[];
+  csvBody: number[];
+  markdownHead: number[];
+  opaque: boolean;
+  sticky: string[];
+  labelContrast: number;
+  headContrast: number;
+}
+
+const READING_ID = "7a9c1e35-6d8f-4b2a-9e4c-0f1a2b3c4d03";
+const READING = `---
+title: "Reading notes: masked autoencoders"
+kind: note
+id: ${READING_ID}
+color: mint
+---
+
+${BODY}`;
+
+function tableColours(page: Page): Promise<TableColours> {
+  return page.evaluate(() => {
+    const root = document.querySelector<HTMLElement>('[role="tabpanel"][data-shown="true"] .ProseMirror[contenteditable="true"]');
+    if (!root) throw new Error("no editor");
+    const canvas = Object.assign(document.createElement("canvas"), { width: 1, height: 1 });
+    const context = canvas.getContext("2d", { willReadFrequently: true }) as CanvasRenderingContext2D;
+    const paint = (color: string, under: string) => {
+      context.fillStyle = under;
+      context.fillRect(0, 0, 1, 1);
+      context.fillStyle = color;
+      context.fillRect(0, 0, 1, 1);
+      return [...context.getImageData(0, 0, 1, 1).data].slice(0, 3);
+    };
+    const style = (selector: string) => {
+      const found = root.querySelector(selector);
+      if (!found) throw new Error(`missing ${selector}`);
+      return getComputedStyle(found);
+    };
+    const luminance = (rgb: number[]) => {
+      const [r, g, b] = rgb.map((value) => {
+        const c = value / 255;
+        return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    };
+    const head = style('.note-drawn[data-block="csv"] thead th');
+    const foot = style('.note-drawn[data-block="csv"] tfoot td');
+    const csvHead = paint(head.backgroundColor, "#fff");
+    const csvFoot = paint(foot.backgroundColor, "#fff");
+    const contrast = (text: string, under: number[]) => {
+      const [light, dark] = [luminance(under), luminance(paint(style(text).color, `rgb(${under.join(",")})`))].sort((a, b) => b - a);
+      return (light + 0.05) / (dark + 0.05);
+    };
+    return {
+      csvHead,
+      csvFoot,
+      csvBody: paint(style('.note-drawn[data-block="csv"] tbody td').backgroundColor, "#fff"),
+      markdownHead: paint(style(":scope > table th, :scope > .tableWrapper th").backgroundColor, "#fff"),
+      opaque: [head, foot].every((cell) => paint(cell.backgroundColor, "#000").join() === paint(cell.backgroundColor, "#fff").join()),
+      sticky: [head.position, foot.position],
+      labelContrast: contrast('.note-drawn[data-block="csv"] tfoot dt', csvFoot),
+      headContrast: contrast('.note-drawn[data-block="csv"] thead th button', csvHead),
+    };
+  });
+}
+
+async function openTables(page: Page, title: RegExp): Promise<TableColours> {
+  await page.locator("aside").getByRole("button", { name: title }).first().click();
+  await expect(page.locator('input[aria-label="Note title"]:visible')).toHaveValue(title);
+  const drawn = editor(page).locator(':scope > .note-drawn[data-block="csv"]');
+  await drawn.scrollIntoViewIfNeeded();
+  await expect(drawn.locator("tfoot")).toBeVisible();
+  return tableColours(page);
+}
+
+async function tablesTakeTheNoteColour(page: Page, engine: string): Promise<void> {
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  const chroma = (rgb: number[]) => Math.max(...rgb) - Math.min(...rgb);
+  for (const theme of ["light", "dark"] as const) {
+    const errors = (await new NotesPage(page).open(theme === "dark" ? "?theme=dark" : "")).errors;
+    await page.evaluate(
+      ([dataloader, reading]) => {
+        const notes = (window as unknown as { __notes: { writeFromDisk(id: string, text: string): void } }).__notes;
+        notes.writeFromDisk("dataloader", dataloader);
+        notes.writeFromDisk("reading", reading);
+      },
+      [NOTE.replace("status: draft\n", "status: draft\ncolor: sky\n"), READING],
+    );
+    const sky = await openTables(page, /Dataloader rewrite/);
+    await shoot(page, `${engine}-${theme}-tables-sky`);
+    const mint = await openTables(page, /Reading notes/);
+    await shoot(page, `${engine}-${theme}-tables-mint`);
+    for (const colours of [sky, mint]) {
+      expect(chroma(colours.csvHead), theme).toBeGreaterThan(8);
+      expect(chroma(colours.csvFoot), theme).toBeGreaterThan(4);
+      expect(colours.markdownHead, theme).toEqual(colours.csvHead);
+      expect(colours.csvBody, theme).toEqual([255, 255, 255]);
+      expect(colours.opaque, theme).toBe(true);
+      expect(colours.sticky, theme).toEqual(["sticky", "sticky"]);
+      expect(colours.labelContrast, theme).toBeGreaterThanOrEqual(4.5);
+      expect(colours.headContrast, theme).toBeGreaterThanOrEqual(4.5);
+    }
+    expect(sky.csvHead, theme).not.toEqual(mint.csvHead);
+    expect(sky.csvFoot, theme).not.toEqual(mint.csvFoot);
+    expect(errors).toEqual([]);
+  }
+}
+
 async function inWebKit(run: (page: Page) => Promise<void>): Promise<void> {
+  // WebKit is skipped on purpose until CI installs it next to Chromium.
   test.skip(!existsSync(webkit.executablePath()), "WebKit is not installed for Playwright on this machine");
   let browser: Browser | null = null;
   try {
@@ -394,5 +505,15 @@ test.describe("Notes select all", () => {
 
   test("Mod+A outside the note body never selects the page chrome in WebKit", async () => {
     await inWebKit((page) => selectAllOutsideEditor(page, "webkit"));
+  });
+});
+
+test.describe("Notes tables", () => {
+  test("a table's header and summary row take the note's colour in Chromium", async ({ page }) => {
+    await tablesTakeTheNoteColour(page, "chromium");
+  });
+
+  test("a table's header and summary row take the note's colour in WebKit", async () => {
+    await inWebKit((page) => tablesTakeTheNoteColour(page, "webkit"));
   });
 });

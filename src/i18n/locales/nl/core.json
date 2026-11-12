@@ -76,7 +76,7 @@
     "offlineNotCached": "De offlinemodus staat aan en voor {{files}} is mogelijk nog niets gedownload. Zet de offlinemodus uit en compileer opnieuw.",
     "offlineNotCachedUnnamed": "De offlinemodus staat aan en een TeX-pakket dat dit document nodig heeft, is mogelijk nog niet gedownload. Zet de offlinemodus uit en compileer opnieuw.",
     "goOnlineAndCompile": "Uitzetten en compileren",
-    "typstMissing":"Typst {{version}} is niet geïnstalleerd. Download het, of zet dit project over op een andere versie.",
+    "typstMissing": "Typst {{version}} is niet geïnstalleerd. Download het, of zet dit project over op een andere versie.",
     "typstPackage": {
       "downloadFailed": "Typst kon {{spec}} niet downloaden. Controleer je internetverbinding en compileer opnieuw.",
       "downloadFailedUnnamed": "Typst kon een pakket dat dit document importeert niet downloaden. Controleer je internetverbinding en compileer opnieuw.",
@@ -319,6 +319,7 @@
   },
   "mcp": {
     "deniedByRules": "Geweigerd door een deny-regel in approvals.toml",
+    "createTodaySummary": "Notitie van vandaag “{{title}}” maken",
     "openProjectSummary": "Project {{id}} openen",
     "rulesUnreadable": "Geweigerd omdat approvals.toml niet kon worden gelezen",
     "useToolSummary": "{{tool}} gebruiken van de MCP-server {{server}}"

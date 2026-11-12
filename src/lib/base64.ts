@@ -21,3 +21,7 @@ export function base64ToBytes(base64: string): Uint8Array {
   for (let index = 0; index < binary.length; index++) bytes[index] = binary.codePointAt(index) ?? 0;
   return bytes;
 }
+
+export function textDataUrl(text: string): string {
+  return `data:text/plain;base64,${textToBase64(text)}`;
+}

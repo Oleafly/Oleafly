@@ -1,13 +1,18 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from "vitest";
+import { Suspense, useEffect, useRef, useState, type ComponentType } from "react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { lazy } from "@/lib/preloadable";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
+import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { buildSettingsIndex, type CatalogPath, type SettingsSearchSection } from "./settings-search";
-import { openSettingsTabFor, revealSettingsRow } from "./SettingsSearch";
+import { openSettingsTabFor, revealSettingsRow, useSettingsSearch } from "./SettingsSearch";
 
-const BUNDLES: Record<string, unknown> = { core: enCore, settings: enSettings, shell: enShell };
+const BUNDLES: Record<string, unknown> = { core: enCore, notes: enNotes, settings: enSettings, shell: enShell };
 
 function lookup(path: CatalogPath): unknown {
   const [namespace, ...keys] = path;
@@ -232,5 +237,156 @@ describe("revealSettingsRow", () => {
     const target = revealSettingsRow(container, "Default compile engine");
     expect(target?.tagName).toBe("H3");
     expect(target).toHaveAttribute("data-settings-search-hit");
+  });
+});
+
+type HarnessSection = "appearance" | "general";
+
+const HARNESS_SECTIONS: readonly { id: HarnessSection; label: string }[] = [
+  { id: "appearance", label: "Appearance" },
+  { id: "general", label: "General" },
+];
+const CALLOUTS = { label: "Callout style", path: ["appearance", "notes", "callouts"] };
+const TEXT = {
+  pick: "Pick",
+  reveal: "Reveal",
+  general: "General",
+  app: "App",
+  notes: "Notes",
+  accent: "Accent color",
+  loading: "Loading",
+};
+const REVEAL_WINDOW_MS = 2_000;
+const REVEAL_LIMIT_MS = 15_000;
+
+function CalloutsRow({ testId }: Readonly<{ testId: string }>) {
+  return (
+    <div className="rounded-lg border" data-testid={testId}>
+      <p>{CALLOUTS.label}</p>
+      <button type="button">{TEXT.pick}</button>
+    </div>
+  );
+}
+
+function notesTabLoadingFor(ms: number) {
+  return lazy(
+    () =>
+      new Promise<{ default: ComponentType }>((resolve) => {
+        setTimeout(() => resolve({ default: () => <CalloutsRow testId="notes-callouts" /> }), ms);
+      }),
+  );
+}
+
+function Ticker() {
+  const [ticks, setTicks] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setTicks((count) => count + 1), 500);
+    return () => clearInterval(timer);
+  }, []);
+  return <p>{`Checked ${ticks} times`}</p>;
+}
+
+function RevealHarness({ NotesTab, ticking = false }: Readonly<{ NotesTab: ComponentType; ticking?: boolean }>) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [section, setSection] = useState<HarnessSection>("appearance");
+  const search = useSettingsSearch({
+    open: true,
+    resetKey: null,
+    sections: HARNESS_SECTIONS,
+    currentSection: section,
+    onSelectSection: setSection,
+    suspended: false,
+    containerRef,
+  });
+  return (
+    <>
+      <button type="button" onClick={() => search.revealRow("appearance", CALLOUTS)}>
+        {TEXT.reveal}
+      </button>
+      <button type="button" onClick={() => setSection("general")}>
+        {TEXT.general}
+      </button>
+      <div ref={containerRef}>
+        {ticking ? <Ticker /> : null}
+        {section === "appearance" ? (
+          <Tabs defaultValue="app">
+            <TabsList>
+              <TabsTrigger value="app">{TEXT.app}</TabsTrigger>
+              <TabsTrigger value="notes">{TEXT.notes}</TabsTrigger>
+            </TabsList>
+            <TabsContent value="app">
+              <p>{TEXT.accent}</p>
+            </TabsContent>
+            <TabsContent value="notes">
+              <Suspense fallback={<p>{TEXT.loading}</p>}>
+                <NotesTab />
+              </Suspense>
+            </TabsContent>
+          </Tabs>
+        ) : (
+          <CalloutsRow testId="general-callouts" />
+        )}
+      </div>
+    </>
+  );
+}
+
+async function wait(ms: number) {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
+}
+
+describe("useSettingsSearch reveal", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({
+      toFake: [
+        "setTimeout",
+        "clearTimeout",
+        "setInterval",
+        "clearInterval",
+        "requestAnimationFrame",
+        "cancelAnimationFrame",
+        "performance",
+      ],
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.useRealTimers();
+  });
+
+  it("tints a row on a lazy tab that loads after the reveal window has passed", async () => {
+    render(<RevealHarness NotesTab={notesTabLoadingFor(3 * REVEAL_WINDOW_MS)} />);
+    fireEvent.click(screen.getByRole("button", { name: TEXT.reveal }));
+    expect(screen.getByRole("tab", { name: TEXT.notes })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText(TEXT.loading)).toBeInTheDocument();
+
+    await wait(3 * REVEAL_WINDOW_MS);
+    await wait(100);
+    const row = screen.getByTestId("notes-callouts");
+    expect(row).toHaveAttribute("data-settings-search-hit");
+    expect(document.activeElement).toBe(within(row).getByRole("button", { name: TEXT.pick }));
+  });
+
+  it("stops looking at the limit even while the page keeps changing", async () => {
+    render(<RevealHarness NotesTab={notesTabLoadingFor(REVEAL_LIMIT_MS + 1_000)} ticking />);
+    fireEvent.click(screen.getByRole("button", { name: TEXT.reveal }));
+
+    await wait(REVEAL_LIMIT_MS + 1_000);
+    await wait(100);
+    expect(screen.getByTestId("notes-callouts")).not.toHaveAttribute("data-settings-search-hit");
+    expect(document.querySelector("[data-settings-search-hit]")).toBeNull();
+  });
+
+  it("gives up when the user moves to another section before the row loads", async () => {
+    render(<RevealHarness NotesTab={notesTabLoadingFor(3 * REVEAL_WINDOW_MS)} />);
+    fireEvent.click(screen.getByRole("button", { name: TEXT.reveal }));
+    fireEvent.click(screen.getByRole("button", { name: TEXT.general }));
+
+    await wait(3 * REVEAL_WINDOW_MS);
+    await wait(100);
+    expect(screen.getByTestId("general-callouts")).not.toHaveAttribute("data-settings-search-hit");
   });
 });

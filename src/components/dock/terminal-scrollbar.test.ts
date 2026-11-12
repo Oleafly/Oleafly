@@ -45,6 +45,6 @@ describe("terminal scrollbar", () => {
   });
 
   it("is as thin as the app's scrollbars", () => {
-    expect(TERMINAL_SCROLLBAR_WIDTH).toBe(8);
+    expect(TERMINAL_SCROLLBAR_WIDTH).toBe(4);
   });
 });

@@ -341,7 +341,15 @@
     },
     "resetPaneLayout": {
       "keywords": "nulstil panel layout rækkefølge flyt paneler sidepanel assistent editor forhåndsvisning terminal standard",
-      "label": "Nulstil panelernes layout"
+      "label": "Nulstil panelernes placering i hvert projekt"
+    },
+    "saveLayout": {
+      "keywords": "layout gem nuværende tilpasset placering paneler størrelser navn",
+      "label": "Gem nuværende layout"
+    },
+    "applySavedLayout": {
+      "keywords": "layout gemt tilpasset placering paneler skift anvend",
+      "label": "Layout: {{name}}"
     },
     "zoomIn": {
       "keywords": "større forstør",
@@ -380,6 +388,10 @@
     "notes": {
       "label": "Åbn Noter",
       "keywords": "noter notesbog viden ideer forskning dagbog notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Hurtig notering",
+      "keywords": "hurtig notering noter indbakke i dag quick capture jot note inbox today"
     }
   },
   "community": {
@@ -484,6 +496,11 @@
   },
   "datePicker": {
     "placeholder": "Vælg en dato"
+  },
+  "monthPicker": {
+    "label": "Vælg en måned",
+    "previousYear": "Forrige år",
+    "nextYear": "Næste år"
   },
   "devMenu": {
     "inspect": "Inspicer",
@@ -704,6 +721,7 @@
     "groups": {
       "action": "Handling",
       "documents": "Dokumenter",
+      "notes": "Noter",
       "references": "Referencer"
     },
     "label": "Søg",
@@ -711,11 +729,13 @@
     "openReferences": "Åbn referencerne for dette projekt",
     "placeholder": "Søg i projekter og dokumenter, eller skriv / for kommandoer…",
     "placeholderDocuments": "Søg inde i dokumenterne…",
+    "placeholderNotes": "Søg i noter og blokkene i dem…",
     "placeholderProjects": "Søg i projekter efter navn, motor, type, dato eller metadata…",
     "referencesNeedProject": "Åbn først et projekt for at gennemse dets referencer.",
     "slash": {
       "create": "åbn skabelongalleriet",
       "docs": "søg inde i dokumenterne",
+      "notes": "søg i noter og blokkene i dem",
       "projects": "søg i dine projekter",
       "refs": "åbn referencerne for dette projekt",
       "settings": "åbn indstillinger",
@@ -1314,7 +1334,24 @@
       "split": "Delt visning"
     },
     "moreActions": "Flere handlinger",
-    "resetPaneLayout": "Nulstil panelernes layout",
+    "resetPaneLayout": "Nulstil panelernes placering",
+    "resetPaneLayoutScope": "Alle projekter",
+    "savedLayouts": {
+      "close": "Luk",
+      "delete": "Slet",
+      "deleteConfirm": "Vil du slette layoutet »{{name}}«?",
+      "limit": "Du kan beholde op til {{count}} layouts. Slet et for at gemme et nyt.",
+      "manage": "Administrer layouts",
+      "name": "Navn på layoutet",
+      "rename": "Omdøb",
+      "renameTitle": "Omdøb layout",
+      "replace": "Erstat",
+      "replaceConfirm": "Der findes allerede et layout med navnet »{{name}}«. Vil du erstatte det?",
+      "save": "Gem nuværende layout",
+      "saveButton": "Gem",
+      "saveTitle": "Gem layout",
+      "update": "Opdater til nuværende"
+    },
     "renameFailed": "Kunne ikke omdøbe projektet."
   },
   "tour": {

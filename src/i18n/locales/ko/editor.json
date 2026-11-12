@@ -988,13 +988,14 @@
         "environment": "{{environment}} 환경",
         "command": "\\{{command}} 명령",
         "latexSource": "LaTeX 소스",
+        "html": "HTML",
         "maketitlePreview": "문서 제목과 저자 메타데이터로 만들어집니다.",
         "figurePreserved": "그림 소스를 그대로 보존했습니다.",
         "tablePreserved": "표 소스를 그대로 보존했습니다.",
         "sourcePreserved": "소스를 그대로 보존함",
         "editSource": "소스 편집",
-        "summaryLabel": "{{label}}. LaTeX 소스를 그대로 보존했습니다.",
-        "inputLabel": "LaTeX 블록 원본 소스"
+        "summaryLabel": "{{label}}. 원본 소스를 그대로 보존했습니다.",
+        "inputLabel": "블록 원본 소스"
       },
       "inline": {
         "label": "인라인 원본 소스",

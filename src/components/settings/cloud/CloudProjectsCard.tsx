@@ -13,7 +13,6 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
-import { loadNamespace } from "@/i18n";
 import { describeError } from "@/lib/app-error";
 import type { CloudProgress, CloudProject, CloudState } from "@/lib/cloud";
 import { formatBytes } from "@/lib/format-bytes";
@@ -34,29 +33,17 @@ import {
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
-import { Suspense, useEffect, useId, useMemo, useState } from "react";
+import { Suspense, useId, useMemo, useState } from "react";
+import { useNow } from "@/hooks/use-now";
 import { useTranslation } from "react-i18next";
 
-const NoteConflictDialog = lazy(() =>
-  Promise.all([import("@/components/notes/NoteConflictDialog"), loadNamespace("notes")]).then(([module]) => module),
-);
+const ConflictCopyDialog = lazy(() => import("@/components/cloud/ConflictCopyDialog"));
 
 type CloudTranslate = ReturnType<typeof useTranslation<["cloud"]>>["t"];
 
 type PendingConfirm = { kind: "remove" | "removeRemote" | "replace" | "deleteHeld"; project: CloudProject };
 
 type RemoteListState = "idle" | "loading" | "failed" | "ready";
-
-const NOW_TICK_MS = 30_000;
-
-function useNow(): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), NOW_TICK_MS);
-    return () => window.clearInterval(timer);
-  }, []);
-  return now;
-}
 
 function attentionRank(project: CloudProject): number {
   if (project.mode === "held") return 0;
@@ -381,9 +368,10 @@ function ConflictNotice({ project }: Readonly<{ project: CloudProject }>) {
   const localId = project.localId as string;
   const busy = useCloudStore((s) => s.busyProjects.includes(localId));
   const dismissConflicts = useCloudStore((s) => s.dismissConflicts);
+  const notesOn = useSettingsStore((s) => s.notes);
   const noteDoc = useFilesStore((s) => {
     const info = s.projects.find((entry) => entry.id === localId);
-    return isNoteProject(info) ? (info?.main_doc ?? null) : null;
+    return notesOn && isNoteProject(info) ? (info?.main_doc ?? null) : null;
   });
   const [comparing, setComparing] = useState<string | null>(null);
   const copies = project.conflictCopies;
@@ -444,7 +432,7 @@ function ConflictNotice({ project }: Readonly<{ project: CloudProject }>) {
       </CloudNotice>
       {conflict && (
         <Suspense fallback={null}>
-          <NoteConflictDialog conflict={conflict} onClose={() => setComparing(null)} />
+          <ConflictCopyDialog conflict={conflict} onClose={() => setComparing(null)} />
         </Suspense>
       )}
     </>

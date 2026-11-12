@@ -18,13 +18,13 @@ export const OVERLAY_SCROLLBAR_ATTRIBUTE = "data-overlay-scrollbar";
 export const NATIVE_SCROLLBAR_HIDDEN_CLASS = "ofl-native-scrollbar-hidden";
 
 const BAR_SIZE = 10;
-const THUMB_SIZE = 4;
-const THUMB_SIZE_ACTIVE = 6;
-const THUMB_INSET = 2;
+const THUMB_SIZE = 2;
+const THUMB_SIZE_ACTIVE = 4;
+const THUMB_INSET = 1;
 const MIN_THUMB = 24;
 const SCROLL_VISIBLE_MS = 900;
-const THUMB_COLOR = "color-mix(in srgb, var(--foreground) var(--ofl-scroll-thumb-mix), transparent)";
-const THUMB_COLOR_ACTIVE = "color-mix(in srgb, var(--foreground) var(--ofl-scroll-thumb-active-mix), transparent)";
+const THUMB_COLOR = "color-mix(in srgb, var(--ofl-scroll-thumb-ink) var(--ofl-scroll-thumb-mix), transparent)";
+const THUMB_COLOR_ACTIVE = "color-mix(in srgb, var(--ofl-scroll-thumb-ink) var(--ofl-scroll-thumb-active-mix), transparent)";
 
 export interface AxisMetrics {
   viewport: number;

@@ -1,7 +1,8 @@
+import { type ScaleLinear, scaleLinear } from "d3";
 import { ChartSpline } from "lucide-react";
 import { i18n } from "@/i18n";
-import { CHAR_WIDTH, chartLegend, formatTick, niceStep, seriesColor, svgNode, ticksBetween } from "./chart-block";
-import type { NoteBlockKind } from "./note-blocks";
+import { type AxisTicks, axisTitles, chartLegend, labelRoom, linearTicks, seriesColor, TITLE_ROOM } from "./chart-block";
+import { blockMessage, element, type NoteBlockKind, svgNode, svgText } from "./note-blocks";
 import { compileExpression, type Evaluate, type ExpressionError } from "./plot-expr";
 
 export type PlotProblemReason =
@@ -55,7 +56,6 @@ const BASE_HEIGHT = 400;
 const TOP = 12;
 const BOTTOM = BASE_HEIGHT - 28;
 const RIGHT = WIDTH - 12;
-const TITLE_ROOM = 18;
 const SCREEN_MIN = -4000;
 const SCREEN_MAX = 4400;
 
@@ -246,28 +246,30 @@ function edgeExtreme(values: Float64Array, outside: (value: number) => boolean, 
   return extreme;
 }
 
+function clippedRange(series: readonly Float64Array[], values: readonly number[]): [number, number] {
+  const sorted = Float64Array.from(values).sort();
+  const lower = quantile(sorted, 0.05);
+  const upper = quantile(sorted, 0.95);
+  const spread = upper - lower;
+  const clipLow = lower - spread;
+  const clipHigh = upper + spread;
+  let low = Math.max(quantile(sorted, 0), clipLow);
+  let high = Math.min(quantile(sorted, 1), clipHigh);
+  const room = spread * 1000;
+  for (const items of series) {
+    const top = edgeExtreme(items, (value) => value > clipHigh, Math.max);
+    if (top !== null && top - upper <= room) high = Math.max(high, top);
+    const bottom = edgeExtreme(items, (value) => value < clipLow, Math.min);
+    if (bottom !== null && lower - bottom <= room) low = Math.min(low, bottom);
+  }
+  return [low, high];
+}
+
 export function robustRange(series: readonly Float64Array[], extras: readonly number[]): [number, number] | null {
-  const values: number[] = [];
-  for (const items of series) for (const value of items) if (usable(value)) values.push(value);
+  const values = series.flatMap((items) => Array.from(items).filter(usable));
   let low = Number.POSITIVE_INFINITY;
   let high = Number.NEGATIVE_INFINITY;
-  if (values.length > 0) {
-    const sorted = Float64Array.from(values).sort();
-    const lower = quantile(sorted, 0.05);
-    const upper = quantile(sorted, 0.95);
-    const spread = upper - lower;
-    const clipLow = lower - spread;
-    const clipHigh = upper + spread;
-    low = Math.max(sorted[0], clipLow);
-    high = Math.min(sorted[sorted.length - 1], clipHigh);
-    const room = spread * 1000;
-    for (const items of series) {
-      const top = edgeExtreme(items, (value) => value > clipHigh, Math.max);
-      if (top !== null && top - upper <= room) high = Math.max(high, top);
-      const bottom = edgeExtreme(items, (value) => value < clipLow, Math.min);
-      if (bottom !== null && lower - bottom <= room) low = Math.min(low, bottom);
-    }
-  }
+  if (values.length > 0) [low, high] = clippedRange(series, values);
   for (const value of extras) {
     low = Math.min(low, value);
     high = Math.max(high, value);
@@ -371,55 +373,41 @@ function problemText(problem: PlotProblem): string {
 }
 
 function problemList(problems: readonly PlotProblem[]): HTMLElement {
-  const list = document.createElement("ul");
-  list.className = "note-plot-problems mt-2 space-y-0.5 text-xs text-muted-foreground";
-  for (const problem of problems) {
-    const item = document.createElement("li");
-    item.textContent = problemText(problem);
-    list.append(item);
-  }
+  const list = element("ul", "note-plot-problems mt-2 space-y-0.5 text-xs text-muted-foreground");
+  for (const problem of problems) list.append(element("li", "", problemText(problem)));
   return list;
 }
 
-function svgText(text: string, attributes: Record<string, string | number>): SVGElement {
-  const node = svgNode("text", attributes);
-  node.textContent = text;
-  return node;
-}
+type Scale = ScaleLinear<number, number>;
 
-function drawAxes(svg: SVGElement, view: View, left: number, bottom: number, toX: (x: number) => number, toY: (y: number) => number): void {
-  const xStep = niceStep(view.x[1] - view.x[0], 8);
-  const yStep = niceStep(view.y[1] - view.y[0], 6);
-  for (const tick of ticksBetween(view.x[0], view.x[1], xStep)) {
+function drawAxes(svg: SVGElement, view: View, toX: Scale, toY: Scale, yTicks: AxisTicks): void {
+  const [left] = toX.range();
+  const xTicks = linearTicks(toX, 8);
+  xTicks.ticks.forEach((tick, index) => {
     const x = toX(tick);
-    svg.append(svgNode("line", { x1: x, x2: x, y1: TOP, y2: bottom, class: "note-plot-grid" }));
-    svg.append(svgText(formatTick(tick, xStep), { x, y: bottom + 16, "text-anchor": "middle", class: "note-chart-label" }));
-  }
-  for (const tick of ticksBetween(view.y[0], view.y[1], yStep)) {
+    svg.append(svgNode("line", { x1: x, x2: x, y1: TOP, y2: BOTTOM, class: "note-plot-grid" }));
+    svg.append(svgText(xTicks.labels[index], { x, y: BOTTOM + 16, "text-anchor": "middle", class: "note-chart-label" }));
+  });
+  yTicks.ticks.forEach((tick, index) => {
     const y = toY(tick);
     svg.append(svgNode("line", { x1: left, x2: RIGHT, y1: y, y2: y, class: "note-plot-grid" }));
-    svg.append(svgText(formatTick(tick, yStep), { x: left - 6, y: y + 3.5, "text-anchor": "end", class: "note-chart-label" }));
-  }
-  svg.append(svgNode("rect", { x: left, y: TOP, width: RIGHT - left, height: bottom - TOP, class: "note-plot-frame" }));
+    svg.append(svgText(yTicks.labels[index], { x: left - 6, y: y + 3.5, "text-anchor": "end", class: "note-chart-label" }));
+  });
+  svg.append(svgNode("rect", { x: left, y: TOP, width: RIGHT - left, height: BOTTOM - TOP, class: "note-plot-frame" }));
   if (view.y[0] <= 0 && view.y[1] >= 0) {
     svg.append(svgNode("line", { x1: left, x2: RIGHT, y1: toY(0), y2: toY(0), class: "note-plot-axis" }));
   }
   if (view.x[0] <= 0 && view.x[1] >= 0) {
-    svg.append(svgNode("line", { x1: toX(0), x2: toX(0), y1: TOP, y2: bottom, class: "note-plot-axis" }));
+    svg.append(svgNode("line", { x1: toX(0), x2: toX(0), y1: TOP, y2: BOTTOM, class: "note-plot-axis" }));
   }
-}
-
-function yTickWidth(view: View): number {
-  const step = niceStep(view.y[1] - view.y[0], 6);
-  const longest = Math.max(1, ...ticksBetween(view.y[0], view.y[1], step).map((tick) => formatTick(tick, step).length));
-  return Math.max(28, Math.ceil(10 + CHAR_WIDTH * longest));
 }
 
 function drawPlot(spec: PlotSpec, drawn: Drawn[], view: View): SVGElement {
   const height = BASE_HEIGHT + (spec.xLabel ? TITLE_ROOM : 0);
-  const left = yTickWidth(view) + (spec.yLabel ? TITLE_ROOM : 0);
-  const toX = (x: number) => left + ((x - view.x[0]) / (view.x[1] - view.x[0])) * (RIGHT - left);
-  const toY = (y: number) => BOTTOM - ((y - view.y[0]) / (view.y[1] - view.y[0])) * (BOTTOM - TOP);
+  const toY = scaleLinear().domain(view.y).range([BOTTOM, TOP]);
+  const yTicks = linearTicks(toY, 6);
+  const left = labelRoom(yTicks.labels, spec.yLabel);
+  const toX = scaleLinear().domain(view.x).range([left, RIGHT]);
   const svg = svgNode("svg", { viewBox: `0 0 ${WIDTH} ${height}`, role: "img", class: "note-plot-svg block w-full" });
   const labels = drawn.map((item) => item.curve.label);
   svg.setAttribute(
@@ -427,7 +415,7 @@ function drawPlot(spec: PlotSpec, drawn: Drawn[], view: View): SVGElement {
     spec.title ??
       (labels.length ? i18n.t(($) => $.notes.blocks.plot.aria, { curves: labels.join("; ") }) : i18n.t(($) => $.notes.blocks.plot.label)),
   );
-  drawAxes(svg, view, left, BOTTOM, toX, toY);
+  drawAxes(svg, view, toX, toY, yTicks);
   serial += 1;
   const clipId = `note-plot-clip-${serial}`;
   const defs = svgNode("defs", {});
@@ -454,28 +442,12 @@ function drawPlot(spec: PlotSpec, drawn: Drawn[], view: View): SVGElement {
     }
   }
   svg.append(layer);
-  if (spec.xLabel) {
-    svg.append(svgText(spec.xLabel, { x: (left + RIGHT) / 2, y: height - 6, "text-anchor": "middle", class: "note-chart-axis-title" }));
-  }
-  if (spec.yLabel) {
-    const middle = (TOP + BOTTOM) / 2;
-    svg.append(
-      svgText(spec.yLabel, {
-        x: 12,
-        y: middle,
-        "text-anchor": "middle",
-        transform: `rotate(-90 12 ${middle})`,
-        class: "note-chart-axis-title",
-      }),
-    );
-  }
+  axisTitles(svg, { x: spec.xLabel, y: spec.yLabel }, { left, right: RIGHT, top: TOP, bottom: BOTTOM, height });
   return svg;
 }
 
 export function paintPlot(preview: HTMLElement, source: string): undefined {
   const spec = parsePlot(source);
-  const root = document.createElement("div");
-  root.className = "note-plot w-full min-w-0";
   const { view, samples } = plotView(spec);
   const problems = [...spec.problems];
   const drawn: Drawn[] = [];
@@ -485,18 +457,11 @@ export function paintPlot(preview: HTMLElement, source: string): undefined {
     else problems.push({ line: curve.line, reason: "undefined" });
   }
   problems.sort((first, second) => first.line - second.line);
+  const root = element("div", "note-plot w-full min-w-0 select-text");
   if (drawn.length === 0 && spec.points.length === 0) {
-    const message = document.createElement("p");
-    message.className = "note-drawn-empty";
-    message.textContent = i18n.t(($) => $.notes.blocks.plot.empty);
-    root.append(message);
+    blockMessage(root, i18n.t(($) => $.notes.blocks.plot.empty));
   } else {
-    if (spec.title) {
-      const title = document.createElement("p");
-      title.className = "note-plot-title text-sm font-semibold";
-      title.textContent = spec.title;
-      root.append(title);
-    }
+    if (spec.title) root.append(element("p", "note-plot-title text-sm font-semibold", spec.title));
     root.append(drawPlot(spec, drawn, view));
     if (drawn.length > 1) {
       root.append(chartLegend(drawn.map((item) => ({ label: item.curve.label, color: item.color }))));

@@ -5,7 +5,7 @@ import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import type { NotePeerCaret, NotePeerMark } from "@/lib/collab-live-bridge";
 import { cssText, labelLightness, REMOTE_CARET_COLOR, REMOTE_PART_STYLES, remoteLabelColor } from "@/lib/peer-colors";
 
-export type { NotePeerCaret, NotePeerMark };
+export type { NotePeerCaret, NotePeerMark } from "@/lib/collab-live-bridge";
 
 interface PlacedMark {
   id: string;
@@ -101,8 +101,10 @@ function decorationsFor(doc: ProseMirrorNode, marks: readonly PlacedMark[]): Dec
     const node = doc.nodeAt(pos);
     if (!node || node.isLeaf) continue;
     const key = group.map((mark) => `${mark.id}:${mark.hue}:${mark.name}`).join("|");
-    decorations.push(Decoration.node(pos, pos + node.nodeSize, { class: "relative" }));
-    decorations.push(Decoration.widget(pos + 1, () => markElement(group), { key, side: -1, ignoreSelection: true }));
+    decorations.push(
+      Decoration.node(pos, pos + node.nodeSize, { class: "relative" }),
+      Decoration.widget(pos + 1, () => markElement(group), { key, side: -1, ignoreSelection: true }),
+    );
   }
   return DecorationSet.create(doc, decorations);
 }

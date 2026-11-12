@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "Search mode: {{mode}}",
+    "heading": "Search mode",
+    "ranked": {
+      "label": "Best match",
+      "description": "Ranks results by how well they match. Words can be anywhere."
+    },
+    "exact": {
+      "label": "Exact text",
+      "description": "Finds these exact characters. A capital letter makes it match case."
+    },
+    "regex": {
+      "label": "Regular expression",
+      "description": "Uses ripgrep's pattern syntax. Put a pattern in quotes if it has spaces or brackets."
+    },
+    "fuzzy": {
+      "label": "Fuzzy",
+      "description": "Matches names that have your letters in order, as fzf does. Also takes 'exact, ^start, end$ and !leave-out."
+    },
+    "invalid": "This pattern isn't valid: {{error}}"
+  },
   "querySearch": {
     "suggestions": "Search suggestions",
     "exclude": "Exclude",
@@ -76,7 +97,8 @@
       "invalidValue": "{{value}} is not a valid value for {{key}}",
       "invalidDate": "{{value}} is not a date. Try 2026-10-02 or @today-7d",
       "invalidNumber": "{{value}} is not a number",
-      "sortNegated": "{{key}} can't be excluded"
+      "sortNegated": "{{key}} can't be excluded",
+      "tooManyBranches": "This search has too many OR combinations, so some results may be missing"
     }
   },
   "avatar": {

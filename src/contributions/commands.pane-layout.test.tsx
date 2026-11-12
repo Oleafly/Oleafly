@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { commandGroup, commandKeywords, commandLabel, commandsFor, registry, type AppContext } from "@oleafly/registry";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { DEFAULT_PANE_LAYOUT, PANES, layoutKey, usePaneLayoutStore } from "@/store/pane-layout";
+import { useSavedLayoutsStore, type SavedLayout } from "@/store/saved-layouts";
 
 vi.mock("@/lib/zen-mode", () => ({ toggleZenMode: vi.fn() }));
 vi.mock("@/lib/compile-preview", () => ({ togglePreviewPane: vi.fn() }));
@@ -86,10 +87,31 @@ describe("pane layout commands", () => {
     expect(command("palette.reset-pane-layout")).toBeUndefined();
     command("palette.move-sidebar-to-right")?.run(project);
     const reset = command("palette.reset-pane-layout");
-    expect(reset && commandLabel(reset, project)).toBe("Reset pane layout");
+    expect(reset && commandLabel(reset, project)).toBe("Reset pane arrangement in every project");
     expect(reset && commandKeywords(reset, project)).toContain("pane layout");
     expect(command("palette.reset-pane-layout", library)).toBeUndefined();
     reset?.run(project);
     expect(usePaneLayoutStore.getState().layout).toBe(DEFAULT_PANE_LAYOUT);
+  });
+
+  it("saves the current layout and switches to each saved one by name", () => {
+    expect(command("palette.save-layout", library)).toBeUndefined();
+    command("palette.save-layout")?.run(project);
+    expect(useSavedLayoutsStore.getState().naming).toEqual({ id: null });
+    expect(command("palette.saved-layout-0")).toBeUndefined();
+    const flags = { viewMode: "split", showTree: true, assistantOpen: false, workspaceHidden: false, terminalOpen: true } as const;
+    const layouts: SavedLayout[] = [
+      { id: "a", name: "Writing", tree: DEFAULT_PANE_LAYOUT, flags },
+      { id: "b", name: "Terminal up", tree: DEFAULT_PANE_LAYOUT, flags },
+    ];
+    const original = useSavedLayoutsStore.getState().apply;
+    const apply = vi.fn();
+    useSavedLayoutsStore.setState({ layouts, naming: null, apply });
+    const second = command("palette.saved-layout-1");
+    expect(second && commandLabel(second, project)).toBe("Layout: Terminal up");
+    expect(command("palette.saved-layout-2")).toBeUndefined();
+    second?.run(project);
+    expect(apply).toHaveBeenCalledWith("b");
+    useSavedLayoutsStore.setState({ layouts: [], apply: original });
   });
 });

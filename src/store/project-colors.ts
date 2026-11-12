@@ -1,4 +1,6 @@
+import { useCallback } from "react";
 import { create } from "zustand";
+import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { setProjectColor as setProjectColorCmd } from "@/lib/tauri";
 import { logError } from "@/lib/log";
 import { readJson, writeJson } from "@/lib/local-storage";
@@ -35,3 +37,17 @@ export const useProjectColorsStore = create<ProjectColorsState>((set, get) => ({
   },
   get: (id) => get().colors[id],
 }));
+
+export interface ColoredProject {
+  readonly id: string;
+  readonly color?: string | null;
+}
+
+function resolveProjectColor(overrides: Readonly<Record<string, string>>, project: ColoredProject): string {
+  return overrides[project.id] ?? (project.color || DEFAULT_BOOK_COLOR);
+}
+
+export function useProjectColorOf(): (project: ColoredProject) => string {
+  const overrides = useProjectColorsStore((state) => state.colors);
+  return useCallback((project) => resolveProjectColor(overrides, project), [overrides]);
+}

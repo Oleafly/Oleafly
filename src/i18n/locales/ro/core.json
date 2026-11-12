@@ -324,6 +324,7 @@
   },
   "mcp": {
     "deniedByRules": "Refuzat de o regulă deny din approvals.toml",
+    "createTodaySummary": "Creează notița de azi „{{title}}”",
     "openProjectSummary": "Deschide proiectul {{id}}",
     "rulesUnreadable": "Refuzat deoarece approvals.toml nu a putut fi citit",
     "useToolSummary": "Folosește {{tool}} de pe serverul MCP {{server}}"

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { useDiffStore } from "@/store/diff";
 import { nextTabSeq } from "@/store/tab-order";
+import { readJson, writeJson } from "@/lib/local-storage";
 
 export interface NoteTab {
   id: string;
@@ -33,6 +34,15 @@ export function markdownKey(projectId: string, path: string): string {
 }
 
 const NO_TABS: NoteTab[] = [];
+const MARKDOWN_STORAGE_KEY = "oleafly.notes.editAsMarkdown";
+
+function storedMarkdown(): Readonly<Record<string, true>> {
+  return readJson(MARKDOWN_STORAGE_KEY, {}, (value) =>
+    Object.fromEntries(
+      (Array.isArray(value) ? value : []).filter((key): key is string => typeof key === "string").map((key) => [key, true]),
+    ),
+  );
+}
 let watchingDiffs = false;
 
 function focusFromDiffs(): void {
@@ -47,7 +57,7 @@ function focusFromDiffs(): void {
 export const useNoteTabsStore = create<NoteTabsState>((set, get) => ({
   tabs: [],
   active: null,
-  markdown: {},
+  markdown: storedMarkdown(),
   open: (projectId, id, look) => {
     focusFromDiffs();
     set((state) => {
@@ -81,15 +91,16 @@ export const useNoteTabsStore = create<NoteTabsState>((set, get) => ({
       if (!tab || (tab.icon === look.icon && tab.color === look.color)) return state;
       return { tabs: state.tabs.map((entry) => (entry === tab ? { ...entry, ...look } : entry)) };
     }),
-  setMarkdown: (projectId, path, markdown) =>
-    set((state) => {
-      const key = markdownKey(projectId, path);
-      if (Boolean(state.markdown[key]) === markdown) return state;
-      const next = { ...state.markdown };
-      if (markdown) next[key] = true;
-      else delete next[key];
-      return { markdown: next };
-    }),
+  setMarkdown: (projectId, path, markdown) => {
+    const key = markdownKey(projectId, path);
+    const current = get().markdown;
+    if (Boolean(current[key]) === markdown) return;
+    const next = { ...current };
+    if (markdown) next[key] = true;
+    else delete next[key];
+    writeJson(MARKDOWN_STORAGE_KEY, Object.keys(next));
+    set({ markdown: next });
+  },
 }));
 
 export function noteTabsFor(state: Pick<NoteTabsState, "tabs">, projectId: string | null): NoteTab[] {

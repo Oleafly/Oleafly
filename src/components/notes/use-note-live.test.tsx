@@ -1,16 +1,17 @@
 // @vitest-environment jsdom
 import type { WorkspaceLayout } from "@oleafly/workspace";
 import { createMarkdownSourceSnapshot, type MarkdownSourceSnapshot } from "@oleafly/wysiwyg";
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { TextOperation } from "@/features/collab/live/ot";
 import { FakeChannel } from "@/features/collab/live/tests/fake-channel";
 import type { LivePeer } from "@/features/collab/live/live-store";
-import { PRESENCE_INTERVAL_MS } from "@/features/collab/live/presence";
-import type { RemoteSessionTransport } from "@/features/collab/live/remote-session";
+import { PRESENCE_KEEP_ALIVE_MS } from "@/features/collab/live/presence";
+import { RemoteDocumentSession, type RemoteSessionTransport } from "@/features/collab/live/remote-session";
 import type { NoteLiveClock } from "@/features/collab/notes/note-live";
+import "./tests/setup";
 
 const mocks = vi.hoisted(() => ({
   toast: { info: vi.fn() },
@@ -38,6 +39,7 @@ import {
   noteLiveHolds,
   useCollabEditorGate,
   useCollabLiveNote,
+  useCollabLiveProject,
   useCollabNoteNotices,
 } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "@/store/files";
@@ -46,7 +48,6 @@ import { NotePeerMarks, peerCaretsOf, peerMarksOf } from "./note-presence-decora
 import { diffNoteDocs } from "./note-diff";
 import { hasPending, NoteSuggestions, showSuggestions } from "./note-suggestions";
 import { defaultNotesLayout, openNoteIn } from "./notes-layout";
-import { loadNamespace } from "@/i18n";
 import {
   handBackNote,
   installNoteLive,
@@ -73,6 +74,7 @@ import {
   useLiveNoteClaim,
   useNoteLiveEditor,
   useNoteLiveMode,
+  useNoteReadOnly,
 } from "./use-note-live";
 import type { NoteItem } from "./types";
 import { NotesDataProvider, type NotesData } from "./notes-data";
@@ -223,13 +225,10 @@ function install(deps: NoteLiveDeps): void {
 
 const TEXT = "---\ntitle: Lab\nkind: note\n---\n\n# Lab\n\nFirst.\n\nSecond.\n";
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 beforeEach(() => {
   vi.clearAllMocks();
   useCollabLiveNote.setState({ noteId: null, session: null });
+  useCollabLiveProject.setState({ session: null });
   useCollabNoteNotices.setState({ notices: {} });
   useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, connecting: false });
   useCollabLiveStore.setState({ projectId: null, role: null, share: null, peers: {}, status: null, pending: 0 });
@@ -638,7 +637,7 @@ describe("useNoteLiveEditor", () => {
     });
     expect(presence.set).toHaveBeenCalledWith(NOTE, "note.md", expect.any(Number), expect.any(Number));
     const second = TEXT.indexOf("Second.");
-    act(() => useCollabLiveStore.setState({ peers: { a: peer("alice", second), b: peer("me", 0), c: peer("bob", null) } }));
+    act(() => useCollabLiveStore.setState({ peers: { a: peer("alice", second), c: peer("bob", null) } }));
     expect(peerMarksOf(editor.state).map((mark) => mark.id)).toEqual(["alice"]);
     expect(peerCaretsOf(editor.state).map((caret) => caret.id)).toEqual(["device-alice"]);
     const alice = peerCaretsOf(editor.state).find((caret) => caret.id === "device-alice");
@@ -667,12 +666,11 @@ describe("useNoteLiveEditor", () => {
     });
     const first = textAt(editor, "First.");
     presence.set.mockClear();
-    await act(async () => {
+    act(() => {
       editor.commands.setTextSelection({ from: first, to: first + 5 });
-      await new Promise((resolve) => setTimeout(resolve, PRESENCE_INTERVAL_MS + 20));
     });
     const start = TEXT.indexOf("First.");
-    expect(presence.set).toHaveBeenLastCalledWith(NOTE, "note.md", start + 5, start);
+    await waitFor(() => expect(presence.set).toHaveBeenLastCalledWith(NOTE, "note.md", start + 5, start));
     const at = TEXT.indexOf("Second.");
     act(() => useCollabLiveStore.setState({ peers: { a: { ...peer("alice", at + 6), anchor: at } } }));
     expect(editor.view.dom.querySelector(".note-remote-selection")?.textContent).toBe("Second");
@@ -735,11 +733,10 @@ describe("live note carets and margin bars", () => {
     expect(around(editor)).toEqual(["Sec", "ond"]);
     expect(editor.state.doc.nodeAt(peerMarksOf(editor.state)[0].pos)?.textContent).toBe("Second.");
     presence.set.mockClear();
-    await act(async () => {
+    act(() => {
       editor.commands.setTextSelection(textAt(editor, "Second.") + 2);
-      await new Promise((resolve) => setTimeout(resolve, PRESENCE_INTERVAL_MS + 20));
     });
-    expect(presence.set).toHaveBeenLastCalledWith(NOTE, "note.md", second + 2, second + 2);
+    await waitFor(() => expect(presence.set).toHaveBeenLastCalledWith(NOTE, "note.md", second + 2, second + 2));
   });
 
   it("re-places an idle collaborator's caret only once after their report, then follows the text", async () => {
@@ -964,6 +961,55 @@ describe("useNoteLiveEditor edge cases", () => {
     }
   });
 
+  it("keeps typing that could not be sent and says so inline", async () => {
+    const channel = new FakeChannel(TEXT);
+    const { editor, clock, hook } = mount(TEXT, channel);
+    await act(async () => {
+      goLive();
+      await settle();
+    });
+    const send = vi.spyOn(RemoteDocumentSession.prototype, "applyLocal").mockImplementationOnce(() => {
+      throw new Error("The live note lost track of its text.");
+    });
+    try {
+      editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+      editor.commands.insertContent(" More");
+      hook.result.current.control.localChanged();
+      act(() => clock.flush());
+    } finally {
+      send.mockRestore();
+    }
+    expect(editor.state.doc.textContent).toContain("Second. More");
+    expect(useCollabNoteNotices.getState().notices[NOTE]).toBe("refused");
+    expect(mocks.logError).toHaveBeenCalledWith("live note", expect.any(Error));
+  });
+
+  it.each([
+    ["viewer", true],
+    ["commenter", true],
+    ["reviewer", true],
+    ["editor", false],
+    ["owner", false],
+  ] as const)("makes a shared note read-only for a %s while it is not live", (role, locked) => {
+    useFilesStore.setState({ projects: [{ id: NOTE, main_doc: "note.md", shared: { server_name: "Lab", role } }] } as never);
+    const { editor, hook } = mount(TEXT, new FakeChannel(TEXT));
+    const gate = renderHook(() => useNoteReadOnly(NOTE));
+    expect(hook.result.current.state).toEqual({ live: false, readOnly: locked, viewOnly: locked });
+    expect(editor.isEditable).toBe(!locked);
+    expect(gate.result.current).toBe(locked);
+  });
+
+  it("follows the live role over the role the project list last saw", async () => {
+    useFilesStore.setState({ projects: [{ id: NOTE, main_doc: "note.md", shared: { server_name: "Lab", role: "viewer" } }] } as never);
+    const { editor, hook } = mount(TEXT, new FakeChannel(TEXT));
+    await act(async () => {
+      goLive("editor");
+      await settle();
+    });
+    expect(hook.result.current.state).toEqual({ live: true, readOnly: false, viewOnly: false });
+    expect(editor.isEditable).toBe(true);
+  });
+
   it("says edits were not sent when the role became read-only", async () => {
     const channel = new FakeChannel(TEXT);
     const { editor, clock, hook } = mount(TEXT, channel);
@@ -983,21 +1029,54 @@ describe("useNoteLiveEditor edge cases", () => {
     });
     expect(useCollabNoteNotices.getState().notices[NOTE]).toBe("read_only");
     expect(mocks.toast.info).not.toHaveBeenCalled();
-    expect(host(editor)).toBe(TEXT);
+    expect(editor.state.doc.textContent).not.toContain("?");
   });
 });
 
-function host(editor: Editor): string {
-  const pad = new Host(editor, TEXT);
-  return pad.sourceOf(editor.state.doc);
-}
+describe("live project notes", () => {
+  const PLAN = { projectId: "paper", path: "notes/Plan.md" };
+
+  it("publishes the note's place only while its tab is shown", async () => {
+    vi.useFakeTimers();
+    const editor = editorFor(TEXT);
+    const presence = { set: vi.fn(async () => undefined), leave: vi.fn(async () => undefined) };
+    install({ transport: () => new FakeChannel(TEXT).transport(), presence, clock: new Clock() });
+    const hook = renderHook(
+      ({ shown }: { shown: boolean }) => useNoteLiveEditor("project-note:paper:plan", editor, new Host(editor, TEXT), PLAN, shown),
+      { initialProps: { shown: false } },
+    );
+    await act(async () => {
+      useCollabLiveProject.setState({ session: { projectId: "paper", role: "editor", accountId: "me", deviceId: "device" } });
+      await settle();
+    });
+    expect(hook.result.current.state.live).toBe(true);
+    await act(async () => {
+      vi.advanceTimersByTime(PRESENCE_KEEP_ALIVE_MS);
+      await settle();
+    });
+    expect(presence.set).not.toHaveBeenCalled();
+    hook.rerender({ shown: true });
+    await act(async () => {
+      vi.advanceTimersByTime(1);
+      await settle();
+    });
+    expect(presence.set).toHaveBeenCalledExactlyOnceWith("paper", "notes/Plan.md", expect.any(Number), expect.any(Number));
+    hook.rerender({ shown: false });
+    await act(async () => {
+      vi.advanceTimersByTime(PRESENCE_KEEP_ALIVE_MS * 2);
+      await settle();
+    });
+    expect(presence.set).toHaveBeenCalledOnce();
+    expect(presence.leave).not.toHaveBeenCalled();
+    hook.unmount();
+  });
+});
 
 describe("peerMarksFor", () => {
   it("places each collaborator on a block once and skips everyone else", () => {
     const blockAt = (offset: number) => blockAtOffset([0, 10, 20], offset);
     const marks = peerMarksFor(
-      { a: peer("a", 12), b: peer("a", 13), c: peer("b", 25), d: peer("c", 5, "assets/x.png"), e: peer("me", 1) },
-      "me",
+      { a: peer("a", 12), b: peer("a", 13), c: peer("b", 25), d: peer("c", 5, "assets/x.png"), e: peer("d", null) },
       "note.md",
       blockAt,
       "Someone",
@@ -1007,7 +1086,7 @@ describe("peerMarksFor", () => {
       { id: "b", name: "Person b", hue: 120, index: 2 },
     ]);
     const unnamed = { ...peer("z", 3), person: null };
-    expect(peerMarksFor({ z: unnamed }, null, "note.md", () => 0, "Someone")).toEqual([{ id: "z", name: "Someone", hue: 120, index: 0 }]);
+    expect(peerMarksFor({ z: unnamed }, "note.md", () => 0, "Someone")).toEqual([{ id: "z", name: "Someone", hue: 120, index: 0 }]);
   });
 });
 
@@ -1021,7 +1100,6 @@ describe("peerCaretsFor", () => {
         c: peer("c", 2, "assets/x.png"),
       },
       "note.md",
-      null,
     );
     expect(carets).toEqual([
       { id: "device-a", name: null, hue: 120, head: 3, anchor: 3 },
@@ -1029,10 +1107,17 @@ describe("peerCaretsFor", () => {
     ]);
   });
 
-  it("leaves out this person's other devices, as the margin bars and avatars do", () => {
-    const laptop = { ...peer("me", 5), deviceId: "laptop" };
-    const carets = peerCaretsFor({ a: peer("alice", 3), l: laptop }, "note.md", "me");
-    expect(carets.map((caret) => caret.id)).toEqual(["device-alice"]);
+  it("shows this person's other devices, since only this device is left out of the peers", async () => {
+    const channel = new FakeChannel(TEXT);
+    const { editor } = mount(TEXT, channel);
+    await act(async () => {
+      goLive();
+      await settle();
+    });
+    const laptop = { ...peer("me", TEXT.indexOf("Second.")), deviceId: "laptop" };
+    act(() => useCollabLiveStore.setState({ peers: { a: peer("alice", 0), l: laptop } }));
+    expect(peerCaretsOf(editor.state).map((caret) => caret.id)).toEqual(["device-alice", "laptop"]);
+    expect(peerMarksOf(editor.state).map((mark) => mark.id)).toEqual(["alice", "me"]);
   });
 });
 

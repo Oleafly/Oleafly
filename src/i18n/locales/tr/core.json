@@ -319,6 +319,7 @@
   },
   "mcp": {
     "deniedByRules": "approvals.toml içindeki bir deny kuralı nedeniyle reddedildi",
+    "createTodaySummary": "Bugünün notunu oluştur: \"{{title}}\"",
     "openProjectSummary": "{{id}} projesini aç",
     "rulesUnreadable": "approvals.toml okunamadığı için reddedildi",
     "useToolSummary": "{{server}} MCP sunucusundaki {{tool}} aracını kullan"

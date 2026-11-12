@@ -1,6 +1,11 @@
 import {
   EMAIL_ADDRESS_PATTERN,
   maskToProse,
+  type ProofreadingDiagnostic,
+  type ProofreadingFormat,
+  type ProofreadingMode,
+  type ProofreadingSuggestion,
+  type ProofreadingSurface,
   scanMathExpressions,
 } from "@oleafly/editor";
 import { isVendoredTypstPackagePath } from "@oleafly/editor/typst-syntax";
@@ -18,13 +23,6 @@ import {
   DecorationSet,
   type EditorView,
 } from "@tiptap/pm/view";
-import type {
-  ProofreadingDiagnostic,
-  ProofreadingFormat,
-  ProofreadingMode,
-  ProofreadingSuggestion,
-  ProofreadingSurface,
-} from "@oleafly/editor";
 import { isImeEnter } from "@/components/ai/composer/ime";
 import {
   cancelProofreading,
@@ -144,6 +142,10 @@ export function proofreadingModeFor(
 ): ProofreadingMode | null {
   if (!grammar) return spelling ? "spelling" : null;
   return spelling ? "combined" : "grammar";
+}
+
+function checksSpelling(mode: ProofreadingMode | null): boolean {
+  return mode === "spelling" || mode === "combined";
 }
 
 function formatForPath(path: string): ProofreadingFormat | null {
@@ -678,7 +680,7 @@ function proofreadingPlugin(
     },
     props: {
       ...(target.replacesNativeSpellcheck
-        ? { attributes: { spellcheck: "false" } }
+        ? { attributes: (): Record<string, string> => (checksSpelling(target.mode()) ? { spellcheck: "false" } : {}) }
         : {}),
       decorations(state) {
         return (
@@ -905,8 +907,7 @@ function proofreadingPlugin(
           !state.dirty &&
           identity &&
           target.active(editorView) &&
-          cachedExtraction &&
-          cachedExtraction.doc === editorView.state.doc &&
+          cachedExtraction?.doc === editorView.state.doc &&
           cachedExtraction.revision === state.revision
         ) {
           const diagnostics = storePresentationDiagnostics(

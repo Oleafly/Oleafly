@@ -1,12 +1,8 @@
 // @vitest-environment jsdom
-import { beforeAll, describe, expect, it } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { describe, expect, it } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { MAX_SVG_CHARS, paintSvg, SVG_TEMPLATE, sanitizeSvg, svgBlock, svgDataUrl } from "./svg-block";
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+import "./tests/setup";
 
 function clean(source: string): string {
   const result = sanitizeSvg(source);
@@ -43,6 +39,14 @@ describe("sanitizeSvg", () => {
     expect(svg).not.toContain("<use");
     expect(svg).toContain("data:image/png;base64,AA==");
     expect(svg).toContain("url(#g)");
+  });
+
+  it("scans unclosed CSS urls in linear time", () => {
+    const unclosed = "url(".repeat(50_000);
+    const started = performance.now();
+    const svg = clean(`<svg xmlns="http://www.w3.org/2000/svg"><style>${unclosed}</style><rect style="fill: ${unclosed}"/></svg>`);
+    expect(performance.now() - started).toBeLessThan(3000);
+    expect(svg.split("url(")).toHaveLength(100_001);
   });
 
   it("adds the namespace when the source leaves it out", () => {

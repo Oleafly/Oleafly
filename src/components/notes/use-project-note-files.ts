@@ -3,10 +3,12 @@ import { isTauri } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
+import { logError } from "@/lib/log";
 import { foldPath, isProjectNotePath, noteFileFacts, noteFileStem } from "@/lib/project-notes";
 import { readFileContent } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
-import { isNoteColor, noteBody, noteSummary } from "./note-file";
+import { frontMatterBody } from "@/lib/front-matter";
+import { isNoteColor, noteSummary } from "./note-file";
 import type { NoteColor } from "./types";
 
 export const PROJECT_NOTE_READ_LIMIT = 200;
@@ -46,7 +48,7 @@ export function projectNoteFile(path: string, text: string | undefined): Project
     title: facts.title ?? noteFileStem(path),
     ...(facts.icon ? { icon: facts.icon } : {}),
     ...(facts.color && isNoteColor(facts.color) ? { color: facts.color } : {}),
-    summary: noteSummary(noteBody(text)),
+    summary: noteSummary(frontMatterBody(text)),
   };
 }
 
@@ -122,17 +124,19 @@ export function useProjectNoteFiles(projectId: string | null): {
           () => [path, ""] as const,
         ),
       ),
-    ).then((entries) => {
-      if (!live) return;
-      setRead((current) => {
-        const texts = new Map(current.projectId === projectId ? current.texts : []);
-        for (const [path, text] of entries) texts.set(path, text);
-        const keep = new Set(wanted);
-        for (const path of texts.keys()) if (!keep.has(path)) texts.delete(path);
-        return { projectId, texts };
-      });
-      setStale((current) => (current === "all" || current.size > 0 ? new Set() : current));
-    });
+    )
+      .then((entries) => {
+        if (!live) return;
+        setRead((current) => {
+          const texts = new Map(current.projectId === projectId ? current.texts : []);
+          for (const [path, text] of entries) texts.set(path, text);
+          const keep = new Set(wanted);
+          for (const path of texts.keys()) if (!keep.has(path)) texts.delete(path);
+          return { projectId, texts };
+        });
+        setStale((current) => (current === "all" || current.size > 0 ? new Set() : current));
+      })
+      .catch((error: unknown) => logError("read the project notes", error));
     return () => {
       live = false;
     };

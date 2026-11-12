@@ -97,8 +97,6 @@ export function useNoteAcpReadOnly(projectId: string, slot: string, enabled: boo
   return enabled && readOnly;
 }
 
-const allowedWrites = new Set<string>();
-
 async function readingOnly(projectId: string, session: AcpSession): Promise<boolean> {
   if (isReadOnly(session.controls)) return true;
   if (!readOnlyChoice(session.controls)) return false;
@@ -131,7 +129,6 @@ export function useNoteAcpWriteGuard(projectId: string, slot: string, enabled: b
     waitingRef.current = null;
     setShown(null);
     if (!waiting) return;
-    if (allowed) allowedWrites.add(waiting.sessionId);
     for (const reply of waiting.answers) reply(allowed);
   }, []);
   useEffect(() => {
@@ -147,10 +144,7 @@ export function useNoteAcpWriteGuard(projectId: string, slot: string, enabled: b
         waitingRef.current = { sessionId: session.id, agentId: session.agentId, answers: [resolve] };
         setShown({ sessionId: session.id, agentId: session.agentId });
       });
-    const stop = setAcpPromptGate(slot, async (session) => {
-      if (allowedWrites.has(session.id) || (await readingOnly(projectId, session))) return true;
-      return allowedWrites.has(session.id) || ask(session);
-    });
+    const stop = setAcpPromptGate(slot, async (session) => (await readingOnly(projectId, session)) || ask(session));
     return () => {
       stop();
       settle(false);

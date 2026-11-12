@@ -1,55 +1,81 @@
 import { renderMathSource } from "@oleafly/editor/math-render";
-import type { AnyExtension, CommandProps, Editor } from "@tiptap/core";
-import { Node as TiptapNode } from "@tiptap/core";
+import { IMAGE_WIDTH_RANGE, imageWidthPercent } from "@oleafly/wysiwyg";
+import { isTauri } from "@tauri-apps/api/core";
+import { type AnyExtension, type CommandProps, type Editor, Node as TiptapNode } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { type EditorState, Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type NodeView } from "@tiptap/pm/view";
-import { NotebookTabs, Network, SquareSigma } from "lucide-react";
+import { AudioLines, Check, Copy, Info, NotebookTabs, Network, Play, SquareArrowOutUpRight, SquareSigma } from "lucide-react";
+import { BLOCK_ACTIONS, BLOCK_FRAME, BLOCK_LABEL, BLOCK_MESSAGE, BLOCK_ROOT } from "@/components/ui/block-frame";
 import { buttonVariants } from "@/components/ui/button";
+import { COPIED_FEEDBACK_MS, COPY_BUTTON_CLASS } from "@/components/ui/copyable-block";
+import { INFO_HINT_CLASS } from "@/components/ui/info-hint";
 import { renderDiagram } from "@/components/ui/mermaid-diagram";
 import { isMermaidRemoteContentError } from "@/components/ui/mermaid-remote";
+import { whenNearViewport } from "@/hooks/use-near-viewport";
 import { i18n } from "@/i18n";
+import { describeError } from "@/lib/app-error";
 import { writeClipboardText } from "@/lib/clipboard";
+import { logError } from "@/lib/log";
+import {
+  heldRemoteImage,
+  type RemoteImage,
+  remoteImage,
+  remoteImageAllowed,
+  subscribeRemoteImages,
+} from "@/lib/remote-image";
+import { basename } from "@/lib/path-utils";
+import { noteLinkPreview, noteVideoFrameOrigin } from "@/lib/tauri";
+import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { blockSyntax } from "./block-guide";
 import { BLOCK_GROUPS, type BlockGroupId, NEW_BLOCKS } from "./block-templates";
+import { bookmarkBlock } from "./bookmark-block";
 import { chartBlock } from "./chart-block";
 import { codeHighlightPlugin, codeLanguage } from "./code-highlight";
+import { d2Block } from "./d2-block";
 import { htmlBlock } from "./html-block";
 import { moleculeBlock } from "./molecule-block";
 import {
   blockMessage,
   currentTheme,
+  type Dispose,
+  element,
+  iconSvg,
   type NoteBlockKind,
   type NoteFile,
   noteBlock,
   noteBlockName,
   type PaintContext,
+  paintAsync,
   paintBlockCard,
   registerNoteBlock,
 } from "./note-blocks";
-import { imageSource } from "./note-path";
 import {
-  heldRemoteImage,
-  type MountedNotice,
-  mountRemoteImageNotice,
-  type RemoteImage,
-  remoteImageAllowed,
-  subscribeRemoteImages,
-} from "./note-remote-images";
+  assetFragment,
+  imageSource,
+  noteMediaKind,
+  notePath,
+  playsInNote,
+  VIDEO_PROVIDER_NAMES,
+  type VideoEmbed,
+  videoEmbed,
+  videoFramePage,
+} from "./note-path";
+import { type MountedNotice, mountRemoteImageNotice } from "./note-remote-images";
 import { NOTEBOOK_INFO, NotebookTooLargeError, notebookText, parseNotebookBlock } from "./notebook-block";
-import type { NotebookMount } from "./NotebookView";
+import type { NotesData } from "./notes-data";
 import { plotBlock } from "./plot-block";
 import { reactBlock } from "./react-block";
 import { sequenceBlock } from "./sequence-block";
 import { smilesBlock } from "./smiles-block";
 import { svgBlock } from "./svg-block";
 import { tableBlock } from "./table-block";
+import { tikzBlocks } from "./tikz-block";
 import { typstBlock } from "./typst-block";
-
-export { imageSource } from "./note-path";
+import { videoLogo } from "./video-logo";
 
 export const BLOCK_REPAINT_MS = 300;
-const COPIED_MS = 1500;
 const CHEMISTRY = /\\(?:ce|pu)\b/u;
 let chemistry: Promise<unknown> | null = null;
 
@@ -60,21 +86,16 @@ export function loadChemistry(): Promise<unknown> {
 
 void loadChemistry();
 
-function paintMermaid(preview: HTMLElement, source: string): () => void {
-  let live = true;
-  renderDiagram(source, currentTheme()).then(
-    (svg) => {
-      if (live) preview.replaceChildren(svg.cloneNode(true));
+function paintMermaid(preview: HTMLElement, source: string): Dispose {
+  return paintAsync(preview, {
+    load: () => renderDiagram(source, currentTheme()),
+    show: (svg) => {
+      preview.replaceChildren(svg.cloneNode(true));
+      return undefined;
     },
-    (error: unknown) => {
-      if (!live) return;
-      const remote = isMermaidRemoteContentError(error);
-      blockMessage(preview, remote ? i18n.t(($) => $.core.mermaid.remoteBlocked) : i18n.t(($) => $.notes.blocks.diagramError));
-    },
-  );
-  return () => {
-    live = false;
-  };
+    error: (error) =>
+      isMermaidRemoteContentError(error) ? i18n.t(($) => $.core.mermaid.remoteBlocked) : i18n.t(($) => $.notes.blocks.diagramError),
+  });
 }
 
 function drawLatex(preview: HTMLElement, source: string): void {
@@ -83,21 +104,22 @@ function drawLatex(preview: HTMLElement, source: string): void {
   else blockMessage(preview, i18n.t(($) => $.notes.blocks.noPreview));
 }
 
-function paintLatex(preview: HTMLElement, source: string): (() => void) | undefined {
+function paintLatex(preview: HTMLElement, source: string): Dispose | undefined {
   if (!CHEMISTRY.test(source)) {
     drawLatex(preview, source);
     return undefined;
   }
-  let live = true;
-  void loadChemistry().then(() => {
-    if (live) drawLatex(preview, source);
+  return paintAsync(preview, {
+    load: loadChemistry,
+    show: () => {
+      drawLatex(preview, source);
+      return undefined;
+    },
+    error: () => i18n.t(($) => $.notes.blocks.noPreview),
   });
-  return () => {
-    live = false;
-  };
 }
 
-function paintNotebook(preview: HTMLElement, source: string, context: PaintContext): () => void {
+function paintNotebook(preview: HTMLElement, source: string, context: PaintContext): Dispose {
   const parsed = parseNotebookBlock(source);
   if (!parsed.ok) {
     blockMessage(
@@ -112,39 +134,31 @@ function paintNotebook(preview: HTMLElement, source: string, context: PaintConte
     blockMessage(preview, i18n.t(($) => $.notes.notebook.missing, { path }));
     return () => {};
   }
-  let live = true;
-  let mounted: NotebookMount | null = null;
-  blockMessage(preview, i18n.t(($) => $.notes.notebook.loading));
-  readFile(path)
-    .then(async (url) => {
-      if (!live) return;
-      if (url === null) {
-        blockMessage(preview, i18n.t(($) => $.notes.notebook.missing, { path }));
-        return;
-      }
+  return paintAsync(preview, {
+    loading: i18n.t(($) => $.notes.notebook.loading),
+    load: async () => {
+      const url = await readFile(path);
+      if (url === null) return null;
       const text = notebookText(url);
       if (text === null) throw new Error("The notebook could not be read.");
-      const { mountNotebook } = await import("./NotebookView");
-      if (!live) return;
-      const host = document.createElement("div");
-      host.className = "note-notebook";
+      return { text, view: await import("./NotebookView") };
+    },
+    show: (loaded) => {
+      if (!loaded) {
+        blockMessage(preview, i18n.t(($) => $.notes.notebook.missing, { path }));
+        return undefined;
+      }
+      const host = element("div", "note-notebook w-full min-w-0");
       preview.replaceChildren(host);
-      mounted = mountNotebook(host);
-      mounted.render({ text, cells, hideCode });
-    })
-    .catch((error: unknown) => {
-      if (!live) return;
-      blockMessage(
-        preview,
-        error instanceof NotebookTooLargeError
-          ? i18n.t(($) => $.notes.notebook.tooLarge)
-          : i18n.t(($) => $.notes.notebook.unreadable, { path }),
-      );
-    });
-  return () => {
-    live = false;
-    mounted?.unmount();
-  };
+      const mounted = loaded.view.mountNotebook(host);
+      mounted.render({ text: loaded.text, cells, hideCode });
+      return () => mounted.unmount();
+    },
+    error: (error) =>
+      error instanceof NotebookTooLargeError
+        ? i18n.t(($) => $.notes.notebook.tooLarge)
+        : i18n.t(($) => $.notes.notebook.unreadable, { path }),
+  });
 }
 
 const latexBlock: NoteBlockKind = {
@@ -179,6 +193,8 @@ export const BUILT_IN_BLOCKS: readonly NoteBlockKind[] = [
   latexBlock,
   typstBlock,
   mermaidBlock,
+  d2Block,
+  ...tikzBlocks,
   svgBlock,
   htmlBlock,
   reactBlock,
@@ -186,6 +202,7 @@ export const BUILT_IN_BLOCKS: readonly NoteBlockKind[] = [
   moleculeBlock,
   sequenceBlock,
   notebookBlock,
+  bookmarkBlock,
 ];
 
 for (const kind of BUILT_IN_BLOCKS) registerNoteBlock(kind);
@@ -234,17 +251,13 @@ export function paintStillBlock(kind: string, preview: HTMLElement, source: stri
   return paint(preview, source, { still: true, fence: kind }) ?? (() => {});
 }
 
-export function blockKindOf(info: string): string | undefined {
-  return noteBlockName(info);
-}
-
 export const EDITING_CLASS = "note-drawn-editing";
 export const SOURCE_CLASS = "note-drawn-source";
 const EDITING_SPEC = { drawnEditing: true };
 const editingKey = new PluginKey<DecorationSet>("noteDrawnEditing");
 
 function isDrawnBlock(node: ProseMirrorNode): boolean {
-  return node.type.name === "codeBlock" && blockKindOf(String(node.attrs.language ?? "")) !== undefined;
+  return node.type.name === "codeBlock" && noteBlockName(String(node.attrs.language ?? "")) !== undefined;
 }
 
 function caretInside(decorations: readonly Decoration[]): boolean {
@@ -324,58 +337,75 @@ function isPlainTextblock(node: ProseMirrorNode): boolean {
 
 export function caretAfterDrawnBlock({ tr, dispatch }: Pick<CommandProps, "tr" | "dispatch">): boolean {
   const { $head } = tr.selection;
-  if ($head.depth === 0 || !isDrawnBlock($head.parent) || !dispatch) return true;
-  if (caretAfter(tr, $head.after(), isEmptyParagraph)) tr.scrollIntoView();
+  if ($head.depth > 0 && isDrawnBlock($head.parent) && dispatch && caretAfter(tr, $head.after(), isEmptyParagraph)) tr.scrollIntoView();
   return true;
+}
+
+function naturalWidthStyle(image: HTMLImageElement): string {
+  return image.naturalWidth ? `${image.naturalWidth}px` : "";
 }
 
 function fenceOf(info: string): string {
   return info.trim().replace(/^\{=(.+)\}$/u, "$1").trim().toLowerCase();
 }
 
-function toggleLabel(showingSource: boolean): string {
-  return showingSource
-    ? i18n.t(($) => $.notes.blocks.preview)
-    : i18n.t(($) => $.notes.blocks.source);
-}
-
-function copyButton(current: () => ProseMirrorNode): HTMLButtonElement {
-  const button = document.createElement("button");
+function copyButton(read: () => string): HTMLButtonElement {
+  const button = element("button", `note-code-copy select-none ${COPY_BUTTON_CLASS}`);
   button.type = "button";
-  button.className = cn(buttonVariants({ variant: "ghost", size: "xs" }), "note-code-copy");
-  button.contentEditable = "false";
-  button.tabIndex = 0;
+  const idle = iconSvg(Copy, "size-3.5");
+  const done = iconSvg(Check, "size-3.5 text-emerald-500");
   let timer = 0;
-  const show = (text: string, label: string) => {
-    button.textContent = text;
+  const show = (icon: SVGElement, label: string) => {
+    button.replaceChildren(icon);
     button.setAttribute("aria-label", label);
+    button.dataset.tooltip = label;
   };
-  const reset = () => show(i18n.t(($) => $.notes.blocks.code.copy), i18n.t(($) => $.notes.blocks.code.copyLabel));
-  const flash = (text: string) => {
-    show(text, text);
+  const reset = () => show(idle, i18n.t(($) => $.notes.blocks.code.copyLabel));
+  const flash = (icon: SVGElement, label: string) => {
+    show(icon, label);
     window.clearTimeout(timer);
-    timer = window.setTimeout(reset, COPIED_MS);
+    timer = window.setTimeout(reset, COPIED_FEEDBACK_MS);
   };
   reset();
   button.addEventListener("mousedown", (event) => event.preventDefault());
   button.addEventListener("click", () => {
-    writeClipboardText(current().textContent).then(
-      () => flash(i18n.t(($) => $.notes.blocks.code.copied)),
-      () => flash(i18n.t(($) => $.notes.blocks.code.copyFailed)),
+    writeClipboardText(read()).then(
+      () => flash(done, i18n.t(($) => $.notes.blocks.code.copied)),
+      () => flash(idle, i18n.t(($) => $.notes.blocks.code.copyFailed)),
     );
   });
   return button;
 }
 
+function syntaxHelp(block: string, syntax: string): HTMLButtonElement {
+  const button = element("button", cn(INFO_HINT_CLASS, "pointer-events-auto ml-1 size-4 cursor-help align-middle"));
+  button.type = "button";
+  button.setAttribute("aria-label", i18n.t(($) => $.notes.blocks.syntax.help, { block }));
+  button.dataset.tooltip = syntax;
+  button.append(iconSvg(Info, "size-3"));
+  button.addEventListener("mousedown", (event) => event.preventDefault());
+  return button;
+}
+
+function actionSlot(...buttons: HTMLElement[]): HTMLElement {
+  const actions = element("div", `${BLOCK_ACTIONS} select-none`);
+  actions.contentEditable = "false";
+  actions.append(...buttons);
+  return actions;
+}
+
+function inside(container: HTMLElement, event: Event): boolean {
+  return event.target instanceof Node && container.contains(event.target);
+}
+
 function plainCodeView(node: ProseMirrorNode, language: string): NodeView {
-  const dom = document.createElement("div");
-  dom.className = "note-code";
+  const dom = element("div", `note-code code-tokens ${BLOCK_ROOT}`);
   const pre = document.createElement("pre");
   const code = document.createElement("code");
   pre.append(code);
   let current = node;
-  const copy = copyButton(() => current);
-  dom.append(copy, pre);
+  const actions = actionSlot(copyButton(() => current.textContent));
+  dom.append(actions, pre);
   const highlighted = codeLanguage(language);
   if (highlighted) {
     dom.classList.add("note-code-lang");
@@ -391,7 +421,7 @@ function plainCodeView(node: ProseMirrorNode, language: string): NodeView {
       return true;
     },
     ignoreMutation: (mutation) => !code.contains(mutation.target),
-    stopEvent: (event) => event.target instanceof Node && copy.contains(event.target),
+    stopEvent: (event) => inside(actions, event),
   };
 }
 
@@ -404,32 +434,34 @@ export function withBlockViews(extension: AnyExtension): AnyExtension {
     addNodeView() {
       return ({ node, editor, getPos, decorations }) => {
         const language = String(node.attrs.language ?? "");
-        const name = blockKindOf(language);
+        const name = noteBlockName(language);
         const kind = name ? noteBlock(name) : undefined;
         if (!name || !kind) return plainCodeView(node, language);
-        const dom = document.createElement("div");
-        dom.className = "note-code note-drawn";
+        const dom = element("div", `note-code note-drawn code-tokens ${BLOCK_FRAME}`);
         dom.dataset.block = name;
         const pre = document.createElement("pre");
         const code = document.createElement("code");
         pre.append(code);
-        const preview = document.createElement("div");
-        preview.className = "note-drawn-preview";
+        const preview = element("div", "note-drawn-preview");
         preview.contentEditable = "false";
-        const label = document.createElement("span");
-        label.className = "note-drawn-label";
+        const label = element("span", `note-drawn-label ${BLOCK_LABEL}`, kind.label());
         label.contentEditable = "false";
-        label.textContent = kind.label();
-        const toggle = document.createElement("button");
+        const syntax = blockSyntax(name);
+        const help = syntax ? syntaxHelp(kind.label(), syntax) : null;
+        if (help) label.append(help);
+        const toggle = element("button", cn(buttonVariants({ variant: "ghost", size: "xs" }), "note-drawn-toggle select-none"));
         toggle.type = "button";
-        toggle.className = cn(buttonVariants({ variant: "ghost", size: "xs" }), "note-drawn-toggle");
-        toggle.contentEditable = "false";
+        let current = node;
+        const copy = copyButton(() => current.textContent);
+        const actions = actionSlot(copy, toggle);
         let editing = caretInside(decorations);
         const syncToggle = () => {
           const showingSource = editing || dom.classList.contains(SOURCE_CLASS);
-          const text = toggleLabel(showingSource);
+          const text = showingSource ? i18n.t(($) => $.notes.blocks.preview) : i18n.t(($) => $.notes.blocks.source);
           if (toggle.textContent !== text) toggle.textContent = text;
           if (toggle.getAttribute("aria-pressed") !== String(showingSource)) toggle.setAttribute("aria-pressed", String(showingSource));
+          copy.hidden = !showingSource;
+          if (help) help.hidden = !showingSource;
         };
         const ownNode = (): { position: number; current: ProseMirrorNode } | null => {
           const position = getPos();
@@ -459,7 +491,7 @@ export function withBlockViews(extension: AnyExtension): AnyExtension {
           else showSource();
           syncToggle();
         });
-        dom.append(label, toggle, preview, pre);
+        dom.append(label, actions, preview, pre);
         let painted = node.textContent;
         let wanted = painted;
         let timer: number | undefined;
@@ -483,11 +515,17 @@ export function withBlockViews(extension: AnyExtension): AnyExtension {
           noteId: noteIdOf(editor),
           rewrite,
         };
-        let dispose = kind.paint(preview, painted, context);
+        let dispose: Dispose | undefined;
+        let shown = false;
+        const stopWaiting = whenNearViewport(dom, () => {
+          shown = true;
+          dispose = kind.paint(preview, painted, context);
+        });
         const repaint = () => {
           timer = undefined;
           if (wanted === painted) return;
           painted = wanted;
+          if (!shown) return;
           dispose?.();
           dispose = kind.paint(preview, painted, context);
         };
@@ -496,6 +534,7 @@ export function withBlockViews(extension: AnyExtension): AnyExtension {
           contentDOM: code,
           update(next, nextDecorations) {
             if (next.type !== node.type || next.attrs.language !== language) return false;
+            current = next;
             editing = caretInside(nextDecorations);
             syncToggle();
             wanted = next.textContent;
@@ -505,20 +544,301 @@ export function withBlockViews(extension: AnyExtension): AnyExtension {
           },
           destroy() {
             window.clearTimeout(timer);
+            stopWaiting();
             dispose?.();
           },
           ignoreMutation: (mutation) => !code.contains(mutation.target),
-          ...(kind.interactive ? { stopEvent: (event: Event) => preview.contains(event.target as Node) } : {}),
+          stopEvent: (event: Event) =>
+            inside(actions, event) || inside(label, event) || (kind.interactive === true && inside(preview, event)),
         };
       };
     },
   });
 }
 
+const NOTE_FILE_TOAST = "note-file-open";
+const MEDIA_CAPTION = "mt-1.5 flex min-w-0 items-center justify-between gap-3 text-[0.8125rem] text-muted-foreground";
+const MEDIA_ACTION = cn(buttonVariants({ variant: "link", size: "xs" }), "h-auto shrink-0 px-0");
+const WATCH_ACTION = cn(
+  buttonVariants({ variant: "link", size: "xs" }),
+  "h-auto shrink-0 gap-1 px-1.5 py-0.5 text-[0.8125rem] text-white hover:bg-white/15 focus-visible:bg-white/20 [&_svg]:size-3.5",
+);
+const MEDIA_CONTROLS = "a, button, audio, video, iframe";
+const FRAME_ORIGIN = /^http:\/\/127\.0\.0\.1:\d{1,5}$/u;
+
+type Resolve = (path: string) => Promise<string | null>;
+
+export interface NoteAssetActions {
+  open?: (path: string) => void;
+  reveal?: (path: string) => void;
+}
+
+type AssetActions = () => NoteAssetActions;
+
+const noAssetActions: AssetActions = () => ({});
+
+export function noteAssetActions(data: Pick<NotesData, "openAsset" | "revealAsset">, noteId: string): NoteAssetActions {
+  const run = (act: ((id: string, path: string) => Promise<void>) | undefined) =>
+    act &&
+    ((path: string) => {
+      act(noteId, path).catch((error: unknown) => {
+        void logError("open a note file", error);
+        toast.errorUnique(NOTE_FILE_TOAST, i18n.t(($) => $.notes.blocks.media.openFailed, { error: describeError(error) }));
+      });
+    });
+  return { open: run(data.openAsset?.bind(data)), reveal: run(data.revealAsset?.bind(data)) };
+}
+
+function onControl(dom: HTMLElement, event: Event): boolean {
+  const hit = event.target instanceof Element ? event.target.closest(MEDIA_CONTROLS) : null;
+  return hit !== null && dom.contains(hit);
+}
+
+function actionButton(label: string, run: () => void): HTMLButtonElement {
+  const button = element("button", MEDIA_ACTION, label);
+  button.type = "button";
+  button.addEventListener("mousedown", (event) => event.preventDefault());
+  button.addEventListener("click", run);
+  return button;
+}
+
+function mediaCaption(...parts: Node[]): HTMLElement {
+  const caption = element("figcaption", MEDIA_CAPTION);
+  caption.contentEditable = "false";
+  caption.append(...parts);
+  return caption;
+}
+
+function revokeBlob(url: string | null): void {
+  if (url?.startsWith("blob:")) URL.revokeObjectURL(url);
+}
+
+function mediaName(src: string): string {
+  const source = imageSource(src);
+  const path = source && "path" in source ? assetFragment(source.path).file : src;
+  return basename(path) || src;
+}
+
+function mediaView(node: ProseMirrorNode, kind: "audio" | "video", resolve: Resolve, assets: AssetActions): NodeView {
+  const src = String(node.attrs.src ?? "");
+  const path = notePath(src);
+  const name = mediaName(src);
+  const dom = element("figure", "note-media");
+  dom.dataset.media = kind;
+  dom.contentEditable = "false";
+  const play = element(
+    "button",
+    cn(buttonVariants({ variant: "outline" }), "note-media-play h-auto max-w-full", kind === "audio" ? "justify-start px-3 py-2" : "p-0"),
+  );
+  play.type = "button";
+  play.setAttribute("aria-label", i18n.t(($) => $.notes.blocks.media.play, { name }));
+  play.append(iconSvg(kind === "video" ? Play : AudioLines, "size-4 shrink-0"));
+  if (kind === "audio") play.append(element("span", "min-w-0 truncate", name));
+  const problem = element("p", cn(BLOCK_MESSAGE, "flex flex-wrap items-center gap-x-2"));
+  problem.hidden = true;
+  dom.append(play);
+  if (kind === "video") dom.append(mediaCaption(element("span", "min-w-0 truncate", name)));
+  dom.append(problem);
+  let url: string | null = null;
+  let player: HTMLMediaElement | null = null;
+  let destroyed = false;
+  const say = (text: string, offerFolder: boolean) => {
+    problem.replaceChildren(element("span", "", text));
+    if (offerFolder && path !== null && assets().reveal) {
+      problem.append(actionButton(i18n.t(($) => $.core.export.showInFolder), () => assets().reveal?.(path)));
+    }
+    problem.hidden = false;
+  };
+  const cantPlay = () => {
+    if (destroyed || !player) return;
+    player.remove();
+    player = null;
+    revokeBlob(url);
+    url = null;
+    say(i18n.t(($) => $.notes.blocks.media.cantPlay, { name }), true);
+  };
+  const load = async () => {
+    play.disabled = true;
+    problem.hidden = true;
+    let unreadable = false;
+    const found =
+      path === null
+        ? null
+        : await resolve(path).catch(() => {
+            unreadable = true;
+            return null;
+          });
+    if (destroyed) {
+      revokeBlob(found);
+      return;
+    }
+    if (!found) {
+      play.disabled = false;
+      say(
+        unreadable ? i18n.t(($) => $.notes.blocks.media.unreadable, { name }) : i18n.t(($) => $.notes.blocks.media.missing, { path: src }),
+        unreadable,
+      );
+      return;
+    }
+    url = found;
+    const media = document.createElement(kind);
+    media.controls = true;
+    media.className = "note-media-player";
+    media.setAttribute("aria-label", name);
+    media.addEventListener("error", cantPlay);
+    media.src = found;
+    player = media;
+    play.replaceWith(media);
+    media.play().catch((error: unknown) => {
+      if (error instanceof DOMException && error.name === "NotSupportedError") cantPlay();
+    });
+  };
+  play.addEventListener("click", () => void load());
+  return {
+    dom,
+    update: (next) => next.type === node.type && String(next.attrs.src ?? "") === src,
+    stopEvent: (event) => onControl(dom, event),
+    ignoreMutation: () => true,
+    destroy() {
+      destroyed = true;
+      player?.pause();
+      revokeBlob(url);
+    },
+  };
+}
+
+async function embedPicture(embed: VideoEmbed): Promise<{ image: string | null; title: string | null }> {
+  if (embed.thumbnail) return { image: embed.thumbnail, title: null };
+  const preview = await Promise.resolve(embed.page)
+    .then(noteLinkPreview)
+    .catch(() => null);
+  return { image: preview?.image?.startsWith("https:") ? preview.image : null, title: preview?.title?.trim() || null };
+}
+
+async function embedFrame(embed: VideoEmbed): Promise<string | null> {
+  const origin = await Promise.resolve()
+    .then(noteVideoFrameOrigin)
+    .catch(() => null);
+  if (origin && FRAME_ORIGIN.test(origin)) return videoFramePage(embed, origin);
+  if (isTauri()) return null;
+  return `${embed.frame}${embed.frame.includes("?") ? "&" : "?"}autoplay=1`;
+}
+
+function embedView(node: ProseMirrorNode, embed: VideoEmbed): NodeView {
+  const src = String(node.attrs.src ?? "");
+  const alt = String(node.attrs.alt ?? "");
+  const site = VIDEO_PROVIDER_NAMES[embed.provider];
+  const dom = element("figure", "note-media");
+  dom.dataset.media = "embed";
+  dom.dataset.provider = embed.provider;
+  dom.contentEditable = "false";
+  const play = element("button", cn(buttonVariants({ variant: "outline" }), "note-media-play note-media-poster h-auto p-0 [&_svg]:size-6"));
+  play.type = "button";
+  play.setAttribute("aria-label", i18n.t(($) => $.notes.blocks.media.embed, { site }));
+  const badge = element("span", "note-media-badge");
+  badge.append(iconSvg(Play, "size-6"));
+  play.append(badge);
+  const title = element("span", "min-w-0 truncate font-medium", alt);
+  title.hidden = !alt;
+  const brand = element("span", "flex min-w-0 items-center gap-2");
+  brand.append(videoLogo(embed.provider, "size-5 shrink-0"), title);
+  const watch = element("a", WATCH_ACTION, i18n.t(($) => $.notes.blocks.media.watch));
+  watch.append(iconSvg(SquareArrowOutUpRight, ""));
+  watch.setAttribute("aria-label", i18n.t(($) => $.notes.blocks.media.watchOn, { site }));
+  watch.href = embed.page;
+  watch.target = "_blank";
+  watch.rel = "noopener noreferrer";
+  const bar = element("figcaption", "note-media-bar");
+  bar.append(brand, watch);
+  const failed = element("p", BLOCK_MESSAGE, i18n.t(($) => $.notes.blocks.media.embedFailed, { site }));
+  failed.hidden = true;
+  dom.append(play, bar, failed);
+  const allowedBy = embed.thumbnail ?? embed.page;
+  let live = true;
+  let frame: HTMLIFrameElement | null = null;
+  let stopWatching = () => {};
+  let held: MountedNotice | null = null;
+  const release = () => {
+    held?.destroy();
+    held = null;
+  };
+  const hold = () => {
+    const remote = remoteImage(allowedBy);
+    if (held || frame || !remote) return;
+    held = mountRemoteImageNotice(remote, alt || site, () => showPicture());
+    dom.append(held.dom);
+  };
+  const showPicture = () => {
+    if (!remoteImageAllowed(allowedBy)) {
+      hold();
+      return;
+    }
+    release();
+    stopWatching();
+    void embedPicture(embed).then((picture) => {
+      if (!live || frame) return;
+      if (picture.title && !alt) {
+        title.textContent = picture.title;
+        title.hidden = false;
+      }
+      if (!picture.image) return;
+      const poster = element("img", "note-media-thumb");
+      poster.src = picture.image;
+      poster.alt = "";
+      poster.draggable = false;
+      poster.addEventListener("error", () => poster.remove());
+      play.prepend(poster);
+    });
+  };
+  const stopWaiting = whenNearViewport(dom, () => {
+    if (!live) return;
+    stopWatching = subscribeRemoteImages(showPicture);
+    showPicture();
+  });
+  play.addEventListener("click", () => {
+    if (play.disabled) return;
+    play.disabled = true;
+    failed.hidden = true;
+    void embedFrame(embed).then((address) => {
+      if (!live) return;
+      if (!address) {
+        play.disabled = false;
+        failed.hidden = false;
+        return;
+      }
+      frame = document.createElement("iframe");
+      frame.className = "note-media-frame";
+      frame.src = address;
+      frame.title = i18n.t(($) => $.notes.blocks.media.embedTitle, { site });
+      frame.allow = "autoplay; encrypted-media; fullscreen; picture-in-picture";
+      frame.allowFullscreen = true;
+      frame.referrerPolicy = "strict-origin-when-cross-origin";
+      play.replaceWith(frame);
+      bar.remove();
+      release();
+      stopWatching();
+      stopWaiting();
+    });
+  });
+  return {
+    dom,
+    update: (next) => next.type === node.type && String(next.attrs.src ?? "") === src && String(next.attrs.alt ?? "") === alt,
+    stopEvent: (event) => onControl(dom, event),
+    ignoreMutation: () => true,
+    destroy() {
+      live = false;
+      release();
+      stopWatching();
+      stopWaiting();
+    },
+  };
+}
+
 export function withImageView(
   extension: AnyExtension,
-  resolve: (path: string) => Promise<string | null>,
+  resolve: Resolve,
   noteId?: string,
+  assets: AssetActions = noAssetActions,
 ): AnyExtension {
   if (!(extension instanceof TiptapNode) || extension.name !== "image") return extension;
   return extension.extend({
@@ -526,15 +846,71 @@ export function withImageView(
       return { ...this.parent?.(), [NOTE_FILES]: resolve, [NOTE_ID]: noteId };
     },
     addNodeView() {
-      return ({ node }) => {
-        const dom = document.createElement("figure");
-        dom.className = "note-image";
+      return ({ node, editor, getPos }) => {
+        const embed = videoEmbed(String(node.attrs.src ?? ""));
+        if (embed) return embedView(node, embed);
+        const media = noteMediaKind(String(node.attrs.src ?? ""));
+        if (media === "audio" || media === "video") return mediaView(node, media, resolve, assets);
+        const dom = element("figure", "note-image");
+        const frame = element("span", "note-image-frame");
         const image = document.createElement("img");
         image.draggable = false;
-        const missing = document.createElement("p");
-        missing.className = "note-drawn-empty";
+        const handle = element("span", "note-image-handle");
+        handle.contentEditable = "false";
+        handle.setAttribute("aria-hidden", "true");
+        frame.append(image, handle);
+        const missing = element("p", BLOCK_MESSAGE);
         missing.contentEditable = "false";
-        dom.append(image, missing);
+        const caption = mediaCaption();
+        caption.hidden = true;
+        dom.append(frame, caption, missing);
+        let width = imageWidthPercent(node.attrs.widthPercent);
+        let drag: { pointer: number; from: number; start: number; column: number; width: number | null } | null = null;
+        const sized = (next: number | null) => {
+          frame.style.width = next === null ? naturalWidthStyle(image) : `${next}%`;
+          frame.toggleAttribute("data-sized", next !== null);
+        };
+        image.addEventListener("load", () => {
+          if (!drag) sized(width);
+        });
+        const shown = (visible: boolean) => {
+          image.hidden = !visible;
+          frame.hidden = !visible;
+        };
+        const commit = (next: number | null) => {
+          const position = typeof getPos === "function" ? getPos() : undefined;
+          const current = position === undefined ? null : editor.state.doc.nodeAt(position);
+          if (position === undefined || current?.type.name !== "image") return;
+          editor.view.dispatch(editor.state.tr.setNodeMarkup(position, undefined, { ...current.attrs, widthPercent: next }));
+        };
+        handle.addEventListener("pointerdown", (event) => {
+          if (!editor.isEditable || event.button !== 0) return;
+          event.preventDefault();
+          handle.setPointerCapture(event.pointerId);
+          const start = frame.getBoundingClientRect().width;
+          drag = { pointer: event.pointerId, from: event.clientX, start, column: dom.clientWidth || start || 1, width };
+        });
+        handle.addEventListener("pointermove", (event) => {
+          if (drag?.pointer !== event.pointerId) return;
+          const percent = Math.round(((drag.start + event.clientX - drag.from) / drag.column) * 100);
+          drag.width = Math.min(IMAGE_WIDTH_RANGE.max, Math.max(IMAGE_WIDTH_RANGE.min, percent));
+          sized(drag.width);
+        });
+        handle.addEventListener("pointerup", (event) => {
+          if (drag?.pointer !== event.pointerId) return;
+          const next = drag.width;
+          drag = null;
+          if (next !== width) commit(next);
+        });
+        handle.addEventListener("pointercancel", () => {
+          drag = null;
+          sized(width);
+        });
+        handle.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          if (editor.isEditable) commit(null);
+        });
+        sized(width);
         let current: string | null = null;
         let generation = 0;
         let held: MountedNotice | null = null;
@@ -546,18 +922,21 @@ export function withImageView(
           stopWatching = null;
         };
         const showMissing = (src: string) => {
-          image.hidden = true;
+          shown(false);
           image.removeAttribute("src");
           missing.hidden = false;
-          missing.textContent = i18n.t(($) => $.notes.blocks.imageMissing, { path: src });
+          missing.textContent =
+            noteMediaKind(src) === "pdf"
+              ? i18n.t(($) => $.notes.blocks.media.missing, { path: src })
+              : i18n.t(($) => $.notes.blocks.imageMissing, { path: src });
         };
         const show = (url: string) => {
           image.src = url;
-          image.hidden = false;
+          shown(true);
           missing.hidden = true;
         };
         const hold = (remote: RemoteImage) => {
-          image.hidden = true;
+          shown(false);
           image.removeAttribute("src");
           missing.hidden = true;
           held = mountRemoteImageNotice(remote, image.alt, () => {
@@ -573,6 +952,16 @@ export function withImageView(
         };
         const paint = (src: string, alt: string) => {
           image.alt = alt;
+          const page = noteMediaKind(src) === "pdf" ? (assetFragment(src).page ?? 1) : null;
+          caption.hidden = page === null;
+          caption.replaceChildren();
+          const file = notePath(src);
+          if (page !== null && file !== null) {
+            caption.append(element("span", "min-w-0 truncate", i18n.t(($) => $.notes.blocks.media.pdfPage, { name: mediaName(src), page })));
+            const { open, reveal } = assets();
+            if (open) caption.append(actionButton(i18n.t(($) => $.notes.blocks.media.openPdf), () => assets().open?.(file)));
+            else if (reveal) caption.append(actionButton(i18n.t(($) => $.core.export.showInFolder), () => assets().reveal?.(file)));
+          }
           if (src === current) return;
           current = src;
           release();
@@ -588,7 +977,7 @@ export function withImageView(
             else show(source.url);
             return;
           }
-          image.hidden = true;
+          shown(false);
           missing.hidden = true;
           resolve(source.path).then(
             (url) => {
@@ -605,11 +994,15 @@ export function withImageView(
         return {
           dom,
           update(next) {
-            if (next.type !== node.type) return false;
+            if (next.type !== node.type || playsInNote(String(next.attrs.src ?? ""))) return false;
             paint(String(next.attrs.src ?? ""), String(next.attrs.alt ?? ""));
+            width = imageWidthPercent(next.attrs.widthPercent);
+            if (!drag) sized(width);
             return true;
           },
-          stopEvent: (event) => event.target instanceof Node && held !== null && held.dom.contains(event.target),
+          stopEvent: (event) =>
+            (event.target instanceof Node && (handle.contains(event.target) || held?.dom.contains(event.target) === true)) ||
+            onControl(caption, event),
           destroy() {
             generation += 1;
             release();

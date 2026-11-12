@@ -17,9 +17,37 @@
     "resize": "调整面板大小",
     "closePanel": "关闭面板",
     "newTab": "新标签页",
-    "emptyPanel": "此面板为空。",
+    "empty": {
+      "greetings": {
+        "begin": "我们从哪里开始？",
+        "ready": "随时可以开始。",
+        "mind": "今天在想些什么？",
+        "resume": "从上次停下的地方继续？",
+        "working": "你正在做什么？",
+        "first": "你想先写点什么？",
+        "blank": "从空白页或模板开始。"
+      },
+      "hints": {
+        "daily": "今天的计划和记录",
+        "experimentLog": "每次运行及其结果",
+        "paperReading": "一篇论文的主要观点",
+        "literatureMatrix": "并排比较论文",
+        "meeting": "议程和决定",
+        "labProtocol": "他人也能照做的步骤",
+        "weeklyLog": "本周完成的工作",
+        "proposal": "目标、方法和时间安排"
+      },
+      "moreTemplates": "更多模板",
+      "continue": "继续",
+      "searchAll": "搜索所有笔记"
+    },
     "closeMissing": "关闭标签页",
-    "notesHome": "前往笔记主页"
+    "notesHome": "前往笔记主页",
+    "breadcrumb": "面包屑导航",
+    "breadcrumbHome": "笔记主页",
+    "brand": "Oleafly 笔记",
+    "back": "后退",
+    "forward": "前进"
   },
   "saveStatus": {
     "saved": "已保存",
@@ -40,7 +68,7 @@
       "notebook": "笔记本"
     },
     "author": {
-      "all": "任何人",
+      "all": "全部",
       "agent": "代理",
       "you": "你"
     },
@@ -52,14 +80,17 @@
       "data": "没有符合这些筛选条件的数据文件。",
       "notebook": "没有符合这些筛选条件的笔记本。"
     },
-    "noNotes": "还没有笔记。点击“新建笔记”开始写第一篇。",
+    "start": {
+      "title": "还没有笔记"
+    },
     "ungrouped": "笔记",
     "agentFallback": "代理",
     "settings": "设置",
     "filters": {
-      "title": "筛选",
+      "title": "标签",
       "active_other": "已启用 {{count}} 个筛选条件",
-      "clear": "清除筛选条件"
+      "clear": "清除筛选条件",
+      "writtenBy": "作者"
     },
     "menu": {
       "more": "更多",
@@ -80,18 +111,31 @@
       "templateOn": "“{{name}}”现在是你的模板之一。",
       "templateOff": "“{{name}}”不再是模板。",
       "linkProject": "关联到项目",
-      "compareConflict": "比较冲突副本"
+      "compareConflict": "比较冲突副本",
+      "copyLink": "复制链接",
+      "linkCopied": "已复制“{{name}}”的链接。",
+      "copyLinkFailed": "无法复制“{{name}}”的链接。",
+      "duplicate": "创建副本",
+      "copyTitle": "{{name}} 副本",
+      "duplicateFailed": "无法创建“{{name}}”的副本。",
+      "export": "导出",
+      "exportAs": {
+        "markdown": "Markdown 文件夹（.md）",
+        "docx": "Word 文档（.docx）",
+        "html": "网页（.html）",
+        "latex": "LaTeX（.tex）",
+        "typst": "Typst（.typ）"
+      },
+      "exportFailed": "无法导出“{{name}}”。",
+      "copyMarkdown": "复制为 Markdown",
+      "markdownCopied": "已将“{{name}}”复制为 Markdown。",
+      "copyMarkdownFailed": "无法将“{{name}}”复制为 Markdown。"
     },
     "conflicts": {
-      "title": "“{{name}}”的两个版本",
-      "description": "这篇笔记在同步之前已分别在这里和另一台电脑上被更改，因此 Oleafly 保留了两个版本。请保留其中一个版本，另一个会移入回收站。",
-      "diffLabel": "两个版本之间的差异",
-      "loading": "正在读取两个版本…",
-      "readFailed": "无法读取冲突副本。",
-      "resolveFailed": "无法保留该版本。",
-      "keepMine": "保留这台电脑上的版本",
-      "useCopy": "使用另一台电脑上的版本",
       "badge": "这篇笔记有冲突副本"
+    },
+    "suggestions": {
+      "badge": "这篇笔记中有待处理的修改建议"
     }
   },
   "home": {
@@ -100,7 +144,9 @@
     "tabs": {
       "label": "要显示的笔记",
       "mine": "我的笔记",
-      "favorites": "收藏"
+      "favorites": "收藏",
+      "tasks": "任务",
+      "attachments": "附件"
     },
     "sortBy": "排序方式",
     "sort": {
@@ -110,8 +156,7 @@
       "title": "标题"
     },
     "layout": "笔记布局",
-    "empty": "还没有笔记。新建一篇，并让代理帮你写。",
-    "noFavorites": "还没有收藏。为笔记加上星标，它就会出现在这里。",
+    "noFavorites": "还没有收藏。将笔记添加到收藏，它就会出现在这里。",
     "noMatches": "没有与“{{query}}”匹配的笔记。",
     "author": "作者"
   },
@@ -124,8 +169,9 @@
     "loadFailed": "无法打开这篇笔记。它所在的项目可能已被移动或删除。",
     "retryLoad": "重试",
     "closeTab": "关闭标签页",
-    "imageFailed": "无法将图片保存到笔记中。",
-    "onlyImages": "只能向笔记中添加 PNG、JPEG 和 SVG 图片。",
+    "fileFailed": "无法将文件添加到笔记：{{error}}",
+    "fileTooLarge": "{{name}} 大于 64 MB，因此没有添加。",
+    "unsupportedFile": "笔记中只能放入图片、音频、视频、PDF、表格（CSV、TSV 或 Excel）、分子文件和 Jupyter 笔记本。",
     "remoteImages": {
       "more": "更多加载图片的方式",
       "loadAll": "加载这篇笔记中的所有图片",
@@ -148,6 +194,10 @@
       "figure": "添加图片",
       "abstract": "总结成摘要"
     },
+    "wholeNote": {
+      "proofread": "校对笔记",
+      "rewrite": "改写笔记"
+    },
     "collapse": "隐藏指令框",
     "expand": "显示指令框"
   },
@@ -156,6 +206,22 @@
     "acceptAll": "全部接受",
     "position": "第 {{current}} 处修改，共 {{total}} 处",
     "undo": "撤销"
+  },
+  "versions": {
+    "title": "版本历史",
+    "summary": "每当你接受全部建议的修改时，以及恢复旧版本之前，Oleafly 都会保存一个版本。你也可以自己保存。",
+    "empty": "还没有版本。保存一个版本，即可留住笔记现在的样子。",
+    "save": "保存版本",
+    "saved": "版本已保存。",
+    "unchanged": "自上一个版本以来没有任何更改。",
+    "saveFailed": "无法保存这篇笔记的版本。",
+    "restore": "恢复此版本",
+    "restored": "版本已恢复。被替换的文本也已保存为一个版本。",
+    "restoreFailed": "无法恢复此版本。",
+    "comparing": "正在与笔记比较",
+    "readFailed": "无法读取此版本。",
+    "changes": "恢复此版本会带来的更改",
+    "textOnly": "恢复只会更改笔记的文本，附加的文件保持不变。"
   },
   "toolbar": {
     "label": "格式",
@@ -171,9 +237,6 @@
     "displayMath": "行间公式",
     "citation": "引用",
     "noCitations": "此项目中还没有参考文献",
-    "tableSize": "{{cols}} × {{rows}} 表格",
-    "addRow": "添加行",
-    "addColumn": "添加列",
     "chart": "统计图",
     "mermaid": "Mermaid 图表",
     "outline": "大纲",
@@ -186,7 +249,12 @@
       "wide": "宽",
       "full": "全宽"
     },
-    "notebook": "插入笔记本"
+    "attach": "附加文件",
+    "attachFilter": "图片、音频、视频、PDF、表格、分子和笔记本",
+    "codeLanguage": "语言",
+    "plainCode": "纯文本",
+    "imageSize": "图片大小",
+    "originalSize": "原始大小"
   },
   "blocks": {
     "chart": "统计图",
@@ -195,9 +263,28 @@
     "diagramError": "此图表有错误。请打开源码修正。",
     "chartError": "此统计图的数据无效。请打开源码修正。",
     "noPreview": "此块暂时没有预览。请打开源码进行编辑。",
+    "syntax": {
+      "help": "如何编写 {{block}} 块",
+      "chart": "包含 type、categories 和 series 的 JSON：\n{\"type\": \"bar\", \"categories\": [\"A\", \"B\"], \"series\": [{\"name\": \"Run 1\", \"values\": [1, 2]}]}\n其他 type：line、area、scatter、pie、donut、histogram。",
+      "plot": "每行一条曲线或一个选项：\ny = x^2 - 1 或 x = cos(t), y = sin(t)\ndomain: -5, 5 和 point: 1, 0, Root",
+      "csv": "每行一组值，第一行是表头：\nRun, Ratio\n也可以用 path: assets/results.csv 读取文件。",
+      "latex": "行间 LaTeX，例如 equation 或 align 环境：\n\\begin{align} a &= b + c \\end{align}\n化学式用 \\ce{H2O}，单位用 \\pu{5 mg}。",
+      "typst": "一段 Typst 代码，会渲染为图片：\n$ E = m c^2 $\n无法使用来自互联网的包。",
+      "mermaid": "Mermaid 图表，例如：\nflowchart LR\nA --> B",
+      "d2": "D2 图表，例如：\nclient -> server: request\nserver.shape: cylinder",
+      "tikz": "TikZ 命令，或完整的 tikzpicture：\n{{example}}\n图片上方的行（例如 \\usetikzlibrary{positioning}）请放在导言区。",
+      "circuitikz": "CircuiTikZ 命令，或完整的 circuitikz 环境：\n{{example}}\n电路上方的行（例如 \\ctikzset{resistors/scale=0.8}）请放在导言区。",
+      "svg": "一个 svg 元素，例如：\n<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" /></svg>\n脚本、链接和远程图片会被移除。",
+      "html": "完整的 HTML 页面，或带有 CSS 和脚本的片段。\n它无法访问互联网，所以请把数据放在块里。\n脚本会在你点击“运行”后启动。",
+      "jsx": "带有默认导出的 React 组件文件：\nexport default function App() { return <p>Hello</p> }\n可以导入 react、recharts、d3、lodash、papaparse、chart.js 和 lucide-react。",
+      "smiles": "每行一个 SMILES，名称可选：\nAspirin: CC(=O)OC1=CC=CC=C1C(=O)O\n每个块最多 24 个。",
+      "molecule": "先写选项行，例如 format: pdb 和 style: cartoon。\n然后是文件文本，或 path: assets/1abc.pdb",
+      "sequence": "FASTA 记录或原始序列：\n>sample 1\nATGGCCATTGTAATG",
+      "notebook": "第一行写笔记本的路径：\nassets/analysis.ipynb\n然后可以加上 cells: 2-5 和 code: hide 之类的可选行。",
+      "bookmark": "每行一个字段，以网址开头：\nurl: https://example.com/article\n然后是可选的 title:、description:、image:、site: 和 favicon: 行。"
+    },
     "newChart": {
       "title": "新统计图",
-      "description": "让代理来填写，或直接编辑源码。",
       "series": "数值"
     },
     "newHtml": {
@@ -234,6 +321,7 @@
     },
     "sequence": {
       "label": "序列",
+      "template": "示例编码序列",
       "empty": "粘贴一条 FASTA 记录或原始序列。",
       "character": "第 {{line}} 行第 {{column}} 列：“{{character}}”不是残基。",
       "untitled": "未命名序列",
@@ -369,7 +457,8 @@
     "artifact": {
       "run": "运行",
       "stop": "停止",
-      "alwaysRun": "始终运行此笔记中的块",
+      "alwaysRun": "始终运行此块",
+      "paused": "已暂停，因为此笔记中的某个块上次卡死或关闭了应用。",
       "desktopOnly": "需要桌面应用才能运行",
       "loading": "正在加载…",
       "loadFailed": "此块无法加载。",
@@ -377,7 +466,7 @@
       "stopped": "此块已停止响应。",
       "reload": "重新加载",
       "failed": "此块无法启动：{{error}}",
-      "offline": "块无法从互联网加载文件，因此略去了以下内容：",
+      "offline": "这些来自互联网的文件已被略去：",
       "more_other": "以及另外 {{count}} 项",
       "frameTitle": "{{label}} 输出",
       "previewTitle": "{{label}} 预览",
@@ -387,7 +476,6 @@
       "noComponent": "此组件没有默认导出。"
     },
     "code": {
-      "copy": "复制",
       "copied": "已复制",
       "copyFailed": "复制失败",
       "copyLabel": "复制代码"
@@ -397,6 +485,22 @@
       "empty": "此 SVG 块为空。",
       "invalid": "此 SVG 无效。请打开源码修正。",
       "tooLarge": "此 SVG 太大，无法显示。"
+    },
+    "d2": {
+      "alt": "D2 图表",
+      "empty": "此 D2 块为空。",
+      "loading": "正在绘制…",
+      "error": "D2 无法绘制此图表：{{error}}",
+      "line": "第 {{line}} 行：{{message}}"
+    },
+    "tikz": {
+      "alt": "TikZ 绘图",
+      "circuitAlt": "电路图",
+      "empty": "此 {{block}} 块为空。",
+      "desktopOnly": "{{block}} 预览需要桌面应用。",
+      "sharedNotice": "这篇笔记是共享的。LaTeX 在这台电脑上运行，并且可以读取你的文件，因此绘制前请先检查源码。",
+      "draw": "绘制",
+      "error": "LaTeX 无法编译此块：{{error}}"
     },
     "typst": {
       "alt": "Typst 输出",
@@ -426,7 +530,33 @@
       "code": "代码",
       "math": "公式",
       "divider": "分隔线",
+      "footnote": "脚注",
       "basic": "基础"
+    },
+    "media": {
+      "play": "播放 {{name}}",
+      "pdfPage": "{{name}}，第 {{page}} 页",
+      "openPdf": "打开 PDF",
+      "openFailed": "无法打开文件：{{error}}",
+      "missing": "找不到文件：{{path}}",
+      "unreadable": "无法读取 {{name}}。",
+      "cantPlay": "无法在这里播放 {{name}}。这台电脑可能没有适用于其格式的解码器。",
+      "embed": "播放来自 {{site}} 的视频",
+      "embedTitle": "来自 {{site}} 的视频",
+      "embedFailed": "播放器没有启动。请重试，或在 {{site}} 上打开视频。",
+      "watch": "观看",
+      "watchOn": "在 {{site}} 上观看",
+      "pasteChoice": "如何显示此视频链接",
+      "embedChoice": "嵌入视频",
+      "linkChoice": "保留为链接"
+    },
+    "bookmark": {
+      "label": "书签",
+      "pasteChoice": "如何显示此链接",
+      "cardChoice": "书签卡片",
+      "ask": "为网页添加书签",
+      "loading": "正在加载页面预览",
+      "noUrl": "请添加一行 url:，并填写以 https:// 或 http:// 开头的网址。"
     }
   },
   "notebook": {
@@ -446,10 +576,7 @@
     "showLess": "收起",
     "showAllCells_other": "显示全部 {{count}} 个单元格",
     "outputImage": "单元格 {{number}} 的输出",
-    "outputFrame": "单元格 {{number}} 的 HTML 输出",
-    "pickTitle": "插入笔记本",
-    "filter": "Jupyter 笔记本",
-    "importFailed": "无法添加笔记本：{{error}}"
+    "outputFrame": "单元格 {{number}} 的 HTML 输出"
   },
   "icons": {
     "choose": "选择图标",
@@ -603,7 +730,7 @@
     "inserting": "正在复制",
     "insertFailed": "无法将此文件复制到笔记中：{{error}}",
     "newProject": "新建项目",
-    "htmlPreview": "Oleafly 暂时还不能运行交互式图表。",
+    "htmlPreview": "要运行这张图，请把它的代码粘贴到笔记的 HTML 块中，然后点击“运行”。",
     "kind": {
       "figure": "图片",
       "html": "交互式图表",
@@ -617,7 +744,14 @@
   "sendToPaper": {
     "title": "发送到论文",
     "description": "Oleafly 会将其转换一次，并插入到光标处。论文中的副本不会与笔记保持关联。",
-    "send": "发送"
+    "send": "发送",
+    "leftOut": "{{block}} 块只存在于笔记中。"
+  },
+  "citations": {
+    "references": "参考文献",
+    "fromReference": "来自参考文献",
+    "unknown": "不在所关联项目的参考文献中：{{keys}}",
+    "openNote": "打开这篇论文的笔记：{{title}}"
   },
   "links": {
     "menu": "链接到笔记或项目",
@@ -627,13 +761,51 @@
     "missingNote": "这篇笔记已不存在",
     "missingNoteCreate": "这篇笔记已不存在。点击即可用这个名称新建笔记。",
     "missingProject": "此项目已不存在",
-    "linkedFrom": "链接来源"
+    "linkedFrom": "链接来源",
+    "showAll": "显示全部 {{total}} 项"
+  },
+  "linksSearch": {
+    "blocks": {
+      "loading": "正在加载块",
+      "none": "没有匹配的块",
+      "missingBlock": "这篇笔记中没有该块",
+      "assignFailed": "无法为该笔记添加块 ID。",
+      "handle": "块选项",
+      "copyLink": "复制块链接",
+      "linkCopied": "已复制此块的链接。",
+      "copyFailed": "无法复制此块的链接。",
+      "noId": "此块还没有 ID，而你无法编辑这篇笔记。",
+      "linkedFrom": "链接来源",
+      "links_other": "{{count}} 篇笔记链接到这里",
+      "openLinked": "打开 {{title}}",
+      "toBlock": "转到块：{{text}}"
+    },
+    "tagBlocks": {
+      "more_other": "再显示 {{count}} 个块"
+    },
+    "dead": {
+      "menu": "失效链接",
+      "title": "失效链接",
+      "summary_other": "{{count}} 个链接指向已不存在的笔记或块。",
+      "none": "没有失效链接。每个链接指向的笔记或块都仍然存在。",
+      "loading": "正在检查链接",
+      "failed": "无法读取你笔记中的链接。",
+      "missingNotes": "缺失的笔记",
+      "missingBlocks": "缺失的块",
+      "noteMeta": "第 {{line}} 行：该笔记已不存在",
+      "blockMeta": "第 {{line}} 行：{{block}} 已不在 {{title}} 中",
+      "create": "新建笔记",
+      "relink": "改为链接到 {{title}}",
+      "remove": "移除链接",
+      "fixFailed": "无法更改链接。"
+    }
   },
   "projectNotes": {
     "searchLabel": "搜索此项目的笔记",
     "searchPlaceholder": "搜索笔记",
     "clearSearch": "清除搜索",
     "noMatches": "没有符合搜索条件的笔记",
+    "loading": "正在读取项目的笔记",
     "edited": "编辑于 {{when}}",
     "createFailed": "无法创建笔记。",
     "projectGroup": "项目笔记",
@@ -679,7 +851,33 @@
     "callouts": {
       "type": "标注类型：{{type}}",
       "fold": "折叠标注",
-      "unfold": "展开标注"
+      "unfold": "展开标注",
+      "types": {
+        "note": "笔记",
+        "abstract": "摘要",
+        "info": "信息",
+        "todo": "待办",
+        "tip": "提示",
+        "success": "成功",
+        "question": "问题",
+        "warning": "警告",
+        "failure": "失败",
+        "danger": "危险",
+        "bug": "缺陷",
+        "example": "示例",
+        "quote": "引用",
+        "theorem": "定理",
+        "lemma": "引理",
+        "corollary": "推论",
+        "proposition": "命题",
+        "definition": "定义",
+        "proof": "证明",
+        "hypothesis": "假设",
+        "assumption": "假定",
+        "result": "结果",
+        "method": "方法",
+        "remark": "注记"
+      }
     },
     "links": {
       "loadingHeadings": "正在加载标题",
@@ -742,6 +940,206 @@
       }
     }
   },
+  "fields": {
+    "today": "今天",
+    "tomorrow": "明天",
+    "yesterday": "昨天",
+    "chip": "{{key}}：{{value}}",
+    "empty": "无值",
+    "edit": "更改或移除",
+    "keys": {
+      "due": "截止",
+      "scheduled": "计划",
+      "priority": "优先级",
+      "start": "开始",
+      "created": "创建",
+      "completed": "完成",
+      "date": "日期",
+      "cancelled": "已取消"
+    },
+    "priorities": {
+      "highest": "最高",
+      "high": "高",
+      "medium": "中",
+      "low": "低",
+      "lowest": "最低"
+    },
+    "editor": {
+      "label": "编辑 {{key}}",
+      "key": "名称",
+      "value": "值",
+      "brackets": "方括号只用于链接，例如 [[Note]]。",
+      "save": "保存",
+      "remove": "移除"
+    }
+  },
+  "at": {
+    "menu": "插入日期、字段、标签或笔记",
+    "groups": {
+      "dates": "日期",
+      "due": "截止日期",
+      "fields": "任务字段",
+      "tags": "标签",
+      "notes": "笔记"
+    },
+    "today": "今天",
+    "tomorrow": "明天",
+    "yesterday": "昨天",
+    "next": "下{{weekday}}",
+    "pick": "选择日期",
+    "pickerLabel": "选择日期",
+    "due": "截止日期",
+    "scheduled": "计划日期",
+    "priority": "优先级",
+    "priorityValue": "{{priority}}优先级",
+    "custom": "自定义字段",
+    "addField": "添加字段“{{key}}”",
+    "setField": "将 {{key}} 设为“{{value}}”",
+    "typeValue": "输入 {{key}} 的值，然后按 Enter。"
+  },
+  "tasks": {
+    "filters": "任务筛选",
+    "loading": "正在读取你的任务",
+    "failed": "无法读取你的任务。",
+    "empty": "还没有任务。在任意笔记中以 - [ ] 开始一行，它就会出现在这里。",
+    "noMatches": "没有符合这些筛选条件的任务。",
+    "clear": "清除筛选",
+    "list": "任务",
+    "count_other": "{{count}} 个任务",
+    "complete": "将“{{text}}”标记为已完成",
+    "reopen": "将“{{text}}”标记为未完成",
+    "openNote": "打开 {{title}}",
+    "toggleFailed": "无法更新任务。",
+    "moved": "该任务在其笔记中已更改。请打开笔记进行更新。",
+    "state": {
+      "label": "显示",
+      "open": "未完成",
+      "done": "已完成",
+      "all": "未完成和已完成"
+    },
+    "due": {
+      "label": "截止",
+      "any": "任意截止日期",
+      "overdue": "已逾期",
+      "today": "今天截止",
+      "week": "未来 7 天内截止",
+      "none": "无截止日期"
+    },
+    "priority": {
+      "label": "优先级",
+      "any": "任意优先级",
+      "high": "高优先级",
+      "medium": "中优先级",
+      "low": "低优先级",
+      "none": "无优先级"
+    },
+    "tag": {
+      "label": "标签",
+      "any": "所有标签"
+    },
+    "project": {
+      "label": "项目",
+      "any": "所有项目"
+    },
+    "sort": {
+      "label": "任务排序方式",
+      "due": "截止日期",
+      "priority": "优先级"
+    }
+  },
+  "attachments": {
+    "filters": "附件筛选",
+    "loading": "正在查找附件",
+    "failed": "无法读取你的附件。",
+    "empty": "还没有附件。将图片或文件拖到笔记中，它就会出现在这里。",
+    "noMatches": "没有符合这些筛选条件的附件。",
+    "clear": "清除筛选",
+    "list": "附件",
+    "count_other": "{{count}} 个文件",
+    "openNote": "打开 {{title}}",
+    "copyLink": "复制链接",
+    "linkCopied": "已复制“{{name}}”的链接。",
+    "copyFailed": "无法复制“{{name}}”的链接。",
+    "unused": "未使用",
+    "type": {
+      "label": "类型",
+      "all": "所有类型",
+      "image": "图片",
+      "audio": "音频",
+      "video": "视频",
+      "pdf": "PDF",
+      "other": "其他"
+    },
+    "use": {
+      "label": "使用情况",
+      "all": "所有文件",
+      "unused": "未使用"
+    }
+  },
+  "info": {
+    "title": "信息",
+    "show": "笔记信息",
+    "noNote": "打开一篇笔记即可查看它的信息。",
+    "details": "笔记详情",
+    "created": "创建时间",
+    "updated": "更新时间",
+    "words": "字数",
+    "characters": "字符数",
+    "lines": "行数",
+    "readingTime": "阅读时间",
+    "underMinute": "不到一分钟",
+    "noProperties": "没有属性",
+    "noBacklinks": "没有笔记链接到这里",
+    "noMentions": "没有其他笔记提及这篇笔记",
+    "noReferences": "这篇笔记中没有引用",
+    "noDeadLinks": "没有失效链接",
+    "noAttachments": "没有附加文件"
+  },
+  "calendar": {
+    "title": "日历",
+    "week": "周",
+    "hasNote": "有每日笔记",
+    "due_other": "{{count}} 个任务截止",
+    "openWeek": "打开第 {{week}} 周的每周笔记",
+    "openMonthNote": "打开每月笔记",
+    "createMonthNote": "创建每月笔记",
+    "today": "今天",
+    "failed": {
+      "weekly": "无法打开每周笔记。",
+      "monthly": "无法打开每月笔记。"
+    }
+  },
+  "periodic": {
+    "title": "每日、每周和每月笔记",
+    "daily": {
+      "label": "每日笔记",
+      "description": "今日笔记，以及侧边栏日历中的日期。"
+    },
+    "weekly": {
+      "label": "每周笔记",
+      "description": "侧边栏日历中的周数。"
+    },
+    "monthly": {
+      "label": "每月笔记",
+      "description": "侧边栏日历顶部的月份名称。"
+    },
+    "weekStart": {
+      "label": "每周开始于",
+      "description": "侧边栏日历的第一列。周数从这一天开始计算，选择星期一时即为 ISO 周数。",
+      "locale": "地区默认（{{day}}）",
+      "monday": "星期一",
+      "sunday": "星期日",
+      "saturday": "星期六"
+    },
+    "format": "标题格式",
+    "preview": "示例：{{title}}",
+    "invalidFormat": "请添加日期部分，例如 YYYY 或 WW。",
+    "template": "模板",
+    "savedTemplate": "你保存的模板",
+    "tag": "标签",
+    "noTag": "无标签",
+    "formatHelp": "标题格式中，YYYY 表示年份，MM 表示月份，MMMM 表示月份名称，DD 表示日，dddd 表示星期几，WW 表示周数，GGGG 表示该周所属的年份。方括号中的文本（如 [W]）会原样保留。已有笔记的标题不会改变，因此请在开始使用某个格式之前修改它。"
+  },
   "live": {
     "share": "共享",
     "shared": "已共享",
@@ -780,7 +1178,9 @@
     "outline": {
       "title": "大纲",
       "empty": "这篇笔记没有标题",
+      "emptyDetail": "在行首输入 # 即可添加标题。",
       "noNote": "打开一篇笔记即可查看其大纲",
+      "noNoteDetail": "大纲会跟随你正在编辑的笔记。",
       "levels": "标题级别",
       "allLevels": "所有级别",
       "upTo": "到 H{{level}} 为止",
@@ -788,7 +1188,8 @@
       "expand": "展开 {{title}}"
     },
     "linksFailed": "无法读取笔记之间的链接。",
-    "tagsFailed": "无法读取标签。"
+    "tagsFailed": "无法读取标签。",
+    "loading": "正在读取笔记之间的链接"
   },
   "vault": {
     "import": {
@@ -807,6 +1208,9 @@
       "seenTitle": "你之前导入过这个文件夹",
       "seenDescription_other": "{{date}} 那次导入添加了 {{count}} 篇笔记。再次导入会添加新的副本，之前的笔记保持不变。",
       "again": "作为新笔记再次导入",
+      "largeTitle": "这个文件夹有 {{total}} 篇笔记",
+      "largeDescription": "全部导入可能需要一些时间，每一篇都会成为你库中的一篇独立笔记。你可以随时停止导入。",
+      "largeConfirm": "全部导入",
       "doneTitle": "导入完成",
       "notes_other": "已导入 {{count}} 篇笔记",
       "attachments_other": "已复制 {{count}} 个附件",
@@ -827,6 +1231,7 @@
         "folderName": "Oleafly 笔记",
         "done_other": "已导出 {{count}} 篇笔记",
         "skipped_other": "{{count}} 个附件无法导出",
+        "paperLinks_other": "{{count}} 个指向论文的链接变成了纯文本",
         "doneSkipped": "{{done}}。{{skipped}}。",
         "showFolder": "显示文件夹",
         "failed": "无法导出笔记。"
@@ -854,8 +1259,10 @@
       "empty": "还没有标签。在笔记中添加 #标签，或在笔记属性中添加 tags。",
       "filter": "显示带有标签 {{tag}} 的笔记",
       "clear": "不再按 {{tag}} 筛选",
-      "expand": "显示 {{tag}} 下的标签",
-      "collapse": "隐藏 {{tag}} 下的标签"
+      "search": "筛选标签",
+      "noMatch": "没有与“{{query}}”匹配的标签。",
+      "showAll": "显示全部 {{total}} 个",
+      "showFewer": "收起"
     },
     "switcher": {
       "open": "转到笔记",
@@ -873,7 +1280,9 @@
     },
     "daily": {
       "open": "今日笔记",
-      "failed": "无法打开今日笔记。"
+      "failed": "无法打开今日笔记。",
+      "previous": "上一篇每日笔记：{{date}}",
+      "next": "下一篇每日笔记：{{date}}"
     },
     "templates": {
       "open": "从模板新建",
@@ -897,7 +1306,9 @@
         "proposal": "研究计划书",
         "proof": "证明或推导",
         "dataAnalysis": "数据分析报告",
-        "interview": "访谈记录"
+        "interview": "访谈记录",
+        "screeningLog": "筛选记录",
+        "labNotebook": "实验记录本条目"
       },
       "descriptions": {
         "daily": "一天的计划和随手记录",
@@ -910,7 +1321,9 @@
         "proposal": "基金申请或学位论文的目标、方法和时间安排",
         "proof": "结论、背后的思路和完整论证",
         "dataAnalysis": "对哪些数据做了哪些分析，以及得到了什么结果",
-        "interview": "一次访谈中的回答、引述和主题"
+        "interview": "一次访谈中的回答、引述和主题",
+        "screeningLog": "综述问题、标准，以及每个筛选阶段的数量",
+        "labNotebook": "实验台上的一天：目的、样品、步骤、观察和签字"
       },
       "bodies": {
         "daily": "**{{weekday}}**\n\n## 计划\n- [ ] 最重要的任务\n- [ ] 第二项任务\n\n## 日志\n- {{time}} 开始一天的工作\n\n## 笔记\n\n## 今日完成\n- 暂无\n\n## 明天\n- [ ] 首先要处理的事",
@@ -921,9 +1334,11 @@
         "labProtocol": "> [!warning] 安全\n> 开始之前，请确认危险因素、防护装备和废弃物处理方式。\n\n## 目的\n此流程能得到什么，以及在什么情况下使用。\n\n## 材料\n| 物品 | 用量 | 供应商或货号 | 备注 |\n| --- | --- | --- | --- |\n| | | | |\n\n## 设备\n- 仪器及参数设置\n\n## 步骤\n1. 准备\n2. 运行\n3. 清理\n\n## 检查\n- [ ] 已准备对照\n- [ ] 已记录设置\n- [ ] 样品已标注日期和批次\n\n## 故障排除\n| 问题 | 可能原因 | 解决方法 |\n| --- | --- | --- |\n| | | |\n\n## 修订历史\n| 版本 | 日期 | 变更 |\n| --- | --- | --- |\n| 1 | {{date}} | 初版 |",
         "weeklyLog": "## 本周目标\n- [ ] 第一个目标\n- [ ] 第二个目标\n- [ ] 第三个目标\n\n## 进展\n| 星期 | 完成的工作 | 备注 |\n| --- | --- | --- |\n| 周一 | | |\n| 周二 | | |\n| 周三 | | |\n| 周四 | | |\n| 周五 | | |\n\n## 结果与图片\n- 本周的成果\n\n## 阻碍\n> [!warning] 需要帮助\n> 哪里卡住了，谁能帮忙解决。\n\n## 阅读\n- 本周读过的论文\n\n## 下周\n- [ ] 下周的第一个目标",
         "proposal": "> [!abstract] 摘要\n> 用三句话说明：问题、方法和预期结果。\n\n## 背景与动机\n为什么现在研究这个问题很重要，以及目前已经知道什么。\n\n## 研究问题\n1. 第一个问题\n\n## 研究目标\n| 目标 | 方法 | 预期成果 |\n| --- | --- | --- |\n| 1 | | |\n\n## 研究方法\n研究设计、数据、分析方法，以及如何衡量成功。\n\n## 时间安排\n| 阶段 | 月份 | 里程碑 |\n| --- | --- | --- |\n| | | |\n\n## 风险与应对\n| 风险 | 可能性 | 应对措施 |\n| --- | --- | --- |\n| | | |\n\n## 资源与预算\n\n## 影响\n谁会受益，以及如何分享研究成果。\n\n## 参考文献",
-        "proof": "> [!note] 命题\n> 精确陈述结论，并写明所有假设。\n\n## 定义与记号\n- 符号及其含义\n\n## 思路\n在进入细节之前，先用通俗的话说明主要思路。\n\n## 证明\n**第 1 步** 搭建论证框架。\n\n**第 2 步** 完成主要估计。\n\n**第 3 步** 得出结论。\n\n## 检查\n- [ ] 每个假设都用到了\n- [ ] 边界情况都已覆盖\n- [ ] 常数和上下界都已跟踪\n\n## 备注\n推广、反例及相关结果。",
-        "dataAnalysis": "> [!info] 问题\n> 这项分析要支持的决策。\n\n## 数据\n| 字段 | 值 |\n| --- | --- |\n| 来源 | |\n| 版本或日期 | |\n| 行数和列数 | |\n| 排除项 | |\n\n## 方法\n- 数据清洗步骤\n- 使用的模型或检验，以及原因\n- 已检验的前提假设\n\n## 结果\n| 指标 | 估计值 | 区间 | 备注 |\n| --- | --- | --- | --- |\n| | | | |\n\n## 图片\n- 图片及其展示的内容\n\n## 解读\n这些结果对所研究的问题意味着什么。\n\n## 局限性\n- 偏差、缺失数据，以及可能改变结论的因素\n\n## 可重复性\n- [ ] 代码已保存并附上链接\n- [ ] 已记录随机种子\n- [ ] 已注明软件包版本",
-        "interview": "> [!warning] 知情同意与隐私\n> 录音前先征得对方同意，并用参与者编号代替姓名。\n\n## 基本信息\n| 条目 | 值 |\n| --- | --- |\n| 参与者编号 | |\n| 角色 | |\n| 时长 | |\n| 录音 | |\n\n## 问题与回答\n### 问题 1\n- 回答\n\n### 问题 2\n- 回答\n\n## 引述\n> 值得保留的原话。\n\n## 主题\n- 主题及支持它的回答\n\n## 后续跟进\n- [ ] 发送感谢信\n- [ ] 转录并匿名化"
+        "proof": "## 定义与记号\n> [!definition] 记号\n> 你使用的符号及其含义。\n\n## 命题\n> [!theorem] 主要结论\n> 精确陈述结论，并写明所有假设。\n\n## 思路\n在进入细节之前，先用通俗的话说明主要思路。\n\n## 引理\n> [!lemma] 引理 1\n> 主要证明所需要的一个较小的论断。\n\n> [!proof] 引理 1 的证明\n> 引理为什么成立。\n\n## 证明\n> [!proof] 主要结论的证明\n> **第 1 步** 搭建论证框架。\n>\n> **第 2 步** 利用引理 1 完成主要估计。\n>\n> **第 3 步** 得出结论。\n\n## 检查\n- [ ] 每个假设都用到了\n- [ ] 边界情况都已覆盖\n- [ ] 常数和上下界都已跟踪\n\n## 备注\n推广、反例及相关结果。",
+        "dataAnalysis": "> [!info] 问题\n> 这项分析要支持的决策。\n\n## 数据\n| 字段 | 值 |\n| --- | --- |\n| 来源 | |\n| 版本或日期 | |\n| 行数和列数 | |\n| 排除项 | |\n\n## 方法\n- 数据清洗步骤\n- 使用的模型或检验，以及原因\n- 已检验的前提假设\n\n## 结果\n下面的表格是一个 CSV 块。请把示例行替换成你的结果。\n\n```csv\n\"指标\",\"估计值\",\"95% 下限\",\"95% 上限\",n\n\"A 组均值\",0,0,0,0\n\"B 组均值\",0,0,0,0\n\"差值\",0,0,0,0\n```\n\n## 图片\n- 图片及其展示的内容\n\n## 解读\n这些结果对所研究的问题意味着什么。\n\n## 局限性\n- 偏差、缺失数据，以及可能改变结论的因素\n\n## 可重复性\n- [ ] 代码已保存并附上链接\n- [ ] 已记录随机种子\n- [ ] 已注明软件包版本",
+        "interview": "> [!warning] 知情同意与隐私\n> 录音前先征得对方同意，并用参与者编号代替姓名。\n\n## 基本信息\n| 条目 | 值 |\n| --- | --- |\n| 参与者编号 | |\n| 角色 | |\n| 时长 | |\n| 录音 | |\n\n## 问题与回答\n### 问题 1\n- 回答\n\n### 问题 2\n- 回答\n\n## 引述\n> 值得保留的原话。\n\n## 主题\n- 主题及支持它的回答\n\n## 后续跟进\n- [ ] 发送感谢信\n- [ ] 转录并匿名化",
+        "screeningLog": "> [!question] 综述问题（PICO）\n> - **人群：** 研究的对象\n> - **干预或暴露：** 要检验的内容\n> - **对照：** 与什么比较\n> - **结局：** 测量的指标\n\n## 纳入标准\n- 研究设计\n- 人群与研究场所\n- 语言和年份\n\n## 排除标准\n- 原因及识别方法\n\n## 检索\n| 日期 | 数据库 | 检索式 | 结果数 |\n| --- | --- | --- | --- |\n| {{date}} | | | |\n\n## 各阶段数量\n| 阶段 | 文献数 | 剔除 | 主要原因 |\n| --- | --- | --- | --- |\n| 检索得到 | | | |\n| 去重后 | | | |\n| 已筛查标题和摘要 | | | |\n| 已评估全文 | | | |\n| 纳入综述 | | | |\n\n## 全文阶段排除\n| 论文 | 原因 |\n| --- | --- |\n| | |\n\n## 分歧\n- 论文、各评审者的判断，以及如何解决\n\n## 后续步骤\n- [ ] 筛选下一批\n- [ ] 核对数量是否相符",
+        "labNotebook": "**{{date}} {{weekday}}**\n\n## 目的\n今天打算做什么，以及原因。\n\n## 材料\n| 材料 | 样品编号 | 批号或批次 | 用量 |\n| --- | --- | --- | --- |\n| | | | |\n\n## 步骤\n1. 按顺序记录做了什么，包括时间和参数设置\n2. 与方案的任何偏差，以及原因\n\n## 观察\n- {{time}} 看到的现象\n\n## 结果\n- 测量值，以及原始数据的存放位置\n\n## 后续步骤\n- [ ] 下一次实验的跟进事项\n\n## 签字\n**签字人：** 姓名，{{date}}\n\n**见证人：** 姓名，日期"
       }
     },
     "mentions": {
@@ -962,8 +1377,8 @@
     "actionHint": "作用于这篇笔记",
     "agentCanEdit": "此代理可以更改关联项目中的文件。",
     "allowWritesLabel": "允许代理更改文件",
-    "allowWritesAsk": "{{agent}} 没有只读模式，因此可能会更改 {{project}} 中的文件。仍要发送消息吗？",
-    "allowWrites": "在此对话中允许",
+    "allowWritesAsk": "{{agent}} 没有只读模式，因此可能会更改 {{project}} 中的文件。Oleafly 无法为它添加只读模式。仍要发送消息吗？",
+    "allowWrites": "仍然发送",
     "dontSend": "不发送",
     "viewOnly": "你只能查看这篇笔记，因此助手无法修改它。"
   },
@@ -980,6 +1395,7 @@
     "template": "无法更改“{{name}}”的模板设置。"
   },
   "noteTab": {
+    "loading": "正在打开笔记",
     "projectNote": "项目笔记",
     "sharedProject": "此项目中的所有人都能查看和编辑",
     "localProject": "与此项目的文件保存在一起",
@@ -991,5 +1407,247 @@
     "copyToMine": "复制到我的笔记",
     "missing": "这篇笔记已不可用。它可能已被移动或删除。",
     "writeRefused": "无法保存笔记。此项目当前为只读。"
+  },
+  "appearance": {
+    "notes": {
+      "sectionName": "笔记外观",
+      "resetAriaLabel": "将{{setting}}恢复为默认值",
+      "text": {
+        "title": "正文"
+      },
+      "typeface": {
+        "label": "字体类型",
+        "description": "选择笔记正文的字体类型。",
+        "options": {
+          "sans": "无衬线",
+          "serif": "衬线",
+          "mono": "等宽"
+        }
+      },
+      "font": {
+        "label": "笔记字体",
+        "description": "为笔记正文选择任意已安装的字体。留空则使用“字体类型”设置。"
+      },
+      "fontSize": {
+        "label": "笔记字号",
+        "description": "设置笔记正文的文字大小。",
+        "custom": "自定义",
+        "customLabel": "自定义笔记字号（像素）"
+      },
+      "lineHeight": {
+        "label": "笔记行高",
+        "description": "设置笔记正文的行间距。",
+        "customLabel": "自定义笔记行高"
+      },
+      "paragraphSpacing": {
+        "label": "段落间距",
+        "description": "设置段落、列表和其他块之间的间距。",
+        "options": {
+          "compact": "紧凑",
+          "normal": "标准",
+          "relaxed": "宽松",
+          "spacious": "宽敞"
+        }
+      },
+      "headings": {
+        "title": "标题与笔记标题"
+      },
+      "headingTypeface": {
+        "label": "标题字体类型",
+        "description": "为标题和笔记标题选择字体类型。",
+        "options": {
+          "text": "与正文相同"
+        }
+      },
+      "headingFont": {
+        "label": "标题字体",
+        "description": "为标题和笔记标题选择已安装的字体。留空则使用“标题字体类型”设置。"
+      },
+      "headingSize": {
+        "label": "标题大小",
+        "description": "设置标题相对于正文的大小。",
+        "options": {
+          "small": "较小",
+          "normal": "标准",
+          "large": "较大"
+        }
+      },
+      "titleSize": {
+        "label": "笔记标题大小",
+        "description": "设置每篇笔记顶部标题的大小。"
+      },
+      "layout": {
+        "title": "布局"
+      },
+      "width": {
+        "label": "笔记宽度",
+        "description": "笔记打开时的宽度。也可以在笔记中的宽度菜单里更改。",
+        "options": {
+          "standard": "标准",
+          "wide": "宽",
+          "full": "全宽"
+        }
+      },
+      "info": {
+        "label": "笔记信息",
+        "description": "笔记的属性和链接显示在哪里。“侧边面板”会把它们放在“信息”面板中，并附上笔记的统计数据和附件。“页内”则把它们保留在笔记页面上。",
+        "options": {
+          "side": "侧边面板",
+          "inline": "页内"
+        }
+      },
+      "taskBox": {
+        "label": "任务复选框",
+        "description": "任务列表中复选框的形状。",
+        "options": {
+          "square": "方形",
+          "round": "圆形"
+        }
+      },
+      "wordCount": {
+        "label": "显示字数",
+        "description": "在笔记的工具栏中显示字数。"
+      },
+      "spellcheck": {
+        "label": "在笔记中检查拼写",
+        "description": "编写笔记时为拼错的单词加下划线。"
+      },
+      "replacements": {
+        "label": "输入时替换",
+        "description": "输入时将 -> 之类的字符组合替换为 →。代码和公式保持原样，替换后立即按 Backspace 可恢复原文。",
+        "list": "文本替换",
+        "type": "输入",
+        "becomes": "替换为",
+        "add": "添加",
+        "remove": "移除 {{from}}",
+        "removeTooltip": "移除",
+        "empty": "还没有替换规则。请在下方添加。",
+        "full": "最多可以有 {{limit}} 条替换规则。请先移除一条再添加。"
+      },
+      "keepUndo": {
+        "label": "关闭后保留撤销记录",
+        "description": "关闭笔记或退出应用后，仍可撤销笔记中的操作。历史记录保存在这台电脑上，关闭此项会删除它。"
+      },
+      "code": {
+        "title": "代码"
+      },
+      "drawings": {
+        "title": "LaTeX 绘图"
+      },
+      "tikzPreamble": {
+        "label": "TikZ 导言区",
+        "description": "放在每个 TikZ 和 CircuiTikZ 块导言区开头的行，例如 \\usetikzlibrary{positioning}。"
+      },
+      "codeFont": {
+        "label": "代码字体",
+        "description": "为代码块和行内代码选择已安装的字体。"
+      },
+      "codeTheme": {
+        "label": "代码块配色",
+        "description": "选择笔记中代码块的语法配色。",
+        "options": {
+          "editor": "与编辑器相同"
+        }
+      },
+      "colors": {
+        "title": "颜色"
+      },
+      "accent": {
+        "label": "笔记强调色",
+        "description": "用于笔记中的链接、标签和任务复选框。",
+        "matchApp": "跟随应用",
+        "customAriaLabel": "选择自定义笔记强调色"
+      },
+      "callouts": {
+        "label": "标注样式",
+        "description": "笔记中标注框的外观。",
+        "options": {
+          "tinted": "浅色底",
+          "filled": "填充",
+          "outlined": "描边",
+          "bar": "侧边条"
+        }
+      },
+      "fieldStyle": {
+        "label": "日期和字段样式",
+        "description": "笔记中日期以及截止、优先级等字段的外观。",
+        "options": {
+          "tint": "浅色底",
+          "outline": "描边",
+          "underline": "下划线"
+        }
+      },
+      "remoteImages": {
+        "title": "来自网络的图片",
+        "description": "笔记和助手的回复会直接加载这些网站的图片，不会先询问。",
+        "empty": "笔记和助手的回复从网络加载图片前会先询问。你设为始终允许的网站会显示在这里。",
+        "remove": "移除 {{host}}"
+      }
+    }
+  },
+  "notesPreview": {
+    "label": "使用这些设置的笔记预览",
+    "title": "野外笔记",
+    "heading": "晨间调查",
+    "paragraph": "小雨一直下到九点，之后北岭上空放晴。到中午土壤仍然潮湿。",
+    "links": "完整步骤见<note>采样方法</note>，也可以浏览<tag>#野外工作</tag>。",
+    "highlight": "幼苗一周内长高了一倍。",
+    "calloutTitle": "下次考察",
+    "calloutBody": "采集新样本前先检查土壤传感器。",
+    "taskDone": "给样本贴标签",
+    "task": "上传照片",
+    "taskLate": "发送土壤报告"
+  },
+  "highlight": {
+    "colors": {
+      "yellow": "黄色",
+      "orange": "橙色",
+      "red": "红色",
+      "pink": "粉色",
+      "purple": "紫色",
+      "blue": "蓝色",
+      "green": "绿色"
+    },
+    "remove": "移除高亮"
+  },
+  "quickCapture": {
+    "title": "快速记录",
+    "untitled": "无标题",
+    "placeholder": "开始写作…",
+    "field": "要记录的文本",
+    "characters_other": "{{count}} 个字符",
+    "failed": "无法保存。你的文本仍在这里，可以重试。",
+    "actions": {
+      "label": "操作",
+      "saveNew": "另存为新笔记",
+      "saveToday": "添加到今日笔记",
+      "copy": "复制为 Markdown",
+      "discard": "放弃草稿"
+    },
+    "openNotes": "打开笔记",
+    "newNote": "新建笔记",
+    "format": "显示格式",
+    "closeFormat": "隐藏格式"
+  },
+  "starter": {
+    "blocksGallery": {
+      "title": "块示例集",
+      "intro": "笔记中可以放入的所有块。点击块上的 {{source}} 即可查看和编辑绘制它的代码，在空行中输入 {{slash}} 即可插入新块。",
+      "charts": "统计图",
+      "functionPlots": "函数图像",
+      "tables": "表格",
+      "csvTable": "csv 块可以排序和筛选，并带有汇总行：",
+      "markdownTable": "也可以使用普通的 Markdown 表格：",
+      "math": "数学和化学",
+      "typst": "Typst",
+      "diagrams": "图表",
+      "svg": "SVG",
+      "html": "HTML，点击“{{run}}”",
+      "react": "React，点击“{{run}}”",
+      "structures": "化学结构式",
+      "molecule": "3D 分子",
+      "sequences": "序列",
+      "code": "代码"
+    }
   }
 }

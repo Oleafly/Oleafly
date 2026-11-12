@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { isAltGraphCharacter, isUnbindableKey } from "@/lib/keyboard";
+import { isAltGraphCharacter, isUnbindableKey, keyLabel } from "@/lib/keyboard";
 import { readJson, writeJson } from "@/lib/local-storage";
 
 export type ShortcutId =
@@ -26,7 +26,16 @@ export type ShortcutId =
   | "notesGraph"
   | "notesLocalGraph"
   | "notesOutline"
-  | "notesAskAgent";
+  | "notesAskAgent"
+  | "notesNewNote"
+  | "notesSearch"
+  | "notesBookmark"
+  | "notesCopyLink"
+  | "notesProperties"
+  | "notesQuickCapture"
+  | "notesCopyBlockLink"
+  | "notesBack"
+  | "notesForward";
 
 export interface ShortcutBinding {
   key: string;
@@ -44,16 +53,26 @@ export interface ShortcutDefinition {
   scope?: ShortcutScope;
 }
 
-const ZEN_MAC_BINDING: ShortcutBinding = { key: "f", mod: true, ctrl: true, shift: true };
-const ZEN_BINDING: ShortcutBinding = { key: "F11", shift: true };
-const LOCAL_GRAPH_MAC_BINDING: ShortcutBinding = { key: "g", mod: true, alt: true };
-const LOCAL_GRAPH_BINDING: ShortcutBinding = { key: "m", mod: true, shift: true };
-const OUTLINE_MAC_BINDING: ShortcutBinding = { key: "o", mod: true, alt: true };
-const OUTLINE_BINDING: ShortcutBinding = { key: "k", mod: true, shift: true };
 const FUNCTION_KEY = /^F(?:[1-9]|1\d|2[0-4])$/;
+const ALT_ARROW_KEY = /^Arrow(?:Left|Right|Up|Down)$/;
 
 function onApplePlatform(): boolean {
   return typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
+}
+
+function platformDefault(
+  id: ShortcutId,
+  apple: ShortcutBinding,
+  other: ShortcutBinding,
+  scope?: ShortcutScope,
+): ShortcutDefinition {
+  return {
+    id,
+    get defaultBinding() {
+      return onApplePlatform() ? apple : other;
+    },
+    ...(scope ? { scope } : {}),
+  };
 }
 
 export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
@@ -105,12 +124,7 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     id: "togglePreview",
     defaultBinding: { key: "p", mod: true, alt: true },
   },
-  {
-    id: "toggleZenMode",
-    get defaultBinding() {
-      return onApplePlatform() ? ZEN_MAC_BINDING : ZEN_BINDING;
-    },
-  },
+  platformDefault("toggleZenMode", { key: "f", mod: true, ctrl: true, shift: true }, { key: "F11", shift: true }),
   {
     id: "openFolder",
     defaultBinding: { key: "o", mod: true, shift: true },
@@ -146,28 +160,39 @@ export const SHORTCUT_DEFINITIONS: ShortcutDefinition[] = [
     defaultBinding: { key: "g", mod: true, shift: true },
     scope: "notes",
   },
-  {
-    id: "notesLocalGraph",
-    get defaultBinding() {
-      return onApplePlatform() ? LOCAL_GRAPH_MAC_BINDING : LOCAL_GRAPH_BINDING;
-    },
-    scope: "notes",
-  },
-  {
-    id: "notesOutline",
-    get defaultBinding() {
-      return onApplePlatform() ? OUTLINE_MAC_BINDING : OUTLINE_BINDING;
-    },
-    scope: "notes",
-  },
+  platformDefault("notesLocalGraph", { key: "g", mod: true, alt: true }, { key: "m", mod: true, shift: true }, "notes"),
+  platformDefault("notesOutline", { key: "o", mod: true, alt: true }, { key: "k", mod: true, shift: true }, "notes"),
   {
     id: "notesAskAgent",
     defaultBinding: { key: "j", mod: true },
     scope: "notes",
   },
+  platformDefault("notesNewNote", { key: "n", mod: true, alt: true }, { key: "n", mod: true, shift: true }, "notes"),
+  platformDefault("notesSearch", { key: "f", mod: true, alt: true }, { key: "a", mod: true, shift: true }, "notes"),
+  platformDefault("notesBookmark", { key: "b", mod: true, alt: true }, { key: "y", mod: true, shift: true }, "notes"),
+  platformDefault("notesCopyLink", { key: "l", mod: true, alt: true }, { key: "x", mod: true, shift: true }, "notes"),
+  platformDefault("notesProperties", { key: "i", mod: true, alt: true }, { key: "t", mod: true, shift: true }, "notes"),
+  {
+    id: "notesQuickCapture",
+    defaultBinding: { key: " ", mod: true, shift: true, alt: true },
+    scope: "notes",
+  },
+  {
+    id: "notesCopyBlockLink",
+    defaultBinding: { key: "l", mod: true, shift: true },
+    scope: "notes",
+  },
+  platformDefault("notesBack", { key: "[", mod: true }, { key: "ArrowLeft", alt: true }, "notes"),
+  platformDefault("notesForward", { key: "]", mod: true }, { key: "ArrowRight", alt: true }, "notes"),
 ];
 
 type ShortcutBindings = Record<ShortcutId, ShortcutBinding>;
+
+const SHORTCUTS_WITHOUT_NOTES = SHORTCUT_DEFINITIONS.filter((definition) => definition.scope !== "notes");
+
+export function shortcutDefinitionsInEffect(notes: boolean): readonly ShortcutDefinition[] {
+  return notes ? SHORTCUT_DEFINITIONS : SHORTCUTS_WITHOUT_NOTES;
+}
 
 function defaultBindings(): ShortcutBindings {
   return Object.fromEntries(
@@ -182,12 +207,12 @@ export function shortcutsDifferFromDefaults(bindings: ShortcutBindings): boolean
 
 export function isValidBinding(value: unknown): value is ShortcutBinding {
   if (!value || typeof value !== "object") return false;
-  const { key, mod, ctrl } = value as { key?: unknown; mod?: unknown; ctrl?: unknown };
+  const { key, mod, ctrl, alt } = value as { key?: unknown; mod?: unknown; ctrl?: unknown; alt?: unknown };
   return (
     typeof key === "string" &&
     key !== "" &&
     !isUnbindableKey(key) &&
-    Boolean(mod || ctrl || FUNCTION_KEY.test(key))
+    Boolean(mod || ctrl || FUNCTION_KEY.test(key) || (alt && ALT_ARROW_KEY.test(key)))
   );
 }
 
@@ -248,7 +273,8 @@ function physicalKey(event: KeyboardEvent): string | null {
 }
 
 function optionLevelKey(event: KeyboardEvent, apple: boolean): string | null {
-  if (!apple || !event.altKey || event.key.length !== 1 || PRINTABLE_ASCII.test(event.key)) return null;
+  if (!apple || !event.altKey) return null;
+  if (event.key !== "Dead" && (event.key.length !== 1 || PRINTABLE_ASCII.test(event.key))) return null;
   return physicalKey(event);
 }
 
@@ -288,17 +314,17 @@ function bindingKey(event: KeyboardEvent, apple: boolean): string {
 }
 
 export function bindingFromEvent(event: KeyboardEvent): ShortcutBinding | null {
+  const apple =
+    typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   if (
-    (!event.metaKey && !event.ctrlKey && !FUNCTION_KEY.test(event.key)) ||
-    isUnbindableKey(event.key) ||
+    (!event.metaKey && !event.ctrlKey && !FUNCTION_KEY.test(event.key) && !(event.altKey && ALT_ARROW_KEY.test(event.key))) ||
+    (isUnbindableKey(event.key) && !optionLevelKey(event, apple)) ||
     event.key === "Tab" ||
     event.key === "Escape" ||
     isAltGraphCharacter(event)
   ) {
     return null;
   }
-  const apple =
-    typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
   return {
     key: bindingKey(event, apple),
     ...(event.metaKey || (event.ctrlKey && !apple) ? { mod: true } : {}),
@@ -371,8 +397,7 @@ export function shortcutParts(binding: ShortcutBinding): string[] {
   if (binding.ctrl && (mac || !binding.mod)) parts.push("Ctrl");
   if (binding.shift) parts.push(mac ? "⇧" : "Shift");
   if (binding.alt) parts.push(mac ? "⌥" : "Alt");
-  const key = binding.key === " " ? "Space" : binding.key;
-  parts.push(key.length === 1 ? key.toUpperCase() : key);
+  parts.push(binding.key === " " ? "Space" : keyLabel(binding.key));
   return parts;
 }
 

@@ -1,43 +1,39 @@
 // @vitest-environment jsdom
 
 import { act, render, screen, waitFor } from "@testing-library/react";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
+import "./tests/setup";
 
 const mermaid = vi.hoisted(() => ({ renderDiagram: vi.fn() }));
 vi.mock("@/components/ui/mermaid-diagram", () => mermaid);
 
+import { clearMarkdownDocumentCache } from "@/components/ui/markdown-renderer";
 import {
-  clearPreviewCache,
   NoteMarkdown,
   NotePreview,
   PREVIEW_BLOCK_TEXT,
   PREVIEW_BLOCKS,
   PREVIEW_SCALE,
   PREVIEW_TABLE,
-  previewContent,
 } from "./note-preview";
-import { resetRemoteImagesForTest } from "./note-remote-images";
+import { resetRemoteImagesForTest } from "@/lib/remote-image";
+import { NOTE_COLOR_HEX } from "./note-icons";
 
 const FENCE = "```";
 const SVG_URL = "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%2F%3E";
 
-function preview(source: string, resolveAsset?: (noteId: string, path: string) => Promise<string | null>, updatedAt = 1) {
-  const view = render(<NotePreview noteId="n1" updatedAt={updatedAt} source={source} resolveAsset={resolveAsset} />);
+function preview(source: string, resolveAsset?: (noteId: string, path: string) => Promise<string | null>) {
+  const view = render(<NotePreview noteId="n1" source={source} resolveAsset={resolveAsset} />);
   const root = view.container.querySelector<HTMLElement>("[data-note-preview]");
   const page = root?.querySelector<HTMLElement>(".ProseMirror");
   if (!root || !page) throw new Error("no preview");
   return { ...view, root, page };
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 beforeEach(() => {
-  clearPreviewCache();
+  clearMarkdownDocumentCache();
   resetRemoteImagesForTest();
   mermaid.renderDiagram.mockReset();
   mermaid.renderDiagram.mockResolvedValue(document.createElementNS("http://www.w3.org/2000/svg", "svg"));
@@ -45,14 +41,12 @@ beforeEach(() => {
 });
 
 describe("NotePreview", () => {
-  it("lays the note out at editor width with the editor's classes and shrinks it from the top left", () => {
+  it("lays the note out at editor width and shrinks it", () => {
     const { root } = preview("Hello");
     expect(root).toHaveAttribute("aria-hidden", "true");
     expect(root).toHaveAttribute("inert");
     expect(root).toHaveAttribute("data-note-preview", "n1");
-    expect(root).toHaveClass("pointer-events-none", "select-none", "overflow-hidden", "[container-type:inline-size]");
     const sheet = root.firstElementChild as HTMLElement;
-    expect(sheet).toHaveClass("wysiwyg-content", "note-body", "origin-top-left", "absolute");
     expect(sheet.style.transform).toBe(`scale(${PREVIEW_SCALE})`);
     expect(sheet.style.width).toMatch(/^calc\((?:100cqw \/ 0\.28|357\.14\d*cqw)\)$/u);
   });
@@ -85,10 +79,9 @@ describe("NotePreview", () => {
   it("draws links and task boxes as plain text so nothing in a card can be clicked", () => {
     const { root } = preview("[docs](https://example.com) and [a note](oleafly://note/1)\n\n- [x] done\n- [ ] open");
     expect(root.querySelector("a, input, button")).toBeNull();
-    expect(screen.getByText("docs")).toHaveClass("text-primary", "underline");
     const boxes = root.querySelectorAll<HTMLElement>("[data-checked]");
     expect([...boxes].map((box) => box.dataset.checked)).toEqual(["true", "false"]);
-    expect(boxes[0].querySelector("svg")).toHaveClass("lucide-check");
+    expect(boxes[0].querySelector("svg")).not.toBeNull();
     expect(boxes[1].querySelector("svg")).toBeNull();
   });
 
@@ -192,7 +185,7 @@ describe("NotePreview", () => {
     );
     const blocks = [...page.querySelectorAll<HTMLElement>(".note-drawn")];
     expect(blocks.map((block) => block.dataset.block)).toEqual(["chart", "latex", "latex", "typst", "notebook"]);
-    expect(blocks.map((block) => block.querySelector(".note-drawn-label")?.textContent)).toEqual([
+    expect(blocks.map((block) => block.firstElementChild?.textContent)).toEqual([
       enNotes.blocks.chart,
       "LaTeX",
       "LaTeX",
@@ -202,8 +195,8 @@ describe("NotePreview", () => {
     expect(blocks[0].querySelector(".note-drawn-preview svg")).toBeInTheDocument();
     expect(blocks[1].querySelector(".katex")).toBeInTheDocument();
     expect(blocks[2]).toHaveTextContent(enNotes.blocks.noPreview);
-    expect(blocks[3].querySelector(".note-block-card")).toHaveTextContent("$ x $");
-    expect(blocks[4].querySelector(".note-block-card")).toHaveTextContent("assets/run.ipynb");
+    expect(blocks[3].querySelector(".note-drawn-preview")).toHaveTextContent("$ x $");
+    expect(blocks[4].querySelector(".note-drawn-preview")).toHaveTextContent("assets/run.ipynb");
     expect(page.querySelector("pre")).toBeNull();
   });
 
@@ -249,15 +242,75 @@ describe("NotePreview", () => {
     expect(other.childElementCount).toBe(0);
   });
 
-  it("builds each note's preview once per edit and rebuilds when the text changes", () => {
-    const first = previewContent("n1\u00001", "Hello");
-    expect(previewContent("n1\u00001", "Hello")).toBe(first);
-    expect(previewContent("n1\u00001", "Changed")).not.toBe(first);
-    expect(previewContent("n1\u00002", "Hello")).not.toBe(first);
-  });
-
   it("keeps footnotes", () => {
     const { page } = preview("Footnote[^1]\n\n[^1]: The note.");
     expect(page.querySelector("section")).toHaveTextContent("The note.");
+  });
+
+  it("shows highlights in their colours and keeps any other HTML as text", () => {
+    const { page } = preview(
+      'One ==yellow **bold**== and <mark data-color="green">green *words*</mark>, [==linked==](https://e.com), `==code==`, x == y == z, <mark data-color="teal">teal</mark> <b onclick="x">b</b>.',
+    );
+    const marks = [...page.querySelectorAll<HTMLElement>("mark")];
+    expect(marks.map((mark) => [mark.className, mark.dataset.color ?? null, mark.textContent])).toEqual([
+      ["note-highlight", null, "yellow bold"],
+      ["note-highlight", "green", "green words"],
+      ["note-highlight", null, "linked"],
+    ]);
+    expect(marks[0].querySelector("strong")).toHaveTextContent("bold");
+    expect(marks[1].querySelector("em")).toHaveTextContent("words");
+    expect(page.querySelector("code")).toHaveTextContent("==code==");
+    expect(page.querySelector("b")).toBeNull();
+    expect(page).toHaveTextContent('x == y == z, <mark data-color="teal">teal</mark> <b onclick="x">b</b>.');
+    expect(page).not.toHaveTextContent('<mark data-color="green">');
+  });
+
+  it("draws a resized picture at its width and keeps a width the note can't use as text", async () => {
+    const resolveAsset = vi.fn(async () => SVG_URL);
+    const { page } = preview("![Loss](assets/loss.svg){width=50%}\n\n![Tiny](assets/tiny.svg){width=5%}", resolveAsset);
+    const figure = page.querySelector("figure.note-image");
+    await waitFor(() => expect(figure?.querySelector("img")).toHaveAttribute("src", SVG_URL));
+    expect(figure?.querySelector<HTMLElement>("img")?.style.width).toBe("50%");
+    await waitFor(() => expect(page.querySelector("p img")).toHaveAttribute("src", SVG_URL));
+    expect(page.querySelector<HTMLElement>("p img")?.style.width).toBe("");
+    expect(page).not.toHaveTextContent("{width=50%}");
+    expect(page).toHaveTextContent("{width=5%}");
+  });
+});
+
+describe("note colour on the preview body", () => {
+  it("gives the card preview and the hover or embed body the note's colour, and the default without one", () => {
+    const card = render(<NotePreview noteId="n1" source="| a |\n| --- |\n| 1 |" color="mint" />);
+    const sheet = card.container.querySelector<HTMLElement>("[data-note-preview] > .note-body");
+    expect(sheet?.style.getPropertyValue("--note-color")).toBe(NOTE_COLOR_HEX.mint);
+    expect(sheet?.style.getPropertyValue("--note-tint")).toBe("0");
+    expect(sheet?.style.transform).toBe(`scale(${PREVIEW_SCALE})`);
+    card.unmount();
+    const hover = render(<NoteMarkdown noteId="n2" source="Hello" color="sky" />);
+    expect(hover.container.querySelector<HTMLElement>(".note-body")?.style.getPropertyValue("--note-color")).toBe(NOTE_COLOR_HEX.sky);
+    hover.unmount();
+    const plain = render(<NoteMarkdown noteId="n3" source="Hello" />);
+    const body = plain.container.querySelector<HTMLElement>(".note-body");
+    expect(body?.style.getPropertyValue("--note-color")).toBe(NOTE_COLOR_HEX.blue);
+    expect(body?.style.getPropertyValue("--note-tint")).toBe("1");
+  });
+});
+
+describe("NoteMarkdown", () => {
+  it("shows highlights and sized pictures in hover previews and embeds", async () => {
+    const resolveAsset = vi.fn(async () => SVG_URL);
+    const source = 'A <mark data-color="blue">blue</mark> and ==plain== word.\n\n![Chart](assets/chart.svg){width=40%}';
+    for (const full of [false, true]) {
+      const view = render(<NoteMarkdown noteId="n3" source={source} resolveAsset={resolveAsset} full={full} />);
+      const marks = [...view.container.querySelectorAll<HTMLElement>("mark.note-highlight")];
+      expect(marks.map((mark) => [mark.dataset.color ?? null, mark.textContent])).toEqual([
+        ["blue", "blue"],
+        [null, "plain"],
+      ]);
+      await waitFor(() => expect(view.container.querySelector("figure.note-image img")).toHaveAttribute("src", SVG_URL));
+      expect(view.container.querySelector<HTMLElement>("figure.note-image img")?.style.width).toBe("40%");
+      expect(view.container).not.toHaveTextContent("{width=40%}");
+      view.unmount();
+    }
   });
 });

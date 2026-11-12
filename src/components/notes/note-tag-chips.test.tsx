@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { destroyKbEditors, kbEditor, kbMarkdown, placeCursor, pressKey } from "./tests/kb-editor-fixtures";
+import "./tests/setup";
 import { NoteTagMenu } from "./NoteTagMenu";
 import {
   closeTagMenu,
@@ -14,10 +14,7 @@ import {
   textblockText,
   type NoteTagOptions,
 } from "./note-tag-chips";
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+import { tagTone } from "./note-tags";
 
 afterEach(destroyKbEditors);
 
@@ -50,16 +47,28 @@ function type(editor: ReturnType<typeof build>["editor"], text: string) {
 describe("tag chips", () => {
   it("draws chips for tags in text and skips code, links and code blocks", () => {
     const { editor } = build("Plan #idea and `#code` and [#link](https://x.org) and #ml/vision\n\n```\n#fenced\n```");
-    const chips = [...editor.view.dom.querySelectorAll<HTMLElement>(".note-tag")];
+    const chips = [...editor.view.dom.querySelectorAll<HTMLElement>("[data-tag]")];
     expect(chips.map((chip) => chip.dataset.tag)).toEqual(["idea", "ml/vision"]);
     expect(chips[0].dataset.tooltip).toBeUndefined();
     expect(textblockText(editor.state.doc.child(0))).toContain("￼");
   });
 
+  it("tints each chip with its tag's tone, the same one the sidebar uses, and only tints on hover when it opens", () => {
+    const classes = (tag: string) => [tagTone(tag).tint, ...tagTone(tag).text.split(" ")];
+    const plain = build("Plan #Idea and #ml/vision and #idea").editor;
+    const chips = [...plain.view.dom.querySelectorAll<HTMLElement>(".note-tag")];
+    expect(chips[0]).toHaveClass(...classes("idea"));
+    expect(chips[1]).toHaveClass(...classes("ml/vision"));
+    expect(chips[2].className).toBe(chips[0].className);
+    expect(chips[0]).not.toHaveClass(tagTone("idea").hover.split(" ")[0]);
+    const open = build("Read #paper", { getOpenTag: () => vi.fn() }).editor;
+    expect(open.view.dom.querySelector(".note-tag")).toHaveClass(...classes("paper"), ...tagTone("paper").hover.split(" "));
+  });
+
   it("opens a tag on click when the workspace can filter", () => {
     const onOpenTag = vi.fn();
     const { editor } = build("Read #paper", { getOpenTag: () => onOpenTag });
-    const chip = editor.view.dom.querySelector<HTMLElement>(".note-tag");
+    const chip = editor.view.dom.querySelector<HTMLElement>("[data-tag]");
     expect(chip?.dataset.tooltip).toBe(enNotes.kb.tags.open);
     chip?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));
     expect(onOpenTag).toHaveBeenCalledWith("paper");
@@ -73,7 +82,7 @@ describe("tag chips", () => {
     const built = build("Read #paper", { getOpenTag: () => open });
     open = vi.fn();
     built.refresh();
-    expect(built.editor.view.dom.querySelector<HTMLElement>(".note-tag")?.dataset.tooltip).toBe(enNotes.kb.tags.open);
+    expect(built.editor.view.dom.querySelector<HTMLElement>("[data-tag]")?.dataset.tooltip).toBe(enNotes.kb.tags.open);
     built.editor.destroy();
     expect(built.listening()).toBe(false);
   });
@@ -147,6 +156,7 @@ describe("tag suggestions", () => {
     type(editor, " (#ml");
     const menu = screen.getByRole("listbox", { name: enNotes.kb.tags.menu });
     expect(menu).toBeTruthy();
+    expect(screen.getByRole("option", { name: "ml/vision" }).querySelector("svg")).toHaveClass(...tagTone("ml/vision").icon.split(" "));
     fireEvent.mouseEnter(screen.getByRole("option", { name: "ml/vision" }));
     fireEvent.click(screen.getByRole("option", { name: "ml/vision" }));
     expect(kbMarkdown(editor)).toBe("x (#ml/vision ");

@@ -1,7 +1,14 @@
-import { newNoteSource, readNoteFacts } from "/src/components/notes/note-file";
-import { notePreviewSource } from "/src/components/notes/note-preview-source";
-import { linkTargets } from "/src/components/notes/note-link-format";
-import type { NotesData } from "/src/components/notes/notes-data";
+import { setScalar } from "/src/lib/front-matter-yaml";
+import { frontMatterBody } from "/src/lib/front-matter";
+import { noteEditorOpen } from "/src/lib/open-note-editors";
+import type { SearchMode } from "/src/lib/search-modes";
+import type { NoteBlockHit, NoteSearchHit, NoteSearchOptions, NoteTagCount, NoteTaskRecord } from "/src/lib/tauri";
+import { newNoteSource, readNoteFacts, withNoteColor, withNoteIcon, withNoteTitle } from "/src/components/notes/note-file";
+import { forgetNoteLeftovers } from "/src/components/notes/note-pending-suggestions";
+import { plainTextTags, tagKey } from "/src/components/notes/note-tags";
+import { composeNoteSource } from "/src/components/notes/note-templates";
+import type { NoteDraft, NotesData } from "/src/components/notes/notes-data";
+import { noteVersion, recordNoteWrite, usesCrlf } from "/src/components/notes/notes-service";
 import {
   NoteConflictError,
   type ArtifactItem,
@@ -12,6 +19,33 @@ import {
 } from "/src/components/notes/types";
 
 const HOUR = 3_600_000;
+const NOTE_LINK = /\[([^\]]*)\]\(oleafly:\/\/(note|project)\/([\w-]+)(?:#\^([A-Za-z0-9-]+))?[^)]*\)/gu;
+const BLOCK_MARK = /(?:^|\s)\^([A-Za-z0-9-]+)\s*$/u;
+
+type FixtureLink = { kind: "note" | "project"; id: string; snippet: string; block?: string; line: number };
+
+function linksOf(text: string): FixtureLink[] {
+  const found = new Map<string, FixtureLink>();
+  const body = frontMatterBody(text);
+  const offset = text.slice(0, text.length - body.length).split("\n").length;
+  body.split("\n").forEach((line, index) => {
+    for (const [, , kind, id, block] of line.matchAll(NOTE_LINK)) {
+      const key = `${kind}:${id}:${block ?? ""}`;
+      const snippet = line.replace(NOTE_LINK, "$1").replace(BLOCK_MARK, "").trim();
+      const link: FixtureLink = { kind: kind as "note" | "project", id, snippet, line: offset + index };
+      if (block) link.block = block;
+      if (!found.has(key)) found.set(key, link);
+    }
+  });
+  return [...found.values()];
+}
+
+function blocksOf(text: string): string[] {
+  return frontMatterBody(text).split("\n").flatMap((line) => {
+    const id = BLOCK_MARK.exec(line)?.[1];
+    return id ? [id] : [];
+  });
+}
 const DAY = 24 * HOUR;
 const FENCE = "```";
 
@@ -198,16 +232,28 @@ const PREVIEWS: Readonly<Record<string, ArtifactPreview>> = {
 interface StoredNote {
   meta: Omit<NoteItem, "icon" | "summary" | "author" | "agent">;
   text: string;
-  version: number;
 }
+
+export type WriteFailure = "conflict" | "permission" | "full";
+
+const WRITE_ERRORS: Readonly<Record<Exclude<WriteFailure, "conflict">, string>> = {
+  permission: "Permission denied (os error 13)",
+  full: "No space left on device (os error 28)",
+};
 
 export interface NotesFixture {
   snapshot(): NotesData;
   subscribe(listener: () => void): () => void;
   writeFromDisk(id: string, text: string): void;
+  removeFromDisk(id: string): void;
+  failNextWrite(kind: WriteFailure): void;
   text(id: string): string;
   has(id: string): boolean;
+  recycled(): string[];
+  restore(id: string): void;
+  saves(id: string): number;
   settingsOpened(): number;
+  shared(): string[];
 }
 
 const PROJECTS = [
@@ -217,6 +263,19 @@ const PROJECTS = [
   { id: "thesis", name: "Thesis" },
 ];
 
+const CITATIONS = [
+  { key: "he2022mae", label: "He et al. 2022, Masked autoencoders" },
+  { key: "chen2020simclr", label: "Chen et al. 2020, SimCLR" },
+  { key: "grill2020byol", label: "Grill et al. 2020, BYOL" },
+];
+
+const STORE_KEY = "oleafly-notes-harness-fixture";
+const WATCH_DELAY_MS = 30;
+
+function projectName(projectId: string | null | undefined): string {
+  return PROJECTS.find((candidate) => candidate.id === projectId)?.name ?? "Notes";
+}
+
 function stored(
   id: string,
   title: string,
@@ -225,8 +284,7 @@ function stored(
   text: string,
   createdAt = updatedAt,
 ): [string, StoredNote] {
-  const project = PROJECTS.find((candidate) => candidate.id === projectId)?.name ?? "Notes";
-  return [id, { meta: { id, title, project, relatedProjectId: projectId, updatedAt, createdAt }, text, version: 1 }];
+  return [id, { meta: { id, title, project: projectName(projectId), relatedProjectId: projectId, updatedAt, createdAt }, text }];
 }
 
 const NOTE_IDS = {
@@ -238,8 +296,8 @@ const NOTE_IDS = {
 
 export const LATEST_RUN = "Task: Review run 3\nSummary:\nRun 3 used a mask ratio of 0.60 and reached 64.1% on validation.";
 
-export function createNotesFixture(now = Date.now()): NotesFixture {
-  const notes = new Map<string, StoredNote>([
+function seed(now: number): Map<string, StoredNote> {
+  return new Map<string, StoredNote>([
     stored(
       "masking",
       "Masking strategy report",
@@ -273,22 +331,184 @@ export function createNotesFixture(now = Date.now()): NotesFixture {
       now - 20 * DAY,
     ),
   ]);
+}
+
+interface Persisted {
+  notes: [string, StoredNote][];
+  recycled: [string, StoredNote][];
+  created: number;
+  copies: { noteId: string; path: string }[];
+}
+
+function restorePersisted(): Persisted | null {
+  try {
+    const saved = sessionStorage.getItem(STORE_KEY);
+    return saved ? (JSON.parse(saved) as Persisted) : null;
+  } catch {
+    return null;
+  }
+}
+
+function persist(state: Persisted): void {
+  try {
+    sessionStorage.setItem(STORE_KEY, JSON.stringify(state));
+  } catch {
+    return;
+  }
+}
+
+function withEndings(text: string, crlf: boolean): string {
+  const plain = text.replace(/\r\n?/gu, "\n");
+  return crlf ? plain.replace(/\n/gu, "\r\n") : plain;
+}
+
+function bodyLines(text: string): string[] {
+  let fenced = false;
+  return frontMatterBody(text.replace(/\r\n?/gu, "\n"))
+    .split("\n")
+    .filter((line) => {
+      if (line.startsWith(FENCE)) fenced = !fenced;
+      return !fenced && !line.startsWith(FENCE);
+    });
+}
+
+function modeTest(query: string, mode: SearchMode): ((title: string, body: string) => boolean) | null {
+  if (mode === "ranked") return null;
+  const raw = (query.match(/"[^"]*"|\S+/gu) ?? []).map((term) => term.replace(/^"|"$/gu, "")).filter((term) => !term.startsWith("tag:"));
+  const tests = raw.map((written) => {
+    const negated = written.length > 1 && written.startsWith("-");
+    const term = negated ? written.slice(1) : written;
+    const flags = /\p{Lu}/u.test(term) ? "u" : "iu";
+    if (mode === "fuzzy") {
+      const letters = [...term.toLowerCase()].filter((char) => char.trim());
+      return (title: string) => {
+        let at = 0;
+        for (const char of title.toLowerCase()) if (char === letters[at]) at += 1;
+        return (at === letters.length) !== negated;
+      };
+    }
+    let pattern: RegExp;
+    try {
+      pattern = new RegExp(mode === "regex" ? term : term.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&"), flags);
+    } catch (error) {
+      throw new Error(`Not a valid pattern: ${error instanceof Error ? error.message : String(error)}`);
+    }
+    return (title: string, body: string) => (pattern.test(title) || pattern.test(body)) !== negated;
+  });
+  return (title, body) => tests.every((test) => test(title, body));
+}
+
+function tagBlocks(text: string, tags: readonly string[]): NoteBlockHit[] {
+  const body = frontMatterBody(text);
+  const offset = text.slice(0, text.length - body.length).split("\n").length;
+  let fenced = false;
+  return body.split("\n").flatMap((line, index): NoteBlockHit[] => {
+    if (line.startsWith(FENCE)) fenced = !fenced;
+    if (fenced || line.startsWith(FENCE)) return [];
+    const found = plainTextTags(line).filter((range) => tags.some((tag) => tagKey(range.tag) === tag || tagKey(range.tag).startsWith(`${tag}/`)));
+    if (found.length === 0) return [];
+    const marker = /^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/u.exec(line)?.[0] ?? "";
+    let kind: NoteBlockHit["kind"] = marker ? "item" : "paragraph";
+    if (line.trimStart().startsWith("|")) kind = "row";
+    const shown = line.slice(marker.length).replace(BLOCK_MARK, "").replace(/^\|\s*|\s*\|$/gu, "").trim();
+    const block = BLOCK_MARK.exec(line)?.[1];
+    const ranges = found.flatMap((range): [number, number][] => {
+      const at = shown.indexOf(`#${range.tag}`);
+      return at < 0 ? [] : [[at, at + range.tag.length + 1]];
+    });
+    return [{ line: offset + index, kind, text: shown, ranges, ...(block ? { block } : {}) }];
+  });
+}
+
+function tagsOf(text: string): string[] {
+  return [...new Set(bodyLines(text).flatMap((line) => plainTextTags(line).map((range) => range.tag)))];
+}
+
+const TASK_LINE = /^\s*(?:>\s*)*[-*+][ \t]+\[([ xX])\](?:[ \t]+(.*))?$/u;
+
+function tasksOf(text: string): NoteTaskRecord["tasks"] {
+  const lines = text.replace(/\r\n?/gu, "\n").split("\n");
+  const body = frontMatterBody(text.replace(/\r\n?/gu, "\n"));
+  const start = lines.length - body.split("\n").length;
+  let fenced = false;
+  return lines.flatMap((line, index) => {
+    if (index < start) return [];
+    if (line.startsWith(FENCE)) {
+      fenced = !fenced;
+      return [];
+    }
+    const match = fenced ? null : TASK_LINE.exec(line);
+    const task = match?.[2]?.trim();
+    return match && task ? [{ line: index, checked: match[1] !== " ", text: task }] : [];
+  });
+}
+
+function rangesOf(text: string, terms: readonly string[]): [number, number][] {
+  const lower = text.toLowerCase();
+  return terms.flatMap((term): [number, number][] => {
+    const at = lower.indexOf(term);
+    return at < 0 ? [] : [[at, at + term.length]];
+  });
+}
+
+function searchTerms(query: string): string[] {
+  return query
+    .toLowerCase()
+    .replace(/["()]/gu, " ")
+    .split(/\s+/u)
+    .filter((term) => term !== "" && term !== "or" && term !== "and");
+}
+
+export function createNotesFixture(now = Date.now()): NotesFixture {
+  const persisted = restorePersisted();
+  const notes = new Map<string, StoredNote>(persisted?.notes ?? seed(now));
+  const recycleBin = new Map<string, StoredNote>(persisted?.recycled ?? []);
+  const copies = persisted?.copies ?? [{ noteId: "dataloader", path: "assets/throughput.svg" }];
+  let created = persisted?.created ?? 0;
   const listeners = new Set<() => void>();
   const watchers = new Map<string, Set<() => void>>();
-  let created = 0;
+  const saveCounts = new Map<string, number>();
+  const sharedNotes: string[] = [];
   let settingsOpened = 0;
   let current: NotesData | null = null;
-  const copies: { noteId: string; path: string }[] = [{ noteId: "dataloader", path: "assets/throughput.svg" }];
+  let revision = 0;
+  let failure: WriteFailure | null = null;
 
   const changed = () => {
     current = null;
+    revision += 1;
+    persist({ notes: [...notes], recycled: [...recycleBin], created, copies });
     for (const listener of listeners) listener();
   };
-  const sourceOf = (note: StoredNote): NoteSource => ({ text: note.text, version: `v${note.version}` });
+  const sourceOf = (note: StoredNote): NoteSource => ({ text: note.text, version: noteVersion(note.text) });
   const noteOf = (id: string) => {
     const note = notes.get(id);
     if (!note) throw new Error(`No note ${id}`);
     return note;
+  };
+  const fireWatchers = (id: string) => {
+    window.setTimeout(() => {
+      for (const watcher of watchers.get(id) ?? []) watcher();
+    }, WATCH_DELAY_MS);
+  };
+  const store = (id: string, text: string) => {
+    const note = noteOf(id);
+    note.text = withEndings(text, usesCrlf(note.text));
+    note.meta.updatedAt = Date.now();
+    changed();
+    fireWatchers(id);
+    return sourceOf(note);
+  };
+  const addNote = (title: string, text: string, relatedProjectId?: string | null) => {
+    created += 1;
+    const id = `new-${created}`;
+    const at = Date.now();
+    notes.set(id, {
+      meta: { id, title, project: projectName(relatedProjectId), relatedProjectId: relatedProjectId ?? undefined, updatedAt: at, createdAt: at },
+      text,
+    });
+    changed();
+    return id;
   };
   const items = (): NoteItem[] =>
     [...notes.values()].map((note) => {
@@ -300,50 +520,131 @@ export function createNotesFixture(now = Date.now()): NotesFixture {
         icon: facts.icon,
         color: facts.color,
         summary: facts.summary,
-        preview: notePreviewSource(note.text, note.meta.title),
+        preview: frontMatterBody(note.text),
+        tags: tagsOf(note.text),
+        ...(facts.id ? { noteId: facts.id } : {}),
       };
     });
 
+  const search = (query: string, limit = 50, options: NoteSearchOptions = {}): NoteSearchHit[] => {
+    const all = searchTerms(query);
+    const tags = all.filter((term) => term.startsWith("tag:")).map((term) => tagKey(term.slice(4)));
+    const terms = all.filter((term) => !term.startsWith("tag:"));
+    if (all.length === 0) return [];
+    const holds = modeTest(query, options.mode ?? "ranked");
+    return [...notes.values()]
+      .flatMap((note): NoteSearchHit[] => {
+        const lines = bodyLines(note.text);
+        const haystack = `${note.meta.title}\n${lines.join("\n")}`.toLowerCase();
+        if (holds ? !holds(note.meta.title, lines.join("\n")) : !terms.every((term) => haystack.includes(term))) return [];
+        const noteTags = tagsOf(note.text).map(tagKey);
+        if (!tags.every((tag) => noteTags.some((known) => known === tag || known.startsWith(`${tag}/`)))) return [];
+        const blocks = options.blocks ? tagBlocks(note.text, tags) : [];
+        const line = lines.find((candidate) => terms.some((term) => candidate.toLowerCase().includes(term))) ?? "";
+        return [
+          {
+            id: note.meta.id,
+            noteId: readNoteFacts(note.text).id ?? null,
+            title: note.meta.title,
+            titleRanges: rangesOf(note.meta.title, terms),
+            score: rangesOf(note.meta.title, terms).length + 1,
+            snippets: line ? [{ text: line, ranges: rangesOf(line, terms) }] : [],
+            tags: tagsOf(note.text),
+            aliases: [],
+            relatedProject: note.meta.relatedProjectId ?? null,
+            updatedAt: Math.floor(note.meta.updatedAt / 1000),
+            ...(blocks.length > 0 ? { blocks } : {}),
+          },
+        ];
+      })
+      .sort((left, right) => right.score - left.score)
+      .slice(0, limit);
+  };
+
+  const tagCounts = (): NoteTagCount[] => {
+    const counts = new Map<string, NoteTagCount>();
+    for (const note of notes.values()) {
+      for (const tag of tagsOf(note.text)) {
+        const key = tagKey(tag);
+        const entry = counts.get(key) ?? { tag: key, label: tag, count: 0, notes: [] };
+        entry.count += 1;
+        entry.notes.push(note.meta.id);
+        counts.set(key, entry);
+      }
+    }
+    return [...counts.values()];
+  };
+
   const service = {
     loadNote: (id: string) => Promise.resolve(sourceOf(noteOf(id))),
-    saveNote: (id: string, text: string, version: string) => {
+    saveNote: (id: string, text: string, version: string) =>
+      recordNoteWrite(id, text, () => {
+        const note = noteOf(id);
+        const failed = failure;
+        failure = null;
+        if (failed === "conflict" || noteVersion(note.text) !== version) {
+          return Promise.reject(new NoteConflictError(sourceOf(note)));
+        }
+        if (failed) return Promise.reject(new Error(WRITE_ERRORS[failed]));
+        saveCounts.set(id, (saveCounts.get(id) ?? 0) + 1);
+        return Promise.resolve(store(id, text));
+      }),
+    renameNote: async (id: string, title: string) => {
       const note = noteOf(id);
-      if (version !== `v${note.version}`) return Promise.reject(new NoteConflictError(sourceOf(note)));
-      note.text = text;
-      note.version += 1;
-      changed();
-      return Promise.resolve(sourceOf(note));
-    },
-    renameNote: (id: string, title: string) => {
-      noteOf(id).meta.title = title;
-      changed();
-      return Promise.resolve();
+      note.meta.title = title;
+      const next = withNoteTitle(note.text, title);
+      if (noteEditorOpen(id) || next === note.text) changed();
+      else await recordNoteWrite(id, next, () => Promise.resolve(store(id, next)));
     },
     deleteNote: (id: string) => {
-      noteOf(id);
+      recycleBin.set(id, noteOf(id));
       notes.delete(id);
       watchers.delete(id);
+      forgetNoteLeftovers(id);
       changed();
       return Promise.resolve();
+    },
+    duplicateNote: (id: string, title: string) => {
+      const note = noteOf(id);
+      const text = setScalar(withNoteTitle(note.text, title), "id", crypto.randomUUID());
+      return Promise.resolve(addNote(title, text, note.meta.relatedProjectId));
     },
     openSettings: () => {
       settingsOpened += 1;
     },
-    createNote: () => {
-      created += 1;
-      const id = `new-${created}`;
-      notes.set(id, { meta: { id, title: "Untitled", project: "Notes", updatedAt: Date.now() }, text: newNoteSource("Untitled"), version: 1 });
-      changed();
-      return Promise.resolve(id);
+    shareNote: (id: string) => {
+      sharedNotes.push(id);
     },
-    setRelatedProject: (id: string, projectId: string | null) => {
-      const meta = noteOf(id).meta;
-      meta.relatedProjectId = projectId ?? undefined;
-      meta.project = PROJECTS.find((project) => project.id === projectId)?.name ?? "Notes";
+    createNote: () => Promise.resolve(addNote("Untitled", newNoteSource("Untitled"))),
+    createNoteFrom: (draft: NoteDraft) => {
+      const title = draft.title.trim() || "Untitled";
+      let base = newNoteSource(title, draft.body ?? "");
+      if (draft.icon) base = withNoteIcon(base, draft.icon);
+      if (draft.color) base = withNoteColor(base, draft.color);
+      return Promise.resolve(addNote(title, composeNoteSource(base, draft.properties, draft.tags), draft.relatedProject));
+    },
+    refreshNotes: () => {
       changed();
       return Promise.resolve();
     },
-    latestRun: (id: string) => (noteOf(id).meta.relatedProjectId === "ssl" ? LATEST_RUN : null),
+    searchNotes: (query: string, limit?: number, options?: NoteSearchOptions) => Promise.resolve(search(query, limit, options)),
+    noteTags: () => Promise.resolve(tagCounts()),
+    noteTasks: () =>
+      Promise.resolve(
+        [...notes.values()].flatMap((note): NoteTaskRecord[] => {
+          const tasks = tasksOf(note.text);
+          return tasks.length > 0 ? [{ projectId: note.meta.id, tasks }] : [];
+        }),
+      ),
+    projectCitations: (projectId: string) => Promise.resolve(projectId === "ssl" ? CITATIONS : []),
+    setRelatedProject: (id: string, projectId: string | null) => {
+      const meta = noteOf(id).meta;
+      meta.relatedProjectId = projectId ?? undefined;
+      meta.project = projectName(projectId);
+      changed();
+      return Promise.resolve();
+    },
+    latestRun: (id: string) => (notes.get(id)?.meta.relatedProjectId === "ssl" ? LATEST_RUN : null),
     previewArtifact: (artifact: ArtifactItem) => {
       const preview = PREVIEWS[artifact.path];
       return preview ? Promise.resolve(preview) : Promise.reject(new Error("The saved task file is missing."));
@@ -358,7 +659,7 @@ export function createNotesFixture(now = Date.now()): NotesFixture {
       if (copied && path.endsWith(".ipynb")) return Promise.resolve(notebookUrl(SWEEP_NOTEBOOK));
       return Promise.resolve(copied && path.endsWith(".svg") ? lossCurveSvg() : null);
     },
-    importNotebook: (noteId: string) => {
+    attachFile: (noteId: string) => {
       if (!copies.some((copy) => copy.noteId === noteId && copy.path === IMPORTED_NOTEBOOK)) {
         copies.push({ noteId, path: IMPORTED_NOTEBOOK });
       }
@@ -376,21 +677,19 @@ export function createNotesFixture(now = Date.now()): NotesFixture {
           projectId: note.meta.id,
           noteId: readNoteFacts(note.text).id ?? null,
           title: note.meta.title,
-          links: linkTargets(note.text),
+          links: linksOf(note.text),
+          blocks: blocksOf(note.text),
         })),
       ),
   } satisfies Partial<NotesData>;
 
   const build = (): NotesData => ({
     notes: items(),
+    revision,
     artifacts,
     experiments,
     projects: PROJECTS,
-    citations: [
-      { key: "he2022mae", label: "He et al. 2022, Masked autoencoders" },
-      { key: "chen2020simclr", label: "Chen et al. 2020, SimCLR" },
-      { key: "grill2020byol", label: "Grill et al. 2020, BYOL" },
-    ],
+    citations: CITATIONS,
     papers: [
       { id: "ssl-paper", label: "ssl-masking-paper (LaTeX)" },
       { id: "thesis", label: "thesis-chapter-3 (Typst)" },
@@ -503,12 +802,30 @@ export function createNotesFixture(now = Date.now()): NotesFixture {
     writeFromDisk: (id, text) => {
       const note = noteOf(id);
       note.text = text;
-      note.version += 1;
+      note.meta.updatedAt = Date.now();
       changed();
-      for (const watcher of watchers.get(id) ?? []) watcher();
+      fireWatchers(id);
+    },
+    removeFromDisk: (id) => {
+      notes.delete(id);
+      changed();
+      fireWatchers(id);
+    },
+    failNextWrite: (kind) => {
+      failure = kind;
     },
     text: (id) => noteOf(id).text,
     has: (id) => notes.has(id),
+    recycled: () => [...recycleBin.keys()],
+    restore: (id) => {
+      const note = recycleBin.get(id);
+      if (!note) throw new Error(`No recycled note ${id}`);
+      recycleBin.delete(id);
+      notes.set(id, note);
+      changed();
+    },
+    saves: (id) => saveCounts.get(id) ?? 0,
     settingsOpened: () => settingsOpened,
+    shared: () => [...sharedNotes],
   };
 }

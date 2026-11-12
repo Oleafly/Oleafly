@@ -1,10 +1,11 @@
+import { arc, bin, type PieArcDatum, pie, range, type ScaleContinuousNumeric, scaleLinear, scaleLog, thresholdSturges, tickStep } from "d3";
 import { ChartColumn } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { newChartSource } from "./block-templates";
-import type { NoteBlockKind, PaintContext } from "./note-blocks";
+import { blockMessage, element, type NoteBlockKind, type PaintContext, svgNode, svgText } from "./note-blocks";
 
 export type ChartType = "bar" | "line" | "area" | "scatter" | "pie" | "donut" | "histogram";
 
@@ -47,8 +48,7 @@ export type ChartProblem =
 
 export type ChartCheck = { ok: true; chart: ChartData } | { ok: false; problem: ChartProblem };
 
-const TYPES: readonly string[] = ["bar", "line", "area", "scatter", "pie", "donut", "histogram"];
-const SVG_NS = "http://www.w3.org/2000/svg";
+const TYPES: ReadonlySet<string> = new Set(["bar", "line", "area", "scatter", "pie", "donut", "histogram"]);
 export const PALETTE_SIZE = 8;
 const MAX_SERIES = PALETTE_SIZE;
 const MAX_POINTS = 5000;
@@ -60,8 +60,8 @@ const BASE_HEIGHT = 280;
 const PLOT_TOP = 12;
 const PLOT_BOTTOM = 248;
 const RIGHT = WIDTH - 8;
-const TITLE_ROOM = 18;
-export const CHAR_WIDTH = 6.2;
+export const TITLE_ROOM = 18;
+const CHAR_WIDTH = 6.2;
 
 let serial = 0;
 const openTables = new WeakSet<HTMLElement>();
@@ -110,6 +110,21 @@ function histogramProblem(series: Record<string, unknown>[]): ChartProblem | nul
   return total > MAX_SAMPLES ? "tooManyPoints" : null;
 }
 
+function categorySeriesProblem(item: Record<string, unknown>, count: number, round: boolean, log: boolean): ChartProblem | null {
+  if (!finiteNumbers(item.values)) return "invalid";
+  if (item.values.length !== count) return "length";
+  if (item.errors !== undefined) {
+    if (round) return "errorsType";
+    if (errorsProblem(item.errors, item.values.length)) return "errors";
+  }
+  if (log && item.values.some((value) => value <= 0)) return "log";
+  return null;
+}
+
+function pieTotalProblem(values: readonly number[]): boolean {
+  return values.some((value) => value < 0) || values.reduce((sum, value) => sum + value, 0) <= 0;
+}
+
 function categoryProblem(
   type: string,
   categories: unknown,
@@ -120,34 +135,30 @@ function categoryProblem(
   if (!categories.every((category) => typeof category === "string")) return "invalid";
   const round = type === "pie" || type === "donut";
   for (const item of series) {
-    if (!finiteNumbers(item.values)) return "invalid";
-    if (item.values.length !== categories.length) return "length";
-    if (item.errors !== undefined) {
-      if (round) return "errorsType";
-      if (errorsProblem(item.errors, item.values.length)) return "errors";
-    }
-    if (log && item.values.some((value) => value <= 0)) return "log";
+    const problem = categorySeriesProblem(item, categories.length, round, log);
+    if (problem) return problem;
   }
   if (categories.length * series.length > MAX_POINTS) return "tooManyPoints";
-  if (round) {
-    const values = series[0].values as number[];
-    if (values.some((value) => value < 0) || values.reduce((sum, value) => sum + value, 0) <= 0) return "pie";
-  }
+  if (round && pieTotalProblem(series[0].values as number[])) return "pie";
   return null;
 }
 
-function chartProblem(data: unknown): ChartProblem | null {
-  if (!isRecord(data)) return "invalid";
+function settingsInvalid(data: Record<string, unknown>): boolean {
   const texts = [data.title, data.description, data.note, data.unit, data.xLabel, data.yLabel];
-  if (!texts.every(optionalText)) return "invalid";
-  if (data.yScale !== undefined && data.yScale !== "linear" && data.yScale !== "log") return "invalid";
-  if (data.stacked !== undefined && typeof data.stacked !== "boolean") return "invalid";
+  if (!texts.every(optionalText)) return true;
+  if (data.yScale !== undefined && data.yScale !== "linear" && data.yScale !== "log") return true;
+  return data.stacked !== undefined && typeof data.stacked !== "boolean";
+}
+
+function binsInvalid(bins: unknown): boolean {
+  return bins !== undefined && !(Number.isInteger(bins) && (bins as number) >= 1 && (bins as number) <= MAX_BINS);
+}
+
+function chartProblem(data: unknown): ChartProblem | null {
+  if (!isRecord(data) || settingsInvalid(data)) return "invalid";
   const type = data.type ?? "bar";
-  if (typeof type !== "string" || !TYPES.includes(type)) return "type";
-  const bins = data.bins;
-  if (bins !== undefined && !(Number.isInteger(bins) && (bins as number) >= 1 && (bins as number) <= MAX_BINS)) {
-    return "bins";
-  }
+  if (typeof type !== "string" || !TYPES.has(type)) return "type";
+  if (binsInvalid(data.bins)) return "bins";
   const series = data.series;
   if (!Array.isArray(series) || series.length === 0) return "invalid";
   if (!series.every((item) => isRecord(item) && typeof item.name === "string")) return "invalid";
@@ -174,54 +185,16 @@ export function chartType(data: ChartData): ChartType {
   return data.type ?? "bar";
 }
 
-function element(tag: string, className: string, text?: string): HTMLElement {
-  const node = document.createElement(tag);
-  node.className = className;
-  if (text) node.textContent = text;
-  return node;
-}
-
-export function svgNode(tag: string, attributes: Record<string, string | number>): SVGElement {
-  const node = document.createElementNS(SVG_NS, tag);
-  for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, String(value));
-  return node;
-}
-
-function svgText(text: string, attributes: Record<string, string | number>): SVGElement {
-  const node = svgNode("text", attributes);
-  node.textContent = text;
-  return node;
-}
-
 export function seriesColor(index: number): string {
-  return `var(--note-chart-${(index % PALETTE_SIZE) + 1})`;
+  return `var(--chart-${(index % PALETTE_SIZE) + 1})`;
 }
 
 function colorFor(data: ChartData, index: number): string {
   return data.series.length === 1 ? "var(--primary)" : seriesColor(index);
 }
 
-export function niceStep(span: number, count: number): number {
-  const raw = span / Math.max(1, count);
-  if (!(raw > 0) || !Number.isFinite(raw)) return 1;
-  const power = 10 ** Math.floor(Math.log10(raw));
-  const fraction = raw / power;
-  if (fraction <= 1) return power;
-  if (fraction <= 2) return 2 * power;
-  if (fraction <= 5) return 5 * power;
-  return 10 * power;
-}
-
 function clean(value: number): number {
   return Number(value.toPrecision(12)) || 0;
-}
-
-export function ticksBetween(low: number, high: number, step: number): number[] {
-  const ticks: number[] = [];
-  const first = Math.ceil(low / step - 1e-9);
-  const last = Math.floor(high / step + 1e-9);
-  for (let index = first; index <= last && ticks.length < 60; index += 1) ticks.push(clean(index * step));
-  return ticks;
 }
 
 const WHOLE_NUMBER: Intl.NumberFormatOptions = { maximumFractionDigits: 0 };
@@ -251,25 +224,41 @@ export interface LegendItem {
   color: string;
 }
 
+function swatch(color: string): HTMLElement {
+  const node = element("span", "note-chart-swatch size-2 shrink-0 rounded-xs");
+  node.setAttribute("style", `background: ${color}`);
+  return node;
+}
+
+export const CHART_LEGEND_CLASS = "note-chart-legend";
+
 export function chartLegend(items: readonly LegendItem[]): HTMLElement {
   const list = element(
     "ul",
-    "note-chart-legend mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[0.6875rem] text-muted-foreground",
+    `${CHART_LEGEND_CLASS} mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[0.6875rem] text-muted-foreground`,
   );
   for (const item of items) {
     const entry = element("li", "flex min-w-0 items-center gap-1.5");
-    const swatch = element("span", "note-chart-swatch shrink-0");
-    swatch.setAttribute("style", `background: ${item.color}`);
-    entry.append(swatch, element("span", "truncate", item.label));
+    entry.append(swatch(item.color), element("span", "truncate", item.label));
     list.append(entry);
   }
   return list;
 }
 
-interface ValueAxis {
-  scale: (value: number) => number;
+export interface AxisTicks {
   ticks: number[];
   labels: string[];
+}
+
+export function linearTicks(scale: ScaleContinuousNumeric<number, number>, count: number, unit = ""): AxisTicks {
+  const [low, high] = scale.domain();
+  const step = tickStep(low, high, count);
+  const ticks = scale.ticks(count);
+  return { ticks, labels: ticks.map((tick) => `${formatTick(tick, step)}${unit}`) };
+}
+
+interface ValueAxis extends AxisTicks {
+  scale: (value: number) => number;
   zero: number;
 }
 
@@ -300,37 +289,20 @@ function linearAxis(extent: Extent, unit: string): ValueAxis {
     low = low === 0 ? 0 : low - room;
     high += room;
   }
-  const step = niceStep(high - low, 4);
-  const bottom = Math.floor(low / step + 1e-9) * step;
-  const top = Math.ceil(high / step - 1e-9) * step;
-  const span = top - bottom;
-  const scale = (value: number) => PLOT_BOTTOM - ((value - bottom) / span) * (PLOT_BOTTOM - PLOT_TOP);
-  const ticks = ticksBetween(bottom, top, step);
-  return {
-    scale,
-    ticks,
-    labels: ticks.map((tick) => `${formatTick(tick, step)}${unit}`),
-    zero: scale(Math.min(top, Math.max(bottom, 0))),
-  };
+  const scale = scaleLinear().domain([low, high]).nice(4).range([PLOT_BOTTOM, PLOT_TOP]);
+  const [bottom, top] = scale.domain();
+  return { scale, ...linearTicks(scale, 4, unit), zero: scale(Math.min(top, Math.max(bottom, 0))) };
 }
 
 function logAxis(extent: Extent, unit: string): ValueAxis {
   const first = Math.floor(Math.log10(extent.low) + 1e-9);
-  let last = Math.ceil(Math.log10(extent.high) - 1e-9);
-  if (last <= first) last = first + 1;
-  const every = Math.ceil((last - first) / 6);
-  const scale = (value: number) =>
-    value > 0
-      ? Math.min(PLOT_BOTTOM, PLOT_BOTTOM - ((Math.log10(value) - first) / (last - first)) * (PLOT_BOTTOM - PLOT_TOP))
-      : PLOT_BOTTOM;
-  const ticks: number[] = [];
-  for (let power = first; power <= last; power += every) ticks.push(clean(10 ** power));
-  return {
-    scale,
-    ticks,
-    labels: ticks.map((tick) => `${formatTick(tick, tick)}${unit}`),
-    zero: PLOT_BOTTOM,
-  };
+  const last = Math.max(first + 1, Math.ceil(Math.log10(extent.high) - 1e-9));
+  const scale = scaleLog()
+    .domain([10 ** first, 10 ** last])
+    .range([PLOT_BOTTOM, PLOT_TOP])
+    .clamp(true);
+  const ticks = scale.ticks(Math.min(6, last - first)).map(clean);
+  return { scale, ticks, labels: ticks.map((tick) => `${formatTick(tick, tick)}${unit}`), zero: PLOT_BOTTOM };
 }
 
 interface Bars {
@@ -388,47 +360,45 @@ function axisFor(data: ChartData, bars: Bars | null): ValueAxis {
   return log ? logAxis(extent, unit) : linearAxis(extent, unit);
 }
 
-function plotLeft(data: ChartData, axis: ValueAxis): number {
-  const longest = Math.max(...axis.labels.map((label) => label.length));
-  return Math.max(28, Math.ceil(10 + CHAR_WIDTH * longest)) + (data.yLabel ? TITLE_ROOM : 0);
+export function labelRoom(labels: readonly string[], title: string | undefined): number {
+  const longest = Math.max(1, ...labels.map((label) => label.length));
+  return Math.max(28, Math.ceil(10 + CHAR_WIDTH * longest)) + (title ? TITLE_ROOM : 0);
+}
+
+function steppedBins(low: number, high: number, target: number) {
+  let wanted = target;
+  let step = tickStep(low, high, wanted);
+  while (wanted > 1 && step < (high - low) / target) {
+    wanted -= 1;
+    step = tickStep(low, high, wanted);
+  }
+  const start = clean(Math.floor(low / step + 1e-9) * step);
+  const end = clean(Math.ceil(high / step - 1e-9) * step);
+  return bin()
+    .domain([start, end])
+    .thresholds(range(start + step, end - step / 2, step).map(clean));
 }
 
 export function histogramBins(samples: readonly (readonly number[])[], bins?: number): { edges: number[]; counts: number[][] } {
   let low = Number.POSITIVE_INFINITY;
   let high = Number.NEGATIVE_INFINITY;
-  let largest = 0;
+  let largest: readonly number[] = [];
   for (const values of samples) {
-    largest = Math.max(largest, values.length);
+    if (values.length > largest.length) largest = values;
     for (const value of values) {
       if (value < low) low = value;
       if (value > high) high = value;
     }
   }
-  let edges: number[];
-  if (low === high) {
-    edges = [low, high];
-  } else if (bins) {
-    const width = (high - low) / bins;
-    edges = Array.from({ length: bins + 1 }, (_value, index) => (index === bins ? high : clean(low + width * index)));
-  } else {
-    const target = Math.min(DEFAULT_BIN_CAP, Math.ceil(Math.log2(largest) + 1));
-    const step = niceStep(high - low, target);
-    const start = Math.floor(low / step + 1e-9) * step;
-    const count = Math.max(1, Math.ceil((high - start) / step - 1e-9));
-    edges = Array.from({ length: count + 1 }, (_value, index) => clean(start + step * index));
-  }
-  const bucketCount = edges.length - 1;
-  const first = edges[0];
-  const span = edges[bucketCount] - first;
-  const counts = samples.map((values) => {
-    const row = new Array<number>(bucketCount).fill(0);
-    for (const value of values) {
-      const bucket = span === 0 ? 0 : Math.min(bucketCount - 1, Math.floor(((value - first) / span) * bucketCount));
-      row[bucket] += 1;
-    }
-    return row;
-  });
-  return { edges, counts };
+  if (low === high) return { edges: [low, high], counts: samples.map((values) => [values.length]) };
+  const binner = bins
+    ? bin()
+        .domain([low, high])
+        .thresholds(Array.from({ length: bins - 1 }, (_value, index) => clean(low + ((high - low) * (index + 1)) / bins)))
+    : steppedBins(low, high, Math.min(DEFAULT_BIN_CAP, thresholdSturges(largest)));
+  const grouped = samples.map((values) => binner(values as number[]));
+  const edges = [...grouped[0].map((group) => group.x0 as number), grouped[0].at(-1)?.x1 as number];
+  return { edges, counts: grouped.map((groups) => groups.map((group) => group.length)) };
 }
 
 function histogramBars(data: ChartData): Bars {
@@ -461,17 +431,15 @@ function categoryBars(data: ChartData): Bars {
 function tooltipBox(title: string): HTMLElement {
   const box = element(
     "div",
-    "note-chart-tooltip pointer-events-none absolute top-0 z-10 min-w-32 rounded-md border bg-popover px-2 py-1 text-[0.6875rem] text-popover-foreground shadow-md",
+    "note-chart-tooltip pointer-events-none absolute top-0 z-10 min-w-32 -translate-x-1/2 rounded-md border bg-popover px-2 py-1 text-[0.6875rem] text-popover-foreground shadow-md",
   );
-  box.append(element("p", "note-chart-tooltip-title", title));
+  box.append(element("p", "note-chart-tooltip-title font-medium", title));
   return box;
 }
 
 function tooltipRow(box: HTMLElement, color: string, name: string, value: string): void {
-  const row = element("p", "note-chart-tooltip-row");
-  const swatch = element("span", "note-chart-swatch");
-  swatch.setAttribute("style", `background: ${color}`);
-  row.append(swatch, element("span", "", name), element("span", "note-chart-value", value));
+  const row = element("p", "note-chart-tooltip-row flex items-center gap-1.5 text-muted-foreground");
+  row.append(swatch(color), element("span", "", name), element("span", "note-chart-value ms-auto text-foreground tabular-nums", value));
   box.append(row);
 }
 
@@ -505,21 +473,24 @@ function valueGrid(svg: SVGElement, axis: ValueAxis, left: number): void {
   svg.append(svgNode("line", { x1: left, x2: RIGHT, y1: axis.zero, y2: axis.zero, class: "note-chart-base" }));
 }
 
-function axisTitles(svg: SVGElement, data: ChartData, left: number, height: number): void {
-  if (data.xLabel) {
+export interface PlotFrame {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+  height: number;
+}
+
+export function axisTitles(svg: SVGElement, titles: { x?: string; y?: string }, frame: PlotFrame): void {
+  if (titles.x) {
     svg.append(
-      svgText(data.xLabel, {
-        x: (left + RIGHT) / 2,
-        y: height - 6,
-        "text-anchor": "middle",
-        class: "note-chart-axis-title",
-      }),
+      svgText(titles.x, { x: (frame.left + frame.right) / 2, y: frame.height - 6, "text-anchor": "middle", class: "note-chart-axis-title" }),
     );
   }
-  if (data.yLabel) {
-    const middle = (PLOT_TOP + PLOT_BOTTOM) / 2;
+  if (titles.y) {
+    const middle = (frame.top + frame.bottom) / 2;
     svg.append(
-      svgText(data.yLabel, {
+      svgText(titles.y, {
         x: 12,
         y: middle,
         "text-anchor": "middle",
@@ -586,13 +557,18 @@ function categoryGroups(
   });
 }
 
+function fixedGroupWidth(band: number, singleHistogram: boolean, stacked: boolean): number {
+  if (singleHistogram) return Math.max(1, band - 1);
+  return stacked ? Math.min(56, band * 0.6) : 0;
+}
+
 function drawBars(svg: SVGElement, plot: HTMLElement, data: ChartData, bars: Bars, axis: ValueAxis, left: number): void {
   const frame = categoryFrame(left, bars.categories.length);
   const groups = categoryGroups(svg, plot, data, bars, frame);
   const count = bars.series.length;
   const histogram = chartType(data) === "histogram";
   const stacked = data.stacked === true && !histogram;
-  const groupWidth = histogram && count === 1 ? Math.max(1, frame.band - 1) : stacked ? Math.min(56, frame.band * 0.6) : 0;
+  const groupWidth = fixedGroupWidth(frame.band, histogram && count === 1, stacked);
   const barWidth = groupWidth || Math.min(44, (frame.band * 0.7) / count);
   const gap = Math.min(4, (frame.band * 0.3) / count);
   bars.categories.forEach((_category, index) => {
@@ -674,16 +650,12 @@ function drawScatter(svg: SVGElement, plot: HTMLElement, data: ChartData, axis: 
   const found: Extent = { low: Number.POSITIVE_INFINITY, high: Number.NEGATIVE_INFINITY };
   for (const series of data.series) for (const point of series.points as number[][]) grow(found, point[0]);
   const extent = found.low === found.high ? { low: found.low - 1, high: found.high + 1 } : pad(found);
-  const step = niceStep(extent.high - extent.low, 6);
-  const low = Math.floor(extent.low / step + 1e-9) * step;
-  const high = Math.ceil(extent.high / step - 1e-9) * step;
-  const x = (value: number) => left + ((value - low) / (high - low)) * (RIGHT - left);
-  for (const tick of ticksBetween(low, high, step)) {
+  const x = scaleLinear().domain([extent.low, extent.high]).nice(6).range([left, RIGHT]);
+  const { ticks, labels } = linearTicks(x, 6);
+  ticks.forEach((tick, index) => {
     svg.append(svgNode("line", { x1: x(tick), x2: x(tick), y1: PLOT_TOP, y2: PLOT_BOTTOM, class: "note-chart-grid" }));
-    svg.append(
-      svgText(formatTick(tick, step), { x: x(tick), y: PLOT_BOTTOM + 22, "text-anchor": "middle", class: "note-chart-label" }),
-    );
-  }
+    svg.append(svgText(labels[index], { x: x(tick), y: PLOT_BOTTOM + 22, "text-anchor": "middle", class: "note-chart-label" }));
+  });
   const unit = data.unit ?? "";
   data.series.forEach((series, seriesIndex) => {
     const color = colorFor(data, seriesIndex);
@@ -731,53 +703,27 @@ function slicesOf(data: ChartData): Slice[] {
   return slices;
 }
 
-function arcPoint(cx: number, cy: number, radius: number, angle: number): string {
-  return `${clean(cx + radius * Math.cos(angle))} ${clean(cy + radius * Math.sin(angle))}`;
-}
-
-function slicePath(cx: number, cy: number, outer: number, inner: number, start: number, end: number): string {
-  const large = end - start > Math.PI ? 1 : 0;
-  const outerArc = `M${arcPoint(cx, cy, outer, start)}A${outer} ${outer} 0 ${large} 1 ${arcPoint(cx, cy, outer, end)}`;
-  if (inner === 0) return `${outerArc}L${cx} ${cy}Z`;
-  return `${outerArc}L${arcPoint(cx, cy, inner, end)}A${inner} ${inner} 0 ${large} 0 ${arcPoint(cx, cy, inner, start)}Z`;
-}
-
 function drawPie(svg: SVGElement, plot: HTMLElement, data: ChartData, slices: Slice[]): void {
   const cx = WIDTH / 2;
-  const cy = BASE_HEIGHT / 2;
-  const outer = 116;
-  const inner = chartType(data) === "donut" ? 70 : 0;
-  const total = slices.reduce((sum, slice) => sum + slice.value, 0);
+  const wedge = arc<PieArcDatum<Slice>>()
+    .outerRadius(116)
+    .innerRadius(chartType(data) === "donut" ? 70 : 0);
+  const arcs = pie<Slice>()
+    .sort(null)
+    .value((slice) => slice.value)(slices);
   const unit = data.unit ?? "";
-  let angle = -Math.PI / 2;
-  for (const slice of slices) {
-    const share = slice.value / total;
-    if (share === 0) continue;
-    const group = svgNode("g", { class: "note-chart-slice" });
-    if (share > 0.9999) {
-      group.append(
-        inner === 0
-          ? svgNode("circle", { cx, cy, r: outer, class: "note-chart-wedge", style: `fill: ${slice.color}` })
-          : svgNode("circle", {
-              cx,
-              cy,
-              r: (outer + inner) / 2,
-              class: "note-chart-ring",
-              "stroke-width": outer - inner,
-              style: `stroke: ${slice.color}`,
-            }),
-      );
-    } else {
-      const end = angle + share * Math.PI * 2;
-      group.append(
-        svgNode("path", {
-          d: slicePath(cx, cy, outer, inner, angle, end),
-          class: "note-chart-wedge note-chart-segment",
-          style: `fill: ${slice.color}`,
-        }),
-      );
-      angle = end;
-    }
+  for (const part of arcs) {
+    if (part.value === 0) continue;
+    const { data: slice } = part;
+    const share = (part.endAngle - part.startAngle) / (2 * Math.PI);
+    const group = svgNode("g", { class: "note-chart-slice", transform: `translate(${cx} ${BASE_HEIGHT / 2})` });
+    group.append(
+      svgNode("path", {
+        d: wedge(part) ?? "",
+        class: share < 1 ? "note-chart-wedge note-chart-segment" : "note-chart-wedge",
+        style: `fill: ${slice.color}`,
+      }),
+    );
     const tip = tooltipBox(slice.name);
     tooltipRow(tip, slice.color, data.series[0].name, `${slice.value}${unit} (${formatShare(share)})`);
     hover(group, plot, tip, cx);
@@ -835,9 +781,9 @@ function dataTable(data: ChartData, bars: Bars | null): HTMLElement {
     ),
   );
   const { head, rows } = dataRows(data, bars);
-  const header = element("tr", "border-b");
+  const header = element("tr", "border-b border-(--note-table-line)");
   for (const [index, name] of head.entries()) {
-    const cell = element("th", cn("px-2 py-1 font-medium", index === 0 ? "text-left" : "text-right"), name);
+    const cell = element("th", cn("bg-(--note-table-head) px-2 py-1 font-medium", index === 0 ? "text-left" : "text-right"), name);
     cell.setAttribute("scope", "col");
     header.append(cell);
   }
@@ -845,7 +791,7 @@ function dataTable(data: ChartData, bars: Bars | null): HTMLElement {
   thead.append(header);
   const tbody = element("tbody", "");
   for (const row of rows) {
-    const line = element("tr", "border-b border-border/60");
+    const line = element("tr", "border-b border-(--note-table-line)");
     row.forEach((value, index) => {
       if (index === 0) {
         const cell = element("th", "px-2 py-1 text-left font-normal", value);
@@ -871,7 +817,7 @@ function dataToggle(preview: HTMLElement, chart: HTMLElement, data: ChartData, b
     "button",
     cn(buttonVariants({ variant: "ghost", size: "xs" }), "note-chart-data-toggle text-muted-foreground"),
     i18n.t(($) => $.notes.blocks.charts.showData),
-  ) as HTMLButtonElement;
+  );
   button.type = "button";
   button.setAttribute("aria-controls", id);
   const show = (open: boolean) => {
@@ -907,24 +853,36 @@ function legendFor(data: ChartData, slices: Slice[] | null): HTMLElement | null 
   return chartLegend(data.series.map((series, index) => ({ label: series.name, color: seriesColor(index) })));
 }
 
-export function chartScale(data: ChartData): (value: number) => number {
-  const bars = chartType(data) === "scatter" ? null : chartType(data) === "histogram" ? histogramBars(data) : categoryBars(data);
-  return axisFor(data, bars).scale;
+function barsFor(data: ChartData, type: ChartType): Bars | null {
+  if (type === "scatter") return null;
+  return type === "histogram" ? histogramBars(data) : categoryBars(data);
+}
+
+function drawAxisChart(svg: SVGElement, plot: HTMLElement, data: ChartData, type: ChartType, height: number): Bars | null {
+  const bars = barsFor(data, type);
+  const axis = axisFor(data, bars);
+  const left = labelRoom(axis.labels, data.yLabel);
+  valueGrid(svg, axis, left);
+  axisTitles(svg, { x: data.xLabel, y: data.yLabel }, { left, right: RIGHT, top: PLOT_TOP, bottom: PLOT_BOTTOM, height });
+  if (bars === null) drawScatter(svg, plot, data, axis, left);
+  else if (type === "line" || type === "area") drawLines(svg, plot, data, bars, axis, left);
+  else drawBars(svg, plot, data, bars, axis, left);
+  return bars;
 }
 
 export function paintChart(preview: HTMLElement, source: string, context?: Partial<PaintContext>): void {
   const result = checkChart(source);
   if (!result.ok) {
-    preview.replaceChildren(element("p", "note-drawn-empty", chartMessage(result.problem)));
+    blockMessage(preview, chartMessage(result.problem));
     return;
   }
   const data = result.chart;
   const type = chartType(data);
   const round = type === "pie" || type === "donut";
-  const chart = element("div", "note-chart");
-  if (data.title) chart.append(element("p", "note-chart-title", data.title));
-  if (data.description) chart.append(element("p", "note-chart-text", data.description));
-  const plot = element("div", "note-chart-plot");
+  const chart = element("div", "note-chart w-full");
+  if (data.title) chart.append(element("p", "note-chart-title text-sm font-semibold", data.title));
+  if (data.description) chart.append(element("p", "note-chart-text text-xs text-muted-foreground", data.description));
+  const plot = element("div", "note-chart-plot relative my-3");
   const height = BASE_HEIGHT + (data.xLabel && !round ? TITLE_ROOM : 0);
   const svg = svgNode("svg", { viewBox: `0 0 ${WIDTH} ${height}`, role: "img" });
   svg.setAttribute("aria-label", data.title ?? i18n.t(($) => $.notes.blocks.chart));
@@ -934,20 +892,13 @@ export function paintChart(preview: HTMLElement, source: string, context?: Parti
     slices = slicesOf(data);
     drawPie(svg, plot, data, slices);
   } else {
-    bars = type === "scatter" ? null : type === "histogram" ? histogramBars(data) : categoryBars(data);
-    const axis = axisFor(data, bars);
-    const left = plotLeft(data, axis);
-    valueGrid(svg, axis, left);
-    axisTitles(svg, data, left, height);
-    if (bars === null) drawScatter(svg, plot, data, axis, left);
-    else if (type === "line" || type === "area") drawLines(svg, plot, data, bars, axis, left);
-    else drawBars(svg, plot, data, bars, axis, left);
+    bars = drawAxisChart(svg, plot, data, type, height);
   }
   plot.append(svg);
   chart.append(plot);
   const legend = legendFor(data, slices);
   if (legend) chart.append(legend);
-  if (data.note) chart.append(element("p", "note-chart-text", data.note));
+  if (data.note) chart.append(element("p", "note-chart-text text-xs text-muted-foreground", data.note));
   if (!context?.still) dataToggle(preview, chart, data, bars ?? (round ? categoryBars(data) : null));
   preview.replaceChildren(chart);
 }

@@ -172,6 +172,9 @@
       },
       "commentsAllowed": {
         "label": "Name of a server-wide setting. When off, comment threads are hidden in every shared project on this server but not deleted."
+      },
+      "publicNotesAllowed": {
+        "label": "Name of a server setting that lets members publish notes as public web pages anyone can read"
       }
     }
   },
@@ -320,7 +323,11 @@
       },
       "count": "{{shown}} and {{total}} are numbers of projects in the list"
     },
-    "states": {}
+    "states": {},
+    "pages": {
+      "takeDown": "Button for a server admin that hides one public note page without deleting it",
+      "restore": "Button that makes a page an admin took down public again"
+    }
   },
   "links": {
     "malformed": "Shown when an Oleafly link someone clicked in an email or web page cannot be read.",
@@ -474,5 +481,13 @@
     "name": "Button that gives a version a name, like a bookmark. Not about file names.",
     "restoreProject": "Button that brings back every file as it was in this version. The change is a normal new edit, so nothing is lost.",
     "timeRange": "Two clock times, such as 10:02 to 10:40, for a group of changes."
+  },
+  "publish": {
+    "tabs": {
+      "people": "Tab in a note's Share dialog listing the people the note is shared with",
+      "publish": "Tab in a note's Share dialog for putting a read-only copy of the note on a public web page"
+    },
+    "republish": "Button that uploads the note's current text to the same public link",
+    "unpublish": "Button that deletes the public web copy of a note. The note itself stays."
   }
 }

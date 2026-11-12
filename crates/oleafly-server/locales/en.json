@@ -11,6 +11,8 @@
   "landing.open": "Open in Oleafly",
   "landing.get": "Get Oleafly",
   "landing.open_browser": "Open in browser",
+  "published.gone_title": "This page isn't available",
+  "published.gone_body": "Its author may have unpublished it, or this server no longer shows public pages.",
   "web.sign_in_body": "Sign in to open your shared projects in this browser.",
   "web.try_again": "Try again",
   "web.other_browser": "This link finishes signing in on {device}, the browser where you started. Open the email there instead. The link still works.",

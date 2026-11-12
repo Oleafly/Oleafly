@@ -1,6 +1,5 @@
 import { quotedScalar as readQuotedScalar } from "@/lib/front-matter";
 import {
-  applySettingEdits,
   composeSettingSteps,
   type DocumentSettingChanges,
   type DocumentSettingsEdit,
@@ -421,17 +420,6 @@ function scalarEntryEdits(text: string, scan: Scan, yamlKey: string, value: stri
 
 function scalarStep(key: ScalarKey, value: string | null): SettingsStep {
   return scanned((text, scan) => scalarEntryEdits(text, scan, YAML_KEYS[key], value, TYPED.has(key)));
-}
-
-export function readFrontMatterScalar(text: string, key: string): string | null {
-  const entry = entryIn(scanFrontMatter(text), key);
-  return entry?.value.kind === "scalar" ? entry.value.value : null;
-}
-
-export function setFrontMatterScalar(text: string, key: string, value: string | null): string {
-  const scan = scanFrontMatter(text);
-  if (scan.status === "unclosed") return text;
-  return applySettingEdits(text, scalarEntryEdits(text, scan, key, value, false));
 }
 
 type ScalarValue = Extract<YamlValue, { kind: "scalar" }>;

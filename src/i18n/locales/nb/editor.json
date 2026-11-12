@@ -1002,13 +1002,14 @@
         "environment": "{{environment}}-miljø",
         "command": "\\{{command}}-kommando",
         "latexSource": "LaTeX-kildekode",
+        "html": "HTML",
         "maketitlePreview": "Laget ut fra dokumenttittelen og forfattermetadataene.",
         "figurePreserved": "Den eksakte figurkilden er tatt vare på.",
         "tablePreserved": "Den eksakte tabellkilden er tatt vare på.",
         "sourcePreserved": "Den eksakte kilden er tatt vare på",
         "editSource": "Rediger kilden",
-        "summaryLabel": "{{label}}. Den eksakte LaTeX-kilden er tatt vare på.",
-        "inputLabel": "Eksakt LaTeX-kilde for blokken"
+        "summaryLabel": "{{label}}. Den eksakte kilden er tatt vare på.",
+        "inputLabel": "Eksakt kilde for blokken"
       },
       "inline": {
         "label": "Rå kilde i linjen",

@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { BreadcrumbLink } from "@/components/ui/breadcrumb";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,9 +8,10 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ColorDot } from "@/components/ui/color-swatch";
 import { notifyError } from "@/lib/toast";
 import { useNotesData } from "./notes-data";
-import { ProjectDot, useProjectColor } from "./project-color";
+import { useProjectColor } from "./project-color";
 import type { NoteItem } from "./types";
 
 export function RelatedProjectMenu({ note }: Readonly<{ note: NoteItem }>) {
@@ -18,10 +20,11 @@ export function RelatedProjectMenu({ note }: Readonly<{ note: NoteItem }>) {
   const colorOf = useProjectColor();
   const label = note.relatedProjectId ? note.project : t(($) => $.notes.workspace.chooseProject);
   const color = colorOf(note.relatedProjectId);
+  const dot = color && <ColorDot color={color} size="xs" />;
   if (!projects || !setRelatedProject) {
     return (
-      <span className="flex min-w-0 items-center gap-1.5">
-        <ProjectDot color={color} />
+      <span className="flex min-w-0 items-center gap-1.5 px-1">
+        {dot}
         <span className="truncate">{note.project}</span>
       </span>
     );
@@ -29,14 +32,12 @@ export function RelatedProjectMenu({ note }: Readonly<{ note: NoteItem }>) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={t(($) => $.notes.workspace.projectMenu, { project: label })}
-          className="flex min-w-0 max-w-[16rem] items-center gap-1.5 rounded px-1 py-0.5 transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent data-[state=open]:bg-accent"
-        >
-          <ProjectDot color={color} />
-          <span className="truncate">{label}</span>
-        </button>
+        <BreadcrumbLink asChild className="max-w-[16rem]">
+          <button type="button" aria-label={t(($) => $.notes.workspace.projectMenu, { project: label })}>
+            {dot}
+            <span className="truncate">{label}</span>
+          </button>
+        </BreadcrumbLink>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-80 overflow-y-auto">
         <DropdownMenuLabel>{t(($) => $.notes.workspace.project)}</DropdownMenuLabel>
@@ -50,12 +51,12 @@ export function RelatedProjectMenu({ note }: Readonly<{ note: NoteItem }>) {
           }}
         >
           <DropdownMenuRadioItem value="">
-            <ProjectDot color={null} />
+            <ColorDot color="transparent" size="xs" />
             {t(($) => $.notes.workspace.noProject)}
           </DropdownMenuRadioItem>
           {projects.map((project) => (
             <DropdownMenuRadioItem key={project.id} value={project.id}>
-              <ProjectDot color={colorOf(project.id)} />
+              <ColorDot color={colorOf(project.id) ?? "transparent"} size="xs" />
               <span className="truncate">{project.name}</span>
             </DropdownMenuRadioItem>
           ))}

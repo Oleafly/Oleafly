@@ -1,13 +1,9 @@
-import { useEffect, useState } from "react";
+import { mediaQuery, useMediaQuery } from "@/lib/media-query";
 
 export const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
-function motionQuery(): MediaQueryList | null {
-  return typeof window !== "undefined" && typeof window.matchMedia === "function" ? window.matchMedia(REDUCED_MOTION_QUERY) : null;
-}
-
 export function prefersReducedMotion(): boolean {
-  return motionQuery()?.matches ?? false;
+  return mediaQuery(REDUCED_MOTION_QUERY)?.matches ?? false;
 }
 
 export function scrollBehavior(): ScrollBehavior {
@@ -15,13 +11,5 @@ export function scrollBehavior(): ScrollBehavior {
 }
 
 export function useReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(prefersReducedMotion);
-  useEffect(() => {
-    const query = motionQuery();
-    if (!query) return;
-    const update = () => setReduced(query.matches);
-    query.addEventListener?.("change", update);
-    return () => query.removeEventListener?.("change", update);
-  }, []);
-  return reduced;
+  return useMediaQuery(REDUCED_MOTION_QUERY);
 }

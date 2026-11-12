@@ -14,12 +14,10 @@ import {
   OverleafBrandIcon,
   ZoteroBrandIcon,
 } from "@/components/settings/IntegrationBrandIcons";
-import { lazy } from "@/lib/preloadable";
+import { intended, lazy } from "@/lib/preloadable";
 import { useSettingsStore } from "@/store/settings";
 
-const DesktopAppsSection = lazy(() => import("@/components/settings/desktop-apps/DesktopAppsSection"), {
-  warm: true,
-});
+const DesktopAppsSection = lazy(() => import("@/components/settings/desktop-apps/DesktopAppsSection"), { warm: () => intended("settings") });
 
 export function IntegrationsSection() {
   const { t } = useTranslation(["common", "settings"]);

@@ -3,9 +3,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { acpCatalog } from "@/lib/acp";
 import { sourceLanguageForPath } from "@/lib/document-engine";
+import { linkBase } from "@/lib/file-links";
 import { logError } from "@/lib/log";
+import { foldPath, NOTE_FILE_KIND } from "@/lib/project-notes";
 import type { ResearchTask } from "@/lib/research-tasks";
-import { noteHeads, noteLinks, setNoteRelatedProject } from "@/lib/tauri";
+import { noteLinks, readFileContent, readProjectBytes, releaseNoteCaches, setNoteRelatedProject } from "@/lib/tauri";
 import { notifyError, toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
@@ -14,36 +16,21 @@ import { useResearchTasksEnabled } from "@/store/research-tasks-flag";
 import { useSettingsStore } from "@/store/settings";
 import { artifactItems, experimentItems, latestRunContext } from "./note-artifacts";
 import { NotesDataProvider, type NotesData } from "./notes-data";
-import { NOTE_KIND } from "./note-file";
-import { createNoteItems, createNotesService, noteHeadOf, relatedProjectChoices } from "./notes-service";
+import { createNoteItems, createNotesService, refreshNoteFacts, relatedProjectChoices, useVaultFacts } from "./notes-service";
+import type { PaperFormat, PaperPlace } from "./note-to-paper";
+import type { LatexPackage } from "./tikz-source";
 import { NotesWorkspace, type ProjectSeed } from "./NotesWorkspace";
 import { shareNote } from "./NoteShareButton";
+import { createStarterNote } from "./starter-note";
 import type { ArtifactItem, ExperimentItem, PaperTarget } from "./types";
 import { NoteLinkIndexProvider } from "./use-note-links";
 import { useResearchTasks } from "./use-research-tasks";
-
-const LIVE_HEAD_DELAY_MS = 1_000;
-
-type PaperFormat = "latex" | "typst" | "markdown";
 
 const NO_NAMES: ReadonlyMap<string, string> = new Map();
 const NO_IDS: readonly string[] = [];
 const NO_ARTIFACTS: readonly ArtifactItem[] = [];
 const NO_EXPERIMENTS: readonly ExperimentItem[] = [];
 const NO_PAPERS: readonly PaperTarget[] = [];
-
-function useChangeCount(value: unknown): number {
-  const seen = useRef({ value, count: 0 });
-  if (seen.current.value !== value) seen.current = { value, count: seen.current.count + 1 };
-  return seen.current.count;
-}
-
-function noteSignature(projects: readonly ProjectInfo[]): string {
-  return projects
-    .filter((project) => project.kind === NOTE_KIND)
-    .map((project) => `${project.id}\u0000${project.name}\u0000${project.updated_at}\u0000${project.related_project ?? ""}\u0000${project.shared ? 1 : 0}`)
-    .join("\u0001");
-}
 
 function openNotesSettings(): void {
   useSettingsStore.getState().openSettingsAt("appearance", "notes");
@@ -62,18 +49,66 @@ export function paperFormat(path: string | null): PaperFormat | null {
 async function convertForPaper(text: string, format: PaperFormat): Promise<string> {
   if (format === "markdown") return text;
   const { pandocConvert } = await import("@/features/tools-ai/pandoc-text");
-  return (await pandocConvert({ source: "markdown", target: format, text })).text ?? "";
+  return ((await pandocConvert({ source: "markdown-fragment", target: format, text })).text ?? "").trim();
 }
 
-export async function sendTextToPaper(paperId: string, text: string): Promise<boolean> {
+async function openPaperPlace(paperId: string, format: PaperFormat, activePath: string, text: string): Promise<PaperPlace> {
+  const { tree, mainDoc } = useFilesStore.getState();
+  const [{ figureDirectory }, { preambleTheorems, hasCitations }, { projectCitations }] = await Promise.all([
+    import("@/components/editor/figure-import"),
+    import("./note-to-paper"),
+    import("./note-citations"),
+  ]);
+  const taken = new Set(tree.map((entry) => foldPath(entry.path)));
+  const preamble = format === "latex" ? await readFileContent(paperId, mainDoc).catch(() => "") : "";
+  const cited = format === "typst" && hasCitations(text) ? await projectCitations(paperId).catch(() => []) : [];
+  const keys = new Set(cited.map((entry) => entry.key));
+  return {
+    format,
+    folder: figureDirectory(tree, mainDoc),
+    from: linkBase(activePath, mainDoc),
+    taken: (path) => taken.has(foldPath(path)),
+    theorems: preambleTheorems(preamble),
+    citations: format === "latex" ? { kind: "command" } : { kind: "keys", known: (key) => format === "markdown" || keys.has(key) },
+  };
+}
+
+async function insertPackagesInOrder(
+  insert: (mainDoc: string, name: string, options: string) => Promise<unknown>,
+  mainDoc: string,
+  packages: readonly LatexPackage[],
+  from = 0,
+): Promise<void> {
+  if (from >= packages.length) return;
+  await insert(mainDoc, packages[from].name, packages[from].options);
+  await insertPackagesInOrder(insert, mainDoc, packages, from + 1);
+}
+
+export async function sendTextToPaper(paperId: string, text: string, noteId: string, shared = false): Promise<boolean> {
   const files = useFilesStore.getState();
   const format = paperFormat(files.activePath);
-  if (files.projectId !== paperId || !format) return false;
-  const converted = await convertForPaper(text, format);
+  if (files.projectId !== paperId || !format || !files.activePath) return false;
+  const [{ notePaperText }, { saveProjectFiles }] = await Promise.all([
+    import("./note-to-paper"),
+    import("@/components/editor/figure-import"),
+  ]);
+  const place = { ...(await openPaperPlace(paperId, format, files.activePath, text)), shared };
+  const read = async (path: string) => new Uint8Array(await readProjectBytes(noteId, path));
+  const prepared = await notePaperText(text, read, place);
+  await saveProjectFiles(paperId, prepared.files);
+  if (format === "latex" && files.mainDoc && prepared.packages.length > 0) {
+    const { insertUsepackage } = await import("@/components/packages/latex-document");
+    await insertPackagesInOrder(insertUsepackage, files.mainDoc, prepared.packages);
+  }
+  const converted = await convertForPaper(prepared.text, format);
   const { insertAtCursor } = await import("@/components/editor/cm/controller");
   useHomeViewStore.getState().goTo("library");
   insertAtCursor(converted);
   return true;
+}
+
+function noteTextChanged(id: string): void {
+  void refreshNoteFacts([id]).catch((error: unknown) => logError("read a live note's facts", error));
 }
 
 let stopProjectLink: (() => void) | null = null;
@@ -120,106 +155,40 @@ function useOpenPapers(projects: readonly ProjectInfo[]): readonly PaperTarget[]
   return useMemo(() => {
     if (!openId || !format) return NO_PAPERS;
     const project = projects.find((candidate) => candidate.id === openId);
-    return project && project.kind !== NOTE_KIND ? [{ id: project.id, label: project.name }] : NO_PAPERS;
+    return project && project.kind !== NOTE_FILE_KIND ? [{ id: project.id, label: project.name }] : NO_PAPERS;
   }, [format, openId, projects]);
 }
 
 function NotesSurface() {
   const { t } = useTranslation(["notes"]);
   const projects = useFilesStore((state) => state.projects);
+  const projectsLoaded = useFilesStore((state) => state.projectsLoaded);
   const refreshProjects = useFilesStore((state) => state.refreshProjects);
   const research = useResearchTasksEnabled();
-  const [heads, setHeads] = useState<ReadonlyMap<string, string>>(new Map());
-  const [initialNoteId] = useState(() => useNotesViewStore.getState().take());
+  const [initial] = useState(() => {
+    const fragment = useNotesViewStore.getState().requestedFragment;
+    return { noteId: useNotesViewStore.getState().take(), fragment };
+  });
   const [noteItems] = useState(createNoteItems);
   const requestedNoteId = useNotesViewStore((state) => state.requestedNoteId);
-  const takeRequest = useCallback(() => void useNotesViewStore.getState().take(), []);
+  const requestedFragment = useNotesViewStore((state) => state.requestedFragment);
+  const takeRequest = useCallback(() => {
+    useNotesViewStore.getState().take();
+  }, []);
   const [agentNames, setAgentNames] = useState<ReadonlyMap<string, string>>(NO_NAMES);
   const projectsRef = useRef(projects);
   projectsRef.current = projects;
 
-  const [headLoads, setHeadLoads] = useState(0);
-  const [writes, setWrites] = useState(0);
-  const headsLoaded = useRef(false);
-  const knowledge = useRef(new Map<string, string>());
-  const live = useRef<{ timer: number | null; pending: Map<string, string> }>({ timer: null, pending: new Map() });
-
-  const refreshHeads = useCallback(() => {
-    noteHeads().then(
-      (list) => {
-        setHeads(new Map(list.map((head) => [head.id, head.head])));
-        if (headsLoaded.current) setHeadLoads((count) => count + 1);
-        headsLoaded.current = true;
-      },
-      (error) => void logError("read note heads", error),
-    );
-  }, []);
-
-  const applyHeads = useCallback((updates: ReadonlyMap<string, string>) => {
-    setHeads((current) => {
-      let next = current;
-      for (const [id, head] of updates) {
-        if (next.get(id) === head) continue;
-        if (next === current) next = new Map(current);
-        (next as Map<string, string>).set(id, head);
-      }
-      return next;
-    });
-  }, []);
-
-  const setHead = useCallback(
-    (id: string, head: string, changed: boolean, key: string) => {
-      live.current.pending.delete(id);
-      applyHeads(new Map([[id, head]]));
-      const known = knowledge.current.get(id);
-      knowledge.current.set(id, key);
-      if (changed && known !== key) setWrites((count) => count + 1);
-    },
-    [applyHeads],
-  );
-
-  const noteTextChanged = useCallback(
-    (id: string, text: string) => {
-      const state = live.current;
-      const head = noteHeadOf(text);
-      if (state.timer !== null) {
-        state.pending.set(id, head);
-        return;
-      }
-      applyHeads(new Map([[id, head]]));
-      const flush = () => {
-        if (state.pending.size === 0) {
-          state.timer = null;
-          return;
-        }
-        const updates = state.pending;
-        state.pending = new Map();
-        applyHeads(updates);
-        state.timer = window.setTimeout(flush, LIVE_HEAD_DELAY_MS);
-      };
-      state.timer = window.setTimeout(flush, LIVE_HEAD_DELAY_MS);
-    },
-    [applyHeads],
-  );
-
-  useEffect(
-    () => () => {
-      if (live.current.timer !== null) window.clearTimeout(live.current.timer);
-    },
-    [],
-  );
-
   useEffect(() => {
     void refreshProjects();
-    refreshHeads();
-  }, [refreshHeads, refreshProjects]);
+    return () => void releaseNoteCaches().catch((error: unknown) => logError("release the note caches", error));
+  }, [refreshProjects]);
 
   const ungrouped = t(($) => $.notes.library.ungrouped);
-  const notes = useMemo(() => noteItems(projects, heads, ungrouped), [heads, noteItems, projects, ungrouped]);
+  const { vault } = useVaultFacts(projects);
+  const notes = useMemo(() => noteItems(projects, vault?.facts, ungrouped), [noteItems, projects, ungrouped, vault?.facts]);
   const notesRef = useRef(notes);
   notesRef.current = notes;
-  const signature = useMemo(() => noteSignature(projects), [projects]);
-  const revision = useChangeCount(signature) + headLoads + writes;
   const relatedIds = useMemo(
     () => (research ? notes.flatMap((note) => (note.relatedProjectId ? [note.relatedProjectId] : [])) : NO_IDS),
     [notes, research],
@@ -268,19 +237,26 @@ function NotesSurface() {
       createNotesService({
         projects: () => projectsRef.current,
         refreshProjects,
-        refreshHeads,
-        setHead,
         untitled: t(($) => $.notes.document.untitled),
         missing: t(($) => $.notes.document.loadFailed),
       }),
-    [refreshHeads, refreshProjects, setHead, t],
+    [refreshProjects, t],
   );
+
+  useEffect(() => {
+    if (!projectsLoaded) return;
+    createStarterNote({ createNoteFrom: service.createNoteFrom, t, notes: () => notesRef.current }).catch((error: unknown) =>
+      logError("create the starter note", error),
+    );
+  }, [projectsLoaded, service, t]);
 
   const data = useMemo<NotesData>(
     () => ({
       ...service,
       notes,
-      revision,
+      revision: vault?.revision,
+      taskRevision: vault?.taskRevision,
+      changedNotes: vault?.changed,
       noteTextChanged,
       artifacts,
       experiments,
@@ -293,7 +269,7 @@ function NotesSurface() {
       papers,
       noteLinks,
     }),
-    [artifacts, choices, experiments, latestRun, noteTextChanged, notes, papers, research, revision, service],
+    [artifacts, choices, experiments, latestRun, notes, papers, research, service, vault?.changed, vault?.revision, vault?.taskRevision],
   );
 
   const createNote = service.createNote;
@@ -315,8 +291,9 @@ function NotesSurface() {
     [t],
   );
   const onSendToPaper = useCallback(
-    ({ paperId, text }: { paperId: string; text: string }) => {
-      sendTextToPaper(paperId, text).then(
+    ({ paperId, text, noteId }: { paperId: string; text: string; noteId: string }) => {
+      const shared = notesRef.current.some((note) => note.id === noteId && note.shared === true);
+      sendTextToPaper(paperId, text, noteId, shared).then(
         (sent) => {
           if (!sent) toast.error(t(($) => $.notes.failures.paperNotOpen));
         },
@@ -332,8 +309,10 @@ function NotesSurface() {
       <NotesDataProvider value={data}>
         <NoteLinkIndexProvider>
           <NotesWorkspace
-            initialNoteId={initialNoteId}
+            initialNoteId={initial.noteId}
+            initialFragment={initial.fragment}
             requestedNoteId={requestedNoteId}
+            requestedFragment={requestedFragment}
             onRequestHandled={takeRequest}
             onExit={onExit}
             onNewNote={onNewNote}

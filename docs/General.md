@@ -25,6 +25,18 @@ state without changing the source format.
 </div>
 <p align="center"><em>Search the workspace and open commands or tools from one place.</em></p>
 
+## Search
+
+The search box (Command-Shift-F, or Ctrl-Shift-F on Windows and Linux) and
+the Search panel in a project read the same query language: words, quoted
+phrases, AND, OR, NOT or `-`, parentheses, and the filters `path:`, `ext:`
+and, in the search box, `project:`. The button at the right end of the field
+picks how words match. Best match ranks files with more matches first. Exact
+text and Regular expression use ripgrep's matcher, and Fuzzy matches file
+paths the way fzf does. Every mode follows `.gitignore` and skips build files
+such as `.aux`, `.log` and `.pdf`. With Notes on, `/notes` searches notes and
+the blocks inside them.
+
 ## Appearance
 
 Appearance has three choices: System, Light, and Dark. System follows the

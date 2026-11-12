@@ -3,7 +3,7 @@ import { useMemo, useRef, useState } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Group, Panel, Separator, type GroupImperativeHandle, type Layout } from "react-resizable-panels";
-import { groupDomIdOf, separatorIdOf, type PaneNode, type PaneSplit } from "@/store/pane-layout";
+import { separatorIdAfter, type PaneNode, type PaneSplit } from "@/store/pane-layout";
 import {
   inPanelOrder,
   panelLayoutKey,
@@ -21,10 +21,10 @@ const PANELS: OuterPane[] = ["sidebar", "editorpdf", "assistant"];
 function rowOf(order: readonly OuterPane[]): PaneSplit {
   const children: PaneNode[] = order.map((pane) =>
     pane === "editorpdf"
-      ? { direction: "row", children: [{ pane: "editor" }, { pane: "pdf" }], sizes: [50, 50] }
+      ? { id: "document", direction: "row", children: [{ pane: "editor" }, { pane: "pdf" }], sizes: [50, 50] }
       : { pane },
   );
-  return { direction: "row", children, sizes: order.map(() => 100 / order.length) };
+  return { id: "horizontal", direction: "row", children, sizes: order.map(() => 100 / order.length) };
 }
 const KEY = panelLayoutKey(GROUP, PANELS);
 const DEFAULT_SIZES: Record<OuterPane, number> = { sidebar: 20, editorpdf: 52, assistant: 28 };
@@ -56,14 +56,15 @@ function OrderHarness({ initialOrder }: Readonly<{ initialOrder: OuterPane[] }>)
     PANELS,
     PANELS.filter((id) => id !== "assistant" || assistantOpen),
     limits,
-    { id: "assistant", defaultSize: 28, onDismiss: () => setAssistantOpen(false) },
+    [{ id: "assistant", defaultSize: 28, onDismiss: () => setAssistantOpen(false) }],
   );
   const visible = order.filter((id) => id !== "assistant" || assistantOpen);
+  const row = rowOf(order);
   return (
     <>
       <output data-testid="assistant-open">{String(assistantOpen)}</output>
       <Group
-        id={groupDomIdOf(rowOf(order))}
+        key={order.join()}
         groupRef={groupRef}
         defaultLayout={layout.defaultLayout}
         onLayoutChange={layout.onLayoutChange}
@@ -75,7 +76,7 @@ function OrderHarness({ initialOrder }: Readonly<{ initialOrder: OuterPane[] }>)
           );
           const previous = visible[index - 1];
           if (!previous) return [panel];
-          const id = separatorIdOf(rowOf(order), visible, previous, pane);
+          const id = separatorIdAfter(row, row.children[order.indexOf(previous)] as PaneNode);
           return [<Separator key={id} id={id} onKeyDownCapture={onKeyDown} />, panel];
         })}
       </Group>
@@ -158,8 +159,8 @@ describe("panel layout in a moved pane order", () => {
   it("resizes the sidebar and the assistant across their shared separator", async () => {
     render(<OrderHarness initialOrder={["sidebar", "assistant", "editorpdf"]} />);
     const separators = [...document.querySelectorAll("[data-separator]")].map((element) => element.id);
-    expect(separators).toEqual(["h-side-assistant", "h-assistant"]);
-    press("h-side-assistant", "ArrowRight");
+    expect(separators).toEqual(["sep-sidebar-assistant", "h-assistant"]);
+    press("sep-sidebar-assistant", "ArrowRight");
     expect([size("sidebar"), size("assistant"), size("editorpdf")]).toEqual([30, 22, 48]);
   });
 });

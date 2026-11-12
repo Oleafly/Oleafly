@@ -29,8 +29,8 @@ export function openToolsGallery(): Promise<void> {
   return openHomePage("tools");
 }
 
-export function openNotes(noteId: string | null = null): Promise<void> {
-  useNotesViewStore.getState().request(noteId);
+export function openNotes(noteId: string | null = null, fragment: string | null = null): Promise<void> {
+  useNotesViewStore.getState().request(noteId, fragment);
   return openHomePage("notes");
 }
 

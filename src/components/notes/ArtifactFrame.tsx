@@ -1,8 +1,8 @@
+import { isTauri } from "@tauri-apps/api/core";
 import DOMPurify from "dompurify";
 import { Play, RotateCw, Square } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { createRoot } from "react-dom/client";
-import { I18nextProvider, useTranslation } from "react-i18next";
+import { type RefObject, useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CodeBlock } from "@/components/ui/code-block";
@@ -10,32 +10,44 @@ import { HighlightedCode } from "@/components/ui/code-highlighter";
 import { watchVisibility } from "@/hooks/use-near-viewport";
 import { i18n } from "@/i18n";
 import { describeError } from "@/lib/app-error";
-import { readJson, writeJson } from "@/lib/local-storage";
 import { artifactFrameClose, artifactFrameOpen, artifactFrameRuntimeUrl } from "@/lib/tauri";
 import {
   type FrameMessages,
   type FrameTheme,
   frameChannel,
   htmlFrameDocument,
+  isPortOffer,
   prepareHtml,
   readFrameMessage,
   reactFrameDocument,
   staticFrameDocument,
 } from "./artifact-runtime/frame-document";
+import {
+  type BlockKey,
+  blockHash,
+  blockTrusted,
+  markBlockStarting,
+  notePaused,
+  setBlockTrusted,
+  subscribeBlockTrust,
+} from "./block-trust";
+import { nodeRoot } from "./node-root";
 
 export type ScriptedKind = "html" | "react";
 
-export const RUN_BLOCKS_KEY = "oleafly.notes.runBlocks";
 export const WATCHDOG_MS = 5000;
 export const START_GRACE_MS = 10_000;
+export const SETTLED_MS = 3000;
+export const RELEASE_MS = 30_000;
+export const MAX_LIVE_FRAMES = 4;
 export const BUILD_DELAY_MS = 400;
 export const MIN_HEIGHT = 48;
 export const MAX_HEIGHT = 2400;
 export const INITIAL_HEIGHT = 160;
 export const RUNAWAY_STEPS = 3;
-const TRUSTED_LIMIT = 500;
 const SOURCE_LINES = 12;
 const NOTICE_URLS = 4;
+const SANDBOXED_ORIGIN = "null";
 
 let runtimeAddress: Promise<string> | null = null;
 
@@ -53,56 +65,43 @@ export function resetArtifactRuntime(): void {
   runtimeAddress = null;
 }
 
-function desktop(): boolean {
-  return Boolean((globalThis as { isTauri?: unknown }).isTauri);
+function useBlockKey(kind: ScriptedKind, source: string, noteId: string | null): BlockKey | null {
+  const code = `${kind}\n${source}`;
+  const [digest, setDigest] = useState<{ code: string; hash: string } | null>(null);
+  useEffect(() => {
+    let live = true;
+    void blockHash(kind, source).then((hash) => {
+      if (live) setDigest({ code: `${kind}\n${source}`, hash });
+    });
+    return () => {
+      live = false;
+    };
+  }, [kind, source]);
+  const hash = digest?.code === code ? digest.hash : null;
+  return useMemo(() => (noteId && hash ? { note: noteId, hash } : null), [noteId, hash]);
 }
 
-const trustListeners = new Set<() => void>();
-let trustMemory: string[] | null = null;
-
-function readTrusted(): string[] {
-  if (trustMemory) return trustMemory;
-  const saved = readJson<unknown>(RUN_BLOCKS_KEY, []);
-  trustMemory = Array.isArray(saved) ? saved.filter((item): item is string => typeof item === "string") : [];
-  return trustMemory;
+function useBlockTrust(key: BlockKey | null): boolean {
+  const read = () => (key ? blockTrusted(key) : false);
+  return useSyncExternalStore(subscribeBlockTrust, read, read);
 }
 
-export function noteRunsBlocks(noteId: string): boolean {
-  return readTrusted().includes(noteId);
+interface LiveFrame {
+  shown: () => boolean;
+  park: () => void;
 }
 
-export function setNoteRunsBlocks(noteId: string, run: boolean): void {
-  const rest = readTrusted().filter((item) => item !== noteId);
-  trustMemory = run ? [...rest, noteId].slice(-TRUSTED_LIMIT) : rest;
-  persistTrusted(trustMemory);
-  notifyTrust();
-}
+const liveFrames = new Set<LiveFrame>();
 
-function persistTrusted(list: readonly string[]): boolean {
-  return writeJson(RUN_BLOCKS_KEY, list);
-}
-
-function notifyTrust(): void {
-  for (const listener of trustListeners) listener();
-}
-
-function subscribeTrust(listener: () => void): () => void {
-  trustListeners.add(listener);
-  const onStorage = (event: StorageEvent) => {
-    if (event.key !== null && event.key !== RUN_BLOCKS_KEY) return;
-    trustMemory = null;
-    listener();
-  };
-  window.addEventListener("storage", onStorage);
-  return () => {
-    trustListeners.delete(listener);
-    window.removeEventListener("storage", onStorage);
-  };
-}
-
-function useNoteTrust(noteId: string | null): boolean {
-  const read = () => (noteId ? noteRunsBlocks(noteId) : false);
-  return useSyncExternalStore(subscribeTrust, read, read);
+function holdLive(entry: LiveFrame): () => void {
+  liveFrames.add(entry);
+  for (const other of liveFrames) {
+    if (liveFrames.size <= MAX_LIVE_FRAMES) break;
+    if (other === entry || other.shown()) continue;
+    liveFrames.delete(other);
+    other.park();
+  }
+  return () => liveFrames.delete(entry);
 }
 
 function readTheme(): FrameTheme {
@@ -135,7 +134,7 @@ export interface BuiltFrame {
 }
 
 export async function buildFrame(kind: ScriptedKind, source: string, theme: FrameTheme, channel: string): Promise<BuiltFrame> {
-  const options = { theme, channel, messages: frameMessages() };
+  const options = { theme, channel, parentOrigin: window.location.origin, messages: frameMessages() };
   if (kind === "react") return { html: reactFrameDocument(source, options, await loadArtifactRuntime()), removed: [] };
   const prepared = prepareHtml(source);
   const runtime = prepared.libraries.length > 0 ? await loadArtifactRuntime() : null;
@@ -185,19 +184,80 @@ interface FrameState {
   removed: string[];
 }
 
-export function ArtifactFrame({ kind, source, label }: Readonly<{ kind: ScriptedKind; source: string; label: string }>) {
+interface FrameViewProps {
+  stalled: boolean;
+  failure: string | null;
+  frame: FrameState | null;
+  frameRef: RefObject<HTMLIFrameElement | null>;
+  label: string;
+  height: number;
+  theme: FrameTheme;
+  onLoaded: (url: string) => void;
+  onReload: () => void;
+}
+
+function FrameView({ stalled, failure, frame, frameRef, label, height, theme, onLoaded, onReload }: Readonly<FrameViewProps>) {
   const { t } = useTranslation(["notes"]);
+  if (stalled) {
+    return (
+      <output data-artifact-stalled className="flex flex-wrap items-center gap-2 py-3">
+        <p className="text-xs text-muted-foreground">{t(($) => $.notes.blocks.artifact.stopped)}</p>
+        <Button variant="outline" size="xs" onClick={onReload}>
+          <RotateCw aria-hidden className="size-3.5" />
+          {t(($) => $.notes.blocks.artifact.reload)}
+        </Button>
+      </output>
+    );
+  }
+  if (failure) {
+    return (
+      <p role="alert" className="py-3 text-xs text-muted-foreground">
+        {t(($) => $.notes.blocks.artifact.failed, { error: failure })}
+      </p>
+    );
+  }
+  if (!frame) return <p className="py-3 text-xs text-muted-foreground">{t(($) => $.notes.blocks.artifact.starting)}</p>;
+  return (
+    <iframe
+      ref={frameRef}
+      src={frame.url}
+      onLoad={() => onLoaded(frame.url)}
+      sandbox="allow-scripts"
+      allow=""
+      referrerPolicy="no-referrer"
+      loading="lazy"
+      title={t(($) => $.notes.blocks.artifact.frameTitle, { label })}
+      className="block w-full rounded-md border-0 bg-transparent"
+      style={{ height, colorScheme: theme }}
+    />
+  );
+}
+
+export interface ArtifactFrameProps {
+  kind: ScriptedKind;
+  source: string;
+  label: string;
+  guard?: BlockKey | null;
+}
+
+export function ArtifactFrame({ kind, source, label, guard = null }: Readonly<ArtifactFrameProps>) {
   const theme = useTheme();
   const themeRef = useRef(theme);
   themeRef.current = theme;
+  const guardRef = useRef(guard);
+  guardRef.current = guard;
   const [channel, setChannel] = useState(frameChannel);
   const [frame, setFrame] = useState<FrameState | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [stalled, setStalled] = useState(false);
+  const [parked, setParked] = useState(false);
   const [height, setHeight] = useState(INITIAL_HEIGHT);
   const frameRef = useRef<HTMLIFrameElement>(null);
+  const port = useRef<MessagePort | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const lastBeat = useRef(0);
+  const openedAt = useRef(0);
+  const settle = useRef<(() => void) | null>(null);
   const visible = useRef(true);
   const heightRef = useRef(INITIAL_HEIGHT);
   const growth = useRef({ delta: 0, count: 0 });
@@ -205,7 +265,15 @@ export function ArtifactFrame({ kind, source, label }: Readonly<{ kind: Scripted
   const [reopened, setReopened] = useState(0);
   const lastReopened = useRef(0);
   const loadedUrl = useRef<string | null>(null);
+  const loadedView = useRef<Window | null>(null);
+  const left = useRef(false);
   const released = useRef<string | null>(null);
+
+  const park = useCallback(() => {
+    setSeen(false);
+    setFrame(null);
+    setParked(true);
+  }, []);
 
   useEffect(() => {
     if (stalled || !seen) return;
@@ -218,44 +286,62 @@ export function ArtifactFrame({ kind, source, label }: Readonly<{ kind: Scripted
       buildFrame(kind, source, themeRef.current, channel)
         .then(async (built) => {
           if (!live) return;
+          const key = guardRef.current;
+          settle.current = key ? markBlockStarting(key) : null;
           const url = await artifactFrameOpen(built.html);
           token = tokenOf(url);
           if (!live) {
             void artifactFrameClose(token).catch(() => undefined);
             return;
           }
-          lastBeat.current = performance.now() + START_GRACE_MS;
+          left.current = false;
+          openedAt.current = performance.now();
+          lastBeat.current = openedAt.current + START_GRACE_MS;
           setFrame({ url, removed: built.removed });
+          setParked(false);
         })
         .catch((error: unknown) => {
           if (live) setFailure(describeError(error));
+          settle.current?.();
         });
     }, delay);
     return () => {
       live = false;
       window.clearTimeout(timer);
+      settle.current?.();
+      settle.current = null;
       if (token && token !== released.current) void artifactFrameClose(token).catch(() => undefined);
     };
   }, [kind, source, channel, stalled, seen, reopened]);
 
+  useEffect(() => (frame ? holdLive({ shown: () => visible.current, park }) : undefined), [frame, park]);
+
   const loaded = (url: string) => {
+    const view = frameRef.current?.contentWindow ?? null;
     if (loadedUrl.current !== url) {
       loadedUrl.current = url;
+      loadedView.current = view;
       released.current = tokenOf(url);
       void artifactFrameClose(released.current).catch(() => undefined);
       return;
     }
-    setReopened((value) => value + 1);
+    if (view !== null && view !== loadedView.current) {
+      setReopened((value) => value + 1);
+      return;
+    }
+    left.current = true;
+    setStalled(true);
+    setFrame(null);
   };
 
   useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      const target = frameRef.current;
-      if (!target || event.source !== target.contentWindow) return;
+    const onFrameMessage = (view: Window, event: MessageEvent) => {
+      if (left.current || frameRef.current?.contentWindow !== view) return;
       const message = readFrameMessage(event.data, channel);
       if (!message) return;
       if (message.type === "beat") {
         lastBeat.current = performance.now();
+        if (lastBeat.current - openedAt.current >= SETTLED_MS) settle.current?.();
         return;
       }
       const next = nextHeight(message.height);
@@ -267,27 +353,47 @@ export function ArtifactFrame({ kind, source, label }: Readonly<{ kind: Scripted
       heightRef.current = next;
       setHeight(next);
     };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
+    const onPortOffer = (event: MessageEvent) => {
+      const view = frameRef.current?.contentWindow;
+      if (event.origin !== SANDBOXED_ORIGIN || left.current || !view || event.source !== view) return;
+      const offered = event.ports[0];
+      if (!offered || !isPortOffer(event.data, channel)) return;
+      port.current?.close();
+      port.current = offered;
+      offered.onmessage = (message) => onFrameMessage(view, message);
+    };
+    window.addEventListener("message", onPortOffer);
+    return () => {
+      window.removeEventListener("message", onPortOffer);
+      port.current?.close();
+      port.current = null;
+    };
   }, [channel]);
 
   useEffect(() => {
-    frameRef.current?.contentWindow?.postMessage({ channel, type: "theme", theme }, "*");
+    port.current?.postMessage({ channel, type: "theme", theme });
   }, [theme, channel]);
 
   useEffect(() => {
     const target = wrapRef.current;
     if (!target || typeof IntersectionObserver === "undefined") return;
-    return watchVisibility(
+    let timer: number | undefined;
+    const stop = watchVisibility(
       target,
       (shown) => {
         if (shown && !visible.current) lastBeat.current = Math.max(lastBeat.current, performance.now());
         visible.current = shown;
+        window.clearTimeout(timer);
         if (shown) setSeen(true);
+        else timer = window.setTimeout(park, RELEASE_MS);
       },
       "0px",
     );
-  }, []);
+    return () => {
+      window.clearTimeout(timer);
+      stop();
+    };
+  }, [park]);
 
   useEffect(() => {
     if (!frame || stalled) return;
@@ -314,39 +420,24 @@ export function ArtifactFrame({ kind, source, label }: Readonly<{ kind: Scripted
     setChannel(frameChannel());
   };
 
-  if (stalled) {
-    return (
-      <div ref={wrapRef} data-artifact-stalled role="status" className="flex flex-wrap items-center gap-2 py-3">
-        <p className="text-xs text-muted-foreground">{t(($) => $.notes.blocks.artifact.stopped)}</p>
-        <Button variant="outline" size="xs" onClick={reload}>
-          <RotateCw aria-hidden className="size-3.5" />
-          {t(($) => $.notes.blocks.artifact.reload)}
-        </Button>
-      </div>
-    );
-  }
   return (
-    <div ref={wrapRef} data-artifact-frame className="w-full min-w-0">
-      {failure ? (
-        <p role="alert" className="py-3 text-xs text-muted-foreground">
-          {t(($) => $.notes.blocks.artifact.failed, { error: failure })}
-        </p>
-      ) : frame ? (
-        <iframe
-          ref={frameRef}
-          src={frame.url}
-          onLoad={() => loaded(frame.url)}
-          sandbox="allow-scripts"
-          allow=""
-          referrerPolicy="no-referrer"
-          loading="lazy"
-          title={t(($) => $.notes.blocks.artifact.frameTitle, { label })}
-          className="block w-full rounded-md border-0 bg-transparent"
-          style={{ height, colorScheme: theme }}
-        />
-      ) : (
-        <p className="py-3 text-xs text-muted-foreground">{t(($) => $.notes.blocks.artifact.starting)}</p>
-      )}
+    <div
+      ref={wrapRef}
+      data-artifact-frame
+      className="w-full min-w-0"
+      style={parked && !frame && !stalled ? { minHeight: height } : undefined}
+    >
+      <FrameView
+        stalled={stalled}
+        failure={failure}
+        frame={frame}
+        frameRef={frameRef}
+        label={label}
+        height={height}
+        theme={theme}
+        onLoaded={loaded}
+        onReload={reload}
+      />
       {frame && <OfflineNotice removed={frame.removed} />}
     </div>
   );
@@ -392,16 +483,19 @@ export interface ScriptedBlockProps {
 
 export function ScriptedBlock({ kind, source, label, noteId, scripted, running, onRunningChange }: Readonly<ScriptedBlockProps>) {
   const { t } = useTranslation(["notes"]);
-  const trusted = useNoteTrust(noteId);
+  const key = useBlockKey(kind, source, noteId);
+  const trusted = useBlockTrust(key);
+  const paused = trusted && noteId !== null && notePaused(noteId);
+  const auto = trusted && !paused;
   const trustId = useId();
-  const canRun = desktop();
-  const live = canRun && (!scripted || trusted || running);
+  const canRun = isTauri();
+  const live = canRun && (!scripted || auto || running);
   return (
     <div data-scripted-block={kind} className="w-full min-w-0 text-left">
       {scripted && (
         <div className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
           {canRun &&
-            !trusted &&
+            !auto &&
             (running ? (
               <Button variant="outline" size="xs" onClick={() => onRunningChange(false)}>
                 <Square aria-hidden className="size-3.5" />
@@ -413,23 +507,22 @@ export function ScriptedBlock({ kind, source, label, noteId, scripted, running, 
                 {t(($) => $.notes.blocks.artifact.run)}
               </Button>
             ))}
-          {canRun && noteId && (
+          {canRun && key && (
             <div className="flex items-center gap-1.5">
-              <Checkbox
-                id={trustId}
-                checked={trusted}
-                onCheckedChange={(checked) => setNoteRunsBlocks(noteId, checked === true)}
-              />
+              <Checkbox id={trustId} checked={trusted} onCheckedChange={(checked) => setBlockTrusted(key, checked === true)} />
               <label htmlFor={trustId} className="text-xs text-muted-foreground">
                 {t(($) => $.notes.blocks.artifact.alwaysRun)}
               </label>
             </div>
           )}
+          {canRun && paused && !running && (
+            <p className="text-xs text-muted-foreground">{t(($) => $.notes.blocks.artifact.paused)}</p>
+          )}
           {!canRun && <p className="text-xs text-muted-foreground">{t(($) => $.notes.blocks.artifact.desktopOnly)}</p>}
         </div>
       )}
       {live ? (
-        <ArtifactFrame kind={kind} source={source} label={label} />
+        <ArtifactFrame kind={kind} source={source} label={label} guard={scripted ? key : null} />
       ) : (
         <StaticPreview kind={kind} source={source} label={label} />
       )}
@@ -446,14 +539,6 @@ export interface ScriptedMount {
 }
 
 export function mountScriptedBlock(host: HTMLElement): ScriptedMount {
-  const root = createRoot(host);
-  return {
-    render: (props) =>
-      root.render(
-        <I18nextProvider i18n={i18n}>
-          <ScriptedBlock {...props} />
-        </I18nextProvider>,
-      ),
-    unmount: () => queueMicrotask(() => root.unmount()),
-  };
+  const root = nodeRoot(host);
+  return { render: (props) => root.render(<ScriptedBlock {...props} />), unmount: root.unmount };
 }

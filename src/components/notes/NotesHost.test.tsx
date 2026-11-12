@@ -2,22 +2,26 @@
 
 import type { ProjectInfo } from "@oleafly/backend-port";
 import { act, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
 import type { AcpAgentStatus } from "@/lib/acp";
+import { appQueryClient } from "@/lib/query";
 import { normalizeTask, type ResearchTask, type TaskArtifact } from "@/lib/research-tasks";
+import type { NoteFacts } from "@/lib/tauri";
 import { latestRunContext } from "./note-artifacts";
 import type { NotesData } from "./notes-data";
 import type { NotesWorkspace } from "./NotesWorkspace";
+import "./tests/setup";
 
 type WorkspaceProps = Parameters<typeof NotesWorkspace>[0];
 
 const mocks = vi.hoisted(() => ({
-  noteHeads: vi.fn(),
+  noteFacts: vi.fn(),
+  releaseNoteCaches: vi.fn(),
   noteLinks: vi.fn(),
   setNoteRelatedProject: vi.fn(),
   createNoteProject: vi.fn(),
+  claimStarterNote: vi.fn(),
   readFileContent: vi.fn(),
   getConfig: vi.fn(),
   acpCatalog: vi.fn(),
@@ -27,9 +31,21 @@ const mocks = vi.hoisted(() => ({
   onTask: null as null | ((task: ResearchTask) => void),
   canCreate: true,
 }));
-const paper = vi.hoisted(() => ({ pandocConvert: vi.fn(), insertAtCursor: vi.fn() }));
+const paper = vi.hoisted(() => ({
+  pandocConvert: vi.fn(),
+  insertAtCursor: vi.fn(),
+  readProjectBytes: vi.fn(),
+  writeProjectBytes: vi.fn(),
+  renderMermaidFigure: vi.fn(),
+  svgDocumentToPngBytes: vi.fn(),
+  insertUsepackage: vi.fn(),
+  notesRenderTikz: vi.fn(),
+}));
 vi.mock("@/features/tools-ai/pandoc-text", () => ({ pandocConvert: paper.pandocConvert }));
 vi.mock("@/components/editor/cm/controller", () => ({ insertAtCursor: paper.insertAtCursor }));
+vi.mock("@/components/diagram/mermaid-render", () => ({ renderMermaidFigure: paper.renderMermaidFigure }));
+vi.mock("@/features/equation-export", () => ({ svgDocumentToPngBytes: paper.svgDocumentToPngBytes }));
+vi.mock("@/components/packages/latex-document", () => ({ insertUsepackage: paper.insertUsepackage }));
 const captured = vi.hoisted(() => ({
   props: null as WorkspaceProps | null,
   data: null as NotesData | null,
@@ -37,12 +53,17 @@ const captured = vi.hoisted(() => ({
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
-  noteHeads: mocks.noteHeads,
+  noteFacts: mocks.noteFacts,
+  releaseNoteCaches: mocks.releaseNoteCaches,
   noteLinks: mocks.noteLinks,
   setNoteRelatedProject: mocks.setNoteRelatedProject,
   createNoteProject: mocks.createNoteProject,
+  claimStarterNote: mocks.claimStarterNote,
   readFileContent: mocks.readFileContent,
   getConfig: mocks.getConfig,
+  readProjectBytes: paper.readProjectBytes,
+  writeProjectBytes: paper.writeProjectBytes,
+  notesRenderTikz: paper.notesRenderTikz,
 }));
 vi.mock("@/lib/acp", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/acp")>()),
@@ -85,9 +106,11 @@ import { useHomeViewStore } from "@/store/home-view";
 import { useNotesViewStore } from "@/store/notes-view";
 import { primeResearchTasksFlag, resetResearchTasksFlagForTests } from "@/store/research-tasks-flag";
 import { useSettingsStore } from "@/store/settings";
-import { newNoteSource, readNoteFacts } from "./note-file";
+import { newNoteSource, noteColorFor, readNoteFacts } from "./note-file";
+import { splitNoteSource } from "./note-templates";
 import { noteVersion } from "./notes-service";
 import { NotesHost, paperFormat, sendTextToPaper } from "./NotesHost";
+import shipped from "./tests/blocks-gallery.md?raw";
 
 function project(overrides: Partial<ProjectInfo> & Pick<ProjectInfo, "id" | "name" | "kind">): ProjectInfo {
   return {
@@ -108,7 +131,28 @@ const projects: ProjectInfo[] = [
   project({ id: "note-2", name: "Reading list", kind: "note", updated_at: 1_700_000_200 }),
 ];
 
-const HEAD = "---\ntitle: Masking ablation\nagent: Codex\nicon: lucide:atom\n---\n\nSweep over masking ratios.\n";
+function facts(id: string, overrides: Partial<NoteFacts> = {}): NoteFacts {
+  return {
+    id,
+    noteId: `n-${id}`,
+    title: id,
+    icon: null,
+    color: null,
+    agent: null,
+    tags: [],
+    aliases: [],
+    properties: {},
+    preview: "",
+    relatedProject: null,
+    updatedAt: 1,
+    knowledge: id,
+    taskDigest: id,
+    ...overrides,
+  };
+}
+
+const vault = new Map<string, NoteFacts>();
+const MASKING = facts("note-1", { agent: "Codex", icon: "lucide:atom", preview: "Sweep over masking ratios." });
 
 const saved = {
   files: useFilesStore.getState(),
@@ -135,10 +179,6 @@ function openNotes() {
   useSettingsStore.setState({ notes: true });
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 beforeEach(() => {
   vi.clearAllMocks();
   resetResearchTasksFlagForTests();
@@ -147,11 +187,18 @@ beforeEach(() => {
   captured.props = null;
   captured.data = null;
   refreshProjects = vi.fn(() => Promise.resolve());
-  useFilesStore.setState({ projects, refreshProjects });
+  useFilesStore.setState({ projects, projectsLoaded: true, refreshProjects });
   useNotesViewStore.setState({ requestedNoteId: null });
-  mocks.noteHeads.mockResolvedValue([{ id: "note-1", head: HEAD }]);
+  appQueryClient().clear();
+  vault.clear();
+  vault.set("note-1", MASKING);
+  mocks.noteFacts.mockImplementation(async (filter?: { ids?: readonly string[] }) =>
+    [...vault.values()].filter((entry) => !filter?.ids || filter.ids.includes(entry.id)),
+  );
+  mocks.releaseNoteCaches.mockResolvedValue(undefined);
   mocks.noteLinks.mockResolvedValue([]);
   mocks.setNoteRelatedProject.mockResolvedValue(undefined);
+  mocks.claimStarterNote.mockResolvedValue(false);
   mocks.getConfig.mockResolvedValue({
     ai_provider: "anthropic",
     ai_model: "claude-sonnet",
@@ -169,6 +216,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   useFilesStore.setState(saved.files, true);
   useHomeViewStore.setState(saved.home, true);
   useNotesViewStore.setState(saved.notesView, true);
@@ -249,12 +297,16 @@ describe("NotesHost agents", () => {
     expect(data()).not.toHaveProperty("openAgentSettings");
   });
 
-  it("names run agents by model or id when the CLI agent list can't be read", async () => {
-    mocks.acpCatalog.mockRejectedValue(new Error("no catalog"));
+  it.each([
+    ["can't be read", () => Promise.reject(new Error("no catalog"))],
+    ["has not arrived yet", () => new Promise<AcpAgentStatus[]>(() => {})],
+  ])("names run agents by model or id while the CLI agent list %s", async (_name, catalog) => {
+    mocks.acpCatalog.mockImplementation(catalog);
     mocks.listResearchTasks.mockResolvedValue(TASKS);
     openNotes();
     render(<NotesHost />);
-    await waitFor(() => expect(mocks.acpCatalog).toHaveBeenCalledOnce());
+    await waitFor(() => expect(data().artifacts).toHaveLength(4));
+    expect(mocks.acpCatalog).toHaveBeenCalledOnce();
     expect(data().artifacts.map((artifact) => artifact.agent)).toEqual(["sonnet", "gpt-5", "codex", undefined]);
     expect(mocks.logError).not.toHaveBeenCalled();
   });
@@ -271,14 +323,6 @@ describe("NotesHost agents", () => {
     expect(mocks.logError).not.toHaveBeenCalled();
   });
 
-  it("offers the related project's references and no fixed citation list", async () => {
-    openNotes();
-    render(<NotesHost />);
-    await screen.findByTestId("workspace");
-    expect(data().citations).toBeUndefined();
-    expect(data().projectCitations).toBeTypeOf("function");
-  });
-
   it("opens Settings at the Notes tab of Appearance", async () => {
     useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "shortcuts" });
     openNotes();
@@ -289,13 +333,6 @@ describe("NotesHost agents", () => {
     expect(useSettingsStore.getState().settingsInitialSection).toBe("appearance");
     expect(useSettingsStore.getState().settingsInitialAppearanceTab).toBe("notes");
   });
-
-  it("hands the workspace a way to move notes to the Recycle Bin", async () => {
-    openNotes();
-    render(<NotesHost />);
-    await waitFor(() => expect(captured.data).not.toBeNull());
-    expect(data().deleteNote).toEqual(expect.any(Function));
-  });
 });
 
 describe("NotesHost", () => {
@@ -304,7 +341,7 @@ describe("NotesHost", () => {
     useSettingsStore.setState({ notes: true });
     const { container } = render(<NotesHost />);
     expect(container).toBeEmptyDOMElement();
-    expect(mocks.noteHeads).not.toHaveBeenCalled();
+    expect(mocks.noteFacts).not.toHaveBeenCalled();
     expect(refreshProjects).not.toHaveBeenCalled();
   });
 
@@ -325,15 +362,16 @@ describe("NotesHost", () => {
     expect(screen.queryByTestId("workspace")).not.toBeInTheDocument();
   });
 
-  it("lists note projects with the facts read from each note's head", async () => {
+  it("lists note projects with the facts the backend read from each note", async () => {
     openNotes();
     render(<NotesHost />);
     expect(refreshProjects).toHaveBeenCalledOnce();
-    expect(mocks.noteHeads).toHaveBeenCalledOnce();
+    expect(mocks.noteFacts).toHaveBeenCalledOnce();
     await waitFor(() => expect(data().notes[0].agent).toBe("Codex"));
     expect(data().notes).toEqual([
       {
         id: "note-1",
+        noteId: "n-note-1",
         title: "Masking ablation",
         project: "Masking paper",
         relatedProjectId: "paper-1",
@@ -341,7 +379,7 @@ describe("NotesHost", () => {
         author: "agent",
         agent: "Codex",
         icon: "lucide:atom",
-        color: readNoteFacts(HEAD).color,
+        color: noteColorFor("n-note-1"),
         summary: "Sweep over masking ratios.",
         createdAt: 1_700_000_000_000,
         preview: "Sweep over masking ratios.",
@@ -357,13 +395,13 @@ describe("NotesHost", () => {
         author: "you",
         agent: undefined,
         icon: undefined,
-        color: readNoteFacts("").color,
+        color: noteColorFor("Reading list"),
         summary: "",
         createdAt: 1_700_000_000_000,
-        preview: "",
-        aliases: [],
-        tags: [],
-        properties: {},
+        preview: undefined,
+        aliases: undefined,
+        tags: undefined,
+        properties: undefined,
       },
     ]);
     expect(data().artifacts).toEqual([]);
@@ -385,12 +423,14 @@ describe("NotesHost", () => {
     expect(screen.getByTestId("workspace")).toHaveTextContent("Masking ablation, Reading list, Fresh idea");
   });
 
-  it("logs and keeps going when note heads cannot be read", async () => {
-    const failure = new Error("no heads");
-    mocks.noteHeads.mockRejectedValue(failure);
+  it("logs and keeps going when note facts cannot be read", async () => {
+    const failure = new Error("no facts");
+    mocks.noteFacts.mockRejectedValue(failure);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
     openNotes();
     render(<NotesHost />);
-    await waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("read note heads", failure));
+    await act(() => vi.advanceTimersByTimeAsync(1_000));
+    await waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("query", failure));
     expect(data().notes.map((note) => note.author)).toEqual(["you", "you"]);
   });
 
@@ -447,7 +487,7 @@ describe("NotesHost", () => {
     expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
     expect([name, source]).toEqual([untitled, newNoteSource(untitled, "", undefined, id)]);
     expect(refreshProjects).toHaveBeenCalledTimes(2);
-    expect(mocks.noteHeads).toHaveBeenCalledTimes(1);
+    expect(mocks.noteFacts).toHaveBeenLastCalledWith({ ids: ["note-3"] });
   });
 
   it("logs a failed note creation and hands back no id", async () => {
@@ -475,6 +515,52 @@ describe("NotesHost", () => {
       created = await props().onNewNote?.();
     });
     expect(created).toBeNull();
+    expect(mocks.createNoteProject).not.toHaveBeenCalled();
+  });
+
+  it("creates the Blocks gallery with a fresh id the first time Notes opens", async () => {
+    mocks.claimStarterNote.mockResolvedValue(true);
+    mocks.createNoteProject.mockResolvedValue("note-3");
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    await waitFor(() => expect(mocks.createNoteProject).toHaveBeenCalledTimes(1));
+    const [name, source, related] = mocks.createNoteProject.mock.calls[0] as [string, string, string | null];
+    const created = splitNoteSource(source);
+    const expected = splitNoteSource(shipped);
+    const fields = (frontMatter: string) => frontMatter.split("\n").filter((line) => !line.startsWith("id: ")).sort();
+    expect(name).toBe(enNotes.starter.blocksGallery.title);
+    expect(related).toBeNull();
+    expect(created.body).toBe(expected.body);
+    expect(fields(created.frontMatter)).toEqual(fields(expected.frontMatter));
+    expect(readNoteFacts(source).id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
+    expect(mocks.claimStarterNote).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves the Blocks gallery out once this data folder has had it", async () => {
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    await waitFor(() => expect(mocks.claimStarterNote).toHaveBeenCalledTimes(1));
+    expect(mocks.createNoteProject).not.toHaveBeenCalled();
+    expect(mocks.logError).not.toHaveBeenCalled();
+  });
+
+  it("waits for the project list before it looks for an existing Blocks gallery", async () => {
+    mocks.claimStarterNote.mockResolvedValue(true);
+    useFilesStore.setState({ projects: [], projectsLoaded: false });
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    expect(mocks.claimStarterNote).not.toHaveBeenCalled();
+    act(() =>
+      useFilesStore.setState({
+        projects: [...projects, project({ id: "note-3", name: enNotes.starter.blocksGallery.title, kind: "note" })],
+        projectsLoaded: true,
+      }),
+    );
+    await waitFor(() => expect(mocks.claimStarterNote).toHaveBeenCalledTimes(1));
+    await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
     expect(mocks.createNoteProject).not.toHaveBeenCalled();
   });
 
@@ -525,15 +611,6 @@ describe("NotesHost research tasks", () => {
     expect(latest).toContain("Agent: claude (sonnet)");
     expect(data().latestRun?.("note-2")).toBeNull();
     expect(data().latestRun?.("gone")).toBeNull();
-  });
-
-  it("names agents by model or id until the CLI agent list arrives", async () => {
-    mocks.acpCatalog.mockReturnValue(new Promise(() => {}));
-    mocks.listResearchTasks.mockResolvedValue(TASKS);
-    openNotes();
-    render(<NotesHost />);
-    await waitFor(() => expect(data().artifacts).toHaveLength(4));
-    expect(data().artifacts.map((artifact) => artifact.agent)).toEqual(["sonnet", "gpt-5", "codex", undefined]);
   });
 
   it("merges the files of every related project, newest first", async () => {
@@ -610,60 +687,51 @@ describe("NotesHost research tasks", () => {
   });
 });
 
-describe("note heads after edits", () => {
-  const FRESH = "---\ntitle: Reading list\nicon: lucide:book\n---\n\nPapers to read this week.\n";
-
-  it("updates only the saved note's head and moves the revision when its text changed", async () => {
+describe("note facts after edits", () => {
+  it("patches only the saved note and moves the revision when what links and tags see changed", async () => {
     const writeProjectFile = vi.fn(() => Promise.resolve());
     useFilesStore.setState({ writeProjectFile } as never);
     mocks.readFileContent.mockResolvedValue("Old text.\n");
     openNotes();
     render(<NotesHost />);
-    await screen.findByTestId("workspace");
     await waitFor(() => expect(data().notes.find((note) => note.id === "note-1")?.icon).toBe("lucide:atom"));
     const before = data().revision ?? 0;
     const untouched = data().notes.find((note) => note.id === "note-1");
+    vault.set("note-2", facts("note-2", { icon: "lucide:book" }));
     await act(async () => {
-      await data().saveNote?.("note-2", FRESH, noteVersion("Old text.\n"));
+      await data().saveNote?.("note-2", "Papers.\n", noteVersion("Old text.\n"));
     });
-    expect(writeProjectFile).toHaveBeenCalled();
-    expect(mocks.noteHeads).toHaveBeenCalledTimes(1);
-    expect(data().notes.find((note) => note.id === "note-2")?.icon).toBe("lucide:book");
+    await waitFor(() => expect(data().notes.find((note) => note.id === "note-2")?.icon).toBe("lucide:book"));
+    expect(mocks.noteFacts).toHaveBeenLastCalledWith({ ids: ["note-2"] });
     expect(data().notes.find((note) => note.id === "note-1")).toBe(untouched);
     expect(data().revision).toBeGreaterThan(before);
+    expect(data().changedNotes).toEqual(["note-2"]);
     const after = data().revision;
-    mocks.readFileContent.mockResolvedValue(FRESH);
+    mocks.readFileContent.mockResolvedValue("Papers.\n");
     const notes = data().notes;
     await act(async () => {
-      await data().saveNote?.("note-2", FRESH, noteVersion(FRESH));
+      await data().saveNote?.("note-2", "Papers.\n\nMore.\n", noteVersion("Papers.\n"));
     });
+    await waitFor(() => expect(mocks.noteFacts).toHaveBeenCalledTimes(3));
     expect(data().revision).toBe(after);
     expect(data().notes).toBe(notes);
   });
 
-  it("moves the revision when the notes are read again but not on the first read", async () => {
+  it("reads a live note's facts again when its text changes", async () => {
     openNotes();
     render(<NotesHost />);
-    await screen.findByTestId("workspace");
     await waitFor(() => expect(data().notes.find((note) => note.id === "note-1")?.icon).toBe("lucide:atom"));
-    const first = data().revision;
-    expect(first).toBe(0);
-    await act(async () => {
-      await data().refreshNotes?.();
-    });
-    await waitFor(() => expect(data().revision).toBe(1));
+    vault.set("note-2", facts("note-2", { icon: "lucide:book" }));
+    act(() => data().noteTextChanged?.("note-2", "Live text.\n"));
+    await waitFor(() => expect(data().notes.find((note) => note.id === "note-2")?.icon).toBe("lucide:book"));
   });
 
-  it("takes a live note's text as its head without reading the vault again", async () => {
+  it("lets go of the backend's note caches when Notes closes", async () => {
     openNotes();
-    render(<NotesHost />);
+    const view = render(<NotesHost />);
     await screen.findByTestId("workspace");
-    await waitFor(() => expect(data().notes.find((note) => note.id === "note-1")?.icon).toBe("lucide:atom"));
-    const before = data().revision;
-    act(() => data().noteTextChanged?.("note-2", FRESH));
-    expect(data().notes.find((note) => note.id === "note-2")?.icon).toBe("lucide:book");
-    expect(data().revision).toBe(before);
-    expect(mocks.noteHeads).toHaveBeenCalledTimes(1);
+    view.unmount();
+    expect(mocks.releaseNoteCaches).toHaveBeenCalledOnce();
   });
 });
 
@@ -683,59 +751,6 @@ describe("NotesHost research tasks switch", () => {
   });
 });
 
-describe("NotesHost live heads", () => {
-  const LIVE = "---\ntitle: Reading list\nicon: lucide:book\n---\n\nLive text.\n";
-
-  it("applies the first live change at once and folds a burst into one later update", async () => {
-    openNotes();
-    render(<NotesHost />);
-    await screen.findByTestId("workspace");
-    await waitFor(() => expect(data().notes.find((note) => note.id === "note-1")?.icon).toBe("lucide:atom"));
-    vi.useFakeTimers();
-    try {
-      act(() => data().noteTextChanged?.("note-2", LIVE));
-      expect(data().notes.find((note) => note.id === "note-2")?.icon).toBe("lucide:book");
-      const afterFirst = data();
-      act(() => {
-        data().noteTextChanged?.("note-2", LIVE.replace("lucide:book", "lucide:atom"));
-        data().noteTextChanged?.("note-2", LIVE.replace("lucide:book", "lucide:flask-conical"));
-      });
-      expect(data()).toBe(afterFirst);
-      act(() => vi.advanceTimersByTime(1_000));
-      expect(data().notes.find((note) => note.id === "note-2")?.icon).toBe("lucide:flask-conical");
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-});
-
-describe("NotesHost revision after saves", () => {
-  it("moves the revision only when links, tags or titles change", async () => {
-    const writeProjectFile = vi.fn(() => Promise.resolve());
-    useFilesStore.setState({ writeProjectFile } as never);
-    const first = "---\ntitle: Reading list\n---\n\nSee [Alpha](oleafly://note/abc).\n";
-    mocks.readFileContent.mockResolvedValue("Old.\n");
-    openNotes();
-    render(<NotesHost />);
-    await screen.findByTestId("workspace");
-    await act(async () => {
-      await data().saveNote?.("note-2", first, noteVersion("Old.\n"));
-    });
-    const linked = data().revision;
-    mocks.readFileContent.mockResolvedValue(first);
-    const prose = `${first}\nMore words with no links.\n`;
-    await act(async () => {
-      await data().saveNote?.("note-2", prose, noteVersion(first));
-    });
-    expect(data().revision).toBe(linked);
-    mocks.readFileContent.mockResolvedValue(prose);
-    await act(async () => {
-      await data().saveNote?.("note-2", `${prose}\nAnd #vision.\n`, noteVersion(prose));
-    });
-    expect(data().revision).toBeGreaterThan(linked ?? 0);
-  });
-});
-
 describe("NotesHost papers and projects", () => {
   it("offers the open paper as the place to send a note", async () => {
     useFilesStore.setState({ projectId: "paper-1", activePath: "main.tex" });
@@ -748,6 +763,33 @@ describe("NotesHost papers and projects", () => {
     expect(props().onSendToPaper).toEqual(expect.any(Function));
   });
 
+  it("leaves a shared note's TikZ out of the paper unless it was drawn here", async () => {
+    paper.notesRenderTikz.mockResolvedValue('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 4"/>');
+    paper.writeProjectBytes.mockResolvedValue({});
+    useFilesStore.setState({
+      projects: [...projects, project({ id: "note-s", name: "Lab log", kind: "note", shared: { server_name: "Lab", role: "editor" } })],
+      projectId: "paper-1",
+      activePath: "notes/plan.md",
+      tree: [],
+      refreshTree: vi.fn(() => Promise.resolve(true)),
+    });
+    openNotes();
+    render(<NotesHost />);
+    await screen.findByTestId("workspace");
+    const send = (noteId: string, length: string) =>
+      act(async () => {
+        props().onSendToPaper?.({ paperId: "paper-1", text: `\`\`\`tikz\n\\draw (0,0) -- (${length},0);\n\`\`\``, noteId });
+        await vi.waitFor(() => expect(paper.insertAtCursor).toHaveBeenCalled(), { timeout: 10_000 });
+      });
+    await send("note-s", "5");
+    expect(paper.notesRenderTikz).not.toHaveBeenCalled();
+    expect(paper.insertAtCursor.mock.lastCall?.[0]).toContain(enNotes.sendToPaper.leftOut.replace("{{block}}", "TikZ"));
+    paper.insertAtCursor.mockClear();
+    await send("note-2", "6");
+    expect(paper.notesRenderTikz).toHaveBeenCalledOnce();
+    expect(paper.insertAtCursor.mock.lastCall?.[0]).toContain("tikz.svg");
+  }, 30_000);
+
   it("tells the user why nothing was sent when the paper is no longer open", async () => {
     useFilesStore.setState({ projectId: "paper-1", activePath: "main.tex" });
     openNotes();
@@ -756,7 +798,7 @@ describe("NotesHost papers and projects", () => {
     toastError.mockClear();
     act(() => useFilesStore.setState({ activePath: "refs.bib" }));
     await act(async () => {
-      props().onSendToPaper?.({ paperId: "paper-1", text: "# Plan" });
+      props().onSendToPaper?.({ paperId: "paper-1", text: "# Plan", noteId: "note-1" });
     });
     expect(toastError).toHaveBeenCalledTimes(1);
     expect(toastError).toHaveBeenCalledWith(enNotes.failures.paperNotOpen);
@@ -799,22 +841,105 @@ describe("NotesHost papers and projects", () => {
 });
 
 describe("sending a note to the open paper", () => {
-  it("converts Markdown for a LaTeX or Typst file and inserts it at the cursor", async () => {
-    paper.pandocConvert.mockResolvedValue({ text: "\\section{Plan}" });
-    useFilesStore.setState({ projectId: "paper-1", activePath: "main.tex" });
+  const CHART = JSON.stringify({ title: "Accuracy", categories: ["A", "B"], series: [{ name: "Run", values: [1, 2] }] });
+  const RICH_NOTE = [
+    "Masks keep ==the key idea== from [the plan](oleafly://note/plan-1) and [[Reading list|the list]].",
+    "",
+    "![Loss curve](assets/loss.png)",
+    "",
+    "```chart",
+    CHART,
+    "```",
+    "",
+    "```mermaid",
+    "graph TD; A-->B",
+    "```",
+    "",
+    "> [!warning] Careful",
+    "> Masks leak.",
+    "",
+    "```html",
+    "<b>Live widget</b>",
+    "```",
+  ].join("\n");
+  const REFERENCE = /!\[[^\]]*\]\(([^)\s]+)|\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}|image\("([^"]+)"/gu;
+
+  function referencedFiles(text: string, from: string): string[] {
+    const folder = from.includes("/") ? from.slice(0, from.lastIndexOf("/")) : "";
+    return [...text.matchAll(REFERENCE)].map((match) => {
+      const parts = [...folder.split("/").filter(Boolean)];
+      for (const part of (match[1] ?? match[2] ?? match[3]).split("/")) {
+        if (part === "..") parts.pop();
+        else parts.push(part);
+      }
+      return parts.join("/");
+    });
+  }
+
+  beforeEach(() => {
+    paper.pandocConvert.mockImplementation(async (request: { text: string }) => ({ text: request.text }));
+    paper.readProjectBytes.mockResolvedValue(new Uint8Array([137, 80, 78, 71]).buffer);
+    paper.writeProjectBytes.mockResolvedValue({});
+    paper.renderMermaidFigure.mockResolvedValue({ svg: "<svg xmlns=\"http://www.w3.org/2000/svg\"/>", pngBase64: "iVBORw0K" });
+    paper.svgDocumentToPngBytes.mockResolvedValue(new Uint8Array([137, 80, 78, 71]));
+    mocks.readFileContent.mockResolvedValue("\\documentclass{article}\n\\begin{document}\n\\end{document}\n");
+  });
+
+  it.each([
+    ["latex", "chapters/results.tex", "main.tex", "main.tex"],
+    ["typst", "chapters/results.typ", "main.typ", "chapters/results.typ"],
+  ])("sends a %s paper only references to files it copied into the paper", async (target, activePath, mainDoc, from) => {
+    useFilesStore.setState({
+      projectId: "paper-1",
+      activePath,
+      mainDoc,
+      tree: [{ path: "figures", is_dir: true }, { path: "figures/loss.png", is_dir: false }],
+      refreshTree: vi.fn(() => Promise.resolve(true)),
+    });
     useHomeViewStore.setState({ page: "notes" });
-    await expect(sendTextToPaper("paper-1", "# Plan")).resolves.toBe(true);
-    expect(paper.pandocConvert).toHaveBeenCalledWith({ source: "markdown", target: "latex", text: "# Plan" });
-    expect(paper.insertAtCursor).toHaveBeenCalledWith("\\section{Plan}");
+    await expect(sendTextToPaper("paper-1", RICH_NOTE, "note-1")).resolves.toBe(true);
     expect(useHomeViewStore.getState().page).toBe("library");
+
+    expect(paper.readProjectBytes).toHaveBeenCalledWith("note-1", "assets/loss.png");
+    const written = paper.writeProjectBytes.mock.calls.map(([projectId, path]) => {
+      expect(projectId).toBe("paper-1");
+      return path as string;
+    });
+    expect(written).not.toContain("figures/loss.png");
+    expect(paper.pandocConvert).toHaveBeenCalledWith(expect.objectContaining({ source: "markdown-fragment", target }));
+    const sent = paper.insertAtCursor.mock.lastCall?.[0] as string;
+    const referenced = referencedFiles(sent, from);
+    expect(referenced).toHaveLength(3);
+    expect(new Set(referenced)).toEqual(new Set(written));
+    expect(sent).toContain("**Careful**");
+    expect(sent).toContain("the key idea");
+    expect(sent).toContain("the plan");
+    expect(sent).toContain("the list");
+    expect(sent).toContain(enNotes.sendToPaper.leftOut.replace("{{block}}", "HTML"));
+    for (const raw of ["==", "oleafly://", "[[", "[!warning]", "```chart", "```mermaid", "Live widget", '"categories"']) {
+      expect(sent).not.toContain(raw);
+    }
+  });
+
+  it("adds the packages a TikZ block needs to a LaTeX paper's preamble", async () => {
+    paper.insertUsepackage.mockResolvedValue("file");
+    useFilesStore.setState({ projectId: "paper-1", activePath: "chapters/circuit.tex", mainDoc: "main.tex", tree: [] });
+    const note = "```circuitikz\n\\usepackage[siunitx]{circuitikz}\n\\draw (0,0) to[R] (2,0);\n```";
+    await expect(sendTextToPaper("paper-1", note, "note-1")).resolves.toBe(true);
+    expect(paper.insertUsepackage.mock.calls).toEqual([["main.tex", "circuitikz", "siunitx"]]);
+    expect(paper.insertAtCursor.mock.lastCall?.[0]).toContain("\\begin{circuitikz}");
+    paper.insertUsepackage.mockClear();
+    useFilesStore.setState({ activePath: "notes/plan.md" });
+    await sendTextToPaper("paper-1", "```tikz\n\\draw (0,0);\n```", "note-1");
+    expect(paper.insertUsepackage).not.toHaveBeenCalled();
   });
 
   it("inserts Markdown as it is and refuses a paper that is not open", async () => {
     useFilesStore.setState({ projectId: "paper-1", activePath: "notes/plan.md" });
-    await expect(sendTextToPaper("paper-1", "# Plan")).resolves.toBe(true);
+    await expect(sendTextToPaper("paper-1", "# Plan", "note-1")).resolves.toBe(true);
     expect(paper.pandocConvert).not.toHaveBeenCalled();
     expect(paper.insertAtCursor).toHaveBeenCalledWith("# Plan");
-    await expect(sendTextToPaper("paper-2", "# Plan")).resolves.toBe(false);
+    await expect(sendTextToPaper("paper-2", "# Plan", "note-1")).resolves.toBe(false);
     expect(paperFormat("main.typ")).toBe("typst");
     expect(paperFormat("refs.bib")).toBeNull();
   });

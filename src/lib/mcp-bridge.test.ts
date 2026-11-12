@@ -209,6 +209,17 @@ describe("mcp tool registry", () => {
     expect(ro.read_skill_file).toBeDefined();
   });
 
+  it("adds the Notes tools only while Notes is on, and drops their writes in read-only mode", () => {
+    const reads = ["list_knowledge_notes", "search_notes", "read_note_by_id", "today_note", "list_note_tasks", "note_backlinks"];
+    const writes = ["create_note", "append_to_note", "edit_note_section"];
+    for (const name of [...reads, ...writes]) expect(registry[name], name).toBeUndefined();
+    const notes = buildMcpToolRegistry({ confirm: async () => true, readOnly: false, onImage: () => {}, notes: true });
+    for (const name of [...reads, ...writes]) expect(notes[name], name).toBeDefined();
+    const readOnly = buildMcpToolRegistry({ confirm: async () => true, readOnly: true, onImage: () => {}, notes: true });
+    for (const name of reads) expect(readOnly[name], name).toBeDefined();
+    for (const name of writes) expect(readOnly[name], name).toBeUndefined();
+  });
+
   it("reports a project override as disabled and hands load_skill its script commands", async () => {
     const overridden = skillFixture({ projectDisabled: true });
     vi.mocked(invoke).mockResolvedValueOnce([overridden]);
@@ -385,12 +396,14 @@ describe("mcp tool registry", () => {
   });
 
   it("keeps the Rust fail-safe mutation list in parity with the webview registry", () => {
+    const full = buildMcpToolRegistry({ confirm: async () => true, readOnly: false, onImage: () => {}, notes: true });
     const ro = buildMcpToolRegistry({
       confirm: async () => true,
       readOnly: true,
       onImage: () => {},
+      notes: true,
     });
-    const removed = Object.keys(registry).filter((name) => !ro[name]).sort();
+    const removed = Object.keys(full).filter((name) => !ro[name]).sort();
     const rust = readFileSync(
       join(process.cwd(), "src-tauri/src/mcp/native.rs"),
       "utf8",
@@ -407,7 +420,8 @@ describe("mcp tool registry", () => {
     const known = new Set([...block.matchAll(/"([a-z_]+)"/g)].map((match) => match[1]));
 
     expect(known.size).toBeGreaterThan(0);
-    expect(Object.keys(registry).filter((name) => !known.has(name))).toEqual([]);
+    const notes = buildMcpToolRegistry({ confirm: async () => true, readOnly: false, onImage: () => {}, notes: true });
+    expect(Object.keys(notes).filter((name) => !known.has(name))).toEqual([]);
   });
 
   it("exposes a plain JSON schema for every tool", () => {

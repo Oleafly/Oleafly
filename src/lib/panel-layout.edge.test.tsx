@@ -180,11 +180,9 @@ describe("dismissible panel reopening", () => {
     const onDismiss = vi.fn();
     const limits = { assistant: { minSize: 20, collapsible: true, collapsedSize: 0 } };
     const { result } = renderHook(() =>
-      useDismissiblePanelLayout(ref, undefined, ["editor", "assistant"], ["editor", "assistant"], limits, {
-        id: "assistant",
-        defaultSize: 30,
-        onDismiss,
-      }),
+      useDismissiblePanelLayout(ref, undefined, ["editor", "assistant"], ["editor", "assistant"], limits, [
+        { id: "assistant", defaultSize: 30, onDismiss },
+      ]),
     );
     result.current.onLayoutChange({ editor: 100, assistant: 0 });
     await Promise.resolve();
@@ -196,15 +194,36 @@ describe("dismissible panel reopening", () => {
     const { group, ref } = fakeGroup({ editor: 60, assistant: 40 });
     const limits = { assistant: { minSize: 20, collapsible: true, collapsedSize: 0 } };
     const { result } = renderHook(() =>
-      useDismissiblePanelLayout(ref, undefined, ["editor", "assistant"], ["editor", "assistant"], limits, {
-        id: "assistant",
-        defaultSize: 30,
-        onDismiss: vi.fn(),
-      }),
+      useDismissiblePanelLayout(ref, undefined, ["editor", "assistant"], ["editor", "assistant"], limits, [
+        { id: "assistant", defaultSize: 30, onDismiss: vi.fn() },
+      ]),
     );
     result.current.onLayoutChange({ editor: 100, assistant: 0 });
     await Promise.resolve();
     expect(group.setLayout).not.toHaveBeenCalled();
+  });
+
+  it("reopens every dismissible panel that reappears collapsed and closes the one pushed shut later", async () => {
+    const { group, ref } = fakeGroup({ assistant: 0, editor: 100, terminal: 0 });
+    const closeTerminal = vi.fn();
+    const limits = {
+      assistant: { minSize: 20, collapsible: true, collapsedSize: 0 },
+      terminal: { minSize: 10, collapsible: true, collapsedSize: 0 },
+    };
+    const panels = ["assistant", "editor", "terminal"];
+    const { result } = renderHook(() =>
+      useDismissiblePanelLayout(ref, undefined, panels, panels, limits, [
+        { id: "assistant", defaultSize: 30, onDismiss: vi.fn() },
+        { id: "terminal", defaultSize: 25, onDismiss: closeTerminal },
+      ]),
+    );
+    result.current.onLayoutChange({ assistant: 0, editor: 100, terminal: 0 });
+    await Promise.resolve();
+    expect(group.setLayout).toHaveBeenCalledWith({ assistant: 30, editor: 45, terminal: 25 });
+    expect(closeTerminal).not.toHaveBeenCalled();
+    result.current.onLayoutChange({ assistant: 30, editor: 45, terminal: 25 });
+    result.current.onLayoutChange({ assistant: 30, editor: 70, terminal: 0 });
+    expect(closeTerminal).toHaveBeenCalledTimes(1);
   });
 });
 

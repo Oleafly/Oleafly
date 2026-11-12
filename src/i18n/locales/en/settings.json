@@ -1127,146 +1127,6 @@
         "label": "Show the PDF when you compile"
       },
       "title": "Zen mode"
-    },
-    "notes": {
-      "sectionName": "Notes appearance",
-      "resetAriaLabel": "Reset {{setting}} to default",
-      "text": {
-        "title": "Text"
-      },
-      "typeface": {
-        "label": "Typeface",
-        "description": "Choose a typeface for note text.",
-        "options": {
-          "sans": "Sans serif",
-          "serif": "Serif",
-          "mono": "Monospace"
-        }
-      },
-      "font": {
-        "label": "Note font",
-        "description": "Pick any installed font for note text. Leave it empty to use the Typeface setting."
-      },
-      "fontSize": {
-        "label": "Note text size",
-        "description": "Set the size of note text.",
-        "custom": "Custom",
-        "customLabel": "Custom note text size in pixels"
-      },
-      "lineHeight": {
-        "label": "Note line height",
-        "description": "Set the space between lines of note text.",
-        "customLabel": "Custom note line height"
-      },
-      "paragraphSpacing": {
-        "label": "Paragraph spacing",
-        "description": "Set the space between paragraphs, lists and other blocks.",
-        "options": {
-          "compact": "Compact",
-          "normal": "Normal",
-          "relaxed": "Relaxed",
-          "spacious": "Spacious"
-        }
-      },
-      "headings": {
-        "title": "Headings and title"
-      },
-      "headingTypeface": {
-        "label": "Heading typeface",
-        "description": "Choose a typeface for headings and the note title.",
-        "options": {
-          "text": "Same as text"
-        }
-      },
-      "headingFont": {
-        "label": "Heading font",
-        "description": "Pick an installed font for headings and the note title. Leave it empty to use the Heading typeface setting."
-      },
-      "headingSize": {
-        "label": "Heading size",
-        "description": "Set how large headings are compared with the text.",
-        "options": {
-          "small": "Smaller",
-          "normal": "Normal",
-          "large": "Larger"
-        }
-      },
-      "titleSize": {
-        "label": "Title size",
-        "description": "Set the size of the title at the top of each note."
-      },
-      "layout": {
-        "title": "Layout"
-      },
-      "width": {
-        "label": "Note width",
-        "description": "How wide notes open. The width menu in a note changes this too.",
-        "options": {
-          "standard": "Standard",
-          "wide": "Wide",
-          "full": "Full width"
-        }
-      },
-      "wordCount": {
-        "label": "Show word count",
-        "description": "Show a note's word count in its toolbar."
-      },
-      "spellcheck": {
-        "label": "Check spelling in notes",
-        "description": "Underline misspelled words while you write a note."
-      },
-      "code": {
-        "title": "Code"
-      },
-      "codeFont": {
-        "label": "Code font",
-        "description": "Pick an installed font for code blocks and inline code."
-      },
-      "codeTheme": {
-        "label": "Code block colors",
-        "description": "Pick the syntax colors for code blocks in notes.",
-        "options": {
-          "editor": "Same as editor"
-        }
-      },
-      "colors": {
-        "title": "Colors"
-      },
-      "accent": {
-        "label": "Note accent color",
-        "description": "Used for links, tags and task boxes in notes.",
-        "matchApp": "Match app",
-        "customAriaLabel": "Pick a custom note accent color"
-      },
-      "highlight": {
-        "label": "Highlight color",
-        "description": "The color behind highlighted text.",
-        "options": {
-          "yellow": "Yellow",
-          "green": "Green",
-          "blue": "Blue",
-          "pink": "Pink",
-          "purple": "Purple",
-          "accent": "Accent"
-        }
-      },
-      "callouts": {
-        "label": "Callout style",
-        "description": "How callout boxes look in notes.",
-        "options": {
-          "tinted": "Tinted",
-          "filled": "Filled",
-          "outlined": "Outlined",
-          "bar": "Side bar"
-        }
-      },
-      "remoteImages": {
-        "title": "Images from the web",
-        "description": "Notes load images from these sites without asking.",
-        "empty": "Notes ask before they load an image from the web. Sites you always allow appear here.",
-        "remove": "Remove {{host}}"
-      },
-      "resetAll": "Reset Notes appearance"
     }
   },
   "checkpoints": {
@@ -2502,6 +2362,42 @@
       "notesAskAgent": {
         "description": "Ask the agent about the selected text, or open and close the note's agent.",
         "label": "Notes: ask agent"
+      },
+      "notesNewNote": {
+        "label": "Notes: new note",
+        "description": "Start a new note in the current panel."
+      },
+      "notesSearch": {
+        "label": "Notes: search notes",
+        "description": "Jump to the search box at the top of the Notes sidebar."
+      },
+      "notesBookmark": {
+        "label": "Notes: bookmark note",
+        "description": "Add the open note to Favorites, or take it out."
+      },
+      "notesCopyLink": {
+        "label": "Notes: copy link to note",
+        "description": "Copy a link to the open note that you can paste into another note or a chat."
+      },
+      "notesProperties": {
+        "label": "Notes: note info",
+        "description": "Open or close the note's info panel. With note info set to inline, it folds the properties under the title."
+      },
+      "notesQuickCapture": {
+        "description": "Open a small window to jot something down from any app, even when Oleafly is in the background.",
+        "label": "Notes: quick capture"
+      },
+      "notesCopyBlockLink": {
+        "description": "Copy a link to the paragraph, list item or table the cursor is in.",
+        "label": "Notes: copy link to block"
+      },
+      "notesBack": {
+        "description": "Go back to where you were in this tab.",
+        "label": "Notes: back"
+      },
+      "notesForward": {
+        "description": "Go forward again after going back.",
+        "label": "Notes: forward"
       }
     },
     "application": {
@@ -2527,14 +2423,41 @@
         "renameSymbol": "Rename symbol or file project-wide",
         "slashCommandMenu": "Slash-command insert menu",
         "triggerAutocomplete": "Trigger autocomplete",
-        "undo": "Undo"
+        "undo": "Undo",
+        "noteBold": "Bold",
+        "noteItalic": "Italic",
+        "noteUnderline": "Underline",
+        "noteStrike": "Strikethrough",
+        "noteCode": "Inline code",
+        "noteHighlight": "Highlight in the last color used",
+        "noteSuperscript": "Superscript",
+        "noteSubscript": "Subscript",
+        "noteHeadings": "Heading 1 to 6",
+        "noteText": "Turn into text",
+        "noteQuote": "Quote",
+        "noteCodeBlock": "Code block",
+        "noteBulletList": "Bullet list",
+        "noteNumberedList": "Numbered list",
+        "noteTaskList": "Task list",
+        "noteToggleTask": "Tick or untick a task",
+        "noteIndent": "Indent a list item",
+        "noteOutdent": "Outdent a list item",
+        "noteLineBreak": "Line break in the same paragraph",
+        "noteFind": "Find and replace",
+        "noteSelectAll": "Select the whole note",
+        "noteUndo": "Undo",
+        "noteRedo": "Redo",
+        "noteInsertMenu": "Open the insert menu at the start of a line",
+        "noteLinkMenu": "Link to a note",
+        "noteTag": "Add a tag"
       },
       "managed": "Managed by the editor"
     },
     "categories": {
       "codeIntelligence": "Code intelligence",
       "editor": "Editor",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Notes"
     },
     "error": {
       "conflict": "Already assigned to {{action}}.",
@@ -2580,6 +2503,15 @@
         "uppercase": "Uppercase"
       },
       "unbound": "Not set"
+    },
+    "quickCapture": {
+      "label": "Quick capture from anywhere",
+      "description": "The quick capture shortcut works in every app on this computer.",
+      "ready": "Press {{shortcut}} in any app to open quick capture.",
+      "taken": "Another app already uses {{shortcut}}. Pick a different shortcut for Notes: quick capture.",
+      "invalid": "{{shortcut}} can't work outside Oleafly. Pick a shortcut that ends in a letter, a number or a function key.",
+      "failed": "Oleafly couldn't set up the shortcut. Turn quick capture off and on again to retry.",
+      "wayland": "Wayland doesn't let apps listen for keys outside their own windows. To open quick capture with a key, add a custom shortcut in your system keyboard settings that runs this command:"
     }
   },
   "systemIntegration": {
@@ -2671,17 +2603,5 @@
       "loadFailed": "The MCP server list could not be read.",
       "missing": "{{name}} (not found)"
     }
-  },
-  "notesPreview": {
-    "label": "Preview of a note with these settings",
-    "title": "Field notes",
-    "heading": "Morning survey",
-    "paragraph": "Light rain until nine, then clear skies over the north ridge. The soil was still damp at noon.",
-    "links": "See <note>Sampling method</note> for the full steps, or browse <tag>#fieldwork</tag>.",
-    "highlight": "Seedlings doubled in height in one week.",
-    "calloutTitle": "Next visit",
-    "calloutBody": "Check the soil sensors before taking new samples.",
-    "taskDone": "Label the samples",
-    "task": "Upload the photos"
   }
 }

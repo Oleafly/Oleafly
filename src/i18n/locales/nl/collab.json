@@ -230,7 +230,11 @@
     "history_unavailable": "De geschiedenis van dit project staat nog niet op deze computer. Probeer het opnieuw zodra die is gesynchroniseerd.",
     "account_storage_full": "Het account van de projecteigenaar heeft geen opslag meer op deze server. Haal wat bestanden weg om ruimte te maken, of vraag de beheerder van de server om meer ruimte.",
     "too_many_projects": "Je hebt al zoveel gedeelde projecten als deze server toestaat. Stop met het delen van een project voordat je een ander deelt.",
-    "too_many_uploads": "Je hebt het afgelopen uur te veel bestanden geüpload. Probeer het later opnieuw."
+    "too_many_uploads": "Je hebt het afgelopen uur te veel bestanden geüpload. Probeer het later opnieuw.",
+    "public_notes_off": "Deze server staat geen openbare links naar notities toe. Een beheerder kan ze aanzetten in de instellingen van de server.",
+    "too_many_pages": "Je hebt zoveel openbare pagina's als deze server toestaat. Trek de publicatie van een pagina in en probeer het opnieuw.",
+    "page_too_large": "Deze notitie is te groot om te publiceren. Verwijder wat afbeeldingen en probeer het opnieuw.",
+    "page_taken_down": "Een beheerder heeft deze pagina offline gehaald, dus deze notitie kan pas weer worden gepubliceerd als de pagina weer online staat."
   },
   "roles": {
     "admin": "Beheerder",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "Aanmelden via e-mail",
         "description": "Mensen kunnen zich aanmelden met een link die naar hun e-mailadres wordt gestuurd. Hiervoor zijn de e-mailinstellingen van de server nodig. Je toegangsregels bepalen nog steeds wie erin komt."
+      },
+      "publicNotesAllowed": {
+        "label": "Openbare links naar notities toestaan",
+        "description": "Leden kunnen een alleen-lezen kopie van een notitie publiceren via een link die iedereen zonder aanmelden kan openen."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "Gastuitnodiging afgewezen",
         "guestInvitationRevoked": "Gastuitnodiging ingetrokken",
         "guestAdmissionEnded": "Toegang van een gast tot de server beëindigd",
-        "unknown": "Andere servergebeurtenis"
+        "unknown": "Andere servergebeurtenis",
+        "notePublished": "Notitie gepubliceerd via een openbare link",
+        "noteUnpublished": "Publicatie van een notitie ingetrokken",
+        "noteTakenDown": "Gepubliceerde notitie offline gehaald",
+        "noteRestored": "Gepubliceerde notitie weer online gezet"
       },
       "details": {
         "project": "Project: {{title}}",
@@ -455,7 +467,8 @@
         "device": "Apparaat: {{name}}",
         "byAdmin": "Vanuit de beheerconsole",
         "settingOn": "{{setting}}: aan",
-        "settingOff": "{{setting}}: uit"
+        "settingOff": "{{setting}}: uit",
+        "note": "Notitie: {{title}}"
       }
     },
     "email": {
@@ -793,7 +806,8 @@
       "settings": "Serverinstellingen",
       "email": "E-mail",
       "log": "Beveiligingslogboek",
-      "checks": "Verbindingscontroles"
+      "checks": "Verbindingscontroles",
+      "pages": "Gepubliceerde notities"
     },
     "health": {
       "label": "Serverstatus: {{status}}",
@@ -960,6 +974,30 @@
     },
     "checks": {
       "description": "Controleer de verbinding van deze computer met de server."
+    },
+    "pages": {
+      "description": "Alleen-lezen pagina's die mensen van hun notities hebben gemaakt. Iedereen met de link van een pagina kan die lezen.",
+      "loading": "Gepubliceerde notities laden…",
+      "empty": "Nog niemand heeft een notitie op deze server gepubliceerd.",
+      "limit": "De nieuwste {{shown}} pagina's worden getoond.",
+      "columns": {
+        "title": "Notitie",
+        "author": "Auteur",
+        "updated": "Gepubliceerd",
+        "actions": "Acties"
+      },
+      "noAuthor": "Verwijderd account",
+      "takenDown": "Offline gehaald",
+      "openNamed": "{{title}} openen",
+      "takeDown": "Offline halen",
+      "takeDownNamed": "{{title}} offline halen",
+      "restore": "Weer online zetten",
+      "restoreNamed": "{{title}} weer online zetten",
+      "takeDownConfirm": {
+        "title": "{{title}} offline halen?",
+        "description": "De openbare link werkt niet meer tot je de pagina weer online zet. De auteur houdt de notitie, maar kan die in de tussentijd niet opnieuw publiceren.",
+        "confirm": "Offline halen"
+      }
     }
   },
   "links": {
@@ -1233,5 +1271,41 @@
     "broughtIn": "Je wijzigingen uit {{name}} staan nu in dit project.",
     "retry": "Opnieuw proberen",
     "dismiss": "Sluiten"
+  },
+  "publish": {
+    "tabs": {
+      "people": "Mensen",
+      "publish": "Publiceren"
+    },
+    "intro": "Bij publiceren komt er een alleen-lezen kopie van deze notitie op een openbare link. Iedereen met de link kan hem lezen zonder zich aan te melden.",
+    "contents": "Afbeeldingen, grafieken, diagrammen, wiskunde, Typst en moleculen worden meegenomen. Blokken met HTML, React, CSV, sequenties en notebooks worden weggelaten.",
+    "checking": "Zoeken naar een openbare pagina…",
+    "loadFailed": "Oleafly kon de openbare pagina van deze notitie niet controleren.",
+    "notAllowed": "{{server}} staat geen openbare links naar notities toe. Een beheerder kan ze aanzetten in de instellingen van de server.",
+    "ownerOnly": "Alleen de eigenaar van de notitie kan die publiceren.",
+    "linkLabel": "Openbare link",
+    "open": "Openen",
+    "publishedAt": "Laatst gepubliceerd {{date}}",
+    "stale": "Je hebt deze notitie gewijzigd sinds je hem voor het laatst publiceerde. Publiceer opnieuw om de pagina bij te werken.",
+    "publish": "Publiceren",
+    "republish": "Opnieuw publiceren",
+    "unpublish": "Publicatie intrekken",
+    "failed": "Het publiceren is niet afgerond.",
+    "unpublishConfirm": {
+      "title": "Publicatie van {{name}} intrekken?",
+      "description": "De openbare link werkt meteen niet meer. Wie een kopie van de pagina heeft opgeslagen, houdt die.",
+      "confirm": "Publicatie intrekken"
+    },
+    "list": {
+      "title": "Gepubliceerde notities",
+      "description": "Alleen-lezen pagina's van je notities op deze server. Iedereen met een link kan ze lezen.",
+      "loadFailed": "Oleafly kon je gepubliceerde notities niet laden.",
+      "empty": "Je hebt hier geen notities gepubliceerd.",
+      "openNamed": "{{name}} openen",
+      "unpublishNamed": "Publicatie van {{name}} intrekken",
+      "updated": "Gepubliceerd {{date}}"
+    },
+    "takenDown": "Een beheerder heeft deze pagina offline gehaald. Lezers kunnen hem niet openen en je kunt hem pas weer publiceren als de beheerder hem weer online zet. Je kunt de publicatie wel intrekken.",
+    "tooOld": "{{server}} is te oud voor openbare links naar notities. De beheerder moet Oleafly Server bijwerken."
   }
 }

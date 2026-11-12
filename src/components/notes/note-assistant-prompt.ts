@@ -2,13 +2,23 @@ import type { AssistantScopePrompt } from "@/components/ai/assistant-scope";
 import { noteBlockGuide } from "./block-guide";
 import { noteLinkHref } from "./note-link-format";
 import type { ResearchActionId } from "./types";
-import { quoted, UNTRUSTED_RESULTS } from "./untrusted-data";
+import { quoted, UNTRUSTED_RESULTS, untrustedBlock } from "./untrusted-data";
 
 export interface NotePromptFacts {
   title: string;
   noteId: string;
   linkId: string | null;
   relatedProject: { id: string; name: string } | null;
+}
+
+export interface NotePassage {
+  text: string;
+  line: number | null;
+}
+
+export interface ResearchTaskContext {
+  latestRun?: string | null;
+  passage?: NotePassage | null;
 }
 
 const RESEARCH_TASKS: Readonly<Record<ResearchActionId, string>> = {
@@ -29,10 +39,28 @@ const RESEARCH_TASKS: Readonly<Record<ResearchActionId, string>> = {
     "Add a section named Summary at the start of the note, after the front matter, with three to five sentences that could open a paper abstract. Use only what the note says.",
 };
 
-export function researchTask(actionId: ResearchActionId, latestRun?: string | null): string {
+type PassageAction = "proofread" | "rewrite";
+
+const PASSAGE_TASKS: Readonly<Record<PassageAction, string>> = {
+  proofread:
+    "Proofread only the passage below. Fix spelling, grammar and punctuation without changing the meaning or the style, and leave the rest of the note as it is.",
+  rewrite:
+    "Rewrite only the passage below for clarity and flow. Keep its meaning, every fact and every number, and leave the rest of the note as it is.",
+};
+
+export function actsOnPassage(actionId: ResearchActionId): actionId is PassageAction {
+  return actionId in PASSAGE_TASKS;
+}
+
+export function researchTask(actionId: ResearchActionId, context: ResearchTaskContext = {}): string {
+  const { passage, latestRun } = context;
+  if (actsOnPassage(actionId) && passage) {
+    const where = passage.line === null ? "" : ` It starts on line ${passage.line} of the note.`;
+    return `${PASSAGE_TASKS[actionId]}${where}\n\n${untrustedBlock("The selected passage", passage.text)}`;
+  }
   const task = RESEARCH_TASKS[actionId];
   if (actionId !== "latestRun" || !latestRun) return task;
-  return `${task}\n\n<run>\n${latestRun}\n</run>`;
+  return `${task}\n\n${untrustedBlock("The latest research task", latestRun)}`;
 }
 
 export function hiddenResearchActions(hasLatestRun: boolean, hasRelatedProject: boolean): ReadonlySet<ResearchActionId> {
@@ -55,6 +83,24 @@ function projectLine(facts: NotePromptFacts): string {
   return `The note is linked to the project ${quoted(project.name)} (id ${project.id}). Read its paper, code and data with related_project_files, read_related_project_file and search_related_project, and run research tasks in it with research_task_create.`;
 }
 
+function toolLines(tools: ReadonlySet<string>): string {
+  const canWrite = tools.has("write_file");
+  return [
+    `- Read the note with read_note before you change it. Change the note only with propose_note_edits: each edit replaces one exact passage, and the person reviews every change. If edits come back skipped, fix their find text and call it again in the same turn.${canWrite ? " Never use write_file or replace_in_file on note.md." : ""}`,
+    tools.has("search_notes")
+      ? "- Search the knowledge base with search_notes or list_knowledge_notes before writing something the person may already know, and reuse it with read_note_by_id."
+      : null,
+    tools.has("create_note") ? "- Use create_note when a result deserves its own note." : null,
+    "- For multi-step work, keep a short plan with update_todos.",
+    canWrite
+      ? "- Files in the note's folder (assets, data, attachments) are yours to read and write with the file tools."
+      : "- You can read the files beside the note with the file tools, but you cannot change them.",
+    tools.has("run_command") ? "- run_command runs in that folder." : null,
+  ]
+    .filter((line): line is string => line !== null)
+    .join("\n");
+}
+
 export function noteAssistantPrompt(facts: NotePromptFacts, input: AssistantScopePrompt): string {
   const tools = input.tools.length > 0 ? input.tools.join(", ") : "none";
   const goal = input.goalLine ? `\n${input.goalLine}` : "";
@@ -67,16 +113,12 @@ How you work:
 - ${UNTRUSTED_RESULTS}
 - You are not limited to describing the editor. Never say a capability is missing when one of your tools can do it, and never lecture about how the editor works. If you truly cannot do something, say what you can do instead in one sentence.
 - Ask one short question only when the request is ambiguous. Otherwise get on with it.
-- Read the note with read_note before you change it. Change the note only with propose_note_edits: each edit replaces one exact passage, and the person reviews every change. If edits come back skipped, fix their find text and call it again in the same turn. Never use write_file or replace_in_file on note.md.
-- Search the knowledge base with search_notes or list_knowledge_notes before writing something the person may already know, and reuse it with read_note_by_id. Use create_note when a result deserves its own note.
-- For multi-step work, keep a short plan with update_todos.
-- Files in the note's folder (assets, data, attachments) are yours to read and write with the file tools. run_command runs in that folder.
+${toolLines(new Set(input.tools))}
 
 Writing in the note:
 - Write Markdown that fits the note's existing structure and voice. Keep the front matter as it is.
 - Cite with [@key] only for references that exist in the linked project's bibliography or that you verified. Never invent a reference, a DOI, a result or a number.
-- Link other notes as [Title](oleafly://note/<link id>) using the link ids from search_notes or list_knowledge_notes.
-- Use the note's blocks for rich content:
+${input.tools.includes("search_notes") ? "- Link other notes as [Title](oleafly://note/<link id>) using the link ids from search_notes or list_knowledge_notes.\n" : ""}- Use the note's blocks for rich content:
 
 ${noteBlockGuide()}
 

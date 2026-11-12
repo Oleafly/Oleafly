@@ -1,0 +1,15 @@
+diff --git a/package.json b/package.json
+index fd2f24e00ac1dbdaa58233d6de8f6e03bdbee1f5..0c50c05c31b767a0b2f3610f2b0e5d0191f49730 100644
+--- a/package.json
++++ b/package.json
+@@ -32,7 +32,9 @@
+       },
+       "default": "./dist/node-esm/index.js"
+     },
+-    "./worker": "./dist/browser/worker.js"
++    "./worker": "./dist/browser/worker.js",
++    "./wasm": "./dist/node-esm/d2.wasm",
++    "./wasm-exec": "./dist/node-esm/wasm_exec.js"
+   },
+   "files": [
+     "dist",

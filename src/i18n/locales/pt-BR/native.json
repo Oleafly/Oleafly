@@ -218,5 +218,10 @@
       "title": "Verificações de permissão desligadas ({{mode}})",
       "description": "O agente pode editar arquivos e executar comandos sem perguntar. O Oleafly não conseguiu trocar para outro modo. Mude o modo nas configurações do próprio agente."
     }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Captura rápida"
+    }
   }
 }

@@ -218,5 +218,10 @@
       "title": "Kontrola oprávnění je vypnutá ({{mode}})",
       "description": "Agent může upravovat soubory a spouštět příkazy bez ptaní. Oleafly ho nedokázal přepnout do jiného režimu. Režim změňte v nastavení samotného agenta."
     }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Rychlý záznam"
+    }
   }
 }

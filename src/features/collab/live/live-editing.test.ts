@@ -362,10 +362,19 @@ describe("live editing", () => {
     release();
     await settle();
     expect(mocks.collabPresenceSet).toHaveBeenCalledExactlyOnceWith(PROJECT, "notes/Plan.md", null, null);
-    const other = holdNoteLivePath(PROJECT, "notes/Other.md");
-    other();
+  });
+
+  it("sends this person's file again when a note on another file lets go, since that note may have spoken last", async () => {
+    mocks.view = { state: { selection: { main: { head: 4, anchor: 1 } } } };
+    mocks.documentPath = "main.tex";
+    start();
     await settle();
-    expect(mocks.collabPresenceSet).toHaveBeenCalledTimes(1);
+    const release = holdNoteLivePath(PROJECT, "notes/Plan.md");
+    await settle();
+    mocks.collabPresenceSet.mockClear();
+    release();
+    await settle();
+    expect(mocks.collabPresenceSet).toHaveBeenCalledExactlyOnceWith(PROJECT, "main.tex", 4, 1);
   });
 
   it("closes everything and returns the editor to local files when it stops", async () => {

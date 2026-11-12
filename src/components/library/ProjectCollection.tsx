@@ -23,6 +23,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { ColorDot } from "@/components/ui/color-swatch";
 import { Book, BOOK_COLOR_OPTIONS, useBookColorLabels } from "@/components/library/Book";
 import {
   ContextMenu,
@@ -255,10 +256,7 @@ function ProjectMenuItems({
       <SubContent className="w-44">
         {BOOK_COLOR_OPTIONS.map((c) => (
           <Item key={c.hex} onClick={() => actions.setColor(p.id, c.hex)}>
-            <span
-              className="mr-2 size-3.5 shrink-0 rounded-full border border-black/10"
-              style={{ background: c.hex }}
-            />
+            <ColorDot color={c.hex} size="md" className="mr-2" />
             {colorLabels[c.name] ?? c.name}
             {color === c.hex && <CheckBadge className="ml-auto" />}
           </Item>

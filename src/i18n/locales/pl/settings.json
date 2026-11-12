@@ -1141,146 +1141,6 @@
         "label": "Pokaż PDF przy kompilacji"
       },
       "title": "Tryb Zen"
-    },
-    "notes": {
-      "sectionName": "Wygląd notatek",
-      "resetAriaLabel": "Przywróć domyślne ustawienie: {{setting}}",
-      "text": {
-        "title": "Tekst"
-      },
-      "typeface": {
-        "label": "Krój pisma",
-        "description": "Wybierz krój pisma dla tekstu notatek.",
-        "options": {
-          "sans": "Bezszeryfowy",
-          "serif": "Szeryfowy",
-          "mono": "Stałej szerokości"
-        }
-      },
-      "font": {
-        "label": "Czcionka notatek",
-        "description": "Wybierz dowolną zainstalowaną czcionkę dla tekstu notatek. Pozostaw pole puste, aby używać ustawienia Krój pisma."
-      },
-      "fontSize": {
-        "label": "Rozmiar tekstu notatek",
-        "description": "Ustaw rozmiar tekstu notatek.",
-        "custom": "Niestandardowy",
-        "customLabel": "Niestandardowy rozmiar tekstu notatek w pikselach"
-      },
-      "lineHeight": {
-        "label": "Wysokość wiersza notatek",
-        "description": "Ustaw odstęp między wierszami tekstu notatek.",
-        "customLabel": "Niestandardowa wysokość wiersza notatek"
-      },
-      "paragraphSpacing": {
-        "label": "Odstępy między akapitami",
-        "description": "Ustaw odstęp między akapitami, listami i innymi blokami.",
-        "options": {
-          "compact": "Zwarte",
-          "normal": "Zwykłe",
-          "relaxed": "Swobodne",
-          "spacious": "Przestronne"
-        }
-      },
-      "headings": {
-        "title": "Nagłówki i tytuł"
-      },
-      "headingTypeface": {
-        "label": "Krój pisma nagłówków",
-        "description": "Wybierz krój pisma dla nagłówków i tytułu notatki.",
-        "options": {
-          "text": "Taki jak tekst"
-        }
-      },
-      "headingFont": {
-        "label": "Czcionka nagłówków",
-        "description": "Wybierz zainstalowaną czcionkę dla nagłówków i tytułu notatki. Pozostaw pole puste, aby używać ustawienia Krój pisma nagłówków."
-      },
-      "headingSize": {
-        "label": "Rozmiar nagłówków",
-        "description": "Ustaw rozmiar nagłówków względem tekstu.",
-        "options": {
-          "small": "Mniejszy",
-          "normal": "Zwykły",
-          "large": "Większy"
-        }
-      },
-      "titleSize": {
-        "label": "Rozmiar tytułu",
-        "description": "Ustaw rozmiar tytułu na początku każdej notatki."
-      },
-      "layout": {
-        "title": "Układ"
-      },
-      "width": {
-        "label": "Szerokość notatki",
-        "description": "Z jaką szerokością otwierają się notatki. To ustawienie zmienia też menu szerokości w notatce.",
-        "options": {
-          "standard": "Standardowa",
-          "wide": "Szeroka",
-          "full": "Pełna szerokość"
-        }
-      },
-      "wordCount": {
-        "label": "Pokazuj liczbę słów",
-        "description": "Pokazuj liczbę słów notatki na jej pasku narzędzi."
-      },
-      "spellcheck": {
-        "label": "Sprawdzaj pisownię w notatkach",
-        "description": "Podkreślaj błędnie napisane słowa podczas pisania notatki."
-      },
-      "code": {
-        "title": "Kod"
-      },
-      "codeFont": {
-        "label": "Czcionka kodu",
-        "description": "Wybierz zainstalowaną czcionkę dla bloków kodu i kodu w tekście."
-      },
-      "codeTheme": {
-        "label": "Kolory bloków kodu",
-        "description": "Wybierz kolory składni dla bloków kodu w notatkach.",
-        "options": {
-          "editor": "Takie jak w edytorze"
-        }
-      },
-      "colors": {
-        "title": "Kolory"
-      },
-      "accent": {
-        "label": "Kolor akcentu notatek",
-        "description": "Używany w linkach, tagach i polach zadań w notatkach.",
-        "matchApp": "Taki jak w aplikacji",
-        "customAriaLabel": "Wybierz własny kolor akcentu notatek"
-      },
-      "highlight": {
-        "label": "Kolor wyróżnienia",
-        "description": "Kolor tła pod wyróżnionym tekstem.",
-        "options": {
-          "yellow": "Żółty",
-          "green": "Zielony",
-          "blue": "Niebieski",
-          "pink": "Różowy",
-          "purple": "Fioletowy",
-          "accent": "Akcent"
-        }
-      },
-      "callouts": {
-        "label": "Styl ramek",
-        "description": "Jak wyglądają ramki z informacjami w notatkach.",
-        "options": {
-          "tinted": "Barwione",
-          "filled": "Wypełnione",
-          "outlined": "Z obramowaniem",
-          "bar": "Z paskiem z boku"
-        }
-      },
-      "remoteImages": {
-        "title": "Obrazy z internetu",
-        "description": "Notatki wczytują obrazy z tych witryn bez pytania.",
-        "empty": "Notatki pytają przed wczytaniem obrazu z internetu. Tutaj pojawią się witryny, z których zawsze zezwalasz wczytywać obrazy.",
-        "remove": "Usuń {{host}}"
-      },
-      "resetAll": "Przywróć domyślny wygląd notatek"
     }
   },
   "checkpoints": {
@@ -2544,6 +2404,42 @@
       "notesAskAgent": {
         "description": "Zapytaj agenta o zaznaczony tekst albo otwórz i zamknij agenta notatki.",
         "label": "Notatki: zapytaj agenta"
+      },
+      "notesNewNote": {
+        "label": "Notatki: nowa notatka",
+        "description": "Zacznij nową notatkę w bieżącym panelu."
+      },
+      "notesSearch": {
+        "label": "Notatki: szukaj w notatkach",
+        "description": "Przejdź do pola wyszukiwania u góry panelu bocznego Notatek."
+      },
+      "notesBookmark": {
+        "label": "Notatki: dodaj do ulubionych",
+        "description": "Dodaj otwartą notatkę do Ulubionych albo ją z nich usuń."
+      },
+      "notesCopyLink": {
+        "label": "Notatki: kopiuj link do notatki",
+        "description": "Skopiuj link do otwartej notatki, który możesz wkleić w innej notatce lub na czacie."
+      },
+      "notesProperties": {
+        "label": "Notatki: pokaż lub ukryj właściwości",
+        "description": "Otwórz lub zamknij właściwości pod tytułem notatki."
+      },
+      "notesQuickCapture": {
+        "description": "Otwórz małe okno, aby coś zanotować z dowolnej aplikacji, nawet gdy Oleafly działa w tle.",
+        "label": "Notatki: szybka notatka"
+      },
+      "notesCopyBlockLink": {
+        "description": "Skopiuj link do akapitu, elementu listy lub tabeli, w której jest kursor.",
+        "label": "Notatki: kopiuj link do bloku"
+      },
+      "notesBack": {
+        "description": "Wróć do poprzedniego miejsca w tej karcie.",
+        "label": "Notatki: wstecz"
+      },
+      "notesForward": {
+        "description": "Przejdź znowu dalej po cofnięciu się.",
+        "label": "Notatki: dalej"
       }
     },
     "application": {
@@ -2569,14 +2465,41 @@
         "renameSymbol": "Zmień nazwę symbolu lub pliku w całym projekcie",
         "slashCommandMenu": "Menu wstawiania poleceń z ukośnikiem",
         "triggerAutocomplete": "Wywołaj autouzupełnianie",
-        "undo": "Cofnij"
+        "undo": "Cofnij",
+        "noteBold": "Pogrubienie",
+        "noteItalic": "Kursywa",
+        "noteUnderline": "Podkreślenie",
+        "noteStrike": "Przekreślenie",
+        "noteCode": "Kod w wierszu",
+        "noteHighlight": "Wyróżnij ostatnio użytym kolorem",
+        "noteSuperscript": "Indeks górny",
+        "noteSubscript": "Indeks dolny",
+        "noteHeadings": "Nagłówek od 1 do 6",
+        "noteText": "Zamień na tekst",
+        "noteQuote": "Cytat",
+        "noteCodeBlock": "Blok kodu",
+        "noteBulletList": "Lista punktowana",
+        "noteNumberedList": "Lista numerowana",
+        "noteTaskList": "Lista zadań",
+        "noteToggleTask": "Zaznacz lub odznacz zadanie",
+        "noteIndent": "Zwiększ wcięcie elementu listy",
+        "noteOutdent": "Zmniejsz wcięcie elementu listy",
+        "noteLineBreak": "Podział wiersza w tym samym akapicie",
+        "noteFind": "Znajdź i zamień",
+        "noteSelectAll": "Zaznacz całą notatkę",
+        "noteUndo": "Cofnij",
+        "noteRedo": "Ponów",
+        "noteInsertMenu": "Otwórz menu wstawiania na początku wiersza",
+        "noteLinkMenu": "Link do notatki",
+        "noteTag": "Dodaj tag"
       },
       "managed": "Zarządzane przez edytor"
     },
     "categories": {
       "codeIntelligence": "Podpowiedzi kodu",
       "editor": "Edytor",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Notatki"
     },
     "error": {
       "conflict": "Już przypisane do {{action}}.",
@@ -2622,6 +2545,15 @@
         "uppercase": "Wielkie litery"
       },
       "unbound": "Nieustawione"
+    },
+    "quickCapture": {
+      "label": "Szybka notatka z dowolnego miejsca",
+      "description": "Skrót szybkiej notatki działa we wszystkich aplikacjach na tym komputerze.",
+      "ready": "Naciśnij {{shortcut}} w dowolnej aplikacji, aby otworzyć szybką notatkę.",
+      "taken": "Inna aplikacja używa już {{shortcut}}. Wybierz inny skrót dla akcji Notatki: szybka notatka.",
+      "invalid": "{{shortcut}} nie może działać poza Oleafly. Wybierz skrót, który kończy się literą, cyfrą lub klawiszem funkcyjnym.",
+      "failed": "Oleafly nie mógł ustawić skrótu. Wyłącz i ponownie włącz szybką notatkę, aby spróbować jeszcze raz.",
+      "wayland": "Wayland nie pozwala aplikacjom nasłuchiwać klawiszy poza ich własnymi oknami. Aby otwierać szybką notatkę klawiszem, dodaj w systemowych ustawieniach klawiatury własny skrót, który uruchamia to polecenie:"
     }
   },
   "systemIntegration": {
@@ -2717,17 +2649,5 @@
       "loadFailed": "Nie udało się odczytać listy serwerów MCP.",
       "missing": "{{name}} (nie znaleziono)"
     }
-  },
-  "notesPreview": {
-    "label": "Podgląd notatki z tymi ustawieniami",
-    "title": "Notatki terenowe",
-    "heading": "Poranny obchód",
-    "paragraph": "Do dziewiątej lekko padało, potem nad północnym grzbietem się przejaśniło. W południe gleba była jeszcze wilgotna.",
-    "links": "Wszystkie kroki opisuje notatka <note>Metoda pobierania prób</note>, a inne wpisy znajdziesz pod tagiem <tag>#teren</tag>.",
-    "highlight": "W ciągu tygodnia siewki podwoiły wysokość.",
-    "calloutTitle": "Następna wizyta",
-    "calloutBody": "Przed pobraniem nowych prób sprawdź czujniki glebowe.",
-    "taskDone": "Opisz próbki",
-    "task": "Prześlij zdjęcia"
   }
 }

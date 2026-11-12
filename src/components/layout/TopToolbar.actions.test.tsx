@@ -300,15 +300,15 @@ describe("TopToolbar layout menu and Zen mode", () => {
     const items = within(menu).getAllByRole("menuitem");
     const zen = items.at(-1) as HTMLElement;
     expect(zen).toHaveAccessibleName(toolbar.layouts.zenMode);
-    expect(items).toHaveLength(Object.keys(toolbar.layouts).length);
+    expect(items).toHaveLength(Object.keys(toolbar.layouts).length + 1);
     const binding = useShortcutStore.getState().bindings.toggleZenMode;
     expect(keyChips(zen)).toEqual(shortcutParts(binding));
     expect(zen).toHaveAttribute("aria-keyshortcuts", shortcutLabel(binding));
     expect(zen.querySelector("svg.lucide-focus")).not.toBeNull();
     const separators = within(menu).getAllByRole("separator");
-    expect(separators).toHaveLength(1);
+    expect(separators).toHaveLength(2);
     expect(
-      separators[0].compareDocumentPosition(zen) & Node.DOCUMENT_POSITION_FOLLOWING,
+      separators[1].compareDocumentPosition(zen) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
       separators[0].compareDocumentPosition(items[0]) & Node.DOCUMENT_POSITION_PRECEDING,

@@ -145,6 +145,16 @@
       "uploadFailed": "Konnte nicht hochgeladen werden"
     }
   },
+  "conflictCopy": {
+    "title": "Zwei Versionen von „{{name}}“",
+    "description": "Diese Notiz wurde hier und auf einem anderen Computer geändert, bevor die Änderungen abgeglichen waren, daher hat Oleafly beide Versionen behalten. Behalten Sie eine Version. Die andere kommt in den Papierkorb.",
+    "diffLabel": "Unterschiede zwischen den beiden Versionen",
+    "loading": "Beide Versionen werden gelesen…",
+    "readFailed": "Die Konfliktkopie konnte nicht gelesen werden.",
+    "resolveFailed": "Diese Version konnte nicht behalten werden.",
+    "keepMine": "Version dieses Computers behalten",
+    "useCopy": "Version des anderen Computers verwenden"
+  },
   "confirm": {
     "removeTitle": "{{name}} aus {{provider}} entfernen?",
     "removeDescription": "Damit wird die Kopie in {{provider}} gelöscht, um Platz zu schaffen. Das Projekt bleibt auf diesem Computer und wird hier nicht mehr abgeglichen. Ihre anderen Computer behalten ihre Kopien und gleichen das Projekt ebenfalls nicht mehr ab.",
@@ -209,6 +219,76 @@
     "pathStyle": "Adressen im Pfadstil verwenden",
     "pathStyleHint": "MinIO und die meisten selbst betriebenen Server brauchen das."
   },
+  "backups": {
+    "title": "Sicherungen",
+    "none": "Noch keine Sicherungen",
+    "last": "Letzte Sicherung {{time}} · {{contents}} · {{size}}",
+    "notes_one": "{{count}} Notiz",
+    "notes_other": "{{count}} Notizen",
+    "projects_one": "{{count}} Projekt",
+    "projects_other": "{{count}} Projekte",
+    "running": "Wird gesichert",
+    "failed": "Die letzte Sicherung wurde nicht abgeschlossen. {{reason}}",
+    "backUpNow": "Jetzt sichern",
+    "auto": {
+      "label": "Automatisch sichern",
+      "description": "Bewahrt datierte Kopien Ihrer Notizen in {{provider}} auf. Spätere Änderungen und Löschungen, auch abgeglichene, wirken sich nicht auf sie aus."
+    },
+    "every": {
+      "label": "Wie oft",
+      "description": "Eine Sicherung lädt nur hoch, was sich seit der letzten geändert hat.",
+      "options": {
+        "6": "Alle 6 Stunden",
+        "24": "Täglich",
+        "168": "Wöchentlich"
+      }
+    },
+    "keep": {
+      "label": "Behalten",
+      "description": "Ältere Sicherungen werden aus {{provider}} gelöscht, um Platz zu sparen.",
+      "option_one": "Die letzte Sicherung",
+      "option_other": "Die letzten {{count}} Sicherungen"
+    },
+    "includeProjects": {
+      "label": "Projekte einbeziehen",
+      "description": "Projekte werden bereits mit ihren Checkpoints abgeglichen. Schalten Sie dies ein, um auch von ihnen datierte Kopien aufzubewahren. Die erste Sicherung eines großen Projekts kann eine Weile dauern und viel Platz belegen."
+    },
+    "list": {
+      "title": "Sicherungen in {{provider}}",
+      "label": "Sicherungen",
+      "loading": "Sicherungen werden gelesen",
+      "failed": "Die Sicherungen konnten nicht gelesen werden. {{reason}}",
+      "empty": "Noch keine Sicherungen in {{provider}}."
+    },
+    "row": {
+      "thisComputer": "Dieser Computer",
+      "manual": "Manuell",
+      "restore": "Wiederherstellen",
+      "restoreLabel": "Sicherung vom {{date}} wiederherstellen"
+    },
+    "restore": {
+      "title": "Aus der Sicherung vom {{date}} wiederherstellen",
+      "description": "Beim Wiederherstellen wird nie ersetzt, was Sie haben. Eine Notiz oder ein Projekt, das noch vorhanden ist, kommt als Kopie daneben zurück, sodass Sie beide vergleichen können.",
+      "loading": "Sicherung wird gelesen",
+      "loadFailed": "Diese Sicherung konnte nicht gelesen werden. {{reason}}",
+      "search": "In dieser Sicherung suchen",
+      "clearSearch": "Suche löschen",
+      "noMatch": "Nichts in dieser Sicherung passt.",
+      "listLabel": "Notizen und Projekte in dieser Sicherung",
+      "here": "Noch vorhanden",
+      "missing": "Nicht auf diesem Computer",
+      "restored": "Wiederhergestellt",
+      "restoredCopy": "Als Kopie wiederhergestellt",
+      "files_one": "{{count}} Datei",
+      "files_other": "{{count}} Dateien",
+      "one": "Wiederherstellen",
+      "oneLabel": "{{name}} wiederherstellen",
+      "allMissing_one": "Fehlenden Eintrag wiederherstellen",
+      "allMissing_other": "Die {{count}} fehlenden Einträge wiederherstellen",
+      "nothingMissing": "Nichts fehlt",
+      "copyName": "(wiederhergestellt am {{date}})"
+    }
+  },
   "errors": {
     "clock_skew": "Die Uhr dieses Computers geht falsch, daher nimmt {{provider}} keine Anfragen von ihm an. Stellen Sie Datum und Uhrzeit richtig ein, damit der Abgleich weiterläuft.",
     "code_invalid": "Dieser Code hat nicht funktioniert. Versuchen Sie es erneut.",
@@ -237,6 +317,8 @@
     "sign_in_timeout": "Die Anmeldung hat zu lange gedauert. Versuchen Sie es erneut.",
     "too_many_files": "Dieses Projekt hat mehr als 100.000 Dateien. Das sind zu viele für den Abgleich.",
     "traffic_limit": "{{provider}} hat das Limit für Uploads erreicht. Neue Änderungen bleiben auf diesem Computer, bis {{provider}} wieder Uploads zulässt.",
-    "verify_failed": "Eine Datei aus {{provider}} entsprach nicht dem, was Oleafly erwartet hat, und wurde daher nicht angetastet. Der Abgleich versucht es erneut."
+    "verify_failed": "Eine Datei aus {{provider}} entsprach nicht dem, was Oleafly erwartet hat, und wurde daher nicht angetastet. Der Abgleich versucht es erneut.",
+    "backup_missing": "Diese Sicherung ist nicht mehr in {{provider}}.",
+    "backup_label": "Oleafly konnte die wiederhergestellte Kopie nicht benennen."
   }
 }

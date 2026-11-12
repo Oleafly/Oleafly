@@ -12,7 +12,7 @@ import {
 import { createPortal } from "react-dom";
 import { trackPointerDrag } from "@oleafly/workspace/drag";
 import { contains, nearestEdge, zoneAt, zoneRect, type Rect } from "@oleafly/workspace/geometry";
-import { PANES, usePaneLayoutStore, type DropTarget, type PaneId } from "@/store/pane-layout";
+import { PANES, moveChanges, usePaneLayoutStore, type DropTarget, type PaneId } from "@/store/pane-layout";
 
 const DROP_INSET_PX = 4;
 const OUTER_EDGE_PX = 24;
@@ -95,11 +95,12 @@ function paneRects(root: HTMLElement, dragged: PaneId): { pane: PaneId; rect: DO
     .filter(({ rect }) => rect.width > 0 && rect.height > 0);
 }
 
-export function dropAt(root: HTMLElement, pane: PaneId, x: number, y: number): PaneDrop | null {
+function zoneUnder(root: HTMLElement, pane: PaneId, x: number, y: number): PaneDrop | null {
   const area = root.getBoundingClientRect();
   const [edge, edgeDistance] = nearestEdge(area, x, y, false);
   if (edgeDistance < 0) return null;
-  if (edgeDistance <= OUTER_EDGE_PX) {
+  const own = root.querySelector(`[data-panel][id="${pane}"]`)?.getBoundingClientRect();
+  if (edgeDistance <= OUTER_EDGE_PX && !(own && contains(own, x, y))) {
     return { pane, target: { kind: "edge", side: edge }, box: inset(zoneRect(area, edge, OUTER_STRIP_SHARE)) };
   }
   const hit = paneRects(root, pane).find(({ rect }) => contains(rect, x, y));
@@ -107,6 +108,11 @@ export function dropAt(root: HTMLElement, pane: PaneId, x: number, y: number): P
   const side = zoneAt(hit.rect, x, y, EDGE_SHARE);
   if (side === "center") return null;
   return { pane, target: { kind: "pane", pane: hit.pane, side }, box: inset(zoneRect(hit.rect, side)) };
+}
+
+function dropAt(root: HTMLElement, pane: PaneId, x: number, y: number): PaneDrop | null {
+  const drop = zoneUnder(root, pane, x, y);
+  return drop && moveChanges(usePaneLayoutStore.getState().layout, pane, drop.target) ? drop : null;
 }
 
 export function PaneReorderProvider({
@@ -185,9 +191,12 @@ export interface PaneBarProps {
   onPointerLeave?: (event: ReactPointerEvent<HTMLElement>) => void;
 }
 
-function setGrab(bar: HTMLElement, grab: boolean): void {
-  if (grab) bar.dataset.paneGrab = "true";
-  else delete bar.dataset.paneGrab;
+function showGrab(bar: HTMLElement): void {
+  bar.dataset.paneGrab = "true";
+}
+
+function clearGrab(bar: HTMLElement): void {
+  delete bar.dataset.paneGrab;
 }
 
 export function usePaneBar(): PaneBarProps {
@@ -208,10 +217,11 @@ export function usePaneBar(): PaneBarProps {
         if (pane !== null) reorder.begin(pane, event.currentTarget, event);
       },
       onPointerMove(event) {
-        setGrab(event.currentTarget, event.buttons === 0 && grabbable(event) !== null);
+        if (event.buttons === 0 && grabbable(event) !== null) showGrab(event.currentTarget);
+        else clearGrab(event.currentTarget);
       },
       onPointerLeave(event) {
-        setGrab(event.currentTarget, false);
+        clearGrab(event.currentTarget);
       },
     };
   }, [reorder]);

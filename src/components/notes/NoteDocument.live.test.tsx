@@ -7,6 +7,8 @@ import { TextOperation } from "@/features/collab/live/ot";
 import { FakeChannel } from "@/features/collab/live/tests/fake-channel";
 import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
 
 const harness = vi.hoisted(() => ({
   editors: [] as Editor[],
@@ -81,24 +83,18 @@ function fakeData() {
     disk = onChange;
     return () => undefined;
   });
-  const data: NotesData = {
+  const data: NotesData = fakeNotesData({
     notes: [NOTE],
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
     loadNote,
     saveNote,
     renameNote,
     watchNote,
-  };
+  });
   return { data, saveNote, renameNote, loadNote, diskChanged: () => disk?.() };
 }
 
 async function wait(ms: number): Promise<void> {
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, ms));
-  });
+  await act(() => vi.advanceTimersByTimeAsync(ms));
 }
 
 async function exchange(): Promise<void> {
@@ -135,12 +131,13 @@ function paragraph(editor: Editor, index: number): number {
 }
 
 beforeAll(async () => {
-  await Promise.all([loadNamespace("notes"), loadNamespace("collab"), loadNamespace("editor")]);
+  await Promise.all([loadNamespace("collab"), loadNamespace("editor")]);
 });
 
 let uninstall: (() => void) | null = null;
 
 beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
   uninstall = installNoteLive();
   harness.editors = [];
   harness.channel = new FakeChannel(TEXT);
@@ -150,6 +147,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  vi.useRealTimers();
   uninstall?.();
   uninstall = null;
   useCollabLiveNote.setState({ noteId: null, session: null });
@@ -232,9 +230,8 @@ describe("a shared note edited live", () => {
     await wait(1_000);
     expect(fake.saveNote).not.toHaveBeenCalled();
     act(() => useCollabEditorGate.setState({ projectId: null, connecting: false }));
-    await vi.waitFor(() => expect(fake.saveNote.mock.calls.some((args) => args[1].includes("First entry. Offline."))).toBe(true), {
-      timeout: 5_000,
-    });
+    await wait(1_000);
+    expect(fake.saveNote.mock.calls.some((args) => args[1].includes("First entry. Offline."))).toBe(true);
   });
 
   it("saves unsent edits with the shared base when live editing moves away", async () => {

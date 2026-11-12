@@ -145,6 +145,16 @@
       "uploadFailed": "Couldn't be uploaded"
     }
   },
+  "conflictCopy": {
+    "title": "Two versions of \"{{name}}\"",
+    "description": "This note changed here and on another computer before they synced, so Oleafly kept both. Keep one version. The other goes to the Recycle Bin.",
+    "diffLabel": "Differences between the two versions",
+    "loading": "Reading both versions…",
+    "readFailed": "Couldn't read the conflict copy.",
+    "resolveFailed": "Couldn't keep that version.",
+    "keepMine": "Keep this computer's version",
+    "useCopy": "Use the other computer's version"
+  },
   "confirm": {
     "removeTitle": "Remove {{name}} from {{provider}}?",
     "removeDescription": "This deletes the copy in your {{provider}} to free up space. The project stays on this computer and stops syncing here. Your other computers keep their copies and stop syncing it too.",
@@ -209,6 +219,76 @@
     "pathStyle": "Use path-style addresses",
     "pathStyleHint": "MinIO and most self-hosted servers need this."
   },
+  "backups": {
+    "title": "Backups",
+    "none": "No backups yet",
+    "last": "Last backup {{time}} · {{contents}} · {{size}}",
+    "notes_one": "{{count}} note",
+    "notes_other": "{{count}} notes",
+    "projects_one": "{{count}} project",
+    "projects_other": "{{count}} projects",
+    "running": "Backing up",
+    "failed": "The last backup didn't finish. {{reason}}",
+    "backUpNow": "Back up now",
+    "auto": {
+      "label": "Back up automatically",
+      "description": "Keeps dated copies of your notes in {{provider}}. Later edits and deletions, even ones that sync, don't touch them."
+    },
+    "every": {
+      "label": "How often",
+      "description": "A backup only uploads what changed since the last one.",
+      "options": {
+        "6": "Every 6 hours",
+        "24": "Every day",
+        "168": "Every week"
+      }
+    },
+    "keep": {
+      "label": "Keep",
+      "description": "Older backups are deleted from {{provider}} to save space.",
+      "option_one": "The last backup",
+      "option_other": "The last {{count}} backups"
+    },
+    "includeProjects": {
+      "label": "Include projects",
+      "description": "Projects already sync with their checkpoints. Turn this on to keep dated copies of them too. The first backup of a big project can take a while and use a lot of space."
+    },
+    "list": {
+      "title": "Backups in {{provider}}",
+      "label": "Backups",
+      "loading": "Reading the backups",
+      "failed": "Couldn't read the backups. {{reason}}",
+      "empty": "No backups in {{provider}} yet."
+    },
+    "row": {
+      "thisComputer": "This computer",
+      "manual": "By hand",
+      "restore": "Restore",
+      "restoreLabel": "Restore the backup from {{date}}"
+    },
+    "restore": {
+      "title": "Restore from {{date}}",
+      "description": "Restoring never replaces what you have. A note or project that's still here comes back as a copy next to it, so you can compare the two.",
+      "loading": "Reading the backup",
+      "loadFailed": "Couldn't read this backup. {{reason}}",
+      "search": "Find in this backup",
+      "clearSearch": "Clear the search",
+      "noMatch": "Nothing in this backup matches.",
+      "listLabel": "Notes and projects in this backup",
+      "here": "Still here",
+      "missing": "Not on this computer",
+      "restored": "Restored",
+      "restoredCopy": "Restored as a copy",
+      "files_one": "{{count}} file",
+      "files_other": "{{count}} files",
+      "one": "Restore",
+      "oneLabel": "Restore {{name}}",
+      "allMissing_one": "Restore the missing one",
+      "allMissing_other": "Restore the {{count}} missing",
+      "nothingMissing": "Nothing is missing",
+      "copyName": "(restored {{date}})"
+    }
+  },
   "errors": {
     "clock_skew": "This computer's clock is off, so {{provider}} won't accept requests from it. Set the correct date and time to keep syncing.",
     "code_invalid": "That code didn't work. Try again.",
@@ -237,6 +317,8 @@
     "sign_in_timeout": "Sign-in took too long. Try again.",
     "too_many_files": "This project has more than 100,000 files. That's too many to sync.",
     "traffic_limit": "Your {{provider}} has reached its upload limit. New changes stay on this computer until {{provider}} allows uploads again.",
-    "verify_failed": "A file from {{provider}} didn't match what Oleafly expected, so it was left alone. Sync will try again."
+    "verify_failed": "A file from {{provider}} didn't match what Oleafly expected, so it was left alone. Sync will try again.",
+    "backup_missing": "This backup is no longer in your {{provider}}.",
+    "backup_label": "Oleafly couldn't name the restored copy."
   }
 }

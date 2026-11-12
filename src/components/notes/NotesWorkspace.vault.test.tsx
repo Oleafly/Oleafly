@@ -4,9 +4,10 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
 import type { NoteDocument as NoteDocumentComponent } from "./NoteDocument";
 import type { NotesLibrary as NotesLibraryComponent } from "./NotesLibrary";
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
 
 vi.mock("@/lib/use-fullscreen", () => ({ useFullscreen: () => false }));
 
@@ -59,15 +60,7 @@ function note(id: string, title: string): NoteItem {
 const notes = [note("n1", "Masking ablation"), note("n2", "Reading list"), note("today", localDate(new Date()))];
 
 function data(): NotesData {
-  return {
-    notes,
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
-    loadNote: vi.fn(),
-    saveNote: vi.fn(),
-  };
+  return fakeNotesData({ notes });
 }
 
 function tabNames(): string[] {
@@ -75,7 +68,6 @@ function tabNames(): string[] {
 }
 
 beforeAll(async () => {
-  await loadNamespace("notes");
   Element.prototype.scrollIntoView = vi.fn();
 });
 

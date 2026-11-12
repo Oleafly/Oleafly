@@ -15,5 +15,5 @@ export function watchEditable(editor: Editor, listener: () => void): () => void 
 }
 
 export function editableChanged(editor: Editor): void {
-  for (const listener of [...(watchers.get(editor) ?? [])]) listener();
+  for (const listener of Array.from(watchers.get(editor) ?? [])) listener();
 }

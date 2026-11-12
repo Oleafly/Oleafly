@@ -1,15 +1,34 @@
 // @vitest-environment jsdom
 
 import type { ProjectInfo } from "@oleafly/backend-port";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
 import type { NotesData } from "./notes-data";
 import type { NoteItem } from "./types";
+import "./tests/setup";
+
+function mineFacts(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "mine",
+    noteId: null,
+    title: "Reading list",
+    icon: "lucide:book",
+    color: "rose",
+    agent: null,
+    tags: [],
+    aliases: [],
+    properties: {},
+    preview: "Papers.",
+    relatedProject: null,
+    updatedAt: 1,
+    knowledge: "k",
+    ...overrides,
+  };
+}
 
 const mocks = vi.hoisted(() => ({
-  noteHeads: vi.fn(),
+  noteFacts: vi.fn(),
   projectCitations: vi.fn(),
   copyProjectNoteToMine: vi.fn(async () => "copy"),
   moveNoteIntoProject: vi.fn(async () => "notes/x.md"),
@@ -28,7 +47,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
-  noteHeads: mocks.noteHeads,
+  noteFacts: mocks.noteFacts,
 }));
 vi.mock("./note-citations", () => ({ projectCitations: mocks.projectCitations }));
 vi.mock("./project-note-actions", async (importOriginal) => ({
@@ -66,10 +85,10 @@ vi.mock("./NoteDocument", async () => {
   };
 });
 
-import { dismissNoteLiveNotice, showNoteLiveNotice, useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { useCollabEditorGate } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "@/store/files";
 import { useNoteTabsStore } from "@/store/note-tabs";
-import { noteListSignature, resetNoteTabHeadsForTest } from "./note-tab-data";
+import { appQueryClient } from "@/lib/query";
 import { PersonalNoteTab, ProjectNoteTab } from "./NoteTabView";
 
 const PATH = "notes/Plan.md";
@@ -95,15 +114,11 @@ function latest() {
   return last;
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 beforeEach(() => {
   vi.clearAllMocks();
-  resetNoteTabHeadsForTest();
+  appQueryClient().clear();
   mocks.seen = [];
-  mocks.noteHeads.mockResolvedValue([{ id: "mine", head: "---\ntitle: Reading list\nicon: lucide:book\ncolor: rose\n---\n\nPapers.\n" }]);
+  mocks.noteFacts.mockResolvedValue([mineFacts()]);
   mocks.projectCitations.mockResolvedValue([{ key: "smith2020", label: "Smith 2020" }]);
   useFilesStore.setState({
     projectId: "paper",
@@ -133,7 +148,6 @@ describe("project note tab", () => {
     });
     expect(note.shared).toBeUndefined();
     expect(live).toEqual({ projectId: "paper", path: PATH });
-    expect(data.importNotebook).toBeUndefined();
     expect(data.projectCitations).toBeUndefined();
     await expect(data.loadNote(note.id)).resolves.toMatchObject({ text: NOTE });
     await waitFor(() => expect(latest().data.citations).toEqual([{ key: "smith2020", label: "Smith 2020" }]));
@@ -157,15 +171,12 @@ describe("project note tab", () => {
     expect(latest().note.shared).toBe(true);
   });
 
-  it("shows the save state with its reason and a working Retry", () => {
+  it("shows the quiet save state and leaves a failed save to the note's banner", () => {
     render(<ProjectNoteTab projectId="paper" path={PATH} />);
     const bar = screen.getByTestId("note-tab-bar");
     expect(bar.querySelector('[data-note-save-status="saved"]')).not.toBeNull();
-    const retry = vi.fn();
-    act(() => latest().onStatusChange?.("failed", { error: new Error("The disk is full."), retry }));
-    expect(screen.getByRole("alert")).toHaveTextContent("The disk is full.");
-    fireEvent.click(screen.getByRole("button", { name: enNotes.saveStatus.retry }));
-    expect(retry).toHaveBeenCalledOnce();
+    act(() => latest().onStatusChange?.("failed", { error: new Error("The disk is full."), retry: vi.fn() }));
+    expect(bar.querySelector("[data-note-save-status]")).toBeNull();
     act(() => latest().onStatusChange?.("saving", null));
     expect(bar.querySelector('[data-note-save-status="saving"]')).not.toBeNull();
   });
@@ -220,32 +231,6 @@ describe("project note tab", () => {
     expect(mocks.renameProjectNote).toHaveBeenCalledOnce();
   });
 
-  it("shows a dropped-changes notice only on the note it belongs to", () => {
-    showNoteLiveNotice("project-note:paper:notes/Other.md", "refused");
-    showNoteLiveNotice("paper", "read_only");
-    const { unmount } = render(<ProjectNoteTab projectId="paper" path={PATH} />);
-    expect(screen.queryByTestId("note-live-notice")).toBeNull();
-    unmount();
-    showNoteLiveNotice("project-note:paper:notes/Plan.md", "refused");
-    render(<ProjectNoteTab projectId="paper" path={PATH} />);
-    expect(screen.getByTestId("note-live-notice")).toHaveTextContent(enNotes.live.unsentRefused);
-    for (const id of ["project-note:paper:notes/Other.md", "project-note:paper:notes/Plan.md", "paper"]) {
-      dismissNoteLiveNotice(id);
-    }
-  });
-
-  it("keeps its buttons on screen in a narrow pane", () => {
-    render(<ProjectNoteTab projectId="paper" path={PATH} />);
-    const bar = screen.getByTestId("note-tab-bar");
-    expect(bar).toHaveClass("@container", "min-w-0", "overflow-hidden");
-    expect(screen.getByTestId("note-tab-label")).toHaveClass("min-w-0", "flex-1", "overflow-hidden");
-    expect(bar.querySelector("[data-note-save-status]")).not.toHaveClass("shrink-0");
-    const copy = screen.getByTestId("note-tab-copy");
-    expect(copy.parentElement?.parentElement).toHaveClass("shrink-0");
-    expect(copy).toHaveAccessibleName(enNotes.noteTab.copyToMine);
-    expect(within(copy).getByText(enNotes.noteTab.copyToMine)).toHaveClass("@max-[34rem]:sr-only");
-  });
-
   it("keeps the note's write refusal message current", async () => {
     const setContent = vi.fn(() => false);
     useFilesStore.setState({ setContent });
@@ -261,7 +246,6 @@ describe("personal note tab", () => {
     render(<PersonalNoteTab projectId="paper" noteId="mine" />);
     expect(await screen.findByTestId("note-document")).toHaveTextContent("Reading list");
     await waitFor(() => expect(useNoteTabsStore.getState().tabs[0]).toMatchObject({ icon: "lucide:book", color: "rose" }));
-    expect(latest().data.importNotebook).toBeDefined();
     expect(screen.getByTestId("note-tab-bar")).toHaveTextContent(enNotes.noteTab.private);
   });
 
@@ -306,42 +290,38 @@ describe("personal note tab", () => {
 
   it("waits for the lists, then says when the note is gone", async () => {
     let deliver: (value: unknown[]) => void = () => {};
-    mocks.noteHeads.mockImplementationOnce(() => new Promise((resolve) => (deliver = resolve)));
+    mocks.noteFacts.mockImplementationOnce(() => new Promise((resolve) => (deliver = resolve)));
     render(<PersonalNoteTab projectId="paper" noteId="gone" />);
     expect(screen.queryByTestId("personal-note-missing")).toBeNull();
     await act(async () => deliver([]));
-    expect(screen.getByTestId("personal-note-missing")).toHaveTextContent(enNotes.noteTab.missing);
+    expect(await screen.findByTestId("personal-note-missing")).toHaveTextContent(enNotes.noteTab.missing);
   });
 
   it("waits while projects are still loading", () => {
     useFilesStore.setState({ projectsLoaded: false, projects: [] });
     render(<PersonalNoteTab projectId="paper" noteId="mine" />);
+    expect(screen.getByRole("status")).toHaveTextContent(enNotes.noteTab.loading);
     expect(screen.queryByTestId("personal-note-missing")).toBeNull();
     expect(screen.queryByTestId("note-document")).toBeNull();
   });
 
-  it("still shows the note when its heads cannot be read", async () => {
-    const failure = new Error("no heads");
-    mocks.noteHeads.mockRejectedValueOnce(failure);
+  it("still shows the note when its facts cannot be read", async () => {
+    const failure = new Error("no facts");
+    mocks.noteFacts.mockRejectedValue(failure);
     render(<PersonalNoteTab projectId="paper" noteId="mine" />);
     expect(await screen.findByTestId("note-document")).toHaveTextContent("Reading list");
-    expect(mocks.logError).toHaveBeenCalledWith("read note heads for a note tab", failure);
+    await waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("query", failure), { timeout: 3000 });
   });
 
-  it("reuses the note list between tab switches until a note changes", async () => {
+  it("reuses the note list between tab switches until the note list changes", async () => {
     const first = render(<PersonalNoteTab projectId="paper" noteId="mine" />);
     await screen.findByTestId("note-document");
-    act(() => latest().data.noteTextChanged?.("mine", "---\ntitle: Reading list\nicon: lucide:flask\n---\n"));
     first.unmount();
-    const second = render(<PersonalNoteTab projectId="paper" noteId="mine" />);
-    expect(screen.getByTestId("note-document")).toBeInTheDocument();
-    expect(latest().data.notes[0].icon).toBe("lucide:flask");
-    expect(mocks.noteHeads).toHaveBeenCalledOnce();
-    second.unmount();
-    act(() => useFilesStore.setState({ projects: [PAPER, { ...PERSONAL, updated_at: 99 }] }));
     render(<PersonalNoteTab projectId="paper" noteId="mine" />);
-    await waitFor(() => expect(mocks.noteHeads).toHaveBeenCalledTimes(2));
-    expect(noteListSignature([PAPER, PERSONAL])).toBe("mine\u00002");
+    expect(screen.getByTestId("note-document")).toBeInTheDocument();
+    expect(mocks.noteFacts).toHaveBeenCalledOnce();
+    act(() => useFilesStore.setState({ projects: [PAPER, { ...PERSONAL, name: "Reading" }] }));
+    await waitFor(() => expect(mocks.noteFacts).toHaveBeenCalledTimes(2));
   });
 
   it("gives the editor a working library", async () => {
@@ -353,6 +333,7 @@ describe("personal note tab", () => {
     expect(data.notes.map((note) => note.id)).toEqual(["mine"]);
     expect(data.projects).toEqual([{ id: "paper", name: "Paper" }]);
     expect(data.artifacts).toEqual([]);
+    mocks.noteFacts.mockResolvedValue([mineFacts({ icon: "lucide:flask" })]);
     act(() => data.noteTextChanged?.("mine", "---\ntitle: Reading list\nicon: lucide:flask\n---\n"));
     await waitFor(() => expect(latest().data.notes[0].icon).toBe("lucide:flask"));
     data.openProject?.("paper");

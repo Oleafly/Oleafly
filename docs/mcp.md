@@ -168,6 +168,39 @@ window.
 | `load_skill` | Load one skill's full instructions, its folder path, and its file list |
 | `read_skill_file` | Read a reference or script from a skill folder |
 
+### Notes
+
+These appear only while Notes is switched on in Settings > Experimentation.
+They work on your knowledge base, so they don't need an open project. A note is
+named by its id or its link id, as `list_knowledge_notes` and `search_notes`
+return them.
+
+| Tool | What it does |
+|---|---|
+| `list_knowledge_notes` | Notes newest first, with id, link id, title, tags, linked project and a summary. Filter by tag or project |
+| `search_notes` | Search every note. All words must match, and the query takes `"exact phrase"`, `-word`, `tag:name`, `title:word` and `project:<id>` |
+| `read_note_by_id` | Read a note as Markdown with its front matter |
+| `today_note` | Read today's daily note, or say there isn't one yet |
+| `list_note_tasks` | Checkbox tasks across your notes, open ones by default, with the note and line they're on |
+| `note_backlinks` | The notes that link to a note, with the text around each link |
+| `create_note` | Create a note. Oleafly shows you the title, tags and text and asks first |
+| `append_to_note` | Add Markdown to the end of a note, or to today's note (created from your daily note settings if needed, once you approve it) |
+| `edit_note_section` | Rewrite the part of a note under one heading, or add to the end of it |
+
+`append_to_note` and `edit_note_section` never write the file themselves. The
+change shows up in the note as a suggestion, the same way the in-app assistant's
+edits do, and nothing is saved until you accept it. If the note is open, the
+suggestion appears there right away. If it's closed, the suggestion waits and
+appears the next time you open the note, and until then the note shows a mark
+in the Notes library and on Home. This holds under every approval policy.
+Reads return the text you see in the editor, unsaved typing and waiting
+suggestions included, so an agent's next edit lines up with it.
+
+Note text is returned as untrusted data, because an agent should never follow
+instructions it finds inside a note. Notes shared through a collaboration
+server can be read but not changed. Read-only mode removes `create_note`,
+`append_to_note` and `edit_note_section`.
+
 ## Skills over MCP
 
 An external agent connected over MCP gets the same three skill tools the
@@ -197,6 +230,7 @@ Your MCP client (Claude Desktop, Claude Code, and others) already asks you to ap
 - **Auto-approve edits, confirm deletes**: writes and renames apply immediately while an Oleafly window owns the renderer session. Deletes still show a card. **Always allow** on a card turns this on for the rest of the session.
 - **Trust this connection**: mutating tools do not prompt, but still require an active Oleafly renderer to enforce the policy. Use this only when you trust the client and its own approval controls.
 - **Read-only mode** (separate toggle) removes mutating tools from `tools/list` entirely, so an external app can read and compile but never modify files, whatever the policy.
+- **Notes**: changes to an existing note always arrive as suggestions you accept or reject in the note, whatever the policy. Creating a note asks first unless the policy is **Trust this connection**.
 - **Bearer token**: 256-bit random value stored in authenticated encrypted
   local storage under `~/.oleafly/`. `get_config` never sends the token to the
   webview. Only Settings connection info exposes it while the server is

@@ -342,7 +342,15 @@
     },
     "resetPaneLayout": {
       "keywords": "ripristina layout pannelli ordine sposta pannelli barra laterale assistente editor anteprima terminale predefinito",
-      "label": "Ripristina il layout dei pannelli"
+      "label": "Ripristina la disposizione dei pannelli in tutti i progetti"
+    },
+    "saveLayout": {
+      "keywords": "salva layout personalizzato disposizione pannelli dimensioni nome",
+      "label": "Salva il layout corrente"
+    },
+    "applySavedLayout": {
+      "keywords": "layout salvato personalizzato disposizione pannelli cambia applica",
+      "label": "Layout: {{name}}"
     },
     "zoomIn": {
       "keywords": "ingrandisci più grande",
@@ -381,6 +389,10 @@
     "notes": {
       "label": "Apri Note",
       "keywords": "note taccuino conoscenza idee ricerca diario notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Cattura rapida",
+      "keywords": "cattura rapida annota nota posta in arrivo oggi quick capture jot note inbox today"
     }
   },
   "community": {
@@ -485,6 +497,11 @@
   },
   "datePicker": {
     "placeholder": "Scegli una data"
+  },
+  "monthPicker": {
+    "label": "Scegli un mese",
+    "previousYear": "Anno precedente",
+    "nextYear": "Anno successivo"
   },
   "devMenu": {
     "inspect": "Ispeziona",
@@ -706,6 +723,7 @@
     "groups": {
       "action": "Azione",
       "documents": "Documenti",
+      "notes": "Note",
       "references": "Riferimenti"
     },
     "label": "Cerca",
@@ -713,11 +731,13 @@
     "openReferences": "Apri i riferimenti di questo progetto",
     "placeholder": "Cerca progetti, documenti, oppure scrivi / per i comandi…",
     "placeholderDocuments": "Cerca dentro i documenti…",
+    "placeholderNotes": "Cerca nelle note e nei loro blocchi…",
     "placeholderProjects": "Cerca progetti per nome, motore, tipo, data o metadati…",
     "referencesNeedProject": "Apri prima un progetto per sfogliarne i riferimenti.",
     "slash": {
       "create": "apri la galleria dei modelli",
       "docs": "cerca dentro i documenti",
+      "notes": "cerca nelle note e nei loro blocchi",
       "projects": "cerca tra i tuoi progetti",
       "refs": "apri i riferimenti di questo progetto",
       "settings": "apri le impostazioni",
@@ -1334,7 +1354,24 @@
       "split": "Vista divisa"
     },
     "moreActions": "Altre azioni",
-    "resetPaneLayout": "Ripristina il layout dei pannelli",
+    "resetPaneLayout": "Ripristina la disposizione dei pannelli",
+    "resetPaneLayoutScope": "Tutti i progetti",
+    "savedLayouts": {
+      "close": "Chiudi",
+      "delete": "Elimina",
+      "deleteConfirm": "Vuoi eliminare il layout {{name}}?",
+      "limit": "Puoi conservare fino a {{count}} layout. Eliminane uno per salvarne un altro.",
+      "manage": "Gestisci i layout",
+      "name": "Nome del layout",
+      "rename": "Rinomina",
+      "renameTitle": "Rinomina layout",
+      "replace": "Sostituisci",
+      "replaceConfirm": "Esiste già un layout chiamato {{name}}. Vuoi sostituirlo?",
+      "save": "Salva il layout corrente",
+      "saveButton": "Salva",
+      "saveTitle": "Salva layout",
+      "update": "Aggiorna con quello corrente"
+    },
     "renameFailed": "Impossibile rinominare il progetto."
   },
   "tour": {

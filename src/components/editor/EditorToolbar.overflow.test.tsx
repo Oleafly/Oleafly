@@ -72,10 +72,12 @@ describe("EditorToolbar overflow menu", () => {
     fireEvent.click(screen.getByText(toolbar.goToDefinition));
     expect(nav.goToDefinition).toHaveBeenCalledWith({ id: "view" });
 
+    fireEvent.click(screen.getByLabelText(toolbar.moreOptions));
     fireEvent.click(screen.getByLabelText(toolbar.codeIntelligence));
     fireEvent.click(screen.getByText(toolbar.findReferences));
     expect(nav.findReferences).toHaveBeenCalledOnce();
 
+    fireEvent.click(screen.getByLabelText(toolbar.moreOptions));
     fireEvent.click(screen.getByLabelText(toolbar.codeIntelligence));
     fireEvent.click(screen.getByText(toolbar.renameSymbol));
     expect(nav.startRename).toHaveBeenCalledOnce();

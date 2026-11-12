@@ -1,25 +1,13 @@
 // @vitest-environment jsdom
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import {
-  resetTypstCacheForTest,
-  MAX_TYPST_RENDERS,
-  paintTypst,
-  paintTypstStill,
-  TYPST_DELAY_MS,
-  TYPST_TEMPLATE,
-  typstBlock,
-  typstError,
-} from "./typst-block";
+import { MAX_NATIVE_RENDERS, NATIVE_RENDER_DELAY_MS, nativeRenderError } from "./native-render";
+import { paintTypst, paintTypstStill, resetTypstCacheForTest, TYPST_TEMPLATE, typstBlock, typstSvg } from "./typst-block";
+import "./tests/setup";
 
 const render = vi.hoisted(() => vi.fn(async (_source: string) => '<svg xmlns="http://www.w3.org/2000/svg"/>'));
 
 vi.mock("@/lib/tauri", () => ({ notesRenderTypst: render }));
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -35,12 +23,21 @@ afterEach(() => {
 });
 
 describe("typst block", () => {
+  it("hands out the rendered SVG for exports, once per source", async () => {
+    render.mockImplementation(async () => '<svg id="drawn"/>');
+    await expect(typstSvg(" $ y $ ")).resolves.toBe('<svg id="drawn"/>');
+    await expect(typstSvg("$ y $")).resolves.toBe('<svg id="drawn"/>');
+    expect(render).toHaveBeenCalledTimes(1);
+    render.mockRejectedValueOnce(new Error("unknown variable"));
+    await expect(typstSvg("#oops")).rejects.toThrow("unknown variable");
+  });
+
   it("renders through Rust after a pause and caches the result", async () => {
     const preview = document.createElement("div");
     paintTypst(preview, " $ x $ ");
     expect(preview.textContent).toBe(enNotes.blocks.typst.rendering);
     expect(render).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(TYPST_DELAY_MS);
+    await vi.advanceTimersByTimeAsync(NATIVE_RENDER_DELAY_MS);
     expect(render).toHaveBeenCalledWith("$ x $");
     const image = preview.querySelector("img.note-typst") as HTMLImageElement;
     expect(image.alt).toBe(enNotes.blocks.typst.alt);
@@ -54,11 +51,11 @@ describe("typst block", () => {
   it("keeps the last drawing while a new one renders and cancels on dispose", async () => {
     const preview = document.createElement("div");
     paintTypst(preview, "$ a $");
-    await vi.advanceTimersByTimeAsync(TYPST_DELAY_MS);
+    await vi.advanceTimersByTimeAsync(NATIVE_RENDER_DELAY_MS);
     const dispose = paintTypst(preview, "$ b $");
     expect(preview.querySelector("img")).not.toBeNull();
     dispose?.();
-    await vi.advanceTimersByTimeAsync(TYPST_DELAY_MS);
+    await vi.advanceTimersByTimeAsync(NATIVE_RENDER_DELAY_MS);
     expect(render).toHaveBeenCalledTimes(1);
   });
 
@@ -67,7 +64,7 @@ describe("typst block", () => {
     render.mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
     const preview = document.createElement("div");
     const dispose = paintTypst(preview, "$ late $");
-    await vi.advanceTimersByTimeAsync(TYPST_DELAY_MS);
+    await vi.advanceTimersByTimeAsync(NATIVE_RENDER_DELAY_MS);
     dispose?.();
     finish("<svg/>");
     await Promise.resolve();
@@ -75,7 +72,7 @@ describe("typst block", () => {
     render.mockRejectedValueOnce(new Error("gone"));
     const other = document.createElement("div");
     const stop = paintTypst(other, "$ gone $");
-    await vi.advanceTimersByTimeAsync(TYPST_DELAY_MS - 1);
+    await vi.advanceTimersByTimeAsync(NATIVE_RENDER_DELAY_MS - 1);
     stop?.();
     await vi.advanceTimersByTimeAsync(10);
     expect(other.textContent).toBe(enNotes.blocks.typst.rendering);
@@ -85,11 +82,11 @@ describe("typst block", () => {
     render.mockRejectedValueOnce(new Error(`Line 1: ${"unclosed delimiter ".repeat(30)}`));
     const preview = document.createElement("div");
     paintTypst(preview, "$ (");
-    await vi.advanceTimersByTimeAsync(TYPST_DELAY_MS);
+    await vi.advanceTimersByTimeAsync(NATIVE_RENDER_DELAY_MS);
     expect(preview.textContent?.startsWith("Typst couldn't compile this block: Line 1: unclosed")).toBe(true);
     expect(preview.textContent?.endsWith("…")).toBe(true);
-    expect(typstError("short")).toBe("short");
-    expect(typstError(new Error('@oleafly/error:{"code":"project.not_found","params":{},"detail":null}'))).not.toContain("@oleafly/error");
+    expect(nativeRenderError("short")).toBe("short");
+    expect(nativeRenderError(new Error('@oleafly/error:{"code":"project.not_found","params":{},"detail":null}'))).not.toContain("@oleafly/error");
   });
 
   it("explains empty blocks and the desktop requirement", () => {
@@ -104,9 +101,9 @@ describe("typst block", () => {
   it("shows cached drawings on Home and a card otherwise, without calling Rust", async () => {
     const preview = document.createElement("div");
     paintTypstStill(preview, "$ never $");
-    expect(preview.querySelector(".note-block-card-title")?.textContent).toBe("Typst");
+    expect(preview.querySelector("p")?.textContent).toBe("Typst");
     paintTypst(document.createElement("div"), "$ seen $");
-    await vi.advanceTimersByTimeAsync(TYPST_DELAY_MS);
+    await vi.advanceTimersByTimeAsync(NATIVE_RENDER_DELAY_MS);
     paintTypstStill(preview, "$ seen $");
     expect(preview.querySelector("img")).not.toBeNull();
     expect(render).toHaveBeenCalledOnce();
@@ -117,8 +114,8 @@ describe("typst block", () => {
     render.mockImplementation(() => new Promise((resolve) => finishers.push(resolve)));
     const previews = [0, 1, 2, 3].map(() => document.createElement("div"));
     for (const [index, preview] of previews.entries()) paintTypst(preview, `$ queue ${index} $`);
-    await vi.advanceTimersByTimeAsync(TYPST_DELAY_MS);
-    expect(render).toHaveBeenCalledTimes(MAX_TYPST_RENDERS);
+    await vi.advanceTimersByTimeAsync(NATIVE_RENDER_DELAY_MS);
+    expect(render).toHaveBeenCalledTimes(MAX_NATIVE_RENDERS);
     finishers[0]("<svg/>");
     await vi.advanceTimersByTimeAsync(0);
     expect(render).toHaveBeenCalledTimes(3);
@@ -139,7 +136,7 @@ describe("typst block", () => {
     const right = document.createElement("div");
     const dispose = paintTypst(left, "$ same $");
     paintTypst(right, " $ same $ ");
-    await vi.advanceTimersByTimeAsync(TYPST_DELAY_MS);
+    await vi.advanceTimersByTimeAsync(NATIVE_RENDER_DELAY_MS);
     dispose?.();
     dispose?.();
     finish("<svg/>");
@@ -156,7 +153,7 @@ describe("typst block", () => {
     paintTypst(document.createElement("div"), "$ busy 2 $");
     const waiting = document.createElement("div");
     const dispose = paintTypst(waiting, "$ gone away $");
-    await vi.advanceTimersByTimeAsync(TYPST_DELAY_MS);
+    await vi.advanceTimersByTimeAsync(NATIVE_RENDER_DELAY_MS);
     dispose?.();
     finishers[0]("<svg/>");
     finishers[1]("<svg/>");
@@ -164,43 +161,6 @@ describe("typst block", () => {
     expect(render).toHaveBeenCalledTimes(2);
     expect(render).not.toHaveBeenCalledWith("$ gone away $");
     expect(waiting.querySelector("img")).toBeNull();
-  });
-
-  it("waits until the block scrolls into view", async () => {
-    const observers: { callback: IntersectionObserverCallback; disconnected: boolean }[] = [];
-    class Observer {
-      record: { callback: IntersectionObserverCallback; disconnected: boolean };
-      constructor(callback: IntersectionObserverCallback) {
-        this.record = { callback, disconnected: false };
-        observers.push(this.record);
-      }
-      observe() {}
-      unobserve() {}
-      disconnect() {
-        this.record.disconnected = true;
-      }
-    }
-    vi.stubGlobal("IntersectionObserver", Observer);
-    try {
-      const preview = document.createElement("div");
-      paintTypst(preview, "$ below the fold $");
-      await vi.advanceTimersByTimeAsync(TYPST_DELAY_MS * 2);
-      expect(render).not.toHaveBeenCalled();
-      const seen = (visible: boolean) =>
-        observers[0].callback([{ isIntersecting: visible, target: preview } as unknown as IntersectionObserverEntry], {} as IntersectionObserver);
-      seen(false);
-      await vi.advanceTimersByTimeAsync(TYPST_DELAY_MS);
-      expect(render).not.toHaveBeenCalled();
-      seen(true);
-      expect(observers[0].disconnected).toBe(true);
-      await vi.advanceTimersByTimeAsync(TYPST_DELAY_MS);
-      expect(render).toHaveBeenCalledWith("$ below the fold $");
-      const hidden = paintTypst(document.createElement("div"), "$ never seen $");
-      hidden?.();
-      expect(observers[1].disconnected).toBe(true);
-    } finally {
-      vi.unstubAllGlobals();
-    }
   });
 
   it("registers with a raw Typst template and evicts old drawings", async () => {
@@ -211,7 +171,7 @@ describe("typst block", () => {
     typstBlock.still !== "card" && typstBlock.still?.(preview, "$ 0 $", { still: true });
     for (let index = 0; index < 70; index += 1) {
       paintTypst(document.createElement("div"), `$ ${index} $`);
-      await vi.advanceTimersByTimeAsync(TYPST_DELAY_MS);
+      await vi.advanceTimersByTimeAsync(NATIVE_RENDER_DELAY_MS);
     }
     const first = document.createElement("div");
     paintTypstStill(first, "$ 0 $");

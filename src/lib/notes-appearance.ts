@@ -1,6 +1,5 @@
 import { EDITOR_THEME_IDS, type EditorThemeId } from "@/lib/editor-themes";
-import { fontFamilyName, fontFamilyStack, withoutControlCharacters } from "@/lib/font-families";
-import { hexLuminance } from "@/lib/peer-colors";
+import { withoutControlCharacters } from "@/lib/font-families";
 
 export type NoteWidth = "standard" | "wide" | "full";
 export const NOTE_WIDTHS: readonly NoteWidth[] = ["standard", "wide", "full"];
@@ -12,13 +11,6 @@ export const NOTES_TYPEFACES: readonly NotesTypeface[] = ["sans", "serif", "mono
 export type NotesHeadingTypeface = "text" | NotesTypeface;
 export const NOTES_HEADING_TYPEFACES: readonly NotesHeadingTypeface[] = ["text", ...NOTES_TYPEFACES];
 
-export const NOTES_TYPEFACE_STACKS: Readonly<Record<NotesTypeface, string>> = {
-  sans: "var(--font-sans)",
-  serif: 'ui-serif, "Iowan Old Style", "Palatino Linotype", Palatino, Charter, Georgia, Cambria, "Times New Roman", serif',
-  mono: "var(--font-mono)",
-};
-
-export const NOTES_FONT_SIZES: readonly number[] = [12, 13, 14, 15, 16, 17, 18, 20, 22, 24];
 export const NOTES_FONT_SIZE_RANGE = { min: 10, max: 40, step: 1 } as const;
 
 export type NotesLineHeightPreset = "compact" | "normal" | "wide";
@@ -32,12 +24,6 @@ export const NOTES_LINE_HEIGHT_OPTIONS: readonly NotesLineHeight[] = ["compact",
 export const NOTES_CUSTOM_LINE_HEIGHT = { min: 1, max: 3, step: 0.05 } as const;
 
 export type NotesParagraphSpacing = "compact" | "normal" | "relaxed" | "spacious";
-export const NOTES_PARAGRAPH_SPACINGS: Readonly<Record<NotesParagraphSpacing, number>> = {
-  compact: 0.4,
-  normal: 0.75,
-  relaxed: 1.1,
-  spacious: 1.5,
-};
 export const NOTES_PARAGRAPH_SPACING_OPTIONS: readonly NotesParagraphSpacing[] = [
   "compact",
   "normal",
@@ -46,11 +32,6 @@ export const NOTES_PARAGRAPH_SPACING_OPTIONS: readonly NotesParagraphSpacing[] =
 ];
 
 export type NotesHeadingSize = "small" | "normal" | "large";
-export const NOTES_HEADING_SCALES: Readonly<Record<NotesHeadingSize, readonly [number, number, number]>> = {
-  small: [1.3, 1.15, 1.05],
-  normal: [1.5, 1.25, 1.1],
-  large: [1.8, 1.45, 1.2],
-};
 export const NOTES_HEADING_SIZES: readonly NotesHeadingSize[] = ["small", "normal", "large"];
 
 export const NOTES_TITLE_SIZES: readonly number[] = [20, 24, 28, 32, 36, 40];
@@ -62,18 +43,63 @@ export const NOTES_CODE_THEMES: readonly NotesCodeTheme[] = [
   ...EDITOR_THEME_IDS.filter((id) => id !== "system"),
 ];
 
-export type NotesHighlightColor = "yellow" | "green" | "blue" | "pink" | "purple" | "accent";
-export const NOTES_HIGHLIGHT_COLORS: readonly NotesHighlightColor[] = [
-  "yellow",
-  "green",
-  "blue",
-  "pink",
-  "purple",
-  "accent",
-];
+export type NotesHighlightColor = "yellow" | "orange" | "red" | "pink" | "purple" | "blue" | "green";
+export const NOTES_HIGHLIGHT_COLORS: readonly NotesHighlightColor[] = ["yellow", "orange", "red", "pink", "purple", "blue", "green"];
 
 export type NotesCalloutStyle = "tinted" | "filled" | "outlined" | "bar";
 export const NOTES_CALLOUT_STYLES: readonly NotesCalloutStyle[] = ["tinted", "filled", "outlined", "bar"];
+
+export type NotesTaskBox = "square" | "round";
+export const NOTES_TASK_BOXES: readonly NotesTaskBox[] = ["square", "round"];
+
+export type NotesFieldStyle = "tint" | "outline" | "underline";
+export const NOTES_FIELD_STYLES: readonly NotesFieldStyle[] = ["tint", "outline", "underline"];
+
+export type NotesInfoPlace = "side" | "inline";
+export const NOTES_INFO_PLACES: readonly NotesInfoPlace[] = ["side", "inline"];
+
+export type TextReplacements = Readonly<Record<string, string>>;
+export const TEXT_REPLACEMENT_LIMITS = { count: 100, from: 16, to: 32 } as const;
+export const NOTES_TEXT_REPLACEMENTS: TextReplacements = {
+  "->": "→",
+  "<-": "←",
+  "=>": "⇒",
+  "!=": "≠",
+  "<=": "≤",
+  ">=": "≥",
+  "+-": "±",
+  "...": "…",
+  "--": "—",
+};
+
+export function textReplacementPair(from: unknown, to: unknown): [string, string] | null {
+  if (typeof from !== "string" || typeof to !== "string") return null;
+  const trigger = withoutControlCharacters(from);
+  const replacement = withoutControlCharacters(to);
+  if (trigger.trim() === "" || replacement === "" || trigger === replacement) return null;
+  if (trigger.length > TEXT_REPLACEMENT_LIMITS.from || replacement.length > TEXT_REPLACEMENT_LIMITS.to) return null;
+  return trigger === from && replacement === to ? [trigger, replacement] : null;
+}
+
+function parsedReplacements(raw: unknown): unknown {
+  if (typeof raw !== "string") return raw;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function normalizeTextReplacements(raw: unknown): TextReplacements {
+  if (raw === null || raw === undefined || raw === "") return NOTES_TEXT_REPLACEMENTS;
+  const value = parsedReplacements(raw);
+  if (!value || typeof value !== "object" || Array.isArray(value)) return NOTES_TEXT_REPLACEMENTS;
+  const pairs = Object.entries(value).flatMap(([from, to]) => {
+    const pair = textReplacementPair(from, to);
+    return pair ? [pair] : [];
+  });
+  return Object.fromEntries(pairs.slice(0, TEXT_REPLACEMENT_LIMITS.count));
+}
 
 export const NOTES_APPEARANCE_DEFAULTS = {
   notesTypeface: "sans" as NotesTypeface,
@@ -90,10 +116,16 @@ export const NOTES_APPEARANCE_DEFAULTS = {
   notesCodeFontFamily: "",
   notesCodeTheme: "system" as NotesCodeTheme,
   notesAccentColor: "",
-  notesHighlightColor: "yellow" as NotesHighlightColor,
   notesCalloutStyle: "tinted" as NotesCalloutStyle,
+  notesTaskBox: "round" as NotesTaskBox,
+  notesFieldStyle: "tint" as NotesFieldStyle,
+  notesInfo: "side" as NotesInfoPlace,
   notesShowWordCount: true,
   notesSpellcheck: true,
+  notesTextReplace: true,
+  notesTextReplacements: NOTES_TEXT_REPLACEMENTS,
+  notesKeepUndo: true,
+  notesTikzPreamble: "",
 };
 
 export type NotesAppearance = typeof NOTES_APPEARANCE_DEFAULTS;
@@ -116,10 +148,16 @@ export const NOTES_APPEARANCE_STORAGE_KEYS: Readonly<Record<NotesAppearanceKey, 
   notesCodeFontFamily: "oleafly.notes.codeFont",
   notesCodeTheme: "oleafly.notes.codeTheme",
   notesAccentColor: "oleafly.notes.accent",
-  notesHighlightColor: "oleafly.notes.highlight",
   notesCalloutStyle: "oleafly.notes.calloutStyle",
+  notesTaskBox: "oleafly.notes.taskBox",
+  notesFieldStyle: "oleafly.notes.fieldStyle",
+  notesInfo: "oleafly.notes.info",
   notesShowWordCount: "oleafly.notes.wordCount",
   notesSpellcheck: "oleafly.notes.spellcheck",
+  notesTextReplace: "oleafly.notes.textReplace",
+  notesTextReplacements: "oleafly.notes.textReplacements",
+  notesKeepUndo: "oleafly.notes.keepUndo",
+  notesTikzPreamble: "oleafly.notes.tikzPreamble",
 };
 
 export function notesOption<T extends string>(options: readonly T[], raw: unknown, fallback: T): T {
@@ -152,6 +190,16 @@ function toggle(fallback: boolean): (raw: unknown) => boolean {
   };
 }
 
+export const NOTES_TIKZ_PREAMBLE_MAX = 8000;
+
+function preamble(raw: unknown): string {
+  if (typeof raw !== "string") return "";
+  return raw
+    .replaceAll(/\r\n?/gu, "\n")
+    .replaceAll(/[^\P{Cc}\n\t]/gu, "")
+    .slice(0, NOTES_TIKZ_PREAMBLE_MAX);
+}
+
 function hex(raw: unknown): string {
   return typeof raw === "string" && /^#[\da-f]{6}$/iu.test(raw) ? raw.toLowerCase() : "";
 }
@@ -176,10 +224,16 @@ const NORMALIZERS: { readonly [K in NotesAppearanceKey]: Normalizer<K> } = {
   notesCodeFontFamily: family,
   notesCodeTheme: option("notesCodeTheme", NOTES_CODE_THEMES),
   notesAccentColor: hex,
-  notesHighlightColor: option("notesHighlightColor", NOTES_HIGHLIGHT_COLORS),
   notesCalloutStyle: option("notesCalloutStyle", NOTES_CALLOUT_STYLES),
+  notesTaskBox: option("notesTaskBox", NOTES_TASK_BOXES),
+  notesFieldStyle: option("notesFieldStyle", NOTES_FIELD_STYLES),
+  notesInfo: option("notesInfo", NOTES_INFO_PLACES),
   notesShowWordCount: toggle(NOTES_APPEARANCE_DEFAULTS.notesShowWordCount),
   notesSpellcheck: toggle(NOTES_APPEARANCE_DEFAULTS.notesSpellcheck),
+  notesTextReplace: toggle(NOTES_APPEARANCE_DEFAULTS.notesTextReplace),
+  notesTextReplacements: normalizeTextReplacements,
+  notesKeepUndo: toggle(NOTES_APPEARANCE_DEFAULTS.notesKeepUndo),
+  notesTikzPreamble: preamble,
 };
 
 export function normalizeNotesSetting<K extends NotesAppearanceKey>(key: K, raw: unknown): NotesAppearance[K] {
@@ -194,14 +248,6 @@ export function readNotesAppearance(read: (storageKey: string) => string | null)
   return appearance as NotesAppearance;
 }
 
-export function notesSettingIsDefault(state: Readonly<NotesAppearance>, key: NotesAppearanceKey): boolean {
-  return Object.is(state[key], NOTES_APPEARANCE_DEFAULTS[key]);
-}
-
-export function notesAppearanceDiffersFromDefaults(state: Readonly<NotesAppearance>): boolean {
-  return NOTES_APPEARANCE_KEYS.some((key) => !notesSettingIsDefault(state, key));
-}
-
 export function clampNotesFontSize(value: number): number {
   if (!Number.isFinite(value)) return NOTES_APPEARANCE_DEFAULTS.notesFontSize;
   const { min, max } = NOTES_FONT_SIZE_RANGE;
@@ -213,90 +259,3 @@ export function clampNotesLineHeight(value: number): number {
   const { min, max } = NOTES_CUSTOM_LINE_HEIGHT;
   return Math.round(Math.min(max, Math.max(min, value)) * 100) / 100;
 }
-
-export function notesLineHeightValue(choice: NotesLineHeight, custom: number): number {
-  return choice === "custom" ? clampNotesLineHeight(custom) : NOTES_LINE_HEIGHTS[choice];
-}
-
-function rem(pixels: number): string {
-  return `${pixels / 16}rem`;
-}
-
-function familyOr(name: string, fallback: string): string {
-  return fontFamilyName(name) ? fontFamilyStack(name, fallback) : fallback;
-}
-
-export function notesTextFont(appearance: Pick<NotesAppearance, "notesTypeface" | "notesFontFamily">): string {
-  return familyOr(appearance.notesFontFamily, NOTES_TYPEFACE_STACKS[appearance.notesTypeface]);
-}
-
-export function notesHeadingFont(
-  appearance: Pick<NotesAppearance, "notesTypeface" | "notesFontFamily" | "notesHeadingTypeface" | "notesHeadingFontFamily">,
-): string {
-  const typeface =
-    appearance.notesHeadingTypeface === "text"
-      ? notesTextFont(appearance)
-      : NOTES_TYPEFACE_STACKS[appearance.notesHeadingTypeface];
-  return familyOr(appearance.notesHeadingFontFamily, typeface);
-}
-
-export function notesCodeFont(appearance: Pick<NotesAppearance, "notesCodeFontFamily">): string {
-  return familyOr(appearance.notesCodeFontFamily, "var(--font-mono)");
-}
-
-export function notesAppearanceVariables(appearance: NotesAppearance): Record<string, string> {
-  const [h1, h2, h3] = NOTES_HEADING_SCALES[appearance.notesHeadingSize];
-  const variables: Record<string, string> = {
-    "--notes-text-font": notesTextFont(appearance),
-    "--notes-text-size": rem(appearance.notesFontSize),
-    "--notes-line-height": String(notesLineHeightValue(appearance.notesLineHeight, appearance.notesCustomLineHeight)),
-    "--notes-block-gap": `${NOTES_PARAGRAPH_SPACINGS[appearance.notesParagraphSpacing]}em`,
-    "--notes-heading-font": notesHeadingFont(appearance),
-    "--notes-h1": `${h1}em`,
-    "--notes-h2": `${h2}em`,
-    "--notes-h3": `${h3}em`,
-    "--notes-title-size": rem(appearance.notesTitleSize),
-    "--notes-code-font": notesCodeFont(appearance),
-  };
-  if (appearance.notesAccentColor) {
-    variables["--notes-accent"] = appearance.notesAccentColor;
-    variables["--notes-accent-foreground"] = readableForeground(appearance.notesAccentColor);
-  }
-  return variables;
-}
-
-export function notesAppearanceAttributes(appearance: NotesAppearance): Record<string, string | null> {
-  return {
-    "data-notes-callout": appearance.notesCalloutStyle === "tinted" ? null : appearance.notesCalloutStyle,
-    "data-notes-highlight": appearance.notesHighlightColor === "yellow" ? null : appearance.notesHighlightColor,
-    "data-notes-accent": appearance.notesAccentColor ? "" : null,
-    spellcheck: appearance.notesSpellcheck ? null : "false",
-  };
-}
-
-export function readableForeground(hex: string): string {
-  const luminance = hexLuminance(hex);
-  return luminance !== null && luminance > 0.4 ? "#111111" : "#ffffff";
-}
-
-export function resolveNotesCodeTheme(
-  codeTheme: NotesCodeTheme,
-  mode: "light" | "dark",
-  editorThemes: Readonly<Record<"light" | "dark", EditorThemeId>>,
-): EditorThemeId {
-  return codeTheme === "editor" ? editorThemes[mode] : codeTheme;
-}
-
-export const NOTES_CODE_PALETTE: readonly (readonly [source: string, target: string])[] = [
-  ["--cm-editor-bg", "--notes-code-bg"],
-  ["--cm-editor-fg", "--notes-code-fg"],
-  ["--cm-comment", "--notes-code-comment"],
-  ["--cm-keyword", "--notes-code-keyword"],
-  ["--cm-number", "--notes-code-number"],
-  ["--cm-string", "--notes-code-string"],
-  ["--cm-bracket", "--notes-code-bracket"],
-  ["--cm-variable", "--notes-code-variable"],
-  ["--cm-meta", "--notes-code-meta"],
-  ["--cm-tag", "--notes-code-tag"],
-  ["--cm-operator", "--notes-code-operator"],
-];

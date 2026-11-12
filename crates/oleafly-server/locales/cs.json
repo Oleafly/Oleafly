@@ -11,6 +11,8 @@
   "landing.open": "Otevřít v Oleafly",
   "landing.get": "Stáhnout Oleafly",
   "landing.open_browser": "Otevřít v prohlížeči",
+  "published.gone_title": "Tato stránka není dostupná",
+  "published.gone_body": "Autor ji možná přestal zveřejňovat, nebo tento server už veřejné stránky nezobrazuje.",
   "web.sign_in_body": "Přihlaste se a otevřete své sdílené projekty v tomto prohlížeči.",
   "web.try_again": "Zkusit znovu",
   "web.other_browser": "Tento odkaz dokončí přihlášení na zařízení {device}, tedy v prohlížeči, ve kterém jste začali. Otevřete e-mail raději tam. Odkaz stále platí.",

@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, type ReactNode } from "react";
+import { useMemo, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -16,7 +16,6 @@ import {
   Link as LinkIcon,
   List,
   ListOrdered,
-  MoreHorizontal,
   Package,
   Pencil,
   PenTool,
@@ -35,8 +34,6 @@ import {
   Underline,
   Undo2,
 } from "lucide-react";
-import { MenuRow } from "@/components/ui/menu-row";
-import { Popover, PopoverItem } from "@/components/ui/popover";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import type { MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -81,7 +78,11 @@ import {
   DROPDOWN_TRIGGER_WIDTH,
   ICON_BUTTON_WIDTH,
   type ToolbarControl,
-  useFittedCount,
+  ToolbarDropdown,
+  type ToolbarDropdownItem,
+  ToolbarMenuItem,
+  ToolbarOverflow,
+  toolbarPicker,
 } from "@/components/ui/toolbar-overflow";
 
 function withProjectSymbol(
@@ -233,7 +234,7 @@ export function btnControl(
         <Icon className="size-4" />
       </IconBtn>
     ),
-    renderMenu: () => <MenuRow key={id} icon={<Icon className="size-4" />} label={label} onClick={onClick} />,
+    renderMenu: () => <ToolbarMenuItem key={id} icon={Icon} label={label} onSelect={onClick} />,
   };
 }
 
@@ -246,105 +247,84 @@ export function dividerControl(id: string): ToolbarControl {
   };
 }
 
-function HeadingDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
+export function headingItems<L extends { hLabel: string; className: string; label: () => string }>(
+  levels: readonly L[],
+  insert: (level: L) => void,
+): ToolbarDropdownItem[] {
+  return levels.map((level) => ({
+    key: level.hLabel,
+    onSelect: () => insert(level),
+    content: (
+      <>
+        <span className="w-6 shrink-0 text-[0.625rem] font-medium text-muted-foreground">{level.hLabel}</span>
+        <span className={level.className}>{level.label()}</span>
+      </>
+    ),
+  }));
+}
+
+export function HeadingDropdown<L extends { hLabel: string; className: string; label: () => string }>({
+  variant,
+  levels,
+  insert,
+}: Readonly<{ variant: "bar" | "menu"; levels: readonly L[]; insert: (level: L) => void }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
-    <Popover
+    <ToolbarDropdown
+      variant={variant}
+      icon={Type}
+      label={t(($) => $.editor.toolbar.heading)}
       ariaLabel={t(($) => $.editor.toolbar.headingLevel)}
+      heading={t(($) => $.editor.toolbar.heading)}
       className="w-fit min-w-0 max-w-56"
-      triggerClassName={variant === "bar" ? "gap-0.5 px-1.5" : "w-full justify-start gap-2 px-2 font-normal"}
-      trigger={
-        variant === "bar" ? (
-          <>
-            <Type className="size-4" />
-            <ChevronDown className="size-3" />
-          </>
-        ) : (
-          <>
-            <Type className="size-4" />
-            <span className="flex-1 text-left">{t(($) => $.editor.toolbar.heading)}</span>
-            <ChevronDown className="size-3" />
-          </>
-        )
-      }
-    >
-      <div className="px-2 py-1 text-[0.625rem] uppercase tracking-wide text-muted-foreground">
-        {t(($) => $.editor.toolbar.heading)}
-      </div>
-      {HEADING_LEVELS.map((level) => (
-        <PopoverItem key={level.hLabel} onClick={() => insertHeading(level)}>
-          <span className="w-6 shrink-0 text-[0.625rem] font-medium text-muted-foreground">{level.hLabel}</span>
-          <span className={level.className}>{level.label()}</span>
-        </PopoverItem>
-      ))}
-    </Popover>
+      items={headingItems(levels, insert)}
+    />
   );
 }
 
 function ListDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
-    <Popover
+    <ToolbarDropdown
+      variant={variant}
+      icon={List}
+      chevron={false}
+      label={t(($) => $.editor.toolbar.list)}
       ariaLabel={t(($) => $.editor.toolbar.insertList)}
-      triggerClassName={variant === "menu" ? "w-full justify-start gap-2 px-2 font-normal" : undefined}
-      trigger={
-        variant === "bar" ? (
-          <List className="size-4" />
-        ) : (
-          <>
-            <List className="size-4" />
-            <span className="flex-1 text-left">{t(($) => $.editor.toolbar.list)}</span>
-          </>
-        )
-      }
-    >
-      <PopoverItem onClick={insertItemize}>
-        <List className="size-4" /> {t(($) => $.editor.toolbar.bulletedList)}
-      </PopoverItem>
-      <PopoverItem onClick={insertEnumerate}>
-        <ListOrdered className="size-4" /> {t(($) => $.editor.toolbar.numberedList)}
-      </PopoverItem>
-    </Popover>
+      items={[
+        { key: "bullet", onSelect: insertItemize, content: <><List className="size-4" /> {t(($) => $.editor.toolbar.bulletedList)}</> },
+        { key: "number", onSelect: insertEnumerate, content: <><ListOrdered className="size-4" /> {t(($) => $.editor.toolbar.numberedList)}</> },
+      ]}
+    />
   );
 }
 
-function CodeIntelDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
+const CODE_ACTIONS = [
+  { key: "definition", icon: ArrowRightToLine, action: goToDefinition, keys: "F12", label: "goToDefinition" },
+  { key: "references", icon: SearchCode, action: findReferences, keys: "⇧F12", label: "findReferences" },
+  { key: "rename", icon: Pencil, action: startRename, keys: "F2", label: "renameSymbol" },
+] as const;
+
+export function CodeIntelDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
-    <Popover
+    <ToolbarDropdown
+      variant={variant}
+      icon={Braces}
+      label={t(($) => $.editor.toolbar.code)}
       ariaLabel={t(($) => $.editor.toolbar.codeIntelligence)}
-      triggerClassName={variant === "bar" ? "gap-0.5 px-1.5" : "w-full justify-start gap-2 px-2 font-normal"}
-      trigger={
-        variant === "bar" ? (
+      heading={t(($) => $.editor.toolbar.code)}
+      items={CODE_ACTIONS.map(({ key, icon: Icon, action, keys, label }) => ({
+        key,
+        onSelect: () => withProjectSymbol(action),
+        content: (
           <>
-            <Braces className="size-4" />
-            <ChevronDown className="size-3" />
+            <Icon className="size-4" /> {t(($) => $.editor.toolbar[label])}
+            <span className="ml-auto text-[0.625rem] text-muted-foreground">{shortcut(keys)}</span>
           </>
-        ) : (
-          <>
-            <Braces className="size-4" />
-            <span className="flex-1 text-left">{t(($) => $.editor.toolbar.code)}</span>
-            <ChevronDown className="size-3" />
-          </>
-        )
-      }
-    >
-      <div className="px-2 py-1 text-[0.625rem] uppercase tracking-wide text-muted-foreground">
-        {t(($) => $.editor.toolbar.code)}
-      </div>
-      <PopoverItem onClick={() => withProjectSymbol(goToDefinition)}>
-        <ArrowRightToLine className="size-4" /> {t(($) => $.editor.toolbar.goToDefinition)}
-        <span className="ml-auto text-[0.625rem] text-muted-foreground">{shortcut("F12")}</span>
-      </PopoverItem>
-      <PopoverItem onClick={() => withProjectSymbol(findReferences)}>
-        <SearchCode className="size-4" /> {t(($) => $.editor.toolbar.findReferences)}
-        <span className="ml-auto text-[0.625rem] text-muted-foreground">{shortcut("⇧F12")}</span>
-      </PopoverItem>
-      <PopoverItem onClick={() => withProjectSymbol(startRename)}>
-        <Pencil className="size-4" /> {t(($) => $.editor.toolbar.renameSymbol)}
-        <span className="ml-auto text-[0.625rem] text-muted-foreground">{shortcut("F2")}</span>
-      </PopoverItem>
-    </Popover>
+        ),
+      }))}
+    />
   );
 }
 
@@ -374,8 +354,8 @@ export function EditorToolbar({
       {
         id: "heading",
         width: DROPDOWN_TRIGGER_WIDTH,
-        render: () => <HeadingDropdown variant="bar" />,
-        renderMenu: () => <HeadingDropdown key="heading" variant="menu" />,
+        render: () => <HeadingDropdown variant="bar" levels={HEADING_LEVELS} insert={insertHeading} />,
+        renderMenu: () => <HeadingDropdown key="heading" variant="menu" levels={HEADING_LEVELS} insert={insertHeading} />,
       },
       dividerControl("divider-1"),
       btnControl(
@@ -396,25 +376,13 @@ export function EditorToolbar({
       dividerControl("divider-2"),
       btnControl("code", Code, t(($) => $.editor.toolbar.inlineCode), insertCode),
       btnControl("link", LinkIcon, t(($) => $.editor.toolbar.insertLink), insertLink),
-      {
-        id: "cite",
-        width: ICON_BUTTON_WIDTH,
-        render: () => <ProjectCitationPicker variant="bar" />,
-        renderMenu: () => (
-          <ProjectCitationPicker key="cite" variant="menu" />
-        ),
-      },
+      toolbarPicker("cite", ICON_BUTTON_WIDTH, (menu) => <ProjectCitationPicker variant={menu ? "menu" : "bar"} />),
       btnControl("ref", Tag, t(($) => $.editor.toolbar.insertCrossReference), insertRef),
       btnControl("footnote", Asterisk, t(($) => $.editor.toolbar.insertFootnote), insertFootnote),
       btnControl("blockquote", Quote, t(($) => $.editor.toolbar.insertBlockquote), insertBlockquote),
       dividerControl("divider-3"),
       btnControl("figure", ImageIcon, t(($) => $.editor.toolbar.insertFigure), insertFigure),
-      {
-        id: "table",
-        width: ICON_BUTTON_WIDTH,
-        render: () => <TableSizePicker />,
-        renderMenu: () => <TableSizePicker key="table" menuRow />,
-      },
+      toolbarPicker("table", ICON_BUTTON_WIDTH, (menuRow) => <TableSizePicker menuRow={menuRow} />),
       btnControl("diagram", PenTool, t(($) => $.editor.toolbar.drawDiagram), () => void openDiagramComposer("tikz")),
     ];
 
@@ -431,11 +399,11 @@ export function EditorToolbar({
           </IconBtn>
         ),
         renderMenu: () => (
-          <MenuRow
+          <ToolbarMenuItem
             key="image-to-latex"
-            icon={<ImagePlus className="size-4" />}
+            icon={ImagePlus}
             label={t(($) => $.editor.toolbar.imageToLatex)}
-            onClick={() => imageInputRef.current?.click()}
+            onSelect={() => imageInputRef.current?.click()}
           />
         ),
       });
@@ -471,12 +439,7 @@ export function EditorToolbar({
         t(($) => $.editor.toolbar.insertFraction),
       ),
       dividerControl("divider-5"),
-      {
-        id: "symbols",
-        width: ICON_BUTTON_WIDTH,
-        render: () => <SymbolPicker />,
-        renderMenu: () => <SymbolPicker key="symbols" menuRow />,
-      },
+      toolbarPicker("symbols", ICON_BUTTON_WIDTH, (menuRow) => <SymbolPicker menuRow={menuRow} />),
       {
         id: "code-intel",
         width: DROPDOWN_TRIGGER_WIDTH,
@@ -488,10 +451,7 @@ export function EditorToolbar({
     return list;
   }, [t, visionReady]);
 
-  const { containerRef, visibleCount } = useFittedCount(controls);
   const history = useEditorHistory();
-  const visibleControls = controls.slice(0, visibleCount);
-  const overflowControls = controls.slice(visibleCount);
 
   return (
     <div data-testid="editor-toolbar" className="flex h-9 items-center gap-0.5 border-b px-2">
@@ -531,21 +491,7 @@ export function EditorToolbar({
         />
       )}
 
-      <div ref={containerRef} className="flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden">
-        {visibleControls.map((c) => (
-          <Fragment key={c.id}>{c.render()}</Fragment>
-        ))}
-        {overflowControls.length > 0 && (
-          <Popover
-            ariaLabel={t(($) => $.editor.toolbar.moreOptions)}
-            closeOnClick={false}
-            className="max-h-96 w-56 overflow-y-auto p-1"
-            trigger={<MoreHorizontal className="size-4" />}
-          >
-            {overflowControls.map((c) => c.renderMenu())}
-          </Popover>
-        )}
-      </div>
+      <ToolbarOverflow controls={controls} label={t(($) => $.editor.toolbar.moreOptions)} />
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
         {activePath?.toLowerCase().endsWith(".bib") && !activeReadOnly && (

@@ -8,6 +8,7 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./block-id-marker": "./src/block-id-marker.ts",
     "./link-destination": "./src/link-destination.ts",
     "./front-matter": "./src/front-matter.ts"
   },

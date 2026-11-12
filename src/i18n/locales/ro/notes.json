@@ -17,9 +17,37 @@
     "resize": "Redimensionează panourile",
     "closePanel": "Închide panoul",
     "newTab": "Filă nouă",
-    "emptyPanel": "Acest panou este gol.",
+    "empty": {
+      "greetings": {
+        "begin": "Cu ce începem?",
+        "ready": "Când ești gata, începem.",
+        "mind": "La ce te gândești azi?",
+        "resume": "Continui de unde ai rămas?",
+        "working": "La ce lucrezi?",
+        "first": "Ce vrei să scrii mai întâi?",
+        "blank": "Începe cu o pagină goală sau cu un șablon."
+      },
+      "hints": {
+        "daily": "Un plan și un jurnal pentru azi",
+        "experimentLog": "Rulările și ce au arătat",
+        "paperReading": "Ce susține o lucrare",
+        "literatureMatrix": "Compară lucrări una lângă alta",
+        "meeting": "Ordinea de zi și deciziile",
+        "labProtocol": "Pași pe care îi poate urma altcineva",
+        "weeklyLog": "Ce s-a făcut săptămâna aceasta",
+        "proposal": "Obiective, metode și un calendar"
+      },
+      "moreTemplates": "Mai multe șabloane",
+      "continue": "Continuă",
+      "searchAll": "Caută în toate notițele"
+    },
     "closeMissing": "Închide fila",
-    "notesHome": "Mergi la pagina Acasă din Notițe"
+    "notesHome": "Mergi la pagina Acasă din Notițe",
+    "breadcrumb": "Cale de navigare",
+    "breadcrumbHome": "Acasă în Notițe",
+    "brand": "Oleafly Notes",
+    "back": "Înapoi",
+    "forward": "Înainte"
   },
   "saveStatus": {
     "saved": "Salvat",
@@ -40,7 +68,7 @@
       "notebook": "Notebookuri"
     },
     "author": {
-      "all": "Oricine",
+      "all": "Toți",
       "agent": "Agenți",
       "you": "Tu"
     },
@@ -52,16 +80,19 @@
       "data": "Niciun fișier de date nu corespunde acestor filtre.",
       "notebook": "Niciun notebook nu corespunde acestor filtre."
     },
-    "noNotes": "Încă nu ai notițe. Începe una cu Notiță nouă.",
+    "start": {
+      "title": "Încă nu ai notițe"
+    },
     "ungrouped": "Notițe",
     "agentFallback": "Agent",
     "settings": "Setări",
     "filters": {
-      "title": "Filtre",
+      "title": "Etichete",
       "active_one": "{{count}} filtru activ",
       "active_few": "{{count}} filtre active",
       "active_other": "{{count}} de filtre active",
-      "clear": "Șterge filtrele"
+      "clear": "Șterge filtrele",
+      "writtenBy": "Scrise de"
     },
     "menu": {
       "more": "Mai mult",
@@ -82,18 +113,31 @@
       "templateOn": "„{{name}}” este acum unul dintre șabloanele tale.",
       "templateOff": "„{{name}}” nu mai este un șablon.",
       "linkProject": "Asociază cu un proiect",
-      "compareConflict": "Compară copia de conflict"
+      "compareConflict": "Compară copia de conflict",
+      "copyLink": "Copiază legătura",
+      "linkCopied": "Legătura către „{{name}}” a fost copiată.",
+      "copyLinkFailed": "Legătura către „{{name}}” nu a putut fi copiată.",
+      "duplicate": "Dublează",
+      "copyTitle": "{{name}} (copie)",
+      "duplicateFailed": "„{{name}}” nu a putut fi dublată.",
+      "export": "Exportă",
+      "exportAs": {
+        "markdown": "Folder Markdown (.md)",
+        "docx": "Document Word (.docx)",
+        "html": "Pagină web (.html)",
+        "latex": "LaTeX (.tex)",
+        "typst": "Typst (.typ)"
+      },
+      "exportFailed": "„{{name}}” nu a putut fi exportată.",
+      "copyMarkdown": "Copiază ca Markdown",
+      "markdownCopied": "„{{name}}” a fost copiată ca Markdown.",
+      "copyMarkdownFailed": "„{{name}}” nu a putut fi copiată ca Markdown."
     },
     "conflicts": {
-      "title": "Două versiuni ale notiței „{{name}}”",
-      "description": "Această notiță s-a modificat aici și pe alt computer înainte ca modificările să fie sincronizate, așa că Oleafly a păstrat ambele versiuni. Păstrează una dintre ele. Cealaltă ajunge în Coșul de reciclare.",
-      "diffLabel": "Diferențele dintre cele două versiuni",
-      "loading": "Se citesc ambele versiuni…",
-      "readFailed": "Copia de conflict nu a putut fi citită.",
-      "resolveFailed": "Versiunea aleasă nu a putut fi păstrată.",
-      "keepMine": "Păstrează versiunea de pe acest computer",
-      "useCopy": "Folosește versiunea de pe celălalt computer",
       "badge": "Această notiță are o copie de conflict"
+    },
+    "suggestions": {
+      "badge": "În această notiță așteaptă modificări sugerate"
     }
   },
   "home": {
@@ -102,7 +146,9 @@
     "tabs": {
       "label": "Notițe afișate",
       "mine": "Notițele mele",
-      "favorites": "Favorite"
+      "favorites": "Favorite",
+      "tasks": "Sarcini",
+      "attachments": "Atașamente"
     },
     "sortBy": "Sortează după",
     "sort": {
@@ -112,8 +158,7 @@
       "title": "Titlu"
     },
     "layout": "Aspectul listei de notițe",
-    "empty": "Încă nu ai notițe. Începe una și cere-i agentului să te ajute s-o scrii.",
-    "noFavorites": "Încă nu ai favorite. Marchează o notiță cu stea ca s-o păstrezi aici.",
+    "noFavorites": "Încă nu ai favorite. Adaugă o notiță la favorite ca s-o păstrezi aici.",
     "noMatches": "Nicio notiță nu corespunde cu „{{query}}”.",
     "author": "Autor"
   },
@@ -126,8 +171,9 @@
     "loadFailed": "Această notiță nu a putut fi deschisă. Este posibil ca proiectul ei să fi fost mutat sau șters.",
     "retryLoad": "Încearcă din nou",
     "closeTab": "Închide fila",
-    "imageFailed": "Imaginea nu a putut fi salvată în notiță.",
-    "onlyImages": "Într-o notiță poți adăuga doar imagini PNG, JPEG și SVG.",
+    "fileFailed": "Fișierul nu a putut fi adăugat în notiță: {{error}}",
+    "fileTooLarge": "{{name}} depășește 64 MB, așa că nu a fost adăugat.",
+    "unsupportedFile": "O notiță poate conține doar imagini, audio, video, PDF-uri, tabele (CSV, TSV sau Excel), fișiere de molecule și notebookuri Jupyter.",
     "remoteImages": {
       "more": "Alte moduri de a încărca imaginile",
       "loadAll": "Încarcă toate imaginile din această notiță",
@@ -150,6 +196,10 @@
       "figure": "Adaugă o figură",
       "abstract": "Condensează pentru rezumat"
     },
+    "wholeNote": {
+      "proofread": "Corectează notița",
+      "rewrite": "Rescrie notița"
+    },
     "collapse": "Ascunde promptul",
     "expand": "Arată promptul"
   },
@@ -158,6 +208,22 @@
     "acceptAll": "Acceptă tot",
     "position": "Modificarea {{current}} din {{total}}",
     "undo": "Anulează"
+  },
+  "versions": {
+    "title": "Istoricul versiunilor",
+    "summary": "Oleafly salvează o versiune de fiecare dată când accepți toate modificările sugerate și înainte să restabilească una mai veche. Poți salva și tu una.",
+    "empty": "Încă nu există versiuni. Salvează o versiune ca să păstrezi notița așa cum este acum.",
+    "save": "Salvează o versiune",
+    "saved": "Versiune salvată.",
+    "unchanged": "Nu s-a schimbat nimic de la ultima versiune.",
+    "saveFailed": "Nu a putut fi salvată o versiune a acestei notițe.",
+    "restore": "Restabilește această versiune",
+    "restored": "Versiune restabilită. Textul înlocuit este salvat și el ca versiune.",
+    "restoreFailed": "Această versiune nu a putut fi restabilită.",
+    "comparing": "Comparație cu notița",
+    "readFailed": "Această versiune nu a putut fi citită.",
+    "changes": "Ce se schimbă dacă restabilești această versiune",
+    "textOnly": "Restabilirea schimbă doar textul notiței. Fișierele atașate rămân cum sunt."
   },
   "toolbar": {
     "label": "Formatare",
@@ -173,9 +239,6 @@
     "displayMath": "Ecuație afișată",
     "citation": "Citare",
     "noCitations": "Încă nu există referințe în acest proiect",
-    "tableSize": "Tabel de {{cols}} pe {{rows}}",
-    "addRow": "Adaugă un rând",
-    "addColumn": "Adaugă o coloană",
     "chart": "Grafic",
     "mermaid": "Diagramă Mermaid",
     "outline": "Cuprins",
@@ -190,7 +253,12 @@
       "wide": "Lată",
       "full": "Lățime completă"
     },
-    "notebook": "Inserează un notebook"
+    "attach": "Atașează un fișier",
+    "attachFilter": "Imagini, audio, video, PDF-uri, tabele, molecule și notebookuri",
+    "codeLanguage": "Limbaj",
+    "plainCode": "Text simplu",
+    "imageSize": "Dimensiunea imaginii",
+    "originalSize": "Dimensiunea originală"
   },
   "blocks": {
     "chart": "Grafic",
@@ -199,9 +267,28 @@
     "diagramError": "Această diagramă are o eroare. Deschide sursa ca s-o corectezi.",
     "chartError": "Datele acestui grafic nu sunt valide. Deschide sursa ca să le corectezi.",
     "noPreview": "Încă nu există o previzualizare pentru acest bloc. Deschide sursa ca să-l editezi.",
+    "syntax": {
+      "help": "Cum scrii un bloc {{block}}",
+      "chart": "JSON cu un tip, categorii și serii:\n{\"type\": \"bar\", \"categories\": [\"A\", \"B\"], \"series\": [{\"name\": \"Run 1\", \"values\": [1, 2]}]}\nAlte tipuri: line, area, scatter, pie, donut, histogram.",
+      "plot": "O curbă sau o opțiune pe linie:\ny = x^2 - 1 sau x = cos(t), y = sin(t)\ndomain: -5, 5 și point: 1, 0, Rădăcină",
+      "csv": "Rânduri de valori, iar primul rând este antetul:\nRulare, Raport\nSau citește un fișier cu path: assets/results.csv",
+      "latex": "LaTeX în modul display, de exemplu o ecuație sau un mediu align:\n\\begin{align} a &= b + c \\end{align}\nChimie cu \\ce{H2O} și unități cu \\pu{5 mg}.",
+      "typst": "Un fragment Typst, desenat ca imagine:\n$ E = m c^2 $\nPachetele de pe internet nu sunt disponibile.",
+      "mermaid": "O diagramă Mermaid, de exemplu:\nflowchart LR\nA --> B",
+      "d2": "O diagramă D2, de exemplu:\nclient -> server: request\nserver.shape: cylinder",
+      "tikz": "Comenzi TikZ sau un tikzpicture întreg:\n{{example}}\nLiniile de deasupra desenului, de exemplu \\usetikzlibrary{positioning}, merg în preambul.",
+      "circuitikz": "Comenzi CircuiTikZ sau un mediu circuitikz întreg:\n{{example}}\nLiniile de deasupra circuitului, de exemplu \\ctikzset{resistors/scale=0.8}, merg în preambul.",
+      "svg": "Un singur element svg, de exemplu:\n<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" /></svg>\nScripturile, legăturile și imaginile de la distanță sunt eliminate.",
+      "html": "O pagină HTML completă sau un fragment cu CSS și scripturi.\nNu are acces la internet, așa că pune datele în bloc.\nScripturile pornesc când apeși Rulează.",
+      "jsx": "Un fișier de componentă React cu un export implicit:\nexport default function App() { return <p>Hello</p> }\nPoate importa react, recharts, d3, lodash, papaparse, chart.js și lucide-react.",
+      "smiles": "Un șir SMILES pe linie, cu un nume opțional:\nAspirină: CC(=O)OC1=CC=CC=C1C(=O)O\nPână la 24 pe bloc.",
+      "molecule": "Mai întâi liniile de opțiuni, de exemplu format: pdb și style: cartoon.\nApoi textul fișierului sau path: assets/1abc.pdb",
+      "sequence": "Înregistrări FASTA sau o secvență simplă:\n>eșantion 1\nATGGCCATTGTAATG",
+      "notebook": "Calea notebookului pe prima linie:\nassets/analysis.ipynb\nApoi linii opționale, de exemplu cells: 2-5 și code: hide.",
+      "bookmark": "Un câmp pe linie, începând cu adresa web:\nurl: https://example.com/article\nApoi, opțional, liniile title:, description:, image:, site: și favicon:."
+    },
     "newChart": {
       "title": "Grafic nou",
-      "description": "Cere-i agentului să-l completeze sau editează sursa.",
       "series": "Valori"
     },
     "newHtml": {
@@ -238,6 +325,7 @@
     },
     "sequence": {
       "label": "Secvență",
+      "template": "Secvență codificatoare de exemplu",
       "empty": "Lipește o înregistrare FASTA sau o secvență simplă.",
       "character": "Linia {{line}}, coloana {{column}}: „{{character}}” nu este un reziduu.",
       "untitled": "Secvență fără titlu",
@@ -381,7 +469,8 @@
     "artifact": {
       "run": "Rulează",
       "stop": "Oprește",
-      "alwaysRun": "Rulează mereu blocurile din această notiță",
+      "alwaysRun": "Rulează mereu acest bloc",
+      "paused": "Oprit temporar, pentru că un bloc din această notiță a înghețat sau a închis aplicația data trecută.",
       "desktopOnly": "Pentru rulare este nevoie de aplicația desktop",
       "loading": "Se încarcă…",
       "loadFailed": "Acest bloc nu s-a putut încărca.",
@@ -389,7 +478,7 @@
       "stopped": "Acest bloc nu mai răspunde.",
       "reload": "Reîncarcă",
       "failed": "Acest bloc nu a putut porni: {{error}}",
-      "offline": "Blocurile nu pot încărca fișiere de pe internet, așa că acestea au fost omise:",
+      "offline": "Aceste fișiere de pe internet au fost omise:",
       "more_one": "și încă {{count}}",
       "more_few": "și încă {{count}}",
       "more_other": "și încă {{count}}",
@@ -401,7 +490,6 @@
       "noComponent": "Această componentă nu are un export implicit."
     },
     "code": {
-      "copy": "Copiază",
       "copied": "Copiat",
       "copyFailed": "Copierea a eșuat",
       "copyLabel": "Copiază codul"
@@ -411,6 +499,22 @@
       "empty": "Acest bloc SVG este gol.",
       "invalid": "Acest SVG nu este valid. Deschide sursa ca să-l corectezi.",
       "tooLarge": "Acest SVG este prea mare pentru a fi afișat."
+    },
+    "d2": {
+      "alt": "Diagramă D2",
+      "empty": "Acest bloc D2 este gol.",
+      "loading": "Se desenează…",
+      "error": "D2 nu a putut desena această diagramă: {{error}}",
+      "line": "Linia {{line}}: {{message}}"
+    },
+    "tikz": {
+      "alt": "Desen TikZ",
+      "circuitAlt": "Schemă de circuit",
+      "empty": "Acest bloc {{block}} este gol.",
+      "desktopOnly": "Previzualizările {{block}} au nevoie de aplicația desktop.",
+      "sharedNotice": "Această notiță este partajată. LaTeX rulează pe acest computer și îți poate citi fișierele, așa că verifică sursa înainte să desenezi.",
+      "draw": "Desenează",
+      "error": "LaTeX nu a putut compila acest bloc: {{error}}"
     },
     "typst": {
       "alt": "Rezultat Typst",
@@ -440,7 +544,33 @@
       "code": "Cod",
       "math": "Matematică",
       "divider": "Separator",
+      "footnote": "Notă de subsol",
       "basic": "De bază"
+    },
+    "media": {
+      "play": "Redă {{name}}",
+      "pdfPage": "{{name}}, pagina {{page}}",
+      "openPdf": "Deschide PDF-ul",
+      "openFailed": "Fișierul nu a putut fi deschis: {{error}}",
+      "missing": "Fișierul nu a fost găsit: {{path}}",
+      "unreadable": "{{name}} nu a putut fi citit.",
+      "cantPlay": "{{name}} nu poate fi redat aici. Poate că acest computer nu are un codec pentru formatul lui.",
+      "embed": "Redă videoclipul de pe {{site}}",
+      "embedTitle": "Videoclip de pe {{site}}",
+      "embedFailed": "Playerul nu a pornit. Încearcă din nou sau deschide videoclipul pe {{site}}.",
+      "watch": "Urmărește",
+      "watchOn": "Urmărește pe {{site}}",
+      "pasteChoice": "Cum se afișează această legătură video",
+      "embedChoice": "Încorporează videoclipul",
+      "linkChoice": "Păstrează ca legătură"
+    },
+    "bookmark": {
+      "label": "Semn de carte",
+      "pasteChoice": "Cum se afișează această legătură",
+      "cardChoice": "Card cu previzualizare",
+      "ask": "Adaugă un semn de carte pentru o pagină web",
+      "loading": "Se încarcă previzualizarea paginii",
+      "noUrl": "Adaugă o linie url: cu o adresă web care începe cu https:// sau http://."
     }
   },
   "notebook": {
@@ -464,10 +594,7 @@
     "showAllCells_few": "Arată toate cele {{count}} celule",
     "showAllCells_other": "Arată toate cele {{count}} de celule",
     "outputImage": "Rezultatul celulei {{number}}",
-    "outputFrame": "Rezultatul HTML al celulei {{number}}",
-    "pickTitle": "Inserează un notebook",
-    "filter": "Notebookuri Jupyter",
-    "importFailed": "Notebookul nu a putut fi adăugat: {{error}}"
+    "outputFrame": "Rezultatul HTML al celulei {{number}}"
   },
   "icons": {
     "choose": "Alege o pictogramă",
@@ -621,7 +748,7 @@
     "inserting": "Se copiază",
     "insertFailed": "Acest fișier nu a putut fi copiat în notiță: {{error}}",
     "newProject": "Proiect nou",
-    "htmlPreview": "Figurile interactive nu pot rula încă în Oleafly.",
+    "htmlPreview": "Ca să rulezi această figură, lipește codul ei într-un bloc HTML dintr-o notiță și apasă Rulează.",
     "kind": {
       "figure": "Figură",
       "html": "Figură interactivă",
@@ -635,7 +762,14 @@
   "sendToPaper": {
     "title": "Trimite într-o lucrare",
     "description": "Oleafly convertește conținutul o singură dată și îl adaugă la cursor. Copia din lucrare nu rămâne legată de notiță.",
-    "send": "Trimite"
+    "send": "Trimite",
+    "leftOut": "Blocul {{block}} există doar în notiță."
+  },
+  "citations": {
+    "references": "Referințe",
+    "fromReference": "Dintr-o referință",
+    "unknown": "Nu se află în bibliografia proiectului asociat: {{keys}}",
+    "openNote": "Deschide notița despre această lucrare: {{title}}"
   },
   "links": {
     "menu": "Legătură către o notiță sau un proiect",
@@ -645,13 +779,57 @@
     "missingNote": "Această notiță nu mai există",
     "missingNoteCreate": "Această notiță nu mai există. Apasă ca să creezi o notiță nouă cu acest nume.",
     "missingProject": "Acest proiect nu mai există",
-    "linkedFrom": "Legături primite"
+    "linkedFrom": "Legături primite",
+    "showAll": "Arată tot ({{total}})"
+  },
+  "linksSearch": {
+    "blocks": {
+      "loading": "Se încarcă blocurile",
+      "none": "Niciun bloc potrivit",
+      "missingBlock": "Blocul acela nu este în notiță",
+      "assignFailed": "Nu s-a putut adăuga un ID de bloc în acea notiță.",
+      "handle": "Opțiunile blocului",
+      "copyLink": "Copiază legătura către bloc",
+      "linkCopied": "Legătura către acest bloc a fost copiată.",
+      "copyFailed": "Legătura către acest bloc nu a putut fi copiată.",
+      "noId": "Acest bloc nu are încă un ID, iar tu nu poți edita această notiță.",
+      "linkedFrom": "Legături primite",
+      "links_one": "{{count}} notiță trimite aici",
+      "links_few": "{{count}} notițe trimit aici",
+      "links_other": "{{count}} de notițe trimit aici",
+      "openLinked": "Deschide {{title}}",
+      "toBlock": "Mergi la bloc: {{text}}"
+    },
+    "tagBlocks": {
+      "more_one": "Arată încă {{count}} bloc",
+      "more_few": "Arată încă {{count}} blocuri",
+      "more_other": "Arată încă {{count}} de blocuri"
+    },
+    "dead": {
+      "menu": "Legături nefuncționale",
+      "title": "Legături nefuncționale",
+      "summary_one": "{{count}} legătură duce la o notiță sau un bloc care nu mai există.",
+      "summary_few": "{{count}} legături duc la notițe sau blocuri care nu mai există.",
+      "summary_other": "{{count}} de legături duc la notițe sau blocuri care nu mai există.",
+      "none": "Nicio legătură nefuncțională. Toate legăturile duc la o notiță sau un bloc care încă există.",
+      "loading": "Se verifică legăturile",
+      "failed": "Legăturile din notițele tale nu au putut fi citite.",
+      "missingNotes": "Notițe lipsă",
+      "missingBlocks": "Blocuri lipsă",
+      "noteMeta": "Linia {{line}}: notița nu mai există",
+      "blockMeta": "Linia {{line}}: {{block}} nu mai este în {{title}}",
+      "create": "Creează notița",
+      "relink": "Schimbă legătura către {{title}}",
+      "remove": "Elimină legătura",
+      "fixFailed": "Legătura nu a putut fi modificată."
+    }
   },
   "projectNotes": {
     "searchLabel": "Caută în notițele acestui proiect",
     "searchPlaceholder": "Caută notițe",
     "clearSearch": "Șterge căutarea",
     "noMatches": "Nicio notiță nu corespunde căutării",
+    "loading": "Se citesc notițele proiectului",
     "edited": "Editată {{when}}",
     "createFailed": "Notița nu a putut fi creată.",
     "projectGroup": "Notițele proiectului",
@@ -699,7 +877,33 @@
     "callouts": {
       "type": "Tipul casetei de evidențiere: {{type}}",
       "fold": "Restrânge caseta",
-      "unfold": "Extinde caseta"
+      "unfold": "Extinde caseta",
+      "types": {
+        "note": "Notă",
+        "abstract": "Rezumat",
+        "info": "Informație",
+        "todo": "De făcut",
+        "tip": "Sfat",
+        "success": "Succes",
+        "question": "Întrebare",
+        "warning": "Avertisment",
+        "failure": "Eșec",
+        "danger": "Pericol",
+        "bug": "Bug",
+        "example": "Exemplu",
+        "quote": "Citat",
+        "theorem": "Teoremă",
+        "lemma": "Lemă",
+        "corollary": "Corolar",
+        "proposition": "Propoziție",
+        "definition": "Definiție",
+        "proof": "Demonstrație",
+        "hypothesis": "Ipoteză",
+        "assumption": "Presupunere",
+        "result": "Rezultat",
+        "method": "Metodă",
+        "remark": "Observație"
+      }
     },
     "links": {
       "loadingHeadings": "Se încarcă titlurile",
@@ -762,6 +966,212 @@
       }
     }
   },
+  "fields": {
+    "today": "Azi",
+    "tomorrow": "Mâine",
+    "yesterday": "Ieri",
+    "chip": "{{key}}: {{value}}",
+    "empty": "fără valoare",
+    "edit": "Modifică sau elimină",
+    "keys": {
+      "due": "Termen",
+      "scheduled": "Programată",
+      "priority": "Prioritate",
+      "start": "Începe",
+      "created": "Creată",
+      "completed": "Finalizată",
+      "date": "Dată",
+      "cancelled": "Anulată"
+    },
+    "priorities": {
+      "highest": "Maximă",
+      "high": "Ridicată",
+      "medium": "Medie",
+      "low": "Scăzută",
+      "lowest": "Minimă"
+    },
+    "editor": {
+      "label": "Editează {{key}}",
+      "key": "Nume",
+      "value": "Valoare",
+      "brackets": "Folosește paranteze drepte doar pentru o legătură, de exemplu [[Note]].",
+      "save": "Salvează",
+      "remove": "Elimină"
+    }
+  },
+  "at": {
+    "menu": "Inserează o dată, un câmp, o etichetă sau o notiță",
+    "groups": {
+      "dates": "Date",
+      "due": "Termen",
+      "fields": "Câmpuri de sarcină",
+      "tags": "Etichete",
+      "notes": "Notițe"
+    },
+    "today": "Azi",
+    "tomorrow": "Mâine",
+    "yesterday": "Ieri",
+    "next": "{{weekday}} viitoare",
+    "pick": "Alege o dată",
+    "pickerLabel": "Alege o dată",
+    "due": "Termen",
+    "scheduled": "Dată programată",
+    "priority": "Prioritate",
+    "priorityValue": "Prioritate: {{priority}}",
+    "custom": "Câmp personalizat",
+    "addField": "Adaugă câmpul „{{key}}”",
+    "setField": "Setează {{key}} la „{{value}}”",
+    "typeValue": "Scrie o valoare pentru {{key}}, apoi apasă Enter."
+  },
+  "tasks": {
+    "filters": "Filtre pentru sarcini",
+    "loading": "Se citesc sarcinile",
+    "failed": "Sarcinile nu au putut fi citite.",
+    "empty": "Încă nu ai sarcini. Începe o linie cu - [ ] în orice notiță și sarcina apare aici.",
+    "noMatches": "Nicio sarcină nu corespunde acestor filtre.",
+    "clear": "Șterge filtrele",
+    "list": "Sarcini",
+    "count_one": "{{count}} sarcină",
+    "count_few": "{{count}} sarcini",
+    "count_other": "{{count}} de sarcini",
+    "complete": "Marchează „{{text}}” ca finalizată",
+    "reopen": "Marchează „{{text}}” ca nefinalizată",
+    "openNote": "Deschide {{title}}",
+    "toggleFailed": "Sarcina nu a putut fi actualizată.",
+    "moved": "Sarcina s-a schimbat în notița ei. Deschide notița ca s-o actualizezi.",
+    "state": {
+      "label": "Arată",
+      "open": "Deschise",
+      "done": "Finalizate",
+      "all": "Deschise și finalizate"
+    },
+    "due": {
+      "label": "Termen",
+      "any": "Orice termen",
+      "overdue": "Cu termen depășit",
+      "today": "Cu termen azi",
+      "week": "Cu termen în următoarele 7 zile",
+      "none": "Fără termen"
+    },
+    "priority": {
+      "label": "Prioritate",
+      "any": "Orice prioritate",
+      "high": "Prioritate ridicată",
+      "medium": "Prioritate medie",
+      "low": "Prioritate scăzută",
+      "none": "Fără prioritate"
+    },
+    "tag": {
+      "label": "Etichetă",
+      "any": "Toate etichetele"
+    },
+    "project": {
+      "label": "Proiect",
+      "any": "Toate proiectele"
+    },
+    "sort": {
+      "label": "Sortează sarcinile după",
+      "due": "Termen",
+      "priority": "Prioritate"
+    }
+  },
+  "attachments": {
+    "filters": "Filtre pentru atașamente",
+    "loading": "Se caută atașamentele",
+    "failed": "Atașamentele nu au putut fi citite.",
+    "empty": "Încă nu ai atașamente. Trage o imagine sau un fișier într-o notiță și apare aici.",
+    "noMatches": "Niciun atașament nu corespunde acestor filtre.",
+    "clear": "Șterge filtrele",
+    "list": "Atașamente",
+    "count_one": "{{count}} fișier",
+    "count_few": "{{count}} fișiere",
+    "count_other": "{{count}} de fișiere",
+    "openNote": "Deschide {{title}}",
+    "copyLink": "Copiază legătura",
+    "linkCopied": "Legătura către „{{name}}” a fost copiată.",
+    "copyFailed": "Legătura către „{{name}}” nu a putut fi copiată.",
+    "unused": "Nefolosit",
+    "type": {
+      "label": "Tip",
+      "all": "Toate tipurile",
+      "image": "Imagini",
+      "audio": "Audio",
+      "video": "Video",
+      "pdf": "PDF-uri",
+      "other": "Altele"
+    },
+    "use": {
+      "label": "Utilizare",
+      "all": "Toate fișierele",
+      "unused": "Nefolosite"
+    }
+  },
+  "info": {
+    "title": "Informații",
+    "show": "Informații despre notiță",
+    "noNote": "Deschide o notiță ca să vezi informațiile despre ea.",
+    "details": "Detaliile notiței",
+    "created": "Creată",
+    "updated": "Actualizată",
+    "words": "Cuvinte",
+    "characters": "Caractere",
+    "lines": "Linii",
+    "readingTime": "Timp de citire",
+    "underMinute": "sub un minut",
+    "noProperties": "Nicio proprietate",
+    "noBacklinks": "Nicio notiță nu trimite aici",
+    "noMentions": "Nicio altă notiță nu o menționează",
+    "noReferences": "Nicio citare în această notiță",
+    "noDeadLinks": "Nicio legătură nefuncțională",
+    "noAttachments": "Niciun fișier atașat"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "week": "Săptămână",
+    "hasNote": "are o notiță zilnică",
+    "due_one": "{{count}} sarcină cu termen",
+    "due_few": "{{count}} sarcini cu termen",
+    "due_other": "{{count}} de sarcini cu termen",
+    "openWeek": "Deschide notița săptămânală pentru săptămâna {{week}}",
+    "openMonthNote": "Deschide notița lunară",
+    "createMonthNote": "Creează notița lunară",
+    "today": "Azi",
+    "failed": {
+      "weekly": "Notița săptămânală nu a putut fi deschisă.",
+      "monthly": "Notița lunară nu a putut fi deschisă."
+    }
+  },
+  "periodic": {
+    "title": "Notițe zilnice, săptămânale și lunare",
+    "daily": {
+      "label": "Notițe zilnice",
+      "description": "Notița de azi și zilele din calendarul din bara laterală."
+    },
+    "weekly": {
+      "label": "Notițe săptămânale",
+      "description": "Numerele săptămânilor din calendarul din bara laterală."
+    },
+    "monthly": {
+      "label": "Notițe lunare",
+      "description": "Numele lunii din partea de sus a calendarului din bara laterală."
+    },
+    "weekStart": {
+      "label": "Prima zi a săptămânii",
+      "description": "Prima coloană a calendarului din bara laterală. Numerele săptămânilor se numără de la această zi, iar cu luni sunt numere de săptămână ISO.",
+      "locale": "Implicit pentru regiune ({{day}})",
+      "monday": "Luni",
+      "sunday": "Duminică",
+      "saturday": "Sâmbătă"
+    },
+    "format": "Formatul titlului",
+    "preview": "Exemplu: {{title}}",
+    "invalidFormat": "Adaugă o parte de dată, de exemplu YYYY sau WW.",
+    "template": "Șablon",
+    "savedTemplate": "Șablonul tău salvat",
+    "tag": "Etichetă",
+    "noTag": "Fără etichetă",
+    "formatHelp": "Formatele de titlu folosesc YYYY pentru an, MM pentru lună, MMMM pentru numele lunii, DD pentru zi, dddd pentru ziua săptămânii, WW pentru numărul săptămânii și GGGG pentru anul căruia îi aparține săptămâna. Textul dintre paranteze drepte, de exemplu [W], rămâne așa cum este scris. Notițele pe care le ai deja își păstrează titlurile, așa că schimbă formatul înainte să începi să-l folosești."
+  },
   "live": {
     "share": "Partajează",
     "shared": "Partajată",
@@ -806,7 +1216,9 @@
     "outline": {
       "title": "Cuprins",
       "empty": "Această notiță nu are titluri",
+      "emptyDetail": "Începe o linie cu # ca să adaugi un titlu.",
       "noNote": "Deschide o notiță ca să-i vezi cuprinsul",
+      "noNoteDetail": "Cuprinsul urmează notița pe care o editezi.",
       "levels": "Niveluri de titlu",
       "allLevels": "Toate nivelurile",
       "upTo": "Până la H{{level}}",
@@ -814,7 +1226,8 @@
       "expand": "Extinde {{title}}"
     },
     "linksFailed": "Legăturile dintre notițe nu au putut fi citite.",
-    "tagsFailed": "Etichetele nu au putut fi citite."
+    "tagsFailed": "Etichetele nu au putut fi citite.",
+    "loading": "Se citesc legăturile dintre notițe"
   },
   "vault": {
     "import": {
@@ -835,6 +1248,9 @@
       "seenDescription_few": "Pe {{date}}, importul a adăugat {{count}} notițe. Dacă imporți din nou, se adaugă copii noi, iar notițele de dinainte rămân neschimbate.",
       "seenDescription_other": "Pe {{date}}, importul a adăugat {{count}} de notițe. Dacă imporți din nou, se adaugă copii noi, iar notițele de dinainte rămân neschimbate.",
       "again": "Importă din nou ca notițe noi",
+      "largeTitle": "Acest folder conține {{total}} notițe",
+      "largeDescription": "Importarea tuturor poate dura o vreme, iar fiecare devine o notiță separată în biblioteca ta. Poți opri importul oricând.",
+      "largeConfirm": "Importă tot",
       "doneTitle": "Import încheiat",
       "notes_one": "{{count}} notiță importată",
       "notes_few": "{{count}} notițe importate",
@@ -871,6 +1287,9 @@
         "skipped_one": "{{count}} atașament nu a putut fi exportat",
         "skipped_few": "{{count}} atașamente nu au putut fi exportate",
         "skipped_other": "{{count}} de atașamente nu au putut fi exportate",
+        "paperLinks_one": "{{count}} legătură către o lucrare a devenit text simplu",
+        "paperLinks_few": "{{count}} legături către lucrări au devenit text simplu",
+        "paperLinks_other": "{{count}} de legături către lucrări au devenit text simplu",
         "doneSkipped": "{{done}}. {{skipped}}.",
         "showFolder": "Arată folderul",
         "failed": "Notițele nu au putut fi exportate."
@@ -898,8 +1317,10 @@
       "empty": "Încă nu există etichete. Adaugă #etichete într-o notiță sau etichete în proprietățile ei.",
       "filter": "Arată notițele cu eticheta {{tag}}",
       "clear": "Nu mai filtra după {{tag}}",
-      "expand": "Arată etichetele din {{tag}}",
-      "collapse": "Ascunde etichetele din {{tag}}"
+      "search": "Filtrează etichetele",
+      "noMatch": "Nicio etichetă nu corespunde cu „{{query}}”.",
+      "showAll": "Arată toate ({{total}})",
+      "showFewer": "Arată mai puține"
     },
     "switcher": {
       "open": "Mergi la notiță",
@@ -917,7 +1338,9 @@
     },
     "daily": {
       "open": "Notița de azi",
-      "failed": "Notița de azi nu a putut fi deschisă."
+      "failed": "Notița de azi nu a putut fi deschisă.",
+      "previous": "Notița zilnică anterioară: {{date}}",
+      "next": "Notița zilnică următoare: {{date}}"
     },
     "templates": {
       "open": "Nouă din șablon",
@@ -941,7 +1364,9 @@
         "proposal": "Propunere de cercetare",
         "proof": "Demonstrație sau derivare",
         "dataAnalysis": "Raport de analiză a datelor",
-        "interview": "Notițe de interviu"
+        "interview": "Notițe de interviu",
+        "screeningLog": "Jurnal de triere",
+        "labNotebook": "Intrare în caietul de laborator"
       },
       "descriptions": {
         "daily": "Un plan și un jurnal curent pentru o zi",
@@ -954,7 +1379,9 @@
         "proposal": "Obiective, metode și un calendar pentru o cerere de finanțare sau o teză",
         "proof": "Un rezultat, ideea din spatele lui și argumentul complet",
         "dataAnalysis": "Ce ai rulat, pe ce date, și ce a arătat",
-        "interview": "Răspunsuri, citate și teme dintr-o conversație"
+        "interview": "Răspunsuri, citate și teme dintr-o conversație",
+        "screeningLog": "Întrebarea revizuirii, criteriile și numărul de înregistrări la fiecare etapă de triere",
+        "labNotebook": "O zi la bancul de lucru: scop, probe, procedură, observații și semnătură"
       },
       "bodies": {
         "daily": "**{{weekday}}**\n\n## Plan\n- [ ] Cea mai importantă sarcină\n- [ ] A doua sarcină\n\n## Jurnal\n- {{time}} Am început ziua\n\n## Notițe\n\n## Gata azi\n- Nimic încă\n\n## Mâine\n- [ ] Primul lucru de reluat",
@@ -965,9 +1392,11 @@
         "labProtocol": "> [!warning] Siguranță\n> Verifică pericolele, echipamentul de protecție și gestionarea deșeurilor înainte să începi.\n\n## Scop\nCe produce acest protocol și când se folosește.\n\n## Materiale\n| Element | Cantitate | Furnizor sau număr de catalog | Notițe |\n| --- | --- | --- | --- |\n| | | | |\n\n## Echipamente\n- Instrument și setări\n\n## Procedură\n1. Pregătește\n2. Rulează\n3. Curăță\n\n## Verificări\n- [ ] Controale pregătite\n- [ ] Setări notate\n- [ ] Probe etichetate cu data și rularea\n\n## Depanare\n| Problemă | Cauză probabilă | Soluție |\n| --- | --- | --- |\n| | | |\n\n## Istoricul reviziilor\n| Versiune | Dată | Modificare |\n| --- | --- | --- |\n| 1 | {{date}} | Prima versiune |",
         "weeklyLog": "## Obiectivele săptămânii\n- [ ] Primul obiectiv\n- [ ] Al doilea obiectiv\n- [ ] Al treilea obiectiv\n\n## Progres\n| Zi | Ce s-a lucrat | Notițe |\n| --- | --- | --- |\n| Luni | | |\n| Marți | | |\n| Miercuri | | |\n| Joi | | |\n| Vineri | | |\n\n## Rezultate și figuri\n- Ce a ieșit din această săptămână\n\n## Blocaje\n> [!warning] E nevoie de ajutor\n> Ce s-a blocat și cine poate debloca.\n\n## Lecturi\n- Lucrări citite săptămâna aceasta\n\n## Săptămâna viitoare\n- [ ] Primul obiectiv pentru săptămâna viitoare",
         "proposal": "> [!abstract] Rezumat\n> În trei propoziții: problema, abordarea și rezultatul așteptat.\n\n## Context și motivație\nDe ce contează acum și ce se știe deja.\n\n## Întrebări de cercetare\n1. Prima întrebare\n\n## Obiective\n| Obiectiv | Abordare | Rezultat așteptat |\n| --- | --- | --- |\n| 1 | | |\n\n## Metode\nDesign, date, analiză și cum se măsoară succesul.\n\n## Calendar\n| Etapă | Durată (luni) | Reper |\n| --- | --- | --- |\n| | | |\n\n## Riscuri și atenuare\n| Risc | Probabilitate | Atenuare |\n| --- | --- | --- |\n| | | |\n\n## Resurse și buget\n\n## Impact\nCine beneficiază și cum vor fi comunicate rezultatele.\n\n## Bibliografie",
-        "proof": "> [!note] Enunț\n> Rezultatul, enunțat precis, cu toate ipotezele.\n\n## Definiții și notații\n- Simbolurile și ce înseamnă\n\n## Idee\nIdeea principală în cuvinte simple, înainte de detalii.\n\n## Demonstrație\n**Pasul 1.** Pregătește argumentul.\n\n**Pasul 2.** Fă estimarea principală.\n\n**Pasul 3.** Trage concluzia.\n\n## Verificări\n- [ ] Fiecare ipoteză este folosită\n- [ ] Cazurile limită sunt acoperite\n- [ ] Constantele și marginile sunt urmărite\n\n## Observații\nGeneralizări, contraexemple și rezultate înrudite.",
-        "dataAnalysis": "> [!info] Întrebare\n> Decizia pe care o sprijină această analiză.\n\n## Date\n| Câmp | Valoare |\n| --- | --- |\n| Sursă | |\n| Versiune sau dată | |\n| Rânduri și coloane | |\n| Excluderi | |\n\n## Metode\n- Pașii de curățare\n- Modelul sau testul, și de ce\n- Ipotezele verificate\n\n## Rezultate\n| Măsură | Estimare | Interval | Notițe |\n| --- | --- | --- | --- |\n| | | | |\n\n## Figuri\n- Figura și ce arată\n\n## Interpretare\nCe înseamnă rezultatele pentru întrebare.\n\n## Limitări\n- Erori sistematice, date lipsă și ce ar putea schimba concluzia\n\n## Reproductibilitate\n- [ ] Cod salvat și legat\n- [ ] Semințe aleatoare notate\n- [ ] Versiunile pachetelor notate",
-        "interview": "> [!warning] Consimțământ și confidențialitate\n> Confirmă consimțământul înainte de înregistrare și folosește un cod de participant în locul numelui.\n\n## Context\n| Element | Valoare |\n| --- | --- |\n| Codul participantului | |\n| Rol | |\n| Durată | |\n| Înregistrare | |\n\n## Întrebări și răspunsuri\n### Întrebarea 1\n- Răspuns\n\n### Întrebarea 2\n- Răspuns\n\n## Citate\n> Un citat care merită păstrat.\n\n## Teme\n- Tema și răspunsurile care o susțin\n\n## De urmărit\n- [ ] Trimite un mesaj de mulțumire\n- [ ] Transcrie și anonimizează"
+        "proof": "## Definiții și notații\n> [!definition] Notații\n> Simbolurile pe care le folosești și ce înseamnă fiecare.\n\n## Enunț\n> [!theorem] Rezultatul principal\n> Rezultatul, enunțat precis, cu toate ipotezele.\n\n## Idee\nIdeea principală în cuvinte simple, înainte de detalii.\n\n## Leme\n> [!lemma] Lema 1\n> O afirmație mai mică de care are nevoie demonstrația principală.\n\n> [!proof] Demonstrația lemei 1\n> De ce este adevărată lema.\n\n## Demonstrație\n> [!proof] Demonstrația rezultatului principal\n> **Pasul 1.** Pregătește argumentul.\n>\n> **Pasul 2.** Fă estimarea principală, folosind lema 1.\n>\n> **Pasul 3.** Trage concluzia.\n\n## Verificări\n- [ ] Fiecare ipoteză este folosită\n- [ ] Cazurile limită sunt acoperite\n- [ ] Constantele și marginile sunt urmărite\n\n## Observații\nGeneralizări, contraexemple și rezultate înrudite.",
+        "dataAnalysis": "> [!info] Întrebare\n> Decizia pe care o sprijină această analiză.\n\n## Date\n| Câmp | Valoare |\n| --- | --- |\n| Sursă | |\n| Versiune sau dată | |\n| Rânduri și coloane | |\n| Excluderi | |\n\n## Metode\n- Pașii de curățare\n- Modelul sau testul, și de ce\n- Ipotezele verificate\n\n## Rezultate\nTabelul de mai jos este un bloc CSV. Înlocuiește rândurile de exemplu cu rezultatele tale.\n\n```csv\nMăsură,Estimare,Limita inferioară 95%,Limita superioară 95%,n\nMedia grupului A,0,0,0,0\nMedia grupului B,0,0,0,0\nDiferența,0,0,0,0\n```\n\n## Figuri\n- Figura și ce arată\n\n## Interpretare\nCe înseamnă rezultatele pentru întrebare.\n\n## Limitări\n- Erori sistematice, date lipsă și ce ar putea schimba concluzia\n\n## Reproductibilitate\n- [ ] Cod salvat și legat\n- [ ] Semințe aleatoare notate\n- [ ] Versiunile pachetelor notate",
+        "interview": "> [!warning] Consimțământ și confidențialitate\n> Confirmă consimțământul înainte de înregistrare și folosește un cod de participant în locul numelui.\n\n## Context\n| Element | Valoare |\n| --- | --- |\n| Codul participantului | |\n| Rol | |\n| Durată | |\n| Înregistrare | |\n\n## Întrebări și răspunsuri\n### Întrebarea 1\n- Răspuns\n\n### Întrebarea 2\n- Răspuns\n\n## Citate\n> Un citat care merită păstrat.\n\n## Teme\n- Tema și răspunsurile care o susțin\n\n## De urmărit\n- [ ] Trimite un mesaj de mulțumire\n- [ ] Transcrie și anonimizează",
+        "screeningLog": "> [!question] Întrebarea revizuirii (PICO)\n> - **Populația:** cine sau ce este studiat\n> - **Intervenția sau expunerea:** ce este testat\n> - **Comparația:** cu ce este comparat\n> - **Rezultatul măsurat:** ce este măsurat\n\n## Criterii de includere\n- Designuri de studiu\n- Populație și context\n- Limbi și ani\n\n## Criterii de excludere\n- Motivul și cum îl recunoști\n\n## Căutări\n| Data | Baza de date | Interogarea | Înregistrări |\n| --- | --- | --- | --- |\n| {{date}} | | | |\n\n## Numărul la fiecare etapă\n| Etapa | Înregistrări | Eliminate | Motive principale |\n| --- | --- | --- | --- |\n| Găsite în căutări | | | |\n| După eliminarea duplicatelor | | | |\n| Titluri și rezumate triate | | | |\n| Texte integrale evaluate | | | |\n| Incluse în revizuire | | | |\n\n## Excluse la textul integral\n| Lucrarea | Motivul |\n| --- | --- |\n| | |\n\n## Dezacorduri\n- Lucrarea, decizia fiecărui evaluator și cum s-a rezolvat\n\n## Pașii următori\n- [ ] Triază lotul următor\n- [ ] Verifică dacă numerele se potrivesc",
+        "labNotebook": "**{{weekday}}, {{date}}**\n\n## Scop\nCe îți propui să faci azi și de ce.\n\n## Materiale\n| Material | ID probă | Lot | Cantitate |\n| --- | --- | --- | --- |\n| | | | |\n\n## Procedură\n1. Ce ai făcut, în ordine, cu ore și setări\n2. Orice abatere de la protocol și de ce\n\n## Observații\n- {{time}} Ce ai văzut\n\n## Rezultate\n- Măsurători și unde sunt stocate datele brute\n\n## Pașii următori\n- [ ] Continuarea pentru sesiunea următoare\n\n## Semnătură\n**Semnat de:** nume, {{date}}\n\n**Martor:** nume, dată"
       }
     },
     "mentions": {
@@ -1006,8 +1435,8 @@
     "actionHint": "Lucrează pe această notiță",
     "agentCanEdit": "Acest agent poate modifica fișiere din proiectul asociat.",
     "allowWritesLabel": "Permite agentului să modifice fișiere",
-    "allowWritesAsk": "{{agent}} nu are un mod doar pentru citire, așa că ar putea modifica fișiere din {{project}}. Trimiți mesajul oricum?",
-    "allowWrites": "Permite în această conversație",
+    "allowWritesAsk": "{{agent}} nu are un mod doar pentru citire, așa că ar putea modifica fișiere din {{project}}. Oleafly nu îi poate adăuga unul. Trimiți mesajul oricum?",
+    "allowWrites": "Trimite oricum",
     "dontSend": "Nu trimite",
     "viewOnly": "Poți doar să vizualizezi această notiță, așa că asistentul nu o poate modifica."
   },
@@ -1024,6 +1453,7 @@
     "template": "Setarea de șablon pentru „{{name}}” nu a putut fi schimbată."
   },
   "noteTab": {
+    "loading": "Se deschide notița",
     "projectNote": "Notiță de proiect",
     "sharedProject": "Toți cei din acest proiect o pot vedea și edita",
     "localProject": "Salvată împreună cu fișierele acestui proiect",
@@ -1035,5 +1465,249 @@
     "copyToMine": "Copiază în notițele mele",
     "missing": "Această notiță nu mai este disponibilă. Este posibil să fi fost mutată sau ștearsă.",
     "writeRefused": "Notița nu a putut fi salvată. Acest proiect este momentan doar pentru citire."
+  },
+  "appearance": {
+    "notes": {
+      "sectionName": "Aspectul notițelor",
+      "resetAriaLabel": "Resetează {{setting}} la valoarea implicită",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Tip de literă",
+        "description": "Alege un tip de literă pentru textul notițelor.",
+        "options": {
+          "sans": "Fără serife",
+          "serif": "Cu serife",
+          "mono": "Monospațiat"
+        }
+      },
+      "font": {
+        "label": "Fontul notițelor",
+        "description": "Alege orice font instalat pentru textul notițelor. Lasă câmpul gol ca să folosești setarea Tip de literă."
+      },
+      "fontSize": {
+        "label": "Dimensiunea textului din notițe",
+        "description": "Setează dimensiunea textului din notițe.",
+        "custom": "Personalizată",
+        "customLabel": "Dimensiune personalizată a textului din notițe, în pixeli"
+      },
+      "lineHeight": {
+        "label": "Înălțimea liniei în notițe",
+        "description": "Setează spațiul dintre liniile textului din notițe.",
+        "customLabel": "Înălțime personalizată a liniei în notițe"
+      },
+      "paragraphSpacing": {
+        "label": "Spațierea paragrafelor",
+        "description": "Setează spațiul dintre paragrafe, liste și alte blocuri.",
+        "options": {
+          "compact": "Compactă",
+          "normal": "Normală",
+          "relaxed": "Relaxată",
+          "spacious": "Aerisită"
+        }
+      },
+      "headings": {
+        "title": "Titluri și titlul notiței"
+      },
+      "headingTypeface": {
+        "label": "Tipul de literă al titlurilor",
+        "description": "Alege un tip de literă pentru titluri și pentru titlul notiței.",
+        "options": {
+          "text": "La fel ca textul"
+        }
+      },
+      "headingFont": {
+        "label": "Fontul titlurilor",
+        "description": "Alege un font instalat pentru titluri și pentru titlul notiței. Lasă câmpul gol ca să folosești setarea Tipul de literă al titlurilor."
+      },
+      "headingSize": {
+        "label": "Dimensiunea titlurilor",
+        "description": "Setează cât de mari sunt titlurile față de text.",
+        "options": {
+          "small": "Mai mici",
+          "normal": "Normale",
+          "large": "Mai mari"
+        }
+      },
+      "titleSize": {
+        "label": "Dimensiunea titlului",
+        "description": "Setează dimensiunea titlului din partea de sus a fiecărei notițe."
+      },
+      "layout": {
+        "title": "Aranjare"
+      },
+      "width": {
+        "label": "Lățimea notiței",
+        "description": "Cât de late se deschid notițele. Meniul de lățime dintr-o notiță schimbă și el această setare.",
+        "options": {
+          "standard": "Standard",
+          "wide": "Lată",
+          "full": "Lățime completă"
+        }
+      },
+      "info": {
+        "label": "Informații despre notiță",
+        "description": "Unde apar proprietățile și legăturile unei notițe. Cu Panou lateral, ele apar în panoul Informații, împreună cu statisticile și atașamentele notiței. Cu În notiță, rămân pe pagină.",
+        "options": {
+          "side": "Panou lateral",
+          "inline": "În notiță"
+        }
+      },
+      "taskBox": {
+        "label": "Casetele sarcinilor",
+        "description": "Forma casetelor din listele de sarcini.",
+        "options": {
+          "square": "Pătrate",
+          "round": "Rotunde"
+        }
+      },
+      "wordCount": {
+        "label": "Arată numărul de cuvinte",
+        "description": "Arată numărul de cuvinte al notiței în bara ei de instrumente."
+      },
+      "spellcheck": {
+        "label": "Verifică ortografia în notițe",
+        "description": "Subliniază cuvintele scrise greșit cât timp scrii o notiță."
+      },
+      "replacements": {
+        "label": "Înlocuiește în timp ce scrii",
+        "description": "Înlocuiește perechi precum -> cu → în timp ce scrii. Codul și formulele matematice rămân cum le-ai scris, iar Backspace imediat după o înlocuire îți readuce textul.",
+        "list": "Înlocuiri de text",
+        "type": "Scrii",
+        "becomes": "Devine",
+        "add": "Adaugă",
+        "remove": "Elimină {{from}}",
+        "removeTooltip": "Elimină",
+        "empty": "Nicio pereche încă. Adaugă una mai jos.",
+        "full": "Poți avea cel mult {{limit}} de perechi. Elimină una ca să adaugi alta."
+      },
+      "keepUndo": {
+        "label": "Păstrează istoricul de anulare după închidere",
+        "description": "Anularea funcționează în continuare într-o notiță după ce o închizi sau ieși din aplicație. Istoricul rămâne pe acest computer, iar dezactivarea opțiunii îl șterge."
+      },
+      "code": {
+        "title": "Cod"
+      },
+      "drawings": {
+        "title": "Desene LaTeX"
+      },
+      "tikzPreamble": {
+        "label": "Preambul TikZ",
+        "description": "Linii precum \\usetikzlibrary{positioning} care se adaugă la începutul preambulului fiecărui bloc TikZ și CircuiTikZ."
+      },
+      "codeFont": {
+        "label": "Fontul codului",
+        "description": "Alege un font instalat pentru blocurile de cod și pentru codul din text."
+      },
+      "codeTheme": {
+        "label": "Culorile blocurilor de cod",
+        "description": "Alege culorile de sintaxă pentru blocurile de cod din notițe.",
+        "options": {
+          "editor": "La fel ca editorul"
+        }
+      },
+      "colors": {
+        "title": "Culori"
+      },
+      "accent": {
+        "label": "Culoarea de accent a notițelor",
+        "description": "Folosită pentru legături, etichete și casetele de sarcini din notițe.",
+        "matchApp": "La fel ca aplicația",
+        "customAriaLabel": "Alege o culoare de accent personalizată pentru notițe"
+      },
+      "callouts": {
+        "label": "Stilul casetelor de evidențiere",
+        "description": "Cum arată casetele de evidențiere în notițe.",
+        "options": {
+          "tinted": "Nuanțat",
+          "filled": "Umplut",
+          "outlined": "Conturat",
+          "bar": "Bară laterală"
+        }
+      },
+      "fieldStyle": {
+        "label": "Marcajele pentru date și câmpuri",
+        "description": "Cum arată în notițe datele calendaristice și câmpurile precum termenul sau prioritatea.",
+        "options": {
+          "tint": "Nuanță",
+          "outline": "Contur",
+          "underline": "Subliniere"
+        }
+      },
+      "remoteImages": {
+        "title": "Imagini de pe web",
+        "description": "Notițele și răspunsurile asistentului încarcă imagini de pe aceste site-uri fără să întrebe.",
+        "empty": "Notițele și răspunsurile asistentului întreabă înainte să încarce o imagine de pe web. Site-urile pe care le permiți mereu apar aici.",
+        "remove": "Elimină {{host}}"
+      }
+    }
+  },
+  "notesPreview": {
+    "label": "Previzualizarea unei notițe cu aceste setări",
+    "title": "Notițe de teren",
+    "heading": "Observații de dimineață",
+    "paragraph": "Ploaie ușoară până la nouă, apoi cer senin deasupra crestei nordice. Solul era încă umed la prânz.",
+    "links": "Vezi <note>Metoda de eșantionare</note> pentru toți pașii sau răsfoiește <tag>#teren</tag>.",
+    "highlight": "Răsadurile și-au dublat înălțimea într-o săptămână.",
+    "calloutTitle": "Următoarea vizită",
+    "calloutBody": "Verifică senzorii de sol înainte să iei probe noi.",
+    "taskDone": "Etichetează probele",
+    "task": "Încarcă fotografiile",
+    "taskLate": "Trimite raportul despre sol"
+  },
+  "highlight": {
+    "colors": {
+      "yellow": "Galben",
+      "orange": "Portocaliu",
+      "red": "Roșu",
+      "pink": "Roz",
+      "purple": "Mov",
+      "blue": "Albastru",
+      "green": "Verde"
+    },
+    "remove": "Elimină evidențierea"
+  },
+  "quickCapture": {
+    "title": "Notare rapidă",
+    "untitled": "Fără titlu",
+    "placeholder": "Începe să scrii…",
+    "field": "Text de notat",
+    "characters_one": "{{count}} caracter",
+    "characters_few": "{{count}} caractere",
+    "characters_other": "{{count}} de caractere",
+    "failed": "Nu s-a putut salva. Textul tău este încă aici, așa că poți încerca din nou.",
+    "actions": {
+      "label": "Acțiuni",
+      "saveNew": "Salvează ca notiță nouă",
+      "saveToday": "Adaugă la notița de azi",
+      "copy": "Copiază ca Markdown",
+      "discard": "Renunță la ciornă"
+    },
+    "openNotes": "Deschide Notițe",
+    "newNote": "Notiță nouă",
+    "format": "Arată formatarea",
+    "closeFormat": "Ascunde formatarea"
+  },
+  "starter": {
+    "blocksGallery": {
+      "title": "Galeria de blocuri",
+      "intro": "Toate blocurile pe care le poate conține o notiță. Apasă pe {{source}} într-un bloc ca să vezi și să editezi ce îl desenează, iar pe o linie goală scrie {{slash}} ca să inserezi unul nou.",
+      "charts": "Grafice",
+      "functionPlots": "Grafice de funcții",
+      "tables": "Tabele",
+      "csvTable": "Un bloc csv se poate sorta și filtra și are un rând de rezumat:",
+      "markdownTable": "Funcționează și tabelele Markdown simple:",
+      "math": "Matematică și chimie",
+      "typst": "Typst",
+      "diagrams": "Diagrame",
+      "svg": "SVG",
+      "html": "HTML, apasă {{run}}",
+      "react": "React, apasă {{run}}",
+      "structures": "Structuri chimice",
+      "molecule": "Moleculă 3D",
+      "sequences": "Secvențe",
+      "code": "Cod"
+    }
   }
 }

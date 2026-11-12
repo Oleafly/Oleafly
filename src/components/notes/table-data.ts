@@ -1,10 +1,10 @@
-import { parseDelimited } from "@oleafly/conversion-registry/table";
+import { delimiterOf, parseDelimited } from "@oleafly/conversion-registry/table";
+import type { SortDirection } from "@/components/ui/table";
 import { dataUrlBytes, dataUrlText, type NoteFile, splitBlockOptions } from "./note-blocks";
 import { notePath } from "./note-path";
 
 export type ColumnType = "number" | "boolean" | "date" | "text";
 export type TableDelimiter = "," | "\t";
-export type SortDirection = "ascending" | "descending";
 export type SortKey = number | string | null;
 
 export interface TableData {
@@ -44,39 +44,15 @@ const NUMBER = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/iu;
 const GROUPED = /^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d*)?(?:e[+-]?\d+)?$/iu;
 const BOOLEAN = /^(?:true|false|yes|no)$/iu;
 const TRUTHY = /^(?:true|yes)$/iu;
-const ISO_DATE =
-  /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?(Z|[+-]\d{2}:?\d{2})?)?$/u;
+const ISO_DAY = /^(\d{4})-(\d{2})-(\d{2})$/u;
+const ISO_DAY_LENGTH = "2000-01-01".length;
+const ISO_CLOCK = /^[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?$/u;
+const ISO_ZONE_START = /[Z+-]/u;
+const ISO_ZONE = /^(?:Z|[+-]\d{2}:?\d{2})$/u;
 const SEARCH_SEPARATOR = "\u0000";
 
-function firstLine(text: string): string {
-  for (const line of text.split(/\r?\n|\r/u)) {
-    if (line.trim()) return line;
-  }
-  return "";
-}
-
-function countOf(text: string, character: string): number {
-  let count = 0;
-  for (const value of text) if (value === character) count += 1;
-  return count;
-}
-
-export function sniffDelimiter(text: string): TableDelimiter {
-  const line = firstLine(text);
-  return countOf(line, "\t") > countOf(line, ",") ? "\t" : ",";
-}
-
 export function tableDelimiter(fence: string | undefined, text: string): TableDelimiter {
-  if (fence === "tsv") return "\t";
-  if (fence === "csv") {
-    const line = firstLine(text);
-    return line.includes("\t") && !line.includes(",") ? "\t" : ",";
-  }
-  return sniffDelimiter(text);
-}
-
-export function fileDelimiter(format: TableFileFormat, text: string): TableDelimiter {
-  return tableDelimiter(format === "tsv" ? "tsv" : "csv", text);
+  return fence === "tsv" || delimiterOf(text.replace(/^\s*\n/u, "")) === "\t" ? "\t" : ",";
 }
 
 export function parseNumber(text: string, thousands = false): number | null {
@@ -100,10 +76,22 @@ function zoneMinutes(zone: string | undefined): number {
   return digits.startsWith("-") ? -minutes : minutes;
 }
 
+function isoDateParts(text: string): (string | undefined)[] | null {
+  const day = ISO_DAY.exec(text.slice(0, ISO_DAY_LENGTH));
+  if (!day) return null;
+  const rest = text.slice(ISO_DAY_LENGTH);
+  if (!rest) return day.slice(1);
+  const zoneAt = rest.search(ISO_ZONE_START);
+  const clock = ISO_CLOCK.exec(zoneAt < 0 ? rest : rest.slice(0, zoneAt));
+  const zone = zoneAt < 0 ? undefined : rest.slice(zoneAt);
+  if (!clock || (zone !== undefined && !ISO_ZONE.test(zone))) return null;
+  return [...day.slice(1), ...clock.slice(1), zone];
+}
+
 export function parseDate(text: string): number | null {
-  const match = ISO_DATE.exec(text.trim());
-  if (!match) return null;
-  const [, year, month, day, hour = "0", minute = "0", second = "0", fraction = "", zone] = match;
+  const iso = isoDateParts(text.trim());
+  if (!iso) return null;
+  const [year, month, day, hour = "0", minute = "0", second = "0", fraction = "", zone] = iso;
   const parts = [year, month, day, hour, minute, second].map(Number);
   const [y, mo, d, h, mi, s] = parts;
   if (mo < 1 || mo > 12 || d < 1 || h > 23 || mi > 59 || s > 59) return null;
@@ -113,23 +101,31 @@ export function parseDate(text: string): number | null {
   return time - zoneMinutes(zone) * 60_000;
 }
 
+interface TypeFit {
+  number: boolean;
+  boolean: boolean;
+  date: boolean;
+}
+
+function narrowFit(fit: TypeFit, cell: string, thousands: boolean): void {
+  if (fit.number && parseNumber(cell, thousands) === null) fit.number = false;
+  if (fit.boolean && parseBoolean(cell) === null) fit.boolean = false;
+  if (fit.date && parseDate(cell) === null) fit.date = false;
+}
+
 function detectType(rows: readonly string[][], column: number, thousands: boolean): ColumnType {
-  let number = true;
-  let boolean = true;
-  let date = true;
+  const fit: TypeFit = { number: true, boolean: true, date: true };
   let seen = false;
   for (const row of rows) {
     const cell = row[column];
     if (cell.trim() === "") continue;
     seen = true;
-    if (number && parseNumber(cell, thousands) === null) number = false;
-    if (boolean && parseBoolean(cell) === null) boolean = false;
-    if (date && parseDate(cell) === null) date = false;
-    if (!number && !boolean && !date) return "text";
+    narrowFit(fit, cell, thousands);
+    if (!fit.number && !fit.boolean && !fit.date) return "text";
   }
   if (!seen) return "text";
-  if (number) return "number";
-  return boolean ? "boolean" : "date";
+  if (fit.number) return "number";
+  return fit.boolean ? "boolean" : "date";
 }
 
 export function detectTypes(rows: readonly string[][], width: number, thousands = false): ColumnType[] {
@@ -143,7 +139,7 @@ export function buildTable(parsed: string[][], thousands = false): TableResult {
   let width = parsed[0].length;
   for (const row of body) width = Math.max(width, row.length);
   if (width > TABLE_MAX_COLUMNS) return { ok: false, problem: "columns" };
-  const pad = (row: string[]) => (row.length < width ? [...row, ...Array<string>(width - row.length).fill("")] : row);
+  const pad = (row: string[]) => (row.length < width ? [...row, ...new Array<string>(width - row.length).fill("")] : row);
   const rows = body.map(pad);
   return {
     ok: true,
@@ -204,7 +200,8 @@ export function spreadsheetCellText(value: unknown): string {
     const minutes = value.getUTCMinutes();
     const seconds = value.getUTCSeconds();
     if (hours === 0 && minutes === 0 && seconds === 0) return date;
-    return `${date} ${pad2(hours)}:${pad2(minutes)}${seconds ? `:${pad2(seconds)}` : ""}`;
+    const clock = `${date} ${pad2(hours)}:${pad2(minutes)}`;
+    return seconds ? `${clock}:${pad2(seconds)}` : clock;
   }
   return typeof value === "string" ? value : "";
 }
@@ -242,7 +239,7 @@ export async function loadTableFile(
   }
   const text = dataUrlText(url, TABLE_MAX_BYTES);
   if (text === null) throw new TableFileError("unreadable");
-  const rows = parseDelimited(text, { delimiter: fileDelimiter(source.format, text), limit: TABLE_MAX_ROWS + 2, trim: false });
+  const rows = parseDelimited(text, { delimiter: tableDelimiter(source.format, text), limit: TABLE_MAX_ROWS + 2, trim: false });
   return buildTable(rows, source.thousands);
 }
 
@@ -280,7 +277,9 @@ export function sortRows(
   return [...indices].sort((left, right) => {
     const a = keys[left];
     const b = keys[right];
-    if (a === null || b === null) return a === b ? 0 : a === null ? 1 : -1;
+    if (a === null && b === null) return 0;
+    if (a === null) return 1;
+    if (b === null) return -1;
     if (typeof a === "number" && typeof b === "number") return (a - b) * sign;
     return collator.compare(String(a), String(b)) * sign;
   });

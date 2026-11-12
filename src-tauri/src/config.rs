@@ -180,6 +180,8 @@ pub struct AppConfig {
     pub ai_personas: Vec<Persona>,
     #[serde(default)]
     pub ai_starter_personas_seeded: bool,
+    #[serde(default)]
+    pub notes_starter_note_created: bool,
     #[serde(default = "default_true")]
     pub checkpoints_enabled: bool,
     #[serde(default = "default_true")]
@@ -276,6 +278,7 @@ impl Default for AppConfig {
             ai_model_lists_refreshed_at: BTreeMap::new(),
             ai_personas: Vec::new(),
             ai_starter_personas_seeded: false,
+            notes_starter_note_created: false,
             checkpoints_enabled: true,
             checkpoint_notifications: true,
             git_auto_init: true,
@@ -1019,6 +1022,30 @@ fn seed_starter_personas_blocking(starters: Vec<Persona>) -> Result<AppConfig, S
     get_config_blocking()
 }
 
+#[tauri::command]
+pub async fn claim_starter_note() -> Result<bool, String> {
+    if cfg!(feature = "e2e-testing") {
+        return Ok(false);
+    }
+    tauri::async_runtime::spawn_blocking(claim_starter_note_blocking)
+        .await
+        .map_err(|error| format!("failed to claim the starter note: {error}"))?
+}
+
+fn claim_starter_note_blocking() -> Result<bool, String> {
+    if matches!(read_disk_config_unlocked(), Ok(Some(config)) if config.notes_starter_note_created)
+    {
+        return Ok(false);
+    }
+    let mut claimed = false;
+    update_config(|config| {
+        claimed = !config.notes_starter_note_created;
+        config.notes_starter_note_created = true;
+        Ok(())
+    })?;
+    Ok(claimed)
+}
+
 fn key_unchanged(config: &AppConfig, stored: &AppConfig, id: &str) -> bool {
     config
         .ai_keys
@@ -1222,6 +1249,7 @@ fn set_config_blocking(mut config: AppConfig) -> Result<(), String> {
     config.research_tasks_enabled = stored.research_tasks_enabled;
     config.research_background_enabled = stored.research_background_enabled;
     config.research_background_at_login = stored.research_background_at_login;
+    config.notes_starter_note_created = stored.notes_starter_note_created;
     config.github_connected = false;
     write_config_unlocked(&config)
 }
@@ -2130,6 +2158,38 @@ mod tests {
         assert!(!apply_starter_persona_seed(&mut config, &starters));
         assert!(config.ai_personas.is_empty());
         assert_eq!(config.mcp_port, 65001);
+    }
+
+    #[test]
+    fn the_starter_note_is_claimed_once_and_full_config_writes_keep_the_claim() {
+        assert!(
+            !serde_json::from_str::<AppConfig>("{}")
+                .unwrap()
+                .notes_starter_note_created
+        );
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let dir = temp_dir();
+        std::env::set_var("OLEAFLY_DATA_DIR", &dir);
+        let _guard = DataDirGuard;
+        write_config(&AppConfig::default()).unwrap();
+
+        let racers: Vec<_> = (0..4)
+            .map(|_| std::thread::spawn(claim_starter_note_blocking))
+            .collect();
+        let wins = racers
+            .into_iter()
+            .map(|racer| racer.join().unwrap().unwrap())
+            .filter(|won| *won)
+            .count();
+        assert_eq!(wins, 1);
+        assert!(!claim_starter_note_blocking().unwrap());
+
+        let mut incoming = get_config_blocking().unwrap();
+        incoming.notes_starter_note_created = false;
+        tauri::async_runtime::block_on(set_config(incoming)).unwrap();
+        assert!(read_config().unwrap().notes_starter_note_created);
+        assert!(!claim_starter_note_blocking().unwrap());
+        std::fs::remove_dir_all(dir).ok();
     }
 
     #[cfg(unix)]

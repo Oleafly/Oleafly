@@ -11,7 +11,7 @@ const NAME_CHARS = 80;
 const MARKDOWN_FILE = /\.md$/iu;
 const UNSAFE_NAME = /[\\/:*?"<>|\p{Cc}]/gu;
 const RESERVED_STEM = /^(?:CON|PRN|AUX|NUL|(?:COM|LPT)[1-9\u00B9\u00B2\u00B3])$/u;
-const UNNORMALIZED_EDGE = /^[.\s]+|[.\s]+$/gu;
+const SPACE = /\s/u;
 
 export function foldPath(path: string): string {
   let folded = "";
@@ -45,7 +45,7 @@ function withoutIgnorable(text: string): string {
 
 export function isWindowsReservedComponent(component: string): boolean {
   const stem = component.split(".")[0] ?? "";
-  return RESERVED_STEM.test(stem.replace(/[a-z]/gu, (letter) => letter.toUpperCase()));
+  return RESERVED_STEM.test(stem.replaceAll(/[a-z]/gu, (letter) => letter.toUpperCase()));
 }
 
 export function projectNotesFolder(paths: Iterable<string>): string {
@@ -100,7 +100,7 @@ export interface NoteFileContext {
 }
 
 export function isEditorNoteFile(path: string | null, text: string | null | undefined, context: NoteFileContext): boolean {
-  return context.notes && context.projectKind !== "note" && path !== null && isMarkdownFile(path) && declaresNoteFile(text);
+  return context.notes && context.projectKind !== "note" && path !== null && isProjectNotePath(path) && declaresNoteFile(text);
 }
 
 export function noteFileStem(path: string): string {
@@ -108,11 +108,20 @@ export function noteFileStem(path: string): string {
   return name.replace(MARKDOWN_FILE, "");
 }
 
+function isDotOrSpace(character: string): boolean {
+  return character === "." || SPACE.test(character);
+}
+
+function trimDotsAndSpaces(text: string): string {
+  let start = 0;
+  let end = text.length;
+  while (start < end && isDotOrSpace(text.charAt(start))) start += 1;
+  while (end > start && isDotOrSpace(text.charAt(end - 1))) end -= 1;
+  return text.slice(start, end);
+}
+
 function portableStem(text: string): string {
-  return withoutIgnorable(text.normalize("NFC"))
-    .replace(UNSAFE_NAME, " ")
-    .replace(/\s+/gu, " ")
-    .replace(UNNORMALIZED_EDGE, "");
+  return trimDotsAndSpaces(withoutIgnorable(text.normalize("NFC")).replaceAll(UNSAFE_NAME, " ").replaceAll(/\s+/gu, " "));
 }
 
 export function noteFileName(title: string, fallback: string): string {

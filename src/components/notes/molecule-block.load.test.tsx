@@ -1,16 +1,12 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { MoleculeView } from "./molecule-block";
+import "./tests/setup";
 
 vi.mock("3dmol", () => {
   throw new Error("The viewer chunk failed to load.");
-});
-
-beforeAll(async () => {
-  await loadNamespace("notes");
 });
 
 describe("MoleculeView without its library", () => {

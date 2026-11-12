@@ -109,6 +109,11 @@ export function csvRows(text: string, separator: string): { rows: string[][]; tr
   };
 }
 
+function tableSeparator(path: string): string | null {
+  if (/\.tsv$/iu.test(path)) return "\t";
+  return /\.csv$/iu.test(path) ? "," : null;
+}
+
 export function artifactPreview(artifact: Pick<ArtifactItem, "kind" | "path">, content: TaskPreviewContent): ArtifactPreview {
   if (!content.exists) return { type: "none", reason: "missing" };
   if (artifact.kind === "html") return { type: "none", reason: "html" };
@@ -122,7 +127,7 @@ export function artifactPreview(artifact: Pick<ArtifactItem, "kind" | "path">, c
     return { type: "image", src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(content.text)}` };
   }
   if (content.text === null) return { type: "none", reason: "binary" };
-  const separator = /\.tsv$/iu.test(artifact.path) ? "\t" : /\.csv$/iu.test(artifact.path) ? "," : null;
+  const separator = tableSeparator(artifact.path);
   if (separator) {
     const table = csvRows(content.text, separator);
     if (table.rows.length > 0) return { type: "table", rows: table.rows, truncated: table.truncated || content.truncated };
@@ -135,7 +140,7 @@ export function artifactPreview(artifact: Pick<ArtifactItem, "kind" | "path">, c
 }
 
 function markdownLabel(text: string): string {
-  return text.replace(/[\\[\]]/gu, (match) => `\\${match}`);
+  return text.replaceAll(/[\\[\]]/gu, (match) => `\\${match}`);
 }
 
 function markdownDestination(path: string): string {
@@ -152,13 +157,14 @@ export function artifactSnippet(artifact: Pick<ArtifactItem, "kind" | "title">, 
 export function latestRunContext(tasks: readonly ResearchTask[]): string | null {
   const finished = tasks.filter((task) => task.result && task.status !== "failed" && task.status !== "cancelled");
   if (finished.length === 0) return null;
-  const task = finished.reduce((latest, candidate) => (finishedAt(candidate) > finishedAt(latest) ? candidate : latest));
+  const task = finished.reduce((latest, candidate) => (finishedAt(candidate) > finishedAt(latest) ? candidate : latest), finished[0]);
   const result = task.result;
   if (!result) return null;
+  const model = task.modelId ? ` (${task.modelId})` : "";
   const lines = [
     `Task: ${task.title.trim() || task.prompt.trim()}`,
     `Finished: ${new Date(finishedAt(task)).toISOString()}`,
-    `Agent: ${task.agentId}${task.modelId ? ` (${task.modelId})` : ""}`,
+    `Agent: ${task.agentId}${model}`,
   ];
   if (task.brief.primaryMetric) {
     lines.push(`Primary metric: ${task.brief.primaryMetric.name} (${task.brief.primaryMetric.goal})`);

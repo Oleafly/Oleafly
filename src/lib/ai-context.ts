@@ -5,9 +5,10 @@ import { useIndexStore } from "@/store/project-index";
 import { useAgentMemoryStore } from "@/store/agent-memory";
 import { useSettingsStore } from "@/store/settings";
 import { basename } from "@/lib/path-utils";
-import { isNoteProject } from "@/lib/library-projects";
+import { collabProjectShared } from "@/lib/collab-live-bridge";
+import { isNoteProject, isSharedProject } from "@/lib/library-projects";
 import { logError } from "@/lib/log";
-import { noteHeads, type NoteHead } from "@/lib/tauri";
+import { type NoteFacts, noteFacts } from "@/lib/tauri";
 import { getCurrentLine } from "@/components/editor/cm/controller";
 
 const SNIPPET_CHARS = 2500;
@@ -69,15 +70,15 @@ async function compactProjectMap(): Promise<string> {
 async function linkedNotesBlock(): Promise<string> {
   const { projectId, projects } = useFilesStore.getState();
   if (!projectId || !useSettingsStore.getState().notes) return "";
+  if (isSharedProject(projects, projectId, collabProjectShared(projectId))) return "";
   if (!projects.some((project) => isNoteProject(project) && project.related_project === projectId)) return "";
-  const heads = noteHeads().catch((error: unknown): NoteHead[] => {
-    void logError("read linked note heads for the assistant", error);
+  const facts = noteFacts({ relatedProject: projectId }).catch((error: unknown): NoteFacts[] => {
+    void logError("read linked note facts for the assistant", error);
     return [];
   });
   try {
     const notes = await import("@/components/notes/project-notes");
-    const map = new Map((await heads).map((head) => [head.id, head.head]));
-    return notes.projectNotesPrompt(notes.projectNotes(projects, projectId, map));
+    return notes.projectNotesPrompt(notes.projectNotes(projects, projectId, await facts));
   } catch (error) {
     void logError("list linked notes for the assistant", error);
     return "";

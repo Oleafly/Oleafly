@@ -341,7 +341,15 @@
     },
     "resetPaneLayout": {
       "keywords": "reset pane layout order move panels sidebar assistant editor preview terminal default",
-      "label": "Reset pane layout"
+      "label": "Reset pane arrangement in every project"
+    },
+    "saveLayout": {
+      "keywords": "save layout custom arrangement panes sizes name",
+      "label": "Save current layout"
+    },
+    "applySavedLayout": {
+      "keywords": "layout saved custom arrangement panes switch apply",
+      "label": "Layout: {{name}}"
     },
     "zoomIn": {
       "keywords": "bigger larger magnify",
@@ -380,6 +388,10 @@
     "notes": {
       "label": "Open Notes",
       "keywords": "notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Quick capture",
+      "keywords": "quick capture jot note inbox today"
     }
   },
   "community": {
@@ -484,6 +496,11 @@
   },
   "datePicker": {
     "placeholder": "Pick a date"
+  },
+  "monthPicker": {
+    "label": "Choose a month",
+    "previousYear": "Previous year",
+    "nextYear": "Next year"
   },
   "devMenu": {
     "inspect": "Inspect",
@@ -704,6 +721,7 @@
     "groups": {
       "action": "Action",
       "documents": "Documents",
+      "notes": "Notes",
       "references": "References"
     },
     "label": "Search",
@@ -711,11 +729,13 @@
     "openReferences": "Open references for this project",
     "placeholder": "Search projects, documents, or type / for commands…",
     "placeholderDocuments": "Search inside documents…",
+    "placeholderNotes": "Search notes and the blocks inside them…",
     "placeholderProjects": "Search projects by name, engine, kind, date, or metadata…",
     "referencesNeedProject": "Open a project first to browse its references.",
     "slash": {
       "create": "open the template gallery",
       "docs": "search inside documents",
+      "notes": "search notes and the blocks inside them",
       "projects": "search your projects",
       "refs": "open references for this project",
       "settings": "open settings",
@@ -1314,7 +1334,24 @@
       "split": "Split View"
     },
     "moreActions": "More actions",
-    "resetPaneLayout": "Reset pane layout",
+    "resetPaneLayout": "Reset pane arrangement",
+    "resetPaneLayoutScope": "All projects",
+    "savedLayouts": {
+      "close": "Close",
+      "delete": "Delete",
+      "deleteConfirm": "Delete the layout {{name}}?",
+      "limit": "You can keep up to {{count}} layouts. Delete one to save another.",
+      "manage": "Manage layouts",
+      "name": "Layout name",
+      "rename": "Rename",
+      "renameTitle": "Rename layout",
+      "replace": "Replace",
+      "replaceConfirm": "A layout named {{name}} already exists. Replace it?",
+      "save": "Save current layout",
+      "saveButton": "Save",
+      "saveTitle": "Save layout",
+      "update": "Update to current"
+    },
     "renameFailed": "Couldn't rename the project."
   },
   "tour": {

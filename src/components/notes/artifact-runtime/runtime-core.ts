@@ -105,12 +105,26 @@ export function runScript(code: string): void {
   script.remove();
 }
 
+export const MODULE_HOOK = "__oleaflyArtifactModule";
+
+type ModuleFactory = (
+  require: (specifier: string) => RuntimeModule,
+  module: { exports: RuntimeModule },
+  exports: RuntimeModule,
+  react: typeof ReactTypes,
+) => void;
+
+export function moduleScript(compiled: string): string {
+  return `${MODULE_HOOK}(function (require, module, exports, React) {\n${compiled}\n});`;
+}
+
 export function createArtifactRuntime(deps: RuntimeDeps): ArtifactRuntime {
   const { React } = deps;
   const evaluate = deps.evaluate ?? runScript;
   const cache = new Map<string, RuntimeModule>();
   let tailwindStarted = false;
   let banner: HTMLElement | null = null;
+  let capture: ((error: unknown) => void) | null = null;
 
   const requireModule = (specifier: string): RuntimeModule => {
     const cached = cache.get(specifier);
@@ -152,8 +166,46 @@ export function createArtifactRuntime(deps: RuntimeDeps): ArtifactRuntime {
   };
 
   const listen = (messages: RuntimeMessages) => {
-    window.addEventListener("error", (event) => showBanner(event.error ?? event.message, messages));
+    window.addEventListener("error", (event) => {
+      const error = event.error ?? event.message;
+      if (capture === null) {
+        showBanner(error, messages);
+        return;
+      }
+      event.preventDefault();
+      capture(error);
+    });
     window.addEventListener("unhandledrejection", (event) => showBanner(event.reason, messages));
+  };
+
+  const loadModule = (compiled: string): RuntimeModule => {
+    const module = { exports: {} as RuntimeModule };
+    const failure = { failed: false, error: undefined as unknown };
+    const fail = (error: unknown) => {
+      if (failure.failed) return;
+      failure.failed = true;
+      failure.error = error;
+    };
+    const hooks = globalThis as unknown as Record<string, unknown>;
+    hooks[MODULE_HOOK] = (factory: ModuleFactory) => {
+      Reflect.deleteProperty(hooks, MODULE_HOOK);
+      try {
+        factory(requireModule, module, module.exports, React);
+      } catch (error) {
+        fail(error);
+      }
+    };
+    capture = fail;
+    try {
+      evaluate(moduleScript(compiled));
+    } catch (error) {
+      fail(error);
+    } finally {
+      capture = null;
+      Reflect.deleteProperty(hooks, MODULE_HOOK);
+    }
+    if (failure.failed) throw failure.error;
+    return module.exports;
   };
 
   const makeBoundary = (messages: RuntimeMessages) =>
@@ -195,10 +247,7 @@ export function createArtifactRuntime(deps: RuntimeDeps): ArtifactRuntime {
     }
     let component: unknown;
     try {
-      const module = { exports: {} as RuntimeModule };
-      const run = new Function("require", "module", "exports", "React", compiled);
-      run(requireModule, module, module.exports, React);
-      component = pickComponent(module.exports);
+      component = pickComponent(loadModule(compiled));
     } catch (error) {
       const { title, detail } = describe(error, messages);
       host.replaceChildren(errorPanel(title, detail));

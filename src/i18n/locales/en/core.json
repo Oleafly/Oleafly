@@ -319,6 +319,7 @@
   },
   "mcp": {
     "deniedByRules": "Refused by a deny rule in approvals.toml",
+    "createTodaySummary": "Create today's note \"{{title}}\"",
     "openProjectSummary": "Open project {{id}}",
     "rulesUnreadable": "Refused because approvals.toml couldn't be read",
     "useToolSummary": "Use {{tool}} from the {{server}} MCP server"

@@ -11,6 +11,7 @@ import {
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useStripReorder, type StripItemProps } from "@/components/layout/strip-reorder";
 import { useFilesStore } from "@/store/files";
 import { useDiffStore, type DiffSide, type OpenDiff } from "@/store/diff";
 import { activeNoteTab, editsAsMarkdown, noteTabsFor, useNoteTabsStore } from "@/store/note-tabs";
@@ -27,6 +28,7 @@ import {
   closeEditorTabsAround,
   editorTabKey,
   editorTabs,
+  reorderEditorTabs,
   type CloseScope,
   type EditorTab,
 } from "./editor-tabs";
@@ -168,13 +170,20 @@ function EditorTabMenuItems({ tab }: Readonly<{ tab: EditorTab }>) {
   );
 }
 
+interface TabDrag {
+  reorderItem: (key: string) => StripItemProps;
+  dragging: boolean;
+}
+
 function EditorTabItem({
   tab,
   active,
+  dragging,
+  reorderItem,
   closeLabel,
   onActivate,
   children,
-}: Readonly<{
+}: Readonly<TabDrag & {
   tab: EditorTab;
   active: boolean;
   closeLabel: string;
@@ -193,9 +202,10 @@ function EditorTabItem({
       <ContextMenuTrigger asChild onMouseDown={preventMiddleScroll} onAuxClick={onAuxClick}>
         <div
           ref={rowRef}
+          {...reorderItem(editorTabKey(tab))}
           className={cn(
             "group flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs",
-            active
+            active || dragging
               ? "bg-muted text-foreground"
               : "text-muted-foreground hover:bg-accent"
           )}
@@ -243,7 +253,8 @@ const FileTab = memo(function FileTab({
   active,
   assistant,
   closeLabel,
-}: Readonly<{
+  ...drag
+}: Readonly<TabDrag & {
   path: string;
   order: number;
   active: boolean;
@@ -254,6 +265,7 @@ const FileTab = memo(function FileTab({
   const note = useNoteFileLabel(path);
   return (
     <EditorTabItem
+      {...drag}
       tab={tab}
       active={active}
       closeLabel={closeLabel}
@@ -281,7 +293,8 @@ const DiffTab = memo(function DiffTab({
   active,
   closeLabel,
   sideLabel,
-}: Readonly<{
+  ...drag
+}: Readonly<TabDrag & {
   id: string;
   diff: OpenDiff;
   active: boolean;
@@ -294,6 +307,7 @@ const DiffTab = memo(function DiffTab({
   );
   return (
     <EditorTabItem
+      {...drag}
       tab={tab}
       active={active}
       closeLabel={closeLabel}
@@ -309,7 +323,8 @@ const PersonalNoteTab = memo(function PersonalNoteTab({
   id,
   order,
   active,
-}: Readonly<{
+  ...drag
+}: Readonly<TabDrag & {
   id: string;
   order: number;
   active: boolean;
@@ -325,6 +340,7 @@ const PersonalNoteTab = memo(function PersonalNoteTab({
   );
   return (
     <EditorTabItem
+      {...drag}
       tab={tab}
       active={active}
       closeLabel={t(($) => $.editor.shell.closeFile, { name: title })}
@@ -356,37 +372,48 @@ export function EditorTabStrip({ diffFocused }: Readonly<{ diffFocused: boolean 
   );
   const tabs = useMemo(() => editorTabs(openTabs, tabOrder, diffs, notes), [openTabs, tabOrder, diffs, notes]);
   const fileFocused = !diffFocused && activeNote === null;
+  const keys = useMemo(() => tabs.map(editorTabKey), [tabs]);
+  const reorder = useStripReorder(keys, reorderEditorTabs);
+  const drag = (tab: EditorTab): TabDrag => ({ reorderItem: reorder.item, dragging: reorder.dragging === editorTabKey(tab) });
+  const renderTab = (tab: EditorTab) => {
+    if (tab.kind === "file") {
+      return (
+        <FileTab
+          {...drag(tab)}
+          key={`f:${tab.id}`}
+          path={tab.id}
+          order={tab.order}
+          active={tab.id === activePath && fileFocused}
+          assistant={assistantTabs.includes(tab.id)}
+          closeLabel={t(($) => $.editor.shell.closeFile, { name: basename(tab.id) })}
+        />
+      );
+    }
+    if (tab.kind === "note") {
+      return <PersonalNoteTab {...drag(tab)} key={`n:${tab.id}`} id={tab.id} order={tab.order} active={activeNote === tab.id} />;
+    }
+    return (
+      <DiffTab
+        {...drag(tab)}
+        key={`d:${tab.id}`}
+        id={tab.id}
+        diff={tab.d}
+        active={activeKey === tab.id && activeNote === null}
+        closeLabel={t(($) => $.editor.shell.closeDiffTab, { name: basename(tab.d.path) })}
+        sideLabel={t(($) => $.editor.shell[DIFF_TAB_SIDE_LABEL[tab.d.side]])}
+      />
+    );
+  };
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-2 no-scrollbar">
+    <div {...reorder.strip} className="relative flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-2 no-scrollbar">
       {tabs.length === 0 && (
         <span className="px-2 text-xs text-muted-foreground">
           {t(($) => $.editor.shell.noFileOpenTab)}
         </span>
       )}
-      {tabs.map((tab) =>
-        tab.kind === "file" ? (
-          <FileTab
-            key={`f:${tab.id}`}
-            path={tab.id}
-            order={tab.order}
-            active={tab.id === activePath && fileFocused}
-            assistant={assistantTabs.includes(tab.id)}
-            closeLabel={t(($) => $.editor.shell.closeFile, { name: basename(tab.id) })}
-          />
-        ) : tab.kind === "note" ? (
-          <PersonalNoteTab key={`n:${tab.id}`} id={tab.id} order={tab.order} active={activeNote === tab.id} />
-        ) : (
-          <DiffTab
-            key={`d:${tab.id}`}
-            id={tab.id}
-            diff={tab.d}
-            active={activeKey === tab.id && activeNote === null}
-            closeLabel={t(($) => $.editor.shell.closeDiffTab, { name: basename(tab.d.path) })}
-            sideLabel={t(($) => $.editor.shell[DIFF_TAB_SIDE_LABEL[tab.d.side]])}
-          />
-        )
-      )}
+      {tabs.map((tab) => renderTab(tab))}
+      {reorder.indicator}
     </div>
   );
 }

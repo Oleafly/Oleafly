@@ -20,7 +20,7 @@ vi.mock("@/lib/native-file-dialog", () => ({}));
 vi.mock("@/lib/research-tasks", () => ({}));
 vi.mock("@/components/editor/cm/hover-asset", () => ({}));
 
-const { createNotesService, noteItems } = await import("./notes-service");
+const { createNoteItems, createNotesService } = await import("./notes-service");
 const { noteEditorOpen, registerNoteEditor } = await import("@/lib/open-note-editors");
 const { noteEditorHandle } = await import("@/lib/tests/open-note-editor-fixtures");
 
@@ -44,7 +44,6 @@ function service(projects = [project()]) {
   const deps = {
     projects: () => projects,
     refreshProjects: vi.fn(async () => undefined),
-    refreshHeads: vi.fn(),
     untitled: "Untitled",
     missing: "Missing",
   };
@@ -60,7 +59,7 @@ beforeEach(() => {
 
 describe("notes service for shared notes", () => {
   it("marks shared notes", () => {
-    const items = noteItems([project({ shared: { server_name: "Lab", role: "editor" } }), project({ id: "plain" })], new Map(), "No project");
+    const items = createNoteItems()([project({ shared: { server_name: "Lab", role: "editor" } }), project({ id: "plain" })], [], "No project");
     expect(items.map((item) => item.shared)).toEqual([true, undefined]);
   });
 
@@ -88,30 +87,21 @@ describe("notes service for shared notes", () => {
     });
   });
 
-  it("writes the new title into a closed note's front matter", async () => {
-    tauri.readFileContent.mockResolvedValue("---\ntitle: Bench notes\nkind: note\n---\n\nBody.\n");
+  it.each([
+    ["LF", "\n", false],
+    ["CRLF", "\r\n", true],
+  ])("writes the new title into a closed note's front matter and keeps its %s line endings", async (_name, eol, crlf) => {
+    const disk = ["---", "title: Bench notes", "kind: note", "---", "", "Body.", ""].join(eol);
+    tauri.readFileContent.mockResolvedValue(disk);
     const { deps, notes } = service();
     await notes.renameNote?.("note-1", "Bench log");
     expect(tauri.renameProjectCmd).toHaveBeenCalledWith("note-1", "Bench log");
-    expect(files.writeProjectFile).toHaveBeenCalledWith(
-      "note-1",
-      "note.md",
-      "---\ntitle: Bench log\nkind: note\n---\n\nBody.\n",
-      { closedProject: true, crlf: false, expectedHash: diskHash("---\ntitle: Bench notes\nkind: note\n---\n\nBody.\n") },
-    );
+    expect(files.writeProjectFile).toHaveBeenCalledWith("note-1", "note.md", "---\ntitle: Bench log\nkind: note\n---\n\nBody.\n", {
+      closedProject: true,
+      crlf,
+      expectedHash: diskHash(disk),
+    });
     expect(deps.refreshProjects).toHaveBeenCalledOnce();
-  });
-
-  it("keeps a closed note's CRLF line endings when it writes the title", async () => {
-    tauri.readFileContent.mockResolvedValue("---\r\ntitle: Bench notes\r\n---\r\n\r\nBody.\r\n");
-    const { notes } = service();
-    await notes.renameNote?.("note-1", "Bench log");
-    expect(files.writeProjectFile).toHaveBeenCalledWith(
-      "note-1",
-      "note.md",
-      "---\ntitle: Bench log\n---\n\nBody.\n",
-      { closedProject: true, crlf: true, expectedHash: diskHash("---\r\ntitle: Bench notes\r\n---\r\n\r\nBody.\r\n") },
-    );
   });
 
   it("leaves the file alone when the title already matches", async () => {

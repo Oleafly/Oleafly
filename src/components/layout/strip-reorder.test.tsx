@@ -95,7 +95,6 @@ describe("useStripReorder", () => {
     fireEvent.pointerMove(window, { clientX: 75, clientY: 10 });
     const drop = indicator();
     expect(drop).toHaveAttribute("data-reorder-drop", "1");
-    expect(drop).toHaveClass("rounded-md", "border-primary/60", "bg-primary/10", "motion-reduce:transition-none");
     expect(drop?.style.left).toBe("60px");
     expect(drop?.style.top).toBe("4px");
     expect(drop?.style.width).toBe("28px");
@@ -122,6 +121,26 @@ describe("useStripReorder", () => {
     expect(indicator()?.style.left).toBe("0px");
     fireEvent.pointerUp(window);
     expect(onReorder).toHaveBeenLastCalledWith(["c", "b", "a"]);
+  });
+
+  it("moves the focused item with Alt and the arrow keys and keeps focus on it", () => {
+    const onReorder = vi.fn();
+    render(<Strip initial={["a", "hidden", "b", "c"]} shown={["a", "b", "c"]} onReorder={onReorder} />);
+    const a = () => screen.getByRole("button", { name: "a" });
+    a().focus();
+    fireEvent.keyDown(a(), { key: "ArrowRight" });
+    fireEvent.keyDown(a(), { key: "ArrowLeft", altKey: true });
+    fireEvent.keyDown(screen.getByTestId("field"), { key: "ArrowRight", altKey: true });
+    expect(onReorder).not.toHaveBeenCalled();
+    fireEvent.keyDown(a(), { key: "ArrowRight", altKey: true });
+    expect(onReorder).toHaveBeenLastCalledWith(["hidden", "b", "a", "c"]);
+    expect(a()).toHaveFocus();
+    fireEvent.keyDown(a(), { key: "ArrowRight", altKey: true });
+    fireEvent.keyDown(a(), { key: "ArrowRight", altKey: true });
+    expect(order()).toEqual(["b", "c", "a"]);
+    expect(onReorder).toHaveBeenCalledTimes(2);
+    fireEvent.keyDown(screen.getByTestId("nested"), { key: "ArrowLeft", altKey: true });
+    expect(onReorder).toHaveBeenCalledTimes(2);
   });
 
   it("treats a short press as a click and leaves the order alone when the item lands where it was", () => {

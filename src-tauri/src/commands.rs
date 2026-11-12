@@ -8,6 +8,11 @@ use crate::state::AppState;
 
 const MAX_QUEUED_PROJECTS: usize = 128;
 const MAX_PROJECT_BINARY_READ_BYTES: u64 = 8 * 1024 * 1024;
+const NOTE_FILE_MAX_BYTES: u64 = 64 * 1024 * 1024;
+const NOTE_FILE_EXTENSIONS: &[&str] = &[
+    "mp3", "wav", "m4a", "aac", "ogg", "oga", "opus", "flac", "mp4", "m4v", "webm", "mov", "ogv",
+    "pdf",
+];
 
 // Injects Webview, not WebviewWindow: the latter fails to materialize once
 // a window hosts a second webview, as the browser window does. Iterating
@@ -1032,15 +1037,49 @@ fn read_regular_file_limited(
     Ok(bytes)
 }
 
+fn read_project_file_limited(
+    project_id: &str,
+    rel_path: &str,
+    max_bytes: u64,
+) -> Result<Vec<u8>, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
+    let target = crate::project::resolve_in_project(project_id, rel_path)?;
+    read_regular_file_limited(&target, rel_path, max_bytes)
+}
+
 #[tauri::command]
 pub async fn read_project_bytes(project_id: String, rel_path: String) -> Result<Response, String> {
-    let bytes = tauri::async_runtime::spawn_blocking(move || -> Result<Vec<u8>, String> {
-        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-        let target = crate::project::resolve_in_project(&project_id, &rel_path)?;
-        read_regular_file_limited(&target, &rel_path, MAX_PROJECT_BINARY_READ_BYTES)
+    let bytes = tauri::async_runtime::spawn_blocking(move || {
+        read_project_file_limited(&project_id, &rel_path, MAX_PROJECT_BINARY_READ_BYTES)
     })
     .await
     .map_err(|e| e.to_string())??;
+    Ok(Response::new(bytes))
+}
+
+fn read_note_file_sync(project_id: &str, rel_path: &str) -> Result<Vec<u8>, String> {
+    let media = std::path::Path::new(rel_path)
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| {
+            NOTE_FILE_EXTENSIONS
+                .iter()
+                .any(|allowed| extension.eq_ignore_ascii_case(allowed))
+        });
+    if !media {
+        return Err(format!(
+            "cannot read {rel_path}: notes read only audio, video and PDF files this way"
+        ));
+    }
+    read_project_file_limited(project_id, rel_path, NOTE_FILE_MAX_BYTES)
+}
+
+#[tauri::command]
+pub async fn read_note_file(project_id: String, rel_path: String) -> Result<Response, String> {
+    let bytes =
+        tauri::async_runtime::spawn_blocking(move || read_note_file_sync(&project_id, &rel_path))
+            .await
+            .map_err(|e| e.to_string())??;
     Ok(Response::new(bytes))
 }
 
@@ -1396,6 +1435,71 @@ mod tests {
             .unwrap_err()
             .contains("regular project file"));
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn note_files_are_audio_video_or_pdf_up_to_64_mib() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let project = crate::paths::create_project_dir("note-media").unwrap();
+        let assets = project.join("assets");
+        std::fs::create_dir_all(&assets).unwrap();
+        let sized = |name: &str, len: u64| {
+            let file = std::fs::File::create(assets.join(name)).unwrap();
+            file.set_len(len).unwrap();
+        };
+        sized("talk.MP4", MAX_PROJECT_BINARY_READ_BYTES + 1);
+        sized("song.flac", 3);
+        sized("paper.pdf", 4);
+        sized("huge.webm", NOTE_FILE_MAX_BYTES + 1);
+        sized("notes.md", 3);
+        sized("photo.png", 3);
+        sized("no-extension", 3);
+
+        assert_eq!(
+            read_note_file_sync("note-media", "assets/talk.MP4")
+                .unwrap()
+                .len() as u64,
+            MAX_PROJECT_BINARY_READ_BYTES + 1
+        );
+        assert!(read_project_file_limited(
+            "note-media",
+            "assets/talk.MP4",
+            MAX_PROJECT_BINARY_READ_BYTES
+        )
+        .unwrap_err()
+        .contains("byte limit"));
+        assert_eq!(
+            read_note_file_sync("note-media", "assets/song.flac")
+                .unwrap()
+                .len(),
+            3
+        );
+        assert_eq!(
+            read_note_file_sync("note-media", "assets/paper.pdf")
+                .unwrap()
+                .len(),
+            4
+        );
+        assert!(read_note_file_sync("note-media", "assets/huge.webm")
+            .unwrap_err()
+            .contains(&format!("{NOTE_FILE_MAX_BYTES}-byte limit")));
+        for refused in ["assets/notes.md", "assets/photo.png", "assets/no-extension"] {
+            assert!(
+                read_note_file_sync("note-media", refused)
+                    .unwrap_err()
+                    .contains("audio, video and PDF"),
+                "{refused}"
+            );
+        }
+        for outside in ["../note-media/assets/song.flac", "/etc/hosts.mp3"] {
+            assert!(
+                read_note_file_sync("note-media", outside).is_err(),
+                "{outside}"
+            );
+        }
+        std::env::remove_var("OLEAFLY_DATA_DIR");
     }
 
     #[test]

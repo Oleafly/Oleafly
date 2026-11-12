@@ -1,11 +1,12 @@
 import type { AnyExtension } from "@tiptap/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { listNoteTags } from "@/lib/tauri";
+import type { NoteTagCount } from "@/lib/tauri";
 import type { EmbedOptions } from "./note-embeds";
 import type { LinkableNote, OpenNoteOptions } from "./note-links";
+import { noteAtExtensions } from "./note-at";
 import { noteTagExtensions } from "./note-tag-chips";
-import { useNotesData } from "./notes-data";
-import { vaultLoad } from "./vault-loads";
+import { useNotesData, useVaultLoad } from "./notes-data";
+import type { NoteItem } from "./types";
 
 export interface NoteKnowledgeInput {
   notes: readonly LinkableNote[] | null;
@@ -23,37 +24,16 @@ export interface HoverSources {
 
 export interface NoteKnowledge {
   tagExtensions: AnyExtension[];
+  atExtensions: AnyExtension[];
   embeds: EmbedOptions;
   hover: HoverSources;
 }
 
-export function notesRevision(notes: readonly { updatedAt: number }[]): number {
-  return notes.reduce((latest, note) => Math.max(latest, note.updatedAt), 0) * 1000 + notes.length;
-}
+const NO_TAGS: readonly NoteTagCount[] = [];
 
 export function useVaultTags(): readonly string[] {
-  const { notes, noteTags, revision: vault } = useNotesData();
-  const fallback = useMemo(() => notesRevision(notes), [notes]);
-  const revision = noteTags && vault !== undefined ? vault : fallback;
-  const load = useMemo(() => (noteTags && vault !== undefined ? () => vaultLoad(noteTags, vault) : listNoteTags), [noteTags, vault]);
-  const [tags, setTags] = useState<{ revision: number; tags: readonly string[] }>({ revision: -1, tags: [] });
-  useEffect(() => {
-    let live = true;
-    Promise.resolve()
-      .then(() => load())
-      .then(
-        (found) => {
-          if (live) setTags({ revision, tags: found.map((entry) => entry.label || entry.tag) });
-        },
-        () => {
-          if (live) setTags({ revision, tags: [] });
-        },
-      );
-    return () => {
-      live = false;
-    };
-  }, [load, revision]);
-  return tags.tags;
+  const counts = useVaultLoad("tags", useNotesData().noteTags).data ?? NO_TAGS;
+  return useMemo(() => counts.map((entry) => entry.label || entry.tag), [counts]);
 }
 
 function useListeners(): readonly [Set<() => void>, (listener: () => void) => () => void] {
@@ -68,6 +48,18 @@ function useListeners(): readonly [Set<() => void>, (listener: () => void) => ()
     [listeners],
   );
   return [listeners, subscribe];
+}
+
+function useVersionCount(notes: readonly NoteItem[]): number {
+  const seen = useRef({ notes, count: 0, versions: new Map(notes.map((note) => [note.id, note.updatedAt])) });
+  const last = seen.current;
+  if (last.notes !== notes) {
+    const changed = notes.length !== last.versions.size || notes.some((note) => last.versions.get(note.id) !== note.updatedAt);
+    seen.current = changed
+      ? { notes, count: last.count + 1, versions: new Map(notes.map((note) => [note.id, note.updatedAt])) }
+      : { ...last, notes };
+  }
+  return seen.current.count;
 }
 
 function useNotify(listeners: Set<() => void>, state: unknown): void {
@@ -86,13 +78,12 @@ export function useNoteKnowledge(input: NoteKnowledgeInput): NoteKnowledge {
   const [embedListeners, subscribeEmbeds] = useListeners();
 
   const opensTags = Boolean(input.onOpenTag);
-  const versions = useMemo(() => data.notes.map((note) => `${note.id}:${note.updatedAt}`).join("\n"), [data.notes]);
-  const tagState = useMemo(() => ({ tags, opensTags }), [opensTags, tags]);
+  const versions = useVersionCount(data.notes);
   const embedState = useMemo(
     () => ({ linkable: input.notes, currentNoteId: input.currentNoteId, versions }),
     [input.currentNoteId, input.notes, versions],
   );
-  useNotify(tagListeners, tagState);
+  useNotify(tagListeners, opensTags);
   useNotify(embedListeners, embedState);
 
   return useMemo(() => {
@@ -105,6 +96,12 @@ export function useNoteKnowledge(input: NoteKnowledgeInput): NoteKnowledge {
       tagExtensions: noteTagExtensions({
         getTags: () => latest.current.tags,
         getOpenTag: () => latest.current.input.onOpenTag,
+        subscribe: subscribeTags,
+      }),
+      atExtensions: noteAtExtensions({
+        getTags: () => latest.current.tags,
+        getNotes,
+        getCurrentNoteId: () => latest.current.input.currentNoteId,
         subscribe: subscribeTags,
       }),
       embeds: {

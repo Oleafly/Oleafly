@@ -11,6 +11,8 @@
   "landing.open": "Åbn i Oleafly",
   "landing.get": "Hent Oleafly",
   "landing.open_browser": "Åbn i browseren",
+  "published.gone_title": "Siden er ikke tilgængelig",
+  "published.gone_body": "Forfatteren har måske fjernet udgivelsen, eller serveren viser ikke længere offentlige sider.",
   "web.sign_in_body": "Log ind for at åbne dine delte projekter i denne browser.",
   "web.try_again": "Prøv igen",
   "web.other_browser": "Dette link gør login færdigt på {device}, den browser hvor du startede. Åbn e-mailen dér i stedet. Linket virker stadig.",

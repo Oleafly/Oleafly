@@ -17,9 +17,37 @@
     "resize": "Panelleri yeniden boyutlandır",
     "closePanel": "Paneli kapat",
     "newTab": "Yeni sekme",
-    "emptyPanel": "Bu panel boş.",
+    "empty": {
+      "greetings": {
+        "begin": "Nereden başlayalım?",
+        "ready": "Hazır olduğunuzda başlayabiliriz.",
+        "mind": "Bugün aklınızda ne var?",
+        "resume": "Kaldığınız yerden devam edelim mi?",
+        "working": "Ne üzerinde çalışıyorsunuz?",
+        "first": "Önce ne yazmak istersiniz?",
+        "blank": "Boş bir sayfayla veya bir şablonla başlayın."
+      },
+      "hints": {
+        "daily": "Bugün için bir plan ve bir kayıt",
+        "experimentLog": "Çalıştırmalar ve gösterdikleri",
+        "paperReading": "Bir makalenin ne iddia ettiği",
+        "literatureMatrix": "Makaleleri yan yana karşılaştırın",
+        "meeting": "Gündem ve kararlar",
+        "labProtocol": "Başkasının izleyebileceği adımlar",
+        "weeklyLog": "Bu hafta neler yapıldı",
+        "proposal": "Amaçlar, yöntemler ve bir zaman çizelgesi"
+      },
+      "moreTemplates": "Daha fazla şablon",
+      "continue": "Devam et",
+      "searchAll": "Tüm notlarda ara"
+    },
     "closeMissing": "Sekmeyi kapat",
-    "notesHome": "Notlar ana ekranına git"
+    "notesHome": "Notlar ana ekranına git",
+    "breadcrumb": "İçerik haritası",
+    "breadcrumbHome": "Notlar ana ekranı",
+    "brand": "Oleafly Notes",
+    "back": "Geri",
+    "forward": "İleri"
   },
   "saveStatus": {
     "saved": "Kaydedildi",
@@ -40,7 +68,7 @@
       "notebook": "Not defterleri"
     },
     "author": {
-      "all": "Herkes",
+      "all": "Tümü",
       "agent": "Ajanlar",
       "you": "Siz"
     },
@@ -52,15 +80,18 @@
       "data": "Bu filtrelerle eşleşen veri dosyası yok.",
       "notebook": "Bu filtrelerle eşleşen not defteri yok."
     },
-    "noNotes": "Henüz not yok. Yeni not ile bir tane başlatın.",
+    "start": {
+      "title": "Henüz not yok"
+    },
     "ungrouped": "Notlar",
     "agentFallback": "Ajan",
     "settings": "Ayarlar",
     "filters": {
-      "title": "Filtreler",
+      "title": "Etiketler",
       "active_one": "{{count}} filtre açık",
       "active_other": "{{count}} filtre açık",
-      "clear": "Filtreleri temizle"
+      "clear": "Filtreleri temizle",
+      "writtenBy": "Yazan"
     },
     "menu": {
       "more": "Diğer",
@@ -81,18 +112,31 @@
       "templateOn": "\"{{name}}\" artık şablonlarınızdan biri.",
       "templateOff": "\"{{name}}\" artık bir şablon değil.",
       "linkProject": "Projeye bağla",
-      "compareConflict": "Çakışma kopyasını karşılaştır"
+      "compareConflict": "Çakışma kopyasını karşılaştır",
+      "copyLink": "Bağlantıyı kopyala",
+      "linkCopied": "\"{{name}}\" bağlantısı kopyalandı.",
+      "copyLinkFailed": "\"{{name}}\" bağlantısı kopyalanamadı.",
+      "duplicate": "Çoğalt",
+      "copyTitle": "{{name}} (kopya)",
+      "duplicateFailed": "\"{{name}}\" çoğaltılamadı.",
+      "export": "Dışa aktar",
+      "exportAs": {
+        "markdown": "Markdown klasörü (.md)",
+        "docx": "Word belgesi (.docx)",
+        "html": "Web sayfası (.html)",
+        "latex": "LaTeX (.tex)",
+        "typst": "Typst (.typ)"
+      },
+      "exportFailed": "\"{{name}}\" dışa aktarılamadı.",
+      "copyMarkdown": "Markdown olarak kopyala",
+      "markdownCopied": "\"{{name}}\" Markdown olarak kopyalandı.",
+      "copyMarkdownFailed": "\"{{name}}\" Markdown olarak kopyalanamadı."
     },
     "conflicts": {
-      "title": "\"{{name}}\" notunun iki sürümü",
-      "description": "Bu not, eşitlenmeden önce hem burada hem de başka bir bilgisayarda değiştiği için Oleafly iki sürümü de sakladı. Bir sürümü koruyun. Diğeri Geri Dönüşüm Kutusu'na gider.",
-      "diffLabel": "İki sürüm arasındaki farklar",
-      "loading": "İki sürüm de okunuyor…",
-      "readFailed": "Çakışma kopyası okunamadı.",
-      "resolveFailed": "Bu sürüm korunamadı.",
-      "keepMine": "Bu bilgisayardaki sürümü koru",
-      "useCopy": "Diğer bilgisayardaki sürümü kullan",
       "badge": "Bu notun bir çakışma kopyası var"
+    },
+    "suggestions": {
+      "badge": "Bu notta bekleyen önerilen değişiklikler var"
     }
   },
   "home": {
@@ -101,7 +145,9 @@
     "tabs": {
       "label": "Gösterilecek notlar",
       "mine": "Notlarım",
-      "favorites": "Favoriler"
+      "favorites": "Favoriler",
+      "tasks": "Görevler",
+      "attachments": "Ekler"
     },
     "sortBy": "Sıralama ölçütü",
     "sort": {
@@ -111,8 +157,7 @@
       "title": "Başlık"
     },
     "layout": "Not düzeni",
-    "empty": "Henüz not yok. Bir tane başlatın ve yazmanıza yardım etmesini ajandan isteyin.",
-    "noFavorites": "Henüz favori yok. Burada tutmak için bir notu yıldızlayın.",
+    "noFavorites": "Henüz favori yok. Burada tutmak için bir notu favorilere ekleyin.",
     "noMatches": "\"{{query}}\" ile eşleşen not yok.",
     "author": "Yazar"
   },
@@ -125,8 +170,9 @@
     "loadFailed": "Bu not açılamadı. Projesi taşınmış veya silinmiş olabilir.",
     "retryLoad": "Yeniden dene",
     "closeTab": "Sekmeyi kapat",
-    "imageFailed": "Görsel nota kaydedilemedi.",
-    "onlyImages": "Bir nota yalnızca PNG, JPEG ve SVG görselleri eklenebilir.",
+    "fileFailed": "Dosya nota eklenemedi: {{error}}",
+    "fileTooLarge": "{{name}} 64 MB'tan büyük, bu yüzden eklenmedi.",
+    "unsupportedFile": "Bir not yalnızca görsel, ses, video, PDF, tablo (CSV, TSV veya Excel), molekül dosyası ve Jupyter not defteri içerebilir.",
     "remoteImages": {
       "more": "Görselleri yüklemenin diğer yolları",
       "loadAll": "Bu nottaki tüm görselleri yükle",
@@ -149,6 +195,10 @@
       "figure": "Şekil ekle",
       "abstract": "Özet bölümü için özetle"
     },
+    "wholeNote": {
+      "proofread": "Notu düzelt",
+      "rewrite": "Notu yeniden yaz"
+    },
     "collapse": "İstemi gizle",
     "expand": "İstemi göster"
   },
@@ -157,6 +207,22 @@
     "acceptAll": "Tümünü kabul et",
     "position": "Değişiklik {{current}}/{{total}}",
     "undo": "Geri al"
+  },
+  "versions": {
+    "title": "Sürüm geçmişi",
+    "summary": "Oleafly, önerilen tüm değişiklikleri kabul ettiğinizde ve eski bir sürümü geri yüklemeden önce bir sürüm kaydeder. İsterseniz kendiniz de bir sürüm kaydedebilirsiniz.",
+    "empty": "Henüz sürüm yok. Notu şu anki haliyle saklamak için bir sürüm kaydedin.",
+    "save": "Sürüm kaydet",
+    "saved": "Sürüm kaydedildi.",
+    "unchanged": "Son sürümden bu yana hiçbir şey değişmedi.",
+    "saveFailed": "Bu notun sürümü kaydedilemedi.",
+    "restore": "Bu sürümü geri yükle",
+    "restored": "Sürüm geri yüklendi. Yerine geçtiği metin de bir sürüm olarak kaydedildi.",
+    "restoreFailed": "Bu sürüm geri yüklenemedi.",
+    "comparing": "Not ile karşılaştırılıyor",
+    "readFailed": "Bu sürüm okunamadı.",
+    "changes": "Bu sürümü geri yüklemek neyi değiştirir",
+    "textOnly": "Geri yükleme yalnızca notun metnini değiştirir. Ekli dosyalar olduğu gibi kalır."
   },
   "toolbar": {
     "label": "Biçimlendirme",
@@ -172,9 +238,6 @@
     "displayMath": "Ayrı satırda denklem",
     "citation": "Atıf",
     "noCitations": "Bu projede henüz kaynak yok",
-    "tableSize": "{{cols}} × {{rows}} tablo",
-    "addRow": "Satır ekle",
-    "addColumn": "Sütun ekle",
     "chart": "Grafik",
     "mermaid": "Mermaid diyagramı",
     "outline": "Anahat",
@@ -188,7 +251,12 @@
       "wide": "Geniş",
       "full": "Tam genişlik"
     },
-    "notebook": "Not defteri ekle"
+    "attach": "Dosya ekle",
+    "attachFilter": "Görseller, ses, video, PDF'ler, tablolar, moleküller ve not defterleri",
+    "codeLanguage": "Dil",
+    "plainCode": "Düz metin",
+    "imageSize": "Görsel boyutu",
+    "originalSize": "Özgün boyut"
   },
   "blocks": {
     "chart": "Grafik",
@@ -197,9 +265,28 @@
     "diagramError": "Bu diyagramda bir hata var. Düzeltmek için kaynağı açın.",
     "chartError": "Bu grafiğin verileri geçerli değil. Düzeltmek için kaynağı açın.",
     "noPreview": "Bu blok için henüz önizleme yok. Düzenlemek için kaynağı açın.",
+    "syntax": {
+      "help": "Blok yazım yardımı: {{block}}",
+      "chart": "type, categories ve series anahtarlarını içeren JSON:\n{\"type\": \"bar\", \"categories\": [\"A\", \"B\"], \"series\": [{\"name\": \"Run 1\", \"values\": [1, 2]}]}\nDiğer türler: line, area, scatter, pie, donut, histogram.",
+      "plot": "Satır başına bir eğri veya seçenek:\ny = x^2 - 1 veya x = cos(t), y = sin(t)\ndomain: -5, 5 ve point: 1, 0, Root",
+      "csv": "Değer satırları, ilk satır başlıktır:\nRun, Ratio\nVeya şu satırla bir dosya okuyun: path: assets/results.csv",
+      "latex": "Ayrı satırda gösterilen formül (LaTeX), örneğin bir denklem veya align ortamı:\n\\begin{align} a &= b + c \\end{align}\nKimya için \\ce{H2O}, birimler için \\pu{5 mg}.",
+      "typst": "Görsel olarak çizilen bir kod parçası (Typst):\n$ E = m c^2 $\nİnternetteki paketler kullanılamaz.",
+      "mermaid": "Bir diyagram (Mermaid), örneğin:\nflowchart LR\nA --> B",
+      "d2": "Bir D2 diyagramı, örneğin:\nclient -> server: request\nserver.shape: cylinder",
+      "tikz": "TikZ komutları veya bütün bir tikzpicture:\n{{example}}\n\\usetikzlibrary{positioning} gibi resmin üstünde kalan satırlar önbölüme yazılır.",
+      "circuitikz": "CircuiTikZ komutları veya bütün bir circuitikz ortamı:\n{{example}}\n\\ctikzset{resistors/scale=0.8} gibi devrenin üstünde kalan satırlar önbölüme yazılır.",
+      "svg": "Tek bir öğe (svg), örneğin:\n<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" /></svg>\nBetikler, bağlantılar ve uzak görseller kaldırılır.",
+      "html": "Tam bir sayfa veya CSS ile betikler içeren bir parça (HTML).\nİnternet erişimi yoktur, bu yüzden verilerinizi bloğa koyun.\nBetikler, Çalıştır düğmesine tıkladığınızda başlar.",
+      "jsx": "Varsayılan dışa aktarımı olan tek bir bileşen dosyası (React):\nexport default function App() { return <p>Hello</p> }\nreact, recharts, d3, lodash, papaparse, chart.js ve lucide-react modüllerini içe aktarabilir.",
+      "smiles": "Her satıra bir SMILES, isteğe bağlı bir adla:\nAspirin: CC(=O)OC1=CC=CC=C1C(=O)O\nBlok başına en fazla 24.",
+      "molecule": "Önce seçenek satırları, örneğin format: pdb ve style: cartoon.\nSonra dosya metni veya path: assets/1abc.pdb",
+      "sequence": "FASTA kayıtları veya ham bir dizi:\n>sample 1\nATGGCCATTGTAATG",
+      "notebook": "İlk satırda not defterinin yolu:\nassets/analysis.ipynb\nSonra cells: 2-5 ve code: hide gibi isteğe bağlı satırlar.",
+      "bookmark": "Her satıra bir alan, web adresiyle başlayarak:\nurl: https://example.com/article\nArdından isteğe bağlı title:, description:, image:, site: ve favicon: satırları."
+    },
     "newChart": {
       "title": "Yeni grafik",
-      "description": "Bunu doldurmasını ajandan isteyin veya kaynağı düzenleyin.",
       "series": "Değerler"
     },
     "newHtml": {
@@ -236,6 +323,7 @@
     },
     "sequence": {
       "label": "Dizi",
+      "template": "Örnek kodlayan dizi",
       "empty": "Bir FASTA kaydı veya düz bir dizi yapıştırın.",
       "character": "Satır {{line}}, sütun {{column}}: \"{{character}}\" bir kalıntı değil.",
       "untitled": "Adsız dizi",
@@ -375,7 +463,8 @@
     "artifact": {
       "run": "Çalıştır",
       "stop": "Durdur",
-      "alwaysRun": "Bu nottaki blokları her zaman çalıştır",
+      "alwaysRun": "Bu bloğu her zaman çalıştır",
+      "paused": "Duraklatıldı, çünkü bu nottaki bir blok geçen sefer uygulamayı dondurdu veya kapattı.",
       "desktopOnly": "Çalıştırmak için masaüstü uygulaması gerekir",
       "loading": "Yükleniyor…",
       "loadFailed": "Bu blok yüklenemedi.",
@@ -383,7 +472,7 @@
       "stopped": "Bu blok yanıt vermeyi bıraktı.",
       "reload": "Yeniden yükle",
       "failed": "Bu blok başlatılamadı: {{error}}",
-      "offline": "Bloklar internetten dosya yükleyemez, bu yüzden şunlar dışarıda bırakıldı:",
+      "offline": "İnternetten gelen şu dosyalar dışarıda bırakıldı:",
       "more_one": "ve {{count}} tane daha",
       "more_other": "ve {{count}} tane daha",
       "frameTitle": "{{label}} çıktısı",
@@ -394,7 +483,6 @@
       "noComponent": "Bu bileşenin varsayılan dışa aktarımı yok."
     },
     "code": {
-      "copy": "Kopyala",
       "copied": "Kopyalandı",
       "copyFailed": "Kopyalanamadı",
       "copyLabel": "Kodu kopyala"
@@ -404,6 +492,22 @@
       "empty": "Bu SVG bloğu boş.",
       "invalid": "Bu SVG geçerli değil. Düzeltmek için kaynağı açın.",
       "tooLarge": "Bu SVG gösterilemeyecek kadar büyük."
+    },
+    "d2": {
+      "alt": "D2 diyagramı",
+      "empty": "Bu D2 bloğu boş.",
+      "loading": "Çiziliyor…",
+      "error": "D2 bu diyagramı çizemedi: {{error}}",
+      "line": "Satır {{line}}: {{message}}"
+    },
+    "tikz": {
+      "alt": "TikZ çizimi",
+      "circuitAlt": "Devre şeması",
+      "empty": "Bu {{block}} bloğu boş.",
+      "desktopOnly": "{{block}} önizlemeleri masaüstü uygulamasını gerektirir.",
+      "sharedNotice": "Bu not paylaşılıyor. LaTeX bu bilgisayarda çalışır ve dosyalarınızı okuyabilir, bu yüzden çizmeden önce kaynağı denetleyin.",
+      "draw": "Çiz",
+      "error": "LaTeX bu bloğu derleyemedi: {{error}}"
     },
     "typst": {
       "alt": "Typst çıktısı",
@@ -433,7 +537,33 @@
       "code": "Kod",
       "math": "Matematik",
       "divider": "Ayırıcı",
+      "footnote": "Dipnot",
       "basic": "Temel"
+    },
+    "media": {
+      "play": "{{name}} dosyasını oynat",
+      "pdfPage": "{{name}}, sayfa {{page}}",
+      "openPdf": "PDF'i aç",
+      "openFailed": "Dosya açılamadı: {{error}}",
+      "missing": "Dosya bulunamadı: {{path}}",
+      "unreadable": "{{name}} okunamadı.",
+      "cantPlay": "{{name}} burada oynatılamıyor. Bu bilgisayarda bu biçim için bir codec olmayabilir.",
+      "embed": "{{site}} videosunu oynat",
+      "embedTitle": "{{site}} videosu",
+      "embedFailed": "Oynatıcı başlamadı. Yeniden deneyin veya videoyu {{site}} üzerinde açın.",
+      "watch": "İzle",
+      "watchOn": "{{site}} üzerinde izle",
+      "pasteChoice": "Bu video bağlantısı nasıl gösterilsin",
+      "embedChoice": "Videoyu yerleştir",
+      "linkChoice": "Bağlantı olarak bırak"
+    },
+    "bookmark": {
+      "label": "Yer imi",
+      "pasteChoice": "Bu bağlantı nasıl gösterilsin",
+      "cardChoice": "Yer imi kartı",
+      "ask": "Bir web sayfasına yer imi ekle",
+      "loading": "Sayfa önizlemesi yükleniyor",
+      "noUrl": "https:// veya http:// ile başlayan bir web adresi içeren bir url: satırı ekleyin."
     }
   },
   "notebook": {
@@ -455,10 +585,7 @@
     "showAllCells_one": "{{count}} hücreyi göster",
     "showAllCells_other": "{{count}} hücrenin tümünü göster",
     "outputImage": "{{number}}. hücrenin çıktısı",
-    "outputFrame": "{{number}}. hücrenin HTML çıktısı",
-    "pickTitle": "Not defteri ekle",
-    "filter": "Jupyter not defterleri",
-    "importFailed": "Not defteri eklenemedi: {{error}}"
+    "outputFrame": "{{number}}. hücrenin HTML çıktısı"
   },
   "icons": {
     "choose": "Simge seç",
@@ -612,7 +739,7 @@
     "inserting": "Kopyalanıyor",
     "insertFailed": "Bu dosya nota kopyalanamadı: {{error}}",
     "newProject": "Yeni proje",
-    "htmlPreview": "Etkileşimli şekiller henüz Oleafly'de çalıştırılamıyor.",
+    "htmlPreview": "Bu şekli çalıştırmak için kodunu bir nottaki bloğa (HTML) yapıştırın ve Çalıştır düğmesine basın.",
     "kind": {
       "figure": "Şekil",
       "html": "Etkileşimli şekil",
@@ -626,7 +753,14 @@
   "sendToPaper": {
     "title": "Bir makaleye gönder",
     "description": "Oleafly bunu bir kez dönüştürür ve imlecin olduğu yere ekler. Makaledeki kopya notla bağlantılı kalmaz.",
-    "send": "Gönder"
+    "send": "Gönder",
+    "leftOut": "{{block}} bloğu yalnızca notta."
+  },
+  "citations": {
+    "references": "Kaynakça",
+    "fromReference": "Bir kaynaktan",
+    "unknown": "Bağlı projenin kaynakçasında yok: {{keys}}",
+    "openNote": "Bu makalenin notunu aç: {{title}}"
   },
   "links": {
     "menu": "Bir nota veya projeye bağlantı ver",
@@ -636,13 +770,54 @@
     "missingNote": "Bu not artık yok",
     "missingNoteCreate": "Bu not artık yok. Bu adla yeni bir not oluşturmak için tıklayın.",
     "missingProject": "Bu proje artık yok",
-    "linkedFrom": "Gelen bağlantılar"
+    "linkedFrom": "Gelen bağlantılar",
+    "showAll": "Tümünü göster ({{total}})"
+  },
+  "linksSearch": {
+    "blocks": {
+      "loading": "Bloklar yükleniyor",
+      "none": "Eşleşen blok yok",
+      "missingBlock": "Bu blok notta yok",
+      "assignFailed": "Bu nota blok kimliği eklenemedi.",
+      "handle": "Blok seçenekleri",
+      "copyLink": "Bloğun bağlantısını kopyala",
+      "linkCopied": "Bu bloğun bağlantısı kopyalandı.",
+      "copyFailed": "Bu bloğun bağlantısı kopyalanamadı.",
+      "noId": "Bu bloğun henüz kimliği yok ve bu notu düzenleyemezsiniz.",
+      "linkedFrom": "Gelen bağlantılar",
+      "links_one": "{{count}} not buraya bağlantı veriyor",
+      "links_other": "{{count}} not buraya bağlantı veriyor",
+      "openLinked": "{{title}} notunu aç",
+      "toBlock": "Bloğa git: {{text}}"
+    },
+    "tagBlocks": {
+      "more_one": "{{count}} blok daha göster",
+      "more_other": "{{count}} blok daha göster"
+    },
+    "dead": {
+      "menu": "Kırık bağlantılar",
+      "title": "Kırık bağlantılar",
+      "summary_one": "{{count}} bağlantı artık var olmayan bir nota veya bloğa gidiyor.",
+      "summary_other": "{{count}} bağlantı artık var olmayan notlara veya bloklara gidiyor.",
+      "none": "Kırık bağlantı yok. Her bağlantı hâlâ var olan bir nota veya bloğa gidiyor.",
+      "loading": "Bağlantılar denetleniyor",
+      "failed": "Notlarınızdaki bağlantılar okunamadı.",
+      "missingNotes": "Eksik notlar",
+      "missingBlocks": "Eksik bloklar",
+      "noteMeta": "Satır {{line}}: not artık yok",
+      "blockMeta": "Satır {{line}}: {{block}} artık {{title}} içinde değil",
+      "create": "Not oluştur",
+      "relink": "Bunun yerine {{title}} notuna bağlantı ver",
+      "remove": "Bağlantıyı kaldır",
+      "fixFailed": "Bağlantı değiştirilemedi."
+    }
   },
   "projectNotes": {
     "searchLabel": "Bu projenin notlarında ara",
     "searchPlaceholder": "Notlarda ara",
     "clearSearch": "Aramayı temizle",
     "noMatches": "Aramanızla eşleşen not yok",
+    "loading": "Projenin notları okunuyor",
     "edited": "Düzenlendi: {{when}}",
     "createFailed": "Not oluşturulamadı.",
     "projectGroup": "Proje notları",
@@ -689,7 +864,33 @@
     "callouts": {
       "type": "Bilgi kutusu türü: {{type}}",
       "fold": "Bilgi kutusunu daralt",
-      "unfold": "Bilgi kutusunu genişlet"
+      "unfold": "Bilgi kutusunu genişlet",
+      "types": {
+        "note": "Not",
+        "abstract": "Özet",
+        "info": "Bilgi",
+        "todo": "Yapılacak",
+        "tip": "İpucu",
+        "success": "Başarı",
+        "question": "Soru",
+        "warning": "Uyarı",
+        "failure": "Başarısızlık",
+        "danger": "Tehlike",
+        "bug": "Hata",
+        "example": "Örnek",
+        "quote": "Alıntı",
+        "theorem": "Teorem",
+        "lemma": "Lemma",
+        "corollary": "Sonuç",
+        "proposition": "Önerme",
+        "definition": "Tanım",
+        "proof": "İspat",
+        "hypothesis": "Hipotez",
+        "assumption": "Varsayım",
+        "result": "Bulgu",
+        "method": "Yöntem",
+        "remark": "Açıklama"
+      }
     },
     "links": {
       "loadingHeadings": "Başlıklar yükleniyor",
@@ -752,6 +953,209 @@
       }
     }
   },
+  "fields": {
+    "today": "Bugün",
+    "tomorrow": "Yarın",
+    "yesterday": "Dün",
+    "chip": "{{key}}: {{value}}",
+    "empty": "değer yok",
+    "edit": "Değiştir veya kaldır",
+    "keys": {
+      "due": "Son tarih",
+      "scheduled": "Planlanan",
+      "priority": "Öncelik",
+      "start": "Başlangıç",
+      "created": "Oluşturulma",
+      "completed": "Tamamlanma",
+      "date": "Tarih",
+      "cancelled": "İptal edildi"
+    },
+    "priorities": {
+      "highest": "En yüksek",
+      "high": "Yüksek",
+      "medium": "Orta",
+      "low": "Düşük",
+      "lowest": "En düşük"
+    },
+    "editor": {
+      "label": "{{key}} alanını düzenle",
+      "key": "Ad",
+      "value": "Değer",
+      "brackets": "Köşeli parantezleri yalnızca [[Note]] gibi bir bağlantı için kullanın.",
+      "save": "Kaydet",
+      "remove": "Kaldır"
+    }
+  },
+  "at": {
+    "menu": "Tarih, alan, etiket veya not ekle",
+    "groups": {
+      "dates": "Tarihler",
+      "due": "Son tarih",
+      "fields": "Görev alanları",
+      "tags": "Etiketler",
+      "notes": "Notlar"
+    },
+    "today": "Bugün",
+    "tomorrow": "Yarın",
+    "yesterday": "Dün",
+    "next": "Gelecek {{weekday}}",
+    "pick": "Tarih seç",
+    "pickerLabel": "Tarih seç",
+    "due": "Son tarih",
+    "scheduled": "Planlanan tarih",
+    "priority": "Öncelik",
+    "priorityValue": "{{priority}} öncelik",
+    "custom": "Özel alan",
+    "addField": "\"{{key}}\" alanını ekle",
+    "setField": "{{key}} alanını \"{{value}}\" olarak ayarla",
+    "typeValue": "{{key}} için bir değer yazın, ardından Enter tuşuna basın."
+  },
+  "tasks": {
+    "filters": "Görev filtreleri",
+    "loading": "Görevleriniz okunuyor",
+    "failed": "Görevleriniz okunamadı.",
+    "empty": "Henüz görev yok. Herhangi bir notta bir satıra - [ ] ile başlayın, görev burada görünür.",
+    "noMatches": "Bu filtrelerle eşleşen görev yok.",
+    "clear": "Filtreleri temizle",
+    "list": "Görevler",
+    "count_one": "{{count}} görev",
+    "count_other": "{{count}} görev",
+    "complete": "\"{{text}}\" görevini tamamlandı olarak işaretle",
+    "reopen": "\"{{text}}\" görevini tamamlanmadı olarak işaretle",
+    "openNote": "{{title}} notunu aç",
+    "toggleFailed": "Görev güncellenemedi.",
+    "moved": "Bu görev notunda değişti. Güncellemek için notu açın.",
+    "state": {
+      "label": "Göster",
+      "open": "Açık",
+      "done": "Tamamlanan",
+      "all": "Açık ve tamamlanan"
+    },
+    "due": {
+      "label": "Son tarih",
+      "any": "Herhangi bir son tarih",
+      "overdue": "Gecikmiş",
+      "today": "Son günü bugün",
+      "week": "Son günü önümüzdeki 7 gün içinde",
+      "none": "Son tarih yok"
+    },
+    "priority": {
+      "label": "Öncelik",
+      "any": "Herhangi bir öncelik",
+      "high": "Yüksek öncelik",
+      "medium": "Orta öncelik",
+      "low": "Düşük öncelik",
+      "none": "Öncelik yok"
+    },
+    "tag": {
+      "label": "Etiket",
+      "any": "Tüm etiketler"
+    },
+    "project": {
+      "label": "Proje",
+      "any": "Tüm projeler"
+    },
+    "sort": {
+      "label": "Görevleri sırala",
+      "due": "Son tarih",
+      "priority": "Öncelik"
+    }
+  },
+  "attachments": {
+    "filters": "Ek filtreleri",
+    "loading": "Ekler bulunuyor",
+    "failed": "Ekleriniz okunamadı.",
+    "empty": "Henüz ek yok. Bir nota görsel veya dosya bırakın, burada görünür.",
+    "noMatches": "Bu filtrelerle eşleşen ek yok.",
+    "clear": "Filtreleri temizle",
+    "list": "Ekler",
+    "count_one": "{{count}} dosya",
+    "count_other": "{{count}} dosya",
+    "openNote": "{{title}} notunu aç",
+    "copyLink": "Bağlantıyı kopyala",
+    "linkCopied": "\"{{name}}\" bağlantısı kopyalandı.",
+    "copyFailed": "\"{{name}}\" bağlantısı kopyalanamadı.",
+    "unused": "Kullanılmıyor",
+    "type": {
+      "label": "Tür",
+      "all": "Tüm türler",
+      "image": "Görseller",
+      "audio": "Ses",
+      "video": "Video",
+      "pdf": "PDF'ler",
+      "other": "Diğer"
+    },
+    "use": {
+      "label": "Kullanım",
+      "all": "Tüm dosyalar",
+      "unused": "Kullanılmayan"
+    }
+  },
+  "info": {
+    "title": "Bilgi",
+    "show": "Not bilgisi",
+    "noNote": "Bilgilerini görmek için bir not açın.",
+    "details": "Not ayrıntıları",
+    "created": "Oluşturulma",
+    "updated": "Güncellenme",
+    "words": "Sözcük",
+    "characters": "Karakter",
+    "lines": "Satır",
+    "readingTime": "Okuma süresi",
+    "underMinute": "bir dakikadan az",
+    "noProperties": "Özellik yok",
+    "noBacklinks": "Buraya bağlantı veren not yok",
+    "noMentions": "Başka hiçbir notta geçmiyor",
+    "noReferences": "Bu notta atıf yok",
+    "noDeadLinks": "Kırık bağlantı yok",
+    "noAttachments": "Ekli dosya yok"
+  },
+  "calendar": {
+    "title": "Takvim",
+    "week": "Hafta",
+    "hasNote": "günlük notu var",
+    "due_one": "{{count}} görevin son günü",
+    "due_other": "{{count}} görevin son günü",
+    "openWeek": "{{week}}. haftanın haftalık notunu aç",
+    "openMonthNote": "Aylık notu aç",
+    "createMonthNote": "Aylık not oluştur",
+    "today": "Bugün",
+    "failed": {
+      "weekly": "Haftalık not açılamadı.",
+      "monthly": "Aylık not açılamadı."
+    }
+  },
+  "periodic": {
+    "title": "Günlük, haftalık ve aylık notlar",
+    "daily": {
+      "label": "Günlük notlar",
+      "description": "Bugünün notu ve kenar çubuğu takvimindeki günler."
+    },
+    "weekly": {
+      "label": "Haftalık notlar",
+      "description": "Kenar çubuğu takvimindeki hafta numaraları."
+    },
+    "monthly": {
+      "label": "Aylık notlar",
+      "description": "Kenar çubuğu takviminin üstündeki ay adı."
+    },
+    "weekStart": {
+      "label": "Haftanın ilk günü",
+      "description": "Kenar çubuğu takviminin ilk sütunu. Hafta numaraları bu günden itibaren sayılır ve Pazartesi seçiliyse ISO hafta numaralarıdır.",
+      "locale": "Bölge varsayılanı ({{day}})",
+      "monday": "Pazartesi",
+      "sunday": "Pazar",
+      "saturday": "Cumartesi"
+    },
+    "format": "Başlık biçimi",
+    "preview": "Örnek: {{title}}",
+    "invalidFormat": "YYYY veya WW gibi bir tarih bölümü ekleyin.",
+    "template": "Şablon",
+    "savedTemplate": "Kayıtlı şablonunuz",
+    "tag": "Etiket",
+    "noTag": "Etiket yok",
+    "formatHelp": "Başlık biçimlerinde yıl için YYYY, ay için MM, ay adı için MMMM, gün için DD, haftanın günü için dddd, hafta numarası için WW ve haftanın ait olduğu yıl için GGGG kullanılır. [W] gibi köşeli parantez içindeki metin yazıldığı gibi kalır. Mevcut notlarınız başlıklarını korur, bu yüzden bir biçimi kullanmaya başlamadan önce değiştirin."
+  },
   "live": {
     "share": "Paylaş",
     "shared": "Paylaşıldı",
@@ -793,7 +1197,9 @@
     "outline": {
       "title": "Anahat",
       "empty": "Bu notta başlık yok",
+      "emptyDetail": "Başlık eklemek için bir satıra # ile başlayın.",
       "noNote": "Anahattını görmek için bir not açın",
+      "noNoteDetail": "Anahat, düzenlediğiniz notu izler.",
       "levels": "Başlık düzeyleri",
       "allLevels": "Tüm düzeyler",
       "upTo": "H{{level}} düzeyine kadar",
@@ -801,7 +1207,8 @@
       "expand": "Genişlet: {{title}}"
     },
     "linksFailed": "Notlar arasındaki bağlantılar okunamadı.",
-    "tagsFailed": "Etiketler okunamadı."
+    "tagsFailed": "Etiketler okunamadı.",
+    "loading": "Notlar arasındaki bağlantılar okunuyor"
   },
   "vault": {
     "import": {
@@ -821,6 +1228,9 @@
       "seenDescription_one": "{{date}} tarihinde {{count}} not eklendi. Yeniden içe aktarmak yeni kopyalar ekler ve önceki notları olduğu gibi bırakır.",
       "seenDescription_other": "{{date}} tarihinde {{count}} not eklendi. Yeniden içe aktarmak yeni kopyalar ekler ve önceki notları olduğu gibi bırakır.",
       "again": "Yeni notlar olarak yeniden içe aktar",
+      "largeTitle": "Bu klasörde {{total}} not var",
+      "largeDescription": "Hepsini içe aktarmak biraz sürebilir ve her biri kitaplığınızda ayrı bir not olur. İçe aktarmayı istediğiniz zaman durdurabilirsiniz.",
+      "largeConfirm": "Tümünü içe aktar",
       "doneTitle": "İçe aktarma tamamlandı",
       "notes_one": "{{count}} not içe aktarıldı",
       "notes_other": "{{count}} not içe aktarıldı",
@@ -849,6 +1259,8 @@
         "done_other": "{{count}} not dışa aktarıldı",
         "skipped_one": "{{count}} ek dışa aktarılamadı",
         "skipped_other": "{{count}} ek dışa aktarılamadı",
+        "paperLinks_one": "{{count}} makale bağlantısı düz metne dönüştü",
+        "paperLinks_other": "{{count}} makale bağlantısı düz metne dönüştü",
         "doneSkipped": "{{done}}. {{skipped}}.",
         "showFolder": "Klasörü göster",
         "failed": "Notlar dışa aktarılamadı."
@@ -876,8 +1288,10 @@
       "empty": "Henüz etiket yok. Bir nota #etiketler ekleyin veya özelliklerine etiket yazın.",
       "filter": "{{tag}} etiketli notları göster",
       "clear": "{{tag}} filtresini kaldır",
-      "expand": "{{tag}} altındaki etiketleri göster",
-      "collapse": "{{tag}} altındaki etiketleri gizle"
+      "search": "Etiketleri filtrele",
+      "noMatch": "\"{{query}}\" ile eşleşen etiket yok.",
+      "showAll": "Tümünü göster ({{total}})",
+      "showFewer": "Daha az göster"
     },
     "switcher": {
       "open": "Nota git",
@@ -895,7 +1309,9 @@
     },
     "daily": {
       "open": "Bugünün notu",
-      "failed": "Bugünün notu açılamadı."
+      "failed": "Bugünün notu açılamadı.",
+      "previous": "Önceki günlük not: {{date}}",
+      "next": "Sonraki günlük not: {{date}}"
     },
     "templates": {
       "open": "Şablondan yeni",
@@ -919,7 +1335,9 @@
         "proposal": "Araştırma önerisi",
         "proof": "İspat veya türetme",
         "dataAnalysis": "Veri analizi raporu",
-        "interview": "Görüşme notları"
+        "interview": "Görüşme notları",
+        "screeningLog": "Tarama günlüğü",
+        "labNotebook": "Laboratuvar defteri girdisi"
       },
       "descriptions": {
         "daily": "Bir günün planı ve sürekli tutulan kaydı",
@@ -932,7 +1350,9 @@
         "proposal": "Bir hibe başvurusu veya tez için amaçlar, yöntemler ve zaman çizelgesi",
         "proof": "Bir sonuç, arkasındaki fikir ve tam akıl yürütme",
         "dataAnalysis": "Hangi veride neyi çalıştırdığınız ve bunun ne gösterdiği",
-        "interview": "Tek bir görüşmeden yanıtlar, alıntılar ve temalar"
+        "interview": "Tek bir görüşmeden yanıtlar, alıntılar ve temalar",
+        "screeningLog": "İnceleme sorusu, ölçütler ve her tarama aşamasındaki sayılar",
+        "labNotebook": "Tezgâhta bir gün: amaç, örnekler, yöntem, gözlemler ve imza"
       },
       "bodies": {
         "daily": "**{{weekday}}**\n\n## Plan\n- [ ] En önemli görev\n- [ ] İkinci görev\n\n## Kayıt\n- {{time}} Güne başladım\n\n## Notlar\n\n## Bugün yapılanlar\n- Henüz bir şey yok\n\n## Yarın\n- [ ] İlk ele alınacak iş",
@@ -943,9 +1363,11 @@
         "labProtocol": "> [!warning] Güvenlik\n> Başlamadan önce tehlikeleri, koruyucu ekipmanı ve atık yönetimini denetleyin.\n\n## Amaç\nBu protokolün ne ürettiği ve ne zaman kullanılacağı.\n\n## Malzemeler\n| Öğe | Miktar | Tedarikçi veya katalog numarası | Notlar |\n| --- | --- | --- | --- |\n| | | | |\n\n## Ekipman\n- Cihaz ve ayarları\n\n## Yöntem\n1. Hazırla\n2. Uygula\n3. Temizle\n\n## Denetimler\n- [ ] Kontrol örnekleri hazırlandı\n- [ ] Ayarlar kaydedildi\n- [ ] Numuneler tarih ve çalıştırmayla etiketlendi\n\n## Sorun giderme\n| Sorun | Olası neden | Çözüm |\n| --- | --- | --- |\n| | | |\n\n## Revizyon geçmişi\n| Sürüm | Tarih | Değişiklik |\n| --- | --- | --- |\n| 1 | {{date}} | İlk sürüm |",
         "weeklyLog": "## Bu haftanın hedefleri\n- [ ] Birinci hedef\n- [ ] İkinci hedef\n- [ ] Üçüncü hedef\n\n## İlerleme\n| Gün | Yapılan iş | Notlar |\n| --- | --- | --- |\n| Pazartesi | | |\n| Salı | | |\n| Çarşamba | | |\n| Perşembe | | |\n| Cuma | | |\n\n## Sonuçlar ve şekiller\n- Haftanın ortaya çıkardıkları\n\n## Engeller\n> [!warning] Yardım gerekiyor\n> Neyin takıldığı ve kimin çözebileceği.\n\n## Okumalar\n- Bu hafta okunan makaleler\n\n## Gelecek hafta\n- [ ] Gelecek haftanın ilk hedefi",
         "proposal": "> [!abstract] Özet\n> Üç cümleyle: problem, yaklaşım ve beklenen sonuç.\n\n## Arka plan ve gerekçe\nBunun neden şimdi önemli olduğu ve neyin zaten bilindiği.\n\n## Araştırma soruları\n1. Birinci soru\n\n## Amaçlar\n| Amaç | Yaklaşım | Beklenen çıktı |\n| --- | --- | --- |\n| 1 | | |\n\n## Yöntemler\nTasarım, veri, analiz ve başarının nasıl ölçüleceği.\n\n## Zaman çizelgesi\n| Aşama | Aylar | Kilometre taşı |\n| --- | --- | --- |\n| | | |\n\n## Riskler ve azaltma\n| Risk | Olasılık | Azaltma önlemi |\n| --- | --- | --- |\n| | | |\n\n## Kaynaklar ve bütçe\n\n## Etki\nKimlerin yararlanacağı ve sonuçların nasıl paylaşılacağı.\n\n## Kaynakça",
-        "proof": "> [!note] Önerme\n> Tüm varsayımlarıyla birlikte, kesin olarak ifade edilen sonuç.\n\n## Tanımlar ve gösterim\n- Simgeler ve anlamları\n\n## Fikir\nAyrıntılardan önce, ana fikir sade bir dille.\n\n## İspat\n**Adım 1.** Akıl yürütmeyi kurun.\n\n**Adım 2.** Ana kestirimi yapın.\n\n**Adım 3.** Sonuca varın.\n\n## Denetimler\n- [ ] Her varsayım kullanıldı\n- [ ] Uç durumlar ele alındı\n- [ ] Sabitler ve sınırlar izlendi\n\n## Açıklamalar\nGenellemeler, karşı örnekler ve ilgili sonuçlar.",
-        "dataAnalysis": "> [!info] Soru\n> Bu analizin desteklediği karar.\n\n## Veri\n| Alan | Değer |\n| --- | --- |\n| Kaynak | |\n| Sürüm veya tarih | |\n| Satırlar ve sütunlar | |\n| Dışlananlar | |\n\n## Yöntemler\n- Temizleme adımları\n- Model veya test ve neden seçildiği\n- Denetlenen varsayımlar\n\n## Sonuçlar\n| Ölçü | Kestirim | Aralık | Notlar |\n| --- | --- | --- | --- |\n| | | | |\n\n## Şekiller\n- Şekil ve ne gösterdiği\n\n## Yorum\nSonuçların soru açısından anlamı.\n\n## Sınırlılıklar\n- Yanlılık, eksik veri ve sonucu neyin değiştirebileceği\n\n## Yeniden üretilebilirlik\n- [ ] Kod kaydedildi ve bağlandı\n- [ ] Rastgele tohumlar kaydedildi\n- [ ] Paket sürümleri not edildi",
-        "interview": "> [!warning] Onam ve gizlilik\n> Kayda başlamadan önce onam alın ve ad yerine bir katılımcı kodu kullanın.\n\n## Bağlam\n| Öğe | Değer |\n| --- | --- |\n| Katılımcı kodu | |\n| Rol | |\n| Süre | |\n| Kayıt | |\n\n## Sorular ve yanıtlar\n### Soru 1\n- Yanıt\n\n### Soru 2\n- Yanıt\n\n## Alıntılar\n> Saklamaya değer bir alıntı.\n\n## Temalar\n- Tema ve onu destekleyen yanıtlar\n\n## Takip\n- [ ] Teşekkür notu gönder\n- [ ] Deşifre et ve anonimleştir"
+        "proof": "## Tanımlar ve gösterim\n> [!definition] Gösterim\n> Kullandığınız simgeler ve her birinin anlamı.\n\n## Önerme\n> [!theorem] Ana sonuç\n> Tüm varsayımlarıyla birlikte, kesin olarak ifade edilen sonuç.\n\n## Fikir\nAyrıntılardan önce, ana fikir sade bir dille.\n\n## Lemmalar\n> [!lemma] Lemma 1\n> Ana ispatın ihtiyaç duyduğu daha küçük bir iddia.\n\n> [!proof] Lemma 1'in ispatı\n> Lemmanın neden geçerli olduğu.\n\n## İspat\n> [!proof] Ana sonucun ispatı\n> **Adım 1.** Akıl yürütmeyi kurun.\n>\n> **Adım 2.** Lemma 1'i kullanarak ana kestirimi yapın.\n>\n> **Adım 3.** Sonuca varın.\n\n## Denetimler\n- [ ] Her varsayım kullanıldı\n- [ ] Uç durumlar ele alındı\n- [ ] Sabitler ve sınırlar izlendi\n\n## Açıklamalar\nGenellemeler, karşı örnekler ve ilgili sonuçlar.",
+        "dataAnalysis": "> [!info] Soru\n> Bu analizin desteklediği karar.\n\n## Veri\n| Alan | Değer |\n| --- | --- |\n| Kaynak | |\n| Sürüm veya tarih | |\n| Satırlar ve sütunlar | |\n| Dışlananlar | |\n\n## Yöntemler\n- Temizleme adımları\n- Model veya test ve neden seçildiği\n- Denetlenen varsayımlar\n\n## Sonuçlar\nAşağıdaki tablo bir blok (CSV). Örnek satırları kendi sonuçlarınızla değiştirin.\n\n```csv\nÖlçü,Kestirim,Alt sınır %95,Üst sınır %95,n\nA grubu ortalaması,0,0,0,0\nB grubu ortalaması,0,0,0,0\nFark,0,0,0,0\n```\n\n## Şekiller\n- Şekil ve ne gösterdiği\n\n## Yorum\nSonuçların soru açısından anlamı.\n\n## Sınırlılıklar\n- Yanlılık, eksik veri ve sonucu neyin değiştirebileceği\n\n## Yeniden üretilebilirlik\n- [ ] Kod kaydedildi ve bağlandı\n- [ ] Rastgele tohumlar kaydedildi\n- [ ] Paket sürümleri not edildi",
+        "interview": "> [!warning] Onam ve gizlilik\n> Kayda başlamadan önce onam alın ve ad yerine bir katılımcı kodu kullanın.\n\n## Bağlam\n| Öğe | Değer |\n| --- | --- |\n| Katılımcı kodu | |\n| Rol | |\n| Süre | |\n| Kayıt | |\n\n## Sorular ve yanıtlar\n### Soru 1\n- Yanıt\n\n### Soru 2\n- Yanıt\n\n## Alıntılar\n> Saklamaya değer bir alıntı.\n\n## Temalar\n- Tema ve onu destekleyen yanıtlar\n\n## Takip\n- [ ] Teşekkür notu gönder\n- [ ] Deşifre et ve anonimleştir",
+        "screeningLog": "> [!question] İnceleme sorusu (PICO)\n> - **Popülasyon:** kim veya ne inceleniyor\n> - **Müdahale veya maruziyet:** ne test ediliyor\n> - **Karşılaştırma:** neyle karşılaştırılıyor\n> - **Sonuç:** ne ölçülüyor\n\n## Dahil etme ölçütleri\n- Çalışma tasarımları\n- Popülasyon ve ortam\n- Diller ve yıllar\n\n## Dışlama ölçütleri\n- Neden ve nasıl fark edileceği\n\n## Aramalar\n| Tarih | Veritabanı | Sorgu | Kayıt sayısı |\n| --- | --- | --- | --- |\n| {{date}} | | | |\n\n## Her aşamadaki sayılar\n| Aşama | Kayıt sayısı | Çıkarılan | Ana nedenler |\n| --- | --- | --- | --- |\n| Aramalarda bulunan | | | |\n| Kopyalar çıkarıldıktan sonra | | | |\n| Başlığı ve özeti taranan | | | |\n| Tam metni değerlendirilen | | | |\n| İncelemeye dahil edilen | | | |\n\n## Tam metin aşamasında dışlananlar\n| Makale | Neden |\n| --- | --- |\n| | |\n\n## Anlaşmazlıklar\n- Makale, her değerlendiricinin kararı ve nasıl çözüldüğü\n\n## Sonraki adımlar\n- [ ] Sonraki grubu tara\n- [ ] Sayıların tuttuğunu denetle",
+        "labNotebook": "**{{weekday}}, {{date}}**\n\n## Amaç\nBugün ne yapmayı hedeflediğiniz ve nedeni.\n\n## Malzemeler\n| Malzeme | Örnek kimliği | Parti veya seri | Miktar |\n| --- | --- | --- | --- |\n| | | | |\n\n## Yöntem\n1. Ne yaptığınız, sırayla, saatler ve ayarlarla\n2. Protokolden herhangi bir sapma ve nedeni\n\n## Gözlemler\n- {{time}} Ne gördüğünüz\n\n## Sonuçlar\n- Ölçümler ve ham verilerin saklandığı yer\n\n## Sonraki adımlar\n- [ ] Bir sonraki oturum için takip işi\n\n## İmza\n**İmzalayan:** ad, {{date}}\n\n**Tanık:** ad, tarih"
       }
     },
     "mentions": {
@@ -984,8 +1406,8 @@
     "actionHint": "Bu not üzerinde çalışır",
     "agentCanEdit": "Bu ajan bağlı projedeki dosyaları değiştirebilir.",
     "allowWritesLabel": "Ajanın dosyaları değiştirmesine izin ver",
-    "allowWritesAsk": "{{agent}} ajanının salt okunur kipi yok, bu yüzden {{project}} projesindeki dosyaları değiştirebilir. Mesajınız yine de gönderilsin mi?",
-    "allowWrites": "Bu sohbette izin ver",
+    "allowWritesAsk": "{{agent}} ajanının salt okunur kipi yok, bu yüzden {{project}} projesindeki dosyaları değiştirebilir. Oleafly bu ajana böyle bir kip ekleyemez. Mesajınız yine de gönderilsin mi?",
+    "allowWrites": "Yine de gönder",
     "dontSend": "Gönderme",
     "viewOnly": "Bu notu yalnızca görüntüleyebilirsiniz, bu yüzden asistan onu değiştiremez."
   },
@@ -1002,6 +1424,7 @@
     "template": "\"{{name}}\" notunun şablon ayarı değiştirilemedi."
   },
   "noteTab": {
+    "loading": "Not açılıyor",
     "projectNote": "Proje notu",
     "sharedProject": "Bu projedeki herkes bu notu görebilir ve düzenleyebilir",
     "localProject": "Bu projenin dosyalarıyla birlikte kaydedilir",
@@ -1013,5 +1436,248 @@
     "copyToMine": "Notlarıma kopyala",
     "missing": "Bu not artık kullanılamıyor. Taşınmış veya silinmiş olabilir.",
     "writeRefused": "Not kaydedilemedi. Bu proje şu anda salt okunur."
+  },
+  "appearance": {
+    "notes": {
+      "sectionName": "Not görünümü",
+      "resetAriaLabel": "{{setting}} ayarını varsayılana sıfırla",
+      "text": {
+        "title": "Metin"
+      },
+      "typeface": {
+        "label": "Yazı stili",
+        "description": "Not metni için bir yazı stili seçin.",
+        "options": {
+          "sans": "Tırnaksız",
+          "serif": "Tırnaklı",
+          "mono": "Eş aralıklı"
+        }
+      },
+      "font": {
+        "label": "Not yazı tipi",
+        "description": "Not metni için yüklü herhangi bir yazı tipini seçin. Yazı stili ayarını kullanmak için boş bırakın."
+      },
+      "fontSize": {
+        "label": "Not metni boyutu",
+        "description": "Not metninin boyutunu ayarlayın.",
+        "custom": "Özel",
+        "customLabel": "Piksel cinsinden özel not metni boyutu"
+      },
+      "lineHeight": {
+        "label": "Not satır yüksekliği",
+        "description": "Not metnindeki satırlar arasındaki boşluğu ayarlayın.",
+        "customLabel": "Özel not satır yüksekliği"
+      },
+      "paragraphSpacing": {
+        "label": "Paragraf aralığı",
+        "description": "Paragraflar, listeler ve diğer bloklar arasındaki boşluğu ayarlayın.",
+        "options": {
+          "compact": "Sıkışık",
+          "normal": "Normal",
+          "relaxed": "Rahat",
+          "spacious": "Ferah"
+        }
+      },
+      "headings": {
+        "title": "Başlıklar ve not başlığı"
+      },
+      "headingTypeface": {
+        "label": "Başlık yazı stili",
+        "description": "Başlıklar ve not başlığı için bir yazı stili seçin.",
+        "options": {
+          "text": "Metinle aynı"
+        }
+      },
+      "headingFont": {
+        "label": "Başlık yazı tipi",
+        "description": "Başlıklar ve not başlığı için yüklü bir yazı tipi seçin. Başlık yazı stili ayarını kullanmak için boş bırakın."
+      },
+      "headingSize": {
+        "label": "Başlık boyutu",
+        "description": "Başlıkların metne göre ne kadar büyük olacağını ayarlayın.",
+        "options": {
+          "small": "Daha küçük",
+          "normal": "Normal",
+          "large": "Daha büyük"
+        }
+      },
+      "titleSize": {
+        "label": "Not başlığı boyutu",
+        "description": "Her notun en üstündeki başlığın boyutunu ayarlayın."
+      },
+      "layout": {
+        "title": "Düzen"
+      },
+      "width": {
+        "label": "Not genişliği",
+        "description": "Notların hangi genişlikte açılacağı. Bir notun içindeki genişlik menüsü de bu ayarı değiştirir.",
+        "options": {
+          "standard": "Standart",
+          "wide": "Geniş",
+          "full": "Tam genişlik"
+        }
+      },
+      "info": {
+        "label": "Not bilgisi",
+        "description": "Bir notun özelliklerinin ve bağlantılarının nerede gösterileceği. Yan panel bunları notun sayılarıyla ve ekleriyle birlikte Bilgi panelinde gösterir. Satır içi ise sayfada tutar.",
+        "options": {
+          "side": "Yan panel",
+          "inline": "Satır içi"
+        }
+      },
+      "taskBox": {
+        "label": "Görev onay kutuları",
+        "description": "Görev listelerindeki kutuların şekli.",
+        "options": {
+          "square": "Kare",
+          "round": "Yuvarlak"
+        }
+      },
+      "wordCount": {
+        "label": "Sözcük sayısını göster",
+        "description": "Notun sözcük sayısını araç çubuğunda gösterir."
+      },
+      "spellcheck": {
+        "label": "Notlarda yazımı denetle",
+        "description": "Not yazarken yanlış yazılan sözcüklerin altını çizer."
+      },
+      "replacements": {
+        "label": "Yazarken değiştir",
+        "description": "Siz yazarken -> gibi çiftleri → ile değiştirir. Kod ve matematik yazıldığı gibi kalır ve bir değiştirmenin hemen ardından Backspace tuşuna basmak metninizi geri getirir.",
+        "list": "Metin değiştirmeleri",
+        "type": "Yazılan",
+        "becomes": "Dönüşen",
+        "add": "Ekle",
+        "remove": "{{from}} çiftini kaldır",
+        "removeTooltip": "Kaldır",
+        "empty": "Henüz çift yok. Aşağıdan bir tane ekleyin.",
+        "full": "En fazla {{limit}} çiftiniz olabilir. Başka bir tane eklemek için birini kaldırın."
+      },
+      "keepUndo": {
+        "label": "Kapattıktan sonra geri almayı koru",
+        "description": "Bir notu kapattıktan veya uygulamadan çıktıktan sonra da geri alma çalışır. Geçmiş bu bilgisayarda kalır ve bunu kapatmak geçmişi siler."
+      },
+      "code": {
+        "title": "Kod"
+      },
+      "drawings": {
+        "title": "LaTeX çizimleri"
+      },
+      "tikzPreamble": {
+        "label": "TikZ önbölümü",
+        "description": "Her TikZ ve CircuiTikZ bloğunun önbölümünün başına eklenen, \\usetikzlibrary{positioning} gibi satırlar."
+      },
+      "codeFont": {
+        "label": "Kod yazı tipi",
+        "description": "Kod blokları ve satır içi kod için yüklü bir yazı tipi seçin."
+      },
+      "codeTheme": {
+        "label": "Kod bloğu renkleri",
+        "description": "Notlardaki kod blokları için söz dizimi renklerini seçin.",
+        "options": {
+          "editor": "Düzenleyiciyle aynı"
+        }
+      },
+      "colors": {
+        "title": "Renkler"
+      },
+      "accent": {
+        "label": "Not vurgu rengi",
+        "description": "Notlardaki bağlantılar, etiketler ve görev kutuları için kullanılır.",
+        "matchApp": "Uygulamayla aynı",
+        "customAriaLabel": "Özel bir not vurgu rengi seçin"
+      },
+      "callouts": {
+        "label": "Bilgi kutusu stili",
+        "description": "Notlardaki bilgi kutularının görünümü.",
+        "options": {
+          "tinted": "Renk tonlu",
+          "filled": "Dolgulu",
+          "outlined": "Çerçeveli",
+          "bar": "Yan çubuk"
+        }
+      },
+      "fieldStyle": {
+        "label": "Tarih ve alan çipleri",
+        "description": "Notlarda tarihlerin ve son tarih ya da öncelik gibi alanların görünümü.",
+        "options": {
+          "tint": "Renk tonlu",
+          "outline": "Çerçeveli",
+          "underline": "Altı çizili"
+        }
+      },
+      "remoteImages": {
+        "title": "Web'deki görseller",
+        "description": "Notlar ve asistan yanıtları bu sitelerdeki görselleri sormadan yükler.",
+        "empty": "Notlar ve asistan yanıtları, web'den bir görsel yüklemeden önce sorar. Her zaman izin verdiğiniz siteler burada görünür.",
+        "remove": "Kaldır: {{host}}"
+      }
+    }
+  },
+  "notesPreview": {
+    "label": "Bu ayarlarla bir not önizlemesi",
+    "title": "Saha notları",
+    "heading": "Sabah gözlemi",
+    "paragraph": "Saat dokuza kadar hafif yağmur, sonra kuzey sırtında açık gökyüzü. Öğlen toprak hâlâ nemliydi.",
+    "links": "Tüm adımlar için <note>Örnekleme yöntemi</note> notuna bakın veya <tag>#sahaçalışması</tag> etiketine göz atın.",
+    "highlight": "Fideler bir haftada iki kat uzadı.",
+    "calloutTitle": "Sonraki ziyaret",
+    "calloutBody": "Yeni örnek almadan önce toprak sensörlerini denetleyin.",
+    "taskDone": "Örnekleri etiketle",
+    "task": "Fotoğrafları yükle",
+    "taskLate": "Toprak raporunu gönder"
+  },
+  "highlight": {
+    "colors": {
+      "yellow": "Sarı",
+      "orange": "Turuncu",
+      "red": "Kırmızı",
+      "pink": "Pembe",
+      "purple": "Mor",
+      "blue": "Mavi",
+      "green": "Yeşil"
+    },
+    "remove": "Vurguyu kaldır"
+  },
+  "quickCapture": {
+    "title": "Hızlı not",
+    "untitled": "Adsız",
+    "placeholder": "Yazmaya başlayın…",
+    "field": "Not alınacak metin",
+    "characters_one": "{{count}} karakter",
+    "characters_other": "{{count}} karakter",
+    "failed": "Bu kaydedilemedi. Metniniz hâlâ burada, yeniden deneyebilirsiniz.",
+    "actions": {
+      "label": "İşlemler",
+      "saveNew": "Yeni not olarak kaydet",
+      "saveToday": "Bugünün notuna ekle",
+      "copy": "Markdown olarak kopyala",
+      "discard": "Taslağı at"
+    },
+    "openNotes": "Notlar'ı aç",
+    "newNote": "Yeni not",
+    "format": "Biçimlendirmeyi göster",
+    "closeFormat": "Biçimlendirmeyi gizle"
+  },
+  "starter": {
+    "blocksGallery": {
+      "title": "Blok galerisi",
+      "intro": "Bir notun içerebileceği tüm bloklar. Bir bloğu neyin çizdiğini görmek ve düzenlemek için bloğun üzerindeki {{source}} düğmesine tıklayın, yeni bir blok eklemek için de boş bir satıra {{slash}} yazın.",
+      "charts": "Grafikler",
+      "functionPlots": "Fonksiyon grafikleri",
+      "tables": "Tablolar",
+      "csvTable": "Bir csv bloğu sıralanabilir ve filtrelenebilir, ayrıca bir özet satırı vardır:",
+      "markdownTable": "Düz Markdown tabloları da çalışır:",
+      "math": "Matematik ve kimya",
+      "typst": "Typst",
+      "diagrams": "Diyagramlar",
+      "svg": "SVG",
+      "html": "HTML, {{run}} düğmesine basın",
+      "react": "React, {{run}} düğmesine basın",
+      "structures": "Kimyasal yapılar",
+      "molecule": "3B molekül",
+      "sequences": "Diziler",
+      "code": "Kod"
+    }
   }
 }

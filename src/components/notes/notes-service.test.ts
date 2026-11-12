@@ -1,8 +1,8 @@
 import type { ProjectInfo } from "@oleafly/backend-port";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { diskHash } from "@/lib/disk-hash";
-import { newNoteSource, readNoteFacts } from "./note-file";
+import { useNoteTabsStore } from "@/store/note-tabs";
+import { newNoteSource, noteColorFor } from "./note-file";
 import { NotebookTooLargeError } from "./notebook-block";
 import { NoteConflictError } from "./types";
 
@@ -12,8 +12,10 @@ const tauri = vi.hoisted(() => ({
   noteImportFile: vi.fn(),
   projectFileSizes: vi.fn(),
   readFileBase64: vi.fn(),
+  readNoteFile: vi.fn(),
   readFileContent: vi.fn(),
   recycleProject: vi.fn(),
+  revealProject: vi.fn(),
   renameProjectCmd: vi.fn(),
   setNoteRelatedProject: vi.fn(),
   unwatchProjectFolder: vi.fn(),
@@ -41,6 +43,8 @@ vi.mock("@/store/files", () => ({
 }));
 const log = vi.hoisted(() => ({ logError: vi.fn() }));
 vi.mock("@/lib/log", () => log);
+const layout = vi.hoisted(() => ({ closeSavedNoteView: vi.fn() }));
+vi.mock("./notes-layout", async (importOriginal) => ({ ...(await importOriginal<typeof import("./notes-layout")>()), ...layout }));
 vi.mock("@tauri-apps/api/event", () => ({
   listen: vi.fn((_name: string, handler: (event: { payload: unknown }) => void) => {
     events.handler = handler;
@@ -48,7 +52,7 @@ vi.mock("@tauri-apps/api/event", () => ({
   }),
 }));
 
-const { createNotesService, noteItems, noteWrittenHere, recordNoteWrite, relatedProjectChoices, resetNoteWritesForTest } =
+const { createNoteItems, createNotesService, noteWrittenHere, recordNoteWrite, relatedProjectChoices, resetNoteWritesForTest } =
   await import("./notes-service");
 
 function project(overrides: Partial<ProjectInfo>): ProjectInfo {
@@ -77,16 +81,11 @@ function service(projects = PROJECTS) {
   const deps = {
     projects: () => projects,
     refreshProjects: vi.fn(() => Promise.resolve()),
-    refreshHeads: vi.fn(),
     untitled: "Untitled",
     missing: "This note couldn't be opened.",
   };
   return { deps, notes: createNotesService(deps) };
 }
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -135,13 +134,27 @@ describe("texts the app wrote to a note", () => {
 });
 
 describe("notes from the library", () => {
-  it("lists only note projects, grouped under the project they belong to", () => {
-    const heads = new Map([
-      ["note-1", "---\ntitle: Masking\nicon: 🧪\nagent: Codex\nkind: note\nid: 1f2e3d4c-5b6a-4987-8654-3210fedcba98\n---\n\nRun 3 reached 64.1%.\n"],
-    ]);
-    expect(noteItems(PROJECTS, heads, "Notes")).toEqual([
+  it("lists only note projects, grouped under the project they belong to, with what the backend read from each", () => {
+    const facts = {
+      id: "note-1",
+      noteId: "1f2e3d4c-5b6a-4987-8654-3210fedcba98",
+      title: "Masking",
+      icon: "🧪",
+      color: null,
+      agent: "Codex",
+      tags: ["ml"],
+      aliases: ["MAE"],
+      properties: { status: "draft" },
+      preview: "Run 3 reached 64.1%.",
+      relatedProject: "paper",
+      updatedAt: 1,
+      knowledge: "k",
+      taskDigest: "t",
+    };
+    expect(createNoteItems()(PROJECTS, [facts], "Notes")).toEqual([
       {
         id: "note-1",
+        noteId: facts.noteId,
         title: "Masking",
         project: "SSL paper",
         relatedProjectId: "paper",
@@ -149,13 +162,13 @@ describe("notes from the library", () => {
         author: "agent",
         agent: "Codex",
         icon: "🧪",
-        color: readNoteFacts(heads.get("note-1") ?? "").color,
+        color: noteColorFor(facts.noteId),
         summary: "Run 3 reached 64.1%.",
         createdAt: 1000,
         preview: "Run 3 reached 64.1%.",
-        aliases: [],
-        tags: [],
-        properties: {},
+        aliases: ["MAE"],
+        tags: ["ml"],
+        properties: { status: "draft" },
       },
       {
         id: "plain",
@@ -165,19 +178,19 @@ describe("notes from the library", () => {
         author: "you",
         agent: undefined,
         icon: undefined,
-        color: readNoteFacts("").color,
+        color: noteColorFor("Plain note"),
         summary: "",
         createdAt: 1000,
-        preview: "",
-        aliases: [],
-        tags: [],
-        properties: {},
+        preview: undefined,
+        aliases: undefined,
+        tags: undefined,
+        properties: undefined,
       },
     ]);
   });
 
   it("files a note whose related project is gone under the ungrouped heading", () => {
-    const notes = noteItems([project({ id: "orphan", name: "Orphan", related_project: "deleted" })], new Map(), "Notes");
+    const notes = createNoteItems()([project({ id: "orphan", name: "Orphan", related_project: "deleted" })], [], "Notes");
     expect(notes).toHaveLength(1);
     expect(notes[0].project).toBe("Notes");
     expect(notes[0]).toHaveProperty("relatedProjectId", undefined);
@@ -198,7 +211,7 @@ describe("notes from the library", () => {
   it("saves through the files store when the file is still the version it loaded", async () => {
     tauri.readFileContent.mockResolvedValue("old\n");
     files.writeProjectFile.mockResolvedValue(undefined);
-    const { deps, notes } = service();
+    const { notes } = service();
     await expect(notes.saveNote("note-1", "new\n", diskHash("old\n"))).resolves.toEqual({
       text: "new\n",
       version: diskHash("new\n"),
@@ -208,7 +221,6 @@ describe("notes from the library", () => {
       crlf: false,
       expectedHash: diskHash("old\n"),
     });
-    expect(deps.refreshHeads).toHaveBeenCalled();
   });
 
   it("refuses to write over a change made on disk and hands back what is there", async () => {
@@ -218,16 +230,6 @@ describe("notes from the library", () => {
     expect(error).toBeInstanceOf(NoteConflictError);
     expect((error as NoteConflictError).disk).toEqual({ text: "from the agent\n", version: diskHash("from the agent\n") });
     expect(files.writeProjectFile).not.toHaveBeenCalled();
-  });
-
-  it("gives each new note its own id", async () => {
-    tauri.createNoteProject.mockResolvedValue("new-id");
-    const { notes } = service();
-    await notes.createNote?.();
-    await notes.createNote?.();
-    const ids = tauri.createNoteProject.mock.calls.map(([, source]) => /\nid: ([^\n]+)\n/u.exec(source as string)?.[1]);
-    for (const id of ids) expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
-    expect(ids[0]).not.toBe(ids[1]);
   });
 
   it("ignores line endings when it checks the version and keeps the file's CRLF", async () => {
@@ -264,7 +266,7 @@ describe("notes from the library", () => {
     tauri.listFiles.mockResolvedValue([{ path: "refs.bib", is_dir: false }]);
     tauri.readFileContent.mockResolvedValue("@misc{he2022, title = {MAE}}");
     const { notes } = service();
-    await expect(notes.projectCitations?.("paper")).resolves.toEqual([{ key: "he2022", label: "MAE" }]);
+    await expect(notes.projectCitations?.("paper")).resolves.toEqual([{ key: "he2022", label: "MAE", fields: { title: "MAE" } }]);
   });
 
   it("passes other save failures through", async () => {
@@ -293,21 +295,26 @@ describe("notes from the library", () => {
     expect(deps.refreshProjects).toHaveBeenCalledTimes(2);
   });
 
-  it("moves a note to the Recycle Bin and reloads the library and the note heads", async () => {
+  it("moves a note to the Recycle Bin, closes its tabs and reloads the library", async () => {
     tauri.recycleProject.mockResolvedValue(undefined);
+    useNoteTabsStore.getState().open("paper", "plain");
     const { deps, notes } = service();
     await notes.deleteNote?.("plain");
     expect(tauri.recycleProject).toHaveBeenCalledExactlyOnceWith("plain");
+    expect(useNoteTabsStore.getState().tabs).toEqual([]);
+    expect(layout.closeSavedNoteView).toHaveBeenCalledExactlyOnceWith("plain");
     expect(deps.refreshProjects).toHaveBeenCalledOnce();
-    expect(deps.refreshHeads).toHaveBeenCalledOnce();
   });
 
-  it("reloads nothing when a note can't be moved to the Recycle Bin", async () => {
+  it("reloads nothing and keeps the tabs when a note can't be moved to the Recycle Bin", async () => {
     tauri.recycleProject.mockRejectedValue(new Error("not recyclable"));
+    useNoteTabsStore.getState().open("paper", "plain");
     const { deps, notes } = service();
     await expect(notes.deleteNote?.("plain")).rejects.toThrow("not recyclable");
+    expect(useNoteTabsStore.getState().tabs.map((tab) => tab.id)).toEqual(["plain"]);
+    expect(layout.closeSavedNoteView).not.toHaveBeenCalled();
     expect(deps.refreshProjects).not.toHaveBeenCalled();
-    expect(deps.refreshHeads).not.toHaveBeenCalled();
+    useNoteTabsStore.getState().close("plain");
   });
 
   it("reports changes to the note file and nothing else, then stops watching", async () => {
@@ -507,7 +514,37 @@ describe("note artifacts and related projects", () => {
     assets.loadAssetThumbnail.mockResolvedValue("data:image/png;base64,AAAA");
     const { notes } = service();
     await expect(notes.resolveAsset?.("note-1", "assets/loss.png")).resolves.toBe("data:image/png;base64,AAAA");
-    expect(assets.loadAssetThumbnail).toHaveBeenCalledWith("note-1", "assets/loss.png");
+    expect(assets.loadAssetThumbnail).toHaveBeenCalledWith("note-1", "assets/loss.png", 1);
+  });
+
+  it("draws the page a PDF link asks for, and gives audio and video as a playable address only when asked", async () => {
+    assets.loadAssetThumbnail.mockResolvedValue("data:image/png;base64,PAGE");
+    const { notes } = service();
+    await expect(notes.resolveAsset?.("note-1", "assets/paper.pdf#page=3")).resolves.toBe("data:image/png;base64,PAGE");
+    expect(assets.loadAssetThumbnail).toHaveBeenLastCalledWith("note-1", "assets/paper.pdf", 3);
+    await notes.resolveAsset?.("note-1", "assets/paper.pdf#page=zero");
+    expect(assets.loadAssetThumbnail).toHaveBeenLastCalledWith("note-1", "assets/paper.pdf", 1);
+    tauri.projectFileSizes.mockResolvedValueOnce({ "assets/talk.mp4": 20 * 1024 * 1024 });
+    tauri.readNoteFile.mockResolvedValueOnce(new Uint8Array([0, 0, 0, 24]).buffer);
+    const created = vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:talk");
+    await expect(notes.resolveAsset?.("note-1", "assets/talk.mp4")).resolves.toBe("blob:talk");
+    expect(tauri.readNoteFile).toHaveBeenCalledWith("note-1", "assets/talk.mp4");
+    expect((created.mock.calls[0][0] as Blob).type).toBe("video/mp4");
+    expect((created.mock.calls[0][0] as Blob).size).toBe(4);
+    tauri.projectFileSizes.mockResolvedValueOnce({});
+    await expect(notes.resolveAsset?.("note-1", "assets/gone.mp3")).resolves.toBeNull();
+    tauri.projectFileSizes.mockResolvedValueOnce({ "assets/huge.wav": 64 * 1024 * 1024 + 1 });
+    await expect(notes.resolveAsset?.("note-1", "assets/huge.wav")).rejects.toThrow("larger than 64 MiB");
+    expect(tauri.readNoteFile).toHaveBeenCalledTimes(1);
+    created.mockRestore();
+  });
+
+  it("shows an attached file in its folder, without the PDF page it links to", async () => {
+    tauri.revealProject.mockResolvedValue(undefined);
+    const { notes } = service();
+    await notes.revealAsset?.("note-1", "assets/paper.pdf#page=3");
+    expect(tauri.revealProject).toHaveBeenCalledWith("note-1", "assets/paper.pdf");
+    expect(notes).not.toHaveProperty("openAsset");
   });
 
   it("reads a notebook in the note's folder whole, as a data address", async () => {
@@ -531,22 +568,17 @@ describe("note artifacts and related projects", () => {
     expect(tauri.readFileBase64).not.toHaveBeenCalled();
   });
 
-  it("copies a notebook picked in the file dialog into the note", async () => {
-    dialog.pickOpenPath.mockResolvedValue("/Users/me/analysis.ipynb");
-    tauri.noteImportFile.mockResolvedValue({ path: "assets/analysis-1a2b3c4d.ipynb", reused: false });
+  it("copies a file picked in the file dialog into the note, and nothing when the dialog is closed", async () => {
+    const filter = { title: "Attach file", name: "Tables", extensions: ["csv", "xlsx"] };
+    dialog.pickOpenPath.mockResolvedValue("/Users/me/panel.xlsx");
+    tauri.noteImportFile.mockResolvedValue({ path: "assets/panel-1a2b3c4d.xlsx", reused: false });
     const { notes } = service();
-    await expect(notes.importNotebook?.("note-1")).resolves.toBe("assets/analysis-1a2b3c4d.ipynb");
-    expect(dialog.pickOpenPath).toHaveBeenCalledWith({
-      title: "Insert a notebook",
-      filters: [{ name: "Jupyter notebooks", extensions: ["ipynb"] }],
-    });
-    expect(tauri.noteImportFile).toHaveBeenCalledWith("note-1", "/Users/me/analysis.ipynb");
-  });
-
-  it("copies nothing when the file dialog is closed", async () => {
+    await expect(notes.attachFile?.("note-1", filter)).resolves.toBe("assets/panel-1a2b3c4d.xlsx");
+    expect(dialog.pickOpenPath).toHaveBeenCalledWith({ title: "Attach file", filters: [{ name: "Tables", extensions: ["csv", "xlsx"] }] });
+    expect(tauri.noteImportFile).toHaveBeenCalledWith("note-1", "/Users/me/panel.xlsx");
+    tauri.noteImportFile.mockClear();
     dialog.pickOpenPath.mockResolvedValue(null);
-    const { notes } = service();
-    await expect(notes.importNotebook?.("note-1")).resolves.toBeNull();
+    await expect(notes.attachFile?.("note-1", filter)).resolves.toBeNull();
     expect(tauri.noteImportFile).not.toHaveBeenCalled();
   });
 
@@ -563,9 +595,6 @@ describe("note artifacts and related projects", () => {
       { id: "plain", name: "Plain" },
       { id: "old", name: "Old paper" },
     ]);
-  });
-
-  it("offers nothing when the library holds only notes", () => {
     expect(relatedProjectChoices([project({})])).toEqual([]);
   });
 });

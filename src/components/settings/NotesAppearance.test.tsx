@@ -2,8 +2,10 @@
 
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { loadNamespace } from "@/i18n";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
+import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 
 vi.mock("@tauri-apps/api/core", () => ({ isTauri: () => false, invoke: vi.fn(async () => undefined) }));
@@ -17,12 +19,20 @@ import {
   remoteImageAllowed,
   resetRemoteImagesForTest,
   trustRemoteImageHost,
-} from "@/components/notes/note-remote-images";
-import { NOTES_APPEARANCE_DEFAULTS, NOTES_TYPEFACE_STACKS } from "@/lib/notes-appearance";
+} from "@/lib/remote-image";
+import {
+  NOTES_APPEARANCE_DEFAULTS,
+  NOTES_TEXT_REPLACEMENTS,
+  TEXT_REPLACEMENT_LIMITS,
+} from "@/lib/notes-appearance";
+import {
+  NOTES_TYPEFACE_STACKS,
+} from "@/lib/notes-appearance-style";
 import { ACCENTS, useSettingsStore } from "@/store/settings";
 import { NotesAppearanceTab } from "./NotesAppearance";
+import { SettingsWidthContext, WIDE_SETTINGS_QUERY } from "./settings-width";
 
-const notes = enSettings.appearance.notes;
+const notes = enNotes.appearance.notes;
 const reset = (setting: string) => notes.resetAriaLabel.replace("{{setting}}", setting);
 
 function previewRoot() {
@@ -38,6 +48,10 @@ async function pick(user: ReturnType<typeof userEvent.setup>, trigger: string, o
   await user.click(await screen.findByRole("option", { name: option }));
 }
 
+beforeAll(async () => {
+  await loadNamespace("notes");
+});
+
 beforeEach(() => {
   localStorage.clear();
   Element.prototype.hasPointerCapture = vi.fn(() => false);
@@ -50,11 +64,10 @@ beforeEach(() => {
 describe("Notes appearance tab", () => {
   it("shows a labelled preview that starts with the plain Notes look", () => {
     render(<NotesAppearanceTab />);
-    expect(screen.getByRole("figure", { name: enSettings.notesPreview.label })).toBeInTheDocument();
+    expect(screen.getByRole("figure", { name: enNotes.notesPreview.label })).toBeInTheDocument();
     expect(variable("--notes-text-size")).toBe("0.9375rem");
     expect(variable("--notes-title-size")).toBe("1.5rem");
     expect(previewRoot()).not.toHaveAttribute("spellcheck");
-    expect(screen.queryByTestId("settings-notes-reset-all")).toBeNull();
     expect(screen.queryAllByRole("button", { name: /^Reset .* to default$/ })).toEqual([]);
     for (const title of [notes.text.title, notes.headings.title, notes.layout.title, notes.code.title, notes.colors.title]) {
       expect(screen.getByRole("region", { name: title })).toBeInTheDocument();
@@ -153,6 +166,38 @@ describe("Notes appearance tab", () => {
     expect(screen.getByTestId("settings-notes-width-wide")).toHaveAttribute("aria-pressed", "true");
   });
 
+  it("puts note info in a side panel by default, or inline on the page, and resets it", async () => {
+    const user = userEvent.setup();
+    render(<NotesAppearanceTab />);
+    const row = within(screen.getByRole("region", { name: notes.layout.title })).getByTestId("settings-row-notes-info");
+    expect(row).toHaveTextContent(notes.info.label);
+    expect(row).toHaveTextContent(notes.info.description);
+    expect(screen.getByTestId("settings-row-notes-info-trigger")).toHaveTextContent(notes.info.options.side);
+    await pick(user, "settings-row-notes-info-trigger", notes.info.options.inline);
+    expect(useSettingsStore.getState().notesInfo).toBe("inline");
+    expect(localStorage.getItem("oleafly.notes.info")).toBe("inline");
+    await user.click(screen.getByRole("button", { name: reset(notes.info.label) }));
+    expect(useSettingsStore.getState().notesInfo).toBe("side");
+  });
+
+  it("draws task boxes round or square and resets them from their row", async () => {
+    const user = userEvent.setup();
+    render(<NotesAppearanceTab />);
+    const row = screen.getByRole("region", { name: notes.layout.title });
+    const round = within(row).getByRole("button", { name: notes.taskBox.options.round });
+    expect(round).toHaveAttribute("aria-pressed", "true");
+    expect(previewRoot()).not.toHaveAttribute("data-notes-task-box");
+
+    await user.click(within(row).getByRole("button", { name: notes.taskBox.options.square }));
+    expect(useSettingsStore.getState().notesTaskBox).toBe("square");
+    expect(previewRoot()).toHaveAttribute("data-notes-task-box", "square");
+
+    await user.click(screen.getByRole("button", { name: reset(notes.taskBox.label) }));
+    expect(useSettingsStore.getState().notesTaskBox).toBe("round");
+    expect(previewRoot()).not.toHaveAttribute("data-notes-task-box");
+    expect(round).toHaveFocus();
+  });
+
   it("turns the word count and spell checking off", async () => {
     const user = userEvent.setup();
     render(<NotesAppearanceTab />);
@@ -160,6 +205,20 @@ describe("Notes appearance tab", () => {
     await user.click(screen.getByRole("switch", { name: notes.spellcheck.label }));
     expect(useSettingsStore.getState()).toMatchObject({ notesShowWordCount: false, notesSpellcheck: false });
     expect(previewRoot()).toHaveAttribute("spellcheck", "false");
+  });
+
+  it("saves the TikZ preamble once typing settles and resets it", async () => {
+    const user = userEvent.setup();
+    render(<NotesAppearanceTab />);
+    const field = screen.getByLabelText(notes.tikzPreamble.label);
+    expect(field).toHaveAttribute("placeholder", "\\usetikzlibrary{arrows.meta, positioning}");
+    fireEvent.change(field, { target: { value: "\\usetikzlibrary{calc}" } });
+    expect(field).toHaveValue("\\usetikzlibrary{calc}");
+    await waitFor(() => expect(useSettingsStore.getState().notesTikzPreamble).toBe("\\usetikzlibrary{calc}"));
+    expect(localStorage.getItem("oleafly.notes.tikzPreamble")).toBe("\\usetikzlibrary{calc}");
+    await user.click(screen.getByRole("button", { name: reset(notes.tikzPreamble.label) }));
+    expect(useSettingsStore.getState().notesTikzPreamble).toBe("");
+    expect(field).toHaveValue("");
   });
 
   it("follows the app accent by default and takes a swatch or a custom color", async () => {
@@ -189,15 +248,10 @@ describe("Notes appearance tab", () => {
     expect(previewRoot()).not.toHaveAttribute("data-notes-accent");
   });
 
-  it("picks highlight and callout styles that preview with the real Notes styles", async () => {
+  it("picks a callout style that previews with the real Notes styles, and has no highlight colour setting", async () => {
     const user = userEvent.setup();
     render(<NotesAppearanceTab />);
-    const green = screen.getByTestId("settings-notes-highlight-green");
-    expect(green).toHaveAttribute("data-notes-highlight", "green");
-    expect(green.querySelector("mark.note-highlight")).not.toBeNull();
-    await user.click(green);
-    expect(previewRoot()).toHaveAttribute("data-notes-highlight", "green");
-
+    expect(screen.queryByTestId("settings-row-notes-highlight")).not.toBeInTheDocument();
     const bar = screen.getByTestId("settings-notes-callout-bar");
     expect(bar.querySelector('[data-notes-callout="bar"] .note-callout')).not.toBeNull();
     await user.click(bar);
@@ -205,23 +259,98 @@ describe("Notes appearance tab", () => {
     expect(previewRoot()).toHaveAttribute("data-notes-callout", "bar");
     await user.click(screen.getByRole("button", { name: reset(notes.callouts.label) }));
     expect(previewRoot()).not.toHaveAttribute("data-notes-callout");
-    await user.click(screen.getByRole("button", { name: reset(notes.highlight.label) }));
-    expect(useSettingsStore.getState().notesHighlightColor).toBe("yellow");
   });
 
-  it("resets a font, and every Notes setting at once", async () => {
+  it("styles date and field chips as a tint, an outline or an underline, previewed with real chips", async () => {
     const user = userEvent.setup();
-    useSettingsStore.setState({ notesCodeFontFamily: "Fira Code", notesFontSize: 20, notesWidth: "full" });
     render(<NotesAppearanceTab />);
+    const row = screen.getByTestId("settings-row-notes-field-style");
+    expect(within(row).getByText(notes.fieldStyle.label)).toBeInTheDocument();
+    const tint = within(row).getByRole("button", { name: notes.fieldStyle.options.tint });
+    expect(tint).toHaveAttribute("aria-pressed", "true");
+    for (const style of ["tint", "outline", "underline"] as const) {
+      const sample = screen.getByTestId(`settings-notes-field-style-${style}`).querySelector(`[data-notes-field-style="${style}"]`);
+      expect(sample?.querySelectorAll('.note-field[data-kind="date"]')).toHaveLength(2);
+      expect(sample?.querySelector('.note-field[data-field-key="due"][data-when="past"]')).not.toBeNull();
+    }
+    expect(previewRoot()).not.toHaveAttribute("data-notes-field-style");
+
+    await user.click(within(row).getByRole("button", { name: notes.fieldStyle.options.underline }));
+    expect(useSettingsStore.getState().notesFieldStyle).toBe("underline");
+    expect(localStorage.getItem("oleafly.notes.fieldStyle")).toBe("underline");
+    expect(previewRoot()).toHaveAttribute("data-notes-field-style", "underline");
+    await user.click(within(row).getByRole("button", { name: notes.fieldStyle.options.outline }));
+    expect(previewRoot()).toHaveAttribute("data-notes-field-style", "outline");
+
+    await user.click(screen.getByRole("button", { name: reset(notes.fieldStyle.label) }));
+    expect(useSettingsStore.getState().notesFieldStyle).toBe("tint");
+    expect(previewRoot()).not.toHaveAttribute("data-notes-field-style");
+    expect(tint).toHaveFocus();
+  });
+
+  it("swaps text as you type from pairs that can be added, removed and reset", async () => {
+    const user = userEvent.setup();
+    render(<NotesAppearanceTab />);
+    const copy = notes.replacements;
+    const list = () => screen.getByRole("list", { name: copy.list });
+    const type = () => screen.getByRole("textbox", { name: copy.type });
+    expect(within(list()).getAllByRole("listitem")).toHaveLength(Object.keys(NOTES_TEXT_REPLACEMENTS).length);
+    expect(screen.getByRole("button", { name: copy.add })).toBeDisabled();
+    await user.type(type(), "(c)");
+    expect(screen.getByRole("button", { name: copy.add })).toBeDisabled();
+    await user.type(screen.getByRole("textbox", { name: copy.becomes }), "©");
+    await user.click(screen.getByRole("button", { name: copy.add }));
+    expect(useSettingsStore.getState().notesTextReplacements["(c)"]).toBe("©");
+    expect(type()).toHaveValue("");
+    expect(type()).toHaveFocus();
+    await user.click(screen.getByRole("button", { name: copy.remove.replace("{{from}}", "->") }));
+    expect(useSettingsStore.getState().notesTextReplacements).not.toHaveProperty("->");
+    expect(document.activeElement).toHaveAccessibleName(copy.remove.replace("{{from}}", "<-"));
+    await user.click(screen.getByRole("button", { name: reset(copy.list) }));
+    expect(useSettingsStore.getState().notesTextReplacements).toEqual(NOTES_TEXT_REPLACEMENTS);
+    expect(screen.queryByTestId("settings-notes-reset-notesTextReplacements")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("switch", { name: copy.label }));
+    expect(useSettingsStore.getState().notesTextReplace).toBe(false);
+    expect(screen.queryByTestId("settings-notes-replacements")).not.toBeInTheDocument();
+  });
+
+  it("hides the reset for pairs saved with the built-in list", () => {
+    useSettingsStore.getState().setNotesAppearance("notesTextReplacements", { ...NOTES_TEXT_REPLACEMENTS });
+    render(<NotesAppearanceTab />);
+    expect(screen.queryByTestId("settings-notes-reset-notesTextReplacements")).not.toBeInTheDocument();
+  });
+
+  it("stops adding new pairs at the limit and says why, but still changes an existing one", async () => {
+    const user = userEvent.setup();
+    const full = Object.fromEntries(Array.from({ length: TEXT_REPLACEMENT_LIMITS.count }, (_, index) => [`t${index}`, `r${index}`]));
+    useSettingsStore.getState().setNotesAppearance("notesTextReplacements", full);
+    render(<NotesAppearanceTab />);
+    const copy = notes.replacements;
+    const add = () => screen.getByRole("button", { name: copy.add });
+    const limit = copy.full.replace("{{limit}}", String(TEXT_REPLACEMENT_LIMITS.count));
+    expect(screen.getByText(limit)).toBeInTheDocument();
+    await user.type(screen.getByRole("textbox", { name: copy.type }), "new");
+    await user.type(screen.getByRole("textbox", { name: copy.becomes }), "x");
+    expect(add()).toBeDisabled();
+    expect(add()).toHaveAccessibleDescription(limit);
+    await user.clear(screen.getByRole("textbox", { name: copy.type }));
+    await user.type(screen.getByRole("textbox", { name: copy.type }), "t1");
+    expect(add()).toBeEnabled();
+    await user.click(add());
+    expect(useSettingsStore.getState().notesTextReplacements.t1).toBe("x");
+    expect(Object.keys(useSettingsStore.getState().notesTextReplacements)).toHaveLength(TEXT_REPLACEMENT_LIMITS.count);
+  });
+
+  it("resets a font from its own row, and has no reset above the preview", async () => {
+    const user = userEvent.setup();
+    useSettingsStore.setState({ notesCodeFontFamily: "Fira Code", notesFontSize: 20 });
+    render(<NotesAppearanceTab />);
+    const preview = screen.getByRole("figure", { name: enNotes.notesPreview.label });
+    expect(within(preview).queryByRole("button")).toBeNull();
     const codeFont = screen.getByTestId("settings-row-notes-code-font");
     expect(variable("--notes-code-font")).toBe('"Fira Code", var(--font-mono)');
     await user.click(within(codeFont).getByRole("button", { name: reset(notes.codeFont.label) }));
-    expect(useSettingsStore.getState().notesCodeFontFamily).toBe("");
-
-    await user.click(screen.getByTestId("settings-notes-reset-all"));
-    expect(useSettingsStore.getState()).toMatchObject(NOTES_APPEARANCE_DEFAULTS);
-    expect(screen.queryByTestId("settings-notes-reset-all")).toBeNull();
-    expect(variable("--notes-text-size")).toBe("0.9375rem");
+    expect(useSettingsStore.getState()).toMatchObject({ notesCodeFontFamily: "", notesFontSize: 20 });
   });
 
   it("keeps focus in the row when a reset button goes away", async () => {
@@ -237,15 +366,6 @@ describe("Notes appearance tab", () => {
 
     await user.click(screen.getByRole("button", { name: reset(notes.accent.label) }));
     expect(screen.getByTestId("settings-notes-accent-app")).toHaveFocus();
-  });
-
-  it("puts focus on the first setting after Reset all goes away", async () => {
-    const user = userEvent.setup();
-    useSettingsStore.setState({ notesTypeface: "serif" });
-    render(<NotesAppearanceTab />);
-    await user.click(screen.getByTestId("settings-notes-reset-all"));
-    expect(screen.queryByTestId("settings-notes-reset-all")).toBeNull();
-    expect(screen.getByTestId(`settings-notes-typeface-${NOTES_APPEARANCE_DEFAULTS.notesTypeface}`)).toHaveFocus();
   });
 
   it("lists the sites that always load images and removes them, keeping focus in the list", async () => {
@@ -280,11 +400,72 @@ describe("Notes appearance tab", () => {
     expect(within(region).getByText("figures.example.org")).toBeInTheDocument();
     expect(within(region).queryByText(notes.remoteImages.empty)).toBeNull();
   });
+});
 
-  it("marks a focused accent swatch with a border colour, not by growing it", () => {
-    render(<NotesAppearanceTab />);
-    const swatch = screen.getByTestId(`settings-notes-accent-${ACCENTS[1].id}`);
-    expect(swatch).toHaveClass("focus-visible:border-ring");
-    expect(swatch.className).not.toMatch(/focus-visible:scale/u);
+function stubWindowWidth(roomy: boolean) {
+  const listeners = new Set<() => void>();
+  const list = {
+    matches: roomy,
+    addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
+    removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
+  };
+  vi.stubGlobal("matchMedia", (query: string) =>
+    query === WIDE_SETTINGS_QUERY ? list : { matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() },
+  );
+  return (next: boolean) => {
+    list.matches = next;
+    act(() => {
+      for (const listener of listeners) listener();
+    });
+  };
+}
+
+function renderInSettings() {
+  const setWide = vi.fn();
+  const view = render(
+    <SettingsWidthContext.Provider value={setWide}>
+      <NotesAppearanceTab />
+    </SettingsWidthContext.Provider>,
+  );
+  return { setWide, view };
+}
+
+describe("Notes appearance layout", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("puts the preview in a column beside the options and widens Settings while the tab is open", () => {
+    stubWindowWidth(true);
+    const { setWide, view } = renderInSettings();
+    const tab = screen.getByTestId("settings-appearance-notes");
+    expect(tab).toHaveAttribute("data-layout", "beside");
+    expect(tab).toHaveClass("grid", "grid-cols-[minmax(0,1fr)_20rem]", "items-start");
+    expect(screen.getByTestId("settings-notes-preview")).toHaveClass("sticky", "top-0", "self-start", "col-start-2", "row-start-1");
+    expect(screen.getByTestId("settings-appearance-notes-options")).toHaveClass("col-start-1", "row-start-1");
+    expect(setWide).toHaveBeenLastCalledWith(true);
+
+    view.unmount();
+    expect(setWide).toHaveBeenLastCalledWith(false);
+  });
+
+  it("keeps one column with the preview on top in a narrow window and follows the window as it changes", () => {
+    const resize = stubWindowWidth(false);
+    const { setWide } = renderInSettings();
+    const tab = screen.getByTestId("settings-appearance-notes");
+    const preview = screen.getByTestId("settings-notes-preview");
+    expect(tab).toHaveAttribute("data-layout", "stacked");
+    expect(tab).not.toHaveClass("grid");
+    expect(preview).toHaveClass("-top-5");
+    expect(preview.compareDocumentPosition(screen.getByTestId("settings-appearance-notes-options"))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(setWide).not.toHaveBeenCalled();
+
+    resize(true);
+    expect(tab).toHaveAttribute("data-layout", "beside");
+    expect(setWide).toHaveBeenLastCalledWith(true);
+
+    resize(false);
+    expect(tab).toHaveAttribute("data-layout", "stacked");
+    expect(setWide).toHaveBeenLastCalledWith(false);
   });
 });

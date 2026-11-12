@@ -1,7 +1,10 @@
-import { ArrowDown, ArrowUp, Columns3 } from "lucide-react";
+import { Columns3 } from "lucide-react";
 import { memo, type RefObject, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { CheckBadge } from "@/components/ui/check-badge";
+import { ColorDot } from "@/components/ui/color-swatch";
 import { ContextMenu, ContextMenuContent, ContextMenuTrigger } from "@/components/ui/context-menu";
 import {
   DropdownMenu,
@@ -10,24 +13,29 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  nextSort,
+  SortableTableHead,
+  type SortDirection,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  TableSpacerRow,
+} from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ROW_WINDOW_ITEM, useRowWindow } from "@/hooks/use-row-window";
 import { compareText, formatRelativeTimeFrom } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { isSelectionModifier } from "@/store/library-selection";
+import { DEFAULT_TABLE_SORT, type TableSort, useNotesPrefsStore } from "@/store/notes-prefs";
 import { RowCornerButtons, useNoteMenus } from "./NoteCard";
-import { CONTEXT_MENU_KIT, ConflictMark, hasNoteMenu, type NoteActions, NoteRenameInput } from "./note-actions";
+import { CONTEXT_MENU_KIT, ConflictMark, hasNoteMenu, type NoteActions, NoteRenameInput, SuggestionsMark } from "./note-actions";
 import { NoteChip } from "./note-icons";
-import {
-  DEFAULT_TABLE_SORT,
-  saveTableColumns,
-  saveTableSort,
-  type TableSort,
-  useTableColumns,
-  useTableSort,
-} from "./note-home-prefs";
 import { LIST_KEYS, MANAGED_KEYS } from "./note-properties";
-import { ProjectDot } from "./project-color";
+import { tagTone } from "./note-tags";
 import type { NoteItem } from "./types";
 import { filterByTag } from "./vault-store";
 
@@ -51,7 +59,8 @@ export function formatValue(value: unknown, yes: string, no: string): string {
   if (Array.isArray(value)) return value.map((item) => formatValue(item, yes, no)).filter(Boolean).join(", ");
   if (typeof value === "boolean") return value ? yes : no;
   if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
+  if (typeof value === "string") return value;
+  return typeof value === "number" || typeof value === "bigint" ? String(value) : "";
 }
 
 function sortValue(note: NoteItem, key: string, tagsOf: (note: NoteItem) => readonly string[]): CellValue {
@@ -83,11 +92,6 @@ export function sortTableRows(
     return (sort.descending ? -order : order) || compareText(left.note.title, right.note.title);
   });
   return keyed.map(({ note }) => note);
-}
-
-export function nextSort(current: TableSort, key: string): TableSort {
-  if (current.key === key) return { key, descending: !current.descending };
-  return { key, descending: key === "edited" };
 }
 
 interface NotesTableProps {
@@ -123,7 +127,7 @@ interface TableRowProps {
 
 const NO_ACTIONS: NoteActions = {};
 
-const TableRow = memo(function TableRow({
+const NoteTableRow = memo(function NoteTableRow({
   note,
   index,
   icon,
@@ -144,14 +148,14 @@ const TableRow = memo(function TableRow({
   const menus = useNoteMenus(note, actions);
   const withMenu = hasNoteMenu(actions);
   const row = (
-    <tr
+    <TableRow
       {...{ [ROW_WINDOW_ITEM]: "" }}
       aria-rowindex={index}
       data-note-table-row={note.id}
       data-menu-open={menus.open ? "true" : "false"}
-      className="group/row border-b border-foreground/[0.045] hover:bg-foreground/[0.025] data-[menu-open=true]:bg-foreground/[0.025]"
+      className="group/row data-[menu-open=true]:bg-muted/40"
     >
-      <td className="max-w-0 py-1.5 pl-1 pr-3">
+      <TableCell className="max-w-0 py-1.5 pl-1">
         {menus.renaming ? (
           <span className="flex min-w-0 items-center gap-2 px-1 py-0.5">
             <NoteChip icon={icon} color={note.color} className="size-5 rounded" />
@@ -164,48 +168,48 @@ const TableRow = memo(function TableRow({
               if (isSelectionModifier(event) && onOpenNoteInNewTab) onOpenNoteInNewTab(note.id);
               else onOpenNote(note.id);
             }}
-            className="flex w-full min-w-0 items-center gap-2 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-foreground/[0.045] focus-visible:bg-foreground/[0.06] motion-reduce:transition-none"
+            className="flex w-full min-w-0 items-center gap-2 rounded-md px-1 py-0.5 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent motion-reduce:transition-none"
           >
             <NoteChip icon={icon} color={note.color} className="size-5 rounded" />
             <span className="truncate font-medium">{note.title}</span>
             {actions.conflict && <ConflictMark />}
+            <SuggestionsMark noteId={note.id} />
           </button>
         )}
-      </td>
-      <td className="px-3 py-1.5">
+      </TableCell>
+      <TableCell className="py-1.5">
         <span className="flex max-w-[16rem] gap-1 overflow-hidden">
-          {tags.map((tag) => (
-            <button
-              key={tag}
-              type="button"
-              onClick={() => onTag(tag)}
-              aria-label={t(($) => $.notes.vault.tags.filter, { tag })}
-              className="shrink-0 whitespace-nowrap rounded-full bg-foreground/[0.06] px-1.5 text-[0.6875rem]/5 text-muted-foreground transition-colors hover:bg-foreground/[0.1] hover:text-foreground focus-visible:bg-foreground/[0.1] motion-reduce:transition-none"
-            >
-              #{tag}
-            </button>
-          ))}
+          {tags.map((tag) => {
+            const tone = tagTone(tag);
+            return (
+              <Badge key={tag} asChild variant="muted" size="sm" className={cn(tone.tint, tone.text, tone.hover)}>
+                <button type="button" onClick={() => onTag(tag)} aria-label={t(($) => $.notes.vault.tags.filter, { tag })}>
+                  #{tag}
+                </button>
+              </Badge>
+            );
+          })}
         </span>
-      </td>
-      <td className="whitespace-nowrap px-3 py-1.5 text-muted-foreground">{status}</td>
-      <td className="px-3 py-1.5 text-muted-foreground">
-        {note.relatedProjectId && (
+      </TableCell>
+      <TableCell className="whitespace-nowrap py-1.5 text-muted-foreground">{status}</TableCell>
+      <TableCell className="py-1.5 text-muted-foreground">
+        {note.relatedProjectId && projectColor && (
           <span className="flex min-w-0 items-center gap-1.5">
-            <ProjectDot color={projectColor} />
+            <ColorDot color={projectColor} size="xs" />
             <span className="truncate">{note.project}</span>
           </span>
         )}
-      </td>
-      <td className="whitespace-nowrap px-3 py-1.5 text-muted-foreground">{edited}</td>
+      </TableCell>
+      <TableCell className="whitespace-nowrap py-1.5 text-muted-foreground">{edited}</TableCell>
       {extra.map((key) => (
-        <td key={key} className="max-w-[16rem] truncate px-3 py-1.5 text-muted-foreground">
+        <TableCell key={key} className="max-w-[16rem] truncate py-1.5 text-muted-foreground">
           {formatValue(note.properties?.[key], yes, no)}
-        </td>
+        </TableCell>
       ))}
-      <td className="relative">
+      <TableCell className="relative p-0">
         {withMenu && <RowCornerButtons favorite={actions.favorite} menus={menus} className="right-1 top-1/2 -translate-y-1/2" />}
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
   if (!withMenu) return row;
   return (
@@ -220,42 +224,7 @@ const TableRow = memo(function TableRow({
   );
 });
 
-function SpacerRow({ height, span }: Readonly<{ height: number; span: number }>) {
-  return (
-    <tr aria-hidden>
-      <td colSpan={span} className="p-0" style={{ height }} />
-    </tr>
-  );
-}
-
-function HeaderCell({
-  label,
-  column,
-  sort,
-  className,
-}: Readonly<{ label: string; column: string; sort: TableSort; className?: string }>) {
-  const { t } = useTranslation(["notes"]);
-  const active = sort.key === column;
-  const Arrow = sort.descending ? ArrowDown : ArrowUp;
-  let ariaSort: "ascending" | "descending" | "none" = "none";
-  if (active) ariaSort = sort.descending ? "descending" : "ascending";
-  return (
-    <th scope="col" aria-sort={ariaSort} className={cn("h-[2.0625rem] px-3 text-left font-normal", className)}>
-      <button
-        type="button"
-        aria-label={t(($) => $.notes.vault.table.sortBy, { name: label })}
-        onClick={() => saveTableSort(nextSort(sort, column))}
-        className={cn(
-          "flex min-w-0 max-w-full items-center gap-1 rounded transition-colors hover:text-foreground focus-visible:text-foreground motion-reduce:transition-none",
-          active && "font-semibold text-foreground",
-        )}
-      >
-        <span className="truncate">{label}</span>
-        {active && <Arrow aria-hidden className="size-3 shrink-0" />}
-      </button>
-    </th>
-  );
-}
+const DIRECTION: Record<"true" | "false", SortDirection> = { true: "descending", false: "ascending" };
 
 export function NotesTable({
   notes,
@@ -269,8 +238,8 @@ export function NotesTable({
   scrollRef,
 }: Readonly<NotesTableProps>) {
   const { t } = useTranslation(["notes"]);
-  const columns = useTableColumns();
-  const storedSort = useTableSort();
+  const columns = useNotesPrefsStore((state) => state.tableColumns);
+  const storedSort = useNotesPrefsStore((state) => state.tableSort);
   const availableKey = useMemo(() => JSON.stringify(propertyKeys(notes)), [notes]);
   const available = useMemo(() => JSON.parse(availableKey) as string[], [availableKey]);
   const extra = useMemo(() => columns.filter((key) => available.includes(key)), [available, columns]);
@@ -285,85 +254,92 @@ export function NotesTable({
   const no = t(($) => $.notes.vault.table.no);
   const label = (column: BaseColumn) => t(($) => $.notes.vault.table.columns[column]);
   const toggleColumn = (key: string) =>
-    saveTableColumns(columns.includes(key) ? columns.filter((candidate) => candidate !== key) : [...columns, key]);
+    useNotesPrefsStore.getState().set("tableColumns", columns.includes(key) ? columns.filter((candidate) => candidate !== key) : [...columns, key]);
+
+  const sortState = { key: sort.key, direction: DIRECTION[String(sort.descending) as "true" | "false"] };
+  const header = (column: string, name: string, className?: string) => (
+    <SortableTableHead
+      key={column}
+      label={name}
+      sortLabel={t(($) => $.notes.vault.table.sortBy, { name })}
+      direction={sort.key === column ? sortState.direction : null}
+      onSort={() => {
+        const next = nextSort(sortState, column, column === "edited" ? "descending" : "ascending");
+        useNotesPrefsStore.getState().set("tableSort", { key: next.key, descending: next.direction === "descending" });
+      }}
+      className={className}
+    />
+  );
 
   return (
     <div className="px-6 pb-8 pt-2.5">
-      <div className="overflow-x-auto overflow-y-hidden">
-        <table aria-rowcount={rows.length + 1} className="w-full min-w-[40rem] border-collapse text-[0.8125rem]/6">
-          <thead className="text-muted-foreground">
-            <tr aria-rowindex={1} className="border-b border-foreground/[0.045]">
-              <HeaderCell label={label("title")} column="title" sort={sort} className="min-w-[12.5rem] pl-6" />
-              <HeaderCell label={label("tags")} column="tags" sort={sort} />
-              <HeaderCell label={label("status")} column="status" sort={sort} />
-              <HeaderCell label={label("project")} column="project" sort={sort} />
-              <HeaderCell label={label("edited")} column="edited" sort={sort} className="whitespace-nowrap" />
-              {extra.map((key) => (
-                <HeaderCell key={key} label={key} column={`${PROPERTY_PREFIX}${key}`} sort={sort} />
-              ))}
-              <th scope="col" className="w-16 px-1 text-right font-normal">
-                <DropdownMenu>
-                  <Tooltip label={t(($) => $.notes.vault.table.addColumn)} side="bottom">
-                    <DropdownMenuTrigger asChild>
-                      <button
-                        type="button"
-                        aria-label={t(($) => $.notes.vault.table.addColumn)}
-                        className="ml-auto flex size-7 items-center justify-center rounded-md transition-colors hover:bg-foreground/[0.045] hover:text-foreground focus-visible:bg-foreground/[0.06] data-[state=open]:bg-foreground/[0.06] motion-reduce:transition-none"
-                      >
-                        <Columns3 aria-hidden className="size-3.5" />
-                      </button>
-                    </DropdownMenuTrigger>
-                  </Tooltip>
-                  <DropdownMenuContent align="end" className="max-h-80 w-56 overflow-y-auto">
-                    <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
-                      {t(($) => $.notes.vault.table.properties)}
-                    </DropdownMenuLabel>
-                    {available.length === 0 && (
-                      <DropdownMenuItem disabled>{t(($) => $.notes.vault.table.noProperties)}</DropdownMenuItem>
-                    )}
-                    {available.map((key) => (
-                      <DropdownMenuItem
-                        key={key}
-                        className="gap-2"
-                        onSelect={(event) => {
-                          event.preventDefault();
-                          toggleColumn(key);
-                        }}
-                      >
-                        <span className="min-w-0 flex-1 truncate">{key}</span>
-                        {columns.includes(key) && <CheckBadge />}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </th>
-            </tr>
-          </thead>
-          <tbody ref={bodyRef}>
-            {shown.paddingTop > 0 && <SpacerRow height={shown.paddingTop} span={span} />}
-            {rows.slice(shown.start, shown.end).map((note, offset) => (
-              <TableRow
-                key={note.id}
-                note={note}
-                index={shown.start + offset + 2}
-                icon={iconFor(note)}
-                tags={tagsOf(note)}
-                status={formatValue(note.properties?.status, yes, no)}
-                projectColor={projectColor(note.relatedProjectId)}
-                edited={formatRelativeTimeFrom(note.updatedAt, now, { dateAfterDays: 7 })}
-                extra={extra}
-                yes={yes}
-                no={no}
-                onOpenNote={onOpenNote}
-                onOpenNoteInNewTab={onOpenNoteInNewTab}
-                onTag={onTag}
-                actionsFor={actionsFor}
-              />
-            ))}
-            {shown.paddingBottom > 0 && <SpacerRow height={shown.paddingBottom} span={span} />}
-          </tbody>
-        </table>
-      </div>
+      <Table aria-rowcount={rows.length + 1} className="min-w-[40rem]" containerClassName="overflow-y-hidden">
+        <TableHeader className="static bg-transparent">
+          <TableRow aria-rowindex={1} className="hover:bg-transparent">
+            {header("title", label("title"), "min-w-[12.5rem] pl-6")}
+            {header("tags", label("tags"))}
+            {header("status", label("status"))}
+            {header("project", label("project"))}
+            {header("edited", label("edited"))}
+            {extra.map((key) => header(`${PROPERTY_PREFIX}${key}`, key))}
+            <TableHead className="w-16 px-1 text-right">
+              <DropdownMenu>
+                <Tooltip label={t(($) => $.notes.vault.table.addColumn)} side="bottom" className="ml-auto">
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" aria-label={t(($) => $.notes.vault.table.addColumn)} className="size-7">
+                      <Columns3 aria-hidden />
+                    </Button>
+                  </DropdownMenuTrigger>
+                </Tooltip>
+                <DropdownMenuContent align="end" className="max-h-80 w-56 overflow-y-auto">
+                  <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+                    {t(($) => $.notes.vault.table.properties)}
+                  </DropdownMenuLabel>
+                  {available.length === 0 && (
+                    <DropdownMenuItem disabled>{t(($) => $.notes.vault.table.noProperties)}</DropdownMenuItem>
+                  )}
+                  {available.map((key) => (
+                    <DropdownMenuItem
+                      key={key}
+                      className="gap-2"
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        toggleColumn(key);
+                      }}
+                    >
+                      <span className="min-w-0 flex-1 truncate">{key}</span>
+                      {columns.includes(key) && <CheckBadge />}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody ref={bodyRef}>
+          {shown.paddingTop > 0 && <TableSpacerRow height={shown.paddingTop} span={span} />}
+          {rows.slice(shown.start, shown.end).map((note, offset) => (
+            <NoteTableRow
+              key={note.id}
+              note={note}
+              index={shown.start + offset + 2}
+              icon={iconFor(note)}
+              tags={tagsOf(note)}
+              status={formatValue(note.properties?.status, yes, no)}
+              projectColor={projectColor(note.relatedProjectId)}
+              edited={formatRelativeTimeFrom(note.updatedAt, now, { dateAfterDays: 7 })}
+              extra={extra}
+              yes={yes}
+              no={no}
+              onOpenNote={onOpenNote}
+              onOpenNoteInNewTab={onOpenNoteInNewTab}
+              onTag={onTag}
+              actionsFor={actionsFor}
+            />
+          ))}
+          {shown.paddingBottom > 0 && <TableSpacerRow height={shown.paddingBottom} span={span} />}
+        </TableBody>
+      </Table>
     </div>
   );
 }

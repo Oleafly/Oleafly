@@ -1127,146 +1127,6 @@
         "label": "Visa PDF:en vid kompilering"
       },
       "title": "Zen-läge"
-    },
-    "notes": {
-      "sectionName": "Anteckningarnas utseende",
-      "resetAriaLabel": "Återställ {{setting}} till standard",
-      "text": {
-        "title": "Text"
-      },
-      "typeface": {
-        "label": "Typsnittsstil",
-        "description": "Välj typsnittsstil för anteckningstext.",
-        "options": {
-          "sans": "Sans serif",
-          "serif": "Serif",
-          "mono": "Fast bredd"
-        }
-      },
-      "font": {
-        "label": "Typsnitt för anteckningar",
-        "description": "Välj valfritt installerat typsnitt för anteckningstext. Lämna tomt för att använda inställningen Typsnittsstil."
-      },
-      "fontSize": {
-        "label": "Textstorlek i anteckningar",
-        "description": "Ange storleken på anteckningstexten.",
-        "custom": "Anpassad",
-        "customLabel": "Anpassad textstorlek i anteckningar i pixlar"
-      },
-      "lineHeight": {
-        "label": "Radhöjd i anteckningar",
-        "description": "Ange avståndet mellan raderna i anteckningstexten.",
-        "customLabel": "Anpassad radhöjd i anteckningar"
-      },
-      "paragraphSpacing": {
-        "label": "Styckeavstånd",
-        "description": "Ange avståndet mellan stycken, listor och andra block.",
-        "options": {
-          "compact": "Kompakt",
-          "normal": "Normal",
-          "relaxed": "Luftig",
-          "spacious": "Rymlig"
-        }
-      },
-      "headings": {
-        "title": "Rubriker och titel"
-      },
-      "headingTypeface": {
-        "label": "Typsnittsstil för rubriker",
-        "description": "Välj typsnittsstil för rubriker och anteckningens titel.",
-        "options": {
-          "text": "Samma som texten"
-        }
-      },
-      "headingFont": {
-        "label": "Typsnitt för rubriker",
-        "description": "Välj ett installerat typsnitt för rubriker och anteckningens titel. Lämna tomt för att använda inställningen Typsnittsstil för rubriker."
-      },
-      "headingSize": {
-        "label": "Rubrikstorlek",
-        "description": "Ange hur stora rubrikerna är jämfört med texten.",
-        "options": {
-          "small": "Mindre",
-          "normal": "Normal",
-          "large": "Större"
-        }
-      },
-      "titleSize": {
-        "label": "Titelstorlek",
-        "description": "Ange storleken på titeln högst upp i varje anteckning."
-      },
-      "layout": {
-        "title": "Layout"
-      },
-      "width": {
-        "label": "Anteckningsbredd",
-        "description": "Hur breda anteckningar är när de öppnas. Breddmenyn i en anteckning ändrar också detta.",
-        "options": {
-          "standard": "Standard",
-          "wide": "Bred",
-          "full": "Full bredd"
-        }
-      },
-      "wordCount": {
-        "label": "Visa antal ord",
-        "description": "Visa antalet ord i en anteckning i dess verktygsfält."
-      },
-      "spellcheck": {
-        "label": "Kontrollera stavningen i anteckningar",
-        "description": "Stryk under felstavade ord medan du skriver en anteckning."
-      },
-      "code": {
-        "title": "Kod"
-      },
-      "codeFont": {
-        "label": "Typsnitt för kod",
-        "description": "Välj ett installerat typsnitt för kodblock och kod i löptext."
-      },
-      "codeTheme": {
-        "label": "Färger i kodblock",
-        "description": "Välj syntaxfärger för kodblock i anteckningar.",
-        "options": {
-          "editor": "Samma som redigeraren"
-        }
-      },
-      "colors": {
-        "title": "Färger"
-      },
-      "accent": {
-        "label": "Accentfärg för anteckningar",
-        "description": "Används för länkar, taggar och uppgiftsrutor i anteckningar.",
-        "matchApp": "Följ appen",
-        "customAriaLabel": "Välj en anpassad accentfärg för anteckningar"
-      },
-      "highlight": {
-        "label": "Markeringsfärg",
-        "description": "Färgen bakom markerad text.",
-        "options": {
-          "yellow": "Gul",
-          "green": "Grön",
-          "blue": "Blå",
-          "pink": "Rosa",
-          "purple": "Lila",
-          "accent": "Accentfärg"
-        }
-      },
-      "callouts": {
-        "label": "Stil för faktarutor",
-        "description": "Hur faktarutor ser ut i anteckningar.",
-        "options": {
-          "tinted": "Tonad",
-          "filled": "Fylld",
-          "outlined": "Kantlinje",
-          "bar": "Sidolist"
-        }
-      },
-      "remoteImages": {
-        "title": "Bilder från webben",
-        "description": "Anteckningar läser in bilder från de här webbplatserna utan att fråga.",
-        "empty": "Anteckningar frågar innan de läser in en bild från webben. Webbplatser som du alltid tillåter visas här.",
-        "remove": "Ta bort {{host}}"
-      },
-      "resetAll": "Återställ anteckningarnas utseende"
     }
   },
   "checkpoints": {
@@ -2502,6 +2362,42 @@
       "notesAskAgent": {
         "description": "Fråga agenten om den markerade texten, eller öppna och stäng anteckningens agent.",
         "label": "Anteckningar: fråga agenten"
+      },
+      "notesNewNote": {
+        "label": "Anteckningar: ny anteckning",
+        "description": "Börja en ny anteckning i den aktuella panelen."
+      },
+      "notesSearch": {
+        "label": "Anteckningar: sök i anteckningar",
+        "description": "Hoppa till sökrutan högst upp i sidofältet i Anteckningar."
+      },
+      "notesBookmark": {
+        "label": "Anteckningar: bokmärk anteckning",
+        "description": "Lägg till den öppna anteckningen i Favoriter, eller ta bort den därifrån."
+      },
+      "notesCopyLink": {
+        "label": "Anteckningar: kopiera länk till anteckningen",
+        "description": "Kopiera en länk till den öppna anteckningen som du kan klistra in i en annan anteckning eller en chatt."
+      },
+      "notesProperties": {
+        "label": "Anteckningar: visa eller dölj egenskaper",
+        "description": "Öppna eller stäng egenskaperna under anteckningens titel."
+      },
+      "notesQuickCapture": {
+        "description": "Öppna ett litet fönster för att skriva ned något från valfri app, även när Oleafly är i bakgrunden.",
+        "label": "Anteckningar: snabbanteckning"
+      },
+      "notesCopyBlockLink": {
+        "description": "Kopiera en länk till stycket, listpunkten eller tabellen där markören står.",
+        "label": "Anteckningar: kopiera länk till blocket"
+      },
+      "notesBack": {
+        "description": "Gå tillbaka dit du var i den här fliken.",
+        "label": "Anteckningar: tillbaka"
+      },
+      "notesForward": {
+        "description": "Gå framåt igen efter att du har gått tillbaka.",
+        "label": "Anteckningar: framåt"
       }
     },
     "application": {
@@ -2527,14 +2423,41 @@
         "renameSymbol": "Byt namn på symbolen eller filen i hela projektet",
         "slashCommandMenu": "Infogningsmeny med snedstreckskommandon",
         "triggerAutocomplete": "Utlös komplettering",
-        "undo": "Ångra"
+        "undo": "Ångra",
+        "noteBold": "Fet",
+        "noteItalic": "Kursiv",
+        "noteUnderline": "Understruken",
+        "noteStrike": "Genomstruken",
+        "noteCode": "Kod i löptext",
+        "noteHighlight": "Markera med den senast använda färgen",
+        "noteSuperscript": "Upphöjd",
+        "noteSubscript": "Nedsänkt",
+        "noteHeadings": "Rubrik 1 till 6",
+        "noteText": "Gör om till text",
+        "noteQuote": "Citat",
+        "noteCodeBlock": "Kodblock",
+        "noteBulletList": "Punktlista",
+        "noteNumberedList": "Numrerad lista",
+        "noteTaskList": "Uppgiftslista",
+        "noteToggleTask": "Bocka av eller avmarkera en uppgift",
+        "noteIndent": "Öka indraget för en listpunkt",
+        "noteOutdent": "Minska indraget för en listpunkt",
+        "noteLineBreak": "Radbrytning i samma stycke",
+        "noteFind": "Sök och ersätt",
+        "noteSelectAll": "Markera hela anteckningen",
+        "noteUndo": "Ångra",
+        "noteRedo": "Gör om",
+        "noteInsertMenu": "Öppna infogningsmenyn i början av en rad",
+        "noteLinkMenu": "Länka till en anteckning",
+        "noteTag": "Lägg till en tagg"
       },
       "managed": "Hanteras av redigeraren"
     },
     "categories": {
       "codeIntelligence": "Kodintelligens",
       "editor": "Redigerare",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Anteckningar"
     },
     "error": {
       "conflict": "Redan tilldelat {{action}}.",
@@ -2580,6 +2503,15 @@
         "uppercase": "Versaler"
       },
       "unbound": "Inte angiven"
+    },
+    "quickCapture": {
+      "label": "Snabbanteckning var du än är",
+      "description": "Kortkommandot för snabbanteckning fungerar i alla appar på den här datorn.",
+      "ready": "Tryck på {{shortcut}} i valfri app för att öppna snabbanteckningen.",
+      "taken": "En annan app använder redan {{shortcut}}. Välj ett annat kortkommando för Anteckningar: snabbanteckning.",
+      "invalid": "{{shortcut}} fungerar inte utanför Oleafly. Välj ett kortkommando som slutar med en bokstav, en siffra eller en funktionstangent.",
+      "failed": "Oleafly kunde inte ställa in kortkommandot. Stäng av snabbanteckning och slå på den igen för att försöka på nytt.",
+      "wayland": "Wayland låter inte appar lyssna efter tangenter utanför sina egna fönster. Om du vill öppna snabbanteckningen med en tangent lägger du till ett eget kortkommando i systemets tangentbordsinställningar som kör det här kommandot:"
     }
   },
   "systemIntegration": {
@@ -2671,17 +2603,5 @@
       "loadFailed": "Listan över MCP-servrar kunde inte läsas.",
       "missing": "{{name}} (hittades inte)"
     }
-  },
-  "notesPreview": {
-    "label": "Förhandsvisning av en anteckning med de här inställningarna",
-    "title": "Fältanteckningar",
-    "heading": "Morgoninventering",
-    "paragraph": "Lätt regn fram till nio, sedan klart väder över norra åsen. Marken var fortfarande fuktig vid lunch.",
-    "links": "Se <note>Provtagningsmetod</note> för alla steg, eller bläddra i <tag>#fältarbete</tag>.",
-    "highlight": "Plantorna fördubblade sin höjd på en vecka.",
-    "calloutTitle": "Nästa besök",
-    "calloutBody": "Kontrollera markgivarna innan du tar nya prover.",
-    "taskDone": "Märk proverna",
-    "task": "Ladda upp fotona"
   }
 }

@@ -1,3 +1,5 @@
+import { SHORTCUT_DEFINITIONS } from "@/store/shortcuts";
+
 export const SETTINGS_SEARCH_SECTIONS = [
   "general",
   "appearance",
@@ -37,7 +39,7 @@ export const SETTINGS_SEARCH_SOURCES: Readonly<Record<SettingsSearchSection, rea
     ["settingsFile"],
     keywords("general"),
   ],
-  appearance: [["settings", "appearance"], keywords("appearance")],
+  appearance: [["settings", "appearance"], ["notes", "appearance", "notes"], keywords("appearance")],
   dictionary: [["settings", "proofreading"], keywords("dictionary")],
   data: [["shell", "settings", "data"], ["settings", "checkpoints"], keywords("data")],
   ai: [
@@ -86,8 +88,9 @@ export const SETTINGS_SEARCH_EXCLUDED: readonly CatalogPath[] = [
   ["shell", "settings", "sectionsNav"],
   ["shell", "settings", "title"],
   ["shell", "settings", "search"],
-  ["settings", "notesPreview"],
 ];
+
+const NOTES_SHORTCUT_ROWS = SHORTCUT_DEFINITIONS.filter(({ scope }) => scope === "notes").map(({ id }) => `shortcuts.actions.${id}`);
 
 export const SETTINGS_SEARCH_TABS: Readonly<Record<string, string>> = {
   "appearance.customTheme": "app",
@@ -96,7 +99,9 @@ export const SETTINGS_SEARCH_TABS: Readonly<Record<string, string>> = {
   "integrations.cookies": "overleaf",
   "integrations.desktopApps": "desktop-apps",
   "shortcuts.actions": "application",
+  ...Object.fromEntries(NOTES_SHORTCUT_ROWS.map((path) => [path, "notes"])),
   "shortcuts.editorKeys": "editor",
+  "shortcuts.quickCapture": "notes",
   "downloads.fontPacks": "fonts",
   "downloads.typstFonts": "fonts",
   "mcp.servers": "mcp",
@@ -126,6 +131,8 @@ export type SettingsSearchFeature = "notes";
 const FEATURE_ROWS: Readonly<Record<string, SettingsSearchFeature>> = {
   "appearance.notes": "notes",
   "appearance.tabs.notes": "notes",
+  "shortcuts.quickCapture": "notes",
+  ...Object.fromEntries(NOTES_SHORTCUT_ROWS.map((path) => [path, "notes"])),
 };
 
 const PLATFORM_ROWS: Readonly<Record<string, SettingsSearchPlatform>> = {

@@ -86,6 +86,7 @@ describe("IPC command contract", () => {
     ["beginOpenSession", () => tauri.beginOpenSession(), "begin_open_session", undefined],
     ["pickOpenFolder", () => tauri.pickOpenFolder(), "pick_open_folder", { browse: null }],
     ["claimQuickActionOffer", () => tauri.claimQuickActionOffer(), "claim_quick_action_offer", undefined],
+    ["claimStarterNote", () => tauri.claimStarterNote(), "claim_starter_note", undefined],
     [
       "exportDocument defaults",
       () => tauri.exportDocument("p", "main.typ", "pdf", "/out.pdf"),

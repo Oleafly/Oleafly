@@ -1,5 +1,4 @@
-import { beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { describe, expect, it, vi } from "vitest";
 
 const tauri = vi.hoisted(() => ({
   notesImportFolder: vi.fn(),
@@ -9,10 +8,7 @@ const tauri = vi.hoisted(() => ({
 vi.mock("@/lib/tauri", () => tauri);
 
 import { cancelImport, exportFolder, importFolder, newRunId, progressPercent, stepAfter } from "./note-vault";
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+import "./tests/setup";
 
 describe("note vault client", () => {
   it("makes ids the import command accepts", () => {
@@ -31,25 +27,26 @@ describe("note vault client", () => {
   it("turns command outcomes into dialog steps", () => {
     expect(stepAfter({ kind: "dismissed" })).toEqual({ step: "options" });
     expect(stepAfter({ kind: "seen", importedAt: 5, notes: 2 })).toEqual({ step: "seen", importedAt: 5, notes: 2 });
+    expect(stepAfter({ kind: "large", notes: 4_000 })).toEqual({ step: "large", notes: 4_000 });
     expect(
-      stepAfter({ kind: "done", notes: 1, attachments: 2, unresolved: 3, skipped: 4, cancelled: false, notCopied: ["figures/plot.png"] }),
+      stepAfter({ kind: "done", notes: 1, attachments: 2, unresolved: 3, skipped: 4, cancelled: false, notCopied: ["figures/plot.png"], skippedNotes: ["big.md"] }),
     ).toEqual({
       step: "done",
-      summary: { notes: 1, attachments: 2, unresolved: 3, skipped: 4, cancelled: false, notCopied: ["figures/plot.png"] },
+      summary: { notes: 1, attachments: 2, unresolved: 3, skipped: 4, cancelled: false, notCopied: ["figures/plot.png"], skippedNotes: ["big.md"] },
     });
   });
 
   it("passes the run, the choices and translated titles to the commands", async () => {
     const onProgress = vi.fn();
     tauri.notesImportFolder.mockResolvedValue({ kind: "dismissed" });
-    await importFolder("run-1", { folderTags: true, again: false }, onProgress);
+    await importFolder("run-1", { folderTags: true, again: false, confirmLarge: true }, onProgress);
     expect(tauri.notesImportFolder).toHaveBeenCalledWith(
-      { runId: "run-1", folderTags: true, again: false, files: false, title: "Choose a folder to import" },
+      { runId: "run-1", folderTags: true, again: false, files: false, confirmLarge: true, title: "Choose a folder to import" },
       onProgress,
     );
     await importFolder("run-2", { folderTags: false, again: false, files: true }, onProgress);
     expect(tauri.notesImportFolder).toHaveBeenLastCalledWith(
-      { runId: "run-2", folderTags: false, again: false, files: true, title: "Choose Markdown files to import" },
+      { runId: "run-2", folderTags: false, again: false, files: true, confirmLarge: false, title: "Choose Markdown files to import" },
       onProgress,
     );
     tauri.notesImportCancel.mockResolvedValue(true);

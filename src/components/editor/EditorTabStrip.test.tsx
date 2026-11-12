@@ -58,6 +58,14 @@ function middleClick(element: HTMLElement) {
   );
 }
 
+function box(left: number, width: number): DOMRect {
+  return { left, top: 0, width, height: 28, right: left + width, bottom: 28, x: left, y: 0, toJSON: () => ({}) } as DOMRect;
+}
+
+function stripKeys(): string[] {
+  return [...document.querySelectorAll("[data-reorder-item]")].map((row) => row.getAttribute("data-reorder-item") ?? "");
+}
+
 beforeEach(() => seed());
 
 describe("editor tab menu", () => {
@@ -158,6 +166,39 @@ describe("editor tab menu", () => {
 
     expect(visibleTabs()).toEqual(["intro.tex", "refs.bib"]);
     expect(useFilesStore.getState().assistantTabs).toEqual([]);
+  });
+});
+
+describe("reordering editor tabs", () => {
+  it("drags a tab between two others without activating it", () => {
+    renderStrip();
+    const rows = STRIP_NAMES.map(tabRow);
+    rows.forEach((row, index) => {
+      row.getBoundingClientRect = () => box(index * 100, 90);
+    });
+    const strip = rows[0].parentElement as HTMLElement;
+    strip.getBoundingClientRect = () => box(0, 400);
+
+    fireEvent.pointerDown(screen.getByText("results.tex"), { button: 0, clientX: 310, clientY: 10 });
+    fireEvent.pointerMove(window, { clientX: 120, clientY: 10 });
+    expect(strip.querySelector("[data-reorder-drop]")).toHaveAttribute("data-reorder-drop", "1");
+    fireEvent.pointerUp(window);
+    fireEvent.click(screen.getByText("results.tex"));
+
+    expect(stripKeys()).toEqual(["f:intro.tex", "f:results.tex", "d:staged:refs.bib", "f:methods.tex"]);
+    expect(useFilesStore.getState().activePath).toBe("intro.tex");
+  });
+
+  it("moves the focused tab with Alt and the arrow keys", () => {
+    renderStrip();
+    const methods = screen.getByText("methods.tex");
+    methods.focus();
+
+    fireEvent.keyDown(methods, { key: "ArrowLeft", altKey: true });
+    fireEvent.keyDown(screen.getByText("methods.tex"), { key: "ArrowLeft", altKey: true });
+
+    expect(stripKeys()).toEqual(["f:methods.tex", "f:intro.tex", "d:staged:refs.bib", "f:results.tex"]);
+    expect(screen.getByText("methods.tex")).toHaveFocus();
   });
 });
 

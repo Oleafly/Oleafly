@@ -1,4 +1,4 @@
-import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from "react";
+import { useLayoutEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { X } from "lucide-react";
 import { badgeShown } from "./geometry";
 import type { Badge, RenderTooltip, ViewInfo } from "./types";
@@ -45,6 +45,20 @@ function withTooltip(renderTooltip: RenderTooltip | undefined, label: string, tr
   return renderTooltip ? renderTooltip(label, trigger, { side: "bottom", className }) : trigger;
 }
 
+function useRevealed(selected: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const element = ref.current;
+    const strip = element?.parentElement;
+    if (!selected || !element || !strip) return;
+    const box = element.getBoundingClientRect();
+    const area = strip.getBoundingClientRect();
+    if (box.left < area.left) strip.scrollLeft -= area.left - box.left;
+    else if (box.right > area.right) strip.scrollLeft += box.right - area.right;
+  }, [selected]);
+  return ref;
+}
+
 function Description({ id, text }: Readonly<{ id: string; text: string | undefined }>) {
   return text === undefined ? null : (
     <span id={id} className="sr-only">
@@ -70,6 +84,7 @@ export function Tab({
   onKeyDown,
 }: Readonly<TabProps>) {
   const description = badgeDescription(info);
+  const revealed = useRevealed(selected);
   const button: ReactNode = (
     <button
       type="button"
@@ -108,6 +123,7 @@ export function Tab({
   );
   return (
     <div
+      ref={revealed}
       data-tab-view={id}
       className={[
         "group/tab relative flex h-full max-w-[14rem] shrink-0 items-center overflow-hidden rounded-t-md border-x border-t text-sm transition-colors",
@@ -142,6 +158,7 @@ export function IconTab({
   onKeyDown,
 }: Readonly<TabProps>) {
   const description = badgeDescription(info);
+  const revealed = useRevealed(selected);
   const button: ReactNode = (
     <button
       type="button"
@@ -173,7 +190,7 @@ export function IconTab({
     </button>
   );
   return (
-    <div data-tab-view={id} className="relative flex h-full shrink-0 items-center">
+    <div ref={revealed} data-tab-view={id} className="relative flex h-full shrink-0 items-center">
       {withTooltip(renderTooltip, info.title, button)}
       <Description id={describedBy} text={description} />
     </div>

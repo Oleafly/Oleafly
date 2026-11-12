@@ -117,6 +117,7 @@ export interface StoredChat {
   web?: WebSetting;
   stub?: boolean;
   messageCount?: number;
+  scope?: string;
 }
 
 export type ChatSaveProblem = "tooLarge";
@@ -138,6 +139,7 @@ export interface ShownChats {
   chats: StoredChat[];
   activeId: string | null;
   skippedOnLoad: number;
+  owner?: string;
 }
 
 const EMPTY_SHOWN: ShownChats = { projectId: null, chats: [], activeId: null, skippedOnLoad: 0 };
@@ -149,7 +151,7 @@ interface ChatsState {
   skippedOnLoad: number;
   shownByScope: Readonly<Record<string, ShownChats>>;
   saveProblems: Readonly<Record<string, ChatSaveProblem>>;
-  load: (projectId: string, scope?: string) => Promise<void>;
+  load: (projectId: string, scope?: string, owner?: string) => Promise<void>;
   create: (
     projectId: string,
     headOid: string | null,
@@ -220,16 +222,31 @@ function shownProjects(state: ShownState): Set<string> {
   return projects;
 }
 
+function ownedChats(chats: StoredChat[], owner: string | undefined): StoredChat[] {
+  return chats.every((chat) => chat.scope === owner) ? chats : chats.filter((chat) => chat.scope === owner);
+}
+
 function publishChats(state: ShownState, projectId: string, chats: StoredChat[]): Partial<ShownState> {
-  const patch: Partial<ShownState> = state.projectId === projectId ? { chats } : {};
+  const patch: Partial<ShownState> = state.projectId === projectId ? { chats: ownedChats(chats, undefined) } : {};
   const scoped = Object.entries(state.shownByScope).filter(([, shown]) => shown.projectId === projectId);
   if (scoped.length > 0) {
     patch.shownByScope = {
       ...state.shownByScope,
-      ...Object.fromEntries(scoped.map(([key, shown]) => [key, { ...shown, chats }])),
+      ...Object.fromEntries(scoped.map(([key, shown]) => [key, { ...shown, chats: ownedChats(chats, shown.owner) }])),
     };
   }
   return patch;
+}
+
+function publishAndShow(
+  state: ShownState,
+  projectId: string,
+  chats: StoredChat[],
+  scope: string,
+  patch: Partial<ShownChats>,
+): Partial<ShownState> {
+  const published = publishChats(state, projectId, chats);
+  return { ...published, ...withShown({ ...state, ...published }, scope, patch) };
 }
 
 function scopedChatIds(state: ShownState, except: string): Set<string> {
@@ -587,7 +604,7 @@ export const useChatsStore = create<ChatsState>((set, get) => {
     shownByScope: {},
     saveProblems: {},
 
-    load: async (projectId, scope = WORKSPACE_CHAT_SCOPE) => {
+    load: async (projectId, scope = WORKSPACE_CHAT_SCOPE, owner) => {
       const my = (loadSeq.get(scope) ?? 0) + 1;
       loadSeq.set(scope, my);
       const loaded = await readAll(projectId);
@@ -596,15 +613,18 @@ export const useChatsStore = create<ChatsState>((set, get) => {
       cacheProjectChats(projectId, chats);
       if (loaded.fromDisk) loadedFromDisk.add(projectId);
       if (my !== loadSeq.get(scope)) return;
+      const workspace = scope === WORKSPACE_CHAT_SCOPE;
+      const shownList = ownedChats(chats, workspace ? undefined : owner);
       set((state) => {
         const previous = shownChats(state, scope);
         const same = previous.projectId === projectId;
         return {
           ...withShown(state, scope, {
             projectId,
-            chats,
-            activeId: same && chats.some((chat) => chat.id === previous.activeId) ? previous.activeId : null,
+            chats: shownList,
+            activeId: same && shownList.some((chat) => chat.id === previous.activeId) ? previous.activeId : null,
             skippedOnLoad: loaded.skipped,
+            ...(workspace ? {} : { owner }),
           }),
           live: same ? state.live : keepLive(state.live, scopedChatIds(state, scope)),
         };
@@ -623,15 +643,20 @@ export const useChatsStore = create<ChatsState>((set, get) => {
       };
       if (settings?.effort) chat.effort = settings.effort;
       if (settings?.web) chat.web = { ...settings.web };
+      const { owner } = shown(scope);
+      if (owner) chat.scope = owner;
       const existing =
         memoryByProject.get(projectId) ?? shown(scope).chats.filter((c) => c.projectId === projectId);
       const next = [chat, ...existing.filter((c) => c.id !== chat.id)];
       cacheProjectChats(projectId, next);
       persistChange(projectId, chat.id, next);
-      set((state) => ({
-        ...publishChats(state, projectId, next),
-        ...withShown(state, scope, { projectId, chats: next, activeId: chat.id }),
-      }));
+      set((state) =>
+        publishAndShow(state, projectId, next, scope, {
+          projectId,
+          chats: ownedChats(next, owner),
+          activeId: chat.id,
+        }),
+      );
       return chat;
     },
 
@@ -748,10 +773,11 @@ export const useChatsStore = create<ChatsState>((set, get) => {
 
     remove: (chatId, opts) => {
       const scope = opts?.scope ?? WORKSPACE_CHAT_SCOPE;
-      const { projectId, activeId } = shown(scope);
+      const { projectId, activeId, owner } = shown(scope);
       if (!projectId) return;
       const chats = current(projectId, scope);
       const removed = chats.find((c) => c.id === chatId);
+      if (removed && removed.scope !== owner) return;
       const updated = chats.filter((c) => c.id !== chatId);
       cacheProjectChats(projectId, updated);
       if (isTauri()) {
@@ -772,10 +798,12 @@ export const useChatsStore = create<ChatsState>((set, get) => {
       } else {
         void queueBrowserPersist(projectId, updated);
       }
-      set((state) => ({
-        ...publishChats(state, projectId, updated),
-        ...withShown(state, scope, { chats: updated, activeId: activeId === chatId ? null : activeId }),
-      }));
+      set((state) =>
+        publishAndShow(state, projectId, updated, scope, {
+          chats: ownedChats(updated, owner),
+          activeId: activeId === chatId ? null : activeId,
+        }),
+      );
       setSaveProblem(chatId, null);
       get().clearLive(chatId);
       const threadId =

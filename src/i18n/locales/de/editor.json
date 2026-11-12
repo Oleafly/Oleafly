@@ -1002,13 +1002,14 @@
         "environment": "Umgebung {{environment}}",
         "command": "Befehl \\{{command}}",
         "latexSource": "LaTeX-Quelltext",
+        "html": "HTML",
         "maketitlePreview": "Erzeugt aus Dokumenttitel und Angaben zu den Autoren.",
         "figurePreserved": "Exakter Quelltext der Abbildung bleibt erhalten.",
         "tablePreserved": "Exakter Quelltext der Tabelle bleibt erhalten.",
         "sourcePreserved": "Exakter Quelltext bleibt erhalten",
         "editSource": "Quelltext bearbeiten",
-        "summaryLabel": "{{label}}. Exakter LaTeX-Quelltext bleibt erhalten.",
-        "inputLabel": "Exakter LaTeX-Quelltext des Blocks"
+        "summaryLabel": "{{label}}. Exakter Quelltext bleibt erhalten.",
+        "inputLabel": "Exakter Quelltext des Blocks"
       },
       "inline": {
         "label": "Roher Quelltext im Fließtext",

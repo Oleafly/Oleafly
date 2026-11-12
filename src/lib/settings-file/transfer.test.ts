@@ -172,6 +172,52 @@ describe("settings document", () => {
     expect(readSettingsFile(text, snapshot())).toMatchObject({ ok: true, changed: [], ignored: [] });
   });
 
+  it("carries the text replacement pairs out and back, and refuses a pair it can't use", () => {
+    useSettingsStore.getState().setNotesAppearance("notesTextReplace", false);
+    useSettingsStore.getState().setNotesAppearance("notesTextReplacements", { "->": "→", "(c)": "©" });
+    const text = serializeSettingsDocument(buildSettingsDocument(snapshot()));
+    expect(JSON.parse(text)).toMatchObject({ appearance: { notes: { textReplace: false, textReplacements: { "->": "→", "(c)": "©" } } } });
+    expect(readSettingsFile(text, snapshot())).toMatchObject({ ok: true, changed: [], ignored: [] });
+    const read = readSettingsFile(fileWith({ appearance: { notes: { textReplacements: { "->": "" } } } }), snapshot());
+    if (read.ok || read.reason !== "invalid") throw new Error("expected problems");
+    expect(read.problems).toMatchObject([{ path: 'appearance.notes.textReplacements."->"', issue: { kind: "listItem" } }]);
+  });
+
+  it("carries the periodic note settings out and back, and refuses ones it can't use", async () => {
+    useSettingsStore.getState().setNotesPeriodic("daily", { format: "DD.MM.YYYY", tag: "journal", template: "note:tpl" });
+    useSettingsStore.getState().setNotesPeriodic("weekly", { enabled: false });
+    useSettingsStore.getState().setNotesWeekStart("monday");
+    const saved = useSettingsStore.getState().notesPeriodic;
+    const text = serializeSettingsDocument(buildSettingsDocument(snapshot()));
+    expect(JSON.parse(text)).toMatchObject({ appearance: { notes: { periodic: saved } } });
+    expect(readSettingsFile(text, snapshot())).toMatchObject({ ok: true, changed: [], ignored: [] });
+
+    useSettingsStore.setState(initial.settings, true);
+    const read = readSettingsFile(text, snapshot());
+    if (!read.ok) throw new Error(read.reason);
+    expect(read.changed).toEqual(["appearance.notes.periodic"]);
+    await applySettingsPlan(read.plan, THEME);
+    expect(useSettingsStore.getState().notesPeriodic).toEqual(saved);
+    expect(JSON.parse(localStorage.getItem("oleafly.notes.periodic") ?? "null")).toEqual(saved);
+
+    const partial = readSettingsFile(fileWith({ appearance: { notes: { periodic: { daily: { tag: "#Log" }, weekStart: "sunday" } } } }), snapshot());
+    if (!partial.ok) throw new Error(partial.reason);
+    expect(partial.plan.preferences.notesPeriodic).toMatchObject({ daily: { tag: "Log", format: "YYYY-MM-DD" }, weekStart: "sunday" });
+
+    const bad = (periodic: unknown) => {
+      const result = readSettingsFile(fileWith({ appearance: { notes: { periodic } } }), snapshot());
+      return result.ok || result.reason !== "invalid" ? null : result.problems;
+    };
+    expect(bad({ daily: { format: "[no date]" } })).toMatchObject([{ path: "appearance.notes.periodic.daily.format", issue: { kind: "listItem" } }]);
+    expect(bad({ daily: { tag: "two words" } })).toMatchObject([{ path: "appearance.notes.periodic.daily.tag", issue: { kind: "listItem" } }]);
+    expect(bad({ daily: { enabled: "yes" } })).toMatchObject([{ path: "appearance.notes.periodic.daily.enabled", issue: { kind: "boolean" } }]);
+    expect(bad({ daily: { colour: "red" } })).toMatchObject([{ path: "appearance.notes.periodic.daily.colour", issue: { kind: "unknownKey" } }]);
+    expect(bad({ yearly: {} })).toMatchObject([{ path: "appearance.notes.periodic.yearly", issue: { kind: "unknownKey" } }]);
+    expect(bad({ weekly: "off" })).toMatchObject([{ path: "appearance.notes.periodic.weekly", issue: { kind: "object" } }]);
+    expect(bad({ weekStart: "friday" })).toMatchObject([{ path: "appearance.notes.periodic.weekStart", issue: { kind: "oneOf" } }]);
+    expect(bad("daily")).toMatchObject([{ path: "appearance.notes.periodic", issue: { kind: "object" } }]);
+  });
+
   it("reads a file saved with a byte order mark", () => {
     const text = String.fromCodePoint(0xfeff) + fileWith({ appearance: { editor: { fontSize: 18 } } });
     expect(readSettingsFile(text, snapshot())).toMatchObject({ ok: true, changed: ["appearance.editor.fontSize"] });
@@ -700,6 +746,8 @@ describe("Notes appearance in a settings file", () => {
       spellcheck: false,
       codeTheme: "system",
       calloutStyle: "tinted",
+      taskBox: "round",
+      fieldStyle: "tint",
     });
     const text = serializeSettingsDocument(document);
     expect(readSettingsFile(text, snapshot())).toMatchObject({ ok: true, changed: [], ignored: [] });
@@ -716,7 +764,6 @@ describe("Notes appearance in a settings file", () => {
             width: "full",
             wordCount: "off",
             codeTheme: "editor",
-            highlightColor: "green",
           },
         },
       }),
@@ -727,7 +774,6 @@ describe("Notes appearance in a settings file", () => {
       "appearance.notes.codeTheme",
       "appearance.notes.customLineHeight",
       "appearance.notes.headingTypeface",
-      "appearance.notes.highlightColor",
       "appearance.notes.lineHeight",
       "appearance.notes.width",
       "appearance.notes.wordCount",
@@ -740,7 +786,6 @@ describe("Notes appearance in a settings file", () => {
       notesWidth: "full",
       notesShowWordCount: false,
       notesCodeTheme: "editor",
-      notesHighlightColor: "green",
     });
     expect(localStorage.getItem("oleafly.notes.width")).toBe("full");
     expect(localStorage.getItem("oleafly.notes.wordCount")).toBe("0");
@@ -752,6 +797,8 @@ describe("Notes appearance in a settings file", () => {
     ["titleSize", 25],
     ["accentColor", "teal"],
     ["calloutStyle", "neon"],
+    ["taskBox", "oval"],
+    ["fieldStyle", "ghost"],
     ["width", "narrow"],
   ])("refuses a %s of %j", (key, value) => {
     const read = readSettingsFile(fileWith({ appearance: { notes: { [key]: value } } }), snapshot());

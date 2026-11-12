@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
 
 const log = vi.hoisted(() => ({ logError: vi.fn(async () => {}) }));
 vi.mock("@/lib/log", async (importOriginal) => ({
@@ -12,10 +14,13 @@ vi.mock("@/lib/log", async (importOriginal) => ({
 }));
 
 import type { NoteLinkRecord, NoteSearchHit } from "@/lib/tauri";
+import { useNotesPrefsStore } from "@/store/notes-prefs";
 import { useToastStore } from "@/store/toast";
 import { NoteBacklinks } from "./NoteBacklinks";
 import { NoteMentions } from "./NoteMentions";
+import { NotePanelSections } from "./NoteListItem";
 import { NotesDataProvider, type NotesData } from "./notes-data";
+import { NoteLinkIndexProvider } from "./use-note-links";
 import type { NoteItem } from "./types";
 
 const copy = enNotes.vault.mentions;
@@ -50,12 +55,8 @@ function hit(id: string, title: string, snippet?: string): NoteSearchHit {
 }
 
 function data(overrides: Partial<NotesData> = {}): NotesData {
-  return {
+  return fakeNotesData({
     notes: NOTES,
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
     loadNote: vi.fn(async () => ({ text: "We ran masking twice.", version: "v1" })),
     saveNote: vi.fn(async (_id: string, text: string) => ({ text, version: "v2" })),
     noteLinks: () => Promise.resolve(RECORDS),
@@ -70,25 +71,24 @@ function data(overrides: Partial<NotesData> = {}): NotesData {
         : [hit("lib-2", "Abstract draft", "Like the MAE paper"), hit("lib-3", "Reading notes", "Notes on MAE")],
     ),
     ...overrides,
-  };
+  });
 }
 
 function renderMentions(value = data(), noteId: string | null = "n-1") {
   const onOpenNote = vi.fn();
   const view = render(
     <NotesDataProvider value={value}>
-      <NoteMentions noteId={noteId} onOpenNote={onOpenNote} className="extra" />
+      <NoteLinkIndexProvider>
+        <NoteMentions noteId={noteId} onOpenNote={onOpenNote} />
+      </NoteLinkIndexProvider>
     </NotesDataProvider>,
   );
   return { ...view, onOpenNote, value };
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 afterEach(() => {
   useToastStore.setState({ toasts: [] });
+  useNotesPrefsStore.getState().set("mentionsOpen", true);
   log.logError.mockClear();
 });
 
@@ -96,11 +96,14 @@ function messages(): string[] {
   return useToastStore.getState().toasts.map((toast) => toast.message);
 }
 
+function header(count?: number): HTMLElement {
+  return screen.getByRole("button", { name: count === undefined ? copy.title : `${copy.title} ${count}` });
+}
+
 describe("NoteMentions", () => {
   it("lists notes that mention the title or an alias without linking here", async () => {
     const { value, onOpenNote, container } = renderMentions();
-    const section = await screen.findByRole("region", { name: copy.title });
-    expect(section.className).toContain("extra");
+    await screen.findByRole("region", { name: copy.title });
     expect(value.searchNotes).toHaveBeenCalledWith('"Masking"', 20);
     expect(value.searchNotes).toHaveBeenCalledWith('"MAE"', 20);
     expect(value.searchNotes).toHaveBeenCalledTimes(2);
@@ -168,7 +171,7 @@ describe("NoteMentions", () => {
 
   it("logs a failed search instead of showing a toast", async () => {
     renderMentions(data({ searchNotes: vi.fn(async () => Promise.reject(new Error("boom"))) }));
-    await waitFor(() => expect(log.logError).toHaveBeenCalledWith("find note mentions", expect.any(Error)));
+    await waitFor(() => expect(log.logError).toHaveBeenCalledWith("query", expect.any(Error)));
     expect(messages()).toEqual([]);
   });
 
@@ -195,26 +198,155 @@ describe("NoteMentions", () => {
   });
 });
 
+describe("NoteMentions folding", () => {
+  it("shows the count in the header and folds and opens from it by click, Enter or Space", async () => {
+    const user = userEvent.setup();
+    renderMentions();
+    await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(2));
+    const toggle = header(2);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const list = document.getElementById(toggle.getAttribute("aria-controls") ?? "");
+    expect(list?.tagName).toBe("UL");
+    await user.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(list).not.toBeVisible();
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+    expect(screen.getByRole("region", { name: copy.title })).toBeInTheDocument();
+    expect(header(2)).toBe(toggle);
+    toggle.focus();
+    await user.keyboard("{Enter}");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+    await user.keyboard(" ");
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("remembers the folded choice for the next note it shows", async () => {
+    const first = renderMentions();
+    await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(2));
+    fireEvent.click(header(2));
+    expect(useNotesPrefsStore.getState().mentionsOpen).toBe(false);
+    first.unmount();
+    const next = renderMentions(data(), "n-2");
+    expect(await screen.findByRole("region", { name: copy.title })).toBeInTheDocument();
+    expect(header()).toHaveAttribute("aria-expanded", "false");
+    await act(async () => {});
+    expect(next.value.searchNotes).not.toHaveBeenCalled();
+  });
+
+  it("doesn't search while folded and searches once opened", async () => {
+    useNotesPrefsStore.getState().set("mentionsOpen", false);
+    const { value } = renderMentions();
+    const toggle = await screen.findByRole("button", { name: copy.title });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await act(async () => {});
+    expect(value.searchNotes).not.toHaveBeenCalled();
+    fireEvent.click(toggle);
+    expect(useNotesPrefsStore.getState().mentionsOpen).toBe(true);
+    await waitFor(() => expect(value.searchNotes).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.getAllByRole("listitem")).toHaveLength(2));
+    expect(header(2)).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("keeps the header with a zero count when opening finds nothing", async () => {
+    useNotesPrefsStore.getState().set("mentionsOpen", false);
+    const searchNotes = vi.fn(async () => []);
+    renderMentions(data({ searchNotes }));
+    fireEvent.click(await screen.findByRole("button", { name: copy.title }));
+    await waitFor(() => expect(header(0)).toHaveAttribute("aria-expanded", "true"));
+    expect(screen.getByRole("region", { name: copy.title })).toHaveAttribute("aria-busy", "false");
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+  });
+
+  it("stays hidden when it is open and nothing mentions the note", async () => {
+    const searchNotes = vi.fn(async () => []);
+    renderMentions(data({ searchNotes }));
+    await waitFor(() => expect(searchNotes).toHaveBeenCalled());
+    await act(async () => {});
+    expect(screen.queryByRole("region", { name: copy.title })).not.toBeInTheDocument();
+  });
+
+  it("shows no folded header for a note it can't search", async () => {
+    useNotesPrefsStore.getState().set("mentionsOpen", false);
+    renderMentions(data({ searchNotes: undefined }));
+    await act(async () => {});
+    expect(screen.queryByRole("region")).not.toBeInTheDocument();
+  });
+
+  it("stays in the info panel when nothing mentions the note, with a zero count and a short line", async () => {
+    const searchNotes = vi.fn(async () => []);
+    render(
+      <NotesDataProvider value={data({ searchNotes })}>
+        <NoteLinkIndexProvider>
+          <NotePanelSections>
+            <NoteMentions noteId="n-1" onOpenNote={vi.fn()} />
+          </NotePanelSections>
+        </NoteLinkIndexProvider>
+      </NotesDataProvider>,
+    );
+    const section = await screen.findByRole("region", { name: copy.title });
+    await waitFor(() => expect(header(0)).toBeInTheDocument());
+    expect(section).toHaveTextContent(enNotes.info.noMentions);
+  });
+});
+
 describe("NoteBacklinks with mentions", () => {
+  it("searches only once the section nears the screen, and not again for a new vault revision", async () => {
+    let show: (visible: boolean) => void = () => {};
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        constructor(callback: (entries: { target: Element; isIntersecting: boolean }[]) => void) {
+          show = (visible) => {
+            const target = document.querySelector("[aria-hidden]");
+            if (target) callback([{ target, isIntersecting: visible }]);
+          };
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    const value = data({ revision: 1 });
+    const view = renderMentions(value);
+    await waitFor(() => expect(document.querySelector("[aria-hidden]")).not.toBeNull());
+    expect(value.searchNotes).not.toHaveBeenCalled();
+    act(() => show(true));
+    await screen.findByRole("region", { name: copy.title });
+    const calls = vi.mocked(value.searchNotes ?? vi.fn()).mock.calls.length;
+    view.rerender(
+      <NotesDataProvider value={{ ...value, revision: 2 }}>
+        <NoteLinkIndexProvider>
+          <NoteMentions noteId="n-1" onOpenNote={vi.fn()} />
+        </NoteLinkIndexProvider>
+      </NotesDataProvider>,
+    );
+    await act(async () => {});
+    expect(value.searchNotes).toHaveBeenCalledTimes(calls);
+    vi.unstubAllGlobals();
+  });
+
   it("renders mentions below the backlinks and alone when nothing links here", async () => {
     const value = data();
     const { unmount } = render(
       <NotesDataProvider value={value}>
-        <NoteBacklinks noteId="n-1" onOpenNote={vi.fn()} className="first" />
+        <NoteLinkIndexProvider>
+          <NoteBacklinks noteId="n-1" onOpenNote={vi.fn()} />
+        </NoteLinkIndexProvider>
       </NotesDataProvider>,
     );
     const linked = await screen.findByRole("region", { name: enNotes.links.linkedFrom });
     const mentions = await screen.findByRole("region", { name: copy.title });
     expect(linked.compareDocumentPosition(mentions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(mentions.className).toContain("mt-6");
     unmount();
     render(
       <NotesDataProvider value={data({ noteLinks: () => Promise.resolve(RECORDS.slice(0, 3)) })}>
-        <NoteBacklinks noteId="n-1" onOpenNote={vi.fn()} className="first" />
+        <NoteLinkIndexProvider>
+          <NoteBacklinks noteId="n-1" onOpenNote={vi.fn()} />
+        </NoteLinkIndexProvider>
       </NotesDataProvider>,
     );
-    const alone = await screen.findByRole("region", { name: copy.title });
-    expect(alone.className).toContain("first");
+    await screen.findByRole("region", { name: copy.title });
     expect(screen.queryByRole("region", { name: enNotes.links.linkedFrom })).not.toBeInTheDocument();
   });
 });

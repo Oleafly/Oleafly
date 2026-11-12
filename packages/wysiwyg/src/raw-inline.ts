@@ -1,10 +1,15 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import type { MarkdownNodeSpec } from "tiptap-markdown";
+import { footnoteReferenceId, footnoteReferenceView } from "./markdown/footnote-reference";
+import { keepsInlineHtml } from "./markdown/raw-html";
+import { writeVerbatim } from "./markdown/table";
 import { wysiwygMessage } from "./messages";
 import {
   compactRawInlineSource,
   isRawMathSource,
 } from "./raw-presentation";
+
+const withRawHtml = new WeakSet<object>();
 
 export const RawInline = Node.create({
   name: "rawInline",
@@ -22,7 +27,18 @@ export const RawInline = Node.create({
   addStorage() {
     const markdown: MarkdownNodeSpec = {
       serialize(state, node) {
-        state.write(String(node.attrs.source ?? ""));
+        writeVerbatim(state, String(node.attrs.source ?? ""));
+      },
+      parse: {
+        setup(markdownit) {
+          const render = markdownit.renderer.rules.html_inline;
+          if (!render || withRawHtml.has(markdownit)) return;
+          withRawHtml.add(markdownit);
+          markdownit.renderer.rules.html_inline = (tokens, index, options, env, self) => {
+            if (keepsInlineHtml(tokens, index)) return render(tokens, index, options, env, self);
+            return `<span data-type="raw-inline" source="${markdownit.utils.escapeHtml(tokens[index].content)}"></span>`;
+          };
+        },
       },
     };
     return { markdown };
@@ -45,6 +61,8 @@ export const RawInline = Node.create({
 
   addNodeView() {
     return ({ node: initialNode, view, getPos }) => {
+      const footnote = footnoteReferenceId(initialNode.attrs.source);
+      if (footnote !== null) return footnoteReferenceView(initialNode, footnote);
       let currentNode = initialNode;
       let editing = false;
 
@@ -162,7 +180,7 @@ export const RawInline = Node.create({
       return {
         dom,
         update(nextNode) {
-          if (nextNode.type !== currentNode.type) return false;
+          if (nextNode.type !== currentNode.type || footnoteReferenceId(nextNode.attrs.source) !== null) return false;
           currentNode = nextNode;
           if (!editing) updatePresentation();
           return true;

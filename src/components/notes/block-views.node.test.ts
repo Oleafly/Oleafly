@@ -4,8 +4,8 @@ import { createWysiwygExtensions } from "@oleafly/wysiwyg";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { DecorationSet } from "@tiptap/pm/view";
 import { Network } from "lucide-react";
+import { within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
 import { MermaidRemoteContentError } from "@/components/ui/mermaid-remote";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
@@ -14,16 +14,38 @@ import {
   BLOCK_REPAINT_MS,
   caretAfterDrawnBlock,
   EDITING_CLASS,
+  type NoteAssetActions,
+  noteAssetActions,
   SOURCE_CLASS,
   withBlockViews,
   withImageView,
 } from "./block-views";
 import { type PaintContext, registerNoteBlock } from "./note-blocks";
 import { showNoteDoc } from "./note-live-doc";
-import { allowRemoteImage, resetRemoteImagesForTest } from "./note-remote-images";
+import { allowRemoteImage, resetRemoteImagesForTest } from "@/lib/remote-image";
+import { useToastStore } from "@/store/toast";
 import { NotebookTooLargeError } from "./notebook-block";
+import { deferred } from "./tests/notes-data-fixture";
+import "./tests/setup";
 
 const mocks = vi.hoisted(() => ({ renderDiagram: vi.fn() }));
+const bridge = vi.hoisted(() => ({
+  origin: vi.fn(async () => "http://127.0.0.1:4545"),
+  preview: vi.fn(async (url: string) => ({ url, title: null, description: null, siteName: null, image: null, favicon: null }) as {
+    url: string;
+    title: string | null;
+    description: string | null;
+    siteName: string | null;
+    image: string | null;
+    favicon: string | null;
+  }),
+}));
+
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/tauri")>()),
+  noteVideoFrameOrigin: bridge.origin,
+  noteLinkPreview: bridge.preview,
+}));
 
 vi.mock("@/components/ui/mermaid-diagram", () => ({ renderDiagram: mocks.renderDiagram }));
 
@@ -86,7 +108,6 @@ function replaceCode(editor: Editor, text: string, index = 0) {
 }
 
 beforeAll(async () => {
-  await loadNamespace("notes");
   const rect = new DOMRect(0, 0, 0, 0);
   Range.prototype.getClientRects = () => [rect] as unknown as DOMRectList;
   Range.prototype.getBoundingClientRect = () => rect;
@@ -166,7 +187,6 @@ describe("drawn block views", () => {
     const editor = build(codeBlock("mermaid", "flowchart ??"));
     const preview = drawn(editor).querySelector(".note-drawn-preview") as HTMLElement;
     await vi.waitFor(() => expect(preview.textContent).toBe(enNotes.blocks.diagramError));
-    expect(preview.querySelector("p")).toHaveClass("note-drawn-empty");
   });
 
   it("says when a Mermaid diagram was not drawn because it loads from the internet", async () => {
@@ -211,10 +231,8 @@ describe("drawn block views", () => {
     const editor = build({ type: "paragraph", content: [{ type: "text", text: "Before" }] }, codeBlock("{=typst}", "$ x $"));
     editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 2)));
     const dom = drawn(editor);
-    const toggle = dom.querySelector("button") as HTMLButtonElement;
+    const toggle = within(dom).getByRole<HTMLButtonElement>("button", { name: enNotes.blocks.source });
     expect(toggle.type).toBe("button");
-    expect(toggle.contentEditable).toBe("false");
-    expect(toggle.textContent).toBe(enNotes.blocks.source);
     expect(toggle).toHaveAttribute("aria-pressed", "false");
 
     const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
@@ -262,6 +280,52 @@ describe("drawn block views", () => {
       expect(mocks.renderDiagram).toHaveBeenCalledTimes(2);
     } finally {
       vi.useRealTimers();
+    }
+  });
+
+  it("paints a block only once it comes near the screen, with the text it has by then", async () => {
+    const watched: { fire: (near: boolean) => void; stopped: boolean }[] = [];
+    vi.stubGlobal(
+      "IntersectionObserver",
+      class {
+        private readonly targets: Element[] = [];
+        private readonly record = { fire: (near: boolean) => this.notify(near), stopped: false };
+        constructor(private readonly callback: IntersectionObserverCallback) {
+          watched.push(this.record);
+        }
+        observe(target: Element) {
+          this.targets.push(target);
+        }
+        unobserve() {}
+        disconnect() {
+          this.record.stopped = true;
+        }
+        private notify(near: boolean) {
+          const entries = this.targets.map((target) => ({ target, isIntersecting: near }) as IntersectionObserverEntry);
+          this.callback(entries, this as unknown as IntersectionObserver);
+        }
+      },
+    );
+    vi.useFakeTimers();
+    try {
+      const editor = build(codeBlock("mermaid", "flowchart LR\n  A --> B"), codeBlock("mermaid", "flowchart LR\n  C --> D"));
+      replaceCode(editor, "flowchart LR\n  A --> E");
+      await vi.advanceTimersByTimeAsync(BLOCK_REPAINT_MS);
+      expect(mocks.renderDiagram).not.toHaveBeenCalled();
+      watched[0].fire(false);
+      expect(mocks.renderDiagram).not.toHaveBeenCalled();
+      watched[0].fire(true);
+      expect(mocks.renderDiagram.mock.calls.map(([source]) => source)).toEqual([
+        "flowchart LR\n  A --> E",
+        "flowchart LR\n  C --> D",
+      ]);
+      editors = editors.filter((open) => open !== editor);
+      editor.view.dom.parentElement?.remove();
+      editor.destroy();
+      expect(watched[0].stopped).toBe(true);
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
     }
   });
 
@@ -639,24 +703,44 @@ describe("blocks that save their own settings", () => {
 
 type Resolve = (path: string) => Promise<string | null>;
 
-function deferred<T>() {
-  const handlers = { resolve: (_value: T) => {}, reject: (_reason: unknown) => {} };
-  const promise = new Promise<T>((resolve, reject) => {
-    handlers.resolve = resolve;
-    handlers.reject = reject;
-  });
-  return { promise, ...handlers };
-}
-
 function image(src: string | null, alt?: string): JSONContent {
   return { type: "image", attrs: alt === undefined ? { src } : { src, alt } };
 }
 
 function buildImages(resolve: Resolve, ...content: JSONContent[]): Editor {
+  return buildMedia(resolve, {}, ...content);
+}
+
+function buildMedia(resolve: Resolve, actions: NoteAssetActions, ...content: JSONContent[]): Editor {
   const extensions = createWysiwygExtensions()
     .map(withBlockViews)
-    .map((extension) => withImageView(extension, resolve));
+    .map((extension) => withImageView(extension, resolve, undefined, () => actions));
   return buildWith(extensions, content);
+}
+
+function imageView(editor: Editor, index = 0) {
+  const positions: number[] = [];
+  editor.state.doc.descendants((node, position) => {
+    if (node.type.name === "image") positions.push(position);
+  });
+  const position = positions[index];
+  const node = editor.state.doc.nodeAt(position);
+  if (!node) throw new Error("no image there");
+  return editor.extensionManager.nodeViews.image(node, editor.view, () => position, [], DecorationSet.empty);
+}
+
+function pressOn(target: Element): Event {
+  const event = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "target", { value: target });
+  return event;
+}
+
+async function loaded<T extends Element>(root: Element, selector: string): Promise<T> {
+  return vi.waitFor(() => {
+    const found = root.querySelector<T>(selector);
+    if (!found) throw new Error(`no ${selector} yet`);
+    return found;
+  });
 }
 
 function figure(editor: Editor, index = 0) {
@@ -664,7 +748,7 @@ function figure(editor: Editor, index = 0) {
   return {
     dom,
     img: dom.querySelector("img") as HTMLImageElement,
-    missing: dom.querySelector("p.note-drawn-empty") as HTMLParagraphElement,
+    missing: dom.querySelector("p") as HTMLParagraphElement,
   };
 }
 
@@ -686,15 +770,362 @@ async function settle() {
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
 }
 
-async function repainted() {
-  await new Promise<void>((resolve) => setTimeout(resolve, BLOCK_REPAINT_MS + 10));
-}
-
 function missingText(path: string): string {
   return enNotes.blocks.imageMissing.replace("{{path}}", path);
 }
 
+function videoTitle(figure: HTMLElement): string | null {
+  const title = figure.querySelector<HTMLElement>("figcaption svg[role='img'] + span");
+  return title && !title.hidden ? title.textContent : null;
+}
+
 describe("image views", () => {
+  it("plays a YouTube or Vimeo link only after a click, through the app's own player page", async () => {
+    const resolve = vi.fn<Resolve>();
+    const editor = buildImages(resolve, image("https://youtu.be/dQw4w9WgXcQ?t=5"), image("https://vimeo.com/76979871/a1b2c3d4e5"));
+    const [youtube, vimeo] = [...editor.view.dom.querySelectorAll<HTMLElement>("figure.note-media")];
+    expect(youtube.dataset.media).toBe("embed");
+    expect(vimeo.dataset.provider).toBe("vimeo");
+    expect(editor.view.dom.querySelector("iframe")).toBeNull();
+    const start = youtube.querySelector("button") as HTMLButtonElement;
+    expect(start.getAttribute("aria-label")).toBe(enNotes.blocks.media.embed.replace("{{site}}", "YouTube"));
+    start.click();
+    const frame = await loaded<HTMLIFrameElement>(youtube, "iframe");
+    expect(youtube.querySelector("figcaption")).toBeNull();
+    expect(vimeo.querySelector("figcaption")).not.toBeNull();
+    expect(frame.getAttribute("src")).toBe("http://127.0.0.1:4545/video#youtube/dQw4w9WgXcQ?start=5");
+    expect(frame.title).toBe(enNotes.blocks.media.embedTitle.replace("{{site}}", "YouTube"));
+    expect(frame.referrerPolicy).toBe("strict-origin-when-cross-origin");
+    expect(frame.allow).toBe("autoplay; encrypted-media; fullscreen; picture-in-picture");
+    expect(vimeo.querySelector("iframe")).toBeNull();
+    (vimeo.querySelector("button") as HTMLButtonElement).click();
+    expect((await loaded<HTMLIFrameElement>(vimeo, "iframe")).getAttribute("src")).toBe("http://127.0.0.1:4545/video#vimeo/76979871?h=a1b2c3d4e5");
+    expect(resolve).not.toHaveBeenCalled();
+  });
+
+  it("names a video by its site's logo and offers Watch on the site, which leaves the poster in place", async () => {
+    const editor = buildImages(vi.fn<Resolve>(), image("https://youtu.be/dQw4w9WgXcQ?t=5"), image("https://vimeo.com/76979871"));
+    const [youtube, vimeo] = [...editor.view.dom.querySelectorAll<HTMLElement>("figure.note-media")];
+    for (const [figure, site, colours, page] of [
+      [youtube, "YouTube", ["#FF0000", "#FFFFFF"], "https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=5"],
+      [vimeo, "Vimeo", ["#1AB7EA"], "https://vimeo.com/76979871"],
+    ] as const) {
+      const bar = figure.querySelector("figcaption") as HTMLElement;
+      const logo = within(bar).getByRole("img", { name: site });
+      expect([...logo.querySelectorAll("path")].map((path) => path.getAttribute("fill"))).toEqual(colours);
+      expect(bar.textContent).toBe(enNotes.blocks.media.watch);
+      const watch = within(bar).getByRole("link", { name: enNotes.blocks.media.watchOn.replace("{{site}}", site) });
+      expect(watch.textContent).toBe(enNotes.blocks.media.watch);
+      expect(watch.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
+      expect(watch.getAttribute("href")).toBe(page);
+      expect(watch.getAttribute("target")).toBe("_blank");
+      expect(watch.getAttribute("rel")).toBe("noopener noreferrer");
+    }
+    const watch = within(youtube).getByRole("link", { name: enNotes.blocks.media.watchOn.replace("{{site}}", "YouTube") });
+    watch.addEventListener("click", (event) => event.preventDefault());
+    watch.click();
+    await settle();
+    expect(youtube.querySelector("iframe")).toBeNull();
+    expect((youtube.querySelector("button") as HTMLButtonElement).disabled).toBe(false);
+    expect(youtube.querySelector("figcaption")).not.toBeNull();
+  });
+
+  it("plays through the provider's own player outside the desktop app", async () => {
+    bridge.origin.mockRejectedValueOnce(new Error("not in the desktop app")).mockResolvedValueOnce("https://example.org");
+    const editor = buildImages(vi.fn<Resolve>(), image("https://youtu.be/dQw4w9WgXcQ?t=5"), image("https://vimeo.com/76979871"));
+    const [youtube, vimeo] = [...editor.view.dom.querySelectorAll<HTMLElement>("figure.note-media")];
+    (youtube.querySelector("button") as HTMLButtonElement).click();
+    expect((await loaded<HTMLIFrameElement>(youtube, "iframe")).getAttribute("src")).toBe(
+      "https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=5&autoplay=1",
+    );
+    (vimeo.querySelector("button") as HTMLButtonElement).click();
+    expect((await loaded<HTMLIFrameElement>(vimeo, "iframe")).getAttribute("src")).toBe("https://player.vimeo.com/video/76979871?dnt=1&autoplay=1");
+  });
+
+  it("points to the video site instead of a player the app blocks when its player page is missing", async () => {
+    Object.assign(globalThis, { isTauri: true });
+    try {
+      bridge.origin
+        .mockRejectedValueOnce(new Error("could not start the video page server"))
+        .mockResolvedValueOnce("https://example.org")
+        .mockResolvedValueOnce("http://127.0.0.1:4545");
+      const editor = buildImages(vi.fn<Resolve>(), image("https://youtu.be/dQw4w9WgXcQ?t=5"));
+      const youtube = editor.view.dom.querySelector("figure.note-media") as HTMLElement;
+      const start = youtube.querySelector("button") as HTMLButtonElement;
+      const failed = youtube.querySelector("figure > p") as HTMLParagraphElement;
+      expect(failed.hidden).toBe(true);
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        start.click();
+        await vi.waitFor(() => expect(failed.hidden).toBe(false));
+        expect(failed.textContent).toBe(enNotes.blocks.media.embedFailed.replace("{{site}}", "YouTube"));
+        expect(youtube.querySelector("iframe")).toBeNull();
+        expect(start.disabled).toBe(false);
+      }
+      expect(youtube.querySelector("figcaption a")?.getAttribute("href")).toBe("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=5");
+      start.click();
+      expect(failed.hidden).toBe(true);
+      expect((await loaded<HTMLIFrameElement>(youtube, "iframe")).getAttribute("src")).toBe("http://127.0.0.1:4545/video#youtube/dQw4w9WgXcQ?start=5");
+    } finally {
+      Reflect.deleteProperty(globalThis, "isTauri");
+    }
+  });
+
+  it("loads no picture from the video site until images from it are allowed", async () => {
+    bridge.preview.mockResolvedValue({
+      url: "https://vimeo.com/76979871",
+      title: "Big Buck Bunny",
+      description: null,
+      siteName: "Vimeo",
+      image: "https://i.vimeocdn.com/video/1.jpg",
+      favicon: null,
+    });
+    const editor = buildImages(vi.fn<Resolve>(), image("https://youtu.be/dQw4w9WgXcQ", "Masking talk"), image("https://vimeo.com/76979871"));
+    const [youtube, vimeo] = [...editor.view.dom.querySelectorAll<HTMLElement>("figure.note-media")];
+    await settle();
+    expect(editor.view.dom.querySelector("img")).toBeNull();
+    expect(bridge.preview).not.toHaveBeenCalled();
+    expect(videoTitle(youtube)).toBe("Masking talk");
+    expect(videoTitle(vimeo)).toBeNull();
+    expect(youtube.querySelector(".note-media-badge")).not.toBeNull();
+    allowRemoteImage("https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg");
+    expect((await loaded<HTMLImageElement>(youtube, "img.note-media-thumb")).getAttribute("src")).toBe(
+      "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+    );
+    expect(videoTitle(youtube)).toBe("Masking talk");
+    expect(vimeo.querySelector("img")).toBeNull();
+    allowRemoteImage("https://vimeo.com/76979871");
+    expect((await loaded<HTMLImageElement>(vimeo, "img.note-media-thumb")).getAttribute("src")).toBe("https://i.vimeocdn.com/video/1.jpg");
+    expect(bridge.preview).toHaveBeenCalledWith("https://vimeo.com/76979871");
+    expect(videoTitle(vimeo)).toBe("Big Buck Bunny");
+    allowRemoteImage("https://example.org/other.png");
+    await settle();
+    expect(bridge.preview).toHaveBeenCalledTimes(1);
+  });
+
+  it("offers to load a held video picture, the way it does for other web images", async () => {
+    const editor = buildImages(vi.fn<Resolve>(), image("https://youtu.be/dQw4w9WgXcQ"));
+    const embed = editor.view.dom.querySelector<HTMLElement>("figure.note-media") as HTMLElement;
+    const held = await vi.waitFor(() => {
+      const found = embed.querySelector<HTMLElement>("[data-remote-image]");
+      if (!found) throw new Error("not drawn yet");
+      return found;
+    });
+    expect(held.dataset.remoteImage).toBe("i.ytimg.com");
+    (held.querySelector("button") as HTMLButtonElement).click();
+    expect((await loaded<HTMLImageElement>(embed, "img.note-media-thumb")).getAttribute("src")).toBe(
+      "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+    );
+    expect(embed.querySelector(".note-remote-image")).toBeNull();
+  });
+
+  it("selects a video from a click on its caption, and leaves its controls to the person", async () => {
+    const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockReturnValue(undefined);
+    const editor = buildImages(vi.fn<Resolve>(async (path) => `blob:${path}`), image("https://youtu.be/dQw4w9WgXcQ"), image("assets/talk.mp4"));
+    const embed = imageView(editor, 0);
+    const caption = embed.dom.querySelector("figcaption") as HTMLElement;
+    expect(embed.stopEvent?.(pressOn(caption.querySelector("span") as HTMLElement))).toBe(false);
+    expect(embed.stopEvent?.(pressOn(within(caption).getByRole("img", { name: "YouTube" })))).toBe(false);
+    expect(embed.stopEvent?.(pressOn(embed.dom))).toBe(false);
+    expect(embed.stopEvent?.(pressOn(embed.dom.querySelector(".note-media-badge svg") as Element))).toBe(true);
+    expect(embed.stopEvent?.(pressOn(caption.querySelector("a") as HTMLElement))).toBe(true);
+    const video = imageView(editor, 1);
+    const name = video.dom.querySelector("figcaption") as HTMLElement;
+    expect(name.textContent).toBe("talk.mp4");
+    expect(video.stopEvent?.(pressOn(name))).toBe(false);
+    const start = video.dom.querySelector("button") as HTMLButtonElement;
+    expect(video.stopEvent?.(pressOn(start))).toBe(true);
+    start.click();
+    expect(video.stopEvent?.(pressOn(await loaded(video.dom, "video")))).toBe(true);
+    video.destroy?.();
+    embed.destroy?.();
+    editor.commands.clearContent();
+    for (const spy of [play, pause]) spy.mockRestore();
+  });
+
+  it("plays audio and video only when asked, and frees the loaded file when the block goes", async () => {
+    const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    const pause = vi.spyOn(HTMLMediaElement.prototype, "pause").mockReturnValue(undefined);
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockReturnValue(undefined);
+    const resolve = vi.fn<Resolve>(async (path) => `blob:${path}`);
+    const editor = buildImages(resolve, image("assets/talk.mp4"), image("assets/memo.m4a"));
+    const [video, audio] = [...editor.view.dom.querySelectorAll<HTMLElement>("figure.note-media")];
+    expect(video.dataset.media).toBe("video");
+    expect(audio.dataset.media).toBe("audio");
+    expect(editor.view.dom.querySelector("figure.note-image")).toBeNull();
+    const start = video.querySelector("button") as HTMLButtonElement;
+    expect(start.getAttribute("aria-label")).toBe(enNotes.blocks.media.play.replace("{{name}}", "talk.mp4"));
+    expect(resolve).not.toHaveBeenCalled();
+    start.click();
+    const player = await vi.waitFor(() => {
+      const found = video.querySelector("video");
+      if (!found) throw new Error("not loaded yet");
+      return found;
+    });
+    expect(resolve).toHaveBeenCalledWith("assets/talk.mp4");
+    expect(player.getAttribute("src")).toBe("blob:assets/talk.mp4");
+    expect(player.controls).toBe(true);
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(audio.querySelector("audio")).toBeNull();
+    editor.commands.clearContent();
+    expect(pause).toHaveBeenCalled();
+    expect(revoke).toHaveBeenCalledWith("blob:assets/talk.mp4");
+    for (const spy of [play, pause, revoke]) spy.mockRestore();
+  });
+
+  it("says when a media file is missing, and names the PDF page it draws", async () => {
+    const resolve = vi.fn<Resolve>(async (path) => (path.endsWith(".pdf#page=3") ? "data:image/png;base64,AAAA" : null));
+    const editor = buildImages(resolve, image("assets/gone.mp3"), image("assets/paper.pdf#page=3"));
+    const audio = editor.view.dom.querySelector<HTMLElement>("figure.note-media") as HTMLElement;
+    (audio.querySelector("button") as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(audio.querySelector("p")?.hidden).toBe(false));
+    expect(audio.querySelector("p")?.textContent).toBe(enNotes.blocks.media.missing.replace("{{path}}", "assets/gone.mp3"));
+    const pdf = figure(editor);
+    await vi.waitFor(() => expect(pdf.img.getAttribute("src")).toBe("data:image/png;base64,AAAA"));
+    expect(resolve).toHaveBeenCalledWith("assets/paper.pdf#page=3");
+    expect(pdf.dom.querySelector("figcaption")?.textContent).toBe("paper.pdf, page 3");
+  });
+
+  it("frees a file that finishes loading after its block is gone", async () => {
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockReturnValue(undefined);
+    const lookup = deferred<string | null>();
+    const editor = buildImages(vi.fn<Resolve>(() => lookup.promise), image("assets/talk.mp4"));
+    (editor.view.dom.querySelector("figure.note-media button") as HTMLButtonElement).click();
+    editor.commands.clearContent();
+    lookup.resolve("blob:late");
+    await vi.waitFor(() => expect(revoke).toHaveBeenCalledWith("blob:late"));
+    revoke.mockRestore();
+  });
+
+  it("says when the computer can't play a file's format, and offers to show the file in its folder", async () => {
+    const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined);
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockReturnValue(undefined);
+    const reveal = vi.fn();
+    const editor = buildMedia(vi.fn<Resolve>(async (path) => `blob:${path}`), { reveal }, image("assets/clip.ogv"));
+    const video = editor.view.dom.querySelector<HTMLElement>("figure.note-media") as HTMLElement;
+    (video.querySelector("button") as HTMLButtonElement).click();
+    const player = await loaded<HTMLVideoElement>(video, "video");
+    player.dispatchEvent(new Event("error"));
+    expect(video.querySelector("video")).toBeNull();
+    expect(revoke).toHaveBeenCalledWith("blob:assets/clip.ogv");
+    const problem = video.querySelector("p") as HTMLElement;
+    expect(problem.hidden).toBe(false);
+    expect(problem.querySelector("span")?.textContent).toBe(enNotes.blocks.media.cantPlay.replace("{{name}}", "clip.ogv"));
+    const folder = within(problem).getByRole("button", { name: enCore.export.showInFolder });
+    folder.click();
+    expect(reveal).toHaveBeenCalledWith("assets/clip.ogv");
+    for (const spy of [play, revoke]) spy.mockRestore();
+  });
+
+  it("says the same when the player refuses the format before it starts", async () => {
+    const play = vi.spyOn(HTMLMediaElement.prototype, "play").mockRejectedValue(new DOMException("no decoder", "NotSupportedError"));
+    const editor = buildImages(vi.fn<Resolve>(async (path) => `blob:${path}`), image("assets/memo.opus"));
+    const audio = editor.view.dom.querySelector<HTMLElement>("figure.note-media") as HTMLElement;
+    (audio.querySelector("button") as HTMLButtonElement).click();
+    await vi.waitFor(() => expect(audio.querySelector("p")?.hidden).toBe(false));
+    expect(audio.querySelector("audio")).toBeNull();
+    expect(audio.querySelector("p")?.textContent).toBe(enNotes.blocks.media.cantPlay.replace("{{name}}", "memo.opus"));
+    expect(audio.querySelector("p button")).toBeNull();
+    play.mockRestore();
+  });
+
+  it("says a file that is there but can't be read couldn't be read, not that it is missing", async () => {
+    const reveal = vi.fn();
+    const editor = buildMedia(vi.fn<Resolve>(async () => Promise.reject(new Error("file exceeds the limit"))), { reveal }, image("assets/huge.wav"));
+    const audio = editor.view.dom.querySelector<HTMLElement>("figure.note-media") as HTMLElement;
+    const start = audio.querySelector("button") as HTMLButtonElement;
+    start.click();
+    await vi.waitFor(() => expect(audio.querySelector("p")?.hidden).toBe(false));
+    expect(audio.querySelector("p span")?.textContent).toBe(enNotes.blocks.media.unreadable.replace("{{name}}", "huge.wav"));
+    expect(start.disabled).toBe(false);
+    within(audio.querySelector("p") as HTMLElement).getByRole("button", { name: enCore.export.showInFolder }).click();
+    expect(reveal).toHaveBeenCalledWith("assets/huge.wav");
+  });
+
+  it("opens the whole PDF from under its page, or shows it in its folder where the note can't open it", async () => {
+    const resolve = vi.fn<Resolve>(async () => "data:image/png;base64,AAAA");
+    const open = vi.fn();
+    const reveal = vi.fn();
+    const opening = buildMedia(resolve, { open, reveal }, image("assets/paper.pdf#page=3"));
+    const caption = figure(opening).dom.querySelector("figcaption") as HTMLElement;
+    const button = within(caption).getByRole("button", { name: enNotes.blocks.media.openPdf });
+    const view = imageView(opening);
+    expect(view.stopEvent?.(pressOn(within(view.dom).getByRole("button", { name: enNotes.blocks.media.openPdf })))).toBe(true);
+    expect(view.stopEvent?.(pressOn(view.dom.querySelector("figcaption span") as HTMLElement))).toBe(false);
+    view.destroy?.();
+    button.click();
+    expect(open).toHaveBeenCalledWith("assets/paper.pdf#page=3");
+    const revealing = buildMedia(resolve, { reveal }, image("assets/paper.pdf"));
+    within(figure(revealing).dom.querySelector("figcaption") as HTMLElement).getByRole("button", { name: enCore.export.showInFolder }).click();
+    expect(reveal).toHaveBeenCalledWith("assets/paper.pdf");
+    expect(figure(buildImages(resolve, image("assets/plain.pdf"))).dom.querySelector("figcaption button")).toBeNull();
+    expect(open).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens note files for the right note and says when that fails", async () => {
+    useToastStore.setState({ toasts: [] });
+    const data = { openAsset: vi.fn(async () => {}), revealAsset: vi.fn(async () => Promise.reject(new Error("folder gone"))) };
+    const actions = noteAssetActions(data, "note-1");
+    actions.open?.("assets/paper.pdf");
+    expect(data.openAsset).toHaveBeenCalledWith("note-1", "assets/paper.pdf");
+    actions.reveal?.("assets/talk.mp4");
+    await vi.waitFor(() =>
+      expect(useToastStore.getState().toasts.map((toast) => toast.message)).toEqual([
+        enNotes.blocks.media.openFailed.replace("{{error}}", "folder gone"),
+      ]),
+    );
+    expect(noteAssetActions({}, "note-1")).toEqual({ open: undefined, reveal: undefined });
+  });
+
+  it("resizes from the handle as a share of the column, keeps a click without a drag, and resets on double-click", async () => {
+    const editor = buildImages(vi.fn<Resolve>(async () => "asset://plot.png"), image("assets/plot.png", "Plot"));
+    await settle();
+    const { dom } = figure(editor);
+    const frame = dom.querySelector<HTMLElement>(".note-image-frame") as HTMLElement;
+    const handle = dom.querySelector<HTMLElement>(".note-image-handle") as HTMLElement;
+    Object.defineProperty(dom, "clientWidth", { configurable: true, value: 800 });
+    frame.getBoundingClientRect = () => new DOMRect(0, 0, 400, 300);
+    handle.setPointerCapture = () => undefined;
+    const width = () => editor.state.doc.nodeAt(imagePosition(editor))?.attrs.widthPercent;
+    const pointer = (type: string, clientX: number) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, button: 0, clientX });
+      Object.defineProperty(event, "pointerId", { value: 1 });
+      handle.dispatchEvent(event);
+    };
+    expect(handle.getAttribute("aria-hidden")).toBe("true");
+    pointer("pointerdown", 400);
+    pointer("pointerup", 400);
+    expect(width()).toBeNull();
+    pointer("pointerdown", 400);
+    pointer("pointermove", 200);
+    expect(frame.style.width).toBe("25%");
+    pointer("pointerup", 200);
+    expect(width()).toBe(25);
+    pointer("pointerdown", 400);
+    pointer("pointermove", -900);
+    pointer("pointerup", -900);
+    expect(width()).toBe(10);
+    handle.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true }));
+    expect(width()).toBeNull();
+    expect(frame.style.width).toBe("");
+    expect(frame.hasAttribute("data-sized")).toBe(false);
+  });
+
+  it("draws a saved width and ignores the handle in a note that can't be edited", async () => {
+    const editor = buildImages(vi.fn<Resolve>(async () => "asset://plot.png"), {
+      type: "image",
+      attrs: { src: "assets/plot.png", widthPercent: 40 },
+    });
+    await settle();
+    const frame = figure(editor).dom.querySelector<HTMLElement>(".note-image-frame") as HTMLElement;
+    expect(frame.style.width).toBe("40%");
+    expect(frame.hasAttribute("data-sized")).toBe(true);
+    editor.setEditable(false);
+    const handle = figure(editor).dom.querySelector<HTMLElement>(".note-image-handle") as HTMLElement;
+    handle.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true }));
+    expect(editor.state.doc.nodeAt(imagePosition(editor))?.attrs.widthPercent).toBe(40);
+  });
+
   it("leaves extensions other than images untouched", () => {
     const resolve = vi.fn<Resolve>();
     const extension = Extension.create({ name: "imageless" });
@@ -968,15 +1399,13 @@ describe("notebook views", () => {
     const resolve = vi.fn<Resolve>().mockReturnValueOnce(first.promise).mockResolvedValue(NOTEBOOK_URL);
     const editor = buildImages(resolve, codeBlock("notebook", "one.ipynb"));
     replaceCode(editor, "two.ipynb");
-    await repainted();
-    expect(resolve).toHaveBeenLastCalledWith("two.ipynb");
+    await vi.waitFor(() => expect(resolve).toHaveBeenLastCalledWith("two.ipynb"));
     await vi.waitFor(() => expect(notebooks.render).toHaveBeenCalledTimes(1));
     first.resolve(NOTEBOOK_URL);
     await settle();
     expect(notebooks.render).toHaveBeenCalledTimes(1);
     replaceCode(editor, "two.ipynb\ncode: hide");
-    await repainted();
-    expect(notebooks.unmount).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => expect(notebooks.unmount).toHaveBeenCalledTimes(1));
     await vi.waitFor(() => expect(notebooks.render).toHaveBeenLastCalledWith({ text: NOTEBOOK, cells: null, hideCode: true }));
   });
 
@@ -990,9 +1419,9 @@ describe("notebook views", () => {
       .mockResolvedValue(NOTEBOOK_URL);
     const editor = buildImages(resolve, codeBlock("notebook", "one.ipynb"));
     replaceCode(editor, "two.ipynb");
-    await repainted();
+    await vi.waitFor(() => expect(resolve).toHaveBeenLastCalledWith("two.ipynb"));
     replaceCode(editor, "three.ipynb");
-    await repainted();
+    await vi.waitFor(() => expect(resolve).toHaveBeenLastCalledWith("three.ipynb"));
     await vi.waitFor(() => expect(notebooks.render).toHaveBeenCalledTimes(1));
     gone.resolve(null);
     failed.reject(new Error("late"));
@@ -1005,7 +1434,7 @@ describe("notebook views", () => {
     const editor = buildImages(resolve, codeBlock("notebook", "one.ipynb"));
     replaceCode(editor, "two.ipynb");
     replaceCode(editor, "three.ipynb");
-    await repainted();
+    await vi.waitFor(() => expect(resolve).toHaveBeenCalledTimes(2));
     expect(resolve.mock.calls.map(([path]) => path)).toEqual(["one.ipynb", "three.ipynb"]);
   });
 
@@ -1022,14 +1451,17 @@ describe("notebook views", () => {
     const inside = document.createElement("button");
     (view.dom as HTMLElement).querySelector(".note-drawn-preview")?.append(inside);
     expect(view.stopEvent?.({ target: inside } as unknown as Event)).toBe(true);
-    const toggle = (view.dom as HTMLElement).querySelector(".note-drawn-toggle");
-    expect(view.stopEvent?.({ target: toggle } as unknown as Event)).toBe(false);
+    const toggle = within(view.dom as HTMLElement).getByRole("button", { name: enNotes.blocks.source });
+    expect(view.stopEvent?.({ target: toggle } as unknown as Event)).toBe(true);
     view.destroy?.();
   });
 
-  it("lets the editor handle events in other drawn blocks", () => {
+  it("lets the editor handle events in the drawing of other blocks, but not on their buttons", () => {
     mocks.renderDiagram.mockReturnValue(new Promise(() => {}));
-    const editor = build(codeBlock("mermaid", "flowchart LR\n  A --> B"));
-    expect(codeBlockView(editor).stopEvent).toBeUndefined();
+    const view = codeBlockView(build(codeBlock("mermaid", "flowchart LR\n  A --> B")));
+    const preview = (view.dom as HTMLElement).querySelector(".note-drawn-preview");
+    expect(view.stopEvent?.({ target: preview } as unknown as Event)).toBe(false);
+    const toggle = within(view.dom as HTMLElement).getByRole("button", { name: enNotes.blocks.source });
+    expect(view.stopEvent?.({ target: toggle } as unknown as Event)).toBe(true);
   });
 });

@@ -71,7 +71,7 @@ export function useKeptNoteTabs(shown: NoteTabView | null, projectId: string | n
   const kept = keptViews(promoted, new Set(shownKeys), KEPT_HIDDEN_NOTE_TABS, (key) => !noteEditorBusy(editorNoteId(known[key])));
   const mounted = promoted.filter((key) => kept.has(key));
   if (mounted.length !== recent.length || mounted.some((key, index) => key !== recent[index])) setRecent(mounted);
-  for (const key of [...views.current.keys()]) {
+  for (const key of views.current.keys()) {
     if (!mounted.includes(key)) views.current.delete(key);
   }
   return mounted.map((key) => ({ view: known[key], shown: key === shown?.key }));

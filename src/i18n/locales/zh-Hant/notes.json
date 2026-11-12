@@ -17,9 +17,37 @@
     "resize": "調整面板大小",
     "closePanel": "關閉面板",
     "newTab": "新分頁",
-    "emptyPanel": "這個面板是空的。",
+    "empty": {
+      "greetings": {
+        "begin": "要從哪裡開始呢？",
+        "ready": "隨時可以開始。",
+        "mind": "今天在想些什麼？",
+        "resume": "要從上次停下的地方繼續嗎？",
+        "working": "你正在忙些什麼？",
+        "first": "想先寫些什麼？",
+        "blank": "從空白頁面或範本開始。"
+      },
+      "hints": {
+        "daily": "今天的計畫與記錄",
+        "experimentLog": "每次執行與觀察到的結果",
+        "paperReading": "一篇論文的主張",
+        "literatureMatrix": "並排比較多篇論文",
+        "meeting": "議程與決議",
+        "labProtocol": "別人也能照著做的步驟",
+        "weeklyLog": "本週完成的工作",
+        "proposal": "目標、方法與時程"
+      },
+      "moreTemplates": "更多範本",
+      "continue": "從上次繼續",
+      "searchAll": "搜尋所有筆記"
+    },
     "closeMissing": "關閉分頁",
-    "notesHome": "前往筆記首頁"
+    "notesHome": "前往筆記首頁",
+    "breadcrumb": "導覽路徑",
+    "breadcrumbHome": "筆記首頁",
+    "brand": "Oleafly Notes",
+    "back": "返回",
+    "forward": "前進"
   },
   "saveStatus": {
     "saved": "已儲存",
@@ -40,7 +68,7 @@
       "notebook": "筆記本"
     },
     "author": {
-      "all": "任何人",
+      "all": "全部",
       "agent": "代理程式",
       "you": "你"
     },
@@ -52,14 +80,17 @@
       "data": "沒有符合這些篩選條件的資料檔案。",
       "notebook": "沒有符合這些篩選條件的筆記本。"
     },
-    "noNotes": "還沒有筆記。按「新增筆記」開始寫第一篇。",
+    "start": {
+      "title": "還沒有筆記"
+    },
     "ungrouped": "筆記",
     "agentFallback": "代理程式",
     "settings": "設定",
     "filters": {
-      "title": "篩選",
+      "title": "標籤",
       "active_other": "已套用 {{count}} 個篩選條件",
-      "clear": "清除篩選條件"
+      "clear": "清除篩選條件",
+      "writtenBy": "撰寫者"
     },
     "menu": {
       "more": "更多",
@@ -80,18 +111,31 @@
       "templateOn": "「{{name}}」現在是你的範本之一。",
       "templateOff": "「{{name}}」已不再是範本。",
       "linkProject": "連結到專案",
-      "compareConflict": "比較衝突副本"
+      "compareConflict": "比較衝突副本",
+      "copyLink": "複製連結",
+      "linkCopied": "已複製「{{name}}」的連結。",
+      "copyLinkFailed": "無法複製「{{name}}」的連結。",
+      "duplicate": "建立副本",
+      "copyTitle": "{{name}} 副本",
+      "duplicateFailed": "無法建立「{{name}}」的副本。",
+      "export": "匯出",
+      "exportAs": {
+        "markdown": "Markdown 資料夾（.md）",
+        "docx": "Word 文件（.docx）",
+        "html": "網頁（.html）",
+        "latex": "LaTeX（.tex）",
+        "typst": "Typst（.typ）"
+      },
+      "exportFailed": "無法匯出「{{name}}」。",
+      "copyMarkdown": "複製為 Markdown",
+      "markdownCopied": "已將「{{name}}」複製為 Markdown。",
+      "copyMarkdownFailed": "無法將「{{name}}」複製為 Markdown。"
     },
     "conflicts": {
-      "title": "「{{name}}」的兩個版本",
-      "description": "這篇筆記在同步之前已分別在這裡和另一台電腦上被變更，因此 Oleafly 保留了兩個版本。請保留其中一個版本，另一個會移至資源回收筒。",
-      "diffLabel": "兩個版本之間的差異",
-      "loading": "正在讀取兩個版本…",
-      "readFailed": "無法讀取衝突副本。",
-      "resolveFailed": "無法保留該版本。",
-      "keepMine": "保留這台電腦上的版本",
-      "useCopy": "使用另一台電腦上的版本",
       "badge": "這篇筆記有衝突副本"
+    },
+    "suggestions": {
+      "badge": "這篇筆記中有待處理的修改建議"
     }
   },
   "home": {
@@ -100,7 +144,9 @@
     "tabs": {
       "label": "要顯示的筆記",
       "mine": "我的筆記",
-      "favorites": "我的最愛"
+      "favorites": "我的最愛",
+      "tasks": "待辦事項",
+      "attachments": "附件"
     },
     "sortBy": "排序方式",
     "sort": {
@@ -110,8 +156,7 @@
       "title": "標題"
     },
     "layout": "筆記版面配置",
-    "empty": "還沒有筆記。新增一篇，再請代理程式幫你撰寫。",
-    "noFavorites": "還沒有我的最愛。為筆記加上星號，它就會出現在這裡。",
+    "noFavorites": "還沒有我的最愛。將筆記加入我的最愛，它就會出現在這裡。",
     "noMatches": "沒有符合「{{query}}」的筆記。",
     "author": "作者"
   },
@@ -124,8 +169,9 @@
     "loadFailed": "無法開啟這篇筆記。它所在的專案可能已被移動或刪除。",
     "retryLoad": "再試一次",
     "closeTab": "關閉分頁",
-    "imageFailed": "無法將圖片儲存到筆記中。",
-    "onlyImages": "筆記中只能加入 PNG、JPEG 和 SVG 圖片。",
+    "fileFailed": "無法將檔案加入筆記：{{error}}",
+    "fileTooLarge": "{{name}} 大於 64 MB，因此沒有加入。",
+    "unsupportedFile": "筆記中只能放入圖片、音訊、影片、PDF、表格（CSV、TSV 或 Excel）、分子檔案和 Jupyter 筆記本。",
     "remoteImages": {
       "more": "更多載入圖片的方式",
       "loadAll": "載入這篇筆記中的所有圖片",
@@ -148,6 +194,10 @@
       "figure": "新增圖片",
       "abstract": "濃縮成摘要"
     },
+    "wholeNote": {
+      "proofread": "校對筆記",
+      "rewrite": "改寫筆記"
+    },
     "collapse": "隱藏指示框",
     "expand": "顯示指示框"
   },
@@ -156,6 +206,22 @@
     "acceptAll": "全部接受",
     "position": "第 {{current}} 處變更，共 {{total}} 處",
     "undo": "復原"
+  },
+  "versions": {
+    "title": "版本記錄",
+    "summary": "每當你接受所有建議的變更時，以及還原舊版本之前，Oleafly 都會儲存一個版本。你也可以自己儲存。",
+    "empty": "還沒有版本。儲存一個版本，即可保留筆記現在的樣子。",
+    "save": "儲存版本",
+    "saved": "已儲存版本。",
+    "unchanged": "自上一個版本以來沒有任何變更。",
+    "saveFailed": "無法儲存這篇筆記的版本。",
+    "restore": "還原此版本",
+    "restored": "已還原版本。被取代的文字也已儲存為一個版本。",
+    "restoreFailed": "無法還原此版本。",
+    "comparing": "正在與筆記比較",
+    "readFailed": "無法讀取此版本。",
+    "changes": "還原此版本會帶來的變更",
+    "textOnly": "還原只會變更筆記的文字，附加的檔案維持不變。"
   },
   "toolbar": {
     "label": "格式",
@@ -171,9 +237,6 @@
     "displayMath": "行間公式",
     "citation": "引用",
     "noCitations": "這個專案還沒有參考文獻",
-    "tableSize": "{{cols}} × {{rows}} 表格",
-    "addRow": "新增列",
-    "addColumn": "新增欄",
     "chart": "統計圖",
     "mermaid": "Mermaid 圖表",
     "outline": "大綱",
@@ -186,7 +249,12 @@
       "wide": "寬",
       "full": "全寬"
     },
-    "notebook": "插入筆記本"
+    "attach": "附加檔案",
+    "attachFilter": "圖片、音訊、影片、PDF、表格、分子和筆記本",
+    "codeLanguage": "語言",
+    "plainCode": "純文字",
+    "imageSize": "圖片大小",
+    "originalSize": "原始大小"
   },
   "blocks": {
     "chart": "統計圖",
@@ -195,9 +263,28 @@
     "diagramError": "這張圖表有錯誤。請開啟原始碼修正。",
     "chartError": "這張統計圖的資料無效。請開啟原始碼修正。",
     "noPreview": "這個區塊目前還沒有預覽。請開啟原始碼進行編輯。",
+    "syntax": {
+      "help": "如何撰寫 {{block}} 區塊",
+      "chart": "包含 type、categories 和 series 的 JSON：\n{\"type\": \"bar\", \"categories\": [\"A\", \"B\"], \"series\": [{\"name\": \"Run 1\", \"values\": [1, 2]}]}\n其他 type：line、area、scatter、pie、donut、histogram。",
+      "plot": "每行一條曲線或一個選項：\ny = x^2 - 1 或 x = cos(t), y = sin(t)\ndomain: -5, 5 和 point: 1, 0, Root",
+      "csv": "每行一組值，第一行是標題列：\nRun, Ratio\n也可以用 path: assets/results.csv 讀取檔案。",
+      "latex": "行間 LaTeX，例如 equation 或 align 環境：\n\\begin{align} a &= b + c \\end{align}\n化學式用 \\ce{H2O}，單位用 \\pu{5 mg}。",
+      "typst": "一段 Typst 程式碼，會轉譯為圖片：\n$ E = m c^2 $\n無法使用來自網際網路的套件。",
+      "mermaid": "Mermaid 圖表，例如：\nflowchart LR\nA --> B",
+      "d2": "D2 圖表，例如：\nclient -> server: request\nserver.shape: cylinder",
+      "tikz": "TikZ 指令，或完整的 tikzpicture：\n{{example}}\n圖片上方的行（例如 \\usetikzlibrary{positioning}）請放在序言區。",
+      "circuitikz": "CircuiTikZ 指令，或完整的 circuitikz 環境：\n{{example}}\n電路上方的行（例如 \\ctikzset{resistors/scale=0.8}）請放在序言區。",
+      "svg": "一個 svg 元素，例如：\n<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" /></svg>\n指令碼、連結和遠端圖片會被移除。",
+      "html": "完整的 HTML 頁面，或帶有 CSS 和指令碼的片段。\n它無法連上網際網路，所以請把資料放在區塊裡。\n指令碼會在你按一下「執行」後啟動。",
+      "jsx": "帶有預設匯出的 React 元件檔案：\nexport default function App() { return <p>Hello</p> }\n可以匯入 react、recharts、d3、lodash、papaparse、chart.js 和 lucide-react。",
+      "smiles": "每行一個 SMILES，名稱可有可無：\nAspirin: CC(=O)OC1=CC=CC=C1C(=O)O\n每個區塊最多 24 個。",
+      "molecule": "先寫選項行，例如 format: pdb 和 style: cartoon。\n然後是檔案文字，或 path: assets/1abc.pdb",
+      "sequence": "FASTA 記錄或原始序列：\n>sample 1\nATGGCCATTGTAATG",
+      "notebook": "第一行寫筆記本的路徑：\nassets/analysis.ipynb\n然後可以加上 cells: 2-5 和 code: hide 之類的選用行。",
+      "bookmark": "每行一個欄位，以網址開頭：\nurl: https://example.com/article\n接著是可選的 title:、description:、image:、site: 和 favicon: 行。"
+    },
     "newChart": {
       "title": "新統計圖",
-      "description": "請代理程式幫你填入內容，或直接編輯原始碼。",
       "series": "數值"
     },
     "newHtml": {
@@ -234,6 +321,7 @@
     },
     "sequence": {
       "label": "序列",
+      "template": "範例編碼序列",
       "empty": "貼上一筆 FASTA 記錄或原始序列。",
       "character": "第 {{line}} 行第 {{column}} 欄：「{{character}}」不是殘基。",
       "untitled": "未命名序列",
@@ -369,7 +457,8 @@
     "artifact": {
       "run": "執行",
       "stop": "停止",
-      "alwaysRun": "一律執行這篇筆記中的區塊",
+      "alwaysRun": "一律執行這個區塊",
+      "paused": "已暫停，因為這篇筆記中的某個區塊上次當機或關閉了應用程式。",
       "desktopOnly": "需要桌面應用程式才能執行",
       "loading": "正在載入…",
       "loadFailed": "無法載入這個區塊。",
@@ -377,7 +466,7 @@
       "stopped": "這個區塊已停止回應。",
       "reload": "重新載入",
       "failed": "這個區塊無法啟動：{{error}}",
-      "offline": "區塊無法從網際網路載入檔案，因此略過了以下內容：",
+      "offline": "這些來自網際網路的檔案已略過：",
       "more_other": "以及其他 {{count}} 項",
       "frameTitle": "{{label}} 輸出",
       "previewTitle": "{{label}} 預覽",
@@ -387,7 +476,6 @@
       "noComponent": "這個元件沒有預設匯出。"
     },
     "code": {
-      "copy": "複製",
       "copied": "已複製",
       "copyFailed": "無法複製",
       "copyLabel": "複製程式碼"
@@ -397,6 +485,22 @@
       "empty": "這個 SVG 區塊是空的。",
       "invalid": "這個 SVG 無效。請開啟原始碼修正。",
       "tooLarge": "這個 SVG 太大，無法顯示。"
+    },
+    "d2": {
+      "alt": "D2 圖表",
+      "empty": "這個 D2 區塊是空的。",
+      "loading": "正在繪製…",
+      "error": "D2 無法繪製這張圖表：{{error}}",
+      "line": "第 {{line}} 行：{{message}}"
+    },
+    "tikz": {
+      "alt": "TikZ 繪圖",
+      "circuitAlt": "電路圖",
+      "empty": "這個 {{block}} 區塊是空的。",
+      "desktopOnly": "{{block}} 預覽需要桌面應用程式。",
+      "sharedNotice": "這篇筆記是分享的。LaTeX 會在這台電腦上執行，而且可以讀取你的檔案，因此繪製前請先檢查原始碼。",
+      "draw": "繪製",
+      "error": "LaTeX 無法編譯這個區塊：{{error}}"
     },
     "typst": {
       "alt": "Typst 輸出",
@@ -426,7 +530,33 @@
       "code": "程式碼",
       "math": "數學式",
       "divider": "分隔線",
+      "footnote": "註腳",
       "basic": "基本"
+    },
+    "media": {
+      "play": "播放 {{name}}",
+      "pdfPage": "{{name}}，第 {{page}} 頁",
+      "openPdf": "開啟 PDF",
+      "openFailed": "無法開啟檔案：{{error}}",
+      "missing": "找不到檔案：{{path}}",
+      "unreadable": "無法讀取 {{name}}。",
+      "cantPlay": "無法在這裡播放 {{name}}。這台電腦可能沒有適用於其格式的轉碼器。",
+      "embed": "播放來自 {{site}} 的影片",
+      "embedTitle": "來自 {{site}} 的影片",
+      "embedFailed": "播放器沒有啟動。請再試一次，或在 {{site}} 上開啟影片。",
+      "watch": "觀看",
+      "watchOn": "在 {{site}} 上觀看",
+      "pasteChoice": "如何顯示這個影片連結",
+      "embedChoice": "嵌入影片",
+      "linkChoice": "保留為連結"
+    },
+    "bookmark": {
+      "label": "書籤",
+      "pasteChoice": "如何顯示這個連結",
+      "cardChoice": "書籤卡片",
+      "ask": "為網頁加上書籤",
+      "loading": "正在載入頁面預覽",
+      "noUrl": "請加入一行 url:，並填入以 https:// 或 http:// 開頭的網址。"
     }
   },
   "notebook": {
@@ -446,10 +576,7 @@
     "showLess": "收合",
     "showAllCells_other": "顯示全部 {{count}} 個儲存格",
     "outputImage": "儲存格 {{number}} 的輸出",
-    "outputFrame": "儲存格 {{number}} 的 HTML 輸出",
-    "pickTitle": "插入筆記本",
-    "filter": "Jupyter 筆記本",
-    "importFailed": "無法加入筆記本：{{error}}"
+    "outputFrame": "儲存格 {{number}} 的 HTML 輸出"
   },
   "icons": {
     "choose": "選擇圖示",
@@ -603,7 +730,7 @@
     "inserting": "正在複製",
     "insertFailed": "無法將這個檔案複製到筆記中：{{error}}",
     "newProject": "新增專案",
-    "htmlPreview": "Oleafly 目前還無法執行互動式圖表。",
+    "htmlPreview": "要執行這張圖，請把它的程式碼貼到筆記的 HTML 區塊中，然後按一下「執行」。",
     "kind": {
       "figure": "圖片",
       "html": "互動式圖表",
@@ -617,7 +744,14 @@
   "sendToPaper": {
     "title": "傳送到論文",
     "description": "Oleafly 會將內容轉換一次，並插入游標所在位置。論文中的副本不會和筆記保持連結。",
-    "send": "傳送"
+    "send": "傳送",
+    "leftOut": "{{block}} 區塊只存在於筆記中。"
+  },
+  "citations": {
+    "references": "參考文獻",
+    "fromReference": "來自參考文獻",
+    "unknown": "不在所連結專案的參考文獻中：{{keys}}",
+    "openNote": "開啟這篇論文的筆記：{{title}}"
   },
   "links": {
     "menu": "連結到筆記或專案",
@@ -627,13 +761,51 @@
     "missingNote": "這篇筆記已不存在",
     "missingNoteCreate": "這篇筆記已不存在。按一下即可用這個名稱建立新筆記。",
     "missingProject": "這個專案已不存在",
-    "linkedFrom": "連結來源"
+    "linkedFrom": "連結來源",
+    "showAll": "顯示全部 {{total}} 項"
+  },
+  "linksSearch": {
+    "blocks": {
+      "loading": "正在載入區塊",
+      "none": "沒有符合的區塊",
+      "missingBlock": "這篇筆記中沒有該區塊",
+      "assignFailed": "無法為該筆記加入區塊 ID。",
+      "handle": "區塊選項",
+      "copyLink": "複製區塊連結",
+      "linkCopied": "已複製這個區塊的連結。",
+      "copyFailed": "無法複製這個區塊的連結。",
+      "noId": "這個區塊還沒有 ID，而你無法編輯這篇筆記。",
+      "linkedFrom": "連結來源",
+      "links_other": "{{count}} 篇筆記連結到這裡",
+      "openLinked": "開啟 {{title}}",
+      "toBlock": "前往區塊：{{text}}"
+    },
+    "tagBlocks": {
+      "more_other": "再顯示 {{count}} 個區塊"
+    },
+    "dead": {
+      "menu": "失效連結",
+      "title": "失效連結",
+      "summary_other": "{{count}} 個連結指向已不存在的筆記或區塊。",
+      "none": "沒有失效連結。每個連結指向的筆記或區塊都仍然存在。",
+      "loading": "正在檢查連結",
+      "failed": "無法讀取你筆記中的連結。",
+      "missingNotes": "缺少的筆記",
+      "missingBlocks": "缺少的區塊",
+      "noteMeta": "第 {{line}} 行：該筆記已不存在",
+      "blockMeta": "第 {{line}} 行：{{block}} 已不在 {{title}} 中",
+      "create": "建立筆記",
+      "relink": "改為連結到 {{title}}",
+      "remove": "移除連結",
+      "fixFailed": "無法變更連結。"
+    }
   },
   "projectNotes": {
     "searchLabel": "搜尋這個專案的筆記",
     "searchPlaceholder": "搜尋筆記",
     "clearSearch": "清除搜尋",
     "noMatches": "沒有符合搜尋條件的筆記",
+    "loading": "正在讀取專案的筆記",
     "edited": "編輯於 {{when}}",
     "createFailed": "無法建立筆記。",
     "projectGroup": "專案筆記",
@@ -679,7 +851,33 @@
     "callouts": {
       "type": "標註類型：{{type}}",
       "fold": "收合標註",
-      "unfold": "展開標註"
+      "unfold": "展開標註",
+      "types": {
+        "note": "筆記",
+        "abstract": "摘要",
+        "info": "資訊",
+        "todo": "待辦",
+        "tip": "提示",
+        "success": "成功",
+        "question": "問題",
+        "warning": "警告",
+        "failure": "失敗",
+        "danger": "危險",
+        "bug": "錯誤",
+        "example": "範例",
+        "quote": "引用",
+        "theorem": "定理",
+        "lemma": "引理",
+        "corollary": "推論",
+        "proposition": "命題",
+        "definition": "定義",
+        "proof": "證明",
+        "hypothesis": "假說",
+        "assumption": "假設",
+        "result": "結果",
+        "method": "方法",
+        "remark": "備註"
+      }
     },
     "links": {
       "loadingHeadings": "正在載入標題",
@@ -742,6 +940,206 @@
       }
     }
   },
+  "fields": {
+    "today": "今天",
+    "tomorrow": "明天",
+    "yesterday": "昨天",
+    "chip": "{{key}}：{{value}}",
+    "empty": "無值",
+    "edit": "變更或移除",
+    "keys": {
+      "due": "截止",
+      "scheduled": "排定",
+      "priority": "優先順序",
+      "start": "開始",
+      "created": "建立",
+      "completed": "完成",
+      "date": "日期",
+      "cancelled": "已取消"
+    },
+    "priorities": {
+      "highest": "最高",
+      "high": "高",
+      "medium": "中",
+      "low": "低",
+      "lowest": "最低"
+    },
+    "editor": {
+      "label": "編輯 {{key}}",
+      "key": "名稱",
+      "value": "值",
+      "brackets": "方括號只用於連結，例如 [[Note]]。",
+      "save": "儲存",
+      "remove": "移除"
+    }
+  },
+  "at": {
+    "menu": "插入日期、欄位、標籤或筆記",
+    "groups": {
+      "dates": "日期",
+      "due": "截止日期",
+      "fields": "待辦事項欄位",
+      "tags": "標籤",
+      "notes": "筆記"
+    },
+    "today": "今天",
+    "tomorrow": "明天",
+    "yesterday": "昨天",
+    "next": "下{{weekday}}",
+    "pick": "選擇日期",
+    "pickerLabel": "選擇日期",
+    "due": "截止日期",
+    "scheduled": "排定日期",
+    "priority": "優先順序",
+    "priorityValue": "{{priority}}優先順序",
+    "custom": "自訂欄位",
+    "addField": "新增欄位「{{key}}」",
+    "setField": "將 {{key}} 設為「{{value}}」",
+    "typeValue": "輸入 {{key}} 的值，然後按 Enter。"
+  },
+  "tasks": {
+    "filters": "待辦事項篩選",
+    "loading": "正在讀取你的待辦事項",
+    "failed": "無法讀取你的待辦事項。",
+    "empty": "還沒有待辦事項。在任何筆記中以 - [ ] 開始一行，它就會出現在這裡。",
+    "noMatches": "沒有符合這些篩選條件的待辦事項。",
+    "clear": "清除篩選條件",
+    "list": "待辦事項",
+    "count_other": "{{count}} 個待辦事項",
+    "complete": "將「{{text}}」標示為已完成",
+    "reopen": "將「{{text}}」標示為未完成",
+    "openNote": "開啟 {{title}}",
+    "toggleFailed": "無法更新待辦事項。",
+    "moved": "這個待辦事項在其筆記中已變更。請開啟筆記來更新。",
+    "state": {
+      "label": "顯示",
+      "open": "未完成",
+      "done": "已完成",
+      "all": "未完成和已完成"
+    },
+    "due": {
+      "label": "截止",
+      "any": "任何截止日期",
+      "overdue": "已逾期",
+      "today": "今天截止",
+      "week": "未來 7 天內截止",
+      "none": "沒有截止日期"
+    },
+    "priority": {
+      "label": "優先順序",
+      "any": "任何優先順序",
+      "high": "高優先順序",
+      "medium": "中優先順序",
+      "low": "低優先順序",
+      "none": "沒有優先順序"
+    },
+    "tag": {
+      "label": "標籤",
+      "any": "所有標籤"
+    },
+    "project": {
+      "label": "專案",
+      "any": "所有專案"
+    },
+    "sort": {
+      "label": "待辦事項排序方式",
+      "due": "截止日期",
+      "priority": "優先順序"
+    }
+  },
+  "attachments": {
+    "filters": "附件篩選",
+    "loading": "正在尋找附件",
+    "failed": "無法讀取你的附件。",
+    "empty": "還沒有附件。將圖片或檔案拖放到筆記中，它就會出現在這裡。",
+    "noMatches": "沒有符合這些篩選條件的附件。",
+    "clear": "清除篩選條件",
+    "list": "附件",
+    "count_other": "{{count}} 個檔案",
+    "openNote": "開啟 {{title}}",
+    "copyLink": "複製連結",
+    "linkCopied": "已複製「{{name}}」的連結。",
+    "copyFailed": "無法複製「{{name}}」的連結。",
+    "unused": "未使用",
+    "type": {
+      "label": "類型",
+      "all": "所有類型",
+      "image": "圖片",
+      "audio": "音訊",
+      "video": "影片",
+      "pdf": "PDF",
+      "other": "其他"
+    },
+    "use": {
+      "label": "使用情形",
+      "all": "所有檔案",
+      "unused": "未使用"
+    }
+  },
+  "info": {
+    "title": "資訊",
+    "show": "筆記資訊",
+    "noNote": "開啟一篇筆記即可查看它的資訊。",
+    "details": "筆記詳細資料",
+    "created": "建立時間",
+    "updated": "更新時間",
+    "words": "字數",
+    "characters": "字元數",
+    "lines": "行數",
+    "readingTime": "閱讀時間",
+    "underMinute": "不到一分鐘",
+    "noProperties": "沒有屬性",
+    "noBacklinks": "沒有筆記連結到這裡",
+    "noMentions": "沒有其他筆記提及這篇筆記",
+    "noReferences": "這篇筆記中沒有引用",
+    "noDeadLinks": "沒有失效連結",
+    "noAttachments": "沒有附加檔案"
+  },
+  "calendar": {
+    "title": "行事曆",
+    "week": "週",
+    "hasNote": "有每日筆記",
+    "due_other": "{{count}} 個待辦事項截止",
+    "openWeek": "開啟第 {{week}} 週的每週筆記",
+    "openMonthNote": "開啟每月筆記",
+    "createMonthNote": "建立每月筆記",
+    "today": "今天",
+    "failed": {
+      "weekly": "無法開啟每週筆記。",
+      "monthly": "無法開啟每月筆記。"
+    }
+  },
+  "periodic": {
+    "title": "每日、每週和每月筆記",
+    "daily": {
+      "label": "每日筆記",
+      "description": "今日筆記，以及側邊欄行事曆中的日期。"
+    },
+    "weekly": {
+      "label": "每週筆記",
+      "description": "側邊欄行事曆中的週數。"
+    },
+    "monthly": {
+      "label": "每月筆記",
+      "description": "側邊欄行事曆頂端的月份名稱。"
+    },
+    "weekStart": {
+      "label": "每週開始於",
+      "description": "側邊欄行事曆的第一欄。週數從這一天開始計算，選擇星期一時即為 ISO 週數。",
+      "locale": "地區預設（{{day}}）",
+      "monday": "星期一",
+      "sunday": "星期日",
+      "saturday": "星期六"
+    },
+    "format": "標題格式",
+    "preview": "範例：{{title}}",
+    "invalidFormat": "請加入日期部分，例如 YYYY 或 WW。",
+    "template": "範本",
+    "savedTemplate": "你儲存的範本",
+    "tag": "標籤",
+    "noTag": "沒有標籤",
+    "formatHelp": "標題格式中，YYYY 代表年份，MM 代表月份，MMMM 代表月份名稱，DD 代表日，dddd 代表星期幾，WW 代表週數，GGGG 代表該週所屬的年份。方括號中的文字（例如 [W]）會原樣保留。現有筆記的標題不會改變，因此請在開始使用某個格式之前先修改它。"
+  },
   "live": {
     "share": "分享",
     "shared": "已分享",
@@ -780,7 +1178,9 @@
     "outline": {
       "title": "大綱",
       "empty": "這篇筆記沒有標題",
+      "emptyDetail": "在行首輸入 # 即可加入標題。",
       "noNote": "開啟一篇筆記即可查看它的大綱",
+      "noNoteDetail": "大綱會跟著你正在編輯的筆記。",
       "levels": "標題層級",
       "allLevels": "所有層級",
       "upTo": "到 H{{level}} 為止",
@@ -788,7 +1188,8 @@
       "expand": "展開 {{title}}"
     },
     "linksFailed": "無法讀取筆記之間的連結。",
-    "tagsFailed": "無法讀取標籤。"
+    "tagsFailed": "無法讀取標籤。",
+    "loading": "正在讀取筆記之間的連結"
   },
   "vault": {
     "import": {
@@ -807,6 +1208,9 @@
       "seenTitle": "你之前匯入過這個資料夾",
       "seenDescription_other": "{{date}} 的匯入加入了 {{count}} 篇筆記。再次匯入會加入新的副本，先前的筆記維持不變。",
       "again": "以新筆記再次匯入",
+      "largeTitle": "這個資料夾有 {{total}} 篇筆記",
+      "largeDescription": "全部匯入可能需要一些時間，每一篇都會成為你筆記庫中的一篇獨立筆記。你可以隨時停止匯入。",
+      "largeConfirm": "全部匯入",
       "doneTitle": "匯入完成",
       "notes_other": "已匯入 {{count}} 篇筆記",
       "attachments_other": "已複製 {{count}} 個附件",
@@ -827,6 +1231,7 @@
         "folderName": "Oleafly 筆記",
         "done_other": "已匯出 {{count}} 篇筆記",
         "skipped_other": "{{count}} 個附件無法匯出",
+        "paperLinks_other": "{{count}} 個指向論文的連結變成了純文字",
         "doneSkipped": "{{done}}。{{skipped}}。",
         "showFolder": "顯示資料夾",
         "failed": "無法匯出筆記。"
@@ -854,8 +1259,10 @@
       "empty": "還沒有標籤。在筆記中加入 #標籤，或在筆記屬性中加入 tags。",
       "filter": "顯示含有標籤 {{tag}} 的筆記",
       "clear": "停止依 {{tag}} 篩選",
-      "expand": "顯示 {{tag}} 底下的標籤",
-      "collapse": "隱藏 {{tag}} 底下的標籤"
+      "search": "篩選標籤",
+      "noMatch": "沒有符合「{{query}}」的標籤。",
+      "showAll": "顯示全部 {{total}} 項",
+      "showFewer": "顯示較少"
     },
     "switcher": {
       "open": "前往筆記",
@@ -873,7 +1280,9 @@
     },
     "daily": {
       "open": "今日筆記",
-      "failed": "無法開啟今日筆記。"
+      "failed": "無法開啟今日筆記。",
+      "previous": "上一篇每日筆記：{{date}}",
+      "next": "下一篇每日筆記：{{date}}"
     },
     "templates": {
       "open": "從範本建立",
@@ -897,7 +1306,9 @@
         "proposal": "研究計畫書",
         "proof": "證明或推導",
         "dataAnalysis": "資料分析報告",
-        "interview": "訪談筆記"
+        "interview": "訪談筆記",
+        "screeningLog": "篩選記錄",
+        "labNotebook": "實驗記錄本條目"
       },
       "descriptions": {
         "daily": "一天的計畫與隨手記錄",
@@ -910,7 +1321,9 @@
         "proposal": "研究計畫申請或學位論文的目標、方法與時程",
         "proof": "結果、背後的想法與完整論證",
         "dataAnalysis": "對哪些資料做了哪些分析，以及得到什麼結果",
-        "interview": "一次訪談中的回答、引述與主題"
+        "interview": "一次訪談中的回答、引述與主題",
+        "screeningLog": "回顧問題、標準，以及每個篩選階段的數量",
+        "labNotebook": "實驗檯上的一天：目的、樣品、步驟、觀察與簽署"
       },
       "bodies": {
         "daily": "**{{weekday}}**\n\n## 計畫\n- [ ] 最重要的任務\n- [ ] 第二項任務\n\n## 記錄\n- {{time}} 開始一天的工作\n\n## 筆記\n\n## 今日完成\n- 目前還沒有\n\n## 明天\n- [ ] 第一件要處理的事",
@@ -921,9 +1334,11 @@
         "labProtocol": "> [!warning] 安全\n> 開始之前，請確認危害、防護裝備與廢棄物處理方式。\n\n## 目的\n這份流程會產出什麼，以及什麼時候使用。\n\n## 材料\n| 品項 | 用量 | 供應商或型錄編號 | 備註 |\n| --- | --- | --- | --- |\n| | | | |\n\n## 設備\n- 儀器與參數設定\n\n## 步驟\n1. 準備\n2. 執行\n3. 清理\n\n## 檢查\n- [ ] 已準備對照組\n- [ ] 已記錄設定\n- [ ] 樣品已標上日期與批次\n\n## 疑難排解\n| 問題 | 可能原因 | 解決方法 |\n| --- | --- | --- |\n| | | |\n\n## 修訂記錄\n| 版本 | 日期 | 變更 |\n| --- | --- | --- |\n| 1 | {{date}} | 初版 |",
         "weeklyLog": "## 本週目標\n- [ ] 第一個目標\n- [ ] 第二個目標\n- [ ] 第三個目標\n\n## 進度\n| 星期 | 完成的工作 | 備註 |\n| --- | --- | --- |\n| 星期一 | | |\n| 星期二 | | |\n| 星期三 | | |\n| 星期四 | | |\n| 星期五 | | |\n\n## 結果與圖片\n- 這週的成果\n\n## 阻礙\n> [!warning] 需要協助\n> 哪裡卡住了，誰能幫忙排除。\n\n## 閱讀\n- 這週讀過的論文\n\n## 下週\n- [ ] 下週的第一個目標",
         "proposal": "> [!abstract] 摘要\n> 用三句話說明：問題、方法與預期結果。\n\n## 背景與動機\n為什麼現在研究這個問題很重要，以及目前已知的內容。\n\n## 研究問題\n1. 第一個問題\n\n## 研究目標\n| 目標 | 方法 | 預期成果 |\n| --- | --- | --- |\n| 1 | | |\n\n## 研究方法\n研究設計、資料、分析方式，以及如何衡量成功。\n\n## 時程\n| 階段 | 月份 | 里程碑 |\n| --- | --- | --- |\n| | | |\n\n## 風險與因應\n| 風險 | 可能性 | 因應措施 |\n| --- | --- | --- |\n| | | |\n\n## 資源與預算\n\n## 影響\n誰會受益，以及如何分享研究成果。\n\n## 參考文獻",
-        "proof": "> [!note] 命題\n> 精確敘述結果，並寫明所有假設。\n\n## 定義與符號\n- 符號及其意義\n\n## 想法\n在進入細節之前，先用淺白的話說明主要想法。\n\n## 證明\n**步驟 1** 建立論證架構。\n\n**步驟 2** 完成主要估計。\n\n**步驟 3** 得出結論。\n\n## 檢查\n- [ ] 每個假設都有用到\n- [ ] 邊界情況都已涵蓋\n- [ ] 常數與上下界都已追蹤\n\n## 備註\n推廣、反例與相關結果。",
-        "dataAnalysis": "> [!info] 問題\n> 這項分析要支援的決策。\n\n## 資料\n| 欄位 | 值 |\n| --- | --- |\n| 來源 | |\n| 版本或日期 | |\n| 列數與欄數 | |\n| 排除項目 | |\n\n## 方法\n- 資料清理步驟\n- 使用的模型或檢定，以及原因\n- 已檢查的前提假設\n\n## 結果\n| 指標 | 估計值 | 區間 | 備註 |\n| --- | --- | --- | --- |\n| | | | |\n\n## 圖片\n- 圖片及其呈現的內容\n\n## 解讀\n這些結果對所研究的問題代表什麼。\n\n## 限制\n- 偏誤、缺漏資料，以及可能改變結論的因素\n\n## 可重現性\n- [ ] 程式碼已儲存並附上連結\n- [ ] 已記錄隨機種子\n- [ ] 已註明套件版本",
-        "interview": "> [!warning] 知情同意與隱私\n> 錄音前先取得對方同意，並以受訪者代碼取代姓名。\n\n## 基本資訊\n| 項目 | 值 |\n| --- | --- |\n| 受訪者代碼 | |\n| 角色 | |\n| 時長 | |\n| 錄音 | |\n\n## 問題與回答\n### 問題 1\n- 回答\n\n### 問題 2\n- 回答\n\n## 引述\n> 值得保留的原話。\n\n## 主題\n- 主題及支持它的回答\n\n## 後續追蹤\n- [ ] 寄送感謝函\n- [ ] 逐字轉錄並去識別化"
+        "proof": "## 定義與符號\n> [!definition] 符號\n> 你使用的符號及其意義。\n\n## 命題\n> [!theorem] 主要結果\n> 精確敘述結果，並寫明所有假設。\n\n## 想法\n在進入細節之前，先用淺白的話說明主要想法。\n\n## 引理\n> [!lemma] 引理 1\n> 主要證明所需要的一個較小的論點。\n\n> [!proof] 引理 1 的證明\n> 引理為什麼成立。\n\n## 證明\n> [!proof] 主要結果的證明\n> **步驟 1** 建立論證架構。\n>\n> **步驟 2** 利用引理 1 完成主要估計。\n>\n> **步驟 3** 得出結論。\n\n## 檢查\n- [ ] 每個假設都有用到\n- [ ] 邊界情況都已涵蓋\n- [ ] 常數與上下界都已追蹤\n\n## 備註\n推廣、反例與相關結果。",
+        "dataAnalysis": "> [!info] 問題\n> 這項分析要支援的決策。\n\n## 資料\n| 欄位 | 值 |\n| --- | --- |\n| 來源 | |\n| 版本或日期 | |\n| 列數與欄數 | |\n| 排除項目 | |\n\n## 方法\n- 資料清理步驟\n- 使用的模型或檢定，以及原因\n- 已檢查的前提假設\n\n## 結果\n下面的表格是一個 CSV 區塊。請把範例列換成你的結果。\n\n```csv\n\"指標\",\"估計值\",\"95% 下限\",\"95% 上限\",n\n\"A 組平均\",0,0,0,0\n\"B 組平均\",0,0,0,0\n\"差值\",0,0,0,0\n```\n\n## 圖片\n- 圖片及其呈現的內容\n\n## 解讀\n這些結果對所研究的問題代表什麼。\n\n## 限制\n- 偏誤、缺漏資料，以及可能改變結論的因素\n\n## 可重現性\n- [ ] 程式碼已儲存並附上連結\n- [ ] 已記錄隨機種子\n- [ ] 已註明套件版本",
+        "interview": "> [!warning] 知情同意與隱私\n> 錄音前先取得對方同意，並以受訪者代碼取代姓名。\n\n## 基本資訊\n| 項目 | 值 |\n| --- | --- |\n| 受訪者代碼 | |\n| 角色 | |\n| 時長 | |\n| 錄音 | |\n\n## 問題與回答\n### 問題 1\n- 回答\n\n### 問題 2\n- 回答\n\n## 引述\n> 值得保留的原話。\n\n## 主題\n- 主題及支持它的回答\n\n## 後續追蹤\n- [ ] 寄送感謝函\n- [ ] 逐字轉錄並去識別化",
+        "screeningLog": "> [!question] 回顧問題（PICO）\n> - **族群：** 研究的對象\n> - **介入或暴露：** 要檢驗的內容\n> - **對照：** 與什麼比較\n> - **結果：** 測量的指標\n\n## 納入標準\n- 研究設計\n- 族群與研究場域\n- 語言與年份\n\n## 排除標準\n- 原因與辨識方式\n\n## 檢索\n| 日期 | 資料庫 | 檢索式 | 結果數 |\n| --- | --- | --- | --- |\n| {{date}} | | | |\n\n## 各階段數量\n| 階段 | 筆數 | 剔除 | 主要原因 |\n| --- | --- | --- | --- |\n| 檢索所得 | | | |\n| 去除重複後 | | | |\n| 已篩選標題與摘要 | | | |\n| 已評估全文 | | | |\n| 納入回顧 | | | |\n\n## 全文階段排除\n| 論文 | 原因 |\n| --- | --- |\n| | |\n\n## 意見分歧\n- 論文、各審查者的判斷，以及如何解決\n\n## 後續步驟\n- [ ] 篩選下一批\n- [ ] 核對數量是否相符",
+        "labNotebook": "**{{date}} {{weekday}}**\n\n## 目的\n今天打算做什麼，以及原因。\n\n## 材料\n| 材料 | 樣品編號 | 批號或批次 | 用量 |\n| --- | --- | --- | --- |\n| | | | |\n\n## 步驟\n1. 依序記錄做了什麼，包括時間與參數設定\n2. 與原定流程不同之處，以及原因\n\n## 觀察\n- {{time}} 看到的現象\n\n## 結果\n- 測量值，以及原始資料的存放位置\n\n## 後續步驟\n- [ ] 下一次實驗的後續事項\n\n## 簽署\n**簽署人：** 姓名，{{date}}\n\n**見證人：** 姓名，日期"
       }
     },
     "mentions": {
@@ -962,8 +1377,8 @@
     "actionHint": "作用於這篇筆記",
     "agentCanEdit": "這個代理程式可以變更所連結專案中的檔案。",
     "allowWritesLabel": "允許代理程式變更檔案",
-    "allowWritesAsk": "{{agent}} 沒有唯讀模式，因此可能會變更 {{project}} 中的檔案。仍要傳送訊息嗎？",
-    "allowWrites": "在這個聊天中允許",
+    "allowWritesAsk": "{{agent}} 沒有唯讀模式，因此可能會變更 {{project}} 中的檔案。Oleafly 無法替它加上唯讀模式。仍要傳送訊息嗎？",
+    "allowWrites": "仍然傳送",
     "dontSend": "不要傳送",
     "viewOnly": "你只能檢視這篇筆記，因此助理無法變更它。"
   },
@@ -980,6 +1395,7 @@
     "template": "無法變更「{{name}}」的範本設定。"
   },
   "noteTab": {
+    "loading": "正在開啟筆記",
     "projectNote": "專案筆記",
     "sharedProject": "這個專案的每個人都能查看和編輯",
     "localProject": "與這個專案的檔案儲存在一起",
@@ -991,5 +1407,247 @@
     "copyToMine": "複製到我的筆記",
     "missing": "這篇筆記已無法使用。它可能已被移動或刪除。",
     "writeRefused": "無法儲存筆記。這個專案目前是唯讀的。"
+  },
+  "appearance": {
+    "notes": {
+      "sectionName": "筆記外觀",
+      "resetAriaLabel": "將{{setting}}重設為預設值",
+      "text": {
+        "title": "內文"
+      },
+      "typeface": {
+        "label": "字型類型",
+        "description": "選擇筆記內文的字型類型。",
+        "options": {
+          "sans": "無襯線",
+          "serif": "襯線",
+          "mono": "等寬"
+        }
+      },
+      "font": {
+        "label": "筆記字型",
+        "description": "為筆記內文選擇任何已安裝的字型。留空則使用「字型類型」設定。"
+      },
+      "fontSize": {
+        "label": "筆記文字大小",
+        "description": "設定筆記內文的文字大小。",
+        "custom": "自訂",
+        "customLabel": "自訂筆記文字大小（像素）"
+      },
+      "lineHeight": {
+        "label": "筆記行高",
+        "description": "設定筆記內文的行距。",
+        "customLabel": "自訂筆記行高"
+      },
+      "paragraphSpacing": {
+        "label": "段落間距",
+        "description": "設定段落、清單與其他區塊之間的間距。",
+        "options": {
+          "compact": "緊密",
+          "normal": "標準",
+          "relaxed": "寬鬆",
+          "spacious": "寬敞"
+        }
+      },
+      "headings": {
+        "title": "標題與筆記標題"
+      },
+      "headingTypeface": {
+        "label": "標題字型類型",
+        "description": "為標題與筆記標題選擇字型類型。",
+        "options": {
+          "text": "與內文相同"
+        }
+      },
+      "headingFont": {
+        "label": "標題字型",
+        "description": "為標題與筆記標題選擇已安裝的字型。留空則使用「標題字型類型」設定。"
+      },
+      "headingSize": {
+        "label": "標題大小",
+        "description": "設定標題相對於內文的大小。",
+        "options": {
+          "small": "較小",
+          "normal": "標準",
+          "large": "較大"
+        }
+      },
+      "titleSize": {
+        "label": "筆記標題大小",
+        "description": "設定每篇筆記頂端標題的大小。"
+      },
+      "layout": {
+        "title": "版面配置"
+      },
+      "width": {
+        "label": "筆記寬度",
+        "description": "筆記開啟時的寬度。也可以在筆記的寬度選單中變更。",
+        "options": {
+          "standard": "標準",
+          "wide": "寬",
+          "full": "全寬"
+        }
+      },
+      "info": {
+        "label": "筆記資訊",
+        "description": "筆記的屬性與連結要顯示在哪裡。「側邊面板」會將它們顯示在「資訊」面板中，並附上筆記的統計數字與附件。「行內」則會將它們保留在頁面上。",
+        "options": {
+          "side": "側邊面板",
+          "inline": "行內"
+        }
+      },
+      "taskBox": {
+        "label": "待辦核取方塊",
+        "description": "待辦清單中方塊的形狀。",
+        "options": {
+          "square": "方形",
+          "round": "圓形"
+        }
+      },
+      "wordCount": {
+        "label": "顯示字數",
+        "description": "在筆記的工具列中顯示字數。"
+      },
+      "spellcheck": {
+        "label": "在筆記中檢查拼字",
+        "description": "撰寫筆記時，在拼錯的字下方加上底線。"
+      },
+      "replacements": {
+        "label": "輸入時取代",
+        "description": "輸入時將 -> 這類字元組合取代為 →。程式碼和數學式會保持原樣，取代後立即按 Backspace 可還原你的文字。",
+        "list": "文字取代",
+        "type": "輸入",
+        "becomes": "取代為",
+        "add": "新增",
+        "remove": "移除 {{from}}",
+        "removeTooltip": "移除",
+        "empty": "還沒有取代規則。請在下方新增。",
+        "full": "最多可以有 {{limit}} 條取代規則。請先移除一條再新增。"
+      },
+      "keepUndo": {
+        "label": "關閉後保留復原記錄",
+        "description": "關閉筆記或結束應用程式後，仍可復原筆記中的操作。歷史記錄會保留在這台電腦上，關閉這個選項會刪除它。"
+      },
+      "code": {
+        "title": "程式碼"
+      },
+      "drawings": {
+        "title": "LaTeX 繪圖"
+      },
+      "tikzPreamble": {
+        "label": "TikZ 序言區",
+        "description": "加在每個 TikZ 和 CircuiTikZ 區塊序言區開頭的行，例如 \\usetikzlibrary{positioning}。"
+      },
+      "codeFont": {
+        "label": "程式碼字型",
+        "description": "為程式碼區塊與行內程式碼選擇已安裝的字型。"
+      },
+      "codeTheme": {
+        "label": "程式碼區塊配色",
+        "description": "選擇筆記中程式碼區塊的語法配色。",
+        "options": {
+          "editor": "與編輯器相同"
+        }
+      },
+      "colors": {
+        "title": "顏色"
+      },
+      "accent": {
+        "label": "筆記強調色",
+        "description": "用於筆記中的連結、標籤與待辦核取方塊。",
+        "matchApp": "與應用程式一致",
+        "customAriaLabel": "選擇自訂的筆記強調色"
+      },
+      "callouts": {
+        "label": "標註樣式",
+        "description": "筆記中標註方塊的外觀。",
+        "options": {
+          "tinted": "淺色底",
+          "filled": "填滿",
+          "outlined": "外框",
+          "bar": "側邊線"
+        }
+      },
+      "fieldStyle": {
+        "label": "日期與欄位標記",
+        "description": "筆記中的日期，以及截止、優先順序等欄位的外觀。",
+        "options": {
+          "tint": "淺色底",
+          "outline": "外框",
+          "underline": "底線"
+        }
+      },
+      "remoteImages": {
+        "title": "來自網路的圖片",
+        "description": "筆記和助理的回覆會直接載入這些網站的圖片，不會先詢問。",
+        "empty": "筆記和助理的回覆從網路載入圖片前會先詢問。你設為一律允許的網站會顯示在這裡。",
+        "remove": "移除 {{host}}"
+      }
+    }
+  },
+  "notesPreview": {
+    "label": "套用這些設定的筆記預覽",
+    "title": "野外筆記",
+    "heading": "早晨調查",
+    "paragraph": "小雨下到九點，之後北邊山脊上空放晴。到了中午，土壤仍然潮濕。",
+    "links": "完整步驟請見<note>採樣方法</note>，也可以瀏覽<tag>#野外調查</tag>。",
+    "highlight": "幼苗在一週內長高了一倍。",
+    "calloutTitle": "下次造訪",
+    "calloutBody": "採集新樣本前，先檢查土壤感測器。",
+    "taskDone": "為樣本貼上標籤",
+    "task": "上傳照片",
+    "taskLate": "寄出土壤報告"
+  },
+  "highlight": {
+    "colors": {
+      "yellow": "黃色",
+      "orange": "橘色",
+      "red": "紅色",
+      "pink": "粉紅色",
+      "purple": "紫色",
+      "blue": "藍色",
+      "green": "綠色"
+    },
+    "remove": "移除醒目提示"
+  },
+  "quickCapture": {
+    "title": "快速記錄",
+    "untitled": "未命名",
+    "placeholder": "開始書寫…",
+    "field": "要記錄的文字",
+    "characters_other": "{{count}} 個字元",
+    "failed": "無法儲存。你的文字仍在這裡，可以再試一次。",
+    "actions": {
+      "label": "動作",
+      "saveNew": "儲存為新筆記",
+      "saveToday": "加入今日筆記",
+      "copy": "複製為 Markdown",
+      "discard": "捨棄草稿"
+    },
+    "openNotes": "開啟筆記",
+    "newNote": "新增筆記",
+    "format": "顯示格式",
+    "closeFormat": "隱藏格式"
+  },
+  "starter": {
+    "blocksGallery": {
+      "title": "區塊範例集",
+      "intro": "筆記中可以放入的所有區塊。在區塊上按一下 {{source}}，即可查看並編輯繪製它的內容。在空白行輸入 {{slash}} 即可插入新區塊。",
+      "charts": "統計圖",
+      "functionPlots": "函數圖形",
+      "tables": "表格",
+      "csvTable": "csv 區塊可以排序和篩選，並附有摘要列：",
+      "markdownTable": "一般的 Markdown 表格也可以使用：",
+      "math": "數學與化學",
+      "typst": "Typst",
+      "diagrams": "圖表",
+      "svg": "SVG",
+      "html": "HTML，按一下「{{run}}」",
+      "react": "React，按一下「{{run}}」",
+      "structures": "化學結構",
+      "molecule": "3D 分子",
+      "sequences": "序列",
+      "code": "程式碼"
+    }
   }
 }

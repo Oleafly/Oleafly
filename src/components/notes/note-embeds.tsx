@@ -1,26 +1,26 @@
 import { Node as TiptapNode, type AnyExtension, type NodeViewRenderer, type NodeViewRendererProps } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
+import type { TFunction } from "i18next";
 import { ArrowUpRight, ChevronDown } from "lucide-react";
 import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
-import { createRoot, type Root } from "react-dom/client";
-import { I18nextProvider, useTranslation } from "react-i18next";
+import type { Root } from "react-dom/client";
+import { useTranslation } from "react-i18next";
+import { BLOCK_MESSAGE, BLOCK_SURFACE } from "@/components/ui/block-frame";
+import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useNearViewport } from "@/hooks/use-near-viewport";
-import { i18n } from "@/i18n";
+import { heldRemoteImage, remoteImageAllowed, subscribeRemoteImages } from "@/lib/remote-image";
 import { cn } from "@/lib/utils";
 import { isSelectionModifier } from "@/store/library-selection";
-import { noteBody } from "./note-file";
+import { frontMatterBody } from "@/lib/front-matter";
+import { blockOfFragment, shortText, stripBlockIdMarkers } from "./note-block-ids";
+import { noteBlock, noteBlockSource } from "./note-block-links";
 import { NoteChip } from "./note-icons";
 import { noteHeadings, noteSection, parseNoteLink, type NoteLinkTarget } from "./note-link-format";
 import type { LinkableNote, OpenNoteOptions } from "./note-links";
 import { NoteMarkdown } from "./note-preview";
-import {
-  heldRemoteImage,
-  type MountedNotice,
-  mountRemoteImageNotice,
-  remoteImageAllowed,
-  subscribeRemoteImages,
-} from "./note-remote-images";
+import { type MountedNotice, mountRemoteImageNotice } from "./note-remote-images";
+import { nodeRoot } from "./node-root";
 
 export interface EmbedOptions {
   getNotes: () => readonly LinkableNote[] | null;
@@ -40,8 +40,18 @@ export function embedTarget(node: ProseMirrorNode): NoteLinkTarget | null {
 type Loaded = { key: string; text: string } | { key: string; failed: true };
 
 export function embedSource(text: string, heading: string | undefined): string | null {
-  const body = noteBody(text);
-  return heading ? noteSection(body, heading) : body.trim();
+  const block = blockOfFragment(heading);
+  if (block) return noteBlockSource(text, block);
+  const body = frontMatterBody(text);
+  const source = heading ? noteSection(body, heading) : body.trim();
+  return source === null ? null : stripBlockIdMarkers(source);
+}
+
+export function fragmentLabel(text: string, fragment: string): string | undefined {
+  const block = blockOfFragment(fragment);
+  if (!block) return noteHeadings(frontMatterBody(text)).find((heading) => heading.slug === fragment)?.text;
+  const found = noteBlock(text, block);
+  return found ? shortText(found.text) || fragment : undefined;
 }
 
 interface CardProps {
@@ -51,7 +61,63 @@ interface CardProps {
 }
 
 function Message({ children }: Readonly<{ children: string }>) {
-  return <p className="note-embed-message">{children}</p>;
+  return <p className={BLOCK_MESSAGE}>{children}</p>;
+}
+
+interface EmbedView {
+  state: string;
+  body: ReactNode;
+}
+
+interface EmbedViewInput {
+  t: TFunction<["notes"]>;
+  target: NoteLinkTarget;
+  notes: readonly LinkableNote[] | null;
+  note: LinkableNote | null;
+  self: boolean;
+  loaded: Loaded | null;
+  text: string | null;
+  resolveAsset: EmbedOptions["resolveAsset"];
+}
+
+function embedSourceView({ t, target, note, text, resolveAsset }: EmbedViewInput & { note: LinkableNote; text: string }): EmbedView {
+  const source = embedSource(text, target.heading);
+  if (source === null) {
+    const missing = blockOfFragment(target.heading) ? t(($) => $.notes.linksSearch.blocks.missingBlock) : t(($) => $.notes.kb.embeds.missingHeading);
+    return { state: "missing", body: <Message>{missing}</Message> };
+  }
+  if (source === "") return { state: "ready", body: <Message>{t(($) => $.notes.kb.embeds.empty)}</Message> };
+  return {
+    state: "ready",
+    body: <NoteMarkdown noteId={note.projectId} source={source} color={note.color} resolveAsset={resolveAsset} full className="note-embed-content" />,
+  };
+}
+
+function embedView(input: EmbedViewInput): EmbedView {
+  const { t, notes, note, self, loaded, text } = input;
+  if (!notes) return { state: "loading", body: null };
+  if (!note) return { state: "missing", body: <Message>{t(($) => $.notes.kb.embeds.missing)}</Message> };
+  if (self) return { state: "self", body: <Message>{t(($) => $.notes.kb.embeds.self)}</Message> };
+  if (loaded && "failed" in loaded) return { state: "failed", body: <Message>{t(($) => $.notes.kb.embeds.failed)}</Message> };
+  if (text === null) return { state: "loading", body: null };
+  return embedSourceView({ ...input, note, text });
+}
+
+function embedKey(note: LinkableNote | null, options: EmbedOptions): string {
+  return note ? `${note.projectId}:${options.version(note.projectId)}` : "";
+}
+
+function loadedText(loaded: Loaded | null): string | null {
+  return loaded && "text" in loaded ? loaded.text : null;
+}
+
+function EmbedTitle({ title, heading, headingText }: Readonly<{ title: string; heading: string | undefined; headingText: string | undefined }>) {
+  return (
+    <span className="min-w-0 flex-1 truncate">
+      <span className="font-medium">{title}</span>
+      {heading && <span className="text-muted-foreground before:mx-1.5 before:content-['›']">{headingText ?? heading}</span>}
+    </span>
+  );
 }
 
 export function EmbedCard({ target, alt, options }: Readonly<CardProps>) {
@@ -62,8 +128,7 @@ export function EmbedCard({ target, alt, options }: Readonly<CardProps>) {
   const notes = options.getNotes();
   const note = notes?.find((candidate) => candidate.noteId === target.id) ?? null;
   const self = target.id === options.currentNoteId();
-  const version = note ? options.version(note.projectId) : 0;
-  const key = note ? `${note.projectId}:${version}` : "";
+  const key = embedKey(note, options);
   const wanted = Boolean(note) && !self && visible && !folded;
 
   useEffect(() => {
@@ -82,8 +147,8 @@ export function EmbedCard({ target, alt, options }: Readonly<CardProps>) {
     };
   }, [key, loaded?.key, note, options, wanted]);
 
-  const text = loaded && "text" in loaded ? loaded.text : null;
-  const headingText = target.heading && text ? noteHeadings(noteBody(text)).find((heading) => heading.slug === target.heading)?.text : undefined;
+  const text = loadedText(loaded);
+  const headingText = target.heading && text ? fragmentLabel(text, target.heading) : undefined;
   const open = (event: MouseEvent) => {
     if (!note) return;
     const opened: OpenNoteOptions = { newTab: isSelectionModifier(event), projectId: note.projectId };
@@ -91,81 +156,65 @@ export function EmbedCard({ target, alt, options }: Readonly<CardProps>) {
     options.onOpen(target.id, opened);
   };
 
-  let state = "ready";
-  let body: ReactNode = null;
-  if (!notes) {
-    state = "loading";
-  } else if (!note) {
-    state = "missing";
-    body = <Message>{t(($) => $.notes.kb.embeds.missing)}</Message>;
-  } else if (self) {
-    state = "self";
-    body = <Message>{t(($) => $.notes.kb.embeds.self)}</Message>;
-  } else if (loaded && "failed" in loaded) {
-    state = "failed";
-    body = <Message>{t(($) => $.notes.kb.embeds.failed)}</Message>;
-  } else if (text !== null) {
-    const source = embedSource(text, target.heading);
-    if (source === null) {
-      state = "missing";
-      body = <Message>{t(($) => $.notes.kb.embeds.missingHeading)}</Message>;
-    } else if (source === "") {
-      body = <Message>{t(($) => $.notes.kb.embeds.empty)}</Message>;
-    } else {
-      body = <NoteMarkdown noteId={note.projectId} source={source} resolveAsset={options.resolveAsset} full className="note-embed-content" />;
-    }
-  } else {
-    state = "loading";
-  }
+  const { state, body } = embedView({ t, target, notes, note, self, loaded, text, resolveAsset: options.resolveAsset });
 
   const title = note?.title || alt || t(($) => $.notes.kb.embeds.untitled);
+  const foldLabel = folded ? t(($) => $.notes.kb.embeds.unfold) : t(($) => $.notes.kb.embeds.fold);
   return (
-    <div ref={gate} className="note-embed-card" data-state={state} data-folded={folded || undefined}>
-      <div className="note-embed-head">
+    <div
+      ref={gate}
+      data-state={state}
+      data-folded={folded || undefined}
+      className={cn(
+        BLOCK_SURFACE,
+        "overflow-hidden transition-colors in-[.ProseMirror-selectednode]:border-primary motion-reduce:transition-none",
+      )}
+    >
+      <div className={cn("note-embed-head flex select-none items-center gap-2 py-1.5 pr-2 pl-3 text-[0.8125rem]", !folded && "border-b")}>
         {note ? <NoteChip icon={note.icon} color={note.color} className="size-5 rounded" /> : null}
-        <span className="min-w-0 flex-1 truncate">
-          <span className="font-medium">{title}</span>
-          {target.heading && <span className="note-embed-crumb">{headingText ?? target.heading}</span>}
-        </span>
+        <EmbedTitle title={title} heading={target.heading} headingText={headingText} />
         {note && !self && (
           <Tooltip label={t(($) => $.notes.kb.embeds.open)}>
-            <button type="button" aria-label={t(($) => $.notes.kb.embeds.openNamed, { title })} onClick={open} className="note-embed-button">
-              <ArrowUpRight aria-hidden className="size-4" />
-            </button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t(($) => $.notes.kb.embeds.openNamed, { title })}
+              onClick={open}
+              className="size-7 text-muted-foreground"
+            >
+              <ArrowUpRight aria-hidden />
+            </Button>
           </Tooltip>
         )}
-        <Tooltip label={folded ? t(($) => $.notes.kb.embeds.unfold) : t(($) => $.notes.kb.embeds.fold)}>
-          <button
-            type="button"
+        <Tooltip label={foldLabel}>
+          <Button
+            variant="ghost"
+            size="icon"
             aria-expanded={!folded}
-            aria-label={folded ? t(($) => $.notes.kb.embeds.unfold) : t(($) => $.notes.kb.embeds.fold)}
+            aria-label={foldLabel}
             onClick={() => setFolded((current) => !current)}
-            className="note-embed-button"
+            className="size-7 text-muted-foreground"
           >
-            <ChevronDown aria-hidden className={cn("size-4 transition-transform motion-reduce:transition-none", folded && "-rotate-90")} />
-          </button>
+            <ChevronDown aria-hidden className={cn("transition-transform motion-reduce:transition-none", folded && "-rotate-90")} />
+          </Button>
         </Tooltip>
       </div>
-      {!folded && <div className="note-embed-body">{body}</div>}
+      {!folded && <div className={cn("max-h-[32rem] overflow-auto px-4 py-2", state === "loading" && "min-h-10")}>{body}</div>}
     </div>
   );
 }
 
-export function embedNodeView(options: EmbedOptions, mount: (host: HTMLElement) => Root = createRoot) {
+export function embedNodeView(options: EmbedOptions, mount?: (host: HTMLElement) => Root) {
   return ({ node }: Pick<NodeViewRendererProps, "node">) => {
     const dom = document.createElement("div");
-    dom.className = "note-embed";
+    dom.className = "note-embed my-4 rounded-md";
     dom.contentEditable = "false";
-    const root = mount(dom);
+    const root = nodeRoot(dom, mount);
     let current = node;
     const paint = () => {
       const target = embedTarget(current);
       if (!target) return;
-      root.render(
-        <I18nextProvider i18n={i18n}>
-          <EmbedCard target={target} alt={String(current.attrs.alt ?? "")} options={options} />
-        </I18nextProvider>,
-      );
+      root.render(<EmbedCard target={target} alt={String(current.attrs.alt ?? "")} options={options} />);
     };
     paint();
     const stop = options.subscribe?.(paint);
@@ -185,7 +234,7 @@ export function embedNodeView(options: EmbedOptions, mount: (host: HTMLElement) 
       },
       destroy() {
         stop?.();
-        queueMicrotask(() => root.unmount());
+        root.unmount();
       },
     };
   };
@@ -234,7 +283,7 @@ export function plainImageView(node: ProseMirrorNode): ImageView {
       paint();
       return true;
     },
-    stopEvent: (event: Event) => event.target instanceof Node && held !== null && held.dom.contains(event.target),
+    stopEvent: (event: Event) => event.target instanceof Node && held?.dom.contains(event.target) === true,
     destroy: release,
   };
 }

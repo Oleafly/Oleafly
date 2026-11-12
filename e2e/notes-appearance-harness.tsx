@@ -8,6 +8,7 @@ import "/src/styles/globals.css";
 
 await prepareHarnessI18n();
 useSettingsStore.setState({ settingsOpen: true });
+Object.assign(window, { __settings: useSettingsStore });
 createRoot(document.getElementById("root")!).render(
   <ThemeProvider>
     <QueryClientProvider client={new QueryClient()}>

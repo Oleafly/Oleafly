@@ -10,7 +10,7 @@ curated screenshots from the root README.
 | Area | References |
 | --- | --- |
 | Product surface | [Features](features.md), [General](General.md), [Project library](ProjectLibrary.md), [Editor](Editor.md), [PDF preview](PDFPreview.md), [Source control](SourceControl.md), [Checkpoints](Checkpoints.md), [Computer Use](desktop-apps.md) |
-| Authoring tools | [Keyboard shortcuts](KeyboardShortcuts.md), [AI Copilot](AICopilot.md), [Citations](Citations.md), [Diagram composer](DiagramComposer.md), [Templates](Templates.md), [Tools gallery](Tools.md), [Skills](Skills.md) |
+| Authoring tools | [Keyboard shortcuts](KeyboardShortcuts.md), [AI Copilot](AICopilot.md), [Citations](Citations.md), [Notes](Notes.md), [Diagram composer](DiagramComposer.md), [Templates](Templates.md), [Tools gallery](Tools.md), [Skills](Skills.md) |
 | Document quality | [Preflight](Preflight.md), [Export](Export.md), [Conversion matrix](conversion-matrix.md), [Conversion roadmap](conversion-roadmap.md), [Compilation engines](CompilationEngines.md) |
 | Integrations | [Integrations](Integrations.md), [MCP integration](mcp.md), [Document engines](document-engines.md), [Typst toolchain catalog](typst-toolchain.md), [AI model catalog](ai-model-catalog.md) |
 | System design | [Product architecture](architecture.md), [Design system](design-system.md), [Development](development.md), [Opening folders from the OS](os-integration.md), [Language-server toolchain](language-server-toolchain.md), [Download sources](download-sources.md), [Deferred app zoom experiment](app-zoom-experiment.md) |

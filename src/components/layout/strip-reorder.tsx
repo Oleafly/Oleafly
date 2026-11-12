@@ -4,11 +4,13 @@ import {
   useMemo,
   useRef,
   useState,
+  type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
   type RefObject,
 } from "react";
-import { placeAmong, slotAlong, trackReorderDrag } from "./reorder-drag";
+import { slotAlong } from "@oleafly/workspace/geometry";
+import { placeAmong, trackReorderDrag } from "./reorder-drag";
 
 const ITEM = "data-reorder-item";
 const STRIP = "data-reorder-strip";
@@ -26,6 +28,7 @@ interface StripDrop {
 export interface StripItemProps {
   "data-reorder-item": string;
   onPointerDown: (event: ReactPointerEvent<HTMLElement>) => void;
+  onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => void;
 }
 
 export interface StripReorder {
@@ -53,6 +56,11 @@ function sameOrder(a: readonly string[], b: readonly string[]): boolean {
   return a.length === b.length && a.every((id, index) => id === b[index]);
 }
 
+function ownItem(strip: HTMLElement | null, target: HTMLElement, order: readonly string[]): HTMLElement | null {
+  const own = target.closest<HTMLElement>(`[${ITEM}]`);
+  return strip && own?.closest(`[${STRIP}]`) === strip && order.includes(idOf(own)) ? own : null;
+}
+
 function dropAt(strip: HTMLElement, own: HTMLElement, order: readonly string[], x: number): StripDrop {
   const others = itemsOf(strip, order)
     .filter((item) => item !== own)
@@ -78,18 +86,24 @@ export function useStripReorder(order: readonly string[], onReorder: (next: stri
   const onReorderRef = useRef(onReorder);
   onReorderRef.current = onReorder;
   const cleanup = useRef<(() => void) | null>(null);
+  const refocus = useRef<HTMLElement | null>(null);
   const [drop, setDrop] = useState<StripDrop | null>(null);
 
   useEffect(() => () => cleanup.current?.(), []);
+
+  useEffect(() => {
+    const element = refocus.current;
+    refocus.current = null;
+    if (element?.isConnected && element !== document.activeElement) element.focus();
+  });
 
   const begin = useCallback((event: ReactPointerEvent<HTMLElement>) => {
     const strip = stripRef.current;
     if (event.button !== 0 || !strip) return;
     if (event.target instanceof Element && event.target.closest(TEXT_ENTRY)) return;
-    const own = event.currentTarget.closest<HTMLElement>(`[${ITEM}]`);
-    if (!own || own.closest(`[${STRIP}]`) !== strip) return;
+    const own = ownItem(strip, event.currentTarget, orderRef.current);
+    if (!own) return;
     const id = idOf(own);
-    if (!orderRef.current.includes(id)) return;
     cleanup.current?.();
     cleanup.current = trackReorderDrag<StripDrop>(event, {
       axis: "x",
@@ -104,11 +118,33 @@ export function useStripReorder(order: readonly string[], onReorder: (next: stri
     });
   }, []);
 
+  const step = useCallback((event: ReactKeyboardEvent<HTMLElement>) => {
+    if (!event.altKey || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
+    if (event.target instanceof Element && event.target.closest(TEXT_ENTRY)) return;
+    const strip = stripRef.current;
+    const own = ownItem(strip, event.currentTarget, orderRef.current);
+    if (!strip || !own) return;
+    event.preventDefault();
+    const id = idOf(own);
+    const current = orderRef.current;
+    const visible = itemsOf(strip, current).map(idOf);
+    const slot = visible.indexOf(id) + (event.key === "ArrowLeft" ? -1 : 1);
+    if (slot < 0 || slot >= visible.length) return;
+    const focused = document.activeElement;
+    refocus.current = focused instanceof HTMLElement && own.contains(focused) ? focused : null;
+    onReorderRef.current(placeAmong(current, visible, id, slot));
+  }, []);
+
+  const item = useCallback(
+    (id: string): StripItemProps => ({ "data-reorder-item": id, onPointerDown: begin, onKeyDown: step }),
+    [begin, step],
+  );
+
   return useMemo<StripReorder>(
     () => ({
       dragging: drop?.id ?? null,
       strip: { ref: stripRef, "data-reorder-strip": "" },
-      item: (id) => ({ "data-reorder-item": id, onPointerDown: begin }),
+      item,
       indicator: drop ? (
         <div
           aria-hidden
@@ -118,6 +154,6 @@ export function useStripReorder(order: readonly string[], onReorder: (next: stri
         />
       ) : null,
     }),
-    [begin, drop],
+    [item, drop],
   );
 }

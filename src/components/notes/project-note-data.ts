@@ -1,11 +1,10 @@
-import { loadAssetThumbnail } from "@/components/editor/cm/hover-asset";
 import { mirrorFileText } from "@/lib/live-file-mirror";
 import { noteRelativePath } from "@/lib/project-notes";
-import { readFileContent } from "@/lib/tauri";
+import { readFileContent, revealProject } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
-import { isNotebookPath } from "./notebook-block";
+import { assetFragment } from "./note-path";
 import type { NotesData } from "./notes-data";
-import { notebookUrl, noteVersion, usesCrlf } from "./notes-service";
+import { lfLineEndings, noteAssetUrl, noteVersion, recordNoteWrite, usesCrlf } from "./notes-service";
 import { NoteConflictError, type NoteSource } from "./types";
 
 export interface ProjectNoteTarget {
@@ -13,7 +12,7 @@ export interface ProjectNoteTarget {
   path: string;
 }
 
-type FileParts = "loadNote" | "saveNote" | "watchNote" | "resolveAsset" | "noteTextChanged";
+type FileParts = "loadNote" | "saveNote" | "watchNote" | "resolveAsset" | "openAsset" | "revealAsset" | "noteTextChanged";
 
 export type ProjectNoteFiles = Required<Pick<NotesData, FileParts>>;
 
@@ -30,10 +29,6 @@ export class ProjectNoteWriteRefused extends Error {
   }
 }
 
-function lf(text: string): string {
-  return text.replace(/\r\n?/gu, "\n");
-}
-
 function source(text: string): NoteSource {
   return { text, version: noteVersion(text) };
 }
@@ -47,21 +42,21 @@ export function createProjectNoteFiles(target: ProjectNoteTarget, options: Proje
   const openHere = () => useFilesStore.getState().projectId === projectId;
   const held = () => (openHere() ? useFilesStore.getState().files[path] : undefined);
   const readRaw = () => readFileContent(projectId, path);
-  const readDisk = async () => lf(await readRaw());
+  const readDisk = async () => lfLineEndings(await readRaw());
 
   const writeFile = async (text: string, version: string, base: string | undefined, closedProject: boolean) => {
     const disk = base === undefined ? await readRaw() : await readRaw().catch(() => null);
-    if (base === undefined && disk !== null && noteVersion(disk) !== version) throw new NoteConflictError(source(lf(disk)));
+    if (base === undefined && disk !== null && noteVersion(disk) !== version) throw new NoteConflictError(source(lfLineEndings(disk)));
     await useFilesStore.getState().writeProjectFile(projectId, path, text, {
       ...(disk === null ? {} : { crlf: usesCrlf(disk) }),
       ...(closedProject ? { closedProject: true } : {}),
-      ...(base === undefined ? {} : { base: lf(base) }),
+      ...(base === undefined ? {} : { base: lfLineEndings(base) }),
     });
     return source(text);
   };
 
   const save = async (text: string, version: string, base: string | undefined): Promise<NoteSource> => {
-    const written = lf(text);
+    const written = lfLineEndings(text);
     if (!openHere()) return writeFile(written, version, base, true);
     const file = held();
     if (!file) return writeFile(written, version, base, false);
@@ -71,7 +66,7 @@ export function createProjectNoteFiles(target: ProjectNoteTarget, options: Proje
     }
     own = written;
     const files = useFilesStore.getState();
-    const accepted = base === undefined ? files.setContent(path, written) : files.setContent(path, written, { base: lf(base) });
+    const accepted = base === undefined ? files.setContent(path, written) : files.setContent(path, written, { base: lfLineEndings(base) });
     if (!accepted) throw new ProjectNoteWriteRefused(options.refused());
     await useFilesStore.getState().saveFile(path);
     return source(written);
@@ -86,7 +81,7 @@ export function createProjectNoteFiles(target: ProjectNoteTarget, options: Proje
     });
 
   const mirror = (text: string) => {
-    const shared = lf(text);
+    const shared = lfLineEndings(text);
     if (held()?.content === shared) return;
     own = shared;
     mirrorFileText(projectId, path, shared);
@@ -95,7 +90,18 @@ export function createProjectNoteFiles(target: ProjectNoteTarget, options: Proje
   const resolve = (relative: string): Promise<string | null> => {
     const full = noteRelativePath(path, relative);
     if (full === null) return Promise.resolve(null);
-    return isNotebookPath(full) ? notebookUrl(projectId, full) : loadAssetThumbnail(projectId, full);
+    return noteAssetUrl(projectId, full);
+  };
+
+  const reveal = async (relative: string) => {
+    const full = noteRelativePath(path, assetFragment(relative).file);
+    if (full !== null) await revealProject(projectId, full);
+  };
+
+  const open = async (relative: string) => {
+    const full = noteRelativePath(path, assetFragment(relative).file);
+    if (full === null || !openHere()) return reveal(relative);
+    await useFilesStore.getState().openFile(full);
   };
 
   return {
@@ -104,7 +110,8 @@ export function createProjectNoteFiles(target: ProjectNoteTarget, options: Proje
       const file = held();
       return source(file ? file.content : await readDisk());
     },
-    saveNote: (id, text, version, base) => (id === key ? save(text, version, base) : others().saveNote(id, text, version, base)),
+    saveNote: (id, text, version, base) =>
+      id === key ? recordNoteWrite(key, text, () => save(text, version, base)) : others().saveNote(id, text, version, base),
     watchNote: (id, onChange) => (id === key ? watch(onChange) : (others().watchNote?.(id, onChange) ?? noWatch)),
     noteTextChanged: (id, text) => {
       if (id === key) mirror(text);
@@ -112,5 +119,13 @@ export function createProjectNoteFiles(target: ProjectNoteTarget, options: Proje
     },
     resolveAsset: (id, relative) =>
       id === key ? resolve(relative) : (others().resolveAsset?.(id, relative) ?? Promise.resolve(null)),
+    openAsset: async (id, relative) => {
+      if (id === key) await open(relative);
+      else await others().openAsset?.(id, relative);
+    },
+    revealAsset: async (id, relative) => {
+      if (id === key) await reveal(relative);
+      else await others().revealAsset?.(id, relative);
+    },
   };
 }

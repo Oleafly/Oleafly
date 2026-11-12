@@ -1,14 +1,16 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { useRef } from "react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
+import { useSettingsStore } from "@/store/settings";
+import { NOTE_COLOR_HEX } from "./note-icons";
 import type { LinkableNote } from "./note-links";
 import { HIDE_DELAY_MS, HOVER_DELAY_MS, NoteHoverPreview } from "./note-hover-preview";
+import "./tests/setup";
 
 const NOTES: LinkableNote[] = [
-  { noteId: "n-1", projectId: "lib-1", title: "Masking", icon: "🧪" },
+  { noteId: "n-1", projectId: "lib-1", title: "Masking", icon: "🧪", color: "mint" },
   { noteId: "n-2", projectId: "lib-2", title: "Sections" },
   { noteId: "n-3", projectId: "lib-3", title: "Blank" },
 ];
@@ -54,10 +56,6 @@ function hover(id: string) {
   });
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 beforeEach(() => {
   vi.useFakeTimers();
 });
@@ -76,6 +74,8 @@ describe("hover previews", () => {
     });
     const card = screen.getByRole("tooltip");
     expect(card.textContent).toContain("patches");
+    expect(card.querySelector<HTMLElement>(".note-hover-body")?.style.getPropertyValue("--note-color")).toBe(NOTE_COLOR_HEX.mint);
+    expect(card.querySelector("[data-note-color]")).toHaveAttribute("data-note-color", "mint");
     fireEvent.mouseOver(link("n-1"));
     fireEvent.mouseOut(link("n-1"), { relatedTarget: card });
     fireEvent.mouseEnter(card);
@@ -140,5 +140,14 @@ describe("hover previews", () => {
     fireEvent.mouseDown(link("n-1"));
     const above = place("n-3", { left: 0, top: 700, bottom: 720 });
     expect([above.left, above.top, above.bottom]).toEqual(["8px", "", `${window.innerHeight - 694}px`]);
+  });
+
+  it("draws the card with the Notes look, square task boxes included", () => {
+    useSettingsStore.setState({ notesTaskBox: "square" });
+    render(<Harness loadText={vi.fn()} />);
+    hover("n-1");
+    expect(screen.getByRole("tooltip")).toHaveAttribute("data-notes-task-box", "square");
+    act(() => useSettingsStore.getState().setNotesAppearance("notesTaskBox", "round"));
+    expect(screen.getByRole("tooltip")).not.toHaveAttribute("data-notes-task-box");
   });
 });

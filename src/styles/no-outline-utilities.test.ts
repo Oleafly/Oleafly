@@ -65,4 +65,12 @@ describe("no outlines or focus rings", () => {
     );
     expect(offenders).toEqual([]);
   });
+
+  it.each([
+    ["src/components/ui/input.tsx", "focus-visible"],
+    ["src/components/ui/textarea.tsx", "focus-visible"],
+    ["src/components/ui/query-search.tsx", "focus-within"],
+  ])("still shows focus in %s, with a tint or a border colour", (file, variant) => {
+    expect(readFileSync(join(ROOT, file), "utf8")).toMatch(new RegExp(String.raw`\b${variant}:(?:bg|border)-`));
+  });
 });

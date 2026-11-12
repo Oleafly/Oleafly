@@ -25,7 +25,7 @@ vi.mock("@/store/agent-memory", () => ({ useAgentMemoryStore: { getState: () => 
 vi.mock("@/components/editor/cm/controller", () => ({ getCurrentLine: () => null }));
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
-  noteHeads: async () => [],
+  noteFacts: async () => [],
 }));
 vi.mock("@/lib/log", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/log")>()),

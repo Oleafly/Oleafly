@@ -1016,13 +1016,14 @@
         "environment": "Ambiente {{environment}}",
         "command": "Comando \\{{command}}",
         "latexSource": "Código-fonte LaTeX",
+        "html": "HTML",
         "maketitlePreview": "Gerado a partir do título do documento e dos metadados de autoria.",
         "figurePreserved": "Código exato da figura preservado.",
         "tablePreserved": "Código exato da tabela preservado.",
         "sourcePreserved": "Código exato preservado",
         "editSource": "Editar o código",
-        "summaryLabel": "{{label}}. Código LaTeX exato preservado.",
-        "inputLabel": "Código exato do bloco LaTeX"
+        "summaryLabel": "{{label}}. Código exato preservado.",
+        "inputLabel": "Código exato do bloco"
       },
       "inline": {
         "label": "Código bruto em linha",

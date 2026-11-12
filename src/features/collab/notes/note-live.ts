@@ -168,7 +168,7 @@ export class NoteLiveBinding {
 
   private pendingRemote(current: string): TextOperation {
     const remote = this.remote;
-    if (remote && remote.baseLength === this.shared.length && remote.targetLength === current.length) return remote;
+    if (remote?.baseLength === this.shared.length && remote.targetLength === current.length) return remote;
     return diffOperation(this.shared, current);
   }
 
@@ -198,7 +198,7 @@ export class NoteLiveBinding {
       this.remote = remote && !remote.isNoop() ? remote : null;
     } catch (error) {
       this.options.onError?.(error);
-      this.apply(false);
+      this.apply(true);
     }
   }
 

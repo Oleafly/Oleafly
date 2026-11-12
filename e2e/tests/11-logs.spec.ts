@@ -64,12 +64,31 @@ test("a LaTeX error surfaces as an error status, and fixing it recovers", async 
     await showCompileLogs(tauriPage);
     await expect(tauriPage.getByText("Copy log")).toBeVisible();
     await expect(tauriPage.getByText("Ask AI", { exact: true })).toBeVisible();
-    await tauriPage.getByText("Ask AI", { exact: true }).click();
-    await expect(tauriPage.locator('[data-testid="settings-section-ai"]')).toHaveAttribute(
-      "aria-current",
-      "page",
+    const assistantReady = await tauriPage.evaluate<boolean>(
+      `Promise.all([import("/src/lib/acp.ts"), import("/src/lib/ai-providers.ts"), import("/src/lib/tauri.ts")]).then(
+        async ([acp, providers, tauri]) =>
+          providers.hasConfiguredProvider(await tauri.getConfig()) ||
+          (await acp.acpCatalog().then((agents) => agents.some(acp.acpUsable), () => false)),
+      )`,
     );
-    await tauriPage.click('[aria-label="Close settings"]');
+    await tauriPage.getByText("Ask AI", { exact: true }).click();
+    if (assistantReady) {
+      await expect
+        .poll(
+          () =>
+            tauriPage.evaluate<boolean>(
+              `import("/src/store/settings.ts").then(({ useSettingsStore }) => { const settings = useSettingsStore.getState(); return !settings.settingsOpen && (settings.assistantOpen || settings.chatFloating); })`,
+            ),
+          { message: "Ask AI hands the errors to the assistant when one is set up", timeout: 15_000 },
+        )
+        .toBe(true);
+    } else {
+      await expect(tauriPage.locator('[data-testid="settings-section-ai"]')).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      await tauriPage.click('[aria-label="Close settings"]');
+    }
   } finally {
     await recoverDocument(tauriPage);
   }

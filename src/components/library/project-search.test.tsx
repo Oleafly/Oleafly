@@ -7,9 +7,9 @@ import {
   buildProjectSearchSchema,
   PROJECT_FACETS,
   PROJECT_KINDS,
+  PROJECT_KINDS_WITHOUT_NOTES,
   projectEngine,
   projectEngineLabel,
-  projectKinds,
   type ProjectSearchExtension,
 } from "./project-search";
 
@@ -118,9 +118,8 @@ describe("project search schema", () => {
       hideNotes: true,
     });
     expect(schema.field("kind")?.options?.map((option) => option.value)).toEqual(["document", "image", "diagram"]);
-    expect(projectKinds(true)).toEqual(["document", "image", "diagram"]);
-    expect(projectKinds(false)).toBe(PROJECT_KINDS);
-    expect(projectKinds()).toBe(PROJECT_KINDS);
+    expect(PROJECT_KINDS_WITHOUT_NOTES).toEqual(["document", "image", "diagram"]);
+    expect(PROJECT_KINDS).toEqual(["document", "image", "diagram", "note"]);
   });
 
   it("supports is:, has: and no: flags", () => {

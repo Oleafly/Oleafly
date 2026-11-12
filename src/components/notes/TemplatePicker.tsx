@@ -1,16 +1,18 @@
+import { normalizeText } from "@oleafly/search-query";
 import { Command, defaultFilter } from "cmdk";
 import { FileText } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { COMMAND_GROUP as GROUP, COMMAND_ITEM, CommandDialogShell } from "@/components/ui/command-dialog";
+import { EmptyState } from "@/components/ui/empty";
 import { useModalLayer } from "@/components/ui/use-modal-accessibility";
 import { compareText } from "@/lib/intl";
 import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { NoteChip } from "./note-icons";
-import { fold } from "./note-search";
 import { draftFromNote, draftFromTemplate, isTemplateNote, NOTE_TEMPLATES, type NoteTemplate } from "./note-templates";
 import { type NoteDraft, useNotesData } from "./notes-data";
+import { ReferenceChoices, useReferenceMatches, useReferenceNote } from "./ReferenceChoices";
 import type { NoteItem } from "./types";
 
 const BLANK_VALUE = "\u0000blank";
@@ -23,8 +25,8 @@ interface TemplatePickerProps {
 }
 
 function matches(query: string, ...texts: string[]): boolean {
-  const search = fold(query.trim());
-  return search === "" || texts.some((text) => defaultFilter(fold(text), search) > 0);
+  const search = normalizeText(query.trim());
+  return search === "" || texts.some((text) => defaultFilter(normalizeText(text), search) > 0);
 }
 
 function Choice({
@@ -46,18 +48,56 @@ function Choice({
   );
 }
 
-export function TemplatePicker({ open, onOpenChange, onCreated }: Readonly<TemplatePickerProps>) {
+export interface NoteFromTemplate {
+  busy: boolean;
+  canCreate: boolean;
+  templateName: (template: NoteTemplate) => string;
+  start: (made: () => Promise<string>) => void;
+  fromTemplate: (template: NoteTemplate) => void;
+  fromNote: (note: NoteItem) => void;
+  fromBlank: () => void;
+}
+
+export function useNoteFromTemplate(onCreated: (id: string) => void): NoteFromTemplate {
   const { t, i18n } = useTranslation(["notes"]);
-  useModalLayer(open);
-  const { notes, createNoteFrom, loadNote } = useNotesData();
-  const [query, setQuery] = useState("");
+  const { createNoteFrom, loadNote } = useNotesData();
   const [busy, setBusy] = useState(false);
+  const templateName = (template: NoteTemplate) => t(($) => $.notes.vault.templates.names[template.id]);
+  const start = (made: () => Promise<string>) => {
+    if (busy) return;
+    setBusy(true);
+    made()
+      .then(onCreated, (error: unknown) => notifyError("create note from template", error, t(($) => $.notes.vault.templates.failed)))
+      .finally(() => setBusy(false));
+  };
+  const create = (draft: () => Promise<NoteDraft>) => {
+    if (createNoteFrom) start(async () => createNoteFrom(await draft()));
+  };
+  return {
+    busy,
+    canCreate: createNoteFrom !== undefined,
+    templateName,
+    start,
+    fromTemplate: (template) => create(() => Promise.resolve(draftFromTemplate(template, templateName(template), new Date(), i18n.language))),
+    fromNote: (note) => create(async () => draftFromNote(note.title, (await loadNote(note.id)).text, new Date(), i18n.language)),
+    fromBlank: () => create(() => Promise.resolve({ title: t(($) => $.notes.document.untitled) })),
+  };
+}
+
+export function TemplatePicker({ open, onOpenChange, onCreated }: Readonly<TemplatePickerProps>) {
+  const { t } = useTranslation(["notes"]);
+  useModalLayer(open);
+  const { notes } = useNotesData();
+  const [query, setQuery] = useState("");
+  const { busy, templateName: name, start, fromTemplate, fromNote, fromBlank } = useNoteFromTemplate((id) => {
+    onOpenChange(false);
+    onCreated(id);
+  });
 
   useEffect(() => {
     if (!open) setQuery("");
   }, [open]);
 
-  const name = (template: NoteTemplate) => t(($) => $.notes.vault.templates.names[template.id]);
   const describe = (template: NoteTemplate) => t(($) => $.notes.vault.templates.descriptions[template.id]);
   const blank = t(($) => $.notes.vault.templates.blank);
   const builtIn = NOTE_TEMPLATES.filter((template) => matches(query, name(template), describe(template)));
@@ -67,29 +107,11 @@ export function TemplatePicker({ open, onOpenChange, onCreated }: Readonly<Templ
   );
   const shownYours = yours.filter((note) => matches(query, note.title));
   const showBlank = matches(query, blank);
+  const references = useReferenceMatches(query, open);
+  const referenceNote = useReferenceNote();
 
-  const create = (draft: () => Promise<NoteDraft>) => {
-    if (!createNoteFrom || busy) return;
-    setBusy(true);
-    draft()
-      .then((value) => createNoteFrom(value))
-      .then(
-        (id) => {
-          onOpenChange(false);
-          onCreated(id);
-        },
-        (error: unknown) => notifyError("create note from template", error, t(($) => $.notes.vault.templates.failed)),
-      )
-      .finally(() => setBusy(false));
-  };
-
-  const fromTemplate = (template: NoteTemplate) =>
-    create(async () => draftFromTemplate(template, name(template), new Date(), i18n.language));
-  const fromNote = (note: NoteItem) =>
-    create(async () => draftFromNote(note.title, (await loadNote(note.id)).text, new Date(), i18n.language));
-  const fromBlank = () => create(async () => ({ title: t(($) => $.notes.document.untitled) }));
-
-  const nothing = !showBlank && builtIn.length === 0 && shownYours.length === 0;
+  const nothing =
+    !showBlank && builtIn.length === 0 && shownYours.length === 0 && references.entries.length === 0 && references.hits.length === 0;
   return (
     <CommandDialogShell
       open={open}
@@ -103,7 +125,7 @@ export function TemplatePicker({ open, onOpenChange, onCreated }: Readonly<Templ
       placement="top-[16%]"
       listClassName="max-h-[min(64vh,440px)]"
     >
-      {nothing && <p className="py-6 text-center text-sm text-muted-foreground">{t(($) => $.notes.vault.templates.empty)}</p>}
+      {nothing && <EmptyState className="py-6" description={t(($) => $.notes.vault.templates.empty)} />}
       {showBlank && (
         <Command.Group className={GROUP}>
           <Choice
@@ -130,6 +152,9 @@ export function TemplatePicker({ open, onOpenChange, onCreated }: Readonly<Templ
             />
           ))}
         </Command.Group>
+      )}
+      {referenceNote && (
+        <ReferenceChoices matches={references} disabled={busy} onPick={(reference) => start(() => referenceNote(reference))} />
       )}
       {shownYours.length > 0 && (
         <Command.Group heading={t(($) => $.notes.vault.templates.yours)} className={GROUP}>

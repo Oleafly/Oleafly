@@ -7,20 +7,17 @@ import type {
 } from "@/components/ai/assistant-scope";
 import type { MentionItem } from "@/components/ai/composer/ChatComposer";
 import { createProjectToolsHost } from "@/lib/ai-tools";
-import { textToBase64 } from "@/lib/base64";
+import { textDataUrl } from "@/lib/base64";
 import type { MentionAttachment } from "@/lib/chat-attachments";
 import { composerMentionPaths } from "@/lib/composer-tokens";
+import { NOTE_FILE } from "@/lib/project-notes";
 import type { DocumentEngineDescriptor, FileEntry } from "@/lib/tauri";
+import { acpSlot } from "@/store/acp-sessions";
 import { useAgentMemoryStore } from "@/store/agent-memory";
 import type { AssistantRuntime } from "@/store/assistant-runtime";
+import { useFilesStore } from "@/store/files";
 import { noteAssistantPrompt, type NotePromptFacts } from "./note-assistant-prompt";
-import {
-  createNoteAssistantTools,
-  NOTE_FILE,
-  noteExcludedTools,
-  noteFileRefusal,
-  type NoteToolDeps,
-} from "./note-assistant-tools";
+import { createNoteAssistantTools, noteExcludedTools, noteFileRefusal, type NoteToolDeps } from "./note-assistant-tools";
 import { noteLinkHref } from "./note-link-format";
 import type { NoteItem } from "./types";
 import { quoted, untrustedBlock } from "./untrusted-data";
@@ -68,12 +65,30 @@ export function noteScopeKey(noteId: string): string {
   return `note:${noteId}`;
 }
 
+export function noteStateKey(note: Pick<NoteItem, "id" | "home">): string {
+  return note.home ? acpSlot(note.home.projectId, noteScopeKey(note.id)) : note.id;
+}
+
 export function noteMentionPath(note: Pick<NoteItem, "title">): string {
   return `${MENTION_PREFIX}${note.title}`;
 }
 
-function textDataUrl(text: string): string {
-  return `data:text/plain;base64,${textToBase64(text)}`;
+async function noteMentionAttachment(
+  note: NoteItem,
+  load: (id: string) => Promise<{ text: string }>,
+): Promise<MentionAttachment> {
+  let body: string;
+  try {
+    body = (await load(note.id)).text.slice(0, MENTION_CHARS);
+  } catch {
+    body = "[This note could not be read. Try read_note_by_id instead.]";
+  }
+  return {
+    id: `note-mention:${note.id}`,
+    name: `${note.title} (note ${note.id})`,
+    mediaType: "text/plain",
+    dataUrl: textDataUrl(untrustedBlock(`The note ${quoted(note.title)} (id ${note.id})`, body)),
+  };
 }
 
 export function noteMentions(
@@ -102,24 +117,8 @@ export function noteMentions(
     attachments: async (text) => {
       if (!text.includes(`@${MENTION_PREFIX}`) && !text.includes(`@"${MENTION_PREFIX}`)) return [];
       const byPath = new Map(others.map((note) => [noteMentionPath(note), note]));
-      const found: MentionAttachment[] = [];
-      for (const path of composerMentionPaths(text, byPath.keys())) {
-        const note = byPath.get(path);
-        if (!note) continue;
-        let body: string;
-        try {
-          body = (await load(note.id)).text.slice(0, MENTION_CHARS);
-        } catch {
-          body = "[This note could not be read. Try read_note_by_id instead.]";
-        }
-        found.push({
-          id: `note-mention:${note.id}`,
-          name: `${note.title} (note ${note.id})`,
-          mediaType: "text/plain",
-          dataUrl: textDataUrl(untrustedBlock(`The note ${quoted(note.title)} (id ${note.id})`, body)),
-        });
-      }
-      return found;
+      const mentioned = composerMentionPaths(text, byPath.keys()).flatMap((path) => byPath.get(path) ?? []);
+      return Promise.all(mentioned.map((note) => noteMentionAttachment(note, load)));
     },
   };
 }
@@ -160,13 +159,16 @@ export function noteContextBlock(input: NoteContextInput): string {
     });
   const long = input.source.length > CONTEXT_NOTE_CHARS;
   const shown = long ? input.source.slice(0, CONTEXT_NOTE_CHARS) : input.source;
+  const linkIdPart = facts.linkId ? `, link id ${facts.linkId}` : "";
+  const project = facts.relatedProject ? `${quoted(facts.relatedProject.name)} (id ${facts.relatedProject.id})` : "none";
+  const recentList = recent.length > 0 ? ` Recent:\n${recent.join("\n")}` : "";
   return [
     "### Live note context (auto-injected, possibly slightly stale)",
-    `Note: ${quoted(facts.title)} (id ${facts.noteId}${facts.linkId ? `, link id ${facts.linkId}` : ""})`,
-    `Linked project: ${facts.relatedProject ? `${quoted(facts.relatedProject.name)} (id ${facts.relatedProject.id})` : "none"}`,
+    `Note: ${quoted(facts.title)} (id ${facts.noteId}${linkIdPart})`,
+    `Linked project: ${project}`,
     input.pending > 0 ? `Suggestions waiting for review: ${input.pending}` : null,
     `Files in the note's folder: ${files.length > 0 ? files.map(quoted).join(", ") : "none"}`,
-    `Knowledge base: ${input.notes.length} notes.${recent.length > 0 ? ` Recent:\n${recent.join("\n")}` : ""}`,
+    `Knowledge base: ${input.notes.length} notes.${recentList}`,
     ...memoryLines(input.memoryScope),
     untrustedBlock("The open note", shown),
     long ? "The note continues past this point. Call read_note for the rest." : null,
@@ -176,7 +178,7 @@ export function noteContextBlock(input: NoteContextInput): string {
 }
 
 export interface NoteScopeOptions {
-  note: NoteItem;
+  note: Pick<NoteItem, "id" | "title" | "home" | "shared">;
   facts: () => NotePromptFacts;
   tree: readonly FileEntry[];
   currentTree: () => readonly FileEntry[];
@@ -191,18 +193,20 @@ export interface NoteScopeOptions {
 export function createNoteScope(options: NoteScopeOptions): AssistantScopeValue {
   const { note } = options;
   const key = noteScopeKey(note.id);
-  const folder = note.home?.projectId ?? note.id;
+  const home = note.home?.projectId;
+  const folder = home ?? note.id;
   const mainDoc = note.home?.path ?? NOTE_FILE;
   return {
     key,
     kind: "note",
     projectId: folder,
+    ...(home ? { storageKey: noteStateKey(note) } : {}),
     projectName: note.title,
     projectKind: "note",
     engine: NOTE_ENGINE,
     engineLoaded: true,
     tree: options.tree,
-    currentProjectId: () => folder,
+    currentProjectId: () => (home && useFilesStore.getState().projectId !== home ? null : folder),
     currentTree: options.currentTree,
     mainDoc: () => mainDoc,
     cachedContent: () => undefined,

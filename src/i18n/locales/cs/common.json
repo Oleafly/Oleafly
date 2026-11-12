@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "Režim hledání: {{mode}}",
+    "heading": "Režim hledání",
+    "ranked": {
+      "label": "Nejlepší shoda",
+      "description": "Řadí výsledky podle toho, jak dobře odpovídají. Slova mohou být kdekoli."
+    },
+    "exact": {
+      "label": "Přesný text",
+      "description": "Najde přesně tyto znaky. Velké písmeno zapne rozlišování velikosti písmen."
+    },
+    "regex": {
+      "label": "Regulární výraz",
+      "description": "Používá syntaxi vzorů nástroje ripgrep. Pokud vzor obsahuje mezery nebo závorky, dejte ho do uvozovek."
+    },
+    "fuzzy": {
+      "label": "Přibližné",
+      "description": "Najde názvy, které obsahují vaše písmena ve stejném pořadí, jako to dělá fzf. Podporuje také 'přesně, ^začátek, konec$ a !vynechat."
+    },
+    "invalid": "Tento vzor není platný: {{error}}"
+  },
   "querySearch": {
     "suggestions": "Návrhy vyhledávání",
     "exclude": "Vyloučit",
@@ -76,7 +97,8 @@
       "invalidValue": "{{value}} není platná hodnota pro {{key}}",
       "invalidDate": "{{value}} není datum. Zkuste 2026-10-02 nebo @today-7d",
       "invalidNumber": "{{value}} není číslo",
-      "sortNegated": "{{key}} nelze vyloučit"
+      "sortNegated": "{{key}} nelze vyloučit",
+      "tooManyBranches": "Toto hledání má příliš mnoho kombinací OR, proto mohou některé výsledky chybět"
     }
   },
   "avatar": {

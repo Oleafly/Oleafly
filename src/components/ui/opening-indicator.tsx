@@ -15,13 +15,9 @@ export function OpeningIndicator() {
   if (!shown) return null;
   return createPortal(
     <div data-opening-indicator className="pointer-events-none fixed inset-0 z-[130] grid place-items-center">
-      <div
-        role="status"
-        aria-label={t(($) => $.common.state.loading)}
-        className="rounded-md border bg-popover p-2 text-muted-foreground shadow-md"
-      >
+      <output aria-label={t(($) => $.common.state.loading)} className="rounded-md border bg-popover p-2 text-muted-foreground shadow-md">
         <Spinner size="lg" aria-hidden />
-      </div>
+      </output>
     </div>,
     document.body,
   );

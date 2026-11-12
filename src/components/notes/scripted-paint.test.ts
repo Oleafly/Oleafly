@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import type { ScriptedBlockProps } from "./ArtifactFrame";
 import { htmlBlock, htmlRunsScripts, htmlTemplate } from "./html-block";
 import { REACT_TEMPLATE, reactBlock } from "./react-block";
 import { paintScripted } from "./scripted-paint";
+import "./tests/setup";
 
 const frames = vi.hoisted(() => ({
   render: vi.fn<(props: ScriptedBlockProps) => void>(),
@@ -28,10 +28,6 @@ async function flush() {
   await vi.dynamicImportSettled();
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 beforeEach(() => {
   frames.render.mockClear();

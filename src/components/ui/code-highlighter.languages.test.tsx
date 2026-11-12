@@ -2,7 +2,13 @@
 
 import { render, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
-import { clearHighlightCache, HighlightedCode, isHighlightCached } from "./code-highlighter";
+import {
+  clearHighlightCache,
+  HighlightedCode,
+  isHighlightCached,
+  loadHighlightLanguage,
+  tokenSpans,
+} from "./code-highlighter";
 
 const SAMPLES: Array<[string, string]> = [
   ["c", "int main(void) { return 0; }"],
@@ -49,8 +55,6 @@ describe("code highlighting languages", () => {
 
     const key = container.querySelector("span.tok-propertyName");
     expect(key?.textContent).toBe("\"key\"");
-    expect(key?.className).toContain("text-[var(--cm-variable)]");
-    expect(key?.className).not.toContain("text-[var(--cm-string)]");
     const value = Array.from(container.querySelectorAll("span.tok-string")).find(
       (span) => span.textContent === "\"value\"",
     );
@@ -80,5 +84,17 @@ describe("code highlighting languages", () => {
     const second = render(<HighlightedCode language="py" source="x = 1" />);
 
     expect(second.container.querySelector("span[class*='tok-']")).not.toBeNull();
+  });
+
+  it("gives token spans by offset once the language has loaded, for editors that decorate text themselves", async () => {
+    const source = "def f():\n    return None";
+    expect(tokenSpans("lua", "local x = 1")).toBeNull();
+    await loadHighlightLanguage("py");
+    const spans = tokenSpans("python", source) ?? [];
+    const words = spans.map((span) => [source.slice(span.from, span.to), span.classes]);
+    expect(words).toContainEqual(["def", "tok-keyword"]);
+    expect(words).toContainEqual(["return", "tok-keyword"]);
+    expect(tokenSpans("py", "x".repeat(50_001))).toEqual([]);
+    expect(tokenSpans("brainfuck", "+++.")).toBeNull();
   });
 });

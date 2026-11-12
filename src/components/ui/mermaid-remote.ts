@@ -58,7 +58,8 @@ const STRING_ESCAPES: Readonly<Record<string, string>> = {
   L: "\u2028",
   P: "\u2029",
 };
-const STRING_ESCAPE = /\\(?:\r?\n[ \t]*|x([0-9a-fA-F]{2})|u\{([0-9a-fA-F]{1,6})\}|U([0-9a-fA-F]{8})|u([0-9a-fA-F]{4})|([\s\S]))/g;
+const LINE_CONTINUATION = /\r?\n[ \t]*/y;
+const HEX_ESCAPE = /x([0-9a-fA-F]{2})|u\{([0-9a-fA-F]{1,6})\}|U([0-9a-fA-F]{8})|u([0-9a-fA-F]{4})/y;
 const CSS_ESCAPE = /\\(?:([0-9a-fA-F]{1,6})(?:\r\n|[ \t\n\r\f])?|(\r\n|[\n\r\f])|([^\n\r\f0-9a-fA-F]))/g;
 const MERMAID_ENTITY = /(?<!&)#(\w+);/g;
 const NUMERIC_ENTITY = /&#(?:[xX]([0-9a-fA-F]+)|(\d+));?/g;
@@ -78,19 +79,31 @@ function codePoint(value: number): string {
   return valid ? String.fromCodePoint(value) : "\ufffd";
 }
 
+function stringEscapeAt(text: string, at: number): { value: string; end: number } {
+  LINE_CONTINUATION.lastIndex = at;
+  if (LINE_CONTINUATION.test(text)) return { value: "", end: LINE_CONTINUATION.lastIndex };
+  HEX_ESCAPE.lastIndex = at;
+  const hex = HEX_ESCAPE.exec(text);
+  if (hex) return { value: codePoint(Number.parseInt(hex[1] ?? hex[2] ?? hex[3] ?? hex[4], 16)), end: HEX_ESCAPE.lastIndex };
+  const single = text[at];
+  return { value: STRING_ESCAPES[single] ?? single, end: at + 1 };
+}
+
 function decodeStringEscapes(text: string): string {
   if (!text.includes("\\")) return text;
-  return text.replace(STRING_ESCAPE, (_whole, hex: string | undefined, braced: string | undefined, long: string | undefined, short: string | undefined, single: string | undefined) => {
-    const digits = hex ?? braced ?? long ?? short;
-    if (digits !== undefined) return codePoint(Number.parseInt(digits, 16));
-    if (single !== undefined) return STRING_ESCAPES[single] ?? single;
-    return "";
-  });
+  let decoded = "";
+  let from = 0;
+  for (let at = text.indexOf("\\"); at !== -1 && at + 1 < text.length; at = text.indexOf("\\", from)) {
+    const decodedEscape = stringEscapeAt(text, at + 1);
+    decoded += text.slice(from, at) + decodedEscape.value;
+    from = decodedEscape.end;
+  }
+  return decoded + text.slice(from);
 }
 
 function decodeCssEscapes(text: string): string {
   if (!text.includes("\\")) return text;
-  return text.replace(CSS_ESCAPE, (_whole, hex: string | undefined, _newline: string | undefined, single: string | undefined) => {
+  return text.replaceAll(CSS_ESCAPE, (_whole, hex: string | undefined, _newline: string | undefined, single: string | undefined) => {
     if (hex !== undefined) return codePoint(Number.parseInt(hex, 16));
     return single ?? "";
   });
@@ -103,14 +116,14 @@ function decodeHtmlEntities(text: string): string {
     entityArea.innerHTML = text;
     return entityArea.value;
   }
-  return text.replace(NUMERIC_ENTITY, (_whole, hex: string | undefined, decimal: string | undefined) =>
+  return text.replaceAll(NUMERIC_ENTITY, (_whole, hex: string | undefined, decimal: string | undefined) =>
     codePoint(hex === undefined ? Number.parseInt(decimal ?? "", 10) : Number.parseInt(hex, 16)),
   );
 }
 
 function decodeEntities(text: string): string {
   const html = text.includes("#")
-    ? text.replace(MERMAID_ENTITY, (_whole, name: string) => (/^\d+$/.test(name) ? `&#${name};` : `&${name};`))
+    ? text.replaceAll(MERMAID_ENTITY, (_whole, name: string) => (/^\d+$/.test(name) ? `&#${name};` : `&${name};`))
     : text;
   return decodeHtmlEntities(html);
 }
@@ -212,7 +225,9 @@ function attributeLoadsRemote(attribute: Attr): boolean {
 }
 
 function unlink(anchor: Element): void {
-  for (const attribute of [...anchor.attributes]) {
+  const { attributes } = anchor;
+  for (let index = attributes.length - 1; index >= 0; index -= 1) {
+    const attribute = attributes[index];
     const name = attribute.localName.toLowerCase();
     const inPage = name === "href" && attribute.value.trim().startsWith("#");
     if ((name === "href" && !inPage) || name === "ping" || name === "target") anchor.removeAttributeNode(attribute);
@@ -222,7 +237,7 @@ function unlink(anchor: Element): void {
 export function secureDrawing(svg: Element): void {
   for (const element of [svg, ...svg.querySelectorAll("*")]) {
     if (element.localName.toLowerCase() === "a") unlink(element);
-    for (const attribute of [...element.attributes]) {
+    for (const attribute of element.attributes) {
       if (attributeLoadsRemote(attribute)) throw new MermaidRemoteContentError();
     }
     if (element.localName.toLowerCase() === "style" && cssLoadsRemote(element.textContent ?? "")) {

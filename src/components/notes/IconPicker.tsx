@@ -1,9 +1,9 @@
-import { Check } from "lucide-react";
 import { Suspense, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { useBookColorLabels } from "@/components/library/Book";
 import { Button } from "@/components/ui/button";
+import { ColorSwatch } from "@/components/ui/color-swatch";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverClose } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { NOTE_COLORS } from "./note-file";
-import { LINE_ICON_PREFIX, LINE_ICONS, NOTE_COLOR_LABELS, noteColorStyle } from "./note-icons";
+import { LINE_ICON_PREFIX, LINE_ICONS, NOTE_COLOR_HEX, NOTE_COLOR_LABELS, noteColorStyle } from "./note-icons";
 import type { NoteColor } from "./types";
 
 const EmojiGrid = lazy(() => import("./EmojiGrid"), { warm: true });
@@ -33,34 +33,6 @@ interface IconPickerProps {
 
 function revealSelected(element: HTMLButtonElement | null) {
   element?.scrollIntoView({ block: "nearest" });
-}
-
-function ColorRow({ color, onChange }: Readonly<{ color: NoteColor | undefined; onChange: (color: NoteColor) => void }>) {
-  const labels = useBookColorLabels();
-  return (
-    <div data-note-colors className="mb-2 flex items-center justify-between px-1">
-      {NOTE_COLORS.map((option) => {
-        const name = NOTE_COLOR_LABELS[option];
-        const label = labels[name];
-        const current = option === color;
-        return (
-          <Tooltip key={option} label={label}>
-            <button
-              type="button"
-              aria-label={label}
-              aria-pressed={current}
-              data-note-swatch={option}
-              style={noteColorStyle(option)}
-              className="note-swatch flex size-5 items-center justify-center rounded-full transition-transform hover:scale-110 motion-reduce:transition-none"
-              onClick={() => onChange(option)}
-            >
-              {current && <Check aria-hidden className={cn("size-3", option === "blue" ? "text-white" : "text-black/70")} />}
-            </button>
-          </Tooltip>
-        );
-      })}
-    </div>
-  );
 }
 
 const LINE_COLUMNS = 8;
@@ -93,7 +65,7 @@ function LineIconGrid({ selected, onSelect }: Readonly<{ selected: string | unde
     if (selectedId) revealSelected(cells.current.get(selectedId) ?? null);
   }, [selectedId]);
   const stop = icons.find((icon) => icon.id === focused)?.id ?? icons.find((icon) => icon.id === selectedId)?.id ?? icons[0]?.id;
-  const onKeyDown = (event: KeyboardEvent<HTMLFieldSetElement>) => {
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     const index = icons.findIndex((icon) => icon.id === stop);
     const next = index < 0 ? null : gridStep(event.key, index, icons.length);
     if (next === null) return;
@@ -118,7 +90,6 @@ function LineIconGrid({ selected, onSelect }: Readonly<{ selected: string | unde
         <fieldset
           aria-label={t(($) => $.notes.icons.lines)}
           className="m-0 grid min-w-0 grid-cols-8 content-start gap-0.5 overflow-y-auto border-0 p-0"
-          onKeyDown={onKeyDown}
         >
           {icons.map(({ id, icon: Icon, label }) => {
             const value = `${LINE_ICON_PREFIX}${id}`;
@@ -136,6 +107,7 @@ function LineIconGrid({ selected, onSelect }: Readonly<{ selected: string | unde
                   tabIndex={id === stop ? 0 : -1}
                   className={cn(CELL, current && SELECTED)}
                   onFocus={() => setFocused(id)}
+                  onKeyDown={onKeyDown}
                   onClick={() => onSelect(value)}
                 >
                   <Icon aria-hidden className="size-4" />
@@ -159,6 +131,7 @@ export function IconPicker({
   onColorChange,
 }: Readonly<IconPickerProps>) {
   const { t } = useTranslation(["notes", "common"]);
+  const colorLabels = useBookColorLabels();
   const selected = value ?? DEFAULT_LINE_ICON;
   const lineIcon = selected.startsWith(LINE_ICON_PREFIX);
   const [tab, setTab] = useState<"emoji" | "lines">(lineIcon ? "lines" : "emoji");
@@ -195,7 +168,22 @@ export function IconPicker({
             </Button>
           )}
         </div>
-        {onColorChange && <ColorRow color={color} onChange={onColorChange} />}
+        {onColorChange && (
+          <div data-note-colors className="mb-2 flex items-center justify-between px-1">
+            {NOTE_COLORS.map((option) => (
+              <ColorSwatch
+                key={option}
+                size="sm"
+                color={NOTE_COLOR_HEX[option]}
+                name={colorLabels[NOTE_COLOR_LABELS[option]]}
+                pressed={option === color}
+                checkClassName={option === "blue" ? undefined : "text-black/70"}
+                data-note-swatch={option}
+                onClick={() => onColorChange(option)}
+              />
+            ))}
+          </div>
+        )}
         {tab === "emoji" ? (
           <Suspense
             fallback={

@@ -4,26 +4,29 @@ import {
   NOTES_APPEARANCE_DEFAULTS,
   NOTES_APPEARANCE_KEYS,
   NOTES_APPEARANCE_STORAGE_KEYS,
-  NOTES_CODE_PALETTE,
   NOTES_CODE_THEMES,
-  NOTES_TYPEFACE_STACKS,
+  NOTES_TEXT_REPLACEMENTS,
+  TEXT_REPLACEMENT_LIMITS,
   clampNotesFontSize,
   clampNotesLineHeight,
   normalizeNotesSetting,
+  notesOption,
+  readNotesAppearance,
+  type NotesAppearance,
+} from "./notes-appearance";
+import {
+  NOTES_CODE_PALETTE,
+  NOTES_TYPEFACE_STACKS,
   notesAppearanceAttributes,
-  notesAppearanceDiffersFromDefaults,
   notesAppearanceVariables,
   notesCodeFont,
   notesHeadingFont,
   notesLineHeightValue,
-  notesOption,
   notesSettingIsDefault,
   notesTextFont,
-  readNotesAppearance,
   readableForeground,
   resolveNotesCodeTheme,
-  type NotesAppearance,
-} from "./notes-appearance";
+} from "./notes-appearance-style";
 
 const defaults = (): NotesAppearance => ({ ...NOTES_APPEARANCE_DEFAULTS });
 
@@ -43,7 +46,8 @@ describe("Notes appearance defaults", () => {
     });
     expect(notesAppearanceAttributes(defaults())).toEqual({
       "data-notes-callout": null,
-      "data-notes-highlight": null,
+      "data-notes-task-box": null,
+      "data-notes-field-style": null,
       "data-notes-accent": null,
       spellcheck: null,
     });
@@ -118,13 +122,15 @@ describe("Notes variables", () => {
       notesAppearanceAttributes({
         ...defaults(),
         notesCalloutStyle: "bar",
-        notesHighlightColor: "accent",
+        notesTaskBox: "square",
+        notesFieldStyle: "underline",
         notesAccentColor: "#db2777",
         notesSpellcheck: false,
       }),
     ).toEqual({
       "data-notes-callout": "bar",
-      "data-notes-highlight": "accent",
+      "data-notes-task-box": "square",
+      "data-notes-field-style": "underline",
       "data-notes-accent": "",
       spellcheck: "false",
     });
@@ -170,7 +176,29 @@ describe("normalizing a Notes setting", () => {
     expect(normalizeNotesSetting("notesWidth", 3)).toBe("standard");
     expect(normalizeNotesSetting("notesCodeTheme", "editor")).toBe("editor");
     expect(normalizeNotesSetting("notesCalloutStyle", "outlined")).toBe("outlined");
-    expect(normalizeNotesSetting("notesHighlightColor", "orange")).toBe("yellow");
+    expect(NOTES_APPEARANCE_DEFAULTS.notesTaskBox).toBe("round");
+    expect(normalizeNotesSetting("notesTaskBox", "square")).toBe("square");
+    expect(normalizeNotesSetting("notesTaskBox", "oval")).toBe("round");
+    expect(NOTES_APPEARANCE_DEFAULTS.notesFieldStyle).toBe("tint");
+    expect(NOTES_APPEARANCE_STORAGE_KEYS.notesFieldStyle).toBe("oleafly.notes.fieldStyle");
+    expect(normalizeNotesSetting("notesFieldStyle", "outline")).toBe("outline");
+    expect(normalizeNotesSetting("notesFieldStyle", "underline")).toBe("underline");
+    expect(normalizeNotesSetting("notesFieldStyle", "ghost")).toBe("tint");
+    expect(normalizeNotesSetting("notesFieldStyle", null)).toBe("tint");
+    expect(NOTES_APPEARANCE_DEFAULTS.notesInfo).toBe("side");
+    expect(NOTES_APPEARANCE_STORAGE_KEYS.notesInfo).toBe("oleafly.notes.info");
+    expect(normalizeNotesSetting("notesInfo", "inline")).toBe("inline");
+    expect(normalizeNotesSetting("notesInfo", "bottom")).toBe("side");
+    expect(normalizeNotesSetting("notesInfo", null)).toBe("side");
+  });
+
+  it("keeps the TikZ preamble's lines and tabs but drops other control characters and overflow", () => {
+    expect(NOTES_APPEARANCE_DEFAULTS.notesTikzPreamble).toBe("");
+    expect(normalizeNotesSetting("notesTikzPreamble", "\\usetikzlibrary{calc}\r\n\t\\tikzset{thick}\u0007")).toBe(
+      "\\usetikzlibrary{calc}\n\t\\tikzset{thick}",
+    );
+    expect(normalizeNotesSetting("notesTikzPreamble", "x".repeat(9000))).toHaveLength(8000);
+    expect(normalizeNotesSetting("notesTikzPreamble", 3)).toBe("");
   });
 
   it("cleans font names", () => {
@@ -218,7 +246,35 @@ describe("comparing with the defaults", () => {
     const state = { ...defaults(), accentColor: "#123456", notesTitleSize: 28 };
     expect(notesSettingIsDefault(state, "notesTypeface")).toBe(true);
     expect(notesSettingIsDefault(state, "notesTitleSize")).toBe(false);
-    expect(notesAppearanceDiffersFromDefaults(state)).toBe(true);
-    expect(notesAppearanceDiffersFromDefaults(defaults())).toBe(false);
+  });
+
+  it("counts the built-in replacement pairs as the default after a save and a reload", () => {
+    const stored = JSON.stringify(NOTES_TEXT_REPLACEMENTS);
+    const reloaded = readNotesAppearance((key) => (key === NOTES_APPEARANCE_STORAGE_KEYS.notesTextReplacements ? stored : null));
+    expect(reloaded.notesTextReplacements).not.toBe(NOTES_TEXT_REPLACEMENTS);
+    expect(notesSettingIsDefault(reloaded, "notesTextReplacements")).toBe(true);
+    const saved = { ...defaults(), notesTextReplacements: normalizeNotesSetting("notesTextReplacements", { ...NOTES_TEXT_REPLACEMENTS }) };
+    expect(notesSettingIsDefault(saved, "notesTextReplacements")).toBe(true);
+    const changed = { ...defaults(), notesTextReplacements: { ...NOTES_TEXT_REPLACEMENTS, "(c)": "©" } };
+    expect(notesSettingIsDefault(changed, "notesTextReplacements")).toBe(false);
+  });
+});
+
+describe("text replacement pairs", () => {
+  it("starts with the built-in pairs and keeps a stored list, even an empty one", () => {
+    expect(NOTES_APPEARANCE_DEFAULTS.notesTextReplace).toBe(true);
+    expect(normalizeNotesSetting("notesTextReplacements", null)).toEqual(NOTES_TEXT_REPLACEMENTS);
+    expect(normalizeNotesSetting("notesTextReplacements", "")).toEqual(NOTES_TEXT_REPLACEMENTS);
+    expect(normalizeNotesSetting("notesTextReplacements", "{}")).toEqual({});
+    expect(normalizeNotesSetting("notesTextReplacements", JSON.stringify({ "(c)": "©" }))).toEqual({ "(c)": "©" });
+  });
+
+  it("drops pairs it can't use and caps the list", () => {
+    const mixed = { " ": "x", a: "", b: "b", ["x".repeat(TEXT_REPLACEMENT_LIMITS.from + 1)]: "y", ok: "fine", "bad\n": "z" };
+    expect(normalizeNotesSetting("notesTextReplacements", mixed)).toEqual({ ok: "fine" });
+    expect(normalizeNotesSetting("notesTextReplacements", "not json")).toEqual(NOTES_TEXT_REPLACEMENTS);
+    expect(normalizeNotesSetting("notesTextReplacements", ["->"])).toEqual(NOTES_TEXT_REPLACEMENTS);
+    const many = Object.fromEntries(Array.from({ length: 150 }, (_, index) => [`k${index}`, "v"]));
+    expect(Object.keys(normalizeNotesSetting("notesTextReplacements", many))).toHaveLength(TEXT_REPLACEMENT_LIMITS.count);
   });
 });

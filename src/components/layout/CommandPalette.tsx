@@ -18,7 +18,7 @@ import { useTourStore } from "@/store/tours";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { useModalLayer } from "@/components/ui/use-modal-accessibility";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
-import { COMMAND_GROUP, CommandDialogShell } from "@/components/ui/command-dialog";
+import { COMMAND_GROUP, COMMAND_ITEM, CommandDialogShell } from "@/components/ui/command-dialog";
 
 export function CommandPalette() {
   const open = useSettingsStore((s) => s.paletteOpen);
@@ -186,7 +186,7 @@ function PaletteItem({
     <Command.Item
       value={searchValue}
       onSelect={onSelect}
-      className="flex items-center gap-2.5 rounded-md px-2 py-2 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+      className={COMMAND_ITEM}
     >
       <span className="text-muted-foreground">{icon}</span>
       <span>{label}</span>

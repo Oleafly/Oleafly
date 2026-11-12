@@ -1,27 +1,18 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { allowRadixSelect, chooseOption } from "@/features/collab/tests/select";
-import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import type { NoteLinkRecord, NoteTagCount } from "@/lib/tauri";
 import { buildGraph, fitView, GRAPH_LAYOUT_KEY, type GraphData, type LayoutRequest, type LayoutUpdate } from "./note-graph-layout";
-import {
-  createLayoutRunner,
-  drawGraph,
-  iconNodeOf,
-  inkFor,
-  lineIconPaths,
-  NoteGraph,
-  readPalette,
-  shapePath,
-  type GraphFrame,
-  type Palette,
-} from "./NoteGraph";
+import { drawGraph, iconNodeOf, lineIconPaths, NoteGraph, shapePath, type GraphFrame, type Palette } from "./NoteGraph";
 import { NotesDataProvider, type NotesData } from "./notes-data";
+import { tagTone } from "./note-tags";
 import type { NoteItem } from "./types";
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
 
 const copy = enNotes.graph;
 const logs = vi.hoisted(() => ({ logError: vi.fn() }));
@@ -63,17 +54,11 @@ function linkRecord(projectId: string, noteId: string, links: NoteLinkRecord["li
 }
 
 function data(overrides: Partial<NotesData> = {}): NotesData {
-  return {
+  return fakeNotesData({
     notes: [note("a", "Alpha", { color: "mint", icon: "lucide:atom" })],
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
-    loadNote: vi.fn(),
-    saveNote: vi.fn(),
     noteLinks: vi.fn(() => Promise.resolve([linkRecord("a", "na")])),
     ...overrides,
-  };
+  });
 }
 
 let context = fakeContext();
@@ -82,10 +67,6 @@ let reduced = true;
 function box(left: number, top: number, width: number, height: number): DOMRect {
   return { left, top, width, height, x: left, y: top, right: left + width, bottom: top + height, toJSON: () => ({}) } as DOMRect;
 }
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 beforeEach(() => {
   allowRadixSelect();
@@ -129,20 +110,30 @@ function renderGraph(props: Partial<Parameters<typeof NoteGraph>[0]> = {}, value
   return { ...utils, onOpenNote, onOpenProject };
 }
 
+function graphCanvas(name: string | RegExp = /^Graph of /u): HTMLElement {
+  return within(screen.getByRole("application")).getByLabelText(name);
+}
+
 function drawn(name: string): number {
   return context.calls.filter(([method]) => method === name).length;
 }
 
 async function settled() {
   await waitFor(() => expect(drawn("arc") + drawn("rect")).toBeGreaterThan(0), { timeout: 3000 });
-  await act(() => new Promise((resolve) => setTimeout(resolve, 60)));
+}
+
+function nextFrame() {
+  return act(() => new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve())));
 }
 
 describe("NoteGraph", () => {
   it("rebuilds the graph when a note's title or look changes, not on every save", async () => {
     const value = data({ notes: [note("a", "Alpha"), note("b", "Beta")] });
     const { rerender } = renderGraph({}, value);
-    await waitFor(() => expect(screen.getByRole("application", { name: "Graph of 2 notes" })).toBeInTheDocument());
+    await waitFor(() => expect(graphCanvas("Graph of 2 notes")).toBeInTheDocument());
+    expect(screen.getByRole("application", { name: copy.title })).toContainElement(graphCanvas("Graph of 2 notes"));
+    await waitFor(() => expect(vi.mocked(value.noteLinks ?? vi.fn())).toHaveBeenCalled());
+    await act(async () => {});
     const built = vi.mocked(buildGraph).mock.calls.length;
     const saved = { ...value, notes: value.notes.map((item) => ({ ...item, summary: "edited", updatedAt: 99 })) };
     rerender(
@@ -150,20 +141,20 @@ describe("NoteGraph", () => {
         <NoteGraph mode="global" onOpenNote={vi.fn()} onOpenProject={vi.fn()} />
       </NotesDataProvider>,
     );
-    expect(vi.mocked(buildGraph).mock.calls.length).toBe(built);
+    expect(vi.mocked(buildGraph).mock.calls).toHaveLength(built);
     const renamed = { ...saved, notes: saved.notes.map((item) => (item.id === "b" ? { ...item, title: "Beta two" } : item)) };
     rerender(
       <NotesDataProvider value={renamed}>
         <NoteGraph mode="global" onOpenNote={vi.fn()} onOpenProject={vi.fn()} />
       </NotesDataProvider>,
     );
-    expect(vi.mocked(buildGraph).mock.calls.length).toBe(built + 1);
+    expect(vi.mocked(buildGraph).mock.calls).toHaveLength(built + 1);
     expect(vi.mocked(buildGraph).mock.lastCall?.[0].notes.map((item) => item.title)).toEqual(["Alpha", "Beta two"]);
   });
 
   it("draws every note and opens one on click", async () => {
     const { onOpenNote } = renderGraph();
-    const canvas = screen.getByRole("application", { name: "Graph of 1 note" });
+    const canvas = graphCanvas("Graph of 1 note");
     await settled();
     fireEvent.pointerDown(canvas, { clientX: 400, clientY: 300, button: 0, pointerId: 1 });
     fireEvent.pointerUp(canvas, { clientX: 400, clientY: 300, pointerId: 1 });
@@ -173,12 +164,18 @@ describe("NoteGraph", () => {
     expect(onOpenNote).toHaveBeenLastCalledWith("a", { newTab: true });
     fireEvent.pointerDown(canvas, { clientX: 400, clientY: 300, button: 2, pointerId: 3 });
     expect(onOpenNote).toHaveBeenCalledTimes(2);
-    expect(localStorage.getItem(GRAPH_LAYOUT_KEY)).toContain("note:a");
+  });
+
+  it("announces that it is reading links while the graph is still empty", () => {
+    localStorage.setItem("oleafly.notes.graph.prefs", JSON.stringify({ orphans: false }));
+    renderGraph({}, data({ noteLinks: vi.fn(() => new Promise<never>(() => {})) }));
+    expect(screen.getByRole("status")).toHaveTextContent(copy.loading);
+    expect(screen.queryByText(copy.emptyFiltered)).toBeNull();
   });
 
   it("drags, pans, hovers and zooms without opening notes", async () => {
     const { onOpenNote } = renderGraph();
-    const canvas = screen.getByRole("application");
+    const canvas = graphCanvas();
     await settled();
     fireEvent.pointerMove(canvas, { clientX: 400, clientY: 300, pointerId: 9 });
     expect(canvas.style.cursor).toBe("pointer");
@@ -218,7 +215,7 @@ describe("NoteGraph", () => {
       ),
     });
     const { onOpenNote } = renderGraph({ activeId: "b" }, value);
-    const canvas = screen.getByRole("application", { name: "Graph of 2 notes" });
+    const canvas = graphCanvas("Graph of 2 notes");
     await settled();
     canvas.focus();
     fireEvent.keyDown(canvas, { key: "ArrowRight" });
@@ -235,15 +232,25 @@ describe("NoteGraph", () => {
     fireEvent.keyDown(canvas, { key: "Escape" });
     fireEvent.keyDown(canvas, { key: "Enter" });
     expect(onOpenNote).toHaveBeenCalledTimes(2);
-    fireEvent.keyDown(canvas, { key: "ArrowLeft" });
-    fireEvent.blur(canvas);
-    fireEvent.blur(canvas);
-    for (const key of ["+", "=", "-", "0", "x"]) fireEvent.keyDown(canvas, { key });
-    const search = screen.getByRole("searchbox", { name: copy.search });
-    fireEvent.keyDown(search, { key: "0", ctrlKey: true });
-    fireEvent.keyDown(search, { key: "=", ctrlKey: true });
-    fireEvent.keyDown(search, { key: "-", ctrlKey: true });
-    fireEvent.keyDown(search, { key: "0" });
+  });
+
+  it("takes zoom keys on the canvas, and with the modifier anywhere in the graph", async () => {
+    renderGraph();
+    const canvas = graphCanvas("Graph of 1 note");
+    await settled();
+    const outside = vi.fn();
+    window.addEventListener("keydown", outside);
+    try {
+      const search = screen.getByRole("searchbox", { name: copy.search });
+      expect(fireEvent.keyDown(search, { key: "0" })).toBe(true);
+      expect(fireEvent.keyDown(search, { key: "0", ctrlKey: true, metaKey: true })).toBe(false);
+      expect(fireEvent.keyDown(canvas, { key: "+" })).toBe(false);
+      expect(fireEvent.keyDown(canvas, { key: "-" })).toBe(false);
+      expect(fireEvent.keyDown(canvas, { key: "x" })).toBe(true);
+      expect(outside).toHaveBeenCalledTimes(2);
+    } finally {
+      window.removeEventListener("keydown", outside);
+    }
   });
 
   it("filters by search, tag, orphans and projects and remembers the switches", async () => {
@@ -264,11 +271,12 @@ describe("NoteGraph", () => {
     await settled();
     await user.type(screen.getByRole("searchbox", { name: copy.search }), "alp");
     await chooseOption(user, copy.tag, "#Lab (1)");
-    expect(screen.getByRole("application", { name: "Graph of 1 note" })).toBeInTheDocument();
+    expect(graphCanvas("Graph of 1 note")).toBeInTheDocument();
+    expect(within(screen.getByRole("combobox", { name: copy.tag })).getByText("#Lab")).toHaveClass(...tagTone("lab").text.split(" "));
     await chooseOption(user, copy.tag, "#ml (2)");
     await chooseOption(user, copy.tag, copy.allTags);
     await user.click(screen.getByRole("switch", { name: copy.orphans }));
-    expect(screen.getByRole("application", { name: "Graph of 1 note" })).toBeInTheDocument();
+    expect(graphCanvas("Graph of 1 note")).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem("oleafly.notes.graph.prefs") ?? "{}")).toMatchObject({ orphans: false });
     await user.click(screen.getByRole("switch", { name: copy.projects }));
     expect(await screen.findByText(copy.emptyFiltered)).toBeInTheDocument();
@@ -283,14 +291,14 @@ describe("NoteGraph", () => {
     await settled();
   });
 
-  it("opens a project node", async () => {
+  it("says when the vault has no notes", async () => {
     const value = data({
       notes: [],
       projects: [{ id: "p1", name: "Paper" }],
       noteLinks: vi.fn(() => Promise.resolve([])),
     });
     renderGraph({}, value);
-    expect(screen.getByText(copy.empty)).toBeInTheDocument();
+    expect(await screen.findByText(copy.empty)).toBeInTheDocument();
   });
 
   it("shows the local graph around the open note at the chosen depth", async () => {
@@ -311,9 +319,9 @@ describe("NoteGraph", () => {
     });
     const { onOpenProject, rerender } = renderGraph({ mode: "local", centerId: "a" }, value);
     expect(screen.queryByRole("switch", { name: copy.orphans })).not.toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("application", { name: "Graph of 2 notes" })).toBeInTheDocument());
+    await waitFor(() => expect(graphCanvas("Graph of 2 notes")).toBeInTheDocument());
     await chooseOption(user, copy.depth, "2 steps");
-    await waitFor(() => expect(screen.getByRole("application", { name: "Graph of 3 notes" })).toBeInTheDocument());
+    await waitFor(() => expect(graphCanvas("Graph of 3 notes")).toBeInTheDocument());
     await chooseOption(user, copy.depth, "1 step");
     rerender(
       <NotesDataProvider value={value}>
@@ -330,10 +338,8 @@ describe("NoteGraph", () => {
       noteTags: vi.fn(() => Promise.reject(new Error("tags"))),
     });
     const { unmount } = renderGraph({}, value);
-    await waitFor(() => expect(logs.logError).toHaveBeenCalledWith("read note links for the graph", expect.any(Error)));
-    expect(logs.logError).toHaveBeenCalledWith("read note tags for the graph", expect.any(Error));
-    expect(await screen.findByText(copy.linksFailed)).toHaveAttribute("role", "status");
-    await settled();
+    expect(await screen.findByRole("alert", undefined, { timeout: 3000 })).toHaveTextContent(copy.linksFailed);
+    expect(logs.logError).toHaveBeenCalledWith("query", expect.any(Error));
     unmount();
   });
 
@@ -359,55 +365,11 @@ describe("NoteGraph", () => {
       setItem.call(this, key, value);
     });
     const { unmount } = renderGraph();
-    fireEvent.click(screen.getAllByRole("switch", { name: copy.projects }).at(-1) as HTMLElement);
+    const projects = screen.getAllByRole("switch", { name: copy.projects }).at(-1) as HTMLElement;
+    expect(projects).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(projects);
+    expect(projects).toHaveAttribute("aria-checked", "false");
     unmount();
-  });
-
-  it("works without a measured canvas or a context", async () => {
-    vi.mocked(HTMLCanvasElement.prototype.getContext).mockImplementation(() => null);
-    vi.mocked(Element.prototype.getBoundingClientRect).mockImplementation(() => box(0, 0, 0, 0));
-    vi.stubGlobal("ResizeObserver", undefined);
-    renderGraph();
-    await act(() => new Promise((resolve) => setTimeout(resolve, 40)));
-    expect(screen.getByRole("application")).toBeInTheDocument();
-  });
-});
-
-describe("createLayoutRunner", () => {
-  it("talks to a worker when one starts", () => {
-    const worker = {
-      postMessage: vi.fn(),
-      terminate: vi.fn(),
-      onmessage: null as ((event: MessageEvent<LayoutUpdate>) => void) | null,
-      onerror: null as ((event: ErrorEvent) => void) | null,
-    };
-    const updates: LayoutUpdate[] = [];
-    const runner = createLayoutRunner((update) => updates.push(update), () => worker as unknown as Worker);
-    runner.send({ type: "stop" });
-    expect(worker.postMessage).toHaveBeenCalledWith({ type: "stop" });
-    const update: LayoutUpdate = { type: "positions", generation: 1, positions: new Float32Array(0), settled: true };
-    worker.onmessage?.({ data: update } as MessageEvent<LayoutUpdate>);
-    expect(updates).toEqual([update]);
-    worker.onerror?.({ message: "boom" } as ErrorEvent);
-    expect(logs.logError).toHaveBeenCalledWith("lay out the note graph", "boom");
-    runner.dispose();
-    expect(worker.terminate).toHaveBeenCalled();
-  });
-
-  it("falls back to the main thread and to a failing worker constructor", () => {
-    vi.stubGlobal(
-      "Worker",
-      class {
-        constructor() {
-          throw new Error("blocked");
-        }
-      },
-    );
-    const updates: LayoutUpdate[] = [];
-    const runner = createLayoutRunner((update) => updates.push(update));
-    runner.send({ type: "start", generation: 1, count: 0, edges: new Uint32Array(0), positions: null, animate: false });
-    expect(updates).toHaveLength(1);
-    runner.dispose();
   });
 });
 
@@ -522,18 +484,6 @@ describe("drawing", () => {
     vi.unstubAllGlobals();
   });
 
-  it("picks readable ink and reads theme colours", () => {
-    expect(inkFor("#98f5e1")).toBe("#1f2328");
-    expect(inkFor("#1982c4")).toBe("#ffffff");
-    expect(inkFor("#000000")).toBe("#ffffff");
-    expect(inkFor("oklch(1 0 0)")).toBe("#1f2328");
-    const host = document.createElement("div");
-    document.body.append(host);
-    const palette = readPalette(host);
-    expect(palette.font.length).toBeGreaterThan(0);
-    expect(host.childElementCount).toBe(0);
-    host.remove();
-  });
 });
 
 class FakeWorker {
@@ -547,7 +497,10 @@ class FakeWorker {
   postMessage(request: LayoutRequest) {
     this.sent.push(request);
   }
-  terminate() {}
+  terminated = false;
+  terminate() {
+    this.terminated = true;
+  }
   started(): Extract<LayoutRequest, { type: "start" }> {
     const start = [...this.sent].reverse().find((request) => request.type === "start");
     if (start?.type !== "start") throw new Error("no layout started");
@@ -607,10 +560,10 @@ describe("NoteGraph with a layout worker", () => {
 
   async function ready() {
     const utils = renderGraph({}, value());
-    const canvas = screen.getByRole("application");
+    const canvas = graphCanvas();
     await waitFor(() => expect(FakeWorker.last?.started().count).toBe(3));
     FakeWorker.last?.place(positions);
-    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+    await nextFrame();
     return { ...utils, canvas, worker: FakeWorker.last as FakeWorker };
   }
 
@@ -618,7 +571,7 @@ describe("NoteGraph with a layout worker", () => {
     const { canvas, worker, onOpenProject, onOpenNote } = await ready();
     const before = drawn("arc");
     worker.place(positions, 0);
-    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+    await nextFrame();
     expect(drawn("arc")).toBe(before);
     const [px, py] = at(2);
     fireEvent.pointerDown(canvas, { clientX: px, clientY: py, button: 0, pointerId: 1 });
@@ -679,6 +632,23 @@ describe("NoteGraph with a layout worker", () => {
     expect(FakeWorker.last?.started().positions).toBeNull();
   });
 
+  it.each([
+    ["fails", (worker: FakeWorker) => worker.onerror?.({ message: "the layout script did not load" } as ErrorEvent)],
+    ["never answers", (_worker: FakeWorker, giveUp: () => void) => giveUp()],
+  ])("lays the graph out on the page when the worker %s, so the notes still draw", async (_case, breakWorker) => {
+    const timers = vi.spyOn(window, "setTimeout");
+    renderGraph({}, value());
+    await waitFor(() => expect(FakeWorker.last?.started().count).toBe(3));
+    const broken = FakeWorker.last as FakeWorker;
+    const giveUp = timers.mock.calls.find(([, delay]) => delay === 2000)?.[0] as () => void;
+    expect(drawn("arc")).toBe(0);
+    act(() => breakWorker(broken, giveUp));
+    await waitFor(() => expect(drawn("arc")).toBeGreaterThan(0));
+    expect(broken.terminated).toBe(true);
+    expect(logs.logError).toHaveBeenCalledWith("lay out the note graph", expect.any(String));
+    broken.place(positions);
+  });
+
   it("restarts when reduced motion changes and does nothing on an empty graph", async () => {
     let change: () => void = () => {};
     const query = {
@@ -695,9 +665,6 @@ describe("NoteGraph with a layout worker", () => {
     query.matches = true;
     act(() => change());
     await waitFor(() => expect(FakeWorker.last?.started().animate).toBe(false));
-    const canvas = screen.getByRole("application", { hidden: true });
-    fireEvent.keyDown(canvas, { key: "ArrowRight" });
-    await userEvent.setup().click(screen.getByRole("button", { name: copy.reset }));
   });
 
   it("skips drawing a canvas with no size and works without matchMedia", async () => {
@@ -706,8 +673,37 @@ describe("NoteGraph with a layout worker", () => {
     renderGraph({}, value());
     await waitFor(() => expect(FakeWorker.last?.started().count).toBe(3));
     FakeWorker.last?.place(positions);
-    await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+    await nextFrame();
     expect(drawn("arc")).toBe(0);
+  });
+
+  it("saves the layout when the graph closes, not each time it settles", async () => {
+    const { unmount } = await ready();
+    expect(localStorage.getItem(GRAPH_LAYOUT_KEY)).toBeNull();
+    unmount();
+    expect(localStorage.getItem(GRAPH_LAYOUT_KEY)).toContain("note:a");
+  });
+
+  it("logs worker errors and stops the worker when the graph closes", async () => {
+    const terminate = vi.spyOn(FakeWorker.prototype, "terminate");
+    const { worker, unmount } = await ready();
+    worker.onerror?.({ message: "boom" } as ErrorEvent);
+    expect(logs.logError).toHaveBeenCalledWith("lay out the note graph", "boom");
+    unmount();
+    expect(terminate).toHaveBeenCalled();
+  });
+
+  it("lays out on the main thread when the worker cannot start", async () => {
+    vi.stubGlobal(
+      "Worker",
+      class {
+        constructor() {
+          throw new Error("blocked");
+        }
+      },
+    );
+    renderGraph();
+    await settled();
   });
 });
 

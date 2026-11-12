@@ -40,6 +40,7 @@ const OCR_FILTER: &str = include_str!("../../../src-tauri/resources/pandoc/oleaf
 /// them as HTML) and `\(x\)` / `\[x\]` count as math.
 const OCR_READER: &str = "--from=markdown-markdown_in_html_blocks+tex_math_single_backslash";
 const OCR_FRAGMENT_METADATA: &str = "--metadata=oleafly-fragment=true";
+const NOTE_FRAGMENT_READER: &str = "--from=markdown";
 
 pub fn stage_ocr_filter(dir: &Path) -> Result<(), String> {
     std::fs::write(dir.join(OCR_FILTER_NAME), OCR_FILTER)
@@ -47,11 +48,16 @@ pub fn stage_ocr_filter(dir: &Path) -> Result<(), String> {
 }
 
 fn ocr_args(source: &str, writer: &str, output_name: &str, source_name: &str) -> Vec<String> {
-    let mut args = vec![OCR_READER.to_string(), format!("--to={writer}")];
+    let reader = if source == "markdown-fragment" {
+        NOTE_FRAGMENT_READER
+    } else {
+        OCR_READER
+    };
+    let mut args = vec![reader.to_string(), format!("--to={writer}")];
     if source == "ocr-markdown" && matches!(writer, "latex" | "typst") {
         args.push("--standalone".into());
     }
-    if source == "ocr-fragment" {
+    if matches!(source, "ocr-fragment" | "markdown-fragment") {
         args.push(OCR_FRAGMENT_METADATA.into());
     }
     args.extend([
@@ -122,11 +128,11 @@ pub fn drop_false_bibliography(markdown: &str) -> String {
 pub fn ad_hoc_plan(source: &str, target: &str) -> Option<AdHocPlan> {
     let (reader, source_name) = match source {
         "latex" | "equation" => ("latex", "source.tex"),
-        "markdown" => ("markdown", "source.md"),
+        "markdown" | "markdown-note" => ("markdown", "source.md"),
         "typst" => ("typst", "source.typ"),
         "html" => ("html", "source.html"),
         "docx" => ("docx", "source.docx"),
-        "ocr-markdown" | "ocr-fragment" => ("markdown", "source.md"),
+        "ocr-markdown" | "ocr-fragment" | "markdown-fragment" => ("markdown", "source.md"),
         _ => return None,
     };
     let (writer, output_name, binary_output, media_type) = match target {
@@ -142,7 +148,10 @@ pub fn ad_hoc_plan(source: &str, target: &str) -> Option<AdHocPlan> {
         ),
         _ => return None,
     };
-    if matches!(source, "ocr-markdown" | "ocr-fragment") {
+    if matches!(
+        source,
+        "ocr-markdown" | "ocr-fragment" | "markdown-fragment"
+    ) {
         if !matches!(target, "latex" | "typst" | "markdown") {
             return None;
         }
@@ -168,6 +177,7 @@ pub fn ad_hoc_plan(source: &str, target: &str) -> Option<AdHocPlan> {
             | ("latex", "docx")
             | ("markdown", "latex")
             | ("markdown", "typst")
+            | ("markdown-note", "latex" | "typst" | "docx" | "html")
             | ("typst", "latex")
             | ("typst", "docx")
             | ("typst", "html")
@@ -1117,6 +1127,14 @@ mod tests {
             );
             assert!(plan.args.contains(&format!("--from={source}")) || source == "docx");
         }
+        for target in ["latex", "typst", "docx", "html"] {
+            let note = ad_hoc_plan("markdown-note", target).unwrap();
+            assert!(note.args.contains(&"--from=markdown".to_string()));
+            assert!(note.args.contains(&"--standalone".to_string()));
+            assert!(note.args.contains(&"--sandbox".to_string()));
+        }
+        assert!(ad_hoc_plan("markdown", "docx").is_none());
+        assert!(ad_hoc_plan("markdown-note", "markdown").is_none());
         assert!(ad_hoc_plan("latex", "latex").is_none());
         assert!(ad_hoc_plan("pdf", "latex").is_none());
         assert!(ad_hoc_plan("docx", "markdown").is_none());
@@ -1242,6 +1260,16 @@ mod tests {
             assert!(ad_hoc_plan("ocr-markdown", target).is_none());
             assert!(ad_hoc_plan("ocr-fragment", target).is_none());
         }
+        for target in ["latex", "typst"] {
+            let note = ad_hoc_plan("markdown-fragment", target).unwrap();
+            assert!(note.args.contains(&"--from=markdown".to_string()));
+            assert!(note
+                .args
+                .contains(&"--metadata=oleafly-fragment=true".to_string()));
+            assert!(!note.args.contains(&"--standalone".to_string()));
+            assert!(note.ocr_filter && note.args.contains(&"--sandbox".to_string()));
+        }
+        assert!(ad_hoc_plan("markdown-fragment", "docx").is_none());
         assert!(!ad_hoc_plan("markdown", "latex").unwrap().ocr_filter);
         assert!(ad_hoc_plan("markdown", "markdown").is_none());
         assert!(ad_hoc_plan("ocr", "latex").is_none());

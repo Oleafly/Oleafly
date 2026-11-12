@@ -873,7 +873,10 @@ fn write_routed_meta(
     intent: MetaWrite<'_>,
 ) -> Result<(), String> {
     let written = write_routed_meta_now(project_id, route, meta, intent);
-    crate::note_index::invalidate();
+    match route {
+        Route::Library(_) => crate::note_index::meta_written(project_id, meta),
+        _ => crate::note_index::invalidate(),
+    }
     written
 }
 
@@ -1157,11 +1160,14 @@ fn project_meta_disk_value(meta: &ProjectMeta) -> Result<serde_json::Value, Stri
 }
 
 fn write_meta_value_at(path: &Path, disk_meta: &serde_json::Value) -> Result<(), String> {
-    let s = serde_json::to_string_pretty(disk_meta).map_err(|e| e.to_string())?;
-    let written =
-        atomic_write(path, s.as_bytes()).map_err(|e| format!("failed to write project.json: {e}"));
+    let written = write_meta_value_quietly(path, disk_meta);
     crate::note_index::invalidate();
     written
+}
+
+fn write_meta_value_quietly(path: &Path, disk_meta: &serde_json::Value) -> Result<(), String> {
+    let s = serde_json::to_string_pretty(disk_meta).map_err(|e| e.to_string())?;
+    atomic_write(path, s.as_bytes()).map_err(|e| format!("failed to write project.json: {e}"))
 }
 
 pub(crate) fn write_meta_at(path: &Path, meta: &ProjectMeta) -> Result<(), String> {
@@ -1181,7 +1187,7 @@ fn write_meta_at_if_changed(path: &Path, meta: &ProjectMeta) -> Result<bool, Str
     if stored_meta_matches(path, &disk_meta) {
         return Ok(false);
     }
-    write_meta_value_at(path, &disk_meta)?;
+    write_meta_value_quietly(path, &disk_meta)?;
     Ok(true)
 }
 
@@ -4934,7 +4940,7 @@ fn linked_project_info(
         engine,
         kind: meta.as_ref().map_or_else(
             || "document".to_string(),
-            |meta| listed_kind(&record.id, meta),
+            |meta| listed_kind(&record.id, meta, true),
         ),
         created_at: record.created_at as f64 / 1000.0,
         updated_at: record.changed_at.map_or(0.0, |at| at as f64 / 1000.0),
@@ -5048,7 +5054,7 @@ pub(crate) fn list_projects_blocking() -> Result<Vec<ProjectInfo>, String> {
         let exports = project_export_infos(&meta.exports);
         let imported_from = imported_service(&meta.extra);
         let related_project = related_project_of(&meta.extra);
-        let kind = listed_kind(&id, &meta);
+        let kind = listed_kind(&id, &meta, false);
         out.push(ProjectInfo {
             name: if meta.name.is_empty() {
                 id.clone()
@@ -6120,12 +6126,6 @@ pub const NOTE_FILE: &str = "note.md";
 const NOTE_HEAD_BYTES: usize = 8 * 1024;
 const RELATED_PROJECT_KEY: &str = "relatedProject";
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
-pub struct NoteHead {
-    pub id: String,
-    pub head: String,
-}
-
 #[tauri::command]
 pub async fn create_note_project(
     name: String,
@@ -6159,27 +6159,6 @@ fn check_related_project(related: Option<&str>) -> Result<(), String> {
 }
 
 pub(crate) fn create_note_project_from(
-    name: String,
-    source: String,
-    related_project: Option<String>,
-) -> Result<String, String> {
-    let project_id = create_note_project_without_git(name, source, related_project)?;
-    initialize_git_for_new_project(&project_id);
-    Ok(project_id)
-}
-
-pub(crate) fn initialize_git_for_imported_notes(project_ids: Vec<String>) {
-    if project_ids.is_empty() {
-        return;
-    }
-    drop(tauri::async_runtime::spawn_blocking(move || {
-        for project_id in project_ids {
-            initialize_git_for_new_project(&project_id);
-        }
-    }));
-}
-
-pub(crate) fn create_note_project_without_git(
     name: String,
     source: String,
     related_project: Option<String>,
@@ -6264,7 +6243,7 @@ pub(crate) fn set_note_related_project_blocking(
     })
 }
 
-fn related_project_of(extra: &HashMap<String, serde_json::Value>) -> Option<String> {
+pub(crate) fn related_project_of(extra: &HashMap<String, serde_json::Value>) -> Option<String> {
     let id = extra.get(RELATED_PROJECT_KEY)?.as_str()?;
     paths::validate_project_id(id).ok()?;
     Some(id.to_string())
@@ -6281,43 +6260,6 @@ fn text_head(bytes: &[u8]) -> String {
     crate::note_index::utf8_prefix(&bytes[..bytes.len().min(NOTE_HEAD_BYTES)])
 }
 
-static NOTE_HEADS: crate::note_index::ParsedCache<String> =
-    std::sync::LazyLock::new(|| std::sync::Mutex::new(HashMap::new()));
-
-#[tauri::command]
-pub async fn note_heads() -> Result<Vec<NoteHead>, String> {
-    tauri::async_runtime::spawn_blocking(note_heads_blocking)
-        .await
-        .map_err(|error| format!("reading the notes failed: {error}"))?
-}
-
-pub(crate) fn note_heads_blocking() -> Result<Vec<NoteHead>, String> {
-    let entries = crate::note_index::notes()?;
-    let mut seen = HashSet::new();
-    let mut heads = Vec::with_capacity(entries.len());
-    for entry in entries.iter() {
-        match crate::note_index::read_parsed_within(
-            &NOTE_HEADS,
-            entry,
-            crate::note_index::LockMode::Bounded,
-            NOTE_HEAD_BYTES as u64,
-            str::to_string,
-        ) {
-            Ok(Some((path, head, _))) => {
-                seen.insert(path);
-                heads.push(NoteHead {
-                    id: entry.id.clone(),
-                    head: head.as_ref().clone(),
-                });
-            }
-            Ok(None) => {}
-            Err(error) => log_project_enumeration_skip(&entry.id, &error),
-        }
-    }
-    crate::note_index::keep_only(&NOTE_HEADS, &seen);
-    Ok(heads)
-}
-
 pub const NOTE_ASSETS: &str = "assets";
 pub const NOTE_ORIGINS: &str = "assets/origins";
 const NOTE_ORIGIN_VERSION: u32 = 1;
@@ -6332,11 +6274,15 @@ pub(crate) fn front_matter_declares_note(text: &str) -> bool {
         .is_some_and(|kind| kind == NOTE_KIND)
 }
 
-fn declares_note(project_id: &str, main_doc: &str) -> bool {
-    if main_doc != NOTE_FILE {
+fn adopts_declared_note(
+    project_id: &str,
+    meta: &ProjectMeta,
+    linked: impl FnOnce() -> bool,
+) -> bool {
+    if !meta.kind.is_empty() || meta.main_doc != NOTE_FILE {
         return false;
     }
-    let Ok(path) = crate::sandbox::resolve_readable(project_id, main_doc) else {
+    let Ok(path) = crate::sandbox::resolve_readable(project_id, &meta.main_doc) else {
         return false;
     };
     let mut bytes = Vec::with_capacity(NOTE_DECLARATION_BYTES);
@@ -6345,13 +6291,20 @@ fn declares_note(project_id: &str, main_doc: &str) -> bool {
         file.take(NOTE_DECLARATION_BYTES as u64)
             .read_to_end(&mut bytes)
     });
-    read.is_ok() && front_matter_declares_note(&text_head(&bytes))
+    let head = text_head(&bytes);
+    read.is_ok()
+        && front_matter_declares_note(&head)
+        && (oleafly_core::front_matter::split(&head)
+            .and_then(|front| front.scalar("id"))
+            .is_some_and(|id| !id.is_empty())
+            || linked()
+            || crate::collab::registry::is_shared(project_id))
 }
 
-fn listed_kind(project_id: &str, meta: &ProjectMeta) -> String {
+fn listed_kind(project_id: &str, meta: &ProjectMeta, linked: bool) -> String {
     if !meta.kind.is_empty() {
         meta.kind.clone()
-    } else if declares_note(project_id, &meta.main_doc) {
+    } else if adopts_declared_note(project_id, meta, || linked) {
         NOTE_KIND.to_string()
     } else {
         "document".to_string()
@@ -6359,7 +6312,11 @@ fn listed_kind(project_id: &str, meta: &ProjectMeta) -> String {
 }
 
 pub(crate) fn is_note(project_id: &str, meta: &ProjectMeta) -> bool {
-    meta.kind == NOTE_KIND || (meta.kind.is_empty() && declares_note(project_id, &meta.main_doc))
+    meta.kind == NOTE_KIND
+        || adopts_declared_note(project_id, meta, || {
+            crate::project_location::locate(project_id)
+                .is_ok_and(|location| location.kind == ProjectKind::Linked)
+        })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -6428,17 +6385,11 @@ pub struct NoteAssetCopy {
 fn note_asset_name(source_path: &str) -> (String, String) {
     let (stem, extension) = note_asset_parts(source_path);
     (
-        truncate_utf8(&stem, NOTE_ASSET_STEM_BYTES).to_string(),
+        oleafly_core::encoding::truncate_utf8(&stem, NOTE_ASSET_STEM_BYTES)
+            .trim_end_matches('-')
+            .to_string(),
         extension,
     )
-}
-
-fn truncate_utf8(text: &str, limit: usize) -> &str {
-    let mut end = text.len().min(limit);
-    while !text.is_char_boundary(end) {
-        end -= 1;
-    }
-    text[..end].trim_end_matches('-')
 }
 
 fn note_asset_parts(source_path: &str) -> (String, String) {
@@ -6566,10 +6517,11 @@ pub(crate) fn copy_into_note(
 
 #[tauri::command]
 pub async fn note_import_file(
+    drops: tauri::State<'_, crate::native_drop::NativeDropState>,
     project_id: String,
     source_path: String,
 ) -> Result<NoteAssetCopy, String> {
-    crate::path_grants::require_open(&source_path)?;
+    crate::native_drop::require_dropped_or_picked(Some(&drops), &source_path)?;
     tauri::async_runtime::spawn_blocking(move || {
         import_file_into_note(&project_id, Path::new(&source_path))
     })
@@ -6945,7 +6897,7 @@ fn try_reserve_project_directory_adopting(
     }))
 }
 
-fn reserve_unique_project_directory(
+pub(crate) fn reserve_unique_project_directory(
     root: &Path,
     coordinate_worktree: bool,
 ) -> Result<ProjectDirectoryReservation, String> {
@@ -8275,66 +8227,112 @@ pub async fn search_docs(query: String) -> Result<Vec<SearchHit>, String> {
             return Ok(Vec::new());
         }
         let q_lower = q.to_lowercase();
-        let root = paths::projects_root()?;
-        let linked = linked_listing_entries();
-        let linked_ids = claimed_by_linked_registry(&linked);
         let mut hits: Vec<SearchHit> = Vec::new();
-        let entries = std::fs::read_dir(&root).map_err(|e| e.to_string())?;
-        for entry in entries.flatten() {
+        visit_search_roots(|root| {
             if hits.len() >= SEARCH_LIMIT {
-                break;
+                return false;
             }
-            if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                continue;
+            if !root.linked {
+                search_walk(
+                    root.id, root.name, root.root, root.root, &q_lower, &mut hits, 0,
+                );
+                return true;
             }
-            let project_id = entry.file_name().to_string_lossy().into_owned();
-            if paths::validate_project_id(&project_id).is_err() {
-                continue;
-            }
-            if linked_ids.contains(&project_id) {
-                continue;
-            }
-            let _worktree = match crate::worktree_lock::ProjectWorktreeLock::shared(&project_id) {
-                Ok(lock) => lock,
-                Err(error) => {
-                    log_project_enumeration_skip(&project_id, &error);
-                    continue;
-                }
+            let never_cancelled = AtomicBool::new(false);
+            let mut found = BoundedSearch {
+                hits: Vec::new(),
+                scanned_entries: 0,
+                scanned_files: 0,
+                scanned_bytes: 0,
+                truncated: false,
             };
-            let meta = match project_meta_for_enumeration_lock_held(&project_id, &entry.path()) {
-                Ok(meta) if !meta.hidden => meta,
-                Ok(_) => continue,
-                Err(error) => {
-                    log_project_enumeration_skip(&project_id, &error);
-                    continue;
-                }
-            };
-            let project_name = if meta.name.is_empty() {
-                project_id.clone()
-            } else {
-                meta.name
-            };
-            search_walk(
-                &project_id,
-                &project_name,
-                &entry.path(),
-                &entry.path(),
+            bounded_search_walk(
+                root.id,
+                root.name,
+                root.root,
+                root.root,
                 &q_lower,
-                &mut hits,
+                &mut found,
+                SearchLimits {
+                    max_results: SEARCH_LIMIT - hits.len(),
+                    max_entries: LINKED_SEARCH_ENTRY_LIMIT,
+                    max_files: LINKED_SEARCH_FILE_LIMIT,
+                    max_file_bytes: MCP_SEARCH_FILE_BYTE_LIMIT,
+                    max_total_bytes: MCP_SEARCH_TOTAL_BYTE_LIMIT,
+                    deadline: std::time::Instant::now() + MCP_SCAN_DEADLINE,
+                },
+                &never_cancelled,
                 0,
             );
-        }
-        search_linked_folders(&linked, &q_lower, &mut hits);
+            hits.extend(found.hits);
+            true
+        })?;
         Ok(hits)
     })
     .await
     .map_err(|e| e.to_string())?
 }
 
-fn search_linked_folders(
+pub(crate) struct SearchRoot<'a> {
+    pub id: &'a str,
+    pub name: &'a str,
+    pub root: &'a Path,
+    pub linked: bool,
+}
+
+pub(crate) fn visit_search_roots(
+    mut visit: impl FnMut(SearchRoot<'_>) -> bool,
+) -> Result<(), String> {
+    let root = paths::projects_root()?;
+    let linked = linked_listing_entries();
+    let linked_ids = claimed_by_linked_registry(&linked);
+    let entries = std::fs::read_dir(&root).map_err(|e| e.to_string())?;
+    for entry in entries.flatten() {
+        if !entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
+            continue;
+        }
+        let project_id = entry.file_name().to_string_lossy().into_owned();
+        if paths::validate_project_id(&project_id).is_err() || linked_ids.contains(&project_id) {
+            continue;
+        }
+        let _worktree = match crate::worktree_lock::ProjectWorktreeLock::shared(&project_id) {
+            Ok(lock) => lock,
+            Err(error) => {
+                log_project_enumeration_skip(&project_id, &error);
+                continue;
+            }
+        };
+        let meta = match project_meta_for_enumeration_lock_held(&project_id, &entry.path()) {
+            Ok(meta) if !meta.hidden => meta,
+            Ok(_) => continue,
+            Err(error) => {
+                log_project_enumeration_skip(&project_id, &error);
+                continue;
+            }
+        };
+        let project_name = if meta.name.is_empty() {
+            project_id.clone()
+        } else {
+            meta.name
+        };
+        let path = entry.path();
+        let found = SearchRoot {
+            id: &project_id,
+            name: &project_name,
+            root: &path,
+            linked: false,
+        };
+        if !visit(found) {
+            return Ok(());
+        }
+    }
+    visit_linked_roots(&linked, &mut visit);
+    Ok(())
+}
+
+fn visit_linked_roots(
     linked: &[crate::linked_registry::LinkEntry],
-    q_lower: &str,
-    hits: &mut Vec<SearchHit>,
+    visit: &mut impl FnMut(SearchRoot<'_>) -> bool,
 ) {
     let records: Vec<&crate::linked_registry::LinkRecord> = linked
         .iter()
@@ -8345,7 +8343,7 @@ fn search_linked_folders(
             _ => None,
         })
         .collect();
-    if records.is_empty() || hits.len() >= SEARCH_LIMIT {
+    if records.is_empty() {
         return;
     }
     let available: HashSet<String> = crate::project_availability::probe_linked_projects(
@@ -8360,9 +8358,6 @@ fn search_linked_folders(
         .into_iter()
         .filter(|record| available.contains(&record.id))
     {
-        if hits.len() >= SEARCH_LIMIT {
-            break;
-        }
         let _worktree = match crate::worktree_lock::ProjectWorktreeLock::shared(&record.id) {
             Ok(lock) => lock,
             Err(error) => {
@@ -8374,34 +8369,36 @@ fn search_linked_folders(
             continue;
         };
         let project_name = linked_display_name(record, linked_listing_meta(&record.id).as_ref());
-        let never_cancelled = AtomicBool::new(false);
-        let mut found = BoundedSearch {
-            hits: Vec::new(),
-            scanned_entries: 0,
-            scanned_files: 0,
-            scanned_bytes: 0,
-            truncated: false,
+        let found = SearchRoot {
+            id: &record.id,
+            name: &project_name,
+            root: &root,
+            linked: true,
         };
-        bounded_search_walk(
-            &record.id,
-            &project_name,
-            &root,
-            &root,
-            q_lower,
-            &mut found,
-            SearchLimits {
-                max_results: SEARCH_LIMIT - hits.len(),
-                max_entries: LINKED_SEARCH_ENTRY_LIMIT,
-                max_files: LINKED_SEARCH_FILE_LIMIT,
-                max_file_bytes: MCP_SEARCH_FILE_BYTE_LIMIT,
-                max_total_bytes: MCP_SEARCH_TOTAL_BYTE_LIMIT,
-                deadline: std::time::Instant::now() + MCP_SCAN_DEADLINE,
-            },
-            &never_cancelled,
-            0,
-        );
-        hits.extend(found.hits);
+        if !visit(found) {
+            return;
+        }
     }
+}
+
+pub(crate) fn with_search_root<T>(
+    project_id: &str,
+    visit: impl FnOnce(SearchRoot<'_>) -> T,
+) -> Result<T, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
+    let root = paths::project_dir(project_id)?;
+    let meta = read_meta(project_id).unwrap_or_default();
+    let name = if meta.name.is_empty() {
+        project_id.to_string()
+    } else {
+        meta.name
+    };
+    Ok(visit(SearchRoot {
+        id: project_id,
+        name: &name,
+        root: &root,
+        linked: false,
+    }))
 }
 
 #[tauri::command]
@@ -8412,25 +8409,13 @@ pub async fn search_project(project_id: String, query: String) -> Result<Vec<Sea
             return Ok(Vec::new());
         }
         let q_lower = q.to_lowercase();
-        let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(&project_id)?;
-        let root = paths::project_dir(&project_id)?;
-        let meta = read_meta(&project_id).unwrap_or_default();
-        let project_name = if meta.name.is_empty() {
-            project_id.clone()
-        } else {
-            meta.name
-        };
-        let mut hits: Vec<SearchHit> = Vec::new();
-        search_walk(
-            &project_id,
-            &project_name,
-            &root,
-            &root,
-            &q_lower,
-            &mut hits,
-            0,
-        );
-        Ok(hits)
+        with_search_root(&project_id, |root| {
+            let mut hits: Vec<SearchHit> = Vec::new();
+            search_walk(
+                root.id, root.name, root.root, root.root, &q_lower, &mut hits, 0,
+            );
+            hits
+        })
     })
     .await
     .map_err(|e| e.to_string())?
@@ -8732,9 +8717,7 @@ pub async fn import_paths_into_project<R: tauri::Runtime>(
         use tauri::Manager;
         let drops = app.try_state::<crate::native_drop::NativeDropState>();
         for source in &source_paths {
-            if !drops.as_ref().is_some_and(|drops| drops.released(source)) {
-                crate::path_grants::require_open(source)?;
-            }
+            crate::native_drop::require_dropped_or_picked(drops.as_deref(), source)?;
         }
     }
     let into_root = normalize_mutation_path(&dest_dir, true).is_ok_and(|dir| dir.is_empty());
@@ -9066,25 +9049,21 @@ pub(crate) async fn recycle_project_synchronized(
     recycle_admitted(project_id, admission).await
 }
 
-pub(crate) async fn recycle_projects_synchronized(
-    state: &crate::state::AppState,
-    project_ids: Vec<String>,
-) -> Vec<(String, String)> {
+pub(crate) fn discard_unopened_projects(project_ids: Vec<String>) -> Vec<(String, String)> {
     let mut failed = Vec::new();
-    let mut admitted = Vec::with_capacity(project_ids.len());
     for project_id in project_ids {
-        match admit_recycle(&project_id) {
-            Ok(admission) => admitted.push((project_id, admission)),
-            Err(error) => failed.push((project_id, error)),
-        }
-    }
-    if admitted.is_empty() {
-        return failed;
-    }
-    let _compile = state.compile_lock.lock().await;
-    let _figure_compile = state.figure_compile_lock.lock().await;
-    for (project_id, admission) in admitted {
-        if let Err(error) = recycle_admitted(project_id.clone(), admission).await {
+        let removed = admit_recycle(&project_id).and_then(|admission| {
+            admission.run_with_change_status(|| {
+                with_project_metadata_lock_held(&project_id, || {
+                    let verified =
+                        crate::project_location::LibraryProjectDir::resolve(&project_id)?;
+                    std::fs::remove_dir_all(verified.path())
+                        .map_err(|error| format!("failed to remove project: {error}"))?;
+                    Ok(((), true))
+                })
+            })
+        });
+        if let Err(error) = removed {
             failed.push((project_id, error));
         }
     }
@@ -9152,15 +9131,15 @@ mod tests {
         import_paths_transactional_with, import_project_zip_bytes, import_project_zip_bytes_with,
         import_skip, infer_main_document, is_table_import_extension, list_projects_blocking,
         normalize_loaded_tex_flavor, normalize_relative, note_asset_name, note_asset_path,
-        note_heads_blocking, note_origin_path, pandoc_asset_for, pandoc_version_supported,
-        read_meta, read_picked_file_bytes, rel_slash, rename_exclusive, rename_path_in_project,
+        note_origin_path, pandoc_asset_for, pandoc_version_supported, read_meta,
+        read_picked_file_bytes, rel_slash, rename_exclusive, rename_path_in_project,
         safe_ad_hoc_project_path, search_docs, set_main_doc_synchronized, set_main_doc_unlocked,
         set_note_related_project_blocking, text_head, try_reserve_project_directory,
         try_reserve_project_directory_adopting, validate_conversion_export, validate_tex_flavor,
         write_meta_at, write_project_zip, AdHocProjectFile, CreateAdHocProjectRequest,
         CreateFileResult, FileConflictStrategy, MutationScope, NoteAssetCopy, NoteAssetOrigin,
-        NoteHead, PdfConversionFigure, ProjectMeta, RenameFileResult, SearchHit, TexSpec,
-        NOTE_FILE, NOTE_HEAD_BYTES, NOTE_KIND, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
+        PdfConversionFigure, ProjectMeta, RenameFileResult, SearchHit, TexSpec, NOTE_FILE,
+        NOTE_HEAD_BYTES, NOTE_KIND, SCRATCH_PROJECT_ID, TABLE_IMPORT_ALLOWLIST_LIMIT,
     };
     use std::collections::HashMap;
     use std::io::Write;
@@ -17519,6 +17498,7 @@ mod tests {
             std::fs::read_to_string(dir.join(NOTE_FILE)).unwrap(),
             source
         );
+        assert!(!dir.join(".git").exists(), "a note gets no repository");
         let listed = list_projects_blocking()
             .unwrap()
             .into_iter()
@@ -17526,13 +17506,11 @@ mod tests {
             .unwrap();
         assert_eq!(listed.kind, NOTE_KIND);
         assert_eq!(listed.related_project.as_deref(), Some("paper-1"));
-        assert_eq!(
-            note_heads_blocking().unwrap(),
-            vec![NoteHead {
-                id: id.clone(),
-                head: source.to_string()
-            }]
-        );
+        let facts = crate::note_facts::note_facts_blocking(None, None).unwrap();
+        assert_eq!(facts.len(), 1);
+        assert_eq!(facts[0].id, id);
+        assert_eq!(facts[0].icon.as_deref(), Some("🧪"));
+        assert_eq!(facts[0].related_project.as_deref(), Some("paper-1"));
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -17751,37 +17729,9 @@ mod tests {
     }
 
     #[test]
-    fn note_heads_come_from_the_shared_cache_and_follow_edits() {
+    fn discarding_unopened_notes_removes_each_one_and_reports_the_missing_ones() {
         let _env_guard = crate::paths::data_dir_env_lock();
-        let root = test_dir("note-heads-cache");
-        std::env::set_var("OLEAFLY_DATA_DIR", &root);
-        let long = format!(
-            "---\nkind: note\n---\n{}",
-            "x".repeat(super::NOTE_HEAD_BYTES * 2)
-        );
-        let id = create_note_project_from("Long".into(), long.clone(), None).unwrap();
-        let heads = note_heads_blocking().unwrap();
-        assert_eq!(heads.len(), 1);
-        assert_eq!(heads[0].head, long[..super::NOTE_HEAD_BYTES]);
-        let path = crate::paths::project_dir(&id).unwrap().join(NOTE_FILE);
-        assert!(super::NOTE_HEADS
-            .lock()
-            .unwrap()
-            .contains_key(&crate::sandbox::resolve_readable(&id, NOTE_FILE).unwrap()));
-        std::fs::write(&path, "---\nkind: note\n---\nShort and new").unwrap();
-        assert_eq!(
-            note_heads_blocking().unwrap()[0].head,
-            "---\nkind: note\n---\nShort and new"
-        );
-        std::env::remove_var("OLEAFLY_DATA_DIR");
-        std::fs::remove_dir_all(root).unwrap();
-    }
-
-    #[allow(clippy::await_holding_lock)]
-    #[tokio::test]
-    async fn a_batch_recycle_removes_every_note_and_reports_the_missing_ones() {
-        let _env_guard = crate::paths::data_dir_env_lock();
-        let root = test_dir("batch-recycle");
+        let root = test_dir("batch-discard");
         std::env::set_var("OLEAFLY_DATA_DIR", &root);
         let created: Vec<String> = (0..3)
             .map(|index| {
@@ -17790,8 +17740,7 @@ mod tests {
             .collect();
         let mut ids = created.clone();
         ids.push("never-created".into());
-        let state = crate::state::AppState::default();
-        let failed = super::recycle_projects_synchronized(&state, ids).await;
+        let failed = super::discard_unopened_projects(ids);
         assert_eq!(
             failed.iter().map(|(id, _)| id.as_str()).collect::<Vec<_>>(),
             vec!["never-created"]
@@ -17800,9 +17749,7 @@ mod tests {
         for id in &created {
             assert!(!projects.join(id).exists());
         }
-        assert!(super::recycle_projects_synchronized(&state, Vec::new())
-            .await
-            .is_empty());
+        assert!(super::discard_unopened_projects(Vec::new()).is_empty());
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
     }
@@ -17854,6 +17801,19 @@ mod tests {
             },
         )
         .unwrap();
+        let _shared = crate::collab::testing::share("joined-note");
+        let older = crate::paths::create_project_dir("older-note-md").unwrap();
+        std::fs::write(older.join(NOTE_FILE), "---\nkind: note\n---\nMine\n").unwrap();
+        write_meta_at(
+            &older.join("project.json"),
+            &ProjectMeta {
+                name: "Older".into(),
+                main_doc: NOTE_FILE.into(),
+                engine: "markdown".into(),
+                ..read_meta("older-note-md").unwrap()
+            },
+        )
+        .unwrap();
         let plain = crate::paths::create_project_dir("plain-md").unwrap();
         std::fs::write(plain.join("main.md"), "---\nkind: note\n---\n").unwrap();
         write_meta_at(
@@ -17876,11 +17836,16 @@ mod tests {
                 .clone()
         };
         assert_eq!(kind_of("joined-note"), NOTE_KIND);
+        assert_eq!(kind_of("older-note-md"), "document");
+        assert!(!super::is_note(
+            "older-note-md",
+            &read_meta("older-note-md").unwrap()
+        ));
         assert_eq!(kind_of("plain-md"), "document");
-        assert!(note_heads_blocking()
+        assert!(crate::note_facts::note_facts_blocking(None, None)
             .unwrap()
             .iter()
-            .any(|head| head.id == "joined-note"));
+            .any(|facts| facts.id == "joined-note"));
         set_note_related_project_blocking("joined-note", Some("paper-3".into())).unwrap();
         assert_eq!(read_meta("joined-note").unwrap().kind, NOTE_KIND);
         std::env::remove_var("OLEAFLY_DATA_DIR");
@@ -18071,20 +18036,6 @@ mod tests {
         assert!(!assets.exists());
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
-        std::fs::remove_dir_all(outside).unwrap();
-    }
-
-    #[test]
-    fn importing_into_a_note_needs_a_file_picked_in_the_dialog() {
-        let outside = test_dir("note-file-import-unpicked");
-        let source = outside.join("unpicked.ipynb");
-        std::fs::write(&source, b"{}").unwrap();
-        let error = tauri::async_runtime::block_on(super::note_import_file(
-            "any-note".to_string(),
-            source.to_string_lossy().into_owned(),
-        ))
-        .unwrap_err();
-        assert!(error.contains("file picker"), "{error}");
         std::fs::remove_dir_all(outside).unwrap();
     }
 

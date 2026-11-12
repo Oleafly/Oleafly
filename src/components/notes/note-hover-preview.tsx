@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { useNotesAppearanceRef } from "@/hooks/use-notes-appearance";
 import { NoteChip } from "./note-icons";
 import { embedSource } from "./note-embeds";
 import type { LinkableNote } from "./note-links";
@@ -55,7 +56,7 @@ function HoverBody({ target, previewOf, loadText, resolveAsset }: Readonly<{ tar
   const source = preview ?? (loaded?.key === key ? loaded.source : undefined);
   if (source === undefined) return <p className="px-3 py-2 text-xs text-muted-foreground">{t(($) => $.notes.kb.hover.loading)}</p>;
   if (!source) return <p className="px-3 py-2 text-xs text-muted-foreground">{t(($) => $.notes.kb.hover.empty)}</p>;
-  return <NoteMarkdown noteId={target.note.projectId} source={source} resolveAsset={resolveAsset} className="note-hover-body" />;
+  return <NoteMarkdown noteId={target.note.projectId} source={source} color={target.note.color} resolveAsset={resolveAsset} className="note-hover-body" />;
 }
 
 function clear(timer: { current: number | null }): void {
@@ -68,6 +69,7 @@ export function NoteHoverPreview({ containerRef, getNotes, previewOf, loadText, 
   const showTimer = useRef<number | null>(null);
   const hideTimer = useRef<number | null>(null);
   const anchor = useRef<HTMLElement | null>(null);
+  const appearanceRef = useNotesAppearanceRef<HTMLDivElement>();
   const hide = useCallback(() => {
     clear(showTimer);
     clear(hideTimer);
@@ -129,6 +131,7 @@ export function NoteHoverPreview({ containerRef, getNotes, previewOf, loadText, 
   if (!target) return null;
   return createPortal(
     <div
+      ref={appearanceRef}
       role="tooltip"
       data-note-hover={target.note.projectId}
       style={anchoredPlacement(target.rect, CARD, GAP, windowViewport())}

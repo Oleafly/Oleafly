@@ -2,18 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   readFileContent: vi.fn(),
-  loadAssetThumbnail: vi.fn(async (_projectId: string, path: string) => `thumb:${path}`),
-  notebookUrl: vi.fn(async (_projectId: string, path: string) => `notebook:${path}`),
+  revealProject: vi.fn(async (_projectId: string, _path?: string | null) => {}),
+  noteAssetUrl: vi.fn(async (_projectId: string, path: string) => `asset:${path}`),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   readFileContent: mocks.readFileContent,
+  revealProject: mocks.revealProject,
 }));
-vi.mock("@/components/editor/cm/hover-asset", () => ({ loadAssetThumbnail: mocks.loadAssetThumbnail }));
 vi.mock("./notes-service", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./notes-service")>()),
-  notebookUrl: mocks.notebookUrl,
+  noteAssetUrl: mocks.noteAssetUrl,
 }));
 
 import { useFilesStore } from "@/store/files";
@@ -30,12 +30,15 @@ const others = {
   saveNote: vi.fn(async (_id: string, text: string) => ({ text, version: "w" })),
   watchNote: vi.fn((_id: string, _change: () => void) => () => {}),
   resolveAsset: vi.fn(async (id: string, path: string) => `${id}/${path}`),
+  openAsset: vi.fn(async (_id: string, _path: string) => {}),
+  revealAsset: vi.fn(async (_id: string, _path: string) => {}),
   noteTextChanged: vi.fn(),
 };
 
 let setContent = vi.fn((_path: string, _content: string, _options?: { base?: string }) => true);
 let saveFile = vi.fn(async (_path: string) => {});
 let writeProjectFile = vi.fn(async (_projectId: string, _path: string, _content: string, _options?: object) => {});
+let openFile = vi.fn(async (_path: string) => {});
 
 function files() {
   return createProjectNoteFiles({ projectId: "paper", path: PATH }, { key: KEY, others: () => others, refused: () => "read only" });
@@ -46,6 +49,7 @@ beforeEach(() => {
   setContent = vi.fn(() => true);
   saveFile = vi.fn(async () => {});
   writeProjectFile = vi.fn(async () => {});
+  openFile = vi.fn(async () => {});
   mocks.readFileContent.mockResolvedValue("disk\r\ntext");
   useFilesStore.setState({
     projectId: "paper",
@@ -53,6 +57,7 @@ beforeEach(() => {
     setContent,
     saveFile,
     writeProjectFile,
+    openFile,
   });
 });
 
@@ -197,9 +202,29 @@ describe("project note files", () => {
 
   it("resolves assets next to the note file", async () => {
     const data = files();
-    await expect(data.resolveAsset(KEY, "assets/fig.png")).resolves.toBe("thumb:notes/assets/fig.png");
-    expect(mocks.loadAssetThumbnail).toHaveBeenCalledWith("paper", "notes/assets/fig.png");
-    await expect(data.resolveAsset(KEY, "assets/run.ipynb")).resolves.toBe("notebook:notes/assets/run.ipynb");
+    await expect(data.resolveAsset(KEY, "assets/fig.png")).resolves.toBe("asset:notes/assets/fig.png");
+    expect(mocks.noteAssetUrl).toHaveBeenCalledWith("paper", "notes/assets/fig.png");
+    await expect(data.resolveAsset(KEY, "assets/talk.mp4")).resolves.toBe("asset:notes/assets/talk.mp4");
     await expect(data.resolveAsset(KEY, "../../x.png")).resolves.toBeNull();
+    expect(mocks.noteAssetUrl).toHaveBeenCalledTimes(2);
+  });
+
+  it("opens an attached PDF in the open project's viewer, and shows it in its folder otherwise", async () => {
+    const data = files();
+    await data.openAsset(KEY, "assets/paper.pdf#page=3");
+    expect(openFile).toHaveBeenCalledWith("notes/assets/paper.pdf");
+    expect(mocks.revealProject).not.toHaveBeenCalled();
+    useFilesStore.setState({ projectId: "thesis" });
+    await data.openAsset(KEY, "assets/paper.pdf");
+    expect(openFile).toHaveBeenCalledTimes(1);
+    expect(mocks.revealProject).toHaveBeenCalledWith("paper", "notes/assets/paper.pdf");
+    await data.revealAsset(KEY, "assets/talk.mp4");
+    expect(mocks.revealProject).toHaveBeenLastCalledWith("paper", "notes/assets/talk.mp4");
+    await data.revealAsset(KEY, "../../x.mp4");
+    expect(mocks.revealProject).toHaveBeenCalledTimes(2);
+    await data.openAsset("lib", "a.pdf");
+    await data.revealAsset("lib", "a.mp4");
+    expect(others.openAsset).toHaveBeenCalledWith("lib", "a.pdf");
+    expect(others.revealAsset).toHaveBeenCalledWith("lib", "a.mp4");
   });
 });

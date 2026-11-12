@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { describe, expect, it, vi } from "vitest";
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { ReviewBar } from "./ReviewBar";
+import "./tests/setup";
 
 function handlers() {
   return {
@@ -16,10 +16,6 @@ function handlers() {
     onRejectAll: vi.fn(),
   };
 }
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 describe("ReviewBar", () => {
   it("offers bulk actions and stepping when there are several changes", () => {
@@ -55,6 +51,7 @@ describe("ReviewBar", () => {
     expect(screen.queryByText("1 / 1")).not.toBeInTheDocument();
     const accept = screen.getByRole("button", { name: enEditor.inlineAi.accept });
     expect(accept).toHaveAttribute("aria-keyshortcuts", "Control+Enter Meta+Enter");
+    expect(screen.getByRole("button", { name: enEditor.inlineAi.reject })).not.toHaveAttribute("aria-keyshortcuts");
     fireEvent.click(accept);
     expect(calls.onAccept).toHaveBeenCalledOnce();
   });

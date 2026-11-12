@@ -1,19 +1,13 @@
 // @vitest-environment jsdom
-import { Editor } from "@tiptap/core";
+import type { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it } from "vitest";
-import { createWysiwygExtensions } from "@oleafly/wysiwyg";
 import { frontMatterChange, frontMatterSteps } from "./note-front-matter-step";
+import { destroyKbEditors, kbEditor } from "./tests/kb-editor-fixtures";
 
-const editors: Editor[] = [];
-
-afterEach(() => {
-  for (const editor of editors.splice(0)) editor.destroy();
-});
+afterEach(destroyKbEditors);
 
 function build(): Editor {
-  const editor = new Editor({ element: document.createElement("div"), extensions: createWysiwygExtensions(), content: "<p>Body</p>" });
-  editors.push(editor);
-  return editor;
+  return kbEditor("Body");
 }
 
 function seen(editor: Editor): string[][] {

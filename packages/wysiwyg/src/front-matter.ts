@@ -1,5 +1,6 @@
-const FRONTMATTER_RE =
-  /^(﻿?---[ \t]*\r?\n(?:[\s\S]*?\r?\n)??(?:---|\.\.\.)[ \t]*)(?=\r?\n|$)((?:\r?\n)(?:[ \t]*\r?\n)*)?/u;
+const OPENING_FENCE = /^\uFEFF?---[ \t]*\r?\n/u;
+const CLOSING_FENCE = /(?:---|\.\.\.)[ \t]*(?=\r?\n|$)/uy;
+const BLANK_LINES = /\r?\n(?:[ \t]*\r?\n)*/uy;
 
 export interface MarkdownFrontMatterSplit {
   frontmatter: string;
@@ -7,8 +8,20 @@ export interface MarkdownFrontMatterSplit {
   body: string;
 }
 
+function closingFenceEnd(source: string, firstLine: number): number {
+  for (let line = firstLine; line > 0; line = source.indexOf("\n", line) + 1) {
+    CLOSING_FENCE.lastIndex = line;
+    const fence = CLOSING_FENCE.exec(source);
+    if (fence) return line + fence[0].length;
+  }
+  return -1;
+}
+
 export function splitMarkdownFrontMatter(source: string): MarkdownFrontMatterSplit {
-  const match = FRONTMATTER_RE.exec(source);
-  if (!match) return { frontmatter: "", separator: "", body: source };
-  return { frontmatter: match[1], separator: match[2] ?? "", body: source.slice(match[0].length) };
+  const opening = OPENING_FENCE.exec(source);
+  const end = opening ? closingFenceEnd(source, opening[0].length) : -1;
+  if (end < 0) return { frontmatter: "", separator: "", body: source };
+  BLANK_LINES.lastIndex = end;
+  const separator = BLANK_LINES.exec(source)?.[0] ?? "";
+  return { frontmatter: source.slice(0, end), separator, body: source.slice(end + separator.length) };
 }

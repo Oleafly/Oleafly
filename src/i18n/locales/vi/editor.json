@@ -988,13 +988,14 @@
         "environment": "Môi trường {{environment}}",
         "command": "Lệnh \\{{command}}",
         "latexSource": "Mã nguồn LaTeX",
+        "html": "HTML",
         "maketitlePreview": "Được tạo từ tiêu đề tài liệu và siêu dữ liệu tác giả.",
         "figurePreserved": "Giữ nguyên mã nguồn hình.",
         "tablePreserved": "Giữ nguyên mã nguồn bảng.",
         "sourcePreserved": "Giữ nguyên mã nguồn",
         "editSource": "Sửa mã nguồn",
-        "summaryLabel": "{{label}}. Giữ nguyên mã nguồn LaTeX.",
-        "inputLabel": "Mã nguồn khối LaTeX nguyên vẹn"
+        "summaryLabel": "{{label}}. Giữ nguyên mã nguồn.",
+        "inputLabel": "Mã nguồn khối nguyên vẹn"
       },
       "inline": {
         "label": "Mã nguồn trong dòng thô",

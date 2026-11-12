@@ -1,5 +1,4 @@
 import { useShallow } from "zustand/react/shallow";
-import { NoteLiveNotice } from "@/components/notes/NoteLiveNotice";
 import { NOTE_FILE } from "@/lib/project-notes";
 import { useFilesStore } from "@/store/files";
 import { useCollabLiveStore } from "../live/live-store";
@@ -41,7 +40,6 @@ export function NoteLiveStatus({ noteId }: Readonly<{ noteId: string }>) {
 export function NoteLivePanel({ noteId, live }: Readonly<{ noteId: string; live: boolean }>) {
   return (
     <>
-      <NoteLiveNotice noteId={noteId} className="max-w-[24rem] pr-2" />
       <NoteLiveStatus noteId={noteId} />
       {live && <NotePresence noteId={noteId} />}
     </>

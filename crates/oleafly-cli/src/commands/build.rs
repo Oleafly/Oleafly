@@ -225,6 +225,7 @@ async fn run_watch(ctx: &Context, args: BuildArgs) -> Result<Outcome, CliError> 
         match event {
             Ok(event) if relevant_event(&event, &root, output.as_deref()) => {}
             Ok(_) => continue,
+            Err(error) if vanished_during_scan(&error, &root) => continue,
             Err(error) => {
                 emit_watch_error(ctx, &error)?;
                 continue;
@@ -232,8 +233,11 @@ async fn run_watch(ctx: &Context, args: BuildArgs) -> Result<Outcome, CliError> 
         }
         tokio::time::sleep(WATCH_DEBOUNCE).await;
         while let Ok(event) = receiver.try_recv() {
-            if let Err(error) = event {
-                emit_watch_error(ctx, &error)?;
+            match event {
+                Err(error) if !vanished_during_scan(&error, &root) => {
+                    emit_watch_error(ctx, &error)?
+                }
+                _ => {}
             }
         }
         if !watch_build(ctx, &root, &args, &request, false, &mut stop).await? {
@@ -367,6 +371,16 @@ pub(crate) fn ignored_path(path: &Path, root: &Path) -> bool {
             .components()
             .any(|component| matches!(component, Component::Normal(value) if is_generated_directory(value)))
     })
+}
+
+fn vanished_during_scan(error: &notify::Error, root: &Path) -> bool {
+    let not_found = matches!(&error.kind, notify::ErrorKind::Io(io) if io.kind() == std::io::ErrorKind::NotFound);
+    not_found
+        && !error.paths.is_empty()
+        && error
+            .paths
+            .iter()
+            .all(|path| path != root && path.starts_with(root))
 }
 
 fn emit_watch_error(ctx: &Context, error: &notify::Error) -> Result<(), CliError> {
@@ -560,6 +574,41 @@ mod tests {
         let mut without = args(root.join("paper.pdf"));
         without.output = None;
         assert_eq!(watched_output(root, &without, "main.tex"), None);
+    }
+
+    #[test]
+    fn an_entry_that_vanished_during_a_scan_is_not_a_watch_error() {
+        let root = Path::new("/project");
+        let missing = |path: &Path| {
+            notify::Error::io(std::io::Error::from(std::io::ErrorKind::NotFound))
+                .add_path(path.to_path_buf())
+        };
+        assert!(vanished_during_scan(
+            &missing(&root.join(".oleafly/build/tex-defaults/.font.fd.oleafly-1.tmp")),
+            root
+        ));
+        assert!(vanished_during_scan(
+            &missing(&root.join("chapters/one.tex")),
+            root
+        ));
+        assert!(!vanished_during_scan(&missing(root), root));
+        assert!(!vanished_during_scan(
+            &missing(Path::new("/elsewhere/one.tex")),
+            root
+        ));
+        assert!(!vanished_during_scan(
+            &notify::Error::io(std::io::Error::from(std::io::ErrorKind::NotFound)),
+            root
+        ));
+        assert!(!vanished_during_scan(
+            &notify::Error::io(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+                .add_path(root.join("chapters/one.tex")),
+            root
+        ));
+        assert!(!vanished_during_scan(
+            &notify::Error::generic("backend unavailable").add_path(root.join("chapters/one.tex")),
+            root
+        ));
     }
 
     #[test]

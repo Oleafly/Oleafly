@@ -1016,13 +1016,14 @@
         "environment": "Mediul {{environment}}",
         "command": "Comanda \\{{command}}",
         "latexSource": "Sursă LaTeX",
+        "html": "HTML",
         "maketitlePreview": "Generat din titlul documentului și din metadatele autorilor.",
         "figurePreserved": "Sursa exactă a figurii este păstrată.",
         "tablePreserved": "Sursa exactă a tabelului este păstrată.",
         "sourcePreserved": "Sursa exactă este păstrată",
         "editSource": "Editează sursa",
-        "summaryLabel": "{{label}}. Sursa LaTeX exactă este păstrată.",
-        "inputLabel": "Sursa exactă a blocului LaTeX"
+        "summaryLabel": "{{label}}. Sursa exactă este păstrată.",
+        "inputLabel": "Sursa exactă a blocului"
       },
       "inline": {
         "label": "Sursă brută în text",

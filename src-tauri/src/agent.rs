@@ -845,7 +845,7 @@ pub async fn agent_run(
                     .and_then(crate::project::note_related_project);
                 let fetch_gate =
                     fetch_needs_approval(
-                        fetch_gate_requested,
+                        fetch_requested(fetch_gate_requested, trust_project.as_deref()),
                         hosted_web,
                         trust_project.as_deref(),
                         fetch_policy,
@@ -1252,6 +1252,10 @@ fn native_dispatch_allowed(
     pinned_is_note: impl FnOnce(&str) -> bool,
 ) -> bool {
     active_project == Some(pinned) || pinned_is_note(pinned)
+}
+
+fn fetch_requested(flag: bool, pinned: Option<&str>) -> bool {
+    flag || pinned.is_some_and(project_is_note)
 }
 
 fn project_is_note(project_id: &str) -> bool {

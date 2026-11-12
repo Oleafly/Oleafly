@@ -154,6 +154,16 @@
       "uploadFailed": "Caricamento non riuscito"
     }
   },
+  "conflictCopy": {
+    "title": "Due versioni di “{{name}}”",
+    "description": "Questa nota è stata modificata qui e su un altro computer prima che le modifiche venissero sincronizzate, quindi Oleafly ha mantenuto entrambe le versioni. Tienine una. L'altra va nel cestino.",
+    "diffLabel": "Differenze tra le due versioni",
+    "loading": "Lettura delle due versioni…",
+    "readFailed": "Impossibile leggere la copia di conflitto.",
+    "resolveFailed": "Impossibile mantenere questa versione.",
+    "keepMine": "Mantieni la versione di questo computer",
+    "useCopy": "Usa la versione dell'altro computer"
+  },
   "confirm": {
     "removeTitle": "Vuoi rimuovere {{name}} da {{provider}}?",
     "removeDescription": "Questo elimina la copia nel tuo {{provider}} per liberare spazio. Il progetto resta su questo computer e smette di sincronizzarsi qui. Gli altri tuoi computer mantengono le loro copie e smettono di sincronizzarlo.",
@@ -223,6 +233,81 @@
     "pathStyle": "Usa indirizzi in stile percorso",
     "pathStyleHint": "MinIO e la maggior parte dei server self-hosted ne hanno bisogno."
   },
+  "backups": {
+    "title": "Backup",
+    "none": "Ancora nessun backup",
+    "last": "Ultimo backup {{time}} · {{contents}} · {{size}}",
+    "notes_one": "{{count}} nota",
+    "notes_many": "{{count}} note",
+    "notes_other": "{{count}} note",
+    "projects_one": "{{count}} progetto",
+    "projects_many": "{{count}} progetti",
+    "projects_other": "{{count}} progetti",
+    "running": "Backup in corso",
+    "failed": "L'ultimo backup non è stato completato. {{reason}}",
+    "backUpNow": "Esegui il backup ora",
+    "auto": {
+      "label": "Backup automatico",
+      "description": "Conserva copie datate delle tue note nel tuo {{provider}}. Le modifiche e le eliminazioni successive, anche quelle sincronizzate, non le toccano."
+    },
+    "every": {
+      "label": "Frequenza",
+      "description": "Ogni backup carica solo ciò che è cambiato dal precedente.",
+      "options": {
+        "6": "Ogni 6 ore",
+        "24": "Ogni giorno",
+        "168": "Ogni settimana"
+      }
+    },
+    "keep": {
+      "label": "Conserva",
+      "description": "I backup più vecchi vengono eliminati dal tuo {{provider}} per risparmiare spazio.",
+      "option_one": "L'ultimo backup",
+      "option_many": "Gli ultimi {{count}} backup",
+      "option_other": "Gli ultimi {{count}} backup"
+    },
+    "includeProjects": {
+      "label": "Includi i progetti",
+      "description": "I progetti si sincronizzano già con i loro checkpoint. Attiva questa opzione per conservarne anche copie datate. Il primo backup di un progetto grande può richiedere un po' di tempo e occupare molto spazio."
+    },
+    "list": {
+      "title": "Backup nel tuo {{provider}}",
+      "label": "Backup",
+      "loading": "Lettura dei backup",
+      "failed": "Impossibile leggere i backup. {{reason}}",
+      "empty": "Ancora nessun backup nel tuo {{provider}}."
+    },
+    "row": {
+      "thisComputer": "Questo computer",
+      "manual": "Manuale",
+      "restore": "Ripristina",
+      "restoreLabel": "Ripristina il backup: {{date}}"
+    },
+    "restore": {
+      "title": "Ripristina il backup: {{date}}",
+      "description": "Il ripristino non sostituisce mai quello che hai. Una nota o un progetto ancora presente torna come copia accanto all'originale, così puoi confrontare i due.",
+      "loading": "Lettura del backup",
+      "loadFailed": "Impossibile leggere questo backup. {{reason}}",
+      "search": "Cerca in questo backup",
+      "clearSearch": "Cancella la ricerca",
+      "noMatch": "Niente in questo backup corrisponde.",
+      "listLabel": "Note e progetti in questo backup",
+      "here": "Ancora qui",
+      "missing": "Non su questo computer",
+      "restored": "Ripristinato",
+      "restoredCopy": "Ripristinato come copia",
+      "files_one": "{{count}} file",
+      "files_many": "{{count}} file",
+      "files_other": "{{count}} file",
+      "one": "Ripristina",
+      "oneLabel": "Ripristina {{name}}",
+      "allMissing_one": "Ripristina l'elemento mancante",
+      "allMissing_many": "Ripristina i {{count}} elementi mancanti",
+      "allMissing_other": "Ripristina i {{count}} elementi mancanti",
+      "nothingMissing": "Non manca niente",
+      "copyName": "(ripristino {{date}})"
+    }
+  },
   "errors": {
     "clock_skew": "L'orologio di questo computer non è corretto, quindi {{provider}} non ne accetta le richieste. Imposta la data e l'ora corrette per continuare a sincronizzare.",
     "code_invalid": "Quel codice non ha funzionato. Riprova.",
@@ -251,6 +336,8 @@
     "sign_in_timeout": "L'accesso ha richiesto troppo tempo. Riprova.",
     "too_many_files": "Questo progetto ha più di 100.000 file. Sono troppi da sincronizzare.",
     "traffic_limit": "Il tuo {{provider}} ha raggiunto il limite di caricamenti. Le nuove modifiche restano su questo computer finché {{provider}} non consente di nuovo i caricamenti.",
-    "verify_failed": "Un file da {{provider}} non corrispondeva a quanto Oleafly si aspettava, quindi è stato lasciato com'era. La sincronizzazione riproverà."
+    "verify_failed": "Un file da {{provider}} non corrispondeva a quanto Oleafly si aspettava, quindi è stato lasciato com'era. La sincronizzazione riproverà.",
+    "backup_missing": "Questo backup non è più nel tuo {{provider}}.",
+    "backup_label": "Oleafly non è riuscito a dare un nome alla copia ripristinata."
   }
 }

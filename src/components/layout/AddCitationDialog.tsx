@@ -23,7 +23,7 @@ import { LoadingState } from "@/components/ui/empty";
 import { ZoteroHintBanner } from "@/components/zotero/ZoteroHintBanner";
 import { useZoteroSearch } from "@/components/zotero/use-zotero-search";
 import { insertZoteroCitation } from "@/features/zotero-actions";
-import { hitByline, hitTitle, libraryLabel, truncated } from "@/lib/zotero/format";
+import { hitDetail } from "@/lib/zotero/format";
 import { zoteroSearchable } from "@/lib/zotero/hint";
 import { useZoteroLibraryStore } from "@/store/zotero-library";
 import type { ZoteroHit } from "@oleafly/backend-port";
@@ -230,7 +230,7 @@ export function AddCitationDialog() {
                 <span className="flex items-baseline gap-2">
                   <span className="shrink-0 font-mono text-xs">{hit.citationKey}</span>
                   <span className="min-w-0 truncate text-[0.6875rem] text-muted-foreground">
-                    {[hitByline(hit), truncated(hitTitle(hit)), libraryLabel(hit, zoteroStatus)].filter(Boolean).join(" · ")}
+                    {hitDetail(hit, zoteroStatus)}
                   </span>
                 </span>
               </button>

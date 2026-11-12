@@ -13,7 +13,7 @@ use super::errors::app_error;
 use super::session::{self, Session};
 use crate::app_error::AppError;
 
-const LABEL_PREFIX: &str = "overleaf-sign-in-";
+pub(crate) const LABEL_PREFIX: &str = "overleaf-sign-in-";
 const SIGN_IN_LIMIT: Duration = Duration::from_secs(20 * 60);
 
 type Pending = Arc<Mutex<Option<oneshot::Sender<Result<Session, String>>>>>;

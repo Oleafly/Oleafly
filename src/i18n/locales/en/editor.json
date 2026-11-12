@@ -1002,13 +1002,14 @@
         "environment": "{{environment}} environment",
         "command": "\\{{command}} command",
         "latexSource": "LaTeX source",
+        "html": "HTML",
         "maketitlePreview": "Generated from the document title and author metadata.",
         "figurePreserved": "Exact figure source preserved.",
         "tablePreserved": "Exact table source preserved.",
         "sourcePreserved": "Exact source preserved",
         "editSource": "Edit source",
-        "summaryLabel": "{{label}}. Exact LaTeX source preserved.",
-        "inputLabel": "Exact LaTeX block source"
+        "summaryLabel": "{{label}}. Exact source preserved.",
+        "inputLabel": "Exact block source"
       },
       "inline": {
         "label": "Raw inline source",

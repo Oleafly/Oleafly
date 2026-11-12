@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { useSettingsStore } from "@/store/settings";
 import { SettingsRow } from "@/components/settings/SettingsRow";
+import { QuickCaptureSettings } from "@/components/settings/QuickCaptureSettings";
 import {
   NATIVE_MENU_SHORTCUTS,
   nativeAccelerator,
@@ -20,9 +21,11 @@ import {
   reservedShortcutAction,
   sameShortcutBinding,
   SHORTCUT_DEFINITIONS,
+  shortcutDefinitionsInEffect,
   shortcutLabel,
   shortcutsDifferFromDefaults,
   type ShortcutBinding,
+  type ShortcutDefinition,
   type ShortcutId,
   useShortcutStore,
 } from "@/store/shortcuts";
@@ -52,7 +55,7 @@ function ShortcutKeys({ binding }: Readonly<{ binding: ShortcutBinding }>) {
   return <KeyTokens tokens={keys} />;
 }
 
-type BuiltInCategory = "editor" | "codeIntelligence" | "pdf";
+type BuiltInCategory = "editor" | "codeIntelligence" | "pdf" | "notes";
 
 type BuiltInShortcutId =
   | "askAiEditSelection"
@@ -68,7 +71,33 @@ type BuiltInShortcutId =
   | "goToDefinitionWithPointer"
   | "findReferences"
   | "renameSymbol"
-  | "jumpToSourceFromPdf";
+  | "jumpToSourceFromPdf"
+  | "noteBold"
+  | "noteItalic"
+  | "noteUnderline"
+  | "noteStrike"
+  | "noteCode"
+  | "noteHighlight"
+  | "noteSuperscript"
+  | "noteSubscript"
+  | "noteHeadings"
+  | "noteText"
+  | "noteQuote"
+  | "noteCodeBlock"
+  | "noteBulletList"
+  | "noteNumberedList"
+  | "noteTaskList"
+  | "noteToggleTask"
+  | "noteIndent"
+  | "noteOutdent"
+  | "noteLineBreak"
+  | "noteFind"
+  | "noteSelectAll"
+  | "noteUndo"
+  | "noteRedo"
+  | "noteInsertMenu"
+  | "noteLinkMenu"
+  | "noteTag";
 
 interface BuiltInShortcut {
   id: BuiltInShortcutId;
@@ -91,32 +120,67 @@ const BUILT_IN_SHORTCUTS: readonly BuiltInShortcut[] = [
   { id: "findReferences", category: "codeIntelligence", keys: ["Shift", "F12"] },
   { id: "renameSymbol", category: "codeIntelligence", keys: ["F2"] },
   { id: "jumpToSourceFromPdf", category: "pdf", keys: ["Mod", "Click"] },
+  { id: "noteBold", category: "notes", keys: ["Mod", "B"] },
+  { id: "noteItalic", category: "notes", keys: ["Mod", "I"] },
+  { id: "noteUnderline", category: "notes", keys: ["Mod", "U"] },
+  { id: "noteStrike", category: "notes", keys: ["Mod", "Shift", "S"] },
+  { id: "noteCode", category: "notes", keys: ["Mod", "E"] },
+  { id: "noteHighlight", category: "notes", keys: ["Mod", "Shift", "H"] },
+  { id: "noteSuperscript", category: "notes", keys: ["Mod", "."] },
+  { id: "noteSubscript", category: "notes", keys: ["Mod", "Shift", ","] },
+  { id: "noteHeadings", category: "notes", keys: ["Mod", "Alt", "1–6"] },
+  { id: "noteText", category: "notes", keys: ["Mod", "Alt", "0"] },
+  { id: "noteQuote", category: "notes", keys: ["Mod", "Shift", "B"] },
+  { id: "noteCodeBlock", category: "notes", keys: ["Mod", "Alt", "C"] },
+  { id: "noteBulletList", category: "notes", keys: ["Mod", "Shift", "8"] },
+  { id: "noteNumberedList", category: "notes", keys: ["Mod", "Shift", "7"] },
+  { id: "noteTaskList", category: "notes", keys: ["Mod", "Shift", "9"] },
+  { id: "noteToggleTask", category: "notes", keys: ["Mod", "Enter"] },
+  { id: "noteIndent", category: "notes", keys: ["Tab"] },
+  { id: "noteOutdent", category: "notes", keys: ["Shift", "Tab"] },
+  { id: "noteLineBreak", category: "notes", keys: ["Shift", "Enter"] },
+  { id: "noteFind", category: "notes", keys: ["Mod", "F"] },
+  { id: "noteSelectAll", category: "notes", keys: ["Mod", "A"] },
+  { id: "noteUndo", category: "notes", keys: ["Mod", "Z"] },
+  { id: "noteRedo", category: "notes", keys: ["Mod", "Shift", "Z"] },
+  { id: "noteInsertMenu", category: "notes", keys: ["/"] },
+  { id: "noteLinkMenu", category: "notes", keys: ["[["] },
+  { id: "noteTag", category: "notes", keys: ["#"] },
 ];
 
 const CATEGORY_TEST_IDS: Record<BuiltInCategory, string> = {
   editor: "shortcuts-tab-editor",
   codeIntelligence: "shortcuts-tab-code-intelligence",
   pdf: "shortcuts-tab-pdf",
+  notes: "shortcuts-tab-notes",
 };
 
 function BuiltInKeys({ keys }: Readonly<{ keys: readonly string[] }>) {
   const mac = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform);
-  const modSymbol = mac ? "⌘" : "Ctrl";
-  return <KeyTokens tokens={keys.map((key) => (key === "Mod" ? modSymbol : key))} />;
+  const symbols: Readonly<Record<string, string>> = mac ? { Mod: "⌘", Alt: "⌥" } : { Mod: "Ctrl" };
+  return <KeyTokens tokens={keys.map((key) => symbols[key] ?? key)} />;
 }
 
-function builtInBinding(keys: readonly string[]): ShortcutBinding | null {
-  if (!keys.includes("Mod") && !keys.includes("Ctrl")) return null;
+const KEY_RANGE = /^(\d)–(\d)$/u;
+
+function builtInKeyNames(key: string): string[] {
+  const range = KEY_RANGE.exec(key);
+  if (!range) return [key === "Space" ? " " : key];
+  const [first, last] = [Number(range[1]), Number(range[2])];
+  return Array.from({ length: last - first + 1 }, (_, index) => String(first + index));
+}
+
+function builtInBindings(keys: readonly string[]): ShortcutBinding[] {
+  if (!keys.includes("Mod") && !keys.includes("Ctrl")) return [];
   const key = keys.find((value) => !["Mod", "Ctrl", "Shift", "Alt"].includes(value));
-  if (!key || key === "Click") return null;
-  const normalizedKey = key.length === 1 ? key.toLowerCase() : key;
-  return {
-    key: key === "Space" ? " " : normalizedKey,
+  if (!key || key === "Click") return [];
+  return builtInKeyNames(key).map((name) => ({
+    key: name,
     mod: keys.includes("Mod"),
     ctrl: keys.includes("Ctrl"),
     shift: keys.includes("Shift"),
     alt: keys.includes("Alt"),
-  };
+  }));
 }
 
 function KeyTokens({ tokens }: Readonly<{ tokens: readonly string[] }>) {
@@ -299,7 +363,10 @@ function EditorKeyRows() {
   );
 }
 
-function ApplicationShortcutRow({ id }: Readonly<{ id: ShortcutId }>) {
+function ApplicationShortcutRow({
+  id,
+  inEffect,
+}: Readonly<{ id: ShortcutId; inEffect: readonly ShortcutDefinition[] }>) {
   const { t } = useTranslation(["common", "settings"]);
   const bindings = useShortcutStore((state) => state.bindings);
   const setBinding = useShortcutStore((state) => state.setBinding);
@@ -318,14 +385,15 @@ function ApplicationShortcutRow({ id }: Readonly<{ id: ShortcutId }>) {
   useDismiss(recording, [captureRef], stopRecording);
 
   const conflictLabel = (next: ShortcutBinding): string => {
-    const app = SHORTCUT_DEFINITIONS.find(
+    const app = inEffect.find(
       (definition) => definition.id !== id && sameShortcutBinding(bindings[definition.id], next),
     );
     if (app) return t(($) => $.settings.shortcuts.actions[app.id].label);
-    const builtIn = BUILT_IN_SHORTCUTS.find(({ keys }) => {
-      const binding = builtInBinding(keys);
-      return binding ? sameShortcutBinding(binding, next) : false;
-    });
+    const notesOnly = SHORTCUT_DEFINITIONS.find((definition) => definition.id === id)?.scope === "notes";
+    const builtIn = BUILT_IN_SHORTCUTS.find(
+      ({ keys, category }) =>
+        (category !== "notes" || notesOnly) && builtInBindings(keys).some((binding) => sameShortcutBinding(binding, next)),
+    );
     return builtIn ? t(($) => $.settings.shortcuts.builtIn.labels[builtIn.id]) : "";
   };
 
@@ -426,9 +494,13 @@ export function ShortcutsSection() {
   const editorKeysChanged = useEditorKeymapStore((state) =>
     editorKeysDifferFromDefaults(state.keys),
   );
-  const categories = [...new Set(BUILT_IN_SHORTCUTS.map(({ category }) => category))];
   const notesEnabled = useSettingsStore((state) => state.notes);
-  const shown = SHORTCUT_DEFINITIONS.filter((definition) => definition.scope !== "notes" || notesEnabled);
+  const categories = [...new Set(BUILT_IN_SHORTCUTS.map(({ category }) => category))].filter(
+    (category) => notesEnabled || category !== "notes",
+  );
+  const shown = shortcutDefinitionsInEffect(notesEnabled);
+  const appShortcuts = shown.filter((definition) => definition.scope !== "notes");
+  const noteShortcuts = shown.filter((definition) => definition.scope === "notes");
 
   return (
     <div className="space-y-4">
@@ -457,8 +529,8 @@ export function ShortcutsSection() {
         <h3 id="application-shortcuts" className="sr-only">
           {t(($) => $.settings.shortcuts.application.heading)}
         </h3>
-        {shown.map((definition) => (
-          <ApplicationShortcutRow key={definition.id} id={definition.id} />
+        {appShortcuts.map((definition) => (
+          <ApplicationShortcutRow key={definition.id} id={definition.id} inEffect={shown} />
         ))}
       </section>
       </TabsContent>
@@ -466,6 +538,11 @@ export function ShortcutsSection() {
         <TabsContent key={category} value={category}>
         <section className="flex flex-col gap-2" aria-labelledby={`shortcut-category-${category}`}>
           {category === "editor" && <EditorKeyRows />}
+          {category === "notes" &&
+            noteShortcuts.map((definition) => (
+              <ApplicationShortcutRow key={definition.id} id={definition.id} inEffect={shown} />
+            ))}
+          {category === "notes" && <QuickCaptureSettings />}
           <div>
             <h3
               id={`shortcut-category-${category}`}

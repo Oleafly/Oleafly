@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { waitFor } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import {
   paintSmiles,
@@ -12,6 +11,7 @@ import {
   smilesBlock,
   structureMarkup,
 } from "./smiles-block";
+import "./tests/setup";
 
 const drawer = vi.hoisted(() => ({
   fail: false,
@@ -63,10 +63,6 @@ function decoded(image: HTMLImageElement): string {
   return decodeURIComponent(image.src.replace("data:image/svg+xml;charset=utf-8,", ""));
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 afterEach(() => {
   drawer.fail = false;
   drawer.draws = [];
@@ -74,6 +70,10 @@ afterEach(() => {
   document.body.replaceChildren();
   document.documentElement.classList.remove("dark");
 });
+
+function nextTask(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 describe("parseSmilesLine", () => {
   it.each([
@@ -163,7 +163,7 @@ describe("paintSmiles", () => {
     drawer.onDraw = () => dispose?.();
     dispose = paintSmiles(element, "C\nCC\nCCC", { still: false });
     await waitFor(() => expect(drawer.draws).toEqual(["C"]));
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await nextTask();
     expect(drawer.draws).toEqual(["C"]);
     expect(images(element)).toHaveLength(1);
   });
@@ -180,7 +180,7 @@ describe("paintSmiles", () => {
     const element = preview();
     const dispose = paintSmiles(element, "CCO", { still: false });
     dispose?.();
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    await nextTask();
     expect(element).not.toHaveTextContent(copy.loadError);
   });
 });

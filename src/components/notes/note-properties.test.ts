@@ -1,5 +1,4 @@
-// @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   canAddProperty,
   conversionLoss,
@@ -8,10 +7,8 @@ import {
   inferType,
   mergeFrontMatter,
   readProperties,
-  readPropertyTypes,
   removeProperty,
   renameProperty,
-  savePropertyType,
   setProperty,
 } from "./note-properties";
 
@@ -35,11 +32,6 @@ const FM = [
   "---",
 ].join("\n");
 
-afterEach(() => {
-  localStorage.clear();
-  vi.restoreAllMocks();
-});
-
 describe("reading properties", () => {
   it("reads user keys with inferred types and skips managed ones", () => {
     expect(readProperties(FM)).toEqual([
@@ -57,6 +49,38 @@ describe("reading properties", () => {
     expect(readProperties("---\ntitle: x\n---")).toEqual([]);
   });
 
+  it("shows an alias as the value its anchor holds", () => {
+    expect(readProperties("---\nbase: &b x\nother: *b\n---")).toEqual([
+      { key: "base", type: "text", value: "x", readOnly: false },
+      { key: "other", type: "text", value: "x", readOnly: false },
+    ]);
+    expect(readProperties("---\nm: &m {k: 1}\nn: *m\ns: &s [x, y]\nt: *s\nb: [*s, *s]\n---")).toEqual([
+      { key: "m", type: "text", value: '{"k":1}', readOnly: true },
+      { key: "n", type: "text", value: '{"k":1}', readOnly: true },
+      { key: "s", type: "list", value: ["x", "y"], readOnly: false },
+      { key: "t", type: "list", value: ["x", "y"], readOnly: false },
+      { key: "b", type: "text", value: '[["x","y"],["x","y"]]', readOnly: true },
+    ]);
+  });
+
+  it("shows an alias written before its anchor as JSON rather than [object Object]", () => {
+    expect(readProperties("---\nearly: *b\nbase: &b x\n---")).toEqual([
+      { key: "early", type: "text", value: '{"source":"b"}', readOnly: false },
+      { key: "base", type: "text", value: "x", readOnly: false },
+    ]);
+  });
+
+  it("shows an alias that loops back into its own anchor as JSON rather than failing", () => {
+    expect(readProperties("---\na: &a [*a]\nm: &m {self: *m}\n---")).toEqual([
+      { key: "a", type: "text", value: '[{"source":"a"}]', readOnly: true },
+      { key: "m", type: "text", value: '{"self":{"source":"m"}}', readOnly: true },
+    ]);
+  });
+
+  it("keeps the JSON of a map that has a list for a key when nothing in it is an alias", () => {
+    expect(readProperties("---\nm: {? [a, b] : c}\n---")).toEqual([{ key: "m", type: "text", value: '{"[\\"a\\",\\"b\\"]":"c"}', readOnly: true }]);
+  });
+
   it("reads a quoted list item that holds a comma as one value, as the tag index does", () => {
     expect(readProperties('---\ntags: ["a, b", c]\n---')).toEqual([{ key: "tags", type: "list", value: ["a, b", "c"], readOnly: false }]);
   });
@@ -66,10 +90,14 @@ describe("reading properties", () => {
     expect(readProperties("---\nstatus: x\n---\nbody")).toEqual([]);
   });
 
-  it("treats tags and aliases as lists even when written as text", () => {
+  it("treats tags and aliases as lists even when written as text, split the way the tag index splits them", () => {
     expect(readProperties("---\ntags: a, b\naliases:\n---")).toEqual([
       { key: "tags", type: "list", value: ["a", "b"], readOnly: false },
       { key: "aliases", type: "list", value: [], readOnly: false },
+    ]);
+    expect(readProperties("---\ntags: methods results\naliases: Mask study, MAE run\n---")).toEqual([
+      { key: "tags", type: "list", value: ["methods", "results"], readOnly: false },
+      { key: "aliases", type: "list", value: ["Mask study", "MAE run"], readOnly: false },
     ]);
   });
 
@@ -110,7 +138,8 @@ describe("types and values", () => {
   });
 
   it("converts values between types", () => {
-    expect(convertValue("a, b ,", "list")).toEqual(["a", "b"]);
+    expect(convertValue("Smith, J.", "list")).toEqual(["Smith, J."]);
+    expect(convertValue("", "list")).toEqual([]);
     expect(convertValue(["a"], "list")).toEqual(["a"]);
     expect(convertValue(null, "list")).toEqual([]);
     expect(convertValue(4, "list")).toEqual(["4"]);
@@ -201,22 +230,6 @@ describe("writing properties", () => {
     expect(canAddProperty(FM, " ")).toBe(false);
     expect(canAddProperty(FM, "owner")).toBe(true);
     expect(canAddProperty("---\na: [\n---", "owner")).toBe(false);
-  });
-});
-
-describe("remembered property types", () => {
-  it("stores types on this computer and survives bad storage", () => {
-    savePropertyType("rank", "number");
-    savePropertyType("bad", "nonsense" as never);
-    expect(readPropertyTypes()).toEqual({ rank: "number" });
-    localStorage.setItem("oleafly.notes.propertyTypes", "[1]");
-    expect(readPropertyTypes()).toEqual({});
-    localStorage.setItem("oleafly.notes.propertyTypes", "{");
-    expect(readPropertyTypes()).toEqual({});
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("full");
-    });
-    expect(() => savePropertyType("x", "text")).not.toThrow();
   });
 });
 

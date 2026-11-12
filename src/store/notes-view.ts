@@ -2,14 +2,16 @@ import { create } from "zustand";
 
 export const useNotesViewStore = create<{
   requestedNoteId: string | null;
-  request: (noteId: string | null) => void;
+  requestedFragment: string | null;
+  request: (noteId: string | null, fragment?: string | null) => void;
   take: () => string | null;
 }>((set, get) => ({
   requestedNoteId: null,
-  request: (requestedNoteId) => set({ requestedNoteId }),
+  requestedFragment: null,
+  request: (requestedNoteId, fragment = null) => set({ requestedNoteId, requestedFragment: requestedNoteId ? fragment : null }),
   take: () => {
     const id = get().requestedNoteId;
-    if (id !== null) set({ requestedNoteId: null });
+    if (id !== null) set({ requestedNoteId: null, requestedFragment: null });
     return id;
   },
 }));

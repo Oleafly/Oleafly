@@ -34,8 +34,10 @@ overrides:
 
 patchedDependencies:
   '@replit/codemirror-emacs@6.1.0': 31605a6ee08dd5a1893dc5d9700a882cb5aaf1f6abdd30d7e485c1bc9db94d00
+  '@terrastruct/d2@0.1.33': c373fad1fa021548fd7165c910edc782b7372967bf66c24e8afdf597f6383c23
   emscripten-wasm-loader@3.0.3: 8eebb0ec457e29444d0f4c2ee9e4e45a8932e088e09b12a6a099daad3251fb65
   hunspell-asm@4.0.2: f5634e1c2ed4fdf8fe6c238d5f6d3c9006136c951a3ecfadea19ef30c7092726
+  tiptap-markdown@0.9.0: afd0b6ddee1a2cd6968ae84ec169c8315655e96ceb780345472ff2124d657f5a
 
 importers:
 
@@ -215,6 +217,9 @@ importers:
       '@tauri-apps/plugin-updater':
         specifier: ~2.14.0
         version: 2.14.1
+      '@terrastruct/d2':
+        specifier: 0.1.33
+        version: 0.1.33(patch_hash=c373fad1fa021548fd7165c910edc782b7372967bf66c24e8afdf597f6383c23)
       '@tiptap/core':
         specifier: 3.30.5
         version: 3.30.5(@tiptap/pm@3.29.2)
@@ -287,6 +292,9 @@ importers:
       d3:
         specifier: 7.9.0
         version: 7.9.0
+      d3-force:
+        specifier: 3.0.0
+        version: 3.0.0
       date-fns:
         specifier: ^4.4.0
         version: 4.4.0
@@ -379,7 +387,7 @@ importers:
         version: 3.7.0
       tiptap-markdown:
         specifier: ^0.9.0
-        version: 0.9.0(@tiptap/core@3.30.5(@tiptap/pm@3.29.2))
+        version: 0.9.0(patch_hash=afd0b6ddee1a2cd6968ae84ec169c8315655e96ceb780345472ff2124d657f5a)(@tiptap/core@3.30.5(@tiptap/pm@3.29.2))
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
@@ -426,6 +434,9 @@ importers:
       '@types/d3':
         specifier: 7.4.3
         version: 7.4.3
+      '@types/d3-force':
+        specifier: 3.0.10
+        version: 3.0.10
       '@types/lodash':
         specifier: 4.17.27
         version: 4.17.27
@@ -697,6 +708,9 @@ importers:
       react:
         specifier: '*'
         version: 19.3.0
+      react-dom:
+        specifier: '*'
+        version: 19.3.0(react@19.3.0)
 
   packages/wysiwyg:
     dependencies:
@@ -738,7 +752,7 @@ importers:
         version: 3.4.17
       tiptap-markdown:
         specifier: '*'
-        version: 0.9.0(@tiptap/core@3.30.5(@tiptap/pm@3.29.2))
+        version: 0.9.0(patch_hash=afd0b6ddee1a2cd6968ae84ec169c8315655e96ceb780345472ff2124d657f5a)(@tiptap/core@3.30.5(@tiptap/pm@3.29.2))
     devDependencies:
       vitest:
         specifier: ^4.1.12
@@ -2935,6 +2949,9 @@ packages:
 
   '@tauri-apps/plugin-updater@2.14.1':
     resolution: {integrity: sha512-Hr7nlBm1wT6xbwzjZ/S36YULazu8MNlj5vvOwMl47fXI7HTa5Bjl1PbDEwVHaZTAKzE1VZsUy35UqnbrQxmYQw==}
+
+  '@terrastruct/d2@0.1.33':
+    resolution: {integrity: sha512-eK5hyfGIJFolC7sUsiKvWdY9xGFctTe3d+PSijo09IYDso8psztC+A4SammizXtlwYZpnnW0AtDjfBYauceSeA==}
 
   '@testing-library/dom@10.4.2':
     resolution: {integrity: sha512-yzr2S9HyAIdhz2/6qHgbs665Q7PKVcDF05vsOlHPxG1mo36gKVesdYVeDLnXgfjJ03CrKRk08knc6+E/9m8v2Q==}
@@ -8374,6 +8391,8 @@ snapshots:
     dependencies:
       '@tauri-apps/api': 2.12.4
 
+  '@terrastruct/d2@0.1.33(patch_hash=c373fad1fa021548fd7165c910edc782b7372967bf66c24e8afdf597f6383c23)': {}
+
   '@testing-library/dom@10.4.2':
     dependencies:
       '@babel/code-frame': 7.29.7
@@ -11804,7 +11823,7 @@ snapshots:
 
   tinyrainbow@3.1.1: {}
 
-  tiptap-markdown@0.9.0(@tiptap/core@3.30.5(@tiptap/pm@3.29.2)):
+  tiptap-markdown@0.9.0(patch_hash=afd0b6ddee1a2cd6968ae84ec169c8315655e96ceb780345472ff2124d657f5a)(@tiptap/core@3.30.5(@tiptap/pm@3.29.2)):
     dependencies:
       '@tiptap/core': 3.30.5(@tiptap/pm@3.29.2)
       '@types/markdown-it': 13.0.9

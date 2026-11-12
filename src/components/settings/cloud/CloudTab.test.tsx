@@ -728,7 +728,7 @@ describe("CloudTab", () => {
     await waitFor(() => expect(screen.queryByTestId("cloud-project-conflicts")).toBeNull());
   });
 
-  it("lets you compare a note's conflict copy with the note, and offers no compare for other projects", async () => {
+  it("lets you compare a note's conflict copy with the note while Notes is on, and offers no compare for other projects", async () => {
     const copy = "note (Laptop 2026-11-08).md";
     serve(
       cloudState({
@@ -748,12 +748,15 @@ describe("CloudTab", () => {
       render(<CloudTab />);
       const notices = await screen.findAllByTestId("cloud-project-conflicts");
       expect(notices).toHaveLength(2);
+      expect(screen.queryByRole("button", { name: `Compare ${copy} with the note` })).toBeNull();
+      act(() => useSettingsStore.setState({ notes: true }));
       const compare = screen.getAllByRole("button", { name: `Compare ${copy} with the note` });
       expect(compare).toHaveLength(1);
       expect(screen.queryByRole("button", { name: "Compare main (Laptop 2026-10-14).tex with the note" })).toBeNull();
       await userEvent.click(compare[0]);
       expect(await screen.findByRole("dialog", { name: 'Two versions of "Idea"' })).toBeInTheDocument();
     } finally {
+      useSettingsStore.setState({ notes: false });
       useFilesStore.setState({ projects: [] });
     }
   });

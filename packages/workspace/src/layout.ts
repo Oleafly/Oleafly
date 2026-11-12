@@ -215,14 +215,16 @@ function cleanNode(node: LayoutNode, isRoot: boolean, stage: string | null): Lay
     const weight = node.weights[index] ?? 0;
     const cleaned = cleanNode(child, false, stage);
     if (!cleaned) {
-      if (kept.length > 0 && index === node.children.length - 1) kept[kept.length - 1].weight += weight + carried;
+      const previous = kept.at(-1);
+      if (previous && index === node.children.length - 1) previous.weight += weight + carried;
       else carried += weight;
       return;
     }
     kept.push({ node: cleaned, weight: weight + carried });
     carried = 0;
   });
-  if (carried > 0 && kept.length > 0) kept[kept.length - 1].weight += carried;
+  const lastKept = kept.at(-1);
+  if (carried > 0 && lastKept) lastKept.weight += carried;
   const children: LayoutNode[] = [];
   const weights: number[] = [];
   kept.forEach(({ node: cleaned, weight }) => {
@@ -242,7 +244,7 @@ function cleanNode(node: LayoutNode, isRoot: boolean, stage: string | null): Lay
 }
 
 function sameList(left: readonly unknown[], right: readonly unknown[] | undefined): boolean {
-  return right !== undefined && left.length === right.length && left.every((value, index) => value === right[index]);
+  return left.length === right?.length && left.every((value, index) => value === right[index]);
 }
 
 function cleanStack(candidate: StackState, views: Record<string, ViewState>, seen: Set<string>): StackState | null {
@@ -418,6 +420,11 @@ function clampIndex(index: number | undefined, length: number): number {
   return Math.max(0, Math.min(index ?? length, length));
 }
 
+function reorderedIndex(from: number, index: number | undefined, length: number): number {
+  const wanted = clampIndex(index, length);
+  return wanted > from ? wanted - 1 : wanted;
+}
+
 function placeInGroup(layout: WorkspaceLayout, entry: string, target: DropTarget, share: number): WorkspaceLayout {
   const destination = findGroup(layout.root, target.groupId);
   if (!destination) return layout;
@@ -462,7 +469,7 @@ function clampShare(share: number): number {
 function moveIntoStack(layout: WorkspaceLayout, id: string, source: Container, target: StackTarget): WorkspaceLayout {
   const holder = stackOf(layout, target.stackId);
   const home = containerOf(layout, target.stackId);
-  if (!holder || !home || home.stackId !== null || target.stackId === id) return layout;
+  if (!holder || home?.stackId !== null || target.stackId === id) return layout;
   const moving = stackOf(layout, id);
   if (moving) {
     const carried = { collapsed: new Set(moving.collapsed), weights: moving.weights };
@@ -471,8 +478,7 @@ function moveIntoStack(layout: WorkspaceLayout, id: string, source: Container, t
   }
   if (source.stackId === target.stackId) {
     const from = source.index;
-    const wanted = clampIndex(target.index, holder.sections.length);
-    const to = wanted > from ? wanted - 1 : wanted;
+    const to = reorderedIndex(from, target.index, holder.sections.length);
     if (to === from) return layout;
     return updateStack(layout, target.stackId, (current) => {
       const sections = reorder(current.sections, from, to);
@@ -483,6 +489,22 @@ function moveIntoStack(layout: WorkspaceLayout, id: string, source: Container, t
   return unmaximizeFor(normalize(placeInStack(detach(layout, id), target.stackId, [id], target.index)), id);
 }
 
+function reorderInGroup(layout: WorkspaceLayout, viewId: string, from: number, destination: GroupNode, index: number | undefined): WorkspaceLayout {
+  const to = reorderedIndex(from, index, destination.views.length);
+  if (to === from) return activate(layout, viewId);
+  return updateGroup(layout, destination.id, (current) => ({ ...current, views: reorder(current.views, from, to), active: viewId }));
+}
+
+function moveIntoGroup(layout: WorkspaceLayout, viewId: string, destination: GroupNode, target: DropTarget, share: number): WorkspaceLayout {
+  let next = detach(layout, viewId);
+  let entry = viewId;
+  if (target.zone === "center" && destination.presentation === "icons" && !isStack(layout, viewId)) {
+    entry = newStackId(layout);
+    next = { ...next, stacks: { ...stacksOf(next), [entry]: stack([viewId]) } };
+  }
+  return unmaximizeFor(normalize(placeInGroup(next, entry, target, clampShare(share))), viewId);
+}
+
 export function moveView(layout: WorkspaceLayout, viewId: string, target: MoveTarget, share = EDGE_SHARE): WorkspaceLayout {
   const source = containerOf(layout, viewId);
   if (!source) return layout;
@@ -491,25 +513,13 @@ export function moveView(layout: WorkspaceLayout, viewId: string, target: MoveTa
   if (!destination) return layout;
   const sameGroup = source.groupId === destination.id;
   if (sameGroup && source.stackId === null) {
-    if (target.zone !== "center" && destination.views.length === 1) return layout;
-    if (target.zone === "center") {
-      const from = source.index;
-      const wanted = clampIndex(target.index, destination.views.length);
-      const to = wanted > from ? wanted - 1 : wanted;
-      if (to === from) return activate(layout, viewId);
-      return updateGroup(layout, destination.id, (current) => ({ ...current, views: reorder(current.views, from, to), active: viewId }));
-    }
+    if (target.zone === "center") return reorderInGroup(layout, viewId, source.index, destination, target.index);
+    if (destination.views.length === 1) return layout;
   }
   if (sameGroup && source.stackId !== null && target.zone !== "center" && destination.views.length === 1 && stacksOf(layout)[source.stackId].sections.length === 1) {
     return layout;
   }
-  let next = detach(layout, viewId);
-  let entry = viewId;
-  if (target.zone === "center" && destination.presentation === "icons" && !isStack(layout, viewId)) {
-    entry = newStackId(layout);
-    next = { ...next, stacks: { ...stacksOf(next), [entry]: stack([viewId]) } };
-  }
-  return unmaximizeFor(normalize(placeInGroup(next, entry, target, clampShare(share))), viewId);
+  return moveIntoGroup(layout, viewId, destination, target, share);
 }
 
 export function createStack(
@@ -529,7 +539,7 @@ export function createStack(
 
 export function toggleSection(layout: WorkspaceLayout, stackId: string, viewId: string, collapsed?: boolean): WorkspaceLayout {
   const holder = stackOf(layout, stackId);
-  if (!holder || !holder.sections.includes(viewId)) return layout;
+  if (!holder?.sections.includes(viewId)) return layout;
   const folded = holder.collapsed.includes(viewId);
   const want = collapsed ?? !folded;
   if (want === folded) return layout;
@@ -541,7 +551,7 @@ export function toggleSection(layout: WorkspaceLayout, stackId: string, viewId: 
 
 export function resizeSections(layout: WorkspaceLayout, stackId: string, weights: readonly number[]): WorkspaceLayout {
   const holder = stackOf(layout, stackId);
-  if (!holder || weights.length !== holder.sections.length) return layout;
+  if (weights.length !== holder?.sections.length) return layout;
   const clamped = normalWeights(
     normalWeights(weights, weights.length).map((weight) => Math.max(MIN_WEIGHT, weight)),
     weights.length,
@@ -601,7 +611,7 @@ export function openView(
 
 export function resizeSplit(layout: WorkspaceLayout, splitId: string, weights: readonly number[]): WorkspaceLayout {
   const node = findNode(layout.root, splitId);
-  if (!node || node.kind !== "split" || weights.length !== node.children.length) return layout;
+  if (node?.kind !== "split" || weights.length !== node.children.length) return layout;
   const clamped = normalWeights(
     normalWeights(weights, weights.length).map((weight) => Math.max(MIN_WEIGHT, weight)),
     weights.length,
@@ -614,7 +624,7 @@ export function resizeSplit(layout: WorkspaceLayout, splitId: string, weights: r
 
 export function evenPair(layout: WorkspaceLayout, splitId: string, index: number, other = index + 1): WorkspaceLayout {
   const node = findNode(layout.root, splitId);
-  if (!node || node.kind !== "split" || index < 0 || other <= index || other >= node.children.length) return layout;
+  if (node?.kind !== "split" || index < 0 || other <= index || other >= node.children.length) return layout;
   const weights = [...node.weights];
   const share = (weights[index] + weights[other]) / 2;
   if (weights[index] === share) return layout;
@@ -651,23 +661,37 @@ function isStringList(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item) => typeof item === "string");
 }
 
+function parseGroup(id: string, record: Record<string, unknown>): GroupNode | null {
+  if (!isStringList(record.views)) return null;
+  const { presentation, hidden } = record;
+  if (presentation !== undefined && presentation !== "tabs" && presentation !== "icons") return null;
+  if (hidden !== undefined && typeof hidden !== "boolean") return null;
+  const active = typeof record.active === "string" ? record.active : null;
+  return group(id, record.views, active, { presentation: presentation as Presentation | undefined, hidden: hidden as boolean | undefined });
+}
+
 function parseNode(value: unknown, depth: number): LayoutNode | null {
   if (depth > 32 || typeof value !== "object" || value === null) return null;
   const record = value as Record<string, unknown>;
   if (typeof record.id !== "string" || record.id === "") return null;
-  if (record.kind === "group") {
-    if (!isStringList(record.views)) return null;
-    const { presentation, hidden } = record;
-    if (presentation !== undefined && presentation !== "tabs" && presentation !== "icons") return null;
-    if (hidden !== undefined && typeof hidden !== "boolean") return null;
-    const active = typeof record.active === "string" ? record.active : null;
-    return group(record.id, record.views, active, { presentation: presentation as Presentation | undefined, hidden: hidden as boolean | undefined });
-  }
+  if (record.kind === "group") return parseGroup(record.id, record);
   if (record.kind !== "split" || (record.direction !== "row" && record.direction !== "column")) return null;
   if (!Array.isArray(record.children) || !Array.isArray(record.weights)) return null;
   const children = record.children.map((child) => parseNode(child, depth + 1));
-  if (children.some((child) => child === null)) return null;
+  if (children.includes(null)) return null;
   return split(record.id, record.direction, children as LayoutNode[], record.weights as number[]);
+}
+
+function parseStack(raw: unknown): StackState | null {
+  if (!isRecord(raw)) return null;
+  const { sections, collapsed = [], weights = [], title, icon } = raw;
+  if (!isStringList(sections) || !isStringList(collapsed)) return null;
+  if (!Array.isArray(weights) || !weights.every((weight) => typeof weight === "number")) return null;
+  if ((title !== undefined && typeof title !== "string") || (icon !== undefined && typeof icon !== "string")) return null;
+  const parsed: StackState = { sections, collapsed, weights };
+  if (title !== undefined) parsed.title = title;
+  if (icon !== undefined) parsed.icon = icon;
+  return parsed;
 }
 
 function parseStacks(value: unknown): Record<string, StackState> | null {
@@ -675,17 +699,40 @@ function parseStacks(value: unknown): Record<string, StackState> | null {
   if (!isRecord(value)) return null;
   const stacks: Record<string, StackState> = {};
   for (const [id, raw] of Object.entries(value)) {
-    if (!isRecord(raw)) return null;
-    const { sections, collapsed = [], weights = [], title, icon } = raw;
-    if (!isStringList(sections) || !isStringList(collapsed)) return null;
-    if (!Array.isArray(weights) || !weights.every((weight) => typeof weight === "number")) return null;
-    if ((title !== undefined && typeof title !== "string") || (icon !== undefined && typeof icon !== "string")) return null;
-    const parsed: StackState = { sections, collapsed, weights };
-    if (title !== undefined) parsed.title = title;
-    if (icon !== undefined) parsed.icon = icon;
+    const parsed = parseStack(raw);
+    if (!parsed) return null;
     stacks[id] = parsed;
   }
   return stacks;
+}
+
+function parseView(value: unknown): ViewState | null {
+  if (typeof value !== "object" || value === null) return null;
+  const { type, params } = value as Record<string, unknown>;
+  if (typeof type !== "string") return null;
+  if (params === undefined) return { type };
+  if (!isRecord(params) || !isJson(params)) return null;
+  return { type, params: params as { [key: string]: JsonValue } };
+}
+
+function parseViews(value: object): Record<string, ViewState> | null {
+  const views: Record<string, ViewState> = {};
+  for (const [id, raw] of Object.entries(value)) {
+    const view = parseView(raw);
+    if (!view) return null;
+    views[id] = view;
+  }
+  return views;
+}
+
+function hasUniqueIds(root: LayoutNode): boolean {
+  const ids = new Set<string>();
+  const unique = (node: LayoutNode): boolean => {
+    if (ids.has(node.id)) return false;
+    ids.add(node.id);
+    return node.kind === "group" || node.children.every(unique);
+  };
+  return unique(root);
 }
 
 export function parseLayout(value: unknown): WorkspaceLayout | null {
@@ -697,21 +744,8 @@ export function parseLayout(value: unknown): WorkspaceLayout | null {
   if (!root) return null;
   const stacks = record.schema === 2 ? parseStacks(record.stacks) : {};
   if (!stacks) return null;
-  const views: Record<string, ViewState> = {};
-  for (const [id, view] of Object.entries(record.views as Record<string, unknown>)) {
-    if (typeof view !== "object" || view === null) return null;
-    const { type, params } = view as Record<string, unknown>;
-    if (typeof type !== "string") return null;
-    if (params !== undefined && (typeof params !== "object" || params === null || Array.isArray(params) || !isJson(params))) return null;
-    views[id] = params === undefined ? { type } : { type, params: params as { [key: string]: JsonValue } };
-  }
-  const ids = new Set<string>();
-  const unique = (node: LayoutNode): boolean => {
-    if (ids.has(node.id)) return false;
-    ids.add(node.id);
-    return node.kind === "group" || node.children.every(unique);
-  };
-  if (!unique(root)) return null;
+  const views = parseViews(record.views);
+  if (!views || !hasUniqueIds(root)) return null;
   const maximized = typeof record.maximized === "string" ? record.maximized : null;
   const stage = typeof record.stage === "string" ? record.stage : null;
   return normalize({ schema: 2, root, views, stacks, maximized, stage });

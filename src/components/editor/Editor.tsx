@@ -1,6 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { HEAVY, lazy } from "@/lib/preloadable";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { Group, Panel, Separator, type GroupImperativeHandle, type Layout } from "react-resizable-panels";
 import { registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
@@ -57,15 +57,15 @@ import { flushWysiwygPendingEdits, setWysiwygVisibilityController } from "./wysi
 import { ProofreadingNotifications } from "./ProofreadingNotifications";
 import { LoadingState } from "@/components/ui/empty";
 const WysiwygEditor = lazy(() =>
-  import("./wysiwyg/WysiwygEditor").then((m) => ({ default: m.WysiwygEditor })), { warm: true, priority: HEAVY });
-const MarkdownPreview = lazy(() => import("./MarkdownPreview").then((module) => ({ default: module.MarkdownPreview })), { warm: true, priority: HEAVY });
+  import("./wysiwyg/WysiwygEditor").then((m) => ({ default: m.WysiwygEditor })));
+const MarkdownPreview = lazy(() => import("./MarkdownPreview").then((module) => ({ default: module.MarkdownPreview })));
 const noteTabView = () =>
   import("@/components/notes/NoteTabView").then(async (module) => {
     await loadNamespace("notes");
     return module;
   });
-const ProjectNoteTab = lazy(() => noteTabView().then((module) => ({ default: module.ProjectNoteTab })), { warm: () => useSettingsStore.getState().notes });
-const PersonalNoteTab = lazy(() => noteTabView().then((module) => ({ default: module.PersonalNoteTab })), { warm: () => useSettingsStore.getState().notes });
+const ProjectNoteTab = lazy(() => noteTabView().then((module) => ({ default: module.ProjectNoteTab })));
+const PersonalNoteTab = lazy(() => noteTabView().then((module) => ({ default: module.PersonalNoteTab })));
 const MARKDOWN_SOURCE_PANEL = "markdown-source-pane";
 const MARKDOWN_PREVIEW_PANEL = "markdown-preview-pane";
 const MARKDOWN_PANE_LIMITS: PanelLimits = { minSize: 20 };
@@ -89,7 +89,7 @@ function PdfFileView({ projectId, path }: Readonly<{ projectId: string; path: st
     const request = latestRead.current;
     readFileBase64(projectId, path)
       .then((b64) => { if (request === latestRead.current) setBytes(base64ToUint8Array(b64)); })
-      .catch((e) => { if (request === latestRead.current) setErr(String(e)); });
+      .catch((error) => { if (request === latestRead.current) setErr(String(error)); });
   }, [projectId, path]);
 
   useTauriEvent<{ projectId?: string; path?: string }>(
@@ -133,7 +133,7 @@ function ImageFileView({ projectId, path }: Readonly<{ projectId: string; path: 
     setUndecodable(false);
     readFileBase64(projectId, path)
       .then((b64) => { if (!cancelled) setSrc(`data:${imageMime(path)};base64,${b64}`); })
-      .catch((e) => { if (!cancelled) setErr(String(e)); });
+      .catch((error) => { if (!cancelled) setErr(String(error)); });
     return () => { cancelled = true; };
   }, [projectId, path]);
 
@@ -190,6 +190,25 @@ function openFileKind(activePath: string | null) {
 function markdownModeFor(split: boolean, visual: boolean): "both" | "visual" | "code" {
   if (split) return "both";
   return visual ? "visual" : "code";
+}
+
+function shownNoteView({
+  projectId,
+  activePath,
+  noteTab,
+  noteFile,
+  diffFocused,
+}: Readonly<{
+  projectId: string | null;
+  activePath: string | null;
+  noteTab: string | null;
+  noteFile: boolean;
+  diffFocused: boolean;
+}>): NoteTabView | null {
+  if (!projectId) return null;
+  if (noteTab) return personalNoteView(projectId, noteTab);
+  if (!diffFocused && noteFile && activePath) return fileNoteView(projectId, activePath);
+  return null;
 }
 
 export function Editor() {
@@ -260,9 +279,7 @@ export function Editor() {
       s.activePath !== null &&
       isEditorNoteFile(s.activePath, s.files[s.activePath]?.content, { notes: notesOn, projectKind: s.projectKind }),
   );
-  let shownNote: NoteTabView | null = null;
-  if (noteTab && projectId) shownNote = personalNoteView(projectId, noteTab);
-  else if (!diffFocused && noteFile && projectId && activePath) shownNote = fileNoteView(projectId, activePath);
+  const shownNote = shownNoteView({ projectId, activePath, noteTab, noteFile, diffFocused });
   const keptNotes = useKeptNoteTabs(shownNote, projectId, notesOn);
   const toolbarProfile = formattingProfileForPath(engine, engineLoaded, activePath);
   const showLatexToolbar = !zen && toolbarProfile === "latex";

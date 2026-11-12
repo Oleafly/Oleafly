@@ -32,7 +32,7 @@ const running = new Set<TrackedSave>();
 
 export function registerNoteEditor(id: string, handle: OpenNoteEditor): () => void {
   editors.set(id, [...(editors.get(id) ?? []), handle]);
-  for (const wake of [...waiters]) wake();
+  for (const wake of waiters) wake();
   return () => {
     const left = (editors.get(id) ?? []).filter((entry) => entry !== handle);
     if (left.length > 0) editors.set(id, left);
@@ -76,7 +76,7 @@ function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function follow(entry: TrackedSave, done: Promise<string | null>): Promise<string | null> {
+function follow(entry: TrackedSave, done: Promise<string | null>): void {
   const settled = done.catch(reasonOf);
   entry.done = settled;
   void settled.then((reason) => {
@@ -84,7 +84,6 @@ function follow(entry: TrackedSave, done: Promise<string | null>): Promise<strin
     if (reason === null) running.delete(entry);
     else entry.failed = reason;
   });
-  return settled;
 }
 
 export function trackNoteSave(
@@ -110,10 +109,10 @@ async function within(done: Promise<string | null>, waitMs: number, timedOut: ()
 }
 
 function closedSaveJob(entry: TrackedSave) {
-  const retrying = entry.failed !== null && entry.retry !== null;
+  const retry = entry.failed === null ? null : entry.retry;
   entry.failed = null;
-  const done = retrying && entry.retry ? follow(entry, Promise.resolve().then(entry.retry)) : entry.done;
-  return { job: entry.job, done, entry };
+  if (retry) follow(entry, Promise.resolve().then(retry));
+  return { job: entry.job, done: entry.done, entry };
 }
 
 export async function flushOpenNotes(waitMs: number = NOTE_FLUSH_MS): Promise<SaveFailure[]> {

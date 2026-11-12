@@ -9,6 +9,7 @@ e2e_needs_collab_peer() {
 
 e2e_needs_notes() {
   case "${1:-}" in
+    *-notes-flag*.spec.ts | *-notes-flag*.spec.ts:*) return 1 ;;
     *-notes-*.spec.ts | *-notes-*.spec.ts:*) return 0 ;;
     *) return 1 ;;
   esac

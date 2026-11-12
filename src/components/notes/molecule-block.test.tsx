@@ -3,34 +3,24 @@ import { act, cleanup, render, screen, waitFor, within } from "@testing-library/
 import userEvent from "@testing-library/user-event";
 import type { AtomSpec, GLViewer } from "3dmol";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { BlockFileTooLargeError } from "./note-blocks";
 import {
   applyStyle,
   atomStyle,
   captureListeners,
-  cssColorHex,
   isPolymer,
-  MoleculeFileError,
   moleculeBlock,
-  moleculeData,
   moleculeProblemText,
   moleculeReadErrorText,
-  moleculeText,
   MoleculeView,
   MoleculeViewError,
   type OpenedViewer,
   openViewer,
-  withMoleculeOption,
   paintMolecule,
-  parseMoleculeSource,
   releaseViewer,
-  repairMolHeader,
-  resolveMoleculeFormat,
   ROTATE_STEP,
   runAction,
-  sniffMoleculeFormat,
   spectrumRange,
   themeBackground,
   webglMode,
@@ -38,6 +28,8 @@ import {
   resetWebglModeForTest,
   ZOOM_STEP,
 } from "./molecule-block";
+import { MoleculeFileError, parseMoleculeSource, sniffMoleculeFormat } from "./molecule-source";
+import "./tests/setup";
 
 const SMALL: AtomSpec[] = [
   { atom: "C", elem: "C", hetflag: true, index: 0 },
@@ -146,37 +138,6 @@ function fakeViewer(viewer: GLViewer): FakeViewerShape {
   return viewer as unknown as FakeViewerShape;
 }
 
-class FakeObserver {
-  static instances: FakeObserver[] = [];
-  readonly callback: IntersectionObserverCallback;
-  observed: Element[] = [];
-  disconnected = false;
-
-  constructor(callback: IntersectionObserverCallback) {
-    this.callback = callback;
-    FakeObserver.instances.push(this);
-  }
-
-  observe(element: Element) {
-    this.observed.push(element);
-  }
-
-  unobserve(element: Element) {
-    this.observed = this.observed.filter((candidate) => candidate !== element);
-  }
-
-  disconnect() {
-    this.disconnected = true;
-  }
-
-  fire(isIntersecting: boolean) {
-    this.callback(
-      this.observed.map((target) => ({ isIntersecting, target }) as IntersectionObserverEntry),
-      this as unknown as IntersectionObserver,
-    );
-  }
-}
-
 function preview(): HTMLElement {
   const element = document.createElement("div");
   document.body.append(element);
@@ -194,7 +155,6 @@ function textUrl(text: string): string {
 }
 
 beforeAll(async () => {
-  await loadNamespace("notes");
   Element.prototype.hasPointerCapture ??= () => false;
   Element.prototype.releasePointerCapture ??= () => undefined;
   Element.prototype.scrollIntoView ??= () => undefined;
@@ -209,7 +169,6 @@ beforeEach(() => {
   lib.createNothing = false;
   lib.addModelError = false;
   lib.styleError = false;
-  FakeObserver.instances = [];
   resetWebglModeForTest();
   vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation((() => null) as never);
 });
@@ -223,113 +182,7 @@ afterEach(() => {
   Reflect.deleteProperty(globalThis, "OffscreenCanvas");
 });
 
-describe("parseMoleculeSource", () => {
-  it("reads options before the inline data", () => {
-    expect(parseMoleculeSource(`format: XYZ\nstyle: Sphere\ncolour: chain\n${XYZ}`)).toEqual({
-      ok: true,
-      spec: { path: null, format: "xyz", style: "sphere", color: "chain", data: XYZ },
-    });
-    expect(parseMoleculeSource("format: mmcif\ncolor: ss\ndata_x\nloop_")).toMatchObject({
-      ok: true,
-      spec: { format: "cif", color: "ss", style: null },
-    });
-  });
-
-  it("reads a file path and ignores inline text with it", () => {
-    expect(parseMoleculeSource("path: ./assets/1abc.pdb\nATOM  1")).toEqual({
-      ok: true,
-      spec: { path: "assets/1abc.pdb", format: null, style: null, color: null, data: "" },
-    });
-  });
-
-  it.each([
-    ["format: png\nx", "format", "png"],
-    ["style: ribbon\nx", "style", "ribbon"],
-    ["color: rainbow\nx", "color", "rainbow"],
-    ["path: ../x.pdb", "path", "../x.pdb"],
-    ["style: stick\n\n", "empty", ""],
-  ])("reports %j", (source, problem, value) => {
-    expect(parseMoleculeSource(source)).toEqual({ ok: false, problem, value });
-  });
-});
-
-describe("withMoleculeOption", () => {
-  it("rewrites an existing option line and keeps how it was written", () => {
-    expect(withMoleculeOption("format: xyz\nStyle:  stick\n3\n", "style", "sphere")).toBe("format: xyz\nStyle: sphere\n3\n");
-    expect(withMoleculeOption("colour: chain\nATOM  1", "color", "residue")).toBe("colour: residue\nATOM  1");
-  });
-
-  it("adds the option after the others, or first when there are none", () => {
-    expect(withMoleculeOption("path: assets/a.pdb", "style", "line")).toBe("path: assets/a.pdb\nstyle: line");
-    expect(withMoleculeOption("\nformat: xyz\n3\n\nC 0 0 0", "color", "chain")).toBe("\nformat: xyz\ncolor: chain\n3\n\nC 0 0 0");
-    expect(withMoleculeOption("3\nstyle: stick\nC 0 0 0", "style", "line")).toBe("style: line\n3\nstyle: stick\nC 0 0 0");
-  });
-
-  it("writes a source that parses to the chosen style and color", () => {
-    const source = withMoleculeOption(withMoleculeOption(XYZ, "style", "sphere"), "color", "chain");
-    expect(parseMoleculeSource(source)).toMatchObject({ ok: true, spec: { style: "sphere", color: "chain" } });
-  });
-});
-
-describe("formats", () => {
-  it.each([
-    ["@<TRIPOS>MOLECULE\nwater", "mol2"],
-    ["data_1ABC\nloop_\n_atom_site.id", "cif"],
-    ["data_x\n_atom_site.id 1", "cif"],
-    ["HEADER    PROTEIN\nATOM      1  N   MET A   1", "pdb"],
-    ["HETATM    1  O   HOH A   1", "pdb"],
-    [MOL, "sdf"],
-    ["x\n$$$$\n", "sdf"],
-    [XYZ, "xyz"],
-    ["\n\n 2\n\nC 1.0 -2e-1 .5\n", "xyz"],
-    ["3\nwater\nnot an atom line", null],
-    ["3\nwater", null],
-    ["hello", null],
-    ["", null],
-  ])("sniffs %j as %s", (text, format) => {
-    expect(sniffMoleculeFormat(text)).toBe(format);
-  });
-
-  it("prefers the option, then the fence, then the extension, then the data", () => {
-    const spec = { path: null, format: null, style: null, color: null, data: "" };
-    expect(resolveMoleculeFormat({ ...spec, format: "pdb" }, "xyz", XYZ)).toBe("pdb");
-    expect(resolveMoleculeFormat(spec, "mol2", XYZ)).toBe("mol2");
-    expect(resolveMoleculeFormat({ ...spec, path: "a/b.ENT" }, "molecule", XYZ)).toBe("pdb");
-    expect(resolveMoleculeFormat({ ...spec, path: "a/b.sd" }, undefined, XYZ)).toBe("sdf");
-    expect(resolveMoleculeFormat({ ...spec, path: "a/b.txt" }, undefined, XYZ)).toBe("xyz");
-    expect(resolveMoleculeFormat({ ...spec, path: "a/noext" }, undefined, "?")).toBeNull();
-    expect(resolveMoleculeFormat(spec, undefined, XYZ)).toBe("xyz");
-  });
-
-  it("restores the three header lines of a MOL file", () => {
-    const stripped = MOL.split("\n").slice(1).join("\n");
-    expect(repairMolHeader(stripped).split("\n")[3]).toContain("V2000");
-    expect(repairMolHeader(MOL)).toBe(MOL);
-    expect(repairMolHeader("  2  1  0  0  0  0  0  0  0  0999 V3000")).toBe("\n\n\n  2  1  0  0  0  0  0  0  0  0999 V3000");
-    expect(repairMolHeader("no counts line")).toBe("no counts line");
-    expect(moleculeData("  1  0 V2000", "mol")).toBe("\n\n\n  1  0 V2000");
-    expect(moleculeData("  1  0 V2000", "sdf")).toBe("\n\n\n  1  0 V2000");
-    expect(moleculeData("  1  0 V2000", "xyz")).toBe("  1  0 V2000");
-  });
-});
-
-describe("moleculeText", () => {
-  const spec = { path: "a.xyz", format: null, style: null, color: null, data: "" };
-
-  it("returns inline data or reads the file", async () => {
-    expect(await moleculeText({ ...spec, path: null, data: XYZ }, undefined)).toBe(XYZ);
-    expect(await moleculeText(spec, async () => textUrl(XYZ))).toBe(XYZ);
-  });
-
-  it("reports missing, unreadable and large files", async () => {
-    await expect(moleculeText(spec, async () => null)).rejects.toMatchObject({ problem: "missing" });
-    await expect(moleculeText(spec, undefined)).rejects.toMatchObject({ problem: "missing" });
-    await expect(moleculeText(spec, async () => "plain")).rejects.toMatchObject({ problem: "unreadable" });
-    await expect(moleculeText(spec, async () => `data:x;base64,${"A".repeat(9 * 1024 * 1024)}`)).rejects.toBeInstanceOf(
-      BlockFileTooLargeError,
-    );
-  });
-
+describe("error text", () => {
   it("words read errors and parse problems", () => {
     expect(moleculeReadErrorText(new BlockFileTooLargeError(), "a.pdb")).toBe(copy.tooLarge);
     expect(moleculeReadErrorText(new MoleculeFileError("missing"), "a.pdb")).toBe("File not found: a.pdb");
@@ -381,26 +234,23 @@ describe("webgl and colors", () => {
     expect(webglMode()).toBeNull();
   });
 
-  it("turns a CSS color into hex through a canvas", () => {
-    const data = { value: [10, 20, 255, 255] };
-    const spy = canvasContext().mockImplementation((() => ({
-      fillStyle: "",
-      fillRect: vi.fn(),
-      getImageData: () => ({ data: data.value }),
-    })) as never);
-    expect(cssColorHex("oklch(0.5 0.1 250)")).toBe("#0a14ff");
-    data.value = [0, 0, 0, 0];
-    expect(cssColorHex("transparent")).toBeNull();
-    expect(cssColorHex("")).toBeNull();
-    spy.mockImplementation((() => null) as never);
-    expect(cssColorHex("red")).toBeNull();
-  });
-
-  it("falls back to a theme color for the background", () => {
+  it("uses the painted background, or a theme color when it is clear", () => {
     const element = preview();
     expect(themeBackground(element)).toBe("#ffffff");
+    element.style.backgroundColor = "rgba(0, 0, 0, 0)";
     document.documentElement.classList.add("dark");
     expect(themeBackground(element)).toBe("#0a0a0a");
+    let fill = "";
+    canvasContext().mockImplementation((() => ({
+      get fillStyle() {
+        return fill;
+      },
+      set fillStyle(value: string) {
+        fill = value;
+      },
+    })) as never);
+    element.style.backgroundColor = "rgb(10, 20, 255)";
+    expect(themeBackground(element)).toBe("#0a14ff");
   });
 });
 
@@ -675,9 +525,9 @@ describe("paintMolecule", () => {
   it("draws a card on Home and when files can't be read", () => {
     const element = preview();
     expect(paintMolecule(element, XYZ, { still: true })).toBeUndefined();
-    expect(element.querySelector(".note-block-card-title")).toHaveTextContent(copy.label);
+    expect(element.querySelector("p")).toHaveTextContent(copy.label);
     paintMolecule(element, "path: assets/a.pdb", { still: false });
-    expect(element.querySelector(".note-block-card-text")).toHaveTextContent("path: assets/a.pdb");
+    expect(element.querySelectorAll("p")[1]).toHaveTextContent("path: assets/a.pdb");
   });
 
   it("explains source problems", () => {
@@ -693,11 +543,10 @@ describe("paintMolecule", () => {
     expect(cachedWebglMode()).toBe("dedicated");
     const calls = canvasContext().mock.calls.length;
     expect(cachedWebglMode()).toBe("dedicated");
-    expect(canvasContext().mock.calls.length).toBe(calls);
+    expect(canvasContext().mock.calls).toHaveLength(calls);
   });
 
-  it("starts at once without IntersectionObserver and explains missing WebGL", () => {
-    vi.stubGlobal("IntersectionObserver", undefined);
+  it("explains missing WebGL", () => {
     stubWebgl(false);
     const element = preview();
     paintMolecule(element, XYZ, { still: false });
@@ -705,7 +554,6 @@ describe("paintMolecule", () => {
   });
 
   it("saves a picked style into the block's source", async () => {
-    vi.stubGlobal("IntersectionObserver", undefined);
     stubWebgl(true);
     const user = userEvent.setup();
     const element = preview();
@@ -722,18 +570,11 @@ describe("paintMolecule", () => {
     await settle();
   });
 
-  it("waits until the block is visible, then mounts the viewer", async () => {
-    vi.stubGlobal("IntersectionObserver", FakeObserver);
+  it("mounts the viewer and removes it on dispose", async () => {
     stubWebgl(true);
     const element = preview();
     const dispose = paintMolecule(element, `style: line\n${XYZ}`, { still: false, fence: "molecule" });
     expect(element).toHaveTextContent(copy.loading);
-    const [observer] = FakeObserver.instances;
-    expect(observer.observed[0]).toBe(element.firstElementChild);
-    act(() => observer.fire(false));
-    expect(lib.viewers).toHaveLength(0);
-    act(() => observer.fire(true));
-    expect(observer.disconnected).toBe(true);
     await waitFor(() => expect(within(element).getByRole("combobox", { name: copy.style })).toHaveTextContent(copy.styles.line));
     expect(lib.formats).toEqual(["xyz"]);
     dispose?.();
@@ -743,7 +584,6 @@ describe("paintMolecule", () => {
   });
 
   it("reads a file and uses its extension for the format", async () => {
-    vi.stubGlobal("IntersectionObserver", undefined);
     stubWebgl(true);
     const element = preview();
     const dispose = paintMolecule(element, "path: assets/water.sdf", {
@@ -756,7 +596,6 @@ describe("paintMolecule", () => {
   });
 
   it("reports read errors and unknown formats", async () => {
-    vi.stubGlobal("IntersectionObserver", undefined);
     stubWebgl(true);
     const element = preview();
     paintMolecule(element, "path: assets/a.pdb", { still: false, readFile: async () => null });
@@ -766,7 +605,6 @@ describe("paintMolecule", () => {
   });
 
   it("ignores results that arrive after dispose", async () => {
-    vi.stubGlobal("IntersectionObserver", undefined);
     stubWebgl(true);
     const element = preview();
     let finish: (value: string | null) => void = () => {};
@@ -782,13 +620,6 @@ describe("paintMolecule", () => {
     again?.();
     await settle();
     expect(lib.viewers).toHaveLength(0);
-  });
-
-  it("disconnects the observer on dispose", () => {
-    vi.stubGlobal("IntersectionObserver", FakeObserver);
-    const dispose = paintMolecule(preview(), XYZ, { still: false });
-    dispose?.();
-    expect(FakeObserver.instances[0].disconnected).toBe(true);
   });
 });
 

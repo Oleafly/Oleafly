@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "検索モード：{{mode}}",
+    "heading": "検索モード",
+    "ranked": {
+      "label": "関連度順",
+      "description": "一致度の高い順に結果を並べます。単語の位置は問いません。"
+    },
+    "exact": {
+      "label": "完全一致",
+      "description": "入力した文字そのものを探します。大文字を含めると、大文字と小文字を区別します。"
+    },
+    "regex": {
+      "label": "正規表現",
+      "description": "ripgrep のパターン構文を使います。スペースや括弧を含むパターンは引用符で囲んでください。"
+    },
+    "fuzzy": {
+      "label": "あいまい",
+      "description": "fzf と同じように、入力した文字を順に含む名前に一致します。'exact、^start、end$、!leave-out も使えます。"
+    },
+    "invalid": "このパターンは無効です：{{error}}"
+  },
   "querySearch": {
     "suggestions": "検索候補",
     "exclude": "除外",
@@ -76,7 +97,8 @@
       "invalidValue": "{{value}} は {{key}} に使える値ではありません",
       "invalidDate": "{{value}} は日付ではありません。2026-10-02 や @today-7d のように入力してください",
       "invalidNumber": "{{value}} は数値ではありません",
-      "sortNegated": "{{key}} は除外できません"
+      "sortNegated": "{{key}} は除外できません",
+      "tooManyBranches": "この検索には OR の組み合わせが多すぎるため、一部の結果が表示されない可能性があります"
     }
   },
   "avatar": {

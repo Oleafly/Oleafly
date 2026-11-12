@@ -11,10 +11,10 @@ use rusqlite::{Connection, OpenFlags, OptionalExtension, Transaction, Transactio
 
 use crate::error::ServerError;
 
-pub const SCHEMA_VERSION: i64 = 18;
+pub const SCHEMA_VERSION: i64 = 19;
 pub const SERVER_ID_KEY: &str = "server_id";
 pub const SETUP_CODE_HASH_KEY: &str = "setup_code_hash";
-const MIGRATIONS: [&str; 18] = [
+const MIGRATIONS: [&str; 19] = [
     include_str!("../migrations/0001_core.sql"),
     include_str!("../migrations/0002_projects.sql"),
     include_str!("../migrations/0003_email.sql"),
@@ -33,6 +33,7 @@ const MIGRATIONS: [&str; 18] = [
     include_str!("../migrations/0016_public_service.sql"),
     include_str!("../migrations/0017_project_outputs.sql"),
     include_str!("../migrations/0018_web_sessions.sql"),
+    include_str!("../migrations/0019_published_notes.sql"),
 ];
 
 const READERS: usize = 4;
@@ -360,7 +361,7 @@ mod tests {
     use super::*;
     use rusqlite::params;
 
-    const TABLES: [&str; 34] = [
+    const TABLES: [&str; 35] = [
         "access_tokens",
         "account_emails",
         "account_uploads",
@@ -389,6 +390,7 @@ mod tests {
         "project_snapshots",
         "project_updates",
         "projects",
+        "published_notes",
         "refresh_tokens",
         "security_log",
         "server_meta",

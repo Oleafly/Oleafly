@@ -11,6 +11,8 @@
   "landing.open": "Mở trong Oleafly",
   "landing.get": "Tải Oleafly",
   "landing.open_browser": "Mở trong trình duyệt",
+  "published.gone_title": "Trang này không khả dụng",
+  "published.gone_body": "Có thể tác giả đã hủy xuất bản trang, hoặc máy chủ này không còn hiển thị trang công khai.",
   "web.sign_in_body": "Đăng nhập để mở các dự án được chia sẻ của bạn trong trình duyệt này.",
   "web.try_again": "Thử lại",
   "web.other_browser": "Liên kết này hoàn tất đăng nhập trên {device}, là trình duyệt nơi bạn bắt đầu. Hãy mở email ở đó thay vì ở đây. Liên kết vẫn dùng được.",

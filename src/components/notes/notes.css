@@ -5,14 +5,14 @@
   text-decoration-color: color-mix(in oklch, var(--destructive) 70%, transparent);
 }
 .note-diff-delete.note-diff-active {
-  background: #f79ba6;
+  background: var(--diff-delete-strong);
 }
 .note-diff-insert {
   border-radius: 2px;
   background: color-mix(in oklch, oklch(0.72 0.19 149) 20%, transparent);
 }
 .note-diff-insert.note-diff-active {
-  background: #7fdfa2;
+  background: var(--diff-insert-strong);
 }
 .note-diff-delete-block {
   border-radius: var(--radius-md);
@@ -21,7 +21,7 @@
   text-decoration-color: color-mix(in oklch, var(--destructive) 70%, transparent);
 }
 .note-diff-delete-block.note-diff-active {
-  background: #ffc2ca;
+  background: var(--diff-delete);
 }
 .note-diff-block {
   margin-block: 0.5rem;
@@ -30,32 +30,13 @@
   background: color-mix(in oklch, oklch(0.72 0.19 149) 14%, transparent);
 }
 .note-diff-block.note-diff-active {
-  background: #b6efc8;
-}
-.dark .note-diff-delete.note-diff-active {
-  background: #7f2731;
-}
-.dark .note-diff-insert.note-diff-active {
-  background: #235c37;
-}
-.dark .note-diff-delete-block.note-diff-active {
-  background: #45191e;
-}
-.dark .note-diff-block.note-diff-active {
-  background: #14361f;
+  background: var(--diff-insert);
 }
 .note-code {
-  position: relative;
   margin-block: 0.75rem;
-}
-.note-drawn {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 2rem 1rem 1rem;
 }
 .note-drawn > pre {
   display: none;
-  margin-block: 0.75rem 0;
 }
 .note-drawn-source > pre,
 .note-drawn-editing > pre {
@@ -70,52 +51,12 @@
   max-width: 100%;
   height: auto;
 }
-.note-drawn-toggle {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  z-index: 1;
-}
-.note-drawn-label {
-  position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
-  color: var(--muted-foreground);
-  font-size: 0.625rem;
-  font-weight: 500;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
-}
-.note-drawn-empty {
-  padding-block: 1rem;
-  color: var(--muted-foreground);
-  font-size: 0.75rem;
-}
 .note-drawn[data-block="notebook"] .note-drawn-preview {
   display: block;
   user-select: text;
 }
-.note-notebook {
-  width: 100%;
-  min-width: 0;
-}
 .note-notebook [data-notebook-cell] p {
   margin-block: 0 0.5rem;
-}
-.note-chart {
-  width: 100%;
-}
-.note-chart-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-}
-.note-chart-text {
-  color: var(--muted-foreground);
-  font-size: 0.75rem;
-}
-.note-chart-plot {
-  position: relative;
-  margin-block: 0.75rem;
 }
 .note-chart-grid {
   stroke: var(--border);
@@ -135,28 +76,6 @@
   fill: var(--accent);
   fill-opacity: 0.6;
 }
-.note-chart-tooltip {
-  transform: translateX(-50%);
-}
-.note-chart-tooltip-title {
-  font-weight: 500;
-}
-.note-chart-tooltip-row {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  color: var(--muted-foreground);
-}
-.note-chart-swatch {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 2px;
-}
-.note-chart-value {
-  margin-inline-start: auto;
-  color: var(--foreground);
-  font-variant-numeric: tabular-nums;
-}
 .note-image {
   margin-block: 0.75rem;
   border-radius: 0.5rem;
@@ -164,11 +83,153 @@
 .note-image img {
   display: block;
   max-width: 100%;
+}
+.note-image-frame {
+  position: relative;
+  display: block;
+  max-width: 100%;
+}
+.note-image-frame[hidden] {
+  display: none;
+}
+.note-image-frame[data-sized] img {
+  width: 100%;
   height: auto;
-  border-radius: 0.375rem;
+}
+.note-image-handle {
+  position: absolute;
+  top: 50%;
+  right: -0.25rem;
+  width: 0.375rem;
+  height: min(3rem, 40%);
+  transform: translateY(-50%);
+  border-radius: 9999px;
+  background: var(--primary);
+  opacity: 0;
+  cursor: ew-resize;
+  touch-action: none;
+  transition: opacity 120ms ease-out;
+}
+.ProseMirror[contenteditable="true"] .note-image-frame:hover .note-image-handle,
+.ProseMirror[contenteditable="true"] .note-image.ProseMirror-selectednode .note-image-handle {
+  opacity: 0.85;
+}
+.ProseMirror:not([contenteditable="true"]) .note-image-handle {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-image-handle {
+    transition: none;
+  }
 }
 .note-image.ProseMirror-selectednode {
   background: var(--accent);
+}
+.note-media {
+  margin-block: 0.75rem;
+  border-radius: 0.5rem;
+}
+.note-media.ProseMirror-selectednode {
+  background: var(--accent);
+}
+.note-media[data-media="video"] .note-media-play,
+.note-media[data-media="embed"] .note-media-play {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+}
+.note-media-poster {
+  position: relative;
+  overflow: hidden;
+}
+.note-media-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.note-media-badge {
+  position: relative;
+  display: flex;
+  width: 3.5rem;
+  height: 3.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: color-mix(in oklch, black 62%, transparent);
+  color: white;
+  transition: background-color 120ms ease-out, transform 120ms ease-out;
+}
+.note-media-poster:hover .note-media-badge,
+.note-media-poster:focus-visible .note-media-badge {
+  background: color-mix(in oklch, black 78%, transparent);
+  transform: scale(1.06);
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-media-badge {
+    transition: none;
+  }
+}
+.note-media[data-media="embed"] {
+  display: grid;
+}
+.note-media[data-media="embed"] > :is(.note-media-poster, .note-media-frame, .note-media-bar) {
+  grid-area: 1 / 1;
+}
+.note-media-bar {
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  align-self: end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 1px;
+  padding: 2rem 0.75rem 0.625rem;
+  border-radius: 0 0 calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px);
+  background: linear-gradient(to top, color-mix(in oklch, black 78%, transparent) 45%, transparent);
+  color: white;
+  font-size: 0.8125rem;
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+.wysiwyg-content .ProseMirror .note-media-bar a {
+  color: inherit;
+  text-decoration: none;
+}
+.note-media[data-media="embed"]:hover > .note-media-bar,
+.note-media[data-media="embed"]:focus-within > .note-media-bar,
+.note-media[data-media="embed"].ProseMirror-selectednode > .note-media-bar {
+  opacity: 1;
+}
+.note-media[data-media="embed"].ProseMirror-selectednode > :is(.note-media-poster, .note-media-frame) {
+  border-color: color-mix(in oklch, var(--primary) 55%, transparent);
+}
+@media (hover: none) {
+  .note-media-bar {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-media-bar {
+    transition: none;
+  }
+}
+.note-media-frame {
+  display: block;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  background: var(--muted);
+}
+.note-media-player {
+  display: block;
+  width: 100%;
+  border-radius: 0.5rem;
+}
+.note-media[data-media="audio"] .note-media-player {
+  height: 2.5rem;
 }
 .note-chip {
   background: color-mix(in oklch, var(--note-color) 34%, transparent);
@@ -178,30 +239,20 @@
   background: color-mix(in oklch, var(--note-color) 16%, transparent);
   color: var(--note-color);
 }
-.note-swatch {
-  background: var(--note-color);
-  border: 1px solid color-mix(in srgb, var(--note-color) 70%, var(--foreground));
+/* oklab, not oklch: --background resolves to oklch(1 0 0), a hue of 0 rather than CSS Color 4's missing hue, so an oklch mix bends Blue toward pink. */
+.note-body {
+  --note-table-head: color-mix(in oklab, var(--note-color, var(--muted)) calc(55% + (16% - 55%) * var(--note-tint, 0)), var(--background));
+  --note-table-foot: color-mix(in oklab, var(--note-color, var(--muted)) calc(30% + (9% - 30%) * var(--note-tint, 0)), var(--background));
+  --note-table-line: color-mix(in oklab, var(--note-color, var(--border)) calc(45% + (22% - 45%) * var(--note-tint, 0)), var(--border));
 }
-.note-swatch[aria-pressed="true"] {
-  border: 2px solid var(--foreground);
-}
-.note-swatch:focus-visible {
-  border: 2px solid var(--ring);
-}
-.note-project-dot {
-  background: var(--note-project);
-  border: 1px solid color-mix(in srgb, var(--note-project) 55%, var(--foreground));
-}
-.note-project-dot-none {
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--muted-foreground) 70%, transparent);
+.dark .note-body {
+  --note-table-head: color-mix(in oklab, var(--note-color, var(--muted)) calc(24% + (30% - 24%) * var(--note-tint, 0)), var(--background));
+  --note-table-foot: color-mix(in oklab, var(--note-color, var(--muted)) calc(14% + (18% - 14%) * var(--note-tint, 0)), var(--background));
+  --note-table-line: color-mix(in oklab, var(--note-color, var(--border)) 22%, var(--border));
 }
 [data-note-preview] .contains-task-list {
   list-style: none;
   padding-left: 0;
-}
-.wysiwyg-content.note-body .ProseMirror {
-  max-width: none;
 }
 .wysiwyg-content .ProseMirror a[href^="oleafly://note/" i],
 .wysiwyg-content .ProseMirror a[href^="oleafly://project/" i] {
@@ -321,28 +372,6 @@
     animation: none;
   }
 }
-.note-chart,
-.note-plot {
-  --note-chart-1: #2a78d6;
-  --note-chart-2: #eb6834;
-  --note-chart-3: #1baf7a;
-  --note-chart-4: #eda100;
-  --note-chart-5: #e87ba4;
-  --note-chart-6: #008300;
-  --note-chart-7: #6250d6;
-  --note-chart-8: #e34948;
-}
-.dark .note-chart,
-.dark .note-plot {
-  --note-chart-1: #3987e5;
-  --note-chart-2: #d95926;
-  --note-chart-3: #199e70;
-  --note-chart-4: #c98500;
-  --note-chart-5: #d55181;
-  --note-chart-6: #008300;
-  --note-chart-7: #9085e9;
-  --note-chart-8: #e66767;
-}
 .note-chart-segment {
   stroke: var(--background);
   stroke-width: 1.5px;
@@ -371,9 +400,6 @@
   stroke: var(--background);
   stroke-width: 1px;
 }
-.note-chart-ring {
-  fill: none;
-}
 .note-chart-axis-title {
   fill: var(--muted-foreground);
   font-size: 0.6875rem;
@@ -383,12 +409,8 @@
   fill: var(--accent);
   fill-opacity: 0.8;
 }
-.note-chart-slice:hover .note-chart-wedge,
-.note-chart-slice:hover .note-chart-ring {
+.note-chart-slice:hover .note-chart-wedge {
   opacity: 0.82;
-}
-.note-plot {
-  user-select: text;
 }
 .note-plot-grid {
   stroke: var(--border);
@@ -421,9 +443,6 @@
   fill: var(--foreground);
   font-size: 0.6875rem;
 }
-.note-seq {
-  user-select: text;
-}
 .note-callout {
   --callout: oklch(0.6 0.15 255);
   position: relative;
@@ -431,7 +450,8 @@
   border-radius: 0.625rem;
   border: 1px solid color-mix(in oklch, var(--callout) 28%, transparent);
   background: color-mix(in oklch, var(--callout) 9%, transparent);
-  padding: 0.625rem 0.75rem 0.625rem 2.5rem;
+  padding: 0.625em 0.75em 0.625em 2.5em;
+  --callout-line: 1.6em;
 }
 .note-callout[data-tone="cyan"] {
   --callout: oklch(0.65 0.12 210);
@@ -459,7 +479,7 @@
 }
 .note-callout-chrome {
   position: absolute;
-  inset: 0.5rem 0.5rem auto 0.5rem;
+  inset: 0.625em 0.5em auto 0.5em;
   display: flex;
   justify-content: space-between;
   pointer-events: none;
@@ -468,14 +488,11 @@
 .note-callout-fold {
   pointer-events: auto;
   display: inline-flex;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: var(--callout-line);
+  height: var(--callout-line);
   align-items: center;
   justify-content: center;
   color: var(--callout);
-}
-.note-callout-fold {
-  color: var(--muted-foreground);
 }
 .note-callout-content > * {
   margin-top: 0.375rem;
@@ -483,9 +500,9 @@
 }
 .note-callout-content > .note-callout-title {
   margin-top: 0;
-  padding-right: 1.75rem;
-  min-height: 1.5rem;
-  line-height: 1.5rem;
+  padding-right: calc(var(--callout-line) + 0.25em);
+  min-height: var(--callout-line);
+  line-height: var(--callout-line);
   font-weight: 600;
   color: color-mix(in oklch, var(--callout) 70%, var(--foreground));
 }
@@ -535,7 +552,6 @@
   width: 1rem;
   height: 1rem;
   margin: 0;
-  border-radius: 0.25rem;
   border: 1.5px solid color-mix(in oklch, var(--muted-foreground) 70%, transparent);
   background: var(--background);
   cursor: pointer;
@@ -550,6 +566,12 @@
 .note-task-box:checked {
   background: var(--primary);
   border-color: var(--primary);
+}
+:is(.note-task-box, .note-body span[data-checked], .note-task-check) {
+  border-radius: 9999px;
+}
+[data-notes-task-box="square"] :is(.note-task-box, .note-body span[data-checked], .note-task-check) {
+  border-radius: 0.25rem;
 }
 .note-task-box:checked::after {
   content: "";
@@ -574,19 +596,54 @@
   }
 }
 .note-highlight {
+  --note-highlight: oklch(0.92 0.12 95 / 0.75);
   border-radius: 0.1875rem;
   padding: 0 0.0625rem;
-  background: oklch(0.92 0.12 95 / 0.75);
+  background: var(--note-highlight);
   color: inherit;
 }
+.note-highlight[data-color="orange"] {
+  --note-highlight: oklch(0.88 0.11 60 / 0.7);
+}
+.note-highlight[data-color="red"] {
+  --note-highlight: oklch(0.87 0.09 25 / 0.7);
+}
+.note-highlight[data-color="pink"] {
+  --note-highlight: oklch(0.9 0.08 350 / 0.75);
+}
+.note-highlight[data-color="purple"] {
+  --note-highlight: oklch(0.88 0.09 300 / 0.7);
+}
+.note-highlight[data-color="blue"] {
+  --note-highlight: oklch(0.9 0.08 240 / 0.75);
+}
+.note-highlight[data-color="green"] {
+  --note-highlight: oklch(0.9 0.11 150 / 0.7);
+}
 .dark .note-highlight {
-  background: oklch(0.55 0.12 95 / 0.45);
+  --note-highlight: oklch(0.55 0.12 95 / 0.45);
+}
+.dark .note-highlight[data-color="orange"] {
+  --note-highlight: oklch(0.55 0.13 60 / 0.45);
+}
+.dark .note-highlight[data-color="red"] {
+  --note-highlight: oklch(0.5 0.14 25 / 0.5);
+}
+.dark .note-highlight[data-color="pink"] {
+  --note-highlight: oklch(0.52 0.12 350 / 0.45);
+}
+.dark .note-highlight[data-color="purple"] {
+  --note-highlight: oklch(0.5 0.12 300 / 0.5);
+}
+.dark .note-highlight[data-color="blue"] {
+  --note-highlight: oklch(0.5 0.11 240 / 0.5);
+}
+.dark .note-highlight[data-color="green"] {
+  --note-highlight: oklch(0.52 0.11 150 / 0.45);
 }
 .note-tag {
   border-radius: 9999px;
   padding: 0.0625rem 0.4375rem;
-  background: color-mix(in oklch, var(--primary) 12%, transparent);
-  color: color-mix(in oklch, var(--primary) 70%, var(--foreground));
   font-size: 0.9em;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
@@ -594,202 +651,24 @@
 .note-tag[data-tooltip] {
   cursor: pointer;
 }
-.note-tag[data-tooltip]:hover {
-  background: color-mix(in oklch, var(--primary) 20%, transparent);
-}
-.note-embed {
-  margin: 1rem 0;
-}
-.note-embed-card {
-  border-radius: 0.625rem;
-  border: 1px solid var(--border);
-  background: color-mix(in oklch, var(--muted) 35%, transparent);
-  overflow: hidden;
-  transition: border-color 120ms ease;
-}
-.ProseMirror-selectednode > .note-embed-card,
-.note-embed.ProseMirror-selectednode .note-embed-card {
-  border-color: var(--primary);
-}
-.note-embed-head {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.5rem 0.375rem 0.75rem;
-  font-size: 0.8125rem;
-  border-bottom: 1px solid var(--border);
-}
-.note-embed-card[data-folded] .note-embed-head {
-  border-bottom-color: transparent;
-}
-.note-embed-button {
-  display: inline-flex;
-  width: 1.75rem;
-  height: 1.75rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.375rem;
-  color: var(--muted-foreground);
-  transition: background-color 120ms ease, color 120ms ease;
-}
-.note-embed-button:hover,
-.note-embed-button:focus-visible {
-  background: var(--accent);
-  color: var(--foreground);
-}
-.note-embed-body {
-  max-height: 32rem;
-  overflow: auto;
-  padding: 0.5rem 1rem;
-}
-.note-embed-content .ProseMirror > :first-child {
-  margin-top: 0;
-}
-.note-embed-message {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--muted-foreground);
-}
-.note-embed-card[data-state="loading"] .note-embed-body {
-  min-height: 2.5rem;
-}
-.note-embed-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  border-radius: 0.375rem;
-  border: 1px solid var(--border);
-  padding: 0.125rem 0.5rem;
-  color: var(--primary);
-}
-.note-hover-body {
-  font-size: 0.8125rem;
-}
+.note-embed-content .ProseMirror > :first-child,
 .note-hover-body .ProseMirror > :first-child {
   margin-top: 0;
-}
-@media (prefers-reduced-motion: reduce) {
-  .note-embed-card,
-  .note-embed-button {
-    transition: none;
-  }
-}
-.note-embed-crumb {
-  color: var(--muted-foreground);
-}
-.note-embed-crumb::before {
-  content: "›";
-  margin: 0 0.375rem;
-}
-.note-block-card {
-  width: 100%;
-  border-radius: var(--radius-md);
-  padding: 0.75rem;
-  background: color-mix(in oklch, var(--muted) 60%, transparent);
-  text-align: left;
-}
-.note-block-card-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-.note-block-card-text {
-  margin-top: 0.25rem;
-  overflow: hidden;
-  color: var(--muted-foreground);
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 0.6875rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .note-drawn-preview > .note-scripted {
   width: 100%;
   min-width: 0;
 }
-.note-svg,
-.note-typst {
+.note-svg {
   display: block;
   max-width: 100%;
   height: auto;
 }
-.dark .note-typst {
-  filter: invert(1) hue-rotate(180deg);
-}
 .note-code-lang > pre {
   margin-block: 0;
 }
-.note-code-copy {
-  position: absolute;
-  top: 0.375rem;
-  right: 0.375rem;
-  z-index: 1;
-  opacity: 0;
-  transition: opacity 120ms ease;
-}
-.note-code:hover > .note-code-copy,
-.note-code-copy:focus-visible {
-  opacity: 1;
-}
-.note-code .tok-keyword,
-.note-code .tok-modifier,
-.note-code .tok-controlKeyword,
-.note-code .tok-operatorKeyword {
-  color: var(--cm-keyword);
-}
-.note-code .tok-string,
-.note-code .tok-string2,
-.note-code .tok-special,
-.note-code .tok-regexp,
-.note-code .tok-link {
-  color: var(--cm-string);
-}
-.note-code .tok-comment {
-  color: var(--cm-comment);
-  font-style: italic;
-}
-.note-code .tok-number,
-.note-code .tok-atom,
-.note-code .tok-bool,
-.note-code .tok-literal {
-  color: var(--cm-number);
-}
-.note-code .tok-variableName,
-.note-code .tok-propertyName,
-.note-code .tok-attributeName {
-  color: var(--cm-variable);
-}
-.note-code .tok-typeName,
-.note-code .tok-className,
-.note-code .tok-tagName,
-.note-code .tok-namespace {
-  color: var(--cm-tag);
-}
-.note-code .tok-operator {
-  color: var(--cm-operator);
-}
-.note-code .tok-meta,
-.note-code .tok-macroName,
-.note-code .tok-labelName,
-.note-code .tok-heading {
-  color: var(--cm-meta);
-}
-.note-code .tok-bracket,
-.note-code .tok-punctuation {
-  color: var(--cm-bracket);
-}
-.note-code .tok-inserted {
-  color: var(--cm-tag);
-}
-.note-code .tok-deleted,
-.note-code .tok-invalid {
-  color: var(--destructive);
-}
-@media (prefers-reduced-motion: reduce) {
-  .note-code-copy {
-    transition: none;
-  }
-}
-
 .wysiwyg-content.note-body .ProseMirror {
+  max-width: none;
   font-family: var(--notes-text-font, var(--font-sans));
   font-size: var(--notes-text-size, 0.9375rem);
   line-height: var(--notes-line-height, 1.7);
@@ -835,36 +714,6 @@
   --primary: var(--notes-accent);
   --primary-foreground: var(--notes-accent-foreground);
 }
-[data-notes-highlight="green"] .note-highlight {
-  background: oklch(0.9 0.11 150 / 0.7);
-}
-[data-notes-highlight="blue"] .note-highlight {
-  background: oklch(0.9 0.08 240 / 0.75);
-}
-[data-notes-highlight="pink"] .note-highlight {
-  background: oklch(0.9 0.08 350 / 0.75);
-}
-[data-notes-highlight="purple"] .note-highlight {
-  background: oklch(0.88 0.09 300 / 0.7);
-}
-[data-notes-highlight="accent"] .note-highlight {
-  background: color-mix(in oklch, var(--primary) 26%, transparent);
-}
-.dark [data-notes-highlight="green"] .note-highlight {
-  background: oklch(0.52 0.11 150 / 0.45);
-}
-.dark [data-notes-highlight="blue"] .note-highlight {
-  background: oklch(0.5 0.11 240 / 0.5);
-}
-.dark [data-notes-highlight="pink"] .note-highlight {
-  background: oklch(0.52 0.12 350 / 0.45);
-}
-.dark [data-notes-highlight="purple"] .note-highlight {
-  background: oklch(0.5 0.12 300 / 0.5);
-}
-.dark [data-notes-highlight="accent"] .note-highlight {
-  background: color-mix(in oklch, var(--primary) 38%, transparent);
-}
 [data-notes-callout="filled"] .note-callout {
   border-color: color-mix(in oklch, var(--callout) 40%, transparent);
   background: color-mix(in oklch, var(--callout) 18%, transparent);
@@ -899,14 +748,10 @@
 }
 :where(.note-body .ProseMirror)
   :is(
-    .note-drawn-label,
-    .note-drawn-toggle,
-    .note-code-copy,
     .note-drawn-preview,
     .note-callout-chrome,
     .note-task-handle,
     .note-task-handle *,
-    .note-embed-head,
     .note-diff-insert,
     .note-diff-block,
     .math-rendered
@@ -930,13 +775,56 @@
   background-color: var(--note-selection);
   pointer-events: none;
 }
-.note-body .ProseMirror .note-embed.note-in-selection::after {
-  border-radius: 0.625rem;
-}
 .note-body .ProseMirror .note-find-match {
   border-radius: 2px;
   background-color: color-mix(in oklch, var(--primary) 25%, transparent);
 }
 .note-body .ProseMirror .note-find-match-active {
   background-color: color-mix(in oklch, var(--primary) 50%, transparent);
+}
+@keyframes note-block-flash {
+  from {
+    background-color: color-mix(in oklch, var(--primary) 22%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+.note-body .ProseMirror .note-block-flash {
+  border-radius: 4px;
+  animation: note-block-flash 1.6s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-body .ProseMirror .note-block-flash {
+    animation-duration: 0.01s;
+    background-color: color-mix(in oklch, var(--primary) 12%, transparent);
+  }
+}
+.note-body .ProseMirror .note-block-refs {
+  display: inline-flex;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  margin-inline-start: 0.375rem;
+  padding: 0 0.3125rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: color-mix(in oklch, var(--primary) 14%, transparent);
+  color: var(--primary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: 0.125em;
+  cursor: pointer;
+  user-select: none;
+}
+.note-body .ProseMirror .note-block-refs:hover,
+.note-body .ProseMirror .note-block-refs:focus-visible {
+  background-color: color-mix(in oklch, var(--primary) 26%, transparent);
+}
+[data-capture-body] .ProseMirror[data-blank]::before {
+  content: attr(aria-placeholder);
+  position: absolute;
+  color: var(--muted-foreground);
+  pointer-events: none;
 }

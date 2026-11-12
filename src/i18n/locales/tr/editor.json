@@ -1002,13 +1002,14 @@
         "environment": "{{environment}} ortamı",
         "command": "\\{{command}} komutu",
         "latexSource": "LaTeX kaynağı",
+        "html": "HTML",
         "maketitlePreview": "Belge başlığı ve yazar üst verisinden oluşturuldu.",
         "figurePreserved": "Şeklin özgün kaynağı korundu.",
         "tablePreserved": "Tablonun özgün kaynağı korundu.",
         "sourcePreserved": "Özgün kaynak korundu",
         "editSource": "Kaynağı düzenle",
-        "summaryLabel": "{{label}}. Özgün LaTeX kaynağı korundu.",
-        "inputLabel": "Özgün LaTeX blok kaynağı"
+        "summaryLabel": "{{label}}. Özgün kaynak korundu.",
+        "inputLabel": "Özgün blok kaynağı"
       },
       "inline": {
         "label": "Ham satır içi kaynak",

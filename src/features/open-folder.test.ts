@@ -323,6 +323,29 @@ describe("switching to an opened folder", () => {
     endChatRun(run);
   });
 
+  it("stops a project note's assistant turn too, and leaves a personal note's turn running", async () => {
+    useFilesStore.setState({ projectId: "thesis-1", projectName: "Thesis" });
+    useCompileStore.setState({ status: "idle" });
+    const projectNote = new AbortController();
+    const personal = new AbortController();
+    const runs = [
+      beginChatRun(projectNote, "thesis-1", "note:project-note:thesis-1:notes/Plan.md"),
+      beginChatRun(personal, "note-1", "note:note-1"),
+    ];
+    mocks.prepareOpenRequest.mockResolvedValue({ project_id: NOTES_ID, display_name: "notes" });
+    mocks.openFolderRequest.mockResolvedValue(opened(NOTES_ID));
+
+    const outcome = openPendingRequest(request("c3", "notes"));
+    await settled();
+    expect(useOpenFolderFlowStore.getState().prompt).toMatchObject({ compile: false, assistant: true });
+    useOpenFolderFlowStore.getState().answer(true);
+
+    await expect(outcome).resolves.toBe("opened");
+    expect(projectNote.signal.aborted).toBe(true);
+    expect(personal.signal.aborted).toBe(false);
+    for (const run of runs) endChatRun(run);
+  });
+
   it("focuses a folder that is already open without asking or switching", async () => {
     useFilesStore.setState({ projectId: THESIS_ID, projectName: "thesis" });
     useCompileStore.setState({ status: "compiling" });

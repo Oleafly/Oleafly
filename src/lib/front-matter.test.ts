@@ -1,15 +1,9 @@
 import { describe, expect, it } from "vitest";
-import {
-  frontMatterBody,
-  frontMatterKey,
-  frontMatterRawValue,
-  frontMatterScalar,
-  frontMatterValue,
-  frontMatterValues,
-  splitFrontMatter,
-  valueOfLines,
-  valuesOfLines,
-} from "./front-matter";
+import { frontMatterBody, frontMatterValues, splitFrontMatter } from "./front-matter";
+
+function scalarIn(lines: string, key = "id"): string | null {
+  return frontMatterValues(`---\n${lines}\n---\n`).get(key) ?? null;
+}
 
 describe("front matter reader", () => {
   it("splits the block at the first closing fence", () => {
@@ -20,6 +14,8 @@ describe("front matter reader", () => {
     expect(closedLast?.lines).toEqual(["id: a"]);
     expect(closedLast?.body).toBe("");
     expect(splitFrontMatter("---\n---\nrest")?.body).toBe("rest");
+    expect(frontMatterBody("---\ntitle: A\n---\n\nBody")).toBe("\nBody");
+    expect(frontMatterBody("No front matter\n")).toBe("No front matter\n");
     for (const open of [
       "No front matter",
       "---",
@@ -35,52 +31,36 @@ describe("front matter reader", () => {
   it("stops at an empty block instead of reading a later fence", () => {
     const text = "---\n---\nid: a\n---\n";
     expect(splitFrontMatter(text)?.lines).toEqual([]);
-    expect(frontMatterValue(text, "id")).toBeNull();
+    expect(frontMatterValues(text).get("id")).toBeUndefined();
     expect(frontMatterBody(text)).toBe("id: a\n---\n");
   });
 
-  it("reads keys with spaces, quotes and comments the same way", () => {
-    expect(frontMatterKey("id: a")).toBe("id");
-    expect(frontMatterKey("id : a")).toBe("id");
-    expect(frontMatterKey("id\t: a")).toBe("id");
-    expect(frontMatterKey('"id": a')).toBe("id");
-    expect(frontMatterKey("'id': a")).toBe("id");
-    expect(frontMatterKey("id:")).toBe("id");
-    for (const line of ["  id: a", "\tid: a", "- id: a", "# id: a", "id:a", ": a", "plain text"]) {
-      expect(frontMatterKey(line), JSON.stringify(line)).toBeNull();
-    }
-    expect(frontMatterRawValue("id :  a b ")).toBe("a b");
-    expect(frontMatterValue("---\nid : abc # old\n---\n", "id")).toBe("abc");
-    expect(frontMatterValue("---\nid: abc\t# old\n---\n", "id")).toBe("abc");
-    expect(frontMatterValue("---\nid: a#b\n---\n", "id")).toBe("a#b");
-    expect(frontMatterValue("---\nid: # none\n---\n", "id")).toBeNull();
-    expect(frontMatterValue('---\nid: "a # b" # c\n---\n', "id")).toBe("a # b");
-    expect(frontMatterValue("---\nid: 'it''s' # c\n---\n", "id")).toBe("it's");
-    expect(frontMatterValue("---\nkind:note\n---\n", "kind")).toBeNull();
-    expect(frontMatterValue("---\nidentity: a\n---\n", "id")).toBeNull();
+  it.each([
+    ["id: a", "a"],
+    ["id : a", "a"],
+    ["id\t: a", "a"],
+    ['"id": a', "a"],
+    ["'id': a", "a"],
+    ["id : abc # old", "abc"],
+    ["id: abc\t# old", "abc"],
+    ["id: a#b", "a#b"],
+    ['id: "a # b" # c', "a # b"],
+    ["id: 'it''s' # c", "it's"],
+    ['id: "a\\"b\\u00e9"', 'a"bé'],
+    ['id: "  padded  "', "padded"],
+    ["id: Paper: draft", "Paper: draft"],
+    ["id: a\nid: \"b\"", "b"],
+    ["id: a\n  id: b", "a"],
+  ])("reads %j as a scalar the way the vault does", (lines, value) => {
+    expect(scalarIn(lines)).toBe(value);
   });
 
-  it("lets the last entry win and reads empty values as missing", () => {
-    expect(valueOfLines(["id: a", 'id: "b"'], "id")).toBe("b");
-    expect(valueOfLines(["id: a", "id:   "], "id")).toBeNull();
-    expect(valueOfLines(["id: a", "  id: b"], "id")).toBe("a");
-    expect(valueOfLines([], "id")).toBeNull();
-    expect(valuesOfLines(["id: a", 'id: "b"', "kind: note", "kind:"])).toEqual(new Map([["id", "b"]]));
-  });
-
-  it("reads quoted scalars like YAML", () => {
-    expect(frontMatterScalar('"a\\"b\\u00e9"')).toBe('a"bé');
-    expect(frontMatterScalar("'a''b'")).toBe("a'b");
-    expect(frontMatterScalar('"  padded  "')).toBe("padded");
-    expect(frontMatterScalar('""')).toBeNull();
-    expect(frontMatterScalar("''")).toBeNull();
-    expect(frontMatterScalar('"unterminated')).toBeNull();
-    expect(frontMatterScalar("'unterminated")).toBeNull();
-    expect(frontMatterScalar('"bad \\q escape"')).toBeNull();
-    expect(frontMatterScalar('"ends with \\')).toBeNull();
-    expect(frontMatterScalar("Paper: draft")).toBe("Paper: draft");
-    expect(frontMatterScalar("  note  ")).toBe("note");
-  });
+  it.each(["  id: a", "\tid: a", "- id: a", "# id: a", "id:a", ": a", "id: # none", "id:", 'id: ""', "id: ''", 'id: "unterminated', "id: 'unterminated", 'id: "bad \\q escape"', "kind:note", "identity: a", "id: a\nid:   "])(
+    "reads nothing for %j",
+    (lines) => {
+      expect(scalarIn(lines)).toBeNull();
+    },
+  );
 
   it("collects every scalar in the block, keeping the last value of each key", () => {
     const text = '---\ntitle: "A: b"\nkind : note\n"id": x\nid: y # moved\ntags: [a, b]\n  nested: no\n---\nBody\n';

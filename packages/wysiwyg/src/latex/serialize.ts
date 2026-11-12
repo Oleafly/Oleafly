@@ -69,6 +69,7 @@ const BLOCK_HANDLERS: Record<string, (node: JSONContent) => string> = {
   orderedList: (node) => listToLatex(node, "enumerate"),
   listItem: listItemToLatex,
   codeBlock: codeBlockToLatex,
+  horizontalRule: () => String.raw`\noindent\rule{\linewidth}{0.4pt}`,
   rawBlock: sourceOf,
   mathDisplay: sourceOf,
   theorem: theoremToLatex,

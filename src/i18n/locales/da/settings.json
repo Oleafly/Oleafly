@@ -1127,146 +1127,6 @@
         "label": "Vis PDF'en ved kompilering"
       },
       "title": "Zen-tilstand"
-    },
-    "notes": {
-      "sectionName": "Udseende for noter",
-      "resetAriaLabel": "Nulstil {{setting}} til standard",
-      "text": {
-        "title": "Tekst"
-      },
-      "typeface": {
-        "label": "Skriftstil",
-        "description": "Vælg en skriftstil til tekst i noter.",
-        "options": {
-          "sans": "Uden seriffer",
-          "serif": "Med seriffer",
-          "mono": "Monospace"
-        }
-      },
-      "font": {
-        "label": "Skrifttype i noter",
-        "description": "Vælg en hvilken som helst installeret skrifttype til tekst i noter. Lad feltet være tomt for at bruge indstillingen Skriftstil."
-      },
-      "fontSize": {
-        "label": "Tekststørrelse i noter",
-        "description": "Indstil størrelsen på tekst i noter.",
-        "custom": "Brugerdefineret",
-        "customLabel": "Brugerdefineret tekststørrelse i noter i pixel"
-      },
-      "lineHeight": {
-        "label": "Linjehøjde i noter",
-        "description": "Indstil afstanden mellem linjerne i tekst i noter.",
-        "customLabel": "Brugerdefineret linjehøjde i noter"
-      },
-      "paragraphSpacing": {
-        "label": "Afstand mellem afsnit",
-        "description": "Indstil afstanden mellem afsnit, lister og andre blokke.",
-        "options": {
-          "compact": "Kompakt",
-          "normal": "Normal",
-          "relaxed": "Luftig",
-          "spacious": "Rummelig"
-        }
-      },
-      "headings": {
-        "title": "Overskrifter og titel"
-      },
-      "headingTypeface": {
-        "label": "Skriftstil til overskrifter",
-        "description": "Vælg en skriftstil til overskrifter og notens titel.",
-        "options": {
-          "text": "Samme som teksten"
-        }
-      },
-      "headingFont": {
-        "label": "Skrifttype til overskrifter",
-        "description": "Vælg en installeret skrifttype til overskrifter og notens titel. Lad feltet være tomt for at bruge indstillingen Skriftstil til overskrifter."
-      },
-      "headingSize": {
-        "label": "Størrelse på overskrifter",
-        "description": "Indstil, hvor store overskrifter er i forhold til teksten.",
-        "options": {
-          "small": "Mindre",
-          "normal": "Normal",
-          "large": "Større"
-        }
-      },
-      "titleSize": {
-        "label": "Størrelse på titel",
-        "description": "Indstil størrelsen på titlen øverst i hver note."
-      },
-      "layout": {
-        "title": "Layout"
-      },
-      "width": {
-        "label": "Notebredde",
-        "description": "Hvor brede noter er, når de åbnes. Breddemenuen i en note ændrer også dette.",
-        "options": {
-          "standard": "Standard",
-          "wide": "Bred",
-          "full": "Fuld bredde"
-        }
-      },
-      "wordCount": {
-        "label": "Vis antal ord",
-        "description": "Vis antallet af ord i en note på dens værktøjslinje."
-      },
-      "spellcheck": {
-        "label": "Stavekontrol i noter",
-        "description": "Understreg forkert stavede ord, mens du skriver en note."
-      },
-      "code": {
-        "title": "Kode"
-      },
-      "codeFont": {
-        "label": "Skrifttype til kode",
-        "description": "Vælg en installeret skrifttype til kodeblokke og kode i linjen."
-      },
-      "codeTheme": {
-        "label": "Farver i kodeblokke",
-        "description": "Vælg syntaksfarverne til kodeblokke i noter.",
-        "options": {
-          "editor": "Samme som editoren"
-        }
-      },
-      "colors": {
-        "title": "Farver"
-      },
-      "accent": {
-        "label": "Accentfarve i noter",
-        "description": "Bruges til links, tags og afkrydsningsfelter til opgaver i noter.",
-        "matchApp": "Samme som appen",
-        "customAriaLabel": "Vælg en brugerdefineret accentfarve til noter"
-      },
-      "highlight": {
-        "label": "Farve til fremhævning",
-        "description": "Farven bag fremhævet tekst.",
-        "options": {
-          "yellow": "Gul",
-          "green": "Grøn",
-          "blue": "Blå",
-          "pink": "Lyserød",
-          "purple": "Lilla",
-          "accent": "Accent"
-        }
-      },
-      "callouts": {
-        "label": "Stil for infobokse",
-        "description": "Hvordan infobokse ser ud i noter.",
-        "options": {
-          "tinted": "Tonet",
-          "filled": "Udfyldt",
-          "outlined": "Med kant",
-          "bar": "Sidebjælke"
-        }
-      },
-      "remoteImages": {
-        "title": "Billeder fra nettet",
-        "description": "Noter indlæser billeder fra disse websteder uden at spørge.",
-        "empty": "Noter spørger, før de indlæser et billede fra nettet. Websteder, du altid tillader, vises her.",
-        "remove": "Fjern {{host}}"
-      },
-      "resetAll": "Nulstil udseende for noter"
     }
   },
   "checkpoints": {
@@ -2502,6 +2362,42 @@
       "notesAskAgent": {
         "description": "Spørg agenten om den markerede tekst, eller åbn og luk notens agent.",
         "label": "Noter: spørg agenten"
+      },
+      "notesNewNote": {
+        "label": "Noter: ny note",
+        "description": "Start en ny note i det aktuelle panel."
+      },
+      "notesSearch": {
+        "label": "Noter: søg i noter",
+        "description": "Gå til søgefeltet øverst i sidepanelet Noter."
+      },
+      "notesBookmark": {
+        "label": "Noter: bogmærk note",
+        "description": "Føj den åbne note til Favoritter, eller fjern den igen."
+      },
+      "notesCopyLink": {
+        "label": "Noter: kopiér link til note",
+        "description": "Kopiér et link til den åbne note, som du kan indsætte i en anden note eller en chat."
+      },
+      "notesProperties": {
+        "label": "Noter: vis eller skjul egenskaber",
+        "description": "Åbn eller luk egenskaberne under notens titel."
+      },
+      "notesQuickCapture": {
+        "description": "Åbn et lille vindue, så du kan skrive noget ned fra enhver app, også når Oleafly kører i baggrunden.",
+        "label": "Noter: hurtig notering"
+      },
+      "notesCopyBlockLink": {
+        "description": "Kopiér et link til det afsnit, listepunkt eller den tabel, som markøren står i.",
+        "label": "Noter: kopiér link til blok"
+      },
+      "notesBack": {
+        "description": "Gå tilbage til, hvor du var i denne fane.",
+        "label": "Noter: tilbage"
+      },
+      "notesForward": {
+        "description": "Gå frem igen, når du er gået tilbage.",
+        "label": "Noter: frem"
       }
     },
     "application": {
@@ -2527,14 +2423,41 @@
         "renameSymbol": "Omdøb symbol eller fil i hele projektet",
         "slashCommandMenu": "Indsætningsmenu med skråstregskommandoer",
         "triggerAutocomplete": "Udløs automatisk fuldførelse",
-        "undo": "Fortryd"
+        "undo": "Fortryd",
+        "noteBold": "Fed",
+        "noteItalic": "Kursiv",
+        "noteUnderline": "Understregning",
+        "noteStrike": "Gennemstreget",
+        "noteCode": "Kode i linjen",
+        "noteHighlight": "Fremhæv med den senest brugte farve",
+        "noteSuperscript": "Hævet skrift",
+        "noteSubscript": "Sænket skrift",
+        "noteHeadings": "Overskrift 1 til 6",
+        "noteText": "Lav om til tekst",
+        "noteQuote": "Citat",
+        "noteCodeBlock": "Kodeblok",
+        "noteBulletList": "Punktopstilling",
+        "noteNumberedList": "Nummereret liste",
+        "noteTaskList": "Tjekliste",
+        "noteToggleTask": "Sæt eller fjern flueben ved en opgave",
+        "noteIndent": "Ryk et listepunkt ind",
+        "noteOutdent": "Ryk et listepunkt ud",
+        "noteLineBreak": "Linjeskift i samme afsnit",
+        "noteFind": "Find og erstat",
+        "noteSelectAll": "Markér hele noten",
+        "noteUndo": "Fortryd",
+        "noteRedo": "Gentag",
+        "noteInsertMenu": "Åbn indsætningsmenuen i starten af en linje",
+        "noteLinkMenu": "Link til en note",
+        "noteTag": "Tilføj et tag"
       },
       "managed": "Styres af editoren"
     },
     "categories": {
       "codeIntelligence": "Kodeindsigt",
       "editor": "Editor",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Noter"
     },
     "error": {
       "conflict": "Allerede tildelt {{action}}.",
@@ -2580,6 +2503,15 @@
         "uppercase": "Store bogstaver"
       },
       "unbound": "Ikke angivet"
+    },
+    "quickCapture": {
+      "label": "Hurtig notering fra alle apps",
+      "description": "Genvejen til hurtig notering virker i alle apps på denne computer.",
+      "ready": "Tryk på {{shortcut}} i en hvilken som helst app for at åbne hurtig notering.",
+      "taken": "En anden app bruger allerede {{shortcut}}. Vælg en anden genvej til Noter: hurtig notering.",
+      "invalid": "{{shortcut}} kan ikke virke uden for Oleafly. Vælg en genvej, der slutter med et bogstav, et tal eller en funktionstast.",
+      "failed": "Oleafly kunne ikke konfigurere genvejen. Slå hurtig notering fra og til igen for at prøve igen.",
+      "wayland": "Wayland lader ikke apps lytte efter taster uden for deres egne vinduer. Hvis du vil åbne hurtig notering med en tast, skal du tilføje en brugerdefineret genvej i systemets tastaturindstillinger, der kører denne kommando:"
     }
   },
   "systemIntegration": {
@@ -2671,17 +2603,5 @@
       "loadFailed": "Listen over MCP-servere kunne ikke læses.",
       "missing": "{{name}} (ikke fundet)"
     }
-  },
-  "notesPreview": {
-    "label": "Forhåndsvisning af en note med disse indstillinger",
-    "title": "Feltnoter",
-    "heading": "Morgenregistrering",
-    "paragraph": "Let regn indtil klokken ni, derefter klar himmel over den nordlige højderyg. Jorden var stadig fugtig ved middagstid.",
-    "links": "Se <note>Prøvetagningsmetode</note> for alle trinene, eller gennemse <tag>#feltarbejde</tag>.",
-    "highlight": "Kimplanterne blev dobbelt så høje på én uge.",
-    "calloutTitle": "Næste besøg",
-    "calloutBody": "Tjek jordsensorerne, før du tager nye prøver.",
-    "taskDone": "Mærk prøverne",
-    "task": "Upload billederne"
   }
 }

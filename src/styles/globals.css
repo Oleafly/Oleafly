@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "../components/settings/settings-path.css";
 @source "../../packages";
 
 @custom-variant dark (&:is(.dark *));
@@ -43,6 +44,20 @@
   --cm-meta: #6639ba;
   --cm-tag: #116329;
   --cm-operator: #0550ae;
+
+  --diff-insert: #b6efc8;
+  --diff-insert-strong: #7fdfa2;
+  --diff-delete: #ffc2ca;
+  --diff-delete-strong: #f79ba6;
+
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-6: #008300;
+  --chart-7: #6250d6;
+  --chart-8: #e34948;
 
   /* Selection for the default ("system") editor theme, where --cm-selection is
    * unset. --primary is the user's accent (theme.tsx sets it), so this has to
@@ -93,6 +108,20 @@
   --cm-meta: #d2a8ff;
   --cm-tag: #7ee787;
   --cm-operator: #79c0ff;
+
+  --diff-insert: #14361f;
+  --diff-insert-strong: #235c37;
+  --diff-delete: #45191e;
+  --diff-delete-strong: #7f2731;
+
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-6: #008300;
+  --chart-7: #9085e9;
+  --chart-8: #e66767;
 
   --cm-selection-default: color-mix(
     in srgb,
@@ -352,7 +381,7 @@
   color: var(--foreground);
   caret-color: var(--cm-cursor-custom, auto);
 }
-.wysiwyg-content .ProseMirror table {
+.wysiwyg-content .ProseMirror table:where(:not(.note-drawn-preview *)) {
   border-collapse: collapse;
   table-layout: fixed;
   width: 100%;
@@ -360,16 +389,16 @@
   overflow: hidden;
   font-size: 0.9em;
 }
-.wysiwyg-content .ProseMirror th,
-.wysiwyg-content .ProseMirror td {
+.wysiwyg-content .ProseMirror th:where(:not(.note-drawn-preview *)),
+.wysiwyg-content .ProseMirror td:where(:not(.note-drawn-preview *)) {
   position: relative;
   min-width: 2rem;
-  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border: 1px solid var(--note-table-line, color-mix(in srgb, var(--border) 70%, transparent));
   padding: 0.25rem 0.6rem;
   vertical-align: top;
 }
-.wysiwyg-content .ProseMirror th {
-  background: color-mix(in srgb, var(--muted) 50%, transparent);
+.wysiwyg-content .ProseMirror th:where(:not(.note-drawn-preview *)) {
+  background: var(--note-table-head, color-mix(in srgb, var(--muted) 50%, transparent));
   font-weight: 600;
   text-align: left;
 }
@@ -794,6 +823,13 @@
    any element that sets scrollbar-width or scrollbar-color, and draw the native
    scroller instead, so neither property is set here or on any scroll surface. */
 :root {
+  --ofl-scroll-thumb-ink: oklch(0.5 0.04 250);
+  --ofl-scroll-thumb-mix: 14%;
+  --ofl-scroll-thumb-active-mix: 28%;
+}
+
+.dark {
+  --ofl-scroll-thumb-ink: var(--foreground);
   --ofl-scroll-thumb-mix: 16%;
   --ofl-scroll-thumb-active-mix: 30%;
 }
@@ -803,7 +839,7 @@
 }
 
 :where(body, body *):hover {
-  --ofl-scroll-thumb: color-mix(in srgb, var(--foreground) var(--ofl-scroll-thumb-mix), transparent);
+  --ofl-scroll-thumb: color-mix(in srgb, var(--ofl-scroll-thumb-ink) var(--ofl-scroll-thumb-mix), transparent);
 }
 
 :where(body, body *)::-webkit-scrollbar {
@@ -818,15 +854,15 @@
 }
 
 :where(body, body *)::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
+  border: 3.5px solid transparent;
   border-radius: 999px;
   background: var(--ofl-scroll-thumb) padding-box;
 }
 
 :where(body, body *)::-webkit-scrollbar-thumb:hover,
 :where(body, body *)::-webkit-scrollbar-thumb:active {
-  border-width: 1px;
-  background-color: color-mix(in srgb, var(--foreground) var(--ofl-scroll-thumb-active-mix), transparent);
+  border-width: 2px;
+  background-color: color-mix(in srgb, var(--ofl-scroll-thumb-ink) var(--ofl-scroll-thumb-active-mix), transparent);
 }
 
 .ofl-native-scrollbar-hidden {
@@ -1091,30 +1127,36 @@ svg.animate-spin {
    rules scoped to the editor's theme classes (up to three classes) after this sheet,
    so each target class repeats four times to outrank them without !important.
    `a` = old side (deletions, red), `b` = new side (insertions, green). --- */
-.cm-changedLine.cm-changedLine.cm-changedLine.cm-changedLine { background-color: #b6efc8; }
-.cm-changedText.cm-changedText.cm-changedText.cm-changedText { background-color: #7fdfa2; }
-.cm-merge-a .cm-changedLine.cm-changedLine.cm-changedLine.cm-changedLine { background-color: #ffc2ca; }
-.cm-merge-a .cm-changedText.cm-changedText.cm-changedText.cm-changedText { background-color: #f79ba6; }
+.cm-changedLine.cm-changedLine.cm-changedLine.cm-changedLine { background-color: var(--diff-insert); }
+.cm-changedText.cm-changedText.cm-changedText.cm-changedText { background-color: var(--diff-insert-strong); }
+.cm-merge-a .cm-changedLine.cm-changedLine.cm-changedLine.cm-changedLine { background-color: var(--diff-delete); }
+.cm-merge-a .cm-changedText.cm-changedText.cm-changedText.cm-changedText { background-color: var(--diff-delete-strong); }
 .cm-deletedChunk.cm-deletedChunk.cm-deletedChunk.cm-deletedChunk { background-color: #ffd2d8; }
 .cm-deletedChunk .cm-deletedText.cm-deletedText.cm-deletedText.cm-deletedText,
-.cm-deletedText.cm-deletedText.cm-deletedText.cm-deletedText { background-color: #f79ba6; }
+.cm-deletedText.cm-deletedText.cm-deletedText.cm-deletedText { background-color: var(--diff-delete-strong); }
 .cm-collapsedLines.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines {
   background: #e5e7eb;
   color: #374151;
 }
 .cm-collapsedLines.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines:hover { background: #d5d9df; }
-.dark .cm-changedLine.cm-changedLine.cm-changedLine.cm-changedLine { background-color: #14361f; }
-.dark .cm-changedText.cm-changedText.cm-changedText.cm-changedText { background-color: #235c37; }
-.dark .cm-merge-a .cm-changedLine.cm-changedLine.cm-changedLine.cm-changedLine { background-color: #45191e; }
-.dark .cm-merge-a .cm-changedText.cm-changedText.cm-changedText.cm-changedText { background-color: #7f2731; }
 .dark .cm-deletedChunk.cm-deletedChunk.cm-deletedChunk.cm-deletedChunk { background-color: #3a161a; }
-.dark .cm-deletedChunk .cm-deletedText.cm-deletedText.cm-deletedText.cm-deletedText,
-.dark .cm-deletedText.cm-deletedText.cm-deletedText.cm-deletedText { background-color: #7f2731; }
 .dark .cm-collapsedLines.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines {
   background: #1f2937;
   color: #9ca3af;
 }
 .dark .cm-collapsedLines.cm-collapsedLines.cm-collapsedLines.cm-collapsedLines:hover { background: #283445; }
+
+.code-tokens :is(.tok-keyword, .tok-modifier, .tok-controlKeyword, .tok-operatorKeyword) { color: var(--cm-keyword); }
+.code-tokens :is(.tok-string, .tok-string2, .tok-special, .tok-regexp, .tok-link) { color: var(--cm-string); }
+.code-tokens .tok-link { text-decoration: underline; }
+.code-tokens .tok-comment { color: var(--cm-comment); font-style: italic; }
+.code-tokens :is(.tok-number, .tok-atom, .tok-bool, .tok-literal) { color: var(--cm-number); }
+.code-tokens :is(.tok-variableName, .tok-propertyName, .tok-attributeName) { color: var(--cm-variable); }
+.code-tokens :is(.tok-typeName, .tok-className, .tok-tagName, .tok-namespace, .tok-inserted) { color: var(--cm-tag); }
+.code-tokens .tok-operator { color: var(--cm-operator); }
+.code-tokens :is(.tok-meta, .tok-macroName, .tok-labelName, .tok-heading) { color: var(--cm-meta); }
+.code-tokens :is(.tok-bracket, .tok-punctuation) { color: var(--cm-bracket); }
+.code-tokens :is(.tok-deleted, .tok-invalid) { color: var(--destructive); }
 
 /* Diagram canvas (React Flow): keep the zoom controls and minimap legible in
    both the light and dark canvas themes (default control icons can render

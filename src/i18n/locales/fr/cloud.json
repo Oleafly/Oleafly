@@ -154,6 +154,16 @@
       "uploadFailed": "Envoi impossible"
     }
   },
+  "conflictCopy": {
+    "title": "Deux versions de « {{name}} »",
+    "description": "Cette note a été modifiée ici et sur un autre ordinateur avant que les modifications soient synchronisées, Oleafly a donc conservé les deux versions. Gardez-en une. L'autre part dans la corbeille.",
+    "diffLabel": "Différences entre les deux versions",
+    "loading": "Lecture des deux versions…",
+    "readFailed": "Impossible de lire la copie de conflit.",
+    "resolveFailed": "Impossible de conserver cette version.",
+    "keepMine": "Garder la version de cet ordinateur",
+    "useCopy": "Utiliser la version de l'autre ordinateur"
+  },
   "confirm": {
     "removeTitle": "Retirer {{name}} de votre {{provider}} ?",
     "removeDescription": "La copie dans votre {{provider}} sera supprimée pour libérer de l'espace. Le projet reste sur cet ordinateur et n'y est plus synchronisé. Vos autres ordinateurs gardent leurs copies, mais ne les synchronisent plus non plus.",
@@ -223,6 +233,81 @@
     "pathStyle": "Utiliser l'adressage de style chemin",
     "pathStyleHint": "MinIO et la plupart des serveurs auto-hébergés en ont besoin."
   },
+  "backups": {
+    "title": "Sauvegardes",
+    "none": "Aucune sauvegarde pour l'instant",
+    "last": "Dernière sauvegarde {{time}} · {{contents}} · {{size}}",
+    "notes_one": "{{count}} note",
+    "notes_many": "{{count}} notes",
+    "notes_other": "{{count}} notes",
+    "projects_one": "{{count}} projet",
+    "projects_many": "{{count}} projets",
+    "projects_other": "{{count}} projets",
+    "running": "Sauvegarde en cours",
+    "failed": "La dernière sauvegarde n'a pas abouti. {{reason}}",
+    "backUpNow": "Sauvegarder maintenant",
+    "auto": {
+      "label": "Sauvegarder automatiquement",
+      "description": "Conserve des copies datées de vos notes dans votre {{provider}}. Les modifications et suppressions ultérieures, même synchronisées, n'y touchent pas."
+    },
+    "every": {
+      "label": "Fréquence",
+      "description": "Une sauvegarde n'envoie que ce qui a changé depuis la précédente.",
+      "options": {
+        "6": "Toutes les 6 heures",
+        "24": "Tous les jours",
+        "168": "Toutes les semaines"
+      }
+    },
+    "keep": {
+      "label": "Conserver",
+      "description": "Les sauvegardes plus anciennes sont supprimées de votre {{provider}} pour gagner de la place.",
+      "option_one": "La dernière sauvegarde",
+      "option_many": "Les {{count}} dernières sauvegardes",
+      "option_other": "Les {{count}} dernières sauvegardes"
+    },
+    "includeProjects": {
+      "label": "Inclure les projets",
+      "description": "Les projets sont déjà synchronisés avec leurs points de contrôle. Activez cette option pour en garder aussi des copies datées. La première sauvegarde d'un gros projet peut prendre du temps et occuper beaucoup d'espace."
+    },
+    "list": {
+      "title": "Sauvegardes dans votre {{provider}}",
+      "label": "Sauvegardes",
+      "loading": "Lecture des sauvegardes",
+      "failed": "Impossible de lire les sauvegardes. {{reason}}",
+      "empty": "Aucune sauvegarde dans votre {{provider}} pour l'instant."
+    },
+    "row": {
+      "thisComputer": "Cet ordinateur",
+      "manual": "Manuelle",
+      "restore": "Restaurer",
+      "restoreLabel": "Restaurer la sauvegarde du {{date}}"
+    },
+    "restore": {
+      "title": "Restaurer la sauvegarde du {{date}}",
+      "description": "La restauration ne remplace jamais ce que vous avez. Une note ou un projet encore présent revient sous forme de copie juste à côté, pour que vous puissiez comparer les deux.",
+      "loading": "Lecture de la sauvegarde",
+      "loadFailed": "Impossible de lire cette sauvegarde. {{reason}}",
+      "search": "Rechercher dans cette sauvegarde",
+      "clearSearch": "Effacer la recherche",
+      "noMatch": "Rien ne correspond dans cette sauvegarde.",
+      "listLabel": "Notes et projets de cette sauvegarde",
+      "here": "Toujours là",
+      "missing": "Pas sur cet ordinateur",
+      "restored": "Restauré",
+      "restoredCopy": "Restauré sous forme de copie",
+      "files_one": "{{count}} fichier",
+      "files_many": "{{count}} fichiers",
+      "files_other": "{{count}} fichiers",
+      "one": "Restaurer",
+      "oneLabel": "Restaurer {{name}}",
+      "allMissing_one": "Restaurer l'élément manquant",
+      "allMissing_many": "Restaurer les {{count}} éléments manquants",
+      "allMissing_other": "Restaurer les {{count}} éléments manquants",
+      "nothingMissing": "Rien ne manque",
+      "copyName": "(restauration du {{date}})"
+    }
+  },
   "errors": {
     "clock_skew": "Cet ordinateur n'est pas à l'heure, donc {{provider}} refuse ses requêtes. Réglez la date et l'heure exactes pour continuer à synchroniser.",
     "code_invalid": "Ce code n'a pas fonctionné. Réessayez.",
@@ -251,6 +336,8 @@
     "sign_in_timeout": "La connexion a pris trop de temps. Réessayez.",
     "too_many_files": "Ce projet contient plus de 100 000 fichiers. C'est trop pour être synchronisé.",
     "traffic_limit": "Votre {{provider}} a atteint sa limite d'envoi. Les nouvelles modifications restent sur cet ordinateur tant que les envois ne sont pas de nouveau autorisés par {{provider}}.",
-    "verify_failed": "Un fichier récupéré dans {{provider}} ne correspondait pas à ce qu'attendait Oleafly, il n'a donc pas été modifié. La synchronisation va réessayer."
+    "verify_failed": "Un fichier récupéré dans {{provider}} ne correspondait pas à ce qu'attendait Oleafly, il n'a donc pas été modifié. La synchronisation va réessayer.",
+    "backup_missing": "Cette sauvegarde ne se trouve plus dans votre {{provider}}.",
+    "backup_label": "Oleafly n'a pas pu nommer la copie restaurée."
   }
 }

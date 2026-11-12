@@ -72,10 +72,10 @@
     "tinytexDownloading": "TinyTeX wird noch heruntergeladen. Dieses Kompilieren startet automatisch, sobald es fertig ist.",
     "sharedTexEditor": "Dieses Projekt ist geteilt, deshalb ändert der Wechsel zu Tectonic es für alle. Die Installation von TinyTeX ändert nur diesen Computer.",
     "sharedTexViewer": "Sie können den Compiler dieses geteilten Projekts nicht ändern, installieren Sie also TinyTeX, um es hier zu kompilieren.",
+    "bundleFetchFailed": "Oleafly konnte die TeX-Pakete, die dieses Dokument braucht, nicht herunterladen. Prüfen Sie Ihre Verbindung und kompilieren Sie erneut.",
     "offlineNotCached": "Der Offline-Modus ist eingeschaltet, und es wurde möglicherweise noch nicht alles heruntergeladen: {{files}}. Schalten Sie den Offline-Modus aus und kompilieren Sie erneut.",
     "offlineNotCachedUnnamed": "Der Offline-Modus ist eingeschaltet, und ein TeX-Paket, das dieses Dokument braucht, wurde möglicherweise noch nicht heruntergeladen. Schalten Sie den Offline-Modus aus und kompilieren Sie erneut.",
     "goOnlineAndCompile": "Ausschalten und kompilieren",
-    "bundleFetchFailed":"Oleafly konnte die TeX-Pakete, die dieses Dokument braucht, nicht herunterladen. Prüfen Sie Ihre Verbindung und kompilieren Sie erneut.",
     "typstMissing": "Typst {{version}} ist nicht installiert. Laden Sie es herunter oder stellen Sie dieses Projekt auf eine andere Version um.",
     "typstPackage": {
       "downloadFailed": "Typst konnte {{spec}} nicht herunterladen. Prüfen Sie Ihre Internetverbindung und kompilieren Sie erneut.",
@@ -319,6 +319,7 @@
   },
   "mcp": {
     "deniedByRules": "Von einer Deny-Regel in approvals.toml abgelehnt",
+    "createTodaySummary": "Heutige Notiz „{{title}}“ erstellen",
     "openProjectSummary": "Projekt {{id}} öffnen",
     "rulesUnreadable": "Abgelehnt, weil approvals.toml nicht gelesen werden konnte",
     "useToolSummary": "{{tool}} vom MCP-Server {{server}} verwenden"

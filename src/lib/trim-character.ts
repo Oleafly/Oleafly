@@ -11,3 +11,9 @@ export function trimTrailingCharacter(value: string, character: string): string 
   while (end > 0 && value[end - 1] === character) end -= 1;
   return value.slice(0, end);
 }
+
+export function trimTrailingCharacters(value: string, characters: string): string {
+  let end = value.length;
+  while (end > 0 && characters.includes(value[end - 1])) end -= 1;
+  return value.slice(0, end);
+}

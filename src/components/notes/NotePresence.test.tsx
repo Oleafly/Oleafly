@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import "./tests/setup";
 
 const mocks = vi.hoisted(() => ({ makeLive: vi.fn() }));
 
@@ -10,15 +11,10 @@ vi.mock("@/components/collab/CollabSlots", () => ({
 }));
 
 import { useShareDialog } from "@/components/collab/share-dialog";
-import { loadNamespace } from "@/i18n";
 import { NoteLiveHeader } from "./NotePresence";
 import { NoteShareButton, SharedMark, shareNote } from "./NoteShareButton";
 
 const NOTE = "note-1";
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 beforeEach(() => {
   vi.clearAllMocks();

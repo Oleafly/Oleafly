@@ -9,11 +9,13 @@ export function HomeBrandButton({
   className,
   compact = false,
   label,
+  brand = "Oleafly",
 }: Readonly<{
   onClick: () => void;
   className?: string;
   compact?: boolean;
   label?: string;
+  brand?: string;
 }>) {
   const { t } = useTranslation(["shell"]);
   return (
@@ -31,7 +33,7 @@ export function HomeBrandButton({
       >
         <span data-toolbar-part="brand" className="col-start-1 row-start-1 flex items-center gap-1.5 group-hover:invisible">
           <LeafLogo className="size-5" />
-          <span data-brand-label className={cn(compact && "invisible absolute")}>Oleafly</span>
+          <span data-brand-label className={cn(compact && "invisible absolute")}>{brand}</span>
         </span>
         <span className="invisible col-start-1 row-start-1 flex items-center gap-1.5 group-hover:visible">
           <Home className="size-5" />

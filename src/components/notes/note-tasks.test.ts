@@ -1,13 +1,10 @@
 // @vitest-environment jsdom
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { loadNamespace } from "@/i18n";
+import type { Editor } from "@tiptap/core";
+import { afterEach, describe, expect, it } from "vitest";
 import { destroyKbEditors, kbEditor, kbMarkdown, placeCursor, pressKey, typeInto } from "./tests/kb-editor-fixtures";
 import { applyTypedTask, clearTaskAtStart, taskMarker, toggledTask, toggleTaskAt } from "./note-tasks";
 import { editableChanged } from "./note-editable";
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+import "./tests/setup";
 
 afterEach(destroyKbEditors);
 
@@ -53,6 +50,17 @@ describe("typing tasks", () => {
     placeCursor(editor, "more");
     typeInto(editor, "[ ] ");
     expect(kbMarkdown(editor)).not.toContain("- [ ]");
+  });
+
+  it("keeps every block id in the list when a typed box turns it into a task list", () => {
+    const editor = kbEditor("- one ^o1\n- Alpha ^aa\n- three ^t3");
+    placeCursor(editor, "Alpha");
+    typeInto(editor, "[ ] ");
+    expect(kbMarkdown(editor)).toBe("- one ^o1\n- [ ] Alpha ^aa\n- three ^t3");
+    const listed = kbEditor("- one\n- Alpha\n\n^lst");
+    placeCursor(listed, "Alpha");
+    typeInto(listed, "[x] ");
+    expect(kbMarkdown(listed)).toBe("- one\n- [x] Alpha\n\n^lst");
   });
 
   it("refuses a box that is not typed at the start of a paragraph", () => {
@@ -106,6 +114,16 @@ describe("task keys and commands", () => {
     expect(kbMarkdown(editor)).toBe("- [ ] one\n  - [ ] two");
     expect(pressKey(editor, "Tab", { shiftKey: true })).toBe(true);
     expect(kbMarkdown(editor)).toBe("- [ ] one\n- [ ] two");
+  });
+
+  it("keeps the item's block id when the command or Mod-Shift-9 makes it a task", () => {
+    const runs: ((editor: Editor) => boolean)[] = [(editor) => editor.commands.toggleTaskList(), (editor) => pressKey(editor, "9", { ctrlKey: true, shiftKey: true })];
+    for (const run of runs) {
+      const editor = kbEditor("- one ^o1\n- Alpha ^aa\n- three ^t3");
+      placeCursor(editor, "Alpha", 2);
+      expect(run(editor)).toBe(true);
+      expect(kbMarkdown(editor)).toBe("- one ^o1\n\n- [ ] Alpha ^aa\n\n- three ^t3");
+    }
   });
 
   it("leaves Enter to the editor outside tasks", () => {

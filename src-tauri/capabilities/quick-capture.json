@@ -1,0 +1,15 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "quick-capture",
+  "description": "The quick capture window. It hands what you type to the main window through events, hides itself and is dragged by its own top strip, so it needs only events, hiding, focus, dragging, writing the clipboard from a code block's copy button and the system locale.",
+  "windows": ["quick-capture"],
+  "permissions": [
+    "core:default",
+    "core:webview:allow-set-webview-zoom",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "core:window:allow-start-dragging",
+    "clipboard-manager:allow-write-text",
+    "os:default"
+  ]
+}

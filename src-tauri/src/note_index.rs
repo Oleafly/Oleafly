@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, LazyLock, Mutex, PoisonError};
 use std::time::{Duration, SystemTime};
 
-use crate::project::{list_projects_blocking, ProjectInfo, NOTE_KIND};
+use crate::project::{list_projects_blocking, ProjectInfo, ProjectMeta, NOTE_KIND};
 
 pub(crate) const MAX_NOTE_BYTES: u64 = 5 * 1024 * 1024;
 
@@ -37,12 +37,6 @@ pub(crate) struct Parsed<T> {
 
 pub(crate) type ParsedCache<T> = LazyLock<Mutex<HashMap<PathBuf, Parsed<T>>>>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum LockMode {
-    Bounded,
-    Try,
-}
-
 const LOCK_BUDGET: Duration = Duration::from_millis(250);
 
 pub(crate) type RootMark = Option<(PathBuf, Option<SystemTime>)>;
@@ -54,10 +48,11 @@ struct Listing {
 }
 
 static REVISION: AtomicU64 = AtomicU64::new(0);
+static MOVES: AtomicU64 = AtomicU64::new(0);
 static LISTING: LazyLock<Mutex<Option<Listing>>> = LazyLock::new(|| Mutex::new(None));
 #[derive(Default)]
 struct Resolutions {
-    revision: u64,
+    moves: u64,
     root: Option<PathBuf>,
     paths: HashMap<(String, String), PathBuf>,
 }
@@ -71,6 +66,50 @@ pub(crate) fn invalidate() {
 
 pub(crate) fn revision() -> u64 {
     REVISION.load(Ordering::SeqCst)
+}
+
+pub(crate) fn relocate() {
+    MOVES.fetch_add(1, Ordering::SeqCst);
+    invalidate();
+}
+
+pub(crate) fn meta_written(project_id: &str, meta: &ProjectMeta) {
+    let mut listing = LISTING.lock().unwrap_or_else(PoisonError::into_inner);
+    let fresh = listing
+        .as_ref()
+        .is_some_and(|listing| listing.revision == revision());
+    let next = REVISION.fetch_add(1, Ordering::SeqCst) + 1;
+    if let Some(listing) = listing.as_mut().filter(|_| fresh) {
+        if patch(Arc::make_mut(&mut listing.notes), project_id, meta) {
+            listing.revision = next;
+        }
+    }
+}
+
+fn patch(notes: &mut Vec<NoteEntry>, project_id: &str, meta: &ProjectMeta) -> bool {
+    if meta.kind.is_empty() {
+        return false;
+    }
+    let at = notes.iter().position(|note| note.id == project_id);
+    match (meta.kind == NOTE_KIND && !meta.hidden, at) {
+        (true, Some(at)) => {
+            let note = &mut notes[at];
+            note.title = if meta.name.is_empty() {
+                project_id.to_owned()
+            } else {
+                meta.name.clone()
+            };
+            note.main_doc.clone_from(&meta.main_doc);
+            note.related_project = crate::project::related_project_of(&meta.extra);
+            true
+        }
+        (true, None) => false,
+        (false, Some(at)) => {
+            notes.remove(at);
+            true
+        }
+        (false, None) => true,
+    }
 }
 
 fn listed_as_note(project_id: &str) -> Option<bool> {
@@ -114,7 +153,14 @@ fn entries(projects: &[ProjectInfo]) -> Vec<NoteEntry> {
 
 pub(crate) fn remember(projects: &[ProjectInfo], revision: u64, root: RootMark) {
     let notes = Arc::new(entries(projects));
-    *LISTING.lock().unwrap_or_else(PoisonError::into_inner) = Some(Listing {
+    let mut listing = LISTING.lock().unwrap_or_else(PoisonError::into_inner);
+    if listing
+        .as_ref()
+        .is_some_and(|listing| listing.revision > revision)
+    {
+        return;
+    }
+    *listing = Some(Listing {
         revision,
         root,
         notes,
@@ -161,12 +207,12 @@ pub(crate) fn utf8_prefix(bytes: &[u8]) -> String {
 impl Resolutions {
     fn scoped(
         &mut self,
-        revision: u64,
+        moves: u64,
         root: Option<PathBuf>,
     ) -> &mut HashMap<(String, String), PathBuf> {
-        if self.revision != revision || self.root != root {
+        if self.moves != moves || self.root != root {
             *self = Resolutions {
-                revision,
+                moves,
                 root,
                 paths: HashMap::new(),
             };
@@ -176,10 +222,10 @@ impl Resolutions {
 }
 
 fn with_resolutions<T>(apply: impl FnOnce(&mut HashMap<(String, String), PathBuf>) -> T) -> T {
-    let revision = revision();
+    let moves = MOVES.load(Ordering::SeqCst);
     let root = crate::paths::projects_root().ok();
     let mut resolved = RESOLVED.lock().unwrap_or_else(PoisonError::into_inner);
-    apply(resolved.scoped(revision, root))
+    apply(resolved.scoped(moves, root))
 }
 
 fn resolved(entry: &NoteEntry) -> Option<PathBuf> {
@@ -227,16 +273,14 @@ fn unchanged_at<T>(cache: &ParsedCache<T>, path: PathBuf) -> Option<(PathBuf, Ar
 pub(crate) fn read_parsed<T>(
     cache: &ParsedCache<T>,
     entry: &NoteEntry,
-    mode: LockMode,
     parse: impl FnOnce(&str) -> T,
 ) -> Result<Option<(PathBuf, Arc<T>, FileKey)>, String> {
-    read_parsed_within(cache, entry, mode, MAX_NOTE_BYTES, parse)
+    read_parsed_within(cache, entry, MAX_NOTE_BYTES, parse)
 }
 
 pub(crate) fn read_parsed_within<T>(
     cache: &ParsedCache<T>,
     entry: &NoteEntry,
-    mode: LockMode,
     limit: u64,
     parse: impl FnOnce(&str) -> T,
 ) -> Result<Option<(PathBuf, Arc<T>, FileKey)>, String> {
@@ -245,13 +289,8 @@ pub(crate) fn read_parsed_within<T>(
     }
     let path = resolve(entry)?;
     let (key, bytes) = {
-        let lock = match mode {
-            LockMode::Bounded => {
-                crate::worktree_lock::ProjectWorktreeLock::shared_bounded(&entry.id, LOCK_BUDGET)
-                    .ok()
-            }
-            LockMode::Try => crate::worktree_lock::ProjectWorktreeLock::try_shared(&entry.id)?,
-        };
+        let lock =
+            crate::worktree_lock::ProjectWorktreeLock::shared_bounded(&entry.id, LOCK_BUDGET).ok();
         let Some(_lock) = lock else {
             return Ok(cached_value(cache, &path, None).map(|(value, key)| (path, value, key)));
         };
@@ -276,6 +315,19 @@ pub(crate) fn read_parsed_within<T>(
         },
     );
     Ok(Some((path, value, key)))
+}
+
+pub(crate) fn forget<T>(cache: &ParsedCache<T>) {
+    cache.lock().unwrap_or_else(PoisonError::into_inner).clear();
+}
+
+#[tauri::command(async)]
+pub fn notes_release_caches() {
+    crate::note_search::forget_cache();
+    crate::note_links::forget_cache();
+    crate::note_tasks::forget_cache();
+    *LISTING.lock().unwrap_or_else(PoisonError::into_inner) = None;
+    *RESOLVED.lock().unwrap_or_else(PoisonError::into_inner) = Resolutions::default();
 }
 
 pub(crate) fn keep_only<T>(cache: &ParsedCache<T>, seen: &HashSet<PathBuf>) {
@@ -334,6 +386,7 @@ mod tests {
 
     #[test]
     fn a_listing_is_fresh_until_the_revision_or_the_root_moves() {
+        let _env_guard = crate::paths::data_dir_env_lock();
         let root: RootMark = Some((PathBuf::from("/library"), Some(SystemTime::UNIX_EPOCH)));
         let base = revision();
         remember(&[info("a", NOTE_KIND, false)], base, root.clone());
@@ -382,7 +435,7 @@ mod tests {
     }
 
     #[test]
-    fn resolved_paths_belong_to_one_library_and_one_revision() {
+    fn resolved_paths_belong_to_one_library_until_a_folder_moves() {
         let mut resolved = Resolutions::default();
         let key = ("n".to_string(), "note.md".to_string());
         let library = Some(PathBuf::from("/library/projects"));
@@ -414,7 +467,7 @@ mod tests {
             related_project: None,
             updated_at: 0.0,
         };
-        let parsed = read_parsed(&TEST_CACHE, &entry, LockMode::Try, |text| {
+        let parsed = read_parsed(&TEST_CACHE, &entry, |text| {
             let free = crate::worktree_lock::ProjectWorktreeLock::try_exclusive(&id)
                 .unwrap()
                 .is_some();
@@ -429,7 +482,6 @@ mod tests {
                 main_doc: crate::project::NOTE_FILE.into(),
                 ..entry.clone()
             },
-            LockMode::Bounded,
             2,
             str::to_string,
         )
@@ -437,11 +489,85 @@ mod tests {
         .unwrap();
         assert_eq!(head.1.as_str(), "text:true");
         std::fs::write(parsed.0, "longer text").unwrap();
-        let fresh = read_parsed_within(&TEST_CACHE, &entry, LockMode::Bounded, 2, str::to_string)
+        let fresh = read_parsed_within(&TEST_CACHE, &entry, 2, str::to_string)
             .unwrap()
             .unwrap();
         assert_eq!(fresh.1.as_str(), "lo");
         std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    fn note_meta(kind: &str, name: &str, related: Option<&str>) -> ProjectMeta {
+        serde_json::from_value(serde_json::json!({
+            "name": name,
+            "main_doc": "note.md",
+            "kind": kind,
+            "relatedProject": related,
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn a_metadata_write_patches_its_own_note_and_keeps_the_listing() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root: RootMark = Some((PathBuf::from("/library"), Some(SystemTime::UNIX_EPOCH)));
+        let stale = revision();
+        remember(
+            &[info("a", NOTE_KIND, false), info("b", NOTE_KIND, false)],
+            stale,
+            root.clone(),
+        );
+        meta_written("a", &note_meta(NOTE_KIND, "Renamed", Some("thesis")));
+        let renamed = fresh_listing(revision(), root.clone()).unwrap();
+        meta_written("b", &note_meta("document", "B", None));
+        let turned = fresh_listing(revision(), root.clone()).unwrap();
+        remember(&[info("a", NOTE_KIND, false)], stale, root.clone());
+        let kept = fresh_listing(revision(), root.clone()).map(|notes| notes.len());
+        meta_written("new", &note_meta(NOTE_KIND, "New", None));
+        let unknown = fresh_listing(revision(), root.clone());
+        remember(&[info("a", NOTE_KIND, false)], revision(), root.clone());
+        meta_written("a", &note_meta("", "Unsure", None));
+        let unsure = fresh_listing(revision(), root);
+
+        assert_eq!(renamed.len(), 2);
+        assert_eq!(renamed[0].title, "Renamed");
+        assert_eq!(renamed[0].related_project.as_deref(), Some("thesis"));
+        assert_eq!(renamed[1].title, "Name b");
+        assert_eq!(turned.len(), 1);
+        assert_eq!(turned[0].id, "a");
+        assert_eq!(kept, Some(1));
+        assert!(unknown.is_none());
+        assert!(unsure.is_none());
+    }
+
+    #[test]
+    fn a_resolved_note_path_survives_a_metadata_write_and_not_a_folder_move() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let root = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", root.path());
+        let id =
+            crate::project::create_note_project_from("Kept".into(), "text".into(), None).unwrap();
+        let entry = NoteEntry {
+            id: id.clone(),
+            title: "Kept".into(),
+            main_doc: crate::project::NOTE_FILE.into(),
+            related_project: None,
+            updated_at: 0.0,
+        };
+        read_parsed(&TEST_CACHE, &entry, str::to_string).unwrap();
+        invalidate();
+        let after_write = resolved(&entry);
+        let locked = crate::worktree_lock::ProjectWorktreeLock::try_exclusive(&id)
+            .unwrap()
+            .unwrap();
+        let hit = unchanged(&TEST_CACHE, &entry).map(|(_, value, _)| value);
+        drop(locked);
+        relocate();
+        let after_move = resolved(&entry);
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        assert!(after_write.is_some());
+        assert_eq!(hit.as_deref().map(String::as_str), Some("text"));
+        assert!(after_move.is_none());
     }
 
     #[test]

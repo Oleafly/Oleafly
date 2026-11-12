@@ -1,31 +1,31 @@
-import { MoreHorizontal, NotebookPen, Plus, Search, X } from "lucide-react";
+import { NotebookPen, Plus } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { SIDEBAR_TITLE_CLASS, SidebarPanelHeader } from "@/components/layout/SidebarSection";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
+import { SearchField } from "@/components/ui/search-field";
 import { Spinner } from "@/components/ui/spinner";
-import { Tooltip } from "@/components/ui/tooltip";
+import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
 import { isImeEnter } from "@/components/ai/composer/ime";
 import { openNotes } from "@/features/open-tool";
 import { useCollabProjectShared } from "@/lib/collab-live-bridge";
 import { formatRelativeTimeFrom } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { deleteProjectEntry } from "@/lib/project-file-delete";
-import { noteHeads } from "@/lib/tauri";
+import { projectNoteKey } from "@/lib/project-notes";
+import { type NoteFacts, noteFacts } from "@/lib/tauri";
 import { notifyError, toast } from "@/lib/toast";
-import { isWindows } from "@/lib/utils";
+import { cn, isWindows } from "@/lib/utils";
 import { i18n } from "@/i18n";
 import { confirmAction } from "@/store/confirm-dialog";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useNoteActions } from "./note-actions";
 import { NoteChip } from "./note-icons";
+import { forgetNoteLeftovers } from "./note-pending-suggestions";
+import { NoteListItem, NoteRowMenu } from "./NoteListItem";
 import { useNoteActionsData } from "./note-tab-data";
 import { NotesDataProvider, useNotesData } from "./notes-data";
 import {
@@ -47,11 +47,6 @@ import { type ProjectNoteFile, useProjectNoteFiles } from "./use-project-note-fi
 import "./notes.css";
 
 export const PROJECT_NOTES_SEARCH_MIN = 8;
-
-const ICON_BUTTON =
-  "flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground disabled:opacity-40";
-const ROW_BUTTON =
-  "flex min-w-0 flex-1 items-start gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent focus-visible:bg-accent motion-reduce:transition-none";
 
 interface RowAction {
   id: string;
@@ -79,56 +74,25 @@ function NoteRow({
   onOpen: () => void;
 }>) {
   const { t } = useTranslation(["notes"]);
-  const id = useId();
-  const menuLabel = t(($) => $.notes.projectNotes.noteActions, { title });
   return (
-    <li className="group/row flex items-start gap-0.5">
-      <button
-        type="button"
+    <li>
+      <NoteListItem
         data-testid={testId}
-        aria-labelledby={`${id}-title`}
-        aria-describedby={[meta ? `${id}-meta` : "", summary ? `${id}-summary` : ""].filter(Boolean).join(" ") || undefined}
+        icon={<NoteChip icon={icon} color={color} />}
+        title={title}
+        meta={meta}
+        snippet={summary}
         onClick={onOpen}
-        className={ROW_BUTTON}
-      >
-        <NoteChip icon={icon} color={color} className="mt-0.5" />
-        <span className="min-w-0 flex-1">
-          <span id={`${id}-title`} className="block truncate text-sm font-medium text-foreground">
-            {title}
-          </span>
-          {meta ? (
-            <span id={`${id}-meta`} className="block truncate text-[0.6875rem] text-muted-foreground">
-              {meta}
-            </span>
-          ) : null}
-          {summary ? (
-            <span id={`${id}-summary`} className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-              {summary}
-            </span>
-          ) : null}
-        </span>
-      </button>
-      <DropdownMenu>
-        <Tooltip label={menuLabel} side="bottom">
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label={menuLabel}
-              data-testid={`${testId}-menu`}
-              className={`${ICON_BUTTON} mt-1.5 opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100`}
-            >
-              <MoreHorizontal aria-hidden className="size-3.5" />
-            </button>
-          </DropdownMenuTrigger>
-        </Tooltip>
-        <DropdownMenuContent align="end" className="w-48">
-          {actions.map((action) => (
-            <DropdownMenuItem key={action.id} data-testid={`${testId}-${action.id}`} onSelect={action.run}>
-              {action.label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        trailing={
+          <NoteRowMenu label={t(($) => $.notes.projectNotes.noteActions, { title })} testId={`${testId}-menu`}>
+            {actions.map((action) => (
+              <DropdownMenuItem key={action.id} data-testid={`${testId}-${action.id}`} onSelect={action.run}>
+                {action.label}
+              </DropdownMenuItem>
+            ))}
+          </NoteRowMenu>
+        }
+      />
     </li>
   );
 }
@@ -154,21 +118,12 @@ function NoteGroup({
   return (
     <section aria-labelledby={headingId} data-testid={testId} className="flex flex-col gap-0.5">
       <div className="flex h-7 items-center gap-1 pl-2 pr-0.5">
-        <h3 id={headingId} className="min-w-0 flex-1 truncate text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-foreground">
+        <h3 id={headingId} className={cn("min-w-0 flex-1 truncate", SIDEBAR_TITLE_CLASS)}>
           {title}
         </h3>
-        <Tooltip label={newLabel} side="bottom">
-          <button
-            type="button"
-            aria-label={newLabel}
-            data-testid={`${testId}-new`}
-            disabled={disabled || busy}
-            onClick={onNew}
-            className={ICON_BUTTON}
-          >
-            {busy ? <Spinner size="sm" /> : <Plus aria-hidden className="size-3.5" />}
-          </button>
-        </Tooltip>
+        <TooltipIconButton label={newLabel} data-testid={`${testId}-new`} disabled={disabled || busy} onClick={onNew} className="size-6">
+          {busy ? <Spinner size="sm" /> : <Plus aria-hidden />}
+        </TooltipIconButton>
       </div>
       {children}
     </section>
@@ -266,13 +221,16 @@ function deleteQuestion(title: string, trashed: boolean): { title: string; messa
   return { title: i18n.t(($) => $.notes.projectNotes.trashTitle, name), message: i18n.t(($) => $.notes.projectNotes.trashMessage) };
 }
 
-async function deleteProjectNote(path: string, title: string, trashed: boolean): Promise<void> {
+async function deleteProjectNote(projectId: string, path: string, title: string, trashed: boolean): Promise<void> {
   const confirmed = await confirmAction({ ...deleteQuestion(title, trashed), confirmLabel: deleteLabel(trashed), destructive: true });
-  if (confirmed) await deleteProjectEntry(path);
+  if (!confirmed) return;
+  if (await deleteProjectEntry(path)) forgetNoteLeftovers(projectNoteKey(projectId, path));
 }
 
-function useNoteHeads(keys: string, notesOpen: boolean): ReadonlyMap<string, string> {
-  const [heads, setHeads] = useState<ReadonlyMap<string, string>>(new Map());
+const NO_FACTS: readonly NoteFacts[] = [];
+
+function useLinkedNoteFacts(projectId: string | null, keys: string, notesOpen: boolean): readonly NoteFacts[] {
+  const [facts, setFacts] = useState(NO_FACTS);
   const refreshProjects = useFilesStore((state) => state.refreshProjects);
   const seen = useRef(notesOpen);
 
@@ -284,20 +242,20 @@ function useNoteHeads(keys: string, notesOpen: boolean): ReadonlyMap<string, str
   }, [notesOpen, refreshProjects]);
 
   useEffect(() => {
-    if (notesOpen || !keys) return;
+    if (notesOpen || !keys || !projectId) return;
     let live = true;
-    noteHeads().then(
+    noteFacts({ relatedProject: projectId }).then(
       (list) => {
-        if (live) setHeads(new Map(list.map((head) => [head.id, head.head])));
+        if (live) setFacts(list);
       },
-      (error: unknown) => void logError("read project note heads", error),
+      (error: unknown) => void logError("read project note facts", error),
     );
     return () => {
       live = false;
     };
-  }, [keys, notesOpen]);
+  }, [keys, notesOpen, projectId]);
 
-  return heads;
+  return facts;
 }
 
 function matchesFile(note: ProjectNoteFile, query: string): boolean {
@@ -330,12 +288,11 @@ function ProjectNotesList() {
   const [creatingMine, setCreatingMine] = useState(false);
   const noteActions = useNoteActions();
   const { setRelatedProject } = useNotesData();
-  const searchRef = useRef<HTMLInputElement>(null);
 
   const linked = useMemo(() => projectNoteProjects(projects, projectId), [projectId, projects]);
   const keys = linked.map((project) => `${project.id}:${project.updated_at}`).join("|");
-  const heads = useNoteHeads(keys, notesOpen);
-  const mine = useMemo(() => projectNotes(projects, projectId, heads), [heads, projectId, projects]);
+  const facts = useLinkedNoteFacts(projectId, keys, notesOpen);
+  const mine = useMemo(() => projectNotes(projects, projectId, facts), [facts, projectId, projects]);
   const files = useProjectNoteFiles(projectId);
   const searchable = mine.length + files.notes.length > PROJECT_NOTES_SEARCH_MIN;
   const shownMine = searchable ? mine.filter((note) => matchesProjectNote(note, query)) : mine;
@@ -379,7 +336,7 @@ function ProjectNotesList() {
           {
             id: "delete",
             label: deleteLabel(trashed),
-            run: () => void deleteProjectNote(note.path, note.title, trashed),
+            run: () => void deleteProjectNote(projectId, note.path, note.title, trashed),
           },
         ]
       : [];
@@ -428,32 +385,28 @@ function ProjectNotesList() {
   };
 
 
-  const renameMine = async (note: ProjectNote, title: string) => {
-    if (!projectId) return;
-    noteActions.actionsFor(personalNoteItem(note, projectId)).rename?.(title.trim());
-    setRenaming(null);
+  const renameMine = (note: ProjectNote, title: string): Promise<void> => {
+    if (projectId) {
+      noteActions.actionsFor(personalNoteItem(note, projectId)).rename?.(title.trim());
+      setRenaming(null);
+    }
+    return Promise.resolve();
   };
 
   const empty = (text: string, testId: string) => (
-    <p data-testid={testId} className="px-2 pb-2 text-xs text-muted-foreground">
-      {text}
-    </p>
+    <EmptyState size="compact" description={text} testId={testId} className="items-start px-2 pb-2 text-left" />
   );
 
   const noMatches =
     searchable && query.trim() !== "" && shownMine.length === 0 && shownFiles.length === 0 ? (
-      <p role="status" className="px-3 py-6 text-center text-xs text-muted-foreground">
-        {t(($) => $.notes.projectNotes.noMatches)}
-      </p>
+      <output className="block py-4">
+        <EmptyState size="compact" description={t(($) => $.notes.projectNotes.noMatches)} />
+      </output>
     ) : null;
 
   const fileList = () => {
     if (!files.loaded) {
-      return (
-        <div className="flex justify-center py-2">
-          <Spinner size="sm" />
-        </div>
-      );
+      return <LoadingState size="compact" label={t(($) => $.notes.projectNotes.loading)} className="px-2 py-1.5" />;
     }
     const pending =
       renaming?.kind === "file" && !files.notes.some((note) => note.path === renaming.key) ? renaming.key : null;
@@ -555,34 +508,14 @@ function ProjectNotesList() {
     <div className="flex h-full flex-col" data-testid="project-notes-panel">
       <SidebarPanelHeader icon={NotebookPen} title={t(($) => $.shell.rail.notes)} />
       {searchable ? (
-        <div className="relative mx-1.5 mt-1.5 shrink-0">
-          <Search
-            aria-hidden
-            className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-          />
-          <Input
-            ref={searchRef}
-            type="search"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            aria-label={t(($) => $.notes.projectNotes.searchLabel)}
-            placeholder={t(($) => $.notes.projectNotes.searchPlaceholder)}
-            className="h-8 pl-7 pr-8 text-xs"
-          />
-          {query ? (
-            <button
-              type="button"
-              aria-label={t(($) => $.notes.projectNotes.clearSearch)}
-              onClick={() => {
-                setQuery("");
-                searchRef.current?.focus();
-              }}
-              className="absolute right-0 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
-            >
-              <X aria-hidden className="size-3" />
-            </button>
-          ) : null}
-        </div>
+        <SearchField
+          className="mx-1.5 mt-1.5 shrink-0"
+          value={query}
+          onChange={setQuery}
+          label={t(($) => $.notes.projectNotes.searchLabel)}
+          placeholder={t(($) => $.notes.projectNotes.searchPlaceholder)}
+          clearLabel={t(($) => $.notes.projectNotes.clearSearch)}
+        />
       ) : null}
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-1.5">
         {shared ? (

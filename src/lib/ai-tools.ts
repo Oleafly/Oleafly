@@ -566,7 +566,7 @@ export function createProjectToolsHost(options: ProjectToolsHostOptions): AiTool
     getCompileLog: () => null,
     getPdfBytes: () => null,
     getPdfCursorPage: () => null,
-    getProjectIndex: async () => null,
+    getProjectIndex: () => Promise.resolve(null),
     insertAtCursor: () => false,
     replaceRange: () => false,
     insertTargetPath: () => null,

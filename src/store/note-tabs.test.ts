@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import {
@@ -9,6 +9,10 @@ import {
   noteTabsFor,
   useNoteTabsStore,
 } from "./note-tabs";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 beforeEach(() => {
   useNoteTabsStore.setState({ tabs: [], active: null, markdown: {} });
@@ -96,6 +100,22 @@ describe("note tabs", () => {
     store.setMarkdown("paper", "notes/a.md", false);
     expect(useNoteTabsStore.getState().markdown).toEqual({});
     expect(markdownKey("p", "x")).toBe("p\u0000x");
+  });
+
+  it("keeps the Edit as Markdown choice for a file across a restart", async () => {
+    const saved = new Map<string, string>();
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => saved.get(key) ?? null,
+      setItem: (key: string, value: string) => void saved.set(key, value),
+    });
+    useNoteTabsStore.getState().setMarkdown("paper", "notes/a.md", true);
+    useNoteTabsStore.getState().setMarkdown("paper", "notes/b.md", true);
+    useNoteTabsStore.getState().setMarkdown("paper", "notes/b.md", false);
+    vi.resetModules();
+    const restarted = await import("./note-tabs");
+    const state = restarted.useNoteTabsStore.getState();
+    expect(restarted.editsAsMarkdown(state, "paper", "notes/a.md")).toBe(true);
+    expect(restarted.editsAsMarkdown(state, "paper", "notes/b.md")).toBe(false);
   });
 
   it("lists and reports only the open project's tabs", () => {

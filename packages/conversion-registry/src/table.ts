@@ -53,17 +53,45 @@ function detectDelimiter(text: string): string {
 }
 
 function quotedText(text: string): string {
-  return text.includes("\r") ? text.replace(/\r\n?/g, "\n") : text;
+  return text.includes("\r") ? text.replaceAll(/\r\n?/g, "\n") : text;
+}
+
+function readQuotedField(text: string, start: number): { value: string; next: number } {
+  let value = "";
+  let index = start;
+  while (index < text.length) {
+    const close = text.indexOf(QUOTE, index);
+    if (close === -1) return { value: value + quotedText(text.slice(index)), next: text.length };
+    value += quotedText(text.slice(index, close));
+    if (text[close + 1] !== QUOTE) return { value, next: close + 1 };
+    value += QUOTE;
+    index = close + 2;
+  }
+  return { value, next: index };
+}
+
+function unquotedFieldEnd(text: string, start: number, separator: number | undefined): number {
+  let stop = start;
+  while (stop < text.length) {
+    const code = text.codePointAt(stop);
+    if (code === separator || code === LINE_FEED || code === CARRIAGE_RETURN) return stop;
+    stop += 1;
+  }
+  return stop;
+}
+
+function lineBreakWidth(text: string, index: number): number {
+  return text.codePointAt(index) === CARRIAGE_RETURN && text.codePointAt(index + 1) === LINE_FEED ? 2 : 1;
 }
 
 function scanDelimited(text: string, delimiter: string, limit: number): string[][] {
   const rows: string[][] = [];
-  const separator = delimiter.charCodeAt(0);
+  const separator = delimiter.codePointAt(0);
   const end = text.length;
   let row: string[] = [];
   let field = "";
   let quoted = false;
-  let index = text.charCodeAt(0) === BYTE_ORDER_MARK ? 1 : 0;
+  let index = text.codePointAt(0) === BYTE_ORDER_MARK ? 1 : 0;
   const finishRow = () => {
     row.push(field);
     if (row.length > 1 || field !== "" || quoted) rows.push(row);
@@ -73,37 +101,17 @@ function scanDelimited(text: string, delimiter: string, limit: number): string[]
   };
   while (index < end && rows.length < limit) {
     if (text[index] === QUOTE && field === "" && !quoted) {
+      const quotedField = readQuotedField(text, index + 1);
+      field = quotedField.value;
       quoted = true;
-      index += 1;
-      while (index < end) {
-        const close = text.indexOf(QUOTE, index);
-        if (close === -1) {
-          field += quotedText(text.slice(index));
-          index = end;
-          break;
-        }
-        field += quotedText(text.slice(index, close));
-        if (text[close + 1] === QUOTE) {
-          field += QUOTE;
-          index = close + 2;
-          continue;
-        }
-        index = close + 1;
-        break;
-      }
+      index = quotedField.next;
       continue;
     }
-    let stop = index;
-    while (stop < end) {
-      const code = text.charCodeAt(stop);
-      if (code === separator || code === LINE_FEED || code === CARRIAGE_RETURN) break;
-      stop += 1;
-    }
+    const stop = unquotedFieldEnd(text, index, separator);
     field += text.slice(index, stop);
     index = stop;
     if (index >= end) break;
-    const code = text.charCodeAt(index);
-    if (code === separator) {
+    if (text.codePointAt(index) === separator) {
       row.push(field);
       field = "";
       quoted = false;
@@ -111,7 +119,7 @@ function scanDelimited(text: string, delimiter: string, limit: number): string[]
       continue;
     }
     finishRow();
-    index += code === CARRIAGE_RETURN && text.charCodeAt(index + 1) === LINE_FEED ? 2 : 1;
+    index += lineBreakWidth(text, index);
   }
   if (rows.length < limit && (row.length > 0 || field !== "" || quoted)) finishRow();
   return rows;
@@ -125,7 +133,7 @@ export function parseDelimited(text: string, options: DelimitedOptions = {}): st
   );
   if (options.trim === false) return rows;
   const trimmed = rows.map((row) => row.map((cell) => cell.trim()));
-  while (trimmed.length > 0 && trimmed[trimmed.length - 1].every((cell) => cell === "")) {
+  while (trimmed.at(-1)?.every((cell) => cell === "")) {
     trimmed.pop();
   }
   return trimmed;
@@ -149,7 +157,7 @@ function isNumericCell(value: string): boolean {
   let text = value;
   if (text.endsWith("%")) text = text.slice(0, -1);
   if (!text) return false;
-  if (text[0] === "-" || text[0] === "+") text = text.slice(1);
+  if (text.startsWith("-") || text.startsWith("+")) text = text.slice(1);
   if (!text) return false;
 
   let decimal = false;
@@ -297,21 +305,18 @@ export function emitLatexTable(rowsInput: string[][], options: TableOptions): st
     ?? inferAlignment(rowsInput, options.header);
   const lines: string[] = ["\\begin{table}[htbp]", "  \\centering"];
   if (options.caption) {
-    lines.push(`  \\caption{${escapeLatexCell(options.caption)}}`);
+    lines.push(String.raw`  \caption{${escapeLatexCell(options.caption)}}`);
   }
   const label = options.label?.trim();
   if (label && isValidLatexLabel(label)) {
-    lines.push(`  \\label{${label}}`);
+    lines.push(String.raw`  \label{${label}}`);
   }
-  lines.push(`  \\begin{tabular}{${alignment}}`, "    \\toprule");
+  lines.push(String.raw`  \begin{tabular}{${alignment}}`, "    \\toprule");
   rows.forEach((row, index) => {
     const cells = row.map(escapeLatexCell);
     const isHeader = options.header && index === 0;
-    if (isHeader && bold) {
-      lines.push(`    ${cells.map((cell) => `\\textbf{${cell}}`).join(" & ")} \\\\`);
-    } else {
-      lines.push(`    ${cells.join(" & ")} \\\\`);
-    }
+    const shown = isHeader && bold ? cells.map((cell) => String.raw`\textbf{${cell}}`) : cells;
+    lines.push(`    ${shown.join(" & ")} \\\\`);
     if (isHeader) {
       lines.push("    \\midrule");
     }

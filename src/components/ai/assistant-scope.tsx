@@ -19,7 +19,7 @@ import { WORKSPACE_ASSISTANT_SCOPE } from "@/components/ai/chat-run-registry";
 import { useAssistantRuntimeStore, type AssistantRuntime } from "@/store/assistant-runtime";
 import { useFilesStore } from "@/store/files";
 
-export { WORKSPACE_ASSISTANT_SCOPE };
+export { WORKSPACE_ASSISTANT_SCOPE } from "@/components/ai/chat-run-registry";
 
 export interface AssistantScopeRun {
   projectId: string;
@@ -87,12 +87,14 @@ export interface AssistantLayoutParts {
   chatCount: number;
   canStartChat: boolean;
   setup: ReactNode | null;
+  tools: ReactNode;
 }
 
 export interface AssistantScopeValue {
   key: string;
   kind: "workspace" | "note";
   projectId: string | null;
+  storageKey?: string;
   projectName: string | null;
   projectKind: string | null;
   engine: DocumentEngineDescriptor;

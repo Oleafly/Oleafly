@@ -1,11 +1,12 @@
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { reattachPreviewWindow } from "@/lib/preview-window";
-import { type ComponentType, Suspense, type SVGProps, useEffect, useRef, useState } from "react";
+import { type ComponentType, Fragment, type ReactNode, Suspense, type SVGProps, useEffect, useRef, useState } from "react";
 import { lazy } from "@/lib/preloadable";
 import { Trans, useTranslation } from "react-i18next";
 import {
   AlertTriangle,
   BookOpen,
+  Bookmark,
   Check,
   Columns2,
   ChevronRight,
@@ -16,10 +17,15 @@ import {
   History,
   Presentation,
   LayoutGrid,
+  PencilLine,
+  RefreshCw,
   RotateCcw,
   LayoutTemplate,
   ImageDown,
+  Save,
+  Settings2,
   SquarePen,
+  Trash2,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +34,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuSub,
   DropdownMenuSubContent,
@@ -58,6 +65,14 @@ import { useSaveAsTemplateStore } from "@/store/save-as-template";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useSettingsStore, type LayoutPreset, type ViewMode } from "@/store/settings";
 import { isDefaultPaneLayout, resetPaneLayout, usePaneLayoutStore } from "@/store/pane-layout";
+import {
+  SAVED_LAYOUT_LIMIT,
+  savedLayoutInEffect,
+  savedLayoutNamed,
+  useSavedLayoutsStore,
+  type SavedLayout,
+} from "@/store/saved-layouts";
+import { confirmAction } from "@/store/confirm-dialog";
 import { shortcutLabel, shortcutParts, useShortcutStore } from "@/store/shortcuts";
 import { enterZenMode } from "@/lib/zen-mode";
 import { exportCurrentDocument, exportCurrentPdf, exportCurrentImagePng, type DocumentExportFormat } from "@/features/export";
@@ -224,6 +239,187 @@ function ZenModeMenuItem() {
         ))}
       </KbdGroup>
     </DropdownMenuItem>
+  );
+}
+
+function NameDialog({
+  open,
+  titleId,
+  title,
+  description,
+  value,
+  onChange,
+  onSubmit,
+  onClose,
+  closeLabel,
+  placeholder,
+  submitLabel,
+  submitIcon,
+  busy = false,
+  error,
+}: Readonly<{
+  open: boolean;
+  titleId: string;
+  title: string;
+  description?: ReactNode;
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  onClose: () => void;
+  closeLabel: string;
+  placeholder: string;
+  submitLabel: string;
+  submitIcon: ReactNode;
+  busy?: boolean;
+  error?: string | null;
+}>) {
+  return (
+    <ModalShell open={open} onClose={onClose} closeLabel={closeLabel} width="md" labelledBy={titleId} className="p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 id={titleId} className="text-base font-semibold">
+          {title}
+        </h2>
+        <Button variant="ghost" size="icon" className="size-7" onClick={onClose}>
+          <X className="size-4" />
+        </Button>
+      </div>
+      {description && <p className="mb-3 text-xs text-muted-foreground">{description}</p>}
+      <div className="flex items-center gap-2">
+        <Input
+          data-modal-initial-focus
+          aria-label={placeholder}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && !busy) onSubmit(); }}
+          placeholder={placeholder}
+          className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+        <Button onClick={onSubmit} disabled={busy}>
+          {busy ? <Spinner /> : submitIcon}
+          {submitLabel}
+        </Button>
+      </div>
+      {error && <p role="alert" className="mt-2 text-xs text-destructive">{error}</p>}
+    </ModalShell>
+  );
+}
+
+function SavedLayoutNameDialog() {
+  const { t } = useTranslation(["shell"]);
+  const naming = useSavedLayoutsStore((s) => s.naming);
+  const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!naming) return;
+    setName(naming.id ? (useSavedLayoutsStore.getState().layouts.find((l) => l.id === naming.id)?.name ?? "") : "");
+    setError(null);
+  }, [naming]);
+  const close = () => useSavedLayoutsStore.getState().stopNaming();
+  const submit = async () => {
+    const trimmed = name.trim();
+    if (!naming || !trimmed) return;
+    const clash = savedLayoutNamed(trimmed, naming.id);
+    if (
+      clash &&
+      !(await confirmAction({
+        message: t(($) => $.shell.toolbar.savedLayouts.replaceConfirm, { name: clash.name }),
+        confirmLabel: t(($) => $.shell.toolbar.savedLayouts.replace),
+        destructive: true,
+      }))
+    ) {
+      return;
+    }
+    const store = useSavedLayoutsStore.getState();
+    if (naming.id) store.rename(naming.id, trimmed);
+    else if (!store.save(trimmed)) {
+      setError(t(($) => $.shell.toolbar.savedLayouts.limit, { count: SAVED_LAYOUT_LIMIT }));
+      return;
+    }
+    close();
+  };
+  return (
+    <NameDialog
+      open={naming !== null}
+      titleId="saved-layout-name-title"
+      title={naming?.id ? t(($) => $.shell.toolbar.savedLayouts.renameTitle) : t(($) => $.shell.toolbar.savedLayouts.saveTitle)}
+      value={name}
+      onChange={setName}
+      onSubmit={() => void submit()}
+      onClose={close}
+      closeLabel={t(($) => $.shell.toolbar.savedLayouts.close)}
+      placeholder={t(($) => $.shell.toolbar.savedLayouts.name)}
+      submitLabel={naming?.id ? t(($) => $.shell.toolbar.savedLayouts.rename) : t(($) => $.shell.toolbar.savedLayouts.saveButton)}
+      submitIcon={naming?.id ? <PencilLine className="size-4" /> : <Save className="size-4" />}
+      error={error}
+    />
+  );
+}
+
+async function deleteSavedLayout(layout: SavedLayout) {
+  const confirmed = await confirmAction({
+    message: i18n.t(($) => $.shell.toolbar.savedLayouts.deleteConfirm, { name: layout.name }),
+    confirmLabel: i18n.t(($) => $.shell.toolbar.savedLayouts.delete),
+    destructive: true,
+  });
+  if (confirmed) useSavedLayoutsStore.getState().remove(layout.id);
+}
+
+function SavedLayoutMenuItems() {
+  const { t } = useTranslation(["shell"]);
+  const layouts = useSavedLayoutsStore((s) => s.layouts);
+  const tree = usePaneLayoutStore((s) => s.layout);
+  const viewMode = useSettingsStore((s) => s.viewMode);
+  const showTree = useSettingsStore((s) => s.showTree);
+  const assistantOpen = useSettingsStore((s) => s.assistantOpen);
+  const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
+  const terminalOpen = useSettingsStore((s) => s.terminalOpen);
+  const flags = { viewMode, showTree, assistantOpen, workspaceHidden, terminalOpen };
+  const store = useSavedLayoutsStore.getState();
+  return (
+    <>
+      <DropdownMenuSeparator />
+      {layouts.map((layout) => (
+        <DropdownMenuItem key={layout.id} data-testid="saved-layout" onSelect={() => store.apply(layout.id)}>
+          <Bookmark className="size-4 text-muted-foreground" />
+          <span className="flex-1 truncate">{layout.name}</span>
+          {savedLayoutInEffect(layout, tree, flags) && <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
+        </DropdownMenuItem>
+      ))}
+      <DropdownMenuItem data-testid="layout-save" onSelect={() => store.startNaming(null)}>
+        <Save className="size-4 text-muted-foreground" />
+        <span className="flex-1">{t(($) => $.shell.toolbar.savedLayouts.save)}</span>
+      </DropdownMenuItem>
+      {layouts.length > 0 && (
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger data-testid="layout-manage">
+            <Settings2 className="mr-2 size-4" />
+            {t(($) => $.shell.toolbar.savedLayouts.manage)}
+          </DropdownMenuSubTrigger>
+          <DropdownMenuPortal>
+            <DropdownMenuSubContent className="w-56">
+              {layouts.map((layout, index) => (
+                <Fragment key={layout.id}>
+                  {index > 0 && <DropdownMenuSeparator />}
+                  <DropdownMenuLabel className="truncate">{layout.name}</DropdownMenuLabel>
+                  <DropdownMenuItem onSelect={() => store.startNaming(layout.id)}>
+                    <PencilLine className="size-4 text-muted-foreground" />
+                    {t(($) => $.shell.toolbar.savedLayouts.rename)}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => store.update(layout.id)}>
+                    <RefreshCw className="size-4 text-muted-foreground" />
+                    {t(($) => $.shell.toolbar.savedLayouts.update)}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void deleteSavedLayout(layout)}>
+                    <Trash2 className="size-4 text-muted-foreground" />
+                    {t(($) => $.shell.toolbar.savedLayouts.delete)}
+                  </DropdownMenuItem>
+                </Fragment>
+              ))}
+            </DropdownMenuSubContent>
+          </DropdownMenuPortal>
+        </DropdownMenuSub>
+      )}
+    </>
   );
 }
 
@@ -426,12 +622,14 @@ export function TopToolbar() {
             <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />}
         </DropdownMenuItem>
       ))}
+      <SavedLayoutMenuItems />
       <DropdownMenuSeparator />
       <ZenModeMenuItem />
       {paneLayoutMoved && (
         <DropdownMenuItem data-testid="layout-reset-pane-layout" onSelect={() => resetPaneLayout()}>
           <RotateCcw className="size-4 text-muted-foreground" />
           <span className="flex-1">{t(($) => $.shell.toolbar.resetPaneLayout)}</span>
+          <span className="pl-3 text-xs text-muted-foreground">{t(($) => $.shell.toolbar.resetPaneLayoutScope)}</span>
         </DropdownMenuItem>
       )}
     </>
@@ -727,45 +925,29 @@ export function TopToolbar() {
     </header>
     <ShareDialogHost />
 
-    <ModalShell
+    <NameDialog
       open={forkOpen}
-      onClose={closeFork}
-      closeLabel={t(($) => $.shell.toolbar.closeForkDialog)}
-      width="md"
-      labelledBy="toolbar-fork-title"
-      className="p-5"
-    >
-      <div className="mb-4 flex items-center justify-between">
-        <h2 id="toolbar-fork-title" className="text-base font-semibold">
-          {t(($) => $.shell.toolbar.forkProject)}
-        </h2>
-        <Button variant="ghost" size="icon" className="size-7" onClick={closeFork}>
-          <X className="size-4" />
-        </Button>
-      </div>
-      <p className="mb-3 text-xs text-muted-foreground">
+      titleId="toolbar-fork-title"
+      title={t(($) => $.shell.toolbar.forkProject)}
+      description={
         <Trans
           ns="shell"
           i18nKey={($) => $.shell.toolbar.forkDescription}
           values={{ name: projectName }}
           components={{ name: <span className="font-medium text-foreground" /> }}
         />
-      </p>
-      <div className="flex items-center gap-2">
-        <Input
-          data-modal-initial-focus
-          value={forkName}
-          onChange={(e) => setForkName(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter" && !forkBusy) void submitFork(); }}
-          placeholder={t(($) => $.shell.toolbar.newProjectName)}
-          className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
-        />
-        <Button onClick={() => void submitFork()} disabled={forkBusy}>
-          {forkBusy ? <Spinner /> : <GitFork className="size-4" />}
-          {t(($) => $.shell.toolbar.fork)}
-        </Button>
-      </div>
-    </ModalShell>
+      }
+      value={forkName}
+      onChange={setForkName}
+      onSubmit={() => void submitFork()}
+      onClose={closeFork}
+      closeLabel={t(($) => $.shell.toolbar.closeForkDialog)}
+      placeholder={t(($) => $.shell.toolbar.newProjectName)}
+      submitLabel={t(($) => $.shell.toolbar.fork)}
+      submitIcon={<GitFork className="size-4" />}
+      busy={forkBusy}
+    />
+    <SavedLayoutNameDialog />
     </>
   );
 }

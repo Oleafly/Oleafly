@@ -33,6 +33,9 @@ describe("Notes appearance in the settings store", () => {
       [KEYS.notesShowWordCount]: "0",
       [KEYS.notesAccentColor]: "#DB2777",
       [KEYS.notesCalloutStyle]: "neon",
+      [KEYS.notesTaskBox]: "round",
+      [KEYS.notesFieldStyle]: "outline",
+      [KEYS.notesInfo]: "inline",
       [KEYS.notesTitleSize]: "31",
     });
     expect(state).toMatchObject({
@@ -42,6 +45,9 @@ describe("Notes appearance in the settings store", () => {
       notesShowWordCount: false,
       notesAccentColor: "#db2777",
       notesCalloutStyle: "tinted",
+      notesTaskBox: "round",
+      notesFieldStyle: "outline",
+      notesInfo: "inline",
       notesTitleSize: 24,
     });
   });
@@ -78,22 +84,28 @@ describe("Notes appearance in the settings store", () => {
     expect(useSettingsStore.getState().notesLineHeight).toBe("custom");
   });
 
-  it("resets only the Notes appearance, and the Appearance reset includes it", () => {
+  it("puts the Notes appearance back with the Appearance reset", () => {
     const store = useSettingsStore.getState();
     store.setNotesAppearance("notesTypeface", "mono");
     store.setNotesAppearance("notesWidth", "full");
-    store.setEditorFontSize(18);
+    store.setNotesAppearance("notesTaskBox", "square");
+    store.setNotesAppearance("notesFieldStyle", "underline");
+    store.setNotesAppearance("notesInfo", "inline");
     expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(true);
 
-    useSettingsStore.getState().resetNotesAppearance();
-    expect(useSettingsStore.getState()).toMatchObject({ notesTypeface: "sans", notesWidth: "standard", editorFontSize: 18 });
+    useSettingsStore.getState().resetAppearancePreferences();
+    expect(useSettingsStore.getState()).toMatchObject({
+      notesTypeface: "sans",
+      notesWidth: "standard",
+      notesTaskBox: "round",
+      notesFieldStyle: "tint",
+      notesInfo: "side",
+    });
+    expect(localStorage.getItem(KEYS.notesTaskBox)).toBe("round");
+    expect(localStorage.getItem(KEYS.notesFieldStyle)).toBe("tint");
     expect(localStorage.getItem(KEYS.notesTypeface)).toBe("sans");
     expect(localStorage.getItem(KEYS.notesWidth)).toBe("standard");
-
-    useSettingsStore.getState().setNotesAppearance("notesHighlightColor", "green");
-    useSettingsStore.getState().resetAppearancePreferences();
-    expect(useSettingsStore.getState().notesHighlightColor).toBe("yellow");
-    expect(localStorage.getItem(KEYS.notesHighlightColor)).toBe("yellow");
+    expect(sectionDiffersFromDefaults("appearance", useSettingsStore.getState())).toBe(false);
   });
 
   it("lists every Notes key in the Appearance section", () => {

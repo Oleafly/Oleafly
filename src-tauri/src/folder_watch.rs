@@ -46,8 +46,13 @@ type Rank = (bool, bool, u64);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Claim {
     Hold,
-    Keep,
     Revive,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Holder {
+    Window(String),
+    Live,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -93,6 +98,7 @@ impl ProjectWatch {
 
 struct Hub {
     watches: BTreeMap<String, ProjectWatch>,
+    owners: BTreeMap<u64, (String, Holder)>,
     latest_request: u64,
 }
 
@@ -110,9 +116,6 @@ impl Hub {
                 watch.holders.insert(ask.id);
                 watch.touched = watch.touched.max(ask.id);
                 Some(Installed::Joined)
-            }
-            (Claim::Keep, Some(watch)) if watch.watcher.is_some() || watch.generation > ask.id => {
-                Some(Installed::Skipped)
             }
             (Claim::Revive, Some(watch))
                 if watch.watcher.is_none() && watch.generation == ask.id =>
@@ -225,6 +228,27 @@ impl Hub {
         watcher
     }
 
+    fn join(&mut self, project_id: &str, id: u64) -> bool {
+        let Some(watch) = self
+            .watches
+            .get_mut(project_id)
+            .filter(|watch| watch.watcher.is_some() || !watch.holders.is_empty())
+        else {
+            return false;
+        };
+        watch.holders.insert(id);
+        watch.touched = watch.touched.max(id);
+        true
+    }
+
+    fn held_by(&self, wanted: impl Fn(&str, &Holder) -> bool) -> Vec<(String, u64)> {
+        self.owners
+            .iter()
+            .filter(|(_, (project_id, holder))| wanted(project_id, holder))
+            .map(|(token, (project_id, _))| (project_id.clone(), *token))
+            .collect()
+    }
+
     fn wake(&mut self) -> Option<(Restart, u64)> {
         if self.live() >= MAX_WATCHES {
             return None;
@@ -243,6 +267,7 @@ impl Hub {
 
 static HUB: Mutex<Hub> = Mutex::new(Hub {
     watches: BTreeMap::new(),
+    owners: BTreeMap::new(),
     latest_request: 0,
 });
 
@@ -662,13 +687,6 @@ pub(crate) fn start(
     }
 }
 
-pub(crate) fn is_watching(project_id: &str) -> bool {
-    hub()
-        .watches
-        .get(project_id)
-        .is_some_and(|watch| watch.watcher.is_some())
-}
-
 fn awaits_root(project_id: &str, generation: u64) -> bool {
     hub().watches.get(project_id).is_some_and(|watch| {
         watch.watcher.is_none() && watch.generation == generation && !watch.evicted
@@ -706,7 +724,9 @@ pub(crate) fn stop(project_id: &str, token: Option<u64>) -> bool {
             if !watch.holders.remove(&token) {
                 return false;
             }
-            if !watch.holders.is_empty() {
+            let still_held = !watch.holders.is_empty();
+            hub.owners.remove(&token);
+            if still_held {
                 return true;
             }
         }
@@ -723,7 +743,11 @@ pub(crate) fn stop(project_id: &str, token: Option<u64>) -> bool {
 
 #[cfg(test)]
 pub(crate) fn stop_all() {
-    let removed = std::mem::take(&mut hub().watches);
+    let removed = {
+        let mut hub = hub();
+        hub.owners.clear();
+        std::mem::take(&mut hub.watches)
+    };
     drop(removed);
 }
 
@@ -953,13 +977,16 @@ fn touches_listing(change: &FolderChange) -> bool {
 async fn request_watch<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
     project_id: String,
-    claim: Claim,
+    holder: Holder,
 ) -> Result<Option<u64>, String> {
     let ask = Ask {
         id: begin_request(),
-        claim,
+        claim: Claim::Hold,
     };
-    tauri::async_runtime::spawn_blocking(move || {
+    let joins = holder == Holder::Live;
+    hub().owners.insert(ask.id, (project_id.clone(), holder));
+    let watched_id = project_id.clone();
+    let watched = tauri::async_runtime::spawn_blocking(move || {
         use tauri::Emitter as _;
         let host: Arc<dyn SyncPauseHost> = Arc::new(app.clone());
         let sink: ChangeSink = Arc::new(move |change| {
@@ -968,24 +995,79 @@ async fn request_watch<R: tauri::Runtime>(
             }
             let _ = app.emit(FOLDER_CHANGED_EVENT, change);
         });
-        watch_project_as(ask, &project_id, sink, host, None)
+        if joins && hub().join(&watched_id, ask.id) {
+            return Ok(Some(ask.id));
+        }
+        watch_project_as(ask, &watched_id, sink, host, None)
     })
     .await
-    .map_err(|error| error.to_string())?
+    .map_err(|error| error.to_string())
+    .and_then(|watched| watched);
+    let owned = hub().owners.contains_key(&ask.id);
+    match watched {
+        Ok(Some(token)) if !owned => {
+            stop(&project_id, Some(token));
+            Ok(None)
+        }
+        Ok(Some(token)) => Ok(Some(token)),
+        other => {
+            hub().owners.remove(&ask.id);
+            other
+        }
+    }
+}
+
+fn release(wanted: impl Fn(&str, &Holder) -> bool) {
+    let held = {
+        let mut hub = hub();
+        let held = hub.held_by(wanted);
+        for (_, token) in &held {
+            hub.owners.remove(token);
+        }
+        held
+    };
+    for (project_id, token) in held {
+        stop(&project_id, Some(token));
+    }
+}
+
+pub(crate) fn release_window(label: &str) {
+    release(|_, holder| matches!(holder, Holder::Window(window) if window == label));
+}
+
+pub(crate) fn on_page_load<R: tauri::Runtime>(
+    webview: &tauri::Webview<R>,
+    payload: &tauri::webview::PageLoadPayload<'_>,
+) {
+    if matches!(payload.event(), tauri::webview::PageLoadEvent::Started) {
+        release_window(webview.label());
+    }
 }
 
 #[tauri::command]
 pub async fn watch_project_folder<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
+    webview: tauri::Webview<R>,
     project_id: String,
 ) -> Result<Option<u64>, String> {
-    request_watch(app, project_id, Claim::Hold).await
+    let holder = Holder::Window(webview.label().to_owned());
+    request_watch(app, project_id, holder).await
 }
 
 pub(crate) async fn keep_watching<R: tauri::Runtime>(app: tauri::AppHandle<R>, project_id: String) {
-    if !is_watching(&project_id) {
-        let _ = request_watch(app, project_id, Claim::Keep).await;
+    let previous = hub().held_by(|id, holder| id == project_id && *holder == Holder::Live);
+    if matches!(
+        request_watch(app, project_id.clone(), Holder::Live).await,
+        Ok(Some(_))
+    ) {
+        for (_, token) in previous {
+            stop(&project_id, Some(token));
+        }
     }
+}
+
+pub(crate) fn release_live(project_id: &str) {
+    release(|id, holder| id == project_id && *holder == Holder::Live);
 }
 
 #[tauri::command]
@@ -2059,41 +2141,83 @@ mod tests {
         assert_eq!(after_first, None);
     }
 
+    fn app_window(
+        label: &str,
+    ) -> (
+        tauri::App<tauri::test::MockRuntime>,
+        tauri::Webview<tauri::test::MockRuntime>,
+    ) {
+        use tauri::Manager as _;
+        let app = tauri::test::mock_builder()
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        tauri::WebviewWindowBuilder::new(&app, label, Default::default())
+            .build()
+            .unwrap();
+        let webview = app.get_webview(label).unwrap();
+        (app, webview)
+    }
+
+    fn watch_from(webview: &tauri::Webview<tauri::test::MockRuntime>, project_id: &str) -> u64 {
+        use tauri::Manager as _;
+        tauri::async_runtime::block_on(watch_project_folder(
+            webview.app_handle().clone(),
+            webview.clone(),
+            project_id.to_owned(),
+        ))
+        .unwrap()
+        .unwrap()
+    }
+
     #[test]
-    fn keeping_a_project_watched_holds_no_token_and_ends_with_its_last_caller() {
-        let _guard = crate::paths::data_dir_env_lock();
-        let directory = tempfile::tempdir().unwrap();
-        let root = folder(directory.path(), "kept");
-        let (sink, _receiver) = recorder();
-        let poll = WatchMode::Poll(Duration::from_millis(50));
-        let open = |plan: Plan| {
-            install(
-                plan,
-                "linked-kept",
-                &root,
-                poll,
-                Arc::clone(&sink),
-                Box::new(|| {}),
-            )
-            .unwrap()
-        };
+    fn a_page_that_loads_again_lets_go_of_what_it_watched() {
+        let library = crate::collab::testing::TempLibrary::new();
+        library.project("reload-paper", &[("main.tex", "one")]);
+        library.project("reload-other", &[("main.tex", "one")]);
+        let (_app, main) = app_window("main");
+        let (_preview_app, preview) = app_window("preview");
 
-        let kept = begin_request();
-        let first = open(plan(kept, Claim::Keep, false));
-        let again = open(plan(begin_request(), Claim::Keep, false));
-        let held = begin_request();
-        let holding = open(plan(held, Claim::Hold, false));
-        let kept_is_no_token = stop("linked-kept", Some(kept));
-        let watched = active_token("linked-kept");
-        let released = stop("linked-kept", Some(held));
+        let stale = watch_from(&main, "reload-paper");
+        watch_from(&main, "reload-other");
+        let kept = watch_from(&preview, "reload-other");
+        release_window("main");
+        let after_reload = (
+            active_token("reload-paper"),
+            active_token("reload-other").is_some(),
+        );
+        let fresh = watch_from(&main, "reload-paper");
+        let closed = unwatch_project_folder("reload-paper".into(), Some(fresh));
+        let after_close = active_token("reload-paper");
+        let stale_again = unwatch_project_folder("reload-paper".into(), Some(stale));
+        unwatch_project_folder("reload-other".into(), Some(kept));
 
-        assert_eq!(first, Installed::Started);
-        assert_eq!(again, Installed::Skipped);
-        assert_eq!(holding, Installed::Started);
-        assert!(!kept_is_no_token);
-        assert_eq!(watched, Some(held));
-        assert!(released);
-        assert_eq!(active_token("linked-kept"), None);
+        assert_eq!(after_reload, (None, true));
+        assert!(closed);
+        assert_eq!(after_close, None);
+        assert!(!stale_again);
+        assert_eq!(active_token("reload-other"), None);
+    }
+
+    #[test]
+    fn a_live_session_holds_its_watch_until_it_stops() {
+        let library = crate::collab::testing::TempLibrary::new();
+        library.project("live-held", &[("main.tex", "one")]);
+        let (app, main) = app_window("main");
+        let handle = app.handle().clone();
+
+        tauri::async_runtime::block_on(keep_watching(handle.clone(), "live-held".into()));
+        let started = active_token("live-held").is_some();
+        let opened = watch_from(&main, "live-held");
+        unwatch_project_folder("live-held".into(), Some(opened));
+        let after_tab_closed = active_token("live-held").is_some();
+        tauri::async_runtime::block_on(keep_watching(handle, "live-held".into()));
+        release_live("live-held");
+        let after_stop = active_token("live-held");
+
+        assert!(started);
+        assert!(after_tab_closed);
+        assert_eq!(after_stop, None);
+        assert!(hub().owners.values().all(|(id, _)| id != "live-held"));
     }
 
     #[test]
@@ -2139,7 +2263,6 @@ mod tests {
         let full = hub().live();
         let oldest_note = active_token("cap-note-0");
         let oldest_still_held = holds("cap-note-0", notes[0]);
-        let unowned = open("cap-kept", plan(begin_request(), Claim::Keep, false));
         let released = stop("cap-note-7", Some(notes[7]));
         let woke = woken.recv_timeout(Duration::from_secs(1)).ok();
         let revived = open("cap-note-0", note(notes[0], Claim::Revive));
@@ -2149,7 +2272,6 @@ mod tests {
             active_token("cap-note-0"),
             active_token("cap-project"),
             active_token("cap-note-1"),
-            active_token("cap-kept"),
         );
         stop_all();
 
@@ -2160,19 +2282,12 @@ mod tests {
         assert_eq!(full, MAX_WATCHES);
         assert_eq!(oldest_note, None);
         assert!(oldest_still_held);
-        assert_eq!(unowned, Installed::Skipped);
         assert!(released);
         assert_eq!(woke, Some(notes[0]));
         assert_eq!(revived, Installed::Started);
         assert_eq!(
             after,
-            (
-                MAX_WATCHES,
-                Some(notes[0]),
-                Some(project),
-                Some(notes[1]),
-                None
-            )
+            (MAX_WATCHES, Some(notes[0]), Some(project), Some(notes[1]),)
         );
     }
 }

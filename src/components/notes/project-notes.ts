@@ -1,11 +1,12 @@
 import type { ProjectInfo } from "@oleafly/backend-port";
 import { i18n, loadNamespace } from "@/i18n";
 import { logError } from "@/lib/log";
-import { createNoteProject } from "@/lib/tauri";
+import { NOTE_FILE_KIND } from "@/lib/project-notes";
+import { createNoteProject, type NoteFacts } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useNoteTabsStore } from "@/store/note-tabs";
-import { NOTE_KIND, newNoteSource, readNoteFacts } from "./note-file";
+import { newNoteSource, noteColorOf, noteSummary } from "./note-file";
 import type { NoteColor } from "./types";
 
 export const PROJECT_NOTES_PROMPT_LIMIT = 12;
@@ -22,24 +23,25 @@ export interface ProjectNote {
 
 export function projectNoteProjects(projects: readonly ProjectInfo[], projectId: string | null): ProjectInfo[] {
   if (!projectId) return [];
-  return projects.filter((project) => project.kind === NOTE_KIND && project.related_project === projectId);
+  return projects.filter((project) => project.kind === NOTE_FILE_KIND && project.related_project === projectId);
 }
 
 export function projectNotes(
   projects: readonly ProjectInfo[],
   projectId: string | null,
-  heads: ReadonlyMap<string, string>,
+  facts: readonly NoteFacts[],
 ): ProjectNote[] {
+  const byId = new Map(facts.map((fact) => [fact.id, fact]));
   return projectNoteProjects(projects, projectId)
     .map((project) => {
-      const facts = readNoteFacts(heads.get(project.id) ?? "");
+      const fact = byId.get(project.id);
       return {
         id: project.id,
         title: project.name,
         updatedAt: project.updated_at * 1000,
-        icon: facts.icon,
-        color: facts.color,
-        summary: facts.summary,
+        icon: fact?.icon ?? undefined,
+        color: noteColorOf(fact?.color, fact?.noteId ?? project.name),
+        summary: noteSummary(fact?.preview ?? ""),
       };
     })
     .sort((left, right) => right.updatedAt - left.updatedAt || left.title.localeCompare(right.title));
@@ -52,7 +54,7 @@ export function matchesProjectNote(note: ProjectNote, query: string): boolean {
 }
 
 function clipSummary(summary: string): string {
-  const text = summary.replace(/\s+/gu, " ").trim();
+  const text = summary.replaceAll(/\s+/gu, " ").trim();
   return text.length <= PROJECT_NOTE_SUMMARY_CHARS ? text : `${text.slice(0, PROJECT_NOTE_SUMMARY_CHARS).trimEnd()}…`;
 }
 
@@ -62,7 +64,8 @@ export function projectNotesPrompt(notes: readonly ProjectNote[]): string {
   const lines = shown.map((note, index) => {
     const summary = clipSummary(note.summary);
     const edited = new Date(note.updatedAt).toISOString();
-    return `${index + 1}. ${note.title} (id ${note.id}, last edited ${edited})${summary ? `: ${summary}` : ""}`;
+    const line = `${index + 1}. ${note.title} (id ${note.id}, last edited ${edited})`;
+    return summary ? `${line}: ${summary}` : line;
   });
   const more = notes.length - shown.length;
   return [

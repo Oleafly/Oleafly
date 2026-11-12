@@ -230,7 +230,11 @@
     "history_unavailable": "Historii tego projektu nie ma jeszcze na tym komputerze. Spróbuj ponownie, gdy projekt się zsynchronizuje.",
     "account_storage_full": "Na koncie właściciela projektu zabrakło miejsca na tym serwerze. Usuń część plików, żeby je zwolnić, albo poproś administratora serwera o więcej miejsca.",
     "too_many_projects": "Masz już tyle udostępnionych projektów, ile pozwala ten serwer. Przestań udostępniać jeden z nich, zanim udostępnisz kolejny.",
-    "too_many_uploads": "W ciągu ostatniej godziny przesłano zbyt wiele plików. Spróbuj ponownie później."
+    "too_many_uploads": "W ciągu ostatniej godziny przesłano zbyt wiele plików. Spróbuj ponownie później.",
+    "public_notes_off": "Ten serwer nie pozwala na publiczne linki do notatek. Administrator może je włączyć w ustawieniach serwera.",
+    "too_many_pages": "Masz już tyle publicznych stron, ile pozwala ten serwer. Cofnij publikację jednej z nich i spróbuj ponownie.",
+    "page_too_large": "Ta notatka jest zbyt duża, aby ją opublikować. Usuń część obrazów i spróbuj ponownie.",
+    "page_taken_down": "Administrator zablokował tę stronę, więc tej notatki nie można ponownie opublikować, dopóki jej nie odblokuje."
   },
   "roles": {
     "admin": "Administrator",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "Logowanie przez e-mail",
         "description": "Osoby mogą logować się linkiem wysłanym na ich adres e-mail. Wymaga to ustawień e-mail serwera. O tym, kto wejdzie, nadal decydują Twoje reguły dostępu."
+      },
+      "publicNotesAllowed": {
+        "label": "Zezwalaj na publiczne linki do notatek",
+        "description": "Członkowie mogą opublikować kopię notatki tylko do odczytu pod linkiem, który każdy może otworzyć bez logowania."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "Odrzucenie zaproszenia gościa",
         "guestInvitationRevoked": "Wycofanie zaproszenia gościa",
         "guestAdmissionEnded": "Zakończenie dostępu gościa do serwera",
-        "unknown": "Inne zdarzenie serwera"
+        "unknown": "Inne zdarzenie serwera",
+        "notePublished": "Opublikowanie notatki pod publicznym linkiem",
+        "noteUnpublished": "Cofnięcie publikacji notatki",
+        "noteTakenDown": "Zablokowanie opublikowanej notatki",
+        "noteRestored": "Odblokowanie opublikowanej notatki"
       },
       "details": {
         "project": "Projekt: {{title}}",
@@ -455,7 +467,8 @@
         "device": "Urządzenie: {{name}}",
         "byAdmin": "Z konsoli administracyjnej",
         "settingOn": "{{setting}}: włączone",
-        "settingOff": "{{setting}}: wyłączone"
+        "settingOff": "{{setting}}: wyłączone",
+        "note": "Notatka: {{title}}"
       }
     },
     "email": {
@@ -793,7 +806,8 @@
       "settings": "Ustawienia serwera",
       "email": "E-mail",
       "log": "Dziennik bezpieczeństwa",
-      "checks": "Testy połączenia"
+      "checks": "Testy połączenia",
+      "pages": "Opublikowane notatki"
     },
     "health": {
       "label": "Stan serwera: {{status}}",
@@ -960,6 +974,30 @@
     },
     "checks": {
       "description": "Sprawdź połączenie tego komputera z serwerem."
+    },
+    "pages": {
+      "description": "Strony tylko do odczytu utworzone przez użytkowników z ich notatek. Każdy, kto ma link do strony, może ją przeczytać.",
+      "loading": "Wczytywanie opublikowanych notatek…",
+      "empty": "Nikt jeszcze nie opublikował notatki na tym serwerze.",
+      "limit": "Wyświetlane są tylko najnowsze strony: {{shown}}.",
+      "columns": {
+        "title": "Notatka",
+        "author": "Autor",
+        "updated": "Opublikowano",
+        "actions": "Działania"
+      },
+      "noAuthor": "Usunięte konto",
+      "takenDown": "Zablokowana",
+      "openNamed": "Otwórz {{title}}",
+      "takeDown": "Zablokuj",
+      "takeDownNamed": "Zablokuj {{title}}",
+      "restore": "Odblokuj",
+      "restoreNamed": "Odblokuj {{title}}",
+      "takeDownConfirm": {
+        "title": "Zablokować {{title}}?",
+        "description": "Publiczny link przestanie działać, dopóki nie odblokujesz strony. Autor zachowa notatkę, ale do tego czasu nie może jej ponownie opublikować.",
+        "confirm": "Zablokuj"
+      }
     }
   },
   "links": {
@@ -1233,5 +1271,41 @@
     "broughtIn": "Twoje zmiany z {{name}} są teraz w tym projekcie.",
     "retry": "Ponów",
     "dismiss": "Zamknij"
+  },
+  "publish": {
+    "tabs": {
+      "people": "Osoby",
+      "publish": "Publikacja"
+    },
+    "intro": "Publikacja umieszcza kopię tej notatki tylko do odczytu pod publicznym linkiem. Każdy, kto ma link, może ją przeczytać bez logowania.",
+    "contents": "Obrazy, wykresy, diagramy, wzory matematyczne, Typst i cząsteczki są uwzględniane. Bloki HTML, React, CSV, sekwencji i notatników są pomijane.",
+    "checking": "Sprawdzanie strony publicznej…",
+    "loadFailed": "Oleafly nie mógł sprawdzić publicznej strony tej notatki.",
+    "notAllowed": "Serwer {{server}} nie pozwala na publiczne linki do notatek. Administrator może je włączyć w ustawieniach serwera.",
+    "ownerOnly": "Tylko właściciel notatki może ją opublikować.",
+    "linkLabel": "Publiczny link",
+    "open": "Otwórz",
+    "publishedAt": "Ostatnia publikacja: {{date}}",
+    "stale": "Ta notatka zmieniła się od ostatniej publikacji. Opublikuj ją ponownie, aby zaktualizować stronę.",
+    "publish": "Opublikuj",
+    "republish": "Opublikuj ponownie",
+    "unpublish": "Cofnij publikację",
+    "failed": "Publikacja nie została ukończona.",
+    "unpublishConfirm": {
+      "title": "Cofnąć publikację notatki {{name}}?",
+      "description": "Publiczny link od razu przestanie działać. Osoby, które zapisały kopię strony, zachowają ją.",
+      "confirm": "Cofnij publikację"
+    },
+    "list": {
+      "title": "Opublikowane notatki",
+      "description": "Strony tylko do odczytu z Twoich notatek na tym serwerze. Każdy, kto ma link, może je przeczytać.",
+      "loadFailed": "Oleafly nie mógł wczytać Twoich opublikowanych notatek.",
+      "empty": "Nie masz tu jeszcze opublikowanych notatek.",
+      "openNamed": "Otwórz {{name}}",
+      "unpublishNamed": "Cofnij publikację {{name}}",
+      "updated": "Opublikowano {{date}}"
+    },
+    "takenDown": "Administrator zablokował tę stronę. Czytelnicy nie mogą jej otworzyć, a Ty nie możesz jej ponownie opublikować, dopóki jej nie odblokuje. Nadal możesz cofnąć jej publikację.",
+    "tooOld": "Serwer {{server}} jest zbyt stary, aby obsługiwać publiczne linki do notatek. Jego administrator musi zaktualizować Oleafly Server."
   }
 }

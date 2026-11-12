@@ -5,14 +5,53 @@ import { blockMessage, type NoteBlockKind } from "./note-blocks";
 
 export const MAX_SVG_CHARS = 2 * 1024 * 1024;
 const SVG_NS = "http://www.w3.org/2000/svg";
-const LINK_ATTRIBUTES = ["href", "xlink:href", "src"];
-const CSS_REMOTE = /url\(\s*(['"]?)(?!#|data:)[^)]*\1\s*\)|@import[^;]*;?/giu;
+const LINK_ATTRIBUTES: ReadonlySet<string> = new Set(["href", "xlink:href", "src"]);
+const REMOTE_CSS_START = /url\(|@import/giu;
+const URL_OPEN = "url(";
+const IMPORT = "@import";
+const DATA_SCHEME = "data:";
 
-export type SvgResult = { ok: true; svg: string } | { ok: false; problem: "empty" | "invalid" | "large" };
+type SvgProblem = "empty" | "invalid" | "large";
+export type SvgResult = { ok: true; svg: string } | { ok: false; problem: SvgProblem };
 
 function localReference(value: string): boolean {
   const trimmed = value.trim();
   return trimmed.startsWith("#") || /^data:image\/(?:png|jpe?g|gif|webp);base64,/iu.test(trimmed);
+}
+
+function closingParenFinder(css: string): (from: number) => number {
+  let close = css.indexOf(")");
+  return (from) => {
+    if (close !== -1 && close < from) close = css.indexOf(")", from);
+    return close;
+  };
+}
+
+function remoteUrlEnd(css: string, at: number, closingParen: (from: number) => number): number | null {
+  const inner = at + URL_OPEN.length;
+  const close = closingParen(inner);
+  const local = css.startsWith("#", inner) || css.slice(inner, inner + DATA_SCHEME.length).toLowerCase() === DATA_SCHEME;
+  return close < 0 || local ? null : close + 1;
+}
+
+function importEnd(css: string, at: number): number {
+  const semicolon = css.indexOf(";", at + IMPORT.length);
+  return semicolon < 0 ? css.length : semicolon + 1;
+}
+
+function withoutRemoteCss(css: string): string {
+  const starts = new RegExp(REMOTE_CSS_START);
+  const closingParen = closingParenFinder(css);
+  let kept = "";
+  let from = 0;
+  for (let found = starts.exec(css); found; found = starts.exec(css)) {
+    const end = found[0].startsWith("@") ? importEnd(css, found.index) : remoteUrlEnd(css, found.index, closingParen);
+    if (end === null) continue;
+    kept += css.slice(from, found.index);
+    from = end;
+    starts.lastIndex = end;
+  }
+  return kept + css.slice(from);
 }
 
 export function sanitizeSvg(source: string): SvgResult {
@@ -23,7 +62,7 @@ export function sanitizeSvg(source: string): SvgResult {
     USE_PROFILES: { svg: true, svgFilters: true },
     FORBID_TAGS: ["script", "foreignObject", "iframe", "a", "animate", "set", "animateMotion", "animateTransform"],
     FORBID_ATTR: ["onload", "onerror", "onclick", "onbegin", "onend"],
-    RETURN_TRUSTED_TYPE: false,
+    RETURN_TRUSTED_TYPE: true,
   });
   const document = new DOMParser().parseFromString(String(clean), "image/svg+xml");
   const root = document.documentElement;
@@ -31,13 +70,13 @@ export function sanitizeSvg(source: string): SvgResult {
     return { ok: false, problem: "invalid" };
   }
   for (const element of [root, ...root.querySelectorAll("*")]) {
-    for (const name of [...element.getAttributeNames()]) {
+    for (const name of element.getAttributeNames()) {
       const value = element.getAttribute(name) ?? "";
       if (/^on/iu.test(name)) element.removeAttribute(name);
-      else if (LINK_ATTRIBUTES.includes(name.toLowerCase()) && !localReference(value)) element.removeAttribute(name);
-      else if (name === "style") element.setAttribute(name, value.replace(CSS_REMOTE, ""));
+      else if (LINK_ATTRIBUTES.has(name.toLowerCase()) && !localReference(value)) element.removeAttribute(name);
+      else if (name === "style") element.setAttribute(name, withoutRemoteCss(value));
     }
-    if (element.localName === "style") element.textContent = (element.textContent ?? "").replace(CSS_REMOTE, "");
+    if (element.localName === "style") element.textContent = withoutRemoteCss(element.textContent ?? "");
   }
   if (!root.getAttribute("xmlns")) root.setAttribute("xmlns", SVG_NS);
   return { ok: true, svg: new XMLSerializer().serializeToString(root) };
@@ -52,17 +91,16 @@ function svgTitle(svg: string): string {
   return match?.[1]?.trim() ?? "";
 }
 
+function svgProblemMessage(problem: SvgProblem): string {
+  if (problem === "large") return i18n.t(($) => $.notes.blocks.svg.tooLarge);
+  if (problem === "empty") return i18n.t(($) => $.notes.blocks.svg.empty);
+  return i18n.t(($) => $.notes.blocks.svg.invalid);
+}
+
 export function paintSvg(preview: HTMLElement, source: string): undefined {
   const result = sanitizeSvg(source);
   if (!result.ok) {
-    blockMessage(
-      preview,
-      result.problem === "large"
-        ? i18n.t(($) => $.notes.blocks.svg.tooLarge)
-        : result.problem === "empty"
-          ? i18n.t(($) => $.notes.blocks.svg.empty)
-          : i18n.t(($) => $.notes.blocks.svg.invalid),
-    );
+    blockMessage(preview, svgProblemMessage(result.problem));
     return undefined;
   }
   const image = document.createElement("img");

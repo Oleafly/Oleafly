@@ -5,6 +5,7 @@ import {
   cleanNotesLayout,
   GRAPH_VIEW,
   HOME_VIEW,
+  INFO_VIEW,
   isSideView,
   LOCAL_GRAPH_VIEW,
   noteView,
@@ -29,28 +30,31 @@ function views(layout: WorkspaceLayout): string[][] {
 
 describe("graph and outline views", () => {
   it("knows the side views and how to make them", () => {
-    expect([ARTIFACTS_VIEW, LOCAL_GRAPH_VIEW, OUTLINE_VIEW].every(isSideView)).toBe(true);
+    expect([ARTIFACTS_VIEW, LOCAL_GRAPH_VIEW, OUTLINE_VIEW, INFO_VIEW].every(isSideView)).toBe(true);
     expect([GRAPH_VIEW, HOME_VIEW, "note:n1", null, undefined].some(isSideView)).toBe(false);
     expect(sideView(ARTIFACTS_VIEW)).toEqual({ type: "artifacts" });
     expect(sideView(LOCAL_GRAPH_VIEW)).toEqual({ type: "graph", params: { local: true } });
     expect(sideView(OUTLINE_VIEW)).toEqual({ type: "outline" });
+    expect(sideView(INFO_VIEW)).toEqual({ type: "info" });
     expect(sideView(GRAPH_VIEW)).toBeNull();
   });
 
   it("keeps graph and outline views when cleaning a saved layout", () => {
-    const layout = layoutOf(group("g1", [HOME_VIEW, GRAPH_VIEW, LOCAL_GRAPH_VIEW, OUTLINE_VIEW, "bad-graph", "bad-local"]), {
+    const layout = layoutOf(group("g1", [HOME_VIEW, GRAPH_VIEW, LOCAL_GRAPH_VIEW, OUTLINE_VIEW, INFO_VIEW, "bad-graph", "bad-local"]), {
       [HOME_VIEW]: home,
       [GRAPH_VIEW]: { type: "graph" },
       [LOCAL_GRAPH_VIEW]: { type: "graph", params: { local: true } },
       [OUTLINE_VIEW]: { type: "outline" },
+      [INFO_VIEW]: { type: "info" },
       "bad-graph": { type: "graph" },
       "bad-local": { type: "outline" },
     });
-    expect(Object.keys(cleanNotesLayout(layout).views).sort()).toEqual([GRAPH_VIEW, HOME_VIEW, LOCAL_GRAPH_VIEW, OUTLINE_VIEW].sort());
-    const swapped = layoutOf(group("g1", [GRAPH_VIEW, LOCAL_GRAPH_VIEW, OUTLINE_VIEW]), {
+    expect(Object.keys(cleanNotesLayout(layout).views).sort()).toEqual([GRAPH_VIEW, HOME_VIEW, INFO_VIEW, LOCAL_GRAPH_VIEW, OUTLINE_VIEW].sort());
+    const swapped = layoutOf(group("g1", [GRAPH_VIEW, LOCAL_GRAPH_VIEW, OUTLINE_VIEW, INFO_VIEW]), {
       [GRAPH_VIEW]: { type: "graph", params: { local: true } },
       [LOCAL_GRAPH_VIEW]: { type: "graph" },
       [OUTLINE_VIEW]: { type: "graph" },
+      [INFO_VIEW]: { type: "outline" },
     });
     expect(Object.keys(cleanNotesLayout(swapped).views)).toEqual([HOME_VIEW]);
   });
@@ -62,6 +66,8 @@ describe("graph and outline views", () => {
     const both = toggleSideView(outline, LOCAL_GRAPH_VIEW, "note:n1");
     expect(views(both)).toEqual([[HOME_VIEW, "note:n1"], [OUTLINE_VIEW, LOCAL_GRAPH_VIEW]]);
     expect(both.views[LOCAL_GRAPH_VIEW]).toEqual({ type: "graph", params: { local: true } });
+    expect(views(toggleSideView(both, INFO_VIEW, "note:n1"))).toEqual([[HOME_VIEW, "note:n1"], [OUTLINE_VIEW, LOCAL_GRAPH_VIEW, INFO_VIEW]]);
+    expect(views(toggleSideView(start, INFO_VIEW, "note:n1"))).toEqual([[HOME_VIEW, "note:n1"], [INFO_VIEW]]);
     const closed = toggleSideView(both, OUTLINE_VIEW, "note:n1");
     expect(views(closed)).toEqual([[HOME_VIEW, "note:n1"], [LOCAL_GRAPH_VIEW]]);
     expect(toggleSideView(start, GRAPH_VIEW, null)).toBe(start);

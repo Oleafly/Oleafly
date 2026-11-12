@@ -1120,146 +1120,6 @@
         "label": "编译时显示 PDF"
       },
       "title": "禅模式"
-    },
-    "notes": {
-      "sectionName": "笔记外观",
-      "resetAriaLabel": "将{{setting}}恢复为默认值",
-      "text": {
-        "title": "正文"
-      },
-      "typeface": {
-        "label": "字体类型",
-        "description": "选择笔记正文的字体类型。",
-        "options": {
-          "sans": "无衬线",
-          "serif": "衬线",
-          "mono": "等宽"
-        }
-      },
-      "font": {
-        "label": "笔记字体",
-        "description": "为笔记正文选择任意已安装的字体。留空则使用“字体类型”设置。"
-      },
-      "fontSize": {
-        "label": "笔记字号",
-        "description": "设置笔记正文的文字大小。",
-        "custom": "自定义",
-        "customLabel": "自定义笔记字号（像素）"
-      },
-      "lineHeight": {
-        "label": "笔记行高",
-        "description": "设置笔记正文的行间距。",
-        "customLabel": "自定义笔记行高"
-      },
-      "paragraphSpacing": {
-        "label": "段落间距",
-        "description": "设置段落、列表和其他块之间的间距。",
-        "options": {
-          "compact": "紧凑",
-          "normal": "标准",
-          "relaxed": "宽松",
-          "spacious": "宽敞"
-        }
-      },
-      "headings": {
-        "title": "标题与笔记标题"
-      },
-      "headingTypeface": {
-        "label": "标题字体类型",
-        "description": "为标题和笔记标题选择字体类型。",
-        "options": {
-          "text": "与正文相同"
-        }
-      },
-      "headingFont": {
-        "label": "标题字体",
-        "description": "为标题和笔记标题选择已安装的字体。留空则使用“标题字体类型”设置。"
-      },
-      "headingSize": {
-        "label": "标题大小",
-        "description": "设置标题相对于正文的大小。",
-        "options": {
-          "small": "较小",
-          "normal": "标准",
-          "large": "较大"
-        }
-      },
-      "titleSize": {
-        "label": "笔记标题大小",
-        "description": "设置每篇笔记顶部标题的大小。"
-      },
-      "layout": {
-        "title": "布局"
-      },
-      "width": {
-        "label": "笔记宽度",
-        "description": "笔记打开时的宽度。也可以在笔记中的宽度菜单里更改。",
-        "options": {
-          "standard": "标准",
-          "wide": "宽",
-          "full": "全宽"
-        }
-      },
-      "wordCount": {
-        "label": "显示字数",
-        "description": "在笔记的工具栏中显示字数。"
-      },
-      "spellcheck": {
-        "label": "在笔记中检查拼写",
-        "description": "编写笔记时为拼错的单词加下划线。"
-      },
-      "code": {
-        "title": "代码"
-      },
-      "codeFont": {
-        "label": "代码字体",
-        "description": "为代码块和行内代码选择已安装的字体。"
-      },
-      "codeTheme": {
-        "label": "代码块配色",
-        "description": "选择笔记中代码块的语法配色。",
-        "options": {
-          "editor": "与编辑器相同"
-        }
-      },
-      "colors": {
-        "title": "颜色"
-      },
-      "accent": {
-        "label": "笔记强调色",
-        "description": "用于笔记中的链接、标签和任务复选框。",
-        "matchApp": "跟随应用",
-        "customAriaLabel": "选择自定义笔记强调色"
-      },
-      "highlight": {
-        "label": "高亮颜色",
-        "description": "高亮文本的背景色。",
-        "options": {
-          "yellow": "黄色",
-          "green": "绿色",
-          "blue": "蓝色",
-          "pink": "粉色",
-          "purple": "紫色",
-          "accent": "强调色"
-        }
-      },
-      "callouts": {
-        "label": "标注样式",
-        "description": "笔记中标注框的外观。",
-        "options": {
-          "tinted": "浅色底",
-          "filled": "填充",
-          "outlined": "描边",
-          "bar": "侧边条"
-        }
-      },
-      "remoteImages": {
-        "title": "来自网络的图片",
-        "description": "笔记会直接加载这些网站的图片，不会先询问。",
-        "empty": "笔记从网络加载图片前会先询问。你设为始终允许的网站会显示在这里。",
-        "remove": "移除 {{host}}"
-      },
-      "resetAll": "重置笔记外观"
     }
   },
   "checkpoints": {
@@ -2481,6 +2341,42 @@
       "notesAskAgent": {
         "description": "就所选文本询问代理，或打开和关闭笔记的代理。",
         "label": "笔记：询问代理"
+      },
+      "notesNewNote": {
+        "label": "笔记：新建笔记",
+        "description": "在当前面板中新建一篇笔记。"
+      },
+      "notesSearch": {
+        "label": "笔记：搜索笔记",
+        "description": "跳转到笔记侧边栏顶部的搜索框。"
+      },
+      "notesBookmark": {
+        "label": "笔记：收藏笔记",
+        "description": "将打开的笔记加入收藏，或从收藏中移除。"
+      },
+      "notesCopyLink": {
+        "label": "笔记：复制笔记链接",
+        "description": "复制打开的笔记的链接，可以粘贴到另一篇笔记或聊天中。"
+      },
+      "notesProperties": {
+        "label": "笔记：显示或隐藏属性",
+        "description": "打开或关闭笔记标题下方的属性。"
+      },
+      "notesQuickCapture": {
+        "description": "打开一个小窗口，在任何应用中随手记录，即使 Oleafly 在后台也可以。",
+        "label": "笔记：快速记录"
+      },
+      "notesCopyBlockLink": {
+        "description": "复制光标所在段落、列表项或表格的链接。",
+        "label": "笔记：复制块链接"
+      },
+      "notesBack": {
+        "description": "回到你在此标签页中之前的位置。",
+        "label": "笔记：后退"
+      },
+      "notesForward": {
+        "description": "后退之后再次前进。",
+        "label": "笔记：前进"
       }
     },
     "application": {
@@ -2506,14 +2402,41 @@
         "renameSymbol": "全项目重命名符号或文件",
         "slashCommandMenu": "斜杠命令插入菜单",
         "triggerAutocomplete": "触发自动补全",
-        "undo": "撤销"
+        "undo": "撤销",
+        "noteBold": "加粗",
+        "noteItalic": "斜体",
+        "noteUnderline": "下划线",
+        "noteStrike": "删除线",
+        "noteCode": "行内代码",
+        "noteHighlight": "用上次使用的颜色高亮",
+        "noteSuperscript": "上标",
+        "noteSubscript": "下标",
+        "noteHeadings": "标题 1 至 6",
+        "noteText": "转为正文",
+        "noteQuote": "引文",
+        "noteCodeBlock": "代码块",
+        "noteBulletList": "无序列表",
+        "noteNumberedList": "有序列表",
+        "noteTaskList": "任务列表",
+        "noteToggleTask": "勾选或取消勾选任务",
+        "noteIndent": "增加列表项缩进",
+        "noteOutdent": "减少列表项缩进",
+        "noteLineBreak": "在同一段落中换行",
+        "noteFind": "查找和替换",
+        "noteSelectAll": "选择整篇笔记",
+        "noteUndo": "撤销",
+        "noteRedo": "重做",
+        "noteInsertMenu": "在行首打开插入菜单",
+        "noteLinkMenu": "链接到笔记",
+        "noteTag": "添加标签"
       },
       "managed": "由编辑器管理"
     },
     "categories": {
       "codeIntelligence": "代码智能",
       "editor": "编辑器",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "笔记"
     },
     "error": {
       "conflict": "已分配给{{action}}。",
@@ -2559,6 +2482,15 @@
         "uppercase": "转为大写"
       },
       "unbound": "未设置"
+    },
+    "quickCapture": {
+      "label": "随处快速记录",
+      "description": "快速记录快捷键在这台电脑上的所有应用中都有效。",
+      "ready": "在任意应用中按 {{shortcut}} 即可打开快速记录。",
+      "taken": "另一个应用已在使用 {{shortcut}}。请为“笔记：快速记录”选择其他快捷键。",
+      "invalid": "{{shortcut}} 无法在 Oleafly 之外使用。请选择以字母、数字或功能键结尾的快捷键。",
+      "failed": "Oleafly 无法设置该快捷键。请关闭快速记录后再重新开启以重试。",
+      "wayland": "Wayland 不允许应用监听其窗口之外的按键。要用按键打开快速记录，请在系统键盘设置中添加一个运行以下命令的自定义快捷键："
     }
   },
   "systemIntegration": {
@@ -2648,17 +2580,5 @@
       "loadFailed": "无法读取 MCP 服务器列表。",
       "missing": "{{name}}（未找到）"
     }
-  },
-  "notesPreview": {
-    "label": "使用这些设置的笔记预览",
-    "title": "野外笔记",
-    "heading": "晨间调查",
-    "paragraph": "小雨一直下到九点，之后北岭上空放晴。到中午土壤仍然潮湿。",
-    "links": "完整步骤见<note>采样方法</note>，也可以浏览<tag>#野外工作</tag>。",
-    "highlight": "幼苗一周内长高了一倍。",
-    "calloutTitle": "下次考察",
-    "calloutBody": "采集新样本前先检查土壤传感器。",
-    "taskDone": "给样本贴标签",
-    "task": "上传照片"
   }
 }

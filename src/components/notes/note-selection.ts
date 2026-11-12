@@ -2,6 +2,7 @@ import { Extension } from "@tiptap/core";
 import type { Node as ProseMirrorNode, Slice } from "@tiptap/pm/model";
 import { type EditorState, NodeSelection, Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
+import { trimTrailingCharacter } from "@/lib/trim-character";
 import { noteBlockName } from "./note-blocks";
 import { serializeNoteMarkdown } from "./note-markdown";
 
@@ -42,11 +43,6 @@ function selectionMarks(state: EditorState): { covered: Decoration[]; roots: Dec
   return { covered, roots };
 }
 
-export function coveredBlocks(state: EditorState): DecorationSet {
-  const { covered } = selectionMarks(state);
-  return covered.length > 0 ? DecorationSet.create(state.doc, covered) : DecorationSet.empty;
-}
-
 function selectionDecorations(state: EditorState): DecorationSet {
   const { covered, roots } = selectionMarks(state);
   const decorations = [...covered, ...roots];
@@ -81,7 +77,7 @@ export function noteClipboardText(slice: Slice, doc: ProseMirrorNode, wholeNote:
   const copied = whole ? doc : doc.type.createAndFill(null, slice.content);
   if (!copied) return "";
   const text = whole && wholeNote ? wholeNote(copied) : serializeNoteMarkdown(copied.toJSON());
-  return text.replace(/\n+$/u, "");
+  return trimTrailingCharacter(text, "\n");
 }
 
 function insideWidget(view: EditorView, node: Node | null): boolean {

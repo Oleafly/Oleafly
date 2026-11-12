@@ -190,8 +190,8 @@
     "pdfFailedDetail": "Не удалось сохранить PDF: {{detail}}",
     "pngFailed": "Не удалось сохранить PNG",
     "pngFailedDetail": "Не удалось сохранить PNG: {{detail}}",
-    "revealFailed": "Файл сохранён, но открыть его папку не удалось.",
     "projectChanged": "Открытый проект изменился. Запустите экспорт заново из проекта, который хотите сохранить.",
+    "revealFailed": "Файл сохранён, но открыть его папку не удалось.",
     "saved": "{{kind}} сохранён · {{fileName}}",
     "savedAfterFailedCompile": "{{kind}} сохранён · {{fileName}}. Последняя компиляция не удалась, поэтому файл может быть неполным.",
     "savedSource": "{{kind}} сохранён · {{fileName}}. Если в нём используются изображения или библиографии из вашего проекта, скопируйте их рядом с ним, прежде чем компилировать.",
@@ -329,6 +329,7 @@
   },
   "mcp": {
     "deniedByRules": "Отклонено правилом deny в approvals.toml",
+    "createTodaySummary": "Создать сегодняшнюю заметку «{{title}}»",
     "openProjectSummary": "Открыть проект {{id}}",
     "rulesUnreadable": "Отклонено, так как не удалось прочитать approvals.toml",
     "useToolSummary": "Использовать {{tool}} с сервера MCP {{server}}"
@@ -600,6 +601,7 @@
   "tinytex": {
     "installFailed": "Не удалось установить TinyTeX.",
     "installGuide": "Инструкция по установке",
+    "tryAgain": "Попробовать снова",
     "installed": "TinyTeX установлен.",
     "phase": {
       "addingPackages": "Добавляем пакеты…",
@@ -609,8 +611,7 @@
       "unpacking": "Распаковываем…"
     },
     "removeFailed": "Не удалось удалить TinyTeX.",
-    "removed": "TinyTeX удалён.",
-    "tryAgain": "Попробовать снова"
+    "removed": "TinyTeX удалён."
   },
   "toolActivity": {
     "labels": {

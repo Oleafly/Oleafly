@@ -6,6 +6,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/empty";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useNow } from "@/hooks/use-now";
 import { formatDateTime, formatRelativeTimeFrom } from "@/lib/intl";
 import type { CollabAccessEntry } from "@/lib/tauri";
 import { collabAccessLogPage } from "@/lib/tauri-collab";
@@ -69,7 +70,7 @@ function AccessList({ projectId, title }: Readonly<{ projectId: string; title: s
   const [loadError, setLoadError] = useState<string | null>(null);
   const [moreError, setMoreError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
+  const now = useNow(TICK_MS);
   const latest = useRef(projectId);
   latest.current = projectId;
 
@@ -104,11 +105,6 @@ function AccessList({ projectId, title }: Readonly<{ projectId: string; title: s
     setMoreError(null);
     void load(null);
   }, [load]);
-
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), TICK_MS);
-    return () => window.clearInterval(timer);
-  }, []);
 
   if (loadError) {
     return (

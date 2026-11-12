@@ -3,6 +3,8 @@ import { Extension } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { type EditorState, Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
+import { escapeRegExp } from "@/lib/regexp";
+import { redecorateTextblocks } from "./touched-textblocks";
 
 export interface NoteFindQuery {
   readonly search: string;
@@ -33,7 +35,6 @@ export const ACTIVE_MATCH_CLASS = "note-find-match-active";
 
 const ATOM = "￼";
 const WORD = /[\p{L}\p{N}_]/u;
-const REGEXP_SPECIALS = /[\\^$.*+?()[\]{}|]/g;
 const ESCAPES: Readonly<Record<string, string>> = { n: "\n", r: "\r", t: "\t", "\\": "\\" };
 
 export const noteFindKey = new PluginKey<NoteFindState>("noteFind");
@@ -48,12 +49,12 @@ const CLOSED: NoteFindState = {
 };
 
 function unquote(text: string): string {
-  return text.replace(/\\([nrt\\])/g, (sequence, char: string) => ESCAPES[char] ?? sequence);
+  return text.replaceAll(/\\([nrt\\])/g, (sequence, char: string) => ESCAPES[char] ?? sequence);
 }
 
 export function findPattern(query: NoteFindQuery): RegExp | null {
   if (!query.search) return null;
-  const source = query.regexp ? query.search : unquote(query.search).replace(REGEXP_SPECIALS, "\\$&");
+  const source = query.regexp ? query.search : escapeRegExp(unquote(query.search));
   try {
     return new RegExp(source, query.caseSensitive ? "gmu" : "gimu");
   } catch {
@@ -71,7 +72,7 @@ function blockText(node: ProseMirrorNode): string {
 
 function charBefore(text: string, index: number): string {
   if (index <= 0) return "";
-  const low = text.charCodeAt(index - 1);
+  const low = text.codePointAt(index - 1) ?? 0;
   return low >= 0xdc00 && low <= 0xdfff && index >= 2 ? text.slice(index - 2, index) : text.charAt(index - 1);
 }
 
@@ -90,9 +91,9 @@ function wholeWordAt(text: string, from: number, to: number): boolean {
   return startsWord && endsWord;
 }
 
-function matchesIn(text: string, start: number, pattern: RegExp, query: NoteFindQuery, into: NoteFindMatch[]): void {
+function matchesIn(text: string, start: number, pattern: RegExp, query: NoteFindQuery, into: NoteFindMatch[], limit: number): void {
   pattern.lastIndex = 0;
-  for (let found = pattern.exec(text); found && into.length < MAX_FIND_MATCHES; found = pattern.exec(text)) {
+  for (let found = pattern.exec(text); found && into.length < limit; found = pattern.exec(text)) {
     const end = found.index + found[0].length;
     if (found[0].length === 0) {
       pattern.lastIndex = found.index + (charAt(text, found.index).length || 1);
@@ -103,14 +104,18 @@ function matchesIn(text: string, start: number, pattern: RegExp, query: NoteFind
   }
 }
 
-export function findMatches(doc: ProseMirrorNode, query: NoteFindQuery): { valid: boolean; matches: NoteFindMatch[] } {
+export function findMatches(
+  doc: ProseMirrorNode,
+  query: NoteFindQuery,
+  limit = MAX_FIND_MATCHES,
+): { valid: boolean; matches: NoteFindMatch[] } {
   const pattern = findPattern(query);
   if (!pattern) return { valid: query.search === "", matches: [] };
   const matches: NoteFindMatch[] = [];
   doc.descendants((node, pos) => {
-    if (matches.length >= MAX_FIND_MATCHES) return false;
+    if (matches.length >= limit) return false;
     if (!node.isTextblock) return true;
-    matchesIn(blockText(node), pos + 1, pattern, query, matches);
+    matchesIn(blockText(node), pos + 1, pattern, query, matches, limit);
     return false;
   });
   return { valid: true, matches };
@@ -138,7 +143,7 @@ function indexOf(matches: readonly NoteFindMatch[], range: Range | undefined): n
   if (!range) return -1;
   const at = firstFrom(matches, range.from);
   const match = matches[at];
-  return match && match.from === range.from && match.to === range.to ? at : -1;
+  return match?.from === range.from && match.to === range.to ? at : -1;
 }
 
 function shownMarks(doc: ProseMirrorNode, marks: DecorationSet, matches: readonly NoteFindMatch[], active: number): DecorationSet {
@@ -151,14 +156,49 @@ function withActive(state: NoteFindState, doc: ProseMirrorNode, active: number):
   return { ...state, active, shown: shownMarks(doc, state.marks, state.matches, active) };
 }
 
+function markOf(match: NoteFindMatch): Decoration {
+  return Decoration.inline(match.from, match.to, { class: MATCH_CLASS });
+}
+
+function withMatches(
+  doc: ProseMirrorNode,
+  query: NoteFindQuery,
+  found: { valid: boolean; matches: NoteFindMatch[] },
+  marks: DecorationSet,
+  anchor: Range | undefined,
+): NoteFindState {
+  const active = indexOf(found.matches, anchor);
+  return { query, ...found, active, marks, shown: shownMarks(doc, marks, found.matches, active) };
+}
+
 function opened(doc: ProseMirrorNode, query: NoteFindQuery, anchor: Range | undefined): NoteFindState {
-  const { valid, matches } = findMatches(doc, query);
-  const marks = DecorationSet.create(
-    doc,
-    matches.map((match) => Decoration.inline(match.from, match.to, { class: MATCH_CLASS })),
-  );
-  const active = indexOf(matches, anchor);
-  return { query, valid, matches, active, marks, shown: shownMarks(doc, marks, matches, active) };
+  const found = findMatches(doc, query);
+  return withMatches(doc, query, found, DecorationSet.create(doc, found.matches.map(markOf)), anchor);
+}
+
+function rescanned(tr: Transaction, previous: NoteFindState, query: NoteFindQuery, anchor: Range | undefined): NoteFindState {
+  const pattern = findPattern(query);
+  if (!pattern || previous.matches.length >= MAX_FIND_MATCHES) return opened(tr.doc, query, anchor);
+  const blocks: Range[] = [];
+  const fresh: NoteFindMatch[] = [];
+  const marks = redecorateTextblocks(previous.marks, tr, (block, pos) => {
+    blocks.push({ from: pos, to: pos + block.nodeSize });
+    const found: NoteFindMatch[] = [];
+    matchesIn(blockText(block), pos + 1, pattern, query, found, MAX_FIND_MATCHES);
+    fresh.push(...found);
+    return found.map(markOf);
+  });
+  if (!marks) return opened(tr.doc, query, anchor);
+  const kept = previous.matches.flatMap((match) => {
+    const from = tr.mapping.mapResult(match.from, 1);
+    const to = tr.mapping.mapResult(match.to, -1);
+    if (from.deleted || to.deleted || to.pos - from.pos !== match.to - match.from) return [];
+    if (blocks.some((block) => from.pos < block.to && to.pos > block.from)) return [];
+    return [{ ...match, from: from.pos, to: to.pos }];
+  });
+  const matches = [...kept, ...fresh].sort((a, b) => a.from - b.from);
+  if (matches.length > MAX_FIND_MATCHES) return opened(tr.doc, query, anchor);
+  return withMatches(tr.doc, query, { valid: true, matches }, marks, anchor);
 }
 
 function wrapped(matches: readonly NoteFindMatch[], index: number): number {
@@ -176,7 +216,7 @@ function applyFind(tr: Transaction, previous: NoteFindState, state: EditorState)
   if (!previous.query) return previous;
   if (tr.docChanged) {
     const mapped = current && { from: tr.mapping.map(current.from, 1), to: tr.mapping.map(current.to, -1) };
-    const next = opened(state.doc, previous.query, mapped);
+    const next = rescanned(tr, previous, previous.query, mapped);
     if (!meta || !("after" in meta)) return next;
     return withActive(next, state.doc, wrapped(next.matches, firstFrom(next.matches, meta.after)));
   }
@@ -233,7 +273,7 @@ export function findPreviousMatch(view: EditorView): NoteFindMatch | null {
 }
 
 function expandGroups(replace: string, groups: readonly string[]): string {
-  return replace.replace(/\$([$&]|\d+)/g, (token, name: string) => {
+  return replace.replaceAll(/\$([$&]|\d+)/g, (token, name: string) => {
     if (name === "&") return groups[0] ?? "";
     if (name === "$") return "$";
     for (let length = name.length; length > 0; length--) {
@@ -269,8 +309,10 @@ export function replaceNextMatch(view: EditorView, keepCase: boolean): NoteFindM
 }
 
 export function replaceAllMatches(view: EditorView, keepCase: boolean): number {
-  const { query, matches } = noteFindState(view.state);
-  if (!query || !view.editable || matches.length === 0) return 0;
+  const { query } = noteFindState(view.state);
+  if (!query || !view.editable) return 0;
+  const { matches } = findMatches(view.state.doc, query, Number.POSITIVE_INFINITY);
+  if (matches.length === 0) return 0;
   const tr = view.state.tr;
   for (let index = matches.length - 1; index >= 0; index--) {
     replaceRange(tr, matches[index], replacementFor(query, matches[index], keepCase));

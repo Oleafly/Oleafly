@@ -340,7 +340,15 @@
     },
     "resetPaneLayout": {
       "keywords": "重置 面板 布局 顺序 移动 侧边栏 助手 编辑器 预览 终端 默认",
-      "label": "重置面板布局"
+      "label": "在所有项目中重置面板排列"
+    },
+    "saveLayout": {
+      "keywords": "保存 布局 自定义 排列 面板 大小 名称",
+      "label": "保存当前布局"
+    },
+    "applySavedLayout": {
+      "keywords": "布局 已保存 自定义 排列 面板 切换 应用",
+      "label": "布局：{{name}}"
     },
     "zoomIn": {
       "keywords": "放大 变大",
@@ -379,6 +387,10 @@
     "notes": {
       "label": "打开笔记",
       "keywords": "笔记 笔记本 知识 想法 灵感 研究 日志 notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "快速记录",
+      "keywords": "快速记录 随手记 笔记 收件箱 今天 quick capture jot note inbox today"
     }
   },
   "community": {
@@ -483,6 +495,11 @@
   },
   "datePicker": {
     "placeholder": "选择日期"
+  },
+  "monthPicker": {
+    "label": "选择月份",
+    "previousYear": "上一年",
+    "nextYear": "下一年"
   },
   "devMenu": {
     "inspect": "检查",
@@ -702,6 +719,7 @@
     "groups": {
       "action": "操作",
       "documents": "文档",
+      "notes": "笔记",
       "references": "参考文献"
     },
     "label": "搜索",
@@ -709,11 +727,13 @@
     "openReferences": "打开此项目的参考文献。",
     "placeholder": "搜索项目、文档，或输入 / 执行命令…",
     "placeholderDocuments": "在文档中搜索…",
+    "placeholderNotes": "搜索笔记及其中的块…",
     "placeholderProjects": "按名称、引擎、类型、日期或元数据搜索项目…",
     "referencesNeedProject": "请先打开项目，才能浏览其中的参考文献。",
     "slash": {
       "create": "打开模板库。",
       "docs": "在文档中搜索",
+      "notes": "搜索笔记及其中的块",
       "projects": "搜索你的项目",
       "refs": "打开此项目的参考文献。",
       "settings": "打开设置",
@@ -1294,7 +1314,24 @@
       "split": "分屏视图"
     },
     "moreActions": "更多操作",
-    "resetPaneLayout": "重置面板布局",
+    "resetPaneLayout": "重置面板排列",
+    "resetPaneLayoutScope": "所有项目",
+    "savedLayouts": {
+      "close": "关闭",
+      "delete": "删除",
+      "deleteConfirm": "要删除布局 {{name}} 吗？",
+      "limit": "最多可保留 {{count}} 个布局。请先删除一个，再保存新的。",
+      "manage": "管理布局",
+      "name": "布局名称",
+      "rename": "重命名",
+      "renameTitle": "重命名布局",
+      "replace": "替换",
+      "replaceConfirm": "已有名为 {{name}} 的布局。要替换它吗？",
+      "save": "保存当前布局",
+      "saveButton": "保存",
+      "saveTitle": "保存布局",
+      "update": "更新为当前布局"
+    },
     "renameFailed": "无法重命名项目。"
   },
   "tour": {

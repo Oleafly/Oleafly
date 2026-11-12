@@ -16,12 +16,19 @@ describe("desktop scrollbars", () => {
   it("draws one thin, light thumb that shows only over its own scroller", () => {
     expect(styles).toContain(":where(body, body *)::-webkit-scrollbar {\n  width: 8px;\n  height: 8px;");
     expect(styles).toContain(":where(body, body *) {\n  --ofl-scroll-thumb: transparent;\n}");
-    expect(styles).toContain(":root {\n  --ofl-scroll-thumb-mix: 16%;\n  --ofl-scroll-thumb-active-mix: 30%;\n}");
     expect(styles).toContain(
-      ":where(body, body *):hover {\n  --ofl-scroll-thumb: color-mix(in srgb, var(--foreground) var(--ofl-scroll-thumb-mix), transparent);",
+      ":root {\n  --ofl-scroll-thumb-ink: oklch(0.5 0.04 250);\n  --ofl-scroll-thumb-mix: 14%;\n  --ofl-scroll-thumb-active-mix: 28%;\n}",
     );
-    expect(styles).toContain("background-color: color-mix(in srgb, var(--foreground) var(--ofl-scroll-thumb-active-mix), transparent);");
-    expect(styles).toContain("border: 2px solid transparent;\n  border-radius: 999px;\n  background: var(--ofl-scroll-thumb) padding-box;");
+    expect(styles).toContain(
+      ".dark {\n  --ofl-scroll-thumb-ink: var(--foreground);\n  --ofl-scroll-thumb-mix: 16%;\n  --ofl-scroll-thumb-active-mix: 30%;\n}",
+    );
+    expect(styles).toContain(
+      ":where(body, body *):hover {\n  --ofl-scroll-thumb: color-mix(in srgb, var(--ofl-scroll-thumb-ink) var(--ofl-scroll-thumb-mix), transparent);",
+    );
+    expect(styles).toContain(
+      "border-width: 2px;\n  background-color: color-mix(in srgb, var(--ofl-scroll-thumb-ink) var(--ofl-scroll-thumb-active-mix), transparent);",
+    );
+    expect(styles).toContain("border: 3.5px solid transparent;\n  border-radius: 999px;\n  background: var(--ofl-scroll-thumb) padding-box;");
     expect(styles).toContain(":where(body, body *)::-webkit-scrollbar-thumb:hover,");
   });
 

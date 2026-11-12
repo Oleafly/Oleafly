@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { useNotesPrefsStore } from "@/store/notes-prefs";
 import { noteModelMemory } from "./note-model-memory";
 
-const KEY = "oleafly.notes.assistantModel";
+const initial = useNotesPrefsStore.getState();
 
-afterEach(() => {
-  localStorage.clear();
-  vi.restoreAllMocks();
+beforeEach(() => {
+  useNotesPrefsStore.setState(initial, true);
 });
 
 describe("the model a note's assistant remembers", () => {
@@ -22,20 +22,12 @@ describe("the model a note's assistant remembers", () => {
     expect(noteModelMemory("n1").read()).toBeNull();
   });
 
-  it("keeps only the most recent notes and survives broken or full storage", () => {
+  it("keeps only the most recent notes", () => {
     for (let index = 0; index < 205; index += 1) noteModelMemory(`n${index}`).save({ providerId: "p", modelId: `m${index}` });
-    const stored = JSON.parse(localStorage.getItem(KEY) ?? "{}") as { notes: Record<string, unknown> };
-    expect(Object.keys(stored.notes)).toHaveLength(200);
-    expect(stored.notes.n0).toBeUndefined();
-    noteModelMemory("n204").save({ providerId: "p", modelId: "again" });
-    expect(Object.keys((JSON.parse(localStorage.getItem(KEY) ?? "{}") as { notes: object }).notes).at(-1)).toBe("n204");
-    localStorage.setItem(KEY, "{");
-    expect(noteModelMemory("n1").read()).toBeNull();
-    localStorage.setItem(KEY, JSON.stringify({ notes: { n1: { providerId: "p" } }, last: "x" }));
-    expect(noteModelMemory("n1").read()).toBeNull();
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
-      throw new Error("full");
-    });
-    expect(() => noteModelMemory("n1").save({ providerId: "p", modelId: "m" })).not.toThrow();
+    const { notes } = useNotesPrefsStore.getState().models;
+    expect(Object.keys(notes)).toHaveLength(200);
+    expect(notes.n0).toBeUndefined();
+    noteModelMemory("n5").save({ providerId: "p", modelId: "again" });
+    expect(Object.keys(useNotesPrefsStore.getState().models.notes).at(-1)).toBe("n5");
   });
 });

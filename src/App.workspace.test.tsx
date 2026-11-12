@@ -253,6 +253,7 @@ vi.mock("@/components/layout/QuickActionOffer", () => ({ QuickActionOffer: () =>
 vi.mock("@/components/layout/CiteOleaflyDialog", () => ({ CiteOleaflyDialog: () => null }));
 vi.mock("@/components/layout/SettingsModal", () => ({ SettingsModal: () => null }));
 vi.mock("@/components/diagram/DiagramComposer", () => ({ DiagramComposer: () => null }));
+vi.mock("@/components/notes/NotesHost", () => ({ NotesHost: () => <div data-testid="notes-host" /> }));
 vi.mock("@/components/diagram/composer-chooser/DiagramComposerChooser", () => ({ DiagramComposerChooserHost: () => null }));
 vi.mock("@/components/editor/WordCountModal", () => ({ WordCountModal: () => null }));
 vi.mock("@/components/editor/VersioningModal", () => ({ VersioningModal: () => null }));
@@ -273,6 +274,8 @@ import { useTypstFormsStore } from "@/store/typst-forms";
 import { setWysiwygEditor } from "@/components/editor/wysiwyg/controller";
 import { registerNoteEditor } from "@/lib/open-note-editors";
 import { noteEditorHandle } from "@/lib/tests/open-note-editor-fixtures";
+import { useNoteTabsStore } from "@/store/note-tabs";
+import { intended } from "@/lib/preloadable";
 
 const initialFiles = useFilesStore.getState();
 const initialCompile = useCompileStore.getState();
@@ -424,6 +427,23 @@ describe("library view", () => {
     await renderApp();
     expect(await screen.findByTestId(`tool-${page}`)).toBeInTheDocument();
     expect(screen.getByTestId("library")).toBeInTheDocument();
+  });
+
+  it("leaves the Notes page and closes personal note tabs when Notes is turned off", async () => {
+    useSettingsStore.setState({ notes: true });
+    useHomeViewStore.setState({ page: "notes" });
+    useNoteTabsStore.setState({ tabs: [{ id: "n1", projectId: "p1", order: 1 }], active: "n1" });
+    await renderApp();
+    expect(await screen.findByTestId("notes-host")).toBeInTheDocument();
+    act(() => useSettingsStore.getState().setNotes(false));
+    expect(useHomeViewStore.getState().page).toBe("library");
+    expect(useNoteTabsStore.getState()).toMatchObject({ tabs: [], active: null });
+  });
+
+  it("starts loading the Settings tabs when Settings opens", async () => {
+    await renderApp();
+    act(() => useSettingsStore.getState().setSettingsOpen(true));
+    expect(intended("settings")).toBe(true);
   });
 
   it("shows the floating copilot over the library", async () => {

@@ -21,8 +21,10 @@ export const ARTIFACTS_SHARE = 0.32;
 export const GRAPH_VIEW = "graph";
 export const LOCAL_GRAPH_VIEW = "local-graph";
 export const OUTLINE_VIEW = "outline";
+export const DEAD_LINKS_VIEW = "dead-links";
+export const INFO_VIEW = "info";
 export const SIDE_SHARE = 0.3;
-const SIDE_VIEWS: readonly string[] = [ARTIFACTS_VIEW, LOCAL_GRAPH_VIEW, OUTLINE_VIEW];
+const SIDE_VIEWS: ReadonlySet<string> = new Set([ARTIFACTS_VIEW, LOCAL_GRAPH_VIEW, OUTLINE_VIEW, INFO_VIEW]);
 const NOTE_PREFIX = "note:";
 const HOME_PREFIX = "home:";
 const EXTRA_HOME = /^home:([1-9]\d*)$/u;
@@ -32,13 +34,14 @@ export function isHomeView(viewId: string): boolean {
 }
 
 export function isSideView(viewId: string | null | undefined): boolean {
-  return viewId !== null && viewId !== undefined && SIDE_VIEWS.includes(viewId);
+  return viewId !== null && viewId !== undefined && SIDE_VIEWS.has(viewId);
 }
 
 export function sideView(viewId: string): ViewState | null {
   if (viewId === ARTIFACTS_VIEW) return { type: "artifacts" };
   if (viewId === LOCAL_GRAPH_VIEW) return { type: "graph", params: { local: true } };
   if (viewId === OUTLINE_VIEW) return { type: "outline" };
+  if (viewId === INFO_VIEW) return { type: "info" };
   return null;
 }
 
@@ -74,6 +77,8 @@ function knownView(id: string, view: ViewState): boolean {
   if (id === GRAPH_VIEW) return view.type === "graph" && view.params?.local !== true;
   if (id === LOCAL_GRAPH_VIEW) return view.type === "graph" && view.params?.local === true;
   if (id === OUTLINE_VIEW) return view.type === "outline";
+  if (id === DEAD_LINKS_VIEW) return view.type === "dead-links";
+  if (id === INFO_VIEW) return view.type === "info";
   const noteId = noteIdOf(id);
   return noteId !== null && noteId !== "" && view.type === "note" && view.params?.noteId === noteId;
 }
@@ -95,6 +100,12 @@ export function readNotesLayout(): WorkspaceLayout {
 
 export function saveNotesLayout(layout: WorkspaceLayout): void {
   writeJson(NOTES_LAYOUT_KEY, layout);
+}
+
+export function closeSavedNoteView(noteId: string): void {
+  const saved = readNotesLayout();
+  const next = closeView(saved, noteViewId(noteId));
+  if (next !== saved) saveNotesLayout(next);
 }
 
 export function holdsNotes(candidate: GroupNode): boolean {
@@ -123,13 +134,21 @@ export function openHomeIn(layout: WorkspaceLayout, viewId: string, groupId: str
   return openView(layout, viewId, { type: "home" }, { groupId, zone: "center" });
 }
 
-export function openNoteInPlace(layout: WorkspaceLayout, placeId: string, noteId: string): WorkspaceLayout {
+export function openInPlace(layout: WorkspaceLayout, placeId: string, viewId: string, view: ViewState): WorkspaceLayout | null {
   const owner = groupOfView(layout, placeId);
-  if (!owner) return openNoteIn(layout, noteId, null);
-  const viewId = noteViewId(noteId);
+  if (!owner) return null;
+  if (placeId === viewId) return layout;
   const target = { groupId: owner.id, zone: "center" as const, index: owner.views.indexOf(placeId) };
-  const placed = groupOfView(layout, viewId) ? moveView(layout, viewId, target) : openView(layout, viewId, noteView(noteId), target);
+  const placed = groupOfView(layout, viewId) ? moveView(layout, viewId, target) : openView(layout, viewId, view, target);
   return closeView(placed, placeId);
+}
+
+export function openNoteInPlace(layout: WorkspaceLayout, placeId: string, noteId: string): WorkspaceLayout {
+  return openInPlace(layout, placeId, noteViewId(noteId), noteView(noteId)) ?? openNoteIn(layout, noteId, null);
+}
+
+export function openHomeInPlace(layout: WorkspaceLayout, placeId: string, homeId: string): WorkspaceLayout {
+  return openInPlace(layout, placeId, homeId, { type: "home" }) ?? openHomeIn(layout, homeId, stageGroup(layout, null).id);
 }
 
 export function openNoteViews(layout: WorkspaceLayout): string[] {
@@ -151,6 +170,11 @@ export function toggleSideView(layout: WorkspaceLayout, viewId: string, focused:
 export function openGraphIn(layout: WorkspaceLayout, focused: string | null): WorkspaceLayout {
   const stage = stageGroup(layout, focused);
   return openView(layout, GRAPH_VIEW, { type: "graph" }, { groupId: stage.id, zone: "center" });
+}
+
+export function openDeadLinksIn(layout: WorkspaceLayout, focused: string | null): WorkspaceLayout {
+  const stage = stageGroup(layout, focused);
+  return openView(layout, DEAD_LINKS_VIEW, { type: "dead-links" }, { groupId: stage.id, zone: "center" });
 }
 
 export function openNoteFrom(layout: WorkspaceLayout, noteId: string, focused: string | null): WorkspaceLayout {

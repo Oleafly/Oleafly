@@ -2,13 +2,14 @@
 
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { allowRadixSelect, chooseOption } from "@/features/collab/tests/select";
-import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { NoteOutline } from "./NoteOutline";
 import type { NoteSource } from "./types";
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
 
 const copy = enNotes.graph.outline;
 const logs = vi.hoisted(() => ({ logError: vi.fn() }));
@@ -38,15 +39,7 @@ class FakeResizeObserver {
 
 
 function data(loadNote: NotesData["loadNote"]): NotesData {
-  return {
-    notes: [],
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
-    loadNote,
-    saveNote: vi.fn(),
-  };
+  return fakeNotesData({ loadNote });
 }
 
 function renderOutline(noteId: string | null, loadNote: NotesData["loadNote"] = vi.fn(() => Promise.resolve({ text: MARKDOWN, version: "1" }))) {
@@ -69,10 +62,6 @@ function editor(noteId: string, html: string): { container: HTMLElement; root: H
     root: host.querySelector(".ProseMirror") as HTMLElement,
   };
 }
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 beforeEach(() => {
   allowRadixSelect();
@@ -218,7 +207,7 @@ describe("NoteOutline upkeep", () => {
     expect(await screen.findByRole("button", { name: "Found" })).toBeInTheDocument();
     const afterAttach = lookups.mock.calls.filter(([selector]) => selector === "[data-note-view]").length;
     await act(() => vi.advanceTimersByTimeAsync(5_000));
-    expect(lookups.mock.calls.filter(([selector]) => selector === "[data-note-view]").length).toBe(afterAttach);
+    expect(lookups.mock.calls.filter(([selector]) => selector === "[data-note-view]")).toHaveLength(afterAttach);
 
     document.querySelector('[data-note-view="n8"]')?.remove();
     act(() => FakeResizeObserver.instances.at(-1)?.fire());

@@ -37,6 +37,7 @@ import {
   type TextScope,
 } from "@oleafly/search-query";
 import { BOOK_COLOR_OPTIONS } from "@/components/library/Book";
+import { ColorDot } from "@/components/ui/color-swatch";
 import {
   folderDisplayPath,
   isFolderProject,
@@ -54,9 +55,7 @@ export const PROJECT_ENGINES: readonly ProjectEngine[] = ["latex", "typst", "mar
 export const PROJECT_KINDS = ["document", "image", "diagram", "note"] as const;
 type ProjectKind = (typeof PROJECT_KINDS)[number];
 
-export function projectKinds(hideNotes = false): readonly ProjectKind[] {
-  return hideNotes ? PROJECT_KINDS.filter((kind) => kind !== "note") : PROJECT_KINDS;
-}
+export const PROJECT_KINDS_WITHOUT_NOTES: readonly ProjectKind[] = PROJECT_KINDS.filter((kind) => kind !== "note");
 export const DEFAULT_PROJECT_SORT = "activity-desc";
 
 const ENGINE_LABELS: Readonly<Record<ProjectEngine, string>> = {
@@ -102,7 +101,7 @@ export type ProjectSearchExtension = SearchExtension<ProjectInfo, QueryMeta>;
 const icon = (Icon: typeof Eye): ReactNode => <Icon className="size-4" />;
 
 function swatch(hex: string): ReactNode {
-  return <span className="size-3 rounded-full border border-black/10 dark:border-white/15" style={{ background: hex }} />;
+  return <ColorDot color={hex} />;
 }
 
 function seconds(value: number | undefined): number | null {
@@ -200,7 +199,7 @@ function valueFields(t: Translate, state: ProjectSearchState): SearchField<Proje
       aliases: ["type"],
       meta: { label: t(($) => $.library.home.filters.kind), icon: icon(Shapes) },
       type: "enum",
-      options: projectKinds(state.hideNotes).map((kind) => ({
+      options: (state.hideNotes ? PROJECT_KINDS_WITHOUT_NOTES : PROJECT_KINDS).map((kind) => ({
         value: kind,
         meta: { label: kindLabel(t, kind), icon: kindIcon(kind) },
       })),

@@ -1,13 +1,13 @@
-import { beforeAll, describe, expect, it } from "vitest";
-import { loadNamespace } from "@/i18n";
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { NOTE_COLORS, newNoteSource, noteColorFor } from "./note-file";
+import { NOTE_COLORS, newNoteSource, noteColorFor, readNoteFacts } from "./note-file";
 import { LINE_ICON_PREFIX, LINE_ICONS } from "./note-icons";
 import { readProperties } from "./note-properties";
-import { frontMatterList, noteTags } from "./note-tags";
 import {
   composeNoteSource,
   draftFromNote,
+  draftFromReference,
   draftFromTemplate,
   expandTemplate,
   extraFrontMatter,
@@ -21,12 +21,17 @@ import {
   withTemplateFlag,
 } from "./note-templates";
 import type { NoteItem } from "./types";
+import { destroyKbEditors, kbNote } from "./tests/kb-editor-fixtures";
+import "./tests/setup";
 
 const NOW = new Date(2026, 10, 8, 9, 5);
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+function tagsOf(source: string): unknown {
+  const block = /^---\n[\s\S]*?\n---/u.exec(source)?.[0] ?? "";
+  return readProperties(block)?.find((property) => property.key === "tags")?.value ?? [];
+}
+
+afterEach(destroyKbEditors);
 
 function note(properties?: Record<string, unknown>): NoteItem {
   return { id: "n", title: "T", project: "Notes", updatedAt: 0, author: "you", summary: "", properties };
@@ -55,9 +60,9 @@ describe("template variables", () => {
 });
 
 describe("built-in templates", () => {
-  it("has eleven distinct research templates, each a real body with properties and tags", () => {
-    expect(NOTE_TEMPLATES).toHaveLength(11);
-    expect(new Set(NOTE_TEMPLATES.map((template) => template.id)).size).toBe(11);
+  it("has thirteen distinct research templates, each a real body with properties and tags", () => {
+    expect(NOTE_TEMPLATES).toHaveLength(13);
+    expect(new Set(NOTE_TEMPLATES.map((template) => template.id)).size).toBe(13);
     for (const template of NOTE_TEMPLATES) {
       expect(TEMPLATES_BY_ID[template.id]).toBe(template);
       const draft = draftFromTemplate(template, "Name", NOW, "en");
@@ -67,7 +72,7 @@ describe("built-in templates", () => {
       expect(draft.body).toMatch(/^## /mu);
       expect(draft.body).not.toMatch(/—/u);
       const source = composeNoteSource(newNoteSource(draft.title, draft.body), draft.properties);
-      expect(frontMatterList(source, "tags").length).toBeGreaterThan(0);
+      expect(tagsOf(source)).not.toEqual([]);
       const block = /^---\n[\s\S]*?\n---/u.exec(source)?.[0] ?? "";
       expect(readProperties(block)?.length).toBeGreaterThan(0);
     }
@@ -100,6 +105,51 @@ describe("built-in templates", () => {
     expect(bodies).toMatch(/^> \[!\w+\]/mu);
     expect(bodies).toMatch(/^- \[ \] /mu);
     expect(bodies).toMatch(/^\| --- \|/mu);
+  });
+
+  it.each([
+    ["proof", ["definition", "theorem", "lemma", "proof"], []],
+    ["dataAnalysis", ["info"], ["csv"]],
+    ["screeningLog", ["question"], []],
+    ["labNotebook", [], []],
+  ] as const)("opens the %s template as the blocks it names and saves it back unchanged", (id, callouts, blocks) => {
+    const draft = draftFromTemplate(TEMPLATES_BY_ID[id], "Name", NOW, "en");
+    const source = composeNoteSource(newNoteSource(draft.title, draft.body), draft.properties);
+    const { editor, save } = kbNote(source);
+    const found = { callouts: new Set<string>(), blocks: new Set<string>(), lists: 0 };
+    editor.state.doc.descendants((node, _position, parent) => {
+      if (node.type.name === "callout") found.callouts.add(String(node.attrs.type));
+      if (node.type.name === "codeBlock") found.blocks.add(String(node.attrs.language));
+      if (node.type.name === "bulletList" && parent?.type.name === "callout") found.lists += 1;
+    });
+    expect([...found.callouts]).toEqual(expect.arrayContaining([...callouts]));
+    expect([...found.blocks]).toEqual(expect.arrayContaining([...blocks]));
+    if (id === "screeningLog") expect(found.lists).toBe(1);
+    expect(save()).toBe(source);
+  });
+
+  it("keeps the fields a screening log and a lab notebook entry need", () => {
+    const screening = draftFromTemplate(TEMPLATES_BY_ID.screeningLog, "Screening", NOW, "en");
+    for (const part of ["Population", "Intervention", "Comparison", "Outcome", "Inclusion criteria", "Exclusion criteria", "Full texts assessed"]) {
+      expect(screening.body).toContain(part);
+    }
+    const notebook = draftFromTemplate(TEMPLATES_BY_ID.labNotebook, "Bench", NOW, "en");
+    expect(notebook.title).toBe("Bench 2026-11-08");
+    expect(notebook.body).toContain("Sample ID");
+    expect(notebook.body).toContain("**Signed by:** name, 2026-11-08");
+    expect(notebook.properties).toBe("tags: [lab-notebook]\ndate: 2026-11-08\nsamples: []");
+  });
+
+  it("fills a paper reading note from a reference, with its citation key", () => {
+    const fields = { author: "He, Kaiming and Chen, Xinlei", year: "2022", title: "{Masked} Autoencoders", booktitle: "CVPR", doi: "10.1/mae" };
+    const draft = draftFromReference({ key: "he2022", label: "He et al. 2022", fields }, NOW, "en");
+    expect(draft.title).toBe("Masked Autoencoders");
+    expect(draft.icon).toBe(TEMPLATES_BY_ID.paperReading.icon);
+    const source = composeNoteSource(newNoteSource(draft.title, draft.body), draft.properties);
+    const block = /^---\n[\s\S]*?\n---/u.exec(source)?.[0] ?? "";
+    const values = Object.fromEntries((readProperties(block) ?? []).map((property) => [property.key, property.value]));
+    expect(values).toMatchObject({ status: "to read", authors: ["He, Kaiming", "Chen, Xinlei"], year: 2022, venue: "CVPR", doi: "10.1/mae", citekey: "he2022" });
+    expect(draftFromReference({ key: "bare", label: "bare" }, NOW, "en")).toMatchObject({ title: "bare", properties: expect.stringContaining("citekey: bare") });
   });
 
   it("makes a daily note tagged daily and titled with the date", () => {
@@ -180,13 +230,13 @@ describe("composeNoteSource", () => {
     expect(source).toMatch(/^---\n[\s\S]*status: draft\ntags: \[ml, "Paper Review"\]\n---\n/u);
     expect(source).not.toContain("id: nope");
     expect(source.endsWith("Body")).toBe(true);
-    expect(noteTags(source)).toEqual(["ml", "paper review"]);
-    expect(frontMatterList(source, "id")).toEqual(["id-1"]);
+    expect(tagsOf(source)).toEqual(["ml", "Paper Review"]);
+    expect(readNoteFacts(source).id).toBe("id-1");
   });
 
   it("keeps the properties' own tags over the separate list", () => {
     const source = composeNoteSource(base, "tags: [a]\n", ["b"]);
-    expect(frontMatterList(source, "tags")).toEqual(["a"]);
+    expect(tagsOf(source)).toEqual(["a"]);
   });
 
   it("leaves the source alone without extras or front matter", () => {

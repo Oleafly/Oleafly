@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useSettingsStore } from "@/store/settings";
 
@@ -21,31 +21,51 @@ vi.mock("@/features/collab/CollaborationSection", () => {
   imported.collaboration = true;
   return { CollaborationSection: () => <div data-testid="collab-section-stub" /> };
 });
-vi.mock("@/components/settings/NotesAppearance", () => ({
-  NotesAppearanceTab: () => <div data-testid="notes-appearance-stub" />,
-}));
+vi.mock("@/components/settings/SettingsFileCard", () => ({ default: () => null }));
+vi.mock("@/components/settings/cloud/CloudTab", () => ({ CloudTab: () => null }));
+vi.mock("@/components/layout/ChangelogDialog", () => ({ ChangelogDialog: () => null }));
+vi.mock("@/components/settings/ai/AcpAgentsTab", () => ({ AcpAgentsTab: () => null }));
+vi.mock("@/components/settings/ai/ToolsTab", () => ({ ToolsTab: () => null }));
+vi.mock("@/components/settings/desktop-apps/DesktopAppsSection", () => ({ default: () => null }));
+vi.mock("@/components/library/TemplateImportDialog", () => ({ TemplateImportDialog: () => null }));
 
-import { STARTUP_MS, startWarming, stopWarming } from "@/lib/preloadable";
+import {
+  IDLE_FALLBACK_MS,
+  preloadIntent,
+  STARTUP_MS,
+  startWarming,
+  stopWarming,
+  warmingQueueLength,
+} from "@/lib/preloadable";
 import { SettingsModal } from "./SettingsModal";
 
 afterEach(() => {
   stopWarming();
   vi.useRealTimers();
-  vi.unstubAllGlobals();
 });
 
+const realTimeout = globalThis.setTimeout;
+
+async function idle(slots: number) {
+  for (let slot = 0; slot < slots; slot++) {
+    await vi.advanceTimersByTimeAsync(IDLE_FALLBACK_MS);
+    await new Promise((resolve) => realTimeout(resolve, 5));
+  }
+}
+
 describe("warming the settings tabs", () => {
-  it("loads the tabs ahead of time so Collaboration shows on the first click", async () => {
-    useSettingsStore.setState({ notes: true });
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    vi.stubGlobal("requestIdleCallback", (run: () => void) => setTimeout(run, 0));
-    vi.stubGlobal("cancelIdleCallback", (id: number) => clearTimeout(id));
+  it("waits for Settings to be opened or hovered, then loads the tabs so Collaboration shows on the first click", async () => {
+    vi.useFakeTimers();
     startWarming(vi.fn());
-    expect(imported.collaboration).toBe(false);
     await vi.advanceTimersByTimeAsync(STARTUP_MS);
-    await waitFor(() => expect(imported.collaboration).toBe(true), { timeout: 20_000 });
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await idle(15);
+    expect(imported.collaboration).toBe(false);
+    const waiting = warmingQueueLength();
+    preloadIntent("settings");
+    await idle(waiting + 2);
+    expect(imported.collaboration).toBe(true);
     stopWarming();
+    vi.useRealTimers();
     const settings = useSettingsStore.getState();
     settings.setSettingsInitialSection("general");
     settings.setSettingsOpen(true);

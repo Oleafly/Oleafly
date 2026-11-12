@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   readFileContent: vi.fn(),
+  logError: vi.fn(() => Promise.resolve()),
   tauri: true,
   handler: null as null | ((payload: { projectId: string; paths: string[]; rescan: boolean }) => void),
   enabled: false,
@@ -20,6 +21,7 @@ vi.mock("@/hooks/use-tauri-event", () => ({
     mocks.enabled = enabled;
   },
 }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
   readFileContent: mocks.readFileContent,
@@ -71,7 +73,16 @@ describe("project note files", () => {
     await waitFor(() => expect(result.current.notes[0].title).toBe("Plan B"));
     const reads = mocks.readFileContent.mock.calls.length;
     act(() => mocks.handler?.({ projectId: "paper", paths: ["main.tex"], rescan: false }));
-    expect(mocks.readFileContent.mock.calls.length).toBe(reads);
+    expect(mocks.readFileContent.mock.calls).toHaveLength(reads);
+  });
+
+  it("logs a read batch that fails instead of leaving it unhandled", async () => {
+    const failure = new Error("gone");
+    const batch = vi.spyOn(Promise, "all").mockRejectedValueOnce(failure);
+    const { result } = renderHook(() => useProjectNoteFiles("paper"));
+    await waitFor(() => expect(mocks.logError).toHaveBeenCalledWith("read the project notes", failure));
+    batch.mockRestore();
+    expect(result.current.notes).toEqual([]);
   });
 
   it("reads at most the limit and does not listen outside the app", async () => {
@@ -151,7 +162,10 @@ describe("project note files", () => {
     const { result } = renderHook(() => useProjectNoteFiles("paper"));
     act(() => mocks.handler?.({ projectId: "paper", paths: ["notes/Plan.md"], rescan: false }));
     await waitFor(() => expect(result.current.notes.map((note) => note.title)).toEqual(["Fresh"]));
-    await act(async () => deliverOld(NOTE));
+    await act(() => {
+      deliverOld(NOTE);
+      return Promise.resolve();
+    });
     expect(result.current.notes.map((note) => note.title)).toEqual(["Fresh"]);
   });
 });

@@ -2,15 +2,32 @@ import {
   activate,
   closeView,
   groupOfView,
+  groupsOf,
   openView,
   visibleViews,
   Workspace,
+  type GroupNode,
   type RenderTooltip,
   type ViewInfo,
   type ViewState,
   type WorkspaceLayout,
 } from "@oleafly/workspace";
-import { FileText, FolderPlus, House, PanelLeft, PanelRight, Plus, Send, TableOfContents, Waypoints } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  FileOutput,
+  FileText,
+  FolderPlus,
+  House,
+  Info,
+  Link2Off,
+  MoreHorizontal,
+  PanelLeft,
+  PanelRight,
+  Send,
+  TableOfContents,
+  Waypoints,
+} from "lucide-react";
 import {
   createContext,
   memo,
@@ -24,43 +41,61 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { HomeBrandButton } from "@/components/layout/HomeBrandButton";
 import { WindowControls } from "@/components/layout/WindowControls";
+import { Badge } from "@/components/ui/badge";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "@/components/ui/context-menu";
+import { EmptyState } from "@/components/ui/empty";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tooltip } from "@/components/ui/tooltip";
 import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
 import { flushOpenNotes } from "@/lib/open-note-editors";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { cn, isMac } from "@/lib/utils";
-import { matchesShortcut, shortcutLabel, type ShortcutId, useShortcutStore } from "@/store/shortcuts";
+import { matchesShortcut, type ShortcutId, useShortcutStore } from "@/store/shortcuts";
+import { useNotesPrefsStore } from "@/store/notes-prefs";
+import { useSettingsStore } from "@/store/settings";
 import { ArtifactPanel } from "./ArtifactPanel";
 import { NoteDocument, type NoteSaveFailure, type SaveStatus } from "./NoteDocument";
 import { NoteLiveHeader } from "./NotePresence";
 import { NoteSaveStatus } from "./NoteSaveStatus";
 import { useLiveNoteClaim, useNoteLiveMode, useNoteReadOnly } from "./use-note-live";
 import { artifactSnippet, artifactsForNote, noteForProject } from "./note-artifacts";
-import { noteBody } from "./note-file";
-import { useRecordNoteOpened } from "./note-home-prefs";
+import { frontMatterBody } from "@/lib/front-matter";
 import { NoteChip } from "./note-icons";
 import { useNotesByLook } from "./note-signature";
 import { NoteExportDialog, NoteImportDialog } from "./NoteImportDialog";
 import { NoteOutline } from "./NoteOutline";
+import { NoteDeadLinks } from "./NoteDeadLinks";
+import { NoteInfoPanel } from "./NoteInfo";
 import { NotesDataProvider, useNotesData } from "./notes-data";
 import {
   ARTIFACTS_SHARE,
   ARTIFACTS_VIEW,
+  DEAD_LINKS_VIEW,
   GRAPH_VIEW,
   HOME_VIEW,
   holdsNotes,
+  INFO_VIEW,
   homeViews,
-  isHomeView,
   isSideView,
   LOCAL_GRAPH_VIEW,
   OUTLINE_VIEW,
+  openDeadLinksIn,
   openGraphIn,
   openNoteFrom,
   toggleSideView,
@@ -68,6 +103,7 @@ import {
   noteIdOf,
   noteViewId,
   openHomeIn,
+  openHomeInPlace,
   openNoteIn,
   openNoteInPlace,
   openNoteViews,
@@ -75,12 +111,30 @@ import {
   saveNotesLayout,
   stageGroup,
 } from "./notes-layout";
+import type { HomeTab } from "./home-notes";
+import {
+  type HistoryDirection,
+  homeTabOf,
+  type NotesPlace,
+  noteScroll,
+  placeView,
+  recordVisit,
+  showHomeTab,
+  stepIndexes,
+  type TabHistory,
+  tabHistory,
+  travel,
+} from "./notes-history";
+import { NotesEmptyPanel } from "./NotesEmptyPanel";
 import { NotesHome } from "./NotesHome";
 import { NotesLibrary } from "./NotesLibrary";
 import { NotesVaultLayer } from "./QuickSwitcher";
 import { useOpenDailyNote } from "./daily-note";
-import { filterByTag } from "./vault-store";
+import { filterByTag, focusNotesSearch } from "./vault-store";
+import { ShortcutButton } from "./vault-sidebar";
 import { RelatedProjectMenu } from "./RelatedProjectMenu";
+import { DROPDOWN_MENU_KIT, hasNoteMenu, type NoteActions, NoteExportItems, NoteRenameInput, useNoteActions } from "./note-actions";
+import { useNoteMenus } from "./NoteCard";
 import type { ArtifactItem, NoteItem } from "./types";
 import { FrozenNoteLinkIndex } from "./use-note-links";
 import { useNotesAppearanceRef } from "@/hooks/use-notes-appearance";
@@ -93,12 +147,14 @@ export interface ProjectSeed {
 
 interface NotesWorkspaceProps {
   initialNoteId?: string | null;
+  initialFragment?: string | null;
   requestedNoteId?: string | null;
+  requestedFragment?: string | null;
   onRequestHandled?: () => void;
   onExit?: () => void;
   onNewNote?: () => Promise<string | null>;
   onCreateProject?: (seed: ProjectSeed) => void;
-  onSendToPaper?: (request: { paperId: string; text: string }) => void;
+  onSendToPaper?: (request: { paperId: string; text: string; noteId: string }) => void;
 }
 
 interface InsertRequest {
@@ -113,6 +169,18 @@ interface HeadingRequest {
   id: number;
 }
 
+interface ScrollRequest {
+  noteId: string;
+  top: number;
+  id: number;
+}
+
+interface HistoryItem {
+  index: number;
+  title: string;
+  icon: ReactNode;
+}
+
 interface WorkspaceActions {
   focusedNoteId: string | null;
   artifactId: string | null;
@@ -120,21 +188,25 @@ interface WorkspaceActions {
   openNote: (id: string) => void;
   openNoteHeading: (id: string, slug: string) => void;
   openFromHome: (homeId: string, noteId: string) => void;
+  chooseHomeTab: (homeId: string, tab: HomeTab) => void;
   insertArtifact?: (artifact: ArtifactItem) => Promise<void>;
   newProject?: (seed: ProjectSeed) => void;
   newNoteFromHome?: (homeId: string) => void;
+  importFolder: () => void;
 }
 
 interface NoteViewActions {
   insertRequest: InsertRequest | null;
   holdView: (viewId: string, held: boolean) => void;
   headingRequest: HeadingRequest | null;
+  scrollRequest: ScrollRequest | null;
   openNote: (id: string) => void;
   openNoteHeading: (id: string, slug: string) => void;
   openTag: (tag: string) => void;
   closeTab: (viewId: string) => void;
+  openHomeHere: (viewId: string) => void;
   newProject?: (seed: ProjectSeed) => void;
-  sendToPaper?: (text: string) => void;
+  sendToPaper?: (request: { text: string; noteId: string }) => void;
 }
 
 interface SideActions {
@@ -142,6 +214,8 @@ interface SideActions {
   openProject?: (projectId: string) => void;
   sideOpen: (viewId: string) => boolean;
   toggleSide: (viewId: string) => void;
+  infoTarget: HTMLElement | null;
+  setInfoTarget: (element: HTMLElement | null) => void;
 }
 
 interface SaveState {
@@ -158,6 +232,8 @@ const WINDOW_DRAG: Readonly<Record<string, string>> = { "data-tauri-drag-region"
 const SAVE_DELAY_MS = 150;
 const SAVED: SaveState = { status: "saved", failure: null };
 const KEPT_HIDDEN_VIEWS = 4;
+const HISTORY_MENU_ITEMS = 15;
+const MOUSE_STEPS: Readonly<Record<number, HistoryDirection>> = { 3: -1, 4: 1 };
 const MemoNoteDocument = memo(NoteDocument);
 const renderTooltip: RenderTooltip = (label, trigger, options) => (
   <Tooltip label={label} side={options.side} className={options.className}>
@@ -183,40 +259,93 @@ function useSideActions(): SideActions {
   return actions;
 }
 
-function useShortcut(id: ShortcutId): string {
-  return useShortcutStore((state) => shortcutLabel(state.bindings[id]));
+function useInfoInPanel(): boolean {
+  return useSettingsStore((state) => state.notesInfo) === "side";
+}
+
+function infoPanelFor(inPanel: boolean, focused: boolean, target: HTMLElement | null): HTMLElement | null | undefined {
+  if (!inPanel) return undefined;
+  return focused ? target : null;
+}
+
+function withoutView(viewId: string): (layout: WorkspaceLayout) => WorkspaceLayout {
+  return (layout) => (viewId in layout.views ? closeView(layout, viewId) : layout);
 }
 
 function SideToggles() {
-  const { t } = useTranslation(["notes", "shell"]);
+  const { t } = useTranslation(["notes"]);
   const side = useSideActions();
   const outline = side.sideOpen(OUTLINE_VIEW);
   const local = side.sideOpen(LOCAL_GRAPH_VIEW);
-  const outlineKeys = useShortcut("notesOutline");
-  const localKeys = useShortcut("notesLocalGraph");
-  const outlineLabel = outline ? t(($) => $.notes.graph.hideOutline) : t(($) => $.notes.graph.showOutline);
-  const localLabel = local ? t(($) => $.notes.graph.hideLocal) : t(($) => $.notes.graph.showLocal);
+  const info = side.sideOpen(INFO_VIEW);
+  const infoInPanel = useInfoInPanel();
   return (
     <>
-      <TooltipIconButton
-        label={outlineLabel}
-        tooltip={t(($) => $.shell.rail.withShortcut, { label: outlineLabel, shortcut: outlineKeys })}
+      <ShortcutButton
+        label={outline ? t(($) => $.notes.graph.hideOutline) : t(($) => $.notes.graph.showOutline)}
+        shortcut="notesOutline"
         aria-pressed={outline}
         className={cn(outline && "bg-accent")}
         onClick={() => side.toggleSide(OUTLINE_VIEW)}
       >
         <TableOfContents aria-hidden className="size-4" />
-      </TooltipIconButton>
-      <TooltipIconButton
-        label={localLabel}
-        tooltip={t(($) => $.shell.rail.withShortcut, { label: localLabel, shortcut: localKeys })}
+      </ShortcutButton>
+      <ShortcutButton
+        label={local ? t(($) => $.notes.graph.hideLocal) : t(($) => $.notes.graph.showLocal)}
+        shortcut="notesLocalGraph"
         aria-pressed={local}
         className={cn(local && "bg-accent")}
         onClick={() => side.toggleSide(LOCAL_GRAPH_VIEW)}
       >
         <Waypoints aria-hidden className="size-4" />
-      </TooltipIconButton>
+      </ShortcutButton>
+      {infoInPanel && (
+        <ShortcutButton
+          label={t(($) => $.notes.info.show)}
+          shortcut="notesProperties"
+          aria-pressed={info}
+          className={cn(info && "bg-accent")}
+          onClick={() => side.toggleSide(INFO_VIEW)}
+        >
+          <Info aria-hidden className="size-4" />
+        </ShortcutButton>
+      )}
     </>
+  );
+}
+
+function HistoryButton({
+  label,
+  shortcut,
+  icon,
+  items,
+  onStep,
+  onJump,
+}: Readonly<{
+  label: string;
+  shortcut: ShortcutId;
+  icon: ReactNode;
+  items: readonly HistoryItem[];
+  onStep: () => void;
+  onJump: (index: number) => void;
+}>) {
+  const empty = items.length === 0;
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild disabled={empty}>
+        <ShortcutButton label={label} shortcut={shortcut} disabled={empty} onClick={onStep}>
+          {icon}
+        </ShortcutButton>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-64">
+        {items.map((item) => (
+          <ContextMenuItem key={item.index} className="gap-2" onSelect={() => onJump(item.index)}>
+            {item.icon}
+            <span className="min-w-0 flex-1 truncate">{item.title}</span>
+          </ContextMenuItem>
+        ))}
+      </ContextMenuContent>
+    </ContextMenu>
   );
 }
 
@@ -237,9 +366,19 @@ function GraphView({ local }: Readonly<{ local: boolean }>) {
   );
 }
 
+function DeadLinksView() {
+  const actions = useActions();
+  return <NoteDeadLinks onOpenNoteAt={actions.openNoteHeading} />;
+}
+
 function OutlineView() {
   const actions = useActions();
   return <NoteOutline noteId={actions.focusedNoteId} onOpenHeading={actions.openNoteHeading} />;
+}
+
+function InfoView() {
+  const side = useSideActions();
+  return <NoteInfoPanel onTarget={side.setInfoTarget} />;
 }
 
 const KeptWhileHidden = memo(function KeptWhileHidden({ viewId, children }: Readonly<{ viewId: string; children: ReactNode }>) {
@@ -254,10 +393,126 @@ const KeptWhileHidden = memo(function KeptWhileHidden({ viewId, children }: Read
   );
 });
 
+function HeaderMenu({
+  label,
+  icon,
+  onCloseAutoFocus,
+  children,
+}: Readonly<{ label: string; icon: ReactNode; onCloseAutoFocus?: () => void; children: ReactNode }>) {
+  return (
+    <DropdownMenu>
+      <Tooltip label={label} side="bottom">
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" aria-label={label} className="size-7">
+            {icon}
+          </Button>
+        </DropdownMenuTrigger>
+      </Tooltip>
+      <DropdownMenuContent align="end" className="w-56" onCloseAutoFocus={onCloseAutoFocus}>
+        {children}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function useFocusedNoteShortcuts(focused: boolean, actions: NoteActions, toggleInfo: () => void): void {
+  const actionsRef = useRef(actions);
+  actionsRef.current = actions;
+  const toggleInfoRef = useRef(toggleInfo);
+  toggleInfoRef.current = toggleInfo;
+  useEffect(() => {
+    if (!focused) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      const { bindings } = useShortcutStore.getState();
+      const current = actionsRef.current;
+      let handled = true;
+      if (current.favorite && matchesShortcut(event, bindings.notesBookmark)) current.favorite.toggle();
+      else if (current.copyLink && matchesShortcut(event, bindings.notesCopyLink)) current.copyLink();
+      else if (matchesShortcut(event, bindings.notesProperties)) {
+        if (useSettingsStore.getState().notesInfo === "side") toggleInfoRef.current();
+        else {
+          const prefs = useNotesPrefsStore.getState();
+          prefs.set("propertiesOpen", !prefs.propertiesOpen);
+        }
+      } else handled = false;
+      if (handled) event.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [focused]);
+}
+
+function NoteHeader({ note, lead, children }: Readonly<{ note: NoteItem; lead: ReactNode; children: ReactNode }>) {
+  const { t } = useTranslation(["notes"]);
+  const { openNote, openHomeHere } = useNoteViewActions();
+  const { focusedNoteId } = useActions();
+  const side = useSideActions();
+  const { actionsFor, dialog } = useNoteActions(openNote);
+  const actions = actionsFor(note);
+  useFocusedNoteShortcuts(focusedNoteId === note.id, actions, () => side.toggleSide(INFO_VIEW));
+  const more: NoteActions = { ...actions, openInNewTab: undefined, share: undefined, exportAs: undefined, copyMarkdown: undefined };
+  const menus = useNoteMenus(note, more);
+  const homeLabel = t(($) => $.notes.workspace.breadcrumbHome);
+  return (
+    <>
+      <div className="flex min-h-10 shrink-0 items-center justify-between gap-3 border-b px-2">
+        <Breadcrumb aria-label={t(($) => $.notes.workspace.breadcrumb)} className="min-w-0 flex-1">
+          <BreadcrumbList>
+            <BreadcrumbItem className="shrink-0">
+              <Tooltip label={homeLabel} side="bottom">
+                <BreadcrumbLink asChild className="p-1">
+                  <button type="button" aria-label={homeLabel} onClick={() => openHomeHere(noteViewId(note.id))}>
+                    <House aria-hidden className="size-4" />
+                  </button>
+                </BreadcrumbLink>
+              </Tooltip>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <RelatedProjectMenu note={note} />
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem className={cn(menus.renaming && "flex-1")}>
+              {menus.renaming ? (
+                <NoteRenameInput title={note.title} className="h-7 px-2 py-0 text-sm" onDone={menus.finishRename} />
+              ) : (
+                <Tooltip label={note.title} side="bottom" className="min-w-0">
+                  <BreadcrumbPage>{note.title}</BreadcrumbPage>
+                </Tooltip>
+              )}
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+        <div className="flex min-w-0 shrink-0 items-center gap-1">
+          {lead}
+          <HeaderMenu label={t(($) => $.notes.library.menu.export)} icon={<FileOutput aria-hidden className="size-4" />}>
+            <NoteExportItems kit={DROPDOWN_MENU_KIT} actions={actions} />
+          </HeaderMenu>
+          {children}
+          {hasNoteMenu(more) && (
+            <HeaderMenu
+              label={t(($) => $.notes.library.menu.more)}
+              icon={<MoreHorizontal aria-hidden className="size-4" />}
+              onCloseAutoFocus={menus.runPending}
+            >
+              {menus.items(DROPDOWN_MENU_KIT)}
+            </HeaderMenu>
+          )}
+        </div>
+      </div>
+      {dialog}
+    </>
+  );
+}
+
 const NoteViewBody = memo(function NoteViewBody({ noteId }: Readonly<{ noteId: string }>) {
   const { t } = useTranslation(["notes"]);
   const data = useNotesData();
   const actions = useNoteViewActions();
+  const { focusedNoteId } = useActions();
+  const { infoTarget } = useSideActions();
+  const infoPanel = infoPanelFor(useInfoInPanel(), focusedNoteId === noteId, infoTarget);
   const [save, setSave] = useState<SaveState>(SAVED);
   const onStatusChange = useCallback((status: SaveStatus, failure: NoteSaveFailure | null) => {
     setSave((current) => (current.status === status && current.failure === failure ? current : { status, failure }));
@@ -280,51 +535,51 @@ const NoteViewBody = memo(function NoteViewBody({ noteId }: Readonly<{ noteId: s
   }, [held, holdView, noteId]);
   const insertRequest = actions.insertRequest?.noteId === noteId ? actions.insertRequest : null;
   const openHeading = actions.headingRequest?.noteId === noteId ? actions.headingRequest : null;
+  const openScroll = actions.scrollRequest?.noteId === noteId ? actions.scrollRequest : null;
   const { loadNote } = data;
-  const sendToPaper = actions.sendToPaper;
+  const sendRequest = actions.sendToPaper;
+  const sendToPaper = useMemo(() => sendRequest && ((text: string) => sendRequest({ text, noteId })), [noteId, sendRequest]);
   const sendNote = useCallback(async () => {
     if (!sendToPaper) return;
     await flushOpenNotes();
-    sendToPaper(noteBody((await loadNote(noteId)).text).trim());
+    sendToPaper(frontMatterBody((await loadNote(noteId)).text).trim());
   }, [loadNote, noteId, sendToPaper]);
   if (!note) {
     return (
-      <div className="flex flex-col items-start gap-3 p-6">
-        <p className="text-sm text-muted-foreground">{t(($) => $.notes.workspace.missing)}</p>
+      <EmptyState className="h-full p-6" description={t(($) => $.notes.workspace.missing)}>
         <Button variant="outline" size="sm" onClick={() => actions.closeTab(noteViewId(noteId))}>
           {t(($) => $.notes.workspace.closeMissing)}
         </Button>
-      </div>
+      </EmptyState>
     );
   }
   const showStatus = liveMode !== "live" || save.status === "failed";
   return (
     <div className="flex h-full min-h-0 flex-col" data-note-view={note.id}>
-      <div className="flex min-h-10 shrink-0 items-center justify-between gap-3 border-b px-2">
-        <p className="flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
-          <RelatedProjectMenu note={note} />
-          <span aria-hidden>/</span>
-          <span className="truncate text-foreground">{note.title}</span>
-        </p>
-        <div className="flex min-w-0 shrink-0 items-center gap-1">
-          {showStatus && <NoteSaveStatus status={save.status} failure={save.failure} className="max-w-[18rem] pr-2" />}
-          <NoteLiveHeader noteId={note.id} mode={liveMode} onShare={data.shareNote && (() => data.shareNote?.(note.id))} />
-          {actions.newProject && (
-            <TooltipIconButton
-              label={t(($) => $.notes.workspace.newProject)}
-              onClick={() => actions.newProject?.({ noteId: note.id, artifactId: null })}
-            >
-              <FolderPlus aria-hidden className="size-4" />
-            </TooltipIconButton>
-          )}
-          {sendToPaper && (
-            <TooltipIconButton label={t(($) => $.notes.workspace.sendToPaper)} onClick={() => void sendNote()}>
-              <Send aria-hidden className="size-4" />
-            </TooltipIconButton>
-          )}
-          <SideToggles />
-        </div>
-      </div>
+      <NoteHeader
+        note={note}
+        lead={
+          <>
+            {showStatus && <NoteSaveStatus status={save.status} className="max-w-[18rem] pr-2" />}
+            <NoteLiveHeader noteId={note.id} mode={liveMode} onShare={data.shareNote && (() => data.shareNote?.(note.id))} />
+          </>
+        }
+      >
+        {actions.newProject && (
+          <TooltipIconButton
+            label={t(($) => $.notes.workspace.newProject)}
+            onClick={() => actions.newProject?.({ noteId: note.id, artifactId: null })}
+          >
+            <FolderPlus aria-hidden className="size-4" />
+          </TooltipIconButton>
+        )}
+        {sendToPaper && (
+          <TooltipIconButton label={t(($) => $.notes.workspace.sendToPaper)} onClick={() => void sendNote()}>
+            <Send aria-hidden className="size-4" />
+          </TooltipIconButton>
+        )}
+        <SideToggles />
+      </NoteHeader>
       <div className="flex min-h-0 flex-1">
         <MemoNoteDocument
           note={note}
@@ -334,7 +589,9 @@ const NoteViewBody = memo(function NoteViewBody({ noteId }: Readonly<{ noteId: s
           onOpenNote={onOpenNote}
           onOpenTag={actions.openTag}
           openHeading={openHeading}
+          openScroll={openScroll}
           onClose={onClose}
+          infoPanel={infoPanel}
         />
       </div>
     </div>
@@ -347,7 +604,7 @@ function ArtifactsView() {
   const { notes } = useNotesData();
   const note = notes.find((candidate) => candidate.id === actions.focusedNoteId) ?? null;
   const readOnly = useNoteReadOnly(note?.id ?? null);
-  if (!note) return <p className="p-4 text-sm text-muted-foreground">{t(($) => $.notes.artifacts.noNote)}</p>;
+  if (!note) return <EmptyState className="h-full p-6" description={t(($) => $.notes.artifacts.noNote)} />;
   return (
     <ArtifactPanel
       note={note}
@@ -359,44 +616,55 @@ function ArtifactsView() {
   );
 }
 
-function HomeView({ viewId }: Readonly<{ viewId: string }>) {
+function HomeView({ viewId, tab }: Readonly<{ viewId: string; tab: HomeTab }>) {
   const actions = useActions();
   return (
     <NotesHome
+      tab={tab}
+      onTabChange={(next) => actions.chooseHomeTab(viewId, next)}
       iconFor={(item) => item.icon}
       onOpenNote={(noteId) => actions.openFromHome(viewId, noteId)}
       onOpenNoteInNewTab={actions.openNote}
       onNewNote={actions.newNoteFromHome && (() => actions.newNoteFromHome?.(viewId))}
+      onImport={actions.importFolder}
     />
   );
 }
 
-function EmptyPanel({ onNewNote, onHome }: Readonly<{ onNewNote?: () => void; onHome: () => void }>) {
-  const { t } = useTranslation(["notes"]);
-  return (
-    <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
-      <p className="text-sm text-muted-foreground">{t(($) => $.notes.workspace.emptyPanel)}</p>
-      <div className="flex items-center gap-2">
-        {onNewNote && (
-          <Button size="sm" onClick={onNewNote}>
-            <Plus aria-hidden />
-            {t(($) => $.notes.library.newNote)}
-          </Button>
-        )}
-        <Button variant="outline" size="sm" onClick={onHome}>
-          <House aria-hidden />
-          {t(($) => $.notes.workspace.home)}
-        </Button>
-      </div>
-    </div>
+interface EmptyPanelActions {
+  newTab: (groupId: string) => void;
+  newNote?: (groupId: string | null) => void;
+  openNoteAt: (id: string, groupId: string | null) => void;
+  openSearch: () => void;
+}
+
+function emptyPanelFor({ newTab, newNote, openNoteAt, openSearch }: EmptyPanelActions) {
+  return (group: GroupNode) => (
+    <NotesEmptyPanel
+      onHome={() => newTab(group.id)}
+      onNewNote={newNote && (() => newNote(group.id))}
+      onOpenNote={(id) => openNoteAt(id, group.id)}
+      onSearch={openSearch}
+    />
   );
 }
 
+function noteShownIn(layout: WorkspaceLayout, noteId: string | null): string | null {
+  return noteId && layout.views[noteViewId(noteId)] ? noteId : null;
+}
+
+function historySteps(history: TabHistory | null, exists: (entry: NotesPlace) => boolean): { back: number[]; forward: number[] } {
+  if (!history) return { back: [], forward: [] };
+  return { back: stepIndexes(history, -1, exists), forward: stepIndexes(history, 1, exists) };
+}
+
 function viewContent(id: string, view: ViewState): ReactNode {
-  if (view.type === "home") return <HomeView viewId={id} />;
+  if (view.type === "home") return <HomeView viewId={id} tab={homeTabOf(view)} />;
   if (view.type === "artifacts") return <ArtifactsView />;
   if (view.type === "graph") return <GraphView local={view.params?.local === true} />;
   if (view.type === "outline") return <OutlineView />;
+  if (view.type === "dead-links") return <DeadLinksView />;
+  if (view.type === "info") return <InfoView />;
   const noteId = noteIdOf(id);
   return noteId ? <NoteViewBody noteId={noteId} /> : null;
 }
@@ -413,7 +681,9 @@ function openTag(tag: string, showSidebar: () => void): void {
 
 export function NotesWorkspace({
   initialNoteId = null,
+  initialFragment = null,
   requestedNoteId = null,
+  requestedFragment = null,
   onRequestHandled,
   onExit,
   onNewNote,
@@ -431,14 +701,21 @@ export function NotesWorkspace({
     return { layout: opened, focused: viewId };
   });
   const [layout, setLayout] = useState<WorkspaceLayout>(initial.layout);
+  const layoutRef = useRef(layout);
+  layoutRef.current = layout;
   const [focused, setFocused] = useState<string | null>(initial.focused);
   const [artifactId, setArtifactId] = useState<string | null>(null);
   const [insertRequest, setInsertRequest] = useState<InsertRequest | null>(null);
-  const [headingRequest, setHeadingRequest] = useState<HeadingRequest | null>(null);
-  const [paperText, setPaperText] = useState<string | null>(null);
+  const [headingRequest, setHeadingRequest] = useState<HeadingRequest | null>(() =>
+    initialNoteId && initialFragment ? { noteId: initialNoteId, slug: initialFragment, id: 1 } : null,
+  );
+  const [scrollRequest, setScrollRequest] = useState<ScrollRequest | null>(null);
+  const [paperText, setPaperText] = useState<{ text: string; noteId: string } | null>(null);
   const [paperId, setPaperId] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [vaultDialog, setVaultDialog] = useState<"import" | "export" | null>(null);
+  const [infoTarget, setInfoTarget] = useState<HTMLElement | null>(null);
+  const infoInPanel = useInfoInPanel();
   const fullscreen = useFullscreen();
   const paperFieldId = useId();
   const chosenPaper = data.papers.some((paper) => paper.id === paperId) ? paperId : (data.papers[0]?.id ?? "");
@@ -465,23 +742,28 @@ export function NotesWorkspace({
   }, []);
 
   useEffect(() => {
-    if (!research) setLayout((current) => (ARTIFACTS_VIEW in current.views ? closeView(current, ARTIFACTS_VIEW) : current));
+    if (!research) setLayout(withoutView(ARTIFACTS_VIEW));
   }, [research]);
+  useEffect(() => {
+    if (!infoInPanel) setLayout(withoutView(INFO_VIEW));
+  }, [infoInPanel]);
 
   const shownKey = visibleViews(layout).join("\n");
   const shown = useMemo<ReadonlySet<string>>(() => new Set(shownKey.split("\n")), [shownKey]);
 
   const focusedNoteId = useMemo(() => {
-    const direct = noteIdOf(focused);
-    if (direct && layout.views[noteViewId(direct)]) return direct;
+    const direct = noteShownIn(layout, noteIdOf(focused));
+    if (direct) return direct;
     const owner = focused ? groupOfView(layout, focused) : null;
     const nearby = noteIdOf(owner?.active) ?? noteIdOf(openNoteViews(layout)[0]);
     return nearby;
   }, [focused, layout]);
-  useRecordNoteOpened(noteIdOf(focused));
+  const openedNoteId = noteIdOf(focused);
+  useEffect(() => {
+    if (openedNoteId) useNotesPrefsStore.getState().recordOpened(openedNoteId);
+  }, [openedNoteId]);
   const focusedNote = data.notes.find((note) => note.id === focusedNoteId) ?? null;
-  const directNoteId = noteIdOf(focused);
-  useLiveNoteClaim(layout, directNoteId && layout.views[noteViewId(directNoteId)] ? directNoteId : null, data.notes);
+  useLiveNoteClaim(layout, noteShownIn(layout, noteIdOf(focused)), data.notes);
   const artifactCount = artifactsForNote(data.artifacts, focusedNote).length;
   const artifactsOpen = ARTIFACTS_VIEW in layout.views;
 
@@ -499,17 +781,58 @@ export function NotesWorkspace({
   );
   useEffect(() => {
     if (!requestedNoteId) return;
-    openNote(requestedNoteId);
+    if (requestedFragment) openNoteHeading(requestedNoteId, requestedFragment);
+    else openNote(requestedNoteId);
     onRequestHandled?.();
-  }, [onRequestHandled, openNote, requestedNoteId]);
+  }, [onRequestHandled, openNote, openNoteHeading, requestedFragment, requestedNoteId]);
 
-  const closeTab = useCallback((viewId: string) => setLayout((current) => closeView(current, viewId)), []);
+  const closeTab = useCallback((viewId: string) => {
+    const owner = groupOfView(layoutRef.current, viewId);
+    setLayout((current) => closeView(current, viewId));
+    if (!owner) return;
+    const next = closeView(layoutRef.current, viewId);
+    const neighbour = groupsOf(next.root).find((candidate) => candidate.id === owner.id)?.active;
+    if (neighbour && neighbour in next.views) setFocused((now) => (now === viewId ? neighbour : now));
+  }, []);
+  const removeNote = data.deleteNote;
+  const deleteNote = useMemo(
+    () =>
+      removeNote &&
+      (async (id: string) => {
+        await removeNote(id);
+        closeTab(noteViewId(id));
+      }),
+    [closeTab, removeNote],
+  );
+  const scopedData = useMemo(() => (deleteNote ? { ...data, deleteNote } : data), [data, deleteNote]);
   const showSidebar = useCallback(() => setSidebarOpen(true), []);
+  const openSearch = useCallback(() => {
+    flushSync(() => setSidebarOpen(true));
+    focusNotesSearch();
+  }, []);
   const onOpenTag = useCallback((tag: string) => openTag(tag, showSidebar), [showSidebar]);
 
   const openFromHome = useCallback((homeId: string, noteId: string) => {
-    setLayout((current) => openNoteInPlace(current, homeId, noteId));
+    const scroll = noteScroll(homeId);
+    setLayout((current) => recordVisit(current, openNoteInPlace(current, homeId, noteId), homeId, noteViewId(noteId), scroll));
     setFocused(noteViewId(noteId));
+  }, []);
+  const chooseHomeTab = useCallback((homeId: string, tab: HomeTab) => {
+    setLayout((current) => recordVisit(current, showHomeTab(current, homeId, tab), homeId, homeId));
+  }, []);
+  const openHomeHere = useCallback((viewId: string) => {
+    const home = newHomeViewId(layoutRef.current);
+    const scroll = noteScroll(viewId);
+    setLayout((current) => recordVisit(current, openHomeInPlace(current, viewId, home), viewId, home, scroll));
+    setFocused(home);
+  }, []);
+  const travelTo = useCallback((viewId: string, index: number) => {
+    const next = travel(layoutRef.current, viewId, index, noteScroll(viewId));
+    if (!next) return;
+    setLayout(next.layout);
+    setFocused(next.viewId);
+    const noteId = noteIdOf(next.place.view);
+    if (noteId) setScrollRequest((previous) => ({ noteId, top: next.place.scroll ?? 0, id: (previous?.id ?? 0) + 1 }));
   }, []);
 
   const showArtifacts = useCallback(() => {
@@ -565,6 +888,7 @@ export function NotesWorkspace({
       openNote,
       openNoteHeading,
       openFromHome,
+      chooseHomeTab,
       insertArtifact,
       newProject: onCreateProject,
       newNoteFromHome: onNewNote
@@ -573,8 +897,9 @@ export function NotesWorkspace({
               if (id) openFromHome(homeId, id);
             })
         : undefined,
+      importFolder: () => setVaultDialog("import"),
     }),
-    [artifactId, insertArtifact, insertNoteId, onCreateProject, onNewNote, openFromHome, openNote, openNoteHeading],
+    [artifactId, chooseHomeTab, insertArtifact, insertNoteId, onCreateProject, onNewNote, openFromHome, openNote, openNoteHeading],
   );
 
   const heldViews = useRef(new Set<string>());
@@ -589,14 +914,16 @@ export function NotesWorkspace({
       insertRequest,
       holdView,
       headingRequest,
+      scrollRequest,
       openNote,
       openNoteHeading,
       openTag: onOpenTag,
       closeTab,
+      openHomeHere,
       newProject: onCreateProject,
       sendToPaper,
     }),
-    [closeTab, headingRequest, holdView, insertRequest, onCreateProject, onOpenTag, openNote, openNoteHeading, sendToPaper],
+    [closeTab, headingRequest, holdView, insertRequest, onCreateProject, onOpenTag, openHomeHere, openNote, openNoteHeading, scrollRequest, sendToPaper],
   );
 
   const focusedNoteView = focusedNoteId ? noteViewId(focusedNoteId) : null;
@@ -608,18 +935,38 @@ export function NotesWorkspace({
     setLayout((current) => openGraphIn(current, focusedNoteView));
     setFocused(GRAPH_VIEW);
   }, [focusedNoteView]);
+  const openDeadLinks = useCallback(() => {
+    setLayout((current) => openDeadLinksIn(current, focusedNoteView));
+    setFocused(DEAD_LINKS_VIEW);
+  }, [focusedNoteView]);
   const sideActions = useMemo<SideActions>(
     () => ({
       openNoteFrom: (id) => {
-        setLayout((current) => openNoteFrom(current, id, focusedNoteView));
+        const from = stageGroup(layoutRef.current, focusedNoteView).active;
+        const scroll = noteScroll(from);
+        setLayout((current) => recordVisit(current, openNoteFrom(current, id, focusedNoteView), from, noteViewId(id), scroll));
         setFocused(noteViewId(id));
       },
       openProject: data.openProject,
       sideOpen: (viewId) => viewId in layout.views,
       toggleSide,
+      infoTarget,
+      setInfoTarget,
     }),
-    [data.openProject, focusedNoteView, layout.views, toggleSide],
+    [data.openProject, focusedNoteView, infoTarget, layout.views, toggleSide],
   );
+  const newNoteRef = useRef<(() => void) | undefined>(undefined);
+  const stepRef = useRef<(direction: HistoryDirection) => void>(() => undefined);
+  useEffect(() => {
+    const onMouse = (event: MouseEvent) => {
+      const direction = MOUSE_STEPS[event.button];
+      if (!direction) return;
+      event.preventDefault();
+      stepRef.current(direction);
+    };
+    window.addEventListener("mouseup", onMouse);
+    return () => window.removeEventListener("mouseup", onMouse);
+  }, []);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
@@ -628,12 +975,16 @@ export function NotesWorkspace({
       if (matchesShortcut(event, bindings.notesGraph)) openGraph();
       else if (matchesShortcut(event, bindings.notesLocalGraph)) toggleSide(LOCAL_GRAPH_VIEW);
       else if (matchesShortcut(event, bindings.notesOutline)) toggleSide(OUTLINE_VIEW);
+      else if (matchesShortcut(event, bindings.notesSearch)) openSearch();
+      else if (newNoteRef.current && matchesShortcut(event, bindings.notesNewNote)) newNoteRef.current();
+      else if (matchesShortcut(event, bindings.notesBack)) stepRef.current(-1);
+      else if (matchesShortcut(event, bindings.notesForward)) stepRef.current(1);
       else handled = false;
       if (handled) event.preventDefault();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [openGraph, toggleSide]);
+  }, [openGraph, openSearch, toggleSide]);
 
   const openInPlace = useCallback(
     (id: string) => {
@@ -644,17 +995,13 @@ export function NotesWorkspace({
   );
   const openToday = useOpenDailyNote(openNote);
 
-  const onNotesHome = focused !== null && isHomeView(focused) && groupOfView(layout, focused)?.active === focused;
-  const goHome = useCallback(() => {
-    if (onNotesHome && onExit) {
-      onExit();
-      return;
-    }
+  const goNotesHome = useCallback(() => {
     const home = homeViews(layout)[0] ?? HOME_VIEW;
     setLayout((current) => openHomeIn(current, home, stageGroup(current, null).id));
     setFocused(home);
-  }, [layout, onExit, onNotesHome]);
-  const homeLabel = onNotesHome && onExit ? undefined : t(($) => $.notes.workspace.notesHome);
+  }, [layout]);
+  const goHome = onExit ?? goNotesHome;
+  const homeLabel = onExit ? undefined : t(($) => $.notes.workspace.notesHome);
 
   const newTab = useCallback(
     (groupId: string) => {
@@ -677,6 +1024,7 @@ export function NotesWorkspace({
     [onNewNote, openNoteAt],
   );
   const newNoteHere = useMemo(() => (newNote ? () => newNote(null) : undefined), [newNote]);
+  newNoteRef.current = newNoteHere;
   const openImport = useCallback(() => setVaultDialog("import"), []);
   const openExport = useCallback(() => setVaultDialog("export"), []);
   const iconFor = useCallback((item: NoteItem) => item.icon, []);
@@ -697,11 +1045,15 @@ export function NotesWorkspace({
       if (view.type === "outline") {
         return { title: t(($) => $.notes.graph.outline.title), icon: <TableOfContents aria-hidden className="size-3.5 shrink-0" /> };
       }
+      if (view.type === "dead-links") {
+        return { title: t(($) => $.notes.linksSearch.dead.title), icon: <Link2Off aria-hidden className="size-3.5 shrink-0" /> };
+      }
+      if (view.type === "info") return { title: t(($) => $.notes.info.title), icon: <Info aria-hidden className="size-3.5 shrink-0" /> };
       const note = tabNotes.find((candidate) => candidate.id === noteIdOf(id));
       return {
         title: note?.title ?? t(($) => $.notes.document.untitled),
         icon: note ? (
-          <NoteChip icon={note.icon} color={note.color} className="size-4 rounded" />
+          <NoteChip icon={note.icon} color={note.color} size="xs" />
         ) : (
           <FileText aria-hidden className="size-3.5 shrink-0" />
         ),
@@ -709,6 +1061,31 @@ export function NotesWorkspace({
     },
     [tabNotes, t],
   );
+
+  const currentTab = stageGroup(layout, focused).active;
+  const history = currentTab ? tabHistory(layout, currentTab) : null;
+  const noteIds = useMemo(() => new Set(data.notes.map((note) => note.id)), [data.notes]);
+  const exists = (entry: NotesPlace) => {
+    const noteId = noteIdOf(entry.view);
+    return noteId === null || noteIds.has(noteId);
+  };
+  const { back: backIndexes, forward: forwardIndexes } = historySteps(history, exists);
+  stepRef.current = (direction) => {
+    const index = (direction < 0 ? backIndexes : forwardIndexes)[0];
+    if (currentTab && index !== undefined) travelTo(currentTab, index);
+  };
+  const historyItems = (indexes: readonly number[]): HistoryItem[] =>
+    history
+      ? indexes.slice(0, HISTORY_MENU_ITEMS).map((index) => {
+          const entry = history.entries[index];
+          const info = describeView(entry.view, placeView(entry));
+          const tab = entry.tab && entry.tab !== "mine" ? entry.tab : null;
+          return { index, title: tab ? t(($) => $.notes.home.tabs[tab]) : info.title, icon: info.icon };
+        })
+      : [];
+  const jump = (index: number) => {
+    if (currentTab) travelTo(currentTab, index);
+  };
 
   const labels = useMemo(
     () => ({
@@ -731,116 +1108,132 @@ export function NotesWorkspace({
   const sidebarLabel = sidebarOpen ? t(($) => $.notes.workspace.hideSidebar) : t(($) => $.notes.workspace.showSidebar);
 
   return (
-    <ActionsContext.Provider value={actions}>
-      <NoteActionsContext.Provider value={noteActions}>
-        <SideContext.Provider value={sideActions}>
-          <ShownContext.Provider value={shown}>
-            <div ref={appearanceRef} className="flex h-full min-h-0 bg-background text-foreground">
-              {sidebarOpen && (
-                <NotesLibrary
-                  iconFor={iconFor}
-                  activeNoteId={focusedNoteId}
-                  activeArtifactId={artifactsOpen ? artifactId : null}
-                  homeLabel={homeLabel}
-                  onHome={goHome}
-                  onNewNote={newNoteHere}
-                  onOpenNote={openNote}
-                  onOpenNoteInNewTab={openNote}
-                  onOpenArtifact={openArtifact}
-                  onToday={openToday}
-                  onOpenGraph={openGraph}
-                  onImportFolder={openImport}
-                  onExportFolder={openExport}
-                />
-              )}
-              <NotesVaultLayer onOpenNote={openInPlace} onOpenNoteInNewTab={openNote} onToday={openToday} />
-              <main className="flex min-w-0 flex-1 flex-col">
-                <div className="min-h-0 flex-1">
-                  <Workspace
-                    layout={layout}
-                    onLayoutChange={setLayout}
-                    renderView={renderNotesView}
-                    describeView={describeView}
-                    labels={labels}
-                    renderTooltip={renderTooltip}
-                    onFocusView={onFocusView}
-                    onNewTab={newTab}
-                    stageCandidate={holdsNotes}
-                    keepHidden={KEPT_HIDDEN_VIEWS}
-                    canRelease={canRelease}
-                    chromeAttributes={WINDOW_DRAG}
-                    leading={
-                      <>
-                        {headerInset && <span aria-hidden className="w-[70px] shrink-0" />}
-                        {!sidebarOpen && <HomeBrandButton compact label={homeLabel} onClick={goHome} />}
-                        <TooltipIconButton label={sidebarLabel} aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((open) => !open)}>
-                          <PanelLeft aria-hidden className="size-4" />
-                        </TooltipIconButton>
-                      </>
-                    }
-                    trailing={
-                      <>
-                        {research && (
-                          <TooltipIconButton
-                            label={t(($) => $.notes.workspace.artifacts, { total: artifactCount })}
-                            aria-pressed={artifactsOpen}
-                            className={cn("relative", artifactsOpen && "bg-accent")}
-                            onClick={toggleArtifacts}
-                          >
-                            <PanelRight aria-hidden className="size-4" />
-                            {artifactCount > 0 && (
-                              <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full border border-background bg-primary px-1 text-[0.5625rem] font-bold text-primary-foreground">
-                                {artifactCount}
-                              </span>
-                            )}
-                          </TooltipIconButton>
-                        )}
-                        <WindowControls compact />
-                      </>
-                    }
-                    empty={(group) => <EmptyPanel onNewNote={newNote && (() => newNote(group.id))} onHome={() => newTab(group.id)} />}
+    <NotesDataProvider value={scopedData}>
+      <ActionsContext.Provider value={actions}>
+        <NoteActionsContext.Provider value={noteActions}>
+          <SideContext.Provider value={sideActions}>
+            <ShownContext.Provider value={shown}>
+              <div ref={appearanceRef} className="flex h-full min-h-0 bg-background text-foreground">
+                {sidebarOpen && (
+                  <NotesLibrary
+                    iconFor={iconFor}
+                    activeNoteId={focusedNoteId}
+                    activeArtifactId={artifactsOpen ? artifactId : null}
+                    homeLabel={homeLabel}
+                    onHome={goHome}
+                    onNewNote={newNoteHere}
+                    onOpenNote={openNote}
+                    onOpenNoteInNewTab={openNote}
+                    onOpenNoteAt={openNoteHeading}
+                    onOpenArtifact={openArtifact}
+                    onToday={openToday}
+                    onOpenGraph={openGraph}
+                    onImportFolder={openImport}
+                    onExportFolder={openExport}
+                    onOpenDeadLinks={openDeadLinks}
                   />
-                </div>
-              </main>
-              <NoteImportDialog open={vaultDialog === "import"} onClose={() => setVaultDialog(null)} onImported={() => void data.refreshNotes?.()} />
-              {vaultDialog === "export" && (
-                <NoteExportDialog open note={focusedNote} total={data.notes.length} onClose={() => setVaultDialog(null)} />
-              )}
-              <Dialog open={paperText !== null} onOpenChange={(open) => !open && setPaperText(null)}>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{t(($) => $.notes.sendToPaper.title)}</DialogTitle>
-                    <DialogDescription>{t(($) => $.notes.sendToPaper.description)}</DialogDescription>
-                  </DialogHeader>
-                  <p className="line-clamp-3 rounded-md border p-2 text-sm text-muted-foreground">{paperText}</p>
-                  <RadioGroup value={chosenPaper} onValueChange={setPaperId} className="gap-1">
-                    {data.papers.map((paper) => (
-                      <label key={paper.id} htmlFor={`${paperFieldId}-${paper.id}`} className="flex items-center gap-2 text-sm">
-                        <RadioGroupItem id={`${paperFieldId}-${paper.id}`} value={paper.id} />
-                        {paper.label}
-                      </label>
-                    ))}
-                  </RadioGroup>
-                  <DialogFooter>
-                    <Button variant="ghost" onClick={() => setPaperText(null)}>
-                      {t(($) => $.common.actions.cancel)}
-                    </Button>
-                    <Button
-                      disabled={!onSendToPaper || !chosenPaper}
-                      onClick={() => {
-                        if (paperText !== null) onSendToPaper?.({ paperId: chosenPaper, text: paperText });
-                        setPaperText(null);
-                      }}
-                    >
-                      {t(($) => $.notes.sendToPaper.send)}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </ShownContext.Provider>
-        </SideContext.Provider>
-      </NoteActionsContext.Provider>
-    </ActionsContext.Provider>
+                )}
+                <NotesVaultLayer onOpenNote={openInPlace} onOpenNoteInNewTab={openNote} onToday={openToday} />
+                <main className="flex min-w-0 flex-1 flex-col">
+                  <div className="min-h-0 flex-1">
+                    <Workspace
+                      layout={layout}
+                      onLayoutChange={setLayout}
+                      renderView={renderNotesView}
+                      describeView={describeView}
+                      labels={labels}
+                      renderTooltip={renderTooltip}
+                      onFocusView={onFocusView}
+                      onNewTab={newTab}
+                      stageCandidate={holdsNotes}
+                      keepHidden={KEPT_HIDDEN_VIEWS}
+                      canRelease={canRelease}
+                      chromeAttributes={WINDOW_DRAG}
+                      leading={
+                        <>
+                          {headerInset && <span aria-hidden className="w-[70px] shrink-0" />}
+                          {!sidebarOpen && <HomeBrandButton compact label={homeLabel} onClick={goHome} />}
+                          <TooltipIconButton label={sidebarLabel} aria-expanded={sidebarOpen} onClick={() => setSidebarOpen((open) => !open)}>
+                            <PanelLeft aria-hidden className="size-4" />
+                          </TooltipIconButton>
+                          <HistoryButton
+                            label={t(($) => $.notes.workspace.back)}
+                            shortcut="notesBack"
+                            icon={<ArrowLeft aria-hidden className="size-4" />}
+                            items={historyItems(backIndexes)}
+                            onStep={() => stepRef.current(-1)}
+                            onJump={jump}
+                          />
+                          <HistoryButton
+                            label={t(($) => $.notes.workspace.forward)}
+                            shortcut="notesForward"
+                            icon={<ArrowRight aria-hidden className="size-4" />}
+                            items={historyItems(forwardIndexes)}
+                            onStep={() => stepRef.current(1)}
+                            onJump={jump}
+                          />
+                        </>
+                      }
+                      trailing={
+                        <>
+                          {research && (
+                            <TooltipIconButton
+                              label={t(($) => $.notes.workspace.artifacts, { total: artifactCount })}
+                              aria-pressed={artifactsOpen}
+                              className={cn("relative", artifactsOpen && "bg-accent")}
+                              onClick={toggleArtifacts}
+                            >
+                              <PanelRight aria-hidden className="size-4" />
+                              {artifactCount > 0 && <Badge size="count">{artifactCount}</Badge>}
+                            </TooltipIconButton>
+                          )}
+                          <WindowControls compact />
+                        </>
+                      }
+                      empty={emptyPanelFor({ newTab, newNote, openNoteAt, openSearch })}
+                    />
+                  </div>
+                </main>
+                <NoteImportDialog open={vaultDialog === "import"} onClose={() => setVaultDialog(null)} onImported={() => void data.refreshNotes?.()} />
+                {vaultDialog === "export" && (
+                  <NoteExportDialog open note={focusedNote} total={data.notes.length} onClose={() => setVaultDialog(null)} />
+                )}
+                <Dialog open={paperText !== null} onOpenChange={(open) => !open && setPaperText(null)}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{t(($) => $.notes.sendToPaper.title)}</DialogTitle>
+                      <DialogDescription>{t(($) => $.notes.sendToPaper.description)}</DialogDescription>
+                    </DialogHeader>
+                    <p className="line-clamp-3 rounded-md border p-2 text-sm text-muted-foreground">{paperText?.text}</p>
+                    <RadioGroup value={chosenPaper} onValueChange={setPaperId} className="gap-1">
+                      {data.papers.map((paper) => (
+                        <label key={paper.id} htmlFor={`${paperFieldId}-${paper.id}`} className="flex items-center gap-2 text-sm">
+                          <RadioGroupItem id={`${paperFieldId}-${paper.id}`} value={paper.id} />
+                          {paper.label}
+                        </label>
+                      ))}
+                    </RadioGroup>
+                    <DialogFooter>
+                      <Button variant="ghost" onClick={() => setPaperText(null)}>
+                        {t(($) => $.common.actions.cancel)}
+                      </Button>
+                      <Button
+                        disabled={!onSendToPaper || !chosenPaper}
+                        onClick={() => {
+                          if (paperText !== null) onSendToPaper?.({ paperId: chosenPaper, ...paperText });
+                          setPaperText(null);
+                        }}
+                      >
+                        {t(($) => $.notes.sendToPaper.send)}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </ShownContext.Provider>
+          </SideContext.Provider>
+        </NoteActionsContext.Provider>
+      </ActionsContext.Provider>
+    </NotesDataProvider>
   );
 }

@@ -1,14 +1,14 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { createRoot } from "react-dom/client";
-import { I18nextProvider, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
+import { BLOCK_MESSAGE } from "@/components/ui/block-frame";
 import { Button } from "@/components/ui/button";
 import { CodeBlock } from "@/components/ui/code-block";
 import { HighlightedCode } from "@/components/ui/code-highlighter";
 import { Markdown } from "@/components/ui/markdown";
-import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import type { CellRange } from "./notebook-block";
 import { type NotebookCell, type NotebookOutput, parseNotebook, pickCells } from "./notebook-file";
+import { nodeRoot } from "./node-root";
 
 export const CELL_LIMIT = 20;
 export const OUTPUT_LINES = 30;
@@ -56,7 +56,7 @@ export function htmlOutputDocument(html: string): string {
 }
 
 function Message({ children }: Readonly<{ children: ReactNode }>) {
-  return <p className="py-4 text-xs text-muted-foreground">{children}</p>;
+  return <p className={BLOCK_MESSAGE}>{children}</p>;
 }
 
 function LongText({ text, failed = false }: Readonly<{ text: string; failed?: boolean }>) {
@@ -195,14 +195,6 @@ export interface NotebookMount {
 }
 
 export function mountNotebook(host: HTMLElement): NotebookMount {
-  const root = createRoot(host);
-  return {
-    render: (props) =>
-      root.render(
-        <I18nextProvider i18n={i18n}>
-          <NotebookView {...props} />
-        </I18nextProvider>,
-      ),
-    unmount: () => queueMicrotask(() => root.unmount()),
-  };
+  const root = nodeRoot(host);
+  return { render: (props) => root.render(<NotebookView {...props} />), unmount: root.unmount };
 }

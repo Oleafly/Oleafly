@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { lazy } from "@/lib/preloadable";
 import { Trans, useTranslation } from "react-i18next";
 import {
@@ -58,6 +58,7 @@ import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { Tooltip } from "@/components/ui/tooltip";
+import { ColorDot } from "@/components/ui/color-swatch";
 import { LayoutToggle } from "@/components/library/LayoutToggle";
 import { ModalShell } from "@/components/ui/modal-shell";
 import {
@@ -82,7 +83,7 @@ import {
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { useFavoritesStore } from "@/store/favorites";
-import { useProjectColorsStore } from "@/store/project-colors";
+import { useProjectColorOf, useProjectColorsStore } from "@/store/project-colors";
 import { decodeAppError, PROJECT_NOT_FOUND } from "@/lib/app-error";
 import { useDisplayPath } from "@/lib/display-path";
 import { logError } from "@/lib/log";
@@ -238,7 +239,6 @@ export function Library() {
   const openProject = useFilesStore((s) => s.openProject);
   const favs = useFavoritesStore((s) => s.favs);
   const toggleFav = useFavoritesStore((s) => s.toggle);
-  const projectColors = useProjectColorsStore((s) => s.colors);
   const setProjectColor = useProjectColorsStore((s) => s.setColor);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const hoverPreview = useSettingsStore((s) => s.hoverPreview);
@@ -281,10 +281,7 @@ export function Library() {
   const availabilityOf = (project: ProjectInfo): ProjectAvailability =>
     folderAvailability(project, checkedFolders);
   const updatedAtOf = (project: ProjectInfo) => projectUpdatedAt(project, modifiedFolders);
-  const coverColor = useCallback(
-    (project: ProjectInfo) => projectColors[project.id] ?? (project.color || DEFAULT_BOOK_COLOR),
-    [projectColors],
-  );
+  const coverColor = useProjectColorOf();
   const collabKit = useCollabLibraryKit();
   const hasShared = useMemo(() => projects.some((project) => Boolean(project.shared)), [projects]);
   const searchSchema = useMemo(
@@ -797,13 +794,8 @@ export function Library() {
               {t(($) => $.library.projects.detailsDialog.color)}
             </dt>
             <dd className="flex items-center gap-2">
-              <span
-                className="size-3.5 rounded-full border"
-                style={{ background: currentDetailsProject.color || DEFAULT_BOOK_COLOR }}
-              />
-              <span className="font-mono text-xs">
-                {currentDetailsProject.color || DEFAULT_BOOK_COLOR}
-              </span>
+              <ColorDot color={coverColor(currentDetailsProject)} size="md" />
+              <span className="font-mono text-xs">{coverColor(currentDetailsProject)}</span>
             </dd>
             <dt className="text-muted-foreground">
               {t(($) => $.library.projects.detailsDialog.bookmarked)}

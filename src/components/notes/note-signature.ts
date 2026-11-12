@@ -1,19 +1,15 @@
-import { useMemo, useRef } from "react";
+import { useRef } from "react";
+import { sameValue } from "@/lib/same-value";
 import type { NoteItem } from "./types";
 
-export function noteLookSignature(notes: readonly NoteItem[]): string {
-  return notes
-    .map((note) => [note.id, note.title, note.icon ?? "", note.color ?? "", (note.aliases ?? []).join("\u0002")].join("\u0000"))
-    .join("\u0001");
-}
-
-export function useKeyedValue<T>(value: T, key: string): T {
-  const kept = useRef({ key, value });
-  if (kept.current.key !== key) kept.current = { key, value };
-  return kept.current.value;
+function sameLook(left: NoteItem | undefined, right: NoteItem): boolean {
+  if (left === right) return true;
+  return left?.id === right.id && left.title === right.title && left.icon === right.icon && left.color === right.color && sameValue(left.aliases, right.aliases);
 }
 
 export function useNotesByLook(notes: readonly NoteItem[]): readonly NoteItem[] {
-  const signature = useMemo(() => noteLookSignature(notes), [notes]);
-  return useKeyedValue(notes, signature);
+  const kept = useRef(notes);
+  const last = kept.current;
+  if (last !== notes && (last.length !== notes.length || notes.some((note, index) => !sameLook(last[index], note)))) kept.current = notes;
+  return kept.current;
 }

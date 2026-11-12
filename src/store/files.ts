@@ -1660,6 +1660,29 @@ function recordFailedSave(projectId: string, path: string, error: unknown, get: 
   if (isMutationConflict(error)) scheduleAutosave(get);
 }
 
+function writeDiskText(projectId: string, path: string, bytes: string, generation: number, expectedHash: string | undefined) {
+  if (expectedHash === undefined) return writeFileContent(projectId, path, bytes, generation);
+  return writeFileContent(projectId, path, bytes, generation, expectedHash);
+}
+
+function markChangedFileDirty(projectId: string, path: string, content: string, set: FilesSet, get: FilesGet): void {
+  set((s) => {
+    if (s.projectId !== projectId) return {};
+    const latest = s.files[path];
+    if (!latest || latest.dirty || latest.content === content) return {};
+    return { files: { ...s.files, [path]: { ...latest, dirty: true } } };
+  });
+  if (get().files[path]?.dirty && (!pendingSaves.has(path) || autosaveTimer === null)) {
+    pendingSaves.add(path);
+    scheduleAutosave(get);
+  }
+}
+
+function projectFlushFailures(error: unknown, label: string): SaveFailure[] {
+  if (error instanceof SaveFlushError) return error.failures;
+  return [{ path: label, reason: describeFailure(error) }];
+}
+
 function rememberAdoptedSnapshots(
   projectId: string,
   adopted: readonly string[],
@@ -1865,11 +1888,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       if (project) throw project.error;
       return;
     }
-    const projectFailures = !project
-      ? []
-      : project.error instanceof SaveFlushError
-        ? project.error.failures
-        : [{ path: get().projectName || get().projectId || "", reason: describeFailure(project.error) }];
+    const projectFailures = project ? projectFlushFailures(project.error, get().projectName || get().projectId || "") : [];
     throw new SaveFlushError([...projectFailures, ...noteFailures]);
   },
 
@@ -2447,11 +2466,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const bytes = crlf ? crlfBytes(canonicalContent) : canonicalContent;
     const base = options?.base === undefined ? undefined : normalizeTextContent(options.base);
     const shared = await writeSharedText(projectId, path, canonicalContent, base);
-    const result = shared
-      ? null
-      : options?.expectedHash === undefined
-        ? await writeFileContent(projectId, path, bytes, expectedGeneration)
-        : await writeFileContent(projectId, path, bytes, expectedGeneration, options.expectedHash);
+    const result = shared ? null : await writeDiskText(projectId, path, bytes, expectedGeneration, options?.expectedHash);
     rememberDiskSnapshot(projectId, path, { hash: diskHash(bytes), crlf, length: bytes.length });
     settleDiskConflict(writeKey(projectId, path));
     if (result && Number.isSafeInteger(result.generation)) {
@@ -2473,16 +2488,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         };
       });
     } else if (current !== undefined && current.content !== canonicalContent) {
-      set((s) => {
-        if (s.projectId !== projectId) return {};
-        const latest = s.files[path];
-        if (!latest || latest.dirty || latest.content === canonicalContent) return {};
-        return { files: { ...s.files, [path]: { ...latest, dirty: true } } };
-      });
-      if (get().files[path]?.dirty && (!pendingSaves.has(path) || autosaveTimer === null)) {
-        pendingSaves.add(path);
-        scheduleAutosave(get);
-      }
+      markChangedFileDirty(projectId, path, canonicalContent, set, get);
     }
     await get().refreshTree({ keepUnchanged: true });
     notifyProjectFilesChanged(projectId, [path]);

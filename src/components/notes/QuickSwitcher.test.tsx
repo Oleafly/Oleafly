@@ -4,7 +4,8 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
 
 const env = vi.hoisted(() => ({ mac: true }));
 vi.mock("@/lib/utils", async (importOriginal) => {
@@ -19,11 +20,11 @@ vi.mock("@/lib/utils", async (importOriginal) => {
 
 import { useShortcutStore } from "@/store/shortcuts";
 import { useToastStore } from "@/store/toast";
-import { recordNoteOpened, NOTE_OPENED_KEY } from "./note-home-prefs";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { NotesVaultLayer, QuickSwitcher } from "./QuickSwitcher";
 import type { NoteItem } from "./types";
 import { setQuickSwitcherOpen, useVaultStore } from "./vault-store";
+import { useNotesPrefsStore } from "@/store/notes-prefs";
 
 const copy = enNotes.vault.switcher;
 
@@ -38,16 +39,10 @@ const notes = [
 ];
 
 function data(overrides: Partial<NotesData> = {}): NotesData {
-  return {
+  return fakeNotesData({
     notes,
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
-    loadNote: vi.fn(),
-    saveNote: vi.fn(),
     ...overrides,
-  };
+  });
 }
 
 function renderSwitcher(value = data()) {
@@ -65,13 +60,14 @@ function options(): string[] {
 }
 
 beforeAll(async () => {
-  await loadNamespace("notes");
   Element.prototype.scrollIntoView = vi.fn();
 });
 
+const initialPrefs = useNotesPrefsStore.getState();
+
 beforeEach(() => {
-  localStorage.removeItem(NOTE_OPENED_KEY);
-});
+  useNotesPrefsStore.setState(initialPrefs, true);
+  });
 
 afterEach(() => {
   act(() => setQuickSwitcherOpen(false));
@@ -86,7 +82,7 @@ describe("QuickSwitcher", () => {
   });
 
   it("lists recently opened notes first, then the rest", () => {
-    recordNoteOpened("c", 10);
+    useNotesPrefsStore.getState().recordOpened("c", 10);
     act(() => setQuickSwitcherOpen(true));
     renderSwitcher();
     expect(screen.getByRole("dialog", { name: copy.label })).toBeInTheDocument();
@@ -128,6 +124,20 @@ describe("QuickSwitcher", () => {
     await user.keyboard("{Enter}");
     await waitFor(() => expect(view.onOpenNote).toHaveBeenCalledWith("new"));
     expect(createNoteFrom).toHaveBeenCalledWith({ title: "Grant ideas" });
+  });
+
+  it("offers a reading note for a matching reference after the create row", async () => {
+    const user = userEvent.setup();
+    const createNoteFrom = vi.fn(async () => "reading");
+    const he = { key: "he2022", label: "He 2022, Masked Autoencoders", fields: { author: "He, Kaiming", year: "2022", title: "Masked Autoencoders" } };
+    act(() => setQuickSwitcherOpen(true));
+    const view = renderSwitcher(data({ createNoteFrom, citations: [he] }));
+    await user.type(screen.getByPlaceholderText(copy.placeholder), "masked");
+    expect(options()).toEqual([copy.create.replace("{{title}}", "masked"), `${he.label}${he.key}`]);
+    await user.click(screen.getByText(he.label));
+    await waitFor(() => expect(view.onOpenNote).toHaveBeenCalledWith("reading"));
+    expect(createNoteFrom).toHaveBeenCalledWith(expect.objectContaining({ title: "Masked Autoencoders", properties: expect.stringContaining("citekey: he2022") }));
+    expect(useVaultStore.getState().switcherOpen).toBe(false);
   });
 
   it("creates from Mod+Enter on the create row and reports a failure", async () => {

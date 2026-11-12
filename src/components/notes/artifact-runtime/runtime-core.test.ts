@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import type { JSDOM } from "jsdom";
 import * as React from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -11,6 +12,8 @@ import {
   esm,
   fillMessage,
   MissingImportError,
+  MODULE_HOOK,
+  moduleScript,
   type RuntimeDeps,
   type TransformOptions,
 } from "./runtime-core";
@@ -57,13 +60,23 @@ async function settle() {
   });
 }
 
+const windowListeners: [string, EventListenerOrEventListenerObject][] = [];
+let addWindowListener: typeof window.addEventListener;
+
 beforeEach(() => {
   document.body.innerHTML = "";
   Reflect.deleteProperty(globalThis, "__tailwindRuns");
   Reflect.deleteProperty(globalThis, "Answer");
+  addWindowListener = window.addEventListener;
+  window.addEventListener = ((type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) => {
+    windowListeners.push([type, listener]);
+    addWindowListener.call(window, type, listener, options);
+  }) as typeof window.addEventListener;
 });
 
 afterEach(() => {
+  window.addEventListener = addWindowListener;
+  for (const [type, listener] of windowListeners.splice(0)) window.removeEventListener(type, listener);
   vi.restoreAllMocks();
 });
 
@@ -223,5 +236,86 @@ export default function App() {
     expect(appended).toEqual(["compiled:", "TAILWIND"]);
     append.mockRestore();
     expect(() => made.runReact('import x from "nothing"; export default x;', MESSAGES)).not.toThrow();
+  });
+});
+
+describe("React modules in a script element", () => {
+  const frameGlobal = () => (globalThis as unknown as { jsdom: JSDOM }).jsdom.window as unknown as Record<string, unknown>;
+
+  beforeEach(() => {
+    Object.defineProperty(frameGlobal(), MODULE_HOOK, {
+      configurable: true,
+      get: () => (globalThis as Record<string, unknown>)[MODULE_HOOK],
+    });
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(frameGlobal(), MODULE_HOOK);
+  });
+
+  const scripted = () => {
+    const appended: string[] = [];
+    vi.spyOn(document.head, "append").mockImplementation((...nodes) => {
+      for (const node of nodes) appended.push((node as HTMLScriptElement).textContent ?? "");
+      Element.prototype.append.apply(document.head, nodes);
+    });
+    const made = createArtifactRuntime({
+      React,
+      createRoot,
+      modules: { react: () => esm(React), "react/jsx-runtime": () => esm(JsxRuntime) },
+      globals: {},
+      transform: compile,
+      tailwindSource: "",
+    });
+    return { made, appended };
+  };
+
+  const banners = () => document.querySelectorAll("body > [data-artifact-error]");
+
+  it("wraps the compiled module in a function that takes require, module, exports and React", () => {
+    expect(moduleScript("exports.x = 1;")).toBe(`${MODULE_HOOK}(function (require, module, exports, React) {\nexports.x = 1;\n});`);
+  });
+
+  it("renders the module's component and removes the hook once it ran", async () => {
+    const { made, appended } = scripted();
+    await act(async () => {
+      made.runReact(
+        'import { useState } from "react";\nexport default function App() { const [n] = useState(2); return <p id="out">{n} {typeof React}</p>; }',
+        MESSAGES,
+      );
+    });
+    expect(appended.at(-1)).toContain(`${MODULE_HOOK}(function (require, module, exports, React) {`);
+    expect(document.getElementById("out")?.textContent).toBe("2 object");
+    expect(MODULE_HOOK in globalThis).toBe(false);
+  });
+
+  it("shows what the module threw in place of the component, without a banner", () => {
+    scripted().made.runReact('throw new Error("top level");', MESSAGES);
+    expect(document.querySelector("#root > [data-artifact-error] p")?.textContent).toBe("Stopped");
+    expect(document.querySelector("#root > [data-artifact-error] pre")?.textContent).toContain("top level");
+    document.body.innerHTML = "";
+    scripted().made.runReact('import * as THREE from "three";\nexport default () => String(THREE);', MESSAGES);
+    expect(document.querySelector("#root > [data-artifact-error] p")?.textContent).toBe("Imports three offline");
+    expect(banners()).toHaveLength(0);
+    expect(MODULE_HOOK in globalThis).toBe(false);
+  });
+
+  it("shows a script that fails to parse as a runtime error, without a banner", () => {
+    scripted().made.runReact("let twice = 1;\nlet twice = 2;\nexport default () => twice;", MESSAGES);
+    expect(document.querySelector("#root > [data-artifact-error] p")?.textContent).toBe("Stopped");
+    expect(document.querySelector("#root > [data-artifact-error] pre")?.textContent).toContain("twice");
+    expect(banners()).toHaveLength(0);
+    expect(MODULE_HOOK in globalThis).toBe(false);
+  });
+
+  it("still shows later uncaught errors in a banner", async () => {
+    const { made } = scripted();
+    await act(async () => {
+      made.runReact("export default () => <p>ok</p>;", MESSAGES);
+    });
+    window.dispatchEvent(new ErrorEvent("error", { error: new Error("later") }));
+    expect(banners()).toHaveLength(1);
+    expect(banners()[0].querySelector("pre")?.textContent).toBe("later");
+    await settle();
   });
 });

@@ -1,0 +1,131 @@
+.note-field {
+  --note-field-mix: 65%;
+  --note-field-wash: 10%;
+  --note-field-edge: 33%;
+  --note-field-warning: var(--color-amber-600);
+  --note-field-info: var(--color-sky-600);
+  --note-field-muted: color-mix(in oklab, var(--muted-foreground) 80%, var(--foreground));
+  --note-field-tone: var(--note-field-muted);
+  --note-field-hue: var(--note-field-tone);
+  --note-field-text: var(--foreground);
+  --note-field-tint: color-mix(in oklab, var(--note-field-hue) var(--note-field-wash), transparent);
+  --note-field-line: color-mix(in oklab, var(--note-field-hue) var(--note-field-edge), transparent);
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  margin: 0 0.0625rem;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  padding: 0 0.375rem;
+  background: var(--note-field-tint);
+  color: var(--note-field-text);
+  font-size: 0.85em;
+  line-height: 1.5;
+  white-space: nowrap;
+  vertical-align: baseline;
+  user-select: none;
+}
+.dark .note-field {
+  --note-field-mix: 55%;
+  --note-field-wash: 14%;
+  --note-field-edge: 38%;
+  --note-field-warning: var(--color-amber-500);
+  --note-field-info: var(--color-sky-500);
+}
+.note-field[data-kind="date"] {
+  --note-field-ink: var(--primary);
+  --note-field-tone: color-mix(in oklab, var(--note-field-ink) var(--note-field-mix), var(--foreground));
+  --note-field-hue: var(--note-field-ink);
+  --note-field-text: var(--note-field-tone);
+}
+.dark .note-field[data-kind="date"] {
+  --note-field-hue: var(--note-field-tone);
+}
+.note-field[data-field-key="due"][data-when="today"] {
+  --note-field-ink: var(--note-field-warning);
+}
+.note-field[data-field-key="due"][data-when="past"] {
+  --note-field-ink: var(--destructive);
+}
+.note-field[data-field-key="scheduled"] {
+  --note-field-ink: var(--note-field-info);
+}
+.note-field[data-field-key="scheduled"][data-when="past"],
+:is(.note-task[data-checked="true"] > .note-task-content > p, [data-task-row][data-checked="true"]) .note-field[data-kind="date"] {
+  --note-field-tone: var(--note-field-muted);
+  --note-field-hue: var(--note-field-muted);
+}
+[data-notes-field-style="outline"] .note-field {
+  border-color: var(--note-field-line);
+  background: transparent;
+}
+[data-notes-field-style="underline"] .note-field {
+  padding: 0 0.125rem;
+  background: transparent;
+  text-decoration: underline dotted;
+  text-underline-offset: 0.3em;
+}
+.ProseMirror[contenteditable="true"] .note-field {
+  cursor: pointer;
+}
+.ProseMirror[contenteditable="true"] .note-field:hover,
+.note-field.ProseMirror-selectednode {
+  border-color: var(--note-field-line);
+  background: var(--note-field-tint);
+}
+.note-field-key {
+  color: var(--note-field-muted);
+}
+.note-field-icon {
+  flex-shrink: 0;
+  align-self: center;
+  width: 1em;
+  height: 1em;
+}
+.note-field-value {
+  font-weight: 500;
+}
+.note-field[data-priority]::before {
+  content: "";
+  align-self: center;
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border-radius: 9999px;
+  background: var(--muted-foreground);
+}
+.note-field:is([data-priority="highest"], [data-priority="high"])::before {
+  background: var(--destructive);
+}
+.note-field[data-priority="medium"]::before {
+  background: oklch(0.75 0.15 75);
+}
+.note-field:is([data-priority="low"], [data-priority="lowest"])::before {
+  background: oklch(0.62 0.12 240);
+}
+.note-field-inline {
+  display: inline;
+  margin: 0;
+  padding: 0 0.3125rem;
+  font-size: inherit;
+  line-height: inherit;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.note-field-inline :is(.note-field-icon, .note-field-key) {
+  margin-right: 0.25rem;
+}
+.note-field-inline .note-field-icon {
+  display: inline-block;
+  vertical-align: -0.125em;
+}
+.note-field-inline[data-priority]::before {
+  display: inline-block;
+  margin-right: 0.25rem;
+  vertical-align: 0.0625em;
+}
+[data-notes-field-style="underline"] .note-field-inline {
+  text-underline-offset: 0.15em;
+}
+.note-field-inline[data-match] {
+  background: color-mix(in oklch, var(--primary) 15%, transparent);
+}

@@ -1,5 +1,4 @@
-import { backtickRunEnd, codeSpanEnd, fencedLines } from "@/lib/code-fences";
-import { frontMatterKey, frontMatterRawValue, quotedScalar, splitFrontMatter } from "@/lib/front-matter";
+import { nameTone, type Tone } from "@/components/ui/tones";
 
 export interface TagRange {
   from: number;
@@ -12,9 +11,6 @@ const NOT_DIGIT = /[^\p{N}]/u;
 const SPACE = /\s/u;
 const SCHEME_URL = /[A-Za-z][A-Za-z0-9+.-]*:\/\/\S*/uy;
 const SCHEME_CHAR = /[A-Za-z0-9+.-]/u;
-const AUTOLINK = /<[A-Za-z][A-Za-z0-9+.-]*:[^\s<>]*>/uy;
-const INLINE_LINK = /\[[^[\]\n]*\]\([^)\n]*\)/uy;
-const LIST_ITEM = /^[ \t]*-(?:[ \t]+(.*))?$/u;
 
 function stripSlashes(run: string): { lead: number; tag: string } {
   let start = 0;
@@ -68,128 +64,10 @@ export function plainTextTags(text: string): TagRange[] {
   return found;
 }
 
-function stickyEnd(pattern: RegExp, line: string, index: number): number {
-  pattern.lastIndex = index;
-  const match = pattern.exec(line)?.[0];
-  return match ? index + match.length : index;
-}
-
-function destinationEnd(line: string, index: number): number {
-  const close = line.indexOf(")", index + 2);
-  return close < 0 ? line.length : close + 1;
-}
-
-function skipAt(line: string, index: number): number {
-  const char = line[index];
-  if (char === "\\") return Math.min(line.length, index + 2);
-  if (char === "`") return codeSpanEnd(line, index) ?? backtickRunEnd(line, index);
-  if (char === "[") return stickyEnd(INLINE_LINK, line, index);
-  if (char === "]" && line[index + 1] === "(") return destinationEnd(line, index);
-  if (char === "<") return stickyEnd(AUTOLINK, line, index);
-  return urlEnd(line, index);
-}
-
-function lineTags(line: string, offset: number, found: TagRange[]): void {
-  let index = 0;
-  while (index < line.length) {
-    const skipped = skipAt(line, index);
-    if (skipped > index) {
-      index = skipped;
-      continue;
-    }
-    const tag = tagAt(line, index);
-    if (tag) {
-      found.push({ from: tag.from + offset, to: tag.to + offset, tag: tag.tag });
-      index = tag.to;
-      continue;
-    }
-    index++;
-  }
-}
-
-export function markdownTagRanges(markdown: string): TagRange[] {
-  const front = splitFrontMatter(markdown);
-  const offset = front?.bodyFrom ?? 0;
-  const found: TagRange[] = [];
-  for (const line of fencedLines(front ? front.body : markdown)) {
-    if (!line.fenced) lineTags(line.text, offset + line.from, found);
-  }
-  return found;
-}
-
-function scalarItem(raw: string): string {
-  const trimmed = raw.trim();
-  return quotedScalar(trimmed)?.value ?? trimmed;
-}
-
-function cleanItem(item: string): string {
-  return item.trim().replace(/^#+/u, "").trim();
-}
-
-function flowItems(value: string): string[] {
-  const items: string[] = [];
-  let index = 1;
-  while (index < value.length && value[index] !== "]") {
-    const rest = value.slice(index).trimStart();
-    index = value.length - rest.length;
-    const quoted = quotedScalar(rest);
-    let end = quoted ? index + quoted.end : index;
-    while (end < value.length && value[end] !== "," && value[end] !== "]") end++;
-    items.push(quoted ? quoted.value : value.slice(index, end));
-    index = value[end] === "," ? end + 1 : end;
-  }
-  return items;
-}
-
-const SCALAR_SPLIT: Readonly<Record<string, RegExp>> = { aliases: /,/u };
-const DEFAULT_SPLIT = /[,\s]+/u;
-
-export function frontMatterList(markdown: string, key: string): string[] {
-  const yaml = splitFrontMatter(markdown)?.lines ?? [];
-  const at = yaml.findIndex((line) => frontMatterKey(line) === key);
-  if (at < 0) return [];
-  const value = frontMatterRawValue(yaml[at]);
-  let items: string[];
-  if (value.startsWith("[")) {
-    items = flowItems(value);
-  } else if (value !== "") {
-    items = scalarItem(value).split(SCALAR_SPLIT[key] ?? DEFAULT_SPLIT);
-  } else {
-    items = [];
-    for (const line of yaml.slice(at + 1)) {
-      if (line.trim() === "") continue;
-      const item = LIST_ITEM.exec(line);
-      if (!item) break;
-      items.push(scalarItem(item[1] ?? ""));
-    }
-  }
-  return items.map(cleanItem).filter((item) => item !== "");
-}
-
 export function tagKey(tag: string): string {
   return tag.toLowerCase();
 }
 
-function uniqueTags(markdown: string): string[] {
-  const seen = new Map<string, string>();
-  const all = [...frontMatterList(markdown, "tags"), ...markdownTagRanges(markdown).map((range) => range.tag)];
-  for (const tag of all) {
-    const key = tagKey(tag);
-    if (!seen.has(key)) seen.set(key, tag);
-  }
-  return [...seen.values()];
-}
-
-export function displayTags(markdown: string): string[] {
-  return uniqueTags(markdown);
-}
-
-export function noteTags(markdown: string): string[] {
-  return uniqueTags(markdown).map(tagKey);
-}
-
-export function tagMatches(tag: string, filter: string): boolean {
-  const key = tagKey(tag);
-  const wanted = tagKey(filter).replace(/^#+/u, "");
-  return key === wanted || key.startsWith(`${wanted}/`);
+export function tagTone(tag: string): Tone {
+  return nameTone(tagKey(tag.replace(/^#+/u, "")));
 }

@@ -96,6 +96,7 @@ fn settings_patch(guests_enabled: Option<bool>, link_sharing_allowed: Option<boo
         email_notifications: None,
         comments_allowed: None,
         email_link_sign_in: None,
+        public_notes_allowed: None,
     })
     .unwrap()
 }

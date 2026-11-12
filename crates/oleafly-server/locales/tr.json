@@ -11,6 +11,8 @@
   "landing.open": "Oleafly'de aç",
   "landing.get": "Oleafly'yi indir",
   "landing.open_browser": "Tarayıcıda aç",
+  "published.gone_title": "Bu sayfa kullanılamıyor",
+  "published.gone_body": "Yazarı yayından kaldırmış olabilir ya da bu sunucu artık herkese açık sayfaları göstermiyor.",
   "web.sign_in_body": "Paylaşılan projelerinizi bu tarayıcıda açmak için oturum açın.",
   "web.try_again": "Yeniden dene",
   "web.other_browser": "Bu bağlantı, oturum açmaya başladığınız tarayıcı olan {device} üzerinde oturum açmayı tamamlar. E-postayı bunun yerine orada açın. Bağlantı hâlâ geçerli.",

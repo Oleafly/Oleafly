@@ -80,6 +80,24 @@ describe("shortcut bindings", () => {
     }
   });
 
+  it("records and keeps Alt with an arrow key, the browser's back and forward chord, without Ctrl", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    try {
+      const { bindingFromEvent, isValidBinding, matchesShortcut } = await import("@/store/shortcuts");
+      const left = keyboard("ArrowLeft", { altKey: true });
+      expect(bindingFromEvent(left)).toEqual({ key: "ArrowLeft", shift: false, alt: true });
+      expect(isValidBinding({ key: "ArrowRight", alt: true })).toBe(true);
+      expect(isValidBinding({ key: "ArrowRight" })).toBe(false);
+      expect(isValidBinding({ key: "x", alt: true })).toBe(false);
+      expect(bindingFromEvent(keyboard("ArrowLeft"))).toBeNull();
+      expect(matchesShortcut(left, { key: "ArrowLeft", alt: true })).toBe(true);
+      expect(matchesShortcut(keyboard("ArrowLeft", { altKey: true, ctrlKey: true }), { key: "ArrowLeft", alt: true })).toBe(false);
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
   it("follows the physical backquote key on layouts that type something else there", async () => {
     const originalNavigator = globalThis.navigator;
     vi.stubGlobal("navigator", { platform: "Linux x86_64" });
@@ -268,6 +286,10 @@ describe("shortcut bindings", () => {
       expect(
         bindingFromEvent(keyboard("@", { code: "KeyL", metaKey: true, altKey: true })),
       ).toEqual({ key: "@", mod: true, shift: false, alt: true });
+      const dead = keyboard("Dead", { code: "KeyN", metaKey: true, altKey: true });
+      expect(matchesShortcut(dead, { key: "n", mod: true, alt: true })).toBe(true);
+      expect(matchesShortcut(dead, { key: "i", mod: true, alt: true })).toBe(false);
+      expect(bindingFromEvent(dead)).toEqual({ key: "n", mod: true, shift: false, alt: true });
     } finally {
       vi.stubGlobal("navigator", originalNavigator);
     }
@@ -592,12 +614,13 @@ describe("shortcut labels", () => {
   it("uses the Mac modifier symbols without separators", async () => {
     expect(await label("MacIntel", { key: "k", mod: true, shift: true, alt: true })).toBe("⌘⇧⌥K");
     expect(await label("MacIntel", { key: " ", ctrl: true })).toBe("CtrlSpace");
-    expect(await label("MacIntel", { key: "ArrowUp", mod: true, ctrl: true })).toBe("⌘CtrlArrowUp");
+    expect(await label("MacIntel", { key: "ArrowUp", mod: true, ctrl: true })).toBe("⌘Ctrl↑");
   });
 
   it("spells out modifiers joined with plus signs elsewhere", async () => {
     expect(await label("Win32", { key: "k", mod: true, shift: true, alt: true })).toBe("Ctrl+Shift+Alt+K");
     expect(await label("Linux x86_64", { key: "Enter", mod: true, ctrl: true })).toBe("Ctrl+Enter");
     expect(await label("Linux x86_64", { key: "p", ctrl: true })).toBe("Ctrl+P");
+    expect(await label("Win32", { key: "ArrowLeft", alt: true })).toBe("Alt+←");
   });
 });

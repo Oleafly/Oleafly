@@ -3,6 +3,7 @@ import { getSchema } from "@tiptap/core";
 import { describe, expect, it } from "vitest";
 import { parseSharedNote, type SharedNote } from "./note-live-doc";
 import { noteMarkdownExtensions } from "./note-markdown";
+import { propertySeeds } from "./tests/property-seeds";
 
 const schema = getSchema(noteMarkdownExtensions());
 
@@ -110,7 +111,7 @@ function shape(note: SharedNote) {
 
 describe("parseSharedNote with a previous parse", () => {
   it("matches a full parse after every random edit", () => {
-    for (let seed = 1; seed <= 15; seed += 1) {
+    for (let seed = 1; seed <= propertySeeds(15, 2); seed += 1) {
       const random = seeded(seed);
       let text = NOTE;
       let previous = parseSharedNote(schema, text);
@@ -184,7 +185,7 @@ Another paragraph near the end.
 
   it("matches a full parse after random edits around footnotes, comments and link definitions", () => {
     const pieces = ["<!--", "-->", "<!-- note -->", "\n<!--\n", "[^1]: more\n", "[ref]", "[x][ref]", "- [ref]: /other\n", "\n\n", "x", "[^2]", "`"];
-    for (let seed = 1; seed <= 12; seed += 1) {
+    for (let seed = 1; seed <= propertySeeds(12, 2); seed += 1) {
       const random = seeded(seed);
       let text = LINKED;
       let previous = parseSharedNote(schema, text);

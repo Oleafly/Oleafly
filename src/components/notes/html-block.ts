@@ -8,7 +8,7 @@ const HTML_TEXT = /[&<>]/gu;
 const HTML_ENTITIES: Readonly<Record<string, string>> = { "&": "&amp;", "<": "&lt;", ">": "&gt;" };
 
 function htmlText(text: string): string {
-  return text.replace(HTML_TEXT, (character) => HTML_ENTITIES[character] ?? character);
+  return text.replaceAll(HTML_TEXT, (character) => HTML_ENTITIES[character] ?? character);
 }
 
 export function htmlTemplate(): string {

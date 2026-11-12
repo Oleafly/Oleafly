@@ -341,7 +341,15 @@
     },
     "resetPaneLayout": {
       "keywords": "herstellen paneel indeling volgorde verplaatsen panelen zijbalk assistent editor voorbeeld terminal standaard",
-      "label": "Paneelindeling herstellen"
+      "label": "Paneelopstelling herstellen in elk project"
+    },
+    "saveLayout": {
+      "keywords": "indeling opslaan huidige aangepast paneel panelen formaten naam",
+      "label": "Huidige indeling opslaan"
+    },
+    "applySavedLayout": {
+      "keywords": "indeling opgeslagen aangepast paneel panelen wisselen toepassen",
+      "label": "Indeling: {{name}}"
     },
     "zoomIn": {
       "keywords": "groter vergroten",
@@ -380,6 +388,10 @@
     "notes": {
       "label": "Notities openen",
       "keywords": "notities notitieboek kennis ideeën onderzoek dagboek notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Snel noteren",
+      "keywords": "snel noteren vastleggen notitie inbox vandaag quick capture jot note inbox today"
     }
   },
   "community": {
@@ -484,6 +496,11 @@
   },
   "datePicker": {
     "placeholder": "Kies een datum"
+  },
+  "monthPicker": {
+    "label": "Kies een maand",
+    "previousYear": "Vorig jaar",
+    "nextYear": "Volgend jaar"
   },
   "devMenu": {
     "inspect": "Inspecteren",
@@ -704,6 +721,7 @@
     "groups": {
       "action": "Actie",
       "documents": "Documenten",
+      "notes": "Notities",
       "references": "Referenties"
     },
     "label": "Zoeken",
@@ -711,11 +729,13 @@
     "openReferences": "Referenties van dit project openen",
     "placeholder": "Zoek projecten en documenten, of typ / voor opdrachten…",
     "placeholderDocuments": "Zoek in documenten…",
+    "placeholderNotes": "Zoek in notities en de blokken erin…",
     "placeholderProjects": "Zoek projecten op naam, engine, soort, datum of metagegevens…",
     "referencesNeedProject": "Open eerst een project om de referenties te bekijken.",
     "slash": {
       "create": "de sjabloongalerij openen",
       "docs": "in documenten zoeken",
+      "notes": "in notities en de blokken erin zoeken",
       "projects": "je projecten doorzoeken",
       "refs": "de referenties van dit project openen",
       "settings": "de instellingen openen",
@@ -1314,7 +1334,24 @@
       "split": "Gesplitste weergave"
     },
     "moreActions": "Meer acties",
-    "resetPaneLayout": "Paneelindeling herstellen",
+    "resetPaneLayout": "Paneelopstelling herstellen",
+    "resetPaneLayoutScope": "Alle projecten",
+    "savedLayouts": {
+      "close": "Sluiten",
+      "delete": "Verwijderen",
+      "deleteConfirm": "De indeling “{{name}}” verwijderen?",
+      "limit": "Je kunt maximaal {{count}} indelingen bewaren. Verwijder er een om een andere op te slaan.",
+      "manage": "Indelingen beheren",
+      "name": "Naam van de indeling",
+      "rename": "Hernoemen",
+      "renameTitle": "Indeling hernoemen",
+      "replace": "Vervangen",
+      "replaceConfirm": "Er bestaat al een indeling met de naam “{{name}}”. Vervangen?",
+      "save": "Huidige indeling opslaan",
+      "saveButton": "Opslaan",
+      "saveTitle": "Indeling opslaan",
+      "update": "Bijwerken naar huidige"
+    },
     "renameFailed": "Kon het project niet hernoemen."
   },
   "tour": {

@@ -2,19 +2,17 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { appQueryClient } from "@/lib/query";
 import type { NoteLinkRecord } from "@/lib/tauri";
 import { NotesDataProvider, type NotesData } from "./notes-data";
+import { noteHeadings } from "./note-link-format";
 import type { LinkableNote, NoteLinkOptions } from "./note-links";
+import { fakeNotesData } from "./tests/notes-data-fixture";
 import type { NoteItem } from "./types";
-import { notesRevision, useNoteKnowledge, useVaultTags } from "./use-note-knowledge";
-import { buildNoteLinkIndex, HeadingCache, useNoteLinkExtensions } from "./use-note-links";
+import { useNoteKnowledge, useVaultTags } from "./use-note-knowledge";
+import { buildNoteLinkIndex, NoteTextCache, useNoteLinkExtensions } from "./use-note-links";
 
 const mocks = vi.hoisted(() => ({ listNoteTags: vi.fn(), logError: vi.fn() }));
-
-vi.mock("@/lib/tauri", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/tauri")>()),
-  listNoteTags: mocks.listNoteTags,
-}));
 
 vi.mock("@/lib/log", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/log")>()),
@@ -29,16 +27,11 @@ const NOTES = [item("lib-1", "Masking", { preview: "Body", aliases: ["MAE"] }), 
 const LINKABLE: LinkableNote[] = [{ noteId: "n-1", projectId: "lib-1", title: "Masking" }];
 
 function data(overrides: Partial<NotesData> = {}): NotesData {
-  return {
+  return fakeNotesData({
     notes: NOTES,
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
     loadNote: vi.fn((id: string) => Promise.resolve({ text: `# Head of ${id}\n`, version: "v" })),
-    saveNote: vi.fn(),
     ...overrides,
-  };
+  });
 }
 
 function wrapperFor(value: { current: NotesData }) {
@@ -46,31 +39,28 @@ function wrapperFor(value: { current: NotesData }) {
 }
 
 beforeEach(() => {
+  appQueryClient().clear();
   mocks.listNoteTags.mockReset();
   mocks.logError.mockReset();
 });
 
 describe("vault tags", () => {
-  it("reads tag labels and refreshes when notes change", async () => {
+  it("reads tag labels and loads them again for a new vault revision", async () => {
     mocks.listNoteTags.mockResolvedValue([
       { tag: "ml", label: "ML", count: 2, notes: [] },
       { tag: "raw", label: "", count: 1, notes: [] },
     ]);
-    const value = { current: data() };
+    const value = { current: data({ revision: 1, noteTags: mocks.listNoteTags }) };
     const { result, rerender } = renderHook(() => useVaultTags(), { wrapper: wrapperFor(value) });
     await waitFor(() => expect(result.current).toEqual(["ML", "raw"]));
-    value.current = data({ notes: [...NOTES, item("lib-3", "New", { updatedAt: 9 })] });
+    value.current = data({ revision: 2, noteTags: mocks.listNoteTags });
     rerender();
     await waitFor(() => expect(mocks.listNoteTags).toHaveBeenCalledTimes(2));
-    expect(notesRevision([{ updatedAt: 2 }, { updatedAt: 1 }])).toBe(2002);
   });
 
-  it("falls back to no tags outside the desktop app", async () => {
-    mocks.listNoteTags.mockRejectedValue(new Error("no ipc"));
-    const { result, unmount } = renderHook(() => useVaultTags(), { wrapper: wrapperFor({ current: data() }) });
-    await waitFor(() => expect(mocks.listNoteTags).toHaveBeenCalled());
+  it("has no tags without a tag source", () => {
+    const { result } = renderHook(() => useVaultTags(), { wrapper: wrapperFor({ current: data() }) });
     expect(result.current).toEqual([]);
-    unmount();
   });
 });
 
@@ -80,7 +70,7 @@ describe("knowledge sources", () => {
     const onOpenNote = vi.fn();
     const onOpenTag = vi.fn();
     const resolveAsset = vi.fn(() => Promise.resolve("blob:x"));
-    const value = { current: data({ resolveAsset }) };
+    const value = { current: data({ resolveAsset, noteTags: mocks.listNoteTags }) };
     const { result, rerender } = renderHook(
       (props: { notes: readonly LinkableNote[] | null }) =>
         useNoteKnowledge({ notes: props.notes, currentNoteId: "n-0", onOpenNote, onOpenTag }),
@@ -106,7 +96,7 @@ describe("knowledge sources", () => {
     await waitFor(() => expect(tagOptions.getTags()).toEqual(["ml"]));
     expect(tagOptions.getOpenTag()).toBe(onOpenTag);
     stop?.();
-    value.current = data({ resolveAsset: undefined });
+    value.current = data({ resolveAsset: undefined, noteTags: mocks.listNoteTags });
     rerender({ notes: LINKABLE });
     await expect(first.hover.resolveAsset?.("lib-1", "a.png")).resolves.toBeNull();
   });
@@ -116,7 +106,7 @@ describe("heading lookups", () => {
   it("loads headings once per version and reports failures as no headings", async () => {
     const changed = vi.fn();
     const load = vi.fn((id: string) => (id === "bad" ? Promise.reject(new Error("io")) : Promise.resolve("# A\n## B\n")));
-    const cache = new HeadingCache(load, changed);
+    const cache = new NoteTextCache(load, noteHeadings, [], changed);
     expect(cache.get("lib-1", 1)).toBeNull();
     expect(cache.get("lib-1", 1)).toBeNull();
     await waitFor(() => expect(changed).toHaveBeenCalledTimes(1));
@@ -132,7 +122,7 @@ describe("heading lookups", () => {
     let finish: (text: string) => void = () => {};
     const load = vi.fn(() => new Promise<string>((resolve) => (finish = resolve)));
     const changed = vi.fn();
-    const cache = new HeadingCache(load, changed);
+    const cache = new NoteTextCache(load, noteHeadings, [], changed);
     cache.get("x", 1);
     const first = finish;
     cache.get("x", 2);
@@ -141,12 +131,12 @@ describe("heading lookups", () => {
       await Promise.resolve();
     });
     expect(changed).not.toHaveBeenCalled();
-    const failing = new HeadingCache(() => Promise.reject(new Error("late")), changed);
+    const failing = new NoteTextCache(() => Promise.reject(new Error("late")), noteHeadings, [], changed);
     failing.get("y", 1);
     failing.get("y", 2);
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await waitFor(() => expect(changed).toHaveBeenCalledOnce());
+    expect(mocks.logError).toHaveBeenCalledOnce();
+    expect(failing.get("y", 2)).toEqual([]);
   });
 
   it("offers aliases and headings through the link extension", async () => {
@@ -192,7 +182,21 @@ describe("knowledge refreshes", () => {
     mocks.listNoteTags.mockResolvedValue([{ tag: "vision", label: "vision", count: 1, notes: [] }]);
     value.current = data({ revision: 2, noteTags: mocks.listNoteTags, notes: value.current.notes });
     rerender();
-    await waitFor(() => expect(tagsChanged).toHaveBeenCalledTimes(1));
-    expect(tagOptions.getTags()).toEqual(["vision"]);
+    await waitFor(() => expect(tagOptions.getTags()).toEqual(["vision"]));
+    expect(tagsChanged).not.toHaveBeenCalled();
+  });
+
+  it("redraws tag chips only when tags start or stop opening the tag filter", () => {
+    const value = { current: data() };
+    const { result, rerender } = renderHook(
+      (props: { onOpenTag?: (tag: string) => void }) => useNoteKnowledge({ notes: LINKABLE, currentNoteId: "n-0", onOpenNote: vi.fn(), ...props }),
+      { wrapper: wrapperFor(value), initialProps: { onOpenTag: vi.fn() } as { onOpenTag?: (tag: string) => void } },
+    );
+    const tagsChanged = vi.fn();
+    ((result.current.tagExtensions[0].options ?? {}) as { subscribe(listener: () => void): () => void }).subscribe(tagsChanged);
+    rerender({ onOpenTag: vi.fn() });
+    expect(tagsChanged).not.toHaveBeenCalled();
+    rerender({});
+    expect(tagsChanged).toHaveBeenCalledOnce();
   });
 });

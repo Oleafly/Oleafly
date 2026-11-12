@@ -82,10 +82,12 @@ export function FloatingReview({
   canUndo = false,
   scrollRef,
   bottomRef,
+  beforeAcceptAll,
 }: Readonly<{
   editor: Editor;
   review: ReviewSummary;
   canUndo?: boolean;
+  beforeAcceptAll?: () => void;
   scrollRef: RefObject<HTMLElement | null>;
   bottomRef: RefObject<HTMLElement | null>;
 }>) {
@@ -148,7 +150,10 @@ export function FloatingReview({
         onNext={() => moveReview(editor, 1)}
         onAccept={settle(acceptActive)}
         onReject={settle(rejectActive)}
-        onAcceptAll={settle(acceptAll)}
+        onAcceptAll={settle((target) => {
+          beforeAcceptAll?.();
+          acceptAll(target);
+        })}
         onRejectAll={settle(rejectAll)}
         onUndo={canUndo ? settle(undoReject) : undefined}
       />

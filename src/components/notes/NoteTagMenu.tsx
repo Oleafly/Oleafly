@@ -1,8 +1,12 @@
 import type { Editor } from "@tiptap/core";
 import { Hash } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { highlightTag, insertTag, tagOptionId, tagSuggestion, type TagSuggestion } from "./note-tag-chips";
-import { type MenuSize, SuggestionListbox, SuggestionOption, useEditorSuggestion } from "./SuggestionListbox";
+import { ListboxOption } from "@/components/ui/listbox";
+import { cn } from "@/lib/utils";
+import { highlightTag, insertTag, tagSuggestion, type TagSuggestion } from "./note-tag-chips";
+import { tagTone } from "./note-tags";
+import { type MenuSize, SuggestionListbox, useEditorSuggestion } from "./SuggestionListbox";
+import { suggestOptionId } from "./note-suggest-plugin";
 
 const TAG_MENU: MenuSize = { width: 240, height: 288 };
 
@@ -17,20 +21,20 @@ export function NoteTagMenu({ editor }: Readonly<{ editor: Editor }>) {
       label={t(($) => $.notes.kb.tags.menu)}
       from={suggestion.from}
       size={TAG_MENU}
-      activeId={tagOptionId(suggestion.menuId, suggestion.index)}
+      activeId={suggestOptionId(suggestion.menuId, suggestion.index)}
       className="max-h-72 w-60"
     >
       {suggestion.items.map((tag, index) => (
-        <SuggestionOption
+        <ListboxOption
           key={tag}
-          id={tagOptionId(suggestion.menuId, index)}
+          id={suggestOptionId(suggestion.menuId, index)}
           selected={index === suggestion.index}
           onHighlight={() => highlightTag(editor.view, index)}
           onChoose={() => insertTag(editor.view, index)}
         >
-          <Hash aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+          <Hash aria-hidden className={cn("size-3.5 shrink-0", tagTone(tag).icon)} />
           <span className="min-w-0 flex-1 truncate text-xs font-medium">{tag}</span>
-        </SuggestionOption>
+        </ListboxOption>
       ))}
     </SuggestionListbox>
   );

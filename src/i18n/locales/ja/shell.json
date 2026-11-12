@@ -340,7 +340,15 @@
     },
     "resetPaneLayout": {
       "keywords": "リセット ペイン レイアウト 順序 移動 パネル サイドバー アシスタント エディタ プレビュー ターミナル 既定",
-      "label": "ペインのレイアウトをリセット"
+      "label": "すべてのプロジェクトでペインの配置をリセット"
+    },
+    "saveLayout": {
+      "keywords": "レイアウト 保存 カスタム 配置 ペイン サイズ 名前",
+      "label": "現在のレイアウトを保存"
+    },
+    "applySavedLayout": {
+      "keywords": "レイアウト 保存済み カスタム 配置 ペイン 切り替え 適用",
+      "label": "レイアウト: {{name}}"
     },
     "zoomIn": {
       "keywords": "拡大 大きく",
@@ -379,6 +387,10 @@
     "notes": {
       "label": "ノートを開く",
       "keywords": "ノート ノートブック ナレッジ 知識 アイデア 研究 日誌 notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "クイックメモ",
+      "keywords": "クイックメモ メモ ノート 受信箱 今日 キャプチャ"
     }
   },
   "community": {
@@ -483,6 +495,11 @@
   },
   "datePicker": {
     "placeholder": "日付を選択"
+  },
+  "monthPicker": {
+    "label": "月を選択",
+    "previousYear": "前の年",
+    "nextYear": "次の年"
   },
   "devMenu": {
     "inspect": "検証",
@@ -702,6 +719,7 @@
     "groups": {
       "action": "操作",
       "documents": "文書",
+      "notes": "ノート",
       "references": "参考文献"
     },
     "label": "検索",
@@ -709,11 +727,13 @@
     "openReferences": "このプロジェクトの参考文献を開く",
     "placeholder": "プロジェクトや文書を検索、または / でコマンド…",
     "placeholderDocuments": "文書の中を検索…",
+    "placeholderNotes": "ノートとその中のブロックを検索…",
     "placeholderProjects": "名前、エンジン、種類、日付、メタデータでプロジェクトを検索…",
     "referencesNeedProject": "参考文献を見るには、先にプロジェクトを開いてください。",
     "slash": {
       "create": "テンプレートギャラリーを開く",
       "docs": "文書の中を検索する",
+      "notes": "ノートとその中のブロックを検索する",
       "projects": "プロジェクトを検索する",
       "refs": "このプロジェクトの参考文献を開く",
       "settings": "設定を開く",
@@ -1294,7 +1314,24 @@
       "split": "分割表示"
     },
     "moreActions": "その他の操作",
-    "resetPaneLayout": "ペインのレイアウトをリセット",
+    "resetPaneLayout": "ペインの配置をリセット",
+    "resetPaneLayoutScope": "すべてのプロジェクト",
+    "savedLayouts": {
+      "close": "閉じる",
+      "delete": "削除",
+      "deleteConfirm": "レイアウト「{{name}}」を削除しますか？",
+      "limit": "レイアウトは最大 {{count}} 個まで保存できます。別のレイアウトを保存するには、どれかを削除してください。",
+      "manage": "レイアウトを管理",
+      "name": "レイアウト名",
+      "rename": "名前を変更",
+      "renameTitle": "レイアウトの名前を変更",
+      "replace": "置き換える",
+      "replaceConfirm": "「{{name}}」という名前のレイアウトはすでにあります。置き換えますか？",
+      "save": "現在のレイアウトを保存",
+      "saveButton": "保存",
+      "saveTitle": "レイアウトを保存",
+      "update": "現在の状態に更新"
+    },
     "renameFailed": "プロジェクトの名前を変更できませんでした。"
   },
   "tour": {

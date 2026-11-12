@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
 import { installIntersectionObserverStub } from "@/components/ui/test-intersection-observer";
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
 
 const drawn = vi.hoisted(() => ({ icons: [] as string[] }));
 vi.mock("./note-icons", async (importOriginal) => {
@@ -22,8 +23,7 @@ vi.mock("./note-icons", async (importOriginal) => {
   };
 });
 
-import { toggleNoteFavorite } from "./note-favorites";
-import { type HomeLayout, saveHomeLayout, saveHomeSort } from "./note-home-prefs";
+import { type HomeLayout, useNotesPrefsStore } from "@/store/notes-prefs";
 import { NotesHome } from "./NotesHome";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import type { NoteItem } from "./types";
@@ -49,16 +49,10 @@ function note(index: number, title = `Note ${index}`): NoteItem {
 
 const NOTES = Array.from({ length: 200 }, (_, index) => note(index));
 
-const DATA: NotesData = {
+const DATA: NotesData = fakeNotesData({
   notes: NOTES,
-  artifacts: [],
-  experiments: [],
-  citations: [],
-  papers: [],
-  loadNote: vi.fn(),
-  saveNote: vi.fn(),
   renameNote: vi.fn(async () => {}),
-};
+});
 
 const iconFor = (item: NoteItem) => `i-${item.id}`;
 
@@ -143,22 +137,21 @@ function grid(): HTMLElement {
 }
 
 function show(layout: HomeLayout) {
-  saveHomeLayout(layout);
-  saveHomeSort("edited");
+  useNotesPrefsStore.getState().set("homeLayout", layout);
+  useNotesPrefsStore.getState().set("homeSort", "edited");
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+const initialPrefs = useNotesPrefsStore.getState();
 
 beforeEach(() => {
+  useNotesPrefsStore.setState(initialPrefs, true);
   localStorage.clear();
   drawn.icons.length = 0;
 });
 
 afterEach(() => {
   vi.restoreAllMocks();
-  saveHomeLayout("grid");
+  useNotesPrefsStore.getState().set("homeLayout", "grid");
 });
 
 describe("Notes Home windowing", () => {
@@ -169,9 +162,6 @@ describe("Notes Home windowing", () => {
     expect(cardIds()).toEqual(ids(0, 16));
     expect(grid().style.paddingTop).toBe("0px");
     expect(grid().style.paddingBottom).toBe(`${(50 - 4) * CARD_HEIGHT}px`);
-    expect(grid().closest(".px-6")).toHaveClass("pb-4", "pt-2.5");
-    expect(grid()).toHaveClass("gap-x-4");
-    expect(document.querySelector("[data-row-window-item]")).toHaveClass("min-w-0", "pb-4");
 
     layout.scrollTo(3_100);
     expect(cardIds()).toEqual(ids(32, 56));
@@ -271,7 +261,7 @@ describe("Notes Home redraws", () => {
     show("grid");
     laidOutHome();
     render(home(NOTES));
-    act(() => toggleNoteFavorite("n5"));
+    act(() => useNotesPrefsStore.getState().toggleFavorite("n5"));
     const card = document.querySelector('[data-note-card="n5"]') as HTMLElement;
     expect(within(card).getByRole("button", { name: enNotes.library.menu.unfavorite })).toBeInTheDocument();
   });

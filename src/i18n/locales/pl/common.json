@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "Tryb wyszukiwania: {{mode}}",
+    "heading": "Tryb wyszukiwania",
+    "ranked": {
+      "label": "Najlepsze dopasowanie",
+      "description": "Szereguje wyniki według tego, jak dobrze pasują. Słowa mogą być w dowolnym miejscu."
+    },
+    "exact": {
+      "label": "Dokładny tekst",
+      "description": "Znajduje dokładnie te znaki. Wielka litera włącza rozróżnianie wielkości liter."
+    },
+    "regex": {
+      "label": "Wyrażenie regularne",
+      "description": "Używa składni wzorców ripgrep. Ujmij wzorzec w cudzysłów, jeśli zawiera spacje lub nawiasy."
+    },
+    "fuzzy": {
+      "label": "Przybliżone",
+      "description": "Dopasowuje nazwy, które zawierają Twoje litery w tej samej kolejności, tak jak fzf. Obsługuje też 'dokładnie, ^początek, koniec$ i !pomiń."
+    },
+    "invalid": "Ten wzorzec jest nieprawidłowy: {{error}}"
+  },
   "querySearch": {
     "suggestions": "Sugestie wyszukiwania",
     "exclude": "Wyklucz",
@@ -76,7 +97,8 @@
       "invalidValue": "{{value}} nie jest prawidłową wartością dla {{key}}",
       "invalidDate": "{{value}} nie jest datą. Spróbuj 2026-10-02 lub @today-7d",
       "invalidNumber": "{{value}} nie jest liczbą",
-      "sortNegated": "Nie można wykluczyć {{key}}"
+      "sortNegated": "Nie można wykluczyć {{key}}",
+      "tooManyBranches": "To wyszukiwanie ma zbyt wiele kombinacji OR, więc części wyników może brakować"
     }
   },
   "avatar": {

@@ -3,7 +3,7 @@ export const LABEL_LIGHTNESS = 45;
 const MIN_LABEL_CONTRAST = 4.5;
 
 function channel(value: number): number {
-  return value <= 0.039_28 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+  return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
 }
 
 // WCAG relative luminance of an HSL colour (hue in degrees, the rest 0 to 100).
@@ -105,8 +105,12 @@ export function remoteLabelColor(hue: number): string {
   return `hsl(${hue} ${LABEL_SATURATION}% ${labelLightness(hue)}%)`;
 }
 
+function cssPropertyName(key: string): string {
+  return key.replaceAll(/[A-Z]/gu, (letter) => `-${letter.toLowerCase()}`);
+}
+
 export function cssText(style: Readonly<Record<string, string>>): string {
   return Object.entries(style)
-    .map(([key, value]) => `${key.replace(/[A-Z]/gu, (letter) => `-${letter.toLowerCase()}`)}: ${value}`)
+    .map(([key, value]) => `${cssPropertyName(key)}: ${value}`)
     .join("; ");
 }

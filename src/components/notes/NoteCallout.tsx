@@ -25,13 +25,14 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
-import { createRoot, type Root } from "react-dom/client";
+import type { Root } from "react-dom/client";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { CALLOUT_TYPES, calloutKind, calloutLabel } from "./note-callouts";
 import { watchEditable } from "./note-editable";
+import { nodeRoot } from "./node-root";
 
 const ICONS: Readonly<Record<string, LucideIcon>> = {
   pencil: Pencil,
@@ -72,7 +73,7 @@ interface ChromeProps {
 export function CalloutChrome({ type, folded, editable, onFold, onType }: Readonly<ChromeProps>) {
   const Icon = calloutIcon(type);
   const current = calloutKind(type).id;
-  const icon = <Icon aria-hidden className="size-4" />;
+  const icon = <Icon aria-hidden className="size-[1.1em]" />;
   const typeLabel = i18n.t(($) => $.notes.kb.callouts.type, { type: calloutLabel(type) });
   const foldLabel = folded ? i18n.t(($) => $.notes.kb.callouts.unfold) : i18n.t(($) => $.notes.kb.callouts.fold);
   return (
@@ -117,14 +118,14 @@ export function CalloutChrome({ type, folded, editable, onFold, onType }: Readon
           onClick={onFold}
           className="note-callout-fold rounded-md transition-colors hover:bg-foreground/10 focus-visible:bg-foreground/10 motion-reduce:transition-none"
         >
-          <ChevronDown aria-hidden className={cn("size-4 transition-transform motion-reduce:transition-none", folded && "-rotate-90")} />
+          <ChevronDown aria-hidden className={cn("size-[1.1em] transition-transform motion-reduce:transition-none", folded && "-rotate-90")} />
         </button>
       </Tooltip>
     </>
   );
 }
 
-export function calloutNodeView(mount: (host: HTMLElement) => Root = createRoot): NodeViewRenderer {
+export function calloutNodeView(mount?: (host: HTMLElement) => Root): NodeViewRenderer {
   return ({ node, editor, getPos }) => {
     const dom = document.createElement("div");
     dom.className = "note-callout";
@@ -134,7 +135,7 @@ export function calloutNodeView(mount: (host: HTMLElement) => Root = createRoot)
     const content = document.createElement("div");
     content.className = "note-callout-content";
     dom.append(chrome, content);
-    const root = mount(chrome);
+    const root = nodeRoot(chrome, mount);
     let current: ProseMirrorNode = node;
     let folded = node.attrs.fold === "-";
     const setType = (type: string) => changeType(editor, getPos, current, type);
@@ -177,7 +178,7 @@ export function calloutNodeView(mount: (host: HTMLElement) => Root = createRoot)
       },
       destroy() {
         stopWatching();
-        queueMicrotask(() => root.unmount());
+        root.unmount();
       },
     };
   };

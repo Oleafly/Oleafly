@@ -27,7 +27,7 @@ const RENDERER_LEASE_TTL: Duration = Duration::from_secs(45);
 const CANCEL_REASON_CLIENT_DISCONNECTED: &str = "client-disconnected";
 const CANCEL_REASON_TIMEOUT: &str = "timeout";
 
-const INSTRUCTIONS: &str = "Oleafly is a local-first editor for documents written in LaTeX, Typst or Markdown. Project tools require the project currently reported by the app. Start with get_status to see the selected project and its document engine. Use list_files or project_map to orient, then read and edit files in that engine's source format and call compile. preview_figure and insert_figure work in LaTeX and Typst projects, and load_image works in any project. Destructive edits may pause for the user to approve inside Oleafly.";
+const INSTRUCTIONS: &str = "Oleafly is a local-first editor for documents written in LaTeX, Typst or Markdown. Project tools require the project currently reported by the app. Start with get_status to see the selected project and its document engine. Use list_files or project_map to orient, then read and edit files in that engine's source format and call compile. preview_figure and insert_figure work in LaTeX and Typst projects, and load_image works in any project. Destructive edits may pause for the user to approve inside Oleafly. When Notes is on, the knowledge base tools (search_notes, list_knowledge_notes, read_note_by_id, today_note, list_note_tasks, note_backlinks) work without a project, and changes made with append_to_note or edit_note_section wait in the note as suggestions the user accepts.";
 
 pub struct McpState {
     pub(crate) control: Mutex<()>,

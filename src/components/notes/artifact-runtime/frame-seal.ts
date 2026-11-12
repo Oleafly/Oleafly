@@ -62,7 +62,8 @@ const sealed = new WeakSet();
 const sealWindow = (win) => {
   if (!win || reach(() => sealed.has(win)) !== false) return;
   sealed.add(win);
-  for (const name of ${JSON.stringify([...TAURI_GLOBALS, ...NETWORK_GLOBALS])}) cut(win, name);
+  for (const name of ${JSON.stringify([...TAURI_GLOBALS, ...NETWORK_GLOBALS, "open"])}) cut(win, name);
+  for (const name of ["back", "forward", "go"]) reach(() => Object.defineProperty(win.History.prototype, name, { value: blocked, writable: false, configurable: false }));
   const chrome = reach(() => win.chrome);
   if (chrome) cut(chrome, "webview");
   seal(win, "chrome");
@@ -167,6 +168,30 @@ setter(prototypes("Element"), "outerHTML", at(0));
 setter(prototypes("ShadowRoot"), "innerHTML", at(0));
 setter(prototypes("Document"), "body", first);
 const watch = (root) => reach(() => new MutationObserver(sweep).observe(root, { childList: true, subtree: true }));
+const call = Reflect.apply;
+const pathOf = reach(() => window.Event.prototype.composedPath);
+const cancel = reach(() => window.Event.prototype.preventDefault);
+const nameOf = reach(() => Object.getOwnPropertyDescriptor(window.Element.prototype, "localName").get);
+const attribute = reach(() => window.Element.prototype.getAttribute);
+const listen = reach(() => window.EventTarget.prototype.addEventListener);
+const test = RegExp.prototype.test;
+const text = String;
+const IN_PAGE = /^\s*#/u;
+const stay = (event) => {
+  const path = reach(() => call(pathOf, event, [])) || [];
+  for (let index = 0; index < path.length; index += 1) {
+    const node = path[index];
+    const name = reach(() => call(nameOf, node, []));
+    if (name !== "a" && name !== "area") continue;
+    const href = reach(() => call(attribute, node, ["href"]) ?? call(attribute, node, ["xlink:href"]));
+    if (href === null || href === undefined) continue;
+    if (!call(test, IN_PAGE, [text(href)])) reach(() => call(cancel, event, []));
+    return;
+  }
+};
+const guard = (target) => {
+  for (const type of ["click", "auxclick"]) reach(() => call(listen, target, [type, stay, true]));
+};
 wrap(prototypes("Element"), "attachShadow", (descriptor) => {
   const attach = descriptor.value;
   if (typeof attach !== "function") return null;
@@ -174,9 +199,11 @@ wrap(prototypes("Element"), "attachShadow", (descriptor) => {
     const root = Reflect.apply(attach, this, args);
     roots.add(root);
     watch(root);
+    guard(root);
     return root;
   } };
 });
+guard(window);
 sealWindow(window);
 sweep();
 watch(document);

@@ -1,6 +1,8 @@
 import { Fragment, memo, useEffect, useSyncExternalStore } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronRight, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
+import { Tooltip } from "@/components/ui/tooltip";
 import { sectionCrumbsForState, type SectionCrumb } from "./breadcrumbs-source";
 import {
   editorCursorRevision,
@@ -33,28 +35,39 @@ function BreadcrumbsBar({ visual = false }: Readonly<{ visual?: boolean }>) {
   const crumbs = currentCrumbs(visual);
 
   return (
-    <nav
+    <Breadcrumb
       data-testid="editor-breadcrumbs"
       aria-label={t(($) => $.editor.breadcrumbs.label)}
-      className="flex h-7 shrink-0 items-center gap-1 overflow-x-auto border-b px-3 text-xs text-muted-foreground no-scrollbar"
+      className="flex h-7 shrink-0 items-center overflow-x-auto border-b px-3 no-scrollbar"
     >
-      <FileText className="size-3.5 shrink-0" aria-hidden />
-      <span className="shrink-0 whitespace-nowrap">{basename(activePath)}</span>
-      {crumbs.map((crumb) => (
-        <Fragment key={`${crumb.line}:${crumb.pos}`}>
-          <ChevronRight className="size-3 shrink-0 opacity-60" aria-hidden />
-          <button
-            type="button"
-            title={t(($) => $.editor.breadcrumbs.goTo, { title: crumb.title })}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => gotoRange(crumb.pos, crumb.pos)}
-            className="shrink-0 whitespace-nowrap rounded px-1 py-0.5 transition-colors hover:bg-accent hover:text-foreground"
-          >
-            {crumb.title === "" ? t(($) => $.editor.breadcrumbs.untitled) : crumb.title}
-          </button>
-        </Fragment>
-      ))}
-    </nav>
+      <BreadcrumbList className="shrink-0 whitespace-nowrap text-xs">
+        <BreadcrumbItem className="gap-1">
+          <FileText className="size-3.5 shrink-0" aria-hidden />
+          {basename(activePath)}
+        </BreadcrumbItem>
+        {crumbs.map((crumb) => {
+          const title = crumb.title === "" ? t(($) => $.editor.breadcrumbs.untitled) : crumb.title;
+          return (
+            <Fragment key={`${crumb.line}:${crumb.pos}`}>
+              <BreadcrumbSeparator className="opacity-60 [&>svg]:size-3" />
+              <BreadcrumbItem>
+                <Tooltip label={t(($) => $.editor.breadcrumbs.goTo, { title })}>
+                  <BreadcrumbLink asChild>
+                    <button
+                      type="button"
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => gotoRange(crumb.pos, crumb.pos)}
+                    >
+                      {title}
+                    </button>
+                  </BreadcrumbLink>
+                </Tooltip>
+              </BreadcrumbItem>
+            </Fragment>
+          );
+        })}
+      </BreadcrumbList>
+    </Breadcrumb>
   );
 }
 

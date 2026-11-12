@@ -2,7 +2,7 @@
 
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { noteLookSignature, useNotesByLook } from "./note-signature";
+import { useNotesByLook } from "./note-signature";
 import type { NoteItem } from "./types";
 
 function note(id: string, extra: Partial<NoteItem> = {}): NoteItem {
@@ -32,9 +32,5 @@ describe("useNotesByLook", () => {
       rerender({ notes: next });
       expect(result.current).toBe(next);
     }
-  });
-
-  it("tells apart titles that only differ where the fields meet", () => {
-    expect(noteLookSignature([note("a", { title: "x", icon: "y" })])).not.toBe(noteLookSignature([note("a", { title: "xy" })]));
   });
 });

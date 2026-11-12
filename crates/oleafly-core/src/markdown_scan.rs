@@ -442,9 +442,378 @@ pub fn line_body(line: &str) -> &str {
     }
 }
 
+pub fn is_space(c: char) -> bool {
+    c.is_whitespace() || c == '\u{feff}'
+}
+
+pub fn is_scheme_char(c: char) -> bool {
+    c.is_ascii_alphanumeric() || matches!(c, '+' | '.' | '-')
+}
+
+pub fn scheme_len<T: Unit>(items: &[T]) -> Option<usize> {
+    if !items.first()?.ascii()?.is_ascii_alphabetic() {
+        return None;
+    }
+    let colon = items.iter().position(|item| {
+        !item
+            .ascii()
+            .is_some_and(|byte| is_scheme_char(char::from(byte)))
+    })?;
+    is(items.get(colon), b':').then_some(colon + 1)
+}
+
+pub fn has_scheme(url: &str) -> bool {
+    scheme_len(url.as_bytes()).is_some()
+}
+
+pub fn autolink_end(chars: &[char], start: usize) -> Option<usize> {
+    let scheme = scheme_len(chars.get(start + 1..)?)?;
+    let mut index = start + 1 + scheme;
+    while let Some(c) = chars.get(index) {
+        match c {
+            '>' => return Some(index + 1),
+            '<' => return None,
+            c if is_space(*c) => return None,
+            _ => index += 1,
+        }
+    }
+    None
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct PlainLink {
+    pub destination: String,
+    pub label: Range<usize>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct PlainLine {
+    pub text: Vec<char>,
+    pub links: Vec<PlainLink>,
+}
+
+enum Frame {
+    Text {
+        index: usize,
+        limit: usize,
+    },
+    Close {
+        destination: Range<usize>,
+        from: usize,
+    },
+}
+
+fn link_at(
+    chars: &[char],
+    start: usize,
+    limit: usize,
+    brackets: &HashMap<usize, usize>,
+) -> Option<(usize, usize, Range<usize>, usize)> {
+    let close = *brackets.get(&start)?;
+    if close >= limit {
+        return None;
+    }
+    let (destination, end) = link_tail(&chars[..limit], close + 1)?;
+    Some((start + 1, close, destination, end))
+}
+
+const MAX_BLOCK_ID: usize = 64;
+const PLAIN_TAGS: [&str; 5] = ["mark", "sup", "sub", "span", "u"];
+
+pub fn block_id_suffix(text: &str) -> Option<(usize, &str)> {
+    let trimmed = text.trim_end_matches([' ', '\t', '\r']);
+    let caret = trimmed.rfind('^')?;
+    let id = &trimmed[caret + 1..];
+    let valid = !id.is_empty()
+        && id.len() <= MAX_BLOCK_ID
+        && id
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-');
+    let before = &trimmed[..caret];
+    if !valid || !(before.is_empty() || before.ends_with([' ', '\t'])) {
+        return None;
+    }
+    Some((before.trim_end_matches([' ', '\t']).len(), id))
+}
+
+fn inline_tag_end(chars: &[char], start: usize) -> Option<usize> {
+    let mut index = start + 1;
+    if chars.get(index) == Some(&'/') {
+        index += 1;
+    }
+    let name_start = index;
+    while chars.get(index).is_some_and(char::is_ascii_alphabetic) {
+        index += 1;
+    }
+    let name: String = chars[name_start..index]
+        .iter()
+        .collect::<String>()
+        .to_ascii_lowercase();
+    if !PLAIN_TAGS.contains(&name.as_str()) {
+        return None;
+    }
+    match chars.get(index)? {
+        '>' => Some(index + 1),
+        c if c.is_whitespace() => {
+            let close = chars[index..].iter().position(|c| *c == '>' || *c == '<')?;
+            (chars[index + close] == '>').then_some(index + close + 1)
+        }
+        _ => None,
+    }
+}
+
+struct PlainScan<'a> {
+    chars: &'a [char],
+    brackets: HashMap<usize, usize>,
+    spans: CodeSpans,
+    plain: PlainLine,
+    frames: Vec<Frame>,
+}
+
+impl<'a> PlainScan<'a> {
+    fn new(chars: &'a [char]) -> Self {
+        let brackets = if chars.contains(&'[') {
+            matching_brackets(chars, b'[', b']')
+        } else {
+            HashMap::new()
+        };
+        Self {
+            chars,
+            brackets,
+            spans: CodeSpans::new(chars),
+            plain: PlainLine::default(),
+            frames: vec![Frame::Text {
+                index: 0,
+                limit: chars.len(),
+            }],
+        }
+    }
+
+    fn read(mut self) -> PlainLine {
+        let chars = self.chars;
+        while let Some(frame) = self.frames.pop() {
+            match frame {
+                Frame::Text { index, limit } => self.text(index, limit),
+                Frame::Close { destination, from } => self.push_link(&chars[destination], from),
+            }
+        }
+        self.plain
+    }
+
+    fn push_link(&mut self, destination: &[char], from: usize) {
+        self.plain.links.push(PlainLink {
+            destination: destination.iter().collect(),
+            label: from..self.plain.text.len(),
+        });
+    }
+
+    fn text(&mut self, mut index: usize, limit: usize) {
+        while index < limit {
+            let Some(next) = self.step(index, limit) else {
+                return;
+            };
+            index = next;
+        }
+    }
+
+    fn step(&mut self, index: usize, limit: usize) -> Option<usize> {
+        let next = self.chars[..limit].get(index + 1).copied();
+        match self.chars[index] {
+            '\\' if next.is_some_and(|next| next.is_ascii_punctuation()) => {
+                self.plain.text.extend(next);
+                Some(index + 2)
+            }
+            '`' => Some(self.code_span(index, limit)),
+            '[' => self.open_link(index, index, limit),
+            '!' if next == Some('[') => self.open_link(index, index + 1, limit),
+            '<' => Some(
+                self.markup(index, limit)
+                    .unwrap_or_else(|| self.literal(index)),
+            ),
+            '~' if next == Some('~') => Some(index + 2),
+            _ => Some(self.literal(index)),
+        }
+    }
+
+    fn literal(&mut self, index: usize) -> usize {
+        match self.chars[index] {
+            '*' => {}
+            '|' => self.plain.text.push(' '),
+            c => self.plain.text.push(c),
+        }
+        index + 1
+    }
+
+    fn code_span(&mut self, index: usize, limit: usize) -> usize {
+        let chars = self.chars;
+        let run = run_at(&chars[..limit], index, b'`');
+        let Some(close) = self.spans.close(index, run, limit) else {
+            self.plain.text.extend(&chars[index..index + run]);
+            return index + run;
+        };
+        self.plain.text.push(' ');
+        self.plain.text.extend(&chars[index + run..close]);
+        self.plain.text.push(' ');
+        close + run
+    }
+
+    fn open_link(&mut self, index: usize, open: usize, limit: usize) -> Option<usize> {
+        let Some((label_start, label_end, destination, end)) =
+            link_at(self.chars, open, limit, &self.brackets)
+        else {
+            return Some(self.literal(index));
+        };
+        let from = self.plain.text.len();
+        self.frames.push(Frame::Text { index: end, limit });
+        self.frames.push(Frame::Close { destination, from });
+        self.frames.push(Frame::Text {
+            index: label_start,
+            limit: label_end,
+        });
+        None
+    }
+
+    fn markup(&mut self, index: usize, limit: usize) -> Option<usize> {
+        let chars = self.chars;
+        let within = &chars[..limit];
+        if let Some(end) = inline_tag_end(within, index) {
+            return Some(end);
+        }
+        let end = autolink_end(within, index)?;
+        let url = &within[index + 1..end - 1];
+        let from = self.plain.text.len();
+        self.plain.text.extend(url);
+        self.push_link(url, from);
+        Some(end)
+    }
+}
+
+pub fn plain_line(line: &str) -> PlainLine {
+    let body = line_body(line);
+    let body = block_id_suffix(body).map_or(body, |(end, _)| &body[..end]);
+    let chars: Vec<char> = body.chars().collect();
+    PlainScan::new(&chars).read()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn plain(line: &str) -> (String, Vec<(String, String)>) {
+        let found = plain_line(line);
+        let links = found
+            .links
+            .iter()
+            .map(|link| {
+                (
+                    link.destination.clone(),
+                    found.text[link.label.clone()].iter().collect(),
+                )
+            })
+            .collect();
+        (found.text.iter().collect(), links)
+    }
+
+    #[test]
+    fn reads_inline_markdown_as_plain_text_and_keeps_link_places() {
+        assert_eq!(
+            plain("- See **[the `x` part](a.md)** and <https://x.org>|end"),
+            (
+                "See the  x  part and https://x.org end".to_string(),
+                vec![
+                    ("a.md".to_string(), "the  x  part".to_string()),
+                    ("https://x.org".to_string(), "https://x.org".to_string()),
+                ]
+            )
+        );
+        assert_eq!(
+            plain("[outer [inner](b) text](a) ~~gone~~"),
+            (
+                "outer inner text gone".to_string(),
+                vec![
+                    ("b".to_string(), "inner".to_string()),
+                    ("a".to_string(), "outer inner text".to_string()),
+                ]
+            )
+        );
+        assert_eq!(
+            plain(r"C:\Users \* `open end\ ").0,
+            r"C:\Users * `open end\ "
+        );
+        assert!(has_scheme("oleafly://note/a") && has_scheme("mailto:x"));
+        assert!(!has_scheme("a/b:c") && !has_scheme("1x:y") && !has_scheme("notes.md"));
+    }
+
+    #[test]
+    fn drops_block_ids_and_inline_tags_from_plain_text() {
+        assert_eq!(plain("Accuracy rose ^acc-1").0, "Accuracy rose");
+        assert_eq!(plain("- item ^it ").0, "item");
+        assert_eq!(plain("^tbl").0, "");
+        assert_eq!(plain("x^2 and 2^10").0, "x^2 and 2^10");
+        assert_eq!(plain("a ^bad_id").0, "a ^bad_id");
+        assert_eq!(block_id_suffix("## Results ^res"), Some((10, "res")));
+        assert_eq!(block_id_suffix("^solo"), Some((0, "solo")));
+        assert_eq!(block_id_suffix("x^2"), None);
+        assert_eq!(
+            plain(r#"A <mark data-color="green">green</mark> H<sub>2</sub>O x<sup>2</sup> <span data-x="1">s</span> <u>u</u> <b>b</b>"#).0,
+            "A green H2O x2 s u <b>b</b>"
+        );
+        assert_eq!(plain("a < b and <mark").0, "a < b and <mark");
+    }
+
+    fn pinned(line: &str, text: &str, links: &[(&str, &str)]) {
+        let links = links
+            .iter()
+            .map(|(destination, label)| (destination.to_string(), label.to_string()))
+            .collect();
+        assert_eq!(plain(line), (text.to_string(), links), "{line}");
+    }
+
+    #[test]
+    fn plain_text_keeps_links_images_code_emphasis_escapes_and_html_in_place() {
+        pinned("[a](b)", "a", &[("b", "a")]);
+        pinned("![alt](img.png)", "alt", &[("img.png", "alt")]);
+        pinned("[![i](a.png)](b)", "i", &[("a.png", "i"), ("b", "i")]);
+        pinned("!![a](b)", "!a", &[("b", "a")]);
+        pinned("![alt] x", "![alt] x", &[]);
+        pinned("[a] (b) [a](b", "[a] (b) [a](b", &[]);
+        pinned(r"[a\]b](c)", "a]b", &[("c", "a]b")]);
+        pinned(
+            "[x](a(b)c) [t](<u v> \"T\")",
+            "x t",
+            &[("a(b)c", "x"), ("u v", "t")],
+        );
+        pinned("[[x]] [a|b](c)", "[[x]] a b", &[("c", "a b")]);
+        pinned("| a | [b](c) |", "  a   b  ", &[("c", "b")]);
+        pinned("`x` ``a`b`` `open", " x   a`b  `open", &[]);
+        pinned(
+            "`a*b|c` `[a](b)` [`x`](y)",
+            " a*b|c   [a](b)   x ",
+            &[("y", " x ")],
+        );
+        pinned(
+            "**bold** *it* _u_ ~~s~~ ~one~ a|b",
+            "bold it _u_ s ~one~ a b",
+            &[],
+        );
+        pinned("~~[a](b)~~", "a", &[("b", "a")]);
+        pinned(
+            r"\* \\ \a \[a](b) \`x` end\",
+            r"* \ \a [a](b) `x` end\",
+            &[],
+        );
+        pinned(
+            r#"<u>x</u> <b>y</b> <SUB>2</SUB> <span class="a">s</span> <mark"#,
+            "x <b>y</b> 2 s <mark",
+            &[],
+        );
+        pinned(
+            "<a:b> <https://x.org/a b> <x@y.z>",
+            "a:b <https://x.org/a b> <x@y.z>",
+            &[("a:b", "a:b")],
+        );
+        pinned("> - [x] **[Done](d.md)** ^id", "Done", &[("d.md", "Done")]);
+    }
 
     fn kinds(text: &str) -> Vec<FenceLine> {
         let mut fences = Fences::default();
@@ -580,6 +949,20 @@ mod tests {
         assert_eq!(spans.close(2, 1, bytes.len()), Some(4));
     }
 
+    #[derive(Clone, Copy, PartialEq)]
+    struct Counted(u8);
+
+    thread_local! {
+        static READS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+    }
+
+    impl Unit for Counted {
+        fn ascii(self) -> Option<u8> {
+            READS.with(|reads| reads.set(reads.get() + 1));
+            self.0.ascii()
+        }
+    }
+
     #[test]
     fn code_spans_stay_linear_on_long_unmatched_runs() {
         let mut line = String::new();
@@ -587,24 +970,29 @@ mod tests {
             line.push_str(&"`".repeat(length));
             line.push('x');
         }
-        let bytes = line.as_bytes();
-        let spans = CodeSpans::new(bytes);
-        let started = std::time::Instant::now();
+        let items: Vec<Counted> = line.bytes().map(Counted).collect();
+        READS.with(|reads| reads.set(0));
+        let spans = CodeSpans::new(&items);
         let mut index = 0;
         let mut found = 0;
-        while index < bytes.len() {
-            if bytes[index] != b'`' {
+        while index < items.len() {
+            if items[index].0 != b'`' {
                 index += 1;
                 continue;
             }
-            let run = run_at(bytes, index, b'`');
-            if spans.close(index, run, bytes.len()).is_some() {
+            let run = run_at(&items, index, b'`');
+            if spans.close(index, run, items.len()).is_some() {
                 found += 1;
             }
             index += run;
         }
         assert_eq!(found, 0);
-        assert!(started.elapsed() < std::time::Duration::from_secs(1));
+        let reads = READS.with(std::cell::Cell::get);
+        assert!(
+            reads <= 4 * items.len(),
+            "{reads} reads for {} items",
+            items.len()
+        );
     }
 
     #[test]

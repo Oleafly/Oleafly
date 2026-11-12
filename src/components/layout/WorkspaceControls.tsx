@@ -23,8 +23,10 @@ import { useChatRail } from "@/components/collab/chat-rail";
 import { useCommentsRail } from "@/components/collab/comments-rail";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useTheme } from "@/lib/theme";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
+import { intentProps } from "@/lib/preloadable";
 import { ThemeMenu, THEME_PREFERENCES, themePreferenceLabel, themeMenuLabel } from "@/components/layout/ThemeControls";
 import { ToolbarAction } from "@/components/layout/ToolbarAction";
 import { CLOUD_ATTENTION_HINT_ID } from "@/components/cloud/cloud-attention";
@@ -89,12 +91,9 @@ function ViewButton({
       >
         <Icon className="size-4" aria-hidden />
         {badge > 0 && (
-          <output
-            aria-label={t(($) => $.shell.rail.pendingBadge, { count: badge })}
-            className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-primary px-1 text-[0.5625rem] font-bold text-white border border-background"
-          >
-            {badge > 99 ? "99+" : badge}
-          </output>
+          <Badge asChild size="count">
+            <output aria-label={t(($) => $.shell.rail.pendingBadge, { count: badge })}>{badge > 99 ? "99+" : badge}</output>
+          </Badge>
         )}
       </button>
     </Tooltip>
@@ -293,7 +292,7 @@ export function WorkspaceDockControls({ onFork, layoutControl, children, overflo
           <Button type="button" variant="ghost" size="icon" className={dockBtn(false)}
             data-testid={hideSettings ? undefined : "open-settings"} aria-label={t(($) => $.shell.dock.settings)}
             aria-describedby={CLOUD_ATTENTION_HINT_ID}
-            onClick={() => setSettingsOpen(true)}><SettingsIcon className="size-4" /></Button>
+            onClick={() => setSettingsOpen(true)} {...intentProps("settings")}><SettingsIcon className="size-4" /></Button>
         </Tooltip>
       </ToolbarAction>
       <ToolbarAction name="menu" hidden={overflow === 0}>

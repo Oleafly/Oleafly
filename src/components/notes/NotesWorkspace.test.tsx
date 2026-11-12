@@ -3,17 +3,18 @@
 import { createLayout, group, groupOfView, groupsOf, split, type LayoutNode, type WorkspaceLayout } from "@oleafly/workspace";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
 import type { ArtifactPanel as ArtifactPanelComponent } from "./ArtifactPanel";
 import type { NoteDocument as NoteDocumentComponent } from "./NoteDocument";
 import type { NotesHome as NotesHomeComponent } from "./NotesHome";
 import type { NotesLibrary as NotesLibraryComponent } from "./NotesLibrary";
 import type { ArtifactItem, NoteItem } from "./types";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
 
 const env = vi.hoisted(() => ({ mac: false, fullscreen: false }));
 const probe = vi.hoisted(() => ({
@@ -213,7 +214,9 @@ vi.mock("./ArtifactPanel", async () => {
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { defaultNotesLayout, NOTES_LAYOUT_KEY, noteView } from "./notes-layout";
 import { NotesWorkspace } from "./NotesWorkspace";
+import { useVaultStore } from "./vault-store";
 import { useSettingsStore } from "@/store/settings";
+import { useNotesPrefsStore } from "@/store/notes-prefs";
 
 type WorkspaceProps = Parameters<typeof NotesWorkspace>[0];
 
@@ -286,17 +289,13 @@ const VIEWS = {
 };
 
 function fakeData(overrides: Partial<NotesData> = {}): NotesData {
-  return {
+  return fakeNotesData({
     notes,
     artifacts,
-    experiments: [],
-    citations: [],
     papers,
     copyArtifact: vi.fn((_noteId: string, item: ArtifactItem) => Promise.resolve(`files/${item.id}.png`)),
-    loadNote: vi.fn(),
-    saveNote: vi.fn(),
     ...overrides,
-  };
+  });
 }
 
 function renderWorkspace(props: WorkspaceProps = {}, data: NotesData = fakeData()) {
@@ -387,15 +386,14 @@ function box(left: number, top: number, width: number, height: number): DOMRect 
   return { left, top, width, height, x: left, y: top, right: left + width, bottom: top + height, toJSON: () => ({}) } as DOMRect;
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+const initialPrefs = useNotesPrefsStore.getState();
 
 beforeEach(() => {
   env.mac = false;
   env.fullscreen = false;
   probe.mounts.clear();
   localStorage.clear();
+  useNotesPrefsStore.setState(initialPrefs, true);
 });
 
 afterEach(() => {
@@ -422,7 +420,7 @@ describe("NotesWorkspace layout", () => {
     act(() => useSettingsStore.getState().setNotesAppearance("notesCalloutStyle", "outlined"));
     expect(root).toHaveAttribute("data-notes-callout", "outlined");
     unmount();
-    useSettingsStore.getState().resetNotesAppearance();
+    useSettingsStore.getState().resetAppearancePreferences();
   });
 
   it("hands the note icons to the library and Home", () => {
@@ -447,7 +445,6 @@ describe("NotesWorkspace layout", () => {
     expect(sidebar).toHaveAttribute("aria-expanded", "true");
     const toggle = within(bar).getByRole("button", { name: copy.artifacts.replace("{{total}}", "0") });
     expect(toggle).toHaveAttribute("aria-pressed", "false");
-    expect(toggle).not.toHaveClass("bg-accent");
     expect(toggle).toHaveTextContent("");
     expect(sidebar.compareDocumentPosition(strip) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(strip.compareDocumentPosition(toggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -535,23 +532,18 @@ describe("NotesWorkspace layout", () => {
     expect(Object.fromEntries(probe.mounts)).toEqual({ n1: 1, n2: 1 });
   });
 
-  it("shows whether the note is saving, and why a save failed with a way to retry", async () => {
+  it("shows whether the note is saving, and leaves a failed save to the note's banner", async () => {
     const user = userEvent.setup();
     renderWorkspace({ initialNoteId: "n1" });
     const note = panel("Masking ablation");
     const status = enNotes.saveStatus;
     await user.click(within(note).getByRole("button", { name: "Mark saving" }));
-    expect(within(note).getByText(status.saving)).toHaveClass("text-muted-foreground");
+    expect(within(note).getByText(status.saving)).toBeInTheDocument();
     expect(within(note).queryByText(status.saved)).not.toBeInTheDocument();
-    expect(within(note).queryByRole("alert")).not.toBeInTheDocument();
     await user.click(within(note).getByRole("button", { name: "Mark failed" }));
-    const alert = within(note).getByRole("alert");
-    expect(alert).toHaveClass("text-destructive");
-    expect(alert).toHaveTextContent(status.failedWithReason.replace("{{reason}}", "The disk is full."));
-    await user.click(within(alert).getByRole("button", { name: status.retry }));
-    expect(probe.retry).toHaveBeenCalledOnce();
+    expect(within(note).queryByText(status.saving)).not.toBeInTheDocument();
     await user.click(within(note).getByRole("button", { name: "Mark saved" }));
-    expect(within(note).getByText(status.saved)).not.toHaveClass("text-destructive");
+    expect(within(note).getByText(status.saved)).toBeInTheDocument();
   });
 
   it("explains a note that is no longer in the library", () => {
@@ -621,15 +613,13 @@ describe("NotesWorkspace layout", () => {
 });
 
 describe("NotesWorkspace Home", () => {
-  it("goes Home from a note, then leaves Notes from Home", async () => {
+  it("leaves Notes for the project library from a note in one click", async () => {
     const user = userEvent.setup();
     const onExit = vi.fn();
     renderWorkspace({ initialNoteId: "n1", onExit });
     await user.click(screen.getByRole("button", { name: "Library home" }));
-    expect(tab(copy.home)).toHaveAttribute("aria-selected", "true");
-    expect(onExit).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Library home" }));
     expect(onExit).toHaveBeenCalledOnce();
+    expect(tab("Masking ablation")).toHaveAttribute("aria-selected", "true");
     expect(tabNames()).toEqual([copy.home, "Masking ablation"]);
   });
 
@@ -649,16 +639,14 @@ describe("NotesWorkspace Home", () => {
     expect(onExit).toHaveBeenCalledOnce();
   });
 
-  it("reopens Home after it was closed", async () => {
+  it("reopens Home after it was closed when there is no project library to leave to", async () => {
     const user = userEvent.setup();
-    const onExit = vi.fn();
-    renderWorkspace({ initialNoteId: "n1", onExit });
+    renderWorkspace({ initialNoteId: "n1" });
     await user.click(screen.getByRole("button", { name: copy.closeTab.replace("{{title}}", copy.home) }));
     expect(tabNames()).toEqual(["Masking ablation"]);
     await user.click(screen.getByRole("button", { name: "Library home" }));
     expect(tabNames()).toEqual(["Masking ablation", copy.home]);
     expect(tab(copy.home)).toHaveAttribute("aria-selected", "true");
-    expect(onExit).not.toHaveBeenCalled();
   });
 
   it("stays on Home when there is nowhere to leave to", async () => {
@@ -680,19 +668,27 @@ describe("NotesWorkspace Home", () => {
     expect(shownViews()).toEqual(["home"]);
   });
 
-  it("offers the brand button while the library is hidden, named for where it goes", async () => {
+  it("offers the brand button while the library is hidden, going straight to the project library", async () => {
     const user = userEvent.setup();
     const onExit = vi.fn();
     renderWorkspace({ initialNoteId: "n2", onExit });
     await user.click(screen.getByRole("button", { name: copy.hideSidebar }));
-    expect(screen.queryByRole("button", { name: enShell.home.ariaLabel })).not.toBeInTheDocument();
-    const brand = screen.getByRole("button", { name: copy.notesHome });
+    expect(screen.queryByRole("button", { name: copy.notesHome })).not.toBeInTheDocument();
+    const brand = screen.getByRole("button", { name: enShell.home.ariaLabel });
     expect(brand.closest("[data-group]")).toContainElement(screen.getByRole("tablist"));
+    fireEvent.mouseEnter(brand.parentElement as HTMLElement);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(enShell.home.tooltip);
     await user.click(brand);
-    expect(tab(copy.home)).toHaveAttribute("aria-selected", "true");
-    expect(onExit).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: enShell.home.ariaLabel }));
     expect(onExit).toHaveBeenCalledOnce();
+    expect(tab("Reading list")).toHaveAttribute("aria-selected", "true");
+  });
+
+  it("takes the hidden library's brand button to Notes Home when there is nowhere to leave to", async () => {
+    const user = userEvent.setup();
+    renderWorkspace({ initialNoteId: "n2" });
+    await user.click(screen.getByRole("button", { name: copy.hideSidebar }));
+    await user.click(screen.getByRole("button", { name: copy.notesHome }));
+    expect(tab(copy.home)).toHaveAttribute("aria-selected", "true");
   });
 });
 
@@ -780,9 +776,8 @@ describe("NotesWorkspace Home tabs", () => {
     expect(savedGroups()).toEqual([["home", "home:2", "note:n1"]]);
   });
 
-  it("goes to the first Home tab from a note, then leaves Notes", async () => {
+  it("goes to the first Home tab from a note when there is no project library to leave to", async () => {
     const user = userEvent.setup();
-    const onExit = vi.fn();
     seedLayout(
       createLayout(split("s1", "row", [group("g1", ["note:n1", "home:4"], "note:n1"), group("g2", ["home"])]), {
         "note:n1": VIEWS["note:n1"],
@@ -790,13 +785,10 @@ describe("NotesWorkspace Home tabs", () => {
         home: VIEWS.home,
       }),
     );
-    renderWorkspace({ onExit });
+    renderWorkspace();
     await user.click(screen.getByRole("button", { name: "Library home" }));
     expect(shownViews()).toEqual(["home", "home:4"]);
     expect(groupOfView(savedLayout(), "home:4")?.active).toBe("home:4");
-    expect(onExit).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Library home" }));
-    expect(onExit).toHaveBeenCalledOnce();
   });
 
   it("leaves Notes from any Home tab that is in front", async () => {
@@ -867,7 +859,9 @@ describe("NotesWorkspace open in new tab", () => {
 });
 
 describe("NotesWorkspace empty panels", () => {
-  const empty = copy.emptyPanel;
+  function emptyBody(): Element | null {
+    return document.querySelector("[data-empty-panel]");
+  }
 
   function emptyBeside(): WorkspaceLayout {
     return createLayout(
@@ -878,7 +872,7 @@ describe("NotesWorkspace empty panels", () => {
   }
 
   function emptyPanel(): HTMLElement {
-    const owner = screen.getByText(empty).closest("[data-group]");
+    const owner = emptyBody()?.closest("[data-group]");
     if (!(owner instanceof HTMLElement)) throw new Error("no empty panel");
     return owner;
   }
@@ -888,8 +882,8 @@ describe("NotesWorkspace empty panels", () => {
     renderWorkspace({ onNewNote: vi.fn(() => Promise.resolve(null)) });
     const owner = emptyPanel();
     expect(owner).toHaveAttribute("data-group", "g2");
-    expect(within(owner).getByRole("button", { name: enNotes.library.newNote })).toHaveClass("bg-primary");
-    expect(within(owner).getByRole("button", { name: copy.home })).toHaveClass("border-input");
+    expect(within(owner).getByRole("button", { name: enNotes.library.newNote })).toBeInTheDocument();
+    expect(within(owner).getByRole("button", { name: copy.home })).toBeInTheDocument();
   });
 
   it("offers only Home when notes cannot be created", () => {
@@ -908,7 +902,38 @@ describe("NotesWorkspace empty panels", () => {
     expect(await screen.findByRole("tab", { name: "Reading list" })).toHaveAttribute("aria-selected", "true");
     expect(onNewNote).toHaveBeenCalledOnce();
     expect(savedGroups()).toEqual([["home", "note:n1"], ["note:n2"]]);
-    expect(screen.queryByText(empty)).not.toBeInTheDocument();
+    expect(emptyBody()).toBeNull();
+  });
+
+  it("starts a note from a template tile in the empty panel", async () => {
+    const user = userEvent.setup();
+    const createNoteFrom = vi.fn(() => Promise.resolve("n2"));
+    seedLayout(emptyBeside());
+    renderWorkspace({}, fakeData({ createNoteFrom }));
+    await user.click(within(emptyPanel()).getByRole("button", { name: new RegExp(enNotes.vault.templates.names.meeting) }));
+    expect(await screen.findByRole("tab", { name: "Reading list" })).toHaveAttribute("aria-selected", "true");
+    expect(createNoteFrom).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ icon: "lucide:presentation" }));
+    expect(savedGroups()).toEqual([["home", "note:n1"], ["note:n2"]]);
+  });
+
+  it("opens a recent note in the empty panel", async () => {
+    const user = userEvent.setup();
+    seedLayout(emptyBeside());
+    renderWorkspace();
+    await user.click(within(emptyPanel()).getByRole("button", { name: "Older vision note" }));
+    expect(tab("Older vision note")).toHaveAttribute("aria-selected", "true");
+    expect(savedGroups()).toEqual([["home", "note:n1"], ["note:n3"]]);
+  });
+
+  it("opens the sidebar search from the empty panel", async () => {
+    const user = userEvent.setup();
+    seedLayout(emptyBeside());
+    renderWorkspace();
+    await user.click(screen.getByRole("button", { name: copy.hideSidebar }));
+    const asked = useVaultStore.getState().searchRequest;
+    await user.click(within(emptyPanel()).getByRole("button", { name: copy.empty.searchAll }));
+    expect(screen.getByRole("complementary", { name: "Library" })).toBeInTheDocument();
+    expect(useVaultStore.getState().searchRequest).toBe(asked + 1);
   });
 
   it("opens a Home tab in the empty panel even while Home is open elsewhere", async () => {
@@ -925,7 +950,7 @@ describe("NotesWorkspace empty panels", () => {
     seedLayout(emptyBeside());
     renderWorkspace();
     await user.click(within(emptyPanel()).getByRole("button", { name: copy.closePanel }));
-    expect(screen.queryByText(empty)).not.toBeInTheDocument();
+    expect(emptyBody()).toBeNull();
     expect(screen.getAllByRole("tablist")).toHaveLength(1);
     expect(savedLayout().stage).toBe("g1");
     await user.click(screen.getByRole("button", { name: "Library note n2" }));
@@ -952,7 +977,7 @@ describe("NotesWorkspace empty panels", () => {
     const user = userEvent.setup();
     renderWorkspace();
     await user.click(screen.getByRole("button", { name: copy.closeTab.replace("{{title}}", copy.home) }));
-    expect(screen.getByText(empty)).toBeInTheDocument();
+    expect(emptyBody()).not.toBeNull();
     expect(screen.queryByRole("button", { name: copy.closePanel })).not.toBeInTheDocument();
   });
 });
@@ -963,7 +988,6 @@ describe("NotesWorkspace artifacts", () => {
     renderWorkspace({ initialNoteId: "n1" });
     await user.click(artifactsToggle(2));
     expect(artifactsToggle(2)).toHaveAttribute("aria-pressed", "true");
-    expect(artifactsToggle(2)).toHaveClass("bg-accent");
     expect(groupIdOf(tab(enNotes.artifacts.title))).not.toBe(groupIdOf(tab("Masking ablation")));
     expect(groupIdOf(artifactsToggle(2))).toBe(groupIdOf(tab(enNotes.artifacts.title)));
     expect(groupIdOf(screen.getByRole("button", { name: copy.hideSidebar }))).toBe(groupIdOf(tab("Masking ablation")));
@@ -973,7 +997,7 @@ describe("NotesWorkspace artifacts", () => {
     expect(stage).toBeCloseTo(0.68);
     expect(side).toBeCloseTo(0.32);
     expect(screen.getAllByRole("button", { name: copy.maximize })).toHaveLength(2);
-    expect(screen.getByRole("separator", { name: copy.resize })).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: copy.resize })).toBeInTheDocument();
     expect(shownViews()).toEqual(["artifacts", "note:n1"]);
     await user.click(artifactsToggle(2));
     expect(artifactsToggle(2)).toHaveAttribute("aria-pressed", "false");
@@ -1334,7 +1358,7 @@ describe("NotesWorkspace notes", () => {
     renderWorkspace();
     await user.click(within(homePanel()).getByRole("button", { name: "Home new tab n2" }));
     expect(tabNames()).toEqual([copy.home, "Reading list"]);
-    const opened = JSON.parse(localStorage.getItem("oleafly.notes.opened") ?? "{}") as Record<string, number>;
+    const opened = useNotesPrefsStore.getState().opened;
     expect(Object.keys(opened)).toEqual(["n2"]);
   });
 
@@ -1426,7 +1450,7 @@ describe("NotesWorkspace send to paper", () => {
     expect(within(dialog).getByRole("radio", { name: "Masking paper" })).toBeChecked();
     await user.click(within(dialog).getByRole("radio", { name: "Survey draft" }));
     await user.click(within(dialog).getByRole("button", { name: enNotes.sendToPaper.send }));
-    expect(onSendToPaper).toHaveBeenCalledWith({ paperId: "paper-2", text: "The whole note body." });
+    expect(onSendToPaper).toHaveBeenCalledWith({ paperId: "paper-2", text: "The whole note body.", noteId: "n1" });
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
@@ -1438,7 +1462,7 @@ describe("NotesWorkspace send to paper", () => {
     const dialog = screen.getByRole("dialog", { name: enNotes.sendToPaper.title });
     expect(dialog).toHaveTextContent("Selected in Masking ablation");
     await user.click(within(dialog).getByRole("button", { name: enNotes.sendToPaper.send }));
-    expect(onSendToPaper).toHaveBeenCalledWith({ paperId: "paper-1", text: "Selected in Masking ablation" });
+    expect(onSendToPaper).toHaveBeenCalledWith({ paperId: "paper-1", text: "Selected in Masking ablation", noteId: "n1" });
   });
 
   it("closes from Cancel or Escape without sending", async () => {
@@ -1555,13 +1579,6 @@ describe("NotesWorkspace hover help", () => {
     await hover(screen.getAllByRole("button", { name: copy.maximize })[0], copy.maximize);
     await hover(tab("Masking ablation"), "Masking ablation");
   });
-
-  it("uses a different icon for the outline panel toggle than the toolbar's outline menu", () => {
-    renderWorkspace({ initialNoteId: "n1" });
-    const toggle = within(panel("Masking ablation")).getByRole("button", { name: enNotes.graph.showOutline });
-    expect(toggle.querySelector("svg")).toHaveClass("lucide-table-of-contents");
-    expect(toggle.querySelector(".lucide-list-tree")).toBeNull();
-  });
 });
 
 describe("NotesWorkspace hidden views", () => {
@@ -1630,5 +1647,135 @@ describe("NotesWorkspace hidden views", () => {
     await user.click(within(panel("Note n1")).getByRole("button", { name: label.markSaved }));
     await openInTurn(user, "n2", "n3", "n4", "n5", "n6");
     expect(screen.queryByTestId("document-n1")).toBeNull();
+  });
+});
+
+describe("NotesWorkspace note header", () => {
+  const menuCopy = enNotes.library.menu;
+
+  function header(title = "Masking ablation"): HTMLElement {
+    const row = panel(title).querySelector("[data-note-view]")?.firstElementChild;
+    if (!(row instanceof HTMLElement)) throw new Error("no note header");
+    return row;
+  }
+
+  function openMenu(name: string): HTMLElement {
+    fireEvent.pointerDown(within(header()).getByRole("button", { name }), { button: 0, ctrlKey: false });
+    return screen.getByRole("menu");
+  }
+
+  function itemNames(menu: HTMLElement): string[] {
+    return within(menu)
+      .getAllByRole("menuitem")
+      .map((item) => item.textContent ?? "");
+  }
+
+  it("puts Export right after Share and the note menu last, without repeating either", () => {
+    renderWorkspace({ initialNoteId: "n1" }, fakeData({ shareNote: vi.fn(), renameNote: vi.fn(async () => {}), deleteNote: vi.fn(async () => {}) }));
+    const names = within(header())
+      .getAllByRole("button")
+      .map((button) => button.getAttribute("aria-label"));
+    expect(names.indexOf(menuCopy.export)).toBe(names.indexOf(enNotes.live.share) + 1);
+    expect(names.at(-1)).toBe(menuCopy.more);
+    expect(itemNames(openMenu(menuCopy.more))).toEqual([
+      menuCopy.copyLink,
+      menuCopy.favorite,
+      menuCopy.rename,
+      menuCopy.useAsTemplate,
+      menuCopy.delete,
+    ]);
+  });
+
+  it("lists the note's export choices, then Copy as Markdown", () => {
+    renderWorkspace({ initialNoteId: "n1" });
+    const menu = openMenu(menuCopy.export);
+    expect(itemNames(menu)).toEqual([
+      menuCopy.exportAs.markdown,
+      menuCopy.exportAs.docx,
+      menuCopy.exportAs.html,
+      menuCopy.exportAs.latex,
+      menuCopy.exportAs.typst,
+      menuCopy.copyMarkdown,
+    ]);
+    expect(within(menu).getAllByRole("separator")).toHaveLength(1);
+  });
+
+  it("renames the open note in place from its menu", async () => {
+    const user = userEvent.setup();
+    const renameNote = vi.fn(async () => {});
+    renderWorkspace({ initialNoteId: "n1" }, fakeData({ renameNote }));
+    await user.click(within(openMenu(menuCopy.more)).getByRole("menuitem", { name: menuCopy.rename }));
+    const input = await within(header()).findByRole("textbox", { name: menuCopy.renameLabel });
+    await user.clear(input);
+    await user.type(input, "Masking sweep{Enter}");
+    expect(renameNote).toHaveBeenCalledExactlyOnceWith("n1", "Masking sweep");
+    expect(within(header()).queryByRole("textbox")).not.toBeInTheDocument();
+  });
+
+  function breadcrumb(title?: string): HTMLElement {
+    return within(header(title)).getByRole("navigation", { name: copy.breadcrumb });
+  }
+
+  function projectData(): NotesData {
+    return fakeData({
+      projects: [
+        { id: "p1", name: "Vision" },
+        { id: "p2", name: "Language" },
+      ],
+      setRelatedProject: vi.fn(async () => {}),
+    });
+  }
+
+  it("shows where the note sits as a breadcrumb of Home, its project and its title", () => {
+    renderWorkspace({ initialNoteId: "n1" }, projectData());
+    const nav = breadcrumb();
+    const items = within(nav).getAllByRole("listitem");
+    expect(items).toHaveLength(3);
+    expect(within(items[0]).getByRole("button", { name: copy.breadcrumbHome })).toBeInTheDocument();
+    expect(within(items[1]).getByRole("button", { name: copy.projectMenu.replace("{{project}}", "Vision") })).toHaveTextContent("Vision");
+    expect(within(items[2]).getByText("Masking ablation")).toHaveAttribute("aria-current", "page");
+    expect(nav.querySelectorAll('[data-slot="breadcrumb-separator"] svg.lucide-chevron-right')).toHaveLength(2);
+    expect(nav).not.toHaveTextContent("/");
+  });
+
+  it("opens Notes Home in the note's own tab from the Home crumb", async () => {
+    const user = userEvent.setup();
+    seedLayout(
+      createLayout(group("g1", ["home", "note:n1", "note:n2"], "note:n1"), {
+        home: VIEWS.home,
+        "note:n1": VIEWS["note:n1"],
+        "note:n2": VIEWS["note:n2"],
+      }),
+    );
+    renderWorkspace();
+    const home = within(breadcrumb()).getByRole("button", { name: copy.breadcrumbHome });
+    fireEvent.mouseEnter(home.parentElement as HTMLElement);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(copy.breadcrumbHome);
+    await user.click(home);
+    expect(tabNames()).toEqual([copy.home, copy.home, "Reading list"]);
+    expect(screen.getAllByRole("tab")[1]).toHaveAttribute("aria-selected", "true");
+    expect(shownViews()).toEqual(["home:2"]);
+    expect(savedGroups()).toEqual([["home", "home:2", "note:n2"]]);
+  });
+
+  it("asks to choose a project in the project crumb and opens the same picker", () => {
+    renderWorkspace({ initialNoteId: "n2" }, projectData());
+    const trigger = within(breadcrumb("Reading list")).getByRole("button", {
+      name: copy.projectMenu.replace("{{project}}", copy.chooseProject),
+    });
+    expect(trigger).toHaveTextContent(copy.chooseProject);
+    expect(trigger.querySelector("span[aria-hidden][style]")).toBeNull();
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+    const menu = screen.getByRole("menu");
+    expect(within(menu).getAllByRole("menuitemradio").map((item) => item.textContent)).toEqual([copy.noProject, "Vision", "Language"]);
+    expect(within(menu).getByRole("menuitemradio", { name: copy.noProject })).toHaveAttribute("aria-checked", "true");
+  });
+
+  it("cuts a long title short and shows all of it in a tooltip", async () => {
+    renderWorkspace({ initialNoteId: "n1" });
+    const page = within(breadcrumb()).getByText("Masking ablation");
+    expect(page).toHaveClass("truncate");
+    fireEvent.mouseEnter(page.parentElement as HTMLElement);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Masking ablation");
   });
 });

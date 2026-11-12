@@ -9,7 +9,7 @@ import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
-  noteHeads: vi.fn(async () => []),
+  noteFacts: vi.fn(async () => []),
 }));
 
 import { useFilesStore } from "@/store/files";

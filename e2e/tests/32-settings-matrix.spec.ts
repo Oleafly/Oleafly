@@ -174,7 +174,7 @@ test("every accent color repaints the primary color", async ({ tauriPage }) => {
     ["Blue", "#2563eb"],
   ] as const;
   for (const [name, hex] of accents) {
-    await tauriPage.click(`button[title="${name}"]`);
+    await tauriPage.click(`button[aria-label="${name} accent"]`);
     await tauriPage.waitForFunction(
       `document.documentElement.style.getPropertyValue('--primary') === '${hex}'`,
       5_000,
@@ -288,7 +288,7 @@ test("reset to defaults restores factory preferences", async ({ tauriPage }) => 
   await openAppearanceTab(tauriPage, "editor");
   await pickOption(tauriPage, "Editor font size", "20px");
   await tauriPage.press('[data-testid="appearance-tab-app"]', "Enter");
-  await tauriPage.click('button[title="Teal"]');
+  await tauriPage.click('button[aria-label="Teal accent"]');
   await tauriPage.waitForFunction(
     `getComputedStyle(document.querySelector('.cm-content')).fontSize === '20px'`,
     5_000,

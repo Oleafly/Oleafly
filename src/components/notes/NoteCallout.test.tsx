@@ -1,23 +1,17 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { Pencil, Sigma } from "lucide-react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { destroyKbEditors, kbEditor, kbMarkdown } from "./tests/kb-editor-fixtures";
 import { CalloutChrome, calloutIcon, calloutNodeView } from "./NoteCallout";
 import { editableChanged } from "./note-editable";
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+import "./tests/setup";
 
 afterEach(destroyKbEditors);
 
 async function settle() {
-  await act(async () => {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  });
+  await act(async () => {});
 }
 
 describe("callout chrome", () => {
@@ -32,7 +26,8 @@ describe("callout chrome", () => {
     render(<CalloutChrome type="tip" folded={false} editable onFold={onFold} onType={onType} />);
     const trigger = screen.getByRole("button", { name: "Callout type: Tip" });
     fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false, pointerType: "mouse" });
-    fireEvent.click(screen.getByRole("menuitem", { name: "Theorem" }));
+    expect(screen.getByRole("menuitem", { name: enNotes.kb.callouts.types.todo })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("menuitem", { name: enNotes.kb.callouts.types.theorem }));
     expect(onType).toHaveBeenCalledWith("theorem");
     fireEvent.click(screen.getByRole("button", { name: enNotes.kb.callouts.fold }));
     expect(onFold).toHaveBeenCalled();
@@ -110,7 +105,8 @@ describe("callout node view", () => {
     const view = ((editor.view as unknown as { docView: { children: { children: unknown[] }[] } }).docView.children[0] as unknown as { spec: { update(node: unknown): boolean } }).spec;
     expect(view.update(editor.schema.nodes.paragraph.create())).toBe(false);
     editor.setEditable(false);
-    const onType = root.render.mock.calls.at(-1)?.[0].props.onType as (type: string) => void;
+    await settle();
+    const onType = root.render.mock.calls.at(-1)?.[0].props.children.props.onType as (type: string) => void;
     onType("bug");
     expect(kbMarkdown(editor)).toBe("> [!note] T\n> B");
     editor.destroy();

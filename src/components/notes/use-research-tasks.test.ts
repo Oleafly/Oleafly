@@ -3,6 +3,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { normalizeTask, type ResearchTask } from "@/lib/research-tasks";
+import { deferred } from "./tests/notes-data-fixture";
 
 const mocks = vi.hoisted(() => ({
   listResearchTasks: vi.fn(),
@@ -23,14 +24,6 @@ const { useResearchTasks } = await import("./use-research-tasks");
 
 function task(id: string, projectId: string, title = id, updatedAt = 0): ResearchTask {
   return normalizeTask({ id, projectId, status: "completed", title, updatedAt });
-}
-
-function deferred<T>() {
-  let resolve: (value: T) => void = () => {};
-  const promise = new Promise<T>((done) => {
-    resolve = done;
-  });
-  return { promise, resolve };
 }
 
 function ids(map: ReadonlyMap<string, readonly ResearchTask[]>) {

@@ -4,11 +4,13 @@ import { useTranslation } from "react-i18next";
 import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 import { Button } from "@/components/ui/button";
+import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { openNotes } from "@/features/open-tool";
 import { useNotesAppearanceRef } from "@/hooks/use-notes-appearance";
 import { useCollabProjectShared } from "@/lib/collab-live-bridge";
+import { isSharedProject } from "@/lib/library-projects";
 import { logError } from "@/lib/log";
 import { noteFileFacts, noteFileStem, projectNoteKey } from "@/lib/project-notes";
 import { useFilesStore } from "@/store/files";
@@ -16,12 +18,12 @@ import { useNoteTabsStore } from "@/store/note-tabs";
 import { isNoteColor } from "./note-file";
 import { projectCitations } from "./note-citations";
 import { NoteDocument, type NoteSaveFailure, type SaveStatus } from "./NoteDocument";
-import { NoteLiveNotice } from "./NoteLiveNotice";
 import { NoteSaveStatus } from "./NoteSaveStatus";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { copyProjectNoteToMine, moveNoteIntoProject, openPersonalNoteTab, renameProjectNote } from "./project-note-actions";
 import { createProjectNoteFiles } from "./project-note-data";
 import { useLibraryNotesData } from "./note-tab-data";
+import { NoteLinkIndexProvider } from "./use-note-links";
 import type { CitationItem, NoteItem } from "./types";
 import "./notes.css";
 
@@ -98,10 +100,9 @@ function NoteTabBar({
   icon,
   label,
   detail,
-  noticeId,
   save,
   children,
-}: Readonly<{ icon: ReactNode; label: string; detail: string; noticeId: string; save: SaveState; children: ReactNode }>) {
+}: Readonly<{ icon: ReactNode; label: string; detail: string; save: SaveState; children: ReactNode }>) {
   return (
     <div
       data-testid="note-tab-bar"
@@ -113,8 +114,7 @@ function NoteTabBar({
         <span aria-hidden className="@max-[24rem]:hidden">·</span>
         <span className="min-w-0 truncate @max-[24rem]:hidden">{detail}</span>
       </span>
-      <NoteLiveNotice noteId={noticeId} className="max-w-[20rem]" />
-      <NoteSaveStatus status={save.status} failure={save.failure} className="min-w-0 max-w-[20rem] truncate" />
+      <NoteSaveStatus status={save.status} className="min-w-0 max-w-[20rem] truncate" />
       <span className="flex shrink-0 items-center gap-1">{children}</span>
     </div>
   );
@@ -122,8 +122,7 @@ function NoteTabBar({
 
 function useProjectShared(projectId: string): boolean {
   const live = useCollabProjectShared(projectId);
-  const listed = useFilesStore((state) => Boolean(state.projects.find((project) => project.id === projectId)?.shared));
-  return live || listed;
+  return useFilesStore((state) => isSharedProject(state.projects, projectId, live));
 }
 
 function useProjectCitations(projectId: string): readonly CitationItem[] {
@@ -220,7 +219,7 @@ export function ProjectNoteTab({ projectId, path, shown = true }: Readonly<{ pro
       ...(shared ? { notes: NO_NOTES, noteLinks: undefined } : {}),
       citations,
       projectCitations: undefined,
-      importNotebook: undefined,
+      attachFile: undefined,
       renameNote: rename,
       deleteNote: undefined,
       setRelatedProject: undefined,
@@ -232,6 +231,7 @@ export function ProjectNoteTab({ projectId, path, shown = true }: Readonly<{ pro
 
   return (
     <NotesDataProvider value={data}>
+      <NoteLinkIndexProvider>
       <div ref={appearanceRef} data-testid="project-note-tab" className="flex min-h-0 flex-1 flex-col">
         <NoteTabBar
           icon={
@@ -243,7 +243,6 @@ export function ProjectNoteTab({ projectId, path, shown = true }: Readonly<{ pro
           }
           label={t(($) => $.notes.noteTab.projectNote)}
           detail={shared ? t(($) => $.notes.noteTab.sharedProject) : t(($) => $.notes.noteTab.localProject)}
-          noticeId={key}
           save={save}
         >
           <NoteTabButton
@@ -269,6 +268,7 @@ export function ProjectNoteTab({ projectId, path, shown = true }: Readonly<{ pro
           onStatusChange={report}
         />
       </div>
+    </NoteLinkIndexProvider>
     </NotesDataProvider>
   );
 }
@@ -292,27 +292,19 @@ export function PersonalNoteTab({ projectId, noteId, shown = true }: Readonly<{ 
 
   if (!note) {
     if (!projectsLoaded || !headsLoaded) {
-      return (
-        <div className="flex flex-1 items-center justify-center">
-          <Spinner size="sm" />
-        </div>
-      );
+      return <LoadingState size="compact" label={t(($) => $.notes.noteTab.loading)} className="flex-1 justify-center" />;
     }
-    return (
-      <p data-testid="personal-note-missing" className="flex-1 p-8 text-sm text-muted-foreground">
-        {t(($) => $.notes.noteTab.missing)}
-      </p>
-    );
+    return <EmptyState testId="personal-note-missing" className="flex-1 p-8" description={t(($) => $.notes.noteTab.missing)} />;
   }
 
   return (
     <NotesDataProvider value={data}>
+      <NoteLinkIndexProvider>
       <div ref={appearanceRef} data-testid="personal-note-tab" className="flex min-h-0 flex-1 flex-col">
         <NoteTabBar
           icon={<Lock aria-hidden className="size-3.5 shrink-0" />}
           label={t(($) => $.notes.noteTab.personalNote)}
           detail={note.shared ? t(($) => $.notes.noteTab.personalShared) : t(($) => $.notes.noteTab.private)}
-          noticeId={noteId}
           save={save}
         >
           <NoteTabButton
@@ -338,6 +330,7 @@ export function PersonalNoteTab({ projectId, noteId, shown = true }: Readonly<{ 
           onStatusChange={report}
         />
       </div>
+    </NoteLinkIndexProvider>
     </NotesDataProvider>
   );
 }

@@ -1,6 +1,5 @@
 import { Fragment, type ReactNode } from "react";
 import { pathParts, useDisplayPath } from "@/lib/display-path";
-import "./settings-path.css";
 
 function BlurredPath({
   children,

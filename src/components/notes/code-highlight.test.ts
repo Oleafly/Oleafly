@@ -2,32 +2,20 @@
 import { createWysiwygExtensions } from "@oleafly/wysiwyg";
 import { Editor, type JSONContent } from "@tiptap/core";
 import { DecorationSet } from "@tiptap/pm/view";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { loadHighlightLanguage } from "@/components/ui/code-highlighter";
 import { withBlockViews } from "./block-views";
 import {
   blockSpans,
-  clearHighlightCache,
   codeHighlightKey,
   codeHighlightPlugin,
   codeLanguage,
   DEFER_HIGHLIGHT_CHARS,
   DEFER_HIGHLIGHT_MS,
-  HIGHLIGHT_LANGUAGES,
-  loadHighlighter,
-  MAX_HIGHLIGHT_CHARS,
-  tokenSpans,
 } from "./code-highlight";
-
-vi.mock("@codemirror/legacy-modes/mode/sas", () => {
-  throw new Error("no sas");
-});
+import "./tests/setup";
 
 const editors: Editor[] = [];
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 function build(...content: JSONContent[]): Editor {
   const element = document.createElement("div");
@@ -47,7 +35,6 @@ function codeBlock(language: string | null, text: string): JSONContent {
 
 afterEach(() => {
   for (const editor of editors.splice(0)) editor.destroy();
-  clearHighlightCache();
 });
 
 describe("codeLanguage", () => {
@@ -72,18 +59,8 @@ describe("codeLanguage", () => {
 });
 
 describe("token spans", () => {
-  it("returns nothing until the language loads, then finds spans", async () => {
-    expect(tokenSpans("rust", "fn main() {}")).toBeNull();
-    expect(await loadHighlighter("rust")).not.toBeNull();
-    expect(loadHighlighter("rust")).toBe(loadHighlighter("rust"));
-    const spans = tokenSpans("rust", "fn main() {}\n// done") ?? [];
-    expect(spans[0]).toEqual({ from: 0, to: 2, classes: "tok-keyword" });
-    expect(spans.some((span) => span.classes.includes("tok-comment") && span.from === 13)).toBe(true);
-    expect(tokenSpans("rust", "x".repeat(MAX_HIGHLIGHT_CHARS + 1))).toEqual([]);
-  });
-
   it("keeps the spans of a code block for as long as the block node is unchanged", async () => {
-    await loadHighlighter("go");
+    await loadHighlightLanguage("go");
     const editor = build(codeBlock("go", "package a0"));
     const node = editor.state.doc.child(0);
     const first = blockSpans(node, "go");
@@ -91,17 +68,6 @@ describe("token spans", () => {
     expect(blockSpans(node, "go")).toBe(first);
     editor.commands.insertContentAt(editor.state.doc.content.size - 1, "1");
     expect(blockSpans(editor.state.doc.child(0), "go")).not.toBe(first);
-  });
-
-  it("loads a highlighter for every listed language", async () => {
-    const loaded = await Promise.all(HIGHLIGHT_LANGUAGES.filter((name) => name !== "sas").map((name) => loadHighlighter(name)));
-    expect(loaded.every(Boolean)).toBe(true);
-    expect(HIGHLIGHT_LANGUAGES).toEqual(expect.arrayContaining(["python", "r", "julia", "octave", "rust", "sql", "yaml", "toml", "latex"]));
-  });
-
-  it("gives up on a language that fails to load", async () => {
-    expect(await loadHighlighter("sas")).toBeNull();
-    expect(tokenSpans("sas", "data x;")).toBeNull();
   });
 });
 
@@ -127,7 +93,7 @@ describe("codeHighlightPlugin", () => {
   });
 
   it("only re-highlights the code block an edit touched", async () => {
-    await loadHighlighter("python");
+    await loadHighlightLanguage("python");
     const editor = build(codeBlock("python", "def a():\n    return 1"), codeBlock("python", "def b():\n    return 2"));
     const second = () => codeHighlightKey.getState(editor.state)?.find(editor.state.doc.child(0).nodeSize, editor.state.doc.content.size) ?? [];
     const before = second().map((decoration) => decoration.from);
@@ -143,7 +109,7 @@ describe("codeHighlightPlugin", () => {
   });
 
   it("waits for a pause before re-highlighting a long code block", async () => {
-    await loadHighlighter("python");
+    await loadHighlightLanguage("python");
     const long = Array.from({ length: Math.ceil(DEFER_HIGHLIGHT_CHARS / 5) }, (_, index) => `x${index} = 1`).join("\n");
     const editor = build(codeBlock("python", long));
     await vi.waitFor(() => expect(editor.view.dom.querySelector(".tok-variableName")).not.toBeNull());
@@ -162,7 +128,7 @@ describe("codeHighlightPlugin", () => {
   it("stops dispatching once the editor is gone", async () => {
     const editor = build(codeBlock("lua", "local x = 1"));
     editor.destroy();
-    expect(await loadHighlighter("lua")).not.toBeNull();
+    expect(await loadHighlightLanguage("lua")).not.toBeNull();
     expect(codeHighlightPlugin().spec.key).toBe(codeHighlightKey);
   });
 });

@@ -341,7 +341,15 @@
     },
     "resetPaneLayout": {
       "keywords": "zurücksetzen bereich layout reihenfolge verschieben bereiche seitenleiste assistent editor vorschau terminal standard",
-      "label": "Layout der Bereiche zurücksetzen"
+      "label": "Anordnung der Bereiche in jedem Projekt zurücksetzen"
+    },
+    "saveLayout": {
+      "keywords": "layout speichern aktuelles benutzerdefiniert anordnung bereiche größen name",
+      "label": "Aktuelles Layout speichern"
+    },
+    "applySavedLayout": {
+      "keywords": "layout gespeichert benutzerdefiniert anordnung bereiche wechseln anwenden",
+      "label": "Layout: {{name}}"
     },
     "zoomIn": {
       "keywords": "größer vergrößern lupe",
@@ -380,6 +388,10 @@
     "notes": {
       "label": "Notizen öffnen",
       "keywords": "Notizen Notizbuch Wissen Ideen Forschung Tagebuch notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Schnellerfassung",
+      "keywords": "Schnellerfassung erfassen notieren Notiz Eingang heute quick capture jot note inbox today"
     }
   },
   "community": {
@@ -484,6 +496,11 @@
   },
   "datePicker": {
     "placeholder": "Datum wählen"
+  },
+  "monthPicker": {
+    "label": "Monat wählen",
+    "previousYear": "Vorheriges Jahr",
+    "nextYear": "Nächstes Jahr"
   },
   "devMenu": {
     "inspect": "Untersuchen",
@@ -704,6 +721,7 @@
     "groups": {
       "action": "Aktion",
       "documents": "Dokumente",
+      "notes": "Notizen",
       "references": "Referenzen"
     },
     "label": "Suche",
@@ -711,11 +729,13 @@
     "openReferences": "Referenzen dieses Projekts öffnen",
     "placeholder": "Projekte und Dokumente durchsuchen oder / für Befehle tippen…",
     "placeholderDocuments": "In Dokumenten suchen…",
+    "placeholderNotes": "Notizen und die Blöcke darin durchsuchen…",
     "placeholderProjects": "Projekte nach Name, Engine, Art, Datum oder Metadaten durchsuchen…",
     "referencesNeedProject": "Öffnen Sie zuerst ein Projekt, um seine Referenzen zu durchsuchen.",
     "slash": {
       "create": "die Vorlagengalerie öffnen",
       "docs": "in Dokumenten suchen",
+      "notes": "Notizen und die Blöcke darin durchsuchen",
       "projects": "Ihre Projekte durchsuchen",
       "refs": "Referenzen dieses Projekts öffnen",
       "settings": "Einstellungen öffnen",
@@ -1314,7 +1334,24 @@
       "split": "Geteilte Ansicht"
     },
     "moreActions": "Weitere Aktionen",
-    "resetPaneLayout": "Layout der Bereiche zurücksetzen",
+    "resetPaneLayout": "Anordnung der Bereiche zurücksetzen",
+    "resetPaneLayoutScope": "Alle Projekte",
+    "savedLayouts": {
+      "close": "Schließen",
+      "delete": "Löschen",
+      "deleteConfirm": "Layout „{{name}}“ löschen?",
+      "limit": "Sie können bis zu {{count}} Layouts behalten. Löschen Sie eines, um ein weiteres zu speichern.",
+      "manage": "Layouts verwalten",
+      "name": "Name des Layouts",
+      "rename": "Umbenennen",
+      "renameTitle": "Layout umbenennen",
+      "replace": "Ersetzen",
+      "replaceConfirm": "Ein Layout namens „{{name}}“ gibt es bereits. Ersetzen?",
+      "save": "Aktuelles Layout speichern",
+      "saveButton": "Speichern",
+      "saveTitle": "Layout speichern",
+      "update": "Mit aktuellem Layout aktualisieren"
+    },
     "renameFailed": "Das Projekt konnte nicht umbenannt werden."
   },
   "tour": {

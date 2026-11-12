@@ -1,5 +1,5 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { lazy } from "@/lib/preloadable";
+import { intended, lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -70,8 +70,8 @@ import {
   type AiSettingsTab,
 } from "./ai-settings-navigation";
 
-const AcpAgentsTab = lazy(() => import("./ai/AcpAgentsTab").then((module) => ({ default: module.AcpAgentsTab })), { warm: true });
-const ToolsTab = lazy(() => import("./ai/ToolsTab").then((module) => ({ default: module.ToolsTab })), { warm: true });
+const AcpAgentsTab = lazy(() => import("./ai/AcpAgentsTab").then((module) => ({ default: module.AcpAgentsTab })), { warm: () => intended("settings") });
+const ToolsTab = lazy(() => import("./ai/ToolsTab").then((module) => ({ default: module.ToolsTab })), { warm: () => intended("settings") });
 
 type DiscoveryResult =
   | { ok: true; models: ProviderModel[] }

@@ -21,7 +21,6 @@ import {
 } from "@/lib/font-families";
 import {
   NOTES_APPEARANCE_DEFAULTS,
-  NOTES_APPEARANCE_KEYS,
   NOTES_APPEARANCE_STORAGE_KEYS,
   NOTES_LINE_HEIGHTS,
   normalizeNotesSetting,
@@ -29,6 +28,7 @@ import {
   type NotesAppearance,
   type NotesAppearanceKey,
 } from "@/lib/notes-appearance";
+import { NOTES_PERIODIC_DEFAULTS, NOTES_PERIODIC_KEY, normalizePeriodic, type NotesPeriodic, type PeriodicKind, type PeriodicNoteSettings, readPeriodic, type WeekStartSetting } from "@/lib/notes-periodic";
 
 const SETTINGS_SECTIONS = new Set([
   "general",
@@ -1126,12 +1126,20 @@ interface SettingsState {
   notesCodeFontFamily: string;
   notesCodeTheme: NotesAppearance["notesCodeTheme"];
   notesAccentColor: string;
-  notesHighlightColor: NotesAppearance["notesHighlightColor"];
   notesCalloutStyle: NotesAppearance["notesCalloutStyle"];
+  notesTaskBox: NotesAppearance["notesTaskBox"];
+  notesFieldStyle: NotesAppearance["notesFieldStyle"];
+  notesInfo: NotesAppearance["notesInfo"];
   notesShowWordCount: boolean;
   notesSpellcheck: boolean;
+  notesTextReplace: boolean;
+  notesTextReplacements: NotesAppearance["notesTextReplacements"];
+  notesKeepUndo: boolean;
+  notesTikzPreamble: string;
   setNotesAppearance: <K extends NotesAppearanceKey>(key: K, value: NotesAppearance[K]) => void;
-  resetNotesAppearance: () => void;
+  notesPeriodic: NotesPeriodic;
+  setNotesPeriodic: (kind: PeriodicKind, patch: Partial<PeriodicNoteSettings>) => void;
+  setNotesWeekStart: (weekStart: WeekStartSetting) => void;
   defaultLatexEngine: DefaultLatexEngine;
   setDefaultLatexEngine: (v: DefaultLatexEngine) => void;
   resetGeneralPreferences: () => void;
@@ -1308,6 +1316,7 @@ const PREF_DEFAULTS = {
   latexTools: false,
   notes: false,
   ...NOTES_APPEARANCE_DEFAULTS,
+  notesPeriodic: NOTES_PERIODIC_DEFAULTS,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
 
@@ -1401,6 +1410,7 @@ export const SECTION_SETTINGS = {
     appIcon: "oleafly.appIcon",
     homeProjectLayout: "oleafly.library.projectLayout",
     ...NOTES_APPEARANCE_STORAGE_KEYS,
+    notesPeriodic: NOTES_PERIODIC_KEY,
   },
   experimentation: {
     latexTools: "oleafly.latexTools",
@@ -2130,11 +2140,17 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     }
     set({ [key]: value } as Partial<SettingsState>);
   },
-  resetNotesAppearance: () => {
-    for (const key of NOTES_APPEARANCE_KEYS) {
-      saveLs(NOTES_APPEARANCE_STORAGE_KEYS[key], storedDefault(NOTES_APPEARANCE_DEFAULTS[key]));
-    }
-    set({ ...NOTES_APPEARANCE_DEFAULTS });
+  notesPeriodic: readPeriodic(ls(NOTES_PERIODIC_KEY, "")),
+  setNotesPeriodic: (kind, patch) => {
+    const current = get().notesPeriodic;
+    const notesPeriodic = normalizePeriodic({ ...current, [kind]: { ...current[kind], ...patch } });
+    saveLs(NOTES_PERIODIC_KEY, JSON.stringify(notesPeriodic));
+    set({ notesPeriodic });
+  },
+  setNotesWeekStart: (weekStart) => {
+    const notesPeriodic = normalizePeriodic({ ...get().notesPeriodic, weekStart });
+    saveLs(NOTES_PERIODIC_KEY, JSON.stringify(notesPeriodic));
+    set({ notesPeriodic });
   },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),

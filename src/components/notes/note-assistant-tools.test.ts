@@ -200,6 +200,14 @@ describe("the note tools", () => {
     expect(made.propose).not.toHaveBeenCalled();
   });
 
+  it("refuses to propose edits to a note the person can only view", async () => {
+    const { run, deps: made } = tools({ viewOnly: () => true });
+    expect(await run("propose_note_edits", { edits: [{ find: "0.75", replace: "0.60" }], summary: "" })).toEqual({
+      error: expect.stringMatching(/only view/u),
+    });
+    expect(made.propose).not.toHaveBeenCalled();
+  });
+
   it("searches the knowledge base and links each hit", async () => {
     const searchNotes = vi.fn(async () => [
       {

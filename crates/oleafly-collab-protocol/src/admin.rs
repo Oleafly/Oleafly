@@ -76,6 +76,8 @@ pub struct RuntimeSettings {
     pub comments_allowed: bool,
     #[serde(default)]
     pub email_link_sign_in: bool,
+    #[serde(default)]
+    pub public_notes_allowed: bool,
 }
 
 impl Default for RuntimeSettings {
@@ -90,6 +92,7 @@ impl Default for RuntimeSettings {
             email_notifications: true,
             comments_allowed: true,
             email_link_sign_in: false,
+            public_notes_allowed: false,
         }
     }
 }
@@ -109,6 +112,7 @@ impl RuntimeSettings {
             (&mut self.email_notifications, patch.email_notifications),
             (&mut self.comments_allowed, patch.comments_allowed),
             (&mut self.email_link_sign_in, patch.email_link_sign_in),
+            (&mut self.public_notes_allowed, patch.public_notes_allowed),
         ];
         for (field, value) in fields {
             if let Some(value) = value {
@@ -138,6 +142,8 @@ pub struct RuntimeSettingsPatch {
     pub comments_allowed: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub email_link_sign_in: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub public_notes_allowed: Option<bool>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -173,6 +179,10 @@ pub enum SecurityEventKind {
     GuestAdmissionEnded,
     ProjectRejoinRefused,
     CommentsChangedWhileOff,
+    NotePublished,
+    NoteUnpublished,
+    NoteTakenDown,
+    NoteRestored,
     #[serde(other)]
     Unknown,
 }
@@ -243,6 +253,7 @@ mod tests {
                 email_notifications: true,
                 comments_allowed: true,
                 email_link_sign_in: false,
+                public_notes_allowed: false,
             }
         );
         assert_eq!(
@@ -256,7 +267,8 @@ mod tests {
                 "access_logs_allowed": true,
                 "email_notifications": true,
                 "comments_allowed": true,
-                "email_link_sign_in": false
+                "email_link_sign_in": false,
+                "public_notes_allowed": false
             })
         );
     }
@@ -305,6 +317,7 @@ mod tests {
             email_notifications: Some(false),
             comments_allowed: Some(false),
             email_link_sign_in: Some(true),
+            public_notes_allowed: Some(true),
         };
         let mut settings = RuntimeSettings::default();
         settings.apply(&flipped);
@@ -320,6 +333,7 @@ mod tests {
                 email_notifications: false,
                 comments_allowed: false,
                 email_link_sign_in: true,
+                public_notes_allowed: true,
             }
         );
     }
@@ -339,6 +353,7 @@ mod tests {
         }))
         .unwrap();
         assert!(!older.email_link_sign_in);
+        assert!(!older.public_notes_allowed);
         let patch: RuntimeSettingsPatch =
             serde_json::from_str(r#"{"email_link_sign_in":true}"#).unwrap();
         assert_eq!(patch.email_link_sign_in, Some(true));
@@ -537,6 +552,10 @@ mod tests {
                 SecurityEventKind::CommentsChangedWhileOff,
                 "comments_changed_while_off",
             ),
+            (SecurityEventKind::NotePublished, "note_published"),
+            (SecurityEventKind::NoteUnpublished, "note_unpublished"),
+            (SecurityEventKind::NoteTakenDown, "note_taken_down"),
+            (SecurityEventKind::NoteRestored, "note_restored"),
             (SecurityEventKind::Unknown, "unknown"),
         ];
         for (kind, name) in kinds {

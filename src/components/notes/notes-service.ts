@@ -1,42 +1,52 @@
 import type { ProjectInfo } from "@oleafly/backend-port";
-import { splitMarkdownFrontMatter } from "@oleafly/wysiwyg/front-matter";
+import { useQuery } from "@tanstack/react-query";
 import { listen } from "@tauri-apps/api/event";
+import { useEffect, useMemo, useRef } from "react";
 import { loadAssetThumbnail } from "@/components/editor/cm/hover-asset";
-import { i18n } from "@/i18n";
 import { diskHash } from "@/lib/disk-hash";
+import { setScalar } from "@/lib/front-matter-yaml";
 import { logError } from "@/lib/log";
-import { sharedDocumentLive } from "@/lib/shared-document-writes";
 import { pickOpenPath } from "@/lib/native-file-dialog";
+import { noteEditorOpen } from "@/lib/open-note-editors";
+import { NOTE_FILE_KIND } from "@/lib/project-notes";
+import { appQueryClient } from "@/lib/query";
 import { copyResearchTaskArtifactToNote, previewResearchTaskArtifact } from "@/lib/research-tasks";
+import { sharedDocumentLive } from "@/lib/shared-document-writes";
 import {
   createNoteProject,
   listNoteTags,
+  listNoteTasks,
+  type NoteFacts,
+  noteFacts,
   noteImportFile,
   noteSearch,
   projectFileSizes,
   readFileBase64,
   readFileContent,
+  readNoteFile,
   recycleProject,
   renameProjectCmd,
+  revealProject,
   setNoteRelatedProject,
   unwatchProjectFolder,
   watchProjectFolder,
 } from "@/lib/tauri";
 import { isDiskConflict, useFilesStore } from "@/store/files";
+import { useNoteTabsStore } from "@/store/note-tabs";
 import { artifactPreview } from "./note-artifacts";
-import { isNotebookPath, NOTEBOOK_MAX_BYTES, NotebookTooLargeError } from "./notebook-block";
-import { NOTE_KIND, newNoteSource, readNoteFacts, withNoteColor, withNoteIcon, withNoteTitle } from "./note-file";
 import { projectCitations } from "./note-citations";
-import { notePreviewSource } from "./note-preview-source";
-import { noteEditorOpen } from "@/lib/open-note-editors";
-import { readProperties } from "./note-properties";
-import { linkTargets } from "./note-link-format";
-import { displayTags, frontMatterList, noteTags } from "./note-tags";
+import { newNoteSource, noteColorOf, noteSummary, withNoteColor, withNoteIcon, withNoteTitle } from "./note-file";
+import { forgetNoteLeftovers } from "./note-pending-suggestions";
+import { copyNoteAssets } from "./project-note-actions";
 import { composeNoteSource } from "./note-templates";
-import type { NotesData } from "./notes-data";
+import { isNotebookPath, NOTEBOOK_MAX_BYTES, NotebookTooLargeError } from "./notebook-block";
+import { assetFragment, NOTE_FILE_MAX_BYTES, noteMediaKind, noteMediaType } from "./note-path";
+import type { AttachFilter, NotesData } from "./notes-data";
+import { closeSavedNoteView } from "./notes-layout";
 import { NoteConflictError, type NoteItem, type NoteSource } from "./types";
 
 const FOLDER_CHANGED_EVENT = "project-folder-changed";
+const NOTE_FACTS_KEY = ["notes", "facts"] as const;
 
 interface FolderChange {
   projectId: string;
@@ -50,15 +60,18 @@ export type NotesService = Pick<
   | "saveNote"
   | "renameNote"
   | "deleteNote"
+  | "duplicateNote"
   | "createNote"
   | "watchNote"
   | "setRelatedProject"
   | "previewArtifact"
   | "copyArtifact"
   | "resolveAsset"
-  | "importNotebook"
+  | "revealAsset"
+  | "attachFile"
   | "searchNotes"
   | "noteTags"
+  | "noteTasks"
   | "createNoteFrom"
   | "refreshNotes"
   | "projectCitations"
@@ -67,171 +80,145 @@ export type NotesService = Pick<
 export interface NotesServiceDeps {
   projects: () => readonly ProjectInfo[];
   refreshProjects: () => Promise<void>;
-  refreshHeads: () => void;
-  setHead?: (id: string, head: string, changed: boolean, knowledge: string) => void;
   untitled: string;
   missing: string;
 }
 
-const NOTE_HEAD_BYTES = 8 * 1024;
-const headEncoder = new TextEncoder();
-const headDecoder = new TextDecoder();
-
-export function noteHeadOf(text: string): string {
-  if (text.length * 3 <= NOTE_HEAD_BYTES) return text;
-  let end = Math.min(text.length, NOTE_HEAD_BYTES);
-  const last = text.charCodeAt(end - 1);
-  if (end < text.length && last >= 0xd800 && last <= 0xdbff) end += 1;
-  const bytes = headEncoder.encode(text.slice(0, end));
-  if (bytes.length <= NOTE_HEAD_BYTES) return text.slice(0, end);
-  let cut = NOTE_HEAD_BYTES;
-  while (cut > 0 && (bytes[cut] & 0xc0) === 0x80) cut -= 1;
-  return headDecoder.decode(bytes.subarray(0, cut));
+export interface VaultFacts {
+  facts: readonly NoteFacts[];
+  revision: number;
+  changed: readonly string[] | null;
+  taskRevision: number;
 }
 
-export function noteKnowledgeKey(text: string): string {
-  const facts = readNoteFacts(text);
-  return JSON.stringify([
-    facts.title ?? "",
-    frontMatterList(text, "aliases"),
-    noteTags(text),
-    linkTargets(text).map((link) => [link.kind, link.id, link.snippet]),
-  ]);
+let revisions = 0;
+let taskRevisions = 0;
+
+function changedNotes(before: readonly NoteFacts[], after: readonly NoteFacts[], part: "knowledge" | "taskDigest"): string[] {
+  const known = new Map(before.map((fact) => [fact.id, fact[part]]));
+  const changed = after.filter((fact) => known.get(fact.id) !== fact[part]).map((fact) => fact.id);
+  const kept = new Set(after.map((fact) => fact.id));
+  return [...changed, ...before.filter((fact) => !kept.has(fact.id)).map((fact) => fact.id)];
 }
 
-interface HeadFacts {
-  aliases: readonly string[];
-  tags: readonly string[];
-  properties: Readonly<Record<string, unknown>>;
+function nextFacts(previous: VaultFacts | undefined, facts: readonly NoteFacts[]): VaultFacts {
+  if (!previous) {
+    revisions += 1;
+    taskRevisions += 1;
+    return { facts, revision: revisions, changed: null, taskRevision: taskRevisions };
+  }
+  let taskRevision = previous.taskRevision;
+  if (changedNotes(previous.facts, facts, "taskDigest").length > 0) {
+    taskRevisions += 1;
+    taskRevision = taskRevisions;
+  }
+  const changed = changedNotes(previous.facts, facts, "knowledge");
+  if (changed.length === 0) return { ...previous, facts, taskRevision };
+  revisions += 1;
+  return { facts, revision: revisions, changed, taskRevision };
 }
 
-const HEAD_CACHE_LIMIT = 4096;
-let headCache = new Map<string, HeadFacts>();
-
-export function headFacts(head: string): HeadFacts {
-  const block = splitMarkdownFrontMatter(head).frontmatter;
-  const properties = block ? (readProperties(block) ?? []) : [];
-  return {
-    aliases: frontMatterList(head, "aliases"),
-    tags: displayTags(head),
-    properties: Object.fromEntries(properties.map((property) => [property.key, property.value])),
-  };
+function patched(facts: readonly NoteFacts[], ids: readonly string[], fresh: readonly NoteFacts[]): NoteFacts[] {
+  const wanted = new Set(ids);
+  const byId = new Map(fresh.filter((fact) => wanted.has(fact.id)).map((fact) => [fact.id, fact]));
+  const next = facts.flatMap((fact) => {
+    if (!wanted.has(fact.id)) return [fact];
+    const replaced = byId.get(fact.id);
+    byId.delete(fact.id);
+    return replaced ? [replaced] : [];
+  });
+  return [...next, ...byId.values()];
 }
 
-function cachedHeadFacts(head: string, next: Map<string, HeadFacts>): HeadFacts {
-  const facts = next.get(head) ?? headCache.get(head) ?? headFacts(head);
-  next.set(head, facts);
-  return facts;
+function loadVaultFacts(): Promise<VaultFacts> {
+  return noteFacts().then((facts) => nextFacts(appQueryClient().getQueryData<VaultFacts>(NOTE_FACTS_KEY), facts ?? []));
 }
 
-interface ItemInputs {
-  head: string;
-  name: string;
-  related: string | undefined;
-  relatedId: string | null | undefined;
-  updatedAt: number;
-  createdAt: number;
-  shared: boolean;
-  ungrouped: string;
+export async function refreshNoteFacts(ids: readonly string[]): Promise<void> {
+  const client = appQueryClient();
+  if (!client.getQueryData(NOTE_FACTS_KEY)) return;
+  const fresh = (await noteFacts({ ids })) ?? [];
+  client.setQueryData<VaultFacts>(NOTE_FACTS_KEY, (current) => current && nextFacts(current, patched(current.facts, ids, fresh)));
+}
+
+export function reloadVaultFacts(): Promise<void> {
+  return appQueryClient().invalidateQueries({ queryKey: NOTE_FACTS_KEY });
+}
+
+function noteNamesOf(projects: readonly ProjectInfo[]): string {
+  return projects
+    .filter((project) => project.kind === NOTE_FILE_KIND)
+    .map((project) => `${project.id}\u0000${project.name}`)
+    .join("\u0001");
+}
+
+export function useVaultFacts(projects: readonly ProjectInfo[]): { vault: VaultFacts | undefined; failed: boolean } {
+  const query = useQuery({ queryKey: NOTE_FACTS_KEY, queryFn: loadVaultFacts }, appQueryClient());
+  const names = useMemo(() => noteNamesOf(projects), [projects]);
+  const seen = useRef(names);
+  useEffect(() => {
+    if (seen.current === names) return;
+    seen.current = names;
+    void reloadVaultFacts();
+  }, [names]);
+  return { vault: query.data, failed: query.isError };
 }
 
 interface CachedItem {
-  inputs: ItemInputs;
+  inputs: readonly unknown[];
   item: NoteItem;
 }
 
-function sameInputs(left: ItemInputs, right: ItemInputs): boolean {
-  return (
-    left.head === right.head &&
-    left.name === right.name &&
-    left.related === right.related &&
-    left.relatedId === right.relatedId &&
-    left.updatedAt === right.updatedAt &&
-    left.createdAt === right.createdAt &&
-    left.shared === right.shared &&
-    left.ungrouped === right.ungrouped
-  );
-}
+type NoteItemsOf = (projects: readonly ProjectInfo[], facts: readonly NoteFacts[] | undefined, ungrouped: string) => NoteItem[];
 
-type NoteItemsOf = (projects: readonly ProjectInfo[], heads: ReadonlyMap<string, string>, ungrouped: string) => NoteItem[];
-
-export function createNoteItems(): NoteItemsOf {
-  let itemCache = new Map<string, CachedItem>();
-  let lastItems: NoteItem[] = [];
-  return (projects, heads, ungrouped) => {
-    const built = buildNoteItems(projects, heads, ungrouped, itemCache, lastItems);
-    itemCache = built.cache;
-    lastItems = built.items;
-    return built.items;
+function itemOf(project: ProjectInfo, fact: NoteFacts | undefined, related: string | undefined, ungrouped: string): NoteItem {
+  return {
+    id: project.id,
+    title: project.name,
+    project: related ?? ungrouped,
+    relatedProjectId: related === undefined ? undefined : (project.related_project ?? undefined),
+    updatedAt: project.updated_at * 1000,
+    author: fact?.agent ? "agent" : "you",
+    agent: fact?.agent ?? undefined,
+    icon: fact?.icon ?? undefined,
+    color: noteColorOf(fact?.color, fact?.noteId ?? project.name),
+    summary: noteSummary(fact?.preview ?? ""),
+    createdAt: project.created_at * 1000,
+    preview: fact?.preview,
+    aliases: fact?.aliases,
+    tags: fact?.tags,
+    properties: fact?.properties,
+    ...(fact?.noteId ? { noteId: fact.noteId } : {}),
+    ...(project.shared ? { shared: true } : {}),
   };
 }
 
-export const noteItems: NoteItemsOf = createNoteItems();
-
-function buildNoteItems(
-  projects: readonly ProjectInfo[],
-  heads: ReadonlyMap<string, string>,
-  ungrouped: string,
-  itemCache: ReadonlyMap<string, CachedItem>,
-  lastItems: readonly NoteItem[],
-): { items: NoteItem[]; cache: Map<string, CachedItem> } {
-  const names = new Map(projects.map((project) => [project.id, project.name]));
-  const nextCache = new Map<string, HeadFacts>();
-  const nextItems = new Map<string, CachedItem>();
-  let reused = 0;
-  const items = projects
-    .filter((project) => project.kind === NOTE_KIND)
-    .map((project): NoteItem => {
-      const head = heads.get(project.id) ?? "";
-      const related = project.related_project ? names.get(project.related_project) : undefined;
-      const inputs: ItemInputs = {
-        head,
-        name: project.name,
-        related,
-        relatedId: project.related_project,
-        updatedAt: project.updated_at,
-        createdAt: project.created_at,
-        shared: Boolean(project.shared),
-        ungrouped,
-      };
-      const cached = itemCache.get(project.id);
-      if (cached && sameInputs(cached.inputs, inputs)) {
-        nextItems.set(project.id, cached);
-        nextCache.set(head, headCache.get(head) ?? headFacts(head));
-        if (lastItems[reused] === cached.item) reused += 1;
-        return cached.item;
-      }
-      const facts = readNoteFacts(head);
-      const extra = cachedHeadFacts(head, nextCache);
-      const item: NoteItem = {
-        id: project.id,
-        title: project.name,
-        project: related ?? ungrouped,
-        relatedProjectId: related === undefined ? undefined : (project.related_project ?? undefined),
-        updatedAt: project.updated_at * 1000,
-        author: facts.agent ? "agent" : "you",
-        agent: facts.agent,
-        icon: facts.icon,
-        color: facts.color,
-        summary: facts.summary,
-        createdAt: project.created_at * 1000,
-        preview: notePreviewSource(head, project.name),
-        aliases: extra.aliases,
-        tags: extra.tags,
-        properties: extra.properties,
-        ...(project.shared ? { shared: true } : {}),
-      };
-      nextItems.set(project.id, { inputs, item });
-      return item;
-    });
-  for (const [head, facts] of nextCache) headCache.set(head, facts);
-  if (headCache.size > HEAD_CACHE_LIMIT) headCache = nextCache;
-  if (reused === items.length && items.length === lastItems.length) return { items: lastItems as NoteItem[], cache: nextItems };
-  return { items, cache: nextItems };
+export function createNoteItems(): NoteItemsOf {
+  let cache = new Map<string, CachedItem>();
+  let last: NoteItem[] = [];
+  return (projects, facts, ungrouped) => {
+    const names = new Map(projects.map((project) => [project.id, project.name]));
+    const factsById = new Map((facts ?? []).map((fact) => [fact.id, fact]));
+    const next = new Map<string, CachedItem>();
+    const items = projects
+      .filter((project) => project.kind === NOTE_FILE_KIND)
+      .map((project) => {
+        const fact = factsById.get(project.id);
+        const related = project.related_project ? names.get(project.related_project) : undefined;
+        const inputs = [fact, project.name, related, project.related_project, project.updated_at, project.created_at, Boolean(project.shared), ungrouped];
+        const cached = cache.get(project.id);
+        const entry = cached?.inputs.every((input, index) => Object.is(input, inputs[index])) ? cached : { inputs, item: itemOf(project, fact, related, ungrouped) };
+        next.set(project.id, entry);
+        return entry.item;
+      });
+    cache = next;
+    if (items.length !== last.length || items.some((item, index) => item !== last[index])) last = items;
+    return last;
+  };
 }
 
-function lineEndings(text: string): string {
-  return text.replace(/\r\n?/gu, "\n");
+export function lfLineEndings(text: string): string {
+  return text.replaceAll(/\r\n?/gu, "\n");
 }
 
 export function usesCrlf(disk: string): boolean {
@@ -239,13 +226,19 @@ export function usesCrlf(disk: string): boolean {
 }
 
 export function noteVersion(text: string): string {
-  return diskHash(lineEndings(text));
+  return diskHash(lfLineEndings(text));
 }
 
 interface DiskState {
   version: string;
   hash: string;
   crlf: boolean;
+}
+
+interface LocalWrite {
+  text: string;
+  version: string;
+  changed: boolean;
 }
 
 function diskStateOf(raw: string): DiskState {
@@ -259,13 +252,13 @@ async function writeNoteFile(
   crlf: boolean,
   expectedHash?: string,
 ): Promise<{ text: string; state: DiskState }> {
-  const plain = lineEndings(text);
+  const plain = lfLineEndings(text);
   await useFilesStore.getState().writeProjectFile(project.id, project.main_doc, plain, {
     closedProject: true,
     crlf,
     ...(expectedHash === undefined ? {} : { expectedHash }),
   });
-  const written = crlf ? plain.replace(/\n/gu, "\r\n") : plain;
+  const written = crlf ? plain.replaceAll("\n", "\r\n") : plain;
   return { text: written, state: diskStateOf(written) };
 }
 
@@ -334,44 +327,6 @@ export function resetNoteWritesForTest(): void {
   noteWrites.clear();
 }
 
-const LINE_LEAD = /^[ \t\r>*+\-.)_=0-9]*/u;
-const KNOWLEDGE_MARKS = /[[\]<>#`~\\]/u;
-
-function commonPrefix(left: string, right: string): number {
-  const shortest = Math.min(left.length, right.length);
-  let index = 0;
-  while (index < shortest && left.charCodeAt(index) === right.charCodeAt(index)) index += 1;
-  return index;
-}
-
-function commonSuffix(left: string, right: string, start: number): number {
-  const room = Math.min(left.length, right.length) - start;
-  let count = 0;
-  while (count < room && left.charCodeAt(left.length - 1 - count) === right.charCodeAt(right.length - 1 - count)) count += 1;
-  return count;
-}
-
-function lineEnd(text: string, from: number): number {
-  const at = text.indexOf("\n", from);
-  return at < 0 ? text.length : at;
-}
-
-function keepsKnowledge(before: string, after: string): boolean {
-  const start = commonPrefix(before, after);
-  if (start === 0) return false;
-  const tail = commonSuffix(before, after, start);
-  const lineStart = before.lastIndexOf("\n", start - 1) + 1;
-  if (lineStart === 0 || lineStart <= splitMarkdownFrontMatter(before).frontmatter.length) return false;
-  const endBefore = lineEnd(before, start);
-  const endAfter = lineEnd(after, start);
-  if (endBefore < before.length - tail || endAfter < after.length - tail) return false;
-  const lineBefore = before.slice(lineStart, endBefore);
-  const lineAfter = after.slice(lineStart, endAfter);
-  if (KNOWLEDGE_MARKS.test(lineBefore) || KNOWLEDGE_MARKS.test(lineAfter)) return false;
-  const lead = LINE_LEAD.exec(lineBefore)?.[0].length ?? 0;
-  return start - lineStart > lead;
-}
-
 function namesFile(path: string, mainDoc: string): boolean {
   return path === mainDoc || path.endsWith(`/${mainDoc}`) || path.endsWith(`\\${mainDoc}`);
 }
@@ -405,11 +360,23 @@ export async function notebookUrl(noteId: string, path: string): Promise<string 
   return `data:application/x-ipynb+json;base64,${await readFileBase64(noteId, path)}`;
 }
 
-async function importNotebook(noteId: string): Promise<string | null> {
-  const source = await pickOpenPath({
-    title: i18n.t(($) => $.notes.notebook.pickTitle),
-    filters: [{ name: i18n.t(($) => $.notes.notebook.filter), extensions: ["ipynb"] }],
-  });
+async function mediaUrl(projectId: string, path: string): Promise<string | null> {
+  const size = (await projectFileSizes(projectId, [path]))[path];
+  if (size === undefined) return null;
+  if (size > NOTE_FILE_MAX_BYTES) throw new Error(`${path} is larger than 64 MiB.`);
+  return URL.createObjectURL(new Blob([await readNoteFile(projectId, path)], { type: noteMediaType(path) }));
+}
+
+export function noteAssetUrl(projectId: string, path: string): Promise<string | null> {
+  const { file, page } = assetFragment(path);
+  if (isNotebookPath(file)) return notebookUrl(projectId, file);
+  const kind = noteMediaKind(file);
+  if (kind === "audio" || kind === "video") return mediaUrl(projectId, file);
+  return loadAssetThumbnail(projectId, file, page ?? 1);
+}
+
+async function attachFile(noteId: string, { title, name, extensions }: AttachFilter): Promise<string | null> {
+  const source = await pickOpenPath({ title, filters: [{ name, extensions: [...extensions] }] });
   if (typeof source !== "string") return null;
   return (await noteImportFile(noteId, source)).path;
 }
@@ -421,57 +388,61 @@ export function createNotesService(deps: NotesServiceDeps): NotesService {
     return project;
   };
   const disk = new Map<string, DiskState>();
-  const knowledge = new Map<string, { text: string; key: string }>();
-  const knowledgeOf = (id: string, text: string): string => {
-    const last = knowledge.get(id);
-    const key = last && (last.text === text || keepsKnowledge(last.text, text)) ? last.key : noteKnowledgeKey(text);
-    keep(knowledge, id, { text, key });
-    return key;
+  const changed = (id: string, moved: boolean) => {
+    if (moved) void refreshNoteFacts([id]).catch((error: unknown) => logError("read a changed note's facts", error));
   };
-  const updateHead = (id: string, text: string, changed: boolean) => {
-    if (deps.setHead) deps.setHead(id, noteHeadOf(text), changed, knowledgeOf(id, text));
-    else deps.refreshHeads();
+  const created = async (id: string) => {
+    await deps.refreshProjects();
+    await refreshNoteFacts([id]);
+    return id;
   };
   const load = async (project: ProjectInfo) => {
     const read = await readNote(project);
+    const known = disk.get(project.id)?.version;
     keep(disk, project.id, read.state);
+    changed(project.id, known !== undefined && known !== read.state.version);
     return read;
   };
-  const writeLocal = async (project: ProjectInfo, text: string, version: string) => {
-    let known = sharedDocumentLive(project.id) ? undefined : disk.get(project.id);
-    for (let attempt = 1; ; attempt += 1) {
-      if (known?.version !== version) {
-        const read = await load(project);
-        if (read.state.version !== version) throw new NoteConflictError(read.source);
-        known = read.state;
-      }
-      try {
-        const written = await writeNoteFile(project, text, known.crlf, known.hash);
-        keep(disk, project.id, written.state);
-        return { text: written.text, version: written.state.version, changed: written.state.version !== known.version };
-      } catch (error) {
-        if (!isDiskConflict(error)) throw error;
-        disk.delete(project.id);
-        if (attempt >= WRITE_ATTEMPTS) throw new NoteConflictError((await load(project)).source);
-        known = undefined;
-      }
+  const writeAttempt = async (
+    project: ProjectInfo,
+    text: string,
+    version: string,
+    known: DiskState | undefined,
+    attempt: number,
+  ): Promise<LocalWrite> => {
+    let state = known;
+    if (state?.version !== version) {
+      const read = await load(project);
+      if (read.state.version !== version) throw new NoteConflictError(read.source);
+      state = read.state;
     }
+    try {
+      const written = await writeNoteFile(project, text, state.crlf, state.hash);
+      keep(disk, project.id, written.state);
+      return { text: written.text, version: written.state.version, changed: written.state.version !== state.version };
+    } catch (error) {
+      if (!isDiskConflict(error)) throw error;
+      if (attempt >= WRITE_ATTEMPTS) throw new NoteConflictError((await load(project)).source);
+    }
+    return writeAttempt(project, text, version, undefined, attempt + 1);
   };
+  const writeLocal = (project: ProjectInfo, text: string, version: string) =>
+    writeAttempt(project, text, version, sharedDocumentLive(project.id) ? undefined : disk.get(project.id), 1);
   return {
     loadNote: async (id) => (await load(projectOf(id))).source,
     saveNote: (id, text, version, base) =>
       recordNoteWrite(id, text, async () => {
         const project = projectOf(id);
-        const shared = base !== undefined && sharedDocumentLive(id) ? lineEndings(base) : null;
+        const shared = base !== undefined && sharedDocumentLive(id) ? lfLineEndings(base) : null;
         if (shared === null) {
-          const saved = await writeLocal(project, text, version);
-          updateHead(id, saved.text, saved.changed);
-          return { text: saved.text, version: saved.version };
+          const written = await writeLocal(project, text, version);
+          changed(id, written.changed);
+          return { text: written.text, version: written.version };
         }
-        const written = lineEndings(text);
+        const written = lfLineEndings(text);
         disk.delete(id);
         await useFilesStore.getState().writeProjectFile(id, project.main_doc, written, { base: shared, closedProject: true });
-        updateHead(id, written, shared !== written);
+        changed(id, shared !== written);
         return { text: written, version: noteVersion(written) };
       }),
     renameNote: async (id, title) => {
@@ -483,33 +454,35 @@ export function createNotesService(deps: NotesServiceDeps): NotesService {
     },
     deleteNote: async (id) => {
       await recycleProject(id);
+      forgetNoteLeftovers(id);
+      useNoteTabsStore.getState().close(id);
+      closeSavedNoteView(id);
       await deps.refreshProjects();
-      if (!deps.setHead) deps.refreshHeads();
     },
-    createNote: async () => {
-      const source = newNoteSource(deps.untitled);
-      const id = await createNoteProject(deps.untitled, source);
-      await deps.refreshProjects();
-      updateHead(id, source, true);
-      return id;
+    duplicateNote: async (id, title) => {
+      const project = projectOf(id);
+      const text = await readFileContent(project.id, project.main_doc);
+      const copy = setScalar(withNoteTitle(text, title), "id", crypto.randomUUID());
+      const copied = await createNoteProject(title, copy, project.related_project ?? null);
+      await copyNoteAssets(id, copied);
+      return created(copied);
     },
+    createNote: async () => created(await createNoteProject(deps.untitled, newNoteSource(deps.untitled))),
     createNoteFrom: async (draft) => {
       const title = draft.title.trim() || deps.untitled;
       let base = newNoteSource(title, draft.body ?? "");
       if (draft.icon) base = withNoteIcon(base, draft.icon);
       if (draft.color) base = withNoteColor(base, draft.color);
       const source = composeNoteSource(base, draft.properties, draft.tags);
-      const id = await createNoteProject(title, source, draft.relatedProject ?? null);
-      await deps.refreshProjects();
-      updateHead(id, source, true);
-      return id;
+      return created(await createNoteProject(title, source, draft.relatedProject ?? null));
     },
     refreshNotes: async () => {
       await deps.refreshProjects();
-      deps.refreshHeads();
+      await reloadVaultFacts();
     },
-    searchNotes: (query, limit) => noteSearch(query, limit),
+    searchNotes: (query, limit, options) => noteSearch(query, limit, options),
     noteTags: () => listNoteTags(),
+    noteTasks: () => listNoteTasks(),
     watchNote: (id, onChange) => watchFile(id, projectOf(id).main_doc, onChange),
     setRelatedProject: async (id, projectId) => {
       await setNoteRelatedProject(id, projectId);
@@ -519,15 +492,16 @@ export function createNotesService(deps: NotesServiceDeps): NotesService {
       artifactPreview(artifact, (await previewResearchTaskArtifact(artifact.taskId, artifact.path)).content),
     copyArtifact: async (noteId, artifact) =>
       (await copyResearchTaskArtifactToNote(artifact.taskId, artifact.path, noteId)).path,
-    resolveAsset: (noteId, path) => (isNotebookPath(path) ? notebookUrl(noteId, path) : loadAssetThumbnail(noteId, path)),
-    importNotebook,
+    resolveAsset: noteAssetUrl,
+    revealAsset: (noteId, path) => revealProject(noteId, assetFragment(path).file),
+    attachFile,
     projectCitations,
   };
 }
 
 export function relatedProjectChoices(projects: readonly ProjectInfo[]): { id: string; name: string }[] {
   return projects
-    .filter((project) => project.kind !== NOTE_KIND && !project.recovery_pending)
+    .filter((project) => project.kind !== NOTE_FILE_KIND && !project.recovery_pending)
     .sort((left, right) => right.updated_at - left.updated_at)
     .map((project) => ({ id: project.id, name: project.name }));
 }

@@ -1,7 +1,9 @@
-import { ChevronRight } from "lucide-react";
+import { List } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { PanelState } from "@/components/layout/IntelligenceTree";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TreeRow } from "@/components/ui/tree-row";
 import { logError } from "@/lib/log";
 import { scrollBehavior } from "@/lib/reduced-motion";
 import { cn } from "@/lib/utils";
@@ -164,7 +166,16 @@ export function NoteOutline({ noteId, onOpenHeading }: Readonly<NoteOutlineProps
     });
   }, []);
 
-  if (!noteId) return <p className="p-4 text-sm text-muted-foreground">{t(($) => $.notes.graph.outline.noNote)}</p>;
+  if (!noteId) {
+    return (
+      <PanelState
+        state="empty"
+        icon={<List aria-hidden className="size-4" />}
+        title={t(($) => $.notes.graph.outline.noNote)}
+        detail={t(($) => $.notes.graph.outline.noNoteDetail)}
+      />
+    );
+  }
 
   const go = (heading: OutlineHeading) => {
     const element = elementsRef.current[heading.index];
@@ -195,49 +206,33 @@ export function NoteOutline({ noteId, onOpenHeading }: Readonly<NoteOutlineProps
         </Select>
       </div>
       {rows.length === 0 ? (
-        <p className="p-4 text-sm text-muted-foreground">{t(($) => $.notes.graph.outline.empty)}</p>
+        <PanelState
+          state="empty"
+          icon={<List aria-hidden className="size-4" />}
+          title={t(($) => $.notes.graph.outline.empty)}
+          detail={t(($) => $.notes.graph.outline.emptyDetail)}
+        />
       ) : (
-        <nav aria-label={t(($) => $.notes.graph.outline.title)} className="min-h-0 flex-1 overflow-y-auto p-1.5">
-          <ul className="space-y-px">
-            {rows.map(({ heading, depth, hasChildren, collapsed: folded }) => {
-              const current = heading.index === active;
-              return (
-                <li key={`${heading.index}-${heading.slug}`} className="flex items-center" style={{ paddingLeft: `${depth * 0.75}rem` }}>
-                  {hasChildren ? (
-                    <button
-                      type="button"
-                      aria-expanded={!folded}
-                      aria-label={
-                        folded
-                          ? t(($) => $.notes.graph.outline.expand, { title: heading.text })
-                          : t(($) => $.notes.graph.outline.collapse, { title: heading.text })
-                      }
-                      onClick={() => toggle(heading.index)}
-                      className="flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent"
-                    >
-                      <ChevronRight
-                        aria-hidden
-                        className={cn("size-3.5 transition-transform motion-reduce:transition-none", !folded && "rotate-90")}
-                      />
-                    </button>
-                  ) : (
-                    <span aria-hidden className="size-5 shrink-0" />
-                  )}
-                  <button
-                    type="button"
-                    aria-current={current ? "location" : undefined}
-                    onClick={() => go(heading)}
-                    className={cn(
-                      "min-w-0 flex-1 truncate rounded-md px-1.5 py-1 text-left text-sm text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent",
-                      heading.level <= 2 && "text-foreground",
-                      current && "bg-primary/10 font-medium text-foreground hover:bg-primary/15",
-                    )}
-                  >
-                    {heading.text}
-                  </button>
-                </li>
-              );
-            })}
+        <nav aria-label={t(($) => $.notes.graph.outline.title)} className="min-h-0 flex-1 overflow-y-auto py-1">
+          <ul>
+            {rows.map(({ heading, depth, hasChildren, collapsed: folded }) => (
+              <li key={`${heading.index}-${heading.slug}`}>
+                <TreeRow
+                  depth={depth}
+                  expanded={hasChildren ? !folded : undefined}
+                  onToggle={() => toggle(heading.index)}
+                  toggleLabel={
+                    folded
+                      ? t(($) => $.notes.graph.outline.expand, { title: heading.text })
+                      : t(($) => $.notes.graph.outline.collapse, { title: heading.text })
+                  }
+                  active={heading.index === active}
+                  onSelect={() => go(heading)}
+                  label={heading.text}
+                  labelClassName={cn("text-sm", heading.level <= 2 && "text-foreground")}
+                />
+              </li>
+            ))}
           </ul>
         </nav>
       )}

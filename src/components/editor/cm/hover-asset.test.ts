@@ -2,14 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/tauri", () => ({
   readFileBase64: vi.fn(),
-  base64ToUint8Array: vi.fn(() => new Uint8Array([1, 2, 3])),
+  readNoteFile: vi.fn(),
 }));
 
 vi.mock("@/lib/pdf-image", () => ({
   pdfPageToPng: vi.fn(),
 }));
 
-import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
+import { readFileBase64, readNoteFile } from "@/lib/tauri";
 import { pdfPageToPng } from "@/lib/pdf-image";
 import {
   clearThumbnailCache,
@@ -17,14 +17,14 @@ import {
 } from "./hover-asset";
 
 const mockRead = vi.mocked(readFileBase64);
-const mockToBytes = vi.mocked(base64ToUint8Array);
+const mockReadBytes = vi.mocked(readNoteFile);
 const mockPdfToPng = vi.mocked(pdfPageToPng);
 
 beforeEach(() => {
   clearThumbnailCache();
   vi.clearAllMocks();
   mockRead.mockResolvedValue("QUJD");
-  mockToBytes.mockReturnValue(new Uint8Array([1, 2, 3]));
+  mockReadBytes.mockResolvedValue(new Uint8Array([37, 80, 68, 70]).buffer);
   mockPdfToPng.mockResolvedValue("data:image/png;base64,PDFTHUMB");
 });
 
@@ -47,21 +47,24 @@ describe("loadAssetThumbnail", () => {
     await expect(loadAssetThumbnail("p1", "huge.png")).resolves.toBeNull();
   });
 
-  it("applies the size guard to PDFs before rasterizing", async () => {
-    mockRead.mockResolvedValue("a".repeat(8 * 1024 * 1024 + 1));
-    await expect(loadAssetThumbnail("p1", "huge.pdf")).resolves.toBeNull();
-    expect(mockPdfToPng).not.toHaveBeenCalled();
-  });
-
-  it("rasterizes page 1 of a PDF via pdfPageToPng", async () => {
+  it("reads a PDF as raw bytes rather than base64, so a large PDF still draws", async () => {
     await expect(loadAssetThumbnail("p1", "figs/plot.pdf")).resolves.toBe(
       "data:image/png;base64,PDFTHUMB",
     );
-    expect(mockToBytes).toHaveBeenCalledWith("QUJD");
+    expect(mockReadBytes).toHaveBeenCalledWith("p1", "figs/plot.pdf");
+    expect(mockRead).not.toHaveBeenCalled();
     expect(mockPdfToPng).toHaveBeenCalledTimes(1);
     const [bytes, page] = mockPdfToPng.mock.calls[0];
-    expect(bytes).toBeInstanceOf(Uint8Array);
+    expect(Array.from(bytes)).toEqual([37, 80, 68, 70]);
     expect(page).toBe(1);
+  });
+
+  it("draws the PDF page asked for, and nothing when the file can't be read", async () => {
+    await loadAssetThumbnail("p1", "paper.PDF", 4);
+    expect(mockPdfToPng.mock.calls[0][1]).toBe(4);
+    mockReadBytes.mockRejectedValue(new Error("file exceeds the limit"));
+    await expect(loadAssetThumbnail("p1", "huge.pdf")).resolves.toBeNull();
+    expect(mockPdfToPng).toHaveBeenCalledTimes(1);
   });
 
   it("caches successful results and does not re-read the file", async () => {

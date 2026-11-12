@@ -28,7 +28,7 @@ import { createPresencePublisher, inOrder, type Presence, peerCursors } from "./
 import { type RemoteCursor, type RemoteCursorSource, remoteCursors } from "./remote-cursors";
 import { collabSessionTransport } from "./transport";
 
-export { peerCursors };
+export { peerCursors } from "./presence";
 
 function sameCursors(a: readonly RemoteCursor[], b: readonly RemoteCursor[]): boolean {
   return (
@@ -175,22 +175,16 @@ export function startLiveEditing(live: LiveSession): () => void {
   });
 
   const queue = inOrder("collab presence");
-  let deferred = false;
   const presence = createPresencePublisher(
     () => currentPresence(projectId),
     ({ path, cursor, anchor }) => {
-      deferred = noteLiveHolds(projectId, path);
-      if (!deferred) queue(() => collabPresenceSet(projectId, path, cursor, anchor));
+      if (!noteLiveHolds(projectId, path)) queue(() => collabPresenceSet(projectId, path, cursor, anchor));
     },
     () => queue(() => collabPresenceLeave(projectId)),
   );
-  let held = false;
   const stopNoteHolds = onNoteLiveHoldsChange(() => {
     const { path, cursor, anchor } = currentPresence(projectId);
-    const wasHeld = held;
-    held = noteLiveHolds(projectId, path);
-    if (held || (!deferred && !wasHeld)) return;
-    deferred = false;
+    if (noteLiveHolds(projectId, path)) return;
     queue(() => collabPresenceSet(projectId, path, cursor, anchor));
   });
   const unsubscribeActive = useFilesStore.subscribe((state, previous) => {

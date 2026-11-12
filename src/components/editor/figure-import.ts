@@ -68,9 +68,9 @@ function trimEdges(value: string, edge: string): string {
 
 function sanitizedStem(stem: string): string {
   const collapsed = foldLatinDiacritics(stem)
-    .replace(/[^A-Za-z0-9._-]+/gu, "-")
-    .replace(/-{2,}/gu, "-")
-    .replace(/-(?=\.)/gu, "");
+    .replaceAll(/[^A-Za-z0-9._-]+/gu, "-")
+    .replaceAll(/-{2,}/gu, "-")
+    .replaceAll(/-(?=\.)/gu, "");
   return trimEdges(collapsed, "-.");
 }
 
@@ -106,7 +106,7 @@ export function suggestedFigureLabel(path: string): string {
   const stem = trimEdges(
     foldLatinDiacritics(path.replace(/^.*\//u, "").replace(/\.[A-Za-z0-9]+$/u, ""))
       .toLowerCase()
-      .replace(/[^a-z0-9]+/gu, "-"),
+      .replaceAll(/[^a-z0-9]+/gu, "-"),
     "-",
   );
   return `fig:${stem === "" ? "figure" : stem}`;
@@ -114,24 +114,41 @@ export function suggestedFigureLabel(path: string): string {
 
 type ImageImportResult = ImportedImage | "failed" | null;
 
+export interface ProjectFileBytes {
+  path: string;
+  dataBase64: string;
+}
+
+async function writeFilesInOrder(projectId: string, files: readonly ProjectFileBytes[], from: number): Promise<void> {
+  if (from >= files.length) return;
+  await writeProjectBytes(projectId, files[from].path, files[from].dataBase64);
+  await writeFilesInOrder(projectId, files, from + 1);
+}
+
+export async function saveProjectFiles(projectId: string, files: readonly ProjectFileBytes[]): Promise<void> {
+  if (files.length === 0) return;
+  await writeFilesInOrder(projectId, files, 0);
+  clearThumbnailCache();
+  if (useFilesStore.getState().projectId !== projectId) return;
+  await useFilesStore
+    .getState()
+    .refreshTree()
+    .catch((error) => logError("refresh files after adding figures", error));
+  notifyProjectFilesChanged(projectId, files.map((file) => file.path));
+}
+
 async function importImageFile(file: File, projectId: string): Promise<ImageImportResult> {
   const state = useFilesStore.getState();
   if (state.projectId !== projectId || isEditorMutationLocked(projectId)) return null;
   const path = pastedImagePath(file, state.tree, state.mainDoc, new Date());
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
-    await writeProjectBytes(projectId, path, uint8ToBase64(bytes));
+    await saveProjectFiles(projectId, [{ path, dataBase64: uint8ToBase64(bytes) }]);
   } catch (error) {
     void logError("paste image", error);
     return "failed";
   }
-  clearThumbnailCache();
   if (useFilesStore.getState().projectId !== projectId) return null;
-  await useFilesStore
-    .getState()
-    .refreshTree()
-    .catch((error) => logError("refresh files after image paste", error));
-  notifyProjectFilesChanged(projectId, [path]);
   return { path, latexPath: latexGraphicsPath(path, state.mainDoc) };
 }
 

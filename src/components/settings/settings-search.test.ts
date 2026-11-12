@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
+import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import enSettingsFile from "@/i18n/locales/en/settingsFile.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
+import { SHORTCUT_DEFINITIONS } from "@/store/shortcuts";
 import {
   bestSettingsHit,
   buildSettingsIndex,
@@ -23,6 +25,7 @@ import {
 
 const BUNDLES: Record<string, unknown> = {
   core: enCore,
+  notes: enNotes,
   researchTools: enResearchTools,
   settings: enSettings,
   settingsFile: enSettingsFile,
@@ -106,36 +109,42 @@ describe("settings search index", () => {
   it("finds the Notes appearance rows only while Notes is on", () => {
     const notes = buildSettingsIndex(lookup, "en", "linux", new Set(["notes"]));
     expect(matchSettingsSections(index, SECTIONS, "callout style")).toEqual([]);
-    expect(rowLabels(index, "appearance")).not.toContain(enSettings.appearance.notes.callouts.label);
+    expect(rowLabels(index, "appearance")).not.toContain(enNotes.appearance.notes.callouts.label);
     const [appearance] = searchSettings(notes, SECTIONS, "callout style");
     expect(appearance).toMatchObject({
       id: "appearance",
-      rows: [{ label: enSettings.appearance.notes.callouts.label, path: ["appearance", "notes", "callouts"] }],
+      rows: [{ label: enNotes.appearance.notes.callouts.label, path: ["appearance", "notes", "callouts"] }],
       match: "row",
     });
     for (const row of [
-      enSettings.appearance.notes.typeface.label,
-      enSettings.appearance.notes.font.label,
-      enSettings.appearance.notes.fontSize.label,
-      enSettings.appearance.notes.lineHeight.label,
-      enSettings.appearance.notes.paragraphSpacing.label,
-      enSettings.appearance.notes.headingFont.label,
-      enSettings.appearance.notes.titleSize.label,
-      enSettings.appearance.notes.width.label,
-      enSettings.appearance.notes.wordCount.label,
-      enSettings.appearance.notes.spellcheck.label,
-      enSettings.appearance.notes.codeFont.label,
-      enSettings.appearance.notes.codeTheme.label,
-      enSettings.appearance.notes.accent.label,
-      enSettings.appearance.notes.highlight.label,
+      enNotes.appearance.notes.typeface.label,
+      enNotes.appearance.notes.font.label,
+      enNotes.appearance.notes.fontSize.label,
+      enNotes.appearance.notes.lineHeight.label,
+      enNotes.appearance.notes.paragraphSpacing.label,
+      enNotes.appearance.notes.headingFont.label,
+      enNotes.appearance.notes.titleSize.label,
+      enNotes.appearance.notes.width.label,
+      enNotes.appearance.notes.wordCount.label,
+      enNotes.appearance.notes.spellcheck.label,
+      enNotes.appearance.notes.codeFont.label,
+      enNotes.appearance.notes.codeTheme.label,
+      enNotes.appearance.notes.accent.label,
     ]) {
       expect(rowLabels(notes, "appearance"), row).toContain(row);
     }
   });
 
+  it("finds the Notes shortcuts only while Notes is on", () => {
+    const notes = buildSettingsIndex(lookup, "en", "linux", new Set(["notes"]));
+    const label = enSettings.shortcuts.actions.notesGraph.label;
+    expect(rowLabels(index, "shortcuts")).not.toContain(label);
+    expect(rowLabels(notes, "shortcuts")).toContain(label);
+  });
+
   it("keeps the sample note in the Notes preview out of search", () => {
     const notes = buildSettingsIndex(lookup, "en", "linux", new Set(["notes"]));
-    expect(matchSettingsSections(notes, SECTIONS, enSettings.notesPreview.calloutBody)).toEqual([]);
+    expect(matchSettingsSections(notes, SECTIONS, enNotes.notesPreview.calloutBody)).toEqual([]);
   });
 
   it("gives each matching row the catalog path it came from", () => {
@@ -356,6 +365,12 @@ describe("settings search tabs", () => {
     expect(settingsTabFor(["appearance", "editor", "fontSize"])).toBeNull();
   });
 
+  it("opens the Notes tab for Notes shortcuts and the Application tab for the rest", () => {
+    for (const { id, scope } of SHORTCUT_DEFINITIONS) {
+      expect(settingsTabFor(["shortcuts", "actions", id, "label"]), id).toBe(scope === "notes" ? "notes" : "application");
+    }
+  });
+
   it("names the default tab for rows on it, so they open from another tab", () => {
     expect(settingsTabFor(["engine", "defaultEngine"])).toBe("latex");
     expect(settingsTabFor(["engine", "choices", "latexmk"])).toBe("latex");
@@ -373,7 +388,7 @@ describe("settings search tabs", () => {
   });
 
   it("points every tab entry at rows the index has", () => {
-    const paths = [...buildSettingsIndex(lookup, "en", "linux").values()].flatMap((entry) =>
+    const paths = [...buildSettingsIndex(lookup, "en", "linux", new Set(["notes"])).values()].flatMap((entry) =>
       entry.rows.map((row) => row.path.join(".")),
     );
     for (const prefix of Object.keys(SETTINGS_SEARCH_TABS)) {

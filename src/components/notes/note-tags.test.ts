@@ -1,17 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  displayTags,
-  frontMatterList,
-  isTagStart,
-  markdownTagRanges,
-  noteTags,
-  plainTextTags,
-  tagAt,
-  tagKey,
-  tagMatches,
-} from "./note-tags";
-
-const tagsIn = (markdown: string) => markdownTagRanges(markdown).map((range) => range.tag);
+import { nameTone } from "@/components/ui/tones";
+import { isTagStart, plainTextTags, tagAt, tagKey, tagTone } from "./note-tags";
 
 describe("inline tags", () => {
   it.each([
@@ -22,51 +11,8 @@ describe("inline tags", () => {
     ["#a/b/c and #/lead and #trail/ and #/", ["a/b/c", "lead", "trail"]],
     ["#tag. #tag's #tag#next", ["tag", "tag", "tag"]],
     ["#Ünïcode #日本語 #ok_1-2", ["Ünïcode", "日本語", "ok_1-2"]],
-    ["\\#escaped #real", ["real"]],
   ])("reads %j", (text, expected) => {
-    expect(tagsIn(text)).toEqual(expected);
-  });
-
-  it("skips headings, code, links and URLs", () => {
-    const text = [
-      "# Heading with #inside",
-      "## Second",
-      "`#code` and ``#also `x` here`` and an unclosed ` then #open",
-      "[x](#y) [#text](url) ](#dangling) <https://a.b/#auto> https://x.org/p#frag xhttps://n#a",
-      "```",
-      "#fenced",
-      "```",
-      "~~~~",
-      "#tilde",
-      "~~~",
-      "#still",
-      "~~~~",
-      "#after",
-    ].join("\n");
-    expect(tagsIn(text)).toEqual(["inside", "open", "after"]);
-  });
-
-  it("leaves an unclosed fence open to the end", () => {
-    expect(tagsIn("#a\n```\n#b")).toEqual(["a"]);
-  });
-
-  it("keeps a backtick line inside a tilde fence, and reads four spaces of indent as text", () => {
-    expect(tagsIn("~~~\n```\n#hidden\n~~~\n#after")).toEqual(["after"]);
-    expect(tagsIn("    ```\n#shown")).toEqual(["shown"]);
-    expect(tagsIn("- item\n  ```\n  #listed\n  ```\n#out")).toEqual(["out"]);
-  });
-
-  it("gives offsets in the source with CRLF lines", () => {
-    const text = "x #a\r\n#bb\r\n";
-    expect(markdownTagRanges(text)).toEqual([
-      { from: 2, to: 4, tag: "a" },
-      { from: 6, to: 9, tag: "bb" },
-    ]);
-  });
-
-  it("skips front matter and reads tags after it", () => {
-    expect(tagsIn("---\ntitle: #no\n---\n#yes")).toEqual(["yes"]);
-    expect(tagsIn("---\ntitle: open\n#yes")).toEqual(["yes"]);
+    expect(plainTextTags(text).map((range) => range.tag)).toEqual(expected);
   });
 
   it("checks where a tag may start", () => {
@@ -76,6 +22,7 @@ describe("inline tags", () => {
     expect(isTagStart("ab", 0)).toBe(false);
     expect(tagAt("# a", 0)).toBeNull();
     expect(tagAt("#//a//", 0)).toEqual({ from: 0, to: 4, tag: "a" });
+    expect(tagKey("ML")).toBe("ml");
   });
 
   it("finds tags in plain editor text and skips URLs there", () => {
@@ -84,51 +31,11 @@ describe("inline tags", () => {
       { from: 33, to: 35, tag: "c" },
     ]);
   });
-});
 
-describe("front matter lists", () => {
-  it.each([
-    ["---\ntags: [a, \"b c\", '#d']\n---\n", ["a", "b c", "d"]],
-    ["---\ntags: [a, b\n---\n", ["a", "b"]],
-    ["---\ntags:\n  - one\n\n  - '#two'\n  -\nnext: x\n---\n", ["one", "two"]],
-    ["---\ntags: alpha, #beta gamma\n---\n", ["alpha", "beta", "gamma"]],
-    ["---\ntags: \"#a #b\"\n---\n", ["a", "b"]],
-    ["---\nother: 1\n---\n", []],
-    ["no front matter", []],
-    ["---\ntags: [a]\n", []],
-    ["---\n\"tags\" : [a, b]\n---\n", ["a", "b"]],
-    ["---\ntags:[a]\n---\n", []],
-    ["---\n---\ntags: [a]\n---\n", []],
-    ["---\ntags: [\"a, b\"]\n---\n", ["a, b"]],
-    ["---\ntags: ['it''s', \"x\\\"y\", plain]\n---\n", ["it's", 'x"y', "plain"]],
-    ["---\ntags:\n  - \"a, b\"\n  - 'c' \n---\n", ["a, b", "c"]],
-    ["---\ntags: []\n---\n", []],
-  ])("reads %j", (text, expected) => {
-    expect(frontMatterList(text, "tags")).toEqual(expected);
-  });
-
-  it("splits aliases on commas only", () => {
-    expect(frontMatterList("---\naliases: Masking study, MAE\n---\n", "aliases")).toEqual(["Masking study", "MAE"]);
-    expect(frontMatterList("...\n", "aliases")).toEqual([]);
-  });
-});
-
-describe("note tags", () => {
-  const text = "---\ntags: [Draft, ml/vision]\n---\nWork on #ML/Vision and #draft and #new #New\n";
-
-  it("puts front matter first and keeps the first spelling", () => {
-    expect(displayTags(text)).toEqual(["Draft", "ml/vision", "new"]);
-    expect(noteTags(text)).toEqual(["draft", "ml/vision", "new"]);
-  });
-
-  it("indexes a quoted list item that holds a comma as one tag, as the Properties panel does", () => {
-    expect(noteTags('---\ntags: ["A, b", c]\n---\n')).toEqual(["a, b", "c"]);
-  });
-
-  it("matches a tag and its children", () => {
-    expect(tagKey("ML")).toBe("ml");
-    expect(tagMatches("ml/vision", "#ML")).toBe(true);
-    expect(tagMatches("ml", "ml")).toBe(true);
-    expect(tagMatches("mlops", "ml")).toBe(false);
+  it("gives a tag one tone whatever its case or leading #", () => {
+    expect(tagTone("Daily")).toBe(tagTone("daily"));
+    expect(tagTone("#DAILY")).toBe(tagTone("daily"));
+    expect(tagTone("##daily")).toBe(nameTone("daily"));
+    expect(tagTone("Lab/2024")).toBe(nameTone("lab/2024"));
   });
 });

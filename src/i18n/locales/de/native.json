@@ -218,5 +218,10 @@
       "title": "Berechtigungsprüfungen sind aus ({{mode}})",
       "description": "Der Agent kann Dateien bearbeiten und Befehle ausführen, ohne zu fragen. Oleafly konnte ihn nicht auf einen anderen Modus umschalten. Ändern Sie den Modus in den eigenen Einstellungen des Agenten."
     }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Schnellerfassung"
+    }
   }
 }

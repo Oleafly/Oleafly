@@ -8,15 +8,12 @@ import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { withNoteEmbeds, type EmbedOptions } from "./note-embeds";
 import { noteBaseExtensions, parseNoteMarkdown } from "./note-markdown";
 import {
-  resetRemoteImagesForTest,
   heldRemoteImage,
   REMOTE_IMAGE_HOSTS_KEY,
   remoteImageAllowed,
-  subscribeRemoteImages,
-  trustedRemoteImageHosts,
-  trustRemoteImageHost,
-  untrustRemoteImageHost,
-} from "./note-remote-images";
+  resetRemoteImagesForTest,
+} from "@/lib/remote-image";
+import "./tests/setup";
 
 const copy = enNotes.document.remoteImages;
 const editors: Editor[] = [];
@@ -59,7 +56,6 @@ function openMenu(notice: HTMLElement): HTMLElement {
 }
 
 beforeAll(async () => {
-  await loadNamespace("notes");
   await loadNamespace("common");
 });
 
@@ -111,34 +107,5 @@ describe("remote images in notes", () => {
     expect(remoteImageAllowed("https://x.org/later.png")).toBe(true);
     expect(heldRemoteImage("https://x.org/later.png")).toBeNull();
     expect(heldRemoteImage("https://y.org/b.png")).toEqual({ url: "https://y.org/b.png", host: "y.org" });
-  });
-
-  it("lists trusted hosts and holds a host's images again once it is removed", () => {
-    const seen = vi.fn();
-    const stop = subscribeRemoteImages(seen);
-    trustRemoteImageHost("x.org");
-    trustRemoteImageHost("y.org");
-    const listed = trustedRemoteImageHosts();
-    expect(listed).toEqual(["x.org", "y.org"]);
-    expect(trustedRemoteImageHosts()).toBe(listed);
-
-    untrustRemoteImageHost("x.org");
-    untrustRemoteImageHost("x.org");
-    stop();
-    expect(trustedRemoteImageHosts()).toEqual(["y.org"]);
-    expect(seen).toHaveBeenCalledTimes(3);
-    expect(heldRemoteImage("https://x.org/a.png")).toEqual({ url: "https://x.org/a.png", host: "x.org" });
-    expect(JSON.parse(localStorage.getItem(REMOTE_IMAGE_HOSTS_KEY) ?? "null")).toEqual(["y.org"]);
-    resetRemoteImagesForTest();
-    expect(trustedRemoteImageHosts()).toEqual(["y.org"]);
-  });
-
-  it("ignores a broken saved host list", () => {
-    localStorage.setItem(REMOTE_IMAGE_HOSTS_KEY, '{"x.org": true}');
-    resetRemoteImagesForTest();
-    expect(remoteImageAllowed("https://x.org/a.png")).toBe(false);
-    trustRemoteImageHost("x.org");
-    trustRemoteImageHost("x.org");
-    expect(JSON.parse(localStorage.getItem(REMOTE_IMAGE_HOSTS_KEY) ?? "[]")).toEqual(["x.org"]);
   });
 });

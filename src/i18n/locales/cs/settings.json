@@ -1141,146 +1141,6 @@
         "label": "Zobrazit PDF při kompilaci"
       },
       "title": "Režim Zen"
-    },
-    "notes": {
-      "sectionName": "Vzhled poznámek",
-      "resetAriaLabel": "Obnovit výchozí hodnotu: {{setting}}",
-      "text": {
-        "title": "Text"
-      },
-      "typeface": {
-        "label": "Řez písma",
-        "description": "Zvolte řez písma pro text poznámek.",
-        "options": {
-          "sans": "Bezpatkové",
-          "serif": "Patkové",
-          "mono": "Neproporcionální"
-        }
-      },
-      "font": {
-        "label": "Písmo poznámek",
-        "description": "Vyberte pro text poznámek libovolné nainstalované písmo. Když pole necháte prázdné, použije se nastavení Řez písma."
-      },
-      "fontSize": {
-        "label": "Velikost textu poznámek",
-        "description": "Nastavte velikost textu poznámek.",
-        "custom": "Vlastní",
-        "customLabel": "Vlastní velikost textu poznámek v pixelech"
-      },
-      "lineHeight": {
-        "label": "Výška řádku poznámek",
-        "description": "Nastavte rozestup mezi řádky textu poznámek.",
-        "customLabel": "Vlastní výška řádku poznámek"
-      },
-      "paragraphSpacing": {
-        "label": "Mezery mezi odstavci",
-        "description": "Nastavte mezery mezi odstavci, seznamy a dalšími bloky.",
-        "options": {
-          "compact": "Kompaktní",
-          "normal": "Normální",
-          "relaxed": "Volnější",
-          "spacious": "Prostorné"
-        }
-      },
-      "headings": {
-        "title": "Nadpisy a název"
-      },
-      "headingTypeface": {
-        "label": "Řez písma nadpisů",
-        "description": "Zvolte řez písma pro nadpisy a název poznámky.",
-        "options": {
-          "text": "Stejné jako text"
-        }
-      },
-      "headingFont": {
-        "label": "Písmo nadpisů",
-        "description": "Vyberte nainstalované písmo pro nadpisy a název poznámky. Když pole necháte prázdné, použije se nastavení Řez písma nadpisů."
-      },
-      "headingSize": {
-        "label": "Velikost nadpisů",
-        "description": "Nastavte, jak velké mají být nadpisy oproti textu.",
-        "options": {
-          "small": "Menší",
-          "normal": "Normální",
-          "large": "Větší"
-        }
-      },
-      "titleSize": {
-        "label": "Velikost názvu",
-        "description": "Nastavte velikost názvu v horní části každé poznámky."
-      },
-      "layout": {
-        "title": "Rozvržení"
-      },
-      "width": {
-        "label": "Šířka poznámky",
-        "description": "Jak široké jsou poznámky po otevření. Mění to i nabídka šířky v poznámce.",
-        "options": {
-          "standard": "Standardní",
-          "wide": "Široká",
-          "full": "Plná šířka"
-        }
-      },
-      "wordCount": {
-        "label": "Zobrazit počet slov",
-        "description": "Zobrazit počet slov poznámky na jejím panelu nástrojů."
-      },
-      "spellcheck": {
-        "label": "Kontrolovat pravopis v poznámkách",
-        "description": "Podtrhávat chybně napsaná slova při psaní poznámky."
-      },
-      "code": {
-        "title": "Kód"
-      },
-      "codeFont": {
-        "label": "Písmo kódu",
-        "description": "Vyberte nainstalované písmo pro bloky kódu a kód v řádku."
-      },
-      "codeTheme": {
-        "label": "Barvy bloků kódu",
-        "description": "Vyberte barvy syntaxe pro bloky kódu v poznámkách.",
-        "options": {
-          "editor": "Stejné jako editor"
-        }
-      },
-      "colors": {
-        "title": "Barvy"
-      },
-      "accent": {
-        "label": "Barva zvýraznění poznámek",
-        "description": "Používá se pro odkazy, štítky a zaškrtávací políčka úkolů v poznámkách.",
-        "matchApp": "Podle aplikace",
-        "customAriaLabel": "Vybrat vlastní barvu zvýraznění poznámek"
-      },
-      "highlight": {
-        "label": "Barva zvýrazňovače",
-        "description": "Barva pod zvýrazněným textem.",
-        "options": {
-          "yellow": "Žlutá",
-          "green": "Zelená",
-          "blue": "Modrá",
-          "pink": "Růžová",
-          "purple": "Fialová",
-          "accent": "Barva zvýraznění"
-        }
-      },
-      "callouts": {
-        "label": "Styl rámečků",
-        "description": "Jak v poznámkách vypadají zvýrazněné rámečky.",
-        "options": {
-          "tinted": "Tónované",
-          "filled": "Vyplněné",
-          "outlined": "Ohraničené",
-          "bar": "Postranní pruh"
-        }
-      },
-      "remoteImages": {
-        "title": "Obrázky z webu",
-        "description": "Poznámky načítají obrázky z těchto webů bez ptaní.",
-        "empty": "Před načtením obrázku z webu se poznámky nejdřív zeptají. Weby, kterým načítání vždy povolíte, se zobrazí tady.",
-        "remove": "Odebrat {{host}}"
-      },
-      "resetAll": "Obnovit vzhled poznámek"
     }
   },
   "checkpoints": {
@@ -2544,6 +2404,42 @@
       "notesAskAgent": {
         "description": "Zeptat se agenta na vybraný text, nebo otevřít a zavřít agenta poznámky.",
         "label": "Poznámky: zeptat se agenta"
+      },
+      "notesNewNote": {
+        "label": "Poznámky: nová poznámka",
+        "description": "Založit novou poznámku v aktuálním panelu."
+      },
+      "notesSearch": {
+        "label": "Poznámky: hledat v poznámkách",
+        "description": "Přejít do vyhledávacího pole nahoře v postranním panelu Poznámek."
+      },
+      "notesBookmark": {
+        "label": "Poznámky: přidat mezi oblíbené",
+        "description": "Přidat otevřenou poznámku mezi oblíbené, nebo ji z nich odebrat."
+      },
+      "notesCopyLink": {
+        "label": "Poznámky: kopírovat odkaz na poznámku",
+        "description": "Zkopírovat odkaz na otevřenou poznámku, který můžete vložit do jiné poznámky nebo do chatu."
+      },
+      "notesProperties": {
+        "label": "Poznámky: zobrazit nebo skrýt vlastnosti",
+        "description": "Otevřít nebo zavřít vlastnosti pod názvem poznámky."
+      },
+      "notesQuickCapture": {
+        "description": "Otevřít malé okno, do kterého si můžete něco zapsat z libovolné aplikace, i když je Oleafly na pozadí.",
+        "label": "Poznámky: rychlý záznam"
+      },
+      "notesCopyBlockLink": {
+        "description": "Zkopírovat odkaz na odstavec, položku seznamu nebo tabulku, ve které je kurzor.",
+        "label": "Poznámky: kopírovat odkaz na blok"
+      },
+      "notesBack": {
+        "description": "Vrátit se tam, kde jste byli na této kartě.",
+        "label": "Poznámky: zpět"
+      },
+      "notesForward": {
+        "description": "Po návratu zpět znovu přejít vpřed.",
+        "label": "Poznámky: vpřed"
       }
     },
     "application": {
@@ -2569,14 +2465,41 @@
         "renameSymbol": "Přejmenovat symbol nebo soubor v celém projektu",
         "slashCommandMenu": "Nabídka vkládání přes lomítko",
         "triggerAutocomplete": "Vyvolat automatické doplňování",
-        "undo": "Zpět"
+        "undo": "Zpět",
+        "noteBold": "Tučné",
+        "noteItalic": "Kurzíva",
+        "noteUnderline": "Podtržené",
+        "noteStrike": "Přeškrtnuté",
+        "noteCode": "Kód v řádku",
+        "noteHighlight": "Zvýraznit naposledy použitou barvou",
+        "noteSuperscript": "Horní index",
+        "noteSubscript": "Dolní index",
+        "noteHeadings": "Nadpis 1 až 6",
+        "noteText": "Převést na text",
+        "noteQuote": "Citát",
+        "noteCodeBlock": "Blok kódu",
+        "noteBulletList": "Odrážkový seznam",
+        "noteNumberedList": "Číslovaný seznam",
+        "noteTaskList": "Seznam úkolů",
+        "noteToggleTask": "Zaškrtnout nebo odškrtnout úkol",
+        "noteIndent": "Odsadit položku seznamu",
+        "noteOutdent": "Zmenšit odsazení položky seznamu",
+        "noteLineBreak": "Zalomení řádku ve stejném odstavci",
+        "noteFind": "Najít a nahradit",
+        "noteSelectAll": "Vybrat celou poznámku",
+        "noteUndo": "Zpět",
+        "noteRedo": "Znovu",
+        "noteInsertMenu": "Otevřít nabídku vkládání na začátku řádku",
+        "noteLinkMenu": "Odkaz na poznámku",
+        "noteTag": "Přidat štítek"
       },
       "managed": "Spravuje editor"
     },
     "categories": {
       "codeIntelligence": "Inteligence kódu",
       "editor": "Editor",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Poznámky"
     },
     "error": {
       "conflict": "Už je přiřazeno akci {{action}}.",
@@ -2622,6 +2545,15 @@
         "uppercase": "Velká písmena"
       },
       "unbound": "Nenastaveno"
+    },
+    "quickCapture": {
+      "label": "Rychlý záznam odkudkoli",
+      "description": "Zkratka pro rychlý záznam funguje ve všech aplikacích na tomto počítači.",
+      "ready": "Stisknutím {{shortcut}} v libovolné aplikaci otevřete rychlý záznam.",
+      "taken": "Zkratku {{shortcut}} už používá jiná aplikace. Vyberte jinou zkratku pro akci Poznámky: rychlý záznam.",
+      "invalid": "{{shortcut}} nemůže fungovat mimo Oleafly. Vyberte zkratku, která končí písmenem, číslicí nebo funkční klávesou.",
+      "failed": "Oleafly nedokázal zkratku nastavit. Chcete-li to zkusit znovu, vypněte a znovu zapněte rychlý záznam.",
+      "wayland": "Wayland aplikacím nedovoluje sledovat klávesy mimo jejich vlastní okna. Chcete-li rychlý záznam otevírat klávesou, přidejte v systémovém nastavení klávesnice vlastní zkratku, která spustí tento příkaz:"
     }
   },
   "systemIntegration": {
@@ -2717,17 +2649,5 @@
       "loadFailed": "Seznam serverů MCP se nepodařilo přečíst.",
       "missing": "{{name}} (nenalezeno)"
     }
-  },
-  "notesPreview": {
-    "label": "Náhled poznámky s tímto nastavením",
-    "title": "Terénní poznámky",
-    "heading": "Ranní průzkum",
-    "paragraph": "Do deváté slabě pršelo, pak se nad severním hřebenem vyjasnilo. V poledne byla půda ještě vlhká.",
-    "links": "Celý postup najdete v poznámce <note>Metoda odběru vzorků</note>, nebo procházejte <tag>#terénní-práce</tag>.",
-    "highlight": "Semenáčky za týden zdvojnásobily výšku.",
-    "calloutTitle": "Příští návštěva",
-    "calloutBody": "Před odběrem nových vzorků zkontrolujte půdní čidla.",
-    "taskDone": "Označit vzorky",
-    "task": "Nahrát fotky"
   }
 }

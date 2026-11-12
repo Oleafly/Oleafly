@@ -1,8 +1,14 @@
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { test, expect } from "../fixtures";
-import { openSettings, type Page } from "../helpers";
+import type { TauriPage } from "@srsholmes/tauri-playwright";
+import type { Page } from "../helpers";
+import { caretAtEnd, createNote, inNote, openNotes, recycleNote, turnNotesOff, turnNotesOn } from "../notes-app";
 import { scriptValue } from "../script-value";
 
 const LOAD_TIMEOUT_MS = 60_000;
+const LEAVE_AFTER_MS = 4_000;
+const LEAVE_SETTLE_MS = 8_000;
 const RUNTIME_URL = /^(?:oleafly-artifact:\/\/localhost|http:\/\/oleafly-artifact\.localhost)\/runtime\/[0-9a-f]{64}\.js$/;
 const FRAME_ORIGIN = process.platform === "win32" ? "http://oleafly-artifact.localhost" : "oleafly-artifact://localhost";
 const LOAD_FAILED = "This block couldn't load.";
@@ -44,6 +50,37 @@ const HTML_PROBE: Probe = {
   ].join("\n"),
 };
 
+function leaveProbe(address: string): Probe {
+  return {
+    block: "html",
+    slash: "/html",
+    item: "block:html",
+    marker: "leave-probe",
+    height: 199,
+    source: [
+      "<style>body { margin: 0; padding: 0; }</style>",
+      '<div id="leave-probe" style="height: 199px">leave probe</div>',
+      `<script>setTimeout(() => { location.href = ${JSON.stringify(address)} + "?note=" + encodeURIComponent(document.getElementById("leave-probe").textContent); }, ${LEAVE_AFTER_MS});</script>`,
+    ].join("\n"),
+  };
+}
+
+async function startLeaveTarget(): Promise<{ address: string; hits: () => number; close: () => Promise<void> }> {
+  let hits = 0;
+  const server = createServer((_request, response) => {
+    hits += 1;
+    response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    response.end("<!doctype html><title>left</title><p>left the note</p>");
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address() as AddressInfo;
+  return {
+    address: `http://127.0.0.1:${port}/leave`,
+    hits: () => hits,
+    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+  };
+}
+
 interface BlockState {
   found: boolean;
   probe: boolean;
@@ -57,131 +94,33 @@ interface BlockState {
   failed: boolean;
 }
 
-function inNote(noteId: string, body: string): string {
-  return `(() => {
-    const view = Array.from(document.querySelectorAll("[data-note-view]")).find(
-      (candidate) => candidate.getAttribute("data-note-view") === ${scriptValue(noteId)} && candidate.getClientRects().length > 0,
-    );
-    const surface = view ? view.querySelector(".note-body .ProseMirror") : null;
-    const editor = surface && surface.editor && !surface.editor.isDestroyed ? surface.editor : null;
-    ${body}
-  })()`;
-}
-
 function inBlock(noteId: string, probe: Probe, body: string): string {
   return inNote(
     noteId,
-    `const host = surface ? surface.querySelector(${scriptValue(`.note-drawn[data-block="${probe.block}"]`)}) : null;
-    const preview = host ? host.querySelector(".note-drawn-preview") : null;
+    `const host = surface ? surface.querySelector(${scriptValue(`[data-block="${probe.block}"]`)}) : null;
+    const preview = host ? host.querySelector("[data-scripted-block]") : null;
     if (!preview) return null;
     ${body}`,
   );
 }
 
-async function notesEnabled(page: Page): Promise<boolean> {
-  return page.evaluate<boolean>(
-    `import("/src/store/settings.ts").then(({ useSettingsStore }) => useSettingsStore.getState().notes === true)`,
-  );
-}
-
-async function turnNotesOn(page: Page): Promise<boolean> {
-  if (await notesEnabled(page)) return false;
-  await openSettings(page, "experimentation");
-  const toggle = page.getByTestId("settings-notes");
-  await expect(toggle).toBeVisible({ timeout: 10_000 });
-  await page.evaluate(
-    `(() => { const toggle = document.querySelector('[data-testid="settings-notes"]'); if (toggle && toggle.getAttribute("aria-checked") !== "true") toggle.click(); return true; })()`,
-  );
-  await expect(toggle).toHaveAttribute("aria-checked", "true");
-  await page.click('[data-testid="settings-close"]');
-  await page.waitForFunction(`!document.querySelector('[data-testid="settings-close"]')`, 10_000);
-  await expect.poll(() => notesEnabled(page), { timeout: 10_000 }).toBe(true);
-  return true;
-}
-
-async function openNotes(page: Page) {
-  await page.waitForFunction(
-    `(() => {
-      const ready = Array.from(document.querySelectorAll('button[aria-label="New note"]')).some(
-        (button) => !button.disabled && button.getClientRects().length > 0,
-      );
-      if (ready) return true;
-      const library = document.querySelector('[data-testid="library"][data-projects-loaded="true"]');
-      const dock = document.querySelector('[data-testid="open-notes"]');
-      const last = window.__e2eNotesOpenedAt || 0;
-      if (library && dock instanceof HTMLElement && dock.getClientRects().length > 0 && Date.now() - last > 2000) {
-        window.__e2eNotesOpenedAt = Date.now();
-        dock.click();
-      }
-      return false;
-    })()`,
-    60_000,
-  );
-}
-
-async function createNote(page: Page): Promise<string> {
-  const before = await page.evaluate<string[]>(
-    `Array.from(document.querySelectorAll("[data-note-view]"), (view) => view.getAttribute("data-note-view") || "")`,
-  );
-  await page.waitForFunction(
-    `(() => {
-      const button = Array.from(document.querySelectorAll('button[aria-label="New note"]')).find(
-        (candidate) => !candidate.disabled && candidate.getClientRects().length > 0,
-      );
-      if (!button) return false;
-      button.click();
-      return true;
-    })()`,
-    20_000,
-  );
-  let noteId = "";
-  await expect
-    .poll(
-      async () => {
-        noteId = await page.evaluate<string>(
-          `(() => {
-            const known = new Set(${scriptValue(before)});
-            const view = Array.from(document.querySelectorAll("[data-note-view]")).find((candidate) => {
-              const id = candidate.getAttribute("data-note-view") || "";
-              if (!id || known.has(id) || candidate.getClientRects().length === 0) return false;
-              const surface = candidate.querySelector(".note-body .ProseMirror");
-              return Boolean(surface && surface.editor && surface.editor.isEditable);
-            });
-            return view ? view.getAttribute("data-note-view") : "";
-          })()`,
-        );
-        return noteId;
-      },
-      { message: "the new note never opened with an editable body", timeout: 30_000 },
-    )
-    .not.toBe("");
-  return noteId;
-}
-
-async function insertFromSlashMenu(page: Page, noteId: string, probe: Probe) {
-  const typed = await page.evaluate<boolean>(
+async function insertFromSlashMenu(page: TauriPage, noteId: string, probe: Probe) {
+  await caretAtEnd(page, noteId);
+  const placed = await page.evaluate<boolean>(
     inNote(
       noteId,
       `if (!editor) return false;
-      return editor.chain().focus("end").insertContent(${scriptValue(probe.slash)}).run();`,
+      const parent = editor.state.selection.$from.parent;
+      return parent.type.name === "paragraph" && parent.content.size === 0;`,
     ),
   );
-  expect(typed, `typing ${probe.slash} into the note`).toBe(true);
-  const keyboardAfter = Date.now() + 3_000;
+  expect(placed, "the caret on an empty line at the end of the note").toBe(true);
+  await page.keyboard.insertText(probe.slash);
   await page.waitForFunction(
-    inNote(
-      noteId,
-      `const option = document.querySelector(${scriptValue(`[role="listbox"] [data-slash-item="${probe.item}"]`)});
-      if (option) {
-        option.click();
-        return true;
-      }
-      if (!surface || surface.getAttribute("aria-expanded") !== "true" || Date.now() < ${keyboardAfter}) return false;
-      surface.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", keyCode: 13, which: 13, bubbles: true, cancelable: true }));
-      return true;`,
-    ),
+    `document.querySelector(${scriptValue(`[role="listbox"] [data-slash-item="${probe.item}"][aria-selected="true"]`)}) !== null`,
     15_000,
   );
+  await page.keyboard.press("Enter");
   await expect
     .poll(
       () =>
@@ -273,16 +212,6 @@ async function expectLoaded(page: Page, noteId: string, probe: Probe, timeout = 
   expect(state?.src.startsWith(`${FRAME_ORIGIN}/`), `frame address ${state?.src}`).toBe(true);
 }
 
-async function recycleNote(page: Page, noteId: string) {
-  await page.evaluate(
-    `Promise.all([import("/src/lib/tauri.ts"), import("/src/store/files.ts")]).then(async ([tauri, files]) => {
-      await tauri.recycleProject(${scriptValue(noteId)});
-      await files.useFilesStore.getState().refreshProjects();
-      return true;
-    })`,
-  );
-}
-
 test("scripted React and HTML blocks in a note load the artifact runtime after Run", async ({ tauriPage }) => {
   test.setTimeout(180_000);
   const turnedOn = await turnNotesOn(tauriPage);
@@ -308,10 +237,53 @@ test("scripted React and HTML blocks in a note load the artifact runtime after R
     await expectLoaded(tauriPage, noteId, REACT_PROBE, 10_000);
   } finally {
     if (noteId) await recycleNote(tauriPage, noteId).catch(() => undefined);
-    if (turnedOn) {
-      await tauriPage
-        .evaluate(`import("/src/store/settings.ts").then(({ useSettingsStore }) => { useSettingsStore.getState().setNotes(false); return true; })`)
-        .catch(() => undefined);
+    if (turnedOn) await turnNotesOff(tauriPage);
+  }
+});
+
+test("a block that sends its frame to a web address keeps the app in place and never reruns", async ({ tauriPage }) => {
+  test.setTimeout(150_000);
+  const target = await startLeaveTarget();
+  const turnedOn = await turnNotesOn(tauriPage);
+  let noteId = "";
+  try {
+    const appAddress = await tauriPage.evaluate<string>("location.href");
+    await openNotes(tauriPage);
+    noteId = await createNote(tauriPage);
+    const probe = leaveProbe(target.address);
+    await insertFromSlashMenu(tauriPage, noteId, probe);
+    await runBlock(tauriPage, noteId, probe);
+    await expectLoaded(tauriPage, noteId, probe, LEAVE_AFTER_MS + LOAD_TIMEOUT_MS);
+    const running = await blockState(tauriPage, noteId, probe);
+    const since = Date.now();
+    const sources = new Set<string>([running?.src ?? ""]);
+    await expect
+      .poll(
+        async () => {
+          const state = await blockState(tauriPage, noteId, probe);
+          if (state?.src) sources.add(state.src);
+          return Boolean(state?.stalled) || Date.now() - since > LEAVE_AFTER_MS + LEAVE_SETTLE_MS;
+        },
+        { message: "the block never settled after trying to leave its frame", timeout: LEAVE_AFTER_MS + LEAVE_SETTLE_MS + 10_000 },
+      )
+      .toBe(true);
+    const settled = await blockState(tauriPage, noteId, probe);
+    expect(await tauriPage.evaluate<string>("location.href")).toBe(appAddress);
+    expect([...sources], "the block was rebuilt after leaving its frame").toHaveLength(1);
+    expect(target.hits(), "the block reached the web address more than once").toBeLessThanOrEqual(1);
+    if (process.platform === "darwin") expect(target.hits(), "the app refuses the navigation before any request").toBe(0);
+    if (target.hits() === 1 || !settled?.frame) {
+      expect(settled, "a block that tried to leave its frame is stopped").toMatchObject({ frame: false, stalled: true });
+    } else {
+      expect(settled, "a frame whose navigation was refused keeps its own document").toMatchObject({
+        frame: true,
+        stalled: false,
+        src: running?.src,
+      });
     }
+  } finally {
+    await target.close().catch(() => undefined);
+    if (noteId) await recycleNote(tauriPage, noteId).catch(() => undefined);
+    if (turnedOn) await turnNotesOff(tauriPage);
   }
 });

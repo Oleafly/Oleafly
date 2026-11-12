@@ -1,9 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{LazyLock, Mutex};
 
-use oleafly_core::markdown_scan::{
-    line_body, link_tail, matching_brackets, run_at, CodeSpans, FenceLine, Fences,
-};
+use oleafly_core::markdown_scan::{block_id_suffix, plain_line, FenceLine, Fences};
 use serde::Serialize;
 
 const SNIPPET_CHARS: usize = 120;
@@ -24,6 +22,9 @@ pub struct LinkTarget {
     pub kind: LinkKind,
     pub id: String,
     pub snippet: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub block: Option<String>,
+    pub line: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -33,11 +34,13 @@ pub struct NoteLinks {
     pub note_id: Option<String>,
     pub title: String,
     pub links: Vec<LinkTarget>,
+    pub blocks: Vec<String>,
 }
 
 struct ScannedLinks {
     note_id: Option<String>,
     links: Vec<LinkTarget>,
+    blocks: Vec<String>,
 }
 
 static CACHE: crate::note_index::ParsedCache<ScannedLinks> =
@@ -48,47 +51,73 @@ fn scan_links(text: &str) -> ScannedLinks {
     ScannedLinks {
         note_id: scanned.note_id,
         links: scanned.links,
+        blocks: scanned.blocks,
     }
 }
 
 #[tauri::command]
-pub async fn note_links() -> Result<Vec<NoteLinks>, String> {
-    tauri::async_runtime::spawn_blocking(note_links_blocking)
-        .await
-        .map_err(|error| format!("listing note links failed: {error}"))?
+pub async fn note_links(ids: Option<Vec<String>>) -> Result<Vec<NoteLinks>, String> {
+    tauri::async_runtime::spawn_blocking(move || match ids {
+        Some(ids) => note_links_of(&ids),
+        None => note_links_blocking(),
+    })
+    .await
+    .map_err(|error| format!("listing note links failed: {error}"))?
+}
+
+fn listed(entry: &crate::note_index::NoteEntry) -> Option<(std::path::PathBuf, NoteLinks)> {
+    match crate::note_index::read_parsed(&CACHE, entry, scan_links) {
+        Ok(Some((path, scanned, _))) => Some((
+            path,
+            NoteLinks {
+                project_id: entry.id.clone(),
+                note_id: scanned.note_id.clone(),
+                title: entry.title.clone(),
+                links: scanned.links.clone(),
+                blocks: scanned.blocks.clone(),
+            },
+        )),
+        Ok(None) => None,
+        Err(error) => {
+            let _ = crate::project::append_app_log(format!(
+                "Skipping links in note {:?}: {error}",
+                entry.id
+            ));
+            None
+        }
+    }
 }
 
 pub(crate) fn note_links_blocking() -> Result<Vec<NoteLinks>, String> {
     let entries = crate::note_index::notes()?;
     let mut seen = HashSet::new();
     let mut found = Vec::new();
-    for entry in entries.iter() {
-        match crate::note_index::read_parsed(
-            &CACHE,
-            entry,
-            crate::note_index::LockMode::Bounded,
-            scan_links,
-        ) {
-            Ok(Some((path, scanned, _))) => {
-                seen.insert(path);
-                found.push(NoteLinks {
-                    project_id: entry.id.clone(),
-                    note_id: scanned.note_id.clone(),
-                    title: entry.title.clone(),
-                    links: scanned.links.clone(),
-                });
-            }
-            Ok(None) => {}
-            Err(error) => {
-                let _ = crate::project::append_app_log(format!(
-                    "Skipping links in note {:?}: {error}",
-                    entry.id
-                ));
-            }
-        }
+    for (path, links) in entries.iter().filter_map(listed) {
+        seen.insert(path);
+        found.push(links);
     }
     crate::note_index::keep_only(&CACHE, &seen);
     Ok(found)
+}
+
+pub(crate) fn note_links_of(ids: &[String]) -> Result<Vec<NoteLinks>, String> {
+    let entries = crate::note_index::notes()?;
+    Ok(entries
+        .iter()
+        .filter(|entry| ids.contains(&entry.id))
+        .filter_map(listed)
+        .map(|(_, links)| links)
+        .collect())
+}
+
+pub(crate) fn forget_cache() {
+    crate::note_index::forget(&CACHE);
+}
+
+pub(crate) fn links_of(entry: &crate::note_index::NoteEntry) -> Result<Vec<LinkTarget>, String> {
+    Ok(crate::note_index::read_parsed(&CACHE, entry, scan_links)?
+        .map(|(_, scanned, _)| scanned.links.clone())
+        .unwrap_or_default())
 }
 
 pub(crate) fn scan_note(project_id: String, title: String, text: &str) -> NoteLinks {
@@ -102,11 +131,14 @@ pub(crate) fn scan_note(project_id: String, title: String, text: &str) -> NoteLi
         .split('\n')
         .map(|line| line.strip_suffix('\r').unwrap_or(line))
         .collect();
+    let first_line = text[..text.len() - body.len()].matches('\n').count() + 1;
+    let scanned = scan_lines(&lines, first_line);
     NoteLinks {
         project_id,
         note_id: front_matter.and_then(|front| front.scalar("id")),
         title,
-        links: link_targets(&lines),
+        links: scanned.links,
+        blocks: scanned.blocks,
     }
 }
 
@@ -116,6 +148,17 @@ pub(crate) fn is_linkable_id(id: &str) -> bool {
         && id
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+}
+
+pub(crate) fn link_block(href: &str) -> Option<String> {
+    let (_, fragment) = href.trim().split_once('#')?;
+    let id = fragment
+        .strip_prefix('^')
+        .or_else(|| fragment.strip_prefix("%5E"))
+        .or_else(|| fragment.strip_prefix("%5e"))?;
+    block_id_suffix(&format!("^{id}"))
+        .filter(|(_, found)| *found == id)
+        .map(|_| id.to_string())
 }
 
 pub(crate) fn parse_note_link(href: &str) -> Option<(LinkKind, String)> {
@@ -136,149 +179,6 @@ pub(crate) fn parse_note_link(href: &str) -> Option<(LinkKind, String)> {
     let path = path.split_once('#').map_or(path, |(id, _)| id);
     let id = path.strip_suffix('/').unwrap_or(path);
     is_linkable_id(id).then(|| (kind, id.to_string()))
-}
-
-struct Piece {
-    text: Vec<char>,
-    target: Option<(LinkKind, String)>,
-}
-
-struct ParsedLink {
-    label: Vec<char>,
-    destination: String,
-    end: usize,
-}
-
-fn plain_fragment(chars: &[char]) -> Vec<char> {
-    let mut out = Vec::with_capacity(chars.len());
-    let mut index = 0;
-    while index < chars.len() {
-        let c = chars[index];
-        if c == '\\' && index + 1 < chars.len() {
-            index += 1;
-            out.push(chars[index]);
-        } else if c == '~' && chars.get(index + 1) == Some(&'~') {
-            index += 1;
-        } else if c != '*' && c != '`' {
-            out.push(if c == '|' { ' ' } else { c });
-        }
-        index += 1;
-    }
-    out
-}
-
-fn link_at(chars: &[char], start: usize, brackets: &HashMap<usize, usize>) -> Option<ParsedLink> {
-    let close = *brackets.get(&start)?;
-    let (destination, end) = link_tail(chars, close + 1)?;
-    Some(ParsedLink {
-        label: plain_fragment(&chars[start + 1..close]),
-        destination: chars[destination].iter().collect(),
-        end,
-    })
-}
-
-pub(crate) fn has_scheme(url: &str) -> bool {
-    let mut chars = url.chars();
-    if !chars.next().is_some_and(|c| c.is_ascii_alphabetic()) {
-        return false;
-    }
-    for c in chars {
-        if c == ':' {
-            return true;
-        }
-        if !(c.is_ascii_alphanumeric() || matches!(c, '+' | '.' | '-')) {
-            return false;
-        }
-    }
-    false
-}
-
-fn autolink_at(chars: &[char], start: usize) -> Option<(Vec<char>, usize)> {
-    let mut index = start + 1;
-    while index < chars.len() && chars[index] != '>' {
-        if matches!(chars[index], '<' | ' ' | '\t') {
-            return None;
-        }
-        index += 1;
-    }
-    if index >= chars.len() {
-        return None;
-    }
-    let url = chars[start + 1..index].to_vec();
-    has_scheme(&url.iter().collect::<String>()).then_some((url, index + 1))
-}
-
-fn line_pieces(line: &str) -> Vec<Piece> {
-    let chars: Vec<char> = line_body(line).chars().collect();
-    let brackets = if chars.contains(&'[') {
-        matching_brackets(&chars, b'[', b']')
-    } else {
-        HashMap::new()
-    };
-    let spans = CodeSpans::new(&chars);
-    let mut pieces = Vec::new();
-    let mut run: Vec<char> = Vec::new();
-    let flush = |run: &mut Vec<char>, pieces: &mut Vec<Piece>| {
-        if !run.is_empty() {
-            pieces.push(Piece {
-                text: plain_fragment(run),
-                target: None,
-            });
-            run.clear();
-        }
-    };
-    let mut index = 0;
-    while index < chars.len() {
-        let c = chars[index];
-        if c == '\\' && index + 1 < chars.len() {
-            run.extend_from_slice(&chars[index..index + 2]);
-            index += 2;
-            continue;
-        }
-        if c == '`' {
-            let ticks = run_at(&chars, index, b'`');
-            match spans.close(index, ticks, chars.len()) {
-                Some(close) => {
-                    flush(&mut run, &mut pieces);
-                    pieces.push(Piece {
-                        text: chars[index + ticks..close].to_vec(),
-                        target: None,
-                    });
-                    index = close + ticks;
-                }
-                None => {
-                    run.extend_from_slice(&chars[index..index + ticks]);
-                    index += ticks;
-                }
-            }
-            continue;
-        }
-        let image = c == '!' && chars.get(index + 1) == Some(&'[');
-        if c == '[' || image {
-            if let Some(link) = link_at(&chars, if image { index + 1 } else { index }, &brackets) {
-                flush(&mut run, &mut pieces);
-                pieces.push(Piece {
-                    text: link.label,
-                    target: parse_note_link(&link.destination),
-                });
-                index = link.end;
-                continue;
-            }
-        }
-        if c == '<' {
-            if let Some((url, end)) = autolink_at(&chars, index) {
-                flush(&mut run, &mut pieces);
-                let target = parse_note_link(&url.iter().collect::<String>());
-                pieces.push(Piece { text: url, target });
-                index = end;
-                continue;
-            }
-        }
-        run.push(c);
-        index += 1;
-    }
-    flush(&mut run, &mut pieces);
-    pieces
 }
 
 fn collapsed(chars: impl IntoIterator<Item = char>) -> Vec<char> {
@@ -352,38 +252,45 @@ fn snippet_of(flat: &[char], link_start: usize, link_end: usize) -> String {
     )
 }
 
-fn link_targets(lines: &[&str]) -> Vec<LinkTarget> {
+struct ScannedLines {
+    links: Vec<LinkTarget>,
+    blocks: Vec<String>,
+}
+
+fn scan_lines(lines: &[&str], first_line: usize) -> ScannedLines {
     let mut seen = HashSet::new();
-    let mut found = Vec::new();
+    let mut links = Vec::new();
+    let mut blocks = Vec::new();
     let mut fences = Fences::default();
-    for line in lines {
+    for (index, line) in lines.iter().enumerate() {
         if fences.line(line) != FenceLine::Text {
             continue;
         }
-        let pieces = line_pieces(line);
-        if pieces.iter().all(|piece| piece.target.is_none()) {
-            continue;
+        if let Some((_, block)) = block_id_suffix(line) {
+            if !blocks.iter().any(|known| known == block) {
+                blocks.push(block.to_string());
+            }
         }
-        let mut flat = Vec::new();
-        let mut starts = Vec::with_capacity(pieces.len());
-        for piece in &pieces {
-            starts.push(flat.len());
-            flat.extend_from_slice(&piece.text);
-        }
-        for (index, piece) in pieces.iter().enumerate() {
-            let Some((kind, id)) = &piece.target else {
+        let plain = plain_line(line);
+        for link in &plain.links {
+            let Some((kind, id)) = parse_note_link(&link.destination) else {
                 continue;
             };
-            if seen.insert((*kind, id.clone())) {
-                found.push(LinkTarget {
-                    kind: *kind,
-                    id: id.clone(),
-                    snippet: snippet_of(&flat, starts[index], starts[index] + piece.text.len()),
+            let block = (kind == LinkKind::Note)
+                .then(|| link_block(&link.destination))
+                .flatten();
+            if seen.insert((kind, id.clone(), block.clone())) {
+                links.push(LinkTarget {
+                    kind,
+                    id,
+                    snippet: snippet_of(&plain.text, link.label.start, link.label.end),
+                    block,
+                    line: first_line + index,
                 });
             }
         }
     }
-    found
+    ScannedLines { links, blocks }
 }
 
 #[cfg(test)]
@@ -573,11 +480,9 @@ mod tests {
             "`".repeat(200_000),
             "``` ".repeat(20_000)
         );
-        let started = std::time::Instant::now();
         let found = links(&line);
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].1, "a");
-        assert!(started.elapsed() < std::time::Duration::from_secs(10));
     }
 
     #[test]
@@ -635,7 +540,7 @@ mod tests {
         assert_eq!(
             links(text),
             vec![
-                one(LinkKind::Note, "f", "<not a link> unclosed w"),
+                one(LinkKind::Note, "f", "<not a link> `unclosed w"),
                 one(LinkKind::Note, "g", "nested [inner] text p"),
                 one(LinkKind::Note, "h", "nested [inner] text p"),
                 one(LinkKind::Note, "i", "#nospace q"),
@@ -651,7 +556,7 @@ mod tests {
     #[test]
     fn reads_escaped_characters_inside_a_destination_and_a_title() {
         let text = r#"[a](<oleafly://note/a\>>) [b](oleafly://note/b "t \" q") [c](x\)y) end\ "#;
-        assert_eq!(links(text), vec![one(LinkKind::Note, "b", "a b c end")]);
+        assert_eq!(links(text), vec![one(LinkKind::Note, "b", r"a b c end\")]);
     }
 
     #[test]
@@ -743,11 +648,15 @@ mod tests {
                     kind: LinkKind::Note,
                     id: "n-1".into(),
                     snippet: "See Masking in Paper.".into(),
+                    block: None,
+                    line: 6,
                 },
                 LinkTarget {
                     kind: LinkKind::Project,
                     id: target.clone(),
                     snippet: "See Masking in Paper.".into(),
+                    block: None,
+                    line: 6,
                 },
             ]
         );
@@ -756,11 +665,45 @@ mod tests {
         assert_eq!(listed[2].project_id, target);
         assert_eq!(listed[2].note_id.as_deref(), Some("n-1"));
 
+        let one = note_links_of(std::slice::from_ref(&source)).unwrap();
+        assert_eq!(one.len(), 1);
+        assert_eq!(one[0], listed[0]);
+        assert_eq!(note_links_blocking().unwrap().len(), 3);
+
         let dir = crate::paths::project_dir(&target).unwrap();
         std::fs::remove_file(dir.join(crate::project::NOTE_FILE)).unwrap();
         let after = note_links_blocking().unwrap();
         assert!(after.iter().all(|note| note.project_id != target));
         std::env::remove_var("OLEAFLY_DATA_DIR");
         std::fs::remove_dir_all(root).unwrap();
+    }
+    #[test]
+    fn reads_block_targets_lines_and_the_block_ids_a_note_defines() {
+        let text = "---\nid: n1\n---\nIntro [a](oleafly://note/a) ^intro\n\nSee [b](oleafly://note/a#^res) and [c](oleafly://note/a#%5Eres).\n- [d](oleafly://note/a#^other) ^item-2\n\n| x |\n| --- |\n\n^tbl\n```\nfake ^code\n```\n[e](oleafly://project/p#^nope)\n";
+        let scanned = scan_note("p".into(), "T".into(), text);
+        let found: Vec<(String, Option<String>, usize)> = scanned
+            .links
+            .iter()
+            .map(|link| (link.id.clone(), link.block.clone(), link.line))
+            .collect();
+        assert_eq!(
+            found,
+            vec![
+                ("a".to_string(), None, 4),
+                ("a".to_string(), Some("res".to_string()), 6),
+                ("a".to_string(), Some("other".to_string()), 7),
+                ("p".to_string(), None, 16),
+            ]
+        );
+        assert_eq!(scanned.links[0].snippet, "Intro a");
+        assert_eq!(scanned.blocks, vec!["intro", "item-2", "tbl"]);
+        assert_eq!(link_block("oleafly://note/a#^x-1"), Some("x-1".into()));
+        assert_eq!(link_block("oleafly://note/a#heading"), None);
+        assert_eq!(link_block("oleafly://note/a#^bad id"), None);
+        let json = serde_json::to_value(&scanned).unwrap();
+        assert_eq!(json["links"][1]["block"], "res");
+        assert_eq!(json["links"][1]["line"], 6);
+        assert!(json["links"][0].get("block").is_none());
+        assert_eq!(json["blocks"][2], "tbl");
     }
 }

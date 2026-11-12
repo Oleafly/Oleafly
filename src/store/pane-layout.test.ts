@@ -3,12 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DEFAULT_PANE_LAYOUT,
   PANE_LAYOUT_KEY,
-  groupDomIdOf,
-  groupNameOf,
   insertAtEdge,
   isDefaultPaneLayout,
   layoutKey,
-  legacyGroupOf,
+  moveChanges,
   movePane,
   movePaneToEdge,
   nodeShown,
@@ -16,16 +14,19 @@ import {
   panelIdOf,
   paneLayoutIsDefault,
   paneSide,
-  parentSplitOf,
+  paneTreeFrom,
   parsePaneLayout,
   removePane,
   renderedChildren,
+  reportSplitSizes,
   resetPaneLayout,
-  separatorIdOf,
-  storageOrderOf,
+  separatorIdAfter,
+  splitsOf,
+  storageOrder,
   swapEditorAndPreview,
   swapPanes,
   usePaneLayoutStore,
+  withLiveSizes,
   type PaneNode,
   type PaneShown,
   type PaneSplit,
@@ -43,6 +44,10 @@ function sizesAddUp(node: PaneNode): void {
   expect(node.sizes).toHaveLength(node.children.length);
   expect(node.sizes.reduce((sum, size) => sum + size, 0)).toBeCloseTo(100, 1);
   for (const child of node.children) sizesAddUp(child);
+}
+
+function parentSplitOf(layout: PaneSplit, pane: string): PaneSplit | undefined {
+  return splitsOf(layout).find((node) => node.children.some((child) => "pane" in child && child.pane === pane));
 }
 
 function band(layout: PaneSplit): PaneSplit {
@@ -66,55 +71,46 @@ describe("default layout", () => {
     sizesAddUp(DEFAULT_PANE_LAYOUT);
   });
 
-  it("names its groups, panels and separators like the fixed layout did", () => {
+  it("keeps the released group, panel and separator ids", () => {
     const horizontal = band(DEFAULT_PANE_LAYOUT);
     const document = horizontal.children[1] as PaneSplit;
-    expect([groupNameOf(DEFAULT_PANE_LAYOUT), groupNameOf(horizontal), groupNameOf(document)]).toEqual([
-      "vertical",
-      "horizontal",
-      "document",
-    ]);
+    expect(splitsOf(DEFAULT_PANE_LAYOUT).map((node) => node.id)).toEqual(["vertical", "horizontal", "document"]);
     expect([panelIdOf(horizontal), panelIdOf(document)]).toEqual(["content-band", "editorpdf"]);
-    expect([groupDomIdOf(DEFAULT_PANE_LAYOUT), groupDomIdOf(horizontal), groupDomIdOf(document)]).toEqual([
-      undefined,
-      undefined,
-      undefined,
-    ]);
-    expect(storageOrderOf(horizontal)).toEqual(["sidebar", "editorpdf", "assistant"]);
-    const all = ["sidebar", "editorpdf", "assistant"];
-    expect(separatorIdOf(DEFAULT_PANE_LAYOUT, ["content-band", "terminal"], "content-band", "terminal")).toBe(
-      "v-terminal",
-    );
-    expect(separatorIdOf(horizontal, all, "sidebar", "editorpdf")).toBe("h-tree");
-    expect(separatorIdOf(horizontal, all, "editorpdf", "assistant")).toBe("h-assistant");
-    expect(separatorIdOf(horizontal, ["sidebar", "assistant"], "sidebar", "assistant")).toBe("h-tree");
-    expect(separatorIdOf(document, ["editor", "pdf"], "editor", "pdf")).toBe("h-mid");
+    expect(storageOrder(horizontal.children.map(panelIdOf))).toEqual(["sidebar", "editorpdf", "assistant"]);
+    expect(storageOrder(["terminal", "content-band"])).toEqual(["content-band", "terminal"]);
+    expect(storageOrder(["pdf", "editor"])).toEqual(["editor", "pdf"]);
+    expect(separatorIdAfter(DEFAULT_PANE_LAYOUT, horizontal)).toBe("v-terminal");
+    expect(separatorIdAfter(horizontal, horizontal.children[0] as PaneNode)).toBe("h-tree");
+    expect(separatorIdAfter(horizontal, document)).toBe("h-assistant");
+    expect(separatorIdAfter(document, document.children[0] as PaneNode)).toBe("h-mid");
   });
 
-  it("names moved groups after the panes they hold", () => {
-    const moved = movePane(DEFAULT_PANE_LAYOUT, "terminal", { kind: "pane", pane: "pdf", side: "bottom" });
-    const stack = parentSplitOf(moved, "terminal") as PaneSplit;
-    expect(groupNameOf(stack)).toBe("split-pdf-terminal");
-    expect(panelIdOf(stack)).toBe("panes-pdf-terminal");
-    expect(legacyGroupOf(stack)).toBeNull();
-    expect(storageOrderOf(stack)).toEqual(["pdf", "terminal"]);
-    expect(groupDomIdOf(stack)).toBe("oleafly-panes-split-pdf-terminal-pdf-terminal");
-    expect(separatorIdOf(stack, ["pdf", "terminal"], "pdf", "terminal")).toBe("sep-pdf-terminal");
+  it("gives a split made by a move the smallest free short id and keeps the ids of splits that survive", () => {
+    const stacked = movePane(DEFAULT_PANE_LAYOUT, "terminal", { kind: "pane", pane: "pdf", side: "bottom" });
+    expect(splitsOf(stacked).map((node) => node.id)).toEqual(["horizontal", "document", "s1"]);
+    const stack = parentSplitOf(stacked, "terminal") as PaneSplit;
+    expect(panelIdOf(stack)).toBe("s1");
+    expect(separatorIdAfter(stack, stack.children[0] as PaneNode)).toBe("sep-pdf-terminal");
+    const second = movePane(stacked, "assistant", { kind: "pane", pane: "sidebar", side: "bottom" });
+    expect(splitsOf(second).map((node) => node.id)).toEqual(["horizontal", "s2", "document", "s1"]);
+    const back = movePane(second, "terminal", { kind: "edge", side: "bottom" });
+    expect(splitsOf(back).map((node) => node.id)).toEqual(["s1", "horizontal", "s2", "document"]);
+  });
 
+  it("keeps the default ids when a move ends in the default arrangement", () => {
+    const moved = movePane(DEFAULT_PANE_LAYOUT, "terminal", { kind: "pane", pane: "pdf", side: "bottom" });
+    usePaneLayoutStore.getState().setLayout(moved);
+    usePaneLayoutStore.getState().move("terminal", { kind: "edge", side: "bottom" });
+    expect(usePaneLayoutStore.getState().layout).toBe(DEFAULT_PANE_LAYOUT);
+  });
+
+  it("orders panels for storage the same way whatever their order on screen", () => {
     const reordered = movePane(DEFAULT_PANE_LAYOUT, "sidebar", { kind: "pane", pane: "assistant", side: "right" });
     const horizontal = band(reordered);
-    expect(groupNameOf(horizontal)).toBe("horizontal");
-    expect(storageOrderOf(horizontal)).toEqual(["sidebar", "editorpdf", "assistant"]);
-    expect(groupDomIdOf(horizontal)).toBe("oleafly-panes-horizontal-editorpdf-assistant-sidebar");
-  });
-
-  it("gives the sidebar and the assistant their own separator when they sit side by side", () => {
-    const moved = movePane(DEFAULT_PANE_LAYOUT, "assistant", { kind: "pane", pane: "sidebar", side: "right" });
-    const horizontal = band(moved);
-    expect(key(moved)).toBe("column(row(sidebar,assistant,row(editor,pdf)),terminal)");
-    expect(separatorIdOf(horizontal, ["sidebar", "assistant", "editorpdf"], "sidebar", "assistant")).toBe(
-      "h-side-assistant",
-    );
+    expect(horizontal.id).toBe("horizontal");
+    expect(horizontal.children.map(panelIdOf)).toEqual(["editorpdf", "assistant", "sidebar"]);
+    expect(storageOrder(horizontal.children.map(panelIdOf))).toEqual(["sidebar", "editorpdf", "assistant"]);
+    expect(separatorIdAfter(horizontal, horizontal.children[1] as PaneNode)).toBe("sep-assistant-sidebar");
   });
 });
 
@@ -173,8 +169,13 @@ describe("moving a pane", () => {
     const stacked = movePane(DEFAULT_PANE_LAYOUT, "editor", { kind: "pane", pane: "pdf", side: "top" });
     expect(key(stacked)).toBe("column(row(sidebar,column(editor,pdf),assistant),terminal)");
     const document = band(stacked).children[1] as PaneSplit;
-    expect([groupNameOf(document), panelIdOf(document)]).toEqual(["document", "editorpdf"]);
-    expect(groupDomIdOf(document)).toBeUndefined();
+    expect([document.id, panelIdOf(document)]).toEqual(["document", "editorpdf"]);
+  });
+
+  it("tells whether a move would change the arrangement", () => {
+    expect(moveChanges(DEFAULT_PANE_LAYOUT, "terminal", { kind: "edge", side: "bottom" })).toBe(false);
+    expect(moveChanges(DEFAULT_PANE_LAYOUT, "editor", { kind: "pane", pane: "pdf", side: "left" })).toBe(false);
+    expect(moveChanges(DEFAULT_PANE_LAYOUT, "editor", { kind: "edge", side: "top" })).toBe(true);
   });
 
   it("ignores drops on the pane itself or on unknown panes", () => {
@@ -190,7 +191,7 @@ describe("moving a pane", () => {
     const rest = removePane(DEFAULT_PANE_LAYOUT, "pdf") as PaneSplit;
     expect(key(rest)).toBe("column(row(sidebar,editor,assistant),terminal)");
     sizesAddUp(rest);
-    const alone = removePane({ direction: "row", children: [{ pane: "editor" }], sizes: [100] }, "editor");
+    const alone = removePane({ id: "s1", direction: "row", children: [{ pane: "editor" }], sizes: [100] }, "editor");
     expect(alone).toBeNull();
   });
 
@@ -211,9 +212,54 @@ describe("reading a saved layout", () => {
     }
   });
 
-  it("keeps a valid tree", () => {
+  it("keeps a valid tree with its ids and version", () => {
     const moved = movePane(DEFAULT_PANE_LAYOUT, "terminal", { kind: "pane", pane: "pdf", side: "bottom" });
-    expect(parsePaneLayout(JSON.stringify(moved))).toEqual(moved);
+    expect(parsePaneLayout(JSON.stringify({ version: 2, root: moved }))).toEqual(moved);
+  });
+
+  it("falls back to the default for a version it does not know", () => {
+    const moved = movePane(DEFAULT_PANE_LAYOUT, "terminal", { kind: "edge", side: "top" });
+    expect(parsePaneLayout(JSON.stringify({ version: 3, root: moved }))).toBe(DEFAULT_PANE_LAYOUT);
+    expect(parsePaneLayout(JSON.stringify({ version: 2 }))).toBe(DEFAULT_PANE_LAYOUT);
+  });
+
+  it("reads a tree saved without a version and gives the released ids to the splits that match them", () => {
+    const legacy = {
+      direction: "row",
+      sizes: [20, 52, 28],
+      children: [
+        { pane: "sidebar" },
+        { direction: "row", sizes: [50, 50], children: [{ pane: "editor" }, { direction: "column", sizes: [60, 40], children: [{ pane: "pdf" }, { pane: "terminal" }] }] },
+        { pane: "assistant" },
+      ],
+    };
+    const layout = parsePaneLayout(JSON.stringify(legacy));
+    expect(key(layout)).toBe("row(sidebar,row(editor,column(pdf,terminal)),assistant)");
+    expect(splitsOf(layout).map((node) => node.id)).toEqual(["s3", "s2", "s1"]);
+    const stacked = parsePaneLayout(
+      JSON.stringify({
+        direction: "column",
+        children: [
+          { direction: "row", children: [{ pane: "sidebar" }, { direction: "column", children: [{ pane: "editor" }, { pane: "pdf" }] }, { pane: "assistant" }] },
+          { pane: "terminal" },
+        ],
+      }),
+    );
+    expect(splitsOf(stacked).map((node) => node.id)).toEqual(["vertical", "horizontal", "document"]);
+  });
+
+  it("replaces missing, repeated or unsafe split ids", () => {
+    const tree = {
+      id: "same",
+      direction: "row",
+      children: [
+        { id: "same", direction: "column", children: [{ pane: "editor" }, { pane: "pdf" }] },
+        { id: "editor", direction: "column", children: [{ pane: "sidebar" }, { pane: "assistant" }] },
+        { id: "Bad Id", direction: "column", children: [{ pane: "terminal" }] },
+      ],
+    };
+    expect(splitsOf(paneTreeFrom(tree) as PaneSplit).map((node) => node.id)).toEqual(["same", "s1", "s2"]);
+    expect(paneTreeFrom("junk")).toBeNull();
   });
 
   it("drops unknown and repeated panes and adds the missing ones where they normally go", () => {
@@ -264,9 +310,9 @@ describe("reading a saved layout", () => {
 });
 
 describe("what shows on screen", () => {
-  it("keeps the terminal in its group while a sibling shows", () => {
+  it("renders only the panes that are open, the terminal included", () => {
     const shown: PaneShown = { ...ALL_SHOWN, terminal: false, assistant: false };
-    expect(renderedChildren(DEFAULT_PANE_LAYOUT, shown).map(panelIdOf)).toEqual(["content-band", "terminal"]);
+    expect(renderedChildren(DEFAULT_PANE_LAYOUT, shown).map(panelIdOf)).toEqual(["content-band"]);
     expect(renderedChildren(band(DEFAULT_PANE_LAYOUT), shown).map(panelIdOf)).toEqual(["sidebar", "editorpdf"]);
   });
 
@@ -296,9 +342,13 @@ describe("what shows on screen", () => {
 });
 
 describe("pane layout store", () => {
-  it("saves a moved layout and forgets it when the layout is back to default", () => {
+  it("saves a moved layout with its version and forgets it when the layout is back to default", () => {
     movePaneToEdge("assistant", "left");
     expect(paneLayoutIsDefault()).toBe(false);
+    expect(JSON.parse(localStorage.getItem(PANE_LAYOUT_KEY) ?? "null")).toEqual({
+      version: 2,
+      root: usePaneLayoutStore.getState().layout,
+    });
     expect(parsePaneLayout(localStorage.getItem(PANE_LAYOUT_KEY))).toEqual(usePaneLayoutStore.getState().layout);
     resetPaneLayout();
     expect(usePaneLayoutStore.getState().layout).toBe(DEFAULT_PANE_LAYOUT);
@@ -328,9 +378,32 @@ describe("pane layout store", () => {
     expect(usePaneLayoutStore.getState().layout).toBe(DEFAULT_PANE_LAYOUT);
   });
 
+  it("starts the moved panes from the sizes on screen and leaves the store alone for a move that changes nothing", () => {
+    reportSplitSizes("horizontal", { sidebar: 30, editorpdf: 40, assistant: 30 });
+    reportSplitSizes("document", { editor: 70, pdf: 30 });
+    const before = usePaneLayoutStore.getState().layout;
+    usePaneLayoutStore.getState().move("terminal", { kind: "edge", side: "bottom" });
+    expect(usePaneLayoutStore.getState().layout).toBe(before);
+    usePaneLayoutStore.getState().move("terminal", { kind: "pane", pane: "pdf", side: "bottom" });
+    const moved = usePaneLayoutStore.getState().layout;
+    expect(moved.sizes).toEqual([30, 40, 30]);
+    expect((moved.children[1] as PaneSplit).sizes).toEqual([70, 30]);
+    reportSplitSizes("horizontal", null);
+    reportSplitSizes("document", null);
+  });
+
+  it("scales sizes on screen into the share the visible panes hold", () => {
+    reportSplitSizes("horizontal", { sidebar: 40, editorpdf: 60 });
+    const sized = withLiveSizes(DEFAULT_PANE_LAYOUT);
+    expect(band(sized).sizes).toEqual([28.8, 43.2, 28]);
+    reportSplitSizes("horizontal", { stale: 100 });
+    expect(band(withLiveSizes(DEFAULT_PANE_LAYOUT)).sizes).toEqual([20, 52, 28]);
+    reportSplitSizes("horizontal", null);
+  });
+
   it("starts from the saved layout", async () => {
     const moved = movePane(DEFAULT_PANE_LAYOUT, "terminal", { kind: "edge", side: "right" });
-    localStorage.setItem(PANE_LAYOUT_KEY, JSON.stringify(moved));
+    localStorage.setItem(PANE_LAYOUT_KEY, JSON.stringify({ version: 2, root: moved }));
     vi.resetModules();
     const fresh = await import("./pane-layout");
     expect(fresh.layoutKey(fresh.usePaneLayoutStore.getState().layout)).toBe(key(moved));

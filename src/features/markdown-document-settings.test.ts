@@ -4,9 +4,7 @@ import { describe, expect, it } from "vitest";
 import { applySettingEdits } from "./document-settings";
 import {
   markdownSettingsEdits,
-  readFrontMatterScalar,
   readMarkdownDocumentSettings,
-  setFrontMatterScalar,
   validateMarkdownSetting,
   type MarkdownSettingChanges,
 } from "./markdown-document-settings";
@@ -320,51 +318,3 @@ describe("front matter edge cases", () => {
   });
 });
 
-describe("single front matter keys", () => {
-  it("reads a plain or quoted value and nothing for lists, empty values or a missing key", () => {
-    const text = front('title: "Run 3: results"', "icon: 🧪", "tags: [a, b]", "agent:");
-    expect(readFrontMatterScalar(text, "title")).toBe("Run 3: results");
-    expect(readFrontMatterScalar(text, "icon")).toBe("🧪");
-    expect(readFrontMatterScalar(text, "tags")).toBeNull();
-    expect(readFrontMatterScalar(text, "agent")).toBeNull();
-    expect(readFrontMatterScalar(text, "missing")).toBeNull();
-    expect(readFrontMatterScalar("No front matter.\n", "title")).toBeNull();
-  });
-
-  it("replaces a value in place and keeps its quotes", () => {
-    expect(setFrontMatterScalar(front("title: 'Old'", "icon: x"), "title", "It's new")).toBe(
-      front("title: 'It''s new'", "icon: x"),
-    );
-    expect(setFrontMatterScalar(front('title: "Old"'), "title", "New")).toBe(front('title: "New"'));
-  });
-
-  it("fills a key that has no value yet", () => {
-    expect(setFrontMatterScalar(front("icon:", "title: T"), "icon", "🧪")).toBe(front("icon: 🧪", "title: T"));
-  });
-
-  it("adds a missing key at the end of the front matter or starts one", () => {
-    expect(setFrontMatterScalar(front("title: T"), "icon", "lucide:flask")).toBe(front("title: T", "icon: lucide:flask"));
-    expect(setFrontMatterScalar("Body.\n", "title", "Notes")).toBe("---\ntitle: Notes\n---\n\nBody.\n");
-  });
-
-  it("quotes values YAML would read as something else", () => {
-    expect(setFrontMatterScalar(front("title: T"), "title", "yes")).toBe(front('title: "yes"'));
-    expect(setFrontMatterScalar(front("title: T"), "title", " padded")).toBe(front('title: " padded"'));
-    expect(setFrontMatterScalar(front("title: T"), "title", "")).toBe(front('title: ""'));
-    expect(setFrontMatterScalar(front("title: T"), "title", "3.5")).toBe(front('title: "3.5"'));
-  });
-
-  it("removes a key and leaves the text alone when the key is absent", () => {
-    expect(setFrontMatterScalar(front("title: T", "icon: x"), "icon", null)).toBe(front("title: T"));
-    expect(setFrontMatterScalar(front("title: T"), "icon", null)).toBe(front("title: T"));
-    expect(setFrontMatterScalar("Body.\n", "icon", null)).toBe("Body.\n");
-  });
-
-  it("leaves lists and unclosed front matter untouched", () => {
-    const list = front("icon: [a, b]");
-    expect(setFrontMatterScalar(list, "icon", "🧪")).toBe(list);
-    const unclosed = "---\ntitle: T\n\nBody.\n";
-    expect(setFrontMatterScalar(unclosed, "title", "New")).toBe(unclosed);
-    expect(readFrontMatterScalar(unclosed, "title")).toBeNull();
-  });
-});

@@ -14,7 +14,6 @@ export interface QuotedScalar {
 const LINE_BREAK = /\r?\n/u;
 const NOT_A_KEY = /^[ \t#-]/u;
 const QUOTED_KEY = /^(["'])(.*)\1$/su;
-const TRAILING_BLANKS = /[ \t]+$/u;
 const COMMENT = /\s#/u;
 
 function doubleQuoted(source: string): QuotedScalar | null {
@@ -61,23 +60,29 @@ export function frontMatterBody(text: string): string {
   return splitFrontMatter(text)?.body ?? text;
 }
 
+function blankFreeEnd(line: string, end: number): number {
+  let at = end;
+  while (at > 0 && (line[at - 1] === " " || line[at - 1] === "\t")) at -= 1;
+  return at;
+}
+
 export function frontMatterKey(line: string): string | null {
   if (NOT_A_KEY.test(line)) return null;
   const colon = line.indexOf(":");
   if (colon < 0) return null;
   const next = line[colon + 1];
   if (next !== undefined && next !== " " && next !== "\t") return null;
-  const raw = line.slice(0, colon).replace(TRAILING_BLANKS, "");
+  const raw = line.slice(0, blankFreeEnd(line, colon));
   const key = QUOTED_KEY.exec(raw)?.[2] ?? raw;
   return key === "" ? null : key;
 }
 
-export function frontMatterRawValue(line: string): string {
+function frontMatterRawValue(line: string): string {
   const colon = line.indexOf(":");
   return colon < 0 ? "" : line.slice(colon + 1).trim();
 }
 
-export function frontMatterScalar(raw: string): string | null {
+function frontMatterScalar(raw: string): string | null {
   const source = raw.trim();
   let value: string | null;
   if (source.startsWith('"') || source.startsWith("'")) value = quotedScalar(source)?.value ?? null;
@@ -87,16 +92,9 @@ export function frontMatterScalar(raw: string): string | null {
   return trimmed === "" ? null : trimmed;
 }
 
-export function valueOfLines(lines: readonly string[], key: string): string | null {
-  for (let index = lines.length - 1; index >= 0; index -= 1) {
-    if (frontMatterKey(lines[index]) === key) return frontMatterScalar(frontMatterRawValue(lines[index]));
-  }
-  return null;
-}
-
-export function valuesOfLines(lines: readonly string[]): ReadonlyMap<string, string> {
+export function frontMatterValues(text: string): ReadonlyMap<string, string> {
   const values = new Map<string, string>();
-  for (const line of lines) {
+  for (const line of splitFrontMatter(text)?.lines ?? []) {
     const key = frontMatterKey(line);
     if (key === null) continue;
     const value = frontMatterScalar(frontMatterRawValue(line));
@@ -104,13 +102,4 @@ export function valuesOfLines(lines: readonly string[]): ReadonlyMap<string, str
     else values.set(key, value);
   }
   return values;
-}
-
-export function frontMatterValues(text: string): ReadonlyMap<string, string> {
-  return valuesOfLines(splitFrontMatter(text)?.lines ?? []);
-}
-
-export function frontMatterValue(text: string, key: string): string | null {
-  const front = splitFrontMatter(text);
-  return front ? valueOfLines(front.lines, key) : null;
 }

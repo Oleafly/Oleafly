@@ -3,8 +3,9 @@ import { createMarkdownSourceSnapshot, type MarkdownSourceSnapshot, splitMarkdow
 import type { Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { EditorContent, useEditor } from "@tiptap/react";
-import { SmilePlus } from "lucide-react";
+import { ChevronLeft, ChevronRight, SmilePlus } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { isImeEnter } from "@/components/ai/composer/ime";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,12 @@ import { useNoteTabsStore } from "@/store/note-tabs";
 import { matchesShortcut, shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { NoteAssistant, type NoteAssistantHandle, type NoteEditorBridge } from "./NoteAssistant";
 import { NoteBacklinks } from "./NoteBacklinks";
+import { NoteBlockHandle } from "./NoteBlockHandle";
+import { NoteDeadLinksSection } from "./NoteDeadLinks";
+import { NoteInfo } from "./NoteInfo";
+import { NoteAttachmentsSection } from "./NotesAttachments";
+import { createBlockRefs } from "./note-block-refs";
+import { NoteCitationMarks, NoteReferences, useNoteCitations } from "./note-citation-marks";
 import { calloutNodeView } from "./NoteCallout";
 import { NoteLinkMenu } from "./NoteLinkMenu";
 import { NoteSlash } from "./note-slash";
@@ -27,21 +34,27 @@ import { NoteProperties } from "./NoteProperties";
 import { NoteProofreadingPopover, useNoteProofreading } from "./note-proofreading";
 import { mergeFrontMatter } from "./note-properties";
 import { NoteTagMenu } from "./NoteTagMenu";
+import { NoteAtMenu } from "./NoteAtMenu";
+import { NoteFieldPopover } from "./NoteFieldPopover";
 import { withNoteEmbeds } from "./note-embeds";
 import { NoteHoverPreview } from "./note-hover-preview";
 import { scrollViewToHeading } from "./note-links";
 import { noteBaseExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "./note-markdown";
 import { useNoteKnowledge } from "./use-note-knowledge";
-import { withBlockViews, withImageView } from "./block-views";
+import { noteAssetActions, withBlockViews, withImageView } from "./block-views";
 import { IconPicker } from "./IconPicker";
-import { LocalEdits } from "./local-edits";
 import { diffNoteDocs } from "./note-diff";
 import { applyNoteEdits } from "./note-edits";
 import { readNoteFacts, withNoteColor, withNoteIcon, withNoteIdentity, withNoteTitle } from "./note-file";
-import { NoteChip } from "./note-icons";
+import { NoteChip, noteColorStyle } from "./note-icons";
 import { useNoteWidth, type NoteWidth } from "./note-prefs";
 import { useNoteLinkExtensions } from "./use-note-links";
 import { NoteImageDrop, noteImageTarget } from "./note-image-drop";
+import { NoteUndoMemory, restoreUndo, startUndoMemory, undoRecord } from "./note-undo-memory";
+import { NoteLinkChoice } from "./note-link-choice";
+import { bubblePlace, type SelectionBubble } from "./note-bubble";
+import { indexedUndoStore } from "./note-undo-store";
+import { useSettingsStore } from "@/store/settings";
 import {
   canUndoReject,
   docWithPending,
@@ -57,18 +70,22 @@ import {
 import { NoteToolbar } from "./NoteToolbar";
 import { NoteFind } from "./note-find";
 import { NoteFindBar } from "./NoteFindBar";
-import { isRemoteTransaction, noteSourceOf, showNoteDoc } from "./note-live-doc";
+import { isRemoteTransaction, noteSourceOf, parseSharedNote, type SharedNote, sharedNoteSnapshot, showNoteDoc } from "./note-live-doc";
 import { NotePeerMarks } from "./note-presence-decorations";
 import { noteClipboardText, NoteSelection, type WholeNoteText } from "./note-selection";
 import { frontMatterChange, frontMatterSteps } from "./note-front-matter-step";
-import { mergeSequences } from "./note-merge";
+import { type ClosedWrite, keepEditorReview, lf, outsideDrafts, withBodyEdits, writeClosedNote } from "./note-outside-changes";
 import { registerNoteEditor, trackNoteSave } from "@/lib/open-note-editors";
-import { addPendingBatch, editsBetween, takePendingBatches } from "./note-pending-suggestions";
+import { addPendingBatch, editsBetween, keptReview, takePendingBatches } from "./note-pending-suggestions";
+import { saveVersionBeforeAccept } from "./note-versions";
+import { useDailyNeighbors } from "./daily-note";
 import { editableChanged } from "./note-editable";
 import { type NoteLiveControl, type NoteLiveTarget, useNoteLiveEditor } from "./use-note-live";
 import { useNotesData } from "./notes-data";
-import { noteVersion, noteWrittenHere, recordNoteWrite } from "./notes-service";
+import { noteVersion, noteWrittenHere } from "./notes-service";
 import { FloatingReview } from "./FloatingReview";
+import { NoteLiveNotice } from "./NoteLiveNotice";
+import { NoteSaveFailed } from "./NoteSaveStatus";
 import { NoteConflictError, type NoteItem, type NoteSource } from "./types";
 
 export type SaveStatus = "saved" | "saving" | "failed";
@@ -86,26 +103,14 @@ interface NoteDocumentProps {
   onOpenNote?: (noteId: string, options: { newTab: boolean; heading?: string }) => void;
   onOpenTag?: (tag: string) => void;
   openHeading?: { slug: string; id: number } | null;
+  openScroll?: { top: number; id: number } | null;
   live?: NoteLiveTarget | null;
   onClose?: () => void;
   shown?: boolean;
+  infoPanel?: HTMLElement | null;
 }
 
-interface SelectionBubble {
-  top: number;
-  left: number;
-}
-
-const BUBBLE_HEIGHT = 40;
-const BUBBLE_WIDTH = 200;
-const BUBBLE_GAP = 8;
 const BUBBLE_PROBE = 4096;
-
-export function bubblePlace(start: { top: number; left: number }, end: { bottom: number }, viewport: { width: number }): SelectionBubble {
-  const above = start.top - BUBBLE_HEIGHT;
-  const top = above >= BUBBLE_GAP ? above : end.bottom + BUBBLE_GAP;
-  return { top, left: Math.max(BUBBLE_GAP, Math.min(start.left, viewport.width - BUBBLE_WIDTH)) };
-}
 
 function selectedText(editor: Editor, wholeNote: WholeNoteText): string {
   const { selection, doc } = editor.state;
@@ -118,36 +123,6 @@ function firstTime(request: object | null | undefined): boolean {
   if (!request || handledRequests.has(request)) return false;
   handledRequests.add(request);
   return true;
-}
-
-function lf(text: string): string {
-  return text.replace(/\r\n?/gu, "\n");
-}
-
-export function keepClosedEdits(saved: string, closing: string, disk: string): string {
-  const lines = (text: string) => lf(text).split("\n");
-  return mergeSequences(lines(saved), lines(disk), lines(closing), (line) => line).join("\n");
-}
-
-type ClosedWrite = (text: string, version: string) => Promise<NoteSource>;
-
-async function writeClosedNote(write: ClosedWrite, text: string, version: string, saved: string): Promise<string | null> {
-  try {
-    await write(text, version);
-    return null;
-  } catch (error) {
-    if (!(error instanceof NoteConflictError)) {
-      void logError("save the note", error);
-      return describeError(error);
-    }
-    try {
-      await write(keepClosedEdits(saved, text, error.disk.text), error.disk.version);
-      return null;
-    } catch (again) {
-      void logError("save the note", again);
-      return describeError(again);
-    }
-  }
 }
 
 const SAVE_DELAY_MS = 800;
@@ -164,7 +139,7 @@ type BlankClick = Pick<MouseEvent, "target" | "clientX" | "clientY" | "button" |
 export function focusFromBlank(editor: Editor | null, event: BlankClick): void {
   if (!editor || event.button !== 0) return;
   const target = event.target;
-  if (!(target instanceof HTMLElement) || !target.hasAttribute("data-note-blank")) return;
+  if (!(target instanceof HTMLElement) || target.dataset.noteBlank === undefined) return;
   const body = editor.view.dom.getBoundingClientRect();
   if (event.clientY < body.top) return;
   event.preventDefault();
@@ -178,20 +153,37 @@ export function focusFromBlank(editor: Editor | null, event: BlankClick): void {
   else editor.commands.focus("end");
 }
 
-function parseNote(source: string) {
-  return parseNoteMarkdown(source);
+function frontMatterBlock(text: string): string {
+  return text.trimEnd();
 }
 
-function frontMatterBlock(text: string): string {
-  return text.replace(/\s+$/u, "");
+async function writeWhenIdle(saving: { readonly current: Promise<void> | null }, write: () => Promise<void>): Promise<void> {
+  const pending = saving.current;
+  if (!pending) return write();
+  await pending;
+  return writeWhenIdle(saving, write);
+}
+
+async function repeatWhile(rounds: number, round: () => Promise<boolean>): Promise<void> {
+  if (rounds <= 0 || !(await round())) return;
+  await repeatWhile(rounds - 1, round);
 }
 
 function sameText(left: string, right: string): boolean {
-  return left.replace(/\r\n?/gu, "\n") === right.replace(/\r\n?/gu, "\n");
+  return lf(left) === lf(right);
 }
 
 function namesTitle(name: string, title: string): boolean {
   return name === title || Array.from(title).slice(0, PROJECT_NAME_CHARS).join("").trim() === name;
+}
+
+function keepUndo(editor: Editor, noteId: string): Promise<void> {
+  const record = useSettingsStore.getState().notesKeepUndo ? undoRecord(editor) : null;
+  return record ? indexedUndoStore.write(noteId, record) : Promise.resolve();
+}
+
+function sameNoteDoc(left: ProseMirrorNode, right: ProseMirrorNode): boolean {
+  return left.eq(right) || serializeNoteMarkdown(left.toJSON()) === serializeNoteMarkdown(right.toJSON());
 }
 
 export function NoteDocument(props: Readonly<NoteDocumentProps>) {
@@ -244,6 +236,13 @@ function NoteLoader({ onRetry, ...props }: Readonly<NoteDocumentProps & { onRetr
     return (
       <div className="flex flex-1 items-center justify-center">
         <Spinner size="sm" />
+        {props.infoPanel &&
+          createPortal(
+            <div className="flex h-full items-center justify-center p-6">
+              <Spinner size="sm" />
+            </div>,
+            props.infoPanel,
+          )}
       </div>
     );
   }
@@ -259,12 +258,17 @@ function NoteEditor({
   onOpenNote,
   onOpenTag,
   openHeading,
+  openScroll,
   live = null,
   shown = true,
+  infoPanel,
 }: Readonly<NoteDocumentProps & { initial: NoteSource }>) {
   const { t } = useTranslation(["notes"]);
   const {
     resolveAsset,
+    openAsset,
+    revealAsset,
+    attachFile,
     loadNote,
     renameNote,
     saveNote,
@@ -273,9 +277,18 @@ function NoteEditor({
   } = useNotesData();
   const resolveRef = useRef(resolveAsset);
   resolveRef.current = resolveAsset;
+  const assetsRef = useRef({ openAsset, revealAsset });
+  assetsRef.current = { openAsset, revealAsset };
+  const attachRef = useRef(attachFile);
+  attachRef.current = attachFile;
   const imageTargetRef = useRef(noteImageTarget(note));
   imageTargetRef.current = noteImageTarget(note);
-  const [parsed] = useState(() => parseNote(initial.text));
+  const [opened] = useState(() => {
+    const kept = keptReview(note.id);
+    const shown = withBodyEdits(initial.text, kept.file);
+    return { kept, shown, parsed: parseNoteMarkdown(shown ?? initial.text) };
+  });
+  const parsed = opened.parsed;
   const openLinked = (projectId: string, newTab: boolean, heading?: string) =>
     onOpenNote?.(projectId, heading ? { newTab, heading } : { newTab });
   const noteLinks = useNoteLinkExtensions({
@@ -291,26 +304,35 @@ function NoteEditor({
     onOpenTag,
   });
   const proofreading = useNoteProofreading(note);
+  const [blockRefs] = useState(createBlockRefs);
   const extensions = useMemo(() => {
     const noteId = note.id;
     const resolve = (path: string) => resolveRef.current?.(noteId, path) ?? Promise.resolve(null);
     return [
       ...noteBaseExtensions({ renderMath: renderMathExpression }, { callout: calloutNodeView() })
         .map(withBlockViews)
-        .map((extension) => withImageView(extension, resolve, noteId))
+        .map((extension) => withImageView(extension, resolve, note.shared ? undefined : noteId, () => noteAssetActions(assetsRef.current, noteId)))
         .map((extension) => withNoteEmbeds(extension, knowledge.embeds)),
       NoteSuggestions,
       NotePeerMarks,
       NoteSelection.configure({ wholeNote: (doc) => serializeNoteMarkdown(doc.toJSON(), snapshotRef.current) }),
       NoteSlash,
-      NoteImageDrop.configure({ target: () => (readOnlyRef.current ? null : imageTargetRef.current) }),
+      NoteImageDrop.configure({
+        target: () => (readOnlyRef.current ? null : imageTargetRef.current),
+        attach: () => attachRef.current,
+      }),
       ...noteLinks.extensions,
       ...knowledge.tagExtensions,
+      ...knowledge.atExtensions,
       proofreading.extension,
       NoteFind,
+      NoteCitationMarks,
+      NoteUndoMemory,
+      blockRefs.extension,
     ];
-  }, [knowledge, note.id, noteLinks.extensions, proofreading.extension]);
+  }, [blockRefs, knowledge, note.id, note.shared, noteLinks.extensions, proofreading.extension]);
   const editor = useEditor({ extensions, content: parsed.doc });
+  const citations = useNoteCitations(editor, note, (id) => onOpenNote?.(id, { newTab: false }));
   const assistantRef = useRef<NoteAssistantHandle>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const assistantDockRef = useRef<HTMLDivElement>(null);
@@ -320,17 +342,24 @@ function NoteEditor({
   const snapshotRef = useRef<MarkdownSourceSnapshot | null>(null);
   const versionRef = useRef(initial.version);
   const savedTextRef = useRef(initial.text);
-  const localRef = useRef(new LocalEdits());
+  const diskRef = useRef<SharedNote | null>(null);
+  const proposalRef = useRef<SharedNote | null>(null);
+  const keptRef = useRef(opened.kept.file.length + opened.kept.proposed.length > 0);
+  const restoreRef = useRef(opened.kept.proposed);
   const timerRef = useRef<number | null>(null);
   const savingRef = useRef<Promise<void> | null>(null);
+  const undoWriteRef = useRef<Promise<void>>(Promise.resolve());
   const statusRef = useRef(onStatusChange);
   statusRef.current = onStatusChange;
   const lastStatusRef = useRef<SaveStatus>("saved");
   const failureRef = useRef<unknown>(null);
   const retryRef = useRef<() => void>(() => undefined);
+  const [saveFailure, setSaveFailure] = useState<NoteSaveFailure | null>(null);
   const report = useCallback((status: SaveStatus) => {
     lastStatusRef.current = status;
-    statusRef.current?.(status, status === "failed" ? { error: failureRef.current, retry: () => retryRef.current() } : null);
+    const failure = status === "failed" ? { error: failureRef.current, retry: () => retryRef.current() } : null;
+    setSaveFailure(failure);
+    statusRef.current?.(status, failure);
   }, []);
   const [facts, setFacts] = useState(() => readNoteFacts(initial.text));
   const [title, setTitle] = useState(facts.title ?? note.title);
@@ -347,12 +376,27 @@ function NoteEditor({
   const deferredRef = useRef(false);
   const handBackRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
-  const quietRef = useRef(false);
   const wholeNote = useCallback<WholeNoteText>((doc) => serializeNoteMarkdown(doc.toJSON(), snapshotRef.current), []);
 
   const sourceOf = useCallback(
     (doc: ProseMirrorNode) => noteSourceOf(doc, frontMatterRef.current, separatorRef.current, snapshotRef.current),
     [],
+  );
+  const bodySourceOf = useCallback((doc: ProseMirrorNode) => lf(noteSourceOf(doc, "", "", snapshotRef.current)), []);
+
+  const diskNote = useCallback(
+    (text: string) => {
+      diskRef.current = parseSharedNote(editor.schema, text, diskRef.current);
+      return diskRef.current;
+    },
+    [editor],
+  );
+
+  const keepReviewNow = useCallback(
+    (closing = false) => {
+      keptRef.current = keepEditorReview(editor, note.id, { body: bodySourceOf, full: sourceOf }, closing, keptRef.current);
+    },
+    [bodySourceOf, editor, note.id, sourceOf],
   );
 
   const adoptFacts = useCallback(
@@ -371,48 +415,36 @@ function NoteEditor({
         versionRef.current = disk.version;
         return false;
       }
-      const next = parseNote(disk.text);
+      const base = diskNote(savedTextRef.current);
+      const next = diskNote(disk.text);
       const ownWrite =
         timerRef.current === null &&
         savingRef.current === null &&
         noteWrittenHere(note.id, disk.text) &&
         sameText(sourceOf(docWithPending(editor, "disk")), savedTextRef.current);
-      if (ownWrite) {
-        if (hasPending(editor, "disk")) {
-          quietRef.current = true;
-          try {
-            showSuggestions(editor, [], "disk");
-          } finally {
-            quietRef.current = false;
-          }
-        }
-        frontMatterRef.current = next.frontmatter;
-        savedFrontMatterRef.current = next.frontmatter;
-        separatorRef.current = next.separator;
-        adoptFacts(next.frontmatter);
-        showNoteDoc(editor, editor.schema.nodeFromJSON(next.doc));
-        snapshotRef.current = createMarkdownSourceSnapshot(next.layout, editor.getJSON());
-        savedDocRef.current = editor.state.doc;
-        localRef.current.clear();
-        versionRef.current = disk.version;
-        savedTextRef.current = disk.text;
-        return false;
-      }
-      const merged = mergeFrontMatter(savedFrontMatterRef.current, frontMatterRef.current, next.frontmatter);
+      const merged = ownWrite
+        ? next.frontmatter
+        : mergeFrontMatter(savedFrontMatterRef.current, frontMatterRef.current, next.frontmatter);
       frontMatterRef.current = merged;
       savedFrontMatterRef.current = next.frontmatter;
-      separatorRef.current = next.separator;
+      separatorRef.current = splitMarkdownFrontMatter(disk.text).separator;
       adoptFacts(merged);
-      const drafts = diffNoteDocs(editor.state.doc, editor.schema.nodeFromJSON(next.doc)).filter(
-        (draft) => !localRef.current.overlaps(draft.from, draft.to),
-      );
-      if (drafts.length > 0 || hasPending(editor, "disk")) showSuggestions(editor, drafts, "disk");
+      if (ownWrite) {
+        if (hasPending(editor, "disk")) showSuggestions(editor, [], "disk");
+        showNoteDoc(editor, next.doc);
+      } else {
+        const drafts = outsideDrafts(base, docWithPending(editor, "disk"), editor.state.doc, next);
+        if (drafts.file.length > 0 || hasPending(editor, "disk")) showSuggestions(editor, drafts.file, "disk");
+        if (drafts.held.length > 0) showSuggestions(editor, drafts.held, "agent", true);
+      }
+      snapshotRef.current = sharedNoteSnapshot(next);
       savedDocRef.current = docWithPending(editor, "disk");
       versionRef.current = disk.version;
       savedTextRef.current = disk.text;
+      keepReviewNow();
       return merged !== next.frontmatter;
     },
-    [adoptFacts, editor, note.id, sourceOf],
+    [adoptFacts, diskNote, editor, keepReviewNow, note.id, sourceOf],
   );
 
   const save = useCallback(async (): Promise<void> => {
@@ -421,58 +453,58 @@ function NoteEditor({
       return;
     }
     deferredRef.current = false;
-    while (savingRef.current) await savingRef.current;
-    frontMatterRef.current = frontMatterBlock(withNoteIdentity(frontMatterRef.current));
-    const frontMatter = frontMatterRef.current;
-    const savedDoc = docWithPending(editor, "disk");
-    const text = sourceOf(savedDoc);
-    if (sameText(text, savedTextRef.current)) {
-      report("saved");
-      return;
-    }
-    report("saving");
-    const docAtStart = editor.state.doc;
-    const base = baseRef.current;
-    baseRef.current = null;
-    const version = versionRef.current;
-    const saving = recordNoteWrite(note.id, text, () =>
-      base === null ? saveNote(note.id, text, version) : saveNote(note.id, text, version, base),
-    );
-    const run = saving.then(
-      (saved) => {
-        failureRef.current = null;
-        handBackRef.current = null;
-        versionRef.current = saved.version;
-        savedTextRef.current = saved.text;
-        savedFrontMatterRef.current = frontMatter;
-        savedDocRef.current = savedDoc;
-        if (editor.state.doc === docAtStart) localRef.current.clear();
+    await writeWhenIdle(savingRef, async () => {
+      frontMatterRef.current = frontMatterBlock(withNoteIdentity(frontMatterRef.current));
+      const frontMatter = frontMatterRef.current;
+      const savedDoc = docWithPending(editor, "disk");
+      const text = sourceOf(savedDoc);
+      if (sameText(text, savedTextRef.current)) {
+        keepReviewNow();
         report("saved");
-      },
-      (error: unknown) => {
-        if (baseRef.current === null) baseRef.current = base;
-        if (!mountedRef.current) return;
-        if (error instanceof NoteConflictError) {
-          handleDisk(error.disk);
-          report("saving");
-          if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-          timerRef.current = window.setTimeout(() => {
-            timerRef.current = null;
-            void save();
-          }, SAVE_DELAY_MS);
-          return;
-        }
-        failureRef.current = error;
-        void logError("save the note", error);
-        report("failed");
-      },
-    );
-    const tracked: Promise<void> = run.finally(() => {
-      if (savingRef.current === tracked) savingRef.current = null;
+        return;
+      }
+      report("saving");
+      const base = baseRef.current;
+      baseRef.current = null;
+      const version = versionRef.current;
+      const saving = base === null ? saveNote(note.id, text, version) : saveNote(note.id, text, version, base);
+      const run = saving.then(
+        (saved) => {
+          failureRef.current = null;
+          handBackRef.current = null;
+          versionRef.current = saved.version;
+          savedTextRef.current = saved.text;
+          savedFrontMatterRef.current = frontMatter;
+          savedDocRef.current = savedDoc;
+          if (!editor.isDestroyed && editor.state.doc === savedDoc) undoWriteRef.current = keepUndo(editor, note.id);
+          if (mountedRef.current) keepReviewNow();
+          report("saved");
+        },
+        (error: unknown) => {
+          if (baseRef.current === null) baseRef.current = base;
+          if (!mountedRef.current) return;
+          if (error instanceof NoteConflictError) {
+            handleDisk(error.disk);
+            report("saving");
+            if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+            timerRef.current = window.setTimeout(() => {
+              timerRef.current = null;
+              void save();
+            }, SAVE_DELAY_MS);
+            return;
+          }
+          failureRef.current = error;
+          void logError("save the note", error);
+          report("failed");
+        },
+      );
+      const tracked: Promise<void> = run.finally(() => {
+        if (savingRef.current === tracked) savingRef.current = null;
+      });
+      savingRef.current = tracked;
+      await tracked;
     });
-    savingRef.current = tracked;
-    await tracked;
-  }, [editor, handleDisk, note.id, report, saveNote, sourceOf]);
+  }, [editor, handleDisk, keepReviewNow, note.id, report, saveNote, sourceOf]);
   retryRef.current = () => void save();
 
   const scheduleSave = useCallback(() => {
@@ -491,7 +523,6 @@ function NoteEditor({
   const collab = useNoteLiveEditor(note.id, editor, {
     sourceOf,
     baseline: () => {
-      localRef.current.clear();
       const shared = handBackRef.current;
       if (shared !== null) {
         handBackRef.current = null;
@@ -532,7 +563,6 @@ function NoteEditor({
       }
     },
     handBack: ({ text, base, edited }) => {
-      localRef.current.clear();
       handBackRef.current = edited ? text : null;
       savedTextRef.current = edited ? base : text;
       savedFrontMatterRef.current = splitMarkdownFrontMatter(savedTextRef.current).frontmatter;
@@ -546,9 +576,11 @@ function NoteEditor({
       report("saving");
       void save();
     },
-  }, live);
+  }, live, shown);
   collabRef.current = collab.control;
   readOnlyRef.current = collab.state.readOnly;
+  const viewOnlyRef = useRef(false);
+  viewOnlyRef.current = collab.state.viewOnly;
   const liveRef = useRef(false);
   liveRef.current = collab.state.live;
   const shownTitleRef = useRef(note.title);
@@ -570,15 +602,18 @@ function NoteEditor({
 
   const flushNow = useCallback(async (): Promise<string | null> => {
     await collabRef.current?.flush();
-    for (let round = 0; round < FLUSH_ROUNDS; round += 1) {
+    await repeatWhile(FLUSH_ROUNDS, async () => {
       if (savingRef.current) await savingRef.current;
-      if (timerRef.current === null) break;
+      if (timerRef.current === null) return false;
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
       await save();
-    }
+      return true;
+    });
+    if (mountedRef.current) keepReviewNow();
+    await undoWriteRef.current;
     return unsavedReason();
-  }, [save, unsavedReason]);
+  }, [keepReviewNow, save, unsavedReason]);
 
   const flushRef = useRef(flushNow);
   flushRef.current = flushNow;
@@ -618,8 +653,36 @@ function NoteEditor({
   );
 
   useEffect(() => {
-    snapshotRef.current = createMarkdownSourceSnapshot(parsed.layout, editor.getJSON());
-  }, [editor, parsed]);
+    if (opened.shown === null) {
+      snapshotRef.current = createMarkdownSourceSnapshot(opened.parsed.layout, editor.getJSON());
+      return;
+    }
+    const file = diskNote(initial.text);
+    snapshotRef.current = sharedNoteSnapshot(file);
+    showSuggestions(editor, diffNoteDocs(editor.state.doc, file.doc), "disk");
+    setReview(reviewSummary(editor));
+    savedDocRef.current = docWithPending(editor, "disk");
+  }, [diskNote, editor, initial.text, opened]);
+
+  const remembersUndo = useSettingsStore((state) => state.notesKeepUndo);
+  useEffect(() => {
+    if (!remembersUndo || note.shared || live !== null || readOnlyRef.current || opened.shown !== null) return;
+    let current = true;
+    const loaded = editor.state.doc;
+    void indexedUndoStore.read(note.id).then((record) => {
+      if (!current || editor.isDestroyed) return;
+      if (record === null || editor.state.doc !== loaded || !restoreUndo(editor, record, sameNoteDoc)) {
+        startUndoMemory(editor);
+        return;
+      }
+      snapshotRef.current = createMarkdownSourceSnapshot(opened.parsed.layout, editor.getJSON());
+      savedDocRef.current = editor.state.doc;
+      editor.view.dispatch(editor.state.tr.setMeta("addToHistory", false));
+    });
+    return () => {
+      current = false;
+    };
+  }, [editor, live, note.id, note.shared, opened, remembersUndo]);
 
   useEffect(() => {
     const onTransaction = ({ transaction }: { transaction: Parameters<typeof isReviewTransaction>[0] }) => {
@@ -633,7 +696,7 @@ function NoteEditor({
       if (isReviewNavigation(transaction)) {
         editor.view.dom.querySelector(".note-diff-active")?.scrollIntoView({ block: "center" });
       }
-      if (isRemoteTransaction(transaction) || quietRef.current) return;
+      if (isRemoteTransaction(transaction)) return;
       let frontMatter = frontMatterRef.current;
       for (const step of frontMatterSteps(transaction)) {
         frontMatter = frontMatterBlock(mergeFrontMatter(step.before, step.after, frontMatter));
@@ -642,12 +705,7 @@ function NoteEditor({
         frontMatterRef.current = frontMatter;
         adoptFacts(frontMatter);
       }
-      if (transaction.docChanged) {
-        if (!liveRef.current) localRef.current.record(transaction.mapping);
-        scheduleSave();
-      } else if (isReviewTransaction(transaction)) {
-        scheduleSave();
-      }
+      if (transaction.docChanged || isReviewTransaction(transaction)) scheduleSave();
     };
     let frame = 0;
     const placeBubble = () => {
@@ -658,7 +716,7 @@ function NoteEditor({
         return;
       }
       const next = bubblePlace(editor.view.coordsAtPos(from), editor.view.coordsAtPos(to), { width: window.innerWidth });
-      setBubble((current) => (current && current.top === next.top && current.left === next.left ? current : next));
+      setBubble((current) => (current?.top === next.top && current.left === next.left ? current : next));
     };
     const trackSelection = () => {
       if (editor.state.selection.empty) {
@@ -724,21 +782,20 @@ function NoteEditor({
 
   useEffect(() => {
     const flush = () => {
-      if (timerRef.current === null) return null;
+      if (timerRef.current === null) return;
       window.clearTimeout(timerRef.current);
       timerRef.current = null;
-      return save();
+      void save();
     };
-    const onLeave = () => void flush();
     const onHidden = () => {
       if (document.visibilityState === "hidden") flush();
     };
-    window.addEventListener("blur", onLeave);
-    window.addEventListener("pagehide", onLeave);
+    window.addEventListener("blur", flush);
+    window.addEventListener("pagehide", flush);
     document.addEventListener("visibilitychange", onHidden);
     return () => {
-      window.removeEventListener("blur", onLeave);
-      window.removeEventListener("pagehide", onLeave);
+      window.removeEventListener("blur", flush);
+      window.removeEventListener("pagehide", flush);
       document.removeEventListener("visibilitychange", onHidden);
     };
   }, [save]);
@@ -750,24 +807,35 @@ function NoteEditor({
     if (timerRef.current !== null) window.clearTimeout(timerRef.current);
     timerRef.current = null;
     const pending = savingRef.current;
+    keepReviewNow(true);
+    const undoKept =
+      !collabRef.current?.holds() && docWithPending(editor, "disk") === editor.state.doc ? keepUndo(editor, note.id) : undoWriteRef.current;
     if (!dirty) return;
     frontMatterRef.current = frontMatterBlock(withNoteIdentity(frontMatterRef.current));
     const text = sourceOf(docWithPending(editor, "disk"));
+    const closed = {
+      noteId: note.id,
+      text,
+      shownBody: bodySourceOf(editor.state.doc),
+      savedFrontMatter: savedFrontMatterRef.current,
+      frontMatter: frontMatterRef.current,
+      separator: separatorRef.current,
+    };
     const notSaved = t(($) => $.notes.saving.notSaved);
     const write: ClosedWrite = (body, version) => {
       const base = baseRef.current;
-      return recordNoteWrite(note.id, body, () =>
-        base === null ? saveNote(note.id, body, version) : saveNote(note.id, body, version, base),
-      );
+      return base === null ? saveNote(note.id, body, version) : saveNote(note.id, body, version, base);
     };
     const attempt = async (): Promise<string | null> => {
       if (collabRef.current?.holds()) return notSaved;
       if (sameText(text, savedTextRef.current)) return null;
-      return writeClosedNote(write, text, versionRef.current, savedTextRef.current);
+      return writeClosedNote(write, versionRef.current, { ...closed, saved: savedTextRef.current });
     };
     const done = (async () => {
       await pending?.catch(() => undefined);
-      return attempt();
+      const reason = await attempt();
+      await undoKept;
+      return reason;
     })();
     trackNoteSave(saveJob, done, attempt);
   };
@@ -779,12 +847,17 @@ function NoteEditor({
   useEffect(() => {
     const snippet = insertRequest?.snippet;
     if (!snippet || !firstTime(insertRequest) || readOnlyRef.current) return;
-    editor.chain().focus("end").insertContent(parseNote(snippet).doc.content ?? []).run();
+    editor.chain().focus("end").insertContent(parseNoteMarkdown(snippet).doc.content ?? []).run();
   }, [editor, insertRequest]);
 
   useEffect(() => {
     if (openHeading && firstTime(openHeading)) scrollViewToHeading(editor.view, openHeading.slug);
   }, [editor, openHeading]);
+
+  useEffect(() => {
+    const scroller = scrollRef.current;
+    if (scroller && openScroll && firstTime(openScroll)) scroller.scrollTop = openScroll.top;
+  }, [openScroll]);
 
   const changeFrontMatter = (update: (text: string) => string, undoable = true) => {
     if (readOnlyRef.current) return;
@@ -838,23 +911,28 @@ function NoteEditor({
       readSource: () => sourceOf(docWithPending(editor, "agent")),
       pending: () => reviewSummary(editor).count,
       propose: (edits) => {
-        if (readOnlyRef.current) return 0;
+        if (readOnlyRef.current) {
+          if (viewOnlyRef.current) return 0;
+          addPendingBatch(note.id, edits);
+          return edits.length;
+        }
         const proposed = applyNoteEdits(sourceOf(docWithPending(editor, "agent")), edits);
-        const current = editor.schema.nodeFromJSON(parseNote(sourceOf(editor.state.doc)).doc);
-        const shown = current.eq(editor.state.doc) ? current : editor.state.doc;
-        const drafts = diffNoteDocs(shown, editor.schema.nodeFromJSON(parseNote(proposed.text).doc));
+        proposalRef.current = parseSharedNote(editor.schema, proposed.text, proposalRef.current ?? diskRef.current);
+        const drafts = diffNoteDocs(editor.state.doc, proposalRef.current.doc);
         showSuggestions(editor, drafts, "agent");
         return drafts.length;
       },
     }),
-    [editor, sourceOf],
+    [editor, note.id, sourceOf],
   );
 
   const liveReadOnly = collab.state.readOnly;
   useEffect(() => {
     editableChanged(editor);
     if (liveReadOnly) return;
-    for (const batch of takePendingBatches(note.id)) assistantBridge.propose(batch);
+    const batches = [restoreRef.current, ...takePendingBatches(note.id)].filter((batch) => batch.length > 0);
+    restoreRef.current = [];
+    for (const batch of batches) assistantBridge.propose(batch);
   }, [assistantBridge, editor, liveReadOnly, note.id]);
 
   useEffect(
@@ -866,12 +944,9 @@ function NoteEditor({
     [editor, note.id, sourceOf],
   );
 
-  const writer =
-    note.author === "agent" && note.agent
-      ? t(($) => $.notes.document.writtenByAgent, { agent: note.agent })
-      : note.shared
-        ? null
-        : t(($) => $.notes.document.writtenByYou);
+  let writer: string | null = null;
+  if (note.author === "agent" && note.agent) writer = t(($) => $.notes.document.writtenByAgent, { agent: note.agent });
+  else if (!note.shared) writer = t(($) => $.notes.document.writtenByYou);
   const byline = [
     ...(writer ? [writer] : []),
     note.project,
@@ -884,6 +959,7 @@ function NoteEditor({
   else if (openProject) editSource = () => openProject(note.id);
 
   const linkTooltips = useDelegatedTooltips(scrollRef);
+  const daily = useDailyNeighbors(note.id);
 
   useEffect(() => {
     const scroller = scrollRef.current;
@@ -893,148 +969,211 @@ function NoteEditor({
     return () => scroller.removeEventListener("mousedown", onDown);
   }, [editor]);
 
+  const inline = infoPanel === undefined;
+  const openHere = (id: string, heading?: string) => onOpenNote?.(id, heading ? { newTab: false, heading } : { newTab: false });
+  const properties = (
+    <NoteProperties
+      frontMatter={frontMatterRef.current}
+      onChange={changeFrontMatter}
+      editable={!collab.state.readOnly}
+      notes={noteLinks.index.notes}
+      onOpenNote={(linked) => openLinked(linked.projectId, false)}
+      onEditSource={editSource}
+    />
+  );
+  const backlinks = (className?: string) => (
+    <NoteBacklinks
+      noteId={facts.id}
+      onOpenNote={(_linkedNoteId, { projectId, newTab }) => onOpenNote?.(projectId, { newTab })}
+      editor={editor}
+      className={className}
+    />
+  );
+
   return (
-    <div
-      ref={scrollRef}
-      data-note-width={width}
-      data-note-blank
-      className="flex min-h-0 flex-1 flex-col overflow-y-auto"
-    >
-      <NoteToolbar editor={editor} noteId={note.id} projectId={note.relatedProjectId} readOnly={collab.state.readOnly} />
-      <NoteFindBar editor={editor} scope={scrollRef} />
-      <article
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <NoteLiveNotice noteId={note.id} />
+      {saveFailure && <NoteSaveFailed failure={saveFailure} onDismiss={() => setSaveFailure(null)} />}
+      <div
+        ref={scrollRef}
+        data-note-width={width}
         data-note-blank
-        className={cn("mx-auto w-full flex-1 cursor-text pb-32 pt-10 transition-[max-width] duration-200 motion-reduce:transition-none", WIDTH_CLASSES[width])}
+        data-keep-scroll
+        className="flex min-h-0 flex-1 flex-col overflow-y-auto"
       >
-        <div className="group/header" spellCheck={false}>
-          {collab.state.readOnly ? (
-            facts.icon && (
-              <span data-note-icon-static className="-ml-1 mb-3 inline-flex rounded-xl p-1">
-                <NoteChip icon={facts.icon} color={facts.color} size="lg" />
-              </span>
-            )
-          ) : (
-            <IconPicker
-              value={facts.icon}
-              hasIcon={Boolean(facts.icon)}
-              onChange={(icon) => changeFrontMatter((text) => withNoteIcon(text, icon))}
-              color={facts.color}
-              onColorChange={(color) => changeFrontMatter((text) => withNoteColor(text, color))}
-              trigger={
-                facts.icon ? (
-                  <NoteChip icon={facts.icon} color={facts.color} size="lg" />
-                ) : (
-                  <span data-add-icon className="flex items-center gap-1.5 text-sm">
-                    <SmilePlus aria-hidden className="size-4" />
-                    {t(($) => $.notes.document.addIcon)}
-                  </span>
-                )
-              }
-              triggerClassName={
-                facts.icon
-                  ? "-ml-1 mb-3 size-auto rounded-xl p-1 transition-colors hover:bg-accent focus-visible:bg-accent"
-                  : "-ml-1.5 mb-2 h-7 w-auto rounded-md px-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:opacity-100 group-hover/header:opacity-100 data-[state=open]:opacity-100"
-              }
-            />
-          )}
-          <input
-            aria-label={t(($) => $.notes.document.titleLabel)}
-            placeholder={t(($) => $.notes.document.untitled)}
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            onFocus={() => {
-              editingTitle.current = true;
-            }}
-            onBlur={commitTitle}
-            readOnly={collab.state.readOnly}
-            onKeyDown={(event) => {
-              if (isImeEnter(event)) return;
-              if (event.key === "Enter") {
-                event.preventDefault();
-                editor.commands.focus("start");
-              }
-              if (event.key === "Escape") setTitle(facts.title ?? note.title);
-            }}
-            className="note-title w-full border-0 bg-transparent p-0 text-2xl font-bold placeholder:text-muted-foreground/60"
-          />
-          <NoteProperties
-            frontMatter={frontMatterRef.current}
-            onChange={changeFrontMatter}
-            editable={!collab.state.readOnly}
-            notes={noteLinks.index.notes}
-            onOpenNote={(linked) => openLinked(linked.projectId, false)}
-            onEditSource={editSource}
-          />
-        </div>
-        <p className="mb-6 mt-1 text-xs text-muted-foreground">{byline}</p>
-        {collab.state.viewOnly && (
-          <p data-note-view-only className="-mt-4 mb-6 text-xs text-muted-foreground">
-            {t(($) => $.notes.live.viewOnly)}
-          </p>
-        )}
-        <div data-note-blank className="wysiwyg-content note-body">
-          <EditorContent editor={editor} />
-        </div>
-        <NoteBacklinks
-          noteId={facts.id}
-          onOpenNote={(_linkedNoteId, { projectId, newTab }) => onOpenNote?.(projectId, { newTab })}
-          className="mt-10"
-        />
-        <NoteLinkMenu editor={editor} />
-        <NoteSlashMenu editor={editor} />
-        <NoteTagMenu editor={editor} />
-        <NoteProofreadingPopover editor={editor} proofreading={proofreading} />
-        <NoteHoverPreview containerRef={scrollRef} {...knowledge.hover} />
-        {linkTooltips}
-      </article>
-      {bubble && (
-        <div
-          data-note-selection-bubble
-          style={{ top: bubble.top, left: bubble.left }}
-          className="fixed z-50 flex gap-0.5 rounded-md border bg-popover p-1 text-popover-foreground shadow-xl"
+        <NoteToolbar editor={editor} noteId={note.id} projectId={note.relatedProjectId} readOnly={collab.state.readOnly} />
+        <NoteFindBar editor={editor} scope={scrollRef} />
+        <article
+          data-note-blank
+          className={cn("mx-auto w-full flex-1 cursor-text pb-32 pt-10 transition-[max-width] duration-200 motion-reduce:transition-none", WIDTH_CLASSES[width])}
         >
-          <Button
-            variant="ghost"
-            size="xs"
-            aria-keyshortcuts={askKeys}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => assistantRef.current?.quote(selectedText(editor, wholeNote))}
+          <div className="group/header" spellCheck={false}>
+            {collab.state.readOnly ? (
+              facts.icon && (
+                <span data-note-icon-static className="-ml-1 mb-3 inline-flex rounded-xl p-1">
+                  <NoteChip icon={facts.icon} color={facts.color} size="lg" />
+                </span>
+              )
+            ) : (
+              <IconPicker
+                value={facts.icon}
+                hasIcon={Boolean(facts.icon)}
+                onChange={(icon) => changeFrontMatter((text) => withNoteIcon(text, icon))}
+                color={facts.color}
+                onColorChange={(color) => changeFrontMatter((text) => withNoteColor(text, color))}
+                trigger={
+                  facts.icon ? (
+                    <NoteChip icon={facts.icon} color={facts.color} size="lg" />
+                  ) : (
+                    <span data-add-icon className="flex items-center gap-1.5 text-sm">
+                      <SmilePlus aria-hidden className="size-4" />
+                      {t(($) => $.notes.document.addIcon)}
+                    </span>
+                  )
+                }
+                triggerClassName={
+                  facts.icon
+                    ? "-ml-1 mb-3 size-auto rounded-xl p-1 transition-colors hover:bg-accent focus-visible:bg-accent [&_svg]:size-7"
+                    : "-ml-1.5 mb-2 h-7 w-auto rounded-md px-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:opacity-100 group-hover/header:opacity-100 data-[state=open]:opacity-100"
+                }
+              />
+            )}
+            <input
+              aria-label={t(($) => $.notes.document.titleLabel)}
+              placeholder={t(($) => $.notes.document.untitled)}
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              onFocus={() => {
+                editingTitle.current = true;
+              }}
+              onBlur={commitTitle}
+              readOnly={collab.state.readOnly}
+              onKeyDown={(event) => {
+                if (isImeEnter(event)) return;
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  editor.commands.focus("start");
+                }
+                if (event.key === "Escape") setTitle(facts.title ?? note.title);
+              }}
+              className="note-title w-full border-0 bg-transparent p-0 text-2xl font-bold placeholder:text-muted-foreground/60"
+            />
+            {inline && properties}
+          </div>
+          <div className="mb-6 mt-1 flex items-center gap-2">
+            <p className="min-w-0 flex-1 text-xs text-muted-foreground">{byline}</p>
+            {daily &&
+              ([["previous", ChevronLeft], ["next", ChevronRight]] as const).map(([step, Icon]) => {
+                const day = daily[step];
+                if (!day) return <span key={step} aria-hidden className="size-7" />;
+                const label = t(($) => $.notes.vault.daily[step], { date: day.title });
+                return (
+                  <Button
+                    key={step}
+                    variant="ghost"
+                    size="icon"
+                    className="size-7 text-muted-foreground"
+                    aria-label={label}
+                    data-tooltip={label}
+                    onClick={() => onOpenNote?.(day.id, { newTab: false })}
+                  >
+                    <Icon aria-hidden className="size-4" />
+                  </Button>
+                );
+              })}
+          </div>
+          {collab.state.viewOnly && (
+            <p data-note-view-only className="-mt-4 mb-6 text-xs text-muted-foreground">
+              {t(($) => $.notes.live.viewOnly)}
+            </p>
+          )}
+          <div data-note-blank className="wysiwyg-content note-body" style={noteColorStyle(facts.color)}>
+            <EditorContent editor={editor} />
+          </div>
+          {inline && (
+            <>
+              <NoteReferences {...citations} className="mt-10" />
+              {backlinks("mt-10")}
+            </>
+          )}
+          {infoPanel &&
+            createPortal(
+              <NoteInfo editor={editor} note={note} icon={facts.icon} color={facts.color} title={title}>
+                {properties}
+                {backlinks()}
+                <NoteReferences {...citations} />
+                <NoteDeadLinksSection noteId={note.id} editable={!collab.state.readOnly} onOpenNoteAt={openHere} />
+                <NoteAttachmentsSection note={note} onOpenNote={(id) => openHere(id)} />
+              </NoteInfo>,
+              infoPanel,
+            )}
+          <NoteLinkMenu editor={editor} />
+          <NoteSlashMenu editor={editor} />
+          <NoteTagMenu editor={editor} />
+          <NoteAtMenu editor={editor} />
+          <NoteFieldPopover editor={editor} />
+          <NoteProofreadingPopover editor={editor} proofreading={proofreading} />
+          <NoteHoverPreview containerRef={scrollRef} {...knowledge.hover} />
+          <NoteLinkChoice editor={editor} />
+          <NoteBlockHandle
+            editor={editor}
+            noteId={facts.id}
+            refs={blockRefs}
+            scrollRef={scrollRef}
+            onOpenNote={(_linkedNoteId, { projectId, newTab }) => onOpenNote?.(projectId, { newTab })}
+          />
+          {linkTooltips}
+        </article>
+        {bubble && (
+          <div
+            data-note-selection-bubble
+            style={{ top: bubble.top, left: bubble.left }}
+            className="fixed z-50 flex gap-0.5 rounded-md border bg-popover p-1 text-popover-foreground shadow-xl"
           >
-            {t(($) => $.notes.document.askAgent)}
-            <span aria-hidden className="text-muted-foreground">
-              {askKeys}
-            </span>
-          </Button>
-          {onSendToPaper && (
             <Button
               variant="ghost"
               size="xs"
+              aria-keyshortcuts={askKeys}
               onMouseDown={(event) => event.preventDefault()}
-              onClick={() => onSendToPaper(selectedText(editor, wholeNote))}
+              onClick={() => assistantRef.current?.quote(selectedText(editor, wholeNote))}
             >
-              {t(($) => $.notes.document.sendToPaper)}
+              {t(($) => $.notes.document.askAgent)}
+              <span aria-hidden className="text-muted-foreground">
+                {askKeys}
+              </span>
             </Button>
-          )}
+            {onSendToPaper && (
+              <Button
+                variant="ghost"
+                size="xs"
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => onSendToPaper(selectedText(editor, wholeNote))}
+              >
+                {t(($) => $.notes.document.sendToPaper)}
+              </Button>
+            )}
+          </div>
+        )}
+        {(review.count > 0 || canUndo) && !collab.state.readOnly && (
+          <FloatingReview
+            editor={editor}
+            review={review}
+            canUndo={canUndo}
+            scrollRef={scrollRef}
+            bottomRef={assistantDockRef}
+            beforeAcceptAll={() => saveVersionBeforeAccept(note.id, sourceOf(editor.state.doc))}
+          />
+        )}
+        <div ref={assistantDockRef} className="pointer-events-none sticky bottom-0 z-10 px-6 pb-4">
+          <NoteAssistant
+            key={note.id}
+            ref={assistantRef}
+            note={note}
+            bridge={assistantBridge}
+            shortcutScope={scrollRef}
+            viewOnly={collab.state.viewOnly}
+          />
         </div>
-      )}
-      {(review.count > 0 || canUndo) && !collab.state.readOnly && (
-        <FloatingReview
-          editor={editor}
-          review={review}
-          canUndo={canUndo}
-          scrollRef={scrollRef}
-          bottomRef={assistantDockRef}
-        />
-      )}
-      <div ref={assistantDockRef} className="pointer-events-none sticky bottom-0 z-10 px-6 pb-4">
-        <NoteAssistant
-          key={note.id}
-          ref={assistantRef}
-          note={note}
-          bridge={assistantBridge}
-          shortcutScope={scrollRef}
-          viewOnly={collab.state.viewOnly}
-        />
       </div>
     </div>
   );

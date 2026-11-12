@@ -37,6 +37,7 @@ import { primeResearchTasksFlag, useResearchTasksFlagStore } from "@/store/resea
 import { useCompileStore } from "@/store/compile";
 import { supportsFigureTools } from "@/lib/document-engine";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { appNoteMcpDeps, createNoteMcpTools, NOTE_MCP_MUTATING_TOOLS } from "@/components/notes/note-mcp-tools";
 
 export type McpContent =
   | { type: "text"; text: string }
@@ -69,6 +70,7 @@ const MUTATING_TOOLS = new Set([
   "forget_note",
   "run_command",
   "research_task_create",
+  ...NOTE_MCP_MUTATING_TOOLS,
 ]);
 
 const ALWAYS_PROMPT_TOOLS = new Set(["run_command", "research_task_create"]);
@@ -455,6 +457,7 @@ export function buildMcpToolRegistry(opts: {
   readOnly: boolean;
   onImage: (dataUrl: string) => void;
   mutationAllowed?: () => boolean;
+  notes?: boolean;
 }): Record<string, McpToolEntry> {
   const all: Record<string, McpToolEntry> = {
     ...(createOleaflyTools({
@@ -471,6 +474,12 @@ export function buildMcpToolRegistry(opts: {
     ...createSkillTools(),
     ...createMcpOnlyTools(opts.confirm, opts.mutationAllowed ?? (() => true)),
     ...(createResearchTaskAiTools({ confirm: opts.confirm }) as Record<string, McpToolEntry>),
+    ...(opts.notes
+      ? (createNoteMcpTools(appNoteMcpDeps(), { confirm: opts.confirm, mutationAllowed: opts.mutationAllowed }) as Record<
+          string,
+          McpToolEntry
+        >)
+      : {}),
   };
   if (opts.readOnly) {
     for (const name of MUTATING_TOOLS) delete all[name];
@@ -639,6 +648,7 @@ async function buildRegistry(generation: number, session: number | null): Promis
     readOnly: !!cfg.mcp_read_only,
     onImage: captureImage,
     mutationAllowed,
+    notes: useSettingsStore.getState().notes,
   });
   try {
     await mcpRegisterTools(
@@ -670,6 +680,11 @@ export async function refreshMcpRegistry(): Promise<void> {
 
 useResearchTasksFlagStore.subscribe((state, previous) => {
   if (state.enabled === previous.enabled || rendererSession === null) return;
+  void rebuildRegistry().catch(() => {});
+});
+
+useSettingsStore.subscribe((state, previous) => {
+  if (state.notes === previous.notes || rendererSession === null) return;
   void rebuildRegistry().catch(() => {});
 });
 

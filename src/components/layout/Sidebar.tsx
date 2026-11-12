@@ -4,8 +4,12 @@ import { useTranslation } from "react-i18next";
 import { FileText, Search } from "lucide-react";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
-import type { SearchHit } from "@/lib/tauri";
+import type { SearchHit, TextSearchHit } from "@/lib/tauri";
+import { useSearchModeStore } from "@/store/search-modes";
+import { Highlighted } from "@/components/ui/highlighted";
+import { SearchModeMenu } from "@/components/ui/search-mode-menu";
 import { useDocSearch } from "@/hooks/use-doc-search";
+import { invalidPattern, textSearchTruncated } from "@/lib/text-search-query";
 import { useScrollMemory } from "@/hooks/use-scroll-memory";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
@@ -40,13 +44,16 @@ const SourceTree = memo(FileTree);
 const EXPLORER_GROUP_ID = "sidebar-explorer-sections-v3";
 
 export function ProjectSearch() {
-  const { t } = useTranslation(["shell"]);
+  const { t } = useTranslation(["shell", "common"]);
   const projectId = useFilesStore((s) => s.projectId);
   const openFile = useFilesStore((s) => s.openFile);
   const [remembered] = useState(() => readSidebarView(projectId, "search"));
   const [q, setQ] = useState(remembered?.query ?? "");
   const [queryEdits, setQueryEdits] = useState(0);
-  const { hits, loading, term } = useDocSearch(q, { projectId });
+  const mode = useSearchModeStore((state) => state.files);
+  const { hits, loading, term, error } = useDocSearch(q, { projectId, mode });
+  const patternError = invalidPattern(error);
+  const truncated = textSearchTruncated(q.trim(), false);
   const searchInputRef = useInitialFocus<HTMLInputElement>();
   const resultsRef = useScrollTopOnChange(queryEdits);
   const settled = useRef<{ term: string; hits: readonly SearchHit[] } | null>(
@@ -73,13 +80,13 @@ export function ProjectSearch() {
   const open = async (hit: SearchHit) => {
     useSettingsStore.getState().revealEditor();
     await openFile(hit.path);
-    window.setTimeout(() => gotoLine(hit.line), 80);
+    if (hit.line > 0) window.setTimeout(() => gotoLine(hit.line), 80);
   };
 
   return (
     <div className="flex h-full flex-col">
       <SidebarPanelHeader icon={Search} title={t(($) => $.shell.projectSearch.title)} />
-      <div className="border-b border-sidebar-border p-2">
+      <div className="flex items-center gap-1 border-b border-sidebar-border p-2">
         <Input
           ref={searchInputRef}
           value={q}
@@ -91,6 +98,7 @@ export function ProjectSearch() {
           data-testid="project-search-input"
           className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm focus-visible:border-input focus-visible:bg-accent/40"
         />
+        <SearchModeMenu value={mode} onChange={(next) => useSearchModeStore.getState().setMode("files", next)} />
       </div>
       <div ref={resultsRef} className="flex-1 overflow-auto p-1.5">
         {shownHits.map((hit) => (
@@ -102,18 +110,22 @@ export function ProjectSearch() {
             <div className="flex items-center gap-1.5 text-sm">
               <FileText className="size-3.5 shrink-0 text-muted-foreground" />
               <span className="truncate font-medium">{basename(hit.path)}</span>
-              <span className="ml-auto shrink-0 font-mono text-[0.625rem] text-muted-foreground">
-                {`:${hit.line}`}
-              </span>
+              {hit.line > 0 && (
+                <span className="ml-auto shrink-0 font-mono text-[0.625rem] text-muted-foreground">
+                  {`:${hit.line}`}
+                </span>
+              )}
             </div>
             <div className="mt-0.5 truncate font-mono text-[0.6875rem] text-muted-foreground">
-              {hit.preview}
+              <Highlighted text={hit.preview} ranges={(hit as Partial<TextSearchHit>).ranges ?? []} />
             </div>
           </button>
         ))}
         {q.trim() && !loading && shownHits.length === 0 && (
-          <p className="px-2 py-6 text-center text-xs text-muted-foreground">
-            {t(($) => $.shell.projectSearch.noResults)}
+          <p className={cn("px-2 py-6 text-center text-xs text-muted-foreground", patternError && "whitespace-pre-wrap text-left font-mono")}>
+            {patternError
+              ? t(($) => $.common.searchModes.invalid, { error: patternError })
+              : t(($) => $.shell.projectSearch.noResults)}
           </p>
         )}
         {!q.trim() && (
@@ -122,6 +134,11 @@ export function ProjectSearch() {
           </p>
         )}
       </div>
+      {truncated && (
+        <p role="status" className="border-t border-sidebar-border px-3 py-2 text-xs text-muted-foreground">
+          {t(($) => $.common.querySearch.issues.tooManyBranches)}
+        </p>
+      )}
     </div>
   );
 }
@@ -182,6 +199,7 @@ export function FilesPanel() {
       fillerId="explorer-filler-v"
       fillerHandleId="explorer-filler-resize"
       sections={order.flatMap((id) => sections.filter((section) => section.id === id))}
+      storageOrder={EXPLORER_SECTIONS}
       resizeLabel={resizeLabel}
       testId="explorer-stack"
       onReorder={setOrder}

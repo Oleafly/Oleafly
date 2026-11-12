@@ -230,7 +230,11 @@
     "history_unavailable": "此项目的历史记录尚未同步到这台电脑。请在同步完成后重试。",
     "account_storage_full": "项目所有者的账户在此服务器上的存储空间已用完。请移除一些文件以腾出空间，或请服务器的管理员提供更多空间。",
     "too_many_projects": "你的共享项目数量已达到此服务器允许的上限。请先停止共享其中一个，再共享其他项目。",
-    "too_many_uploads": "你在过去一小时内上传次数过多。请稍后再试。"
+    "too_many_uploads": "你在过去一小时内上传次数过多。请稍后再试。",
+    "public_notes_off": "此服务器不允许笔记公开链接。管理员可以在服务器设置中开启。",
+    "too_many_pages": "你的公开页面数量已达到此服务器允许的上限。请取消发布其中一个，然后重试。",
+    "page_too_large": "这篇笔记太大，无法发布。请移除一些图片，然后重试。",
+    "page_taken_down": "管理员已下架此页面，在管理员恢复之前，这篇笔记无法再次发布。"
   },
   "roles": {
     "admin": "管理员",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "通过电子邮件登录",
         "description": "用户可以通过发送到其电子邮件地址的链接登录。这需要服务器的电子邮件设置。谁能进入仍由你的访问规则决定。"
+      },
+      "publicNotesAllowed": {
+        "label": "允许笔记公开链接",
+        "description": "成员可以将笔记的只读副本发布到一个链接，任何人无需登录即可打开。"
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "拒绝了一个访客邀请",
         "guestInvitationRevoked": "撤回了一个访客邀请",
         "guestAdmissionEnded": "结束了访客对服务器的访问",
-        "unknown": "其他服务器事件"
+        "unknown": "其他服务器事件",
+        "notePublished": "将笔记发布到公开链接",
+        "noteUnpublished": "取消发布了一篇笔记",
+        "noteTakenDown": "下架了一篇已发布的笔记",
+        "noteRestored": "恢复了一篇已发布的笔记"
       },
       "details": {
         "project": "项目：{{title}}",
@@ -455,7 +467,8 @@
         "device": "设备：{{name}}",
         "byAdmin": "来自管理控制台",
         "settingOn": "{{setting}}：开启",
-        "settingOff": "{{setting}}：关闭"
+        "settingOff": "{{setting}}：关闭",
+        "note": "笔记：{{title}}"
       }
     },
     "email": {
@@ -793,7 +806,8 @@
       "settings": "服务器设置",
       "email": "电子邮件",
       "log": "安全日志",
-      "checks": "连接检查"
+      "checks": "连接检查",
+      "pages": "已发布的笔记"
     },
     "health": {
       "label": "服务器状态：{{status}}",
@@ -960,6 +974,30 @@
     },
     "checks": {
       "description": "检查这台电脑与服务器之间的连接。"
+    },
+    "pages": {
+      "description": "用户用自己的笔记生成的只读页面。任何拥有页面链接的人都可以阅读。",
+      "loading": "正在加载已发布的笔记…",
+      "empty": "此服务器上还没有人发布笔记。",
+      "limit": "显示最新的 {{shown}} 个页面。",
+      "columns": {
+        "title": "笔记",
+        "author": "作者",
+        "updated": "发布时间",
+        "actions": "操作"
+      },
+      "noAuthor": "已移除的账户",
+      "takenDown": "已下架",
+      "openNamed": "打开 {{title}}",
+      "takeDown": "下架",
+      "takeDownNamed": "下架 {{title}}",
+      "restore": "恢复",
+      "restoreNamed": "恢复 {{title}}",
+      "takeDownConfirm": {
+        "title": "要下架 {{title}} 吗？",
+        "description": "在你恢复页面之前，公开链接将无法使用。作者仍保留笔记，但在此期间无法再次发布。",
+        "confirm": "下架"
+      }
     }
   },
   "links": {
@@ -1233,5 +1271,41 @@
     "broughtIn": "你在 {{name}} 中的更改现已加入此项目。",
     "retry": "重试",
     "dismiss": "关闭"
+  },
+  "publish": {
+    "tabs": {
+      "people": "人员",
+      "publish": "发布"
+    },
+    "intro": "发布会将这篇笔记的只读副本放到一个公开链接上。任何拥有链接的人无需登录即可阅读。",
+    "contents": "图片、统计图、图表、公式、Typst 和分子会包含在内。HTML、React、CSV、序列和笔记本块不包含在内。",
+    "checking": "正在检查公开页面…",
+    "loadFailed": "Oleafly 无法检查这篇笔记的公开页面。",
+    "notAllowed": "{{server}} 不允许笔记公开链接。管理员可以在服务器设置中开启。",
+    "ownerOnly": "只有笔记的所有者可以发布它。",
+    "linkLabel": "公开链接",
+    "open": "打开",
+    "publishedAt": "上次发布：{{date}}",
+    "stale": "自上次发布以来，你更改了这篇笔记。再次发布即可更新页面。",
+    "publish": "发布",
+    "republish": "再次发布",
+    "unpublish": "取消发布",
+    "failed": "发布未完成。",
+    "unpublishConfirm": {
+      "title": "要取消发布 {{name}} 吗？",
+      "description": "公开链接会立即失效。已保存页面副本的人仍会保留副本。",
+      "confirm": "取消发布"
+    },
+    "list": {
+      "title": "已发布的笔记",
+      "description": "你在此服务器上的笔记的只读页面。任何拥有链接的人都可以阅读。",
+      "loadFailed": "Oleafly 无法加载你已发布的笔记。",
+      "empty": "你还没有在这里发布任何笔记。",
+      "openNamed": "打开 {{name}}",
+      "unpublishNamed": "取消发布 {{name}}",
+      "updated": "发布于 {{date}}"
+    },
+    "takenDown": "管理员已下架此页面。在管理员恢复之前，读者无法打开它，你也无法再次发布。你仍然可以取消发布。",
+    "tooOld": "{{server}} 版本太旧，不支持笔记公开链接。其管理员需要更新 Oleafly Server。"
   }
 }

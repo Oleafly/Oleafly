@@ -1,14 +1,17 @@
 // @vitest-environment jsdom
-import { createWysiwygExtensions } from "@oleafly/wysiwyg";
-import { Editor } from "@tiptap/core";
+import type { Editor } from "@tiptap/core";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { useToastStore } from "@/store/toast";
-import { NoteImageDrop, type NoteImageTarget, noteImageName, noteImageTarget } from "./note-image-drop";
+import { attachFile, canAttach, NoteImageDrop, type NoteImageTarget, noteImageName, noteImageTarget } from "./note-image-drop";
+import { NOTE_FILE_MAX_BYTES } from "./note-path";
+import type { NotesData } from "./notes-data";
+import { destroyKbEditors, kbEditor, kbMarkdown, positionOf } from "./tests/kb-editor-fixtures";
+import "./tests/setup";
 
 const tauri = vi.hoisted(() => ({ write: vi.fn(async (..._args: unknown[]) => ({})) }));
-const native = vi.hoisted(() => ({ drop: vi.fn(() => false), images: vi.fn(async (): Promise<File[]> => []) }));
+const native = vi.hoisted(() => ({ drop: vi.fn(() => false), take: vi.fn(async (): Promise<{ name: string; read: () => Promise<File> }[]> => []) }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri")>()),
@@ -17,23 +20,13 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
 vi.mock("@/lib/native-drop", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/native-drop")>()),
   isNativeFileDrop: native.drop,
-}));
-vi.mock("@/components/editor/figure-import", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/components/editor/figure-import")>()),
-  nativeDroppedImages: native.images,
+  takeNativeDrop: native.take,
 }));
 
-const editors: Editor[] = [];
+type Attach = NonNullable<NotesData["attachFile"]>;
 
-function build(target: NoteImageTarget | null = { projectId: "note-1", notePath: null }): Editor {
-  const element = document.createElement("div");
-  document.body.append(element);
-  const editor = new Editor({
-    element,
-    extensions: [...createWysiwygExtensions(), NoteImageDrop.configure({ target: () => target })],
-    content: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Hello" }] }] },
-  });
-  editors.push(editor);
+function build(target: NoteImageTarget | null = { projectId: "note-1", notePath: null }, attach?: Attach): Editor {
+  const editor = kbEditor("Hello world", undefined, [NoteImageDrop.configure({ target: () => target, attach: () => attach })]);
   vi.spyOn(editor.view, "posAtCoords").mockReturnValue(null);
   return editor;
 }
@@ -66,21 +59,30 @@ function images(editor: Editor): string[] {
   return found;
 }
 
+function toasts(): string[] {
+  return useToastStore.getState().toasts.map((toast) => toast.message);
+}
+
 beforeAll(async () => {
-  await loadNamespace("notes");
+  await loadNamespace("editor");
+  const rect = new DOMRect(0, 0, 0, 0);
+  Range.prototype.getClientRects = () => [rect] as unknown as DOMRectList;
+  Range.prototype.getBoundingClientRect = () => rect;
+  Element.prototype.getClientRects = () => [rect] as unknown as DOMRectList;
 });
 
 afterEach(() => {
-  for (const editor of editors.splice(0)) editor.destroy();
+  destroyKbEditors();
   tauri.write.mockReset();
   tauri.write.mockImplementation(async () => ({}));
   native.drop.mockReset();
   native.drop.mockImplementation(() => false);
-  native.images.mockReset();
+  native.take.mockReset();
+  native.take.mockImplementation(async () => []);
   useToastStore.setState({ toasts: [] });
 });
 
-describe("where note images go", () => {
+describe("where note files go", () => {
   it("writes into the note itself or next to a project note", () => {
     expect(noteImageTarget({ id: "note-1" })).toEqual({ projectId: "note-1", notePath: null });
     expect(noteImageTarget({ id: "key", home: { projectId: "paper", path: "notes/a.md" } })).toEqual({
@@ -89,15 +91,28 @@ describe("where note images go", () => {
     });
   });
 
-  it("names an image after the file and its content", () => {
+  it("names a file after its name and its content", () => {
     const name = noteImageName(png("Loss curve.png"), "abc", new Date(2026, 0, 2, 3, 4, 5));
     expect(name).toMatch(/^assets\/Loss-curve-[0-9a-f]{8}\.png$/u);
     expect(noteImageName(png("Loss curve.png"), "abc", new Date())).toBe(name);
     expect(noteImageName(png("Loss curve.png"), "abd", new Date())).not.toBe(name);
   });
+
+  it.each([
+    ["録音.m4a", "audio/mp4", /^assets\/audio-[0-9a-f]{8}\.m4a$/u],
+    ["запись.mp3", "audio/mpeg", /^assets\/audio-[0-9a-f]{8}\.mp3$/u],
+    ["image.mp4", "video/mp4", /^assets\/video-[0-9a-f]{8}\.mp4$/u],
+    ["blob", "video/webm", /^assets\/video-[0-9a-f]{8}\.webm$/u],
+    ["論文.PDF", "application/pdf", /^assets\/pdf-[0-9a-f]{8}\.PDF$/u],
+    ["数据.csv", "text/csv", /^assets\/table-[0-9a-f]{8}\.csv$/u],
+    ["talk.mp4", "video/mp4", /^assets\/talk-[0-9a-f]{8}\.mp4$/u],
+    ["Field recording", "audio/mpeg", /^assets\/Field-recording-[0-9a-f]{8}\.mp3$/u],
+  ])("keeps the type of %s (%s) in its name, never a picture's", (name, type, pattern) => {
+    expect(noteImageName(new File(["x"], name, { type }), "abc", new Date(2026, 10, 11, 12))).toMatch(pattern);
+  });
 });
 
-describe("pasting and dropping images into a note", () => {
+describe("pasting and dropping files into a note", () => {
   it("saves a pasted image into the note's assets and shows it in place", async () => {
     const editor = build();
     const { handled, event } = paste(editor, transfer([png()]));
@@ -117,7 +132,7 @@ describe("pasting and dropping images into a note", () => {
     expect(paste(editor, transfer([])).handled).toBe(false);
   });
 
-  it("writes a project note's image next to the note and links it from the note", async () => {
+  it("writes a project note's file next to the note and links it from the note", async () => {
     const editor = build({ projectId: "paper", notePath: "notes/a.md" });
     drop(editor, transfer([png()]));
     await vi.waitFor(() => expect(images(editor)).toHaveLength(1));
@@ -127,57 +142,104 @@ describe("pasting and dropping images into a note", () => {
     expect(images(editor)[0]).toBe(String(path).slice("notes/".length));
   });
 
-  it("keeps other file drops out of the note and says only images can be dropped", () => {
+  it.each([
+    ["results.csv", "csv", "path: assets/results-"],
+    ["panel.xlsx", "csv", "path: assets/panel-"],
+    ["1abc.pdb", "molecule", "path: assets/1abc-"],
+    ["sweep.ipynb", "notebook", "assets/sweep-"],
+  ])("shows a dropped %s in the block that reads it", async (name, language, start) => {
     const editor = build();
-    const pdf = new File(["%PDF"], "paper.pdf", { type: "application/pdf" });
+    drop(editor, transfer([new File(["a,b\n1,2"], name)]));
+    await vi.waitFor(() => expect(editor.state.doc.firstChild?.type.name).toBe("codeBlock"));
+    expect(editor.state.doc.firstChild?.attrs.language).toBe(language);
+    expect(editor.state.doc.firstChild?.textContent.startsWith(start)).toBe(true);
+  });
+
+  it("puts a dropped file where it was dropped, even after typing during the copy", async () => {
+    let finish: () => void = () => {};
+    tauri.write.mockImplementation(() => new Promise((resolve) => (finish = () => resolve({}))));
+    const editor = build();
+    vi.mocked(editor.view.posAtCoords).mockReturnValue({ pos: positionOf(editor, " world"), inside: -1 });
+    drop(editor, transfer([png()]));
+    await vi.waitFor(() => expect(tauri.write).toHaveBeenCalled());
+    editor.view.dispatch(editor.state.tr.insertText("Big ", 1));
+    finish();
+    await vi.waitFor(() => expect(images(editor)).toHaveLength(1));
+    expect(kbMarkdown(editor)).toMatch(/^Big Hello\n\n!\[\]\(assets\/shot-[0-9a-f]{8}\.png\)\n\n world/u);
+  });
+
+  it("refuses a file over the size limit without reading it", async () => {
+    const editor = build();
+    const huge = png("huge.png");
+    Object.defineProperty(huge, "size", { value: NOTE_FILE_MAX_BYTES + 1 });
+    const read = vi.spyOn(huge, "arrayBuffer");
+    drop(editor, transfer([huge]));
+    await vi.waitFor(() => expect(toasts()).toEqual([enNotes.document.fileTooLarge.replace("{{name}}", "huge.png")]));
+    expect(read).not.toHaveBeenCalled();
+    expect(tauri.write).not.toHaveBeenCalled();
+  });
+
+  it("keeps other file drops out of the note and says which files a note can hold", () => {
+    const editor = build();
+    const pdf = new File(["PK"], "bundle.zip", { type: "application/zip" });
     const { handled, event } = drop(editor, transfer([pdf]));
     expect(handled).toBe(true);
     expect(event.preventDefault).toHaveBeenCalled();
+    expect(paste(editor, transfer([pdf])).handled).toBe(false);
     expect(tauri.write).not.toHaveBeenCalled();
-    expect(editor.getText()).toBe("Hello");
-    expect(useToastStore.getState().toasts.map((toast) => toast.message)).toEqual([enNotes.document.onlyImages]);
+    expect(editor.getText()).toBe("Hello world");
+    expect(toasts()).toEqual([enNotes.document.unsupportedFile]);
     drop(editor, transfer([pdf]));
-    expect(useToastStore.getState().toasts).toHaveLength(1);
+    expect(toasts()).toHaveLength(1);
     expect(drop(editor, transfer([], ["text/plain"])).handled).toBe(false);
   });
 
-  it("never saves a dropped or pasted PDF as a broken note image", async () => {
+  it("reads files dropped from the Linux file manager through the app, and says so when none fits", async () => {
+    native.drop.mockReturnValue(true);
+    native.take.mockResolvedValue([{ name: "drop.png", read: async () => png("drop.png") }]);
     const editor = build();
-    const pdf = new File(["%PDF"], "paper.pdf", { type: "application/pdf" });
-    drop(editor, transfer([pdf]));
-    expect(paste(editor, transfer([pdf])).handled).toBe(false);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(drop(editor, transfer([], ["text/uri-list"])).handled).toBe(true);
+    await vi.waitFor(() => expect(images(editor)).toHaveLength(1));
+    expect(String(tauri.write.mock.calls[0][1])).toMatch(/^assets\/drop-/u);
+    native.take.mockResolvedValue([{ name: "bundle.zip", read: async () => png() }]);
+    drop(editor, transfer([], ["text/uri-list"]));
+    await vi.waitFor(() => expect(toasts()).toEqual([enNotes.document.unsupportedFile]));
+  });
+
+  it("takes dropped audio, video and PDF files as embeds", async () => {
+    const editor = build();
+    drop(editor, transfer([new File(["ID3"], "talk.mp3", { type: "audio/mpeg" }), new File(["%PDF"], "paper.pdf", { type: "application/pdf" })]));
+    await vi.waitFor(() => expect(images(editor)).toHaveLength(2));
+    expect(tauri.write.mock.calls.map((call) => String(call[1]))).toEqual([expect.stringMatching(/^assets\/talk-.*\.mp3$/u), expect.stringMatching(/^assets\/paper-.*\.pdf$/u)]);
+    drop(editor, transfer([new File(["x"], "clip", { type: "video/webm" })]));
+    await vi.waitFor(() => expect(images(editor)).toHaveLength(3));
+    expect(images(editor)[2]).toMatch(/^assets\/clip-[0-9a-f]{8}\.webm$/u);
+  });
+
+  it("refuses audio or video in a format a note can't play, instead of showing it as a broken image", async () => {
+    const editor = build();
+    drop(editor, transfer([new File(["x"], "clip.mkv", { type: "video/x-matroska" }), new File(["x"], "memo.wma", { type: "audio/x-ms-wma" })]));
+    expect(toasts()).toEqual([enNotes.document.unsupportedFile]);
+    await Promise.resolve();
     expect(tauri.write).not.toHaveBeenCalled();
     expect(images(editor)).toEqual([]);
   });
 
-  it("says only images can be dropped when a Linux file drop holds none", async () => {
-    native.drop.mockReturnValue(true);
-    native.images.mockResolvedValue([]);
+  it("saves pasted audio, video and PDF files the way it saves dropped ones", async () => {
     const editor = build();
-    expect(drop(editor, transfer([], ["text/uri-list"])).handled).toBe(true);
-    await vi.waitFor(() =>
-      expect(useToastStore.getState().toasts.map((toast) => toast.message)).toEqual([enNotes.document.onlyImages]),
-    );
-    expect(tauri.write).not.toHaveBeenCalled();
-  });
-
-  it("reads images dropped from the Linux file manager through the app", async () => {
-    native.drop.mockReturnValue(true);
-    native.images.mockResolvedValue([png("drop.png")]);
-    const editor = build();
-    const { handled } = drop(editor, transfer([], ["text/uri-list"]));
+    const files = [new File(["ID3"], "memo.mp3", { type: "audio/mpeg" }), new File(["%PDF"], "paper.pdf", { type: "application/pdf" })];
+    const { handled, event } = paste(editor, transfer(files));
     expect(handled).toBe(true);
-    await vi.waitFor(() => expect(images(editor)).toHaveLength(1));
-    expect(String(tauri.write.mock.calls[0][1])).toMatch(/^assets\/drop-/u);
+    expect(event.preventDefault).toHaveBeenCalled();
+    await vi.waitFor(() => expect(images(editor)).toHaveLength(2));
+    expect(images(editor)).toEqual([expect.stringMatching(/^assets\/memo-.*\.mp3$/u), expect.stringMatching(/^assets\/paper-.*\.pdf$/u)]);
   });
 
-  it("says once when an image could not be saved", async () => {
+  it("says once when files could not be saved", async () => {
     tauri.write.mockRejectedValue(new Error("disk full"));
     const editor = build();
     paste(editor, transfer([png("a.png"), png("b.png")]));
-    await vi.waitFor(() => expect(useToastStore.getState().toasts).toHaveLength(1));
-    expect(useToastStore.getState().toasts[0].message).toBe(enNotes.document.imageFailed);
+    await vi.waitFor(() => expect(toasts()).toEqual([enNotes.document.fileFailed.replace("{{error}}", "disk full")]));
     expect(images(editor)).toEqual([]);
   });
 
@@ -186,5 +248,47 @@ describe("pasting and dropping images into a note", () => {
     expect(drop(editor, transfer([png()])).handled).toBe(true);
     expect(paste(editor, transfer([png()])).handled).toBe(false);
     expect(tauri.write).not.toHaveBeenCalled();
+  });
+});
+
+describe("attaching a picked file", () => {
+  it("offers attaching only to an editable note whose data can copy files", () => {
+    expect(canAttach(build())).toBe(false);
+    expect(canAttach(build(null, vi.fn()))).toBe(false);
+    expect(canAttach(build(undefined, vi.fn()))).toBe(true);
+  });
+
+  it("copies the picked file into the note and inserts its block where the cursor was", async () => {
+    let finish: (path: string | null) => void = () => {};
+    const attach = vi.fn<Attach>(() => new Promise((resolve) => (finish = resolve)));
+    const editor = build(undefined, attach);
+    editor.commands.setTextSelection(positionOf(editor, " world"));
+    const done = attachFile(editor, "image");
+    expect(attach).toHaveBeenCalledWith("note-1", expect.objectContaining({ extensions: expect.arrayContaining(["png", "webp", "svg"]) }));
+    expect(attach.mock.calls[0][1].extensions).not.toContain("csv");
+    editor.commands.insertContentAt(1, "Big ");
+    finish("assets/plot-1a2b3c4d.png");
+    await done;
+    expect(kbMarkdown(editor)).toMatch(/^Big Hello\n\n!\[\]\(assets\/plot-1a2b3c4d\.png\)\n\n world/u);
+  });
+
+  it("leaves the note alone when the dialog is closed, and says why a copy failed", async () => {
+    const attach = vi.fn<Attach>(async () => null);
+    const editor = build(undefined, attach);
+    await attachFile(editor, "file");
+    expect(kbMarkdown(editor)).toBe("Hello world");
+    attach.mockRejectedValueOnce(new Error("The file is larger than the 64 MiB limit."));
+    await attachFile(editor, "file");
+    expect(toasts()).toEqual([enNotes.document.fileFailed.replace("{{error}}", "The file is larger than the 64 MiB limit.")]);
+  });
+
+  it("drops the block when the note closed while the dialog was open", async () => {
+    let finish: (path: string) => void = () => {};
+    const editor = build(undefined, () => new Promise((resolve) => (finish = resolve)));
+    const done = attachFile(editor, "file");
+    destroyKbEditors();
+    finish("assets/run.ipynb");
+    await expect(done).resolves.toBeUndefined();
+    expect(toasts()).toEqual([]);
   });
 });

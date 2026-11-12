@@ -1,6 +1,7 @@
 import { diffKey, useDiffStore, type OpenDiff } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
 import { activeNoteTab, noteTabsFor, useNoteTabsStore, type NoteTab } from "@/store/note-tabs";
+import { nextTabSeq } from "@/store/tab-order";
 
 export type EditorTab =
   | { kind: "file"; id: string; order: number }
@@ -41,6 +42,16 @@ export function editorTabs(
 
 export function editorTabKey(tab: Pick<EditorTab, "kind" | "id">): string {
   return `${TAB_KEY_PREFIX[tab.kind]}:${tab.id}`;
+}
+
+export function reorderEditorTabs(keys: readonly string[]): void {
+  const sequence = new Map(keys.map((key) => [key, nextTabSeq()]));
+  const orderOf = (kind: EditorTab["kind"], id: string) => sequence.get(editorTabKey({ kind, id }));
+  useFilesStore.setState((s) => ({
+    tabOrder: { ...s.tabOrder, ...Object.fromEntries(s.openTabs.map((path) => [path, orderOf("file", path) ?? s.tabOrder[path] ?? 0])) },
+  }));
+  useDiffStore.setState((s) => ({ diffs: s.diffs.map((d) => ({ ...d, order: orderOf("diff", diffKey(d)) ?? d.order })) }));
+  useNoteTabsStore.setState((s) => ({ tabs: s.tabs.map((tab) => ({ ...tab, order: orderOf("note", tab.id) ?? tab.order })) }));
 }
 
 export function tabsToClose(

@@ -49,8 +49,8 @@ interface UnitIndex {
 
 const unitIndexes = new WeakMap<SharedNote, UnitIndex>();
 
-function noteWith(fields: Omit<SharedNote, "sources">, index: UnitIndex | null, given?: readonly string[]): SharedNote {
-  let sources: readonly string[] | null = given ?? null;
+function noteWith(fields: Omit<SharedNote, "sources">, index: UnitIndex | null, given: readonly string[] | null = null): SharedNote {
+  let sources = given;
   const note: SharedNote = {
     ...fields,
     get sources() {
@@ -215,13 +215,13 @@ function changesDocument(region: string): boolean {
 function commonPrefix(left: string, right: string): number {
   const limit = Math.min(left.length, right.length);
   let index = 0;
-  while (index < limit && left.charCodeAt(index) === right.charCodeAt(index)) index += 1;
+  while (index < limit && left[index] === right[index]) index += 1;
   return index;
 }
 
 function commonSuffix(left: string, right: string, limit: number): number {
   let index = 0;
-  while (index < limit && left.charCodeAt(left.length - 1 - index) === right.charCodeAt(right.length - 1 - index)) index += 1;
+  while (index < limit && left[left.length - 1 - index] === right[right.length - 1 - index]) index += 1;
   return index;
 }
 
@@ -242,7 +242,7 @@ function nodesBefore(layout: MarkdownSourceLayout, index: number): number {
 }
 
 function sameUnit(left: MarkdownSourceLayout["units"][number] | undefined, right: MarkdownSourceLayout["units"][number]): boolean {
-  return left !== undefined && left.source === right.source && left.nodes === right.nodes;
+  return left?.source === right.source && left.nodes === right.nodes;
 }
 
 interface TextRange {
@@ -313,7 +313,21 @@ function isEmptyParagraph(node: ProseMirrorNode | undefined): boolean {
   return node !== undefined && isEmptyBlock(node);
 }
 
-function reparsedNote(schema: Schema, previous: SharedNote, text: string): SharedNote | null {
+interface ChangedRegion {
+  layout: MarkdownSourceLayout;
+  starts: number[];
+  prefix: number;
+  changeEnd: number;
+  first: number;
+  last: number;
+  toEnd: boolean;
+  regionStart: number;
+  regionEnd: number;
+  nextEnd: number;
+  region: string;
+}
+
+function changedRegion(previous: SharedNote, text: string): ChangedRegion | null {
   const { layout } = previous;
   if (!layout || layout.units.length === 0 || definesLinks(previous)) return null;
   const starts = unitStarts(previous.text, layout);
@@ -333,7 +347,11 @@ function reparsedNote(schema: Schema, previous: SharedNote, text: string): Share
   if (regionEnd < changeEnd) return null;
   const nextEnd = regionEnd + text.length - previous.text.length;
   if (nextEnd < regionStart) return null;
-  const region = text.slice(regionStart, nextEnd);
+  return { layout, starts, prefix, changeEnd, first, last, toEnd, regionStart, regionEnd, nextEnd, region: text.slice(regionStart, nextEnd) };
+}
+
+function rangesKeptAround(previous: SharedNote, text: string, span: ChangedRegion): ProtectedRanges | null {
+  const { region, regionStart, regionEnd, nextEnd } = span;
   if (changesDocument(region) || changesDocument(previous.text.slice(regionStart, regionEnd))) return null;
   const was = rangesOf(previous);
   const now = scanRanges(text);
@@ -341,7 +359,25 @@ function reparsedNote(schema: Schema, previous: SharedNote, text: string): Share
   if (!sameRangesIn(now.preserved, regionStart, nextEnd, markdownPreservedRanges(region))) return null;
   if (!sameOutside(was.math, now.math, regionStart, regionEnd, nextEnd)) return null;
   if (!sameOutside(was.preserved, now.preserved, regionStart, regionEnd, nextEnd)) return null;
-  const lead = first > 0 ? leadWord(region) : "";
+  return now;
+}
+
+interface ParsedRegion {
+  units: MarkdownSourceLayout["units"];
+  separators: MarkdownSourceLayout["separators"];
+  trailing: string;
+  fresh: ProseMirrorNode[];
+  counted: number;
+}
+
+function closedRegionNodes(fresh: ProseMirrorNode[], counted: number, trailing: string): ProseMirrorNode[] | null {
+  if (trailing !== "") return null;
+  const nodes = fresh.length === counted + 1 && isEmptyParagraph(fresh.at(-1)) ? fresh.slice(0, counted) : fresh;
+  return nodes.length === counted ? nodes : null;
+}
+
+function parsedRegion(schema: Schema, region: string, afterFirst: boolean, toEnd: boolean): ParsedRegion | null {
+  const lead = afterFirst ? leadWord(region) : "";
   const sub = parseNoteMarkdown(lead ? `${lead}\n\n${region}` : region);
   if (!sub.layout || sub.frontmatter !== "") return null;
   let units = sub.layout.units;
@@ -355,34 +391,48 @@ function reparsedNote(schema: Schema, previous: SharedNote, text: string): Share
   }
   if (units.length === 0) return null;
   const counted = units.reduce((sum, unit) => sum + unit.nodes, 0);
-  if (!toEnd) {
-    if (sub.layout.trailing !== "") return null;
-    if (fresh.length === counted + 1 && isEmptyParagraph(fresh.at(-1))) fresh = fresh.slice(0, counted);
-    if (fresh.length !== counted) return null;
-  }
+  const { trailing } = sub.layout;
+  if (toEnd) return { units, separators, trailing, fresh, counted };
+  const closed = closedRegionNodes(fresh, counted, trailing);
+  return closed ? { units, separators, trailing, fresh: closed, counted } : null;
+}
+
+function keepsFirstUnit(span: ChangedRegion, parsed: ParsedRegion, kept: readonly ProseMirrorNode[], head: number): boolean {
+  const { layout, starts, first, prefix } = span;
+  const unit = layout.units[first];
+  if (starts[first] + unit.source.length > prefix) return true;
+  return sameUnit(parsed.units[0], unit) && sameNodes(parsed.fresh, 0, kept, head, unit.nodes);
+}
+
+function keepsLastUnit(span: ChangedRegion, parsed: ParsedRegion, kept: readonly ProseMirrorNode[]): boolean {
+  const { layout, starts, last, changeEnd } = span;
+  const unit = layout.units[last];
+  if (starts[last] < changeEnd) return true;
+  return sameUnit(parsed.units.at(-1), unit) && sameNodes(parsed.fresh, parsed.counted - unit.nodes, kept, nodesBefore(layout, last), unit.nodes);
+}
+
+function reparsedNote(schema: Schema, previous: SharedNote, text: string): SharedNote | null {
+  const span = changedRegion(previous, text);
+  if (!span) return null;
+  const now = rangesKeptAround(previous, text, span);
+  if (!now) return null;
+  const parsed = parsedRegion(schema, span.region, span.first > 0, span.toEnd);
+  if (!parsed) return null;
+  const { layout, first, last, toEnd } = span;
   const kept = children(previous.doc);
   const head = nodesBefore(layout, first);
-  const before = starts[first] + layout.units[first].source.length <= prefix;
-  if (before && !(sameUnit(units[0], layout.units[first]) && sameNodes(fresh, 0, kept, head, layout.units[first].nodes))) return null;
-  const after = starts[last] >= changeEnd;
-  const lastNodes = layout.units[last].nodes;
-  if (
-    after &&
-    !(sameUnit(units.at(-1), layout.units[last]) && sameNodes(fresh, counted - lastNodes, kept, nodesBefore(layout, last), lastNodes))
-  ) {
-    return null;
-  }
+  if (!keepsFirstUnit(span, parsed, kept, head) || !keepsLastUnit(span, parsed, kept)) return null;
   const tail = toEnd ? [] : kept.slice(nodesBefore(layout, last + 1));
   let doc: ProseMirrorNode;
   try {
-    doc = previous.doc.type.createChecked(previous.doc.attrs, [...kept.slice(0, head), ...fresh, ...tail]);
+    doc = previous.doc.type.createChecked(previous.doc.attrs, [...kept.slice(0, head), ...parsed.fresh, ...tail]);
   } catch {
     return null;
   }
   const nextLayout: MarkdownSourceLayout = {
-    units: [...layout.units.slice(0, first), ...units, ...layout.units.slice(last + 1)],
-    separators: [...layout.separators.slice(0, first), ...separators, ...layout.separators.slice(last)],
-    trailing: toEnd ? sub.layout.trailing : layout.trailing,
+    units: [...layout.units.slice(0, first), ...parsed.units, ...layout.units.slice(last + 1)],
+    separators: [...layout.separators.slice(0, first), ...parsed.separators, ...layout.separators.slice(last)],
+    trailing: toEnd ? parsed.trailing : layout.trailing,
   };
   const note = sharedNoteOf(text, doc, previous.frontmatter, nextLayout);
   protectedRanges.set(note, now);
@@ -528,14 +578,10 @@ function blockStart(doc: ProseMirrorNode, index: number): number {
 function restoredPosition(
   tr: Transaction,
   before: ProseMirrorNode,
-  drafts: readonly NoteChangeDraft[] | null,
+  drafts: readonly NoteChangeDraft[],
   pos: number,
 ): number {
   const place = placeOf(before, pos);
-  if (drafts === null) {
-    const index = Math.min(place.index, tr.doc.childCount - 1);
-    return positionInBlock(tr.doc, blockStart(tr.doc, index), place);
-  }
   const draft = drafts.find((change) => change.kind === "blocks" && change.from <= place.start && place.end <= change.to);
   if (draft?.kind !== "blocks" || draft.nodes.length === 0) return tr.mapping.map(pos);
   let skipped = 0;
@@ -556,7 +602,7 @@ function keepSelection(
   tr: Transaction,
   selection: Selection,
   before: ProseMirrorNode,
-  drafts: readonly NoteChangeDraft[] | null,
+  drafts: readonly NoteChangeDraft[],
 ): void {
   if (!(selection instanceof TextSelection)) return;
   const anchor = restoredPosition(tr, before, drafts, selection.anchor);
@@ -577,16 +623,33 @@ function applyDrafts(tr: Transaction, drafts: readonly NoteChangeDraft[]): void 
   }
 }
 
+function changedSpan(current: ProseMirrorNode, target: ProseMirrorNode): NoteChangeDraft {
+  const limit = Math.min(current.childCount, target.childCount);
+  let head = 0;
+  let from = 0;
+  while (head < limit && current.child(head).eq(target.child(head))) {
+    from += current.child(head).nodeSize;
+    head += 1;
+  }
+  let tail = 0;
+  let to = current.content.size;
+  while (tail < limit - head && current.child(current.childCount - 1 - tail).eq(target.child(target.childCount - 1 - tail))) {
+    to -= current.child(current.childCount - 1 - tail).nodeSize;
+    tail += 1;
+  }
+  return { kind: "blocks", from, to, nodes: children(target).slice(head, target.childCount - tail) };
+}
+
 export function noteDocTransaction(state: EditorState, target: ProseMirrorNode): Transaction | null {
   const current = state.doc;
   if (target.eq(current)) return null;
-  const drafts = diffNoteDocs(current, target);
+  let placed = diffNoteDocs(current, target);
   let tr = state.tr;
-  applyDrafts(tr, drafts);
-  let placed: readonly NoteChangeDraft[] | null = drafts;
+  applyDrafts(tr, placed);
   if (!tr.doc.eq(target)) {
-    tr = state.tr.replaceWith(0, current.content.size, target.content);
-    placed = null;
+    placed = [changedSpan(current, target)];
+    tr = state.tr;
+    applyDrafts(tr, placed);
   }
   keepSelection(tr, state.selection, current, placed);
   return tr.setMeta(NOTE_REMOTE, true).setMeta("addToHistory", false);
@@ -594,11 +657,6 @@ export function noteDocTransaction(state: EditorState, target: ProseMirrorNode):
 
 export function sharedNoteTransaction(state: EditorState, base: SharedNote | null, next: SharedNote): Transaction | null {
   return noteDocTransaction(state, base ? mergedDoc(base, state.doc, next) : next.doc);
-}
-
-export function showSharedNote(editor: Editor, base: SharedNote | null, next: SharedNote): void {
-  const tr = sharedNoteTransaction(editor.state, base, next);
-  if (tr) editor.view.dispatch(tr);
 }
 
 export function showNoteDoc(editor: Editor, target: ProseMirrorNode): void {

@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import type { NodeViewRenderer } from "@tiptap/core";
 import { afterEach, describe, expect, it } from "vitest";
+import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { destroyKbEditors, kbEditor, kbMarkdown, placeCursor, pressKey, typeInto } from "./tests/kb-editor-fixtures";
 import { CALLOUT_TYPES, calloutFold, calloutKind, calloutLabel, leaveCalloutTitle, unwrapCallout } from "./note-callouts";
+import "./tests/setup";
 
 const plainView: NodeViewRenderer = () => {
   const dom = document.createElement("div");
@@ -23,11 +25,28 @@ describe("callout kinds", () => {
     expect(calloutKind("lemma")).toMatchObject({ id: "lemma", tone: "purple" });
     expect(calloutKind("whatever").id).toBe("note");
     expect(CALLOUT_TYPES).toEqual(expect.arrayContaining(["theorem", "definition", "proof", "hypothesis", "method", "remark"]));
-    expect(calloutLabel("warning")).toBe("Warning");
     expect(calloutLabel("")).toBe("");
     expect(calloutFold("-")).toBe("-");
     expect(calloutFold("x")).toBe("");
     expect(calloutFold(null)).toBe("");
+  });
+});
+
+describe("callout names", () => {
+  it.each([
+    ["todo", enNotes.kb.callouts.types.todo],
+    ["WARNING", enNotes.kb.callouts.types.warning],
+    ["summary", "Summary"],
+    ["custom", "Custom"],
+  ])("names %s from the locale, keeping words outside the list as written", (type, label) => {
+    expect(calloutLabel(type)).toBe(label);
+  });
+
+  it("shows the translated name in an empty title and keeps the id in Markdown", () => {
+    const editor = editorFor("> [!todo]\n> Body");
+    const title = editor.view.dom.querySelector("[data-callout-title]");
+    expect(title?.getAttribute("data-default")).toBe(enNotes.kb.callouts.types.todo);
+    expect(kbMarkdown(editor)).toBe("> [!todo]\n> Body");
   });
 });
 

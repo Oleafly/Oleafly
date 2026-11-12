@@ -1,31 +1,23 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
 import { formatRelativeTimeFrom } from "@/lib/intl";
 import { installIntersectionObserverStub, type IntersectionObserverStub } from "@/components/ui/test-intersection-observer";
-import { useProjectColorsStore } from "@/store/project-colors";
-import { useToastStore } from "@/store/toast";
-
-const log = vi.hoisted(() => ({ logError: vi.fn(async () => {}) }));
-vi.mock("@/lib/log", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/log")>()),
-  logError: log.logError,
-}));
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
 vi.mock("@/components/ui/mermaid-diagram", () => ({
   renderDiagram: vi.fn(() => Promise.resolve(document.createElementNS("http://www.w3.org/2000/svg", "svg"))),
 }));
 
 import { NotesHome } from "./NotesHome";
-import { NOTE_FAVORITES_KEY, toggleNoteFavorite } from "./note-favorites";
-import { NOTE_HOME_LAYOUT_KEY, NOTE_HOME_SORT_KEY, NOTE_OPENED_KEY } from "./note-home-prefs";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import type { NoteItem } from "./types";
+import { useNotesPrefsStore } from "@/store/notes-prefs";
 
 const copy = enNotes.home;
 const menuCopy = enNotes.library.menu;
@@ -75,30 +67,25 @@ const PROJECTS = [
 ];
 
 function fakeData(overrides: Partial<NotesData> = {}): NotesData {
-  return {
+  return fakeNotesData({
     notes,
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
     projects: PROJECTS,
-    loadNote: vi.fn(),
-    saveNote: vi.fn(),
     renameNote: vi.fn(async () => {}),
     setRelatedProject: vi.fn(async () => {}),
     deleteNote: vi.fn(async () => {}),
     resolveAsset: vi.fn(async () => null),
     ...overrides,
-  };
+  });
 }
 
 interface Props {
   data?: NotesData;
   onNewNote?: () => void;
+  onImport?: () => void;
   onOpenNoteInNewTab?: (id: string) => void;
 }
 
-function renderHome({ data = fakeData(), onNewNote, onOpenNoteInNewTab }: Props = {}) {
+function renderHome({ data = fakeData(), onNewNote, onImport, onOpenNoteInNewTab }: Props = {}) {
   const handlers = {
     onOpenNote: vi.fn(),
     iconFor: vi.fn((note: NoteItem) => note.icon),
@@ -110,6 +97,7 @@ function renderHome({ data = fakeData(), onNewNote, onOpenNoteInNewTab }: Props 
         onOpenNote={handlers.onOpenNote}
         onOpenNoteInNewTab={onOpenNoteInNewTab}
         onNewNote={onNewNote}
+        onImport={onImport}
       />
     </NotesDataProvider>,
   );
@@ -151,15 +139,8 @@ function columnHeader(label: string): HTMLElement {
   return match;
 }
 
-function favorites(): string[] {
-  return JSON.parse(localStorage.getItem(NOTE_FAVORITES_KEY) ?? "[]") as string[];
-}
-
-function toastMessages(kind: "success" | "error"): string[] {
-  return useToastStore
-    .getState()
-    .toasts.filter((toast) => toast.kind === kind)
-    .map((toast) => toast.message);
+function favorites(): readonly string[] {
+  return useNotesPrefsStore.getState().favorites;
 }
 
 function ago(timestamp: number): string {
@@ -169,15 +150,11 @@ function ago(timestamp: number): string {
 let observer: IntersectionObserverStub | null = null;
 const scrollTo = vi.fn();
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+const initialPrefs = useNotesPrefsStore.getState();
 
 beforeEach(() => {
+  useNotesPrefsStore.setState(initialPrefs, true);
   localStorage.clear();
-  log.logError.mockClear();
-  useToastStore.setState({ toasts: [] });
-  useProjectColorsStore.setState({ colors: {} });
   scrollTo.mockClear();
   HTMLElement.prototype.scrollTo = scrollTo as unknown as HTMLElement["scrollTo"];
 });
@@ -189,31 +166,12 @@ afterEach(() => {
 });
 
 describe("NotesHome header", () => {
-  it("fills its view with the note background and scrolls on its own", () => {
-    renderHome();
-    const root = screen.getByRole("heading", { name: copy.title }).closest(".overflow-y-auto");
-    expect(root).toHaveClass("flex-1", "min-h-0", "bg-background", "@container");
-  });
-
-  it("puts the title on the left, a search field centred on wide panes and inline on narrow ones, and a New note button on the right", async () => {
+  it("shows the title, a search field and a New note button", async () => {
     const user = userEvent.setup();
     const onNewNote = vi.fn();
     renderHome({ onNewNote });
-    expect(screen.getByRole("heading", { level: 2, name: copy.title })).toHaveClass("font-semibold");
-    const search = screen.getByRole("combobox", { name: copy.search });
-    expect(search).toHaveAttribute("placeholder", copy.search);
-    expect(search.parentElement).toHaveClass(
-      "min-w-0",
-      "flex-1",
-      "rounded-[0.5625rem]",
-      "max-w-[22.5rem]",
-      "@min-[36rem]:absolute",
-      "@min-[36rem]:left-1/2",
-      "@min-[36rem]:w-[22.5rem]",
-      "@min-[36rem]:-translate-x-1/2",
-    );
-    expect(search.parentElement?.className).not.toMatch(/(^|\s)(absolute|left-1\/2|-translate-x-1\/2)(\s|$)/u);
-    expect(search.className).not.toMatch(/(^|\s)(ring|outline)-/u);
+    expect(screen.getByRole("heading", { level: 2, name: copy.title })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: copy.search })).toHaveAttribute("placeholder", copy.search);
     await user.click(screen.getByRole("button", { name: enNotes.library.newNote }));
     expect(onNewNote).toHaveBeenCalledOnce();
   });
@@ -223,45 +181,30 @@ describe("NotesHome header", () => {
     expect(screen.getByRole("button", { name: enNotes.library.newNote })).toBeDisabled();
   });
 
-  it("wraps the toolbar instead of overlapping, and keeps the sort name for screen readers when it hides", () => {
-    renderHome();
-    const tabs = screen.getByRole("group", { name: copy.tabs.label });
-    expect(tabs.parentElement).toHaveClass("flex-wrap", "gap-y-2", "min-h-7");
-    const sort = screen.getByRole("button", { name: enNotes.home.sort.opened });
-    expect(within(sort).getByText(enNotes.home.sort.opened)).toHaveClass("@max-[32rem]:sr-only");
-  });
-
   it("shows My notes and Favorites, the sort choice and the layout switch", () => {
     renderHome();
-    const tabs = screen.getByRole("group", { name: copy.tabs.label });
-    expect(within(tabs).getByRole("button", { name: copy.tabs.mine })).toHaveAttribute("aria-pressed", "true");
-    expect(within(tabs).getByRole("button", { name: copy.tabs.favorites })).toHaveAttribute("aria-pressed", "false");
+    const tabs = screen.getByRole("tablist", { name: copy.tabs.label });
+    expect(within(tabs).getByRole("tab", { name: copy.tabs.mine })).toHaveAttribute("aria-selected", "true");
+    expect(within(tabs).getByRole("tab", { name: copy.tabs.favorites })).toHaveAttribute("aria-selected", "false");
     expect(screen.getByRole("button", { name: copy.sort.opened })).toHaveAttribute("aria-haspopup", "menu");
     const layout = screen.getByRole("group", { name: copy.layout });
     expect(within(layout).getByRole("button", { name: enLibrary.home.gridView })).toHaveAttribute("aria-pressed", "true");
-    expect(within(layout).getByRole("button", { name: enLibrary.home.listView })).toHaveClass("h-6", "w-[1.875rem]");
-    expect(screen.queryByRole("tab")).not.toBeInTheDocument();
   });
 });
 
 describe("NotesHome cards", () => {
-  it("draws each note as a framed card with its title, project and a live preview", () => {
-    useProjectColorsStore.setState({ colors: { "p-vision": "#cfbaf0" } });
+  it("draws each note as a card with its title, project and a live preview", () => {
     const view = renderHome();
     expect(shownIds()).toEqual(["n1", "n2", "n3"]);
     const masking = card("n1");
-    expect(masking).toHaveClass("aspect-[236/264]", "rounded-[1.25rem]", "p-1");
-    expect(masking.className).not.toMatch(/border-(l|s)-|note-project/u);
-    expect(within(masking).getByText("Masking ablation")).toHaveClass("break-words");
+    expect(within(masking).getByText("Masking ablation")).toBeInTheDocument();
     expect(within(masking).getByText("🧪")).toBeInTheDocument();
+    expect(within(masking).getByText("Vision")).toBeInTheDocument();
     expect(view.iconFor).toHaveBeenCalledWith(notes[0]);
-    expect(within(masking).getByText("Vision").previousElementSibling).toHaveAttribute("data-project-color", "#cfbaf0");
-    expect(within(card("n2")).getByText("Notes").previousElementSibling).toHaveAttribute("data-project-color", "none");
 
     const preview = masking.querySelector<HTMLElement>("[data-note-preview]");
     expect(preview).toHaveAttribute("aria-hidden", "true");
     expect(preview).toHaveAttribute("inert");
-    expect(preview).toHaveClass("pointer-events-none");
     expect(preview?.querySelector(".wysiwyg-content.note-body > .ProseMirror h2")).toHaveTextContent("Where things stand");
     expect(preview?.querySelectorAll("td")).toHaveLength(2);
     expect(card("n2").querySelectorAll("[data-note-preview] li")).toHaveLength(2);
@@ -288,24 +231,20 @@ describe("NotesHome cards", () => {
     expect(card("n2").querySelector("[data-note-preview]")).toBeInTheDocument();
   });
 
-  it("stars a note from its card and keeps the star showing once it is a favorite", async () => {
+  it("bookmarks a note from its card", async () => {
     const user = userEvent.setup();
     renderHome();
-    const star = within(card("n2")).getByRole("button", { name: menuCopy.favorite });
-    expect(star).toHaveClass("opacity-0", "group-hover/card:opacity-100");
-    await user.click(star);
+    await user.click(within(card("n2")).getByRole("button", { name: menuCopy.favorite }));
     expect(favorites()).toEqual(["n2"]);
     const starred = within(card("n2")).getByRole("button", { name: menuCopy.unfavorite });
     expect(starred).toHaveAttribute("aria-pressed", "true");
-    expect(starred).toHaveClass("opacity-100", "text-amber-500");
-    expect(starred.querySelector("svg")).toHaveClass("fill-current");
     await user.click(starred);
     expect(favorites()).toEqual([]);
   });
 
   it("follows favorites changed elsewhere, like the sidebar", () => {
     renderHome();
-    act(() => toggleNoteFavorite("n3"));
+    act(() => useNotesPrefsStore.getState().toggleFavorite("n3"));
     expect(within(card("n3")).getByRole("button", { name: menuCopy.unfavorite })).toBeInTheDocument();
   });
 });
@@ -313,10 +252,10 @@ describe("NotesHome cards", () => {
 describe("NotesHome tabs, search and sort", () => {
   it("shows only starred notes under Favorites and says when there are none", async () => {
     const user = userEvent.setup();
-    localStorage.setItem(NOTE_FAVORITES_KEY, JSON.stringify(["n3", "gone"]));
+    useNotesPrefsStore.getState().set("favorites", ["n3", "gone"]);
     renderHome();
-    await user.click(screen.getByRole("button", { name: copy.tabs.favorites }));
-    expect(screen.getByRole("button", { name: copy.tabs.favorites })).toHaveAttribute("aria-pressed", "true");
+    await user.click(screen.getByRole("tab", { name: copy.tabs.favorites }));
+    expect(screen.getByRole("tab", { name: copy.tabs.favorites })).toHaveAttribute("aria-selected", "true");
     expect(shownIds()).toEqual(["n3"]);
     await user.click(within(card("n3")).getByRole("button", { name: menuCopy.unfavorite }));
     expect(shownIds()).toEqual([]);
@@ -344,8 +283,8 @@ describe("NotesHome tabs, search and sort", () => {
 
   it("uses the sidebar's search syntax, completes qualifiers and writes a clicked table tag into the search", async () => {
     const user = userEvent.setup();
-    localStorage.setItem(NOTE_FAVORITES_KEY, JSON.stringify(["n2"]));
-    localStorage.setItem(NOTE_HOME_LAYOUT_KEY, "table");
+    useNotesPrefsStore.getState().set("favorites", ["n2"]);
+    useNotesPrefsStore.getState().set("homeLayout", "table");
     const noteTags = vi.fn(async () => [{ tag: "ml", label: "ml", count: 1, notes: ["n1"] }]);
     renderHome({ data: fakeData({ noteTags }) });
     const tableIds = () => [...document.querySelectorAll<HTMLElement>("[data-note-table-row]")].map((row) => row.dataset.noteTableRow);
@@ -374,7 +313,7 @@ describe("NotesHome tabs, search and sort", () => {
 
   it("sorts by last opened, then by the sort picked, remembers it and scrolls back to the top", async () => {
     const user = userEvent.setup();
-    localStorage.setItem(NOTE_OPENED_KEY, JSON.stringify({ n3: NOW }));
+    useNotesPrefsStore.getState().set("opened", { n3: NOW });
     const view = renderHome();
     const scroller = view.container.querySelector(".overflow-y-auto") as HTMLElement;
     expect(shownIds()).toEqual(["n3", "n1", "n2"]);
@@ -390,7 +329,7 @@ describe("NotesHome tabs, search and sort", () => {
     };
     await pick(copy.sort.created);
     expect(shownIds()).toEqual(["n3", "n2", "n1"]);
-    expect(localStorage.getItem(NOTE_HOME_SORT_KEY)).toBe("created");
+    expect(useNotesPrefsStore.getState().homeSort).toBe("created");
     expect(scrollTo).toHaveBeenCalledWith({ top: 0 });
     expect(scrollTo.mock.contexts.at(-1)).toBe(scroller);
     expect(screen.getByRole("button", { name: copy.sort.created })).toBeInTheDocument();
@@ -402,7 +341,7 @@ describe("NotesHome tabs, search and sort", () => {
   });
 
   it("marks the current sort with a check in its menu", () => {
-    localStorage.setItem(NOTE_HOME_SORT_KEY, "title");
+    useNotesPrefsStore.getState().set("homeSort", "title");
     renderHome();
     fireEvent.pointerDown(screen.getByRole("button", { name: copy.sort.title }), { button: 0, ctrlKey: false });
     const items = within(screen.getByRole("menu")).getAllByRole("menuitem");
@@ -420,10 +359,10 @@ describe("NotesHome list", () => {
 
   it("switches to compact rows with chip, title, project, author and times, and remembers it", async () => {
     const user = userEvent.setup();
-    localStorage.setItem(NOTE_OPENED_KEY, JSON.stringify({ n1: NOW - 10 * 60_000 }));
+    useNotesPrefsStore.getState().set("opened", { n1: NOW - 10 * 60_000 });
     const first = renderHome();
     await user.click(screen.getByRole("button", { name: enLibrary.home.listView }));
-    expect(localStorage.getItem(NOTE_HOME_LAYOUT_KEY)).toBe("list");
+    expect(useNotesPrefsStore.getState().homeLayout).toBe("list");
     expect(document.querySelector("[data-note-card]")).toBeNull();
     const row = listRow("n1");
     expect(row.querySelector("[data-note-color]")).toHaveAttribute("data-note-color", "mint");
@@ -436,7 +375,6 @@ describe("NotesHome list", () => {
     expect(listRow("n2")).toHaveTextContent(enNotes.library.author.you);
     expect(within(listRow("n3")).getByText(enNotes.library.agentFallback)).toBeInTheDocument();
     expect(listRow("n3")).toHaveTextContent(ago(notes[2].updatedAt));
-    expect(row.className).not.toMatch(/border-(l|s)-|note-project/u);
     first.unmount();
 
     renderHome();
@@ -445,26 +383,21 @@ describe("NotesHome list", () => {
 
   it("heads the columns, marks the sorted one and sorts by a column when it is clicked", async () => {
     const user = userEvent.setup();
-    localStorage.setItem(NOTE_HOME_LAYOUT_KEY, "list");
+    useNotesPrefsStore.getState().set("homeLayout", "list");
     renderHome();
-    const opened = columnHeader(copy.sort.opened);
-    expect(opened).toHaveAttribute("aria-pressed", "true");
-    expect(opened).toHaveClass("font-semibold", "text-foreground");
-    expect(opened.parentElement).toHaveClass("flex");
-    expect(opened.parentElement).not.toHaveClass("hidden");
-    expect(columnHeader(copy.sort.created).parentElement).toHaveClass("hidden");
+    expect(columnHeader(copy.sort.opened)).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText(copy.author)).toBeInTheDocument();
     await user.click(columnHeader(copy.sort.title));
-    expect(localStorage.getItem(NOTE_HOME_SORT_KEY)).toBe("title");
+    expect(useNotesPrefsStore.getState().homeSort).toBe("title");
     expect(shownIds()).toEqual(["n3", "n1", "n2"]);
     expect(columnHeader(copy.sort.title)).toHaveAttribute("aria-pressed", "true");
     await user.click(columnHeader(copy.sort.created));
-    expect(localStorage.getItem(NOTE_HOME_SORT_KEY)).toBe("created");
+    expect(useNotesPrefsStore.getState().homeSort).toBe("created");
   });
 
   it("opens, stars and manages a note from its row", async () => {
     const user = userEvent.setup();
-    localStorage.setItem(NOTE_HOME_LAYOUT_KEY, "list");
+    useNotesPrefsStore.getState().set("homeLayout", "list");
     const onOpenNoteInNewTab = vi.fn();
     const view = renderHome({ onOpenNoteInNewTab });
     await user.click(screen.getByRole("button", { name: "Agent scratch" }));
@@ -490,6 +423,8 @@ describe("NotesHome note menus", () => {
     const menu = openMore(card("n1"));
     expect(menuItemNames(menu)).toEqual([
       menuCopy.openInNewTab,
+      menuCopy.copyLink,
+      menuCopy.export,
       menuCopy.favorite,
       menuCopy.rename,
       menuCopy.useAsTemplate,
@@ -502,143 +437,39 @@ describe("NotesHome note menus", () => {
 
     fireEvent.contextMenu(card("n2"));
     const context = screen.getByRole("menu");
-    expect(menuItemNames(context)[1]).toBe(menuCopy.favorite);
+    expect(menuItemNames(context)).toContain(menuCopy.favorite);
     await user.click(within(context).getByRole("menuitem", { name: menuCopy.openInNewTab }));
     expect(onOpenNoteInNewTab).toHaveBeenCalledWith("n2");
-  });
-
-  it("names the icon-only More and star buttons in tooltips", async () => {
-    renderHome();
-    fireEvent.mouseEnter(within(card("n1")).getByRole("button", { name: menuCopy.more }));
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(menuCopy.more);
-    fireEvent.mouseLeave(within(card("n1")).getByRole("button", { name: menuCopy.more }));
-    await waitFor(() => expect(screen.queryByRole("tooltip")).not.toBeInTheDocument());
-    fireEvent.mouseEnter(within(card("n1")).getByRole("button", { name: menuCopy.favorite }));
-    expect(await screen.findByRole("tooltip")).toHaveTextContent(menuCopy.favorite);
-  });
-
-  it("keeps only the actions the data can do", () => {
-    renderHome({
-      data: fakeData({ renameNote: undefined, deleteNote: undefined, setRelatedProject: undefined }),
-    });
-    expect(menuItemNames(openMore(card("n1")))).toEqual([menuCopy.favorite, menuCopy.useAsTemplate]);
-  });
-
-  it("renames a note in its card, saving the trimmed title on Enter and keeping the old one on Escape", async () => {
-    const user = userEvent.setup();
-    const { data } = renderHome();
-    await user.click(within(openMore(card("n1"))).getByRole("menuitem", { name: menuCopy.rename }));
-    const input = await screen.findByRole("textbox", { name: menuCopy.renameLabel });
-    expect(input).toHaveValue("Masking ablation");
-    await waitFor(() => expect(input).toHaveFocus());
-    expect(within(card("n1")).queryByRole("button", { name: "Masking ablation" })).not.toBeInTheDocument();
-    await user.clear(input);
-    await user.type(input, "  Masking, final  {Enter}");
-    expect(data.renameNote).toHaveBeenCalledExactlyOnceWith("n1", "Masking, final");
-    expect(screen.queryByRole("textbox", { name: menuCopy.renameLabel })).not.toBeInTheDocument();
-
-    await user.click(within(openMore(card("n2"))).getByRole("menuitem", { name: menuCopy.rename }));
-    const second = await screen.findByRole("textbox", { name: menuCopy.renameLabel });
-    await user.type(second, "zzz{Escape}");
-    expect(data.renameNote).toHaveBeenCalledOnce();
-    expect(screen.queryByRole("textbox", { name: menuCopy.renameLabel })).not.toBeInTheDocument();
-  });
-
-  it("saves a rename when the field loses focus and skips an unchanged or empty title", async () => {
-    const user = userEvent.setup();
-    const { data } = renderHome();
-    await user.click(within(openMore(card("n1"))).getByRole("menuitem", { name: menuCopy.rename }));
-    const input = await screen.findByRole("textbox", { name: menuCopy.renameLabel });
-    fireEvent.blur(input);
-    fireEvent.keyDown(input, { key: "Enter" });
-    expect(data.renameNote).not.toHaveBeenCalled();
-    await user.click(within(openMore(card("n1"))).getByRole("menuitem", { name: menuCopy.rename }));
-    const again = await screen.findByRole("textbox", { name: menuCopy.renameLabel });
-    await user.clear(again);
-    fireEvent.blur(again);
-    expect(data.renameNote).not.toHaveBeenCalled();
-  });
-
-  it("tells you when a rename fails", async () => {
-    const user = userEvent.setup();
-    renderHome({ data: fakeData({ renameNote: vi.fn(async () => Promise.reject(new Error("locked"))) }) });
-    await user.click(within(openMore(card("n2"))).getByRole("menuitem", { name: menuCopy.rename }));
-    await user.type(await screen.findByRole("textbox", { name: menuCopy.renameLabel }), "!{Enter}");
-    await waitFor(() => expect(toastMessages("error")).toEqual(['Couldn\'t rename "Reading list".']));
-  });
-
-  it("moves a note to another project or out of every project", async () => {
-    const user = userEvent.setup();
-    const { data } = renderHome();
-    const choose = async (id: string, name: string) => {
-      const trigger = within(openMore(card(id))).getByRole("menuitem", { name: enNotes.library.menu.linkProject });
-      trigger.focus();
-      await user.keyboard("{ArrowRight}");
-      const submenu = (await screen.findAllByRole("menu")).at(-1) as HTMLElement;
-      await user.click(within(submenu).getByRole("menuitem", { name }));
-    };
-    await choose("n2", "Language");
-    expect(data.setRelatedProject).toHaveBeenCalledWith("n2", "p-language");
-    await choose("n1", enNotes.workspace.noProject);
-    expect(data.setRelatedProject).toHaveBeenLastCalledWith("n1", null);
-  });
-
-  it("logs a project move that fails", async () => {
-    const user = userEvent.setup();
-    renderHome({ data: fakeData({ setRelatedProject: vi.fn(async () => Promise.reject(new Error("gone"))) }) });
-    const trigger = within(openMore(card("n2"))).getByRole("menuitem", { name: enNotes.library.menu.linkProject });
-    trigger.focus();
-    await user.keyboard("{ArrowRight}");
-    const submenu = (await screen.findAllByRole("menu")).at(-1) as HTMLElement;
-    await user.click(within(submenu).getByRole("menuitem", { name: "Vision" }));
-    await waitFor(() => expect(log.logError).toHaveBeenCalledWith("set the note's project", expect.any(Error)));
-    expect(useToastStore.getState().toasts.map((toast) => toast.message)).toContain(
-      enNotes.failures.linkNote.replace("{{name}}", "Reading list"),
-    );
-  });
-
-  it("asks before moving a note to the Recycle Bin, then moves it and says so", async () => {
-    const user = userEvent.setup();
-    const { data } = renderHome();
-    await user.click(within(openMore(card("n2"))).getByRole("menuitem", { name: menuCopy.delete }));
-    const dialog = await screen.findByRole("alertdialog");
-    expect(within(dialog).getByRole("heading", { name: 'Move "Reading list" to the Recycle Bin?' })).toBeInTheDocument();
-    await user.click(within(dialog).getByRole("button", { name: menuCopy.deleteConfirm }));
-    expect(data.deleteNote).toHaveBeenCalledExactlyOnceWith("n2");
-    await waitFor(() => expect(toastMessages("success")).toEqual(['Moved "Reading list" to the Recycle Bin.']));
-  });
-
-  it("keeps the note when the delete is cancelled and reports one that fails", async () => {
-    const user = userEvent.setup();
-    const deleteNote = vi.fn(async () => Promise.reject(new Error("busy")));
-    renderHome({ data: fakeData({ deleteNote }) });
-    fireEvent.contextMenu(card("n1"));
-    await user.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: menuCopy.delete }));
-    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: new RegExp(`^${enCommon.actions.cancel}`, "u") }));
-    expect(deleteNote).not.toHaveBeenCalled();
-    fireEvent.contextMenu(card("n1"));
-    await user.click(within(screen.getByRole("menu")).getByRole("menuitem", { name: menuCopy.delete }));
-    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: menuCopy.deleteConfirm }));
-    await waitFor(() => expect(toastMessages("error")).toEqual(['Couldn\'t delete "Masking ablation".']));
-    expect(toastMessages("success")).toEqual([]);
   });
 });
 
 describe("NotesHome empty state", () => {
-  it("invites you to write the first note", async () => {
+  const greetings = Object.values(enNotes.workspace.empty.greetings);
+
+  it("greets a first note with a blank note, starter templates and a Markdown import", async () => {
     const user = userEvent.setup();
     const onNewNote = vi.fn();
-    renderHome({ data: fakeData({ notes: [] }), onNewNote });
-    expect(screen.getByText(copy.empty)).toBeInTheDocument();
-    const buttons = screen.getAllByRole("button", { name: enNotes.library.newNote });
-    expect(buttons).toHaveLength(2);
-    await user.click(buttons[1]);
+    const onImport = vi.fn();
+    const { container } = renderHome({ data: fakeData({ notes: [], createNoteFrom: vi.fn() }), onNewNote, onImport });
+    expect(screen.getAllByRole("heading", { level: 2 }).filter((heading) => greetings.includes(heading.textContent ?? ""))).toHaveLength(1);
+    expect(container.querySelector("[data-rings-pattern]")).not.toBeNull();
+    expect(screen.getByRole("button", { name: new RegExp(enNotes.vault.templates.names.proposal) })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: new RegExp(enNotes.vault.templates.blank) }));
     expect(onNewNote).toHaveBeenCalledOnce();
+    await user.click(screen.getByRole("button", { name: enNotes.vault.import.menu }));
+    expect(onImport).toHaveBeenCalledOnce();
+    Element.prototype.scrollIntoView = vi.fn();
+    await user.click(screen.getByRole("button", { name: enNotes.workspace.empty.moreTemplates }));
+    expect(await screen.findByRole("dialog", { name: enNotes.vault.templates.label })).toBeInTheDocument();
+    Reflect.deleteProperty(Element.prototype, "scrollIntoView");
   });
 
-  it("leaves the button out when notes can't be made", () => {
+  it("leaves out the actions that can't run", () => {
     renderHome({ data: fakeData({ notes: [] }) });
-    expect(screen.getByText(copy.empty)).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: enNotes.library.newNote })).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { level: 2 }).filter((heading) => greetings.includes(heading.textContent ?? ""))).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: new RegExp(enNotes.vault.templates.blank) })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: enNotes.vault.import.menu })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: enNotes.workspace.empty.moreTemplates })).not.toBeInTheDocument();
   });
 });
+

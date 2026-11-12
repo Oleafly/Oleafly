@@ -17,9 +17,37 @@
     "resize": "Změnit velikost panelů",
     "closePanel": "Zavřít panel",
     "newTab": "Nová karta",
-    "emptyPanel": "Tento panel je prázdný.",
+    "empty": {
+      "greetings": {
+        "begin": "Kde začneme?",
+        "ready": "Můžeme začít, kdykoli budete chtít.",
+        "mind": "Co máte dnes na mysli?",
+        "resume": "Navážete tam, kde jste skončili?",
+        "working": "Na čem pracujete?",
+        "first": "Co chcete napsat jako první?",
+        "blank": "Začněte prázdnou stránkou nebo šablonou."
+      },
+      "hints": {
+        "daily": "Plán a záznam na dnešek",
+        "experimentLog": "Běhy a co ukázaly",
+        "paperReading": "Co tvrdí jeden článek",
+        "literatureMatrix": "Porovnání článků vedle sebe",
+        "meeting": "Program a rozhodnutí",
+        "labProtocol": "Kroky, podle kterých může postupovat i někdo jiný",
+        "weeklyLog": "Co se tento týden udělalo",
+        "proposal": "Cíle, metody a harmonogram"
+      },
+      "moreTemplates": "Další šablony",
+      "continue": "Pokračovat",
+      "searchAll": "Hledat ve všech poznámkách"
+    },
     "closeMissing": "Zavřít kartu",
-    "notesHome": "Přejít na úvod Poznámek"
+    "notesHome": "Přejít na úvod Poznámek",
+    "breadcrumb": "Drobečková navigace",
+    "breadcrumbHome": "Úvod Poznámek",
+    "brand": "Poznámky Oleafly",
+    "back": "Zpět",
+    "forward": "Vpřed"
   },
   "saveStatus": {
     "saved": "Uloženo",
@@ -40,7 +68,7 @@
       "notebook": "Poznámkové bloky"
     },
     "author": {
-      "all": "Kdokoli",
+      "all": "Všichni",
       "agent": "Agenti",
       "you": "Vy"
     },
@@ -52,17 +80,20 @@
       "data": "Těmto filtrům neodpovídají žádné datové soubory.",
       "notebook": "Těmto filtrům neodpovídají žádné poznámkové bloky."
     },
-    "noNotes": "Zatím nemáte žádné poznámky. Začněte tlačítkem Nová poznámka.",
+    "start": {
+      "title": "Zatím žádné poznámky"
+    },
     "ungrouped": "Poznámky",
     "agentFallback": "Agent",
     "settings": "Nastavení",
     "filters": {
-      "title": "Filtry",
+      "title": "Štítky",
       "active_one": "{{count}} aktivní filtr",
       "active_few": "{{count}} aktivní filtry",
       "active_many": "{{count}} aktivního filtru",
       "active_other": "{{count}} aktivních filtrů",
-      "clear": "Zrušit filtry"
+      "clear": "Zrušit filtry",
+      "writtenBy": "Autor"
     },
     "menu": {
       "more": "Další",
@@ -83,18 +114,31 @@
       "templateOn": "Poznámka „{{name}}“ je teď jednou z vašich šablon.",
       "templateOff": "Poznámka „{{name}}“ už není šablona.",
       "linkProject": "Propojit s projektem",
-      "compareConflict": "Porovnat konfliktní kopii"
+      "compareConflict": "Porovnat konfliktní kopii",
+      "copyLink": "Kopírovat odkaz",
+      "linkCopied": "Odkaz na „{{name}}“ byl zkopírován.",
+      "copyLinkFailed": "Odkaz na „{{name}}“ se nepodařilo zkopírovat.",
+      "duplicate": "Duplikovat",
+      "copyTitle": "{{name}} (kopie)",
+      "duplicateFailed": "Poznámku „{{name}}“ se nepodařilo duplikovat.",
+      "export": "Exportovat",
+      "exportAs": {
+        "markdown": "Složka Markdown (.md)",
+        "docx": "Dokument Word (.docx)",
+        "html": "Webová stránka (.html)",
+        "latex": "LaTeX (.tex)",
+        "typst": "Typst (.typ)"
+      },
+      "exportFailed": "Poznámku „{{name}}“ se nepodařilo exportovat.",
+      "copyMarkdown": "Kopírovat jako Markdown",
+      "markdownCopied": "Poznámka „{{name}}“ byla zkopírována jako Markdown.",
+      "copyMarkdownFailed": "Poznámku „{{name}}“ se nepodařilo zkopírovat jako Markdown."
     },
     "conflicts": {
-      "title": "Dvě verze poznámky „{{name}}“",
-      "description": "Tato poznámka se změnila tady i na jiném počítači ještě před synchronizací, proto Oleafly zachoval obě verze. Ponechte si jednu z nich. Druhá se přesune do koše.",
-      "diffLabel": "Rozdíly mezi oběma verzemi",
-      "loading": "Načítají se obě verze…",
-      "readFailed": "Konfliktní kopii se nepodařilo načíst.",
-      "resolveFailed": "Vybranou verzi se nepodařilo zachovat.",
-      "keepMine": "Ponechat verzi z tohoto počítače",
-      "useCopy": "Použít verzi z jiného počítače",
       "badge": "Tato poznámka má konfliktní kopii"
+    },
+    "suggestions": {
+      "badge": "V této poznámce čekají navržené změny"
     }
   },
   "home": {
@@ -103,7 +147,9 @@
     "tabs": {
       "label": "Zobrazené poznámky",
       "mine": "Moje poznámky",
-      "favorites": "Oblíbené"
+      "favorites": "Oblíbené",
+      "tasks": "Úkoly",
+      "attachments": "Přílohy"
     },
     "sortBy": "Řadit podle",
     "sort": {
@@ -113,8 +159,7 @@
       "title": "Název"
     },
     "layout": "Rozvržení poznámek",
-    "empty": "Zatím nemáte žádné poznámky. Založte první a požádejte agenta, ať vám ji pomůže napsat.",
-    "noFavorites": "Zatím nemáte žádné oblíbené. Označte poznámku hvězdičkou a objeví se tady.",
+    "noFavorites": "Zatím nemáte žádné oblíbené. Přidejte poznámku mezi oblíbené a objeví se tady.",
     "noMatches": "Hledání „{{query}}“ neodpovídají žádné poznámky.",
     "author": "Autor"
   },
@@ -127,8 +172,9 @@
     "loadFailed": "Tuto poznámku se nepodařilo otevřít. Její projekt mohl být přesunut nebo smazán.",
     "retryLoad": "Zkusit znovu",
     "closeTab": "Zavřít kartu",
-    "imageFailed": "Obrázek se nepodařilo uložit do poznámky.",
-    "onlyImages": "Do poznámky lze přidat jen obrázky PNG, JPEG a SVG.",
+    "fileFailed": "Soubor se nepodařilo přidat do poznámky: {{error}}",
+    "fileTooLarge": "Soubor {{name}} je větší než 64 MB, proto nebyl přidán.",
+    "unsupportedFile": "Poznámka může obsahovat jen obrázky, zvuk, video, PDF, tabulky (CSV, TSV nebo Excel), soubory molekul a poznámkové bloky Jupyter.",
     "remoteImages": {
       "more": "Další způsoby načtení obrázků",
       "loadAll": "Načíst všechny obrázky v této poznámce",
@@ -151,6 +197,10 @@
       "figure": "Přidat obrázek",
       "abstract": "Shrnout do abstraktu"
     },
+    "wholeNote": {
+      "proofread": "Zkorigovat poznámku",
+      "rewrite": "Přepsat poznámku"
+    },
     "collapse": "Skrýt zadání",
     "expand": "Zobrazit zadání"
   },
@@ -159,6 +209,22 @@
     "acceptAll": "Přijmout vše",
     "position": "Změna {{current}} z {{total}}",
     "undo": "Vrátit zpět"
+  },
+  "versions": {
+    "title": "Historie verzí",
+    "summary": "Oleafly uloží verzi pokaždé, když přijmete všechny navržené změny, a před obnovením starší verze. Verzi můžete uložit i sami.",
+    "empty": "Zatím žádné verze. Uložte verzi, abyste poznámku zachovali v její současné podobě.",
+    "save": "Uložit verzi",
+    "saved": "Verze uložena.",
+    "unchanged": "Od poslední verze se nic nezměnilo.",
+    "saveFailed": "Verzi této poznámky se nepodařilo uložit.",
+    "restore": "Obnovit tuto verzi",
+    "restored": "Verze obnovena. Nahrazený text je uložen také jako verze.",
+    "restoreFailed": "Tuto verzi se nepodařilo obnovit.",
+    "comparing": "Porovnání s poznámkou",
+    "readFailed": "Tuto verzi se nepodařilo přečíst.",
+    "changes": "Co obnovení této verze změní",
+    "textOnly": "Obnovení mění jen text poznámky. Připojené soubory zůstanou beze změny."
   },
   "toolbar": {
     "label": "Formátování",
@@ -174,9 +240,6 @@
     "displayMath": "Matematika na samostatném řádku",
     "citation": "Citace",
     "noCitations": "V tomto projektu zatím nejsou žádné reference",
-    "tableSize": "Tabulka {{cols}} × {{rows}}",
-    "addRow": "Přidat řádek",
-    "addColumn": "Přidat sloupec",
     "chart": "Graf",
     "mermaid": "Diagram Mermaid",
     "outline": "Osnova",
@@ -192,7 +255,12 @@
       "wide": "Široká",
       "full": "Plná šířka"
     },
-    "notebook": "Vložit poznámkový blok"
+    "attach": "Připojit soubor",
+    "attachFilter": "Obrázky, zvuk, video, PDF, tabulky, molekuly a poznámkové bloky",
+    "codeLanguage": "Jazyk",
+    "plainCode": "Prostý text",
+    "imageSize": "Velikost obrázku",
+    "originalSize": "Původní velikost"
   },
   "blocks": {
     "chart": "Graf",
@@ -201,9 +269,28 @@
     "diagramError": "V tomto diagramu je chyba. Opravte ji ve zdroji.",
     "chartError": "Data tohoto grafu nejsou platná. Opravte je ve zdroji.",
     "noPreview": "Tento blok zatím nemá náhled. Upravit ho můžete ve zdroji.",
+    "syntax": {
+      "help": "Jak napsat blok {{block}}",
+      "chart": "JSON s typem, kategoriemi a řadami:\n{\"type\": \"bar\", \"categories\": [\"A\", \"B\"], \"series\": [{\"name\": \"Run 1\", \"values\": [1, 2]}]}\nDalší typy: line, area, scatter, pie, donut, histogram.",
+      "plot": "Jedna křivka nebo volba na řádek:\ny = x^2 - 1 nebo x = cos(t), y = sin(t)\ndomain: -5, 5 a point: 1, 0, Root",
+      "csv": "Řádky hodnot, první řádek je záhlaví:\nRun, Ratio\nNebo načtěte soubor pomocí path: assets/results.csv",
+      "latex": "Samostatný vzorec LaTeX, například rovnice nebo prostředí align:\n\\begin{align} a &= b + c \\end{align}\nChemie pomocí \\ce{H2O} a jednotky pomocí \\pu{5 mg}.",
+      "typst": "Úryvek Typst, vykreslený jako obrázek:\n$ E = m c^2 $\nBalíčky z internetu nejsou k dispozici.",
+      "mermaid": "Diagram Mermaid, například:\nflowchart LR\nA --> B",
+      "d2": "Diagram D2, například:\nclient -> server: request\nserver.shape: cylinder",
+      "tikz": "Příkazy TikZ nebo celé prostředí tikzpicture:\n{{example}}\nŘádky nad obrázkem, například \\usetikzlibrary{positioning}, patří do preambule.",
+      "circuitikz": "Příkazy CircuiTikZ nebo celé prostředí circuitikz:\n{{example}}\nŘádky nad obvodem, například \\ctikzset{resistors/scale=0.8}, patří do preambule.",
+      "svg": "Jeden prvek svg, například:\n<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" /></svg>\nSkripty, odkazy a vzdálené obrázky se odstraní.",
+      "html": "Celá stránka HTML nebo úryvek s CSS a skripty.\nNemá přístup k internetu, proto vložte data přímo do bloku.\nSkripty se spustí po kliknutí na Spustit.",
+      "jsx": "Jeden soubor komponenty React s výchozím exportem:\nexport default function App() { return <p>Hello</p> }\nMůže importovat react, recharts, d3, lodash, papaparse, chart.js a lucide-react.",
+      "smiles": "Jeden zápis SMILES na řádek, volitelně s názvem:\nAspirin: CC(=O)OC1=CC=CC=C1C(=O)O\nNejvýše 24 na blok.",
+      "molecule": "Nejprve řádky voleb, například format: pdb a style: cartoon.\nPotom text souboru nebo path: assets/1abc.pdb",
+      "sequence": "Záznamy FASTA nebo samotná sekvence:\n>sample 1\nATGGCCATTGTAATG",
+      "notebook": "Cesta k poznámkovému bloku na prvním řádku:\nassets/analysis.ipynb\nPotom volitelné řádky, například cells: 2-5 a code: hide.",
+      "bookmark": "Jedno pole na řádek, začněte webovou adresou:\nurl: https://example.com/article\nPotom volitelné řádky title:, description:, image:, site: a favicon:."
+    },
     "newChart": {
       "title": "Nový graf",
-      "description": "Požádejte agenta, ať graf vyplní, nebo upravte zdroj.",
       "series": "Hodnoty"
     },
     "newHtml": {
@@ -240,6 +327,7 @@
     },
     "sequence": {
       "label": "Sekvence",
+      "template": "Ukázková kódující sekvence",
       "empty": "Vložte záznam FASTA nebo samotnou sekvenci.",
       "character": "Řádek {{line}}, sloupec {{column}}: „{{character}}“ není platný zbytek.",
       "untitled": "Sekvence bez názvu",
@@ -387,7 +475,8 @@
     "artifact": {
       "run": "Spustit",
       "stop": "Zastavit",
-      "alwaysRun": "Vždy spouštět bloky v této poznámce",
+      "alwaysRun": "Vždy spouštět tento blok",
+      "paused": "Pozastaveno, protože blok v této poznámce minule zamrzl nebo ukončil aplikaci.",
       "desktopOnly": "Spuštění vyžaduje desktopovou aplikaci",
       "loading": "Načítá se…",
       "loadFailed": "Tento blok se nepodařilo načíst.",
@@ -395,7 +484,7 @@
       "stopped": "Tento blok přestal reagovat.",
       "reload": "Znovu načíst",
       "failed": "Tento blok se nepodařilo spustit: {{error}}",
-      "offline": "Bloky nemohou načítat soubory z internetu, proto byly vynechány tyto soubory:",
+      "offline": "Tyto soubory z internetu byly vynechány:",
       "more_one": "a další ({{count}})",
       "more_few": "a další ({{count}})",
       "more_many": "a další ({{count}})",
@@ -408,7 +497,6 @@
       "noComponent": "Tato komponenta nemá výchozí export."
     },
     "code": {
-      "copy": "Kopírovat",
       "copied": "Zkopírováno",
       "copyFailed": "Kopírování se nezdařilo",
       "copyLabel": "Kopírovat kód"
@@ -418,6 +506,22 @@
       "empty": "Tento blok SVG je prázdný.",
       "invalid": "Tento kód SVG není platný. Opravte ho ve zdroji.",
       "tooLarge": "Tento obrázek SVG je na zobrazení příliš velký."
+    },
+    "d2": {
+      "alt": "Diagram D2",
+      "empty": "Tento blok D2 je prázdný.",
+      "loading": "Kreslí se…",
+      "error": "D2 tento diagram nedokázal nakreslit: {{error}}",
+      "line": "Řádek {{line}}: {{message}}"
+    },
+    "tikz": {
+      "alt": "Kresba TikZ",
+      "circuitAlt": "Schéma obvodu",
+      "empty": "Tento blok {{block}} je prázdný.",
+      "desktopOnly": "Náhledy {{block}} vyžadují desktopovou aplikaci.",
+      "sharedNotice": "Tato poznámka je sdílená. LaTeX běží na tomto počítači a může číst vaše soubory, proto si zdroj před vykreslením zkontrolujte.",
+      "draw": "Nakreslit",
+      "error": "LaTeX tento blok nedokázal zkompilovat: {{error}}"
     },
     "typst": {
       "alt": "Výstup Typst",
@@ -447,7 +551,33 @@
       "code": "Kód",
       "math": "Matematika",
       "divider": "Oddělovač",
+      "footnote": "Poznámka pod čarou",
       "basic": "Základní"
+    },
+    "media": {
+      "play": "Přehrát {{name}}",
+      "pdfPage": "{{name}}, strana {{page}}",
+      "openPdf": "Otevřít PDF",
+      "openFailed": "Soubor se nepodařilo otevřít: {{error}}",
+      "missing": "Soubor nebyl nalezen: {{path}}",
+      "unreadable": "Soubor {{name}} se nepodařilo přečíst.",
+      "cantPlay": "Soubor {{name}} tu nelze přehrát. Tento počítač možná nemá kodek pro jeho formát.",
+      "embed": "Přehrát video z {{site}}",
+      "embedTitle": "Video z {{site}}",
+      "embedFailed": "Přehrávač se nespustil. Zkuste to znovu, nebo video otevřete na {{site}}.",
+      "watch": "Sledovat",
+      "watchOn": "Sledovat na {{site}}",
+      "pasteChoice": "Jak zobrazit tento odkaz na video",
+      "embedChoice": "Vložit video",
+      "linkChoice": "Ponechat jako odkaz"
+    },
+    "bookmark": {
+      "label": "Záložka",
+      "pasteChoice": "Jak zobrazit tento odkaz",
+      "cardChoice": "Karta záložky",
+      "ask": "Přidat záložku webové stránky",
+      "loading": "Načítá se náhled stránky",
+      "noUrl": "Přidejte řádek url: s webovou adresou, která začíná na https:// nebo http://."
     }
   },
   "notebook": {
@@ -473,10 +603,7 @@
     "showAllCells_many": "Zobrazit všech {{count}} buňky",
     "showAllCells_other": "Zobrazit všech {{count}} buněk",
     "outputImage": "Výstup buňky {{number}}",
-    "outputFrame": "Výstup HTML buňky {{number}}",
-    "pickTitle": "Vložit poznámkový blok",
-    "filter": "Poznámkové bloky Jupyter",
-    "importFailed": "Poznámkový blok se nepodařilo přidat: {{error}}"
+    "outputFrame": "Výstup HTML buňky {{number}}"
   },
   "icons": {
     "choose": "Vybrat ikonu",
@@ -630,7 +757,7 @@
     "inserting": "Kopíruje se",
     "insertFailed": "Tento soubor se nepodařilo zkopírovat do poznámky: {{error}}",
     "newProject": "Nový projekt",
-    "htmlPreview": "Interaktivní obrázky zatím v Oleafly spustit nelze.",
+    "htmlPreview": "Chcete-li tento obrázek spustit, vložte jeho kód do bloku HTML v poznámce a stiskněte Spustit.",
     "kind": {
       "figure": "Obrázek",
       "html": "Interaktivní obrázek",
@@ -644,7 +771,14 @@
   "sendToPaper": {
     "title": "Odeslat do článku",
     "description": "Oleafly tento obsah jednou převede a vloží ho na místo kurzoru. Kopie v článku nezůstane s poznámkou propojená.",
-    "send": "Odeslat"
+    "send": "Odeslat",
+    "leftOut": "Blok {{block}} je jen v poznámce."
+  },
+  "citations": {
+    "references": "Reference",
+    "fromReference": "Z reference",
+    "unknown": "Chybí v bibliografii propojeného projektu: {{keys}}",
+    "openNote": "Otevřít poznámku k tomuto článku: {{title}}"
   },
   "links": {
     "menu": "Odkaz na poznámku nebo projekt",
@@ -654,13 +788,60 @@
     "missingNote": "Tato poznámka už neexistuje",
     "missingNoteCreate": "Tato poznámka už neexistuje. Kliknutím vytvoříte novou poznámku s tímto názvem.",
     "missingProject": "Tento projekt už neexistuje",
-    "linkedFrom": "Odkazují sem"
+    "linkedFrom": "Odkazují sem",
+    "showAll": "Zobrazit všechny ({{total}})"
+  },
+  "linksSearch": {
+    "blocks": {
+      "loading": "Načítají se bloky",
+      "none": "Žádné odpovídající bloky",
+      "missingBlock": "Tento blok v poznámce není",
+      "assignFailed": "Do této poznámky se nepodařilo přidat ID bloku.",
+      "handle": "Možnosti bloku",
+      "copyLink": "Kopírovat odkaz na blok",
+      "linkCopied": "Odkaz na tento blok byl zkopírován.",
+      "copyFailed": "Odkaz na tento blok se nepodařilo zkopírovat.",
+      "noId": "Tento blok zatím nemá ID a tuto poznámku nemůžete upravovat.",
+      "linkedFrom": "Odkazují sem",
+      "links_one": "Odkazuje sem {{count}} poznámka",
+      "links_few": "Odkazují sem {{count}} poznámky",
+      "links_many": "Odkazuje sem {{count}} poznámky",
+      "links_other": "Odkazuje sem {{count}} poznámek",
+      "openLinked": "Otevřít {{title}}",
+      "toBlock": "Přejít na blok: {{text}}"
+    },
+    "tagBlocks": {
+      "more_one": "Zobrazit {{count}} další blok",
+      "more_few": "Zobrazit {{count}} další bloky",
+      "more_many": "Zobrazit {{count}} dalšího bloku",
+      "more_other": "Zobrazit {{count}} dalších bloků"
+    },
+    "dead": {
+      "menu": "Nefunkční odkazy",
+      "title": "Nefunkční odkazy",
+      "summary_one": "{{count}} odkaz vede na poznámku nebo blok, který už neexistuje.",
+      "summary_few": "{{count}} odkazy vedou na poznámky nebo bloky, které už neexistují.",
+      "summary_many": "{{count}} odkazu vede na poznámky nebo bloky, které už neexistují.",
+      "summary_other": "{{count}} odkazů vede na poznámky nebo bloky, které už neexistují.",
+      "none": "Žádné nefunkční odkazy. Každý odkaz vede na poznámku nebo blok, který stále existuje.",
+      "loading": "Kontrolují se odkazy",
+      "failed": "Odkazy ve vašich poznámkách se nepodařilo přečíst.",
+      "missingNotes": "Chybějící poznámky",
+      "missingBlocks": "Chybějící bloky",
+      "noteMeta": "Řádek {{line}}: poznámka už neexistuje",
+      "blockMeta": "Řádek {{line}}: {{block}} už v poznámce {{title}} není",
+      "create": "Vytvořit poznámku",
+      "relink": "Odkázat místo toho na {{title}}",
+      "remove": "Odebrat odkaz",
+      "fixFailed": "Odkaz se nepodařilo změnit."
+    }
   },
   "projectNotes": {
     "searchLabel": "Hledat v poznámkách tohoto projektu",
     "searchPlaceholder": "Hledat poznámky",
     "clearSearch": "Vymazat hledání",
     "noMatches": "Hledání neodpovídají žádné poznámky",
+    "loading": "Načítání poznámek projektu",
     "edited": "Upraveno {{when}}",
     "createFailed": "Poznámku se nepodařilo vytvořit.",
     "projectGroup": "Poznámky projektu",
@@ -709,7 +890,33 @@
     "callouts": {
       "type": "Typ rámečku: {{type}}",
       "fold": "Sbalit rámeček",
-      "unfold": "Rozbalit rámeček"
+      "unfold": "Rozbalit rámeček",
+      "types": {
+        "note": "Poznámka",
+        "abstract": "Abstrakt",
+        "info": "Informace",
+        "todo": "Úkol",
+        "tip": "Tip",
+        "success": "Úspěch",
+        "question": "Otázka",
+        "warning": "Varování",
+        "failure": "Selhání",
+        "danger": "Nebezpečí",
+        "bug": "Chyba",
+        "example": "Příklad",
+        "quote": "Citát",
+        "theorem": "Věta",
+        "lemma": "Lemma",
+        "corollary": "Důsledek",
+        "proposition": "Tvrzení",
+        "definition": "Definice",
+        "proof": "Důkaz",
+        "hypothesis": "Hypotéza",
+        "assumption": "Předpoklad",
+        "result": "Výsledek",
+        "method": "Metoda",
+        "remark": "Připomínka"
+      }
     },
     "links": {
       "loadingHeadings": "Načítají se nadpisy",
@@ -772,6 +979,215 @@
       }
     }
   },
+  "fields": {
+    "today": "Dnes",
+    "tomorrow": "Zítra",
+    "yesterday": "Včera",
+    "chip": "{{key}}: {{value}}",
+    "empty": "bez hodnoty",
+    "edit": "Změnit nebo odebrat",
+    "keys": {
+      "due": "Termín",
+      "scheduled": "Naplánováno",
+      "priority": "Priorita",
+      "start": "Začátek",
+      "created": "Vytvořeno",
+      "completed": "Hotovo",
+      "date": "Datum",
+      "cancelled": "Zrušeno"
+    },
+    "priorities": {
+      "highest": "Nejvyšší",
+      "high": "Vysoká",
+      "medium": "Střední",
+      "low": "Nízká",
+      "lowest": "Nejnižší"
+    },
+    "editor": {
+      "label": "Upravit {{key}}",
+      "key": "Název",
+      "value": "Hodnota",
+      "brackets": "Hranaté závorky používejte jen pro odkaz, například [[Poznámka]].",
+      "save": "Uložit",
+      "remove": "Odebrat"
+    }
+  },
+  "at": {
+    "menu": "Vložit datum, pole, štítek nebo poznámku",
+    "groups": {
+      "dates": "Datumy",
+      "due": "Termín",
+      "fields": "Pole úkolu",
+      "tags": "Štítky",
+      "notes": "Poznámky"
+    },
+    "today": "Dnes",
+    "tomorrow": "Zítra",
+    "yesterday": "Včera",
+    "next": "Příští {{weekday}}",
+    "pick": "Vybrat datum",
+    "pickerLabel": "Vybrat datum",
+    "due": "Termín",
+    "scheduled": "Plánované datum",
+    "priority": "Priorita",
+    "priorityValue": "Priorita: {{priority}}",
+    "custom": "Vlastní pole",
+    "addField": "Přidat pole „{{key}}“",
+    "setField": "Nastavit {{key}} na „{{value}}“",
+    "typeValue": "Napište hodnotu pro {{key}} a stiskněte Enter."
+  },
+  "tasks": {
+    "filters": "Filtry úkolů",
+    "loading": "Načítají se vaše úkoly",
+    "failed": "Vaše úkoly se nepodařilo načíst.",
+    "empty": "Zatím žádné úkoly. Začněte v libovolné poznámce řádek znaky - [ ] a úkol se objeví tady.",
+    "noMatches": "Těmto filtrům neodpovídají žádné úkoly.",
+    "clear": "Vymazat filtry",
+    "list": "Úkoly",
+    "count_one": "{{count}} úkol",
+    "count_few": "{{count}} úkoly",
+    "count_many": "{{count}} úkolu",
+    "count_other": "{{count}} úkolů",
+    "complete": "Označit „{{text}}“ jako hotové",
+    "reopen": "Označit „{{text}}“ jako nehotové",
+    "openNote": "Otevřít {{title}}",
+    "toggleFailed": "Úkol se nepodařilo aktualizovat.",
+    "moved": "Tento úkol se v poznámce změnil. Otevřete poznámku a aktualizujte ho.",
+    "state": {
+      "label": "Zobrazit",
+      "open": "Otevřené",
+      "done": "Hotové",
+      "all": "Otevřené i hotové"
+    },
+    "due": {
+      "label": "Termín",
+      "any": "Libovolný termín",
+      "overdue": "Po termínu",
+      "today": "Termín dnes",
+      "week": "Termín v příštích 7 dnech",
+      "none": "Bez termínu"
+    },
+    "priority": {
+      "label": "Priorita",
+      "any": "Libovolná priorita",
+      "high": "Vysoká priorita",
+      "medium": "Střední priorita",
+      "low": "Nízká priorita",
+      "none": "Bez priority"
+    },
+    "tag": {
+      "label": "Štítek",
+      "any": "Všechny štítky"
+    },
+    "project": {
+      "label": "Projekt",
+      "any": "Všechny projekty"
+    },
+    "sort": {
+      "label": "Řadit úkoly podle",
+      "due": "Termín",
+      "priority": "Priorita"
+    }
+  },
+  "attachments": {
+    "filters": "Filtry příloh",
+    "loading": "Hledají se přílohy",
+    "failed": "Vaše přílohy se nepodařilo načíst.",
+    "empty": "Zatím žádné přílohy. Přetáhněte do poznámky obrázek nebo soubor a objeví se tady.",
+    "noMatches": "Těmto filtrům neodpovídají žádné přílohy.",
+    "clear": "Vymazat filtry",
+    "list": "Přílohy",
+    "count_one": "{{count}} soubor",
+    "count_few": "{{count}} soubory",
+    "count_many": "{{count}} souboru",
+    "count_other": "{{count}} souborů",
+    "openNote": "Otevřít {{title}}",
+    "copyLink": "Kopírovat odkaz",
+    "linkCopied": "Odkaz na „{{name}}“ byl zkopírován.",
+    "copyFailed": "Odkaz na „{{name}}“ se nepodařilo zkopírovat.",
+    "unused": "Nepoužito",
+    "type": {
+      "label": "Typ",
+      "all": "Všechny typy",
+      "image": "Obrázky",
+      "audio": "Zvuk",
+      "video": "Video",
+      "pdf": "PDF",
+      "other": "Ostatní"
+    },
+    "use": {
+      "label": "Použití",
+      "all": "Všechny soubory",
+      "unused": "Nepoužité"
+    }
+  },
+  "info": {
+    "title": "Informace",
+    "show": "Informace o poznámce",
+    "noNote": "Otevřete poznámku a uvidíte informace o ní.",
+    "details": "Podrobnosti poznámky",
+    "created": "Vytvořeno",
+    "updated": "Aktualizováno",
+    "words": "Slova",
+    "characters": "Znaky",
+    "lines": "Řádky",
+    "readingTime": "Doba čtení",
+    "underMinute": "méně než minuta",
+    "noProperties": "Žádné vlastnosti",
+    "noBacklinks": "Sem neodkazují žádné poznámky",
+    "noMentions": "Žádná jiná poznámka ji nezmiňuje",
+    "noReferences": "V této poznámce nejsou žádné citace",
+    "noDeadLinks": "Žádné nefunkční odkazy",
+    "noAttachments": "Žádné přiložené soubory"
+  },
+  "calendar": {
+    "title": "Kalendář",
+    "week": "Týden",
+    "hasNote": "má denní poznámku",
+    "due_one": "{{count}} úkol s termínem",
+    "due_few": "{{count}} úkoly s termínem",
+    "due_many": "{{count}} úkolu s termínem",
+    "due_other": "{{count}} úkolů s termínem",
+    "openWeek": "Otevřít týdenní poznámku za týden {{week}}",
+    "openMonthNote": "Otevřít měsíční poznámku",
+    "createMonthNote": "Vytvořit měsíční poznámku",
+    "today": "Dnes",
+    "failed": {
+      "weekly": "Týdenní poznámku se nepodařilo otevřít.",
+      "monthly": "Měsíční poznámku se nepodařilo otevřít."
+    }
+  },
+  "periodic": {
+    "title": "Denní, týdenní a měsíční poznámky",
+    "daily": {
+      "label": "Denní poznámky",
+      "description": "Dnešní poznámka a dny v kalendáři v postranním panelu."
+    },
+    "weekly": {
+      "label": "Týdenní poznámky",
+      "description": "Čísla týdnů v kalendáři v postranním panelu."
+    },
+    "monthly": {
+      "label": "Měsíční poznámky",
+      "description": "Název měsíce v horní části kalendáře v postranním panelu."
+    },
+    "weekStart": {
+      "label": "První den týdne",
+      "description": "První sloupec kalendáře v postranním panelu. Čísla týdnů se počítají od tohoto dne a s pondělím odpovídají číslům týdnů podle ISO.",
+      "locale": "Výchozí pro oblast ({{day}})",
+      "monday": "Pondělí",
+      "sunday": "Neděle",
+      "saturday": "Sobota"
+    },
+    "format": "Formát názvu",
+    "preview": "Příklad: {{title}}",
+    "invalidFormat": "Přidejte část data, například YYYY nebo WW.",
+    "template": "Šablona",
+    "savedTemplate": "Vaše uložená šablona",
+    "tag": "Štítek",
+    "noTag": "Bez štítku",
+    "formatHelp": "Formáty názvů používají YYYY pro rok, MM pro měsíc, MMMM pro jeho název, DD pro den, dddd pro den v týdnu, WW pro číslo týdne a GGGG pro rok, do kterého daný týden patří. Text v hranatých závorkách, například [W], zůstane tak, jak je napsaný. Stávající poznámky si své názvy ponechají, proto formát změňte dřív, než ho začnete používat."
+  },
   "live": {
     "share": "Sdílet",
     "shared": "Sdíleno",
@@ -819,7 +1235,9 @@
     "outline": {
       "title": "Osnova",
       "empty": "Tato poznámka nemá žádné nadpisy",
+      "emptyDetail": "Začněte řádek znakem #, a přidáte tak nadpis.",
       "noNote": "Otevřete poznámku a uvidíte její osnovu",
+      "noNoteDetail": "Osnova sleduje poznámku, kterou upravujete.",
       "levels": "Úrovně nadpisů",
       "allLevels": "Všechny úrovně",
       "upTo": "Do úrovně H{{level}}",
@@ -827,7 +1245,8 @@
       "expand": "Rozbalit {{title}}"
     },
     "linksFailed": "Odkazy mezi poznámkami se nepodařilo přečíst.",
-    "tagsFailed": "Štítky se nepodařilo přečíst."
+    "tagsFailed": "Štítky se nepodařilo přečíst.",
+    "loading": "Načítání odkazů mezi poznámkami"
   },
   "vault": {
     "import": {
@@ -849,6 +1268,9 @@
       "seenDescription_many": "Dne {{date}} se z ní přidalo {{count}} poznámky. Nový import přidá nové kopie a dřívější poznámky ponechá beze změny.",
       "seenDescription_other": "Dne {{date}} se z ní přidalo {{count}} poznámek. Nový import přidá nové kopie a dřívější poznámky ponechá beze změny.",
       "again": "Importovat znovu jako nové poznámky",
+      "largeTitle": "Poznámek v této složce: {{total}}",
+      "largeDescription": "Import všech může chvíli trvat a každá z nich se ve vaší knihovně stane samostatnou poznámkou. Import můžete kdykoli zastavit.",
+      "largeConfirm": "Importovat vše",
       "doneTitle": "Import dokončen",
       "notes_one": "Importována {{count}} poznámka",
       "notes_few": "Importovány {{count}} poznámky",
@@ -893,6 +1315,10 @@
         "skipped_few": "{{count}} přílohy se nepodařilo exportovat",
         "skipped_many": "{{count}} přílohy se nepodařilo exportovat",
         "skipped_other": "{{count}} příloh se nepodařilo exportovat",
+        "paperLinks_one": "{{count}} odkaz na článek se změnil na prostý text",
+        "paperLinks_few": "{{count}} odkazy na články se změnily na prostý text",
+        "paperLinks_many": "{{count}} odkazu na články se změnilo na prostý text",
+        "paperLinks_other": "{{count}} odkazů na články se změnilo na prostý text",
         "doneSkipped": "{{done}}. {{skipped}}.",
         "showFolder": "Zobrazit složku",
         "failed": "Poznámky se nepodařilo exportovat."
@@ -920,8 +1346,10 @@
       "empty": "Zatím žádné štítky. Přidejte do poznámky #štítky nebo štítky do jejích vlastností.",
       "filter": "Zobrazit poznámky se štítkem {{tag}}",
       "clear": "Přestat filtrovat podle štítku {{tag}}",
-      "expand": "Zobrazit štítky pod {{tag}}",
-      "collapse": "Skrýt štítky pod {{tag}}"
+      "search": "Filtrovat štítky",
+      "noMatch": "Hledání „{{query}}“ neodpovídají žádné štítky.",
+      "showAll": "Zobrazit všechny ({{total}})",
+      "showFewer": "Zobrazit méně"
     },
     "switcher": {
       "open": "Přejít na poznámku",
@@ -939,7 +1367,9 @@
     },
     "daily": {
       "open": "Dnešní poznámka",
-      "failed": "Dnešní poznámku se nepodařilo otevřít."
+      "failed": "Dnešní poznámku se nepodařilo otevřít.",
+      "previous": "Předchozí denní poznámka: {{date}}",
+      "next": "Další denní poznámka: {{date}}"
     },
     "templates": {
       "open": "Nová ze šablony",
@@ -963,7 +1393,9 @@
         "proposal": "Návrh výzkumu",
         "proof": "Důkaz nebo odvození",
         "dataAnalysis": "Zpráva o analýze dat",
-        "interview": "Poznámky z rozhovoru"
+        "interview": "Poznámky z rozhovoru",
+        "screeningLog": "Deník třídění",
+        "labNotebook": "Záznam z laboratorního deníku"
       },
       "descriptions": {
         "daily": "Plán a průběžný záznam na jeden den",
@@ -976,7 +1408,9 @@
         "proposal": "Cíle, metody a harmonogram pro grant nebo diplomovou práci",
         "proof": "Výsledek, myšlenka za ním a úplný argument",
         "dataAnalysis": "Co jste spustili na jakých datech a co z toho vyšlo",
-        "interview": "Odpovědi, citace a témata z jednoho rozhovoru"
+        "interview": "Odpovědi, citace a témata z jednoho rozhovoru",
+        "screeningLog": "Otázka rešerše, kritéria a počty záznamů v každé fázi třídění",
+        "labNotebook": "Jeden den v laboratoři: cíl, vzorky, postup, pozorování a podpis"
       },
       "bodies": {
         "daily": "**{{weekday}}**\n\n## Plán\n- [ ] Nejdůležitější úkol\n- [ ] Druhý úkol\n\n## Záznam\n- {{time}} Začátek dne\n\n## Poznámky\n\n## Dnes hotovo\n- Zatím nic\n\n## Zítra\n- [ ] První věc, na kterou navázat",
@@ -987,9 +1421,11 @@
         "labProtocol": "> [!warning] Bezpečnost\n> Než začnete, zkontrolujte rizika, ochranné pomůcky a nakládání s odpady.\n\n## Účel\nCo tento protokol vytváří a kdy ho použít.\n\n## Materiály\n| Položka | Množství | Dodavatel nebo katalogové číslo | Poznámky |\n| --- | --- | --- | --- |\n| | | | |\n\n## Vybavení\n- Přístroj a nastavení\n\n## Postup\n1. Příprava\n2. Provedení\n3. Úklid\n\n## Kontrola\n- [ ] Kontrolní vzorky připraveny\n- [ ] Nastavení zaznamenáno\n- [ ] Vzorky označené datem a během\n\n## Řešení problémů\n| Problém | Pravděpodobná příčina | Řešení |\n| --- | --- | --- |\n| | | |\n\n## Historie revizí\n| Verze | Datum | Změna |\n| --- | --- | --- |\n| 1 | {{date}} | První verze |",
         "weeklyLog": "## Cíle na tento týden\n- [ ] První cíl\n- [ ] Druhý cíl\n- [ ] Třetí cíl\n\n## Pokrok\n| Den | Odvedená práce | Poznámky |\n| --- | --- | --- |\n| Pondělí | | |\n| Úterý | | |\n| Středa | | |\n| Čtvrtek | | |\n| Pátek | | |\n\n## Výsledky a obrázky\n- Co týden přinesl\n\n## Překážky\n> [!warning] Potřebuji pomoc\n> Co se zaseklo a kdo to může odblokovat.\n\n## Četba\n- Články přečtené tento týden\n\n## Příští týden\n- [ ] První cíl na příští týden",
         "proposal": "> [!abstract] Shrnutí\n> Ve třech větách: problém, přístup a očekávaný výsledek.\n\n## Pozadí a motivace\nProč je to důležité právě teď a co se už ví.\n\n## Výzkumné otázky\n1. První otázka\n\n## Cíle\n| Cíl | Přístup | Očekávaný výsledek |\n| --- | --- | --- |\n| 1 | | |\n\n## Metody\nDesign, data, analýza a jak se bude měřit úspěch.\n\n## Harmonogram\n| Fáze | Měsíce | Milník |\n| --- | --- | --- |\n| | | |\n\n## Rizika a jejich zmírnění\n| Riziko | Pravděpodobnost | Zmírnění |\n| --- | --- | --- |\n| | | |\n\n## Zdroje a rozpočet\n\n## Dopad\nKdo z toho bude mít užitek a jak se výsledky budou sdílet.\n\n## Literatura",
-        "proof": "> [!note] Tvrzení\n> Výsledek přesně formulovaný se všemi předpoklady.\n\n## Definice a značení\n- Symboly a jejich význam\n\n## Myšlenka\nHlavní myšlenka jednoduchými slovy, ještě před detaily.\n\n## Důkaz\n**Krok 1.** Připravte argument.\n\n**Krok 2.** Proveďte hlavní odhad.\n\n**Krok 3.** Dokončete důkaz.\n\n## Kontrola\n- [ ] Každý předpoklad je použit\n- [ ] Okrajové případy jsou pokryty\n- [ ] Konstanty a meze jsou pod kontrolou\n\n## Poznámky\nZobecnění, protipříklady a související výsledky.",
-        "dataAnalysis": "> [!info] Otázka\n> Rozhodnutí, které tato analýza podporuje.\n\n## Data\n| Pole | Hodnota |\n| --- | --- |\n| Zdroj | |\n| Verze nebo datum | |\n| Řádky a sloupce | |\n| Vyloučení | |\n\n## Metody\n- Kroky čištění\n- Model nebo test a proč\n- Ověřené předpoklady\n\n## Výsledky\n| Ukazatel | Odhad | Interval | Poznámky |\n| --- | --- | --- | --- |\n| | | | |\n\n## Obrázky\n- Obrázek a co ukazuje\n\n## Interpretace\nCo výsledky znamenají pro položenou otázku.\n\n## Omezení\n- Zkreslení, chybějící data a co by mohlo změnit závěr\n\n## Reprodukovatelnost\n- [ ] Kód uložen a propojen\n- [ ] Náhodné seedy zaznamenány\n- [ ] Verze balíčků poznamenány",
-        "interview": "> [!warning] Souhlas a soukromí\n> Před nahráváním si ověřte souhlas a místo jména používejte kód účastníka.\n\n## Kontext\n| Položka | Hodnota |\n| --- | --- |\n| Kód účastníka | |\n| Role | |\n| Délka | |\n| Nahrávka | |\n\n## Otázky a odpovědi\n### Otázka 1\n- Odpověď\n\n### Otázka 2\n- Odpověď\n\n## Citace\n> Citace, kterou stojí za to si ponechat.\n\n## Témata\n- Téma a odpovědi, které ho podporují\n\n## Navázat\n- [ ] Poslat poděkování\n- [ ] Přepsat a anonymizovat"
+        "proof": "## Definice a značení\n> [!definition] Značení\n> Symboly, které používáte, a co který z nich znamená.\n\n## Tvrzení\n> [!theorem] Hlavní výsledek\n> Výsledek přesně formulovaný se všemi předpoklady.\n\n## Myšlenka\nHlavní myšlenka jednoduchými slovy, ještě před detaily.\n\n## Lemmata\n> [!lemma] Lemma 1\n> Menší tvrzení, které hlavní důkaz potřebuje.\n\n> [!proof] Důkaz lemmatu 1\n> Proč lemma platí.\n\n## Důkaz\n> [!proof] Důkaz hlavního výsledku\n> **Krok 1.** Připravte argument.\n>\n> **Krok 2.** Proveďte hlavní odhad pomocí lemmatu 1.\n>\n> **Krok 3.** Dokončete důkaz.\n\n## Kontrola\n- [ ] Každý předpoklad je použit\n- [ ] Okrajové případy jsou pokryty\n- [ ] Konstanty a meze jsou pod kontrolou\n\n## Poznámky\nZobecnění, protipříklady a související výsledky.",
+        "dataAnalysis": "> [!info] Otázka\n> Rozhodnutí, které tato analýza podporuje.\n\n## Data\n| Pole | Hodnota |\n| --- | --- |\n| Zdroj | |\n| Verze nebo datum | |\n| Řádky a sloupce | |\n| Vyloučení | |\n\n## Metody\n- Kroky čištění\n- Model nebo test a proč\n- Ověřené předpoklady\n\n## Výsledky\nTabulka níže je blok CSV. Ukázkové řádky nahraďte svými výsledky.\n\n```csv\nUkazatel,Odhad,Dolní 95%,Horní 95%,n\nPrůměr skupiny A,0,0,0,0\nPrůměr skupiny B,0,0,0,0\nRozdíl,0,0,0,0\n```\n\n## Obrázky\n- Obrázek a co ukazuje\n\n## Interpretace\nCo výsledky znamenají pro položenou otázku.\n\n## Omezení\n- Zkreslení, chybějící data a co by mohlo změnit závěr\n\n## Reprodukovatelnost\n- [ ] Kód uložen a propojen\n- [ ] Náhodné seedy zaznamenány\n- [ ] Verze balíčků poznamenány",
+        "interview": "> [!warning] Souhlas a soukromí\n> Před nahráváním si ověřte souhlas a místo jména používejte kód účastníka.\n\n## Kontext\n| Položka | Hodnota |\n| --- | --- |\n| Kód účastníka | |\n| Role | |\n| Délka | |\n| Nahrávka | |\n\n## Otázky a odpovědi\n### Otázka 1\n- Odpověď\n\n### Otázka 2\n- Odpověď\n\n## Citace\n> Citace, kterou stojí za to si ponechat.\n\n## Témata\n- Téma a odpovědi, které ho podporují\n\n## Navázat\n- [ ] Poslat poděkování\n- [ ] Přepsat a anonymizovat",
+        "screeningLog": "> [!question] Otázka rešerše (PICO)\n> - **Populace:** kdo nebo co se zkoumá\n> - **Intervence nebo expozice:** co se testuje\n> - **Srovnání:** s čím se porovnává\n> - **Výsledek:** co se měří\n\n## Kritéria zahrnutí\n- Návrhy studií\n- Populace a prostředí\n- Jazyky a roky\n\n## Kritéria vyloučení\n- Důvod a jak ho poznat\n\n## Vyhledávání\n| Datum | Databáze | Dotaz | Záznamy |\n| --- | --- | --- | --- |\n| {{date}} | | | |\n\n## Počty v jednotlivých fázích\n| Fáze | Záznamy | Odstraněno | Hlavní důvody |\n| --- | --- | --- | --- |\n| Nalezeno při vyhledávání | | | |\n| Po odstranění duplicit | | | |\n| Prověřené názvy a abstrakty | | | |\n| Posouzené plné texty | | | |\n| Zahrnuto do rešerše | | | |\n\n## Vyloučeno na úrovni plného textu\n| Článek | Důvod |\n| --- | --- |\n| | |\n\n## Neshody\n- Článek, rozhodnutí jednotlivých posuzovatelů a jak se věc vyřešila\n\n## Další kroky\n- [ ] Prověřit další dávku\n- [ ] Zkontrolovat, že počty sedí",
+        "labNotebook": "**{{weekday}}, {{date}}**\n\n## Cíl\nCo jste si dnes předsevzali a proč.\n\n## Materiály\n| Materiál | ID vzorku | Šarže | Množství |\n| --- | --- | --- | --- |\n| | | | |\n\n## Postup\n1. Co jste udělali, popořadě, s časy a nastaveními\n2. Každá odchylka od protokolu a její důvod\n\n## Pozorování\n- {{time}} Co jste viděli\n\n## Výsledky\n- Měření a kde jsou uložena surová data\n\n## Další kroky\n- [ ] Návazný úkol na příští sezení\n\n## Potvrzení\n**Podepsal:** jméno, {{date}}\n\n**Svědek:** jméno, datum"
       }
     },
     "mentions": {
@@ -1028,8 +1464,8 @@
     "actionHint": "Pracuje s touto poznámkou",
     "agentCanEdit": "Tento agent může měnit soubory v propojeném projektu.",
     "allowWritesLabel": "Povolit agentovi měnit soubory",
-    "allowWritesAsk": "{{agent}} nemá režim jen pro čtení, takže by mohl měnit soubory v projektu {{project}}. Přesto zprávu odeslat?",
-    "allowWrites": "Povolit v tomto chatu",
+    "allowWritesAsk": "{{agent}} nemá režim jen pro čtení, takže by mohl měnit soubory v projektu {{project}}. Oleafly mu ho přidat nedokáže. Přesto zprávu odeslat?",
+    "allowWrites": "Přesto odeslat",
     "dontSend": "Neodesílat",
     "viewOnly": "Tuto poznámku můžete jen zobrazit, takže ji asistent nemůže měnit."
   },
@@ -1046,6 +1482,7 @@
     "template": "U poznámky „{{name}}“ se nepodařilo změnit nastavení šablony."
   },
   "noteTab": {
+    "loading": "Otevírání poznámky",
     "projectNote": "Poznámka projektu",
     "sharedProject": "Všichni v tomto projektu ji mohou zobrazit a upravovat",
     "localProject": "Uloženo se soubory tohoto projektu",
@@ -1057,5 +1494,250 @@
     "copyToMine": "Zkopírovat do mých poznámek",
     "missing": "Tato poznámka už není k dispozici. Mohla být přesunuta nebo smazána.",
     "writeRefused": "Poznámku se nepodařilo uložit. Tento projekt je teď jen pro čtení."
+  },
+  "appearance": {
+    "notes": {
+      "sectionName": "Vzhled poznámek",
+      "resetAriaLabel": "Obnovit výchozí hodnotu: {{setting}}",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Řez písma",
+        "description": "Zvolte řez písma pro text poznámek.",
+        "options": {
+          "sans": "Bezpatkové",
+          "serif": "Patkové",
+          "mono": "Neproporcionální"
+        }
+      },
+      "font": {
+        "label": "Písmo poznámek",
+        "description": "Vyberte pro text poznámek libovolné nainstalované písmo. Když pole necháte prázdné, použije se nastavení Řez písma."
+      },
+      "fontSize": {
+        "label": "Velikost textu poznámek",
+        "description": "Nastavte velikost textu poznámek.",
+        "custom": "Vlastní",
+        "customLabel": "Vlastní velikost textu poznámek v pixelech"
+      },
+      "lineHeight": {
+        "label": "Výška řádku poznámek",
+        "description": "Nastavte rozestup mezi řádky textu poznámek.",
+        "customLabel": "Vlastní výška řádku poznámek"
+      },
+      "paragraphSpacing": {
+        "label": "Mezery mezi odstavci",
+        "description": "Nastavte mezery mezi odstavci, seznamy a dalšími bloky.",
+        "options": {
+          "compact": "Kompaktní",
+          "normal": "Normální",
+          "relaxed": "Volnější",
+          "spacious": "Prostorné"
+        }
+      },
+      "headings": {
+        "title": "Nadpisy a název"
+      },
+      "headingTypeface": {
+        "label": "Řez písma nadpisů",
+        "description": "Zvolte řez písma pro nadpisy a název poznámky.",
+        "options": {
+          "text": "Stejné jako text"
+        }
+      },
+      "headingFont": {
+        "label": "Písmo nadpisů",
+        "description": "Vyberte nainstalované písmo pro nadpisy a název poznámky. Když pole necháte prázdné, použije se nastavení Řez písma nadpisů."
+      },
+      "headingSize": {
+        "label": "Velikost nadpisů",
+        "description": "Nastavte, jak velké mají být nadpisy oproti textu.",
+        "options": {
+          "small": "Menší",
+          "normal": "Normální",
+          "large": "Větší"
+        }
+      },
+      "titleSize": {
+        "label": "Velikost názvu",
+        "description": "Nastavte velikost názvu v horní části každé poznámky."
+      },
+      "layout": {
+        "title": "Rozvržení"
+      },
+      "width": {
+        "label": "Šířka poznámky",
+        "description": "Jak široké jsou poznámky po otevření. Mění to i nabídka šířky v poznámce.",
+        "options": {
+          "standard": "Standardní",
+          "wide": "Široká",
+          "full": "Plná šířka"
+        }
+      },
+      "info": {
+        "label": "Informace o poznámce",
+        "description": "Kde se zobrazují vlastnosti a odkazy poznámky. Možnost Postranní panel je ukáže na panelu Informace spolu s počty a přílohami poznámky. Možnost V poznámce je ponechá přímo na stránce.",
+        "options": {
+          "side": "Postranní panel",
+          "inline": "V poznámce"
+        }
+      },
+      "taskBox": {
+        "label": "Zaškrtávací políčka úkolů",
+        "description": "Tvar políček v seznamech úkolů.",
+        "options": {
+          "square": "Čtvercová",
+          "round": "Kulatá"
+        }
+      },
+      "wordCount": {
+        "label": "Zobrazit počet slov",
+        "description": "Zobrazit počet slov poznámky na jejím panelu nástrojů."
+      },
+      "spellcheck": {
+        "label": "Kontrolovat pravopis v poznámkách",
+        "description": "Podtrhávat chybně napsaná slova při psaní poznámky."
+      },
+      "replacements": {
+        "label": "Nahrazovat při psaní",
+        "description": "Při psaní zamění dvojice jako -> za →. Kód a matematika zůstanou tak, jak jsou napsané, a Backspace hned po záměně vrátí váš text.",
+        "list": "Náhrady textu",
+        "type": "Napsaný text",
+        "becomes": "Nahradí se",
+        "add": "Přidat",
+        "remove": "Odebrat {{from}}",
+        "removeTooltip": "Odebrat",
+        "empty": "Zatím žádné dvojice. Přidejte jednu níže.",
+        "full": "Dvojic můžete mít nejvýše {{limit}}. Chcete-li přidat další, jednu odeberte."
+      },
+      "keepUndo": {
+        "label": "Zachovat historii vrácení po zavření",
+        "description": "Vracení změn v poznámce funguje i po jejím zavření nebo ukončení aplikace. Historie zůstává na tomto počítači a vypnutím této volby se smaže."
+      },
+      "code": {
+        "title": "Kód"
+      },
+      "drawings": {
+        "title": "Kresby LaTeX"
+      },
+      "tikzPreamble": {
+        "label": "Preambule TikZ",
+        "description": "Řádky jako \\usetikzlibrary{positioning}, které se přidají na začátek preambule každého bloku TikZ a CircuiTikZ."
+      },
+      "codeFont": {
+        "label": "Písmo kódu",
+        "description": "Vyberte nainstalované písmo pro bloky kódu a kód v řádku."
+      },
+      "codeTheme": {
+        "label": "Barvy bloků kódu",
+        "description": "Vyberte barvy syntaxe pro bloky kódu v poznámkách.",
+        "options": {
+          "editor": "Stejné jako editor"
+        }
+      },
+      "colors": {
+        "title": "Barvy"
+      },
+      "accent": {
+        "label": "Barva zvýraznění poznámek",
+        "description": "Používá se pro odkazy, štítky a zaškrtávací políčka úkolů v poznámkách.",
+        "matchApp": "Podle aplikace",
+        "customAriaLabel": "Vybrat vlastní barvu zvýraznění poznámek"
+      },
+      "callouts": {
+        "label": "Styl rámečků",
+        "description": "Jak v poznámkách vypadají zvýrazněné rámečky.",
+        "options": {
+          "tinted": "Tónované",
+          "filled": "Vyplněné",
+          "outlined": "Ohraničené",
+          "bar": "Postranní pruh"
+        }
+      },
+      "fieldStyle": {
+        "label": "Vzhled dat a polí",
+        "description": "Jak v poznámkách vypadají data a pole jako termín nebo priorita.",
+        "options": {
+          "tint": "Tónované",
+          "outline": "Ohraničené",
+          "underline": "Podtržené"
+        }
+      },
+      "remoteImages": {
+        "title": "Obrázky z webu",
+        "description": "Poznámky a odpovědi asistenta načítají obrázky z těchto webů bez ptaní.",
+        "empty": "Před načtením obrázku z webu se poznámky a odpovědi asistenta nejdřív zeptají. Weby, kterým načítání vždy povolíte, se zobrazí tady.",
+        "remove": "Odebrat {{host}}"
+      }
+    }
+  },
+  "notesPreview": {
+    "label": "Náhled poznámky s tímto nastavením",
+    "title": "Terénní poznámky",
+    "heading": "Ranní průzkum",
+    "paragraph": "Do deváté slabě pršelo, pak se nad severním hřebenem vyjasnilo. V poledne byla půda ještě vlhká.",
+    "links": "Celý postup najdete v poznámce <note>Metoda odběru vzorků</note>, nebo procházejte <tag>#terénní-práce</tag>.",
+    "highlight": "Semenáčky za týden zdvojnásobily výšku.",
+    "calloutTitle": "Příští návštěva",
+    "calloutBody": "Před odběrem nových vzorků zkontrolujte půdní čidla.",
+    "taskDone": "Označit vzorky",
+    "task": "Nahrát fotky",
+    "taskLate": "Odeslat zprávu o půdě"
+  },
+  "highlight": {
+    "colors": {
+      "yellow": "Žlutá",
+      "orange": "Oranžová",
+      "red": "Červená",
+      "pink": "Růžová",
+      "purple": "Fialová",
+      "blue": "Modrá",
+      "green": "Zelená"
+    },
+    "remove": "Odebrat zvýraznění"
+  },
+  "quickCapture": {
+    "title": "Rychlý záznam",
+    "untitled": "Bez názvu",
+    "placeholder": "Začněte psát…",
+    "field": "Text k zaznamenání",
+    "characters_one": "{{count}} znak",
+    "characters_few": "{{count}} znaky",
+    "characters_many": "{{count}} znaku",
+    "characters_other": "{{count}} znaků",
+    "failed": "Uložení se nezdařilo. Váš text tu zůstal, takže to můžete zkusit znovu.",
+    "actions": {
+      "label": "Akce",
+      "saveNew": "Uložit jako novou poznámku",
+      "saveToday": "Přidat do dnešní poznámky",
+      "copy": "Kopírovat jako Markdown",
+      "discard": "Zahodit koncept"
+    },
+    "openNotes": "Otevřít Poznámky",
+    "newNote": "Nová poznámka",
+    "format": "Zobrazit formátování",
+    "closeFormat": "Skrýt formátování"
+  },
+  "starter": {
+    "blocksGallery": {
+      "title": "Galerie bloků",
+      "intro": "Všechny bloky, které poznámka může obsahovat. Kliknutím na {{source}} u bloku zobrazíte a upravíte to, co ho vykresluje, a napsáním {{slash}} na prázdný řádek vložíte nový blok.",
+      "charts": "Grafy",
+      "functionPlots": "Grafy funkcí",
+      "tables": "Tabulky",
+      "csvTable": "Blok csv lze řadit a filtrovat a má souhrnný řádek:",
+      "markdownTable": "Fungují i obyčejné tabulky Markdown:",
+      "math": "Matematika a chemie",
+      "typst": "Typst",
+      "diagrams": "Diagramy",
+      "svg": "SVG",
+      "html": "HTML, stiskněte {{run}}",
+      "react": "React, stiskněte {{run}}",
+      "structures": "Chemické struktury",
+      "molecule": "3D molekula",
+      "sequences": "Sekvence",
+      "code": "Kód"
+    }
   }
 }

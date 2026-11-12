@@ -145,6 +145,16 @@
       "uploadFailed": "Kon niet worden geüpload"
     }
   },
+  "conflictCopy": {
+    "title": "Twee versies van “{{name}}”",
+    "description": "Deze notitie is hier en op een andere computer gewijzigd voordat de wijzigingen waren gesynchroniseerd, dus Oleafly heeft beide versies bewaard. Bewaar één versie. De andere gaat naar de Prullenbak.",
+    "diffLabel": "Verschillen tussen de twee versies",
+    "loading": "Beide versies worden gelezen…",
+    "readFailed": "Kon de conflictkopie niet lezen.",
+    "resolveFailed": "Kon die versie niet bewaren.",
+    "keepMine": "Versie van deze computer bewaren",
+    "useCopy": "Versie van de andere computer gebruiken"
+  },
   "confirm": {
     "removeTitle": "{{name}} uit {{provider}} verwijderen?",
     "removeDescription": "Hiermee verwijder je de kopie in je {{provider}} om ruimte vrij te maken. Het project blijft op deze computer en wordt hier niet meer gesynchroniseerd. Je andere computers houden hun kopieën en synchroniseren het project ook niet meer.",
@@ -209,6 +219,76 @@
     "pathStyle": "Adressen in padstijl gebruiken",
     "pathStyleHint": "MinIO en de meeste zelf gehoste servers hebben dit nodig."
   },
+  "backups": {
+    "title": "Back-ups",
+    "none": "Nog geen back-ups",
+    "last": "Laatste back-up {{time}} · {{contents}} · {{size}}",
+    "notes_one": "{{count}} notitie",
+    "notes_other": "{{count}} notities",
+    "projects_one": "{{count}} project",
+    "projects_other": "{{count}} projecten",
+    "running": "Back-up bezig",
+    "failed": "De laatste back-up is niet afgerond. {{reason}}",
+    "backUpNow": "Nu back-up maken",
+    "auto": {
+      "label": "Automatisch back-ups maken",
+      "description": "Bewaart gedateerde kopieën van je notities in je {{provider}}. Latere wijzigingen en verwijderingen, ook als die worden gesynchroniseerd, blijven ervan af."
+    },
+    "every": {
+      "label": "Hoe vaak",
+      "description": "Een back-up uploadt alleen wat er sinds de vorige is veranderd.",
+      "options": {
+        "6": "Elke 6 uur",
+        "24": "Elke dag",
+        "168": "Elke week"
+      }
+    },
+    "keep": {
+      "label": "Bewaren",
+      "description": "Oudere back-ups worden uit je {{provider}} verwijderd om ruimte te besparen.",
+      "option_one": "De laatste back-up",
+      "option_other": "De laatste {{count}} back-ups"
+    },
+    "includeProjects": {
+      "label": "Projecten meenemen",
+      "description": "Projecten worden al gesynchroniseerd met hun checkpoints. Zet dit aan om er ook gedateerde kopieën van te bewaren. De eerste back-up van een groot project kan even duren en veel ruimte innemen."
+    },
+    "list": {
+      "title": "Back-ups in {{provider}}",
+      "label": "Back-ups",
+      "loading": "Back-ups lezen",
+      "failed": "Kon de back-ups niet lezen. {{reason}}",
+      "empty": "Nog geen back-ups in {{provider}}."
+    },
+    "row": {
+      "thisComputer": "Deze computer",
+      "manual": "Handmatig",
+      "restore": "Terugzetten",
+      "restoreLabel": "De back-up van {{date}} terugzetten"
+    },
+    "restore": {
+      "title": "Terugzetten van {{date}}",
+      "description": "Terugzetten vervangt nooit wat je hebt. Een notitie of project dat er nog is, komt terug als kopie ernaast, zodat je de twee kunt vergelijken.",
+      "loading": "Back-up lezen",
+      "loadFailed": "Kon deze back-up niet lezen. {{reason}}",
+      "search": "Zoeken in deze back-up",
+      "clearSearch": "Zoekopdracht wissen",
+      "noMatch": "Niets in deze back-up komt overeen.",
+      "listLabel": "Notities en projecten in deze back-up",
+      "here": "Nog aanwezig",
+      "missing": "Niet op deze computer",
+      "restored": "Teruggezet",
+      "restoredCopy": "Als kopie teruggezet",
+      "files_one": "{{count}} bestand",
+      "files_other": "{{count}} bestanden",
+      "one": "Terugzetten",
+      "oneLabel": "{{name}} terugzetten",
+      "allMissing_one": "Het ontbrekende item terugzetten",
+      "allMissing_other": "De {{count}} ontbrekende items terugzetten",
+      "nothingMissing": "Er ontbreekt niets",
+      "copyName": "(teruggezet {{date}})"
+    }
+  },
   "errors": {
     "clock_skew": "De klok van deze computer staat verkeerd, dus {{provider}} accepteert geen verzoeken van deze computer. Stel de juiste datum en tijd in om te blijven synchroniseren.",
     "code_invalid": "Die code werkte niet. Probeer het opnieuw.",
@@ -237,6 +317,8 @@
     "sign_in_timeout": "Inloggen duurde te lang. Probeer het opnieuw.",
     "too_many_files": "Dit project heeft meer dan 100.000 bestanden. Dat zijn er te veel om te synchroniseren.",
     "traffic_limit": "Je {{provider}} heeft de uploadlimiet bereikt. Nieuwe wijzigingen blijven op deze computer tot {{provider}} weer uploads toestaat.",
-    "verify_failed": "Een bestand uit {{provider}} kwam niet overeen met wat Oleafly verwachtte, dus het is met rust gelaten. De synchronisatie probeert het opnieuw."
+    "verify_failed": "Een bestand uit {{provider}} kwam niet overeen met wat Oleafly verwachtte, dus het is met rust gelaten. De synchronisatie probeert het opnieuw.",
+    "backup_missing": "Deze back-up staat niet meer in je {{provider}}.",
+    "backup_label": "Oleafly kon de teruggezette kopie geen naam geven."
   }
 }

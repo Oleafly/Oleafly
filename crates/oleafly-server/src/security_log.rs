@@ -48,6 +48,10 @@ pub fn kind_to_str(kind: &SecurityEventKind) -> &'static str {
         SecurityEventKind::GuestAdmissionEnded => "guest_admission_ended",
         SecurityEventKind::ProjectRejoinRefused => "project_rejoin_refused",
         SecurityEventKind::CommentsChangedWhileOff => "comments_changed_while_off",
+        SecurityEventKind::NotePublished => "note_published",
+        SecurityEventKind::NoteUnpublished => "note_unpublished",
+        SecurityEventKind::NoteTakenDown => "note_taken_down",
+        SecurityEventKind::NoteRestored => "note_restored",
         SecurityEventKind::Unknown => "unknown",
     }
 }
@@ -84,6 +88,10 @@ pub fn kind_from_str(text: &str) -> Option<SecurityEventKind> {
         "guest_admission_ended" => Some(SecurityEventKind::GuestAdmissionEnded),
         "project_rejoin_refused" => Some(SecurityEventKind::ProjectRejoinRefused),
         "comments_changed_while_off" => Some(SecurityEventKind::CommentsChangedWhileOff),
+        "note_published" => Some(SecurityEventKind::NotePublished),
+        "note_unpublished" => Some(SecurityEventKind::NoteUnpublished),
+        "note_taken_down" => Some(SecurityEventKind::NoteTakenDown),
+        "note_restored" => Some(SecurityEventKind::NoteRestored),
         _ => None,
     }
 }
@@ -197,7 +205,7 @@ mod tests {
     use oleafly_collab_protocol::ids::SharedProjectId;
     use serde_json::json;
 
-    const ALL_KINDS: [SecurityEventKind; 30] = [
+    const ALL_KINDS: [SecurityEventKind; 34] = [
         SecurityEventKind::SetupCompleted,
         SecurityEventKind::SignIn,
         SecurityEventKind::SignInRefused,
@@ -228,6 +236,10 @@ mod tests {
         SecurityEventKind::GuestAdmissionEnded,
         SecurityEventKind::ProjectRejoinRefused,
         SecurityEventKind::CommentsChangedWhileOff,
+        SecurityEventKind::NotePublished,
+        SecurityEventKind::NoteUnpublished,
+        SecurityEventKind::NoteTakenDown,
+        SecurityEventKind::NoteRestored,
     ];
 
     fn event(target: &str) -> NewSecurityEvent {
@@ -284,6 +296,10 @@ mod tests {
                 "guest_admission_ended",
                 "project_rejoin_refused",
                 "comments_changed_while_off",
+                "note_published",
+                "note_unpublished",
+                "note_taken_down",
+                "note_restored",
             ]
         );
         for name in &names {

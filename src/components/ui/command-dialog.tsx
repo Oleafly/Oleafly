@@ -14,6 +14,9 @@ export interface CommandDialogShellProps extends DialogProps {
   onQueryChange: (query: string) => void;
   placeholder: string;
   placement?: string;
+  className?: string;
+  leading?: ReactNode;
+  trailing?: ReactNode;
   listRef?: Ref<HTMLDivElement>;
   listClassName?: string;
   footer?: ReactNode;
@@ -25,6 +28,9 @@ export function CommandDialogShell({
   onQueryChange,
   placeholder,
   placement = "top-[20%]",
+  className,
+  leading,
+  trailing,
   listRef,
   listClassName = "max-h-[min(60vh,360px)]",
   footer,
@@ -35,16 +41,20 @@ export function CommandDialogShell({
     <Command.Dialog
       {...dialog}
       overlayClassName="fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm motion-reduce:backdrop-blur-none"
-      className={cn("fixed left-1/2 z-[90] w-[min(560px,92vw)] -translate-x-1/2", placement)}
+      className={cn("fixed left-1/2 z-[90] w-[min(560px,92vw)] -translate-x-1/2", placement, className)}
     >
       <div className="overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl">
-        <Command.Input
-          value={query}
-          onValueChange={onQueryChange}
-          autoFocus
-          placeholder={placeholder}
-          className="flex h-12 w-full border-b border-border bg-transparent px-4 text-sm placeholder:text-muted-foreground"
-        />
+        <div className={cn("flex items-center gap-2 border-b border-border", leading ? "px-3" : "px-4")}>
+          {leading}
+          <Command.Input
+            value={query}
+            onValueChange={onQueryChange}
+            autoFocus
+            placeholder={placeholder}
+            className="flex h-12 w-full bg-transparent text-sm placeholder:text-muted-foreground"
+          />
+          {trailing}
+        </div>
         <Command.List ref={listRef} className={cn("overflow-auto p-1.5", listClassName)}>
           {children}
         </Command.List>

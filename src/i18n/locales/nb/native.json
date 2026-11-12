@@ -218,5 +218,10 @@
       "title": "Tillatelsessjekkene er av ({{mode}})",
       "description": "Agenten kan endre filer og kjøre kommandoer uten å spørre. Oleafly kunne ikke bytte den til en annen modus. Endre modusen i agentens egne innstillinger."
     }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Hurtignotat"
+    }
   }
 }

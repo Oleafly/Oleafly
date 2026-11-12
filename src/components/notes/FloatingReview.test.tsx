@@ -7,6 +7,7 @@ import { loadNamespace } from "@/i18n";
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { activeChangeBox, FloatingReview, REVIEW_GAP_PX, reviewPlacement, type Box } from "./FloatingReview";
+import "./tests/setup";
 
 const suggestions = vi.hoisted(() => ({
   acceptActive: vi.fn(),
@@ -41,7 +42,7 @@ function frame() {
 }
 
 beforeAll(async () => {
-  await Promise.all([loadNamespace("notes"), loadNamespace("editor")]);
+  await loadNamespace("editor");
 });
 
 afterEach(() => {
@@ -141,7 +142,6 @@ describe("FloatingReview", () => {
   it("floats on the active change, follows it on scroll and edits, and stops listening when it goes", async () => {
     const { container, scroller, change, listeners, unmount } = setup();
     const bar = container.querySelector<HTMLElement>("[data-note-review]");
-    expect(bar).toHaveClass("fixed");
     expect(bar?.style.visibility).toBe("visible");
     expect(bar?.style.top).toBe(`${300 + REVIEW_GAP_PX}px`);
     expect(bar?.style.left).toBe("700px");

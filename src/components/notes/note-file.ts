@@ -1,15 +1,14 @@
-import { readMarkdownDocumentSettings, setFrontMatterScalar } from "@/features/markdown-document-settings";
-import { fencedLines } from "@/lib/code-fences";
-import { frontMatterBody, frontMatterValue, splitFrontMatter, valuesOfLines } from "@/lib/front-matter";
+import { type FencedLine, fencedLines } from "@/lib/code-fences";
+import { frontMatterBody, frontMatterValues } from "@/lib/front-matter";
+import { setScalar } from "@/lib/front-matter-yaml";
+import { sourceHash } from "@/lib/project-intelligence/source";
 import { NOTE_FILE_KIND } from "@/lib/project-notes";
+import { trimTrailingCharacter } from "@/lib/trim-character";
 import { LINE_ICON_PREFIX, LINE_ICONS } from "./note-icons";
 import type { NoteColor } from "./types";
 
-export const NOTE_KIND = NOTE_FILE_KIND;
-const BOM = "\uFEFF";
-const OPENING_FENCE = /^\uFEFF?---[ \t]*(?:\r?\n|$)/u;
 const SUMMARY_LIMIT = 180;
-const NOT_PROSE = /^(?:#{1,6}\s|```|~~~|\||[-*+]\s|\d+[.)]\s|>|\$\$|<|!\[|---|\*\*\*|___)/u;
+const NOT_PROSE = /^(?:#{1,6}\s|```|~~~|\||[-*+]\s|\d+[.)]\s|>|\$\$|<(?!mark data-color=")|!\[|---|\*\*\*|___)/u;
 
 export const NOTE_COLORS: readonly NoteColor[] = [
   "blue",
@@ -35,12 +34,7 @@ export interface NoteFacts {
 }
 
 function hashOf(text: string): number {
-  let hash = 0x811c9dc5;
-  for (let index = 0; index < text.length; index++) {
-    hash ^= text.charCodeAt(index);
-    hash = Math.imul(hash, 0x01000193);
-  }
-  return hash >>> 0;
+  return Number.parseInt(sourceHash(text), 16);
 }
 
 export function isNoteColor(value: string | undefined): value is NoteColor {
@@ -51,40 +45,59 @@ export function noteColorFor(seed: string): NoteColor {
   return NOTE_COLORS[hashOf(seed) % NOTE_COLORS.length];
 }
 
-export function starterIcon(seed: string): string {
-  const ids = Object.keys(LINE_ICONS);
-  return `${LINE_ICON_PREFIX}${ids[hashOf(`icon:${seed}`) % ids.length]}`;
+export function noteColorOf(declared: string | null | undefined, seed: string): NoteColor {
+  const color = declared?.toLowerCase();
+  return isNoteColor(color) ? color : noteColorFor(seed);
 }
 
-export function noteBody(text: string): string {
-  return frontMatterBody(text);
+export function starterIcon(seed: string): string {
+  const ids = Object.keys(LINE_ICONS);
+  const index = hashOf(`icon:${seed}`) % ids.length;
+  return `${LINE_ICON_PREFIX}${ids[index]}`;
+}
+
+function withLinkLabels(text: string): string {
+  let result = "";
+  let from = 0;
+  let open = text.indexOf("[");
+  while (open >= 0) {
+    const close = text.indexOf("]", open + 1);
+    if (close < 0) break;
+    if (text[close + 1] === "(") {
+      const end = text.indexOf(")", close + 2);
+      if (end < 0) break;
+      const start = text[open - 1] === "!" ? open - 1 : open;
+      result += text.slice(from, start) + text.slice(open + 1, close);
+      from = end + 1;
+    }
+    open = text.indexOf("[", Math.max(from, close + 1));
+  }
+  return result + text.slice(from);
 }
 
 function plainInline(line: string): string {
-  return line
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/gu, "$1")
-    .replace(/(\*\*|__|\*|_|`)(.+?)\1/gu, "$2")
-    .replace(/\s+/gu, " ")
+  const unmarked = line
+    .replaceAll(/<mark data-color="[a-z]+">(.*?)<\/mark>/gu, "$1")
+    .replaceAll(/(!\[[^\]]*\]\([^)]*\))\{width=\d{1,3}%\}/gu, "$1");
+  return withLinkLabels(unmarked)
+    .replaceAll(/==(?![\s=])(.+?)(?<!\s)==/gu, "$1")
+    .replaceAll(/(\*\*|__|\*|_|`)(.+?)\1/gu, "$2")
+    .replaceAll(/\s+/gu, " ")
     .trim();
+}
+
+function proseLine(raw: FencedLine): string | null {
+  if (raw.fenced) return null;
+  const line = raw.text.trim();
+  return line === "" || NOT_PROSE.test(line) ? null : line;
 }
 
 export function noteSummary(body: string): string {
   const lines: string[] = [];
   for (const raw of fencedLines(body)) {
-    if (raw.fenced) {
-      if (lines.length > 0) break;
-      continue;
-    }
-    const line = raw.text.trim();
-    if (line === "") {
-      if (lines.length > 0) break;
-      continue;
-    }
-    if (NOT_PROSE.test(line)) {
-      if (lines.length > 0) break;
-      continue;
-    }
-    lines.push(line);
+    const line = proseLine(raw);
+    if (line !== null) lines.push(line);
+    else if (lines.length > 0) break;
   }
   const text = plainInline(lines.join(" "));
   if (text.length <= SUMMARY_LIMIT) return text;
@@ -94,55 +107,43 @@ export function noteSummary(body: string): string {
 }
 
 export function readNoteFacts(text: string): NoteFacts {
-  const front = splitFrontMatter(text);
-  const values = valuesOfLines(front?.lines ?? []);
+  const values = frontMatterValues(text);
   const title = values.get("title") ?? null;
   const id = values.get("id");
-  const declared = values.get("color")?.toLowerCase();
   return {
     title,
     id,
     icon: values.get("icon"),
-    color: isNoteColor(declared) ? declared : noteColorFor(id ?? title ?? ""),
+    color: noteColorOf(values.get("color"), id ?? title ?? ""),
     agent: values.get("agent"),
-    summary: noteSummary(front ? front.body : text),
+    summary: noteSummary(frontMatterBody(text)),
   };
 }
 
-function openFrontMatter(text: string): string | null {
-  if (OPENING_FENCE.test(text)) return readMarkdownDocumentSettings(text).frontMatter === "present" ? text : null;
-  const bom = text.startsWith(BOM) ? BOM : "";
-  const rest = text.slice(bom.length);
-  const newline = rest.includes("\r\n") ? "\r\n" : "\n";
-  const gap = /^(?:\r?\n|$)/u.test(rest) ? "" : newline;
-  return `${bom}---${newline}kind: ${NOTE_KIND}${newline}---${newline}${gap}${rest}`;
-}
-
 export function withNoteIdentity(text: string, id?: string): string {
-  const opened = openFrontMatter(text);
-  if (opened === null) return text;
-  const declared = frontMatterValue(opened, "kind") === NOTE_KIND ? opened : setFrontMatterScalar(opened, "kind", NOTE_KIND);
-  return frontMatterValue(declared, "id") ? declared : setFrontMatterScalar(declared, "id", id ?? crypto.randomUUID());
+  const declared = frontMatterValues(text).get("kind") === NOTE_FILE_KIND ? text : setScalar(text, "kind", NOTE_FILE_KIND);
+  if (declared === text && frontMatterValues(text).get("kind") !== NOTE_FILE_KIND) return text;
+  return frontMatterValues(declared).get("id") ? declared : setScalar(declared, "id", id ?? crypto.randomUUID());
 }
 
 export function newNoteSource(title: string, body = "", agent?: string, id: string = crypto.randomUUID()): string {
-  let text = setFrontMatterScalar("", "title", title);
-  if (agent) text = setFrontMatterScalar(text, "agent", agent);
-  text = setFrontMatterScalar(text, "icon", starterIcon(id));
-  text = setFrontMatterScalar(text, "color", noteColorFor(id));
+  let text = setScalar("", "title", title);
+  if (agent) text = setScalar(text, "agent", agent);
+  text = setScalar(text, "icon", starterIcon(id));
+  text = setScalar(text, "color", noteColorFor(id));
   text = withNoteIdentity(text, id);
   const rest = body.replace(/^\s+/u, "");
-  return rest ? `${text.replace(/\n*$/u, "\n\n")}${rest}` : text;
+  return rest ? `${trimTrailingCharacter(text, "\n")}\n\n${rest}` : text;
 }
 
 export function withNoteIcon(text: string, icon: string | undefined): string {
-  return setFrontMatterScalar(text, "icon", icon ?? null);
+  return setScalar(text, "icon", icon ?? null);
 }
 
 export function withNoteColor(text: string, color: NoteColor): string {
-  return setFrontMatterScalar(text, "color", color);
+  return setScalar(text, "color", color);
 }
 
 export function withNoteTitle(text: string, title: string): string {
-  return setFrontMatterScalar(text, "title", title);
+  return setScalar(text, "title", title);
 }

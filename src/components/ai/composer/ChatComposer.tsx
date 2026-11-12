@@ -538,7 +538,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
               // gives the placeholder a wider scroll width than the box, and
               // the vertical scrolling turned that into a horizontal scrollbar.
               // Text still wraps at the visible width.
-              "relative w-full resize-none overflow-y-auto overflow-x-hidden rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none placeholder:text-muted-foreground/70",
+              "relative w-full resize-none overflow-y-auto overflow-x-hidden rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none focus-visible:bg-transparent placeholder:text-muted-foreground/70",
               highlight && "text-transparent caret-foreground",
             )}
           />

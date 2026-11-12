@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAgentMemoryStore } from "@/store/agent-memory";
+import { useFilesStore } from "@/store/files";
 import { createNoteScope, NOTE_ENGINE, NOTE_FEATURES, noteContextBlock, noteMentionPath, noteMentions, noteScopeKey } from "./note-assistant-scope";
 import type { NoteToolDeps } from "./note-assistant-tools";
 import type { NoteItem } from "./types";
@@ -154,6 +155,7 @@ describe("the note scope", () => {
       features: NOTE_FEATURES,
     });
     expect(scope.currentProjectId()).toBe("note-1");
+    expect(scope.storageKey).toBeUndefined();
     expect(scope.currentTree()).toBe(tree);
     expect(scope.mainDoc()).toBe("note.md");
     expect(scope.cachedContent("note.md")).toBeUndefined();
@@ -169,7 +171,8 @@ describe("the note scope", () => {
     expect(setRuntime).toHaveBeenCalledWith("acp");
   });
 
-  it("works in the project for a note kept inside a project, without file changes", () => {
+  it("works in the project for a note kept inside a project, with its own state and without file changes", () => {
+    useFilesStore.setState({ projectId: "paper" });
     const deps = { relatedProjectId: "paper" } as NoteToolDeps;
     const note = { ...NOTES[0], id: "project-note:paper:p1", home: { projectId: "paper", path: "notes/Plan.md" } };
     const scope = createNoteScope({
@@ -186,10 +189,13 @@ describe("the note scope", () => {
     });
     expect(scope.key).toBe(noteScopeKey("project-note:paper:p1"));
     expect(scope.projectId).toBe("paper");
+    expect(scope.storageKey).toBe("paper#note:project-note:paper:p1");
     expect(scope.currentProjectId()).toBe("paper");
     expect(scope.mainDoc()).toBe("notes/Plan.md");
     expect(scope.toolHost?.getProjectId()).toBe("paper");
-    expect(scope.excludedNames).toEqual(expect.arrayContaining(["write_file", "delete_file", "rename_file"]));
+    expect(scope.excludedNames).toEqual(expect.arrayContaining(["write_file", "delete_file", "rename_file", "run_command"]));
+    useFilesStore.setState({ projectId: "other" });
+    expect(scope.currentProjectId()).toBeNull();
     expect(scope.excludedNames).not.toContain("research_task_create");
   });
 });

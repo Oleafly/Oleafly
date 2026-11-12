@@ -1,6 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
 import { i18n } from "@/i18n";
-import { activeChatRun, WORKSPACE_ASSISTANT_SCOPE } from "@/components/ai/chat-run-registry";
+import { activeChatRuns, WORKSPACE_ASSISTANT_SCOPE } from "@/components/ai/chat-run-registry";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { holdBootSplash, releaseBootSplash } from "@/lib/boot-telemetry";
 import { offerQuickActionOnce } from "@/features/quick-action-offer";
@@ -247,10 +247,15 @@ function presentOnceOpen(folder: OpenedFolder, blocked: SaveBlockedState): void 
   });
 }
 
+function projectRuns(projectId: string) {
+  return activeChatRuns().filter((run) => run.scope === WORKSPACE_ASSISTANT_SCOPE || run.projectId === projectId);
+}
+
 function runningWork(): RunningWork | null {
-  if (!useFilesStore.getState().projectId) return null;
+  const projectId = useFilesStore.getState().projectId;
+  if (!projectId) return null;
   const compile = useCompileStore.getState().status === "compiling";
-  const assistant = activeChatRun(WORKSPACE_ASSISTANT_SCOPE) !== null;
+  const assistant = projectRuns(projectId).length > 0;
   return compile || assistant ? { compile, assistant } : null;
 }
 
@@ -262,7 +267,8 @@ async function stopRunningWork(name: string): Promise<boolean> {
     .ask({ name, project: useFilesStore.getState().projectName, ...work });
   if (!stop) return false;
   if (work.compile) await useCompileStore.getState().stopCompile();
-  if (work.assistant) activeChatRun(WORKSPACE_ASSISTANT_SCOPE)?.controller.abort();
+  const projectId = useFilesStore.getState().projectId;
+  if (work.assistant && projectId) for (const run of projectRuns(projectId)) run.controller.abort();
   return true;
 }
 

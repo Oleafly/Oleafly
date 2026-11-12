@@ -1,9 +1,11 @@
 import type { FileEntry } from "@oleafly/backend-port";
-import { setFrontMatterScalar } from "@/features/markdown-document-settings";
 import { i18n, loadNamespace } from "@/i18n";
 import { describeError } from "@/lib/app-error";
+import { eachInOrder } from "@/lib/each-in-order";
+import { setScalar } from "@/lib/front-matter-yaml";
 import { flushOpenNotes, openNoteText } from "@/lib/open-note-editors";
 import { numberedPath } from "@/lib/path-utils";
+import { escapeRegExp } from "@/lib/regexp";
 import {
   foldPath,
   isProjectNoteAssetPath,
@@ -29,6 +31,7 @@ import { useFilesStore } from "@/store/files";
 import { useNoteTabsStore, type NoteTabLook } from "@/store/note-tabs";
 import { describeSaveFailure, type SaveFailure } from "@/store/save-flush-error";
 import { newNoteSource, readNoteFacts } from "./note-file";
+import { closeSavedNoteView } from "./notes-layout";
 
 const NOTE_ASSETS = "assets";
 
@@ -93,32 +96,30 @@ function assetFiles(entries: readonly FileEntry[], folder: string): string[] {
   return entries.filter((entry) => !entry.is_dir && entry.path.startsWith(`${folder}/`)).map((entry) => entry.path);
 }
 
-async function copyFiles(
+function copyFiles(
   from: { projectId: string; paths: readonly string[]; prefix: string },
   to: { projectId: string; prefix: string; existing: ReadonlySet<string> },
-): Promise<number> {
-  let copied = 0;
-  for (const path of from.paths) {
+): Promise<void> {
+  return eachInOrder(from.paths, async (path) => {
     const target = `${to.prefix}${path.slice(from.prefix.length)}`;
-    if (to.existing.has(target)) continue;
+    if (to.existing.has(target)) return;
     await writeProjectBytes(to.projectId, target, await readFileBase64(from.projectId, path));
-    copied += 1;
-  }
-  return copied;
+  });
+}
+
+export async function copyNoteAssets(fromId: string, toId: string): Promise<void> {
+  const paths = assetFiles(await listFiles(fromId), NOTE_ASSETS);
+  await copyFiles({ projectId: fromId, paths, prefix: "" }, { projectId: toId, prefix: "", existing: new Set() });
 }
 
 function originOf(asset: string, assetsDir: string): string {
   return `${assetsDir}/origins/${asset.slice(asset.lastIndexOf("/") + 1)}.json`;
 }
 
-function escapeRegExp(text: string): string {
-  return text.replaceAll(/[.*+?^${}()|[\]\\]/gu, "\\$&");
-}
-
 export function relinkAssets(text: string, renames: ReadonlyMap<string, string>): string {
   if (renames.size === 0) return text;
   const names = [...renames.keys()].sort((left, right) => right.length - left.length).map(escapeRegExp);
-  const pattern = new RegExp(`(?<![\\w./-])(\\./)?(${names.join("|")})(?![\\w.-])`, "gu");
+  const pattern = new RegExp(String.raw`(?<![\w./-])(\./)?(${names.join("|")})(?![\w.-])`, "gu");
   return text.replace(pattern, (found, dot: string | undefined, name: string) => {
     const renamed = renames.get(name);
     return renamed === undefined ? found : `${dot ?? ""}${renamed}`;
@@ -142,16 +143,16 @@ async function moveAssets(
   const actual = new Map([...existing].map((path) => [foldPath(path), path]));
   const taken = new Set(actual.keys());
   const renames = new Map<string, string>();
-  for (const asset of listed) {
+  await eachInOrder(listed, async (asset) => {
     const bytes = await readFileBase64(noteId, asset);
     const wanted = `${folder}/${asset}`;
     const present = actual.get(foldPath(wanted));
-    if (present !== undefined && (await readFileBase64(projectId, present)) === bytes) continue;
+    if (present !== undefined && (await readFileBase64(projectId, present)) === bytes) return;
     const target = numberedPath(wanted, (path) => taken.has(foldPath(path)));
     taken.add(foldPath(target));
     await writeProjectBytes(projectId, target, bytes);
     if (target !== wanted) renames.set(asset, target.slice(folder.length + 1));
-  }
+  });
   return renames;
 }
 
@@ -182,6 +183,7 @@ export async function moveNoteIntoProject(noteId: string, projectId: string): Pr
     const latest = await readFileContent(noteId, mainDoc);
     if (latest !== text) await useFilesStore.getState().writeProjectFile(projectId, path, relinkAssets(latest, renames));
     await recycleProject(noteId);
+    closeSavedNoteView(noteId);
     await useFilesStore.getState().refreshProjects();
     await useFilesStore.getState().openFile(path);
     toast.success(i18n.t(($) => $.notes.projectNotes.moved, { title }));
@@ -227,7 +229,7 @@ async function copyNote(projectId: string, path: string): Promise<string | null>
     const text = await currentNoteText(projectId, path);
     if (useFilesStore.getState().projectId !== projectId) return null;
     const title = noteFileFacts(text)?.title ?? noteFileStem(path);
-    const source = setFrontMatterScalar(text, "id", crypto.randomUUID());
+    const source = setScalar(text, "id", crypto.randomUUID());
     const id = await createNoteProject(title, source, projectId);
     const folder = projectNotesFolder([path]);
     const assetsDir = `${folder}/${NOTE_ASSETS}`;
@@ -264,7 +266,7 @@ export async function renameProjectNote(projectId: string, path: string, title: 
     const text = await currentNoteText(projectId, path);
     if (useFilesStore.getState().projectId !== projectId) return null;
     if (noteFileFacts(text)?.title !== name) {
-      await useFilesStore.getState().writeProjectFile(projectId, path, setFrontMatterScalar(text, "title", name), { base: text });
+      await useFilesStore.getState().writeProjectFile(projectId, path, setScalar(text, "title", name), { base: text });
     }
     const others = useFilesStore
       .getState()

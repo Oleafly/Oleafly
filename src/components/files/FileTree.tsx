@@ -1039,6 +1039,7 @@ export function FileTree({
         <ContextMenuTrigger asChild>
           <div
             ref={treeScrollRef}
+            data-keep-scroll
             onContextMenuCapture={(event) => setMenuNode(menuNodeFor(event.target))}
             role="tree"
             aria-label={t(($) => $.workspace.files.treeAriaLabel)}

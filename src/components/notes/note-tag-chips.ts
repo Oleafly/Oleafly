@@ -3,8 +3,8 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { PluginKey, TextSelection, type EditorState } from "@tiptap/pm/state";
 import { Decoration, type DecorationSet, type EditorView } from "@tiptap/pm/view";
 import { i18n } from "@/i18n";
-import { sendSuggestMeta, suggestionKey, suggestOptionId, suggestPlugin, type SuggestState } from "./note-suggest-plugin";
-import { plainTextTags, tagKey } from "./note-tags";
+import { sendSuggestMeta, suggestionKey, suggestPlugin, type SuggestState } from "./note-suggest-plugin";
+import { plainTextTags, tagKey, tagTone } from "./note-tags";
 
 export interface NoteTagOptions {
   getTags: () => readonly string[];
@@ -68,13 +68,16 @@ type Chip = (range: TagRange) => Decoration;
 function chipMaker(options: NoteTagOptions): Chip {
   const open = Boolean(options.getOpenTag());
   const label = i18n.t(($) => $.notes.kb.tags.open);
-  return ({ from, to, tag }) =>
-    Decoration.inline(
+  return ({ from, to, tag }) => {
+    const tone = tagTone(tag);
+    const tinted = `note-tag ${tone.tint} ${tone.text}`;
+    return Decoration.inline(
       from,
       to,
-      open ? { class: "note-tag", "data-tag": tag, "data-tooltip": label } : { class: "note-tag", "data-tag": tag },
+      open ? { class: `${tinted} ${tone.hover}`, "data-tag": tag, "data-tooltip": label } : { class: tinted, "data-tag": tag },
       { tag },
     );
+  };
 }
 
 function rangesOf(decorations: DecorationSet): TagRange[] {
@@ -136,8 +139,6 @@ export function tagSuggestion(state: EditorState): TagSuggestion | null {
   return suggestion;
 }
 
-export const tagOptionId = suggestOptionId;
-
 export function highlightTag(view: EditorView, index: number): void {
   sendSuggestMeta(view, tagPluginKey, { index });
 }
@@ -174,14 +175,11 @@ function handleKey(view: EditorView, event: KeyboardEvent): boolean {
   );
 }
 
-function openClicked(event: MouseEvent, options: NoteTagOptions): boolean {
+function openClickedTag(event: MouseEvent, options: NoteTagOptions): void {
   const open = options.getOpenTag();
-  if (!open || event.button !== 0 || !(event.target instanceof Element)) return false;
-  const chip = event.target.closest<HTMLElement>(".note-tag[data-tag]");
-  const tag = chip?.dataset.tag;
-  if (!tag) return false;
-  open(tag);
-  return false;
+  if (!open || event.button !== 0 || !(event.target instanceof Element)) return;
+  const tag = event.target.closest<HTMLElement>(".note-tag[data-tag]")?.dataset.tag;
+  if (tag) open(tag);
 }
 
 function tagPlugin(options: NoteTagOptions) {
@@ -201,7 +199,10 @@ function tagPlugin(options: NoteTagOptions) {
       return suggestion ? { index: suggestion.index, count: suggestion.items.length } : null;
     },
     handleKeyDown: handleKey,
-    click: (_view, event) => openClicked(event, options),
+    click: (_view, event) => {
+      openClickedTag(event, options);
+      return false;
+    },
     subscribe: options.subscribe,
   });
 }

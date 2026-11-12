@@ -2,12 +2,12 @@
 import { Editor } from "@tiptap/core";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { withBlockViews } from "./block-views";
 import { noteBaseExtensions } from "./note-markdown";
 import { NoteSlash, slashState } from "./note-slash";
 import { NoteSlashMenu } from "./NoteSlashMenu";
+import "./tests/setup";
 
 const editors: Editor[] = [];
 
@@ -31,7 +31,6 @@ function typeText(editor: Editor, text: string) {
 }
 
 beforeAll(async () => {
-  await loadNamespace("notes");
   Element.prototype.scrollIntoView = vi.fn();
 });
 

@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { blockKindOf, imageSource } from "./block-views";
+import "./block-views";
+import { noteBlockName } from "./note-blocks";
+import { imageSource } from "./note-path";
 
 describe("drawn blocks", () => {
   it.each([
@@ -24,13 +26,13 @@ describe("drawn blocks", () => {
     ["fasta", "sequence"],
     ["notebook", "notebook"],
   ])("draws a %s fence", (info, kind) => {
-    expect(blockKindOf(info)).toBe(kind);
+    expect(noteBlockName(info)).toBe(kind);
   });
 
   it.each(["python", "", "{.python}", "{=markdown}", "latex extra", "constructor", "toString", "__proto__"])(
     "leaves a %s fence as code",
     (info) => {
-      expect(blockKindOf(info)).toBeUndefined();
+      expect(noteBlockName(info)).toBeUndefined();
     },
   );
 });

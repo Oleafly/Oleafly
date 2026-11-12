@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Archive, ArchiveRestore, ArrowDown, ArrowUp, Search } from "lucide-react";
+import { Archive, ArchiveRestore, Search } from "lucide-react";
 import { SettingsNote } from "@/components/settings/SettingsNote";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
@@ -10,7 +10,17 @@ import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  nextSort,
+  SortableTableHead,
+  type SortState,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
@@ -20,7 +30,6 @@ import type {
   CollabAdminProjectSort,
   CollabAdminProjectsQuery,
   CollabProjectStatus,
-  CollabSortOrder,
 } from "@/lib/tauri";
 import {
   collabAdminArchiveProject,
@@ -51,11 +60,6 @@ const STATUS_BADGE = {
   unknown: "muted",
 } as const satisfies Record<Exclude<CollabProjectStatus, "active">, BadgeVariant>;
 
-interface Sorting {
-  readonly column: Column;
-  readonly order: CollabSortOrder;
-}
-
 interface Load {
   readonly serverId: string;
   readonly query: CollabAdminProjectsQuery;
@@ -76,15 +80,6 @@ type ListState =
 type MoreState =
   | { readonly status: "loading"; readonly load: Load }
   | { readonly status: "failed"; readonly load: Load; readonly message: string };
-
-function ariaSort(sorting: Sorting, column: Column): "ascending" | "descending" | "none" {
-  if (sorting.column !== column) return "none";
-  return sorting.order === "asc" ? "ascending" : "descending";
-}
-
-function SortArrow({ order }: Readonly<{ order: Sorting["order"] }>) {
-  return order === "asc" ? <ArrowUp aria-hidden /> : <ArrowDown aria-hidden />;
-}
 
 function StatusBadge({ status }: Readonly<{ status: CollabProjectStatus }>) {
   const { t } = useTranslation(["collab"]);
@@ -109,7 +104,7 @@ export function ProjectsSection({
   const [search, setSearch] = useState("");
   const searched = useDebouncedValue(search.trim(), SEARCH_DELAY_MS);
   const [filter, setFilter] = useState<Filter>("all");
-  const [sorting, setSorting] = useState<Sorting>({ column: "activity", order: "desc" });
+  const [sorting, setSorting] = useState<SortState<Column>>({ key: "activity", direction: "descending" });
   const [list, setList] = useState<ListState>({ status: "loading" });
   const [request, setRequest] = useState(0);
   const [more, setMore] = useState<MoreState | null>(null);
@@ -121,8 +116,8 @@ export function ProjectsSection({
     () => ({
       q: searched === "" ? null : searched,
       status: filter === "all" ? null : filter,
-      sort: sorting.column,
-      order: sorting.order,
+      sort: sorting.key,
+      order: sorting.direction === "ascending" ? "asc" : "desc",
       cursor: null,
       limit: PROJECTS_PAGE_SIZE,
     }),
@@ -196,11 +191,7 @@ export function ProjectsSection({
   };
 
   const sortBy = (column: Column) =>
-    setSorting((current) =>
-      current.column === column
-        ? { column, order: current.order === "asc" ? "desc" : "asc" }
-        : { column, order: ASCENDING_FIRST.has(column) ? "asc" : "desc" },
-    );
+    setSorting((current) => nextSort(current, column, ASCENDING_FIRST.has(column) ? "ascending" : "descending"));
 
   const columnCount = columns.length + (canArchive ? 1 : 0);
 
@@ -299,21 +290,16 @@ export function ProjectsSection({
           <TableHeader>
             <TableRow>
               {columns.map((column) => (
-                <TableHead key={column} numeric={NUMERIC.has(column)} aria-sort={ariaSort(sorting, column)}>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="xs"
-                    className="-mx-2 font-medium uppercase tracking-wide"
-                    aria-label={t(($) => $.collab.console.projects.sortBy, {
-                      column: t(($) => $.collab.console.projects.columns[column]),
-                    })}
-                    onClick={() => sortBy(column)}
-                  >
-                    {t(($) => $.collab.console.projects.columns[column])}
-                    {sorting.column === column ? <SortArrow order={sorting.order} /> : null}
-                  </Button>
-                </TableHead>
+                <SortableTableHead
+                  key={column}
+                  numeric={NUMERIC.has(column)}
+                  label={t(($) => $.collab.console.projects.columns[column])}
+                  sortLabel={t(($) => $.collab.console.projects.sortBy, {
+                    column: t(($) => $.collab.console.projects.columns[column]),
+                  })}
+                  direction={sorting.key === column ? sorting.direction : null}
+                  onSort={() => sortBy(column)}
+                />
               ))}
               {canArchive ? (
                 <TableHead>

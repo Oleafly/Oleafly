@@ -3,8 +3,9 @@ import { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { registerNoteEditor } from "@/lib/open-note-editors";
 import { noteEditorHandle } from "@/lib/tests/open-note-editor-fixtures";
-import { noteBaseExtensions, parseNoteMarkdown } from "./note-markdown";
-import { noteBlockPosition, revealNoteLocation } from "./note-reveal";
+import { blockPosition } from "@/components/editor/wysiwyg/reveal";
+import { noteBaseExtensions, noteMarkdownExtensions, parseNoteMarkdown } from "./note-markdown";
+import { revealNoteLocation } from "./note-reveal";
 
 const SOURCE = "---\ntitle: Plan\nkind: note\n---\n\n# Plan\n\nFirst paragraph.\n\n- one\n- two\n\nLast paragraph.\n";
 const KEY = "project-note:paper:notes/Plan.md";
@@ -35,9 +36,9 @@ afterEach(() => {
 describe("revealing a location in a note", () => {
   it("finds the block that holds a source line, past the front matter", () => {
     const view = open();
-    expect(noteBlockPosition(view.state.doc, SOURCE, { path: "notes/Plan.md", line: 8 })).toBe(view.state.doc.child(0).nodeSize);
-    expect(noteBlockPosition(view.state.doc, SOURCE, { path: "notes/Plan.md", line: 1 })).toBe(0);
-    expect(noteBlockPosition(view.state.doc, "# Only\n", { path: "notes/Plan.md", line: 1 })).toBeNull();
+    expect(blockPosition(view.state.doc, SOURCE, { path: "notes/Plan.md", line: 8 }, noteMarkdownExtensions())).toBe(view.state.doc.child(0).nodeSize);
+    expect(blockPosition(view.state.doc, SOURCE, { path: "notes/Plan.md", line: 1 }, noteMarkdownExtensions())).toBe(0);
+    expect(blockPosition(view.state.doc, "# Only\n", { path: "notes/Plan.md", line: 1 }, noteMarkdownExtensions())).toBeNull();
   });
 
   it("selects and scrolls to the block once the editor opens", async () => {

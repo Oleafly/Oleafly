@@ -1,4 +1,4 @@
-import { Children, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { Children, useId, useMemo, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Group, Panel, Separator, type GroupImperativeHandle } from "react-resizable-panels";
 import {
@@ -10,28 +10,10 @@ import {
   useSeparatorKeyboard,
   type PanelLimits,
 } from "@/lib/panel-layout";
+import { useMediaQuery } from "@/lib/media-query";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { SectionHeading } from "@/components/ui/section-heading";
-
-function useDesktopSplit(): boolean {
-  const [desktop, setDesktop] = useState(() =>
-    typeof window === "undefined" || typeof window.matchMedia !== "function"
-      ? true
-      : window.matchMedia("(min-width: 768px)").matches,
-  );
-
-  useEffect(() => {
-    if (typeof window.matchMedia !== "function") return;
-    const media = window.matchMedia("(min-width: 768px)");
-    const update = () => setDesktop(media.matches);
-    update();
-    media.addEventListener("change", update);
-    return () => media.removeEventListener("change", update);
-  }, []);
-
-  return desktop;
-}
 
 export function ToolSplitView({
   children,
@@ -43,7 +25,7 @@ export function ToolSplitView({
   storageId?: string;
 }) {
   const panes = Children.toArray(children);
-  const desktop = useDesktopSplit();
+  const desktop = useMediaQuery("(min-width: 768px)", true);
 
   if (!desktop || panes.length !== 2) {
     return (

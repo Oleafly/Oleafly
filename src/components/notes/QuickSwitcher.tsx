@@ -1,18 +1,21 @@
 import { Command } from "cmdk";
 import { FilePlus2 } from "lucide-react";
-import { useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useDeferredValue, useEffect, useMemo, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { COMMAND_GROUP as GROUP, COMMAND_ITEM as ITEM, CommandDialogShell } from "@/components/ui/command-dialog";
+import { EmptyState } from "@/components/ui/empty";
 import { Kbd } from "@/components/ui/kbd";
 import { useModalLayer } from "@/components/ui/use-modal-accessibility";
 import { notifyError } from "@/lib/toast";
 import { isSelectionModifier } from "@/store/library-selection";
 import { isMac, shortcut } from "@/lib/utils";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
-import { useNoteOpenedTimes } from "./note-home-prefs";
+import { useNotesPrefsStore } from "@/store/notes-prefs";
 import { NoteChip } from "./note-icons";
 import { hasExactTitle, switcherMatches, type SwitcherMatch } from "./note-search";
 import { useNotesData } from "./notes-data";
+import { ReferenceChoices, useReferenceMatches, useReferenceNote } from "./ReferenceChoices";
+import type { CitationItem } from "./types";
 import { setQuickSwitcherOpen, useVaultStore } from "./vault-store";
 
 const CREATE_VALUE = "\u0000create";
@@ -46,7 +49,7 @@ export function QuickSwitcher({ onOpenNote, onOpenNoteInNewTab }: Readonly<OpenH
   const open = useVaultStore((state) => state.switcherOpen);
   useModalLayer(open);
   const { notes, createNoteFrom } = useNotesData();
-  const opened = useNoteOpenedTimes();
+  const opened = useNotesPrefsStore((state) => state.opened);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState("");
 
@@ -54,11 +57,14 @@ export function QuickSwitcher({ onOpenNote, onOpenNoteInNewTab }: Readonly<OpenH
     if (!open) setQuery("");
   }, [open]);
 
-  const matches = useMemo(() => (open ? switcherMatches(notes, query, opened) : []), [notes, open, opened, query]);
-  const title = query.trim();
+  const searched = useDeferredValue(query);
+  const matches = useMemo(() => (open ? switcherMatches(notes, searched, opened) : []), [notes, open, opened, searched]);
+  const title = searched.trim();
   const canCreate = title !== "" && createNoteFrom !== undefined && !hasExactTitle(notes, title);
   const recent = title === "" ? matches.filter((match) => opened[match.note.id] !== undefined) : [];
   const rest = title === "" ? matches.filter((match) => opened[match.note.id] === undefined) : matches;
+  const references = useReferenceMatches(searched, open);
+  const referenceNote = useReferenceNote();
   const first = matches[0]?.note.id ?? (canCreate ? CREATE_VALUE : "");
 
   useEffect(() => {
@@ -74,8 +80,16 @@ export function QuickSwitcher({ onOpenNote, onOpenNoteInNewTab }: Readonly<OpenH
   const create = () => {
     if (!createNoteFrom) return;
     setQuickSwitcherOpen(false);
-    createNoteFrom({ title }).then(onOpenNote, (error: unknown) =>
+    createNoteFrom({ title: query.trim() }).then(onOpenNote, (error: unknown) =>
       notifyError("create note", error, t(($) => $.notes.vault.switcher.createFailed)),
+    );
+  };
+
+  const fromReference = (reference: CitationItem) => {
+    if (!referenceNote) return;
+    setQuickSwitcherOpen(false);
+    referenceNote(reference).then(onOpenNote, (error: unknown) =>
+      notifyError("create note from a reference", error, t(($) => $.notes.vault.switcher.createFailed)),
     );
   };
 
@@ -114,10 +128,11 @@ export function QuickSwitcher({ onOpenNote, onOpenNoteInNewTab }: Readonly<OpenH
         </div>
       }
     >
-      {matches.length === 0 && !canCreate && (
-        <p className="py-6 text-center text-sm text-muted-foreground">
-          {notes.length === 0 ? t(($) => $.notes.vault.switcher.empty) : t(($) => $.notes.vault.switcher.noMatches)}
-        </p>
+      {matches.length === 0 && !canCreate && references.entries.length === 0 && references.hits.length === 0 && (
+        <EmptyState
+          className="py-6"
+          description={notes.length === 0 ? t(($) => $.notes.vault.switcher.empty) : t(($) => $.notes.vault.switcher.noMatches)}
+        />
       )}
       {recent.length > 0 && (
         <Command.Group heading={t(($) => $.notes.vault.switcher.recent)} className={GROUP}>
@@ -141,6 +156,7 @@ export function QuickSwitcher({ onOpenNote, onOpenNoteInNewTab }: Readonly<OpenH
           </Command.Item>
         </Command.Group>
       )}
+      {referenceNote && <ReferenceChoices matches={references} onPick={fromReference} />}
     </CommandDialogShell>
   );
 }

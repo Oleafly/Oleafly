@@ -27,12 +27,6 @@ export function trackReorderDrag<T>(press: DragPoint, gesture: ReorderGesture<T>
   });
 }
 
-export function slotAlong(rects: readonly DOMRect[], position: number, axis: ReorderAxis): number {
-  return rects.filter((rect) =>
-    axis === "x" ? position > rect.left + rect.width / 2 : position > rect.top + rect.height / 2,
-  ).length;
-}
-
 export function placeAmong(order: readonly string[], visible: readonly string[], id: string, slot: number): string[] {
   const rest = order.filter((item) => item !== id);
   const others = visible.filter((item) => item !== id && rest.includes(item));

@@ -30,11 +30,26 @@ const MUTATING: &[&str] = &[
     "forget_note",
     "run_command",
     "research_task_create",
+    "create_note",
+    "append_to_note",
+    "edit_note_section",
 ];
 
 pub fn is_mutating(name: &str) -> bool {
     MUTATING.contains(&name)
 }
+
+const NOTE_TOOLS: &[&str] = &[
+    "list_knowledge_notes",
+    "search_notes",
+    "read_note_by_id",
+    "create_note",
+    "today_note",
+    "append_to_note",
+    "edit_note_section",
+    "list_note_tasks",
+    "note_backlinks",
+];
 
 pub fn handles(name: &str, _approval_policy: &str) -> bool {
     READ_ONLY.contains(&name)
@@ -45,7 +60,7 @@ pub fn handles_for_agent(name: &str) -> bool {
 }
 
 pub fn needs_project(name: &str) -> bool {
-    !SKILL_TOOLS.contains(&name)
+    !SKILL_TOOLS.contains(&name) && !NOTE_TOOLS.contains(&name)
 }
 
 fn arg<'a>(arguments: &'a Value, key: &str) -> Option<&'a str> {
@@ -387,6 +402,29 @@ mod tests {
                 Err(error) => error,
             };
             assert!(error.contains("Oleafly interface"), "{name}: {error}");
+        }
+    }
+
+    #[test]
+    fn notes_tools_go_to_the_renderer_and_ignore_the_open_project() {
+        for name in NOTE_TOOLS {
+            assert!(!needs_project(name), "{name}");
+            for policy in ["ask", "auto_writes", "trust"] {
+                assert!(!handles(name, policy), "{name} under {policy}");
+            }
+        }
+        for name in ["create_note", "append_to_note", "edit_note_section"] {
+            assert!(is_mutating(name), "{name}");
+        }
+        for name in [
+            "list_knowledge_notes",
+            "search_notes",
+            "read_note_by_id",
+            "today_note",
+            "list_note_tasks",
+            "note_backlinks",
+        ] {
+            assert!(!is_mutating(name), "{name}");
         }
     }
 

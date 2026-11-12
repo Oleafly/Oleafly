@@ -308,7 +308,9 @@ fn returns_chats_past_the_load_budget_as_stubs() {
     let root = tempfile::tempdir().unwrap();
     let newest = chat("new", 2.0, 1);
     write_chat(root.path(), "p1", "new", &newest, false).unwrap();
-    write_chat(root.path(), "p1", "old", &chat("old", 1.0, 2), false).unwrap();
+    let mut old: serde_json::Value = serde_json::from_str(&chat("old", 1.0, 2)).unwrap();
+    old["scope"] = "p1#note".into();
+    write_chat(root.path(), "p1", "old", &old.to_string(), false).unwrap();
     let load = read_project_chats(root.path(), "p1", newest.len()).unwrap();
     let chats = parsed(&load);
     assert!(chats[0].get("stub").is_none());
@@ -317,6 +319,7 @@ fn returns_chats_past_the_load_budget_as_stubs() {
     assert_eq!(chats[1]["messageCount"], 2);
     assert_eq!(chats[1]["messages"], serde_json::json!([]));
     assert_eq!(chats[1]["title"], "Chat old");
+    assert_eq!(chats[1]["scope"], "p1#note");
 }
 
 fn chat_file(root: &Path, id: &str) -> PathBuf {

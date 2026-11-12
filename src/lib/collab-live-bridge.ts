@@ -62,6 +62,7 @@ export interface NoteLiveEditor {
   revealBlock(index: number): void;
   onCaret(listener: () => void): () => void;
   batch(run: () => void): void;
+  shown?(): boolean;
 }
 
 export type NoteLiveEndReason = "released" | "dropped";

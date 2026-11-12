@@ -341,7 +341,15 @@
     },
     "resetPaneLayout": {
       "keywords": "sıfırla panel düzeni sıra taşı kenar çubuğu asistan düzenleyici önizleme terminal varsayılan",
-      "label": "Panel düzenini sıfırla"
+      "label": "Her projede panel yerleşimini sıfırla"
+    },
+    "saveLayout": {
+      "keywords": "kaydet düzen özel yerleşim paneller boyutlar ad save layout custom arrangement panes sizes name",
+      "label": "Geçerli düzeni kaydet"
+    },
+    "applySavedLayout": {
+      "keywords": "düzen kayıtlı özel yerleşim paneller geçiş uygula layout saved custom arrangement panes switch apply",
+      "label": "Düzen: {{name}}"
     },
     "zoomIn": {
       "keywords": "büyüt büyük",
@@ -380,6 +388,10 @@
     "notes": {
       "label": "Notlar'ı aç",
       "keywords": "notlar not defteri bilgi fikirler araştırma günlük notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Hızlı not",
+      "keywords": "hızlı not al yakala gelen kutusu bugün quick capture jot note inbox today"
     }
   },
   "community": {
@@ -484,6 +496,11 @@
   },
   "datePicker": {
     "placeholder": "Bir tarih seçin"
+  },
+  "monthPicker": {
+    "label": "Bir ay seçin",
+    "previousYear": "Önceki yıl",
+    "nextYear": "Sonraki yıl"
   },
   "devMenu": {
     "inspect": "İncele",
@@ -704,6 +721,7 @@
     "groups": {
       "action": "Eylem",
       "documents": "Belgeler",
+      "notes": "Notlar",
       "references": "Kaynaklar"
     },
     "label": "Ara",
@@ -711,11 +729,13 @@
     "openReferences": "Bu projenin kaynaklarını aç",
     "placeholder": "Projelerde veya belgelerde arayın ya da komutlar için / yazın…",
     "placeholderDocuments": "Belgelerin içinde arayın…",
+    "placeholderNotes": "Notlarda ve içlerindeki bloklarda arayın…",
     "placeholderProjects": "Projelerde ada, motora, türe, tarihe veya üst veriye göre arayın…",
     "referencesNeedProject": "Kaynaklara göz atmak için önce bir proje açın.",
     "slash": {
       "create": "şablon galerisini açar",
       "docs": "belgelerin içinde arar",
+      "notes": "notlarda ve içlerindeki bloklarda arar",
       "projects": "projelerinizde arar",
       "refs": "bu projenin kaynaklarını açar",
       "settings": "ayarları açar",
@@ -1314,7 +1334,24 @@
       "split": "Bölünmüş Görünüm"
     },
     "moreActions": "Diğer işlemler",
-    "resetPaneLayout": "Panel düzenini sıfırla",
+    "resetPaneLayout": "Panel yerleşimini sıfırla",
+    "resetPaneLayoutScope": "Tüm projeler",
+    "savedLayouts": {
+      "close": "Kapat",
+      "delete": "Sil",
+      "deleteConfirm": "{{name}} düzeni silinsin mi?",
+      "limit": "En fazla {{count}} düzen saklayabilirsiniz. Başka bir düzen kaydetmek için birini silin.",
+      "manage": "Düzenleri yönet",
+      "name": "Düzen adı",
+      "rename": "Yeniden adlandır",
+      "renameTitle": "Düzeni yeniden adlandır",
+      "replace": "Değiştir",
+      "replaceConfirm": "{{name}} adlı bir düzen zaten var. Değiştirilsin mi?",
+      "save": "Geçerli düzeni kaydet",
+      "saveButton": "Kaydet",
+      "saveTitle": "Düzeni kaydet",
+      "update": "Geçerliyle güncelle"
+    },
     "renameFailed": "Proje yeniden adlandırılamadı."
   },
   "tour": {

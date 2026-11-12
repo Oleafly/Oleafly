@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, render, screen } from "@testing-library/react";
-import { Editor } from "@tiptap/core";
-import { StarterKit } from "@tiptap/starter-kit";
+import type { Editor } from "@tiptap/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProofreadingDiagnostic, ProofreadingResult } from "@oleafly/editor";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
@@ -32,14 +31,11 @@ vi.mock("@/lib/proofreading/client", async (importOriginal) => ({
 }));
 
 import { NoteProofreading, NoteProofreadingPopover } from "./note-proofreading";
+import { destroyKbEditors, kbEditor } from "./tests/kb-editor-fixtures";
 
-const editors: Editor[] = [];
-
-function mount(proofreading: NoteProofreading, html: string, host: HTMLElement = document.body): Editor {
-  const element = document.createElement("div");
-  host.append(element);
-  const editor = new Editor({ element, extensions: [StarterKit, proofreading.extension], content: html });
-  editors.push(editor);
+function mount(proofreading: NoteProofreading, markdown: string, host: HTMLElement = document.body): Editor {
+  const editor = kbEditor(markdown, undefined, [proofreading.extension]);
+  host.append(editor.view.dom.parentElement as HTMLElement);
   return editor;
 }
 
@@ -114,14 +110,14 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  for (const editor of editors.splice(0)) editor.destroy();
+  destroyKbEditors();
   document.body.replaceChildren();
   vi.useRealTimers();
 });
 
 describe("note proofreading requests", () => {
   it("checks a personal note for spelling with the app dictionary language and personal words", async () => {
-    mount(new NoteProofreading({ id: "idea" }), "<p>Speling here.</p>");
+    mount(new NoteProofreading({ id: "idea" }), "Speling here.");
     await settle();
     const [request] = requests();
     expect(request).toMatchObject({
@@ -135,7 +131,7 @@ describe("note proofreading requests", () => {
 
   it("checks a note in the open project with that project's language and ignored words", async () => {
     useFilesStore.setState({ projectId: "paper", projectDictionaryLocale: "de_DE" });
-    mount(new NoteProofreading({ id: "key", home: { projectId: "paper", path: "Notes/a.md" } }), "<p>Speling.</p>");
+    mount(new NoteProofreading({ id: "key", home: { projectId: "paper", path: "Notes/a.md" } }), "Speling.");
     await settle();
     expect(requests()[0]).toMatchObject({
       ignoredWords: ["mine", "Oleafly"],
@@ -145,8 +141,8 @@ describe("note proofreading requests", () => {
   });
 
   it("gives two editors of the same note their own lanes", async () => {
-    mount(new NoteProofreading({ id: "idea" }), "<p>One.</p>");
-    mount(new NoteProofreading({ id: "idea" }), "<p>Two.</p>");
+    mount(new NoteProofreading({ id: "idea" }), "One.");
+    mount(new NoteProofreading({ id: "idea" }), "Two.");
     await settle();
     const [first, second] = requests().map((request) => request.identity.path);
     expect(first).not.toBe(second);
@@ -154,7 +150,7 @@ describe("note proofreading requests", () => {
 
   it("leaves tags out of the check and turns the WebView's own spell check off", async () => {
     client.words = ["Speling", "projectx"];
-    const editor = mount(new NoteProofreading({ id: "idea" }), "<p>Speling #projectx here.</p>");
+    const editor = mount(new NoteProofreading({ id: "idea" }), "Speling #projectx here.");
     await settle();
     expect(requests()[0].text).not.toContain("projectx");
     expect(findings(editor).map((node) => node.textContent)).toEqual(["Speling"]);
@@ -169,14 +165,14 @@ describe("matching the Visual editor's settings", () => {
     [true, false, "spelling"],
   ] as const)("checks a note with spelling %s and grammar %s as %s", async (notesSpellcheck, harper, mode) => {
     useSettingsStore.setState({ notesSpellcheck, harper });
-    mount(new NoteProofreading({ id: "idea" }), "<p>Speling here.</p>");
+    mount(new NoteProofreading({ id: "idea" }), "Speling here.");
     await settle();
     expect(requests()[0].mode).toBe(mode);
   });
 
   it("checks nothing when spelling in notes and grammar are both off", async () => {
     useSettingsStore.setState({ notesSpellcheck: false, harper: false });
-    mount(new NoteProofreading({ id: "idea" }), "<p>Speling here.</p>");
+    mount(new NoteProofreading({ id: "idea" }), "Speling here.");
     await settle(800);
     expect(client.proofreadDocument).not.toHaveBeenCalled();
   });
@@ -191,7 +187,7 @@ describe("matching the Visual editor's settings", () => {
     ["a project's word list", () => useDictionary.setState({ ignored: { paper: ["Oleafly", "Speling"] } })],
   ])("checks the note again when %s changes", async (_name, change) => {
     const proofreading = new NoteProofreading({ id: "idea" });
-    const editor = mount(proofreading, "<p>Speling here.</p>");
+    const editor = mount(proofreading, "Speling here.");
     render(<NoteProofreadingPopover editor={editor} proofreading={proofreading} />);
     await settle();
     expect(client.proofreadDocument).toHaveBeenCalledOnce();
@@ -202,7 +198,7 @@ describe("matching the Visual editor's settings", () => {
 
   it("asks with the new dictionary language after it changes", async () => {
     const proofreading = new NoteProofreading({ id: "idea" });
-    const editor = mount(proofreading, "<p>Speling here.</p>");
+    const editor = mount(proofreading, "Speling here.");
     render(<NoteProofreadingPopover editor={editor} proofreading={proofreading} />);
     await settle();
     act(() => useSettingsStore.setState({ dictionaryLocale: "de_DE" }));
@@ -212,7 +208,7 @@ describe("matching the Visual editor's settings", () => {
 
   it("leaves unrelated settings alone", async () => {
     const proofreading = new NoteProofreading({ id: "idea" });
-    const editor = mount(proofreading, "<p>Speling here.</p>");
+    const editor = mount(proofreading, "Speling here.");
     render(<NoteProofreadingPopover editor={editor} proofreading={proofreading} />);
     await settle();
     act(() => useSettingsStore.setState({ notesShowWordCount: false }));
@@ -225,7 +221,7 @@ describe("Check spelling in notes", () => {
   it("turns note proofreading on and off", async () => {
     useSettingsStore.setState({ notesSpellcheck: false });
     const proofreading = new NoteProofreading({ id: "idea" });
-    const editor = mount(proofreading, "<p>Speling here.</p>");
+    const editor = mount(proofreading, "Speling here.");
     render(<NoteProofreadingPopover editor={editor} proofreading={proofreading} />);
     await settle();
     expect(client.proofreadDocument).not.toHaveBeenCalled();
@@ -248,8 +244,8 @@ describe("the note suggestion popover", () => {
   it("shows the same popover as the Visual editor, one note at a time", async () => {
     const first = new NoteProofreading({ id: "a" });
     const second = new NoteProofreading({ id: "b" });
-    const one = mount(first, "<p>Speling one.</p>");
-    const two = mount(second, "<p>Wrod two.</p>");
+    const one = mount(first, "Speling one.");
+    const two = mount(second, "Wrod two.");
     render(
       <>
         <NoteProofreadingPopover editor={one} proofreading={first} />
@@ -273,7 +269,7 @@ describe("the note suggestion popover", () => {
     const pane = document.createElement("div");
     document.body.append(pane);
     const proofreading = new NoteProofreading({ id: "idea" });
-    const editor = mount(proofreading, "<p>Speling here.</p>", pane);
+    const editor = mount(proofreading, "Speling here.", pane);
     render(<NoteProofreadingPopover editor={editor} proofreading={proofreading} />);
     await settle();
     open(editor);

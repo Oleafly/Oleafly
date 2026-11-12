@@ -342,7 +342,15 @@
     },
     "resetPaneLayout": {
       "keywords": "resetează aranjare panouri ordine mută bară laterală asistent editor previzualizare terminal implicit",
-      "label": "Resetează aranjarea panourilor"
+      "label": "Resetează așezarea panourilor în toate proiectele"
+    },
+    "saveLayout": {
+      "keywords": "salvează aranjare personalizată panouri dimensiuni nume",
+      "label": "Salvează aranjarea curentă"
+    },
+    "applySavedLayout": {
+      "keywords": "aranjare salvată personalizată panouri schimbă aplică",
+      "label": "Aranjare: {{name}}"
     },
     "zoomIn": {
       "keywords": "mărește mai mare",
@@ -381,6 +389,10 @@
     "notes": {
       "label": "Deschide Notițe",
       "keywords": "notițe caiet cunoștințe idei cercetare jurnal notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Notare rapidă",
+      "keywords": "notare rapidă notează notiță inbox azi quick capture jot note inbox today"
     }
   },
   "community": {
@@ -485,6 +497,11 @@
   },
   "datePicker": {
     "placeholder": "Alege o dată"
+  },
+  "monthPicker": {
+    "label": "Alege o lună",
+    "previousYear": "Anul precedent",
+    "nextYear": "Anul următor"
   },
   "devMenu": {
     "inspect": "Inspectează",
@@ -706,6 +723,7 @@
     "groups": {
       "action": "Acțiune",
       "documents": "Documente",
+      "notes": "Notițe",
       "references": "Referințe"
     },
     "label": "Căutare",
@@ -713,11 +731,13 @@
     "openReferences": "Deschide referințele acestui proiect",
     "placeholder": "Caută proiecte, documente sau scrie / pentru comenzi…",
     "placeholderDocuments": "Caută în documente…",
+    "placeholderNotes": "Caută notițe și blocurile din ele…",
     "placeholderProjects": "Caută proiecte după nume, motor, tip, dată sau metadate…",
     "referencesNeedProject": "Deschide întâi un proiect ca să îi răsfoiești referințele.",
     "slash": {
       "create": "deschide galeria de șabloane",
       "docs": "caută în documente",
+      "notes": "caută notițe și blocurile din ele",
       "projects": "caută în proiectele tale",
       "refs": "deschide referințele acestui proiect",
       "settings": "deschide setările",
@@ -1334,7 +1354,24 @@
       "split": "Vizualizare împărțită"
     },
     "moreActions": "Mai multe acțiuni",
-    "resetPaneLayout": "Resetează aranjarea panourilor",
+    "resetPaneLayout": "Resetează așezarea panourilor",
+    "resetPaneLayoutScope": "Toate proiectele",
+    "savedLayouts": {
+      "close": "Închide",
+      "delete": "Șterge",
+      "deleteConfirm": "Ștergi aranjarea {{name}}?",
+      "limit": "Poți păstra cel mult {{count}} aranjări. Șterge una ca să salvezi alta.",
+      "manage": "Gestionează aranjările",
+      "name": "Numele aranjării",
+      "rename": "Redenumește",
+      "renameTitle": "Redenumește aranjarea",
+      "replace": "Înlocuiește",
+      "replaceConfirm": "Există deja o aranjare numită {{name}}. O înlocuiești?",
+      "save": "Salvează aranjarea curentă",
+      "saveButton": "Salvează",
+      "saveTitle": "Salvează aranjarea",
+      "update": "Actualizează cu cea curentă"
+    },
     "renameFailed": "Proiectul nu a putut fi redenumit."
   },
   "tour": {

@@ -53,12 +53,14 @@ impl ApprovalsFile {
 static APPROVALS_WRITE_LOCK: Mutex<()> = Mutex::new(());
 
 const KNOWN_TOOLS: &[&str] = &[
+    "append_to_note",
     "close_agent",
     "compile",
     "create_file",
     "create_note",
     "delete_file",
     "desktop_apps",
+    "edit_note_section",
     "followup_task",
     "forget_note",
     "get_log",
@@ -71,6 +73,7 @@ const KNOWN_TOOLS: &[&str] = &[
     "list_agents",
     "list_files",
     "list_knowledge_notes",
+    "list_note_tasks",
     "list_notes",
     "list_overleaf_projects",
     "list_projects",
@@ -80,6 +83,7 @@ const KNOWN_TOOLS: &[&str] = &[
     "literature_search",
     "load_image",
     "load_skill",
+    "note_backlinks",
     "open_project",
     "preview_figure",
     "project_library_search",
@@ -105,6 +109,7 @@ const KNOWN_TOOLS: &[&str] = &[
     "set_main_doc",
     "show_location",
     "spawn_agent",
+    "today_note",
     "toggle_theme",
     "update_todos",
     "verify_citation",

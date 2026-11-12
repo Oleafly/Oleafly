@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import * as XLSX from "xlsx";
 import { describe, expect, it } from "vitest";
 import { BlockFileTooLargeError } from "./note-blocks";
@@ -7,7 +6,6 @@ import {
   columnKeyCache,
   columnKeys,
   detectTypes,
-  fileDelimiter,
   filterRows,
   loadTableFile,
   parseBoolean,
@@ -15,7 +13,6 @@ import {
   parseNumber,
   pickSheet,
   readSpreadsheetRows,
-  sniffDelimiter,
   sortRows,
   spreadsheetCellText,
   summarizeColumn,
@@ -52,20 +49,13 @@ function table(header: string[], rows: string[][]): TableData {
 const collator = new Intl.Collator("en", { numeric: true, sensitivity: "base" });
 
 describe("delimiters", () => {
-  it("sniffs tabs against commas on the first line with text", () => {
-    expect(sniffDelimiter("\n\na\tb\tc,d\n")).toBe("\t");
-    expect(sniffDelimiter("a,b\tc")).toBe(",");
-    expect(sniffDelimiter("")).toBe(",");
-  });
-
   it("follows the fence and reads spreadsheet pastes in csv blocks", () => {
     expect(tableDelimiter("tsv", "a,b")).toBe("\t");
     expect(tableDelimiter("csv", "a\tb")).toBe("\t");
-    expect(tableDelimiter("csv", "a\tb,c")).toBe(",");
-    expect(tableDelimiter("csv", "a,b")).toBe(",");
-    expect(tableDelimiter(undefined, "a\tb")).toBe("\t");
-    expect(fileDelimiter("tsv", "a,b")).toBe("\t");
-    expect(fileDelimiter("csv", "a,b")).toBe(",");
+    expect(tableDelimiter("csv", "\n\na\tb\n1\t2")).toBe("\t");
+    expect(tableDelimiter("csv", '"a\tb",c')).toBe(",");
+    expect(tableDelimiter("csv", "a,b\n1\t2")).toBe(",");
+    expect(tableDelimiter(undefined, "")).toBe(",");
   });
 });
 

@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "Chế độ tìm kiếm: {{mode}}",
+    "heading": "Chế độ tìm kiếm",
+    "ranked": {
+      "label": "Khớp nhất",
+      "description": "Xếp kết quả theo mức độ khớp. Các từ có thể nằm ở bất kỳ đâu."
+    },
+    "exact": {
+      "label": "Đúng nguyên văn",
+      "description": "Tìm đúng các ký tự này. Nếu có chữ in hoa, tìm kiếm sẽ phân biệt hoa thường."
+    },
+    "regex": {
+      "label": "Biểu thức chính quy",
+      "description": "Dùng cú pháp mẫu của ripgrep. Hãy đặt mẫu trong dấu ngoặc kép nếu mẫu có khoảng trắng hoặc dấu ngoặc."
+    },
+    "fuzzy": {
+      "label": "Gần đúng",
+      "description": "Khớp các tên chứa các chữ cái bạn gõ theo đúng thứ tự, giống fzf. Cũng hỗ trợ 'exact, ^start, end$ và !leave-out."
+    },
+    "invalid": "Mẫu này không hợp lệ: {{error}}"
+  },
   "querySearch": {
     "suggestions": "Gợi ý tìm kiếm",
     "exclude": "Loại trừ",
@@ -76,7 +97,8 @@
       "invalidValue": "{{value}} không phải giá trị hợp lệ cho {{key}}",
       "invalidDate": "{{value}} không phải ngày. Hãy thử 2026-10-02 hoặc @today-7d",
       "invalidNumber": "{{value}} không phải số",
-      "sortNegated": "Không thể loại trừ {{key}}"
+      "sortNegated": "Không thể loại trừ {{key}}",
+      "tooManyBranches": "Tìm kiếm này có quá nhiều tổ hợp OR, nên có thể thiếu một số kết quả"
     }
   },
   "avatar": {

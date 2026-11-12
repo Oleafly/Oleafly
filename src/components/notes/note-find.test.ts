@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
+import type { Editor } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
-import { afterEach, describe, expect, it } from "vitest";
-import { destroyKbEditors, kbEditor, kbMarkdown } from "./tests/kb-editor-fixtures";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { deleteText, destroyKbEditors, kbEditor, kbMarkdown, positionOf, typeBefore } from "./tests/kb-editor-fixtures";
 import {
   ACTIVE_MATCH_CLASS,
   closeNoteFind,
@@ -77,15 +78,6 @@ describe("finding text in a note", () => {
     expect(texts(editor)).toEqual(["after"]);
   });
 
-  it("stops at the match limit", () => {
-    const editor = kbEditor("x", { callout: null }, [NoteFind]);
-    const many = findMatches(editor.schema.nodeFromJSON({
-      type: "doc",
-      content: [{ type: "paragraph", content: [{ type: "text", text: "a".repeat(MAX_FIND_MATCHES + 5) }] }],
-    }), query("a"));
-    expect(many.matches).toHaveLength(MAX_FIND_MATCHES);
-  });
-
   it("clears its marks when the query is emptied or closed", () => {
     const editor = finding("one two one", query("one"));
     expect(texts(editor)).toHaveLength(2);
@@ -97,11 +89,34 @@ describe("finding text in a note", () => {
     expect(noteFindState(editor.state).matches).toEqual([]);
   });
 
-  it("follows edits while open", () => {
-    const editor = finding("alpha", query("beta"));
-    expect(texts(editor)).toEqual([]);
-    editor.commands.insertContentAt(editor.state.doc.content.size - 1, " beta");
-    expect(texts(editor)).toEqual(["beta"]);
+  it.each<[string, (editor: Editor) => void]>([
+    ["typing a match", (editor) => editor.commands.insertContentAt(positionOf(editor, "gamma"), "beta ")],
+    ["deleting a match", (editor) => deleteText(editor, "beta one")],
+    ["splitting a block", (editor) => editor.chain().setTextSelection(positionOf(editor, "two")).splitBlock().run()],
+    ["joining blocks", (editor) => editor.chain().setTextSelection(positionOf(editor, "gamma")).joinBackward().run()],
+    ["removing a whole block", (editor) => editor.commands.deleteRange({ from: positionOf(editor, "alpha") - 1, to: positionOf(editor, "gamma") - 1 })],
+    ["undoing", (editor) => {
+      deleteText(editor, "beta two");
+      editor.commands.undo();
+    }],
+  ])("follows edits while open: %s", (_name, edit) => {
+    const editor = finding("alpha beta one\n\nbeta two\n\ngamma beta", query("beta"));
+    findNextMatch(editor.view);
+    edit(editor);
+    const state = noteFindState(editor.state);
+    expect(state.matches).toEqual(findMatches(editor.state.doc, query("beta")).matches);
+    expect(editor.view.dom.querySelectorAll(`.${MATCH_CLASS}`)).toHaveLength(state.matches.length);
+  });
+
+  it("rescans only the blocks an edit touched", () => {
+    const blocks = Array.from({ length: 300 }, (_, index) => `needle ${index}`).join("\n\n");
+    const editor = finding(blocks, query("needle"));
+    const exec = vi.spyOn(RegExp.prototype, "exec");
+    typeBefore(editor, "needle 150", "needle ");
+    const scans = exec.mock.contexts.filter((pattern) => (pattern as RegExp).source === "needle").length;
+    exec.mockRestore();
+    expect(noteFindState(editor.state).matches).toHaveLength(301);
+    expect(scans).toBeLessThan(10);
   });
 });
 
@@ -191,6 +206,13 @@ describe("replacing matches", () => {
     const editor = finding("2024-05", query("(\\d+)-(\\d+)", { regexp: true, replace: "$2/$1" }));
     replaceAllMatches(editor.view, false);
     expect(kbMarkdown(editor)).toBe("05/2024");
+  });
+
+  it("replaces every match past the display limit", () => {
+    const editor = finding("a ".repeat(MAX_FIND_MATCHES + 500).trim(), query("a", { replace: "b" }));
+    expect(noteFindState(editor.state).matches).toHaveLength(MAX_FIND_MATCHES);
+    expect(replaceAllMatches(editor.view, false)).toBe(MAX_FIND_MATCHES + 500);
+    expect(kbMarkdown(editor)).not.toContain("a");
   });
 
   it("deletes a match when the replacement is empty", () => {

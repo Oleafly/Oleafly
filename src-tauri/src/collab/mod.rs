@@ -12,6 +12,7 @@ pub mod joining;
 pub mod links;
 pub mod live;
 pub mod output;
+pub mod published;
 pub mod registry;
 pub mod review;
 pub mod secrets_adapter;

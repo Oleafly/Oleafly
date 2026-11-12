@@ -101,6 +101,29 @@ describe("chats shown per scope", () => {
     expect(state.liveOrSaved("paper-chat")).toEqual([{ role: "assistant", content: "streaming" }]);
   });
 
+  it("keeps a project note's chats apart from the project's chats in the same folder", async () => {
+    const plan = "note:project-note:paper:notes/Plan.md";
+    const owner = "paper#plan";
+    disk.set("paper", JSON.stringify([stored("paper", "paper-chat"), stored("paper", "plan-chat", { scope: owner })]));
+    const store = useChatsStore.getState();
+    await store.load("paper");
+    await store.load("paper", plan, owner);
+    store.setActive("paper-chat");
+    const ids = (scope?: string) => shownChats(useChatsStore.getState(), scope).chats.map((chat) => chat.id);
+    expect(ids()).toEqual(["paper-chat"]);
+    expect(ids(plan)).toEqual(["plan-chat"]);
+
+    const created = store.create("paper", null, undefined, plan);
+    expect(created.scope).toBe(owner);
+    expect(ids()).toEqual(["paper-chat"]);
+    expect(ids(plan)).toEqual([created.id, "plan-chat"]);
+
+    store.remove("paper-chat", { scope: plan });
+    store.saveMessages("paper-chat", [{ role: "user", content: "still saved" }]);
+    expect(useChatsStore.getState().byId("paper-chat")?.messages).toHaveLength(1);
+    expect(chatSave).toHaveBeenCalledWith("paper", "paper-chat", expect.stringContaining("still saved"), true);
+  });
+
   it("keeps a note run's live reply when the workspace switches project", async () => {
     disk.set("note-live", JSON.stringify([stored("note-live", "note-chat")]));
     const store = useChatsStore.getState();

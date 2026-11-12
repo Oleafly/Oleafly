@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 import { Editor } from "@tiptap/core";
-import { createWysiwygExtensions, parseMarkdownBody, serializeMarkdownBody } from "@oleafly/wysiwyg";
+import { createWysiwygExtensions } from "@oleafly/wysiwyg";
 import { TextSelection } from "@tiptap/pm/state";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { isMac } from "@/lib/utils";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import {
@@ -17,7 +16,6 @@ import {
   linkedNoteCreator,
   NOTE_LIMIT,
   noteLinkExtensions,
-  noteLinkOptionId,
   noteLinkSuggestion,
   parseLinkQuery,
   PROJECT_LIMIT,
@@ -25,6 +23,10 @@ import {
   type LinkableProject,
   type NoteLinkOptions,
 } from "./note-links";
+import { noteBaseExtensions, parseNoteMarkdown } from "./note-markdown";
+import { suggestOptionId } from "./note-suggest-plugin";
+import { destroyKbEditors, kbEditor, kbMarkdown as markdown } from "./tests/kb-editor-fixtures";
+import "./tests/setup";
 
 const NOTES: LinkableNote[] = [
   { noteId: "n-1", projectId: "lib-1", title: "Masking report", color: "rose", icon: "🧪" },
@@ -36,7 +38,7 @@ const PROJECTS: LinkableProject[] = [
   { projectId: "thesis", title: "Thesis", color: null },
 ];
 
-let editors: Editor[] = [];
+const editors: Editor[] = [];
 
 interface Built {
   editor: Editor;
@@ -61,19 +63,8 @@ function build(markdown: string, overrides: Partial<NoteLinkOptions> = {}): Buil
     },
     ...overrides,
   };
-  const element = document.createElement("div");
-  document.body.append(element);
-  const editor = new Editor({
-    element,
-    extensions: [...createWysiwygExtensions(), ...noteLinkExtensions(options)],
-    content: parseMarkdownBody(markdown).doc,
-  });
-  editors.push(editor);
+  const editor = kbEditor(markdown, { callout: null }, noteLinkExtensions(options));
   return { editor, options, refresh: () => listener?.(), unsubscribed: () => stopped };
-}
-
-function markdown(editor: Editor): string {
-  return serializeMarkdownBody(editor.getJSON());
 }
 
 function typeText(editor: Editor, text: string) {
@@ -95,7 +86,7 @@ function press(editor: Editor, key: string, init: KeyboardEventInit = {}): boole
 }
 
 function chips(editor: Editor): HTMLElement[] {
-  return [...editor.view.dom.querySelectorAll<HTMLElement>(".note-link")];
+  return [...editor.view.dom.querySelectorAll<HTMLElement>("[data-note-link]")];
 }
 
 function click(editor: Editor, init: MouseEventInit = {}, selector = "a"): MouseEvent {
@@ -104,17 +95,12 @@ function click(editor: Editor, init: MouseEventInit = {}, selector = "a"): Mouse
   return event;
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 afterEach(() => {
-  for (const editor of editors) {
-    if (editor.isDestroyed) continue;
+  destroyKbEditors();
+  for (const editor of editors.splice(0)) {
     editor.view.dom.parentElement?.remove();
     editor.destroy();
   }
-  editors = [];
 });
 
 describe("note link markdown", () => {
@@ -140,7 +126,6 @@ describe("note link chips", () => {
     const { editor } = build("[Masking report](oleafly://note/n-1) [SSL masking](oleafly://project/ssl) [Thesis](oleafly://project/thesis)\n");
     const [note, project, plain] = chips(editor);
     expect(note.dataset.noteLink).toBe("note");
-    expect(note.classList.contains("note-link-start")).toBe(true);
     expect(note.getAttribute("style")).toContain("--note-color");
     expect(project.dataset.noteLink).toBe("project");
     expect(project.dataset.projectColor).toBe("#ff0000");
@@ -149,11 +134,10 @@ describe("note link chips", () => {
     expect(chips(editor).some((chip) => chip.dataset.missing)).toBe(false);
   });
 
-  it("marks only the first piece of a link that mixes formatting", () => {
+  it("keeps a link that mixes formatting as one link", () => {
     const { editor } = build("[Masking **report**](oleafly://note/n-1)\n");
-    const pieces = chips(editor);
-    expect(pieces).toHaveLength(2);
-    expect(pieces.map((piece) => piece.classList.contains("note-link-start"))).toEqual([true, false]);
+    expect(chips(editor).map((piece) => piece.dataset.noteId)).toEqual(["n-1", "n-1"]);
+    expect(markdown(editor)).toBe("[Masking **report**](oleafly://note/n-1)");
   });
 
   it("mutes a link whose note or project is gone and says so", () => {
@@ -161,7 +145,6 @@ describe("note link chips", () => {
     const [note, project] = chips(editor);
     expect(note.dataset.missing).toBe("true");
     expect(note.dataset.tooltip).toBe(enNotes.links.missingNote);
-    expect(note.classList.contains("note-link-missing")).toBe(true);
     expect(project.dataset.tooltip).toBe(enNotes.links.missingProject);
   });
 
@@ -196,7 +179,7 @@ describe("opening links", () => {
     expect(options.onOpenNote).toHaveBeenLastCalledWith("n-1", { newTab: false, projectId: "lib-1" });
     click(editor, isMac ? { metaKey: true } : { ctrlKey: true });
     expect(options.onOpenNote).toHaveBeenLastCalledWith("n-1", { newTab: true, projectId: "lib-1" });
-    click(editor, isMac ? { ctrlKey: true } : { metaKey: true }, ".note-link");
+    click(editor, isMac ? { ctrlKey: true } : { metaKey: true }, "[data-note-link]");
     expect(options.onOpenNote).toHaveBeenLastCalledWith("n-1", { newTab: false, projectId: "lib-1" });
   });
 
@@ -294,8 +277,8 @@ describe("opening links", () => {
     const editor = new Editor({
       element,
       editable: false,
-      extensions: [...createWysiwygExtensions(), ...noteLinkExtensions({ getNotes: () => NOTES, getProjects: () => PROJECTS, onOpenNote: vi.fn(), onOpenProject: vi.fn(), createNote: vi.fn() })],
-      content: parseMarkdownBody("[Old](oleafly://note/gone)\n").doc,
+      extensions: [...noteBaseExtensions(), ...noteLinkExtensions({ getNotes: () => NOTES, getProjects: () => PROJECTS, onOpenNote: vi.fn(), onOpenProject: vi.fn(), createNote: vi.fn() })],
+      content: parseNoteMarkdown("[Old](oleafly://note/gone)\n").doc,
     });
     editors.push(editor);
     await vi.waitFor(() => expect(chips(editor)[0].dataset.tooltip).toBe(enNotes.links.missingNote));
@@ -352,6 +335,7 @@ describe("candidates", () => {
     const [alias] = linkCandidates(notes, [], "caf\u00e9");
     expect(alias.kind === "note" ? alias.alias : null).toBe("Cafe\u0301 plan");
     expect(headingTarget(notes, "\u00e9cole notes")?.noteId).toBe("n-e");
+    expect(linkCandidates([{ noteId: "n-c", projectId: "lib-c", title: "Caf\u00e9 plan" }], [], "cafe").map((item) => item.id)).toEqual(["n-c"]);
     expect(createCandidate({ getNotes: () => notes, getProjects: () => [], onOpenNote: vi.fn(), onOpenProject: vi.fn(), createNote: vi.fn() }, parseLinkQuery("\u00c9cole notes"), false)).toBeNull();
   });
 
@@ -373,7 +357,7 @@ describe("typing [[", () => {
     expect(open?.query).toBe("mask");
     expect(open?.items.map((item) => item.title)).toEqual(["Masking report", "Reading notes on masking", "SSL masking"]);
     expect(editor.view.dom.getAttribute("aria-controls")).toBe(open?.menuId);
-    expect(editor.view.dom.getAttribute("aria-activedescendant")).toBe(noteLinkOptionId(open?.menuId ?? "", 0));
+    expect(editor.view.dom.getAttribute("aria-activedescendant")).toBe(suggestOptionId(open?.menuId ?? "", 0));
 
     expect(press(editor, "ArrowDown")).toBe(true);
     expect(press(editor, "ArrowDown")).toBe(true);

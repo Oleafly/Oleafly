@@ -311,18 +311,18 @@ fn is_reparse(_metadata: &std::fs::Metadata) -> bool {
 }
 
 #[cfg(unix)]
-fn executable(metadata: &std::fs::Metadata, _fallback: bool) -> bool {
+pub(crate) fn executable(metadata: &std::fs::Metadata, _fallback: bool) -> bool {
     use std::os::unix::fs::PermissionsExt as _;
     metadata.permissions().mode() & 0o111 != 0
 }
 
 #[cfg(not(unix))]
-fn executable(_metadata: &std::fs::Metadata, fallback: bool) -> bool {
+pub(crate) fn executable(_metadata: &std::fs::Metadata, fallback: bool) -> bool {
     fallback
 }
 
 #[cfg(unix)]
-fn apply_exec(path: &Path, portable: &str, exec: bool) {
+pub(crate) fn apply_exec(path: &Path, portable: &str, exec: bool) {
     use std::os::unix::fs::PermissionsExt as _;
     let hidden = portable
         .rsplit('/')
@@ -347,7 +347,7 @@ fn apply_exec(path: &Path, portable: &str, exec: bool) {
 }
 
 #[cfg(not(unix))]
-fn apply_exec(_path: &Path, _portable: &str, _exec: bool) {}
+pub(crate) fn apply_exec(_path: &Path, _portable: &str, _exec: bool) {}
 
 #[derive(Clone, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 pub(crate) struct OwnedPolicy {
@@ -405,6 +405,12 @@ pub(crate) struct Capture {
     policy_read: bool,
     meta: Option<serde_json::Value>,
     tracked: BTreeSet<String>,
+}
+
+impl LocalFile {
+    pub(crate) fn size(&self) -> u64 {
+        self.size
+    }
 }
 
 impl Capture {
@@ -772,6 +778,10 @@ fn record_file(
             stamp,
         },
     );
+}
+
+pub(crate) fn capture_tree(root: &Path) -> Result<Capture, RoundError> {
+    walk(root, &BTreeMap::new(), None).map(Walked::finish)
 }
 
 #[cfg(test)]
@@ -1636,7 +1646,7 @@ async fn free_space(staging: &Path) -> Option<u64> {
         .flatten()
 }
 
-async fn room_for(staging: &Path, needed: u64) -> bool {
+pub(crate) async fn room_for(staging: &Path, needed: u64) -> bool {
     free_space(staging)
         .await
         .is_none_or(|free| needed.saturating_add(DISK_HEADROOM_BYTES) <= free)

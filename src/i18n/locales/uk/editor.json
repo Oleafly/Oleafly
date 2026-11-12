@@ -1030,13 +1030,14 @@
         "environment": "Середовище {{environment}}",
         "command": "Команда \\{{command}}",
         "latexSource": "Код LaTeX",
+        "html": "HTML",
         "maketitlePreview": "Згенеровано із заголовка документа та метаданих автора.",
         "figurePreserved": "Точний код рисунка збережено.",
         "tablePreserved": "Точний код таблиці збережено.",
         "sourcePreserved": "Точний код збережено",
         "editSource": "Редагувати код",
-        "summaryLabel": "{{label}}. Точний код LaTeX збережено.",
-        "inputLabel": "Точний код блоку LaTeX"
+        "summaryLabel": "{{label}}. Точний код збережено.",
+        "inputLabel": "Точний код блоку"
       },
       "inline": {
         "label": "Сирий код у рядку",

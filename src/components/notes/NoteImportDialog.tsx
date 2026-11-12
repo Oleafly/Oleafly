@@ -1,26 +1,56 @@
-import { FileInput, FolderOutput, MoreHorizontal, Waypoints } from "lucide-react";
+import { FileInput, FolderOutput, Link2Off, MoreHorizontal } from "lucide-react";
 import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ErrorState } from "@/components/ui/empty";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Progress } from "@/components/ui/progress";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { describeError } from "@/lib/app-error";
 import { useDisplayPath } from "@/lib/display-path";
-import { formatDate } from "@/lib/intl";
+import { formatDate, formatNumber } from "@/lib/intl";
 import { logError } from "@/lib/log";
-import { revealInDir } from "@/lib/tauri";
-import { toast } from "@/lib/toast";
-import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
-import { cancelImport, exportFolder, importFolder, newRunId, progressPercent, stepAfter, type ImportStep } from "./note-vault";
+import { announceExport, cancelImport, exportFolder, importFolder, newRunId, progressPercent, stepAfter, type ImportStep } from "./note-vault";
 
 export interface NoteImportDialogProps {
   open: boolean;
   onClose: () => void;
   onImported: () => void;
+}
+
+function NameList({ label, names }: Readonly<{ label: string; names: readonly string[] }>) {
+  const shownPath = useDisplayPath();
+  return (
+    <li className="text-muted-foreground">
+      {label}
+      {names.length > 0 && (
+        <ul className="mt-1 max-h-32 space-y-0.5 overflow-y-auto pl-4 text-xs">
+          {names.map((name) => (
+            <li key={name} className="min-w-0">
+              <Tooltip label={shownPath(name)} className="block min-w-0">
+                <span className="block truncate">{shownPath(name)}</span>
+              </Tooltip>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+type ImportProgress = Extract<ImportStep, { step: "running" }>["progress"];
+
+function ImportProgressLabel({ progress, picking }: Readonly<{ progress: ImportProgress; picking: "folder" | "files" }>) {
+  const { t } = useTranslation(["notes"]);
+  if (progress) {
+    return progress.phase === "read"
+      ? t(($) => $.notes.vault.import.reading, { file: progress.file })
+      : t(($) => $.notes.vault.import.writing, { file: progress.file });
+  }
+  return picking === "files" ? t(($) => $.notes.vault.import.filesPickerTitle) : t(($) => $.notes.vault.import.pickerTitle);
 }
 
 export function NoteImportDialog({ open, onClose, onImported }: Readonly<NoteImportDialogProps>) {
@@ -31,14 +61,14 @@ export function NoteImportDialog({ open, onClose, onImported }: Readonly<NoteImp
   const [failure, setFailure] = useState("");
   const runRef = useRef<string | null>(null);
   const tagsId = useId();
-  const shownPath = useDisplayPath();
 
-  const run = (again: boolean, files = false) => {
+  const run = (again: boolean, files = false, confirmed = false) => {
     const runId = again && runRef.current ? runRef.current : newRunId();
     runRef.current = runId;
     setPicking(files ? "files" : "folder");
     setState({ step: "running", runId, progress: null, stopping: false });
-    importFolder(runId, files ? { folderTags, again, files } : { folderTags, again }, (progress) =>
+    const choice = { folderTags, again, confirmLarge: !confirmed };
+    importFolder(runId, files ? { ...choice, files } : choice, (progress) =>
       setState((current) => (current.step === "running" ? { ...current, progress } : current)),
     ).then(
       (outcome) => {
@@ -64,7 +94,7 @@ export function NoteImportDialog({ open, onClose, onImported }: Readonly<NoteImp
       stop(state);
       return;
     }
-    if (state.step === "seen" && runRef.current) {
+    if ((state.step === "seen" || state.step === "large") && runRef.current) {
       cancelImport(runRef.current).catch((error: unknown) => void logError("forget the Markdown import", error));
     }
     runRef.current = null;
@@ -79,14 +109,21 @@ export function NoteImportDialog({ open, onClose, onImported }: Readonly<NoteImp
   return (
     <Dialog open={open} onOpenChange={(next) => !next && close()}>
       <DialogContent className="sm:max-w-md">
-        {state.step === "seen" ? (
+        {state.step === "seen" && (
           <DialogHeader>
             <DialogTitle>{t(($) => $.notes.vault.import.seenTitle)}</DialogTitle>
             <DialogDescription>
               {t(($) => $.notes.vault.import.seenDescription, { count: state.notes, date: formatDate(state.importedAt) })}
             </DialogDescription>
           </DialogHeader>
-        ) : (
+        )}
+        {state.step === "large" && (
+          <DialogHeader>
+            <DialogTitle>{t(($) => $.notes.vault.import.largeTitle, { total: formatNumber(state.notes) })}</DialogTitle>
+            <DialogDescription>{t(($) => $.notes.vault.import.largeDescription)}</DialogDescription>
+          </DialogHeader>
+        )}
+        {state.step !== "seen" && state.step !== "large" && (
           <DialogHeader>
             <DialogTitle>
               {state.step === "done" ? t(($) => $.notes.vault.import.doneTitle) : t(($) => $.notes.vault.import.title)}
@@ -108,13 +145,7 @@ export function NoteImportDialog({ open, onClose, onImported }: Readonly<NoteImp
             <Progress value={percent} indeterminate={progress === null} label={t(($) => $.notes.vault.import.title)} />
             <p className="flex items-center justify-between gap-3 text-xs text-muted-foreground" aria-live="polite">
               <span className="min-w-0 truncate">
-                {progress
-                  ? progress.phase === "read"
-                    ? t(($) => $.notes.vault.import.reading, { file: progress.file })
-                    : t(($) => $.notes.vault.import.writing, { file: progress.file })
-                  : picking === "files"
-                    ? t(($) => $.notes.vault.import.filesPickerTitle)
-                    : t(($) => $.notes.vault.import.pickerTitle)}
+                <ImportProgressLabel progress={progress} picking={picking} />
               </span>
               {progress && (
                 <span className="shrink-0 tabular-nums">
@@ -136,31 +167,19 @@ export function NoteImportDialog({ open, onClose, onImported }: Readonly<NoteImp
                   <li className="text-muted-foreground">{t(($) => $.notes.vault.import.unresolved, { count: summary.unresolved })}</li>
                 )}
                 {summary.skipped > 0 && (
-                  <li className="text-muted-foreground">{t(($) => $.notes.vault.import.skipped, { count: summary.skipped })}</li>
+                  <NameList label={t(($) => $.notes.vault.import.skipped, { count: summary.skipped })} names={summary.skippedNotes} />
                 )}
                 {summary.notCopied.length > 0 && (
-                  <li className="text-muted-foreground">
-                    {t(($) => $.notes.vault.import.notCopied, { count: summary.notCopied.length })}
-                    <ul className="mt-1 max-h-32 space-y-0.5 overflow-y-auto pl-4 text-xs">
-                      {summary.notCopied.map((name) => (
-                        <li key={name} className="min-w-0">
-                          <Tooltip label={shownPath(name)} className="block min-w-0">
-                            <span className="block truncate">{shownPath(name)}</span>
-                          </Tooltip>
-                        </li>
-                      ))}
-                    </ul>
-                  </li>
+                  <NameList label={t(($) => $.notes.vault.import.notCopied, { count: summary.notCopied.length })} names={summary.notCopied} />
                 )}
               </>
             )}
           </ul>
         )}
         {state.step === "failed" && (
-          <div role="alert" className="space-y-1 text-sm text-destructive">
-            <p>{t(($) => $.notes.vault.import.failed)}</p>
-            {failure && <p className="text-xs">{failure}</p>}
-          </div>
+          <ErrorState message={t(($) => $.notes.vault.import.failed)}>
+            {failure && <p className="text-xs text-destructive">{failure}</p>}
+          </ErrorState>
         )}
         <DialogFooter>
           {state.step === "options" && (
@@ -185,6 +204,14 @@ export function NoteImportDialog({ open, onClose, onImported }: Readonly<NoteImp
                 {t(($) => $.common.actions.cancel)}
               </Button>
               <Button onClick={() => run(true)}>{t(($) => $.notes.vault.import.again)}</Button>
+            </>
+          )}
+          {state.step === "large" && (
+            <>
+              <Button variant="ghost" onClick={close}>
+                {t(($) => $.common.actions.cancel)}
+              </Button>
+              <Button onClick={() => run(true, picking === "files", true)}>{t(($) => $.notes.vault.import.largeConfirm)}</Button>
             </>
           )}
           {(state.step === "done" || state.step === "failed") && <Button onClick={close}>{t(($) => $.notes.vault.import.done)}</Button>}
@@ -216,20 +243,7 @@ export function NoteExportDialog({ open, note, total, onClose }: Readonly<NoteEx
       .then(
         (summary) => {
           if (!summary) return;
-          const done = t(($) => $.notes.vault.import.export.done, { count: summary.notes });
-          const message =
-            summary.skipped > 0
-              ? t(($) => $.notes.vault.import.export.doneSkipped, {
-                  done,
-                  skipped: t(($) => $.notes.vault.import.export.skipped, { count: summary.skipped }),
-                })
-              : done;
-          toast.success(message, {
-            label: t(($) => $.notes.vault.import.export.showFolder),
-            onClick: () => {
-              void revealInDir(summary.folder).catch((error: unknown) => void logError("show the exported notes", error));
-            },
-          });
+          announceExport(summary);
           onClose();
         },
         (error: unknown) => {
@@ -260,10 +274,9 @@ export function NoteExportDialog({ open, note, total, onClose }: Readonly<NoteEx
           </RadioGroup>
         )}
         {failure !== null && (
-          <div role="alert" className="space-y-1 text-sm text-destructive">
-            <p>{t(($) => $.notes.vault.import.export.failed)}</p>
-            {failure && <p className="text-xs">{failure}</p>}
-          </div>
+          <ErrorState message={t(($) => $.notes.vault.import.export.failed)}>
+            {failure && <p className="text-xs text-destructive">{failure}</p>}
+          </ErrorState>
         )}
         <DialogFooter>
           <Button variant="ghost" disabled={busy} onClick={onClose}>
@@ -278,63 +291,59 @@ export function NoteExportDialog({ open, note, total, onClose }: Readonly<NoteEx
   );
 }
 
-export interface SidebarGraphActionsProps {
-  onOpenGraph?: () => void;
+export interface VaultMoreMenuProps {
   onImportFolder?: () => void;
   onExportFolder?: () => void;
+  onOpenDeadLinks?: () => void;
 }
 
-export function SidebarGraphActions({ onOpenGraph, onImportFolder, onExportFolder }: Readonly<SidebarGraphActionsProps>) {
-  const { t } = useTranslation(["notes", "shell"]);
-  const graphKeys = useShortcutStore((state) => shortcutLabel(state.bindings.notesGraph));
+export function VaultMoreMenu({ onImportFolder, onExportFolder, onOpenDeadLinks }: Readonly<VaultMoreMenuProps>) {
+  const { t } = useTranslation(["notes"]);
   const pending = useRef<(() => void) | null>(null);
   const later = (action: () => void) => () => {
     pending.current = action;
   };
+  if (!onImportFolder && !onExportFolder && !onOpenDeadLinks) return null;
   return (
-    <>
-      {onOpenGraph && (
-        <Tooltip label={t(($) => $.shell.rail.withShortcut, { label: t(($) => $.notes.graph.openGraph), shortcut: graphKeys })} side="bottom">
-          <Button variant="ghost" size="icon" aria-label={t(($) => $.notes.graph.openGraph)} className="size-7" onClick={onOpenGraph}>
-            <Waypoints aria-hidden />
+    <DropdownMenu>
+      <Tooltip label={t(($) => $.notes.vault.import.more)} side="top">
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" size="icon" aria-label={t(($) => $.notes.vault.import.more)} className="size-8 data-[state=open]:bg-accent">
+            <MoreHorizontal aria-hidden />
           </Button>
-        </Tooltip>
-      )}
-      {(onImportFolder || onExportFolder) && (
-        <DropdownMenu>
-          <Tooltip label={t(($) => $.notes.vault.import.more)} side="bottom">
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label={t(($) => $.notes.vault.import.more)} className="size-7 data-[state=open]:bg-accent">
-                <MoreHorizontal aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-          </Tooltip>
-          <DropdownMenuContent
-            align="end"
-            className="w-56"
-            onCloseAutoFocus={(event) => {
-              const action = pending.current;
-              pending.current = null;
-              if (!action) return;
-              event.preventDefault();
-              action();
-            }}
-          >
-            {onImportFolder && (
-              <DropdownMenuItem className="gap-2 [&>svg]:size-4" onSelect={later(onImportFolder)}>
-                <FileInput aria-hidden />
-                {t(($) => $.notes.vault.import.menu)}
-              </DropdownMenuItem>
-            )}
-            {onExportFolder && (
-              <DropdownMenuItem className="gap-2 [&>svg]:size-4" onSelect={later(onExportFolder)}>
-                <FolderOutput aria-hidden />
-                {t(($) => $.notes.vault.import.export.menu)}
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-    </>
+        </DropdownMenuTrigger>
+      </Tooltip>
+      <DropdownMenuContent
+        side="top"
+        align="start"
+        className="w-56"
+        onCloseAutoFocus={(event) => {
+          const action = pending.current;
+          pending.current = null;
+          if (!action) return;
+          event.preventDefault();
+          action();
+        }}
+      >
+        {onImportFolder && (
+          <DropdownMenuItem className="gap-2 [&>svg]:size-4" onSelect={later(onImportFolder)}>
+            <FileInput aria-hidden />
+            {t(($) => $.notes.vault.import.menu)}
+          </DropdownMenuItem>
+        )}
+        {onExportFolder && (
+          <DropdownMenuItem className="gap-2 [&>svg]:size-4" onSelect={later(onExportFolder)}>
+            <FolderOutput aria-hidden />
+            {t(($) => $.notes.vault.import.export.menu)}
+          </DropdownMenuItem>
+        )}
+        {onOpenDeadLinks && (
+          <DropdownMenuItem className="gap-2 [&>svg]:size-4" onSelect={later(onOpenDeadLinks)}>
+            <Link2Off aria-hidden />
+            {t(($) => $.notes.linksSearch.dead.menu)}
+          </DropdownMenuItem>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

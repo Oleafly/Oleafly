@@ -22,9 +22,9 @@ export type NotebookParse = { ok: true; notebook: Notebook } | { ok: false; prob
 
 type Json = Record<string, unknown>;
 
-const ESC = String.fromCharCode(27);
-const BEL = String.fromCharCode(7);
-const ANSI = new RegExp(`${ESC}(?:\\[[0-?]*[ -/]*[@-~]|\\][^${BEL}${ESC}]*(?:${BEL}|${ESC}\\\\)?|[@-_])`, "gu");
+const ESC = String.fromCodePoint(27);
+const BEL = String.fromCodePoint(7);
+const ANSI = new RegExp(String.raw`${ESC}(?:\[[0-?]*[ -/]*[@-~]|\][^${BEL}${ESC}]*(?:${BEL}|${ESC}\\)?|[@-_])`, "gu");
 const BASE64 = /^[A-Za-z0-9+/]+={0,2}$/u;
 
 function isObject(value: unknown): value is Json {
@@ -38,7 +38,7 @@ function text(value: unknown): string {
 }
 
 export function stripAnsi(value: string): string {
-  return value.replace(ANSI, "");
+  return value.replaceAll(ANSI, "");
 }
 
 function image(mime: string, value: unknown): NotebookOutput | null {
@@ -46,7 +46,7 @@ function image(mime: string, value: unknown): NotebookOutput | null {
   if (mime === "image/svg+xml") {
     return data.trim() ? { type: "image", src: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(data)}` } : null;
   }
-  const encoded = data.replace(/\s+/gu, "");
+  const encoded = data.replaceAll(/\s+/gu, "");
   return BASE64.test(encoded) ? { type: "image", src: `data:${mime};base64,${encoded}` } : null;
 }
 
@@ -105,9 +105,9 @@ function cell(value: unknown): NotebookCell | null {
 function language(metadata: unknown): string {
   if (!isObject(metadata)) return "";
   const info = isObject(metadata.language_info) ? metadata.language_info.name : undefined;
+  if (typeof info === "string") return info.trim().toLowerCase();
   const kernel = isObject(metadata.kernelspec) ? metadata.kernelspec.language : undefined;
-  const name = typeof info === "string" ? info : typeof kernel === "string" ? kernel : "";
-  return name.trim().toLowerCase();
+  return typeof kernel === "string" ? kernel.trim().toLowerCase() : "";
 }
 
 export function parseNotebook(source: string): NotebookParse {

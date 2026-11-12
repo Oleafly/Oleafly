@@ -1127,146 +1127,6 @@
         "label": "Vis PDF-en ved kompilering"
       },
       "title": "Zen-modus"
-    },
-    "notes": {
-      "sectionName": "Utseende for notater",
-      "resetAriaLabel": "Tilbakestill {{setting}} til standard",
-      "text": {
-        "title": "Tekst"
-      },
-      "typeface": {
-        "label": "Skrifttype",
-        "description": "Velg en skrifttype for notattekst.",
-        "options": {
-          "sans": "Uten seriffer",
-          "serif": "Med seriffer",
-          "mono": "Fast bredde"
-        }
-      },
-      "font": {
-        "label": "Notatskrift",
-        "description": "Velg hvilken som helst installert skrift for notattekst. La feltet stå tomt for å bruke innstillingen Skrifttype."
-      },
-      "fontSize": {
-        "label": "Tekststørrelse i notater",
-        "description": "Angi størrelsen på notattekst.",
-        "custom": "Egendefinert",
-        "customLabel": "Egendefinert tekststørrelse i notater i piksler"
-      },
-      "lineHeight": {
-        "label": "Linjeavstand i notater",
-        "description": "Angi avstanden mellom linjene i notattekst.",
-        "customLabel": "Egendefinert linjeavstand i notater"
-      },
-      "paragraphSpacing": {
-        "label": "Avsnittsavstand",
-        "description": "Angi avstanden mellom avsnitt, lister og andre blokker.",
-        "options": {
-          "compact": "Kompakt",
-          "normal": "Vanlig",
-          "relaxed": "Luftig",
-          "spacious": "Romslig"
-        }
-      },
-      "headings": {
-        "title": "Overskrifter og tittel"
-      },
-      "headingTypeface": {
-        "label": "Skrifttype for overskrifter",
-        "description": "Velg en skrifttype for overskrifter og notattittelen.",
-        "options": {
-          "text": "Samme som teksten"
-        }
-      },
-      "headingFont": {
-        "label": "Overskriftsskrift",
-        "description": "Velg en installert skrift for overskrifter og notattittelen. La feltet stå tomt for å bruke innstillingen Skrifttype for overskrifter."
-      },
-      "headingSize": {
-        "label": "Overskriftsstørrelse",
-        "description": "Angi hvor store overskriftene er sammenlignet med teksten.",
-        "options": {
-          "small": "Mindre",
-          "normal": "Vanlig",
-          "large": "Større"
-        }
-      },
-      "titleSize": {
-        "label": "Tittelstørrelse",
-        "description": "Angi størrelsen på tittelen øverst i hvert notat."
-      },
-      "layout": {
-        "title": "Oppsett"
-      },
-      "width": {
-        "label": "Notatbredde",
-        "description": "Hvor brede notater er når de åpnes. Breddemenyen i et notat endrer også dette.",
-        "options": {
-          "standard": "Standard",
-          "wide": "Bred",
-          "full": "Full bredde"
-        }
-      },
-      "wordCount": {
-        "label": "Vis antall ord",
-        "description": "Vis antall ord i et notat i verktøylinjen."
-      },
-      "spellcheck": {
-        "label": "Stavekontroll i notater",
-        "description": "Understrek feilstavede ord mens du skriver et notat."
-      },
-      "code": {
-        "title": "Kode"
-      },
-      "codeFont": {
-        "label": "Kodeskrift",
-        "description": "Velg en installert skrift for kodeblokker og kode i teksten."
-      },
-      "codeTheme": {
-        "label": "Farger i kodeblokker",
-        "description": "Velg syntaksfargene for kodeblokker i notater.",
-        "options": {
-          "editor": "Samme som editoren"
-        }
-      },
-      "colors": {
-        "title": "Farger"
-      },
-      "accent": {
-        "label": "Aksentfarge for notater",
-        "description": "Brukes på lenker, etiketter og avkrysningsbokser i notater.",
-        "matchApp": "Samme som appen",
-        "customAriaLabel": "Velg en egendefinert aksentfarge for notater"
-      },
-      "highlight": {
-        "label": "Uthevingsfarge",
-        "description": "Fargen bak uthevet tekst.",
-        "options": {
-          "yellow": "Gul",
-          "green": "Grønn",
-          "blue": "Blå",
-          "pink": "Rosa",
-          "purple": "Lilla",
-          "accent": "Aksent"
-        }
-      },
-      "callouts": {
-        "label": "Stil på infobokser",
-        "description": "Hvordan infobokser ser ut i notater.",
-        "options": {
-          "tinted": "Tonet",
-          "filled": "Fylt",
-          "outlined": "Med kantlinje",
-          "bar": "Sidestrek"
-        }
-      },
-      "remoteImages": {
-        "title": "Bilder fra nettet",
-        "description": "Notater laster inn bilder fra disse nettstedene uten å spørre.",
-        "empty": "Notater spør før de laster inn et bilde fra nettet. Nettsteder du alltid tillater, vises her.",
-        "remove": "Fjern {{host}}"
-      },
-      "resetAll": "Tilbakestill utseendet for notater"
     }
   },
   "checkpoints": {
@@ -2502,6 +2362,42 @@
       "notesAskAgent": {
         "description": "Spør agenten om den merkede teksten, eller åpne og lukk agenten for notatet.",
         "label": "Notater: spør agenten"
+      },
+      "notesNewNote": {
+        "label": "Notater: nytt notat",
+        "description": "Start et nytt notat i det gjeldende panelet."
+      },
+      "notesSearch": {
+        "label": "Notater: søk i notater",
+        "description": "Hopp til søkefeltet øverst i sidepanelet i Notater."
+      },
+      "notesBookmark": {
+        "label": "Notater: legg bokmerke på notatet",
+        "description": "Legg det åpne notatet til i Favoritter, eller fjern det derfra."
+      },
+      "notesCopyLink": {
+        "label": "Notater: kopier lenke til notatet",
+        "description": "Kopier en lenke til det åpne notatet som du kan lime inn i et annet notat eller en samtale."
+      },
+      "notesProperties": {
+        "label": "Notater: vis eller skjul egenskaper",
+        "description": "Åpne eller lukk egenskapene under notattittelen."
+      },
+      "notesQuickCapture": {
+        "description": "Åpne et lite vindu der du kan skrive ned noe fra hvilken som helst app, også når Oleafly er i bakgrunnen.",
+        "label": "Notater: hurtignotat"
+      },
+      "notesCopyBlockLink": {
+        "description": "Kopier en lenke til avsnittet, listepunktet eller tabellen markøren står i.",
+        "label": "Notater: kopier lenke til blokken"
+      },
+      "notesBack": {
+        "description": "Gå tilbake til der du var i denne fanen.",
+        "label": "Notater: tilbake"
+      },
+      "notesForward": {
+        "description": "Gå fremover igjen etter at du har gått tilbake.",
+        "label": "Notater: fremover"
       }
     },
     "application": {
@@ -2527,14 +2423,41 @@
         "renameSymbol": "Gi symbolet eller filen nytt navn i hele prosjektet",
         "slashCommandMenu": "Innsettingsmeny med skråstrekkommandoer",
         "triggerAutocomplete": "Start autofullføring",
-        "undo": "Angre"
+        "undo": "Angre",
+        "noteBold": "Halvfet",
+        "noteItalic": "Kursiv",
+        "noteUnderline": "Understreking",
+        "noteStrike": "Gjennomstreking",
+        "noteCode": "Kode i teksten",
+        "noteHighlight": "Uthev med sist brukte farge",
+        "noteSuperscript": "Hevet skrift",
+        "noteSubscript": "Senket skrift",
+        "noteHeadings": "Overskrift 1 til 6",
+        "noteText": "Gjør om til tekst",
+        "noteQuote": "Sitat",
+        "noteCodeBlock": "Kodeblokk",
+        "noteBulletList": "Punktliste",
+        "noteNumberedList": "Nummerert liste",
+        "noteTaskList": "Oppgaveliste",
+        "noteToggleTask": "Kryss av eller fjern avkrysningen for en oppgave",
+        "noteIndent": "Rykk inn et listepunkt",
+        "noteOutdent": "Rykk ut et listepunkt",
+        "noteLineBreak": "Linjeskift i samme avsnitt",
+        "noteFind": "Finn og erstatt",
+        "noteSelectAll": "Merk hele notatet",
+        "noteUndo": "Angre",
+        "noteRedo": "Gjør om",
+        "noteInsertMenu": "Åpne innsettingsmenyen på starten av en linje",
+        "noteLinkMenu": "Lenk til et notat",
+        "noteTag": "Legg til en etikett"
       },
       "managed": "Styres av editoren"
     },
     "categories": {
       "codeIntelligence": "Kodeinnsikt",
       "editor": "Editor",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Notater"
     },
     "error": {
       "conflict": "Allerede tildelt {{action}}.",
@@ -2580,6 +2503,15 @@
         "uppercase": "Store bokstaver"
       },
       "unbound": "Ikke satt"
+    },
+    "quickCapture": {
+      "label": "Hurtignotat fra hvor som helst",
+      "description": "Hurtigtasten for hurtignotat virker i alle apper på denne datamaskinen.",
+      "ready": "Trykk {{shortcut}} i en hvilken som helst app for å åpne hurtignotat.",
+      "taken": "En annen app bruker allerede {{shortcut}}. Velg en annen hurtigtast for Notater: hurtignotat.",
+      "invalid": "{{shortcut}} kan ikke virke utenfor Oleafly. Velg en hurtigtast som slutter med en bokstav, et tall eller en funksjonstast.",
+      "failed": "Oleafly kunne ikke sette opp hurtigtasten. Slå hurtignotat av og på igjen for å prøve på nytt.",
+      "wayland": "Wayland lar ikke apper lytte etter taster utenfor sine egne vinduer. For å åpne hurtignotat med en tast legger du til en egendefinert hurtigtast i tastaturinnstillingene for systemet, som kjører denne kommandoen:"
     }
   },
   "systemIntegration": {
@@ -2671,17 +2603,5 @@
       "loadFailed": "Listen over MCP-servere kunne ikke leses.",
       "missing": "{{name}} (ikke funnet)"
     }
-  },
-  "notesPreview": {
-    "label": "Forhåndsvisning av et notat med disse innstillingene",
-    "title": "Feltnotater",
-    "heading": "Morgenregistrering",
-    "paragraph": "Lett regn til klokken ni, så klarvær over nordryggen. Jorden var fortsatt fuktig ved middagstid.",
-    "links": "Se <note>Prøvetakingsmetode</note> for alle trinnene, eller bla gjennom <tag>#feltarbeid</tag>.",
-    "highlight": "Frøplantene ble dobbelt så høye på én uke.",
-    "calloutTitle": "Neste besøk",
-    "calloutBody": "Sjekk jordsensorene før du tar nye prøver.",
-    "taskDone": "Merk prøvene",
-    "task": "Last opp bildene"
   }
 }

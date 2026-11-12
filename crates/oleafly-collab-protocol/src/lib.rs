@@ -14,5 +14,6 @@ pub mod outputs;
 pub mod page;
 pub mod poll;
 pub mod projects;
+pub mod published;
 pub mod roles;
 pub mod snapshots;

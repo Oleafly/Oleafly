@@ -3,12 +3,15 @@ import type { Editor } from "@tiptap/core";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import type { NoteLinkRecord } from "@/lib/tauri";
 import { NoteDocument } from "./NoteDocument";
 import { NotesDataProvider, type NotesData } from "./notes-data";
+import { NoteLinkIndexProvider } from "./use-note-links";
 import type { NoteItem, NoteSource } from "./types";
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
+import { useNotesPrefsStore } from "@/store/notes-prefs";
 
 const editors = vi.hoisted(() => ({ last: null as Editor | null }));
 
@@ -71,16 +74,12 @@ const RECORDS: NoteLinkRecord[] = [
 
 function fakeData() {
   const saveNote = vi.fn(async (_id: string, text: string): Promise<NoteSource> => ({ text, version: "v2" }));
-  const data: NotesData = {
+  const data: NotesData = fakeNotesData({
     notes: [NOTE, OTHER],
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
     loadNote: vi.fn(async (id: string) => ({ text: id === "lib-1" ? TEXT : "# Method\nSteps", version: "v1" })),
     saveNote,
     noteLinks: () => Promise.resolve(RECORDS),
-  };
+  });
   return { data, saveNote };
 }
 
@@ -90,7 +89,9 @@ async function open(props: Partial<Parameters<typeof NoteDocument>[0]> = {}) {
   const onOpenTag = vi.fn();
   const view = render(
     <NotesDataProvider value={fake.data}>
-      <NoteDocument note={NOTE} insertRequest={null} onSendToPaper={vi.fn()} onOpenNote={onOpenNote} onOpenTag={onOpenTag} {...props} />
+      <NoteLinkIndexProvider>
+        <NoteDocument note={NOTE} insertRequest={null} onSendToPaper={vi.fn()} onOpenNote={onOpenNote} onOpenTag={onOpenTag} {...props} />
+      </NoteLinkIndexProvider>
     </NotesDataProvider>,
   );
   await screen.findByLabelText(enNotes.document.titleLabel);
@@ -105,11 +106,13 @@ async function save() {
 }
 
 beforeAll(async () => {
-  await loadNamespace("notes");
   Element.prototype.scrollIntoView = vi.fn();
 });
 
+const initialPrefs = useNotesPrefsStore.getState();
+
 afterEach(() => {
+  useNotesPrefsStore.setState(initialPrefs, true);
   editors.last = null;
 });
 
@@ -146,7 +149,9 @@ describe("knowledge base features in a note", () => {
     expect(onOpenTag).toHaveBeenCalledWith("ssl");
     rerender(
       <NotesDataProvider value={fake.data}>
-        <NoteDocument note={NOTE} insertRequest={null} onSendToPaper={vi.fn()} onOpenNote={onOpenNote} openHeading={{ slug: "results", id: 1 }} />
+        <NoteLinkIndexProvider>
+          <NoteDocument note={NOTE} insertRequest={null} onSendToPaper={vi.fn()} onOpenNote={onOpenNote} openHeading={{ slug: "results", id: 1 }} />
+        </NoteLinkIndexProvider>
       </NotesDataProvider>,
     );
     expect(editor.state.selection.$from.parent.textContent).toBe("Results");
@@ -154,14 +159,32 @@ describe("knowledge base features in a note", () => {
     expect(screen.getByRole("textbox", { name: enNotes.kb.properties.newName })).toBeTruthy();
   });
 
+  it("scrolls the note to where it was once when asked, and leaves it alone after", async () => {
+    const request = { top: 640, id: 1 };
+    const { container, rerender, fake } = await open({ openScroll: request });
+    const scroller = container.querySelector<HTMLElement>("[data-keep-scroll]");
+    expect(scroller?.scrollTop).toBe(640);
+    if (scroller) scroller.scrollTop = 12;
+    rerender(
+      <NotesDataProvider value={fake.data}>
+        <NoteLinkIndexProvider>
+          <NoteDocument note={NOTE} insertRequest={null} onSendToPaper={vi.fn()} openScroll={request} />
+        </NoteLinkIndexProvider>
+      </NotesDataProvider>,
+    );
+    expect(scroller?.scrollTop).toBe(12);
+  });
+
   it("opens a linked note without a heading from a property", async () => {
-    localStorage.setItem("oleafly.notes.propertyTypes", JSON.stringify({ source: "link" }));
+    useNotesPrefsStore.getState().set("propertyTypes", { source: "link" });
     const fake = fakeData();
     fake.data.loadNote = vi.fn(async () => ({ text: "---\nid: n-1\nsource: oleafly://note/n-2\n---\nBody", version: "v1" }));
     const onOpenNote = vi.fn();
     render(
       <NotesDataProvider value={fake.data}>
-        <NoteDocument note={NOTE} insertRequest={null} onSendToPaper={vi.fn()} onOpenNote={onOpenNote} />
+        <NoteLinkIndexProvider>
+          <NoteDocument note={NOTE} insertRequest={null} onSendToPaper={vi.fn()} onOpenNote={onOpenNote} />
+        </NoteLinkIndexProvider>
       </NotesDataProvider>,
     );
     fireEvent.click(await screen.findByRole("button", { name: "Open Method" }));

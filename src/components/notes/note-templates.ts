@@ -1,10 +1,11 @@
-import { splitMarkdownFrontMatter } from "@oleafly/wysiwyg/front-matter";
 import { i18n } from "@/i18n";
 import { frontMatterKey, splitFrontMatter } from "@/lib/front-matter";
+import { appendEntries, withFrontMatter } from "@/lib/front-matter-yaml";
+import { CITEKEY_PROPERTY, citationAuthors, citationTitle, citationVenue, citationYear } from "./note-citations";
 import { readNoteFacts } from "./note-file";
 import { removeProperty, setProperty } from "./note-properties";
 import type { NoteDraft } from "./notes-data";
-import type { NoteColor, NoteItem } from "./types";
+import type { CitationItem, NoteColor, NoteItem } from "./types";
 
 export type TemplateId =
   | "daily"
@@ -17,7 +18,9 @@ export type TemplateId =
   | "proposal"
   | "proof"
   | "dataAnalysis"
-  | "interview";
+  | "interview"
+  | "screeningLog"
+  | "labNotebook";
 
 export type TemplateTitle = "name" | "nameDate" | "date";
 
@@ -62,7 +65,7 @@ export const NOTE_TEMPLATES: readonly NoteTemplate[] = [
     icon: "lucide:book-open",
     color: "blue",
     title: "name",
-    properties: "tags: [paper]\nstatus: to read\nauthors: []\nyear:\nvenue:\ndoi:",
+    properties: "tags: [paper]\nstatus: to read\nauthors: []\nyear:\nvenue:\ndoi:\ncitekey:",
   },
   {
     id: "literatureMatrix",
@@ -120,6 +123,20 @@ export const NOTE_TEMPLATES: readonly NoteTemplate[] = [
     title: "nameDate",
     properties: "tags: [interview]\ndate: {{date}}\nparticipant:\nconsent: false",
   },
+  {
+    id: "screeningLog",
+    icon: "lucide:funnel",
+    color: "pink",
+    title: "name",
+    properties: "tags: [systematic-review]\nstatus: screening\nreviewers: []",
+  },
+  {
+    id: "labNotebook",
+    icon: "lucide:notebook-pen",
+    color: "spring",
+    title: "nameDate",
+    properties: "tags: [lab-notebook]\ndate: {{date}}\nsamples: []",
+  },
 ];
 
 export const TEMPLATES_BY_ID = Object.fromEntries(NOTE_TEMPLATES.map((template) => [template.id, template])) as Readonly<
@@ -144,7 +161,7 @@ export function templateVars(now: Date, locale: string, title = ""): TemplateVar
 }
 
 export function expandTemplate(text: string, vars: TemplateVars): string {
-  return text.replace(VARIABLE, (_match, name: keyof TemplateVars) => vars[name]);
+  return text.replaceAll(VARIABLE, (_match, name: keyof TemplateVars) => vars[name]);
 }
 
 export function templateTitle(template: NoteTemplate, name: string, vars: TemplateVars): string {
@@ -169,6 +186,24 @@ export function draftFromTemplate(template: NoteTemplate, name: string, now: Dat
   };
 }
 
+export function draftFromReference(reference: CitationItem, now: Date, locale: string): NoteDraft {
+  const draft = draftFromTemplate(TEMPLATES_BY_ID.paperReading, citationTitle(reference), now, locale);
+  const fields = reference.fields ?? {};
+  const year = Number(citationYear(fields));
+  const values: [string, string | number | string[]][] = [
+    ["authors", citationAuthors(fields)],
+    ["year", Number.isInteger(year) && year > 0 ? year : ""],
+    ["venue", citationVenue(fields)],
+    ["doi", (fields.doi ?? "").trim()],
+    [CITEKEY_PROPERTY, reference.key],
+  ];
+  const block = values.reduce(
+    (current, [key, value]) => (value === "" || (Array.isArray(value) && value.length === 0) ? current : setProperty(current, key, value)),
+    `---\n${draft.properties ?? ""}\n---`,
+  );
+  return { ...draft, properties: block.slice(4, -4) };
+}
+
 export function splitNoteSource(text: string): { frontMatter: string; body: string } {
   const front = splitFrontMatter(text);
   return front ? { frontMatter: front.lines.join("\n"), body: front.body } : { frontMatter: "", body: text };
@@ -183,7 +218,7 @@ export function extraFrontMatter(frontMatter: string): string {
     else if (line.trim() !== "" && !/^[\s-]/u.test(line) && !line.startsWith("#")) keep = false;
     if (keep) kept.push(line);
   }
-  while (kept.length > 0 && kept[kept.length - 1].trim() === "") kept.pop();
+  while (kept.at(-1)?.trim() === "") kept.pop();
   return kept.join("\n");
 }
 
@@ -207,21 +242,12 @@ function tagItem(tag: string): string {
   return PLAIN_TAG.test(tag) ? tag : JSON.stringify(tag);
 }
 
-function hasKey(lines: readonly string[], key: string): boolean {
-  return lines.some((line) => frontMatterKey(line) === key);
-}
-
 export function composeNoteSource(base: string, properties?: string, tags?: readonly string[]): string {
-  const extra = extraFrontMatter(properties ?? "")
-    .split("\n")
-    .filter((line, index, lines) => line !== "" || index < lines.length - 1);
+  const extra = extraFrontMatter(properties ?? "");
   const cleanTags = (tags ?? []).map((tag) => tag.trim().replace(/^#+/u, "")).filter(Boolean);
-  if (cleanTags.length > 0 && !hasKey(extra, "tags")) extra.push(`tags: [${cleanTags.map(tagItem).join(", ")}]`);
-  if (extra.length === 0) return base;
-  const { frontmatter } = splitMarkdownFrontMatter(base);
-  if (!frontmatter) return base;
-  const close = frontmatter.lastIndexOf("\n") + 1;
-  return `${base.slice(0, close)}${extra.join("\n")}\n${base.slice(close)}`;
+  const tagLine = cleanTags.length > 0 && !extra.split("\n").some((line) => frontMatterKey(line) === "tags") ? `tags: [${cleanTags.map(tagItem).join(", ")}]` : "";
+  const lines = [extra, tagLine].filter(Boolean).join("\n");
+  return lines && splitFrontMatter(base) ? withFrontMatter(base, (block) => appendEntries(block, lines)) : base;
 }
 
 export function isTemplateNote(note: NoteItem): boolean {
@@ -229,9 +255,5 @@ export function isTemplateNote(note: NoteItem): boolean {
 }
 
 export function withTemplateFlag(text: string, on: boolean): string {
-  const { frontmatter } = splitMarkdownFrontMatter(text);
-  if (!frontmatter) return on ? `${setProperty("", TEMPLATE_KEY, true)}\n\n${text}` : text;
-  const next = on ? setProperty(frontmatter, TEMPLATE_KEY, true) : removeProperty(frontmatter, TEMPLATE_KEY);
-  const at = text.indexOf(frontmatter);
-  return `${text.slice(0, at)}${next}${text.slice(at + frontmatter.length)}`;
+  return withFrontMatter(text, (block) => (on ? setProperty(block, TEMPLATE_KEY, true) : removeProperty(block, TEMPLATE_KEY)));
 }

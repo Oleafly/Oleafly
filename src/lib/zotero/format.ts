@@ -33,5 +33,5 @@ export function hitTitle(hit: ZoteroHit): string {
 }
 
 export function hitDetail(hit: ZoteroHit, status: ZoteroLibraryStatus | null): string {
-  return [hitByline(hit), libraryLabel(hit, status), truncated(hitTitle(hit))].filter(Boolean).join(" · ");
+  return [hitByline(hit), truncated(hitTitle(hit)), libraryLabel(hit, status)].filter(Boolean).join(" · ");
 }

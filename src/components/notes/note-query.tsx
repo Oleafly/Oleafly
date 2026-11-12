@@ -5,18 +5,19 @@ import {
   analyze,
   compile,
   defineSchema,
+  expandQuery,
   flagField,
   formatValue,
   inRange,
   mergeExtensions,
   normalizeText,
   readFacet,
+  truncatedDiagnostic,
   writeFacet,
   type AnalyzedQuery,
   type AnalyzedTerm,
   type Facet,
   type FacetOption,
-  type QueryNode,
   type SearchContext,
   type SearchExtension,
   type SearchField,
@@ -26,8 +27,11 @@ import {
 import { compareText } from "@/lib/intl";
 import type { QueryMeta } from "@/lib/query-suggestions";
 import type { NoteSearchHit, NoteTagCount } from "@/lib/tauri";
-import { useNoteFavorites } from "./note-favorites";
+import { trimCharacter } from "@/lib/trim-character";
+import { cn } from "@/lib/utils";
+import { useNoteFavorites } from "@/store/notes-prefs";
 import { artifactIcon, KIND_TONES, NoteIcon } from "./note-icons";
+import { tagTone } from "./note-tags";
 import { useNotesData } from "./notes-data";
 import type { ArtifactItem, Author, NoteItem } from "./types";
 
@@ -44,7 +48,6 @@ export type VaultKind = (typeof VAULT_KINDS)[number];
 export const VAULT_AUTHORS = ["agent", "you"] as const satisfies readonly Author[];
 
 const INDEXED_FIELDS: ReadonlySet<string> = new Set(["tag", "title"]);
-const MAX_BRANCHES = 8;
 const PROJECT_SEPARATOR = "\u0000";
 
 export interface NoteSearchState {
@@ -58,10 +61,10 @@ export function isArtifact(item: VaultItem): item is ArtifactItem {
 }
 
 export function tagFilterKey(tag: string): string {
-  return tag.trim().replace(/^#+/u, "").replace(/^\/+|\/+$/gu, "").toLowerCase();
+  return trimCharacter(tag.trim().replace(/^#+/u, ""), "/").toLowerCase();
 }
 
-const icon = (Icon: typeof Hash): ReactNode => <Icon className="size-4" />;
+const icon = (Icon: typeof Hash, className?: string): ReactNode => <Icon className={cn("size-4", className)} />;
 
 function kindIcon(kind: VaultKind): ReactNode {
   return kind === "note" ? <NoteIcon className={KIND_TONES.note.icon} /> : artifactIcon(kind);
@@ -127,7 +130,7 @@ function noteQualifiers(t: Translate, state: NoteSearchState): NoteSearchExtensi
         aliases: ["tags"],
         meta: { label: t(($) => $.notes.vault.search.fields.tag), icon: icon(Hash) },
         type: "text",
-        options: (state.tags ?? []).map((entry) => ({ value: entry.tag, meta: { label: `#${entry.label}`, icon: icon(Hash) } })),
+        options: (state.tags ?? []).map((entry) => ({ value: entry.tag, meta: { label: `#${entry.label}`, icon: icon(Hash, tagTone(entry.tag).icon) } })),
         test: tagTest(state.tags),
       },
       {
@@ -203,20 +206,6 @@ function literals(term: VaultTerm, source: string, negated: boolean): Conjunctio
   return negated ? [each] : each.map((literal) => [literal]);
 }
 
-function expand(node: QueryNode, query: VaultQuery, negated: boolean): Conjunction[] | null {
-  if (node.type === "term") {
-    const term = query.termFor(node.term);
-    return term ? literals(term, query.source, negated) : null;
-  }
-  if (node.type === "not") return expand(node.child, query, !negated);
-  const parts = node.children
-    .map((child) => expand(child, query, negated))
-    .filter((part): part is Conjunction[] => part !== null);
-  if (parts.length === 0) return null;
-  if ((node.type === "or") !== negated) return parts.flat().slice(0, MAX_BRANCHES);
-  return parts.reduce((left, right) => left.flatMap((a) => right.map((b) => [...a, ...b])).slice(0, MAX_BRANCHES));
-}
-
 function holds(literal: Literal, item: VaultItem, context: SearchContext): boolean {
   const field = literal.term.field;
   if (!field) return literal.negated;
@@ -242,13 +231,17 @@ export interface VaultPlan {
   readonly branches: readonly VaultBranch[];
   readonly test: (item: VaultItem) => boolean;
   readonly filtered: boolean;
+  readonly truncated: boolean;
 }
 
 export function vaultPlan(query: VaultQuery, schema: VaultSchema, context: SearchContext): VaultPlan {
   const compiled = compile(query, schema, context);
-  const conjunctions = query.root ? (expand(query.root, query, false) ?? []) : [];
+  const expansion = expandQuery<Literal>(query.root, (token, negated) => {
+    const term = query.termFor(token);
+    return term ? literals(term, query.source, negated) : null;
+  });
   let fullText = false;
-  const branches = conjunctions.map((conjunction): VaultBranch => {
+  const branches = (expansion?.conjunctions ?? []).map((conjunction): VaultBranch => {
     const indexed = conjunction.filter((literal) => literal.search !== null);
     const local = conjunction.filter((literal) => literal.search === null);
     fullText ||= conjunction.some((literal) => literal.term.role === "text");
@@ -258,10 +251,10 @@ export function vaultPlan(query: VaultQuery, schema: VaultSchema, context: Searc
     };
   });
   const searches = [...new Set(branches.flatMap((branch) => (branch.search === null ? [] : [branch.search])))];
-  return { fullText, searches, branches, test: compiled.test, filtered: compiled.filtered };
+  return { fullText, searches, branches, test: compiled.test, filtered: compiled.filtered, truncated: expansion?.truncated ?? false };
 }
 
-function localHit(note: NoteItem): NoteSearchHit {
+export function localHit(note: NoteItem): NoteSearchHit {
   return {
     id: note.id,
     noteId: null,
@@ -276,6 +269,17 @@ function localHit(note: NoteItem): NoteSearchHit {
   };
 }
 
+function bestHits(lists: Iterable<readonly NoteSearchHit[]>): NoteSearchHit[] {
+  const best = new Map<string, NoteSearchHit>();
+  for (const hits of lists) {
+    for (const hit of hits) {
+      const seen = best.get(hit.id);
+      if (!seen || hit.score > seen.score) best.set(hit.id, hit);
+    }
+  }
+  return [...best.values()].sort((left, right) => right.score - left.score);
+}
+
 export function mergeHits(
   plan: VaultPlan,
   results: readonly (readonly NoteSearchHit[])[],
@@ -283,18 +287,14 @@ export function mergeHits(
   limit: number,
 ): NoteSearchHit[] {
   const byId = new Map(notes.map((note) => [note.id, note]));
-  const best = new Map<string, NoteSearchHit>();
-  const consider = (hit: NoteSearchHit, keep: (item: VaultItem) => boolean) => {
-    const note = byId.get(hit.id);
-    if (!note || !keep(note)) return;
-    const seen = best.get(hit.id);
-    if (!seen || hit.score > seen.score) best.set(hit.id, hit);
-  };
-  for (const branch of plan.branches) {
+  const kept = plan.branches.map((branch) => {
     const hits = branch.search === null ? notes.map(localHit) : (results[plan.searches.indexOf(branch.search)] ?? []);
-    for (const hit of hits) consider(hit, branch.keep);
-  }
-  return [...best.values()].sort((left, right) => right.score - left.score).slice(0, limit);
+    return hits.filter((hit) => {
+      const note = byId.get(hit.id);
+      return note !== undefined && branch.keep(note);
+    });
+  });
+  return bestHits(kept).slice(0, limit);
 }
 
 function single(key: string, value: string): FacetOption {
@@ -350,6 +350,8 @@ export function useVaultQuery(source: string, tags: readonly NoteTagCount[] | nu
   return useMemo(() => {
     const context = { now: Date.now() };
     const query = analyze(source, schema, context);
-    return { schema, query, plan: vaultPlan(query, schema, context) };
+    const plan = vaultPlan(query, schema, context);
+    if (!plan.truncated) return { schema, query, plan };
+    return { schema, query: { ...query, diagnostics: [...query.diagnostics, truncatedDiagnostic(source)] }, plan };
   }, [source, schema]);
 }

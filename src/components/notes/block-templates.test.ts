@@ -1,13 +1,10 @@
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { i18n, loadNamespace } from "@/i18n";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { i18n } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { NEW_BLOCKS, newChartSource } from "./block-templates";
 import { checkChart } from "./chart-block";
 import { htmlTemplate } from "./html-block";
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+import "./tests/setup";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -30,7 +27,6 @@ describe("block templates", () => {
     const source = newChartSource();
     expect(JSON.parse(source)).toEqual({
       title: enNotes.blocks.newChart.title,
-      description: enNotes.blocks.newChart.description,
       categories: ["A", "B", "C"],
       series: [{ name: enNotes.blocks.newChart.series, values: [3, 5, 2] }],
     });

@@ -5,6 +5,7 @@ import { TextOperation } from "../live/ot";
 import { RemoteDocumentSession } from "../live/remote-session";
 import { FakeChannel } from "../live/tests/fake-channel";
 import { browserClock, LIVE_SEND_MS, NoteLiveBinding, type NoteLiveClock, type NoteLiveEditor } from "./note-live";
+import { propertySeeds } from "@/components/notes/tests/property-seeds";
 
 interface Block {
   kind: "p" | "li";
@@ -317,10 +318,11 @@ async function setup(text: string, count = 2) {
 }
 
 describe("NoteLiveBinding", () => {
-  it("converges for 1000 seeded random interleavings of typing, IME, late joins and delivery", async () => {
+  it("converges for seeded random interleavings of typing, IME, late joins and delivery", async () => {
+    const runs = propertySeeds(1000, 50);
     let exact = 0;
-    for (let seed = 1; seed <= 1000; seed += 1) if (await randomRun(seed)) exact += 1;
-    expect(exact).toBe(1000);
+    for (let seed = 1; seed <= runs; seed += 1) if (await randomRun(seed)) exact += 1;
+    expect(exact).toBe(runs);
   });
 
   it("turns local typing into one operation per send", async () => {
@@ -577,18 +579,23 @@ describe("NoteLiveBinding", () => {
     expect(bob.editor.serialize()).toBe("claim one\nclaim two, with a citation");
   });
 
-  it("recovers from a send that fails by showing the shared text", async () => {
-    const { clock, peers } = await setup("base");
-    const [alice] = peers;
+  it("keeps local typing when a send fails, merged with what others sent", async () => {
+    const { channel, clock, peers } = await setup("base\nother");
+    const [alice, bob] = peers;
     alice.errors.length = 0;
     alice.session.applyLocal = () => {
       throw new Error("boom");
     };
+    bob.editor.edit(1, () => ({ text: "other by bob" }));
+    bob.binding.localChanged();
+    clock.fireAll();
+    channel.drain();
+    clock.settle();
     alice.editor.edit(0, () => ({ text: "base edited" }));
     alice.binding.localChanged();
     clock.fireAll();
     expect(alice.errors).toHaveLength(1);
-    expect(alice.editor.serialize()).toBe("base");
+    expect(alice.editor.serialize()).toBe("base edited\nother by bob");
   });
 
   it("falls back to a text diff when remote edits cannot be tracked", async () => {

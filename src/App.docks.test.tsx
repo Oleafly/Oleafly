@@ -486,7 +486,7 @@ describe("project dock layout", () => {
     const { createRoot } = await import("react-dom/client");
     const { default: App } = await import("./App");
     const { useSettingsStore } = await import("@/store/settings");
-    useSettingsStore.setState({ appFontSize: 20 });
+    useSettingsStore.setState({ appFontSize: 20, showTree: true, openInTree: true });
     const host = document.getElementById("root");
     if (!host) throw new Error("test root is unavailable");
     root = createRoot(host);
@@ -532,7 +532,7 @@ describe("project dock layout", () => {
     expect(panelHandleMocks.resize).not.toHaveBeenCalledWith("sidebar", expect.anything());
   });
 
-  it("reopens the terminal when its panel is dragged back up after collapsing", async () => {
+  it("closes the terminal and removes its panel when the panel is dragged shut", async () => {
     const { act } = await import("react");
     const { createRoot } = await import("react-dom/client");
     const { default: App } = await import("./App");
@@ -551,17 +551,12 @@ describe("project dock layout", () => {
 
     const terminal = panelHandleMocks.callbacks.get("terminal");
     expect(terminal?.collapse).toBeTypeOf("function");
-    expect(terminal?.expand).toBeTypeOf("function");
 
     await act(async () => {
       terminal?.collapse?.();
     });
     expect(useSettingsStore.getState().terminalOpen).toBe(false);
-
-    await act(async () => {
-      terminal?.expand?.();
-    });
-    expect(useSettingsStore.getState().terminalOpen).toBe(true);
+    expect(document.getElementById("v-terminal")).toBeNull();
   });
 
   it("draws the terminal divider as a 1px rule that only tints with opaque colour", async () => {
@@ -600,11 +595,7 @@ describe("project dock layout", () => {
     await act(async () => {
       useSettingsStore.setState({ terminalOpen: false });
     });
-    const closed = document.getElementById("v-terminal");
-    expect(Array.from(closed?.classList ?? [])).toEqual(
-      expect.arrayContaining(["invisible", "h-0", "border-t-0"]),
-    );
-    expect(closed?.classList.contains("border-t")).toBe(false);
+    expect(document.getElementById("v-terminal")).toBeNull();
   });
 
   it("toggles the terminal dock from its registered keyboard shortcut", async () => {

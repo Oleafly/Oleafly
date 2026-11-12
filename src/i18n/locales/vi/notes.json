@@ -17,9 +17,37 @@
     "resize": "Đổi kích thước các khung",
     "closePanel": "Đóng khung",
     "newTab": "Tab mới",
-    "emptyPanel": "Khung này đang trống.",
+    "empty": {
+      "greetings": {
+        "begin": "Chúng ta nên bắt đầu từ đâu?",
+        "ready": "Sẵn sàng bất cứ khi nào bạn muốn.",
+        "mind": "Hôm nay bạn đang nghĩ gì?",
+        "resume": "Tiếp tục từ chỗ bạn đã dừng?",
+        "working": "Bạn đang làm việc gì?",
+        "first": "Bạn muốn viết gì trước tiên?",
+        "blank": "Bắt đầu với một trang trống hoặc một mẫu."
+      },
+      "hints": {
+        "daily": "Kế hoạch và nhật ký cho hôm nay",
+        "experimentLog": "Các lượt chạy và những gì chúng cho thấy",
+        "paperReading": "Các nhận định của một bài báo",
+        "literatureMatrix": "So sánh các bài báo cạnh nhau",
+        "meeting": "Chương trình họp và các quyết định",
+        "labProtocol": "Các bước người khác có thể làm theo",
+        "weeklyLog": "Những việc đã xong trong tuần này",
+        "proposal": "Mục tiêu, phương pháp và lịch trình"
+      },
+      "moreTemplates": "Mẫu khác",
+      "continue": "Tiếp tục",
+      "searchAll": "Tìm mọi ghi chú"
+    },
     "closeMissing": "Đóng tab",
-    "notesHome": "Về Trang chủ Ghi chú"
+    "notesHome": "Về Trang chủ Ghi chú",
+    "breadcrumb": "Đường dẫn điều hướng",
+    "breadcrumbHome": "Trang chủ Ghi chú",
+    "brand": "Oleafly Notes",
+    "back": "Quay lại",
+    "forward": "Tiến tới"
   },
   "saveStatus": {
     "saved": "Đã lưu",
@@ -40,7 +68,7 @@
       "notebook": "Notebook"
     },
     "author": {
-      "all": "Bất kỳ ai",
+      "all": "Tất cả",
       "agent": "Agent",
       "you": "Bạn"
     },
@@ -52,14 +80,17 @@
       "data": "Không có tệp dữ liệu nào khớp với các bộ lọc này.",
       "notebook": "Không có notebook nào khớp với các bộ lọc này."
     },
-    "noNotes": "Chưa có ghi chú nào. Hãy bắt đầu bằng Ghi chú mới.",
+    "start": {
+      "title": "Chưa có ghi chú nào"
+    },
     "ungrouped": "Ghi chú",
     "agentFallback": "Agent",
     "settings": "Cài đặt",
     "filters": {
-      "title": "Bộ lọc",
+      "title": "Thẻ",
       "active_other": "Đang bật {{count}} bộ lọc",
-      "clear": "Xoá bộ lọc"
+      "clear": "Xoá bộ lọc",
+      "writtenBy": "Người viết"
     },
     "menu": {
       "more": "Thêm",
@@ -80,18 +111,31 @@
       "templateOn": "“{{name}}” giờ là một trong các mẫu của bạn.",
       "templateOff": "“{{name}}” không còn là mẫu nữa.",
       "linkProject": "Liên kết với dự án",
-      "compareConflict": "So sánh bản sao xung đột"
+      "compareConflict": "So sánh bản sao xung đột",
+      "copyLink": "Sao chép liên kết",
+      "linkCopied": "Đã sao chép liên kết tới “{{name}}”.",
+      "copyLinkFailed": "Không thể sao chép liên kết tới “{{name}}”.",
+      "duplicate": "Nhân đôi",
+      "copyTitle": "{{name}} (bản sao)",
+      "duplicateFailed": "Không thể nhân đôi “{{name}}”.",
+      "export": "Xuất",
+      "exportAs": {
+        "markdown": "Thư mục Markdown (.md)",
+        "docx": "Tài liệu Word (.docx)",
+        "html": "Trang web (.html)",
+        "latex": "LaTeX (.tex)",
+        "typst": "Typst (.typ)"
+      },
+      "exportFailed": "Không thể xuất “{{name}}”.",
+      "copyMarkdown": "Sao chép dạng Markdown",
+      "markdownCopied": "Đã sao chép “{{name}}” dạng Markdown.",
+      "copyMarkdownFailed": "Không thể sao chép “{{name}}” dạng Markdown."
     },
     "conflicts": {
-      "title": "Hai phiên bản của “{{name}}”",
-      "description": "Ghi chú này đã thay đổi ở đây và trên máy tính khác trước khi đồng bộ, nên Oleafly giữ cả hai. Hãy giữ một phiên bản. Phiên bản còn lại sẽ được chuyển vào Thùng rác.",
-      "diffLabel": "Khác biệt giữa hai phiên bản",
-      "loading": "Đang đọc cả hai phiên bản…",
-      "readFailed": "Không thể đọc bản sao xung đột.",
-      "resolveFailed": "Không thể giữ phiên bản đó.",
-      "keepMine": "Giữ phiên bản trên máy tính này",
-      "useCopy": "Dùng phiên bản từ máy tính kia",
       "badge": "Ghi chú này có bản sao xung đột"
+    },
+    "suggestions": {
+      "badge": "Ghi chú này có thay đổi được đề xuất đang chờ"
     }
   },
   "home": {
@@ -100,7 +144,9 @@
     "tabs": {
       "label": "Ghi chú cần hiển thị",
       "mine": "Ghi chú của tôi",
-      "favorites": "Yêu thích"
+      "favorites": "Yêu thích",
+      "tasks": "Công việc",
+      "attachments": "Tệp đính kèm"
     },
     "sortBy": "Sắp xếp theo",
     "sort": {
@@ -110,8 +156,7 @@
       "title": "Tiêu đề"
     },
     "layout": "Bố cục ghi chú",
-    "empty": "Chưa có ghi chú nào. Hãy bắt đầu một ghi chú và nhờ agent giúp bạn viết.",
-    "noFavorites": "Chưa có mục yêu thích nào. Gắn sao cho một ghi chú để giữ nó ở đây.",
+    "noFavorites": "Chưa có mục yêu thích nào. Thêm một ghi chú vào yêu thích để giữ nó ở đây.",
     "noMatches": "Không có ghi chú nào khớp với “{{query}}”.",
     "author": "Tác giả"
   },
@@ -124,8 +169,9 @@
     "loadFailed": "Không thể mở ghi chú này. Dự án của nó có thể đã bị chuyển đi hoặc bị xoá.",
     "retryLoad": "Thử lại",
     "closeTab": "Đóng tab",
-    "imageFailed": "Không thể lưu ảnh vào ghi chú.",
-    "onlyImages": "Chỉ có thể thêm ảnh PNG, JPEG và SVG vào ghi chú.",
+    "fileFailed": "Không thể thêm tệp vào ghi chú: {{error}}",
+    "fileTooLarge": "{{name}} lớn hơn 64 MB nên không được thêm.",
+    "unsupportedFile": "Ghi chú chỉ có thể chứa ảnh, âm thanh, video, PDF, bảng (CSV, TSV hoặc Excel), tệp phân tử và notebook Jupyter.",
     "remoteImages": {
       "more": "Thêm cách tải ảnh",
       "loadAll": "Tải tất cả ảnh trong ghi chú này",
@@ -148,6 +194,10 @@
       "figure": "Thêm hình",
       "abstract": "Tóm tắt cho phần tóm lược"
     },
+    "wholeNote": {
+      "proofread": "Hiệu đính ghi chú",
+      "rewrite": "Viết lại ghi chú"
+    },
     "collapse": "Ẩn ô yêu cầu",
     "expand": "Hiện ô yêu cầu"
   },
@@ -156,6 +206,22 @@
     "acceptAll": "Chấp nhận tất cả",
     "position": "Thay đổi {{current}} trên {{total}}",
     "undo": "Hoàn tác"
+  },
+  "versions": {
+    "title": "Lịch sử phiên bản",
+    "summary": "Oleafly lưu một phiên bản mỗi khi bạn chấp nhận tất cả thay đổi được đề xuất, và trước khi khôi phục một phiên bản cũ. Bạn cũng có thể tự lưu một phiên bản.",
+    "empty": "Chưa có phiên bản nào. Hãy lưu một phiên bản để giữ ghi chú như hiện tại.",
+    "save": "Lưu phiên bản",
+    "saved": "Đã lưu phiên bản.",
+    "unchanged": "Chưa có gì thay đổi kể từ phiên bản gần nhất.",
+    "saveFailed": "Không thể lưu phiên bản của ghi chú này.",
+    "restore": "Khôi phục phiên bản này",
+    "restored": "Đã khôi phục phiên bản. Văn bản bị thay thế cũng được lưu thành một phiên bản.",
+    "restoreFailed": "Không thể khôi phục phiên bản này.",
+    "comparing": "Đang so sánh với ghi chú",
+    "readFailed": "Không thể đọc phiên bản này.",
+    "changes": "Khôi phục phiên bản này sẽ thay đổi gì",
+    "textOnly": "Khôi phục chỉ thay đổi văn bản của ghi chú. Các tệp đính kèm được giữ nguyên."
   },
   "toolbar": {
     "label": "Định dạng",
@@ -171,9 +237,6 @@
     "displayMath": "Toán hiển thị",
     "citation": "Trích dẫn",
     "noCitations": "Dự án này chưa có tài liệu tham khảo nào",
-    "tableSize": "Bảng {{cols}} × {{rows}}",
-    "addRow": "Thêm hàng",
-    "addColumn": "Thêm cột",
     "chart": "Biểu đồ",
     "mermaid": "Sơ đồ Mermaid",
     "outline": "Dàn ý",
@@ -186,7 +249,12 @@
       "wide": "Rộng",
       "full": "Toàn chiều rộng"
     },
-    "notebook": "Chèn notebook"
+    "attach": "Đính kèm tệp",
+    "attachFilter": "Ảnh, âm thanh, video, PDF, bảng, phân tử và notebook",
+    "codeLanguage": "Ngôn ngữ",
+    "plainCode": "Văn bản thuần",
+    "imageSize": "Kích thước ảnh",
+    "originalSize": "Kích thước gốc"
   },
   "blocks": {
     "chart": "Biểu đồ",
@@ -195,9 +263,28 @@
     "diagramError": "Sơ đồ này có lỗi. Hãy mở mã nguồn để sửa.",
     "chartError": "Dữ liệu của biểu đồ này không hợp lệ. Hãy mở mã nguồn để sửa.",
     "noPreview": "Khối này chưa có bản xem trước. Hãy mở mã nguồn để chỉnh sửa.",
+    "syntax": {
+      "help": "Cách viết khối {{block}}",
+      "chart": "JSON gồm type, categories và series:\n{\"type\": \"bar\", \"categories\": [\"A\", \"B\"], \"series\": [{\"name\": \"Run 1\", \"values\": [1, 2]}]}\nCác loại khác: line, area, scatter, pie, donut, histogram.",
+      "plot": "Mỗi dòng một đường cong hoặc một tuỳ chọn:\ny = x^2 - 1 hoặc x = cos(t), y = sin(t)\ndomain: -5, 5 và point: 1, 0, Root",
+      "csv": "Các dòng giá trị, dòng đầu là tiêu đề:\nRun, Ratio\nHoặc đọc một tệp bằng path: assets/results.csv",
+      "latex": "Công thức hiển thị riêng (LaTeX), như phương trình hoặc môi trường align:\n\\begin{align} a &= b + c \\end{align}\nHoá học với \\ce{H2O} và đơn vị với \\pu{5 mg}.",
+      "typst": "Một đoạn mã (Typst), được vẽ thành ảnh:\n$ E = m c^2 $\nKhông dùng được các gói từ internet.",
+      "mermaid": "Một sơ đồ (Mermaid), ví dụ:\nflowchart LR\nA --> B",
+      "d2": "Một sơ đồ (D2), ví dụ:\nclient -> server: request\nserver.shape: cylinder",
+      "tikz": "Các lệnh TikZ, hoặc cả một tikzpicture:\n{{example}}\nCác dòng đứng trước hình, như \\usetikzlibrary{positioning}, được đặt trong phần mở đầu.",
+      "circuitikz": "Các lệnh CircuiTikZ, hoặc cả một môi trường circuitikz:\n{{example}}\nCác dòng đứng trước mạch, như \\ctikzset{resistors/scale=0.8}, được đặt trong phần mở đầu.",
+      "svg": "Một phần tử svg, ví dụ:\n<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" /></svg>\nTập lệnh, liên kết và ảnh từ xa sẽ bị loại bỏ.",
+      "html": "Một trang HTML đầy đủ hoặc một đoạn có CSS và tập lệnh.\nKhối này không có truy cập internet, nên hãy đặt dữ liệu của bạn trong khối.\nTập lệnh bắt đầu chạy khi bạn nhấp Chạy.",
+      "jsx": "Một tệp thành phần React có export mặc định:\nexport default function App() { return <p>Hello</p> }\nNó có thể nhập react, recharts, d3, lodash, papaparse, chart.js và lucide-react.",
+      "smiles": "Mỗi dòng một chuỗi SMILES, có thể kèm tên:\nAspirin: CC(=O)OC1=CC=CC=C1C(=O)O\nTối đa 24 mỗi khối.",
+      "molecule": "Các dòng tuỳ chọn trước, như format: pdb và style: cartoon.\nSau đó là nội dung tệp, hoặc path: assets/1abc.pdb",
+      "sequence": "Bản ghi FASTA hoặc một trình tự thô:\n>sample 1\nATGGCCATTGTAATG",
+      "notebook": "Đường dẫn của notebook ở dòng đầu:\nassets/analysis.ipynb\nSau đó là các dòng tuỳ chọn như cells: 2-5 và code: hide.",
+      "bookmark": "Mỗi dòng một trường, bắt đầu bằng địa chỉ web:\nurl: https://example.com/article\nSau đó là các dòng tuỳ chọn title:, description:, image:, site: và favicon:."
+    },
     "newChart": {
       "title": "Biểu đồ mới",
-      "description": "Nhờ agent điền nội dung, hoặc tự sửa mã nguồn.",
       "series": "Giá trị"
     },
     "newHtml": {
@@ -234,6 +321,7 @@
     },
     "sequence": {
       "label": "Trình tự",
+      "template": "Trình tự mã hoá ví dụ",
       "empty": "Hãy dán một bản ghi FASTA hoặc một trình tự thô.",
       "character": "Dòng {{line}}, cột {{column}}: “{{character}}” không phải là một gốc.",
       "untitled": "Trình tự chưa đặt tên",
@@ -369,7 +457,8 @@
     "artifact": {
       "run": "Chạy",
       "stop": "Dừng",
-      "alwaysRun": "Luôn chạy các khối trong ghi chú này",
+      "alwaysRun": "Luôn chạy khối này",
+      "paused": "Đã tạm dừng vì một khối trong ghi chú này đã treo hoặc đóng ứng dụng lần trước.",
       "desktopOnly": "Cần ứng dụng máy tính để chạy",
       "loading": "Đang tải…",
       "loadFailed": "Không thể tải khối này.",
@@ -377,7 +466,7 @@
       "stopped": "Khối này đã ngừng phản hồi.",
       "reload": "Tải lại",
       "failed": "Không thể khởi động khối này: {{error}}",
-      "offline": "Các khối không thể tải tệp từ internet, nên những tệp này đã bị bỏ qua:",
+      "offline": "Những tệp từ internet này đã bị bỏ qua:",
       "more_other": "và {{count}} mục khác",
       "frameTitle": "Kết quả của {{label}}",
       "previewTitle": "Xem trước {{label}}",
@@ -387,7 +476,6 @@
       "noComponent": "Thành phần này không có export mặc định."
     },
     "code": {
-      "copy": "Sao chép",
       "copied": "Đã sao chép",
       "copyFailed": "Sao chép thất bại",
       "copyLabel": "Sao chép mã"
@@ -397,6 +485,22 @@
       "empty": "Khối SVG này đang trống.",
       "invalid": "SVG này không hợp lệ. Hãy mở mã nguồn để sửa.",
       "tooLarge": "SVG này quá lớn để hiển thị."
+    },
+    "d2": {
+      "alt": "Sơ đồ D2",
+      "empty": "Khối D2 này đang trống.",
+      "loading": "Đang vẽ…",
+      "error": "D2 không thể vẽ sơ đồ này: {{error}}",
+      "line": "Dòng {{line}}: {{message}}"
+    },
+    "tikz": {
+      "alt": "Hình vẽ TikZ",
+      "circuitAlt": "Sơ đồ mạch",
+      "empty": "Khối {{block}} này đang trống.",
+      "desktopOnly": "Xem trước {{block}} cần ứng dụng máy tính.",
+      "sharedNotice": "Ghi chú này được chia sẻ. LaTeX chạy trên máy tính này và có thể đọc tệp của bạn, nên hãy kiểm tra mã nguồn trước khi vẽ.",
+      "draw": "Vẽ",
+      "error": "LaTeX không thể biên dịch khối này: {{error}}"
     },
     "typst": {
       "alt": "Kết quả Typst",
@@ -426,7 +530,33 @@
       "code": "Mã",
       "math": "Toán",
       "divider": "Đường phân cách",
+      "footnote": "Chú thích cuối trang",
       "basic": "Cơ bản"
+    },
+    "media": {
+      "play": "Phát {{name}}",
+      "pdfPage": "{{name}}, trang {{page}}",
+      "openPdf": "Mở PDF",
+      "openFailed": "Không thể mở tệp: {{error}}",
+      "missing": "Không tìm thấy tệp: {{path}}",
+      "unreadable": "Không thể đọc {{name}}.",
+      "cantPlay": "Không thể phát {{name}} ở đây. Máy tính này có thể không có codec cho định dạng của tệp.",
+      "embed": "Phát video từ {{site}}",
+      "embedTitle": "Video từ {{site}}",
+      "embedFailed": "Trình phát không khởi động. Hãy thử lại hoặc mở video trên {{site}}.",
+      "watch": "Xem",
+      "watchOn": "Xem trên {{site}}",
+      "pasteChoice": "Cách hiển thị liên kết video này",
+      "embedChoice": "Nhúng video",
+      "linkChoice": "Giữ dạng liên kết"
+    },
+    "bookmark": {
+      "label": "Dấu trang",
+      "pasteChoice": "Cách hiển thị liên kết này",
+      "cardChoice": "Khung dấu trang",
+      "ask": "Đánh dấu một trang web",
+      "loading": "Đang tải bản xem trước của trang",
+      "noUrl": "Hãy thêm một dòng url: với địa chỉ web bắt đầu bằng https:// hoặc http://."
     }
   },
   "notebook": {
@@ -446,10 +576,7 @@
     "showLess": "Thu gọn",
     "showAllCells_other": "Hiện tất cả {{count}} ô",
     "outputImage": "Kết quả của ô {{number}}",
-    "outputFrame": "Kết quả HTML của ô {{number}}",
-    "pickTitle": "Chèn một notebook",
-    "filter": "Notebook Jupyter",
-    "importFailed": "Không thể thêm notebook: {{error}}"
+    "outputFrame": "Kết quả HTML của ô {{number}}"
   },
   "icons": {
     "choose": "Chọn biểu tượng",
@@ -603,7 +730,7 @@
     "inserting": "Đang sao chép",
     "insertFailed": "Không thể sao chép tệp này vào ghi chú: {{error}}",
     "newProject": "Dự án mới",
-    "htmlPreview": "Oleafly chưa chạy được hình tương tác.",
+    "htmlPreview": "Để chạy hình này, hãy dán mã của nó vào một khối (HTML) trong ghi chú rồi nhấn Chạy.",
     "kind": {
       "figure": "Hình",
       "html": "Hình tương tác",
@@ -617,7 +744,14 @@
   "sendToPaper": {
     "title": "Gửi sang một bài báo",
     "description": "Oleafly chuyển đổi nội dung này một lần và chèn vào vị trí con trỏ. Bản sao trong bài báo sẽ không còn liên kết với ghi chú.",
-    "send": "Gửi"
+    "send": "Gửi",
+    "leftOut": "Khối {{block}} chỉ có trong ghi chú."
+  },
+  "citations": {
+    "references": "Tài liệu tham khảo",
+    "fromReference": "Từ một tài liệu tham khảo",
+    "unknown": "Không có trong Tài liệu tham khảo của dự án được liên kết: {{keys}}",
+    "openNote": "Mở ghi chú về bài báo này: {{title}}"
   },
   "links": {
     "menu": "Liên kết tới ghi chú hoặc dự án",
@@ -627,13 +761,51 @@
     "missingNote": "Ghi chú này không còn tồn tại",
     "missingNoteCreate": "Ghi chú này không còn tồn tại. Nhấp để tạo ghi chú mới với tên này.",
     "missingProject": "Dự án này không còn tồn tại",
-    "linkedFrom": "Được liên kết từ"
+    "linkedFrom": "Được liên kết từ",
+    "showAll": "Hiện tất cả {{total}}"
+  },
+  "linksSearch": {
+    "blocks": {
+      "loading": "Đang tải các khối",
+      "none": "Không có khối nào khớp",
+      "missingBlock": "Khối đó không có trong ghi chú",
+      "assignFailed": "Không thể thêm ID khối vào ghi chú đó.",
+      "handle": "Tuỳ chọn khối",
+      "copyLink": "Sao chép liên kết tới khối",
+      "linkCopied": "Đã sao chép liên kết tới khối này.",
+      "copyFailed": "Không thể sao chép liên kết tới khối này.",
+      "noId": "Khối này chưa có ID, và bạn không thể sửa ghi chú này.",
+      "linkedFrom": "Được liên kết từ",
+      "links_other": "{{count}} ghi chú liên kết tới đây",
+      "openLinked": "Mở {{title}}",
+      "toBlock": "Đi tới khối: {{text}}"
+    },
+    "tagBlocks": {
+      "more_other": "Hiện thêm {{count}} khối"
+    },
+    "dead": {
+      "menu": "Liên kết hỏng",
+      "title": "Liên kết hỏng",
+      "summary_other": "{{count}} liên kết trỏ tới ghi chú hoặc khối không còn tồn tại.",
+      "none": "Không có liên kết hỏng. Mọi liên kết đều trỏ tới ghi chú hoặc khối vẫn còn tồn tại.",
+      "loading": "Đang kiểm tra liên kết",
+      "failed": "Không thể đọc các liên kết trong ghi chú của bạn.",
+      "missingNotes": "Ghi chú bị thiếu",
+      "missingBlocks": "Khối bị thiếu",
+      "noteMeta": "Dòng {{line}}: ghi chú không còn tồn tại",
+      "blockMeta": "Dòng {{line}}: {{block}} không còn trong {{title}}",
+      "create": "Tạo ghi chú",
+      "relink": "Chuyển liên kết sang {{title}}",
+      "remove": "Gỡ liên kết",
+      "fixFailed": "Không thể thay đổi liên kết."
+    }
   },
   "projectNotes": {
     "searchLabel": "Tìm trong ghi chú của dự án này",
     "searchPlaceholder": "Tìm ghi chú",
     "clearSearch": "Xoá tìm kiếm",
     "noMatches": "Không có ghi chú nào khớp với tìm kiếm",
+    "loading": "Đang đọc ghi chú của dự án",
     "edited": "Đã sửa {{when}}",
     "createFailed": "Không thể tạo ghi chú.",
     "projectGroup": "Ghi chú dự án",
@@ -679,7 +851,33 @@
     "callouts": {
       "type": "Loại hộp chú thích: {{type}}",
       "fold": "Thu gọn hộp chú thích",
-      "unfold": "Mở rộng hộp chú thích"
+      "unfold": "Mở rộng hộp chú thích",
+      "types": {
+        "note": "Ghi chú",
+        "abstract": "Tóm tắt",
+        "info": "Thông tin",
+        "todo": "Việc cần làm",
+        "tip": "Mẹo",
+        "success": "Thành công",
+        "question": "Câu hỏi",
+        "warning": "Cảnh báo",
+        "failure": "Thất bại",
+        "danger": "Nguy hiểm",
+        "bug": "Lỗi",
+        "example": "Ví dụ",
+        "quote": "Trích dẫn",
+        "theorem": "Định lý",
+        "lemma": "Bổ đề",
+        "corollary": "Hệ quả",
+        "proposition": "Mệnh đề",
+        "definition": "Định nghĩa",
+        "proof": "Chứng minh",
+        "hypothesis": "Giả thuyết",
+        "assumption": "Giả định",
+        "result": "Kết quả",
+        "method": "Phương pháp",
+        "remark": "Nhận xét"
+      }
     },
     "links": {
       "loadingHeadings": "Đang tải tiêu đề",
@@ -742,6 +940,206 @@
       }
     }
   },
+  "fields": {
+    "today": "Hôm nay",
+    "tomorrow": "Ngày mai",
+    "yesterday": "Hôm qua",
+    "chip": "{{key}}: {{value}}",
+    "empty": "không có giá trị",
+    "edit": "Thay đổi hoặc gỡ",
+    "keys": {
+      "due": "Hạn",
+      "scheduled": "Lên lịch",
+      "priority": "Ưu tiên",
+      "start": "Bắt đầu",
+      "created": "Đã tạo",
+      "completed": "Hoàn thành",
+      "date": "Ngày",
+      "cancelled": "Đã huỷ"
+    },
+    "priorities": {
+      "highest": "Cao nhất",
+      "high": "Cao",
+      "medium": "Trung bình",
+      "low": "Thấp",
+      "lowest": "Thấp nhất"
+    },
+    "editor": {
+      "label": "Sửa {{key}}",
+      "key": "Tên",
+      "value": "Giá trị",
+      "brackets": "Chỉ dùng dấu ngoặc vuông cho liên kết, như [[Note]].",
+      "save": "Lưu",
+      "remove": "Gỡ"
+    }
+  },
+  "at": {
+    "menu": "Chèn ngày, trường, thẻ hoặc ghi chú",
+    "groups": {
+      "dates": "Ngày",
+      "due": "Ngày hạn",
+      "fields": "Trường công việc",
+      "tags": "Thẻ",
+      "notes": "Ghi chú"
+    },
+    "today": "Hôm nay",
+    "tomorrow": "Ngày mai",
+    "yesterday": "Hôm qua",
+    "next": "{{weekday}} tới",
+    "pick": "Chọn ngày",
+    "pickerLabel": "Chọn ngày",
+    "due": "Ngày hạn",
+    "scheduled": "Ngày lên lịch",
+    "priority": "Ưu tiên",
+    "priorityValue": "Ưu tiên: {{priority}}",
+    "custom": "Trường tuỳ chỉnh",
+    "addField": "Thêm trường “{{key}}”",
+    "setField": "Đặt {{key}} thành “{{value}}”",
+    "typeValue": "Nhập giá trị cho {{key}}, rồi nhấn Enter."
+  },
+  "tasks": {
+    "filters": "Bộ lọc công việc",
+    "loading": "Đang đọc công việc của bạn",
+    "failed": "Không thể đọc công việc của bạn.",
+    "empty": "Chưa có công việc nào. Bắt đầu một dòng bằng - [ ] trong bất kỳ ghi chú nào và nó sẽ hiện ở đây.",
+    "noMatches": "Không có công việc nào khớp với các bộ lọc này.",
+    "clear": "Xoá bộ lọc",
+    "list": "Công việc",
+    "count_other": "{{count}} công việc",
+    "complete": "Đánh dấu “{{text}}” là đã xong",
+    "reopen": "Đánh dấu “{{text}}” là chưa xong",
+    "openNote": "Mở {{title}}",
+    "toggleFailed": "Không thể cập nhật công việc.",
+    "moved": "Công việc đó đã thay đổi trong ghi chú của nó. Hãy mở ghi chú để cập nhật.",
+    "state": {
+      "label": "Hiện",
+      "open": "Chưa xong",
+      "done": "Đã xong",
+      "all": "Cả chưa xong và đã xong"
+    },
+    "due": {
+      "label": "Hạn",
+      "any": "Mọi hạn",
+      "overdue": "Quá hạn",
+      "today": "Đến hạn hôm nay",
+      "week": "Đến hạn trong 7 ngày tới",
+      "none": "Không có hạn"
+    },
+    "priority": {
+      "label": "Ưu tiên",
+      "any": "Mọi mức ưu tiên",
+      "high": "Ưu tiên cao",
+      "medium": "Ưu tiên trung bình",
+      "low": "Ưu tiên thấp",
+      "none": "Không có ưu tiên"
+    },
+    "tag": {
+      "label": "Thẻ",
+      "any": "Tất cả thẻ"
+    },
+    "project": {
+      "label": "Dự án",
+      "any": "Tất cả dự án"
+    },
+    "sort": {
+      "label": "Sắp xếp công việc theo",
+      "due": "Ngày hạn",
+      "priority": "Ưu tiên"
+    }
+  },
+  "attachments": {
+    "filters": "Bộ lọc tệp đính kèm",
+    "loading": "Đang tìm tệp đính kèm",
+    "failed": "Không thể đọc tệp đính kèm của bạn.",
+    "empty": "Chưa có tệp đính kèm nào. Thả một ảnh hoặc tệp vào ghi chú và nó sẽ hiện ở đây.",
+    "noMatches": "Không có tệp đính kèm nào khớp với các bộ lọc này.",
+    "clear": "Xoá bộ lọc",
+    "list": "Tệp đính kèm",
+    "count_other": "{{count}} tệp",
+    "openNote": "Mở {{title}}",
+    "copyLink": "Sao chép liên kết",
+    "linkCopied": "Đã sao chép liên kết tới “{{name}}”.",
+    "copyFailed": "Không thể sao chép liên kết tới “{{name}}”.",
+    "unused": "Không được dùng",
+    "type": {
+      "label": "Loại",
+      "all": "Tất cả loại",
+      "image": "Ảnh",
+      "audio": "Âm thanh",
+      "video": "Video",
+      "pdf": "PDF",
+      "other": "Khác"
+    },
+    "use": {
+      "label": "Sử dụng",
+      "all": "Tất cả tệp",
+      "unused": "Không được dùng"
+    }
+  },
+  "info": {
+    "title": "Thông tin",
+    "show": "Thông tin ghi chú",
+    "noNote": "Hãy mở một ghi chú để xem thông tin của nó.",
+    "details": "Chi tiết ghi chú",
+    "created": "Ngày tạo",
+    "updated": "Ngày cập nhật",
+    "words": "Từ",
+    "characters": "Ký tự",
+    "lines": "Dòng",
+    "readingTime": "Thời gian đọc",
+    "underMinute": "dưới một phút",
+    "noProperties": "Không có thuộc tính",
+    "noBacklinks": "Không có ghi chú nào liên kết tới đây",
+    "noMentions": "Không có ghi chú nào khác nhắc đến nó",
+    "noReferences": "Ghi chú này không có trích dẫn",
+    "noDeadLinks": "Không có liên kết hỏng",
+    "noAttachments": "Không có tệp đính kèm"
+  },
+  "calendar": {
+    "title": "Lịch",
+    "week": "Tuần",
+    "hasNote": "có ghi chú hằng ngày",
+    "due_other": "{{count}} công việc đến hạn",
+    "openWeek": "Mở ghi chú hằng tuần của tuần {{week}}",
+    "openMonthNote": "Mở ghi chú hằng tháng",
+    "createMonthNote": "Tạo ghi chú hằng tháng",
+    "today": "Hôm nay",
+    "failed": {
+      "weekly": "Không thể mở ghi chú hằng tuần.",
+      "monthly": "Không thể mở ghi chú hằng tháng."
+    }
+  },
+  "periodic": {
+    "title": "Ghi chú hằng ngày, hằng tuần và hằng tháng",
+    "daily": {
+      "label": "Ghi chú hằng ngày",
+      "description": "Ghi chú hôm nay và các ngày trong lịch ở thanh bên."
+    },
+    "weekly": {
+      "label": "Ghi chú hằng tuần",
+      "description": "Các số tuần trong lịch ở thanh bên."
+    },
+    "monthly": {
+      "label": "Ghi chú hằng tháng",
+      "description": "Tên tháng ở đầu lịch trong thanh bên."
+    },
+    "weekStart": {
+      "label": "Tuần bắt đầu vào",
+      "description": "Cột đầu tiên của lịch ở thanh bên. Số tuần được đếm từ ngày này, và nếu chọn Thứ Hai thì đó là số tuần theo ISO.",
+      "locale": "Mặc định theo vùng ({{day}})",
+      "monday": "Thứ Hai",
+      "sunday": "Chủ Nhật",
+      "saturday": "Thứ Bảy"
+    },
+    "format": "Định dạng tiêu đề",
+    "preview": "Ví dụ: {{title}}",
+    "invalidFormat": "Hãy thêm một phần ngày tháng, như YYYY hoặc WW.",
+    "template": "Mẫu",
+    "savedTemplate": "Mẫu bạn đã lưu",
+    "tag": "Thẻ",
+    "noTag": "Không có thẻ",
+    "formatHelp": "Định dạng tiêu đề dùng YYYY cho năm, MM cho tháng, MMMM cho tên tháng, DD cho ngày, dddd cho thứ trong tuần, WW cho số tuần và GGGG cho năm mà tuần đó thuộc về. Văn bản trong ngoặc vuông, như [W], được giữ nguyên. Các ghi chú bạn đã có vẫn giữ tiêu đề cũ, nên hãy đổi định dạng trước khi bắt đầu dùng."
+  },
   "live": {
     "share": "Chia sẻ",
     "shared": "Đã chia sẻ",
@@ -780,7 +1178,9 @@
     "outline": {
       "title": "Dàn ý",
       "empty": "Ghi chú này không có tiêu đề nào",
+      "emptyDetail": "Bắt đầu một dòng bằng # để thêm tiêu đề.",
       "noNote": "Hãy mở một ghi chú để xem dàn ý của nó",
+      "noNoteDetail": "Dàn ý theo dõi ghi chú bạn đang sửa.",
       "levels": "Cấp tiêu đề",
       "allLevels": "Tất cả các cấp",
       "upTo": "Đến H{{level}}",
@@ -788,7 +1188,8 @@
       "expand": "Mở rộng {{title}}"
     },
     "linksFailed": "Không thể đọc các liên kết giữa các ghi chú.",
-    "tagsFailed": "Không thể đọc các thẻ."
+    "tagsFailed": "Không thể đọc các thẻ.",
+    "loading": "Đang đọc các liên kết giữa ghi chú"
   },
   "vault": {
     "import": {
@@ -807,6 +1208,9 @@
       "seenTitle": "Bạn đã nhập thư mục này trước đây",
       "seenDescription_other": "Lần nhập ngày {{date}} đã thêm {{count}} ghi chú. Nếu nhập lại, Oleafly sẽ thêm các bản sao mới và giữ nguyên các ghi chú trước đó.",
       "again": "Nhập lại thành ghi chú mới",
+      "largeTitle": "Thư mục này có {{total}} ghi chú",
+      "largeDescription": "Nhập tất cả có thể mất một lúc, và mỗi tệp sẽ thành một ghi chú riêng trong thư viện của bạn. Bạn có thể dừng nhập bất cứ lúc nào.",
+      "largeConfirm": "Nhập tất cả",
       "doneTitle": "Đã nhập xong",
       "notes_other": "Đã nhập {{count}} ghi chú",
       "attachments_other": "Đã sao chép {{count}} tệp đính kèm",
@@ -827,6 +1231,7 @@
         "folderName": "Ghi chú Oleafly",
         "done_other": "Đã xuất {{count}} ghi chú",
         "skipped_other": "Không thể xuất {{count}} tệp đính kèm",
+        "paperLinks_other": "{{count}} liên kết tới bài báo đã chuyển thành văn bản thuần",
         "doneSkipped": "{{done}}. {{skipped}}.",
         "showFolder": "Hiện thư mục",
         "failed": "Không thể xuất các ghi chú."
@@ -854,8 +1259,10 @@
       "empty": "Chưa có thẻ nào. Hãy thêm #thẻ vào ghi chú, hoặc thêm thẻ trong phần thuộc tính của ghi chú.",
       "filter": "Hiện các ghi chú có thẻ {{tag}}",
       "clear": "Thôi lọc theo {{tag}}",
-      "expand": "Hiện các thẻ bên trong {{tag}}",
-      "collapse": "Ẩn các thẻ bên trong {{tag}}"
+      "search": "Lọc thẻ",
+      "noMatch": "Không có thẻ nào khớp với “{{query}}”.",
+      "showAll": "Hiện tất cả {{total}}",
+      "showFewer": "Ẩn bớt"
     },
     "switcher": {
       "open": "Đi tới ghi chú",
@@ -873,7 +1280,9 @@
     },
     "daily": {
       "open": "Ghi chú hôm nay",
-      "failed": "Không thể mở ghi chú hôm nay."
+      "failed": "Không thể mở ghi chú hôm nay.",
+      "previous": "Ghi chú hằng ngày trước: {{date}}",
+      "next": "Ghi chú hằng ngày tiếp theo: {{date}}"
     },
     "templates": {
       "open": "Tạo mới từ mẫu",
@@ -897,7 +1306,9 @@
         "proposal": "Đề cương nghiên cứu",
         "proof": "Chứng minh hoặc suy dẫn",
         "dataAnalysis": "Báo cáo phân tích dữ liệu",
-        "interview": "Ghi chú phỏng vấn"
+        "interview": "Ghi chú phỏng vấn",
+        "screeningLog": "Nhật ký sàng lọc",
+        "labNotebook": "Mục sổ ghi chép phòng thí nghiệm"
       },
       "descriptions": {
         "daily": "Kế hoạch và nhật ký liên tục cho một ngày",
@@ -910,7 +1321,9 @@
         "proposal": "Mục tiêu, phương pháp và tiến độ cho một đề xuất tài trợ hoặc luận văn",
         "proof": "Một kết quả, ý tưởng đằng sau và toàn bộ lập luận",
         "dataAnalysis": "Bạn đã chạy gì trên dữ liệu nào, và kết quả cho thấy gì",
-        "interview": "Câu trả lời, trích dẫn và chủ đề từ một cuộc trò chuyện"
+        "interview": "Câu trả lời, trích dẫn và chủ đề từ một cuộc trò chuyện",
+        "screeningLog": "Câu hỏi tổng quan, các tiêu chí và số lượng ở mỗi giai đoạn sàng lọc",
+        "labNotebook": "Một ngày tại bàn thí nghiệm: mục tiêu, mẫu, quy trình, quan sát và chữ ký"
       },
       "bodies": {
         "daily": "**{{weekday}}**\n\n## Kế hoạch\n- [ ] Việc quan trọng nhất\n- [ ] Việc thứ hai\n\n## Nhật ký\n- {{time}} Bắt đầu ngày làm việc\n\n## Ghi chú\n\n## Đã xong hôm nay\n- Chưa có gì\n\n## Ngày mai\n- [ ] Việc đầu tiên cần làm",
@@ -921,9 +1334,11 @@
         "labProtocol": "> [!warning] An toàn\n> Kiểm tra mối nguy, đồ bảo hộ và cách xử lý chất thải trước khi bắt đầu.\n\n## Mục đích\nQuy trình này tạo ra gì và khi nào nên dùng.\n\n## Vật liệu\n| Mục | Lượng | Nhà cung cấp hoặc mã danh mục | Ghi chú |\n| --- | --- | --- | --- |\n| | | | |\n\n## Thiết bị\n- Thiết bị và thông số cài đặt\n\n## Các bước\n1. Chuẩn bị\n2. Thực hiện\n3. Dọn dẹp\n\n## Kiểm tra\n- [ ] Đã chuẩn bị mẫu đối chứng\n- [ ] Đã ghi lại thông số\n- [ ] Đã dán nhãn mẫu với ngày và lượt chạy\n\n## Xử lý sự cố\n| Vấn đề | Nguyên nhân có thể | Cách khắc phục |\n| --- | --- | --- |\n| | | |\n\n## Lịch sử sửa đổi\n| Phiên bản | Ngày | Thay đổi |\n| --- | --- | --- |\n| 1 | {{date}} | Phiên bản đầu tiên |",
         "weeklyLog": "## Mục tiêu tuần này\n- [ ] Mục tiêu thứ nhất\n- [ ] Mục tiêu thứ hai\n- [ ] Mục tiêu thứ ba\n\n## Tiến độ\n| Ngày | Việc đã làm | Ghi chú |\n| --- | --- | --- |\n| Thứ Hai | | |\n| Thứ Ba | | |\n| Thứ Tư | | |\n| Thứ Năm | | |\n| Thứ Sáu | | |\n\n## Kết quả và hình\n- Những gì tuần này mang lại\n\n## Vướng mắc\n> [!warning] Cần trợ giúp\n> Việc gì đang bị kẹt, và ai có thể gỡ.\n\n## Đã đọc\n- Các bài báo đã đọc trong tuần\n\n## Tuần sau\n- [ ] Mục tiêu đầu tiên cho tuần sau",
         "proposal": "> [!abstract] Tóm tắt\n> Trong ba câu: vấn đề, cách tiếp cận và kết quả dự kiến.\n\n## Bối cảnh và động lực\nVì sao vấn đề này quan trọng lúc này, và những gì đã được biết.\n\n## Câu hỏi nghiên cứu\n1. Câu hỏi thứ nhất\n\n## Mục tiêu\n| Mục tiêu | Cách tiếp cận | Kết quả dự kiến |\n| --- | --- | --- |\n| 1 | | |\n\n## Phương pháp\nThiết kế, dữ liệu, phân tích và cách đo lường thành công.\n\n## Tiến độ\n| Giai đoạn | Tháng | Mốc |\n| --- | --- | --- |\n| | | |\n\n## Rủi ro và biện pháp giảm thiểu\n| Rủi ro | Khả năng xảy ra | Biện pháp giảm thiểu |\n| --- | --- | --- |\n| | | |\n\n## Nguồn lực và kinh phí\n\n## Tác động\nAi được hưởng lợi, và kết quả sẽ được chia sẻ ra sao.\n\n## Tài liệu tham khảo",
-        "proof": "> [!note] Phát biểu\n> Kết quả, được phát biểu chính xác cùng mọi giả thiết.\n\n## Định nghĩa và ký hiệu\n- Các ký hiệu và ý nghĩa của chúng\n\n## Ý tưởng\nÝ tưởng chính bằng lời đơn giản, trước khi đi vào chi tiết.\n\n## Chứng minh\n**Bước 1.** Thiết lập lập luận.\n\n**Bước 2.** Thực hiện ước lượng chính.\n\n**Bước 3.** Kết luận.\n\n## Kiểm tra\n- [ ] Mọi giả thiết đều được dùng\n- [ ] Các trường hợp biên đều được xét\n- [ ] Các hằng số và cận đều được theo dõi\n\n## Nhận xét\nCác tổng quát hoá, phản ví dụ và kết quả liên quan.",
-        "dataAnalysis": "> [!info] Câu hỏi\n> Quyết định mà phân tích này hỗ trợ.\n\n## Dữ liệu\n| Trường | Giá trị |\n| --- | --- |\n| Nguồn | |\n| Phiên bản hoặc ngày | |\n| Số hàng và cột | |\n| Loại trừ | |\n\n## Phương pháp\n- Các bước làm sạch\n- Mô hình hoặc kiểm định, và lý do\n- Các giả định đã kiểm tra\n\n## Kết quả\n| Chỉ số | Ước lượng | Khoảng | Ghi chú |\n| --- | --- | --- | --- |\n| | | | |\n\n## Hình\n- Hình và nội dung nó thể hiện\n\n## Diễn giải\nÝ nghĩa của kết quả đối với câu hỏi.\n\n## Hạn chế\n- Sai lệch, dữ liệu thiếu và những gì có thể làm thay đổi kết luận\n\n## Khả năng tái lập\n- [ ] Đã lưu và liên kết mã\n- [ ] Đã ghi lại seed ngẫu nhiên\n- [ ] Đã ghi chú phiên bản các gói",
-        "interview": "> [!warning] Đồng ý và quyền riêng tư\n> Xác nhận sự đồng ý trước khi ghi âm, và dùng mã người tham gia thay cho tên.\n\n## Bối cảnh\n| Mục | Giá trị |\n| --- | --- |\n| Mã người tham gia | |\n| Vai trò | |\n| Thời lượng | |\n| Bản ghi âm | |\n\n## Câu hỏi và trả lời\n### Câu hỏi 1\n- Trả lời\n\n### Câu hỏi 2\n- Trả lời\n\n## Trích dẫn\n> Một câu nói đáng giữ lại.\n\n## Chủ đề\n- Chủ đề và các câu trả lời minh hoạ\n\n## Theo dõi tiếp\n- [ ] Gửi lời cảm ơn\n- [ ] Chép lời và ẩn danh hoá"
+        "proof": "## Định nghĩa và ký hiệu\n> [!definition] Ký hiệu\n> Các ký hiệu bạn dùng và ý nghĩa của từng ký hiệu.\n\n## Phát biểu\n> [!theorem] Kết quả chính\n> Kết quả được phát biểu chính xác cùng mọi giả định.\n\n## Ý tưởng\nÝ tưởng chính bằng lời đơn giản, trước khi vào chi tiết.\n\n## Bổ đề\n> [!lemma] Bổ đề 1\n> Một khẳng định nhỏ hơn mà phần chứng minh chính cần đến.\n\n> [!proof] Chứng minh Bổ đề 1\n> Vì sao bổ đề đúng.\n\n## Chứng minh\n> [!proof] Chứng minh kết quả chính\n> **Bước 1.** Dựng lập luận.\n>\n> **Bước 2.** Thực hiện đánh giá chính, dùng Bổ đề 1.\n>\n> **Bước 3.** Kết luận.\n\n## Kiểm tra\n- [ ] Mọi giả định đều được dùng\n- [ ] Các trường hợp biên đã được xét\n- [ ] Hằng số và cận được theo dõi\n\n## Nhận xét\nCác khái quát hoá, phản ví dụ và kết quả liên quan.",
+        "dataAnalysis": "> [!info] Câu hỏi\n> Quyết định mà phân tích này hỗ trợ.\n\n## Dữ liệu\n| Trường | Giá trị |\n| --- | --- |\n| Nguồn | |\n| Phiên bản hoặc ngày | |\n| Số hàng và cột | |\n| Phần bị loại | |\n\n## Phương pháp\n- Các bước làm sạch\n- Mô hình hoặc kiểm định, và lý do\n- Các giả định đã kiểm tra\n\n## Kết quả\nBảng bên dưới là một khối (CSV). Hãy thay các hàng mẫu bằng kết quả của bạn.\n\n```csv\nThước đo,Ước tính,Cận dưới 95%,Cận trên 95%,n\nTrung bình nhóm A,0,0,0,0\nTrung bình nhóm B,0,0,0,0\nChênh lệch,0,0,0,0\n```\n\n## Hình\n- Hình và điều nó cho thấy\n\n## Diễn giải\nKết quả có ý nghĩa gì đối với câu hỏi.\n\n## Hạn chế\n- Sai lệch, dữ liệu thiếu và điều có thể làm thay đổi kết luận\n\n## Khả năng tái lập\n- [ ] Đã lưu và liên kết mã\n- [ ] Đã ghi lại hạt giống ngẫu nhiên\n- [ ] Đã ghi chú phiên bản các gói",
+        "interview": "> [!warning] Đồng ý và quyền riêng tư\n> Xác nhận sự đồng ý trước khi ghi âm, và dùng mã người tham gia thay cho tên.\n\n## Bối cảnh\n| Mục | Giá trị |\n| --- | --- |\n| Mã người tham gia | |\n| Vai trò | |\n| Thời lượng | |\n| Bản ghi âm | |\n\n## Câu hỏi và trả lời\n### Câu hỏi 1\n- Trả lời\n\n### Câu hỏi 2\n- Trả lời\n\n## Trích dẫn\n> Một câu nói đáng giữ lại.\n\n## Chủ đề\n- Chủ đề và các câu trả lời minh hoạ\n\n## Theo dõi tiếp\n- [ ] Gửi lời cảm ơn\n- [ ] Chép lời và ẩn danh hoá",
+        "screeningLog": "> [!question] Câu hỏi tổng quan (PICO)\n> - **Đối tượng:** ai hoặc cái gì được nghiên cứu\n> - **Can thiệp hoặc phơi nhiễm:** điều gì được thử nghiệm\n> - **So sánh:** so với điều gì\n> - **Kết cục:** điều gì được đo\n\n## Tiêu chí đưa vào\n- Thiết kế nghiên cứu\n- Đối tượng và bối cảnh\n- Ngôn ngữ và năm\n\n## Tiêu chí loại trừ\n- Lý do và cách nhận biết\n\n## Tìm kiếm\n| Ngày | Cơ sở dữ liệu | Truy vấn | Bản ghi |\n| --- | --- | --- | --- |\n| {{date}} | | | |\n\n## Số lượng ở mỗi giai đoạn\n| Giai đoạn | Bản ghi | Đã loại | Lý do chính |\n| --- | --- | --- | --- |\n| Tìm thấy qua tìm kiếm | | | |\n| Sau khi loại bản trùng | | | |\n| Đã sàng lọc tiêu đề và tóm tắt | | | |\n| Đã đánh giá toàn văn | | | |\n| Đưa vào tổng quan | | | |\n\n## Loại ở bước toàn văn\n| Bài báo | Lý do |\n| --- | --- |\n| | |\n\n## Bất đồng\n- Bài báo, quyết định của từng người đánh giá và cách giải quyết\n\n## Bước tiếp theo\n- [ ] Sàng lọc đợt tiếp theo\n- [ ] Kiểm tra số lượng có khớp không",
+        "labNotebook": "**{{weekday}}, {{date}}**\n\n## Mục tiêu\nĐiều bạn định làm hôm nay và lý do.\n\n## Vật liệu\n| Vật liệu | Mã mẫu | Lô hoặc mẻ | Lượng |\n| --- | --- | --- | --- |\n| | | | |\n\n## Quy trình\n1. Những gì bạn đã làm, theo thứ tự, kèm thời gian và thông số\n2. Mọi thay đổi so với quy trình chuẩn và lý do\n\n## Quan sát\n- {{time}} Điều bạn thấy\n\n## Kết quả\n- Các số đo và nơi lưu dữ liệu thô\n\n## Bước tiếp theo\n- [ ] Việc tiếp theo cho buổi sau\n\n## Xác nhận\n**Người ký:** tên, {{date}}\n\n**Người chứng kiến:** tên, ngày"
       }
     },
     "mentions": {
@@ -962,8 +1377,8 @@
     "actionHint": "Thao tác trên ghi chú này",
     "agentCanEdit": "Agent này có thể thay đổi tệp trong dự án được liên kết.",
     "allowWritesLabel": "Cho phép agent thay đổi tệp",
-    "allowWritesAsk": "{{agent}} không có chế độ chỉ đọc, nên có thể thay đổi tệp trong {{project}}. Vẫn gửi tin nhắn của bạn?",
-    "allowWrites": "Cho phép trong trò chuyện này",
+    "allowWritesAsk": "{{agent}} không có chế độ chỉ đọc, nên có thể thay đổi tệp trong {{project}}. Oleafly không thể thêm chế độ này cho agent. Vẫn gửi tin nhắn này?",
+    "allowWrites": "Vẫn gửi",
     "dontSend": "Không gửi",
     "viewOnly": "Bạn chỉ có thể xem ghi chú này, nên trợ lý không thể thay đổi nó."
   },
@@ -980,6 +1395,7 @@
     "template": "Không thể thay đổi cài đặt mẫu của “{{name}}”."
   },
   "noteTab": {
+    "loading": "Đang mở ghi chú",
     "projectNote": "Ghi chú dự án",
     "sharedProject": "Mọi người trong dự án này đều có thể xem và sửa",
     "localProject": "Được lưu cùng các tệp của dự án này",
@@ -991,5 +1407,247 @@
     "copyToMine": "Sao chép vào ghi chú của tôi",
     "missing": "Ghi chú này không còn khả dụng. Nó có thể đã bị chuyển đi hoặc bị xoá.",
     "writeRefused": "Không thể lưu ghi chú. Dự án này hiện đang ở chế độ chỉ đọc."
+  },
+  "appearance": {
+    "notes": {
+      "sectionName": "Giao diện ghi chú",
+      "resetAriaLabel": "Đặt lại {{setting}} về mặc định",
+      "text": {
+        "title": "Văn bản"
+      },
+      "typeface": {
+        "label": "Kiểu chữ",
+        "description": "Chọn kiểu chữ cho văn bản ghi chú.",
+        "options": {
+          "sans": "Không chân",
+          "serif": "Có chân",
+          "mono": "Đơn cách"
+        }
+      },
+      "font": {
+        "label": "Phông chữ ghi chú",
+        "description": "Chọn bất kỳ phông chữ nào đã cài cho văn bản ghi chú. Để trống để dùng cài đặt Kiểu chữ."
+      },
+      "fontSize": {
+        "label": "Cỡ chữ ghi chú",
+        "description": "Đặt cỡ chữ của văn bản ghi chú.",
+        "custom": "Tuỳ chỉnh",
+        "customLabel": "Cỡ chữ ghi chú tuỳ chỉnh theo pixel"
+      },
+      "lineHeight": {
+        "label": "Chiều cao dòng ghi chú",
+        "description": "Đặt khoảng cách giữa các dòng văn bản ghi chú.",
+        "customLabel": "Chiều cao dòng ghi chú tuỳ chỉnh"
+      },
+      "paragraphSpacing": {
+        "label": "Khoảng cách đoạn",
+        "description": "Đặt khoảng cách giữa các đoạn, danh sách và các khối khác.",
+        "options": {
+          "compact": "Gọn",
+          "normal": "Bình thường",
+          "relaxed": "Thoáng",
+          "spacious": "Rộng rãi"
+        }
+      },
+      "headings": {
+        "title": "Tiêu đề mục và tiêu đề ghi chú"
+      },
+      "headingTypeface": {
+        "label": "Kiểu chữ tiêu đề",
+        "description": "Chọn kiểu chữ cho các tiêu đề mục và tiêu đề ghi chú.",
+        "options": {
+          "text": "Giống văn bản"
+        }
+      },
+      "headingFont": {
+        "label": "Phông chữ tiêu đề",
+        "description": "Chọn một phông chữ đã cài cho các tiêu đề mục và tiêu đề ghi chú. Để trống để dùng cài đặt Kiểu chữ tiêu đề."
+      },
+      "headingSize": {
+        "label": "Cỡ tiêu đề",
+        "description": "Đặt độ lớn của tiêu đề so với văn bản.",
+        "options": {
+          "small": "Nhỏ hơn",
+          "normal": "Bình thường",
+          "large": "Lớn hơn"
+        }
+      },
+      "titleSize": {
+        "label": "Cỡ tiêu đề ghi chú",
+        "description": "Đặt cỡ của tiêu đề ở đầu mỗi ghi chú."
+      },
+      "layout": {
+        "title": "Bố cục"
+      },
+      "width": {
+        "label": "Độ rộng ghi chú",
+        "description": "Độ rộng khi mở ghi chú. Menu độ rộng trong ghi chú cũng thay đổi giá trị này.",
+        "options": {
+          "standard": "Chuẩn",
+          "wide": "Rộng",
+          "full": "Toàn chiều rộng"
+        }
+      },
+      "info": {
+        "label": "Thông tin ghi chú",
+        "description": "Nơi hiển thị thuộc tính và liên kết của ghi chú. Khung bên hiện chúng trong khung Thông tin, cùng các số đếm và tệp đính kèm của ghi chú. Nội tuyến giữ chúng ngay trên trang.",
+        "options": {
+          "side": "Khung bên",
+          "inline": "Nội tuyến"
+        }
+      },
+      "taskBox": {
+        "label": "Ô đánh dấu công việc",
+        "description": "Hình dạng của các ô trong danh sách công việc.",
+        "options": {
+          "square": "Vuông",
+          "round": "Tròn"
+        }
+      },
+      "wordCount": {
+        "label": "Hiện số từ",
+        "description": "Hiện số từ của ghi chú trên thanh công cụ."
+      },
+      "spellcheck": {
+        "label": "Kiểm tra chính tả trong ghi chú",
+        "description": "Gạch chân các từ sai chính tả khi bạn viết ghi chú."
+      },
+      "replacements": {
+        "label": "Thay thế khi gõ",
+        "description": "Thay các cặp như -> thành → khi bạn gõ. Mã và công thức toán được giữ nguyên, và nhấn Backspace ngay sau khi thay sẽ trả lại văn bản của bạn.",
+        "list": "Thay thế văn bản",
+        "type": "Khi gõ",
+        "becomes": "Thành",
+        "add": "Thêm",
+        "remove": "Gỡ {{from}}",
+        "removeTooltip": "Gỡ",
+        "empty": "Chưa có cặp nào. Hãy thêm một cặp bên dưới.",
+        "full": "Bạn có thể có tối đa {{limit}} cặp. Hãy gỡ một cặp để thêm cặp khác."
+      },
+      "keepUndo": {
+        "label": "Giữ lịch sử hoàn tác sau khi đóng",
+        "description": "Hoàn tác vẫn hoạt động trên ghi chú sau khi bạn đóng nó hoặc thoát ứng dụng. Lịch sử được lưu trên máy tính này, và tắt mục này sẽ xoá lịch sử."
+      },
+      "code": {
+        "title": "Mã"
+      },
+      "drawings": {
+        "title": "Hình vẽ LaTeX"
+      },
+      "tikzPreamble": {
+        "label": "Phần mở đầu TikZ",
+        "description": "Các dòng như \\usetikzlibrary{positioning} được đặt đầu tiên trong phần mở đầu của mọi khối TikZ và CircuiTikZ."
+      },
+      "codeFont": {
+        "label": "Phông chữ mã",
+        "description": "Chọn một phông chữ đã cài cho khối mã và mã trong dòng."
+      },
+      "codeTheme": {
+        "label": "Màu khối mã",
+        "description": "Chọn màu cú pháp cho khối mã trong ghi chú.",
+        "options": {
+          "editor": "Giống trình biên tập"
+        }
+      },
+      "colors": {
+        "title": "Màu sắc"
+      },
+      "accent": {
+        "label": "Màu nhấn của ghi chú",
+        "description": "Dùng cho liên kết, thẻ và ô công việc trong ghi chú.",
+        "matchApp": "Theo ứng dụng",
+        "customAriaLabel": "Chọn màu nhấn tuỳ chỉnh cho ghi chú"
+      },
+      "callouts": {
+        "label": "Kiểu hộp chú thích",
+        "description": "Cách hiển thị hộp chú thích trong ghi chú.",
+        "options": {
+          "tinted": "Nền nhạt",
+          "filled": "Tô đầy",
+          "outlined": "Có viền",
+          "bar": "Vạch bên"
+        }
+      },
+      "fieldStyle": {
+        "label": "Nhãn ngày và trường",
+        "description": "Cách ngày và các trường như hạn hoặc ưu tiên hiển thị trong ghi chú.",
+        "options": {
+          "tint": "Nền nhạt",
+          "outline": "Có viền",
+          "underline": "Gạch chân"
+        }
+      },
+      "remoteImages": {
+        "title": "Ảnh từ web",
+        "description": "Ghi chú và câu trả lời của trợ lý tải ảnh từ các trang này mà không cần hỏi.",
+        "empty": "Ghi chú và câu trả lời của trợ lý sẽ hỏi trước khi tải ảnh từ web. Các trang bạn luôn cho phép sẽ hiện ở đây.",
+        "remove": "Gỡ {{host}}"
+      }
+    }
+  },
+  "notesPreview": {
+    "label": "Xem trước một ghi chú với các cài đặt này",
+    "title": "Ghi chép thực địa",
+    "heading": "Khảo sát buổi sáng",
+    "paragraph": "Mưa nhẹ đến chín giờ, sau đó trời quang trên sườn núi phía bắc. Đến trưa đất vẫn còn ẩm.",
+    "links": "Xem <note>Phương pháp lấy mẫu</note> để biết đầy đủ các bước, hoặc duyệt <tag>#thực-địa</tag>.",
+    "highlight": "Cây con cao gấp đôi chỉ sau một tuần.",
+    "calloutTitle": "Lần đến tiếp theo",
+    "calloutBody": "Kiểm tra cảm biến đất trước khi lấy mẫu mới.",
+    "taskDone": "Dán nhãn mẫu",
+    "task": "Tải ảnh lên",
+    "taskLate": "Gửi báo cáo về đất"
+  },
+  "highlight": {
+    "colors": {
+      "yellow": "Vàng",
+      "orange": "Cam",
+      "red": "Đỏ",
+      "pink": "Hồng",
+      "purple": "Tím",
+      "blue": "Xanh dương",
+      "green": "Xanh lá"
+    },
+    "remove": "Bỏ tô sáng"
+  },
+  "quickCapture": {
+    "title": "Ghi nhanh",
+    "untitled": "Chưa đặt tên",
+    "placeholder": "Bắt đầu viết…",
+    "field": "Nội dung cần ghi",
+    "characters_other": "{{count}} ký tự",
+    "failed": "Không thể lưu. Văn bản của bạn vẫn còn ở đây, nên bạn có thể thử lại.",
+    "actions": {
+      "label": "Thao tác",
+      "saveNew": "Lưu thành ghi chú mới",
+      "saveToday": "Thêm vào ghi chú hôm nay",
+      "copy": "Sao chép dạng Markdown",
+      "discard": "Bỏ bản nháp"
+    },
+    "openNotes": "Mở Ghi chú",
+    "newNote": "Ghi chú mới",
+    "format": "Hiện định dạng",
+    "closeFormat": "Ẩn định dạng"
+  },
+  "starter": {
+    "blocksGallery": {
+      "title": "Bộ sưu tập khối",
+      "intro": "Mọi loại khối mà một ghi chú có thể chứa. Nhấp {{source}} trên một khối để xem và sửa mã vẽ ra khối đó, và gõ {{slash}} trên một dòng trống để chèn khối mới.",
+      "charts": "Biểu đồ",
+      "functionPlots": "Đồ thị hàm",
+      "tables": "Bảng",
+      "csvTable": "Khối csv có thể sắp xếp và lọc, kèm một hàng tóm tắt:",
+      "markdownTable": "Bảng Markdown thông thường cũng dùng được:",
+      "math": "Toán và hoá học",
+      "typst": "Typst",
+      "diagrams": "Sơ đồ",
+      "svg": "SVG",
+      "html": "HTML, nhấn {{run}}",
+      "react": "React, nhấn {{run}}",
+      "structures": "Cấu trúc hoá học",
+      "molecule": "Phân tử 3D",
+      "sequences": "Trình tự",
+      "code": "Mã"
+    }
   }
 }

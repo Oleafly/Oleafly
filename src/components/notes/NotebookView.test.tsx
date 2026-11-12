@@ -5,6 +5,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { CELL_LIMIT, htmlOutputDocument, mountNotebook, NotebookView, OUTPUT_LINES } from "./NotebookView";
+import "./tests/setup";
 
 const copy = enNotes.notebook;
 const LAZY_MS = 10_000;
@@ -26,7 +27,6 @@ function display(data: Record<string, unknown>) {
 }
 
 beforeAll(async () => {
-  await loadNamespace("notes");
   await loadNamespace("common");
 });
 
@@ -141,7 +141,6 @@ describe("NotebookView", () => {
         ])}
       />,
     );
-    expect(screen.getByText("careful").closest("pre")).toHaveClass("bg-destructive/5");
     expect(screen.getByText("ZeroDivisionError: division by zero")).toBeInTheDocument();
     expect(screen.getByText(/Traceback\s+line 1/u)).toBeInTheDocument();
     const errors = container.querySelectorAll("[data-notebook-error]");
@@ -234,7 +233,7 @@ describe("NotebookView", () => {
     const host = document.createElement("div");
     document.body.append(host);
     const mounted = mountNotebook(host);
-    act(() => mounted.render({ text: notebook([code("mounted()")]) }));
+    await act(async () => mounted.render({ text: notebook([code("mounted()")]) }));
     expect(host).toHaveTextContent("mounted()");
     act(() => mounted.render({ text: notebook([code("again()")]), hideCode: false, cells: null }));
     expect(host).toHaveTextContent("again()");

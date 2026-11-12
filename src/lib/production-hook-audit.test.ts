@@ -72,6 +72,27 @@ describe("Tauri production style CSP audit", () => {
   });
 });
 
+describe("Tauri CSP for media and video players in notes", () => {
+  const directive = (name: string) =>
+    (tauriConfig as { app: { security: { csp: string } } }).app.security.csp
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith(`${name} `)) ?? "";
+
+  it("plays only the note's own audio and video files, never remote media", () => {
+    expect(directive("media-src").split(/\s+/u)).toEqual(["media-src", "'self'", "blob:"]);
+  });
+
+  it("frames only the app, artifacts and the loopback video page", () => {
+    expect(directive("frame-src").split(/\s+/u).slice(1)).toEqual([
+      "'self'",
+      "oleafly-artifact:",
+      "http://oleafly-artifact.localhost",
+      "http://127.0.0.1:*",
+    ]);
+  });
+});
+
 describe("Tauri CSP permits CodeMirror's runtime stylesheet", () => {
   const shippedCsp = (
     tauriConfig as { app: { security: { csp: string } } }

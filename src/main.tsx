@@ -22,7 +22,7 @@ import { reapOrphanAgentRuns } from "@/lib/agent-backend";
 import { getSnapshotConfig, getSnapshotPendingOpen, hydrateFromSnapshot } from "@/lib/initial-state";
 import { prepareColdOpen } from "@/features/open-folder";
 import { initializeDesktopI18n, syncLocaleFromConfig } from "@/i18n/desktop";
-import { readCachedPreference } from "@/i18n";
+import { loadNamespace, readCachedPreference } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
 import { useTypstMigrationStore } from "@/store/typst-migration";
 import { useRenameStore } from "@/store/rename";
@@ -64,7 +64,7 @@ if ((window as { __OLEAFLY_E2E_BOOT__?: boolean }).__OLEAFLY_E2E_BOOT__) {
   registerE2EImports();
 }
 
-type WindowView = "main" | "update" | "preview" | "present" | "presenter" | "admin";
+type WindowView = "main" | "update" | "preview" | "present" | "presenter" | "admin" | "capture";
 
 function currentWindowView(): WindowView {
   const view = new URLSearchParams(window.location.search).get("view");
@@ -73,7 +73,8 @@ function currentWindowView(): WindowView {
     view === "preview" ||
     view === "present" ||
     view === "presenter" ||
-    view === "admin"
+    view === "admin" ||
+    view === "capture"
   ) {
     return view;
   }
@@ -107,7 +108,7 @@ function prepareWindow(view: WindowView): void {
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
   }
-  if (view === "present" || view === "presenter" || view === "admin") {
+  if (view === "present" || view === "presenter" || view === "admin" || view === "capture") {
     document.documentElement.style.setProperty("--app-surface", "var(--background)");
   }
   dismissBootSplash();
@@ -117,6 +118,11 @@ const queryClient = appQueryClient();
 
 const UpdateWindow = lazy(() =>
   import("@/components/layout/UpdateWindow").then((module) => ({ default: module.UpdateWindow })),
+);
+const QuickCaptureWindow = lazy(() =>
+  Promise.all([import("@/components/notes/QuickCaptureWindow"), loadNamespace("notes"), loadNamespace("editor")]).then(([module]) => ({
+    default: module.QuickCaptureWindow,
+  })),
 );
 const PreviewWindow = lazy(() =>
   import("@/components/preview/PreviewWindow").then((module) => ({ default: module.PreviewWindow })),
@@ -248,6 +254,17 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
         <AppZoom />
         <Suspense fallback={null}>
           {view === "present" ? <PresentationWindow /> : <PresenterWindow />}
+        </Suspense>
+      </ThemeProvider>
+    );
+  }
+  if (view === "capture") {
+    return (
+      <ThemeProvider>
+        <StoredAppTypography />
+        <AppZoom />
+        <Suspense fallback={null}>
+          <QuickCaptureWindow />
         </Suspense>
       </ThemeProvider>
     );

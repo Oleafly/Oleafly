@@ -1127,146 +1127,6 @@
         "label": "Näytä PDF käännettäessä"
       },
       "title": "Zen-tila"
-    },
-    "notes": {
-      "sectionName": "Muistiinpanojen ulkoasu",
-      "resetAriaLabel": "Palauta oletusarvo: {{setting}}",
-      "text": {
-        "title": "Teksti"
-      },
-      "typeface": {
-        "label": "Kirjaintyyppi",
-        "description": "Valitse muistiinpanojen tekstin kirjaintyyppi.",
-        "options": {
-          "sans": "Groteski",
-          "serif": "Antiikva",
-          "mono": "Tasalevyinen"
-        }
-      },
-      "font": {
-        "label": "Muistiinpanojen fontti",
-        "description": "Valitse muistiinpanojen tekstille mikä tahansa asennettu fontti. Jos jätät kentän tyhjäksi, käytetään Kirjaintyyppi-asetusta."
-      },
-      "fontSize": {
-        "label": "Muistiinpanojen tekstikoko",
-        "description": "Aseta muistiinpanojen tekstin koko.",
-        "custom": "Mukautettu",
-        "customLabel": "Mukautettu muistiinpanojen tekstikoko pikseleinä"
-      },
-      "lineHeight": {
-        "label": "Muistiinpanojen riviväli",
-        "description": "Aseta muistiinpanojen tekstirivien välinen tila.",
-        "customLabel": "Mukautettu muistiinpanojen riviväli"
-      },
-      "paragraphSpacing": {
-        "label": "Kappaleväli",
-        "description": "Aseta kappaleiden, luetteloiden ja muiden lohkojen välinen tila.",
-        "options": {
-          "compact": "Tiivis",
-          "normal": "Normaali",
-          "relaxed": "Väljä",
-          "spacious": "Tilava"
-        }
-      },
-      "headings": {
-        "title": "Otsikot ja nimi"
-      },
-      "headingTypeface": {
-        "label": "Otsikoiden kirjaintyyppi",
-        "description": "Valitse otsikoiden ja muistiinpanon nimen kirjaintyyppi.",
-        "options": {
-          "text": "Sama kuin tekstissä"
-        }
-      },
-      "headingFont": {
-        "label": "Otsikoiden fontti",
-        "description": "Valitse otsikoille ja muistiinpanon nimelle asennettu fontti. Jos jätät kentän tyhjäksi, käytetään Otsikoiden kirjaintyyppi -asetusta."
-      },
-      "headingSize": {
-        "label": "Otsikoiden koko",
-        "description": "Aseta, kuinka suuria otsikot ovat tekstiin verrattuna.",
-        "options": {
-          "small": "Pienempi",
-          "normal": "Normaali",
-          "large": "Suurempi"
-        }
-      },
-      "titleSize": {
-        "label": "Nimen koko",
-        "description": "Aseta kunkin muistiinpanon yläreunassa olevan nimen koko."
-      },
-      "layout": {
-        "title": "Asettelu"
-      },
-      "width": {
-        "label": "Muistiinpanon leveys",
-        "description": "Kuinka leveinä muistiinpanot avautuvat. Myös muistiinpanon leveysvalikko muuttaa tätä.",
-        "options": {
-          "standard": "Tavallinen",
-          "wide": "Leveä",
-          "full": "Täysi leveys"
-        }
-      },
-      "wordCount": {
-        "label": "Näytä sanamäärä",
-        "description": "Näytä muistiinpanon sanamäärä sen työkalurivillä."
-      },
-      "spellcheck": {
-        "label": "Tarkista oikeinkirjoitus muistiinpanoissa",
-        "description": "Alleviivaa väärin kirjoitetut sanat, kun kirjoitat muistiinpanoa."
-      },
-      "code": {
-        "title": "Koodi"
-      },
-      "codeFont": {
-        "label": "Koodin fontti",
-        "description": "Valitse asennettu fontti koodilohkoille ja tekstin sisäiselle koodille."
-      },
-      "codeTheme": {
-        "label": "Koodilohkojen värit",
-        "description": "Valitse muistiinpanojen koodilohkojen syntaksivärit.",
-        "options": {
-          "editor": "Sama kuin editorissa"
-        }
-      },
-      "colors": {
-        "title": "Värit"
-      },
-      "accent": {
-        "label": "Muistiinpanojen korostusväri",
-        "description": "Käytetään muistiinpanojen linkeissä, tunnisteissa ja tehtävien valintaruuduissa.",
-        "matchApp": "Sama kuin sovelluksessa",
-        "customAriaLabel": "Valitse muistiinpanoille mukautettu korostusväri"
-      },
-      "highlight": {
-        "label": "Korostuskynän väri",
-        "description": "Korostetun tekstin taustaväri.",
-        "options": {
-          "yellow": "Keltainen",
-          "green": "Vihreä",
-          "blue": "Sininen",
-          "pink": "Vaaleanpunainen",
-          "purple": "Violetti",
-          "accent": "Korostusväri"
-        }
-      },
-      "callouts": {
-        "label": "Huomiolaatikoiden tyyli",
-        "description": "Miltä huomiolaatikot näyttävät muistiinpanoissa.",
-        "options": {
-          "tinted": "Sävytetty",
-          "filled": "Täytetty",
-          "outlined": "Reunaviiva",
-          "bar": "Sivupalkki"
-        }
-      },
-      "remoteImages": {
-        "title": "Kuvat verkosta",
-        "description": "Muistiinpanot lataavat kuvia näiltä sivustoilta kysymättä.",
-        "empty": "Muistiinpanot kysyvät ennen kuin lataavat kuvan verkosta. Sivustot, jotka sallit aina, näkyvät tässä.",
-        "remove": "Poista {{host}}"
-      },
-      "resetAll": "Palauta muistiinpanojen ulkoasu"
     }
   },
   "checkpoints": {
@@ -2502,6 +2362,42 @@
       "notesAskAgent": {
         "description": "Kysy agentilta valitusta tekstistä tai avaa ja sulje muistiinpanon agentti.",
         "label": "Muistiinpanot: kysy agentilta"
+      },
+      "notesNewNote": {
+        "label": "Muistiinpanot: uusi muistiinpano",
+        "description": "Aloita uusi muistiinpano nykyisessä paneelissa."
+      },
+      "notesSearch": {
+        "label": "Muistiinpanot: hae muistiinpanoista",
+        "description": "Siirry hakukenttään Muistiinpanot-sivupalkin yläreunassa."
+      },
+      "notesBookmark": {
+        "label": "Muistiinpanot: lisää suosikkeihin",
+        "description": "Lisää avoin muistiinpano suosikkeihin tai poista se sieltä."
+      },
+      "notesCopyLink": {
+        "label": "Muistiinpanot: kopioi linkki muistiinpanoon",
+        "description": "Kopioi avoimen muistiinpanon linkki, jonka voit liittää toiseen muistiinpanoon tai keskusteluun."
+      },
+      "notesProperties": {
+        "label": "Muistiinpanot: näytä tai piilota ominaisuudet",
+        "description": "Avaa tai sulje ominaisuudet muistiinpanon nimen alla."
+      },
+      "notesQuickCapture": {
+        "description": "Avaa pieni ikkuna, johon voit kirjata jotain mistä tahansa sovelluksesta, vaikka Oleafly olisi taustalla.",
+        "label": "Muistiinpanot: pikakirjaus"
+      },
+      "notesCopyBlockLink": {
+        "description": "Kopioi linkki kappaleeseen, luettelon kohtaan tai taulukkoon, jossa kohdistin on.",
+        "label": "Muistiinpanot: kopioi linkki lohkoon"
+      },
+      "notesBack": {
+        "description": "Palaa kohtaan, jossa olit tässä välilehdessä.",
+        "label": "Muistiinpanot: takaisin"
+      },
+      "notesForward": {
+        "description": "Siirry taas eteenpäin, kun olet palannut takaisin.",
+        "label": "Muistiinpanot: eteenpäin"
       }
     },
     "application": {
@@ -2527,14 +2423,41 @@
         "renameSymbol": "Nimeä symboli tai tiedosto uudelleen koko projektissa",
         "slashCommandMenu": "Kauttaviivakomentojen lisäysvalikko",
         "triggerAutocomplete": "Käynnistä automaattitäydennys",
-        "undo": "Kumoa"
+        "undo": "Kumoa",
+        "noteBold": "Lihavointi",
+        "noteItalic": "Kursivointi",
+        "noteUnderline": "Alleviivaus",
+        "noteStrike": "Yliviivaus",
+        "noteCode": "Rivinsisäinen koodi",
+        "noteHighlight": "Korosta viimeksi käytetyllä värillä",
+        "noteSuperscript": "Yläindeksi",
+        "noteSubscript": "Alaindeksi",
+        "noteHeadings": "Otsikot 1:stä 6:een",
+        "noteText": "Muuta tekstiksi",
+        "noteQuote": "Lainaus",
+        "noteCodeBlock": "Koodilohko",
+        "noteBulletList": "Merkitty luettelo",
+        "noteNumberedList": "Numeroitu luettelo",
+        "noteTaskList": "Tehtäväluettelo",
+        "noteToggleTask": "Merkitse tehtävä tehdyksi tai poista merkintä",
+        "noteIndent": "Sisennä luettelon kohta",
+        "noteOutdent": "Vähennä luettelon kohdan sisennystä",
+        "noteLineBreak": "Rivinvaihto samassa kappaleessa",
+        "noteFind": "Etsi ja korvaa",
+        "noteSelectAll": "Valitse koko muistiinpano",
+        "noteUndo": "Kumoa",
+        "noteRedo": "Tee uudelleen",
+        "noteInsertMenu": "Avaa lisäysvalikko rivin alussa",
+        "noteLinkMenu": "Linkitä muistiinpanoon",
+        "noteTag": "Lisää tunniste"
       },
       "managed": "Editorin hallitsema"
     },
     "categories": {
       "codeIntelligence": "Koodiäly",
       "editor": "Editori",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Muistiinpanot"
     },
     "error": {
       "conflict": "On jo varattu toiminnolle {{action}}.",
@@ -2580,6 +2503,15 @@
         "uppercase": "Isot kirjaimet"
       },
       "unbound": "Ei asetettu"
+    },
+    "quickCapture": {
+      "label": "Pikakirjaus mistä tahansa",
+      "description": "Pikakirjauksen pikanäppäin toimii kaikissa tämän tietokoneen sovelluksissa.",
+      "ready": "Avaa pikakirjaus painamalla {{shortcut}} missä tahansa sovelluksessa.",
+      "taken": "Toinen sovellus käyttää jo pikanäppäintä {{shortcut}}. Valitse toinen pikanäppäin toiminnolle Muistiinpanot: pikakirjaus.",
+      "invalid": "Pikanäppäin {{shortcut}} ei voi toimia muualla kuin sovelluksessa Oleafly. Valitse pikanäppäin, joka päättyy kirjaimeen, numeroon tai funktionäppäimeen.",
+      "failed": "Oleafly ei voinut ottaa pikanäppäintä käyttöön. Yritä uudelleen poistamalla pikakirjaus käytöstä ja ottamalla se taas käyttöön.",
+      "wayland": "Wayland ei anna sovellusten kuunnella näppäimiä omien ikkunoidensa ulkopuolella. Jos haluat avata pikakirjauksen näppäimellä, lisää järjestelmän näppäimistöasetuksiin oma pikanäppäin, joka suorittaa tämän komennon:"
     }
   },
   "systemIntegration": {
@@ -2671,17 +2603,5 @@
       "loadFailed": "MCP-palvelinten luetteloa ei voitu lukea.",
       "missing": "{{name}} (ei löytynyt)"
     }
-  },
-  "notesPreview": {
-    "label": "Esikatselu muistiinpanosta näillä asetuksilla",
-    "title": "Maastomuistiinpanot",
-    "heading": "Aamun kartoitus",
-    "paragraph": "Kevyttä sadetta yhdeksään asti, sitten pohjoisrinteen yllä selkeni. Maa oli vielä keskipäivällä kostea.",
-    "links": "Katso koko menetelmä muistiinpanosta <note>Näytteenottomenetelmä</note> tai selaa tunnistetta <tag>#maastotyö</tag>.",
-    "highlight": "Taimien pituus kaksinkertaistui viikossa.",
-    "calloutTitle": "Seuraava käynti",
-    "calloutBody": "Tarkista maaperäanturit ennen uusien näytteiden ottamista.",
-    "taskDone": "Merkitse näytteet",
-    "task": "Lähetä kuvat"
   }
 }

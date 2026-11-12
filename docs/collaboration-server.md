@@ -16,12 +16,13 @@ The server keeps everything in one folder, set by `OLEAFLY_DATA_DIR`:
 
 - **Accounts.** Each member's display name, avatar address, verified email addresses, and their user ID and login at the sign-in provider. The server never sees or stores a password.
 - **Devices.** Each computer that signed in, and each browser signed in for [browser access](#browser-access): its name, operating system, public key, and when it was last seen. Sign-in tokens and browser sessions are stored only as hashes.
-- **The security log.** Sign-ins and refused sign-ins, devices added and signed out, changes to members, roles and settings, projects shared, archived and restored, changes to who can open a project, and guest invitations, each with the time and the IP address. Entries older than `OLEAFLY_SECURITY_LOG_DAYS` days are deleted.
+- **The security log.** Sign-ins and refused sign-ins, devices added and signed out, changes to members, roles and settings, projects shared, archived and restored, changes to who can open a project, guest invitations, and notes published, unpublished, taken down and put back, each with the time and the IP address. Entries older than `OLEAFLY_SECURITY_LOG_DAYS` days are deleted.
 - **Server settings** that admins change in Oleafly.
 - **Project access logs**, for projects whose owner turns one on: who opened the project, joined it or downloaded a copy, with the device name and the time. Only the project's owner can read it. Entries older than `OLEAFLY_SECURITY_LOG_DAYS` days are deleted, as in the security log.
 - **Guest invitations**: the invited email address, the project, the role and who sent it. Answered and expired invitations are deleted `OLEAFLY_SECURITY_LOG_DAYS` days after they were answered or expired.
 - **Shared projects.** Every file and the full history of changes. Comments, suggestions, chat messages and version names are part of that history too. Deleting a comment or a chat message takes it out of the project, but the history of changes still holds it, on the server and on every member's computer. Files a project no longer uses, such as the old copy of a figure someone replaced, are deleted 30 days after the project last used them. A file uploaded for a change that hasn't reached the server yet is kept for those 30 days as well. When an owner stops sharing a project, the server keeps it read-only for `OLEAFLY_ARCHIVE_DAYS` days and then deletes it. In that time only the owner and any admins in the project can download it.
 - **Compiled PDFs.** The newest PDF of each shared project, and its SyncTeX file, which the apps of owners and editors upload after they compile. Read [Compiled PDFs](#compiled-pdfs).
+- **Published notes.** The read-only web pages people make from their notes, while [public note links](#public-note-links) are allowed. Anyone with a page's link can read it. Unpublishing deletes the page.
 
 **Projects are not encrypted on the server.** Anyone who can read the data folder, the machine's disk or your backups can read every project stored there. That includes whoever runs the machine and the company that hosts it. Inside Oleafly the rules are stricter: no server role, admin included, can open a project unless the project's owner added them. If you need to keep a project away from the people who run a server, run your own server for it.
 
@@ -753,7 +754,8 @@ If you're signed out of the server, or your role is member or guest, the window 
 | People | Everyone who has signed in. Change roles, suspend or remove people, and sign out their devices. [Guest](#guests) invitations waiting for approval are at the top. |
 | Access rules | The allowed people list and the domain rules from [Become the first admin](#become-the-first-admin). |
 | Projects | Every project shared on the server, with its owner, how many people it has, its size with its compiled PDFs, and its last activity. Search by title or owner, show only shared, archived or uploading projects, and archive or restore a project. |
-| Settings | The server settings, such as **Allow guests**, **Allow link sharing** and **Sign in by email**. |
+| Published notes | Every note published at a [public link](#public-note-links), with its author and when it was last published. Open a page, take it down or put it back. |
+| Settings | The server settings, such as **Allow guests**, **Allow link sharing**, **Allow public note links** and **Sign in by email**. |
 | Email | Whether email is set up, the From address and the last failure. Send a test email from here. Read [Email](#email). |
 | Security log | Sign-ins and refused sign-ins, devices, people, settings, projects and guests. Each entry says who did it, when and from which IP address, with details such as the project, the sign-in option used or why a sign-in was refused. |
 | Connection checks | The same checks as **Test connection**, run from your computer to the server. |
@@ -851,9 +853,9 @@ Open sign-up also turns on three limits for each account. You can set any of the
 
 | Setting | What it limits | With open sign-up | Without |
 | --- | --- | --- | --- |
-| `OLEAFLY_ACCOUNT_STORAGE_MB` | The files, change logs and compiled PDFs of every project the account owns. Archived projects count until the server deletes them. | 100 MB | No limit |
+| `OLEAFLY_ACCOUNT_STORAGE_MB` | The files, change logs and compiled PDFs of every project the account owns, and its published notes. Archived projects count until the server deletes them. | 100 MB | No limit |
 | `OLEAFLY_MAX_PROJECTS_PER_ACCOUNT` | The shared projects the account owns, not counting archived ones. | 50 | No limit |
-| `OLEAFLY_UPLOADS_PER_HOUR` | The file and snapshot uploads the account makes in an hour. Compiled PDFs don't count. | 300 | No limit |
+| `OLEAFLY_UPLOADS_PER_HOUR` | The file and snapshot uploads the account makes in an hour, and each time it publishes a note. Compiled PDFs don't count. | 300 | No limit |
 
 Storage counts against the project's owner, whoever uploads. The server refuses a file upload, a first snapshot or a compiled PDF that would go past it with 413 `account_storage_full`. Text changes still go through. Sharing a project past the project limit gets 429 `too_many_projects`, and an upload past the hourly limit gets 429 `too_many_uploads` with the minutes left to wait. Each limit has to be a whole number of 1 or more.
 
@@ -897,6 +899,41 @@ The routes, if you script against the server:
 | `PUT /web/api/projects/<project>/output/pdf` and `.../output/synctex` | Owners and editors, signed in to the browser app | The same, from the browser app. It also needs the `X-Requested-With` and `Origin` headers that [browser access](#browser-access) describes. |
 | `GET /api/v1/projects/<project>/output/pdf` and `.../output/synctex` | Everyone in the project | Downloads it. |
 | `GET /api/v1/projects/<project>/output` | Everyone in the project | Lists what's stored, with the size, who compiled it and when. |
+
+## Public note links
+
+People can publish a note as a read-only web page. Anyone with the link can read it, without an account and without Oleafly. This is off until an admin turns on **Allow public note links** under **Settings** in the [admin console](#admin-console). Admins, maintainers and members can publish. Guests can't.
+
+In Oleafly, the note's **Share** dialog has a **Publish** tab. The app turns the note into HTML the same way **Export › Web page (.html)** does and uploads that copy. Images go inside the page. Charts, diagrams, Typst blocks and molecules become pictures, and math becomes MathML. HTML, React, CSV, sequence and notebook blocks are left out. Publishing again replaces the page and keeps its link. Editing the note doesn't change the page: the author publishes again when they want readers to see the new version, and the tab says when the note has changed since. Each person's published notes are listed on the server's card in **Settings › Collaboration**, where they can open or unpublish them. In a shared note only its owner sees the publish controls.
+
+A page's address is `<OLEAFLY_PUBLIC_URL>/n/<16 random characters>`. The links can't be guessed, and nothing lists them, but anyone who gets one can pass it on. The pages ask search engines not to index them.
+
+The server never trusts what the app sends. It cleans every page itself before storing it and keeps only text, headings, lists, tables, code, quotes, figures, footnotes, links and MathML. Scripts, styles, frames, forms, event handlers and links to other kinds of address are removed. Images have to be embedded in the page, so a page can't load a tracking image or anything else from another site. Each page is served with a content security policy that runs no scripts and puts it in a sandbox, so it can't use the cookies of the [browser app](#browser-access) on the same address. If your reverse proxy adds its own `Content-Security-Policy` header, don't let it replace this one under `/n/`.
+
+| Limit | Value |
+| --- | --- |
+| Size of one page | 8 MB, or `OLEAFLY_MAX_FILE_MB` if that is smaller |
+| Pages per account | 500 |
+| Storage | Counts toward `OLEAFLY_ACCOUNT_STORAGE_MB` |
+| Publishing | Counts toward `OLEAFLY_UPLOADS_PER_HOUR`, and at most 10 times a minute per account |
+| Reading | 120 page views a minute from one IP address, after which the server answers 429 |
+
+To take down one page, open **Published notes** in the [admin console](#admin-console) and select **Take down**. Admins and maintainers can do it. The link stops working at once, but the page isn't deleted: the author still sees it, marked **Taken down**, and can't publish that note again until someone selects **Put back**. Unpublishing doesn't get around that. The author can still unpublish the page, which deletes the copy and takes it off their list, but it stays in **Published notes** and the note stays blocked. **Put back** on a page the author unpublished lifts the block and removes the page from **Published notes** for good. Taking down, putting back, publishing and unpublishing all show in the security log.
+
+Turning **Allow public note links** off hides every page at once, and turning it back on shows them again. Nothing is deleted, and people can still list and unpublish their pages while it's off. A suspended or removed person's pages stop showing too. Readers whose browsers already loaded a page check with the server each time they open it, so a page that's gone is gone on the next visit.
+
+A server older than this feature answers 404 to the app, and the Publish tab says the server is too old for public note links.
+
+The routes, if you script against the server:
+
+| Route | Who can use it | What it does |
+| --- | --- | --- |
+| `GET /api/v1/published-notes` | Anyone signed in | Lists their own published notes, and whether they may publish. |
+| `POST /api/v1/published-notes` | Admins, maintainers and members | Publishes or replaces a page. The JSON body has `source`, the note's id, `title` and `html`. |
+| `DELETE /api/v1/published-notes/<id>` | The page's author | Unpublishes it. |
+| `GET /api/v1/admin/published-notes` | Admins and maintainers | Lists the newest 1,000 pages on the server with their authors. |
+| `POST /api/v1/admin/published-notes/<id>/take-down` and `.../restore` | Admins and maintainers | Takes a page down or puts it back. |
+| `GET /n/<page>` | Anyone | Reads the page. |
 
 ## Browser access
 
@@ -1113,6 +1150,8 @@ Each person has one server role, given by the server's admins and maintainers. I
 | Add members to the server | Yes | Yes | No | No |
 | Appoint maintainers | Yes | No | No | No |
 | Change server settings | Yes | No | No | No |
+| Publish a note to a public link | Yes, if the server allows it | Yes, if the server allows it | Yes, if the server allows it | No |
+| Take down someone's public note page | Yes | Yes | No | No |
 | Delete a project | Yes, to free storage | No | No | No |
 | Sign out someone's device | Yes | Yes, but not other admins' or maintainers' | Own devices only | Own devices only |
 | Read stored projects with direct server access | Not in the app | Not in the app | Not in the app | Not in the app |

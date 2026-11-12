@@ -343,7 +343,15 @@
     },
     "resetPaneLayout": {
       "keywords": "obnovit rozvržení panelů pořadí přesunout panely postranní panel asistent editor náhled terminál výchozí",
-      "label": "Obnovit rozvržení panelů"
+      "label": "Obnovit uspořádání panelů ve všech projektech"
+    },
+    "saveLayout": {
+      "keywords": "uložit rozvržení vlastní uspořádání panely velikosti název",
+      "label": "Uložit aktuální rozvržení"
+    },
+    "applySavedLayout": {
+      "keywords": "rozvržení uložené vlastní uspořádání panely přepnout použít",
+      "label": "Rozvržení: {{name}}"
     },
     "zoomIn": {
       "keywords": "zvětšit větší lupa",
@@ -382,6 +390,10 @@
     "notes": {
       "label": "Otevřít Poznámky",
       "keywords": "poznámky poznámka zápisník znalosti nápady výzkum deník notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Rychlý záznam",
+      "keywords": "rychlý záznam zapsat poznámka doručené dnes quick capture jot note inbox today"
     }
   },
   "community": {
@@ -486,6 +498,11 @@
   },
   "datePicker": {
     "placeholder": "Vyberte datum"
+  },
+  "monthPicker": {
+    "label": "Vyberte měsíc",
+    "previousYear": "Předchozí rok",
+    "nextYear": "Další rok"
   },
   "devMenu": {
     "inspect": "Prozkoumat",
@@ -708,6 +725,7 @@
     "groups": {
       "action": "Akce",
       "documents": "Dokumenty",
+      "notes": "Poznámky",
       "references": "Reference"
     },
     "label": "Hledat",
@@ -715,11 +733,13 @@
     "openReferences": "Otevřít reference tohoto projektu",
     "placeholder": "Hledejte projekty, dokumenty, nebo napište / pro příkazy…",
     "placeholderDocuments": "Hledat uvnitř dokumentů…",
+    "placeholderNotes": "Hledat v poznámkách a blocích v nich…",
     "placeholderProjects": "Hledat projekty podle názvu, enginu, druhu, data nebo metadat…",
     "referencesNeedProject": "Nejprve otevřete projekt, abyste mohli procházet jeho reference.",
     "slash": {
       "create": "otevřít galerii šablon",
       "docs": "hledat uvnitř dokumentů",
+      "notes": "hledat v poznámkách a blocích v nich",
       "projects": "hledat ve vašich projektech",
       "refs": "otevřít reference tohoto projektu",
       "settings": "otevřít nastavení",
@@ -1354,7 +1374,24 @@
       "split": "Rozdělené zobrazení"
     },
     "moreActions": "Další akce",
-    "resetPaneLayout": "Obnovit rozvržení panelů",
+    "resetPaneLayout": "Obnovit uspořádání panelů",
+    "resetPaneLayoutScope": "Všechny projekty",
+    "savedLayouts": {
+      "close": "Zavřít",
+      "delete": "Smazat",
+      "deleteConfirm": "Smazat rozvržení „{{name}}“?",
+      "limit": "Limit rozvržení: {{count}}. Další uložíte po smazání jednoho.",
+      "manage": "Spravovat rozvržení",
+      "name": "Název rozvržení",
+      "rename": "Přejmenovat",
+      "renameTitle": "Přejmenovat rozvržení",
+      "replace": "Nahradit",
+      "replaceConfirm": "Rozvržení s názvem „{{name}}“ už existuje. Nahradit ho?",
+      "save": "Uložit aktuální rozvržení",
+      "saveButton": "Uložit",
+      "saveTitle": "Uložit rozvržení",
+      "update": "Aktualizovat podle aktuálního"
+    },
     "renameFailed": "Projekt se nepodařilo přejmenovat."
   },
   "tour": {

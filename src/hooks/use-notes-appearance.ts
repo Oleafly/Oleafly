@@ -2,12 +2,14 @@ import { useCallback } from "react";
 import type { EditorThemeId } from "@/lib/editor-themes";
 import {
   NOTES_APPEARANCE_KEYS,
+  type NotesAppearance,
+} from "@/lib/notes-appearance";
+import {
   NOTES_CODE_PALETTE,
   notesAppearanceAttributes,
   notesAppearanceVariables,
   resolveNotesCodeTheme,
-  type NotesAppearance,
-} from "@/lib/notes-appearance";
+} from "@/lib/notes-appearance-style";
 import { currentTheme, subscribeTheme, type Theme } from "@/lib/theme";
 import { useSettingsStore } from "@/store/settings";
 

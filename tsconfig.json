@@ -24,6 +24,7 @@
       "@/*": ["./src/*"],
       "@oleafly/latex": ["./packages/latex/src/index.ts"],
       "@oleafly/wysiwyg": ["./packages/wysiwyg/src/index.ts"],
+      "@oleafly/wysiwyg/block-id-marker": ["./packages/wysiwyg/src/block-id-marker.ts"],
       "@oleafly/wysiwyg/link-destination": ["./packages/wysiwyg/src/link-destination.ts"],
       "@oleafly/wysiwyg/front-matter": ["./packages/wysiwyg/src/front-matter.ts"],
       "@oleafly/ai-core": ["./packages/ai-core/src/index.ts"],

@@ -1,28 +1,38 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registry } from "@oleafly/registry";
 
 const mocks = vi.hoisted(() => ({
-  searchDocs: vi.fn(async () => [] as unknown[]),
+  textSearch: vi.fn(async () => [] as unknown[]),
+  noteSearch: vi.fn(async (_query: string, _limit?: number, _options?: unknown) => [] as unknown[]),
+  openNotes: vi.fn(async () => {}),
   gotoLine: vi.fn(),
   toggleTheme: vi.fn(),
   openProject: vi.fn(async () => {}),
   openFile: vi.fn(async () => {}),
   refreshProjects: vi.fn(async () => {}),
+  vaultSnapshot: vi.fn(),
 }));
 
 vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ theme: "dark", toggleTheme: mocks.toggleTheme }),
+  currentTheme: () => "dark",
+  subscribeTheme: () => () => undefined,
 }));
-vi.mock("@/lib/tauri", () => ({ searchDocs: mocks.searchDocs }));
+vi.mock("@/lib/tauri", () => ({ textSearch: mocks.textSearch, noteSearch: mocks.noteSearch }));
+vi.mock("@/features/open-tool", () => ({ openNotes: mocks.openNotes }));
 vi.mock("@/components/editor/cm/controller", () => ({ gotoLine: mocks.gotoLine }));
+vi.mock("@/components/notes/app-notes", () => ({ vaultSnapshot: mocks.vaultSnapshot }));
 
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { useFilesStore } from "@/store/files";
 import { useFavoritesStore } from "@/store/favorites";
+import { useNotesPrefsStore } from "@/store/notes-prefs";
+import { useSearchModeStore } from "@/store/search-modes";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
 import { SearchOmnibar } from "./SearchOmnibar";
@@ -54,6 +64,7 @@ const HIT = {
   path: "chapters/intro.tex",
   line: 12,
   preview: "a transformer baseline",
+  ranges: [] as [number, number][],
 };
 
 async function type(text: string) {
@@ -68,7 +79,8 @@ beforeEach(() => {
   registry.commands.length = 0;
   run.mockClear();
   for (const mock of Object.values(mocks)) mock.mockClear();
-  mocks.searchDocs.mockResolvedValue([]);
+  mocks.textSearch.mockResolvedValue([]);
+  mocks.noteSearch.mockResolvedValue([]);
   registry.commands.push({
     id: "omnibar.demo",
     surfaces: ["omnibar"],
@@ -102,6 +114,121 @@ beforeEach(() => {
 
 afterEach(() => {
   registry.commands.length = 0;
+});
+
+function noteHit(id: string, title: string, score: number) {
+  return { id, noteId: null, title, titleRanges: [], score, snippets: [], tags: [], aliases: [], relatedProject: null, updatedAt: 0, blocks: [] };
+}
+
+function vaultNote(id: string, title: string, author: "agent" | "you" = "you") {
+  return { id, title, project: "Notes", updatedAt: 0, author, summary: "" };
+}
+
+const VAULT = [
+  vaultNote("n-mask", "Mask notes"),
+  vaultNote("n-ratio", "Ratio notes"),
+  vaultNote("n-both", "Both"),
+  vaultNote("lib-1", "Masking report"),
+  vaultNote("n-agent", "Agent masking run", "agent"),
+  vaultNote("n-starred", "Starred idea"),
+];
+
+async function searchFor(text: string) {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  render(<SearchOmnibar />);
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+  await user.type(screen.getByPlaceholderText(/./), text);
+  await vi.advanceTimersByTimeAsync(250);
+  vi.useRealTimers();
+}
+
+describe("SearchOmnibar notes", () => {
+  beforeEach(() => {
+    mocks.vaultSnapshot.mockReset().mockResolvedValue({ notes: VAULT, facts: [] });
+    useNotesPrefsStore.setState({ favorites: ["n-starred"] });
+  });
+
+  afterEach(() => {
+    useSettingsStore.setState({ notes: false });
+    useSearchModeStore.setState({ notes: "ranked", files: "ranked" });
+  });
+
+  it("reads AND, OR, NOT and groups in note searches the way file searches do", async () => {
+    useSettingsStore.setState({ notes: true });
+    const found: Record<string, unknown[]> = {
+      "mask -draft": [noteHit("n-mask", "Mask notes", 1), noteHit("n-both", "Both", 2)],
+      "ratio -draft": [noteHit("n-ratio", "Ratio notes", 3), noteHit("n-both", "Both", 5)],
+    };
+    mocks.noteSearch.mockImplementation(async (query: string) => found[query] ?? []);
+    await searchFor("/notes (mask OR ratio) NOT draft");
+    expect(await screen.findByText("Ratio notes")).toBeInTheDocument();
+    expect(mocks.noteSearch.mock.calls.map((call: unknown[]) => call[0])).toEqual(["mask -draft", "ratio -draft"]);
+    expect(screen.getByText("Mask notes")).toBeInTheDocument();
+    expect(screen.getAllByText("Both")).toHaveLength(1);
+  });
+
+  it("searches notes with the mode shown in the box when everything is searched", async () => {
+    useSettingsStore.setState({ notes: true });
+    useSearchModeStore.setState({ files: "exact", notes: "fuzzy" });
+    await searchFor("masking");
+    await waitFor(() => expect(mocks.noteSearch).toHaveBeenLastCalledWith("masking", expect.any(Number), { mode: "exact", blocks: true }));
+  });
+
+  it("says when a search has more OR combinations than it runs", async () => {
+    useSettingsStore.setState({ notes: true });
+    await searchFor("/notes (a OR b OR c OR d OR e OR f) (g OR h OR i OR j OR k OR l)");
+    expect(await screen.findByRole("status")).toHaveTextContent(enCommon.querySearch.issues.tooManyBranches);
+    await waitFor(() => expect(mocks.noteSearch).toHaveBeenCalledTimes(32));
+  });
+
+  it("filters notes by author and favorite the way the Notes library does", async () => {
+    useSettingsStore.setState({ notes: true });
+    mocks.noteSearch.mockResolvedValue([noteHit("n-agent", "Agent masking run", 2), noteHit("n-mask", "Mask notes", 1)]);
+    await searchFor("/notes author:agent mask");
+    expect(await screen.findByText("Agent masking run")).toBeInTheDocument();
+    expect(mocks.noteSearch.mock.calls.map((call: unknown[]) => call[0])).toEqual(["mask"]);
+    expect(screen.queryByText("Mask notes")).toBeNull();
+    cleanup();
+
+    mocks.noteSearch.mockClear();
+    await searchFor("/notes is:favorite");
+    expect(await screen.findByText("Starred idea")).toBeInTheDocument();
+    expect(mocks.noteSearch).not.toHaveBeenCalled();
+  });
+
+  it("lists matching notes with their blocks and opens a note at the block chosen", async () => {
+    useSettingsStore.setState({ notes: true, notesFieldStyle: "outline" });
+    mocks.noteSearch.mockResolvedValue([
+      {
+        id: "lib-1",
+        noteId: "n-1",
+        title: "Masking report",
+        titleRanges: [[0, 7]],
+        score: 1,
+        snippets: [],
+        tags: [],
+        aliases: [],
+        relatedProject: null,
+        updatedAt: 0,
+        blocks: [
+          { line: 4, block: "acc", kind: "paragraph", text: "Accuracy rose with masking", ranges: [[19, 26]] },
+          { line: 9, kind: "item", text: "Check the masking seed", ranges: [] },
+        ],
+      },
+    ]);
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    render(<SearchOmnibar />);
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    await user.type(screen.getByPlaceholderText(omnibar.placeholder), "/notes masking");
+    await vi.advanceTimersByTimeAsync(250);
+    expect(await screen.findByText(omnibar.groups.notes)).toBeInTheDocument();
+    expect(mocks.noteSearch).toHaveBeenLastCalledWith("masking", 20, { mode: "ranked", blocks: true });
+    expect(mocks.textSearch).not.toHaveBeenCalled();
+    expect(screen.getByText("Check the masking seed").closest("[data-notes-field-style]")).toHaveAttribute("data-notes-field-style", "outline");
+    await user.click(screen.getByText("Check the masking seed"));
+    expect(mocks.openNotes).toHaveBeenLastCalledWith("lib-1", "~Check the masking seed");
+    vi.useRealTimers();
+  });
 });
 
 describe("SearchOmnibar modes", () => {
@@ -202,7 +329,7 @@ describe("SearchOmnibar modes", () => {
   });
 
   it("searches documents and opens the hit the reader picks", async () => {
-    mocks.searchDocs.mockResolvedValue([HIT]);
+    mocks.textSearch.mockResolvedValue([HIT]);
     vi.useFakeTimers({ shouldAdvanceTime: true });
     render(<SearchOmnibar />);
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
@@ -222,7 +349,7 @@ describe("SearchOmnibar modes", () => {
   });
 
   it("opens nothing in the current project when the switch to the hit's project is declined", async () => {
-    mocks.searchDocs.mockResolvedValue([{ ...HIT, project_id: "beta", project_name: "Beta survey" }]);
+    mocks.textSearch.mockResolvedValue([{ ...HIT, project_id: "beta", project_name: "Beta survey" }]);
     vi.useFakeTimers({ shouldAdvanceTime: true });
     render(<SearchOmnibar />);
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
@@ -238,7 +365,7 @@ describe("SearchOmnibar modes", () => {
   });
 
   it("survives a document search that fails", async () => {
-    mocks.searchDocs.mockRejectedValue(new Error("index down"));
+    mocks.textSearch.mockRejectedValue(new Error("index down"));
     vi.useFakeTimers({ shouldAdvanceTime: true });
     render(<SearchOmnibar />);
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
@@ -318,7 +445,7 @@ describe("SearchOmnibar modes", () => {
   });
 
   it("shows a document hit whose line does not contain the words searched", async () => {
-    mocks.searchDocs.mockResolvedValue([{ ...HIT, preview: "stemmed match only" }]);
+    mocks.textSearch.mockResolvedValue([{ ...HIT, preview: "stemmed match only" }]);
     vi.useFakeTimers({ shouldAdvanceTime: true });
     render(<SearchOmnibar />);
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });

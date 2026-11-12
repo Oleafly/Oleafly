@@ -103,7 +103,7 @@ async function currentEditorSelection(
 
 function codeIntelligenceButtonExpression(label: string) {
   return `Array.from(
-    document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+    document.querySelectorAll('[data-radix-popper-content-wrapper] button, [data-radix-popper-content-wrapper] [role="menuitem"]')
   ).find((candidate) => {
     if (!candidate.textContent?.trim().startsWith(${JSON.stringify(label)})) return false;
     const style = getComputedStyle(candidate);
@@ -164,7 +164,7 @@ async function clickPortalButton(
     .waitForFunction(
       `(() => {
         const button = Array.from(
-          document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+          document.querySelectorAll('[data-radix-popper-content-wrapper] button, [data-radix-popper-content-wrapper] [role="menuitem"]')
         )
           .filter((candidate) => candidate.closest('[data-state="open"]'))
           .find((candidate) => ${predicate});
@@ -855,7 +855,7 @@ WYSPARAGRAPHANCHOR
         .waitForFunction(
           `(() => {
             const button = Array.from(
-              document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+              document.querySelectorAll('[data-radix-popper-content-wrapper] button, [data-radix-popper-content-wrapper] [role="menuitem"]')
             )
               .filter((candidate) => candidate.closest('[data-state="open"]'))
               .find((candidate) => candidate.getAttribute("aria-label") === "1 by 1 table");

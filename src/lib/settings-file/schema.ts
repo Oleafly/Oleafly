@@ -11,17 +11,33 @@ import {
   NOTES_CALLOUT_STYLES,
   NOTES_CODE_THEMES,
   NOTES_CUSTOM_LINE_HEIGHT,
+  NOTES_FIELD_STYLES,
   NOTES_FONT_SIZE_RANGE,
   NOTES_HEADING_SIZES,
   NOTES_HEADING_TYPEFACES,
-  NOTES_HIGHLIGHT_COLORS,
+  NOTES_INFO_PLACES,
   NOTES_LINE_HEIGHT_OPTIONS,
   NOTES_PARAGRAPH_SPACING_OPTIONS,
+  NOTES_TASK_BOXES,
+  NOTES_TIKZ_PREAMBLE_MAX,
   NOTES_TITLE_SIZES,
   NOTES_TYPEFACES,
+  TEXT_REPLACEMENT_LIMITS,
   clampNotesFontSize,
   clampNotesLineHeight,
+  textReplacementPair,
 } from "@/lib/notes-appearance";
+import {
+  cleanTag,
+  FORMAT_LIMIT,
+  normalizePeriodic,
+  type NotesPeriodic,
+  PERIODIC_KINDS,
+  type PeriodicKind,
+  TAG_LIMIT,
+  validPeriodFormat,
+  WEEK_START_SETTINGS,
+} from "@/lib/notes-periodic";
 import { isLintRuleName } from "@/lib/proofreading/lint-profile";
 import type { ThemePreference } from "@/lib/theme";
 import { parseThemeCustomizationImport, type ThemeCustomization } from "@/lib/theme-customization";
@@ -369,7 +385,72 @@ const lintRules: ValueType<string[]> = {
   },
 };
 const fontFamily = text(200);
+
+const textReplacements: ValueType<Record<string, string>> = {
+  parse(raw) {
+    if (!isRecord(raw)) return fail({ kind: "object" });
+    const entries = Object.entries(raw);
+    if (entries.length > TEXT_REPLACEMENT_LIMITS.count) return fail({ kind: "list", max: TEXT_REPLACEMENT_LIMITS.count });
+    for (const [from, to] of entries) {
+      if (!textReplacementPair(from, to)) return fail({ kind: "listItem" }, JSON.stringify(from));
+    }
+    return ok(Object.fromEntries(entries) as Record<string, string>);
+  },
+};
 const terminalWeight = wholeNumber(100, 900, 100);
+
+const periodFormat = text(FORMAT_LIMIT);
+const periodTag = text(TAG_LIMIT);
+const periodTemplate = text(256);
+const weekStartSetting = oneOf(WEEK_START_SETTINGS);
+const PERIODIC_PARTS: ReadonlySet<string> = new Set<string>([...PERIODIC_KINDS, "weekStart"]);
+const periodFormatValue: ValueType<string> = {
+  parse(raw) {
+    const format = periodFormat.parse(raw);
+    return format.ok && !validPeriodFormat(format.value) ? fail({ kind: "listItem" }) : format;
+  },
+};
+const periodTagValue: ValueType<string> = {
+  parse(raw) {
+    const tag = periodTag.parse(raw);
+    if (!tag.ok) return tag;
+    const plain = tag.value.trim().replace(/^#+/u, "");
+    return plain && !cleanTag(plain) ? fail({ kind: "listItem" }) : ok(cleanTag(plain));
+  },
+};
+const PERIODIC_FIELDS: ReadonlyMap<string, ValueType<unknown>> = new Map<string, ValueType<unknown>>([
+  ["enabled", bool],
+  ["format", periodFormatValue],
+  ["template", periodTemplate],
+  ["tag", periodTagValue],
+]);
+
+function parsePeriodicKind(kind: PeriodicKind, raw: unknown): Parsed<Record<string, unknown>> {
+  if (!isRecord(raw)) return fail({ kind: "object" }, kind);
+  const parsed: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    const type = PERIODIC_FIELDS.get(key);
+    if (!type) return fail({ kind: "unknownKey" }, `${kind}.${key}`);
+    const result = type.parse(value);
+    if (!result.ok) return fail(result.issue, `${kind}.${key}`);
+    parsed[key] = result.value;
+  }
+  return ok(parsed);
+}
+
+const periodic: ValueType<NotesPeriodic> = {
+  parse(raw) {
+    if (!isRecord(raw)) return fail({ kind: "object" });
+    const parsed: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(raw)) {
+      if (!PERIODIC_PARTS.has(key)) return fail({ kind: "unknownKey" }, key);
+      const result = key === "weekStart" ? weekStartSetting.parse(value) : parsePeriodicKind(key as PeriodicKind, value);
+      if (!result.ok) return result.at ? result : fail(result.issue, key);
+      parsed[key] = result.value;
+    }
+    return ok(normalizePeriodic(parsed));
+  },
+};
 
 function shortcutField(id: ShortcutId): SettingField {
   return field(
@@ -530,13 +611,20 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.notes.headingSize", "notesHeadingSize", oneOf(NOTES_HEADING_SIZES)),
   pref("appearance.notes.titleSize", "notesTitleSize", numberOf(NOTES_TITLE_SIZES)),
   pref("appearance.notes.width", "notesWidth", oneOf(NOTE_WIDTHS)),
+  pref("appearance.notes.info", "notesInfo", oneOf(NOTES_INFO_PLACES)),
   pref("appearance.notes.wordCount", "notesShowWordCount", bool),
   pref("appearance.notes.spellcheck", "notesSpellcheck", bool),
+  pref("appearance.notes.textReplace", "notesTextReplace", bool),
+  pref("appearance.notes.textReplacements", "notesTextReplacements", textReplacements),
+  pref("appearance.notes.keepUndo", "notesKeepUndo", bool),
   pref("appearance.notes.codeFontFamily", "notesCodeFontFamily", fontFamily),
   pref("appearance.notes.codeTheme", "notesCodeTheme", oneOf(NOTES_CODE_THEMES)),
   pref("appearance.notes.accentColor", "notesAccentColor", hexColorOrEmpty),
-  pref("appearance.notes.highlightColor", "notesHighlightColor", oneOf(NOTES_HIGHLIGHT_COLORS)),
   pref("appearance.notes.calloutStyle", "notesCalloutStyle", oneOf(NOTES_CALLOUT_STYLES)),
+  pref("appearance.notes.taskBox", "notesTaskBox", oneOf(NOTES_TASK_BOXES)),
+  pref("appearance.notes.fieldStyle", "notesFieldStyle", oneOf(NOTES_FIELD_STYLES)),
+  pref("appearance.notes.tikzPreamble", "notesTikzPreamble", text(NOTES_TIKZ_PREAMBLE_MAX, { multiline: true })),
+  pref("appearance.notes.periodic", "notesPeriodic", periodic),
 
   field("dictionary.words", words, (snapshot) => [...snapshot.words], (value, plan) => {
     plan.words = value;

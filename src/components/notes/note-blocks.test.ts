@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { Box } from "lucide-react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   BlockFileTooLargeError,
   blockMessage,
@@ -9,9 +9,10 @@ import {
   dataUrlBytes,
   dataUrlText,
   noteBlock,
-  noteBlockKinds,
   noteBlockName,
+  paintAsync,
   paintBlockCard,
+  parseOptionLine,
   registerNoteBlock,
   splitBlockOptions,
 } from "./note-blocks";
@@ -19,6 +20,10 @@ import {
 afterEach(() => {
   document.documentElement.classList.remove("dark");
 });
+
+function texts(preview: HTMLElement): (string | null)[] {
+  return [...preview.querySelectorAll("p")].map((paragraph) => paragraph.textContent);
+}
 
 describe("note block registry", () => {
   it("finds kinds by name and alias, ignoring case, raw braces and spaces", () => {
@@ -30,7 +35,6 @@ describe("note block registry", () => {
     expect(noteBlock("probe-kind")).toBe(kind);
     expect(noteBlock("missing")).toBeUndefined();
     expect(noteBlockName("missing")).toBeUndefined();
-    expect(noteBlockKinds()).toContain(kind);
   });
 });
 
@@ -46,7 +50,7 @@ describe("block drawing helpers", () => {
     preview.append(document.createElement("span"));
     blockMessage(preview, "Nothing to show");
     expect(preview.children).toHaveLength(1);
-    expect(preview.querySelector("p.note-drawn-empty")?.textContent).toBe("Nothing to show");
+    expect(preview.querySelector("p")?.textContent).toBe("Nothing to show");
   });
 
   it("summarises a block by its first non-empty line, cut long", () => {
@@ -59,11 +63,42 @@ describe("block drawing helpers", () => {
   it("paints a labelled card with the summary when there is one", () => {
     const preview = document.createElement("div");
     paintBlockCard(preview, "HTML", "<p>Hello</p>");
-    expect(preview.querySelector(".note-block-card-title")?.textContent).toBe("HTML");
-    expect(preview.querySelector(".note-block-card-text")?.textContent).toBe("<p>Hello</p>");
+    expect(texts(preview)).toEqual(["HTML", "<p>Hello</p>"]);
     paintBlockCard(preview, "React", "");
-    expect(preview.querySelector(".note-block-card-title")?.textContent).toBe("React");
-    expect(preview.querySelector(".note-block-card-text")).toBeNull();
+    expect(texts(preview)).toEqual(["React"]);
+  });
+});
+
+describe("async painting", () => {
+  it("shows the loading text, then the result, and disposes what it mounted", async () => {
+    const preview = document.createElement("div");
+    const unmount = vi.fn();
+    const dispose = paintAsync(preview, {
+      loading: "Loading",
+      load: () => Promise.resolve("Ready"),
+      show: (text) => {
+        preview.textContent = text;
+        return unmount;
+      },
+      error: () => "Failed",
+    });
+    expect(preview.textContent).toBe("Loading");
+    await vi.waitFor(() => expect(preview.textContent).toBe("Ready"));
+    dispose();
+    expect(unmount).toHaveBeenCalledOnce();
+  });
+
+  it("explains a failure, and ignores everything after dispose", async () => {
+    const failed = document.createElement("div");
+    paintAsync(failed, { load: () => Promise.reject(new Error("x")), show: () => undefined, error: () => "Failed" });
+    await vi.waitFor(() => expect(failed.textContent).toBe("Failed"));
+    const gone = document.createElement("div");
+    const show = vi.fn(() => undefined);
+    paintAsync(gone, { loading: "Loading", load: () => Promise.resolve("Ready"), show, error: () => "Failed" })();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(show).not.toHaveBeenCalled();
+    expect(gone.textContent).toBe("Loading");
   });
 });
 
@@ -103,5 +138,20 @@ describe("block options", () => {
     expect(splitBlockOptions("title: x\npath: a", keys).options.size).toBe(0);
     expect(splitBlockOptions("plain\npath: a", keys).body).toBe("plain\npath: a");
     expect(splitBlockOptions("", keys)).toEqual({ options: new Map(), body: "" });
+  });
+
+  it("reads one option line: a name, a colon and the value after any spaces", () => {
+    expect(parseOptionLine("Style :  stick model")).toEqual({ name: "Style", value: "stick model" });
+    expect(parseOptionLine("path: a:b")).toEqual({ name: "path", value: "a:b" });
+    expect(parseOptionLine("color:")).toEqual({ name: "color", value: "" });
+    expect(parseOptionLine("x-1_y:\n z")).toEqual({ name: "x-1_y", value: "z" });
+  });
+
+  it("rejects lines that are not an option", () => {
+    expect(parseOptionLine("no colon")).toBeNull();
+    expect(parseOptionLine("1st: x")).toBeNull();
+    expect(parseOptionLine(" style: x")).toBeNull();
+    expect(parseOptionLine("two words: x")).toBeNull();
+    expect(parseOptionLine("style: a\rb")).toBeNull();
   });
 });

@@ -14,7 +14,7 @@ const groups = new Map<string, WatchGroup>();
 
 function groupFor(margin: string): WatchGroup {
   const current = groups.get(margin);
-  if (current && current.type === IntersectionObserver) return current;
+  if (current?.type === IntersectionObserver) return current;
   const watchers = new Map<Element, Watcher>();
   const observer = new IntersectionObserver(
     (entries) => {

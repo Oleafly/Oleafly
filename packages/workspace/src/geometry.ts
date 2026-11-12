@@ -27,7 +27,7 @@ export function sameRects(left: Record<string, Rect>, right: Record<string, Rect
   return keys.every((key) => {
     const a = left[key];
     const b = right[key];
-    return b !== undefined && a.left === b.left && a.top === b.top && a.width === b.width && a.height === b.height;
+    return a.left === b?.left && a.top === b.top && a.width === b.width && a.height === b.height;
   });
 }
 
@@ -38,13 +38,17 @@ export function contains(rect: Rect, x: number, y: number): boolean {
 export function nearestEdge(rect: Rect, x: number, y: number, relative = true): [Edge, number] {
   const across = relative ? rect.width : 1;
   const down = relative ? rect.height : 1;
-  const edges: [Edge, number][] = [
-    ["left", (x - rect.left) / across],
+  const left: [Edge, number] = ["left", (x - rect.left) / across];
+  const others: [Edge, number][] = [
     ["right", (rect.left + rect.width - x) / across],
     ["top", (y - rect.top) / down],
     ["bottom", (rect.top + rect.height - y) / down],
   ];
-  return edges.reduce((best, edge) => (edge[1] < best[1] ? edge : best));
+  return others.reduce((best, edge) => (edge[1] < best[1] ? edge : best), left);
+}
+
+export function slotAlong(rects: readonly Rect[], position: number, axis: "x" | "y"): number {
+  return rects.filter((rect) => (axis === "x" ? position >= rect.left + rect.width / 2 : position >= rect.top + rect.height / 2)).length;
 }
 
 export function zoneAt(rect: Rect, x: number, y: number, edgeShare = EDGE): DropZone {
@@ -84,8 +88,8 @@ export function shiftPair({ weights, first, second, delta, size, total, minFirst
   return next;
 }
 
-export function childrenWith(parent: Element, attribute: string): Element[] {
-  return [...parent.children].filter((child) => child.hasAttribute(attribute));
+export function childrenWith(parent: Element, attribute: string): HTMLElement[] {
+  return [...parent.children].filter((child): child is HTMLElement => child instanceof HTMLElement && child.hasAttribute(attribute));
 }
 
 export function badgeShown(badge: number | string | boolean | undefined): boolean {

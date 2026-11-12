@@ -1,8 +1,10 @@
 import { compareText } from "@/lib/intl";
-import type { HomeSort } from "./note-home-prefs";
+import type { HomeSort } from "@/store/notes-prefs";
 import type { NoteItem } from "./types";
 
-export type HomeTab = "mine" | "favorites";
+export type HomeTab = "mine" | "favorites" | "tasks" | "attachments";
+
+export const HOME_TABS: readonly HomeTab[] = ["mine", "favorites", "tasks", "attachments"];
 
 export interface HomeQuery {
   tab: HomeTab;

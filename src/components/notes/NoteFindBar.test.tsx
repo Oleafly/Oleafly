@@ -39,7 +39,7 @@ function findField(): HTMLInputElement {
 }
 
 function count(): string {
-  return screen.getByRole("search").querySelector("output")?.textContent ?? "";
+  return screen.getByRole("status").textContent ?? "";
 }
 
 describe("isFindKey", () => {

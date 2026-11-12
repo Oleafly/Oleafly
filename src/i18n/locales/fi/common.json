@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "Hakutila: {{mode}}",
+    "heading": "Hakutila",
+    "ranked": {
+      "label": "Paras osuma",
+      "description": "Järjestää tulokset sen mukaan, kuinka hyvin ne vastaavat hakua. Sanat voivat olla missä tahansa."
+    },
+    "exact": {
+      "label": "Tarkka teksti",
+      "description": "Etsii juuri nämä merkit. Jos haussa on iso kirjain, kirjainkoko huomioidaan."
+    },
+    "regex": {
+      "label": "Säännöllinen lauseke",
+      "description": "Käyttää samaa lausekesyntaksia kuin ripgrep. Laita lauseke lainausmerkkeihin, jos siinä on välilyöntejä tai sulkeita."
+    },
+    "fuzzy": {
+      "label": "Sumea",
+      "description": "Löytää nimet, joissa kirjoittamasi kirjaimet ovat järjestyksessä, kuten fzf. Tukee myös muotoja 'tarkka, ^alku, loppu$ ja !pois."
+    },
+    "invalid": "Lauseke ei kelpaa: {{error}}"
+  },
   "querySearch": {
     "suggestions": "Hakuehdotukset",
     "exclude": "Jätä pois",
@@ -76,7 +97,8 @@
       "invalidValue": "{{value}} ei kelpaa suodattimen {{key}} arvoksi",
       "invalidDate": "{{value}} ei ole päivämäärä. Kokeile 2026-10-02 tai @today-7d",
       "invalidNumber": "{{value}} ei ole luku",
-      "sortNegated": "Suodatinta {{key}} ei voi jättää pois"
+      "sortNegated": "Suodatinta {{key}} ei voi jättää pois",
+      "tooManyBranches": "Tässä haussa on liikaa OR-yhdistelmiä, joten osa tuloksista voi puuttua"
     }
   },
   "avatar": {

@@ -12,14 +12,17 @@ fn bytes_from(value: i64) -> u64 {
 }
 
 pub fn account_bytes(conn: &Connection, account: AccountId) -> Result<u64, ServerError> {
-    let (projects, outputs): (i64, i64) = conn.query_row(
+    let (projects, outputs, published): (i64, i64, i64) = conn.query_row(
         "SELECT \
            (SELECT COALESCE(SUM(log_bytes + file_bytes), 0) FROM projects WHERE owner_account = ?1), \
-           (SELECT COALESCE(SUM(o.size), 0) FROM project_outputs o JOIN projects p ON p.id = o.project_id WHERE p.owner_account = ?1)",
+           (SELECT COALESCE(SUM(o.size), 0) FROM project_outputs o JOIN projects p ON p.id = o.project_id WHERE p.owner_account = ?1), \
+           (SELECT COALESCE(SUM(size), 0) FROM published_notes WHERE account_id = ?1)",
         [account.to_string()],
-        |row| Ok((row.get(0)?, row.get(1)?)),
+        |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
     )?;
-    Ok(bytes_from(projects).saturating_add(bytes_from(outputs)))
+    Ok(bytes_from(projects)
+        .saturating_add(bytes_from(outputs))
+        .saturating_add(bytes_from(published)))
 }
 
 pub fn owned_projects(conn: &Connection, account: AccountId) -> Result<u32, ServerError> {

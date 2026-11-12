@@ -1,12 +1,9 @@
 import { scanMathExpressions } from "@oleafly/editor/math-source";
+import { splitMarkdownFrontMatter } from "@oleafly/wysiwyg/front-matter";
 
-const MARKDOWN_FRONTMATTER_RE = /^(---\r?\n[\s\S]*?\r?\n---)\r?\n?/u;
-
-/** The math the Visual editor keeps as written when it loads Markdown. */
 export function markdownMathRanges(source: string) {
-  const bodyOffset = MARKDOWN_FRONTMATTER_RE.exec(source)?.[0].length ?? 0;
   return scanMathExpressions(source, {
     format: "markdown",
-    from: bodyOffset,
+    from: source.length - splitMarkdownFrontMatter(source).body.length,
   }).map(({ from, to }) => ({ from, to }));
 }

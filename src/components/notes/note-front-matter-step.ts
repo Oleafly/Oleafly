@@ -22,7 +22,7 @@ export class FrontMatterStep extends Step {
     return new FrontMatterStep(this.after, this.before);
   }
 
-  map(): FrontMatterStep {
+  map(): this {
     return this;
   }
 

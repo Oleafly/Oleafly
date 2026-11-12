@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { describe, expect, it, vi } from "vitest";
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
 
 vi.mock("@/lib/use-fullscreen", () => ({ useFullscreen: () => false }));
 
@@ -15,16 +16,10 @@ const SHARED: NoteItem = { id: "n1", title: "Shared lab log", project: "Lab", up
 const PRIVATE: NoteItem = { id: "n2", title: "Private draft", project: "Lab", updatedAt: Date.now(), author: "you", summary: "" };
 
 function data(overrides: Partial<NotesData> = {}): NotesData {
-  return {
+  return fakeNotesData({
     notes: [SHARED, PRIVATE],
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
-    loadNote: vi.fn(),
-    saveNote: vi.fn(),
     ...overrides,
-  };
+  });
 }
 
 function library(value: NotesData) {
@@ -73,10 +68,6 @@ function CardList() {
     </>
   );
 }
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 describe("sharing notes from the sidebar and Home", () => {
   it("marks shared notes in the sidebar", () => {

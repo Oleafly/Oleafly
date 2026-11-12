@@ -59,7 +59,7 @@
   },
   "compile": {
     "failedWithReason": "Не вдалося скомпілювати: {{message}}",
-    "noOfflineMode":"{{engine}} не має офлайн-режиму компіляції. Компілюємо звичайним способом.",
+    "noOfflineMode": "{{engine}} не має офлайн-режиму компіляції. Компілюємо звичайним способом.",
     "pandocRequired": "Pandoc недоступний. Відновіть його в розділі Налаштування > Рушії > Markdown і скомпілюйте ще раз.",
     "pandocSetupFailed": "Не вдалося налаштувати Pandoc: {{message}}",
     "pdfChanged": "Скомпільований PDF змінився, поки Oleafly його читав, тож залишається попередній перегляд. Скомпілюйте ще раз, щоб оновити його.",
@@ -329,6 +329,7 @@
   },
   "mcp": {
     "deniedByRules": "Відхилено правилом deny в approvals.toml",
+    "createTodaySummary": "Створити нотатку на сьогодні «{{title}}»",
     "openProjectSummary": "Відкрити проєкт {{id}}",
     "rulesUnreadable": "Відхилено, бо не вдалося прочитати approvals.toml",
     "useToolSummary": "Використати {{tool}} із сервера MCP {{server}}"

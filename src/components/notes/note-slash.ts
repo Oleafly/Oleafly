@@ -3,15 +3,21 @@ import { type Editor, Extension } from "@tiptap/core";
 import { type EditorState, type Plugin, PluginKey } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import {
+  Asterisk,
+  Globe,
   Heading1,
   Heading2,
   Heading3,
+  Heading4,
+  Heading5,
+  Heading6,
   List,
   ListChecks,
   ListOrdered,
   type LucideIcon,
   Megaphone,
   Minus,
+  Paperclip,
   Quote,
   SquareCode,
   SquareFunction,
@@ -20,6 +26,8 @@ import {
 import { i18n } from "@/i18n";
 import type { BlockGroupId } from "./block-templates";
 import { blockGroups, caretAfterDrawnBlock } from "./block-views";
+import { attachFile, canAttach } from "./note-image-drop";
+import { askBookmark, canAskBookmark } from "./note-link-choice";
 import { type SuggestRange, type SuggestState, sendSuggestMeta, suggestionKey, suggestOptionId, suggestPlugin } from "./note-suggest-plugin";
 
 export type SlashGroup = "basic" | BlockGroupId;
@@ -58,6 +66,9 @@ const BLOCK_KEYWORDS: Readonly<Record<string, readonly string[]>> = {
   latex: ["math", "equation", "formula", "chemistry"],
   typst: ["math", "equation"],
   mermaid: ["diagram", "flowchart", "graph"],
+  d2: ["diagram", "flowchart", "architecture", "graph"],
+  tikz: ["latex", "diagram", "drawing", "figure", "pgf"],
+  circuitikz: ["circuit", "electronics", "schematic", "latex", "diagram"],
   svg: ["vector", "drawing", "image"],
   html: ["web", "page", "widget", "interactive"],
   jsx: ["component", "app", "interactive", "artifact"],
@@ -102,10 +113,13 @@ function chain(editor: Editor, range: SlashRange) {
 
 function basicItems(): SlashItem[] {
   const always = () => true;
-  const headings: [1 | 2 | 3, LucideIcon][] = [
+  const headings: [1 | 2 | 3 | 4 | 5 | 6, LucideIcon][] = [
     [1, Heading1],
     [2, Heading2],
     [3, Heading3],
+    [4, Heading4],
+    [5, Heading5],
+    [6, Heading6],
   ];
   return [
     ...headings.map(
@@ -203,6 +217,37 @@ function basicItems(): SlashItem[] {
       available: (editor) => commandAvailable(editor, "setHorizontalRule"),
       run: (editor, range) => chain(editor, range).setHorizontalRule().run(),
     },
+    {
+      id: "footnote",
+      label: i18n.t(($) => $.notes.blocks.slash.footnote),
+      group: "basic",
+      icon: Asterisk,
+      keywords: ["footnote", "note", "reference"],
+      available: (editor) => commandAvailable(editor, "insertFootnoteReference"),
+      run: (editor, range) => chain(editor, range).insertFootnoteReference().run(),
+    },
+    {
+      id: "bookmark",
+      label: i18n.t(($) => $.notes.blocks.bookmark.label),
+      group: "basic",
+      icon: Globe,
+      keywords: ["bookmark", "link", "url", "web", "card", "preview"],
+      available: canAskBookmark,
+      run: (editor, range) => chain(editor, range).run() && askBookmark(editor),
+    },
+    {
+      id: "attach",
+      label: i18n.t(($) => $.notes.toolbar.attach),
+      group: "basic",
+      icon: Paperclip,
+      keywords: ["attach", "file", "image", "upload", "csv", "excel", "notebook", "molecule"],
+      available: canAttach,
+      run: (editor, range) => {
+        if (!chain(editor, range).run()) return false;
+        void attachFile(editor, "file");
+        return true;
+      },
+    },
   ];
 }
 
@@ -237,6 +282,11 @@ export function slashItems(editor: Editor): SlashItem[] {
   return [...basicItems(), ...blockItems()].filter((item) => item.available(editor));
 }
 
+function slashRank(label: string, haystack: readonly string[], first: string): number {
+  if (label.startsWith(first)) return 0;
+  return haystack.some((text) => text.startsWith(first)) ? 1 : 2;
+}
+
 export function filterSlashItems(items: readonly SlashItem[], query: string): SlashItem[] {
   const words = query.trim().toLowerCase().split(/\s+/u).filter(Boolean);
   if (words.length === 0) return [...items];
@@ -245,12 +295,11 @@ export function filterSlashItems(items: readonly SlashItem[], query: string): Sl
       const label = item.label.toLowerCase();
       const haystack = [label, ...item.keywords.map((keyword) => keyword.toLowerCase())];
       if (!words.every((word) => haystack.some((text) => text.includes(word)))) return null;
-      const first = words[0];
-      const rank = label.startsWith(first) ? 0 : haystack.some((text) => text.startsWith(first)) ? 1 : 2;
-      return { item, rank, order };
+      return { item, rank: slashRank(label, haystack, words[0]), order };
     })
     .filter((entry): entry is { item: SlashItem; rank: number; order: number } => entry !== null);
-  return scored.sort((left, right) => left.rank - right.rank || left.order - right.order).map(({ item }) => item);
+  scored.sort((left, right) => left.rank - right.rank || left.order - right.order);
+  return scored.map(({ item }) => item);
 }
 
 export function slashState(state: EditorState): SlashState {

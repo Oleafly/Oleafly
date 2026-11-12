@@ -7,8 +7,8 @@ import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { readSidebarView } from "@/store/sidebar-view-state";
 import { Tooltip } from "@/components/ui/tooltip";
+import { SearchField } from "@/components/ui/search-field";
 import {
-  IntelligenceFilter,
   IntelligenceTree,
   PanelState,
   type IntelligenceTreeExpansionCommand,
@@ -305,7 +305,7 @@ export function Outline({
       }
     >
       <div className="shrink-0 border-b border-sidebar-border/65 px-2 py-1.5">
-            <IntelligenceFilter
+            <SearchField
               value={filter}
               onChange={editFilter}
               label={t(($) => $.workspace.structure.filterLabel)}

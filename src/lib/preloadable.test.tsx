@@ -2,9 +2,11 @@
 import { act, render, screen } from "@testing-library/react";
 import { createRef, forwardRef, Suspense } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { lazy, stopWarming } from "./preloadable";
 
 const WAITING = "Waiting";
+const FAILED = "Failed";
 const FIELD = "field";
 
 function loading(order: string[], name: string) {
@@ -26,6 +28,7 @@ afterEach(() => {
   stopWarming();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 describe("lazy", () => {
@@ -65,6 +68,27 @@ describe("lazy", () => {
     await View.preload();
     expect(load).toHaveBeenCalledTimes(2);
     expect(View.loaded()).toBe(true);
+  });
+
+  it("surfaces a failed load to the error boundary once, then tries the import again on a later mount", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const load = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce({ default: Hello });
+    const View = lazy(load);
+    const failed = render(
+      <ErrorBoundary fallback={<p>{FAILED}</p>}>
+        <Suspense fallback={<p>{WAITING}</p>}>
+          <View name="Ada" />
+        </Suspense>
+      </ErrorBoundary>,
+    );
+    expect(await screen.findByText(FAILED)).toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(1);
+    failed.unmount();
+    vi.setSystemTime(Date.now() + 60_000);
+    shown(<View name="Ada" />);
+    expect(await screen.findByText("Hello Ada")).toBeInTheDocument();
+    expect(load).toHaveBeenCalledTimes(2);
   });
 
   it("passes a ref through to the loaded component", async () => {
@@ -134,8 +158,8 @@ describe("warming views ahead of time", () => {
     const warming = await fresh();
     const order: string[] = [];
     let wanted = false;
-    warming.lazy(loading(order, "heavy"), { warm: true, priority: warming.HEAVY });
     warming.lazy(loading(order, "later"), { warm: () => wanted });
+    warming.lazy(loading(order, "second"), { warm: true });
     warming.lazy(loading(order, "first"), { warm: true, priority: 1 });
     warming.startWarming(vi.fn());
     await pastStartup(warming);
@@ -145,39 +169,34 @@ describe("warming views ahead of time", () => {
     await vi.advanceTimersByTimeAsync(warming.IDLE_FALLBACK_MS + 1);
     expect(order).toEqual(["first"]);
     await vi.advanceTimersByTimeAsync(warming.IDLE_FALLBACK_MS * 3);
-    expect(order).toEqual(["first"]);
-    await vi.advanceTimersByTimeAsync(warming.HEAVY_QUIET_MS);
-    expect(order).toEqual(["first", "heavy"]);
+    expect(order).toEqual(["first", "second"]);
     wanted = true;
     warming.warmDeferred();
     await vi.advanceTimersByTimeAsync(warming.IDLE_FALLBACK_MS);
-    expect(order).toEqual(["first", "heavy", "later"]);
+    expect(order).toEqual(["first", "second", "later"]);
   });
 
-  it("loads a heavy view only after a long stretch without input", async () => {
+  it("loads an intent-only view at once on intent and never on the timer, then warms the views gated on that intent", async () => {
     const warming = await fresh();
     const order: string[] = [];
-    warming.lazy(loading(order, "heavy"), { warm: true, priority: warming.HEAVY });
+    const Heavy = warming.lazy(loading(order, "heavy"), { intent: "composer" });
+    warming.lazy(loading(order, "tab"), { warm: () => warming.intended("composer") });
     warming.startWarming(vi.fn());
-    for (let pause = 0; pause < 4; pause++) {
-      await vi.advanceTimersByTimeAsync(warming.HEAVY_QUIET_MS / 2);
-      input("keydown");
-    }
+    await vi.advanceTimersByTimeAsync(warming.STARTUP_MS * 10);
     expect(order).toEqual([]);
-    await vi.advanceTimersByTimeAsync(warming.HEAVY_QUIET_MS + warming.IDLE_FALLBACK_MS);
+    expect(warming.intended("composer")).toBe(false);
+    const { onPointerEnter, onFocus } = warming.intentProps("composer");
+    onPointerEnter();
+    onFocus();
+    await vi.advanceTimersByTimeAsync(0);
     expect(order).toEqual(["heavy"]);
-  });
-
-  it("takes a newly declared view ahead of a heavy one that is still waiting", async () => {
-    const warming = await fresh();
-    const order: string[] = [];
-    warming.lazy(loading(order, "heavy"), { warm: true, priority: warming.HEAVY });
-    warming.startWarming(vi.fn());
-    await pastStartup(warming);
-    input("keydown");
-    warming.lazy(loading(order, "dialog"), { warm: true });
-    await vi.advanceTimersByTimeAsync(warming.QUIET_MS + warming.IDLE_FALLBACK_MS);
-    expect(order).toEqual(["dialog"]);
+    expect(Heavy.loaded()).toBe(true);
+    expect(warming.intended("composer")).toBe(true);
+    await vi.advanceTimersByTimeAsync(warming.IDLE_FALLBACK_MS);
+    expect(order).toEqual(["heavy", "tab"]);
+    warming.preloadIntent("unknown");
+    await vi.advanceTimersByTimeAsync(warming.IDLE_FALLBACK_MS);
+    expect(order).toEqual(["heavy", "tab"]);
   });
 
   it.each([
@@ -185,6 +204,8 @@ describe("warming views ahead of time", () => {
     ["a window resize", "resize", {}],
     ["a scroll", "scroll", {}],
     ["a wheel turn", "wheel", {}],
+    ["typing that arrives without a key press", "beforeinput", {}],
+    ["an edit event", "input", {}],
   ])("counts %s as input", async (_name, type, init) => {
     const warming = await fresh();
     const order: string[] = [];
@@ -265,7 +286,7 @@ describe("warming views ahead of time", () => {
     expect(order).toEqual(["view"]);
   });
 
-  it("needs a roomy idle deadline, but gives in after a long busy stretch", async () => {
+  it("needs a roomy idle deadline, however long the thread stays busy", async () => {
     const idle: IdleRequestCallback[] = [];
     const warming = await fresh((run) => idle.push(run));
     const order: string[] = [];
@@ -282,10 +303,12 @@ describe("warming views ahead of time", () => {
     expect(order).toEqual([]);
     await offer(warming.MIN_IDLE_MS);
     expect(order).toEqual(["first"]);
-    await offer(1);
-    vi.setSystemTime(Date.now() + warming.BUSY_PATIENCE_MS);
+    for (let tick = 0; tick < 20; tick++) {
+      vi.setSystemTime(Date.now() + warming.STARTUP_MS);
+      await offer(1);
+    }
     expect(order).toEqual(["first"]);
-    await offer(1);
+    await offer(warming.MIN_IDLE_MS);
     expect(order).toEqual(["first", "second"]);
   });
 

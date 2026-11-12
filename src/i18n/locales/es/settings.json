@@ -1134,146 +1134,6 @@
         "label": "Mostrar el PDF al compilar"
       },
       "title": "Modo Zen"
-    },
-    "notes": {
-      "sectionName": "Apariencia de las notas",
-      "resetAriaLabel": "Restablecer el valor predeterminado del ajuste {{setting}}",
-      "text": {
-        "title": "Texto"
-      },
-      "typeface": {
-        "label": "Tipo de letra",
-        "description": "Elige un tipo de letra para el texto de las notas.",
-        "options": {
-          "sans": "Sin serifa",
-          "serif": "Con serifa",
-          "mono": "Monoespaciada"
-        }
-      },
-      "font": {
-        "label": "Tipografía de las notas",
-        "description": "Elige cualquier tipografía instalada para el texto de las notas. Déjalo vacío para usar el ajuste Tipo de letra."
-      },
-      "fontSize": {
-        "label": "Tamaño del texto de las notas",
-        "description": "Define el tamaño del texto de las notas.",
-        "custom": "Personalizado",
-        "customLabel": "Tamaño personalizado del texto de las notas, en píxeles"
-      },
-      "lineHeight": {
-        "label": "Interlineado de las notas",
-        "description": "Define el espacio entre las líneas del texto de las notas.",
-        "customLabel": "Interlineado personalizado de las notas"
-      },
-      "paragraphSpacing": {
-        "label": "Espacio entre párrafos",
-        "description": "Define el espacio entre párrafos, listas y otros bloques.",
-        "options": {
-          "compact": "Compacto",
-          "normal": "Normal",
-          "relaxed": "Holgado",
-          "spacious": "Amplio"
-        }
-      },
-      "headings": {
-        "title": "Títulos de sección y título"
-      },
-      "headingTypeface": {
-        "label": "Tipo de letra de los títulos",
-        "description": "Elige un tipo de letra para los títulos de sección y el título de la nota.",
-        "options": {
-          "text": "Igual que el texto"
-        }
-      },
-      "headingFont": {
-        "label": "Tipografía de los títulos",
-        "description": "Elige una tipografía instalada para los títulos de sección y el título de la nota. Déjalo vacío para usar el ajuste Tipo de letra de los títulos."
-      },
-      "headingSize": {
-        "label": "Tamaño de los títulos de sección",
-        "description": "Define el tamaño de los títulos de sección en relación con el texto.",
-        "options": {
-          "small": "Más pequeños",
-          "normal": "Normal",
-          "large": "Más grandes"
-        }
-      },
-      "titleSize": {
-        "label": "Tamaño del título",
-        "description": "Define el tamaño del título que aparece al principio de cada nota."
-      },
-      "layout": {
-        "title": "Diseño"
-      },
-      "width": {
-        "label": "Ancho de las notas",
-        "description": "El ancho con el que se abren las notas. El menú de ancho de una nota también cambia este ajuste.",
-        "options": {
-          "standard": "Estándar",
-          "wide": "Ancho",
-          "full": "Ancho completo"
-        }
-      },
-      "wordCount": {
-        "label": "Mostrar el recuento de palabras",
-        "description": "Muestra el recuento de palabras de una nota en su barra de herramientas."
-      },
-      "spellcheck": {
-        "label": "Revisar la ortografía en las notas",
-        "description": "Subraya las palabras mal escritas mientras escribes una nota."
-      },
-      "code": {
-        "title": "Código"
-      },
-      "codeFont": {
-        "label": "Tipografía del código",
-        "description": "Elige una tipografía instalada para los bloques de código y el código en línea."
-      },
-      "codeTheme": {
-        "label": "Colores de los bloques de código",
-        "description": "Elige los colores de sintaxis de los bloques de código de las notas.",
-        "options": {
-          "editor": "Igual que el editor"
-        }
-      },
-      "colors": {
-        "title": "Colores"
-      },
-      "accent": {
-        "label": "Color de acento de las notas",
-        "description": "Se usa para los enlaces, las etiquetas y las casillas de tareas de las notas.",
-        "matchApp": "Igual que la aplicación",
-        "customAriaLabel": "Elegir un color de acento personalizado para las notas"
-      },
-      "highlight": {
-        "label": "Color de resaltado",
-        "description": "El color que hay detrás del texto resaltado.",
-        "options": {
-          "yellow": "Amarillo",
-          "green": "Verde",
-          "blue": "Azul",
-          "pink": "Rosa",
-          "purple": "Morado",
-          "accent": "Acento"
-        }
-      },
-      "callouts": {
-        "label": "Estilo de los recuadros",
-        "description": "El aspecto de los recuadros en las notas.",
-        "options": {
-          "tinted": "Tintado",
-          "filled": "Relleno",
-          "outlined": "Contorno",
-          "bar": "Barra lateral"
-        }
-      },
-      "remoteImages": {
-        "title": "Imágenes de la web",
-        "description": "Las notas cargan las imágenes de estos sitios sin preguntar.",
-        "empty": "Las notas preguntan antes de cargar una imagen de la web. Aquí aparecen los sitios que permites siempre.",
-        "remove": "Quitar {{host}}"
-      },
-      "resetAll": "Restablecer la apariencia de las notas"
     }
   },
   "checkpoints": {
@@ -2523,6 +2383,42 @@
       "notesAskAgent": {
         "description": "Pregunta al agente sobre el texto seleccionado o abre y cierra el agente de la nota.",
         "label": "Notas: preguntar al agente"
+      },
+      "notesNewNote": {
+        "label": "Notas: nota nueva",
+        "description": "Empieza una nota nueva en el panel actual."
+      },
+      "notesSearch": {
+        "label": "Notas: buscar notas",
+        "description": "Salta al cuadro de búsqueda de la parte superior de la barra lateral de Notas."
+      },
+      "notesBookmark": {
+        "label": "Notas: añadir a favoritos",
+        "description": "Añade la nota abierta a Favoritos o la quita."
+      },
+      "notesCopyLink": {
+        "label": "Notas: copiar enlace a la nota",
+        "description": "Copia un enlace a la nota abierta que puedes pegar en otra nota o en un chat."
+      },
+      "notesProperties": {
+        "label": "Notas: mostrar u ocultar propiedades",
+        "description": "Abre o cierra las propiedades que hay bajo el título de la nota."
+      },
+      "notesQuickCapture": {
+        "description": "Abre una ventana pequeña para apuntar algo desde cualquier aplicación, incluso cuando Oleafly está en segundo plano.",
+        "label": "Notas: captura rápida"
+      },
+      "notesCopyBlockLink": {
+        "description": "Copia un enlace al párrafo, elemento de lista o tabla donde está el cursor.",
+        "label": "Notas: copiar enlace al bloque"
+      },
+      "notesBack": {
+        "description": "Vuelve a donde estabas en esta pestaña.",
+        "label": "Notas: atrás"
+      },
+      "notesForward": {
+        "description": "Vuelve a avanzar después de retroceder.",
+        "label": "Notas: adelante"
       }
     },
     "application": {
@@ -2548,14 +2444,41 @@
         "renameSymbol": "Renombrar el símbolo o el archivo en todo el proyecto",
         "slashCommandMenu": "Menú de inserción con barra",
         "triggerAutocomplete": "Abrir el autocompletado",
-        "undo": "Deshacer"
+        "undo": "Deshacer",
+        "noteBold": "Negrita",
+        "noteItalic": "Cursiva",
+        "noteUnderline": "Subrayado",
+        "noteStrike": "Tachado",
+        "noteCode": "Código en línea",
+        "noteHighlight": "Resaltar con el último color usado",
+        "noteSuperscript": "Superíndice",
+        "noteSubscript": "Subíndice",
+        "noteHeadings": "Títulos del 1 al 6",
+        "noteText": "Convertir en texto",
+        "noteQuote": "Cita",
+        "noteCodeBlock": "Bloque de código",
+        "noteBulletList": "Lista con viñetas",
+        "noteNumberedList": "Lista numerada",
+        "noteTaskList": "Lista de tareas",
+        "noteToggleTask": "Marcar o desmarcar una tarea",
+        "noteIndent": "Aumentar la sangría de un elemento de lista",
+        "noteOutdent": "Reducir la sangría de un elemento de lista",
+        "noteLineBreak": "Salto de línea en el mismo párrafo",
+        "noteFind": "Buscar y reemplazar",
+        "noteSelectAll": "Seleccionar toda la nota",
+        "noteUndo": "Deshacer",
+        "noteRedo": "Rehacer",
+        "noteInsertMenu": "Abrir el menú de inserción al principio de una línea",
+        "noteLinkMenu": "Enlazar a una nota",
+        "noteTag": "Añadir una etiqueta"
       },
       "managed": "Lo gestiona el editor"
     },
     "categories": {
       "codeIntelligence": "Inteligencia de código",
       "editor": "Editor",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Notas"
     },
     "error": {
       "conflict": "Ya está asignado a {{action}}.",
@@ -2601,6 +2524,15 @@
         "uppercase": "Mayúsculas"
       },
       "unbound": "Sin asignar"
+    },
+    "quickCapture": {
+      "label": "Captura rápida desde cualquier aplicación",
+      "description": "El atajo de captura rápida funciona en todas las aplicaciones de este equipo.",
+      "ready": "Pulsa {{shortcut}} en cualquier aplicación para abrir la captura rápida.",
+      "taken": "Otra aplicación ya usa {{shortcut}}. Elige otro atajo para Notas: captura rápida.",
+      "invalid": "{{shortcut}} no puede funcionar fuera de Oleafly. Elige un atajo que termine en una letra, un número o una tecla de función.",
+      "failed": "Oleafly no pudo configurar el atajo. Desactiva y vuelve a activar la captura rápida para intentarlo de nuevo.",
+      "wayland": "Wayland no permite que las aplicaciones detecten teclas fuera de sus propias ventanas. Para abrir la captura rápida con una tecla, añade en los ajustes de teclado del sistema un atajo personalizado que ejecute este comando:"
     }
   },
   "systemIntegration": {
@@ -2694,17 +2626,5 @@
       "loadFailed": "No se pudo leer la lista de servidores MCP.",
       "missing": "{{name}} (no encontrado)"
     }
-  },
-  "notesPreview": {
-    "label": "Vista previa de una nota con estos ajustes",
-    "title": "Notas de campo",
-    "heading": "Muestreo de la mañana",
-    "paragraph": "Lluvia ligera hasta las nueve y después cielo despejado sobre la cresta norte. A mediodía el suelo seguía húmedo.",
-    "links": "Consulta <note>Método de muestreo</note> para ver todos los pasos, o explora <tag>#trabajodecampo</tag>.",
-    "highlight": "Las plántulas duplicaron su altura en una semana.",
-    "calloutTitle": "Próxima visita",
-    "calloutBody": "Revisa los sensores de suelo antes de tomar muestras nuevas.",
-    "taskDone": "Etiquetar las muestras",
-    "task": "Subir las fotos"
   }
 }

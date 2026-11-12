@@ -18,6 +18,10 @@
 # Vitest's module runner cannot load a CRLF hashbang in this imported script.
 scripts/update-tagging-status.mjs text eol=lf
 
+# The notes video page pins this inline script by its CSP sha256 hash, and the
+# browser hashes it with LF line ends.
+src-tauri/src/note_video_page.js text eol=lf
+
 
 src-tauri/resources/templates/**/*.tex text eol=lf
 src-tauri/resources/templates/**/*.typ text eol=lf

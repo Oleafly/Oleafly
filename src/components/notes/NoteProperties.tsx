@@ -1,10 +1,11 @@
-import { Calendar, CheckSquare, ChevronDown, Hash, Link2, List, Plus, Text, Trash2, X, type LucideIcon } from "lucide-react";
+import { Calendar, CheckSquare, Hash, Link2, List, Plus, Text, Trash2, X, type LucideIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { isImeEnter } from "@/components/ai/composer/ime";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,30 +15,27 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { readString, writeString } from "@/lib/local-storage";
+import { Input } from "@/components/ui/input";
+import { PROPERTY_TYPES, type PropertyType, useNotesPrefsStore } from "@/store/notes-prefs";
 import { cn } from "@/lib/utils";
 import { NoteChip } from "./note-icons";
 import { noteLinkHref, parseNoteLink } from "./note-link-format";
 import type { LinkableNote } from "./note-links";
+import { NoteSectionToggle, useNotePanelSections } from "./NoteListItem";
 import {
   canAddProperty,
   conversionLoss,
   convertValue,
   emptyValue,
   LIST_KEYS,
-  PROPERTY_TYPES,
   readProperties,
-  readPropertyTypes,
   removeProperty,
   renameProperty,
-  savePropertyType,
   setProperty,
   type NoteProperty,
-  type PropertyType,
   type PropertyValue,
 } from "./note-properties";
 
-const OPEN_KEY = "oleafly.notes.propertiesOpen";
 const TYPE_ICONS: Readonly<Record<PropertyType, LucideIcon>> = {
   text: Text,
   list: List,
@@ -46,8 +44,7 @@ const TYPE_ICONS: Readonly<Record<PropertyType, LucideIcon>> = {
   date: Calendar,
   link: Link2,
 };
-const FIELD =
-  "min-w-0 rounded-md border-0 bg-transparent px-1.5 py-1 text-sm transition-colors placeholder:text-muted-foreground/60 hover:bg-accent/50 focus:bg-accent/70 motion-reduce:transition-none";
+const BARE = "h-8 min-w-0 border-0 bg-transparent px-1.5 hover:bg-accent/50";
 
 export type FrontMatterUpdate = (update: (text: string) => string) => void;
 
@@ -73,14 +70,6 @@ function focusAfterRemoving(list: HTMLElement | null, key: string): HTMLElement 
   );
 }
 
-function readOpen(): boolean {
-  return readString(OPEN_KEY) !== "false";
-}
-
-function saveOpen(open: boolean): void {
-  writeString(OPEN_KEY, String(open));
-}
-
 function TextField({
   value,
   label,
@@ -91,7 +80,7 @@ function TextField({
 }: Readonly<{
   value: string;
   label: string;
-  type?: "text" | "number" | "date";
+  type?: "text" | "number";
   disabled?: boolean;
   error?: (draft: string) => string | null;
   onCommit: (value: string) => void;
@@ -105,7 +94,7 @@ function TextField({
     setDraft(null);
   };
   const input = (
-    <input
+    <Input
       type={type}
       aria-label={label}
       aria-invalid={problem === null ? undefined : true}
@@ -123,7 +112,7 @@ function TextField({
         }
         if (event.key === "Escape") setDraft(null);
       }}
-      className={cn(FIELD, "w-full")}
+      className={BARE}
     />
   );
   if (!error) return input;
@@ -148,16 +137,13 @@ function ListField({
   const { t } = useTranslation(["notes"]);
   const [draft, setDraft] = useState("");
   const add = () => {
-    const next = draft
-      .split(",")
-      .map((item) => item.trim())
-      .filter((item) => item && !items.includes(item));
+    const next = draft.trim();
     setDraft("");
-    if (next.length > 0) onCommit([...items, ...next]);
+    if (next && !items.includes(next)) onCommit([...items, next]);
   };
   const onKey = (event: KeyboardEvent<HTMLInputElement>) => {
     if (isImeEnter(event)) return;
-    if (event.key === "Enter" || event.key === ",") {
+    if (event.key === "Enter") {
       event.preventDefault();
       add();
     } else if (event.key === "Backspace" && draft === "" && items.length > 0) {
@@ -182,14 +168,14 @@ function ListField({
         </span>
       ))}
       {!disabled && (
-        <input
+        <Input
           aria-label={label}
           value={draft}
           placeholder={items.length === 0 ? t(($) => $.notes.kb.properties.addItem) : undefined}
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={onKey}
           onBlur={add}
-          className={cn(FIELD, "w-24 flex-1 py-0.5 text-xs")}
+          className={cn(BARE, "h-6 w-24 flex-1 text-xs")}
         />
       )}
     </div>
@@ -217,22 +203,19 @@ function LinkField({
   return (
     <div className="flex min-w-0 items-center gap-1">
       {linked && onOpen ? (
-        <button
-          type="button"
-          onClick={() => onOpen(linked)}
-          aria-label={t(($) => $.notes.kb.properties.openNote, { title: linked.title })}
-          className={cn(FIELD, "flex items-center gap-1.5 text-primary")}
-        >
+        <Button type="button" variant="ghostPrimary" size="sm" onClick={() => onOpen(linked)} aria-label={t(($) => $.notes.kb.properties.openNote, { title: linked.title })} className="min-w-0 gap-1.5 px-1.5 text-sm font-normal">
           <NoteChip icon={linked.icon} color={linked.color} className="size-4 rounded" />
           <span className="truncate">{linked.title}</span>
-        </button>
+        </Button>
       ) : (
         value && <span className="truncate px-1.5 text-sm text-muted-foreground">{linked?.title ?? t(($) => $.notes.links.missingNote)}</span>
       )}
       {!disabled && (
         <DropdownMenu>
-          <DropdownMenuTrigger aria-label={label} className={cn(FIELD, "text-muted-foreground")}>
-            {value ? t(($) => $.notes.kb.properties.changeNote) : t(($) => $.notes.kb.properties.chooseNote)}
+          <DropdownMenuTrigger asChild>
+            <Button type="button" variant="ghost" size="sm" aria-label={label} className="px-1.5 text-sm font-normal text-muted-foreground">
+              {value ? t(($) => $.notes.kb.properties.changeNote) : t(($) => $.notes.kb.properties.chooseNote)}
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="max-h-72 w-64 overflow-y-auto">
             {notes.map((note) => (
@@ -293,7 +276,7 @@ function ValueField({
         />
       );
     case "date":
-      return <TextField type="date" label={label} value={typeof value === "string" ? value : ""} disabled={disabled} onCommit={(text) => onCommit(text || null)} />;
+      return <DatePicker clearable aria-label={label} value={typeof value === "string" ? value : null} disabled={disabled} onChange={onCommit} buttonClassName={cn(BARE, "w-fit")} />;
     case "link":
       return (
         <LinkField
@@ -439,7 +422,7 @@ function NewProperty({ frontMatter, onAdd, onCancel }: Readonly<{ frontMatter: s
   };
   return (
     <div className="flex items-center gap-1 pl-7">
-      <input
+      <Input
         ref={field}
         aria-label={t(($) => $.notes.kb.properties.newName)}
         aria-invalid={taken || undefined}
@@ -456,7 +439,7 @@ function NewProperty({ frontMatter, onAdd, onCancel }: Readonly<{ frontMatter: s
           }
           if (event.key === "Escape") onCancel();
         }}
-        className={cn(FIELD, "w-48")}
+        className={cn(BARE, "w-48")}
       />
       {taken && (
         <span id={hint} className="text-xs text-destructive">
@@ -469,9 +452,11 @@ function NewProperty({ frontMatter, onAdd, onCancel }: Readonly<{ frontMatter: s
 
 export function NoteProperties({ frontMatter, onChange, notes, onOpenNote, onEditSource, editable = true }: Readonly<NotePropertiesProps>) {
   const { t } = useTranslation(["notes"]);
-  const [known, setKnown] = useState(readPropertyTypes);
+  const known = useNotesPrefsStore((state) => state.propertyTypes);
   const properties = useMemo(() => readProperties(frontMatter, known), [frontMatter, known]);
-  const [open, setOpen] = useState(readOpen);
+  const open = useNotesPrefsStore((state) => state.propertiesOpen);
+  const panel = useNotePanelSections();
+  const setOpen = (value: boolean) => useNotesPrefsStore.getState().set("propertiesOpen", value);
   const [adding, setAdding] = useState(false);
   const [converting, setConverting] = useState<PendingConversion | null>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -491,8 +476,7 @@ export function NoteProperties({ frontMatter, onChange, notes, onOpenNote, onEdi
   };
   const commit = (key: string, value: PropertyValue) => write((text) => setProperty(text, key, value));
   const applyType = (property: NoteProperty, type: PropertyType) => {
-    savePropertyType(property.key, type);
-    setKnown(readPropertyTypes());
+    useNotesPrefsStore.getState().set("propertyTypes", { ...known, [property.key]: type });
     commit(property.key, convertValue(property.value, type));
   };
   const changeType = (property: NoteProperty, type: PropertyType) => {
@@ -504,26 +488,20 @@ export function NoteProperties({ frontMatter, onChange, notes, onOpenNote, onEdi
   const add = (key: string) => {
     setAdding(false);
     setOpen(true);
-    saveOpen(true);
     write((text) => setProperty(text, key, emptyValue(known[key] ?? "text")));
   };
   const toggle = () => {
-    setOpen((current) => {
-      saveOpen(!current);
-      return !current;
-    });
+    setOpen(!open);
   };
   const startAdding = () => {
     setAdding(true);
-    if (open) return;
-    setOpen(true);
-    saveOpen(true);
+    if (!open) setOpen(true);
   };
 
   if (properties === null) {
     if (!frontMatter.trim()) return null;
     return (
-      <div data-properties-invalid className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-1">
+      <div data-properties-invalid className={cn("flex flex-wrap items-center gap-x-2 gap-y-1", panel ? "border-b px-3.5 py-2" : "mb-4")}>
         <p className="text-xs text-muted-foreground">{t(($) => $.notes.kb.properties.invalid)}</p>
         {onEditSource && (
           <Button type="button" variant="outline" size="xs" onClick={onEditSource}>
@@ -533,7 +511,7 @@ export function NoteProperties({ frontMatter, onChange, notes, onOpenNote, onEdi
       </div>
     );
   }
-  if (list.length === 0 && !adding) {
+  if (list.length === 0 && !adding && !panel) {
     if (!editable) return null;
     return (
       <button
@@ -548,21 +526,24 @@ export function NoteProperties({ frontMatter, onChange, notes, onOpenNote, onEdi
     );
   }
   return (
-    <section aria-label={t(($) => $.notes.kb.properties.title)} className="note-properties mt-3">
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={toggle}
-        className="-ml-1.5 flex h-7 items-center gap-1 rounded-md px-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent motion-reduce:transition-none"
-      >
-        <ChevronDown aria-hidden className={cn("size-3.5 transition-transform motion-reduce:transition-none", !open && "-rotate-90")} />
+    <section aria-label={t(($) => $.notes.kb.properties.title)} className={cn("note-properties", panel ? "border-b px-1.5 py-1" : "mt-3")}>
+      <NoteSectionToggle open={open} count={list.length} onClick={toggle} className={panel ? undefined : "-ml-1.5"}>
         {t(($) => $.notes.kb.properties.title)}
-        <span className="tabular-nums">{list.length}</span>
-      </button>
+      </NoteSectionToggle>
       {open && (
-        <ul ref={listRef} className="mt-1 flex flex-col gap-0.5">
+        <ul ref={listRef} className={cn("flex flex-col gap-0.5", panel ? "pb-1" : "mt-1")}>
+          {list.length === 0 && !adding && !editable && (
+            <li className="px-2 py-1 text-xs text-muted-foreground">{t(($) => $.notes.info.noProperties)}</li>
+          )}
           {list.map((property) => (
-            <li key={property.key} data-property={property.key} className="grid grid-cols-[minmax(7rem,11rem)_1fr] items-start gap-1">
+            <li
+              key={property.key}
+              data-property={property.key}
+              className={cn(
+                "grid items-start gap-1",
+                panel ? "grid-cols-[minmax(5rem,8rem)_minmax(0,1fr)]" : "grid-cols-[minmax(7rem,11rem)_1fr]",
+              )}
+            >
               <div className="flex min-w-0 items-center">
                 <TypeMenu
                   property={property}

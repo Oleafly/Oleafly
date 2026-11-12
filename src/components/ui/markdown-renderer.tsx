@@ -1,9 +1,9 @@
-import { Children, isValidElement, memo, type ReactNode, useRef, useState } from "react";
+import { Children, isValidElement, memo, type ReactNode, useRef, useSyncExternalStore } from "react";
 import rehypeKatex from "rehype-katex";
 import ReactMarkdown, { type Components, type Options } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import { remoteImageHost } from "@/lib/remote-image";
+import { allowRemoteImage, remoteImage, remoteImageAllowed, subscribeRemoteImages } from "@/lib/remote-image";
 import { cn } from "@/lib/utils";
 import { HighlightedCode } from "./code-highlighter";
 import { CopyableBlock } from "./copyable-block";
@@ -33,11 +33,11 @@ function codeLanguage(className?: string) {
   return className?.match(/(?:^|\s)language-([^\s]+)/)?.[1]?.toLowerCase();
 }
 
-function MarkdownImage({ src, alt, title }: Readonly<{ src?: string; alt?: string; title?: string }>) {
-  const [allowed, setAllowed] = useState(false);
-  const host = src ? remoteImageHost(src) : null;
-  if (!host || allowed) return <img src={src} alt={alt ?? ""} title={title} className="max-w-full" />;
-  return <RemoteImageNotice host={host} alt={alt} onLoad={() => setAllowed(true)} />;
+function MarkdownImage({ src, alt }: Readonly<{ src?: string; alt?: string }>) {
+  const remote = src ? remoteImage(src) : null;
+  const allowed = useSyncExternalStore(subscribeRemoteImages, () => !remote || remoteImageAllowed(remote.url));
+  if (!remote || allowed) return <img src={src} alt={alt ?? ""} className="max-w-full" />;
+  return <RemoteImageNotice host={remote.host} alt={alt} onLoad={() => allowRemoteImage(remote.url)} />;
 }
 
 function createMarkdownComponents(inverted: boolean): Components {
@@ -122,9 +122,7 @@ function createMarkdownComponents(inverted: boolean): Components {
   ),
   th: ({ children }) => <th className="border border-border px-2 py-1 text-left font-semibold">{children}</th>,
   td: ({ children }) => <td className="border border-border px-2 py-1 align-top">{children}</td>,
-  img: ({ src, alt, title }) => (
-    <MarkdownImage src={typeof src === "string" ? src : undefined} alt={alt} title={title} />
-  ),
+  img: ({ src, alt }) => <MarkdownImage src={typeof src === "string" ? src : undefined} alt={alt} />,
   };
 }
 
@@ -135,27 +133,41 @@ const invertedMarkdownComponents = createMarkdownComponents(true);
 // see src/lib/display-path.ts) or a LaTeX tie (`Fig.~\ref{a}`), and two of
 // them in one paragraph would otherwise strike out the text between them.
 const remarkPlugins: Options["remarkPlugins"] = [[remarkGfm, { singleTilde: false }], remarkMath];
-const rehypePlugins: Options["rehypePlugins"] = [rehypeKatex];
 
-const documentCaches = {
-  plain: new RenderCache<ReactNode>(MAX_CACHED_DOCUMENTS, MAX_CACHED_DOCUMENT_CHARS),
-  inverted: new RenderCache<ReactNode>(MAX_CACHED_DOCUMENTS, MAX_CACHED_DOCUMENT_CHARS),
-};
+export interface MarkdownDocumentOptions {
+  readonly namespace?: string;
+  readonly rehypePlugins?: NonNullable<Options["rehypePlugins"]>;
+  readonly components?: Components;
+  readonly urlTransform?: Options["urlTransform"];
+}
+
+const documentCaches = new Map<string, RenderCache<ReactNode>>();
+
+function documentCache(namespace: string): RenderCache<ReactNode> {
+  let documents = documentCaches.get(namespace);
+  if (!documents) {
+    documents = new RenderCache<ReactNode>(MAX_CACHED_DOCUMENTS, MAX_CACHED_DOCUMENT_CHARS);
+    documentCaches.set(namespace, documents);
+  }
+  return documents;
+}
 
 export function renderMarkdownDocument(
   source: string,
   inverted: boolean,
   cache = true,
+  options: MarkdownDocumentOptions = {},
 ): ReactNode {
-  const documents = inverted ? documentCaches.inverted : documentCaches.plain;
+  const documents = documentCache(options.namespace ?? (inverted ? "inverted" : "plain"));
   if (cache) {
     const cached = documents.get(source);
     if (cached !== undefined) return cached;
   }
   const rendered = ReactMarkdown({
     remarkPlugins,
-    rehypePlugins,
-    components: inverted ? invertedMarkdownComponents : markdownComponents,
+    rehypePlugins: [...(options.rehypePlugins ?? []), rehypeKatex],
+    components: options.components ?? (inverted ? invertedMarkdownComponents : markdownComponents),
+    urlTransform: options.urlTransform,
     children: source,
   });
   if (cache) documents.set(source, rendered, source.length + 1);
@@ -163,12 +175,11 @@ export function renderMarkdownDocument(
 }
 
 export function isMarkdownDocumentCached(source: string, inverted = false): boolean {
-  return (inverted ? documentCaches.inverted : documentCaches.plain).has(source);
+  return documentCache(inverted ? "inverted" : "plain").has(source);
 }
 
 export function clearMarkdownDocumentCache(): void {
-  documentCaches.plain.clear();
-  documentCaches.inverted.clear();
+  for (const documents of documentCaches.values()) documents.clear();
 }
 
 function MarkdownDocument({

@@ -6,6 +6,7 @@ import {
   folderUnavailable,
   isFolderProject,
   isNoteProject,
+  isSharedProject,
   libraryProjects,
   opensInNotes,
   projectActivityAt,
@@ -176,5 +177,15 @@ describe("notes in the library", () => {
     expect(opensInNotes(all, "idea", false)).toBe(false);
     expect(opensInNotes(all, "paper", true)).toBe(false);
     expect(opensInNotes(all, "missing", true)).toBe(false);
+  });
+});
+
+describe("shared projects", () => {
+  it("counts a project as shared when it is live or listed as shared", () => {
+    const projects = [project("solo"), project("team", { shared: { role: "owner" } as ProjectInfo["shared"] })];
+    expect(isSharedProject(projects, "team", false)).toBe(true);
+    expect(isSharedProject(projects, "solo", true)).toBe(true);
+    expect(isSharedProject(projects, "solo", false)).toBe(false);
+    expect(isSharedProject(projects, null, false)).toBe(false);
   });
 });

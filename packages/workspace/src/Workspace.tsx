@@ -23,6 +23,7 @@ import {
   relativeRect,
   sameRects,
   shiftPair,
+  slotAlong,
   zoneAt,
   zoneRect,
   type Rect,
@@ -137,7 +138,7 @@ function elementRegistry(watch?: (previous: HTMLElement | undefined, next: HTMLE
   };
 }
 
-function cyclesPanels(event: ReactKeyboardEvent<HTMLElement>): boolean {
+function cyclesPanels(event: KeyboardEvent): boolean {
   if (event.key === "F6") return true;
   return event.key === "Tab" && event.ctrlKey && !event.metaKey && !event.altKey;
 }
@@ -278,6 +279,12 @@ function stackDrop(probe: StackProbe, px: number, py: number): Found | null {
   };
 }
 
+function tabInsertEdge(tabs: readonly Rect[], index: number, box: Rect): number {
+  if (index < tabs.length) return tabs[index].left;
+  const lastTab = tabs.at(-1);
+  return lastTab ? lastTab.left + lastTab.width : box.left;
+}
+
 function findDrop(probes: DropProbes, x: number, y: number): Found | null {
   const px = x - probes.origin.left;
   const py = y - probes.origin.top;
@@ -287,10 +294,8 @@ function findDrop(probes: DropProbes, x: number, y: number): Found | null {
   }
   for (const { groupId, box, tabs } of probes.strips) {
     if (!contains(box, px, py)) continue;
-    const found = tabs.findIndex((tab) => px < tab.left + tab.width / 2);
-    const index = found < 0 ? tabs.length : found;
-    const lastTab = tabs.at(-1);
-    const at = index < tabs.length ? tabs[index].left : lastTab ? lastTab.left + lastTab.width : box.left;
+    const index = slotAlong(tabs, px, "x");
+    const at = tabInsertEdge(tabs, index, box);
     return {
       target: { groupId, zone: "center", index },
       indicator: { left: clamp(at - BAR_WIDTH_PX / 2, box.left, box.left + box.width - BAR_WIDTH_PX), top: box.top, width: BAR_WIDTH_PX, height: box.height },
@@ -303,6 +308,40 @@ function findDrop(probes: DropProbes, x: number, y: number): Found | null {
     return { target: { groupId, zone }, indicator: zoneRect(box, zone), bar: false };
   }
   return null;
+}
+
+interface PlacementIds {
+  tabId: (id: string) => string;
+  headerId: (id: string) => string;
+}
+
+function entryPlacements(holder: StackState | null, entry: string, slot: string, selected: boolean, ids: PlacementIds): [string, Placement][] {
+  const tabPanel = (id: string): [string, Placement] => [id, { slot, fallback: slot, shown: selected, role: "tabpanel", labelledBy: ids.tabId(entry) }];
+  if (!holder) return [tabPanel(entry)];
+  if (holder.sections.length === 1) return holder.sections.map(tabPanel);
+  return holder.sections.map((section) => [
+    section,
+    {
+      slot: sectionKey(section),
+      fallback: slot,
+      shown: selected && !holder.collapsed.includes(section),
+      role: "region",
+      labelledBy: ids.headerId(section),
+    },
+  ]);
+}
+
+function viewPlacements(layout: WorkspaceLayout, visibleGroups: ReadonlySet<string>, ids: PlacementIds): Map<string, Placement> {
+  const placements = new Map<string, Placement>();
+  for (const owner of groupsOf(layout.root)) {
+    const slot = groupKey(owner.id);
+    const groupShown = visibleGroups.has(owner.id);
+    for (const entry of owner.views) {
+      const selected = groupShown && owner.active === entry;
+      for (const [id, place] of entryPlacements(stackOf(layout, entry), entry, slot, selected, ids)) placements.set(id, place);
+    }
+  }
+  return placements;
 }
 
 const BAR_BUTTON =
@@ -398,6 +437,7 @@ export function Workspace({
   const [rects, setRects] = useState<Record<string, Rect>>({});
   const [drag, setDrag] = useState<DragState | null>(null);
   const [resizing, setResizing] = useState(false);
+  const resizeStart = useRef<WorkspaceLayout | null>(null);
   const known = useRef<Record<string, Rect>>({});
   const layoutRef = useRef(layout);
   layoutRef.current = layout;
@@ -407,9 +447,21 @@ export function Workspace({
   visibleRef.current = onVisibleViewsChange;
   const reported = useRef<string[] | null>(null);
   const stopGesture = useRef<(() => void) | null>(null);
+  const cyclePanelsRef = useRef<((event: KeyboardEvent) => void) | null>(null);
   const [recent, setRecent] = useState<readonly string[]>([]);
 
   useEffect(() => () => stopGesture.current?.(), []);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+    const page = root.ownerDocument;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.target instanceof Node && root.contains(event.target)) cyclePanelsRef.current?.(event);
+    };
+    page.addEventListener("keydown", onKeyDown);
+    return () => page.removeEventListener("keydown", onKeyDown);
+  }, []);
 
   const tabId = useCallback((id: string) => `${prefix}-tab-${id}`, [prefix]);
   const panelId = useCallback((id: string) => `${prefix}-panel-${id}`, [prefix]);
@@ -439,7 +491,7 @@ export function Workspace({
   useEffect(() => {
     const ids = visibleViews(layout);
     const last = reported.current;
-    if (last && last.length === ids.length && last.every((id, index) => id === ids[index])) return;
+    if (last?.length === ids.length && last.every((id, index) => id === ids[index])) return;
     reported.current = ids;
     visibleRef.current?.(ids);
   }, [layout]);
@@ -452,7 +504,9 @@ export function Workspace({
     for (const [key, element] of slots.elements) {
       if (element.isConnected) next[key] = relativeRect(element, origin);
     }
-    known.current = { ...known.current, ...next };
+    const { root: tree, views: placed } = layoutRef.current;
+    const live = new Set([...groupsOf(tree).map((owner) => groupKey(owner.id)), ...Object.keys(placed).map(sectionKey)]);
+    known.current = Object.fromEntries(Object.entries({ ...known.current, ...next }).filter(([key]) => live.has(key)));
     setRects((current) => (sameRects(current, next) ? current : next));
   }, [slots]);
 
@@ -493,7 +547,40 @@ export function Workspace({
     [change, onFocusView],
   );
 
-  const close = useCallback((id: string) => change(closeView(layoutRef.current, id)), [change]);
+  const resizingChange = useCallback(
+    (active: boolean, cancelled = false) => {
+      setResizing(active);
+      const start = resizeStart.current;
+      resizeStart.current = active ? layoutRef.current : null;
+      if (cancelled && start?.views === layoutRef.current.views) change(start);
+    },
+    [change],
+  );
+
+  const holdsFocus = useCallback(
+    (id: string): boolean => {
+      const active = document.activeElement;
+      if (!active || active === document.body) return true;
+      if (active.closest<HTMLElement>("[data-tab-view]")?.dataset.tabView === id) return true;
+      const sections = stackOf(layoutRef.current, id)?.sections ?? [id];
+      return sections.some((view) => document.getElementById(panelId(view))?.contains(active));
+    },
+    [panelId],
+  );
+
+  const closeTab = useCallback(
+    (group: GroupNode, id: string, refocus: boolean) => {
+      const index = group.views.indexOf(id);
+      const next = group.active === id ? (group.views[index + 1] ?? group.views[index - 1]) : group.active;
+      change(closeView(layoutRef.current, id));
+      if (!refocus || !next) return;
+      requestAnimationFrame(() => {
+        if (group.active === id) select(next);
+        document.getElementById(tabId(next))?.focus();
+      });
+    },
+    [change, select, tabId],
+  );
 
   const captureProbes = useCallback((): DropProbes | null => {
     const root = rootRef.current;
@@ -571,14 +658,7 @@ export function Workspace({
       else if (event.key === "End") next = group.views.at(-1);
       else if ((event.key === "Delete" || event.key === "Backspace") && closable) {
         event.preventDefault();
-        const neighbour = group.views[index + 1] ?? group.views[index - 1];
-        close(id);
-        if (neighbour) {
-          requestAnimationFrame(() => {
-            select(neighbour);
-            document.getElementById(tabId(neighbour))?.focus();
-          });
-        }
+        closeTab(group, id, true);
         return;
       }
       if (next === undefined) return;
@@ -586,13 +666,13 @@ export function Workspace({
       select(next);
       document.getElementById(tabId(next))?.focus();
     },
-    [close, select, tabId],
+    [closeTab, select, tabId],
   );
 
   const headerHeight = useCallback(
     (stackId: string, viewId: string): number => {
       const element = stackElements.elements.get(stackId);
-      const section = element ? childrenWith(element, "data-section").find((candidate) => candidate.getAttribute("data-section") === viewId) : undefined;
+      const section = element ? childrenWith(element, "data-section").find((candidate) => candidate.dataset.section === viewId) : undefined;
       const header = section ? childrenWith(section, "data-section-header")[0] : undefined;
       return header ? header.getBoundingClientRect().height : 0;
     },
@@ -646,7 +726,7 @@ export function Workspace({
   const shiftSplit = useCallback(
     (splitId: string, index: number, other: number, delta: number, size: number) => {
       const current = findNode(layoutRef.current.root, splitId);
-      if (!current || current.kind !== "split" || other >= current.children.length) return;
+      if (current?.kind !== "split" || other >= current.children.length) return;
       const row = current.direction === "row";
       const total = current.children.reduce((sum, child, at) => (nodeShown(child) ? sum + current.weights[at] : sum), 0);
       const minFirst = nodeMinimum(layoutRef.current, current.children[index], row, infosRef.current);
@@ -682,13 +762,13 @@ export function Workspace({
       closable,
       dragging: drag?.id === id,
       tabId: tabId(id),
-      controls: holder && holder.sections.length === 1 ? panelId(holder.sections[0]) : panelId(id),
+      controls: holder?.sections.length === 1 ? panelId(holder.sections[0]) : panelId(id),
       describedBy: `${prefix}-badge-${id}`,
       closeLabel: labels.closeTab(info.title),
       renderTooltip,
       onPointerDown: (event: ReactPointerEvent<HTMLElement>) => startDrag(event, id, info.title),
       onClick: () => select(id),
-      onClose: () => close(id),
+      onClose: () => closeTab(group, id, holdsFocus(id)),
       onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => tabKeyDown(event, group, id, closable),
     };
     return icons ? <IconTab key={id} {...props} /> : <Tab key={id} {...props} />;
@@ -816,7 +896,7 @@ export function Workspace({
               onStartDrag={startDrag}
               onResize={(first, second, delta, size) => shiftSections(group.active ?? "", first, second, delta, size)}
               onEven={(first, second) => evenSections(group.active ?? "", first, second)}
-              onResizing={setResizing}
+              onResizing={resizingChange}
             />
           )}
         </div>
@@ -847,7 +927,7 @@ export function Workspace({
                   size={(element) => containerSize(element, row)}
                   onShift={(delta, size) => shiftSplit(node.id, index, other, delta, size)}
                   onEven={() => change(evenPair(layoutRef.current, node.id, index, other))}
-                  onResizing={setResizing}
+                  onResizing={resizingChange}
                   className={[
                     "absolute z-20 rounded-full transition-colors hover:bg-primary/40 focus-visible:bg-primary/50",
                     row ? "-right-1 top-2 bottom-2 w-1 cursor-col-resize" : "-bottom-1 left-2 right-2 h-1 cursor-row-resize",
@@ -865,11 +945,11 @@ export function Workspace({
 
   const interactive = drag === null && !resizing;
 
-  const cyclePanels = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+  const cyclePanels = (event: KeyboardEvent) => {
     if (event.defaultPrevented || !cyclesPanels(event) || shownGroups.length === 0) return;
     const active = document.activeElement;
-    const marker = active instanceof Element ? active.closest("[data-view], [data-tab-view], [data-section-header]") : null;
-    const id = marker?.getAttribute("data-view") ?? marker?.getAttribute("data-tab-view") ?? marker?.getAttribute("data-section-header") ?? null;
+    const marker = active instanceof Element ? active.closest<HTMLElement>("[data-view], [data-tab-view], [data-section-header]") : null;
+    const id = marker?.dataset.view ?? marker?.dataset.tabView ?? marker?.dataset.sectionHeader ?? null;
     const owner = id === null ? null : (containerOf(layout, id)?.groupId ?? null);
     const current = shownGroups.findIndex((candidate) => candidate.id === owner);
     const step = event.shiftKey ? -1 : 1;
@@ -879,30 +959,9 @@ export function Workspace({
     event.preventDefault();
     document.getElementById(tabId(target))?.focus();
   };
+  cyclePanelsRef.current = cyclePanels;
 
-  const placements = new Map<string, Placement>();
-  for (const owner of groupsOf(layout.root)) {
-    const groupShown = visibleGroups.has(owner.id);
-    const slot = groupKey(owner.id);
-    for (const entry of owner.views) {
-      const holder = stackOf(layout, entry);
-      const selected = groupShown && owner.active === entry;
-      if (!holder) {
-        placements.set(entry, { slot, fallback: slot, shown: selected, role: "tabpanel", labelledBy: tabId(entry) });
-        continue;
-      }
-      const single = holder.sections.length === 1;
-      for (const section of holder.sections) {
-        placements.set(section, {
-          slot: single ? slot : sectionKey(section),
-          fallback: slot,
-          shown: selected && (single || !holder.collapsed.includes(section)),
-          role: single ? "tabpanel" : "region",
-          labelledBy: single ? tabId(entry) : headerId(section),
-        });
-      }
-    }
-  }
+  const placements = viewPlacements(layout, visibleGroups, { tabId, headerId });
 
   const hosts = Object.entries(layout.views).map(([id, view]) => {
     const place = placements.get(id);
@@ -918,7 +977,6 @@ export function Workspace({
     <div
       {...chromeAttributes}
       ref={rootRef}
-      onKeyDown={cyclePanels}
       className={`relative h-full w-full min-h-0 min-w-0 overflow-hidden bg-muted/30 p-1 ${className ?? ""}`}
     >
       {nodeShown(shownRoot) && renderNode(shownRoot)}

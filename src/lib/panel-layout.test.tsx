@@ -531,11 +531,7 @@ function WorkspaceHarness({ initiallyOpen = true }: Readonly<{ initiallyOpen?: b
       (id) => (id !== "sidebar" || showSidebar) && (id !== "assistant" || assistantOpen),
     ),
     limits,
-    {
-      id: "assistant",
-      defaultSize: assistantDefaultSize,
-      onDismiss: () => setAssistantOpen(false),
-    },
+    [{ id: "assistant", defaultSize: assistantDefaultSize, onDismiss: () => setAssistantOpen(false) }],
   );
   return (
     <>

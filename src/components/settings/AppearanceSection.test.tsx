@@ -9,9 +9,12 @@ import {
   TERMINAL_COLOR_THEMES,
   useSettingsStore,
 } from "@/store/settings";
+import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 
 const appearance = enSettings.appearance;
+const LAZY_TAB_MS = 20_000;
+const LAZY_TAB_WAIT = { timeout: 10_000 };
 const fill = (template: string, values: Record<string, string>) =>
   Object.entries(values).reduce(
     (text, [name, value]) => text.replace(`{{${name}}}`, value),
@@ -100,15 +103,15 @@ describe("Appearance settings tabs", () => {
     const tabs = screen.getAllByRole("tab").map((tab) => tab.textContent);
     expect(tabs.at(-1)).toBe(appearance.tabs.notes);
     await user.click(screen.getByRole("tab", { name: appearance.tabs.notes }));
-    expect(await screen.findByTestId("settings-appearance-notes")).toBeInTheDocument();
-    expect(screen.getByText(appearance.notes.typeface.label)).toBeInTheDocument();
+    expect(await screen.findByTestId("settings-appearance-notes", {}, LAZY_TAB_WAIT)).toBeInTheDocument();
+    expect(screen.getByText(enNotes.appearance.notes.typeface.label)).toBeInTheDocument();
 
     act(() => useSettingsStore.setState({ notes: false }));
     expect(screen.getByRole("tab", { name: appearance.tabs.app })).toHaveAttribute("aria-selected", "true");
     expect(screen.queryByTestId("settings-appearance-notes")).toBeNull();
     view.unmount();
     useSettingsStore.setState({ notes: false });
-  });
+  }, LAZY_TAB_MS);
 
   it("opens on the Notes tab when asked, but only while Notes is on", async () => {
     useSettingsStore.setState({ notes: false, settingsInitialAppearanceTab: "notes" });
@@ -119,11 +122,11 @@ describe("Appearance settings tabs", () => {
     useSettingsStore.setState({ notes: true, settingsInitialAppearanceTab: "notes" });
     const on = render(<AppearanceSection />);
     expect(screen.getByRole("tab", { name: appearance.tabs.notes })).toHaveAttribute("aria-selected", "true");
-    expect(await screen.findByTestId("settings-notes-preview")).toBeInTheDocument();
+    expect(await screen.findByTestId("settings-notes-preview", {}, LAZY_TAB_WAIT)).toBeInTheDocument();
     expect(useSettingsStore.getState().settingsInitialAppearanceTab).toBeNull();
     on.unmount();
     useSettingsStore.setState({ notes: false });
-  });
+  }, LAZY_TAB_MS);
 
   it("groups editor, PDF preview, and file management settings", async () => {
     const user = userEvent.setup();

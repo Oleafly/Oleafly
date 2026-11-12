@@ -1,6 +1,7 @@
 import { analyze, writeFacet } from "@oleafly/search-query";
-import { beforeAll, describe, expect, it } from "vitest";
-import { i18n, loadNamespace } from "@/i18n";
+import { isValidElement, type ReactNode } from "react";
+import { describe, expect, it } from "vitest";
+import { i18n } from "@/i18n";
 import type { NoteTagCount } from "@/lib/tauri";
 import {
   activeFilterCount,
@@ -13,7 +14,9 @@ import {
   vaultPlan,
   writeTagFilter,
 } from "./note-query";
+import { tagTone } from "./note-tags";
 import type { ArtifactItem, NoteItem } from "./types";
+import "./tests/setup";
 
 const CONTEXT = { now: 0 };
 
@@ -69,10 +72,6 @@ function shown(source: string, state: Partial<NoteSearchState> = {}): string[] {
   return ITEMS.filter(plan.test).map((item) => item.id);
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 describe("note search schema", () => {
   it("offers the note qualifiers with their values", () => {
     const schema = schemaFor();
@@ -87,6 +86,13 @@ describe("note search schema", () => {
     expect(schema.field("author")?.options?.map((option) => option.value)).toEqual(["agent", "you"]);
     expect(schema.field("project")?.options?.map((option) => option.value)).toEqual(["Language", "Vision"]);
     expect(schema.field("tags")).toBe(schema.field("tag"));
+  });
+
+  it("colours each suggested tag's icon with that tag's tone", () => {
+    const classOf = (icon: ReactNode) => (isValidElement<{ className?: string }>(icon) ? icon.props.className : undefined);
+    expect(schemaFor().field("tag")?.options?.map((option) => classOf(option.meta?.icon))).toEqual(
+      ["ml", "ml/vision", "draft"].map((tag) => `size-4 ${tagTone(tag).icon}`),
+    );
   });
 
   it("offers favorite as the only is: flag and no has: field", () => {
@@ -172,7 +178,14 @@ describe("note search plan", () => {
     expect(planFor("mask tag:ml,draft").plan.searches).toEqual(["mask tag:ml", "mask tag:draft"]);
     expect(planFor("mask -tag:ml,draft").plan.searches).toEqual(["mask -tag:ml -tag:draft"]);
     expect(planFor("mask OR mask").plan.searches).toEqual(["mask"]);
-    expect(planFor("a OR b OR c OR d OR e OR f OR g OR h OR i OR j").plan.branches).toHaveLength(8);
+    expect(planFor("a OR b OR c OR d OR e OR f OR g OR h OR i OR j").plan.branches).toHaveLength(10);
+  });
+
+  it("says when a query had more combinations than it searches", () => {
+    expect(planFor("(a OR b OR c) (d OR e OR f)").plan.truncated).toBe(false);
+    const { plan } = planFor("(a OR b OR c OR d OR e OR f) (g OR h OR i OR j OR k OR l)");
+    expect(plan.branches).toHaveLength(32);
+    expect(plan.truncated).toBe(true);
   });
 
   it("keeps each branch's own filters for its hits", () => {

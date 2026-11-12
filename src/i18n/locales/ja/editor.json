@@ -988,13 +988,14 @@
         "environment": "{{environment}} 環境",
         "command": "\\{{command}} コマンド",
         "latexSource": "LaTeX のソース",
+        "html": "HTML",
         "maketitlePreview": "文書のタイトルと著者の情報から生成されています。",
         "figurePreserved": "図のソースをそのまま保持しています。",
         "tablePreserved": "表のソースをそのまま保持しています。",
         "sourcePreserved": "ソースをそのまま保持しています",
         "editSource": "ソースを編集",
-        "summaryLabel": "{{label}}。LaTeX のソースをそのまま保持しています。",
-        "inputLabel": "LaTeX のブロックのソースそのもの"
+        "summaryLabel": "{{label}}。ソースをそのまま保持しています。",
+        "inputLabel": "ブロックのソースそのもの"
       },
       "inline": {
         "label": "生の行内ソース",

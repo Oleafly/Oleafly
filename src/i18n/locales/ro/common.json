@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "Mod de căutare: {{mode}}",
+    "heading": "Mod de căutare",
+    "ranked": {
+      "label": "Cea mai bună potrivire",
+      "description": "Ordonează rezultatele după cât de bine se potrivesc. Cuvintele pot fi oriunde."
+    },
+    "exact": {
+      "label": "Text exact",
+      "description": "Găsește exact aceste caractere. O majusculă face căutarea sensibilă la majuscule și minuscule."
+    },
+    "regex": {
+      "label": "Expresie regulată",
+      "description": "Folosește sintaxa de tipare din ripgrep. Pune tiparul între ghilimele dacă are spații sau paranteze."
+    },
+    "fuzzy": {
+      "label": "Aproximativă",
+      "description": "Găsește nume care conțin literele tale în aceeași ordine, ca fzf. Acceptă și 'exact, ^început, sfârșit$ și !exclus."
+    },
+    "invalid": "Acest tipar nu este valid: {{error}}"
+  },
   "querySearch": {
     "suggestions": "Sugestii de căutare",
     "exclude": "Exclude",
@@ -76,7 +97,8 @@
       "invalidValue": "{{value}} nu este o valoare validă pentru {{key}}",
       "invalidDate": "{{value}} nu este o dată. Încearcă 2026-10-02 sau @today-7d",
       "invalidNumber": "{{value}} nu este un număr",
-      "sortNegated": "{{key}} nu poate fi exclus"
+      "sortNegated": "{{key}} nu poate fi exclus",
+      "tooManyBranches": "Această căutare are prea multe combinații OR, așa că unele rezultate pot lipsi"
     }
   },
   "avatar": {

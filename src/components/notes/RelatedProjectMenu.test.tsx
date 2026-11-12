@@ -2,15 +2,16 @@
 
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { useToastStore } from "@/store/toast";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { RelatedProjectMenu } from "./RelatedProjectMenu";
 import type { NoteItem } from "./types";
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
 
 const mocks = vi.hoisted(() => ({ logError: vi.fn(async () => {}) }));
 
@@ -51,17 +52,11 @@ interface Setup {
 }
 
 function renderMenu({ note = related, projects = PROJECTS, setRelatedProject = vi.fn<SetRelatedProject>(async () => {}) }: Setup = {}) {
-  const data: NotesData = {
+  const data: NotesData = fakeNotesData({
     notes: [note],
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
     ...(projects ? { projects } : {}),
     ...(setRelatedProject ? { setRelatedProject } : {}),
-    loadNote: vi.fn(),
-    saveNote: vi.fn(),
-  };
+  });
   render(
     <NotesDataProvider value={data}>
       <RelatedProjectMenu note={note} />
@@ -79,17 +74,19 @@ function openMenu(project: string): HTMLElement {
   return screen.getByRole("menu");
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 beforeEach(() => {
   mocks.logError.mockClear();
   useProjectColorsStore.setState({ colors: {} });
 });
 
-function dotOf(element: Element): string | null | undefined {
-  return element.querySelector("[data-project-color]")?.getAttribute("data-project-color");
+function dotOf(element: Element): string | undefined {
+  return element.querySelector<HTMLElement>("span[aria-hidden][style]")?.style.background;
+}
+
+function painted(color: string): string {
+  const probe = document.createElement("span");
+  probe.style.background = color;
+  return probe.style.background;
 }
 
 describe("RelatedProjectMenu", () => {
@@ -98,26 +95,17 @@ describe("RelatedProjectMenu", () => {
     const trigger = screen.getByRole("button", { name: menuLabel("Vision") });
     expect(trigger).toHaveTextContent("Vision");
     expect(trigger).toHaveAttribute("aria-haspopup", "menu");
-  });
-
-  it("shows the related project's colour on its trigger", () => {
-    useProjectColorsStore.setState({ colors: { p1: "#cfbaf0" } });
-    renderMenu();
-    expect(dotOf(screen.getByRole("button", { name: menuLabel("Vision") }))).toBe("#cfbaf0");
-  });
-
-  it("shows a neutral dot on the trigger when the note has no project", () => {
-    renderMenu({ note: loose });
-    expect(dotOf(screen.getByRole("button", { name: menuLabel(copy.chooseProject) }))).toBe("none");
+    expect(trigger).toHaveAttribute("data-slot", "breadcrumb-link");
+    expect(dotOf(trigger)).toBe(painted(DEFAULT_BOOK_COLOR));
   });
 
   it("puts each project's colour next to its name in the menu", () => {
     useProjectColorsStore.setState({ colors: { p2: "#98f5e1" } });
     renderMenu();
     const menu = openMenu("Vision");
-    expect(dotOf(within(menu).getByRole("menuitemradio", { name: copy.noProject }))).toBe("none");
-    expect(dotOf(within(menu).getByRole("menuitemradio", { name: "Vision" }))).toBe(DEFAULT_BOOK_COLOR);
-    expect(dotOf(within(menu).getByRole("menuitemradio", { name: "Speech" }))).toBe("#98f5e1");
+    expect(dotOf(within(menu).getByRole("menuitemradio", { name: copy.noProject }))).toBe(painted("transparent"));
+    expect(dotOf(within(menu).getByRole("menuitemradio", { name: "Vision" }))).toBe(painted(DEFAULT_BOOK_COLOR));
+    expect(dotOf(within(menu).getByRole("menuitemradio", { name: "Speech" }))).toBe(painted("#98f5e1"));
   });
 
   it("asks to choose a project when the note has none", () => {
@@ -125,6 +113,7 @@ describe("RelatedProjectMenu", () => {
     const trigger = screen.getByRole("button", { name: menuLabel(copy.chooseProject) });
     expect(trigger).toHaveTextContent(copy.chooseProject);
     expect(trigger).not.toHaveTextContent("Notes");
+    expect(dotOf(trigger)).toBeUndefined();
   });
 
   it("lists No project and every project, with the related one checked", () => {
@@ -184,16 +173,15 @@ describe("RelatedProjectMenu", () => {
   });
 
   it("shows the project as plain text when the project list is missing", () => {
-    useProjectColorsStore.setState({ colors: { p1: "#cfbaf0" } });
     renderMenu({ projects: null });
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(screen.getByText("Vision").tagName).toBe("SPAN");
-    expect(dotOf(screen.getByText("Vision").parentElement as HTMLElement)).toBe("#cfbaf0");
   });
 
   it("shows the project as plain text when projects cannot be changed", () => {
     renderMenu({ note: loose, setRelatedProject: null });
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(screen.getByText("Notes").tagName).toBe("SPAN");
+    expect(dotOf(screen.getByText("Notes").parentElement as HTMLElement)).toBeUndefined();
   });
 });

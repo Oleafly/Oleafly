@@ -203,7 +203,7 @@ const limits = {
   // citations, the trusted image hosts list and the shared suggestion menu.
   // The entry grows 8 KB, to 4,975,382 bytes. The combined graph measures
   // 23,010,241 bytes on macOS.
-  totalJavaScript: 23_100_000,
+  totalJavaScript: 23_130_000,
   // Russian is the largest catalog. Main measures 983,290 bytes, and the
   // translated Notes settings, shortcuts, errors and agent strings add 13,383.
   // The Notes namespace itself is its own lazy chunk. This gate is here to

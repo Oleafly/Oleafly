@@ -16,6 +16,7 @@ export type NoteColor =
 
 export interface NoteItem {
   id: string;
+  noteId?: string;
   title: string;
   project: string;
   relatedProjectId?: string;
@@ -80,6 +81,7 @@ export interface ExperimentItem {
 export interface CitationItem {
   key: string;
   label: string;
+  fields?: Readonly<Record<string, string>>;
 }
 
 export interface PaperTarget {

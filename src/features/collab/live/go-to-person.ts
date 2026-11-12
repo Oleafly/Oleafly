@@ -46,19 +46,20 @@ async function showCaret(place: Whereabouts, accountId: string): Promise<void> {
 
 let latestJump = 0;
 
+async function followPerson(accountId: string, jump: number, opened: string | null, follows: number): Promise<boolean> {
+  if (follows > MOST_FOLLOWS) return opened !== null;
+  const place = whereIs(useCollabLiveStore.getState().peers, accountId);
+  if (!place) return opened !== null;
+  if (place.path === opened) {
+    await showCaret(place, accountId);
+    return true;
+  }
+  if (!(await openProjectLocation(locationOf(place), { keepSelection: true }))) return false;
+  if (jump !== latestJump) return false;
+  return followPerson(accountId, jump, place.path, follows + 1);
+}
+
 export async function goToPerson(accountId: string): Promise<boolean> {
   const jump = ++latestJump;
-  let opened: string | null = null;
-  for (let follows = 0; follows <= MOST_FOLLOWS; follows += 1) {
-    const place = whereIs(useCollabLiveStore.getState().peers, accountId);
-    if (!place) return opened !== null;
-    if (place.path === opened) {
-      await showCaret(place, accountId);
-      return true;
-    }
-    if (!(await openProjectLocation(locationOf(place), { keepSelection: true }))) return false;
-    if (jump !== latestJump) return false;
-    opened = place.path;
-  }
-  return opened !== null;
+  return followPerson(accountId, jump, null, 0);
 }

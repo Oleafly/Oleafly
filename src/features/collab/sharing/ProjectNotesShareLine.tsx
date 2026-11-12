@@ -11,6 +11,15 @@ import { useSettingsStore } from "@/store/settings";
 export const SHARED_NOTE_SCAN_LIMIT = 500;
 export const SHARED_NOTE_BATCH = 8;
 
+async function batchesDeclareNote(projectId: string, paths: readonly string[], start: number): Promise<boolean> {
+  if (start >= paths.length) return false;
+  const texts = await Promise.all(
+    paths.slice(start, start + SHARED_NOTE_BATCH).map((path) => readFileContent(projectId, path).catch(() => "")),
+  );
+  if (texts.some((text) => declaresNoteFile(text))) return true;
+  return batchesDeclareNote(projectId, paths, start + SHARED_NOTE_BATCH);
+}
+
 export async function hasProjectNotes(projectId: string): Promise<boolean> {
   const files = useFilesStore.getState();
   const open = files.projectId === projectId;
@@ -22,13 +31,7 @@ export async function hasProjectNotes(projectId: string): Promise<boolean> {
   const held = (path: string) => (open ? files.files[path]?.content : undefined);
   if (paths.some((path) => declaresNoteFile(held(path)))) return true;
   const unread = paths.filter((path) => held(path) === undefined);
-  for (let start = 0; start < unread.length; start += SHARED_NOTE_BATCH) {
-    const texts = await Promise.all(
-      unread.slice(start, start + SHARED_NOTE_BATCH).map((path) => readFileContent(projectId, path).catch(() => "")),
-    );
-    if (texts.some((text) => declaresNoteFile(text))) return true;
-  }
-  return false;
+  return batchesDeclareNote(projectId, unread, 0);
 }
 
 export function ProjectNotesShareLine({ projectId }: Readonly<{ projectId: string }>) {

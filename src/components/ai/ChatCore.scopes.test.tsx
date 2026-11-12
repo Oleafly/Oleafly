@@ -868,6 +868,23 @@ describe("two assistant scopes side by side", () => {
     await waitFor(() => expect(activeChatRun(NOTE_SCOPE)).toBeNull());
   });
 
+  it("keeps a project note's draft, goal and plan mode apart from its project's assistant", async () => {
+    const project = useFilesStore.getState().projectId as string;
+    useChatsStore.setState({ activeId: null });
+    useChatGoalStore.getState().setGoal(project, "Ship the paper");
+    usePlanModeStore.getState().setEnabled(project, true);
+    await renderBoth(noteScope({ projectId: project, currentProjectId: () => project, storageKey: `${project}#plan` }));
+    fireEvent.change(workspaceBox(), { target: { value: "Unsent project prompt" } });
+    expect(noteBox()).toHaveValue("");
+    const layout = screen().getByTestId("note-layout");
+    expect(within(layout).queryByText("Ship the paper")).toBeNull();
+    sendIn(noteBox(), "Plan the ablation");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(workspaceBox()).toHaveValue("Unsent project prompt");
+    expect(useChatGoalStore.getState().goal(project)).toBe("Ship the paper");
+    expect(usePlanModeStore.getState().isEnabled(`${project}#plan`)).toBe(false);
+  });
+
   it("uses the scope's placeholder, label, slash commands and extra model groups", async () => {
     await renderBoth();
     expect(noteBox()).toHaveAttribute("placeholder", "Ask about this note");
@@ -945,7 +962,7 @@ describe("two assistant scopes side by side", () => {
     expect(chat.messages[0].mentions).toEqual(["note:Ablations"]);
   });
 
-  it("shows a compact sign-in prompt in the note layout when no provider is set up", async () => {
+  it("shows the assistant's sign-in prompt in the note layout when no provider is set up", async () => {
     mocks.getConfig.mockResolvedValue({
       ai_provider: "openai",
       ai_model: "gpt-4o",

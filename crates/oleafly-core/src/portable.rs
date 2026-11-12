@@ -46,6 +46,39 @@ fn is_short_alias(folded: &str, stem: &str) -> bool {
         })
 }
 
+pub fn safe_stem(text: &str, limit: usize, reserved_suffix: &str) -> String {
+    let cleaned: String = text
+        .nfc()
+        .filter(|c| !is_ignorable_code_point(*c))
+        .map(|c| {
+            if c.is_control()
+                || matches!(
+                    c,
+                    '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' | '#' | '^' | '[' | ']'
+                )
+            {
+                ' '
+            } else {
+                c
+            }
+        })
+        .collect();
+    let collapsed = cleaned.split_whitespace().collect::<Vec<_>>().join(" ");
+    let cut = crate::encoding::truncate_utf8(collapsed.trim_start_matches('.'), limit);
+    let stem = cut.trim().trim_end_matches('.').trim().to_string();
+    let (first, rest) = stem
+        .split_once('.')
+        .map_or((stem.as_str(), None), |(first, rest)| (first, Some(rest)));
+    let first = first.trim_end();
+    if !is_windows_reserved_component(first) {
+        return stem;
+    }
+    match rest {
+        Some(rest) => format!("{first}{reserved_suffix}.{rest}"),
+        None => format!("{first}{reserved_suffix}"),
+    }
+}
+
 pub fn is_ignorable_code_point(character: char) -> bool {
     matches!(
         character,
@@ -107,7 +140,17 @@ pub fn synced_path_problem(path: &str) -> Option<PortableProblem> {
 
 #[cfg(test)]
 mod tests {
-    use super::{fold, relative_problem, synced_path_problem, PortableProblem};
+    use super::{fold, relative_problem, safe_stem, synced_path_problem, PortableProblem};
+
+    #[test]
+    fn safe_stems_work_on_every_platform() {
+        assert_eq!(safe_stem("a/b: c? #1 [x]|y^", 200, "_"), "a b c 1 x y");
+        assert_eq!(safe_stem("..x.", 200, "_"), "x");
+        assert_eq!(safe_stem(" \u{200b} ", 200, "_"), "");
+        assert_eq!(safe_stem("nul.txt", 200, "_"), "nul_.txt");
+        assert_eq!(safe_stem("Cafe\u{301}", 4, "_"), "Caf");
+        assert_eq!(safe_stem("Cafe\u{301}", 5, "_"), "Caf\u{e9}");
+    }
 
     #[test]
     fn relative_paths_reject_escapes_and_windows_hazards() {

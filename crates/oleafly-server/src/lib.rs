@@ -19,6 +19,7 @@ pub mod outputs;
 pub mod peers;
 pub mod polls;
 pub mod projects;
+pub mod published;
 pub mod quotas;
 pub mod rate_limit;
 pub mod removals;

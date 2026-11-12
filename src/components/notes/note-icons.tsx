@@ -131,6 +131,7 @@ import type { CSSProperties, ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { BOOK_COLOR_OPTIONS } from "@/components/library/Book";
 import { Badge } from "@/components/ui/badge";
+import { TONES, type Tone } from "@/components/ui/tones";
 import type { Resources } from "@/i18n/resources-types";
 import { cn } from "@/lib/utils";
 import type { ArtifactKind, Author, NoteColor } from "./types";
@@ -267,56 +268,14 @@ export const LINE_ICONS: Readonly<Record<string, { icon: LucideIcon; name: LineI
 
 export type ItemKind = ArtifactKind | "note";
 
-export interface KindTone {
-  icon: string;
-  text: string;
-  tint: string;
-  dot: string;
-}
-
-export const KIND_TONES: Readonly<Record<ItemKind, KindTone>> = {
-  note: {
-    icon: "text-violet-600 dark:text-violet-400",
-    text: "text-violet-700 dark:text-violet-300",
-    tint: "bg-violet-500/10",
-    dot: "bg-violet-500",
-  },
-  figure: {
-    icon: "text-pink-600 dark:text-pink-400",
-    text: "text-pink-700 dark:text-pink-300",
-    tint: "bg-pink-500/10",
-    dot: "bg-pink-500",
-  },
-  html: {
-    icon: "text-orange-600 dark:text-orange-400",
-    text: "text-orange-700 dark:text-orange-300",
-    tint: "bg-orange-500/10",
-    dot: "bg-orange-500",
-  },
-  data: {
-    icon: "text-emerald-600 dark:text-emerald-400",
-    text: "text-emerald-700 dark:text-emerald-300",
-    tint: "bg-emerald-500/10",
-    dot: "bg-emerald-500",
-  },
-  report: {
-    icon: "text-sky-600 dark:text-sky-400",
-    text: "text-sky-700 dark:text-sky-300",
-    tint: "bg-sky-500/10",
-    dot: "bg-sky-500",
-  },
-  notebook: {
-    icon: "text-amber-600 dark:text-amber-400",
-    text: "text-amber-700 dark:text-amber-300",
-    tint: "bg-amber-500/10",
-    dot: "bg-amber-500",
-  },
-  file: {
-    icon: "text-slate-600 dark:text-slate-400",
-    text: "text-slate-700 dark:text-slate-300",
-    tint: "bg-slate-500/10",
-    dot: "bg-slate-500",
-  },
+export const KIND_TONES: Readonly<Record<ItemKind, Tone>> = {
+  note: TONES.violet,
+  figure: TONES.pink,
+  html: TONES.orange,
+  data: TONES.emerald,
+  report: TONES.sky,
+  notebook: TONES.amber,
+  file: TONES.slate,
 };
 
 export const NOTE_COLOR_HEX = Object.fromEntries(
@@ -327,21 +286,26 @@ export const NOTE_COLOR_LABELS = Object.fromEntries(
   BOOK_COLOR_OPTIONS.map(({ name }) => [name.toLowerCase(), name]),
 ) as Readonly<Record<NoteColor, string>>;
 
+const STRONG_NOTE_COLORS: ReadonlySet<NoteColor> = new Set(["blue"]);
+
 const DEFAULT_TONE: NoteColor = "blue";
 
 export function noteColorStyle(color: string | undefined): CSSProperties {
-  return { "--note-color": NOTE_COLOR_HEX[toneOf(color)] } as CSSProperties;
+  const tone = toneOf(color);
+  return { "--note-color": NOTE_COLOR_HEX[tone], "--note-tint": STRONG_NOTE_COLORS.has(tone) ? 1 : 0 } as CSSProperties;
 }
 
-export type NoteIconSize = "sm" | "md" | "lg";
+type NoteIconSize = "xs" | "sm" | "md" | "lg";
 
 const ICON_SIZES: Readonly<Record<NoteIconSize, { line: string; emoji: string }>> = {
+  xs: { line: "size-3", emoji: "text-xs" },
   sm: { line: "size-3.5", emoji: "text-sm" },
   md: { line: "size-4", emoji: "text-base" },
-  lg: { line: "size-8", emoji: "text-[2rem]" },
+  lg: { line: "size-7", emoji: "text-[1.75rem]" },
 };
 
 const CHIP_SIZES: Readonly<Record<NoteIconSize, string>> = {
+  xs: "size-4.5 rounded",
   sm: "size-6 rounded-md",
   md: "size-8 rounded-lg",
   lg: "size-14 rounded-xl",

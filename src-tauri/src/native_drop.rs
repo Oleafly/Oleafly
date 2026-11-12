@@ -78,9 +78,19 @@ impl NativeDropState {
         f(&mut drop)
     }
 
-    pub(crate) fn released(&self, path: &str) -> bool {
+    fn released(&self, path: &str) -> bool {
         self.with(|drop| drop.readable(path, Instant::now()))
     }
+}
+
+pub(crate) fn require_dropped_or_picked(
+    drops: Option<&NativeDropState>,
+    source: &str,
+) -> Result<(), String> {
+    if drops.is_some_and(|drops| drops.released(source)) {
+        return Ok(());
+    }
+    crate::path_grants::require_open(source)
 }
 
 #[tauri::command]
@@ -225,6 +235,57 @@ mod tests {
         });
         assert!(state.released("/home/a/figure.png"));
         assert!(!state.released("/home/a/.ssh/id_ed25519"));
+    }
+
+    #[test]
+    fn a_note_copies_a_dropped_or_picked_file_and_refuses_any_other() {
+        use tauri::Manager as _;
+        let _library = crate::collab::testing::TempLibrary::new();
+        let note =
+            crate::project::create_note_project_from("Note".into(), String::new(), None).unwrap();
+        let outside = tempfile::tempdir().unwrap();
+        let file = |name: &str| {
+            let path = outside.path().join(name);
+            std::fs::write(&path, name).unwrap();
+            path.to_string_lossy().into_owned()
+        };
+        let (dropped, picked, other) = (file("dropped.csv"), file("picked.csv"), file("other.csv"));
+        let app = tauri::test::mock_builder()
+            .manage(NativeDropState::default())
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        app.state::<NativeDropState>().with(|drop| {
+            drop.offer(7, vec![dropped.clone()]);
+            drop.dropped(7, Instant::now());
+            drop.take(Instant::now());
+        });
+        crate::path_grants::grant(
+            crate::path_grants::Access::Open,
+            std::path::Path::new(&picked),
+        );
+        let import = |path: &str| {
+            tauri::async_runtime::block_on(crate::project::note_import_file(
+                app.state(),
+                note.clone(),
+                path.to_string(),
+            ))
+        };
+        assert!(import(&dropped)
+            .unwrap()
+            .path
+            .starts_with("assets/dropped-"));
+        assert!(import(&picked).unwrap().path.starts_with("assets/picked-"));
+        assert!(import(&other).unwrap_err().contains("file picker"));
+        assert!(!crate::paths::project_dir(&note)
+            .unwrap()
+            .join("assets")
+            .read_dir()
+            .unwrap()
+            .any(|entry| entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with("other")));
     }
 
     #[test]

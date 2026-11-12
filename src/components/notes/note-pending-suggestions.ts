@@ -1,6 +1,10 @@
+import { useSyncExternalStore } from "react";
+import { createEmitter } from "@/lib/emitter";
 import { readString, removeKey, writeString } from "@/lib/local-storage";
 import { myersEditScript } from "@/lib/myers-diff";
+import { forgetNoteBlocks } from "./block-trust";
 import { applyNoteEdits, type NoteEdit } from "./note-edits";
+import { indexedUndoStore } from "./note-undo-store";
 
 export interface NoteEditorLink {
   readSource: () => string;
@@ -12,7 +16,9 @@ const STORAGE_KEY = "oleafly.notes.pendingSuggestions";
 const MAX_STORED_CHARS = 1_000_000;
 
 const editors = new Map<string, NoteEditorLink[]>();
+const changes = createEmitter();
 let batches: Map<string, NoteEdit[][]> | null = null;
+let waiting: ReadonlySet<string> | null = null;
 
 function isEdit(value: unknown): value is NoteEdit {
   if (!value || typeof value !== "object") return false;
@@ -41,7 +47,13 @@ function stored(): Map<string, NoteEdit[][]> {
   return batches;
 }
 
+function changed(): void {
+  waiting = null;
+  changes.emit();
+}
+
 function persist(): void {
+  changed();
   const entries = [...stored()];
   let text = JSON.stringify(Object.fromEntries(entries));
   while (text.length > MAX_STORED_CHARS && entries.length > 1) {
@@ -69,6 +81,17 @@ export function pendingBatches(noteId: string): readonly (readonly NoteEdit[])[]
   return stored().get(noteId) ?? [];
 }
 
+export function proposeNoteEdits(noteId: string, edits: readonly NoteEdit[]): number {
+  const open = noteEditorLink(noteId);
+  if (open) return open.propose(edits);
+  addPendingBatch(noteId, edits);
+  return edits.length;
+}
+
+export function reviewedNoteSource(noteId: string, load: () => Promise<{ text: string }>): string | Promise<string> {
+  return noteEditorLink(noteId)?.readSource() ?? load().then((saved) => withPendingEdits(saved.text, pendingBatches(noteId)));
+}
+
 export function addPendingBatch(noteId: string, edits: readonly NoteEdit[], first = false): void {
   if (edits.length === 0) return;
   const current = stored().get(noteId) ?? [];
@@ -86,13 +109,53 @@ export function takePendingBatches(noteId: string): NoteEdit[][] {
   return taken;
 }
 
+export interface KeptReview {
+  file: NoteEdit[];
+  proposed: NoteEdit[];
+}
+
+const keptKeys = (noteId: string) => [`${noteId}#file`, `${noteId}#proposed`] as const;
+
+export function keptReview(noteId: string): KeptReview {
+  const [file, proposed] = keptKeys(noteId).map((key) => stored().get(key)?.[0] ?? []);
+  return { file, proposed };
+}
+
+export function keepReview(noteId: string, kept: KeptReview | null): void {
+  const keys = keptKeys(noteId);
+  const before = JSON.stringify(keys.map((key) => stored().get(key)));
+  keys.forEach((key, index) => {
+    const edits = (index === 0 ? kept?.file : kept?.proposed) ?? [];
+    if (edits.length > 0) stored().set(key, [edits.map(({ find, replace }) => ({ find, replace }))]);
+    else stored().delete(key);
+  });
+  if (JSON.stringify(keys.map((key) => stored().get(key))) !== before) persist();
+}
+
+export function forgetNoteLeftovers(noteId: string): void {
+  takePendingBatches(noteId);
+  keepReview(noteId, null);
+  forgetNoteBlocks(noteId);
+  void indexedUndoStore.remove(noteId);
+}
+
 export function withPendingEdits(text: string, pending: readonly (readonly NoteEdit[])[]): string {
   return pending.reduce((current, batch) => applyNoteEdits(current, batch).text, text);
+}
+
+export function notesWithSuggestions(): ReadonlySet<string> {
+  waiting ??= new Set([...stored().keys()].map((key) => key.split("#")[0]));
+  return waiting;
+}
+
+export function useWaitingSuggestions(noteId: string): boolean {
+  return useSyncExternalStore(changes.subscribe, () => notesWithSuggestions().has(noteId));
 }
 
 export function resetPendingSuggestionsForTest(): void {
   batches = null;
   editors.clear();
+  changed();
 }
 
 interface Hunk {
@@ -124,7 +187,7 @@ function hunksOf(oldLines: readonly string[], newLines: readonly string[]): Hunk
 
 function occursOnce(text: string, find: string): boolean {
   const first = text.indexOf(find);
-  return first >= 0 && text.indexOf(find, first + 1) < 0;
+  return first >= 0 && !text.includes(find, first + 1);
 }
 
 function placed(

@@ -12,6 +12,7 @@ pub mod meta;
 pub mod outputs;
 pub mod poll;
 pub mod projects;
+pub mod published;
 pub mod sign_in_pages;
 pub mod web_pages;
 pub mod ws;
@@ -53,6 +54,7 @@ pub fn api_routes() -> Router<AppState> {
         .merge(outputs::router())
         .merge(access_log::router())
         .merge(guests::router())
+        .merge(published::router())
         .merge(landing::router());
     with_web(router)
 }

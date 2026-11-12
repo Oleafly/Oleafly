@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
-import { beforeAll, describe, expect, it } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { describe, expect, it } from "vitest";
 import {
   BLOCK_LENGTH,
   detectKind,
@@ -12,16 +11,13 @@ import {
   RECORD_LIMIT,
   residueTone,
   reverseComplement,
-  SEQUENCE_TEMPLATE,
+  SAMPLE_RESIDUES,
   sequenceBlock,
   TOTAL_LIMIT,
   translate,
   translationTrack,
 } from "./sequence-block";
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+import "./tests/setup";
 
 function paint(source: string, still = false): HTMLElement {
   const preview = document.createElement("div");
@@ -152,7 +148,6 @@ describe("sequence drawing", () => {
     expect(preview.querySelector(".note-seq-residues")?.getAttribute("aria-label")).toBe("Residues of gene one");
     const first = preview.querySelector(".note-seq-bases span") as HTMLElement;
     expect(first.textContent).toBe("A");
-    expect(first.className).toContain("emerald");
     expect(preview.querySelector(".note-seq-legend")).toBeNull();
     expect(LINE_LENGTH).toBe(60);
   });
@@ -267,7 +262,6 @@ describe("sequence drawing", () => {
   it("says when the source is empty or has a character that is not a residue", () => {
     expect(paint("").textContent).toBe("Paste a FASTA record or a raw sequence.");
     expect(paint(">x\nAC!G").textContent).toBe('Line 2, column 3: "!" isn\'t a residue.');
-    expect(paint(">x\nAC!G").querySelector(".note-drawn-empty")).not.toBeNull();
   });
 
   it("describes itself as an interactive note block for sequence and fasta fences", () => {
@@ -275,11 +269,12 @@ describe("sequence drawing", () => {
     expect(sequenceBlock.aliases).toEqual(["fasta"]);
     expect(sequenceBlock.label()).toBe("Sequence");
     expect(sequenceBlock.interactive).toBe(true);
-    expect(sequenceBlock.template?.()).toEqual({ info: "sequence", source: SEQUENCE_TEMPLATE });
+    const template = `>Example coding sequence\n${SAMPLE_RESIDUES}`;
+    expect(sequenceBlock.template?.()).toEqual({ info: "sequence", source: template });
     const preview = document.createElement("div");
-    expect(sequenceBlock.paint(preview, SEQUENCE_TEMPLATE, { still: false })).toBeUndefined();
+    expect(sequenceBlock.paint(preview, template, { still: false })).toBeUndefined();
     expect(preview.querySelector(".note-seq-meta")?.textContent).toBe("DNA · 39 bp · GC 56.4%");
-    expect(paint(SEQUENCE_TEMPLATE, false).querySelectorAll("button")).toHaveLength(2);
+    expect(paint(template, false).querySelectorAll("button")).toHaveLength(2);
     const bare = document.createElement("div");
     paintSequence(bare, "ACGT");
     expect(bare.querySelectorAll("button")).toHaveLength(2);

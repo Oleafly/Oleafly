@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const tauri = vi.hoisted(() => ({ listFiles: vi.fn(), readFileContent: vi.fn() }));
 vi.mock("@/lib/tauri", () => tauri);
 
-const { citationLabel, projectCitations } = await import("./note-citations");
+const { citationGroups, citationLabel, inlineCitation, projectCitations, referenceLine } = await import("./note-citations");
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -36,11 +36,13 @@ describe("a project's references", () => {
         ? "@article{he2022, author = {He, Kaiming}, year = {2022}, title = {MAE}}\n@book{knuth, title = {TAOCP}}"
         : "@misc{he2022, title = {Duplicate}}\n@misc{chen2020, author = {Chen, Ting}, year = 2020}",
     );
-    await expect(projectCitations("paper")).resolves.toEqual([
+    const found = await projectCitations("paper");
+    expect(found.map(({ key, label }) => ({ key, label }))).toEqual([
       { key: "he2022", label: "He 2022, MAE" },
       { key: "knuth", label: "TAOCP" },
       { key: "chen2020", label: "Chen 2020" },
     ]);
+    expect(found[0].fields).toMatchObject({ author: "He, Kaiming", year: "2022", title: "MAE" });
     expect(tauri.listFiles).toHaveBeenCalledWith("paper");
     expect(tauri.readFileContent.mock.calls.map((call) => call[1])).toEqual(["refs/main.bib", "extra.BIB"]);
   });
@@ -86,6 +88,28 @@ describe("a project's references", () => {
       if (path === "a.bib") throw new Error("gone");
       return "@misc{ok, title = {Fine}}";
     });
-    await expect(projectCitations("paper")).resolves.toEqual([{ key: "ok", label: "Fine" }]);
+    expect((await projectCitations("paper")).map((citation) => citation.key)).toEqual(["ok"]);
+  });
+});
+
+describe("citations in a note's text", () => {
+  it.each([
+    ["[@he2022]", [{ key: "he2022", prefix: "", locator: "" }]],
+    ["[@he2022, p. 12]", [{ key: "he2022", prefix: "", locator: "p. 12" }]],
+    ["[see @he2022, ch. 2; -@doe:2020]", [{ key: "he2022", prefix: "see", locator: "ch. 2" }, { key: "doe:2020", prefix: "", locator: "" }]],
+  ])("reads %s", (text, items) => {
+    expect(citationGroups(`Masks ${text}.`)).toEqual([{ from: 6, to: 6 + text.length, items }]);
+  });
+
+  it("leaves links, footnotes and e-mail addresses alone", () => {
+    expect(citationGroups("[a link](https://x.org) [^1] ann@example.org [[Note]]")).toEqual([]);
+  });
+
+  it("writes a group by author and year, and an entry as a reference line", () => {
+    const he = { key: "he2022", label: "He 2022, MAE", fields: { author: "He, Kaiming and Chen, Xinlei", year: "2022", title: "{MAE}", journal: "CVPR", doi: "10.1/mae" } };
+    const entries = new Map([["he2022", he]]);
+    expect(inlineCitation(citationGroups("[see @he2022, p. 3; @gone]")[0], entries)).toBe("(see He et al. 2022, p. 3; gone)");
+    expect(referenceLine(he)).toBe("He, Kaiming, Chen, Xinlei (2022). MAE. CVPR. https://doi.org/10.1/mae");
+    expect(referenceLine({ key: "bare", label: "Bare entry" })).toBe("Bare entry");
   });
 });

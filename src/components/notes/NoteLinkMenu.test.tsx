@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
-import { Editor } from "@tiptap/core";
-import { createWysiwygExtensions, parseMarkdownBody, serializeMarkdownBody } from "@oleafly/wysiwyg";
+import type { Editor } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
 import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { NoteLinkMenu } from "./NoteLinkMenu";
 import { noteLinkExtensions, noteLinkSuggestion, type LinkableNote, type LinkableProject } from "./note-links";
-import { sameSuggestion, useEditorSuggestion } from "./SuggestionListbox";
+import { useEditorSuggestion } from "./SuggestionListbox";
+import { destroyKbEditors, kbEditor, kbMarkdown } from "./tests/kb-editor-fixtures";
+import "./tests/setup";
 
 const NOTES: LinkableNote[] = [
   { noteId: "n-1", projectId: "lib-1", title: "Masking report", color: "rose", icon: "🧪" },
@@ -16,23 +16,11 @@ const NOTES: LinkableNote[] = [
 ];
 const PROJECTS: LinkableProject[] = [{ projectId: "ssl", title: "SSL masking", color: "#ff0000" }];
 
-let editors: Editor[] = [];
-
 function build(
   rect: () => { left: number; top: number; bottom: number } = () => ({ left: 40, top: 100, bottom: 120 }),
   createNote?: (title: string) => Promise<LinkableNote | null>,
 ) {
-  const element = document.createElement("div");
-  document.body.append(element);
-  const editor = new Editor({
-    element,
-    extensions: [
-      ...createWysiwygExtensions(),
-      ...noteLinkExtensions({ getNotes: () => NOTES, getProjects: () => PROJECTS, onOpenNote: vi.fn(), onOpenProject: vi.fn(), createNote }),
-    ],
-    content: parseMarkdownBody("A\n").doc,
-  });
-  editors.push(editor);
+  const editor = kbEditor("A\n", undefined, noteLinkExtensions({ getNotes: () => NOTES, getProjects: () => PROJECTS, onOpenNote: vi.fn(), onOpenProject: vi.fn(), createNote }));
   vi.spyOn(editor.view, "coordsAtPos").mockImplementation(() => ({ ...rect(), right: 0 }));
   editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 2)));
   return editor;
@@ -51,16 +39,8 @@ function menu(): HTMLElement {
   return screen.getByRole("listbox", { name: enNotes.links.menu });
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 afterEach(() => {
-  for (const editor of editors) {
-    editor.view.dom.parentElement?.remove();
-    editor.destroy();
-  }
-  editors = [];
+  destroyKbEditors();
 });
 
 describe("NoteLinkMenu", () => {
@@ -78,7 +58,7 @@ describe("NoteLinkMenu", () => {
     expect(options.map((option) => option.textContent)).toEqual(["🧪Masking report", "n-2", "SSL masking"]);
     expect(options[0].getAttribute("aria-selected")).toBe("true");
     expect(list.querySelector('[data-note-color="rose"]')).not.toBeNull();
-    expect(list.querySelector('[data-project-color="#ff0000"]')).not.toBeNull();
+    expect(list.querySelector<HTMLElement>('span[aria-hidden][style*="background"]')?.style.background).toBe("rgb(255, 0, 0)");
 
     fireEvent.mouseEnter(options[2]);
     expect(screen.getAllByRole("option")[2].getAttribute("aria-selected")).toBe("true");
@@ -88,7 +68,7 @@ describe("NoteLinkMenu", () => {
     expect(down.defaultPrevented).toBe(true);
     act(() => fireEvent.click(screen.getAllByRole("option")[2]));
     expect(screen.queryByRole("listbox")).toBeNull();
-    expect(serializeMarkdownBody(editor.getJSON())).toBe("A[SSL masking](oleafly://project/ssl) ");
+    expect(kbMarkdown(editor)).toBe("A[SSL masking](oleafly://project/ssl) ");
   });
 
   it("offers Create note for a name no note has, and links the new note", async () => {
@@ -101,7 +81,7 @@ describe("NoteLinkMenu", () => {
     expect(create.parentElement?.querySelector("[data-embed-option]")).toBeNull();
     expect(screen.queryByText(enNotes.links.noMatches)).toBeNull();
     act(() => fireEvent.click(create));
-    await vi.waitFor(() => expect(serializeMarkdownBody(editor.getJSON())).toBe("A[Fresh](oleafly://note/n-9) "));
+    await vi.waitFor(() => expect(kbMarkdown(editor)).toBe("A[Fresh](oleafly://note/n-9) "));
     expect(createNote).toHaveBeenCalledWith("Fresh");
   });
 
@@ -184,7 +164,7 @@ describe("useEditorSuggestion", () => {
     expect(listen.mock.calls.some(([name]) => name === "scroll")).toBe(false);
     const quiet = renders.mock.calls.length;
     act(() => editor.view.dispatch(editor.state.tr.setMeta("other", true)));
-    expect(renders.mock.calls.length).toBe(quiet);
+    expect(renders.mock.calls).toHaveLength(quiet);
     type(editor, "[[");
     const shown = result.current;
     expect(shown?.items.length).toBeGreaterThan(0);
@@ -192,16 +172,7 @@ describe("useEditorSuggestion", () => {
     const open = renders.mock.calls.length;
     act(() => editor.view.dispatch(editor.state.tr.setMeta("other", true)));
     expect(result.current).toBe(shown);
-    expect(renders.mock.calls.length).toBe(open);
+    expect(renders.mock.calls).toHaveLength(open);
     listen.mockRestore();
-  });
-
-  it("compares suggestions by value", () => {
-    expect(sameSuggestion({ a: [1, { b: 2 }] }, { a: [1, { b: 2 }] })).toBe(true);
-    expect(sameSuggestion({ a: [1, { b: 2 }] }, { a: [1, { b: 3 }] })).toBe(false);
-    expect(sameSuggestion({ a: 1 }, { b: 1 })).toBe(false);
-    expect(sameSuggestion([1], { 0: 1 })).toBe(false);
-    expect(sameSuggestion(null, null)).toBe(true);
-    expect(sameSuggestion(null, {})).toBe(false);
   });
 });

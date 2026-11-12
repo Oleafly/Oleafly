@@ -98,8 +98,8 @@ pub fn require_open(source: &str) -> Result<(), String> {
 #[derive(Debug, Default, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DialogFilter {
-    name: String,
-    extensions: Vec<String>,
+    pub(crate) name: String,
+    pub(crate) extensions: Vec<String>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -127,7 +127,7 @@ pub struct SaveDialogOptions {
 }
 
 #[derive(Debug, Default, PartialEq)]
-struct DialogSpec {
+pub(crate) struct DialogSpec {
     title: Option<String>,
     filters: Vec<DialogFilter>,
     directory: Option<PathBuf>,
@@ -136,7 +136,7 @@ struct DialogSpec {
 }
 
 impl DialogSpec {
-    fn new(
+    pub(crate) fn new(
         title: Option<String>,
         filters: Vec<DialogFilter>,
         default_path: Option<PathBuf>,
@@ -157,7 +157,7 @@ impl DialogSpec {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum PickKind {
+pub(crate) enum PickKind {
     File,
     Files,
     Folder,
@@ -192,7 +192,7 @@ fn display(path: &Path) -> String {
     path.to_string_lossy().into_owned()
 }
 
-async fn native_pick<R: Runtime>(
+pub(crate) async fn native_pick<R: Runtime>(
     webview: &Webview<R>,
     spec: DialogSpec,
     kind: PickKind,

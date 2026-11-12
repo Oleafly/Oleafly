@@ -9,7 +9,10 @@ import {
 import { Fragment, type Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-import { onceFor, type MarkdownIt, type MdCoreState, type MdToken } from "./note-markdown-it";
+import { i18n } from "@/i18n";
+import { LINE_BREAK } from "./note-blocks";
+import { isSpaceOrTab } from "./note-link-format";
+import type { MarkdownIt, MdCoreState, MdToken } from "./note-markdown-it";
 import { redecorateTextblocks } from "./touched-textblocks";
 
 export type CalloutTone = "blue" | "cyan" | "teal" | "green" | "yellow" | "orange" | "red" | "purple" | "gray";
@@ -21,7 +24,7 @@ export interface CalloutKind {
   tone: CalloutTone;
 }
 
-const KIND_LIST: readonly (readonly [string, string, CalloutTone, readonly string[]])[] = [
+const KIND_LIST = [
   ["note", "pencil", "blue", []],
   ["abstract", "clipboard-list", "cyan", ["summary", "tldr"]],
   ["info", "info", "blue", []],
@@ -46,15 +49,17 @@ const KIND_LIST: readonly (readonly [string, string, CalloutTone, readonly strin
   ["result", "flask-conical", "green", []],
   ["method", "workflow", "blue", []],
   ["remark", "message-square", "gray", []],
-];
+] as const satisfies readonly (readonly [string, string, CalloutTone, readonly string[]])[];
+
+export type CalloutType = (typeof KIND_LIST)[number][0];
 
 const KINDS = new Map<string, CalloutKind>();
 for (const [id, icon, tone, aliases] of KIND_LIST) {
   for (const name of [id, ...aliases]) KINDS.set(name, { id, icon, tone });
 }
 
-export const CALLOUT_TYPES: readonly string[] = KIND_LIST.map(([id]) => id);
-export const CALLOUT_HEADER = /^\[!([A-Za-z][\w-]*)\]([+-]?)(?:[ \t]+(.*))?$/u;
+export const CALLOUT_TYPES: readonly CalloutType[] = KIND_LIST.map(([id]) => id);
+const CALLOUT_START = /^\[!([A-Za-z][\w-]*)\]([+-]?)/u;
 const TYPED_HEADER = /^\[!([A-Za-z][\w-]*)\]([+-]?) /u;
 const DEFAULT_KIND = KINDS.get("note") as CalloutKind;
 const calloutKey = new PluginKey("noteCallouts");
@@ -64,6 +69,8 @@ export function calloutKind(type: string): CalloutKind {
 }
 
 export function calloutLabel(type: string): string {
+  const known = CALLOUT_TYPES.find((id) => id === type.toLowerCase());
+  if (known) return i18n.t(($) => $.notes.kb.callouts.types[known]);
   return type ? `${type[0].toUpperCase()}${type.slice(1)}` : "";
 }
 
@@ -71,7 +78,7 @@ export function calloutFold(value: string | null | undefined): CalloutFold {
   return value === "+" || value === "-" ? value : "";
 }
 
-function token(state: MdCoreState, type: string, tag: string, nesting: number, from: MdToken): MdToken {
+function token(state: MdCoreState, type: string, tag: string, nesting: MdToken["nesting"], from: MdToken): MdToken {
   const next = new state.Token(type, tag, nesting);
   next.level = from.level;
   next.block = true;
@@ -93,6 +100,14 @@ function hasGap(paragraph: MdToken, next: MdToken): boolean {
   return next.map[0] > paragraph.map[1];
 }
 
+function readCalloutHeader(line: string): { type: string; fold: string; title: string } | null {
+  const start = CALLOUT_START.exec(line);
+  if (!start) return null;
+  const rest = line.slice(start[0].length);
+  if ((rest !== "" && !isSpaceOrTab(rest[0])) || LINE_BREAK.test(rest)) return null;
+  return { type: start[1], fold: start[2], title: rest.trim() };
+}
+
 export function markCallouts(state: MdCoreState): void {
   const { tokens } = state;
   for (let index = 0; index < tokens.length; index++) {
@@ -102,11 +117,11 @@ export function markCallouts(state: MdCoreState): void {
     if (quote.type !== "blockquote_open" || paragraph?.type !== "paragraph_open" || inline?.type !== "inline") continue;
     const newline = inline.content.indexOf("\n");
     const first = newline < 0 ? inline.content : inline.content.slice(0, newline);
-    const header = CALLOUT_HEADER.exec(first);
+    const header = readCalloutHeader(first);
     if (!header) continue;
-    quote.attrSet("data-callout", header[1]);
-    quote.attrSet("data-fold", header[2]);
-    const title = titleTokens(state, paragraph, inline, (header[3] ?? "").trim());
+    quote.attrSet("data-callout", header.type);
+    quote.attrSet("data-fold", header.fold);
+    const title = titleTokens(state, paragraph, inline, header.title);
     if (newline >= 0) {
       inline.content = inline.content.slice(newline + 1);
       tokens.splice(index + 1, 0, ...title);
@@ -118,12 +133,14 @@ export function markCallouts(state: MdCoreState): void {
   }
 }
 
+const withCallouts = new WeakSet<MarkdownIt>();
+
 function setupCallouts(md: MarkdownIt): void {
-  onceFor(md, "note_callouts", () => {
-    md.core.ruler.after("block", "note_callouts", (state) => {
-      markCallouts(state);
-      return true;
-    });
+  if (withCallouts.has(md)) return;
+  withCallouts.add(md);
+  md.core.ruler.after("block", "note_callouts", (state) => {
+    markCallouts(state);
+    return true;
   });
 }
 
@@ -254,12 +271,12 @@ export function convertTypedCallouts(transactions: readonly Transaction[], oldSt
   for (const { newRange } of getChangedRanges(combineTransactionSteps(oldState.doc, [...transactions]))) {
     newState.doc.nodesBetween(newRange.from, newRange.to, (node, pos) => {
       if (node.type.name === "blockquote" && !quotes.some((quote) => quote.pos === pos)) quotes.push({ pos });
-      return true;
     });
   }
   let tr: Transaction | null = null;
   const { from, empty } = newState.selection;
-  for (const { pos } of quotes.sort((left, right) => right.pos - left.pos)) {
+  quotes.sort((left, right) => right.pos - left.pos);
+  for (const { pos } of quotes) {
     const node = (tr ?? newState).doc.nodeAt(pos);
     if (node?.type.name !== "blockquote" || node.firstChild?.type.name !== "paragraph") continue;
     const paragraph = node.child(0);
@@ -281,9 +298,7 @@ function emptyTitle(callout: ProseMirrorNode, title: ProseMirrorNode, pos: numbe
 function emptyTitles(doc: ProseMirrorNode): DecorationSet {
   const found: Decoration[] = [];
   doc.descendants((node, pos) => {
-    if (node.type.name !== "callout") return true;
-    found.push(...emptyTitle(node, node.child(0), pos + 1));
-    return true;
+    if (node.type.name === "callout") found.push(...emptyTitle(node, node.child(0), pos + 1));
   });
   return DecorationSet.create(doc, found);
 }
@@ -324,17 +339,17 @@ export const NoteCallout = Node.create<CalloutOptions>({
     return {
       type: {
         default: "note",
-        parseHTML: (element: HTMLElement) => element.getAttribute("data-callout") || "note",
+        parseHTML: (element: HTMLElement) => element.dataset.callout || "note",
         renderHTML: (attributes: Record<string, unknown>) => ({ "data-callout": String(attributes.type) }),
       },
       fold: {
         default: "",
-        parseHTML: (element: HTMLElement) => calloutFold(element.getAttribute("data-fold")),
-        renderHTML: (attributes: Record<string, unknown>) => (attributes.fold ? { "data-fold": String(attributes.fold) } : {}),
+        parseHTML: (element: HTMLElement) => calloutFold(element.dataset.fold),
+        renderHTML: (attributes: Record<string, unknown>) => (typeof attributes.fold === "string" && attributes.fold ? { "data-fold": attributes.fold } : {}),
       },
       gap: {
         default: false,
-        parseHTML: (element: HTMLElement) => element.getAttribute("data-gap") === "true",
+        parseHTML: (element: HTMLElement) => element.dataset.gap === "true",
         renderHTML: (attributes: Record<string, unknown>) => (attributes.gap ? { "data-gap": "true" } : {}),
       },
     };

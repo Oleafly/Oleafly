@@ -391,7 +391,7 @@ fn collapse_blank_lines(text: &str) -> String {
     out.trim().to_string()
 }
 
-fn absolute(base: &Url, raw: &str) -> Option<Url> {
+pub(crate) fn absolute(base: &Url, raw: &str) -> Option<Url> {
     let raw = raw.trim();
     if raw.is_empty() || raw.starts_with('#') || raw.starts_with("javascript:") {
         return None;

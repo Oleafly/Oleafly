@@ -17,8 +17,13 @@ interface Placed {
 
 function placeOnce(source: string, find: string): number | null {
   const first = source.indexOf(find);
-  if (first < 0 || source.indexOf(find, first + 1) >= 0) return null;
+  if (first < 0 || source.includes(find, first + 1)) return null;
   return first;
+}
+
+function appendedGap(source: string): string {
+  if (source === "" || source.endsWith("\n\n")) return "";
+  return source.endsWith("\n") ? "\n" : "\n\n";
 }
 
 export function applyNoteEdits(source: string, edits: readonly NoteEdit[]): AppliedNoteEdits {
@@ -26,8 +31,7 @@ export function applyNoteEdits(source: string, edits: readonly NoteEdit[]): Appl
   let skipped = 0;
   for (const edit of edits) {
     if (edit.find === "") {
-      const gap = source === "" || source.endsWith("\n\n") ? "" : source.endsWith("\n") ? "\n" : "\n\n";
-      placed.push({ from: source.length, to: source.length, replace: `${gap}${edit.replace}` });
+      placed.push({ from: source.length, to: source.length, replace: `${appendedGap(source)}${edit.replace}` });
       continue;
     }
     const at = placeOnce(source, edit.find);

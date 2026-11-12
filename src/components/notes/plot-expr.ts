@@ -85,8 +85,9 @@ const BINARY: Readonly<Record<"+" | "-" | "*" | "/" | "^", (left: number, right:
   "^": (left, right) => left ** right,
 };
 
-const NUMBER = /\d+(?:\.\d*)?(?:[eE][+-]?\d+)?|\.\d+(?:[eE][+-]?\d+)?/y;
-const NAME = /[A-Za-z_][A-Za-z0-9_]*/y;
+const MANTISSA = /\d+(?:\.\d*)?|\.\d+/y;
+const EXPONENT = /[eE][+-]?\d+/y;
+const NAME = /[A-Za-z_]\w*/y;
 const SPACE = /\s/u;
 
 class ExpressionFailure extends Error {
@@ -96,6 +97,15 @@ class ExpressionFailure extends Error {
   ) {
     super(error);
   }
+}
+
+function numberAt(text: string, index: number): string | null {
+  MANTISSA.lastIndex = index;
+  const mantissa = MANTISSA.exec(text);
+  if (!mantissa) return null;
+  EXPONENT.lastIndex = MANTISSA.lastIndex;
+  const exponent = EXPONENT.exec(text);
+  return exponent ? mantissa[0] + exponent[0] : mantissa[0];
 }
 
 function tokenize(text: string): Token[] {
@@ -123,11 +133,10 @@ function tokenize(text: string): Token[] {
       index += 1;
       continue;
     }
-    NUMBER.lastIndex = index;
-    const number = NUMBER.exec(text);
+    const number = numberAt(text, index);
     if (number) {
-      tokens.push({ kind: "number", value: Number(number[0]), text: number[0] });
-      index += number[0].length;
+      tokens.push({ kind: "number", value: Number(number), text: number });
+      index += number.length;
       continue;
     }
     NAME.lastIndex = index;
@@ -308,8 +317,8 @@ export function compileExpression(text: string, variables: readonly string[]): C
     const names = new Map(variables.map((name) => [name.toLowerCase(), name]));
     const compiled = new Parser(tokens, names).parse();
     return { ok: true, evaluate: compiled.run, constant: compiled.value !== undefined };
-  } catch (thrown) {
-    const failure = thrown as ExpressionFailure;
+  } catch (error) {
+    const failure = error as ExpressionFailure;
     return failure.detail === undefined
       ? { ok: false, error: failure.error }
       : { ok: false, error: failure.error, detail: failure.detail };

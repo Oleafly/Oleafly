@@ -1,21 +1,18 @@
 // @vitest-environment jsdom
-import { beforeAll, describe, expect, it } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { describe, expect, it } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { newChartSource } from "./block-templates";
 import {
   chartBlock,
   chartLegend,
-  chartScale,
   checkChart,
   formatCount,
   formatTick,
   histogramBins,
-  niceStep,
   paintChart,
   seriesColor,
-  ticksBetween,
 } from "./chart-block";
+import "./tests/setup";
 
 const VALID = {
   title: "Validation",
@@ -26,10 +23,6 @@ const VALID = {
     { name: "B", values: [58, 60] },
   ],
 };
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 function paint(data: unknown, still = false): HTMLElement {
   const preview = document.createElement("div");
@@ -149,69 +142,16 @@ describe("chart data", () => {
 });
 
 describe("chart scales and numbers", () => {
-  it("puts zero on the baseline when values go below it", () => {
-    const scale = chartScale({ categories: ["a", "b"], series: [{ name: "A", values: [-2, 6] }] });
-    expect(scale(6)).toBeLessThan(scale(0));
-    expect(scale(-2)).toBeGreaterThan(scale(0));
-  });
-
-  it("draws all-zero values on the baseline", () => {
-    const scale = chartScale({ categories: ["a"], series: [{ name: "A", values: [0] }] });
-    expect(scale(0)).toBe(248);
-    expect(Number.isFinite(scale(1))).toBe(true);
-  });
-
-  it("lets line charts leave out zero but never cross it with padding", () => {
-    expect(chartScale({ type: "line", categories: ["a", "b"], series: [{ name: "A", values: [61, 64] }] })(0)).toBeGreaterThan(248);
-    expect(chartScale({ type: "line", categories: ["a", "b"], series: [{ name: "A", values: [0, 10] }] })(0)).toBe(248);
-    expect(chartScale({ type: "line", categories: ["a", "b"], series: [{ name: "A", values: [-10, 0] }] })(0)).toBe(12);
-    const flat = chartScale({ type: "line", categories: ["a", "b"], series: [{ name: "A", values: [-5, -5] }] });
-    expect(flat(-5)).toBeGreaterThan(12);
-    expect(flat(-5)).toBeLessThan(248);
-  });
-
-  it("scales scatter values, histogram counts and log values", () => {
-    const scatter = chartScale({ type: "scatter", series: [{ name: "A", points: [[0, 1], [1, 5, 1]] }] });
-    expect(scatter(6)).toBeGreaterThanOrEqual(12);
-    expect(chartScale({ type: "histogram", series: [{ name: "A", values: [1, 2, 2] }] })(0)).toBe(248);
-    const log = chartScale({ yScale: "log", categories: ["a", "b"], series: [{ name: "A", values: [1, 100] }] });
-    expect(log(1)).toBe(248);
-    expect(log(100)).toBe(12);
-    expect(log(10)).toBe(130);
-    expect(log(0)).toBe(248);
-    expect(log(0.01)).toBe(248);
-    const errors = chartScale({
-      yScale: "log",
-      stacked: true,
-      categories: ["a"],
-      series: [{ name: "A", values: [10], errors: [20] }, { name: "B", values: [5] }],
-    });
-    expect(Number.isFinite(errors(10))).toBe(true);
-    const scatterLog = chartScale({ type: "scatter", yScale: "log", series: [{ name: "A", points: [[1, 1, 5]] }] });
-    expect(Number.isFinite(scatterLog(1))).toBe(true);
-    const wide = chartScale({ yScale: "log", categories: ["a"], series: [{ name: "A", values: [10], errors: [20] }] });
-    expect(wide(30)).toBeCloseTo(12 + 236 * (1 - Math.log10(3)), 6);
-    const single = chartScale({ yScale: "log", categories: ["a"], series: [{ name: "A", values: [10] }] });
-    expect(single(10)).toBe(248);
-    expect(single(100)).toBe(12);
-  });
-
   it.each([
-    [10, 4, 5],
-    [4, 4, 1],
-    [6, 4, 2],
-    [14, 4, 5],
-    [64.1, 4, 20],
-    [0, 4, 1],
-    [Number.POSITIVE_INFINITY, 4, 1],
-    [0.3, 0, 0.5],
-  ])("picks a round step for a span of %d in %d steps", (span, count, step) => {
-    expect(niceStep(span, count)).toBeCloseTo(step, 12);
-  });
-
-  it("lists ticks between two values without rounding noise", () => {
-    expect(ticksBetween(-0.25, 0.35, 0.1)).toEqual([-0.2, -0.1, 0, 0.1, 0.2, 0.3]);
-    expect(ticksBetween(0, 1, 0.001)).toHaveLength(60);
+    ["bars below zero", { categories: ["a", "b"], series: [{ name: "A", values: [-2, 6] }] }, "-2", "6"],
+    ["all-zero bars", { categories: ["a"], series: [{ name: "A", values: [0] }] }, "0", "1"],
+    ["a line that leaves out zero", { type: "line", categories: ["a", "b"], series: [{ name: "A", values: [61, 64] }] }, "60", "65"],
+    ["a line that starts at zero", { type: "line", categories: ["a", "b"], series: [{ name: "A", values: [0, 10] }] }, "0", "12"],
+    ["a line that ends at zero", { type: "line", categories: ["a", "b"], series: [{ name: "A", values: [-10, 0] }] }, "-12", "0"],
+    ["a histogram of counts", { type: "histogram", series: [{ name: "A", values: [1, 2, 2] }] }, "0", "2"],
+  ])("labels the value axis of %s from round numbers", (_name, data, first, last) => {
+    const labels = texts(paint(data), "svg > text.note-chart-label");
+    expect([labels[0], labels.at(-1)]).toEqual([first, last]);
   });
 
   it("formats ticks and counts", () => {
@@ -234,11 +174,11 @@ describe("chart scales and numbers", () => {
   });
 
   it("names palette colours in order and draws a legend", () => {
-    expect(seriesColor(0)).toBe("var(--note-chart-1)");
-    expect(seriesColor(9)).toBe("var(--note-chart-2)");
+    expect(seriesColor(0)).toBe("var(--chart-1)");
+    expect(seriesColor(9)).toBe("var(--chart-2)");
     const legend = chartLegend([{ label: "One", color: seriesColor(0) }]);
     expect(texts(legend, "li")).toEqual(["One"]);
-    expect(legend.querySelector(".note-chart-swatch")?.getAttribute("style")).toBe("background: var(--note-chart-1)");
+    expect(legend.querySelector(".note-chart-swatch")?.getAttribute("style")).toBe("background: var(--chart-1)");
   });
 });
 
@@ -273,7 +213,7 @@ describe("chart drawing", () => {
     expect(texts(preview, ".note-chart-text")).toEqual(["What was measured.", "Higher is better."]);
     const first = [...preview.querySelectorAll(".note-chart-group")][0].querySelectorAll("rect.note-chart-bar");
     expect([...first].map((bar) => bar.getAttribute("style"))).toEqual(
-      [1, 2, 3, 4, 5, 6].map((slot) => `fill: var(--note-chart-${slot})`),
+      [1, 2, 3, 4, 5, 6].map((slot) => `fill: var(--chart-${slot})`),
     );
     const negative = [...preview.querySelectorAll(".note-chart-group")][1].querySelectorAll("rect.note-chart-bar")[5];
     const base = preview.querySelector(".note-chart-base");
@@ -297,8 +237,8 @@ describe("chart drawing", () => {
     expect(tip.querySelector(".note-chart-tooltip-title")?.textContent).toBe("Run 1");
     expect(texts(tip, ".note-chart-value")).toEqual(["61.2%", "58%"]);
     expect([...tip.querySelectorAll(".note-chart-swatch")].map((node) => node.getAttribute("style"))).toEqual([
-      "background: var(--note-chart-1)",
-      "background: var(--note-chart-2)",
+      "background: var(--chart-1)",
+      "background: var(--chart-2)",
     ]);
     const left = Number.parseFloat(tip.style.left);
     expect(left).toBeGreaterThan(25);
@@ -405,7 +345,7 @@ describe("chart drawing", () => {
     expect(preview.querySelectorAll(".note-chart-marker")).toHaveLength(6);
     expect(preview.querySelectorAll(".note-chart-error")).toHaveLength(3);
     expect(preview.querySelector(".note-chart-area")).toBeNull();
-    expect(preview.querySelector(".note-chart-line")?.getAttribute("style")).toBe("stroke: var(--note-chart-1)");
+    expect(preview.querySelector(".note-chart-line")?.getAttribute("style")).toBe("stroke: var(--chart-1)");
   });
 
   it("fills area charts to zero and stacks them on the series below", () => {
@@ -461,19 +401,20 @@ describe("chart drawing", () => {
     const first = preview.querySelector(".note-chart-slice") as SVGElement;
     first.dispatchEvent(new Event("pointerenter"));
     expect(texts(preview, ".note-chart-tooltip-row span")).toEqual(["", "Share", "40 g (40%)"]);
-    expect(preview.querySelector("path.note-chart-wedge")?.getAttribute("d")).toMatch(/^M320 24A116 116 0 0 1 .+L320 140Z$/u);
+    expect(preview.querySelector("path.note-chart-wedge")?.getAttribute("d")).toMatch(/^M0,-116A116,116,0,0,1,.+L0,0Z$/u);
     const large = paint({ type: "pie", categories: ["A", "B"], series: [{ name: "S", values: [3, 1] }] });
-    expect(large.querySelector("path.note-chart-wedge")?.getAttribute("d")).toContain("A116 116 0 1 1");
+    expect(large.querySelector("path.note-chart-wedge")?.getAttribute("d")).toContain("A116,116,0,1,1");
   });
 
   it("cuts a hole in donuts and draws a lone slice as a full circle", () => {
-    const donut = paint({ type: "donut", categories: ["A", "B"], series: [{ name: "S", values: [1, 1] }] });
-    expect(donut.querySelector("path.note-chart-wedge")?.getAttribute("d")).toContain("A70 70 0 0 0");
+    const donut = paint({ type: "donut", categories: ["A", "B"], series: [{ name: "S", values: [1, 2] }] });
+    expect(donut.querySelector("path.note-chart-wedge")?.getAttribute("d")).toContain("A70,70,0,0,0");
     const whole = paint({ type: "pie", categories: ["A", "B"], series: [{ name: "S", values: [5, 0] }] });
     expect(whole.querySelectorAll(".note-chart-slice")).toHaveLength(1);
-    expect(whole.querySelector("circle.note-chart-wedge")?.getAttribute("r")).toBe("116");
+    expect(whole.querySelector(".note-chart-segment")).toBeNull();
+    expect(whole.querySelector(".note-chart-wedge")?.getAttribute("d")).toMatch(/^M0,-116A116,116,0,1,1,0,116A116,116,0,1,1,0,-116Z$/u);
     const ring = paint({ type: "donut", categories: ["A"], series: [{ name: "S", values: [5] }] });
-    expect(ring.querySelector("circle.note-chart-ring")?.getAttribute("stroke-width")).toBe("46");
+    expect(ring.querySelector(".note-chart-wedge")?.getAttribute("d")).toContain("M0,-70A70,70,0,1,0");
     expect(texts(ring, ".note-chart-legend li")).toEqual(["A 100%"]);
   });
 
@@ -537,6 +478,8 @@ describe("chart drawing", () => {
       ["Run 2", "64.1%", "0.8%", "60%"],
     ]);
     expect(table.querySelector("tbody th")?.getAttribute("scope")).toBe("row");
+    for (const cell of table.querySelectorAll("thead th")) expect(cell).toHaveClass("bg-(--note-table-head)");
+    for (const row of table.querySelectorAll("tr")) expect(row).toHaveClass("border-(--note-table-line)");
     toggle.click();
     expect(toggle.textContent).toBe("Show data");
     expect((preview.querySelector(".note-chart-data") as HTMLElement).hidden).toBe(true);

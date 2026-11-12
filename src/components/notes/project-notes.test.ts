@@ -1,7 +1,6 @@
 import type { ProjectInfo } from "@oleafly/backend-port";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
 
 const mocks = vi.hoisted(() => ({
   createNoteProject: vi.fn(),
@@ -26,7 +25,7 @@ import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { useNoteTabsStore } from "@/store/note-tabs";
 import { useNotesViewStore } from "@/store/notes-view";
-import { readNoteFacts } from "./note-file";
+import { noteColorFor, readNoteFacts } from "./note-file";
 import {
   createProjectNote,
   matchesProjectNote,
@@ -37,6 +36,7 @@ import {
   startProjectNote,
   type ProjectNote,
 } from "./project-notes";
+import "./tests/setup";
 
 function project(id: string, overrides: Partial<ProjectInfo> = {}): ProjectInfo {
   return {
@@ -72,10 +72,6 @@ const saved = {
 
 let refreshProjects = vi.fn(async () => {});
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 beforeEach(() => {
   vi.clearAllMocks();
   refreshProjects = vi.fn(async () => {});
@@ -98,8 +94,8 @@ describe("a project's notes", () => {
   });
 
   it("reads each note's icon, colour and summary and sorts by last edit, then title", () => {
-    const head = "---\ntitle: Beta\nicon: lucide:atom\ncolor: mint\n---\n\nSweep over masking ratios.\n";
-    const notes = projectNotes(PROJECTS, "paper", new Map([["beta", head]]));
+    const beta = { id: "beta", noteId: null, title: "Beta", icon: "lucide:atom", color: "Mint", agent: null, tags: [], aliases: [], properties: {}, preview: "Sweep over masking ratios.", relatedProject: "paper", updatedAt: 1, knowledge: "k", taskDigest: "t" };
+    const notes = projectNotes(PROJECTS, "paper", [beta]);
     expect(notes.map((note) => note.id)).toEqual(["alpha", "beta", "older"]);
     expect(notes[1]).toEqual({
       id: "beta",
@@ -109,7 +105,7 @@ describe("a project's notes", () => {
       color: "mint",
       summary: "Sweep over masking ratios.",
     });
-    expect(notes[0]).toMatchObject({ icon: undefined, summary: "", color: readNoteFacts("").color });
+    expect(notes[0]).toMatchObject({ icon: undefined, summary: "", color: noteColorFor("Alpha") });
   });
 
   it("matches a search against the title and summary, ignoring case", () => {

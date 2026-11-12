@@ -340,7 +340,15 @@
     },
     "resetPaneLayout": {
       "keywords": "重設 面板 版面配置 順序 移動 側邊欄 助理 編輯器 預覽 終端機 預設 reset pane layout order move panels sidebar assistant editor preview terminal default",
-      "label": "重設面板版面配置"
+      "label": "在所有專案中重設面板排列"
+    },
+    "saveLayout": {
+      "keywords": "儲存 版面配置 自訂 排列 面板 大小 名稱 save layout custom arrangement panes sizes name",
+      "label": "儲存目前的版面配置"
+    },
+    "applySavedLayout": {
+      "keywords": "版面配置 已儲存 自訂 排列 面板 切換 套用 layout saved custom arrangement panes switch apply",
+      "label": "版面配置：{{name}}"
     },
     "zoomIn": {
       "keywords": "放大 變大",
@@ -379,6 +387,10 @@
     "notes": {
       "label": "開啟筆記",
       "keywords": "筆記 筆記本 知識 想法 點子 研究 日誌 notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "快速記錄",
+      "keywords": "快速記錄 隨手記 筆記 收件匣 今天 quick capture jot note inbox today"
     }
   },
   "community": {
@@ -483,6 +495,11 @@
   },
   "datePicker": {
     "placeholder": "選擇日期"
+  },
+  "monthPicker": {
+    "label": "選擇月份",
+    "previousYear": "上一年",
+    "nextYear": "下一年"
   },
   "devMenu": {
     "inspect": "檢查",
@@ -702,6 +719,7 @@
     "groups": {
       "action": "動作",
       "documents": "文件",
+      "notes": "筆記",
       "references": "參考文獻"
     },
     "label": "搜尋",
@@ -709,11 +727,13 @@
     "openReferences": "開啟這個專案的參考文獻",
     "placeholder": "搜尋專案、文件，或輸入 / 使用指令…",
     "placeholderDocuments": "在文件中搜尋…",
+    "placeholderNotes": "搜尋筆記及其中的區塊…",
     "placeholderProjects": "依名稱、引擎、類型、日期或中繼資料搜尋專案…",
     "referencesNeedProject": "請先開啟專案才能瀏覽其中的參考文獻。",
     "slash": {
       "create": "開啟範本庫",
       "docs": "在文件中搜尋",
+      "notes": "搜尋筆記及其中的區塊",
       "projects": "搜尋你的專案",
       "refs": "開啟這個專案的參考文獻",
       "settings": "開啟設定",
@@ -1294,7 +1314,24 @@
       "split": "分割檢視"
     },
     "moreActions": "更多操作",
-    "resetPaneLayout": "重設面板版面配置",
+    "resetPaneLayout": "重設面板排列",
+    "resetPaneLayoutScope": "所有專案",
+    "savedLayouts": {
+      "close": "關閉",
+      "delete": "刪除",
+      "deleteConfirm": "要刪除版面配置 {{name}} 嗎？",
+      "limit": "最多可保留 {{count}} 個版面配置。請先刪除一個，再儲存新的。",
+      "manage": "管理版面配置",
+      "name": "版面配置名稱",
+      "rename": "重新命名",
+      "renameTitle": "重新命名版面配置",
+      "replace": "取代",
+      "replaceConfirm": "已有名為 {{name}} 的版面配置。要取代它嗎？",
+      "save": "儲存目前的版面配置",
+      "saveButton": "儲存",
+      "saveTitle": "儲存版面配置",
+      "update": "更新為目前的版面配置"
+    },
     "renameFailed": "無法重新命名專案。"
   },
   "tour": {

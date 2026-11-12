@@ -1030,13 +1030,14 @@
         "environment": "Prostředí {{environment}}",
         "command": "Příkaz \\{{command}}",
         "latexSource": "Zdroj LaTeX",
+        "html": "HTML",
         "maketitlePreview": "Vygenerováno z názvu dokumentu a metadat autorů.",
         "figurePreserved": "Přesný zdroj obrázku je zachován.",
         "tablePreserved": "Přesný zdroj tabulky je zachován.",
         "sourcePreserved": "Přesný zdroj je zachován",
         "editSource": "Upravit zdroj",
-        "summaryLabel": "{{label}}. Přesný zdroj LaTeX je zachován.",
-        "inputLabel": "Přesný zdroj bloku LaTeX"
+        "summaryLabel": "{{label}}. Přesný zdroj je zachován.",
+        "inputLabel": "Přesný zdroj bloku"
       },
       "inline": {
         "label": "Nezpracovaný zdroj v řádku",

@@ -1,10 +1,11 @@
 import { createElement, Suspense, type ComponentType } from "react";
 import { lazy } from "@/lib/preloadable";
+import { researchTasksEnabled } from "@/store/research-tasks-flag";
 import { LoadingState } from "@/components/ui/empty";
 import { i18n } from "@/i18n";
 
 const ComputeSection = lazy(() =>
-  import("./ComputeSection").then((module) => ({ default: module.ComputeSection })), { warm: true });
+  import("./ComputeSection").then((module) => ({ default: module.ComputeSection })), { warm: researchTasksEnabled });
 
 function loadingCard() {
   return createElement(LoadingState, { size: "compact", label: i18n.t(($) => $.common.state.loading) });
@@ -17,7 +18,7 @@ function ResearchCompute() {
 export const ResearchComputeSlot: ComponentType | null = ResearchCompute;
 
 const BackgroundTasksCard = lazy(() =>
-  import("./BackgroundTasksCard").then((module) => ({ default: module.BackgroundTasksCard })), { warm: true });
+  import("./BackgroundTasksCard").then((module) => ({ default: module.BackgroundTasksCard })), { warm: researchTasksEnabled });
 
 function ResearchBackground() {
   return createElement(Suspense, { fallback: loadingCard() }, createElement(BackgroundTasksCard));

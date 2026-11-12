@@ -10,6 +10,7 @@
   "sideEffects": false,
   "dependencies": {
     "lucide-react": "*",
-    "react": "*"
+    "react": "*",
+    "react-dom": "*"
   }
 }

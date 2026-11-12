@@ -3,14 +3,15 @@
 import { groupsOf, type WorkspaceLayout } from "@oleafly/workspace";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import type { NoteGraph as NoteGraphComponent } from "./NoteGraph";
 import type { NoteExportDialog as ExportComponent, NoteImportDialog as ImportComponent } from "./NoteImportDialog";
 import type { NoteOutline as NoteOutlineComponent } from "./NoteOutline";
 import type { NotesLibrary as NotesLibraryComponent } from "./NotesLibrary";
 import type { NoteItem } from "./types";
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
 
 const graphCopy = enNotes.graph;
 const label = vi.hoisted(() => ({
@@ -129,18 +130,12 @@ const notes: NoteItem[] = ["n1", "n2", "n3"].map((id) => ({
 }));
 
 function fakeData(overrides: Partial<NotesData> = {}): NotesData {
-  return {
+  return fakeNotesData({
     notes,
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
-    loadNote: vi.fn(),
-    saveNote: vi.fn(),
     openProject: vi.fn(),
     refreshNotes: vi.fn(() => Promise.resolve()),
     ...overrides,
-  };
+  });
 }
 
 function renderWorkspace(data: NotesData = fakeData()) {
@@ -157,10 +152,6 @@ function savedGroups(): string[][] {
   const layout = JSON.parse(localStorage.getItem(NOTES_LAYOUT_KEY) ?? "null") as WorkspaceLayout | null;
   return layout ? groupsOf(layout.root).map((candidate) => candidate.views) : [];
 }
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 beforeEach(() => {
   localStorage.clear();

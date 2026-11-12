@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CheckCheck, FileText, MessageSquare, MessageSquareDiff, Unlink } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
@@ -8,6 +8,7 @@ import { badgeVariants } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useNow } from "@/hooks/use-now";
 import { formatNumber } from "@/lib/intl";
 import { basename } from "@/lib/path-utils";
 import type { CollabCommentCount, CollabCommentThread, CollabSuggestion } from "@/lib/tauri";
@@ -61,15 +62,6 @@ async function postThread(body: string): Promise<void> {
 function dropDraft(): void {
   cancelDraft();
   backToText();
-}
-
-function useNow(): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), TICK_MS);
-    return () => window.clearInterval(timer);
-  }, []);
-  return now;
 }
 
 type ReviewItem =
@@ -556,7 +548,7 @@ export function CommentsPane() {
       self: store.share?.account_id ?? null,
     })),
   );
-  const now = useNow();
+  const now = useNow(TICK_MS);
   const commentsOn = commentsShown(state.status);
   const canWrite = canWriteComments(state.status, live.role, live.liveState);
   const connected = live.liveState !== null && live.liveState !== "ended";

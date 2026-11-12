@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -310,8 +310,18 @@ import { useHomeViewStore } from "@/store/home-view";
 import { useTourStore } from "@/store/tours";
 import { useSettingsStore } from "@/store/settings";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
-import { panelExpandSizesKey } from "@/lib/panel-layout";
-import { DEFAULT_PANE_LAYOUT, movePane, usePaneLayoutStore, type DropTarget, type PaneId } from "@/store/pane-layout";
+import { enterZenMode, exitZenMode } from "@/lib/zen-mode";
+import { togglePreviewPane } from "@/lib/compile-preview";
+import type { LayoutPreset } from "@/store/settings";
+import {
+  DEFAULT_PANE_LAYOUT,
+  movePane,
+  panelIdOf,
+  splitsOf,
+  usePaneLayoutStore,
+  type DropTarget,
+  type PaneId,
+} from "@/store/pane-layout";
 
 const initialFiles = useFilesStore.getState();
 const initialCompile = useCompileStore.getState();
@@ -319,11 +329,10 @@ const initialSettings = useSettingsStore.getState();
 
 type Shape = string | { [panel: string]: Shape[] };
 
-const DEFAULT_SHAPE: Shape[] = [
-  { "content-band": ["sidebar", "h-tree", { editorpdf: ["editor", "h-mid", "pdf"] }, "h-assistant", "assistant"] },
-  "v-terminal",
-  "terminal",
-];
+const BAND: Shape = {
+  "content-band": ["sidebar", "h-tree", { editorpdf: ["editor", "h-mid", "pdf"] }, "h-assistant", "assistant"],
+};
+const DEFAULT_SHAPE: Shape[] = [BAND, "v-terminal", "terminal"];
 
 function savedLayout(layout: { viewMode?: string; showTree?: boolean; assistantOpen?: boolean; workspaceHidden?: boolean }) {
   localStorage.setItem("oleafly.workspace.p1", JSON.stringify({ version: 1, ...layout }));
@@ -443,89 +452,160 @@ afterEach(() => {
   document.documentElement.removeAttribute("style");
 });
 
+const RELEASED_KEYS = {
+  vertical: "react-resizable-panels:oleafly.workspace.p1.vertical:content-band:terminal",
+  horizontal: "react-resizable-panels:oleafly.workspace.p1.horizontal:sidebar:editorpdf:assistant",
+  aiOnly: "react-resizable-panels:oleafly.workspace.p1.horizontal:sidebar:assistant",
+  document: "react-resizable-panels:oleafly.workspace.p1.document:editor:pdf",
+};
+
+function flexOf(id: string): number {
+  return Number(document.getElementById(id)?.style.flexGrow ?? Number.NaN);
+}
+
+function idsOf(selector: string): string[] {
+  return [...document.querySelectorAll(selector)].map((element) => element.id);
+}
+
+function widePanels() {
+  vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockImplementation(function (this: HTMLElement) {
+    return this.hasAttribute("data-panel") ? 1000 : this.hasAttribute("data-separator") ? 6 : 0;
+  });
+}
+
+describe("released storage keys, panel ids and separator ids", () => {
+  it("reads the sizes the released app saved and writes them back under the same keys", async () => {
+    widePanels();
+    savedLayout({ showTree: true, assistantOpen: true });
+    localStorage.setItem(RELEASED_KEYS.horizontal, JSON.stringify({ sidebar: 30, editorpdf: 45, assistant: 25 }));
+    localStorage.setItem(RELEASED_KEYS.document, JSON.stringify({ editor: 60, pdf: 40 }));
+    localStorage.setItem(RELEASED_KEYS.vertical, JSON.stringify({ "content-band": 65, terminal: 35 }));
+    await renderApp();
+    act(() => useSettingsStore.getState().setTerminalOpen(true));
+    await waitFor(() => expect(flexOf("terminal")).toBe(35));
+    expect(idsOf("[data-panel]").filter((id) => id !== "chat-split")).toEqual([
+      "content-band",
+      "sidebar",
+      "editorpdf",
+      "editor",
+      "pdf",
+      "assistant",
+      "terminal",
+    ]);
+    expect(idsOf("[data-separator]")).toEqual(["h-tree", "h-mid", "h-assistant", "v-terminal"]);
+    for (const group of document.querySelectorAll("[data-group]")) expect(group.id).toMatch(/^:r|^$|^«|^_r/);
+    expect([flexOf("sidebar"), flexOf("editorpdf"), flexOf("assistant")]).toEqual([30, 45, 25]);
+    expect([flexOf("editor"), flexOf("pdf")]).toEqual([60, 40]);
+    expect([flexOf("content-band"), flexOf("terminal")]).toEqual([65, 35]);
+    press("h-mid", "ArrowRight");
+    expect(JSON.parse(localStorage.getItem(RELEASED_KEYS.document) ?? "null")).toEqual({ editor: 70, pdf: 30 });
+    const keys = Object.keys(localStorage).filter((key) => key.startsWith("react-resizable-panels:"));
+    expect(keys).toEqual(expect.arrayContaining([RELEASED_KEYS.document, RELEASED_KEYS.horizontal, RELEASED_KEYS.vertical]));
+    for (const key of keys) {
+      expect(key).toMatch(/^react-resizable-panels:oleafly\.workspace\.p1\.(vertical|horizontal|document):[a-z-]+(:[a-z-]+)*$/);
+    }
+  });
+
+  it("opens a terminal the released app saved closed at its remembered height", async () => {
+    widePanels();
+    savedLayout({ showTree: true, assistantOpen: true });
+    localStorage.setItem(RELEASED_KEYS.vertical, JSON.stringify({ "content-band": 100, terminal: 0 }));
+    localStorage.setItem("oleafly.panel-expand-sizes.oleafly.workspace.p1.vertical", JSON.stringify({ terminal: 35 }));
+    await renderApp();
+    expect(useSettingsStore.getState().terminalOpen).toBe(false);
+    act(() => useSettingsStore.getState().setTerminalOpen(true));
+    await waitFor(() => expect([flexOf("content-band"), flexOf("terminal")]).toEqual([65, 35]));
+    expect(useSettingsStore.getState().terminalOpen).toBe(true);
+  });
+
+  it("names the separator between the sidebar and the assistant h-tree in AI only", async () => {
+    widePanels();
+    savedLayout({ showTree: true, assistantOpen: true, workspaceHidden: true });
+    localStorage.setItem(RELEASED_KEYS.aiOnly, JSON.stringify({ sidebar: 35, assistant: 65 }));
+    await renderApp();
+    expect(idsOf("[data-separator]").filter((id) => id !== "v-terminal")).toEqual(["h-tree"]);
+    expect([flexOf("sidebar"), flexOf("assistant")]).toEqual([35, 65]);
+  });
+});
+
+function splitOf(pane: PaneId): string {
+  const parent = splitsOf(usePaneLayoutStore.getState().layout).find((node) =>
+    node.children.some((child) => "pane" in child && child.pane === pane),
+  );
+  if (!parent) throw new Error(`${pane} has no parent split`);
+  return panelIdOf(parent);
+}
+
+function openTerminal(open = true) {
+  act(() => useSettingsStore.getState().setTerminalOpen(open));
+}
+
+function sizes(...ids: string[]): number[] {
+  return ids.map(flexOf);
+}
+
 describe("default pane layout", () => {
-  it("renders the same groups, panels and separators as the fixed layout", async () => {
+  it("renders the released panels and adds the terminal only while it is open", async () => {
     savedLayout({ showTree: true, assistantOpen: true });
     await renderApp();
-    expect(shapeOf(rootGroup())).toEqual(DEFAULT_SHAPE);
-    for (const group of document.querySelectorAll("[data-group]")) expect(group.id).not.toMatch(/^oleafly-panes/);
-    expect(document.getElementById("sidebar")?.firstElementChild).toHaveClass("bg-sidebar");
-    expect(document.getElementById("assistant")?.firstElementChild).toHaveClass("min-h-0", "min-w-0", "border-l");
-    const terminalHandle = document.getElementById("v-terminal");
-    expect(terminalHandle).toHaveClass("resize-handle-row", "invisible", "h-0");
-    expect(terminalHandle).toHaveAttribute("aria-disabled", "true");
-    expect(document.getElementById("h-tree")).toHaveClass("resize-handle-col");
-    expect(document.getElementById("h-tree")).not.toHaveAttribute("aria-disabled");
+    expect(shapeOf(rootGroup())).toEqual([BAND]);
     inPanel("sidebar-surface", "sidebar");
     inPanel("editor-surface", "editor");
     inPanel("preview-surface", "pdf");
     inPanel("chat-surface", "assistant");
+    expect(document.getElementById("terminal")).toBeNull();
+    openTerminal();
+    expect(shapeOf(rootGroup())).toEqual(DEFAULT_SHAPE);
     inPanel("terminal-dock", "terminal");
+    openTerminal(false);
+    expect(shapeOf(rootGroup())).toEqual([BAND]);
+    openTerminal();
+    expect(mocks.surfaceMounts.terminal).toBe(1);
   });
 
-  it("keeps the sidebar separator when the document is hidden and opens the terminal separator", async () => {
+  it("keeps the sidebar separator when the document is hidden", async () => {
     savedLayout({ showTree: true, assistantOpen: true, workspaceHidden: true });
     await renderApp();
-    expect(shapeOf(rootGroup())).toEqual([
-      { "content-band": ["sidebar", "h-tree", "assistant"] },
-      "v-terminal",
-      "terminal",
-    ]);
-    act(() => useSettingsStore.getState().setTerminalOpen(true));
-    expect(document.getElementById("v-terminal")).not.toHaveClass("invisible");
-    expect(document.getElementById("v-terminal")).not.toHaveAttribute("aria-disabled", "true");
+    expect(shapeOf(rootGroup())).toEqual([{ "content-band": ["sidebar", "h-tree", "assistant"] }]);
+    openTerminal();
+    expect(shapeOf(rootGroup())).toEqual([{ "content-band": ["sidebar", "h-tree", "assistant"] }, "v-terminal", "terminal"]);
   });
 });
 
 describe("moved pane layout", () => {
-  it("nests groups for a stacked pane and names them after their panes", async () => {
+  it("nests a stacked pane in a group with a short id", async () => {
     savedLayout({ showTree: true, assistantOpen: true });
     await renderApp();
+    openTerminal();
     move("terminal", { kind: "pane", pane: "pdf", side: "bottom" });
     expect(shapeOf(rootGroup())).toEqual([
       "sidebar",
-      "sep-panes-editor-pdf-terminal-sidebar",
-      {
-        "panes-editor-pdf-terminal": [
-          "editor",
-          "sep-editor-panes-pdf-terminal",
-          { "panes-pdf-terminal": ["pdf", "sep-pdf-terminal", "terminal"] },
-        ],
-      },
-      "sep-assistant-panes-editor-pdf-terminal",
+      "h-tree",
+      { editorpdf: ["editor", "sep-editor-s1", { s1: ["pdf", "sep-pdf-terminal", "terminal"] }] },
+      "h-assistant",
       "assistant",
     ]);
-    expect(document.getElementById("sep-pdf-terminal")).toHaveClass("resize-handle-row", "invisible");
-    expect(document.getElementById("sep-editor-panes-pdf-terminal")).toHaveClass("resize-handle-col");
-    inPanel("terminal-dock", "terminal");
-    inPanel("terminal-dock", "panes-pdf-terminal");
+    inPanel("terminal-dock", "s1");
   });
 
   it("puts a pane along a window edge", async () => {
     savedLayout({ showTree: true, assistantOpen: true });
     await renderApp();
+    openTerminal();
     move("terminal", { kind: "edge", side: "top" });
-    expect(shapeOf(rootGroup())).toEqual(["terminal", "v-terminal", ...DEFAULT_SHAPE.slice(0, 1)]);
-    expect(rootGroup().id).toBe("oleafly-panes-vertical-terminal-content-band");
+    expect(shapeOf(rootGroup())).toEqual(["terminal", "v-terminal", BAND]);
     move("assistant", { kind: "edge", side: "left" });
     expect(shapeOf(rootGroup())).toEqual([
       "assistant",
-      "sep-assistant-panes-editor-pdf-sidebar-terminal",
-      {
-        "panes-editor-pdf-sidebar-terminal": [
-          "terminal",
-          "sep-panes-editor-pdf-sidebar-terminal",
-          { "panes-editor-pdf-sidebar": ["sidebar", "sep-editorpdf-sidebar".replace("sep-editorpdf-sidebar", "h-tree"), { editorpdf: ["editor", "h-mid", "pdf"] }] },
-        ],
-      },
+      "sep-assistant-s1",
+      { s1: ["terminal", "v-terminal", { "content-band": ["sidebar", "h-tree", { editorpdf: ["editor", "h-mid", "pdf"] }] }] },
     ]);
-    expect(document.getElementById("assistant")?.firstElementChild).toHaveClass("border-r");
   });
 
   it("moves every pane without remounting what is inside it", async () => {
     savedLayout({ showTree: true, assistantOpen: true });
     await renderApp();
-    act(() => useSettingsStore.getState().setTerminalOpen(true));
+    openTerminal();
     const mounts = { ...mocks.surfaceMounts };
     expect(mounts).toEqual({ editor: 1, sidebar: 1, chat: 1, terminal: 1 });
     expect(mocks.previewMounts).toBe(1);
@@ -557,13 +637,15 @@ describe("moved pane layout", () => {
     await renderApp();
     move("assistant", { kind: "pane", pane: "terminal", side: "right" });
     move("terminal", { kind: "pane", pane: "pdf", side: "bottom" });
-    expect(document.getElementById("panes-pdf-terminal")).not.toBeNull();
+    const stack = splitOf("terminal");
+    expect(document.getElementById(stack)).not.toBeNull();
+    expect(document.getElementById("terminal")).toBeNull();
 
     act(() => useSettingsStore.getState().setViewMode("editor"));
     expect(document.getElementById("pdf")).toBeNull();
-    expect(document.getElementById("panes-pdf-terminal")).toBeNull();
-    act(() => useSettingsStore.getState().setTerminalOpen(true));
-    expect(document.getElementById("panes-pdf-terminal")).not.toBeNull();
+    expect(document.getElementById(stack)).toBeNull();
+    openTerminal();
+    expect(document.getElementById(stack)).not.toBeNull();
     inPanel("terminal-dock", "terminal");
 
     act(() => useSettingsStore.getState().setAssistantOpen(false));
@@ -586,33 +668,85 @@ describe("moved pane layout", () => {
     savedLayout({ showTree: true, assistantOpen: true });
     await renderApp();
     move("assistant", { kind: "pane", pane: "pdf", side: "bottom" });
-    expect(document.getElementById("sep-assistant-pdf")).not.toBeNull();
-    for (let step = 0; step < 10 && useSettingsStore.getState().assistantOpen; step += 1) press("sep-assistant-pdf", "ArrowDown");
+    expect(document.getElementById("sep-pdf-assistant")).not.toBeNull();
+    for (let step = 0; step < 10 && useSettingsStore.getState().assistantOpen; step += 1) press("sep-pdf-assistant", "ArrowDown");
     expect(useSettingsStore.getState().assistantOpen).toBe(false);
   });
 
-  it("follows the terminal wherever it sits when it opens, closes or is pushed shut", async () => {
+  it("reopens the terminal at the height it had and closes it when it is pushed shut", async () => {
     savedLayout({ showTree: true, assistantOpen: true });
     await renderApp();
     move("terminal", { kind: "pane", pane: "pdf", side: "bottom" });
-    act(() => useSettingsStore.getState().setTerminalOpen(true));
-    await act(async () => {
-      await new Promise((resolve) => window.requestAnimationFrame(() => resolve(null)));
-    });
-    expect(document.getElementById("sep-pdf-terminal")).not.toHaveClass("invisible");
+    openTerminal();
+    press("sep-pdf-terminal", "ArrowUp");
+    const open = sizes("pdf", "terminal");
+    openTerminal(false);
+    expect(document.getElementById("terminal")).toBeNull();
+    openTerminal();
+    await waitFor(() => expect(sizes("pdf", "terminal")).toEqual(open));
     for (let step = 0; step < 10 && useSettingsStore.getState().terminalOpen; step += 1) press("sep-pdf-terminal", "ArrowDown");
     expect(useSettingsStore.getState().terminalOpen).toBe(false);
-    act(() => useSettingsStore.getState().setTerminalOpen(true));
-    act(() => useSettingsStore.getState().setTerminalOpen(false));
-    await act(async () => {
-      await new Promise((resolve) => window.requestAnimationFrame(() => resolve(null)));
-    });
-    expect(localStorage.getItem(panelExpandSizesKey("oleafly.workspace.p1.split-pdf-terminal"))).toContain("terminal");
+    expect(document.getElementById("terminal")).toBeNull();
+  });
+
+  it("keeps a resizable separator for a pane moved below the closed terminal", async () => {
+    widePanels();
+    savedLayout({ showTree: true, assistantOpen: true });
+    await renderApp();
+    act(() => usePaneLayoutStore.getState().move("assistant", { kind: "edge", side: "bottom" }));
+    const separators = idsOf("[data-separator]");
+    const between = separators[separators.length - 1] ?? "";
+    expect(shapeOf(rootGroup()).map((entry) => (typeof entry === "string" ? entry : Object.keys(entry)[0]))).toEqual([
+      "content-band",
+      between,
+      "assistant",
+    ]);
+    expect(document.getElementById(between)).not.toHaveAttribute("aria-disabled", "true");
+    const before = flexOf("assistant");
+    press(between, "ArrowUp");
+    expect(flexOf("assistant")).toBeGreaterThan(before);
+  });
+
+  it.each([true, false])("leaves the terminal %s when the arrangement is reset", async (open) => {
+    savedLayout({ showTree: true, assistantOpen: true });
+    localStorage.setItem(
+      RELEASED_KEYS.vertical,
+      JSON.stringify(open ? { "content-band": 100, terminal: 0 } : { "content-band": 72, terminal: 28 }),
+    );
+    await renderApp();
+    openTerminal(open);
+    move("sidebar", { kind: "edge", side: "right" });
+    act(() => usePaneLayoutStore.getState().reset());
+    await act(async () => {});
+    expect(useSettingsStore.getState().terminalOpen).toBe(open);
+    expect(document.getElementById("terminal") !== null).toBe(open);
+  });
+
+  it("keeps the sizes the user set when a pane moves away and back", async () => {
+    widePanels();
+    savedLayout({ showTree: true, assistantOpen: true });
+    await renderApp();
+    openTerminal();
+    press("h-tree", "ArrowRight");
+    press("h-mid", "ArrowRight");
+    press("v-terminal", "ArrowUp");
+    const band = sizes("sidebar", "editorpdf", "assistant");
+    const documentSizes = sizes("editor", "pdf");
+    const terminal = sizes("content-band", "terminal");
+    act(() => usePaneLayoutStore.getState().move("terminal", { kind: "pane", pane: "pdf", side: "bottom" }));
+    expect(sizes("sidebar", "editorpdf", "assistant")).toEqual(band);
+    expect(sizes("editor", splitOf("terminal"))).toEqual(documentSizes);
+    act(() => usePaneLayoutStore.getState().move("terminal", { kind: "edge", side: "bottom" }));
+    expect(usePaneLayoutStore.getState().layout).toBe(DEFAULT_PANE_LAYOUT);
+    expect(sizes("sidebar", "editorpdf", "assistant")).toEqual(band);
+    expect(sizes("editor", "pdf")).toEqual(documentSizes);
+    expect(sizes("content-band", "terminal")).toEqual(terminal);
   });
 
   it("moves a pane dropped on another pane's edge or on the window edge", async () => {
     savedLayout({ showTree: true, assistantOpen: true });
     await renderApp();
+    openTerminal();
     vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
       return rectOf(this);
     });
@@ -621,7 +755,7 @@ describe("moved pane layout", () => {
     expect(document.querySelector("[data-pane-drop]")).toHaveAttribute("data-pane-drop", "assistant-right");
     fireEvent.pointerUp(window);
     expect(shapeOf(rootGroup())[0]).toEqual({
-      "content-band": [{ editorpdf: ["editor", "h-mid", "pdf"] }, "h-assistant", "assistant", "h-side-assistant", "sidebar"],
+      "content-band": [{ editorpdf: ["editor", "h-mid", "pdf"] }, "h-assistant", "assistant", "sep-assistant-sidebar", "sidebar"],
     });
 
     fireEvent.pointerDown(screen.getByTestId("ai-assistant-header"), { button: 0, clientX: 600, clientY: 60 });
@@ -629,11 +763,83 @@ describe("moved pane layout", () => {
     expect(document.querySelector("[data-pane-drop]")).toHaveAttribute("data-pane-drop", "edge-bottom");
     fireEvent.pointerUp(window);
     expect(shapeOf(rootGroup()).map((entry) => (typeof entry === "string" ? entry : Object.keys(entry)[0]))).toEqual([
-      "panes-editor-pdf-sidebar",
-      "sep-panes-editor-pdf-sidebar-terminal",
+      "content-band",
+      "v-terminal",
       "terminal",
-      "sep-assistant-terminal",
+      "sep-terminal-assistant",
       "assistant",
     ]);
+  });
+});
+
+const PRESETS: readonly [LayoutPreset, readonly PaneId[]][] = [
+  ["editor-preview-ai", ["editor", "pdf", "assistant"]],
+  ["editor-preview", ["editor", "pdf"]],
+  ["editor-ai", ["editor", "assistant"]],
+  ["preview-ai", ["pdf", "assistant"]],
+  ["editor-only", ["editor"]],
+  ["preview-only", ["pdf"]],
+  ["ai-only", ["assistant"]],
+];
+const ALL_PANES: readonly PaneId[] = ["sidebar", "editor", "pdf", "terminal", "assistant"];
+
+function panesOnScreen(): PaneId[] {
+  return ALL_PANES.filter((pane) => document.getElementById(pane) !== null);
+}
+
+function allSizes(): number[] {
+  return ALL_PANES.map(flexOf);
+}
+
+describe.each([
+  ["the default arrangement", null],
+  ["a rearranged arrangement", ["terminal", { kind: "pane", pane: "pdf", side: "bottom" }] as const],
+])("layout switches in %s", (_name, rearrange) => {
+  async function resizedWorkspace() {
+    widePanels();
+    savedLayout({ showTree: true, assistantOpen: true });
+    await renderApp();
+    if (rearrange) move(rearrange[0], rearrange[1]);
+    openTerminal();
+    const before = allSizes();
+    for (const id of idsOf("[data-separator]")) press(id, document.getElementById(id)?.getAttribute("aria-orientation") === "horizontal" ? "ArrowUp" : "ArrowRight");
+    const sizes = allSizes();
+    expect(sizes.every((size) => Number.isFinite(size) && size > 0)).toBe(true);
+    expect(sizes).not.toEqual(before);
+    return sizes;
+  }
+
+  it("shows the panes of each preset and brings the sizes back", async () => {
+    const sizes = await resizedWorkspace();
+    for (const [preset, panes] of PRESETS) {
+      act(() => useSettingsStore.getState().setLayoutPreset(preset));
+      expect(panesOnScreen()).toEqual(ALL_PANES.filter((pane) => pane === "sidebar" || pane === "terminal" || panes.includes(pane)));
+    }
+    act(() => useSettingsStore.getState().setLayoutPreset("editor-preview-ai"));
+    await waitFor(() => expect(allSizes()).toEqual(sizes));
+  });
+
+  it("brings the sizes back after Zen and the sidebar, preview and terminal toggles", async () => {
+    const sizes = await resizedWorkspace();
+    const toggles: [string, () => void, () => void][] = [
+      ["zen", () => void enterZenMode(), () => exitZenMode()],
+      ["sidebar", () => useSettingsStore.getState().setShowTree(false), () => useSettingsStore.getState().setShowTree(true)],
+      ["preview", () => void togglePreviewPane(), () => void togglePreviewPane()],
+      ["terminal", () => openTerminal(false), () => openTerminal()],
+    ];
+    for (const [name, off, on] of toggles) {
+      act(off);
+      expect(panesOnScreen(), name).not.toEqual(ALL_PANES);
+      act(on);
+      await waitFor(() => expect(allSizes(), name).toEqual(sizes));
+    }
+  });
+
+  it("brings the sizes back when the project opens again", async () => {
+    const sizes = await resizedWorkspace();
+    act(() => useFilesStore.setState({ projectId: null }));
+    act(() => useFilesStore.setState({ projectId: "p1" }));
+    openTerminal();
+    await waitFor(() => expect(allSizes()).toEqual(sizes));
   });
 });

@@ -17,4 +17,5 @@ export interface WysiwygExtensionOptions {
   resolveAssetUrl?: AssetUrlResolver;
   localizeLinkHref?: LinkHrefLocalizer;
   openLinkHref?: LinkHrefOpener;
+  markdownTyping?: boolean;
 }

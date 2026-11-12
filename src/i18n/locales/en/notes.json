@@ -17,9 +17,37 @@
     "resize": "Resize panels",
     "closePanel": "Close panel",
     "newTab": "New tab",
-    "emptyPanel": "This panel is empty.",
+    "empty": {
+      "greetings": {
+        "begin": "Where should we begin?",
+        "ready": "Ready when you are.",
+        "mind": "What's on your mind today?",
+        "resume": "Pick up where you left off?",
+        "working": "What are you working on?",
+        "first": "What would you like to write first?",
+        "blank": "Start with a blank page or a template."
+      },
+      "hints": {
+        "daily": "A plan and a log for today",
+        "experimentLog": "Runs and what they showed",
+        "paperReading": "What one paper claims",
+        "literatureMatrix": "Compare papers side by side",
+        "meeting": "Agenda and decisions",
+        "labProtocol": "Steps someone else can follow",
+        "weeklyLog": "What got done this week",
+        "proposal": "Aims, methods and a timeline"
+      },
+      "moreTemplates": "More templates",
+      "continue": "Continue",
+      "searchAll": "Search all notes"
+    },
     "closeMissing": "Close tab",
-    "notesHome": "Go to Notes Home"
+    "notesHome": "Go to Notes Home",
+    "breadcrumb": "Breadcrumb",
+    "breadcrumbHome": "Notes Home",
+    "brand": "Oleafly Notes",
+    "back": "Back",
+    "forward": "Forward"
   },
   "saveStatus": {
     "saved": "Saved",
@@ -40,7 +68,7 @@
       "notebook": "Notebooks"
     },
     "author": {
-      "all": "Anyone",
+      "all": "All",
       "agent": "Agents",
       "you": "You"
     },
@@ -52,15 +80,18 @@
       "data": "No data files match these filters.",
       "notebook": "No notebooks match these filters."
     },
-    "noNotes": "No notes yet. Start one with New note.",
+    "start": {
+      "title": "No notes yet"
+    },
     "ungrouped": "Notes",
     "agentFallback": "Agent",
     "settings": "Settings",
     "filters": {
-      "title": "Filters",
+      "title": "Tags",
       "active_one": "{{count}} filter on",
       "active_other": "{{count}} filters on",
-      "clear": "Clear filters"
+      "clear": "Clear filters",
+      "writtenBy": "Written by"
     },
     "menu": {
       "more": "More",
@@ -81,18 +112,31 @@
       "templateOn": "\"{{name}}\" is now one of your templates.",
       "templateOff": "\"{{name}}\" is no longer a template.",
       "linkProject": "Link to project",
-      "compareConflict": "Compare conflict copy"
+      "compareConflict": "Compare conflict copy",
+      "copyLink": "Copy link",
+      "linkCopied": "Copied the link to \"{{name}}\".",
+      "copyLinkFailed": "Couldn't copy the link to \"{{name}}\".",
+      "duplicate": "Duplicate",
+      "copyTitle": "{{name}} copy",
+      "duplicateFailed": "Couldn't duplicate \"{{name}}\".",
+      "export": "Export",
+      "exportAs": {
+        "markdown": "Markdown folder (.md)",
+        "docx": "Word document (.docx)",
+        "html": "Web page (.html)",
+        "latex": "LaTeX (.tex)",
+        "typst": "Typst (.typ)"
+      },
+      "exportFailed": "Couldn't export \"{{name}}\".",
+      "copyMarkdown": "Copy as Markdown",
+      "markdownCopied": "Copied \"{{name}}\" as Markdown.",
+      "copyMarkdownFailed": "Couldn't copy \"{{name}}\" as Markdown."
     },
     "conflicts": {
-      "title": "Two versions of \"{{name}}\"",
-      "description": "This note changed here and on another computer before they synced, so Oleafly kept both. Keep one version. The other goes to the Recycle Bin.",
-      "diffLabel": "Differences between the two versions",
-      "loading": "Reading both versions…",
-      "readFailed": "Couldn't read the conflict copy.",
-      "resolveFailed": "Couldn't keep that version.",
-      "keepMine": "Keep this computer's version",
-      "useCopy": "Use the other computer's version",
       "badge": "This note has a conflict copy"
+    },
+    "suggestions": {
+      "badge": "Suggested changes are waiting in this note"
     }
   },
   "home": {
@@ -101,7 +145,9 @@
     "tabs": {
       "label": "Notes to show",
       "mine": "My notes",
-      "favorites": "Favorites"
+      "favorites": "Favorites",
+      "tasks": "Tasks",
+      "attachments": "Attachments"
     },
     "sortBy": "Sort by",
     "sort": {
@@ -111,8 +157,7 @@
       "title": "Title"
     },
     "layout": "Note layout",
-    "empty": "No notes yet. Start one and ask the agent to help you write it.",
-    "noFavorites": "No favorites yet. Star a note to keep it here.",
+    "noFavorites": "No favorites yet. Add a note to favorites to keep it here.",
     "noMatches": "No notes match \"{{query}}\".",
     "author": "Author"
   },
@@ -125,8 +170,9 @@
     "loadFailed": "This note couldn't be opened. Its project may have been moved or deleted.",
     "retryLoad": "Try again",
     "closeTab": "Close tab",
-    "imageFailed": "Couldn't save the image to the note.",
-    "onlyImages": "Only PNG, JPEG and SVG images can be added to a note.",
+    "fileFailed": "Couldn't add the file to the note: {{error}}",
+    "fileTooLarge": "{{name}} is larger than 64 MB, so it wasn't added.",
+    "unsupportedFile": "A note can only hold images, audio, video, PDFs, tables (CSV, TSV or Excel), molecule files and Jupyter notebooks.",
     "remoteImages": {
       "more": "More ways to load images",
       "loadAll": "Load all images in this note",
@@ -149,6 +195,10 @@
       "figure": "Add a figure",
       "abstract": "Summarize for the abstract"
     },
+    "wholeNote": {
+      "proofread": "Proofread the note",
+      "rewrite": "Rewrite the note"
+    },
     "collapse": "Hide prompt",
     "expand": "Show prompt"
   },
@@ -157,6 +207,22 @@
     "acceptAll": "Accept all",
     "position": "Change {{current}} of {{total}}",
     "undo": "Undo"
+  },
+  "versions": {
+    "title": "Version history",
+    "summary": "Oleafly saves a version each time you accept all suggested changes, and before it restores an older one. You can also save one yourself.",
+    "empty": "No versions yet. Save a version to keep the note as it is now.",
+    "save": "Save a version",
+    "saved": "Version saved.",
+    "unchanged": "Nothing has changed since the last version.",
+    "saveFailed": "Couldn't save a version of this note.",
+    "restore": "Restore this version",
+    "restored": "Version restored. The text it replaced is saved as a version too.",
+    "restoreFailed": "Couldn't restore this version.",
+    "comparing": "Comparing with the note",
+    "readFailed": "Couldn't read this version.",
+    "changes": "What restoring this version changes",
+    "textOnly": "Restoring changes the note's text only. Attached files stay as they are."
   },
   "toolbar": {
     "label": "Formatting",
@@ -172,9 +238,6 @@
     "displayMath": "Display math",
     "citation": "Citation",
     "noCitations": "No references in this project yet",
-    "tableSize": "{{cols}} by {{rows}} table",
-    "addRow": "Add row",
-    "addColumn": "Add column",
     "chart": "Chart",
     "mermaid": "Mermaid diagram",
     "outline": "Outline",
@@ -188,7 +251,12 @@
       "wide": "Wide",
       "full": "Full width"
     },
-    "notebook": "Insert notebook"
+    "attach": "Attach file",
+    "attachFilter": "Images, audio, video, PDFs, tables, molecules and notebooks",
+    "codeLanguage": "Code language",
+    "plainCode": "Plain text",
+    "imageSize": "Image size",
+    "originalSize": "Original size"
   },
   "blocks": {
     "chart": "Chart",
@@ -197,9 +265,28 @@
     "diagramError": "This diagram has an error. Open the source to fix it.",
     "chartError": "This chart's data isn't valid. Open the source to fix it.",
     "noPreview": "No preview for this block yet. Open the source to edit it.",
+    "syntax": {
+      "help": "How to write a {{block}} block",
+      "chart": "JSON with a type, categories and series:\n{\"type\": \"bar\", \"categories\": [\"A\", \"B\"], \"series\": [{\"name\": \"Run 1\", \"values\": [1, 2]}]}\nOther types: line, area, scatter, pie, donut, histogram.",
+      "plot": "One curve or option per line:\ny = x^2 - 1 or x = cos(t), y = sin(t)\ndomain: -5, 5 and point: 1, 0, Root",
+      "csv": "Rows of values, and the first row is the header:\nRun, Ratio\nOr read a file with path: assets/results.csv",
+      "latex": "Display LaTeX, such as an equation or align environment:\n\\begin{align} a &= b + c \\end{align}\nChemistry with \\ce{H2O} and units with \\pu{5 mg}.",
+      "typst": "A Typst snippet, drawn as an image:\n$ E = m c^2 $\nPackages from the internet are not available.",
+      "mermaid": "A Mermaid diagram, for example:\nflowchart LR\nA --> B",
+      "d2": "A D2 diagram, for example:\nclient -> server: request\nserver.shape: cylinder",
+      "tikz": "TikZ commands, or a whole tikzpicture:\n{{example}}\nLines above the picture, such as \\usetikzlibrary{positioning}, go in the preamble.",
+      "circuitikz": "CircuiTikZ commands, or a whole circuitikz environment:\n{{example}}\nLines above the circuit, such as \\ctikzset{resistors/scale=0.8}, go in the preamble.",
+      "svg": "One svg element, for example:\n<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" /></svg>\nScripts, links and remote images are removed.",
+      "html": "A full HTML page or a fragment with CSS and scripts.\nIt has no internet access, so put your data in the block.\nScripts start when you click Run.",
+      "jsx": "One React component file with a default export:\nexport default function App() { return <p>Hello</p> }\nIt can import react, recharts, d3, lodash, papaparse, chart.js and lucide-react.",
+      "smiles": "One SMILES string per line, with an optional name:\nAspirin: CC(=O)OC1=CC=CC=C1C(=O)O\nUp to 24 per block.",
+      "molecule": "Option lines first, such as format: pdb and style: cartoon.\nThen the file text, or path: assets/1abc.pdb",
+      "sequence": "FASTA records or a raw sequence:\n>sample 1\nATGGCCATTGTAATG",
+      "notebook": "The notebook's path on the first line:\nassets/analysis.ipynb\nThen optional lines such as cells: 2-5 and code: hide.",
+      "bookmark": "One field per line, starting with the web address:\nurl: https://example.com/article\nThen optional title:, description:, image:, site: and favicon: lines."
+    },
     "newChart": {
       "title": "New chart",
-      "description": "Ask the agent to fill this in, or edit the source.",
       "series": "Values"
     },
     "newHtml": {
@@ -236,6 +323,7 @@
     },
     "sequence": {
       "label": "Sequence",
+      "template": "Example coding sequence",
       "empty": "Paste a FASTA record or a raw sequence.",
       "character": "Line {{line}}, column {{column}}: \"{{character}}\" isn't a residue.",
       "untitled": "Untitled sequence",
@@ -375,7 +463,8 @@
     "artifact": {
       "run": "Run",
       "stop": "Stop",
-      "alwaysRun": "Always run blocks in this note",
+      "alwaysRun": "Always run this block",
+      "paused": "Paused because a block in this note froze or closed the app last time.",
       "desktopOnly": "Running needs the desktop app",
       "loading": "Loading…",
       "loadFailed": "This block couldn't load.",
@@ -383,7 +472,7 @@
       "stopped": "This block stopped responding.",
       "reload": "Reload",
       "failed": "This block couldn't start: {{error}}",
-      "offline": "Blocks can't load files from the internet, so these were left out:",
+      "offline": "These files from the internet were left out:",
       "more_one": "and {{count}} more",
       "more_other": "and {{count}} more",
       "frameTitle": "{{label}} output",
@@ -394,7 +483,6 @@
       "noComponent": "This component has no default export."
     },
     "code": {
-      "copy": "Copy",
       "copied": "Copied",
       "copyFailed": "Copy failed",
       "copyLabel": "Copy code"
@@ -404,6 +492,22 @@
       "empty": "This SVG block is empty.",
       "invalid": "This SVG isn't valid. Open the source to fix it.",
       "tooLarge": "This SVG is too large to show."
+    },
+    "d2": {
+      "alt": "D2 diagram",
+      "empty": "This D2 block is empty.",
+      "loading": "Drawing…",
+      "error": "D2 couldn't draw this diagram: {{error}}",
+      "line": "Line {{line}}: {{message}}"
+    },
+    "tikz": {
+      "alt": "TikZ drawing",
+      "circuitAlt": "Circuit diagram",
+      "empty": "This {{block}} block is empty.",
+      "desktopOnly": "{{block}} previews need the desktop app.",
+      "sharedNotice": "This note is shared. LaTeX runs on this computer and can read your files, so check the source before you draw it.",
+      "draw": "Draw",
+      "error": "LaTeX couldn't compile this block: {{error}}"
     },
     "typst": {
       "alt": "Typst output",
@@ -433,7 +537,33 @@
       "code": "Code",
       "math": "Math",
       "divider": "Divider",
+      "footnote": "Footnote",
       "basic": "Basic"
+    },
+    "media": {
+      "play": "Play {{name}}",
+      "pdfPage": "{{name}}, page {{page}}",
+      "openPdf": "Open PDF",
+      "openFailed": "Couldn't open the file: {{error}}",
+      "missing": "File not found: {{path}}",
+      "unreadable": "{{name}} couldn't be read.",
+      "cantPlay": "{{name}} can't play here. This computer may not have a codec for its format.",
+      "embed": "Play the video from {{site}}",
+      "embedTitle": "Video from {{site}}",
+      "embedFailed": "The player didn't start. Try again, or open the video on {{site}}.",
+      "watch": "Watch",
+      "watchOn": "Watch on {{site}}",
+      "pasteChoice": "How to show this video link",
+      "embedChoice": "Embed video",
+      "linkChoice": "Keep as link"
+    },
+    "bookmark": {
+      "label": "Bookmark",
+      "pasteChoice": "How to show this link",
+      "cardChoice": "Bookmark card",
+      "ask": "Bookmark a web page",
+      "loading": "Loading the page preview",
+      "noUrl": "Add a url: line with a web address that starts with https:// or http://."
     }
   },
   "notebook": {
@@ -455,10 +585,7 @@
     "showAllCells_one": "Show the {{count}} cell",
     "showAllCells_other": "Show all {{count}} cells",
     "outputImage": "Output of cell {{number}}",
-    "outputFrame": "HTML output of cell {{number}}",
-    "pickTitle": "Insert a notebook",
-    "filter": "Jupyter notebooks",
-    "importFailed": "Couldn't add the notebook: {{error}}"
+    "outputFrame": "HTML output of cell {{number}}"
   },
   "icons": {
     "choose": "Choose icon",
@@ -612,7 +739,7 @@
     "inserting": "Copying",
     "insertFailed": "Couldn't copy this file into the note: {{error}}",
     "newProject": "New project",
-    "htmlPreview": "Interactive figures can't run in Oleafly yet.",
+    "htmlPreview": "To run this figure, paste its code into an HTML block in a note and press Run.",
     "kind": {
       "figure": "Figure",
       "html": "Interactive figure",
@@ -626,7 +753,14 @@
   "sendToPaper": {
     "title": "Send to a paper",
     "description": "Oleafly converts this once and adds it at the cursor. The copy in the paper won't stay linked to the note.",
-    "send": "Send"
+    "send": "Send",
+    "leftOut": "The {{block}} block is only in the note."
+  },
+  "citations": {
+    "references": "References",
+    "fromReference": "From a reference",
+    "unknown": "Not in the linked project's bibliography: {{keys}}",
+    "openNote": "Open the note on this paper: {{title}}"
   },
   "links": {
     "menu": "Link to a note or project",
@@ -636,13 +770,54 @@
     "missingNote": "This note no longer exists",
     "missingNoteCreate": "This note no longer exists. Click to create a new note with this name.",
     "missingProject": "This project no longer exists",
-    "linkedFrom": "Linked from"
+    "linkedFrom": "Linked from",
+    "showAll": "Show all {{total}}"
+  },
+  "linksSearch": {
+    "blocks": {
+      "loading": "Loading blocks",
+      "none": "No matching blocks",
+      "missingBlock": "That block isn't in the note",
+      "assignFailed": "Couldn't add a block ID to that note.",
+      "handle": "Block options",
+      "copyLink": "Copy link to block",
+      "linkCopied": "Copied a link to this block.",
+      "copyFailed": "Couldn't copy a link to this block.",
+      "noId": "This block has no ID yet, and you can't edit this note.",
+      "linkedFrom": "Linked from",
+      "links_one": "{{count}} note links here",
+      "links_other": "{{count}} notes link here",
+      "openLinked": "Open {{title}}",
+      "toBlock": "Go to the block: {{text}}"
+    },
+    "tagBlocks": {
+      "more_one": "Show {{count}} more block",
+      "more_other": "Show {{count}} more blocks"
+    },
+    "dead": {
+      "menu": "Dead links",
+      "title": "Dead links",
+      "summary_one": "{{count}} link points to a note or block that no longer exists.",
+      "summary_other": "{{count}} links point to notes or blocks that no longer exist.",
+      "none": "No dead links. Every link points to a note or block that still exists.",
+      "loading": "Checking links",
+      "failed": "Couldn't read the links in your notes.",
+      "missingNotes": "Missing notes",
+      "missingBlocks": "Missing blocks",
+      "noteMeta": "Line {{line}}: the note no longer exists",
+      "blockMeta": "Line {{line}}: {{block}} is no longer in {{title}}",
+      "create": "Create note",
+      "relink": "Link to {{title}} instead",
+      "remove": "Remove link",
+      "fixFailed": "Couldn't change the link."
+    }
   },
   "projectNotes": {
     "searchLabel": "Search this project's notes",
     "searchPlaceholder": "Search notes",
     "clearSearch": "Clear search",
     "noMatches": "No notes match your search",
+    "loading": "Reading the project's notes",
     "edited": "Edited {{when}}",
     "createFailed": "Couldn't create the note.",
     "projectGroup": "Project notes",
@@ -677,7 +852,7 @@
     "trashTitleWindows": "Move \"{{name}}\" to the Recycle Bin?",
     "trashMessage": "The note file moves out of this project and into the Trash, where you can restore it.",
     "trashMessageWindows": "The note file moves out of this project and into the Recycle Bin, where you can restore it.",
-    "mineDeviceOnly":"These notes are linked to this project on this computer only.",
+    "mineDeviceOnly": "These notes are linked to this project on this computer only.",
     "moreFiles_one": "{{count}} more file in the notes folder isn't listed.",
     "moreFiles_other": "{{count}} more files in the notes folder aren't listed."
   },
@@ -689,7 +864,33 @@
     "callouts": {
       "type": "Callout type: {{type}}",
       "fold": "Fold callout",
-      "unfold": "Unfold callout"
+      "unfold": "Unfold callout",
+      "types": {
+        "note": "Note",
+        "abstract": "Abstract",
+        "info": "Info",
+        "todo": "To do",
+        "tip": "Tip",
+        "success": "Success",
+        "question": "Question",
+        "warning": "Warning",
+        "failure": "Failure",
+        "danger": "Danger",
+        "bug": "Bug",
+        "example": "Example",
+        "quote": "Quote",
+        "theorem": "Theorem",
+        "lemma": "Lemma",
+        "corollary": "Corollary",
+        "proposition": "Proposition",
+        "definition": "Definition",
+        "proof": "Proof",
+        "hypothesis": "Hypothesis",
+        "assumption": "Assumption",
+        "result": "Result",
+        "method": "Method",
+        "remark": "Remark"
+      }
     },
     "links": {
       "loadingHeadings": "Loading headings",
@@ -752,6 +953,209 @@
       }
     }
   },
+  "fields": {
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "yesterday": "Yesterday",
+    "chip": "{{key}}: {{value}}",
+    "empty": "no value",
+    "edit": "Change or remove",
+    "keys": {
+      "due": "Due",
+      "scheduled": "Scheduled",
+      "priority": "Priority",
+      "start": "Starts",
+      "created": "Created",
+      "completed": "Done",
+      "date": "Date",
+      "cancelled": "Cancelled"
+    },
+    "priorities": {
+      "highest": "Highest",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "lowest": "Lowest"
+    },
+    "editor": {
+      "label": "Edit {{key}}",
+      "key": "Name",
+      "value": "Value",
+      "brackets": "Use square brackets only for a link, like [[Note]].",
+      "save": "Save",
+      "remove": "Remove"
+    }
+  },
+  "at": {
+    "menu": "Insert a date, field, tag or note",
+    "groups": {
+      "dates": "Dates",
+      "due": "Due date",
+      "fields": "Task fields",
+      "tags": "Tags",
+      "notes": "Notes"
+    },
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "yesterday": "Yesterday",
+    "next": "Next {{weekday}}",
+    "pick": "Pick a date",
+    "pickerLabel": "Pick a date",
+    "due": "Due date",
+    "scheduled": "Scheduled date",
+    "priority": "Priority",
+    "priorityValue": "{{priority}} priority",
+    "custom": "Custom field",
+    "addField": "Add field \"{{key}}\"",
+    "setField": "Set {{key}} to \"{{value}}\"",
+    "typeValue": "Type a value for {{key}}, then press Enter."
+  },
+  "tasks": {
+    "filters": "Task filters",
+    "loading": "Reading your tasks",
+    "failed": "Couldn't read your tasks.",
+    "empty": "No tasks yet. Start a line with - [ ] in any note and it shows up here.",
+    "noMatches": "No tasks match these filters.",
+    "clear": "Clear filters",
+    "list": "Tasks",
+    "count_one": "{{count}} task",
+    "count_other": "{{count}} tasks",
+    "complete": "Mark \"{{text}}\" as done",
+    "reopen": "Mark \"{{text}}\" as not done",
+    "openNote": "Open {{title}}",
+    "toggleFailed": "Couldn't update the task.",
+    "moved": "That task changed in its note. Open the note to update it.",
+    "state": {
+      "label": "Show",
+      "open": "Open",
+      "done": "Done",
+      "all": "Open and done"
+    },
+    "due": {
+      "label": "Due",
+      "any": "Any due date",
+      "overdue": "Overdue",
+      "today": "Due today",
+      "week": "Due in the next 7 days",
+      "none": "No due date"
+    },
+    "priority": {
+      "label": "Priority",
+      "any": "Any priority",
+      "high": "High priority",
+      "medium": "Medium priority",
+      "low": "Low priority",
+      "none": "No priority"
+    },
+    "tag": {
+      "label": "Tag",
+      "any": "All tags"
+    },
+    "project": {
+      "label": "Project",
+      "any": "All projects"
+    },
+    "sort": {
+      "label": "Sort tasks by",
+      "due": "Due date",
+      "priority": "Priority"
+    }
+  },
+  "attachments": {
+    "filters": "Attachment filters",
+    "loading": "Finding attachments",
+    "failed": "Couldn't read your attachments.",
+    "empty": "No attachments yet. Drop an image or a file into a note and it shows up here.",
+    "noMatches": "No attachments match these filters.",
+    "clear": "Clear filters",
+    "list": "Attachments",
+    "count_one": "{{count}} file",
+    "count_other": "{{count}} files",
+    "openNote": "Open {{title}}",
+    "copyLink": "Copy link",
+    "linkCopied": "Copied a link to \"{{name}}\".",
+    "copyFailed": "Couldn't copy the link to \"{{name}}\".",
+    "unused": "Not used",
+    "type": {
+      "label": "Type",
+      "all": "All types",
+      "image": "Images",
+      "audio": "Audio",
+      "video": "Video",
+      "pdf": "PDFs",
+      "other": "Other"
+    },
+    "use": {
+      "label": "Use",
+      "all": "All files",
+      "unused": "Not used"
+    }
+  },
+  "info": {
+    "title": "Info",
+    "show": "Note info",
+    "noNote": "Open a note to see its info.",
+    "details": "Note details",
+    "created": "Created",
+    "updated": "Updated",
+    "words": "Words",
+    "characters": "Characters",
+    "lines": "Lines",
+    "readingTime": "Reading time",
+    "underMinute": "under a minute",
+    "noProperties": "No properties",
+    "noBacklinks": "No notes link here",
+    "noMentions": "No other notes mention it",
+    "noReferences": "No citations in this note",
+    "noDeadLinks": "No dead links",
+    "noAttachments": "No files attached"
+  },
+  "calendar": {
+    "title": "Calendar",
+    "week": "Week",
+    "hasNote": "has a daily note",
+    "due_one": "{{count}} task due",
+    "due_other": "{{count}} tasks due",
+    "openWeek": "Open the weekly note for week {{week}}",
+    "openMonthNote": "Open monthly note",
+    "createMonthNote": "Create monthly note",
+    "today": "Today",
+    "failed": {
+      "weekly": "Couldn't open the weekly note.",
+      "monthly": "Couldn't open the monthly note."
+    }
+  },
+  "periodic": {
+    "title": "Daily, weekly and monthly notes",
+    "daily": {
+      "label": "Daily notes",
+      "description": "Today's note, and the days in the sidebar calendar."
+    },
+    "weekly": {
+      "label": "Weekly notes",
+      "description": "The week numbers in the sidebar calendar."
+    },
+    "monthly": {
+      "label": "Monthly notes",
+      "description": "The month name at the top of the sidebar calendar."
+    },
+    "weekStart": {
+      "label": "Week starts on",
+      "description": "The first column of the sidebar calendar. Week numbers count from this day, and with Monday they are ISO week numbers.",
+      "locale": "Region default ({{day}})",
+      "monday": "Monday",
+      "sunday": "Sunday",
+      "saturday": "Saturday"
+    },
+    "format": "Title format",
+    "preview": "Example: {{title}}",
+    "invalidFormat": "Add a date part, such as YYYY or WW.",
+    "template": "Template",
+    "savedTemplate": "Your saved template",
+    "tag": "Tag",
+    "noTag": "No tag",
+    "formatHelp": "Title formats use YYYY for the year, MM for the month, MMMM for its name, DD for the day, dddd for the weekday, WW for the week number and GGGG for the year that week belongs to. Text in square brackets, like [W], stays as written. Notes you already have keep their titles, so change a format before you start using it."
+  },
   "live": {
     "share": "Share",
     "shared": "Shared",
@@ -793,7 +1197,9 @@
     "outline": {
       "title": "Outline",
       "empty": "This note has no headings",
+      "emptyDetail": "Start a line with # to add a heading.",
       "noNote": "Open a note to see its outline",
+      "noNoteDetail": "The outline follows the note you are editing.",
       "levels": "Heading levels",
       "allLevels": "All levels",
       "upTo": "Up to H{{level}}",
@@ -801,7 +1207,8 @@
       "expand": "Expand {{title}}"
     },
     "linksFailed": "Couldn't read the links between notes.",
-    "tagsFailed": "Couldn't read the tags."
+    "tagsFailed": "Couldn't read the tags.",
+    "loading": "Reading the links between notes"
   },
   "vault": {
     "import": {
@@ -821,6 +1228,9 @@
       "seenDescription_one": "On {{date}} it added {{count}} note. Importing again adds new copies and leaves the earlier notes as they are.",
       "seenDescription_other": "On {{date}} it added {{count}} notes. Importing again adds new copies and leaves the earlier notes as they are.",
       "again": "Import again as new notes",
+      "largeTitle": "This folder has {{total}} notes",
+      "largeDescription": "Importing them all can take a while, and each one becomes its own note in your library. You can stop the import at any time.",
+      "largeConfirm": "Import all",
       "doneTitle": "Import finished",
       "notes_one": "{{count}} note imported",
       "notes_other": "{{count}} notes imported",
@@ -849,6 +1259,8 @@
         "done_other": "Exported {{count}} notes",
         "skipped_one": "{{count}} attachment couldn't be exported",
         "skipped_other": "{{count}} attachments couldn't be exported",
+        "paperLinks_one": "{{count}} link to a paper became plain text",
+        "paperLinks_other": "{{count}} links to papers became plain text",
         "doneSkipped": "{{done}}. {{skipped}}.",
         "showFolder": "Show folder",
         "failed": "Couldn't export the notes."
@@ -876,8 +1288,10 @@
       "empty": "No tags yet. Add #tags to a note, or tags in its properties.",
       "filter": "Show notes tagged {{tag}}",
       "clear": "Stop filtering by {{tag}}",
-      "expand": "Show tags under {{tag}}",
-      "collapse": "Hide tags under {{tag}}"
+      "search": "Filter tags",
+      "noMatch": "No tags match \"{{query}}\".",
+      "showAll": "Show all {{total}}",
+      "showFewer": "Show fewer"
     },
     "switcher": {
       "open": "Go to note",
@@ -895,7 +1309,9 @@
     },
     "daily": {
       "open": "Today's note",
-      "failed": "Couldn't open today's note."
+      "failed": "Couldn't open today's note.",
+      "previous": "Previous daily note: {{date}}",
+      "next": "Next daily note: {{date}}"
     },
     "templates": {
       "open": "New from template",
@@ -919,7 +1335,9 @@
         "proposal": "Research proposal",
         "proof": "Proof or derivation",
         "dataAnalysis": "Data analysis report",
-        "interview": "Interview notes"
+        "interview": "Interview notes",
+        "screeningLog": "Screening log",
+        "labNotebook": "Lab notebook entry"
       },
       "descriptions": {
         "daily": "A plan and a running log for one day",
@@ -932,7 +1350,9 @@
         "proposal": "Aims, methods and a timeline for a grant or thesis",
         "proof": "A result, the idea behind it and the full argument",
         "dataAnalysis": "What you ran on which data, and what it showed",
-        "interview": "Answers, quotes and themes from one conversation"
+        "interview": "Answers, quotes and themes from one conversation",
+        "screeningLog": "The review question, the criteria and the count at each screening stage",
+        "labNotebook": "One day at the bench: aim, samples, procedure, observations and sign-off"
       },
       "bodies": {
         "daily": "**{{weekday}}**\n\n## Plan\n- [ ] Most important task\n- [ ] Second task\n\n## Log\n- {{time}} Started the day\n\n## Notes\n\n## Done today\n- Nothing yet\n\n## Tomorrow\n- [ ] First thing to pick up",
@@ -943,9 +1363,11 @@
         "labProtocol": "> [!warning] Safety\n> Check hazards, protective equipment and waste handling before you start.\n\n## Purpose\nWhat this protocol produces and when to use it.\n\n## Materials\n| Item | Amount | Supplier or catalog number | Notes |\n| --- | --- | --- | --- |\n| | | | |\n\n## Equipment\n- Instrument and settings\n\n## Procedure\n1. Prepare\n2. Run\n3. Clean up\n\n## Checks\n- [ ] Controls prepared\n- [ ] Settings recorded\n- [ ] Samples labeled with the date and run\n\n## Troubleshooting\n| Problem | Likely cause | Fix |\n| --- | --- | --- |\n| | | |\n\n## Revision history\n| Version | Date | Change |\n| --- | --- | --- |\n| 1 | {{date}} | First version |",
         "weeklyLog": "## Goals for this week\n- [ ] First goal\n- [ ] Second goal\n- [ ] Third goal\n\n## Progress\n| Day | Work done | Notes |\n| --- | --- | --- |\n| Monday | | |\n| Tuesday | | |\n| Wednesday | | |\n| Thursday | | |\n| Friday | | |\n\n## Results and figures\n- What came out of the week\n\n## Blockers\n> [!warning] Needs help\n> What is stuck, and who can unblock it.\n\n## Reading\n- Papers read this week\n\n## Next week\n- [ ] First goal for next week",
         "proposal": "> [!abstract] Summary\n> In three sentences: the problem, the approach, and the expected result.\n\n## Background and motivation\nWhy this matters now, and what is already known.\n\n## Research questions\n1. First question\n\n## Aims\n| Aim | Approach | Expected outcome |\n| --- | --- | --- |\n| 1 | | |\n\n## Methods\nDesign, data, analysis, and how success is measured.\n\n## Timeline\n| Phase | Months | Milestone |\n| --- | --- | --- |\n| | | |\n\n## Risks and mitigation\n| Risk | Likelihood | Mitigation |\n| --- | --- | --- |\n| | | |\n\n## Resources and budget\n\n## Impact\nWho benefits, and how the results will be shared.\n\n## References",
-        "proof": "> [!note] Statement\n> The result, stated precisely with every assumption.\n\n## Definitions and notation\n- Symbols and what they mean\n\n## Idea\nThe main idea in plain words, before the details.\n\n## Proof\n**Step 1.** Set up the argument.\n\n**Step 2.** Carry out the main estimate.\n\n**Step 3.** Conclude.\n\n## Checks\n- [ ] Every assumption is used\n- [ ] Edge cases are covered\n- [ ] Constants and bounds are tracked\n\n## Remarks\nGeneralizations, counterexamples, and related results.",
-        "dataAnalysis": "> [!info] Question\n> The decision this analysis supports.\n\n## Data\n| Field | Value |\n| --- | --- |\n| Source | |\n| Version or date | |\n| Rows and columns | |\n| Exclusions | |\n\n## Methods\n- Cleaning steps\n- Model or test, and why\n- Assumptions checked\n\n## Results\n| Measure | Estimate | Interval | Notes |\n| --- | --- | --- | --- |\n| | | | |\n\n## Figures\n- Figure and what it shows\n\n## Interpretation\nWhat the results mean for the question.\n\n## Limitations\n- Bias, missing data, and what could change the conclusion\n\n## Reproducibility\n- [ ] Code saved and linked\n- [ ] Random seeds recorded\n- [ ] Package versions noted",
-        "interview": "> [!warning] Consent and privacy\n> Confirm consent before recording, and use a participant code instead of a name.\n\n## Context\n| Item | Value |\n| --- | --- |\n| Participant code | |\n| Role | |\n| Duration | |\n| Recording | |\n\n## Questions and answers\n### Question 1\n- Answer\n\n### Question 2\n- Answer\n\n## Quotes\n> A quote worth keeping.\n\n## Themes\n- Theme and supporting answers\n\n## Follow up\n- [ ] Send a thank-you note\n- [ ] Transcribe and anonymize"
+        "proof": "## Definitions and notation\n> [!definition] Notation\n> The symbols you use and what each one means.\n\n## Statement\n> [!theorem] Main result\n> The result, stated precisely with every assumption.\n\n## Idea\nThe main idea in plain words, before the details.\n\n## Lemmas\n> [!lemma] Lemma 1\n> A smaller claim the main proof needs.\n\n> [!proof] Proof of Lemma 1\n> Why the lemma holds.\n\n## Proof\n> [!proof] Proof of the main result\n> **Step 1.** Set up the argument.\n>\n> **Step 2.** Carry out the main estimate, using Lemma 1.\n>\n> **Step 3.** Conclude.\n\n## Checks\n- [ ] Every assumption is used\n- [ ] Edge cases are covered\n- [ ] Constants and bounds are tracked\n\n## Remarks\nGeneralizations, counterexamples, and related results.",
+        "dataAnalysis": "> [!info] Question\n> The decision this analysis supports.\n\n## Data\n| Field | Value |\n| --- | --- |\n| Source | |\n| Version or date | |\n| Rows and columns | |\n| Exclusions | |\n\n## Methods\n- Cleaning steps\n- Model or test, and why\n- Assumptions checked\n\n## Results\nThe table below is a CSV block. Replace the example rows with your results.\n\n```csv\nMeasure,Estimate,Lower 95%,Upper 95%,n\nGroup A mean,0,0,0,0\nGroup B mean,0,0,0,0\nDifference,0,0,0,0\n```\n\n## Figures\n- Figure and what it shows\n\n## Interpretation\nWhat the results mean for the question.\n\n## Limitations\n- Bias, missing data, and what could change the conclusion\n\n## Reproducibility\n- [ ] Code saved and linked\n- [ ] Random seeds recorded\n- [ ] Package versions noted",
+        "interview": "> [!warning] Consent and privacy\n> Confirm consent before recording, and use a participant code instead of a name.\n\n## Context\n| Item | Value |\n| --- | --- |\n| Participant code | |\n| Role | |\n| Duration | |\n| Recording | |\n\n## Questions and answers\n### Question 1\n- Answer\n\n### Question 2\n- Answer\n\n## Quotes\n> A quote worth keeping.\n\n## Themes\n- Theme and supporting answers\n\n## Follow up\n- [ ] Send a thank-you note\n- [ ] Transcribe and anonymize",
+        "screeningLog": "> [!question] Review question (PICO)\n> - **Population:** who or what is studied\n> - **Intervention or exposure:** what is tested\n> - **Comparison:** what it is compared with\n> - **Outcome:** what is measured\n\n## Inclusion criteria\n- Study designs\n- Population and setting\n- Languages and years\n\n## Exclusion criteria\n- Reason and how to spot it\n\n## Searches\n| Date | Database | Query | Records |\n| --- | --- | --- | --- |\n| {{date}} | | | |\n\n## Counts at each stage\n| Stage | Records | Removed | Main reasons |\n| --- | --- | --- | --- |\n| Found in searches | | | |\n| After removing duplicates | | | |\n| Titles and abstracts screened | | | |\n| Full texts assessed | | | |\n| Included in the review | | | |\n\n## Excluded at full text\n| Paper | Reason |\n| --- | --- |\n| | |\n\n## Disagreements\n- Paper, each reviewer's decision, and how it was settled\n\n## Next steps\n- [ ] Screen the next batch\n- [ ] Check the counts add up",
+        "labNotebook": "**{{weekday}}, {{date}}**\n\n## Aim\nWhat you set out to do today, and why.\n\n## Materials\n| Material | Sample ID | Lot or batch | Amount |\n| --- | --- | --- | --- |\n| | | | |\n\n## Procedure\n1. What you did, in order, with times and settings\n2. Any change from the protocol, and why\n\n## Observations\n- {{time}} What you saw\n\n## Results\n- Measurements, and where the raw data are stored\n\n## Next steps\n- [ ] Follow-up for the next session\n\n## Sign-off\n**Signed by:** name, {{date}}\n\n**Witnessed by:** name, date"
       }
     },
     "mentions": {
@@ -984,8 +1406,8 @@
     "actionHint": "Works on this note",
     "agentCanEdit": "This agent can change files in the linked project.",
     "allowWritesLabel": "Let the agent change files",
-    "allowWritesAsk": "{{agent}} has no read-only mode, so it could change files in {{project}}. Send your message anyway?",
-    "allowWrites": "Allow in this chat",
+    "allowWritesAsk": "{{agent}} has no read-only mode, so it could change files in {{project}}. Oleafly can't add one for it. Send this message anyway?",
+    "allowWrites": "Send anyway",
     "dontSend": "Don't send",
     "viewOnly": "You can only view this note, so the assistant can't change it."
   },
@@ -999,9 +1421,10 @@
     "linkProject": "The project was created, but the note couldn't be linked to it.",
     "sendToPaper": "Couldn't add this to the paper.",
     "paperNotOpen": "Open a LaTeX, Typst or Markdown file of the paper first, then send it again.",
-    "template":"Couldn't change the template setting of \"{{name}}\"."
+    "template": "Couldn't change the template setting of \"{{name}}\"."
   },
   "noteTab": {
+    "loading": "Opening the note",
     "projectNote": "Project note",
     "sharedProject": "Everyone on this project can see and edit it",
     "localProject": "Saved with this project's files",
@@ -1013,5 +1436,248 @@
     "copyToMine": "Copy to my notes",
     "missing": "This note isn't available anymore. It may have been moved or deleted.",
     "writeRefused": "Couldn't save the note. This project is read-only right now."
+  },
+  "appearance": {
+    "notes": {
+      "sectionName": "Notes appearance",
+      "resetAriaLabel": "Reset {{setting}} to default",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Typeface",
+        "description": "Choose a typeface for note text.",
+        "options": {
+          "sans": "Sans serif",
+          "serif": "Serif",
+          "mono": "Monospace"
+        }
+      },
+      "font": {
+        "label": "Note font",
+        "description": "Pick any installed font for note text. Leave it empty to use the Typeface setting."
+      },
+      "fontSize": {
+        "label": "Note text size",
+        "description": "Set the size of note text.",
+        "custom": "Custom",
+        "customLabel": "Custom note text size in pixels"
+      },
+      "lineHeight": {
+        "label": "Note line height",
+        "description": "Set the space between lines of note text.",
+        "customLabel": "Custom note line height"
+      },
+      "paragraphSpacing": {
+        "label": "Paragraph spacing",
+        "description": "Set the space between paragraphs, lists and other blocks.",
+        "options": {
+          "compact": "Compact",
+          "normal": "Normal",
+          "relaxed": "Relaxed",
+          "spacious": "Spacious"
+        }
+      },
+      "headings": {
+        "title": "Headings and title"
+      },
+      "headingTypeface": {
+        "label": "Heading typeface",
+        "description": "Choose a typeface for headings and the note title.",
+        "options": {
+          "text": "Same as text"
+        }
+      },
+      "headingFont": {
+        "label": "Heading font",
+        "description": "Pick an installed font for headings and the note title. Leave it empty to use the Heading typeface setting."
+      },
+      "headingSize": {
+        "label": "Heading size",
+        "description": "Set how large headings are compared with the text.",
+        "options": {
+          "small": "Smaller",
+          "normal": "Normal",
+          "large": "Larger"
+        }
+      },
+      "titleSize": {
+        "label": "Title size",
+        "description": "Set the size of the title at the top of each note."
+      },
+      "layout": {
+        "title": "Layout"
+      },
+      "width": {
+        "label": "Note width",
+        "description": "How wide notes open. The width menu in a note changes this too.",
+        "options": {
+          "standard": "Standard",
+          "wide": "Wide",
+          "full": "Full width"
+        }
+      },
+      "info": {
+        "label": "Note info",
+        "description": "Where a note's properties and links go. Side panel shows them in the Info panel, with the note's counts and attachments. Inline keeps them on the page.",
+        "options": {
+          "side": "Side panel",
+          "inline": "Inline"
+        }
+      },
+      "taskBox": {
+        "label": "Task checkboxes",
+        "description": "The shape of the boxes in task lists.",
+        "options": {
+          "square": "Square",
+          "round": "Round"
+        }
+      },
+      "wordCount": {
+        "label": "Show word count",
+        "description": "Show a note's word count in its toolbar."
+      },
+      "spellcheck": {
+        "label": "Check spelling in notes",
+        "description": "Underline misspelled words while you write a note."
+      },
+      "replacements": {
+        "label": "Replace as you type",
+        "description": "Swaps pairs like -> for → while you type. Code and math stay as typed, and Backspace right after a swap puts your text back.",
+        "list": "Text replacements",
+        "type": "Type",
+        "becomes": "Becomes",
+        "add": "Add",
+        "remove": "Remove {{from}}",
+        "removeTooltip": "Remove",
+        "empty": "No pairs yet. Add one below.",
+        "full": "You can have up to {{limit}} pairs. Remove one to add another."
+      },
+      "keepUndo": {
+        "label": "Keep undo after closing",
+        "description": "Undo still works on a note after you close it or quit the app. The history stays on this computer, and turning this off deletes it."
+      },
+      "code": {
+        "title": "Code"
+      },
+      "drawings": {
+        "title": "LaTeX drawings"
+      },
+      "tikzPreamble": {
+        "label": "TikZ preamble",
+        "description": "Lines such as \\usetikzlibrary{positioning} that start the preamble of every TikZ and CircuiTikZ block."
+      },
+      "codeFont": {
+        "label": "Code font",
+        "description": "Pick an installed font for code blocks and inline code."
+      },
+      "codeTheme": {
+        "label": "Code block colors",
+        "description": "Pick the syntax colors for code blocks in notes.",
+        "options": {
+          "editor": "Same as editor"
+        }
+      },
+      "colors": {
+        "title": "Colors"
+      },
+      "accent": {
+        "label": "Note accent color",
+        "description": "Used for links, tags and task boxes in notes.",
+        "matchApp": "Match app",
+        "customAriaLabel": "Pick a custom note accent color"
+      },
+      "callouts": {
+        "label": "Callout style",
+        "description": "How callout boxes look in notes.",
+        "options": {
+          "tinted": "Tinted",
+          "filled": "Filled",
+          "outlined": "Outlined",
+          "bar": "Side bar"
+        }
+      },
+      "fieldStyle": {
+        "label": "Date and field chips",
+        "description": "How dates and fields like due or priority look in notes.",
+        "options": {
+          "tint": "Tint",
+          "outline": "Outline",
+          "underline": "Underline"
+        }
+      },
+      "remoteImages": {
+        "title": "Images from the web",
+        "description": "Notes and assistant replies load images from these sites without asking.",
+        "empty": "Notes and assistant replies ask before they load an image from the web. Sites you always allow appear here.",
+        "remove": "Remove {{host}}"
+      }
+    }
+  },
+  "notesPreview": {
+    "label": "Preview of a note with these settings",
+    "title": "Field notes",
+    "heading": "Morning survey",
+    "paragraph": "Light rain until nine, then clear skies over the north ridge. The soil was still damp at noon.",
+    "links": "See <note>Sampling method</note> for the full steps, or browse <tag>#fieldwork</tag>.",
+    "highlight": "Seedlings doubled in height in one week.",
+    "calloutTitle": "Next visit",
+    "calloutBody": "Check the soil sensors before taking new samples.",
+    "taskDone": "Label the samples",
+    "task": "Upload the photos",
+    "taskLate": "Send the soil report"
+  },
+  "highlight": {
+    "colors": {
+      "yellow": "Yellow",
+      "orange": "Orange",
+      "red": "Red",
+      "pink": "Pink",
+      "purple": "Purple",
+      "blue": "Blue",
+      "green": "Green"
+    },
+    "remove": "Remove highlight"
+  },
+  "quickCapture": {
+    "title": "Quick capture",
+    "untitled": "Untitled",
+    "placeholder": "Start writing…",
+    "field": "Text to capture",
+    "characters_one": "{{count}} character",
+    "characters_other": "{{count}} characters",
+    "failed": "Couldn't save this. Your text is still here, so you can try again.",
+    "actions": {
+      "label": "Actions",
+      "saveNew": "Save as new note",
+      "saveToday": "Add to today's note",
+      "copy": "Copy as Markdown",
+      "discard": "Discard draft"
+    },
+    "openNotes": "Open Notes",
+    "newNote": "New note",
+    "format": "Show formatting",
+    "closeFormat": "Hide formatting"
+  },
+  "starter": {
+    "blocksGallery": {
+      "title": "Blocks gallery",
+      "intro": "Every block a note can hold. Click {{source}} on a block to see and edit what draws it, and type {{slash}} on an empty line to insert a new one.",
+      "charts": "Charts",
+      "functionPlots": "Function plots",
+      "tables": "Tables",
+      "csvTable": "A csv block is sortable and filterable, with a summary row:",
+      "markdownTable": "Plain Markdown tables work too:",
+      "math": "Math and chemistry",
+      "typst": "Typst",
+      "diagrams": "Diagrams",
+      "svg": "SVG",
+      "html": "HTML, press {{run}}",
+      "react": "React, press {{run}}",
+      "structures": "Chemical structures",
+      "molecule": "3D molecule",
+      "sequences": "Sequences",
+      "code": "Code"
+    }
   }
 }

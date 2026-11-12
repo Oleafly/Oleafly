@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NoteLinkRecord } from "@/lib/tauri";
 import {
@@ -8,7 +7,6 @@ import {
   buildGraph,
   clampZoom,
   createLayoutEngine,
-  DEFAULT_FORCES,
   edgeArray,
   filterGraph,
   fitView,
@@ -18,7 +16,6 @@ import {
   initialPositions,
   localGraph,
   matchesQuery,
-  MAX_TICKS,
   MAX_ZOOM,
   MIN_ZOOM,
   nodeRadius,
@@ -26,7 +23,6 @@ import {
   projectKey,
   readSavedPositions,
   savePositions,
-  Simulation,
   toWorld,
   zoomAt,
   type GraphData,
@@ -227,85 +223,6 @@ function chain(count: number): Uint32Array {
   return new Uint32Array(edges);
 }
 
-function settle(simulation: Simulation): number {
-  let ticks = 0;
-  while (!simulation.settled() && ticks < 2000) {
-    simulation.tick();
-    ticks += 1;
-  }
-  return ticks;
-}
-
-describe("Simulation", () => {
-  it("settles a linked chain apart and near link length", () => {
-    const simulation = new Simulation(5, chain(5), null);
-    expect(simulation.alpha).toBe(1);
-    const ticks = settle(simulation);
-    expect(ticks).toBeLessThan(MAX_TICKS);
-    const positions = simulation.positions();
-    for (let index = 1; index < 5; index++) {
-      const distance = Math.hypot(positions[index * 2] - positions[index * 2 - 2], positions[index * 2 + 1] - positions[index * 2 - 1]);
-      expect(distance).toBeGreaterThan(10);
-      expect(distance).toBeLessThan(200);
-    }
-  });
-
-  it("starts warm from known positions and places new nodes next to their neighbours", () => {
-    const start = new Float32Array([100, 100, Number.NaN, Number.NaN, Number.NaN, Number.NaN]);
-    const simulation = new Simulation(3, new Uint32Array([0, 1, 9, 0, 2, 2]), start);
-    expect(simulation.alpha).toBe(0.6);
-    expect(Math.hypot(simulation.x[1] - 100, simulation.y[1] - 100)).toBeLessThan(DEFAULT_FORCES.linkDistance);
-    const warm = new Simulation(2, new Uint32Array([1, 0]), new Float32Array([0, 0, 50, 0]));
-    expect(warm.alpha).toBe(0.25);
-    expect(new Simulation(0, new Uint32Array(0), null).alpha).toBe(0);
-  });
-
-  it("pins, releases and reheats nodes", () => {
-    const simulation = new Simulation(2, new Uint32Array([0, 1]), null);
-    simulation.pin(0, 500, -500);
-    simulation.pin(9, 1, 1);
-    settle(simulation);
-    expect([simulation.x[0], simulation.y[0]]).toEqual([500, -500]);
-    simulation.unpin(0);
-    simulation.unpin(7);
-    expect(simulation.fixed[0]).toBe(0);
-    simulation.pin(1, 1, 1);
-    simulation.unpin(null);
-    expect(simulation.fixed[1]).toBe(0);
-    simulation.reheat(0.5);
-    expect(simulation.alpha).toBe(0.5);
-    simulation.alphaTarget = 0.3;
-    expect(simulation.settled()).toBe(false);
-  });
-
-  it("pushes apart nodes that start on the same spot", () => {
-    const start = new Float32Array(Array.from({ length: 40 }, () => 7));
-    const simulation = new Simulation(20, new Uint32Array(0), start);
-    for (let tick = 0; tick < 60; tick++) simulation.tick();
-    const positions = simulation.positions();
-    const spread = Math.hypot(positions[0] - positions[2], positions[1] - positions[3]);
-    expect(spread).toBeGreaterThan(0);
-    const one = new Simulation(1, new Uint32Array(0), null);
-    one.tick();
-    expect(Number.isFinite(one.x[0])).toBe(true);
-    const none = new Simulation(0, new Uint32Array(0), null);
-    none.tick();
-    expect(none.positions()).toHaveLength(0);
-  });
-
-  it("keeps two thousand nodes fast enough for a smooth frame", () => {
-    const count = 2000;
-    const edges: number[] = [];
-    for (let index = 1; index < count; index++) edges.push(index, Math.floor(index / 3));
-    const simulation = new Simulation(count, new Uint32Array(edges), null);
-    simulation.tick();
-    const started = performance.now();
-    for (let tick = 0; tick < 5; tick++) simulation.tick();
-    expect((performance.now() - started) / 5).toBeLessThan(300);
-    expect(simulation.positions().every(Number.isFinite)).toBe(true);
-  });
-});
-
 describe("createLayoutEngine", () => {
   function harness(now: () => number = () => 0) {
     const updates: LayoutUpdate[] = [];
@@ -329,17 +246,44 @@ describe("createLayoutEngine", () => {
     return { engine, updates, timer, flush, queue };
   }
 
-  it("animates in slices until the layout settles", () => {
+  function gap(positions: Float32Array | undefined, a: number, b: number): number {
+    if (!positions) return Number.NaN;
+    return Math.hypot(positions[a * 2] - positions[b * 2], positions[a * 2 + 1] - positions[b * 2 + 1]);
+  }
+
+  it("animates in slices until a linked chain settles apart", () => {
     let clock = 0;
     const { engine, updates, flush } = harness(() => {
       clock += 5;
       return clock;
     });
-    engine.handle({ type: "start", generation: 1, count: 3, edges: chain(3), positions: null, animate: true });
+    engine.handle({ type: "start", generation: 1, count: 5, edges: chain(5), positions: null, animate: true });
     expect(updates[0]).toMatchObject({ generation: 1, settled: false });
-    expect(updates[0].positions).toHaveLength(6);
+    expect(updates[0].positions).toHaveLength(10);
     expect(flush(1000)).toBeGreaterThan(5);
-    expect(updates.at(-1)?.settled).toBe(true);
+    const last = updates.at(-1);
+    expect(last?.settled).toBe(true);
+    for (let index = 1; index < 5; index++) {
+      expect(gap(last?.positions, index, index - 1)).toBeGreaterThan(10);
+      expect(gap(last?.positions, index, index - 1)).toBeLessThan(200);
+    }
+  });
+
+  it("starts from known positions and places new nodes beside their linked neighbours", () => {
+    const { engine, updates } = harness();
+    const start = new Float32Array([100, 100, Number.NaN, Number.NaN, Number.NaN, Number.NaN]);
+    engine.handle({ type: "start", generation: 7, count: 3, edges: new Uint32Array([0, 1, 9, 0, 2, 2]), positions: start, animate: true });
+    const first = updates[0].positions;
+    expect([first[0], first[1]]).toEqual([100, 100]);
+    expect(Math.hypot(first[2] - 100, first[3] - 100)).toBeLessThan(46);
+    expect([...first].every(Number.isFinite)).toBe(true);
+  });
+
+  it("pushes apart nodes that start on the same spot", () => {
+    const { engine, updates, flush } = harness();
+    engine.handle({ type: "start", generation: 8, count: 20, edges: new Uint32Array(0), positions: new Float32Array(40).fill(7), animate: false });
+    flush();
+    expect(gap(updates.at(-1)?.positions, 0, 1)).toBeGreaterThan(0);
   });
 
   it("settles in one step for reduced motion and only moves pins", () => {
@@ -413,28 +357,6 @@ describe("edge cases", () => {
     );
     expect(shared.nodes.filter((node) => node.kind === "project")).toHaveLength(1);
     expect(shared.nodes[2].degree).toBe(2);
-  });
-
-  it("separates linked nodes that start together, places nodes beside known targets and keeps far clusters apart", () => {
-    const together = new Simulation(2, new Uint32Array([0, 1]), new Float32Array([5, 5, 5, 5]));
-    together.tick();
-    expect(Number.isFinite(together.x[0])).toBe(true);
-    const beside = new Simulation(2, new Uint32Array([0, 1]), new Float32Array([Number.NaN, Number.NaN, 300, 300]));
-    expect(Math.hypot(beside.x[0] - 300, beside.y[0] - 300)).toBeLessThan(DEFAULT_FORCES.linkDistance);
-    const far = new Float32Array([0, 0, 1, 0, 9000, 9000, 9001, 9000, 0, 1]);
-    const apart = new Simulation(5, new Uint32Array(0), far, { ...DEFAULT_FORCES, gravity: 0 });
-    apart.tick();
-    expect(apart.x[2]).toBeGreaterThan(8000);
-    const pair = new Simulation(2, new Uint32Array(0), new Float32Array([0, 0, 9000, 9000]), { ...DEFAULT_FORCES, gravity: 0 });
-    pair.tick();
-    expect([pair.x[0], pair.y[0]]).toEqual([0, 0]);
-  });
-
-  it("grows the tree for points that sit almost on top of each other", () => {
-    const start = new Float32Array([0, 0, 1e-9, 0, 1000, 1000, 2e-9, 0]);
-    const simulation = new Simulation(4, new Uint32Array(0), start);
-    simulation.tick();
-    expect(simulation.positions().every(Number.isFinite)).toBe(true);
   });
 
   it("survives storage that cannot even be reached", () => {

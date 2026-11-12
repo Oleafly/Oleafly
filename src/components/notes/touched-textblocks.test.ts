@@ -4,16 +4,13 @@ import { Fragment, Slice } from "@tiptap/pm/model";
 import { EditorState, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { DocAttrStep, ReplaceAroundStep } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, describe, expect, it } from "vitest";
 import { destroyKbEditors, kbEditor } from "./tests/kb-editor-fixtures";
 import { noteLinkExtensions, type LinkableNote } from "./note-links";
 import { noteTagExtensions } from "./note-tag-chips";
 import { redecorateTextblocks, touchedTextblocks } from "./touched-textblocks";
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+import { propertySeeds } from "./tests/property-seeds";
+import "./tests/setup";
 
 afterEach(destroyKbEditors);
 
@@ -112,7 +109,7 @@ function build(): Editor {
 
 describe("incremental note decorations", () => {
   it("matches a full rebuild after every random edit", () => {
-    for (let seed = 1; seed <= 40; seed += 1) {
+    for (let seed = 1; seed <= propertySeeds(40, 4); seed += 1) {
       const editor = build();
       const random = seeded(seed);
       for (let step = 0; step < 40; step += 1) {

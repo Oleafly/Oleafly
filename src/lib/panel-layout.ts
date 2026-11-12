@@ -140,6 +140,25 @@ function writeExpandSizes(groupId: string, sizes: Record<string, number>): void 
   writeStorage(panelExpandSizesKey(groupId), JSON.stringify(sizes));
 }
 
+export function expandedSize(groupId: string, panelId: string): number | undefined {
+  return readExpandSizes(groupId)[panelId];
+}
+
+export function replaceStoredPanelLayout(groupId: string, layout: Layout): void {
+  const prefix = `${LAYOUT_PREFIX}${groupId}:`;
+  const stale: string[] = [];
+  try {
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (key?.startsWith(prefix)) stale.push(key);
+    }
+  } catch {
+    return;
+  }
+  for (const key of stale) removeStorage(key);
+  writeStorage(panelLayoutKey(groupId, Object.keys(layout)), JSON.stringify(layout));
+}
+
 const migratedGroups = new Set<string>();
 
 function parseLegacyEntries(serialized: string): [string, LegacyGroupEntry][] | null {
@@ -667,7 +686,7 @@ export function useDismissiblePanelLayout(
   panelOrder: readonly string[],
   panelIds: string[],
   limits: Readonly<Record<string, PanelLimits>>,
-  { id: dismissibleId, defaultSize, onDismiss }: DismissiblePanel,
+  dismissibles: readonly DismissiblePanel[],
 ): {
   defaultLayout: Layout | undefined;
   onLayoutChange: (layout: Layout) => void;
@@ -681,13 +700,18 @@ export function useDismissiblePanelLayout(
   useLayoutReevaluation(groupRef, panelIds, limits);
   const track = useCollapseTransitions();
   const lastLayout = useRef<Readonly<{ groupId: string | undefined; layout: Layout }> | null>(null);
-  const collapsedSize = resolveLimits(limits[dismissibleId]).collapsedSize;
+
+  const collapsedIn = useCallback(
+    (layout: Layout) =>
+      dismissibles.filter(({ id }) => isCollapsedIn(layout, id, resolveLimits(limits[id]).collapsedSize)),
+    [dismissibles, limits],
+  );
 
   const onLayoutChanged = useCallback(
     (layout: Layout, meta: LayoutChangedMeta) => {
-      if (!isCollapsedIn(layout, dismissibleId, collapsedSize)) persist(layout, meta);
+      if (collapsedIn(layout).length === 0) persist(layout, meta);
     },
-    [collapsedSize, dismissibleId, persist],
+    [collapsedIn, persist],
   );
 
   const onLayoutChange = useCallback(
@@ -695,25 +719,34 @@ export function useDismissiblePanelLayout(
       const last = lastLayout.current;
       const reappeared =
         last === null || last.groupId !== groupId || !samePanels(last.layout, Object.keys(layout));
-      if (reappeared && isCollapsedIn(layout, dismissibleId, collapsedSize)) {
-        const target = reopenedLayout(layout, groupId, panelOrder, limits, dismissibleId, defaultSize);
+      const collapsed = reappeared ? collapsedIn(layout) : [];
+      if (collapsed.length > 0) {
+        const target = collapsed.reduce(
+          (next, { id, defaultSize }) => reopenedLayout(next, groupId, panelOrder, limits, id, defaultSize),
+          layout,
+        );
         queueMicrotask(() => {
           const group = groupRef.current;
           if (!group) return;
           const current = group.getLayout();
-          if (
-            samePanels(current, Object.keys(target)) &&
-            isCollapsedIn(current, dismissibleId, collapsedSize)
-          ) {
+          if (samePanels(current, Object.keys(target)) && collapsedIn(current).length > 0) {
             group.setLayout(target);
           }
         });
         return;
       }
       lastLayout.current = { groupId, layout };
-      track(layout, { [dismissibleId]: { collapsedSize, onCollapse: onDismiss } });
+      track(
+        layout,
+        Object.fromEntries(
+          dismissibles.map(({ id, onDismiss }) => [
+            id,
+            { collapsedSize: resolveLimits(limits[id]).collapsedSize, onCollapse: onDismiss },
+          ]),
+        ),
+      );
     },
-    [collapsedSize, defaultSize, dismissibleId, groupId, groupRef, limits, onDismiss, panelOrder, track],
+    [collapsedIn, dismissibles, groupId, groupRef, limits, panelOrder, track],
   );
 
   return { defaultLayout, onLayoutChange, onLayoutChanged };

@@ -17,9 +17,37 @@
     "resize": "Größe der Bereiche ändern",
     "closePanel": "Bereich schließen",
     "newTab": "Neuer Tab",
-    "emptyPanel": "Dieser Bereich ist leer.",
+    "empty": {
+      "greetings": {
+        "begin": "Wo sollen wir anfangen?",
+        "ready": "Bereit, wenn Sie es sind.",
+        "mind": "Was beschäftigt Sie heute?",
+        "resume": "Dort weitermachen, wo Sie aufgehört haben?",
+        "working": "Woran arbeiten Sie gerade?",
+        "first": "Was möchten Sie zuerst schreiben?",
+        "blank": "Beginnen Sie mit einer leeren Seite oder einer Vorlage."
+      },
+      "hints": {
+        "daily": "Ein Plan und ein Protokoll für heute",
+        "experimentLog": "Läufe und was sie gezeigt haben",
+        "paperReading": "Was ein Aufsatz behauptet",
+        "literatureMatrix": "Aufsätze nebeneinander vergleichen",
+        "meeting": "Tagesordnung und Entscheidungen",
+        "labProtocol": "Schritte, denen andere folgen können",
+        "weeklyLog": "Was diese Woche erledigt wurde",
+        "proposal": "Ziele, Methoden und Zeitplan"
+      },
+      "moreTemplates": "Weitere Vorlagen",
+      "continue": "Weiterarbeiten",
+      "searchAll": "Alle Notizen durchsuchen"
+    },
     "closeMissing": "Tab schließen",
-    "notesHome": "Zur Startseite der Notizen"
+    "notesHome": "Zur Startseite der Notizen",
+    "breadcrumb": "Navigationspfad",
+    "breadcrumbHome": "Startseite der Notizen",
+    "brand": "Oleafly Notes",
+    "back": "Zurück",
+    "forward": "Vorwärts"
   },
   "saveStatus": {
     "saved": "Gespeichert",
@@ -52,15 +80,18 @@
       "data": "Keine Datendateien passen zu diesen Filtern.",
       "notebook": "Keine Notebooks passen zu diesen Filtern."
     },
-    "noNotes": "Noch keine Notizen. Beginnen Sie eine mit Neue Notiz.",
+    "start": {
+      "title": "Noch keine Notizen"
+    },
     "ungrouped": "Notizen",
     "agentFallback": "Agent",
     "settings": "Einstellungen",
     "filters": {
-      "title": "Filter",
+      "title": "Tags",
       "active_one": "{{count}} Filter aktiv",
       "active_other": "{{count}} Filter aktiv",
-      "clear": "Filter zurücksetzen"
+      "clear": "Filter zurücksetzen",
+      "writtenBy": "Verfasst von"
     },
     "menu": {
       "more": "Mehr",
@@ -81,18 +112,31 @@
       "templateOn": "„{{name}}“ ist jetzt eine Ihrer Vorlagen.",
       "templateOff": "„{{name}}“ ist keine Vorlage mehr.",
       "linkProject": "Mit Projekt verknüpfen",
-      "compareConflict": "Konfliktkopie vergleichen"
+      "compareConflict": "Konfliktkopie vergleichen",
+      "copyLink": "Link kopieren",
+      "linkCopied": "Link zu „{{name}}“ kopiert.",
+      "copyLinkFailed": "Der Link zu „{{name}}“ konnte nicht kopiert werden.",
+      "duplicate": "Duplizieren",
+      "copyTitle": "Kopie von {{name}}",
+      "duplicateFailed": "„{{name}}“ konnte nicht dupliziert werden.",
+      "export": "Exportieren",
+      "exportAs": {
+        "markdown": "Ordner in Markdown (.md)",
+        "docx": "Word-Dokument (.docx)",
+        "html": "Webseite (.html)",
+        "latex": "LaTeX (.tex)",
+        "typst": "Typst (.typ)"
+      },
+      "exportFailed": "„{{name}}“ konnte nicht exportiert werden.",
+      "copyMarkdown": "Als Markdown kopieren",
+      "markdownCopied": "„{{name}}“ als Markdown kopiert.",
+      "copyMarkdownFailed": "„{{name}}“ konnte nicht als Markdown kopiert werden."
     },
     "conflicts": {
-      "title": "Zwei Versionen von „{{name}}“",
-      "description": "Diese Notiz wurde hier und auf einem anderen Computer geändert, bevor die Änderungen abgeglichen waren, daher hat Oleafly beide Versionen behalten. Behalten Sie eine Version. Die andere kommt in den Papierkorb.",
-      "diffLabel": "Unterschiede zwischen den beiden Versionen",
-      "loading": "Beide Versionen werden gelesen…",
-      "readFailed": "Die Konfliktkopie konnte nicht gelesen werden.",
-      "resolveFailed": "Diese Version konnte nicht behalten werden.",
-      "keepMine": "Version dieses Computers behalten",
-      "useCopy": "Version des anderen Computers verwenden",
       "badge": "Diese Notiz hat eine Konfliktkopie"
+    },
+    "suggestions": {
+      "badge": "In dieser Notiz warten Änderungsvorschläge"
     }
   },
   "home": {
@@ -101,7 +145,9 @@
     "tabs": {
       "label": "Angezeigte Notizen",
       "mine": "Meine Notizen",
-      "favorites": "Favoriten"
+      "favorites": "Favoriten",
+      "tasks": "Aufgaben",
+      "attachments": "Anhänge"
     },
     "sortBy": "Sortieren nach",
     "sort": {
@@ -111,8 +157,7 @@
       "title": "Titel"
     },
     "layout": "Ansicht der Notizen",
-    "empty": "Noch keine Notizen. Beginnen Sie eine und lassen Sie sich vom Agenten beim Schreiben helfen.",
-    "noFavorites": "Noch keine Favoriten. Markieren Sie eine Notiz mit einem Stern, damit sie hier erscheint.",
+    "noFavorites": "Noch keine Favoriten. Fügen Sie eine Notiz zu Favoriten hinzu, damit sie hier erscheint.",
     "noMatches": "Keine Notizen passen zu „{{query}}“.",
     "author": "Autor"
   },
@@ -125,8 +170,9 @@
     "loadFailed": "Diese Notiz ließ sich nicht öffnen. Ihr Projekt wurde vielleicht verschoben oder gelöscht.",
     "retryLoad": "Erneut versuchen",
     "closeTab": "Tab schließen",
-    "imageFailed": "Das Bild konnte nicht in der Notiz gespeichert werden.",
-    "onlyImages": "Einer Notiz lassen sich nur Bilder im Format PNG, JPEG oder SVG hinzufügen.",
+    "fileFailed": "Die Datei konnte der Notiz nicht hinzugefügt werden: {{error}}",
+    "fileTooLarge": "{{name}} ist größer als 64 MB und wurde deshalb nicht hinzugefügt.",
+    "unsupportedFile": "Eine Notiz kann nur Bilder, Audio, Video, PDFs, Tabellen (CSV, TSV oder Excel), Moleküldateien und Jupyter Notebooks enthalten.",
     "remoteImages": {
       "more": "Weitere Möglichkeiten zum Laden von Bildern",
       "loadAll": "Alle Bilder in dieser Notiz laden",
@@ -149,6 +195,10 @@
       "figure": "Abbildung hinzufügen",
       "abstract": "Für das Abstract zusammenfassen"
     },
+    "wholeNote": {
+      "proofread": "Notiz Korrektur lesen",
+      "rewrite": "Notiz umschreiben"
+    },
     "collapse": "Prompt ausblenden",
     "expand": "Prompt einblenden"
   },
@@ -157,6 +207,22 @@
     "acceptAll": "Alle annehmen",
     "position": "Änderung {{current}} von {{total}}",
     "undo": "Rückgängig"
+  },
+  "versions": {
+    "title": "Versionsverlauf",
+    "summary": "Oleafly speichert eine Version, wenn Sie alle vorgeschlagenen Änderungen annehmen, und bevor eine ältere Version wiederhergestellt wird. Sie können auch selbst eine speichern.",
+    "empty": "Noch keine Versionen. Speichern Sie eine Version, um die Notiz so zu sichern, wie sie jetzt ist.",
+    "save": "Version speichern",
+    "saved": "Version gespeichert.",
+    "unchanged": "Seit der letzten Version hat sich nichts geändert.",
+    "saveFailed": "Von dieser Notiz konnte keine Version gespeichert werden.",
+    "restore": "Diese Version wiederherstellen",
+    "restored": "Version wiederhergestellt. Der ersetzte Text ist ebenfalls als Version gespeichert.",
+    "restoreFailed": "Diese Version konnte nicht wiederhergestellt werden.",
+    "comparing": "Vergleich mit der Notiz",
+    "readFailed": "Diese Version konnte nicht gelesen werden.",
+    "changes": "Was die Wiederherstellung dieser Version ändert",
+    "textOnly": "Die Wiederherstellung ändert nur den Text der Notiz. Angehängte Dateien bleiben unverändert."
   },
   "toolbar": {
     "label": "Formatierung",
@@ -172,9 +238,6 @@
     "displayMath": "Abgesetzte Formel",
     "citation": "Zitation",
     "noCitations": "Noch keine Literaturangaben in diesem Projekt",
-    "tableSize": "Tabelle {{cols}} × {{rows}}",
-    "addRow": "Zeile hinzufügen",
-    "addColumn": "Spalte hinzufügen",
     "chart": "Diagramm",
     "mermaid": "Mermaid-Diagramm",
     "outline": "Gliederung",
@@ -188,7 +251,12 @@
       "wide": "Breit",
       "full": "Volle Breite"
     },
-    "notebook": "Notebook einfügen"
+    "attach": "Datei anhängen",
+    "attachFilter": "Bilder, Audio, Video, PDFs, Tabellen, Moleküle und Notebooks",
+    "codeLanguage": "Sprache",
+    "plainCode": "Klartext",
+    "imageSize": "Bildgröße",
+    "originalSize": "Originalgröße"
   },
   "blocks": {
     "chart": "Diagramm",
@@ -197,9 +265,28 @@
     "diagramError": "Dieses Diagramm enthält einen Fehler. Öffnen Sie den Quelltext, um ihn zu beheben.",
     "chartError": "Die Daten dieses Diagramms sind ungültig. Öffnen Sie den Quelltext, um sie zu korrigieren.",
     "noPreview": "Für diesen Block gibt es noch keine Vorschau. Öffnen Sie den Quelltext, um ihn zu bearbeiten.",
+    "syntax": {
+      "help": "So schreiben Sie den Block „{{block}}“",
+      "chart": "JSON mit einem Typ, Kategorien und Datenreihen:\n{\"type\": \"bar\", \"categories\": [\"A\", \"B\"], \"series\": [{\"name\": \"Run 1\", \"values\": [1, 2]}]}\nWeitere Typen: line, area, scatter, pie, donut, histogram.",
+      "plot": "Eine Kurve oder Option pro Zeile:\ny = x^2 - 1 oder x = cos(t), y = sin(t)\ndomain: -5, 5 und point: 1, 0, Nullstelle",
+      "csv": "Wertzeilen, die erste Zeile ist die Kopfzeile:\nRun, Ratio\nOder eine Datei lesen mit path: assets/results.csv",
+      "latex": "Abgesetztes LaTeX, etwa eine Gleichung oder eine align-Umgebung:\n\\begin{align} a &= b + c \\end{align}\nChemie mit \\ce{H2O} und Einheiten mit \\pu{5 mg}.",
+      "typst": "Ein Ausschnitt in Typst, als Bild dargestellt:\n$ E = m c^2 $\nPakete aus dem Internet sind nicht verfügbar.",
+      "mermaid": "Ein Diagramm in Mermaid, zum Beispiel:\nflowchart LR\nA --> B",
+      "d2": "Ein D2-Diagramm, zum Beispiel:\nclient -> server: request\nserver.shape: cylinder",
+      "tikz": "Befehle in TikZ oder ein ganzes tikzpicture:\n{{example}}\nZeilen über dem Bild, etwa \\usetikzlibrary{positioning}, gehören in die Präambel.",
+      "circuitikz": "Befehle in CircuiTikZ oder eine ganze circuitikz-Umgebung:\n{{example}}\nZeilen über der Schaltung, etwa \\ctikzset{resistors/scale=0.8}, gehören in die Präambel.",
+      "svg": "Ein einzelnes svg-Element, zum Beispiel:\n<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" /></svg>\nSkripte, Links und Bilder aus dem Internet werden entfernt.",
+      "html": "Eine vollständige HTML-Seite oder ein Fragment mit CSS und Skripten.\nSie hat keinen Internetzugang, legen Sie Ihre Daten daher in den Block.\nSkripte starten, wenn Sie auf Ausführen klicken.",
+      "jsx": "Eine React-Komponentendatei mit einem Default-Export:\nexport default function App() { return <p>Hello</p> }\nSie kann react, recharts, d3, lodash, papaparse, chart.js und lucide-react importieren.",
+      "smiles": "Ein SMILES-String pro Zeile, mit optionalem Namen:\nAspirin: CC(=O)OC1=CC=CC=C1C(=O)O\nBis zu 24 pro Block.",
+      "molecule": "Zuerst Optionszeilen, etwa format: pdb und style: cartoon.\nDann der Text der Datei oder path: assets/1abc.pdb",
+      "sequence": "FASTA-Einträge oder eine reine Sequenz:\n>sample 1\nATGGCCATTGTAATG",
+      "notebook": "Der Pfad des Notebooks in der ersten Zeile:\nassets/analysis.ipynb\nDanach optionale Zeilen wie cells: 2-5 und code: hide.",
+      "bookmark": "Ein Feld pro Zeile, beginnend mit der Webadresse:\nurl: https://example.com/article\nDanach optional Zeilen mit title:, description:, image:, site: und favicon:."
+    },
     "newChart": {
       "title": "Neues Diagramm",
-      "description": "Bitten Sie den Agenten, es auszufüllen, oder bearbeiten Sie den Quelltext.",
       "series": "Werte"
     },
     "newHtml": {
@@ -236,6 +323,7 @@
     },
     "sequence": {
       "label": "Sequenz",
+      "template": "Beispiel einer codierenden Sequenz",
       "empty": "Fügen Sie einen FASTA-Eintrag oder eine reine Sequenz ein.",
       "character": "Zeile {{line}}, Spalte {{column}}: „{{character}}“ ist kein gültiger Rest.",
       "untitled": "Sequenz ohne Titel",
@@ -375,7 +463,8 @@
     "artifact": {
       "run": "Ausführen",
       "stop": "Stoppen",
-      "alwaysRun": "Blöcke in dieser Notiz immer ausführen",
+      "alwaysRun": "Diesen Block immer ausführen",
+      "paused": "Pausiert, weil ein Block in dieser Notiz beim letzten Mal eingefroren ist oder die App beendet hat.",
       "desktopOnly": "Zum Ausführen ist die Desktop-App nötig",
       "loading": "Wird geladen…",
       "loadFailed": "Dieser Block konnte nicht geladen werden.",
@@ -383,7 +472,7 @@
       "stopped": "Dieser Block reagiert nicht mehr.",
       "reload": "Neu laden",
       "failed": "Dieser Block konnte nicht starten: {{error}}",
-      "offline": "Blöcke können keine Dateien aus dem Internet laden, daher wurden diese ausgelassen:",
+      "offline": "Diese Dateien aus dem Internet wurden ausgelassen:",
       "more_one": "und {{count}} weitere",
       "more_other": "und {{count}} weitere",
       "frameTitle": "Ausgabe von {{label}}",
@@ -394,7 +483,6 @@
       "noComponent": "Diese Komponente hat keinen Default-Export."
     },
     "code": {
-      "copy": "Kopieren",
       "copied": "Kopiert",
       "copyFailed": "Kopieren fehlgeschlagen",
       "copyLabel": "Code kopieren"
@@ -404,6 +492,22 @@
       "empty": "Dieser SVG-Block ist leer.",
       "invalid": "Dieses SVG ist ungültig. Öffnen Sie den Quelltext, um es zu korrigieren.",
       "tooLarge": "Dieses SVG ist zu groß zum Anzeigen."
+    },
+    "d2": {
+      "alt": "D2-Diagramm",
+      "empty": "Dieser D2-Block ist leer.",
+      "loading": "Wird gezeichnet…",
+      "error": "D2 konnte dieses Diagramm nicht zeichnen: {{error}}",
+      "line": "Zeile {{line}}: {{message}}"
+    },
+    "tikz": {
+      "alt": "Zeichnung in TikZ",
+      "circuitAlt": "Schaltplan",
+      "empty": "Der Block „{{block}}“ ist leer.",
+      "desktopOnly": "Vorschauen für {{block}} brauchen die Desktop-App.",
+      "sharedNotice": "Diese Notiz ist geteilt. LaTeX läuft auf diesem Computer und kann Ihre Dateien lesen, prüfen Sie daher den Quelltext, bevor Sie zeichnen lassen.",
+      "draw": "Zeichnen",
+      "error": "LaTeX konnte diesen Block nicht kompilieren: {{error}}"
     },
     "typst": {
       "alt": "Typst-Ausgabe",
@@ -433,7 +537,33 @@
       "code": "Code",
       "math": "Formel",
       "divider": "Trennlinie",
+      "footnote": "Fußnote",
       "basic": "Grundlagen"
+    },
+    "media": {
+      "play": "{{name}} abspielen",
+      "pdfPage": "{{name}}, Seite {{page}}",
+      "openPdf": "PDF öffnen",
+      "openFailed": "Die Datei konnte nicht geöffnet werden: {{error}}",
+      "missing": "Datei nicht gefunden: {{path}}",
+      "unreadable": "{{name}} konnte nicht gelesen werden.",
+      "cantPlay": "{{name}} lässt sich hier nicht abspielen. Diesem Computer fehlt vielleicht ein Codec für das Format.",
+      "embed": "Video von {{site}} abspielen",
+      "embedTitle": "Video von {{site}}",
+      "embedFailed": "Der Player ist nicht gestartet. Versuchen Sie es erneut oder öffnen Sie das Video auf {{site}}.",
+      "watch": "Ansehen",
+      "watchOn": "Auf {{site}} ansehen",
+      "pasteChoice": "Darstellung dieses Videolinks",
+      "embedChoice": "Video einbetten",
+      "linkChoice": "Als Link belassen"
+    },
+    "bookmark": {
+      "label": "Lesezeichen",
+      "pasteChoice": "Darstellung dieses Links",
+      "cardChoice": "Lesezeichenkarte",
+      "ask": "Lesezeichen für eine Webseite setzen",
+      "loading": "Seitenvorschau wird geladen",
+      "noUrl": "Fügen Sie eine Zeile url: mit einer Webadresse hinzu, die mit https:// oder http:// beginnt."
     }
   },
   "notebook": {
@@ -455,10 +585,7 @@
     "showAllCells_one": "{{count}} Zelle anzeigen",
     "showAllCells_other": "Alle {{count}} Zellen anzeigen",
     "outputImage": "Ausgabe von Zelle {{number}}",
-    "outputFrame": "HTML-Ausgabe von Zelle {{number}}",
-    "pickTitle": "Notebook einfügen",
-    "filter": "Jupyter-Notebooks",
-    "importFailed": "Das Notebook konnte nicht hinzugefügt werden: {{error}}"
+    "outputFrame": "HTML-Ausgabe von Zelle {{number}}"
   },
   "icons": {
     "choose": "Symbol wählen",
@@ -612,7 +739,7 @@
     "inserting": "Wird kopiert",
     "insertFailed": "Diese Datei konnte nicht in die Notiz kopiert werden: {{error}}",
     "newProject": "Neues Projekt",
-    "htmlPreview": "Interaktive Abbildungen lassen sich in Oleafly noch nicht ausführen.",
+    "htmlPreview": "Um diese Abbildung auszuführen, fügen Sie ihren Code in einen HTML-Block in einer Notiz ein und klicken Sie auf Ausführen.",
     "kind": {
       "figure": "Abbildung",
       "html": "Interaktive Abbildung",
@@ -626,7 +753,14 @@
   "sendToPaper": {
     "title": "An einen Aufsatz senden",
     "description": "Oleafly wandelt den Inhalt einmalig um und fügt ihn an der Cursorposition ein. Die Kopie im Aufsatz bleibt nicht mit der Notiz verknüpft.",
-    "send": "Senden"
+    "send": "Senden",
+    "leftOut": "Der Block „{{block}}“ gibt es nur in der Notiz."
+  },
+  "citations": {
+    "references": "Literaturangaben",
+    "fromReference": "Aus einer Literaturangabe",
+    "unknown": "Nicht im Literaturverzeichnis des verknüpften Projekts: {{keys}}",
+    "openNote": "Notiz zu diesem Aufsatz öffnen: {{title}}"
   },
   "links": {
     "menu": "Link zu einer Notiz oder einem Projekt",
@@ -636,13 +770,54 @@
     "missingNote": "Diese Notiz gibt es nicht mehr",
     "missingNoteCreate": "Diese Notiz gibt es nicht mehr. Klicken Sie, um eine neue Notiz mit diesem Namen zu erstellen.",
     "missingProject": "Dieses Projekt gibt es nicht mehr",
-    "linkedFrom": "Verlinkt von"
+    "linkedFrom": "Verlinkt von",
+    "showAll": "Alle {{total}} anzeigen"
+  },
+  "linksSearch": {
+    "blocks": {
+      "loading": "Blöcke werden geladen",
+      "none": "Keine passenden Blöcke",
+      "missingBlock": "Dieser Block ist nicht in der Notiz",
+      "assignFailed": "Dieser Notiz konnte keine Block-ID hinzugefügt werden.",
+      "handle": "Blockoptionen",
+      "copyLink": "Link zum Block kopieren",
+      "linkCopied": "Link zu diesem Block kopiert.",
+      "copyFailed": "Der Link zu diesem Block konnte nicht kopiert werden.",
+      "noId": "Dieser Block hat noch keine ID, und Sie können diese Notiz nicht bearbeiten.",
+      "linkedFrom": "Verlinkt von",
+      "links_one": "{{count}} Notiz verlinkt hierher",
+      "links_other": "{{count}} Notizen verlinken hierher",
+      "openLinked": "{{title}} öffnen",
+      "toBlock": "Zum Block springen: {{text}}"
+    },
+    "tagBlocks": {
+      "more_one": "{{count}} weiteren Block anzeigen",
+      "more_other": "{{count}} weitere Blöcke anzeigen"
+    },
+    "dead": {
+      "menu": "Tote Links",
+      "title": "Tote Links",
+      "summary_one": "{{count}} Link zeigt auf eine Notiz oder einen Block, die es nicht mehr gibt.",
+      "summary_other": "{{count}} Links zeigen auf Notizen oder Blöcke, die es nicht mehr gibt.",
+      "none": "Keine toten Links. Jeder Link zeigt auf eine Notiz oder einen Block, die es noch gibt.",
+      "loading": "Links werden geprüft",
+      "failed": "Die Links in Ihren Notizen konnten nicht gelesen werden.",
+      "missingNotes": "Fehlende Notizen",
+      "missingBlocks": "Fehlende Blöcke",
+      "noteMeta": "Zeile {{line}}: Die Notiz gibt es nicht mehr",
+      "blockMeta": "Zeile {{line}}: {{block}} ist nicht mehr in {{title}}",
+      "create": "Notiz erstellen",
+      "relink": "Stattdessen auf {{title}} verlinken",
+      "remove": "Link entfernen",
+      "fixFailed": "Der Link konnte nicht geändert werden."
+    }
   },
   "projectNotes": {
     "searchLabel": "Notizen dieses Projekts durchsuchen",
     "searchPlaceholder": "Notizen durchsuchen",
     "clearSearch": "Suche löschen",
     "noMatches": "Keine Notizen passen zu Ihrer Suche",
+    "loading": "Notizen des Projekts werden gelesen",
     "edited": "Bearbeitet {{when}}",
     "createFailed": "Die Notiz konnte nicht erstellt werden.",
     "projectGroup": "Projektnotizen",
@@ -689,7 +864,33 @@
     "callouts": {
       "type": "Typ der Hinweisbox: {{type}}",
       "fold": "Hinweisbox einklappen",
-      "unfold": "Hinweisbox aufklappen"
+      "unfold": "Hinweisbox aufklappen",
+      "types": {
+        "note": "Notiz",
+        "abstract": "Zusammenfassung",
+        "info": "Info",
+        "todo": "Aufgabe",
+        "tip": "Tipp",
+        "success": "Erfolg",
+        "question": "Frage",
+        "warning": "Warnung",
+        "failure": "Fehlschlag",
+        "danger": "Gefahr",
+        "bug": "Bug",
+        "example": "Beispiel",
+        "quote": "Zitat",
+        "theorem": "Satz",
+        "lemma": "Lemma",
+        "corollary": "Korollar",
+        "proposition": "Proposition",
+        "definition": "Definition",
+        "proof": "Beweis",
+        "hypothesis": "Hypothese",
+        "assumption": "Annahme",
+        "result": "Ergebnis",
+        "method": "Methode",
+        "remark": "Bemerkung"
+      }
     },
     "links": {
       "loadingHeadings": "Überschriften werden geladen",
@@ -752,6 +953,209 @@
       }
     }
   },
+  "fields": {
+    "today": "Heute",
+    "tomorrow": "Morgen",
+    "yesterday": "Gestern",
+    "chip": "{{key}}: {{value}}",
+    "empty": "kein Wert",
+    "edit": "Ändern oder entfernen",
+    "keys": {
+      "due": "Fällig",
+      "scheduled": "Geplant",
+      "priority": "Priorität",
+      "start": "Beginnt",
+      "created": "Erstellt",
+      "completed": "Erledigt",
+      "date": "Datum",
+      "cancelled": "Abgebrochen"
+    },
+    "priorities": {
+      "highest": "Höchste",
+      "high": "Hoch",
+      "medium": "Mittel",
+      "low": "Niedrig",
+      "lowest": "Niedrigste"
+    },
+    "editor": {
+      "label": "{{key}} bearbeiten",
+      "key": "Name",
+      "value": "Wert",
+      "brackets": "Verwenden Sie eckige Klammern nur für einen Link, etwa [[Note]].",
+      "save": "Speichern",
+      "remove": "Entfernen"
+    }
+  },
+  "at": {
+    "menu": "Datum, Feld, Tag oder Notiz einfügen",
+    "groups": {
+      "dates": "Datumsangaben",
+      "due": "Fälligkeitsdatum",
+      "fields": "Aufgabenfelder",
+      "tags": "Tags",
+      "notes": "Notizen"
+    },
+    "today": "Heute",
+    "tomorrow": "Morgen",
+    "yesterday": "Gestern",
+    "next": "Nächster {{weekday}}",
+    "pick": "Datum wählen",
+    "pickerLabel": "Datum wählen",
+    "due": "Fälligkeitsdatum",
+    "scheduled": "Geplantes Datum",
+    "priority": "Priorität",
+    "priorityValue": "Priorität: {{priority}}",
+    "custom": "Eigenes Feld",
+    "addField": "Feld „{{key}}“ hinzufügen",
+    "setField": "{{key}} auf „{{value}}“ setzen",
+    "typeValue": "Geben Sie einen Wert für {{key}} ein und drücken Sie dann Enter."
+  },
+  "tasks": {
+    "filters": "Aufgabenfilter",
+    "loading": "Ihre Aufgaben werden gelesen",
+    "failed": "Ihre Aufgaben konnten nicht gelesen werden.",
+    "empty": "Noch keine Aufgaben. Beginnen Sie in einer beliebigen Notiz eine Zeile mit - [ ], dann erscheint sie hier.",
+    "noMatches": "Keine Aufgaben passen zu diesen Filtern.",
+    "clear": "Filter zurücksetzen",
+    "list": "Aufgaben",
+    "count_one": "{{count}} Aufgabe",
+    "count_other": "{{count}} Aufgaben",
+    "complete": "„{{text}}“ als erledigt markieren",
+    "reopen": "„{{text}}“ als nicht erledigt markieren",
+    "openNote": "{{title}} öffnen",
+    "toggleFailed": "Die Aufgabe konnte nicht aktualisiert werden.",
+    "moved": "Diese Aufgabe hat sich in ihrer Notiz geändert. Öffnen Sie die Notiz, um sie zu aktualisieren.",
+    "state": {
+      "label": "Anzeigen",
+      "open": "Offen",
+      "done": "Erledigt",
+      "all": "Offen und erledigt"
+    },
+    "due": {
+      "label": "Fällig",
+      "any": "Beliebiges Fälligkeitsdatum",
+      "overdue": "Überfällig",
+      "today": "Heute fällig",
+      "week": "In den nächsten 7 Tagen fällig",
+      "none": "Kein Fälligkeitsdatum"
+    },
+    "priority": {
+      "label": "Priorität",
+      "any": "Beliebige Priorität",
+      "high": "Hohe Priorität",
+      "medium": "Mittlere Priorität",
+      "low": "Niedrige Priorität",
+      "none": "Keine Priorität"
+    },
+    "tag": {
+      "label": "Tag",
+      "any": "Alle Tags"
+    },
+    "project": {
+      "label": "Projekt",
+      "any": "Alle Projekte"
+    },
+    "sort": {
+      "label": "Aufgaben sortieren nach",
+      "due": "Fälligkeitsdatum",
+      "priority": "Priorität"
+    }
+  },
+  "attachments": {
+    "filters": "Filter für Anhänge",
+    "loading": "Anhänge werden gesucht",
+    "failed": "Ihre Anhänge konnten nicht gelesen werden.",
+    "empty": "Noch keine Anhänge. Ziehen Sie ein Bild oder eine Datei in eine Notiz, dann erscheint es hier.",
+    "noMatches": "Keine Anhänge passen zu diesen Filtern.",
+    "clear": "Filter zurücksetzen",
+    "list": "Anhänge",
+    "count_one": "{{count}} Datei",
+    "count_other": "{{count}} Dateien",
+    "openNote": "{{title}} öffnen",
+    "copyLink": "Link kopieren",
+    "linkCopied": "Link zu „{{name}}“ kopiert.",
+    "copyFailed": "Der Link zu „{{name}}“ konnte nicht kopiert werden.",
+    "unused": "Nicht verwendet",
+    "type": {
+      "label": "Typ",
+      "all": "Alle Typen",
+      "image": "Bilder",
+      "audio": "Audio",
+      "video": "Video",
+      "pdf": "PDFs",
+      "other": "Sonstige"
+    },
+    "use": {
+      "label": "Verwendung",
+      "all": "Alle Dateien",
+      "unused": "Nicht verwendet"
+    }
+  },
+  "info": {
+    "title": "Info",
+    "show": "Infos zur Notiz",
+    "noNote": "Öffnen Sie eine Notiz, um ihre Infos zu sehen.",
+    "details": "Details der Notiz",
+    "created": "Erstellt",
+    "updated": "Aktualisiert",
+    "words": "Wörter",
+    "characters": "Zeichen",
+    "lines": "Zeilen",
+    "readingTime": "Lesezeit",
+    "underMinute": "unter einer Minute",
+    "noProperties": "Keine Eigenschaften",
+    "noBacklinks": "Keine Notizen verlinken hierher",
+    "noMentions": "Keine anderen Notizen erwähnen sie",
+    "noReferences": "Keine Zitationen in dieser Notiz",
+    "noDeadLinks": "Keine toten Links",
+    "noAttachments": "Keine Dateien angehängt"
+  },
+  "calendar": {
+    "title": "Kalender",
+    "week": "Woche",
+    "hasNote": "hat eine Tagesnotiz",
+    "due_one": "{{count}} Aufgabe fällig",
+    "due_other": "{{count}} Aufgaben fällig",
+    "openWeek": "Wochennotiz für Woche {{week}} öffnen",
+    "openMonthNote": "Monatsnotiz öffnen",
+    "createMonthNote": "Monatsnotiz erstellen",
+    "today": "Heute",
+    "failed": {
+      "weekly": "Die Wochennotiz konnte nicht geöffnet werden.",
+      "monthly": "Die Monatsnotiz konnte nicht geöffnet werden."
+    }
+  },
+  "periodic": {
+    "title": "Tages-, Wochen- und Monatsnotizen",
+    "daily": {
+      "label": "Tagesnotizen",
+      "description": "Die heutige Notiz und die Tage im Kalender der Seitenleiste."
+    },
+    "weekly": {
+      "label": "Wochennotizen",
+      "description": "Die Wochennummern im Kalender der Seitenleiste."
+    },
+    "monthly": {
+      "label": "Monatsnotizen",
+      "description": "Der Monatsname oben im Kalender der Seitenleiste."
+    },
+    "weekStart": {
+      "label": "Woche beginnt am",
+      "description": "Die erste Spalte im Kalender der Seitenleiste. Wochennummern zählen ab diesem Tag, und mit Montag sind es ISO-Wochennummern.",
+      "locale": "Standard der Region ({{day}})",
+      "monday": "Montag",
+      "sunday": "Sonntag",
+      "saturday": "Samstag"
+    },
+    "format": "Titelformat",
+    "preview": "Beispiel: {{title}}",
+    "invalidFormat": "Fügen Sie einen Datumsteil hinzu, etwa YYYY oder WW.",
+    "template": "Vorlage",
+    "savedTemplate": "Ihre gespeicherte Vorlage",
+    "tag": "Tag",
+    "noTag": "Kein Tag",
+    "formatHelp": "Titelformate verwenden YYYY für das Jahr, MM für den Monat, MMMM für seinen Namen, DD für den Tag, dddd für den Wochentag, WW für die Wochennummer und GGGG für das Jahr, zu dem diese Woche gehört. Text in eckigen Klammern, etwa [W], bleibt wie geschrieben. Vorhandene Notizen behalten ihre Titel, ändern Sie ein Format also, bevor Sie es verwenden."
+  },
   "live": {
     "share": "Teilen",
     "shared": "Geteilt",
@@ -793,7 +1197,9 @@
     "outline": {
       "title": "Gliederung",
       "empty": "Diese Notiz hat keine Überschriften",
+      "emptyDetail": "Beginnen Sie eine Zeile mit #, um eine Überschrift hinzuzufügen.",
       "noNote": "Öffnen Sie eine Notiz, um ihre Gliederung zu sehen",
+      "noNoteDetail": "Die Gliederung folgt der Notiz, die Sie bearbeiten.",
       "levels": "Überschriftenebenen",
       "allLevels": "Alle Ebenen",
       "upTo": "Bis H{{level}}",
@@ -801,7 +1207,8 @@
       "expand": "{{title}} aufklappen"
     },
     "linksFailed": "Die Links zwischen den Notizen konnten nicht gelesen werden.",
-    "tagsFailed": "Die Tags konnten nicht gelesen werden."
+    "tagsFailed": "Die Tags konnten nicht gelesen werden.",
+    "loading": "Die Links zwischen den Notizen werden gelesen"
   },
   "vault": {
     "import": {
@@ -821,6 +1228,9 @@
       "seenDescription_one": "Am {{date}} wurde dabei {{count}} Notiz hinzugefügt. Ein erneuter Import fügt neue Kopien hinzu und lässt die früheren Notizen unverändert.",
       "seenDescription_other": "Am {{date}} wurden dabei {{count}} Notizen hinzugefügt. Ein erneuter Import fügt neue Kopien hinzu und lässt die früheren Notizen unverändert.",
       "again": "Erneut als neue Notizen importieren",
+      "largeTitle": "Dieser Ordner enthält {{total}} Notizen",
+      "largeDescription": "Alle zu importieren kann eine Weile dauern, und jede wird zu einer eigenen Notiz in Ihrer Bibliothek. Sie können den Import jederzeit stoppen.",
+      "largeConfirm": "Alle importieren",
       "doneTitle": "Import abgeschlossen",
       "notes_one": "{{count}} Notiz importiert",
       "notes_other": "{{count}} Notizen importiert",
@@ -849,6 +1259,8 @@
         "done_other": "{{count}} Notizen exportiert",
         "skipped_one": "{{count}} Anhang konnte nicht exportiert werden",
         "skipped_other": "{{count}} Anhänge konnten nicht exportiert werden",
+        "paperLinks_one": "{{count}} Link zu einem Aufsatz wurde zu reinem Text",
+        "paperLinks_other": "{{count}} Links zu Aufsätzen wurden zu reinem Text",
         "doneSkipped": "{{done}}. {{skipped}}.",
         "showFolder": "Ordner anzeigen",
         "failed": "Die Notizen konnten nicht exportiert werden."
@@ -876,8 +1288,10 @@
       "empty": "Noch keine Tags. Fügen Sie einer Notiz #Tags hinzu oder Tags in ihren Eigenschaften.",
       "filter": "Notizen mit dem Tag {{tag}} anzeigen",
       "clear": "Nicht mehr nach {{tag}} filtern",
-      "expand": "Tags unter {{tag}} anzeigen",
-      "collapse": "Tags unter {{tag}} ausblenden"
+      "search": "Tags filtern",
+      "noMatch": "Keine Tags passen zu „{{query}}“.",
+      "showAll": "Alle {{total}} anzeigen",
+      "showFewer": "Weniger anzeigen"
     },
     "switcher": {
       "open": "Zu Notiz wechseln",
@@ -895,7 +1309,9 @@
     },
     "daily": {
       "open": "Heutige Notiz",
-      "failed": "Die heutige Notiz konnte nicht geöffnet werden."
+      "failed": "Die heutige Notiz konnte nicht geöffnet werden.",
+      "previous": "Vorherige Tagesnotiz: {{date}}",
+      "next": "Nächste Tagesnotiz: {{date}}"
     },
     "templates": {
       "open": "Neu aus Vorlage",
@@ -919,7 +1335,9 @@
         "proposal": "Forschungsantrag",
         "proof": "Beweis oder Herleitung",
         "dataAnalysis": "Bericht zur Datenanalyse",
-        "interview": "Interviewnotizen"
+        "interview": "Interviewnotizen",
+        "screeningLog": "Screening-Protokoll",
+        "labNotebook": "Eintrag im Laborbuch"
       },
       "descriptions": {
         "daily": "Ein Plan und ein laufendes Protokoll für einen Tag",
@@ -932,7 +1350,9 @@
         "proposal": "Ziele, Methoden und Zeitplan für einen Förderantrag oder eine Abschlussarbeit",
         "proof": "Ein Ergebnis, die Idee dahinter und das vollständige Argument",
         "dataAnalysis": "Was Sie mit welchen Daten berechnet haben und was sich gezeigt hat",
-        "interview": "Antworten, Zitate und Themen aus einem Gespräch"
+        "interview": "Antworten, Zitate und Themen aus einem Gespräch",
+        "screeningLog": "Die Fragestellung der Übersicht, die Kriterien und die Anzahl in jeder Screening-Phase",
+        "labNotebook": "Ein Tag am Labortisch: Ziel, Proben, Ablauf, Beobachtungen und Unterschrift"
       },
       "bodies": {
         "daily": "**{{weekday}}**\n\n## Plan\n- [ ] Wichtigste Aufgabe\n- [ ] Zweite Aufgabe\n\n## Protokoll\n- {{time}} Tag begonnen\n\n## Notizen\n\n## Heute erledigt\n- Noch nichts\n\n## Morgen\n- [ ] Als Erstes angehen",
@@ -943,9 +1363,11 @@
         "labProtocol": "> [!warning] Sicherheit\n> Prüfen Sie vor Beginn Gefahren, Schutzausrüstung und Abfallentsorgung.\n\n## Zweck\nWas dieses Protokoll ergibt und wann es eingesetzt wird.\n\n## Materialien\n| Material | Menge | Lieferant oder Katalognummer | Notizen |\n| --- | --- | --- | --- |\n| | | | |\n\n## Geräte\n- Gerät und Einstellungen\n\n## Ablauf\n1. Vorbereiten\n2. Durchführen\n3. Aufräumen\n\n## Prüfungen\n- [ ] Kontrollen vorbereitet\n- [ ] Einstellungen notiert\n- [ ] Proben mit Datum und Lauf beschriftet\n\n## Fehlerbehebung\n| Problem | Wahrscheinliche Ursache | Lösung |\n| --- | --- | --- |\n| | | |\n\n## Versionsverlauf\n| Version | Datum | Änderung |\n| --- | --- | --- |\n| 1 | {{date}} | Erste Version |",
         "weeklyLog": "## Ziele für diese Woche\n- [ ] Erstes Ziel\n- [ ] Zweites Ziel\n- [ ] Drittes Ziel\n\n## Fortschritt\n| Tag | Erledigte Arbeit | Notizen |\n| --- | --- | --- |\n| Montag | | |\n| Dienstag | | |\n| Mittwoch | | |\n| Donnerstag | | |\n| Freitag | | |\n\n## Ergebnisse und Abbildungen\n- Was die Woche ergeben hat\n\n## Hindernisse\n> [!warning] Hilfe nötig\n> Was feststeckt und wer es lösen kann.\n\n## Lektüre\n- In dieser Woche gelesene Aufsätze\n\n## Nächste Woche\n- [ ] Erstes Ziel für nächste Woche",
         "proposal": "> [!abstract] Zusammenfassung\n> In drei Sätzen: das Problem, der Ansatz und das erwartete Ergebnis.\n\n## Hintergrund und Motivation\nWarum das jetzt wichtig ist und was bereits bekannt ist.\n\n## Forschungsfragen\n1. Erste Frage\n\n## Ziele\n| Ziel | Ansatz | Erwartetes Ergebnis |\n| --- | --- | --- |\n| 1 | | |\n\n## Methoden\nDesign, Daten, Analyse und wie Erfolg gemessen wird.\n\n## Zeitplan\n| Phase | Monate | Meilenstein |\n| --- | --- | --- |\n| | | |\n\n## Risiken und Gegenmaßnahmen\n| Risiko | Wahrscheinlichkeit | Gegenmaßnahme |\n| --- | --- | --- |\n| | | |\n\n## Ressourcen und Budget\n\n## Wirkung\nWer profitiert und wie die Ergebnisse geteilt werden.\n\n## Literatur",
-        "proof": "> [!note] Aussage\n> Das Ergebnis, präzise formuliert mit allen Voraussetzungen.\n\n## Definitionen und Notation\n- Symbole und ihre Bedeutung\n\n## Idee\nDie Grundidee in einfachen Worten, vor den Details.\n\n## Beweis\n**Schritt 1.** Das Argument aufstellen.\n\n**Schritt 2.** Die Hauptabschätzung durchführen.\n\n**Schritt 3.** Abschließen.\n\n## Prüfungen\n- [ ] Jede Voraussetzung wird verwendet\n- [ ] Randfälle sind abgedeckt\n- [ ] Konstanten und Schranken sind nachverfolgt\n\n## Bemerkungen\nVerallgemeinerungen, Gegenbeispiele und verwandte Ergebnisse.",
-        "dataAnalysis": "> [!info] Frage\n> Die Entscheidung, die diese Analyse stützt.\n\n## Daten\n| Feld | Wert |\n| --- | --- |\n| Quelle | |\n| Version oder Datum | |\n| Zeilen und Spalten | |\n| Ausschlüsse | |\n\n## Methoden\n- Bereinigungsschritte\n- Modell oder Test und Begründung\n- Geprüfte Annahmen\n\n## Ergebnisse\n| Kennzahl | Schätzwert | Intervall | Notizen |\n| --- | --- | --- | --- |\n| | | | |\n\n## Abbildungen\n- Abbildung und was sie zeigt\n\n## Interpretation\nWas die Ergebnisse für die Frage bedeuten.\n\n## Einschränkungen\n- Verzerrungen, fehlende Daten und was das Fazit ändern könnte\n\n## Reproduzierbarkeit\n- [ ] Code gespeichert und verlinkt\n- [ ] Zufalls-Seeds notiert\n- [ ] Paketversionen festgehalten",
-        "interview": "> [!warning] Einwilligung und Datenschutz\n> Holen Sie vor der Aufnahme die Einwilligung ein und verwenden Sie statt eines Namens einen Teilnehmercode.\n\n## Kontext\n| Angabe | Wert |\n| --- | --- |\n| Teilnehmercode | |\n| Rolle | |\n| Dauer | |\n| Aufnahme | |\n\n## Fragen und Antworten\n### Frage 1\n- Antwort\n\n### Frage 2\n- Antwort\n\n## Zitate\n> Ein Zitat, das sich zu behalten lohnt.\n\n## Themen\n- Thema und stützende Antworten\n\n## Weiterverfolgen\n- [ ] Dankesnachricht senden\n- [ ] Transkribieren und anonymisieren"
+        "proof": "## Definitionen und Notation\n> [!definition] Notation\n> Die verwendeten Symbole und was jedes bedeutet.\n\n## Aussage\n> [!theorem] Hauptergebnis\n> Das Ergebnis, präzise formuliert mit allen Voraussetzungen.\n\n## Idee\nDie Grundidee in einfachen Worten, vor den Details.\n\n## Lemmata\n> [!lemma] Lemma 1\n> Eine kleinere Behauptung, die der Hauptbeweis braucht.\n\n> [!proof] Beweis von Lemma 1\n> Warum das Lemma gilt.\n\n## Beweis\n> [!proof] Beweis des Hauptergebnisses\n> **Schritt 1.** Das Argument aufstellen.\n>\n> **Schritt 2.** Die Hauptabschätzung mit Lemma 1 durchführen.\n>\n> **Schritt 3.** Abschließen.\n\n## Prüfungen\n- [ ] Jede Voraussetzung wird verwendet\n- [ ] Randfälle sind abgedeckt\n- [ ] Konstanten und Schranken sind nachverfolgt\n\n## Bemerkungen\nVerallgemeinerungen, Gegenbeispiele und verwandte Ergebnisse.",
+        "dataAnalysis": "> [!info] Frage\n> Die Entscheidung, die diese Analyse stützt.\n\n## Daten\n| Feld | Wert |\n| --- | --- |\n| Quelle | |\n| Version oder Datum | |\n| Zeilen und Spalten | |\n| Ausschlüsse | |\n\n## Methoden\n- Bereinigungsschritte\n- Modell oder Test und Begründung\n- Geprüfte Annahmen\n\n## Ergebnisse\nDie Tabelle unten ist ein Block im Format CSV. Ersetzen Sie die Beispielzeilen durch Ihre Ergebnisse.\n\n```csv\nKennzahl,Schätzwert,Untere Grenze 95 %,Obere Grenze 95 %,n\nMittelwert Gruppe A,0,0,0,0\nMittelwert Gruppe B,0,0,0,0\nDifferenz,0,0,0,0\n```\n\n## Abbildungen\n- Abbildung und was sie zeigt\n\n## Interpretation\nWas die Ergebnisse für die Frage bedeuten.\n\n## Einschränkungen\n- Verzerrungen, fehlende Daten und was das Fazit ändern könnte\n\n## Reproduzierbarkeit\n- [ ] Code gespeichert und verlinkt\n- [ ] Zufalls-Seeds notiert\n- [ ] Paketversionen festgehalten",
+        "interview": "> [!warning] Einwilligung und Datenschutz\n> Holen Sie vor der Aufnahme die Einwilligung ein und verwenden Sie statt eines Namens einen Teilnehmercode.\n\n## Kontext\n| Angabe | Wert |\n| --- | --- |\n| Teilnehmercode | |\n| Rolle | |\n| Dauer | |\n| Aufnahme | |\n\n## Fragen und Antworten\n### Frage 1\n- Antwort\n\n### Frage 2\n- Antwort\n\n## Zitate\n> Ein Zitat, das sich zu behalten lohnt.\n\n## Themen\n- Thema und stützende Antworten\n\n## Weiterverfolgen\n- [ ] Dankesnachricht senden\n- [ ] Transkribieren und anonymisieren",
+        "screeningLog": "> [!question] Fragestellung der Übersicht (PICO)\n> - **Population:** wer oder was untersucht wird\n> - **Intervention oder Exposition:** was getestet wird\n> - **Vergleich:** womit verglichen wird\n> - **Outcome:** was gemessen wird\n\n## Einschlusskriterien\n- Studiendesigns\n- Population und Rahmen\n- Sprachen und Jahre\n\n## Ausschlusskriterien\n- Grund und woran man ihn erkennt\n\n## Suchen\n| Datum | Datenbank | Suchanfrage | Treffer |\n| --- | --- | --- | --- |\n| {{date}} | | | |\n\n## Zahlen je Phase\n| Phase | Treffer | Entfernt | Hauptgründe |\n| --- | --- | --- | --- |\n| In Suchen gefunden | | | |\n| Nach Entfernen von Duplikaten | | | |\n| Titel und Abstracts geprüft | | | |\n| Volltexte bewertet | | | |\n| In die Übersicht aufgenommen | | | |\n\n## Im Volltext ausgeschlossen\n| Aufsatz | Grund |\n| --- | --- |\n| | |\n\n## Uneinigkeiten\n- Aufsatz, Entscheidung jeder Gutachterin und jedes Gutachters und wie sie beigelegt wurde\n\n## Nächste Schritte\n- [ ] Nächsten Stapel prüfen\n- [ ] Prüfen, ob die Zahlen aufgehen",
+        "labNotebook": "**{{weekday}}, {{date}}**\n\n## Ziel\nWas Sie sich heute vorgenommen haben und warum.\n\n## Materialien\n| Material | Proben-ID | Charge | Menge |\n| --- | --- | --- | --- |\n| | | | |\n\n## Ablauf\n1. Was Sie in welcher Reihenfolge getan haben, mit Zeiten und Einstellungen\n2. Jede Abweichung vom Protokoll und der Grund\n\n## Beobachtungen\n- {{time}} Was Sie gesehen haben\n\n## Ergebnisse\n- Messwerte und wo die Rohdaten gespeichert sind\n\n## Nächste Schritte\n- [ ] Folgeaufgabe für die nächste Sitzung\n\n## Unterschrift\n**Unterschrieben von:** Name, {{date}}\n\n**Bezeugt von:** Name, Datum"
       }
     },
     "mentions": {
@@ -984,8 +1406,8 @@
     "actionHint": "Wirkt auf diese Notiz",
     "agentCanEdit": "Dieser Agent kann Dateien im verknüpften Projekt ändern.",
     "allowWritesLabel": "Dem Agenten Dateiänderungen erlauben",
-    "allowWritesAsk": "{{agent}} hat keinen Nur-Lese-Modus und könnte daher Dateien in {{project}} ändern. Nachricht trotzdem senden?",
-    "allowWrites": "In diesem Chat erlauben",
+    "allowWritesAsk": "{{agent}} hat keinen Nur-Lese-Modus und könnte daher Dateien in {{project}} ändern. Oleafly kann ihm keinen hinzufügen. Nachricht trotzdem senden?",
+    "allowWrites": "Trotzdem senden",
     "dontSend": "Nicht senden",
     "viewOnly": "Sie können diese Notiz nur ansehen, daher kann der Assistent sie nicht ändern."
   },
@@ -1002,6 +1424,7 @@
     "template": "Die Vorlageneinstellung von „{{name}}“ konnte nicht geändert werden."
   },
   "noteTab": {
+    "loading": "Notiz wird geöffnet",
     "projectNote": "Projektnotiz",
     "sharedProject": "Alle in diesem Projekt können sie sehen und bearbeiten",
     "localProject": "Mit den Dateien dieses Projekts gespeichert",
@@ -1013,5 +1436,248 @@
     "copyToMine": "In meine Notizen kopieren",
     "missing": "Diese Notiz ist nicht mehr verfügbar. Sie wurde vielleicht verschoben oder gelöscht.",
     "writeRefused": "Die Notiz konnte nicht gespeichert werden. Dieses Projekt ist gerade schreibgeschützt."
+  },
+  "appearance": {
+    "notes": {
+      "sectionName": "Darstellung der Notizen",
+      "resetAriaLabel": "{{setting}} auf Standard zurücksetzen",
+      "text": {
+        "title": "Text"
+      },
+      "typeface": {
+        "label": "Schriftart",
+        "description": "Wählen Sie eine Schriftart für den Text von Notizen.",
+        "options": {
+          "sans": "Serifenlos",
+          "serif": "Serif",
+          "mono": "Monospace"
+        }
+      },
+      "font": {
+        "label": "Schrift für Notizen",
+        "description": "Wählen Sie eine beliebige installierte Schrift für den Text von Notizen. Lassen Sie das Feld leer, um die Einstellung Schriftart zu verwenden."
+      },
+      "fontSize": {
+        "label": "Textgröße in Notizen",
+        "description": "Legen Sie die Größe des Notiztexts fest.",
+        "custom": "Benutzerdefiniert",
+        "customLabel": "Benutzerdefinierte Textgröße in Notizen in Pixeln"
+      },
+      "lineHeight": {
+        "label": "Zeilenhöhe in Notizen",
+        "description": "Legen Sie den Abstand zwischen den Zeilen im Notiztext fest.",
+        "customLabel": "Benutzerdefinierte Zeilenhöhe in Notizen"
+      },
+      "paragraphSpacing": {
+        "label": "Absatzabstand",
+        "description": "Legen Sie den Abstand zwischen Absätzen, Listen und anderen Blöcken fest.",
+        "options": {
+          "compact": "Kompakt",
+          "normal": "Normal",
+          "relaxed": "Locker",
+          "spacious": "Großzügig"
+        }
+      },
+      "headings": {
+        "title": "Überschriften und Titel"
+      },
+      "headingTypeface": {
+        "label": "Schriftart für Überschriften",
+        "description": "Wählen Sie eine Schriftart für Überschriften und den Titel der Notiz.",
+        "options": {
+          "text": "Wie der Text"
+        }
+      },
+      "headingFont": {
+        "label": "Schrift für Überschriften",
+        "description": "Wählen Sie eine installierte Schrift für Überschriften und den Titel der Notiz. Lassen Sie das Feld leer, um die Einstellung Schriftart für Überschriften zu verwenden."
+      },
+      "headingSize": {
+        "label": "Größe der Überschriften",
+        "description": "Legen Sie fest, wie groß Überschriften im Vergleich zum Text sind.",
+        "options": {
+          "small": "Kleiner",
+          "normal": "Normal",
+          "large": "Größer"
+        }
+      },
+      "titleSize": {
+        "label": "Größe des Titels",
+        "description": "Legen Sie die Größe des Titels oben in jeder Notiz fest."
+      },
+      "layout": {
+        "title": "Layout"
+      },
+      "width": {
+        "label": "Breite der Notiz",
+        "description": "Wie breit Notizen geöffnet werden. Das Breitenmenü in einer Notiz ändert dies ebenfalls.",
+        "options": {
+          "standard": "Standard",
+          "wide": "Breit",
+          "full": "Volle Breite"
+        }
+      },
+      "info": {
+        "label": "Infos zur Notiz",
+        "description": "Wo die Eigenschaften und Links einer Notiz erscheinen. Seitenbereich zeigt sie im Bereich Info, zusammen mit den Kennzahlen und Anhängen der Notiz. Inline lässt sie auf der Seite.",
+        "options": {
+          "side": "Seitenbereich",
+          "inline": "Inline"
+        }
+      },
+      "taskBox": {
+        "label": "Kontrollkästchen für Aufgaben",
+        "description": "Die Form der Kästchen in Aufgabenlisten.",
+        "options": {
+          "square": "Eckig",
+          "round": "Rund"
+        }
+      },
+      "wordCount": {
+        "label": "Wortzahl anzeigen",
+        "description": "Zeigt die Wortzahl einer Notiz in ihrer Werkzeugleiste."
+      },
+      "spellcheck": {
+        "label": "Rechtschreibung in Notizen prüfen",
+        "description": "Falsch geschriebene Wörter beim Schreiben einer Notiz unterstreichen."
+      },
+      "replacements": {
+        "label": "Beim Tippen ersetzen",
+        "description": "Ersetzt beim Tippen Paare wie -> durch →. Code und Formeln bleiben wie getippt, und Backspace direkt nach dem Ersetzen stellt Ihren Text wieder her.",
+        "list": "Textersetzungen",
+        "type": "Eingabe",
+        "becomes": "Wird zu",
+        "add": "Hinzufügen",
+        "remove": "{{from}} entfernen",
+        "removeTooltip": "Entfernen",
+        "empty": "Noch keine Paare. Fügen Sie unten eines hinzu.",
+        "full": "Sie können bis zu {{limit}} Paare haben. Entfernen Sie eines, um ein weiteres hinzuzufügen."
+      },
+      "keepUndo": {
+        "label": "Rückgängig nach dem Schließen behalten",
+        "description": "Rückgängig funktioniert bei einer Notiz auch, nachdem Sie sie geschlossen oder die App beendet haben. Der Verlauf bleibt auf diesem Computer, und das Ausschalten löscht ihn."
+      },
+      "code": {
+        "title": "Code"
+      },
+      "drawings": {
+        "title": "Zeichnungen mit LaTeX"
+      },
+      "tikzPreamble": {
+        "label": "Präambel für TikZ",
+        "description": "Zeilen wie \\usetikzlibrary{positioning}, die an den Anfang der Präambel jedes Blocks mit TikZ und CircuiTikZ gesetzt werden."
+      },
+      "codeFont": {
+        "label": "Schrift für Code",
+        "description": "Wählen Sie eine installierte Schrift für Codeblöcke und Code im Text."
+      },
+      "codeTheme": {
+        "label": "Farben der Codeblöcke",
+        "description": "Wählen Sie die Syntaxfarben für Codeblöcke in Notizen.",
+        "options": {
+          "editor": "Wie im Editor"
+        }
+      },
+      "colors": {
+        "title": "Farben"
+      },
+      "accent": {
+        "label": "Akzentfarbe der Notizen",
+        "description": "Wird für Links, Tags und Aufgabenkästchen in Notizen verwendet.",
+        "matchApp": "Wie die App",
+        "customAriaLabel": "Eigene Akzentfarbe für Notizen wählen"
+      },
+      "callouts": {
+        "label": "Stil der Hinweisboxen",
+        "description": "Wie Hinweisboxen in Notizen aussehen.",
+        "options": {
+          "tinted": "Getönt",
+          "filled": "Gefüllt",
+          "outlined": "Umrandet",
+          "bar": "Seitenbalken"
+        }
+      },
+      "fieldStyle": {
+        "label": "Chips für Datum und Felder",
+        "description": "Wie Datumsangaben und Felder wie Fällig oder Priorität in Notizen aussehen.",
+        "options": {
+          "tint": "Getönt",
+          "outline": "Umrandet",
+          "underline": "Unterstrichen"
+        }
+      },
+      "remoteImages": {
+        "title": "Bilder aus dem Web",
+        "description": "Notizen und Antworten des Assistenten laden Bilder von diesen Websites ohne Nachfrage.",
+        "empty": "Notizen und Antworten des Assistenten fragen nach, bevor sie ein Bild aus dem Web laden. Websites, die Sie immer zulassen, erscheinen hier.",
+        "remove": "{{host}} entfernen"
+      }
+    }
+  },
+  "notesPreview": {
+    "label": "Vorschau einer Notiz mit diesen Einstellungen",
+    "title": "Feldnotizen",
+    "heading": "Morgendliche Erhebung",
+    "paragraph": "Leichter Regen bis neun, danach klarer Himmel über dem Nordkamm. Der Boden war mittags noch feucht.",
+    "links": "Die einzelnen Schritte stehen in <note>Probenahmeverfahren</note>, oder stöbern Sie in <tag>#feldarbeit</tag>.",
+    "highlight": "Die Keimlinge sind in einer Woche doppelt so hoch geworden.",
+    "calloutTitle": "Nächster Besuch",
+    "calloutBody": "Prüfen Sie die Bodensensoren, bevor Sie neue Proben nehmen.",
+    "taskDone": "Proben beschriften",
+    "task": "Fotos hochladen",
+    "taskLate": "Bodenbericht senden"
+  },
+  "highlight": {
+    "colors": {
+      "yellow": "Gelb",
+      "orange": "Orange",
+      "red": "Rot",
+      "pink": "Rosa",
+      "purple": "Lila",
+      "blue": "Blau",
+      "green": "Grün"
+    },
+    "remove": "Hervorhebung entfernen"
+  },
+  "quickCapture": {
+    "title": "Schnellerfassung",
+    "untitled": "Ohne Titel",
+    "placeholder": "Beginnen Sie zu schreiben…",
+    "field": "Zu erfassender Text",
+    "characters_one": "{{count}} Zeichen",
+    "characters_other": "{{count}} Zeichen",
+    "failed": "Das konnte nicht gespeichert werden. Ihr Text ist noch da, Sie können es also erneut versuchen.",
+    "actions": {
+      "label": "Aktionen",
+      "saveNew": "Als neue Notiz speichern",
+      "saveToday": "Zur heutigen Notiz hinzufügen",
+      "copy": "Als Markdown kopieren",
+      "discard": "Entwurf verwerfen"
+    },
+    "openNotes": "Notizen öffnen",
+    "newNote": "Neue Notiz",
+    "format": "Formatierung anzeigen",
+    "closeFormat": "Formatierung ausblenden"
+  },
+  "starter": {
+    "blocksGallery": {
+      "title": "Blockgalerie",
+      "intro": "Alle Blöcke, die eine Notiz enthalten kann. Klicken Sie bei einem Block auf {{source}}, um zu sehen und zu bearbeiten, was ihn zeichnet, und geben Sie {{slash}} in einer leeren Zeile ein, um einen neuen einzufügen.",
+      "charts": "Datendiagramme",
+      "functionPlots": "Funktionsplots",
+      "tables": "Tabellen",
+      "csvTable": "Ein Block vom Typ csv lässt sich sortieren und filtern und hat eine Zusammenfassungszeile:",
+      "markdownTable": "Einfache Tabellen in Markdown funktionieren auch:",
+      "math": "Mathematik und Chemie",
+      "typst": "Typst",
+      "diagrams": "Diagramme",
+      "svg": "SVG",
+      "html": "HTML, klicken Sie auf {{run}}",
+      "react": "React, klicken Sie auf {{run}}",
+      "structures": "Chemische Strukturen",
+      "molecule": "3D-Molekül",
+      "sequences": "Sequenzen",
+      "code": "Code"
+    }
   }
 }

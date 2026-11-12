@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "Søgetilstand: {{mode}}",
+    "heading": "Søgetilstand",
+    "ranked": {
+      "label": "Bedste match",
+      "description": "Rangerer resultaterne efter, hvor godt de matcher. Ordene kan stå hvor som helst."
+    },
+    "exact": {
+      "label": "Præcis tekst",
+      "description": "Finder præcis disse tegn. Med et stort bogstav skelnes der mellem store og små bogstaver."
+    },
+    "regex": {
+      "label": "Regulært udtryk",
+      "description": "Bruger mønstersyntaksen fra ripgrep. Sæt et mønster i anførselstegn, hvis det indeholder mellemrum eller parenteser."
+    },
+    "fuzzy": {
+      "label": "Omtrentlig",
+      "description": "Finder navne, hvor dine bogstaver står i rækkefølge, som fzf gør. Forstår også 'præcis, ^start, slut$ og !udelad."
+    },
+    "invalid": "Mønsteret er ikke gyldigt: {{error}}"
+  },
   "querySearch": {
     "suggestions": "Søgeforslag",
     "exclude": "Udelad",
@@ -76,7 +97,8 @@
       "invalidValue": "{{value}} er ikke en gyldig værdi for {{key}}",
       "invalidDate": "{{value}} er ikke en dato. Prøv 2026-10-02 eller @today-7d",
       "invalidNumber": "{{value}} er ikke et tal",
-      "sortNegated": "{{key}} kan ikke udelades"
+      "sortNegated": "{{key}} kan ikke udelades",
+      "tooManyBranches": "Søgningen har for mange OR-kombinationer, så nogle resultater mangler måske"
     }
   },
   "avatar": {

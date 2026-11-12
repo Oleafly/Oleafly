@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import {
@@ -44,8 +45,12 @@ export function isThemePreference(value: unknown): value is ThemePreference {
 
 export function getStoredPreference(): ThemePreference {
   if (typeof window === "undefined") return "system";
-  const stored = window.localStorage.getItem(STORAGE_KEY);
-  return stored === "light" || stored === "dark" ? stored : "system";
+  try {
+    const stored = window.localStorage.getItem(STORAGE_KEY);
+    return stored === "light" || stored === "dark" ? stored : "system";
+  } catch {
+    return "system";
+  }
 }
 
 function lightSchemeQuery(): MediaQueryList | null {
@@ -175,7 +180,5 @@ export function useTheme() {
 }
 
 export function useAppTheme(): Theme {
-  const [theme, setTheme] = useState<Theme>(() => currentTheme());
-  useEffect(() => subscribeTheme(setTheme), []);
-  return theme;
+  return useSyncExternalStore(subscribeTheme, currentTheme);
 }

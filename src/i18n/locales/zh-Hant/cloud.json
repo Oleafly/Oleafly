@@ -136,6 +136,16 @@
       "uploadFailed": "無法上傳"
     }
   },
+  "conflictCopy": {
+    "title": "「{{name}}」的兩個版本",
+    "description": "這篇筆記在同步之前已分別在這裡和另一台電腦上被變更，因此 Oleafly 保留了兩個版本。請保留其中一個版本，另一個會移至資源回收筒。",
+    "diffLabel": "兩個版本之間的差異",
+    "loading": "正在讀取兩個版本…",
+    "readFailed": "無法讀取衝突副本。",
+    "resolveFailed": "無法保留該版本。",
+    "keepMine": "保留這台電腦上的版本",
+    "useCopy": "使用另一台電腦上的版本"
+  },
   "confirm": {
     "removeTitle": "要從 {{provider}} 中移除 {{name}} 嗎？",
     "removeDescription": "這會刪除你 {{provider}} 中的副本以釋出空間。專案會保留在這台電腦上，並停止在這裡同步。你的其他電腦會保留各自的副本，但也會停止同步這個專案。",
@@ -195,6 +205,71 @@
     "pathStyle": "使用路徑樣式位址",
     "pathStyleHint": "MinIO 和大多數自架伺服器都需要啟用此項。"
   },
+  "backups": {
+    "title": "備份",
+    "none": "還沒有備份",
+    "last": "上次備份：{{time}} · {{contents}} · {{size}}",
+    "notes_other": "{{count}} 篇筆記",
+    "projects_other": "{{count}} 個專案",
+    "running": "正在備份",
+    "failed": "上次備份沒有完成。{{reason}}",
+    "backUpNow": "立即備份",
+    "auto": {
+      "label": "自動備份",
+      "description": "在 {{provider}} 中保存附有日期的筆記副本。之後的編輯和刪除，即使已經同步，也不會影響這些副本。"
+    },
+    "every": {
+      "label": "備份頻率",
+      "description": "每次備份只會上傳自上次備份以來變更的內容。",
+      "options": {
+        "6": "每 6 小時",
+        "24": "每天",
+        "168": "每週"
+      }
+    },
+    "keep": {
+      "label": "保留",
+      "description": "較舊的備份會從 {{provider}} 中刪除，以節省空間。",
+      "option_other": "最近 {{count}} 份備份"
+    },
+    "includeProjects": {
+      "label": "包含專案",
+      "description": "專案已經隨著檢查點同步。開啟這個選項，也會保存專案附有日期的副本。大型專案的第一次備份可能需要一段時間，並占用大量空間。"
+    },
+    "list": {
+      "title": "{{provider}} 中的備份",
+      "label": "備份",
+      "loading": "正在讀取備份",
+      "failed": "無法讀取備份。{{reason}}",
+      "empty": "{{provider}} 中還沒有備份。"
+    },
+    "row": {
+      "thisComputer": "這台電腦",
+      "manual": "手動",
+      "restore": "還原",
+      "restoreLabel": "還原 {{date}} 的備份"
+    },
+    "restore": {
+      "title": "從 {{date}} 的備份還原",
+      "description": "還原絕不會取代你現有的內容。仍在這裡的筆記或專案會以副本的形式還原在旁邊，方便你比較兩者。",
+      "loading": "正在讀取備份",
+      "loadFailed": "無法讀取這份備份。{{reason}}",
+      "search": "在這份備份中尋找",
+      "clearSearch": "清除搜尋",
+      "noMatch": "這份備份中沒有符合的內容。",
+      "listLabel": "這份備份中的筆記和專案",
+      "here": "仍在這裡",
+      "missing": "不在這台電腦上",
+      "restored": "已還原",
+      "restoredCopy": "已還原為副本",
+      "files_other": "{{count}} 個檔案",
+      "one": "還原",
+      "oneLabel": "還原 {{name}}",
+      "allMissing_other": "還原缺少的 {{count}} 項",
+      "nothingMissing": "沒有缺少的內容",
+      "copyName": "（還原於 {{date}}）"
+    }
+  },
   "errors": {
     "clock_skew": "這台電腦的時鐘不準，因此 {{provider}} 不會接受來自它的請求。請設定正確的日期和時間以繼續同步。",
     "code_invalid": "該代碼無效。請再試一次。",
@@ -223,6 +298,8 @@
     "sign_in_timeout": "登入耗時過長。請再試一次。",
     "too_many_files": "這個專案有超過 100,000 個檔案。檔案太多，無法同步。",
     "traffic_limit": "你的 {{provider}} 已達到上傳上限。在 {{provider}} 再次允許上傳之前，新的變更會保留在這台電腦上。",
-    "verify_failed": "來自 {{provider}} 的某個檔案與 Oleafly 預期的不符，因此沒有變動它。稍後會再試著同步。"
+    "verify_failed": "來自 {{provider}} 的某個檔案與 Oleafly 預期的不符，因此沒有變動它。稍後會再試著同步。",
+    "backup_missing": "這份備份已不在你的 {{provider}} 中。",
+    "backup_label": "Oleafly 無法為還原的副本命名。"
   }
 }

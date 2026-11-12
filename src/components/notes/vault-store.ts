@@ -4,9 +4,14 @@ interface VaultState {
   tag: string | null;
   tagRequest: number;
   switcherOpen: boolean;
+  searchRequest: number;
 }
 
-export const useVaultStore = create<VaultState>(() => ({ tag: null, tagRequest: 0, switcherOpen: false }));
+export const useVaultStore = create<VaultState>(() => ({ tag: null, tagRequest: 0, switcherOpen: false, searchRequest: 0 }));
+
+export function focusNotesSearch(): void {
+  useVaultStore.setState((state) => ({ searchRequest: state.searchRequest + 1 }));
+}
 
 export function filterByTag(tag: string | null): void {
   const key = tag?.trim().replace(/^#+/u, "").toLowerCase() || null;

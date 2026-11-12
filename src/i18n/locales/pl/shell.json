@@ -343,7 +343,15 @@
     },
     "resetPaneLayout": {
       "keywords": "resetuj układ paneli kolejność przenieś panele panel boczny asystent edytor podgląd terminal domyślny",
-      "label": "Resetuj układ paneli"
+      "label": "Resetuj rozmieszczenie paneli w każdym projekcie"
+    },
+    "saveLayout": {
+      "keywords": "zapisz układ własny rozmieszczenie panele rozmiary nazwa",
+      "label": "Zapisz bieżący układ"
+    },
+    "applySavedLayout": {
+      "keywords": "układ zapisany własny rozmieszczenie panele przełącz zastosuj",
+      "label": "Układ: {{name}}"
     },
     "zoomIn": {
       "keywords": "powiększ większe",
@@ -382,6 +390,10 @@
     "notes": {
       "label": "Otwórz Notatki",
       "keywords": "notatki notatka notatnik wiedza pomysły badania dziennik notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Szybka notatka",
+      "keywords": "szybka notatka zanotuj notatka skrzynka dzisiaj quick capture jot note inbox today"
     }
   },
   "community": {
@@ -486,6 +498,11 @@
   },
   "datePicker": {
     "placeholder": "Wybierz datę"
+  },
+  "monthPicker": {
+    "label": "Wybierz miesiąc",
+    "previousYear": "Poprzedni rok",
+    "nextYear": "Następny rok"
   },
   "devMenu": {
     "inspect": "Zbadaj",
@@ -708,6 +725,7 @@
     "groups": {
       "action": "Działanie",
       "documents": "Dokumenty",
+      "notes": "Notatki",
       "references": "Odwołania"
     },
     "label": "Szukaj",
@@ -715,11 +733,13 @@
     "openReferences": "Otwórz odwołania tego projektu",
     "placeholder": "Szukaj projektów, dokumentów lub wpisz / dla poleceń…",
     "placeholderDocuments": "Szukaj wewnątrz dokumentów…",
+    "placeholderNotes": "Szukaj w notatkach i ich blokach…",
     "placeholderProjects": "Szukaj projektów według nazwy, silnika, rodzaju, daty lub metadanych…",
     "referencesNeedProject": "Otwórz najpierw projekt, aby przeglądać jego odwołania.",
     "slash": {
       "create": "otwiera galerię szablonów",
       "docs": "szuka wewnątrz dokumentów",
+      "notes": "szuka w notatkach i ich blokach",
       "projects": "szuka w Twoich projektach",
       "refs": "otwiera odwołania tego projektu",
       "settings": "otwiera ustawienia",
@@ -1354,7 +1374,24 @@
       "split": "Widok dzielony"
     },
     "moreActions": "Więcej działań",
-    "resetPaneLayout": "Resetuj układ paneli",
+    "resetPaneLayout": "Resetuj rozmieszczenie paneli",
+    "resetPaneLayoutScope": "Wszystkie projekty",
+    "savedLayouts": {
+      "close": "Zamknij",
+      "delete": "Usuń",
+      "deleteConfirm": "Usunąć układ „{{name}}”?",
+      "limit": "Limit układów: {{count}}. Usuń jeden, aby zapisać kolejny.",
+      "manage": "Zarządzaj układami",
+      "name": "Nazwa układu",
+      "rename": "Zmień nazwę",
+      "renameTitle": "Zmień nazwę układu",
+      "replace": "Zastąp",
+      "replaceConfirm": "Układ o nazwie „{{name}}” już istnieje. Zastąpić go?",
+      "save": "Zapisz bieżący układ",
+      "saveButton": "Zapisz",
+      "saveTitle": "Zapisz układ",
+      "update": "Zaktualizuj do bieżącego"
+    },
     "renameFailed": "Nie udało się zmienić nazwy projektu."
   },
   "tour": {

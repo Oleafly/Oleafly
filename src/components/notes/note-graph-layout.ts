@@ -1,3 +1,4 @@
+import { forceLink, forceManyBody, forceSimulation, forceX, forceY, type Simulation, type SimulationLinkDatum, type SimulationNodeDatum } from "d3-force";
 import { readJson, writeJson } from "@/lib/local-storage";
 import type { NoteLinkRecord } from "@/lib/tauri";
 
@@ -49,17 +50,6 @@ export interface View {
   k: number;
 }
 
-export interface ForceOptions {
-  linkDistance: number;
-  charge: number;
-  gravity: number;
-  theta: number;
-  velocityDecay: number;
-  alphaMin: number;
-  alphaDecay: number;
-  distanceMax: number;
-}
-
 export type LayoutRequest =
   | {
       type: "start";
@@ -88,26 +78,16 @@ export interface LayoutTimer {
 
 export const MIN_ZOOM = 0.05;
 export const MAX_ZOOM = 8;
-export const MAX_TICKS = 600;
-export const SLICE_MS = 12;
-export const SLICE_TICKS = 4;
+const MAX_TICKS = 600;
+const SLICE_MS = 12;
+const SLICE_TICKS = 4;
 export const FRAME_MS = 16;
-export const DRAG_ALPHA = 0.3;
+const DRAG_ALPHA = 0.3;
 export const GRAPH_LAYOUT_KEY = "oleafly.notes.graph.layout";
 const SAVED_LIMIT = 20_000;
-const MAX_DEPTH = 24;
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
-
-export const DEFAULT_FORCES: ForceOptions = {
-  linkDistance: 46,
-  charge: -70,
-  gravity: 0.045,
-  theta: 0.9,
-  velocityDecay: 0.4,
-  alphaMin: 0.002,
-  alphaDecay: 1 - 0.002 ** (1 / 300),
-  distanceMax: 1600,
-};
+const LINK_DISTANCE = 46;
+const ALPHA_MIN = 0.002;
 
 export function noteKey(projectId: string): string {
   return `note:${projectId}`;
@@ -117,12 +97,37 @@ export function projectKey(projectId: string): string {
   return `project:${projectId}`;
 }
 
+type GraphLink = NoteLinkRecord["links"][number];
+
+interface GraphParts {
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  pairs: Set<string>;
+}
+
+function linkTarget(
+  link: GraphLink,
+  index: ReadonlyMap<string, number>,
+  byNoteId: ReadonlyMap<string, string>,
+  projectNode: (id: string) => number | undefined,
+): number | undefined {
+  if (link.kind !== "note") return index.get(noteKey(link.id)) ?? projectNode(link.id);
+  const projectId = byNoteId.get(link.id);
+  return projectId === undefined ? undefined : index.get(noteKey(projectId));
+}
+
+function addEdge(parts: GraphParts, from: number, target: number): void {
+  const pair = from < target ? `${from}:${target}` : `${target}:${from}`;
+  if (parts.pairs.has(pair)) return;
+  parts.pairs.add(pair);
+  parts.edges.push({ source: from, target });
+  parts.nodes[from].degree += 1;
+  parts.nodes[target].degree += 1;
+}
+
 export function buildGraph(input: GraphInput, options: { projects: boolean; projectColor: string }): GraphData {
-  const nodes: GraphNode[] = [];
-  const index = new Map<string, number>();
-  for (const note of input.notes) {
-    index.set(noteKey(note.id), nodes.length);
-    nodes.push({
+  const nodes = input.notes.map(
+    (note): GraphNode => ({
       key: noteKey(note.id),
       kind: "note",
       id: note.id,
@@ -131,13 +136,13 @@ export function buildGraph(input: GraphInput, options: { projects: boolean; proj
       icon: note.icon,
       tags: note.tags ?? [],
       degree: 0,
-    });
-  }
+    }),
+  );
+  const index = new Map(nodes.map((node, at) => [node.key, at]));
   const byNoteId = new Map<string, string>();
   for (const record of input.records ?? []) if (record.noteId) byNoteId.set(record.noteId, record.projectId);
   const names = new Map(input.projects.map((project) => [project.id, project.name]));
-  const pairs = new Set<string>();
-  const edges: GraphEdge[] = [];
+  const parts: GraphParts = { nodes, edges: [], pairs: new Set() };
   const projectNode = (id: string): number | undefined => {
     const existing = index.get(projectKey(id));
     if (existing !== undefined) return existing;
@@ -151,23 +156,11 @@ export function buildGraph(input: GraphInput, options: { projects: boolean; proj
     const from = index.get(noteKey(record.projectId));
     if (from === undefined) continue;
     for (const link of record.links) {
-      let target: number | undefined;
-      if (link.kind === "note") {
-        const projectId = byNoteId.get(link.id);
-        target = projectId === undefined ? undefined : index.get(noteKey(projectId));
-      } else {
-        target = index.get(noteKey(link.id)) ?? projectNode(link.id);
-      }
-      if (target === undefined || target === from) continue;
-      const pair = from < target ? `${from}:${target}` : `${target}:${from}`;
-      if (pairs.has(pair)) continue;
-      pairs.add(pair);
-      edges.push({ source: from, target });
-      nodes[from].degree += 1;
-      nodes[target].degree += 1;
+      const target = linkTarget(link, index, byNoteId, projectNode);
+      if (target !== undefined && target !== from) addEdge(parts, from, target);
     }
   }
-  return { nodes, edges };
+  return { nodes, edges: parts.edges };
 }
 
 function subgraph(data: GraphData, keep: (index: number) => boolean): GraphData {
@@ -394,379 +387,106 @@ export function edgeArray(edges: readonly GraphEdge[]): Uint32Array {
   return flat;
 }
 
-class QuadTree {
-  private capacity = 0;
-  child = new Int32Array(0);
-  point = new Int32Array(0);
-  internal = new Uint8Array(0);
-  mass = new Float64Array(0);
-  sumX = new Float64Array(0);
-  sumY = new Float64Array(0);
-  size = new Float64Array(0);
-  next: Int32Array;
-  cells = 0;
-  private x0 = 0;
-  private y0 = 0;
-  private width = 1;
-
-  constructor(points: number) {
-    this.next = new Int32Array(points);
-    this.grow(Math.max(16, points * 4));
-  }
-
-  private grow(capacity: number): void {
-    const copy = <T extends Int32Array | Uint8Array | Float64Array>(source: T, make: (length: number) => T, length: number): T => {
-      const target = make(length);
-      target.set(source.subarray(0, Math.min(source.length, length)));
-      return target;
-    };
-    this.child = copy(this.child, (length) => new Int32Array(length), capacity * 4);
-    this.point = copy(this.point, (length) => new Int32Array(length), capacity);
-    this.internal = copy(this.internal, (length) => new Uint8Array(length), capacity);
-    this.mass = copy(this.mass, (length) => new Float64Array(length), capacity);
-    this.sumX = copy(this.sumX, (length) => new Float64Array(length), capacity);
-    this.sumY = copy(this.sumY, (length) => new Float64Array(length), capacity);
-    this.size = copy(this.size, (length) => new Float64Array(length), capacity);
-    this.capacity = capacity;
-  }
-
-  private cell(size: number): number {
-    if (this.cells === this.capacity) this.grow(this.capacity * 2);
-    const cell = this.cells++;
-    this.child.fill(-1, cell * 4, cell * 4 + 4);
-    this.point[cell] = -1;
-    this.internal[cell] = 0;
-    this.mass[cell] = 0;
-    this.sumX[cell] = 0;
-    this.sumY[cell] = 0;
-    this.size[cell] = size;
-    return cell;
-  }
-
-  build(x: Float64Array, y: Float64Array, count: number): void {
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-    for (let index = 0; index < count; index++) {
-      minX = Math.min(minX, x[index]);
-      maxX = Math.max(maxX, x[index]);
-      minY = Math.min(minY, y[index]);
-      maxY = Math.max(maxY, y[index]);
-    }
-    this.width = Math.max(1, maxX - minX, maxY - minY) * 1.0001;
-    this.x0 = minX;
-    this.y0 = minY;
-    this.cells = 0;
-    this.cell(this.width);
-    for (let index = 0; index < count; index++) this.insert(x, y, index);
-  }
-
-  private insert(x: Float64Array, y: Float64Array, index: number): void {
-    const px = x[index];
-    const py = y[index];
-    let cell = 0;
-    let left = this.x0;
-    let top = this.y0;
-    let size = this.width;
-    let depth = 0;
-    for (;;) {
-      this.mass[cell] += 1;
-      this.sumX[cell] += px;
-      this.sumY[cell] += py;
-      if (this.internal[cell] === 0) {
-        const resident = this.point[cell];
-        if (resident < 0) {
-          this.point[cell] = index;
-          this.next[index] = -1;
-          return;
-        }
-        if (depth >= MAX_DEPTH || (x[resident] === px && y[resident] === py)) {
-          this.next[index] = this.next[resident];
-          this.next[resident] = index;
-          return;
-        }
-        this.point[cell] = -1;
-        this.internal[cell] = 1;
-        const half = size / 2;
-        const quadrant = (y[resident] >= top + half ? 2 : 0) + (x[resident] >= left + half ? 1 : 0);
-        const moved = this.cell(half);
-        this.child[cell * 4 + quadrant] = moved;
-        this.point[moved] = resident;
-        this.mass[moved] = this.mass[cell] - 1;
-        this.sumX[moved] = this.sumX[cell] - px;
-        this.sumY[moved] = this.sumY[cell] - py;
-      }
-      const half = size / 2;
-      const right = px >= left + half;
-      const bottom = py >= top + half;
-      if (right) left += half;
-      if (bottom) top += half;
-      size = half;
-      depth += 1;
-      const slot = cell * 4 + (bottom ? 2 : 0) + (right ? 1 : 0);
-      let next = this.child[slot];
-      if (next < 0) {
-        next = this.cell(size);
-        this.child[slot] = next;
-      }
-      cell = next;
-    }
-  }
+interface LayoutNode extends SimulationNodeDatum {
+  x: number;
+  y: number;
 }
 
-function jiggle(seed: number): number {
-  const value = Math.sin(seed * 12.9898) * 43758.5453;
-  return (value - Math.floor(value) - 0.5) * 1e-6;
+interface LayoutLink {
+  source: number;
+  target: number;
 }
 
-export class Simulation {
-  readonly count: number;
-  readonly x: Float64Array;
-  readonly y: Float64Array;
-  readonly vx: Float64Array;
-  readonly vy: Float64Array;
-  readonly fixed: Uint8Array;
-  private readonly fx: Float64Array;
-  private readonly fy: Float64Array;
-  private readonly sources: Uint32Array;
-  private readonly targets: Uint32Array;
-  private readonly bias: Float64Array;
-  private readonly strength: Float64Array;
-  private readonly tree: QuadTree;
-  private readonly options: ForceOptions;
-  private stack: Int32Array;
-  alpha: number;
-  alphaTarget = 0;
+interface Layout {
+  simulation: Simulation<LayoutNode, undefined>;
+  nodes: LayoutNode[];
+}
 
-  constructor(count: number, edges: Uint32Array, initial: Float32Array | null, options: ForceOptions = DEFAULT_FORCES) {
-    this.count = count;
-    this.options = options;
-    this.x = new Float64Array(count);
-    this.y = new Float64Array(count);
-    this.vx = new Float64Array(count);
-    this.vy = new Float64Array(count);
-    this.fixed = new Uint8Array(count);
-    this.fx = new Float64Array(count);
-    this.fy = new Float64Array(count);
-    const links = Math.floor(edges.length / 2);
-    this.sources = new Uint32Array(links);
-    this.targets = new Uint32Array(links);
-    const degree = new Uint32Array(count);
-    let used = 0;
-    for (let link = 0; link < links; link++) {
-      const source = edges[link * 2];
-      const target = edges[link * 2 + 1];
-      if (source >= count || target >= count || source === target) continue;
-      this.sources[used] = source;
-      this.targets[used] = target;
-      degree[source] += 1;
-      degree[target] += 1;
-      used += 1;
-    }
-    this.bias = new Float64Array(used);
-    this.strength = new Float64Array(used);
-    for (let link = 0; link < used; link++) {
-      const source = degree[this.sources[link]];
-      const target = degree[this.targets[link]];
-      this.bias[link] = source / (source + target);
-      this.strength[link] = 1 / Math.min(source, target);
-    }
-    this.sourcesUsed = used;
-    const known = this.place(initial);
-    this.alpha = count === 0 ? 0 : known === count ? 0.25 : known > 0 ? 0.6 : 1;
-    this.tree = new QuadTree(count);
-    this.stack = new Int32Array(16);
+function layoutLinks(count: number, edges: Uint32Array): LayoutLink[] {
+  const links: LayoutLink[] = [];
+  for (let link = 0; link + 1 < edges.length; link += 2) {
+    const source = edges[link];
+    const target = edges[link + 1];
+    if (source < count && target < count && source !== target) links.push({ source, target });
   }
+  return links;
+}
 
-  private readonly sourcesUsed: number;
-
-  private place(initial: Float32Array | null): number {
-    let known = 0;
-    const has = new Uint8Array(this.count);
-    for (let index = 0; index < this.count; index++) {
-      const x = initial?.[index * 2];
-      const y = initial?.[index * 2 + 1];
-      if (x !== undefined && y !== undefined && Number.isFinite(x) && Number.isFinite(y)) {
-        this.x[index] = x;
-        this.y[index] = y;
-        has[index] = 1;
-        known += 1;
-      }
+function placeNodes(count: number, links: readonly LayoutLink[], initial: Float32Array | null): { nodes: LayoutNode[]; known: number } {
+  const nodes: LayoutNode[] = [];
+  let known = 0;
+  for (let index = 0; index < count; index++) {
+    const x = initial?.[index * 2] ?? Number.NaN;
+    const y = initial?.[index * 2 + 1] ?? Number.NaN;
+    const placed = Number.isFinite(x) && Number.isFinite(y);
+    if (placed) known += 1;
+    nodes.push({ x: placed ? x : Number.NaN, y: placed ? y : Number.NaN });
+  }
+  if (known === 0) return { nodes, known };
+  const sums = new Map<number, [number, number, number]>();
+  const add = (to: number, from: number) => {
+    if (Number.isNaN(nodes[to].x) && !Number.isNaN(nodes[from].x)) {
+      const sum = sums.get(to) ?? [0, 0, 0];
+      sums.set(to, [sum[0] + nodes[from].x, sum[1] + nodes[from].y, sum[2] + 1]);
     }
-    const sumX = new Float64Array(this.count);
-    const sumY = new Float64Array(this.count);
-    const seen = new Uint32Array(this.count);
-    for (let link = 0; link < this.sourcesUsed; link++) {
-      const source = this.sources[link];
-      const target = this.targets[link];
-      if (has[source] && !has[target]) {
-        sumX[target] += this.x[source];
-        sumY[target] += this.y[source];
-        seen[target] += 1;
-      }
-      if (has[target] && !has[source]) {
-        sumX[source] += this.x[target];
-        sumY[source] += this.y[target];
-        seen[source] += 1;
-      }
-    }
-    let spiral = 0;
-    for (let index = 0; index < this.count; index++) {
-      if (has[index]) continue;
-      if (seen[index] > 0) {
-        const angle = index * GOLDEN_ANGLE;
-        const radius = this.options.linkDistance * 0.5;
-        this.x[index] = sumX[index] / seen[index] + Math.cos(angle) * radius;
-        this.y[index] = sumY[index] / seen[index] + Math.sin(angle) * radius;
-        continue;
-      }
-      const radius = 10 * Math.sqrt(0.5 + spiral + known);
-      const angle = (spiral + known) * GOLDEN_ANGLE;
-      this.x[index] = radius * Math.cos(angle);
-      this.y[index] = radius * Math.sin(angle);
-      spiral += 1;
-    }
-    return known;
+  };
+  for (const link of links) {
+    add(link.target, link.source);
+    add(link.source, link.target);
   }
-
-  settled(): boolean {
-    return this.alpha < this.options.alphaMin && this.alphaTarget === 0;
+  for (const [index, [sumX, sumY, seen]] of sums) {
+    const angle = index * GOLDEN_ANGLE;
+    nodes[index].x = sumX / seen + Math.cos(angle) * LINK_DISTANCE * 0.5;
+    nodes[index].y = sumY / seen + Math.sin(angle) * LINK_DISTANCE * 0.5;
   }
+  return { nodes, known };
+}
 
-  reheat(alpha: number): void {
-    this.alpha = Math.max(this.alpha, alpha);
-  }
+function startAlpha(count: number, known: number): number {
+  if (count === 0) return 0;
+  if (known === count) return 0.25;
+  return known > 0 ? 0.6 : 1;
+}
 
-  pin(index: number, x: number, y: number): void {
-    if (index < 0 || index >= this.count) return;
-    this.fixed[index] = 1;
-    this.fx[index] = x;
-    this.fy[index] = y;
-    this.x[index] = x;
-    this.y[index] = y;
-    this.vx[index] = 0;
-    this.vy[index] = 0;
-  }
+function createLayout(count: number, edges: Uint32Array, initial: Float32Array | null): Layout {
+  const links = layoutLinks(count, edges);
+  const { nodes, known } = placeNodes(count, links, initial);
+  const simulation = forceSimulation<LayoutNode>(nodes)
+    .stop()
+    .alpha(startAlpha(count, known))
+    .alphaMin(ALPHA_MIN)
+    .alphaDecay(1 - ALPHA_MIN ** (1 / 300))
+    .force("link", forceLink<LayoutNode, SimulationLinkDatum<LayoutNode>>(links).distance(LINK_DISTANCE))
+    .force("charge", forceManyBody<LayoutNode>().strength(-70).theta(0.9).distanceMax(1600))
+    .force("x", forceX<LayoutNode>().strength(0.045))
+    .force("y", forceY<LayoutNode>().strength(0.045));
+  return { simulation, nodes };
+}
 
-  unpin(index: number | null): void {
-    if (index === null) this.fixed.fill(0);
-    else if (index >= 0 && index < this.count) this.fixed[index] = 0;
-  }
+function settledLayout({ simulation }: Layout): boolean {
+  return simulation.alpha() < ALPHA_MIN && simulation.alphaTarget() === 0;
+}
 
-  positions(): Float32Array {
-    const out = new Float32Array(this.count * 2);
-    for (let index = 0; index < this.count; index++) {
-      out[index * 2] = this.x[index];
-      out[index * 2 + 1] = this.y[index];
-    }
-    return out;
-  }
+function layoutPositions({ nodes }: Layout): Float32Array {
+  const out = new Float32Array(nodes.length * 2);
+  nodes.forEach((node, index) => {
+    out[index * 2] = node.x;
+    out[index * 2 + 1] = node.y;
+  });
+  return out;
+}
 
-  tick(): void {
-    const { count, x, y, vx, vy } = this;
-    if (count === 0) return;
-    this.alpha += (this.alphaTarget - this.alpha) * this.options.alphaDecay;
-    const alpha = this.alpha;
-    this.applyLinks(alpha);
-    this.applyCharge(alpha);
-    const gravity = this.options.gravity * alpha;
-    const keep = 1 - this.options.velocityDecay;
-    for (let index = 0; index < count; index++) {
-      if (this.fixed[index]) {
-        x[index] = this.fx[index];
-        y[index] = this.fy[index];
-        vx[index] = 0;
-        vy[index] = 0;
-        continue;
-      }
-      vx[index] = (vx[index] - x[index] * gravity) * keep;
-      vy[index] = (vy[index] - y[index] * gravity) * keep;
-      x[index] += vx[index];
-      y[index] += vy[index];
-    }
-  }
+function pinNode({ nodes }: Layout, index: number, x: number, y: number): void {
+  const node = nodes[index];
+  if (!node) return;
+  Object.assign(node, { fx: x, fy: y, x, y, vx: 0, vy: 0 });
+}
 
-  private applyLinks(alpha: number): void {
-    const { x, y, vx, vy } = this;
-    const distance = this.options.linkDistance;
-    for (let link = 0; link < this.sourcesUsed; link++) {
-      const source = this.sources[link];
-      const target = this.targets[link];
-      let dx = x[target] + vx[target] - x[source] - vx[source];
-      let dy = y[target] + vy[target] - y[source] - vy[source];
-      if (dx === 0) dx = jiggle(link + 1);
-      if (dy === 0) dy = jiggle(link + 2);
-      const length = Math.sqrt(dx * dx + dy * dy);
-      const force = ((length - distance) / length) * alpha * this.strength[link];
-      dx *= force;
-      dy *= force;
-      const bias = this.bias[link];
-      vx[target] -= dx * bias;
-      vy[target] -= dy * bias;
-      vx[source] += dx * (1 - bias);
-      vy[source] += dy * (1 - bias);
-    }
-  }
-
-  private push(depth: number, cell: number): number {
-    if (depth >= this.stack.length) {
-      const grown = new Int32Array(this.stack.length * 2);
-      grown.set(this.stack);
-      this.stack = grown;
-    }
-    this.stack[depth] = cell;
-    return depth + 1;
-  }
-
-  private applyCharge(alpha: number): void {
-    const { count, x, y, vx, vy, tree } = this;
-    tree.build(x, y, count);
-    const strength = this.options.charge * alpha;
-    const theta2 = this.options.theta * this.options.theta;
-    const distanceMax2 = this.options.distanceMax * this.options.distanceMax;
-    for (let index = 0; index < count; index++) {
-      const px = x[index];
-      const py = y[index];
-      let top = this.push(0, 0);
-      while (top > 0) {
-        top -= 1;
-        const cell = this.stack[top];
-        const mass = tree.mass[cell];
-        if (tree.internal[cell]) {
-          const dx = tree.sumX[cell] / mass - px;
-          const dy = tree.sumY[cell] / mass - py;
-          const distance = dx * dx + dy * dy;
-          const width = tree.size[cell];
-          if ((width * width) / theta2 < distance) {
-            if (distance < distanceMax2) {
-              const force = (strength * mass) / Math.max(distance, 1);
-              vx[index] += dx * force;
-              vy[index] += dy * force;
-            }
-            continue;
-          }
-          for (let quadrant = 0; quadrant < 4; quadrant++) {
-            const child = tree.child[cell * 4 + quadrant];
-            if (child >= 0) top = this.push(top, child);
-          }
-          continue;
-        }
-        for (let other = tree.point[cell]; other >= 0; other = tree.next[other]) {
-          if (other === index) continue;
-          let dx = x[other] - px;
-          let dy = y[other] - py;
-          if (dx === 0) dx = jiggle(index * 31 + other);
-          if (dy === 0) dy = jiggle(index * 17 + other);
-          let distance = dx * dx + dy * dy;
-          if (distance >= distanceMax2) continue;
-          if (distance < 1) distance = Math.sqrt(distance);
-          const force = strength / distance;
-          vx[index] += dx * force;
-          vy[index] += dy * force;
-        }
-      }
-    }
+function unpinNodes({ nodes }: Layout, index: number | null): void {
+  for (const node of index === null ? nodes : [nodes[index]]) {
+    if (!node) continue;
+    node.fx = null;
+    node.fy = null;
   }
 }
 
@@ -778,9 +498,8 @@ export function createLayoutEngine(
   post: (update: LayoutUpdate) => void,
   timer: LayoutTimer,
   now: () => number = () => performance.now(),
-  options: ForceOptions = DEFAULT_FORCES,
 ): LayoutEngine {
-  let simulation: Simulation | null = null;
+  let layout: Layout | null = null;
   let generation = 0;
   let animate = true;
   let handle: unknown = null;
@@ -791,21 +510,21 @@ export function createLayoutEngine(
     timer.clear(handle);
     handle = null;
   };
-  const emit = (current: Simulation, settled: boolean) => {
-    post({ type: "positions", generation, positions: current.positions(), settled });
+  const emit = (current: Layout, settled: boolean) => {
+    post({ type: "positions", generation, positions: layoutPositions(current), settled });
   };
   const run = () => {
     handle = null;
-    const current = simulation;
+    const current = layout;
     if (!current) return;
     const started = now();
     let slice = 0;
     do {
-      current.tick();
+      current.simulation.tick();
       ticks += 1;
       slice += 1;
-    } while (!current.settled() && ticks < MAX_TICKS && (!animate || (slice < SLICE_TICKS && now() - started < SLICE_MS)));
-    const settled = current.settled() || ticks >= MAX_TICKS;
+    } while (!settledLayout(current) && ticks < MAX_TICKS && (!animate || (slice < SLICE_TICKS && now() - started < SLICE_MS)));
+    const settled = settledLayout(current) || ticks >= MAX_TICKS;
     emit(current, settled);
     if (!settled) handle = timer.set(run);
   };
@@ -817,7 +536,7 @@ export function createLayoutEngine(
     handle(request) {
       if (request.type === "stop") {
         cancel();
-        simulation = null;
+        layout = null;
         return;
       }
       if (request.type === "start") {
@@ -825,34 +544,34 @@ export function createLayoutEngine(
         generation = request.generation;
         animate = request.animate;
         ticks = 0;
-        simulation = new Simulation(request.count, request.edges, request.positions, options);
-        emit(simulation, simulation.count === 0);
-        if (simulation.count > 0) schedule();
+        layout = createLayout(request.count, request.edges, request.positions);
+        emit(layout, request.count === 0);
+        if (request.count > 0) schedule();
         return;
       }
-      const current = simulation;
+      const current = layout;
       if (!current || request.generation !== generation) return;
       if (request.type === "pin") {
-        current.pin(request.index, request.x, request.y);
+        pinNode(current, request.index, request.x, request.y);
         if (!animate) {
           emit(current, true);
           return;
         }
         ticks = 0;
-        current.reheat(0.05);
+        current.simulation.alpha(Math.max(current.simulation.alpha(), 0.05));
         schedule();
         return;
       }
       if (request.type === "unpin") {
-        current.unpin(request.index);
+        unpinNodes(current, request.index);
         if (!animate) return;
         ticks = 0;
-        current.reheat(DRAG_ALPHA);
+        current.simulation.alpha(Math.max(current.simulation.alpha(), DRAG_ALPHA));
         schedule();
         return;
       }
       if (!animate) return;
-      current.alphaTarget = request.active ? DRAG_ALPHA : 0;
+      current.simulation.alphaTarget(request.active ? DRAG_ALPHA : 0);
       ticks = 0;
       schedule();
     },

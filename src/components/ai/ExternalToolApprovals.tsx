@@ -16,7 +16,7 @@ export function ExternalToolApprovals() {
     <div
       data-testid="mcp-approval-panel"
       className={cn(
-        "ai-tool-approval-chrome fixed bottom-4 right-4 z-50 w-[420px] max-w-[calc(100vw-2rem)] rounded-xl p-0.5 shadow-2xl shadow-[#9B72CB]/25",
+        "ai-tool-approval-chrome fixed bottom-4 right-4 z-[70] w-[420px] max-w-[calc(100vw-2rem)] rounded-xl p-0.5 shadow-2xl shadow-[#9B72CB]/25",
       )}
     >
       <div

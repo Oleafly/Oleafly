@@ -38,6 +38,8 @@ check "a notes spec with a line filter needs it too" yes "$(notes e2e/tests/123-
 check "an ordinary spec does not need Notes" no "$(notes e2e/tests/21-library.spec.ts)"
 check "a peer spec does not need Notes" no "$(notes e2e/tests/109-live-collaboration-peer.spec.ts)"
 check "a notes helper file is not a spec" no "$(notes e2e/tests/123-notes-artifact-runtime.ts)"
+check "the Notes flag spec starts with Notes off" no "$(notes e2e/tests/126-notes-flag.spec.ts)"
+check "the Notes flag spec with a line filter starts with Notes off too" no "$(notes e2e/tests/126-notes-flag.spec.ts:12)"
 
 check "ordinary specs turn live collaboration and Notes off so neither leaks between specs" \
   '{"oleafly.dictionary.locale":"en_US","oleafly.spellcheck":"1","oleafly.harper":"1","oleafly.liveCollaboration":"0","oleafly.notes":"0","oleafly.preview.detached.*":null}' \

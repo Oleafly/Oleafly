@@ -4,7 +4,7 @@ import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { formatCount } from "./chart-block";
-import { blockMessage, type NoteBlockKind, type PaintContext } from "./note-blocks";
+import { blockMessage, element, type NoteBlockKind, type PaintContext } from "./note-blocks";
 
 export type SequenceKind = "dna" | "rna" | "protein";
 
@@ -30,7 +30,7 @@ const STILL_RECORD_LIMIT = 240;
 const STILL_TOTAL_LIMIT = 480;
 const STILL_RECORD_COUNT = 3;
 
-export const SEQUENCE_TEMPLATE = ">example coding sequence\nATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG";
+export const SAMPLE_RESIDUES = "ATGGCCATTGTAATGGGCCGCTGAAAGGGTGCCCGATAG";
 
 const BAD_CHARACTER = /[^A-Za-z*.\-\s\d]/u;
 const IGNORED = /[\s\d]+/gu;
@@ -64,15 +64,16 @@ const EXPANSION: ReadonlyMap<string, string> = new Map([
 const PAIRS = ["AT", "CG", "RY", "SS", "WW", "KM", "BV", "DH", "NN"];
 
 function complementTable(adenine: string): ReadonlyMap<string, string> {
-  const table = new Map<string, string>();
+  const upper = new Map<string, string>();
   for (const [first, second] of PAIRS) {
-    table.set(first, second);
-    table.set(second, first);
+    upper.set(first, second);
+    upper.set(second, first);
   }
-  table.set("A", adenine);
-  table.set(adenine, "A");
-  table.set("U", "A");
-  for (const [key, value] of [...table]) table.set(key.toLowerCase(), value.toLowerCase());
+  upper.set("A", adenine);
+  upper.set(adenine, "A");
+  upper.set("U", "A");
+  const table = new Map(upper);
+  for (const [key, value] of upper) table.set(key.toLowerCase(), value.toLowerCase());
   return table;
 }
 
@@ -107,23 +108,32 @@ function isGap(residue: string): boolean {
   return residue === "-" || residue === ".";
 }
 
-export function detectKind(residues: string): SequenceKind {
-  let letters = 0;
-  let core = 0;
-  let thymine = false;
-  let uracil = false;
+interface BaseCounts {
+  letters: number;
+  core: number;
+  thymine: boolean;
+  uracil: boolean;
+}
+
+function nucleicBaseCounts(residues: string): BaseCounts | null {
+  const counts: BaseCounts = { letters: 0, core: 0, thymine: false, uracil: false };
   for (const residue of residues.toUpperCase()) {
     if (isGap(residue)) continue;
-    if (residue === "*") return "protein";
-    letters += 1;
-    if (residue === "T") thymine = true;
-    if (residue === "U") uracil = true;
-    if (CORE_BASES.has(residue)) core += 1;
-    else if (!AMBIGUOUS_BASES.has(residue)) return "protein";
+    if (residue === "*") return null;
+    counts.letters += 1;
+    if (residue === "T") counts.thymine = true;
+    if (residue === "U") counts.uracil = true;
+    if (CORE_BASES.has(residue)) counts.core += 1;
+    else if (!AMBIGUOUS_BASES.has(residue)) return null;
   }
-  if (thymine && uracil) return "protein";
-  if (letters > 0 && core / letters < 0.9) return "protein";
-  return uracil ? "rna" : "dna";
+  return counts;
+}
+
+export function detectKind(residues: string): SequenceKind {
+  const counts = nucleicBaseCounts(residues);
+  if (!counts || (counts.thymine && counts.uracil)) return "protein";
+  if (counts.letters > 0 && counts.core / counts.letters < 0.9) return "protein";
+  return counts.uracil ? "rna" : "dna";
 }
 
 export function parseSequences(source: string): SequenceParse {
@@ -149,7 +159,7 @@ export function parseSequences(source: string): SequenceParse {
         column: bad.index + 1,
       };
     }
-    const residues = line.replace(IGNORED, "");
+    const residues = line.replaceAll(IGNORED, "");
     if (!residues) continue;
     if (!current) {
       current = { header: "", chunks: [] };
@@ -202,7 +212,7 @@ function codonAmino(codon: string): string {
 }
 
 export function translate(residues: string): string {
-  const bases = residues.replace(/[-.]/gu, "").toUpperCase();
+  const bases = residues.replaceAll(/[-.]/gu, "").toUpperCase();
   const protein: string[] = [];
   for (let index = 0; index + 3 <= bases.length; index += 3) protein.push(codonAmino(bases.slice(index, index + 3)));
   return protein.join("");
@@ -236,13 +246,6 @@ export function residueTone(kind: SequenceKind, residue: string): string {
   const upper = residue.toUpperCase();
   const tones = kind === "protein" ? PROTEIN_TONES : NUCLEOTIDE_TONES;
   return tones.get(upper) ?? OTHER_TONE;
-}
-
-function element(tag: string, className: string, text?: string): HTMLElement {
-  const node = document.createElement(tag);
-  node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
 }
 
 function appendRuns(target: HTMLElement, text: string, kind: SequenceKind): void {
@@ -378,7 +381,7 @@ function toggle(label: string, pressed: boolean, onChange: (pressed: boolean) =>
       "note-seq-toggle text-muted-foreground aria-pressed:bg-accent aria-pressed:text-accent-foreground",
     ),
     label,
-  ) as HTMLButtonElement;
+  );
   button.type = "button";
   button.setAttribute("aria-pressed", String(pressed));
   button.addEventListener("click", () => {
@@ -422,7 +425,7 @@ export function paintSequence(preview: HTMLElement, source: string, context?: Pa
   const fresh: ViewState = { reverse: false, translate: false };
   const state = still ? fresh : (viewStates.get(preview) ?? fresh);
   if (!still) viewStates.set(preview, state);
-  const root = element("div", "note-seq w-full min-w-0 space-y-3 text-left");
+  const root = element("div", "note-seq w-full min-w-0 select-text space-y-3 text-left");
   const body = element("div", "note-seq-records space-y-4");
   const render = () => body.replaceChildren(...recordViews(records, state, still));
   const nucleotide = records.some((record) => record.kind !== "protein" && record.residues.length > 0);
@@ -454,5 +457,5 @@ export const sequenceBlock: NoteBlockKind = {
   icon: Dna,
   interactive: true,
   paint: paintSequence,
-  template: () => ({ info: "sequence", source: SEQUENCE_TEMPLATE }),
+  template: () => ({ info: "sequence", source: `>${i18n.t(($) => $.notes.blocks.sequence.template)}\n${SAMPLE_RESIDUES}` }),
 };

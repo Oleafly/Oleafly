@@ -524,6 +524,12 @@ describe("latestRunContext", () => {
     ).toBe(["Task: Plot the loss", "Finished: 2026-01-02T00:00:00.000Z", "Agent: claude"].join("\n"));
   });
 
+  it("keeps the first of two runs that finished at the same time", () => {
+    const at = Date.UTC(2026, 10, 3);
+    const context = latestRunContext([task({ title: "First", finishedAt: at }), task({ title: "Second", finishedAt: at })]);
+    expect(context?.startsWith("Task: First\n")).toBe(true);
+  });
+
   it("cuts a long summary", () => {
     const context = latestRunContext([task({ summary: "s".repeat(7000) })]);
     expect(context?.endsWith(`\n${"s".repeat(6000)}`)).toBe(true);

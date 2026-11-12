@@ -988,13 +988,14 @@
         "environment": "{{environment}} 环境",
         "command": "\\{{command}} 命令",
         "latexSource": "LaTeX 源码",
+        "html": "HTML",
         "maketitlePreview": "根据文档标题和作者元数据生成。",
         "figurePreserved": "图片源码已原样保留。",
         "tablePreserved": "表格源码已原样保留。",
         "sourcePreserved": "已原样保留源码",
         "editSource": "编辑源码",
-        "summaryLabel": "{{label}}。LaTeX 源码已原样保留。",
-        "inputLabel": "LaTeX 块的原始源码"
+        "summaryLabel": "{{label}}。源码已原样保留。",
+        "inputLabel": "块的原始源码"
       },
       "inline": {
         "label": "原始行内源码",

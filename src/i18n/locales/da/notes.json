@@ -17,9 +17,37 @@
     "resize": "Tilpas størrelsen på panelerne",
     "closePanel": "Luk panelet",
     "newTab": "Ny fane",
-    "emptyPanel": "Dette panel er tomt.",
+    "empty": {
+      "greetings": {
+        "begin": "Hvor skal vi begynde?",
+        "ready": "Klar, når du er.",
+        "mind": "Hvad tænker du på i dag?",
+        "resume": "Vil du fortsætte, hvor du slap?",
+        "working": "Hvad arbejder du på?",
+        "first": "Hvad vil du gerne skrive først?",
+        "blank": "Start med en tom side eller en skabelon."
+      },
+      "hints": {
+        "daily": "En plan og en log for i dag",
+        "experimentLog": "Kørsler og hvad de viste",
+        "paperReading": "Hvad én artikel påstår",
+        "literatureMatrix": "Sammenlign artikler side om side",
+        "meeting": "Dagsorden og beslutninger",
+        "labProtocol": "Trin, som andre kan følge",
+        "weeklyLog": "Hvad der blev nået i denne uge",
+        "proposal": "Mål, metoder og en tidsplan"
+      },
+      "moreTemplates": "Flere skabeloner",
+      "continue": "Fortsæt",
+      "searchAll": "Søg i alle noter"
+    },
     "closeMissing": "Luk fanen",
-    "notesHome": "Gå til startsiden for Noter"
+    "notesHome": "Gå til startsiden for Noter",
+    "breadcrumb": "Brødkrummesti",
+    "breadcrumbHome": "Startside for Noter",
+    "brand": "Oleafly Notes",
+    "back": "Tilbage",
+    "forward": "Frem"
   },
   "saveStatus": {
     "saved": "Gemt",
@@ -52,15 +80,18 @@
       "data": "Ingen datafiler matcher disse filtre.",
       "notebook": "Ingen notebooks matcher disse filtre."
     },
-    "noNotes": "Ingen noter endnu. Start en med Ny note.",
+    "start": {
+      "title": "Ingen noter endnu"
+    },
     "ungrouped": "Noter",
     "agentFallback": "Agent",
     "settings": "Indstillinger",
     "filters": {
-      "title": "Filtre",
+      "title": "Tags",
       "active_one": "{{count}} filter aktivt",
       "active_other": "{{count}} filtre aktive",
-      "clear": "Ryd filtre"
+      "clear": "Ryd filtre",
+      "writtenBy": "Skrevet af"
     },
     "menu": {
       "more": "Mere",
@@ -81,18 +112,31 @@
       "templateOn": "»{{name}}« er nu en af dine skabeloner.",
       "templateOff": "»{{name}}« er ikke længere en skabelon.",
       "linkProject": "Knyt til projekt",
-      "compareConflict": "Sammenlign konfliktkopi"
+      "compareConflict": "Sammenlign konfliktkopi",
+      "copyLink": "Kopier link",
+      "linkCopied": "Linket til »{{name}}« er kopieret.",
+      "copyLinkFailed": "Kunne ikke kopiere linket til »{{name}}«.",
+      "duplicate": "Dupliker",
+      "copyTitle": "Kopi af {{name}}",
+      "duplicateFailed": "Kunne ikke duplikere »{{name}}«.",
+      "export": "Eksporter",
+      "exportAs": {
+        "markdown": "Mappe med Markdown (.md)",
+        "docx": "Word-dokument (.docx)",
+        "html": "Webside (.html)",
+        "latex": "LaTeX (.tex)",
+        "typst": "Typst (.typ)"
+      },
+      "exportFailed": "Kunne ikke eksportere »{{name}}«.",
+      "copyMarkdown": "Kopiér som Markdown",
+      "markdownCopied": "»{{name}}« er kopieret som Markdown.",
+      "copyMarkdownFailed": "Kunne ikke kopiere »{{name}}« som Markdown."
     },
     "conflicts": {
-      "title": "To versioner af »{{name}}«",
-      "description": "Denne note blev ændret både her og på en anden computer, før ændringerne blev synkroniseret, så Oleafly beholdt begge versioner. Behold én version. Den anden flyttes til papirkurven.",
-      "diffLabel": "Forskelle mellem de to versioner",
-      "loading": "Læser begge versioner…",
-      "readFailed": "Kunne ikke læse konfliktkopien.",
-      "resolveFailed": "Kunne ikke beholde den version.",
-      "keepMine": "Behold denne computers version",
-      "useCopy": "Brug den anden computers version",
       "badge": "Denne note har en konfliktkopi"
+    },
+    "suggestions": {
+      "badge": "Der venter ændringsforslag i denne note"
     }
   },
   "home": {
@@ -101,7 +145,9 @@
     "tabs": {
       "label": "Noter, der vises",
       "mine": "Mine noter",
-      "favorites": "Favoritter"
+      "favorites": "Favoritter",
+      "tasks": "Opgaver",
+      "attachments": "Vedhæftede filer"
     },
     "sortBy": "Sortér efter",
     "sort": {
@@ -111,8 +157,7 @@
       "title": "Titel"
     },
     "layout": "Visning af noter",
-    "empty": "Ingen noter endnu. Start en, og bed agenten om at hjælpe dig med at skrive den.",
-    "noFavorites": "Ingen favoritter endnu. Giv en note en stjerne for at have den her.",
+    "noFavorites": "Ingen favoritter endnu. Føj en note til favoritter for at have den her.",
     "noMatches": "Ingen noter matcher »{{query}}«.",
     "author": "Forfatter"
   },
@@ -125,8 +170,9 @@
     "loadFailed": "Noten kunne ikke åbnes. Dens projekt er måske flyttet eller slettet.",
     "retryLoad": "Prøv igen",
     "closeTab": "Luk fanen",
-    "imageFailed": "Kunne ikke gemme billedet i noten.",
-    "onlyImages": "Du kan kun føje billeder i formaterne PNG, JPEG og SVG til en note.",
+    "fileFailed": "Kunne ikke føje filen til noten: {{error}}",
+    "fileTooLarge": "{{name}} er større end 64 MB og blev derfor ikke tilføjet.",
+    "unsupportedFile": "En note kan kun indeholde billeder, lyd, video, PDF'er, tabeller (CSV, TSV eller Excel), molekylfiler og notebooks fra Jupyter.",
     "remoteImages": {
       "more": "Flere måder at indlæse billeder på",
       "loadAll": "Indlæs alle billeder i denne note",
@@ -149,6 +195,10 @@
       "figure": "Tilføj en figur",
       "abstract": "Opsummer til abstractet"
     },
+    "wholeNote": {
+      "proofread": "Korrekturlæs noten",
+      "rewrite": "Omskriv noten"
+    },
     "collapse": "Skjul prompten",
     "expand": "Vis prompten"
   },
@@ -157,6 +207,22 @@
     "acceptAll": "Accepter alle",
     "position": "Ændring {{current}} af {{total}}",
     "undo": "Fortryd"
+  },
+  "versions": {
+    "title": "Versionshistorik",
+    "summary": "Oleafly gemmer en version, hver gang du accepterer alle foreslåede ændringer, og før en ældre version gendannes. Du kan også selv gemme en.",
+    "empty": "Ingen versioner endnu. Gem en version for at bevare noten, som den er nu.",
+    "save": "Gem en version",
+    "saved": "Versionen er gemt.",
+    "unchanged": "Der er ikke ændret noget siden den seneste version.",
+    "saveFailed": "Kunne ikke gemme en version af denne note.",
+    "restore": "Gendan denne version",
+    "restored": "Versionen er gendannet. Teksten, den erstattede, er også gemt som en version.",
+    "restoreFailed": "Kunne ikke gendanne denne version.",
+    "comparing": "Sammenligner med noten",
+    "readFailed": "Kunne ikke læse denne version.",
+    "changes": "Hvad gendannelsen af denne version ændrer",
+    "textOnly": "Gendannelsen ændrer kun notens tekst. Vedhæftede filer forbliver, som de er."
   },
   "toolbar": {
     "label": "Formatering",
@@ -172,9 +238,6 @@
     "displayMath": "Ligning på egen linje",
     "citation": "Citation",
     "noCitations": "Ingen referencer i dette projekt endnu",
-    "tableSize": "Tabel på {{cols}} gange {{rows}}",
-    "addRow": "Tilføj række",
-    "addColumn": "Tilføj kolonne",
     "chart": "Diagram",
     "mermaid": "Mermaid-diagram",
     "outline": "Disposition",
@@ -188,7 +251,12 @@
       "wide": "Bred",
       "full": "Fuld bredde"
     },
-    "notebook": "Indsæt notebook"
+    "attach": "Vedhæft fil",
+    "attachFilter": "Billeder, lyd, video, PDF'er, tabeller, molekyler og notebooks",
+    "codeLanguage": "Sprog",
+    "plainCode": "Almindelig tekst",
+    "imageSize": "Billedstørrelse",
+    "originalSize": "Original størrelse"
   },
   "blocks": {
     "chart": "Diagram",
@@ -197,9 +265,28 @@
     "diagramError": "Diagrammet indeholder en fejl. Åbn kilden for at rette den.",
     "chartError": "Diagrammets data er ikke gyldige. Åbn kilden for at rette dem.",
     "noPreview": "Der er endnu ingen forhåndsvisning af denne blok. Åbn kilden for at redigere den.",
+    "syntax": {
+      "help": "Sådan skriver du blokken »{{block}}«",
+      "chart": "JSON med en type, kategorier og serier:\n{\"type\": \"bar\", \"categories\": [\"A\", \"B\"], \"series\": [{\"name\": \"Run 1\", \"values\": [1, 2]}]}\nAndre typer: line, area, scatter, pie, donut, histogram.",
+      "plot": "Én kurve eller indstilling pr. linje:\ny = x^2 - 1 eller x = cos(t), y = sin(t)\ndomain: -5, 5 og point: 1, 0, Nulpunkt",
+      "csv": "Rækker med værdier, og den første række er overskriften:\nRun, Ratio\nEller læs en fil med path: assets/results.csv",
+      "latex": "LaTeX på egen linje, for eksempel en ligning eller et align-miljø:\n\\begin{align} a &= b + c \\end{align}\nKemi med \\ce{H2O} og enheder med \\pu{5 mg}.",
+      "typst": "Et uddrag i Typst, tegnet som et billede:\n$ E = m c^2 $\nPakker fra internettet er ikke tilgængelige.",
+      "mermaid": "Et diagram i Mermaid, for eksempel:\nflowchart LR\nA --> B",
+      "d2": "Et diagram i D2, for eksempel:\nclient -> server: request\nserver.shape: cylinder",
+      "tikz": "Kommandoer i TikZ eller et helt tikzpicture-miljø:\n{{example}}\nLinjer, der står over tegningen, f.eks. \\usetikzlibrary{positioning}, skal i præamblen.",
+      "circuitikz": "Kommandoer i CircuiTikZ eller et helt circuitikz-miljø:\n{{example}}\nLinjer, der står over kredsløbet, f.eks. \\ctikzset{resistors/scale=0.8}, skal i præamblen.",
+      "svg": "Ét svg-element, for eksempel:\n<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" /></svg>\nScripts, links og eksterne billeder fjernes.",
+      "html": "En hel HTML-side eller et fragment med CSS og scripts.\nDen har ikke adgang til internettet, så læg dine data i blokken.\nScripts starter, når du klikker på Kør.",
+      "jsx": "Én React-komponentfil med en default export:\nexport default function App() { return <p>Hello</p> }\nDen kan importere react, recharts, d3, lodash, papaparse, chart.js og lucide-react.",
+      "smiles": "Én SMILES pr. linje, med et valgfrit navn:\nAspirin: CC(=O)OC1=CC=CC=C1C(=O)O\nOp til 24 pr. blok.",
+      "molecule": "Først indstillingslinjer, for eksempel format: pdb og style: cartoon.\nDerefter filens tekst eller path: assets/1abc.pdb",
+      "sequence": "FASTA-poster eller en rå sekvens:\n>sample 1\nATGGCCATTGTAATG",
+      "notebook": "Notebookens sti på første linje:\nassets/analysis.ipynb\nDerefter valgfrie linjer som cells: 2-5 og code: hide.",
+      "bookmark": "Ét felt pr. linje, først webadressen:\nurl: https://example.com/article\nDerefter valgfrie linjer med title:, description:, image:, site: og favicon:."
+    },
     "newChart": {
       "title": "Nyt diagram",
-      "description": "Bed agenten om at udfylde det, eller rediger kilden.",
       "series": "Værdier"
     },
     "newHtml": {
@@ -236,6 +323,7 @@
     },
     "sequence": {
       "label": "Sekvens",
+      "template": "Eksempel på kodende sekvens",
       "empty": "Indsæt en FASTA-post eller en rå sekvens.",
       "character": "Linje {{line}}, kolonne {{column}}: »{{character}}« er ikke en rest.",
       "untitled": "Sekvens uden titel",
@@ -375,7 +463,8 @@
     "artifact": {
       "run": "Kør",
       "stop": "Stop",
-      "alwaysRun": "Kør altid blokke i denne note",
+      "alwaysRun": "Kør altid denne blok",
+      "paused": "Sat på pause, fordi en blok i denne note frøs eller lukkede appen sidste gang.",
       "desktopOnly": "Kørsel kræver skrivebordsappen",
       "loading": "Indlæser…",
       "loadFailed": "Blokken kunne ikke indlæses.",
@@ -383,7 +472,7 @@
       "stopped": "Blokken svarer ikke længere.",
       "reload": "Genindlæs",
       "failed": "Blokken kunne ikke starte: {{error}}",
-      "offline": "Blokke kan ikke indlæse filer fra internettet, så disse blev udeladt:",
+      "offline": "Disse filer fra internettet blev udeladt:",
       "more_one": "og {{count}} mere",
       "more_other": "og {{count}} mere",
       "frameTitle": "Output fra {{label}}",
@@ -394,7 +483,6 @@
       "noComponent": "Komponenten har ingen standardeksport."
     },
     "code": {
-      "copy": "Kopier",
       "copied": "Kopieret",
       "copyFailed": "Kopiering mislykkedes",
       "copyLabel": "Kopier koden"
@@ -404,6 +492,22 @@
       "empty": "Denne SVG-blok er tom.",
       "invalid": "Denne SVG er ikke gyldig. Åbn kilden for at rette den.",
       "tooLarge": "Denne SVG er for stor til at blive vist."
+    },
+    "d2": {
+      "alt": "Diagram i D2",
+      "empty": "Denne D2-blok er tom.",
+      "loading": "Tegner…",
+      "error": "D2 kunne ikke tegne diagrammet: {{error}}",
+      "line": "Linje {{line}}: {{message}}"
+    },
+    "tikz": {
+      "alt": "Tegning i TikZ",
+      "circuitAlt": "Kredsløbsdiagram",
+      "empty": "Blokken {{block}} er tom.",
+      "desktopOnly": "Forhåndsvisning af {{block}} kræver skrivebordsappen.",
+      "sharedNotice": "Noten er delt. LaTeX kører på denne computer og kan læse dine filer, så tjek kilden, før du tegner den.",
+      "draw": "Tegn",
+      "error": "LaTeX kunne ikke kompilere blokken: {{error}}"
     },
     "typst": {
       "alt": "Typst-output",
@@ -433,7 +537,33 @@
       "code": "Kode",
       "math": "Matematik",
       "divider": "Skillelinje",
+      "footnote": "Fodnote",
       "basic": "Grundlæggende"
+    },
+    "media": {
+      "play": "Afspil {{name}}",
+      "pdfPage": "{{name}}, side {{page}}",
+      "openPdf": "Åbn PDF",
+      "openFailed": "Kunne ikke åbne filen: {{error}}",
+      "missing": "Filen blev ikke fundet: {{path}}",
+      "unreadable": "{{name}} kunne ikke læses.",
+      "cantPlay": "{{name}} kan ikke afspilles her. Computeren har måske ikke et codec til formatet.",
+      "embed": "Afspil videoen fra {{site}}",
+      "embedTitle": "Video fra {{site}}",
+      "embedFailed": "Afspilleren startede ikke. Prøv igen, eller åbn videoen på {{site}}.",
+      "watch": "Se",
+      "watchOn": "Se på {{site}}",
+      "pasteChoice": "Sådan vises dette videolink",
+      "embedChoice": "Indlejr video",
+      "linkChoice": "Behold som link"
+    },
+    "bookmark": {
+      "label": "Bogmærke",
+      "pasteChoice": "Sådan vises dette link",
+      "cardChoice": "Bogmærkekort",
+      "ask": "Opret et bogmærke til en webside",
+      "loading": "Indlæser forhåndsvisning af siden",
+      "noUrl": "Tilføj en linje med url: og en webadresse, der starter med https:// eller http://."
     }
   },
   "notebook": {
@@ -455,10 +585,7 @@
     "showAllCells_one": "Vis {{count}} celle",
     "showAllCells_other": "Vis alle {{count}} celler",
     "outputImage": "Output fra celle {{number}}",
-    "outputFrame": "HTML-output fra celle {{number}}",
-    "pickTitle": "Indsæt en notebook",
-    "filter": "Jupyter-notebooks",
-    "importFailed": "Kunne ikke tilføje notebooken: {{error}}"
+    "outputFrame": "HTML-output fra celle {{number}}"
   },
   "icons": {
     "choose": "Vælg ikon",
@@ -612,7 +739,7 @@
     "inserting": "Kopierer",
     "insertFailed": "Kunne ikke kopiere filen til noten: {{error}}",
     "newProject": "Nyt projekt",
-    "htmlPreview": "Interaktive figurer kan endnu ikke køre i Oleafly.",
+    "htmlPreview": "Hvis du vil køre denne figur, skal du indsætte koden i en HTML-blok i en note og klikke på Kør.",
     "kind": {
       "figure": "Figur",
       "html": "Interaktiv figur",
@@ -626,7 +753,14 @@
   "sendToPaper": {
     "title": "Send til en artikel",
     "description": "Oleafly konverterer dette én gang og indsætter det ved markøren. Kopien i artiklen forbliver ikke knyttet til noten.",
-    "send": "Send"
+    "send": "Send",
+    "leftOut": "Blokken »{{block}}« findes kun i noten."
+  },
+  "citations": {
+    "references": "Referencer",
+    "fromReference": "Fra en reference",
+    "unknown": "Findes ikke i det tilknyttede projekts bibliografi: {{keys}}",
+    "openNote": "Åbn noten om denne artikel: {{title}}"
   },
   "links": {
     "menu": "Link til en note eller et projekt",
@@ -636,13 +770,54 @@
     "missingNote": "Noten findes ikke længere",
     "missingNoteCreate": "Noten findes ikke længere. Klik for at oprette en ny note med dette navn.",
     "missingProject": "Projektet findes ikke længere",
-    "linkedFrom": "Linket fra"
+    "linkedFrom": "Linket fra",
+    "showAll": "Vis alle {{total}}"
+  },
+  "linksSearch": {
+    "blocks": {
+      "loading": "Indlæser blokke",
+      "none": "Ingen blokke matcher",
+      "missingBlock": "Den blok findes ikke i noten",
+      "assignFailed": "Kunne ikke tilføje et blok-id til noten.",
+      "handle": "Blokindstillinger",
+      "copyLink": "Kopiér link til blok",
+      "linkCopied": "Et link til blokken er kopieret.",
+      "copyFailed": "Kunne ikke kopiere et link til blokken.",
+      "noId": "Blokken har endnu ikke et id, og du kan ikke redigere noten.",
+      "linkedFrom": "Linket fra",
+      "links_one": "{{count}} note linker hertil",
+      "links_other": "{{count}} noter linker hertil",
+      "openLinked": "Åbn {{title}}",
+      "toBlock": "Gå til blokken: {{text}}"
+    },
+    "tagBlocks": {
+      "more_one": "Vis {{count}} blok mere",
+      "more_other": "Vis {{count}} blokke mere"
+    },
+    "dead": {
+      "menu": "Døde links",
+      "title": "Døde links",
+      "summary_one": "{{count}} link peger på en note eller blok, der ikke længere findes.",
+      "summary_other": "{{count}} links peger på noter eller blokke, der ikke længere findes.",
+      "none": "Ingen døde links. Alle links peger på en note eller blok, der stadig findes.",
+      "loading": "Tjekker links",
+      "failed": "Kunne ikke læse linkene i dine noter.",
+      "missingNotes": "Manglende noter",
+      "missingBlocks": "Manglende blokke",
+      "noteMeta": "Linje {{line}}: noten findes ikke længere",
+      "blockMeta": "Linje {{line}}: {{block}} er ikke længere i {{title}}",
+      "create": "Opret note",
+      "relink": "Link til {{title}} i stedet",
+      "remove": "Fjern link",
+      "fixFailed": "Kunne ikke ændre linket."
+    }
   },
   "projectNotes": {
     "searchLabel": "Søg i projektets noter",
     "searchPlaceholder": "Søg i noter",
     "clearSearch": "Ryd søgningen",
     "noMatches": "Ingen noter matcher din søgning",
+    "loading": "Læser projektets noter",
     "edited": "Redigeret {{when}}",
     "createFailed": "Kunne ikke oprette noten.",
     "projectGroup": "Projektnoter",
@@ -689,7 +864,33 @@
     "callouts": {
       "type": "Infoboksens type: {{type}}",
       "fold": "Fold infoboksen sammen",
-      "unfold": "Fold infoboksen ud"
+      "unfold": "Fold infoboksen ud",
+      "types": {
+        "note": "Note",
+        "abstract": "Resumé",
+        "info": "Info",
+        "todo": "Skal gøres",
+        "tip": "Tip",
+        "success": "Succes",
+        "question": "Spørgsmål",
+        "warning": "Advarsel",
+        "failure": "Fejl",
+        "danger": "Fare",
+        "bug": "Bug",
+        "example": "Eksempel",
+        "quote": "Citat",
+        "theorem": "Sætning",
+        "lemma": "Lemma",
+        "corollary": "Korollar",
+        "proposition": "Proposition",
+        "definition": "Definition",
+        "proof": "Bevis",
+        "hypothesis": "Hypotese",
+        "assumption": "Antagelse",
+        "result": "Resultat",
+        "method": "Metode",
+        "remark": "Bemærkning"
+      }
     },
     "links": {
       "loadingHeadings": "Indlæser overskrifter",
@@ -752,6 +953,209 @@
       }
     }
   },
+  "fields": {
+    "today": "I dag",
+    "tomorrow": "I morgen",
+    "yesterday": "I går",
+    "chip": "{{key}}: {{value}}",
+    "empty": "ingen værdi",
+    "edit": "Rediger eller fjern",
+    "keys": {
+      "due": "Forfald",
+      "scheduled": "Planlagt",
+      "priority": "Prioritet",
+      "start": "Starter",
+      "created": "Oprettet",
+      "completed": "Udført",
+      "date": "Dato",
+      "cancelled": "Annulleret"
+    },
+    "priorities": {
+      "highest": "Højeste",
+      "high": "Høj",
+      "medium": "Middel",
+      "low": "Lav",
+      "lowest": "Laveste"
+    },
+    "editor": {
+      "label": "Rediger {{key}}",
+      "key": "Navn",
+      "value": "Værdi",
+      "brackets": "Brug kun firkantede parenteser til et link, f.eks. [[Note]].",
+      "save": "Gem",
+      "remove": "Fjern"
+    }
+  },
+  "at": {
+    "menu": "Indsæt en dato, et felt, et tag eller en note",
+    "groups": {
+      "dates": "Datoer",
+      "due": "Forfaldsdato",
+      "fields": "Opgavefelter",
+      "tags": "Tags",
+      "notes": "Noter"
+    },
+    "today": "I dag",
+    "tomorrow": "I morgen",
+    "yesterday": "I går",
+    "next": "Næste {{weekday}}",
+    "pick": "Vælg en dato",
+    "pickerLabel": "Vælg en dato",
+    "due": "Forfaldsdato",
+    "scheduled": "Planlagt dato",
+    "priority": "Prioritet",
+    "priorityValue": "{{priority}} prioritet",
+    "custom": "Brugerdefineret felt",
+    "addField": "Tilføj feltet »{{key}}«",
+    "setField": "Sæt {{key}} til »{{value}}«",
+    "typeValue": "Skriv en værdi for {{key}}, og tryk på Enter."
+  },
+  "tasks": {
+    "filters": "Opgavefiltre",
+    "loading": "Læser dine opgaver",
+    "failed": "Kunne ikke læse dine opgaver.",
+    "empty": "Ingen opgaver endnu. Start en linje med - [ ] i en hvilken som helst note, så vises den her.",
+    "noMatches": "Ingen opgaver matcher disse filtre.",
+    "clear": "Ryd filtre",
+    "list": "Opgaver",
+    "count_one": "{{count}} opgave",
+    "count_other": "{{count}} opgaver",
+    "complete": "Markér »{{text}}« som udført",
+    "reopen": "Markér »{{text}}« som ikke udført",
+    "openNote": "Åbn {{title}}",
+    "toggleFailed": "Kunne ikke opdatere opgaven.",
+    "moved": "Opgaven er ændret i sin note. Åbn noten for at opdatere den.",
+    "state": {
+      "label": "Vis",
+      "open": "Åbne",
+      "done": "Udførte",
+      "all": "Åbne og udførte"
+    },
+    "due": {
+      "label": "Forfald",
+      "any": "Alle forfaldsdatoer",
+      "overdue": "Overskredet",
+      "today": "Forfalder i dag",
+      "week": "Forfalder inden for de næste 7 dage",
+      "none": "Ingen forfaldsdato"
+    },
+    "priority": {
+      "label": "Prioritet",
+      "any": "Alle prioriteter",
+      "high": "Høj prioritet",
+      "medium": "Middel prioritet",
+      "low": "Lav prioritet",
+      "none": "Ingen prioritet"
+    },
+    "tag": {
+      "label": "Tag",
+      "any": "Alle tags"
+    },
+    "project": {
+      "label": "Projekt",
+      "any": "Alle projekter"
+    },
+    "sort": {
+      "label": "Sortér opgaver efter",
+      "due": "Forfaldsdato",
+      "priority": "Prioritet"
+    }
+  },
+  "attachments": {
+    "filters": "Filtre for vedhæftede filer",
+    "loading": "Finder vedhæftede filer",
+    "failed": "Kunne ikke læse dine vedhæftede filer.",
+    "empty": "Ingen vedhæftede filer endnu. Træk et billede eller en fil ind i en note, så vises den her.",
+    "noMatches": "Ingen vedhæftede filer matcher disse filtre.",
+    "clear": "Ryd filtre",
+    "list": "Vedhæftede filer",
+    "count_one": "{{count}} fil",
+    "count_other": "{{count}} filer",
+    "openNote": "Åbn {{title}}",
+    "copyLink": "Kopiér link",
+    "linkCopied": "Et link til »{{name}}« er kopieret.",
+    "copyFailed": "Kunne ikke kopiere linket til »{{name}}«.",
+    "unused": "Ikke i brug",
+    "type": {
+      "label": "Type",
+      "all": "Alle typer",
+      "image": "Billeder",
+      "audio": "Lyd",
+      "video": "Video",
+      "pdf": "PDF'er",
+      "other": "Andet"
+    },
+    "use": {
+      "label": "Brug",
+      "all": "Alle filer",
+      "unused": "Ikke i brug"
+    }
+  },
+  "info": {
+    "title": "Info",
+    "show": "Info om noten",
+    "noNote": "Åbn en note for at se info om den.",
+    "details": "Detaljer om noten",
+    "created": "Oprettet",
+    "updated": "Opdateret",
+    "words": "Ord",
+    "characters": "Tegn",
+    "lines": "Linjer",
+    "readingTime": "Læsetid",
+    "underMinute": "under et minut",
+    "noProperties": "Ingen egenskaber",
+    "noBacklinks": "Ingen noter linker hertil",
+    "noMentions": "Ingen andre noter nævner den",
+    "noReferences": "Ingen citationer i denne note",
+    "noDeadLinks": "Ingen døde links",
+    "noAttachments": "Ingen vedhæftede filer"
+  },
+  "calendar": {
+    "title": "Kalender",
+    "week": "Uge",
+    "hasNote": "har en dagsnote",
+    "due_one": "{{count}} opgave forfalder",
+    "due_other": "{{count}} opgaver forfalder",
+    "openWeek": "Åbn ugenoten for uge {{week}}",
+    "openMonthNote": "Åbn månedsnote",
+    "createMonthNote": "Opret månedsnote",
+    "today": "I dag",
+    "failed": {
+      "weekly": "Kunne ikke åbne ugenoten.",
+      "monthly": "Kunne ikke åbne månedsnoten."
+    }
+  },
+  "periodic": {
+    "title": "Dags-, uge- og månedsnoter",
+    "daily": {
+      "label": "Dagsnoter",
+      "description": "Dagens note og dagene i kalenderen i sidepanelet."
+    },
+    "weekly": {
+      "label": "Ugenoter",
+      "description": "Ugenumrene i kalenderen i sidepanelet."
+    },
+    "monthly": {
+      "label": "Månedsnoter",
+      "description": "Månedens navn øverst i kalenderen i sidepanelet."
+    },
+    "weekStart": {
+      "label": "Ugen begynder om",
+      "description": "Den første kolonne i kalenderen i sidepanelet. Ugenumre tælles fra denne dag, og med mandag er de ISO-ugenumre.",
+      "locale": "Standard for området ({{day}})",
+      "monday": "Mandag",
+      "sunday": "Søndag",
+      "saturday": "Lørdag"
+    },
+    "format": "Titelformat",
+    "preview": "Eksempel: {{title}}",
+    "invalidFormat": "Tilføj en datodel, f.eks. YYYY eller WW.",
+    "template": "Skabelon",
+    "savedTemplate": "Din gemte skabelon",
+    "tag": "Tag",
+    "noTag": "Intet tag",
+    "formatHelp": "Titelformater bruger YYYY for året, MM for måneden, MMMM for månedens navn, DD for dagen, dddd for ugedagen, WW for ugenummeret og GGGG for det år, ugen hører til. Tekst i firkantede parenteser, f.eks. [W], bliver stående, som den er. Noter, du allerede har, beholder deres titler, så skift et format, før du begynder at bruge det."
+  },
   "live": {
     "share": "Del",
     "shared": "Delt",
@@ -793,7 +1197,9 @@
     "outline": {
       "title": "Disposition",
       "empty": "Noten har ingen overskrifter",
+      "emptyDetail": "Begynd en linje med # for at tilføje en overskrift.",
       "noNote": "Åbn en note for at se dens disposition",
+      "noNoteDetail": "Dispositionen følger den note, du redigerer.",
       "levels": "Overskriftsniveauer",
       "allLevels": "Alle niveauer",
       "upTo": "Op til H{{level}}",
@@ -801,7 +1207,8 @@
       "expand": "Fold {{title}} ud"
     },
     "linksFailed": "Kunne ikke læse links mellem noterne.",
-    "tagsFailed": "Kunne ikke læse tags."
+    "tagsFailed": "Kunne ikke læse tags.",
+    "loading": "Læser linkene mellem noter"
   },
   "vault": {
     "import": {
@@ -821,6 +1228,9 @@
       "seenDescription_one": "Den {{date}} tilføjede den {{count}} note. En ny import tilføjer nye kopier og lader de tidligere noter være, som de er.",
       "seenDescription_other": "Den {{date}} tilføjede den {{count}} noter. En ny import tilføjer nye kopier og lader de tidligere noter være, som de er.",
       "again": "Importer igen som nye noter",
+      "largeTitle": "Denne mappe indeholder {{total}} noter",
+      "largeDescription": "Det kan tage et stykke tid at importere dem alle, og hver enkelt bliver en egen note i dit bibliotek. Du kan stoppe importen når som helst.",
+      "largeConfirm": "Importer alle",
       "doneTitle": "Importen er færdig",
       "notes_one": "{{count}} note importeret",
       "notes_other": "{{count}} noter importeret",
@@ -849,6 +1259,8 @@
         "done_other": "{{count}} noter eksporteret",
         "skipped_one": "{{count}} vedhæftet fil kunne ikke eksporteres",
         "skipped_other": "{{count}} vedhæftede filer kunne ikke eksporteres",
+        "paperLinks_one": "{{count}} link til en artikel blev til almindelig tekst",
+        "paperLinks_other": "{{count}} links til artikler blev til almindelig tekst",
         "doneSkipped": "{{done}}. {{skipped}}.",
         "showFolder": "Vis mappen",
         "failed": "Kunne ikke eksportere noterne."
@@ -876,8 +1288,10 @@
       "empty": "Ingen tags endnu. Tilføj #tags til en note eller tags i dens egenskaber.",
       "filter": "Vis noter med tagget {{tag}}",
       "clear": "Stop filtrering efter {{tag}}",
-      "expand": "Vis tags under {{tag}}",
-      "collapse": "Skjul tags under {{tag}}"
+      "search": "Filtrer tags",
+      "noMatch": "Ingen tags matcher »{{query}}«.",
+      "showAll": "Vis alle {{total}}",
+      "showFewer": "Vis færre"
     },
     "switcher": {
       "open": "Gå til note",
@@ -895,7 +1309,9 @@
     },
     "daily": {
       "open": "Dagens note",
-      "failed": "Kunne ikke åbne dagens note."
+      "failed": "Kunne ikke åbne dagens note.",
+      "previous": "Forrige dagsnote: {{date}}",
+      "next": "Næste dagsnote: {{date}}"
     },
     "templates": {
       "open": "Ny fra skabelon",
@@ -919,7 +1335,9 @@
         "proposal": "Forskningsforslag",
         "proof": "Bevis eller udledning",
         "dataAnalysis": "Rapport over dataanalyse",
-        "interview": "Interviewnoter"
+        "interview": "Interviewnoter",
+        "screeningLog": "Screeninglog",
+        "labNotebook": "Opslag i laboratoriejournalen"
       },
       "descriptions": {
         "daily": "En plan og en løbende log for én dag",
@@ -932,7 +1350,9 @@
         "proposal": "Mål, metoder og en tidsplan for en bevillingsansøgning eller en afhandling",
         "proof": "Et resultat, idéen bag det og hele argumentet",
         "dataAnalysis": "Hvad du kørte på hvilke data, og hvad det viste",
-        "interview": "Svar, citater og temaer fra én samtale"
+        "interview": "Svar, citater og temaer fra én samtale",
+        "screeningLog": "Gennemgangens spørgsmål, kriterierne og antallet i hvert screeningstrin",
+        "labNotebook": "En dag ved laboratoriebordet: formål, prøver, fremgangsmåde, observationer og underskrift"
       },
       "bodies": {
         "daily": "**{{weekday}}**\n\n## Plan\n- [ ] Vigtigste opgave\n- [ ] Anden opgave\n\n## Log\n- {{time}} Startede dagen\n\n## Noter\n\n## Nået i dag\n- Intet endnu\n\n## I morgen\n- [ ] Det første, der skal tages fat på",
@@ -943,9 +1363,11 @@
         "labProtocol": "> [!warning] Sikkerhed\n> Tjek farer, værnemidler og affaldshåndtering, før du starter.\n\n## Formål\nHvad protokollen giver, og hvornår den skal bruges.\n\n## Materialer\n| Materiale | Mængde | Leverandør eller katalognummer | Noter |\n| --- | --- | --- | --- |\n| | | | |\n\n## Udstyr\n- Instrument og indstillinger\n\n## Fremgangsmåde\n1. Forbered\n2. Udfør\n3. Ryd op\n\n## Kontrol\n- [ ] Kontroller forberedt\n- [ ] Indstillinger noteret\n- [ ] Prøver mærket med dato og kørsel\n\n## Fejlfinding\n| Problem | Sandsynlig årsag | Løsning |\n| --- | --- | --- |\n| | | |\n\n## Versionshistorik\n| Version | Dato | Ændring |\n| --- | --- | --- |\n| 1 | {{date}} | Første version |",
         "weeklyLog": "## Mål for denne uge\n- [ ] Første mål\n- [ ] Andet mål\n- [ ] Tredje mål\n\n## Fremskridt\n| Dag | Udført arbejde | Noter |\n| --- | --- | --- |\n| Mandag | | |\n| Tirsdag | | |\n| Onsdag | | |\n| Torsdag | | |\n| Fredag | | |\n\n## Resultater og figurer\n- Hvad ugen gav\n\n## Forhindringer\n> [!warning] Har brug for hjælp\n> Hvad der sidder fast, og hvem der kan løse det.\n\n## Læsning\n- Artikler læst i denne uge\n\n## Næste uge\n- [ ] Første mål for næste uge",
         "proposal": "> [!abstract] Resumé\n> I tre sætninger: problemet, tilgangen og det forventede resultat.\n\n## Baggrund og motivation\nHvorfor det er vigtigt nu, og hvad man allerede ved.\n\n## Forskningsspørgsmål\n1. Første spørgsmål\n\n## Mål\n| Mål | Tilgang | Forventet resultat |\n| --- | --- | --- |\n| 1 | | |\n\n## Metoder\nDesign, data, analyse og hvordan succes måles.\n\n## Tidsplan\n| Fase | Måneder | Milepæl |\n| --- | --- | --- |\n| | | |\n\n## Risici og afhjælpning\n| Risiko | Sandsynlighed | Afhjælpning |\n| --- | --- | --- |\n| | | |\n\n## Ressourcer og budget\n\n## Betydning\nHvem der får gavn af det, og hvordan resultaterne bliver delt.\n\n## Referencer",
-        "proof": "> [!note] Udsagn\n> Resultatet, præcist formuleret med alle forudsætninger.\n\n## Definitioner og notation\n- Symboler og hvad de betyder\n\n## Idé\nHovedidéen med almindelige ord, før detaljerne.\n\n## Bevis\n**Trin 1.** Opstil argumentet.\n\n**Trin 2.** Gennemfør hovedvurderingen.\n\n**Trin 3.** Konkluder.\n\n## Kontrol\n- [ ] Alle forudsætninger bliver brugt\n- [ ] Grænsetilfælde er dækket\n- [ ] Konstanter og grænser er fulgt\n\n## Bemærkninger\nGeneraliseringer, modeksempler og beslægtede resultater.",
-        "dataAnalysis": "> [!info] Spørgsmål\n> Den beslutning, analysen understøtter.\n\n## Data\n| Felt | Værdi |\n| --- | --- |\n| Kilde | |\n| Version eller dato | |\n| Rækker og kolonner | |\n| Udeladelser | |\n\n## Metoder\n- Trin i datarensningen\n- Model eller test, og hvorfor\n- Kontrollerede antagelser\n\n## Resultater\n| Mål | Estimat | Interval | Noter |\n| --- | --- | --- | --- |\n| | | | |\n\n## Figurer\n- Figur og hvad den viser\n\n## Fortolkning\nHvad resultaterne betyder for spørgsmålet.\n\n## Begrænsninger\n- Skævheder, manglende data og hvad der kunne ændre konklusionen\n\n## Reproducerbarhed\n- [ ] Kode gemt og linket\n- [ ] Tilfældige seeds noteret\n- [ ] Pakkeversioner noteret",
-        "interview": "> [!warning] Samtykke og privatliv\n> Indhent samtykke før optagelse, og brug en deltagerkode i stedet for et navn.\n\n## Kontekst\n| Punkt | Værdi |\n| --- | --- |\n| Deltagerkode | |\n| Rolle | |\n| Varighed | |\n| Optagelse | |\n\n## Spørgsmål og svar\n### Spørgsmål 1\n- Svar\n\n### Spørgsmål 2\n- Svar\n\n## Citater\n> Et citat, der er værd at gemme.\n\n## Temaer\n- Tema og svar, der understøtter det\n\n## Opfølgning\n- [ ] Send en tak\n- [ ] Transskriber og anonymiser"
+        "proof": "## Definitioner og notation\n> [!definition] Notation\n> De symboler, du bruger, og hvad hvert af dem betyder.\n\n## Udsagn\n> [!theorem] Hovedresultat\n> Resultatet, præcist formuleret med alle forudsætninger.\n\n## Idé\nHovedidéen med almindelige ord, før detaljerne.\n\n## Lemmaer\n> [!lemma] Lemma 1\n> Et mindre udsagn, som hovedbeviset har brug for.\n\n> [!proof] Bevis for Lemma 1\n> Hvorfor lemmaet gælder.\n\n## Bevis\n> [!proof] Bevis for hovedresultatet\n> **Trin 1.** Opstil argumentet.\n>\n> **Trin 2.** Gennemfør hovedvurderingen ved hjælp af Lemma 1.\n>\n> **Trin 3.** Konkluder.\n\n## Kontrol\n- [ ] Alle forudsætninger bliver brugt\n- [ ] Grænsetilfælde er dækket\n- [ ] Konstanter og grænser er fulgt\n\n## Bemærkninger\nGeneraliseringer, modeksempler og beslægtede resultater.",
+        "dataAnalysis": "> [!info] Spørgsmål\n> Den beslutning, analysen understøtter.\n\n## Data\n| Felt | Værdi |\n| --- | --- |\n| Kilde | |\n| Version eller dato | |\n| Rækker og kolonner | |\n| Udeladelser | |\n\n## Metoder\n- Trin i datarensningen\n- Model eller test, og hvorfor\n- Kontrollerede antagelser\n\n## Resultater\nTabellen nedenfor er en blok i formatet CSV. Erstat eksempelrækkerne med dine resultater.\n\n```csv\nMål,Estimat,Nedre grænse 95 %,Øvre grænse 95 %,n\nGennemsnit for gruppe A,0,0,0,0\nGennemsnit for gruppe B,0,0,0,0\nForskel,0,0,0,0\n```\n\n## Figurer\n- Figur og hvad den viser\n\n## Fortolkning\nHvad resultaterne betyder for spørgsmålet.\n\n## Begrænsninger\n- Skævheder, manglende data og hvad der kunne ændre konklusionen\n\n## Reproducerbarhed\n- [ ] Kode gemt og linket\n- [ ] Tilfældige seeds noteret\n- [ ] Pakkeversioner noteret",
+        "interview": "> [!warning] Samtykke og privatliv\n> Indhent samtykke før optagelse, og brug en deltagerkode i stedet for et navn.\n\n## Kontekst\n| Punkt | Værdi |\n| --- | --- |\n| Deltagerkode | |\n| Rolle | |\n| Varighed | |\n| Optagelse | |\n\n## Spørgsmål og svar\n### Spørgsmål 1\n- Svar\n\n### Spørgsmål 2\n- Svar\n\n## Citater\n> Et citat, der er værd at gemme.\n\n## Temaer\n- Tema og svar, der understøtter det\n\n## Opfølgning\n- [ ] Send en tak\n- [ ] Transskriber og anonymiser",
+        "screeningLog": "> [!question] Spørgsmål til gennemgangen (PICO)\n> - **Population:** hvem eller hvad der undersøges\n> - **Intervention eller eksponering:** hvad der testes\n> - **Sammenligning:** hvad der sammenlignes med\n> - **Udfald:** hvad der måles\n\n## Inklusionskriterier\n- Studiedesign\n- Population og setting\n- Sprog og år\n\n## Eksklusionskriterier\n- Årsag og hvordan den opdages\n\n## Søgninger\n| Dato | Database | Søgning | Resultater |\n| --- | --- | --- | --- |\n| {{date}} | | | |\n\n## Antal i hvert trin\n| Trin | Resultater | Fjernet | Vigtigste årsager |\n| --- | --- | --- | --- |\n| Fundet i søgninger | | | |\n| Efter fjernelse af dubletter | | | |\n| Titler og resuméer screenet | | | |\n| Fuldtekster vurderet | | | |\n| Inkluderet i gennemgangen | | | |\n\n## Ekskluderet på fuldtekstniveau\n| Artikel | Årsag |\n| --- | --- |\n| | |\n\n## Uenigheder\n- Artikel, hver bedømmers afgørelse og hvordan den blev afgjort\n\n## Næste skridt\n- [ ] Screen den næste portion\n- [ ] Tjek, at tallene stemmer",
+        "labNotebook": "**{{weekday}}, {{date}}**\n\n## Formål\nHvad du ville opnå i dag, og hvorfor.\n\n## Materialer\n| Materiale | Prøve-id | Lot eller batch | Mængde |\n| --- | --- | --- | --- |\n| | | | |\n\n## Fremgangsmåde\n1. Hvad du gjorde, i rækkefølge, med tidspunkter og indstillinger\n2. Enhver afvigelse fra protokollen, og hvorfor\n\n## Observationer\n- {{time}} Hvad du så\n\n## Resultater\n- Målinger, og hvor rådata er gemt\n\n## Næste skridt\n- [ ] Opfølgning til næste gang\n\n## Underskrift\n**Underskrevet af:** navn, {{date}}\n\n**Overværet af:** navn, dato"
       }
     },
     "mentions": {
@@ -984,8 +1406,8 @@
     "actionHint": "Arbejder på denne note",
     "agentCanEdit": "Denne agent kan ændre filer i det tilknyttede projekt.",
     "allowWritesLabel": "Lad agenten ændre filer",
-    "allowWritesAsk": "{{agent}} har ingen skrivebeskyttet tilstand, så den kan ændre filer i {{project}}. Vil du sende din besked alligevel?",
-    "allowWrites": "Tillad i denne chat",
+    "allowWritesAsk": "{{agent}} har ingen skrivebeskyttet tilstand, så den kan ændre filer i {{project}}. Oleafly kan ikke tilføje en til den. Vil du sende din besked alligevel?",
+    "allowWrites": "Send alligevel",
     "dontSend": "Send ikke",
     "viewOnly": "Du kan kun se denne note, så assistenten kan ikke ændre den."
   },
@@ -1002,6 +1424,7 @@
     "template": "Kunne ikke ændre skabelonindstillingen for »{{name}}«."
   },
   "noteTab": {
+    "loading": "Åbner noten",
     "projectNote": "Projektnote",
     "sharedProject": "Alle i projektet kan se og redigere den",
     "localProject": "Gemt sammen med projektets filer",
@@ -1013,5 +1436,248 @@
     "copyToMine": "Kopier til mine noter",
     "missing": "Noten er ikke længere tilgængelig. Den er måske flyttet eller slettet.",
     "writeRefused": "Kunne ikke gemme noten. Projektet er skrivebeskyttet lige nu."
+  },
+  "appearance": {
+    "notes": {
+      "sectionName": "Udseende for noter",
+      "resetAriaLabel": "Nulstil {{setting}} til standard",
+      "text": {
+        "title": "Tekst"
+      },
+      "typeface": {
+        "label": "Skriftstil",
+        "description": "Vælg en skriftstil til tekst i noter.",
+        "options": {
+          "sans": "Uden seriffer",
+          "serif": "Med seriffer",
+          "mono": "Monospace"
+        }
+      },
+      "font": {
+        "label": "Skrifttype i noter",
+        "description": "Vælg en hvilken som helst installeret skrifttype til tekst i noter. Lad feltet være tomt for at bruge indstillingen Skriftstil."
+      },
+      "fontSize": {
+        "label": "Tekststørrelse i noter",
+        "description": "Indstil størrelsen på tekst i noter.",
+        "custom": "Brugerdefineret",
+        "customLabel": "Brugerdefineret tekststørrelse i noter i pixel"
+      },
+      "lineHeight": {
+        "label": "Linjehøjde i noter",
+        "description": "Indstil afstanden mellem linjerne i tekst i noter.",
+        "customLabel": "Brugerdefineret linjehøjde i noter"
+      },
+      "paragraphSpacing": {
+        "label": "Afstand mellem afsnit",
+        "description": "Indstil afstanden mellem afsnit, lister og andre blokke.",
+        "options": {
+          "compact": "Kompakt",
+          "normal": "Normal",
+          "relaxed": "Luftig",
+          "spacious": "Rummelig"
+        }
+      },
+      "headings": {
+        "title": "Overskrifter og titel"
+      },
+      "headingTypeface": {
+        "label": "Skriftstil til overskrifter",
+        "description": "Vælg en skriftstil til overskrifter og notens titel.",
+        "options": {
+          "text": "Samme som teksten"
+        }
+      },
+      "headingFont": {
+        "label": "Skrifttype til overskrifter",
+        "description": "Vælg en installeret skrifttype til overskrifter og notens titel. Lad feltet være tomt for at bruge indstillingen Skriftstil til overskrifter."
+      },
+      "headingSize": {
+        "label": "Størrelse på overskrifter",
+        "description": "Indstil, hvor store overskrifter er i forhold til teksten.",
+        "options": {
+          "small": "Mindre",
+          "normal": "Normal",
+          "large": "Større"
+        }
+      },
+      "titleSize": {
+        "label": "Størrelse på titel",
+        "description": "Indstil størrelsen på titlen øverst i hver note."
+      },
+      "layout": {
+        "title": "Layout"
+      },
+      "width": {
+        "label": "Notebredde",
+        "description": "Hvor brede noter er, når de åbnes. Breddemenuen i en note ændrer også dette.",
+        "options": {
+          "standard": "Standard",
+          "wide": "Bred",
+          "full": "Fuld bredde"
+        }
+      },
+      "info": {
+        "label": "Info om noten",
+        "description": "Hvor en notes egenskaber og links vises. Med Sidepanel vises de i panelet Info sammen med notens optællinger og vedhæftede filer. Med I noten bliver de på siden.",
+        "options": {
+          "side": "Sidepanel",
+          "inline": "I noten"
+        }
+      },
+      "taskBox": {
+        "label": "Afkrydsningsfelter til opgaver",
+        "description": "Formen på felterne i tjeklister.",
+        "options": {
+          "square": "Firkantet",
+          "round": "Rund"
+        }
+      },
+      "wordCount": {
+        "label": "Vis antal ord",
+        "description": "Vis antallet af ord i en note på dens værktøjslinje."
+      },
+      "spellcheck": {
+        "label": "Stavekontrol i noter",
+        "description": "Understreg forkert stavede ord, mens du skriver en note."
+      },
+      "replacements": {
+        "label": "Erstat, mens du skriver",
+        "description": "Skifter par som -> ud med →, mens du skriver. Kode og matematik bliver, som du skrev dem, og Backspace lige efter et skift giver dig din tekst tilbage.",
+        "list": "Teksterstatninger",
+        "type": "Du skriver",
+        "becomes": "Bliver til",
+        "add": "Tilføj",
+        "remove": "Fjern {{from}}",
+        "removeTooltip": "Fjern",
+        "empty": "Ingen par endnu. Tilføj et nedenfor.",
+        "full": "Du kan have op til {{limit}} par. Fjern et for at tilføje et andet."
+      },
+      "keepUndo": {
+        "label": "Behold fortryd efter lukning",
+        "description": "Fortryd virker stadig i en note, efter du har lukket den eller afsluttet appen. Historikken bliver på denne computer, og hvis du slår dette fra, slettes den."
+      },
+      "code": {
+        "title": "Kode"
+      },
+      "drawings": {
+        "title": "Tegninger i LaTeX"
+      },
+      "tikzPreamble": {
+        "label": "Præambel til TikZ",
+        "description": "Linjer som \\usetikzlibrary{positioning}, der tilføjes først i præamblen til hver blok med TikZ og CircuiTikZ."
+      },
+      "codeFont": {
+        "label": "Skrifttype til kode",
+        "description": "Vælg en installeret skrifttype til kodeblokke og kode i linjen."
+      },
+      "codeTheme": {
+        "label": "Farver i kodeblokke",
+        "description": "Vælg syntaksfarverne til kodeblokke i noter.",
+        "options": {
+          "editor": "Samme som editoren"
+        }
+      },
+      "colors": {
+        "title": "Farver"
+      },
+      "accent": {
+        "label": "Accentfarve i noter",
+        "description": "Bruges til links, tags og afkrydsningsfelter til opgaver i noter.",
+        "matchApp": "Samme som appen",
+        "customAriaLabel": "Vælg en brugerdefineret accentfarve til noter"
+      },
+      "callouts": {
+        "label": "Stil for infobokse",
+        "description": "Hvordan infobokse ser ud i noter.",
+        "options": {
+          "tinted": "Tonet",
+          "filled": "Udfyldt",
+          "outlined": "Med kant",
+          "bar": "Sidebjælke"
+        }
+      },
+      "fieldStyle": {
+        "label": "Mærker for datoer og felter",
+        "description": "Hvordan datoer og felter som forfald eller prioritet ser ud i noter.",
+        "options": {
+          "tint": "Tonet",
+          "outline": "Med kant",
+          "underline": "Understregning"
+        }
+      },
+      "remoteImages": {
+        "title": "Billeder fra nettet",
+        "description": "Noter og assistentens svar indlæser billeder fra disse websteder uden at spørge.",
+        "empty": "Noter og assistentens svar spørger, før de indlæser et billede fra nettet. Websteder, du altid tillader, vises her.",
+        "remove": "Fjern {{host}}"
+      }
+    }
+  },
+  "notesPreview": {
+    "label": "Forhåndsvisning af en note med disse indstillinger",
+    "title": "Feltnoter",
+    "heading": "Morgenregistrering",
+    "paragraph": "Let regn indtil klokken ni, derefter klar himmel over den nordlige højderyg. Jorden var stadig fugtig ved middagstid.",
+    "links": "Se <note>Prøvetagningsmetode</note> for alle trinene, eller gennemse <tag>#feltarbejde</tag>.",
+    "highlight": "Kimplanterne blev dobbelt så høje på én uge.",
+    "calloutTitle": "Næste besøg",
+    "calloutBody": "Tjek jordsensorerne, før du tager nye prøver.",
+    "taskDone": "Mærk prøverne",
+    "task": "Upload billederne",
+    "taskLate": "Send jordrapporten"
+  },
+  "highlight": {
+    "colors": {
+      "yellow": "Gul",
+      "orange": "Orange",
+      "red": "Rød",
+      "pink": "Lyserød",
+      "purple": "Lilla",
+      "blue": "Blå",
+      "green": "Grøn"
+    },
+    "remove": "Fjern fremhævning"
+  },
+  "quickCapture": {
+    "title": "Hurtig notering",
+    "untitled": "Uden titel",
+    "placeholder": "Begynd at skrive…",
+    "field": "Tekst, der skal noteres",
+    "characters_one": "{{count}} tegn",
+    "characters_other": "{{count}} tegn",
+    "failed": "Kunne ikke gemme. Din tekst er her stadig, så du kan prøve igen.",
+    "actions": {
+      "label": "Handlinger",
+      "saveNew": "Gem som ny note",
+      "saveToday": "Føj til dagens note",
+      "copy": "Kopiér som Markdown",
+      "discard": "Kassér udkast"
+    },
+    "openNotes": "Åbn noter",
+    "newNote": "Ny note",
+    "format": "Vis formatering",
+    "closeFormat": "Skjul formatering"
+  },
+  "starter": {
+    "blocksGallery": {
+      "title": "Blokgalleri",
+      "intro": "Alle de blokke, en note kan indeholde. Klik på {{source}} på en blok for at se og redigere det, der tegner den, og skriv {{slash}} på en tom linje for at indsætte en ny.",
+      "charts": "Datadiagrammer",
+      "functionPlots": "Funktionsplot",
+      "tables": "Tabeller",
+      "csvTable": "En csv-blok kan sorteres og filtreres og har en opsummeringsrække:",
+      "markdownTable": "Almindelige Markdown-tabeller virker også:",
+      "math": "Matematik og kemi",
+      "typst": "Typst",
+      "diagrams": "Diagrammer",
+      "svg": "SVG",
+      "html": "HTML, klik på {{run}}",
+      "react": "React, klik på {{run}}",
+      "structures": "Kemiske strukturer",
+      "molecule": "3D-molekyle",
+      "sequences": "Sekvenser",
+      "code": "Kode"
+    }
   }
 }

@@ -172,9 +172,12 @@ The two audit commands require registry/network access. CI records their
 current results on every code change. An offline local run cannot certify that
 the dependency graph is advisory-free.
 
-CI also runs `pnpm test:coverage`, which fails if frontend coverage drops below
-the thresholds in `vitest.config.ts` (98% of lines, 92% of branches, 96% of
-functions and statements). New code needs tests that keep it there. SonarCloud
+CI fails if frontend coverage drops below the thresholds in `vitest.config.ts`
+(98% of lines, 92% of branches, 96% of functions and statements). New code
+needs tests that keep it there. Locally, `pnpm test:coverage` runs the whole
+suite and checks them in one go. CI splits the suite into three shards to save
+time, then merges their reports with `pnpm test:coverage:merge` and checks the
+thresholds on the merged result. SonarCloud
 counts the same files: `src/` and `packages/`, without tests, `tests/` folders,
 the `src/main.tsx` bootstrap and the e2e-only probes.
 

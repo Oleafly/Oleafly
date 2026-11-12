@@ -1,5 +1,6 @@
 import { memo, Suspense, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { lazy } from "@/lib/preloadable";
+import { researchTasksEnabled } from "@/store/research-tasks-flag";
 import { Trans, useTranslation } from "react-i18next";
 import {
   AlertCircle,
@@ -70,9 +71,9 @@ import { PendingApprovals } from "./PendingApprovals";
 import { PlanReview } from "./PlanReview";
 
 const TaskProgressTab = lazy(() =>
-  import("./progress/TaskProgressTab").then((module) => ({ default: module.TaskProgressTab })), { warm: true });
+  import("./progress/TaskProgressTab").then((module) => ({ default: module.TaskProgressTab })), { warm: researchTasksEnabled });
 const EvidenceChecklist = lazy(() =>
-  import("./evidence/EvidenceChecklist").then((module) => ({ default: module.EvidenceChecklist })), { warm: true });
+  import("./evidence/EvidenceChecklist").then((module) => ({ default: module.EvidenceChecklist })), { warm: researchTasksEnabled });
 
 function stopReasonText(reason: StopReason): string {
   switch (reason) {

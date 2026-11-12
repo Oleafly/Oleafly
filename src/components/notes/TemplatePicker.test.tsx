@@ -4,31 +4,49 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
 import { useToastStore } from "@/store/toast";
 import { noteColorFor } from "./note-file";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { TemplatePicker } from "./TemplatePicker";
 import type { NoteItem } from "./types";
+import { fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
+
+const zotero = vi.hoisted(() => ({
+  hit: {
+    library: "user",
+    itemKey: "ABCD",
+    citationKey: "doe2020",
+    keySource: "bbt",
+    title: "Sparse <i>masks</i>",
+    authors: ["Doe, Jane"],
+    authorCount: 1,
+    year: "2020",
+    doi: "10.2/sparse",
+    itemType: "journalArticle",
+    dateModified: "",
+    score: 1,
+  },
+}));
+vi.mock("@/components/zotero/fresh-hits", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/zotero/fresh-hits")>()),
+  useFreshZoteroHits: (query: string) => ({ hits: query.includes("sparse") ? [zotero.hit] : [], pending: false }),
+}));
 
 const copy = enNotes.vault.templates;
+const HE = { key: "he2022", label: "He 2022, Masked Autoencoders", fields: { author: "He, Kaiming", year: "2022", title: "Masked Autoencoders" } };
 
 function note(id: string, title: string, properties?: Record<string, unknown>): NoteItem {
   return { id, title, project: "Notes", updatedAt: 0, author: "you", summary: "", properties };
 }
 
 function data(overrides: Partial<NotesData> = {}): NotesData {
-  return {
+  return fakeNotesData({
     notes: [note("t2", "Zeta template", { template: true }), note("t1", "Alpha template", { template: true }), note("plain", "Plain")],
-    artifacts: [],
-    experiments: [],
-    citations: [],
-    papers: [],
     loadNote: vi.fn(async () => ({ text: "---\ntitle: Alpha\ntemplate: true\nstatus: open\n---\nHello {{title}}", version: "v" })),
-    saveNote: vi.fn(),
     createNoteFrom: vi.fn(async () => "created"),
     ...overrides,
-  };
+  });
 }
 
 function renderPicker(value = data()) {
@@ -46,7 +64,6 @@ function names(): string[] {
 }
 
 beforeAll(async () => {
-  await loadNamespace("notes");
   Element.prototype.scrollIntoView = vi.fn();
 });
 
@@ -166,5 +183,32 @@ describe("TemplatePicker", () => {
       </NotesDataProvider>,
     );
     expect(screen.getByPlaceholderText(copy.placeholder)).toHaveValue("");
+  });
+
+  it("makes a paper reading note from a reference in the bibliography or Zotero, with its citation key", async () => {
+    const user = userEvent.setup();
+    const view = renderPicker(data({ citations: [HE] }));
+    await user.type(screen.getByPlaceholderText(copy.placeholder), "masked");
+    expect(screen.getByText(enNotes.citations.fromReference)).toBeInTheDocument();
+    await user.click(screen.getByText(HE.label));
+    await waitFor(() => expect(view.onCreated).toHaveBeenCalledWith("created"));
+    expect(view.value.createNoteFrom).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: "Masked Autoencoders", icon: "lucide:book-open", properties: expect.stringContaining("citekey: he2022") }),
+    );
+    await user.clear(screen.getByPlaceholderText(copy.placeholder));
+    await user.type(screen.getByPlaceholderText(copy.placeholder), "sparse");
+    await user.click(screen.getByText("doe2020"));
+    await waitFor(() => expect(view.value.createNoteFrom).toHaveBeenLastCalledWith(expect.objectContaining({ title: "Sparse masks" })));
+    const properties = vi.mocked(view.value.createNoteFrom)?.mock.lastCall?.[0].properties ?? "";
+    for (const line of ['authors: ["Doe, Jane"]', "year: 2020", "doi: 10.2/sparse", "citekey: doe2020"]) expect(properties).toContain(line);
+  });
+
+  it("opens the note already written on a reference instead of making another", async () => {
+    const user = userEvent.setup();
+    const view = renderPicker(data({ citations: [HE], notes: [note("read", "Reading MAE", { citekey: "he2022" })] }));
+    await user.type(screen.getByPlaceholderText(copy.placeholder), "he2022");
+    await user.click(screen.getByText(HE.label));
+    await waitFor(() => expect(view.onCreated).toHaveBeenCalledWith("read"));
+    expect(view.value.createNoteFrom).not.toHaveBeenCalled();
   });
 });

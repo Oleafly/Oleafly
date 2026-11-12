@@ -387,17 +387,8 @@ pub fn write_file(root: &Path, relative: &str, bytes: &[u8]) -> Result<bool, Str
         }
     }
     crate::sandbox::atomic_write(&target, bytes)?;
-    wrote(root, relative, &target, bytes);
+    crate::folder_watch::note_own_write(&target);
     Ok(true)
-}
-
-fn wrote(root: &Path, relative: &str, target: &Path, bytes: &[u8]) {
-    crate::folder_watch::note_own_write(target);
-    if relative == crate::project::NOTE_FILE {
-        if let Some(project_id) = root.file_name().and_then(|name| name.to_str()) {
-            crate::note_index::note_file_written(project_id, bytes);
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -457,7 +448,7 @@ pub fn write_file_over(
         return Ok(WriteOutcome::ChangedOutside);
     }
     staged.commit()?;
-    wrote(root, relative, &target, bytes);
+    crate::folder_watch::note_own_write(&target);
     Ok(WriteOutcome::Written)
 }
 

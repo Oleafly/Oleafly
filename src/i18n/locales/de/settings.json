@@ -1127,146 +1127,6 @@
         "label": "PDF beim Kompilieren anzeigen"
       },
       "title": "Zen-Modus"
-    },
-    "notes": {
-      "sectionName": "Darstellung der Notizen",
-      "resetAriaLabel": "{{setting}} auf Standard zurücksetzen",
-      "text": {
-        "title": "Text"
-      },
-      "typeface": {
-        "label": "Schriftart",
-        "description": "Wählen Sie eine Schriftart für den Text von Notizen.",
-        "options": {
-          "sans": "Serifenlos",
-          "serif": "Serif",
-          "mono": "Monospace"
-        }
-      },
-      "font": {
-        "label": "Schrift für Notizen",
-        "description": "Wählen Sie eine beliebige installierte Schrift für den Text von Notizen. Lassen Sie das Feld leer, um die Einstellung Schriftart zu verwenden."
-      },
-      "fontSize": {
-        "label": "Textgröße in Notizen",
-        "description": "Legen Sie die Größe des Notiztexts fest.",
-        "custom": "Benutzerdefiniert",
-        "customLabel": "Benutzerdefinierte Textgröße in Notizen in Pixeln"
-      },
-      "lineHeight": {
-        "label": "Zeilenhöhe in Notizen",
-        "description": "Legen Sie den Abstand zwischen den Zeilen im Notiztext fest.",
-        "customLabel": "Benutzerdefinierte Zeilenhöhe in Notizen"
-      },
-      "paragraphSpacing": {
-        "label": "Absatzabstand",
-        "description": "Legen Sie den Abstand zwischen Absätzen, Listen und anderen Blöcken fest.",
-        "options": {
-          "compact": "Kompakt",
-          "normal": "Normal",
-          "relaxed": "Locker",
-          "spacious": "Großzügig"
-        }
-      },
-      "headings": {
-        "title": "Überschriften und Titel"
-      },
-      "headingTypeface": {
-        "label": "Schriftart für Überschriften",
-        "description": "Wählen Sie eine Schriftart für Überschriften und den Titel der Notiz.",
-        "options": {
-          "text": "Wie der Text"
-        }
-      },
-      "headingFont": {
-        "label": "Schrift für Überschriften",
-        "description": "Wählen Sie eine installierte Schrift für Überschriften und den Titel der Notiz. Lassen Sie das Feld leer, um die Einstellung Schriftart für Überschriften zu verwenden."
-      },
-      "headingSize": {
-        "label": "Größe der Überschriften",
-        "description": "Legen Sie fest, wie groß Überschriften im Vergleich zum Text sind.",
-        "options": {
-          "small": "Kleiner",
-          "normal": "Normal",
-          "large": "Größer"
-        }
-      },
-      "titleSize": {
-        "label": "Größe des Titels",
-        "description": "Legen Sie die Größe des Titels oben in jeder Notiz fest."
-      },
-      "layout": {
-        "title": "Layout"
-      },
-      "width": {
-        "label": "Breite der Notiz",
-        "description": "Wie breit Notizen geöffnet werden. Das Breitenmenü in einer Notiz ändert dies ebenfalls.",
-        "options": {
-          "standard": "Standard",
-          "wide": "Breit",
-          "full": "Volle Breite"
-        }
-      },
-      "wordCount": {
-        "label": "Wortzahl anzeigen",
-        "description": "Zeigt die Wortzahl einer Notiz in ihrer Werkzeugleiste."
-      },
-      "spellcheck": {
-        "label": "Rechtschreibung in Notizen prüfen",
-        "description": "Falsch geschriebene Wörter beim Schreiben einer Notiz unterstreichen."
-      },
-      "code": {
-        "title": "Code"
-      },
-      "codeFont": {
-        "label": "Schrift für Code",
-        "description": "Wählen Sie eine installierte Schrift für Codeblöcke und Code im Text."
-      },
-      "codeTheme": {
-        "label": "Farben der Codeblöcke",
-        "description": "Wählen Sie die Syntaxfarben für Codeblöcke in Notizen.",
-        "options": {
-          "editor": "Wie im Editor"
-        }
-      },
-      "colors": {
-        "title": "Farben"
-      },
-      "accent": {
-        "label": "Akzentfarbe der Notizen",
-        "description": "Wird für Links, Tags und Aufgabenkästchen in Notizen verwendet.",
-        "matchApp": "Wie die App",
-        "customAriaLabel": "Eigene Akzentfarbe für Notizen wählen"
-      },
-      "highlight": {
-        "label": "Hervorhebungsfarbe",
-        "description": "Die Farbe hinter hervorgehobenem Text.",
-        "options": {
-          "yellow": "Gelb",
-          "green": "Grün",
-          "blue": "Blau",
-          "pink": "Rosa",
-          "purple": "Lila",
-          "accent": "Akzent"
-        }
-      },
-      "callouts": {
-        "label": "Stil der Hinweisboxen",
-        "description": "Wie Hinweisboxen in Notizen aussehen.",
-        "options": {
-          "tinted": "Getönt",
-          "filled": "Gefüllt",
-          "outlined": "Umrandet",
-          "bar": "Seitenbalken"
-        }
-      },
-      "remoteImages": {
-        "title": "Bilder aus dem Web",
-        "description": "Notizen laden Bilder von diesen Websites ohne Nachfrage.",
-        "empty": "Notizen fragen nach, bevor sie ein Bild aus dem Web laden. Websites, die Sie immer zulassen, erscheinen hier.",
-        "remove": "{{host}} entfernen"
-      },
-      "resetAll": "Darstellung der Notizen zurücksetzen"
     }
   },
   "checkpoints": {
@@ -2502,6 +2362,42 @@
       "notesAskAgent": {
         "description": "Den Agenten zum markierten Text fragen oder den Agenten der Notiz öffnen und schließen.",
         "label": "Notizen: Agenten fragen"
+      },
+      "notesNewNote": {
+        "label": "Notizen: neue Notiz",
+        "description": "Eine neue Notiz im aktuellen Bereich beginnen."
+      },
+      "notesSearch": {
+        "label": "Notizen: Notizen durchsuchen",
+        "description": "Zum Suchfeld oben in der Seitenleiste von Notizen springen."
+      },
+      "notesBookmark": {
+        "label": "Notizen: Lesezeichen setzen",
+        "description": "Die geöffnete Notiz zu Favoriten hinzufügen oder daraus entfernen."
+      },
+      "notesCopyLink": {
+        "label": "Notizen: Link zur Notiz kopieren",
+        "description": "Einen Link zur geöffneten Notiz kopieren, den Sie in eine andere Notiz oder einen Chat einfügen können."
+      },
+      "notesProperties": {
+        "label": "Notizen: Eigenschaften ein- oder ausblenden",
+        "description": "Die Eigenschaften unter dem Titel der Notiz öffnen oder schließen."
+      },
+      "notesQuickCapture": {
+        "description": "Ein kleines Fenster öffnen, um aus jeder App etwas zu notieren, auch wenn Oleafly im Hintergrund ist.",
+        "label": "Notizen: Schnellerfassung"
+      },
+      "notesCopyBlockLink": {
+        "description": "Einen Link zum Block kopieren, in dem der Cursor steht, etwa einem Absatz, Listeneintrag oder einer Tabelle.",
+        "label": "Notizen: Link zum Block kopieren"
+      },
+      "notesBack": {
+        "description": "Zu der Stelle zurückkehren, an der Sie in diesem Tab waren.",
+        "label": "Notizen: zurück"
+      },
+      "notesForward": {
+        "description": "Nach dem Zurückgehen wieder vorwärts gehen.",
+        "label": "Notizen: vorwärts"
       }
     },
     "application": {
@@ -2527,14 +2423,41 @@
         "renameSymbol": "Symbol oder Datei im ganzen Projekt umbenennen",
         "slashCommandMenu": "Einfügemenü der Schrägstrich-Befehle",
         "triggerAutocomplete": "Autovervollständigung auslösen",
-        "undo": "Rückgängig"
+        "undo": "Rückgängig",
+        "noteBold": "Fett",
+        "noteItalic": "Kursiv",
+        "noteUnderline": "Unterstrichen",
+        "noteStrike": "Durchgestrichen",
+        "noteCode": "Inline-Code",
+        "noteHighlight": "In der zuletzt verwendeten Farbe hervorheben",
+        "noteSuperscript": "Hochgestellt",
+        "noteSubscript": "Tiefgestellt",
+        "noteHeadings": "Überschrift 1 bis 6",
+        "noteText": "In Text umwandeln",
+        "noteQuote": "Zitat",
+        "noteCodeBlock": "Codeblock",
+        "noteBulletList": "Aufzählungsliste",
+        "noteNumberedList": "Nummerierte Liste",
+        "noteTaskList": "Aufgabenliste",
+        "noteToggleTask": "Aufgabe abhaken oder Haken entfernen",
+        "noteIndent": "Listeneintrag einrücken",
+        "noteOutdent": "Listeneintrag ausrücken",
+        "noteLineBreak": "Zeilenumbruch im selben Absatz",
+        "noteFind": "Suchen und ersetzen",
+        "noteSelectAll": "Ganze Notiz auswählen",
+        "noteUndo": "Rückgängig",
+        "noteRedo": "Wiederholen",
+        "noteInsertMenu": "Einfügemenü am Zeilenanfang öffnen",
+        "noteLinkMenu": "Auf eine Notiz verlinken",
+        "noteTag": "Tag hinzufügen"
       },
       "managed": "Vom Editor verwaltet"
     },
     "categories": {
       "codeIntelligence": "Code-Intelligenz",
       "editor": "Editor",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Notizen"
     },
     "error": {
       "conflict": "Bereits {{action}} zugewiesen.",
@@ -2580,6 +2503,15 @@
         "uppercase": "Großbuchstaben"
       },
       "unbound": "Nicht belegt"
+    },
+    "quickCapture": {
+      "label": "Schnellerfassung von überall",
+      "description": "Das Kürzel für die Schnellerfassung funktioniert in jeder App auf diesem Computer.",
+      "ready": "Drücken Sie {{shortcut}} in einer beliebigen App, um die Schnellerfassung zu öffnen.",
+      "taken": "Eine andere App verwendet bereits {{shortcut}}. Wählen Sie ein anderes Kürzel für Notizen: Schnellerfassung.",
+      "invalid": "{{shortcut}} funktioniert außerhalb von Oleafly nicht. Wählen Sie ein Kürzel, das auf einen Buchstaben, eine Ziffer oder eine Funktionstaste endet.",
+      "failed": "Oleafly konnte das Kürzel nicht einrichten. Schalten Sie die Schnellerfassung aus und wieder ein, um es erneut zu versuchen.",
+      "wayland": "Unter Wayland können Apps keine Tasten außerhalb ihrer eigenen Fenster abfangen. Um die Schnellerfassung per Taste zu öffnen, legen Sie in den Tastatureinstellungen Ihres Systems ein eigenes Kürzel an, das diesen Befehl ausführt:"
     }
   },
   "systemIntegration": {
@@ -2671,17 +2603,5 @@
       "loadFailed": "Die Liste der MCP-Server konnte nicht gelesen werden.",
       "missing": "{{name}} (nicht gefunden)"
     }
-  },
-  "notesPreview": {
-    "label": "Vorschau einer Notiz mit diesen Einstellungen",
-    "title": "Feldnotizen",
-    "heading": "Morgendliche Erhebung",
-    "paragraph": "Leichter Regen bis neun, danach klarer Himmel über dem Nordkamm. Der Boden war mittags noch feucht.",
-    "links": "Die einzelnen Schritte stehen in <note>Probenahmeverfahren</note>, oder stöbern Sie in <tag>#feldarbeit</tag>.",
-    "highlight": "Die Keimlinge sind in einer Woche doppelt so hoch geworden.",
-    "calloutTitle": "Nächster Besuch",
-    "calloutBody": "Prüfen Sie die Bodensensoren, bevor Sie neue Proben nehmen.",
-    "taskDone": "Proben beschriften",
-    "task": "Fotos hochladen"
   }
 }

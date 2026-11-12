@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import "@/components/notes/tests/setup";
 
 const mocks = vi.hoisted(() => ({ jump: vi.fn() }));
 
@@ -51,7 +52,7 @@ function liveHere(peers = {}) {
 }
 
 beforeAll(async () => {
-  await Promise.all([loadNamespace("notes"), loadNamespace("collab")]);
+  await loadNamespace("collab");
 });
 
 beforeEach(() => {

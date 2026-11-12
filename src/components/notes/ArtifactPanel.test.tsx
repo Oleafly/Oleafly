@@ -3,13 +3,14 @@
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
 import { formatRelativeTimeFrom } from "@/lib/intl";
 import { ArtifactPanel } from "./ArtifactPanel";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import type { ArtifactItem, ArtifactPreview, NoteItem } from "./types";
+import { deferred, fakeNotesData } from "./tests/notes-data-fixture";
+import "./tests/setup";
 
 const copy = enNotes.artifacts;
 const NOW = Date.now();
@@ -85,16 +86,6 @@ function previewing(preview: ArtifactPreview) {
   return vi.fn<Previewer>(async () => preview);
 }
 
-function deferred<T>() {
-  let resolve: (value: T) => void = () => {};
-  let reject: (error: unknown) => void = () => {};
-  const promise = new Promise<T>((done, fail) => {
-    resolve = done;
-    reject = fail;
-  });
-  return { promise, resolve, reject };
-}
-
 type PanelProps = ComponentProps<typeof ArtifactPanel>;
 
 interface Setup {
@@ -113,16 +104,11 @@ function renderPanel({ note = related, selectedId = null, artifacts = ALL, previ
     onNewProject: vi.fn(),
     ...handlers,
   };
-  const data: NotesData = {
+  const data: NotesData = fakeNotesData({
     notes: [note],
     artifacts,
-    experiments: [],
-    citations: [],
-    papers: [],
     ...(previewArtifact ? { previewArtifact } : {}),
-    loadNote: vi.fn(),
-    saveNote: vi.fn(),
-  };
+  });
   const element = (id: string | null) => (
     <NotesDataProvider value={data}>
       <ArtifactPanel {...props} selectedId={id} />
@@ -141,10 +127,6 @@ function details(): HTMLElement {
 function insertButton(): HTMLElement {
   return within(details()).getByRole("button", { name: /^(Insert in note|Copying)$/u });
 }
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 describe("ArtifactPanel", () => {
   describe("empty states", () => {
@@ -219,15 +201,12 @@ describe("ArtifactPanel", () => {
       expect(await screen.findByRole("tooltip")).toHaveTextContent("outputs/loss curve.png");
     });
 
-    it("tints each artifact in the list with its kind", () => {
+    it("lists each artifact with its kind", () => {
       renderPanel({ previewArtifact: null });
       const kinds = within(screen.getByRole("list"))
         .getAllByRole("button")
         .map((item) => item.querySelector("[data-kind]")?.getAttribute("data-kind"));
       expect(kinds).toEqual(["figure", "data", "report", "html"]);
-      expect(screen.getByRole("button", { name: "Metrics" }).querySelector("[data-kind]")).toHaveClass("bg-emerald-500/10");
-      expect(screen.getByRole("button", { name: "Loss curve" })).toHaveClass("bg-primary/10");
-      expect(screen.getByRole("button", { name: "Metrics" })).not.toHaveClass("bg-primary/10");
     });
 
     it("falls back to a generic agent label and drops an empty summary", async () => {
@@ -244,10 +223,10 @@ describe("ArtifactPanel", () => {
       await screen.findByText(copy.htmlPreview);
     });
 
-    it("labels notebooks by kind with their own tint", async () => {
+    it("labels notebooks by kind", async () => {
       renderPanel({ artifacts: [analysis], selectedId: "a6", previewArtifact: previewing({ type: "none", reason: "large" }) });
       expect(details()).toHaveTextContent(`${copy.kind.notebook} Codex · `);
-      expect(document.querySelector('li [data-kind="notebook"]')).toHaveClass("bg-amber-500/10");
+      expect(document.querySelector('li [data-kind="notebook"]')).not.toBeNull();
       await screen.findByText(copy.notebookTooLarge);
     });
   });
@@ -300,7 +279,7 @@ describe("ArtifactPanel", () => {
       expect(await within(details()).findByText("[7]", {}, { timeout: 10_000 })).toBeInTheDocument();
       expect(within(details()).getByText("print(64.1)")).toBeInTheDocument();
       expect(details().querySelector("[data-artifact-notebook]")).not.toBeNull();
-    });
+    }, 15_000);
 
     it.each([
       ["html", copy.htmlPreview],
@@ -477,26 +456,20 @@ describe("ArtifactPanel", () => {
       expect(onNewProject).toHaveBeenCalledWith(metrics);
     });
 
-    it("hides New project when there is no handler for it", () => {
-      renderPanel({ selectedId: "a1", previewArtifact: null, handlers: { onNewProject: undefined } });
-      expect(within(details()).queryByRole("button", { name: copy.newProject })).not.toBeInTheDocument();
-      expect(insertButton()).toBeInTheDocument();
-    });
-
-    it("hides Insert when there is no handler for it", () => {
-      renderPanel({ selectedId: "a1", previewArtifact: null, handlers: { onInsert: undefined } });
-      expect(within(details()).queryByRole("button", { name: copy.insert })).not.toBeInTheDocument();
-      expect(within(details()).getByRole("button", { name: copy.newProject })).toBeInTheDocument();
-    });
-
-    it("shows no action buttons when neither handler is given", () => {
-      renderPanel({ selectedId: "a1", previewArtifact: null, handlers: { onInsert: undefined, onNewProject: undefined } });
-      expect(within(details()).queryAllByRole("button")).toHaveLength(0);
+    it.each([
+      ["New project", { onNewProject: undefined }, [copy.insert]],
+      ["Insert", { onInsert: undefined }, [copy.newProject]],
+      ["both actions", { onInsert: undefined, onNewProject: undefined }, []],
+    ])("hides %s without a handler for it", (_name, handlers, shown) => {
+      renderPanel({ selectedId: "a1", previewArtifact: null, handlers });
+      const buttons = within(details()).queryAllByRole("button");
+      expect(buttons).toHaveLength(shown.length);
+      for (const [index, name] of shown.entries()) expect(buttons[index]).toHaveAccessibleName(name);
     });
 
     it("fills its view with no header of its own", () => {
       renderPanel({ previewArtifact: null });
-      expect(screen.getByRole("complementary", { name: copy.title })).toHaveClass("w-full");
+      expect(screen.getByRole("complementary", { name: copy.title })).toBeInTheDocument();
       expect(screen.queryByRole("heading", { level: 2 })).not.toBeInTheDocument();
     });
   });

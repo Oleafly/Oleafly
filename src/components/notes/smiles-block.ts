@@ -1,6 +1,15 @@
 import { FlaskConical } from "lucide-react";
 import { i18n } from "@/i18n";
-import { blockMessage, currentTheme, type Dispose, type NoteBlockKind, type PaintContext } from "./note-blocks";
+import { BLOCK_MESSAGE, BLOCK_SURFACE } from "@/components/ui/block-frame";
+import {
+  blockMessage,
+  currentTheme,
+  type Dispose,
+  element,
+  type NoteBlockKind,
+  type PaintContext,
+  paintAsync,
+} from "./note-blocks";
 
 export interface SmilesEntry {
   name: string | null;
@@ -52,13 +61,6 @@ export function structureMarkup(
   return new XMLSerializer().serializeToString(svg);
 }
 
-function element<K extends keyof HTMLElementTagNameMap>(tag: K, className: string, text?: string) {
-  const node = document.createElement(tag);
-  node.className = className;
-  if (text !== undefined) node.textContent = text;
-  return node;
-}
-
 interface StructureCell {
   entry: SmilesEntry;
   figure: HTMLElement;
@@ -66,7 +68,7 @@ interface StructureCell {
 }
 
 function structureCell(entry: SmilesEntry): StructureCell {
-  const figure = element("figure", "note-smiles-item m-0 flex min-w-0 flex-col items-center gap-1 rounded-md border p-2");
+  const figure = element("figure", `note-smiles-item m-0 flex min-w-0 flex-col items-center gap-1 p-2 ${BLOCK_SURFACE}`);
   figure.setAttribute("role", "listitem");
   const frame = element("div", "note-smiles-frame flex aspect-square w-full items-center justify-center");
   const caption = element("figcaption", "w-full min-w-0 text-center");
@@ -84,7 +86,7 @@ function drawCell(cell: StructureCell, library: SmilesDrawer, drawer: StructureD
     markup = structureMarkup(library, drawer, cell.entry.smiles, theme);
   } catch {
     cell.frame.replaceChildren(
-      element("p", "note-drawn-empty px-1 text-center", i18n.t(($) => $.notes.blocks.smiles.invalid)),
+      element("p", `${BLOCK_MESSAGE} px-1 text-center`, i18n.t(($) => $.notes.blocks.smiles.invalid)),
     );
     cell.figure.dataset.invalid = "true";
     return;
@@ -98,6 +100,19 @@ function drawCell(cell: StructureCell, library: SmilesDrawer, drawer: StructureD
 
 function nextTask(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+async function drawOnePerTask(
+  cells: readonly StructureCell[],
+  alive: () => boolean,
+  draw: (cell: StructureCell) => void,
+  from = 0,
+): Promise<void> {
+  if (from >= cells.length || !alive()) return;
+  draw(cells[from]);
+  if (from === cells.length - 1) return;
+  await nextTask();
+  await drawOnePerTask(cells, alive, draw, from + 1);
 }
 
 export function paintSmiles(preview: HTMLElement, source: string, context: PaintContext): Dispose | undefined {
@@ -120,23 +135,15 @@ export function paintSmiles(preview: HTMLElement, source: string, context: Paint
     );
   }
   preview.replaceChildren(wrapper);
-  let live = true;
-  import("smiles-drawer")
-    .then(async ({ default: library }) => {
+  return paintAsync(preview, {
+    load: () => import("smiles-drawer"),
+    show: async ({ default: library }, alive) => {
       const drawer = new library.SvgDrawer({ width: DRAW_SIZE, height: DRAW_SIZE });
       const theme = currentTheme();
-      for (const [index, cell] of cells.entries()) {
-        if (!live) return;
-        drawCell(cell, library, drawer, theme);
-        if (index < cells.length - 1) await nextTask();
-      }
-    })
-    .catch(() => {
-      if (live) blockMessage(preview, i18n.t(($) => $.notes.blocks.smiles.loadError));
-    });
-  return () => {
-    live = false;
-  };
+      await drawOnePerTask(cells, alive, (cell) => drawCell(cell, library, drawer, theme));
+    },
+    error: () => i18n.t(($) => $.notes.blocks.smiles.loadError),
+  });
 }
 
 function templateSource(): string {

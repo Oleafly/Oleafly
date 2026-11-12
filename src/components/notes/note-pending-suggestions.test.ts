@@ -1,16 +1,26 @@
 // @vitest-environment jsdom
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { blockTrusted, setBlockTrusted } from "./block-trust";
 import { applyNoteEdits } from "./note-edits";
 import {
   addPendingBatch,
   editsBetween,
+  forgetNoteLeftovers,
+  keepReview,
+  keptReview,
   noteEditorLink,
+  notesWithSuggestions,
   pendingBatches,
+  proposeNoteEdits,
   registerNoteEditor,
   resetPendingSuggestionsForTest,
+  reviewedNoteSource,
   takePendingBatches,
+  useWaitingSuggestions,
   withPendingEdits,
 } from "./note-pending-suggestions";
+import { indexedUndoStore } from "./note-undo-store";
 
 const KEY = "oleafly.notes.pendingSuggestions";
 
@@ -98,6 +108,29 @@ describe("suggestions waiting for a closed note", () => {
   });
 });
 
+describe("forgetting a deleted note", () => {
+  it("drops its waiting suggestions and its trusted blocks, and keeps other notes'", () => {
+    addPendingBatch("gone", [{ find: "secret", replace: "more secret" }]);
+    addPendingBatch("kept", [{ find: "a", replace: "b" }]);
+    setBlockTrusted({ note: "gone", hash: "1" }, true);
+    setBlockTrusted({ note: "kept", hash: "2" }, true);
+    keepReview("gone", { file: [{ find: "secret outside", replace: "mine" }], proposed: [] });
+    forgetNoteLeftovers("gone");
+    expect(keptReview("gone")).toEqual({ file: [], proposed: [] });
+    expect(pendingBatches("gone")).toEqual([]);
+    expect(pendingBatches("kept")).toHaveLength(1);
+    expect(localStorage.getItem(KEY)).not.toContain("secret");
+    expect(blockTrusted({ note: "gone", hash: "1" })).toBe(false);
+    expect(blockTrusted({ note: "kept", hash: "2" })).toBe(true);
+  });
+
+  it("drops its kept undo history", () => {
+    const remove = vi.spyOn(indexedUndoStore, "remove").mockResolvedValue(undefined);
+    forgetNoteLeftovers("gone");
+    expect(remove).toHaveBeenCalledWith("gone");
+  });
+});
+
 describe("open note editors", () => {
   it("finds the editor showing a note until it closes", () => {
     const link = { readSource: () => "text", propose: () => 1, pending: () => 0 };
@@ -120,5 +153,37 @@ describe("open note editors", () => {
     expect(noteEditorLink("n1")).toBe(first);
     stopFirst();
     expect(noteEditorLink("n1")).toBeNull();
+  });
+});
+
+describe("suggestions from outside the editor", () => {
+  it("shows them in the open editor, or keeps them for a closed note", () => {
+    const propose = vi.fn(() => 2);
+    const stop = registerNoteEditor("open", { readSource: () => "live", propose, pending: () => 0 });
+    expect(proposeNoteEdits("open", [{ find: "", replace: "x" }])).toBe(2);
+    expect(pendingBatches("open")).toEqual([]);
+    expect(proposeNoteEdits("closed", [{ find: "", replace: "y" }])).toBe(1);
+    expect(pendingBatches("closed")).toEqual([[{ find: "", replace: "y" }]]);
+    stop();
+  });
+
+  it("reads the editor text, or the saved text with the waiting suggestions on top", async () => {
+    const stop = registerNoteEditor("open", { readSource: () => "live", propose: () => 1, pending: () => 0 });
+    expect(reviewedNoteSource("open", async () => ({ text: "disk" }))).toBe("live");
+    stop();
+    addPendingBatch("closed", [{ find: "old", replace: "new" }]);
+    expect(await reviewedNoteSource("closed", async () => ({ text: "the old line" }))).toBe("the new line");
+  });
+
+  it("knows which notes have suggestions waiting and tells a row when that changes", () => {
+    const { result } = renderHook(() => useWaitingSuggestions("n1"));
+    expect(result.current).toBe(false);
+    act(() => addPendingBatch("n1", [{ find: "a", replace: "b" }]));
+    expect(result.current).toBe(true);
+    act(() => keepReview("n2", { file: [{ find: "c", replace: "d" }], proposed: [] }));
+    expect([...notesWithSuggestions()].sort()).toEqual(["n1", "n2"]);
+    act(() => void takePendingBatches("n1"));
+    expect(result.current).toBe(false);
+    expect([...notesWithSuggestions()]).toEqual(["n2"]);
   });
 });

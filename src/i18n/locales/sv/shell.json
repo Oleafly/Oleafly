@@ -341,7 +341,15 @@
     },
     "resetPaneLayout": {
       "keywords": "återställ panellayout ordning flytta paneler sidofält assistent redigerare förhandsvisning terminal standard",
-      "label": "Återställ panellayouten"
+      "label": "Återställ panelernas placering i varje projekt"
+    },
+    "saveLayout": {
+      "keywords": "layout spara aktuell anpassad ordning paneler storlekar namn",
+      "label": "Spara aktuell layout"
+    },
+    "applySavedLayout": {
+      "keywords": "layout sparad anpassad ordning paneler byt tillämpa",
+      "label": "Layout: {{name}}"
     },
     "zoomIn": {
       "keywords": "större förstora",
@@ -380,6 +388,10 @@
     "notes": {
       "label": "Öppna Anteckningar",
       "keywords": "anteckningar anteckningsbok kunskap idéer forskning dagbok notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Snabbanteckning",
+      "keywords": "snabbanteckning anteckna anteckning inkorg i dag quick capture jot note inbox today"
     }
   },
   "community": {
@@ -484,6 +496,11 @@
   },
   "datePicker": {
     "placeholder": "Välj ett datum"
+  },
+  "monthPicker": {
+    "label": "Välj en månad",
+    "previousYear": "Föregående år",
+    "nextYear": "Nästa år"
   },
   "devMenu": {
     "inspect": "Inspektera",
@@ -704,6 +721,7 @@
     "groups": {
       "action": "Åtgärd",
       "documents": "Dokument",
+      "notes": "Anteckningar",
       "references": "Referenser"
     },
     "label": "Sök",
@@ -711,11 +729,13 @@
     "openReferences": "Öppna referenserna för det här projektet",
     "placeholder": "Sök projekt, dokument, eller skriv / för kommandon…",
     "placeholderDocuments": "Sök inuti dokument…",
+    "placeholderNotes": "Sök i anteckningar och blocken i dem…",
     "placeholderProjects": "Sök projekt efter namn, motor, typ, datum eller metadata…",
     "referencesNeedProject": "Öppna ett projekt först för att bläddra bland dess referenser.",
     "slash": {
       "create": "öppna mallgalleriet",
       "docs": "sök inuti dokument",
+      "notes": "sök i anteckningar och blocken i dem",
       "projects": "sök bland dina projekt",
       "refs": "öppna referenserna för det här projektet",
       "settings": "öppna inställningar",
@@ -1314,7 +1334,24 @@
       "split": "Delad vy"
     },
     "moreActions": "Fler åtgärder",
-    "resetPaneLayout": "Återställ panellayouten",
+    "resetPaneLayout": "Återställ panelernas placering",
+    "resetPaneLayoutScope": "Alla projekt",
+    "savedLayouts": {
+      "close": "Stäng",
+      "delete": "Radera",
+      "deleteConfirm": "Vill du radera layouten \"{{name}}\"?",
+      "limit": "Du kan spara upp till {{count}} layouter. Radera en för att spara en till.",
+      "manage": "Hantera layouter",
+      "name": "Namn på layouten",
+      "rename": "Byt namn",
+      "renameTitle": "Byt namn på layouten",
+      "replace": "Ersätt",
+      "replaceConfirm": "Det finns redan en layout med namnet \"{{name}}\". Vill du ersätta den?",
+      "save": "Spara aktuell layout",
+      "saveButton": "Spara",
+      "saveTitle": "Spara layout",
+      "update": "Uppdatera till aktuell"
+    },
     "renameFailed": "Det gick inte att byta namn på projektet."
   },
   "tour": {

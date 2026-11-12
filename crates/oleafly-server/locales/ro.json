@@ -11,6 +11,8 @@
   "landing.open": "Deschide în Oleafly",
   "landing.get": "Descarcă Oleafly",
   "landing.open_browser": "Deschide în browser",
+  "published.gone_title": "Această pagină nu este disponibilă",
+  "published.gone_body": "Autorul poate i-a anulat publicarea sau acest server nu mai afișează pagini publice.",
   "web.sign_in_body": "Autentifică-te ca să deschizi proiectele partajate în acest browser.",
   "web.try_again": "Încearcă din nou",
   "web.other_browser": "Acest link finalizează autentificarea pe {device}, browserul în care ai început. Deschide e-mailul acolo. Linkul încă funcționează.",

@@ -4,13 +4,20 @@ export type WordDiffToken = { kind: "same" | "del" | "add"; text: string };
 
 export const WORD_DIFF_WORK_LIMIT = 500_000;
 
-function tokenize(s: string): string[] {
-  return s.match(/\S+\s*|\s+/g) ?? [];
+const UNSPACED = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\p{Script=Thai}]/u;
+const segmenter = typeof Intl.Segmenter === "function" ? new Intl.Segmenter(undefined, { granularity: "word" }) : null;
+
+export function wordsOf(s: string): string[] {
+  const tokens = s.match(/\S+\s*|\s+/g) ?? [];
+  if (!segmenter || !UNSPACED.test(s)) return tokens;
+  return tokens.flatMap((token) =>
+    UNSPACED.test(token) ? Array.from(segmenter.segment(token), (part) => part.segment) : [token],
+  );
 }
 
 export function diffWords(oldText: string, newText: string): WordDiffToken[] {
-  const a = tokenize(oldText);
-  const b = tokenize(newText);
+  const a = wordsOf(oldText);
+  const b = wordsOf(newText);
 
   const out: WordDiffToken[] = [];
   const push = (kind: WordDiffToken["kind"], text: string) => {

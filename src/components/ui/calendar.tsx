@@ -21,24 +21,24 @@ function CalendarChevron({
   return <Icon className={cn("size-4", chevronClassName)} {...rest} />;
 }
 
-export function Calendar({ className, classNames, showOutsideDays = true, ...props }: CalendarProps) {
+export function Calendar({ className, classNames, components, showOutsideDays = true, ...props }: CalendarProps) {
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
       className={cn("p-3", className)}
       classNames={{
-        months: "flex flex-col gap-4 sm:flex-row",
+        months: "relative flex flex-col gap-4 sm:flex-row",
         month: "flex flex-col gap-3",
         month_caption: "relative flex h-8 items-center justify-center",
         caption_label: "text-sm font-medium",
-        nav: "absolute inset-x-3 top-3 z-10 flex h-8 items-center justify-between",
+        nav: "pointer-events-none absolute inset-x-0 top-0 z-10 flex h-8 items-center justify-between",
         button_previous: cn(
           buttonVariants({ variant: "outline" }),
-          "size-7 bg-transparent p-0 opacity-60 hover:opacity-100",
+          "pointer-events-auto size-7 bg-transparent p-0 opacity-60 hover:opacity-100",
         ),
         button_next: cn(
           buttonVariants({ variant: "outline" }),
-          "size-7 bg-transparent p-0 opacity-60 hover:opacity-100",
+          "pointer-events-auto size-7 bg-transparent p-0 opacity-60 hover:opacity-100",
         ),
         month_grid: "w-full border-collapse",
         weekdays: "flex",
@@ -65,7 +65,7 @@ export function Calendar({ className, classNames, showOutsideDays = true, ...pro
         hidden: "invisible",
         ...classNames,
       }}
-      components={{ Chevron: CalendarChevron }}
+      components={{ Chevron: CalendarChevron, ...components }}
       {...props}
     />
   );

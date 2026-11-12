@@ -21,7 +21,7 @@ describe("CodeBlock", () => {
     expect(block).toHaveTextContent("\\begin{table}");
     expect(block).toHaveClass("select-text");
     const copy = screen.getByRole("button", { name: "Copy" });
-    expect(copy).toHaveClass("opacity-0", "group-hover/code-block:opacity-100", "group-focus-within/code-block:opacity-100");
+    expect(copy).toHaveClass("opacity-0", "group-hover/block:opacity-100", "group-focus-within/block:opacity-100");
     fireEvent.click(copy);
     expect(writeText).toHaveBeenCalledExactlyOnceWith("\\begin{table}\n\\end{table}");
     expect(await screen.findByRole("button", { name: "Copied" })).toBeInTheDocument();

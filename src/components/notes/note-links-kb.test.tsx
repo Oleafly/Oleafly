@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
-import { Editor } from "@tiptap/core";
+import type { Editor } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
 import { act, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { isMac } from "@/lib/utils";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { NoteLinkMenu } from "./NoteLinkMenu";
@@ -26,7 +25,8 @@ import {
   type LinkCandidate,
   type NoteLinkOptions,
 } from "./note-links";
-import { noteBaseExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "./note-markdown";
+import { destroyKbEditors, kbEditor, kbMarkdown as markdown } from "./tests/kb-editor-fixtures";
+import "./tests/setup";
 
 const NOTES: LinkableNote[] = [
   { noteId: "self", projectId: "lib-0", title: "This note" },
@@ -38,8 +38,6 @@ const REMOTE: NoteHeading[] = [
   { level: 2, text: "Method", slug: "method" },
 ];
 
-let editors: Editor[] = [];
-
 function build(markdown: string, overrides: Partial<NoteLinkOptions> = {}) {
   const options: NoteLinkOptions = {
     getNotes: () => NOTES,
@@ -50,14 +48,7 @@ function build(markdown: string, overrides: Partial<NoteLinkOptions> = {}) {
     currentProjectId: "lib-0",
     ...overrides,
   };
-  const element = document.createElement("div");
-  document.body.append(element);
-  const editor = new Editor({
-    element,
-    extensions: [...noteBaseExtensions(), ...noteLinkExtensions(options)],
-    content: parseNoteMarkdown(markdown).doc,
-  });
-  editors.push(editor);
+  const editor = kbEditor(markdown, null, noteLinkExtensions(options));
   vi.spyOn(editor.view, "coordsAtPos").mockImplementation(() => ({ left: 10, top: 10, bottom: 20, right: 0 }));
   return { editor, options };
 }
@@ -82,20 +73,8 @@ function press(editor: Editor, key: string, init: KeyboardEventInit = {}): boole
   return plugin?.props.handleKeyDown?.call(plugin, editor.view, event) ?? false;
 }
 
-function markdown(editor: Editor): string {
-  return serializeNoteMarkdown(editor.getJSON());
-}
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 afterEach(() => {
-  for (const editor of editors) {
-    editor.view.dom.parentElement?.remove();
-    editor.destroy();
-  }
-  editors = [];
+  destroyKbEditors();
 });
 
 describe("link queries", () => {
@@ -214,7 +193,7 @@ describe("heading links in the editor", () => {
   it("scrolls to a heading in this note and opens other notes at a heading", () => {
     const { editor, options } = build("# Top\n\n## Goal\n\nSee [g](oleafly://note/self#goal) and [m](oleafly://note/n-1#method).");
     const anchors = editor.view.dom.querySelectorAll("a");
-    const chips = editor.view.dom.querySelectorAll<HTMLElement>(".note-link");
+    const chips = editor.view.dom.querySelectorAll<HTMLElement>("[data-note-link]");
     expect(chips[0].dataset.noteHeading).toBe("goal");
     expect(chips[1].dataset.noteId).toBe("n-1");
     anchors[0].dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true, button: 0 }));

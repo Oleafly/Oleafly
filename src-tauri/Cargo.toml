@@ -45,12 +45,18 @@ tauri-plugin-process = "2"
 tauri-plugin-notification = "2.4"
 tauri-plugin-single-instance = { version = "2.4.5", features = ["deep-link"] }
 tauri-plugin-deep-link = "~2.4.10"
+tauri-plugin-global-shortcut = "2.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["raw_value"] }
 toml = "0.8"
 # Package names follow Typst's identifier rule (XID_Start, XID_Continue).
 unicode-ident = "1"
 unicode-normalization = "0.1"
+grep-matcher = "0.1"
+grep-regex = "0.1"
+grep-searcher = "0.1"
+ignore = "0.4"
+nucleo-matcher = "0.3"
 rusqlite = { version = "0.41", features = ["bundled", "fallible_uint"] }
 portable-pty = "0.9"
 base64 = "0.23"
@@ -119,9 +125,10 @@ security-framework = "=2.11.1"
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSURL", "NSGeometry", "NSData", "NSDictionary", "NSArray", "NSEnumerator", "objc2-core-foundation"] }
 # Lets AppKit size the WKWebView of Oleafly's own windows (webview_frame.rs),
-# draw installed apps' icons for the Computer Use app picker, and find the
-# allowed apps that run.
-objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSResponder", "NSView", "NSWindow", "NSApplication", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSGraphics", "NSGraphicsContext", "NSWorkspace", "NSRunningApplication", "libc"] }
+# draw installed apps' icons for the Computer Use app picker, find the allowed
+# apps that run, and hide the quick capture window's traffic lights until the
+# pointer is over it.
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "NSResponder", "NSView", "NSWindow", "NSButton", "NSControl", "NSApplication", "NSImage", "NSImageRep", "NSBitmapImageRep", "NSGraphics", "NSGraphicsContext", "NSWorkspace", "NSRunningApplication", "libc"] }
 dispatch2 = "0.3"
 plist = "1"
 

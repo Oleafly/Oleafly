@@ -342,7 +342,15 @@
     },
     "resetPaneLayout": {
       "keywords": "restablecer disposición paneles orden mover barra lateral asistente editor vista previa terminal predeterminado",
-      "label": "Restablecer la disposición de los paneles"
+      "label": "Restablecer la distribución de los paneles en todos los proyectos"
+    },
+    "saveLayout": {
+      "keywords": "guardar disposición personalizada distribución paneles tamaños nombre",
+      "label": "Guardar la disposición actual"
+    },
+    "applySavedLayout": {
+      "keywords": "disposición guardada personalizada distribución paneles cambiar aplicar",
+      "label": "Disposición: {{name}}"
     },
     "zoomIn": {
       "keywords": "agrandar más grande",
@@ -381,6 +389,10 @@
     "notes": {
       "label": "Abrir Notas",
       "keywords": "notas cuaderno conocimiento ideas investigación diario notes notebook knowledge research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Captura rápida",
+      "keywords": "captura rápida apuntar nota bandeja de entrada hoy quick capture jot note inbox today"
     }
   },
   "community": {
@@ -485,6 +497,11 @@
   },
   "datePicker": {
     "placeholder": "Elige una fecha"
+  },
+  "monthPicker": {
+    "label": "Elegir un mes",
+    "previousYear": "Año anterior",
+    "nextYear": "Año siguiente"
   },
   "devMenu": {
     "inspect": "Inspeccionar",
@@ -706,6 +723,7 @@
     "groups": {
       "action": "Acción",
       "documents": "Documentos",
+      "notes": "Notas",
       "references": "Referencias"
     },
     "label": "Buscar",
@@ -713,11 +731,13 @@
     "openReferences": "Abrir las referencias de este proyecto",
     "placeholder": "Busca proyectos y documentos, o escribe / para ver los comandos…",
     "placeholderDocuments": "Buscar dentro de los documentos…",
+    "placeholderNotes": "Buscar en las notas y en sus bloques…",
     "placeholderProjects": "Busca proyectos por nombre, motor, tipo, fecha o metadatos…",
     "referencesNeedProject": "Abre antes un proyecto para explorar sus referencias.",
     "slash": {
       "create": "abrir la galería de plantillas",
       "docs": "buscar dentro de los documentos",
+      "notes": "buscar en las notas y en sus bloques",
       "projects": "buscar en tus proyectos",
       "refs": "abrir las referencias de este proyecto",
       "settings": "abrir los ajustes",
@@ -1334,7 +1354,24 @@
       "split": "Vista dividida"
     },
     "moreActions": "Más acciones",
-    "resetPaneLayout": "Restablecer la disposición de los paneles",
+    "resetPaneLayout": "Restablecer la distribución de los paneles",
+    "resetPaneLayoutScope": "Todos los proyectos",
+    "savedLayouts": {
+      "close": "Cerrar",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Eliminar la disposición {{name}}?",
+      "limit": "Puedes conservar hasta {{count}} disposiciones. Elimina una para guardar otra.",
+      "manage": "Gestionar disposiciones",
+      "name": "Nombre de la disposición",
+      "rename": "Renombrar",
+      "renameTitle": "Renombrar disposición",
+      "replace": "Reemplazar",
+      "replaceConfirm": "Ya existe una disposición llamada {{name}}. ¿Reemplazarla?",
+      "save": "Guardar la disposición actual",
+      "saveButton": "Guardar",
+      "saveTitle": "Guardar disposición",
+      "update": "Actualizar con la actual"
+    },
     "renameFailed": "No se pudo cambiar el nombre del proyecto."
   },
   "tour": {

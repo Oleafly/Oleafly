@@ -14,11 +14,13 @@ use crate::tool::ToolSchema;
 
 mod client;
 mod html;
+mod preview;
 mod provenance;
 mod robots;
 mod search;
 
 use client::{redirect_allowed, PublicResolver};
+pub use preview::{link_preview, LinkPreview};
 use provenance::Provenance;
 use robots::Robots;
 
@@ -458,11 +460,18 @@ async fn extract_html(text: String, base: Url, limit: Duration) -> html::Extract
         })
 }
 
-pub async fn web_fetch(
+fn deadline_after(timeout: Duration) -> Instant {
+    Instant::now()
+        .checked_add(timeout)
+        .unwrap_or_else(|| Instant::now() + Duration::from_secs(24 * 60 * 60))
+}
+
+async fn open_page(
     client: &WebClient,
     url: &str,
     opts: &WebFetchOptions,
-) -> WebResult<WebPage> {
+    deadline: Instant,
+) -> WebResult<reqwest::Response> {
     let mut target = Url::parse(url.trim()).map_err(|_| WebError::InvalidUrl(url.to_string()))?;
     if client.strict && target.scheme() == "http" {
         target
@@ -471,9 +480,6 @@ pub async fn web_fetch(
     }
     target.set_fragment(None);
     client.check(&target)?;
-    let deadline = Instant::now()
-        .checked_add(opts.timeout)
-        .unwrap_or_else(|| Instant::now() + Duration::from_secs(24 * 60 * 60));
     let remaining = || deadline.saturating_duration_since(Instant::now());
     let mut hops = 0usize;
     let response = loop {
@@ -505,18 +511,32 @@ pub async fn web_fetch(
     if !response.status().is_success() {
         return Err(WebError::Http(response.status().as_u16()));
     }
+    Ok(response)
+}
+
+fn mime_of(content_type: Option<&str>) -> String {
+    content_type
+        .and_then(|value| value.split(';').next())
+        .map(|value| value.trim().to_ascii_lowercase())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "text/plain".to_string())
+}
+
+pub async fn web_fetch(
+    client: &WebClient,
+    url: &str,
+    opts: &WebFetchOptions,
+) -> WebResult<WebPage> {
+    let deadline = deadline_after(opts.timeout);
+    let remaining = || deadline.saturating_duration_since(Instant::now());
+    let response = open_page(client, url, opts, deadline).await?;
     let final_url = response.url().clone();
     let content_type = response
         .headers()
         .get(CONTENT_TYPE)
         .and_then(|value| value.to_str().ok())
         .map(str::to_string);
-    let mime = content_type
-        .as_deref()
-        .and_then(|value| value.split(';').next())
-        .map(|value| value.trim().to_ascii_lowercase())
-        .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| "text/plain".to_string());
+    let mime = mime_of(content_type.as_deref());
     let kind = kind_of(&mime)?;
     let (bytes, mut truncated) = within(remaining(), read_limited(response, MAX_FETCH_BYTES))
         .await?

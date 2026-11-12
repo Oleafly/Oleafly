@@ -40,7 +40,6 @@ describe("collaborator margin marks", () => {
     expect([...groups].map((group) => group.getAttribute("data-note-peers"))).toEqual(["alice bob", "carol"]);
     expect(groups[0].getAttribute("aria-hidden")).toBe("true");
     expect(editor.view.dom.querySelector('[data-note-peer-name="bob"]')?.textContent).toBe("Bob");
-    expect(groups[0].closest("p")?.classList.contains("relative")).toBe(true);
   });
 
   it("keeps marks on their blocks while the document changes and skips unchanged updates", () => {

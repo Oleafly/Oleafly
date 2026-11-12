@@ -31,12 +31,9 @@ import { LoadingState } from "@/components/ui/empty";
 import { insertTypstCitation } from "@/components/editor/typst-commands";
 import { formattingProfileForPath } from "@/lib/document-engine";
 import { ZoteroHintBanner } from "@/components/zotero/ZoteroHintBanner";
-import { useZoteroSearch } from "@/components/zotero/use-zotero-search";
+import { useFreshZoteroHits, ZoteroHitRow } from "@/components/zotero/fresh-hits";
 import { insertCitationKey } from "@/features/cite-insert";
 import { insertZoteroCitation } from "@/features/zotero-actions";
-import { existingKeyForHit, projectBibliography } from "@/features/zotero-cite";
-import { hitByline, hitTitle, libraryLabel, truncated } from "@/lib/zotero/format";
-import { useZoteroLibraryStore } from "@/store/zotero-library";
 
 function CitationRow({
   completion,
@@ -160,16 +157,8 @@ function CitationPickerContent({
     [current, deferredQuery],
   );
 
-  const zoteroStatus = useZoteroLibraryStore((state) => state.status);
-  const { hits: zoteroMatches } = useZoteroSearch(deferredQuery, 20);
-  const zoteroHits = useMemo(() => {
-    if (zoteroMatches.length === 0) return zoteroMatches;
-    const project = projectBibliography();
-    const listed = new Set(completions.map((completion) => completion.key));
-    return zoteroMatches.filter(
-      (hit) => !listed.has(hit.citationKey) && !project.keys.has(hit.citationKey) && !existingKeyForHit(hit, project),
-    );
-  }, [completions, zoteroMatches]);
+  const listedKeys = useMemo(() => completions.map((completion) => completion.key), [completions]);
+  const { hits: zoteroHits } = useFreshZoteroHits(deferredQuery, listedKeys, 20);
 
   const insert = (completion: CitationCompletion) => {
     if (isWysiwygActive() && !getWysiwygProjectIntelligenceCurrent()) return;
@@ -270,15 +259,7 @@ function CitationPickerContent({
             </p>
             {zoteroHits.map((hit) => (
               <PopoverItem key={`${hit.library}:${hit.itemKey}`} onClick={() => insertZoteroCitation(hit)}>
-                <span
-                  className="grid min-w-0 flex-1 gap-y-0.5 py-0.5"
-                  style={{ contentVisibility: "auto", containIntrinsicSize: "36px" }}
-                >
-                  <span className="truncate font-mono text-xs">{hit.citationKey}</span>
-                  <span className="truncate text-[0.625rem] text-muted-foreground">
-                    {[hitByline(hit), truncated(hitTitle(hit)), libraryLabel(hit, zoteroStatus)].filter(Boolean).join(" · ")}
-                  </span>
-                </span>
+                <ZoteroHitRow hit={hit} />
               </PopoverItem>
             ))}
           </div>

@@ -1,6 +1,6 @@
 import type { ProjectInfo } from "@oleafly/backend-port";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { frontMatterList } from "./note-tags";
+import { readProperties } from "./note-properties";
 
 const tauri = vi.hoisted(() => ({
   createNoteProject: vi.fn(),
@@ -15,7 +15,7 @@ vi.mock("@/components/editor/cm/hover-asset", () => ({ loadAssetThumbnail: vi.fn
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => ({ writeProjectFile: vi.fn() }) } }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
 
-const { createNotesService, headFacts, noteItems } = await import("./notes-service");
+const { createNotesService } = await import("./notes-service");
 
 function project(overrides: Partial<ProjectInfo>): ProjectInfo {
   return {
@@ -37,7 +37,6 @@ function service() {
   const deps = {
     projects: () => [project({})],
     refreshProjects: vi.fn(() => Promise.resolve()),
-    refreshHeads: vi.fn(),
     untitled: "Untitled",
     missing: "Missing",
   };
@@ -46,57 +45,6 @@ function service() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-});
-
-describe("note head facts", () => {
-  const head = [
-    "---",
-    "title: Masking",
-    "kind: note",
-    "id: n-1",
-    "aliases: [MAE, Masked encoder]",
-    "tags: [Paper]",
-    "status: draft",
-    "template: true",
-    "priority: 2",
-    "---",
-    "Body with #Inline tag.",
-  ].join("\n");
-
-  it("reads aliases, tags and user properties from the front matter", () => {
-    expect(headFacts(head)).toEqual({
-      aliases: ["MAE", "Masked encoder"],
-      tags: ["Paper", "Inline"],
-      properties: {
-        aliases: ["MAE", "Masked encoder"],
-        tags: ["Paper"],
-        status: "draft",
-        template: true,
-        priority: 2,
-      },
-    });
-  });
-
-  it("is empty without front matter or with broken YAML", () => {
-    expect(headFacts("Just text")).toEqual({ aliases: [], tags: [], properties: {} });
-    expect(headFacts("---\nkey: [unclosed\n---\n").properties).toEqual({});
-  });
-
-  it("fills note items and reuses parsed heads between refreshes", () => {
-    const heads = new Map([
-      ["note-1", head],
-      ["note-2", head],
-    ]);
-    const projects = [project({}), project({ id: "note-2", name: "Twin" })];
-    const first = noteItems(projects, heads, "Notes");
-    expect(first[0]).toMatchObject({ aliases: ["MAE", "Masked encoder"], tags: ["Paper", "Inline"] });
-    expect(first[0].properties).toBe(first[1].properties);
-    const second = noteItems(projects, heads, "Notes");
-    expect(second[0].properties).toBe(first[0].properties);
-    const third = noteItems(projects, new Map([["note-1", "---\nstatus: done\n---\n"]]), "Notes");
-    expect(third[0].properties).toEqual({ status: "done" });
-    expect(third[1].properties).toEqual({});
-  });
 });
 
 describe("vault service calls", () => {
@@ -110,9 +58,8 @@ describe("vault service calls", () => {
     expect(title).toBe("Plan");
     expect(related).toBe("p1");
     expect(source).toMatch(/^---\ntitle: Plan\n[\s\S]*status: draft\ntags: \[ml\]\n---\n\nBody$/u);
-    expect(frontMatterList(source, "tags")).toEqual(["ml"]);
+    expect(readProperties(/^---\n[\s\S]*?\n---/u.exec(source)?.[0] ?? "")?.find((property) => property.key === "tags")?.value).toEqual(["ml"]);
     expect(deps.refreshProjects).toHaveBeenCalled();
-    expect(deps.refreshHeads).toHaveBeenCalled();
   });
 
   it("starts a note from a template with the template's icon and colour instead of the starter ones", async () => {
@@ -141,10 +88,11 @@ describe("vault service calls", () => {
     tauri.listNoteTags.mockResolvedValue([{ tag: "ml", label: "ml", count: 1, notes: ["a"] }]);
     const { deps, notes } = service();
     await expect(notes.searchNotes?.("mask", 5)).resolves.toEqual([]);
-    expect(tauri.noteSearch).toHaveBeenCalledWith("mask", 5);
+    expect(tauri.noteSearch).toHaveBeenCalledWith("mask", 5, undefined);
+    await notes.searchNotes?.("tag:lab", 50, { mode: "regex", blocks: true });
+    expect(tauri.noteSearch).toHaveBeenLastCalledWith("tag:lab", 50, { mode: "regex", blocks: true });
     await expect(notes.noteTags?.()).resolves.toHaveLength(1);
     await notes.refreshNotes?.();
     expect(deps.refreshProjects).toHaveBeenCalled();
-    expect(deps.refreshHeads).toHaveBeenCalled();
   });
 });

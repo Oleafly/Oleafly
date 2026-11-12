@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { SectionReorderArea } from "./section-reorder";
 import { SidebarSection } from "./SidebarSection";
 
+const EDITOR = "Editor";
 const BOXES: Record<string, readonly [number, number]> = { a: [0, 90], b: [100, 90], c: [200, 90] };
 
 function rectAt(top: number, height: number): DOMRect {
@@ -103,6 +104,21 @@ describe("reordering sidebar sections", () => {
     expect(order()).toEqual(["b", "c", "a"]);
   });
 
+  it("leaves focus where it was when a header is clicked with the mouse", () => {
+    const onOpen = vi.fn();
+    render(
+      <>
+        <input aria-label={EDITOR} />
+        <Stack onReorder={vi.fn()} onOpen={onOpen} />
+      </>,
+    );
+    const editor = screen.getByRole("textbox", { name: EDITOR });
+    editor.focus();
+    fireEvent.click(header("b"), { detail: 1 });
+    expect(onOpen).toHaveBeenCalledWith("b");
+    expect(editor).toHaveFocus();
+  });
+
   it("drags a section onto another, highlights the whole target, and does not toggle it", () => {
     const onReorder = vi.fn();
     const onOpen = vi.fn();
@@ -116,8 +132,6 @@ describe("reordering sidebar sections", () => {
     expect(bar).toHaveAttribute("data-section-drop", "1");
     expect(bar?.style.top).toBe("100px");
     expect(bar?.style.height).toBe("90px");
-    expect(bar).toHaveClass("rounded-md", "border-primary/60", "bg-primary/10");
-    expect(container.querySelector('[data-section-header="a"]')).toHaveClass("bg-sidebar-accent");
     fireEvent.pointerUp(window);
     fireEvent.click(header("a"));
     expect(onReorder).toHaveBeenCalledWith(["b", "a", "c"]);
@@ -189,7 +203,6 @@ describe("reordering sidebar sections", () => {
     fireEvent.pointerDown(header("b"), { button: 0, clientY: 110 });
     fireEvent.pointerMove(window, { clientY: 140 });
     expect(container.querySelector("[data-section-drop]")).toBeNull();
-    expect(container.querySelector('[data-section-header="b"]')).toHaveClass("bg-sidebar-accent");
     fireEvent.pointerUp(window);
     expect(onReorder).not.toHaveBeenCalled();
   });

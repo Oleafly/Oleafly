@@ -314,6 +314,7 @@
   },
   "mcp": {
     "deniedByRules": "Bị từ chối bởi quy tắc deny trong approvals.toml",
+    "createTodaySummary": "Tạo ghi chú hôm nay “{{title}}”",
     "openProjectSummary": "Mở dự án {{id}}",
     "rulesUnreadable": "Bị từ chối vì không đọc được approvals.toml",
     "useToolSummary": "Dùng {{tool}} từ máy chủ MCP {{server}}"

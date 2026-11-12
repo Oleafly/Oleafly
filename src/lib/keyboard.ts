@@ -57,6 +57,17 @@ export function isUnbindableKey(key: string): boolean {
   return UNBINDABLE_KEYS.has(key);
 }
 
+const KEY_LABELS: Readonly<Record<string, string>> = {
+  ArrowUp: "↑",
+  ArrowDown: "↓",
+  ArrowLeft: "←",
+  ArrowRight: "→",
+};
+
+export function keyLabel(key: string): string {
+  return KEY_LABELS[key] ?? (key.length === 1 ? key.toUpperCase() : key);
+}
+
 const NAMED_KEY = /^[A-Z][A-Za-z0-9]+$/;
 const PRINTABLE_ASCII = /^[\x21-\x7e]$/;
 

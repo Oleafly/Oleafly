@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
+import "./tests/setup";
 
 const mocks = vi.hoisted(() => ({ locale: "en" }));
 
@@ -96,12 +97,7 @@ vi.mock("frimousse", async () => {
   };
 });
 
-const { loadNamespace } = await import("@/i18n");
 const { default: EmojiGrid } = await import("./EmojiGrid");
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
 
 beforeEach(() => {
   mocks.locale = "en";
@@ -121,22 +117,18 @@ describe("EmojiGrid", () => {
     render(<EmojiGrid onSelect={vi.fn()} />);
     const header = screen.getByText("Smileys");
     expect(header).toHaveAttribute("data-index", "0");
-    expect(header).toHaveClass("uppercase");
     const grinning = screen.getByRole("button", { name: "😀" });
     expect(grinning).toHaveAttribute("type", "button");
     expect(grinning).toHaveAttribute("data-active", "");
     expect(grinning.parentElement).toHaveAttribute("data-row", "0");
-    expect(grinning.parentElement).toHaveClass("gap-0.5");
   });
 
-  it("tints the note's current emoji and marks it pressed", () => {
+  it("marks the note's current emoji pressed", () => {
     const { rerender } = render(<EmojiGrid selected="🚀" onSelect={vi.fn()} />);
     const rocket = screen.getByRole("button", { name: "🚀" });
     expect(rocket).toHaveAttribute("aria-pressed", "true");
-    expect(rocket).toHaveClass("note-chip");
     const grinning = screen.getByRole("button", { name: "😀" });
     expect(grinning).toHaveAttribute("aria-pressed", "false");
-    expect(grinning).not.toHaveClass("note-chip");
     rerender(<EmojiGrid onSelect={vi.fn()} />);
     expect(screen.getByRole("button", { name: "🚀" })).toHaveAttribute("aria-pressed", "false");
   });

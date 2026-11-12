@@ -13,7 +13,8 @@ export function isNoteProject(project: Kinded | null | undefined): boolean {
 }
 
 export function libraryProjects<T extends Kinded>(projects: readonly T[], notesOn: boolean): readonly T[] {
-  return notesOn ? projects.filter((project) => !isNoteProject(project)) : projects;
+  if (!notesOn) return projects;
+  return projects.filter((project) => !isNoteProject(project));
 }
 
 export function opensInNotes(
@@ -22,6 +23,14 @@ export function opensInNotes(
   notesOn: boolean,
 ): boolean {
   return notesOn && isNoteProject(projects.find((project) => project.id === id));
+}
+
+export function isSharedProject(
+  projects: readonly Pick<ProjectInfo, "id" | "shared">[],
+  projectId: string | null,
+  live: boolean,
+): boolean {
+  return live || Boolean(projectId && projects.find((project) => project.id === projectId)?.shared);
 }
 
 export function isFolderProject(project: Located): boolean {

@@ -1,9 +1,10 @@
-import { ArrowDown, ArrowUp, ArrowUpDown, Table2 } from "lucide-react";
+import { Table2 } from "lucide-react";
 import { useDeferredValue, useMemo, useRef, useState } from "react";
-import { createRoot } from "react-dom/client";
-import { I18nextProvider, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
 import { parseDelimited, serializeCsv } from "@oleafly/conversion-registry/table";
+import { BLOCK_SURFACE } from "@/components/ui/block-frame";
 import { Input } from "@/components/ui/input";
+import { nextSort, SortableTableHead, type SortState, TableSpacerRow } from "@/components/ui/table";
 import { ROW_WINDOW_ITEM, useRowWindow } from "@/hooks/use-row-window";
 import { i18n } from "@/i18n";
 import { formatList, formatNumber, textCollator } from "@/lib/intl";
@@ -14,7 +15,9 @@ import {
   blockMessage,
   type Dispose,
   type NoteBlockKind,
+  element,
   type PaintContext,
+  paintAsync,
   paintBlockCard,
 } from "./note-blocks";
 import {
@@ -23,7 +26,6 @@ import {
   columnKeyCache,
   filterRows,
   loadTableFile,
-  type SortDirection,
   sortRows,
   summarizeColumn,
   TABLE_MAX_COLUMNS,
@@ -35,6 +37,7 @@ import {
   tableDelimiter,
   tableSource,
 } from "./table-data";
+import { nodeRoot } from "./node-root";
 
 export const VIRTUAL_AFTER = 200;
 export const ROW_REM = 1.75;
@@ -44,22 +47,11 @@ export const STILL_ROWS = 6;
 export const STILL_COLUMNS = 6;
 const FIRST_WINDOW = Math.ceil(VIEW_REM / ROW_REM) + OVERSCAN * 2;
 const MEAN_FORMAT: Intl.NumberFormatOptions = { maximumSignificantDigits: 6 };
-
-type SortState = { column: number; direction: SortDirection } | null;
-
-function nextSort(current: SortState, column: number): SortState {
-  if (!current || current.column !== column) return { column, direction: "ascending" };
-  return current.direction === "ascending" ? { column, direction: "descending" } : null;
-}
+const TABLE_LINE = "border-(--note-table-line)";
+const TABLE_HEAD = "bg-(--note-table-head)";
 
 function columnName(name: string, index: number): string {
   return name.trim() || i18n.t(($) => $.notes.blocks.table.column, { number: index + 1 });
-}
-
-function SortIcon({ direction }: Readonly<{ direction: SortDirection | null }>) {
-  if (direction === "ascending") return <ArrowUp aria-hidden="true" className="size-3 shrink-0" />;
-  if (direction === "descending") return <ArrowDown aria-hidden="true" className="size-3 shrink-0" />;
-  return <ArrowUpDown aria-hidden="true" className="size-3 shrink-0 opacity-40" />;
 }
 
 function SummaryCell({ summary }: Readonly<{ summary: ColumnSummary }>) {
@@ -71,10 +63,10 @@ function SummaryCell({ summary }: Readonly<{ summary: ColumnSummary }>) {
     [t(($) => $.notes.blocks.table.max), summary.maxText],
   ];
   return (
-    <dl className="grid grid-cols-[auto_auto_auto_auto] justify-end gap-x-1.5 whitespace-nowrap text-[0.6875rem]">
+    <dl className="flex flex-wrap justify-end gap-x-3 gap-y-0.5 text-[0.6875rem]">
       {items.map(([label, value]) => (
-        <div key={label} className="contents">
-          <dt className="text-muted-foreground">{label}</dt>
+        <div key={label} className="inline-flex gap-1 whitespace-nowrap">
+          <dt className="text-foreground/60">{label}</dt>
           <dd className="tabular-nums">{value}</dd>
         </div>
       ))}
@@ -85,7 +77,7 @@ function SummaryCell({ summary }: Readonly<{ summary: ColumnSummary }>) {
 export function TableView({ table }: Readonly<{ table: TableData }>) {
   const { t } = useTranslation(["notes"]);
   const [filter, setFilter] = useState("");
-  const [sort, setSort] = useState<SortState>(null);
+  const [sort, setSort] = useState<SortState<number> | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLTableSectionElement>(null);
   const query = useDeferredValue(filter);
@@ -93,7 +85,7 @@ export function TableView({ table }: Readonly<{ table: TableData }>) {
   const keys = useMemo(() => columnKeyCache(table), [table]);
   const filtered = useMemo(() => filterRows(table, query), [table, query]);
   const order = useMemo(
-    () => (sort ? sortRows(filtered, keys(sort.column), sort.direction, collator) : filtered),
+    () => (sort ? sortRows(filtered, keys(sort.key), sort.direction, collator) : filtered),
     [filtered, sort, keys, collator],
   );
   const summaries = useMemo(
@@ -158,48 +150,31 @@ export function TableView({ table }: Readonly<{ table: TableData }>) {
           {t(($) => $.notes.blocks.table.truncated, { limit: formatNumber(TABLE_MAX_ROWS) })}
         </p>
       ) : null}
-      <div ref={scrollRef} className={cn("overflow-auto rounded-md border", virtual ? "h-[24rem]" : "max-h-[24rem]")}>
+      <div ref={scrollRef} className={cn(BLOCK_SURFACE, TABLE_LINE, "overflow-auto", virtual ? "h-[24rem]" : "max-h-[24rem]")}>
         <table
           className="w-full border-separate border-spacing-0 text-xs"
           aria-rowcount={order.length + (hasSummary ? 2 : 1)}
         >
           <thead>
             <tr aria-rowindex={1}>
-              {columns.map(({ id, index: column, label, numeric }) => {
-                const direction = sort?.column === column ? sort.direction : null;
-                return (
-                  <th
-                    key={id}
-                    scope="col"
-                    aria-sort={direction ?? undefined}
-                    className="sticky top-0 z-[1] border-b bg-muted p-0 text-left font-medium"
-                  >
-                    <button
-                      type="button"
-                      aria-label={t(($) => $.notes.blocks.table.sortBy, { column: label })}
-                      onClick={() => {
-                        setSort((current) => nextSort(current, column));
-                        toTop();
-                      }}
-                      className={cn(
-                        "flex w-full items-center gap-1 whitespace-nowrap px-2 py-1 hover:bg-accent focus-visible:bg-accent",
-                        numeric && "justify-end",
-                      )}
-                    >
-                      <span className="max-w-[24rem] truncate">{label}</span>
-                      <SortIcon direction={direction} />
-                    </button>
-                  </th>
-                );
-              })}
+              {columns.map(({ id, index: column, label, numeric }) => (
+                <SortableTableHead
+                  key={id}
+                  label={<span className="max-w-[24rem] truncate">{label}</span>}
+                  sortLabel={t(($) => $.notes.blocks.table.sortBy, { column: label })}
+                  direction={sort?.key === column ? sort.direction : null}
+                  numeric={numeric}
+                  onSort={() => {
+                    setSort((current) => nextSort(current, column, "ascending", true));
+                    toTop();
+                  }}
+                  className={cn("sticky top-0 z-[1] border-b", TABLE_LINE, TABLE_HEAD)}
+                />
+              ))}
             </tr>
           </thead>
           <tbody ref={bodyRef} className="[&>tr:last-child>td]:border-b-0">
-            {paddingTop > 0 ? (
-              <tr data-spacer="before" style={{ height: `${paddingTop}px` }}>
-                <td colSpan={width} className="p-0" />
-              </tr>
-            ) : null}
+            {paddingTop > 0 ? <TableSpacerRow height={paddingTop} span={width} /> : null}
             {order.slice(start, end).map((rowIndex, offset) => (
               <tr
                 key={rowIndex}
@@ -209,17 +184,13 @@ export function TableView({ table }: Readonly<{ table: TableData }>) {
                 className="hover:bg-muted/40"
               >
                 {columns.map(({ id, index: column, numeric }) => (
-                  <td key={id} className={cn("border-b px-2 py-1", numeric && "text-right tabular-nums")}>
+                  <td key={id} className={cn("border-b px-2 py-1", TABLE_LINE, numeric && "text-right tabular-nums")}>
                     <span className="block max-w-[32rem] truncate whitespace-nowrap">{table.rows[rowIndex][column]}</span>
                   </td>
                 ))}
               </tr>
             ))}
-            {paddingBottom > 0 ? (
-              <tr data-spacer="after" style={{ height: `${paddingBottom}px` }}>
-                <td colSpan={width} className="p-0" />
-              </tr>
-            ) : null}
+            {paddingBottom > 0 ? <TableSpacerRow height={paddingBottom} span={width} /> : null}
             {order.length === 0 ? (
               <tr>
                 <td colSpan={width} className="px-2 py-4 text-center text-muted-foreground">
@@ -234,7 +205,7 @@ export function TableView({ table }: Readonly<{ table: TableData }>) {
                 {columns.map(({ id, index: column }) => {
                   const summary = summaries[column];
                   return (
-                    <td key={id} className="sticky bottom-0 border-t bg-muted px-2 py-1 align-top">
+                    <td key={id} className={cn("sticky bottom-0 border-t bg-(--note-table-foot) px-2 py-1 align-top", TABLE_LINE)}>
                       {summary ? <SummaryCell summary={summary} /> : null}
                     </td>
                   );
@@ -249,13 +220,9 @@ export function TableView({ table }: Readonly<{ table: TableData }>) {
 }
 
 export function mountTable(host: HTMLElement, table: TableData): Dispose {
-  const root = createRoot(host);
-  root.render(
-    <I18nextProvider i18n={i18n}>
-      <TableView table={table} />
-    </I18nextProvider>,
-  );
-  return () => queueMicrotask(() => root.unmount());
+  const root = nodeRoot(host);
+  root.render(<TableView table={table} />);
+  return root.unmount;
 }
 
 function tableLabel(): string {
@@ -298,8 +265,7 @@ function showTable(preview: HTMLElement, result: TableResult): Dispose | undefin
     blockMessage(preview, problemText(result.problem));
     return undefined;
   }
-  const host = document.createElement("div");
-  host.className = "note-table-host w-full min-w-0";
+  const host = element("div", "note-table-host w-full min-w-0");
   preview.replaceChildren(host);
   return mountTable(host, result.table);
 }
@@ -320,26 +286,21 @@ export const paintTableStill: BlockPaint = (preview, source, context) => {
     return undefined;
   }
   const { header, rows, types } = result.table;
-  const table = document.createElement("table");
-  table.className = "note-table-still w-full border-collapse text-xs";
-  const head = document.createElement("tr");
+  const table = element("table", "note-table-still w-full border-collapse text-xs");
+  const head = element("tr", "");
   header.slice(0, STILL_COLUMNS).forEach((name, column) => {
-    const cell = document.createElement("th");
+    const numeric = types[column] === "number";
+    const cell = element("th", cn("border-b px-2 py-1 font-medium", TABLE_LINE, TABLE_HEAD, numeric ? "text-right" : "text-left"), columnName(name, column));
     cell.scope = "col";
-    cell.className = cn("border-b px-2 py-1 font-medium", types[column] === "number" ? "text-right" : "text-left");
-    cell.textContent = columnName(name, column);
     head.append(cell);
   });
-  const thead = document.createElement("thead");
+  const thead = element("thead", "");
   thead.append(head);
-  const tbody = document.createElement("tbody");
+  const tbody = element("tbody", "");
   for (const row of rows) {
-    const line = document.createElement("tr");
+    const line = element("tr", "");
     row.slice(0, STILL_COLUMNS).forEach((value, column) => {
-      const cell = document.createElement("td");
-      cell.className = cn("px-2 py-1", types[column] === "number" && "text-right tabular-nums");
-      cell.textContent = value;
-      line.append(cell);
+      line.append(element("td", cn("border-t px-2 py-1", TABLE_LINE, types[column] === "number" && "text-right tabular-nums"), value));
     });
     tbody.append(line);
   }
@@ -363,21 +324,12 @@ export function paintTable(preview: HTMLElement, source: string, context: PaintC
     paintBlockCard(preview, tableLabel(), source);
     return undefined;
   }
-  let live = true;
-  let unmount: Dispose | undefined;
-  blockMessage(preview, i18n.t(($) => $.notes.blocks.table.loading, { path: spec.path }));
-  loadTableFile(spec, readFile).then(
-    (result) => {
-      if (live) unmount = showTable(preview, result);
-    },
-    (error: unknown) => {
-      if (live) blockMessage(preview, tableErrorText(error, spec));
-    },
-  );
-  return () => {
-    live = false;
-    unmount?.();
-  };
+  return paintAsync(preview, {
+    loading: i18n.t(($) => $.notes.blocks.table.loading, { path: spec.path }),
+    load: () => loadTableFile(spec, readFile),
+    show: (result) => showTable(preview, result),
+    error: (error) => tableErrorText(error, spec),
+  });
 }
 
 function templateSource(): string {

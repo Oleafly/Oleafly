@@ -1,7 +1,7 @@
 import type { ITheme } from "@xterm/xterm";
 import { cssColorToHex, readCssVariable } from "@/lib/css-color";
 
-export const TERMINAL_SCROLLBAR_WIDTH = 8;
+export const TERMINAL_SCROLLBAR_WIDTH = 4;
 
 export interface ScrollThumbMix {
   rest: number;

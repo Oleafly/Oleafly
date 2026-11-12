@@ -1030,13 +1030,14 @@
         "environment": "Окружение {{environment}}",
         "command": "Команда \\{{command}}",
         "latexSource": "Исходник LaTeX",
+        "html": "HTML",
         "maketitlePreview": "Построено по заголовку документа и метаданным авторов.",
         "figurePreserved": "Точный исходник рисунка сохранён.",
         "tablePreserved": "Точный исходник таблицы сохранён.",
         "sourcePreserved": "Точный исходник сохранён",
         "editSource": "Править исходник",
-        "summaryLabel": "{{label}}. Точный исходник LaTeX сохранён.",
-        "inputLabel": "Точный исходник блока LaTeX"
+        "summaryLabel": "{{label}}. Точный исходник сохранён.",
+        "inputLabel": "Точный исходник блока"
       },
       "inline": {
         "label": "Сырой исходник в строке",

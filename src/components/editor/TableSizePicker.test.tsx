@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const insertTable = vi.fn();
@@ -51,6 +52,14 @@ describe("TableSizePicker", () => {
     expect(screen.getByLabelText("2 by 3 table")).toHaveClass("bg-primary/20");
     expect(screen.getByLabelText("3 by 3 table")).not.toHaveClass("bg-primary/20");
     expect(screen.getByLabelText("2 by 4 table")).not.toHaveClass("bg-primary/20");
+  });
+
+  it("previews the size of the cell that has keyboard focus", async () => {
+    render(<TableSizePicker />);
+    fireEvent.click(screen.getByLabelText("Insert table"));
+    expect(screen.getByText("Select size")).toBeInTheDocument();
+    await userEvent.tab();
+    expect(screen.getByText("1 × 2")).toBeInTheDocument();
   });
 
   it("labels the trigger as a menu row when asked", () => {

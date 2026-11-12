@@ -230,7 +230,11 @@
     "history_unavailable": "Historikken til dette prosjektet er ikke på denne datamaskinen ennå. Prøv igjen når prosjektet er synkronisert.",
     "account_storage_full": "Kontoen til prosjekteieren har gått tom for lagringsplass på denne serveren. Fjern noen filer for å få plass, eller be administratoren for serveren om mer plass.",
     "too_many_projects": "Du har allerede så mange delte prosjekter som denne serveren tillater. Slutt å dele ett før du deler et nytt.",
-    "too_many_uploads": "Du har lastet opp for mange filer den siste timen. Prøv igjen senere."
+    "too_many_uploads": "Du har lastet opp for mange filer den siste timen. Prøv igjen senere.",
+    "public_notes_off": "Denne serveren tillater ikke offentlige notatlenker. En administrator kan slå dem på i serverinnstillingene.",
+    "too_many_pages": "Du har så mange offentlige sider som denne serveren tillater. Avpubliser én, og prøv igjen.",
+    "page_too_large": "Dette notatet er for stort til å publiseres. Fjern noen bilder, og prøv igjen.",
+    "page_taken_down": "En administrator har tatt ned denne siden, så notatet kan ikke publiseres igjen før siden er gjenopprettet."
   },
   "roles": {
     "admin": "Administrator",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "Innlogging med e-post",
         "description": "Folk kan logge inn med en lenke som sendes til e-postadressen deres. Dette krever serverens e-postinnstillinger. Tilgangsreglene dine avgjør fortsatt hvem som slipper inn."
+      },
+      "publicNotesAllowed": {
+        "label": "Tillat offentlige notatlenker",
+        "description": "Medlemmer kan publisere en kopi av et notat som bare kan leses, på en lenke alle kan åpne uten å logge inn."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "Avslo en gjesteinvitasjon",
         "guestInvitationRevoked": "Trakk tilbake en gjesteinvitasjon",
         "guestAdmissionEnded": "Avsluttet en gjests tilgang til serveren",
-        "unknown": "Annen serverhendelse"
+        "unknown": "Annen serverhendelse",
+        "notePublished": "Publiserte et notat på en offentlig lenke",
+        "noteUnpublished": "Avpubliserte et notat",
+        "noteTakenDown": "Tok ned et publisert notat",
+        "noteRestored": "Gjenopprettet et publisert notat"
       },
       "details": {
         "project": "Prosjekt: {{title}}",
@@ -455,7 +467,8 @@
         "device": "Enhet: {{name}}",
         "byAdmin": "Fra administrasjonskonsollen",
         "settingOn": "{{setting}}: på",
-        "settingOff": "{{setting}}: av"
+        "settingOff": "{{setting}}: av",
+        "note": "Notat: {{title}}"
       }
     },
     "email": {
@@ -793,7 +806,8 @@
       "settings": "Serverinnstillinger",
       "email": "E-post",
       "log": "Sikkerhetslogg",
-      "checks": "Tilkoblingssjekk"
+      "checks": "Tilkoblingssjekk",
+      "pages": "Publiserte notater"
     },
     "health": {
       "label": "Serverstatus: {{status}}",
@@ -960,6 +974,30 @@
     },
     "checks": {
       "description": "Sjekk tilkoblingen fra denne maskinen til serveren."
+    },
+    "pages": {
+      "description": "Sider som bare kan leses, og som folk har laget av notatene sine. Alle som har lenken til en side, kan lese den.",
+      "loading": "Laster publiserte notater…",
+      "empty": "Ingen har publisert et notat på denne serveren ennå.",
+      "limit": "Viser de {{shown}} nyeste sidene.",
+      "columns": {
+        "title": "Notat",
+        "author": "Forfatter",
+        "updated": "Publisert",
+        "actions": "Handlinger"
+      },
+      "noAuthor": "Fjernet konto",
+      "takenDown": "Tatt ned",
+      "openNamed": "Åpne {{title}}",
+      "takeDown": "Ta ned",
+      "takeDownNamed": "Ta ned {{title}}",
+      "restore": "Gjenopprett",
+      "restoreNamed": "Gjenopprett {{title}}",
+      "takeDownConfirm": {
+        "title": "Ta ned {{title}}?",
+        "description": "Den offentlige lenken slutter å virke til du gjenoppretter siden. Forfatteren beholder notatet, men kan ikke publisere det igjen i mellomtiden.",
+        "confirm": "Ta ned"
+      }
     }
   },
   "links": {
@@ -1233,5 +1271,41 @@
     "broughtIn": "Endringene dine fra {{name}} er nå i dette prosjektet.",
     "retry": "Prøv på nytt",
     "dismiss": "Lukk"
+  },
+  "publish": {
+    "tabs": {
+      "people": "Personer",
+      "publish": "Publiser"
+    },
+    "intro": "Når du publiserer, legges en kopi av notatet som bare kan leses, ut på en offentlig lenke. Alle som har lenken, kan lese den uten å logge inn.",
+    "contents": "Bilder, diagrammer, matematikk, Typst og molekyler tas med. Blokker med HTML, React, CSV, sekvenser og notatbøker utelates.",
+    "checking": "Ser etter en offentlig side…",
+    "loadFailed": "Oleafly kunne ikke sjekke den offentlige siden til dette notatet.",
+    "notAllowed": "{{server}} tillater ikke offentlige notatlenker. En administrator kan slå dem på i serverinnstillingene.",
+    "ownerOnly": "Bare eieren av notatet kan publisere det.",
+    "linkLabel": "Offentlig lenke",
+    "open": "Åpne",
+    "publishedAt": "Sist publisert {{date}}",
+    "stale": "Du har endret notatet siden du publiserte det sist. Publiser på nytt for å oppdatere siden.",
+    "publish": "Publiser",
+    "republish": "Publiser på nytt",
+    "unpublish": "Avpubliser",
+    "failed": "Publiseringen ble ikke fullført.",
+    "unpublishConfirm": {
+      "title": "Avpublisere {{name}}?",
+      "description": "Den offentlige lenken slutter å virke med en gang. De som har lagret en kopi av siden, beholder den.",
+      "confirm": "Avpubliser"
+    },
+    "list": {
+      "title": "Publiserte notater",
+      "description": "Sider av notatene dine på denne serveren som bare kan leses. Alle som har en lenke, kan lese dem.",
+      "loadFailed": "Oleafly kunne ikke laste de publiserte notatene dine.",
+      "empty": "Du har ikke publisert noen notater her.",
+      "openNamed": "Åpne {{name}}",
+      "unpublishNamed": "Avpubliser {{name}}",
+      "updated": "Publisert {{date}}"
+    },
+    "takenDown": "En administrator har tatt ned denne siden. Lesere kan ikke åpne den, og du kan ikke publisere den igjen før siden er gjenopprettet. Du kan fortsatt avpublisere den.",
+    "tooOld": "{{server}} er for gammel for offentlige notatlenker. Administratoren må oppdatere Oleafly Server."
   }
 }

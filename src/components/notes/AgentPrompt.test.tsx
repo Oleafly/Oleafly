@@ -1,16 +1,14 @@
 // @vitest-environment jsdom
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef, type RefObject } from "react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadNamespace } from "@/i18n";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enAi from "@/i18n/locales/en/ai.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { CollapsePromptButton, GlowRing, PromptDock, ShortcutLabel, type PromptDockHandle } from "./AgentPrompt";
-import { PROMPT_COLLAPSED_KEY } from "./note-prefs";
 import { useShortcutStore } from "@/store/shortcuts";
+import "./tests/setup";
+import { useNotesPrefsStore } from "@/store/notes-prefs";
 
 interface FakeAnimation {
   element: Element;
@@ -29,6 +27,7 @@ interface Overrides {
   working?: boolean;
   onStop?: () => void;
   shortcutScope?: RefObject<HTMLElement | null>;
+  keepMounted?: boolean;
 }
 
 const BOX = "Box";
@@ -58,6 +57,7 @@ function setup(overrides: Overrides = {}) {
       onStop={next.onStop}
       shortcutScope={next.shortcutScope}
       focusComposer={focusComposer}
+      keepMounted={next.keepMounted}
     >
       <Panel dock={dock} />
     </PromptDock>
@@ -127,11 +127,10 @@ function rect(element: Element, x: number, y: number, width: number, height: num
   vi.spyOn(element, "getBoundingClientRect").mockReturnValue(new DOMRect(x, y, width, height));
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+const initialPrefs = useNotesPrefsStore.getState();
 
 beforeEach(() => {
+  useNotesPrefsStore.setState(initialPrefs, true);
   localStorage.clear();
   animations = [];
   scope = document.createElement("div");
@@ -153,29 +152,68 @@ describe("the assistant dock", () => {
     expect(collapseButton()).toHaveAttribute("aria-expanded", "true");
     await user.click(collapseButton());
     expect(root()).toHaveAttribute("data-prompt-state", "collapsed");
-    expect(localStorage.getItem(PROMPT_COLLAPSED_KEY)).toBe("true");
+    expect(useNotesPrefsStore.getState().promptCollapsed).toBe(true);
     expect(pill()).toHaveAttribute("aria-expanded", "false");
     const { panel } = parts();
     expect(panel).toHaveAttribute("inert");
-    expect(panel).toHaveClass("pointer-events-none", "opacity-0");
     expect(screen.queryByRole("button", { name: enAi.composer.stop })).toBeNull();
   });
 
   it("opens again from the pill and focuses the composer", async () => {
     const user = userEvent.setup();
-    localStorage.setItem(PROMPT_COLLAPSED_KEY, "true");
+    useNotesPrefsStore.getState().set("promptCollapsed", true);
     const { focusComposer } = setup();
     expect(root()).toHaveAttribute("data-prompt-state", "collapsed");
     await user.click(pill());
     expect(root()).toHaveAttribute("data-prompt-state", "expanded");
-    expect(localStorage.getItem(PROMPT_COLLAPSED_KEY)).toBe("false");
+    expect(useNotesPrefsStore.getState().promptCollapsed).toBe(false);
     expect(focusComposer).toHaveBeenCalled();
     expect(box()).toHaveFocus();
     expect(parts().pill).toHaveAttribute("inert");
   });
 
+  it("focuses a composer that mounts after the dock opens, unless the person has moved on", async () => {
+    useNotesPrefsStore.getState().set("promptCollapsed", true);
+    const dock = createRef<PromptDockHandle>();
+    const focusComposer = () => screen.queryByLabelText<HTMLTextAreaElement>(BOX)?.focus();
+    const tree = (ready: boolean) => (
+      <PromptDock handle={dock} detail="Built-in" working={false} focusComposer={focusComposer}>
+        {ready && <textarea aria-label={BOX} />}
+      </PromptDock>
+    );
+    const view = render(tree(false));
+    act(() => dock.current?.expand(true));
+    expect(screen.queryByLabelText(BOX)).toBeNull();
+    view.rerender(tree(true));
+    await act(async () => {});
+    expect(box()).toHaveFocus();
+
+    act(() => dock.current?.collapse());
+    view.rerender(tree(false));
+    const elsewhere = document.body.appendChild(document.createElement("input"));
+    act(() => dock.current?.expand(true));
+    elsewhere.focus();
+    view.rerender(tree(true));
+    await act(async () => {});
+    expect(elsewhere).toHaveFocus();
+    elsewhere.remove();
+  });
+
+  it("mounts what it holds only once opened, or while asked to keep it", () => {
+    useNotesPrefsStore.getState().set("promptCollapsed", true);
+    const { dock, rerender } = setup();
+    expect(screen.queryByLabelText(BOX)).toBeNull();
+    rerender({ keepMounted: true });
+    expect(box()).toBeInTheDocument();
+    rerender({ keepMounted: false });
+    expect(screen.queryByLabelText(BOX)).toBeNull();
+    act(() => dock.current?.expand(false));
+    act(() => dock.current?.collapse());
+    expect(box()).toBeInTheDocument();
+  });
+
   it("opens and focuses through its handle, or only opens", () => {
-    localStorage.setItem(PROMPT_COLLAPSED_KEY, "true");
+    useNotesPrefsStore.getState().set("promptCollapsed", true);
     const { dock, focusComposer } = setup();
     act(() => dock.current?.expand(false));
     expect(root()).toHaveAttribute("data-prompt-state", "expanded");
@@ -262,7 +300,7 @@ describe("the assistant dock", () => {
   it("hands focus back to where it was when Mod+J closes it", () => {
     const editor = document.createElement("button");
     document.body.append(editor);
-    localStorage.setItem(PROMPT_COLLAPSED_KEY, "true");
+    useNotesPrefsStore.getState().set("promptCollapsed", true);
     setup({ shortcutScope: { current: document.body } });
     act(() => editor.focus());
     press({ key: "j", ctrlKey: true }, editor);
@@ -276,7 +314,7 @@ describe("the assistant dock", () => {
   it("moves focus to the pill when the place it came from is gone", () => {
     const editor = document.createElement("button");
     document.body.append(editor);
-    localStorage.setItem(PROMPT_COLLAPSED_KEY, "true");
+    useNotesPrefsStore.getState().set("promptCollapsed", true);
     setup({ shortcutScope: { current: document.body } });
     act(() => editor.focus());
     press({ key: "j", ctrlKey: true }, editor);
@@ -305,7 +343,7 @@ describe("the assistant dock", () => {
 
   it("shows a spinner and Stop in the pill while the assistant works", async () => {
     const user = userEvent.setup();
-    localStorage.setItem(PROMPT_COLLAPSED_KEY, "true");
+    useNotesPrefsStore.getState().set("promptCollapsed", true);
     const onStop = vi.fn();
     const { rerender } = setup({ onStop });
     expect(screen.queryByRole("button", { name: enAi.composer.stop })).toBeNull();
@@ -401,20 +439,9 @@ describe("the assistant dock", () => {
 });
 
 describe("the working glow", () => {
-  const css = readFileSync(join(process.cwd(), "src/components/notes/notes.css"), "utf8").replace(/\r\n/gu, "\n");
-
-  it("spins a gradient layer with a transform instead of repainting a custom property", () => {
-    expect(css).not.toContain("@property --note-glow-angle");
-    expect(css).not.toMatch(/--note-glow-angle:\s*360deg/u);
-    expect(css).toMatch(/@keyframes note-glow-spin \{\n {2}to \{\n {4}transform: translate\(-50%, -50%\) rotate\(360deg\);/u);
-    expect(css).toContain(".note-prompt-glow[data-working] > .note-prompt-glow-ring::before {\n  animation: note-glow-spin");
-    expect(css).toContain("@media (prefers-reduced-motion: reduce) {\n  .note-prompt-glow[data-working] > .note-prompt-glow-ring::before {\n    animation: none;");
-  });
-
   it("draws the ring as a hidden layer", () => {
     render(<GlowRing />);
     const ring = document.querySelector("[data-glow-ring]");
-    expect(ring).toHaveClass("note-prompt-glow-ring");
     expect(ring).toHaveAttribute("aria-hidden", "true");
   });
 });

@@ -1,6 +1,10 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import type { MarkdownNodeSpec } from "tiptap-markdown";
+import { keepsBlockHtml } from "./markdown/raw-html";
 import { wysiwygMessage } from "./messages";
 import { rawBlockPresentation } from "./raw-presentation";
+
+const withRawHtml = new WeakSet<object>();
 
 export const RawBlock = Node.create({
   name: "rawBlock",
@@ -13,6 +17,29 @@ export const RawBlock = Node.create({
     return {
       source: { default: "" },
     };
+  },
+
+  addStorage() {
+    const markdown: MarkdownNodeSpec = {
+      serialize(state, node) {
+        state.text(String(node.attrs.source ?? ""), false);
+        state.closeBlock(node);
+      },
+      parse: {
+        setup(markdownit) {
+          const render = markdownit.renderer.rules.html_block;
+          if (!render || withRawHtml.has(markdownit)) return;
+          withRawHtml.add(markdownit);
+          markdownit.renderer.rules.html_block = (tokens, index, options, env, self) => {
+            const html = tokens[index].content;
+            if (keepsBlockHtml(html)) return render(tokens, index, options, env, self);
+            const source = markdownit.utils.escapeHtml(html.replace(/\n$/u, ""));
+            return `<div data-type="raw-block" source="${source}"></div>`;
+          };
+        },
+      },
+    };
+    return { markdown };
   },
 
   parseHTML() {

@@ -7,6 +7,7 @@ import {
   ArrowUpToLine,
   Asterisk,
   Bold,
+  Bookmark,
   CaseLower,
   CaseSensitive,
   CaseUpper,
@@ -40,6 +41,7 @@ import {
   RefreshCw,
   RotateCcw,
   Rows3,
+  Save,
   ScanSearch,
   SearchCode,
   Settings,
@@ -71,7 +73,8 @@ import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
 import { useCitationStore } from "@/store/citation";
 import { openMissingCitations, openZoteroUpdates } from "@/features/zotero-actions";
 import { useZoteroLibraryStore } from "@/store/zotero-library";
-import { clearBuildCache } from "@/lib/tauri";
+import { clearBuildCache, quickCaptureOpen } from "@/lib/tauri";
+import { isTauri } from "@tauri-apps/api/core";
 import { getEditorView, insertAtCursor, wrapSelection } from "@/components/editor/cm/controller";
 import {
   closeEnvironmentAtCursor,
@@ -149,8 +152,7 @@ import { toggleZenMode } from "@/lib/zen-mode";
 import { togglePreviewPane } from "@/lib/compile-preview";
 import {
   PANES,
-  layoutKey,
-  movePane,
+  moveChanges,
   movePaneToEdge,
   paneLayoutIsDefault,
   resetPaneLayout,
@@ -159,6 +161,7 @@ import {
   type PaneId,
   type Side,
 } from "@/store/pane-layout";
+import { SAVED_LAYOUT_LIMIT, useSavedLayoutsStore } from "@/store/saved-layouts";
 import { zoomApp } from "@/lib/app-zoom";
 import { LAYOUT_PRESET_ICONS } from "@/components/icons/LayoutPresetIcons";
 import { shortcut } from "@/lib/utils";
@@ -227,6 +230,8 @@ const ENGLISH_KEYWORDS = {
   resetPaneLayout: "reset pane layout order move panels sidebar assistant editor preview terminal default",
   movePaneToEdge: "move pane edge dock side split stack layout",
   swapEditorPreview: "swap editor preview pdf sides pane order layout",
+  saveLayout: "save layout custom arrangement panes sizes name",
+  applySavedLayout: "layout saved custom arrangement panes switch apply",
   zoomIn: "zoom in bigger larger magnify scale interface window",
   zoomOut: "zoom out smaller shrink scale interface window",
   resetZoom: "reset zoom actual size 100 percent scale interface window",
@@ -240,8 +245,7 @@ const PANE_EDGE_ICONS = [
 ] as const satisfies readonly (readonly [Side, unknown])[];
 
 function paneMovesToEdge(pane: PaneId, side: Side): boolean {
-  const { layout } = usePaneLayoutStore.getState();
-  return layoutKey(movePane(layout, pane, { kind: "edge", side })) !== layoutKey(layout);
+  return moveChanges(usePaneLayoutStore.getState().layout, pane, { kind: "edge", side });
 }
 
 const runLanguageServiceFormat = (scope: FormatScope) => {
@@ -523,6 +527,17 @@ export function registerOmnibarCommands() {
     order: 21,
     when: () => useSettingsStore.getState().notes === true,
     run: () => void openNotes(),
+  });
+  registerCommand({
+    id: "omnibar.notes-quick-capture",
+    surfaces: ["omnibar", "palette"],
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.notesQuickCapture.label),
+    keywords: () => `${i18n.t(($) => $.shell.commands.notesQuickCapture.keywords)} quick capture jot inbox`,
+    icon: () => <NotebookPen className="size-4" />,
+    order: 22,
+    when: () => isTauri() && useSettingsStore.getState().notes === true,
+    run: () => void quickCaptureOpen().catch((error: unknown) => logError("open quick capture", error)),
   });
   registerCommand({
     id: "omnibar.tools",
@@ -1181,6 +1196,33 @@ export function registerPaletteCommands() {
     when: (ctx) => !!ctx.projectId && !paneLayoutIsDefault(),
     run: () => resetPaneLayout(),
   });
+  palette({
+    id: "palette.save-layout",
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
+    label: () => i18n.t(($) => $.shell.commands.saveLayout.label),
+    keywords: () => `${i18n.t(($) => $.shell.commands.saveLayout.keywords)} ${ENGLISH_KEYWORDS.saveLayout}`,
+    icon: () => <Save className="size-4" />,
+    order: 516,
+    when: (ctx) => !!ctx.projectId,
+    run: () => useSavedLayoutsStore.getState().startNaming(null),
+  });
+  for (let slot = 0; slot < SAVED_LAYOUT_LIMIT; slot += 1) {
+    const saved = () => useSavedLayoutsStore.getState().layouts[slot];
+    palette({
+      id: `palette.saved-layout-${slot}`,
+      group: () => i18n.t(($) => $.shell.commandGroups.settings),
+      label: () => i18n.t(($) => $.shell.commands.applySavedLayout.label, { name: saved()?.name ?? "" }),
+      keywords: () =>
+        `${i18n.t(($) => $.shell.commands.applySavedLayout.keywords)} ${ENGLISH_KEYWORDS.applySavedLayout}`,
+      icon: () => <Bookmark className="size-4" />,
+      order: 516,
+      when: (ctx) => !!ctx.projectId && saved() !== undefined,
+      run: () => {
+        const layout = saved();
+        if (layout) useSavedLayoutsStore.getState().apply(layout.id);
+      },
+    });
+  }
   for (const [id, direction, Icon, order] of [
     ["zoomIn", 1, ZoomIn, 517],
     ["zoomOut", -1, ZoomOut, 518],

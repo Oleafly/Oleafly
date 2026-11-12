@@ -2,7 +2,7 @@ import { InputRule, mergeAttributes, Node, type Editor, type KeyboardShortcutCom
 import type { Node as ProseMirrorNode, NodeType, ResolvedPos } from "@tiptap/pm/model";
 import { TextSelection, type EditorState, type Transaction } from "@tiptap/pm/state";
 import { i18n } from "@/i18n";
-import { onceFor, type MarkdownIt, type MdCoreState, type MdToken } from "./note-markdown-it";
+import type { MarkdownIt, MdCoreState, MdToken } from "./note-markdown-it";
 import { watchEditable } from "./note-editable";
 
 export interface TaskAttrs {
@@ -59,15 +59,16 @@ export function markTaskLists(state: MdCoreState): void {
   });
 }
 
+const withTasks = new WeakSet<MarkdownIt>();
+
 function setupTasks(md: MarkdownIt): void {
-  onceFor(md, "note_task_lists", () => {
-    md.core.ruler.after("block", "note_task_lists", (state) => {
-      markTaskLists(state);
-      return true;
-    });
+  if (withTasks.has(md)) return;
+  withTasks.add(md);
+  md.core.ruler.after("block", "note_task_lists", (state) => {
+    markTaskLists(state);
+    return true;
   });
 }
-
 
 function isEmptyItem(node: ProseMirrorNode): boolean {
   return node.childCount === 1 && node.firstChild?.content.size === 0;
@@ -134,10 +135,10 @@ function convertBulletList(tr: Transaction, depth: number, cursor: number, check
   const at = $from.index(depth - 1);
   const items: ProseMirrorNode[] = [];
   list.forEach((child, _offset, index) => {
-    items.push(types.item.create({ task: index === at, checked: index === at && checked }, child.content));
+    items.push(types.item.create({ ...child.attrs, task: index === at, checked: index === at && checked }, child.content));
   });
   const start = $from.before(depth - 1);
-  tr.replaceWith(start, start + list.nodeSize, types.list.create({ tight: list.attrs.tight ?? true }, items));
+  tr.replaceWith(start, start + list.nodeSize, types.list.create({ ...list.attrs, tight: list.attrs.tight ?? true }, items));
   tr.setSelection(TextSelection.create(tr.doc, cursor));
 }
 
@@ -248,7 +249,7 @@ export const NoteTaskList = Node.create({
     return {
       tight: {
         default: true,
-        parseHTML: (element: HTMLElement) => element.getAttribute("data-tight") === "true" || !element.querySelector("p"),
+        parseHTML: (element: HTMLElement) => element.dataset.tight === "true" || !element.querySelector("p"),
         renderHTML: (attributes: Record<string, unknown>) => (attributes.tight ? { "data-tight": "true" } : {}),
       },
     };
@@ -260,6 +261,10 @@ export const NoteTaskList = Node.create({
 
   renderHTML({ HTMLAttributes }) {
     return ["ul", mergeAttributes(HTMLAttributes, { "data-type": "taskList", class: "note-tasks" }), 0];
+  },
+
+  addKeyboardShortcuts() {
+    return { "Mod-Shift-9": () => this.editor.commands.toggleTaskList() };
   },
 
   addCommands() {
@@ -296,13 +301,13 @@ export const NoteTaskItem = Node.create<TaskNodeOptions>({
     return {
       task: {
         default: true,
-        parseHTML: (element: HTMLElement) => element.getAttribute("data-task") !== "false",
+        parseHTML: (element: HTMLElement) => element.dataset.task !== "false",
         renderHTML: (attributes: Record<string, unknown>) => (attributes.task ? {} : { "data-task": "false" }),
       },
       checked: {
         default: false,
         keepOnSplit: false,
-        parseHTML: (element: HTMLElement) => element.getAttribute("data-checked") === "true",
+        parseHTML: (element: HTMLElement) => element.dataset.checked === "true",
         renderHTML: (attributes: Record<string, unknown>) => ({ "data-checked": attributes.checked ? "true" : "false" }),
       },
     };

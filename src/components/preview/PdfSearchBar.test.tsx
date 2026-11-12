@@ -73,9 +73,8 @@ describe("PdfSearchBar", () => {
     const { ref, findNext, findPrevious } = viewerRef();
     render(<Harness state={searchState({ status: "success", current: 1, total: 4 })} pdfRef={ref} />);
 
-    const panel = screen.getByRole("form", { name: enPreview.search.panel });
+    const panel = screen.getByRole("search", { name: enPreview.search.panel });
     expect(panel).toHaveAttribute("id", "pdf-search-panel");
-    expect(panel).toHaveAttribute("aria-label", enPreview.search.panel);
 
     const input = screen.getByLabelText(enPreview.search.input);
     await userEvent.type(input, QUERY);

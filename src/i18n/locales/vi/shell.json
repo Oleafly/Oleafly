@@ -340,7 +340,15 @@
     },
     "resetPaneLayout": {
       "keywords": "đặt lại bố cục khung thứ tự chuyển bảng thanh bên trợ lý trình soạn thảo xem trước terminal mặc định",
-      "label": "Đặt lại bố cục khung"
+      "label": "Đặt lại cách sắp xếp khung ở mọi dự án"
+    },
+    "saveLayout": {
+      "keywords": "lưu bố cục tuỳ chỉnh sắp xếp khung kích thước tên",
+      "label": "Lưu bố cục hiện tại"
+    },
+    "applySavedLayout": {
+      "keywords": "bố cục đã lưu tuỳ chỉnh sắp xếp khung chuyển áp dụng",
+      "label": "Bố cục: {{name}}"
     },
     "zoomIn": {
       "keywords": "to hơn lớn hơn phóng to",
@@ -379,6 +387,10 @@
     "notes": {
       "label": "Mở Ghi chú",
       "keywords": "ghi chú sổ tay kiến thức ý tưởng nghiên cứu nhật ký notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Ghi nhanh",
+      "keywords": "ghi nhanh ghi chú hộp thư đến hôm nay quick capture jot note inbox today"
     }
   },
   "community": {
@@ -483,6 +495,11 @@
   },
   "datePicker": {
     "placeholder": "Chọn ngày"
+  },
+  "monthPicker": {
+    "label": "Chọn tháng",
+    "previousYear": "Năm trước",
+    "nextYear": "Năm sau"
   },
   "devMenu": {
     "inspect": "Kiểm tra",
@@ -702,6 +719,7 @@
     "groups": {
       "action": "Hành động",
       "documents": "Tài liệu",
+      "notes": "Ghi chú",
       "references": "Tài liệu tham khảo"
     },
     "label": "Tìm kiếm",
@@ -709,11 +727,13 @@
     "openReferences": "Mở tài liệu tham khảo của dự án này",
     "placeholder": "Tìm dự án, tài liệu, hoặc nhập / để dùng lệnh…",
     "placeholderDocuments": "Tìm trong tài liệu…",
+    "placeholderNotes": "Tìm ghi chú và các khối bên trong…",
     "placeholderProjects": "Tìm dự án theo tên, engine, loại, ngày hoặc metadata…",
     "referencesNeedProject": "Hãy mở một dự án trước để duyệt tài liệu tham khảo của dự án đó.",
     "slash": {
       "create": "mở thư viện mẫu",
       "docs": "tìm trong tài liệu",
+      "notes": "tìm ghi chú và các khối bên trong",
       "projects": "tìm dự án của bạn",
       "refs": "mở tài liệu tham khảo của dự án này",
       "settings": "mở cài đặt",
@@ -1294,7 +1314,24 @@
       "split": "Chế độ chia đôi"
     },
     "moreActions": "Thao tác khác",
-    "resetPaneLayout": "Đặt lại bố cục khung",
+    "resetPaneLayout": "Đặt lại cách sắp xếp khung",
+    "resetPaneLayoutScope": "Tất cả dự án",
+    "savedLayouts": {
+      "close": "Đóng",
+      "delete": "Xoá",
+      "deleteConfirm": "Xoá bố cục {{name}}?",
+      "limit": "Bạn có thể giữ tối đa {{count}} bố cục. Hãy xoá một bố cục để lưu bố cục khác.",
+      "manage": "Quản lý bố cục",
+      "name": "Tên bố cục",
+      "rename": "Đổi tên",
+      "renameTitle": "Đổi tên bố cục",
+      "replace": "Thay thế",
+      "replaceConfirm": "Đã có bố cục tên {{name}}. Thay thế nó?",
+      "save": "Lưu bố cục hiện tại",
+      "saveButton": "Lưu",
+      "saveTitle": "Lưu bố cục",
+      "update": "Cập nhật theo hiện tại"
+    },
     "renameFailed": "Không đổi tên được dự án."
   },
   "tour": {

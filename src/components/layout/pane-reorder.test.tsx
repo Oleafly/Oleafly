@@ -296,6 +296,25 @@ describe("dropping a pane", () => {
     expect(clicked).not.toHaveBeenCalled();
   });
 
+  it("offers nothing for a short drag on a header that sits along the window edge", () => {
+    render(<Workspace />);
+    drag(screen.getByTestId("editor"), [375, 50], [383, 50]);
+    expect(overlay()).not.toBeNull();
+    expect(drop()).toBeNull();
+    fireEvent.pointerUp(window);
+    expect(usePaneLayoutStore.getState().layout).toBe(DEFAULT_PANE_LAYOUT);
+  });
+
+  it("offers nothing for a drop that would leave the arrangement as it is", () => {
+    render(<Workspace />);
+    drag(screen.getByTestId("editor"), [375, 260], [520, 260]);
+    expect(drop()).toBeNull();
+    moveTo(720, 260);
+    expect(drop()).toHaveAttribute("data-pane-drop", "pdf-right");
+    fireEvent.pointerUp(window);
+    expect(layout()).toBe("column(row(sidebar,row(pdf,editor),assistant),terminal)");
+  });
+
   it("skips a pane that takes no space", () => {
     terminalHeight = 0;
     render(<Workspace />);

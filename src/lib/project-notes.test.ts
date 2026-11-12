@@ -40,7 +40,8 @@ describe("project note paths", () => {
   it("knows which project files open as note tabs", () => {
     const on = { notes: true, projectKind: "document" };
     expect(isEditorNoteFile("notes/Plan.md", NOTE, on)).toBe(true);
-    expect(isEditorNoteFile("ideas.md", NOTE, on)).toBe(true);
+    expect(isEditorNoteFile("ideas.md", NOTE, on)).toBe(false);
+    expect(isEditorNoteFile("docs/paper.md", NOTE, on)).toBe(false);
     expect(isEditorNoteFile("notes/Plan.md", "# Plain\n", on)).toBe(false);
     expect(isEditorNoteFile("notes/Plan.tex", NOTE, on)).toBe(false);
     expect(isEditorNoteFile(null, NOTE, on)).toBe(false);

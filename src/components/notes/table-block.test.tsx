@@ -2,9 +2,8 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as XLSX from "xlsx";
-import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { ROW_WINDOW_ITEM } from "@/hooks/use-row-window";
-import { loadNamespace } from "@/i18n";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { BlockFileTooLargeError } from "./note-blocks";
 import {
@@ -21,6 +20,7 @@ import {
   VIRTUAL_AFTER,
 } from "./table-block";
 import { buildTable, TABLE_MAX_COLUMNS, TABLE_MAX_ROWS, type TableData, TableFileError } from "./table-data";
+import "./tests/setup";
 
 const copy = enNotes.blocks.table;
 const SOURCE = "name,score,ok\nbeta,10,true\nAlpha,2.5,false\ngamma,-4,true\ndelta,,false\nepsilon,7,true";
@@ -61,10 +61,6 @@ async function settle(): Promise<void> {
   });
 }
 
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
-
 afterEach(() => {
   vi.restoreAllMocks();
   document.body.replaceChildren();
@@ -76,9 +72,6 @@ describe("TableView", () => {
     const { container } = render(<TableView table={tableOf(SOURCE)} />);
     expect(screen.getByRole("button", { name: "Sort by score" })).toBeInTheDocument();
     expect(screen.getByText("5 rows")).toBeInTheDocument();
-    const cells = container.querySelectorAll("tbody tr[aria-rowindex] td");
-    expect(cells[1]).toHaveClass("text-right");
-    expect(cells[0]).not.toHaveClass("text-right");
     const summary = container.querySelector("tfoot") as HTMLElement;
     expect(within(summary).getByText(copy.count).nextElementSibling).toHaveTextContent("4");
     expect(within(summary).getByText(copy.mean).nextElementSibling).toHaveTextContent("3.875");
@@ -87,12 +80,29 @@ describe("TableView", () => {
     expect(container.querySelector("table")).toHaveAttribute("aria-rowcount", "7");
   });
 
+  it("tints the sticky header and summary row with the note colour and keeps the body plain", () => {
+    const { container } = render(<TableView table={tableOf(SOURCE)} />);
+    const heads = [...container.querySelectorAll("thead th")];
+    const sums = [...container.querySelectorAll("tfoot td")];
+    expect(heads).toHaveLength(3);
+    for (const cell of heads) expect(cell).toHaveClass("sticky", "top-0", "bg-(--note-table-head)", "border-(--note-table-line)");
+    for (const cell of sums) expect(cell).toHaveClass("sticky", "bottom-0", "bg-(--note-table-foot)", "border-(--note-table-line)");
+    for (const cell of container.querySelectorAll("tbody td")) {
+      expect(cell).toHaveClass("border-(--note-table-line)");
+      expect(cell.className).not.toMatch(/\bbg-/u);
+    }
+    expect(container.querySelector(".overflow-auto")).toHaveClass("border-(--note-table-line)");
+    expect(container.querySelector(".overflow-auto")).not.toHaveClass("border-border");
+    expect(container.querySelector(".bg-muted")).toBeNull();
+    expect(within(sums[1] as HTMLElement).getByText(copy.count)).toHaveClass("text-foreground/60");
+  });
+
   it("cycles sorting through ascending, descending and the original order", async () => {
     const user = userEvent.setup();
     const { container } = render(<TableView table={tableOf(SOURCE)} />);
     const button = screen.getByRole("button", { name: "Sort by score" });
     const header = button.closest("th") as HTMLElement;
-    expect(header).not.toHaveAttribute("aria-sort");
+    expect(header).toHaveAttribute("aria-sort", "none");
     await user.click(button);
     expect(header).toHaveAttribute("aria-sort", "ascending");
     expect(bodyNames(container)).toEqual(["gamma", "Alpha", "epsilon", "beta", "delta"]);
@@ -101,12 +111,12 @@ describe("TableView", () => {
     expect(header).toHaveAttribute("aria-sort", "descending");
     expect(bodyNames(container)).toEqual(["beta", "epsilon", "Alpha", "gamma", "delta"]);
     await user.keyboard(" ");
-    expect(header).not.toHaveAttribute("aria-sort");
+    expect(header).toHaveAttribute("aria-sort", "none");
     expect(bodyNames(container)).toEqual(["beta", "Alpha", "gamma", "delta", "epsilon"]);
     await user.click(screen.getByRole("button", { name: "Sort by name" }));
     expect(bodyNames(container)).toEqual(["Alpha", "beta", "delta", "epsilon", "gamma"]);
     await user.click(screen.getByRole("button", { name: "Sort by score" }));
-    expect(screen.getByRole("button", { name: "Sort by name" }).closest("th")).not.toHaveAttribute("aria-sort");
+    expect(screen.getByRole("button", { name: "Sort by name" }).closest("th")).toHaveAttribute("aria-sort", "none");
   });
 
   it("filters rows in any column and updates the count and summary", async () => {
@@ -160,19 +170,22 @@ describe("TableView", () => {
     const lines = ["n,label", ...Array.from({ length: 1000 }, (_, index) => `${index},row ${index}`)];
     const { container } = render(<TableView table={tableOf(lines.join("\n"))} />);
     const rows = () => container.querySelectorAll("tbody tr[aria-rowindex]");
+    const spacer = (edge: "firstElementChild" | "lastElementChild") => {
+      const row = container.querySelector("tbody")?.[edge];
+      return row?.hasAttribute("aria-hidden") ? row.firstElementChild : null;
+    };
     const shown = Math.ceil(384 / rowPx) + OVERSCAN;
     expect(rows()).toHaveLength(shown);
-    expect(container.querySelector('[data-spacer="before"]')).toBeNull();
-    expect(container.querySelector('[data-spacer="after"]')).toHaveStyle({ height: `${(1000 - shown) * rowPx}px` });
+    expect(spacer("firstElementChild")).toBeNull();
+    expect(spacer("lastElementChild")).toHaveStyle({ height: `${(1000 - shown) * rowPx}px` });
     const scroller = container.querySelector("table")?.parentElement as HTMLElement;
-    expect(scroller).toHaveClass("h-[24rem]");
     scrollTop = headPx + 500 * rowPx;
     fireEvent.scroll(scroller);
     expect(rows()[0]).toHaveAttribute("aria-rowindex", String(500 - OVERSCAN + 2));
-    expect(container.querySelector('[data-spacer="before"]')).toHaveStyle({ height: `${(500 - OVERSCAN) * rowPx}px` });
+    expect(spacer("firstElementChild")).toHaveStyle({ height: `${(500 - OVERSCAN) * rowPx}px` });
     scrollTop = headPx + 1000 * rowPx;
     fireEvent.scroll(scroller);
-    expect(container.querySelector('[data-spacer="after"]')).toBeNull();
+    expect(spacer("lastElementChild")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Sort by n" }));
     expect(scrollTop).toBe(0);
     expect(rows()[0]).toHaveAttribute("aria-rowindex", "2");
@@ -188,7 +201,6 @@ describe("TableView", () => {
     const lines = ["n", ...Array.from({ length: VIRTUAL_AFTER }, (_, index) => String(index))];
     const { container } = render(<TableView table={tableOf(lines.join("\n"))} />);
     expect(container.querySelectorAll("tbody tr[aria-rowindex]")).toHaveLength(VIRTUAL_AFTER);
-    expect(container.querySelector("table")?.parentElement).toHaveClass("max-h-[24rem]");
   });
 });
 
@@ -196,7 +208,7 @@ describe("paintTable", () => {
   it("mounts inline data and unmounts after the current task", async () => {
     const element = preview();
     let dispose: (() => void) | undefined;
-    act(() => {
+    await act(async () => {
       dispose = paintTable(element, SOURCE, { still: false, fence: "csv" });
     });
     expect(within(element).getByRole("table")).toBeInTheDocument();
@@ -206,9 +218,9 @@ describe("paintTable", () => {
     expect(element.querySelector("table")).toBeNull();
   });
 
-  it("reads tab separated data from a tsv fence", () => {
+  it("reads tab separated data from a tsv fence", async () => {
     const element = preview();
-    act(() => {
+    await act(async () => {
       paintTable(element, "a\tb\n1\t2", { still: false, fence: "tsv" });
     });
     expect(within(element).getByRole("button", { name: "Sort by b" })).toBeInTheDocument();
@@ -233,7 +245,7 @@ describe("paintTable", () => {
   it("draws a card for a file when it can't read files", () => {
     const element = preview();
     expect(paintTable(element, "path: assets/a.csv", { still: false })).toBeUndefined();
-    expect(element.querySelector(".note-block-card-title")).toHaveTextContent(copy.label);
+    expect(element.querySelector("p")).toHaveTextContent(copy.label);
   });
 
   it("loads a file, then mounts and unmounts it", async () => {
@@ -332,10 +344,10 @@ describe("paintTableStill", () => {
     expect(table.querySelectorAll("th")).toHaveLength(STILL_COLUMNS);
     expect(table.querySelectorAll("tbody tr")).toHaveLength(STILL_ROWS);
     expect(table.querySelectorAll("tbody tr")[0].querySelectorAll("td")).toHaveLength(STILL_COLUMNS);
-    expect(table.querySelector("th")).toHaveClass("text-left");
-    expect(table.querySelectorAll("th")[1]).toHaveClass("text-right");
-    expect(table.querySelectorAll("tbody td")[1]).toHaveClass("text-right");
     expect(element.querySelector("button, input")).toBeNull();
+    for (const cell of table.querySelectorAll("th")) expect(cell).toHaveClass("bg-(--note-table-head)", "border-(--note-table-line)");
+    expect(table.querySelector("td")?.className).not.toMatch(/\bbg-/u);
+    expect(table.querySelector("td")).toHaveClass("border-t", "border-(--note-table-line)");
   });
 
   it("names blank headers", () => {
@@ -347,9 +359,9 @@ describe("paintTableStill", () => {
   it("draws a card for a file and a message for empty data", () => {
     const element = preview();
     paintTableStill(element, "path: assets/a.csv\nsheet: S", { still: true });
-    expect(element.querySelector(".note-block-card-text")).toHaveTextContent("path: assets/a.csv");
+    expect(element.querySelectorAll("p")[1]).toHaveTextContent("path: assets/a.csv");
     paintTableStill(element, "path: ../a.csv", { still: true });
-    expect(element.querySelector(".note-block-card")).not.toBeNull();
+    expect(element.querySelector("p")).toHaveTextContent(copy.label);
     paintTableStill(element, "just a header", { still: true });
     expect(element).toHaveTextContent(copy.empty);
   });

@@ -207,6 +207,7 @@ describe("MarkdownToolbar", () => {
     expect(screen.getByText(toolbar.drawDiagram)).toBeInTheDocument();
 
     fireEvent.click(screen.getByText(toolbar.bold));
+    fireEvent.click(screen.getByLabelText(toolbar.moreOptions));
     fireEvent.click(screen.getByText(toolbar.insertTable));
 
     expect(commands.insertMarkdownBold).toHaveBeenCalledOnce();
@@ -221,6 +222,7 @@ describe("MarkdownToolbar", () => {
     fireEvent.click(screen.getByText(MARKDOWN_HEADING_LEVELS[0].label()));
     expect(commands.insertMarkdownHeading).toHaveBeenCalledWith(MARKDOWN_HEADING_LEVELS[0]);
 
+    fireEvent.click(screen.getByLabelText(toolbar.moreOptions));
     fireEvent.click(screen.getByLabelText(toolbar.listType));
     fireEvent.click(screen.getByText(toolbar.numberedList));
     expect(commands.insertMarkdownOrderedList).toHaveBeenCalledOnce();

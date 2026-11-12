@@ -1,11 +1,9 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { BOOK_COLOR_OPTIONS } from "@/components/library/Book";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { loadNamespace } from "@/i18n";
 import {
-  AgentTag,
   artifactIcon,
   Byline,
   KIND_TONES,
@@ -22,32 +20,24 @@ import {
 } from "./note-icons";
 import { NOTE_COLORS } from "./note-file";
 import type { ArtifactKind } from "./types";
-
-beforeAll(async () => {
-  await loadNamespace("notes");
-});
+import "./tests/setup";
 
 function svgClass(container: HTMLElement): string {
   return container.querySelector("svg")?.getAttribute("class") ?? "";
 }
 
 describe("note icons", () => {
-  it("shows an emoji as hidden text in every size", () => {
-    const small = render(<NoteIcon icon="🧪" />);
-    const smallSpan = small.container.querySelector("span");
-    expect(smallSpan?.textContent).toBe("🧪");
-    expect(smallSpan).toHaveClass("text-sm");
-    expect(smallSpan).toHaveAttribute("aria-hidden", "true");
-    expect(small.container.querySelector("svg")).toBeNull();
-
-    expect(render(<NoteIcon icon="🧪" size="md" />).container.querySelector("span")).toHaveClass("text-base");
-    expect(render(<NoteIcon icon="🧪" size="lg" />).container.querySelector("span")).toHaveClass("text-[2rem]");
+  it("shows an emoji as hidden text", () => {
+    const { container } = render(<NoteIcon icon="🧪" />);
+    const span = container.querySelector("span");
+    expect(span?.textContent).toBe("🧪");
+    expect(span).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector("svg")).toBeNull();
   });
 
   it("draws a known line icon", () => {
     const { container } = render(<NoteIcon icon={`${LINE_ICON_PREFIX}rocket`} />);
     expect(svgClass(container)).toContain("lucide-rocket");
-    expect(svgClass(container)).toContain("text-muted-foreground");
   });
 
   it("falls back to the notebook icon for an unknown line icon", () => {
@@ -60,18 +50,8 @@ describe("note icons", () => {
     expect(svgClass(container)).toContain("lucide-notebook-pen");
   });
 
-  it("uses the notebook icon when there is no icon and grows it in the large size", () => {
-    const small = render(<NoteIcon />);
-    expect(svgClass(small.container)).toContain("lucide-notebook-pen");
-    expect(svgClass(small.container)).toContain("size-3.5");
-
-    const medium = render(<NoteIcon size="md" />);
-    expect(svgClass(medium.container)).toContain("size-4");
-    expect(svgClass(medium.container)).toContain("text-muted-foreground");
-
-    const large = render(<NoteIcon size="lg" />);
-    expect(svgClass(large.container)).toContain("size-8");
-    expect(svgClass(large.container)).toContain("text-foreground");
+  it("uses the notebook icon when there is no icon", () => {
+    expect(svgClass(render(<NoteIcon />).container)).toContain("lucide-notebook-pen");
   });
 
   it("names every line icon in the English catalog", () => {
@@ -104,13 +84,6 @@ describe("note icons", () => {
     const { container } = render(<span>{artifactIcon(kind)}</span>);
     expect(svgClass(container).split(" ")).toContain(className);
   });
-
-  it("lets a caller tint a line icon", () => {
-    const { container } = render(<NoteIcon icon={`${LINE_ICON_PREFIX}rocket`} className={KIND_TONES.note.icon} />);
-    const classes = svgClass(container).split(" ");
-    expect(classes).toContain("text-violet-600");
-    expect(classes).not.toContain("text-muted-foreground");
-  });
 });
 
 describe("note chips", () => {
@@ -123,22 +96,19 @@ describe("note chips", () => {
     const chip = container.firstElementChild as HTMLElement;
     expect(chip).toHaveAttribute("data-note-color", "mint");
     expect(chip).toHaveAttribute("aria-hidden", "true");
-    expect(chip).toHaveClass("note-chip", "size-6", "rounded-md");
     expect(noteColorOf(chip)).toBe("#98f5e1");
-    expect(chip.querySelector("svg")).toHaveClass("lucide-atom", "text-current", "size-3.5");
-    expect(chip.querySelector("svg")).not.toHaveClass("text-muted-foreground");
+    expect(chip.querySelector("svg")).toHaveClass("lucide-atom");
   });
 
-  it.each([
-    ["md", "size-8", "size-4", "text-base"],
-    ["lg", "size-14", "size-8", "text-[2rem]"],
-  ] as const)("grows to the %s size", (size, chipSize, iconSize, emojiSize) => {
-    const line = render(<NoteChip color="rose" size={size} className="mb-3" />).container.firstElementChild as HTMLElement;
-    expect(line).toHaveClass("note-chip", chipSize, "mb-3");
-    expect(noteColorOf(line)).toBe("#ffcfd2");
-    expect(line.querySelector("svg")).toHaveClass("lucide-notebook-pen", iconSize, "text-current");
-    const emoji = render(<NoteChip icon="🧪" color="rose" size={size} />).container.firstElementChild as HTMLElement;
-    expect(emoji.querySelector("span")).toHaveClass(emojiSize);
+  it("fills about half of the large tile with its icon and leaves the small chips as they were", () => {
+    const line = render(<NoteChip icon={`${LINE_ICON_PREFIX}atom`} size="lg" />).container.firstElementChild as HTMLElement;
+    expect(line).toHaveClass("size-14");
+    expect(line.querySelector("svg")).toHaveClass("size-7");
+    const emoji = render(<NoteChip icon="🧪" size="lg" />).container.firstElementChild as HTMLElement;
+    expect(emoji.firstElementChild).toHaveClass("text-[1.75rem]");
+    const small = render(<NoteChip icon={`${LINE_ICON_PREFIX}atom`} size="sm" />).container.firstElementChild as HTMLElement;
+    expect(small).toHaveClass("size-6");
+    expect(small.querySelector("svg")).toHaveClass("size-3.5");
   });
 
   it("falls back to blue for a missing or unknown colour", () => {
@@ -147,9 +117,17 @@ describe("note chips", () => {
       expect(chip).toHaveAttribute("data-note-color", "blue");
       expect(noteColorOf(chip)).toBe("#1982c4");
     }
-    expect(noteColorStyle(undefined)).toEqual({ "--note-color": "#1982c4" });
-    expect(noteColorStyle("toString")).toEqual({ "--note-color": "#1982c4" });
-    expect(noteColorStyle("lilac")).toEqual({ "--note-color": "#cfbaf0" });
+    expect(noteColorStyle(undefined)).toEqual({ "--note-color": "#1982c4", "--note-tint": 1 });
+    expect(noteColorStyle("toString")).toEqual({ "--note-color": "#1982c4", "--note-tint": 1 });
+    expect(noteColorStyle("lilac")).toEqual({ "--note-color": "#cfbaf0", "--note-tint": 0 });
+  });
+
+  it("gives every note colour a hex and a tint strength, lighter mixes only for the saturated blue", () => {
+    for (const color of NOTE_COLORS) {
+      expect(noteColorStyle(color)).toEqual({ "--note-color": NOTE_COLOR_HEX[color], "--note-tint": color === "blue" ? 1 : 0 });
+    }
+    const chip = render(<NoteChip color="sky" />).container.firstElementChild as HTMLElement;
+    expect(chip.style.getPropertyValue("--note-tint")).toBe("0");
   });
 
   it("keeps an emoji out of the name of the row that shows it", () => {
@@ -205,21 +183,13 @@ describe("kind tones", () => {
     expect(svgClass(container).split(" ")).toContain(className);
   });
 
-  it("puts an artifact's icon in a chip tinted with its kind", () => {
-    const { container } = render(<KindChip kind="data" />);
-    const chip = container.firstElementChild as HTMLElement;
-    expect(chip).toHaveAttribute("data-kind", "data");
-    expect(chip).toHaveClass("bg-emerald-500/10", "rounded-md", "size-6");
-    expect(chip.querySelector("svg")).toHaveClass("lucide-database", "text-emerald-600");
-  });
-
-  it("draws a violet notebook for a note chip and can be round and larger", () => {
-    const { container } = render(<KindChip kind="note" shape="circle" className="size-7" />);
-    const chip = container.firstElementChild as HTMLElement;
-    expect(chip).toHaveClass("bg-violet-500/10", "rounded-full", "size-7");
-    expect(chip).not.toHaveClass("rounded-md");
-    expect(chip).not.toHaveClass("size-6");
-    expect(chip.querySelector("svg")).toHaveClass("lucide-notebook-pen", "text-violet-600");
+  it.each([
+    ["data", "lucide-database"],
+    ["note", "lucide-notebook-pen"],
+  ] as const)("puts a %s item's icon in its kind chip", (kind, icon) => {
+    const chip = render(<KindChip kind={kind} />).container.firstElementChild as HTMLElement;
+    expect(chip).toHaveAttribute("data-kind", kind);
+    expect(chip.querySelector("svg")).toHaveClass(icon);
   });
 
   it("holds a note's own icon when given one", () => {
@@ -228,26 +198,18 @@ describe("kind tones", () => {
         <NoteIcon icon="🧪" />
       </KindChip>,
     );
-    expect(screen.getByText("🧪").parentElement).toHaveClass("bg-violet-500/10");
+    expect(screen.getByText("🧪").closest("[data-kind]")).toHaveAttribute("data-kind", "note");
   });
 
   it("labels an artifact's kind in a tinted badge", () => {
     render(<KindBadge kind="figure" label={enNotes.artifacts.kind.figure} />);
     const badge = screen.getByText(enNotes.artifacts.kind.figure);
     expect(badge).toHaveAttribute("data-kind", "figure");
-    expect(badge).toHaveClass("bg-pink-500/10", "text-pink-700", "rounded-full");
-    expect(badge).not.toHaveClass("bg-muted");
     expect(badge.querySelector("svg")).toHaveClass("lucide-image");
   });
 });
 
 describe("bylines", () => {
-  it("tags an agent by name in the primary colour", () => {
-    render(<AgentTag name="Claude Code" />);
-    const tag = screen.getByText("Claude Code").closest("[data-agent-tag]");
-    expect(tag).toHaveClass("bg-primary/10", "text-primary");
-  });
-
   it("shows an agent's tag before when it wrote", () => {
     const { container } = render(<Byline author="agent" agent="Codex" when="2 hours ago" />);
     expect(container).toHaveTextContent("Codex · 2 hours ago");
@@ -263,7 +225,6 @@ describe("bylines", () => {
     const { container } = render(<Byline author="you" agent="Codex" when="yesterday" className="mt-2" />);
     expect(container).toHaveTextContent(`${enNotes.library.author.you} · yesterday`);
     expect(container.querySelector("[data-agent-tag]")).toBeNull();
-    expect(container.firstElementChild).toHaveClass("mt-2", "truncate");
   });
 
   it("names nobody on a shared note that no agent wrote", () => {

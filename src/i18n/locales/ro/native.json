@@ -218,5 +218,10 @@
       "title": "Verificările permisiunilor sunt dezactivate ({{mode}})",
       "description": "Agentul poate edita fișiere și rula comenzi fără să întrebe. Oleafly nu a putut comuta la alt mod. Schimbă modul din setările proprii ale agentului."
     }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Notare rapidă"
+    }
   }
 }

@@ -1,10 +1,11 @@
 import { Suspense, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, ChevronRight, Plus, RotateCcw } from "lucide-react";
+import { ChevronRight, Plus, RotateCcw } from "lucide-react";
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/color-picker";
+import { ColorSwatch } from "@/components/ui/color-swatch";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -15,7 +16,7 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
-import { i18n } from "@/i18n";
+import { i18n, loadNamespace } from "@/i18n";
 import { cursorThemeFor, editorThemeCursorColor } from "@/lib/editor-cursor-color";
 import { formatNumber } from "@/lib/intl";
 import { isEditorThemeId, type EditorThemeId } from "@/lib/editor-themes";
@@ -65,7 +66,7 @@ import {
   useSettingsStore,
 } from "@/store/settings";
 import { LAYOUT_OPTIONS } from "@/components/layout/TopToolbar";
-import { lazy } from "@/lib/preloadable";
+import { intended, lazy } from "@/lib/preloadable";
 import { APP_FONT_SIZES } from "@/lib/app-font-sizes";
 import { ThemeSegmentedControl } from "@/components/layout/ThemeControls";
 import { SettingsRow } from "@/components/settings/SettingsRow";
@@ -84,8 +85,11 @@ import { LoadingState } from "@/components/ui/empty";
 import { SettingsOptionCards } from "@/components/settings/SettingsOptionCards";
 
 const NotesAppearanceTab = lazy(
-  () => import("@/components/settings/NotesAppearance").then((module) => ({ default: module.NotesAppearanceTab })),
-  { warm: () => useSettingsStore.getState().notes },
+  () =>
+    Promise.all([import("@/components/settings/NotesAppearance"), loadNamespace("notes")]).then(([module]) => ({
+      default: module.NotesAppearanceTab,
+    })),
+  { warm: () => intended("settings") && useSettingsStore.getState().notes },
 );
 
 const APPEARANCE_TABS = [
@@ -243,30 +247,16 @@ function AppAppearanceTab() {
         description={t(($) => $.settings.appearance.app.accent.description)}
         control={
           <div className="flex flex-wrap items-center gap-2">
-            {ACCENTS.map((accent) => {
-              const active = accentColor === accent.color;
-              return (
-                <button
-                  type="button"
-                  key={accent.id}
-                  title={accent.name}
-                  aria-label={t(($) => $.settings.appearance.app.accent.swatchAriaLabel, {
-                    name: accent.name,
-                  })}
-                  aria-pressed={active}
-                  onClick={() => setAccentColor(accent.color)}
-                  className={cn(
-                    "flex size-8 items-center justify-center rounded-full border transition-transform hover:scale-110",
-                    active
-                      ? "border-foreground"
-                      : "border-border",
-                  )}
-                  style={{ backgroundColor: accent.color }}
-                >
-                  {active ? <Check className="size-3.5 text-white drop-shadow" /> : null}
-                </button>
-              );
-            })}
+            {ACCENTS.map((accent) => (
+              <ColorSwatch
+                key={accent.id}
+                color={accent.color}
+                name={accent.name}
+                label={t(($) => $.settings.appearance.app.accent.swatchAriaLabel, { name: accent.name })}
+                pressed={accentColor === accent.color}
+                onClick={() => setAccentColor(accent.color)}
+              />
+            ))}
           </div>
         }
       />
@@ -1542,14 +1532,14 @@ export function AppearanceSection() {
   const requestedTab = useSettingsStore((state) => state.settingsInitialAppearanceTab);
   const setRequestedTab = useSettingsStore((state) => state.setSettingsInitialAppearanceTab);
   const notesEnabled = useSettingsStore((state) => state.notes);
-  const [chosenTab, setActiveTab] = useState<AppearanceTabId>(() =>
+  const [chosenTab, setChosenTab] = useState<AppearanceTabId>(() =>
     isAppearanceTab(requestedTab, notesEnabled) ? requestedTab : "app",
   );
   const activeTab = chosenTab === "notes" && !notesEnabled ? "app" : chosenTab;
   const tabs = APPEARANCE_TABS.filter((tab) => tab.id !== "notes" || notesEnabled);
   useEffect(() => {
     if (!isAppearanceTab(requestedTab, notesEnabled)) return;
-    setActiveTab(requestedTab);
+    setChosenTab(requestedTab);
     setRequestedTab(null);
   }, [notesEnabled, requestedTab, setRequestedTab]);
   const resetAppearancePreferences = useSettingsStore(
@@ -1564,7 +1554,7 @@ export function AppearanceSection() {
     <div className="space-y-4">
       <Tabs
         value={activeTab}
-        onValueChange={(value) => setActiveTab(value as AppearanceTabId)}
+        onValueChange={(value) => setChosenTab(value as AppearanceTabId)}
         className="space-y-4"
       >
         <TabsList scrollable data-testid="appearance-tab-strip">

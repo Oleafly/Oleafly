@@ -10,9 +10,11 @@ const mocks = vi.hoisted(() => ({
   normalizeImage: vi.fn(),
   view: null as null | { state: EditorState },
   activePath: "chapters/main.tex" as string | null,
+  noteLinkSelections: vi.fn(async (_text: string) => [] as { path: null; text: string }[]),
 }));
 
 vi.mock("@/lib/attachments", () => ({ attachmentRead: mocks.attachmentRead }));
+vi.mock("@/components/notes/note-link-context", () => ({ noteLinkSelections: mocks.noteLinkSelections }));
 vi.mock("@/lib/image-normalize", () => ({ normalizeImage: mocks.normalizeImage }));
 vi.mock("@/components/editor/cm/controller", () => ({ getEditorView: () => mocks.view }));
 vi.mock("@/store/files", () => ({
@@ -124,6 +126,13 @@ describe("CLI prompt attachments", () => {
   it("refuses images the agent cannot read", async () => {
     const input = toPromptInput(draft({ attachments: [attachment("plot.png")] }), session("s"), tree);
     expect(await rejection(input)).toBe("imagesUnsupported");
+  });
+
+  it("sends the blocks that pasted note links point to as quotes", async () => {
+    mocks.noteLinkSelections.mockResolvedValueOnce([{ path: null, text: "### A block of the note\nAccuracy rose" }]);
+    const input = await toPromptInput(draft({ text: "Use oleafly://note/n-1#^acc" }), session("s"), tree);
+    expect(mocks.noteLinkSelections).toHaveBeenCalledWith("Use oleafly://note/n-1#^acc");
+    expect(input.selections).toEqual([{ path: null, text: "### A block of the note\nAccuracy rose" }]);
   });
 
   it("refuses more than ten attachments", async () => {

@@ -15,13 +15,15 @@ import {
   isRemoteTransaction,
   mergedDoc,
   parseSharedNote,
+  type SharedNote,
+  sharedNoteTransaction,
   showNoteDoc,
-  showSharedNote,
 } from "./note-live-doc";
 import { noteBaseExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "./note-markdown";
 import { NotePeerMarks } from "./note-presence-decorations";
 import { NoteSuggestions } from "./note-suggestions";
 import { createNoteLiveEditor } from "./use-note-live";
+import { propertySeeds } from "./tests/property-seeds";
 
 const NOTE = `---
 title: Lab
@@ -181,11 +183,16 @@ function quiet(channel: FakeChannel, clock: Clock, peers: readonly Peer[]): void
   throw new Error("The editors never settled.");
 }
 
+function showSharedNote(editor: Editor, base: SharedNote | null, next: SharedNote): void {
+  const tr = sharedNoteTransaction(editor.state, base, next);
+  if (tr) editor.view.dispatch(tr);
+}
+
 function shape(doc: ProseMirrorNode): string[] {
   const out: string[] = [];
   doc.descendants((node, _pos, parent) => {
     if (!node.isTextblock) return true;
-    const text = node.textContent.replace(/\s+/gu, " ").trim();
+    const text = node.textContent.replaceAll(/\s+/gu, " ").trim();
     if (text) out.push(`${parent?.type.name ?? ""}/${node.type.name}:${text}`);
     return false;
   });
@@ -195,7 +202,7 @@ function shape(doc: ProseMirrorNode): string[] {
 describe("live note editors", () => {
   it("converge with real Tiptap editors for 40 seeded random sessions", async () => {
     let exact = 0;
-    const runs = 40;
+    const runs = propertySeeds(40, 4);
     for (let seed = 1; seed <= runs; seed += 1) {
       const below = rng(seed);
       const channel = new FakeChannel(NOTE);
@@ -301,18 +308,25 @@ describe("live note editors", () => {
     expect(blockIndexAt(pad.editor.state.doc, pad.editor.state.selection.head)).toBe(2);
   });
 
-  it("falls back to replacing the whole document when the block changes do not reproduce it", async () => {
+  it("replaces only the blocks that differ when the block changes do not reproduce the target", async () => {
     const diff = await import("./note-diff");
     const pad = new Pad("A.\n\nB.\n\nC.\n");
+    pad.editor.commands.setTextSelection(2);
+    pad.editor.commands.insertContent("x");
+    const [first, second] = [pad.editor.state.doc.child(0), pad.editor.state.doc.child(1)];
     pad.editor.commands.setTextSelection(pad.editor.state.doc.content.size - 1);
     const spy = vi.spyOn(diff, "diffNoteDocs").mockReturnValueOnce([]);
     try {
-      showNoteDoc(pad.editor, parseSharedNote(pad.editor.schema, "A.\n\nB.\n\nC!\n").doc);
+      showNoteDoc(pad.editor, parseSharedNote(pad.editor.schema, "Ax.\n\nB.\n\nC!\n\nD.\n").doc);
     } finally {
       spy.mockRestore();
     }
-    expect(pad.text()).toBe("A.\n\nB.\n\nC!\n");
+    expect(pad.text()).toBe("Ax.\n\nB.\n\nC!\n\nD.\n");
+    expect(pad.editor.state.doc.child(0)).toBe(first);
+    expect(pad.editor.state.doc.child(1)).toBe(second);
     expect(blockIndexAt(pad.editor.state.doc, pad.editor.state.selection.head)).toBe(2);
+    pad.editor.commands.undo();
+    expect(pad.text()).toBe("A.\n\nB.\n\nC!\n\nD.\n");
   });
 
   it("keeps a paragraph the serializer cannot round trip when someone edits elsewhere", () => {
@@ -381,12 +395,13 @@ describe("live note editors", () => {
   it("gives every block a start even without a source layout", () => {
     const pad = new Pad("Plain.\n");
     const note = parseSharedNote(pad.editor.schema, "");
-    expect(note.starts.length).toBe(note.doc.childCount);
+    expect(note.starts).toHaveLength(note.doc.childCount);
     expect(note.sources.every((source) => source === "")).toBe(true);
   });
 
   it("shows a remote edit without writing the whole note out again and reuses its snapshot", () => {
-    const start = `${Array.from({ length: 30 }, (_, index) => `Paragraph ${index}.`).join("\n\n")}\n`;
+    const paragraphs = Array.from({ length: 30 }, (_, index) => `Paragraph ${index}.`);
+    const start = `${paragraphs.join("\n\n")}\n`;
     const first = start.replace("Paragraph 5.", "Paragraph 5, edited.");
     const second = first.replace("Paragraph 20.", "Paragraph 20, edited.");
     const pad = new Pad(start);
