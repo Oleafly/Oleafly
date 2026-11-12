@@ -22,6 +22,10 @@ scripts/update-tagging-status.mjs text eol=lf
 # browser hashes it with LF line ends.
 src-tauri/src/note_video_page.js text eol=lf
 
+# The shipped Blocks gallery note. Notes tests compare the note the app builds
+# with these bytes, so a CRLF checkout on Windows fails them.
+src/components/notes/tests/blocks-gallery.md text eol=lf
+
 
 src-tauri/resources/templates/**/*.tex text eol=lf
 src-tauri/resources/templates/**/*.typ text eol=lf

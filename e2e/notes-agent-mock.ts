@@ -1,4 +1,4 @@
-import { mockIPC } from "@tauri-apps/api/mocks";
+import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
 import type { AgentEvent } from "/packages/ai-core/src/agent-events";
 import type { AgentUsage } from "/packages/ai-core/src/usage";
 import type { AppConfig, StoredModel } from "/packages/backend-port/src/index";
@@ -406,8 +406,11 @@ export function installNotesAgentMock(options: MockOptions): NotesAgentMock {
       state.logs.push(String(args.message));
       return null;
     },
+    "plugin:window|is_fullscreen": () => false,
+    "plugin:window|is_maximized": () => false,
   };
 
+  mockWindows("main");
   mockIPC(
     (command, args) => {
       const handler = handlers[command];

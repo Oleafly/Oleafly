@@ -183,7 +183,7 @@ export class NotesPage {
   }
 
   menuEntry(label: string): Locator {
-    const name = new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}(?:$|\\s*[^\\p{L}\\s])`, "u");
+    const name = new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}(?:$|\\s*[^\\p{L}\\s]|\\s+(?:Ctrl|Alt|Shift)\\+)`, "u");
     return this.page
       .getByRole("menuitem", { name })
       .or(this.page.getByRole("menuitemcheckbox", { name }))
