@@ -6,7 +6,7 @@ import { destroyKbEditors, kbEditor, kbMarkdown, placeCursor, pressKey } from ".
 import "./tests/setup";
 import { atSuggestion, chooseAt, closeAtMenu, dateItems, nextWeekday, noteAtExtensions, setAtPicker, type NoteAtOptions } from "./note-at";
 import { NoteAtMenu } from "./NoteAtMenu";
-import { fieldDisplay, isoDate } from "./note-fields";
+import { fieldDisplay, isoDate } from "./note-field-values";
 import { tagTone } from "./note-tags";
 import { localDate } from "./note-templates";
 

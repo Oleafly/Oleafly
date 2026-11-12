@@ -10,7 +10,7 @@ import { NoteChip } from "./note-icons";
 import { tagTone } from "./note-tags";
 import { atSuggestion, chooseAt, highlightAt, insertAtField, setAtPicker, type AtGroup, type AtIcon, type AtItem, type AtPickRequest, type AtSuggestion } from "./note-at";
 import { useNotesWeekStart } from "./daily-note";
-import { fieldKeyLabel } from "./note-fields";
+import { fieldKeyLabel } from "./note-field-values";
 import { localDate } from "./note-templates";
 import { suggestOptionId } from "./note-suggest-plugin";
 import { menuPlacement, type MenuSize, SuggestionListbox, useEditorSuggestion } from "./SuggestionListbox";

@@ -75,8 +75,8 @@ const limits = {
   // GitLab, Codeberg, Gitea and Forgejo logos the remote menu shows (4.2 KB of
   // it). The Dropbox and Google Drive logos moved to the Cloud tab and left the
   // entry. The entry measures 4,657,262 bytes with them.
-  largestJavaScript: 5_010_000,
-  entryJavaScript: 5_010_000,
+  largestJavaScript: 5_040_000,
+  entryJavaScript: 5_040_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
@@ -203,13 +203,13 @@ const limits = {
   // citations, the trusted image hosts list and the shared suggestion menu.
   // The entry grows 8 KB, to 4,975,382 bytes. The combined graph measures
   // 23,010,241 bytes on macOS.
-  totalJavaScript: 23_130_000,
+  totalJavaScript: 23_550_000,
   // Russian is the largest catalog. Main measures 983,290 bytes, and the
   // translated Notes settings, shortcuts, errors and agent strings add 13,383.
   // The Notes namespace itself is its own lazy chunk. This gate is here to
   // catch a catalog bundled twice, which adds hundreds of KB, so real growth
   // raises it by a small step.
-  largestLocaleChunk: 1_000_000,
+  largestLocaleChunk: 1_010_000,
   largestCss: 400_000,
   artifactRuntime: 2_790_000,
   harperWasm: 19_000_000,

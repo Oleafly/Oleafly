@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { type FieldDisplay, fieldData } from "./note-fields";
+import { type FieldDisplay, fieldData } from "./note-field-values";
 
 export function FieldChip({
   display,

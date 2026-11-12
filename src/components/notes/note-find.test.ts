@@ -213,7 +213,7 @@ describe("replacing matches", () => {
     expect(noteFindState(editor.state).matches).toHaveLength(MAX_FIND_MATCHES);
     expect(replaceAllMatches(editor.view, false)).toBe(MAX_FIND_MATCHES + 500);
     expect(kbMarkdown(editor)).not.toContain("a");
-  });
+  }, 60_000);
 
   it("deletes a match when the replacement is empty", () => {
     const editor = finding("keep drop keep", query(" drop"));

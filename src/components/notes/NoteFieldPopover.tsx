@@ -7,23 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { EditorPopover } from "./EditorPopover";
-import {
-  fieldKey,
-  fieldKeyLabel,
-  fieldKind,
-  fieldValue,
-  isDateKey,
-  isoDate,
-  newField,
-  PRIORITY_KEY,
-  priorityLabel,
-  priorityOf,
-  setFieldOpener,
-  validFieldKey,
-  validFieldValue,
-  type FieldAttrs,
-  type Priority,
-} from "./note-fields";
+import { fieldKey, fieldKeyLabel, fieldKind, fieldValue, isDateKey, isoDate, newField, PRIORITY_KEY, priorityLabel, priorityOf, validFieldKey, validFieldValue, type FieldAttrs, type Priority } from "./note-field-values";
+import { setFieldOpener } from "./note-fields";
 import { useNotesWeekStart } from "./daily-note";
 import { localDate } from "./note-templates";
 import { menuPlacement, type MenuSize } from "./SuggestionListbox";

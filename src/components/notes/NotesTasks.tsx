@@ -19,7 +19,7 @@ import {
   type TaskPrefs,
   useNotesPrefsStore,
 } from "@/store/notes-prefs";
-import { DUE_KEY, fieldDisplay, isoDate, PRIORITY_KEY, SCHEDULED_KEY } from "./note-fields";
+import { DUE_KEY, fieldDisplay, isoDate, PRIORITY_KEY, SCHEDULED_KEY } from "./note-field-values";
 import { NoteChip } from "./note-icons";
 import { tagTone } from "./note-tags";
 import { filterTasks, type TaskEntry, taskEntries, toggleTask } from "./note-task-list";

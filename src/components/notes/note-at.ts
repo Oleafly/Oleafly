@@ -4,20 +4,7 @@ import { PluginKey, TextSelection, type EditorState } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { i18n } from "@/i18n";
 import { addDays, weekdayName } from "@/lib/notes-periodic";
-import {
-  DATE_KEY,
-  DUE_KEY,
-  fieldKey,
-  fieldKeyLabel,
-  isDateKey,
-  isoDate,
-  newField,
-  PRIORITY_KEY,
-  priorityLabel,
-  SCHEDULED_KEY,
-  validFieldKey,
-  type Priority,
-} from "./note-fields";
+import { DATE_KEY, DUE_KEY, fieldKey, fieldKeyLabel, isDateKey, isoDate, newField, PRIORITY_KEY, priorityLabel, SCHEDULED_KEY, validFieldKey, type Priority } from "./note-field-values";
 import { candidateHref, candidateText, linkCandidates, type LinkableNote, type LinkCandidate } from "./note-links";
 import { sendSuggestMeta, suggestionKey, suggestPlugin, type SuggestRange, type SuggestState } from "./note-suggest-plugin";
 import { tagKey } from "./note-tags";

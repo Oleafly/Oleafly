@@ -30,7 +30,7 @@ import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { useWideSettings } from "@/components/settings/settings-width";
 import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
-import { DATE_KEY, DUE_KEY } from "@/components/notes/note-fields";
+import { DATE_KEY, DUE_KEY } from "@/components/notes/note-field-values";
 import { untrustRemoteImageHost, useTrustedRemoteImageHosts } from "@/lib/remote-image";
 import {
   NOTE_WIDTHS,

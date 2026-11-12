@@ -5,19 +5,8 @@ import { Calendar, CalendarArrowUp, CalendarCheck, CalendarClock, CalendarDays, 
 import { afterEach, describe, expect, it } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
 import { destroyKbEditors, kbEditor, kbMarkdown, kbNote, placeCursor, typeInto } from "./tests/kb-editor-fixtures";
-import {
-  fieldDisplay,
-  fieldKey,
-  fieldKind,
-  fieldSource,
-  inlineFields,
-  isoDate,
-  newField,
-  priorityOf,
-  setFieldOpener,
-  validFieldKey,
-  validFieldValue,
-} from "./note-fields";
+import { fieldDisplay, fieldKey, fieldKind, fieldSource, inlineFields, isoDate, newField, priorityOf, validFieldKey, validFieldValue } from "./note-field-values";
+import { setFieldOpener } from "./note-fields";
 import { editableChanged } from "./note-editable";
 import { localDate } from "./note-templates";
 import "./tests/setup";

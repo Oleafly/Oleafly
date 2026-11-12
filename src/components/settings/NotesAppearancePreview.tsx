@@ -3,7 +3,7 @@ import { Trans, useTranslation } from "react-i18next";
 import { Info } from "lucide-react";
 import { useNotesAppearanceRef } from "@/hooks/use-notes-appearance";
 import { FieldChip } from "@/components/notes/FieldChip";
-import { DATE_KEY, DUE_KEY, fieldDisplay } from "@/components/notes/note-fields";
+import { DATE_KEY, DUE_KEY, fieldDisplay } from "@/components/notes/note-field-values";
 import { tagTone } from "@/components/notes/note-tags";
 import { localDate } from "@/components/notes/note-templates";
 import { addDays } from "@/lib/notes-periodic";

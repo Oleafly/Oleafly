@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 import { Highlighted } from "@/components/ui/highlighted";
 import { useNow } from "@/hooks/use-now";
 import { FieldChip } from "./FieldChip";
-import { fieldDisplay, inlineFields } from "./note-fields";
+import { fieldDisplay, inlineFields } from "./note-field-values";
 
 type Range = readonly [number, number];
 

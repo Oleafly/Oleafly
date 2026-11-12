@@ -4,18 +4,7 @@ import type { NoteTaskRecord } from "@/lib/tauri";
 import type { TaskDue, TaskPrefs, TaskPriorityFilter } from "@/store/notes-prefs";
 import { addDays, startOfDay } from "@/lib/notes-periodic";
 import { openNoteEditor } from "@/lib/open-note-editors";
-import {
-  DUE_KEY,
-  fieldKey,
-  fieldValue,
-  inlineFields,
-  isoDate,
-  PRIORITY_KEY,
-  priorityOf,
-  SCHEDULED_KEY,
-  type FieldAttrs,
-  type Priority,
-} from "./note-fields";
+import { DUE_KEY, fieldKey, fieldValue, inlineFields, isoDate, PRIORITY_KEY, priorityOf, SCHEDULED_KEY, type FieldAttrs, type Priority } from "./note-field-values";
 import { stripBlockIdMarkers } from "./note-block-ids";
 import { noteItemLines } from "./note-block-links";
 import { plainHeading } from "./note-link-format";
