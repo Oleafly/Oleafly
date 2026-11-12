@@ -39,7 +39,7 @@ import { NoteFieldPopover } from "./NoteFieldPopover";
 import { withNoteEmbeds } from "./note-embeds";
 import { NoteHoverPreview } from "./note-hover-preview";
 import { scrollViewToHeading } from "./note-links";
-import { noteBaseExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "./note-markdown";
+import { NOTE_CORE_EXTENSIONS, noteBaseExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "./note-markdown";
 import { useNoteKnowledge } from "./use-note-knowledge";
 import { noteAssetActions, withBlockViews, withImageView } from "./block-views";
 import { IconPicker } from "./IconPicker";
@@ -331,7 +331,7 @@ function NoteEditor({
       blockRefs.extension,
     ];
   }, [blockRefs, knowledge, note.id, note.shared, noteLinks.extensions, proofreading.extension]);
-  const editor = useEditor({ extensions, content: parsed.doc });
+  const editor = useEditor({ extensions, content: parsed.doc, enableCoreExtensions: NOTE_CORE_EXTENSIONS });
   const citations = useNoteCitations(editor, note, (id) => onOpenNote?.(id, { newTab: false }));
   const assistantRef = useRef<NoteAssistantHandle>(null);
   const scrollRef = useRef<HTMLDivElement>(null);

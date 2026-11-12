@@ -213,7 +213,7 @@ describe("replacing matches", () => {
     expect(noteFindState(editor.state).matches).toHaveLength(MAX_FIND_MATCHES);
     expect(replaceAllMatches(editor.view, false)).toBe(MAX_FIND_MATCHES + 500);
     expect(kbMarkdown(editor)).not.toContain("a");
-  }, 20_000);
+  });
 
   it("writes a replacement as plain text, even when it looks like a link", () => {
     const editor = finding("see SITE now", query("SITE ", { replace: "https://example.com " }));

@@ -21,7 +21,7 @@ import { quickCaptureOpenNotes, quickCaptureWindowButtons } from "@/lib/tauri";
 import { cn, isMac } from "@/lib/utils";
 import { withBlockViews } from "./block-views";
 import { calloutNodeView } from "./NoteCallout";
-import { noteBaseExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "./note-markdown";
+import { NOTE_CORE_EXTENSIONS, noteBaseExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "./note-markdown";
 import { NoteSlash } from "./note-slash";
 import { NoteSlashMenu } from "./NoteSlashMenu";
 import { NoteToolbar, returnFocus } from "./NoteToolbar";
@@ -142,6 +142,7 @@ export function QuickCaptureWindow({ bridge = desktopBridge }: Readonly<{ bridge
     () => ({
       extensions,
       content: parseNoteMarkdown(initial).doc,
+      enableCoreExtensions: NOTE_CORE_EXTENSIONS,
       autofocus: "end" as const,
       editorProps: {
         attributes: {

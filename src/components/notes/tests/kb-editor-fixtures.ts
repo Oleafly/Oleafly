@@ -3,7 +3,7 @@ import { Editor, type AnyExtension } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
 import { noteSourceOf } from "../note-live-doc";
 import type { NoteViews } from "../note-markdown";
-import { noteBaseExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "../note-markdown";
+import { NOTE_CORE_EXTENSIONS, noteBaseExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "../note-markdown";
 
 const editors: Editor[] = [];
 
@@ -14,6 +14,7 @@ export function kbEditor(markdown: string, views: NoteViews | null = { callout: 
     element,
     extensions: [...noteBaseExtensions({}, views), ...extra],
     content: parseNoteMarkdown(markdown).doc,
+    enableCoreExtensions: NOTE_CORE_EXTENSIONS,
   });
   editors.push(editor);
   return editor;

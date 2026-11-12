@@ -14,6 +14,8 @@ import { NoteHighlight } from "./note-highlight";
 import { NoteTaskItem, NoteTaskList } from "./note-tasks";
 import { NoteTextReplacements } from "./note-text-replacements";
 
+export const NOTE_CORE_EXTENSIONS = { delete: false } as const;
+
 export interface NoteViews {
   callout: NodeViewRenderer | null;
 }
