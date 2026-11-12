@@ -59,8 +59,8 @@ function leaveProbe(address: string): Probe {
     height: 199,
     source: [
       "<style>body { margin: 0; padding: 0; }</style>",
-      '<div id="leave-probe" style="height: 199px">leave probe</div>',
-      `<script>setTimeout(() => { location.href = ${JSON.stringify(address)} + "?note=" + encodeURIComponent(document.getElementById("leave-probe").textContent); }, ${LEAVE_AFTER_MS});</script>`,
+      `<div id="leave-probe" style="height: 199px" data-target="${address}">leave probe</div>`,
+      `<script>setTimeout(() => { const probe = document.getElementById("leave-probe"); location.href = probe.dataset.target + "?note=" + encodeURIComponent(probe.textContent); }, ${LEAVE_AFTER_MS});</script>`,
     ].join("\n"),
   };
 }

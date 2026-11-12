@@ -85,7 +85,7 @@ function triggerAt(state: EditorState): Omit<SuggestRange, "index"> | null {
   const match = TRIGGER.exec(before);
   if (!match) return null;
   const query = match[1];
-  if (/^\s|\s{2}/u.test(query)) return null;
+  if (/(?:^\s)|\s{2}/u.test(query)) return null;
   return { from: $from.pos - query.length - 1, to: $from.pos, query };
 }
 

@@ -476,14 +476,19 @@ function layoutPositions({ nodes }: Layout): Float32Array {
   return out;
 }
 
-function pinNode({ nodes }: Layout, index: number, x: number, y: number): void {
-  const node = nodes[index];
-  if (!node) return;
+function nodeAt(nodes: LayoutNode[], index: number): LayoutNode | undefined {
+  return Number.isInteger(index) && index >= 0 ? nodes.at(index) : undefined;
+}
+
+function pinNode({ nodes }: Layout, index: number, x: number, y: number): boolean {
+  const node = nodeAt(nodes, index);
+  if (!node) return false;
   Object.assign(node, { fx: x, fy: y, x, y, vx: 0, vy: 0 });
+  return true;
 }
 
 function unpinNodes({ nodes }: Layout, index: number | null): void {
-  for (const node of index === null ? nodes : [nodes[index]]) {
+  for (const node of index === null ? nodes : [nodeAt(nodes, index)]) {
     if (!node) continue;
     node.fx = null;
     node.fy = null;
@@ -552,7 +557,7 @@ export function createLayoutEngine(
       const current = layout;
       if (!current || request.generation !== generation) return;
       if (request.type === "pin") {
-        pinNode(current, request.index, request.x, request.y);
+        if (!pinNode(current, request.index, request.x, request.y)) return;
         if (!animate) {
           emit(current, true);
           return;

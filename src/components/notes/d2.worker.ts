@@ -82,7 +82,7 @@ function canvas(own: unknown, background: string | null): unknown {
   return { ...overrides, n7: background };
 }
 
-scope.onmessage = async ({ data: { id, source, theme, background } }) => {
+async function render({ id, source, theme, background }: D2Request): Promise<void> {
   try {
     const d2 = await start();
     const options = { themeID: theme, pad: 16, scale: 1, noXMLTag: true };
@@ -93,4 +93,8 @@ scope.onmessage = async ({ data: { id, source, theme, background } }) => {
   } catch (error) {
     scope.postMessage(error instanceof Failure ? { id, failure: error.failure } : { id, error: error instanceof Error ? error.message : String(error) });
   }
+}
+
+scope.onmessage = ({ data }) => {
+  void render(data);
 };

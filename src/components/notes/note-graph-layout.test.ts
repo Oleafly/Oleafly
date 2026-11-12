@@ -300,6 +300,20 @@ describe("createLayoutEngine", () => {
     expect(flush()).toBe(0);
   });
 
+  it("ignores a pin or unpin whose index is not a node", () => {
+    const { engine, updates, flush } = harness();
+    engine.handle({ type: "start", generation: 4, count: 3, edges: chain(3), positions: null, animate: false });
+    flush();
+    const before = updates.length;
+    for (const index of ["__proto__", "constructor", -1, 1.5, 3] as unknown as number[]) {
+      engine.handle({ type: "pin", generation: 4, index, x: 5, y: 5 });
+      engine.handle({ type: "unpin", generation: 4, index });
+    }
+    expect(updates).toHaveLength(before);
+    expect(Object.hasOwn(Array.prototype, "fx")).toBe(false);
+    expect(Object.hasOwn(Object.prototype, "fx")).toBe(false);
+  });
+
   it("reheats while dragging and ignores stale generations", () => {
     let clock = 0;
     const { engine, updates, flush, timer } = harness(() => {

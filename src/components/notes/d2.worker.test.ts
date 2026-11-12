@@ -7,7 +7,7 @@ vi.mock("@terrastruct/d2/wasm?url", () => ({ default: "/assets/d2.wasm" }));
 interface Scope {
   Go?: unknown;
   d2?: unknown;
-  onmessage?: ((event: { data: D2Request }) => Promise<void>) | null;
+  onmessage?: ((event: { data: D2Request }) => void) | null;
   postMessage?: (reply: D2Reply) => void;
 }
 
@@ -32,9 +32,14 @@ const fakeD2 = {
   }),
 };
 
-async function send(request: D2Request): Promise<D2Reply> {
-  await scope.onmessage?.({ data: request });
-  return replies.at(-1) as D2Reply;
+function send(request: D2Request): Promise<D2Reply> {
+  const before = replies.length;
+  scope.onmessage?.({ data: request });
+  return vi.waitFor(() => {
+    const reply = replies[before];
+    if (!reply) throw new Error(`no reply to ${request.id} yet`);
+    return reply;
+  });
 }
 
 beforeAll(async () => {

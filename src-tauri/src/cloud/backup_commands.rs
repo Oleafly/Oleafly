@@ -309,9 +309,8 @@ pub async fn cloud_backup_run(scheduled: bool) -> Result<BackupRunView, String> 
         .await
         .map_err(|error| failed(&target, &error));
     RUNNING.store(false, Ordering::Release);
-    let staging = dirs.staging;
+    let _ = tokio::fs::remove_dir_all(&dirs.staging).await;
     let (result, recorded) = blocking(move || {
-        let _ = std::fs::remove_dir_all(&staging);
         let recorded = record_run(started, &result);
         (result, recorded)
     })
