@@ -4920,6 +4920,29 @@ mod tests {
     }
 
     #[test]
+    fn a_current_catalog_reopens_unchanged_on_the_bundled_sqlite() {
+        assert!(rusqlite::version_number() >= 3_054_000);
+        let temp = tempdir().unwrap();
+        let (store, root) = published_test_store(temp.path());
+        let history = store.root().to_path_buf();
+        let listed = store.list().unwrap();
+        drop(store);
+        assert_eq!(catalog_user_version_at(&history), FORMAT_VERSION);
+
+        let reopened = Store::open_existing(&history).unwrap().unwrap();
+        assert_eq!(catalog_user_version_at(&history), FORMAT_VERSION);
+        assert_eq!(reopened.list().unwrap(), listed);
+        let checkpoint = reopened.checkpoint(&root).unwrap().unwrap();
+        assert_eq!(checkpoint.file_count, 2);
+        let verified = reopened.verify().unwrap();
+        assert_eq!(verified.checked_checkpoints, 1);
+        assert_eq!(verified.checked_files, 2);
+        let restored = temp.path().join("restored");
+        reopened.materialize(&root, &restored).unwrap();
+        assert_eq!(fs::read(restored.join("main.tex")).unwrap(), b"source");
+    }
+
+    #[test]
     fn checkpoint_labels_are_trimmed_validated_and_clearable() {
         let temp = tempdir().unwrap();
         let (store, root) = published_test_store(temp.path());
