@@ -13,6 +13,7 @@ export type RowWindow = RowRange &
 
 export const UNMEASURED_ROW_COUNT = 80;
 const DEFAULT_OVERSCAN = 12;
+const MAX_SYNC_MEASURES = 8;
 const NO_SCROLLER_TARGET: { readonly element: HTMLElement | null } = { element: null };
 export const ROW_WINDOW_ITEM = "data-row-window-item";
 
@@ -82,6 +83,7 @@ export function useRowWindow({
   const countRef = useRef(count);
   countRef.current = count;
   const frame = useRef(0);
+  const syncMeasures = useRef(0);
   const foundScroller = useRef<HTMLElement | null>(null);
 
   const subscribed = useRef<HTMLElement | null>(null);
@@ -198,7 +200,18 @@ export function useRowWindow({
     latest.current = measured;
     const scroller = resolveScroller();
     if (scroller !== subscribed.current) setScrollerTarget({ element: scroller });
-    measure();
+    const next = nextMeasure();
+    if (!next) return;
+    if (!sameMeasure(measured, next)) {
+      if (syncMeasures.current >= MAX_SYNC_MEASURES) return;
+      syncMeasures.current += 1;
+      if (syncMeasures.current === 1) {
+        queueMicrotask(() => {
+          syncMeasures.current = 0;
+        });
+      }
+    }
+    setMeasured((previous) => (sameMeasure(previous, next) ? previous : next));
   });
 
   const scrollToIndex = useCallback(
