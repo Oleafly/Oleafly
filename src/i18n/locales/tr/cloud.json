@@ -147,7 +147,7 @@
   },
   "conflictCopy": {
     "title": "\"{{name}}\" notunun iki sürümü",
-    "description": "Bu not, eşitlenmeden önce hem burada hem de başka bir bilgisayarda değiştiği için Oleafly iki sürümü de sakladı. Bir sürümü koruyun. Diğeri Geri Dönüşüm Kutusu'na gider.",
+    "description": "Bu not, eşitlenmeden önce hem burada hem de başka bir bilgisayarda değiştiği için Oleafly iki sürümü de sakladı. Bir sürümü koruyun. Diğeri bu bilgisayarın Geri Dönüşüm Kutusu'na gider.",
     "diffLabel": "İki sürüm arasındaki farklar",
     "loading": "İki sürüm de okunuyor…",
     "readFailed": "Çakışma kopyası okunamadı.",
