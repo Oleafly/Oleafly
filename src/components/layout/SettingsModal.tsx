@@ -1,4 +1,4 @@
-import { Fragment, lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { Fragment, Suspense, useEffect, useId, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { create } from "zustand";
 import { isLocalePreference, LOCALE_INFO, SUPPORTED_LOCALES } from "@oleafly/i18n-contract";
@@ -110,7 +110,9 @@ import {
   PROJECT_NOT_FOUND,
 } from "@/lib/app-error";
 import { isLibraryProject } from "@/lib/project-location";
+import { libraryProjects as projectsOutsideNotes } from "@/lib/library-projects";
 import { logError } from "@/lib/log";
+import { intended, lazy } from "@/lib/preloadable";
 import { notifyError, toast } from "@/lib/toast";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { startTour } from "@/lib/tour";
@@ -123,6 +125,7 @@ import { useTourStore } from "@/store/tours";
 import { ProofreadingDictionarySection } from "@/components/settings/ProofreadingDictionarySection";
 import { DictionaryLocalePicker } from "@/components/settings/DictionaryLocalePicker";
 import { AppearanceSection } from "@/components/settings/AppearanceSection";
+import { SettingsWidthContext, useRoomySettings } from "@/components/settings/settings-width";
 import { CheckpointToggles } from "@/components/settings/CheckpointToggles";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { SettingsRow } from "@/components/settings/SettingsRow";
@@ -146,34 +149,43 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 
-const SettingsFileCard = lazy(() =>
-  Promise.all([
-    import("@/components/settings/SettingsFileCard"),
-    loadNamespace("settingsFile"),
-    loadNamespace("cloud"),
-  ]).then(([module]) => module),
+const SettingsFileCard = lazy(
+  () =>
+    Promise.all([
+      import("@/components/settings/SettingsFileCard"),
+      loadNamespace("settingsFile"),
+      loadNamespace("cloud"),
+    ]).then(([module]) => module),
+  { warm: () => intended("settings") },
 );
-const CloudTab = lazy(() =>
-  Promise.all([
-    import("@/components/settings/cloud/CloudTab"),
-    loadNamespace("cloud").catch((error: unknown) => logError("load cloud sync strings", error)),
-  ]).then(([module]) => ({ default: module.CloudTab })),
+const CloudTab = lazy(
+  () =>
+    Promise.all([
+      import("@/components/settings/cloud/CloudTab"),
+      loadNamespace("cloud").catch((error: unknown) => logError("load cloud sync strings", error)),
+    ]).then(([module]) => ({ default: module.CloudTab })),
+  { warm: () => intended("settings") },
 );
-const ChangelogDialog = lazy(() =>
-  import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
-);
-
-const ResearchSettingsSection = lazy(() =>
-  Promise.all([
-    import("@/components/settings/research/ResearchSettingsSection"),
-    loadNamespace("researchTools"),
-  ]).then(([module]) => ({ default: module.ResearchSettingsSection })),
+const ChangelogDialog = lazy(
+  () => import("@/components/layout/ChangelogDialog").then((module) => ({ default: module.ChangelogDialog })),
+  { warm: () => intended("settings") },
 );
 
-const CollaborationSection = lazy(() =>
-  Promise.all([import("@/features/collab/CollaborationSection"), loadNamespace("collab")]).then(
-    ([module]) => ({ default: module.CollaborationSection }),
-  ),
+const ResearchSettingsSection = lazy(
+  () =>
+    Promise.all([
+      import("@/components/settings/research/ResearchSettingsSection"),
+      loadNamespace("researchTools"),
+    ]).then(([module]) => ({ default: module.ResearchSettingsSection })),
+  { warm: () => intended("settings") && useResearchTasksFlagStore.getState().enabled },
+);
+
+const CollaborationSection = lazy(
+  () =>
+    Promise.all([import("@/features/collab/CollaborationSection"), loadNamespace("collab")]).then(([module]) => ({
+      default: module.CollaborationSection,
+    })),
+  { warm: () => intended("settings") },
 );
 
 type Section = SettingsSearchSection;
@@ -333,6 +345,8 @@ export function SettingsModal() {
   const setOffline = useSettingsStore((s) => s.setOffline);
   const latexTools = useSettingsStore((s) => s.latexTools);
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
+  const notesEnabled = useSettingsStore((s) => s.notes);
+  const setNotesEnabled = useSettingsStore((s) => s.setNotes);
   const researchTasks = useResearchTasksEnabled();
   const [researchTasksBusy, setResearchTasksBusy] = useState(false);
   const [researchTasksFailed, setResearchTasksFailed] = useState(false);
@@ -347,7 +361,10 @@ export function SettingsModal() {
 
   const projectId = useFilesStore((s) => s.projectId);
   const projects = useFilesStore((s) => s.projects);
-  const libraryProjects = projects.filter(isLibraryProject);
+  const libraryProjects = projectsOutsideNotes(projects, notesEnabled).filter(isLibraryProject);
+  const projectsStatLabel = notesEnabled
+    ? t(($) => $.shell.settings.data.storage.stats.projectsAndNotes)
+    : t(($) => $.shell.settings.data.storage.stats.projects);
   const closeProject = useFilesStore((s) => s.closeProject);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const forgeStatus = useForgeAccountsStore((s) => s.status);
@@ -413,6 +430,8 @@ export function SettingsModal() {
     useSettingsStore.getState().setSettingsInitialSection("general");
   };
   const settingsBodyRef = useScrollTopOnChange(section);
+  const [wide, setWide] = useState(false);
+  const roomy = useRoomySettings();
   const sectionListId = useId();
   const settingsTourActive = useTourStore((s) => s.activeTourId === "settings");
   const search = useSettingsSearch({
@@ -639,7 +658,7 @@ export function SettingsModal() {
           <span className="sr-only">{t(($) => $.shell.settings.data.storage.calculating)}</span>
           <StatGrid
             stats={[
-              { id: "projects", label: t(($) => $.shell.settings.data.storage.stats.projects), ...pending },
+              { id: "projects", label: projectsStatLabel, ...pending },
               { id: "files", label: t(($) => $.shell.settings.data.storage.stats.files), ...pending },
               { id: "images", label: t(($) => $.shell.settings.data.storage.stats.images), ...pending },
               { id: "pdfs", label: t(($) => $.shell.settings.data.storage.stats.pdfs), ...pending },
@@ -656,7 +675,7 @@ export function SettingsModal() {
           stats={[
             {
               id: "projects",
-              label: t(($) => $.shell.settings.data.storage.stats.projects),
+              label: projectsStatLabel,
               value: formatNumber(storageSummary.project_count),
               detail: formatBytes(storageSummary.projects_bytes),
             },
@@ -792,6 +811,13 @@ export function SettingsModal() {
           onChange={setLatexTools}
         />
         <SettingsToggleRow
+          testId="settings-notes"
+          label={t(($) => $.shell.settings.experimentation.notes.label)}
+          description={t(($) => $.shell.settings.experimentation.notes.description)}
+          checked={notesEnabled}
+          onChange={setNotesEnabled}
+        />
+        <SettingsToggleRow
           testId="settings-research-tasks"
           label={t(($) => $.shell.settings.experimentation.researchTasks.label)}
           description={t(($) => $.shell.settings.experimentation.researchTasks.description)}
@@ -826,7 +852,7 @@ export function SettingsModal() {
     <div
       ref={settingsBodyRef}
       data-testid="settings-body"
-      className={cn("flex-1 select-text overflow-auto p-5", SETTINGS_SEARCH_HIT_CLASSES)}
+      className={cn("relative flex-1 select-text overflow-auto p-5", SETTINGS_SEARCH_HIT_CLASSES)}
     >
       {section === "appearance" && <AppearanceSection />}
 
@@ -1313,7 +1339,11 @@ export function SettingsModal() {
         onClose={closeSettings}
         closeLabel={t(($) => $.shell.settings.close)}
         label={t(($) => $.shell.settings.title)}
-        className="flex h-[min(900px,88vh)] min-h-[min(540px,88vh)] w-[min(1040px,94vw)] min-w-[min(640px,94vw)] overflow-hidden"
+        animateWidth={roomy}
+        className={cn(
+          "flex h-(--settings-height) min-h-[min(540px,88vh)] min-w-[min(640px,94vw)] overflow-hidden [--settings-height:min(900px,88vh)]",
+          wide ? "w-[min(1380px,94vw)]" : "w-[min(1040px,94vw)]",
+        )}
       >
         <nav
           aria-label={t(($) => $.shell.settings.sectionsNav)}
@@ -1385,7 +1415,7 @@ export function SettingsModal() {
               <X className="size-4" />
             </Button>
           </div>
-          {renderSettingsBody()}
+          <SettingsWidthContext.Provider value={setWide}>{renderSettingsBody()}</SettingsWidthContext.Provider>
         </div>
       </ModalShell>
       <ConfirmationDialog

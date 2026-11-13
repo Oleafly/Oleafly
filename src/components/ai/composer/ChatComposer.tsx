@@ -88,6 +88,7 @@ export interface ChatComposerProps {
   accept?: string;
   labels?: { send?: string; stop?: string; stopTitle?: string; textarea?: string };
   controlsTestId?: string;
+  shellClassName?: string;
 }
 
 export interface ChatComposerHandle {
@@ -149,6 +150,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
     accept,
     labels,
     controlsTestId = "ai-composer-controls",
+    shellClassName,
   },
   ref,
 ) {
@@ -437,7 +439,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
       <AttachmentChips items={attachments} onRemove={onRemoveAttachment} />
       <div
         ref={shellRef}
-        className="relative rounded-[1.375rem] border bg-card px-3 pb-2 pt-2.5 shadow-sm transition-colors focus-within:border-ring"
+        className={cn(
+          "relative rounded-[1.375rem] border bg-card px-3 pb-2 pt-2.5 shadow-sm transition-colors",
+          shellClassName,
+        )}
       >
         <ComposerResizeHandle
           height={resting}
@@ -533,7 +538,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
               // gives the placeholder a wider scroll width than the box, and
               // the vertical scrolling turned that into a horizontal scrollbar.
               // Text still wraps at the visible width.
-              "relative w-full resize-none overflow-y-auto overflow-x-hidden rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none placeholder:text-muted-foreground/70",
+              "relative w-full resize-none overflow-y-auto overflow-x-hidden rounded-md border-0 bg-transparent px-0.5 text-sm shadow-none focus-visible:bg-transparent placeholder:text-muted-foreground/70",
               highlight && "text-transparent caret-foreground",
             )}
           />

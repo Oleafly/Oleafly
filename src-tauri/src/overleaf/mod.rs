@@ -18,6 +18,7 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Runtime};
 
 pub use import::{ImportEvent, ImportOutcome, RemoteProject};
+pub(crate) use signin::LABEL_PREFIX as SIGN_IN_LABEL_PREFIX;
 pub use sync::Side;
 
 use std::collections::BTreeMap;

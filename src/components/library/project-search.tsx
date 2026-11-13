@@ -17,6 +17,7 @@ import {
   GitFork,
   Image,
   Library,
+  NotebookPen,
   Palette,
   Shapes,
   TextSearch,
@@ -27,6 +28,7 @@ import {
   defineSchema,
   flagField,
   type Facet,
+  type SearchExtension,
   type SearchField,
   type SearchFlag,
   type SearchOption,
@@ -35,6 +37,7 @@ import {
   type TextScope,
 } from "@oleafly/search-query";
 import { BOOK_COLOR_OPTIONS } from "@/components/library/Book";
+import { ColorDot } from "@/components/ui/color-swatch";
 import {
   folderDisplayPath,
   isFolderProject,
@@ -49,7 +52,10 @@ type ProjectFlag = SearchFlag<ProjectInfo, QueryMeta>;
 type ProjectEngine = "latex" | "typst" | "markdown" | "quarto" | "calepin";
 
 export const PROJECT_ENGINES: readonly ProjectEngine[] = ["latex", "typst", "markdown", "quarto", "calepin"];
-export const PROJECT_KINDS = ["document", "image", "diagram"] as const;
+export const PROJECT_KINDS = ["document", "image", "diagram", "note"] as const;
+type ProjectKind = (typeof PROJECT_KINDS)[number];
+
+export const PROJECT_KINDS_WITHOUT_NOTES: readonly ProjectKind[] = PROJECT_KINDS.filter((kind) => kind !== "note");
 export const DEFAULT_PROJECT_SORT = "activity-desc";
 
 const ENGINE_LABELS: Readonly<Record<ProjectEngine, string>> = {
@@ -87,20 +93,15 @@ export interface ProjectSearchState {
   readonly modified: Readonly<Record<string, number>>;
   readonly colorOf: (project: ProjectInfo) => string;
   readonly colorLabels: Readonly<Record<string, string>>;
+  readonly hideNotes?: boolean;
 }
 
-export interface ProjectSearchExtension {
-  readonly is?: readonly ProjectFlag[];
-  readonly has?: readonly ProjectFlag[];
-  readonly fields?: readonly SearchField<ProjectInfo, QueryMeta>[];
-  readonly sorts?: readonly SortOrder<ProjectInfo, QueryMeta>[];
-  readonly text?: readonly TextScope<ProjectInfo, QueryMeta>[];
-}
+export type ProjectSearchExtension = SearchExtension<ProjectInfo, QueryMeta>;
 
 const icon = (Icon: typeof Eye): ReactNode => <Icon className="size-4" />;
 
 function swatch(hex: string): ReactNode {
-  return <span className="size-3 rounded-full border border-black/10 dark:border-white/15" style={{ background: hex }} />;
+  return <ColorDot color={hex} />;
 }
 
 function seconds(value: number | undefined): number | null {
@@ -163,15 +164,17 @@ function hasFlags(t: Translate): ProjectFlag[] {
   ];
 }
 
-function kindIcon(kind: (typeof PROJECT_KINDS)[number]): ReactNode {
+function kindIcon(kind: ProjectKind): ReactNode {
   if (kind === "image") return icon(Image);
   if (kind === "diagram") return icon(Shapes);
+  if (kind === "note") return icon(NotebookPen);
   return icon(FileText);
 }
 
-function kindLabel(t: Translate, kind: (typeof PROJECT_KINDS)[number]): string {
+function kindLabel(t: Translate, kind: ProjectKind): string {
   if (kind === "image") return t(($) => $.library.home.filters.kindImage);
   if (kind === "diagram") return t(($) => $.library.home.filters.kindDiagram);
+  if (kind === "note") return t(($) => $.library.home.filters.kindNote);
   return t(($) => $.library.home.filters.kindDocument);
 }
 
@@ -196,7 +199,10 @@ function valueFields(t: Translate, state: ProjectSearchState): SearchField<Proje
       aliases: ["type"],
       meta: { label: t(($) => $.library.home.filters.kind), icon: icon(Shapes) },
       type: "enum",
-      options: PROJECT_KINDS.map((kind) => ({ value: kind, meta: { label: kindLabel(t, kind), icon: kindIcon(kind) } })),
+      options: (state.hideNotes ? PROJECT_KINDS_WITHOUT_NOTES : PROJECT_KINDS).map((kind) => ({
+        value: kind,
+        meta: { label: kindLabel(t, kind), icon: kindIcon(kind) },
+      })),
       test: (project, value) => (project.kind || "document") === value,
     },
     {

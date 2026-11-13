@@ -115,6 +115,8 @@
     "conflictsHelp_many": "Estes arquivos foram alterados aqui e em outro computador antes de as alterações serem sincronizadas, então o Oleafly manteve as duas versões. Fique com o que você precisa e depois exclua as cópias de conflito.",
     "conflictsHelp_other": "Estes arquivos foram alterados aqui e em outro computador antes de as alterações serem sincronizadas, então o Oleafly manteve as duas versões. Fique com o que você precisa e depois exclua as cópias de conflito.",
     "conflictsLabel": "Cópias de conflito em {{name}}",
+    "compare": "Comparar",
+    "compareLabel": "Comparar {{path}} com a nota",
     "dismiss": "Dispensar",
     "skipped_one": "{{count}} arquivo foi ignorado",
     "skipped_many": "{{count}} arquivos foram ignorados",
@@ -151,6 +153,16 @@
       "downloadFailed": "Não foi possível baixar",
       "uploadFailed": "Não foi possível enviar"
     }
+  },
+  "conflictCopy": {
+    "title": "Duas versões de \"{{name}}\"",
+    "description": "Esta nota foi alterada aqui e em outro computador antes de as alterações serem sincronizadas, então o Oleafly manteve as duas versões. Fique com uma delas. A outra vai para a Lixeira.",
+    "diffLabel": "Diferenças entre as duas versões",
+    "loading": "Lendo as duas versões…",
+    "readFailed": "Não foi possível ler a cópia de conflito.",
+    "resolveFailed": "Não foi possível manter essa versão.",
+    "keepMine": "Manter a versão deste computador",
+    "useCopy": "Usar a versão do outro computador"
   },
   "confirm": {
     "removeTitle": "Remover {{name}} do {{provider}}?",
@@ -221,6 +233,81 @@
     "pathStyle": "Usar endereços no estilo de caminho",
     "pathStyleHint": "O MinIO e a maioria dos servidores auto-hospedados precisam disso."
   },
+  "backups": {
+    "title": "Backups",
+    "none": "Nenhum backup ainda",
+    "last": "Último backup {{time}} · {{contents}} · {{size}}",
+    "notes_one": "{{count}} nota",
+    "notes_many": "{{count}} notas",
+    "notes_other": "{{count}} notas",
+    "projects_one": "{{count}} projeto",
+    "projects_many": "{{count}} projetos",
+    "projects_other": "{{count}} projetos",
+    "running": "Fazendo backup",
+    "failed": "O último backup não terminou. {{reason}}",
+    "backUpNow": "Fazer backup agora",
+    "auto": {
+      "label": "Fazer backup automaticamente",
+      "description": "Mantém cópias datadas das suas notas no {{provider}}. Edições e exclusões posteriores, mesmo as que são sincronizadas, não mexem nelas."
+    },
+    "every": {
+      "label": "Frequência",
+      "description": "Cada backup só envia o que mudou desde o anterior.",
+      "options": {
+        "6": "A cada 6 horas",
+        "24": "Todo dia",
+        "168": "Toda semana"
+      }
+    },
+    "keep": {
+      "label": "Manter",
+      "description": "Os backups mais antigos são excluídos do {{provider}} para economizar espaço.",
+      "option_one": "O último backup",
+      "option_many": "Os últimos {{count}} backups",
+      "option_other": "Os últimos {{count}} backups"
+    },
+    "includeProjects": {
+      "label": "Incluir projetos",
+      "description": "Os projetos já são sincronizados com seus pontos de verificação. Ative esta opção para manter cópias datadas deles também. O primeiro backup de um projeto grande pode demorar e ocupar bastante espaço."
+    },
+    "list": {
+      "title": "Backups no {{provider}}",
+      "label": "Backups",
+      "loading": "Lendo os backups",
+      "failed": "Não foi possível ler os backups. {{reason}}",
+      "empty": "Ainda não há backups no {{provider}}."
+    },
+    "row": {
+      "thisComputer": "Este computador",
+      "manual": "Manual",
+      "restore": "Restaurar",
+      "restoreLabel": "Restaurar o backup de {{date}}"
+    },
+    "restore": {
+      "title": "Restaurar o backup de {{date}}",
+      "description": "Restaurar nunca substitui o que você tem. Uma nota ou um projeto que ainda está aqui volta como cópia ao lado do original, para você comparar os dois.",
+      "loading": "Lendo o backup",
+      "loadFailed": "Não foi possível ler este backup. {{reason}}",
+      "search": "Buscar neste backup",
+      "clearSearch": "Limpar a busca",
+      "noMatch": "Nada neste backup corresponde à busca.",
+      "listLabel": "Notas e projetos neste backup",
+      "here": "Ainda está aqui",
+      "missing": "Não está neste computador",
+      "restored": "Restaurado",
+      "restoredCopy": "Restaurado como cópia",
+      "files_one": "{{count}} arquivo",
+      "files_many": "{{count}} arquivos",
+      "files_other": "{{count}} arquivos",
+      "one": "Restaurar",
+      "oneLabel": "Restaurar {{name}}",
+      "allMissing_one": "Restaurar o que falta",
+      "allMissing_many": "Restaurar os {{count}} que faltam",
+      "allMissing_other": "Restaurar os {{count}} que faltam",
+      "nothingMissing": "Não falta nada",
+      "copyName": "(backup de {{date}})"
+    }
+  },
   "errors": {
     "clock_skew": "O relógio deste computador está desajustado, então o {{provider}} não aceita solicitações vindas dele. Defina a data e a hora corretas para continuar sincronizando.",
     "code_invalid": "Esse código não funcionou. Tente de novo.",
@@ -249,6 +336,8 @@
     "sign_in_timeout": "O login demorou demais. Tente de novo.",
     "too_many_files": "Este projeto tem mais de 100.000 arquivos. São arquivos demais para sincronizar.",
     "traffic_limit": "Seu {{provider}} atingiu o limite de envio. As novas alterações ficam neste computador até o {{provider}} voltar a permitir envios.",
-    "verify_failed": "Um arquivo do {{provider}} não correspondia ao que o Oleafly esperava, então não foi alterado. A sincronização vai tentar de novo."
+    "verify_failed": "Um arquivo do {{provider}} não correspondia ao que o Oleafly esperava, então não foi alterado. A sincronização vai tentar de novo.",
+    "backup_missing": "Este backup não está mais no seu {{provider}}.",
+    "backup_label": "O Oleafly não conseguiu dar um nome à cópia restaurada."
   }
 }

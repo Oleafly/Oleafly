@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  announcePeerJoined,
   createPresencePublisher,
+  PRESENCE_ANNOUNCE_JITTER_MS,
   PRESENCE_INTERVAL_MS,
   PRESENCE_KEEP_ALIVE_MS,
   type Presence,
@@ -95,5 +97,26 @@ describe("presence publisher", () => {
     vi.advanceTimersByTime(PRESENCE_KEEP_ALIVE_MS * 2);
     publisher.dispose();
     expect(leave).not.toHaveBeenCalled();
+  });
+
+  it("sends its last presence again soon after a new peer appears, so the newcomer sees who is here", () => {
+    const own = vi.fn();
+    const publisher = createPresencePublisher(() => current, own, leave);
+    announcePeerJoined();
+    vi.advanceTimersByTime(PRESENCE_ANNOUNCE_JITTER_MS);
+    expect(own).not.toHaveBeenCalled();
+    publisher.schedule();
+    expect(own).toHaveBeenCalledTimes(1);
+    announcePeerJoined();
+    announcePeerJoined();
+    vi.advanceTimersByTime(PRESENCE_ANNOUNCE_JITTER_MS);
+    expect(own).toHaveBeenCalledTimes(2);
+    expect(own).toHaveBeenLastCalledWith({ path: "main.tex", cursor: 1, anchor: 1 });
+    announcePeerJoined();
+    publisher.dispose();
+    vi.advanceTimersByTime(PRESENCE_ANNOUNCE_JITTER_MS);
+    announcePeerJoined();
+    vi.advanceTimersByTime(PRESENCE_ANNOUNCE_JITTER_MS);
+    expect(own).toHaveBeenCalledTimes(2);
   });
 });

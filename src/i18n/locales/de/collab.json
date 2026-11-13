@@ -230,7 +230,11 @@
     "history_unavailable": "Der Verlauf dieses Projekts ist noch nicht auf diesem Computer. Versuchen Sie es erneut, sobald er abgeglichen ist.",
     "account_storage_full": "Das Konto der Person, der das Projekt gehört, hat auf diesem Server keinen Speicher mehr frei. Entfernen Sie einige Dateien, um Platz zu schaffen, oder bitten Sie den Admin des Servers um mehr Speicher.",
     "too_many_projects": "Sie haben bereits so viele geteilte Projekte, wie dieser Server erlaubt. Beenden Sie das Teilen eines Projekts, bevor Sie ein weiteres teilen.",
-    "too_many_uploads": "Sie haben in der letzten Stunde zu viele Dateien hochgeladen. Versuchen Sie es später noch einmal."
+    "too_many_uploads": "Sie haben in der letzten Stunde zu viele Dateien hochgeladen. Versuchen Sie es später noch einmal.",
+    "public_notes_off": "Dieser Server erlaubt keine öffentlichen Links zu Notizen. Ein Admin kann sie in den Einstellungen des Servers einschalten.",
+    "too_many_pages": "Sie haben so viele öffentliche Seiten, wie dieser Server erlaubt. Heben Sie die Veröffentlichung einer Seite auf und versuchen Sie es dann erneut.",
+    "page_too_large": "Diese Notiz ist zu groß zum Veröffentlichen. Entfernen Sie einige Bilder und versuchen Sie es dann erneut.",
+    "page_taken_down": "Ein Admin hat diese Seite gesperrt. Diese Notiz kann erst wieder veröffentlicht werden, wenn die Seite wieder freigegeben ist."
   },
   "roles": {
     "admin": "Admin",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "Anmeldung per E-Mail",
         "description": "Personen können sich mit einem Link anmelden, der an ihre E-Mail-Adresse geschickt wird. Dafür braucht der Server E-Mail-Einstellungen. Wer hineinkommt, entscheiden weiterhin Ihre Zugriffsregeln."
+      },
+      "publicNotesAllowed": {
+        "label": "Öffentliche Links zu Notizen erlauben",
+        "description": "Mitglieder können eine schreibgeschützte Kopie einer Notiz unter einem Link veröffentlichen, den jeder ohne Anmeldung öffnen kann."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "Hat eine Gasteinladung abgelehnt",
         "guestInvitationRevoked": "Hat eine Gasteinladung zurückgezogen",
         "guestAdmissionEnded": "Hat den Zugang eines Gasts zum Server beendet",
-        "unknown": "Anderes Serverereignis"
+        "unknown": "Anderes Serverereignis",
+        "notePublished": "Hat eine Notiz unter einem öffentlichen Link veröffentlicht",
+        "noteUnpublished": "Hat die Veröffentlichung einer Notiz aufgehoben",
+        "noteTakenDown": "Hat eine veröffentlichte Notiz gesperrt",
+        "noteRestored": "Hat eine veröffentlichte Notiz wieder freigegeben"
       },
       "details": {
         "project": "Projekt: {{title}}",
@@ -455,7 +467,8 @@
         "device": "Gerät: {{name}}",
         "byAdmin": "Über die Admin-Konsole",
         "settingOn": "{{setting}}: an",
-        "settingOff": "{{setting}}: aus"
+        "settingOff": "{{setting}}: aus",
+        "note": "Notiz: {{title}}"
       }
     },
     "email": {
@@ -509,6 +522,7 @@
     "copyAndShare": "In Oleafly kopieren und teilen",
     "title": "{{name}} teilen",
     "description": "Arbeiten Sie über einen Kollaborationsserver gemeinsam mit anderen an diesem Projekt.",
+    "noteDescription": "Schreiben Sie diese Notiz über einen Kollaborationsserver gemeinsam mit anderen.",
     "loading": "Wird geladen…",
     "linked": "Dieses Projekt ist ein Ordner außerhalb von Oleafly. Oleafly kopiert ihn in Ihre Bibliothek und teilt diese Kopie. Der ursprüngliche Ordner bleibt unangetastet.",
     "editCopy": "Dies ist die geteilte Kopie. Bearbeiten Sie ab jetzt diese und nicht den ursprünglichen Ordner.",
@@ -526,12 +540,15 @@
     "tooLarge": "Diese Dateien überschreiten das Limit des Servers von {{size}} MB. Verkleinern oder entfernen Sie sie, bevor Sie teilen.",
     "renamed": "Manche Namen funktionieren nicht auf jedem Computer. Andere erhalten diese Dateien unter einem leicht geänderten Namen.",
     "excluded": "Nicht geteilt: andere Ausgabedateien, Oleafly-Einstellungen und Git-Verlauf. Das zuletzt kompilierte PDF wird geteilt, damit alle im Projekt es im Browser lesen können.",
+    "noteExcluded": "Nicht geteilt: Oleafly-Einstellungen und Git-Verlauf.",
     "start": "Teilen",
     "preparing": "Das Projekt wird vorbereitet…",
     "uploading": "Abbildungen und andere Dateien werden hochgeladen: {{done}} von {{total}}",
     "saving": "Das Projekt wird auf dem Server gespeichert…",
     "failed": "Das Teilen wurde nicht abgeschlossen, daher wurde nichts geteilt.",
-    "trustAgain": "Alle, die Sie zu diesem Projekt hinzufügen, können seine Dateien ändern. Deshalb bittet Oleafly Sie auf diesem Computer erneut, ihm zu vertrauen, bevor es dafür Agenten, Terminalbefehle oder shell escape ausführt."
+    "trustAgain": "Alle, die Sie zu diesem Projekt hinzufügen, können seine Dateien ändern. Deshalb bittet Oleafly Sie auf diesem Computer erneut, ihm zu vertrauen, bevor es dafür Agenten, Terminalbefehle oder shell escape ausführt.",
+    "projectNotesShared": "Die Notizen des Projekts sind für alle in diesem Projekt freigegeben. Persönliche Notizen bleiben privat.",
+    "personalNotesPrivate": "Persönliche Notizen bleiben privat. Nur Notizen im Notizordner des Projekts werden geteilt."
   },
   "manage": {
     "sharedOn": "Geteilt über {{server}}",
@@ -736,7 +753,7 @@
       "serverError": "Der Server hat das kompilierte PDF nicht angenommen, deshalb sehen andere weiterhin das vorherige."
     },
     "texNeeded": "Dieses Projekt wird mit einer TeX-Distribution kompiliert, und dieser Computer hat keine. Installieren Sie TinyTeX unter Einstellungen > Engines > LaTeX, um es hier zu kompilieren.",
-    "mentioned":"{{name}} hat Sie in einem Kommentar in {{path}} erwähnt",
+    "mentioned": "{{name}} hat Sie in einem Kommentar in {{path}} erwähnt",
     "mentionedHere": "{{name}} hat Sie in einem Kommentar erwähnt",
     "showComment": "Kommentar anzeigen",
     "settings": {
@@ -789,7 +806,8 @@
       "settings": "Servereinstellungen",
       "email": "E-Mail",
       "log": "Sicherheitsprotokoll",
-      "checks": "Verbindungstests"
+      "checks": "Verbindungstests",
+      "pages": "Veröffentlichte Notizen"
     },
     "health": {
       "label": "Serverzustand: {{status}}",
@@ -956,6 +974,30 @@
     },
     "checks": {
       "description": "Prüfen Sie die Verbindung von diesem Computer zum Server."
+    },
+    "pages": {
+      "description": "Schreibgeschützte Seiten, die Personen aus ihren Notizen erstellt haben. Jeder mit dem Link einer Seite kann sie lesen.",
+      "loading": "Veröffentlichte Notizen werden geladen…",
+      "empty": "Auf diesem Server hat noch niemand eine Notiz veröffentlicht.",
+      "limit": "Die neuesten {{shown}} Seiten werden angezeigt.",
+      "columns": {
+        "title": "Notiz",
+        "author": "Autor",
+        "updated": "Veröffentlicht",
+        "actions": "Aktionen"
+      },
+      "noAuthor": "Entferntes Konto",
+      "takenDown": "Gesperrt",
+      "openNamed": "{{title}} öffnen",
+      "takeDown": "Sperren",
+      "takeDownNamed": "{{title}} sperren",
+      "restore": "Wieder freigeben",
+      "restoreNamed": "{{title}} wieder freigeben",
+      "takeDownConfirm": {
+        "title": "{{title}} sperren?",
+        "description": "Der öffentliche Link funktioniert nicht mehr, bis Sie die Seite wieder freigeben. Der Autor behält die Notiz, kann sie in der Zwischenzeit aber nicht erneut veröffentlichen.",
+        "confirm": "Sperren"
+      }
     }
   },
   "links": {
@@ -1229,5 +1271,41 @@
     "broughtIn": "Deine Änderungen aus {{name}} sind jetzt in diesem Projekt.",
     "retry": "Erneut versuchen",
     "dismiss": "Ausblenden"
+  },
+  "publish": {
+    "tabs": {
+      "people": "Personen",
+      "publish": "Veröffentlichen"
+    },
+    "intro": "Beim Veröffentlichen wird eine schreibgeschützte Kopie dieser Notiz unter einem öffentlichen Link bereitgestellt. Jeder mit dem Link kann sie ohne Anmeldung lesen.",
+    "contents": "Bilder, Grafiken, Diagramme, Formeln, Typst und Moleküle sind enthalten. Blöcke für HTML, React, CSV, Sequenzen und Notebooks werden weggelassen.",
+    "checking": "Öffentliche Seite wird gesucht…",
+    "loadFailed": "Oleafly konnte die öffentliche Seite dieser Notiz nicht prüfen.",
+    "notAllowed": "{{server}} erlaubt keine öffentlichen Links zu Notizen. Ein Admin kann sie in den Einstellungen des Servers einschalten.",
+    "ownerOnly": "Nur der Inhaber der Notiz kann sie veröffentlichen.",
+    "linkLabel": "Öffentlicher Link",
+    "open": "Öffnen",
+    "publishedAt": "Zuletzt veröffentlicht: {{date}}",
+    "stale": "Sie haben diese Notiz seit der letzten Veröffentlichung geändert. Veröffentlichen Sie sie erneut, um die Seite zu aktualisieren.",
+    "publish": "Veröffentlichen",
+    "republish": "Erneut veröffentlichen",
+    "unpublish": "Veröffentlichung aufheben",
+    "failed": "Die Veröffentlichung wurde nicht abgeschlossen.",
+    "unpublishConfirm": {
+      "title": "Veröffentlichung von {{name}} aufheben?",
+      "description": "Der öffentliche Link funktioniert sofort nicht mehr. Wer eine Kopie der Seite gespeichert hat, behält sie.",
+      "confirm": "Veröffentlichung aufheben"
+    },
+    "list": {
+      "title": "Veröffentlichte Notizen",
+      "description": "Schreibgeschützte Seiten Ihrer Notizen auf diesem Server. Jeder mit einem Link kann sie lesen.",
+      "loadFailed": "Oleafly konnte Ihre veröffentlichten Notizen nicht laden.",
+      "empty": "Sie haben hier noch keine Notizen veröffentlicht.",
+      "openNamed": "{{name}} öffnen",
+      "unpublishNamed": "Veröffentlichung von {{name}} aufheben",
+      "updated": "Veröffentlicht: {{date}}"
+    },
+    "takenDown": "Ein Admin hat diese Seite gesperrt. Leser können sie nicht öffnen, und Sie können sie erst wieder veröffentlichen, wenn sie wieder freigegeben ist. Die Veröffentlichung aufheben können Sie trotzdem.",
+    "tooOld": "{{server}} ist zu alt für öffentliche Links zu Notizen. Der Admin muss Oleafly Server aktualisieren."
   }
 }

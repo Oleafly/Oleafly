@@ -4,6 +4,7 @@ import { Search, ToolCase } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { openTool } from "@/features/open-tool";
+import { intentProps } from "@/lib/preloadable";
 import {
   TOOL_CATEGORY_ORDER,
   TOOL_DEFINITIONS,
@@ -70,6 +71,7 @@ function ToolCard({ tool }: Readonly<{
       type="button"
       data-testid={`latex-tool-card-${tool.id}`}
       onClick={() => void openTool(tool)}
+      {...intentProps(tool.destination.kind === "page" ? tool.destination.page : tool.destination.kind)}
       className="group flex h-full w-full flex-col overflow-hidden rounded-xl border bg-card text-left shadow-sm transition-[border-color,background-color,transform,box-shadow] hover:-translate-y-0.5 hover:border-primary/35 hover:bg-accent/25 hover:shadow-md focus-visible:border-primary focus-visible:bg-accent/25 motion-reduce:transform-none"
     >
       {art && (

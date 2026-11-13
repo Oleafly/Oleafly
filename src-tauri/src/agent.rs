@@ -794,10 +794,12 @@ pub async fn agent_run(
     project_id: Option<String>,
     thread_id: Option<String>,
     client_turn_id: Option<String>,
+    network_needs_approval: Option<bool>,
     on_event: tauri::ipc::Channel<AgentEvent>,
 ) -> Result<oleafly_agent::RunOutcome, String> {
     let agent_state = state.inner();
     let config = sanitized_run_config(config);
+    let fetch_gate_requested = network_needs_approval.unwrap_or(false);
     let run_id = request_id.clone();
     let pinned_project = project_id.filter(|id| crate::paths::validate_project_id(id).is_ok());
     let record_scope = thread_id
@@ -825,15 +827,35 @@ pub async fn agent_run(
         .map_err(|error| error.to_string())??;
         let mut request = resolved_request;
         let trust_project = pinned_project.clone();
-        let (search_key, reasoning_summaries, hosted_web) =
+        let (search_key, reasoning_summaries, hosted_web, fetch_gate) =
             tauri::async_runtime::spawn_blocking(move || {
                 let summaries = crate::config::read_config()
                     .map(|cfg| cfg.ai_reasoning_summaries)
                     .unwrap_or(false);
-                let hosted_web = trust_project
+                let hosted_web = run_trusted(trust_project.as_deref());
+                let fetch_policy = |project: &str| {
+                    crate::approvals::policy_for(
+                        &crate::paths::oleafly_root()?,
+                        project,
+                        oleafly_agent::tools::web::WEB_FETCH_TOOL,
+                    )
+                };
+                let related = trust_project
                     .as_deref()
-                    .is_none_or(crate::trust::is_trusted);
-                (web::configured_search_key(), summaries, hosted_web)
+                    .and_then(crate::project::note_related_project);
+                let fetch_gate =
+                    fetch_needs_approval(
+                        fetch_requested(fetch_gate_requested, trust_project.as_deref()),
+                        hosted_web,
+                        trust_project.as_deref(),
+                        fetch_policy,
+                    ) || related_fetch_denied(hosted_web, related.as_deref(), fetch_policy);
+                (
+                    web::configured_search_key(),
+                    summaries,
+                    hosted_web,
+                    fetch_gate,
+                )
             })
             .await
             .map_err(|error| error.to_string())?;
@@ -843,7 +865,12 @@ pub async fn agent_run(
         let web::RunWeb {
             ctx: web_ctx,
             notices: web_notices,
-        } = web::prepare_run_web(&mut request, &resolved, search_key, hosted_web)?;
+        } = web::prepare_run_web_with(
+            &mut request,
+            &resolved,
+            search_key,
+            hosted_web_for(hosted_web, fetch_gate),
+        )?;
         notices.extend(web_notices);
         oleafly_agent::validate_completion_request(&request).map_err(tagged)?;
         let client = agent_state.client()?;
@@ -874,6 +901,8 @@ pub async fn agent_run(
             native_restricted_confirm(app.clone()),
             inner_tool,
         );
+        let base_tool =
+            fetch_approval_runner(fetch_gate, native_fetch_confirm(app.clone()), base_tool);
         let classified_tool = oleafly_agent::ToolOrchestrator::wrap(
             base_tool.clone(),
             approval_classifier(pinned_project.clone()),
@@ -1020,7 +1049,7 @@ pub async fn agent_run(
 
 pub const SUBAGENT_TOOL: &str = "spawn_subagents";
 
-const READ_RISK_TOOLS: [&str; 33] = [
+const READ_RISK_TOOLS: [&str; 41] = [
     "read_file",
     "read_skill_file",
     "load_skill",
@@ -1054,6 +1083,14 @@ const READ_RISK_TOOLS: [&str; 33] = [
     "web_search",
     "web_fetch",
     "research_task_status",
+    "read_note",
+    "propose_note_edits",
+    "search_notes",
+    "list_knowledge_notes",
+    "read_note_by_id",
+    "related_project_files",
+    "read_related_project_file",
+    "search_related_project",
 ];
 
 const SERIAL_READ_TOOLS: [&str; 1] = ["show_location"];
@@ -1104,21 +1141,68 @@ fn tool_pipeline() -> oleafly_agent::ToolPipeline {
     oleafly_agent::ToolPipeline::from_registry(registry)
 }
 
+fn related_project_tool(name: &str) -> Option<&'static str> {
+    match name {
+        "related_project_files" => Some("list_files"),
+        "read_related_project_file" => Some("read_file"),
+        "search_related_project" => Some("search_project"),
+        "research_task_create" => Some("research_task_create"),
+        "research_task_status" => Some("research_task_status"),
+        _ => None,
+    }
+}
+
+fn run_trusted_with(
+    project: Option<&str>,
+    related_project: impl FnOnce(&str) -> Option<String>,
+    trusted: impl Fn(&str) -> bool,
+) -> bool {
+    project.is_none_or(|project| {
+        trusted(project) && related_project(project).is_none_or(|related| trusted(&related))
+    })
+}
+
+fn run_trusted(project: Option<&str>) -> bool {
+    run_trusted_with(
+        project,
+        crate::project::note_related_project,
+        crate::trust::is_trusted,
+    )
+}
+
+fn tool_decision(
+    project: &str,
+    tool: &str,
+    related_project: impl FnOnce(&str) -> Option<String>,
+    decision_for: impl Fn(&str, &str) -> Option<crate::approvals::ToolDecision>,
+) -> Option<crate::approvals::ToolDecision> {
+    let own = decision_for(project, tool);
+    let related = related_project_tool(tool).and_then(|mapped| {
+        let target = related_project(project).unwrap_or_else(|| project.to_string());
+        decision_for(&target, mapped)
+    });
+    match related {
+        Some(crate::approvals::ToolDecision::Deny) => Some(crate::approvals::ToolDecision::Deny),
+        _ => own,
+    }
+}
+
 fn approval_classifier(
     project_id: Option<String>,
 ) -> oleafly_agent::tools::orchestrator::Classifier {
     std::sync::Arc::new(move |call| {
         let risk = tool_risk(&call.name);
         let decision = project_id.as_deref().and_then(|project| {
-            crate::paths::oleafly_root().ok().and_then(|root| {
-                crate::approvals::effective_decision_for(&root, project, &call.name).map(
-                    |decision| match decision {
-                        crate::approvals::ToolDecision::Allow => {
-                            oleafly_agent::PolicyDecision::Allow
-                        }
-                        crate::approvals::ToolDecision::Deny => oleafly_agent::PolicyDecision::Deny,
-                    },
-                )
+            let root = crate::paths::oleafly_root().ok()?;
+            tool_decision(
+                project,
+                &call.name,
+                crate::project::note_related_project,
+                |project, tool| crate::approvals::effective_decision_for(&root, project, tool),
+            )
+            .map(|decision| match decision {
+                crate::approvals::ToolDecision::Allow => oleafly_agent::PolicyDecision::Allow,
+                crate::approvals::ToolDecision::Deny => oleafly_agent::PolicyDecision::Deny,
             })
         });
         oleafly_agent::classification_from_policy(risk, decision)
@@ -1162,8 +1246,22 @@ fn unwrap_mcp_text(result: &serde_json::Value) -> String {
     }
 }
 
-fn native_dispatch_allowed(pinned: &str, active_project: Option<&str>) -> bool {
-    active_project == Some(pinned)
+fn native_dispatch_allowed(
+    pinned: &str,
+    active_project: Option<&str>,
+    pinned_is_note: impl FnOnce(&str) -> bool,
+) -> bool {
+    active_project == Some(pinned) || pinned_is_note(pinned)
+}
+
+fn fetch_requested(flag: bool, pinned: Option<&str>) -> bool {
+    flag || pinned.is_some_and(project_is_note)
+}
+
+fn project_is_note(project_id: &str) -> bool {
+    crate::project::read_meta(project_id)
+        .map(|meta| crate::project::is_note(project_id, &meta))
+        .unwrap_or(false)
 }
 
 fn composite_tool_runner(
@@ -1193,7 +1291,15 @@ fn composite_tool_runner(
                         let guard = state.active_project.lock().await;
                         guard.clone()
                     };
-                    if !native_dispatch_allowed(project, active.as_deref()) {
+                    let pinned_is_note = if active.as_deref() == Some(project) {
+                        false
+                    } else {
+                        let pinned = project.to_string();
+                        tokio::task::spawn_blocking(move || project_is_note(&pinned))
+                            .await
+                            .unwrap_or(false)
+                    };
+                    if !native_dispatch_allowed(project, active.as_deref(), |_| pinned_is_note) {
                         return tool_error(
                             "the open project changed while this run was active; \
                              the tool was not executed",
@@ -1314,10 +1420,9 @@ fn restricted_tool_runner(
             let Some(project_id) = project_id else {
                 return inner(call).await;
             };
-            let trusted =
-                tokio::task::spawn_blocking(move || crate::trust::is_trusted(&project_id))
-                    .await
-                    .unwrap_or(false);
+            let trusted = tokio::task::spawn_blocking(move || run_trusted(Some(&project_id)))
+                .await
+                .unwrap_or(false);
             if trusted {
                 return inner(call).await;
             }
@@ -1331,6 +1436,133 @@ fn restricted_tool_runner(
                     Ok(false) => tool_error(RESTRICTED_DECLINED),
                     Err(error) => tool_error(&error),
                 },
+            }
+        })
+    })
+}
+
+const FETCH_DECLINED: &str = "The user declined this request, so the page was not opened.";
+
+fn fetch_needs_approval(
+    requested: bool,
+    trusted: bool,
+    project: Option<&str>,
+    policy: impl FnOnce(
+        &str,
+    ) -> Result<
+        (
+            crate::approvals::ApprovalMode,
+            Option<crate::approvals::ToolDecision>,
+        ),
+        String,
+    >,
+) -> bool {
+    use crate::approvals::{ApprovalMode, ToolDecision};
+    if !trusted {
+        return false;
+    }
+    let Some(project) = project else {
+        return requested;
+    };
+    match policy(project) {
+        Ok((_, Some(ToolDecision::Deny))) | Err(_) => true,
+        Ok((ApprovalMode::FullAccess, _)) | Ok((_, Some(ToolDecision::Allow))) => false,
+        Ok(_) => requested,
+    }
+}
+
+fn related_fetch_denied(
+    trusted: bool,
+    related: Option<&str>,
+    policy: impl FnOnce(
+        &str,
+    ) -> Result<
+        (
+            crate::approvals::ApprovalMode,
+            Option<crate::approvals::ToolDecision>,
+        ),
+        String,
+    >,
+) -> bool {
+    let Some(related) = related.filter(|_| trusted) else {
+        return false;
+    };
+    matches!(
+        policy(related),
+        Ok((_, Some(crate::approvals::ToolDecision::Deny))) | Err(_)
+    )
+}
+
+fn hosted_web_for(trusted: bool, fetch_gate: bool) -> web::HostedWeb {
+    match (trusted, fetch_gate) {
+        (false, _) => web::HostedWeb::Off,
+        (true, true) => web::HostedWeb::SearchOnly,
+        (true, false) => web::HostedWeb::All,
+    }
+}
+
+fn assistant_network_message(request: &crate::trust::AiConfirm) -> String {
+    let (tool, target) = match request {
+        crate::trust::AiConfirm::Network { tool, target } => (tool.as_str(), target.as_deref()),
+        crate::trust::AiConfirm::Write(path) => ("write_file", Some(path.as_str())),
+    };
+    let mut message = crate::i18n::t_with("dialog.assistantNetwork.message", &[("tool", tool)]);
+    if let Some(target) = target {
+        message.push_str("\n\n");
+        message.push_str(target);
+    }
+    message
+}
+
+fn native_fetch_confirm(app: tauri::AppHandle) -> RestrictedConfirm {
+    std::sync::Arc::new(move |request| {
+        let app = app.clone();
+        Box::pin(async move {
+            crate::trust::native_confirm(
+                &app,
+                "dialog.restrictedNetwork.title",
+                assistant_network_message(&request),
+                "dialog.restrictedNetwork.confirm",
+            )
+            .await
+        })
+    })
+}
+
+fn fetch_approval_runner(
+    gated: bool,
+    confirm: RestrictedConfirm,
+    inner: oleafly_agent::ToolRunner,
+) -> oleafly_agent::ToolRunner {
+    if !gated {
+        return inner;
+    }
+    let asking = std::sync::Arc::new(tokio::sync::Mutex::new(()));
+    std::sync::Arc::new(move |call| {
+        let inner = inner.clone();
+        let confirm = confirm.clone();
+        let asking = asking.clone();
+        Box::pin(async move {
+            if call.name != oleafly_agent::tools::web::WEB_FETCH_TOOL {
+                return inner(call).await;
+            }
+            let arguments =
+                serde_json::from_str(&call.arguments).unwrap_or(serde_json::Value::Null);
+            let request = match crate::trust::ai_tool_gate(&call.name, &arguments) {
+                crate::trust::AiToolGate::Confirm(request) => request,
+                _ => crate::trust::AiConfirm::Network {
+                    tool: call.name.clone(),
+                    target: None,
+                },
+            };
+            let answer = {
+                let _turn = asking.lock().await;
+                confirm(request).await
+            };
+            match answer {
+                Ok(true) => inner(call).await,
+                Ok(false) => tool_error(FETCH_DECLINED),
+                Err(error) => tool_error(&error),
             }
         })
     })
@@ -1640,10 +1872,11 @@ pub async fn agent_web_search_ready(
         })
         .unwrap_or(true);
     tauri::async_runtime::spawn_blocking(move || {
-        let hosted = project_id
-            .as_deref()
-            .filter(|id| crate::paths::validate_project_id(id).is_ok())
-            .is_none_or(crate::trust::is_trusted);
+        let hosted = run_trusted(
+            project_id
+                .as_deref()
+                .filter(|id| crate::paths::validate_project_id(id).is_ok()),
+        );
         (native && hosted) || web::configured_search_key().is_some()
     })
     .await

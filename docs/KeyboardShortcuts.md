@@ -151,6 +151,93 @@ expect:
 Shift-Enter sends a plain Enter instead when Settings > Appearance > Terminal
 says so.
 
+## Notes
+
+These shortcuts exist only while Notes is switched on in Settings >
+Experimentation. They work in the Notes window. Settings > Keyboard Shortcuts
+lists them in a Notes tab and can rebind them. See [Notes](Notes.md).
+
+| Action | macOS | Windows/Linux |
+| --- | --- | --- |
+| Notes: go to note | Command-O | Ctrl-O |
+| Notes: today's note | Command-Shift-D | Ctrl-Shift-D |
+| Notes: graph | Command-Shift-G | Ctrl-Shift-G |
+| Notes: local graph | Command-Option-G | Ctrl-Shift-M |
+| Notes: outline | Command-Option-O | Ctrl-Shift-K |
+| Notes: ask agent | Command-J | Ctrl-J |
+| Notes: new note | Command-Option-N | Ctrl-Shift-N |
+| Notes: search notes | Command-Option-F | Ctrl-Shift-A |
+| Notes: bookmark note | Command-Option-B | Ctrl-Shift-Y |
+| Notes: copy link to note | Command-Option-L | Ctrl-Shift-X |
+| Notes: note info | Command-Option-I | Ctrl-Shift-T |
+| Notes: quick capture (works in every app) | Command-Shift-Option-Space | Ctrl-Shift-Alt-Space |
+| Notes: copy link to block | Command-Shift-L | Ctrl-Shift-L |
+| Notes: back | Command-[ | Alt-Left |
+| Notes: forward | Command-] | Alt-Right |
+
+On Windows and Linux, local graph, outline, new note, search, bookmark, copy
+link and note info use Ctrl-Shift where macOS uses Command-Option, not
+Ctrl-Alt. Windows treats Ctrl-Alt as AltGr, which types characters like ł or {
+on many European layouts. Some Linux desktops also take Ctrl-Alt keys for
+themselves: Ctrl-Alt-L locks the screen on KDE, XFCE, Cinnamon and MATE.
+
+Bookmark, copy link and note info act on the note you are working in. Note info
+opens or closes the Info panel, or folds the properties under the title when
+note info is inline. Search notes shows the sidebar first if it is hidden.
+
+Back and forward move through what the tab you are in has shown. A mouse's back
+and forward buttons do the same.
+
+Ask agent acts while focus is in a note. With text selected it quotes the
+selection in the note's assistant. Otherwise it opens the assistant, or folds
+it when its box is empty. Copy link to block also acts while focus is in a
+note, on the paragraph, list item or table the cursor is in.
+
+The note editor has its own keys, which cannot be remapped. The Notes tab in
+Settings > Keyboard Shortcuts lists them too:
+
+| Action | macOS | Windows/Linux |
+| --- | --- | --- |
+| Bold | Command-B | Ctrl-B |
+| Italic | Command-I | Ctrl-I |
+| Underline | Command-U | Ctrl-U |
+| Strikethrough | Command-Shift-S | Ctrl-Shift-S |
+| Inline code | Command-E | Ctrl-E |
+| Highlight in the last color used | Command-Shift-H | Ctrl-Shift-H |
+| Superscript | Command-. | Ctrl-. |
+| Subscript | Command-Shift-, | Ctrl-Shift-, |
+| Heading 1 to 6 | Command-Option-1 to 6 | Ctrl-Alt-1 to 6 |
+| Turn into text | Command-Option-0 | Ctrl-Alt-0 |
+| Quote | Command-Shift-B | Ctrl-Shift-B |
+| Code block | Command-Option-C | Ctrl-Alt-C |
+| Bullet list | Command-Shift-8 | Ctrl-Shift-8 |
+| Numbered list | Command-Shift-7 | Ctrl-Shift-7 |
+| Task list | Command-Shift-9 | Ctrl-Shift-9 |
+| Check or uncheck a task | Command-Enter | Ctrl-Enter |
+| Accept the current suggested change | Command-Enter | Ctrl-Enter |
+| Bring back a change you just rejected | Command-Z | Ctrl-Z |
+| Find and replace in the note | Command-F | Ctrl-F |
+| Select the whole note | Command-A | Ctrl-A |
+| Line break in the same paragraph | Shift-Enter | Shift-Enter |
+| Insert menu, at the start of a line | / | / |
+| Link to a note | [[ | [[ |
+| Add a tag | # | # |
+
+While a suggested change is waiting, Command-Enter or Ctrl-Enter accepts it.
+Otherwise it checks or unchecks the task under the cursor.
+
+Tab and Shift-Tab indent and outdent a list item, and Tab in a code block
+inserts spaces. Enter on a selected formula or footnote marker opens its
+source.
+
+On the graph, the arrow keys move between notes, Enter opens one, plus and
+minus zoom in and out, and 0 fits the whole graph. In Go to note, Enter opens
+the note and Command-Enter or Ctrl-Enter opens it in a new tab.
+
+F6 or Ctrl-Tab moves focus to the next panel of the Notes window, and adding
+Shift goes back. On a focused tab, Left, Right, Home and End move between tabs,
+and Delete or Backspace closes it.
+
 ## Configuration model
 
 - Users can change bindings from the shortcut settings surface.

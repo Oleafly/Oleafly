@@ -1,9 +1,13 @@
 import { test, expect } from "../fixtures";
-import { openProject, openRailTab } from "../helpers";
+import { closeAssistant, openProject, openRailTab } from "../helpers";
 
 test.beforeEach(async ({ tauriPage }) => {
   await openProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
+});
+
+test.afterEach(async ({ tauriPage }) => {
+  await closeAssistant(tauriPage);
 });
 
 test("project search tab opens the search panel", async ({ tauriPage }) => {

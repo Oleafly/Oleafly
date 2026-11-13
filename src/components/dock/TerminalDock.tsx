@@ -1,7 +1,8 @@
 import { useTranslation } from "react-i18next";
-import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import { Palette, Pencil, Plus, Settings2, X } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
+import { PanelBottomClose, Palette, Pencil, Plus, Settings2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { openContextMenuFromKey } from "@/lib/context-menu-key";
 import { Input } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
@@ -25,6 +26,9 @@ import {
   requestCloseTerminals,
 } from "@/lib/terminal-lifecycle";
 import { useResolvedTerminalTheme, useSettingsStore } from "@/store/settings";
+import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
+import { PANE_BAR_CLASS, usePaneBar } from "@/components/layout/pane-reorder";
+import { isReorderItem, useStripReorder, type StripItemProps } from "@/components/layout/strip-reorder";
 
 const stripButtonClass =
   "inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50 focus-visible:bg-accent focus-visible:text-foreground";
@@ -59,6 +63,8 @@ export function terminalColorHex(color: TerminalColorKey | null): string | null 
 function TerminalTabItem({
   tab,
   active,
+  dragging,
+  drag,
   canCloseOthers,
   canCloseRight,
   canCloseLeft,
@@ -72,6 +78,8 @@ function TerminalTabItem({
 }: Readonly<{
   tab: TerminalTab;
   active: boolean;
+  dragging: string | null;
+  drag: StripItemProps;
   canCloseOthers: boolean;
   canCloseRight: boolean;
   canCloseLeft: boolean;
@@ -125,25 +133,7 @@ function TerminalTabItem({
       cancel();
     }
   };
-  const openMenu = () => {
-    const row = rowRef.current;
-    if (!row) return;
-    const rect = row.getBoundingClientRect();
-    row.dispatchEvent(
-      new MouseEvent("contextmenu", {
-        bubbles: true,
-        cancelable: true,
-        clientX: Math.round(rect.left + rect.width / 2),
-        clientY: Math.round(rect.bottom),
-      }),
-    );
-  };
-  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key === "ContextMenu" || (event.key === "F10" && event.shiftKey)) {
-      event.preventDefault();
-      openMenu();
-    }
-  };
+  const onTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => openContextMenuFromKey(event, rowRef.current);
   const controlBase =
     "inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-opacity hover:bg-foreground/10 hover:text-foreground focus-visible:opacity-100 focus-visible:bg-foreground/10 focus-visible:text-foreground";
   const hoverOnly = "opacity-0 group-hover:opacity-100 group-focus-within:opacity-100";
@@ -157,9 +147,10 @@ function TerminalTabItem({
         <div
           ref={rowRef}
           role="presentation"
+          {...drag}
           className={cn(
             "group flex h-7 shrink-0 items-center gap-0.5 rounded-t-md pl-2 pr-0.5 text-xs transition-colors",
-            active
+            active || dragging === tab.id
               ? "bg-accent text-foreground"
               : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
           )}
@@ -197,7 +188,13 @@ function TerminalTabItem({
               className="h-5 w-32 rounded px-1 py-0 text-xs"
             />
           ) : (
-            <Tooltip label={tab.oscTitle || tab.title} side="bottom" role="none" className="min-w-0">
+            <Tooltip
+              label={tab.oscTitle || tab.title}
+              side="bottom"
+              role="none"
+              className="min-w-0"
+              suppressed={dragging !== null}
+            >
               <button
                 ref={tabRef}
                 type="button"
@@ -342,7 +339,7 @@ export function TerminalDock({
   projectId: string;
   visible?: boolean;
 }>) {
-  const { t } = useTranslation(["common", "workspace"]);
+  const { t } = useTranslation(["common", "workspace", "shell"]);
   const storeProjectId = useTerminalsStore((state) => state.projectId);
   const tabs = useTerminalsStore((state) => state.tabs);
   const activeId = useTerminalsStore((state) => state.activeId);
@@ -355,6 +352,13 @@ export function TerminalDock({
   const [sessions, setSessions] = useState<Readonly<Record<string, number>>>({});
   const dockRef = useRef<HTMLDivElement | null>(null);
   const focusTrackerRef = useRef<TerminalFocusTracker | null>(null);
+  const reorder = useStripReorder(
+    tabs.map((tab) => tab.id),
+    (ids) => useTerminalsStore.getState().reorderTerminals(ids),
+  );
+  const paneBar = usePaneBar();
+  const hideShortcut = useShortcutStore((state) => shortcutLabel(state.bindings.toggleTerminal));
+  const hideLabel = t(($) => $.shell.dock.terminal.hide, { shortcut: hideShortcut });
 
   useLayoutEffect(() => {
     mountedDocks += 1;
@@ -415,11 +419,19 @@ export function TerminalDock({
   return (
     <div ref={dockRef} data-terminal-dock="" className="flex h-full min-h-0 w-full flex-col">
       <div
+        {...paneBar}
+        {...reorder.strip}
+        onPointerDown={(event) => {
+          if (!isReorderItem(event.target)) paneBar.onPointerDown?.(event);
+        }}
         role="tablist"
         aria-label={t(($) => $.workspace.terminal.tabs)}
         data-testid="dock-terminal-tabs"
-        className="flex h-8 shrink-0 items-end gap-0.5 overflow-x-auto px-1"
-        style={{ backgroundColor: terminalBackground }}
+        className={cn(
+          "relative flex h-8 shrink-0 items-end gap-0.5 overflow-x-auto bg-[var(--terminal-strip-bg)] px-1",
+          PANE_BAR_CLASS,
+        )}
+        style={{ "--terminal-strip-bg": terminalBackground } as CSSProperties}
       >
         {ready &&
           tabs.map((tab, position) => (
@@ -427,6 +439,8 @@ export function TerminalDock({
               key={tab.id}
               tab={tab}
               active={tab.id === activeId}
+              dragging={reorder.dragging}
+              drag={reorder.item(tab.id)}
               canCloseOthers={tabs.length > 1}
               canCloseRight={position < tabs.length - 1}
               canCloseLeft={position > 0}
@@ -467,11 +481,23 @@ export function TerminalDock({
             type="button"
             aria-label={t(($) => $.workspace.terminal.settings)}
             onClick={openTerminalSettings}
-            className={cn(stripButtonClass, "mr-0.5")}
+            className={stripButtonClass}
           >
             <Settings2 className="size-4" aria-hidden />
           </button>
         </Tooltip>
+        <Tooltip label={hideLabel} side="bottom">
+          <button
+            type="button"
+            data-testid="dock-terminal-hide"
+            aria-label={hideLabel}
+            onClick={() => useSettingsStore.getState().setTerminalOpen(false)}
+            className={cn(stripButtonClass, "mr-0.5")}
+          >
+            <PanelBottomClose className="size-4" aria-hidden />
+          </button>
+        </Tooltip>
+        {reorder.indicator}
       </div>
       <div
         className="relative flex min-h-0 flex-1 flex-col overflow-hidden"

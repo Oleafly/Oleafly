@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "Sökläge: {{mode}}",
+    "heading": "Sökläge",
+    "ranked": {
+      "label": "Bästa träff",
+      "description": "Rangordnar resultat efter hur väl de matchar. Orden kan stå var som helst."
+    },
+    "exact": {
+      "label": "Exakt text",
+      "description": "Hittar exakt de här tecknen. Med en versal skiljer sökningen på stora och små bokstäver."
+    },
+    "regex": {
+      "label": "Reguljärt uttryck",
+      "description": "Använder mönstersyntaxen i ripgrep. Sätt ett mönster inom citattecken om det innehåller mellanslag eller parenteser."
+    },
+    "fuzzy": {
+      "label": "Ungefärlig",
+      "description": "Matchar namn som har dina bokstäver i ordning, som fzf gör. Förstår även 'exact, ^start, end$ och !leave-out."
+    },
+    "invalid": "Mönstret är inte giltigt: {{error}}"
+  },
   "querySearch": {
     "suggestions": "Sökförslag",
     "exclude": "Uteslut",
@@ -76,11 +97,16 @@
       "invalidValue": "{{value}} är inte ett giltigt värde för {{key}}",
       "invalidDate": "{{value}} är inte ett datum. Prova 2026-10-02 eller @today-7d",
       "invalidNumber": "{{value}} är inte ett tal",
-      "sortNegated": "{{key}} kan inte uteslutas"
+      "sortNegated": "{{key}} kan inte uteslutas",
+      "tooManyBranches": "Sökningen har för många OR-kombinationer, så vissa resultat kan saknas"
     }
   },
   "avatar": {
     "more_one": "{{count}} person till",
     "more_other": "{{count}} personer till"
+  },
+  "remoteImage": {
+    "blocked": "Bild från {{host}}",
+    "load": "Läs in bilden"
   }
 }

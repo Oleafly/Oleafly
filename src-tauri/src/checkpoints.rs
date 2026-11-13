@@ -350,6 +350,59 @@ fn checkpoint_save_file_sync(
     transaction.commit()
 }
 
+const MAX_CHECKPOINT_TEXT_BYTES: u64 = 16 * 1024 * 1024;
+
+fn checkpoint_read_text_sync(
+    project_id: &str,
+    snapshot_root: &str,
+    path: &str,
+) -> Result<String, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
+    require_active_project(project_id)?;
+    let root = parse_snapshot_root(snapshot_root)?;
+    let store = require_existing_store(project_id)?;
+    let unreadable = || "Could not read that file from the selected Checkpoint.".to_string();
+    let missing = || "The selected Checkpoint does not hold that file.".to_string();
+    let file = store
+        .checkpoint_files(&root)
+        .map_err(|_| unreadable())?
+        .ok_or_else(|| "The selected Checkpoint no longer exists.".to_string())?
+        .into_iter()
+        .find(|file| file.relative_path == path)
+        .ok_or_else(missing)?;
+    if file.logical_bytes > MAX_CHECKPOINT_TEXT_BYTES {
+        return Err("That file is too large to show.".to_string());
+    }
+    let mut bytes = Vec::with_capacity(file.logical_bytes as usize);
+    store
+        .write_file_to(&root, path, &mut bytes)
+        .map_err(|_| unreadable())?
+        .ok_or_else(missing)?;
+    String::from_utf8(bytes).map_err(|_| "That file is not text.".to_string())
+}
+
+#[tauri::command]
+pub async fn checkpoint_read_text(
+    project_id: String,
+    snapshot_root: String,
+    path: String,
+) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        checkpoint_read_text_sync(&project_id, &snapshot_root, &path)
+    })
+    .await
+    .map_err(|error| format!("Checkpoint file task failed: {error}"))?
+}
+
+#[tauri::command]
+pub async fn checkpoint_save(
+    project_id: String,
+    text: Option<String>,
+) -> Result<crate::checkpoint_publication::CheckpointPublicationOutcome, String> {
+    require_active_project(&project_id)?;
+    crate::checkpoint_publication::save_version(&project_id, text).await
+}
+
 fn checkpoint_inspect_sync(project_id: &str) -> Result<CheckpointStoreInspection, String> {
     let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
     require_active_project(project_id)?;
@@ -2448,6 +2501,67 @@ mod tests {
         assert_eq!(
             checkpoint_set_label_sync("paper", &absent, "Anything").unwrap_err(),
             "The selected Checkpoint no longer exists."
+        );
+
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn a_saved_version_holds_the_folder_or_the_given_text_and_reads_back() {
+        use crate::checkpoint_publication::{save_version, CheckpointPublicationOutcome};
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", directory.path());
+        let project = isolated_project_dir(directory.path(), "note");
+        fs::write(
+            project.join("project.json"),
+            br#"{"name":"Note","main_doc":"note.md","engine":"markdown","kind":"note"}"#,
+        )
+        .unwrap();
+        fs::write(project.join("note.md"), "# Plan\n\nFirst draft.\n").unwrap();
+        fs::create_dir_all(project.join("assets")).unwrap();
+        fs::write(project.join("assets/figure.svg"), "<svg/>").unwrap();
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        let newest = || checkpoint_list_sync("note").unwrap()[0].clone();
+        let text_of =
+            |root: &str| super::checkpoint_read_text_sync("note", root, "note.md").unwrap();
+
+        let first = runtime.block_on(save_version("note", None)).unwrap();
+        assert!(
+            matches!(first, CheckpointPublicationOutcome::Published { .. }),
+            "{first:?}"
+        );
+        assert_eq!(newest().main_document, "note.md");
+        assert_eq!(newest().engine, "markdown");
+        assert_eq!(text_of(&newest().snapshot_root), "# Plan\n\nFirst draft.\n");
+
+        let again = runtime.block_on(save_version("note", None)).unwrap();
+        assert_eq!(again, CheckpointPublicationOutcome::Unchanged);
+
+        let given = runtime
+            .block_on(save_version(
+                "note",
+                Some("# Plan\n\nBefore the rewrite.\n".into()),
+            ))
+            .unwrap();
+        assert!(
+            matches!(given, CheckpointPublicationOutcome::Published { .. }),
+            "{given:?}"
+        );
+        let root = newest().snapshot_root;
+        assert_eq!(text_of(&root), "# Plan\n\nBefore the rewrite.\n");
+        assert_eq!(newest().file_count, 3);
+        assert_eq!(
+            fs::read_to_string(project.join("note.md")).unwrap(),
+            "# Plan\n\nFirst draft.\n"
+        );
+        assert_eq!(checkpoint_list_sync("note").unwrap().len(), 2);
+        assert_eq!(
+            super::checkpoint_read_text_sync("note", &root, "missing.md").unwrap_err(),
+            "The selected Checkpoint does not hold that file."
         );
 
         std::env::remove_var("OLEAFLY_DATA_DIR");

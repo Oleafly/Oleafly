@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { diffWords, type WordDiffToken } from "./diff-words";
 
 function seededRandom(seed: number): () => number {
@@ -131,6 +131,32 @@ describe("diffWords", () => {
     const replayed = reconstructions(tokens);
     expect(replayed.old).toBe(oldText);
     expect(replayed.next).toBe(newText);
+  });
+
+  it.each([
+    ["Chinese", "我们使用掩码比例进行训练，结果很好。", "我们使用遮罩比例进行训练，结果很好。", "掩码", "遮罩"],
+    ["Japanese", "マスク比率を使って学習します。", "マスク比率を使って評価します。", "学習", "評価"],
+    ["Korean", "마스크 비율로 학습합니다.", "마스크 비율로 평가합니다.", "학습합니다", "평가합니다"],
+  ])("changes only the changed word in %s text", (_language, oldText, newText, removed, added) => {
+    const tokens = diffWords(oldText, newText);
+    expect(tokens.filter((t) => t.kind === "del").map((t) => t.text)).toEqual([removed]);
+    expect(tokens.filter((t) => t.kind === "add").map((t) => t.text)).toEqual([added]);
+    expect(reconstructions(tokens)).toEqual({ old: oldText, next: newText });
+  });
+
+  it("splits Latin text the same way with or without word segmentation", async () => {
+    const oldText = "The encoder trains, with a mask-ratio of 0.75.\n\nMasks:   sampled per pixel.";
+    const newText = "The encoder trains, with a mask-ratio of 0.60.\n\nMasks: sampled per patch!";
+    const segmented = diffWords(oldText, newText);
+    expect(segmented.filter((t) => t.kind !== "same").map((t) => t.text)).toEqual(["0.75.\n\nMasks:   ", "0.60.\n\nMasks: ", "pixel.", "patch!"]);
+    vi.stubGlobal("Intl", Object.assign(Object.create(Intl), { Segmenter: undefined }));
+    try {
+      vi.resetModules();
+      const plain = await import("./diff-words");
+      expect(plain.diffWords(oldText, newText)).toEqual(segmented);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 
   it("falls back to one replacement when the work cap is exceeded", () => {

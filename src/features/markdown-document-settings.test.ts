@@ -320,6 +320,7 @@ describe("front matter edge cases", () => {
     ["classoption: [twocolumn] extra", "columns", { status: "locked", reason: "expression", source: "[twocolumn] extra" }],
     ["classoption: [twocolumn] # wide", "columns", { status: "set", value: "twocolumn" }],
     ["classoption: [[twocolumn]]", "columns", { status: "locked", reason: "expression", source: "[[twocolumn]]" }],
+    ["classoption: [a, {b}]", "columns", { status: "locked", reason: "expression", source: "[a, {b}]" }],
     ['classoption: [twocolumn, "x" y]', "columns", { status: "locked", reason: "expression", source: '[twocolumn, "x" y]' }],
     ["classoption:\n  twocolumn", "columns", { status: "locked", reason: "expression", source: "twocolumn" }],
     ['classoption:\n  - "twocolumn', "columns", { status: "locked", reason: "expression", source: '- "twocolumn' }],
@@ -337,3 +338,4 @@ describe("front matter edge cases", () => {
     expect(edited("\nBody\n", { lang: "fr" })).toBe("---\nlang: fr\n---\n\nBody\n");
   });
 });
+

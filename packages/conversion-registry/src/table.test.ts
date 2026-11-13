@@ -60,6 +60,67 @@ describe("parseDelimited", () => {
   });
 });
 
+describe("parseDelimited with a fixed delimiter, untrimmed", () => {
+  const raw = (text: string, delimiter = ",", limit?: number) => parseDelimited(text, { delimiter, limit, trim: false });
+
+  it("reads plain rows and drops the trailing newline", () => {
+    expect(raw("a,b\n1,2\n")).toEqual([
+      ["a", "b"],
+      ["1", "2"],
+    ]);
+  });
+
+  it("reads quoted fields with doubled quotes, delimiters and newlines", () => {
+    expect(raw('name,note\n"Smith, J","said ""hi""\nand left"\n')).toEqual([
+      ["name", "note"],
+      ["Smith, J", 'said "hi"\nand left'],
+    ]);
+  });
+
+  it("handles CRLF, lone CR and a byte order mark, also inside quoted cells", () => {
+    expect(raw("\uFEFFa,b\r\n1,2\r3,4")).toEqual([
+      ["a", "b"],
+      ["1", "2"],
+      ["3", "4"],
+    ]);
+    expect(raw('a,"two\r\nlines"\r\n')).toEqual([["a", "two\nlines"]]);
+  });
+
+  it("skips blank lines but keeps an empty quoted field, empty cells and spaces", () => {
+    expect(raw('a\n\n""\n,\n b \n')).toEqual([["a"], [""], ["", ""], [" b "]]);
+  });
+
+  it("keeps text after a closing quote and an unterminated quote", () => {
+    expect(raw('"ab"cd,"open')).toEqual([["abcd", "open"]]);
+  });
+
+  it("treats a quote inside a field as text and keeps the next line its own row", () => {
+    expect(raw('a"b,c\nd,e')).toEqual([
+      ['a"b', "c"],
+      ["d", "e"],
+    ]);
+  });
+
+  it("reads tabs and stops at the row limit", () => {
+    expect(raw("a\tb\n1\t2\n3\t4\n", "\t", 2)).toEqual([
+      ["a", "b"],
+      ["1", "2"],
+    ]);
+  });
+
+  it("returns no rows for empty text", () => {
+    expect(raw("")).toEqual([]);
+    expect(parseDelimited("")).toEqual([]);
+  });
+
+  it("drops a byte order mark from trimmed rows too", () => {
+    expect(parseDelimited("\uFEFFa,b\n1,2")).toEqual([
+      ["a", "b"],
+      ["1", "2"],
+    ]);
+  });
+});
+
 describe("escapeLatexCell", () => {
   it("escapes every special exactly once", () => {
     const input = "a&b%c$d#e_f{g}h~i^j\\k";

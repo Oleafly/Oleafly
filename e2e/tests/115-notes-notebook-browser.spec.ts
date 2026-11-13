@@ -1,0 +1,98 @@
+import type { Page } from "@playwright/test";
+import { expect, test } from "../notes-page";
+
+const FENCE = "```";
+
+function notebookBlock(page: Page) {
+  return page.locator('.ProseMirror:visible .note-drawn[data-block="notebook"]');
+}
+
+test.describe("Notes notebooks", () => {
+  test("previews a task notebook and inserts it as a block that draws every kind of output", async ({ notes }) => {
+    const { page } = await notes.open();
+    await notes.openNote("Dataloader rewrite: what changed");
+    await page.getByRole("button", { name: "Artifacts, 1" }).click();
+    const panel = page.getByRole("complementary", { name: "Artifacts" });
+    await expect(panel.locator("section").getByText("Notebook", { exact: true })).toBeVisible();
+    const preview = panel.locator("[data-artifact-notebook]");
+    await expect(preview.getByRole("heading", { name: "Mask ratio sweep" })).toBeVisible();
+    await expect(preview.getByText("[4]")).toBeVisible();
+
+    await panel.getByRole("button", { name: "Insert in note" }).click();
+    await expect.poll(() => notes.text("dataloader")).toContain(`${FENCE}notebook\nassets/mask-sweep.ipynb\n${FENCE}`);
+
+    const block = notebookBlock(page);
+    await expect(block.locator(".note-drawn-label")).toHaveText("Jupyter notebook");
+    await expect(block.getByRole("heading", { name: "Mask ratio sweep" })).toBeVisible();
+    await expect(block.locator(".katex").first()).toBeVisible();
+    await expect(block.getByText("[1]")).toBeVisible();
+    await expect(block.locator('code[data-language="python"]').first()).toContainText("ratios = [0.75, 0.60]");
+    const plot = block.getByRole("img", { name: "Output of cell 2" });
+    await expect(plot).toBeVisible();
+    expect(await plot.evaluate((image: HTMLImageElement) => image.naturalWidth)).toBe(24);
+    await expect(block.getByText("best ratio: 0.60")).toBeVisible();
+    await expect(block.getByText("ZeroDivisionError: division by zero").first()).toBeVisible();
+    await expect(block.locator("[data-notebook-error] pre")).not.toContainText("[0;31m");
+
+    const frame = block.getByTitle("HTML output of cell 4");
+    await expect(frame).toHaveAttribute("sandbox", "");
+    const table = page.frameLocator('.ProseMirror:visible iframe[title="HTML output of cell 4"]');
+    await expect(table.getByRole("cell", { name: "64.1" })).toBeVisible();
+    await expect(table.locator("script")).toHaveCount(0);
+    expect(await page.title()).toBe("Notes fixture");
+
+    await block.getByRole("button", { name: "Source" }).click();
+    await expect(block.locator(":scope > pre")).toBeVisible();
+    await expect(block.locator(":scope > pre code")).toHaveText("assets/mask-sweep.ipynb");
+  });
+
+  test("copies a notebook in from the toolbar and narrows it to the cells asked for", async ({ notes }) => {
+    const { page } = await notes.open();
+    await notes.openNote("Abstract draft");
+    await page.locator(".ProseMirror:visible > p").first().click();
+    await page.getByRole("toolbar", { name: "Formatting" }).getByRole("button", { name: "Attach file" }).click();
+    const block = notebookBlock(page);
+    await expect(block.getByRole("img", { name: "Output of cell 2" })).toBeVisible();
+    await expect(block.locator("[data-notebook-cell]")).toHaveCount(5);
+    await expect.poll(() => notes.text("abstract")).toContain(`${FENCE}notebook\nassets/sweep-1a2b3c4d.ipynb\n${FENCE}`);
+
+    await block.getByRole("button", { name: "Source" }).click();
+    const source = block.locator(":scope > pre code");
+    const box = await source.boundingBox();
+    if (!box) throw new Error("no source geometry");
+    await source.click({ position: { x: box.width - 1, y: box.height / 2 } });
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("cells: 2-3");
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("code: hide");
+    await block.getByRole("button", { name: "Preview" }).click();
+    await expect(block.locator("[data-notebook-cell]")).toHaveCount(2);
+    await expect(block.getByRole("img", { name: "Output of cell 2" })).toBeVisible();
+    await expect(block.getByText("best ratio: 0.60")).toBeVisible();
+    await expect(block.getByText("ratios = [0.75, 0.60]")).toHaveCount(0);
+    await expect.poll(() => notes.text("abstract")).toContain("assets/sweep-1a2b3c4d.ipynb\ncells: 2-3\ncode: hide\n");
+
+    await block.getByRole("button", { name: "Source" }).click();
+    await source.click({ position: { x: 1, y: 4 } });
+    await page.keyboard.type("../");
+    await expect(block.locator(".note-drawn-preview")).toContainText("Put the notebook's path on the first line");
+  });
+
+  test("lists notebooks under their own tag and draws them in dark mode", async ({ notes }) => {
+    const { page } = await notes.open("?theme=dark");
+    const sidebar = page.locator("aside");
+    await sidebar.getByRole("button", { name: "Tags" }).click();
+    const kinds = sidebar.getByRole("group", { name: "Kind" });
+    await kinds.getByRole("button", { name: "Notebooks", exact: true }).click();
+    await expect(kinds.getByRole("button", { name: "Notebooks", exact: true })).toHaveAttribute("aria-pressed", "true");
+    await expect(sidebar.getByRole("button", { name: /Mask ratio sweep/ })).toBeVisible();
+    await expect(sidebar.getByRole("button", { name: /Masking strategy report/ })).toHaveCount(0);
+    await expect(sidebar.locator('[data-kind-dot="notebook"]')).toBeVisible();
+    await kinds.getByRole("button", { name: "All", exact: true }).click();
+
+    await notes.openNote("Dataloader rewrite: what changed");
+    await page.getByRole("button", { name: "Artifacts, 1" }).click();
+    await page.getByRole("complementary", { name: "Artifacts" }).getByRole("button", { name: "Insert in note" }).click();
+    await expect(notebookBlock(page).getByRole("img", { name: "Output of cell 2" })).toBeVisible();
+  });
+});

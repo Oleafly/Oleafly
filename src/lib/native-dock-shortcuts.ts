@@ -4,6 +4,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
+import { projectCovered } from "@/lib/project-covered";
 import { toggleZenMode } from "@/lib/zen-mode";
 import {
   SHORTCUT_DEFINITIONS,
@@ -159,7 +160,7 @@ export function useNativeShortcutsPaused(active: boolean): void {
 }
 
 function toggleTerminalDock(): void {
-  if (!useFilesStore.getState().projectId || useTourStore.getState().activeTourId) return;
+  if (!useFilesStore.getState().projectId || useTourStore.getState().activeTourId || projectCovered()) return;
   const settings = useSettingsStore.getState();
   settings.setTerminalOpen(!settings.terminalOpen);
 }
@@ -192,7 +193,7 @@ export async function startNativeDockShortcutBridge(): Promise<() => void> {
     toggleTerminalDock();
   });
   const unlistenZen = await listen("menu://toggle-zen-mode", () => {
-    toggleZenMode();
+    if (!projectCovered()) toggleZenMode();
   });
   return () => {
     unsubscribeStore();

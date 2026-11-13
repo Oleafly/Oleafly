@@ -14,12 +14,14 @@ import { DeleteConversationDialog, RenameInput, deleteConversation } from "./Acp
 
 export function AcpSessionHeader({
   projectId,
+  slot,
   session,
   agentName,
   busy,
   perform,
 }: Readonly<{
   projectId: string;
+  slot?: string;
   session: AcpSession;
   agentName: string;
   busy: boolean;
@@ -105,7 +107,7 @@ export function AcpSessionHeader({
               const snapshot = await acpFork(projectId, session.id);
               const store = useAcpSessionsStore.getState();
               store.setSnapshot(snapshot);
-              await store.open(projectId, snapshot.session.id);
+              await store.open(slot ?? projectId, snapshot.session.id);
             })}
           >
             <GitFork className="size-3.5" />

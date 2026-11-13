@@ -20,6 +20,7 @@ interface PopoverProps {
   onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
   openOnHover?: boolean;
+  onOpenAutoFocus?: (event: Event) => void;
 }
 
 export function Popover({
@@ -34,6 +35,7 @@ export function Popover({
   onOpenChange: onOpenChangeProp,
   disabled = false,
   openOnHover = false,
+  onOpenAutoFocus,
 }: Readonly<PopoverProps>) {
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
@@ -149,6 +151,7 @@ export function Popover({
             onPointerLeave={openOnHover ? hoverOut : undefined}
             onOpenAutoFocus={(event) => {
               if (openedByHover.current) event.preventDefault();
+              else onOpenAutoFocus?.(event);
             }}
             onPointerDownOutside={(event) => {
               if (closeOnClick) return;

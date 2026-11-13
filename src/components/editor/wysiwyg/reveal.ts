@@ -1,4 +1,4 @@
-import { markdownBlockAt } from "@oleafly/wysiwyg";
+import { markdownBlockAt, type ParseMarkdownBodyOptions } from "@oleafly/wysiwyg";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Selection } from "@tiptap/pm/state";
 import type { Editor } from "@tiptap/react";
@@ -12,7 +12,7 @@ export interface VisualLocation {
   range?: { from: number; to: number };
 }
 
-function sourceOffset(source: string, target: VisualLocation): number {
+export function sourceOffset(source: string, target: VisualLocation): number {
   if (target.range) return Math.min(Math.max(0, target.range.from), source.length);
   let offset = 0;
   for (let line = 1; line < (target.line ?? 1); line++) {
@@ -23,11 +23,19 @@ function sourceOffset(source: string, target: VisualLocation): number {
   return offset;
 }
 
-function blockCount(doc: ProseMirrorNode): number {
+export function blockCount(doc: ProseMirrorNode): number {
   const last = doc.lastChild;
   return last?.type.name === "paragraph" && last.childCount === 0
     ? doc.childCount - 1
     : doc.childCount;
+}
+
+export function blockPosition(doc: ProseMirrorNode, source: string, target: VisualLocation, extensions?: ParseMarkdownBodyOptions["extensions"]): number | null {
+  const block = markdownBlockAt(source, sourceOffset(source, target), { preservedInlineRanges: markdownMathRanges(source), extensions });
+  if (block?.count !== blockCount(doc)) return null;
+  let pos = 0;
+  for (let index = 0; index < block.index; index++) pos += doc.child(index).nodeSize;
+  return pos;
 }
 
 function centreBlock(editor: Editor, pos: number) {
@@ -54,13 +62,9 @@ export async function revealVisualLocation(
   if (!editor || editor.isDestroyed || signal.aborted) return false;
   const source = useFilesStore.getState().files[target.path]?.content;
   if (source === undefined) return false;
-  const block = markdownBlockAt(source, sourceOffset(source, target), {
-    preservedInlineRanges: markdownMathRanges(source),
-  });
   const { doc } = editor.state;
-  if (block?.count !== blockCount(doc)) return false;
-  let pos = 0;
-  for (let index = 0; index < block.index; index++) pos += doc.child(index).nodeSize;
+  const pos = blockPosition(doc, source, target);
+  if (pos === null) return false;
   if (options.focus) editor.view.focus();
   if (options.select) {
     editor.view.dispatch(editor.state.tr.setSelection(Selection.near(doc.resolve(pos))));

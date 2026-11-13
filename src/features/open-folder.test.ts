@@ -7,6 +7,7 @@ import { useCompileStore } from "@/store/compile";
 import { useHomeViewStore } from "@/store/home-view";
 import { useOpenFolderStore } from "@/store/open-folder";
 import { useOpenFolderFlowStore } from "@/store/open-folder-flow";
+import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
 import { beginChatRun, endChatRun } from "@/components/ai/chat-run-registry";
 import { bootSplashHeld } from "@/lib/boot-telemetry";
@@ -322,6 +323,29 @@ describe("switching to an opened folder", () => {
     endChatRun(run);
   });
 
+  it("stops a project note's assistant turn too, and leaves a personal note's turn running", async () => {
+    useFilesStore.setState({ projectId: "thesis-1", projectName: "Thesis" });
+    useCompileStore.setState({ status: "idle" });
+    const projectNote = new AbortController();
+    const personal = new AbortController();
+    const runs = [
+      beginChatRun(projectNote, "thesis-1", "note:project-note:thesis-1:notes/Plan.md"),
+      beginChatRun(personal, "note-1", "note:note-1"),
+    ];
+    mocks.prepareOpenRequest.mockResolvedValue({ project_id: NOTES_ID, display_name: "notes" });
+    mocks.openFolderRequest.mockResolvedValue(opened(NOTES_ID));
+
+    const outcome = openPendingRequest(request("c3", "notes"));
+    await settled();
+    expect(useOpenFolderFlowStore.getState().prompt).toMatchObject({ compile: false, assistant: true });
+    useOpenFolderFlowStore.getState().answer(true);
+
+    await expect(outcome).resolves.toBe("opened");
+    expect(projectNote.signal.aborted).toBe(true);
+    expect(personal.signal.aborted).toBe(false);
+    for (const run of runs) endChatRun(run);
+  });
+
   it("focuses a folder that is already open without asking or switching", async () => {
     useFilesStore.setState({ projectId: THESIS_ID, projectName: "thesis" });
     useCompileStore.setState({ status: "compiling" });
@@ -585,6 +609,32 @@ describe("the Open Recent menu", () => {
     startRecentProjectsMenuSync(false)();
     expect(mocks.setRecentProjects).not.toHaveBeenCalled();
   });
+
+  it("leaves notes out while Notes is on and resends when the setting changes", () => {
+    const notes = useSettingsStore.getState().notes;
+    mocks.setRecentProjects.mockResolvedValue(undefined);
+    useSettingsStore.setState({ notes: true });
+    useFilesStore.setState({
+      projects: [
+        { id: "paper", name: "Paper", kind: "document", updated_at: 1 },
+        { id: "idea", name: "Idea", kind: "note", updated_at: 2 },
+      ] as never[],
+    });
+
+    const stop = startRecentProjectsMenuSync(true);
+    expect(mocks.setRecentProjects).toHaveBeenLastCalledWith([{ id: "paper", name: "Paper" }]);
+    useSettingsStore.setState({ hoverPreview: !useSettingsStore.getState().hoverPreview });
+    expect(mocks.setRecentProjects).toHaveBeenCalledTimes(1);
+    useSettingsStore.setState({ notes: false });
+    expect(mocks.setRecentProjects).toHaveBeenLastCalledWith([
+      { id: "idea", name: "Idea" },
+      { id: "paper", name: "Paper" },
+    ]);
+    stop();
+    useSettingsStore.setState({ notes: true });
+    expect(mocks.setRecentProjects).toHaveBeenCalledTimes(2);
+    useSettingsStore.setState({ notes });
+  });
 });
 
 describe("open folder failures", () => {
@@ -657,6 +707,24 @@ describe("Open Recent", () => {
     await settled();
     expect(openProject).toHaveBeenCalledWith(NOTES_ID);
     stop();
+  });
+
+  it("opens a note in Notes without asking to stop running work", async () => {
+    const notes = useSettingsStore.getState().notes;
+    useSettingsStore.setState({ notes: true });
+    useFilesStore.setState({
+      projectId: "thesis-1",
+      projectName: "Thesis",
+      projects: [{ id: "idea", name: "Idea", kind: "note" }] as never[],
+    });
+    useCompileStore.setState({ status: "compiling" });
+
+    await openRecentProject("idea");
+
+    expect(useOpenFolderFlowStore.getState().prompt).toBeNull();
+    expect(openProject).toHaveBeenCalledWith("idea");
+    expect(stopCompile).not.toHaveBeenCalled();
+    useSettingsStore.setState({ notes });
   });
 
   it("does nothing for the open project and keeps it when the stop prompt is declined", async () => {

@@ -2,6 +2,8 @@ import type { Attributes } from "@tiptap/core";
 import { CodeBlock } from "@tiptap/extension-code-block";
 import type { MarkdownNodeSpec } from "tiptap-markdown";
 
+const withInfo = new WeakSet<object>();
+
 function fenceFor(code: string, info: string): string {
   // CommonMark lets an info string hold tildes but not backticks.
   const char = info.includes("`") ? "~" : "`";
@@ -68,7 +70,8 @@ export const MarkdownCodeBlock = CodeBlock.extend({
       parse: {
         setup(markdownit) {
           const render = markdownit.renderer.rules.fence;
-          if (!render) return;
+          if (!render || withInfo.has(markdownit)) return;
+          withInfo.add(markdownit);
           markdownit.renderer.rules.fence = (tokens, index, options, env, self) => {
             const html = render(tokens, index, options, env, self);
             const info = tokens[index].info.trim();

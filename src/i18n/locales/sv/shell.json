@@ -321,6 +321,36 @@
       "keywords": "pdf förhandsvisning visa dölj delad bara redigerare",
       "label": "Visa eller dölj PDF-förhandsvisning"
     },
+    "swapEditorPreview": {
+      "keywords": "byt plats redigerare förhandsvisning pdf sidor panel ordning layout",
+      "label": "Byt plats på redigeraren och förhandsvisningen"
+    },
+    "movePaneToEdge": {
+      "bottom": "Flytta {{pane}} till nederkanten",
+      "keywords": "flytta panel kant docka sida dela stapla layout",
+      "left": "Flytta {{pane}} till vänsterkanten",
+      "right": "Flytta {{pane}} till högerkanten",
+      "top": "Flytta {{pane}} till överkanten"
+    },
+    "paneNames": {
+      "assistant": "assistenten",
+      "editor": "redigeraren",
+      "pdf": "förhandsvisningen",
+      "sidebar": "sidofältet",
+      "terminal": "terminalen"
+    },
+    "resetPaneLayout": {
+      "keywords": "återställ panellayout ordning flytta paneler sidofält assistent redigerare förhandsvisning terminal standard",
+      "label": "Återställ panelernas placering i varje projekt"
+    },
+    "saveLayout": {
+      "keywords": "layout spara aktuell anpassad ordning paneler storlekar namn",
+      "label": "Spara aktuell layout"
+    },
+    "applySavedLayout": {
+      "keywords": "layout sparad anpassad ordning paneler byt tillämpa",
+      "label": "Layout: {{name}}"
+    },
     "zoomIn": {
       "keywords": "större förstora",
       "label": "Zooma in"
@@ -348,6 +378,20 @@
     "insertFileLink": {
       "label": "Infoga länk till fil",
       "keywords": "länk fil sökväg anteckning referens"
+    },
+    "projectNotes": {
+      "open": "Öppna anteckningar för det här projektet",
+      "newShared": "Ny projektanteckning",
+      "newPersonal": "Ny personlig anteckning för det här projektet",
+      "keywords": "anteckningar forskning länkat relaterat projekt"
+    },
+    "notes": {
+      "label": "Öppna Anteckningar",
+      "keywords": "anteckningar anteckningsbok kunskap idéer forskning dagbok notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Snabbanteckning",
+      "keywords": "snabbanteckning anteckna anteckning inkorg i dag quick capture jot note inbox today"
     }
   },
   "community": {
@@ -452,6 +496,11 @@
   },
   "datePicker": {
     "placeholder": "Välj ett datum"
+  },
+  "monthPicker": {
+    "label": "Välj en månad",
+    "previousYear": "Föregående år",
+    "nextYear": "Nästa år"
   },
   "devMenu": {
     "inspect": "Inspektera",
@@ -645,7 +694,6 @@
   "home": {
     "ariaLabel": "Start",
     "label": "Start",
-    "title": "Tillbaka till biblioteket",
     "tooltip": "Gå tillbaka till projektbiblioteket"
   },
   "importDestination": {
@@ -673,6 +721,7 @@
     "groups": {
       "action": "Åtgärd",
       "documents": "Dokument",
+      "notes": "Anteckningar",
       "references": "Referenser"
     },
     "label": "Sök",
@@ -680,11 +729,13 @@
     "openReferences": "Öppna referenserna för det här projektet",
     "placeholder": "Sök projekt, dokument, eller skriv / för kommandon…",
     "placeholderDocuments": "Sök inuti dokument…",
+    "placeholderNotes": "Sök i anteckningar och blocken i dem…",
     "placeholderProjects": "Sök projekt efter namn, motor, typ, datum eller metadata…",
     "referencesNeedProject": "Öppna ett projekt först för att bläddra bland dess referenser.",
     "slash": {
       "create": "öppna mallgalleriet",
       "docs": "sök inuti dokument",
+      "notes": "sök i anteckningar och blocken i dem",
       "projects": "sök bland dina projekt",
       "refs": "öppna referenserna för det här projektet",
       "settings": "öppna inställningar",
@@ -791,7 +842,8 @@
     "research": "Forskningsyta",
     "search": "Sök i projektet",
     "sourceControl": "Versionshantering",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Anteckningar"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} på {{host}}",
@@ -893,7 +945,8 @@
           "folders_other": "{{count}} mappar",
           "images": "Bilder",
           "pdfs": "PDF-filer",
-          "projects": "Projekt"
+          "projects": "Projekt",
+          "projectsAndNotes": "Projekt och anteckningar"
         },
         "subtitle": "Projekt, förhandsvisningar, historik och appdata",
         "title": "Lagringsanvändning",
@@ -935,6 +988,10 @@
       "latexTools": {
         "description": "Visa galleriet Oleafly Tools och de enskilda verktygen (PDF-import, ekvationer, tabeller, BibTeX, labb- och litteratursökning, deadlines) plus deras snedstreckskommandon. Av som standard medan det fortfarande är i beta.",
         "label": "LaTeX-verktyg"
+      },
+      "notes": {
+        "description": "Lägger till Anteckningar i dockan på startsidan. En anteckning är en Markdown-fil med diagram, grafer och matematik som både du och dina agenter kan redigera. Anteckningar hålls utanför ditt projektbibliotek, och varje anteckning kan länkas till ett projekt. Av som standard under betaperioden.",
+        "label": "Anteckningar"
       },
       "researchTasks": {
         "description": "En agent arbetar på egen hand i en kopia av projektet och lämnar sina ändringar åt dig att granska. Mycket instabilt: körningar kan hänga sig, misslyckas eller lämna ändringar att ordna upp för hand, och de använder din leverantörs kvot hela tiden. Lägger till avsnittet Forskning i Inställningar. Avstängning stoppar alla pågående uppgifter. Av som standard. Slå på det på egen risk.",
@@ -1277,6 +1334,24 @@
       "split": "Delad vy"
     },
     "moreActions": "Fler åtgärder",
+    "resetPaneLayout": "Återställ panelernas placering",
+    "resetPaneLayoutScope": "Alla projekt",
+    "savedLayouts": {
+      "close": "Stäng",
+      "delete": "Radera",
+      "deleteConfirm": "Vill du radera layouten \"{{name}}\"?",
+      "limit": "Du kan spara upp till {{count}} layouter. Radera en för att spara en till.",
+      "manage": "Hantera layouter",
+      "name": "Namn på layouten",
+      "rename": "Byt namn",
+      "renameTitle": "Byt namn på layouten",
+      "replace": "Ersätt",
+      "replaceConfirm": "Det finns redan en layout med namnet \"{{name}}\". Vill du ersätta den?",
+      "save": "Spara aktuell layout",
+      "saveButton": "Spara",
+      "saveTitle": "Spara layout",
+      "update": "Uppdatera till aktuell"
+    },
     "renameFailed": "Det gick inte att byta namn på projektet."
   },
   "tour": {

@@ -993,7 +993,8 @@
       "editor": "Redigerare",
       "files": "Projekt",
       "pdf": "PDF-förhandsvisning",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Anteckningar"
     },
     "terminal": {
       "colorTheme": {
@@ -1062,6 +1063,22 @@
         "lines_one": "{{value}} rad",
         "lines_other": "{{value}} rader"
       },
+      "openWith": {
+        "ariaLabel": "Terminal för att öppna mappar och kommandon",
+        "builtin": "Inbyggd terminal",
+        "cmd": "Kommandotolken",
+        "description": "Används för Öppna i terminalen i Utforskaren och för kommandon som Oleafly kör åt dig, till exempel när en agent loggar in. Terminalpanelen är alltid den inbyggda.",
+        "gnome-terminal": "GNOME Terminal",
+        "iterm": "iTerm",
+        "konsole": "Konsole",
+        "label": "Öppna mappar i",
+        "mac-terminal": "Terminal",
+        "notFound": "{{name}} (hittades inte)",
+        "powershell": "PowerShell",
+        "systemDefault": "Systemstandard ({{name}})",
+        "windows-terminal": "Windows Terminal",
+        "x-terminal-emulator": "Systemets standardterminal"
+      },
       "shell": {
         "ariaLabel": "Terminalens shell",
         "description": "Nya terminaler startar det här shellet. Öppna terminaler behåller sitt.",
@@ -1098,22 +1115,6 @@
       "startWithProject": {
         "description": "Starta shell när ett projekt öppnas i stället för första gången du visar terminalen.",
         "label": "Starta shell med projektet"
-      },
-      "openWith": {
-        "ariaLabel": "Terminal för att öppna mappar och kommandon",
-        "builtin": "Inbyggd terminal",
-        "cmd": "Kommandotolken",
-        "description": "Används för Öppna i terminalen i Utforskaren och för kommandon som Oleafly kör åt dig, till exempel när en agent loggar in. Terminalpanelen är alltid den inbyggda.",
-        "gnome-terminal": "GNOME Terminal",
-        "iterm": "iTerm",
-        "konsole": "Konsole",
-        "label": "Öppna mappar i",
-        "mac-terminal": "Terminal",
-        "notFound": "{{name}} (hittades inte)",
-        "powershell": "PowerShell",
-        "systemDefault": "Systemstandard ({{name}})",
-        "windows-terminal": "Windows Terminal",
-        "x-terminal-emulator": "Systemets standardterminal"
       }
     },
     "zen": {
@@ -1434,6 +1435,7 @@
       "use": "Använd för kompileringar"
     },
     "latexmkMissing": "ingen latexmk hittades",
+    "latexmkNeedsPerl": "latexmk behöver Perl",
     "markdown": {
       "downloading": "Laddar ner…",
       "heading": "Markdown-kompilator",
@@ -1449,7 +1451,6 @@
       "tectonicDetail": "Sätter den LaTeX som pandoc producerar. Följer med Oleafly, inget att konfigurera.",
       "tooltip": "Markdown-projekt konverteras med pandoc (Pandoc Markdown: tabeller, fotnoter, citeringar, matematik) till LaTeX och sätts sedan till PDF av den medföljande Tectonic. Pandoc följer med Oleafly."
     },
-    "latexmkNeedsPerl": "latexmk behöver Perl",
     "packages": {
       "ariaLabel": "LaTeX-paket",
       "badge": {
@@ -2337,6 +2338,66 @@
       "resetZoom": {
         "description": "Återställer appen till 100 %.",
         "label": "Återställ zoom"
+      },
+      "notesQuickSwitcher": {
+        "description": "Hitta en anteckning efter namn och öppna den.",
+        "label": "Anteckningar: gå till anteckning"
+      },
+      "notesTodayNote": {
+        "description": "Öppna dagens anteckning eller påbörja den.",
+        "label": "Anteckningar: dagens anteckning"
+      },
+      "notesGraph": {
+        "description": "Öppna grafen över alla dina anteckningar.",
+        "label": "Anteckningar: graf"
+      },
+      "notesLocalGraph": {
+        "description": "Visa eller dölj länkarna runt den öppna anteckningen.",
+        "label": "Anteckningar: lokal graf"
+      },
+      "notesOutline": {
+        "description": "Visa eller dölj dispositionen för den öppna anteckningen.",
+        "label": "Anteckningar: disposition"
+      },
+      "notesAskAgent": {
+        "description": "Fråga agenten om den markerade texten, eller öppna och stäng anteckningens agent.",
+        "label": "Anteckningar: fråga agenten"
+      },
+      "notesNewNote": {
+        "label": "Anteckningar: ny anteckning",
+        "description": "Börja en ny anteckning i den aktuella panelen."
+      },
+      "notesSearch": {
+        "label": "Anteckningar: sök i anteckningar",
+        "description": "Hoppa till sökrutan högst upp i sidofältet i Anteckningar."
+      },
+      "notesBookmark": {
+        "label": "Anteckningar: bokmärk anteckning",
+        "description": "Lägg till den öppna anteckningen i Favoriter, eller ta bort den därifrån."
+      },
+      "notesCopyLink": {
+        "label": "Anteckningar: kopiera länk till anteckningen",
+        "description": "Kopiera en länk till den öppna anteckningen som du kan klistra in i en annan anteckning eller en chatt."
+      },
+      "notesProperties": {
+        "label": "Anteckningar: visa eller dölj egenskaper",
+        "description": "Öppna eller stäng egenskaperna under anteckningens titel."
+      },
+      "notesQuickCapture": {
+        "description": "Öppna ett litet fönster för att skriva ned något från valfri app, även när Oleafly är i bakgrunden.",
+        "label": "Anteckningar: snabbanteckning"
+      },
+      "notesCopyBlockLink": {
+        "description": "Kopiera en länk till stycket, listpunkten eller tabellen där markören står.",
+        "label": "Anteckningar: kopiera länk till blocket"
+      },
+      "notesBack": {
+        "description": "Gå tillbaka dit du var i den här fliken.",
+        "label": "Anteckningar: tillbaka"
+      },
+      "notesForward": {
+        "description": "Gå framåt igen efter att du har gått tillbaka.",
+        "label": "Anteckningar: framåt"
       }
     },
     "application": {
@@ -2362,14 +2423,41 @@
         "renameSymbol": "Byt namn på symbolen eller filen i hela projektet",
         "slashCommandMenu": "Infogningsmeny med snedstreckskommandon",
         "triggerAutocomplete": "Utlös komplettering",
-        "undo": "Ångra"
+        "undo": "Ångra",
+        "noteBold": "Fet",
+        "noteItalic": "Kursiv",
+        "noteUnderline": "Understruken",
+        "noteStrike": "Genomstruken",
+        "noteCode": "Kod i löptext",
+        "noteHighlight": "Markera med den senast använda färgen",
+        "noteSuperscript": "Upphöjd",
+        "noteSubscript": "Nedsänkt",
+        "noteHeadings": "Rubrik 1 till 6",
+        "noteText": "Gör om till text",
+        "noteQuote": "Citat",
+        "noteCodeBlock": "Kodblock",
+        "noteBulletList": "Punktlista",
+        "noteNumberedList": "Numrerad lista",
+        "noteTaskList": "Uppgiftslista",
+        "noteToggleTask": "Bocka av eller avmarkera en uppgift",
+        "noteIndent": "Öka indraget för en listpunkt",
+        "noteOutdent": "Minska indraget för en listpunkt",
+        "noteLineBreak": "Radbrytning i samma stycke",
+        "noteFind": "Sök och ersätt",
+        "noteSelectAll": "Markera hela anteckningen",
+        "noteUndo": "Ångra",
+        "noteRedo": "Gör om",
+        "noteInsertMenu": "Öppna infogningsmenyn i början av en rad",
+        "noteLinkMenu": "Länka till en anteckning",
+        "noteTag": "Lägg till en tagg"
       },
       "managed": "Hanteras av redigeraren"
     },
     "categories": {
       "codeIntelligence": "Kodintelligens",
       "editor": "Redigerare",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Anteckningar"
     },
     "error": {
       "conflict": "Redan tilldelat {{action}}.",
@@ -2415,6 +2503,15 @@
         "uppercase": "Versaler"
       },
       "unbound": "Inte angiven"
+    },
+    "quickCapture": {
+      "label": "Snabbanteckning var du än är",
+      "description": "Kortkommandot för snabbanteckning fungerar i alla appar på den här datorn.",
+      "ready": "Tryck på {{shortcut}} i valfri app för att öppna snabbanteckningen.",
+      "taken": "En annan app använder redan {{shortcut}}. Välj ett annat kortkommando för Anteckningar: snabbanteckning.",
+      "invalid": "{{shortcut}} fungerar inte utanför Oleafly. Välj ett kortkommando som slutar med en bokstav, en siffra eller en funktionstangent.",
+      "failed": "Oleafly kunde inte ställa in kortkommandot. Stäng av snabbanteckning och slå på den igen för att försöka på nytt.",
+      "wayland": "Wayland låter inte appar lyssna efter tangenter utanför sina egna fönster. Om du vill öppna snabbanteckningen med en tangent lägger du till ett eget kortkommando i systemets tangentbordsinställningar som kör det här kommandot:"
     }
   },
   "systemIntegration": {

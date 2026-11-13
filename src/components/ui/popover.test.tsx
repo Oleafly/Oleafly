@@ -134,6 +134,33 @@ describe("Popover", () => {
     expect(screen.queryByRole("dialog", { name: "Details" })).toBeNull();
   });
 
+  it("lets the caller pick the focus on a click open but not on a hover open", () => {
+    vi.useFakeTimers();
+    try {
+      const onOpenAutoFocus = vi.fn((event: Event) => {
+        event.preventDefault();
+        screen.getByRole("button", { name: "Second" }).focus();
+      });
+      render(
+        <Popover trigger="…" ariaLabel="Status" contentAriaLabel="Details" openOnHover closeOnClick={false} onOpenAutoFocus={onOpenAutoFocus}>
+          <button type="button">{"First"}</button>
+          <button type="button">{"Second"}</button>
+        </Popover>,
+      );
+      open("Status");
+      expect(onOpenAutoFocus).toHaveBeenCalledTimes(1);
+      expect(document.activeElement).toBe(screen.getByRole("button", { name: "Second" }));
+      fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+      const trigger = screen.getByRole("button", { name: "Status" });
+      fireEvent.pointerEnter(trigger, { pointerType: "mouse" });
+      act(() => vi.advanceTimersByTime(400));
+      expect(screen.getByRole("dialog", { name: "Details" })).toBeInTheDocument();
+      expect(onOpenAutoFocus).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("ignores touch hovers and forgets a pending hover when the popover goes away", () => {
     vi.useFakeTimers();
     try {

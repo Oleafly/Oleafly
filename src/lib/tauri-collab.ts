@@ -129,6 +129,10 @@ const COLLAB_ERROR_CODES = new Set<string>([
   "account_storage_full",
   "too_many_projects",
   "too_many_uploads",
+  "public_notes_off",
+  "too_many_pages",
+  "page_too_large",
+  "page_taken_down",
 ] satisfies CollabErrorCode[]);
 
 export function isCollabCommandError(value: unknown): value is CollabCommandError {
@@ -528,6 +532,20 @@ export const collabAdminGuestDecline = (serverId: string, invitationId: string) 
   invoke<CollabGuestInvitation>("collab_admin_guest_decline", { serverId, invitationId });
 export const collabAdminGuestRevoke = (serverId: string, invitationId: string) =>
   invoke<void>("collab_admin_guest_revoke", { serverId, invitationId });
+export const collabPublishedNotes = (serverId: string) =>
+  invoke<import("@oleafly/backend-port").CollabPublishedNotes>("collab_published_notes", { serverId });
+export const collabPublishNote = (serverId: string, note: import("@oleafly/backend-port").CollabNoteUpload) =>
+  invoke<import("@oleafly/backend-port").CollabPublishedNote>("collab_publish_note", { serverId, ...note });
+export const collabUnpublishNote = (serverId: string, noteId: string) =>
+  invoke<void>("collab_unpublish_note", { serverId, noteId });
+export const collabAdminPublishedNotes = (serverId: string) =>
+  invoke<import("@oleafly/backend-port").CollabAdminPublishedNote[]>("collab_admin_published_notes", { serverId });
+export const collabAdminSetNoteTakenDown = (serverId: string, noteId: string, takenDown: boolean) =>
+  invoke<import("@oleafly/backend-port").CollabAdminPublishedNote>("collab_admin_set_note_taken_down", {
+    serverId,
+    noteId,
+    takenDown,
+  });
 
 export async function collabServerCodeSignIn(
   url: string,

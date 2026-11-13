@@ -155,6 +155,9 @@
       "spacesMessage": "Agenții care folosesc Cua Spaces vor putea:",
       "spacesChanges": "Să creeze și să șteargă Space-uri și să ruleze comenzi în ele",
       "spacesSignIns": "Să folosească într-un Space autentificarea ta Claude Code sau Codex"
+    },
+    "assistantNetwork": {
+      "message": "Asistentul vrea să folosească {{tool}}, care trimite text către un serviciu online."
     }
   },
   "errors": {
@@ -214,6 +217,11 @@
     "blockedMode": {
       "title": "Verificările permisiunilor sunt dezactivate ({{mode}})",
       "description": "Agentul poate edita fișiere și rula comenzi fără să întrebe. Oleafly nu a putut comuta la alt mod. Schimbă modul din setările proprii ale agentului."
+    }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Notare rapidă"
     }
   }
 }

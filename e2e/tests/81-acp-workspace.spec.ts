@@ -177,8 +177,8 @@ async function withAgent(page: Page, login: boolean, work: (fixture: AgentFixtur
     },
   };
   try {
-    const hasBack = await page.evaluate<boolean>(`!!document.querySelector('[title="Back to library"]')`);
-    if (hasBack) await page.click('[title="Back to library"]');
+    const hasBack = await page.evaluate<boolean>(`!!document.querySelector('[data-toolbar-part="home"][aria-label="Home"]')`);
+    if (hasBack) await page.click('[data-toolbar-part="home"][aria-label="Home"]');
     await createBlankProject(page, fixture.projectName);
     fixture.projectId = await page.evaluate<string>(`document.querySelector('[data-e2e-project-id]')?.getAttribute('data-e2e-project-id') ?? ''`);
     expect(fixture.projectId).not.toBe("");

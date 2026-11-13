@@ -4,13 +4,13 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  searchDocs: vi.fn(async () => [] as unknown[]),
+  textSearch: vi.fn(async (_projectId?: unknown) => [] as unknown[]),
   gotoLine: vi.fn(),
   openFile: vi.fn(async () => {}),
   revealEditor: vi.fn(),
 }));
 
-vi.mock("@/lib/tauri", () => ({ searchDocs: mocks.searchDocs }));
+vi.mock("@/lib/tauri", () => ({ textSearch: mocks.textSearch }));
 vi.mock("@/components/editor/cm/controller", () => ({ gotoLine: mocks.gotoLine }));
 
 function sectionStub(testId: string, label: string) {
@@ -65,6 +65,7 @@ const HIT = {
   path: "chapters/intro.tex",
   line: 9,
   preview: "a matching line",
+  ranges: [] as [number, number][],
 };
 
 function openProject(projectId: string) {
@@ -76,7 +77,7 @@ function openProject(projectId: string) {
 
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockClear();
-  mocks.searchDocs.mockResolvedValue([]);
+  mocks.textSearch.mockResolvedValue([]);
   localStorage.removeItem(panelLayoutKey(EXPLORER_GROUP, EXPLORER_PANELS));
   localStorage.removeItem(panelExpandSizesKey(EXPLORER_GROUP));
   openProject("alpha");
@@ -142,7 +143,7 @@ describe("ProjectSearch view memory", () => {
   }
 
   it("keeps the query and its results after another rail was visited", async () => {
-    mocks.searchDocs.mockResolvedValue([HIT]);
+    mocks.textSearch.mockResolvedValue([HIT]);
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const first = render(<ProjectSearch />);
@@ -150,7 +151,7 @@ describe("ProjectSearch view memory", () => {
     expect(await screen.findByText("intro.tex")).toBeInTheDocument();
     first.unmount();
 
-    mocks.searchDocs.mockClear();
+    mocks.textSearch.mockClear();
     render(<ProjectSearch />);
     expect(screen.getByPlaceholderText(copy.placeholder)).toHaveValue("matching");
     expect(screen.getByText("intro.tex")).toBeInTheDocument();
@@ -160,7 +161,7 @@ describe("ProjectSearch view memory", () => {
   });
 
   it("starts another project with an empty search and restores the first on return", async () => {
-    mocks.searchDocs.mockResolvedValue([HIT]);
+    mocks.textSearch.mockResolvedValue([HIT]);
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const first = render(<ProjectSearch />);
@@ -182,7 +183,7 @@ describe("ProjectSearch view memory", () => {
   });
 
   it("swaps the query when the project changes while the panel is open", async () => {
-    mocks.searchDocs.mockResolvedValue([HIT]);
+    mocks.textSearch.mockResolvedValue([HIT]);
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<ProjectSearch />);
@@ -224,7 +225,7 @@ describe("ProjectSearch scroll memory", () => {
   });
 
   async function searchAndScroll(top: number) {
-    mocks.searchDocs.mockResolvedValue(MANY);
+    mocks.textSearch.mockResolvedValue(MANY);
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const view = render(<ProjectSearch />);
@@ -262,7 +263,7 @@ describe("ProjectSearch scroll memory", () => {
 
   it("keeps each project's position when the project changes while open", async () => {
     await searchAndScroll(900);
-    mocks.searchDocs.mockResolvedValue([...MANY, ...MANY.map((hit) => ({ ...hit, project_id: "beta" }))]);
+    mocks.textSearch.mockImplementation(async (projectId: unknown) => (projectId === "beta" ? MANY.map((hit) => ({ ...hit, project_id: "beta" })) : MANY));
     const input = screen.getByPlaceholderText(copy.placeholder);
     openProject("beta");
     await waitFor(() => expect(input).toHaveValue(""));

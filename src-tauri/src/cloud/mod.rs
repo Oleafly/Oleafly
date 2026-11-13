@@ -1,3 +1,5 @@
+pub(crate) mod backup;
+pub(crate) mod backup_commands;
 pub(crate) mod commands;
 pub(crate) mod drive;
 pub(crate) mod engine;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { trimCharacter, trimTrailingCharacter } from "./trim-character";
+import { trimCharacter, trimTrailingCharacter, trimTrailingCharacters } from "./trim-character";
 
 describe("trimCharacter", () => {
   it("drops the runs at both ends only", () => {
@@ -14,6 +14,7 @@ describe("trimCharacter", () => {
     const value = `${"/".repeat(200_000)}x`;
     expect(trimCharacter(value, "/")).toBe("x");
     expect(trimTrailingCharacter(value, "/")).toBe(value);
+    expect(trimTrailingCharacters(value, "/\\")).toBe(value);
   });
 });
 
@@ -22,5 +23,16 @@ describe("trimTrailingCharacter", () => {
     expect(trimTrailingCharacter("/a/b///", "/")).toBe("/a/b");
     expect(trimTrailingCharacter("/", "/")).toBe("");
     expect(trimTrailingCharacter("a", "/")).toBe("a");
+  });
+});
+
+describe("trimTrailingCharacters", () => {
+  it("drops a trailing run of any of the characters and keeps the rest", () => {
+    expect(trimTrailingCharacters("see ~/paper.tex).", ".,;:!?)]}")).toBe("see ~/paper.tex");
+    expect(trimTrailingCharacters("a. .b. . ", ". ")).toBe("a. .b");
+    expect(trimTrailingCharacters("line \t \t", " \t")).toBe("line");
+    expect(trimTrailingCharacters("...", ".")).toBe("");
+    expect(trimTrailingCharacters("", ".")).toBe("");
+    expect(trimTrailingCharacters("word", "")).toBe("word");
   });
 });

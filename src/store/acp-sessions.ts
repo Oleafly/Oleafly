@@ -22,13 +22,63 @@ export interface AcpQueuedPrompt {
   skill: AcpComposerSkill | null;
   sending?: boolean;
   failed?: boolean;
+  gatedBy?: string[];
 }
-export type AcpPromptDraft = Omit<AcpQueuedPrompt, "id" | "sending" | "failed">;
+export type AcpPromptDraft = Omit<AcpQueuedPrompt, "id" | "sending" | "failed" | "gatedBy">;
 
 export const EMPTY_COMPOSER: AcpComposer = { agentId: null };
 export const MAX_VISIBLE_EVENTS = 2000;
 const MAX_PINNED_EVENTS = 3 * MAX_VISIBLE_EVENTS;
 const TRIM_SLACK = 250;
+
+export function acpSlot(projectId: string, owner?: string): string {
+  return owner ? `${projectId}#${owner}` : projectId;
+}
+
+export function acpSlotProject(slot: string): string {
+  const mark = slot.indexOf("#");
+  return mark < 0 ? slot : slot.slice(0, mark);
+}
+
+export type AcpPromptGate = (session: AcpSession) => Promise<boolean>;
+
+const promptGates = new Map<string, Set<AcpPromptGate>>();
+
+export function setAcpPromptGate(slot: string, gate: AcpPromptGate): () => void {
+  const gates = promptGates.get(slot) ?? new Set<AcpPromptGate>();
+  gates.add(gate);
+  promptGates.set(slot, gates);
+  return () => {
+    gates.delete(gate);
+    if (gates.size === 0 && promptGates.get(slot) === gates) promptGates.delete(slot);
+  };
+}
+
+function gatedSlots(sessionId: string): string[] {
+  return Object.entries(useAcpSessionsStore.getState().activeByProject)
+    .filter(([slot, id]) => id === sessionId && (promptGates.get(slot)?.size ?? 0) > 0)
+    .map(([slot]) => slot);
+}
+
+async function passesPromptGates(sessionId: string, required: ReadonlySet<string>): Promise<boolean> {
+  const shown = Object.entries(useAcpSessionsStore.getState().activeByProject)
+    .filter(([, id]) => id === sessionId)
+    .map(([slot]) => slot);
+  for (const slot of new Set([...required, ...shown])) {
+    const gates = [...(promptGates.get(slot) ?? [])];
+    if (required.has(slot) && gates.length === 0) return false;
+    for (const gate of gates) {
+      const session = useAcpSessionsStore.getState().sessions[sessionId];
+      if (!session) return false;
+      try {
+        if (!(await gate(session))) return false;
+      } catch {
+        return false;
+      }
+    }
+  }
+  return true;
+}
 
 export function acpComposerId(projectId: string, agentId: string | null, sessionId: string | null = null): string {
   const base = `${projectId}:acp:${agentId ?? "none"}`;
@@ -67,12 +117,13 @@ interface AcpState {
   removeQueued: (sessionId: string, id: string) => void;
   retryQueued: (projectId: string, sessionId: string, id: string) => Promise<void>;
   forgetSession: (projectId: string, sessionId: string) => void;
-  sendPrompt: (projectId: string, sessionId: string, draft: AcpPromptDraft) => Promise<boolean>;
+  sendPrompt: (projectId: string, sessionId: string, draft: AcpPromptDraft, gatedBy?: readonly string[]) => Promise<boolean>;
   startWithPrompt: (projectId: string, agentId: string, draft: AcpPromptDraft) => Promise<void>;
   dispatchQueued: (projectId: string, sessionId: string) => Promise<void>;
   steerQueued: (projectId: string, sessionId: string, id: string) => Promise<void>;
   applySummary: (summary: AcpSessionSummary) => void;
   releaseProject: (projectId: string) => Promise<void>;
+  releaseSlot: (slot: string) => Promise<void>;
 }
 
 export function isDelegatedSession(session: AcpSession): boolean {
@@ -278,7 +329,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     try {
       const catalog = await acpCatalog(probe);
       if (request !== catalogRequest) return false;
-      set({ catalog });
+      if (JSON.stringify(catalog) !== JSON.stringify(get().catalog)) set({ catalog });
       return true;
     } catch (error) {
       if (request === catalogRequest) throw error;
@@ -286,7 +337,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     }
   },
   loadProject: async (projectId) => {
-    const sessions = await acpSessions(projectId);
+    const sessions = await acpSessions(acpSlotProject(projectId));
     set((state) => ({ sessions: { ...state.sessions, ...Object.fromEntries(sessions.filter((session) => (state.sessions[session.id]?.lastSequence ?? -1) <= session.lastSequence).map((session) => [session.id, session])) } }));
   },
   setSnapshot: (snapshot) => set((state) => (state.sessions[snapshot.session.id]?.lastSequence ?? -1) > snapshot.session.lastSequence ? state : ({
@@ -303,19 +354,20 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
   }),
   setComposer: (projectId, patch) => set((state) => ({ composers: { ...state.composers, [projectId]: { ...EMPTY_COMPOSER, ...state.composers[projectId], ...patch } } })),
   start: (projectId, agentId) => singleStart(projectId, agentId, async () => {
+    const project = acpSlotProject(projectId);
     set((state) => ({ starting: { ...state.starting, [projectId]: true } }));
     try {
       const openId = get().activeByProject[projectId];
       const open = openId ? get().sessions[openId] : undefined;
       if (openId && open && ["ready", "auth_required"].includes(open.status)) {
-        await acpDisconnect(projectId, openId);
+        await acpDisconnect(project, openId);
       }
-      const snapshot = await acpStart(projectId, agentId);
+      const snapshot = await acpStart(project, agentId);
       get().setSnapshot(snapshot);
       const id = snapshot.session.id;
       get().setActive(projectId, id);
       try {
-        const page = await acpEvents(projectId, id, Math.max(0, snapshot.session.lastSequence - 300));
+        const page = await acpEvents(project, id, Math.max(0, snapshot.session.lastSequence - 300));
         set((state) => ({ events: { ...state.events, [id]: mergeAcpEvents(state.events[id] ?? [], page.events) } }));
       } catch {
         // Live events still arrive; only the ones from the start stay missing.
@@ -325,17 +377,18 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     }
   }),
   open: async (projectId, id) => {
+    const project = acpSlotProject(projectId);
     get().setActive(projectId, id);
-    const snapshot = await acpSnapshot(projectId, id);
+    const snapshot = await acpSnapshot(project, id);
     get().setSnapshot(snapshot);
     const after = Math.max(0, snapshot.session.lastSequence - 300);
-    const page = await acpEvents(projectId, id, after);
+    const page = await acpEvents(project, id, after);
     set((state) => ({ events: { ...state.events, [id]: mergeAcpEvents(state.events[id] ?? [], page.events) } }));
   },
   loadEarlier: async (projectId, id) => {
     const first = get().events[id]?.[0]?.sequence ?? 1;
     if (first <= 1) return;
-    const page = await acpEvents(projectId, id, Math.max(0, first - 301), Math.min(300, first - 1));
+    const page = await acpEvents(acpSlotProject(projectId), id, Math.max(0, first - 301), Math.min(300, first - 1));
     set((state) => {
       const earlier = page.events.filter((event) => event.sequence < first);
       const all = [...earlier, ...(state.events[id] ?? [])];
@@ -346,11 +399,12 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     });
   },
   resync: async (projectId, id) => {
-    const snapshot = await acpSnapshot(projectId, id);
+    const project = acpSlotProject(projectId);
+    const snapshot = await acpSnapshot(project, id);
     get().setSnapshot(snapshot);
     let after = get().events[id]?.at(-1)?.sequence ?? Math.max(0, snapshot.session.lastSequence - 300);
     for (let pageIndex = 0; pageIndex < 20; pageIndex++) {
-      const page = await acpEvents(projectId, id, after);
+      const page = await acpEvents(project, id, after);
       get().ingest(page.events);
       after = page.events.at(-1)?.sequence ?? after;
       if (!page.hasMore) break;
@@ -396,7 +450,9 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
   },
   enqueue: (sessionId, draft) => {
     const id = `queued-${Date.now()}-${++queueCounter}`;
-    set((state) => ({ queues: { ...state.queues, [sessionId]: [...(state.queues[sessionId] ?? []), { ...draft, id }] } }));
+    const gatedBy = gatedSlots(sessionId);
+    const item: AcpQueuedPrompt = gatedBy.length > 0 ? { ...draft, id, gatedBy } : { ...draft, id };
+    set((state) => ({ queues: { ...state.queues, [sessionId]: [...(state.queues[sessionId] ?? []), item] } }));
     return id;
   },
   removeQueued: (sessionId, id) => set((state) => {
@@ -430,8 +486,10 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
         watched: drop(state.watched),
         sessionErrors: drop(state.sessionErrors),
         ...withoutEvents(state, sessionId),
-        activeByProject: state.activeByProject[projectId] === sessionId
-          ? { ...state.activeByProject, [projectId]: null }
+        activeByProject: Object.values(state.activeByProject).includes(sessionId)
+          ? Object.fromEntries(
+            Object.entries(state.activeByProject).map(([key, id]) => [key, id === sessionId ? null : id]),
+          )
           : state.activeByProject,
       };
     });
@@ -440,7 +498,9 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     drafts.setText(composerId, "");
     drafts.setAttachments(composerId, []);
   },
-  sendPrompt: async (projectId, sessionId, draft) => {
+  sendPrompt: async (slot, sessionId, draft, gatedBy = []) => {
+    const projectId = acpSlotProject(slot);
+    const required = new Set([...gatedBy, ...gatedSlots(sessionId)]);
     const adjust = (delta: number) => set((state) => {
       const count = Math.max(0, (state.sending[sessionId] ?? 0) + delta);
       const sending = { ...state.sending };
@@ -460,6 +520,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
         if (error instanceof SaveFlushError) return false;
         throw error;
       }
+      if (!get().sessions[sessionId] || !(await passesPromptGates(sessionId, required))) return false;
       const session = get().sessions[sessionId];
       if (!session) return false;
       const before = session.lastSequence;
@@ -472,7 +533,9 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
         const input = await toPromptInput(draft, session, files.projectId === projectId ? files.tree : null);
         get().setSnapshot(await acpPrompt(projectId, sessionId, input));
         get().setSessionError(sessionId, null);
-        if (get().activeByProject[projectId] === sessionId) get().setError(projectId, null);
+        for (const [key, id] of Object.entries(get().activeByProject)) {
+          if (id === sessionId) get().setError(key, null);
+        }
         return true;
       } catch (error) {
         await get().resync(projectId, sessionId).catch(() => {});
@@ -503,8 +566,8 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
       queues: { ...state.queues, [sessionId]: (state.queues[sessionId] ?? []).map((item) => item.id === head.id ? { ...item, ...patch } : item) },
     }));
     mark({ sending: true });
-    const { id: _id, sending: _sending, failed: _failed, ...draft } = head;
-    const sent = await get().sendPrompt(projectId, sessionId, draft);
+    const { id: _id, sending: _sending, failed: _failed, gatedBy, ...draft } = head;
+    const sent = await get().sendPrompt(projectId, sessionId, draft, gatedBy);
     if (sent) {
       get().removeQueued(sessionId, head.id);
       await get().dispatchQueued(projectId, sessionId);
@@ -522,7 +585,7 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
     }));
     mark(true);
     try {
-      const outcome = await acpSteer(projectId, sessionId, item.text);
+      const outcome = await acpSteer(acpSlotProject(projectId), sessionId, item.text);
       if (outcome === "injected") {
         get().removeQueued(sessionId, id);
       } else {
@@ -561,6 +624,16 @@ export const useAcpSessionsStore = create<AcpState>((set, get) => ({
       && !state.sending[session.id]
       && !state.queues[session.id]?.some((item) => !item.failed));
     await Promise.all(idle.map((session) => acpDisconnect(projectId, session.id).catch(() => {})));
+  },
+  releaseSlot: async (slot) => {
+    const state = get();
+    const id = state.activeByProject[slot];
+    const session = id ? state.sessions[id] : undefined;
+    if (!id || !session) return;
+    const idle = (session.status === "ready" || session.status === "auth_required")
+      && !state.sending[id]
+      && !state.queues[id]?.some((item) => !item.failed);
+    if (idle) await acpDisconnect(acpSlotProject(slot), id).catch(() => {});
   },
 }));
 

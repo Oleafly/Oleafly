@@ -993,7 +993,8 @@
       "editor": "Editori",
       "files": "Projekti",
       "pdf": "PDF-esikatselu",
-      "terminal": "Pääte"
+      "terminal": "Pääte",
+      "notes": "Muistiinpanot"
     },
     "terminal": {
       "colorTheme": {
@@ -2337,6 +2338,66 @@
       "resetZoom": {
         "description": "Palauttaa sovelluksen 100 prosenttiin.",
         "label": "Palauta zoomaus"
+      },
+      "notesQuickSwitcher": {
+        "description": "Etsi muistiinpano nimen perusteella ja avaa se.",
+        "label": "Muistiinpanot: siirry muistiinpanoon"
+      },
+      "notesTodayNote": {
+        "description": "Avaa tämän päivän muistiinpano tai aloita se.",
+        "label": "Muistiinpanot: tämän päivän muistiinpano"
+      },
+      "notesGraph": {
+        "description": "Avaa kaikkien muistiinpanojesi graafi.",
+        "label": "Muistiinpanot: graafi"
+      },
+      "notesLocalGraph": {
+        "description": "Näytä tai piilota avoimen muistiinpanon ympärillä olevat linkit.",
+        "label": "Muistiinpanot: paikallinen graafi"
+      },
+      "notesOutline": {
+        "description": "Näytä tai piilota avoimen muistiinpanon jäsennys.",
+        "label": "Muistiinpanot: jäsennys"
+      },
+      "notesAskAgent": {
+        "description": "Kysy agentilta valitusta tekstistä tai avaa ja sulje muistiinpanon agentti.",
+        "label": "Muistiinpanot: kysy agentilta"
+      },
+      "notesNewNote": {
+        "label": "Muistiinpanot: uusi muistiinpano",
+        "description": "Aloita uusi muistiinpano nykyisessä paneelissa."
+      },
+      "notesSearch": {
+        "label": "Muistiinpanot: hae muistiinpanoista",
+        "description": "Siirry hakukenttään Muistiinpanot-sivupalkin yläreunassa."
+      },
+      "notesBookmark": {
+        "label": "Muistiinpanot: lisää suosikkeihin",
+        "description": "Lisää avoin muistiinpano suosikkeihin tai poista se sieltä."
+      },
+      "notesCopyLink": {
+        "label": "Muistiinpanot: kopioi linkki muistiinpanoon",
+        "description": "Kopioi avoimen muistiinpanon linkki, jonka voit liittää toiseen muistiinpanoon tai keskusteluun."
+      },
+      "notesProperties": {
+        "label": "Muistiinpanot: näytä tai piilota ominaisuudet",
+        "description": "Avaa tai sulje ominaisuudet muistiinpanon nimen alla."
+      },
+      "notesQuickCapture": {
+        "description": "Avaa pieni ikkuna, johon voit kirjata jotain mistä tahansa sovelluksesta, vaikka Oleafly olisi taustalla.",
+        "label": "Muistiinpanot: pikakirjaus"
+      },
+      "notesCopyBlockLink": {
+        "description": "Kopioi linkki kappaleeseen, luettelon kohtaan tai taulukkoon, jossa kohdistin on.",
+        "label": "Muistiinpanot: kopioi linkki lohkoon"
+      },
+      "notesBack": {
+        "description": "Palaa kohtaan, jossa olit tässä välilehdessä.",
+        "label": "Muistiinpanot: takaisin"
+      },
+      "notesForward": {
+        "description": "Siirry taas eteenpäin, kun olet palannut takaisin.",
+        "label": "Muistiinpanot: eteenpäin"
       }
     },
     "application": {
@@ -2362,14 +2423,41 @@
         "renameSymbol": "Nimeä symboli tai tiedosto uudelleen koko projektissa",
         "slashCommandMenu": "Kauttaviivakomentojen lisäysvalikko",
         "triggerAutocomplete": "Käynnistä automaattitäydennys",
-        "undo": "Kumoa"
+        "undo": "Kumoa",
+        "noteBold": "Lihavointi",
+        "noteItalic": "Kursivointi",
+        "noteUnderline": "Alleviivaus",
+        "noteStrike": "Yliviivaus",
+        "noteCode": "Rivinsisäinen koodi",
+        "noteHighlight": "Korosta viimeksi käytetyllä värillä",
+        "noteSuperscript": "Yläindeksi",
+        "noteSubscript": "Alaindeksi",
+        "noteHeadings": "Otsikot 1:stä 6:een",
+        "noteText": "Muuta tekstiksi",
+        "noteQuote": "Lainaus",
+        "noteCodeBlock": "Koodilohko",
+        "noteBulletList": "Merkitty luettelo",
+        "noteNumberedList": "Numeroitu luettelo",
+        "noteTaskList": "Tehtäväluettelo",
+        "noteToggleTask": "Merkitse tehtävä tehdyksi tai poista merkintä",
+        "noteIndent": "Sisennä luettelon kohta",
+        "noteOutdent": "Vähennä luettelon kohdan sisennystä",
+        "noteLineBreak": "Rivinvaihto samassa kappaleessa",
+        "noteFind": "Etsi ja korvaa",
+        "noteSelectAll": "Valitse koko muistiinpano",
+        "noteUndo": "Kumoa",
+        "noteRedo": "Tee uudelleen",
+        "noteInsertMenu": "Avaa lisäysvalikko rivin alussa",
+        "noteLinkMenu": "Linkitä muistiinpanoon",
+        "noteTag": "Lisää tunniste"
       },
       "managed": "Editorin hallitsema"
     },
     "categories": {
       "codeIntelligence": "Koodiäly",
       "editor": "Editori",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Muistiinpanot"
     },
     "error": {
       "conflict": "On jo varattu toiminnolle {{action}}.",
@@ -2415,6 +2503,15 @@
         "uppercase": "Isot kirjaimet"
       },
       "unbound": "Ei asetettu"
+    },
+    "quickCapture": {
+      "label": "Pikakirjaus mistä tahansa",
+      "description": "Pikakirjauksen pikanäppäin toimii kaikissa tämän tietokoneen sovelluksissa.",
+      "ready": "Avaa pikakirjaus painamalla {{shortcut}} missä tahansa sovelluksessa.",
+      "taken": "Toinen sovellus käyttää jo pikanäppäintä {{shortcut}}. Valitse toinen pikanäppäin toiminnolle Muistiinpanot: pikakirjaus.",
+      "invalid": "Pikanäppäin {{shortcut}} ei voi toimia muualla kuin sovelluksessa Oleafly. Valitse pikanäppäin, joka päättyy kirjaimeen, numeroon tai funktionäppäimeen.",
+      "failed": "Oleafly ei voinut ottaa pikanäppäintä käyttöön. Yritä uudelleen poistamalla pikakirjaus käytöstä ja ottamalla se taas käyttöön.",
+      "wayland": "Wayland ei anna sovellusten kuunnella näppäimiä omien ikkunoidensa ulkopuolella. Jos haluat avata pikakirjauksen näppäimellä, lisää järjestelmän näppäimistöasetuksiin oma pikanäppäin, joka suorittaa tämän komennon:"
     }
   },
   "systemIntegration": {

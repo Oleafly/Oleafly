@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import {
   NewProjectDialog as NewProjectDialogCore,
@@ -83,8 +84,7 @@ const FOCUS_RESTORE_FRAMES = 12;
 const TemplateImportDialog = lazy(() =>
   import("@/components/library/TemplateImportDialog").then((module) => ({
     default: module.TemplateImportDialog,
-  })),
-);
+  })), { warm: true });
 
 export function NewProjectDialog(props: Readonly<{
   open: boolean;

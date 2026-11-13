@@ -324,6 +324,7 @@
   },
   "mcp": {
     "deniedByRules": "Refusé par une règle deny dans approvals.toml",
+    "createTodaySummary": "Créer la note du jour « {{title}} »",
     "openProjectSummary": "Ouvrir le projet {{id}}",
     "rulesUnreadable": "Refusé, car approvals.toml n'a pas pu être lu",
     "useToolSummary": "Utiliser {{tool}} du serveur MCP {{server}}"
@@ -346,6 +347,7 @@
   },
   "mermaid": {
     "diagram": "Diagramme",
+    "remoteBlocked": "Ce diagramme n'a pas été affiché, car il charge des images ou des styles depuis internet.",
     "renderFailed": "Impossible d'afficher le diagramme.",
     "rendering": "Rendu du diagramme"
   },

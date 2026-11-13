@@ -14,7 +14,7 @@ async function ensureLibraryFixture(tauriPage: TauriPage) {
 
   await createBlankProject(tauriPage, "E2E Doc");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await tauriPage.click('[title="Back to library"]');
+  await tauriPage.click('[data-toolbar-part="home"][aria-label="Home"]');
   await expect(
     tauriPage.locator('[data-testid="library"][data-projects-loaded="true"]'),
   ).toBeVisible({ timeout: 30_000 });
@@ -31,7 +31,7 @@ async function compileForLibraryPreview(tauriPage: TauriPage) {
   await clickCompile(tauriPage);
   await expect(tauriPage.locator(".pdf-canvas")).toBeVisible({ timeout: 90_000 });
   await expect(tauriPage.getByTestId("compile-status")).toHaveAttribute("data-severity", "ok");
-  await tauriPage.click('[title="Back to library"]');
+  await tauriPage.click('[data-toolbar-part="home"][aria-label="Home"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
 }
 
@@ -327,7 +327,7 @@ test("hovering a compiled project slides in its PDF preview, gated by the settin
   await tauriPage.press('[data-testid="appearance-tab-pdf"]', "Enter");
   await tauriPage.click('[role="switch"][aria-label="Preview PDF on hover"]');
   await tauriPage.click('[aria-label="Close settings"]');
-  await tauriPage.click('[title="Back to library"]');
+  await tauriPage.click('[data-toolbar-part="home"][aria-label="Home"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
   await tauriPage.evaluate(bookFor("E2E Doc"));
   await tauriPage.waitForFunction(
@@ -351,7 +351,7 @@ test("project details and export history release their modal layers after closin
   tauriPage,
 }) => {
   await createBlankProject(tauriPage, `Modal Layers ${Date.now()}`);
-  await tauriPage.click('[title="Back to library"]');
+  await tauriPage.click('[data-toolbar-part="home"][aria-label="Home"]');
   await expect(
     tauriPage.locator('[data-testid="library"][data-projects-loaded="true"]'),
   ).toBeVisible();

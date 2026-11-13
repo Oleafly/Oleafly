@@ -155,6 +155,9 @@
       "spacesMessage": "Agenter som bruker Cua Spaces vil kunne:",
       "spacesChanges": "Opprette og slette Spaces og kjøre kommandoer i dem",
       "spacesSignIns": "Bruke innloggingen din for Claude Code eller Codex i en Space"
+    },
+    "assistantNetwork": {
+      "message": "Assistenten vil bruke {{tool}}, som sender tekst til en nettjeneste."
     }
   },
   "errors": {
@@ -214,6 +217,11 @@
     "blockedMode": {
       "title": "Tillatelsessjekkene er av ({{mode}})",
       "description": "Agenten kan endre filer og kjøre kommandoer uten å spørre. Oleafly kunne ikke bytte den til en annen modus. Endre modusen i agentens egne innstillinger."
+    }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Hurtignotat"
     }
   }
 }

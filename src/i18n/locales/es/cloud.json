@@ -115,6 +115,8 @@
     "conflictsHelp_many": "Estos archivos cambiaron aquí y en otro ordenador antes de que se sincronizaran los cambios, así que Oleafly conservó las dos versiones. Quédate con lo que necesites y luego elimina las copias.",
     "conflictsHelp_other": "Estos archivos cambiaron aquí y en otro ordenador antes de que se sincronizaran los cambios, así que Oleafly conservó las dos versiones. Quédate con lo que necesites y luego elimina las copias.",
     "conflictsLabel": "Copias de conflicto en {{name}}",
+    "compare": "Comparar",
+    "compareLabel": "Comparar {{path}} con la nota",
     "dismiss": "Descartar",
     "skipped_one": "Se omitió {{count}} archivo",
     "skipped_many": "Se omitieron {{count}} archivos",
@@ -151,6 +153,16 @@
       "downloadFailed": "No se pudo descargar",
       "uploadFailed": "No se pudo subir"
     }
+  },
+  "conflictCopy": {
+    "title": "Dos versiones de “{{name}}”",
+    "description": "Esta nota cambió aquí y en otro ordenador antes de que se sincronizaran los cambios, así que Oleafly conservó las dos versiones. Quédate con una. La otra irá a la papelera.",
+    "diffLabel": "Diferencias entre las dos versiones",
+    "loading": "Leyendo las dos versiones…",
+    "readFailed": "No se pudo leer la copia de conflicto.",
+    "resolveFailed": "No se pudo conservar esa versión.",
+    "keepMine": "Conservar la versión de este ordenador",
+    "useCopy": "Usar la versión del otro ordenador"
   },
   "confirm": {
     "removeTitle": "¿Quitar {{name}} de {{provider}}?",
@@ -221,6 +233,81 @@
     "pathStyle": "Usar direcciones de estilo de ruta",
     "pathStyleHint": "MinIO y la mayoría de los servidores autoalojados lo necesitan."
   },
+  "backups": {
+    "title": "Copias de seguridad",
+    "none": "Todavía no hay copias de seguridad",
+    "last": "Última copia {{time}} · {{contents}} · {{size}}",
+    "notes_one": "{{count}} nota",
+    "notes_many": "{{count}} notas",
+    "notes_other": "{{count}} notas",
+    "projects_one": "{{count}} proyecto",
+    "projects_many": "{{count}} proyectos",
+    "projects_other": "{{count}} proyectos",
+    "running": "Haciendo la copia de seguridad",
+    "failed": "La última copia de seguridad no terminó. {{reason}}",
+    "backUpNow": "Hacer una copia ahora",
+    "auto": {
+      "label": "Hacer copias automáticamente",
+      "description": "Guarda copias con fecha de tus notas en tu {{provider}}. Las ediciones y eliminaciones posteriores, incluso las que se sincronizan, no las afectan."
+    },
+    "every": {
+      "label": "Frecuencia",
+      "description": "Cada copia solo sube lo que cambió desde la anterior.",
+      "options": {
+        "6": "Cada 6 horas",
+        "24": "Cada día",
+        "168": "Cada semana"
+      }
+    },
+    "keep": {
+      "label": "Conservar",
+      "description": "Las copias más antiguas se eliminan de tu {{provider}} para ahorrar espacio.",
+      "option_one": "La última copia",
+      "option_many": "Las últimas {{count}} copias",
+      "option_other": "Las últimas {{count}} copias"
+    },
+    "includeProjects": {
+      "label": "Incluir proyectos",
+      "description": "Los proyectos ya se sincronizan con sus puntos de control. Activa esta opción para guardar también copias con fecha de ellos. La primera copia de un proyecto grande puede tardar un rato y ocupar mucho espacio."
+    },
+    "list": {
+      "title": "Copias de seguridad en tu {{provider}}",
+      "label": "Copias de seguridad",
+      "loading": "Leyendo las copias de seguridad",
+      "failed": "No se pudieron leer las copias de seguridad. {{reason}}",
+      "empty": "Todavía no hay copias de seguridad en tu {{provider}}."
+    },
+    "row": {
+      "thisComputer": "Este ordenador",
+      "manual": "Manual",
+      "restore": "Restaurar",
+      "restoreLabel": "Restaurar la copia del {{date}}"
+    },
+    "restore": {
+      "title": "Restaurar la copia del {{date}}",
+      "description": "Restaurar nunca reemplaza lo que tienes. Una nota o un proyecto que sigue aquí vuelve como una copia junto al original, para que puedas comparar los dos.",
+      "loading": "Leyendo la copia de seguridad",
+      "loadFailed": "No se pudo leer esta copia de seguridad. {{reason}}",
+      "search": "Buscar en esta copia",
+      "clearSearch": "Borrar la búsqueda",
+      "noMatch": "Nada de esta copia coincide.",
+      "listLabel": "Notas y proyectos de esta copia",
+      "here": "Sigue aquí",
+      "missing": "No está en este ordenador",
+      "restored": "Restaurado",
+      "restoredCopy": "Restaurado como copia",
+      "files_one": "{{count}} archivo",
+      "files_many": "{{count}} archivos",
+      "files_other": "{{count}} archivos",
+      "one": "Restaurar",
+      "oneLabel": "Restaurar {{name}}",
+      "allMissing_one": "Restaurar el que falta",
+      "allMissing_many": "Restaurar los {{count}} que faltan",
+      "allMissing_other": "Restaurar los {{count}} que faltan",
+      "nothingMissing": "No falta nada",
+      "copyName": "(restauración del {{date}})"
+    }
+  },
   "errors": {
     "clock_skew": "El reloj de este ordenador está desajustado, así que {{provider}} no acepta peticiones desde él. Pon la fecha y la hora correctas para seguir sincronizando.",
     "code_invalid": "Ese código no funcionó. Inténtalo de nuevo.",
@@ -249,6 +336,8 @@
     "sign_in_timeout": "El inicio de sesión tardó demasiado. Inténtalo de nuevo.",
     "too_many_files": "Este proyecto tiene más de 100 000 archivos. Son demasiados para sincronizar.",
     "traffic_limit": "Tu {{provider}} alcanzó el límite de subidas. Los cambios nuevos se quedan en este ordenador hasta que {{provider}} vuelva a permitir subidas.",
-    "verify_failed": "Un archivo de {{provider}} no coincidía con lo que Oleafly esperaba, así que no se tocó. La sincronización lo volverá a intentar."
+    "verify_failed": "Un archivo de {{provider}} no coincidía con lo que Oleafly esperaba, así que no se tocó. La sincronización lo volverá a intentar.",
+    "backup_missing": "Esta copia de seguridad ya no está en tu {{provider}}.",
+    "backup_label": "Oleafly no pudo poner nombre a la copia restaurada."
   }
 }

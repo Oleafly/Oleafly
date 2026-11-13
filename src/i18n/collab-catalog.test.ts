@@ -54,6 +54,10 @@ const ERROR_CODES = [
   "account_storage_full",
   "too_many_projects",
   "too_many_uploads",
+  "public_notes_off",
+  "too_many_pages",
+  "page_too_large",
+  "page_taken_down",
 ];
 const CHECKS = ["reachable", "https", "protocol", "webSocket", "signInProviders", "email", "clock"];
 const STATUSES = ["pass", "fail", "info", "skipped"];
@@ -91,6 +95,10 @@ const EVENT_KINDS = [
   "projectCommentsOff",
   "projectRejoinRefused",
   "commentsChangedWhileOff",
+  "notePublished",
+  "noteUnpublished",
+  "noteTakenDown",
+  "noteRestored",
   "guestInvited",
   "guestInvitationApproved",
   "guestInvitationDeclined",
@@ -104,6 +112,7 @@ const RUNTIME_SETTINGS = [
   "directoryVisible",
   "directoryShowsEmail",
   "linkSharingAllowed",
+  "publicNotesAllowed",
   "accessLogsAllowed",
   "emailNotifications",
 ];

@@ -72,6 +72,13 @@ describe("Markdown link destinations", () => {
   it("still refuses script links", () => {
     expect(linksIn("[x](javascript:alert(1)) [y](JAVASCRIPT:alert(1))")).toEqual([]);
   });
+
+  it("keeps links to notes and projects and writes them back unchanged", () => {
+    const body = "See [Masking](oleafly://note/0b6e-41_a) and [Paper](OLEAFLY://project/p1/).";
+    expect(linksIn(body)).toEqual(["oleafly://note/0b6e-41_a", "OLEAFLY://project/p1/"]);
+    expect(serializeMarkdownBody(parseMarkdownBody(body).doc)).toBe(body);
+    expect(linksIn("[a](oleafly://template/x/y) [b](oleafly://note/a/b) [c](oleafly://note/a.b)")).toEqual([]);
+  });
 });
 
 describe("links on the app's own origin in Visual mode", () => {

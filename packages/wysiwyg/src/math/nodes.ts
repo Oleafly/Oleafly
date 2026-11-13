@@ -1,5 +1,7 @@
-import { Node, mergeAttributes, type NodeViewRenderer } from "@tiptap/core";
+import { InputRule, Node, mergeAttributes, type NodeViewRenderer } from "@tiptap/core";
+import { NodeSelection } from "@tiptap/pm/state";
 import type { MarkdownNodeSpec } from "tiptap-markdown";
+import { writeVerbatim } from "../markdown/table";
 import { wysiwygMessage } from "../messages";
 import type { MathRenderPort } from "../options";
 import {
@@ -9,7 +11,7 @@ import {
   openSelectedSourceEditor,
   updateNodeAttribute,
 } from "../source-editing";
-import { mathRenderInput, splitMathSource } from "./source";
+import { mathNodeJSON, mathRenderInput, splitMathSource } from "./source";
 
 export interface MathNodeOptions {
   renderMath: MathRenderPort | null;
@@ -116,11 +118,50 @@ function mathNodeView(display: boolean, options: MathNodeOptions): NodeViewRende
   };
 }
 
+const TYPED_INLINE = /(?<![\\$])\$[^\s$][^$\n]*\$$/u;
+const TYPED_DISPLAY = /^\$\$$/u;
+const DISPLAY_PLACEHOLDER = "$$x^2$$";
+
+function typedInlineMath(): InputRule {
+  return new InputRule({
+    find: TYPED_INLINE,
+    handler: ({ state, range, match }) => {
+      const source = match[0];
+      const node = mathNodeJSON(source);
+      const before = source.at(-2) ?? "";
+      const after = state.doc.textBetween(range.to, Math.min(range.to + 1, state.doc.resolve(range.to).end()));
+      const code = state.schema.marks.code;
+      if (node?.type !== "mathInline" || /\s/u.test(before) || /\d/u.test(after)) return null;
+      if (code && state.doc.rangeHasMark(range.from, range.to, code)) return null;
+      state.tr.replaceWith(range.from, range.to, state.schema.nodeFromJSON(node));
+    },
+  });
+}
+
+function typedDisplayMath(): InputRule {
+  return new InputRule({
+    find: TYPED_DISPLAY,
+    handler: ({ state, range }) => {
+      const $from = state.doc.resolve(range.from);
+      const node = mathNodeJSON(DISPLAY_PLACEHOLDER);
+      if (!node || $from.parent.type.name !== "paragraph" || $from.parent.content.size !== range.to - range.from) return null;
+      const start = $from.before();
+      state.tr.replaceWith(start, $from.after(), state.schema.nodeFromJSON(node));
+      state.tr.setSelection(NodeSelection.create(state.tr.doc, start));
+    },
+  });
+}
+
 function markdownSpec(block: boolean): MarkdownNodeSpec {
   return {
     serialize(state, node) {
-      state.write(String(node.attrs.source ?? ""));
-      if (block) state.closeBlock(node);
+      const source = String(node.attrs.source ?? "");
+      if (!block) {
+        writeVerbatim(state, source);
+        return;
+      }
+      state.write(source);
+      state.closeBlock(node);
     },
   };
 }
@@ -158,6 +199,10 @@ export const MathInline = Node.create<MathNodeOptions>({
 
   addKeyboardShortcuts() {
     return { Enter: () => openSelectedSourceEditor(this.editor.view, this.name) };
+  },
+
+  addInputRules() {
+    return [typedInlineMath()];
   },
 
   addNodeView() {
@@ -198,6 +243,10 @@ export const MathDisplay = Node.create<MathNodeOptions>({
 
   addKeyboardShortcuts() {
     return { Enter: () => openSelectedSourceEditor(this.editor.view, this.name) };
+  },
+
+  addInputRules() {
+    return [typedDisplayMath()];
   },
 
   addNodeView() {

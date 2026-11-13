@@ -133,7 +133,7 @@ test("dock's Search button is gated on having at least one project", async ({ ta
   if (!hasProjects) {
     await expect(tauriPage.locator('[data-testid="open-search"]')).toBeHidden();
     await createBlankProject(tauriPage, `E2E Home Nav ${Date.now().toString(36)}`);
-    await tauriPage.evaluate(`(() => { const b = document.querySelector('[title="Back to library"]'); if (b) b.click(); return true; })()`);
+    await tauriPage.evaluate(`(() => { const b = document.querySelector('[data-toolbar-part="home"][aria-label="Home"]'); if (b) b.click(); return true; })()`);
     await expect(tauriPage.getByTestId("library")).toBeVisible();
   }
   await expect(tauriPage.locator('[data-testid="open-search"]')).toBeVisible();

@@ -319,6 +319,7 @@
   },
   "mcp": {
     "deniedByRules": "Afvist af en deny-regel i approvals.toml",
+    "createTodaySummary": "Opret dagens note »{{title}}«",
     "openProjectSummary": "Åbn projektet {{id}}",
     "rulesUnreadable": "Afvist, fordi approvals.toml ikke kunne læses",
     "useToolSummary": "Brug {{tool}} fra MCP-serveren {{server}}"
@@ -341,6 +342,7 @@
   },
   "mermaid": {
     "diagram": "Diagram",
+    "remoteBlocked": "Diagrammet blev ikke tegnet, fordi det indlæser billeder eller typografier fra internettet.",
     "renderFailed": "Diagrammet kunne ikke gengives.",
     "rendering": "Gengiver diagram"
   },

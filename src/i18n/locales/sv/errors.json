@@ -220,6 +220,10 @@
     "warning_other": "{{text}}",
     "warning_references_unnumbered": "Vissa referenser har inget nummer än. Kompilera dokumentet och exportera sedan igen."
   },
+  "tools": {
+    "conversion_failed": "Pandoc kunde inte konvertera det här dokumentet.",
+    "pandoc_missing": "Pandoc är inte tillgängligt. Reparera det under Inställningar > Motorer > Markdown och försök sedan igen."
+  },
   "git": {
     "access_denied": "{{host}} nekade åtkomst till det här repositoriet. Kontrollera att ditt konto har åtkomst till det. Om organisationen använder enkel inloggning (SSO) måste du först godkänna din inloggning för den.",
     "access_denied_account": "{{host}} nekade {{account}} åtkomst till det här repositoriet. Kontrollera att kontot kan använda det. Om organisationen använder enkel inloggning (SSO) måste du först godkänna din inloggning för den.",
@@ -268,7 +272,6 @@
     "tls_failed": "Oleafly kunde inte verifiera certifikatet för {{host}}. Om din organisation har en egen certifikatutfärdare lägger du till dess certifikatfil i kontot i Inställningar.",
     "tracked_secret_files": "Publiceringen stoppades eftersom filer i projektets Git-historik kan innehålla nycklar eller lösenord: {{files}}"
   },
-  "approvals": {},
   "trust": {
     "git": "Lita på den här mappen för att använda versionshantering.",
     "repository": "Lita på repositoriet {{name}} för att använda versionshantering här.",
@@ -405,20 +408,6 @@
       "npm_timed_out": "Installationen från {{host}} tog för lång tid och stoppades. Kontrollera nätverksanslutningen, proxyn eller inställningen för npm-registret."
     }
   },
-  "typst_toolchain": {
-    "unknown_version": "Oleafly erbjuder inte Typst {{version}}, och ingen Typst på den här datorn har den versionen.",
-    "busy": "Typst {{version}} installeras fortfarande. Försök igen när det är klart.",
-    "remove_default": "Typst {{version}} är din standardversion. Välj en annan standard innan du tar bort den.",
-    "remove_not_downloaded": "Oleafly kan bara ta bort Typst-versioner som programmet själv har laddat ner, och Typst {{version}} har inte laddats ner av Oleafly.",
-    "not_offered": "Typst {{version}} kan inte laddas ner för den här datorn.",
-    "install_unverified": "Typst {{version}} laddades ner men klarade inte integritetskontrollen. Försök installera den igen.",
-    "not_typst_project": "Bara Typst-projekt har en Typst-version.",
-    "update_waits": "Vänta tills Typst har installerats klart innan du uppdaterar Oleafly."
-  },
-  "tools": {
-    "conversion_failed": "Pandoc kunde inte konvertera det här dokumentet.",
-    "pandoc_missing": "Pandoc är inte tillgängligt. Reparera det under Inställningar > Motorer > Markdown och försök sedan igen."
-  },
   "font_pack": {
     "download_failed": "Oleafly kunde inte ladda ner {{file}}. Kontrollera anslutningen och försök igen.",
     "save_failed": "Oleafly kunde inte spara {{file}} i sin typsnittsmapp."
@@ -440,6 +429,16 @@
     "missing_glyphs_sealed": "Det här projektet använder bara projekttypsnitt, och inget av dem har {{sample}}, så PDF-filen visar tomma rutor för de här tecknen. Lägg till ett typsnitt som har dem i projektets typsnittsmapp, eller välj {{systemFonts}} och {{standardBuild}} för det här projektet.",
     "live_preview_stopped": "Typst slutade bevaka projektet, så den levande förhandsvisningen avslutades. Kompilera igen för att starta om den.",
     "live_preview_timeout": "Typst blev inte klar med kompileringen i tid, så den levande förhandsvisningen avslutades. Kompilera igen för att starta om den."
+  },
+  "typst_toolchain": {
+    "unknown_version": "Oleafly erbjuder inte Typst {{version}}, och ingen Typst på den här datorn har den versionen.",
+    "busy": "Typst {{version}} installeras fortfarande. Försök igen när det är klart.",
+    "remove_default": "Typst {{version}} är din standardversion. Välj en annan standard innan du tar bort den.",
+    "remove_not_downloaded": "Oleafly kan bara ta bort Typst-versioner som programmet själv har laddat ner, och Typst {{version}} har inte laddats ner av Oleafly.",
+    "not_offered": "Typst {{version}} kan inte laddas ner för den här datorn.",
+    "install_unverified": "Typst {{version}} laddades ner men klarade inte integritetskontrollen. Försök installera den igen.",
+    "not_typst_project": "Bara Typst-projekt har en Typst-version.",
+    "update_waits": "Vänta tills Typst har installerats klart innan du uppdaterar Oleafly."
   },
   "typst_packages": {
     "index_offline": "Du är offline och paketlistan från Typst Universe har inte laddats ner än.",
@@ -597,5 +596,49 @@
     "needs_permissions": "Cua Driver väntar på sina macOS-behörigheter. Slå på Hjälpmedel och Skärminspelning för CuaDriver i Systeminställningar och försök igen.",
     "task_unattended": "Uppgifter som körs enligt schema eller efter att Oleafly har stängts kan inte använda skrivbordsappar.",
     "main_window": "Ändra Computer Use från huvudfönstret."
+  },
+  "notes": {
+    "typst_empty": "Det här Typst-blocket är tomt.",
+    "typst_too_large": "Det här Typst-blocket är för stort för att förhandsvisas.",
+    "typst_image_too_large": "Det här Typst-blocket ritar en bild som är för stor för att visas.",
+    "typst_no_svg": "Typst ritade ingen SVG.",
+    "typst_failed": "Typst kunde inte kompilera det här blocket.",
+    "typst_line": "Rad {{line}}: {{message}}",
+    "tikz_empty": "Den här ritningen är tom.",
+    "tikz_too_large": "Den här ritningen är för stor för att förhandsvisas.",
+    "tikz_failed": "LaTeX kunde inte kompilera den här ritningen.",
+    "tikz_timeout": "LaTeX tog för lång tid på den här ritningen, så Oleafly stoppade det.",
+    "tikz_line": "Rad {{line}}: {{message}}",
+    "tikz_preamble_line": "Rad {{line}} i ingressen för TikZ i Inställningar: {{message}}",
+    "tikz_image_too_large": "Den här ritningen ger en bild som är för stor för att visas.",
+    "tikz_convert_failed": "Oleafly kunde inte göra om ritningen till en bild.",
+    "tikz_setup_failed": "Oleafly kunde inte förbereda LaTeX för den här ritningen.",
+    "tikz_unconfined": "Oleafly kan inte köra LaTeX i en sandlåda på den här datorn, så TikZ ritas inte här. På Linux löser du det genom att installera bubblewrap.",
+    "d2_not_started": "D2-renderaren startade inte.",
+    "d2_failed": "D2-renderaren misslyckades utan att säga varför.",
+    "d2_stopped": "D2-renderaren kraschade.",
+    "import_folder_unreadable": "Oleafly kunde inte läsa den här mappen.",
+    "import_too_many_files": "Mappen innehåller för många filer för att kunna importeras. Välj en mindre mapp.",
+    "import_files_in_library": "Välj filer utanför Oleaflys bibliotek.",
+    "import_no_space": "Det finns inte tillräckligt med diskutrymme för den här importen. Den behöver ungefär {{size}} GB. Frigör utrymme och försök igen.",
+    "import_stopped": "Importen stoppade oväntat. Försök igen.",
+    "import_invalid_run": "Den här importen har ett ogiltigt ID. Försök igen.",
+    "import_running": "Den här importen körs redan.",
+    "export_note_missing": "Anteckningen finns inte längre i ditt bibliotek.",
+    "export_too_many_titles": "För många anteckningar har samma titel. Byt namn på några av dem och exportera sedan igen.",
+    "export_attachments_failed": "Oleafly kunde inte skapa mappen för bilagor.",
+    "export_copy_failed": "Oleafly kunde inte kopiera {{name}}.",
+    "export_write_failed": "Oleafly kunde inte skriva {{name}}.",
+    "export_stopped": "Exporten stoppade oväntat. Försök igen.",
+    "folder_in_library": "Välj en mapp utanför Oleaflys bibliotek.",
+    "folder_unopenable": "Oleafly kunde inte öppna mappen.",
+    "folder_not_folder": "Oleafly kan inte använda den platsen. Välj en mapp.",
+    "folder_create_failed": "Oleafly kunde inte skapa mappen.",
+    "folder_no_free_name": "Oleafly hittade inget ledigt mappnamn där. Välj en annan mapp.",
+    "picker_closed": "Väljaren stängdes oväntat. Försök igen.",
+    "folder_not_local": "Välj en mapp på den här datorn.",
+    "files_not_local": "Välj filer på den här datorn.",
+    "related_missing": "Projektet finns inte längre i ditt bibliotek, så anteckningen kan inte länkas till det.",
+    "related_is_note": "En anteckning kan bara länkas till ett projekt, inte till en annan anteckning."
   }
 }

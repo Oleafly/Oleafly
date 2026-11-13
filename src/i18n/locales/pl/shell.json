@@ -323,6 +323,36 @@
       "keywords": "pdf podgląd pokaż ukryj podziel tylko edytor",
       "label": "Przełącz podgląd PDF"
     },
+    "swapEditorPreview": {
+      "keywords": "zamień edytor podgląd pdf strony kolejność paneli układ",
+      "label": "Zamień miejscami edytor i podgląd"
+    },
+    "movePaneToEdge": {
+      "bottom": "Przenieś {{pane}} do dolnej krawędzi",
+      "keywords": "przenieś panel krawędź zadokuj strona podziel stos układ",
+      "left": "Przenieś {{pane}} do lewej krawędzi",
+      "right": "Przenieś {{pane}} do prawej krawędzi",
+      "top": "Przenieś {{pane}} do górnej krawędzi"
+    },
+    "paneNames": {
+      "assistant": "asystenta",
+      "editor": "edytor",
+      "pdf": "podgląd",
+      "sidebar": "panel boczny",
+      "terminal": "terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "resetuj układ paneli kolejność przenieś panele panel boczny asystent edytor podgląd terminal domyślny",
+      "label": "Resetuj rozmieszczenie paneli w każdym projekcie"
+    },
+    "saveLayout": {
+      "keywords": "zapisz układ własny rozmieszczenie panele rozmiary nazwa",
+      "label": "Zapisz bieżący układ"
+    },
+    "applySavedLayout": {
+      "keywords": "układ zapisany własny rozmieszczenie panele przełącz zastosuj",
+      "label": "Układ: {{name}}"
+    },
     "zoomIn": {
       "keywords": "powiększ większe",
       "label": "Powiększ"
@@ -350,6 +380,20 @@
     "insertFileLink": {
       "label": "Wstaw odsyłacz do pliku",
       "keywords": "odsyłacz plik ścieżka notatka"
+    },
+    "projectNotes": {
+      "open": "Otwórz notatki tego projektu",
+      "newShared": "Nowa notatka projektu",
+      "newPersonal": "Nowa notatka osobista dla tego projektu",
+      "keywords": "notatki badania powiązane projekt"
+    },
+    "notes": {
+      "label": "Otwórz Notatki",
+      "keywords": "notatki notatka notatnik wiedza pomysły badania dziennik notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Szybka notatka",
+      "keywords": "szybka notatka zanotuj notatka skrzynka dzisiaj quick capture jot note inbox today"
     }
   },
   "community": {
@@ -454,6 +498,11 @@
   },
   "datePicker": {
     "placeholder": "Wybierz datę"
+  },
+  "monthPicker": {
+    "label": "Wybierz miesiąc",
+    "previousYear": "Poprzedni rok",
+    "nextYear": "Następny rok"
   },
   "devMenu": {
     "inspect": "Zbadaj",
@@ -649,7 +698,6 @@
   "home": {
     "ariaLabel": "Ekran główny",
     "label": "Biblioteka",
-    "title": "Powrót do biblioteki",
     "tooltip": "Wróć do biblioteki projektów"
   },
   "importDestination": {
@@ -677,6 +725,7 @@
     "groups": {
       "action": "Działanie",
       "documents": "Dokumenty",
+      "notes": "Notatki",
       "references": "Odwołania"
     },
     "label": "Szukaj",
@@ -684,11 +733,13 @@
     "openReferences": "Otwórz odwołania tego projektu",
     "placeholder": "Szukaj projektów, dokumentów lub wpisz / dla poleceń…",
     "placeholderDocuments": "Szukaj wewnątrz dokumentów…",
+    "placeholderNotes": "Szukaj w notatkach i ich blokach…",
     "placeholderProjects": "Szukaj projektów według nazwy, silnika, rodzaju, daty lub metadanych…",
     "referencesNeedProject": "Otwórz najpierw projekt, aby przeglądać jego odwołania.",
     "slash": {
       "create": "otwiera galerię szablonów",
       "docs": "szuka wewnątrz dokumentów",
+      "notes": "szuka w notatkach i ich blokach",
       "projects": "szuka w Twoich projektach",
       "refs": "otwiera odwołania tego projektu",
       "settings": "otwiera ustawienia",
@@ -797,7 +848,8 @@
     "research": "Badawczy obszar roboczy",
     "search": "Szukaj w projekcie",
     "sourceControl": "Kontrola wersji",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notatki"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} na {{host}}",
@@ -919,7 +971,8 @@
           "folders_other": "{{count}} folderu",
           "images": "Obrazy",
           "pdfs": "Pliki PDF",
-          "projects": "Projekty"
+          "projects": "Projekty",
+          "projectsAndNotes": "Projekty i notatki"
         },
         "subtitle": "Projekty, podglądy, historia i dane aplikacji",
         "title": "Zajętość miejsca",
@@ -963,6 +1016,10 @@
       "latexTools": {
         "description": "Pokazuje galerię Narzędzi Oleafly i poszczególne narzędzia (import PDF, wzory, tabele, BibTeX, wyszukiwanie zespołów i literatury, terminy) wraz z ich poleceniami z ukośnikiem. Domyślnie wyłączone, bo funkcja jest w wersji beta.",
         "label": "Narzędzia LaTeX"
+      },
+      "notes": {
+        "description": "Dodaje Notatki do doku ekranu głównego. Notatka to plik Markdown z diagramami, wykresami i wzorami, który możesz edytować Ty i Twoi agenci. Notatki nie trafiają do biblioteki projektów, a każdą notatkę można powiązać z projektem. Domyślnie wyłączone, dopóki funkcja jest w wersji beta.",
+        "label": "Notatki"
       },
       "researchTasks": {
         "description": "Agent pracuje samodzielnie w kopii projektu, a zmiany zostawia Tobie do przejrzenia. Bardzo niestabilne: uruchomienia mogą się zawiesić, zakończyć błędem albo zostawić zmiany do ręcznego uporządkowania, a przez cały czas zużywają limit Twojego dostawcy. Dodaje do Ustawień sekcję Badania. Wyłączenie zatrzymuje wszystkie trwające zadania. Domyślnie wyłączone. Włącz na własne ryzyko.",
@@ -1317,6 +1374,24 @@
       "split": "Widok dzielony"
     },
     "moreActions": "Więcej działań",
+    "resetPaneLayout": "Resetuj rozmieszczenie paneli",
+    "resetPaneLayoutScope": "Wszystkie projekty",
+    "savedLayouts": {
+      "close": "Zamknij",
+      "delete": "Usuń",
+      "deleteConfirm": "Usunąć układ „{{name}}”?",
+      "limit": "Limit układów: {{count}}. Usuń jeden, aby zapisać kolejny.",
+      "manage": "Zarządzaj układami",
+      "name": "Nazwa układu",
+      "rename": "Zmień nazwę",
+      "renameTitle": "Zmień nazwę układu",
+      "replace": "Zastąp",
+      "replaceConfirm": "Układ o nazwie „{{name}}” już istnieje. Zastąpić go?",
+      "save": "Zapisz bieżący układ",
+      "saveButton": "Zapisz",
+      "saveTitle": "Zapisz układ",
+      "update": "Zaktualizuj do bieżącego"
+    },
     "renameFailed": "Nie udało się zmienić nazwy projektu."
   },
   "tour": {

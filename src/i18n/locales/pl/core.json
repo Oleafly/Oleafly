@@ -329,6 +329,7 @@
   },
   "mcp": {
     "deniedByRules": "Odrzucono przez regułę deny w approvals.toml",
+    "createTodaySummary": "Utwórz dzisiejszą notatkę „{{title}}”",
     "openProjectSummary": "Otwórz projekt {{id}}",
     "rulesUnreadable": "Odrzucono, bo nie udało się odczytać pliku approvals.toml",
     "useToolSummary": "Użyj narzędzia {{tool}} z serwera MCP {{server}}"
@@ -351,6 +352,7 @@
   },
   "mermaid": {
     "diagram": "Diagram",
+    "remoteBlocked": "Ten diagram nie został wyrenderowany, ponieważ wczytuje obrazy lub style z internetu.",
     "renderFailed": "Nie można wyrenderować diagramu.",
     "rendering": "Renderowanie diagramu"
   },

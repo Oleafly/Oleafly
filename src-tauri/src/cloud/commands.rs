@@ -712,17 +712,44 @@ async fn active_store(account: &ConnectedAccount) -> Result<AnyStore, String> {
     }
 }
 
+pub(crate) struct BackupTarget {
+    pub(crate) store: AnyStore,
+    pub(crate) device: String,
+    pub(crate) device_name: String,
+    pub(crate) account_id: String,
+}
+
+pub(crate) async fn backup_target() -> Result<BackupTarget, String> {
+    let (file, account) = require_reachable()?;
+    let store = active_store(&account).await?;
+    Ok(BackupTarget {
+        store,
+        device: file.device_id.to_string(),
+        device_name: file.device_name,
+        account_id: account.account_id,
+    })
+}
+
+pub(crate) fn backup_failed(error: &RoundError, account_id: &str) {
+    note_error(error, account_id);
+}
+
 fn connected_account() -> Result<(ConnectionFile, ConnectedAccount), String> {
     let file = read_connection()?.ok_or_else(not_connected)?;
     let account = file.account.clone().ok_or_else(not_connected)?;
     Ok((file, account))
 }
 
-fn require_usable() -> Result<(ConnectionFile, ConnectedAccount), String> {
+fn require_reachable() -> Result<(ConnectionFile, ConnectedAccount), String> {
     let (file, account) = connected_account()?;
     if account.revoked {
         return Err(AppError::new("cloud.revoked").into());
     }
+    Ok((file, account))
+}
+
+fn require_usable() -> Result<(ConnectionFile, ConnectedAccount), String> {
+    let (file, account) = require_reachable()?;
     if !account.enabled {
         return Err(AppError::new("cloud.disabled").into());
     }
@@ -2023,7 +2050,7 @@ pub async fn cloud_remove_remote(cloud_id: String) -> Result<(), String> {
     Ok(())
 }
 
-fn library_has(local_id: &str) -> bool {
+pub(crate) fn library_has(local_id: &str) -> bool {
     crate::paths::projects_root()
         .map(|root| root.join(local_id).join("project.json").is_file())
         .unwrap_or(false)

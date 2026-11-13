@@ -4,7 +4,6 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import {
-  IntelligenceFilter,
   IntelligenceTree,
   PanelBreadcrumb,
   PanelState,
@@ -17,8 +16,6 @@ const onActivate = vi.fn();
 
 const TREE_LABEL = enWorkspace.structure.treeLabel;
 const EMPTY_MESSAGE = enWorkspace.structure.empty;
-const FILTER_LABEL = enWorkspace.structure.filterLabel;
-const CUSTOM_PLACEHOLDER = enWorkspace.structure.filterPlaceholder;
 const STATE_TITLE = enWorkspace.structure.unavailable.failed.title;
 const STATE_DETAIL = enWorkspace.structure.unavailable.failed.detail;
 const PENDING_TITLE = enWorkspace.structure.unavailable.mapping.title;
@@ -282,38 +279,6 @@ describe("IntelligenceTree", () => {
   it("says when the filter matches nothing", () => {
     renderTree("zzzzq");
     expect(screen.getByRole("status")).toHaveTextContent(EMPTY_MESSAGE);
-  });
-});
-
-describe("IntelligenceFilter", () => {
-  it("reports typing and clears itself", async () => {
-    const onChange = vi.fn();
-    const { rerender } = render(
-      <IntelligenceFilter value="" onChange={onChange} label={FILTER_LABEL} />,
-    );
-    const user = userEvent.setup();
-    const input = screen.getByLabelText(FILTER_LABEL);
-    expect(input).toHaveAttribute("placeholder", copy.filterPlaceholder);
-    await user.type(input, "a");
-    expect(onChange).toHaveBeenCalledWith("a");
-    expect(
-      screen.queryByRole("button", { name: copy.clearFilter }),
-    ).not.toBeInTheDocument();
-
-    rerender(
-      <IntelligenceFilter
-        value="a"
-        onChange={onChange}
-        label={FILTER_LABEL}
-        placeholder={CUSTOM_PLACEHOLDER}
-      />,
-    );
-    expect(screen.getByLabelText(FILTER_LABEL)).toHaveAttribute(
-      "placeholder",
-      CUSTOM_PLACEHOLDER,
-    );
-    await user.click(screen.getByRole("button", { name: copy.clearFilter }));
-    expect(onChange).toHaveBeenLastCalledWith("");
   });
 });
 

@@ -39,6 +39,7 @@ const FONT_LABEL = enSettings.appearance.editor.font.label;
 const MONOSPACE = enSettings.appearance.editor.font.monospace;
 const APP_FONT_LABEL = enSettings.appearance.app.font.label;
 const DIALOG_LABEL = "Settings";
+const RESET = "Reset";
 const CLOSE_LABEL = "Close";
 
 function Picker({ use = "editor" }: Readonly<{ use?: SystemFontUse }>) {
@@ -365,5 +366,25 @@ describe("SystemFontPicker", () => {
       `Consolas${MONOSPACE}`,
     ]);
     expect(mocks.invoke).not.toHaveBeenCalled();
+  });
+
+  it("puts an extra control beside the picker when the row has one", () => {
+    mocks.tauri = false;
+    render(
+      <SystemFontSettingsRow
+        testId="font-row"
+        id="font"
+        use="app"
+        label={APP_FONT_LABEL}
+        description="Pick a font"
+        value=""
+        onChange={() => undefined}
+        adornment={<button type="button">{RESET}</button>}
+      />,
+    );
+    const reset = screen.getByRole("button", { name: "Reset" });
+    const picker = screen.getByRole("combobox", { name: APP_FONT_LABEL });
+    expect(reset.parentElement?.contains(picker)).toBe(true);
+    expect(reset.compareDocumentPosition(picker) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

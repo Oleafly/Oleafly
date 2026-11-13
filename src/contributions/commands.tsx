@@ -1,8 +1,13 @@
 import {
   AlignLeft,
+  ArrowDownToLine,
+  ArrowLeftRight,
+  ArrowLeftToLine,
   ArrowRightToLine,
+  ArrowUpToLine,
   Asterisk,
   Bold,
+  Bookmark,
   CaseLower,
   CaseSensitive,
   CaseUpper,
@@ -25,6 +30,7 @@ import {
   List,
   MessageSquareCode,
   Monitor,
+  NotebookPen,
   Moon,
   Package,
   Pencil,
@@ -35,6 +41,7 @@ import {
   RefreshCw,
   RotateCcw,
   Rows3,
+  Save,
   ScanSearch,
   SearchCode,
   Settings,
@@ -66,7 +73,8 @@ import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
 import { useCitationStore } from "@/store/citation";
 import { openMissingCitations, openZoteroUpdates } from "@/features/zotero-actions";
 import { useZoteroLibraryStore } from "@/store/zotero-library";
-import { clearBuildCache } from "@/lib/tauri";
+import { clearBuildCache, quickCaptureOpen } from "@/lib/tauri";
+import { isTauri } from "@tauri-apps/api/core";
 import { getEditorView, insertAtCursor, wrapSelection } from "@/components/editor/cm/controller";
 import {
   closeEnvironmentAtCursor,
@@ -131,15 +139,29 @@ import {
 import {
   openDiagramComposerChooser,
   openHomePage,
+  openNotes,
   openTool,
   openToolsGallery,
 } from "@/features/open-tool";
 import { openFolderWithPicker } from "@/features/open-folder";
+import { logError } from "@/lib/log";
 import { openTypstPackages } from "@/components/typst-packages/open";
 import { openLatexPackages } from "@/components/packages/open";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { toggleZenMode } from "@/lib/zen-mode";
 import { togglePreviewPane } from "@/lib/compile-preview";
+import {
+  PANES,
+  moveChanges,
+  movePaneToEdge,
+  paneLayoutIsDefault,
+  resetPaneLayout,
+  swapEditorAndPreview,
+  usePaneLayoutStore,
+  type PaneId,
+  type Side,
+} from "@/store/pane-layout";
+import { SAVED_LAYOUT_LIMIT, useSavedLayoutsStore } from "@/store/saved-layouts";
 import { zoomApp } from "@/lib/app-zoom";
 import { LAYOUT_PRESET_ICONS } from "@/components/icons/LayoutPresetIcons";
 import { shortcut } from "@/lib/utils";
@@ -181,6 +203,7 @@ const ENGLISH_KEYWORDS = {
   theme: "theme dark light appearance mode",
   generateFigure: "figure diagram draw tikz cetz fletcher typst plot chart illustration",
   diagramComposer: "diagram figure tikz composer draw canvas",
+  notes: "notes notebook knowledge ideas research journal",
   tools: "tools latex pdf equation bibtex table lab search deadlines gallery",
   settings: "settings preferences options",
   clearCache: "clear build cache clean rebuild stale reset aux",
@@ -204,10 +227,26 @@ const ENGLISH_KEYWORDS = {
   closeAssistantTabs: "close editor tabs files assistant ai agent opened",
   zenMode: "zen distraction free focus full screen hide interface minimal writing",
   togglePreview: "pdf preview show hide split editor only layout view",
+  resetPaneLayout: "reset pane layout order move panels sidebar assistant editor preview terminal default",
+  movePaneToEdge: "move pane edge dock side split stack layout",
+  swapEditorPreview: "swap editor preview pdf sides pane order layout",
+  saveLayout: "save layout custom arrangement panes sizes name",
+  applySavedLayout: "layout saved custom arrangement panes switch apply",
   zoomIn: "zoom in bigger larger magnify scale interface window",
   zoomOut: "zoom out smaller shrink scale interface window",
   resetZoom: "reset zoom actual size 100 percent scale interface window",
 } as const;
+
+const PANE_EDGE_ICONS = [
+  ["left", ArrowLeftToLine],
+  ["right", ArrowRightToLine],
+  ["top", ArrowUpToLine],
+  ["bottom", ArrowDownToLine],
+] as const satisfies readonly (readonly [Side, unknown])[];
+
+function paneMovesToEdge(pane: PaneId, side: Side): boolean {
+  return moveChanges(usePaneLayoutStore.getState().layout, pane, { kind: "edge", side });
+}
 
 const runLanguageServiceFormat = (scope: FormatScope) => {
   const view = getEditorView();
@@ -479,6 +518,28 @@ export function registerOmnibarCommands() {
     run: () => openDiagramComposerChooser(),
   });
   registerCommand({
+    id: "omnibar.notes",
+    surfaces: ["omnibar", "palette"],
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.notes.label),
+    keywords: () => `${i18n.t(($) => $.shell.commands.notes.keywords)} ${ENGLISH_KEYWORDS.notes}`,
+    icon: () => <NotebookPen className="size-4" />,
+    order: 21,
+    when: () => useSettingsStore.getState().notes === true,
+    run: () => void openNotes(),
+  });
+  registerCommand({
+    id: "omnibar.notes-quick-capture",
+    surfaces: ["omnibar", "palette"],
+    group: () => i18n.t(($) => $.shell.commandGroups.tools),
+    label: () => i18n.t(($) => $.shell.commands.notesQuickCapture.label),
+    keywords: () => `${i18n.t(($) => $.shell.commands.notesQuickCapture.keywords)} quick capture jot inbox`,
+    icon: () => <NotebookPen className="size-4" />,
+    order: 22,
+    when: () => isTauri() && useSettingsStore.getState().notes === true,
+    run: () => void quickCaptureOpen().catch((error: unknown) => logError("open quick capture", error)),
+  });
+  registerCommand({
     id: "omnibar.tools",
     surfaces: ["omnibar", "palette"],
     group: () => i18n.t(($) => $.shell.commandGroups.tools),
@@ -570,6 +631,58 @@ export function registerPaletteCommands() {
     order: 120,
     when: (ctx) => !!ctx.projectId && useFilesStore.getState().manifestHome === "device",
     run: () => void useFilesStore.getState().saveSettingsToFolder(),
+  });
+  const projectNotesShown = (ctx: AppContext) =>
+    !!ctx.projectId && ctx.projectKind !== "note" && useSettingsStore.getState().notes;
+  palette({
+    id: "palette.project-notes",
+    group: () => i18n.t(($) => $.shell.commandGroups.project),
+    label: () => i18n.t(($) => $.shell.commands.projectNotes.open),
+    keywords: () => `${i18n.t(($) => $.shell.commands.projectNotes.keywords)} notes research linked related project`,
+    icon: () => <NotebookPen className="size-4" />,
+    order: 125,
+    when: projectNotesShown,
+    run: () => {
+      const settings = useSettingsStore.getState();
+      settings.setRailTab("notes");
+      settings.setShowTree(true);
+    },
+  });
+  palette({
+    id: "palette.new-project-note-file",
+    group: () => i18n.t(($) => $.shell.commandGroups.project),
+    label: () => i18n.t(($) => $.shell.commands.projectNotes.newShared),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.projectNotes.keywords)} notes research new create project shared file folder`,
+    icon: () => <NotebookPen className="size-4" />,
+    order: 126,
+    when: projectNotesShown,
+    run: (ctx) => {
+      const projectId = ctx.projectId;
+      if (!projectId) return;
+      void import("@/components/notes/project-note-actions").then(
+        (module) => module.createProjectNoteFile(projectId, ""),
+        (error: unknown) => logError("load project notes", error),
+      );
+    },
+  });
+  palette({
+    id: "palette.new-project-note",
+    group: () => i18n.t(($) => $.shell.commandGroups.project),
+    label: () => i18n.t(($) => $.shell.commands.projectNotes.newPersonal),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.projectNotes.keywords)} notes research new create project personal private mine`,
+    icon: () => <NotebookPen className="size-4" />,
+    order: 127,
+    when: projectNotesShown,
+    run: (ctx) => {
+      const projectId = ctx.projectId;
+      if (!projectId) return;
+      void import("@/components/notes/project-notes").then(
+        (module) => module.startProjectNote(projectId),
+        (error: unknown) => logError("load project notes", error),
+      );
+    },
   });
 
   palette({
@@ -1043,6 +1156,73 @@ export function registerPaletteCommands() {
       togglePreviewPane();
     },
   });
+  for (const pane of PANES) {
+    for (const [side, Icon] of PANE_EDGE_ICONS) {
+      palette({
+        id: `palette.move-${pane}-to-${side}`,
+        group: () => i18n.t(($) => $.shell.commandGroups.settings),
+        label: () =>
+          i18n.t(($) => $.shell.commands.movePaneToEdge[side], {
+            pane: i18n.t(($) => $.shell.commands.paneNames[pane]),
+          }),
+        keywords: () =>
+          `${i18n.t(($) => $.shell.commands.movePaneToEdge.keywords)} ${ENGLISH_KEYWORDS.movePaneToEdge} ${pane}`,
+        icon: () => <Icon className="size-4" />,
+        order: 516,
+        when: (ctx) => !!ctx.projectId && paneMovesToEdge(pane, side),
+        run: () => movePaneToEdge(pane, side),
+      });
+    }
+  }
+  palette({
+    id: "palette.swap-editor-preview",
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
+    label: () => i18n.t(($) => $.shell.commands.swapEditorPreview.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.swapEditorPreview.keywords)} ${ENGLISH_KEYWORDS.swapEditorPreview}`,
+    icon: () => <ArrowLeftRight className="size-4" />,
+    order: 516,
+    when: (ctx) => !!ctx.projectId,
+    run: () => swapEditorAndPreview(),
+  });
+  palette({
+    id: "palette.reset-pane-layout",
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
+    label: () => i18n.t(($) => $.shell.commands.resetPaneLayout.label),
+    keywords: () =>
+      `${i18n.t(($) => $.shell.commands.resetPaneLayout.keywords)} ${ENGLISH_KEYWORDS.resetPaneLayout}`,
+    icon: () => <RotateCcw className="size-4" />,
+    order: 516,
+    when: (ctx) => !!ctx.projectId && !paneLayoutIsDefault(),
+    run: () => resetPaneLayout(),
+  });
+  palette({
+    id: "palette.save-layout",
+    group: () => i18n.t(($) => $.shell.commandGroups.settings),
+    label: () => i18n.t(($) => $.shell.commands.saveLayout.label),
+    keywords: () => `${i18n.t(($) => $.shell.commands.saveLayout.keywords)} ${ENGLISH_KEYWORDS.saveLayout}`,
+    icon: () => <Save className="size-4" />,
+    order: 516,
+    when: (ctx) => !!ctx.projectId,
+    run: () => useSavedLayoutsStore.getState().startNaming(null),
+  });
+  for (let slot = 0; slot < SAVED_LAYOUT_LIMIT; slot += 1) {
+    const saved = () => useSavedLayoutsStore.getState().layouts[slot];
+    palette({
+      id: `palette.saved-layout-${slot}`,
+      group: () => i18n.t(($) => $.shell.commandGroups.settings),
+      label: () => i18n.t(($) => $.shell.commands.applySavedLayout.label, { name: saved()?.name ?? "" }),
+      keywords: () =>
+        `${i18n.t(($) => $.shell.commands.applySavedLayout.keywords)} ${ENGLISH_KEYWORDS.applySavedLayout}`,
+      icon: () => <Bookmark className="size-4" />,
+      order: 516,
+      when: (ctx) => !!ctx.projectId && saved() !== undefined,
+      run: () => {
+        const layout = saved();
+        if (layout) useSavedLayoutsStore.getState().apply(layout.id);
+      },
+    });
+  }
   for (const [id, direction, Icon, order] of [
     ["zoomIn", 1, ZoomIn, 517],
     ["zoomOut", -1, ZoomOut, 518],

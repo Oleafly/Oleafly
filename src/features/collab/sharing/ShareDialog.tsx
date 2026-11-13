@@ -1,16 +1,16 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CopyPlus, Eye, Plus, Share2, X } from "lucide-react";
+import { CopyPlus, Eye, Share2, X } from "lucide-react";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/empty";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatNumber } from "@/lib/intl";
-import { isFolderProject } from "@/lib/library-projects";
+import { isFolderProject, isNoteProject } from "@/lib/library-projects";
 import type {
   CollabServer,
   CollabShareCheck,
@@ -23,7 +23,6 @@ import {
   onCollabShareProgress,
 } from "@/lib/tauri-collab";
 import { useFilesStore } from "@/store/files";
-import { useSettingsStore } from "@/store/settings";
 import { AddServerDialog } from "../AddServerDialog";
 import { OLEAFLY_SERVER } from "../default-server";
 import { collabErrorCode, collabErrorText } from "../errors";
@@ -32,6 +31,9 @@ import { useCollabStore } from "../store";
 import { syncShareChange } from "./after-change";
 import { copyThenShare } from "./copy-then-share";
 import { ManageSharing } from "./ManageSharing";
+import { NotePublishPanel } from "./NotePublishPanel";
+import { ProjectNotesShareLine } from "./ProjectNotesShareLine";
+import { NoServers, openCollaborationSettings, ServerField } from "./server-choice";
 
 type CheckState =
   | { kind: "checking" }
@@ -42,13 +44,6 @@ type UploadState =
   | { kind: "idle" }
   | { kind: "sharing"; done: number; total: number; reported: boolean }
   | { kind: "failed"; message: string; elsewhere: boolean };
-
-function openCollaborationSettings() {
-  useShareDialog.getState().close();
-  const settings = useSettingsStore.getState();
-  settings.setSettingsInitialSection("collaboration");
-  settings.setSettingsOpen(true);
-}
 
 function PathList({ paths }: Readonly<{ paths: readonly string[] }>) {
   return (
@@ -62,29 +57,7 @@ function PathList({ paths }: Readonly<{ paths: readonly string[] }>) {
   );
 }
 
-function NoServers({ onAddOleafly }: Readonly<{ onAddOleafly: (() => void) | null }>) {
-  const { t } = useTranslation(["collab"]);
-  return (
-    <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">
-        {onAddOleafly ? t(($) => $.collab.share.noServersYet) : t(($) => $.collab.share.noServers)}
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {onAddOleafly ? (
-          <Button type="button" onClick={onAddOleafly}>
-            <Plus aria-hidden />
-            {t(($) => $.collab.share.addOleafly)}
-          </Button>
-        ) : null}
-        <Button type="button" variant="outline" onClick={openCollaborationSettings}>
-          {t(($) => $.collab.share.openSettings)}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function CheckSummary({ check, server }: Readonly<{ check: CollabShareCheck; server: string }>) {
+function CheckSummary({ check, server, note }: Readonly<{ check: CollabShareCheck; server: string; note: boolean }>) {
   const { t } = useTranslation(["collab"]);
   return (
     <div className="space-y-3">
@@ -115,7 +88,9 @@ function CheckSummary({ check, server }: Readonly<{ check: CollabShareCheck; ser
       ) : null}
       {check.excluded.length > 0 ? (
         <div className="space-y-1.5">
-          <p className="text-xs text-muted-foreground">{t(($) => $.collab.share.excluded)}</p>
+          <p className="text-xs text-muted-foreground">
+            {note ? t(($) => $.collab.share.noteExcluded) : t(($) => $.collab.share.excluded)}
+          </p>
           <PathList paths={check.excluded} />
         </div>
       ) : null}
@@ -123,41 +98,6 @@ function CheckSummary({ check, server }: Readonly<{ check: CollabShareCheck; ser
         <Eye aria-hidden className="mt-0.5 size-3.5 shrink-0 text-primary" />
         <span>{t(($) => $.collab.share.disclosure, { server })}</span>
       </p>
-    </div>
-  );
-}
-
-function ServerField({
-  servers,
-  value,
-  disabled,
-  onChange,
-}: Readonly<{ servers: CollabServer[]; value: CollabServer; disabled: boolean; onChange: (id: string) => void }>) {
-  const { t } = useTranslation(["collab"]);
-  const label = t(($) => $.collab.share.serverLabel);
-  if (servers.length === 1) {
-    return (
-      <p className="flex items-center justify-between gap-3 text-sm">
-        <span className="text-muted-foreground">{label}</span>
-        <span className="truncate font-medium">{value.name}</span>
-      </p>
-    );
-  }
-  return (
-    <div className="flex items-center justify-between gap-3 text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <Select value={value.server_id} disabled={disabled} onValueChange={onChange}>
-        <SelectTrigger aria-label={label} className="h-8 w-56 text-xs">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent className="z-[130]">
-          {servers.map((entry) => (
-            <SelectItem key={entry.server_id} value={entry.server_id}>
-              {entry.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
     </div>
   );
 }
@@ -178,6 +118,7 @@ function ShareStep({
   const [serverId, setServerId] = useState<string | null>(null);
   const server = servers.find((entry) => entry.server_id === serverId) ?? servers[0];
   const [check, setCheck] = useState<CheckState>({ kind: "checking" });
+  const note = useFilesStore((state) => isNoteProject(state.projects.find((entry) => entry.id === projectId)));
   const [checkRequest, setCheckRequest] = useState(0);
   const [upload, setUpload] = useState<UploadState>({ kind: "idle" });
   const chosenId = server.server_id;
@@ -259,7 +200,7 @@ function ShareStep({
         </div>
       );
     }
-    return <CheckSummary check={check.check} server={server.name} />;
+    return <CheckSummary check={check.check} server={server.name} note={note} />;
   };
 
   const renderUpload = () => {
@@ -435,7 +376,10 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
             <h2 id={titleId} className="truncate text-base font-semibold">
               {t(($) => $.collab.share.title, { name })}
             </h2>
-            <p className="text-xs text-muted-foreground">{t(($) => $.collab.share.description)}</p>
+            <p className="text-xs text-muted-foreground">
+              {isNoteProject(project) ? t(($) => $.collab.share.noteDescription) : t(($) => $.collab.share.description)}
+            </p>
+            <ProjectNotesShareLine projectId={projectId} />
           </div>
           <Button
             type="button"
@@ -449,7 +393,36 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
             <X aria-hidden className="size-4" />
           </Button>
         </div>
-        {renderBody()}
+        {project && isNoteProject(project) ? (
+          <Tabs defaultValue="people" className="space-y-4">
+            <TabsList size="sm" fill>
+              <TabsTrigger value="people" data-testid="share-tab-people">
+                {t(($) => $.collab.publish.tabs.people)}
+              </TabsTrigger>
+              <TabsTrigger value="publish" disabled={sharing} data-testid="share-tab-publish">
+                {t(($) => $.collab.publish.tabs.publish)}
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="people" className="space-y-4">
+              {renderBody()}
+            </TabsContent>
+            <TabsContent value="publish">
+              {share === undefined && !shareError ? (
+                <LoadingState size="compact" label={t(($) => $.collab.share.loading)} />
+              ) : (
+                <NotePublishPanel
+                  project={project}
+                  share={share ?? null}
+                  servers={signedIn}
+                  onAddOleafly={noServerYet ? () => setAddingOleafly(true) : null}
+                  onClose={close}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
+        ) : (
+          renderBody()
+        )}
       </ModalShell>
       {addingOleafly ? (
         <AddServerDialog open initialUrl={OLEAFLY_SERVER.url} onClose={() => setAddingOleafly(false)} />

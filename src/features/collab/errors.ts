@@ -56,6 +56,10 @@ export const COLLAB_ERROR_CODES = [
   "account_storage_full",
   "too_many_projects",
   "too_many_uploads",
+  "public_notes_off",
+  "too_many_pages",
+  "page_too_large",
+  "page_taken_down",
 ] as const satisfies readonly CollabErrorCode[];
 
 type UnlistedCode = Exclude<CollabErrorCode, (typeof COLLAB_ERROR_CODES)[number]>;

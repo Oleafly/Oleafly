@@ -1,25 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
+use crate::markdown_scan::{FenceLine, Fences};
+
 use super::text::{is_js_space, resolve_project_path, string_of, trim_js, Source};
 use super::{Def, DefKind, FileFacts, Use, UseKind};
-
-struct Fence {
-    character: char,
-    length: usize,
-}
-
-fn fence_marker(line: &str) -> Option<(char, usize)> {
-    let trimmed = line.trim_start();
-    let character = trimmed.chars().next()?;
-    if character != '`' && character != '~' {
-        return None;
-    }
-    let length = trimmed
-        .chars()
-        .take_while(|current| *current == character)
-        .count();
-    (length >= 3).then_some((character, length))
-}
 
 fn strip_trailing_attributes(title: &str) -> String {
     let trimmed_end = title.trim_end();
@@ -361,17 +345,6 @@ impl Facts<'_> {
     }
 }
 
-fn toggle_fence(fence: Option<Fence>, character: char, run: usize) -> Option<Fence> {
-    match fence {
-        None => Some(Fence {
-            character,
-            length: run,
-        }),
-        Some(open) if character == open.character && run >= open.length => None,
-        Some(open) => Some(open),
-    }
-}
-
 fn atx_heading(line: &str, visible: &str, offset: usize, index: usize) -> Option<Heading> {
     let hashes = visible
         .chars()
@@ -411,7 +384,7 @@ fn setext_heading(lines: &[&str], index: usize, visible: &str, offset: usize) ->
 
 fn legacy_headings(text: &str, lines: &[&str]) -> Vec<Heading> {
     let mut offset = 0;
-    let mut fence: Option<Fence> = None;
+    let mut fences = Fences::default();
     let mut yaml = text.starts_with("---\n");
     let mut headings = Vec::new();
     for (index, line) in lines.iter().enumerate() {
@@ -421,11 +394,8 @@ fn legacy_headings(text: &str, lines: &[&str]) -> Vec<Heading> {
                 yaml = false;
             }
             true
-        } else if let Some((character, run)) = fence_marker(line) {
-            fence = toggle_fence(fence, character, run);
-            true
         } else {
-            fence.is_some()
+            fences.line(line) != FenceLine::Text
         };
         if !skip {
             let visible = mask_code_spans(line);
@@ -517,7 +487,7 @@ fn note_front_matter_line(facts: &mut Facts<'_>, line: &str, offset: usize, in_l
 fn visible_text(facts: &mut Facts<'_>, text: &str, lines: &[&str]) -> Vec<char> {
     let mut visible: Vec<char> = facts.source.chars.clone();
     let mut offset = 0;
-    let mut fence: Option<Fence> = None;
+    let mut fences = Fences::default();
     let mut yaml = text.starts_with("---\n");
     let mut bibliography_list = false;
     for (index, line) in lines.iter().enumerate() {
@@ -530,10 +500,7 @@ fn visible_text(facts: &mut Facts<'_>, text: &str, lines: &[&str]) -> Vec<char> 
                 note_front_matter_line(facts, line, offset, &mut bibliography_list);
                 mask(&mut visible, offset, length);
             }
-        } else if let Some((character, run)) = fence_marker(line) {
-            fence = toggle_fence(fence, character, run);
-            mask(&mut visible, offset, length);
-        } else if fence.is_some() {
+        } else if fences.line(line) != FenceLine::Text {
             mask(&mut visible, offset, length);
         } else {
             mask_line_code_spans(&mut visible, line, offset);

@@ -1,5 +1,34 @@
 import * as React from "react";
+import { ArrowDown, ArrowUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+export type SortDirection = "ascending" | "descending";
+
+export interface SortState<K> {
+  readonly key: K;
+  readonly direction: SortDirection;
+}
+
+const OTHER: Record<SortDirection, SortDirection> = { ascending: "descending", descending: "ascending" };
+
+export function nextSort<K>(current: SortState<K> | null, key: K, first?: SortDirection): SortState<K>;
+export function nextSort<K>(
+  current: SortState<K> | null,
+  key: K,
+  first: SortDirection,
+  clearable: true,
+): SortState<K> | null;
+export function nextSort<K>(
+  current: SortState<K> | null,
+  key: K,
+  first: SortDirection = "ascending",
+  clearable = false,
+): SortState<K> | null {
+  if (current?.key !== key) return { key, direction: first };
+  if (current.direction === first) return { key, direction: OTHER[first] };
+  return clearable ? null : { key, direction: first };
+}
 
 const Table = React.forwardRef<
   HTMLTableElement,
@@ -101,4 +130,57 @@ const TableCaption = React.forwardRef<
 ));
 TableCaption.displayName = "TableCaption";
 
-export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption };
+function SortableTableHead({
+  label,
+  sortLabel,
+  direction,
+  onSort,
+  numeric,
+  ...props
+}: Readonly<
+  {
+    label: React.ReactNode;
+    sortLabel: string;
+    direction: SortDirection | null;
+    onSort: () => void;
+    numeric?: boolean;
+  } & Omit<React.ThHTMLAttributes<HTMLTableCellElement>, "children" | "onClick">
+>) {
+  const Arrow = direction === "ascending" ? ArrowUp : ArrowDown;
+  return (
+    <TableHead {...props} scope="col" numeric={numeric} aria-sort={direction ?? "none"}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="xs"
+        className="-mx-2 font-medium uppercase tracking-wide"
+        aria-label={sortLabel}
+        onClick={onSort}
+      >
+        {label}
+        {direction ? <Arrow aria-hidden /> : null}
+      </Button>
+    </TableHead>
+  );
+}
+
+function TableSpacerRow({ height, span }: Readonly<{ height: number; span: number }>) {
+  return (
+    <tr aria-hidden>
+      <td colSpan={span} className="p-0" style={{ height }} />
+    </tr>
+  );
+}
+
+export {
+  Table,
+  TableHeader,
+  TableBody,
+  TableFooter,
+  TableHead,
+  SortableTableHead,
+  TableRow,
+  TableSpacerRow,
+  TableCell,
+  TableCaption,
+};

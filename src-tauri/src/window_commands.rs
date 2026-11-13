@@ -45,6 +45,15 @@ const PRESENTATION: &[&str] = &[
     "typst_slide_notes",
 ];
 
+const QUICK_CAPTURE: &[&str] = &[
+    "note_link_preview",
+    "note_video_frame_origin",
+    "notes_render_tikz",
+    "notes_render_typst",
+    "quick_capture_open_notes",
+    "quick_capture_window_buttons",
+];
+
 const ADMIN_CONSOLE: &[&str] = &[
     "collab_admin_add_allowlist",
     "collab_admin_add_domain_rule",
@@ -63,10 +72,12 @@ const ADMIN_CONSOLE: &[&str] = &[
     "collab_admin_patch_member",
     "collab_admin_patch_settings",
     "collab_admin_projects",
+    "collab_admin_published_notes",
     "collab_admin_remove_allowlist",
     "collab_admin_remove_domain_rule",
     "collab_admin_remove_member",
     "collab_admin_security_log",
+    "collab_admin_set_note_taken_down",
     "collab_admin_settings",
     "collab_admin_sign_out_device",
     "collab_admin_unarchive_project",
@@ -80,6 +91,7 @@ fn window_commands(window: &str) -> Option<&'static [&'static str]> {
         "update" => Some(UPDATE),
         "preview" => Some(PREVIEW),
         "presentation" | "presenter" => Some(PRESENTATION),
+        crate::quick_capture::WINDOW => Some(QUICK_CAPTURE),
         _ if window.starts_with(ADMIN_CONSOLE_PREFIX) => Some(ADMIN_CONSOLE),
         _ => None,
     }
@@ -165,6 +177,62 @@ mod tests {
             "collab_server_sign_in"
         ));
         assert!(!allowed("admin-console-7", "admin-console-7", "agent_exec"));
+        assert!(allowed("quick-capture", "quick-capture", "append_app_log"));
+        assert!(allowed(
+            "quick-capture",
+            "quick-capture",
+            "quick_capture_window_buttons"
+        ));
+        assert!(allowed(
+            "quick-capture",
+            "quick-capture",
+            "quick_capture_open_notes"
+        ));
+        for drawn in [
+            "notes_render_typst",
+            "notes_render_tikz",
+            "note_video_frame_origin",
+            "note_link_preview",
+        ] {
+            assert!(allowed("quick-capture", "quick-capture", drawn), "{drawn}");
+        }
+        assert!(!allowed("quick-capture", "quick-capture", "note_search"));
+        assert!(!allowed(
+            "quick-capture",
+            "quick-capture",
+            "quick_capture_configure"
+        ));
+        assert!(!allowed(
+            "preview",
+            "preview",
+            "quick_capture_window_buttons"
+        ));
+        assert!(!allowed(
+            "quick-capture",
+            "quick-capture",
+            "write_project_file"
+        ));
+        assert!(!allowed("quick-capture", "quick-capture", "read_file"));
+    }
+
+    #[test]
+    fn the_admin_console_reaches_every_registered_admin_command() {
+        let registered = include_str!("lib.rs");
+        let admin: Vec<&str> = registered
+            .split("::")
+            .filter_map(|tail| {
+                tail.split(|c: char| !(c.is_ascii_alphanumeric() || c == '_'))
+                    .next()
+            })
+            .filter(|name| name.starts_with("collab_admin_"))
+            .collect();
+        assert!(admin.contains(&"collab_admin_published_notes"));
+        for command in admin {
+            assert!(
+                allowed("admin-console-7", "admin-console-7", command),
+                "{command}"
+            );
+        }
     }
 
     #[test]

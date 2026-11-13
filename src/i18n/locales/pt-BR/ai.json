@@ -44,14 +44,16 @@
       "externalTool": "Confirmar ação de ferramenta externa",
       "internet": "Confirmar acesso à internet",
       "edit": "Confirmar edição da IA",
-      "researchTask": "Confirmar tarefa de pesquisa"
+      "researchTask": "Confirmar tarefa de pesquisa",
+      "note": "Confirmar nova nota"
     },
     "headline": {
       "command": "O assistente quer executar este comando",
       "externalTool": "O assistente quer usar uma ferramenta externa",
       "internet": "O assistente quer acessar a internet",
       "edit": "O assistente quer alterar seus arquivos",
-      "researchTask": "O assistente quer criar uma tarefa de pesquisa"
+      "researchTask": "O assistente quer criar uma tarefa de pesquisa",
+      "note": "O assistente quer criar uma nota"
     },
     "mcpNote": "Isso envia os argumentos abaixo para o servidor MCP configurado.",
     "line": "linha {{line}}",
@@ -86,10 +88,18 @@
       "timeBudget": "Orçamento de tempo",
       "timeBudgetDefault": "Padrão",
       "minutes_one": "{{count}} minuto",
+      "minutes_many": "{{count}} minutos",
       "minutes_other": "{{count}} minutos",
       "planFirst": "Planejar primeiro",
-      "startNow": "Começar agora",
-      "minutes_many": "{{count}} minutos"
+      "startNow": "Começar agora"
+    },
+    "noteDraft": {
+      "title": "Título",
+      "project": "Projeto vinculado",
+      "tags": "Tags",
+      "text": "Texto",
+      "empty": "Sem texto",
+      "more": "A nota continua depois deste ponto."
     }
   },
   "attachments": {
@@ -1124,5 +1134,19 @@
     "replaceConfirm": "Substituir a resposta",
     "forked": "Uma nova conversa começou a partir da mensagem editada.",
     "failed": "Não foi possível enviar a mensagem de novo."
+  },
+  "noteScope": {
+    "notesOnly": "Só em um assistente de nota.",
+    "tools": {
+      "readNote": "Ler a nota aberta, incluindo as sugestões que aguardam revisão.",
+      "proposeNoteEdits": "Sugerir alterações na nota aberta para você aceitar ou rejeitar.",
+      "searchNotes": "Buscar em todas as suas notas.",
+      "listKnowledgeNotes": "Listar as suas notas por tag ou projeto.",
+      "readNoteById": "Ler outra nota.",
+      "createNote": "Criar uma nova nota.",
+      "relatedProjectFiles": "Listar os arquivos do projeto ao qual a nota está vinculada.",
+      "readRelatedProjectFile": "Ler um arquivo do projeto ao qual a nota está vinculada.",
+      "searchRelatedProject": "Buscar no projeto ao qual a nota está vinculada."
+    }
   }
 }

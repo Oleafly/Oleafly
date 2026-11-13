@@ -172,6 +172,15 @@ describe("line endings", () => {
     await useFilesStore.getState().writeProjectFile("project", "main.tex", "one\ntwo\nthree\n");
     expect(mocks.writeFileContent.mock.calls.at(-1)?.[2]).toBe("one\r\ntwo\r\nthree\r\n");
   });
+
+  it("asks the backend to check the disk hash only when the caller gives one", async () => {
+    mocks.readFileContent.mockResolvedValue("one\n");
+    await useFilesStore.getState().openFile("main.tex");
+    await useFilesStore.getState().writeProjectFile("project", "main.tex", "two\n", { expectedHash: "abc" });
+    expect(mocks.writeFileContent.mock.calls.at(-1)?.[4]).toBe("abc");
+    await useFilesStore.getState().writeProjectFile("project", "main.tex", "three\n");
+    expect(mocks.writeFileContent.mock.calls.at(-1)).toHaveLength(4);
+  });
 });
 
 describe("text that did not change", () => {

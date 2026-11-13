@@ -1,9 +1,14 @@
 import { diffKey, useDiffStore, type OpenDiff } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
+import { activeNoteTab, noteTabsFor, useNoteTabsStore, type NoteTab } from "@/store/note-tabs";
+import { nextTabSeq } from "@/store/tab-order";
 
 export type EditorTab =
   | { kind: "file"; id: string; order: number }
-  | { kind: "diff"; id: string; d: OpenDiff; order: number };
+  | { kind: "diff"; id: string; d: OpenDiff; order: number }
+  | { kind: "note"; id: string; order: number };
+
+const TAB_KEY_PREFIX: Record<EditorTab["kind"], string> = { file: "f", diff: "d", note: "n" };
 
 export type CloseScope = "others" | "left" | "right" | "all";
 
@@ -18,6 +23,7 @@ export function editorTabs(
   openTabs: readonly string[],
   tabOrder: Readonly<Record<string, number>>,
   diffs: readonly OpenDiff[],
+  notes: readonly NoteTab[] = [],
 ): EditorTab[] {
   const fileTabs: EditorTab[] = openTabs.map((path) => ({
     kind: "file",
@@ -30,11 +36,22 @@ export function editorTabs(
     d,
     order: d.order,
   }));
-  return [...fileTabs, ...diffTabs].sort((a, b) => a.order - b.order);
+  const noteTabs: EditorTab[] = notes.map((note) => ({ kind: "note", id: note.id, order: note.order }));
+  return [...fileTabs, ...diffTabs, ...noteTabs].sort((a, b) => a.order - b.order);
 }
 
 export function editorTabKey(tab: Pick<EditorTab, "kind" | "id">): string {
-  return `${tab.kind === "file" ? "f" : "d"}:${tab.id}`;
+  return `${TAB_KEY_PREFIX[tab.kind]}:${tab.id}`;
+}
+
+export function reorderEditorTabs(keys: readonly string[]): void {
+  const sequence = new Map(keys.map((key) => [key, nextTabSeq()]));
+  const orderOf = (kind: EditorTab["kind"], id: string) => sequence.get(editorTabKey({ kind, id }));
+  useFilesStore.setState((s) => ({
+    tabOrder: { ...s.tabOrder, ...Object.fromEntries(s.openTabs.map((path) => [path, orderOf("file", path) ?? s.tabOrder[path] ?? 0])) },
+  }));
+  useDiffStore.setState((s) => ({ diffs: s.diffs.map((d) => ({ ...d, order: orderOf("diff", diffKey(d)) ?? d.order })) }));
+  useNoteTabsStore.setState((s) => ({ tabs: s.tabs.map((tab) => ({ ...tab, order: orderOf("note", tab.id) ?? tab.order })) }));
 }
 
 export function tabsToClose(
@@ -49,24 +66,29 @@ export function tabsToClose(
 }
 
 export function currentEditorTabs(): EditorTab[] {
-  const { openTabs = [], tabOrder = {} } = useFilesStore.getState();
+  const { openTabs = [], tabOrder = {}, projectId = null } = useFilesStore.getState();
   const { diffs = [] } = useDiffStore.getState();
-  return editorTabs(openTabs, tabOrder, diffs);
+  return editorTabs(openTabs, tabOrder, diffs, noteTabsFor(useNoteTabsStore.getState(), projectId));
 }
 
 export function closeEditorTab(tab: EditorTab): void {
   if (tab.kind === "file") useFilesStore.getState().closeTab(tab.id);
-  else useDiffStore.getState().closeDiff(tab.id);
+  else if (tab.kind === "diff") useDiffStore.getState().closeDiff(tab.id);
+  else useNoteTabsStore.getState().close(tab.id);
 }
 
 export function closeEditorTabs(tabs: readonly EditorTab[]): void {
   const paths = tabs.flatMap((tab) => (tab.kind === "file" ? [tab.id] : []));
   const keys = tabs.flatMap((tab) => (tab.kind === "diff" ? [tab.id] : []));
+  const notes = tabs.flatMap((tab) => (tab.kind === "note" ? [tab.id] : []));
+  if (notes.length > 0) useNoteTabsStore.getState().closeMany(notes);
   if (keys.length > 0) useDiffStore.getState().closeDiffs(keys);
   if (paths.length > 0) useFilesStore.getState().closeTabs(paths);
 }
 
 function isVisibleTab(tab: EditorTab): boolean {
+  const note = activeNoteTab(useNoteTabsStore.getState(), useFilesStore.getState().projectId);
+  if (note !== null) return tab.kind === "note" && tab.id === note;
   const { activeKey, diffs } = useDiffStore.getState();
   const diffFocused = activeKey !== null && diffs.some((d) => diffKey(d) === activeKey);
   if (diffFocused) return tab.kind === "diff" && tab.id === activeKey;
@@ -75,7 +97,8 @@ function isVisibleTab(tab: EditorTab): boolean {
 
 function focusEditorTab(tab: EditorTab): void {
   if (tab.kind === "file") useFilesStore.getState().setActive(tab.id);
-  else useDiffStore.getState().setActiveDiff(tab.id);
+  else if (tab.kind === "diff") useDiffStore.getState().setActiveDiff(tab.id);
+  else useNoteTabsStore.getState().setActive(tab.id);
 }
 
 export function closeEditorTabsAround(anchorKey: string, scope: CloseScope): void {

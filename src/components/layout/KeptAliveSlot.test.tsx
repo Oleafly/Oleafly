@@ -16,9 +16,14 @@ function Kept() {
     };
   }, []);
   return (
-    <div data-testid="kept-scroller" data-pdf-scroll-root>
-      <p>{KEPT_TEXT}</p>
-    </div>
+    <>
+      <div data-testid="kept-scroller" data-pdf-scroll-root>
+        <p>{KEPT_TEXT}</p>
+      </div>
+      <div data-testid="opted-in" data-keep-scroll>
+        <input data-testid="kept-field" />
+      </div>
+    </>
   );
 }
 
@@ -69,6 +74,22 @@ describe("KeptAliveSlot", () => {
 
     expect(scroller.scrollTop).toBe(1_234);
     expect(scroller.scrollLeft).toBe(56);
+  });
+
+  it("brings back scroll positions of opted in scrollers and the focus a move took away", () => {
+    const view = render(<Harness shown />);
+    const scroller = screen.getByTestId("opted-in");
+    const field = screen.getByTestId("kept-field");
+    scroller.scrollTop = 300;
+    field.focus();
+
+    view.rerender(<Harness shown={false} />);
+    scroller.scrollTop = 0;
+    expect(document.activeElement).not.toBe(field);
+    view.rerender(<Harness shown />);
+
+    expect(scroller.scrollTop).toBe(300);
+    expect(document.activeElement).toBe(field);
   });
 
   it("places the content inside the slot's element", () => {

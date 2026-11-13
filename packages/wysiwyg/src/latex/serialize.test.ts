@@ -3,6 +3,33 @@ import { serializeLatexBody } from "./serialize";
 import { parseLatexBody } from "./parse";
 
 describe("serializeLatexBody", () => {
+  it("writes a divider pasted into a LaTeX document as a rule", () => {
+    expect(serializeLatexBody({ type: "doc", content: [{ type: "horizontalRule" }] })).toBe(
+      "\\noindent\\rule{\\linewidth}{0.4pt}\n",
+    );
+  });
+
+  it("writes superscript and subscript marks with the LaTeX text commands", () => {
+    const doc = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            { type: "text", text: "Ca" },
+            { type: "text", text: "2+", marks: [{ type: "superscript" }] },
+            { type: "text", text: " and H" },
+            { type: "text", text: "2", marks: [{ type: "subscript" }] },
+            { type: "text", text: "O" },
+          ],
+        },
+      ],
+    };
+    expect(serializeLatexBody(doc)).toBe("Ca\\textsuperscript{2+} and H\\textsubscript{2}O\n");
+    const source = "x\\textsuperscript{2} and H\\textsubscript{2}O\n";
+    expect(serializeLatexBody(parseLatexBody(source))).toBe(source);
+  });
+
   it("serializes a heading and marked-up paragraph", () => {
     const doc: import("@tiptap/core").JSONContent = {
       type: "doc",

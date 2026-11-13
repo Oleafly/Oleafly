@@ -11,6 +11,8 @@
   "landing.open": "Otwórz w Oleafly",
   "landing.get": "Pobierz Oleafly",
   "landing.open_browser": "Otwórz w przeglądarce",
+  "published.gone_title": "Ta strona jest niedostępna",
+  "published.gone_body": "Autor mógł wycofać jej publikację albo ten serwer nie pokazuje już stron publicznych.",
   "web.sign_in_body": "Zaloguj się, aby otworzyć swoje udostępnione projekty w tej przeglądarce.",
   "web.try_again": "Spróbuj ponownie",
   "web.other_browser": "Ten link kończy logowanie na urządzeniu {device}, czyli w przeglądarce, w której rozpoczęto logowanie. Otwórz e-mail właśnie tam. Link nadal działa.",

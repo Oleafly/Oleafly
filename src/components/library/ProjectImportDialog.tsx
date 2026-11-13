@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
+import { Suspense, useEffect, useId, useRef, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react";
 import { ChoiceCard } from "@/components/library/ChoiceCard";
@@ -42,14 +43,12 @@ import { useFilesStore } from "@/store/files";
 const OverleafImportView = lazy(() =>
   import("@/components/library/overleaf/OverleafImportView").then((module) => ({
     default: module.OverleafImportView,
-  })),
-);
+  })), { warm: true });
 
 const GitImportView = lazy(() =>
   import("@/components/library/GitImportView").then((module) => ({
     default: module.GitImportView,
-  })),
-);
+  })), { warm: true });
 
 type ImportView = "sources" | "git" | "target" | "arxiv" | "overleaf";
 

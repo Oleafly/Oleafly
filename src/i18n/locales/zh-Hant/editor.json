@@ -221,7 +221,13 @@
     "closeRight": "關閉右側全部",
     "closeAll": "關閉全部",
     "closeAssistantTabs": "關閉助理開啟的檔案",
-    "closeAssistantTabsCount_other": "關閉助理開啟的 {{count}} 個檔案"
+    "closeAssistantTabsCount_other": "關閉助理開啟的 {{count}} 個檔案",
+    "editAsMarkdown": "以 Markdown 編輯",
+    "editAsNote": "以筆記編輯",
+    "noteAsMarkdown": "你正在以 Markdown 編輯這篇筆記。",
+    "openInNotes": "在筆記中開啟",
+    "moveIntoProject": "移至專案",
+    "copyToMyNotes": "複製到我的筆記"
   },
   "projectInfo": {
     "trigger": "專案資訊",
@@ -982,13 +988,14 @@
         "environment": "{{environment}} 環境",
         "command": "\\{{command}} 指令",
         "latexSource": "LaTeX 原始碼",
+        "html": "HTML",
         "maketitlePreview": "由文件標題與作者中繼資料產生。",
         "figurePreserved": "已完整保留圖片的原始碼。",
         "tablePreserved": "已完整保留表格的原始碼。",
         "sourcePreserved": "已完整保留原始碼",
         "editSource": "編輯原始碼",
-        "summaryLabel": "{{label}}。已完整保留 LaTeX 原始碼。",
-        "inputLabel": "精確的 LaTeX 區塊原始碼"
+        "summaryLabel": "{{label}}。已完整保留原始碼。",
+        "inputLabel": "精確的區塊原始碼"
       },
       "inline": {
         "label": "行內原始碼",

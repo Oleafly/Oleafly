@@ -85,7 +85,7 @@ test("export menu lists the document formats", async ({ tauriPage }) => {
 test("back to library and reopen", async ({ tauriPage }) => {
   await createBlankProject(tauriPage, "Toolbar navigation");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
-  await tauriPage.click('[title="Back to library"]');
+  await tauriPage.click('[data-toolbar-part="home"][aria-label="Home"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible();
   await openProject(tauriPage, "Toolbar navigation");
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });

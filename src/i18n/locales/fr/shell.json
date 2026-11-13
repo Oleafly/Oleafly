@@ -322,6 +322,36 @@
       "keywords": "pdf aperçu afficher masquer partager éditeur seul",
       "label": "Afficher ou masquer l'aperçu PDF"
     },
+    "swapEditorPreview": {
+      "keywords": "permuter inverser éditeur aperçu pdf côtés panneau ordre disposition",
+      "label": "Permuter l'éditeur et l'aperçu"
+    },
+    "movePaneToEdge": {
+      "bottom": "Déplacer {{pane}} vers le bord inférieur",
+      "keywords": "déplacer panneau bord ancrer côté diviser empiler disposition",
+      "left": "Déplacer {{pane}} vers le bord gauche",
+      "right": "Déplacer {{pane}} vers le bord droit",
+      "top": "Déplacer {{pane}} vers le bord supérieur"
+    },
+    "paneNames": {
+      "assistant": "l'assistant",
+      "editor": "l'éditeur",
+      "pdf": "l'aperçu",
+      "sidebar": "la barre latérale",
+      "terminal": "le terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "réinitialiser disposition panneaux ordre déplacer barre latérale assistant éditeur aperçu terminal défaut",
+      "label": "Réinitialiser l'agencement des panneaux dans tous les projets"
+    },
+    "saveLayout": {
+      "keywords": "enregistrer disposition personnalisée agencement panneaux tailles nom",
+      "label": "Enregistrer la disposition actuelle"
+    },
+    "applySavedLayout": {
+      "keywords": "disposition enregistrée personnalisée agencement panneaux changer appliquer",
+      "label": "Disposition : {{name}}"
+    },
     "zoomIn": {
       "keywords": "agrandir plus grand loupe",
       "label": "Zoom avant"
@@ -349,6 +379,20 @@
     "insertFileLink": {
       "label": "Insérer un lien vers un fichier",
       "keywords": "lien fichier chemin note référence"
+    },
+    "projectNotes": {
+      "open": "Ouvrir les notes de ce projet",
+      "newShared": "Nouvelle note de projet",
+      "newPersonal": "Nouvelle note personnelle pour ce projet",
+      "keywords": "notes recherche lié associé projet"
+    },
+    "notes": {
+      "label": "Ouvrir Notes",
+      "keywords": "notes carnet connaissances idées recherche journal notebook knowledge ideas research"
+    },
+    "notesQuickCapture": {
+      "label": "Capture rapide",
+      "keywords": "capture rapide noter note boîte de réception aujourd'hui"
     }
   },
   "community": {
@@ -453,6 +497,11 @@
   },
   "datePicker": {
     "placeholder": "Choisir une date"
+  },
+  "monthPicker": {
+    "label": "Choisir un mois",
+    "previousYear": "Année précédente",
+    "nextYear": "Année suivante"
   },
   "devMenu": {
     "inspect": "Inspecter",
@@ -647,7 +696,6 @@
   "home": {
     "ariaLabel": "Accueil",
     "label": "Accueil",
-    "title": "Retour à la bibliothèque",
     "tooltip": "Revenir à la bibliothèque de projets"
   },
   "importDestination": {
@@ -675,6 +723,7 @@
     "groups": {
       "action": "Action",
       "documents": "Documents",
+      "notes": "Notes",
       "references": "Références"
     },
     "label": "Recherche",
@@ -682,11 +731,13 @@
     "openReferences": "Ouvrir les références de ce projet",
     "placeholder": "Cherchez un projet, un document, ou tapez / pour les commandes…",
     "placeholderDocuments": "Rechercher dans les documents…",
+    "placeholderNotes": "Rechercher dans les notes et leurs blocs…",
     "placeholderProjects": "Chercher un projet par nom, moteur, type, date ou métadonnée…",
     "referencesNeedProject": "Ouvrez d'abord un projet pour parcourir ses références.",
     "slash": {
       "create": "ouvrir la galerie de modèles",
       "docs": "rechercher dans les documents",
+      "notes": "rechercher dans les notes et leurs blocs",
       "projects": "rechercher dans vos projets",
       "refs": "ouvrir les références de ce projet",
       "settings": "ouvrir les paramètres",
@@ -794,7 +845,8 @@
     "research": "Espace de recherche",
     "search": "Rechercher dans le projet",
     "sourceControl": "Contrôle de version",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notes"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} sur {{host}}",
@@ -906,7 +958,8 @@
           "folders_other": "{{count}} dossiers",
           "images": "Images",
           "pdfs": "PDF",
-          "projects": "Projets"
+          "projects": "Projets",
+          "projectsAndNotes": "Projets et notes"
         },
         "subtitle": "Projets, aperçus, historique et données de l'application",
         "title": "Espace utilisé",
@@ -949,6 +1002,10 @@
       "latexTools": {
         "description": "Afficher la galerie Oleafly Tools et les outils individuels (import PDF, équations, tableaux, BibTeX, laboratoire et recherche bibliographique, échéances) ainsi que leurs commandes slash. Désactivé par défaut tant que c'est en bêta.",
         "label": "Outils LaTeX"
+      },
+      "notes": {
+        "description": "Ajoute Notes au dock de l'accueil. Une note est un fichier Markdown avec diagrammes, graphiques et maths, que vous et vos agents pouvez modifier tous les deux. Les notes restent en dehors de votre bibliothèque de projets, et chaque note peut être liée à un projet. Désactivé par défaut tant que c'est en bêta.",
+        "label": "Notes"
       },
       "researchTasks": {
         "description": "Un agent travaille seul dans une copie du projet et vous laisse ses modifications à relire. Très instable. Une exécution peut se bloquer, échouer ou laisser des modifications à trier à la main, et elle consomme en continu le quota de votre fournisseur. Ajoute une section Recherche aux Paramètres. La désactiver arrête toutes les tâches en cours. Désactivé par défaut, à activer à vos risques et périls.",
@@ -1297,6 +1354,24 @@
       "split": "Vue partagée"
     },
     "moreActions": "Autres actions",
+    "resetPaneLayout": "Réinitialiser l'agencement des panneaux",
+    "resetPaneLayoutScope": "Tous les projets",
+    "savedLayouts": {
+      "close": "Fermer",
+      "delete": "Supprimer",
+      "deleteConfirm": "Supprimer la disposition {{name}} ?",
+      "limit": "Vous pouvez conserver jusqu'à {{count}} dispositions. Supprimez-en une pour en enregistrer une autre.",
+      "manage": "Gérer les dispositions",
+      "name": "Nom de la disposition",
+      "rename": "Renommer",
+      "renameTitle": "Renommer la disposition",
+      "replace": "Remplacer",
+      "replaceConfirm": "Une disposition nommée {{name}} existe déjà. La remplacer ?",
+      "save": "Enregistrer la disposition actuelle",
+      "saveButton": "Enregistrer",
+      "saveTitle": "Enregistrer la disposition",
+      "update": "Mettre à jour avec l'actuelle"
+    },
     "renameFailed": "Impossible de renommer le projet."
   },
   "tour": {

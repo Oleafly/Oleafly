@@ -18,6 +18,8 @@ import {
   checkpointReset,
   checkpointRestore,
   checkpointRevealStore,
+  checkpointReadText,
+  checkpointSave,
   checkpointSaveFile,
   checkpointStats,
   checkpointVerify,
@@ -282,6 +284,18 @@ describe("Checkpoints bridge", () => {
       path: "Thesis.pdf",
       dest: "/tmp/Thesis.pdf",
     });
+
+    await checkpointReadText("note", "root-1", "note.md");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_read_text", {
+      projectId: "note",
+      snapshotRoot: "root-1",
+      path: "note.md",
+    });
+
+    await checkpointSave("note");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_save", { projectId: "note", text: null });
+    await checkpointSave("note", "Before");
+    expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_save", { projectId: "note", text: "Before" });
 
     await checkpointInspect("project");
     expect(mocks.invoke).toHaveBeenLastCalledWith("checkpoint_inspect", {

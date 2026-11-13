@@ -1,4 +1,5 @@
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use oleafly_core::encoding::form_decode;
 use rand::RngCore;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
@@ -274,47 +275,10 @@ impl LoopbackListener {
     }
 }
 
-fn percent_decode(value: &str) -> String {
-    let bytes = value.as_bytes();
-    let mut decoded = Vec::with_capacity(bytes.len());
-    let mut index = 0;
-    while index < bytes.len() {
-        match bytes[index] {
-            b'+' => {
-                decoded.push(b' ');
-                index += 1;
-            }
-            b'%' if index + 2 < bytes.len() => {
-                let hex = |byte: u8| match byte {
-                    b'0'..=b'9' => Some(byte - b'0'),
-                    b'a'..=b'f' => Some(byte - b'a' + 10),
-                    b'A'..=b'F' => Some(byte - b'A' + 10),
-                    _ => None,
-                };
-                match (hex(bytes[index + 1]), hex(bytes[index + 2])) {
-                    (Some(high), Some(low)) => {
-                        decoded.push((high << 4) | low);
-                        index += 3;
-                    }
-                    _ => {
-                        decoded.push(b'%');
-                        index += 1;
-                    }
-                }
-            }
-            byte => {
-                decoded.push(byte);
-                index += 1;
-            }
-        }
-    }
-    String::from_utf8_lossy(&decoded).into_owned()
-}
-
 fn query_value(query: Option<&str>, key: &str) -> Option<String> {
     query?.split('&').find_map(|pair| {
         let (name, value) = pair.split_once('=')?;
-        (percent_decode(name) == key).then(|| percent_decode(value))
+        (form_decode(name) == key).then(|| form_decode(value))
     })
 }
 

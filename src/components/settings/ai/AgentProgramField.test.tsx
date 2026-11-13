@@ -96,7 +96,7 @@ describe("program row", () => {
     const missing = render(<AgentProgramField agent={pi()} placement="main" onStatus={vi.fn()} />);
     const input = missing.getByRole("textbox", { name: fill(copy.inputLabel, { name: "Pi" }) });
     expect(input.className).not.toMatch(/(^|\s)(ring|outline)-/);
-    expect(input.className).toContain("focus-visible:border-ring");
+    expect(input.className).not.toMatch(/focus[\w-]*:border/);
   });
 
   it("tests a chosen file before saving it and reports success with the sign-in hint", async () => {

@@ -321,6 +321,36 @@
       "keywords": "pdf vorschau anzeigen ausblenden geteilt nur editor",
       "label": "PDF-Vorschau ein- oder ausblenden"
     },
+    "swapEditorPreview": {
+      "keywords": "tauschen editor vorschau pdf seiten bereich reihenfolge layout",
+      "label": "Editor und Vorschau tauschen"
+    },
+    "movePaneToEdge": {
+      "bottom": "{{pane}} an den unteren Rand verschieben",
+      "keywords": "verschieben bereich rand andocken seite teilen stapeln layout",
+      "left": "{{pane}} an den linken Rand verschieben",
+      "right": "{{pane}} an den rechten Rand verschieben",
+      "top": "{{pane}} an den oberen Rand verschieben"
+    },
+    "paneNames": {
+      "assistant": "Assistent",
+      "editor": "Editor",
+      "pdf": "Vorschau",
+      "sidebar": "Seitenleiste",
+      "terminal": "Terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "zurücksetzen bereich layout reihenfolge verschieben bereiche seitenleiste assistent editor vorschau terminal standard",
+      "label": "Anordnung der Bereiche in jedem Projekt zurücksetzen"
+    },
+    "saveLayout": {
+      "keywords": "layout speichern aktuelles benutzerdefiniert anordnung bereiche größen name",
+      "label": "Aktuelles Layout speichern"
+    },
+    "applySavedLayout": {
+      "keywords": "layout gespeichert benutzerdefiniert anordnung bereiche wechseln anwenden",
+      "label": "Layout: {{name}}"
+    },
     "zoomIn": {
       "keywords": "größer vergrößern lupe",
       "label": "Vergrößern"
@@ -348,6 +378,20 @@
     "insertFileLink": {
       "label": "Link zu Datei einfügen",
       "keywords": "link datei pfad notiz verweis"
+    },
+    "projectNotes": {
+      "open": "Notizen für dieses Projekt öffnen",
+      "newShared": "Neue Projektnotiz",
+      "newPersonal": "Neue persönliche Notiz für dieses Projekt",
+      "keywords": "notizen forschung verknüpft zugehörig projekt"
+    },
+    "notes": {
+      "label": "Notizen öffnen",
+      "keywords": "Notizen Notizbuch Wissen Ideen Forschung Tagebuch notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Schnellerfassung",
+      "keywords": "Schnellerfassung erfassen notieren Notiz Eingang heute quick capture jot note inbox today"
     }
   },
   "community": {
@@ -452,6 +496,11 @@
   },
   "datePicker": {
     "placeholder": "Datum wählen"
+  },
+  "monthPicker": {
+    "label": "Monat wählen",
+    "previousYear": "Vorheriges Jahr",
+    "nextYear": "Nächstes Jahr"
   },
   "devMenu": {
     "inspect": "Untersuchen",
@@ -645,7 +694,6 @@
   "home": {
     "ariaLabel": "Start",
     "label": "Start",
-    "title": "Zurück zur Bibliothek",
     "tooltip": "Zurück zur Projektbibliothek"
   },
   "importDestination": {
@@ -673,6 +721,7 @@
     "groups": {
       "action": "Aktion",
       "documents": "Dokumente",
+      "notes": "Notizen",
       "references": "Referenzen"
     },
     "label": "Suche",
@@ -680,11 +729,13 @@
     "openReferences": "Referenzen dieses Projekts öffnen",
     "placeholder": "Projekte und Dokumente durchsuchen oder / für Befehle tippen…",
     "placeholderDocuments": "In Dokumenten suchen…",
+    "placeholderNotes": "Notizen und die Blöcke darin durchsuchen…",
     "placeholderProjects": "Projekte nach Name, Engine, Art, Datum oder Metadaten durchsuchen…",
     "referencesNeedProject": "Öffnen Sie zuerst ein Projekt, um seine Referenzen zu durchsuchen.",
     "slash": {
       "create": "die Vorlagengalerie öffnen",
       "docs": "in Dokumenten suchen",
+      "notes": "Notizen und die Blöcke darin durchsuchen",
       "projects": "Ihre Projekte durchsuchen",
       "refs": "Referenzen dieses Projekts öffnen",
       "settings": "Einstellungen öffnen",
@@ -791,7 +842,8 @@
     "research": "Forschungsbereich",
     "search": "Projekt durchsuchen",
     "sourceControl": "Versionsverwaltung",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notizen"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} auf {{host}}",
@@ -893,7 +945,8 @@
           "folders_other": "{{count}} Ordner",
           "images": "Bilder",
           "pdfs": "PDFs",
-          "projects": "Projekte"
+          "projects": "Projekte",
+          "projectsAndNotes": "Projekte und Notizen"
         },
         "subtitle": "Projekte, Vorschauen, Historie und App-Daten",
         "title": "Speicherbelegung",
@@ -935,6 +988,10 @@
       "latexTools": {
         "description": "Zeigt die Galerie Oleafly Tools und die einzelnen Werkzeuge (PDF-Import, Formeln, Tabellen, BibTeX, Labor- und Literatursuche, Fristen) samt ihren Schrägstrich-Befehlen. Standardmäßig aus, solange es noch Beta ist.",
         "label": "LaTeX-Werkzeuge"
+      },
+      "notes": {
+        "description": "Fügt Notizen zum Dock der Startseite hinzu. Eine Notiz ist eine Markdown-Datei mit Diagrammen, Grafiken und Formeln, die Sie und Ihre Agenten gemeinsam bearbeiten können. Notizen bleiben außerhalb Ihrer Projektbibliothek, und jede Notiz lässt sich mit einem Projekt verknüpfen. Standardmäßig aus, solange die Funktion in der Beta ist.",
+        "label": "Notizen"
       },
       "researchTasks": {
         "description": "Ein Agent arbeitet eigenständig in einer Kopie des Projekts und hinterlässt seine Änderungen, damit Sie sie prüfen können. Sehr instabil: Läufe können hängen bleiben, fehlschlagen oder Änderungen hinterlassen, die Sie von Hand bereinigen müssen, und sie verbrauchen während der gesamten Laufzeit das Kontingent Ihres Anbieters. Fügt den Einstellungen den Bereich Forschung hinzu. Beim Ausschalten werden alle laufenden Aufgaben beendet. Standardmäßig aus. Schalten Sie es auf eigenes Risiko ein.",
@@ -1277,6 +1334,24 @@
       "split": "Geteilte Ansicht"
     },
     "moreActions": "Weitere Aktionen",
+    "resetPaneLayout": "Anordnung der Bereiche zurücksetzen",
+    "resetPaneLayoutScope": "Alle Projekte",
+    "savedLayouts": {
+      "close": "Schließen",
+      "delete": "Löschen",
+      "deleteConfirm": "Layout „{{name}}“ löschen?",
+      "limit": "Sie können bis zu {{count}} Layouts behalten. Löschen Sie eines, um ein weiteres zu speichern.",
+      "manage": "Layouts verwalten",
+      "name": "Name des Layouts",
+      "rename": "Umbenennen",
+      "renameTitle": "Layout umbenennen",
+      "replace": "Ersetzen",
+      "replaceConfirm": "Ein Layout namens „{{name}}“ gibt es bereits. Ersetzen?",
+      "save": "Aktuelles Layout speichern",
+      "saveButton": "Speichern",
+      "saveTitle": "Layout speichern",
+      "update": "Mit aktuellem Layout aktualisieren"
+    },
     "renameFailed": "Das Projekt konnte nicht umbenannt werden."
   },
   "tour": {

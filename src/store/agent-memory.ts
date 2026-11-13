@@ -11,14 +11,24 @@ export interface AgentMemoryNote {
   createdAt: number;
 }
 
-interface AgentMemoryState {
+export const WORKSPACE_MEMORY_SCOPE = "workspace";
+
+export interface AgentMemoryView {
   projectId: string | null;
   notes: AgentMemoryNote[];
-  load: (projectId: string) => void;
-  add: (content: string) => AgentMemoryNote | null;
-  remove: (id: string) => void;
-  clear: () => void;
-  asPromptBlock: () => string;
+}
+
+const EMPTY_VIEW: AgentMemoryView = { projectId: null, notes: [] };
+
+interface AgentMemoryState extends AgentMemoryView {
+  scopes: Readonly<Record<string, AgentMemoryView>>;
+  load: (projectId: string, scope?: string) => void;
+  add: (content: string, scope?: string) => AgentMemoryNote | null;
+  remove: (id: string, scope?: string) => void;
+  clear: (scope?: string) => void;
+  asPromptBlock: (scope?: string) => string;
+  view: (scope?: string) => AgentMemoryView;
+  forgetScope: (scope: string) => void;
 }
 
 function key(pid: string) {
@@ -37,14 +47,29 @@ function write(pid: string, notes: AgentMemoryNote[]) {
 
 let seq = 1;
 
+function withView(
+  state: Pick<AgentMemoryState, "scopes">,
+  scope: string,
+  view: AgentMemoryView,
+): Partial<AgentMemoryState> {
+  if (scope === WORKSPACE_MEMORY_SCOPE) return view;
+  return { scopes: { ...state.scopes, [scope]: view } };
+}
+
 export const useAgentMemoryStore = create<AgentMemoryState>((set, get) => ({
   projectId: null,
   notes: [],
-  load: (projectId) => {
-    set({ projectId, notes: read(projectId) });
+  scopes: {},
+  view: (scope = WORKSPACE_MEMORY_SCOPE) => {
+    const state = get();
+    if (scope === WORKSPACE_MEMORY_SCOPE) return { projectId: state.projectId, notes: state.notes };
+    return state.scopes[scope] ?? EMPTY_VIEW;
   },
-  add: (content) => {
-    const pid = get().projectId;
+  load: (projectId, scope = WORKSPACE_MEMORY_SCOPE) => {
+    set((state) => withView(state, scope, { projectId, notes: read(projectId) }));
+  },
+  add: (content, scope = WORKSPACE_MEMORY_SCOPE) => {
+    const { projectId: pid, notes: current } = get().view(scope);
     if (!pid) return null;
     const text = content.trim().slice(0, MAX_NOTE_CHARS);
     if (!text) return null;
@@ -53,26 +78,26 @@ export const useAgentMemoryStore = create<AgentMemoryState>((set, get) => ({
       content: text,
       createdAt: Date.now(),
     };
-    const notes = [note, ...get().notes].slice(0, MAX_NOTES);
+    const notes = [note, ...current].slice(0, MAX_NOTES);
     write(pid, notes);
-    set({ notes });
+    set((state) => withView(state, scope, { projectId: pid, notes }));
     return note;
   },
-  remove: (id) => {
-    const pid = get().projectId;
+  remove: (id, scope = WORKSPACE_MEMORY_SCOPE) => {
+    const { projectId: pid, notes: current } = get().view(scope);
     if (!pid) return;
-    const notes = get().notes.filter((n) => n.id !== id);
+    const notes = current.filter((n) => n.id !== id);
     write(pid, notes);
-    set({ notes });
+    set((state) => withView(state, scope, { projectId: pid, notes }));
   },
-  clear: () => {
-    const pid = get().projectId;
+  clear: (scope = WORKSPACE_MEMORY_SCOPE) => {
+    const { projectId: pid } = get().view(scope);
     if (!pid) return;
     write(pid, []);
-    set({ notes: [] });
+    set((state) => withView(state, scope, { projectId: pid, notes: [] }));
   },
-  asPromptBlock: () => {
-    const notes = get().notes;
+  asPromptBlock: (scope = WORKSPACE_MEMORY_SCOPE) => {
+    const notes = get().view(scope).notes;
     if (!notes.length) return "";
     const lines = notes
       .slice(0, 20)
@@ -83,6 +108,12 @@ export const useAgentMemoryStore = create<AgentMemoryState>((set, get) => ({
       ...lines,
     ].join("\n");
   },
+  forgetScope: (scope) =>
+    set((state) => {
+      if (scope === WORKSPACE_MEMORY_SCOPE || !(scope in state.scopes)) return state;
+      const { [scope]: _gone, ...scopes } = state.scopes;
+      return { scopes };
+    }),
 }));
 
 if (typeof window !== "undefined" && E2E_HOOKS) {

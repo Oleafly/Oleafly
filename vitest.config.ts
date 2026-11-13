@@ -18,6 +18,7 @@ export default defineConfig({
       "@oleafly/ai-tools": path.resolve(__dirname, "./packages/ai-tools/src"),
       "@oleafly/preflight": path.resolve(__dirname, "./packages/preflight/src"),
       "@oleafly/registry": path.resolve(__dirname, "./packages/registry/src"),
+      "@oleafly/workspace": path.resolve(__dirname, "./packages/workspace/src"),
       "@oleafly/i18n-contract": path.resolve(__dirname, "./packages/i18n-contract/src"),
       "@oleafly/search-query": path.resolve(__dirname, "./packages/search-query/src"),
       "@oleafly/templates": path.resolve(__dirname, "./packages/templates/src"),
@@ -45,12 +46,9 @@ export default defineConfig({
         "src/lib/e2e-probe.ts",
         "src/lib/e2e-import-registry.ts",
       ],
-      thresholds: {
-        lines: 98,
-        branches: 92,
-        functions: 96,
-        statements: 96,
-      },
+      ...(process.env.OLEAFLY_COVERAGE_SHARD === "1"
+        ? {}
+        : { thresholds: { lines: 98, branches: 92, functions: 96, statements: 96 } }),
     },
   },
 });

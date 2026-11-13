@@ -4,6 +4,7 @@ import { toolById } from "@/lib/tool-catalog";
 import { useDiagramComposerStore } from "@/store/diagram-composer";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
+import { useNotesViewStore } from "@/store/notes-view";
 import { useSettingsStore } from "@/store/settings";
 
 const mocks = vi.hoisted(() => ({
@@ -31,6 +32,7 @@ import {
   openDiagramComposer,
   openDiagramComposerChooser,
   openHomePage,
+  openNotes,
   openTool,
   openToolsGallery,
 } from "./open-tool";
@@ -50,6 +52,7 @@ beforeEach(() => {
   });
   useSettingsStore.setState({ viewMode: "editor" });
   useDiagramComposerStore.setState({ language: "tikz", requestId: 0, chooserOpen: false });
+  useNotesViewStore.setState({ requestedNoteId: null });
 });
 
 describe("tool navigation", () => {
@@ -203,6 +206,29 @@ describe("diagram composer entry", () => {
     await openDiagramComposer("typst");
     expect(useDiagramComposerStore.getState().language).toBe("typst");
     expect(useHomeViewStore.getState().page).toBe("diagram-composer");
+    expect(useHomeViewStore.getState().queuedPageAfterProjectClose).toBeNull();
+    expect(useFilesStore.getState().closeProject).not.toHaveBeenCalled();
+  });
+});
+
+describe("notes entry", () => {
+  it("opens Notes on its home when no note is named", async () => {
+    useNotesViewStore.setState({ requestedNoteId: "stale" });
+    await openNotes();
+    expect(useHomeViewStore.getState().page).toBe("notes");
+    expect(useNotesViewStore.getState().requestedNoteId).toBeNull();
+  });
+
+  it("asks Notes to open the named note", async () => {
+    await openNotes("note-7");
+    expect(useHomeViewStore.getState().page).toBe("notes");
+    expect(useNotesViewStore.getState().take()).toBe("note-7");
+  });
+
+  it("opens Notes over the active project without closing it", async () => {
+    useFilesStore.setState({ projectId: "paper" });
+    await openNotes("note-7");
+    expect(useHomeViewStore.getState().page).toBe("notes");
     expect(useHomeViewStore.getState().queuedPageAfterProjectClose).toBeNull();
     expect(useFilesStore.getState().closeProject).not.toHaveBeenCalled();
   });

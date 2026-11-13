@@ -1005,7 +1005,8 @@
       "editor": "Editor",
       "files": "Projekt",
       "pdf": "Náhled PDF",
-      "terminal": "Terminál"
+      "terminal": "Terminál",
+      "notes": "Poznámky"
     },
     "terminal": {
       "colorTheme": {
@@ -2379,6 +2380,66 @@
       "resetZoom": {
         "description": "Vrátí aplikaci na 100 %.",
         "label": "Obnovit přiblížení"
+      },
+      "notesQuickSwitcher": {
+        "description": "Najít poznámku podle názvu a otevřít ji.",
+        "label": "Poznámky: přejít na poznámku"
+      },
+      "notesTodayNote": {
+        "description": "Otevřít dnešní poznámku, nebo ji založit.",
+        "label": "Poznámky: dnešní poznámka"
+      },
+      "notesGraph": {
+        "description": "Otevřít graf všech vašich poznámek.",
+        "label": "Poznámky: graf"
+      },
+      "notesLocalGraph": {
+        "description": "Zobrazit nebo skrýt odkazy kolem otevřené poznámky.",
+        "label": "Poznámky: místní graf"
+      },
+      "notesOutline": {
+        "description": "Zobrazit nebo skrýt osnovu otevřené poznámky.",
+        "label": "Poznámky: osnova"
+      },
+      "notesAskAgent": {
+        "description": "Zeptat se agenta na vybraný text, nebo otevřít a zavřít agenta poznámky.",
+        "label": "Poznámky: zeptat se agenta"
+      },
+      "notesNewNote": {
+        "label": "Poznámky: nová poznámka",
+        "description": "Založit novou poznámku v aktuálním panelu."
+      },
+      "notesSearch": {
+        "label": "Poznámky: hledat v poznámkách",
+        "description": "Přejít do vyhledávacího pole nahoře v postranním panelu Poznámek."
+      },
+      "notesBookmark": {
+        "label": "Poznámky: přidat mezi oblíbené",
+        "description": "Přidat otevřenou poznámku mezi oblíbené, nebo ji z nich odebrat."
+      },
+      "notesCopyLink": {
+        "label": "Poznámky: kopírovat odkaz na poznámku",
+        "description": "Zkopírovat odkaz na otevřenou poznámku, který můžete vložit do jiné poznámky nebo do chatu."
+      },
+      "notesProperties": {
+        "label": "Poznámky: zobrazit nebo skrýt vlastnosti",
+        "description": "Otevřít nebo zavřít vlastnosti pod názvem poznámky."
+      },
+      "notesQuickCapture": {
+        "description": "Otevřít malé okno, do kterého si můžete něco zapsat z libovolné aplikace, i když je Oleafly na pozadí.",
+        "label": "Poznámky: rychlý záznam"
+      },
+      "notesCopyBlockLink": {
+        "description": "Zkopírovat odkaz na odstavec, položku seznamu nebo tabulku, ve které je kurzor.",
+        "label": "Poznámky: kopírovat odkaz na blok"
+      },
+      "notesBack": {
+        "description": "Vrátit se tam, kde jste byli na této kartě.",
+        "label": "Poznámky: zpět"
+      },
+      "notesForward": {
+        "description": "Po návratu zpět znovu přejít vpřed.",
+        "label": "Poznámky: vpřed"
       }
     },
     "application": {
@@ -2404,14 +2465,41 @@
         "renameSymbol": "Přejmenovat symbol nebo soubor v celém projektu",
         "slashCommandMenu": "Nabídka vkládání přes lomítko",
         "triggerAutocomplete": "Vyvolat automatické doplňování",
-        "undo": "Zpět"
+        "undo": "Zpět",
+        "noteBold": "Tučné",
+        "noteItalic": "Kurzíva",
+        "noteUnderline": "Podtržené",
+        "noteStrike": "Přeškrtnuté",
+        "noteCode": "Kód v řádku",
+        "noteHighlight": "Zvýraznit naposledy použitou barvou",
+        "noteSuperscript": "Horní index",
+        "noteSubscript": "Dolní index",
+        "noteHeadings": "Nadpis 1 až 6",
+        "noteText": "Převést na text",
+        "noteQuote": "Citát",
+        "noteCodeBlock": "Blok kódu",
+        "noteBulletList": "Odrážkový seznam",
+        "noteNumberedList": "Číslovaný seznam",
+        "noteTaskList": "Seznam úkolů",
+        "noteToggleTask": "Zaškrtnout nebo odškrtnout úkol",
+        "noteIndent": "Odsadit položku seznamu",
+        "noteOutdent": "Zmenšit odsazení položky seznamu",
+        "noteLineBreak": "Zalomení řádku ve stejném odstavci",
+        "noteFind": "Najít a nahradit",
+        "noteSelectAll": "Vybrat celou poznámku",
+        "noteUndo": "Zpět",
+        "noteRedo": "Znovu",
+        "noteInsertMenu": "Otevřít nabídku vkládání na začátku řádku",
+        "noteLinkMenu": "Odkaz na poznámku",
+        "noteTag": "Přidat štítek"
       },
       "managed": "Spravuje editor"
     },
     "categories": {
       "codeIntelligence": "Inteligence kódu",
       "editor": "Editor",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Poznámky"
     },
     "error": {
       "conflict": "Už je přiřazeno akci {{action}}.",
@@ -2457,6 +2545,15 @@
         "uppercase": "Velká písmena"
       },
       "unbound": "Nenastaveno"
+    },
+    "quickCapture": {
+      "label": "Rychlý záznam odkudkoli",
+      "description": "Zkratka pro rychlý záznam funguje ve všech aplikacích na tomto počítači.",
+      "ready": "Stisknutím {{shortcut}} v libovolné aplikaci otevřete rychlý záznam.",
+      "taken": "Zkratku {{shortcut}} už používá jiná aplikace. Vyberte jinou zkratku pro akci Poznámky: rychlý záznam.",
+      "invalid": "{{shortcut}} nemůže fungovat mimo Oleafly. Vyberte zkratku, která končí písmenem, číslicí nebo funkční klávesou.",
+      "failed": "Oleafly nedokázal zkratku nastavit. Chcete-li to zkusit znovu, vypněte a znovu zapněte rychlý záznam.",
+      "wayland": "Wayland aplikacím nedovoluje sledovat klávesy mimo jejich vlastní okna. Chcete-li rychlý záznam otevírat klávesou, přidejte v systémovém nastavení klávesnice vlastní zkratku, která spustí tento příkaz:"
     }
   },
   "systemIntegration": {

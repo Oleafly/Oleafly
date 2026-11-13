@@ -221,7 +221,13 @@
     "closeRight": "오른쪽 탭 모두 닫기",
     "closeAll": "모두 닫기",
     "closeAssistantTabs": "어시스턴트가 연 파일 닫기",
-    "closeAssistantTabsCount_other": "어시스턴트가 연 파일 {{count}}개 닫기"
+    "closeAssistantTabsCount_other": "어시스턴트가 연 파일 {{count}}개 닫기",
+    "editAsMarkdown": "Markdown으로 편집",
+    "editAsNote": "노트로 편집",
+    "noteAsMarkdown": "이 노트를 Markdown으로 편집하고 있습니다.",
+    "openInNotes": "노트에서 열기",
+    "moveIntoProject": "프로젝트로 이동",
+    "copyToMyNotes": "내 노트로 복사"
   },
   "projectInfo": {
     "trigger": "프로젝트 정보",
@@ -982,13 +988,14 @@
         "environment": "{{environment}} 환경",
         "command": "\\{{command}} 명령",
         "latexSource": "LaTeX 소스",
+        "html": "HTML",
         "maketitlePreview": "문서 제목과 저자 메타데이터로 만들어집니다.",
         "figurePreserved": "그림 소스를 그대로 보존했습니다.",
         "tablePreserved": "표 소스를 그대로 보존했습니다.",
         "sourcePreserved": "소스를 그대로 보존함",
         "editSource": "소스 편집",
-        "summaryLabel": "{{label}}. LaTeX 소스를 그대로 보존했습니다.",
-        "inputLabel": "LaTeX 블록 원본 소스"
+        "summaryLabel": "{{label}}. 원본 소스를 그대로 보존했습니다.",
+        "inputLabel": "블록 원본 소스"
       },
       "inline": {
         "label": "인라인 원본 소스",

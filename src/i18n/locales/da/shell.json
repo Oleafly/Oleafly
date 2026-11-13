@@ -321,6 +321,36 @@
       "keywords": "pdf visning vis skjul opdel kun editor",
       "label": "Vis eller skjul PDF-visningen"
     },
+    "swapEditorPreview": {
+      "keywords": "byt editor forhåndsvisning pdf sider panel rækkefølge layout",
+      "label": "Byt om på editor og forhåndsvisning"
+    },
+    "movePaneToEdge": {
+      "bottom": "Flyt {{pane}} til nederste kant",
+      "keywords": "flyt panel kant dok side opdel stabl layout",
+      "left": "Flyt {{pane}} til venstre kant",
+      "right": "Flyt {{pane}} til højre kant",
+      "top": "Flyt {{pane}} til øverste kant"
+    },
+    "paneNames": {
+      "assistant": "assistenten",
+      "editor": "editoren",
+      "pdf": "forhåndsvisningen",
+      "sidebar": "sidepanelet",
+      "terminal": "terminalen"
+    },
+    "resetPaneLayout": {
+      "keywords": "nulstil panel layout rækkefølge flyt paneler sidepanel assistent editor forhåndsvisning terminal standard",
+      "label": "Nulstil panelernes placering i hvert projekt"
+    },
+    "saveLayout": {
+      "keywords": "layout gem nuværende tilpasset placering paneler størrelser navn",
+      "label": "Gem nuværende layout"
+    },
+    "applySavedLayout": {
+      "keywords": "layout gemt tilpasset placering paneler skift anvend",
+      "label": "Layout: {{name}}"
+    },
     "zoomIn": {
       "keywords": "større forstør",
       "label": "Zoom ind"
@@ -348,6 +378,20 @@
     "insertFileLink": {
       "label": "Indsæt link til fil",
       "keywords": "link fil sti note reference"
+    },
+    "projectNotes": {
+      "open": "Åbn noter til dette projekt",
+      "newShared": "Ny projektnote",
+      "newPersonal": "Ny personlig note til dette projekt",
+      "keywords": "noter forskning tilknyttet relateret projekt"
+    },
+    "notes": {
+      "label": "Åbn Noter",
+      "keywords": "noter notesbog viden ideer forskning dagbog notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Hurtig notering",
+      "keywords": "hurtig notering noter indbakke i dag quick capture jot note inbox today"
     }
   },
   "community": {
@@ -452,6 +496,11 @@
   },
   "datePicker": {
     "placeholder": "Vælg en dato"
+  },
+  "monthPicker": {
+    "label": "Vælg en måned",
+    "previousYear": "Forrige år",
+    "nextYear": "Næste år"
   },
   "devMenu": {
     "inspect": "Inspicer",
@@ -645,7 +694,6 @@
   "home": {
     "ariaLabel": "Start",
     "label": "Start",
-    "title": "Tilbage til biblioteket",
     "tooltip": "Gå tilbage til projektbiblioteket"
   },
   "importDestination": {
@@ -673,6 +721,7 @@
     "groups": {
       "action": "Handling",
       "documents": "Dokumenter",
+      "notes": "Noter",
       "references": "Referencer"
     },
     "label": "Søg",
@@ -680,11 +729,13 @@
     "openReferences": "Åbn referencerne for dette projekt",
     "placeholder": "Søg i projekter og dokumenter, eller skriv / for kommandoer…",
     "placeholderDocuments": "Søg inde i dokumenterne…",
+    "placeholderNotes": "Søg i noter og blokkene i dem…",
     "placeholderProjects": "Søg i projekter efter navn, motor, type, dato eller metadata…",
     "referencesNeedProject": "Åbn først et projekt for at gennemse dets referencer.",
     "slash": {
       "create": "åbn skabelongalleriet",
       "docs": "søg inde i dokumenterne",
+      "notes": "søg i noter og blokkene i dem",
       "projects": "søg i dine projekter",
       "refs": "åbn referencerne for dette projekt",
       "settings": "åbn indstillinger",
@@ -791,7 +842,8 @@
     "research": "Forskningsarbejdsområde",
     "search": "Søg i projektet",
     "sourceControl": "Versionsstyring",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Noter"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} på {{host}}",
@@ -893,7 +945,8 @@
           "folders_other": "{{count}} mapper",
           "images": "Billeder",
           "pdfs": "PDF-filer",
-          "projects": "Projekter"
+          "projects": "Projekter",
+          "projectsAndNotes": "Projekter og noter"
         },
         "subtitle": "Projekter, forhåndsvisninger, historik og appdata",
         "title": "Lagerforbrug",
@@ -935,6 +988,10 @@
       "latexTools": {
         "description": "Vis galleriet Oleafly-værktøjer og de enkelte værktøjer (PDF-import, ligninger, tabeller, BibTeX, søgning efter forskergrupper og litteratur, frister) samt deres skråstregskommandoer. Slået fra som udgangspunkt, mens det stadig er i beta.",
         "label": "LaTeX-værktøjer"
+      },
+      "notes": {
+        "description": "Føjer Noter til docken på startskærmen. En note er en Markdown-fil med diagrammer, grafer og matematik, som både du og dine agenter kan redigere. Noter holdes uden for dit projektbibliotek, og hver note kan knyttes til et projekt. Slået fra som standard, mens funktionen stadig er i beta.",
+        "label": "Noter"
       },
       "researchTasks": {
         "description": "En agent arbejder selvstændigt i en kopi af projektet og efterlader sine ændringer, så du kan gennemgå dem. Meget ustabilt: kørsler kan gå i stå, fejle eller efterlade ændringer, du selv må rette op på manuelt, og de bruger din udbyders kvote hele tiden. Tilføjer afsnittet Forskning under Indstillinger. Hvis du slår det fra, stoppes alle kørende opgaver. Slået fra som udgangspunkt. Slå det til på eget ansvar.",
@@ -1277,6 +1334,24 @@
       "split": "Delt visning"
     },
     "moreActions": "Flere handlinger",
+    "resetPaneLayout": "Nulstil panelernes placering",
+    "resetPaneLayoutScope": "Alle projekter",
+    "savedLayouts": {
+      "close": "Luk",
+      "delete": "Slet",
+      "deleteConfirm": "Vil du slette layoutet »{{name}}«?",
+      "limit": "Du kan beholde op til {{count}} layouts. Slet et for at gemme et nyt.",
+      "manage": "Administrer layouts",
+      "name": "Navn på layoutet",
+      "rename": "Omdøb",
+      "renameTitle": "Omdøb layout",
+      "replace": "Erstat",
+      "replaceConfirm": "Der findes allerede et layout med navnet »{{name}}«. Vil du erstatte det?",
+      "save": "Gem nuværende layout",
+      "saveButton": "Gem",
+      "saveTitle": "Gem layout",
+      "update": "Opdater til nuværende"
+    },
     "renameFailed": "Kunne ikke omdøbe projektet."
   },
   "tour": {

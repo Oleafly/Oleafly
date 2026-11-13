@@ -105,6 +105,8 @@
     "conflicts_other": "Đã tạo {{count}} bản sao xung đột",
     "conflictsHelp_other": "Các tệp này đã thay đổi ở đây và trên máy tính khác trước khi đồng bộ, nên Oleafly giữ cả hai. Hãy giữ những gì bạn cần, rồi xoá các bản sao.",
     "conflictsLabel": "Bản sao xung đột trong {{name}}",
+    "compare": "So sánh",
+    "compareLabel": "So sánh {{path}} với ghi chú",
     "dismiss": "Bỏ qua",
     "skipped_other": "Đã bỏ qua {{count}} tệp",
     "skippedMore_other": "Và thêm {{count}} tệp khác",
@@ -133,6 +135,16 @@
       "downloadFailed": "Không tải xuống được",
       "uploadFailed": "Không tải lên được"
     }
+  },
+  "conflictCopy": {
+    "title": "Hai phiên bản của “{{name}}”",
+    "description": "Ghi chú này đã thay đổi ở đây và trên máy tính khác trước khi đồng bộ, nên Oleafly giữ cả hai. Hãy giữ một phiên bản. Phiên bản còn lại sẽ được chuyển vào Thùng rác.",
+    "diffLabel": "Khác biệt giữa hai phiên bản",
+    "loading": "Đang đọc cả hai phiên bản…",
+    "readFailed": "Không thể đọc bản sao xung đột.",
+    "resolveFailed": "Không thể giữ phiên bản đó.",
+    "keepMine": "Giữ phiên bản trên máy tính này",
+    "useCopy": "Dùng phiên bản từ máy tính kia"
   },
   "confirm": {
     "removeTitle": "Xoá {{name}} khỏi {{provider}}?",
@@ -193,6 +205,71 @@
     "pathStyle": "Dùng địa chỉ kiểu đường dẫn",
     "pathStyleHint": "MinIO và hầu hết máy chủ tự vận hành cần mục này."
   },
+  "backups": {
+    "title": "Sao lưu",
+    "none": "Chưa có bản sao lưu nào",
+    "last": "Sao lưu gần nhất {{time}} · {{contents}} · {{size}}",
+    "notes_other": "{{count}} ghi chú",
+    "projects_other": "{{count}} dự án",
+    "running": "Đang sao lưu",
+    "failed": "Lần sao lưu gần nhất chưa hoàn tất. {{reason}}",
+    "backUpNow": "Sao lưu ngay",
+    "auto": {
+      "label": "Tự động sao lưu",
+      "description": "Giữ các bản sao có ghi ngày của ghi chú trong {{provider}}. Những chỉnh sửa và thao tác xoá sau này, kể cả khi đã đồng bộ, không ảnh hưởng tới các bản sao đó."
+    },
+    "every": {
+      "label": "Tần suất",
+      "description": "Mỗi lần sao lưu chỉ tải lên những gì đã thay đổi kể từ lần trước.",
+      "options": {
+        "6": "6 giờ một lần",
+        "24": "Hằng ngày",
+        "168": "Hằng tuần"
+      }
+    },
+    "keep": {
+      "label": "Giữ lại",
+      "description": "Các bản sao lưu cũ hơn sẽ bị xoá khỏi {{provider}} để tiết kiệm dung lượng.",
+      "option_other": "{{count}} bản sao lưu gần nhất"
+    },
+    "includeProjects": {
+      "label": "Bao gồm dự án",
+      "description": "Dự án vốn đã được đồng bộ cùng các điểm lưu của chúng. Bật mục này để giữ cả các bản sao có ghi ngày của dự án. Lần sao lưu đầu tiên của một dự án lớn có thể mất một lúc và chiếm nhiều dung lượng."
+    },
+    "list": {
+      "title": "Bản sao lưu trong {{provider}}",
+      "label": "Bản sao lưu",
+      "loading": "Đang đọc các bản sao lưu",
+      "failed": "Không thể đọc các bản sao lưu. {{reason}}",
+      "empty": "Chưa có bản sao lưu nào trong {{provider}}."
+    },
+    "row": {
+      "thisComputer": "Máy tính này",
+      "manual": "Thủ công",
+      "restore": "Khôi phục",
+      "restoreLabel": "Khôi phục bản sao lưu ngày {{date}}"
+    },
+    "restore": {
+      "title": "Khôi phục bản sao lưu ngày {{date}}",
+      "description": "Khôi phục không bao giờ thay thế những gì bạn đang có. Ghi chú hoặc dự án vẫn còn ở đây sẽ được khôi phục thành một bản sao nằm bên cạnh, để bạn có thể so sánh hai bản.",
+      "loading": "Đang đọc bản sao lưu",
+      "loadFailed": "Không thể đọc bản sao lưu này. {{reason}}",
+      "search": "Tìm trong bản sao lưu này",
+      "clearSearch": "Xoá tìm kiếm",
+      "noMatch": "Không có gì trong bản sao lưu này khớp.",
+      "listLabel": "Ghi chú và dự án trong bản sao lưu này",
+      "here": "Vẫn còn",
+      "missing": "Không có trên máy tính này",
+      "restored": "Đã khôi phục",
+      "restoredCopy": "Đã khôi phục thành bản sao",
+      "files_other": "{{count}} tệp",
+      "one": "Khôi phục",
+      "oneLabel": "Khôi phục {{name}}",
+      "allMissing_other": "Khôi phục {{count}} mục còn thiếu",
+      "nothingMissing": "Không thiếu gì",
+      "copyName": "(khôi phục {{date}})"
+    }
+  },
   "errors": {
     "clock_skew": "Đồng hồ của máy tính này bị lệch nên {{provider}} không chấp nhận yêu cầu từ máy. Hãy đặt đúng ngày và giờ để tiếp tục đồng bộ.",
     "code_invalid": "Mã đó không dùng được. Hãy thử lại.",
@@ -221,6 +298,8 @@
     "sign_in_timeout": "Đăng nhập mất quá lâu. Hãy thử lại.",
     "too_many_files": "Dự án này có hơn 100.000 tệp. Đó là quá nhiều để đồng bộ.",
     "traffic_limit": "{{provider}} đã đạt giới hạn tải lên. Các thay đổi mới ở lại máy tính này cho tới khi {{provider}} cho phép tải lên lại.",
-    "verify_failed": "Một tệp từ {{provider}} không khớp với dự kiến của Oleafly, nên nó được giữ nguyên. Đồng bộ sẽ thử lại."
+    "verify_failed": "Một tệp từ {{provider}} không khớp với dự kiến của Oleafly, nên nó được giữ nguyên. Đồng bộ sẽ thử lại.",
+    "backup_missing": "Bản sao lưu này không còn trong {{provider}} của bạn.",
+    "backup_label": "Oleafly không thể đặt tên cho bản sao đã khôi phục."
   }
 }

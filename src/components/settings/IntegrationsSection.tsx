@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { GitBranch, LibraryBig, MousePointer2 } from "lucide-react";
 import { McpBrandIcon } from "@/components/ai/McpBrandIcon";
@@ -14,9 +14,10 @@ import {
   OverleafBrandIcon,
   ZoteroBrandIcon,
 } from "@/components/settings/IntegrationBrandIcons";
+import { intended, lazy } from "@/lib/preloadable";
 import { useSettingsStore } from "@/store/settings";
 
-const DesktopAppsSection = lazy(() => import("@/components/settings/desktop-apps/DesktopAppsSection"));
+const DesktopAppsSection = lazy(() => import("@/components/settings/desktop-apps/DesktopAppsSection"), { warm: () => intended("settings") });
 
 export function IntegrationsSection() {
   const { t } = useTranslation(["common", "settings"]);

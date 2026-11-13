@@ -230,7 +230,11 @@
     "history_unavailable": "Projektets historik er ikke på denne computer endnu. Prøv igen, når projektet er synkroniseret.",
     "account_storage_full": "Projektejerens konto er løbet tør for lagerplads på denne server. Fjern nogle filer for at gøre plads, eller bed serverens administrator om mere plads.",
     "too_many_projects": "Du har allerede så mange delte projekter, som denne server tillader. Stop deling af et projekt, før du deler et nyt.",
-    "too_many_uploads": "Du har uploadet for mange filer den sidste time. Prøv igen senere."
+    "too_many_uploads": "Du har uploadet for mange filer den sidste time. Prøv igen senere.",
+    "public_notes_off": "Denne server tillader ikke offentlige links til noter. En administrator kan slå dem til i serverens indstillinger.",
+    "too_many_pages": "Du har så mange offentlige sider, som denne server tillader. Fjern udgivelsen af en af dem, og prøv igen.",
+    "page_too_large": "Noten er for stor til at blive udgivet. Fjern nogle billeder, og prøv igen.",
+    "page_taken_down": "En administrator har taget siden ned, så noten kan ikke udgives igen, før administratoren genopretter den."
   },
   "roles": {
     "admin": "Administrator",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "Log ind via e-mail",
         "description": "Folk kan logge ind med et link, der sendes til deres e-mailadresse. Det kræver serverens e-mailindstillinger. Dine adgangsregler afgør stadig, hvem der kommer ind."
+      },
+      "publicNotesAllowed": {
+        "label": "Tillad offentlige links til noter",
+        "description": "Medlemmer kan udgive en skrivebeskyttet kopi af en note via et link, som alle kan åbne uden at logge ind."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "Afviste en gæsteinvitation",
         "guestInvitationRevoked": "Trak en gæsteinvitation tilbage",
         "guestAdmissionEnded": "Afsluttede en gæsts adgang til serveren",
-        "unknown": "Anden serverhændelse"
+        "unknown": "Anden serverhændelse",
+        "notePublished": "Udgav en note via et offentligt link",
+        "noteUnpublished": "Fjernede udgivelsen af en note",
+        "noteTakenDown": "Tog en udgivet note ned",
+        "noteRestored": "Genoprettede en udgivet note"
       },
       "details": {
         "project": "Projekt: {{title}}",
@@ -455,7 +467,8 @@
         "device": "Enhed: {{name}}",
         "byAdmin": "Fra administrationskonsollen",
         "settingOn": "{{setting}}: til",
-        "settingOff": "{{setting}}: fra"
+        "settingOff": "{{setting}}: fra",
+        "note": "Note: {{title}}"
       }
     },
     "email": {
@@ -509,6 +522,7 @@
     "copyAndShare": "Kopiér til Oleafly og del",
     "title": "Del {{name}}",
     "description": "Arbejd sammen med andre om dette projekt via en samarbejdsserver.",
+    "noteDescription": "Skriv denne note sammen med andre via en samarbejdsserver.",
     "loading": "Indlæser…",
     "linked": "Dette projekt er en mappe uden for Oleafly. Oleafly kopierer den til dit bibliotek og deler kopien. Den oprindelige mappe bliver ikke rørt.",
     "editCopy": "Dette er den delte kopi. Rediger denne fra nu af, ikke den oprindelige mappe.",
@@ -526,12 +540,15 @@
     "tooLarge": "Disse filer overskrider serverens grænse på {{size}} MB. Gør dem mindre, eller fjern dem, før du deler.",
     "renamed": "Nogle navne virker ikke på alle computere. Andre får disse filer under et lidt andet navn.",
     "excluded": "Ikke delt: andre byggefiler, Oleafly-indstillinger og Git-historik. Den nyeste kompilerede PDF deles, så medforfattere kan læse den i en browser.",
+    "noteExcluded": "Ikke delt: Oleafly-indstillinger og Git-historik.",
     "start": "Del",
     "preparing": "Gør projektet klar…",
     "uploading": "Uploader figurer og andre filer: {{done}} af {{total}}",
     "saving": "Gemmer projektet på serveren…",
     "failed": "Delingen blev ikke færdig, så intet blev delt.",
-    "trustAgain": "Alle, du tilføjer til projektet, kan ændre dets filer, så Oleafly beder dig stole på det igen på denne computer, før det kører agenter, terminalkommandoer eller shell escape for det."
+    "trustAgain": "Alle, du tilføjer til projektet, kan ændre dets filer, så Oleafly beder dig stole på det igen på denne computer, før det kører agenter, terminalkommandoer eller shell escape for det.",
+    "projectNotesShared": "Projektets noter deles med alle i dette projekt. Personlige noter forbliver private.",
+    "personalNotesPrivate": "Personlige noter forbliver private. Kun noter i projektets notemappe deles."
   },
   "manage": {
     "sharedOn": "Delt på {{server}}",
@@ -736,7 +753,7 @@
       "serverError": "Serveren tog ikke imod den kompilerede PDF, så andre ser stadig den forrige."
     },
     "texNeeded": "Dette projekt kompileres med en TeX-distribution, og denne computer har ingen. Installer TinyTeX under Indstillinger > Motorer > LaTeX for at kompilere det her.",
-    "mentioned":"{{name}} nævnte dig i en kommentar i {{path}}",
+    "mentioned": "{{name}} nævnte dig i en kommentar i {{path}}",
     "mentionedHere": "{{name}} nævnte dig i en kommentar",
     "showComment": "Vis kommentar",
     "settings": {
@@ -789,7 +806,8 @@
       "settings": "Serverindstillinger",
       "email": "E-mail",
       "log": "Sikkerhedslog",
-      "checks": "Forbindelsestjek"
+      "checks": "Forbindelsestjek",
+      "pages": "Udgivne noter"
     },
     "health": {
       "label": "Serverens tilstand: {{status}}",
@@ -956,6 +974,30 @@
     },
     "checks": {
       "description": "Tjek forbindelsen fra denne computer til serveren."
+    },
+    "pages": {
+      "description": "Skrivebeskyttede sider, som folk har lavet ud fra deres noter. Alle med linket til en side kan læse den.",
+      "loading": "Indlæser udgivne noter…",
+      "empty": "Ingen har udgivet en note på denne server endnu.",
+      "limit": "Viser de nyeste {{shown}} sider.",
+      "columns": {
+        "title": "Note",
+        "author": "Forfatter",
+        "updated": "Udgivet",
+        "actions": "Handlinger"
+      },
+      "noAuthor": "Slettet konto",
+      "takenDown": "Taget ned",
+      "openNamed": "Åbn {{title}}",
+      "takeDown": "Tag ned",
+      "takeDownNamed": "Tag {{title}} ned",
+      "restore": "Genopret",
+      "restoreNamed": "Genopret {{title}}",
+      "takeDownConfirm": {
+        "title": "Vil du tage {{title}} ned?",
+        "description": "Det offentlige link holder op med at virke, indtil du genopretter siden. Forfatteren beholder noten, men kan ikke udgive den igen i mellemtiden.",
+        "confirm": "Tag ned"
+      }
     }
   },
   "links": {
@@ -1229,5 +1271,41 @@
     "broughtIn": "Dine ændringer fra {{name}} er nu i dette projekt.",
     "retry": "Prøv igen",
     "dismiss": "Luk"
+  },
+  "publish": {
+    "tabs": {
+      "people": "Personer",
+      "publish": "Udgiv"
+    },
+    "intro": "Når du udgiver, lægges en skrivebeskyttet kopi af noten på et offentligt link. Alle med linket kan læse den uden at logge ind.",
+    "contents": "Billeder, grafer, diagrammer, matematik, Typst og molekyler kommer med. Blokke med HTML, React, CSV, sekvenser og notebooks udelades.",
+    "checking": "Tjekker, om der er en offentlig side…",
+    "loadFailed": "Oleafly kunne ikke tjekke notens offentlige side.",
+    "notAllowed": "{{server}} tillader ikke offentlige links til noter. En administrator kan slå dem til i serverens indstillinger.",
+    "ownerOnly": "Kun notens ejer kan udgive den.",
+    "linkLabel": "Offentligt link",
+    "open": "Åbn",
+    "publishedAt": "Senest udgivet {{date}}",
+    "stale": "Du har ændret noten, siden du sidst udgav den. Udgiv igen for at opdatere siden.",
+    "publish": "Udgiv",
+    "republish": "Udgiv igen",
+    "unpublish": "Fjern udgivelse",
+    "failed": "Udgivelsen blev ikke færdig.",
+    "unpublishConfirm": {
+      "title": "Vil du fjerne udgivelsen af »{{name}}«?",
+      "description": "Det offentlige link holder straks op med at virke. Alle, der har gemt en kopi af siden, beholder den.",
+      "confirm": "Fjern udgivelse"
+    },
+    "list": {
+      "title": "Udgivne noter",
+      "description": "Skrivebeskyttede sider med dine noter på denne server. Alle med et link kan læse dem.",
+      "loadFailed": "Oleafly kunne ikke indlæse dine udgivne noter.",
+      "empty": "Du har ikke udgivet nogen noter her.",
+      "openNamed": "Åbn {{name}}",
+      "unpublishNamed": "Fjern udgivelsen af {{name}}",
+      "updated": "Udgivet {{date}}"
+    },
+    "takenDown": "En administrator har taget siden ned. Læsere kan ikke åbne den, og du kan ikke udgive den igen, før administratoren genopretter den. Du kan stadig fjerne udgivelsen.",
+    "tooOld": "{{server}} er for gammel til offentlige links til noter. Dens administrator skal opdatere Oleafly Server."
   }
 }

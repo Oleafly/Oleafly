@@ -1,10 +1,11 @@
 import { listen } from "@tauri-apps/api/event";
 import { i18n } from "@/i18n";
-import { activeChatRun } from "@/components/ai/chat-run-registry";
+import { activeChatRuns, WORKSPACE_ASSISTANT_SCOPE } from "@/components/ai/chat-run-registry";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { holdBootSplash, releaseBootSplash } from "@/lib/boot-telemetry";
 import { offerQuickActionOnce } from "@/features/quick-action-offer";
 import type { OpenedFolder } from "@/lib/folder-detection";
+import { libraryProjects, opensInNotes } from "@/lib/library-projects";
 import { logError } from "@/lib/log";
 import { usesNativeDockMenu } from "@/lib/native-dock-shortcuts";
 import {
@@ -26,6 +27,7 @@ import { onSaveBlockedSettled, useFilesStore, type SaveBlockedState } from "@/st
 import { useHomeViewStore } from "@/store/home-view";
 import { useOpenFolderStore } from "@/store/open-folder";
 import { useOpenFolderFlowStore } from "@/store/open-folder-flow";
+import { useSettingsStore } from "@/store/settings";
 import { useTourStore } from "@/store/tours";
 
 export type OpenFolderOutcome =
@@ -99,6 +101,10 @@ export async function openFolderWithPicker(browse: string | null = null): Promis
 export async function openRecentProject(projectId: string): Promise<void> {
   const files = useFilesStore.getState();
   if (files.projectId === projectId) return;
+  if (opensInNotes(files.projects, projectId, useSettingsStore.getState().notes)) {
+    await files.openProject(projectId);
+    return;
+  }
   const name = files.projects.find((project) => project.id === projectId)?.name ?? projectId;
   if (!(await stopRunningWork(name))) return;
   await useFilesStore.getState().openProject(projectId);
@@ -164,7 +170,7 @@ export function startRecentProjectsMenuSync(enabled = usesNativeDockMenu()): () 
   if (!enabled) return () => {};
   let sent = "";
   const sync = (projects: readonly ProjectInfo[]) => {
-    const recent = [...projects]
+    const recent = [...libraryProjects(projects, useSettingsStore.getState().notes)]
       .sort((left, right) => right.updated_at - left.updated_at)
       .slice(0, RECENT_MENU_LIMIT)
       .map(({ id, name }) => ({ id, name }));
@@ -176,9 +182,16 @@ export function startRecentProjectsMenuSync(enabled = usesNativeDockMenu()): () 
     });
   };
   sync(useFilesStore.getState().projects);
-  return useFilesStore.subscribe((state, previous) => {
+  const stopProjects = useFilesStore.subscribe((state, previous) => {
     if (state.projects !== previous.projects) sync(state.projects);
   });
+  const stopNotes = useSettingsStore.subscribe((state, previous) => {
+    if (state.notes !== previous.notes) sync(useFilesStore.getState().projects);
+  });
+  return () => {
+    stopProjects();
+    stopNotes();
+  };
 }
 
 async function clearRunningWork(
@@ -234,10 +247,15 @@ function presentOnceOpen(folder: OpenedFolder, blocked: SaveBlockedState): void 
   });
 }
 
+function projectRuns(projectId: string) {
+  return activeChatRuns().filter((run) => run.scope === WORKSPACE_ASSISTANT_SCOPE || run.projectId === projectId);
+}
+
 function runningWork(): RunningWork | null {
-  if (!useFilesStore.getState().projectId) return null;
+  const projectId = useFilesStore.getState().projectId;
+  if (!projectId) return null;
   const compile = useCompileStore.getState().status === "compiling";
-  const assistant = activeChatRun() !== null;
+  const assistant = projectRuns(projectId).length > 0;
   return compile || assistant ? { compile, assistant } : null;
 }
 
@@ -249,7 +267,8 @@ async function stopRunningWork(name: string): Promise<boolean> {
     .ask({ name, project: useFilesStore.getState().projectName, ...work });
   if (!stop) return false;
   if (work.compile) await useCompileStore.getState().stopCompile();
-  if (work.assistant) activeChatRun()?.controller.abort();
+  const projectId = useFilesStore.getState().projectId;
+  if (work.assistant && projectId) for (const run of projectRuns(projectId)) run.controller.abort();
   return true;
 }
 

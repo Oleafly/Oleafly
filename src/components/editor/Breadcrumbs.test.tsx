@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it } from "vitest";
@@ -41,12 +41,16 @@ describe("Breadcrumbs", () => {
     expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
 
-  it("lists the sections around the cursor and jumps to one on click", () => {
+  it("lists the sections around the cursor and jumps to one on click", async () => {
     useFilesStore.setState({ activePath: "chapters/intro.tex" });
     mountEditor(DOC.indexOf("Body"));
     render(<Breadcrumbs />);
+    const nav = screen.getByRole("navigation", { name: en.breadcrumbs.label });
+    expect(within(nav).getAllByRole("listitem").map((item) => item.textContent)).toEqual(["intro.tex", "Methods", en.breadcrumbs.untitled]);
     const methods = screen.getByRole("button", { name: "Methods" });
-    expect(methods).toHaveAttribute("title", en.breadcrumbs.goTo.replace("{{title}}", "Methods"));
+    expect(methods).not.toHaveAttribute("title");
+    fireEvent.mouseEnter(methods);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(en.breadcrumbs.goTo.replace("{{title}}", "Methods"));
     expect(screen.getByRole("button", { name: en.breadcrumbs.untitled })).toBeInTheDocument();
 
     const mouseDown = new MouseEvent("mousedown", { bubbles: true, cancelable: true });

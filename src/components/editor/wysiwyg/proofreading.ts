@@ -1,6 +1,11 @@
 import {
   EMAIL_ADDRESS_PATTERN,
   maskToProse,
+  type ProofreadingDiagnostic,
+  type ProofreadingFormat,
+  type ProofreadingMode,
+  type ProofreadingSuggestion,
+  type ProofreadingSurface,
   scanMathExpressions,
 } from "@oleafly/editor";
 import { isVendoredTypstPackagePath } from "@oleafly/editor/typst-syntax";
@@ -18,12 +23,7 @@ import {
   DecorationSet,
   type EditorView,
 } from "@tiptap/pm/view";
-import type {
-  ProofreadingDiagnostic,
-  ProofreadingFormat,
-  ProofreadingMode,
-  ProofreadingSuggestion,
-} from "@oleafly/editor";
+import { isImeEnter } from "@/components/ai/composer/ime";
 import {
   cancelProofreading,
   proofreadDocument,
@@ -100,6 +100,33 @@ interface ExtractedProse {
   gapPrefix: number[];
 }
 
+export interface ProofreadingDocument {
+  path: string;
+  projectId: string | null;
+  documentVersion: number;
+  format: ProofreadingFormat;
+}
+
+export interface ProtectedProseRange {
+  from: number;
+  to: number;
+}
+
+export interface ProofreadingTarget {
+  surface: ProofreadingSurface;
+  document: () => ProofreadingDocument | null;
+  active: (view: EditorView) => boolean;
+  mode: () => ProofreadingMode | null;
+  locale: () => string;
+  publish: (issue: VisualProofreadingIssue | null) => void;
+  protect?: (text: string) => readonly ProtectedProseRange[];
+  replacesNativeSpellcheck?: boolean;
+}
+
+interface ProofreadingPluginSpec {
+  proofreadingTarget: ProofreadingTarget;
+}
+
 const visualProofreadingKey =
   new PluginKey<VisualProofreadingState>("visualProofreading");
 const VISUAL_PROOFREADING_DEBOUNCE_MS = 800;
@@ -107,13 +134,18 @@ const VISUAL_PROOFREADING_COMPOSITION_RETRY_MS = 250;
 let issueListener:
   | ((issue: VisualProofreadingIssue | null) => void)
   | null = null;
+const resumers = new WeakMap<EditorView, () => void>();
 
-function proofreadingMode(
-  harper: boolean,
-  spellcheck: boolean,
-): ProofreadingMode {
-  if (!harper) return "spelling";
-  return spellcheck ? "combined" : "grammar";
+export function proofreadingModeFor(
+  spelling: boolean,
+  grammar: boolean,
+): ProofreadingMode | null {
+  if (!grammar) return spelling ? "spelling" : null;
+  return spelling ? "combined" : "grammar";
+}
+
+function checksSpelling(mode: ProofreadingMode | null): boolean {
+  return mode === "spelling" || mode === "combined";
 }
 
 function formatForPath(path: string): ProofreadingFormat | null {
@@ -123,12 +155,7 @@ function formatForPath(path: string): ProofreadingFormat | null {
   return null;
 }
 
-function currentIdentity(): {
-  path: string;
-  projectId: string | null;
-  documentVersion: number;
-  format: ProofreadingFormat;
-} | null {
+function currentIdentity(): ProofreadingDocument | null {
   const files = useFilesStore.getState();
   const path = files.activePath;
   if (!path) return null;
@@ -142,6 +169,21 @@ function currentIdentity(): {
       }
     : null;
 }
+
+function visualMode(): ProofreadingMode | null {
+  const settings = useSettingsStore.getState();
+  return proofreadingModeFor(settings.spellcheck, settings.harper);
+}
+
+const VISUAL_TARGET: ProofreadingTarget = {
+  surface: "visual",
+  document: currentIdentity,
+  active: () => isWysiwygActive(),
+  mode: visualMode,
+  locale: () => currentDictionaryLocale(),
+  publish: (issue) => issueListener?.(issue),
+  replacesNativeSpellcheck: true,
+};
 
 interface ProseAccumulator {
   text: string;
@@ -226,25 +268,38 @@ const PROTECTED_PROSE_PATTERNS = [
   EMAIL_ADDRESS_PATTERN,
 ];
 
+function maskProseRange(
+  characters: string[],
+  blocked: boolean[],
+  from: number,
+  to: number,
+): void {
+  const end = Math.min(characters.length, to);
+  for (let index = Math.max(0, from); index < end; index++) {
+    if (!/\s/u.test(characters[index])) characters[index] = " ";
+    blocked[index] = true;
+  }
+}
+
 function maskProtectedSpans(
   text: string,
   blocked: boolean[],
-): string[] {
-  const characters = text.split("");
+  protect?: (text: string) => readonly ProtectedProseRange[],
+): string {
+  const ranges: ProtectedProseRange[] = [];
   for (const pattern of PROTECTED_PROSE_PATTERNS) {
     for (const match of text.matchAll(pattern)) {
       if (match.index === undefined) continue;
-      const end = Math.min(
-        characters.length,
-        match.index + match[0].length,
-      );
-      for (let index = match.index; index < end; index++) {
-        if (!/\s/u.test(characters[index])) characters[index] = " ";
-        blocked[index] = true;
-      }
+      ranges.push({ from: match.index, to: match.index + match[0].length });
     }
   }
-  return characters;
+  ranges.push(...(protect?.(text) ?? []));
+  if (ranges.length === 0) return text;
+  const characters = text.split("");
+  for (const range of ranges) {
+    maskProseRange(characters, blocked, range.from, range.to);
+  }
+  return characters.join("");
 }
 
 function proseBoundaryPrefixes(accumulator: ProseAccumulator): {
@@ -277,6 +332,7 @@ function proseBoundaryPrefixes(accumulator: ProseAccumulator): {
 export function extractVisualProofreadingProse(
   doc: ProseMirrorNode,
   format: ProofreadingFormat,
+  protect?: (text: string) => readonly ProtectedProseRange[],
 ): ExtractedProse {
   const accumulator: ProseAccumulator = {
     text: "",
@@ -310,13 +366,14 @@ export function extractVisualProofreadingProse(
     appendTextProse(accumulator, node.text, position, format);
     return true;
   });
-  const characters = maskProtectedSpans(
+  const text = maskProtectedSpans(
     accumulator.text,
     accumulator.blocked,
+    protect,
   );
   const { blockedPrefix, gapPrefix } = proseBoundaryPrefixes(accumulator);
   return {
-    text: characters.join(""),
+    text,
     map: accumulator.map,
     rawBlockIndex: accumulator.rawBlockIndex,
     rawSourceOffset: accumulator.rawSourceOffset,
@@ -536,6 +593,25 @@ function issueFromTarget(
   );
 }
 
+function untouchedDecorations(
+  decorations: DecorationSet,
+  transaction: Transaction,
+): DecorationSet {
+  if (decorations === DecorationSet.empty) return decorations;
+  const mapped = decorations.map(transaction.mapping, transaction.doc);
+  const touched: Decoration[] = [];
+  const { maps } = transaction.mapping;
+  maps.forEach((stepMap, index) => {
+    const later = transaction.mapping.slice(index + 1);
+    stepMap.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
+      touched.push(
+        ...mapped.find(later.map(newStart, -1), later.map(newEnd, 1)),
+      );
+    });
+  });
+  return touched.length > 0 ? mapped.remove(touched) : mapped;
+}
+
 function applyVisualProofreadingState(
   transaction: Transaction,
   previous: VisualProofreadingState,
@@ -546,7 +622,10 @@ function applyVisualProofreadingState(
   ) as VisualProofreadingMeta | null;
   if (transaction.docChanged || meta?.type === "refresh") {
     return {
-      decorations: DecorationSet.empty,
+      decorations:
+        meta?.type === "refresh"
+          ? DecorationSet.empty
+          : untouchedDecorations(previous.decorations, transaction),
       issues: [],
       dirty: true,
       revision: previous.revision + 1,
@@ -570,358 +649,384 @@ function applyVisualProofreadingState(
   return previous;
 }
 
-function publishIssue(issue: VisualProofreadingIssue | null) {
-  issueListener?.(issue);
+function targetOf(state: EditorState): ProofreadingTarget | null {
+  const spec = visualProofreadingKey.get(state)?.spec as
+    | Partial<ProofreadingPluginSpec>
+    | undefined;
+  return spec?.proofreadingTarget ?? null;
 }
 
-export const VisualProofreading = Extension.create({
-  name: "visualProofreading",
+function proofreadingPlugin(
+  target: ProofreadingTarget,
+): Plugin<VisualProofreadingState> {
+  const spec: ProofreadingPluginSpec = { proofreadingTarget: target };
+  return new Plugin<VisualProofreadingState>({
+    ...spec,
+    key: visualProofreadingKey,
+    state: {
+      init: () => ({
+        decorations: DecorationSet.empty,
+        issues: [],
+        dirty: true,
+        revision: 0,
+        requestGeneration: 0,
+      }),
+      apply: (transaction, previous, _oldState, nextState) =>
+        applyVisualProofreadingState(
+          transaction,
+          previous,
+          nextState,
+        ),
+    },
+    props: {
+      ...(target.replacesNativeSpellcheck
+        ? { attributes: (): Record<string, string> => (checksSpelling(target.mode()) ? { spellcheck: "false" } : {}) }
+        : {}),
+      decorations(state) {
+        return (
+          visualProofreadingKey.getState(state)?.decorations ??
+          DecorationSet.empty
+        );
+      },
+      handleDOMEvents: {
+        click(view, event) {
+          const issue = issueFromTarget(view, event.target);
+          if (!issue) return false;
+          event.preventDefault();
+          event.stopPropagation();
+          target.publish(issue);
+          return true;
+        },
+        keydown(view, event) {
+          if (event.key !== "Enter" && event.key !== " ") {
+            return false;
+          }
+          if (view.composing || isImeEnter(event)) return false;
+          const issue = issueFromTarget(view, event.target);
+          if (!issue) return false;
+          event.preventDefault();
+          event.stopPropagation();
+          target.publish(issue);
+          return true;
+        },
+      },
+    },
+    view(editorView) {
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      let requestGeneration = 0;
+      let requestedPath: string | null = null;
+      let destroyed = false;
+      let skipped = false;
+      let cachedExtraction:
+        | {
+            doc: ProseMirrorNode;
+            revision: number;
+            extraction: ReturnType<typeof extractVisualProofreadingProse>;
+          }
+        | null = null;
 
-  addProseMirrorPlugins() {
-    return [
-      new Plugin<VisualProofreadingState>({
-        key: visualProofreadingKey,
-        state: {
-          init: () => ({
+      const paintEmpty = (
+        doc: ProseMirrorNode,
+        revision: number,
+        request: number,
+      ) => {
+        if (destroyed || editorView.state.doc !== doc) return;
+        editorView.dispatch(
+          editorView.state.tr.setMeta(visualProofreadingKey, {
+            type: "paint",
+            doc,
+            revision,
+            requestGeneration: request,
             decorations: DecorationSet.empty,
             issues: [],
-            dirty: true,
-            revision: 0,
-            requestGeneration: 0,
-          }),
-          apply: (transaction, previous, _oldState, nextState) =>
-            applyVisualProofreadingState(
-              transaction,
-              previous,
-              nextState,
-            ),
-        },
-        props: {
-          decorations(state) {
-            return (
-              visualProofreadingKey.getState(state)?.decorations ??
-              DecorationSet.empty
-            );
-          },
-          handleDOMEvents: {
-            click(view, event) {
-              const issue = issueFromTarget(view, event.target);
-              if (!issue) return false;
-              event.preventDefault();
-              event.stopPropagation();
-              publishIssue(issue);
-              return true;
-            },
-            keydown(view, event) {
-              if (event.key !== "Enter" && event.key !== " ") {
-                return false;
-              }
-              const issue = issueFromTarget(view, event.target);
-              if (!issue) return false;
-              event.preventDefault();
-              event.stopPropagation();
-              publishIssue(issue);
-              return true;
-            },
-          },
-        },
-        view(editorView) {
-          let timer: ReturnType<typeof setTimeout> | null = null;
-          let requestGeneration = 0;
-          let requestedPath: string | null = null;
-          let destroyed = false;
-          let cachedExtraction:
-            | {
-                doc: ProseMirrorNode;
-                revision: number;
-                extraction: ReturnType<typeof extractVisualProofreadingProse>;
-              }
-            | null = null;
+          } satisfies VisualProofreadingMeta),
+        );
+      };
 
-          const paintEmpty = (
-            doc: ProseMirrorNode,
-            revision: number,
-            request: number,
-          ) => {
-            if (destroyed || editorView.state.doc !== doc) return;
-            editorView.dispatch(
-              editorView.state.tr.setMeta(visualProofreadingKey, {
-                type: "paint",
-                doc,
-                revision,
-                requestGeneration: request,
-                decorations: DecorationSet.empty,
-                issues: [],
-              } satisfies VisualProofreadingMeta),
+      const schedule = (
+        delay = VISUAL_PROOFREADING_DEBOUNCE_MS,
+      ) => {
+        if (timer !== null) clearTimeout(timer);
+        const state = visualProofreadingKey.getState(
+          editorView.state,
+        );
+        if (!state) return;
+        const doc = editorView.state.doc;
+        const revision = state.revision;
+        const request = ++requestGeneration;
+        timer = setTimeout(() => {
+          timer = null;
+          if (
+            destroyed ||
+            editorView.state.doc !== doc ||
+            visualProofreadingKey.getState(editorView.state)
+              ?.revision !== revision ||
+            requestGeneration !== request
+          ) {
+            return;
+          }
+          if (editorView.composing) {
+            schedule(VISUAL_PROOFREADING_COMPOSITION_RETRY_MS);
+            return;
+          }
+          const identity = target.document();
+          const active = target.active(editorView);
+          const mode = target.mode();
+          skipped = !active;
+          if (!identity || !active || mode === null) {
+            cancelProofreading(
+              target.surface,
+              requestedPath ?? identity?.path,
             );
-          };
+            requestedPath = null;
+            paintEmpty(doc, revision, request);
+            return;
+          }
 
-          const schedule = (
-            delay = VISUAL_PROOFREADING_DEBOUNCE_MS,
-          ) => {
-            if (timer !== null) clearTimeout(timer);
-            const state = visualProofreadingKey.getState(
-              editorView.state,
-            );
-            if (!state) return;
-            const doc = editorView.state.doc;
-            const revision = state.revision;
-            const request = ++requestGeneration;
-            timer = setTimeout(() => {
-              timer = null;
-              const identity = currentIdentity();
-              const settings = useSettingsStore.getState();
-              if (
-                destroyed ||
-                editorView.state.doc !== doc ||
+          const settings = useSettingsStore.getState();
+          const extraction = extractVisualProofreadingProse(
+            doc,
+            identity.format,
+            target.protect,
+          );
+          const dictionary = useDictionary.getState();
+          const ignoredWords = [
+            ...dictionary.global,
+            ...(identity.projectId
+              ? (dictionary.ignored[identity.projectId] ?? [])
+              : []),
+          ];
+          requestedPath = identity.path;
+          void proofreadDocument({
+            identity: {
+              projectId: identity.projectId,
+              path: identity.path,
+              revision,
+              surface: target.surface,
+            },
+            text: extraction.text,
+            format: "plaintext",
+            mode,
+            ignoredWords,
+            preferences: {
+              showRegionalism: settings.showRegionalism,
+              showWordChoice: settings.showWordChoice,
+              dictionaryLocale: target.locale(),
+            },
+          })
+            .then((result) => {
+              const current = target.document();
+              const ready =
+                result.status === "ready" || result.status === "partial";
+              const fresh =
+                !destroyed &&
+                editorView.state.doc === doc &&
+                requestGeneration === request &&
                 visualProofreadingKey.getState(editorView.state)
-                  ?.revision !== revision ||
-                requestGeneration !== request
-              ) {
+                  ?.revision === revision;
+              const sameDocument =
+                current?.path === identity.path &&
+                current?.projectId === identity.projectId &&
+                current?.documentVersion === identity.documentVersion;
+              const active = target.active(editorView);
+              if (!ready || !fresh || !sameDocument || !active) {
+                if (
+                  !ready &&
+                  editorView.state.doc === doc &&
+                  requestGeneration === request
+                ) {
+                  paintEmpty(doc, revision, request);
+                }
+                if (ready && fresh && sameDocument) skipped = true;
                 return;
               }
               if (editorView.composing) {
                 schedule(VISUAL_PROOFREADING_COMPOSITION_RETRY_MS);
                 return;
               }
-              if (
-                !identity ||
-                !isWysiwygActive() ||
-                (!settings.spellcheck && !settings.harper)
-              ) {
-                cancelProofreading(
-                  "visual",
-                  requestedPath ?? identity?.path,
-                );
-                requestedPath = null;
-                paintEmpty(doc, revision, request);
-                return;
-              }
-
-              const mode = proofreadingMode(
-                settings.harper,
-                settings.spellcheck,
-              );
-              const extraction = extractVisualProofreadingProse(
+              cachedExtraction = { doc, revision, extraction };
+              const painted = mapVisualProofreadingDiagnostics(
                 doc,
-                identity.format,
+                proofreadingPresentationDiagnostics(result),
+                extraction,
+                identity,
+                revision,
+                request,
               );
-              const dictionary = useDictionary.getState();
-              const ignoredWords = [
-                ...dictionary.global,
-                ...(identity.projectId
-                  ? (dictionary.ignored[identity.projectId] ?? [])
-                  : []),
-              ];
-              requestedPath = identity.path;
-              void proofreadDocument({
-                identity: {
-                  projectId: identity.projectId,
-                  path: identity.path,
-                  revision,
-                  surface: "visual",
-                },
-                text: extraction.text,
-                format: "plaintext",
-                mode,
-                ignoredWords,
-                preferences: {
-                  showRegionalism: settings.showRegionalism,
-                  showWordChoice: settings.showWordChoice,
-                  dictionaryLocale: currentDictionaryLocale(),
-                },
-              })
-                .then((result) => {
-                  const current = currentIdentity();
-                  if (
-                    destroyed ||
-                    (result.status !== "ready" &&
-                      result.status !== "partial") ||
-                    editorView.state.doc !== doc ||
-                    requestGeneration !== request ||
-                    visualProofreadingKey.getState(editorView.state)
-                      ?.revision !== revision ||
-                    current?.path !== identity.path ||
-                    current?.projectId !== identity.projectId ||
-                    current?.documentVersion !==
-                      identity.documentVersion ||
-                    !isWysiwygActive()
-                  ) {
-                    if (
-                      result.status !== "ready" &&
-                      result.status !== "partial" &&
-                      editorView.state.doc === doc &&
-                      requestGeneration === request
-                    ) {
-                      paintEmpty(doc, revision, request);
-                    }
-                    return;
-                  }
-                  cachedExtraction = { doc, revision, extraction };
-                  const painted = mapVisualProofreadingDiagnostics(
-                    doc,
-                    proofreadingPresentationDiagnostics(result),
-                    extraction,
-                    identity,
-                    revision,
-                    request,
-                  );
-                  editorView.dispatch(
-                    editorView.state.tr.setMeta(
-                      visualProofreadingKey,
-                      {
-                        type: "paint",
-                        doc,
-                        revision,
-                        requestGeneration: request,
-                        ...painted,
-                      } satisfies VisualProofreadingMeta,
-                    ),
-                  );
-                })
-                .catch(() => {
-                  // The client owns unavailable/cancelled status. Stale
-                  // failures must not repaint this document.
-                });
-            }, delay);
-          };
-
-          const onRetry = (event: Event) => {
-            const detail = (
-              event as CustomEvent<{
-                surface?: string;
-                path?: string;
-              }>
-            ).detail;
-            if (
-              detail?.surface !== "visual" ||
-              (detail.path && detail.path !== currentIdentity()?.path)
-            ) {
-              return;
-            }
-            schedule(0);
-          };
-          const onSettingsChanged = () => {
-            cancelProofreading(
-              "visual",
-              requestedPath ?? currentIdentity()?.path,
-            );
-            requestedPath = null;
-            publishIssue(null);
-            schedule(0);
-          };
-          const onPresentationChanged = () => {
-            const state = visualProofreadingKey.getState(
-              editorView.state,
-            );
-            const identity = currentIdentity();
-            if (
-              state &&
-              !state.dirty &&
-              identity &&
-              isWysiwygActive() &&
-              cachedExtraction &&
-              cachedExtraction.doc === editorView.state.doc &&
-              cachedExtraction.revision === state.revision
-            ) {
-              const diagnostics = storePresentationDiagnostics(
-                "visual",
-                identity.projectId,
-                identity.path,
-              );
-              if (diagnostics) {
-                const request = ++requestGeneration;
-                const painted = mapVisualProofreadingDiagnostics(
-                  editorView.state.doc,
-                  diagnostics,
-                  cachedExtraction.extraction,
-                  identity,
-                  state.revision,
-                  request,
-                );
-                editorView.dispatch(
-                  editorView.state.tr.setMeta(visualProofreadingKey, {
+              editorView.dispatch(
+                editorView.state.tr.setMeta(
+                  visualProofreadingKey,
+                  {
                     type: "paint",
-                    doc: editorView.state.doc,
-                    revision: state.revision,
+                    doc,
+                    revision,
                     requestGeneration: request,
                     ...painted,
-                  } satisfies VisualProofreadingMeta),
-                );
-                return;
-              }
-            }
-            schedule(0);
-          };
+                  } satisfies VisualProofreadingMeta,
+                ),
+              );
+            })
+            .catch(() => {
+              // The client owns unavailable/cancelled status. Stale
+              // failures must not repaint this document.
+            });
+        }, delay);
+      };
 
-          window.addEventListener(
+      const onRetry = (event: Event) => {
+        const detail = (
+          event as CustomEvent<{
+            surface?: string;
+            path?: string;
+          }>
+        ).detail;
+        if (
+          detail?.surface !== target.surface ||
+          (detail.path && detail.path !== target.document()?.path)
+        ) {
+          return;
+        }
+        schedule(0);
+      };
+      const onSettingsChanged = () => {
+        cancelProofreading(
+          target.surface,
+          requestedPath ?? target.document()?.path,
+        );
+        requestedPath = null;
+        target.publish(null);
+        schedule(0);
+      };
+      const onPresentationChanged = () => {
+        const state = visualProofreadingKey.getState(
+          editorView.state,
+        );
+        const identity = target.document();
+        if (
+          state &&
+          !state.dirty &&
+          identity &&
+          target.active(editorView) &&
+          cachedExtraction?.doc === editorView.state.doc &&
+          cachedExtraction.revision === state.revision
+        ) {
+          const diagnostics = storePresentationDiagnostics(
+            target.surface,
+            identity.projectId,
+            identity.path,
+          );
+          if (diagnostics) {
+            const request = ++requestGeneration;
+            const painted = mapVisualProofreadingDiagnostics(
+              editorView.state.doc,
+              diagnostics,
+              cachedExtraction.extraction,
+              identity,
+              state.revision,
+              request,
+            );
+            editorView.dispatch(
+              editorView.state.tr.setMeta(visualProofreadingKey, {
+                type: "paint",
+                doc: editorView.state.doc,
+                revision: state.revision,
+                requestGeneration: request,
+                ...painted,
+              } satisfies VisualProofreadingMeta),
+            );
+            return;
+          }
+        }
+        schedule(0);
+      };
+
+      window.addEventListener(
+        "oleafly:proofreading-retry",
+        onRetry,
+      );
+      window.addEventListener(
+        "oleafly:proofreading-settings-changed",
+        onSettingsChanged,
+      );
+      window.addEventListener(
+        "oleafly:proofreading-presentation-changed",
+        onPresentationChanged,
+      );
+      const resume = () => {
+        if (destroyed || !skipped || !target.active(editorView)) return;
+        skipped = false;
+        schedule(0);
+      };
+      resumers.set(editorView, resume);
+      schedule(0);
+      return {
+        update(view, previousState) {
+          const current = visualProofreadingKey.getState(view.state);
+          const previous =
+            visualProofreadingKey.getState(previousState);
+          if (current?.dirty && current.issues.length === 0) {
+            target.publish(null);
+          }
+          if (
+            view.state.doc !== previousState.doc ||
+            current?.revision !== previous?.revision ||
+            (current?.dirty && !previous?.dirty)
+          ) {
+            if (
+              (view.state.doc !== previousState.doc ||
+                current?.revision !== previous?.revision) &&
+              requestedPath
+            ) {
+              cancelProofreading(target.surface, requestedPath);
+              requestedPath = null;
+            }
+            schedule();
+          }
+        },
+        destroy() {
+          destroyed = true;
+          requestGeneration++;
+          cachedExtraction = null;
+          if (resumers.get(editorView) === resume) {
+            resumers.delete(editorView);
+          }
+          if (timer !== null) clearTimeout(timer);
+          timer = null;
+          window.removeEventListener(
             "oleafly:proofreading-retry",
             onRetry,
           );
-          window.addEventListener(
+          window.removeEventListener(
             "oleafly:proofreading-settings-changed",
             onSettingsChanged,
           );
-          window.addEventListener(
+          window.removeEventListener(
             "oleafly:proofreading-presentation-changed",
             onPresentationChanged,
           );
-          schedule(0);
-          return {
-            update(view, previousState) {
-              const current = visualProofreadingKey.getState(view.state);
-              const previous =
-                visualProofreadingKey.getState(previousState);
-              if (current?.dirty && current.issues.length === 0) {
-                publishIssue(null);
-              }
-              if (
-                view.state.doc !== previousState.doc ||
-                current?.revision !== previous?.revision ||
-                (current?.dirty && !previous?.dirty)
-              ) {
-                if (
-                  view.state.doc !== previousState.doc ||
-                  current?.revision !== previous?.revision
-                ) {
-                  if (requestedPath) {
-                    cancelProofreading("visual", requestedPath);
-                  }
-                }
-                schedule();
-              }
-            },
-          destroy() {
-            destroyed = true;
-            requestGeneration++;
-            cachedExtraction = null;
-              if (timer !== null) clearTimeout(timer);
-              timer = null;
-              window.removeEventListener(
-                "oleafly:proofreading-retry",
-                onRetry,
-              );
-              window.removeEventListener(
-                "oleafly:proofreading-settings-changed",
-                onSettingsChanged,
-              );
-              window.removeEventListener(
-                "oleafly:proofreading-presentation-changed",
-                onPresentationChanged,
-              );
-              cancelProofreading(
-                "visual",
-                requestedPath ?? currentIdentity()?.path,
-              );
-              requestedPath = null;
-              publishIssue(null);
-            },
-          };
+          cancelProofreading(
+            target.surface,
+            requestedPath ?? target.document()?.path,
+          );
+          requestedPath = null;
+          target.publish(null);
         },
-      }),
-    ];
-  },
-});
+      };
+    },
+  });
+}
+
+export function createProofreading(target: ProofreadingTarget) {
+  return Extension.create({
+    name: "visualProofreading",
+
+    addProseMirrorPlugins() {
+      return [proofreadingPlugin(target)];
+    },
+  });
+}
+
+export const VisualProofreading = createProofreading(VISUAL_TARGET);
 
 export function setVisualProofreadingIssueListener(
   listener:
@@ -939,18 +1044,23 @@ export function refreshVisualProofreading(editor: Editor) {
   );
 }
 
+export function resumeVisualProofreading(editor: Editor) {
+  resumers.get(editor.view)?.();
+}
+
 function currentIssue(
   editor: Editor,
   issue: VisualProofreadingIssue,
 ): VisualProofreadingIssue | null {
   const state = visualProofreadingKey.getState(editor.state);
-  const identity = currentIdentity();
-  if (!state || !identity) return null;
+  const target = targetOf(editor.state);
+  const identity = target?.document();
+  if (!state || !target || !identity) return null;
   if (
     identity.path !== issue.path ||
     identity.projectId !== issue.projectId ||
     identity.documentVersion !== issue.documentVersion ||
-    !isWysiwygActive() ||
+    !target.active(editor.view) ||
     state.dirty ||
     state.revision !== issue.revision ||
     state.requestGeneration !== issue.requestGeneration
@@ -960,6 +1070,10 @@ function currentIssue(
   return (
     state.issues.find((candidate) => candidate.id === issue.id) ?? null
   );
+}
+
+function publishCleared(editor: Editor): void {
+  targetOf(editor.state)?.publish(null);
 }
 
 export function groupVisualProofreadingIssues(
@@ -1068,7 +1182,7 @@ export function applyVisualProofreadingSuggestion(
     if (editor.state.doc === before) return false;
     scrollVisualSelectionLocally(editor.view);
     editor.view.focus();
-    publishIssue(null);
+    publishCleared(editor);
     return true;
   }
   const transaction = editor.state.tr;
@@ -1095,7 +1209,7 @@ export function applyVisualProofreadingSuggestion(
   if (editor.state.doc === before) return false;
   scrollVisualSelectionLocally(editor.view);
   editor.view.focus();
-  publishIssue(null);
+  publishCleared(editor);
   return true;
 }
 
@@ -1118,6 +1232,6 @@ export function ignoreVisualProofreadingIssue(
   }
   if (outcome !== "stored" && outcome !== "duplicate") return false;
   refreshVisualProofreading(editor);
-  publishIssue(null);
+  publishCleared(editor);
   return true;
 }

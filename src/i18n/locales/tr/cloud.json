@@ -110,6 +110,8 @@
     "conflictsHelp_one": "Bu dosya, eşitlenmeden önce hem burada hem de başka bir bilgisayarda değiştiği için Oleafly iki sürümü de sakladı. İhtiyacınız olanı koruyun, ardından kopyayı silin.",
     "conflictsHelp_other": "Bu dosyalar, eşitlenmeden önce hem burada hem de başka bir bilgisayarda değiştiği için Oleafly iki sürümü de sakladı. İhtiyacınız olanı koruyun, ardından kopyaları silin.",
     "conflictsLabel": "{{name}} projesindeki çakışma kopyaları",
+    "compare": "Karşılaştır",
+    "compareLabel": "{{path}} dosyasını notla karşılaştır",
     "dismiss": "Kapat",
     "skipped_one": "{{count}} dosya atlandı",
     "skipped_other": "{{count}} dosya atlandı",
@@ -142,6 +144,16 @@
       "downloadFailed": "İndirilemedi",
       "uploadFailed": "Yüklenemedi"
     }
+  },
+  "conflictCopy": {
+    "title": "\"{{name}}\" notunun iki sürümü",
+    "description": "Bu not, eşitlenmeden önce hem burada hem de başka bir bilgisayarda değiştiği için Oleafly iki sürümü de sakladı. Bir sürümü koruyun. Diğeri Geri Dönüşüm Kutusu'na gider.",
+    "diffLabel": "İki sürüm arasındaki farklar",
+    "loading": "İki sürüm de okunuyor…",
+    "readFailed": "Çakışma kopyası okunamadı.",
+    "resolveFailed": "Bu sürüm korunamadı.",
+    "keepMine": "Bu bilgisayardaki sürümü koru",
+    "useCopy": "Diğer bilgisayardaki sürümü kullan"
   },
   "confirm": {
     "removeTitle": "{{name}} {{provider}} hizmetinden kaldırılsın mı?",
@@ -207,6 +219,76 @@
     "pathStyle": "Yol biçimli adresler kullan",
     "pathStyleHint": "MinIO ve kendi barındırdığınız sunucuların çoğu buna ihtiyaç duyar."
   },
+  "backups": {
+    "title": "Yedekler",
+    "none": "Henüz yedek yok",
+    "last": "Son yedekleme {{time}} · {{contents}} · {{size}}",
+    "notes_one": "{{count}} not",
+    "notes_other": "{{count}} not",
+    "projects_one": "{{count}} proje",
+    "projects_other": "{{count}} proje",
+    "running": "Yedekleniyor",
+    "failed": "Son yedekleme tamamlanmadı. {{reason}}",
+    "backUpNow": "Şimdi yedekle",
+    "auto": {
+      "label": "Otomatik yedekle",
+      "description": "Notlarınızın tarihli kopyalarını {{provider}} hizmetinde tutar. Sonraki düzenlemeler ve silmeler, eşitlenenler bile, bu kopyalara dokunmaz."
+    },
+    "every": {
+      "label": "Sıklık",
+      "description": "Her yedekleme yalnızca bir öncekinden bu yana değişenleri yükler.",
+      "options": {
+        "6": "6 saatte bir",
+        "24": "Her gün",
+        "168": "Her hafta"
+      }
+    },
+    "keep": {
+      "label": "Sakla",
+      "description": "Yer açmak için eski yedekler {{provider}} hizmetinden silinir.",
+      "option_one": "Son yedek",
+      "option_other": "Son {{count}} yedek"
+    },
+    "includeProjects": {
+      "label": "Projeleri dahil et",
+      "description": "Projeler zaten kontrol noktalarıyla birlikte eşitleniyor. Onların da tarihli kopyalarını tutmak için bunu açın. Büyük bir projenin ilk yedeklemesi biraz sürebilir ve çok yer kaplayabilir."
+    },
+    "list": {
+      "title": "{{provider}} hizmetindeki yedekler",
+      "label": "Yedekler",
+      "loading": "Yedekler okunuyor",
+      "failed": "Yedekler okunamadı. {{reason}}",
+      "empty": "{{provider}} hizmetinde henüz yedek yok."
+    },
+    "row": {
+      "thisComputer": "Bu bilgisayar",
+      "manual": "Elle",
+      "restore": "Geri yükle",
+      "restoreLabel": "{{date}} tarihli yedeği geri yükle"
+    },
+    "restore": {
+      "title": "{{date}} yedeğinden geri yükle",
+      "description": "Geri yükleme elinizdekinin yerine asla geçmez. Hâlâ burada olan bir not veya proje, yanına bir kopya olarak gelir, böylece ikisini karşılaştırabilirsiniz.",
+      "loading": "Yedek okunuyor",
+      "loadFailed": "Bu yedek okunamadı. {{reason}}",
+      "search": "Bu yedekte bul",
+      "clearSearch": "Aramayı temizle",
+      "noMatch": "Bu yedekte eşleşen bir şey yok.",
+      "listLabel": "Bu yedekteki notlar ve projeler",
+      "here": "Hâlâ burada",
+      "missing": "Bu bilgisayarda yok",
+      "restored": "Geri yüklendi",
+      "restoredCopy": "Kopya olarak geri yüklendi",
+      "files_one": "{{count}} dosya",
+      "files_other": "{{count}} dosya",
+      "one": "Geri yükle",
+      "oneLabel": "{{name}} öğesini geri yükle",
+      "allMissing_one": "Eksik olanı geri yükle",
+      "allMissing_other": "Eksik {{count}} öğeyi geri yükle",
+      "nothingMissing": "Eksik bir şey yok",
+      "copyName": "({{date}} yedeğinden)"
+    }
+  },
   "errors": {
     "clock_skew": "Bu bilgisayarın saati yanlış olduğu için {{provider}} hizmeti bu bilgisayardan gelen istekleri kabul etmiyor. Eşitlemeye devam etmek için tarihi ve saati doğru ayarlayın.",
     "code_invalid": "O kod çalışmadı. Tekrar deneyin.",
@@ -235,6 +317,8 @@
     "sign_in_timeout": "Oturum açma çok uzun sürdü. Tekrar deneyin.",
     "too_many_files": "Bu projede 100.000'den fazla dosya var. Bu, eşitlenemeyecek kadar çok.",
     "traffic_limit": "{{provider}} hizmetindeki alanınız yükleme sınırına ulaştı. {{provider}} yüklemelere yeniden izin verene kadar yeni değişiklikler bu bilgisayarda kalır.",
-    "verify_failed": "{{provider}} hizmetinden gelen bir dosya Oleafly'nin beklediğiyle eşleşmediği için olduğu gibi bırakıldı. Eşitleme yeniden denenecek."
+    "verify_failed": "{{provider}} hizmetinden gelen bir dosya Oleafly'nin beklediğiyle eşleşmediği için olduğu gibi bırakıldı. Eşitleme yeniden denenecek.",
+    "backup_missing": "Bu yedek artık {{provider}} hizmetinde değil.",
+    "backup_label": "Oleafly geri yüklenen kopyaya ad veremedi."
   }
 }

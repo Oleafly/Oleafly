@@ -318,15 +318,32 @@ pub(crate) fn render_snippet(
     request: &TypstSnippetRequest,
     timeout: Duration,
 ) -> Result<TypstSnippetRender, String> {
-    if request.source.len() > MAX_SOURCE_BYTES {
-        return Err("This Typst snippet is too large to render.".into());
-    }
-    let ppi = resolution(request)?;
     let workspace = tempfile::Builder::new()
         .prefix("oleafly-typst-snippet-")
         .tempdir()
         .map_err(|error| format!("failed to create a Typst workspace: {error}"))?;
-    let root = workspace.path();
+    render_snippet_in(
+        typst,
+        capabilities,
+        packages,
+        request,
+        timeout,
+        workspace.path(),
+    )
+}
+
+pub(crate) fn render_snippet_in(
+    typst: &Path,
+    capabilities: &TypstCapabilities,
+    packages: Option<&crate::typst_packages::TypstPackageDirs>,
+    request: &TypstSnippetRequest,
+    timeout: Duration,
+    root: &Path,
+) -> Result<TypstSnippetRender, String> {
+    if request.source.len() > MAX_SOURCE_BYTES {
+        return Err("This Typst snippet is too large to render.".into());
+    }
+    let ppi = resolution(request)?;
     std::fs::write(root.join(SNIPPET_FILE), request.file_source())
         .map_err(|error| format!("failed to write the Typst snippet: {error}"))?;
     let output_name = request.output_name();

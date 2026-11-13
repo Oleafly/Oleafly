@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { isTauri } from "@tauri-apps/api/core";
 import { useLinkInbox } from "@/components/collab/link-inbox";
 import { logError } from "@/lib/log";

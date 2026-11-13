@@ -993,7 +993,8 @@
       "editor": "Editor",
       "files": "Projekt",
       "pdf": "PDF-forhåndsvisning",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Noter"
     },
     "terminal": {
       "colorTheme": {
@@ -2337,6 +2338,66 @@
       "resetZoom": {
         "description": "Sætter appen tilbage til 100 %.",
         "label": "Nulstil zoom"
+      },
+      "notesQuickSwitcher": {
+        "description": "Find en note ud fra navnet, og åbn den.",
+        "label": "Noter: gå til note"
+      },
+      "notesTodayNote": {
+        "description": "Åbn dagens note, eller start den.",
+        "label": "Noter: dagens note"
+      },
+      "notesGraph": {
+        "description": "Åbn grafen over alle dine noter.",
+        "label": "Noter: graf"
+      },
+      "notesLocalGraph": {
+        "description": "Vis eller skjul linkene omkring den åbne note.",
+        "label": "Noter: lokal graf"
+      },
+      "notesOutline": {
+        "description": "Vis eller skjul dispositionen for den åbne note.",
+        "label": "Noter: disposition"
+      },
+      "notesAskAgent": {
+        "description": "Spørg agenten om den markerede tekst, eller åbn og luk notens agent.",
+        "label": "Noter: spørg agenten"
+      },
+      "notesNewNote": {
+        "label": "Noter: ny note",
+        "description": "Start en ny note i det aktuelle panel."
+      },
+      "notesSearch": {
+        "label": "Noter: søg i noter",
+        "description": "Gå til søgefeltet øverst i sidepanelet Noter."
+      },
+      "notesBookmark": {
+        "label": "Noter: bogmærk note",
+        "description": "Føj den åbne note til Favoritter, eller fjern den igen."
+      },
+      "notesCopyLink": {
+        "label": "Noter: kopiér link til note",
+        "description": "Kopiér et link til den åbne note, som du kan indsætte i en anden note eller en chat."
+      },
+      "notesProperties": {
+        "label": "Noter: vis eller skjul egenskaber",
+        "description": "Åbn eller luk egenskaberne under notens titel."
+      },
+      "notesQuickCapture": {
+        "description": "Åbn et lille vindue, så du kan skrive noget ned fra enhver app, også når Oleafly kører i baggrunden.",
+        "label": "Noter: hurtig notering"
+      },
+      "notesCopyBlockLink": {
+        "description": "Kopiér et link til det afsnit, listepunkt eller den tabel, som markøren står i.",
+        "label": "Noter: kopiér link til blok"
+      },
+      "notesBack": {
+        "description": "Gå tilbage til, hvor du var i denne fane.",
+        "label": "Noter: tilbage"
+      },
+      "notesForward": {
+        "description": "Gå frem igen, når du er gået tilbage.",
+        "label": "Noter: frem"
       }
     },
     "application": {
@@ -2362,14 +2423,41 @@
         "renameSymbol": "Omdøb symbol eller fil i hele projektet",
         "slashCommandMenu": "Indsætningsmenu med skråstregskommandoer",
         "triggerAutocomplete": "Udløs automatisk fuldførelse",
-        "undo": "Fortryd"
+        "undo": "Fortryd",
+        "noteBold": "Fed",
+        "noteItalic": "Kursiv",
+        "noteUnderline": "Understregning",
+        "noteStrike": "Gennemstreget",
+        "noteCode": "Kode i linjen",
+        "noteHighlight": "Fremhæv med den senest brugte farve",
+        "noteSuperscript": "Hævet skrift",
+        "noteSubscript": "Sænket skrift",
+        "noteHeadings": "Overskrift 1 til 6",
+        "noteText": "Lav om til tekst",
+        "noteQuote": "Citat",
+        "noteCodeBlock": "Kodeblok",
+        "noteBulletList": "Punktopstilling",
+        "noteNumberedList": "Nummereret liste",
+        "noteTaskList": "Tjekliste",
+        "noteToggleTask": "Sæt eller fjern flueben ved en opgave",
+        "noteIndent": "Ryk et listepunkt ind",
+        "noteOutdent": "Ryk et listepunkt ud",
+        "noteLineBreak": "Linjeskift i samme afsnit",
+        "noteFind": "Find og erstat",
+        "noteSelectAll": "Markér hele noten",
+        "noteUndo": "Fortryd",
+        "noteRedo": "Gentag",
+        "noteInsertMenu": "Åbn indsætningsmenuen i starten af en linje",
+        "noteLinkMenu": "Link til en note",
+        "noteTag": "Tilføj et tag"
       },
       "managed": "Styres af editoren"
     },
     "categories": {
       "codeIntelligence": "Kodeindsigt",
       "editor": "Editor",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Noter"
     },
     "error": {
       "conflict": "Allerede tildelt {{action}}.",
@@ -2415,6 +2503,15 @@
         "uppercase": "Store bogstaver"
       },
       "unbound": "Ikke angivet"
+    },
+    "quickCapture": {
+      "label": "Hurtig notering fra alle apps",
+      "description": "Genvejen til hurtig notering virker i alle apps på denne computer.",
+      "ready": "Tryk på {{shortcut}} i en hvilken som helst app for at åbne hurtig notering.",
+      "taken": "En anden app bruger allerede {{shortcut}}. Vælg en anden genvej til Noter: hurtig notering.",
+      "invalid": "{{shortcut}} kan ikke virke uden for Oleafly. Vælg en genvej, der slutter med et bogstav, et tal eller en funktionstast.",
+      "failed": "Oleafly kunne ikke konfigurere genvejen. Slå hurtig notering fra og til igen for at prøve igen.",
+      "wayland": "Wayland lader ikke apps lytte efter taster uden for deres egne vinduer. Hvis du vil åbne hurtig notering med en tast, skal du tilføje en brugerdefineret genvej i systemets tastaturindstillinger, der kører denne kommando:"
     }
   },
   "systemIntegration": {

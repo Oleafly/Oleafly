@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { EDITOR_COMMAND_IDS, type EditorCommandId } from "@oleafly/editor";
-import { isAltGraphCharacter, isUnbindableKey } from "@/lib/keyboard";
+import { isAltGraphCharacter, isUnbindableKey, keyLabel } from "@/lib/keyboard";
 import { readJson, writeJson } from "@/lib/local-storage";
 
 export type EditorKeyId = EditorCommandId;
@@ -147,13 +147,6 @@ const MODIFIER_LABELS: Readonly<Record<string, { mac: string; other: string }>> 
   Shift: { mac: "Shift", other: "Shift" },
 };
 
-const KEY_LABELS: Readonly<Record<string, string>> = {
-  ArrowUp: "↑",
-  ArrowDown: "↓",
-  ArrowLeft: "←",
-  ArrowRight: "→",
-};
-
 export function editorKeyTokens(value: string): string[] {
   const parsed = parseEditorKey(value);
   if (!parsed) return [];
@@ -161,8 +154,7 @@ export function editorKeyTokens(value: string): string[] {
   const tokens = MODIFIER_ORDER.filter((modifier) => parsed.modifiers.includes(modifier)).map(
     (modifier) => (mac ? MODIFIER_LABELS[modifier].mac : MODIFIER_LABELS[modifier].other),
   );
-  const key = parsed.key;
-  tokens.push(KEY_LABELS[key] ?? (key.length === 1 ? key.toUpperCase() : key));
+  tokens.push(keyLabel(parsed.key));
   return tokens;
 }
 

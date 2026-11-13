@@ -314,6 +314,7 @@
   },
   "mcp": {
     "deniedByRules": "approvals.toml의 거부 규칙에 따라 거부됨",
+    "createTodaySummary": "오늘의 노트 “{{title}}” 만들기",
     "openProjectSummary": "프로젝트 {{id}} 열기",
     "rulesUnreadable": "approvals.toml을 읽을 수 없어 거부됨",
     "useToolSummary": "{{server}} MCP 서버의 {{tool}} 사용"
@@ -336,6 +337,7 @@
   },
   "mermaid": {
     "diagram": "다이어그램",
+    "remoteBlocked": "이 다이어그램은 인터넷에서 이미지나 스타일을 불러오기 때문에 그리지 않았습니다.",
     "renderFailed": "다이어그램을 렌더링할 수 없습니다.",
     "rendering": "다이어그램을 렌더링하는 중"
   },

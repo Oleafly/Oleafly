@@ -322,6 +322,36 @@
       "keywords": "pdf anteprima mostra nascondi dividi solo editor",
       "label": "Mostra o nascondi l'anteprima PDF"
     },
+    "swapEditorPreview": {
+      "keywords": "scambia inverti editor anteprima pdf lati pannello ordine layout",
+      "label": "Scambia editor e anteprima"
+    },
+    "movePaneToEdge": {
+      "bottom": "Sposta {{pane}} sul bordo inferiore",
+      "keywords": "sposta pannello bordo aggancia lato dividi impila layout",
+      "left": "Sposta {{pane}} sul bordo sinistro",
+      "right": "Sposta {{pane}} sul bordo destro",
+      "top": "Sposta {{pane}} sul bordo superiore"
+    },
+    "paneNames": {
+      "assistant": "l'assistente",
+      "editor": "l'editor",
+      "pdf": "l'anteprima",
+      "sidebar": "la barra laterale",
+      "terminal": "il terminale"
+    },
+    "resetPaneLayout": {
+      "keywords": "ripristina layout pannelli ordine sposta pannelli barra laterale assistente editor anteprima terminale predefinito",
+      "label": "Ripristina la disposizione dei pannelli in tutti i progetti"
+    },
+    "saveLayout": {
+      "keywords": "salva layout personalizzato disposizione pannelli dimensioni nome",
+      "label": "Salva il layout corrente"
+    },
+    "applySavedLayout": {
+      "keywords": "layout salvato personalizzato disposizione pannelli cambia applica",
+      "label": "Layout: {{name}}"
+    },
     "zoomIn": {
       "keywords": "ingrandisci più grande",
       "label": "Ingrandisci"
@@ -349,6 +379,20 @@
     "insertFileLink": {
       "label": "Inserisci un collegamento a un file",
       "keywords": "collegamento file percorso nota riferimento"
+    },
+    "projectNotes": {
+      "open": "Apri le note di questo progetto",
+      "newShared": "Nuova nota di progetto",
+      "newPersonal": "Nuova nota personale per questo progetto",
+      "keywords": "note ricerca collegate correlate progetto"
+    },
+    "notes": {
+      "label": "Apri Note",
+      "keywords": "note taccuino conoscenza idee ricerca diario notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Cattura rapida",
+      "keywords": "cattura rapida annota nota posta in arrivo oggi quick capture jot note inbox today"
     }
   },
   "community": {
@@ -453,6 +497,11 @@
   },
   "datePicker": {
     "placeholder": "Scegli una data"
+  },
+  "monthPicker": {
+    "label": "Scegli un mese",
+    "previousYear": "Anno precedente",
+    "nextYear": "Anno successivo"
   },
   "devMenu": {
     "inspect": "Ispeziona",
@@ -647,7 +696,6 @@
   "home": {
     "ariaLabel": "Home",
     "label": "Home",
-    "title": "Torna alla libreria",
     "tooltip": "Torna alla libreria dei progetti"
   },
   "importDestination": {
@@ -675,6 +723,7 @@
     "groups": {
       "action": "Azione",
       "documents": "Documenti",
+      "notes": "Note",
       "references": "Riferimenti"
     },
     "label": "Cerca",
@@ -682,11 +731,13 @@
     "openReferences": "Apri i riferimenti di questo progetto",
     "placeholder": "Cerca progetti, documenti, oppure scrivi / per i comandi…",
     "placeholderDocuments": "Cerca dentro i documenti…",
+    "placeholderNotes": "Cerca nelle note e nei loro blocchi…",
     "placeholderProjects": "Cerca progetti per nome, motore, tipo, data o metadati…",
     "referencesNeedProject": "Apri prima un progetto per sfogliarne i riferimenti.",
     "slash": {
       "create": "apri la galleria dei modelli",
       "docs": "cerca dentro i documenti",
+      "notes": "cerca nelle note e nei loro blocchi",
       "projects": "cerca tra i tuoi progetti",
       "refs": "apri i riferimenti di questo progetto",
       "settings": "apri le impostazioni",
@@ -794,7 +845,8 @@
     "research": "Area di lavoro per la ricerca",
     "search": "Cerca nel progetto",
     "sourceControl": "Controllo del codice",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Note"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} su {{host}}",
@@ -906,7 +958,8 @@
           "folders_other": "{{count}} cartelle",
           "images": "Immagini",
           "pdfs": "PDF",
-          "projects": "Progetti"
+          "projects": "Progetti",
+          "projectsAndNotes": "Progetti e note"
         },
         "subtitle": "Progetti, anteprime, cronologia e dati dell'app",
         "title": "Spazio occupato",
@@ -949,6 +1002,10 @@
       "latexTools": {
         "description": "Mostra la galleria Oleafly Tools e i singoli strumenti (importazione PDF, equazioni, tabelle, BibTeX, ricerca di laboratori e letteratura, scadenze) più i relativi comandi slash. Disattivata per impostazione predefinita finché è in beta.",
         "label": "Strumenti LaTeX"
+      },
+      "notes": {
+        "description": "Aggiunge Note alla barra della Home. Una nota è un file Markdown con diagrammi, grafici e formule che puoi modificare sia tu sia i tuoi agenti. Le note restano fuori dalla libreria dei progetti e ogni nota può essere collegata a un progetto. Disattivata per impostazione predefinita finché è in beta.",
+        "label": "Note"
       },
       "researchTasks": {
         "description": "Un agente lavora in autonomia su una copia del progetto e lascia a te le modifiche da rivedere. Molto instabile: le esecuzioni possono bloccarsi, fallire o lasciare modifiche da sistemare a mano, e consumano di continuo la quota del tuo provider. Aggiunge la sezione Ricerca alle Impostazioni. Disattivandola si interrompono tutte le attività in corso. Disattivata per impostazione predefinita, attivala a tuo rischio.",
@@ -1297,6 +1354,24 @@
       "split": "Vista divisa"
     },
     "moreActions": "Altre azioni",
+    "resetPaneLayout": "Ripristina la disposizione dei pannelli",
+    "resetPaneLayoutScope": "Tutti i progetti",
+    "savedLayouts": {
+      "close": "Chiudi",
+      "delete": "Elimina",
+      "deleteConfirm": "Vuoi eliminare il layout {{name}}?",
+      "limit": "Puoi conservare fino a {{count}} layout. Eliminane uno per salvarne un altro.",
+      "manage": "Gestisci i layout",
+      "name": "Nome del layout",
+      "rename": "Rinomina",
+      "renameTitle": "Rinomina layout",
+      "replace": "Sostituisci",
+      "replaceConfirm": "Esiste già un layout chiamato {{name}}. Vuoi sostituirlo?",
+      "save": "Salva il layout corrente",
+      "saveButton": "Salva",
+      "saveTitle": "Salva layout",
+      "update": "Aggiorna con quello corrente"
+    },
     "renameFailed": "Impossibile rinominare il progetto."
   },
   "tour": {

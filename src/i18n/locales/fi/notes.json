@@ -1,0 +1,1683 @@
+{
+  "workspace": {
+    "home": "Aloitus",
+    "hideSidebar": "Piilota sivupalkki",
+    "showSidebar": "Näytä sivupalkki",
+    "newProject": "Uusi projekti",
+    "sendToPaper": "Lähetä artikkeliin",
+    "artifacts": "Tuotokset, {{total}}",
+    "project": "Projekti",
+    "projectMenu": "Projekti: {{project}}",
+    "chooseProject": "Valitse projekti",
+    "noProject": "Ei projektia",
+    "missing": "Tämä muistiinpano ei ole enää kirjastossasi.",
+    "closeTab": "Sulje {{title}}",
+    "maximize": "Suurenna",
+    "restore": "Palauta",
+    "resize": "Muuta paneelien kokoa",
+    "closePanel": "Sulje paneeli",
+    "newTab": "Uusi välilehti",
+    "empty": {
+      "greetings": {
+        "begin": "Mistä aloitetaan?",
+        "ready": "Aloitetaan, kun olet valmis.",
+        "mind": "Mitä mielessäsi on tänään?",
+        "resume": "Jatketaanko siitä, mihin jäit?",
+        "working": "Minkä parissa työskentelet?",
+        "first": "Mitä haluaisit kirjoittaa ensin?",
+        "blank": "Aloita tyhjällä sivulla tai mallipohjalla."
+      },
+      "hints": {
+        "daily": "Suunnitelma ja loki tälle päivälle",
+        "experimentLog": "Ajot ja mitä ne osoittivat",
+        "paperReading": "Mitä yksi artikkeli väittää",
+        "literatureMatrix": "Vertaa artikkeleita rinnakkain",
+        "meeting": "Asialista ja päätökset",
+        "labProtocol": "Vaiheet, joita joku muu voi seurata",
+        "weeklyLog": "Mitä tällä viikolla saatiin tehtyä",
+        "proposal": "Tavoitteet, menetelmät ja aikataulu"
+      },
+      "moreTemplates": "Lisää mallipohjia",
+      "continue": "Jatka",
+      "searchAll": "Hae kaikista muistiinpanoista"
+    },
+    "closeMissing": "Sulje välilehti",
+    "notesHome": "Siirry Muistiinpanojen aloitukseen",
+    "breadcrumb": "Murupolku",
+    "breadcrumbHome": "Muistiinpanojen aloitus",
+    "brand": "Oleafly Muistiinpanot",
+    "back": "Takaisin",
+    "forward": "Eteenpäin"
+  },
+  "saveStatus": {
+    "saved": "Tallennettu",
+    "saving": "Tallennetaan",
+    "failed": "Ei tallennettu",
+    "failedWithReason": "Ei tallennettu: {{reason}}",
+    "retry": "Yritä uudelleen"
+  },
+  "library": {
+    "newNote": "Uusi muistiinpano",
+    "search": "Hae muistiinpanoista ja tuotoksista",
+    "kind": {
+      "all": "Kaikki",
+      "note": "Muistiinpanot",
+      "figure": "Kuvat",
+      "report": "Raportit",
+      "data": "Data",
+      "notebook": "Muistikirjat"
+    },
+    "author": {
+      "all": "Kaikki",
+      "agent": "Agentit",
+      "you": "Sinä"
+    },
+    "empty": "Mikään ei vastaa näitä suodattimia.",
+    "emptyKind": {
+      "note": "Mikään muistiinpano ei vastaa näitä suodattimia.",
+      "figure": "Mikään kuva ei vastaa näitä suodattimia.",
+      "report": "Mikään raportti ei vastaa näitä suodattimia.",
+      "data": "Mikään datatiedosto ei vastaa näitä suodattimia.",
+      "notebook": "Mikään muistikirja ei vastaa näitä suodattimia."
+    },
+    "start": {
+      "title": "Ei vielä muistiinpanoja"
+    },
+    "ungrouped": "Muistiinpanot",
+    "agentFallback": "Agentti",
+    "settings": "Asetukset",
+    "filters": {
+      "title": "Tunnisteet",
+      "active_one": "{{count}} suodatin käytössä",
+      "active_other": "{{count}} suodatinta käytössä",
+      "clear": "Tyhjennä suodattimet",
+      "writtenBy": "Kirjoittaja"
+    },
+    "menu": {
+      "more": "Lisää",
+      "openInNewTab": "Avaa uudessa välilehdessä",
+      "favorite": "Lisää suosikkeihin",
+      "unfavorite": "Poista suosikeista",
+      "rename": "Nimeä uudelleen",
+      "renameLabel": "Nimeä muistiinpano uudelleen",
+      "renameFailed": "Muistiinpanon \"{{name}}\" nimeäminen uudelleen ei onnistunut.",
+      "delete": "Poista",
+      "deleteTitle": "Siirretäänkö \"{{name}}\" roskakoriin?",
+      "deleteDescription": "Muistiinpano poistuu Muistiinpanoista ja säilyy Tietojen tallennus -osiossa, kunnes palautat sen tai poistat sen pysyvästi.",
+      "deleteConfirm": "Siirrä roskakoriin",
+      "deleted": "\"{{name}}\" siirrettiin roskakoriin.",
+      "deleteFailed": "Muistiinpanon \"{{name}}\" poistaminen ei onnistunut.",
+      "useAsTemplate": "Käytä mallipohjana",
+      "stopTemplate": "Lopeta mallipohjana käyttäminen",
+      "templateOn": "\"{{name}}\" on nyt yksi mallipohjistasi.",
+      "templateOff": "\"{{name}}\" ei ole enää mallipohja.",
+      "linkProject": "Linkitä projektiin",
+      "compareConflict": "Vertaa ristiriitakopiota",
+      "copyLink": "Kopioi linkki",
+      "linkCopied": "Muistiinpanon \"{{name}}\" linkki kopioitiin.",
+      "copyLinkFailed": "Muistiinpanon \"{{name}}\" linkin kopioiminen ei onnistunut.",
+      "duplicate": "Monista",
+      "copyTitle": "{{name}} (kopio)",
+      "duplicateFailed": "Muistiinpanon \"{{name}}\" monistaminen ei onnistunut.",
+      "export": "Vie",
+      "exportAs": {
+        "markdown": "Kansio (Markdown, .md)",
+        "docx": "Word-asiakirja (.docx)",
+        "html": "Verkkosivu (.html)",
+        "latex": "LaTeX (.tex)",
+        "typst": "Typst (.typ)"
+      },
+      "exportFailed": "Muistiinpanon \"{{name}}\" vienti ei onnistunut.",
+      "copyMarkdown": "Kopioi muodossa Markdown",
+      "markdownCopied": "\"{{name}}\" kopioitiin muodossa Markdown.",
+      "copyMarkdownFailed": "Muistiinpanoa \"{{name}}\" ei voitu kopioida muodossa Markdown."
+    },
+    "conflicts": {
+      "badge": "Tällä muistiinpanolla on ristiriitakopio"
+    },
+    "suggestions": {
+      "badge": "Tässä muistiinpanossa on odottavia muutosehdotuksia"
+    }
+  },
+  "home": {
+    "title": "Aloitus",
+    "search": "Hae muistiinpanoja",
+    "tabs": {
+      "label": "Näytettävät muistiinpanot",
+      "mine": "Omat muistiinpanot",
+      "favorites": "Suosikit",
+      "tasks": "Tehtävät",
+      "attachments": "Liitteet"
+    },
+    "sortBy": "Järjestä",
+    "sort": {
+      "opened": "Viimeksi avattu",
+      "edited": "Viimeksi muokattu",
+      "created": "Luontipäivä",
+      "title": "Otsikko"
+    },
+    "layout": "Muistiinpanojen asettelu",
+    "noFavorites": "Ei vielä suosikkeja. Lisää muistiinpano suosikkeihin, niin se pysyy tässä.",
+    "noMatches": "Haulla \"{{query}}\" ei löytynyt muistiinpanoja.",
+    "author": "Tekijä"
+  },
+  "document": {
+    "writtenByAgent": "Kirjoittaja: {{agent}}",
+    "writtenByYou": "Kirjoittaja: sinä",
+    "askAgent": "Kysy agentilta",
+    "addIcon": "Lisää kuvake",
+    "sendToPaper": "Lähetä artikkeliin",
+    "loadFailed": "Tätä muistiinpanoa ei voitu avata. Sen projekti on ehkä siirretty tai poistettu.",
+    "retryLoad": "Yritä uudelleen",
+    "closeTab": "Sulje välilehti",
+    "fileFailed": "Tiedostoa ei voitu lisätä muistiinpanoon: {{error}}",
+    "fileTooLarge": "{{name}} on yli 64 MB, joten sitä ei lisätty.",
+    "unsupportedFile": "Muistiinpanoon voi lisätä vain kuvia, ääntä, videota, PDF:iä, taulukoita (CSV, TSV tai Excel), molekyylitiedostoja ja muistikirjoja (Jupyter).",
+    "remoteImages": {
+      "more": "Muita tapoja ladata kuvia",
+      "loadAll": "Lataa kaikki tämän muistiinpanon kuvat",
+      "trustHost": "Lataa aina kuvat sivustolta {{host}}"
+    },
+    "titleLabel": "Muistiinpanon otsikko",
+    "untitled": "Nimetön"
+  },
+  "prompt": {
+    "actionsGroup": "Tutkimustoiminnot",
+    "actions": {
+      "latestRun": "Päivitä viimeisimmän ajon perusteella",
+      "claims": "Tarkista väitteet koodia vasten",
+      "citations": "Etsi lähdeviitteet",
+      "proofread": "Oikolue valinta",
+      "rewrite": "Kirjoita valinta uudelleen",
+      "shorter": "Lyhennä",
+      "paragraph": "Kirjoita uusi kappale",
+      "table": "Lisää vertailutaulukko",
+      "figure": "Lisää kuva",
+      "abstract": "Tiivistä tiivistelmää varten"
+    },
+    "wholeNote": {
+      "proofread": "Oikolue muistiinpano",
+      "rewrite": "Kirjoita muistiinpano uudelleen"
+    },
+    "collapse": "Piilota kehote",
+    "expand": "Näytä kehote"
+  },
+  "review": {
+    "rejectAll": "Hylkää kaikki",
+    "acceptAll": "Hyväksy kaikki",
+    "position": "Muutos {{current}}/{{total}}",
+    "undo": "Kumoa"
+  },
+  "versions": {
+    "title": "Versiohistoria",
+    "summary": "Oleafly tallentaa version aina, kun hyväksyt kaikki ehdotetut muutokset, ja ennen vanhemman version palauttamista. Voit myös tallentaa version itse.",
+    "empty": "Ei vielä versioita. Tallenna versio, niin muistiinpano säilyy nykyisessä tilassaan.",
+    "save": "Tallenna versio",
+    "saved": "Versio tallennettu.",
+    "unchanged": "Mikään ei ole muuttunut viimeisimmän version jälkeen.",
+    "saveFailed": "Tämän muistiinpanon version tallentaminen ei onnistunut.",
+    "restore": "Palauta tämä versio",
+    "restored": "Versio palautettu. Myös korvattu teksti tallennettiin versiona.",
+    "restoreFailed": "Tämän version palauttaminen ei onnistunut.",
+    "comparing": "Verrataan muistiinpanoon",
+    "readFailed": "Tätä versiota ei voitu lukea.",
+    "changes": "Mitä tämän version palauttaminen muuttaa",
+    "textOnly": "Palauttaminen muuttaa vain muistiinpanon tekstiä. Liitetyt tiedostot säilyvät ennallaan."
+  },
+  "toolbar": {
+    "label": "Muotoilu",
+    "blockType": "Lohkon tyyppi",
+    "text": "Teksti",
+    "heading": "Otsikko {{level}}",
+    "list": "Luettelo",
+    "bulletList": "Merkitty luettelo",
+    "link": "Lisää linkki",
+    "linkAddress": "Linkin osoite",
+    "linkPlaceholder": "https://",
+    "linkInvalid": "Kirjoita koko verkko-osoite, esimerkiksi https://example.com.",
+    "displayMath": "Erillinen matematiikka",
+    "citation": "Viittaus",
+    "noCitations": "Tässä projektissa ei ole vielä lähteitä",
+    "chart": "Diagrammi",
+    "mermaid": "Mermaid-kaavio",
+    "outline": "Jäsennys",
+    "emptyOutline": "Lisää otsikko, niin jäsennys muodostuu",
+    "words_one": "{{count}} sana",
+    "words_other": "{{count}} sanaa",
+    "more": "Lisää",
+    "width": "Muistiinpanon leveys",
+    "widths": {
+      "standard": "Tavallinen",
+      "wide": "Leveä",
+      "full": "Täysi leveys"
+    },
+    "attach": "Liitä tiedosto",
+    "attachFilter": "Kuvat, ääni, video, PDF:t, taulukot, molekyylit ja muistikirjat",
+    "codeLanguage": "Kieli",
+    "plainCode": "Pelkkä teksti",
+    "imageSize": "Kuvan koko",
+    "originalSize": "Alkuperäinen koko"
+  },
+  "blocks": {
+    "chart": "Diagrammi",
+    "source": "Lähde",
+    "preview": "Esikatselu",
+    "diagramError": "Tässä kaaviossa on virhe. Korjaa se lähdekoodissa.",
+    "chartError": "Tämän diagrammin data ei kelpaa. Korjaa se lähdekoodissa.",
+    "noPreview": "Tälle lohkolle ei ole vielä esikatselua. Muokkaa sitä lähdekoodissa.",
+    "syntax": {
+      "help": "Lohkon kirjoitusohje: {{block}}",
+      "chart": "JSON, jossa on avaimet type, categories ja series:\n{\"type\": \"bar\", \"categories\": [\"A\", \"B\"], \"series\": [{\"name\": \"Run 1\", \"values\": [1, 2]}]}\nMuut tyypit: line, area, scatter, pie, donut, histogram.",
+      "plot": "Yksi käyrä tai asetus per rivi:\ny = x^2 - 1 tai x = cos(t), y = sin(t)\ndomain: -5, 5 ja point: 1, 0, Root",
+      "csv": "Arvorivejä, ja ensimmäinen rivi on otsikkorivi:\nRun, Ratio\nTai lue tiedosto rivillä path: assets/results.csv",
+      "latex": "Erillinen kaava (LaTeX), kuten yhtälö tai align-ympäristö:\n\\begin{align} a &= b + c \\end{align}\nKemiaa komennolla \\ce{H2O} ja yksiköitä komennolla \\pu{5 mg}.",
+      "typst": "Koodinpätkä (Typst), joka piirretään kuvana:\n$ E = m c^2 $\nInternetistä ladattavat paketit eivät ole käytettävissä.",
+      "mermaid": "Kaavio (Mermaid), esimerkiksi:\nflowchart LR\nA --> B",
+      "d2": "Kaavio (D2), esimerkiksi:\nclient -> server: request\nserver.shape: cylinder",
+      "tikz": "Komennot (TikZ) tai kokonainen tikzpicture-ympäristö:\n{{example}}\nKuvan yläpuolelle kuuluvat rivit, kuten \\usetikzlibrary{positioning}, menevät preambuliin.",
+      "circuitikz": "Komennot (CircuiTikZ) tai kokonainen circuitikz-ympäristö:\n{{example}}\nPiirin yläpuolelle kuuluvat rivit, kuten \\ctikzset{resistors/scale=0.8}, menevät preambuliin.",
+      "svg": "Yksi elementti (svg), esimerkiksi:\n<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" /></svg>\nSkriptit, linkit ja etäkuvat poistetaan.",
+      "html": "Kokonainen sivu tai sivun osa (HTML) CSS:n ja skriptien kanssa.\nSiinä ei ole internetyhteyttä, joten lisää tietosi lohkoon.\nSkriptit käynnistyvät, kun napsautat Suorita.",
+      "jsx": "Yksi komponenttitiedosto (React), jolla on oletusvienti:\nexport default function App() { return <p>Hello</p> }\nSe voi tuoda kirjastot react, recharts, d3, lodash, papaparse, chart.js ja lucide-react.",
+      "smiles": "Yksi SMILES-merkkijono riviä kohden, nimi valinnaisena:\nAspirin: CC(=O)OC1=CC=CC=C1C(=O)O\nEnintään 24 per lohko.",
+      "molecule": "Ensin asetusrivit, kuten format: pdb ja style: cartoon.\nSitten tiedoston teksti tai path: assets/1abc.pdb",
+      "sequence": "FASTA-tietueita tai pelkkä sekvenssi:\n>sample 1\nATGGCCATTGTAATG",
+      "notebook": "Muistikirjan polku ensimmäisellä rivillä:\nassets/analysis.ipynb\nSen jälkeen valinnaisia rivejä, kuten cells: 2-5 ja code: hide.",
+      "bookmark": "Yksi kenttä riviä kohden, ensin verkko-osoite:\nurl: https://example.com/article\nSitten valinnaiset rivit title:, description:, image:, site: ja favicon:."
+    },
+    "newChart": {
+      "title": "Uusi diagrammi",
+      "series": "Arvot"
+    },
+    "newHtml": {
+      "title": "Annos-vastesuhde",
+      "dose": "Annos",
+      "response": "Vaste:"
+    },
+    "imageMissing": "Kuvaa ei löytynyt: {{path}}",
+    "plot": {
+      "label": "Kuvaaja",
+      "aria": "Kuvaaja: {{curves}}",
+      "empty": "Ei vielä piirrettävää. Lisää rivi, kuten y = sin(x).",
+      "problem": "Rivi {{line}}: {{reason}}",
+      "errors": {
+        "empty": "Kirjoita lauseke.",
+        "length": "Lauseke on liian pitkä.",
+        "depth": "Lauseke on sisäkkäistetty liian syvälle.",
+        "name": "Tuntematon nimi {{name}}.",
+        "call": "Kirjoita {{name}} sulkeiden kanssa, esimerkiksi {{name}}(x).",
+        "arguments": "Funktiolla {{name}} on väärä määrä arvoja.",
+        "parenthesis": "Sulkeet eivät täsmää.",
+        "syntax": "Odottamaton symboli \"{{name}}\".",
+        "end": "Lauseke loppuu liian aikaisin.",
+        "line": "Tämä ei ole käyrä eikä asetus. Kokeile y = x^2 tai domain: -5, 5.",
+        "parametric": "Kirjoita parametrinen käyrä muodossa x = lauseke t:n suhteen, y = lauseke t:n suhteen.",
+        "values": "Kirjoita kaksi pilkulla erotettua arvoa.",
+        "point": "Kirjoita piste muodossa x, y ja halutessasi nimiö.",
+        "order": "Arvojen on oltava keskenään erisuuret.",
+        "number": "Käytä äärellisiä lukuja.",
+        "tooManyCurves": "Kuvaajaan voi piirtää enintään 8 käyrää.",
+        "tooManyPoints": "Kuvaajaan voi merkitä enintään 50 pistettä.",
+        "undefined": "Tällä välillä ei ole reaalisia arvoja."
+      }
+    },
+    "sequence": {
+      "label": "Sekvenssi",
+      "template": "Esimerkki koodaavasta sekvenssistä",
+      "empty": "Liitä FASTA-tietue tai pelkkä sekvenssi.",
+      "character": "Rivi {{line}}, sarake {{column}}: \"{{character}}\" ei ole kelvollinen tähde.",
+      "untitled": "Nimetön sekvenssi",
+      "kinds": {
+        "dna": "DNA",
+        "rna": "RNA",
+        "protein": "Proteiini"
+      },
+      "length": {
+        "dna": "{{length}} bp",
+        "rna": "{{length}} nt",
+        "protein": "{{length}} aa"
+      },
+      "gc": "GC {{value}}",
+      "noResidues": "Ei tähteitä",
+      "reverse": "Käänteinen komplementti",
+      "translation": "Translaatio",
+      "residues": "Sekvenssin {{name}} tähteet",
+      "hidden_one": "{{formatted}} tähde lisää ei näkyvissä",
+      "hidden_other": "{{formatted}} tähdettä lisää ei näkyvissä",
+      "hiddenRecords_one": "{{formatted}} tietue lisää ei näkyvissä",
+      "hiddenRecords_other": "{{formatted}} tietuetta lisää ei näkyvissä",
+      "classes": {
+        "hydrophobic": "Hydrofobinen",
+        "polar": "Polaarinen",
+        "positive": "Positiivinen",
+        "negative": "Negatiivinen",
+        "special": "Glysiini ja proliini",
+        "other": "Muu"
+      }
+    },
+    "charts": {
+      "type": "Tuntematon diagrammityyppi. Käytä tyyppiä bar, line, area, scatter, pie, donut tai histogram.",
+      "length": "Jokaisessa sarjassa on oltava yksi arvo kutakin luokkaa kohden.",
+      "tooManySeries": "Diagrammissa voi olla enintään 8 sarjaa.",
+      "errors": "Virhepalkit tarvitsevat jokaiselle arvolle yhden virhearvon, joka on nolla tai suurempi.",
+      "errorsType": "Virhepalkit toimivat pylväs-, viiva-, alue- ja pistediagrammeissa.",
+      "points": "Pistesarjojen pisteet kirjoitetaan muodossa [x, y] tai [x, y, virhe].",
+      "tooManyPoints": "Tässä diagrammissa on liian monta arvoa piirrettäväksi.",
+      "pie": "Piirakka- ja rengasdiagrammit tarvitsevat arvoja, jotka ovat nolla tai suurempia ja joiden summa on suurempi kuin nolla.",
+      "samples": "Jokaisessa histogrammin sarjassa on oltava vähintään yksi arvo.",
+      "bins": "bins-arvon on oltava kokonaisluku 1:stä 100:aan.",
+      "log": "Logaritminen asteikko vaatii, että jokainen arvo on suurempi kuin nolla.",
+      "logType": "Logaritminen asteikko toimii pylväs-, viiva-, alue- ja pistediagrammeissa.",
+      "showData": "Näytä data",
+      "hideData": "Piilota data",
+      "caption": "Diagrammin data",
+      "category": "Luokka",
+      "series": "Sarja",
+      "bin": "Väli",
+      "error": "Virhe: {{name}}",
+      "other": "Muut"
+    },
+    "table": {
+      "label": "Taulukko",
+      "filter": "Suodata rivejä",
+      "rows_one": "{{total}} rivi",
+      "rows_other": "{{total}} riviä",
+      "filtered_one": "{{shown}}/{{total}} rivi",
+      "filtered_other": "{{shown}}/{{total}} riviä",
+      "noMatch": "Mikään rivi ei vastaa suodatinta.",
+      "sortBy": "Järjestä sarakkeen {{column}} mukaan",
+      "column": "Sarake {{number}}",
+      "count": "Lukumäärä",
+      "mean": "Keskiarvo",
+      "min": "Min.",
+      "max": "Maks.",
+      "truncated": "Näytetään ensimmäiset {{limit}} riviä.",
+      "loading": "Ladataan {{path}}…",
+      "empty": "Tässä taulukossa ei ole datarivejä. Lisää otsikkorivi ja vähintään yksi datarivi.",
+      "columns": "Tässä taulukossa on yli {{limit}} saraketta.",
+      "missing": "Tiedostoa ei löytynyt: {{path}}",
+      "unreadable": "Tiedostoa {{path}} ei voitu lukea.",
+      "tooLarge": "Tämä tiedosto on yli 6 MB. Käytä pienempää otetta.",
+      "badPath": "Käytä polkua muistiinpanon kansion sisällä, esimerkiksi assets/results.csv.",
+      "unsupported": "Taulukot lukevat .csv-, .tsv-, .xlsx- ja .xls-tiedostoja.",
+      "noSheet": "Taulukkosivua {{sheet}} ei ole. Tiedoston taulukkosivut: {{sheets}}.",
+      "template": {
+        "sample": "Näyte",
+        "temperature": "Lämpötila (°C)",
+        "yield": "Saanto (%)",
+        "converged": "Konvergoitui"
+      }
+    },
+    "smiles": {
+      "label": "Kemiallinen rakenne",
+      "structures": "Kemialliset rakenteet",
+      "empty": "Lisää yksi SMILES-merkkijono riviä kohden, esimerkiksi Etanoli: CCO.",
+      "invalid": "Tätä SMILES-merkkijonoa ei voitu lukea.",
+      "more": "Näytetään ensimmäiset {{limit}} rakennetta.",
+      "loadError": "Näitä rakenteita ei voitu piirtää.",
+      "alt": "Rakenne: {{name}}",
+      "template": {
+        "caffeine": "Kofeiini",
+        "aspirin": "Aspiriini"
+      }
+    },
+    "molecule": {
+      "label": "3D-molekyyli",
+      "loading": "Ladataan 3D-katselinta…",
+      "empty": "Lisää path: assets/molecule.pdb tai liitä tiedoston teksti.",
+      "noWebgl": "3D-näkymä tarvitsee WebGL:n, joka ei ole käytettävissä tässä.",
+      "noAtoms": "Atomeja ei löytynyt. Tarkista tiedosto ja sen muoto.",
+      "unknownFormat": "Tiedostomuotoa ei voitu tunnistaa. Lisää format: pdb, sdf, mol, xyz, cif tai mol2.",
+      "badFormat": "Tuntematon muoto {{value}}. Käytä muotoa pdb, sdf, mol, xyz, cif tai mol2.",
+      "badStyle": "Tuntematon tyyli {{value}}. Käytä tyyliä cartoon, stick, sphere tai line.",
+      "badColor": "Tuntematon väritys {{value}}. Käytä väritystä spectrum, chain, element, residue tai ss.",
+      "badPath": "Käytä polkua muistiinpanon kansion sisällä, esimerkiksi assets/protein.pdb.",
+      "missing": "Tiedostoa ei löytynyt: {{path}}",
+      "unreadable": "Tiedostoa {{path}} ei voitu lukea.",
+      "tooLarge": "Tämä tiedosto on yli 6 MB.",
+      "loadError": "3D-katselimen lataaminen ei onnistunut.",
+      "viewer": "Molekyylin 3D-näkymä. Kierrä vetämällä ja zoomaa vierittämällä.",
+      "controls": "Näkymän säätimet",
+      "style": "Tyyli",
+      "color": "Väritys",
+      "styles": {
+        "cartoon": "Nauhamalli",
+        "stick": "Tikku",
+        "sphere": "Pallo",
+        "line": "Viiva"
+      },
+      "colors": {
+        "spectrum": "Spektri",
+        "chain": "Ketju",
+        "element": "Alkuaine",
+        "residue": "Tähde",
+        "ss": "Sekundaarirakenne"
+      },
+      "rotateLeft": "Kierrä vasemmalle",
+      "rotateRight": "Kierrä oikealle",
+      "zoomIn": "Lähennä",
+      "zoomOut": "Loitonna",
+      "reset": "Palauta näkymä",
+      "template": "Etanoli"
+    },
+    "artifact": {
+      "run": "Suorita",
+      "stop": "Pysäytä",
+      "alwaysRun": "Suorita tämä lohko aina",
+      "paused": "Keskeytetty, koska jokin tämän muistiinpanon lohko jumittui tai sulki sovelluksen viime kerralla.",
+      "desktopOnly": "Suorittaminen vaatii työpöytäsovelluksen",
+      "loading": "Ladataan…",
+      "loadFailed": "Tätä lohkoa ei voitu ladata.",
+      "starting": "Käynnistetään…",
+      "stopped": "Tämä lohko lakkasi vastaamasta.",
+      "reload": "Lataa uudelleen",
+      "failed": "Tätä lohkoa ei voitu käynnistää: {{error}}",
+      "offline": "Nämä tiedostot internetistä jätettiin pois:",
+      "more_one": "ja {{count}} muu",
+      "more_other": "ja {{count}} muuta",
+      "frameTitle": "Tuloste: {{label}}",
+      "previewTitle": "Esikatselu: {{label}}",
+      "unknownImport": "Tämä lohko tuo moduulin {{name}}, joka ei ole käytettävissä offline-tilassa.",
+      "compileError": "Tässä komponentissa on syntaksivirhe",
+      "runtimeError": "Tämä komponentti pysähtyi virheeseen",
+      "noComponent": "Tällä komponentilla ei ole oletusvientiä."
+    },
+    "code": {
+      "copied": "Kopioitu",
+      "copyFailed": "Kopiointi epäonnistui",
+      "copyLabel": "Kopioi koodi"
+    },
+    "svg": {
+      "alt": "SVG-piirros",
+      "empty": "Tämä SVG-lohko on tyhjä.",
+      "invalid": "Tämä SVG ei kelpaa. Korjaa se lähdekoodissa.",
+      "tooLarge": "Tämä SVG on liian suuri näytettäväksi."
+    },
+    "d2": {
+      "alt": "Kaavio (D2)",
+      "empty": "Tämä D2-lohko on tyhjä.",
+      "loading": "Piirretään…",
+      "error": "D2 ei voinut piirtää tätä kaaviota: {{error}}",
+      "line": "Rivi {{line}}: {{message}}"
+    },
+    "tikz": {
+      "alt": "Piirros (TikZ)",
+      "circuitAlt": "Piirikaavio",
+      "empty": "Tämä lohko ({{block}}) on tyhjä.",
+      "desktopOnly": "Esikatselu ({{block}}) vaatii työpöytäsovelluksen.",
+      "sharedNotice": "Tämä muistiinpano on jaettu. LaTeX toimii tällä tietokoneella ja voi lukea tiedostojasi, joten tarkista lähdekoodi ennen piirtämistä.",
+      "draw": "Piirrä",
+      "error": "LaTeX ei voinut kääntää tätä lohkoa: {{error}}"
+    },
+    "typst": {
+      "alt": "Typst-tuloste",
+      "empty": "Tämä Typst-lohko on tyhjä.",
+      "rendering": "Piirretään…",
+      "desktopOnly": "Typst-esikatselut vaativat työpöytäsovelluksen.",
+      "error": "Typst ei voinut kääntää tätä lohkoa: {{error}}"
+    },
+    "insert": {
+      "label": "Lisää lohko",
+      "data": "Data",
+      "math": "Matematiikka",
+      "diagrams": "Kaaviot",
+      "code": "Koodi",
+      "science": "Tiede"
+    },
+    "slash": {
+      "menu": "Lisää",
+      "noMatches": "Ei vastaavia lohkoja",
+      "heading": "Otsikko {{level}}",
+      "bulletList": "Merkitty luettelo",
+      "numberedList": "Numeroitu luettelo",
+      "taskList": "Tehtäväluettelo",
+      "quote": "Lainaus",
+      "callout": "Huomiolaatikko",
+      "table": "Taulukko",
+      "code": "Koodi",
+      "math": "Matematiikka",
+      "divider": "Erotin",
+      "footnote": "Alaviite",
+      "basic": "Perus"
+    },
+    "media": {
+      "play": "Toista {{name}}",
+      "pdfPage": "{{name}}, sivu {{page}}",
+      "openPdf": "Avaa PDF",
+      "openFailed": "Tiedostoa ei voitu avata: {{error}}",
+      "missing": "Tiedostoa ei löytynyt: {{path}}",
+      "unreadable": "Tiedostoa {{name}} ei voitu lukea.",
+      "cantPlay": "Tiedostoa {{name}} ei voi toistaa täällä. Tietokoneelta saattaa puuttua sen muodon koodekki.",
+      "embed": "Toista video palvelusta {{site}}",
+      "embedTitle": "Video palvelusta {{site}}",
+      "embedFailed": "Soitin ei käynnistynyt. Yritä uudelleen tai avaa video palvelussa {{site}}.",
+      "watch": "Katso",
+      "watchOn": "Katso palvelussa {{site}}",
+      "pasteChoice": "Miten tämä videolinkki näytetään",
+      "embedChoice": "Upota video",
+      "linkChoice": "Säilytä linkkinä"
+    },
+    "bookmark": {
+      "label": "Kirjanmerkki",
+      "pasteChoice": "Miten tämä linkki näytetään",
+      "cardChoice": "Kirjanmerkkikortti",
+      "ask": "Tee kirjanmerkki verkkosivusta",
+      "loading": "Ladataan sivun esikatselua",
+      "noUrl": "Lisää rivi url: ja verkko-osoite, joka alkaa https:// tai http://."
+    }
+  },
+  "notebook": {
+    "label": "Jupyter-muistikirja",
+    "loading": "Ladataan muistikirjaa",
+    "missing": "Muistikirjaa ei löytynyt: {{path}}",
+    "unreadable": "Tiedostoa {{path}} ei voitu lukea.",
+    "tooLarge": "Tämä muistikirja on yli 64 MiB, joten sitä ei näytetä tässä.",
+    "badPath": "Kirjoita muistikirjan polku ensimmäiselle riville suhteessa tämän muistiinpanon kansioon.",
+    "badCells": "Kirjoita solut yhtenä numerona tai välinä, esimerkiksi cells: 3-8.",
+    "invalid": "Tämä tiedosto ei ole kelvollinen muistikirja.",
+    "unsupported": "Tässä voi näyttää vain muodon 4 Jupyter-muistikirjoja.",
+    "empty": "Tässä muistikirjassa ei ole soluja.",
+    "outOfRange_one": "Tässä muistikirjassa on vain {{count}} solu, joten tällä välillä ei ole mitään.",
+    "outOfRange_other": "Tässä muistikirjassa on vain {{count}} solua, joten tällä välillä ei ole mitään.",
+    "nothingShown": "Ei näytettävää, kun koodi on piilotettu.",
+    "showAll": "Näytä kaikki",
+    "showLess": "Näytä vähemmän",
+    "showAllCells_one": "Näytä {{count}} solu",
+    "showAllCells_other": "Näytä kaikki {{count}} solua",
+    "outputImage": "Solun {{number}} tuloste",
+    "outputFrame": "Solun {{number}} HTML-tuloste"
+  },
+  "icons": {
+    "choose": "Valitse kuvake",
+    "dialog": "Valitse kuvake",
+    "emoji": "Emojit",
+    "lines": "Kuvakkeet",
+    "search": "Hae kuvakkeita",
+    "searchEmoji": "Hae emojeja",
+    "loading": "Ladataan emojeja",
+    "noEmoji": "Emojeja ei löytynyt",
+    "noIcons": "Kuvakkeita ei löytynyt",
+    "skinTone": "Ihonväri",
+    "names": {
+      "atom": "Atomi",
+      "bookOpen": "Avoin kirja",
+      "brain": "Aivot",
+      "bug": "Ötökkä",
+      "chartLine": "Viivadiagrammi",
+      "cpu": "Suoritin",
+      "database": "Tietokanta",
+      "dna": "DNA",
+      "fileText": "Dokumentti",
+      "flaskConical": "Erlenmeyer-pullo",
+      "graduationCap": "Ylioppilaslakki",
+      "layers": "Tasot",
+      "lightbulb": "Hehkulamppu",
+      "microscope": "Mikroskooppi",
+      "network": "Verkko",
+      "notebookPen": "Muistivihko",
+      "rocket": "Raketti",
+      "sigma": "Sigma",
+      "target": "Maalitaulu",
+      "telescope": "Kaukoputki",
+      "testTube": "Koeputki",
+      "beaker": "Dekantterilasi",
+      "flaskRound": "Retortti",
+      "testTubes": "Näyteputket",
+      "pipette": "Pipetti",
+      "magnet": "Magneetti",
+      "thermometer": "Lämpömittari",
+      "scale": "Vaaka",
+      "radiation": "Säteily",
+      "biohazard": "Biovaara",
+      "leaf": "Lehti",
+      "sprout": "Taimi",
+      "trees": "Puut",
+      "flower": "Kukka",
+      "bird": "Lintu",
+      "fish": "Kala",
+      "rabbit": "Kani",
+      "pawPrint": "Tassunjälki",
+      "shell": "Simpukankuori",
+      "stethoscope": "Stetoskooppi",
+      "heartPulse": "Syke",
+      "pill": "Pilleri",
+      "syringe": "Ruisku",
+      "hospital": "Sairaala",
+      "bone": "Luu",
+      "eye": "Silmä",
+      "orbit": "Kiertorata",
+      "satelliteDish": "Satelliittiantenni",
+      "sun": "Aurinko",
+      "moon": "Kuu",
+      "star": "Tähti",
+      "sparkles": "Kimallus",
+      "zap": "Salama",
+      "waves": "Aallot",
+      "radar": "Tutka",
+      "globe": "Karttapallo",
+      "earth": "Maapallo",
+      "mountain": "Vuori",
+      "cloudRain": "Sadepilvi",
+      "droplets": "Vesi",
+      "pi": "Pii-symboli",
+      "infinity": "Ääretön",
+      "radical": "Neliöjuuri",
+      "squareFunction": "Funktio",
+      "variable": "Muuttuja",
+      "calculator": "Laskin",
+      "divide": "Jakolasku",
+      "omega": "Omega",
+      "axis3d": "3D-akselit",
+      "shapes": "Muodot",
+      "hexagon": "Kuusikulmio",
+      "chartColumn": "Pylväsdiagrammi",
+      "chartBar": "Vaakapylväsdiagrammi",
+      "chartPie": "Piirakkadiagrammi",
+      "chartScatter": "Pistediagrammi",
+      "chartArea": "Aluediagrammi",
+      "chartSpline": "Käyrä",
+      "chartNetwork": "Verkkograafi",
+      "trendingUp": "Trendi",
+      "activity": "Signaali",
+      "table": "Taulukko",
+      "sheet": "Laskentataulukko",
+      "funnel": "Suodatin",
+      "microchip": "Mikrosiru",
+      "circuitBoard": "Piirilevy",
+      "code": "Koodi",
+      "codeXml": "Merkintäkieli",
+      "terminal": "Pääte",
+      "braces": "Aaltosulkeet",
+      "binary": "Binäärikoodi",
+      "gitBranch": "Haara",
+      "gitMerge": "Yhdistäminen",
+      "bot": "Robotti",
+      "brainCircuit": "Neuroverkko",
+      "workflow": "Työnkulku",
+      "server": "Palvelin",
+      "puzzle": "Palapeli",
+      "notebook": "Päiväkirja",
+      "notebookText": "Maastomuistiinpanot",
+      "book": "Suljettu kirja",
+      "bookMarked": "Kirja ja kirjanmerkki",
+      "library": "Kirjasto",
+      "scrollText": "Kirjakäärö",
+      "quote": "Lainaus",
+      "penTool": "Kynänterä",
+      "pencil": "Lyijykynä",
+      "feather": "Sulkakynä",
+      "languages": "Kielet",
+      "school": "Koulu",
+      "presentation": "Esitys",
+      "award": "Palkinto",
+      "trophy": "Pokaali",
+      "landmark": "Instituutio",
+      "compass": "Kompassi",
+      "map": "Kartta",
+      "ruler": "Viivain",
+      "wrench": "Kiintoavain",
+      "cog": "Hammasratas",
+      "calendar": "Kalenteri",
+      "timer": "Ajastin",
+      "hourglass": "Tiimalasi",
+      "clipboardList": "Tarkistuslista",
+      "listChecks": "Tehtävät"
+    }
+  },
+  "artifacts": {
+    "title": "Tuotokset",
+    "empty": "Ei vielä mitään. Projektin {{project}} tutkimustehtävien tekemät tiedostot näkyvät tässä.",
+    "noProject": "Valitse otsikon vierestä projekti, jota tämä muistiinpano koskee. Projektin tutkimustehtävien tekemät tiedostot näkyvät tässä.",
+    "noNote": "Avaa muistiinpano, niin näet sen projektin tutkimustehtävien tekemät tiedostot.",
+    "fromTask": "Tehtävästä {{task}}",
+    "loading": "Ladataan esikatselua",
+    "previewFailed": "Esikatselun lataaminen ei onnistunut: {{error}}",
+    "truncated": "Näytetään tiedoston alku.",
+    "binary": "Tämän tyyppiselle tiedostolle ei ole esikatselua.",
+    "missing": "Tätä tiedostoa ei ole enää tehtävän tallennetussa kopiossa.",
+    "insert": "Lisää muistiinpanoon",
+    "inserting": "Kopioidaan",
+    "insertFailed": "Tiedoston kopioiminen muistiinpanoon ei onnistunut: {{error}}",
+    "newProject": "Uusi projekti",
+    "htmlPreview": "Voit suorittaa tämän kuvan liittämällä sen koodin muistiinpanon lohkoon (HTML) ja painamalla Suorita.",
+    "kind": {
+      "figure": "Kuva",
+      "html": "Interaktiivinen kuva",
+      "report": "Raportti",
+      "data": "Data",
+      "file": "Tiedosto",
+      "notebook": "Muistikirja"
+    },
+    "notebookTooLarge": "Tämä muistikirja on liian suuri esikatseltavaksi tässä. Lisää se muistiinpanoon, niin näet sen."
+  },
+  "sendToPaper": {
+    "title": "Lähetä artikkeliin",
+    "description": "Oleafly muuntaa tämän kerran ja lisää sen kohdistimen kohtaan. Artikkelissa oleva kopio ei pysy linkitettynä muistiinpanoon.",
+    "send": "Lähetä",
+    "leftOut": "Lohko {{block}} on vain muistiinpanossa."
+  },
+  "citations": {
+    "references": "Lähteet",
+    "fromReference": "Lähdeviitteestä",
+    "unknown": "Ei linkitetyn projektin lähdeluettelossa: {{keys}}",
+    "openNote": "Avaa tämän artikkelin muistiinpano: {{title}}"
+  },
+  "links": {
+    "menu": "Linkki muistiinpanoon tai projektiin",
+    "notes": "Muistiinpanot",
+    "projects": "Projektit",
+    "noMatches": "Ei vastaavia muistiinpanoja tai projekteja",
+    "missingNote": "Tätä muistiinpanoa ei ole enää olemassa",
+    "missingNoteCreate": "Tätä muistiinpanoa ei ole enää olemassa. Luo uusi muistiinpano tällä nimellä napsauttamalla.",
+    "missingProject": "Tätä projektia ei ole enää olemassa",
+    "linkedFrom": "Linkit tähän",
+    "showAll": "Näytä kaikki {{total}}"
+  },
+  "linksSearch": {
+    "blocks": {
+      "loading": "Ladataan lohkoja",
+      "none": "Ei vastaavia lohkoja",
+      "missingBlock": "Tätä lohkoa ei ole muistiinpanossa",
+      "assignFailed": "Lohkon tunnusta ei voitu lisätä muistiinpanoon.",
+      "handle": "Lohkon valinnat",
+      "copyLink": "Kopioi linkki lohkoon",
+      "linkCopied": "Linkki tähän lohkoon kopioitiin.",
+      "copyFailed": "Linkkiä tähän lohkoon ei voitu kopioida.",
+      "noId": "Tällä lohkolla ei ole vielä tunnusta, etkä voi muokata tätä muistiinpanoa.",
+      "linkedFrom": "Linkit tänne",
+      "links_one": "{{count}} muistiinpano linkittää tänne",
+      "links_other": "{{count}} muistiinpanoa linkittää tänne",
+      "openLinked": "Avaa {{title}}",
+      "toBlock": "Siirry lohkoon: {{text}}"
+    },
+    "tagBlocks": {
+      "more_one": "Näytä {{count}} lohko lisää",
+      "more_other": "Näytä {{count}} lohkoa lisää"
+    },
+    "dead": {
+      "menu": "Rikkinäiset linkit",
+      "title": "Rikkinäiset linkit",
+      "summary_one": "{{count}} linkki osoittaa muistiinpanoon tai lohkoon, jota ei ole enää olemassa.",
+      "summary_other": "{{count}} linkkiä osoittaa muistiinpanoihin tai lohkoihin, joita ei ole enää olemassa.",
+      "none": "Ei rikkinäisiä linkkejä. Jokainen linkki osoittaa muistiinpanoon tai lohkoon, joka on yhä olemassa.",
+      "loading": "Tarkistetaan linkkejä",
+      "failed": "Muistiinpanojesi linkkejä ei voitu lukea.",
+      "missingNotes": "Puuttuvat muistiinpanot",
+      "missingBlocks": "Puuttuvat lohkot",
+      "noteMeta": "Rivi {{line}}: muistiinpanoa ei ole enää olemassa",
+      "blockMeta": "Rivi {{line}}: {{block}} ei ole enää muistiinpanossa {{title}}",
+      "create": "Luo muistiinpano",
+      "relink": "Linkitä sen sijaan kohteeseen {{title}}",
+      "remove": "Poista linkki",
+      "fixFailed": "Linkkiä ei voitu muuttaa."
+    }
+  },
+  "projectNotes": {
+    "searchLabel": "Hae tämän projektin muistiinpanoista",
+    "searchPlaceholder": "Hae muistiinpanoja",
+    "clearSearch": "Tyhjennä haku",
+    "noMatches": "Mikään muistiinpano ei vastaa hakua",
+    "loading": "Luetaan projektin muistiinpanoja",
+    "edited": "Muokattu {{when}}",
+    "createFailed": "Muistiinpanon luominen ei onnistunut.",
+    "projectGroup": "Projektin muistiinpanot",
+    "mineGroup": "Omat muistiinpanot",
+    "newProjectNote": "Uusi projektin muistiinpano",
+    "newPersonalNote": "Uusi henkilökohtainen muistiinpano",
+    "titleLabel": "Uuden projektin muistiinpanon otsikko",
+    "titlePlaceholder": "Muistiinpanon otsikko",
+    "projectEmpty": "Projektin muistiinpanoja ei ole vielä. Ne tallennetaan projektin muistiinpanokansioon, joten myös yhteistyökumppanit saavat ne.",
+    "mineEmpty": "Tähän projektiin ei ole vielä linkitetty henkilökohtaisia muistiinpanoja.",
+    "sharedLine": "Projektin muistiinpanot jaetaan kaikille projektin jäsenille. Henkilökohtaiset muistiinpanosi pysyvät yksityisinä.",
+    "noteActions": "Toiminnot: {{title}}",
+    "moveTitle": "Siirretäänkö tämä muistiinpano projektiin?",
+    "moveMessage": "Kaikki projektin {{project}} jäsenet voivat nähdä ja muokata sitä. Henkilökohtainen kopiosi siirretään roskakoriin.",
+    "moveConfirm": "Siirrä projektiin",
+    "moved": "{{title}} siirrettiin projektiin.",
+    "moveFailed": "Muistiinpanon siirtäminen projektiin ei onnistunut.",
+    "copied": "{{title}} kopioitiin omiin muistiinpanoihisi.",
+    "copyFailed": "Muistiinpanon kopioiminen omiin muistiinpanoihisi ei onnistunut.",
+    "moveUnsaved": "Joissakin muistiinpanoissa on tallentamattomia muutoksia, joten muistiinpanoa ei siirretty. Tallenna ne ja yritä uudelleen.",
+    "copyUnsaved": "Joissakin muistiinpanoissa on tallentamattomia muutoksia, joten muistiinpanoa ei kopioitu. Tallenna ne ja yritä uudelleen.",
+    "renameUnsaved": "Joissakin muistiinpanoissa on tallentamattomia muutoksia, joten muistiinpanoa ei nimetty uudelleen. Tallenna ne ja yritä uudelleen.",
+    "unlink": "Poista linkitys tähän projektiin",
+    "unlinked": "Muistiinpanon {{title}} ja tämän projektin välinen linkitys poistettiin.",
+    "undoUnlink": "Kumoa",
+    "unlinkFailed": "Linkityksen poistaminen muistiinpanon {{title}} ja tämän projektin väliltä ei onnistunut.",
+    "deleteTitle": "Poistetaanko \"{{name}}\"?",
+    "deleteMessage": "Muistiinpanotiedosto poistetaan tästä projektista. Tätä ei voi kumota.",
+    "trash": "Siirrä roskakoriin",
+    "trashWindows": "Siirrä roskakoriin",
+    "trashTitle": "Siirretäänkö \"{{name}}\" roskakoriin?",
+    "trashTitleWindows": "Siirretäänkö \"{{name}}\" roskakoriin?",
+    "trashMessage": "Muistiinpanotiedosto siirretään tästä projektista roskakoriin, josta voit palauttaa sen.",
+    "trashMessageWindows": "Muistiinpanotiedosto siirretään tästä projektista roskakoriin, josta voit palauttaa sen.",
+    "mineDeviceOnly": "Nämä muistiinpanot on linkitetty tähän projektiin vain tällä tietokoneella.",
+    "moreFiles_one": "Muistiinpanokansiossa on vielä {{count}} tiedosto, jota ei ole listattu.",
+    "moreFiles_other": "Muistiinpanokansiossa on vielä {{count}} tiedostoa, joita ei ole listattu."
+  },
+  "kb": {
+    "tasks": {
+      "label": "Tehtävä: {{text}}",
+      "empty": "Tyhjä tehtävä"
+    },
+    "callouts": {
+      "type": "Huomiolaatikon tyyppi: {{type}}",
+      "fold": "Kutista huomiolaatikko",
+      "unfold": "Laajenna huomiolaatikko",
+      "types": {
+        "note": "Huomio",
+        "abstract": "Tiivistelmä",
+        "info": "Tieto",
+        "todo": "Tehtävä",
+        "tip": "Vinkki",
+        "success": "Onnistui",
+        "question": "Kysymys",
+        "warning": "Varoitus",
+        "failure": "Epäonnistui",
+        "danger": "Vaara",
+        "bug": "Vika",
+        "example": "Esimerkki",
+        "quote": "Lainaus",
+        "theorem": "Lause",
+        "lemma": "Apulause",
+        "corollary": "Seuraus",
+        "proposition": "Propositio",
+        "definition": "Määritelmä",
+        "proof": "Todistus",
+        "hypothesis": "Hypoteesi",
+        "assumption": "Oletus",
+        "result": "Tulos",
+        "method": "Menetelmä",
+        "remark": "Huomautus"
+      }
+    },
+    "links": {
+      "loadingHeadings": "Ladataan otsikoita",
+      "noHeadings": "Ei vastaavia otsikoita",
+      "embedHeading": "Upota muistiinpano",
+      "thisNote": "Tämä muistiinpano",
+      "embed": "Upota",
+      "embedNamed": "Upota {{title}}"
+    },
+    "tags": {
+      "open": "Näytä muistiinpanot, joilla on tämä tunniste",
+      "menu": "Tunnisteet"
+    },
+    "embeds": {
+      "missing": "Muistiinpanoa ei löytynyt",
+      "self": "Muistiinpano ei voi upottaa itseään",
+      "failed": "Tätä muistiinpanoa ei voitu lukea",
+      "missingHeading": "Tätä otsikkoa ei ole muistiinpanossa",
+      "empty": "Tämä muistiinpano on tyhjä",
+      "untitled": "Nimetön",
+      "open": "Avaa muistiinpano",
+      "openNamed": "Avaa {{title}}",
+      "fold": "Kutista upotus",
+      "unfold": "Laajenna upotus"
+    },
+    "hover": {
+      "loading": "Ladataan esikatselua",
+      "empty": "Tämä muistiinpano on tyhjä"
+    },
+    "properties": {
+      "title": "Ominaisuudet",
+      "add": "Lisää ominaisuus",
+      "removeItem": "Poista {{item}}",
+      "addItem": "Lisää kohde",
+      "openNote": "Avaa {{title}}",
+      "changeNote": "Vaihda",
+      "chooseNote": "Valitse muistiinpano",
+      "clearLink": "Tyhjennä linkki",
+      "value": "Ominaisuuden {{key}} arvo",
+      "type": "Ominaisuuden {{key}} tyyppi: {{type}}",
+      "types": {
+        "text": "Teksti",
+        "list": "Luettelo",
+        "number": "Numero",
+        "checkbox": "Valintaruutu",
+        "date": "Päivämäärä",
+        "link": "Muistiinpanolinkki"
+      },
+      "remove": "Poista ominaisuus",
+      "name": "Ominaisuuden {{key}} nimi",
+      "newName": "Ominaisuuden nimi",
+      "taken": "Nimi on jo käytössä",
+      "invalid": "YAML-alkulohko ei ole kelvollista YAMLia, joten ominaisuuksia ei voi muokata tässä.",
+      "editSource": "Korjaa Markdownissa",
+      "convert": {
+        "title": "Vaihdetaanko ominaisuuden {{key}} tyypiksi \"{{type}}\"?",
+        "list": "Vain ensimmäinen kohde säilytetään. Muut poistetaan.",
+        "value": "Nykyinen arvo ei sovi tähän tyyppiin, ja se menetetään.",
+        "confirm": "Vaihda tyyppi"
+      }
+    }
+  },
+  "fields": {
+    "today": "Tänään",
+    "tomorrow": "Huomenna",
+    "yesterday": "Eilen",
+    "chip": "{{key}}: {{value}}",
+    "empty": "ei arvoa",
+    "edit": "Muuta tai poista",
+    "keys": {
+      "due": "Eräpäivä",
+      "scheduled": "Ajoitettu",
+      "priority": "Prioriteetti",
+      "start": "Alkaa",
+      "created": "Luotu",
+      "completed": "Valmis",
+      "date": "Päivämäärä",
+      "cancelled": "Peruttu"
+    },
+    "priorities": {
+      "highest": "Korkein",
+      "high": "Korkea",
+      "medium": "Keskitaso",
+      "low": "Matala",
+      "lowest": "Matalin"
+    },
+    "editor": {
+      "label": "Muokkaa kenttää {{key}}",
+      "key": "Nimi",
+      "value": "Arvo",
+      "brackets": "Käytä hakasulkeita vain linkkiin, esimerkiksi [[Note]].",
+      "save": "Tallenna",
+      "remove": "Poista"
+    }
+  },
+  "at": {
+    "menu": "Lisää päivämäärä, kenttä, tunniste tai muistiinpano",
+    "groups": {
+      "dates": "Päivämäärät",
+      "due": "Eräpäivä",
+      "fields": "Tehtävän kentät",
+      "tags": "Tunnisteet",
+      "notes": "Muistiinpanot"
+    },
+    "today": "Tänään",
+    "tomorrow": "Huomenna",
+    "yesterday": "Eilen",
+    "next": "Seuraava {{weekday}}",
+    "pick": "Valitse päivämäärä",
+    "pickerLabel": "Valitse päivämäärä",
+    "due": "Eräpäivä",
+    "scheduled": "Ajoitettu päivä",
+    "priority": "Prioriteetti",
+    "priorityValue": "Prioriteetti: {{priority}}",
+    "custom": "Mukautettu kenttä",
+    "addField": "Lisää kenttä \"{{key}}\"",
+    "setField": "Aseta kentän {{key}} arvoksi \"{{value}}\"",
+    "typeValue": "Kirjoita kentän {{key}} arvo ja paina Enter."
+  },
+  "tasks": {
+    "filters": "Tehtäväsuodattimet",
+    "loading": "Luetaan tehtäviäsi",
+    "failed": "Tehtäviäsi ei voitu lukea.",
+    "empty": "Ei vielä tehtäviä. Aloita rivi merkeillä - [ ] missä tahansa muistiinpanossa, niin se näkyy täällä.",
+    "noMatches": "Mikään tehtävä ei vastaa näitä suodattimia.",
+    "clear": "Tyhjennä suodattimet",
+    "list": "Tehtävät",
+    "count_one": "{{count}} tehtävä",
+    "count_other": "{{count}} tehtävää",
+    "complete": "Merkitse \"{{text}}\" tehdyksi",
+    "reopen": "Merkitse \"{{text}}\" tekemättömäksi",
+    "openNote": "Avaa {{title}}",
+    "toggleFailed": "Tehtävää ei voitu päivittää.",
+    "moved": "Tehtävä on muuttunut muistiinpanossaan. Päivitä se avaamalla muistiinpano.",
+    "state": {
+      "label": "Näytä",
+      "open": "Avoimet",
+      "done": "Valmiit",
+      "all": "Avoimet ja valmiit"
+    },
+    "due": {
+      "label": "Eräpäivä",
+      "any": "Mikä tahansa eräpäivä",
+      "overdue": "Myöhässä",
+      "today": "Erääntyy tänään",
+      "week": "Erääntyy 7 päivän kuluessa",
+      "none": "Ei eräpäivää"
+    },
+    "priority": {
+      "label": "Prioriteetti",
+      "any": "Mikä tahansa prioriteetti",
+      "high": "Korkea prioriteetti",
+      "medium": "Keskitason prioriteetti",
+      "low": "Matala prioriteetti",
+      "none": "Ei prioriteettia"
+    },
+    "tag": {
+      "label": "Tunniste",
+      "any": "Kaikki tunnisteet"
+    },
+    "project": {
+      "label": "Projekti",
+      "any": "Kaikki projektit"
+    },
+    "sort": {
+      "label": "Järjestä tehtävät",
+      "due": "Eräpäivän mukaan",
+      "priority": "Prioriteetin mukaan"
+    }
+  },
+  "attachments": {
+    "filters": "Liitesuodattimet",
+    "loading": "Etsitään liitteitä",
+    "failed": "Liitteitäsi ei voitu lukea.",
+    "empty": "Ei vielä liitteitä. Pudota kuva tai tiedosto muistiinpanoon, niin se näkyy täällä.",
+    "noMatches": "Mikään liite ei vastaa näitä suodattimia.",
+    "clear": "Tyhjennä suodattimet",
+    "list": "Liitteet",
+    "count_one": "{{count}} tiedosto",
+    "count_other": "{{count}} tiedostoa",
+    "openNote": "Avaa {{title}}",
+    "copyLink": "Kopioi linkki",
+    "linkCopied": "Linkki kohteeseen \"{{name}}\" kopioitiin.",
+    "copyFailed": "Linkkiä kohteeseen \"{{name}}\" ei voitu kopioida.",
+    "unused": "Ei käytössä",
+    "type": {
+      "label": "Tyyppi",
+      "all": "Kaikki tyypit",
+      "image": "Kuvat",
+      "audio": "Ääni",
+      "video": "Video",
+      "pdf": "PDF:t",
+      "other": "Muut"
+    },
+    "use": {
+      "label": "Käyttö",
+      "all": "Kaikki tiedostot",
+      "unused": "Käyttämättömät"
+    }
+  },
+  "info": {
+    "title": "Tiedot",
+    "show": "Muistiinpanon tiedot",
+    "noNote": "Avaa muistiinpano, niin näet sen tiedot.",
+    "details": "Muistiinpanon yksityiskohdat",
+    "created": "Luotu",
+    "updated": "Päivitetty",
+    "words": "Sanoja",
+    "characters": "Merkkejä",
+    "lines": "Rivejä",
+    "readingTime": "Lukuaika",
+    "underMinute": "alle minuutti",
+    "noProperties": "Ei ominaisuuksia",
+    "noBacklinks": "Mikään muistiinpano ei linkitä tänne",
+    "noMentions": "Mikään muu muistiinpano ei mainitse sitä",
+    "noReferences": "Tässä muistiinpanossa ei ole lähdeviitteitä",
+    "noDeadLinks": "Ei rikkinäisiä linkkejä",
+    "noAttachments": "Ei liitettyjä tiedostoja"
+  },
+  "calendar": {
+    "title": "Kalenteri",
+    "week": "Viikko",
+    "hasNote": "päivän muistiinpano on olemassa",
+    "due_one": "{{count}} tehtävä erääntyy",
+    "due_other": "{{count}} tehtävää erääntyy",
+    "openWeek": "Avaa viikon {{week}} muistiinpano",
+    "openMonthNote": "Avaa kuukauden muistiinpano",
+    "createMonthNote": "Luo kuukauden muistiinpano",
+    "today": "Tänään",
+    "failed": {
+      "weekly": "Viikon muistiinpanoa ei voitu avata.",
+      "monthly": "Kuukauden muistiinpanoa ei voitu avata."
+    }
+  },
+  "periodic": {
+    "title": "Päivän, viikon ja kuukauden muistiinpanot",
+    "daily": {
+      "label": "Päivän muistiinpanot",
+      "description": "Tämän päivän muistiinpano ja sivupalkin kalenterin päivät."
+    },
+    "weekly": {
+      "label": "Viikon muistiinpanot",
+      "description": "Sivupalkin kalenterin viikkonumerot."
+    },
+    "monthly": {
+      "label": "Kuukauden muistiinpanot",
+      "description": "Kuukauden nimi sivupalkin kalenterin yläosassa."
+    },
+    "weekStart": {
+      "label": "Viikon ensimmäinen päivä",
+      "description": "Sivupalkin kalenterin ensimmäinen sarake. Viikkonumerot lasketaan tästä päivästä, ja kun viikko alkaa maanantaista, ne ovat ISO-viikkonumeroita.",
+      "locale": "Alueen oletus ({{day}})",
+      "monday": "Maanantai",
+      "sunday": "Sunnuntai",
+      "saturday": "Lauantai"
+    },
+    "format": "Nimen muoto",
+    "preview": "Esimerkki: {{title}}",
+    "invalidFormat": "Lisää päivämäärän osa, kuten YYYY tai WW.",
+    "template": "Mallipohja",
+    "savedTemplate": "Tallennettu mallipohjasi",
+    "tag": "Tunniste",
+    "noTag": "Ei tunnistetta",
+    "formatHelp": "Nimen muodoissa YYYY on vuosi, MM kuukausi, MMMM kuukauden nimi, DD päivä, dddd viikonpäivä, WW viikkonumero ja GGGG vuosi, johon viikko kuuluu. Hakasulkeissa oleva teksti, kuten [W], säilyy sellaisenaan. Olemassa olevat muistiinpanot säilyttävät nimensä, joten muuta muotoa ennen kuin alat käyttää sitä."
+  },
+  "live": {
+    "share": "Jaa",
+    "shared": "Jaettu",
+    "elsewhere": "Reaaliaikainen muokkaus on käytössä toisessa muistiinpanossa",
+    "makeLive": "Muokkaa reaaliaikaisesti tässä",
+    "viewOnly": "Voit lukea tätä muistiinpanoa mutta et muokata sitä.",
+    "someone": "Joku",
+    "unsentReadOnly": "Viimeisimpiä muutoksiasi tähän muistiinpanoon ei lähetetty, koska voit nyt vain katsella sitä.",
+    "unsentRefused": "Oleafly ei voinut lähettää viimeisimpiä muutoksiasi tähän muistiinpanoon, joten ne hylättiin."
+  },
+  "graph": {
+    "title": "Graafi",
+    "localTitle": "Paikallinen graafi",
+    "openGraph": "Graafinäkymä",
+    "canvas_one": "Graafi, {{count}} muistiinpano",
+    "canvas_other": "Graafi, {{count}} muistiinpanoa",
+    "keyboardHelp": "Nuolinäppäimillä liikut muistiinpanojen välillä. Enter avaa muistiinpanon. Plus ja miinus zoomaavat, ja 0 sovittaa koko graafin näkyviin.",
+    "search": "Hae graafista",
+    "tag": "Suodata tunnisteen mukaan",
+    "allTags": "Kaikki tunnisteet",
+    "orphans": "Muistiinpanot ilman linkkejä",
+    "projects": "Projektit",
+    "depth": "Syvyys",
+    "depthLevel_one": "{{count}} askel",
+    "depthLevel_other": "{{count}} askelta",
+    "fit": "Sovita näkymään",
+    "zoomIn": "Lähennä",
+    "zoomOut": "Loitonna",
+    "reset": "Palauta asettelu",
+    "empty": "Ei vielä muistiinpanoja",
+    "emptyFiltered": "Mikään muistiinpano ei vastaa näitä suodattimia",
+    "noNote": "Avaa muistiinpano, niin näet sen paikallisen graafin",
+    "focusedNote_one": "{{title}}, {{count}} linkki",
+    "focusedNote_other": "{{title}}, {{count}} linkkiä",
+    "showLocal": "Näytä paikallinen graafi",
+    "hideLocal": "Piilota paikallinen graafi",
+    "showOutline": "Näytä jäsennys",
+    "hideOutline": "Piilota jäsennys",
+    "outline": {
+      "title": "Jäsennys",
+      "empty": "Tässä muistiinpanossa ei ole otsikoita",
+      "emptyDetail": "Aloita rivi merkillä #, niin lisäät otsikon.",
+      "noNote": "Avaa muistiinpano, niin näet sen jäsennyksen",
+      "noNoteDetail": "Jäsennys seuraa muokkaamaasi muistiinpanoa.",
+      "levels": "Otsikkotasot",
+      "allLevels": "Kaikki tasot",
+      "upTo": "Enintään H{{level}}",
+      "collapse": "Kutista {{title}}",
+      "expand": "Laajenna {{title}}"
+    },
+    "linksFailed": "Muistiinpanojen välisiä linkkejä ei voitu lukea.",
+    "tagsFailed": "Tunnisteita ei voitu lukea.",
+    "loading": "Luetaan muistiinpanojen välisiä linkkejä"
+  },
+  "vault": {
+    "import": {
+      "more": "Lisää",
+      "menu": "Tuo Markdown",
+      "title": "Tuo Markdown",
+      "description": "Tuo Markdown-tiedostoja tai kokonainen kansio, esimerkiksi Obsidian-holvi. Jokaisesta tiedostosta tulee muistiinpano linkkeineen ja liitteineen.",
+      "folderTags": "Lisää kansioiden nimet tunnisteiksi",
+      "folderTagsHint": "Kansiossa Lab/2024 oleva tiedosto saa tunnisteen Lab/2024.",
+      "choose": "Valitse kansio",
+      "pickerTitle": "Valitse tuotava kansio",
+      "reading": "Luetaan {{file}}",
+      "writing": "Tuodaan {{file}}",
+      "progress": "{{done}}/{{total}}",
+      "stop": "Pysäytä tuonti",
+      "seenTitle": "Olet tuonut tämän kansion aiemmin",
+      "seenDescription_one": "Tuonti {{date}} lisäsi {{count}} muistiinpanon. Uusi tuonti lisää uudet kopiot eikä muuta aiempia muistiinpanoja.",
+      "seenDescription_other": "Tuonti {{date}} lisäsi {{count}} muistiinpanoa. Uusi tuonti lisää uudet kopiot eikä muuta aiempia muistiinpanoja.",
+      "again": "Tuo uudelleen uusina muistiinpanoina",
+      "largeTitle": "Tässä kansiossa on {{total}} muistiinpanoa",
+      "largeDescription": "Kaikkien tuominen voi kestää hetken, ja jokaisesta tulee oma muistiinpanonsa kirjastossasi. Voit pysäyttää tuonnin milloin tahansa.",
+      "largeConfirm": "Tuo kaikki",
+      "doneTitle": "Tuonti valmis",
+      "notes_one": "{{count}} muistiinpano tuotu",
+      "notes_other": "{{count}} muistiinpanoa tuotu",
+      "attachments_one": "{{count}} liite kopioitu",
+      "attachments_other": "{{count}} liitettä kopioitu",
+      "unresolved_one": "{{count}} linkki ei vastannut mitään muistiinpanoa ja jää tekstiksi",
+      "unresolved_other": "{{count}} linkkiä ei vastannut mitään muistiinpanoa, ja ne jäävät tekstiksi",
+      "skipped_one": "{{count}} tiedosto ohitettiin, koska se on yli 5 MB tai sitä ei voitu lukea",
+      "skipped_other": "{{count}} tiedostoa ohitettiin, koska ne ovat yli 5 MB tai niitä ei voitu lukea",
+      "notCopied_one": "{{count}} linkitetty tiedosto jäi kopioimatta",
+      "notCopied_other": "{{count}} linkitettyä tiedostoa jäi kopioimatta",
+      "cancelled": "Tuonti pysäytettiin. Muistiinpanoja ei lisätty.",
+      "failed": "Tuontia ei voitu viedä loppuun. Muistiinpanoja ei lisätty.",
+      "done": "Valmis",
+      "export": {
+        "menu": "Vie Markdown-kansiona",
+        "title": "Vie Markdown-kansiona",
+        "description": "Tallentaa jokaisen muistiinpanon Markdown-tiedostoksi wikilinkkeineen ja kokoaa liitteet omaan kansioonsa. Tuloksen voi avata Obsidian-holvina.",
+        "thisNote": "Tämä muistiinpano: {{title}}",
+        "allNotes_one": "Kaikki muistiinpanot ({{count}})",
+        "allNotes_other": "Kaikki muistiinpanot ({{count}})",
+        "export": "Vie",
+        "pickerTitle": "Valitse, minne kansio tallennetaan",
+        "folderName": "Oleafly-muistiinpanot",
+        "done_one": "{{count}} muistiinpano viety",
+        "done_other": "{{count}} muistiinpanoa viety",
+        "skipped_one": "{{count}} liite jäi viemättä",
+        "skipped_other": "{{count}} liitettä jäi viemättä",
+        "paperLinks_one": "{{count}} artikkelilinkki muuttui pelkäksi tekstiksi",
+        "paperLinks_other": "{{count}} artikkelilinkkiä muuttui pelkäksi tekstiksi",
+        "doneSkipped": "{{done}}. {{skipped}}.",
+        "showFolder": "Näytä kansio",
+        "failed": "Muistiinpanojen vienti ei onnistunut."
+      },
+      "chooseFiles": "Valitse tiedostot",
+      "filesPickerTitle": "Valitse tuotavat Markdown-tiedostot"
+    },
+    "search": {
+      "results": "Vastaavat muistiinpanot",
+      "searching": "Haetaan…",
+      "noResults": "Haulla \"{{query}}\" ei löytynyt muistiinpanoja.",
+      "clear": "Tyhjennä haku",
+      "favorite": "Suosikki",
+      "fields": {
+        "is": "Tila",
+        "tag": "Tunniste",
+        "kind": "Laji",
+        "author": "Tekijä",
+        "project": "Projekti",
+        "title": "Otsikko"
+      }
+    },
+    "tags": {
+      "label": "Muistiinpanojesi tunnisteet",
+      "empty": "Ei vielä tunnisteita. Lisää muistiinpanoon #tunnisteita tai tunnisteita sen ominaisuuksiin.",
+      "filter": "Näytä muistiinpanot, joilla on tunniste {{tag}}",
+      "clear": "Lopeta suodatus tunnisteella {{tag}}",
+      "search": "Suodata tunnisteita",
+      "noMatch": "Haulla \"{{query}}\" ei löytynyt tunnisteita.",
+      "showAll": "Näytä kaikki {{total}}",
+      "showFewer": "Näytä vähemmän"
+    },
+    "switcher": {
+      "open": "Siirry muistiinpanoon",
+      "label": "Siirry muistiinpanoon",
+      "placeholder": "Etsi muistiinpano otsikon tai aliaksen perusteella",
+      "recent": "Viimeisimmät",
+      "notes": "Muistiinpanot",
+      "alias": "Alias: {{alias}}",
+      "create": "Luo muistiinpano \"{{title}}\"",
+      "createFailed": "Muistiinpanon luominen ei onnistunut.",
+      "empty": "Ei vielä muistiinpanoja.",
+      "noMatches": "Ei vastaavia muistiinpanoja.",
+      "openHint": "Avaa",
+      "newTabHint": "Avaa uudessa välilehdessä"
+    },
+    "daily": {
+      "open": "Tämän päivän muistiinpano",
+      "failed": "Tämän päivän muistiinpanon avaaminen ei onnistunut.",
+      "previous": "Edellinen päivän muistiinpano: {{date}}",
+      "next": "Seuraava päivän muistiinpano: {{date}}"
+    },
+    "templates": {
+      "open": "Uusi mallipohjasta",
+      "label": "Uusi muistiinpano mallipohjasta",
+      "placeholder": "Etsi mallipohja",
+      "empty": "Ei vastaavia mallipohjia.",
+      "blank": "Tyhjä muistiinpano",
+      "blankDescription": "Tyhjä sivu",
+      "builtIn": "Tutkimuksen mallipohjat",
+      "yours": "Omat mallipohjat",
+      "yoursDescription": "Muistiinpano, jonka merkitsit mallipohjaksi",
+      "failed": "Muistiinpanon luominen ei onnistunut.",
+      "names": {
+        "daily": "Päivän muistiinpano",
+        "experimentLog": "Koeloki",
+        "paperReading": "Artikkelin lukumuistiinpanot",
+        "literatureMatrix": "Kirjallisuuskatsauksen matriisi",
+        "meeting": "Kokousmuistiinpanot",
+        "labProtocol": "Laboratorioprotokolla",
+        "weeklyLog": "Tutkimuksen viikkoloki",
+        "proposal": "Tutkimussuunnitelma",
+        "proof": "Todistus tai johto",
+        "dataAnalysis": "Data-analyysin raportti",
+        "interview": "Haastattelumuistiinpanot",
+        "screeningLog": "Seulontaloki",
+        "labNotebook": "Laboratoriopäiväkirjan merkintä"
+      },
+      "descriptions": {
+        "daily": "Suunnitelma ja juokseva loki yhdelle päivälle",
+        "experimentLog": "Kirjaa jokainen ajo, mikä muuttui ja mitä havaitsit",
+        "paperReading": "Mitä yksi artikkeli väittää ja miten se liittyy työhösi",
+        "literatureMatrix": "Hakuloki ja artikkeleita vertaileva taulukko",
+        "meeting": "Asialista, päätökset ja kuka tekee mitäkin",
+        "labProtocol": "Vaiheittainen menettely materiaaleineen ja turvallisuusohjeineen",
+        "weeklyLog": "Viikon tavoitteet ja kunkin päivän saavutukset",
+        "proposal": "Tavoitteet, menetelmät ja aikataulu apurahaa tai opinnäytettä varten",
+        "proof": "Tulos, sen taustalla oleva idea ja koko perustelu",
+        "dataAnalysis": "Mitä ajoit millä datalla ja mitä se osoitti",
+        "interview": "Vastaukset, lainaukset ja teemat yhdestä keskustelusta",
+        "screeningLog": "Katsauksen kysymys, kriteerit ja määrät kussakin seulontavaiheessa",
+        "labNotebook": "Yksi päivä laboratoriossa: tavoite, näytteet, menettely, havainnot ja allekirjoitus"
+      },
+      "bodies": {
+        "daily": "**{{weekday}}**\n\n## Suunnitelma\n- [ ] Tärkein tehtävä\n- [ ] Toinen tehtävä\n\n## Loki\n- {{time}} Päivä alkoi\n\n## Muistiinpanot\n\n## Tehty tänään\n- Ei vielä mitään\n\n## Huomenna\n- [ ] Ensimmäinen jatkettava asia",
+        "experimentLog": "> [!info] Tavoite\n> Mihin kysymykseen tämä ajo vastaa, ja mikä tulos muuttaisi suunnitelmaa?\n\n## Asetelma\n| Kohde | Arvo |\n| --- | --- |\n| Koodin versio | |\n| Aineisto | |\n| Laitteisto | |\n| Siemenluku | |\n\n## Hypoteesi\n- Odotettu tulos ja miksi\n\n## Ajot\n| Ajo | Muutos | Mittari | Tulos | Huomiot |\n| --- | --- | --- | --- | --- |\n| 1 | Vertailukohta | | | |\n\n## Havainnot\n- {{time}} Ensimmäinen havainto\n\n## Seuraavat vaiheet\n- [ ] Vertaa vertailukohtaa edelliseen raporttiin\n- [ ] Tallenna asetukset tulosten viereen\n- [ ] Päätä, skaalataanko vai lopetetaanko\n\n## Johtopäätös",
+        "paperReading": "> [!abstract] Yhteenveto\n> Artikkeli yhdellä virkkeellä.\n\n## Lähdeviite\nTekijät, otsikko, julkaisupaikka, vuosi sekä linkki tai DOI.\n\n## Ongelma\nMihin aukkoon artikkeli tarttuu, ja miksi sillä on merkitystä?\n\n## Menetelmä\n- Pääidea\n- Aineisto ja asetelma\n\n## Päätulokset\n| Väite | Näyttö | Vahvuus |\n| --- | --- | --- |\n| | | |\n\n## Vahvuudet\n- Mitä artikkeli tekee hyvin\n\n## Heikkoudet ja avoimet kysymykset\n- Mitä puuttuu tai mikä ei vakuuta\n\n## Yhteys omaan työhöni\n- Mihin tämä sopii, ja mitä kannattaa käyttää uudelleen tai testata\n\n## Jatkotoimet\n- [ ] Lue työt, joihin artikkeli perustuu\n- [ ] Tarkista, onko koodi tai aineisto saatavilla",
+        "literatureMatrix": "> [!question] Katsauksen kysymys\n> Kysymys, johon tämä katsaus vastaa, sekä sisäänotto- ja poissulkukriteerit.\n\n## Hakuloki\n| Päivämäärä | Lähde | Haku | Tulokset | Mukaan otetut |\n| --- | --- | --- | --- | --- |\n| {{date}} | | | | |\n\n## Matriisi\n| Artikkeli | Vuosi | Menetelmä | Aineisto | Päälöydös | Rajoitukset | Merkitys |\n| --- | --- | --- | --- | --- | --- | --- |\n| | | | | | | |\n\n## Teemat\n- Teema ja sitä tukevat artikkelit\n\n## Aukot\n- Mihin mikään artikkeli ei vielä vastaa\n\n## Luettavaksi\n- [ ] Seuraava artikkeli",
+        "meeting": "**{{weekday}} {{date}} klo {{time}}**\n\n## Asialista\n1. Ensimmäinen aihe\n2. Toinen aihe\n\n## Muistiinpanot\n- Keskustelun pääkohdat\n\n## Päätökset\n> [!success] Päätetty\n> Mitä sovittiin ja kenen toimesta.\n\n## Toimenpiteet\n- [ ] Vastuuhenkilö: tehtävä, määräaika\n\n## Seuraava kokous\nPäivämäärä ja seuraavaan siirtyvät aiheet.",
+        "labProtocol": "> [!warning] Turvallisuus\n> Tarkista vaarat, suojavarusteet ja jätteiden käsittely ennen aloittamista.\n\n## Tarkoitus\nMitä tämä protokolla tuottaa ja milloin sitä käytetään.\n\n## Materiaalit\n| Kohde | Määrä | Toimittaja tai luettelonumero | Huomiot |\n| --- | --- | --- | --- |\n| | | | |\n\n## Välineet\n- Laite ja asetukset\n\n## Menettely\n1. Valmistele\n2. Suorita\n3. Siivoa\n\n## Tarkistukset\n- [ ] Kontrollit valmisteltu\n- [ ] Asetukset kirjattu\n- [ ] Näytteet merkitty päivämäärällä ja ajolla\n\n## Vianmääritys\n| Ongelma | Todennäköinen syy | Korjaus |\n| --- | --- | --- |\n| | | |\n\n## Versiohistoria\n| Versio | Päivämäärä | Muutos |\n| --- | --- | --- |\n| 1 | {{date}} | Ensimmäinen versio |",
+        "weeklyLog": "## Tämän viikon tavoitteet\n- [ ] Ensimmäinen tavoite\n- [ ] Toinen tavoite\n- [ ] Kolmas tavoite\n\n## Edistyminen\n| Päivä | Tehty työ | Huomiot |\n| --- | --- | --- |\n| Maanantai | | |\n| Tiistai | | |\n| Keskiviikko | | |\n| Torstai | | |\n| Perjantai | | |\n\n## Tulokset ja kuvat\n- Mitä viikko tuotti\n\n## Esteet\n> [!warning] Tarvitsen apua\n> Mikä on jumissa, ja kuka voi auttaa eteenpäin.\n\n## Luettua\n- Tällä viikolla luetut artikkelit\n\n## Ensi viikko\n- [ ] Ensi viikon ensimmäinen tavoite",
+        "proposal": "> [!abstract] Yhteenveto\n> Kolmella virkkeellä: ongelma, lähestymistapa ja odotettu tulos.\n\n## Tausta ja motivaatio\nMiksi tämä on tärkeää juuri nyt, ja mitä tiedetään jo.\n\n## Tutkimuskysymykset\n1. Ensimmäinen kysymys\n\n## Tavoitteet\n| Tavoite | Lähestymistapa | Odotettu tulos |\n| --- | --- | --- |\n| 1 | | |\n\n## Menetelmät\nAsetelma, aineisto, analyysi ja miten onnistumista mitataan.\n\n## Aikataulu\n| Vaihe | Kuukaudet | Välitavoite |\n| --- | --- | --- |\n| | | |\n\n## Riskit ja niiden hallinta\n| Riski | Todennäköisyys | Hallintakeino |\n| --- | --- | --- |\n| | | |\n\n## Resurssit ja budjetti\n\n## Vaikuttavuus\nKeitä tulokset hyödyttävät ja miten ne jaetaan.\n\n## Lähteet",
+        "proof": "## Määritelmät ja merkinnät\n> [!definition] Merkinnät\n> Käyttämäsi symbolit ja se, mitä kukin tarkoittaa.\n\n## Väite\n> [!theorem] Päätulos\n> Tulos täsmällisesti muotoiltuna kaikkine oletuksineen.\n\n## Idea\nPääidea selkokielellä ennen yksityiskohtia.\n\n## Apulauseet\n> [!lemma] Apulause 1\n> Pienempi väite, jota päätodistus tarvitsee.\n\n> [!proof] Apulauseen 1 todistus\n> Miksi apulause pätee.\n\n## Todistus\n> [!proof] Päätuloksen todistus\n> **Vaihe 1.** Pohjusta päättely.\n>\n> **Vaihe 2.** Tee pääarvio apulausetta 1 käyttäen.\n>\n> **Vaihe 3.** Tee johtopäätös.\n\n## Tarkistukset\n- [ ] Jokaista oletusta käytetään\n- [ ] Reunatapaukset on katettu\n- [ ] Vakiot ja rajat on pidetty mukana\n\n## Huomautukset\nYleistykset, vastaesimerkit ja liittyvät tulokset.",
+        "dataAnalysis": "> [!info] Kysymys\n> Päätös, jota tämä analyysi tukee.\n\n## Aineisto\n| Kenttä | Arvo |\n| --- | --- |\n| Lähde | |\n| Versio tai päivämäärä | |\n| Rivit ja sarakkeet | |\n| Poissulut | |\n\n## Menetelmät\n- Puhdistusvaiheet\n- Malli tai testi ja miksi\n- Tarkistetut oletukset\n\n## Tulokset\nAlla oleva taulukko on lohko (CSV). Korvaa esimerkkirivit omilla tuloksillasi.\n\n```csv\nMittari,Estimaatti,Alaraja 95 %,Yläraja 95 %,n\nRyhmän A keskiarvo,0,0,0,0\nRyhmän B keskiarvo,0,0,0,0\nErotus,0,0,0,0\n```\n\n## Kuvat\n- Kuva ja mitä se näyttää\n\n## Tulkinta\nMitä tulokset merkitsevät kysymyksen kannalta.\n\n## Rajoitukset\n- Harha, puuttuva data ja mikä voisi muuttaa johtopäätöstä\n\n## Toistettavuus\n- [ ] Koodi tallennettu ja linkitetty\n- [ ] Satunnaissiemenet kirjattu\n- [ ] Pakettien versiot merkitty",
+        "interview": "> [!warning] Suostumus ja yksityisyys\n> Varmista suostumus ennen tallentamista ja käytä nimen sijaan osallistujakoodia.\n\n## Konteksti\n| Kohde | Arvo |\n| --- | --- |\n| Osallistujakoodi | |\n| Rooli | |\n| Kesto | |\n| Tallenne | |\n\n## Kysymykset ja vastaukset\n### Kysymys 1\n- Vastaus\n\n### Kysymys 2\n- Vastaus\n\n## Lainaukset\n> Talteen otettava lainaus.\n\n## Teemat\n- Teema ja sitä tukevat vastaukset\n\n## Jatkotoimet\n- [ ] Lähetä kiitosviesti\n- [ ] Litteroi ja anonymisoi",
+        "screeningLog": "> [!question] Katsauksen kysymys (PICO)\n> - **Populaatio:** ketä tai mitä tutkitaan\n> - **Interventio tai altiste:** mitä testataan\n> - **Vertailu:** mihin sitä verrataan\n> - **Tulos:** mitä mitataan\n\n## Sisäänottokriteerit\n- Tutkimusasetelmat\n- Populaatio ja ympäristö\n- Kielet ja vuodet\n\n## Poissulkukriteerit\n- Syy ja miten sen tunnistaa\n\n## Haut\n| Päivämäärä | Tietokanta | Hakulauseke | Tulokset |\n| --- | --- | --- | --- |\n| {{date}} | | | |\n\n## Määrät kussakin vaiheessa\n| Vaihe | Tulokset | Poistettu | Pääsyyt |\n| --- | --- | --- | --- |\n| Löytyi hauista | | | |\n| Kaksoiskappaleiden poiston jälkeen | | | |\n| Otsikot ja tiivistelmät seulottu | | | |\n| Kokotekstit arvioitu | | | |\n| Mukana katsauksessa | | | |\n\n## Poissuljettu kokotekstivaiheessa\n| Artikkeli | Syy |\n| --- | --- |\n| | |\n\n## Erimielisyydet\n- Artikkeli, kunkin arvioijan päätös ja miten asia ratkaistiin\n\n## Seuraavat vaiheet\n- [ ] Seulo seuraava erä\n- [ ] Tarkista, että määrät täsmäävät",
+        "labNotebook": "**{{weekday}}, {{date}}**\n\n## Tavoite\nMitä aiot tehdä tänään ja miksi.\n\n## Materiaalit\n| Materiaali | Näytetunnus | Erä | Määrä |\n| --- | --- | --- | --- |\n| | | | |\n\n## Menettely\n1. Mitä teit järjestyksessä, kellonaikoineen ja asetuksineen\n2. Mahdolliset poikkeamat protokollasta ja syyt niihin\n\n## Havainnot\n- {{time}} Mitä näit\n\n## Tulokset\n- Mittaukset ja paikka, johon raakadata on tallennettu\n\n## Seuraavat vaiheet\n- [ ] Jatkotoimi seuraavalle kerralle\n\n## Allekirjoitus\n**Allekirjoittanut:** nimi, {{date}}\n\n**Todistaja:** nimi, päivämäärä"
+      }
+    },
+    "mentions": {
+      "title": "Mainittu kohteissa",
+      "link": "Linkitä",
+      "linkLabel": "Linkitä ensimmäinen maininta muistiinpanossa {{title}}",
+      "linked": "Maininta muistiinpanossa \"{{title}}\" linkitettiin.",
+      "notFound": "Muistiinpanossa \"{{title}}\" ei ole enää linkittämätöntä mainintaa.",
+      "failed": "Linkin lisääminen muistiinpanoon \"{{title}}\" ei onnistunut."
+    },
+    "table": {
+      "view": "Taulukkonäkymä",
+      "sortBy": "Järjestä: {{name}}",
+      "addColumn": "Lisää tai poista sarakkeita",
+      "properties": "Ominaisuudet",
+      "noProperties": "Näissä muistiinpanoissa ei ole muita ominaisuuksia",
+      "yes": "Kyllä",
+      "no": "Ei",
+      "columns": {
+        "title": "Otsikko",
+        "tags": "Tunnisteet",
+        "status": "Tila",
+        "project": "Projekti",
+        "edited": "Viimeksi muokattu"
+      }
+    }
+  },
+  "assistant": {
+    "label": "Avustaja",
+    "placeholder": "Kysy tästä muistiinpanosta tai pyydä muutosta. Kirjoita / nähdäksesi toiminnot",
+    "newChat": "Uusi keskustelu",
+    "conversation": "Keskustelu avustajan kanssa",
+    "foldConversation": "Kutista keskustelu",
+    "showConversation": "Näytä keskustelu",
+    "cliAgents": "Komentoriviagentit",
+    "actionHint": "Toimii tässä muistiinpanossa",
+    "agentCanEdit": "Tämä agentti voi muuttaa linkitetyn projektin tiedostoja.",
+    "allowWritesLabel": "Anna agentin muuttaa tiedostoja",
+    "allowWritesAsk": "Agentilla {{agent}} ei ole vain luku -tilaa, joten se voisi muuttaa projektin {{project}} tiedostoja. Oleafly ei voi lisätä sille sellaista. Lähetetäänkö viesti silti?",
+    "allowWrites": "Lähetä silti",
+    "dontSend": "Älä lähetä",
+    "viewOnly": "Voit vain katsoa tätä muistiinpanoa, joten avustaja ei voi muuttaa sitä."
+  },
+  "saving": {
+    "notSaved": "Viimeisimpiä muutoksiasi ei ole tallennettu.",
+    "timedOut": "Tallentaminen kesti liian kauan."
+  },
+  "failures": {
+    "createNote": "Muistiinpanon luominen ei onnistunut.",
+    "linkNote": "Muistiinpanon \"{{name}}\" linkittäminen valittuun projektiin ei onnistunut.",
+    "linkProject": "Projekti luotiin, mutta muistiinpanoa ei voitu linkittää siihen.",
+    "sendToPaper": "Tämän lisääminen artikkeliin ei onnistunut.",
+    "paperNotOpen": "Avaa ensin jokin artikkelin tiedostoista (LaTeX, Typst tai Markdown) ja lähetä se sitten uudelleen.",
+    "template": "Muistiinpanon \"{{name}}\" mallipohja-asetuksen muuttaminen ei onnistunut."
+  },
+  "noteTab": {
+    "loading": "Avataan muistiinpanoa",
+    "projectNote": "Projektin muistiinpano",
+    "sharedProject": "Kaikki projektin jäsenet voivat nähdä ja muokata sitä",
+    "localProject": "Tallennettu tämän projektin tiedostojen kanssa",
+    "personalNote": "Henkilökohtainen muistiinpano",
+    "private": "Vain sinä näet sen",
+    "personalShared": "Jaettu Muistiinpanoista",
+    "openInNotes": "Avaa Muistiinpanoissa",
+    "moveIntoProject": "Siirrä projektiin",
+    "copyToMine": "Kopioi omiin muistiinpanoihin",
+    "missing": "Tämä muistiinpano ei ole enää käytettävissä. Se on ehkä siirretty tai poistettu.",
+    "writeRefused": "Muistiinpanon tallentaminen ei onnistunut. Tämä projekti on nyt vain luku -tilassa."
+  },
+  "appearance": {
+    "notes": {
+      "sectionName": "Muistiinpanojen ulkoasu",
+      "resetAriaLabel": "Palauta oletusarvo: {{setting}}",
+      "text": {
+        "title": "Teksti"
+      },
+      "typeface": {
+        "label": "Kirjaintyyppi",
+        "description": "Valitse muistiinpanojen tekstin kirjaintyyppi.",
+        "options": {
+          "sans": "Groteski",
+          "serif": "Antiikva",
+          "mono": "Tasalevyinen"
+        }
+      },
+      "font": {
+        "label": "Muistiinpanojen fontti",
+        "description": "Valitse muistiinpanojen tekstille mikä tahansa asennettu fontti. Jos jätät kentän tyhjäksi, käytetään Kirjaintyyppi-asetusta."
+      },
+      "fontSize": {
+        "label": "Muistiinpanojen tekstikoko",
+        "description": "Aseta muistiinpanojen tekstin koko.",
+        "custom": "Mukautettu",
+        "customLabel": "Mukautettu muistiinpanojen tekstikoko pikseleinä"
+      },
+      "lineHeight": {
+        "label": "Muistiinpanojen riviväli",
+        "description": "Aseta muistiinpanojen tekstirivien välinen tila.",
+        "customLabel": "Mukautettu muistiinpanojen riviväli"
+      },
+      "paragraphSpacing": {
+        "label": "Kappaleväli",
+        "description": "Aseta kappaleiden, luetteloiden ja muiden lohkojen välinen tila.",
+        "options": {
+          "compact": "Tiivis",
+          "normal": "Normaali",
+          "relaxed": "Väljä",
+          "spacious": "Tilava"
+        }
+      },
+      "headings": {
+        "title": "Otsikot ja nimi"
+      },
+      "headingTypeface": {
+        "label": "Otsikoiden kirjaintyyppi",
+        "description": "Valitse otsikoiden ja muistiinpanon nimen kirjaintyyppi.",
+        "options": {
+          "text": "Sama kuin tekstissä"
+        }
+      },
+      "headingFont": {
+        "label": "Otsikoiden fontti",
+        "description": "Valitse otsikoille ja muistiinpanon nimelle asennettu fontti. Jos jätät kentän tyhjäksi, käytetään Otsikoiden kirjaintyyppi -asetusta."
+      },
+      "headingSize": {
+        "label": "Otsikoiden koko",
+        "description": "Aseta, kuinka suuria otsikot ovat tekstiin verrattuna.",
+        "options": {
+          "small": "Pienempi",
+          "normal": "Normaali",
+          "large": "Suurempi"
+        }
+      },
+      "titleSize": {
+        "label": "Nimen koko",
+        "description": "Aseta kunkin muistiinpanon yläreunassa olevan nimen koko."
+      },
+      "layout": {
+        "title": "Asettelu"
+      },
+      "width": {
+        "label": "Muistiinpanon leveys",
+        "description": "Kuinka leveinä muistiinpanot avautuvat. Myös muistiinpanon leveysvalikko muuttaa tätä.",
+        "options": {
+          "standard": "Tavallinen",
+          "wide": "Leveä",
+          "full": "Täysi leveys"
+        }
+      },
+      "info": {
+        "label": "Muistiinpanon tiedot",
+        "description": "Mihin muistiinpanon ominaisuudet ja linkit sijoitetaan. Kun valitset Sivupaneeli, ne näkyvät Tiedot-paneelissa muistiinpanon tilastojen ja liitteiden kanssa. Kun valitset Sivulla, ne pysyvät sivulla.",
+        "options": {
+          "side": "Sivupaneeli",
+          "inline": "Sivulla"
+        }
+      },
+      "taskBox": {
+        "label": "Tehtävien valintaruudut",
+        "description": "Tehtäväluetteloiden ruutujen muoto.",
+        "options": {
+          "square": "Neliö",
+          "round": "Pyöreä"
+        }
+      },
+      "wordCount": {
+        "label": "Näytä sanamäärä",
+        "description": "Näytä muistiinpanon sanamäärä sen työkalurivillä."
+      },
+      "spellcheck": {
+        "label": "Tarkista oikeinkirjoitus muistiinpanoissa",
+        "description": "Alleviivaa väärin kirjoitetut sanat, kun kirjoitat muistiinpanoa."
+      },
+      "replacements": {
+        "label": "Korvaa kirjoittaessa",
+        "description": "Vaihtaa kirjoittaessa esimerkiksi -> merkiksi →. Koodi ja matematiikka pysyvät kirjoitetun mukaisina, ja Backspace heti vaihdon jälkeen palauttaa tekstisi.",
+        "list": "Tekstikorvaukset",
+        "type": "Kirjoitat",
+        "becomes": "Tulos",
+        "add": "Lisää",
+        "remove": "Poista {{from}}",
+        "removeTooltip": "Poista",
+        "empty": "Ei vielä pareja. Lisää pari alla.",
+        "full": "Pareja voi olla enintään {{limit}}. Poista yksi, niin voit lisätä toisen."
+      },
+      "keepUndo": {
+        "label": "Säilytä kumoushistoria sulkemisen jälkeen",
+        "description": "Kumoaminen toimii muistiinpanossa vielä, kun olet sulkenut sen tai lopettanut sovelluksen. Historia säilyy tällä tietokoneella, ja tämän poistaminen käytöstä poistaa sen."
+      },
+      "code": {
+        "title": "Koodi"
+      },
+      "drawings": {
+        "title": "Piirrokset (LaTeX)"
+      },
+      "tikzPreamble": {
+        "label": "Preambuli (TikZ)",
+        "description": "Rivit, kuten \\usetikzlibrary{positioning}, jotka lisätään preambulin alkuun jokaisessa lohkossa (TikZ ja CircuiTikZ)."
+      },
+      "codeFont": {
+        "label": "Koodin fontti",
+        "description": "Valitse asennettu fontti koodilohkoille ja tekstin sisäiselle koodille."
+      },
+      "codeTheme": {
+        "label": "Koodilohkojen värit",
+        "description": "Valitse muistiinpanojen koodilohkojen syntaksivärit.",
+        "options": {
+          "editor": "Sama kuin editorissa"
+        }
+      },
+      "colors": {
+        "title": "Värit"
+      },
+      "accent": {
+        "label": "Muistiinpanojen korostusväri",
+        "description": "Käytetään muistiinpanojen linkeissä, tunnisteissa ja tehtävien valintaruuduissa.",
+        "matchApp": "Sama kuin sovelluksessa",
+        "customAriaLabel": "Valitse muistiinpanoille mukautettu korostusväri"
+      },
+      "callouts": {
+        "label": "Huomiolaatikoiden tyyli",
+        "description": "Miltä huomiolaatikot näyttävät muistiinpanoissa.",
+        "options": {
+          "tinted": "Sävytetty",
+          "filled": "Täytetty",
+          "outlined": "Reunaviiva",
+          "bar": "Sivupalkki"
+        }
+      },
+      "fieldStyle": {
+        "label": "Päivämäärä- ja kenttäsirut",
+        "description": "Miltä päivämäärät ja kentät, kuten eräpäivä tai prioriteetti, näyttävät muistiinpanoissa.",
+        "options": {
+          "tint": "Sävytys",
+          "outline": "Reunaviiva",
+          "underline": "Alleviivaus"
+        }
+      },
+      "remoteImages": {
+        "title": "Kuvat verkosta",
+        "description": "Muistiinpanot ja avustajan vastaukset lataavat kuvia näiltä sivustoilta kysymättä.",
+        "empty": "Muistiinpanot ja avustajan vastaukset kysyvät ennen kuin lataavat kuvan verkosta. Sivustot, jotka sallit aina, näkyvät tässä.",
+        "remove": "Poista {{host}}"
+      }
+    }
+  },
+  "notesPreview": {
+    "label": "Esikatselu muistiinpanosta näillä asetuksilla",
+    "title": "Maastomuistiinpanot",
+    "heading": "Aamun kartoitus",
+    "paragraph": "Kevyttä sadetta yhdeksään asti, sitten pohjoisrinteen yllä selkeni. Maa oli vielä keskipäivällä kostea.",
+    "links": "Katso koko menetelmä muistiinpanosta <note>Näytteenottomenetelmä</note> tai selaa tunnistetta <tag>#maastotyö</tag>.",
+    "highlight": "Taimien pituus kaksinkertaistui viikossa.",
+    "calloutTitle": "Seuraava käynti",
+    "calloutBody": "Tarkista maaperäanturit ennen uusien näytteiden ottamista.",
+    "taskDone": "Merkitse näytteet",
+    "task": "Lähetä kuvat",
+    "taskLate": "Lähetä maaperäraportti"
+  },
+  "highlight": {
+    "colors": {
+      "yellow": "Keltainen",
+      "orange": "Oranssi",
+      "red": "Punainen",
+      "pink": "Vaaleanpunainen",
+      "purple": "Violetti",
+      "blue": "Sininen",
+      "green": "Vihreä"
+    },
+    "remove": "Poista korostus"
+  },
+  "quickCapture": {
+    "title": "Pikakirjaus",
+    "untitled": "Nimetön",
+    "placeholder": "Aloita kirjoittaminen…",
+    "field": "Kirjattava teksti",
+    "characters_one": "{{count}} merkki",
+    "characters_other": "{{count}} merkkiä",
+    "failed": "Tallentaminen ei onnistunut. Tekstisi on yhä tässä, joten voit yrittää uudelleen.",
+    "actions": {
+      "label": "Toiminnot",
+      "saveNew": "Tallenna uutena muistiinpanona",
+      "saveToday": "Lisää tämän päivän muistiinpanoon",
+      "copy": "Kopioi muodossa Markdown",
+      "discard": "Hylkää luonnos"
+    },
+    "openNotes": "Avaa Muistiinpanot",
+    "newNote": "Uusi muistiinpano",
+    "format": "Näytä muotoilu",
+    "closeFormat": "Piilota muotoilu"
+  },
+  "starter": {
+    "blocksGallery": {
+      "title": "Lohkogalleria",
+      "intro": "Kaikki lohkot, joita muistiinpano voi sisältää. Napsauta lohkossa {{source}}, niin näet sen piirtävän koodin ja voit muokata sitä. Lisää uusi lohko kirjoittamalla {{slash}} tyhjälle riville.",
+      "charts": "Diagrammit",
+      "functionPlots": "Funktioiden kuvaajat",
+      "tables": "Taulukot",
+      "csvTable": "Lohkon csv voi järjestää ja suodattaa, ja siinä on yhteenvetorivi:",
+      "markdownTable": "Myös tavalliset Markdown-taulukot toimivat:",
+      "math": "Matematiikka ja kemia",
+      "typst": "Typst",
+      "diagrams": "Kaaviot",
+      "svg": "SVG",
+      "html": "HTML, napsauta {{run}}",
+      "react": "React, napsauta {{run}}",
+      "structures": "Kemialliset rakenteet",
+      "molecule": "3D-molekyyli",
+      "sequences": "Sekvenssit",
+      "code": "Koodi"
+    }
+  }
+}

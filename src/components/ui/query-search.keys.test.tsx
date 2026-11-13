@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { useMemo, useState } from "react";
+import { type KeyboardEvent, useMemo, useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { analyze, defineSchema } from "@oleafly/search-query";
 import type { QueryMeta } from "@/lib/query-suggestions";
@@ -148,5 +148,66 @@ describe("QuerySearch pointer and focus", () => {
     expect(value()).toBe("engine:typst rest");
     expect(input().selectionStart).toBe(13);
     expect(input().getAttribute("aria-expanded")).toBe("false");
+  });
+});
+
+function ResultsHarness({ onKeyDown }: Readonly<{ onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void }>) {
+  const [value, setValue] = useState("");
+  const query = useMemo(() => analyze(value, schema, { now: 0 }), [value]);
+  const open = value !== "";
+  return (
+    <QuerySearch
+      value={value}
+      onChange={setValue}
+      query={query}
+      schema={schema}
+      ariaLabel="Search items"
+      placeholder={PLACEHOLDER}
+      clearLabel="Clear search"
+      results={{ listId: "hits", open, activeId: open ? "hit-0" : undefined }}
+      onKeyDown={onKeyDown}
+    />
+  );
+}
+
+describe("QuerySearch with a results list of its caller's", () => {
+  it("points at the results while its own menu is closed and hands them the keys", () => {
+    const keys: string[] = [];
+    render(
+      <ResultsHarness
+        onKeyDown={(event) => {
+          keys.push(event.key);
+          event.preventDefault();
+        }}
+      />,
+    );
+    expect(input().getAttribute("aria-expanded")).toBe("false");
+    fireEvent.change(input(), { target: { value: "zebra" } });
+
+    expect(input().getAttribute("aria-expanded")).toBe("true");
+    expect(input().getAttribute("aria-controls")).toBe("hits");
+    expect(input().getAttribute("aria-activedescendant")).toBe("hit-0");
+    fireEvent.keyDown(input(), { key: "ArrowDown" });
+    fireEvent.keyDown(input(), { key: "Enter" });
+    fireEvent.keyDown(input(), { key: "Escape" });
+
+    expect(keys).toEqual(["ArrowDown", "Enter", "Escape"]);
+    expect(options()).toEqual([]);
+  });
+
+  it("keeps the keys its open menu needs and passes on the rest", () => {
+    const keys: string[] = [];
+    render(<ResultsHarness onKeyDown={(event) => keys.push(event.key)} />);
+    fireEvent.focus(input());
+    expect(input().getAttribute("aria-controls")).not.toBe("hits");
+
+    fireEvent.keyDown(input(), { key: "ArrowDown" });
+    fireEvent.keyDown(input(), { key: "Escape" });
+    expect(keys).toEqual([]);
+
+    fireEvent.keyDown(input(), { key: "ArrowDown" });
+    expect(options()).toEqual(["kind", "words", "Engine", "Exclude"]);
+    fireEvent.keyDown(input(), { key: "Enter" });
+    expect(keys).toEqual(["ArrowDown", "Enter"]);
   });
 });

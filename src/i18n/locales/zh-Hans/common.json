@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "搜索模式：{{mode}}",
+    "heading": "搜索模式",
+    "ranked": {
+      "label": "最佳匹配",
+      "description": "按匹配程度对结果排序。词语可以出现在任意位置。"
+    },
+    "exact": {
+      "label": "精确文本",
+      "description": "查找完全相同的字符。包含大写字母时区分大小写。"
+    },
+    "regex": {
+      "label": "正则表达式",
+      "description": "使用 ripgrep 的模式语法。如果模式中有空格或括号，请用引号括起来。"
+    },
+    "fuzzy": {
+      "label": "模糊",
+      "description": "像 fzf 一样，匹配按顺序包含你输入的字母的名称。也支持 'exact、^start、end$ 和 !leave-out。"
+    },
+    "invalid": "此模式无效：{{error}}"
+  },
   "querySearch": {
     "suggestions": "搜索建议",
     "exclude": "排除",
@@ -76,10 +97,15 @@
       "invalidValue": "{{value}} 不是 {{key}} 的有效值",
       "invalidDate": "{{value}} 不是日期。请尝试 2026-10-02 或 @today-7d",
       "invalidNumber": "{{value}} 不是数字",
-      "sortNegated": "{{key}} 不能排除"
+      "sortNegated": "{{key}} 不能排除",
+      "tooManyBranches": "此搜索包含的 OR 组合过多，部分结果可能缺失"
     }
   },
   "avatar": {
     "more_other": "另外 {{count}} 人"
+  },
+  "remoteImage": {
+    "blocked": "来自 {{host}} 的图片",
+    "load": "加载图片"
   }
 }

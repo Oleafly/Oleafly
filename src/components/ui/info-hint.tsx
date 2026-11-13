@@ -3,7 +3,7 @@ import { Info } from "lucide-react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-const TRIGGER_CLASS =
+export const INFO_HINT_CLASS =
   "inline-flex size-5 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground";
 
 function keepTooltipOpen(event: SyntheticEvent) {
@@ -36,7 +36,7 @@ export function InfoHint({
           rel="noopener noreferrer"
           aria-label={label}
           data-testid="info-hint"
-          className={cn(TRIGGER_CLASS, className)}
+          className={cn(INFO_HINT_CLASS, className)}
         >
           <Info aria-hidden className="size-3.5" />
         </a>
@@ -45,7 +45,7 @@ export function InfoHint({
           type="button"
           aria-label={label}
           data-testid="info-hint"
-          className={cn(TRIGGER_CLASS, "cursor-help", className)}
+          className={cn(INFO_HINT_CLASS, "cursor-help", className)}
           onMouseDown={keepTooltipOpen}
           onClick={keepTooltipOpen}
           onKeyDown={keepTooltipOpenOnKey}

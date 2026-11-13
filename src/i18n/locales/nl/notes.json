@@ -1,0 +1,1683 @@
+{
+  "workspace": {
+    "home": "Start",
+    "hideSidebar": "Zijbalk verbergen",
+    "showSidebar": "Zijbalk tonen",
+    "newProject": "Nieuw project",
+    "sendToPaper": "Naar artikel sturen",
+    "artifacts": "Artefacten, {{total}}",
+    "project": "Project",
+    "projectMenu": "Project: {{project}}",
+    "chooseProject": "Project kiezen",
+    "noProject": "Geen project",
+    "missing": "Deze notitie staat niet meer in je bibliotheek.",
+    "closeTab": "{{title}} sluiten",
+    "maximize": "Maximaliseren",
+    "restore": "Herstellen",
+    "resize": "Grootte van panelen aanpassen",
+    "closePanel": "Paneel sluiten",
+    "newTab": "Nieuw tabblad",
+    "empty": {
+      "greetings": {
+        "begin": "Waar zullen we beginnen?",
+        "ready": "Klaar wanneer jij dat bent.",
+        "mind": "Wat houdt je vandaag bezig?",
+        "resume": "Verdergaan waar je was gebleven?",
+        "working": "Waar werk je aan?",
+        "first": "Wat wil je als eerste schrijven?",
+        "blank": "Begin met een lege pagina of een sjabloon."
+      },
+      "hints": {
+        "daily": "Een plan en een logboek voor vandaag",
+        "experimentLog": "Runs en wat ze lieten zien",
+        "paperReading": "Wat één artikel beweert",
+        "literatureMatrix": "Artikelen naast elkaar vergelijken",
+        "meeting": "Agenda en besluiten",
+        "labProtocol": "Stappen die een ander kan volgen",
+        "weeklyLog": "Wat er deze week is gedaan",
+        "proposal": "Doelen, methoden en een tijdlijn"
+      },
+      "moreTemplates": "Meer sjablonen",
+      "continue": "Verder werken",
+      "searchAll": "Alle notities doorzoeken"
+    },
+    "closeMissing": "Tabblad sluiten",
+    "notesHome": "Naar de startpagina van Notities",
+    "breadcrumb": "Kruimelpad",
+    "breadcrumbHome": "Startpagina van Notities",
+    "brand": "Oleafly Notes",
+    "back": "Terug",
+    "forward": "Vooruit"
+  },
+  "saveStatus": {
+    "saved": "Opgeslagen",
+    "saving": "Opslaan",
+    "failed": "Niet opgeslagen",
+    "failedWithReason": "Niet opgeslagen: {{reason}}",
+    "retry": "Opnieuw proberen"
+  },
+  "library": {
+    "newNote": "Nieuwe notitie",
+    "search": "Notities en artefacten zoeken",
+    "kind": {
+      "all": "Alles",
+      "note": "Notities",
+      "figure": "Figuren",
+      "report": "Rapporten",
+      "data": "Gegevens",
+      "notebook": "Notebooks"
+    },
+    "author": {
+      "all": "Alles",
+      "agent": "Agents",
+      "you": "Jij"
+    },
+    "empty": "Niets past bij deze filters.",
+    "emptyKind": {
+      "note": "Geen notities passen bij deze filters.",
+      "figure": "Geen figuren passen bij deze filters.",
+      "report": "Geen rapporten passen bij deze filters.",
+      "data": "Geen gegevensbestanden passen bij deze filters.",
+      "notebook": "Geen notebooks passen bij deze filters."
+    },
+    "start": {
+      "title": "Nog geen notities"
+    },
+    "ungrouped": "Notities",
+    "agentFallback": "Agent",
+    "settings": "Instellingen",
+    "filters": {
+      "title": "Tags",
+      "active_one": "{{count}} filter actief",
+      "active_other": "{{count}} filters actief",
+      "clear": "Filters wissen",
+      "writtenBy": "Geschreven door"
+    },
+    "menu": {
+      "more": "Meer",
+      "openInNewTab": "In nieuw tabblad openen",
+      "favorite": "Aan favorieten toevoegen",
+      "unfavorite": "Uit favorieten weghalen",
+      "rename": "Hernoemen",
+      "renameLabel": "Notitie hernoemen",
+      "renameFailed": "Kon “{{name}}” niet hernoemen.",
+      "delete": "Verwijderen",
+      "deleteTitle": "“{{name}}” naar de Prullenbak verplaatsen?",
+      "deleteDescription": "De notitie verdwijnt uit Notities en blijft in Gegevensopslag staan tot je hem herstelt of definitief verwijdert.",
+      "deleteConfirm": "Naar de Prullenbak verplaatsen",
+      "deleted": "“{{name}}” is naar de Prullenbak verplaatst.",
+      "deleteFailed": "Kon “{{name}}” niet verwijderen.",
+      "useAsTemplate": "Als sjabloon gebruiken",
+      "stopTemplate": "Niet meer als sjabloon gebruiken",
+      "templateOn": "“{{name}}” is nu een van je sjablonen.",
+      "templateOff": "“{{name}}” is geen sjabloon meer.",
+      "linkProject": "Aan project koppelen",
+      "compareConflict": "Conflictkopie vergelijken",
+      "copyLink": "Link kopiëren",
+      "linkCopied": "Link naar “{{name}}” gekopieerd.",
+      "copyLinkFailed": "Kon de link naar “{{name}}” niet kopiëren.",
+      "duplicate": "Dupliceren",
+      "copyTitle": "Kopie van {{name}}",
+      "duplicateFailed": "Kon “{{name}}” niet dupliceren.",
+      "export": "Exporteren",
+      "exportAs": {
+        "markdown": "Map met Markdown (.md)",
+        "docx": "Word-document (.docx)",
+        "html": "Webpagina (.html)",
+        "latex": "LaTeX (.tex)",
+        "typst": "Typst (.typ)"
+      },
+      "exportFailed": "Kon “{{name}}” niet exporteren.",
+      "copyMarkdown": "Kopiëren als Markdown",
+      "markdownCopied": "“{{name}}” gekopieerd als Markdown.",
+      "copyMarkdownFailed": "Kon “{{name}}” niet als Markdown kopiëren."
+    },
+    "conflicts": {
+      "badge": "Deze notitie heeft een conflictkopie"
+    },
+    "suggestions": {
+      "badge": "Er wachten voorgestelde wijzigingen in deze notitie"
+    }
+  },
+  "home": {
+    "title": "Start",
+    "search": "Notities zoeken",
+    "tabs": {
+      "label": "Te tonen notities",
+      "mine": "Mijn notities",
+      "favorites": "Favorieten",
+      "tasks": "Taken",
+      "attachments": "Bijlagen"
+    },
+    "sortBy": "Sorteren op",
+    "sort": {
+      "opened": "Laatst geopend",
+      "edited": "Laatst bewerkt",
+      "created": "Aanmaakdatum",
+      "title": "Titel"
+    },
+    "layout": "Weergave van notities",
+    "noFavorites": "Nog geen favorieten. Voeg een notitie aan favorieten toe om hem hier te bewaren.",
+    "noMatches": "Geen notities passen bij “{{query}}”.",
+    "author": "Auteur"
+  },
+  "document": {
+    "writtenByAgent": "Geschreven door {{agent}}",
+    "writtenByYou": "Door jou geschreven",
+    "askAgent": "Agent vragen",
+    "addIcon": "Pictogram toevoegen",
+    "sendToPaper": "Naar artikel sturen",
+    "loadFailed": "Deze notitie kon niet worden geopend. Het project is misschien verplaatst of verwijderd.",
+    "retryLoad": "Opnieuw proberen",
+    "closeTab": "Tabblad sluiten",
+    "fileFailed": "Kon het bestand niet aan de notitie toevoegen: {{error}}",
+    "fileTooLarge": "{{name}} is groter dan 64 MB en is daarom niet toegevoegd.",
+    "unsupportedFile": "Een notitie kan alleen afbeeldingen, audio, video, PDF's, tabellen (CSV, TSV of Excel), moleculebestanden en Jupyter Notebooks bevatten.",
+    "remoteImages": {
+      "more": "Meer manieren om afbeeldingen te laden",
+      "loadAll": "Alle afbeeldingen in deze notitie laden",
+      "trustHost": "Afbeeldingen van {{host}} altijd laden"
+    },
+    "titleLabel": "Titel van de notitie",
+    "untitled": "Naamloos"
+  },
+  "prompt": {
+    "actionsGroup": "Onderzoeksacties",
+    "actions": {
+      "latestRun": "Bijwerken met de laatste run",
+      "claims": "Beweringen toetsen aan de code",
+      "citations": "Citaties zoeken",
+      "proofread": "Selectie proeflezen",
+      "rewrite": "Selectie herschrijven",
+      "shorter": "Korter maken",
+      "paragraph": "Nieuwe alinea schrijven",
+      "table": "Vergelijkingstabel toevoegen",
+      "figure": "Figuur toevoegen",
+      "abstract": "Samenvatten voor het abstract"
+    },
+    "wholeNote": {
+      "proofread": "Notitie proeflezen",
+      "rewrite": "Notitie herschrijven"
+    },
+    "collapse": "Prompt verbergen",
+    "expand": "Prompt tonen"
+  },
+  "review": {
+    "rejectAll": "Alles afwijzen",
+    "acceptAll": "Alles accepteren",
+    "position": "Wijziging {{current}} van {{total}}",
+    "undo": "Ongedaan maken"
+  },
+  "versions": {
+    "title": "Versiegeschiedenis",
+    "summary": "Oleafly slaat een versie op telkens wanneer je alle voorgestelde wijzigingen accepteert, en voordat een oudere versie wordt teruggezet. Je kunt ook zelf een versie opslaan.",
+    "empty": "Nog geen versies. Sla een versie op om de notitie te bewaren zoals hij nu is.",
+    "save": "Versie opslaan",
+    "saved": "Versie opgeslagen.",
+    "unchanged": "Er is niets veranderd sinds de laatste versie.",
+    "saveFailed": "Kon geen versie van deze notitie opslaan.",
+    "restore": "Deze versie terugzetten",
+    "restored": "Versie teruggezet. De tekst die ze verving, is ook als versie opgeslagen.",
+    "restoreFailed": "Kon deze versie niet terugzetten.",
+    "comparing": "Vergelijken met de notitie",
+    "readFailed": "Kon deze versie niet lezen.",
+    "changes": "Wat het terugzetten van deze versie verandert",
+    "textOnly": "Terugzetten verandert alleen de tekst van de notitie. Bijgevoegde bestanden blijven zoals ze zijn."
+  },
+  "toolbar": {
+    "label": "Opmaak",
+    "blockType": "Bloktype",
+    "text": "Tekst",
+    "heading": "Kop {{level}}",
+    "list": "Lijst",
+    "bulletList": "Opsommingslijst",
+    "link": "Link toevoegen",
+    "linkAddress": "Linkadres",
+    "linkPlaceholder": "https://",
+    "linkInvalid": "Voer een volledig webadres in, zoals https://example.com.",
+    "displayMath": "Vergelijking op een eigen regel",
+    "citation": "Citatie",
+    "noCitations": "Nog geen referenties in dit project",
+    "chart": "Grafiek",
+    "mermaid": "Mermaid-diagram",
+    "outline": "Overzicht",
+    "emptyOutline": "Voeg een kop toe om het overzicht op te bouwen",
+    "words_one": "{{count}} woord",
+    "words_other": "{{count}} woorden",
+    "more": "Meer",
+    "width": "Breedte van de notitie",
+    "widths": {
+      "standard": "Standaard",
+      "wide": "Breed",
+      "full": "Volledige breedte"
+    },
+    "attach": "Bestand bijvoegen",
+    "attachFilter": "Afbeeldingen, audio, video, PDF's, tabellen, moleculen en notebooks",
+    "codeLanguage": "Taal",
+    "plainCode": "Platte tekst",
+    "imageSize": "Afbeeldingsgrootte",
+    "originalSize": "Oorspronkelijke grootte"
+  },
+  "blocks": {
+    "chart": "Grafiek",
+    "source": "Bron",
+    "preview": "Voorbeeld",
+    "diagramError": "Dit diagram bevat een fout. Open de bron om die te herstellen.",
+    "chartError": "De gegevens van deze grafiek zijn ongeldig. Open de bron om ze te herstellen.",
+    "noPreview": "Nog geen voorbeeld voor dit blok. Open de bron om het te bewerken.",
+    "syntax": {
+      "help": "Zo schrijf je het blok “{{block}}”",
+      "chart": "JSON met een type, categorieën en reeksen:\n{\"type\": \"bar\", \"categories\": [\"A\", \"B\"], \"series\": [{\"name\": \"Run 1\", \"values\": [1, 2]}]}\nAndere typen: line, area, scatter, pie, donut, histogram.",
+      "plot": "Eén curve of optie per regel:\ny = x^2 - 1 of x = cos(t), y = sin(t)\ndomain: -5, 5 en point: 1, 0, Nulpunt",
+      "csv": "Rijen met waarden, de eerste rij is de kop:\nRun, Ratio\nOf lees een bestand met path: assets/results.csv",
+      "latex": "LaTeX op een eigen regel, zoals een vergelijking of een align-omgeving:\n\\begin{align} a &= b + c \\end{align}\nScheikunde met \\ce{H2O} en eenheden met \\pu{5 mg}.",
+      "typst": "Een fragment in Typst, weergegeven als afbeelding:\n$ E = m c^2 $\nPakketten van internet zijn niet beschikbaar.",
+      "mermaid": "Een diagram in Mermaid, bijvoorbeeld:\nflowchart LR\nA --> B",
+      "d2": "Een D2-diagram, bijvoorbeeld:\nclient -> server: request\nserver.shape: cylinder",
+      "tikz": "Opdrachten in TikZ, of een hele tikzpicture:\n{{example}}\nRegels boven de afbeelding, zoals \\usetikzlibrary{positioning}, horen in de preambule.",
+      "circuitikz": "Opdrachten in CircuiTikZ, of een hele circuitikz-omgeving:\n{{example}}\nRegels boven het circuit, zoals \\ctikzset{resistors/scale=0.8}, horen in de preambule.",
+      "svg": "Eén svg-element, bijvoorbeeld:\n<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" /></svg>\nScripts, links en externe afbeeldingen worden verwijderd.",
+      "html": "Een volledige HTML-pagina of een fragment met CSS en scripts.\nEr is geen internettoegang, zet je gegevens dus in het blok.\nScripts starten wanneer je op Uitvoeren klikt.",
+      "jsx": "Eén React-componentbestand met een default export:\nexport default function App() { return <p>Hello</p> }\nHet kan react, recharts, d3, lodash, papaparse, chart.js en lucide-react importeren.",
+      "smiles": "Eén SMILES per regel, met een optionele naam:\nAspirin: CC(=O)OC1=CC=CC=C1C(=O)O\nMaximaal 24 per blok.",
+      "molecule": "Eerst optieregels, zoals format: pdb en style: cartoon.\nDaarna de tekst van het bestand, of path: assets/1abc.pdb",
+      "sequence": "FASTA-records of een kale sequentie:\n>sample 1\nATGGCCATTGTAATG",
+      "notebook": "Het pad van het notebook op de eerste regel:\nassets/analysis.ipynb\nDaarna optionele regels zoals cells: 2-5 en code: hide.",
+      "bookmark": "Eén veld per regel, te beginnen met het webadres:\nurl: https://example.com/article\nDaarna optioneel regels met title:, description:, image:, site: en favicon:."
+    },
+    "newChart": {
+      "title": "Nieuwe grafiek",
+      "series": "Waarden"
+    },
+    "newHtml": {
+      "title": "Dosis-respons",
+      "dose": "Dosis",
+      "response": "Respons:"
+    },
+    "imageMissing": "Afbeelding niet gevonden: {{path}}",
+    "plot": {
+      "label": "Plot",
+      "aria": "Plot van {{curves}}",
+      "empty": "Nog niets te plotten. Voeg een regel toe zoals y = sin(x).",
+      "problem": "Regel {{line}}: {{reason}}",
+      "errors": {
+        "empty": "Schrijf een uitdrukking.",
+        "length": "De uitdrukking is te lang.",
+        "depth": "De uitdrukking is te diep genest.",
+        "name": "Onbekende naam {{name}}.",
+        "call": "Schrijf {{name}} met haakjes, zoals {{name}}(x).",
+        "arguments": "{{name}} heeft het verkeerde aantal waarden.",
+        "parenthesis": "De haakjes kloppen niet.",
+        "syntax": "Onverwacht “{{name}}”.",
+        "end": "De uitdrukking houdt te vroeg op.",
+        "line": "Geen kromme en geen optie. Probeer y = x^2 of domain: -5, 5.",
+        "parametric": "Schrijf een parameterkromme als x = een uitdrukking in t, y = een uitdrukking in t.",
+        "values": "Schrijf twee waarden, gescheiden door een komma.",
+        "point": "Schrijf een punt als x, y en eventueel een label.",
+        "order": "De twee waarden moeten verschillen.",
+        "number": "Gebruik eindige getallen.",
+        "tooManyCurves": "Een plot kan maximaal 8 krommen tekenen.",
+        "tooManyPoints": "Een plot kan maximaal 50 punten markeren.",
+        "undefined": "Geen reële waarden in dit bereik."
+      }
+    },
+    "sequence": {
+      "label": "Sequentie",
+      "template": "Voorbeeld van een coderende sequentie",
+      "empty": "Plak een FASTA-record of een kale sequentie.",
+      "character": "Regel {{line}}, kolom {{column}}: “{{character}}” is geen residu.",
+      "untitled": "Naamloze sequentie",
+      "kinds": {
+        "dna": "DNA",
+        "rna": "RNA",
+        "protein": "Eiwit"
+      },
+      "length": {
+        "dna": "{{length}} bp",
+        "rna": "{{length}} nt",
+        "protein": "{{length}} aa"
+      },
+      "gc": "GC {{value}}",
+      "noResidues": "Geen residuen",
+      "reverse": "Omgekeerd complement",
+      "translation": "Translatie",
+      "residues": "Residuen van {{name}}",
+      "hidden_one": "Nog {{formatted}} residu niet getoond",
+      "hidden_other": "Nog {{formatted}} residuen niet getoond",
+      "hiddenRecords_one": "Nog {{formatted}} record niet getoond",
+      "hiddenRecords_other": "Nog {{formatted}} records niet getoond",
+      "classes": {
+        "hydrophobic": "Hydrofoob",
+        "polar": "Polair",
+        "positive": "Positief",
+        "negative": "Negatief",
+        "special": "Glycine en proline",
+        "other": "Overig"
+      }
+    },
+    "charts": {
+      "type": "Onbekend grafiektype. Gebruik bar, line, area, scatter, pie, donut of histogram.",
+      "length": "Elke reeks heeft één waarde per categorie nodig.",
+      "tooManySeries": "Een grafiek kan maximaal 8 reeksen tonen.",
+      "errors": "Foutbalken hebben voor elke waarde een waarde van nul of meer nodig.",
+      "errorsType": "Foutbalken werken bij staaf-, lijn-, vlak- en spreidingsgrafieken.",
+      "points": "Reeksen in een spreidingsgrafiek hebben punten nodig in de vorm [x, y] of [x, y, error].",
+      "tooManyPoints": "Deze grafiek heeft te veel waarden om te tekenen.",
+      "pie": "Cirkel- en ringgrafieken hebben waarden van nul of meer nodig die samen meer dan nul zijn.",
+      "samples": "Elke histogramreeks heeft minstens één waarde nodig.",
+      "bins": "De waarde bins moet een geheel getal van 1 tot en met 100 zijn.",
+      "log": "Een logaritmische schaal heeft alleen waarden boven nul nodig.",
+      "logType": "Een logaritmische schaal werkt bij staaf-, lijn-, vlak- en spreidingsgrafieken.",
+      "showData": "Gegevens tonen",
+      "hideData": "Gegevens verbergen",
+      "caption": "Grafiekgegevens",
+      "category": "Categorie",
+      "series": "Reeks",
+      "bin": "Klasse",
+      "error": "Fout van {{name}}",
+      "other": "Overig"
+    },
+    "table": {
+      "label": "Tabel",
+      "filter": "Rijen filteren",
+      "rows_one": "{{total}} rij",
+      "rows_other": "{{total}} rijen",
+      "filtered_one": "{{shown}} van {{total}} rij",
+      "filtered_other": "{{shown}} van {{total}} rijen",
+      "noMatch": "Geen rijen passen bij het filter.",
+      "sortBy": "Sorteren op {{column}}",
+      "column": "Kolom {{number}}",
+      "count": "Aantal",
+      "mean": "Gemiddelde",
+      "min": "Min.",
+      "max": "Max.",
+      "truncated": "De eerste {{limit}} rijen worden getoond.",
+      "loading": "{{path}} laden…",
+      "empty": "Deze tabel heeft geen gegevensrijen. Voeg een kopregel en minstens één gegevensrij toe.",
+      "columns": "Deze tabel heeft meer dan {{limit}} kolommen.",
+      "missing": "Bestand niet gevonden: {{path}}",
+      "unreadable": "Kon {{path}} niet lezen.",
+      "tooLarge": "Dit bestand is groter dan 6 MB. Gebruik een kleiner uittreksel.",
+      "badPath": "Gebruik een pad binnen de map van de notitie, zoals assets/results.csv.",
+      "unsupported": "Tabellen lezen .csv-, .tsv-, .xlsx- en .xls-bestanden.",
+      "noSheet": "Geen werkblad met de naam {{sheet}}. Dit bestand bevat {{sheets}}.",
+      "template": {
+        "sample": "Monster",
+        "temperature": "Temperatuur (°C)",
+        "yield": "Opbrengst (%)",
+        "converged": "Geconvergeerd"
+      }
+    },
+    "smiles": {
+      "label": "Chemische structuur",
+      "structures": "Chemische structuren",
+      "empty": "Voeg één SMILES per regel toe, bijvoorbeeld Ethanol: CCO.",
+      "invalid": "Kon deze SMILES niet lezen.",
+      "more": "De eerste {{limit}} structuren worden getoond.",
+      "loadError": "Kon deze structuren niet tekenen.",
+      "alt": "Structuur van {{name}}",
+      "template": {
+        "caffeine": "Cafeïne",
+        "aspirin": "Aspirine"
+      }
+    },
+    "molecule": {
+      "label": "3D-molecuul",
+      "loading": "3D-viewer laden…",
+      "empty": "Voeg path: assets/molecule.pdb toe of plak de tekst van het bestand.",
+      "noWebgl": "De 3D-weergave heeft WebGL nodig, en dat is hier niet beschikbaar.",
+      "noAtoms": "Geen atomen gevonden. Controleer het bestand en de indeling ervan.",
+      "unknownFormat": "Kon de bestandsindeling niet bepalen. Voeg format: pdb, sdf, mol, xyz, cif of mol2 toe.",
+      "badFormat": "Onbekende indeling {{value}}. Gebruik pdb, sdf, mol, xyz, cif of mol2.",
+      "badStyle": "Onbekende stijl {{value}}. Gebruik cartoon, stick, sphere of line.",
+      "badColor": "Onbekende kleur {{value}}. Gebruik spectrum, chain, element, residue of ss.",
+      "badPath": "Gebruik een pad binnen de map van de notitie, zoals assets/protein.pdb.",
+      "missing": "Bestand niet gevonden: {{path}}",
+      "unreadable": "Kon {{path}} niet lezen.",
+      "tooLarge": "Dit bestand is groter dan 6 MB.",
+      "loadError": "Kon de 3D-viewer niet laden.",
+      "viewer": "3D-weergave van het molecuul. Sleep om te draaien, scrol om te zoomen.",
+      "controls": "Weergaveknoppen",
+      "style": "Stijl",
+      "color": "Kleur",
+      "styles": {
+        "cartoon": "Cartoon",
+        "stick": "Staafjes",
+        "sphere": "Bollen",
+        "line": "Lijnen"
+      },
+      "colors": {
+        "spectrum": "Spectrum",
+        "chain": "Keten",
+        "element": "Element",
+        "residue": "Residu",
+        "ss": "Secundaire structuur"
+      },
+      "rotateLeft": "Naar links draaien",
+      "rotateRight": "Naar rechts draaien",
+      "zoomIn": "Inzoomen",
+      "zoomOut": "Uitzoomen",
+      "reset": "Weergave herstellen",
+      "template": "Ethanol"
+    },
+    "artifact": {
+      "run": "Uitvoeren",
+      "stop": "Stoppen",
+      "alwaysRun": "Dit blok altijd uitvoeren",
+      "paused": "Gepauzeerd omdat een blok in deze notitie de vorige keer vastliep of de app sloot.",
+      "desktopOnly": "Voor uitvoeren is de desktopapp nodig",
+      "loading": "Laden…",
+      "loadFailed": "Dit blok kon niet worden geladen.",
+      "starting": "Starten…",
+      "stopped": "Dit blok reageert niet meer.",
+      "reload": "Opnieuw laden",
+      "failed": "Dit blok kon niet starten: {{error}}",
+      "offline": "Deze bestanden van internet zijn weggelaten:",
+      "more_one": "en nog {{count}}",
+      "more_other": "en nog {{count}}",
+      "frameTitle": "Uitvoer van {{label}}",
+      "previewTitle": "Voorbeeld van {{label}}",
+      "unknownImport": "Dit blok importeert {{name}}, dat offline niet beschikbaar is.",
+      "compileError": "Deze component bevat een syntaxfout",
+      "runtimeError": "Deze component is met een fout gestopt",
+      "noComponent": "Deze component heeft geen default export."
+    },
+    "code": {
+      "copied": "Gekopieerd",
+      "copyFailed": "Kopiëren mislukt",
+      "copyLabel": "Code kopiëren"
+    },
+    "svg": {
+      "alt": "SVG-tekening",
+      "empty": "Dit SVG-blok is leeg.",
+      "invalid": "Deze SVG is ongeldig. Open de bron om die te herstellen.",
+      "tooLarge": "Deze SVG is te groot om te tonen."
+    },
+    "d2": {
+      "alt": "D2-diagram",
+      "empty": "Dit D2-blok is leeg.",
+      "loading": "Tekenen…",
+      "error": "D2 kon dit diagram niet tekenen: {{error}}",
+      "line": "Regel {{line}}: {{message}}"
+    },
+    "tikz": {
+      "alt": "Tekening in TikZ",
+      "circuitAlt": "Schakelschema",
+      "empty": "Het blok “{{block}}” is leeg.",
+      "desktopOnly": "Voorbeelden van {{block}} hebben de desktop-app nodig.",
+      "sharedNotice": "Deze notitie is gedeeld. LaTeX draait op deze computer en kan je bestanden lezen, dus controleer de bron voordat je tekent.",
+      "draw": "Tekenen",
+      "error": "LaTeX kon dit blok niet compileren: {{error}}"
+    },
+    "typst": {
+      "alt": "Typst-uitvoer",
+      "empty": "Dit Typst-blok is leeg.",
+      "rendering": "Renderen…",
+      "desktopOnly": "Voor Typst-voorbeelden is de desktopapp nodig.",
+      "error": "Typst kon dit blok niet compileren: {{error}}"
+    },
+    "insert": {
+      "label": "Blok invoegen",
+      "data": "Gegevens",
+      "math": "Wiskunde",
+      "diagrams": "Diagrammen",
+      "code": "Code",
+      "science": "Wetenschap"
+    },
+    "slash": {
+      "menu": "Invoegen",
+      "noMatches": "Geen passende blokken",
+      "heading": "Kop {{level}}",
+      "bulletList": "Opsommingslijst",
+      "numberedList": "Genummerde lijst",
+      "taskList": "Takenlijst",
+      "quote": "Citaat",
+      "callout": "Kader",
+      "table": "Tabel",
+      "code": "Code",
+      "math": "Wiskunde",
+      "divider": "Scheidingslijn",
+      "footnote": "Voetnoot",
+      "basic": "Basis"
+    },
+    "media": {
+      "play": "{{name}} afspelen",
+      "pdfPage": "{{name}}, pagina {{page}}",
+      "openPdf": "PDF openen",
+      "openFailed": "Kon het bestand niet openen: {{error}}",
+      "missing": "Bestand niet gevonden: {{path}}",
+      "unreadable": "{{name}} kon niet worden gelezen.",
+      "cantPlay": "{{name}} kan hier niet worden afgespeeld. Deze computer heeft misschien geen codec voor dit formaat.",
+      "embed": "De video van {{site}} afspelen",
+      "embedTitle": "Video van {{site}}",
+      "embedFailed": "De speler is niet gestart. Probeer het opnieuw, of open de video op {{site}}.",
+      "watch": "Bekijken",
+      "watchOn": "Bekijken op {{site}}",
+      "pasteChoice": "Hoe deze videolink tonen",
+      "embedChoice": "Video insluiten",
+      "linkChoice": "Als link houden"
+    },
+    "bookmark": {
+      "label": "Bladwijzer",
+      "pasteChoice": "Hoe deze link tonen",
+      "cardChoice": "Bladwijzerkaart",
+      "ask": "Bladwijzer voor een webpagina maken",
+      "loading": "Paginavoorbeeld laden",
+      "noUrl": "Voeg een regel url: toe met een webadres dat begint met https:// of http://."
+    }
+  },
+  "notebook": {
+    "label": "Jupyter-notebook",
+    "loading": "Notebook laden",
+    "missing": "Notebook niet gevonden: {{path}}",
+    "unreadable": "Kon {{path}} niet lezen.",
+    "tooLarge": "Dit notebook is groter dan 64 MiB en wordt daarom hier niet getoond.",
+    "badPath": "Zet het pad van het notebook op de eerste regel, relatief ten opzichte van de map van deze notitie.",
+    "badCells": "Schrijf cellen als één getal of een bereik, zoals cells: 3-8.",
+    "invalid": "Dit bestand is geen geldig notebook.",
+    "unsupported": "Alleen Jupyter-notebooks in formaat 4 kunnen hier worden getoond.",
+    "empty": "Dit notebook heeft geen cellen.",
+    "outOfRange_one": "Dit notebook heeft maar {{count}} cel, dus in dat bereik staat niets.",
+    "outOfRange_other": "Dit notebook heeft maar {{count}} cellen, dus in dat bereik staat niets.",
+    "nothingShown": "Niets te tonen zolang de code verborgen is.",
+    "showAll": "Alles tonen",
+    "showLess": "Minder tonen",
+    "showAllCells_one": "De {{count}} cel tonen",
+    "showAllCells_other": "Alle {{count}} cellen tonen",
+    "outputImage": "Uitvoer van cel {{number}}",
+    "outputFrame": "HTML-uitvoer van cel {{number}}"
+  },
+  "icons": {
+    "choose": "Pictogram kiezen",
+    "dialog": "Kies een pictogram",
+    "emoji": "Emoji",
+    "lines": "Pictogrammen",
+    "search": "Pictogrammen zoeken",
+    "searchEmoji": "Emoji zoeken",
+    "loading": "Emoji laden",
+    "noEmoji": "Geen emoji gevonden",
+    "noIcons": "Geen pictogrammen gevonden",
+    "skinTone": "Huidskleur",
+    "names": {
+      "atom": "Atoom",
+      "bookOpen": "Open boek",
+      "brain": "Hersenen",
+      "bug": "Kever",
+      "chartLine": "Lijngrafiek",
+      "cpu": "Processor",
+      "database": "Database",
+      "dna": "DNA",
+      "fileText": "Document",
+      "flaskConical": "Erlenmeyer",
+      "graduationCap": "Afstudeerhoed",
+      "layers": "Lagen",
+      "lightbulb": "Gloeilamp",
+      "microscope": "Microscoop",
+      "network": "Netwerk",
+      "notebookPen": "Notitieboek",
+      "rocket": "Raket",
+      "sigma": "Sigma",
+      "target": "Doelwit",
+      "telescope": "Telescoop",
+      "testTube": "Reageerbuis",
+      "beaker": "Bekerglas",
+      "flaskRound": "Retort",
+      "testTubes": "Monsterbuisjes",
+      "pipette": "Pipet",
+      "magnet": "Magneet",
+      "thermometer": "Thermometer",
+      "scale": "Weegschaal",
+      "radiation": "Straling",
+      "biohazard": "Biologisch gevaar",
+      "leaf": "Blad",
+      "sprout": "Kiemplant",
+      "trees": "Bomen",
+      "flower": "Bloem",
+      "bird": "Vogel",
+      "fish": "Vis",
+      "rabbit": "Konijn",
+      "pawPrint": "Pootafdruk",
+      "shell": "Schelp",
+      "stethoscope": "Stethoscoop",
+      "heartPulse": "Hartslag",
+      "pill": "Pil",
+      "syringe": "Injectiespuit",
+      "hospital": "Ziekenhuis",
+      "bone": "Bot",
+      "eye": "Oog",
+      "orbit": "Baan",
+      "satelliteDish": "Schotelantenne",
+      "sun": "Zon",
+      "moon": "Maan",
+      "star": "Ster",
+      "sparkles": "Fonkeling",
+      "zap": "Bliksem",
+      "waves": "Golven",
+      "radar": "Radar",
+      "globe": "Wereldbol",
+      "earth": "Aarde",
+      "mountain": "Berg",
+      "cloudRain": "Regenwolk",
+      "droplets": "Water",
+      "pi": "Pi-symbool",
+      "infinity": "Oneindig",
+      "radical": "Vierkantswortel",
+      "squareFunction": "Functie",
+      "variable": "Variabele",
+      "calculator": "Rekenmachine",
+      "divide": "Deling",
+      "omega": "Omega",
+      "axis3d": "3D-assen",
+      "shapes": "Vormen",
+      "hexagon": "Zeshoek",
+      "chartColumn": "Kolomgrafiek",
+      "chartBar": "Staafgrafiek",
+      "chartPie": "Cirkelgrafiek",
+      "chartScatter": "Spreidingsdiagram",
+      "chartArea": "Vlakgrafiek",
+      "chartSpline": "Kromme",
+      "chartNetwork": "Graaf",
+      "trendingUp": "Trend",
+      "activity": "Signaal",
+      "table": "Tabel",
+      "sheet": "Spreadsheet",
+      "funnel": "Filter",
+      "microchip": "Microchip",
+      "circuitBoard": "Printplaat",
+      "code": "Code",
+      "codeXml": "Markup",
+      "terminal": "Terminal",
+      "braces": "Accolades",
+      "binary": "Binair",
+      "gitBranch": "Branch",
+      "gitMerge": "Merge",
+      "bot": "Robot",
+      "brainCircuit": "Neuraal netwerk",
+      "workflow": "Werkstroom",
+      "server": "Server",
+      "puzzle": "Puzzel",
+      "notebook": "Dagboek",
+      "notebookText": "Veldnotities",
+      "book": "Gesloten boek",
+      "bookMarked": "Boek met bladwijzer",
+      "library": "Bibliotheek",
+      "scrollText": "Perkamentrol",
+      "quote": "Citaat",
+      "penTool": "Penpunt",
+      "pencil": "Potlood",
+      "feather": "Ganzenveer",
+      "languages": "Talen",
+      "school": "School",
+      "presentation": "Presentatie",
+      "award": "Onderscheiding",
+      "trophy": "Trofee",
+      "landmark": "Instelling",
+      "compass": "Kompas",
+      "map": "Kaart",
+      "ruler": "Liniaal",
+      "wrench": "Moersleutel",
+      "cog": "Tandwiel",
+      "calendar": "Agenda",
+      "timer": "Timer",
+      "hourglass": "Zandloper",
+      "clipboardList": "Checklist",
+      "listChecks": "Taken"
+    }
+  },
+  "artifacts": {
+    "title": "Artefacten",
+    "empty": "Nog niets. Bestanden die onderzoekstaken in {{project}} maken, verschijnen hier.",
+    "noProject": "Kies naast de titel het project waar deze notitie over gaat. Bestanden die de onderzoekstaken van het project maken, verschijnen hier.",
+    "noNote": "Open een notitie om de bestanden te zien die de onderzoekstaken van het project hebben gemaakt.",
+    "fromTask": "Uit de taak {{task}}",
+    "loading": "Voorbeeld laden",
+    "previewFailed": "Kon geen voorbeeld laden: {{error}}",
+    "truncated": "Het begin van het bestand wordt getoond.",
+    "binary": "Voor dit soort bestand is er geen voorbeeld.",
+    "missing": "Dit bestand staat niet meer in de opgeslagen kopie van de taak.",
+    "insert": "In notitie invoegen",
+    "inserting": "Kopiëren",
+    "insertFailed": "Kon dit bestand niet naar de notitie kopiëren: {{error}}",
+    "newProject": "Nieuw project",
+    "htmlPreview": "Om deze figuur uit te voeren, plak je de code in een HTML-blok in een notitie en klik je op Uitvoeren.",
+    "kind": {
+      "figure": "Figuur",
+      "html": "Interactieve figuur",
+      "report": "Rapport",
+      "data": "Gegevens",
+      "file": "Bestand",
+      "notebook": "Notebook"
+    },
+    "notebookTooLarge": "Dit notebook is te groot voor een voorbeeld hier. Voeg het in de notitie in om het te zien."
+  },
+  "sendToPaper": {
+    "title": "Naar een artikel sturen",
+    "description": "Oleafly zet dit één keer om en voegt het in op de plek van de cursor. De kopie in het artikel blijft niet aan de notitie gekoppeld.",
+    "send": "Versturen",
+    "leftOut": "Het blok “{{block}}” staat alleen in de notitie."
+  },
+  "citations": {
+    "references": "Referenties",
+    "fromReference": "Uit een referentie",
+    "unknown": "Niet in de bibliografie van het gekoppelde project: {{keys}}",
+    "openNote": "De notitie bij dit artikel openen: {{title}}"
+  },
+  "links": {
+    "menu": "Link naar een notitie of project",
+    "notes": "Notities",
+    "projects": "Projecten",
+    "noMatches": "Geen passende notities of projecten",
+    "missingNote": "Deze notitie bestaat niet meer",
+    "missingNoteCreate": "Deze notitie bestaat niet meer. Klik om een nieuwe notitie met deze naam te maken.",
+    "missingProject": "Dit project bestaat niet meer",
+    "linkedFrom": "Gelinkt vanuit",
+    "showAll": "Alle {{total}} tonen"
+  },
+  "linksSearch": {
+    "blocks": {
+      "loading": "Blokken laden",
+      "none": "Geen passende blokken",
+      "missingBlock": "Dat blok staat niet in de notitie",
+      "assignFailed": "Kon geen blok-ID aan die notitie toevoegen.",
+      "handle": "Blokopties",
+      "copyLink": "Link naar blok kopiëren",
+      "linkCopied": "Link naar dit blok gekopieerd.",
+      "copyFailed": "Kon geen link naar dit blok kopiëren.",
+      "noId": "Dit blok heeft nog geen ID en je kunt deze notitie niet bewerken.",
+      "linkedFrom": "Gelinkt vanuit",
+      "links_one": "{{count}} notitie linkt hierheen",
+      "links_other": "{{count}} notities linken hierheen",
+      "openLinked": "{{title}} openen",
+      "toBlock": "Naar het blok: {{text}}"
+    },
+    "tagBlocks": {
+      "more_one": "Nog {{count}} blok tonen",
+      "more_other": "Nog {{count}} blokken tonen"
+    },
+    "dead": {
+      "menu": "Dode links",
+      "title": "Dode links",
+      "summary_one": "{{count}} link wijst naar een notitie of blok dat niet meer bestaat.",
+      "summary_other": "{{count}} links wijzen naar notities of blokken die niet meer bestaan.",
+      "none": "Geen dode links. Elke link wijst naar een notitie of blok dat nog bestaat.",
+      "loading": "Links controleren",
+      "failed": "Kon de links in je notities niet lezen.",
+      "missingNotes": "Ontbrekende notities",
+      "missingBlocks": "Ontbrekende blokken",
+      "noteMeta": "Regel {{line}}: de notitie bestaat niet meer",
+      "blockMeta": "Regel {{line}}: {{block}} staat niet meer in {{title}}",
+      "create": "Notitie maken",
+      "relink": "In plaats daarvan naar {{title}} linken",
+      "remove": "Link verwijderen",
+      "fixFailed": "Kon de link niet wijzigen."
+    }
+  },
+  "projectNotes": {
+    "searchLabel": "Notities van dit project zoeken",
+    "searchPlaceholder": "Notities zoeken",
+    "clearSearch": "Zoekopdracht wissen",
+    "noMatches": "Geen notities passen bij je zoekopdracht",
+    "loading": "De notities van het project worden gelezen",
+    "edited": "Bewerkt {{when}}",
+    "createFailed": "Kon de notitie niet maken.",
+    "projectGroup": "Projectnotities",
+    "mineGroup": "Mijn notities",
+    "newProjectNote": "Nieuwe projectnotitie",
+    "newPersonalNote": "Nieuwe persoonlijke notitie",
+    "titleLabel": "Titel voor de nieuwe projectnotitie",
+    "titlePlaceholder": "Titel van de notitie",
+    "projectEmpty": "Nog geen projectnotities. Ze worden opgeslagen in de notitiemap van het project, zodat medewerkers ze ook krijgen.",
+    "mineEmpty": "Nog geen persoonlijke notities aan dit project gekoppeld.",
+    "sharedLine": "Projectnotities worden gedeeld met iedereen in dit project. Je persoonlijke notities blijven privé.",
+    "noteActions": "Acties voor {{title}}",
+    "moveTitle": "Deze notitie naar het project verplaatsen?",
+    "moveMessage": "Iedereen in {{project}} kan hem dan zien en bewerken. Je persoonlijke kopie gaat naar de Prullenbak.",
+    "moveConfirm": "Naar het project verplaatsen",
+    "moved": "{{title}} is naar het project verplaatst.",
+    "moveFailed": "Kon de notitie niet naar het project verplaatsen.",
+    "copied": "{{title}} is naar je notities gekopieerd.",
+    "copyFailed": "Kon de notitie niet naar je notities kopiëren.",
+    "moveUnsaved": "Sommige notities hebben niet-opgeslagen wijzigingen, dus de notitie is niet verplaatst. Sla ze op en probeer het opnieuw.",
+    "copyUnsaved": "Sommige notities hebben niet-opgeslagen wijzigingen, dus de notitie is niet gekopieerd. Sla ze op en probeer het opnieuw.",
+    "renameUnsaved": "Sommige notities hebben niet-opgeslagen wijzigingen, dus de notitie is niet hernoemd. Sla ze op en probeer het opnieuw.",
+    "unlink": "Ontkoppelen van dit project",
+    "unlinked": "{{title}} is ontkoppeld van dit project.",
+    "undoUnlink": "Ongedaan maken",
+    "unlinkFailed": "Kon {{title}} niet ontkoppelen van dit project.",
+    "deleteTitle": "“{{name}}” verwijderen?",
+    "deleteMessage": "Het notitiebestand wordt uit dit project verwijderd. Dit kan niet ongedaan worden gemaakt.",
+    "trash": "Naar de Prullenmand verplaatsen",
+    "trashWindows": "Naar de Prullenbak verplaatsen",
+    "trashTitle": "“{{name}}” naar de Prullenmand verplaatsen?",
+    "trashTitleWindows": "“{{name}}” naar de Prullenbak verplaatsen?",
+    "trashMessage": "Het notitiebestand gaat uit dit project naar de Prullenmand, waar je het kunt terugzetten.",
+    "trashMessageWindows": "Het notitiebestand gaat uit dit project naar de Prullenbak, waar je het kunt terugzetten.",
+    "mineDeviceOnly": "Deze notities zijn alleen op deze computer aan dit project gekoppeld.",
+    "moreFiles_one": "Nog {{count}} bestand in de notitiemap staat niet in de lijst.",
+    "moreFiles_other": "Nog {{count}} bestanden in de notitiemap staan niet in de lijst."
+  },
+  "kb": {
+    "tasks": {
+      "label": "Taak: {{text}}",
+      "empty": "Lege taak"
+    },
+    "callouts": {
+      "type": "Soort kader: {{type}}",
+      "fold": "Kader inklappen",
+      "unfold": "Kader uitklappen",
+      "types": {
+        "note": "Notitie",
+        "abstract": "Samenvatting",
+        "info": "Info",
+        "todo": "Te doen",
+        "tip": "Tip",
+        "success": "Succes",
+        "question": "Vraag",
+        "warning": "Waarschuwing",
+        "failure": "Mislukking",
+        "danger": "Gevaar",
+        "bug": "Bug",
+        "example": "Voorbeeld",
+        "quote": "Citaat",
+        "theorem": "Stelling",
+        "lemma": "Lemma",
+        "corollary": "Gevolg",
+        "proposition": "Propositie",
+        "definition": "Definitie",
+        "proof": "Bewijs",
+        "hypothesis": "Hypothese",
+        "assumption": "Aanname",
+        "result": "Resultaat",
+        "method": "Methode",
+        "remark": "Opmerking"
+      }
+    },
+    "links": {
+      "loadingHeadings": "Koppen laden",
+      "noHeadings": "Geen passende koppen",
+      "embedHeading": "Een notitie insluiten",
+      "thisNote": "Deze notitie",
+      "embed": "Insluiten",
+      "embedNamed": "{{title}} insluiten"
+    },
+    "tags": {
+      "open": "Notities met deze tag tonen",
+      "menu": "Tags"
+    },
+    "embeds": {
+      "missing": "Notitie niet gevonden",
+      "self": "Een notitie kan zichzelf niet insluiten",
+      "failed": "Deze notitie kon niet worden gelezen",
+      "missingHeading": "Die kop staat niet in de notitie",
+      "empty": "Deze notitie is leeg",
+      "untitled": "Naamloos",
+      "open": "Notitie openen",
+      "openNamed": "{{title}} openen",
+      "fold": "Insluiting inklappen",
+      "unfold": "Insluiting uitklappen"
+    },
+    "hover": {
+      "loading": "Voorbeeld laden",
+      "empty": "Deze notitie is leeg"
+    },
+    "properties": {
+      "title": "Eigenschappen",
+      "add": "Eigenschap toevoegen",
+      "removeItem": "{{item}} verwijderen",
+      "addItem": "Item toevoegen",
+      "openNote": "{{title}} openen",
+      "changeNote": "Wijzigen",
+      "chooseNote": "Kies een notitie",
+      "clearLink": "Link wissen",
+      "value": "Waarde van {{key}}",
+      "type": "Type van {{key}}: {{type}}",
+      "types": {
+        "text": "Tekst",
+        "list": "Lijst",
+        "number": "Getal",
+        "checkbox": "Selectievakje",
+        "date": "Datum",
+        "link": "Notitielink"
+      },
+      "remove": "Eigenschap verwijderen",
+      "name": "Naam van {{key}}",
+      "newName": "Naam van de eigenschap",
+      "taken": "Die naam is al in gebruik",
+      "invalid": "De front matter is geen geldige YAML, dus eigenschappen kunnen hier niet worden bewerkt.",
+      "editSource": "Herstellen in Markdown",
+      "convert": {
+        "title": "{{key}} omzetten naar {{type}}?",
+        "list": "Alleen het eerste item blijft bewaard. De andere worden verwijderd.",
+        "value": "De huidige waarde past niet bij dit type en gaat verloren.",
+        "confirm": "Type wijzigen"
+      }
+    }
+  },
+  "fields": {
+    "today": "Vandaag",
+    "tomorrow": "Morgen",
+    "yesterday": "Gisteren",
+    "chip": "{{key}}: {{value}}",
+    "empty": "geen waarde",
+    "edit": "Wijzigen of verwijderen",
+    "keys": {
+      "due": "Deadline",
+      "scheduled": "Gepland",
+      "priority": "Prioriteit",
+      "start": "Begint",
+      "created": "Gemaakt",
+      "completed": "Klaar",
+      "date": "Datum",
+      "cancelled": "Geannuleerd"
+    },
+    "priorities": {
+      "highest": "Hoogste",
+      "high": "Hoog",
+      "medium": "Gemiddeld",
+      "low": "Laag",
+      "lowest": "Laagste"
+    },
+    "editor": {
+      "label": "{{key}} bewerken",
+      "key": "Naam",
+      "value": "Waarde",
+      "brackets": "Gebruik vierkante haken alleen voor een link, zoals [[Note]].",
+      "save": "Opslaan",
+      "remove": "Verwijderen"
+    }
+  },
+  "at": {
+    "menu": "Datum, veld, tag of notitie invoegen",
+    "groups": {
+      "dates": "Datums",
+      "due": "Deadline",
+      "fields": "Taakvelden",
+      "tags": "Tags",
+      "notes": "Notities"
+    },
+    "today": "Vandaag",
+    "tomorrow": "Morgen",
+    "yesterday": "Gisteren",
+    "next": "Volgende {{weekday}}",
+    "pick": "Kies een datum",
+    "pickerLabel": "Kies een datum",
+    "due": "Deadline",
+    "scheduled": "Geplande datum",
+    "priority": "Prioriteit",
+    "priorityValue": "Prioriteit: {{priority}}",
+    "custom": "Eigen veld",
+    "addField": "Veld “{{key}}” toevoegen",
+    "setField": "{{key}} instellen op “{{value}}”",
+    "typeValue": "Typ een waarde voor {{key}} en druk op Enter."
+  },
+  "tasks": {
+    "filters": "Taakfilters",
+    "loading": "Je taken lezen",
+    "failed": "Kon je taken niet lezen.",
+    "empty": "Nog geen taken. Begin in een notitie een regel met - [ ] en hij verschijnt hier.",
+    "noMatches": "Geen taken passen bij deze filters.",
+    "clear": "Filters wissen",
+    "list": "Taken",
+    "count_one": "{{count}} taak",
+    "count_other": "{{count}} taken",
+    "complete": "“{{text}}” markeren als klaar",
+    "reopen": "“{{text}}” markeren als niet klaar",
+    "openNote": "{{title}} openen",
+    "toggleFailed": "Kon de taak niet bijwerken.",
+    "moved": "Die taak is in de notitie gewijzigd. Open de notitie om hem bij te werken.",
+    "state": {
+      "label": "Tonen",
+      "open": "Open",
+      "done": "Klaar",
+      "all": "Open en klaar"
+    },
+    "due": {
+      "label": "Deadline",
+      "any": "Elke deadline",
+      "overdue": "Te laat",
+      "today": "Deadline vandaag",
+      "week": "Deadline in de komende 7 dagen",
+      "none": "Geen deadline"
+    },
+    "priority": {
+      "label": "Prioriteit",
+      "any": "Elke prioriteit",
+      "high": "Hoge prioriteit",
+      "medium": "Gemiddelde prioriteit",
+      "low": "Lage prioriteit",
+      "none": "Geen prioriteit"
+    },
+    "tag": {
+      "label": "Tag",
+      "any": "Alle tags"
+    },
+    "project": {
+      "label": "Project",
+      "any": "Alle projecten"
+    },
+    "sort": {
+      "label": "Taken sorteren op",
+      "due": "Deadline",
+      "priority": "Prioriteit"
+    }
+  },
+  "attachments": {
+    "filters": "Bijlagefilters",
+    "loading": "Bijlagen zoeken",
+    "failed": "Kon je bijlagen niet lezen.",
+    "empty": "Nog geen bijlagen. Sleep een afbeelding of bestand naar een notitie en het verschijnt hier.",
+    "noMatches": "Geen bijlagen passen bij deze filters.",
+    "clear": "Filters wissen",
+    "list": "Bijlagen",
+    "count_one": "{{count}} bestand",
+    "count_other": "{{count}} bestanden",
+    "openNote": "{{title}} openen",
+    "copyLink": "Link kopiëren",
+    "linkCopied": "Link naar “{{name}}” gekopieerd.",
+    "copyFailed": "Kon de link naar “{{name}}” niet kopiëren.",
+    "unused": "Niet gebruikt",
+    "type": {
+      "label": "Type",
+      "all": "Alle typen",
+      "image": "Afbeeldingen",
+      "audio": "Audio",
+      "video": "Video",
+      "pdf": "PDF's",
+      "other": "Overig"
+    },
+    "use": {
+      "label": "Gebruik",
+      "all": "Alle bestanden",
+      "unused": "Niet gebruikt"
+    }
+  },
+  "info": {
+    "title": "Info",
+    "show": "Info over de notitie",
+    "noNote": "Open een notitie om de info ervan te zien.",
+    "details": "Details van de notitie",
+    "created": "Gemaakt",
+    "updated": "Bijgewerkt",
+    "words": "Woorden",
+    "characters": "Tekens",
+    "lines": "Regels",
+    "readingTime": "Leestijd",
+    "underMinute": "minder dan een minuut",
+    "noProperties": "Geen eigenschappen",
+    "noBacklinks": "Geen notities linken hierheen",
+    "noMentions": "Geen andere notities vermelden deze notitie",
+    "noReferences": "Geen citaties in deze notitie",
+    "noDeadLinks": "Geen dode links",
+    "noAttachments": "Geen bestanden bijgevoegd"
+  },
+  "calendar": {
+    "title": "Kalender",
+    "week": "Week",
+    "hasNote": "heeft een dagnotitie",
+    "due_one": "{{count}} taak met deadline",
+    "due_other": "{{count}} taken met deadline",
+    "openWeek": "De weeknotitie van week {{week}} openen",
+    "openMonthNote": "Maandnotitie openen",
+    "createMonthNote": "Maandnotitie maken",
+    "today": "Vandaag",
+    "failed": {
+      "weekly": "Kon de weeknotitie niet openen.",
+      "monthly": "Kon de maandnotitie niet openen."
+    }
+  },
+  "periodic": {
+    "title": "Dag-, week- en maandnotities",
+    "daily": {
+      "label": "Dagnotities",
+      "description": "De notitie van vandaag en de dagen in de kalender in de zijbalk."
+    },
+    "weekly": {
+      "label": "Weeknotities",
+      "description": "De weeknummers in de kalender in de zijbalk."
+    },
+    "monthly": {
+      "label": "Maandnotities",
+      "description": "De maandnaam boven in de kalender in de zijbalk."
+    },
+    "weekStart": {
+      "label": "Week begint op",
+      "description": "De eerste kolom van de kalender in de zijbalk. Weeknummers tellen vanaf deze dag, en met maandag zijn het ISO-weeknummers.",
+      "locale": "Standaard voor de regio ({{day}})",
+      "monday": "Maandag",
+      "sunday": "Zondag",
+      "saturday": "Zaterdag"
+    },
+    "format": "Titelnotatie",
+    "preview": "Voorbeeld: {{title}}",
+    "invalidFormat": "Voeg een datumdeel toe, zoals YYYY of WW.",
+    "template": "Sjabloon",
+    "savedTemplate": "Je opgeslagen sjabloon",
+    "tag": "Tag",
+    "noTag": "Geen tag",
+    "formatHelp": "Titelnotaties gebruiken YYYY voor het jaar, MM voor de maand, MMMM voor de naam ervan, DD voor de dag, dddd voor de weekdag, WW voor het weeknummer en GGGG voor het jaar waar die week bij hoort. Tekst tussen vierkante haken, zoals [W], blijft zoals hij is. Notities die je al hebt, houden hun titel, dus wijzig een notatie voordat je hem gaat gebruiken."
+  },
+  "live": {
+    "share": "Delen",
+    "shared": "Gedeeld",
+    "elsewhere": "Live bewerken staat aan in een andere notitie",
+    "makeLive": "Hier live bewerken",
+    "viewOnly": "Je kunt deze notitie lezen, maar niet bewerken.",
+    "someone": "Iemand",
+    "unsentReadOnly": "Je laatste wijzigingen aan deze notitie zijn niet verstuurd, omdat je hem nu alleen nog kunt bekijken.",
+    "unsentRefused": "Oleafly kon je laatste wijzigingen aan deze notitie niet versturen, dus ze zijn vervallen."
+  },
+  "graph": {
+    "title": "Graaf",
+    "localTitle": "Lokale graaf",
+    "openGraph": "Graafweergave",
+    "canvas_one": "Graaf van {{count}} notitie",
+    "canvas_other": "Graaf van {{count}} notities",
+    "keyboardHelp": "Met de pijltoetsen ga je van notitie naar notitie. Enter opent er een. Plus en min zoomen, en 0 past de hele graaf in beeld.",
+    "search": "In de graaf zoeken",
+    "tag": "Filteren op tag",
+    "allTags": "Alle tags",
+    "orphans": "Notities zonder links",
+    "projects": "Projecten",
+    "depth": "Diepte",
+    "depthLevel_one": "{{count}} stap",
+    "depthLevel_other": "{{count}} stappen",
+    "fit": "Passend in beeld",
+    "zoomIn": "Inzoomen",
+    "zoomOut": "Uitzoomen",
+    "reset": "Indeling herstellen",
+    "empty": "Nog geen notities",
+    "emptyFiltered": "Geen notities passen bij deze filters",
+    "noNote": "Open een notitie om de lokale graaf ervan te zien",
+    "focusedNote_one": "{{title}}, {{count}} link",
+    "focusedNote_other": "{{title}}, {{count}} links",
+    "showLocal": "Lokale graaf tonen",
+    "hideLocal": "Lokale graaf verbergen",
+    "showOutline": "Overzicht tonen",
+    "hideOutline": "Overzicht verbergen",
+    "outline": {
+      "title": "Overzicht",
+      "empty": "Deze notitie heeft geen koppen",
+      "emptyDetail": "Begin een regel met # om een kop toe te voegen.",
+      "noNote": "Open een notitie om het overzicht ervan te zien",
+      "noNoteDetail": "Het overzicht volgt de notitie die je bewerkt.",
+      "levels": "Kopniveaus",
+      "allLevels": "Alle niveaus",
+      "upTo": "Tot en met H{{level}}",
+      "collapse": "{{title}} inklappen",
+      "expand": "{{title}} uitklappen"
+    },
+    "linksFailed": "Kon de links tussen notities niet lezen.",
+    "tagsFailed": "Kon de tags niet lezen.",
+    "loading": "De links tussen notities worden gelezen"
+  },
+  "vault": {
+    "import": {
+      "more": "Meer",
+      "menu": "Markdown importeren",
+      "title": "Markdown importeren",
+      "description": "Haal Markdown-bestanden of een hele map binnen, zoals een Obsidian-vault. Elk bestand wordt een notitie met zijn links en bijlagen.",
+      "folderTags": "Mapnamen als tags toevoegen",
+      "folderTagsHint": "Een bestand in Lab/2024 krijgt de tag Lab/2024.",
+      "choose": "Map kiezen",
+      "pickerTitle": "Kies een map om te importeren",
+      "reading": "{{file}} lezen",
+      "writing": "{{file}} importeren",
+      "progress": "{{done}} van {{total}}",
+      "stop": "Import stoppen",
+      "seenTitle": "Je hebt deze map al eens geïmporteerd",
+      "seenDescription_one": "Op {{date}} is er {{count}} notitie mee toegevoegd. Opnieuw importeren voegt nieuwe kopieën toe en laat de eerdere notities zoals ze zijn.",
+      "seenDescription_other": "Op {{date}} zijn er {{count}} notities mee toegevoegd. Opnieuw importeren voegt nieuwe kopieën toe en laat de eerdere notities zoals ze zijn.",
+      "again": "Opnieuw importeren als nieuwe notities",
+      "largeTitle": "Deze map bevat {{total}} notities",
+      "largeDescription": "Alle notities importeren kan even duren, en elke notitie wordt een eigen notitie in je bibliotheek. Je kunt de import op elk moment stoppen.",
+      "largeConfirm": "Alles importeren",
+      "doneTitle": "Import voltooid",
+      "notes_one": "{{count}} notitie geïmporteerd",
+      "notes_other": "{{count}} notities geïmporteerd",
+      "attachments_one": "{{count}} bijlage gekopieerd",
+      "attachments_other": "{{count}} bijlagen gekopieerd",
+      "unresolved_one": "{{count}} link paste bij geen enkele notitie en blijft als tekst staan",
+      "unresolved_other": "{{count}} links pasten bij geen enkele notitie en blijven als tekst staan",
+      "skipped_one": "{{count}} bestand overgeslagen omdat het groter is dan 5 MB of niet kon worden gelezen",
+      "skipped_other": "{{count}} bestanden overgeslagen omdat ze groter zijn dan 5 MB of niet konden worden gelezen",
+      "notCopied_one": "{{count}} gelinkt bestand is niet gekopieerd",
+      "notCopied_other": "{{count}} gelinkte bestanden zijn niet gekopieerd",
+      "cancelled": "Import gestopt. Er zijn geen notities toegevoegd.",
+      "failed": "Kon de import niet voltooien. Er zijn geen notities toegevoegd.",
+      "done": "Klaar",
+      "export": {
+        "menu": "Exporteren als Markdown-map",
+        "title": "Exporteren als Markdown-map",
+        "description": "Slaat elke notitie op als Markdown-bestand met wikilinks en zet bijlagen in een eigen map. Je kunt het resultaat openen als Obsidian-vault.",
+        "thisNote": "Deze notitie: {{title}}",
+        "allNotes_one": "Alle notities ({{count}})",
+        "allNotes_other": "Alle notities ({{count}})",
+        "export": "Exporteren",
+        "pickerTitle": "Kies waar de map moet worden opgeslagen",
+        "folderName": "Oleafly-notities",
+        "done_one": "{{count}} notitie geëxporteerd",
+        "done_other": "{{count}} notities geëxporteerd",
+        "skipped_one": "{{count}} bijlage kon niet worden geëxporteerd",
+        "skipped_other": "{{count}} bijlagen konden niet worden geëxporteerd",
+        "paperLinks_one": "{{count}} link naar een artikel is gewone tekst geworden",
+        "paperLinks_other": "{{count}} links naar artikelen zijn gewone tekst geworden",
+        "doneSkipped": "{{done}}. {{skipped}}.",
+        "showFolder": "Map tonen",
+        "failed": "Kon de notities niet exporteren."
+      },
+      "chooseFiles": "Bestanden kiezen",
+      "filesPickerTitle": "Kies Markdown-bestanden om te importeren"
+    },
+    "search": {
+      "results": "Passende notities",
+      "searching": "Zoeken…",
+      "noResults": "Geen notities passen bij “{{query}}”.",
+      "clear": "Zoekopdracht wissen",
+      "favorite": "Favoriet",
+      "fields": {
+        "is": "Is",
+        "tag": "Tag",
+        "kind": "Soort",
+        "author": "Auteur",
+        "project": "Project",
+        "title": "Titel"
+      }
+    },
+    "tags": {
+      "label": "Tags in je notities",
+      "empty": "Nog geen tags. Voeg #tags toe aan een notitie, of tags in de eigenschappen ervan.",
+      "filter": "Notities met de tag {{tag}} tonen",
+      "clear": "Niet meer filteren op {{tag}}",
+      "search": "Tags filteren",
+      "noMatch": "Geen tags passen bij “{{query}}”.",
+      "showAll": "Alle {{total}} tonen",
+      "showFewer": "Minder tonen"
+    },
+    "switcher": {
+      "open": "Naar notitie gaan",
+      "label": "Naar notitie gaan",
+      "placeholder": "Zoek een notitie op titel of alias",
+      "recent": "Recent",
+      "notes": "Notities",
+      "alias": "Alias: {{alias}}",
+      "create": "Notitie “{{title}}” maken",
+      "createFailed": "Kon de notitie niet maken.",
+      "empty": "Nog geen notities.",
+      "noMatches": "Geen passende notities.",
+      "openHint": "Openen",
+      "newTabHint": "In nieuw tabblad openen"
+    },
+    "daily": {
+      "open": "Notitie van vandaag",
+      "failed": "Kon de notitie van vandaag niet openen.",
+      "previous": "Vorige dagnotitie: {{date}}",
+      "next": "Volgende dagnotitie: {{date}}"
+    },
+    "templates": {
+      "open": "Nieuw uit sjabloon",
+      "label": "Nieuwe notitie uit een sjabloon",
+      "placeholder": "Zoek een sjabloon",
+      "empty": "Geen passende sjablonen.",
+      "blank": "Lege notitie",
+      "blankDescription": "Een lege pagina",
+      "builtIn": "Onderzoekssjablonen",
+      "yours": "Jouw sjablonen",
+      "yoursDescription": "Een notitie die je als sjabloon hebt gemarkeerd",
+      "failed": "Kon de notitie niet maken.",
+      "names": {
+        "daily": "Dagnotitie",
+        "experimentLog": "Experimentlogboek",
+        "paperReading": "Leesnotities bij een artikel",
+        "literatureMatrix": "Matrix voor literatuuronderzoek",
+        "meeting": "Vergadernotities",
+        "labProtocol": "Labprotocol",
+        "weeklyLog": "Wekelijks onderzoekslogboek",
+        "proposal": "Onderzoeksvoorstel",
+        "proof": "Bewijs of afleiding",
+        "dataAnalysis": "Verslag van data-analyse",
+        "interview": "Interviewnotities",
+        "screeningLog": "Screeninglogboek",
+        "labNotebook": "Invoer in labjournaal"
+      },
+      "descriptions": {
+        "daily": "Een plan en een doorlopend logboek voor één dag",
+        "experimentLog": "Houd elke run bij, wat er veranderde en wat je zag",
+        "paperReading": "Wat één artikel beweert en hoe het bij je werk past",
+        "literatureMatrix": "Een zoeklogboek en een tabel die artikelen vergelijkt",
+        "meeting": "Agenda, besluiten en wie wat doet",
+        "labProtocol": "Stapsgewijze werkwijze met materialen en veiligheidsnotities",
+        "weeklyLog": "Doelen voor de week en wat er elke dag is gedaan",
+        "proposal": "Doelen, methoden en een tijdlijn voor een subsidieaanvraag of scriptie",
+        "proof": "Een resultaat, het idee erachter en het volledige argument",
+        "dataAnalysis": "Wat je op welke gegevens hebt uitgevoerd en wat dat liet zien",
+        "interview": "Antwoorden, citaten en thema's uit één gesprek",
+        "screeningLog": "De reviewvraag, de criteria en het aantal in elke screeningfase",
+        "labNotebook": "Eén dag aan de labtafel: doel, monsters, werkwijze, observaties en handtekening"
+      },
+      "bodies": {
+        "daily": "**{{weekday}}**\n\n## Plan\n- [ ] Belangrijkste taak\n- [ ] Tweede taak\n\n## Logboek\n- {{time}} Dag begonnen\n\n## Notities\n\n## Vandaag gedaan\n- Nog niets\n\n## Morgen\n- [ ] Eerste om op te pakken",
+        "experimentLog": "> [!info] Doel\n> Welke vraag beantwoordt deze run, en welk resultaat zou het plan veranderen?\n\n## Opzet\n| Onderdeel | Waarde |\n| --- | --- |\n| Codeversie | |\n| Dataset | |\n| Hardware | |\n| Seed | |\n\n## Hypothese\n- Verwacht resultaat en waarom\n\n## Runs\n| Run | Wijziging | Metriek | Resultaat | Notities |\n| --- | --- | --- | --- | --- |\n| 1 | Baseline | | | |\n\n## Observaties\n- {{time}} Eerste observatie\n\n## Volgende stappen\n- [ ] De baseline vergelijken met het laatste rapport\n- [ ] De configuratie naast de resultaten opslaan\n- [ ] Beslissen of we opschalen of stoppen\n\n## Conclusie",
+        "paperReading": "> [!abstract] Samenvatting\n> Het artikel in één zin.\n\n## Bronvermelding\nAuteurs, titel, tijdschrift of congres, jaar, en een link of DOI.\n\n## Probleem\nWelk gat vult het artikel, en waarom is dat belangrijk?\n\n## Methode\n- Hoofdidee\n- Gegevens en context\n\n## Belangrijkste resultaten\n| Bewering | Bewijs | Sterkte |\n| --- | --- | --- |\n| | | |\n\n## Sterke punten\n- Wat het artikel goed doet\n\n## Zwakke punten en open vragen\n- Wat ontbreekt of niet overtuigt\n\n## Verband met mijn werk\n- Waar dit past, en wat ik kan hergebruiken of testen\n\n## Vervolg\n- [ ] Het werk lezen waarop het voortbouwt\n- [ ] Nagaan of code of gegevens beschikbaar zijn",
+        "literatureMatrix": "> [!question] Onderzoeksvraag\n> De vraag die dit overzicht beantwoordt, met de in- en exclusiecriteria.\n\n## Zoeklogboek\n| Datum | Bron | Zoekopdracht | Resultaten | Behouden |\n| --- | --- | --- | --- | --- |\n| {{date}} | | | | |\n\n## Matrix\n| Artikel | Jaar | Methode | Gegevens | Belangrijkste bevinding | Beperkingen | Relevantie |\n| --- | --- | --- | --- | --- | --- | --- |\n| | | | | | | |\n\n## Thema's\n- Thema en de artikelen die het ondersteunen\n\n## Lacunes\n- Wat nog geen enkel artikel beantwoordt\n\n## Te lezen\n- [ ] Volgend artikel",
+        "meeting": "**{{weekday}} {{date}} om {{time}}**\n\n## Agenda\n1. Eerste onderwerp\n2. Tweede onderwerp\n\n## Notities\n- Bespreekpunten\n\n## Besluiten\n> [!success] Besloten\n> Wat is afgesproken, en door wie.\n\n## Actiepunten\n- [ ] Eigenaar: taak, deadline\n\n## Volgende vergadering\nDatum en onderwerpen om mee te nemen.",
+        "labProtocol": "> [!warning] Veiligheid\n> Controleer gevaren, beschermingsmiddelen en afvalverwerking voordat je begint.\n\n## Doel\nWat dit protocol oplevert en wanneer je het gebruikt.\n\n## Materialen\n| Onderdeel | Hoeveelheid | Leverancier of catalogusnummer | Notities |\n| --- | --- | --- | --- |\n| | | | |\n\n## Apparatuur\n- Instrument en instellingen\n\n## Werkwijze\n1. Voorbereiden\n2. Uitvoeren\n3. Opruimen\n\n## Controles\n- [ ] Controlemonsters klaargezet\n- [ ] Instellingen genoteerd\n- [ ] Monsters gelabeld met datum en run\n\n## Problemen oplossen\n| Probleem | Waarschijnlijke oorzaak | Oplossing |\n| --- | --- | --- |\n| | | |\n\n## Versiegeschiedenis\n| Versie | Datum | Wijziging |\n| --- | --- | --- |\n| 1 | {{date}} | Eerste versie |",
+        "weeklyLog": "## Doelen voor deze week\n- [ ] Eerste doel\n- [ ] Tweede doel\n- [ ] Derde doel\n\n## Voortgang\n| Dag | Gedaan werk | Notities |\n| --- | --- | --- |\n| Maandag | | |\n| Dinsdag | | |\n| Woensdag | | |\n| Donderdag | | |\n| Vrijdag | | |\n\n## Resultaten en figuren\n- Wat de week heeft opgeleverd\n\n## Knelpunten\n> [!warning] Hulp nodig\n> Wat vastzit, en wie het kan oplossen.\n\n## Gelezen\n- Artikelen die deze week gelezen zijn\n\n## Volgende week\n- [ ] Eerste doel voor volgende week",
+        "proposal": "> [!abstract] Samenvatting\n> In drie zinnen: het probleem, de aanpak en het verwachte resultaat.\n\n## Achtergrond en motivatie\nWaarom dit nu belangrijk is, en wat er al bekend is.\n\n## Onderzoeksvragen\n1. Eerste vraag\n\n## Doelen\n| Doel | Aanpak | Verwacht resultaat |\n| --- | --- | --- |\n| 1 | | |\n\n## Methoden\nOpzet, gegevens, analyse, en hoe succes wordt gemeten.\n\n## Tijdlijn\n| Fase | Maanden | Mijlpaal |\n| --- | --- | --- |\n| | | |\n\n## Risico's en maatregelen\n| Risico | Kans | Maatregel |\n| --- | --- | --- |\n| | | |\n\n## Middelen en budget\n\n## Impact\nWie er baat bij heeft, en hoe de resultaten worden gedeeld.\n\n## Referenties",
+        "proof": "## Definities en notatie\n> [!definition] Notatie\n> De symbolen die je gebruikt en wat elk betekent.\n\n## Uitspraak\n> [!theorem] Hoofdresultaat\n> Het resultaat, precies geformuleerd met elke aanname.\n\n## Idee\nHet hoofdidee in gewone woorden, vóór de details.\n\n## Lemma's\n> [!lemma] Lemma 1\n> Een kleinere bewering die het hoofdbewijs nodig heeft.\n\n> [!proof] Bewijs van Lemma 1\n> Waarom het lemma geldt.\n\n## Bewijs\n> [!proof] Bewijs van het hoofdresultaat\n> **Stap 1.** Het argument opzetten.\n>\n> **Stap 2.** De hoofdafschatting uitvoeren met Lemma 1.\n>\n> **Stap 3.** Afronden.\n\n## Controles\n- [ ] Elke aanname wordt gebruikt\n- [ ] Randgevallen zijn afgedekt\n- [ ] Constanten en grenzen zijn bijgehouden\n\n## Opmerkingen\nGeneralisaties, tegenvoorbeelden en verwante resultaten.",
+        "dataAnalysis": "> [!info] Vraag\n> Het besluit dat deze analyse onderbouwt.\n\n## Gegevens\n| Veld | Waarde |\n| --- | --- |\n| Bron | |\n| Versie of datum | |\n| Rijen en kolommen | |\n| Uitsluitingen | |\n\n## Methoden\n- Opschoonstappen\n- Model of toets, en waarom\n- Gecontroleerde aannames\n\n## Resultaten\nDe tabel hieronder is een blok in het formaat CSV. Vervang de voorbeeldrijen door je resultaten.\n\n```csv\nMaat,Schatting,Ondergrens 95%,Bovengrens 95%,n\nGemiddelde groep A,0,0,0,0\nGemiddelde groep B,0,0,0,0\nVerschil,0,0,0,0\n```\n\n## Figuren\n- Figuur en wat die laat zien\n\n## Interpretatie\nWat de resultaten betekenen voor de vraag.\n\n## Beperkingen\n- Vertekening, ontbrekende gegevens en wat de conclusie zou kunnen veranderen\n\n## Reproduceerbaarheid\n- [ ] Code opgeslagen en gelinkt\n- [ ] Random seeds genoteerd\n- [ ] Pakketversies genoteerd",
+        "interview": "> [!warning] Toestemming en privacy\n> Vraag toestemming voordat je opneemt, en gebruik een deelnemerscode in plaats van een naam.\n\n## Context\n| Onderdeel | Waarde |\n| --- | --- |\n| Deelnemerscode | |\n| Rol | |\n| Duur | |\n| Opname | |\n\n## Vragen en antwoorden\n### Vraag 1\n- Antwoord\n\n### Vraag 2\n- Antwoord\n\n## Citaten\n> Een citaat dat de moeite waard is om te bewaren.\n\n## Thema's\n- Thema en ondersteunende antwoorden\n\n## Vervolg\n- [ ] Een bedankje sturen\n- [ ] Transcriberen en anonimiseren",
+        "screeningLog": "> [!question] Onderzoeksvraag van de review (PICO)\n> - **Populatie:** wie of wat wordt onderzocht\n> - **Interventie of blootstelling:** wat wordt getest\n> - **Vergelijking:** waarmee wordt vergeleken\n> - **Uitkomst:** wat wordt gemeten\n\n## Inclusiecriteria\n- Studieopzetten\n- Populatie en setting\n- Talen en jaren\n\n## Exclusiecriteria\n- Reden en hoe je die herkent\n\n## Zoekopdrachten\n| Datum | Database | Zoekopdracht | Records |\n| --- | --- | --- | --- |\n| {{date}} | | | |\n\n## Aantallen per fase\n| Fase | Records | Verwijderd | Belangrijkste redenen |\n| --- | --- | --- | --- |\n| Gevonden in zoekopdrachten | | | |\n| Na verwijderen van duplicaten | | | |\n| Titels en abstracts gescreend | | | |\n| Volledige teksten beoordeeld | | | |\n| Opgenomen in de review | | | |\n\n## Uitgesloten op volledige tekst\n| Artikel | Reden |\n| --- | --- |\n| | |\n\n## Meningsverschillen\n- Artikel, het oordeel van elke beoordelaar en hoe het is opgelost\n\n## Volgende stappen\n- [ ] De volgende batch screenen\n- [ ] Controleren of de aantallen kloppen",
+        "labNotebook": "**{{weekday}}, {{date}}**\n\n## Doel\nWat je vandaag wilde doen, en waarom.\n\n## Materialen\n| Materiaal | Monster-ID | Lot of batch | Hoeveelheid |\n| --- | --- | --- | --- |\n| | | | |\n\n## Werkwijze\n1. Wat je deed, op volgorde, met tijden en instellingen\n2. Elke afwijking van het protocol, en waarom\n\n## Observaties\n- {{time}} Wat je zag\n\n## Resultaten\n- Metingen, en waar de ruwe gegevens zijn opgeslagen\n\n## Volgende stappen\n- [ ] Vervolgtaak voor de volgende sessie\n\n## Ondertekening\n**Ondertekend door:** naam, {{date}}\n\n**Getuige:** naam, datum"
+      }
+    },
+    "mentions": {
+      "title": "Vermeld in",
+      "link": "Linken",
+      "linkLabel": "De eerste vermelding in {{title}} linken",
+      "linked": "De vermelding in “{{title}}” is gelinkt.",
+      "notFound": "“{{title}}” heeft geen ongelinkte vermelding meer.",
+      "failed": "Kon de link in “{{title}}” niet toevoegen."
+    },
+    "table": {
+      "view": "Tabelweergave",
+      "sortBy": "Sorteren op {{name}}",
+      "addColumn": "Kolommen toevoegen of verwijderen",
+      "properties": "Eigenschappen",
+      "noProperties": "Geen andere eigenschappen in deze notities",
+      "yes": "Ja",
+      "no": "Nee",
+      "columns": {
+        "title": "Titel",
+        "tags": "Tags",
+        "status": "Status",
+        "project": "Project",
+        "edited": "Laatst bewerkt"
+      }
+    }
+  },
+  "assistant": {
+    "label": "Assistent",
+    "placeholder": "Stel een vraag over deze notitie of vraag om een wijziging. Typ / voor acties",
+    "newChat": "Nieuwe chat",
+    "conversation": "Gesprek met de assistent",
+    "foldConversation": "Gesprek inklappen",
+    "showConversation": "Gesprek tonen",
+    "cliAgents": "CLI-agents",
+    "actionHint": "Werkt op deze notitie",
+    "agentCanEdit": "Deze agent kan bestanden in het gekoppelde project wijzigen.",
+    "allowWritesLabel": "De agent bestanden laten wijzigen",
+    "allowWritesAsk": "{{agent}} heeft geen alleen-lezenmodus en kan dus bestanden in {{project}} wijzigen. Oleafly kan er geen voor toevoegen. Je bericht toch versturen?",
+    "allowWrites": "Toch versturen",
+    "dontSend": "Niet versturen",
+    "viewOnly": "Je kunt deze notitie alleen bekijken, dus de assistent kan hem niet wijzigen."
+  },
+  "saving": {
+    "notSaved": "Je laatste wijzigingen zijn niet opgeslagen.",
+    "timedOut": "Opslaan duurde te lang."
+  },
+  "failures": {
+    "createNote": "Kon de notitie niet maken.",
+    "linkNote": "Kon “{{name}}” niet aan dat project koppelen.",
+    "linkProject": "Het project is gemaakt, maar de notitie kon er niet aan worden gekoppeld.",
+    "sendToPaper": "Kon dit niet aan het artikel toevoegen.",
+    "paperNotOpen": "Open eerst een LaTeX-, Typst- of Markdown-bestand van het artikel en stuur het daarna opnieuw.",
+    "template": "Kon de sjablooninstelling van “{{name}}” niet wijzigen."
+  },
+  "noteTab": {
+    "loading": "De notitie wordt geopend",
+    "projectNote": "Projectnotitie",
+    "sharedProject": "Iedereen in dit project kan hem zien en bewerken",
+    "localProject": "Opgeslagen bij de bestanden van dit project",
+    "personalNote": "Persoonlijke notitie",
+    "private": "Alleen jij kunt hem zien",
+    "personalShared": "Gedeeld vanuit Notities",
+    "openInNotes": "Openen in Notities",
+    "moveIntoProject": "Naar het project verplaatsen",
+    "copyToMine": "Naar mijn notities kopiëren",
+    "missing": "Deze notitie is niet meer beschikbaar. Hij is misschien verplaatst of verwijderd.",
+    "writeRefused": "Kon de notitie niet opslaan. Dit project is op dit moment alleen-lezen."
+  },
+  "appearance": {
+    "notes": {
+      "sectionName": "Weergave van notities",
+      "resetAriaLabel": "{{setting}} terugzetten naar standaard",
+      "text": {
+        "title": "Tekst"
+      },
+      "typeface": {
+        "label": "Lettersoort",
+        "description": "Kies een lettersoort voor de tekst van notities.",
+        "options": {
+          "sans": "Schreefloos",
+          "serif": "Met schreef",
+          "mono": "Vaste breedte"
+        }
+      },
+      "font": {
+        "label": "Lettertype van notities",
+        "description": "Kies een willekeurig geïnstalleerd lettertype voor de tekst van notities. Laat het leeg om de instelling Lettersoort te gebruiken."
+      },
+      "fontSize": {
+        "label": "Tekstgrootte van notities",
+        "description": "Stel de grootte van de tekst in notities in.",
+        "custom": "Aangepast",
+        "customLabel": "Aangepaste tekstgrootte van notities in pixels"
+      },
+      "lineHeight": {
+        "label": "Regelhoogte van notities",
+        "description": "Stel de ruimte tussen de regels van notitietekst in.",
+        "customLabel": "Aangepaste regelhoogte van notities"
+      },
+      "paragraphSpacing": {
+        "label": "Alinea-afstand",
+        "description": "Stel de ruimte tussen alinea's, lijsten en andere blokken in.",
+        "options": {
+          "compact": "Compact",
+          "normal": "Normaal",
+          "relaxed": "Luchtig",
+          "spacious": "Ruim"
+        }
+      },
+      "headings": {
+        "title": "Koppen en titel"
+      },
+      "headingTypeface": {
+        "label": "Lettersoort van koppen",
+        "description": "Kies een lettersoort voor koppen en de titel van de notitie.",
+        "options": {
+          "text": "Zelfde als tekst"
+        }
+      },
+      "headingFont": {
+        "label": "Lettertype van koppen",
+        "description": "Kies een geïnstalleerd lettertype voor koppen en de titel van de notitie. Laat het leeg om de instelling Lettersoort van koppen te gebruiken."
+      },
+      "headingSize": {
+        "label": "Grootte van koppen",
+        "description": "Stel in hoe groot koppen zijn ten opzichte van de tekst.",
+        "options": {
+          "small": "Kleiner",
+          "normal": "Normaal",
+          "large": "Groter"
+        }
+      },
+      "titleSize": {
+        "label": "Grootte van de titel",
+        "description": "Stel de grootte in van de titel bovenaan elke notitie."
+      },
+      "layout": {
+        "title": "Indeling"
+      },
+      "width": {
+        "label": "Breedte van notities",
+        "description": "Hoe breed notities openen. Het breedtemenu in een notitie wijzigt dit ook.",
+        "options": {
+          "standard": "Standaard",
+          "wide": "Breed",
+          "full": "Volledige breedte"
+        }
+      },
+      "info": {
+        "label": "Info over de notitie",
+        "description": "Waar de eigenschappen en links van een notitie komen. Met Zijpaneel staan ze in het paneel Info, samen met de tellingen en bijlagen van de notitie. Met In de notitie blijven ze op de pagina.",
+        "options": {
+          "side": "Zijpaneel",
+          "inline": "In de notitie"
+        }
+      },
+      "taskBox": {
+        "label": "Selectievakjes voor taken",
+        "description": "De vorm van de vakjes in takenlijsten.",
+        "options": {
+          "square": "Vierkant",
+          "round": "Rond"
+        }
+      },
+      "wordCount": {
+        "label": "Aantal woorden tonen",
+        "description": "Toon het aantal woorden van een notitie in de werkbalk."
+      },
+      "spellcheck": {
+        "label": "Spelling in notities controleren",
+        "description": "Onderstreep verkeerd gespelde woorden terwijl je een notitie schrijft."
+      },
+      "replacements": {
+        "label": "Vervangen tijdens typen",
+        "description": "Vervangt paren zoals -> door → terwijl je typt. Code en wiskunde blijven zoals getypt, en Backspace direct na een vervanging zet je tekst terug.",
+        "list": "Tekstvervangingen",
+        "type": "Typ",
+        "becomes": "Wordt",
+        "add": "Toevoegen",
+        "remove": "{{from}} verwijderen",
+        "removeTooltip": "Verwijderen",
+        "empty": "Nog geen paren. Voeg er hieronder een toe.",
+        "full": "Je kunt maximaal {{limit}} paren hebben. Verwijder er een om een nieuw paar toe te voegen."
+      },
+      "keepUndo": {
+        "label": "Ongedaan maken bewaren na sluiten",
+        "description": "Ongedaan maken werkt nog voor een notitie nadat je die hebt gesloten of de app hebt afgesloten. De geschiedenis blijft op deze computer, en als je dit uitzet, wordt hij verwijderd."
+      },
+      "code": {
+        "title": "Code"
+      },
+      "drawings": {
+        "title": "Tekeningen met LaTeX"
+      },
+      "tikzPreamble": {
+        "label": "Preambule voor TikZ",
+        "description": "Regels zoals \\usetikzlibrary{positioning} die aan het begin van de preambule van elk blok met TikZ en CircuiTikZ komen."
+      },
+      "codeFont": {
+        "label": "Lettertype voor code",
+        "description": "Kies een geïnstalleerd lettertype voor codeblokken en code in de tekst."
+      },
+      "codeTheme": {
+        "label": "Kleuren van codeblokken",
+        "description": "Kies de syntaxkleuren voor codeblokken in notities.",
+        "options": {
+          "editor": "Zelfde als editor"
+        }
+      },
+      "colors": {
+        "title": "Kleuren"
+      },
+      "accent": {
+        "label": "Accentkleur van notities",
+        "description": "Gebruikt voor links, tags en taakvakjes in notities.",
+        "matchApp": "Zelfde als app",
+        "customAriaLabel": "Een eigen accentkleur voor notities kiezen"
+      },
+      "callouts": {
+        "label": "Stijl van kaders",
+        "description": "Hoe kaders er in notities uitzien.",
+        "options": {
+          "tinted": "Getint",
+          "filled": "Gevuld",
+          "outlined": "Omlijnd",
+          "bar": "Zijbalk"
+        }
+      },
+      "fieldStyle": {
+        "label": "Labels voor datums en velden",
+        "description": "Hoe datums en velden zoals deadline of prioriteit er in notities uitzien.",
+        "options": {
+          "tint": "Getint",
+          "outline": "Omlijnd",
+          "underline": "Onderstreept"
+        }
+      },
+      "remoteImages": {
+        "title": "Afbeeldingen van het web",
+        "description": "Notities en antwoorden van de assistent laden afbeeldingen van deze sites zonder te vragen.",
+        "empty": "Notities en antwoorden van de assistent vragen het eerst voordat ze een afbeelding van het web laden. Sites die je altijd toestaat, verschijnen hier.",
+        "remove": "{{host}} verwijderen"
+      }
+    }
+  },
+  "notesPreview": {
+    "label": "Voorbeeld van een notitie met deze instellingen",
+    "title": "Veldnotities",
+    "heading": "Ochtendopname",
+    "paragraph": "Lichte regen tot negen uur, daarna een heldere lucht boven de noordelijke heuvelrug. Om twaalf uur was de bodem nog vochtig.",
+    "links": "Zie <note>Bemonsteringsmethode</note> voor alle stappen, of blader door <tag>#veldwerk</tag>.",
+    "highlight": "De zaailingen zijn in één week twee keer zo hoog geworden.",
+    "calloutTitle": "Volgend bezoek",
+    "calloutBody": "Controleer de bodemsensoren voordat je nieuwe monsters neemt.",
+    "taskDone": "De monsters labelen",
+    "task": "De foto's uploaden",
+    "taskLate": "Het bodemrapport versturen"
+  },
+  "highlight": {
+    "colors": {
+      "yellow": "Geel",
+      "orange": "Oranje",
+      "red": "Rood",
+      "pink": "Roze",
+      "purple": "Paars",
+      "blue": "Blauw",
+      "green": "Groen"
+    },
+    "remove": "Markering verwijderen"
+  },
+  "quickCapture": {
+    "title": "Snel noteren",
+    "untitled": "Zonder titel",
+    "placeholder": "Begin met schrijven…",
+    "field": "Te noteren tekst",
+    "characters_one": "{{count}} teken",
+    "characters_other": "{{count}} tekens",
+    "failed": "Kon dit niet opslaan. Je tekst staat er nog, dus je kunt het opnieuw proberen.",
+    "actions": {
+      "label": "Acties",
+      "saveNew": "Opslaan als nieuwe notitie",
+      "saveToday": "Toevoegen aan de notitie van vandaag",
+      "copy": "Kopiëren als Markdown",
+      "discard": "Concept weggooien"
+    },
+    "openNotes": "Notities openen",
+    "newNote": "Nieuwe notitie",
+    "format": "Opmaak tonen",
+    "closeFormat": "Opmaak verbergen"
+  },
+  "starter": {
+    "blocksGallery": {
+      "title": "Blokkengalerij",
+      "intro": "Elk blok dat een notitie kan bevatten. Klik bij een blok op {{source}} om te zien en te bewerken wat het tekent, en typ {{slash}} op een lege regel om een nieuw blok in te voegen.",
+      "charts": "Grafieken",
+      "functionPlots": "Functieplots",
+      "tables": "Tabellen",
+      "csvTable": "Een csv-blok kun je sorteren en filteren, en het heeft een samenvattingsrij:",
+      "markdownTable": "Gewone Markdown-tabellen werken ook:",
+      "math": "Wiskunde en scheikunde",
+      "typst": "Typst",
+      "diagrams": "Diagrammen",
+      "svg": "SVG",
+      "html": "HTML, klik op {{run}}",
+      "react": "React, klik op {{run}}",
+      "structures": "Chemische structuren",
+      "molecule": "3D-molecuul",
+      "sequences": "Sequenties",
+      "code": "Code"
+    }
+  }
+}

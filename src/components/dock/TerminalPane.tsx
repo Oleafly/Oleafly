@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import type { SearchAddon } from "@xterm/addon-search";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { cn } from "@/lib/utils";
@@ -48,11 +49,12 @@ import { TerminalLinkTooltip, type TerminalLinkTip } from "./TerminalLinkTooltip
 import { attachTerminalKeys } from "./terminal-input";
 import { copyTerminalText } from "./terminal-clipboard";
 import { canDropOnTerminal, readTerminalDrop, refusedDropPaths, terminalDropText } from "./terminal-drop";
+import { TERMINAL_SCROLLBAR_WIDTH, withQuietScrollbar } from "./terminal-scrollbar";
 import type { TerminalSearch } from "./TerminalFindBar";
 import { Spinner } from "@/components/ui/spinner";
 import "@xterm/xterm/css/xterm.css";
 
-const TerminalFindBar = lazy(() => import("./TerminalFindBar"));
+const TerminalFindBar = lazy(() => import("./TerminalFindBar"), { warm: true });
 
 function terminalBufferText(terminal: Terminal): string {
   const buffer = terminal.buffer.active;
@@ -302,7 +304,7 @@ export function TerminalPane({
     surfacedErrorsRef.current.clear();
     const platform = platformRef.current;
     const appearance = appearanceRef.current;
-    const theme = resolveTerminalTheme(appearance, appThemeRef.current);
+    const theme = withQuietScrollbar(resolveTerminalTheme(appearance, appThemeRef.current));
     let disposed = false;
     let linkTipTimer: number | null = null;
     const hideLinkTip = () => {
@@ -337,6 +339,7 @@ export function TerminalPane({
       // number of cells, so right-aligned prompts (Powerlevel10k, Starship) line up.
       allowProposedApi: true,
       theme,
+      overviewRuler: { width: TERMINAL_SCROLLBAR_WIDTH },
       linkHandler: createTerminalLinkHandler(linkActions),
     });
     const fit = new FitAddon();
@@ -706,9 +709,8 @@ export function TerminalPane({
     terminal.options.cursorStyle = terminalCursorStyle;
     terminal.options.cursorBlink = terminalCursorBlink;
     terminal.options.drawBoldTextInBrightColors = true;
-    terminal.options.theme = resolveTerminalTheme(
-      { terminalColorTheme, terminalBackground, terminalForeground, terminalCursorColor },
-      appTheme,
+    terminal.options.theme = withQuietScrollbar(
+      resolveTerminalTheme({ terminalColorTheme, terminalBackground, terminalForeground, terminalCursorColor }, appTheme),
     );
     if (!visibleRef.current || !openedRef.current) return;
     fitRef.current?.fit();

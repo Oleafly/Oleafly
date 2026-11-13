@@ -224,7 +224,13 @@
     "closeAssistantTabsCount_one": "Закрити файл, відкритий асистентом",
     "closeAssistantTabsCount_few": "Закрити {{count}} файли, відкриті асистентом",
     "closeAssistantTabsCount_many": "Закрити {{count}} файлів, відкритих асистентом",
-    "closeAssistantTabsCount_other": "Закрити {{count}} файлу, відкритого асистентом"
+    "closeAssistantTabsCount_other": "Закрити {{count}} файлу, відкритого асистентом",
+    "editAsMarkdown": "Редагувати як Markdown",
+    "editAsNote": "Редагувати як нотатку",
+    "noteAsMarkdown": "Ви редагуєте цю нотатку як Markdown.",
+    "openInNotes": "Відкрити в нотатках",
+    "moveIntoProject": "Перенести в проєкт",
+    "copyToMyNotes": "Скопіювати до моїх нотаток"
   },
   "projectInfo": {
     "trigger": "Відомості про проєкт",
@@ -1024,13 +1030,14 @@
         "environment": "Середовище {{environment}}",
         "command": "Команда \\{{command}}",
         "latexSource": "Код LaTeX",
+        "html": "HTML",
         "maketitlePreview": "Згенеровано із заголовка документа та метаданих автора.",
         "figurePreserved": "Точний код рисунка збережено.",
         "tablePreserved": "Точний код таблиці збережено.",
         "sourcePreserved": "Точний код збережено",
         "editSource": "Редагувати код",
-        "summaryLabel": "{{label}}. Точний код LaTeX збережено.",
-        "inputLabel": "Точний код блоку LaTeX"
+        "summaryLabel": "{{label}}. Точний код збережено.",
+        "inputLabel": "Точний код блоку"
       },
       "inline": {
         "label": "Сирий код у рядку",

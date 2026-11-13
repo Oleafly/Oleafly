@@ -319,6 +319,7 @@
   },
   "mcp": {
     "deniedByRules": "approvals.toml içindeki bir deny kuralı nedeniyle reddedildi",
+    "createTodaySummary": "Bugünün notunu oluştur: \"{{title}}\"",
     "openProjectSummary": "{{id}} projesini aç",
     "rulesUnreadable": "approvals.toml okunamadığı için reddedildi",
     "useToolSummary": "{{server}} MCP sunucusundaki {{tool}} aracını kullan"
@@ -341,6 +342,7 @@
   },
   "mermaid": {
     "diagram": "Diyagram",
+    "remoteBlocked": "Bu diyagram internetten görsel veya stil yüklediği için çizilmedi.",
     "renderFailed": "Diyagram işlenemedi.",
     "rendering": "Diyagram işleniyor"
   },

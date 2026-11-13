@@ -222,7 +222,13 @@
     "closeAll": "Luk alle",
     "closeAssistantTabs": "Luk filer, som assistenten har åbnet",
     "closeAssistantTabsCount_one": "Luk filen, som assistenten har åbnet",
-    "closeAssistantTabsCount_other": "Luk de {{count}} filer, som assistenten har åbnet"
+    "closeAssistantTabsCount_other": "Luk de {{count}} filer, som assistenten har åbnet",
+    "editAsMarkdown": "Rediger som Markdown",
+    "editAsNote": "Rediger som note",
+    "noteAsMarkdown": "Du redigerer denne note som Markdown.",
+    "openInNotes": "Åbn i Noter",
+    "moveIntoProject": "Flyt ind i projektet",
+    "copyToMyNotes": "Kopier til mine noter"
   },
   "projectInfo": {
     "trigger": "Projektoplysninger",
@@ -996,13 +1002,14 @@
         "environment": "{{environment}}-miljø",
         "command": "\\{{command}}-kommando",
         "latexSource": "LaTeX-kilde",
+        "html": "HTML",
         "maketitlePreview": "Dannet ud fra dokumentets titel og forfattermetadata.",
         "figurePreserved": "Figurens kilde er bevaret præcis som den er.",
         "tablePreserved": "Tabellens kilde er bevaret præcis som den er.",
         "sourcePreserved": "Kilden er bevaret præcis som den er",
         "editSource": "Rediger kilden",
-        "summaryLabel": "{{label}}. LaTeX-kilden er bevaret præcis som den er.",
-        "inputLabel": "Præcis LaTeX-kilde til blokken"
+        "summaryLabel": "{{label}}. Kilden er bevaret præcis som den er.",
+        "inputLabel": "Præcis kilde til blokken"
       },
       "inline": {
         "label": "Rå kilde i linjen",

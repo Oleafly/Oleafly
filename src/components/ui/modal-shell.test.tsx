@@ -169,4 +169,43 @@ describe("ModalShell", () => {
     }
     expect(overlayOf(panel)).toHaveClass("z-[90]");
   });
+
+  it("eases a width change only when asked, and never under reduced motion", async () => {
+    const { rerender } = render(
+      <ModalShell open onClose={vi.fn()} closeLabel={CLOSE} label={TITLE}>
+        <p>{ACTION}</p>
+      </ModalShell>,
+    );
+    expect(screen.getByRole("dialog", { name: TITLE })).not.toHaveClass("transition-[width]");
+
+    rerender(
+      <ModalShell open onClose={vi.fn()} closeLabel={CLOSE} label={TITLE} animateWidth className="w-96">
+        <p>{ACTION}</p>
+      </ModalShell>,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("dialog", { name: TITLE })).toHaveClass(
+        "transition-[width]",
+        "duration-200",
+        "ease-out",
+        "motion-reduce:transition-none",
+        "w-96",
+      ),
+    );
+  });
+
+  it("opens at its final width and eases only the changes made after the panel is shown", async () => {
+    const view = (open: boolean) => (
+      <ModalShell open={open} onClose={vi.fn()} closeLabel={CLOSE} label={TITLE} animateWidth>
+        <p>{ACTION}</p>
+      </ModalShell>
+    );
+    const { rerender } = render(view(true));
+    expect(screen.getByRole("dialog", { name: TITLE })).not.toHaveClass("transition-[width]");
+    await waitFor(() => expect(screen.getByRole("dialog", { name: TITLE })).toHaveClass("transition-[width]"));
+
+    rerender(view(false));
+    rerender(view(true));
+    expect(screen.getByRole("dialog", { name: TITLE })).not.toHaveClass("transition-[width]");
+  });
 });

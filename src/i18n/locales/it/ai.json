@@ -44,14 +44,16 @@
       "externalTool": "Conferma l'azione dello strumento esterno",
       "internet": "Conferma l'accesso a internet",
       "edit": "Conferma la modifica dell'AI",
-      "researchTask": "Conferma l'attività di ricerca"
+      "researchTask": "Conferma l'attività di ricerca",
+      "note": "Conferma la nuova nota"
     },
     "headline": {
       "command": "L'assistente vuole eseguire questo comando",
       "externalTool": "L'assistente vuole usare uno strumento esterno",
       "internet": "L'assistente vuole accedere a internet",
       "edit": "L'assistente vuole modificare i tuoi file",
-      "researchTask": "L'assistente vuole creare un'attività di ricerca"
+      "researchTask": "L'assistente vuole creare un'attività di ricerca",
+      "note": "L'assistente vuole creare una nota"
     },
     "mcpNote": "Questo invia gli argomenti qui sotto al server MCP configurato.",
     "line": "riga {{line}}",
@@ -86,10 +88,18 @@
       "timeBudget": "Budget di tempo",
       "timeBudgetDefault": "Predefinito",
       "minutes_one": "{{count}} minuto",
+      "minutes_many": "{{count}} minuti",
       "minutes_other": "{{count}} minuti",
       "planFirst": "Prima il piano",
-      "startNow": "Avvia subito",
-      "minutes_many": "{{count}} minuti"
+      "startNow": "Avvia subito"
+    },
+    "noteDraft": {
+      "title": "Titolo",
+      "project": "Progetto collegato",
+      "tags": "Tag",
+      "text": "Testo",
+      "empty": "Nessun testo",
+      "more": "La nota continua oltre questo punto."
     }
   },
   "attachments": {
@@ -1124,5 +1134,19 @@
     "replaceConfirm": "Sostituisci la risposta",
     "forked": "Nuova chat avviata dal messaggio modificato.",
     "failed": "Impossibile inviare di nuovo il messaggio."
+  },
+  "noteScope": {
+    "notesOnly": "Solo nell'assistente di una nota.",
+    "tools": {
+      "readNote": "Legge la nota aperta, compresi i suggerimenti in attesa di revisione.",
+      "proposeNoteEdits": "Suggerisce modifiche alla nota aperta, che puoi accettare o rifiutare.",
+      "searchNotes": "Cerca in tutte le tue note.",
+      "listKnowledgeNotes": "Elenca le tue note, per tag o per progetto.",
+      "readNoteById": "Legge un'altra nota.",
+      "createNote": "Crea una nuova nota.",
+      "relatedProjectFiles": "Elenca i file del progetto collegato alla nota.",
+      "readRelatedProjectFile": "Legge un file del progetto collegato alla nota.",
+      "searchRelatedProject": "Cerca nel progetto collegato alla nota."
+    }
   }
 }

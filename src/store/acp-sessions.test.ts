@@ -190,6 +190,17 @@ describe("ACP catalog and session-list request ordering", () => {
     expect(vi.mocked(acpCatalog).mock.calls).toEqual([[false], [true]]);
   });
 
+  it("keeps the same catalog when a refresh finds nothing new", async () => {
+    const known = [agent("builtin")];
+    useAcpSessionsStore.setState({ catalog: known });
+    vi.mocked(acpCatalog).mockResolvedValueOnce([agent("builtin")]).mockResolvedValueOnce([agent("builtin"), agent("new")]);
+
+    await expect(useAcpSessionsStore.getState().refreshCatalog()).resolves.toBe(true);
+    expect(useAcpSessionsStore.getState().catalog).toBe(known);
+    await expect(useAcpSessionsStore.getState().refreshCatalog()).resolves.toBe(true);
+    expect(useAcpSessionsStore.getState().catalog).toEqual([agent("builtin"), agent("new")]);
+  });
+
   it("ignores an obsolete catalog error after the newer refresh succeeds", async () => {
     const initial = deferred<AcpAgentStatus[]>();
     const registered = [agent("newly-registered")];

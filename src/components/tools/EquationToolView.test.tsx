@@ -6,6 +6,7 @@ import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 import { useHomeViewStore } from "@/store/home-view";
 import { useFilesStore } from "@/store/files";
+import { useSettingsStore } from "@/store/settings";
 import { toolName } from "@/lib/tool-catalog";
 
 const mocks = vi.hoisted(() => ({
@@ -483,6 +484,19 @@ describe("EquationToolView", () => {
 
     expect(mocks.toastError).toHaveBeenCalledTimes(2);
     expect(mocks.toastDismiss).not.toHaveBeenCalled();
+  });
+
+  it("offers notes as save targets only while Notes is off", () => {
+    const note = { ...PAPER, id: "idea", name: "Idea note", kind: "note", main_doc: "note.md" };
+    useFilesStore.setState({ projects: [PAPER, note] });
+    useSettingsStore.setState({ notes: true });
+    const { unmount } = render(<EquationToolView />);
+    expect(screen.getByRole("button", { name: "Paper" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Idea note" })).toBeNull();
+    unmount();
+    useSettingsStore.setState({ notes: false });
+    render(<EquationToolView />);
+    expect(screen.getByRole("button", { name: "Idea note" })).toBeInTheDocument();
   });
 
   it("saves a rendered PNG into an existing project without racing newer edits", async () => {

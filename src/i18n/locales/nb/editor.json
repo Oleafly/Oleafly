@@ -222,7 +222,13 @@
     "closeAll": "Lukk alle",
     "closeAssistantTabs": "Lukk filer som assistenten har åpnet",
     "closeAssistantTabsCount_one": "Lukk filen som assistenten har åpnet",
-    "closeAssistantTabsCount_other": "Lukk de {{count}} filene som assistenten har åpnet"
+    "closeAssistantTabsCount_other": "Lukk de {{count}} filene som assistenten har åpnet",
+    "editAsMarkdown": "Rediger som Markdown",
+    "editAsNote": "Rediger som notat",
+    "noteAsMarkdown": "Du redigerer dette notatet som Markdown.",
+    "openInNotes": "Åpne i Notater",
+    "moveIntoProject": "Flytt inn i prosjektet",
+    "copyToMyNotes": "Kopier til notatene mine"
   },
   "projectInfo": {
     "trigger": "Prosjektinfo",
@@ -996,13 +1002,14 @@
         "environment": "{{environment}}-miljø",
         "command": "\\{{command}}-kommando",
         "latexSource": "LaTeX-kildekode",
+        "html": "HTML",
         "maketitlePreview": "Laget ut fra dokumenttittelen og forfattermetadataene.",
         "figurePreserved": "Den eksakte figurkilden er tatt vare på.",
         "tablePreserved": "Den eksakte tabellkilden er tatt vare på.",
         "sourcePreserved": "Den eksakte kilden er tatt vare på",
         "editSource": "Rediger kilden",
-        "summaryLabel": "{{label}}. Den eksakte LaTeX-kilden er tatt vare på.",
-        "inputLabel": "Eksakt LaTeX-kilde for blokken"
+        "summaryLabel": "{{label}}. Den eksakte kilden er tatt vare på.",
+        "inputLabel": "Eksakt kilde for blokken"
       },
       "inline": {
         "label": "Rå kilde i linjen",

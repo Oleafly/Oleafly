@@ -222,7 +222,13 @@
     "closeAll": "Alles sluiten",
     "closeAssistantTabs": "Bestanden sluiten die de assistent heeft geopend",
     "closeAssistantTabsCount_one": "Het bestand sluiten dat de assistent heeft geopend",
-    "closeAssistantTabsCount_other": "De {{count}} bestanden sluiten die de assistent heeft geopend"
+    "closeAssistantTabsCount_other": "De {{count}} bestanden sluiten die de assistent heeft geopend",
+    "editAsMarkdown": "Bewerken als Markdown",
+    "editAsNote": "Bewerken als notitie",
+    "noteAsMarkdown": "Je bewerkt deze notitie als Markdown.",
+    "openInNotes": "Openen in Notities",
+    "moveIntoProject": "Naar het project verplaatsen",
+    "copyToMyNotes": "Naar mijn notities kopiëren"
   },
   "projectInfo": {
     "trigger": "Projectinfo",
@@ -996,13 +1002,14 @@
         "environment": "Omgeving {{environment}}",
         "command": "Commando \\{{command}}",
         "latexSource": "LaTeX-broncode",
+        "html": "HTML",
         "maketitlePreview": "Gegenereerd uit de documenttitel en de auteursgegevens.",
         "figurePreserved": "De exacte broncode van de figuur is behouden.",
         "tablePreserved": "De exacte broncode van de tabel is behouden.",
         "sourcePreserved": "Exacte broncode behouden",
         "editSource": "Broncode bewerken",
-        "summaryLabel": "{{label}}. De exacte LaTeX-broncode is behouden.",
-        "inputLabel": "Exacte LaTeX-broncode van het blok"
+        "summaryLabel": "{{label}}. De exacte broncode is behouden.",
+        "inputLabel": "Exacte broncode van het blok"
       },
       "inline": {
         "label": "Ruwe broncode in de tekst",

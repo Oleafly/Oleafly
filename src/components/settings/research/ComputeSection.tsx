@@ -1,4 +1,6 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { lazy } from "@/lib/preloadable";
+import { researchTasksEnabled } from "@/store/research-tasks-flag";
 import { useTranslation } from "react-i18next";
 import { Box, Cpu, Laptop, type LucideIcon, MoreHorizontal, Plus, Server, ShieldCheck } from "lucide-react";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
@@ -39,14 +41,11 @@ import {
 } from "./compute-api";
 
 const ComputeTargetDialog = lazy(() =>
-  import("./ComputeTargetDialog").then((module) => ({ default: module.ComputeTargetDialog })),
-);
+  import("./ComputeTargetDialog").then((module) => ({ default: module.ComputeTargetDialog })), { warm: researchTasksEnabled });
 const ComputeHostKeyDialog = lazy(() =>
-  import("./ComputeHostKeyDialog").then((module) => ({ default: module.ComputeHostKeyDialog })),
-);
+  import("./ComputeHostKeyDialog").then((module) => ({ default: module.ComputeHostKeyDialog })), { warm: researchTasksEnabled });
 const ComputeSshImportDialog = lazy(() =>
-  import("./ComputeSshImportDialog").then((module) => ({ default: module.ComputeSshImportDialog })),
-);
+  import("./ComputeSshImportDialog").then((module) => ({ default: module.ComputeSshImportDialog })), { warm: researchTasksEnabled });
 
 interface HostKeyEntry {
   target: ComputeTarget;

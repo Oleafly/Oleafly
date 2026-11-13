@@ -11,6 +11,8 @@
   "landing.open": "In Oleafly öffnen",
   "landing.get": "Oleafly herunterladen",
   "landing.open_browser": "Im Browser öffnen",
+  "published.gone_title": "Diese Seite ist nicht verfügbar",
+  "published.gone_body": "Der Autor hat die Veröffentlichung vielleicht zurückgenommen, oder dieser Server zeigt keine öffentlichen Seiten mehr.",
   "web.sign_in_body": "Melden Sie sich an, um Ihre geteilten Projekte in diesem Browser zu öffnen.",
   "web.try_again": "Erneut versuchen",
   "web.other_browser": "Dieser Link schließt die Anmeldung auf {device} ab, dem Browser, in dem Sie begonnen haben. Öffnen Sie die E-Mail stattdessen dort. Der Link ist weiterhin gültig.",

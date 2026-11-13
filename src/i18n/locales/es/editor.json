@@ -223,7 +223,13 @@
     "closeAssistantTabs": "Cerrar los archivos que abrió el asistente",
     "closeAssistantTabsCount_one": "Cerrar el archivo que abrió el asistente",
     "closeAssistantTabsCount_many": "Cerrar los {{count}} archivos que abrió el asistente",
-    "closeAssistantTabsCount_other": "Cerrar los {{count}} archivos que abrió el asistente"
+    "closeAssistantTabsCount_other": "Cerrar los {{count}} archivos que abrió el asistente",
+    "editAsMarkdown": "Editar como Markdown",
+    "editAsNote": "Editar como nota",
+    "noteAsMarkdown": "Estás editando esta nota como Markdown.",
+    "openInNotes": "Abrir en Notas",
+    "moveIntoProject": "Mover al proyecto",
+    "copyToMyNotes": "Copiar a mis notas"
   },
   "projectInfo": {
     "trigger": "Información del proyecto",
@@ -1010,13 +1016,14 @@
         "environment": "Entorno {{environment}}",
         "command": "Comando \\{{command}}",
         "latexSource": "Código LaTeX",
+        "html": "HTML",
         "maketitlePreview": "Generado a partir del título del documento y los metadatos de autoría.",
         "figurePreserved": "Se conserva el código exacto de la figura.",
         "tablePreserved": "Se conserva el código exacto de la tabla.",
         "sourcePreserved": "Se conserva el código exacto",
         "editSource": "Editar el código",
-        "summaryLabel": "{{label}}. Se conserva el código LaTeX exacto.",
-        "inputLabel": "Código LaTeX exacto del bloque"
+        "summaryLabel": "{{label}}. Se conserva el código exacto.",
+        "inputLabel": "Código exacto del bloque"
       },
       "inline": {
         "label": "Código en línea en bruto",

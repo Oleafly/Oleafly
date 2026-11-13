@@ -319,6 +319,7 @@
   },
   "mcp": {
     "deniedByRules": "Nekad av en deny-regel i approvals.toml",
+    "createTodaySummary": "Skapa dagens anteckning \"{{title}}\"",
     "openProjectSummary": "Öppna projektet {{id}}",
     "rulesUnreadable": "Nekad eftersom approvals.toml inte kunde läsas",
     "useToolSummary": "Använd {{tool}} från MCP-servern {{server}}"
@@ -341,6 +342,7 @@
   },
   "mermaid": {
     "diagram": "Diagram",
+    "remoteBlocked": "Diagrammet ritades inte eftersom det läser in bilder eller formatmallar från internet.",
     "renderFailed": "Det gick inte att rendera diagrammet.",
     "rendering": "Renderar diagrammet"
   },

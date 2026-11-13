@@ -17,11 +17,18 @@ import {
   settingsTabFor,
   type CatalogPath,
   type SettingsSearchHit,
+  type SettingsSearchFeature,
   type SettingsSearchIndex,
   type SettingsSearchPlatform,
   type SettingsSearchRowHit,
 } from "@/components/settings/settings-search";
 import { cn, isMac, isWindows } from "@/lib/utils";
+import { loadNamespace } from "@/i18n";
+import { logError } from "@/lib/log";
+import { useSettingsStore } from "@/store/settings";
+
+const NO_FEATURES: ReadonlySet<SettingsSearchFeature> = new Set();
+const NOTES_FEATURES: ReadonlySet<SettingsSearchFeature> = new Set(["notes"]);
 
 const SEARCH_DELAY_MS = 150;
 
@@ -54,11 +61,13 @@ function settledQuery(query: string): string {
   return query.trim() === "" ? "" : query;
 }
 /**
- * How long to keep looking for a row after a click. Counted in time, not
- * frames: WebView2 runs frames at the display rate, so 90 frames is 0.6 s on
- * a 144 Hz screen, and rows the backend fills in can take longer than that.
+ * How long to keep looking for a row once the page stops changing. Counted in
+ * time, not frames: WebView2 runs frames at the display rate, so 90 frames is
+ * 0.6 s on a 144 Hz screen, and rows the backend fills in can take longer.
  */
 const REVEAL_TIMEOUT_MS = 2000;
+const REVEAL_LIMIT_MS = 15_000;
+const PAGE_CHANGES: MutationObserverInit = { childList: true, subtree: true, characterData: true };
 const HIT_ATTRIBUTE = "data-settings-search-hit";
 const ROW_SELECTOR = '[role="switch"], .rounded-lg.border';
 const FOCUSABLE = [
@@ -132,7 +141,7 @@ function revealTarget(container: HTMLElement, element: HTMLElement): HTMLElement
 export function revealSettingsRow(container: HTMLElement, label: string): HTMLElement | null {
   const walker = container.ownerDocument.createTreeWalker(container, NodeFilter.SHOW_TEXT);
   for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-    if (node.nodeValue?.replace(/\s+/g, " ").trim() !== label) continue;
+    if (node.nodeValue?.replaceAll(/\s+/g, " ").trim() !== label) continue;
     const element = node.parentElement;
     if (!element || element.closest("[hidden]")) continue;
     const target = revealTarget(container, element);
@@ -195,6 +204,50 @@ function tabToOpen(closed: readonly HTMLElement[], path: readonly string[]): HTM
   return undefined;
 }
 
+function revealWhenShown(
+  containerRef: RefObject<HTMLElement | null>,
+  row: SettingsSearchRowHit,
+  wanted: () => boolean,
+): () => void {
+  const visited = new Set<HTMLElement>();
+  const started = performance.now();
+  let changed = started;
+  let frame: number | null = null;
+  let watched: HTMLElement | null = null;
+  const observer = new MutationObserver(() => {
+    changed = performance.now();
+    frame ??= requestAnimationFrame(attempt);
+  });
+  const stop = () => {
+    if (frame !== null) cancelAnimationFrame(frame);
+    frame = null;
+    observer.disconnect();
+  };
+  function attempt() {
+    frame = null;
+    if (!wanted() || performance.now() - started >= REVEAL_LIMIT_MS) {
+      stop();
+      return;
+    }
+    const container = containerRef.current;
+    if (container) {
+      if (container !== watched) {
+        observer.disconnect();
+        observer.observe(container, PAGE_CHANGES);
+        watched = container;
+      }
+      if (revealSettingsRow(container, row.label)) {
+        stop();
+        return;
+      }
+      openSettingsTabFor(container, row.path, visited);
+    }
+    if (performance.now() - changed < REVEAL_TIMEOUT_MS) frame = requestAnimationFrame(attempt);
+  }
+  attempt();
+  return stop;
+}
+
 interface SettingsSearchOptions<Id extends string> {
   open: boolean;
   resetKey: unknown;
@@ -222,6 +275,11 @@ export function useSettingsSearch<Id extends string>({
   const setQuery = store.set;
   const [pendingRow, setPendingRow] = useState<PendingRow<Id> | null>(null);
   const [catalogs, setCatalogs] = useState(0);
+  const features = useSettingsStore((state) => (state.notes ? NOTES_FEATURES : NO_FEATURES));
+
+  useEffect(() => {
+    if (features.has("notes")) loadNamespace("notes").catch((error: unknown) => void logError("load Notes strings", error));
+  }, [features]);
 
   useEffect(() => {
     const added = () => setCatalogs((count) => count + 1);
@@ -250,7 +308,12 @@ export function useSettingsSearch<Id extends string>({
       if (timer !== null) clearTimeout(timer);
     };
   }, [store]);
-  const indexRef = useRef<{ locale: string; catalogs: number; index: SettingsSearchIndex } | null>(null);
+  const indexRef = useRef<{
+    locale: string;
+    catalogs: number;
+    features: ReadonlySet<SettingsSearchFeature>;
+    index: SettingsSearchIndex;
+  } | null>(null);
   const selectRef = useRef(onSelectSection);
   selectRef.current = onSelectSection;
 
@@ -278,15 +341,18 @@ export function useSettingsSearch<Id extends string>({
   const active = !suspended && applied.trim() !== "";
   const hits: SettingsSearchHit<Id>[] | null = useMemo(() => {
     if (!active) return null;
-    if (indexRef.current?.locale !== locale || indexRef.current.catalogs !== catalogs) {
-      indexRef.current = {
+    let cached = indexRef.current;
+    if (cached?.locale !== locale || cached.catalogs !== catalogs || cached.features !== features) {
+      cached = {
         locale,
         catalogs,
-        index: buildSettingsIndex(catalogLookup(i18n, locale), locale, currentPlatform()),
+        features,
+        index: buildSettingsIndex(catalogLookup(i18n, locale), locale, currentPlatform(), features),
       };
+      indexRef.current = cached;
     }
-    return searchSettings(indexRef.current.index, sections, applied, locale);
-  }, [active, applied, catalogs, i18n, locale, sections]);
+    return searchSettings(cached.index, sections, applied, locale);
+  }, [active, applied, catalogs, features, i18n, locale, sections]);
   const currentVisible = hits ? hits.some((hit) => hit.id === currentSection) : true;
   const bestHitRef = useRef<Id | null>(null);
   bestHitRef.current = hits ? bestSettingsHit(hits, currentSection) : null;
@@ -307,21 +373,11 @@ export function useSettingsSearch<Id extends string>({
     setPendingRow(null);
   }, [applied, containerRef]);
 
+  const sectionRef = useRef(currentSection);
+  sectionRef.current = currentSection;
   useEffect(() => {
     if (!pendingRow) return;
-    let frame = 0;
-    const started = performance.now();
-    const visited = new Set<HTMLElement>();
-    const attempt = () => {
-      const container = containerRef.current;
-      if (container) {
-        if (revealSettingsRow(container, pendingRow.label)) return;
-        openSettingsTabFor(container, pendingRow.path, visited);
-      }
-      if (performance.now() - started < REVEAL_TIMEOUT_MS) frame = requestAnimationFrame(attempt);
-    };
-    attempt();
-    return () => cancelAnimationFrame(frame);
+    return revealWhenShown(containerRef, pendingRow, () => sectionRef.current === pendingRow.id);
   }, [pendingRow, containerRef]);
 
   const revealRow = (id: Id, row: SettingsSearchRowHit) => {

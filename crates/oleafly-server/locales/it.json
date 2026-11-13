@@ -11,6 +11,8 @@
   "landing.open": "Apri in Oleafly",
   "landing.get": "Scarica Oleafly",
   "landing.open_browser": "Apri nel browser",
+  "published.gone_title": "Questa pagina non è disponibile",
+  "published.gone_body": "L'autore potrebbe averne annullato la pubblicazione, oppure questo server non mostra più pagine pubbliche.",
   "web.sign_in_body": "Accedi per aprire i tuoi progetti condivisi in questo browser.",
   "web.try_again": "Riprova",
   "web.other_browser": "Questo link completa l'accesso su {device}, il browser in cui hai iniziato. Apri invece l'email lì. Il link funziona ancora.",

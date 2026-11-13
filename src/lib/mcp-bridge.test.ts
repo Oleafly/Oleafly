@@ -95,6 +95,9 @@ import {
   validateToolInput,
 } from "@/lib/mcp-bridge";
 import { summarizeMcpError, summarizeMcpResult } from "@/store/mcp-activity";
+import { useHomeViewStore } from "@/store/home-view";
+import { useNotesViewStore } from "@/store/notes-view";
+import { useSettingsStore } from "@/store/settings";
 import { invoke } from "@tauri-apps/api/core";
 import type { SkillEntry } from "@/lib/skills";
 import { LATEX_ENGINE, UNKNOWN_ENGINE } from "@/lib/document-engine";
@@ -204,6 +207,17 @@ describe("mcp tool registry", () => {
     expect(ro.list_skills).toBeDefined();
     expect(ro.load_skill).toBeDefined();
     expect(ro.read_skill_file).toBeDefined();
+  });
+
+  it("adds the Notes tools only while Notes is on, and drops their writes in read-only mode", () => {
+    const reads = ["list_knowledge_notes", "search_notes", "read_note_by_id", "today_note", "list_note_tasks", "note_backlinks"];
+    const writes = ["create_note", "append_to_note", "edit_note_section"];
+    for (const name of [...reads, ...writes]) expect(registry[name], name).toBeUndefined();
+    const notes = buildMcpToolRegistry({ confirm: async () => true, readOnly: false, onImage: () => {}, notes: true });
+    for (const name of [...reads, ...writes]) expect(notes[name], name).toBeDefined();
+    const readOnly = buildMcpToolRegistry({ confirm: async () => true, readOnly: true, onImage: () => {}, notes: true });
+    for (const name of reads) expect(readOnly[name], name).toBeDefined();
+    for (const name of writes) expect(readOnly[name], name).toBeUndefined();
   });
 
   it("reports a project override as disabled and hands load_skill its script commands", async () => {
@@ -382,12 +396,14 @@ describe("mcp tool registry", () => {
   });
 
   it("keeps the Rust fail-safe mutation list in parity with the webview registry", () => {
+    const full = buildMcpToolRegistry({ confirm: async () => true, readOnly: false, onImage: () => {}, notes: true });
     const ro = buildMcpToolRegistry({
       confirm: async () => true,
       readOnly: true,
       onImage: () => {},
+      notes: true,
     });
-    const removed = Object.keys(registry).filter((name) => !ro[name]).sort();
+    const removed = Object.keys(full).filter((name) => !ro[name]).sort();
     const rust = readFileSync(
       join(process.cwd(), "src-tauri/src/mcp/native.rs"),
       "utf8",
@@ -404,7 +420,8 @@ describe("mcp tool registry", () => {
     const known = new Set([...block.matchAll(/"([a-z_]+)"/g)].map((match) => match[1]));
 
     expect(known.size).toBeGreaterThan(0);
-    expect(Object.keys(registry).filter((name) => !known.has(name))).toEqual([]);
+    const notes = buildMcpToolRegistry({ confirm: async () => true, readOnly: false, onImage: () => {}, notes: true });
+    expect(Object.keys(notes).filter((name) => !known.has(name))).toEqual([]);
   });
 
   it("exposes a plain JSON schema for every tool", () => {
@@ -430,6 +447,49 @@ describe("mcp tool registry", () => {
 
     expect(result).toMatchObject({ error: expect.stringContaining("could not be opened") });
     expect(mocks.filesState.openProject).toHaveBeenCalledWith("next", expect.any(Function));
+  });
+
+  it("lists notes as projects only while Notes is off", async () => {
+    const notes = useSettingsStore.getState().notes;
+    mocks.api.listProjects.mockResolvedValue([
+      { id: "paper", name: "Paper", kind: "document" },
+      { id: "idea", name: "Idea", kind: "note" },
+    ] as never);
+    useSettingsStore.setState({ notes: true });
+    expect(await registry.list_projects.execute({})).toEqual({
+      projects: [{ id: "paper", name: "Paper", kind: "document" }],
+    });
+    useSettingsStore.setState({ notes: false });
+    expect(await registry.list_projects.execute({})).toMatchObject({
+      projects: [{ id: "paper" }, { id: "idea" }],
+    });
+    useSettingsStore.setState({ notes });
+  });
+
+  it("open_project opens a note in Notes and leaves the open project alone", async () => {
+    const notes = useSettingsStore.getState().notes;
+    useSettingsStore.setState({ notes: true });
+    useHomeViewStore.setState({ page: "library" });
+    useNotesViewStore.setState({ requestedNoteId: null });
+    mocks.api.listProjects.mockResolvedValue([{ id: "idea", name: "Idea", kind: "note" }] as never);
+    mocks.filesState.projectId = "proj";
+    mocks.filesState.openProject.mockClear();
+    const local = buildMcpToolRegistry({
+      confirm: async () => true,
+      readOnly: false,
+      onImage: () => {},
+      mutationAllowed: () => true,
+    });
+
+    const result = await local.open_project.execute({ project_id: "idea" });
+
+    expect(result).toMatchObject({ success: true, project_id: "idea", opened_in: "notes" });
+    expect(mocks.filesState.openProject).not.toHaveBeenCalled();
+    expect(useHomeViewStore.getState().page).toBe("notes");
+    expect(useNotesViewStore.getState().requestedNoteId).toBe("idea");
+    useSettingsStore.setState({ notes });
+    useHomeViewStore.setState({ page: "library" });
+    useNotesViewStore.setState({ requestedNoteId: null });
   });
 
   it("validates required fields, types, bounds, and unexpected arguments", () => {

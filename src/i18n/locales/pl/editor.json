@@ -224,7 +224,13 @@
     "closeAssistantTabsCount_one": "Zamknij plik otwarty przez asystenta",
     "closeAssistantTabsCount_few": "Zamknij {{count}} pliki otwarte przez asystenta",
     "closeAssistantTabsCount_many": "Zamknij {{count}} plików otwartych przez asystenta",
-    "closeAssistantTabsCount_other": "Zamknij {{count}} pliku otwartego przez asystenta"
+    "closeAssistantTabsCount_other": "Zamknij {{count}} pliku otwartego przez asystenta",
+    "editAsMarkdown": "Edytuj jako Markdown",
+    "editAsNote": "Edytuj jako notatkę",
+    "noteAsMarkdown": "Edytujesz tę notatkę jako Markdown.",
+    "openInNotes": "Otwórz w Notatkach",
+    "moveIntoProject": "Przenieś do projektu",
+    "copyToMyNotes": "Skopiuj do moich notatek"
   },
   "projectInfo": {
     "trigger": "Informacje o projekcie",
@@ -1024,13 +1030,14 @@
         "environment": "Środowisko {{environment}}",
         "command": "Polecenie \\{{command}}",
         "latexSource": "Kod LaTeX",
+        "html": "HTML",
         "maketitlePreview": "Wygenerowane z tytułu dokumentu i metadanych autora.",
         "figurePreserved": "Zachowano dokładny kod rysunku.",
         "tablePreserved": "Zachowano dokładny kod tabeli.",
         "sourcePreserved": "Zachowano dokładny kod źródłowy",
         "editSource": "Edytuj kod źródłowy",
-        "summaryLabel": "{{label}}. Zachowano dokładny kod LaTeX.",
-        "inputLabel": "Dokładny kod bloku LaTeX"
+        "summaryLabel": "{{label}}. Zachowano dokładny kod źródłowy.",
+        "inputLabel": "Dokładny kod źródłowy bloku"
       },
       "inline": {
         "label": "Surowy kod w wierszu",

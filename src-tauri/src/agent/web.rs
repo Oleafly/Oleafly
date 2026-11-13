@@ -86,11 +86,18 @@ fn add_missing_web_tools(
     notices
 }
 
-pub(crate) fn prepare_run_web(
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum HostedWeb {
+    All,
+    SearchOnly,
+    Off,
+}
+
+pub(crate) fn prepare_run_web_with(
     request: &mut CompletionRequest,
     resolved: &Resolved,
     key: Option<SearchKey>,
-    hosted_allowed: bool,
+    hosted: HostedWeb,
 ) -> Result<RunWeb, String> {
     let Some(web) = request.web.filter(|web| web.any()) else {
         return Ok(RunWeb {
@@ -98,11 +105,30 @@ pub(crate) fn prepare_run_web(
             notices: Vec::new(),
         });
     };
-    let notices = if hosted_allowed {
-        add_local_web_tools(request, resolved, key.is_some())
-    } else {
-        request.web = None;
-        add_missing_web_tools(request, web, NativeWeb::default(), key.is_some())
+    let notices = match hosted {
+        HostedWeb::All => add_local_web_tools(request, resolved, key.is_some()),
+        HostedWeb::SearchOnly => {
+            let native = native_web(
+                &resolved.provider_id,
+                &resolved.wire,
+                &resolved.model_id,
+                Some(web),
+            );
+            let search = web.search && native.search;
+            request.web = search.then_some(WebTools {
+                search: true,
+                fetch: false,
+            });
+            let kept = NativeWeb {
+                search,
+                fetch: false,
+            };
+            add_missing_web_tools(request, web, kept, key.is_some())
+        }
+        HostedWeb::Off => {
+            request.web = None;
+            add_missing_web_tools(request, web, NativeWeb::default(), key.is_some())
+        }
     };
     let ctx = WebToolContext::new(key, WEB_USER_AGENT).map_err(|error| error.to_string())?;
     ctx.observe_messages(&request.messages);
@@ -255,21 +281,21 @@ mod tests {
     #[test]
     fn prepare_run_web_adds_only_missing_local_tools() {
         let mut request = web_request();
-        let run = prepare_run_web(
+        let run = prepare_run_web_with(
             &mut request,
             &anthropic_resolved("claude-opus-5-5"),
             None,
-            true,
+            HostedWeb::All,
         )
         .unwrap();
         assert!(request.tools.is_empty() && run.notices.is_empty() && run.ctx.is_some());
 
         let mut gemini = web_request();
-        let run = prepare_run_web(
+        let run = prepare_run_web_with(
             &mut gemini,
             &google_resolved("gemini-3.8-flash"),
             None,
-            true,
+            HostedWeb::All,
         )
         .unwrap();
         assert_eq!(
@@ -284,11 +310,11 @@ mod tests {
             run.notices.as_slice(),
             [AgentEvent::Notice { code, .. }] if code == "web_search_unavailable"
         ));
-        prepare_run_web(
+        prepare_run_web_with(
             &mut gemini,
             &google_resolved("gemini-3.8-flash"),
             Some(SearchKey::Brave("k".into())),
-            true,
+            HostedWeb::All,
         )
         .unwrap();
         assert_eq!(
@@ -309,8 +335,13 @@ mod tests {
         );
 
         let mut off = CompletionRequest::prompt("s", "u");
-        let run =
-            prepare_run_web(&mut off, &google_resolved("gemini-3.8-flash"), None, true).unwrap();
+        let run = prepare_run_web_with(
+            &mut off,
+            &google_resolved("gemini-3.8-flash"),
+            None,
+            HostedWeb::All,
+        )
+        .unwrap();
         assert!(run.ctx.is_none() && off.tools.is_empty());
     }
 
@@ -323,11 +354,11 @@ mod tests {
             names
         };
         let mut request = web_request();
-        let run = prepare_run_web(
+        let run = prepare_run_web_with(
             &mut request,
             &anthropic_resolved("claude-opus-5-5"),
             Some(SearchKey::Brave("k".into())),
-            false,
+            HostedWeb::Off,
         )
         .unwrap();
         assert_eq!(request.web, None);
@@ -343,11 +374,11 @@ mod tests {
         );
 
         let mut keyless = web_request();
-        let run = prepare_run_web(
+        let run = prepare_run_web_with(
             &mut keyless,
             &anthropic_resolved("claude-opus-5-5"),
             None,
-            false,
+            HostedWeb::Off,
         )
         .unwrap();
         assert_eq!(names(&keyless), ["web_fetch"]);
@@ -355,6 +386,71 @@ mod tests {
             run.notices.as_slice(),
             [AgentEvent::Notice { code, .. }] if code == "web_search_unavailable"
         ));
+    }
+
+    #[test]
+    fn search_only_keeps_hosted_search_and_runs_fetch_locally() {
+        let names = |request: &CompletionRequest| {
+            let mut names: Vec<String> =
+                request.tools.iter().map(|tool| tool.name.clone()).collect();
+            names.sort_unstable();
+            names
+        };
+        let mut request = web_request();
+        let run = prepare_run_web_with(
+            &mut request,
+            &anthropic_resolved("claude-opus-5-5"),
+            None,
+            HostedWeb::SearchOnly,
+        )
+        .unwrap();
+        assert_eq!(
+            request.web,
+            Some(WebTools {
+                search: true,
+                fetch: false
+            })
+        );
+        assert_eq!(names(&request), ["web_fetch"]);
+        assert!(run.ctx.is_some() && run.notices.is_empty());
+        let body =
+            oleafly_agent::complete::wire_body(&anthropic_resolved("claude-opus-5-5"), &request)
+                .unwrap()
+                .to_string();
+        assert!(
+            body.contains("web_search_2") && !body.contains("web_fetch_2"),
+            "{body}"
+        );
+
+        let mut fetch_only = CompletionRequest {
+            web: Some(WebTools {
+                search: false,
+                fetch: true,
+            }),
+            ..CompletionRequest::prompt("s", "u")
+        };
+        let run = prepare_run_web_with(
+            &mut fetch_only,
+            &anthropic_resolved("claude-opus-5-5"),
+            None,
+            HostedWeb::SearchOnly,
+        )
+        .unwrap();
+        assert_eq!(fetch_only.web, None);
+        assert_eq!(names(&fetch_only), ["web_fetch"]);
+        assert!(run.ctx.is_some());
+
+        let mut gemini = web_request();
+        let run = prepare_run_web_with(
+            &mut gemini,
+            &google_resolved("gemini-3.8-flash"),
+            Some(SearchKey::Brave("k".into())),
+            HostedWeb::SearchOnly,
+        )
+        .unwrap();
+        assert_eq!(gemini.web, None);
+        assert_eq!(names(&gemini), ["web_fetch", "web_search"]);
+        assert!(run.ctx.is_some() && run.notices.is_empty());
     }
 
     #[test]

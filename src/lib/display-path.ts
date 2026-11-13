@@ -5,6 +5,7 @@ import { isSeparator, withoutVerbatimPrefix } from "@/lib/path-utils";
 import { escapeRegExp } from "@/lib/regexp";
 import { createEmitter } from "@/lib/emitter";
 import { displayHomes } from "@/lib/tauri";
+import { trimTrailingCharacters } from "@/lib/trim-character";
 
 /**
  * Shows paths under the user's home folder as `~/…`, so a settings screen or a
@@ -218,20 +219,14 @@ const PATH_PATTERN = new RegExp(
   `${PATH_START}(${HOME_PATH}|${DRIVE_PATH}|${UNC_PATH}|${POSIX_PATH})`,
   "gu",
 );
-const TRAILING_PUNCTUATION = new Set(".,;:!?)]}");
-
-function withoutTrailingPunctuation(value: string): string {
-  let end = value.length;
-  while (end > 0 && TRAILING_PUNCTUATION.has(value.charAt(end - 1))) end -= 1;
-  return value.slice(0, end);
-}
+const TRAILING_PUNCTUATION = ".,;:!?)]}";
 
 export function pathParts(text: string): PathPart[] {
   if (typeof text !== "string" || text.length === 0) return [];
   const parts: PathPart[] = [];
   let cursor = 0;
   for (const match of text.matchAll(PATH_PATTERN)) {
-    const path = withoutTrailingPunctuation(match[2]);
+    const path = trimTrailingCharacters(match[2], TRAILING_PUNCTUATION);
     if (!path) continue;
     const start = match.index + (match[1]?.length ?? 0);
     if (start > cursor) parts.push({ text: text.slice(cursor, start), path: false });

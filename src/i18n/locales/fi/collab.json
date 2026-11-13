@@ -230,7 +230,11 @@
     "history_unavailable": "Tämän projektin historia ei ole vielä tällä koneella. Yritä uudelleen, kun se on synkronoitu.",
     "account_storage_full": "Projektin omistajan tililtä on loppunut tallennustila tällä palvelimella. Poista joitakin tiedostoja vapauttaaksesi tilaa tai pyydä palvelimen ylläpitäjältä lisää tilaa.",
     "too_many_projects": "Sinulla on jo niin monta jaettua projektia kuin tämä palvelin sallii. Lopeta yhden projektin jakaminen ennen kuin jaat uuden.",
-    "too_many_uploads": "Olet lähettänyt viimeisen tunnin aikana liian monta tiedostoa. Yritä myöhemmin uudelleen."
+    "too_many_uploads": "Olet lähettänyt viimeisen tunnin aikana liian monta tiedostoa. Yritä myöhemmin uudelleen.",
+    "public_notes_off": "Tämä palvelin ei salli julkisia muistiinpanolinkkejä. Ylläpitäjä voi ottaa ne käyttöön palvelimen asetuksista.",
+    "too_many_pages": "Sinulla on jo niin monta julkista sivua kuin tämä palvelin sallii. Peru yhden julkaisu ja yritä sitten uudelleen.",
+    "page_too_large": "Tämä muistiinpano on liian suuri julkaistavaksi. Poista osa kuvista ja yritä sitten uudelleen.",
+    "page_taken_down": "Ylläpitäjä poisti tämän sivun näkyvistä, joten muistiinpanoa ei voi julkaista uudelleen, ennen kuin ylläpitäjä palauttaa sen."
   },
   "roles": {
     "admin": "Ylläpitäjä",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "Kirjautuminen sähköpostilla",
         "description": "Käyttäjät voivat kirjautua sähköpostiosoitteeseensa lähetetyllä linkillä. Tämä vaatii palvelimen sähköpostiasetukset. Käyttösääntösi ratkaisevat edelleen, kuka pääsee sisään."
+      },
+      "publicNotesAllowed": {
+        "label": "Salli julkiset muistiinpanolinkit",
+        "description": "Jäsenet voivat julkaista muistiinpanosta vain luku -kopion linkkiin, jonka kuka tahansa voi avata kirjautumatta."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "Hylkäsi vieraskutsun",
         "guestInvitationRevoked": "Perui vieraskutsun",
         "guestAdmissionEnded": "Päätti vieraan pääsyn palvelimelle",
-        "unknown": "Muu palvelintapahtuma"
+        "unknown": "Muu palvelintapahtuma",
+        "notePublished": "Julkaisi muistiinpanon julkiseen linkkiin",
+        "noteUnpublished": "Perui muistiinpanon julkaisun",
+        "noteTakenDown": "Poisti julkaistun muistiinpanon näkyvistä",
+        "noteRestored": "Palautti julkaistun muistiinpanon"
       },
       "details": {
         "project": "Projekti: {{title}}",
@@ -455,7 +467,8 @@
         "device": "Laite: {{name}}",
         "byAdmin": "Hallintakonsolista",
         "settingOn": "{{setting}}: käytössä",
-        "settingOff": "{{setting}}: ei käytössä"
+        "settingOff": "{{setting}}: ei käytössä",
+        "note": "Muistiinpano: {{title}}"
       }
     },
     "email": {
@@ -509,6 +522,7 @@
     "copyAndShare": "Kopioi Oleaflyhin ja jaa",
     "title": "Jaa projekti {{name}}",
     "description": "Työstä tätä projektia muiden kanssa yhteistyöpalvelimen kautta.",
+    "noteDescription": "Kirjoita tätä muistiinpanoa muiden kanssa yhteistyöpalvelimen kautta.",
     "loading": "Ladataan…",
     "linked": "Tämä projekti on Oleaflyn ulkopuolinen kansio. Oleafly kopioi sen kirjastoosi ja jakaa kopion. Alkuperäiseen kansioon ei kosketa.",
     "editCopy": "Tämä on jaettu kopio. Muokkaa tästä lähtien tätä kopiota, älä alkuperäistä kansiota.",
@@ -526,12 +540,15 @@
     "tooLarge": "Nämä tiedostot ylittävät palvelimen rajan, joka on {{size}} MB. Pienennä tai poista ne ennen jakamista.",
     "renamed": "Kaikki nimet eivät toimi jokaisella koneella. Muut saavat nämä tiedostot hieman eri nimellä.",
     "excluded": "Ei jaeta: muut käännöstulosteet, Oleafly-asetukset ja Git-historia. Uusin käännetty PDF jaetaan, jotta kanssakirjoittajat voivat lukea sen selaimessa.",
+    "noteExcluded": "Ei jaeta: Oleafly-asetukset ja Git-historia.",
     "start": "Jaa",
     "preparing": "Valmistellaan projektia…",
     "uploading": "Lähetetään kuvia ja muita tiedostoja: {{done}}/{{total}}",
     "saving": "Tallennetaan projektia palvelimelle…",
     "failed": "Jakaminen ei valmistunut, joten mitään ei jaettu.",
-    "trustAgain": "Kuka tahansa, jonka lisäät projektiin, voi muuttaa sen tiedostoja, joten Oleafly pyytää sinua luottamaan siihen uudelleen tällä koneella ennen kuin se ajaa sille agentteja, päätteen komentoja tai shell escapea."
+    "trustAgain": "Kuka tahansa, jonka lisäät projektiin, voi muuttaa sen tiedostoja, joten Oleafly pyytää sinua luottamaan siihen uudelleen tällä koneella ennen kuin se ajaa sille agentteja, päätteen komentoja tai shell escapea.",
+    "projectNotesShared": "Projektin muistiinpanot jaetaan kaikille tämän projektin jäsenille. Henkilökohtaiset muistiinpanot pysyvät yksityisinä.",
+    "personalNotesPrivate": "Henkilökohtaiset muistiinpanot pysyvät yksityisinä. Vain projektin muistiinpanokansiossa olevat muistiinpanot jaetaan."
   },
   "manage": {
     "sharedOn": "Jaettu palvelimella {{server}}",
@@ -789,7 +806,8 @@
       "settings": "Palvelimen asetukset",
       "email": "Sähköposti",
       "log": "Tietoturvaloki",
-      "checks": "Yhteystarkistukset"
+      "checks": "Yhteystarkistukset",
+      "pages": "Julkaistut muistiinpanot"
     },
     "health": {
       "label": "Palvelimen tila: {{status}}",
@@ -956,6 +974,30 @@
     },
     "checks": {
       "description": "Tarkista yhteys tältä koneelta palvelimelle."
+    },
+    "pages": {
+      "description": "Vain luku -sivut, joita käyttäjät ovat tehneet muistiinpanoistaan. Kuka tahansa, jolla on sivun linkki, voi lukea sen.",
+      "loading": "Ladataan julkaistuja muistiinpanoja…",
+      "empty": "Kukaan ei ole vielä julkaissut muistiinpanoa tällä palvelimella.",
+      "limit": "Näytetään {{shown}} uusinta sivua.",
+      "columns": {
+        "title": "Muistiinpano",
+        "author": "Tekijä",
+        "updated": "Julkaistu",
+        "actions": "Toiminnot"
+      },
+      "noAuthor": "Poistettu tili",
+      "takenDown": "Poistettu näkyvistä",
+      "openNamed": "Avaa {{title}}",
+      "takeDown": "Poista näkyvistä",
+      "takeDownNamed": "Poista {{title}} näkyvistä",
+      "restore": "Palauta",
+      "restoreNamed": "Palauta {{title}}",
+      "takeDownConfirm": {
+        "title": "Poistetaanko {{title}} näkyvistä?",
+        "description": "Julkinen linkki lakkaa toimimasta, kunnes palautat sivun. Tekijä säilyttää muistiinpanon, mutta ei voi julkaista sitä uudelleen sillä välin.",
+        "confirm": "Poista näkyvistä"
+      }
     }
   },
   "links": {
@@ -1229,5 +1271,41 @@
     "broughtIn": "Muutoksesi projektista {{name}} ovat nyt tässä projektissa.",
     "retry": "Yritä uudelleen",
     "dismiss": "Sulje"
+  },
+  "publish": {
+    "tabs": {
+      "people": "Henkilöt",
+      "publish": "Julkaisu"
+    },
+    "intro": "Julkaiseminen tuo tästä muistiinpanosta vain luku -kopion julkiseen linkkiin. Kuka tahansa, jolla on linkki, voi lukea sen kirjautumatta.",
+    "contents": "Kuvat, diagrammit, kaaviot, matematiikka, Typst ja molekyylit tulevat mukaan. Lohkot, joiden tyyppi on HTML, React, CSV, sekvenssi tai muistikirja, jätetään pois.",
+    "checking": "Tarkistetaan julkista sivua…",
+    "loadFailed": "Oleafly ei voinut tarkistaa tämän muistiinpanon julkista sivua.",
+    "notAllowed": "Palvelin {{server}} ei salli julkisia muistiinpanolinkkejä. Ylläpitäjä voi ottaa ne käyttöön palvelimen asetuksista.",
+    "ownerOnly": "Vain muistiinpanon omistaja voi julkaista sen.",
+    "linkLabel": "Julkinen linkki",
+    "open": "Avaa",
+    "publishedAt": "Julkaistu viimeksi {{date}}",
+    "stale": "Olet muuttanut muistiinpanoa viimeisimmän julkaisun jälkeen. Julkaise uudelleen, niin sivu päivittyy.",
+    "publish": "Julkaise",
+    "republish": "Julkaise uudelleen",
+    "unpublish": "Peru julkaisu",
+    "failed": "Julkaisu ei valmistunut.",
+    "unpublishConfirm": {
+      "title": "Perutaanko muistiinpanon \"{{name}}\" julkaisu?",
+      "description": "Julkinen linkki lakkaa toimimasta heti. Ne, jotka ovat tallentaneet sivusta kopion, säilyttävät sen.",
+      "confirm": "Peru julkaisu"
+    },
+    "list": {
+      "title": "Julkaistut muistiinpanot",
+      "description": "Muistiinpanojesi vain luku -sivut tällä palvelimella. Kuka tahansa, jolla on linkki, voi lukea ne.",
+      "loadFailed": "Oleafly ei voinut ladata julkaistuja muistiinpanojasi.",
+      "empty": "Et ole julkaissut täällä yhtään muistiinpanoa.",
+      "openNamed": "Avaa {{name}}",
+      "unpublishNamed": "Peru julkaisu: {{name}}",
+      "updated": "Julkaistu {{date}}"
+    },
+    "takenDown": "Ylläpitäjä poisti tämän sivun näkyvistä. Lukijat eivät voi avata sitä, etkä voi julkaista sitä uudelleen, ennen kuin ylläpitäjä palauttaa sen. Voit silti perua julkaisun.",
+    "tooOld": "Palvelin {{server}} on liian vanha julkisille muistiinpanolinkeille. Sen ylläpitäjän täytyy päivittää Oleafly Server."
   }
 }

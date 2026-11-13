@@ -46,6 +46,23 @@ function stripComments(source: string): string {
     .join("\n");
 }
 
+function clippedPreview(text: string): string {
+  if (text.length <= PREVIEW_TEXT_LIMIT) return text;
+  return `${text.slice(0, PREVIEW_TEXT_LIMIT - 1).trimEnd()}…`;
+}
+
+function withoutTags(text: string): string {
+  let out = "";
+  let index = 0;
+  for (let open = text.indexOf("<"); open !== -1; open = text.indexOf("<", index)) {
+    const close = text.indexOf(">", open + 1);
+    if (close === -1) break;
+    out += `${text.slice(index, open)} `;
+    index = close + 1;
+  }
+  return out + text.slice(index);
+}
+
 function readableLatex(source: string): string {
   const escaped: string[] = [];
   const protect = (value: string) => {
@@ -54,27 +71,25 @@ function readableLatex(source: string): string {
   };
   const text = stripComments(source.slice(0, PREVIEW_SOURCE_LIMIT))
     .replaceAll(String.raw`{\L}`, "Ł")
-    .replace(/\\([%$&#_{}])/gu, (_match, value: string) => protect(value))
-    .replace(/\\thanks\s*\{[^{}]*\}/gu, " ")
-    .replace(/\\footnotemark(?:\[[^\]]*\])?/gu, " ")
-    .replace(/\\L(?![A-Za-z])/gu, "Ł")
+    .replaceAll(/\\([%$&#_{}])/gu, (_match, value: string) => protect(value))
+    .replaceAll(/\\thanks\s*\{[^{}]*\}/gu, " ")
+    .replaceAll(/\\footnotemark(?:\[[^\]]*\])?/gu, " ")
+    .replaceAll(/\\L(?![A-Za-z])/gu, "Ł")
     .replaceAll(String.raw`\ `, " ")
     .replaceAll(String.raw`\\`, " · ")
-    .replace(/\\(?:quad|qquad|enspace|hfill)\b/gu, " ")
-    .replace(/\\and\b/gu, " · ")
-    .replace(/\\(?:begin|end)\{[^}]+\}/gu, " ")
-    .replace(/\\[A-Za-z@]+\*?(?:\s*\[[^\]]*\])?/gu, " ")
-    .replace(/[{}]/gu, " ")
+    .replaceAll(/\\(?:quad|qquad|enspace|hfill)\b/gu, " ")
+    .replaceAll(/\\and\b/gu, " · ")
+    .replaceAll(/\\(?:begin|end)\{[^}]+\}/gu, " ")
+    .replaceAll(/\\[A-Za-z@]+\*?(?:\s*\[[^\]]*\])?/gu, " ")
+    .replaceAll(/[{}]/gu, " ")
     .replaceAll("~", " ")
-    .replace(/OLEAFLYESCAPED(\d+)X/gu, (_match, index: string) => escaped[Number(index)] ?? "")
-    .replace(/[{}]/gu, " ")
-    .replace(/\\+/gu, " ")
+    .replaceAll(/OLEAFLYESCAPED(\d+)X/gu, (_match, index: string) => escaped[Number(index)] ?? "")
+    .replaceAll(/[{}]/gu, " ")
+    .replaceAll(/\\+/gu, " ")
     .replaceAll("·", " · ")
-    .replace(/\s+/gu, " ")
+    .replaceAll(/\s+/gu, " ")
     .trim();
-
-  if (text.length <= PREVIEW_TEXT_LIMIT) return text;
-  return `${text.slice(0, PREVIEW_TEXT_LIMIT - 1).trimEnd()}…`;
+  return clippedPreview(text);
 }
 
 function blockLabel(
@@ -95,6 +110,13 @@ export function rawBlockPresentation(source: string): {
   label: string;
   preview: string;
 } {
+  if (/^\s*<[a-z!/]/iu.test(source)) {
+    const text = withoutTags(source.slice(0, PREVIEW_SOURCE_LIMIT)).replaceAll(/\s+/gu, " ").trim();
+    return {
+      label: wysiwygMessage("block.html"),
+      preview: clippedPreview(text) || wysiwygMessage("block.sourcePreserved"),
+    };
+  }
   const environment = environmentName(source);
   const command = commandName(source);
   const name = environment ?? command ?? "";
@@ -126,7 +148,7 @@ export function rawBlockPresentation(source: string): {
 }
 
 export function compactRawInlineSource(source: string): string {
-  const normalized = source.replace(/\s+/gu, " ").trim();
+  const normalized = source.replaceAll(/\s+/gu, " ").trim();
   if (
     normalized === "~" ||
     /^\\textasciitilde\s*\{\s*\}$/u.test(normalized)

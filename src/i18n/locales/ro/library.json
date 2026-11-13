@@ -3,6 +3,7 @@
     "newProject": "Proiect nou",
     "search": "Caută în documente ({{shortcut}})",
     "diagramComposer": "Compozitorul de diagrame",
+    "notes": "Notițe",
     "tools": "Instrumente Oleafly",
     "settings": "Setări"
   },
@@ -55,6 +56,7 @@
       "kindDocument": "Document",
       "kindImage": "Imagine",
       "kindDiagram": "Diagramă",
+      "kindNote": "Notiță",
       "bookmark": "Semn de carte",
       "bookmarkAll": "Orice stare",
       "bookmarkYes": "Cu semn de carte",
@@ -138,6 +140,7 @@
       "document": "document",
       "image": "imagine",
       "diagram": "diagramă",
+      "note": "notiță",
       "external": "extern",
       "overleaf": "Overleaf"
     },

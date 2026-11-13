@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { isTauri } from "@tauri-apps/api/core";
 import { FontFamilyCombobox, type FontFamilyOption } from "@/components/editor/FontFamilyPicker";
@@ -216,6 +216,7 @@ export function SystemFontSettingsRow({
   onChange,
   disabled = false,
   disabledHint,
+  adornment,
 }: Readonly<{
   testId: string;
   id: string;
@@ -226,6 +227,7 @@ export function SystemFontSettingsRow({
   onChange: (value: string) => void;
   disabled?: boolean;
   disabledHint?: string;
+  adornment?: ReactNode;
 }>) {
   const { t } = useTranslation(["settings"]);
   const { fonts, native, load } = useSystemFontFamilies(use);
@@ -247,6 +249,17 @@ export function SystemFontSettingsRow({
     />
   );
 
+  const control =
+    disabled && disabledHint ? (
+      <Tooltip label={disabledHint} side="top" wide>
+        <span className="inline-flex cursor-not-allowed">
+          <span className="pointer-events-none inline-flex">{picker}</span>
+        </span>
+      </Tooltip>
+    ) : (
+      picker
+    );
+
   return (
     <SettingsRow
       testId={testId}
@@ -260,14 +273,13 @@ export function SystemFontSettingsRow({
         ) : null
       }
       control={
-        disabled && disabledHint ? (
-          <Tooltip label={disabledHint} side="top" wide>
-            <span className="inline-flex cursor-not-allowed">
-              <span className="pointer-events-none inline-flex">{picker}</span>
-            </span>
-          </Tooltip>
+        adornment ? (
+          <div className="flex shrink-0 items-center gap-2">
+            {adornment}
+            {control}
+          </div>
         ) : (
-          picker
+          control
         )
       }
     />

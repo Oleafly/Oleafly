@@ -12,6 +12,7 @@ import {
   PROOFREADING_PROTOCOL_VERSION,
   createGrammarSuppressionKeyer,
   guardProofreadingDiagnostics,
+  isProofreadingSurface,
   type ProofreadingDialect,
   type ProofreadingDiagnostic,
   type ProofreadingCancelRequest,
@@ -137,7 +138,7 @@ function yieldToMessages(): Promise<void> {
 }
 
 function cancelLanes(surface: unknown, path: unknown) {
-  if (surface !== "source" && surface !== "visual") return;
+  if (!isProofreadingSurface(surface)) return;
   if (path !== undefined && typeof path !== "string") return;
   const matches = (requestLane: string) => {
     const [laneSurface, , lanePath] = requestLane.split("\0");
@@ -226,7 +227,7 @@ function validateRequest(request: ProofreadingRequest): string | null {
     identity.revision < 0 ||
     !Number.isSafeInteger(identity.requestGeneration) ||
     identity.requestGeneration <= 0 ||
-    (identity.surface !== "source" && identity.surface !== "visual")
+    !isProofreadingSurface(identity.surface)
   ) {
     return "Malformed proofreading identity.";
   }

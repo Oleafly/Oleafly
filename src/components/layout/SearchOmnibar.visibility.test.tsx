@@ -10,7 +10,7 @@ vi.mock("@/lib/theme", () => ({
   useTheme: () => ({ theme: "dark", toggleTheme: vi.fn() }),
 }));
 vi.mock("@/lib/tauri", () => ({
-  searchDocs: vi.fn().mockResolvedValue([]),
+  textSearch: vi.fn().mockResolvedValue([]),
 }));
 vi.mock("@/components/editor/cm/controller", () => ({
   gotoLine: vi.fn(),

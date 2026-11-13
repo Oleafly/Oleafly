@@ -63,8 +63,8 @@
     "pandocRequired": "Pandoc 無法使用。請在設定 > 引擎 > Markdown 中修復，然後重新編譯。",
     "pandocSetupFailed": "Pandoc 設定失敗：{{message}}",
     "pdfChanged": "Oleafly 讀取編譯出的 PDF 時它發生了變化，因此保留先前的預覽。請重新編譯以更新。",
-    "superseded": "較新的編譯已取代這一次。",
     "retry": "重新編譯",
+    "superseded": "較新的編譯已取代這一次。",
     "syntaxCheckFailed": "語法檢查發現錯誤。請修正它們，或關閉「{{setting}}」。",
     "taggedFailed": "標記式編譯失敗：{{message}}",
     "taggedPdfChanged": "Oleafly 讀取標記式 PDF 時它發生了變化，因此保留先前的預覽。請重新編譯以更新。",
@@ -314,6 +314,7 @@
   },
   "mcp": {
     "deniedByRules": "已被 approvals.toml 中的拒絕規則拒絕。",
+    "createTodaySummary": "建立今日筆記「{{title}}」",
     "openProjectSummary": "開啟專案 {{id}}",
     "rulesUnreadable": "無法讀取 approvals.toml，因此已拒絕。",
     "useToolSummary": "使用 {{server}} MCP 伺服器的 {{tool}}"
@@ -336,6 +337,7 @@
   },
   "mermaid": {
     "diagram": "圖表",
+    "remoteBlocked": "這張圖表會從網際網路載入圖片或樣式，因此沒有繪製。",
     "renderFailed": "無法繪製圖表。",
     "rendering": "正在繪製圖表"
   },
@@ -548,6 +550,7 @@
   "tinytex": {
     "installFailed": "無法安裝 TinyTeX。",
     "installGuide": "安裝指南",
+    "tryAgain": "再試一次",
     "installed": "已安裝 TinyTeX。",
     "phase": {
       "addingPackages": "正在新增套件…",
@@ -557,8 +560,7 @@
       "unpacking": "正在解壓縮…"
     },
     "removeFailed": "無法移除 TinyTeX。",
-    "removed": "已移除 TinyTeX。",
-    "tryAgain": "再試一次"
+    "removed": "已移除 TinyTeX。"
   },
   "toolActivity": {
     "labels": {

@@ -1,5 +1,5 @@
 import { StarterKit } from "@tiptap/starter-kit";
-import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
+import { TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import { Markdown } from "tiptap-markdown";
 import type { AnyExtension } from "@tiptap/core";
 import { ColorBox, TextColor } from "./color";
@@ -7,15 +7,21 @@ import { Figure, FigureCaption } from "./figure";
 import { Footnote } from "./footnote";
 import { LatexHeadingAttributes } from "./heading";
 import { MarkdownCodeBlock } from "./markdown/code-block";
+import { MarkdownFootnotes } from "./markdown/footnote-reference";
+import { MarkdownHorizontalRule } from "./markdown/horizontal-rule";
 import { MarkdownImage } from "./markdown/image";
 import { MarkdownLink } from "./markdown/link";
+import { MarkdownTable } from "./markdown/table";
 import { MarkdownText } from "./markdown/text";
 import { MathDisplay, MathInline } from "./math/nodes";
 import type { WysiwygExtensionOptions } from "./options";
 import { RawBlock } from "./raw-block";
 import { RawInline } from "./raw-inline";
+import { Subscript, Superscript } from "./script-marks";
 import { LatexTableAttributes, TableCaption, TableFloat } from "./table-float";
 import { Theorem } from "./theorem";
+
+const APP_ITEM_LINK = /^oleafly:\/\/(?:note|project)\/[\w-]+\/?(?:#[^\s#]*)?$/iu;
 
 export function createWysiwygExtensions(options: WysiwygExtensionOptions = {}): AnyExtension[] {
   const renderMath = options.renderMath ?? null;
@@ -29,17 +35,19 @@ export function createWysiwygExtensions(options: WysiwygExtensionOptions = {}): 
     }),
     MarkdownCodeBlock.configure({ enableTabIndentation: true }),
     MarkdownText,
+    MarkdownHorizontalRule.configure({ typedRule: options.markdownTyping ?? false }),
     MarkdownLink.configure({
       localizeHref,
       openHref: options.openLinkHref ?? null,
       // A link copied out of the preview carries the app's own address. On
       // macOS and Linux that is `tauri://localhost`, a scheme Tiptap refuses,
       // so the link was dropped before it could be made relative.
-      isAllowedUri: (url, context) => context.defaultValidate(url) || (localizeHref !== null && localizeHref(url) !== null),
+      isAllowedUri: (url, context) =>
+        context.defaultValidate(url) || APP_ITEM_LINK.test(url) || (localizeHref !== null && localizeHref(url) !== null),
     }),
     LatexHeadingAttributes,
     MarkdownImage.configure({ inline: false }),
-    Table.configure({ resizable: false }),
+    MarkdownTable.configure({ resizable: false }),
     TableRow,
     TableHeader,
     TableCell,
@@ -47,6 +55,9 @@ export function createWysiwygExtensions(options: WysiwygExtensionOptions = {}): 
     Markdown,
     RawBlock,
     RawInline,
+    MarkdownFootnotes,
+    Superscript,
+    Subscript,
     MathInline.configure({ renderMath }),
     MathDisplay.configure({ renderMath }),
     Footnote,

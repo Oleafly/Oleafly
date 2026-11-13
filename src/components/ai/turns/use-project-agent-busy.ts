@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { activeChatRun, subscribeChatRun } from "@/components/ai/chat-run-registry";
+import { projectHasChatRun, subscribeChatRun } from "@/components/ai/chat-run-registry";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 
 export function useProjectAgentBusy(projectId: string): boolean {
@@ -13,7 +13,7 @@ export function useProjectAgentBusy(projectId: string): boolean {
   );
   const builtInBusy = useSyncExternalStore(
     subscribeChatRun,
-    () => activeChatRun()?.projectId === projectId,
+    () => projectHasChatRun(projectId),
     () => false,
   );
   return cliBusy || builtInBusy;

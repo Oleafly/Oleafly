@@ -113,7 +113,7 @@ async function setProjectLanguage(page: TauriPage, label: string) {
 }
 
 async function returnToLibrary(page: TauriPage): Promise<void> {
-  await page.click('[title="Back to library"]');
+  await page.click('[data-toolbar-part="home"][aria-label="Home"]');
   await page.waitForFunction(
     `!!document.querySelector('[data-testid="library"][data-projects-loaded="true"]')`,
     30_000,

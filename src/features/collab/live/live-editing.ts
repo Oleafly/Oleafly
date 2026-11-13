@@ -1,13 +1,16 @@
 import { getEditorDocumentPath, getEditorView, subscribeEditorDocument } from "@oleafly/editor";
 import { setCollabEditorExtension } from "@/components/editor/cm/collab-slot";
-import { installCollabEditorPort, useCollabEditorGate } from "@/lib/collab-live-bridge";
+import {
+  installCollabEditorPort,
+  noteLiveHolds,
+  onNoteLiveHoldsChange,
+  useCollabEditorGate,
+} from "@/lib/collab-live-bridge";
 import { i18n } from "@/i18n";
+import { mirrorFileText } from "@/lib/live-file-mirror";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import {
-  collabDocChange,
-  collabDocClose,
-  collabDocOpen,
   collabLiveFlush,
   collabPresenceLeave,
   collabPresenceSet,
@@ -20,25 +23,12 @@ import { useIndexStore } from "@/store/project-index";
 import { collabErrorMessage } from "../errors";
 import { canEditProjectRole, isReadOnlyProjectRole } from "../roles";
 import { LiveSessions } from "./live-sessions";
-import { type LivePeer, type LiveSession, useCollabLiveStore } from "./live-store";
-import { createPresencePublisher, type Presence } from "./presence";
+import { type LiveSession, useCollabLiveStore } from "./live-store";
+import { createPresencePublisher, inOrder, type Presence, peerCursors } from "./presence";
 import { type RemoteCursor, type RemoteCursorSource, remoteCursors } from "./remote-cursors";
+import { collabSessionTransport } from "./transport";
 
-export function peerCursors(peers: Record<string, LivePeer>, path: string | null): RemoteCursor[] {
-  if (!path) return [];
-  const cursors: RemoteCursor[] = [];
-  for (const peer of Object.values(peers)) {
-    if (peer.path !== path || peer.cursor === null) continue;
-    cursors.push({
-      id: peer.deviceId,
-      name: peer.person?.display_name ?? null,
-      hue: peer.hue,
-      head: peer.cursor,
-      anchor: peer.anchor ?? peer.cursor,
-    });
-  }
-  return cursors;
-}
+export { peerCursors } from "./presence";
 
 function sameCursors(a: readonly RemoteCursor[], b: readonly RemoteCursor[]): boolean {
   return (
@@ -75,14 +65,6 @@ function peerCursorSource(activity: () => void): RemoteCursorSource {
   };
 }
 
-function mirrorText(projectId: string, path: string, text: string): void {
-  useFilesStore.setState((state) => {
-    const file = state.files[path];
-    if (state.projectId !== projectId || !file || file.dirty || file.content === text) return state;
-    return { files: { ...state.files, [path]: { ...file, content: text } } };
-  });
-}
-
 export const BACKGROUND_INDEX_MS = 400;
 export const HAND_BACK_WAIT_MS = 1_500;
 export const REFUSAL_FRESH_MS = 10_000;
@@ -110,13 +92,6 @@ function backgroundIndexer(projectId: string) {
   };
 }
 
-function inOrder(): (call: () => Promise<void>) => void {
-  let last = Promise.resolve();
-  return (call) => {
-    last = last.then(call).catch((error) => logError("collab presence", error));
-  };
-}
-
 function currentPresence(projectId: string): Presence {
   const files = useFilesStore.getState();
   const path = files.projectId === projectId ? files.activePath : null;
@@ -138,18 +113,14 @@ export function startLiveEditing(live: LiveSession): () => void {
     return () => undefined;
   });
   const sessions = new LiveSessions({
-    transport: {
-      open: (path, onMessage) => collabDocOpen(projectId, path, onMessage),
-      change: (fileId, rev, op) => collabDocChange(projectId, fileId, rev, op),
-      close: (fileId, session) => collabDocClose(projectId, fileId, session),
-    },
+    transport: collabSessionTransport(projectId),
     readOnly: isViewer,
     initialText: (path) => {
       const files = useFilesStore.getState();
       return files.projectId === projectId ? (files.files[path]?.content ?? null) : null;
     },
     mirror: (path, text) => {
-      mirrorText(projectId, path, text);
+      mirrorFileText(projectId, path, text);
       indexer.schedule(path);
     },
     detached: (path, text, edited, shared) => {
@@ -203,12 +174,19 @@ export function startLiveEditing(live: LiveSession): () => void {
     }
   });
 
-  const queue = inOrder();
+  const queue = inOrder("collab presence");
   const presence = createPresencePublisher(
     () => currentPresence(projectId),
-    ({ path, cursor, anchor }) => queue(() => collabPresenceSet(projectId, path, cursor, anchor)),
+    ({ path, cursor, anchor }) => {
+      if (!noteLiveHolds(projectId, path)) queue(() => collabPresenceSet(projectId, path, cursor, anchor));
+    },
     () => queue(() => collabPresenceLeave(projectId)),
   );
+  const stopNoteHolds = onNoteLiveHoldsChange(() => {
+    const { path, cursor, anchor } = currentPresence(projectId);
+    if (noteLiveHolds(projectId, path)) return;
+    queue(() => collabPresenceSet(projectId, path, cursor, anchor));
+  });
   const unsubscribeActive = useFilesStore.subscribe((state, previous) => {
     if (state.activePath !== previous.activePath) presence.schedule();
   });
@@ -224,6 +202,7 @@ export function startLiveEditing(live: LiveSession): () => void {
 
   return () => {
     presence.dispose();
+    stopNoteHolds();
     unsubscribeActive();
     unsubscribeTabs();
     unsubscribeRole();

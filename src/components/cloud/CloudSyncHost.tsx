@@ -1,4 +1,5 @@
-import { type ComponentType, lazy, useEffect, useState } from "react";
+import { type ComponentType, useEffect, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { cloudState } from "@/lib/cloud";
 import { mountOnFirstOpen } from "@/lib/mount-on-first-open";
 import { useFilesStore } from "@/store/files";

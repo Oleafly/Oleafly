@@ -41,6 +41,18 @@ export function exportFileStem(name: string | null | undefined, fallback: string
   return WINDOWS_RESERVED_STEM.test(trimmed) ? `${fallback}_${trimmed}` : trimmed;
 }
 
+export function numberedPath(candidate: string, isTaken: (path: string) => boolean): string {
+  if (!isTaken(candidate)) return candidate;
+  const slash = candidate.lastIndexOf("/");
+  const dot = candidate.lastIndexOf(".");
+  const stem = dot > slash + 1 ? candidate.slice(0, dot) : candidate;
+  const extension = dot > slash + 1 ? candidate.slice(dot) : "";
+  for (let attempt = 2; ; attempt += 1) {
+    const next = `${stem}-${attempt}${extension}`;
+    if (!isTaken(next)) return next;
+  }
+}
+
 export function relativeFilePath(fromFile: string, target: string): string {
   const base = dirname(fromFile).split("/").filter(Boolean);
   const parts = target.split("/").filter(Boolean);

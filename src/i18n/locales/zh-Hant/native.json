@@ -155,6 +155,9 @@
       "spacesMessage": "使用 Cua Spaces 的代理程式將能夠：",
       "spacesChanges": "建立與刪除 Space，並在其中執行指令",
       "spacesSignIns": "在 Space 中使用你的 Claude Code 或 Codex 登入"
+    },
+    "assistantNetwork": {
+      "message": "助理想要使用 {{tool}}，它會將文字傳送到線上服務。"
     }
   },
   "errors": {
@@ -214,6 +217,11 @@
     "blockedMode": {
       "title": "權限檢查已關閉（{{mode}}）",
       "description": "代理程式可以在不詢問的情況下編輯檔案並執行指令。Oleafly 無法將它切換到其他模式。請在代理程式自己的設定中變更模式。"
+    }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "快速記錄"
     }
   }
 }

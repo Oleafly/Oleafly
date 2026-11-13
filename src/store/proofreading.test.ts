@@ -167,6 +167,20 @@ describe("proofreading run lifecycle", () => {
     expect(useProofreadingStore.getState().visual.phase).toBe("idle");
   });
 
+  it("keeps a notes run apart from the Visual editor's", () => {
+    const visual = { ...identity(1), surface: "visual" as const };
+    const notes = { ...identity(2), path: "notes/1/idea", surface: "notes" as const };
+    useProofreadingStore.getState().begin(visual);
+    useProofreadingStore.getState().complete(result(visual, 2));
+
+    useProofreadingStore.getState().begin(notes);
+    useProofreadingStore.getState().complete(result(notes, 1));
+    useProofreadingStore.getState().clear("notes");
+
+    expect(useProofreadingStore.getState().visual).toMatchObject({ phase: "ready", diagnosticCount: 2 });
+    expect(useProofreadingStore.getState().notes.phase).toBe("idle");
+  });
+
   it("clears a surface only for the matching path", () => {
     const current = identity(1);
     useProofreadingStore.getState().begin(current);

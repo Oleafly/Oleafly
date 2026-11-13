@@ -56,6 +56,7 @@ import { collabLeaveProject } from "@/lib/tauri-collab";
 import { logError } from "@/lib/log";
 import { requestRestart } from "@/lib/quit-flush";
 import { openUpdateWindow } from "@/lib/updater";
+import { useNow } from "@/hooks/use-now";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -496,11 +497,7 @@ const ActivityList = memo(function ActivityList({
   entries,
 }: Readonly<{ title: string; entries: readonly ActivityEntry[] }>) {
   const { t } = useTranslation(["collab"]);
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), TICK_MS);
-    return () => window.clearInterval(timer);
-  }, []);
+  const now = useNow(TICK_MS);
   if (entries.length === 0) {
     return <p className="px-1 text-xs text-muted-foreground">{t(($) => $.collab.pane.empty)}</p>;
   }

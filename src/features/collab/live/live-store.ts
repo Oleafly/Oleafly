@@ -1,5 +1,5 @@
 import { create, type StoreApi, type UseBoundStore } from "zustand";
-import { useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { collabHandBack, collabNoteHandBack, useCollabEditorGate, useCollabLiveNote } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
 import type {
   CollabCommentNotSent,
@@ -44,6 +44,7 @@ import { collabErrorCode } from "../errors";
 import { canEditProjectRole } from "../roles";
 import { heldStatus } from "../sharing/sync-state";
 import { peerHue } from "./peer-hue";
+import { announcePeerJoined } from "./presence";
 
 export interface LivePeer {
   deviceId: string;
@@ -271,6 +272,10 @@ function releaseEditors(projectId: string): void {
   }
 }
 
+export function liveTarget(): string | null {
+  return useCollabLiveNote.getState().noteId ?? useFilesStore.getState().projectId;
+}
+
 export function startCollabLive(hooks: LiveHooks = {}): () => void {
   const store = useCollabLiveStore;
   let disposed = false;
@@ -467,6 +472,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
 
   const onPresence = (payload: CollabPresence) => {
     if (payload.projectId !== current() || payload.deviceId === live?.deviceId) return;
+    const joined = !store.getState().peers[payload.deviceId];
     store.setState((state) => ({
       peers: {
         ...state.peers,
@@ -483,6 +489,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
       },
     }));
     learnAbout([payload.accountId]);
+    if (joined) announcePeerJoined();
   };
 
   const onLeft = (payload: CollabPresenceLeft) => {
@@ -574,12 +581,26 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     }
   });
 
-  let projectId = useFilesStore.getState().projectId;
-  const unsubscribeFiles = useFilesStore.subscribe((state) => {
-    if (state.projectId === projectId) return;
-    projectId = state.projectId;
-    openProject(projectId);
-  });
+  let projectId = liveTarget();
+  let turn = 0;
+  const follow = () => {
+    const next = liveTarget();
+    if (next === projectId) return;
+    const leaving = live?.ready && live.projectId === projectId ? projectId : null;
+    projectId = next;
+    const mine = ++turn;
+    if (leaving === null) {
+      openProject(projectId);
+      return;
+    }
+    void Promise.all([collabHandBack(leaving), collabNoteHandBack(leaving)])
+      .catch((error: unknown) => logError("collab hand back before switching", error))
+      .finally(() => {
+        if (!disposed && mine === turn) openProject(projectId);
+      });
+  };
+  const unsubscribeFiles = useFilesStore.subscribe(follow);
+  const unsubscribeNote = useCollabLiveNote.subscribe(follow);
   openProject(projectId);
 
   return () => {
@@ -587,6 +608,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     disposed = true;
     if (goLiveAgainNow === goLiveAgain) goLiveAgainNow = null;
     unsubscribeFiles();
+    unsubscribeNote();
     unsubscribeStore();
     unsubscribeSweep();
     if (sweep !== null) clearInterval(sweep);

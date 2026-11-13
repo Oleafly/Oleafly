@@ -230,7 +230,11 @@
     "history_unavailable": "Istoricul acestui proiect nu este încă pe acest computer. Încearcă din nou după ce se sincronizează.",
     "account_storage_full": "Contul proprietarului proiectului a rămas fără spațiu de stocare pe acest server. Elimină câteva fișiere ca să faci loc sau cere-i administratorului serverului mai mult spațiu.",
     "too_many_projects": "Ai deja câte proiecte partajate permite acest server. Oprește partajarea unuia înainte să partajezi altul.",
-    "too_many_uploads": "Ai încărcat prea multe fișiere în ultima oră. Încearcă din nou mai târziu."
+    "too_many_uploads": "Ai încărcat prea multe fișiere în ultima oră. Încearcă din nou mai târziu.",
+    "public_notes_off": "Acest server nu permite linkuri publice către notițe. Un administrator le poate activa din setările serverului.",
+    "too_many_pages": "Ai deja atâtea pagini publice câte permite acest server. Anulează publicarea uneia, apoi încearcă din nou.",
+    "page_too_large": "Această notiță este prea mare pentru a fi publicată. Elimină câteva imagini, apoi încearcă din nou.",
+    "page_taken_down": "Un administrator a retras această pagină, așa că notița nu poate fi publicată din nou până când pagina nu este repusă."
   },
   "roles": {
     "admin": "Administrator",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "Autentificare prin e-mail",
         "description": "Oamenii se pot autentifica printr-un link trimis la adresa lor de e-mail. E nevoie de setările de e-mail ale serverului. Regulile tale de acces decid în continuare cine intră."
+      },
+      "publicNotesAllowed": {
+        "label": "Permite linkuri publice către notițe",
+        "description": "Membrii pot publica o copie doar pentru citire a unei notițe la un link pe care îl poate deschide oricine, fără autentificare."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "A refuzat o invitație pentru un invitat",
         "guestInvitationRevoked": "A retras o invitație pentru un invitat",
         "guestAdmissionEnded": "A încheiat accesul unui invitat la server",
-        "unknown": "Alt eveniment pe server"
+        "unknown": "Alt eveniment pe server",
+        "notePublished": "A publicat o notiță la un link public",
+        "noteUnpublished": "A anulat publicarea unei notițe",
+        "noteTakenDown": "A retras o notiță publicată",
+        "noteRestored": "A repus o notiță publicată"
       },
       "details": {
         "project": "Proiect: {{title}}",
@@ -455,7 +467,8 @@
         "device": "Dispozitiv: {{name}}",
         "byAdmin": "Din consola de administrare",
         "settingOn": "{{setting}}: activat",
-        "settingOff": "{{setting}}: dezactivat"
+        "settingOff": "{{setting}}: dezactivat",
+        "note": "Notiță: {{title}}"
       }
     },
     "email": {
@@ -509,6 +522,7 @@
     "copyAndShare": "Copiază în Oleafly și partajează",
     "title": "Partajează {{name}}",
     "description": "Lucrează la acest proiect cu alte persoane printr-un server de colaborare.",
+    "noteDescription": "Scrie această notiță împreună cu alte persoane, printr-un server de colaborare.",
     "loading": "Se încarcă…",
     "linked": "Acest proiect este un folder din afara Oleafly. Oleafly îl copiază în biblioteca ta și partajează copia. Folderul original nu este modificat.",
     "editCopy": "Aceasta este copia partajată. De acum înainte editează această copie, nu folderul original.",
@@ -526,12 +540,15 @@
     "tooLarge": "Aceste fișiere depășesc limita serverului, de {{size}} MB. Micșorează-le sau elimină-le înainte să partajezi.",
     "renamed": "Unele nume nu funcționează pe toate computerele. Celelalte persoane primesc aceste fișiere cu un nume puțin diferit.",
     "excluded": "Nu se partajează: celelalte fișiere de compilare, setările Oleafly și istoricul Git. Cel mai recent PDF compilat se partajează, ca coautorii să îl poată citi într-un browser.",
+    "noteExcluded": "Nu se partajează: setările Oleafly și istoricul Git.",
     "start": "Partajează",
     "preparing": "Se pregătește proiectul…",
     "uploading": "Se încarcă figurile și celelalte fișiere: {{done}} din {{total}}",
     "saving": "Se salvează proiectul pe server…",
     "failed": "Partajarea nu s-a terminat, așa că nu s-a partajat nimic.",
-    "trustAgain": "Oricine adaugi la acest proiect îi poate modifica fișierele, așa că Oleafly îți cere să ai din nou încredere în el pe acest computer înainte să ruleze pentru el agenți, comenzi în terminal sau shell escape."
+    "trustAgain": "Oricine adaugi la acest proiect îi poate modifica fișierele, așa că Oleafly îți cere să ai din nou încredere în el pe acest computer înainte să ruleze pentru el agenți, comenzi în terminal sau shell escape.",
+    "projectNotesShared": "Notițele proiectului sunt partajate cu toți cei din acest proiect. Notițele personale rămân private.",
+    "personalNotesPrivate": "Notițele personale rămân private. Se partajează doar notițele din folderul de notițe al proiectului."
   },
   "manage": {
     "sharedOn": "Partajat pe {{server}}",
@@ -789,7 +806,8 @@
       "settings": "Setările serverului",
       "email": "E-mail",
       "log": "Jurnal de securitate",
-      "checks": "Verificări de conexiune"
+      "checks": "Verificări de conexiune",
+      "pages": "Notițe publicate"
     },
     "health": {
       "label": "Starea serverului: {{status}}",
@@ -956,6 +974,30 @@
     },
     "checks": {
       "description": "Verifică conexiunea dintre acest computer și server."
+    },
+    "pages": {
+      "description": "Pagini doar pentru citire create de oameni din notițele lor. Oricine are linkul unei pagini o poate citi.",
+      "loading": "Se încarcă notițele publicate…",
+      "empty": "Nimeni nu a publicat încă o notiță pe acest server.",
+      "limit": "Se afișează doar cele mai noi {{shown}} de pagini.",
+      "columns": {
+        "title": "Notiță",
+        "author": "Autor",
+        "updated": "Publicată",
+        "actions": "Acțiuni"
+      },
+      "noAuthor": "Cont eliminat",
+      "takenDown": "Retrasă",
+      "openNamed": "Deschide {{title}}",
+      "takeDown": "Retrage",
+      "takeDownNamed": "Retrage {{title}}",
+      "restore": "Repune",
+      "restoreNamed": "Repune {{title}}",
+      "takeDownConfirm": {
+        "title": "Retragi {{title}}?",
+        "description": "Linkul public nu mai funcționează până când repui pagina. Autorul păstrează notița, dar între timp nu o poate publica din nou.",
+        "confirm": "Retrage"
+      }
     }
   },
   "links": {
@@ -1229,5 +1271,41 @@
     "broughtIn": "Modificările tale din {{name}} sunt acum în acest proiect.",
     "retry": "Reîncearcă",
     "dismiss": "Închide"
+  },
+  "publish": {
+    "tabs": {
+      "people": "Persoane",
+      "publish": "Publică"
+    },
+    "intro": "Publicarea pune o copie doar pentru citire a acestei notițe la un link public. Oricine are linkul o poate citi fără autentificare.",
+    "contents": "Imaginile, graficele, diagramele, formulele matematice, Typst și moleculele sunt incluse. Blocurile HTML, React, CSV, de secvență și de notebook sunt omise.",
+    "checking": "Se caută o pagină publică…",
+    "loadFailed": "Oleafly nu a putut verifica pagina publică a acestei notițe.",
+    "notAllowed": "{{server}} nu permite linkuri publice către notițe. Un administrator le poate activa din setările serverului.",
+    "ownerOnly": "Doar proprietarul notiței o poate publica.",
+    "linkLabel": "Link public",
+    "open": "Deschide",
+    "publishedAt": "Ultima publicare: {{date}}",
+    "stale": "Ai modificat această notiță de la ultima publicare. Publică din nou ca să actualizezi pagina.",
+    "publish": "Publică",
+    "republish": "Publică din nou",
+    "unpublish": "Anulează publicarea",
+    "failed": "Publicarea nu s-a finalizat.",
+    "unpublishConfirm": {
+      "title": "Anulezi publicarea pentru {{name}}?",
+      "description": "Linkul public nu mai funcționează imediat. Cei care au salvat o copie a paginii o păstrează.",
+      "confirm": "Anulează publicarea"
+    },
+    "list": {
+      "title": "Notițe publicate",
+      "description": "Pagini doar pentru citire ale notițelor tale de pe acest server. Oricine are un link le poate citi.",
+      "loadFailed": "Oleafly nu a putut încărca notițele tale publicate.",
+      "empty": "Nu ai publicat nicio notiță aici.",
+      "openNamed": "Deschide {{name}}",
+      "unpublishNamed": "Anulează publicarea pentru {{name}}",
+      "updated": "Publicată: {{date}}"
+    },
+    "takenDown": "Un administrator a retras această pagină. Cititorii nu o pot deschide, iar tu nu o poți publica din nou până când nu este repusă. Poți totuși să anulezi publicarea.",
+    "tooOld": "{{server}} este prea vechi pentru linkuri publice către notițe. Administratorul lui trebuie să actualizeze Oleafly Server."
   }
 }

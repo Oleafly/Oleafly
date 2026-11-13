@@ -1,0 +1,122 @@
+diff --git a/dist/tiptap-markdown.es.js b/dist/tiptap-markdown.es.js
+index da5639e..358fa4d 100644
+--- a/dist/tiptap-markdown.es.js
++++ b/dist/tiptap-markdown.es.js
+@@ -122,8 +122,8 @@ class MarkdownSerializerState extends MarkdownSerializerState$1 {
+   }
+   render(node, parent, index) {
+     super.render(node, parent, index);
+-    const top = this.inlines[this.inlines.length - 1];
+-    if (top !== null && top !== void 0 && top.start && top !== null && top !== void 0 && top.end) {
++    let top = this.inlines[this.inlines.length - 1];
++    while (top !== void 0 && top.end !== void 0) {
+       const {
+         delimiter,
+         start,
+@@ -131,26 +131,38 @@ class MarkdownSerializerState extends MarkdownSerializerState$1 {
+       } = this.normalizeInline(top);
+       this.out = trimInline(this.out, delimiter, start, end);
+       this.inlines.pop();
++      top = this.inlines[this.inlines.length - 1];
+     }
+   }
+   markString(mark, open, parent, index) {
+     const info = this.marks[mark.type.name];
+-    if (info.expelEnclosingWhitespace) {
++    const delimiter = info.expelEnclosingWhitespace ? this.inlineDelimiter(info, mark, parent, index) : null;
++    if (delimiter) {
+       if (open) {
++        this.write();
+         this.inlines.push({
+           start: this.out.length,
+-          delimiter: info.open
++          delimiter
+         });
+       } else {
+-        const top = this.inlines.pop();
+-        this.inlines.push({
+-          ...top,
+-          end: this.out.length
+-        });
++        const lineBreak = [`\\\n${this.delim}`, "\\\n"].find((ending) => this.out.endsWith(ending)) || "";
++        this.out = this.out.slice(0, this.out.length - lineBreak.length);
++        for (let at = this.inlines.length - 1; at >= 0; at--) {
++          if (this.inlines[at].end === void 0) {
++            this.inlines[at].end = this.out.length;
++            break;
++          }
++        }
++        return super.markString(mark, open, parent, index) + (lineBreak && "\\\n");
+       }
+     }
+     return super.markString(mark, open, parent, index);
+   }
++  inlineDelimiter(info, mark, parent, index) {
++    const resolve = (value) => typeof value === "function" ? value(this, mark, parent, index) : value;
++    const open = resolve(info.open);
++    return typeof open === "string" && open !== "" && open === resolve(info.close) ? open : null;
++  }
+   normalizeInline(inline) {
+     let {
+       start,
+diff --git a/dist/tiptap-markdown.umd.js b/dist/tiptap-markdown.umd.js
+index b682117..795a601 100644
+--- a/dist/tiptap-markdown.umd.js
++++ b/dist/tiptap-markdown.umd.js
+@@ -120,8 +120,8 @@ var __publicField = (obj, key, value) => {
+     }
+     render(node, parent, index) {
+       super.render(node, parent, index);
+-      const top = this.inlines[this.inlines.length - 1];
+-      if (top !== null && top !== void 0 && top.start && top !== null && top !== void 0 && top.end) {
++      let top = this.inlines[this.inlines.length - 1];
++      while (top !== void 0 && top.end !== void 0) {
+         const {
+           delimiter,
+           start,
+@@ -129,26 +129,38 @@ var __publicField = (obj, key, value) => {
+         } = this.normalizeInline(top);
+         this.out = trimInline(this.out, delimiter, start, end);
+         this.inlines.pop();
++        top = this.inlines[this.inlines.length - 1];
+       }
+     }
+     markString(mark, open, parent, index) {
+       const info = this.marks[mark.type.name];
+-      if (info.expelEnclosingWhitespace) {
++      const delimiter = info.expelEnclosingWhitespace ? this.inlineDelimiter(info, mark, parent, index) : null;
++      if (delimiter) {
+         if (open) {
++          this.write();
+           this.inlines.push({
+             start: this.out.length,
+-            delimiter: info.open
++            delimiter
+           });
+         } else {
+-          const top = this.inlines.pop();
+-          this.inlines.push({
+-            ...top,
+-            end: this.out.length
+-          });
++          const lineBreak = [`\\\n${this.delim}`, "\\\n"].find((ending) => this.out.endsWith(ending)) || "";
++          this.out = this.out.slice(0, this.out.length - lineBreak.length);
++          for (let at = this.inlines.length - 1; at >= 0; at--) {
++            if (this.inlines[at].end === void 0) {
++              this.inlines[at].end = this.out.length;
++              break;
++            }
++          }
++          return super.markString(mark, open, parent, index) + (lineBreak && "\\\n");
+         }
+       }
+       return super.markString(mark, open, parent, index);
+     }
++    inlineDelimiter(info, mark, parent, index) {
++      const resolve = (value) => typeof value === "function" ? value(this, mark, parent, index) : value;
++      const open = resolve(info.open);
++      return typeof open === "string" && open !== "" && open === resolve(info.close) ? open : null;
++    }
+     normalizeInline(inline) {
+       let {
+         start,

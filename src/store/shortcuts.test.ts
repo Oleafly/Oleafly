@@ -80,6 +80,24 @@ describe("shortcut bindings", () => {
     }
   });
 
+  it("records and keeps Alt with an arrow key, the browser's back and forward chord, without Ctrl", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    try {
+      const { bindingFromEvent, isValidBinding, matchesShortcut } = await import("@/store/shortcuts");
+      const left = keyboard("ArrowLeft", { altKey: true });
+      expect(bindingFromEvent(left)).toEqual({ key: "ArrowLeft", shift: false, alt: true });
+      expect(isValidBinding({ key: "ArrowRight", alt: true })).toBe(true);
+      expect(isValidBinding({ key: "ArrowRight" })).toBe(false);
+      expect(isValidBinding({ key: "x", alt: true })).toBe(false);
+      expect(bindingFromEvent(keyboard("ArrowLeft"))).toBeNull();
+      expect(matchesShortcut(left, { key: "ArrowLeft", alt: true })).toBe(true);
+      expect(matchesShortcut(keyboard("ArrowLeft", { altKey: true, ctrlKey: true }), { key: "ArrowLeft", alt: true })).toBe(false);
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
   it("follows the physical backquote key on layouts that type something else there", async () => {
     const originalNavigator = globalThis.navigator;
     vi.stubGlobal("navigator", { platform: "Linux x86_64" });
@@ -268,6 +286,79 @@ describe("shortcut bindings", () => {
       expect(
         bindingFromEvent(keyboard("@", { code: "KeyL", metaKey: true, altKey: true })),
       ).toEqual({ key: "@", mod: true, shift: false, alt: true });
+      const dead = keyboard("Dead", { code: "KeyN", metaKey: true, altKey: true });
+      expect(matchesShortcut(dead, { key: "n", mod: true, alt: true })).toBe(true);
+      expect(matchesShortcut(dead, { key: "i", mod: true, alt: true })).toBe(false);
+      expect(bindingFromEvent(dead)).toEqual({ key: "n", mod: true, shift: false, alt: true });
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("matches and records Cmd+letter by the key pressed on a Russian layout on macOS", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
+    try {
+      const { bindingFromEvent, matchesShortcut } = await import("@/store/shortcuts");
+      const askAgent = { key: "j", mod: true };
+      const cmdJ = keyboard("о", { code: "KeyJ", metaKey: true });
+
+      expect(matchesShortcut(cmdJ, askAgent)).toBe(true);
+      expect(matchesShortcut(keyboard("О", { code: "KeyJ", metaKey: true, shiftKey: true }), { ...askAgent, shift: true })).toBe(true);
+      expect(matchesShortcut(cmdJ, { key: "o", mod: true })).toBe(false);
+      expect(matchesShortcut(cmdJ, { ...askAgent, shift: true })).toBe(false);
+      expect(matchesShortcut(keyboard("о", { code: "KeyJ", ctrlKey: true }), askAgent)).toBe(false);
+      expect(matchesShortcut(keyboard("ф", { code: "KeyA", metaKey: true, altKey: true }), { key: "a", mod: true, alt: true })).toBe(true);
+      expect(bindingFromEvent(cmdJ)).toEqual({ key: "j", mod: true, shift: false, alt: false });
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("matches and records Ctrl+letter and Ctrl+digit by the key pressed on non-Latin layouts on Windows", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    try {
+      const { bindingFromEvent, matchesShortcut } = await import("@/store/shortcuts");
+      const askAgent = { key: "j", mod: true };
+      const russian = keyboard("о", { code: "KeyJ", ctrlKey: true });
+
+      expect(matchesShortcut(russian, askAgent)).toBe(true);
+      expect(matchesShortcut(keyboard("ξ", { code: "KeyJ", ctrlKey: true }), askAgent)).toBe(true);
+      expect(matchesShortcut(keyboard("ח", { code: "KeyJ", ctrlKey: true }), askAgent)).toBe(true);
+      expect(matchesShortcut(keyboard("ت", { code: "KeyJ", ctrlKey: true }), askAgent)).toBe(true);
+      expect(matchesShortcut(keyboard("۱", { code: "Digit1", ctrlKey: true }), { key: "1", mod: true })).toBe(true);
+      expect(matchesShortcut(russian, { key: "o", mod: true })).toBe(false);
+      expect(matchesShortcut(keyboard("о", { code: "KeyJ", metaKey: true }), askAgent)).toBe(false);
+      expect(matchesShortcut(keyboard("о", { code: "KeyJ" }), askAgent)).toBe(false);
+      expect(bindingFromEvent(russian)).toEqual({ key: "j", mod: true, shift: false, alt: false });
+      expect(
+        matchesShortcut(keyboard("о", { code: "KeyJ", ctrlKey: true, altKey: true, getModifierState: altGraph }), {
+          key: "j",
+          mod: true,
+          alt: true,
+        }),
+      ).toBe(false);
+    } finally {
+      vi.stubGlobal("navigator", originalNavigator);
+    }
+  });
+
+  it("keeps matching Latin layouts by the character they type", async () => {
+    const originalNavigator = globalThis.navigator;
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    try {
+      const { bindingFromEvent, matchesShortcut } = await import("@/store/shortcuts");
+      const azertyTwo = keyboard("é", { code: "Digit2", ctrlKey: true });
+      const germanThree = keyboard("§", { code: "Digit3", ctrlKey: true, shiftKey: true });
+
+      expect(matchesShortcut(azertyTwo, { key: "2", mod: true })).toBe(false);
+      expect(matchesShortcut(azertyTwo, { key: "é", mod: true })).toBe(true);
+      expect(matchesShortcut(germanThree, { key: "3", mod: true, shift: true })).toBe(false);
+      expect(matchesShortcut(keyboard("ö", { code: "Semicolon", ctrlKey: true }), { key: "ö", mod: true })).toBe(true);
+      expect(matchesShortcut(keyboard("z", { code: "KeyY", ctrlKey: true }), { key: "z", mod: true })).toBe(true);
+      expect(matchesShortcut(keyboard("z", { code: "KeyY", ctrlKey: true }), { key: "y", mod: true })).toBe(false);
+      expect(bindingFromEvent(azertyTwo)).toEqual({ key: "é", mod: true, shift: false, alt: false });
     } finally {
       vi.stubGlobal("navigator", originalNavigator);
     }
@@ -523,12 +614,13 @@ describe("shortcut labels", () => {
   it("uses the Mac modifier symbols without separators", async () => {
     expect(await label("MacIntel", { key: "k", mod: true, shift: true, alt: true })).toBe("⌘⇧⌥K");
     expect(await label("MacIntel", { key: " ", ctrl: true })).toBe("CtrlSpace");
-    expect(await label("MacIntel", { key: "ArrowUp", mod: true, ctrl: true })).toBe("⌘CtrlArrowUp");
+    expect(await label("MacIntel", { key: "ArrowUp", mod: true, ctrl: true })).toBe("⌘Ctrl↑");
   });
 
   it("spells out modifiers joined with plus signs elsewhere", async () => {
     expect(await label("Win32", { key: "k", mod: true, shift: true, alt: true })).toBe("Ctrl+Shift+Alt+K");
     expect(await label("Linux x86_64", { key: "Enter", mod: true, ctrl: true })).toBe("Ctrl+Enter");
     expect(await label("Linux x86_64", { key: "p", ctrl: true })).toBe("Ctrl+P");
+    expect(await label("Win32", { key: "ArrowLeft", alt: true })).toBe("Alt+←");
   });
 });

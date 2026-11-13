@@ -92,6 +92,10 @@ function expandTextNode(
   return parts;
 }
 
+function restoreText(text: string, token: RegExp, sources: readonly string[]): string {
+  return text.replace(token, (match: string, index: string) => sources[Number(index)] ?? match);
+}
+
 function restoreAttributes(
   attrs: Record<string, unknown>,
   token: RegExp,
@@ -99,10 +103,7 @@ function restoreAttributes(
 ): Record<string, unknown> {
   const restored: Record<string, unknown> = {};
   for (const [name, value] of Object.entries(attrs)) {
-    restored[name] =
-      typeof value === "string"
-        ? value.replace(token, (match: string, index: string) => sources[Number(index)] ?? match)
-        : value;
+    restored[name] = typeof value === "string" ? restoreText(value, token, sources) : value;
   }
   return restored;
 }
@@ -114,6 +115,10 @@ function restoreNode(
 ): JSONContent {
   const base = node.attrs ? { ...node, attrs: restoreAttributes(node.attrs, token, sources) } : node;
   if (node.type === "text" || !node.content) return base;
+  if (node.type === "codeBlock") {
+    const restored = restoreText(node.content.map((child) => child.text ?? "").join(""), token, sources);
+    return { ...base, content: restored ? [{ type: "text", text: restored }] : [] };
+  }
   const content = node.content.flatMap((child) =>
     child.type === "text" && child.text
       ? expandTextNode(child, token, sources)
@@ -127,8 +132,7 @@ export function restoreInlineText(
   tokenPrefix: string,
   sources: readonly string[],
 ): string {
-  const token = new RegExp(String.raw`${tokenPrefix}(\d+)X`, "gu");
-  return text.replace(token, (match: string, index: string) => sources[Number(index)] ?? match);
+  return restoreText(text, new RegExp(String.raw`${tokenPrefix}(\d+)X`, "gu"), sources);
 }
 
 export function restoreInlineSources(

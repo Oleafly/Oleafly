@@ -987,7 +987,8 @@
       "editor": "編輯器",
       "files": "專案",
       "pdf": "PDF 預覽",
-      "terminal": "終端機"
+      "terminal": "終端機",
+      "notes": "筆記"
     },
     "terminal": {
       "colorTheme": {
@@ -2316,6 +2317,66 @@
       "resetZoom": {
         "description": "將應用程式恢復為 100%。",
         "label": "重設縮放"
+      },
+      "notesQuickSwitcher": {
+        "description": "依名稱尋找筆記並開啟。",
+        "label": "筆記：前往筆記"
+      },
+      "notesTodayNote": {
+        "description": "開啟今天的筆記，若還沒有就建立一篇。",
+        "label": "筆記：今日筆記"
+      },
+      "notesGraph": {
+        "description": "開啟所有筆記的關聯圖。",
+        "label": "筆記：關聯圖"
+      },
+      "notesLocalGraph": {
+        "description": "顯示或隱藏開啟中筆記周圍的連結。",
+        "label": "筆記：局部關聯圖"
+      },
+      "notesOutline": {
+        "description": "顯示或隱藏開啟中筆記的大綱。",
+        "label": "筆記：大綱"
+      },
+      "notesAskAgent": {
+        "description": "就選取的文字詢問代理程式，或開啟和關閉筆記的代理程式。",
+        "label": "筆記：詢問代理程式"
+      },
+      "notesNewNote": {
+        "label": "筆記：新增筆記",
+        "description": "在目前的面板中新增一篇筆記。"
+      },
+      "notesSearch": {
+        "label": "筆記：搜尋筆記",
+        "description": "跳到筆記側邊欄頂端的搜尋方塊。"
+      },
+      "notesBookmark": {
+        "label": "筆記：將筆記加入書籤",
+        "description": "將開啟中的筆記加入我的最愛，或從中移除。"
+      },
+      "notesCopyLink": {
+        "label": "筆記：複製筆記連結",
+        "description": "複製開啟中筆記的連結，可以貼到另一篇筆記或對話中。"
+      },
+      "notesProperties": {
+        "label": "筆記：顯示或隱藏屬性",
+        "description": "開啟或關閉筆記標題下方的屬性。"
+      },
+      "notesQuickCapture": {
+        "description": "開啟一個小視窗，在任何應用程式中隨手記錄，即使 Oleafly 在背景執行也可以。",
+        "label": "筆記：快速記錄"
+      },
+      "notesCopyBlockLink": {
+        "description": "複製游標所在段落、清單項目或表格的連結。",
+        "label": "筆記：複製區塊連結"
+      },
+      "notesBack": {
+        "description": "回到你在這個分頁中的上一個位置。",
+        "label": "筆記：返回"
+      },
+      "notesForward": {
+        "description": "返回後再次前進。",
+        "label": "筆記：前進"
       }
     },
     "application": {
@@ -2341,14 +2402,41 @@
         "renameSymbol": "在整個專案中重新命名符號或檔案",
         "slashCommandMenu": "斜線指令插入選單",
         "triggerAutocomplete": "觸發自動完成",
-        "undo": "復原"
+        "undo": "復原",
+        "noteBold": "粗體",
+        "noteItalic": "斜體",
+        "noteUnderline": "底線",
+        "noteStrike": "刪除線",
+        "noteCode": "行內程式碼",
+        "noteHighlight": "以上次使用的顏色醒目提示",
+        "noteSuperscript": "上標",
+        "noteSubscript": "下標",
+        "noteHeadings": "標題 1 至 6",
+        "noteText": "轉為內文",
+        "noteQuote": "引文",
+        "noteCodeBlock": "程式碼區塊",
+        "noteBulletList": "項目符號清單",
+        "noteNumberedList": "編號清單",
+        "noteTaskList": "待辦清單",
+        "noteToggleTask": "勾選或取消勾選待辦事項",
+        "noteIndent": "增加清單項目縮排",
+        "noteOutdent": "減少清單項目縮排",
+        "noteLineBreak": "在同一段落中換行",
+        "noteFind": "尋找與取代",
+        "noteSelectAll": "選取整篇筆記",
+        "noteUndo": "復原",
+        "noteRedo": "重做",
+        "noteInsertMenu": "在行首開啟插入選單",
+        "noteLinkMenu": "連結到筆記",
+        "noteTag": "新增標籤"
       },
       "managed": "由編輯器管理"
     },
     "categories": {
       "codeIntelligence": "程式碼智慧",
       "editor": "編輯器",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "筆記"
     },
     "error": {
       "conflict": "已指派給 {{action}}。",
@@ -2394,6 +2482,15 @@
         "uppercase": "轉為大寫"
       },
       "unbound": "未設定"
+    },
+    "quickCapture": {
+      "label": "隨處快速記錄",
+      "description": "快速記錄快捷鍵可在這台電腦上的所有應用程式中使用。",
+      "ready": "在任何應用程式中按 {{shortcut}} 即可開啟快速記錄。",
+      "taken": "另一個應用程式已在使用 {{shortcut}}。請為「筆記：快速記錄」選擇其他快捷鍵。",
+      "invalid": "{{shortcut}} 無法在 Oleafly 以外使用。請選擇以字母、數字或功能鍵結尾的快捷鍵。",
+      "failed": "Oleafly 無法設定快捷鍵。請關閉快速記錄再重新開啟以重試。",
+      "wayland": "Wayland 不允許應用程式監聽自身視窗以外的按鍵。若要用按鍵開啟快速記錄，請在系統鍵盤設定中新增一個執行以下指令的自訂快捷鍵："
     }
   },
   "systemIntegration": {

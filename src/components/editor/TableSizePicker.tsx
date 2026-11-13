@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Table as TableIcon } from "lucide-react";
 import { Popover } from "@/components/ui/popover";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { insertTable } from "@/components/editor/latex-commands";
 
@@ -22,7 +23,7 @@ export function TableSizePicker({
   const { t } = useTranslation(["common", "editor"]);
   const [hover, setHover] = useState<{ row: number; col: number } | null>(null);
 
-  return (
+  const picker = (
     <Popover
       ariaLabel={t(($) => $.editor.table.trigger)}
       className="w-auto p-3"
@@ -50,6 +51,9 @@ export function TableSizePicker({
               key={id}
               aria-label={t(($) => $.editor.table.cell, { rows: row + 1, columns: col + 1 })}
               onMouseEnter={() => setHover({ row, col })}
+              onFocus={(event) => {
+                if (event.currentTarget.matches(":focus-visible")) setHover({ row, col });
+              }}
               onClick={() => onPick(row + 1, col + 1)}
               className={cn(
                 "size-5 rounded-sm border transition-colors",
@@ -65,5 +69,11 @@ export function TableSizePicker({
           : t(($) => $.editor.table.selectSize)}
       </p>
     </Popover>
+  );
+  if (menuRow) return picker;
+  return (
+    <Tooltip label={t(($) => $.editor.table.trigger)} side="bottom">
+      {picker}
+    </Tooltip>
   );
 }

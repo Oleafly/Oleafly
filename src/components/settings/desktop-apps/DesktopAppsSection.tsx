@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState } from "react";
+import { Suspense, useState } from "react";
+import { intended, lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, Plus, Trash2 } from "lucide-react";
@@ -34,7 +35,7 @@ import { SpacesCard } from "./SpacesCard";
 import { storeSavedSettings, useDesktopAppsStatus } from "./desktop-apps-queries";
 import { runInTerminal } from "./run-in-terminal";
 
-const AppPickerDialog = lazy(() => import("./AppPickerDialog"));
+const AppPickerDialog = lazy(() => import("./AppPickerDialog"), { warm: () => intended("settings") });
 
 const CUA_DRIVER_DOCS_URL = "https://cua.ai/docs/cua-driver";
 

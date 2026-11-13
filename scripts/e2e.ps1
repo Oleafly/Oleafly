@@ -182,7 +182,9 @@ function Start-App([string]$label) {
       $seed["oleafly.tours"] = '{"state":{"schemaVersion":1,"enabled":false,"tours":{}},"version":1}'
     }
     $env:OLEAFLY_E2E_BOOT_LOCALSTORAGE = ConvertTo-Json -InputObject $seed -Compress
-    $env:OLEAFLY_E2E_LAUNCH_LOCALSTORAGE = '{"oleafly.dictionary.locale":"en_US","oleafly.spellcheck":"1","oleafly.harper":"1","oleafly.preview.detached.*":null}'
+    $notes = "0"
+    if ($script:checkpointHints -match "-notes-[^/\\]*\.spec\.ts") { $notes = "1" }
+    $env:OLEAFLY_E2E_LAUNCH_LOCALSTORAGE = '{"oleafly.dictionary.locale":"en_US","oleafly.spellcheck":"1","oleafly.harper":"1","oleafly.notes":"' + $notes + '","oleafly.preview.detached.*":null}'
     $script:app = Start-Process -FilePath $script:appBinary `
       -RedirectStandardError $script:log -RedirectStandardOutput "$($script:log).stdout" `
       -PassThru -WindowStyle Hidden

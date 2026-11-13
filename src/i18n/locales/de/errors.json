@@ -4,6 +4,7 @@
   "project": {
     "name_empty": "Der Projektname darf nicht leer sein.",
     "name_conflict": "Ein Projekt mit dem Namen {{name}} gibt es bereits.",
+    "import_failed": "Pandoc konnte dieses Dokument nicht importieren.",
     "folder_unavailable": "Es konnte kein neuer Projektordner reserviert werden.",
     "not_found": "Dieses Projekt ist nicht mehr in Ihrer Bibliothek.",
     "not_recyclable": "Dieses Projekt kann nicht in den Papierkorb verschoben werden.",
@@ -24,8 +25,7 @@
     "copy_too_large": "Die geöffneten Dateien sind zu groß, um sie als Kopie zu speichern.",
     "copy_failed": "Oleafly konnte die Kopie dort nicht speichern. Wählen Sie einen Ordner, in den Sie schreiben können.",
     "folder_picker_failed": "Oleafly konnte die Ordnerauswahl nicht öffnen. Versuchen Sie es erneut.",
-    "import_failed": "Pandoc konnte dieses Dokument nicht importieren.",
-    "import_no_main":"Dieser Import enthält kein LaTeX-, Typst- oder Markdown-Dokument zum Kompilieren.",
+    "import_no_main": "Dieser Import enthält kein LaTeX-, Typst- oder Markdown-Dokument zum Kompilieren.",
     "settings_file_exists": "Dieser Ordner enthält bereits eine project.json. Oleafly hat sie unverändert gelassen.",
     "settings_need_main": "Wählen Sie zuerst ein Hauptdokument und speichern Sie dann die Projekteinstellungen in diesem Ordner.",
     "settings_write_failed": "Oleafly konnte die Projekteinstellungen nicht in diesem Ordner speichern.",
@@ -131,7 +131,7 @@
     "main_document_characters": "Oleafly kann „{{path}}“ nicht kompilieren, weil sein Name Zeichen enthält, die LaTeX als Befehle liest. Benennen Sie die Datei um.",
     "bibtex_folder_brace": "BibTeX kann keine Dateien in einem Ordner lesen, dessen Name eine einzelne geschweifte Klammer enthält. Benennen Sie den Ordner so um, dass { und } paarweise vorkommen, oder entfernen Sie sie, und kompilieren Sie dann erneut.",
     "bib_syntax": "Biber konnte diese Bibliografiedatei nicht lesen, deshalb wurde das Kompilieren gestoppt. Suchen Sie in dieser Zeile oder kurz davor nach einem fehlenden Komma oder einer fehlenden schließenden geschweiften Klammer und kompilieren Sie dann erneut.",
-    "shell_escape_denied_minted":"minted muss ein anderes Programm ausführen, um Code hervorzuheben, und dieses Projekt blockiert das. Um es zu erlauben, klicken Sie im Banner über dem Editor auf „{{setting}}“. Tun Sie das nur, wenn Sie jeder Datei im Projekt vertrauen. LaTeX kann dann jedes Programm mit Ihren Berechtigungen ausführen, und ein gestartetes Programm kann weiterlaufen, nachdem Sie das Kompilieren gestoppt haben.",
+    "shell_escape_denied_minted": "minted muss ein anderes Programm ausführen, um Code hervorzuheben, und dieses Projekt blockiert das. Um es zu erlauben, klicken Sie im Banner über dem Editor auf „{{setting}}“. Tun Sie das nur, wenn Sie jeder Datei im Projekt vertrauen. LaTeX kann dann jedes Programm mit Ihren Berechtigungen ausführen, und ein gestartetes Programm kann weiterlaufen, nachdem Sie das Kompilieren gestoppt haben.",
     "shell_escape_denied_pythontex": "PythonTeX muss Python ausführen, und dieses Projekt blockiert das. Um es zu erlauben, klicken Sie im Banner über dem Editor auf „{{setting}}“. Tun Sie das nur, wenn Sie jeder Datei im Projekt vertrauen. LaTeX kann dann jedes Programm mit Ihren Berechtigungen ausführen, und ein gestartetes Programm kann weiterlaufen, nachdem Sie das Kompilieren gestoppt haben.",
     "shell_escape_denied_command": "Dieses Dokument führt einen shell-Befehl aus, und dieses Projekt blockiert das. Um es zu erlauben, klicken Sie im Banner über dem Editor auf „{{setting}}“. Tun Sie das nur, wenn Sie jeder Datei im Projekt vertrauen. LaTeX kann dann jedes Programm mit Ihren Berechtigungen ausführen, und ein gestartetes Programm kann weiterlaufen, nachdem Sie das Kompilieren gestoppt haben.",
     "japanese_compiler_missing": "{{compiler}} ist in Ihrer TeX-Distribution nicht installiert. Fügen Sie die japanische Unterstützung mit der Paketverwaltung der Distribution hinzu oder wählen Sie einen anderen Compiler.",
@@ -177,14 +177,14 @@
       "citation_missing": "Zitat `{{name}}` nicht gefunden.",
       "reference_missing": "Verweis `{{name}}` nicht gefunden."
     },
-    "t1_fontenc_unicode_engine": "Dieses Dokument lädt \\usepackage[T1]{fontenc}, was dieser Compiler für eingetippte Akzente und Symbole nicht verwenden kann. ß kann als SS gedruckt werden, § und « können zu anderen Buchstaben werden, und typografische Anführungszeichen, Gedankenstriche und € können verschwinden. Entfernen Sie diese Zeile oder umgeben Sie sie wie unten gezeigt. Auch pdfLaTeX kompiliert das Dokument korrekt.",
-    "font_in_bundle": "{{font}} wird mit dem eingebauten TeX-Bündel mitgeliefert, das Schriften anhand des Dateinamens findet. Schreiben Sie stattdessen {{file}}.",
-    "font_download_prompt": "Das Kompilieren wurde angehalten, während macOS zum Herunterladen einer Schrift aufgefordert hat. Beantworten Sie diesen Dialog und kompilieren Sie erneut. Um das zu vermeiden, fügen Sie fontset=fandol zu den Optionen von \\documentclass hinzu oder wählen Sie eine Schrift, die mit TeX mitgeliefert wird.",
     "missing_characters": "Einige Zeichen, zum Beispiel {{sample}}, fehlen im PDF, weil die Schrift keine Glyphen dafür hat. Wechseln Sie zu einer Schrift, die sie abdeckt.",
     "missing_characters_cjk": "Einige Zeichen, zum Beispiel {{sample}}, fehlen im PDF, weil die Schrift keine chinesischen, japanischen oder koreanischen Glyphen hat. Fügen Sie eines der Setups aus dem Kompilierprotokoll hinzu.",
     "missing_characters_cjk_package": "Text wie {{sample}} fehlt im PDF, weil CJKutf8 und CJK nur mit pdfLaTeX funktionieren. Stellen Sie dieses Projekt auf pdfLaTeX um, oder entfernen Sie das Paket samt seiner CJK-Umgebung und fügen Sie eines der Setups aus dem Kompilierprotokoll hinzu.",
     "compiler_crashed": "Der Compiler ist abgestürzt, bevor er fertig war, deshalb endet das Protokoll an der Stelle, an der er stehen blieb. Kompilieren Sie erneut. Stürzt er jedes Mal ab, wählen Sie im Kompiliermenü einen anderen Compiler.",
     "compiler_crashed_font": "Tectonic ist bei der Suche nach der Schrift „{{font}}“ abgestürzt. Sie ist auf diesem Computer wahrscheinlich nicht installiert. Installieren Sie die Schrift, oder wählen Sie im Kompiliermenü XeLaTeX oder LuaLaTeX. Diese melden eine fehlende Schrift, statt abzustürzen.",
+    "t1_fontenc_unicode_engine": "Dieses Dokument lädt \\usepackage[T1]{fontenc}, was dieser Compiler für eingetippte Akzente und Symbole nicht verwenden kann. ß kann als SS gedruckt werden, § und « können zu anderen Buchstaben werden, und typografische Anführungszeichen, Gedankenstriche und € können verschwinden. Entfernen Sie diese Zeile oder umgeben Sie sie wie unten gezeigt. Auch pdfLaTeX kompiliert das Dokument korrekt.",
+    "font_in_bundle": "{{font}} wird mit dem eingebauten TeX-Bündel mitgeliefert, das Schriften anhand des Dateinamens findet. Schreiben Sie stattdessen {{file}}.",
+    "font_download_prompt": "Das Kompilieren wurde angehalten, während macOS zum Herunterladen einer Schrift aufgefordert hat. Beantworten Sie diesen Dialog und kompilieren Sie erneut. Um das zu vermeiden, fügen Sie fontset=fandol zu den Optionen von \\documentclass hinzu oder wählen Sie eine Schrift, die mit TeX mitgeliefert wird.",
     "repository_timed_out": "Das TeX-Paket-Repository unter {{host}} hat zu lange nicht geantwortet. Wählen Sie unter Einstellungen > Downloads > Quellen ein näher gelegenes Repository und suchen Sie dann erneut.",
     "repository_timed_out_default": "Ihr TeX-Paket-Repository hat zu lange nicht geantwortet. Wählen Sie unter Einstellungen > Downloads > Quellen ein näher gelegenes Repository und suchen Sie dann erneut."
   },
@@ -197,6 +197,7 @@
     "tool_missing": "{{tool}} fehlt in Oleafly. Installieren Sie Oleafly neu. Passiert es erneut, prüfen Sie, ob Ihr Virenscanner die Datei in Quarantäne verschoben hat."
   },
   "export": {
+    "bibliography_unreadable": "Oleafly konnte die Bibliografiedatei {{name}} nicht lesen. Prüfen Sie sie auf einen fehlerhaften Eintrag und exportieren Sie dann erneut.",
     "destination_busy": "Oleafly konnte {{name}} nicht ersetzen. Ist die Datei in einer anderen App geöffnet, schließen Sie sie und exportieren Sie erneut.",
     "destination_extension": "Geben Sie der Datei die Endung .{{extension}} und exportieren Sie dann erneut.",
     "destination_folder_missing": "Dieser Ordner existiert nicht mehr. Wählen Sie einen anderen Ordner und exportieren Sie erneut.",
@@ -217,8 +218,7 @@
     "warning_math_unconverted": "Diese Formel blieb als TeX erhalten: {{formula}}",
     "warning_one": "{{text}}",
     "warning_other": "{{text}}",
-    "warning_references_unnumbered": "Einige Verweise haben noch keine Nummer. Kompilieren Sie das Dokument und exportieren Sie dann erneut.",
-    "bibliography_unreadable":"Oleafly konnte die Bibliografiedatei {{name}} nicht lesen. Prüfen Sie sie auf einen fehlerhaften Eintrag und exportieren Sie dann erneut."
+    "warning_references_unnumbered": "Einige Verweise haben noch keine Nummer. Kompilieren Sie das Dokument und exportieren Sie dann erneut."
   },
   "tools": {
     "conversion_failed": "Pandoc konnte dieses Dokument nicht umwandeln.",
@@ -272,7 +272,6 @@
     "tls_failed": "Oleafly konnte das Zertifikat von {{host}} nicht überprüfen. Wenn Ihre Organisation eine eigene Zertifizierungsstelle betreibt, fügen Sie deren Zertifikatsdatei in den Einstellungen dem Konto hinzu.",
     "tracked_secret_files": "Veröffentlichen abgebrochen, weil Dateien im Git-Verlauf dieses Projekts Schlüssel oder Passwörter enthalten können: {{files}}"
   },
-  "approvals": {},
   "trust": {
     "git": "Vertrauen Sie diesem Ordner, um die Versionsverwaltung zu nutzen.",
     "repository": "Vertrauen Sie dem Repository {{name}}, um hier die Versionsverwaltung zu nutzen.",
@@ -518,9 +517,11 @@
     "r_package_missing": "Ein R-Paket, das dieses Dokument braucht, fehlt. Installieren Sie es in R, zum Beispiel mit install.packages(), und kompilieren Sie dann erneut.",
     "r_missing": "Dieses Dokument enthält R-Code, und zum Erstellen braucht es R, auch wenn Code ausgeschaltet ist. Oleafly findet R nicht. Installieren Sie es von https://cloud.r-project.org/ und kompilieren Sie dann erneut.",
     "python_missing": "Der Python-Code in diesem Dokument braucht Python, und Oleafly findet es nicht. Installieren Sie es von https://www.python.org/downloads/ und kompilieren Sie dann erneut. Oder schalten Sie Code im Menü „Kompilieren“ aus, um den Code ohne Ausführung anzuzeigen.",
+    "jupyter_missing": "Der Python-Code in diesem Dokument braucht Jupyter, um zu laufen.Installieren Sie es mit python3 -m pip install jupyter und kompilieren Sie dann erneut. Oder schalten Sie Code im Menü „Kompilieren“ aus, um den Code ohne Ausführung anzuzeigen.",
     "jupyter_missing_command": "Der Python-Code in diesem Dokument braucht Jupyter, um zu laufen. Installieren Sie es mit {{command}} und kompilieren Sie dann erneut. Oder schalten Sie Code im Menü „Kompilieren“ aus, um den Code ohne Ausführung anzuzeigen.",
     "chrome_missing": "Quarto braucht Chrome, Chromium oder Edge, um dieses Diagramm in diesem Format zu zeichnen. Installieren Sie einen davon und kompilieren Sie dann erneut oder stellen Sie das Dokument auf format: html um.",
     "julia_not_run": "Der Julia-Code in diesem Dokument wurde nicht ausgeführt. Fügen Sie dem Projekt eine Datei _quarto.yml hinzu oder installieren Sie das Paket IJulia in Julia und kompilieren Sie dann erneut.",
+    "quarto_no_input": "Quarto konnte das Hauptdokument nicht lesen. Prüfen Sie, ob es eine .qmd- oder .Rmd-Datei im Projekt ist.",
     "quarto_outdated": "Quarto {{version}} auf diesem Computer ist zu alt. Oleafly braucht {{minimum}} oder neuer. Laden Sie es unter Einstellungen > Engines > Quarto herunter und kompilieren Sie dann erneut.",
     "not_project_input": "Quarto zählt diese Datei in diesem Ordner nicht zum Projekt. Es überspringt Dateien und Ordner, deren Namen mit _ beginnen, sowie Dateien, die in project: render fehlen. Benennen Sie die Datei um oder fügen Sie sie in _quarto.yml zu project: render hinzu und kompilieren Sie dann erneut.",
     "would_overwrite": "Beim Kompilieren würde {{file}} ersetzt, weil Quarto seine Arbeitsdatei unter diesem Namen schreibt. Benennen Sie {{file}} um oder verschieben Sie die Datei und kompilieren Sie dann erneut.",
@@ -539,9 +540,7 @@
     "download_failed": "Oleafly konnte {{tool}} nicht herunterladen. Prüfen Sie Ihre Verbindung und versuchen Sie es dann erneut.",
     "install_failed": "Oleafly konnte {{tool}} nicht installieren.",
     "remove_failed": "Oleafly konnte {{tool}} nicht entfernen.",
-    "timed_out": "Das Notebook lief länger als {{minutes}} Minuten, deshalb hat Oleafly es gestoppt. Das Protokoll zeigt die Zelle, die erreicht wurde. Kürzen oder cachen Sie diese Zelle und kompilieren Sie dann erneut.",
-    "jupyter_missing": "Der Python-Code in diesem Dokument braucht Jupyter, um zu laufen.Installieren Sie es mit python3 -m pip install jupyter und kompilieren Sie dann erneut. Oder schalten Sie Code im Menü „Kompilieren“ aus, um den Code ohne Ausführung anzuzeigen.",
-    "quarto_no_input": "Quarto konnte das Hauptdokument nicht lesen. Prüfen Sie, ob es eine .qmd- oder .Rmd-Datei im Projekt ist."
+    "timed_out": "Das Notebook lief länger als {{minutes}} Minuten, deshalb hat Oleafly es gestoppt. Das Protokoll zeigt die Zelle, die erreicht wurde. Kürzen oder cachen Sie diese Zelle und kompilieren Sie dann erneut."
   },
   "attachments": {
     "too_large": "Diese Datei ist größer als {{max}} MB. Hängen Sie eine kleinere Datei an.",
@@ -597,5 +596,49 @@
     "needs_permissions": "Cua Driver wartet auf seine macOS-Berechtigungen. Aktivieren Sie Bedienungshilfen und Bildschirmaufnahme für CuaDriver in den Systemeinstellungen und versuchen Sie es dann erneut.",
     "task_unattended": "Aufgaben, die nach Zeitplan oder nach dem Schließen von Oleafly laufen, können keine Desktop-Apps verwenden.",
     "main_window": "Ändern Sie Computer Use im Hauptfenster."
+  },
+  "notes": {
+    "typst_empty": "Dieser Typst-Block ist leer.",
+    "typst_too_large": "Dieser Typst-Block ist zu groß für eine Vorschau.",
+    "typst_image_too_large": "Dieser Typst-Block zeichnet ein Bild, das zu groß zum Anzeigen ist.",
+    "typst_no_svg": "Typst hat kein SVG erzeugt.",
+    "typst_failed": "Typst konnte diesen Block nicht kompilieren.",
+    "typst_line": "Zeile {{line}}: {{message}}",
+    "tikz_empty": "Diese Zeichnung ist leer.",
+    "tikz_too_large": "Diese Zeichnung ist zu groß für eine Vorschau.",
+    "tikz_failed": "LaTeX konnte diese Zeichnung nicht kompilieren.",
+    "tikz_timeout": "LaTeX hat für diese Zeichnung zu lange gebraucht, daher hat Oleafly es gestoppt.",
+    "tikz_line": "Zeile {{line}}: {{message}}",
+    "tikz_preamble_line": "Zeile {{line}} der Präambel für TikZ in den Einstellungen: {{message}}",
+    "tikz_image_too_large": "Diese Zeichnung ergibt ein Bild, das zu groß zum Anzeigen ist.",
+    "tikz_convert_failed": "Oleafly konnte diese Zeichnung nicht in ein Bild umwandeln.",
+    "tikz_setup_failed": "Oleafly konnte LaTeX für diese Zeichnung nicht einrichten.",
+    "tikz_unconfined": "Oleafly kann LaTeX auf diesem Computer nicht in einer Sandbox ausführen und zeichnet TikZ hier daher nicht. Unter Linux lässt sich das durch die Installation von bubblewrap beheben.",
+    "d2_not_started": "Der D2-Renderer ist nicht gestartet.",
+    "d2_failed": "Der D2-Renderer ist ohne Angabe von Gründen fehlgeschlagen.",
+    "d2_stopped": "Der D2-Renderer ist abgestürzt.",
+    "import_folder_unreadable": "Oleafly konnte diesen Ordner nicht lesen.",
+    "import_too_many_files": "Dieser Ordner enthält zu viele Dateien für einen Import. Wählen Sie einen kleineren Ordner.",
+    "import_files_in_library": "Wählen Sie Dateien außerhalb der Oleafly-Bibliothek.",
+    "import_no_space": "Für diesen Import ist nicht genug Speicherplatz frei. Er braucht etwa {{size}} GB. Geben Sie etwas Speicherplatz frei und versuchen Sie es erneut.",
+    "import_stopped": "Der Import wurde unerwartet beendet. Versuchen Sie es erneut.",
+    "import_invalid_run": "Dieser Import hat eine ungültige ID. Versuchen Sie es erneut.",
+    "import_running": "Dieser Import läuft bereits.",
+    "export_note_missing": "Diese Notiz ist nicht mehr in Ihrer Bibliothek.",
+    "export_too_many_titles": "Zu viele Notizen haben denselben Titel. Benennen Sie einige davon um und exportieren Sie dann erneut.",
+    "export_attachments_failed": "Oleafly konnte den Ordner für Anhänge nicht erstellen.",
+    "export_copy_failed": "Oleafly konnte {{name}} nicht kopieren.",
+    "export_write_failed": "Oleafly konnte {{name}} nicht schreiben.",
+    "export_stopped": "Der Export wurde unerwartet beendet. Versuchen Sie es erneut.",
+    "folder_in_library": "Wählen Sie einen Ordner außerhalb der Oleafly-Bibliothek.",
+    "folder_unopenable": "Oleafly konnte den Ordner nicht öffnen.",
+    "folder_not_folder": "Oleafly kann diesen Speicherort nicht verwenden. Wählen Sie einen Ordner.",
+    "folder_create_failed": "Oleafly konnte den Ordner nicht erstellen.",
+    "folder_no_free_name": "Oleafly hat dort keinen freien Ordnernamen gefunden. Wählen Sie einen anderen Ordner.",
+    "picker_closed": "Die Auswahl wurde unerwartet geschlossen. Versuchen Sie es erneut.",
+    "folder_not_local": "Wählen Sie einen Ordner auf diesem Computer.",
+    "files_not_local": "Wählen Sie Dateien auf diesem Computer.",
+    "related_missing": "Dieses Projekt ist nicht mehr in Ihrer Bibliothek, daher kann die Notiz nicht damit verknüpft werden.",
+    "related_is_note": "Eine Notiz lässt sich nur mit einem Projekt verknüpfen, nicht mit einer anderen Notiz."
   }
 }

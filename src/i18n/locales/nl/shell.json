@@ -321,6 +321,36 @@
       "keywords": "pdf voorbeeld tonen verbergen splitsen alleen editor",
       "label": "PDF-voorbeeld tonen of verbergen"
     },
+    "swapEditorPreview": {
+      "keywords": "wisselen editor voorbeeld pdf zijden paneel volgorde indeling",
+      "label": "Editor en voorbeeld wisselen"
+    },
+    "movePaneToEdge": {
+      "bottom": "{{pane}} naar de onderrand verplaatsen",
+      "keywords": "verplaatsen paneel rand vastzetten zijkant splitsen stapelen indeling",
+      "left": "{{pane}} naar de linkerrand verplaatsen",
+      "right": "{{pane}} naar de rechterrand verplaatsen",
+      "top": "{{pane}} naar de bovenrand verplaatsen"
+    },
+    "paneNames": {
+      "assistant": "Assistent",
+      "editor": "Editor",
+      "pdf": "Voorbeeld",
+      "sidebar": "Zijbalk",
+      "terminal": "Terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "herstellen paneel indeling volgorde verplaatsen panelen zijbalk assistent editor voorbeeld terminal standaard",
+      "label": "Paneelopstelling herstellen in elk project"
+    },
+    "saveLayout": {
+      "keywords": "indeling opslaan huidige aangepast paneel panelen formaten naam",
+      "label": "Huidige indeling opslaan"
+    },
+    "applySavedLayout": {
+      "keywords": "indeling opgeslagen aangepast paneel panelen wisselen toepassen",
+      "label": "Indeling: {{name}}"
+    },
     "zoomIn": {
       "keywords": "groter vergroten",
       "label": "Inzoomen"
@@ -348,6 +378,20 @@
     "insertFileLink": {
       "label": "Link naar bestand invoegen",
       "keywords": "link bestand pad notitie verwijzing"
+    },
+    "projectNotes": {
+      "open": "Notities voor dit project openen",
+      "newShared": "Nieuwe projectnotitie",
+      "newPersonal": "Nieuwe persoonlijke notitie voor dit project",
+      "keywords": "notities onderzoek gekoppeld verwant project"
+    },
+    "notes": {
+      "label": "Notities openen",
+      "keywords": "notities notitieboek kennis ideeën onderzoek dagboek notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Snel noteren",
+      "keywords": "snel noteren vastleggen notitie inbox vandaag quick capture jot note inbox today"
     }
   },
   "community": {
@@ -452,6 +496,11 @@
   },
   "datePicker": {
     "placeholder": "Kies een datum"
+  },
+  "monthPicker": {
+    "label": "Kies een maand",
+    "previousYear": "Vorig jaar",
+    "nextYear": "Volgend jaar"
   },
   "devMenu": {
     "inspect": "Inspecteren",
@@ -645,7 +694,6 @@
   "home": {
     "ariaLabel": "Start",
     "label": "Start",
-    "title": "Terug naar de bibliotheek",
     "tooltip": "Terug naar de projectbibliotheek"
   },
   "importDestination": {
@@ -673,6 +721,7 @@
     "groups": {
       "action": "Actie",
       "documents": "Documenten",
+      "notes": "Notities",
       "references": "Referenties"
     },
     "label": "Zoeken",
@@ -680,11 +729,13 @@
     "openReferences": "Referenties van dit project openen",
     "placeholder": "Zoek projecten en documenten, of typ / voor opdrachten…",
     "placeholderDocuments": "Zoek in documenten…",
+    "placeholderNotes": "Zoek in notities en de blokken erin…",
     "placeholderProjects": "Zoek projecten op naam, engine, soort, datum of metagegevens…",
     "referencesNeedProject": "Open eerst een project om de referenties te bekijken.",
     "slash": {
       "create": "de sjabloongalerij openen",
       "docs": "in documenten zoeken",
+      "notes": "in notities en de blokken erin zoeken",
       "projects": "je projecten doorzoeken",
       "refs": "de referenties van dit project openen",
       "settings": "de instellingen openen",
@@ -791,7 +842,8 @@
     "research": "Onderzoekswerkruimte",
     "search": "Project doorzoeken",
     "sourceControl": "Versiebeheer",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notities"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} op {{host}}",
@@ -893,7 +945,8 @@
           "folders_other": "{{count}} mappen",
           "images": "Afbeeldingen",
           "pdfs": "PDF's",
-          "projects": "Projecten"
+          "projects": "Projecten",
+          "projectsAndNotes": "Projecten en notities"
         },
         "subtitle": "Projecten, voorbeelden, geschiedenis en app-gegevens",
         "title": "Opslaggebruik",
@@ -935,6 +988,10 @@
       "latexTools": {
         "description": "Toon de galerij Oleafly Tools en de losse tools (PDF-import, vergelijkingen, tabellen, BibTeX, lab- en literatuurzoeken, deadlines) plus hun slash-opdrachten. Staat standaard uit zolang dit in bèta is.",
         "label": "LaTeX-tools"
+      },
+      "notes": {
+        "description": "Voegt Notities toe aan het dock op het startscherm. Een notitie is een Markdown-bestand met diagrammen, grafieken en wiskunde dat jij en je agents allebei kunnen bewerken. Notities blijven buiten je projectbibliotheek, en elke notitie kan aan een project worden gekoppeld. Staat standaard uit zolang de functie nog in bèta is.",
+        "label": "Notities"
       },
       "researchTasks": {
         "description": "Een agent werkt zelfstandig in een kopie van het project en laat de wijzigingen voor jou achter om te beoordelen. Zeer onstabiel: runs kunnen vastlopen, mislukken of wijzigingen achterlaten die je met de hand moet opruimen, en ze gebruiken de hele tijd het quotum van je provider. Voegt de sectie Onderzoek toe aan Instellingen. Als je het uitzet, stoppen alle lopende taken. Staat standaard uit. Zet het op eigen risico aan.",
@@ -1277,6 +1334,24 @@
       "split": "Gesplitste weergave"
     },
     "moreActions": "Meer acties",
+    "resetPaneLayout": "Paneelopstelling herstellen",
+    "resetPaneLayoutScope": "Alle projecten",
+    "savedLayouts": {
+      "close": "Sluiten",
+      "delete": "Verwijderen",
+      "deleteConfirm": "De indeling “{{name}}” verwijderen?",
+      "limit": "Je kunt maximaal {{count}} indelingen bewaren. Verwijder er een om een andere op te slaan.",
+      "manage": "Indelingen beheren",
+      "name": "Naam van de indeling",
+      "rename": "Hernoemen",
+      "renameTitle": "Indeling hernoemen",
+      "replace": "Vervangen",
+      "replaceConfirm": "Er bestaat al een indeling met de naam “{{name}}”. Vervangen?",
+      "save": "Huidige indeling opslaan",
+      "saveButton": "Opslaan",
+      "saveTitle": "Indeling opslaan",
+      "update": "Bijwerken naar huidige"
+    },
     "renameFailed": "Kon het project niet hernoemen."
   },
   "tour": {

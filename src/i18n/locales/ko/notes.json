@@ -1,0 +1,1653 @@
+{
+  "workspace": {
+    "home": "홈",
+    "hideSidebar": "사이드바 숨기기",
+    "showSidebar": "사이드바 표시",
+    "newProject": "새 프로젝트",
+    "sendToPaper": "논문으로 보내기",
+    "artifacts": "산출물, {{total}}개",
+    "project": "프로젝트",
+    "projectMenu": "프로젝트: {{project}}",
+    "chooseProject": "프로젝트 선택",
+    "noProject": "프로젝트 없음",
+    "missing": "이 노트는 더 이상 라이브러리에 없습니다.",
+    "closeTab": "{{title}} 닫기",
+    "maximize": "최대화",
+    "restore": "원래 크기로 복원",
+    "resize": "패널 크기 조절",
+    "closePanel": "패널 닫기",
+    "newTab": "새 탭",
+    "empty": {
+      "greetings": {
+        "begin": "어디서부터 시작할까요?",
+        "ready": "준비되면 언제든 시작하세요.",
+        "mind": "오늘은 어떤 생각을 하고 있나요?",
+        "resume": "하던 작업을 이어서 할까요?",
+        "working": "지금 어떤 작업을 하고 있나요?",
+        "first": "무엇부터 써 볼까요?",
+        "blank": "빈 페이지나 템플릿으로 시작하세요."
+      },
+      "hints": {
+        "daily": "오늘의 계획과 기록",
+        "experimentLog": "실행 내역과 그 결과",
+        "paperReading": "논문 한 편의 주장",
+        "literatureMatrix": "논문을 나란히 비교",
+        "meeting": "안건과 결정 사항",
+        "labProtocol": "다른 사람도 따라 할 수 있는 단계",
+        "weeklyLog": "이번 주에 한 일",
+        "proposal": "목표, 방법, 일정"
+      },
+      "moreTemplates": "템플릿 더 보기",
+      "continue": "이어서 작업",
+      "searchAll": "모든 노트 검색"
+    },
+    "closeMissing": "탭 닫기",
+    "notesHome": "노트 홈으로 이동",
+    "breadcrumb": "탐색 경로",
+    "breadcrumbHome": "노트 홈",
+    "brand": "Oleafly 노트",
+    "back": "뒤로",
+    "forward": "앞으로"
+  },
+  "saveStatus": {
+    "saved": "저장됨",
+    "saving": "저장하는 중",
+    "failed": "저장되지 않음",
+    "failedWithReason": "저장되지 않음: {{reason}}",
+    "retry": "다시 시도"
+  },
+  "library": {
+    "newNote": "새 노트",
+    "search": "노트와 산출물 검색",
+    "kind": {
+      "all": "전체",
+      "note": "노트",
+      "figure": "그림",
+      "report": "보고서",
+      "data": "데이터",
+      "notebook": "노트북"
+    },
+    "author": {
+      "all": "전체",
+      "agent": "에이전트",
+      "you": "나"
+    },
+    "empty": "이 필터와 일치하는 항목이 없습니다.",
+    "emptyKind": {
+      "note": "이 필터와 일치하는 노트가 없습니다.",
+      "figure": "이 필터와 일치하는 그림이 없습니다.",
+      "report": "이 필터와 일치하는 보고서가 없습니다.",
+      "data": "이 필터와 일치하는 데이터 파일이 없습니다.",
+      "notebook": "이 필터와 일치하는 노트북이 없습니다."
+    },
+    "start": {
+      "title": "아직 노트가 없습니다"
+    },
+    "ungrouped": "노트",
+    "agentFallback": "에이전트",
+    "settings": "설정",
+    "filters": {
+      "title": "태그",
+      "active_other": "필터 {{count}}개 적용됨",
+      "clear": "필터 지우기",
+      "writtenBy": "작성자"
+    },
+    "menu": {
+      "more": "더 보기",
+      "openInNewTab": "새 탭에서 열기",
+      "favorite": "즐겨찾기에 추가",
+      "unfavorite": "즐겨찾기에서 제거",
+      "rename": "이름 바꾸기",
+      "renameLabel": "노트 이름 바꾸기",
+      "renameFailed": "“{{name}}”의 이름을 바꾸지 못했습니다.",
+      "delete": "삭제",
+      "deleteTitle": "“{{name}}”을(를) 휴지통으로 이동할까요?",
+      "deleteDescription": "노트는 노트 목록에서 빠지지만, 복원하거나 완전히 삭제하기 전까지 데이터 저장 화면에 남아 있습니다.",
+      "deleteConfirm": "휴지통으로 이동",
+      "deleted": "“{{name}}”을(를) 휴지통으로 이동했습니다.",
+      "deleteFailed": "“{{name}}”을(를) 삭제하지 못했습니다.",
+      "useAsTemplate": "템플릿으로 사용",
+      "stopTemplate": "템플릿으로 사용 중지",
+      "templateOn": "“{{name}}”이(가) 이제 내 템플릿 중 하나입니다.",
+      "templateOff": "“{{name}}”은(는) 더 이상 템플릿이 아닙니다.",
+      "linkProject": "프로젝트에 연결",
+      "compareConflict": "충돌 사본 비교",
+      "copyLink": "링크 복사",
+      "linkCopied": "“{{name}}” 링크를 복사했습니다.",
+      "copyLinkFailed": "“{{name}}” 링크를 복사하지 못했습니다.",
+      "duplicate": "복제",
+      "copyTitle": "{{name}} 사본",
+      "duplicateFailed": "“{{name}}”을(를) 복제하지 못했습니다.",
+      "export": "내보내기",
+      "exportAs": {
+        "markdown": "Markdown 폴더(.md)",
+        "docx": "Word 문서(.docx)",
+        "html": "웹 페이지(.html)",
+        "latex": "LaTeX(.tex)",
+        "typst": "Typst(.typ)"
+      },
+      "exportFailed": "“{{name}}”을(를) 내보내지 못했습니다.",
+      "copyMarkdown": "Markdown으로 복사",
+      "markdownCopied": "“{{name}}”을(를) Markdown으로 복사했습니다.",
+      "copyMarkdownFailed": "“{{name}}”을(를) Markdown으로 복사하지 못했습니다."
+    },
+    "conflicts": {
+      "badge": "이 노트에 충돌 사본이 있습니다"
+    },
+    "suggestions": {
+      "badge": "이 노트에 검토할 변경 제안이 있습니다"
+    }
+  },
+  "home": {
+    "title": "홈",
+    "search": "노트 검색",
+    "tabs": {
+      "label": "표시할 노트",
+      "mine": "내 노트",
+      "favorites": "즐겨찾기",
+      "tasks": "할 일",
+      "attachments": "첨부 파일"
+    },
+    "sortBy": "정렬 기준",
+    "sort": {
+      "opened": "마지막으로 연 날짜",
+      "edited": "마지막으로 편집한 날짜",
+      "created": "만든 날짜",
+      "title": "제목"
+    },
+    "layout": "노트 레이아웃",
+    "noFavorites": "아직 즐겨찾기가 없습니다. 노트를 즐겨찾기에 추가하면 여기에 모입니다.",
+    "noMatches": "“{{query}}”와(과) 일치하는 노트가 없습니다.",
+    "author": "작성자"
+  },
+  "document": {
+    "writtenByAgent": "{{agent}}이(가) 작성",
+    "writtenByYou": "내가 작성",
+    "askAgent": "에이전트에게 요청",
+    "addIcon": "아이콘 추가",
+    "sendToPaper": "논문으로 보내기",
+    "loadFailed": "이 노트를 열지 못했습니다. 프로젝트가 이동되었거나 삭제되었을 수 있습니다.",
+    "retryLoad": "다시 시도",
+    "closeTab": "탭 닫기",
+    "fileFailed": "파일을 노트에 추가하지 못했습니다: {{error}}",
+    "fileTooLarge": "{{name}}은(는) 64 MB보다 커서 추가하지 않았습니다.",
+    "unsupportedFile": "노트에는 이미지, 오디오, 동영상, PDF, 표(CSV, TSV, Excel), 분자 파일, Jupyter 노트북만 넣을 수 있습니다.",
+    "remoteImages": {
+      "more": "이미지를 불러오는 다른 방법",
+      "loadAll": "이 노트의 모든 이미지 불러오기",
+      "trustHost": "{{host}}의 이미지 항상 불러오기"
+    },
+    "titleLabel": "노트 제목",
+    "untitled": "제목 없음"
+  },
+  "prompt": {
+    "actionsGroup": "연구 동작",
+    "actions": {
+      "latestRun": "최근 실행 결과로 업데이트",
+      "claims": "주장을 코드와 대조",
+      "citations": "인용 찾기",
+      "proofread": "선택 영역 교정",
+      "rewrite": "선택 영역 다시 쓰기",
+      "shorter": "더 짧게",
+      "paragraph": "새 문단 쓰기",
+      "table": "비교 표 추가",
+      "figure": "그림 추가",
+      "abstract": "초록용으로 요약"
+    },
+    "wholeNote": {
+      "proofread": "노트 교정",
+      "rewrite": "노트 다시 쓰기"
+    },
+    "collapse": "프롬프트 숨기기",
+    "expand": "프롬프트 표시"
+  },
+  "review": {
+    "rejectAll": "모두 거부",
+    "acceptAll": "모두 수락",
+    "position": "변경 {{current}}/{{total}}",
+    "undo": "실행 취소"
+  },
+  "versions": {
+    "title": "버전 기록",
+    "summary": "Oleafly는 제안된 변경을 모두 수락할 때마다, 그리고 이전 버전을 복원하기 전에 버전을 저장합니다. 직접 저장할 수도 있습니다.",
+    "empty": "아직 버전이 없습니다. 지금의 노트를 보관하려면 버전을 저장하세요.",
+    "save": "버전 저장",
+    "saved": "버전을 저장했습니다.",
+    "unchanged": "마지막 버전 이후 바뀐 내용이 없습니다.",
+    "saveFailed": "이 노트의 버전을 저장하지 못했습니다.",
+    "restore": "이 버전 복원",
+    "restored": "버전을 복원했습니다. 대체된 텍스트도 버전으로 저장되었습니다.",
+    "restoreFailed": "이 버전을 복원하지 못했습니다.",
+    "comparing": "노트와 비교하는 중",
+    "readFailed": "이 버전을 읽지 못했습니다.",
+    "changes": "이 버전을 복원하면 바뀌는 내용",
+    "textOnly": "복원하면 노트의 텍스트만 바뀝니다. 첨부 파일은 그대로 유지됩니다."
+  },
+  "toolbar": {
+    "label": "서식",
+    "blockType": "블록 종류",
+    "text": "텍스트",
+    "heading": "제목 {{level}}",
+    "list": "목록",
+    "bulletList": "글머리 기호 목록",
+    "link": "링크 추가",
+    "linkAddress": "링크 주소",
+    "linkPlaceholder": "https://",
+    "linkInvalid": "https://example.com처럼 전체 웹 주소를 입력하세요.",
+    "displayMath": "별행 수식",
+    "citation": "인용",
+    "noCitations": "이 프로젝트에는 아직 참고문헌이 없습니다",
+    "chart": "차트",
+    "mermaid": "Mermaid 다이어그램",
+    "outline": "개요",
+    "emptyOutline": "제목을 추가하면 개요가 만들어집니다",
+    "words_other": "{{count}}단어",
+    "more": "더 보기",
+    "width": "노트 너비",
+    "widths": {
+      "standard": "표준",
+      "wide": "넓게",
+      "full": "전체 너비"
+    },
+    "attach": "파일 첨부",
+    "attachFilter": "이미지, 오디오, 동영상, PDF, 표, 분자, 노트북",
+    "codeLanguage": "언어",
+    "plainCode": "일반 텍스트",
+    "imageSize": "이미지 크기",
+    "originalSize": "원래 크기"
+  },
+  "blocks": {
+    "chart": "차트",
+    "source": "소스",
+    "preview": "미리보기",
+    "diagramError": "이 다이어그램에 오류가 있습니다. 소스를 열어 고치세요.",
+    "chartError": "이 차트의 데이터가 올바르지 않습니다. 소스를 열어 고치세요.",
+    "noPreview": "이 블록은 아직 미리보기가 없습니다. 소스를 열어 편집하세요.",
+    "syntax": {
+      "help": "{{block}} 블록 작성 방법",
+      "chart": "type, categories, series가 있는 JSON:\n{\"type\": \"bar\", \"categories\": [\"A\", \"B\"], \"series\": [{\"name\": \"Run 1\", \"values\": [1, 2]}]}\n다른 type: line, area, scatter, pie, donut, histogram.",
+      "plot": "한 줄에 곡선이나 옵션을 하나씩:\ny = x^2 - 1 또는 x = cos(t), y = sin(t)\ndomain: -5, 5 그리고 point: 1, 0, Root",
+      "csv": "값의 행들이며 첫 행이 헤더입니다:\nRun, Ratio\n파일을 읽으려면 path: assets/results.csv",
+      "latex": "별행 수식 LaTeX. equation이나 align 환경 등:\n\\begin{align} a &= b + c \\end{align}\n화학식은 \\ce{H2O}, 단위는 \\pu{5 mg}.",
+      "typst": "이미지로 그려지는 Typst 코드 조각:\n$ E = m c^2 $\n인터넷의 패키지는 사용할 수 없습니다.",
+      "mermaid": "Mermaid 다이어그램 예시:\nflowchart LR\nA --> B",
+      "d2": "D2 다이어그램 예시:\nclient -> server: request\nserver.shape: cylinder",
+      "tikz": "TikZ 명령 또는 tikzpicture 전체:\n{{example}}\n\\usetikzlibrary{positioning}처럼 그림 위에 오는 줄은 프리앰블에 넣으세요.",
+      "circuitikz": "CircuiTikZ 명령 또는 circuitikz 환경 전체:\n{{example}}\n\\ctikzset{resistors/scale=0.8}처럼 회로 위에 오는 줄은 프리앰블에 넣으세요.",
+      "svg": "svg 요소 하나. 예:\n<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" /></svg>\n스크립트, 링크, 원격 이미지는 제거됩니다.",
+      "html": "CSS와 스크립트가 포함된 전체 HTML 페이지 또는 그 일부 조각입니다.\n인터넷에 접근할 수 없으므로 데이터는 블록 안에 넣으세요.\n스크립트는 “실행”을 클릭하면 시작됩니다.",
+      "jsx": "default export가 있는 React 컴포넌트 파일 하나:\nexport default function App() { return <p>Hello</p> }\nreact, recharts, d3, lodash, papaparse, chart.js, lucide-react를 가져올 수 있습니다.",
+      "smiles": "한 줄에 SMILES 문자열 하나, 이름은 선택:\nAspirin: CC(=O)OC1=CC=CC=C1C(=O)O\n블록당 최대 24개.",
+      "molecule": "옵션 줄을 먼저 쓰세요. 예: format: pdb, style: cartoon.\n그다음 파일 텍스트 또는 path: assets/1abc.pdb",
+      "sequence": "FASTA 레코드나 원시 서열:\n>sample 1\nATGGCCATTGTAATG",
+      "notebook": "첫 줄에 노트북 경로:\nassets/analysis.ipynb\n그다음 cells: 2-5, code: hide 같은 줄을 선택적으로 추가할 수 있습니다.",
+      "bookmark": "한 줄에 필드 하나씩, 웹 주소부터 쓰세요:\nurl: https://example.com/article\n그다음 title:, description:, image:, site:, favicon: 줄을 선택적으로 추가할 수 있습니다."
+    },
+    "newChart": {
+      "title": "새 차트",
+      "series": "값"
+    },
+    "newHtml": {
+      "title": "용량 반응",
+      "dose": "용량",
+      "response": "반응:"
+    },
+    "imageMissing": "이미지를 찾을 수 없습니다: {{path}}",
+    "plot": {
+      "label": "플롯",
+      "aria": "{{curves}}의 플롯",
+      "empty": "아직 그릴 내용이 없습니다. y = sin(x) 같은 줄을 추가하세요.",
+      "problem": "{{line}}번 줄: {{reason}}",
+      "errors": {
+        "empty": "식을 입력하세요.",
+        "length": "식이 너무 깁니다.",
+        "depth": "식이 너무 깊게 중첩되어 있습니다.",
+        "name": "알 수 없는 이름 {{name}}입니다.",
+        "call": "{{name}}은(는) {{name}}(x)처럼 괄호와 함께 쓰세요.",
+        "arguments": "{{name}}에 전달한 값의 개수가 맞지 않습니다.",
+        "parenthesis": "괄호의 짝이 맞지 않습니다.",
+        "syntax": "예상하지 못한 “{{name}}”이(가) 있습니다.",
+        "end": "식이 너무 일찍 끝납니다.",
+        "line": "곡선도 옵션도 아닙니다. y = x^2나 domain: -5, 5처럼 써 보세요.",
+        "parametric": "매개변수 곡선은 x = t에 대한 식, y = t에 대한 식 형태로 쓰세요.",
+        "values": "두 값을 쉼표로 구분해 쓰세요.",
+        "point": "점은 x, y 형태로 쓰고, 필요하면 레이블을 붙이세요.",
+        "order": "두 값은 서로 달라야 합니다.",
+        "number": "유한한 숫자를 사용하세요.",
+        "tooManyCurves": "플롯 하나에는 곡선을 최대 8개까지 그릴 수 있습니다.",
+        "tooManyPoints": "플롯 하나에는 점을 최대 50개까지 표시할 수 있습니다.",
+        "undefined": "이 범위에는 실수 값이 없습니다."
+      }
+    },
+    "sequence": {
+      "label": "서열",
+      "template": "예시 코딩 서열",
+      "empty": "FASTA 레코드나 원시 서열을 붙여 넣으세요.",
+      "character": "{{line}}번 줄 {{column}}번 열: “{{character}}”은(는) 잔기가 아닙니다.",
+      "untitled": "제목 없는 서열",
+      "kinds": {
+        "dna": "DNA",
+        "rna": "RNA",
+        "protein": "단백질"
+      },
+      "length": {
+        "dna": "{{length}} bp",
+        "rna": "{{length}} nt",
+        "protein": "{{length}} aa"
+      },
+      "gc": "GC {{value}}",
+      "noResidues": "잔기 없음",
+      "reverse": "역상보 서열",
+      "translation": "번역",
+      "residues": "{{name}}의 잔기",
+      "hidden_other": "표시되지 않은 잔기 {{formatted}}개 더 있음",
+      "hiddenRecords_other": "표시되지 않은 레코드 {{formatted}}개 더 있음",
+      "classes": {
+        "hydrophobic": "소수성",
+        "polar": "극성",
+        "positive": "양전하",
+        "negative": "음전하",
+        "special": "글리신과 프롤린",
+        "other": "기타"
+      }
+    },
+    "charts": {
+      "type": "알 수 없는 차트 종류입니다. bar, line, area, scatter, pie, donut, histogram 중 하나를 사용하세요.",
+      "length": "각 계열에는 범주마다 값이 하나씩 있어야 합니다.",
+      "tooManySeries": "차트 하나에는 계열을 최대 8개까지 표시할 수 있습니다.",
+      "errors": "오차 막대에는 각 값마다 0 이상의 값이 하나씩 있어야 합니다.",
+      "errorsType": "오차 막대는 막대, 꺾은선, 영역, 산점도 차트에서 쓸 수 있습니다.",
+      "points": "산점도 계열의 점은 [x, y] 또는 [x, y, error] 형태로 써야 합니다.",
+      "tooManyPoints": "이 차트는 값이 너무 많아 그릴 수 없습니다.",
+      "pie": "원형 차트와 도넛 차트에는 합이 0보다 큰 0 이상의 값이 필요합니다.",
+      "samples": "히스토그램의 각 계열에는 값이 하나 이상 있어야 합니다.",
+      "bins": "bins 값은 1부터 100까지의 정수여야 합니다.",
+      "log": "로그 눈금을 쓰려면 모든 값이 0보다 커야 합니다.",
+      "logType": "로그 눈금은 막대, 꺾은선, 영역, 산점도 차트에서 쓸 수 있습니다.",
+      "showData": "데이터 표시",
+      "hideData": "데이터 숨기기",
+      "caption": "차트 데이터",
+      "category": "범주",
+      "series": "계열",
+      "bin": "구간",
+      "error": "{{name}} 오차",
+      "other": "기타"
+    },
+    "table": {
+      "label": "표",
+      "filter": "행 필터",
+      "rows_other": "{{total}}행",
+      "filtered_other": "{{total}}행 중 {{shown}}행",
+      "noMatch": "필터와 일치하는 행이 없습니다.",
+      "sortBy": "{{column}} 기준으로 정렬",
+      "column": "열 {{number}}",
+      "count": "개수",
+      "mean": "평균",
+      "min": "최솟값",
+      "max": "최댓값",
+      "truncated": "처음 {{limit}}행을 표시하고 있습니다.",
+      "loading": "{{path}} 불러오는 중…",
+      "empty": "이 표에는 데이터 행이 없습니다. 머리글 행과 데이터 행을 하나 이상 추가하세요.",
+      "columns": "이 표의 열이 {{limit}}개를 넘습니다.",
+      "missing": "파일을 찾을 수 없습니다: {{path}}",
+      "unreadable": "{{path}}을(를) 읽지 못했습니다.",
+      "tooLarge": "이 파일은 6 MB보다 큽니다. 더 작게 추린 파일을 사용하세요.",
+      "badPath": "assets/results.csv처럼 노트 폴더 안의 경로를 사용하세요.",
+      "unsupported": "표는 .csv, .tsv, .xlsx, .xls 파일을 읽습니다.",
+      "noSheet": "{{sheet}}(이)라는 이름의 시트가 없습니다. 이 파일에 있는 시트: {{sheets}}.",
+      "template": {
+        "sample": "시료",
+        "temperature": "온도(°C)",
+        "yield": "수율(%)",
+        "converged": "수렴 여부"
+      }
+    },
+    "smiles": {
+      "label": "화학 구조",
+      "structures": "화학 구조",
+      "empty": "한 줄에 SMILES를 하나씩 추가하세요(예: 에탄올: CCO).",
+      "invalid": "이 SMILES를 읽지 못했습니다.",
+      "more": "처음 {{limit}}개의 구조를 표시하고 있습니다.",
+      "loadError": "이 구조들을 그리지 못했습니다.",
+      "alt": "{{name}}의 구조",
+      "template": {
+        "caffeine": "카페인",
+        "aspirin": "아스피린"
+      }
+    },
+    "molecule": {
+      "label": "3D 분자",
+      "loading": "3D 뷰어 불러오는 중…",
+      "empty": "path: assets/molecule.pdb를 추가하거나 파일 내용을 붙여 넣으세요.",
+      "noWebgl": "3D 보기에는 WebGL이 필요하지만 여기에서는 사용할 수 없습니다.",
+      "noAtoms": "원자를 찾지 못했습니다. 파일과 형식을 확인하세요.",
+      "unknownFormat": "파일 형식을 알 수 없습니다. format: pdb처럼 pdb, sdf, mol, xyz, cif, mol2 중 하나를 추가하세요.",
+      "badFormat": "알 수 없는 형식 {{value}}입니다. pdb, sdf, mol, xyz, cif, mol2 중 하나를 사용하세요.",
+      "badStyle": "알 수 없는 스타일 {{value}}입니다. cartoon, stick, sphere, line 중 하나를 사용하세요.",
+      "badColor": "알 수 없는 색상 {{value}}입니다. spectrum, chain, element, residue, ss 중 하나를 사용하세요.",
+      "badPath": "assets/protein.pdb처럼 노트 폴더 안의 경로를 사용하세요.",
+      "missing": "파일을 찾을 수 없습니다: {{path}}",
+      "unreadable": "{{path}}을(를) 읽지 못했습니다.",
+      "tooLarge": "이 파일은 6 MB보다 큽니다.",
+      "loadError": "3D 뷰어를 불러오지 못했습니다.",
+      "viewer": "분자의 3D 보기입니다. 드래그하면 회전하고 스크롤하면 확대하거나 축소합니다.",
+      "controls": "보기 조작",
+      "style": "스타일",
+      "color": "색상",
+      "styles": {
+        "cartoon": "카툰",
+        "stick": "막대",
+        "sphere": "구",
+        "line": "선"
+      },
+      "colors": {
+        "spectrum": "스펙트럼",
+        "chain": "사슬",
+        "element": "원소",
+        "residue": "잔기",
+        "ss": "2차 구조"
+      },
+      "rotateLeft": "왼쪽으로 회전",
+      "rotateRight": "오른쪽으로 회전",
+      "zoomIn": "확대",
+      "zoomOut": "축소",
+      "reset": "보기 초기화",
+      "template": "에탄올"
+    },
+    "artifact": {
+      "run": "실행",
+      "stop": "중지",
+      "alwaysRun": "이 블록을 항상 실행",
+      "paused": "이 노트의 블록이 지난번에 멈췄거나 앱을 종료시켜서 일시 중지되었습니다.",
+      "desktopOnly": "실행하려면 데스크톱 앱이 필요합니다",
+      "loading": "불러오는 중…",
+      "loadFailed": "이 블록을 불러오지 못했습니다.",
+      "starting": "시작하는 중…",
+      "stopped": "이 블록이 응답하지 않습니다.",
+      "reload": "다시 불러오기",
+      "failed": "이 블록을 시작하지 못했습니다: {{error}}",
+      "offline": "인터넷의 다음 파일은 제외했습니다:",
+      "more_other": "외 {{count}}개",
+      "frameTitle": "{{label}} 출력",
+      "previewTitle": "{{label}} 미리보기",
+      "unknownImport": "이 블록이 가져오는 {{name}}은(는) 오프라인에서 사용할 수 없습니다.",
+      "compileError": "이 컴포넌트에 구문 오류가 있습니다",
+      "runtimeError": "이 컴포넌트가 오류로 중단되었습니다",
+      "noComponent": "이 컴포넌트에는 default export가 없습니다."
+    },
+    "code": {
+      "copied": "복사됨",
+      "copyFailed": "복사하지 못함",
+      "copyLabel": "코드 복사"
+    },
+    "svg": {
+      "alt": "SVG 그림",
+      "empty": "이 SVG 블록은 비어 있습니다.",
+      "invalid": "이 SVG가 올바르지 않습니다. 소스를 열어 고치세요.",
+      "tooLarge": "이 SVG는 너무 커서 표시할 수 없습니다."
+    },
+    "d2": {
+      "alt": "D2 다이어그램",
+      "empty": "이 D2 블록은 비어 있습니다.",
+      "loading": "그리는 중…",
+      "error": "D2가 이 다이어그램을 그리지 못했습니다: {{error}}",
+      "line": "{{line}}번 줄: {{message}}"
+    },
+    "tikz": {
+      "alt": "TikZ 그림",
+      "circuitAlt": "회로도",
+      "empty": "이 {{block}} 블록은 비어 있습니다.",
+      "desktopOnly": "{{block}} 미리보기에는 데스크톱 앱이 필요합니다.",
+      "sharedNotice": "이 노트는 공유되어 있습니다. LaTeX는 이 컴퓨터에서 실행되고 내 파일을 읽을 수 있으므로, 그리기 전에 소스를 확인하세요.",
+      "draw": "그리기",
+      "error": "LaTeX가 이 블록을 컴파일하지 못했습니다: {{error}}"
+    },
+    "typst": {
+      "alt": "Typst 출력",
+      "empty": "이 Typst 블록은 비어 있습니다.",
+      "rendering": "렌더링하는 중…",
+      "desktopOnly": "Typst 미리보기에는 데스크톱 앱이 필요합니다.",
+      "error": "Typst가 이 블록을 컴파일하지 못했습니다: {{error}}"
+    },
+    "insert": {
+      "label": "블록 삽입",
+      "data": "데이터",
+      "math": "수식",
+      "diagrams": "다이어그램",
+      "code": "코드",
+      "science": "과학"
+    },
+    "slash": {
+      "menu": "삽입",
+      "noMatches": "일치하는 블록 없음",
+      "heading": "제목 {{level}}",
+      "bulletList": "글머리 기호 목록",
+      "numberedList": "번호 목록",
+      "taskList": "할 일 목록",
+      "quote": "인용문",
+      "callout": "콜아웃",
+      "table": "표",
+      "code": "코드",
+      "math": "수식",
+      "divider": "구분선",
+      "footnote": "각주",
+      "basic": "기본"
+    },
+    "media": {
+      "play": "{{name}} 재생",
+      "pdfPage": "{{name}}, {{page}}쪽",
+      "openPdf": "PDF 열기",
+      "openFailed": "파일을 열지 못했습니다: {{error}}",
+      "missing": "파일을 찾을 수 없습니다: {{path}}",
+      "unreadable": "{{name}}을(를) 읽지 못했습니다.",
+      "cantPlay": "여기에서는 {{name}}을(를) 재생할 수 없습니다. 이 컴퓨터에 해당 형식의 코덱이 없을 수 있습니다.",
+      "embed": "{{site}}의 동영상 재생",
+      "embedTitle": "{{site}}의 동영상",
+      "embedFailed": "플레이어가 시작되지 않았습니다. 다시 시도하거나 {{site}}에서 동영상을 여세요.",
+      "watch": "보기",
+      "watchOn": "{{site}}에서 보기",
+      "pasteChoice": "이 동영상 링크를 표시할 방식",
+      "embedChoice": "동영상 임베드",
+      "linkChoice": "링크로 유지"
+    },
+    "bookmark": {
+      "label": "북마크",
+      "pasteChoice": "이 링크를 표시할 방식",
+      "cardChoice": "북마크 카드",
+      "ask": "웹 페이지 북마크",
+      "loading": "페이지 미리보기를 불러오는 중",
+      "noUrl": "https:// 또는 http://로 시작하는 웹 주소를 담은 url: 줄을 추가하세요."
+    }
+  },
+  "notebook": {
+    "label": "Jupyter 노트북",
+    "loading": "노트북 불러오는 중",
+    "missing": "노트북을 찾을 수 없습니다: {{path}}",
+    "unreadable": "{{path}}을(를) 읽지 못했습니다.",
+    "tooLarge": "이 노트북은 64 MiB를 넘어서 여기에 표시하지 않습니다.",
+    "badPath": "첫 줄에 이 노트 폴더를 기준으로 한 노트북 경로를 쓰세요.",
+    "badCells": "셀은 cells: 3-8처럼 번호 하나나 범위로 쓰세요.",
+    "invalid": "이 파일은 올바른 노트북이 아닙니다.",
+    "unsupported": "여기에는 형식 4의 Jupyter 노트북만 표시할 수 있습니다.",
+    "empty": "이 노트북에는 셀이 없습니다.",
+    "outOfRange_other": "이 노트북에는 셀이 {{count}}개뿐이라 그 범위에는 아무것도 없습니다.",
+    "nothingShown": "코드가 숨겨져 있어 표시할 내용이 없습니다.",
+    "showAll": "모두 표시",
+    "showLess": "간략히 보기",
+    "showAllCells_other": "셀 {{count}}개 모두 표시",
+    "outputImage": "셀 {{number}}의 출력",
+    "outputFrame": "셀 {{number}}의 HTML 출력"
+  },
+  "icons": {
+    "choose": "아이콘 선택",
+    "dialog": "아이콘 선택",
+    "emoji": "이모지",
+    "lines": "아이콘",
+    "search": "아이콘 검색",
+    "searchEmoji": "이모지 검색",
+    "loading": "이모지 불러오는 중",
+    "noEmoji": "이모지를 찾을 수 없습니다",
+    "noIcons": "아이콘을 찾을 수 없습니다",
+    "skinTone": "피부색",
+    "names": {
+      "atom": "원자",
+      "bookOpen": "펼친 책",
+      "brain": "뇌",
+      "bug": "벌레",
+      "chartLine": "꺾은선형 차트",
+      "cpu": "프로세서",
+      "database": "데이터베이스",
+      "dna": "DNA",
+      "fileText": "문서",
+      "flaskConical": "플라스크",
+      "graduationCap": "학사모",
+      "layers": "레이어",
+      "lightbulb": "전구",
+      "microscope": "현미경",
+      "network": "네트워크",
+      "notebookPen": "공책",
+      "rocket": "로켓",
+      "sigma": "시그마",
+      "target": "과녁",
+      "telescope": "망원경",
+      "testTube": "시험관",
+      "beaker": "비커",
+      "flaskRound": "레토르트",
+      "testTubes": "시료 튜브",
+      "pipette": "피펫",
+      "magnet": "자석",
+      "thermometer": "온도계",
+      "scale": "저울",
+      "radiation": "방사선",
+      "biohazard": "생물학적 위험",
+      "leaf": "잎",
+      "sprout": "새싹",
+      "trees": "나무들",
+      "flower": "꽃",
+      "bird": "새",
+      "fish": "물고기",
+      "rabbit": "토끼",
+      "pawPrint": "발자국",
+      "shell": "조개껍데기",
+      "stethoscope": "청진기",
+      "heartPulse": "심박수",
+      "pill": "알약",
+      "syringe": "주사기",
+      "hospital": "병원",
+      "bone": "뼈",
+      "eye": "눈",
+      "orbit": "궤도",
+      "satelliteDish": "위성 안테나",
+      "sun": "해",
+      "moon": "달",
+      "star": "별",
+      "sparkles": "반짝임",
+      "zap": "번개",
+      "waves": "물결",
+      "radar": "레이더",
+      "globe": "지구본",
+      "earth": "지구",
+      "mountain": "산",
+      "cloudRain": "비구름",
+      "droplets": "물",
+      "pi": "파이 기호",
+      "infinity": "무한대",
+      "radical": "제곱근",
+      "squareFunction": "함수",
+      "variable": "변수",
+      "calculator": "계산기",
+      "divide": "나눗셈",
+      "omega": "오메가",
+      "axis3d": "3D 좌표축",
+      "shapes": "도형",
+      "hexagon": "육각형",
+      "chartColumn": "세로 막대형 차트",
+      "chartBar": "가로 막대형 차트",
+      "chartPie": "원형 차트",
+      "chartScatter": "산점도",
+      "chartArea": "영역형 차트",
+      "chartSpline": "곡선",
+      "chartNetwork": "그래프",
+      "trendingUp": "추세",
+      "activity": "신호",
+      "table": "표",
+      "sheet": "스프레드시트",
+      "funnel": "필터",
+      "microchip": "마이크로칩",
+      "circuitBoard": "회로 기판",
+      "code": "코드",
+      "codeXml": "마크업",
+      "terminal": "터미널",
+      "braces": "중괄호",
+      "binary": "이진수",
+      "gitBranch": "브랜치",
+      "gitMerge": "병합",
+      "bot": "로봇",
+      "brainCircuit": "신경망",
+      "workflow": "워크플로",
+      "server": "서버",
+      "puzzle": "퍼즐",
+      "notebook": "일기장",
+      "notebookText": "현장 기록",
+      "book": "덮은 책",
+      "bookMarked": "책갈피 꽂은 책",
+      "library": "도서관",
+      "scrollText": "두루마리",
+      "quote": "인용",
+      "penTool": "펜촉",
+      "pencil": "연필",
+      "feather": "깃펜",
+      "languages": "언어",
+      "school": "학교",
+      "presentation": "프레젠테이션",
+      "award": "상",
+      "trophy": "트로피",
+      "landmark": "기관",
+      "compass": "나침반",
+      "map": "지도",
+      "ruler": "자",
+      "wrench": "렌치",
+      "cog": "톱니바퀴",
+      "calendar": "달력",
+      "timer": "타이머",
+      "hourglass": "모래시계",
+      "clipboardList": "체크리스트",
+      "listChecks": "할 일"
+    }
+  },
+  "artifacts": {
+    "title": "산출물",
+    "empty": "아직 없습니다. {{project}}의 연구 작업이 만든 파일이 여기에 표시됩니다.",
+    "noProject": "제목 옆에서 이 노트가 다루는 프로젝트를 선택하세요. 그 프로젝트의 연구 작업이 만든 파일이 여기에 표시됩니다.",
+    "noNote": "노트를 열면 그 프로젝트의 연구 작업이 만든 파일을 볼 수 있습니다.",
+    "fromTask": "{{task}} 작업에서 만듦",
+    "loading": "미리보기 불러오는 중",
+    "previewFailed": "미리보기를 불러오지 못했습니다: {{error}}",
+    "truncated": "파일의 앞부분을 표시하고 있습니다.",
+    "binary": "이 종류의 파일은 미리 볼 수 없습니다.",
+    "missing": "이 파일은 더 이상 작업의 저장된 사본에 없습니다.",
+    "insert": "노트에 삽입",
+    "inserting": "복사하는 중",
+    "insertFailed": "이 파일을 노트로 복사하지 못했습니다: {{error}}",
+    "newProject": "새 프로젝트",
+    "htmlPreview": "이 그림을 실행하려면 코드를 노트의 HTML 블록에 붙여 넣고 “실행”을 누르세요.",
+    "kind": {
+      "figure": "그림",
+      "html": "대화형 그림",
+      "report": "보고서",
+      "data": "데이터",
+      "file": "파일",
+      "notebook": "노트북"
+    },
+    "notebookTooLarge": "이 노트북은 너무 커서 여기에서 미리 볼 수 없습니다. 노트에 삽입하면 볼 수 있습니다."
+  },
+  "sendToPaper": {
+    "title": "논문으로 보내기",
+    "description": "Oleafly가 이 내용을 한 번 변환해 커서 위치에 추가합니다. 논문에 들어간 사본은 노트와 계속 연결되지 않습니다.",
+    "send": "보내기",
+    "leftOut": "{{block}} 블록은 노트에만 있습니다."
+  },
+  "citations": {
+    "references": "참고문헌",
+    "fromReference": "참고문헌에서",
+    "unknown": "연결된 프로젝트의 참고문헌에 없음: {{keys}}",
+    "openNote": "이 논문의 노트 열기: {{title}}"
+  },
+  "links": {
+    "menu": "노트나 프로젝트로 연결",
+    "notes": "노트",
+    "projects": "프로젝트",
+    "noMatches": "일치하는 노트나 프로젝트가 없습니다",
+    "missingNote": "이 노트는 더 이상 없습니다",
+    "missingNoteCreate": "이 노트는 더 이상 없습니다. 클릭하면 이 이름으로 새 노트를 만듭니다.",
+    "missingProject": "이 프로젝트는 더 이상 없습니다",
+    "linkedFrom": "이 노트를 연결한 곳",
+    "showAll": "{{total}}개 모두 표시"
+  },
+  "linksSearch": {
+    "blocks": {
+      "loading": "블록을 불러오는 중",
+      "none": "일치하는 블록 없음",
+      "missingBlock": "그 블록은 노트에 없습니다",
+      "assignFailed": "그 노트에 블록 ID를 추가하지 못했습니다.",
+      "handle": "블록 옵션",
+      "copyLink": "블록 링크 복사",
+      "linkCopied": "이 블록의 링크를 복사했습니다.",
+      "copyFailed": "이 블록의 링크를 복사하지 못했습니다.",
+      "noId": "이 블록에는 아직 ID가 없고, 이 노트는 편집할 수 없습니다.",
+      "linkedFrom": "링크한 노트",
+      "links_other": "노트 {{count}}개에서 여기로 링크함",
+      "openLinked": "{{title}} 열기",
+      "toBlock": "블록으로 이동: {{text}}"
+    },
+    "tagBlocks": {
+      "more_other": "블록 {{count}}개 더 보기"
+    },
+    "dead": {
+      "menu": "끊어진 링크",
+      "title": "끊어진 링크",
+      "summary_other": "링크 {{count}}개가 더 이상 없는 노트나 블록을 가리킵니다.",
+      "none": "끊어진 링크가 없습니다. 모든 링크가 아직 있는 노트나 블록을 가리킵니다.",
+      "loading": "링크를 확인하는 중",
+      "failed": "노트의 링크를 읽지 못했습니다.",
+      "missingNotes": "없는 노트",
+      "missingBlocks": "없는 블록",
+      "noteMeta": "{{line}}번 줄: 노트가 더 이상 없습니다",
+      "blockMeta": "{{line}}번 줄: {{block}}이(가) 더 이상 {{title}}에 없습니다",
+      "create": "노트 만들기",
+      "relink": "대신 {{title}}에 링크",
+      "remove": "링크 제거",
+      "fixFailed": "링크를 바꾸지 못했습니다."
+    }
+  },
+  "projectNotes": {
+    "searchLabel": "이 프로젝트의 노트 검색",
+    "searchPlaceholder": "노트 검색",
+    "clearSearch": "검색 지우기",
+    "noMatches": "검색과 일치하는 노트가 없습니다",
+    "loading": "프로젝트 노트를 읽는 중",
+    "edited": "{{when}} 편집함",
+    "createFailed": "노트를 만들지 못했습니다.",
+    "projectGroup": "프로젝트 노트",
+    "mineGroup": "내 노트",
+    "newProjectNote": "새 프로젝트 노트",
+    "newPersonalNote": "새 개인 노트",
+    "titleLabel": "새 프로젝트 노트의 제목",
+    "titlePlaceholder": "노트 제목",
+    "projectEmpty": "아직 프로젝트 노트가 없습니다. 프로젝트 노트는 프로젝트의 노트 폴더에 저장되므로 공동 작업자도 함께 받습니다.",
+    "mineEmpty": "이 프로젝트에 연결된 개인 노트가 아직 없습니다.",
+    "sharedLine": "프로젝트 노트는 이 프로젝트에 참여한 모든 사람과 공유됩니다. 개인 노트는 비공개로 유지됩니다.",
+    "noteActions": "{{title}} 작업",
+    "moveTitle": "이 노트를 프로젝트로 이동할까요?",
+    "moveMessage": "{{project}}에 참여한 모든 사람이 이 노트를 보고 편집할 수 있게 됩니다. 개인 사본은 휴지통으로 이동합니다.",
+    "moveConfirm": "프로젝트로 이동",
+    "moved": "{{title}}을(를) 프로젝트로 이동했습니다.",
+    "moveFailed": "노트를 프로젝트로 이동하지 못했습니다.",
+    "copied": "{{title}}을(를) 내 노트로 복사했습니다.",
+    "copyFailed": "노트를 내 노트로 복사하지 못했습니다.",
+    "moveUnsaved": "저장하지 않은 변경 사항이 있는 노트가 있어 노트를 이동하지 않았습니다. 저장한 뒤 다시 시도하세요.",
+    "copyUnsaved": "저장하지 않은 변경 사항이 있는 노트가 있어 노트를 복사하지 않았습니다. 저장한 뒤 다시 시도하세요.",
+    "renameUnsaved": "저장하지 않은 변경 사항이 있는 노트가 있어 노트 이름을 바꾸지 않았습니다. 저장한 뒤 다시 시도하세요.",
+    "unlink": "이 프로젝트와 연결 해제",
+    "unlinked": "이 프로젝트에서 {{title}}의 연결을 해제했습니다.",
+    "undoUnlink": "실행 취소",
+    "unlinkFailed": "이 프로젝트에서 {{title}}의 연결을 해제하지 못했습니다.",
+    "deleteTitle": "“{{name}}”을(를) 삭제할까요?",
+    "deleteMessage": "노트 파일이 이 프로젝트에서 삭제됩니다. 되돌릴 수 없습니다.",
+    "trash": "휴지통으로 이동",
+    "trashWindows": "휴지통으로 이동",
+    "trashTitle": "“{{name}}”을(를) 휴지통으로 이동할까요?",
+    "trashTitleWindows": "“{{name}}”을(를) 휴지통으로 이동할까요?",
+    "trashMessage": "노트 파일이 이 프로젝트에서 빠져 휴지통으로 이동하며, 휴지통에서 복원할 수 있습니다.",
+    "trashMessageWindows": "노트 파일이 이 프로젝트에서 빠져 휴지통으로 이동하며, 휴지통에서 복원할 수 있습니다.",
+    "mineDeviceOnly": "이 노트들은 이 컴퓨터에서만 이 프로젝트에 연결되어 있습니다.",
+    "moreFiles_other": "노트 폴더에 목록에 없는 파일이 {{count}}개 더 있습니다."
+  },
+  "kb": {
+    "tasks": {
+      "label": "할 일: {{text}}",
+      "empty": "빈 할 일"
+    },
+    "callouts": {
+      "type": "콜아웃 종류: {{type}}",
+      "fold": "콜아웃 접기",
+      "unfold": "콜아웃 펼치기",
+      "types": {
+        "note": "메모",
+        "abstract": "요약",
+        "info": "정보",
+        "todo": "할 일",
+        "tip": "팁",
+        "success": "성공",
+        "question": "질문",
+        "warning": "경고",
+        "failure": "실패",
+        "danger": "위험",
+        "bug": "버그",
+        "example": "예시",
+        "quote": "인용",
+        "theorem": "정리",
+        "lemma": "보조정리",
+        "corollary": "따름정리",
+        "proposition": "명제",
+        "definition": "정의",
+        "proof": "증명",
+        "hypothesis": "가설",
+        "assumption": "가정",
+        "result": "결과",
+        "method": "방법",
+        "remark": "비고"
+      }
+    },
+    "links": {
+      "loadingHeadings": "제목 불러오는 중",
+      "noHeadings": "일치하는 제목 없음",
+      "embedHeading": "노트 임베드",
+      "thisNote": "이 노트",
+      "embed": "임베드",
+      "embedNamed": "{{title}} 임베드"
+    },
+    "tags": {
+      "open": "이 태그가 달린 노트 표시",
+      "menu": "태그"
+    },
+    "embeds": {
+      "missing": "노트를 찾을 수 없습니다",
+      "self": "노트는 자기 자신을 임베드할 수 없습니다",
+      "failed": "이 노트를 읽지 못했습니다",
+      "missingHeading": "그 제목은 노트에 없습니다",
+      "empty": "이 노트는 비어 있습니다",
+      "untitled": "제목 없음",
+      "open": "노트 열기",
+      "openNamed": "{{title}} 열기",
+      "fold": "임베드 접기",
+      "unfold": "임베드 펼치기"
+    },
+    "hover": {
+      "loading": "미리보기 불러오는 중",
+      "empty": "이 노트는 비어 있습니다"
+    },
+    "properties": {
+      "title": "속성",
+      "add": "속성 추가",
+      "removeItem": "{{item}} 제거",
+      "addItem": "항목 추가",
+      "openNote": "{{title}} 열기",
+      "changeNote": "변경",
+      "chooseNote": "노트 선택",
+      "clearLink": "링크 지우기",
+      "value": "{{key}} 값",
+      "type": "{{key}} 유형: {{type}}",
+      "types": {
+        "text": "텍스트",
+        "list": "목록",
+        "number": "숫자",
+        "checkbox": "체크박스",
+        "date": "날짜",
+        "link": "노트 링크"
+      },
+      "remove": "속성 제거",
+      "name": "{{key}} 이름",
+      "newName": "속성 이름",
+      "taken": "이미 사용 중인 이름입니다",
+      "invalid": "프런트매터가 올바른 YAML이 아니어서 여기에서는 속성을 편집할 수 없습니다.",
+      "editSource": "Markdown에서 고치기",
+      "convert": {
+        "title": "{{key}}의 유형을 {{type}}(으)로 바꿀까요?",
+        "list": "첫 번째 항목만 남고 나머지는 제거됩니다.",
+        "value": "현재 값이 이 유형에 맞지 않아 사라집니다.",
+        "confirm": "유형 변경"
+      }
+    }
+  },
+  "fields": {
+    "today": "오늘",
+    "tomorrow": "내일",
+    "yesterday": "어제",
+    "chip": "{{key}}: {{value}}",
+    "empty": "값 없음",
+    "edit": "변경 또는 제거",
+    "keys": {
+      "due": "마감",
+      "scheduled": "예정",
+      "priority": "우선순위",
+      "start": "시작",
+      "created": "생성",
+      "completed": "완료",
+      "date": "날짜",
+      "cancelled": "취소됨"
+    },
+    "priorities": {
+      "highest": "가장 높음",
+      "high": "높음",
+      "medium": "보통",
+      "low": "낮음",
+      "lowest": "가장 낮음"
+    },
+    "editor": {
+      "label": "{{key}} 편집",
+      "key": "이름",
+      "value": "값",
+      "brackets": "대괄호는 [[Note]]처럼 링크에만 쓰세요.",
+      "save": "저장",
+      "remove": "제거"
+    }
+  },
+  "at": {
+    "menu": "날짜, 필드, 태그 또는 노트 삽입",
+    "groups": {
+      "dates": "날짜",
+      "due": "마감일",
+      "fields": "할 일 필드",
+      "tags": "태그",
+      "notes": "노트"
+    },
+    "today": "오늘",
+    "tomorrow": "내일",
+    "yesterday": "어제",
+    "next": "다음 {{weekday}}",
+    "pick": "날짜 선택",
+    "pickerLabel": "날짜 선택",
+    "due": "마감일",
+    "scheduled": "예정일",
+    "priority": "우선순위",
+    "priorityValue": "우선순위 {{priority}}",
+    "custom": "사용자 지정 필드",
+    "addField": "“{{key}}” 필드 추가",
+    "setField": "{{key}}을(를) “{{value}}”(으)로 설정",
+    "typeValue": "{{key}} 값을 입력한 다음 Enter를 누르세요."
+  },
+  "tasks": {
+    "filters": "할 일 필터",
+    "loading": "할 일을 읽는 중",
+    "failed": "할 일을 읽지 못했습니다.",
+    "empty": "아직 할 일이 없습니다. 아무 노트에서나 줄을 - [ ]로 시작하면 여기에 표시됩니다.",
+    "noMatches": "이 필터에 맞는 할 일이 없습니다.",
+    "clear": "필터 지우기",
+    "list": "할 일",
+    "count_other": "할 일 {{count}}개",
+    "complete": "“{{text}}”을(를) 완료로 표시",
+    "reopen": "“{{text}}”을(를) 미완료로 표시",
+    "openNote": "{{title}} 열기",
+    "toggleFailed": "할 일을 업데이트하지 못했습니다.",
+    "moved": "노트에서 그 할 일이 바뀌었습니다. 노트를 열어 업데이트하세요.",
+    "state": {
+      "label": "표시",
+      "open": "미완료",
+      "done": "완료",
+      "all": "미완료 및 완료"
+    },
+    "due": {
+      "label": "마감",
+      "any": "모든 마감일",
+      "overdue": "기한 지남",
+      "today": "오늘 마감",
+      "week": "7일 이내 마감",
+      "none": "마감일 없음"
+    },
+    "priority": {
+      "label": "우선순위",
+      "any": "모든 우선순위",
+      "high": "우선순위 높음",
+      "medium": "우선순위 보통",
+      "low": "우선순위 낮음",
+      "none": "우선순위 없음"
+    },
+    "tag": {
+      "label": "태그",
+      "any": "모든 태그"
+    },
+    "project": {
+      "label": "프로젝트",
+      "any": "모든 프로젝트"
+    },
+    "sort": {
+      "label": "할 일 정렬 기준",
+      "due": "마감일",
+      "priority": "우선순위"
+    }
+  },
+  "attachments": {
+    "filters": "첨부 파일 필터",
+    "loading": "첨부 파일을 찾는 중",
+    "failed": "첨부 파일을 읽지 못했습니다.",
+    "empty": "아직 첨부 파일이 없습니다. 노트에 이미지나 파일을 끌어다 놓으면 여기에 표시됩니다.",
+    "noMatches": "이 필터에 맞는 첨부 파일이 없습니다.",
+    "clear": "필터 지우기",
+    "list": "첨부 파일",
+    "count_other": "파일 {{count}}개",
+    "openNote": "{{title}} 열기",
+    "copyLink": "링크 복사",
+    "linkCopied": "“{{name}}” 링크를 복사했습니다.",
+    "copyFailed": "“{{name}}” 링크를 복사하지 못했습니다.",
+    "unused": "사용되지 않음",
+    "type": {
+      "label": "유형",
+      "all": "모든 유형",
+      "image": "이미지",
+      "audio": "오디오",
+      "video": "동영상",
+      "pdf": "PDF",
+      "other": "기타"
+    },
+    "use": {
+      "label": "사용 여부",
+      "all": "모든 파일",
+      "unused": "사용되지 않음"
+    }
+  },
+  "info": {
+    "title": "정보",
+    "show": "노트 정보",
+    "noNote": "정보를 보려면 노트를 여세요.",
+    "details": "노트 세부 정보",
+    "created": "만든 날짜",
+    "updated": "수정한 날짜",
+    "words": "단어 수",
+    "characters": "글자 수",
+    "lines": "줄 수",
+    "readingTime": "읽는 시간",
+    "underMinute": "1분 미만",
+    "noProperties": "속성이 없습니다",
+    "noBacklinks": "이 노트를 링크한 노트가 없습니다",
+    "noMentions": "이 노트를 언급한 다른 노트가 없습니다",
+    "noReferences": "이 노트에는 인용이 없습니다",
+    "noDeadLinks": "끊어진 링크가 없습니다",
+    "noAttachments": "첨부된 파일이 없습니다"
+  },
+  "calendar": {
+    "title": "달력",
+    "week": "주",
+    "hasNote": "데일리 노트 있음",
+    "due_other": "마감 할 일 {{count}}개",
+    "openWeek": "{{week}}주차 주간 노트 열기",
+    "openMonthNote": "월간 노트 열기",
+    "createMonthNote": "월간 노트 만들기",
+    "today": "오늘",
+    "failed": {
+      "weekly": "주간 노트를 열지 못했습니다.",
+      "monthly": "월간 노트를 열지 못했습니다."
+    }
+  },
+  "periodic": {
+    "title": "데일리, 주간, 월간 노트",
+    "daily": {
+      "label": "데일리 노트",
+      "description": "오늘의 노트와 사이드바 달력의 날짜에 쓰입니다."
+    },
+    "weekly": {
+      "label": "주간 노트",
+      "description": "사이드바 달력의 주 번호에 쓰입니다."
+    },
+    "monthly": {
+      "label": "월간 노트",
+      "description": "사이드바 달력 맨 위의 월 이름에 쓰입니다."
+    },
+    "weekStart": {
+      "label": "주 시작 요일",
+      "description": "사이드바 달력의 첫 번째 열입니다. 주 번호는 이 요일부터 세며, 월요일로 하면 ISO 주 번호가 됩니다.",
+      "locale": "지역 기본값({{day}})",
+      "monday": "월요일",
+      "sunday": "일요일",
+      "saturday": "토요일"
+    },
+    "format": "제목 형식",
+    "preview": "예: {{title}}",
+    "invalidFormat": "YYYY나 WW 같은 날짜 요소를 추가하세요.",
+    "template": "템플릿",
+    "savedTemplate": "저장한 템플릿",
+    "tag": "태그",
+    "noTag": "태그 없음",
+    "formatHelp": "제목 형식에서 YYYY는 연도, MM은 월, MMMM은 월 이름, DD는 일, dddd는 요일, WW는 주 번호, GGGG는 그 주가 속한 연도입니다. [W]처럼 대괄호 안의 텍스트는 그대로 표시됩니다. 이미 있는 노트는 제목이 그대로 유지되므로, 형식은 쓰기 시작하기 전에 바꾸세요."
+  },
+  "live": {
+    "share": "공유",
+    "shared": "공유됨",
+    "elsewhere": "다른 노트에서 실시간 편집이 켜져 있습니다",
+    "makeLive": "여기서 실시간 편집",
+    "viewOnly": "이 노트를 읽을 수는 있지만 편집할 수는 없습니다.",
+    "someone": "누군가",
+    "unsentReadOnly": "지금은 이 노트를 보기만 할 수 있어서 마지막 변경 사항을 보내지 않았습니다.",
+    "unsentRefused": "Oleafly가 이 노트의 마지막 변경 사항을 보내지 못해 해당 변경 사항이 삭제되었습니다."
+  },
+  "graph": {
+    "title": "그래프",
+    "localTitle": "로컬 그래프",
+    "openGraph": "그래프 보기",
+    "canvas_other": "노트 {{count}}개의 그래프",
+    "keyboardHelp": "화살표 키로 노트 사이를 이동하고 Enter로 엽니다. 더하기와 빼기로 확대하거나 축소하고, 0을 누르면 그래프 전체를 맞춰 봅니다.",
+    "search": "그래프 검색",
+    "tag": "태그로 필터",
+    "allTags": "모든 태그",
+    "orphans": "링크 없는 노트",
+    "projects": "프로젝트",
+    "depth": "깊이",
+    "depthLevel_other": "{{count}}단계",
+    "fit": "화면에 맞추기",
+    "zoomIn": "확대",
+    "zoomOut": "축소",
+    "reset": "레이아웃 초기화",
+    "empty": "아직 노트가 없습니다",
+    "emptyFiltered": "이 필터와 일치하는 노트가 없습니다",
+    "noNote": "노트를 열면 로컬 그래프를 볼 수 있습니다",
+    "focusedNote_other": "{{title}}, 링크 {{count}}개",
+    "showLocal": "로컬 그래프 표시",
+    "hideLocal": "로컬 그래프 숨기기",
+    "showOutline": "개요 표시",
+    "hideOutline": "개요 숨기기",
+    "outline": {
+      "title": "개요",
+      "empty": "이 노트에는 제목이 없습니다",
+      "emptyDetail": "줄을 #로 시작하면 제목을 추가할 수 있습니다.",
+      "noNote": "노트를 열면 개요를 볼 수 있습니다",
+      "noNoteDetail": "개요는 편집 중인 노트를 따라갑니다.",
+      "levels": "제목 단계",
+      "allLevels": "모든 단계",
+      "upTo": "H{{level}}까지",
+      "collapse": "{{title}} 접기",
+      "expand": "{{title}} 펼치기"
+    },
+    "linksFailed": "노트 사이의 링크를 읽지 못했습니다.",
+    "tagsFailed": "태그를 읽지 못했습니다.",
+    "loading": "노트 사이의 링크를 읽는 중"
+  },
+  "vault": {
+    "import": {
+      "more": "더 보기",
+      "menu": "Markdown 가져오기",
+      "title": "Markdown 가져오기",
+      "description": "Markdown 파일이나 Obsidian 보관함 같은 폴더 전체를 가져옵니다. 각 파일은 링크와 첨부 파일을 그대로 갖춘 노트가 됩니다.",
+      "folderTags": "폴더 이름을 태그로 추가",
+      "folderTagsHint": "Lab/2024에 있는 파일에는 Lab/2024 태그가 붙습니다.",
+      "choose": "폴더 선택",
+      "pickerTitle": "가져올 폴더 선택",
+      "reading": "{{file}} 읽는 중",
+      "writing": "{{file}} 가져오는 중",
+      "progress": "{{total}}개 중 {{done}}개",
+      "stop": "가져오기 중지",
+      "seenTitle": "이 폴더는 전에 가져온 적이 있습니다",
+      "seenDescription_other": "{{date}}에 노트 {{count}}개를 추가했습니다. 다시 가져오면 새 사본이 추가되고 이전 노트는 그대로 남습니다.",
+      "again": "새 노트로 다시 가져오기",
+      "largeTitle": "이 폴더에는 노트가 {{total}}개 있습니다",
+      "largeDescription": "모두 가져오려면 시간이 걸릴 수 있으며, 각각이 라이브러리의 별도 노트가 됩니다. 가져오기는 언제든 중지할 수 있습니다.",
+      "largeConfirm": "모두 가져오기",
+      "doneTitle": "가져오기 완료",
+      "notes_other": "노트 {{count}}개를 가져옴",
+      "attachments_other": "첨부 파일 {{count}}개를 복사함",
+      "unresolved_other": "링크 {{count}}개는 일치하는 노트가 없어 텍스트로 남음",
+      "skipped_other": "5 MB보다 크거나 읽을 수 없어서 파일 {{count}}개를 건너뜀",
+      "notCopied_other": "연결된 파일 {{count}}개를 복사하지 않음",
+      "cancelled": "가져오기를 중지했습니다. 노트는 추가되지 않았습니다.",
+      "failed": "가져오기를 끝내지 못했습니다. 노트는 추가되지 않았습니다.",
+      "done": "완료",
+      "export": {
+        "menu": "Markdown 폴더로 내보내기",
+        "title": "Markdown 폴더로 내보내기",
+        "description": "각 노트를 위키링크가 포함된 Markdown 파일로 저장하고, 첨부 파일은 별도 폴더에 넣습니다. 결과물은 Obsidian 보관함으로 열 수 있습니다.",
+        "thisNote": "이 노트: {{title}}",
+        "allNotes_other": "모든 노트({{count}})",
+        "export": "내보내기",
+        "pickerTitle": "폴더를 저장할 위치 선택",
+        "folderName": "Oleafly 노트",
+        "done_other": "노트 {{count}}개를 내보냄",
+        "skipped_other": "첨부 파일 {{count}}개를 내보내지 못함",
+        "paperLinks_other": "논문 링크 {{count}}개가 일반 텍스트가 됨",
+        "doneSkipped": "{{done}}. {{skipped}}.",
+        "showFolder": "폴더 보기",
+        "failed": "노트를 내보내지 못했습니다."
+      },
+      "chooseFiles": "파일 선택",
+      "filesPickerTitle": "가져올 Markdown 파일 선택"
+    },
+    "search": {
+      "results": "일치하는 노트",
+      "searching": "검색하는 중…",
+      "noResults": "“{{query}}”와(과) 일치하는 노트가 없습니다.",
+      "clear": "검색 지우기",
+      "favorite": "즐겨찾기",
+      "fields": {
+        "is": "상태",
+        "tag": "태그",
+        "kind": "종류",
+        "author": "작성자",
+        "project": "프로젝트",
+        "title": "제목"
+      }
+    },
+    "tags": {
+      "label": "노트의 태그",
+      "empty": "아직 태그가 없습니다. 노트에 #태그를 쓰거나 속성에 태그를 추가하세요.",
+      "filter": "{{tag}} 태그가 달린 노트 표시",
+      "clear": "{{tag}} 필터 해제",
+      "search": "태그 필터링",
+      "noMatch": "“{{query}}”와(과) 일치하는 태그가 없습니다.",
+      "showAll": "{{total}}개 모두 표시",
+      "showFewer": "일부만 표시"
+    },
+    "switcher": {
+      "open": "노트로 이동",
+      "label": "노트로 이동",
+      "placeholder": "제목이나 별칭으로 노트 찾기",
+      "recent": "최근",
+      "notes": "노트",
+      "alias": "별칭: {{alias}}",
+      "create": "“{{title}}” 노트 만들기",
+      "createFailed": "노트를 만들지 못했습니다.",
+      "empty": "아직 노트가 없습니다.",
+      "noMatches": "일치하는 노트가 없습니다.",
+      "openHint": "열기",
+      "newTabHint": "새 탭에서 열기"
+    },
+    "daily": {
+      "open": "오늘의 노트",
+      "failed": "오늘의 노트를 열지 못했습니다.",
+      "previous": "이전 데일리 노트: {{date}}",
+      "next": "다음 데일리 노트: {{date}}"
+    },
+    "templates": {
+      "open": "템플릿으로 새로 만들기",
+      "label": "템플릿으로 새 노트 만들기",
+      "placeholder": "템플릿 찾기",
+      "empty": "일치하는 템플릿이 없습니다.",
+      "blank": "빈 노트",
+      "blankDescription": "빈 페이지",
+      "builtIn": "연구 템플릿",
+      "yours": "내 템플릿",
+      "yoursDescription": "템플릿으로 지정한 노트",
+      "failed": "노트를 만들지 못했습니다.",
+      "names": {
+        "daily": "데일리 노트",
+        "experimentLog": "실험 기록",
+        "paperReading": "논문 읽기 노트",
+        "literatureMatrix": "문헌 검토 매트릭스",
+        "meeting": "회의록",
+        "labProtocol": "실험 프로토콜",
+        "weeklyLog": "주간 연구 기록",
+        "proposal": "연구 제안서",
+        "proof": "증명 또는 유도",
+        "dataAnalysis": "데이터 분석 보고서",
+        "interview": "인터뷰 노트",
+        "screeningLog": "스크리닝 기록",
+        "labNotebook": "실험 노트 기록"
+      },
+      "descriptions": {
+        "daily": "하루의 계획과 진행 기록",
+        "experimentLog": "실행마다 무엇을 바꿨고 무엇을 봤는지 기록",
+        "paperReading": "논문 한 편의 주장과 내 연구와의 관계",
+        "literatureMatrix": "검색 기록과 논문 비교 표",
+        "meeting": "안건, 결정 사항, 담당자",
+        "labProtocol": "재료와 안전 주의 사항을 포함한 단계별 절차",
+        "weeklyLog": "한 주의 목표와 날마다 한 일",
+        "proposal": "연구비 신청이나 학위 논문을 위한 목표, 방법, 일정",
+        "proof": "결과, 그 바탕에 있는 아이디어, 전체 논증",
+        "dataAnalysis": "어떤 데이터로 무엇을 실행했고 무엇이 드러났는지",
+        "interview": "한 번의 대화에서 얻은 답변, 인용, 주제",
+        "screeningLog": "검토 질문, 기준, 스크리닝 단계별 건수",
+        "labNotebook": "실험대 위의 하루: 목적, 시료, 절차, 관찰, 서명"
+      },
+      "bodies": {
+        "daily": "**{{weekday}}**\n\n## 계획\n- [ ] 가장 중요한 일\n- [ ] 두 번째 일\n\n## 기록\n- {{time}} 하루 시작\n\n## 메모\n\n## 오늘 한 일\n- 아직 없음\n\n## 내일\n- [ ] 가장 먼저 할 일",
+        "experimentLog": "> [!info] 목표\n> 이번 실행은 어떤 질문에 답하나요? 어떤 결과가 나오면 계획을 바꿔야 하나요?\n\n## 설정\n| 항목 | 값 |\n| --- | --- |\n| 코드 버전 | |\n| 데이터셋 | |\n| 하드웨어 | |\n| 시드 | |\n\n## 가설\n- 예상 결과와 그 이유\n\n## 실행\n| 실행 | 변경 사항 | 지표 | 결과 | 메모 |\n| --- | --- | --- | --- | --- |\n| 1 | 기준선 | | | |\n\n## 관찰\n- {{time}} 첫 번째 관찰\n\n## 다음 단계\n- [ ] 기준선을 지난 보고서와 비교하기\n- [ ] 설정 파일을 결과 옆에 저장하기\n- [ ] 규모를 키울지 중단할지 결정하기\n\n## 결론",
+        "paperReading": "> [!abstract] 요약\n> 논문을 한 문장으로.\n\n## 서지 정보\n저자, 제목, 게재처, 연도, 링크 또는 DOI.\n\n## 문제\n이 논문은 어떤 공백을 다루며, 그것이 왜 중요한가요?\n\n## 방법\n- 핵심 아이디어\n- 데이터와 환경\n\n## 주요 결과\n| 주장 | 근거 | 강도 |\n| --- | --- | --- |\n| | | |\n\n## 장점\n- 이 논문이 잘한 점\n\n## 약점과 열린 질문\n- 빠졌거나 설득력이 부족한 점\n\n## 내 연구와의 관계\n- 어디에 들어맞는지, 무엇을 재사용하거나 검증할지\n\n## 후속 작업\n- [ ] 이 논문이 바탕으로 삼은 연구 읽기\n- [ ] 코드나 데이터가 공개되어 있는지 확인하기",
+        "literatureMatrix": "> [!question] 검토 질문\n> 이 검토가 답하려는 질문과 포함 기준 및 제외 기준.\n\n## 검색 기록\n| 날짜 | 출처 | 검색어 | 결과 수 | 채택 |\n| --- | --- | --- | --- | --- |\n| {{date}} | | | | |\n\n## 매트릭스\n| 논문 | 연도 | 방법 | 데이터 | 주요 발견 | 한계 | 관련성 |\n| --- | --- | --- | --- | --- | --- | --- |\n| | | | | | | |\n\n## 주제\n- 주제와 이를 뒷받침하는 논문\n\n## 공백\n- 아직 어떤 논문도 답하지 못한 것\n\n## 읽을 목록\n- [ ] 다음 논문",
+        "meeting": "**{{date}} ({{weekday}}) {{time}}**\n\n## 안건\n1. 첫 번째 안건\n2. 두 번째 안건\n\n## 메모\n- 논의 사항\n\n## 결정 사항\n> [!success] 결정됨\n> 무엇에 누가 합의했는지.\n\n## 실행 항목\n- [ ] 담당자: 할 일, 기한\n\n## 다음 회의\n날짜와 이어서 다룰 안건.",
+        "labProtocol": "> [!warning] 안전\n> 시작하기 전에 위험 요소, 보호 장비, 폐기물 처리를 확인하세요.\n\n## 목적\n이 프로토콜로 무엇을 얻고 언제 사용하는지.\n\n## 재료\n| 품목 | 양 | 공급업체 또는 카탈로그 번호 | 메모 |\n| --- | --- | --- | --- |\n| | | | |\n\n## 장비\n- 기기와 설정\n\n## 절차\n1. 준비\n2. 실행\n3. 정리\n\n## 점검\n- [ ] 대조군 준비\n- [ ] 설정 기록\n- [ ] 시료에 날짜와 실행 회차 라벨 부착\n\n## 문제 해결\n| 문제 | 예상 원인 | 해결 방법 |\n| --- | --- | --- |\n| | | |\n\n## 개정 이력\n| 버전 | 날짜 | 변경 내용 |\n| --- | --- | --- |\n| 1 | {{date}} | 첫 버전 |",
+        "weeklyLog": "## 이번 주 목표\n- [ ] 첫 번째 목표\n- [ ] 두 번째 목표\n- [ ] 세 번째 목표\n\n## 진행 상황\n| 요일 | 한 일 | 메모 |\n| --- | --- | --- |\n| 월요일 | | |\n| 화요일 | | |\n| 수요일 | | |\n| 목요일 | | |\n| 금요일 | | |\n\n## 결과와 그림\n- 이번 주에 나온 결과\n\n## 걸림돌\n> [!warning] 도움 필요\n> 무엇이 막혀 있고, 누가 풀어 줄 수 있는지.\n\n## 읽은 자료\n- 이번 주에 읽은 논문\n\n## 다음 주\n- [ ] 다음 주 첫 번째 목표",
+        "proposal": "> [!abstract] 요약\n> 세 문장으로: 문제, 접근 방법, 기대 결과.\n\n## 배경과 동기\n지금 이것이 왜 중요한지, 이미 알려진 것은 무엇인지.\n\n## 연구 질문\n1. 첫 번째 질문\n\n## 목표\n| 목표 | 접근 방법 | 기대 성과 |\n| --- | --- | --- |\n| 1 | | |\n\n## 방법\n설계, 데이터, 분석, 그리고 성공을 측정하는 방법.\n\n## 일정\n| 단계 | 기간(월) | 마일스톤 |\n| --- | --- | --- |\n| | | |\n\n## 위험과 대응\n| 위험 | 가능성 | 대응 |\n| --- | --- | --- |\n| | | |\n\n## 자원과 예산\n\n## 기대 효과\n누가 혜택을 받고, 결과를 어떻게 공유할지.\n\n## 참고문헌",
+        "proof": "## 정의와 표기법\n> [!definition] 표기법\n> 사용하는 기호와 각 기호의 의미.\n\n## 명제\n> [!theorem] 주요 결과\n> 모든 가정을 포함해 결과를 정확하게 서술합니다.\n\n## 아이디어\n세부 사항에 앞서 핵심 아이디어를 쉬운 말로.\n\n## 보조정리\n> [!lemma] 보조정리 1\n> 주요 증명에 필요한 더 작은 주장.\n\n> [!proof] 보조정리 1의 증명\n> 이 보조정리가 성립하는 이유.\n\n## 증명\n> [!proof] 주요 결과의 증명\n> **1단계.** 논증을 준비합니다.\n>\n> **2단계.** 보조정리 1을 사용해 주요 추정을 수행합니다.\n>\n> **3단계.** 결론을 내립니다.\n\n## 점검\n- [ ] 모든 가정을 사용함\n- [ ] 경계 사례를 다룸\n- [ ] 상수와 상계, 하계를 추적함\n\n## 비고\n일반화, 반례, 관련 결과.",
+        "dataAnalysis": "> [!info] 질문\n> 이 분석이 뒷받침하는 결정.\n\n## 데이터\n| 항목 | 값 |\n| --- | --- |\n| 출처 | |\n| 버전 또는 날짜 | |\n| 행과 열 | |\n| 제외 기준 | |\n\n## 방법\n- 정제 단계\n- 모델 또는 검정과 그 이유\n- 확인한 가정\n\n## 결과\n아래 표는 CSV 블록입니다. 예시 행을 자신의 결과로 바꾸세요.\n\n```csv\n측정 항목,추정값,하한 95%,상한 95%,n\n집단 A 평균,0,0,0,0\n집단 B 평균,0,0,0,0\n차이,0,0,0,0\n```\n\n## 그림\n- 그림과 그 그림이 보여 주는 것\n\n## 해석\n결과가 질문에 대해 의미하는 바.\n\n## 한계\n- 편향, 결측 데이터, 결론을 바꿀 수 있는 요인\n\n## 재현성\n- [ ] 코드를 저장하고 연결함\n- [ ] 난수 시드를 기록함\n- [ ] 패키지 버전을 기록함",
+        "interview": "> [!warning] 동의와 개인정보\n> 녹음하기 전에 동의를 확인하고, 이름 대신 참여자 코드를 사용하세요.\n\n## 맥락\n| 항목 | 값 |\n| --- | --- |\n| 참여자 코드 | |\n| 역할 | |\n| 소요 시간 | |\n| 녹음 | |\n\n## 질문과 답변\n### 질문 1\n- 답변\n\n### 질문 2\n- 답변\n\n## 인용\n> 남겨 둘 만한 발언.\n\n## 주제\n- 주제와 이를 뒷받침하는 답변\n\n## 후속 작업\n- [ ] 감사 메시지 보내기\n- [ ] 전사하고 익명화하기",
+        "screeningLog": "> [!question] 검토 질문(PICO)\n> - **대상 집단:** 누구 또는 무엇을 연구하는지\n> - **중재 또는 노출:** 무엇을 시험하는지\n> - **비교:** 무엇과 비교하는지\n> - **결과:** 무엇을 측정하는지\n\n## 포함 기준\n- 연구 설계\n- 대상과 환경\n- 언어와 연도\n\n## 제외 기준\n- 이유와 알아보는 방법\n\n## 검색\n| 날짜 | 데이터베이스 | 검색어 | 결과 수 |\n| --- | --- | --- | --- |\n| {{date}} | | | |\n\n## 단계별 건수\n| 단계 | 문헌 수 | 제외 | 주요 이유 |\n| --- | --- | --- | --- |\n| 검색에서 찾은 문헌 | | | |\n| 중복 제거 후 | | | |\n| 제목과 초록 선별 | | | |\n| 전문 평가 | | | |\n| 검토에 포함 | | | |\n\n## 전문 단계에서 제외\n| 논문 | 이유 |\n| --- | --- |\n| | |\n\n## 의견 불일치\n- 논문, 검토자별 판단, 해결 방법\n\n## 다음 단계\n- [ ] 다음 묶음 선별하기\n- [ ] 건수 합계가 맞는지 확인하기",
+        "labNotebook": "**{{date}} ({{weekday}})**\n\n## 목적\n오늘 하려던 일과 그 이유.\n\n## 재료\n| 재료 | 시료 ID | 로트 또는 배치 | 양 |\n| --- | --- | --- | --- |\n| | | | |\n\n## 절차\n1. 수행한 일을 순서대로, 시간과 설정과 함께\n2. 프로토콜에서 바뀐 점과 그 이유\n\n## 관찰\n- {{time}} 본 것\n\n## 결과\n- 측정값, 그리고 원시 데이터가 저장된 위치\n\n## 다음 단계\n- [ ] 다음 작업을 위한 후속 조치\n\n## 서명\n**서명자:** 이름, {{date}}\n\n**입회자:** 이름, 날짜"
+      }
+    },
+    "mentions": {
+      "title": "언급한 노트",
+      "link": "링크",
+      "linkLabel": "{{title}}의 첫 번째 언급을 링크로 만들기",
+      "linked": "“{{title}}”의 언급을 링크로 만들었습니다.",
+      "notFound": "“{{title}}”에는 링크로 만들 일반 언급이 더 이상 없습니다.",
+      "failed": "“{{title}}”에 링크를 추가하지 못했습니다."
+    },
+    "table": {
+      "view": "표 보기",
+      "sortBy": "{{name}} 기준으로 정렬",
+      "addColumn": "열 추가 또는 제거",
+      "properties": "속성",
+      "noProperties": "이 노트들에는 다른 속성이 없습니다",
+      "yes": "예",
+      "no": "아니요",
+      "columns": {
+        "title": "제목",
+        "tags": "태그",
+        "status": "상태",
+        "project": "프로젝트",
+        "edited": "마지막으로 편집한 날짜"
+      }
+    }
+  },
+  "assistant": {
+    "label": "어시스턴트",
+    "placeholder": "이 노트에 대해 묻거나 변경을 요청하세요. /를 입력하면 작업 목록이 열립니다",
+    "newChat": "새 채팅",
+    "conversation": "어시스턴트와의 대화",
+    "foldConversation": "대화 접기",
+    "showConversation": "대화 표시",
+    "cliAgents": "CLI 에이전트",
+    "actionHint": "이 노트를 대상으로 작동합니다",
+    "agentCanEdit": "이 에이전트는 연결된 프로젝트의 파일을 바꿀 수 있습니다.",
+    "allowWritesLabel": "에이전트가 파일을 바꾸도록 허용",
+    "allowWritesAsk": "{{agent}}에는 읽기 전용 모드가 없어서 {{project}}의 파일을 바꿀 수 있습니다. Oleafly가 대신 읽기 전용 모드를 추가할 수는 없습니다. 그래도 메시지를 보낼까요?",
+    "allowWrites": "그래도 보내기",
+    "dontSend": "보내지 않기",
+    "viewOnly": "이 노트는 보기만 할 수 있어서 어시스턴트가 바꿀 수 없습니다."
+  },
+  "saving": {
+    "notSaved": "최근 변경 사항이 저장되지 않았습니다.",
+    "timedOut": "저장하는 데 시간이 너무 오래 걸렸습니다."
+  },
+  "failures": {
+    "createNote": "노트를 만들지 못했습니다.",
+    "linkNote": "“{{name}}”을(를) 그 프로젝트에 연결하지 못했습니다.",
+    "linkProject": "프로젝트는 만들었지만 노트를 연결하지 못했습니다.",
+    "sendToPaper": "이 내용을 논문에 추가하지 못했습니다.",
+    "paperNotOpen": "먼저 논문의 LaTeX, Typst 또는 Markdown 파일을 연 다음 다시 보내세요.",
+    "template": "“{{name}}”의 템플릿 설정을 바꾸지 못했습니다."
+  },
+  "noteTab": {
+    "loading": "노트 여는 중",
+    "projectNote": "프로젝트 노트",
+    "sharedProject": "이 프로젝트의 모든 사람이 보고 편집할 수 있습니다",
+    "localProject": "이 프로젝트의 파일과 함께 저장됩니다",
+    "personalNote": "개인 노트",
+    "private": "나만 볼 수 있습니다",
+    "personalShared": "노트에서 공유됨",
+    "openInNotes": "노트에서 열기",
+    "moveIntoProject": "프로젝트로 이동",
+    "copyToMine": "내 노트로 복사",
+    "missing": "이 노트는 더 이상 사용할 수 없습니다. 이동되었거나 삭제되었을 수 있습니다.",
+    "writeRefused": "노트를 저장하지 못했습니다. 이 프로젝트는 지금 읽기 전용입니다."
+  },
+  "appearance": {
+    "notes": {
+      "sectionName": "노트 모양",
+      "resetAriaLabel": "{{setting}}을(를) 기본값으로 되돌리기",
+      "text": {
+        "title": "텍스트"
+      },
+      "typeface": {
+        "label": "서체",
+        "description": "노트 본문의 서체를 고르세요.",
+        "options": {
+          "sans": "산세리프",
+          "serif": "세리프",
+          "mono": "고정폭"
+        }
+      },
+      "font": {
+        "label": "노트 글꼴",
+        "description": "노트 본문에 쓸 글꼴을 설치된 글꼴 중에서 고르세요. 비워 두면 서체 설정을 따릅니다."
+      },
+      "fontSize": {
+        "label": "노트 글자 크기",
+        "description": "노트 본문의 글자 크기를 정합니다.",
+        "custom": "사용자 지정",
+        "customLabel": "사용자 지정 노트 글자 크기(픽셀)"
+      },
+      "lineHeight": {
+        "label": "노트 줄 높이",
+        "description": "노트 본문의 줄 간격을 정합니다.",
+        "customLabel": "사용자 지정 노트 줄 높이"
+      },
+      "paragraphSpacing": {
+        "label": "문단 간격",
+        "description": "문단, 목록, 기타 블록 사이의 간격을 정합니다.",
+        "options": {
+          "compact": "좁게",
+          "normal": "보통",
+          "relaxed": "여유 있게",
+          "spacious": "넓게"
+        }
+      },
+      "headings": {
+        "title": "제목과 노트 제목"
+      },
+      "headingTypeface": {
+        "label": "제목 서체",
+        "description": "제목과 노트 제목의 서체를 고르세요.",
+        "options": {
+          "text": "본문과 같게"
+        }
+      },
+      "headingFont": {
+        "label": "제목 글꼴",
+        "description": "제목과 노트 제목에 쓸 글꼴을 설치된 글꼴 중에서 고르세요. 비워 두면 제목 서체 설정을 따릅니다."
+      },
+      "headingSize": {
+        "label": "제목 크기",
+        "description": "본문과 비교해 제목을 얼마나 크게 표시할지 정합니다.",
+        "options": {
+          "small": "작게",
+          "normal": "보통",
+          "large": "크게"
+        }
+      },
+      "titleSize": {
+        "label": "노트 제목 크기",
+        "description": "각 노트 맨 위에 있는 제목의 크기를 정합니다."
+      },
+      "layout": {
+        "title": "레이아웃"
+      },
+      "width": {
+        "label": "노트 너비",
+        "description": "노트가 열릴 때의 너비입니다. 노트의 너비 메뉴에서도 바꿀 수 있습니다.",
+        "options": {
+          "standard": "표준",
+          "wide": "넓게",
+          "full": "전체 너비"
+        }
+      },
+      "info": {
+        "label": "노트 정보",
+        "description": "노트의 속성과 링크를 표시할 위치입니다. 사이드 패널은 노트의 통계, 첨부 파일과 함께 정보 패널에 표시하고, 인라인은 페이지 안에 그대로 둡니다.",
+        "options": {
+          "side": "사이드 패널",
+          "inline": "인라인"
+        }
+      },
+      "taskBox": {
+        "label": "할 일 체크박스",
+        "description": "할 일 목록에 있는 상자의 모양입니다.",
+        "options": {
+          "square": "사각형",
+          "round": "원형"
+        }
+      },
+      "wordCount": {
+        "label": "단어 수 표시",
+        "description": "노트 도구 모음에 단어 수를 표시합니다."
+      },
+      "spellcheck": {
+        "label": "노트 맞춤법 검사",
+        "description": "노트를 쓰는 동안 철자가 틀린 단어에 밑줄을 긋습니다."
+      },
+      "replacements": {
+        "label": "입력하면서 바꾸기",
+        "description": "입력하는 동안 -> 같은 문자 쌍을 →로 바꿉니다. 코드와 수식은 입력한 그대로 두며, 바꾼 직후 Backspace를 누르면 원래 텍스트로 돌아갑니다.",
+        "list": "텍스트 바꾸기",
+        "type": "입력",
+        "becomes": "변환",
+        "add": "추가",
+        "remove": "{{from}} 제거",
+        "removeTooltip": "제거",
+        "empty": "아직 쌍이 없습니다. 아래에서 추가하세요.",
+        "full": "쌍은 최대 {{limit}}개까지 둘 수 있습니다. 하나를 제거한 뒤 추가하세요."
+      },
+      "keepUndo": {
+        "label": "닫은 뒤에도 실행 취소 유지",
+        "description": "노트를 닫거나 앱을 종료한 뒤에도 실행 취소를 쓸 수 있습니다. 기록은 이 컴퓨터에 남으며, 끄면 기록이 삭제됩니다."
+      },
+      "code": {
+        "title": "코드"
+      },
+      "drawings": {
+        "title": "LaTeX 그림"
+      },
+      "tikzPreamble": {
+        "label": "TikZ 프리앰블",
+        "description": "모든 TikZ 및 CircuiTikZ 블록의 프리앰블 맨 앞에 들어가는 \\usetikzlibrary{positioning} 같은 줄입니다."
+      },
+      "codeFont": {
+        "label": "코드 글꼴",
+        "description": "코드 블록과 인라인 코드에 쓸 글꼴을 설치된 글꼴 중에서 고르세요."
+      },
+      "codeTheme": {
+        "label": "코드 블록 색상",
+        "description": "노트의 코드 블록에 쓸 구문 강조 색상을 고르세요.",
+        "options": {
+          "editor": "편집기와 같게"
+        }
+      },
+      "colors": {
+        "title": "색상"
+      },
+      "accent": {
+        "label": "노트 강조 색상",
+        "description": "노트의 링크, 태그, 할 일 상자에 쓰입니다.",
+        "matchApp": "앱과 같게",
+        "customAriaLabel": "사용자 지정 노트 강조 색상 고르기"
+      },
+      "callouts": {
+        "label": "콜아웃 스타일",
+        "description": "노트에서 콜아웃 상자가 보이는 모양입니다.",
+        "options": {
+          "tinted": "옅은 색",
+          "filled": "채우기",
+          "outlined": "테두리",
+          "bar": "세로선"
+        }
+      },
+      "fieldStyle": {
+        "label": "날짜와 필드 칩",
+        "description": "노트에서 날짜와 마감, 우선순위 같은 필드가 보이는 모양입니다.",
+        "options": {
+          "tint": "옅은 색",
+          "outline": "테두리",
+          "underline": "밑줄"
+        }
+      },
+      "remoteImages": {
+        "title": "웹 이미지",
+        "description": "노트와 어시스턴트 답변은 이 사이트들의 이미지를 묻지 않고 불러옵니다.",
+        "empty": "노트와 어시스턴트 답변은 웹에서 이미지를 불러오기 전에 먼저 묻습니다. 항상 허용한 사이트가 여기에 표시됩니다.",
+        "remove": "{{host}} 제거"
+      }
+    }
+  },
+  "notesPreview": {
+    "label": "이 설정을 적용한 노트 미리보기",
+    "title": "현장 기록",
+    "heading": "아침 조사",
+    "paragraph": "9시까지 약한 비가 내리다가 이후 북쪽 능선 위로 하늘이 맑게 개었습니다. 정오에도 흙은 여전히 축축했습니다.",
+    "links": "전체 단계는 <note>샘플링 방법</note>을 참고하거나 <tag>#현장조사</tag>를 둘러보세요.",
+    "highlight": "모종의 키가 일주일 만에 두 배가 되었습니다.",
+    "calloutTitle": "다음 방문",
+    "calloutBody": "새 시료를 채취하기 전에 토양 센서를 확인합니다.",
+    "taskDone": "시료에 라벨 붙이기",
+    "task": "사진 업로드하기",
+    "taskLate": "토양 보고서 보내기"
+  },
+  "highlight": {
+    "colors": {
+      "yellow": "노란색",
+      "orange": "주황색",
+      "red": "빨간색",
+      "pink": "분홍색",
+      "purple": "보라색",
+      "blue": "파란색",
+      "green": "초록색"
+    },
+    "remove": "형광펜 지우기"
+  },
+  "quickCapture": {
+    "title": "빠른 캡처",
+    "untitled": "제목 없음",
+    "placeholder": "쓰기 시작…",
+    "field": "캡처할 텍스트",
+    "characters_other": "{{count}}자",
+    "failed": "저장하지 못했습니다. 텍스트는 그대로 남아 있으니 다시 시도할 수 있습니다.",
+    "actions": {
+      "label": "동작",
+      "saveNew": "새 노트로 저장",
+      "saveToday": "오늘의 노트에 추가",
+      "copy": "Markdown으로 복사",
+      "discard": "초안 삭제"
+    },
+    "openNotes": "노트 열기",
+    "newNote": "새 노트",
+    "format": "서식 표시",
+    "closeFormat": "서식 숨기기"
+  },
+  "starter": {
+    "blocksGallery": {
+      "title": "블록 갤러리",
+      "intro": "노트에 넣을 수 있는 모든 블록입니다. 블록에서 {{source}}를 클릭하면 그 블록을 그리는 내용을 보고 편집할 수 있고, 빈 줄에서 {{slash}}를 입력하면 새 블록을 삽입할 수 있습니다.",
+      "charts": "차트",
+      "functionPlots": "함수 그래프",
+      "tables": "표",
+      "csvTable": "csv 블록은 정렬과 필터링이 가능하고 요약 행이 있습니다:",
+      "markdownTable": "일반 Markdown 표도 쓸 수 있습니다:",
+      "math": "수식과 화학",
+      "typst": "Typst",
+      "diagrams": "다이어그램",
+      "svg": "SVG",
+      "html": "HTML, “{{run}}”을 누르세요",
+      "react": "React, “{{run}}”을 누르세요",
+      "structures": "화학 구조식",
+      "molecule": "3D 분자",
+      "sequences": "서열",
+      "code": "코드"
+    }
+  }
+}

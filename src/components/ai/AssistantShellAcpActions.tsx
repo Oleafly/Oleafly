@@ -1,4 +1,5 @@
-import { lazy, Suspense, useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { BarChart3, Download, History, ListTree, Plus, Settings2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { AssistantFloatButton } from "@/components/ai/AssistantShellHeader";
@@ -20,15 +21,14 @@ import { useSettingsStore } from "@/store/settings";
 import { toast } from "@/lib/toast";
 import { exportConversation } from "@/components/ai/acp/export-conversation";
 
-const AcpHistoryDialog = lazy(() => import("@/components/ai/acp/AcpHistoryDialog"));
+const AcpHistoryDialog = lazy(() => import("@/components/ai/acp/AcpHistoryDialog"), { warm: true });
 
 const MENU_CONVERSATIONS = 20;
 
 const UsageReportDialog = lazy(() =>
   import("@/components/usage/UsageReport").then((module) => ({
     default: module.UsageReportDialog,
-  })),
-);
+  })), { warm: true });
 
 export function openCliAgentSettings(agentId?: string) {
   const settings = useSettingsStore.getState();

@@ -230,7 +230,11 @@
     "history_unavailable": "이 프로젝트의 기록이 아직 이 컴퓨터에 없습니다. 동기화가 끝나면 다시 시도하세요.",
     "account_storage_full": "프로젝트 소유자의 계정이 이 서버의 저장소를 모두 사용했습니다. 파일을 일부 제거해 공간을 확보하거나 서버 관리자에게 공간을 늘려 달라고 요청하세요.",
     "too_many_projects": "이 서버가 허용하는 최대 개수의 공유 프로젝트가 이미 있습니다. 다른 프로젝트를 공유하려면 먼저 하나의 공유를 중지하세요.",
-    "too_many_uploads": "지난 한 시간 동안 업로드를 너무 많이 했습니다. 나중에 다시 시도하세요."
+    "too_many_uploads": "지난 한 시간 동안 업로드를 너무 많이 했습니다. 나중에 다시 시도하세요.",
+    "public_notes_off": "이 서버는 노트 공개 링크를 허용하지 않습니다. 관리자가 서버 설정에서 켤 수 있습니다.",
+    "too_many_pages": "이 서버에서 허용하는 공개 페이지 수를 모두 사용했습니다. 하나를 게시 취소한 다음 다시 시도하세요.",
+    "page_too_large": "이 노트는 너무 커서 게시할 수 없습니다. 이미지를 일부 제거한 다음 다시 시도하세요.",
+    "page_taken_down": "관리자가 이 페이지를 내렸으므로, 관리자가 다시 올릴 때까지 이 노트를 다시 게시할 수 없습니다."
   },
   "roles": {
     "admin": "관리자",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "이메일로 로그인",
         "description": "이메일 주소로 보낸 링크로 로그인할 수 있습니다. 서버의 이메일 설정이 필요합니다. 누가 들어올 수 있는지는 계속 접근 규칙이 정합니다."
+      },
+      "publicNotesAllowed": {
+        "label": "노트 공개 링크 허용",
+        "description": "멤버가 노트의 읽기 전용 사본을 로그인하지 않아도 누구나 열 수 있는 링크로 게시할 수 있습니다."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "게스트 초대를 거절함",
         "guestInvitationRevoked": "게스트 초대를 취소함",
         "guestAdmissionEnded": "게스트의 서버 접근을 종료함",
-        "unknown": "기타 서버 이벤트"
+        "unknown": "기타 서버 이벤트",
+        "notePublished": "공개 링크로 노트를 게시함",
+        "noteUnpublished": "노트 게시를 취소함",
+        "noteTakenDown": "게시된 노트를 내림",
+        "noteRestored": "게시된 노트를 다시 올림"
       },
       "details": {
         "project": "프로젝트: {{title}}",
@@ -455,7 +467,8 @@
         "device": "기기: {{name}}",
         "byAdmin": "관리 콘솔에서",
         "settingOn": "{{setting}}: 켜짐",
-        "settingOff": "{{setting}}: 꺼짐"
+        "settingOff": "{{setting}}: 꺼짐",
+        "note": "노트: {{title}}"
       }
     },
     "email": {
@@ -509,6 +522,7 @@
     "copyAndShare": "Oleafly에 복사하고 공유",
     "title": "{{name}} 공유",
     "description": "공동 작업 서버를 통해 다른 사람과 이 프로젝트를 함께 작업합니다.",
+    "noteDescription": "공동 작업 서버를 통해 다른 사람과 이 노트를 함께 씁니다.",
     "loading": "불러오는 중…",
     "linked": "이 프로젝트는 Oleafly 밖에 있는 폴더입니다. Oleafly가 이 폴더를 라이브러리로 복사하고 그 사본을 공유합니다. 원래 폴더는 건드리지 않습니다.",
     "editCopy": "공유된 사본입니다. 앞으로는 원래 폴더가 아니라 이 사본을 편집하세요.",
@@ -526,12 +540,15 @@
     "tooLarge": "이 파일들은 서버 한도인 {{size}} MB를 넘습니다. 공유하기 전에 파일 크기를 줄이거나 파일을 제거하세요.",
     "renamed": "일부 파일 이름은 컴퓨터에 따라 쓸 수 없습니다. 다른 사람에게는 이 파일들이 조금 다른 이름으로 전달됩니다.",
     "excluded": "공유하지 않는 항목: 기타 빌드 출력, Oleafly 설정, Git 기록. 최신 컴파일 PDF는 공유되므로 공동 저자가 브라우저에서 읽을 수 있습니다.",
+    "noteExcluded": "공유되지 않는 항목: Oleafly 설정과 Git 기록.",
     "start": "공유",
     "preparing": "프로젝트를 준비하는 중…",
     "uploading": "그림과 기타 파일 업로드 중: {{total}}개 중 {{done}}개",
     "saving": "프로젝트를 서버에 저장하는 중…",
     "failed": "공유가 끝나지 않아 아무것도 공유되지 않았습니다.",
-    "trustAgain": "이 프로젝트에 추가한 사람은 누구나 파일을 바꿀 수 있으므로, Oleafly는 이 컴퓨터에서 에이전트, 터미널 명령, shell escape를 실행하기 전에 이 프로젝트를 다시 신뢰할지 묻습니다."
+    "trustAgain": "이 프로젝트에 추가한 사람은 누구나 파일을 바꿀 수 있으므로, Oleafly는 이 컴퓨터에서 에이전트, 터미널 명령, shell escape를 실행하기 전에 이 프로젝트를 다시 신뢰할지 묻습니다.",
+    "projectNotesShared": "프로젝트의 노트는 이 프로젝트에 참여한 모든 사람과 공유됩니다. 개인 노트는 비공개로 유지됩니다.",
+    "personalNotesPrivate": "개인 노트는 비공개로 유지됩니다. 프로젝트의 노트 폴더에 있는 노트만 공유됩니다."
   },
   "manage": {
     "sharedOn": "{{server}}에서 공유 중",
@@ -789,7 +806,8 @@
       "settings": "서버 설정",
       "email": "이메일",
       "log": "보안 로그",
-      "checks": "연결 점검"
+      "checks": "연결 점검",
+      "pages": "게시된 노트"
     },
     "health": {
       "label": "서버 상태: {{status}}",
@@ -956,6 +974,30 @@
     },
     "checks": {
       "description": "이 컴퓨터에서 서버로의 연결을 확인합니다."
+    },
+    "pages": {
+      "description": "사람들이 자신의 노트로 만든 읽기 전용 페이지입니다. 페이지 링크가 있으면 누구나 읽을 수 있습니다.",
+      "loading": "게시된 노트를 불러오는 중…",
+      "empty": "아직 이 서버에서 노트를 게시한 사람이 없습니다.",
+      "limit": "최신 페이지 {{shown}}개를 표시합니다.",
+      "columns": {
+        "title": "노트",
+        "author": "작성자",
+        "updated": "게시일",
+        "actions": "작업"
+      },
+      "noAuthor": "삭제된 계정",
+      "takenDown": "내려짐",
+      "openNamed": "{{title}} 열기",
+      "takeDown": "내리기",
+      "takeDownNamed": "{{title}} 내리기",
+      "restore": "다시 올리기",
+      "restoreNamed": "{{title}} 다시 올리기",
+      "takeDownConfirm": {
+        "title": "{{title}}을(를) 내릴까요?",
+        "description": "페이지를 다시 올릴 때까지 공개 링크가 작동하지 않습니다. 작성자는 노트를 그대로 갖지만, 그동안에는 다시 게시할 수 없습니다.",
+        "confirm": "내리기"
+      }
     }
   },
   "links": {
@@ -1229,5 +1271,41 @@
     "broughtIn": "{{name}}의 변경 내용이 이제 이 프로젝트에 있습니다.",
     "retry": "다시 시도",
     "dismiss": "닫기"
+  },
+  "publish": {
+    "tabs": {
+      "people": "참여자",
+      "publish": "게시"
+    },
+    "intro": "게시하면 이 노트의 읽기 전용 사본이 공개 링크에 올라갑니다. 링크가 있으면 누구나 로그인하지 않고 읽을 수 있습니다.",
+    "contents": "이미지, 차트, 다이어그램, 수식, Typst, 분자는 포함됩니다. HTML, React, CSV, 서열, 노트북 블록은 제외됩니다.",
+    "checking": "공개 페이지를 확인하는 중…",
+    "loadFailed": "Oleafly가 이 노트의 공개 페이지를 확인하지 못했습니다.",
+    "notAllowed": "{{server}}은(는) 노트 공개 링크를 허용하지 않습니다. 관리자가 서버 설정에서 켤 수 있습니다.",
+    "ownerOnly": "노트 소유자만 게시할 수 있습니다.",
+    "linkLabel": "공개 링크",
+    "open": "열기",
+    "publishedAt": "마지막 게시: {{date}}",
+    "stale": "마지막으로 게시한 뒤 이 노트를 바꿨습니다. 페이지를 업데이트하려면 다시 게시하세요.",
+    "publish": "게시",
+    "republish": "다시 게시",
+    "unpublish": "게시 취소",
+    "failed": "게시를 완료하지 못했습니다.",
+    "unpublishConfirm": {
+      "title": "{{name}} 게시를 취소할까요?",
+      "description": "공개 링크가 바로 작동을 멈춥니다. 페이지 사본을 저장한 사람은 그 사본을 계속 갖게 됩니다.",
+      "confirm": "게시 취소"
+    },
+    "list": {
+      "title": "게시된 노트",
+      "description": "이 서버에 있는 내 노트의 읽기 전용 페이지입니다. 링크가 있으면 누구나 읽을 수 있습니다.",
+      "loadFailed": "Oleafly가 게시된 노트를 불러오지 못했습니다.",
+      "empty": "이 서버에 게시한 노트가 없습니다.",
+      "openNamed": "{{name}} 열기",
+      "unpublishNamed": "{{name}} 게시 취소",
+      "updated": "게시일: {{date}}"
+    },
+    "takenDown": "관리자가 이 페이지를 내렸습니다. 관리자가 다시 올릴 때까지 독자는 페이지를 열 수 없고, 다시 게시할 수도 없습니다. 게시 취소는 할 수 있습니다.",
+    "tooOld": "{{server}}은(는) 버전이 오래되어 노트 공개 링크를 쓸 수 없습니다. 관리자가 Oleafly Server를 업데이트해야 합니다."
   }
 }

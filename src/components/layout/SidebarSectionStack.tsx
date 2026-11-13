@@ -32,6 +32,7 @@ import {
   type PanelLimits,
 } from "@/lib/panel-layout";
 import { cn } from "@/lib/utils";
+import { SectionReorderArea } from "./section-reorder";
 
 export interface StackSection {
   readonly id: string;
@@ -101,6 +102,7 @@ function SectionGroup({
   fillerId,
   fillerHandleId,
   sections,
+  storageOrder,
   collapsedSize,
   resizeLabel,
   onCollapsedSize,
@@ -111,6 +113,7 @@ function SectionGroup({
   fillerId: string;
   fillerHandleId: string;
   sections: readonly StackSection[];
+  storageOrder: readonly string[];
   collapsedSize: number;
   resizeLabel: (first: string, second: string) => string;
   onCollapsedSize: (size: number) => void;
@@ -118,6 +121,10 @@ function SectionGroup({
 }>) {
   const ids = useMemo(() => sections.map((section) => section.id), [sections]);
   const panelIds = useMemo(() => [...ids, fillerId], [ids, fillerId]);
+  const storedIds = useMemo(
+    () => [...storageOrder.filter((id) => ids.includes(id)), ...ids.filter((id) => !storageOrder.includes(id)), fillerId],
+    [fillerId, ids, storageOrder],
+  );
   const stackRef = useRef<HTMLDivElement>(null);
   const groupRef = useRef<GroupImperativeHandle>(null);
   const fillerRef = useRef<PanelImperativeHandle>(null);
@@ -129,8 +136,8 @@ function SectionGroup({
   const [initialCollapsed] = useState(() => sections.map((section) => section.collapsed));
   const { defaultLayout, onLayoutChanged } = usePersistentPanelLayout(
     persist ? groupId : undefined,
-    panelIds,
-    panelIds,
+    storedIds,
+    storedIds,
   );
   const trackCollapse = useCollapseTransitions();
   const hitArea = useSeparatorHitArea(0);
@@ -345,33 +352,41 @@ export function SidebarSectionStack({
   fillerId,
   fillerHandleId,
   sections,
+  storageOrder,
   resizeLabel,
   testId,
+  onReorder,
 }: Readonly<{
   groupId: string;
   persist?: boolean;
   fillerId: string;
   fillerHandleId: string;
   sections: readonly StackSection[];
+  storageOrder?: readonly string[];
   resizeLabel: (first: string, second: string) => string;
   testId: string;
+  onReorder?: (ids: string[]) => void;
 }>) {
   const [collapsedSize, setCollapsedSize] = useState(6);
   const onCollapsedSize = useCallback((next: number) => {
     setCollapsedSize((current) => (Math.abs(current - next) < 0.05 ? current : next));
   }, []);
+  const ids = useMemo(() => sections.map((section) => section.id), [sections]);
   return (
-    <SectionGroup
+    <SectionReorderArea ids={ids} onReorder={onReorder}>
+      <SectionGroup
       key={sections.map((section) => section.id).join("|")}
       groupId={groupId}
       persist={persist}
       fillerId={fillerId}
       fillerHandleId={fillerHandleId}
       sections={sections}
+      storageOrder={storageOrder ?? ids}
       collapsedSize={collapsedSize}
       resizeLabel={resizeLabel}
       onCollapsedSize={onCollapsedSize}
       testId={testId}
-    />
+      />
+    </SectionReorderArea>
   );
 }

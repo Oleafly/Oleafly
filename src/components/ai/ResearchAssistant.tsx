@@ -1,4 +1,5 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { ChatCore } from "@/components/ai/ChatCore";
 import { AssistantShellAcpActions } from "@/components/ai/AssistantShellAcpActions";

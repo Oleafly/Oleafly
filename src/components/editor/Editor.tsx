@@ -1,5 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
-import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { Group, Panel, Separator, type GroupImperativeHandle, type Layout } from "react-resizable-panels";
 import { registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
@@ -14,6 +15,7 @@ import { SelectionActionMenu } from "./SelectionActionMenu";
 import { DiffView } from "./diff/DiffView";
 import { PdfViewer } from "@/components/pdf/PdfViewer";
 import { SidebarCollapseToggle } from "@/components/layout/WorkspaceControls";
+import { PANE_BAR_CLASS, usePaneBar } from "@/components/layout/pane-reorder";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { getEditorView, wrapSelection } from "./cm/controller";
@@ -21,9 +23,14 @@ import { useFilesStore } from "@/store/files";
 import { isManagedProjectPath, isReadOnlyLink } from "@/lib/project-paths";
 import { inWidgetControl } from "@/lib/field-history";
 import { ChangedOnDiskBanner } from "./ChangedOnDiskBanner";
+import { NoteMarkdownBanner } from "./NoteMarkdownBanner";
 import { CloseAssistantTabsButton, EditorTabStrip } from "./EditorTabStrip";
 import { useDiffStore, diffKey } from "@/store/diff";
 import { useSettingsStore } from "@/store/settings";
+import { activeNoteTab, editsAsMarkdown, useNoteTabsStore } from "@/store/note-tabs";
+import { isEditorNoteFile } from "@/lib/project-notes";
+import { fileNoteView, type NoteTabView, personalNoteView, useKeptNoteTabs } from "./kept-note-tabs";
+import { loadNamespace } from "@/i18n";
 import { useZenStore } from "@/store/zen";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
@@ -50,9 +57,15 @@ import { flushWysiwygPendingEdits, setWysiwygVisibilityController } from "./wysi
 import { ProofreadingNotifications } from "./ProofreadingNotifications";
 import { LoadingState } from "@/components/ui/empty";
 const WysiwygEditor = lazy(() =>
-  import("./wysiwyg/WysiwygEditor").then((m) => ({ default: m.WysiwygEditor })),
-);
+  import("./wysiwyg/WysiwygEditor").then((m) => ({ default: m.WysiwygEditor })));
 const MarkdownPreview = lazy(() => import("./MarkdownPreview").then((module) => ({ default: module.MarkdownPreview })));
+const noteTabView = () =>
+  import("@/components/notes/NoteTabView").then(async (module) => {
+    await loadNamespace("notes");
+    return module;
+  });
+const ProjectNoteTab = lazy(() => noteTabView().then((module) => ({ default: module.ProjectNoteTab })));
+const PersonalNoteTab = lazy(() => noteTabView().then((module) => ({ default: module.PersonalNoteTab })));
 const MARKDOWN_SOURCE_PANEL = "markdown-source-pane";
 const MARKDOWN_PREVIEW_PANEL = "markdown-preview-pane";
 const MARKDOWN_PANE_LIMITS: PanelLimits = { minSize: 20 };
@@ -76,7 +89,7 @@ function PdfFileView({ projectId, path }: Readonly<{ projectId: string; path: st
     const request = latestRead.current;
     readFileBase64(projectId, path)
       .then((b64) => { if (request === latestRead.current) setBytes(base64ToUint8Array(b64)); })
-      .catch((e) => { if (request === latestRead.current) setErr(String(e)); });
+      .catch((error) => { if (request === latestRead.current) setErr(String(error)); });
   }, [projectId, path]);
 
   useTauriEvent<{ projectId?: string; path?: string }>(
@@ -120,7 +133,7 @@ function ImageFileView({ projectId, path }: Readonly<{ projectId: string; path: 
     setUndecodable(false);
     readFileBase64(projectId, path)
       .then((b64) => { if (!cancelled) setSrc(`data:${imageMime(path)};base64,${b64}`); })
-      .catch((e) => { if (!cancelled) setErr(String(e)); });
+      .catch((error) => { if (!cancelled) setErr(String(error)); });
     return () => { cancelled = true; };
   }, [projectId, path]);
 
@@ -179,9 +192,29 @@ function markdownModeFor(split: boolean, visual: boolean): "both" | "visual" | "
   return visual ? "visual" : "code";
 }
 
+function shownNoteView({
+  projectId,
+  activePath,
+  noteTab,
+  noteFile,
+  diffFocused,
+}: Readonly<{
+  projectId: string | null;
+  activePath: string | null;
+  noteTab: string | null;
+  noteFile: boolean;
+  diffFocused: boolean;
+}>): NoteTabView | null {
+  if (!projectId) return null;
+  if (noteTab) return personalNoteView(projectId, noteTab);
+  if (!diffFocused && noteFile && activePath) return fileNoteView(projectId, activePath);
+  return null;
+}
+
 export function Editor() {
   const { t } = useTranslation(["common", "editor"]);
   const zen = useZenStore((s) => s.active);
+  const paneBar = usePaneBar();
   const interactionRoot = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const root = interactionRoot.current;
@@ -237,6 +270,17 @@ export function Editor() {
   const engine = useFilesStore((s) => s.engine);
   const formattingProfile = useFilesStore((s) => s.engine.capabilities.formatting_profile);
   const isMarkdownFile = /\.(md|markdown)$/iu.test(activePath ?? "");
+  const notesOn = useSettingsStore((s) => s.notes);
+  const noteTab = useNoteTabsStore((s) => (notesOn ? activeNoteTab(s, projectId) : null));
+  const asMarkdown = useNoteTabsStore((s) => editsAsMarkdown(s, projectId, activePath));
+  const noteFile = useFilesStore(
+    (s) =>
+      !asMarkdown &&
+      s.activePath !== null &&
+      isEditorNoteFile(s.activePath, s.files[s.activePath]?.content, { notes: notesOn, projectKind: s.projectKind }),
+  );
+  const shownNote = shownNoteView({ projectId, activePath, noteTab, noteFile, diffFocused });
+  const keptNotes = useKeptNoteTabs(shownNote, projectId, notesOn);
   const toolbarProfile = formattingProfileForPath(engine, engineLoaded, activePath);
   const showLatexToolbar = !zen && toolbarProfile === "latex";
   const markdownIsEngineSource =
@@ -289,6 +333,7 @@ export function Editor() {
         </output>
       ) : null}
       <ChangedOnDiskBanner />
+      <NoteMarkdownBanner />
       {linkedFile && !managedFile ? (
         <output
           data-testid="linked-file-notice"
@@ -427,7 +472,22 @@ export function Editor() {
     return renderTextArea();
   };
 
+  const renderNote = (view: NoteTabView, shown: boolean) => (
+    <div key={view.key} hidden={!shown} className={shown ? "flex min-h-0 flex-1 flex-col" : undefined}>
+      <ErrorBoundary surface="editor" resetKey={`${view.key}\u0000${shown}`}>
+        <Suspense fallback={<LoadingState className="h-full justify-center" label={t(($) => $.common.state.loading)} />}>
+          {view.kind === "personal" ? (
+            <PersonalNoteTab projectId={view.projectId} noteId={view.noteId} shown={shown} />
+          ) : (
+            <ProjectNoteTab projectId={view.projectId} path={view.path} shown={shown} />
+          )}
+        </Suspense>
+      </ErrorBoundary>
+    </div>
+  );
+
   const renderBody = () => {
+    if (shownNote) return null;
     if (diffFocused) {
       return (
         <ErrorBoundary
@@ -495,7 +555,7 @@ export function Editor() {
       className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-background"
     >
       {!zen && (
-        <div className="flex h-9 shrink-0 items-center border-b">
+        <div {...paneBar} className={cn("flex h-9 shrink-0 items-center border-b", PANE_BAR_CLASS)}>
           <div className="flex shrink-0 items-center border-r border-border pl-2 pr-1">
             <SidebarCollapseToggle />
           </div>
@@ -516,13 +576,14 @@ export function Editor() {
         </div>
       )}
       <CollabRemovedFileSlot />
-      {!diffFocused ? (
+      {!diffFocused && !noteTab && !noteFile ? (
         <ProofreadingNotifications
           path={activePath}
           surface={markdownVisual ? "visual" : "source"}
         />
       ) : null}
       {renderBody()}
+      {keptNotes.map(({ view, shown }) => renderNote(view, shown))}
     </div>
   );
 }

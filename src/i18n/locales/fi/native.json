@@ -155,6 +155,9 @@
       "spacesMessage": "Cua Spacesia käyttävät agentit voivat:",
       "spacesChanges": "Luoda ja poistaa Space-ympäristöjä ja suorittaa niissä komentoja",
       "spacesSignIns": "Käyttää Claude Code- tai Codex-kirjautumistasi Space-ympäristössä"
+    },
+    "assistantNetwork": {
+      "message": "Avustaja haluaa käyttää työkalua {{tool}}, joka lähettää tekstiä verkkopalveluun."
     }
   },
   "errors": {
@@ -214,6 +217,11 @@
     "blockedMode": {
       "title": "Lupatarkistukset ovat pois päältä ({{mode}})",
       "description": "Agentti voi muokata tiedostoja ja suorittaa komentoja kysymättä. Oleafly ei voinut vaihtaa sitä toiseen tilaan. Vaihda tila agentin omista asetuksista."
+    }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Pikakirjaus"
     }
   }
 }

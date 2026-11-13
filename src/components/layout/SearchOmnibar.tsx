@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode, type Ref } from "react";
 import { Command } from "cmdk";
 import {
   Bookmark,
@@ -7,7 +7,9 @@ import {
   Link2,
   Moon,
   NotebookText,
+  Pilcrow,
   Plus,
+  StickyNote,
   Search,
   Settings,
   Sun,
@@ -27,20 +29,30 @@ import { useFilesStore } from "@/store/files";
 import { useProjectColorsStore } from "@/store/project-colors";
 import { DEFAULT_BOOK_COLOR } from "@/components/library/Book";
 import { useTheme } from "@/lib/theme";
-import type { ProjectInfo, SearchHit } from "@/lib/tauri";
-import { useDocSearch } from "@/hooks/use-doc-search";
+import type { NoteBlockHit, NoteSearchHit, ProjectInfo, SearchHit } from "@/lib/tauri";
+import { useDocSearch, useSearchResults } from "@/hooks/use-doc-search";
+import { useNotesAppearanceRef } from "@/hooks/use-notes-appearance";
+import type { OmnibarNoteResults, OmnibarNoteSearch } from "@/components/notes/omnibar-note-search";
+import { textSearchTruncated } from "@/lib/text-search-query";
+import { openNotes } from "@/features/open-tool";
+import { blockFragment, textFragment } from "@/components/notes/note-block-ids";
+import { Highlighted } from "@/components/ui/highlighted";
+import { SearchModeMenu } from "@/components/ui/search-mode-menu";
+import { useSearchModeStore } from "@/store/search-modes";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { projectModifiedLabel } from "@/lib/project-format";
+import { libraryProjects } from "@/lib/library-projects";
 import { i18n } from "@/i18n";
 import { gotoLine } from "@/components/editor/cm/controller";
-import { cn } from "@/lib/utils";
 import { objectKey } from "@/lib/react-key";
+import { COMMAND_GROUP, COMMAND_ITEM, CommandDialogShell } from "@/components/ui/command-dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { useFavoritesStore } from "@/store/favorites";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { basename } from "@/lib/path-utils";
 import { useModalLayer } from "@/components/ui/use-modal-accessibility";
 import { EmptyState } from "@/components/ui/empty";
+import { NoteSnippet } from "@/components/notes/NoteSnippet";
 
 function searchableDate(timestamp: number) {
   if (!timestamp) return "";
@@ -150,6 +162,7 @@ type Mode =
   | "all"
   | "projects"
   | "docs"
+  | "notes"
   | "refs"
   | "create"
   | "theme"
@@ -163,6 +176,10 @@ interface SlashEntry {
   hint: string;
   command?: CommandContribution;
 }
+
+const NOTE_RESULTS = 20;
+const NOTE_RESULTS_ALL = 5;
+const NOTE_BLOCKS = 3;
 
 const BUILT_IN_SLASH: SlashEntry[] = [
   {
@@ -184,6 +201,13 @@ const BUILT_IN_SLASH: SlashEntry[] = [
     mode: "docs",
     get hint() {
       return i18n.t(($) => $.shell.omnibar.slash.docs);
+    },
+  },
+  {
+    keys: ["notes", "n"],
+    mode: "notes",
+    get hint() {
+      return i18n.t(($) => $.shell.omnibar.slash.notes);
     },
   },
   {
@@ -262,6 +286,10 @@ export function parse(
   return { mode: "help", term: q, cmd };
 }
 
+function noteBlockFragment(block: NoteBlockHit): string {
+  return block.block ? blockFragment(block.block) : textFragment(block.text);
+}
+
 export function SearchOmnibar() {
   const open = useSettingsStore((s) => s.searchOpen);
   useModalLayer(open);
@@ -270,7 +298,9 @@ export function SearchOmnibar() {
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setRailTab = useSettingsStore((s) => s.setRailTab);
   const latexTools = useSettingsStore((s) => s.latexTools);
-  const projects = useFilesStore((s) => s.projects);
+  const allProjects = useFilesStore((s) => s.projects);
+  const notesOn = useSettingsStore((s) => s.notes);
+  const projects = useMemo(() => libraryProjects(allProjects, notesOn), [allProjects, notesOn]);
   const projectColors = useProjectColorsStore((s) => s.colors);
   const favs = useFavoritesStore((s) => s.favs);
   const projectId = useFilesStore((s) => s.projectId);
@@ -282,6 +312,8 @@ export function SearchOmnibar() {
   const { t } = useTranslation(["common", "shell"]);
   const [query, setQuery] = useState("");
   const listRef = useScrollTopOnChange(query);
+  const notesAppearanceRef = useNotesAppearanceRef<HTMLDivElement>();
+  const noteSearcher = useRef<Promise<OmnibarNoteSearch> | null>(null);
 
   const ctx = useMemo<AppContext>(
     () => ({ projectId, projectKind, theme, latexToolsEnabled: latexTools }),
@@ -293,19 +325,40 @@ export function SearchOmnibar() {
   );
   const slashEntries = useMemo(
     () => [
-      ...BUILT_IN_SLASH,
+      ...BUILT_IN_SLASH.filter((entry) => notesOn || entry.mode !== "notes"),
       ...commandSlashEntries(availableCommands, ctx),
     ],
-    [availableCommands, ctx],
+    [availableCommands, ctx, notesOn],
   );
   const { mode, term, cmd, action } = useMemo(
     () => parse(query, slashEntries),
     [query, slashEntries],
   );
   const trimmed = term.trim();
+  const fileMode = useSearchModeStore((state) => state.files);
+  const noteMode = useSearchModeStore((state) => state.notes);
+  const searchingFiles = mode === "all" || mode === "docs";
+  const searchingNotes = notesOn && (mode === "all" || mode === "notes");
+  const notesSearchMode = mode === "notes" ? noteMode : fileMode;
   const { hits, loading } = useDocSearch(trimmed, {
-    enabled: mode === "all" || mode === "docs",
+    enabled: searchingFiles,
+    mode: fileMode,
   });
+  const noteLimit = mode === "notes" ? NOTE_RESULTS : NOTE_RESULTS_ALL;
+  const notes = useSearchResults<OmnibarNoteResults>(
+    searchingNotes ? trimmed : "",
+    `${notesSearchMode}\u0000${noteLimit}`,
+    (term) => {
+      noteSearcher.current ??= import("@/components/notes/omnibar-note-search").then((module) => module.omnibarNoteSearch());
+      return noteSearcher.current.then((search) => search(term, noteLimit, notesSearchMode)).then((found) => [found]);
+    },
+  );
+  const noteResults = notes.hits[0];
+  const noteHits = noteResults?.hits ?? [];
+  const truncated = useMemo(
+    () => (searchingFiles && textSearchTruncated(trimmed, true)) || (searchingNotes && noteResults?.truncated === true),
+    [noteResults, searchingFiles, searchingNotes, trimmed],
+  );
   const slashSuggestions = useMemo(
     () =>
       mode === "help"
@@ -317,7 +370,9 @@ export function SearchOmnibar() {
   );
 
   useEffect(() => {
-    if (open) void refreshProjects().catch(() => {});
+    if (!open) return;
+    noteSearcher.current = null;
+    void refreshProjects().catch(() => {});
   }, [open, refreshProjects]);
 
   useEffect(() => {
@@ -388,7 +443,11 @@ export function SearchOmnibar() {
     await openProject(hit.project_id);
     if (useFilesStore.getState().projectId !== hit.project_id) return;
     await openFile(hit.path);
-    window.setTimeout(() => gotoLine(hit.line), 120);
+    if (hit.line > 0) window.setTimeout(() => gotoLine(hit.line), 120);
+  };
+  const openNote = (hit: NoteSearchHit, block?: NoteBlockHit) => {
+    close();
+    void openNotes(hit.id, block ? noteBlockFragment(block) : null);
   };
   const runAction = (fn: () => void) => {
     close();
@@ -398,218 +457,37 @@ export function SearchOmnibar() {
   const placeholderFor = (): string => {
     if (mode === "projects") return t(($) => $.shell.omnibar.placeholderProjects);
     if (mode === "docs") return t(($) => $.shell.omnibar.placeholderDocuments);
+    if (mode === "notes") return t(($) => $.shell.omnibar.placeholderNotes);
     return t(($) => $.shell.omnibar.placeholder);
   };
   const placeholder = placeholderFor();
 
   return (
-    <Command.Dialog
+    <CommandDialogShell
       open={open}
       onOpenChange={(v) => (v ? setSearchOpen(true) : close())}
       label={t(($) => $.shell.omnibar.label)}
       shouldFilter={false}
-      overlayClassName="fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm"
-      className="fixed left-1/2 top-[18%] z-[90] w-[min(660px,92vw)] -translate-x-1/2"
-    >
-      <div className="overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl">
-        <div className="flex items-center gap-2 border-b border-border px-3">
-          <Search className="size-4 shrink-0 text-muted-foreground" />
-          <Command.Input
-            value={query}
-            onValueChange={setQuery}
-            autoFocus
-            placeholder={placeholder}
-            className="flex h-12 w-full bg-transparent text-sm placeholder:text-muted-foreground"
-          />
-          <span className="shrink-0 text-xs text-muted-foreground">
-            {loading ? "…" : ""}
-          </span>
-        </div>
-
-        <Command.List ref={listRef} className="max-h-[min(60vh,440px)] overflow-auto p-1.5">
-          {mode === "create" && (
-            <Group heading={t(($) => $.shell.omnibar.groups.action)}>
-              <Row
-                icon={<Plus className="size-4" />}
-                title={t(($) => $.shell.omnibar.createProject)}
-                hint={t(($) => $.shell.keys.enter)}
-                onSelect={() => runAction(() => setNewProjectOpen(true))}
-              />
-            </Group>
+      query={query}
+      onQueryChange={setQuery}
+      placeholder={placeholder}
+      placement="top-[18%]"
+      className="w-[min(660px,92vw)]"
+      leading={<Search aria-hidden className="size-4 shrink-0 text-muted-foreground" />}
+      trailing={
+        <span className="flex shrink-0 items-center gap-1">
+          <span className="text-xs text-muted-foreground">{loading || notes.loading ? "…" : ""}</span>
+          {searchingFiles && (
+            <SearchModeMenu value={fileMode} onChange={(next) => useSearchModeStore.getState().setMode("files", next)} />
           )}
-          {mode === "theme" && (
-            <Group heading={t(($) => $.shell.omnibar.groups.action)}>
-              <Row
-                icon={theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-                title={
-                  theme === "dark"
-                    ? t(($) => $.shell.commands.theme.toLight)
-                    : t(($) => $.shell.commands.theme.toDark)
-                }
-                hint={t(($) => $.shell.keys.enter)}
-                onSelect={() => runAction(toggleTheme)}
-              />
-            </Group>
+          {mode === "notes" && (
+            <SearchModeMenu value={noteMode} onChange={(next) => useSearchModeStore.getState().setMode("notes", next)} />
           )}
-          {mode === "settings" && (
-            <Group heading={t(($) => $.shell.omnibar.groups.action)}>
-              <Row
-                icon={<Settings className="size-4" />}
-                title={t(($) => $.shell.commands.settings.label)}
-                hint={t(($) => $.shell.keys.enter)}
-                onSelect={() => runAction(() => setSettingsOpen(true))}
-              />
-            </Group>
-          )}
-          {mode === "command" && action && (
-            <Group heading={t(($) => $.shell.omnibar.groups.action)}>
-              <Row
-                icon={action.icon?.(ctx)}
-                title={commandLabel(action, ctx)}
-                hint={t(($) => $.shell.keys.enter)}
-                onSelect={() => runAction(() => action.run(ctx))}
-              />
-            </Group>
-          )}
-          {mode === "refs" && (
-            <Group heading={t(($) => $.shell.omnibar.groups.references)}>
-              {projectId ? (
-                <Row
-                  icon={<Link2 className="size-4" />}
-                  title={t(($) => $.shell.omnibar.openReferences)}
-                  hint={t(($) => $.shell.keys.enter)}
-                  onSelect={() => runAction(() => setRailTab("refs"))}
-                />
-              ) : (
-                <Hint>{t(($) => $.shell.omnibar.referencesNeedProject)}</Hint>
-              )}
-            </Group>
-          )}
-
-          {generalCommands.length > 0 && (
-            <Group heading={t(($) => $.shell.commandGroups.commands)}>
-              {generalCommands.map((c) => (
-                <Row
-                  key={c.id}
-                  icon={c.icon}
-                  title={c.label}
-                  onSelect={() => runAction(c.run)}
-                />
-              ))}
-            </Group>
-          )}
-
-          {toolCommands.length > 0 && (
-            <Group heading={t(($) => $.shell.commandGroups.tools)}>
-              {toolCommands.map((c) => (
-                <Row
-                  key={c.id}
-                  icon={c.icon}
-                  title={c.label}
-                  onSelect={() => runAction(c.run)}
-                />
-              ))}
-            </Group>
-          )}
-
-          {matchedProjects.length > 0 && (
-            <Group heading={t(($) => $.shell.commandGroups.project)}>
-              {matchedProjects.map((p) => (
-                <Row
-                  key={p.id}
-                  icon={
-                    <span className="flex items-center gap-2">
-                      <span
-                        className="size-2 shrink-0 rounded-full"
-                        style={{
-                          backgroundColor:
-                            projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR),
-                        }}
-                      />
-                      <NotebookText className="size-4" />
-                    </span>
-                  }
-                  title={p.name}
-                  starred={favs.includes(p.id)}
-                  hint={projectModifiedLabel(p.updated_at)}
-                  onSelect={() => void runProject(p.id)}
-                />
-              ))}
-            </Group>
-          )}
-
-          {(mode === "all" || mode === "docs") && hits.length > 0 && (
-            <Group heading={t(($) => $.shell.omnibar.groups.documents)}>
-              {hits.map((hit) => {
-                const itemKey = objectKey(hit, "document");
-                return (
-                <Command.Item
-                  key={itemKey}
-                  value={itemKey}
-                  onSelect={() => void openHit(hit)}
-                  className="flex cursor-pointer flex-col gap-0.5 rounded-md px-2.5 py-2 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
-                >
-                  <div className="flex items-center gap-2">
-                    <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-                    <span className="truncate font-medium">{basename(hit.path)}</span>
-                    <span className="truncate text-xs text-muted-foreground">
-                      {`${hit.project_name} · ${hit.path} : ${hit.line}`}
-                    </span>
-                  </div>
-                  <PreviewLine preview={hit.preview} query={trimmed} />
-                </Command.Item>
-                );
-              })}
-            </Group>
-          )}
-
-          {mode === "help" && slashSuggestions.length > 0 && (
-            <Group heading={t(($) => $.shell.commandGroups.commands)}>
-              {slashSuggestions.map((s) => (
-                <Row
-                  key={s.keys[0]}
-                  icon={
-                    s.command?.icon?.(ctx) ?? (
-                      <code className="text-xs">/{s.keys[0]}</code>
-                    )
-                  }
-                  title={s.hint}
-                  hint={`/${s.keys[0]}`}
-                  onSelect={() => {
-                    if (s.command) {
-                      runAction(() => s.command?.run(ctx));
-                    } else {
-                      setQuery(`/${s.keys[0]} `);
-                    }
-                  }}
-                />
-              ))}
-            </Group>
-          )}
-          {mode === "help" && slashSuggestions.length === 0 && (
-            <Hint>{t(($) => $.shell.omnibar.unknownCommand)}</Hint>
-          )}
-          {mode === "all" &&
-            !trimmed &&
-            commands.length === 0 &&
-            matchedProjects.length === 0 && (
-              <SlashHelp entries={slashEntries} />
-            )}
-          {(mode === "all" || mode === "docs" || mode === "projects") &&
-            trimmed &&
-            !loading &&
-            hits.length === 0 &&
-            matchedProjects.length === 0 &&
-            commands.length === 0 && (
-              <EmptyState
-                className="px-3 py-6"
-                icon={<Ghost aria-hidden className="size-6 text-muted-foreground" />}
-                title={t(($) => $.shell.omnibar.noMatches)}
-                testId="omnibar-no-matches"
-              />
-            )}
-        </Command.List>
-
+        </span>
+      }
+      listRef={listRef}
+      listClassName="max-h-[min(60vh,440px)]"
+      footer={
         <div className="flex items-center gap-3 border-t border-border px-3 py-1.5 text-[0.6875rem] text-muted-foreground">
           <span className="flex items-center gap-1">
             <Kbd className="border bg-background text-foreground">{t(($) => $.shell.keys.enter)}</Kbd>
@@ -619,18 +497,243 @@ export function SearchOmnibar() {
             <Kbd className="border bg-background text-foreground">/</Kbd>
             <span>{t(($) => $.shell.commandGroups.commands)}</span>
           </span>
+          {truncated && (
+            <span role="status" className="ml-auto min-w-0 text-right">
+              {t(($) => $.common.querySearch.issues.tooManyBranches)}
+            </span>
+          )}
         </div>
-      </div>
-    </Command.Dialog>
+      }
+    >
+      {mode === "create" && (
+        <Group heading={t(($) => $.shell.omnibar.groups.action)}>
+          <Row
+            icon={<Plus className="size-4" />}
+            title={t(($) => $.shell.omnibar.createProject)}
+            hint={t(($) => $.shell.keys.enter)}
+            onSelect={() => runAction(() => setNewProjectOpen(true))}
+          />
+        </Group>
+      )}
+      {mode === "theme" && (
+        <Group heading={t(($) => $.shell.omnibar.groups.action)}>
+          <Row
+            icon={theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            title={
+              theme === "dark"
+                ? t(($) => $.shell.commands.theme.toLight)
+                : t(($) => $.shell.commands.theme.toDark)
+            }
+            hint={t(($) => $.shell.keys.enter)}
+            onSelect={() => runAction(toggleTheme)}
+          />
+        </Group>
+      )}
+      {mode === "settings" && (
+        <Group heading={t(($) => $.shell.omnibar.groups.action)}>
+          <Row
+            icon={<Settings className="size-4" />}
+            title={t(($) => $.shell.commands.settings.label)}
+            hint={t(($) => $.shell.keys.enter)}
+            onSelect={() => runAction(() => setSettingsOpen(true))}
+          />
+        </Group>
+      )}
+      {mode === "command" && action && (
+        <Group heading={t(($) => $.shell.omnibar.groups.action)}>
+          <Row
+            icon={action.icon?.(ctx)}
+            title={commandLabel(action, ctx)}
+            hint={t(($) => $.shell.keys.enter)}
+            onSelect={() => runAction(() => action.run(ctx))}
+          />
+        </Group>
+      )}
+      {mode === "refs" && (
+        <Group heading={t(($) => $.shell.omnibar.groups.references)}>
+          {projectId ? (
+            <Row
+              icon={<Link2 className="size-4" />}
+              title={t(($) => $.shell.omnibar.openReferences)}
+              hint={t(($) => $.shell.keys.enter)}
+              onSelect={() => runAction(() => setRailTab("refs"))}
+            />
+          ) : (
+            <Hint>{t(($) => $.shell.omnibar.referencesNeedProject)}</Hint>
+          )}
+        </Group>
+      )}
+
+      {generalCommands.length > 0 && (
+        <Group heading={t(($) => $.shell.commandGroups.commands)}>
+          {generalCommands.map((c) => (
+            <Row
+              key={c.id}
+              icon={c.icon}
+              title={c.label}
+              onSelect={() => runAction(c.run)}
+            />
+          ))}
+        </Group>
+      )}
+
+      {toolCommands.length > 0 && (
+        <Group heading={t(($) => $.shell.commandGroups.tools)}>
+          {toolCommands.map((c) => (
+            <Row
+              key={c.id}
+              icon={c.icon}
+              title={c.label}
+              onSelect={() => runAction(c.run)}
+            />
+          ))}
+        </Group>
+      )}
+
+      {matchedProjects.length > 0 && (
+        <Group heading={t(($) => $.shell.commandGroups.project)}>
+          {matchedProjects.map((p) => (
+            <Row
+              key={p.id}
+              icon={
+                <span className="flex items-center gap-2">
+                  <span
+                    className="size-2 shrink-0 rounded-full"
+                    style={{
+                      backgroundColor:
+                        projectColors[p.id] ?? (p.color || DEFAULT_BOOK_COLOR),
+                    }}
+                  />
+                  <NotebookText className="size-4" />
+                </span>
+              }
+              title={p.name}
+              starred={favs.includes(p.id)}
+              hint={projectModifiedLabel(p.updated_at)}
+              onSelect={() => void runProject(p.id)}
+            />
+          ))}
+        </Group>
+      )}
+
+      {(mode === "all" || mode === "notes") && noteHits.length > 0 && (
+        <Group ref={notesAppearanceRef} heading={t(($) => $.shell.omnibar.groups.notes)}>
+          {noteHits.flatMap((hit) => [
+            <Command.Item
+              key={`note:${hit.id}`}
+              value={`note:${hit.id}`}
+              onSelect={() => openNote(hit)}
+              className="flex cursor-pointer flex-col gap-0.5 rounded-md px-2.5 py-2 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+            >
+              <div className="flex items-center gap-2">
+                <StickyNote className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate font-medium">
+                  <Highlighted text={hit.title} ranges={hit.titleRanges} />
+                </span>
+              </div>
+              {!hit.blocks?.length && hit.snippets[0] && (
+                <span className="-my-0.5 truncate py-0.5 text-xs text-muted-foreground">
+                  <NoteSnippet text={hit.snippets[0].text} ranges={hit.snippets[0].ranges} />
+                </span>
+              )}
+            </Command.Item>,
+            ...(hit.blocks ?? []).slice(0, NOTE_BLOCKS).map((block) => (
+              <Command.Item
+                key={`note:${hit.id}:${block.line}`}
+                value={`note:${hit.id}:${block.line}`}
+                data-omnibar-block={block.line}
+                onSelect={() => openNote(hit, block)}
+                className="flex cursor-pointer items-center gap-2 rounded-md py-1.5 pr-2.5 pl-8 text-xs text-muted-foreground data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+              >
+                <Pilcrow className="size-3.5 shrink-0" />
+                <span className="-my-0.5 truncate py-0.5">
+                  <NoteSnippet text={block.text} ranges={block.ranges} />
+                </span>
+              </Command.Item>
+            )),
+          ])}
+        </Group>
+      )}
+
+      {(mode === "all" || mode === "docs") && hits.length > 0 && (
+        <Group heading={t(($) => $.shell.omnibar.groups.documents)}>
+          {hits.map((hit) => {
+            const itemKey = objectKey(hit, "document");
+            return (
+            <Command.Item
+              key={itemKey}
+              value={itemKey}
+              onSelect={() => void openHit(hit)}
+              className="flex cursor-pointer flex-col gap-0.5 rounded-md px-2.5 py-2 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+            >
+              <div className="flex items-center gap-2">
+                <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate font-medium">{basename(hit.path)}</span>
+                <span className="truncate text-xs text-muted-foreground">
+                  {hit.line > 0 ? `${hit.project_name} · ${hit.path} : ${hit.line}` : `${hit.project_name} · ${hit.path}`}
+                </span>
+              </div>
+              <span className="truncate font-mono text-xs text-muted-foreground">
+                <Highlighted text={hit.preview} ranges={hit.ranges} />
+              </span>
+            </Command.Item>
+            );
+          })}
+        </Group>
+      )}
+
+      {mode === "help" && slashSuggestions.length > 0 && (
+        <Group heading={t(($) => $.shell.commandGroups.commands)}>
+          {slashSuggestions.map((s) => (
+            <Row
+              key={s.keys[0]}
+              icon={
+                s.command?.icon?.(ctx) ?? (
+                  <code className="text-xs">/{s.keys[0]}</code>
+                )
+              }
+              title={s.hint}
+              hint={`/${s.keys[0]}`}
+              onSelect={() => {
+                if (s.command) {
+                  runAction(() => s.command?.run(ctx));
+                } else {
+                  setQuery(`/${s.keys[0]} `);
+                }
+              }}
+            />
+          ))}
+        </Group>
+      )}
+      {mode === "help" && slashSuggestions.length === 0 && (
+        <Hint>{t(($) => $.shell.omnibar.unknownCommand)}</Hint>
+      )}
+      {mode === "all" &&
+        !trimmed &&
+        commands.length === 0 &&
+        matchedProjects.length === 0 && (
+          <SlashHelp entries={slashEntries} />
+        )}
+      {(mode === "all" || mode === "docs" || mode === "projects") &&
+        trimmed &&
+        !loading &&
+        hits.length === 0 &&
+        matchedProjects.length === 0 &&
+        commands.length === 0 && (
+          <EmptyState
+            className="px-3 py-6"
+            icon={<Ghost aria-hidden className="size-6 text-muted-foreground" />}
+            title={t(($) => $.shell.omnibar.noMatches)}
+            testId="omnibar-no-matches"
+          />
+        )}
+    </CommandDialogShell>
   );
 }
 
-function Group({ heading, children }: Readonly<{ heading: string; children: ReactNode }>) {
+function Group({ heading, children, ref }: Readonly<{ heading: string; children: ReactNode; ref?: Ref<HTMLDivElement> }>) {
   return (
-    <Command.Group
-      heading={heading}
-      className="px-1 text-xs font-medium text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
-    >
+    <Command.Group ref={ref} heading={heading} className={COMMAND_GROUP}>
       {children}
     </Command.Group>
   );
@@ -653,7 +756,7 @@ function Row({
     <Command.Item
       value={title}
       onSelect={onSelect}
-      className="flex cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-2 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+      className={COMMAND_ITEM}
     >
       <span className="text-muted-foreground">{icon}</span>
       <span className="truncate">{title}</span>
@@ -686,21 +789,5 @@ function SlashHelp({ entries }: Readonly<{ entries: SlashEntry[] }>) {
         </div>
       ))}
     </div>
-  );
-}
-
-function PreviewLine({ preview, query }: Readonly<{ preview: string; query: string }>) {
-  if (!query.trim()) return <span className="truncate text-xs text-muted-foreground">{preview}</span>;
-  const idx = preview.toLowerCase().indexOf(query.toLowerCase());
-  if (idx < 0)
-    return <span className="truncate font-mono text-xs text-muted-foreground">{preview}</span>;
-  return (
-    <span className={cn("truncate font-mono text-xs text-muted-foreground")}>
-      {preview.slice(0, idx)}
-      <mark className="rounded-sm bg-primary/25 px-0.5 text-foreground">
-        {preview.slice(idx, idx + query.length)}
-      </mark>
-      {preview.slice(idx + query.length)}
-    </span>
   );
 }

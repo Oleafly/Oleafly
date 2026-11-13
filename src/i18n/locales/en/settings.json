@@ -993,7 +993,8 @@
       "editor": "Editor",
       "files": "Project",
       "pdf": "PDF Preview",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Notes"
     },
     "terminal": {
       "colorTheme": {
@@ -2337,6 +2338,66 @@
       "resetZoom": {
         "description": "Set the app back to 100%.",
         "label": "Reset zoom"
+      },
+      "notesQuickSwitcher": {
+        "description": "Find a note by name and open it.",
+        "label": "Notes: go to note"
+      },
+      "notesTodayNote": {
+        "description": "Open today's note, or start it.",
+        "label": "Notes: today's note"
+      },
+      "notesGraph": {
+        "description": "Open the graph of all your notes.",
+        "label": "Notes: graph"
+      },
+      "notesLocalGraph": {
+        "description": "Show or hide the links around the open note.",
+        "label": "Notes: local graph"
+      },
+      "notesOutline": {
+        "description": "Show or hide the outline of the open note.",
+        "label": "Notes: outline"
+      },
+      "notesAskAgent": {
+        "description": "Ask the agent about the selected text, or open and close the note's agent.",
+        "label": "Notes: ask agent"
+      },
+      "notesNewNote": {
+        "label": "Notes: new note",
+        "description": "Start a new note in the current panel."
+      },
+      "notesSearch": {
+        "label": "Notes: search notes",
+        "description": "Jump to the search box at the top of the Notes sidebar."
+      },
+      "notesBookmark": {
+        "label": "Notes: bookmark note",
+        "description": "Add the open note to Favorites, or take it out."
+      },
+      "notesCopyLink": {
+        "label": "Notes: copy link to note",
+        "description": "Copy a link to the open note that you can paste into another note or a chat."
+      },
+      "notesProperties": {
+        "label": "Notes: note info",
+        "description": "Open or close the note's info panel. With note info set to inline, it folds the properties under the title."
+      },
+      "notesQuickCapture": {
+        "description": "Open a small window to jot something down from any app, even when Oleafly is in the background.",
+        "label": "Notes: quick capture"
+      },
+      "notesCopyBlockLink": {
+        "description": "Copy a link to the paragraph, list item or table the cursor is in.",
+        "label": "Notes: copy link to block"
+      },
+      "notesBack": {
+        "description": "Go back to where you were in this tab.",
+        "label": "Notes: back"
+      },
+      "notesForward": {
+        "description": "Go forward again after going back.",
+        "label": "Notes: forward"
       }
     },
     "application": {
@@ -2362,14 +2423,41 @@
         "renameSymbol": "Rename symbol or file project-wide",
         "slashCommandMenu": "Slash-command insert menu",
         "triggerAutocomplete": "Trigger autocomplete",
-        "undo": "Undo"
+        "undo": "Undo",
+        "noteBold": "Bold",
+        "noteItalic": "Italic",
+        "noteUnderline": "Underline",
+        "noteStrike": "Strikethrough",
+        "noteCode": "Inline code",
+        "noteHighlight": "Highlight in the last color used",
+        "noteSuperscript": "Superscript",
+        "noteSubscript": "Subscript",
+        "noteHeadings": "Heading 1 to 6",
+        "noteText": "Turn into text",
+        "noteQuote": "Quote",
+        "noteCodeBlock": "Code block",
+        "noteBulletList": "Bullet list",
+        "noteNumberedList": "Numbered list",
+        "noteTaskList": "Task list",
+        "noteToggleTask": "Tick or untick a task",
+        "noteIndent": "Indent a list item",
+        "noteOutdent": "Outdent a list item",
+        "noteLineBreak": "Line break in the same paragraph",
+        "noteFind": "Find and replace",
+        "noteSelectAll": "Select the whole note",
+        "noteUndo": "Undo",
+        "noteRedo": "Redo",
+        "noteInsertMenu": "Open the insert menu at the start of a line",
+        "noteLinkMenu": "Link to a note",
+        "noteTag": "Add a tag"
       },
       "managed": "Managed by the editor"
     },
     "categories": {
       "codeIntelligence": "Code intelligence",
       "editor": "Editor",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Notes"
     },
     "error": {
       "conflict": "Already assigned to {{action}}.",
@@ -2415,6 +2503,15 @@
         "uppercase": "Uppercase"
       },
       "unbound": "Not set"
+    },
+    "quickCapture": {
+      "label": "Quick capture from anywhere",
+      "description": "The quick capture shortcut works in every app on this computer.",
+      "ready": "Press {{shortcut}} in any app to open quick capture.",
+      "taken": "Another app already uses {{shortcut}}. Pick a different shortcut for Notes: quick capture.",
+      "invalid": "{{shortcut}} can't work outside Oleafly. Pick a shortcut that ends in a letter, a number or a function key.",
+      "failed": "Oleafly couldn't set up the shortcut. Turn quick capture off and on again to retry.",
+      "wayland": "Wayland doesn't let apps listen for keys outside their own windows. To open quick capture with a key, add a custom shortcut in your system keyboard settings that runs this command:"
     }
   },
   "systemIntegration": {

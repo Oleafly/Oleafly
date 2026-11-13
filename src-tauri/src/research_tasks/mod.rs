@@ -364,6 +364,42 @@ pub async fn research_task_artifact_preview(
 }
 
 #[tauri::command]
+pub async fn research_task_copy_artifact_to_note(
+    state: tauri::State<'_, ResearchTaskState>,
+    task_id: String,
+    path: String,
+    note_id: String,
+) -> Result<crate::project::NoteAssetCopy, String> {
+    check_task_id(&task_id)?;
+    blocking_task_command(&state, move |state| {
+        copy_artifact_to_note(&state.store()?, &task_id, &path, &note_id)
+    })
+    .await
+}
+
+pub(crate) fn copy_artifact_to_note(
+    store: &TaskStore,
+    task_id: &str,
+    path: &str,
+    note_id: &str,
+) -> Result<crate::project::NoteAssetCopy, String> {
+    crate::paths::validate_project_id(note_id)?;
+    let file = preview::artifact_file(store, task_id, path)?;
+    let origin = crate::project::NoteAssetOrigin {
+        sha256: file.sha256,
+        copied_at: now_ms(),
+        project_id: file.task.project_id,
+        task_id: file.task.id,
+        source_path: file.artifact.path,
+        runtime_id: file.task.runtime_id,
+        agent_id: file.task.agent_id,
+        model_id: file.task.model_id,
+        finished_at: file.task.finished_at,
+    };
+    crate::project::copy_into_note(note_id, &file.bytes, origin)
+}
+
+#[tauri::command]
 pub async fn research_task_apply(
     app: tauri::AppHandle,
     app_state: tauri::State<'_, crate::state::AppState>,

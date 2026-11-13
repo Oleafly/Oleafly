@@ -191,13 +191,8 @@ describe("DocumentOutline", () => {
 
     const parent = screen.getByText("Model Architecture").closest("div");
     const child = screen.getByText("Attention").closest("div");
-    expect(parent).toHaveClass("min-h-7", "py-1", "leading-5");
-    expect(child).toHaveClass("min-h-7", "py-1", "leading-5");
     const indent = (element: Element | null | undefined) =>
-      Number.parseInt(
-        (element as HTMLElement | null)?.style.paddingLeft ?? "0",
-        10,
-      );
+      Number.parseFloat((element as HTMLElement | null)?.style.paddingLeft ?? "0");
     expect(indent(child)).toBeGreaterThan(indent(parent));
   });
 

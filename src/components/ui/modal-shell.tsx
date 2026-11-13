@@ -1,4 +1,4 @@
-import type { ReactNode, RefObject } from "react";
+import { useEffect, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import { useModalAccessibility } from "@/components/ui/use-modal-accessibility";
@@ -27,6 +27,7 @@ const WIDTH_CLASS: Record<ModalWidth, string> = {
 
 const OVERLAY_ANIMATION = "animate-in fade-in duration-200 motion-reduce:animate-none";
 const PANEL_ANIMATION = "animate-in fade-in zoom-in-95 duration-200 motion-reduce:animate-none";
+const WIDTH_TRANSITION = "transition-[width] duration-200 ease-out motion-reduce:transition-none";
 
 export const MODAL_PANEL_SURFACE =
   "rounded-xl border bg-background text-foreground shadow-2xl";
@@ -42,6 +43,21 @@ export function modalOverlayClassName(
   );
 }
 
+function useShownForAFrame(shown: boolean): boolean {
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (!shown) return;
+    let frame = requestAnimationFrame(() => {
+      frame = requestAnimationFrame(() => setSettled(true));
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      setSettled(false);
+    };
+  }, [shown]);
+  return settled;
+}
+
 export interface ModalShellProps {
   open: boolean;
   onClose: () => void;
@@ -55,6 +71,7 @@ export interface ModalShellProps {
   surface?: boolean;
   portal?: boolean;
   animated?: boolean;
+  animateWidth?: boolean;
   label?: string;
   labelledBy?: string;
   describedBy?: string;
@@ -75,6 +92,7 @@ export function ModalShell({
   surface = true,
   portal = false,
   animated = false,
+  animateWidth = false,
   label,
   labelledBy,
   describedBy,
@@ -82,6 +100,7 @@ export function ModalShell({
   testId,
 }: Readonly<ModalShellProps>) {
   const { dialogRef, onBackdropMouseDown } = useModalAccessibility<HTMLElement>(open, onClose);
+  const easeWidth = useShownForAFrame(open && animateWidth);
 
   if (!open) return null;
 
@@ -90,6 +109,7 @@ export function ModalShell({
     surface && MODAL_PANEL_SURFACE,
     width && WIDTH_CLASS[width],
     animated && PANEL_ANIMATION,
+    easeWidth && WIDTH_TRANSITION,
     className,
   );
   const panelProps = {

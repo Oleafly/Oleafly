@@ -15,6 +15,7 @@ import {
   assertNoProductionDevHookTokens,
   assertNoTauriStyleNonceTriggers,
 } from "./scripts/production-hook-audit.mjs";
+import { emojibaseAssets } from "./src/build/emojibase-assets";
 import { tailwindPropertiesFallbackPlugin } from "./src/build/tailwind-properties-fallback";
 
 // Tauri expects a fixed port; if that's not available it will attempt the next one.
@@ -40,7 +41,7 @@ const staticE2eClient = (): Plugin => ({
 export const LEGAL_COMMENT_PATTERN =
   /^!|@preserve|@license|@cc_on/i;
 
-const LAZY_LOCALE_NAMESPACES = new Set(["cloud", "collab", "settingsFile"]);
+const LAZY_LOCALE_NAMESPACES = new Set(["cloud", "collab", "notes", "settingsFile"]);
 
 export function localeChunk(id: string): string | undefined {
   const match = /\/src\/i18n\/locales\/([^/]+)\/([^/?]*?)(?:\.json)?(?:\?|$)/.exec(id);
@@ -189,6 +190,7 @@ export default defineConfig(async () => ({
     requirePolyfillsFirst(),
     staticE2eClient(),
     pdfjsAssets(),
+    emojibaseAssets(),
   ],
   optimizeDeps: {
     exclude: ["harper.js"],
@@ -213,6 +215,11 @@ export default defineConfig(async () => ({
       "@citation-js/core",
       "@citation-js/plugin-bibtex",
       "@citation-js/plugin-csl",
+      // Vite finds a worker's imports only when the worker first loads, and the
+      // Notes graph worker is the only importer of d3-force. Pre-bundle it so
+      // opening the graph in dev cannot fail the worker on a re-optimized dep.
+      "d3-force",
+      "@terrastruct/d2/wasm-exec",
     ],
   },
   // pdf.js v6 loads its worker as an ES module; build ours the same way so the
@@ -269,6 +276,7 @@ export default defineConfig(async () => ({
       "@oleafly/ai-tools": path.resolve(__dirname, "./packages/ai-tools/src"),
       "@oleafly/preflight": path.resolve(__dirname, "./packages/preflight/src"),
       "@oleafly/registry": path.resolve(__dirname, "./packages/registry/src"),
+      "@oleafly/workspace": path.resolve(__dirname, "./packages/workspace/src"),
       "@oleafly/i18n-contract": path.resolve(__dirname, "./packages/i18n-contract/src"),
       "@oleafly/search-query": path.resolve(__dirname, "./packages/search-query/src"),
       "@oleafly/templates": path.resolve(__dirname, "./packages/templates/src"),
@@ -296,7 +304,17 @@ export default defineConfig(async () => ({
       : undefined,
     watch: {
       // Don't watch the Rust source; handled by tauri.
-      ignored: ["**/src-tauri/**", "**/crates/**", "**/*.test.ts", "**/*.test.tsx"],
+      ignored: [
+        "**/src-tauri/**",
+        "**/crates/**",
+        "**/coverage/**",
+        "**/.vitest-reports/**",
+        "**/test-results/**",
+        "**/docs/**",
+        "**/e2e/tests/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+      ],
     },
   },
 }));

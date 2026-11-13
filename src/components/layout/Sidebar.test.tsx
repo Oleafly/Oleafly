@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  searchDocs: vi.fn(async () => [] as unknown[]),
+  textSearch: vi.fn(async () => [] as unknown[]),
   gotoLine: vi.fn(),
   openFile: vi.fn(async () => {}),
   revealEditor: vi.fn(),
@@ -13,7 +13,7 @@ const sourceLabel = "Explorer";
 const outlineLabel = "Outline";
 const structureLabel = "Structure";
 
-vi.mock("@/lib/tauri", () => ({ searchDocs: mocks.searchDocs }));
+vi.mock("@/lib/tauri", () => ({ textSearch: mocks.textSearch }));
 vi.mock("@/components/editor/cm/controller", () => ({ gotoLine: mocks.gotoLine }));
 vi.mock("@/components/files/FileTree", () => ({
   FileTree: ({
@@ -73,6 +73,7 @@ vi.mock("@/components/layout/Outline", () => ({
   ),
 }));
 
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import enWorkspace from "@/i18n/locales/en/workspace.json" with { type: "json" };
 import { registry } from "@oleafly/registry";
@@ -94,11 +95,12 @@ const HIT = {
   path: "chapters/intro.tex",
   line: 9,
   preview: "a matching line",
+  ranges: [] as [number, number][],
 };
 
 beforeEach(() => {
   for (const mock of Object.values(mocks)) mock.mockClear();
-  mocks.searchDocs.mockResolvedValue([]);
+  mocks.textSearch.mockResolvedValue([]);
   registry.railTabs.length = 0;
   useFilesStore.setState({
     projectId: "p1",
@@ -130,17 +132,17 @@ describe("ProjectSearch", () => {
   });
 
   it("lists the hits of the active project and opens the one chosen", async () => {
-    mocks.searchDocs.mockResolvedValue([
-      HIT,
-      { ...HIT, project_id: "other", path: "elsewhere.tex" },
-    ]);
+    mocks.textSearch.mockResolvedValue([HIT]);
     vi.useFakeTimers({ shouldAdvanceTime: true });
     render(<ProjectSearch />);
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     await user.type(screen.getByPlaceholderText(copy.placeholder), "matching");
     await vi.advanceTimersByTimeAsync(250);
     expect(await screen.findByText("intro.tex")).toBeInTheDocument();
-    expect(screen.queryByText("elsewhere.tex")).not.toBeInTheDocument();
+    expect(mocks.textSearch).toHaveBeenLastCalledWith(HIT.project_id, {
+      mode: "ranked",
+      branches: [{ all: [{ kind: "text", value: "matching" }], none: [] }],
+    });
     expect(screen.getByText("a matching line")).toBeInTheDocument();
     await user.click(screen.getByText("intro.tex"));
     await vi.advanceTimersByTimeAsync(150);
@@ -162,7 +164,7 @@ describe("ProjectSearch", () => {
   });
 
   it("survives a failing search", async () => {
-    mocks.searchDocs.mockRejectedValue(new Error("index down"));
+    mocks.textSearch.mockRejectedValue(new Error("index down"));
     vi.useFakeTimers({ shouldAdvanceTime: true });
     render(<ProjectSearch />);
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
@@ -170,6 +172,15 @@ describe("ProjectSearch", () => {
     await vi.advanceTimersByTimeAsync(250);
     vi.useRealTimers();
     expect(await screen.findByText(copy.noResults)).toBeInTheDocument();
+  });
+
+  it("says when a query has more OR combinations than the search runs", () => {
+    render(<ProjectSearch />);
+    const field = screen.getByPlaceholderText(copy.placeholder);
+    fireEvent.change(field, { target: { value: "(a OR b) (c OR d)" } });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    fireEvent.change(field, { target: { value: "(a OR b OR c OR d OR e OR f) (g OR h OR i OR j OR k OR l)" } });
+    expect(screen.getByRole("status")).toHaveTextContent(enCommon.querySearch.issues.tooManyBranches);
   });
 });
 

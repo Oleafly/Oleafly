@@ -73,13 +73,17 @@ export { htmlToLatex, type HtmlToLatexOptions } from "./paste/html-to-latex";
 export {
   markdownBlockAt,
   parseMarkdownBody,
+  splitMarkdownFrontMatter,
+  type MarkdownFrontMatterSplit,
   type ParseMarkdownBodyOptions,
   type PreservedMarkdownInlineRange,
 } from "./markdown/parse";
-export { serializeMarkdownBody } from "./markdown/serialize";
+export { markdownBlockKey, serializeMarkdownBody, serializeMarkdownDoc } from "./markdown/serialize";
+export { markdownReferences } from "./markdown/references";
 export { markdownLinkDestination } from "./link-destination";
 export {
   createMarkdownSourceSnapshot,
+  markdownPreservedRanges,
   type MarkdownSourceLayout,
   type MarkdownSourceSnapshot,
 } from "./markdown/source-layout";
@@ -89,3 +93,5 @@ export {
 } from "./latex/parse";
 export { serializeLatexBody, hasLatexSerialization, hasLatexMarkSerialization } from "./latex/serialize";
 export { splitLatexDocument, joinLatexDocument, type LatexDocumentSplit } from "./latex/document";
+export { IMAGE_WIDTH_RANGE, imageWidthPercent, imageWidthSuffix } from "./markdown/image";
+export { BlockId, blockIdOf, markdownBlockSpans, type MarkdownBlockKind } from "./block-id";

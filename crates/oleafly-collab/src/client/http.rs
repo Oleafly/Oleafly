@@ -1101,7 +1101,7 @@ async fn error_answer(mut response: Response) -> Vec<u8> {
     body
 }
 
-async fn empty(request: RequestBuilder) -> Result<(), CollabError> {
+pub(super) async fn empty(request: RequestBuilder) -> Result<(), CollabError> {
     check_status(request.send().await.map_err(network_error)?)
         .await
         .map(|_| ())
@@ -1555,6 +1555,7 @@ mod tests {
             email_notifications: None,
             comments_allowed: None,
             email_link_sign_in: None,
+            public_notes_allowed: None,
         }
     }
 

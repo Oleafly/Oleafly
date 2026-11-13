@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { intended, lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { create } from "zustand";
 import { ChevronDown, ChevronRight, Download, FileText, FileUp, FolderPlus, Info, LayoutTemplate, Trash2, Type } from "lucide-react";
@@ -79,8 +80,7 @@ const setProgress = (fontProgress: string) =>
 const TemplateImportDialog = lazy(() =>
   import("@/components/library/TemplateImportDialog").then((module) => ({
     default: module.TemplateImportDialog,
-  })),
-);
+  })), { warm: () => intended("settings") });
 
 export function DownloadsSection() {
   const { t } = useTranslation(["common", "settings"]);

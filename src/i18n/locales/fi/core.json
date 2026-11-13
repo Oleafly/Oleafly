@@ -319,6 +319,7 @@
   },
   "mcp": {
     "deniedByRules": "Hylätty approvals.toml-tiedoston deny-säännön vuoksi",
+    "createTodaySummary": "Luo tämän päivän muistiinpano \"{{title}}\"",
     "openProjectSummary": "Avaa projekti {{id}}",
     "rulesUnreadable": "Hylätty, koska approvals.toml-tiedostoa ei voitu lukea",
     "useToolSummary": "Käytä työkalua {{tool}} MCP-palvelimelta {{server}}"
@@ -341,6 +342,7 @@
   },
   "mermaid": {
     "diagram": "Kaavio",
+    "remoteBlocked": "Tätä kaaviota ei piirretty, koska se lataa kuvia tai tyylejä internetistä.",
     "renderFailed": "Kaaviota ei voitu piirtää.",
     "rendering": "Piirretään kaaviota"
   },

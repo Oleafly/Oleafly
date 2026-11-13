@@ -11,6 +11,7 @@ mod ai_model_registry;
 mod app_error;
 mod app_icon;
 mod approvals;
+mod artifact_frame;
 mod arxiv_import;
 mod assets;
 mod attachments;
@@ -73,7 +74,19 @@ mod mcp;
 mod media_type;
 mod menu;
 mod native_drop;
+mod navigation_guard;
+mod note_facts;
+mod note_index;
+mod note_link_preview;
+mod note_links;
+mod note_search;
+mod note_tasks;
+mod note_vault;
+mod note_video;
 mod notebook_toolchain;
+mod notes_render;
+mod notes_tikz;
+mod notes_typst;
 mod ollama;
 mod open_folder;
 mod open_request;
@@ -97,6 +110,7 @@ mod project_rebind;
 mod project_recents;
 mod project_sources;
 mod protocol;
+mod quick_capture;
 mod quit_gate;
 mod rag;
 mod release_notes;
@@ -108,6 +122,7 @@ mod research_workspace;
 #[allow(dead_code)]
 mod rollout;
 mod sandbox;
+mod search_modes;
 mod secrets;
 mod settings_file;
 mod shell_command;
@@ -129,6 +144,7 @@ mod terminal;
 #[cfg(test)]
 mod test_wait;
 mod tex_distro;
+mod text_search;
 mod tinytex_archive;
 mod toolchain_download;
 mod trust;
@@ -150,6 +166,8 @@ mod web_process;
 mod webview_focus;
 #[cfg(any(target_os = "macos", test))]
 mod webview_frame;
+#[cfg(any(target_os = "macos", test))]
+mod webview_user_agent;
 mod window_commands;
 mod window_frame;
 mod worktree_lock;
@@ -185,6 +203,9 @@ where
 fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
     #[cfg(target_os = "macos")]
     webview_frame::on_window_event(window, event);
+    if let tauri::WindowEvent::Destroyed = event {
+        folder_watch::release_window(window.label());
+    }
     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
         use tauri::{Emitter, Manager};
         if window.state::<updater::UpdateState>().installing() {
@@ -216,6 +237,15 @@ fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
             }
         }
     }
+}
+
+fn quick_capture_state() -> quick_capture::QuickCaptureState {
+    let state = quick_capture::QuickCaptureState::default();
+    quick_capture::note_launch_request(
+        &state,
+        std::env::args_os().map(|arg| arg.to_string_lossy().into_owned()),
+    );
+    state
 }
 
 fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -417,10 +447,12 @@ pub fn run() {
     builder = with_open_intake(builder, open_intake)
         .on_page_load(|webview, payload| {
             terminal::on_page_load(webview, payload);
+            folder_watch::on_page_load(webview, payload);
             deep_link::on_page_load(webview, payload);
         })
         .manage(language_service::LanguageServiceState::default())
         .manage(web_process::RestoreAfterReload::default())
+        .plugin(navigation_guard::plugin())
         .plugin(language_service::lifecycle_plugin())
         .plugin(terminal::lifecycle_plugin())
         .plugin(acp::lifecycle_plugin())
@@ -470,6 +502,9 @@ pub fn run() {
         builder = builder
             .plugin(tauri_plugin_updater::Builder::new().build())
             .plugin(tauri_plugin_process::init());
+        if let Some(plugin) = quick_capture::plugin() {
+            builder = builder.plugin(plugin);
+        }
     }
 
     #[cfg(feature = "e2e-testing")]
@@ -520,11 +555,21 @@ pub fn run() {
         .manage(zotero::commands::ZoteroState::default())
         .manage(collab::state::CollabState::for_app())
         .manage(deep_link::LinkInbox::default())
+        .manage(quick_capture_state())
+        .register_asynchronous_uri_scheme_protocol(
+            artifact_frame::SCHEME,
+            |_context, request, responder| responder.respond(artifact_frame::respond(&request)),
+        )
         .on_window_event(on_window_event)
         .setup(setup_app)
         .invoke_handler(traced_commands(tauri::generate_handler![
             ad_hoc_conversion::convert_ad_hoc,
             typst_render::render_typst_snippet,
+            notes_typst::notes_render_typst,
+            notes_tikz::notes_render_tikz,
+            artifact_frame::artifact_frame_open,
+            artifact_frame::artifact_frame_close,
+            artifact_frame::artifact_frame_runtime_url,
             typst_query::typst_document_insights,
             typst_slide_notes::typst_slide_notes,
             arxiv_import::extract_arxiv_source,
@@ -538,6 +583,7 @@ pub fn run() {
             research_tasks::research_task_events,
             research_tasks::research_task_file_preview,
             research_tasks::research_task_artifact_preview,
+            research_tasks::research_task_copy_artifact_to_note,
             research_tasks::research_task_apply,
             research_tasks::research_task_accept_result,
             research_tasks::research_task_delete,
@@ -610,6 +656,8 @@ pub fn run() {
             checkpoints::checkpoint_reveal_store,
             checkpoints::checkpoint_files,
             checkpoints::checkpoint_save_file,
+            checkpoints::checkpoint_read_text,
+            checkpoints::checkpoint_save,
             checkpoints::checkpoint_inspect,
             checkpoint_backup::checkpoint_export,
             checkpoint_backup::checkpoint_import,
@@ -719,6 +767,7 @@ pub fn run() {
             commands::cancel_isolated_compile,
             commands::read_isolated_pdf,
             commands::read_project_bytes,
+            commands::read_note_file,
             commands::write_project_bytes,
             commands::write_bytes_file,
             commands::export_project_image,
@@ -787,6 +836,11 @@ pub fn run() {
             collab::guests::collab_admin_guest_approve,
             collab::guests::collab_admin_guest_decline,
             collab::guests::collab_admin_guest_revoke,
+            collab::published::collab_published_notes,
+            collab::published::collab_publish_note,
+            collab::published::collab_unpublish_note,
+            collab::published::collab_admin_published_notes,
+            collab::published::collab_admin_set_note_taken_down,
             collab::share::collab_share_info,
             collab::share::collab_share_check,
             collab::share::collab_share_project,
@@ -1031,6 +1085,21 @@ pub fn run() {
             project::create_markdown_project,
             project::create_image_project,
             project::create_diagram_project,
+            project::create_note_project,
+            project::note_import_file,
+            note_links::note_links,
+            note_search::note_search,
+            note_search::note_tags,
+            note_tasks::note_tasks,
+            text_search::text_search,
+            note_facts::note_facts,
+            note_index::notes_release_caches,
+            note_video::note_video_frame_origin,
+            note_link_preview::note_link_preview,
+            note_vault::notes_import_folder,
+            note_vault::notes_import_cancel,
+            note_vault::notes_export_folder,
+            project::set_note_related_project,
             project::get_or_create_scratch_project,
             project::save_figure_to_cache,
             templates::list_templates,
@@ -1080,6 +1149,7 @@ pub fn run() {
             config::get_config,
             config::set_config,
             config::seed_starter_personas,
+            config::claim_starter_note,
             mcp::mcp_begin_renderer_session,
             mcp::mcp_renderer_heartbeat,
             mcp::mcp_end_renderer_session,
@@ -1251,6 +1321,16 @@ pub fn run() {
             daemon_handoff::background_helper_reveal_log,
             daemon_handoff::background_tasks_set_enabled,
             daemon_handoff::research_task_set_keep_running,
+            cloud::backup_commands::cloud_backup_state,
+            cloud::backup_commands::cloud_backup_set_settings,
+            cloud::backup_commands::cloud_backup_run,
+            cloud::backup_commands::cloud_backup_list,
+            cloud::backup_commands::cloud_backup_entries,
+            cloud::backup_commands::cloud_backup_restore,
+            quick_capture::quick_capture_configure,
+            quick_capture::quick_capture_open,
+            quick_capture::quick_capture_window_buttons,
+            quick_capture::quick_capture_open_notes,
         ]))
         .build(tauri::generate_context!())
         .expect("error while running Oleafly")

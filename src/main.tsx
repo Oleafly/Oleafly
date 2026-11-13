@@ -1,6 +1,7 @@
 import "@/lib/polyfills";
 import { dismissBootSplash, markBootStage } from "@/lib/boot-telemetry";
-import { lazy, StrictMode, Suspense } from "react";
+import { StrictMode, Suspense } from "react";
+import { lazy } from "@/lib/preloadable";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { Contained } from "@/components/Contained";
@@ -21,7 +22,7 @@ import { reapOrphanAgentRuns } from "@/lib/agent-backend";
 import { getSnapshotConfig, getSnapshotPendingOpen, hydrateFromSnapshot } from "@/lib/initial-state";
 import { prepareColdOpen } from "@/features/open-folder";
 import { initializeDesktopI18n, syncLocaleFromConfig } from "@/i18n/desktop";
-import { readCachedPreference } from "@/i18n";
+import { loadNamespace, readCachedPreference } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
 import { useTypstMigrationStore } from "@/store/typst-migration";
 import { useRenameStore } from "@/store/rename";
@@ -31,6 +32,7 @@ import { useZoteroDialogStore } from "@/store/zotero-dialogs";
 import { useTableImportStore } from "@/store/table-import";
 import { useFigureDialogStore } from "@/store/figure-dialog";
 import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
+import { OpeningIndicator } from "@/components/ui/opening-indicator";
 import { mountOnFirstOpen } from "@/lib/mount-on-first-open";
 import { registerContributions } from "@/contributions";
 import { installDesktopViewportGuard } from "@/lib/desktop-viewport";
@@ -63,7 +65,7 @@ if ((window as { __OLEAFLY_E2E_BOOT__?: boolean }).__OLEAFLY_E2E_BOOT__) {
   registerE2EImports();
 }
 
-type WindowView = "main" | "update" | "preview" | "present" | "presenter" | "admin";
+type WindowView = "main" | "update" | "preview" | "present" | "presenter" | "admin" | "capture";
 
 function currentWindowView(): WindowView {
   const view = new URLSearchParams(window.location.search).get("view");
@@ -72,7 +74,8 @@ function currentWindowView(): WindowView {
     view === "preview" ||
     view === "present" ||
     view === "presenter" ||
-    view === "admin"
+    view === "admin" ||
+    view === "capture"
   ) {
     return view;
   }
@@ -106,7 +109,7 @@ function prepareWindow(view: WindowView): void {
     document.documentElement.style.background = "transparent";
     document.body.style.background = "transparent";
   }
-  if (view === "present" || view === "presenter" || view === "admin") {
+  if (view === "present" || view === "presenter" || view === "admin" || view === "capture") {
     document.documentElement.style.setProperty("--app-surface", "var(--background)");
   }
   dismissBootSplash();
@@ -117,37 +120,40 @@ const queryClient = appQueryClient();
 const UpdateWindow = lazy(() =>
   import("@/components/layout/UpdateWindow").then((module) => ({ default: module.UpdateWindow })),
 );
+const QuickCaptureWindow = lazy(() =>
+  Promise.all([import("@/components/notes/QuickCaptureWindow"), loadNamespace("notes"), loadNamespace("editor")]).then(([module]) => ({
+    default: module.QuickCaptureWindow,
+  })),
+);
 const PreviewWindow = lazy(() =>
   import("@/components/preview/PreviewWindow").then((module) => ({ default: module.PreviewWindow })),
 );
 const RenameDialog = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/layout/RenameDialog").then((module) => ({ default: module.RenameDialog })),
-  ),
+    import("@/components/layout/RenameDialog").then((module) => ({ default: module.RenameDialog })), { warm: true }),
   () => useRenameStore((state) => state.sym !== null),
   () => useRenameStore.getState().close(),
+  { loading: <OpeningIndicator /> },
 );
 const FileRenameDialog = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/layout/FileRenameDialog").then((module) => ({ default: module.FileRenameDialog })),
-  ),
+    import("@/components/layout/FileRenameDialog").then((module) => ({ default: module.FileRenameDialog })), { warm: true }),
   () => useFileRenameStore((state) => state.target !== null),
   () => useFileRenameStore.getState().close(),
+  { loading: <OpeningIndicator /> },
 );
 const FileReferencesDialog = lazy(() =>
-  import("@/components/files/FileReferencesDialog").then((module) => ({ default: module.FileReferencesDialog })),
-);
+  import("@/components/files/FileReferencesDialog").then((module) => ({ default: module.FileReferencesDialog })), { warm: true });
 const AddCitationDialog = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/layout/AddCitationDialog").then((module) => ({ default: module.AddCitationDialog })),
-  ),
+    import("@/components/layout/AddCitationDialog").then((module) => ({ default: module.AddCitationDialog })), { warm: true }),
   () => useCitationStore((state) => state.open),
   () => useCitationStore.getState().setOpen(false),
+  { loading: <OpeningIndicator /> },
 );
 const ZoteroDialogs = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/zotero/ZoteroDialogs").then((module) => ({ default: module.ZoteroDialogs })),
-  ),
+    import("@/components/zotero/ZoteroDialogs").then((module) => ({ default: module.ZoteroDialogs })), { warm: true }),
   () =>
     useZoteroDialogStore(
       (state) =>
@@ -163,20 +169,21 @@ const ZoteroDialogs = mountOnFirstOpen(
     zotero.handList?.resolve(false);
     zotero.closeBulk();
   },
+  { loading: <OpeningIndicator /> },
 );
 const TableImportDialog = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/editor/TableImportDialog").then((module) => ({ default: module.TableImportDialog })),
-  ),
+    import("@/components/editor/TableImportDialog").then((module) => ({ default: module.TableImportDialog })), { warm: true }),
   () => useTableImportStore((state) => state.open),
   () => useTableImportStore.getState().setOpen(false),
+  { loading: <OpeningIndicator /> },
 );
 const FigureDialog = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/editor/FigureDialog").then((module) => ({ default: module.FigureDialog })),
-  ),
+    import("@/components/editor/FigureDialog").then((module) => ({ default: module.FigureDialog })), { warm: true }),
   () => useFigureDialogStore((state) => state.open),
   () => useFigureDialogStore.getState().setOpen(false),
+  { loading: <OpeningIndicator /> },
 );
 const PresentationWindow = lazy(() =>
   import("@/components/presentation/PresentationWindow").then((module) => ({ default: module.PresentationWindow })),
@@ -248,6 +255,17 @@ function WindowContent({ view }: Readonly<{ view: WindowView }>) {
         <AppZoom />
         <Suspense fallback={null}>
           {view === "present" ? <PresentationWindow /> : <PresenterWindow />}
+        </Suspense>
+      </ThemeProvider>
+    );
+  }
+  if (view === "capture") {
+    return (
+      <ThemeProvider>
+        <StoredAppTypography />
+        <AppZoom />
+        <Suspense fallback={null}>
+          <QuickCaptureWindow />
         </Suspense>
       </ThemeProvider>
     );

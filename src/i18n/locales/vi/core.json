@@ -314,6 +314,7 @@
   },
   "mcp": {
     "deniedByRules": "Bị từ chối bởi quy tắc deny trong approvals.toml",
+    "createTodaySummary": "Tạo ghi chú hôm nay “{{title}}”",
     "openProjectSummary": "Mở dự án {{id}}",
     "rulesUnreadable": "Bị từ chối vì không đọc được approvals.toml",
     "useToolSummary": "Dùng {{tool}} từ máy chủ MCP {{server}}"
@@ -336,6 +337,7 @@
   },
   "mermaid": {
     "diagram": "Sơ đồ",
+    "remoteBlocked": "Sơ đồ này không được vẽ vì nó tải ảnh hoặc kiểu định dạng từ internet.",
     "renderFailed": "Không hiển thị được sơ đồ.",
     "rendering": "Đang hiển thị sơ đồ"
   },

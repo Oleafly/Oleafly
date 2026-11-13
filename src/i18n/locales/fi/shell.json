@@ -321,6 +321,36 @@
       "keywords": "pdf esikatselu näytä piilota jaa vain editori",
       "label": "Näytä tai piilota PDF-esikatselu"
     },
+    "swapEditorPreview": {
+      "keywords": "vaihda editori esikatselu pdf puolet paneeli järjestys asettelu",
+      "label": "Vaihda editorin ja esikatselun paikkaa"
+    },
+    "movePaneToEdge": {
+      "bottom": "Siirrä {{pane}} alareunaan",
+      "keywords": "siirrä paneeli reuna telakoi sivu jaa pinoa asettelu",
+      "left": "Siirrä {{pane}} vasempaan reunaan",
+      "right": "Siirrä {{pane}} oikeaan reunaan",
+      "top": "Siirrä {{pane}} yläreunaan"
+    },
+    "paneNames": {
+      "assistant": "avustajapaneeli",
+      "editor": "editori",
+      "pdf": "esikatselu",
+      "sidebar": "sivupalkki",
+      "terminal": "pääte"
+    },
+    "resetPaneLayout": {
+      "keywords": "palauta paneelien asettelu järjestys siirrä paneelit sivupalkki avustaja editori esikatselu pääte oletus",
+      "label": "Palauta paneelien järjestys kaikissa projekteissa"
+    },
+    "saveLayout": {
+      "keywords": "tallenna asettelu mukautettu järjestys paneelit koot nimi",
+      "label": "Tallenna nykyinen asettelu"
+    },
+    "applySavedLayout": {
+      "keywords": "asettelu tallennettu mukautettu järjestys paneelit vaihda käytä",
+      "label": "Asettelu: {{name}}"
+    },
     "zoomIn": {
       "keywords": "suurenna isompi",
       "label": "Lähennä"
@@ -348,6 +378,20 @@
     "insertFileLink": {
       "label": "Lisää linkki tiedostoon",
       "keywords": "linkki tiedosto polku muistiinpano viittaus"
+    },
+    "projectNotes": {
+      "open": "Avaa tämän projektin muistiinpanot",
+      "newShared": "Uusi projektin muistiinpano",
+      "newPersonal": "Uusi henkilökohtainen muistiinpano tähän projektiin",
+      "keywords": "muistiinpanot tutkimus linkitetty liittyvä projekti"
+    },
+    "notes": {
+      "label": "Avaa Muistiinpanot",
+      "keywords": "muistiinpanot muistiinpano muistikirja tieto tietämys ideat tutkimus päiväkirja notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Pikakirjaus",
+      "keywords": "pikakirjaus kirjaa muistiinpano saapuneet tänään quick capture jot note inbox today"
     }
   },
   "community": {
@@ -452,6 +496,11 @@
   },
   "datePicker": {
     "placeholder": "Valitse päivämäärä"
+  },
+  "monthPicker": {
+    "label": "Valitse kuukausi",
+    "previousYear": "Edellinen vuosi",
+    "nextYear": "Seuraava vuosi"
   },
   "devMenu": {
     "inspect": "Tarkastele",
@@ -645,7 +694,6 @@
   "home": {
     "ariaLabel": "Aloitusnäkymä",
     "label": "Aloitus",
-    "title": "Takaisin kirjastoon",
     "tooltip": "Palaa projektikirjastoon"
   },
   "importDestination": {
@@ -673,6 +721,7 @@
     "groups": {
       "action": "Toiminto",
       "documents": "Dokumentit",
+      "notes": "Muistiinpanot",
       "references": "Viitteet"
     },
     "label": "Haku",
@@ -680,11 +729,13 @@
     "openReferences": "Avaa tämän projektin viitteet",
     "placeholder": "Hae projekteja, dokumentteja tai kirjoita / komentoja varten…",
     "placeholderDocuments": "Hae dokumenttien sisältä…",
+    "placeholderNotes": "Hae muistiinpanoista ja niiden lohkoista…",
     "placeholderProjects": "Hae projekteja nimen, moottorin, lajin, päivämäärän tai metatietojen mukaan…",
     "referencesNeedProject": "Avaa ensin projekti, niin sen viitteitä voi selata.",
     "slash": {
       "create": "avaa mallipohjagalleria",
       "docs": "hae dokumenttien sisältä",
+      "notes": "hae muistiinpanoista ja niiden lohkoista",
       "projects": "hae omista projekteista",
       "refs": "avaa tämän projektin viitteet",
       "settings": "avaa asetukset",
@@ -791,7 +842,8 @@
     "research": "Tutkimustyötila",
     "search": "Hae projektista",
     "sourceControl": "Versionhallinta",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Muistiinpanot"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} palvelussa {{host}}",
@@ -893,7 +945,8 @@
           "folders_other": "{{count}} kansiota",
           "images": "Kuvat",
           "pdfs": "PDF-tiedostot",
-          "projects": "Projektit"
+          "projects": "Projektit",
+          "projectsAndNotes": "Projektit ja muistiinpanot"
         },
         "subtitle": "Projektit, esikatselut, historia ja sovellustiedot",
         "title": "Tallennustilan käyttö",
@@ -935,6 +988,10 @@
       "latexTools": {
         "description": "Näytä Oleafly Tools -galleria ja yksittäiset työkalut (PDF-tuonti, kaavat, taulukot, BibTeX, labra- ja kirjallisuushaku, määräajat) sekä niiden kauttaviivakomennot. Oletuksena pois, koska nämä ovat vielä beta-vaiheessa.",
         "label": "LaTeX-työkalut"
+      },
+      "notes": {
+        "description": "Lisää Muistiinpanot aloitusnäkymän telakkaan. Muistiinpano on Markdown-tiedosto, jossa voi olla kaavioita, diagrammeja ja matematiikkaa ja jota sekä sinä että agenttisi voitte muokata. Muistiinpanot eivät kuulu projektikirjastoon, ja jokaisen muistiinpanon voi linkittää projektiin. Oletuksena pois käytöstä beta-vaiheen ajan.",
+        "label": "Muistiinpanot"
       },
       "researchTasks": {
         "description": "Agentti työskentelee itsenäisesti projektin kopiossa ja jättää muutokset sinun tarkistettavaksesi. Erittäin epävakaa: ajot voivat jumittua, epäonnistua tai jättää muutoksia, jotka pitää selvittää käsin, ja ne kuluttavat tekoälypalvelusi kiintiötä koko ajan. Lisää asetuksiin Tutkimus-osion. Kun kytket sen pois, kaikki käynnissä olevat tehtävät pysähtyvät. Oletuksena pois. Ota käyttöön omalla vastuullasi.",
@@ -1277,6 +1334,24 @@
       "split": "Jaettu näkymä"
     },
     "moreActions": "Lisää toimintoja",
+    "resetPaneLayout": "Palauta paneelien järjestys",
+    "resetPaneLayoutScope": "Kaikki projektit",
+    "savedLayouts": {
+      "close": "Sulje",
+      "delete": "Poista",
+      "deleteConfirm": "Poistetaanko asettelu {{name}}?",
+      "limit": "Voit säilyttää enintään {{count}} asettelua. Poista yksi, jotta voit tallentaa uuden.",
+      "manage": "Hallitse asetteluja",
+      "name": "Asettelun nimi",
+      "rename": "Nimeä uudelleen",
+      "renameTitle": "Nimeä asettelu uudelleen",
+      "replace": "Korvaa",
+      "replaceConfirm": "Asettelu nimeltä {{name}} on jo olemassa. Korvataanko se?",
+      "save": "Tallenna nykyinen asettelu",
+      "saveButton": "Tallenna",
+      "saveTitle": "Tallenna asettelu",
+      "update": "Päivitä nykyiseksi"
+    },
     "renameFailed": "Projektia ei voitu nimetä uudelleen."
   },
   "tour": {

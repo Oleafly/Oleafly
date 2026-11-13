@@ -253,6 +253,7 @@ vi.mock("@/components/layout/QuickActionOffer", () => ({ QuickActionOffer: () =>
 vi.mock("@/components/layout/CiteOleaflyDialog", () => ({ CiteOleaflyDialog: () => null }));
 vi.mock("@/components/layout/SettingsModal", () => ({ SettingsModal: () => null }));
 vi.mock("@/components/diagram/DiagramComposer", () => ({ DiagramComposer: () => null }));
+vi.mock("@/components/notes/NotesHost", () => ({ NotesHost: () => <div data-testid="notes-host" /> }));
 vi.mock("@/components/diagram/composer-chooser/DiagramComposerChooser", () => ({ DiagramComposerChooserHost: () => null }));
 vi.mock("@/components/editor/WordCountModal", () => ({ WordCountModal: () => null }));
 vi.mock("@/components/editor/VersioningModal", () => ({ VersioningModal: () => null }));
@@ -270,6 +271,11 @@ import { useSettingsStore } from "@/store/settings";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { useTypstFormsStore } from "@/store/typst-forms";
+import { setWysiwygEditor } from "@/components/editor/wysiwyg/controller";
+import { registerNoteEditor } from "@/lib/open-note-editors";
+import { noteEditorHandle } from "@/lib/tests/open-note-editor-fixtures";
+import { useNoteTabsStore } from "@/store/note-tabs";
+import { intended } from "@/lib/preloadable";
 
 const initialFiles = useFilesStore.getState();
 const initialCompile = useCompileStore.getState();
@@ -287,6 +293,38 @@ function keydown(target: EventTarget, init: KeyboardEventInit) {
     target.dispatchEvent(event);
   });
   return event;
+}
+
+function richText(registered: boolean) {
+  const host = document.createElement("div");
+  host.className = "ProseMirror";
+  host.contentEditable = "true";
+  host.tabIndex = 0;
+  const calls: string[] = [];
+  const chain = {
+    focus: () => chain,
+    undo: () => {
+      calls.push("undo");
+      return chain;
+    },
+    redo: () => {
+      calls.push("redo");
+      return chain;
+    },
+    run: () => true,
+  };
+  Object.assign(host, { editor: { chain: () => chain } });
+  document.body.append(host);
+  if (registered) setWysiwygEditor({ isDestroyed: false, view: { dom: host } } as unknown as Parameters<typeof setWysiwygEditor>[0]);
+  host.focus();
+  return {
+    host,
+    calls,
+    remove: () => {
+      setWysiwygEditor(null);
+      host.remove();
+    },
+  };
 }
 
 function savedLayout(layout: { viewMode?: string; showTree?: boolean; assistantOpen?: boolean; workspaceHidden?: boolean }) {
@@ -389,6 +427,23 @@ describe("library view", () => {
     await renderApp();
     expect(await screen.findByTestId(`tool-${page}`)).toBeInTheDocument();
     expect(screen.getByTestId("library")).toBeInTheDocument();
+  });
+
+  it("leaves the Notes page and closes personal note tabs when Notes is turned off", async () => {
+    useSettingsStore.setState({ notes: true });
+    useHomeViewStore.setState({ page: "notes" });
+    useNoteTabsStore.setState({ tabs: [{ id: "n1", projectId: "p1", order: 1 }], active: "n1" });
+    await renderApp();
+    expect(await screen.findByTestId("notes-host")).toBeInTheDocument();
+    act(() => useSettingsStore.getState().setNotes(false));
+    expect(useHomeViewStore.getState().page).toBe("library");
+    expect(useNoteTabsStore.getState()).toMatchObject({ tabs: [], active: null });
+  });
+
+  it("starts loading the Settings tabs when Settings opens", async () => {
+    await renderApp();
+    act(() => useSettingsStore.getState().setSettingsOpen(true));
+    expect(intended("settings")).toBe(true);
   });
 
   it("shows the floating copilot over the library", async () => {
@@ -751,6 +806,53 @@ describe("native events", () => {
     expect(mocks.preflightReset).toHaveBeenCalledTimes(1);
   });
 
+  it("routes menu undo and redo to a note's own editor, with or without a project", async () => {
+    await renderApp();
+    await waitFor(() => expect(mocks.listeners.has("menu://undo")).toBe(true));
+    const note = richText(false);
+    emit("menu://undo", null);
+    emit("menu://redo", null);
+    act(() => useFilesStore.setState({ projectId: null }));
+    emit("menu://undo", null);
+    expect(note.calls).toEqual(["undo", "redo", "undo"]);
+    expect(mocks.editorUndo).not.toHaveBeenCalled();
+    expect(mocks.editorRedo).not.toHaveBeenCalled();
+    note.remove();
+  });
+
+  it("sends undo from an open note's controls and the Edit menu to that note", async () => {
+    await renderApp();
+    await waitFor(() => expect(mocks.listeners.has("menu://undo")).toBe(true));
+    const root = document.createElement("div");
+    const control = document.createElement("button");
+    root.append(control);
+    document.body.append(root);
+    const run = vi.fn();
+    const stop = registerNoteEditor("note", noteEditorHandle({ root, history: run }));
+    control.focus();
+    const key = keydown(control, { key: "z", ctrlKey: true });
+    keydown(control, { key: "z", ctrlKey: true, shiftKey: true });
+    emit("menu://undo", null);
+    act(() => useFilesStore.setState({ projectId: null }));
+    emit("menu://redo", null);
+    expect(key.defaultPrevented).toBe(true);
+    expect(run.mock.calls).toEqual([[false], [true], [false], [true]]);
+    expect(mocks.editorUndo).not.toHaveBeenCalled();
+    expect(mocks.editorRedo).not.toHaveBeenCalled();
+    stop();
+    root.remove();
+  });
+
+  it("keeps menu history in the Markdown visual editor on the document", async () => {
+    await renderApp();
+    await waitFor(() => expect(mocks.listeners.has("menu://undo")).toBe(true));
+    const visual = richText(true);
+    emit("menu://undo", null);
+    expect(visual.calls).toEqual([]);
+    expect(mocks.editorUndo).toHaveBeenCalledTimes(1);
+    visual.remove();
+  });
+
   it("routes menu undo and redo to a focused plain field", async () => {
     const execCommand = vi.fn(() => true);
     Object.defineProperty(document, "execCommand", { value: execCommand, configurable: true });
@@ -775,6 +877,37 @@ describe("keyboard shortcuts", () => {
     expect(event.defaultPrevented).toBe(true);
     expect(useCompileStore.getState().recompile).toHaveBeenCalled();
     expect(useSettingsStore.getState().viewMode).toBe("split");
+  });
+
+  it("does not recompile from a note's editor or after another handler took the key", async () => {
+    await renderApp();
+    const note = richText(false);
+    keydown(note.host, { key: "Enter", ctrlKey: true });
+    note.remove();
+    const field = document.createElement("input");
+    document.body.append(field);
+    field.addEventListener("keydown", (event) => event.preventDefault());
+    keydown(field, { key: "Enter", ctrlKey: true });
+    field.remove();
+    expect(useCompileStore.getState().recompile).not.toHaveBeenCalled();
+  });
+
+  it("still recompiles when the source or visual editor claims the key on the app's behalf", async () => {
+    await renderApp();
+    const editor = document.createElement("div");
+    editor.className = "cm-editor";
+    const content = document.createElement("div");
+    content.className = "cm-content";
+    editor.append(content);
+    document.body.append(editor);
+    content.addEventListener("keydown", (event) => event.preventDefault());
+    keydown(content, { key: "Enter", ctrlKey: true });
+    editor.remove();
+    const visual = richText(true);
+    visual.host.addEventListener("keydown", (event) => event.preventDefault());
+    keydown(visual.host, { key: "Enter", ctrlKey: true });
+    visual.remove();
+    expect(useCompileStore.getState().recompile).toHaveBeenCalledTimes(2);
   });
 
   it("opens settings from the settings shortcut, in a project and in the library", async () => {
@@ -859,6 +992,24 @@ describe("keyboard shortcuts", () => {
     keydown(window, { key: "y", ctrlKey: true });
     expect(mocks.editorUndo).toHaveBeenCalledTimes(1);
     expect(mocks.editorRedo).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves history keys to a note's own editor and keeps the visual editor on the document", async () => {
+    await renderApp();
+    const note = richText(false);
+    const inNote = keydown(note.host, { key: "z", ctrlKey: true });
+    const redoInNote = keydown(note.host, { key: "y", ctrlKey: true });
+    expect(inNote.defaultPrevented).toBe(false);
+    expect(redoInNote.defaultPrevented).toBe(false);
+    expect(mocks.editorUndo).not.toHaveBeenCalled();
+    expect(mocks.editorRedo).not.toHaveBeenCalled();
+    note.remove();
+
+    const visual = richText(true);
+    const inVisual = keydown(visual.host, { key: "z", ctrlKey: true });
+    expect(inVisual.defaultPrevented).toBe(true);
+    expect(mocks.editorUndo).toHaveBeenCalledTimes(1);
+    visual.remove();
   });
 
   it("uses the field's own history inside a text input", async () => {

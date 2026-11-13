@@ -269,6 +269,17 @@ describe("inserting a Zotero citation", () => {
     expect(mocks.toastError).not.toHaveBeenCalled();
   });
 
+  it("inserts through another editor's insert and still adds the entry", async () => {
+    const insert = vi.fn((key: string) => `[@${key}]`);
+
+    expect(insertZoteroCitation(hit, insert)).toBe("[@key-ABCD1234]");
+    await settle();
+
+    expect(insert).toHaveBeenCalledWith("key-ABCD1234");
+    expect(mocks.insertCitationKey).not.toHaveBeenCalled();
+    expect(mocks.ensureZoteroEntries).toHaveBeenCalledWith([{ hit, key: "key-ABCD1234" }], expect.any(Object));
+  });
+
   it("reports an entry that could not be added", async () => {
     mocks.ensureZoteroEntries.mockResolvedValue({ added: [], reused: [], error: "read only" });
 

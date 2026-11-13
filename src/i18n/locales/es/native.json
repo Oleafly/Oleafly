@@ -155,6 +155,9 @@
       "spacesMessage": "Los agentes que usan Cua Spaces podrán:",
       "spacesChanges": "Crear y eliminar Spaces, y ejecutar comandos en ellos",
       "spacesSignIns": "Usar tu inicio de sesión de Claude Code o Codex dentro de un Space"
+    },
+    "assistantNetwork": {
+      "message": "El asistente quiere usar {{tool}}, que envía texto a un servicio en línea."
     }
   },
   "errors": {
@@ -214,6 +217,11 @@
     "blockedMode": {
       "title": "Las comprobaciones de permisos están desactivadas ({{mode}})",
       "description": "El agente puede editar archivos y ejecutar comandos sin preguntar. Oleafly no pudo cambiarlo a otro modo. Cambia el modo en los ajustes del propio agente."
+    }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Captura rápida"
     }
   }
 }

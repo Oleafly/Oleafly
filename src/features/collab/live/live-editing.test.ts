@@ -8,6 +8,7 @@ import {
   collabProjectReadOnly,
   collabSettingsLocked,
   collabVisualReadOnly,
+  holdNoteLivePath,
 } from "@/lib/collab-live-bridge";
 
 const mocks = vi.hoisted(() => ({
@@ -329,6 +330,51 @@ describe("live editing", () => {
     await settle();
     expect(mocks.collabPresenceSet).toHaveBeenLastCalledWith(PROJECT, "figure.png", null, null);
     expect(mocks.setCollabEditorExtension).toHaveBeenCalledOnce();
+  });
+
+  it("lets a note editor share the caret for a project note it has open, then takes over again", async () => {
+    mocks.view = { state: { selection: { main: { head: 4, anchor: 1 } } } };
+    mocks.documentPath = "main.tex";
+    const release = holdNoteLivePath(PROJECT, "notes/Plan.md");
+    start();
+    await settle();
+    mocks.collabPresenceSet.mockClear();
+    useFilesStore.setState({ activePath: "notes/Plan.md" });
+    vi.advanceTimersByTime(150);
+    await settle();
+    expect(mocks.collabPresenceSet).not.toHaveBeenCalled();
+    release();
+    await settle();
+    expect(mocks.collabPresenceSet).toHaveBeenLastCalledWith(PROJECT, "notes/Plan.md", null, null);
+  });
+
+  it("sends this person's place again as soon as a project note's live binding lets it go", async () => {
+    mocks.view = { state: { selection: { main: { head: 4, anchor: 1 } } } };
+    mocks.documentPath = "main.tex";
+    useFilesStore.setState({ activePath: "notes/Plan.md" });
+    start();
+    await settle();
+    expect(mocks.collabPresenceSet).toHaveBeenLastCalledWith(PROJECT, "notes/Plan.md", null, null);
+    const release = holdNoteLivePath(PROJECT, "notes/Plan.md");
+    await settle();
+    mocks.collabPresenceSet.mockClear();
+    vi.advanceTimersByTime(5_000);
+    release();
+    await settle();
+    expect(mocks.collabPresenceSet).toHaveBeenCalledExactlyOnceWith(PROJECT, "notes/Plan.md", null, null);
+  });
+
+  it("sends this person's file again when a note on another file lets go, since that note may have spoken last", async () => {
+    mocks.view = { state: { selection: { main: { head: 4, anchor: 1 } } } };
+    mocks.documentPath = "main.tex";
+    start();
+    await settle();
+    const release = holdNoteLivePath(PROJECT, "notes/Plan.md");
+    await settle();
+    mocks.collabPresenceSet.mockClear();
+    release();
+    await settle();
+    expect(mocks.collabPresenceSet).toHaveBeenCalledExactlyOnceWith(PROJECT, "main.tex", 4, 1);
   });
 
   it("closes everything and returns the editor to local files when it stops", async () => {

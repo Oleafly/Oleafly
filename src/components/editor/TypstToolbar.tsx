@@ -2,12 +2,9 @@ import { Fragment, useMemo, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ArrowRight,
-  ArrowRightToLine,
   Asterisk,
   Bold,
   BookmarkPlus,
-  Braces,
-  ChevronDown,
   Code,
   Divide,
   Hash,
@@ -17,30 +14,25 @@ import {
   Italic,
   Link as LinkIcon,
   List,
-  MoreHorizontal,
   Package,
-  Pencil,
   PenTool,
   Quote,
   Redo2,
   Rows3,
   ScanSearch,
   Search,
-  SearchCode,
   Sigma,
   SlidersHorizontal,
   SquareCode,
   SquareSigma,
   Strikethrough,
-  Type,
   Underline,
   Undo2,
 } from "lucide-react";
-import type { EditorView } from "@codemirror/view";
-import { MenuRow } from "@/components/ui/menu-row";
-import { Popover, PopoverItem } from "@/components/ui/popover";
 import {
+  CodeIntelDropdown,
   Divider,
+  HeadingDropdown,
   IconBtn,
   WysiwygModeSwitch,
   btnControl,
@@ -55,9 +47,12 @@ import {
   DROPDOWN_TRIGGER_WIDTH,
   ICON_BUTTON_WIDTH,
   type ToolbarControl,
-  useFittedCount,
+  ToolbarDropdown,
+  ToolbarMenuItem,
+  ToolbarOverflow,
+  toolbarPicker,
 } from "@/components/ui/toolbar-overflow";
-import { editorFind, editorRedo, editorUndo, getEditorView } from "@/components/editor/cm/controller";
+import { editorFind, editorRedo, editorUndo } from "@/components/editor/cm/controller";
 import { useEditorHistory } from "@/components/editor/history-signal";
 import {
   TYPST_HEADING_LEVELS,
@@ -85,7 +80,6 @@ import {
 } from "@/components/editor/typst-commands";
 import { imageToTypst } from "@/features/image-to-latex";
 import { useToolsImageReady } from "@/hooks/use-tools-image-ready";
-import { findReferences, goToDefinition, startRename } from "@/lib/index/nav";
 import { shortcut } from "@/lib/utils";
 import { openTypstPackages } from "@/components/typst-packages/open";
 import { useTypstDocumentPanelStore } from "@/store/typst-document-panels";
@@ -93,126 +87,25 @@ import { goToSyncTex } from "@/features/synctex";
 import { openDiagramComposer } from "@/features/open-tool";
 import { useFilesStore } from "@/store/files";
 
-function withView(action: (view: EditorView) => void) {
-  const view = getEditorView();
-  if (view) action(view);
-}
-
-function TypstHeadingDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
-  const { t } = useTranslation(["common", "editor"]);
-  return (
-    <Popover
-      ariaLabel={t(($) => $.editor.toolbar.headingLevel)}
-      className="w-fit min-w-0 max-w-56"
-      triggerClassName={
-        variant === "bar" ? "gap-0.5 px-1.5" : "w-full justify-start gap-2 px-2 font-normal"
-      }
-      trigger={
-        variant === "bar" ? (
-          <>
-            <Type className="size-4" />
-            <ChevronDown className="size-3" />
-          </>
-        ) : (
-          <>
-            <Type className="size-4" />
-            <span className="flex-1 text-left">{t(($) => $.editor.toolbar.heading)}</span>
-            <ChevronDown className="size-3" />
-          </>
-        )
-      }
-    >
-      <div className="px-2 py-1 text-[0.625rem] uppercase tracking-wide text-muted-foreground">
-        {t(($) => $.editor.toolbar.heading)}
-      </div>
-      {TYPST_HEADING_LEVELS.map((level) => (
-        <PopoverItem key={level.hLabel} onClick={() => insertTypstHeading(level)}>
-          <span className="w-6 shrink-0 text-[0.625rem] font-medium text-muted-foreground">{level.hLabel}</span>
-          <span className={level.className}>{level.label()}</span>
-        </PopoverItem>
-      ))}
-    </Popover>
-  );
-}
-
 function TypstListDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
-    <Popover
+    <ToolbarDropdown
+      variant={variant}
+      icon={List}
+      label={t(($) => $.editor.toolbar.list)}
       ariaLabel={t(($) => $.editor.toolbar.listType)}
       className="w-fit min-w-0 max-w-56"
-      triggerClassName={
-        variant === "bar" ? "gap-0.5 px-1.5" : "w-full justify-start gap-2 px-2 font-normal"
-      }
-      trigger={
-        variant === "bar" ? (
-          <>
-            <List className="size-4" />
-            <ChevronDown className="size-3" />
-          </>
-        ) : (
-          <>
-            <List className="size-4" />
-            <span className="flex-1 text-left">{t(($) => $.editor.toolbar.list)}</span>
-            <ChevronDown className="size-3" />
-          </>
-        )
-      }
-    >
-      <PopoverItem onClick={insertTypstBulletList}>{t(($) => $.editor.toolbar.bulletedList)}</PopoverItem>
-      <PopoverItem onClick={insertTypstNumberedList}>{t(($) => $.editor.toolbar.numberedList)}</PopoverItem>
-    </Popover>
+      items={[
+        { key: "bullet", onSelect: insertTypstBulletList, content: t(($) => $.editor.toolbar.bulletedList) },
+        { key: "numbered", onSelect: insertTypstNumberedList, content: t(($) => $.editor.toolbar.numberedList) },
+      ]}
+    />
   );
 }
 
-function TypstCodeIntelDropdown({ variant }: Readonly<{ variant: "bar" | "menu" }>) {
-  const { t } = useTranslation(["common", "editor"]);
-  return (
-    <Popover
-      ariaLabel={t(($) => $.editor.toolbar.codeIntelligence)}
-      triggerClassName={variant === "bar" ? "gap-0.5 px-1.5" : "w-full justify-start gap-2 px-2 font-normal"}
-      trigger={
-        variant === "bar" ? (
-          <>
-            <Braces className="size-4" />
-            <ChevronDown className="size-3" />
-          </>
-        ) : (
-          <>
-            <Braces className="size-4" />
-            <span className="flex-1 text-left">{t(($) => $.editor.toolbar.code)}</span>
-            <ChevronDown className="size-3" />
-          </>
-        )
-      }
-    >
-      <PopoverItem onClick={() => withView(goToDefinition)}>
-        <ArrowRightToLine className="size-4" /> {t(($) => $.editor.toolbar.goToDefinition)}
-        <span className="ml-auto text-[0.625rem] text-muted-foreground">{shortcut("F12")}</span>
-      </PopoverItem>
-      <PopoverItem onClick={() => withView(findReferences)}>
-        <SearchCode className="size-4" /> {t(($) => $.editor.toolbar.findReferences)}
-        <span className="ml-auto text-[0.625rem] text-muted-foreground">{shortcut("⇧F12")}</span>
-      </PopoverItem>
-      <PopoverItem onClick={() => withView(startRename)}>
-        <Pencil className="size-4" /> {t(($) => $.editor.toolbar.renameSymbol)}
-        <span className="ml-auto text-[0.625rem] text-muted-foreground">{shortcut("F2")}</span>
-      </PopoverItem>
-    </Popover>
-  );
-}
-
-function dropdownControl(
-  id: string,
-  render: (variant: "bar" | "menu") => ReactNode,
-  width = DROPDOWN_TRIGGER_WIDTH,
-): ToolbarControl {
-  return {
-    id,
-    width,
-    render: () => render("bar"),
-    renderMenu: () => <Fragment key={id}>{render("menu")}</Fragment>,
-  };
+function dropdownControl(id: string, render: (variant: "bar" | "menu") => ReactNode): ToolbarControl {
+  return { id, width: DROPDOWN_TRIGGER_WIDTH, render: () => render("bar"), renderMenu: () => <Fragment key={id}>{render("menu")}</Fragment> };
 }
 
 export function TypstToolbar({
@@ -233,7 +126,9 @@ export function TypstToolbar({
 
   const controls = useMemo<ToolbarControl[]>(() => {
     const list: ToolbarControl[] = [
-      dropdownControl("heading", (variant) => <TypstHeadingDropdown variant={variant} />),
+      dropdownControl("heading", (variant) => (
+        <HeadingDropdown variant={variant} levels={TYPST_HEADING_LEVELS} insert={insertTypstHeading} />
+      )),
       dividerControl("divider-1"),
       btnControl(
         "bold",
@@ -259,21 +154,16 @@ export function TypstToolbar({
       dividerControl("divider-2"),
       btnControl("code", Code, t(($) => $.editor.toolbar.inlineCode), insertTypstRawInline),
       btnControl("link", LinkIcon, t(($) => $.editor.toolbar.insertLink), insertTypstLink),
-      dropdownControl("cite", (variant) => <ProjectCitationPicker variant={variant} />, ICON_BUTTON_WIDTH),
-      dropdownControl("reference", (variant) => <TypstLabelPicker variant={variant} />, ICON_BUTTON_WIDTH),
+      toolbarPicker("cite", ICON_BUTTON_WIDTH, (menu) => <ProjectCitationPicker variant={menu ? "menu" : "bar"} />),
+      toolbarPicker("reference", ICON_BUTTON_WIDTH, (menu) => <TypstLabelPicker variant={menu ? "menu" : "bar"} />),
       btnControl("add-label", BookmarkPlus, t(($) => $.editor.toolbar.addLabel), () => void addTypstLabel()),
       btnControl("footnote", Asterisk, t(($) => $.editor.toolbar.insertFootnote), insertTypstFootnote),
       btnControl("quote", Quote, t(($) => $.editor.toolbar.insertBlockquote), insertTypstQuote),
       dividerControl("divider-3"),
       btnControl("figure", ImageIcon, t(($) => $.editor.toolbar.insertFigure), () => void insertTypstFigure()),
-      {
-        id: "table",
-        width: ICON_BUTTON_WIDTH,
-        render: () => <TableSizePicker onPick={(rows, cols) => void insertTypstTable(rows, cols)} />,
-        renderMenu: () => (
-          <TableSizePicker key="table" menuRow onPick={(rows, cols) => void insertTypstTable(rows, cols)} />
-        ),
-      },
+      toolbarPicker("table", ICON_BUTTON_WIDTH, (menuRow) => (
+        <TableSizePicker menuRow={menuRow} onPick={(rows, cols) => void insertTypstTable(rows, cols)} />
+      )),
       btnControl("image", Images, t(($) => $.editor.toolbar.insertImage), insertTypstImage),
       btnControl("diagram", PenTool, t(($) => $.editor.toolbar.drawDiagram), () => void openDiagramComposer("typst")),
     ];
@@ -291,11 +181,11 @@ export function TypstToolbar({
           </IconBtn>
         ),
         renderMenu: () => (
-          <MenuRow
+          <ToolbarMenuItem
             key="image-to-typst"
-            icon={<ImagePlus className="size-4" />}
+            icon={ImagePlus}
             label={t(($) => $.editor.toolbar.imageToTypst)}
-            onClick={() => imageInputRef.current?.click()}
+            onSelect={() => imageInputRef.current?.click()}
           />
         ),
       });
@@ -321,22 +211,14 @@ export function TypstToolbar({
         t(($) => $.editor.toolbar.insertFraction),
       ),
       dividerControl("divider-5"),
-      {
-        id: "symbols",
-        width: ICON_BUTTON_WIDTH,
-        render: () => <SymbolPicker language="typst" />,
-        renderMenu: () => <SymbolPicker key="symbols" menuRow language="typst" />,
-      },
+      toolbarPicker("symbols", ICON_BUTTON_WIDTH, (menuRow) => <SymbolPicker menuRow={menuRow} language="typst" />),
       btnControl("code-block", SquareCode, t(($) => $.editor.toolbar.codeBlock), insertTypstCodeBlock),
-      dropdownControl("code-intel", (variant) => <TypstCodeIntelDropdown variant={variant} />),
+      dropdownControl("code-intel", (variant) => <CodeIntelDropdown variant={variant} />),
     );
     return list;
   }, [t, visionReady]);
 
-  const { containerRef, visibleCount } = useFittedCount(controls);
   const history = useEditorHistory();
-  const visibleControls = controls.slice(0, visibleCount);
-  const overflowControls = controls.slice(visibleCount);
 
   return (
     <div data-testid="typst-toolbar" className="flex h-9 items-center gap-0.5 border-b px-2">
@@ -375,21 +257,7 @@ export function TypstToolbar({
         />
       )}
 
-      <div ref={containerRef} className="flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden">
-        {visibleControls.map((control) => (
-          <Fragment key={control.id}>{control.render()}</Fragment>
-        ))}
-        {overflowControls.length > 0 && (
-          <Popover
-            ariaLabel={t(($) => $.editor.toolbar.moreOptions)}
-            closeOnClick={false}
-            className="max-h-96 w-56 overflow-y-auto p-1"
-            trigger={<MoreHorizontal className="size-4" />}
-          >
-            {overflowControls.map((control) => control.renderMenu())}
-          </Popover>
-        )}
-      </div>
+      <ToolbarOverflow controls={controls} label={t(($) => $.editor.toolbar.moreOptions)} />
 
       <div className="ml-auto flex shrink-0 items-center gap-0.5">
         <IconBtn onClick={openTypstPackages} title={t(($) => $.editor.toolbar.typstPackages)}>

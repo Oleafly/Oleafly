@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect } from "react";
+import { Suspense, useEffect } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {

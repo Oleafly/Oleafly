@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { openDiagramComposer } from "@/features/open-tool";
+import { preloadIntent } from "@/lib/preloadable";
 import {
   DIAGRAM_COMPOSER_LANGUAGES,
   useDiagramComposerStore,
@@ -101,7 +102,9 @@ export function DiagramComposerChooserHost() {
   const setChooserOpen = useDiagramComposerStore((state) => state.setChooserOpen);
   const [chosen, setChosen] = useState(false);
   useEffect(() => {
-    if (open) setChosen(false);
+    if (!open) return;
+    setChosen(false);
+    preloadIntent("diagram-composer");
   }, [open]);
   if (chosen) return null;
   return (

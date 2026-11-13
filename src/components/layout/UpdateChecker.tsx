@@ -120,7 +120,7 @@ export function UpdateChecker({ className }: Readonly<{ className?: string }>) {
             {t(($) => $.shell.updateChecker.available, { version: state.update.version })}
           </div>
           {state.update.body?.trim() && (
-            <Markdown className="mt-2 max-h-48 overflow-auto rounded bg-background/60 p-2.5 text-xs text-muted-foreground [scrollbar-width:thin]">
+            <Markdown className="mt-2 max-h-48 overflow-auto rounded bg-background/60 p-2.5 text-xs text-muted-foreground">
               {state.update.body.trim()}
             </Markdown>
           )}

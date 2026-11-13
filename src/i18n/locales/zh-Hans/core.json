@@ -76,7 +76,7 @@
     "offlineNotCached": "离线模式已开启，{{files}} 可能还没有下载。请关闭离线模式后重新编译。",
     "offlineNotCachedUnnamed": "离线模式已开启，此文档所需的某个 TeX 宏包可能还没有下载。请关闭离线模式后重新编译。",
     "goOnlineAndCompile": "关闭并编译",
-    "typstMissing":"Typst {{version}} 未安装。请下载该版本，或将此项目切换到其他版本。",
+    "typstMissing": "Typst {{version}} 未安装。请下载该版本，或将此项目切换到其他版本。",
     "typstPackage": {
       "downloadFailed": "Typst 无法下载 {{spec}}。请检查网络连接，然后重新编译。",
       "downloadFailedUnnamed": "Typst 无法下载此文档导入的某个包。请检查网络连接，然后重新编译。",
@@ -314,6 +314,7 @@
   },
   "mcp": {
     "deniedByRules": "已被 approvals.toml 中的拒绝规则拒绝。",
+    "createTodaySummary": "新建今日笔记“{{title}}”",
     "openProjectSummary": "打开项目 {{id}}。",
     "rulesUnreadable": "无法读取 approvals.toml，因此已拒绝。",
     "useToolSummary": "使用 {{server}} MCP 服务器中的 {{tool}}。"
@@ -336,6 +337,7 @@
   },
   "mermaid": {
     "diagram": "图表",
+    "remoteBlocked": "此图表会从互联网加载图片或样式，因此没有绘制。",
     "renderFailed": "无法渲染图表。",
     "rendering": "正在渲染图表"
   },
@@ -348,7 +350,7 @@
       "dnf": "运行 {{command}}。"
     },
     "systemManaged_other": "编译时找不到 {{names}}。此 TeX Live 随你的 Linux 发行版一起安装，因此 Oleafly 无法向其中添加宏包。{{hint}}",
-    "userTree":"系统 TeX 目录树为只读，因此宏包已安装到你位于 {{path}} 的个人目录树。"
+    "userTree": "系统 TeX 目录树为只读，因此宏包已安装到你位于 {{path}} 的个人目录树。"
   },
   "models": {
     "chips": {

@@ -55,6 +55,7 @@ vi.mock("@/lib/cloud-settings", () => ({
 import { loadNamespace } from "@/i18n";
 import { useCloudStore } from "@/store/cloud";
 import { useFilesStore } from "@/store/files";
+import { useSettingsStore } from "@/store/settings";
 import { CloudTab } from "./CloudTab";
 import { storageTone } from "./StorageRing";
 
@@ -403,6 +404,39 @@ describe("CloudTab", () => {
     expect(screen.getByText(/2 projects opened from a folder aren't synced/)).toBeInTheDocument();
   });
 
+  it("tags a synced note as a note while Notes is on", async () => {
+    serve(
+      cloudState({
+        projects: [
+          project({ localId: "idea", cloudId: "c-idea", name: "Idea", lastSyncedMs: 1 }),
+          project({ localId: "draft", cloudId: "c-draft", name: "Draft", lastSyncedMs: 1 }),
+        ],
+      }),
+      null,
+      [project({ localId: null, cloudId: "c-far", name: "Far", mode: "download" })],
+    );
+    useFilesStore.setState({
+      projects: [
+        { id: "idea", name: "Idea", kind: "note" },
+        { id: "draft", name: "Draft", kind: "document" },
+      ] as never,
+    });
+    useSettingsStore.setState({ notes: true });
+    try {
+      render(<CloudTab />);
+      await openProjects();
+      const rows = await screen.findAllByTestId("cloud-project-row");
+      expect(within(rows[0]).getByTestId("cloud-project-note-tag")).toHaveTextContent("Note");
+      expect(within(rows[1]).queryByTestId("cloud-project-note-tag")).toBeNull();
+      expect(screen.getAllByTestId("cloud-project-note-tag")).toHaveLength(1);
+      act(() => useSettingsStore.setState({ notes: false }));
+      expect(screen.queryByTestId("cloud-project-note-tag")).toBeNull();
+    } finally {
+      useSettingsStore.setState({ notes: false });
+      useFilesStore.setState({ projects: [] });
+    }
+  });
+
   it("turns a removed project back on so it uploads again", async () => {
     serve(cloudState({ projects: [project({ mode: "removed", removedBy: "Laptop" })] }));
     render(<CloudTab />);
@@ -692,6 +726,39 @@ describe("CloudTab", () => {
     await userEvent.click(within(notice).getByRole("button", { name: "Dismiss" }));
     expect(mocks.cloud.cloudProjectDismissConflicts).toHaveBeenCalledWith("thesis");
     await waitFor(() => expect(screen.queryByTestId("cloud-project-conflicts")).toBeNull());
+  });
+
+  it("lets you compare a note's conflict copy with the note while Notes is on, and offers no compare for other projects", async () => {
+    const copy = "note (Laptop 2026-11-08).md";
+    serve(
+      cloudState({
+        projects: [
+          project({ localId: "idea", cloudId: "c-idea", name: "Idea", lastSyncedMs: Date.now(), conflicts: 1, conflictCopies: [copy] }),
+          project({ lastSyncedMs: Date.now(), conflicts: 1, conflictCopies: ["main (Laptop 2026-10-14).tex"] }),
+        ],
+      }),
+    );
+    useFilesStore.setState({
+      projects: [
+        { id: "idea", name: "Idea", kind: "note", main_doc: "note.md" },
+        { id: "thesis", name: "Thesis", kind: "document", main_doc: "main.tex" },
+      ] as never,
+    });
+    try {
+      render(<CloudTab />);
+      const notices = await screen.findAllByTestId("cloud-project-conflicts");
+      expect(notices).toHaveLength(2);
+      expect(screen.queryByRole("button", { name: `Compare ${copy} with the note` })).toBeNull();
+      act(() => useSettingsStore.setState({ notes: true }));
+      const compare = screen.getAllByRole("button", { name: `Compare ${copy} with the note` });
+      expect(compare).toHaveLength(1);
+      expect(screen.queryByRole("button", { name: "Compare main (Laptop 2026-10-14).tex with the note" })).toBeNull();
+      await userEvent.click(compare[0]);
+      expect(await screen.findByRole("dialog", { name: 'Two versions of "Idea"' })).toBeInTheDocument();
+    } finally {
+      useSettingsStore.setState({ notes: false });
+      useFilesStore.setState({ projects: [] });
+    }
   });
 
   it("replaces an unreadable copy in Dropbox only after confirming", async () => {

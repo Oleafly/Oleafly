@@ -25,7 +25,7 @@ toml = { version = "0.8", default-features = false, features = ["parse"] }
 toml_edit = "0.25"
 unicode-ident = "1"
 unicode-normalization = "0.1"
-uuid = { version = "1", features = ["v7"] }
+uuid = { version = "1", features = ["v4", "v7"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

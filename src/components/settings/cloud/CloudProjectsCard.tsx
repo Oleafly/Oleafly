@@ -1,5 +1,6 @@
 import { CloudNotice } from "@/components/settings/cloud/CloudNotice";
 import { SettingsSwitchIndicator } from "@/components/settings/SettingsToggleRow";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
@@ -16,8 +17,12 @@ import { describeError } from "@/lib/app-error";
 import type { CloudProgress, CloudProject, CloudState } from "@/lib/cloud";
 import { formatBytes } from "@/lib/format-bytes";
 import { formatList, formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
+import { isNoteProject } from "@/lib/library-projects";
+import { lazy } from "@/lib/preloadable";
 import { cn } from "@/lib/utils";
 import { cloudErrorCode, remoteBusyKey, useCloudProviderName, useCloudStore } from "@/store/cloud";
+import { useFilesStore } from "@/store/files";
+import { useSettingsStore } from "@/store/settings";
 import {
   ChevronRight,
   CloudOff,
@@ -28,25 +33,17 @@ import {
   RefreshCw,
   ShieldAlert,
 } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { Suspense, useId, useMemo, useState } from "react";
+import { useNow } from "@/hooks/use-now";
 import { useTranslation } from "react-i18next";
+
+const ConflictCopyDialog = lazy(() => import("@/components/cloud/ConflictCopyDialog"));
 
 type CloudTranslate = ReturnType<typeof useTranslation<["cloud"]>>["t"];
 
 type PendingConfirm = { kind: "remove" | "removeRemote" | "replace" | "deleteHeld"; project: CloudProject };
 
 type RemoteListState = "idle" | "loading" | "failed" | "ready";
-
-const NOW_TICK_MS = 30_000;
-
-function useNow(): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), NOW_TICK_MS);
-    return () => window.clearInterval(timer);
-  }, []);
-  return now;
-}
 
 function attentionRank(project: CloudProject): number {
   if (project.mode === "held") return 0;
@@ -371,36 +368,74 @@ function ConflictNotice({ project }: Readonly<{ project: CloudProject }>) {
   const localId = project.localId as string;
   const busy = useCloudStore((s) => s.busyProjects.includes(localId));
   const dismissConflicts = useCloudStore((s) => s.dismissConflicts);
+  const notesOn = useSettingsStore((s) => s.notes);
+  const noteDoc = useFilesStore((s) => {
+    const info = s.projects.find((entry) => entry.id === localId);
+    return notesOn && isNoteProject(info) ? (info?.main_doc ?? null) : null;
+  });
+  const [comparing, setComparing] = useState<string | null>(null);
+  const copies = project.conflictCopies;
+  const conflict = useMemo(
+    () =>
+      comparing === null || noteDoc === null
+        ? null
+        : {
+            projectId: localId,
+            title: project.name,
+            mainDoc: noteDoc,
+            copies: [comparing, ...copies.filter((path) => path !== comparing)],
+          },
+    [comparing, copies, localId, noteDoc, project.name],
+  );
   const count = project.conflictCopies.length || project.conflicts;
   return (
-    <CloudNotice
-      tone="warning"
-      icon={Copy}
-      testId="cloud-project-conflicts"
-      className="mt-2"
-      actions={
-        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void dismissConflicts(localId)}>
-          {t(($) => $.cloud.row.dismiss)}
-        </Button>
-      }
-      details={
-        project.conflictCopies.length > 0 ? (
-          <ul
-            aria-label={t(($) => $.cloud.row.conflictsLabel, { name: project.name })}
-            className="mt-2 space-y-0.5 pl-6.5"
-          >
-            {project.conflictCopies.map((path) => (
-              <li key={path} className="select-text break-all">
-                {path}
-              </li>
-            ))}
-          </ul>
-        ) : null
-      }
-    >
-      <span className="block font-medium">{t(($) => $.cloud.row.conflicts, { count })}</span>
-      <span className="block">{t(($) => $.cloud.row.conflictsHelp, { count })}</span>
-    </CloudNotice>
+    <>
+      <CloudNotice
+        tone="warning"
+        icon={Copy}
+        testId="cloud-project-conflicts"
+        className="mt-2"
+        actions={
+          <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void dismissConflicts(localId)}>
+            {t(($) => $.cloud.row.dismiss)}
+          </Button>
+        }
+        details={
+          project.conflictCopies.length > 0 ? (
+            <ul
+              aria-label={t(($) => $.cloud.row.conflictsLabel, { name: project.name })}
+              className="mt-2 space-y-0.5 pl-6.5"
+            >
+              {project.conflictCopies.map((path) => (
+                <li key={path} className="flex min-w-0 items-center gap-2">
+                  <span className="min-w-0 flex-1 select-text break-all">{path}</span>
+                  {noteDoc !== null && (
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="outline"
+                      disabled={busy}
+                      aria-label={t(($) => $.cloud.row.compareLabel, { path })}
+                      onClick={() => setComparing(path)}
+                    >
+                      {t(($) => $.cloud.row.compare)}
+                    </Button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : null
+        }
+      >
+        <span className="block font-medium">{t(($) => $.cloud.row.conflicts, { count })}</span>
+        <span className="block">{t(($) => $.cloud.row.conflictsHelp, { count })}</span>
+      </CloudNotice>
+      {conflict && (
+        <Suspense fallback={null}>
+          <ConflictCopyDialog conflict={conflict} onClose={() => setComparing(null)} />
+        </Suspense>
+      )}
+    </>
   );
 }
 
@@ -482,6 +517,18 @@ function isRemovable(project: CloudProject, local: boolean, connected: boolean):
   return (project.mode === "sync" || project.mode === "pause") && project.lastSyncedMs > 0;
 }
 
+function NoteTag({ localId }: Readonly<{ localId: string }>) {
+  const { t } = useTranslation(["library"]);
+  const notesOn = useSettingsStore((s) => s.notes);
+  const note = useFilesStore((s) => notesOn && isNoteProject(s.projects.find((entry) => entry.id === localId)));
+  if (!note) return null;
+  return (
+    <Badge variant="muted" size="sm" data-testid="cloud-project-note-tag">
+      {t(($) => $.library.home.filters.kindNote)}
+    </Badge>
+  );
+}
+
 function ProjectRow({
   project,
   now,
@@ -501,11 +548,14 @@ function ProjectRow({
     <li data-testid="cloud-project-row" className="px-3 py-2.5">
       <div className="flex items-center gap-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium text-foreground">
-            <Tooltip label={project.name} className="inline">
-              {project.name}
-            </Tooltip>
-          </p>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <p className="min-w-0 truncate text-sm font-medium text-foreground">
+              <Tooltip label={project.name} className="inline">
+                {project.name}
+              </Tooltip>
+            </p>
+            {local ? <NoteTag localId={project.localId as string} /> : null}
+          </div>
           {transferring ? (
             <TransferLine progress={progress} />
           ) : (

@@ -44,14 +44,16 @@
       "externalTool": "Confirmar la acción de la herramienta externa",
       "internet": "Confirmar el acceso a internet",
       "edit": "Confirmar la edición de la IA",
-      "researchTask": "Confirmar la tarea de investigación"
+      "researchTask": "Confirmar la tarea de investigación",
+      "note": "Confirmar la nota nueva"
     },
     "headline": {
       "command": "El asistente quiere ejecutar este comando",
       "externalTool": "El asistente quiere usar una herramienta externa",
       "internet": "El asistente quiere acceder a internet",
       "edit": "El asistente quiere cambiar tus archivos",
-      "researchTask": "El asistente quiere crear una tarea de investigación"
+      "researchTask": "El asistente quiere crear una tarea de investigación",
+      "note": "El asistente quiere crear una nota"
     },
     "mcpNote": "Esto envía los argumentos de abajo al servidor MCP configurado.",
     "line": "línea {{line}}",
@@ -86,10 +88,18 @@
       "timeBudget": "Presupuesto de tiempo",
       "timeBudgetDefault": "Predeterminado",
       "minutes_one": "{{count}} minuto",
+      "minutes_many": "{{count}} minutos",
       "minutes_other": "{{count}} minutos",
       "planFirst": "Planificar primero",
-      "startNow": "Empezar ya",
-      "minutes_many": "{{count}} minutos"
+      "startNow": "Empezar ya"
+    },
+    "noteDraft": {
+      "title": "Título",
+      "project": "Proyecto vinculado",
+      "tags": "Etiquetas",
+      "text": "Texto",
+      "empty": "Sin texto",
+      "more": "La nota continúa más allá de este punto."
     }
   },
   "attachments": {
@@ -1124,5 +1134,19 @@
     "replaceConfirm": "Sustituir la respuesta",
     "forked": "Se empezó un chat nuevo desde el mensaje editado.",
     "failed": "No se pudo volver a enviar el mensaje."
+  },
+  "noteScope": {
+    "notesOnly": "Solo en el asistente de una nota.",
+    "tools": {
+      "readNote": "Lee la nota abierta, incluidas las sugerencias pendientes de revisión.",
+      "proposeNoteEdits": "Sugiere cambios en la nota abierta para que los aceptes o los rechaces.",
+      "searchNotes": "Busca en todas tus notas.",
+      "listKnowledgeNotes": "Enumera tus notas, por etiqueta o por proyecto.",
+      "readNoteById": "Lee otra nota.",
+      "createNote": "Crea una nota nueva.",
+      "relatedProjectFiles": "Enumera los archivos del proyecto vinculado a la nota.",
+      "readRelatedProjectFile": "Lee un archivo del proyecto vinculado a la nota.",
+      "searchRelatedProject": "Busca en el proyecto vinculado a la nota."
+    }
   }
 }

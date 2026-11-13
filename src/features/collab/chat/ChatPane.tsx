@@ -1,4 +1,4 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Eraser, MessagesSquare, ShieldQuestion, Trash2 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useNow } from "@/hooks/use-now";
 import { formatDateTime, formatRelativeTimeFrom } from "@/lib/intl";
 import type { CollabChatMessage, CollabPerson } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
@@ -22,15 +23,6 @@ import { clearChat, deleteChat, loadChat, loadOlderChat, sendChat, useChat } fro
 
 const TICK_MS = 60_000;
 const NO_MEMBERS: readonly never[] = [];
-
-function useNow(): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), TICK_MS);
-    return () => window.clearInterval(timer);
-  }, []);
-  return now;
-}
 
 const MessageRow = memo(function MessageRow({
   message,
@@ -132,7 +124,7 @@ export function ChatPane() {
   );
   const [clearing, setClearing] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-  const now = useNow();
+  const now = useNow(TICK_MS);
   const list = useRef<HTMLDivElement>(null);
   const lastId = chat.messages.at(-1)?.id ?? null;
   const people = useMemo(

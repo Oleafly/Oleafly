@@ -2,7 +2,8 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { useMemo, useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import { analyze, defineSchema, flagField } from "@oleafly/search-query";
+import { analyze, defineSchema, flagField, truncatedDiagnostic } from "@oleafly/search-query";
+import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import type { QueryMeta } from "@/lib/query-suggestions";
 import { QuerySearch } from "./query-search";
 
@@ -169,6 +170,27 @@ describe("QuerySearch", () => {
     fireEvent.keyUp(input(), { key: "Home" });
     fireEvent.keyDown(input(), { key: "ArrowDown" });
     expect(screen.getByText(/soon is not a date/)).toBeInTheDocument();
+  });
+
+  it("shows a whole-query notice with the caret at the end, without marking any term", () => {
+    const source = "a OR b";
+    const query = { ...analyze(source, schema, { now: 0 }), diagnostics: [truncatedDiagnostic(source)] };
+    render(
+      <QuerySearch
+        value={source}
+        onChange={() => undefined}
+        query={query}
+        schema={schema}
+        ariaLabel="Search items"
+        placeholder={PLACEHOLDER}
+        clearLabel="Clear search"
+      />,
+    );
+    const highlight = screen.getByTestId("query-search-highlight");
+    expect(highlight.querySelector("[class*='amber']")).toBeNull();
+    fireEvent.focus(input());
+    fireEvent.keyDown(input(), { key: "ArrowDown" });
+    expect(screen.getByText(enCommon.querySearch.issues.tooManyBranches)).toBeInTheDocument();
   });
 
   it("shows the date hint after a date key", () => {

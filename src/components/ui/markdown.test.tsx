@@ -13,6 +13,7 @@ import {
   renderMarkdownDocument,
 } from "./markdown-renderer";
 import { clearDiagramCache } from "./mermaid-diagram";
+import { MERMAID_LABEL_PURIFY, MERMAID_SECURE_KEYS } from "./mermaid-remote";
 import {
   installIntersectionObserverStub,
   type IntersectionObserverStub,
@@ -310,7 +311,9 @@ $$`}
     expect(diagram).toHaveTextContent("Rendered diagram");
     expect(diagram).toHaveAccessibleDescription(/flowchart TD A --> B/);
     expect(mermaidInitialize).toHaveBeenLastCalledWith({
+      dompurifyConfig: MERMAID_LABEL_PURIFY,
       maxTextSize: 50_000,
+      secure: MERMAID_SECURE_KEYS,
       securityLevel: "strict",
       startOnLoad: false,
       suppressErrorRendering: true,

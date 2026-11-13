@@ -41,6 +41,9 @@ pub(crate) fn on_second_launch<R: tauri::Runtime>(
     args: Vec<String>,
     cwd: String,
 ) {
+    if crate::quick_capture::arrive(app, &args) {
+        return;
+    }
     reveal_main_window(app);
     crate::collab::links::arrive(app, crate::collab::links::links_in(args.iter().cloned()));
     crate::open_request::arrive(

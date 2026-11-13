@@ -222,7 +222,13 @@
     "closeAll": "Sulje kaikki",
     "closeAssistantTabs": "Sulje avustajan avaamat tiedostot",
     "closeAssistantTabsCount_one": "Sulje avustajan avaama tiedosto",
-    "closeAssistantTabsCount_other": "Sulje {{count}} avustajan avaamaa tiedostoa"
+    "closeAssistantTabsCount_other": "Sulje {{count}} avustajan avaamaa tiedostoa",
+    "editAsMarkdown": "Muokkaa Markdownina",
+    "editAsNote": "Muokkaa muistiinpanona",
+    "noteAsMarkdown": "Muokkaat tätä muistiinpanoa Markdownina.",
+    "openInNotes": "Avaa Muistiinpanoissa",
+    "moveIntoProject": "Siirrä projektiin",
+    "copyToMyNotes": "Kopioi omiin muistiinpanoihin"
   },
   "projectInfo": {
     "trigger": "Projektin tiedot",
@@ -996,13 +1002,14 @@
         "environment": "{{environment}}-ympäristö",
         "command": "\\{{command}}-komento",
         "latexSource": "LaTeX-lähdekoodi",
+        "html": "HTML",
         "maketitlePreview": "Muodostettu dokumentin otsikosta ja tekijätiedoista.",
         "figurePreserved": "Kuvan alkuperäinen lähdekoodi säilytetty.",
         "tablePreserved": "Taulukon alkuperäinen lähdekoodi säilytetty.",
         "sourcePreserved": "Alkuperäinen lähdekoodi säilytetty",
         "editSource": "Muokkaa lähdekoodia",
-        "summaryLabel": "{{label}}. Alkuperäinen LaTeX-lähdekoodi säilytetty.",
-        "inputLabel": "LaTeX-lohkon alkuperäinen lähdekoodi"
+        "summaryLabel": "{{label}}. Alkuperäinen lähdekoodi säilytetty.",
+        "inputLabel": "Lohkon alkuperäinen lähdekoodi"
       },
       "inline": {
         "label": "Raaka tekstin sisäinen lähdekoodi",

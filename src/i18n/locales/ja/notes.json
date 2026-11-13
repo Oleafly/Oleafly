@@ -1,0 +1,1653 @@
+{
+  "workspace": {
+    "home": "ホーム",
+    "hideSidebar": "サイドバーを隠す",
+    "showSidebar": "サイドバーを表示",
+    "newProject": "新規プロジェクト",
+    "sendToPaper": "論文に送る",
+    "artifacts": "成果物、{{total}} 件",
+    "project": "プロジェクト",
+    "projectMenu": "プロジェクト: {{project}}",
+    "chooseProject": "プロジェクトを選択",
+    "noProject": "プロジェクトなし",
+    "missing": "このノートはもうライブラリにありません。",
+    "closeTab": "{{title}} を閉じる",
+    "maximize": "最大化",
+    "restore": "元のサイズに戻す",
+    "resize": "パネルのサイズを変更",
+    "closePanel": "パネルを閉じる",
+    "newTab": "新しいタブ",
+    "empty": {
+      "greetings": {
+        "begin": "どこから始めましょうか？",
+        "ready": "準備ができたら、いつでもどうぞ。",
+        "mind": "今日は何を考えていますか？",
+        "resume": "前回の続きから始めますか？",
+        "working": "何に取り組んでいますか？",
+        "first": "まず何を書きましょうか？",
+        "blank": "空白のページかテンプレートから始めましょう。"
+      },
+      "hints": {
+        "daily": "今日の計画と記録",
+        "experimentLog": "実験の実行とその結果",
+        "paperReading": "1 本の論文が主張していること",
+        "literatureMatrix": "論文を並べて比較",
+        "meeting": "議題と決定事項",
+        "labProtocol": "他の人がたどれる手順",
+        "weeklyLog": "今週済ませたこと",
+        "proposal": "目的、方法、スケジュール"
+      },
+      "moreTemplates": "その他のテンプレート",
+      "continue": "続きから",
+      "searchAll": "すべてのノートを検索"
+    },
+    "closeMissing": "タブを閉じる",
+    "notesHome": "ノートのホームへ移動",
+    "breadcrumb": "パンくずリスト",
+    "breadcrumbHome": "ノートのホーム",
+    "brand": "Oleafly Notes",
+    "back": "戻る",
+    "forward": "進む"
+  },
+  "saveStatus": {
+    "saved": "保存済み",
+    "saving": "保存中",
+    "failed": "未保存",
+    "failedWithReason": "未保存: {{reason}}",
+    "retry": "再試行"
+  },
+  "library": {
+    "newNote": "新規ノート",
+    "search": "ノートと成果物を検索",
+    "kind": {
+      "all": "すべて",
+      "note": "ノート",
+      "figure": "図",
+      "report": "レポート",
+      "data": "データ",
+      "notebook": "ノートブック"
+    },
+    "author": {
+      "all": "すべて",
+      "agent": "エージェント",
+      "you": "自分"
+    },
+    "empty": "この絞り込み条件に一致するものはありません。",
+    "emptyKind": {
+      "note": "この絞り込み条件に一致するノートはありません。",
+      "figure": "この絞り込み条件に一致する図はありません。",
+      "report": "この絞り込み条件に一致するレポートはありません。",
+      "data": "この絞り込み条件に一致するデータファイルはありません。",
+      "notebook": "この絞り込み条件に一致するノートブックはありません。"
+    },
+    "start": {
+      "title": "ノートはまだありません"
+    },
+    "ungrouped": "ノート",
+    "agentFallback": "エージェント",
+    "settings": "設定",
+    "filters": {
+      "title": "タグ",
+      "active_other": "{{count}} 件の絞り込みを適用中",
+      "clear": "絞り込みを解除",
+      "writtenBy": "作成者"
+    },
+    "menu": {
+      "more": "その他",
+      "openInNewTab": "新しいタブで開く",
+      "favorite": "お気に入りに追加",
+      "unfavorite": "お気に入りから外す",
+      "rename": "名前を変更",
+      "renameLabel": "ノートの名前を変更",
+      "renameFailed": "「{{name}}」の名前を変更できませんでした。",
+      "delete": "削除",
+      "deleteTitle": "「{{name}}」をごみ箱に移動しますか？",
+      "deleteDescription": "ノートは「ノート」から外れ、復元するか完全に削除するまで「データの保存」に残ります。",
+      "deleteConfirm": "ごみ箱に移動",
+      "deleted": "「{{name}}」をごみ箱に移動しました。",
+      "deleteFailed": "「{{name}}」を削除できませんでした。",
+      "useAsTemplate": "テンプレートとして使う",
+      "stopTemplate": "テンプレートとしての使用をやめる",
+      "templateOn": "「{{name}}」をテンプレートに追加しました。",
+      "templateOff": "「{{name}}」はテンプレートではなくなりました。",
+      "linkProject": "プロジェクトにリンク",
+      "compareConflict": "競合コピーと比較",
+      "copyLink": "リンクをコピー",
+      "linkCopied": "「{{name}}」へのリンクをコピーしました。",
+      "copyLinkFailed": "「{{name}}」へのリンクをコピーできませんでした。",
+      "duplicate": "複製",
+      "copyTitle": "{{name}} のコピー",
+      "duplicateFailed": "「{{name}}」を複製できませんでした。",
+      "export": "書き出す",
+      "exportAs": {
+        "markdown": "Markdown フォルダ（.md）",
+        "docx": "Word 文書（.docx）",
+        "html": "Web ページ（.html）",
+        "latex": "LaTeX（.tex）",
+        "typst": "Typst（.typ）"
+      },
+      "exportFailed": "「{{name}}」を書き出せませんでした。",
+      "copyMarkdown": "Markdown としてコピー",
+      "markdownCopied": "「{{name}}」を Markdown としてコピーしました。",
+      "copyMarkdownFailed": "「{{name}}」を Markdown としてコピーできませんでした。"
+    },
+    "conflicts": {
+      "badge": "このノートには競合コピーがあります"
+    },
+    "suggestions": {
+      "badge": "このノートには確認待ちの変更提案があります"
+    }
+  },
+  "home": {
+    "title": "ホーム",
+    "search": "ノートを検索",
+    "tabs": {
+      "label": "表示するノート",
+      "mine": "自分のノート",
+      "favorites": "お気に入り",
+      "tasks": "タスク",
+      "attachments": "添付ファイル"
+    },
+    "sortBy": "並べ替え",
+    "sort": {
+      "opened": "最後に開いた日",
+      "edited": "最終編集日",
+      "created": "作成日",
+      "title": "タイトル"
+    },
+    "layout": "ノートのレイアウト",
+    "noFavorites": "お気に入りはまだありません。ノートをお気に入りに追加すると、ここに表示されます。",
+    "noMatches": "「{{query}}」に一致するノートはありません。",
+    "author": "作成者"
+  },
+  "document": {
+    "writtenByAgent": "{{agent}} が作成",
+    "writtenByYou": "自分が作成",
+    "askAgent": "エージェントに依頼",
+    "addIcon": "アイコンを追加",
+    "sendToPaper": "論文に送る",
+    "loadFailed": "このノートを開けませんでした。プロジェクトが移動または削除された可能性があります。",
+    "retryLoad": "再試行",
+    "closeTab": "タブを閉じる",
+    "fileFailed": "ファイルをノートに追加できませんでした: {{error}}",
+    "fileTooLarge": "{{name}} は 64 MB を超えているため、追加されませんでした。",
+    "unsupportedFile": "ノートに追加できるのは、画像、音声、動画、PDF、表（CSV、TSV、Excel）、分子ファイル、Jupyter ノートブックだけです。",
+    "remoteImages": {
+      "more": "画像を読み込むその他の方法",
+      "loadAll": "このノートのすべての画像を読み込む",
+      "trustHost": "{{host}} の画像を常に読み込む"
+    },
+    "titleLabel": "ノートのタイトル",
+    "untitled": "無題"
+  },
+  "prompt": {
+    "actionsGroup": "研究のアクション",
+    "actions": {
+      "latestRun": "最新の実行結果で更新",
+      "claims": "主張をコードと照合",
+      "citations": "引用文献を探す",
+      "proofread": "選択範囲を校正",
+      "rewrite": "選択範囲を書き直す",
+      "shorter": "短くする",
+      "paragraph": "新しい段落を書く",
+      "table": "比較表を追加",
+      "figure": "図を追加",
+      "abstract": "要旨用に要約"
+    },
+    "wholeNote": {
+      "proofread": "ノートを校正",
+      "rewrite": "ノートを書き直す"
+    },
+    "collapse": "プロンプトを隠す",
+    "expand": "プロンプトを表示"
+  },
+  "review": {
+    "rejectAll": "すべて却下",
+    "acceptAll": "すべて承認",
+    "position": "{{total}} 件中 {{current}} 件目の変更",
+    "undo": "元に戻す"
+  },
+  "versions": {
+    "title": "バージョン履歴",
+    "summary": "Oleafly は、提案された変更をすべて承認するたびに、また古いバージョンを復元する前に、バージョンを保存します。自分で保存することもできます。",
+    "empty": "バージョンはまだありません。今のノートを残すには、バージョンを保存してください。",
+    "save": "バージョンを保存",
+    "saved": "バージョンを保存しました。",
+    "unchanged": "前回のバージョンから変更はありません。",
+    "saveFailed": "このノートのバージョンを保存できませんでした。",
+    "restore": "このバージョンを復元",
+    "restored": "バージョンを復元しました。置き換えられたテキストもバージョンとして保存されています。",
+    "restoreFailed": "このバージョンを復元できませんでした。",
+    "comparing": "ノートと比較しています",
+    "readFailed": "このバージョンを読み込めませんでした。",
+    "changes": "このバージョンを復元すると変わること",
+    "textOnly": "復元で変わるのはノートのテキストだけです。添付ファイルはそのままです。"
+  },
+  "toolbar": {
+    "label": "書式",
+    "blockType": "ブロックの種類",
+    "text": "テキスト",
+    "heading": "見出し {{level}}",
+    "list": "リスト",
+    "bulletList": "箇条書き",
+    "link": "リンクを追加",
+    "linkAddress": "リンク先のアドレス",
+    "linkPlaceholder": "https://",
+    "linkInvalid": "https://example.com のような完全な Web アドレスを入力してください。",
+    "displayMath": "ディスプレイ数式",
+    "citation": "引用",
+    "noCitations": "このプロジェクトにはまだ参考文献がありません",
+    "chart": "グラフ",
+    "mermaid": "Mermaid の図",
+    "outline": "アウトライン",
+    "emptyOutline": "見出しを追加するとアウトラインが作られます",
+    "words_other": "{{count}} 語",
+    "more": "その他",
+    "width": "ノートの幅",
+    "widths": {
+      "standard": "標準",
+      "wide": "広い",
+      "full": "全幅"
+    },
+    "attach": "ファイルを添付",
+    "attachFilter": "画像、音声、動画、PDF、表、分子、ノートブック",
+    "codeLanguage": "言語",
+    "plainCode": "プレーンテキスト",
+    "imageSize": "画像のサイズ",
+    "originalSize": "元のサイズ"
+  },
+  "blocks": {
+    "chart": "グラフ",
+    "source": "ソース",
+    "preview": "プレビュー",
+    "diagramError": "この図にはエラーがあります。ソースを開いて修正してください。",
+    "chartError": "このグラフのデータが無効です。ソースを開いて修正してください。",
+    "noPreview": "このブロックにはまだプレビューがありません。ソースを開いて編集してください。",
+    "syntax": {
+      "help": "{{block}} ブロックの書き方",
+      "chart": "type、categories、series を持つ JSON:\n{\"type\": \"bar\", \"categories\": [\"A\", \"B\"], \"series\": [{\"name\": \"Run 1\", \"values\": [1, 2]}]}\nほかの type: line、area、scatter、pie、donut、histogram。",
+      "plot": "1 行に曲線またはオプションを 1 つずつ:\ny = x^2 - 1 または x = cos(t), y = sin(t)\ndomain: -5, 5 と point: 1, 0, Root",
+      "csv": "値の行を並べ、1 行目がヘッダーです:\nRun, Ratio\nファイルを読み込むには path: assets/results.csv",
+      "latex": "ディスプレイ数式の LaTeX。equation 環境や align 環境など:\n\\begin{align} a &= b + c \\end{align}\n化学式は \\ce{H2O}、単位は \\pu{5 mg}。",
+      "typst": "画像として描画される Typst のスニペット:\n$ E = m c^2 $\nインターネット上のパッケージは使えません。",
+      "mermaid": "Mermaid の図。例:\nflowchart LR\nA --> B",
+      "d2": "D2 の図。例:\nclient -> server: request\nserver.shape: cylinder",
+      "tikz": "TikZ のコマンド、または tikzpicture 全体:\n{{example}}\n\\usetikzlibrary{positioning} のように図より前に書く行は、プリアンブルに入れてください。",
+      "circuitikz": "CircuiTikZ のコマンド、または circuitikz 環境全体:\n{{example}}\n\\ctikzset{resistors/scale=0.8} のように回路より前に書く行は、プリアンブルに入れてください。",
+      "svg": "svg 要素を 1 つ。例:\n<svg viewBox=\"0 0 100 100\"><circle cx=\"50\" cy=\"50\" r=\"40\" /></svg>\nスクリプト、リンク、リモート画像は取り除かれます。",
+      "html": "CSS やスクリプトを含む HTML ページ全体、またはその断片。\nインターネットにはアクセスできないため、データはブロックの中に入れてください。\nスクリプトは「実行」をクリックすると始まります。",
+      "jsx": "default export を持つ React コンポーネントのファイルを 1 つ:\nexport default function App() { return <p>Hello</p> }\nreact、recharts、d3、lodash、papaparse、chart.js、lucide-react をインポートできます。",
+      "smiles": "1 行に SMILES を 1 つ。名前は省略できます:\nAspirin: CC(=O)OC1=CC=CC=C1C(=O)O\n1 ブロックにつき最大 24 個まで。",
+      "molecule": "先にオプションの行を書きます。format: pdb や style: cartoon など。\n次にファイルのテキスト、または path: assets/1abc.pdb",
+      "sequence": "FASTA レコードまたは生の配列:\n>sample 1\nATGGCCATTGTAATG",
+      "notebook": "1 行目にノートブックのパス:\nassets/analysis.ipynb\n続けて cells: 2-5 や code: hide などの行を、必要に応じて追加できます。",
+      "bookmark": "1 行に 1 つのフィールドを書き、最初は Web アドレスです:\nurl: https://example.com/article\n続けて、必要に応じて title:、description:、image:、site:、favicon: の行を追加できます。"
+    },
+    "newChart": {
+      "title": "新しいグラフ",
+      "series": "値"
+    },
+    "newHtml": {
+      "title": "用量反応",
+      "dose": "用量",
+      "response": "反応:"
+    },
+    "imageMissing": "画像が見つかりません: {{path}}",
+    "plot": {
+      "label": "プロット",
+      "aria": "{{curves}} のプロット",
+      "empty": "まだプロットするものがありません。y = sin(x) のような行を追加してください。",
+      "problem": "{{line}} 行目: {{reason}}",
+      "errors": {
+        "empty": "式を入力してください。",
+        "length": "式が長すぎます。",
+        "depth": "式の入れ子が深すぎます。",
+        "name": "{{name}} という名前は不明です。",
+        "call": "{{name}} は {{name}}(x) のように括弧を付けて書いてください。",
+        "arguments": "{{name}} に渡す値の数が正しくありません。",
+        "parenthesis": "括弧の対応が合っていません。",
+        "syntax": "予期しない「{{name}}」があります。",
+        "end": "式が途中で終わっています。",
+        "line": "曲線でもオプションでもありません。y = x^2 や domain: -5, 5 のように書いてください。",
+        "parametric": "媒介変数曲線は「x = t の式, y = t の式」の形で書いてください。",
+        "values": "2 つの値をカンマで区切って書いてください。",
+        "point": "点は x, y の形で書き、必要ならラベルを付けてください。",
+        "order": "2 つの値は異なる必要があります。",
+        "number": "有限の数を使ってください。",
+        "tooManyCurves": "1 つのプロットに描ける曲線は 8 本までです。",
+        "tooManyPoints": "1 つのプロットに示せる点は 50 個までです。",
+        "undefined": "この範囲には実数の値がありません。"
+      }
+    },
+    "sequence": {
+      "label": "配列",
+      "template": "コーディング配列の例",
+      "empty": "FASTA レコードまたは生の配列を貼り付けてください。",
+      "character": "{{line}} 行 {{column}} 列: 「{{character}}」は残基ではありません。",
+      "untitled": "無題の配列",
+      "kinds": {
+        "dna": "DNA",
+        "rna": "RNA",
+        "protein": "タンパク質"
+      },
+      "length": {
+        "dna": "{{length}} bp",
+        "rna": "{{length}} nt",
+        "protein": "{{length}} aa"
+      },
+      "gc": "GC {{value}}",
+      "noResidues": "残基なし",
+      "reverse": "逆相補鎖",
+      "translation": "翻訳",
+      "residues": "{{name}} の残基",
+      "hidden_other": "表示されていない残基があと {{formatted}} 個あります",
+      "hiddenRecords_other": "表示されていないレコードがあと {{formatted}} 件あります",
+      "classes": {
+        "hydrophobic": "疎水性",
+        "polar": "極性",
+        "positive": "正電荷",
+        "negative": "負電荷",
+        "special": "グリシンとプロリン",
+        "other": "その他"
+      }
+    },
+    "charts": {
+      "type": "不明なグラフの種類です。bar、line、area、scatter、pie、donut、histogram のいずれかを使ってください。",
+      "length": "各系列には、カテゴリごとに 1 つずつ値が必要です。",
+      "tooManySeries": "1 つのグラフに表示できる系列は 8 個までです。",
+      "errors": "誤差範囲には、各値に対して 0 以上の値が 1 つずつ必要です。",
+      "errorsType": "誤差範囲は、棒、折れ線、面、散布図のグラフで使えます。",
+      "points": "散布図の系列では、点を [x, y] または [x, y, error] の形で書いてください。",
+      "tooManyPoints": "このグラフは値が多すぎて描画できません。",
+      "pie": "円グラフとドーナツグラフには、0 以上で合計が 0 より大きくなる値が必要です。",
+      "samples": "ヒストグラムの各系列には、少なくとも 1 つの値が必要です。",
+      "bins": "bins の値は 1 から 100 までの整数にしてください。",
+      "log": "対数目盛では、すべての値が 0 より大きい必要があります。",
+      "logType": "対数目盛は、棒、折れ線、面、散布図のグラフで使えます。",
+      "showData": "データを表示",
+      "hideData": "データを隠す",
+      "caption": "グラフのデータ",
+      "category": "カテゴリ",
+      "series": "系列",
+      "bin": "ビン",
+      "error": "{{name}} の誤差",
+      "other": "その他"
+    },
+    "table": {
+      "label": "表",
+      "filter": "行を絞り込む",
+      "rows_other": "{{total}} 行",
+      "filtered_other": "{{total}} 行中 {{shown}} 行",
+      "noMatch": "絞り込みに一致する行はありません。",
+      "sortBy": "{{column}} で並べ替え",
+      "column": "列 {{number}}",
+      "count": "件数",
+      "mean": "平均",
+      "min": "最小",
+      "max": "最大",
+      "truncated": "最初の {{limit}} 行を表示しています。",
+      "loading": "{{path}} を読み込んでいます…",
+      "empty": "この表にはデータ行がありません。ヘッダー行と、少なくとも 1 つのデータ行を追加してください。",
+      "columns": "この表には {{limit}} を超える列があります。",
+      "missing": "ファイルが見つかりません: {{path}}",
+      "unreadable": "{{path}} を読み込めませんでした。",
+      "tooLarge": "このファイルは 6 MB を超えています。より小さく抜き出したファイルを使ってください。",
+      "badPath": "assets/results.csv のように、ノートのフォルダ内のパスを使ってください。",
+      "unsupported": "表で読み込めるのは .csv、.tsv、.xlsx、.xls ファイルです。",
+      "noSheet": "{{sheet}} という名前のシートはありません。このファイルにあるシート: {{sheets}}。",
+      "template": {
+        "sample": "サンプル",
+        "temperature": "温度（°C）",
+        "yield": "収率（%）",
+        "converged": "収束"
+      }
+    },
+    "smiles": {
+      "label": "化学構造",
+      "structures": "化学構造",
+      "empty": "SMILES を 1 行に 1 つずつ追加してください（例: エタノール: CCO）。",
+      "invalid": "この SMILES を読み取れませんでした。",
+      "more": "最初の {{limit}} 個の構造を表示しています。",
+      "loadError": "これらの構造を描画できませんでした。",
+      "alt": "{{name}} の構造",
+      "template": {
+        "caffeine": "カフェイン",
+        "aspirin": "アスピリン"
+      }
+    },
+    "molecule": {
+      "label": "3D 分子",
+      "loading": "3D ビューアを読み込んでいます…",
+      "empty": "path: assets/molecule.pdb を追加するか、ファイルのテキストを貼り付けてください。",
+      "noWebgl": "3D 表示には WebGL が必要ですが、ここでは使えません。",
+      "noAtoms": "原子が見つかりません。ファイルとその形式を確認してください。",
+      "unknownFormat": "ファイル形式を判別できませんでした。format: pdb のように、pdb、sdf、mol、xyz、cif、mol2 のいずれかを追加してください。",
+      "badFormat": "不明な形式 {{value}} です。pdb、sdf、mol、xyz、cif、mol2 のいずれかを使ってください。",
+      "badStyle": "不明なスタイル {{value}} です。cartoon、stick、sphere、line のいずれかを使ってください。",
+      "badColor": "不明な色 {{value}} です。spectrum、chain、element、residue、ss のいずれかを使ってください。",
+      "badPath": "assets/protein.pdb のように、ノートのフォルダ内のパスを使ってください。",
+      "missing": "ファイルが見つかりません: {{path}}",
+      "unreadable": "{{path}} を読み込めませんでした。",
+      "tooLarge": "このファイルは 6 MB を超えています。",
+      "loadError": "3D ビューアを読み込めませんでした。",
+      "viewer": "分子の 3D 表示です。ドラッグで回転し、スクロールで拡大縮小します。",
+      "controls": "表示の操作",
+      "style": "スタイル",
+      "color": "色",
+      "styles": {
+        "cartoon": "カートゥーン",
+        "stick": "スティック",
+        "sphere": "球",
+        "line": "線"
+      },
+      "colors": {
+        "spectrum": "スペクトル",
+        "chain": "鎖",
+        "element": "元素",
+        "residue": "残基",
+        "ss": "二次構造"
+      },
+      "rotateLeft": "左に回転",
+      "rotateRight": "右に回転",
+      "zoomIn": "拡大",
+      "zoomOut": "縮小",
+      "reset": "表示をリセット",
+      "template": "エタノール"
+    },
+    "artifact": {
+      "run": "実行",
+      "stop": "停止",
+      "alwaysRun": "このブロックを常に実行",
+      "paused": "このノートのブロックが前回フリーズした、またはアプリを終了させたため、一時停止しています。",
+      "desktopOnly": "実行にはデスクトップアプリが必要です",
+      "loading": "読み込み中…",
+      "loadFailed": "このブロックを読み込めませんでした。",
+      "starting": "起動中…",
+      "stopped": "このブロックが応答しなくなりました。",
+      "reload": "再読み込み",
+      "failed": "このブロックを起動できませんでした: {{error}}",
+      "offline": "インターネット上の次のファイルは除外されました:",
+      "more_other": "ほか {{count}} 件",
+      "frameTitle": "{{label}} の出力",
+      "previewTitle": "{{label}} のプレビュー",
+      "unknownImport": "このブロックは {{name}} をインポートしていますが、オフラインでは使えません。",
+      "compileError": "このコンポーネントには構文エラーがあります",
+      "runtimeError": "このコンポーネントはエラーで停止しました",
+      "noComponent": "このコンポーネントには default export がありません。"
+    },
+    "code": {
+      "copied": "コピーしました",
+      "copyFailed": "コピーに失敗しました",
+      "copyLabel": "コードをコピー"
+    },
+    "svg": {
+      "alt": "SVG の図",
+      "empty": "この SVG ブロックは空です。",
+      "invalid": "この SVG は無効です。ソースを開いて修正してください。",
+      "tooLarge": "この SVG は大きすぎて表示できません。"
+    },
+    "d2": {
+      "alt": "D2 の図",
+      "empty": "この D2 ブロックは空です。",
+      "loading": "描画中…",
+      "error": "D2 でこの図を描画できませんでした: {{error}}",
+      "line": "{{line}} 行目: {{message}}"
+    },
+    "tikz": {
+      "alt": "TikZ の図",
+      "circuitAlt": "回路図",
+      "empty": "この {{block}} ブロックは空です。",
+      "desktopOnly": "{{block}} のプレビューにはデスクトップアプリが必要です。",
+      "sharedNotice": "このノートは共有されています。LaTeX はこのコンピュータ上で実行され、ファイルを読み取れるため、描画する前にソースを確認してください。",
+      "draw": "描画",
+      "error": "LaTeX でこのブロックをコンパイルできませんでした: {{error}}"
+    },
+    "typst": {
+      "alt": "Typst の出力",
+      "empty": "この Typst ブロックは空です。",
+      "rendering": "描画中…",
+      "desktopOnly": "Typst のプレビューにはデスクトップアプリが必要です。",
+      "error": "Typst でこのブロックをコンパイルできませんでした: {{error}}"
+    },
+    "insert": {
+      "label": "ブロックを挿入",
+      "data": "データ",
+      "math": "数式",
+      "diagrams": "図",
+      "code": "コード",
+      "science": "科学"
+    },
+    "slash": {
+      "menu": "挿入",
+      "noMatches": "一致するブロックはありません",
+      "heading": "見出し {{level}}",
+      "bulletList": "箇条書き",
+      "numberedList": "番号付きリスト",
+      "taskList": "タスクリスト",
+      "quote": "引用文",
+      "callout": "コールアウト",
+      "table": "表",
+      "code": "コード",
+      "math": "数式",
+      "divider": "区切り線",
+      "footnote": "脚注",
+      "basic": "基本"
+    },
+    "media": {
+      "play": "{{name}} を再生",
+      "pdfPage": "{{name}}、{{page}} ページ",
+      "openPdf": "PDF を開く",
+      "openFailed": "ファイルを開けませんでした: {{error}}",
+      "missing": "ファイルが見つかりません: {{path}}",
+      "unreadable": "{{name}} を読み込めませんでした。",
+      "cantPlay": "{{name}} はここでは再生できません。このコンピュータに、その形式のコーデックがない可能性があります。",
+      "embed": "{{site}} の動画を再生",
+      "embedTitle": "{{site}} の動画",
+      "embedFailed": "プレーヤーが起動しませんでした。もう一度試すか、{{site}} で動画を開いてください。",
+      "watch": "見る",
+      "watchOn": "{{site}} で見る",
+      "pasteChoice": "この動画リンクの表示方法",
+      "embedChoice": "動画を埋め込む",
+      "linkChoice": "リンクのままにする"
+    },
+    "bookmark": {
+      "label": "ブックマーク",
+      "pasteChoice": "このリンクの表示方法",
+      "cardChoice": "ブックマークカード",
+      "ask": "Web ページをブックマーク",
+      "loading": "ページのプレビューを読み込んでいます",
+      "noUrl": "https:// または http:// で始まる Web アドレスを書いた url: の行を追加してください。"
+    }
+  },
+  "notebook": {
+    "label": "Jupyter ノートブック",
+    "loading": "ノートブックを読み込んでいます",
+    "missing": "ノートブックが見つかりません: {{path}}",
+    "unreadable": "{{path}} を読み込めませんでした。",
+    "tooLarge": "このノートブックは 64 MiB を超えているため、ここには表示されません。",
+    "badPath": "1 行目に、このノートのフォルダからの相対パスでノートブックのパスを書いてください。",
+    "badCells": "セルは cells: 3-8 のように、1 つの番号または範囲で書いてください。",
+    "invalid": "このファイルは有効なノートブックではありません。",
+    "unsupported": "ここに表示できるのは、フォーマット 4 の Jupyter ノートブックだけです。",
+    "empty": "このノートブックにはセルがありません。",
+    "outOfRange_other": "このノートブックにはセルが {{count}} 個しかないため、その範囲には何もありません。",
+    "nothingShown": "コードが非表示のため、表示するものがありません。",
+    "showAll": "すべて表示",
+    "showLess": "表示を減らす",
+    "showAllCells_other": "{{count}} 個のセルをすべて表示",
+    "outputImage": "セル {{number}} の出力",
+    "outputFrame": "セル {{number}} の HTML 出力"
+  },
+  "icons": {
+    "choose": "アイコンを選択",
+    "dialog": "アイコンを選択",
+    "emoji": "絵文字",
+    "lines": "アイコン",
+    "search": "アイコンを検索",
+    "searchEmoji": "絵文字を検索",
+    "loading": "絵文字を読み込んでいます",
+    "noEmoji": "絵文字が見つかりません",
+    "noIcons": "アイコンが見つかりません",
+    "skinTone": "肌の色",
+    "names": {
+      "atom": "原子",
+      "bookOpen": "開いた本",
+      "brain": "脳",
+      "bug": "虫",
+      "chartLine": "折れ線グラフ",
+      "cpu": "プロセッサ",
+      "database": "データベース",
+      "dna": "DNA",
+      "fileText": "文書",
+      "flaskConical": "フラスコ",
+      "graduationCap": "角帽",
+      "layers": "レイヤー",
+      "lightbulb": "電球",
+      "microscope": "顕微鏡",
+      "network": "ネットワーク",
+      "notebookPen": "ノート",
+      "rocket": "ロケット",
+      "sigma": "シグマ",
+      "target": "的",
+      "telescope": "望遠鏡",
+      "testTube": "試験管",
+      "beaker": "ビーカー",
+      "flaskRound": "レトルト",
+      "testTubes": "サンプルチューブ",
+      "pipette": "ピペット",
+      "magnet": "磁石",
+      "thermometer": "温度計",
+      "scale": "天秤",
+      "radiation": "放射線",
+      "biohazard": "バイオハザード",
+      "leaf": "葉",
+      "sprout": "芽",
+      "trees": "木々",
+      "flower": "花",
+      "bird": "鳥",
+      "fish": "魚",
+      "rabbit": "ウサギ",
+      "pawPrint": "動物の足跡",
+      "shell": "貝殻",
+      "stethoscope": "聴診器",
+      "heartPulse": "心拍",
+      "pill": "錠剤",
+      "syringe": "注射器",
+      "hospital": "病院",
+      "bone": "骨",
+      "eye": "目",
+      "orbit": "軌道",
+      "satelliteDish": "パラボラアンテナ",
+      "sun": "太陽",
+      "moon": "月",
+      "star": "星",
+      "sparkles": "きらめき",
+      "zap": "稲妻",
+      "waves": "波",
+      "radar": "レーダー",
+      "globe": "地球儀",
+      "earth": "地球",
+      "mountain": "山",
+      "cloudRain": "雨雲",
+      "droplets": "水",
+      "pi": "円周率の記号",
+      "infinity": "無限大",
+      "radical": "平方根",
+      "squareFunction": "関数",
+      "variable": "変数",
+      "calculator": "電卓",
+      "divide": "割り算",
+      "omega": "オメガ",
+      "axis3d": "3D 座標軸",
+      "shapes": "図形",
+      "hexagon": "六角形",
+      "chartColumn": "縦棒グラフ",
+      "chartBar": "横棒グラフ",
+      "chartPie": "円グラフ",
+      "chartScatter": "散布図",
+      "chartArea": "面グラフ",
+      "chartSpline": "曲線",
+      "chartNetwork": "グラフ",
+      "trendingUp": "トレンド",
+      "activity": "信号",
+      "table": "表",
+      "sheet": "スプレッドシート",
+      "funnel": "フィルター",
+      "microchip": "マイクロチップ",
+      "circuitBoard": "回路基板",
+      "code": "コード",
+      "codeXml": "マークアップ",
+      "terminal": "ターミナル",
+      "braces": "波括弧",
+      "binary": "2 進数",
+      "gitBranch": "ブランチ",
+      "gitMerge": "マージ",
+      "bot": "ロボット",
+      "brainCircuit": "ニューラルネット",
+      "workflow": "ワークフロー",
+      "server": "サーバー",
+      "puzzle": "パズル",
+      "notebook": "日記",
+      "notebookText": "フィールドノート",
+      "book": "閉じた本",
+      "bookMarked": "しおり付きの本",
+      "library": "図書館",
+      "scrollText": "巻物",
+      "quote": "引用",
+      "penTool": "ペン先",
+      "pencil": "鉛筆",
+      "feather": "羽ペン",
+      "languages": "言語",
+      "school": "学校",
+      "presentation": "プレゼンテーション",
+      "award": "賞",
+      "trophy": "トロフィー",
+      "landmark": "機関",
+      "compass": "コンパス",
+      "map": "地図",
+      "ruler": "定規",
+      "wrench": "レンチ",
+      "cog": "歯車",
+      "calendar": "カレンダー",
+      "timer": "タイマー",
+      "hourglass": "砂時計",
+      "clipboardList": "チェックリスト",
+      "listChecks": "タスク"
+    }
+  },
+  "artifacts": {
+    "title": "成果物",
+    "empty": "まだありません。{{project}} の研究タスクが作成したファイルがここに表示されます。",
+    "noProject": "タイトルの横で、このノートが扱うプロジェクトを選んでください。そのプロジェクトの研究タスクが作成したファイルがここに表示されます。",
+    "noNote": "ノートを開くと、そのプロジェクトの研究タスクが作成したファイルが表示されます。",
+    "fromTask": "タスク {{task}} から",
+    "loading": "プレビューを読み込んでいます",
+    "previewFailed": "プレビューを読み込めませんでした: {{error}}",
+    "truncated": "ファイルの先頭部分を表示しています。",
+    "binary": "この種類のファイルにはプレビューがありません。",
+    "missing": "このファイルはもうタスクの保存済みコピーにありません。",
+    "insert": "ノートに挿入",
+    "inserting": "コピー中",
+    "insertFailed": "このファイルをノートにコピーできませんでした: {{error}}",
+    "newProject": "新規プロジェクト",
+    "htmlPreview": "この図を実行するには、コードをノートの HTML ブロックに貼り付けて「実行」を押してください。",
+    "kind": {
+      "figure": "図",
+      "html": "インタラクティブな図",
+      "report": "レポート",
+      "data": "データ",
+      "file": "ファイル",
+      "notebook": "ノートブック"
+    },
+    "notebookTooLarge": "このノートブックは大きすぎて、ここではプレビューできません。ノートに挿入すると表示できます。"
+  },
+  "sendToPaper": {
+    "title": "論文に送る",
+    "description": "Oleafly はこれを一度だけ変換して、カーソル位置に追加します。論文内のコピーは、ノートとのリンクを保ちません。",
+    "send": "送る",
+    "leftOut": "{{block}} ブロックはノートにしかありません。"
+  },
+  "citations": {
+    "references": "参考文献",
+    "fromReference": "参考文献から",
+    "unknown": "リンクされたプロジェクトの参考文献にありません: {{keys}}",
+    "openNote": "この論文のノートを開く: {{title}}"
+  },
+  "links": {
+    "menu": "ノートまたはプロジェクトへのリンク",
+    "notes": "ノート",
+    "projects": "プロジェクト",
+    "noMatches": "一致するノートやプロジェクトはありません",
+    "missingNote": "このノートはもう存在しません",
+    "missingNoteCreate": "このノートはもう存在しません。クリックすると、この名前で新しいノートを作成します。",
+    "missingProject": "このプロジェクトはもう存在しません",
+    "linkedFrom": "リンク元",
+    "showAll": "{{total}} 件すべてを表示"
+  },
+  "linksSearch": {
+    "blocks": {
+      "loading": "ブロックを読み込んでいます",
+      "none": "一致するブロックはありません",
+      "missingBlock": "そのブロックはノートにありません",
+      "assignFailed": "そのノートにブロック ID を追加できませんでした。",
+      "handle": "ブロックのオプション",
+      "copyLink": "ブロックへのリンクをコピー",
+      "linkCopied": "このブロックへのリンクをコピーしました。",
+      "copyFailed": "このブロックへのリンクをコピーできませんでした。",
+      "noId": "このブロックにはまだ ID がなく、このノートは編集できません。",
+      "linkedFrom": "リンク元",
+      "links_other": "{{count}} 件のノートがここにリンクしています",
+      "openLinked": "{{title}} を開く",
+      "toBlock": "ブロックへ移動: {{text}}"
+    },
+    "tagBlocks": {
+      "more_other": "さらに {{count}} 個のブロックを表示"
+    },
+    "dead": {
+      "menu": "リンク切れ",
+      "title": "リンク切れ",
+      "summary_other": "{{count}} 件のリンクが、存在しなくなったノートまたはブロックを指しています。",
+      "none": "リンク切れはありません。すべてのリンクが、存在するノートまたはブロックを指しています。",
+      "loading": "リンクを確認しています",
+      "failed": "ノート内のリンクを読み込めませんでした。",
+      "missingNotes": "見つからないノート",
+      "missingBlocks": "見つからないブロック",
+      "noteMeta": "{{line}} 行目: ノートはもう存在しません",
+      "blockMeta": "{{line}} 行目: {{block}} はもう {{title}} にありません",
+      "create": "ノートを作成",
+      "relink": "代わりに {{title}} にリンク",
+      "remove": "リンクを削除",
+      "fixFailed": "リンクを変更できませんでした。"
+    }
+  },
+  "projectNotes": {
+    "searchLabel": "このプロジェクトのノートを検索",
+    "searchPlaceholder": "ノートを検索",
+    "clearSearch": "検索をクリア",
+    "noMatches": "検索に一致するノートはありません",
+    "loading": "プロジェクトのノートを読み込んでいます",
+    "edited": "{{when}} に編集",
+    "createFailed": "ノートを作成できませんでした。",
+    "projectGroup": "プロジェクトのノート",
+    "mineGroup": "自分のノート",
+    "newProjectNote": "プロジェクトのノートを新規作成",
+    "newPersonalNote": "個人のノートを新規作成",
+    "titleLabel": "新しいプロジェクトのノートのタイトル",
+    "titlePlaceholder": "ノートのタイトル",
+    "projectEmpty": "プロジェクトのノートはまだありません。プロジェクトのノートフォルダに保存されるため、共同作業者にも共有されます。",
+    "mineEmpty": "このプロジェクトにリンクされた個人のノートはまだありません。",
+    "sharedLine": "プロジェクトのノートは、このプロジェクトの全員と共有されます。個人のノートは非公開のままです。",
+    "noteActions": "{{title}} の操作",
+    "moveTitle": "このノートをプロジェクトに移動しますか？",
+    "moveMessage": "{{project}} の全員がこのノートを閲覧、編集できるようになります。個人のコピーはごみ箱に移動されます。",
+    "moveConfirm": "プロジェクトに移動",
+    "moved": "{{title}} をプロジェクトに移動しました。",
+    "moveFailed": "ノートをプロジェクトに移動できませんでした。",
+    "copied": "{{title}} を自分のノートにコピーしました。",
+    "copyFailed": "ノートを自分のノートにコピーできませんでした。",
+    "moveUnsaved": "保存されていない変更があるノートがあるため、ノートを移動しませんでした。保存してから、もう一度お試しください。",
+    "copyUnsaved": "保存されていない変更があるノートがあるため、ノートをコピーしませんでした。保存してから、もう一度お試しください。",
+    "renameUnsaved": "保存されていない変更があるノートがあるため、ノートの名前を変更しませんでした。保存してから、もう一度お試しください。",
+    "unlink": "このプロジェクトとのリンクを解除",
+    "unlinked": "{{title}} とこのプロジェクトのリンクを解除しました。",
+    "undoUnlink": "元に戻す",
+    "unlinkFailed": "{{title}} とこのプロジェクトのリンクを解除できませんでした。",
+    "deleteTitle": "「{{name}}」を削除しますか？",
+    "deleteMessage": "ノートのファイルはこのプロジェクトから削除されます。この操作は取り消せません。",
+    "trash": "ごみ箱に入れる",
+    "trashWindows": "ごみ箱に移動",
+    "trashTitle": "「{{name}}」をごみ箱に入れますか？",
+    "trashTitleWindows": "「{{name}}」をごみ箱に移動しますか？",
+    "trashMessage": "ノートのファイルはこのプロジェクトから外れてごみ箱に移動します。ごみ箱から復元できます。",
+    "trashMessageWindows": "ノートのファイルはこのプロジェクトから外れてごみ箱に移動します。ごみ箱から復元できます。",
+    "mineDeviceOnly": "これらのノートは、このコンピュータ上でのみこのプロジェクトにリンクされています。",
+    "moreFiles_other": "ノートフォルダには、一覧にないファイルがあと {{count}} 個あります。"
+  },
+  "kb": {
+    "tasks": {
+      "label": "タスク: {{text}}",
+      "empty": "空のタスク"
+    },
+    "callouts": {
+      "type": "コールアウトの種類: {{type}}",
+      "fold": "コールアウトを折りたたむ",
+      "unfold": "コールアウトを展開",
+      "types": {
+        "note": "メモ",
+        "abstract": "要約",
+        "info": "情報",
+        "todo": "ToDo",
+        "tip": "ヒント",
+        "success": "成功",
+        "question": "質問",
+        "warning": "警告",
+        "failure": "失敗",
+        "danger": "危険",
+        "bug": "バグ",
+        "example": "例",
+        "quote": "引用",
+        "theorem": "定理",
+        "lemma": "補題",
+        "corollary": "系",
+        "proposition": "命題",
+        "definition": "定義",
+        "proof": "証明",
+        "hypothesis": "仮説",
+        "assumption": "仮定",
+        "result": "結果",
+        "method": "手法",
+        "remark": "注記"
+      }
+    },
+    "links": {
+      "loadingHeadings": "見出しを読み込んでいます",
+      "noHeadings": "一致する見出しはありません",
+      "embedHeading": "ノートを埋め込む",
+      "thisNote": "このノート",
+      "embed": "埋め込む",
+      "embedNamed": "{{title}} を埋め込む"
+    },
+    "tags": {
+      "open": "このタグのノートを表示",
+      "menu": "タグ"
+    },
+    "embeds": {
+      "missing": "ノートが見つかりません",
+      "self": "ノートを自分自身に埋め込むことはできません",
+      "failed": "このノートを読み込めませんでした",
+      "missingHeading": "その見出しはノートにありません",
+      "empty": "このノートは空です",
+      "untitled": "無題",
+      "open": "ノートを開く",
+      "openNamed": "{{title}} を開く",
+      "fold": "埋め込みを折りたたむ",
+      "unfold": "埋め込みを展開"
+    },
+    "hover": {
+      "loading": "プレビューを読み込んでいます",
+      "empty": "このノートは空です"
+    },
+    "properties": {
+      "title": "プロパティ",
+      "add": "プロパティを追加",
+      "removeItem": "{{item}} を削除",
+      "addItem": "項目を追加",
+      "openNote": "{{title}} を開く",
+      "changeNote": "変更",
+      "chooseNote": "ノートを選択",
+      "clearLink": "リンクをクリア",
+      "value": "{{key}} の値",
+      "type": "{{key}} の種類: {{type}}",
+      "types": {
+        "text": "テキスト",
+        "list": "リスト",
+        "number": "数値",
+        "checkbox": "チェックボックス",
+        "date": "日付",
+        "link": "ノートへのリンク"
+      },
+      "remove": "プロパティを削除",
+      "name": "{{key}} の名前",
+      "newName": "プロパティ名",
+      "taken": "その名前はすでに使われています",
+      "invalid": "フロントマターが有効な YAML ではないため、ここではプロパティを編集できません。",
+      "editSource": "Markdown で修正",
+      "convert": {
+        "title": "{{key}} の種類を {{type}} に変更しますか？",
+        "list": "最初の項目だけが残り、ほかの項目は削除されます。",
+        "value": "現在の値はこの種類に合わないため、失われます。",
+        "confirm": "種類を変更"
+      }
+    }
+  },
+  "fields": {
+    "today": "今日",
+    "tomorrow": "明日",
+    "yesterday": "昨日",
+    "chip": "{{key}}: {{value}}",
+    "empty": "値なし",
+    "edit": "変更または削除",
+    "keys": {
+      "due": "期限",
+      "scheduled": "予定日",
+      "priority": "優先度",
+      "start": "開始日",
+      "created": "作成日",
+      "completed": "完了日",
+      "date": "日付",
+      "cancelled": "キャンセル"
+    },
+    "priorities": {
+      "highest": "最高",
+      "high": "高",
+      "medium": "中",
+      "low": "低",
+      "lowest": "最低"
+    },
+    "editor": {
+      "label": "{{key}} を編集",
+      "key": "名前",
+      "value": "値",
+      "brackets": "角括弧はリンクにだけ使ってください。例: [[Note]]",
+      "save": "保存",
+      "remove": "削除"
+    }
+  },
+  "at": {
+    "menu": "日付、フィールド、タグ、ノートを挿入",
+    "groups": {
+      "dates": "日付",
+      "due": "期限",
+      "fields": "タスクのフィールド",
+      "tags": "タグ",
+      "notes": "ノート"
+    },
+    "today": "今日",
+    "tomorrow": "明日",
+    "yesterday": "昨日",
+    "next": "次の{{weekday}}",
+    "pick": "日付を選択",
+    "pickerLabel": "日付を選択",
+    "due": "期限",
+    "scheduled": "予定日",
+    "priority": "優先度",
+    "priorityValue": "優先度: {{priority}}",
+    "custom": "カスタムフィールド",
+    "addField": "フィールド「{{key}}」を追加",
+    "setField": "{{key}} を「{{value}}」に設定",
+    "typeValue": "{{key}} の値を入力して、Enter を押してください。"
+  },
+  "tasks": {
+    "filters": "タスクの絞り込み",
+    "loading": "タスクを読み込んでいます",
+    "failed": "タスクを読み込めませんでした。",
+    "empty": "タスクはまだありません。どのノートでも、行を - [ ] で始めるとここに表示されます。",
+    "noMatches": "この絞り込み条件に一致するタスクはありません。",
+    "clear": "絞り込みを解除",
+    "list": "タスク",
+    "count_other": "{{count}} 件のタスク",
+    "complete": "「{{text}}」を完了にする",
+    "reopen": "「{{text}}」を未完了にする",
+    "openNote": "{{title}} を開く",
+    "toggleFailed": "タスクを更新できませんでした。",
+    "moved": "そのタスクはノート内で変更されています。更新するにはノートを開いてください。",
+    "state": {
+      "label": "表示",
+      "open": "未完了",
+      "done": "完了",
+      "all": "未完了と完了"
+    },
+    "due": {
+      "label": "期限",
+      "any": "すべての期限",
+      "overdue": "期限切れ",
+      "today": "今日が期限",
+      "week": "7 日以内に期限",
+      "none": "期限なし"
+    },
+    "priority": {
+      "label": "優先度",
+      "any": "すべての優先度",
+      "high": "優先度: 高",
+      "medium": "優先度: 中",
+      "low": "優先度: 低",
+      "none": "優先度なし"
+    },
+    "tag": {
+      "label": "タグ",
+      "any": "すべてのタグ"
+    },
+    "project": {
+      "label": "プロジェクト",
+      "any": "すべてのプロジェクト"
+    },
+    "sort": {
+      "label": "タスクの並べ替え",
+      "due": "期限",
+      "priority": "優先度"
+    }
+  },
+  "attachments": {
+    "filters": "添付ファイルの絞り込み",
+    "loading": "添付ファイルを探しています",
+    "failed": "添付ファイルを読み込めませんでした。",
+    "empty": "添付ファイルはまだありません。ノートに画像やファイルをドロップすると、ここに表示されます。",
+    "noMatches": "この絞り込み条件に一致する添付ファイルはありません。",
+    "clear": "絞り込みを解除",
+    "list": "添付ファイル",
+    "count_other": "{{count}} 個のファイル",
+    "openNote": "{{title}} を開く",
+    "copyLink": "リンクをコピー",
+    "linkCopied": "「{{name}}」へのリンクをコピーしました。",
+    "copyFailed": "「{{name}}」へのリンクをコピーできませんでした。",
+    "unused": "未使用",
+    "type": {
+      "label": "種類",
+      "all": "すべての種類",
+      "image": "画像",
+      "audio": "音声",
+      "video": "動画",
+      "pdf": "PDF",
+      "other": "その他"
+    },
+    "use": {
+      "label": "使用状況",
+      "all": "すべてのファイル",
+      "unused": "未使用"
+    }
+  },
+  "info": {
+    "title": "情報",
+    "show": "ノートの情報",
+    "noNote": "ノートを開くと、その情報が表示されます。",
+    "details": "ノートの詳細",
+    "created": "作成日",
+    "updated": "更新日",
+    "words": "単語数",
+    "characters": "文字数",
+    "lines": "行数",
+    "readingTime": "読了時間",
+    "underMinute": "1 分未満",
+    "noProperties": "プロパティなし",
+    "noBacklinks": "ここにリンクしているノートはありません",
+    "noMentions": "言及しているほかのノートはありません",
+    "noReferences": "このノートには引用がありません",
+    "noDeadLinks": "リンク切れはありません",
+    "noAttachments": "添付ファイルはありません"
+  },
+  "calendar": {
+    "title": "カレンダー",
+    "week": "週",
+    "hasNote": "デイリーノートあり",
+    "due_other": "期限のタスク {{count}} 件",
+    "openWeek": "第 {{week}} 週のウィークリーノートを開く",
+    "openMonthNote": "マンスリーノートを開く",
+    "createMonthNote": "マンスリーノートを作成",
+    "today": "今日",
+    "failed": {
+      "weekly": "ウィークリーノートを開けませんでした。",
+      "monthly": "マンスリーノートを開けませんでした。"
+    }
+  },
+  "periodic": {
+    "title": "デイリー、ウィークリー、マンスリーノート",
+    "daily": {
+      "label": "デイリーノート",
+      "description": "今日のノートと、サイドバーのカレンダーの日付です。"
+    },
+    "weekly": {
+      "label": "ウィークリーノート",
+      "description": "サイドバーのカレンダーの週番号です。"
+    },
+    "monthly": {
+      "label": "マンスリーノート",
+      "description": "サイドバーのカレンダー上部にある月の名前です。"
+    },
+    "weekStart": {
+      "label": "週の始まり",
+      "description": "サイドバーのカレンダーの最初の列です。週番号はこの曜日から数え、月曜日にすると ISO 週番号になります。",
+      "locale": "地域の既定（{{day}}）",
+      "monday": "月曜日",
+      "sunday": "日曜日",
+      "saturday": "土曜日"
+    },
+    "format": "タイトルの形式",
+    "preview": "例: {{title}}",
+    "invalidFormat": "YYYY や WW のような日付の要素を追加してください。",
+    "template": "テンプレート",
+    "savedTemplate": "保存したテンプレート",
+    "tag": "タグ",
+    "noTag": "タグなし",
+    "formatHelp": "タイトルの形式では、YYYY が年、MM が月、MMMM が月の名前、DD が日、dddd が曜日、WW が週番号、GGGG がその週の属する年を表します。[W] のように角括弧で囲んだテキストは、書いたとおりに残ります。既存のノートのタイトルは変わらないため、形式は使い始める前に変更してください。"
+  },
+  "live": {
+    "share": "共有",
+    "shared": "共有中",
+    "elsewhere": "別のノートでリアルタイム編集がオンになっています",
+    "makeLive": "ここでリアルタイム編集",
+    "viewOnly": "このノートは閲覧できますが、編集はできません。",
+    "someone": "誰か",
+    "unsentReadOnly": "現在は閲覧のみのため、このノートへの最後の変更は送信されませんでした。",
+    "unsentRefused": "Oleafly はこのノートへの最後の変更を送信できなかったため、その変更は破棄されました。"
+  },
+  "graph": {
+    "title": "グラフ",
+    "localTitle": "ローカルグラフ",
+    "openGraph": "グラフビュー",
+    "canvas_other": "{{count}} 件のノートのグラフ",
+    "keyboardHelp": "矢印キーでノート間を移動し、Enter で開きます。プラスとマイナスで拡大縮小し、0 でグラフ全体を表示します。",
+    "search": "グラフを検索",
+    "tag": "タグで絞り込む",
+    "allTags": "すべてのタグ",
+    "orphans": "リンクのないノート",
+    "projects": "プロジェクト",
+    "depth": "深さ",
+    "depthLevel_other": "{{count}} 段階",
+    "fit": "全体を表示",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小",
+    "reset": "レイアウトをリセット",
+    "empty": "ノートはまだありません",
+    "emptyFiltered": "この絞り込み条件に一致するノートはありません",
+    "noNote": "ノートを開くと、そのローカルグラフが表示されます",
+    "focusedNote_other": "{{title}}、リンク {{count}} 件",
+    "showLocal": "ローカルグラフを表示",
+    "hideLocal": "ローカルグラフを隠す",
+    "showOutline": "アウトラインを表示",
+    "hideOutline": "アウトラインを隠す",
+    "outline": {
+      "title": "アウトライン",
+      "empty": "このノートには見出しがありません",
+      "emptyDetail": "行頭に # を付けると、見出しを追加できます。",
+      "noNote": "ノートを開くと、そのアウトラインが表示されます",
+      "noNoteDetail": "アウトラインは、編集中のノートに合わせて切り替わります。",
+      "levels": "見出しのレベル",
+      "allLevels": "すべてのレベル",
+      "upTo": "H{{level}} まで",
+      "collapse": "{{title}} を折りたたむ",
+      "expand": "{{title}} を展開"
+    },
+    "linksFailed": "ノート間のリンクを読み込めませんでした。",
+    "tagsFailed": "タグを読み込めませんでした。",
+    "loading": "ノート間のリンクを読み込んでいます"
+  },
+  "vault": {
+    "import": {
+      "more": "その他",
+      "menu": "Markdown を読み込む",
+      "title": "Markdown を読み込む",
+      "description": "Markdown ファイルや、Obsidian の保管庫などのフォルダ全体を取り込みます。各ファイルは、リンクと添付ファイルを保ったままノートになります。",
+      "folderTags": "フォルダ名をタグとして追加",
+      "folderTagsHint": "Lab/2024 にあるファイルには Lab/2024 というタグが付きます。",
+      "choose": "フォルダを選択",
+      "pickerTitle": "読み込むフォルダを選択",
+      "reading": "{{file}} を読み取っています",
+      "writing": "{{file}} を読み込んでいます",
+      "progress": "{{total}} 件中 {{done}} 件",
+      "stop": "読み込みを停止",
+      "seenTitle": "このフォルダは以前に読み込んだことがあります",
+      "seenDescription_other": "{{date}} に {{count}} 件のノートを追加しました。もう一度読み込むと新しいコピーが追加され、以前のノートはそのまま残ります。",
+      "again": "新しいノートとしてもう一度読み込む",
+      "largeTitle": "このフォルダには {{total}} 件のノートがあります",
+      "largeDescription": "すべてを読み込むには時間がかかることがあり、それぞれがライブラリ内の個別のノートになります。読み込みはいつでも停止できます。",
+      "largeConfirm": "すべて読み込む",
+      "doneTitle": "読み込みが完了しました",
+      "notes_other": "{{count}} 件のノートを読み込みました",
+      "attachments_other": "{{count}} 件の添付ファイルをコピーしました",
+      "unresolved_other": "{{count}} 件のリンクはどのノートにも一致せず、テキストのまま残ります",
+      "skipped_other": "5 MB を超えているか読み込めなかったため、{{count}} 件のファイルをスキップしました",
+      "notCopied_other": "リンクされた {{count}} 件のファイルはコピーされませんでした",
+      "cancelled": "読み込みを停止しました。ノートは追加されていません。",
+      "failed": "読み込みを完了できませんでした。ノートは追加されていません。",
+      "done": "完了",
+      "export": {
+        "menu": "Markdown フォルダとして書き出す",
+        "title": "Markdown フォルダとして書き出す",
+        "description": "各ノートをウィキリンク付きの Markdown ファイルとして保存し、添付ファイルは専用のフォルダに入れます。書き出したフォルダは Obsidian の保管庫として開けます。",
+        "thisNote": "このノート: {{title}}",
+        "allNotes_other": "すべてのノート（{{count}}）",
+        "export": "書き出す",
+        "pickerTitle": "フォルダの保存先を選択",
+        "folderName": "Oleafly ノート",
+        "done_other": "{{count}} 件のノートを書き出しました",
+        "skipped_other": "{{count}} 件の添付ファイルを書き出せませんでした",
+        "paperLinks_other": "論文へのリンク {{count}} 件がプレーンテキストになりました",
+        "doneSkipped": "{{done}}。{{skipped}}。",
+        "showFolder": "フォルダを表示",
+        "failed": "ノートを書き出せませんでした。"
+      },
+      "chooseFiles": "ファイルを選択",
+      "filesPickerTitle": "読み込む Markdown ファイルを選択"
+    },
+    "search": {
+      "results": "一致するノート",
+      "searching": "検索中…",
+      "noResults": "「{{query}}」に一致するノートはありません。",
+      "clear": "検索をクリア",
+      "favorite": "お気に入り",
+      "fields": {
+        "is": "状態",
+        "tag": "タグ",
+        "kind": "種類",
+        "author": "作成者",
+        "project": "プロジェクト",
+        "title": "タイトル"
+      }
+    },
+    "tags": {
+      "label": "ノート内のタグ",
+      "empty": "タグはまだありません。ノートに #タグ を書くか、プロパティにタグを追加してください。",
+      "filter": "タグ {{tag}} が付いたノートを表示",
+      "clear": "{{tag}} での絞り込みを解除",
+      "search": "タグを絞り込む",
+      "noMatch": "「{{query}}」に一致するタグはありません。",
+      "showAll": "{{total}} 件すべてを表示",
+      "showFewer": "表示を減らす"
+    },
+    "switcher": {
+      "open": "ノートへ移動",
+      "label": "ノートへ移動",
+      "placeholder": "タイトルまたはエイリアスでノートを探す",
+      "recent": "最近",
+      "notes": "ノート",
+      "alias": "エイリアス: {{alias}}",
+      "create": "ノート「{{title}}」を作成",
+      "createFailed": "ノートを作成できませんでした。",
+      "empty": "ノートはまだありません。",
+      "noMatches": "一致するノートはありません。",
+      "openHint": "開く",
+      "newTabHint": "新しいタブで開く"
+    },
+    "daily": {
+      "open": "今日のノート",
+      "failed": "今日のノートを開けませんでした。",
+      "previous": "前のデイリーノート: {{date}}",
+      "next": "次のデイリーノート: {{date}}"
+    },
+    "templates": {
+      "open": "テンプレートから作成",
+      "label": "テンプレートから新しいノートを作成",
+      "placeholder": "テンプレートを探す",
+      "empty": "一致するテンプレートはありません。",
+      "blank": "空白のノート",
+      "blankDescription": "空のページ",
+      "builtIn": "研究用テンプレート",
+      "yours": "自分のテンプレート",
+      "yoursDescription": "テンプレートとして指定したノート",
+      "failed": "ノートを作成できませんでした。",
+      "names": {
+        "daily": "デイリーノート",
+        "experimentLog": "実験ログ",
+        "paperReading": "論文の読書ノート",
+        "literatureMatrix": "文献レビューのマトリクス",
+        "meeting": "議事録",
+        "labProtocol": "実験プロトコル",
+        "weeklyLog": "週間研究ログ",
+        "proposal": "研究計画書",
+        "proof": "証明・導出",
+        "dataAnalysis": "データ分析レポート",
+        "interview": "インタビューノート",
+        "screeningLog": "スクリーニング記録",
+        "labNotebook": "実験ノートの記録"
+      },
+      "descriptions": {
+        "daily": "1 日の計画と作業の記録",
+        "experimentLog": "実行ごとに、何を変えて何が見えたかを記録",
+        "paperReading": "論文の主張と、自分の研究との関係",
+        "literatureMatrix": "検索の記録と、論文を比較する表",
+        "meeting": "議題、決定事項、担当者",
+        "labProtocol": "材料と安全上の注意を含む手順書",
+        "weeklyLog": "週の目標と、日ごとにできたこと",
+        "proposal": "助成金申請や学位論文のための目的、方法、スケジュール",
+        "proof": "結果と、その背後にある考え方、完全な論証",
+        "dataAnalysis": "どのデータで何を実行し、何がわかったか",
+        "interview": "1 回の対話から得た回答、発言、テーマ",
+        "screeningLog": "レビューの問い、基準、スクリーニングの段階ごとの件数",
+        "labNotebook": "実験台での 1 日: 目的、サンプル、手順、観察、署名"
+      },
+      "bodies": {
+        "daily": "**{{weekday}}**\n\n## 計画\n- [ ] 最も重要なタスク\n- [ ] 2 番目のタスク\n\n## 記録\n- {{time}} 1 日を開始\n\n## メモ\n\n## 今日やったこと\n- まだなし\n\n## 明日\n- [ ] 最初に取りかかること",
+        "experimentLog": "> [!info] 目的\n> この実行はどんな問いに答えるのか。どんな結果なら計画を変えるのか。\n\n## セットアップ\n| 項目 | 値 |\n| --- | --- |\n| コードのバージョン | |\n| データセット | |\n| ハードウェア | |\n| シード | |\n\n## 仮説\n- 予想される結果とその理由\n\n## 実行\n| 実行 | 変更点 | 指標 | 結果 | メモ |\n| --- | --- | --- | --- | --- |\n| 1 | ベースライン | | | |\n\n## 観察\n- {{time}} 最初の観察\n\n## 次のステップ\n- [ ] ベースラインを前回のレポートと比較する\n- [ ] 設定ファイルを結果と同じ場所に保存する\n- [ ] 規模を拡大するか中止するかを決める\n\n## 結論",
+        "paperReading": "> [!abstract] 要約\n> この論文を一文で。\n\n## 書誌情報\n著者、タイトル、掲載先、年、リンクまたは DOI。\n\n## 問題\nこの論文はどのギャップに取り組んでいるのか。それはなぜ重要なのか。\n\n## 手法\n- 主なアイデア\n- データと設定\n\n## 主な結果\n| 主張 | 根拠 | 確かさ |\n| --- | --- | --- |\n| | | |\n\n## 長所\n- この論文がうまくできている点\n\n## 短所と未解決の問い\n- 足りない点や説得力に欠ける点\n\n## 自分の研究との関係\n- どこに当てはまるか、何を再利用または検証するか\n\n## フォローアップ\n- [ ] この論文が土台にしている研究を読む\n- [ ] コードやデータが公開されているか確認する",
+        "literatureMatrix": "> [!question] レビューの問い\n> このレビューが答える問いと、採用基準および除外基準。\n\n## 検索の記録\n| 日付 | 情報源 | 検索式 | 件数 | 採用 |\n| --- | --- | --- | --- | --- |\n| {{date}} | | | | |\n\n## マトリクス\n| 論文 | 年 | 手法 | データ | 主な知見 | 限界 | 関連性 |\n| --- | --- | --- | --- | --- | --- | --- |\n| | | | | | | |\n\n## テーマ\n- テーマと、それを支持する論文\n\n## ギャップ\n- まだどの論文も答えていないこと\n\n## 読む予定\n- [ ] 次の論文",
+        "meeting": "**{{date}}（{{weekday}}）{{time}}**\n\n## 議題\n1. 最初の議題\n2. 2 番目の議題\n\n## メモ\n- 議論のポイント\n\n## 決定事項\n> [!success] 決定\n> 何が、誰によって合意されたか。\n\n## アクションアイテム\n- [ ] 担当者: タスク、期限\n\n## 次回のミーティング\n日時と、持ち越す議題。",
+        "labProtocol": "> [!warning] 安全\n> 始める前に、危険性、保護具、廃棄物の処理を確認してください。\n\n## 目的\nこのプロトコルで何が得られ、いつ使うのか。\n\n## 材料\n| 品目 | 量 | 購入先またはカタログ番号 | メモ |\n| --- | --- | --- | --- |\n| | | | |\n\n## 機器\n- 装置と設定\n\n## 手順\n1. 準備\n2. 実施\n3. 片付け\n\n## チェック\n- [ ] 対照を用意した\n- [ ] 設定を記録した\n- [ ] サンプルに日付と実施回のラベルを付けた\n\n## トラブルシューティング\n| 問題 | 考えられる原因 | 対処 |\n| --- | --- | --- |\n| | | |\n\n## 改訂履歴\n| バージョン | 日付 | 変更 |\n| --- | --- | --- |\n| 1 | {{date}} | 初版 |",
+        "weeklyLog": "## 今週の目標\n- [ ] 1 つ目の目標\n- [ ] 2 つ目の目標\n- [ ] 3 つ目の目標\n\n## 進捗\n| 曜日 | 作業内容 | メモ |\n| --- | --- | --- |\n| 月曜日 | | |\n| 火曜日 | | |\n| 水曜日 | | |\n| 木曜日 | | |\n| 金曜日 | | |\n\n## 結果と図\n- 今週の成果\n\n## 障害\n> [!warning] 助けが必要\n> 何が止まっていて、誰なら解決できるか。\n\n## 文献\n- 今週読んだ論文\n\n## 来週\n- [ ] 来週の最初の目標",
+        "proposal": "> [!abstract] 要約\n> 3 文で: 問題、アプローチ、期待される結果。\n\n## 背景と動機\nなぜ今これが重要なのか、すでに何がわかっているのか。\n\n## 研究課題\n1. 最初の問い\n\n## 目標\n| 目標 | アプローチ | 期待される成果 |\n| --- | --- | --- |\n| 1 | | |\n\n## 方法\nデザイン、データ、分析、成功をどう測るか。\n\n## スケジュール\n| フェーズ | 月 | マイルストーン |\n| --- | --- | --- |\n| | | |\n\n## リスクと対策\n| リスク | 可能性 | 対策 |\n| --- | --- | --- |\n| | | |\n\n## リソースと予算\n\n## インパクト\n誰が恩恵を受けるのか、結果をどう共有するのか。\n\n## 参考文献",
+        "proof": "## 定義と記法\n> [!definition] 記法\n> 使う記号と、それぞれの意味。\n\n## 主張\n> [!theorem] 主結果\n> 結果を、すべての仮定とともに正確に述べる。\n\n## アイデア\n詳細に入る前に、主なアイデアを平易な言葉で。\n\n## 補題\n> [!lemma] 補題 1\n> 主証明に必要な、より小さな主張。\n\n> [!proof] 補題 1 の証明\n> その補題がなぜ成り立つのか。\n\n## 証明\n> [!proof] 主結果の証明\n> **ステップ 1.** 議論の準備をする。\n>\n> **ステップ 2.** 補題 1 を使って、主要な評価を行う。\n>\n> **ステップ 3.** 結論を導く。\n\n## チェック\n- [ ] すべての仮定を使っている\n- [ ] 境界の場合を扱っている\n- [ ] 定数と上下界を追跡している\n\n## 備考\n一般化、反例、関連する結果。",
+        "dataAnalysis": "> [!info] 問い\n> この分析が支える意思決定。\n\n## データ\n| 項目 | 値 |\n| --- | --- |\n| 出典 | |\n| バージョンまたは日付 | |\n| 行数と列数 | |\n| 除外 | |\n\n## 方法\n- クリーニングの手順\n- モデルまたは検定と、その理由\n- 確認した仮定\n\n## 結果\n次の表は CSV ブロックです。例の行を、自分の結果に置き換えてください。\n\n```csv\n指標,推定値,下限 95%,上限 95%,n\nA 群の平均,0,0,0,0\nB 群の平均,0,0,0,0\n差,0,0,0,0\n```\n\n## 図\n- 図とその内容\n\n## 解釈\n結果が問いに対して何を意味するか。\n\n## 限界\n- バイアス、欠損データ、結論を変えうる要因\n\n## 再現性\n- [ ] コードを保存してリンクした\n- [ ] 乱数シードを記録した\n- [ ] パッケージのバージョンを記録した",
+        "interview": "> [!warning] 同意とプライバシー\n> 録音の前に同意を確認し、名前の代わりに参加者コードを使ってください。\n\n## 背景\n| 項目 | 値 |\n| --- | --- |\n| 参加者コード | |\n| 役割 | |\n| 所要時間 | |\n| 録音 | |\n\n## 質問と回答\n### 質問 1\n- 回答\n\n### 質問 2\n- 回答\n\n## 発言の引用\n> 残しておきたい発言。\n\n## テーマ\n- テーマと、それを裏付ける回答\n\n## フォローアップ\n- [ ] お礼のメッセージを送る\n- [ ] 文字起こしして匿名化する",
+        "screeningLog": "> [!question] レビューの問い（PICO）\n> - **対象集団:** 誰または何を調べるか\n> - **介入または曝露:** 何を検証するか\n> - **比較対照:** 何と比べるか\n> - **アウトカム:** 何を測定するか\n\n## 採用基準\n- 研究デザイン\n- 対象集団と状況\n- 言語と年\n\n## 除外基準\n- 理由と、その見分け方\n\n## 検索\n| 日付 | データベース | 検索式 | 件数 |\n| --- | --- | --- | --- |\n| {{date}} | | | |\n\n## 段階ごとの件数\n| 段階 | 件数 | 除外 | 主な理由 |\n| --- | --- | --- | --- |\n| 検索で見つかった件数 | | | |\n| 重複を除いた後 | | | |\n| タイトルと要旨のスクリーニング | | | |\n| 全文の評価 | | | |\n| レビューに採用 | | | |\n\n## 全文の段階で除外\n| 論文 | 理由 |\n| --- | --- |\n| | |\n\n## 意見の不一致\n- 論文、各レビュアーの判断、どう解決したか\n\n## 次のステップ\n- [ ] 次のバッチをスクリーニングする\n- [ ] 件数の合計が合っているか確認する",
+        "labNotebook": "**{{date}}（{{weekday}}）**\n\n## 目的\n今日やろうとしたことと、その理由。\n\n## 材料\n| 材料 | サンプル ID | ロットまたはバッチ | 量 |\n| --- | --- | --- | --- |\n| | | | |\n\n## 手順\n1. 行ったことを、時刻と設定とともに順番に\n2. プロトコルからの変更点と、その理由\n\n## 観察\n- {{time}} 見たこと\n\n## 結果\n- 測定値と、生データの保存場所\n\n## 次のステップ\n- [ ] 次回に向けたフォローアップ\n\n## 署名\n**署名者:** 氏名、{{date}}\n\n**立会人:** 氏名、日付"
+      }
+    },
+    "mentions": {
+      "title": "言及しているノート",
+      "link": "リンク",
+      "linkLabel": "{{title}} 内の最初の言及をリンクにする",
+      "linked": "「{{title}}」内の言及をリンクにしました。",
+      "notFound": "「{{title}}」には、リンクにできる言及が残っていません。",
+      "failed": "「{{title}}」にリンクを追加できませんでした。"
+    },
+    "table": {
+      "view": "表ビュー",
+      "sortBy": "{{name}} で並べ替え",
+      "addColumn": "列を追加または削除",
+      "properties": "プロパティ",
+      "noProperties": "これらのノートにはほかのプロパティはありません",
+      "yes": "はい",
+      "no": "いいえ",
+      "columns": {
+        "title": "タイトル",
+        "tags": "タグ",
+        "status": "ステータス",
+        "project": "プロジェクト",
+        "edited": "最終編集日"
+      }
+    }
+  },
+  "assistant": {
+    "label": "アシスタント",
+    "placeholder": "このノートについて質問するか、変更を依頼してください。/ でアクションを表示",
+    "newChat": "新しいチャット",
+    "conversation": "アシスタントとの会話",
+    "foldConversation": "会話を折りたたむ",
+    "showConversation": "会話を表示",
+    "cliAgents": "CLI エージェント",
+    "actionHint": "このノートを対象に動作します",
+    "agentCanEdit": "このエージェントは、リンク先のプロジェクトのファイルを変更できます。",
+    "allowWritesLabel": "エージェントにファイルの変更を許可",
+    "allowWritesAsk": "{{agent}} には読み取り専用モードがないため、{{project}} のファイルを変更する可能性があります。Oleafly がこのモードを追加することもできません。それでもメッセージを送信しますか？",
+    "allowWrites": "それでも送信",
+    "dontSend": "送信しない",
+    "viewOnly": "このノートは閲覧のみのため、アシスタントは変更できません。"
+  },
+  "saving": {
+    "notSaved": "最新の変更は保存されていません。",
+    "timedOut": "保存に時間がかかりすぎました。"
+  },
+  "failures": {
+    "createNote": "ノートを作成できませんでした。",
+    "linkNote": "「{{name}}」をそのプロジェクトにリンクできませんでした。",
+    "linkProject": "プロジェクトは作成されましたが、ノートをリンクできませんでした。",
+    "sendToPaper": "これを論文に追加できませんでした。",
+    "paperNotOpen": "先に論文の LaTeX、Typst、Markdown いずれかのファイルを開いてから、もう一度送ってください。",
+    "template": "「{{name}}」のテンプレート設定を変更できませんでした。"
+  },
+  "noteTab": {
+    "loading": "ノートを開いています",
+    "projectNote": "プロジェクトのノート",
+    "sharedProject": "このプロジェクトの全員が閲覧、編集できます",
+    "localProject": "このプロジェクトのファイルと一緒に保存されます",
+    "personalNote": "個人のノート",
+    "private": "自分だけが閲覧できます",
+    "personalShared": "ノートから共有",
+    "openInNotes": "ノートで開く",
+    "moveIntoProject": "プロジェクトに移動",
+    "copyToMine": "自分のノートにコピー",
+    "missing": "このノートはもう利用できません。移動または削除された可能性があります。",
+    "writeRefused": "ノートを保存できませんでした。このプロジェクトは現在、読み取り専用です。"
+  },
+  "appearance": {
+    "notes": {
+      "sectionName": "ノートの外観",
+      "resetAriaLabel": "{{setting}} を既定に戻す",
+      "text": {
+        "title": "テキスト"
+      },
+      "typeface": {
+        "label": "書体",
+        "description": "ノートの本文の書体を選びます。",
+        "options": {
+          "sans": "サンセリフ",
+          "serif": "セリフ",
+          "mono": "等幅"
+        }
+      },
+      "font": {
+        "label": "ノートのフォント",
+        "description": "ノートの本文に使うフォントを、インストール済みのものから選びます。空欄にすると「書体」の設定を使います。"
+      },
+      "fontSize": {
+        "label": "ノートの文字サイズ",
+        "description": "ノートの本文の文字サイズを設定します。",
+        "custom": "カスタム",
+        "customLabel": "ノートの文字サイズ（カスタム、ピクセル）"
+      },
+      "lineHeight": {
+        "label": "ノートの行の高さ",
+        "description": "ノートの本文の行間を設定します。",
+        "customLabel": "ノートの行の高さ（カスタム）"
+      },
+      "paragraphSpacing": {
+        "label": "段落の間隔",
+        "description": "段落、リスト、その他のブロックの間隔を設定します。",
+        "options": {
+          "compact": "狭い",
+          "normal": "標準",
+          "relaxed": "ゆったり",
+          "spacious": "広い"
+        }
+      },
+      "headings": {
+        "title": "見出しとタイトル"
+      },
+      "headingTypeface": {
+        "label": "見出しの書体",
+        "description": "見出しとノートのタイトルの書体を選びます。",
+        "options": {
+          "text": "本文と同じ"
+        }
+      },
+      "headingFont": {
+        "label": "見出しのフォント",
+        "description": "見出しとノートのタイトルに使うフォントを、インストール済みのものから選びます。空欄にすると「見出しの書体」の設定を使います。"
+      },
+      "headingSize": {
+        "label": "見出しのサイズ",
+        "description": "本文に対する見出しの大きさを設定します。",
+        "options": {
+          "small": "小さめ",
+          "normal": "標準",
+          "large": "大きめ"
+        }
+      },
+      "titleSize": {
+        "label": "タイトルのサイズ",
+        "description": "各ノートの先頭にあるタイトルのサイズを設定します。"
+      },
+      "layout": {
+        "title": "レイアウト"
+      },
+      "width": {
+        "label": "ノートの幅",
+        "description": "ノートを開いたときの幅です。ノート内の幅メニューからも変更できます。",
+        "options": {
+          "standard": "標準",
+          "wide": "広い",
+          "full": "全幅"
+        }
+      },
+      "info": {
+        "label": "ノートの情報",
+        "description": "ノートのプロパティとリンクの表示場所です。「サイドパネル」を選ぶと、ノートの各種カウントや添付ファイルとあわせて「情報」パネルに表示します。「インライン」を選ぶと、ページ上に表示したままにします。",
+        "options": {
+          "side": "サイドパネル",
+          "inline": "インライン"
+        }
+      },
+      "taskBox": {
+        "label": "タスクのチェックボックス",
+        "description": "タスクリストのチェックボックスの形です。",
+        "options": {
+          "square": "四角",
+          "round": "丸"
+        }
+      },
+      "wordCount": {
+        "label": "単語数を表示",
+        "description": "ノートのツールバーに単語数を表示します。"
+      },
+      "spellcheck": {
+        "label": "ノートのスペルチェック",
+        "description": "ノートを書いている間、スペルの誤りに下線を引きます。"
+      },
+      "replacements": {
+        "label": "入力中に置き換える",
+        "description": "-> を → にするなど、入力中に組み合わせを置き換えます。コードと数式は入力したままになり、置き換えた直後に Backspace を押すと元のテキストに戻ります。",
+        "list": "テキストの置き換え",
+        "type": "入力",
+        "becomes": "変換後",
+        "add": "追加",
+        "remove": "{{from}} を削除",
+        "removeTooltip": "削除",
+        "empty": "組み合わせはまだありません。下で追加してください。",
+        "full": "組み合わせは {{limit}} 個まで登録できます。追加するには、どれかを削除してください。"
+      },
+      "keepUndo": {
+        "label": "閉じた後も元に戻す履歴を保持",
+        "description": "ノートを閉じたりアプリを終了したりした後でも、元に戻す操作が使えます。履歴はこのコンピュータに保存され、オフにすると削除されます。"
+      },
+      "code": {
+        "title": "コード"
+      },
+      "drawings": {
+        "title": "LaTeX の図"
+      },
+      "tikzPreamble": {
+        "label": "TikZ のプリアンブル",
+        "description": "\\usetikzlibrary{positioning} のように、すべての TikZ と CircuiTikZ ブロックのプリアンブルの先頭に置く行です。"
+      },
+      "codeFont": {
+        "label": "コードのフォント",
+        "description": "コードブロックとインラインコードに使うフォントを、インストール済みのものから選びます。"
+      },
+      "codeTheme": {
+        "label": "コードブロックの色",
+        "description": "ノートのコードブロックに使うシンタックスカラーを選びます。",
+        "options": {
+          "editor": "エディタと同じ"
+        }
+      },
+      "colors": {
+        "title": "色"
+      },
+      "accent": {
+        "label": "ノートのアクセントカラー",
+        "description": "ノート内のリンク、タグ、タスクのチェックボックスに使われます。",
+        "matchApp": "アプリに合わせる",
+        "customAriaLabel": "ノートのアクセントカラーを自由に選ぶ"
+      },
+      "callouts": {
+        "label": "コールアウトのスタイル",
+        "description": "ノート内のコールアウトボックスの見た目です。",
+        "options": {
+          "tinted": "淡い色",
+          "filled": "塗りつぶし",
+          "outlined": "枠線",
+          "bar": "縦線"
+        }
+      },
+      "fieldStyle": {
+        "label": "日付とフィールドのチップ",
+        "description": "ノート内の日付と、期限や優先度などのフィールドの見た目です。",
+        "options": {
+          "tint": "淡い色",
+          "outline": "枠線",
+          "underline": "下線"
+        }
+      },
+      "remoteImages": {
+        "title": "Web 上の画像",
+        "description": "ノートとアシスタントの返信は、これらのサイトの画像を確認せずに読み込みます。",
+        "empty": "ノートとアシスタントの返信は、Web から画像を読み込む前に確認します。常に許可したサイトがここに表示されます。",
+        "remove": "{{host}} を削除"
+      }
+    }
+  },
+  "notesPreview": {
+    "label": "この設定でのノートのプレビュー",
+    "title": "フィールドノート",
+    "heading": "朝の調査",
+    "paragraph": "9 時まで小雨、その後は北の尾根の上に晴れ間が広がりました。正午になっても土はまだ湿っていました。",
+    "links": "詳しい手順は <note>サンプリングの方法</note> を参照するか、<tag>#フィールドワーク</tag> を見てください。",
+    "highlight": "苗の高さが 1 週間で 2 倍になりました。",
+    "calloutTitle": "次回の訪問",
+    "calloutBody": "新しいサンプルを採る前に、土壌センサーを確認します。",
+    "taskDone": "サンプルにラベルを付ける",
+    "task": "写真をアップロードする",
+    "taskLate": "土壌レポートを送る"
+  },
+  "highlight": {
+    "colors": {
+      "yellow": "黄",
+      "orange": "オレンジ",
+      "red": "赤",
+      "pink": "ピンク",
+      "purple": "紫",
+      "blue": "青",
+      "green": "緑"
+    },
+    "remove": "ハイライトを解除"
+  },
+  "quickCapture": {
+    "title": "クイックメモ",
+    "untitled": "無題",
+    "placeholder": "書き始める…",
+    "field": "メモするテキスト",
+    "characters_other": "{{count}} 文字",
+    "failed": "保存できませんでした。テキストは残っているので、もう一度お試しください。",
+    "actions": {
+      "label": "操作",
+      "saveNew": "新しいノートとして保存",
+      "saveToday": "今日のノートに追加",
+      "copy": "Markdown としてコピー",
+      "discard": "下書きを破棄"
+    },
+    "openNotes": "ノートを開く",
+    "newNote": "新規ノート",
+    "format": "書式を表示",
+    "closeFormat": "書式を非表示"
+  },
+  "starter": {
+    "blocksGallery": {
+      "title": "ブロックギャラリー",
+      "intro": "ノートに入れられるすべてのブロックです。ブロックの {{source}} をクリックすると、それを描画している内容を表示して編集できます。空の行で {{slash}} を入力すると、新しいブロックを挿入できます。",
+      "charts": "グラフ",
+      "functionPlots": "関数のプロット",
+      "tables": "表",
+      "csvTable": "csv ブロックは並べ替えと絞り込みができ、集計行も付きます:",
+      "markdownTable": "通常の Markdown の表も使えます:",
+      "math": "数式と化学式",
+      "typst": "Typst",
+      "diagrams": "図",
+      "svg": "SVG",
+      "html": "HTML（{{run}} を押す）",
+      "react": "React（{{run}} を押す）",
+      "structures": "化学構造",
+      "molecule": "3D 分子",
+      "sequences": "配列",
+      "code": "コード"
+    }
+  }
+}

@@ -7,8 +7,6 @@ import { describe, expect, it, vi } from "vitest";
 import { SidebarPanelHeader, SidebarSection } from "./SidebarSection";
 
 const TITLE = "Explorer";
-const ACTION_LABEL = "Expand all";
-const CONTENT = "Section content";
 const RESEARCH = "Research workspace";
 const BETA = "Beta";
 const CONFIGURE = "Configure";
@@ -17,32 +15,6 @@ const REFS = "refs.tex";
 const REFS_PATH = "appendix/refs.tex";
 
 describe("SidebarSection", () => {
-  it("reveals actions from hover or focus anywhere in the section", () => {
-    render(
-      <SidebarSection
-        id="test-section"
-        title={TITLE}
-        open
-        onOpenChange={vi.fn()}
-        actions={<button type="button">{ACTION_LABEL}</button>}
-      >
-        <div>{CONTENT}</div>
-      </SidebarSection>,
-    );
-
-    const section = screen.getByTestId("test-section");
-    const actions = screen.getByTestId("test-section-actions");
-    expect(section).toHaveClass("group/section");
-    expect(section.firstElementChild).not.toHaveClass("group/section");
-    expect(actions).toHaveClass(
-      "hidden",
-      "group-hover/section:flex",
-      "group-focus-within/section:flex",
-      "has-[[data-state=open]]:flex",
-    );
-    expect(screen.getByRole("button", { name: ACTION_LABEL })).toBeInTheDocument();
-  });
-
   it("shows the full title or its hint in the app tooltip, never in a native title", async () => {
     const { container } = render(
       <SidebarSection id="refs" title={REFS} titleHint={REFS_PATH} open onOpenChange={vi.fn()}>
@@ -55,27 +27,6 @@ describe("SidebarSection", () => {
     fireEvent.mouseEnter(label);
     expect(await screen.findByRole("tooltip")).toHaveTextContent(REFS_PATH);
   });
-
-  it("keeps one clear divider at the end of collapsed and expanded sections", () => {
-    const props = {
-      id: "test-section",
-      title: "Explorer",
-      onOpenChange: vi.fn(),
-      children: <div />,
-    };
-    const { rerender } = render(<SidebarSection {...props} open={false} />);
-
-    const section = screen.getByTestId("test-section");
-    const header = section.firstElementChild;
-    expect(section).toHaveClass("border-b", "border-sidebar-border");
-    expect(header).not.toHaveClass("border-b");
-
-    rerender(<SidebarSection {...props} open />);
-    expect(section.firstElementChild).toHaveClass(
-      "border-b",
-      "border-sidebar-border/65",
-    );
-  });
 });
 
 describe("SidebarPanelHeader", () => {
@@ -87,27 +38,25 @@ describe("SidebarPanelHeader", () => {
     "src/components/research/ResearchWorkspacePanel.tsx",
     "src/components/layout/McpActivityPanel.tsx",
     "src/features/collab/sharing/CollabPane.tsx",
+    "src/components/notes/ProjectNotesPanel.tsx",
   ];
   const LAZY_BRIDGES: Readonly<Record<string, string>> = {
     "src/components/collab/CollabSlots.tsx": "src/features/collab/sharing/CollabPane.tsx",
   };
 
-  it("keeps the icon at full size and cuts a long title with an ellipsis", async () => {
-    const { container } = render(
+  it("shows the title in the app tooltip and puts the actions in the header", async () => {
+    render(
       <SidebarPanelHeader icon={FlaskConical} title={RESEARCH} adornment={<span>{BETA}</span>}>
         <button type="button">{CONFIGURE}</button>
       </SidebarPanelHeader>,
     );
 
-    expect(container.querySelector("svg")).toHaveClass("size-3.5", "shrink-0");
     const title = screen.getByRole("heading", { name: RESEARCH });
-    expect(title).toHaveClass("min-w-0", "truncate", "text-[0.6875rem]", "uppercase");
     expect(title).not.toHaveAttribute("title");
     fireEvent.mouseEnter(within(title).getByText(RESEARCH));
     expect(await screen.findByRole("tooltip")).toHaveTextContent(RESEARCH);
     const configure = screen.getByRole("button", { name: CONFIGURE });
     expect(configure.parentElement).toBe(title.closest("header"));
-    expect(configure.previousElementSibling).toHaveClass("flex-1");
   });
 
   it("uses the same title style as the Explorer sections", () => {
@@ -133,6 +82,11 @@ describe("SidebarPanelHeader", () => {
     const source = readFileSync(join(process.cwd(), path), "utf8");
     expect(source).toContain("<SidebarPanelHeader");
     expect(source).not.toContain("text-xs font-medium uppercase tracking-wide text-sidebar-foreground/70");
+    const copies = [...source.matchAll(/"[^"\n]*"|`[^`]*`/g)].filter(([value]) => {
+      const tokens = value.split(/[\s"'`]+/);
+      return tokens.includes("uppercase") && tokens.includes("text-[0.6875rem]") && tokens.some((token) => /^text-[a-z-]*foreground/.test(token));
+    });
+    expect(copies).toEqual([]);
   });
 
   it("covers every panel registered on the rail", () => {

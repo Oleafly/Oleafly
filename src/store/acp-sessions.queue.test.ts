@@ -50,7 +50,7 @@ vi.mock("@/store/files", () => ({
 import { AcpPromptError } from "@/components/ai/acp/acp-attachments";
 import { initTestI18n } from "@/components/ai/acp/tests/ui-fixtures";
 import { SaveFlushError } from "@/store/save-flush-error";
-import { attachAcpListeners, MAX_VISIBLE_EVENTS, type AcpPromptDraft, useAcpSessionsStore } from "./acp-sessions";
+import { attachAcpListeners, MAX_VISIBLE_EVENTS, setAcpPromptGate, type AcpPromptDraft, useAcpSessionsStore } from "./acp-sessions";
 
 function session(id: string, overrides: Partial<AcpSession> = {}): AcpSession {
   return {
@@ -386,6 +386,91 @@ describe("sending a prompt", () => {
     mocks.acpEvents.mockResolvedValueOnce({ events: [event(1, "user_message", { content: [] }), event(2, "status", { status: "failed" })], hasMore: false });
     await expect(useAcpSessionsStore.getState().sendPrompt("p", "s", draft("Hi"))).resolves.toBe(true);
     expect(useAcpSessionsStore.getState().sessionErrors.s).toBe("The agent crashed.");
+  });
+});
+
+describe("prompt gates", () => {
+  it("holds the first prompt of a new conversation until the slot's gate lets it through", async () => {
+    reset([], null);
+    let open: (allowed: boolean) => void = () => {};
+    const gate = vi.fn((_session: AcpSession) => new Promise<boolean>((resolve) => { open = resolve; }));
+    const stop = setAcpPromptGate("paper#note-n1", gate);
+    mocks.acpStart.mockResolvedValue(snapshot(session("new", { status: "ready" })));
+    mocks.acpPrompt.mockResolvedValue(snapshot(session("new", { status: "running", lastSequence: 1 })));
+    const started = useAcpSessionsStore.getState().startWithPrompt("paper#note-n1", "agent", draft("Hello"));
+    await vi.waitFor(() => expect(gate).toHaveBeenCalledWith(expect.objectContaining({ id: "new" })));
+    expect(mocks.acpPrompt).not.toHaveBeenCalled();
+    expect(useAcpSessionsStore.getState().sending.new).toBe(1);
+    open(true);
+    await started;
+    expect(mocks.acpPrompt).toHaveBeenCalledWith("paper", "new", input("Hello"));
+    stop();
+  });
+
+  it("keeps a refused prompt as failed in the queue and refuses one sent straight away", async () => {
+    reset([session("s")]);
+    const gate = vi.fn(async () => false);
+    const stop = setAcpPromptGate("p", gate);
+    const store = useAcpSessionsStore.getState();
+    store.enqueue("s", draft("Queued"));
+    await store.dispatchQueued("p", "s");
+    expect(useAcpSessionsStore.getState().queues.s).toEqual([expect.objectContaining({ text: "Queued", failed: true })]);
+    await expect(store.sendPrompt("p", "s", draft("Now"))).resolves.toBe(false);
+    expect(mocks.acpPrompt).not.toHaveBeenCalled();
+    stop();
+    mocks.acpPrompt.mockResolvedValue(snapshot(session("s", { status: "running", lastSequence: 1 })));
+    await expect(store.sendPrompt("p", "s", draft("Later"))).resolves.toBe(true);
+  });
+
+  it("holds a prompt queued behind a note's gate when the note panel closes before it is sent", async () => {
+    reset([session("s", { status: "running" })], null);
+    useAcpSessionsStore.setState({ activeByProject: { "paper#note-n1": "s" } });
+    const stop = setAcpPromptGate("paper#note-n1", vi.fn(async () => true));
+    const store = useAcpSessionsStore.getState();
+    const id = store.enqueue("s", draft("Queued"));
+    stop();
+    useAcpSessionsStore.setState((state) => ({ sessions: { ...state.sessions, s: { ...state.sessions.s, status: "ready" } } }));
+    await store.dispatchQueued("paper", "s");
+    expect(mocks.acpPrompt).not.toHaveBeenCalled();
+    expect(useAcpSessionsStore.getState().queues.s).toEqual([expect.objectContaining({ id, text: "Queued", failed: true })]);
+    useAcpSessionsStore.setState({ activeByProject: { "paper#note-n1": null } });
+    await store.retryQueued("paper", "s", id);
+    expect(mocks.acpPrompt).not.toHaveBeenCalled();
+    const reopened = vi.fn(async () => true);
+    const stopReopened = setAcpPromptGate("paper#note-n1", reopened);
+    mocks.acpPrompt.mockResolvedValue(snapshot(session("s", { status: "running", lastSequence: 1 })));
+    await store.retryQueued("paper", "s", id);
+    expect(reopened).toHaveBeenCalledWith(expect.objectContaining({ id: "s" }));
+    expect(mocks.acpPrompt).toHaveBeenCalledWith("paper", "s", input("Queued"));
+    stopReopened();
+  });
+
+  it("refuses a prompt whose note panel closes while it is being saved before sending", async () => {
+    useAcpSessionsStore.setState({ activeByProject: { "paper#note-n1": "s" } });
+    let saved: () => void = () => {};
+    mocks.flushOpenFilesToDisk.mockReturnValueOnce(new Promise<void>((resolve) => { saved = resolve; }));
+    const stop = setAcpPromptGate("paper#note-n1", vi.fn(async () => true));
+    const sent = useAcpSessionsStore.getState().sendPrompt("paper#note-n1", "s", draft("Hi"));
+    await vi.waitFor(() => expect(mocks.flushOpenFilesToDisk).toHaveBeenCalled());
+    stop();
+    saved();
+    await expect(sent).resolves.toBe(false);
+    expect(mocks.acpPrompt).not.toHaveBeenCalled();
+  });
+
+  it("treats a gate that throws as a refusal and only asks the gates of slots showing the session", async () => {
+    reset([session("s"), session("other")]);
+    const unrelated = vi.fn(async () => false);
+    const stopUnrelated = setAcpPromptGate("elsewhere", unrelated);
+    const stopBroken = setAcpPromptGate("p", async () => {
+      throw new Error("broken");
+    });
+    await expect(useAcpSessionsStore.getState().sendPrompt("p", "s", draft("Hi"))).resolves.toBe(false);
+    expect(unrelated).not.toHaveBeenCalled();
+    stopBroken();
+    mocks.acpPrompt.mockResolvedValue(snapshot(session("s", { status: "running", lastSequence: 1 })));
+    await expect(useAcpSessionsStore.getState().sendPrompt("p", "s", draft("Hi"))).resolves.toBe(true);
+    stopUnrelated();
   });
 });
 

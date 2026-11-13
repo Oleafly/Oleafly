@@ -754,7 +754,7 @@ export function DeadlinesView() {
                 </div>
               </div>
 
-              <div className="mt-5 flex items-center gap-2 rounded-lg border bg-background p-2 shadow-sm focus-within:border-ring">
+              <div className="mt-5 flex items-center gap-2 rounded-lg border bg-background p-2 shadow-sm">
                 <Search className="ml-2 size-5 shrink-0 text-muted-foreground" />
                 <Input
                   value={query}

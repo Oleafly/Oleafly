@@ -155,6 +155,9 @@
       "spacesMessage": "Cua Spaces kullanan ajanlar şunları yapabilecek:",
       "spacesChanges": "Space oluşturmak ve silmek, içlerinde komut çalıştırmak",
       "spacesSignIns": "Bir Space içinde Claude Code veya Codex oturumunuzu kullanmak"
+    },
+    "assistantNetwork": {
+      "message": "Asistan {{tool}} aracını kullanmak istiyor. Bu araç metni çevrimiçi bir hizmete gönderir."
     }
   },
   "errors": {
@@ -214,6 +217,11 @@
     "blockedMode": {
       "title": "İzin denetimleri kapalı ({{mode}})",
       "description": "Ajan sormadan dosya düzenleyebilir ve komut çalıştırabilir. Oleafly onu başka bir kipe geçiremedi. Kipi ajanın kendi ayarlarından değiştirin."
+    }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "Hızlı not"
     }
   }
 }

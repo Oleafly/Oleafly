@@ -1,16 +1,42 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const styles = readFileSync(new URL("./globals.css", import.meta.url), "utf8");
+const styles = readFileSync(new URL("./globals.css", import.meta.url), "utf8").replace(/\r\n/gu, "\n");
+
+function sourceFiles(root: URL): string[] {
+  const directory = fileURLToPath(root);
+  return readdirSync(directory, { recursive: true, encoding: "utf8" })
+    .filter((path) => /\.(css|tsx?)$/.test(path) && !path.includes("node_modules") && !/\.test\.tsx?$/.test(path))
+    .map((path) => join(directory, path));
+}
 
 describe("desktop scrollbars", () => {
-  it("styles every application scroll surface", () => {
-    expect(styles).toContain(":where(body, body *)");
-    expect(styles).toContain("scrollbar-width: thin");
-    expect(styles).toContain(":where(body, body *)::-webkit-scrollbar");
-    expect(styles).toContain("width: 6px");
-    expect(styles).toContain("height: 6px");
-    expect(styles).toContain(":where(body, body *):hover::-webkit-scrollbar-thumb");
+  it("draws one thin, light thumb that shows only over its own scroller", () => {
+    expect(styles).toContain(":where(body, body *)::-webkit-scrollbar {\n  width: 8px;\n  height: 8px;");
+    expect(styles).toContain(":where(body, body *) {\n  --ofl-scroll-thumb: transparent;\n}");
+    expect(styles).toContain(
+      ":root {\n  --ofl-scroll-thumb-ink: oklch(0.5 0.04 250);\n  --ofl-scroll-thumb-mix: 14%;\n  --ofl-scroll-thumb-active-mix: 28%;\n}",
+    );
+    expect(styles).toContain(
+      ".dark {\n  --ofl-scroll-thumb-ink: var(--foreground);\n  --ofl-scroll-thumb-mix: 16%;\n  --ofl-scroll-thumb-active-mix: 30%;\n}",
+    );
+    expect(styles).toContain(
+      ":where(body, body *):hover {\n  --ofl-scroll-thumb: color-mix(in srgb, var(--ofl-scroll-thumb-ink) var(--ofl-scroll-thumb-mix), transparent);",
+    );
+    expect(styles).toContain(
+      "border-width: 2px;\n  background-color: color-mix(in srgb, var(--ofl-scroll-thumb-ink) var(--ofl-scroll-thumb-active-mix), transparent);",
+    );
+    expect(styles).toContain("border: 3.5px solid transparent;\n  border-radius: 999px;\n  background: var(--ofl-scroll-thumb) padding-box;");
+    expect(styles).toContain(":where(body, body *)::-webkit-scrollbar-thumb:hover,");
+  });
+
+  it("never sets the standard scrollbar properties that switch WebKit back to the native scroller", () => {
+    const offenders = [new URL("../", import.meta.url), new URL("../../packages/", import.meta.url)]
+      .flatMap(sourceFiles)
+      .filter((path) => /scrollbar-width:\s*thin|scrollbar-color\s*:|scrollbarWidth:\s*"thin"|scrollbarColor\s*:/.test(readFileSync(path, "utf8")));
+    expect(offenders).toEqual([]);
   });
 });
 

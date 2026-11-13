@@ -31,6 +31,7 @@ const PLAIN_TEXT_BLOCKS: Record<string, string> = {
   "src/components/editor/compile-log-details.tsx": "compile log output",
   "src/components/editor/LogPane.tsx": "compile log output",
   "src/components/preflight/ReaderViewDialog.tsx": "a reader view of the document's text",
+  "src/components/settings/NotesAppearancePreview.tsx": "an inert sample code block inside the Notes appearance preview",
 };
 const NATIVE_TITLE_ALLOWED: Record<string, string> = {
   "src/components/editor/MarkdownPreview.tsx": "a previewed image keeps the title its author wrote in the Markdown source",
@@ -46,7 +47,6 @@ const NATIVE_TITLE_BACKLOG: Record<string, number> = {
   "src/components/ai/chat-parts.tsx": 1,
   "src/components/ai/home/AssistantHome.tsx": 2,
   "src/components/ai/home/RecentChats.tsx": 1,
-  "src/components/editor/Breadcrumbs.tsx": 1,
   "src/components/editor/CheckpointsPanel.tsx": 1,
   "src/components/editor/DocumentInsightsDialog.tsx": 2,
   "src/components/editor/EditorTabStrip.tsx": 1,
@@ -57,8 +57,6 @@ const NATIVE_TITLE_BACKLOG: Record<string, number> = {
   "src/components/files/FileTree.tsx": 1,
   "src/components/files/gitStatus.tsx": 2,
   "src/components/layout/CompileControls.tsx": 1,
-  "src/components/layout/DocumentOutline.tsx": 1,
-  "src/components/layout/HomeBrandButton.tsx": 1,
   "src/components/layout/McpActivityPanel.tsx": 2,
   "src/components/layout/ReferencesPanel.tsx": 1,
   "src/components/layout/ReleaseTimeline.tsx": 2,
@@ -75,7 +73,6 @@ const NATIVE_TITLE_BACKLOG: Record<string, number> = {
   "src/components/preview/PdfOutlinePanel.tsx": 2,
   "src/components/preview/PreviewPane.tsx": 1,
   "src/components/research/tasks/TaskChips.tsx": 1,
-  "src/components/settings/AppearanceSection.tsx": 1,
   "src/components/settings/McpServersManager.tsx": 1,
   "src/components/settings/ProofreadingDictionarySection.tsx": 2,
   "src/components/settings/SettingsSearch.tsx": 1,

@@ -25,6 +25,7 @@ import { EmailPreferencesRow } from "./EmailPreferencesRow";
 import { collabErrorMessage } from "./errors";
 import { InlineAlert } from "./feedback";
 import { accountDetail, accountPerson } from "./people";
+import { PublishedNotesList } from "./PublishedNotesList";
 import { canManageServer, toServerRole, type ServerRole } from "./roles";
 import { useCollabStore } from "./store";
 import { useConnectionTest, type ConnectionTest } from "./use-connection-test";
@@ -261,6 +262,7 @@ export function ServerCard({
             signOut={(deviceId) => collabServerSignOutDevice(serverId, deviceId)}
           />
         ) : null}
+        {account ? <PublishedNotesList key={`published-${serverId}`} serverId={serverId} /> : null}
       </CollapsibleSection>
       <ConfirmationDialog
         open={confirmRemove}

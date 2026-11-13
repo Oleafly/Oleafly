@@ -26,7 +26,7 @@ function sectionStub(testId: string) {
   };
 }
 
-vi.mock("@/lib/tauri", () => ({ searchDocs: vi.fn(async () => []) }));
+vi.mock("@/lib/tauri", () => ({ textSearch: vi.fn(async () => []) }));
 vi.mock("@/components/editor/cm/controller", () => ({ gotoLine: vi.fn() }));
 vi.mock("@/components/files/FileTree", () => ({ FileTree: sectionStub("file-tree") }));
 vi.mock("@/components/layout/WorkspaceControls", () => ({

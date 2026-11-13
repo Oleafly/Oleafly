@@ -10,80 +10,133 @@ const MAX_CACHED_BLOCK_CHARS = 2_000_000;
 
 type ParserLoader = () => Promise<StreamParser<unknown>>;
 
+const clike = () => import("@codemirror/legacy-modes/mode/clike");
+const javascriptModes = () => import("@codemirror/legacy-modes/mode/javascript");
+const cssModes = () => import("@codemirror/legacy-modes/mode/css");
+const xmlModes = () => import("@codemirror/legacy-modes/mode/xml");
+
 const parserLoaders: Record<string, ParserLoader> = {
-  c: () => import("@codemirror/legacy-modes/mode/clike").then(({ c }) => c),
-  cpp: () => import("@codemirror/legacy-modes/mode/clike").then(({ cpp }) => cpp),
-  csharp: () => import("@codemirror/legacy-modes/mode/clike").then(({ csharp }) => csharp),
-  css: () => import("@codemirror/legacy-modes/mode/css").then(({ css }) => css),
+  c: () => clike().then(({ c }) => c),
+  cpp: () => clike().then(({ cpp }) => cpp),
+  csharp: () => clike().then(({ csharp }) => csharp),
+  css: () => cssModes().then(({ css }) => css),
   diff: () => import("@codemirror/legacy-modes/mode/diff").then(({ diff }) => diff),
+  dockerfile: () => import("@codemirror/legacy-modes/mode/dockerfile").then(({ dockerFile }) => dockerFile),
+  fortran: () => import("@codemirror/legacy-modes/mode/fortran").then(({ fortran }) => fortran),
   go: () => import("@codemirror/legacy-modes/mode/go").then(({ go }) => go),
-  html: () => import("@codemirror/legacy-modes/mode/xml").then(({ html }) => html),
-  java: () => import("@codemirror/legacy-modes/mode/clike").then(({ java }) => java),
-  javascript: () =>
-    import("@codemirror/legacy-modes/mode/javascript").then(({ javascript }) => javascript),
-  json: () => import("@codemirror/legacy-modes/mode/javascript").then(({ json }) => json),
-  kotlin: () => import("@codemirror/legacy-modes/mode/clike").then(({ kotlin }) => kotlin),
+  haskell: () => import("@codemirror/legacy-modes/mode/haskell").then(({ haskell }) => haskell),
+  html: () => xmlModes().then(({ html }) => html),
+  java: () => clike().then(({ java }) => java),
+  javascript: () => javascriptModes().then(({ javascript }) => javascript),
+  json: () => javascriptModes().then(({ json }) => json),
+  julia: () => import("@codemirror/legacy-modes/mode/julia").then(({ julia }) => julia),
+  kotlin: () => clike().then(({ kotlin }) => kotlin),
   latex: () => import("@codemirror/legacy-modes/mode/stex").then(({ stex }) => stex),
+  lua: () => import("@codemirror/legacy-modes/mode/lua").then(({ lua }) => lua),
+  mathematica: () => import("@codemirror/legacy-modes/mode/mathematica").then(({ mathematica }) => mathematica),
+  octave: () => import("@codemirror/legacy-modes/mode/octave").then(({ octave }) => octave),
+  perl: () => import("@codemirror/legacy-modes/mode/perl").then(({ perl }) => perl),
+  powershell: () => import("@codemirror/legacy-modes/mode/powershell").then(({ powerShell }) => powerShell),
   python: () => import("@codemirror/legacy-modes/mode/python").then(({ python }) => python),
+  r: () => import("@codemirror/legacy-modes/mode/r").then(({ r }) => r),
   ruby: () => import("@codemirror/legacy-modes/mode/ruby").then(({ ruby }) => ruby),
   rust: () => import("@codemirror/legacy-modes/mode/rust").then(({ rust }) => rust),
+  sas: () => import("@codemirror/legacy-modes/mode/sas").then(({ sas }) => sas),
   sass: () => import("@codemirror/legacy-modes/mode/sass").then(({ sass }) => sass),
+  scala: () => clike().then(({ scala }) => scala),
+  scss: () => cssModes().then(({ sCSS }) => sCSS),
   shell: () => import("@codemirror/legacy-modes/mode/shell").then(({ shell }) => shell),
   sql: () => import("@codemirror/legacy-modes/mode/sql").then(({ standardSQL }) => standardSQL),
+  swift: () => import("@codemirror/legacy-modes/mode/swift").then(({ swift }) => swift),
   toml: () => import("@codemirror/legacy-modes/mode/toml").then(({ toml }) => toml),
-  typescript: () =>
-    import("@codemirror/legacy-modes/mode/javascript").then(({ typescript }) => typescript),
-  xml: () => import("@codemirror/legacy-modes/mode/xml").then(({ xml }) => xml),
+  typescript: () => javascriptModes().then(({ typescript }) => typescript),
+  xml: () => xmlModes().then(({ xml }) => xml),
   yaml: () => import("@codemirror/legacy-modes/mode/yaml").then(({ yaml }) => yaml),
 };
 
 const aliases: Record<string, string> = {
   bash: "shell",
+  "c++": "cpp",
+  cc: "cpp",
   cjs: "javascript",
+  console: "shell",
   cs: "csharp",
+  cxx: "cpp",
+  docker: "dockerfile",
+  f90: "fortran",
+  golang: "go",
   h: "c",
   hpp: "cpp",
+  hs: "haskell",
+  ipython: "python",
+  jl: "julia",
   js: "javascript",
   jsx: "javascript",
+  kt: "kotlin",
+  m: "octave",
+  matlab: "octave",
   mjs: "javascript",
+  mysql: "sql",
+  node: "javascript",
   patch: "diff",
+  pl: "perl",
+  postgres: "sql",
+  postgresql: "sql",
+  ps1: "powershell",
   py: "python",
+  python3: "python",
   rb: "ruby",
   rs: "rust",
-  scss: "sass",
+  rscript: "r",
   sh: "shell",
+  sqlite: "sql",
+  svg: "xml",
   tex: "latex",
   ts: "typescript",
   tsx: "typescript",
+  wolfram: "mathematica",
   yml: "yaml",
   zsh: "shell",
 };
 
+export const HIGHLIGHT_LANGUAGES: readonly string[] = Object.keys(parserLoaders);
+
 const languageCache = new Map<string, Promise<Language | null>>();
+const loadedLanguages = new Map<string, Language>();
+let lezer: typeof import("@lezer/highlight") | null = null;
 const highlightCache = new RenderCache<ReactNode[]>(MAX_CACHED_BLOCKS, MAX_CACHED_BLOCK_CHARS);
 
-function loadLanguage(language: string) {
+export function highlightLanguageName(language: string): string | undefined {
   const normalized = language.toLowerCase();
-  const name = aliases[normalized] ?? normalized;
+  const name = Object.hasOwn(aliases, normalized) ? aliases[normalized] : normalized;
+  return Object.hasOwn(parserLoaders, name) ? name : undefined;
+}
+
+export function loadHighlightLanguage(language: string): Promise<Language | null> {
+  const name = highlightLanguageName(language);
+  if (!name) return Promise.resolve(null);
   const cached = languageCache.get(name);
   if (cached) return cached;
-  const parserLoader = parserLoaders[name];
-  if (!parserLoader) return Promise.resolve(null);
   const pending = Promise.all([
     import("@codemirror/language"),
     import("@lezer/highlight"),
-    parserLoader(),
-  ]).then(([{ StreamLanguage }, lezerHighlight, parser]) =>
-    StreamLanguage.define({
-      ...parser,
-      tokenTable: { ...legacyTokenTags(lezerHighlight.tags), ...parser.tokenTable },
-    }),
-  );
+    parserLoaders[name](),
+  ])
+    .then(([{ StreamLanguage }, lezerHighlight, parser]) => {
+      const language = StreamLanguage.define({
+        ...parser,
+        tokenTable: { ...legacyTokenTags(lezerHighlight.tags), ...parser.tokenTable },
+      });
+      lezer = lezerHighlight;
+      loadedLanguages.set(name, language);
+      return language;
+    })
+    .catch(() => null);
   languageCache.set(name, pending);
   return pending;
 }
 
-function legacyTokenTags(t: typeof tags) {
+export function legacyTokenTags(t: typeof tags) {
   return {
     attribute: t.attributeName,
     builtin: t.standard(t.variableName),
@@ -100,56 +153,50 @@ function legacyTokenTags(t: typeof tags) {
   };
 }
 
-const tokenColors: Record<string, string> = {
-  "tok-atom": "text-[var(--cm-number)]",
-  "tok-bool": "text-[var(--cm-number)]",
-  "tok-bracket": "text-[var(--cm-bracket)]",
-  "tok-comment": "text-[var(--cm-comment)] italic",
-  "tok-heading": "text-[var(--cm-meta)]",
-  "tok-keyword": "text-[var(--cm-keyword)]",
-  "tok-labelName": "text-[var(--cm-meta)]",
-  "tok-link": "text-[var(--cm-string)] underline",
-  "tok-meta": "text-[var(--cm-meta)]",
-  "tok-number": "text-[var(--cm-number)]",
-  "tok-operator": "text-[var(--cm-operator)]",
-  "tok-propertyName": "text-[var(--cm-variable)]",
-  "tok-string": "text-[var(--cm-string)]",
-  "tok-string2": "text-[var(--cm-string)]",
-  "tok-tagName": "text-[var(--cm-tag)]",
-  "tok-typeName": "text-[var(--cm-tag)]",
-  "tok-variableName": "text-[var(--cm-variable)]",
-};
+export interface TokenSpan {
+  readonly from: number;
+  readonly to: number;
+  readonly classes: string;
+}
 
-function styledTokenClasses(classes: string) {
-  return cn(
-    classes,
-    classes.split(" ").map((className) => tokenColors[className]),
+export function tokenSpans(language: string, text: string): TokenSpan[] | null {
+  const name = highlightLanguageName(language);
+  const loaded = name ? loadedLanguages.get(name) : undefined;
+  if (!loaded || !lezer) return null;
+  if (text.length > MAX_HIGHLIGHT_LENGTH) return [];
+  const spans: TokenSpan[] = [];
+  let position = 0;
+  lezer.highlightCode(
+    text,
+    loaded.parser.parse(text),
+    lezer.classHighlighter,
+    (piece, classes) => {
+      if (classes) spans.push({ from: position, to: position + piece.length, classes });
+      position += piece.length;
+    },
+    () => {
+      position += 1;
+    },
   );
+  return spans;
 }
 
 async function highlight(source: string, languageName: string) {
-  const language = await loadLanguage(languageName);
-  if (!language) return null;
-  const { classHighlighter, highlightCode } = await import("@lezer/highlight");
+  await loadHighlightLanguage(languageName);
+  const spans = tokenSpans(languageName, source);
+  if (!spans) return null;
   const nodes: ReactNode[] = [];
-  let key = 0;
-  highlightCode(
-    source,
-    language.parser.parse(source),
-    classHighlighter,
-    (text, classes) => {
-      nodes.push(
-        classes ? (
-          <span key={key++} className={styledTokenClasses(classes)}>
-            {text}
-          </span>
-        ) : (
-          text
-        ),
-      );
-    },
-    () => nodes.push("\n"),
-  );
+  let at = 0;
+  for (const span of spans) {
+    if (span.from > at) nodes.push(source.slice(at, span.from));
+    nodes.push(
+      <span key={span.from} className={span.classes}>
+        {source.slice(span.from, span.to)}
+      </span>,
+    );
+    at = span.to;
+  }
+  if (at < source.length) nodes.push(source.slice(at));
   return nodes;
 }
 
@@ -205,7 +252,7 @@ export const HighlightedCode = memo(function HighlightedCode({
     cachedNodes ?? (highlighted?.key === highlightKey ? highlighted.nodes : null);
 
   return (
-    <code className={cn("font-mono", className)} data-language={language}>
+    <code className={cn("code-tokens font-mono", className)} data-language={language}>
       {nodes ? <span>{nodes}</span> : source}
     </code>
   );

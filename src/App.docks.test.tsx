@@ -268,6 +268,7 @@ vi.mock("@/components/layout/OpenFolderGuards", () => ({
 }));
 vi.mock("@/components/layout/SettingsModal", () => ({ SettingsModal: () => null }));
 vi.mock("@/components/diagram/DiagramComposer", () => ({ DiagramComposer: () => null }));
+vi.mock("@/components/notes/NotesHost", () => ({ NotesHost: () => null }));
 vi.mock("@/components/ai/CopilotOverlay", () => ({ CopilotOverlay: () => null }));
 vi.mock("@/components/editor/WordCountModal", () => ({ WordCountModal: () => null }));
 vi.mock("@/components/editor/VersioningModal", () => ({
@@ -485,7 +486,7 @@ describe("project dock layout", () => {
     const { createRoot } = await import("react-dom/client");
     const { default: App } = await import("./App");
     const { useSettingsStore } = await import("@/store/settings");
-    useSettingsStore.setState({ appFontSize: 20 });
+    useSettingsStore.setState({ appFontSize: 20, showTree: true, openInTree: true });
     const host = document.getElementById("root");
     if (!host) throw new Error("test root is unavailable");
     root = createRoot(host);
@@ -531,7 +532,7 @@ describe("project dock layout", () => {
     expect(panelHandleMocks.resize).not.toHaveBeenCalledWith("sidebar", expect.anything());
   });
 
-  it("reopens the terminal when its panel is dragged back up after collapsing", async () => {
+  it("closes the terminal and removes its panel when the panel is dragged shut", async () => {
     const { act } = await import("react");
     const { createRoot } = await import("react-dom/client");
     const { default: App } = await import("./App");
@@ -550,17 +551,12 @@ describe("project dock layout", () => {
 
     const terminal = panelHandleMocks.callbacks.get("terminal");
     expect(terminal?.collapse).toBeTypeOf("function");
-    expect(terminal?.expand).toBeTypeOf("function");
 
     await act(async () => {
       terminal?.collapse?.();
     });
     expect(useSettingsStore.getState().terminalOpen).toBe(false);
-
-    await act(async () => {
-      terminal?.expand?.();
-    });
-    expect(useSettingsStore.getState().terminalOpen).toBe(true);
+    expect(document.getElementById("v-terminal")).toBeNull();
   });
 
   it("draws the terminal divider as a 1px rule that only tints with opaque colour", async () => {
@@ -599,11 +595,7 @@ describe("project dock layout", () => {
     await act(async () => {
       useSettingsStore.setState({ terminalOpen: false });
     });
-    const closed = document.getElementById("v-terminal");
-    expect(Array.from(closed?.classList ?? [])).toEqual(
-      expect.arrayContaining(["invisible", "h-0", "border-t-0"]),
-    );
-    expect(closed?.classList.contains("border-t")).toBe(false);
+    expect(document.getElementById("v-terminal")).toBeNull();
   });
 
   it("toggles the terminal dock from its registered keyboard shortcut", async () => {
@@ -667,6 +659,78 @@ describe("project dock layout", () => {
     expect(events.map((event) => event.defaultPrevented)).toEqual([false, false, false]);
     xterm.remove();
   });
+
+  it.each(["notes", "diagram-composer"])(
+    "leaves the hidden project alone while %s covers it",
+    async (page) => {
+      const { act } = await import("react");
+      const { createRoot } = await import("react-dom/client");
+      const { default: App } = await import("./App");
+      const { useSettingsStore } = await import("@/store/settings");
+      const { forwardFromCursor } = await import("@/features/synctex");
+      const host = document.getElementById("root");
+      if (!host) throw new Error("test root is unavailable");
+      appState.tauri = true;
+      appState.home.page = page;
+      root = createRoot(host);
+      await act(async () => {
+        root?.render(<App />);
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+      const card = document.createElement("button");
+      const title = document.createElement("input");
+      document.body.append(card, title);
+      card.focus();
+      const before = useSettingsStore.getState();
+      const keys = [
+        { key: "z", ctrlKey: true },
+        { key: "y", ctrlKey: true },
+        { key: "Enter", ctrlKey: true },
+        { key: "J", ctrlKey: true, shiftKey: true },
+        { key: "b", ctrlKey: true },
+        { key: "p", ctrlKey: true, altKey: true },
+        { key: "`", ctrlKey: true },
+        { key: "~", ctrlKey: true, shiftKey: true },
+      ].map((init) => new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init }));
+      await act(async () => {
+        for (const event of keys) card.dispatchEvent(event);
+        appState.menuListeners.get("menu://undo")?.();
+        appState.menuListeners.get("menu://redo")?.();
+      });
+
+      expect(keys.map((event) => event.defaultPrevented)).toEqual(keys.map(() => false));
+      expect(editorControllerMocks.editorUndo).not.toHaveBeenCalled();
+      expect(editorControllerMocks.editorRedo).not.toHaveBeenCalled();
+      expect(editorControllerMocks.editorVimUndo).not.toHaveBeenCalled();
+      expect(appState.compile.recompile).not.toHaveBeenCalled();
+      expect(forwardFromCursor).not.toHaveBeenCalled();
+      expect(useSettingsStore.getState().showTree).toBe(before.showTree);
+      expect(useSettingsStore.getState().viewMode).toBe(before.viewMode);
+      expect(useSettingsStore.getState().terminalOpen).toBe(false);
+
+      const execCommand = vi.fn(() => true);
+      Object.defineProperty(document, "execCommand", { configurable: true, value: execCommand });
+      title.focus();
+      await act(async () => {
+        appState.menuListeners.get("menu://undo")?.();
+        appState.menuListeners.get("menu://redo")?.();
+      });
+      expect(execCommand.mock.calls).toEqual([["undo"], ["redo"]]);
+      expect(editorControllerMocks.editorUndo).not.toHaveBeenCalled();
+
+      appState.home.page = "library";
+      card.focus();
+      await act(async () => {
+        card.dispatchEvent(new window.KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "z", ctrlKey: true }));
+      });
+      expect(editorControllerMocks.editorUndo).toHaveBeenCalledOnce();
+      card.remove();
+      title.remove();
+      delete (document as unknown as Record<string, unknown>).execCommand;
+    },
+  );
 
   it("still opens the terminal tab shortcuts on macOS", async () => {
     const { act } = await import("react");
@@ -949,6 +1013,7 @@ describe("project dock layout", () => {
     const { createRoot } = await import("react-dom/client");
     const { default: App } = await import("./App");
     const { useSettingsStore } = await import("@/store/settings");
+    const { setWysiwygEditor } = await import("@/components/editor/wysiwyg/controller");
     const host = document.getElementById("root");
     if (!host) throw new Error("test root is unavailable");
     appState.tauri = true;
@@ -966,6 +1031,7 @@ describe("project dock layout", () => {
     visual.tabIndex = 0;
     document.body.append(source, visual);
     editorControllerMocks.getEditorView.mockReturnValue({ contentDOM: source });
+    setWysiwygEditor({ isDestroyed: false, view: { dom: visual } } as unknown as Parameters<typeof setWysiwygEditor>[0]);
     visual.focus();
 
     const undo = appState.menuListeners.get("menu://undo");
@@ -976,6 +1042,7 @@ describe("project dock layout", () => {
       undo?.();
       redo?.();
     });
+    setWysiwygEditor(null);
 
     expect(editorControllerMocks.editorVimUndo).not.toHaveBeenCalled();
     expect(editorControllerMocks.editorVimRedo).not.toHaveBeenCalled();

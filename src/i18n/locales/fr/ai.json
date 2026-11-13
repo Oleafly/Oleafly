@@ -44,14 +44,16 @@
       "externalTool": "Confirmer l'action de l'outil externe",
       "internet": "Confirmer l'accès à internet",
       "edit": "Confirmer la modification par l'IA",
-      "researchTask": "Confirmer la tâche de recherche"
+      "researchTask": "Confirmer la tâche de recherche",
+      "note": "Confirmer la nouvelle note"
     },
     "headline": {
       "command": "L'assistant veut exécuter cette commande",
       "externalTool": "L'assistant veut utiliser un outil externe",
       "internet": "L'assistant veut accéder à internet",
       "edit": "L'assistant veut modifier vos fichiers",
-      "researchTask": "L'assistant veut créer une tâche de recherche"
+      "researchTask": "L'assistant veut créer une tâche de recherche",
+      "note": "L'assistant veut créer une note"
     },
     "mcpNote": "Cela envoie les arguments ci-dessous au serveur MCP configuré.",
     "line": "ligne {{line}}",
@@ -86,10 +88,18 @@
       "timeBudget": "Budget de temps",
       "timeBudgetDefault": "Par défaut",
       "minutes_one": "{{count}} minute",
+      "minutes_many": "{{count}} minutes",
       "minutes_other": "{{count}} minutes",
       "planFirst": "Planifier d'abord",
-      "startNow": "Démarrer maintenant",
-      "minutes_many": "{{count}} minutes"
+      "startNow": "Démarrer maintenant"
+    },
+    "noteDraft": {
+      "title": "Titre",
+      "project": "Projet lié",
+      "tags": "Tags",
+      "text": "Texte",
+      "empty": "Aucun texte",
+      "more": "La note continue au-delà de ce point."
     }
   },
   "attachments": {
@@ -1124,5 +1134,19 @@
     "replaceConfirm": "Remplacer la réponse",
     "forked": "Nouvelle discussion démarrée à partir du message modifié.",
     "failed": "Impossible de renvoyer le message."
+  },
+  "noteScope": {
+    "notesOnly": "Uniquement dans l'assistant d'une note.",
+    "tools": {
+      "readNote": "Lire la note ouverte, y compris les suggestions en attente de relecture.",
+      "proposeNoteEdits": "Suggérer des modifications de la note ouverte, que vous acceptez ou refusez.",
+      "searchNotes": "Rechercher dans toutes vos notes.",
+      "listKnowledgeNotes": "Lister vos notes, par tag ou par projet.",
+      "readNoteById": "Lire une autre note.",
+      "createNote": "Créer une note.",
+      "relatedProjectFiles": "Lister les fichiers du projet lié à la note.",
+      "readRelatedProjectFile": "Lire un fichier du projet lié à la note.",
+      "searchRelatedProject": "Rechercher dans le projet lié à la note."
+    }
   }
 }

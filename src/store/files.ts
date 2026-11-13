@@ -54,9 +54,13 @@ import { scanImportCompatibility } from "@oleafly/latex";
 import { cancelProofreading, releaseIdleProofreadingWorker } from "@/lib/proofreading/client";
 import { effectiveDictionaryLocale } from "@/lib/proofreading/dictionary-catalog";
 import { useDiffStore } from "@/store/diff";
+import { clearActiveNoteTab } from "@/store/note-tabs";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { dismissEngineHint, engineHintDismissed } from "@/store/engine-picker";
 import { useSettingsStore } from "@/store/settings";
+import { useHomeViewStore } from "@/store/home-view";
+import { useNotesViewStore } from "@/store/notes-view";
+import { opensInNotes } from "@/lib/library-projects";
 import { useMcpApprovalStore } from "@/store/mcp-approvals";
 import { nextTabSeq } from "@/store/tab-order";
 import { recordProjectStateRevision } from "@/lib/project-state-revision";
@@ -76,6 +80,7 @@ import {
 } from "@/components/editor/wysiwyg/controller";
 import { randomFraction } from "@/lib/random";
 import { collabHandBack } from "@/lib/collab-live-bridge";
+import { flushOpenNotes } from "@/lib/open-note-editors";
 import { projectLeaveAllowed } from "@/lib/project-leave-guards";
 import { diskHash } from "@/lib/disk-hash";
 import { createEmitter } from "@/lib/emitter";
@@ -207,7 +212,7 @@ function isMutationConflict(error: unknown): boolean {
   return String(error).includes(MUTATION_CONFLICT);
 }
 
-function isDiskConflict(error: unknown): boolean {
+export function isDiskConflict(error: unknown): boolean {
   return String(error).includes(DISK_CONFLICT);
 }
 
@@ -478,7 +483,7 @@ interface FilesStore {
     projectId: string,
     path: string,
     content: string,
-    options?: { crlf?: boolean; base?: string },
+    options?: { crlf?: boolean; base?: string; closedProject?: boolean; expectedHash?: string },
   ) => Promise<void>;
   applyExternalWrite: (
     projectId: string,
@@ -1655,6 +1660,29 @@ function recordFailedSave(projectId: string, path: string, error: unknown, get: 
   if (isMutationConflict(error)) scheduleAutosave(get);
 }
 
+function writeDiskText(projectId: string, path: string, bytes: string, generation: number, expectedHash: string | undefined) {
+  if (expectedHash === undefined) return writeFileContent(projectId, path, bytes, generation);
+  return writeFileContent(projectId, path, bytes, generation, expectedHash);
+}
+
+function markChangedFileDirty(projectId: string, path: string, content: string, set: FilesSet, get: FilesGet): void {
+  set((s) => {
+    if (s.projectId !== projectId) return {};
+    const latest = s.files[path];
+    if (!latest || latest.dirty || latest.content === content) return {};
+    return { files: { ...s.files, [path]: { ...latest, dirty: true } } };
+  });
+  if (get().files[path]?.dirty && (!pendingSaves.has(path) || autosaveTimer === null)) {
+    pendingSaves.add(path);
+    scheduleAutosave(get);
+  }
+}
+
+function projectFlushFailures(error: unknown, label: string): SaveFailure[] {
+  if (error instanceof SaveFlushError) return error.failures;
+  return [{ path: label, reason: describeFailure(error) }];
+}
+
 function rememberAdoptedSnapshots(
   projectId: string,
   adopted: readonly string[],
@@ -1766,8 +1794,14 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     set({ projects, projectsLoaded: true });
   },
 
-  openProject: (id, shouldContinue = () => true) =>
-    enqueueProjectTransition(() => openProjectTransition(id, shouldContinue, set, get)),
+  openProject: (id, shouldContinue = () => true) => {
+    if (opensInNotes(get().projects, id, useSettingsStore.getState().notes)) {
+      useNotesViewStore.getState().request(id);
+      useHomeViewStore.getState().goTo("notes");
+      return Promise.resolve();
+    }
+    return enqueueProjectTransition(() => openProjectTransition(id, shouldContinue, set, get));
+  },
 
   closeProject: () => enqueueProjectTransition(async () => {
     const projectId = get().projectId;
@@ -1840,11 +1874,23 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     }
   },
 
-  flushForQuit: () =>
-    enqueueProjectTransition(async () => {
+  flushForQuit: async () => {
+    const notes = flushOpenNotes();
+    const project = await enqueueProjectTransition(async () => {
       await collabHandBack(get().projectId);
       await get().saveAllDirty();
-    }),
+    }).then(
+      () => null,
+      (error: unknown) => ({ error }),
+    );
+    const noteFailures = await notes;
+    if (noteFailures.length === 0) {
+      if (project) throw project.error;
+      return;
+    }
+    const projectFailures = project ? projectFlushFailures(project.error, get().projectName || get().projectId || "") : [];
+    throw new SaveFlushError([...projectFailures, ...noteFailures]);
+  },
 
   createProject: async (name) => {
     const id = await apiCreateProject(name);
@@ -1987,6 +2033,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
       return;
     }
     useDiffStore.getState().clearActiveDiff();
+    clearActiveNoteTab();
     set((s) => {
       const isNew = !s.openTabs.includes(path);
       return {
@@ -2001,6 +2048,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
 
   setActive: (path) => {
     useDiffStore.getState().clearActiveDiff();
+    clearActiveNoteTab();
     set({ activePath: path });
   },
 
@@ -2409,20 +2457,16 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
     const baselineRevision = fileReloadRevision;
     const adoptable = (file: FileState | undefined) =>
       file !== undefined && !editedSinceLoad(file) && fileReloadRevision === baselineRevision;
-    const expectedGeneration = await get().prepareExternalMutation(projectId);
+    const expectedGeneration =
+      options?.closedProject && get().projectId !== projectId
+        ? await refreshMutationGeneration(projectId)
+        : await get().prepareExternalMutation(projectId);
     const canonicalContent = normalizeTextContent(content);
     const crlf = options?.crlf ?? diskSnapshots.get(writeKey(projectId, path))?.crlf ?? false;
     const bytes = crlf ? crlfBytes(canonicalContent) : canonicalContent;
     const base = options?.base === undefined ? undefined : normalizeTextContent(options.base);
     const shared = await writeSharedText(projectId, path, canonicalContent, base);
-    const result = shared
-      ? null
-      : await writeFileContent(
-          projectId,
-          path,
-          bytes,
-          expectedGeneration,
-        );
+    const result = shared ? null : await writeDiskText(projectId, path, bytes, expectedGeneration, options?.expectedHash);
     rememberDiskSnapshot(projectId, path, { hash: diskHash(bytes), crlf, length: bytes.length });
     settleDiskConflict(writeKey(projectId, path));
     if (result && Number.isSafeInteger(result.generation)) {
@@ -2444,16 +2488,7 @@ export const useFilesStore = create<FilesStore>((set, get) => ({
         };
       });
     } else if (current !== undefined && current.content !== canonicalContent) {
-      set((s) => {
-        if (s.projectId !== projectId) return {};
-        const latest = s.files[path];
-        if (!latest || latest.dirty || latest.content === canonicalContent) return {};
-        return { files: { ...s.files, [path]: { ...latest, dirty: true } } };
-      });
-      if (get().files[path]?.dirty && (!pendingSaves.has(path) || autosaveTimer === null)) {
-        pendingSaves.add(path);
-        scheduleAutosave(get);
-      }
+      markChangedFileDirty(projectId, path, canonicalContent, set, get);
     }
     await get().refreshTree({ keepUnchanged: true });
     notifyProjectFilesChanged(projectId, [path]);

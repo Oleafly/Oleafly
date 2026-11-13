@@ -1,4 +1,5 @@
 import { i18n } from "@/i18n";
+import { eachInOrder } from "@/lib/each-in-order";
 import { formatList } from "@/lib/intl";
 import type { EditorView } from "@codemirror/view";
 import { editBackgroundDocument, type BackgroundDocumentChange } from "@oleafly/editor";
@@ -7,7 +8,7 @@ import { useFilesStore } from "@/store/files";
 import { sharedBaseOption, sharedDocumentLive } from "@/lib/shared-document-writes";
 import { projectFolderIsReadOnly, readOnlyFolderMessage } from "@/store/folder-access";
 import { isReadOnlyProjectPath } from "@/lib/project-paths";
-import { useReferencesStore } from "@/store/references";
+import { type ReferenceLocation, type ReferenceQueryMode, useReferencesStore } from "@/store/references";
 import { useRenameStore } from "@/store/rename";
 import { useSettingsStore } from "@/store/settings";
 import {
@@ -52,7 +53,6 @@ import {
 import { JsonRpcRemoteError } from "@/lib/language-service/json-rpc";
 import { TextPositionIndex } from "@/lib/language-service/position";
 import { openProjectLocation } from "@/lib/open-location";
-import type { ReferenceLocation, ReferenceQueryMode } from "@/store/references";
 
 export const NAVIGATION_LOOKUP_TOAST_KEY = "navigation:lookup";
 
@@ -302,7 +302,7 @@ function showLocationQuery(
 ): void {
   const identity = useIndexStore.getState().intelligenceState.identity;
   const projectId = useFilesStore.getState().projectId;
-  if (!identity || identity.projectId !== projectId) {
+  if (identity?.projectId !== projectId) {
     openResolvedLocation(locations[0]);
     return;
   }
@@ -701,10 +701,6 @@ interface RenameWriteContext {
   readonly baseFor: (file: string) => string | undefined;
 }
 
-function inSequence<T>(items: readonly T[], task: (item: T) => Promise<void>): Promise<void> {
-  return items.reduce<Promise<void>>((chain, item) => chain.then(() => task(item)), Promise.resolve());
-}
-
 function writeRenameFile(
   context: RenameWriteContext,
   file: string,
@@ -728,7 +724,7 @@ async function writeRenameEdits(
 ): Promise<RenameWriteResult> {
   const context: RenameWriteContext = { view, files: useFilesStore.getState(), baseFor };
   const result: RenameWriteResult = { editedFiles: 0, editedCount: 0, unwritten: [] };
-  await inSequence([...groupEditsByFile(edits)], async ([file, fileEdits]) => {
+  await eachInOrder([...groupEditsByFile(edits)], async ([file, fileEdits]) => {
     const outcome = await writeRenameFile(context, file, fileEdits);
     if (outcome === "failed") result.unwritten.push(file);
     else if (outcome === "edited") {
@@ -837,7 +833,7 @@ async function moveRenamedFiles(
   unwritten: string[],
 ): Promise<number> {
   let moved = 0;
-  await inSequence(moves, async (move) => {
+  await eachInOrder(moves, async (move) => {
     try {
       await useFilesStore.getState().renameEntry(move.from, move.to);
       moved++;

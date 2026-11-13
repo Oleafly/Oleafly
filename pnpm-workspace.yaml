@@ -74,5 +74,7 @@ overrides:
 
 patchedDependencies:
   '@replit/codemirror-emacs@6.1.0': patches/@replit__codemirror-emacs@6.1.0.patch
+  '@terrastruct/d2@0.1.33': patches/@terrastruct__d2@0.1.33.patch
   emscripten-wasm-loader@3.0.3: patches/emscripten-wasm-loader@3.0.3.patch
   hunspell-asm@4.0.2: patches/hunspell-asm@4.0.2.patch
+  tiptap-markdown@0.9.0: patches/tiptap-markdown@0.9.0.patch

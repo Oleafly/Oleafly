@@ -230,7 +230,11 @@
     "history_unavailable": "Historie tohoto projektu ještě není v tomto počítači. Zkuste to znovu, až se projekt synchronizuje.",
     "account_storage_full": "Účet vlastníka projektu nemá na tomto serveru volné úložiště. Odeberte některé soubory, abyste uvolnili místo, nebo požádejte administrátora serveru o více místa.",
     "too_many_projects": "Už máte tolik sdílených projektů, kolik tento server dovoluje. Než začnete sdílet další, ukončete sdílení jednoho z nich.",
-    "too_many_uploads": "Za poslední hodinu jste nahráli příliš mnoho souborů. Zkuste to později."
+    "too_many_uploads": "Za poslední hodinu jste nahráli příliš mnoho souborů. Zkuste to později.",
+    "public_notes_off": "Tento server nepovoluje veřejné odkazy na poznámky. Administrátor je může zapnout v nastavení serveru.",
+    "too_many_pages": "Máte tolik veřejných stránek, kolik tento server dovoluje. Zrušte publikování jedné z nich a zkuste to znovu.",
+    "page_too_large": "Tato poznámka je na publikování příliš velká. Odeberte některé obrázky a zkuste to znovu.",
+    "page_taken_down": "Administrátor tuto stránku zablokoval, takže poznámku nelze znovu publikovat, dokud ji neodblokuje."
   },
   "roles": {
     "admin": "Administrátor",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "Přihlášení e-mailem",
         "description": "Lidé se mohou přihlásit odkazem zaslaným na jejich e-mailovou adresu. Server k tomu potřebuje nastavení e-mailu. O tom, kdo se dostane dovnitř, dál rozhodují vaše pravidla přístupu."
+      },
+      "publicNotesAllowed": {
+        "label": "Povolit veřejné odkazy na poznámky",
+        "description": "Členové mohou publikovat kopii poznámky jen pro čtení na odkazu, který může kdokoli otevřít bez přihlášení."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "Odmítnutí pozvánky pro hosta",
         "guestInvitationRevoked": "Stažení pozvánky pro hosta",
         "guestAdmissionEnded": "Ukončení přístupu hosta k serveru",
-        "unknown": "Jiná událost serveru"
+        "unknown": "Jiná událost serveru",
+        "notePublished": "Publikování poznámky na veřejném odkazu",
+        "noteUnpublished": "Zrušení publikování poznámky",
+        "noteTakenDown": "Zablokování publikované poznámky",
+        "noteRestored": "Odblokování publikované poznámky"
       },
       "details": {
         "project": "Projekt: {{title}}",
@@ -455,7 +467,8 @@
         "device": "Zařízení: {{name}}",
         "byAdmin": "Z konzole pro správu",
         "settingOn": "{{setting}}: zapnuto",
-        "settingOff": "{{setting}}: vypnuto"
+        "settingOff": "{{setting}}: vypnuto",
+        "note": "Poznámka: {{title}}"
       }
     },
     "email": {
@@ -509,6 +522,7 @@
     "copyAndShare": "Zkopírovat do Oleafly a sdílet",
     "title": "Sdílet {{name}}",
     "description": "Pracujte na tomto projektu s dalšími lidmi přes server pro spolupráci.",
+    "noteDescription": "Pište tuto poznámku s dalšími lidmi přes server pro spolupráci.",
     "loading": "Načítání…",
     "linked": "Tento projekt je složka mimo Oleafly. Oleafly ho zkopíruje do vaší knihovny a bude sdílet tuto kopii. Původní složka zůstane beze změny.",
     "editCopy": "Toto je sdílená kopie. Od teď upravujte ji, ne původní složku.",
@@ -526,12 +540,15 @@
     "tooLarge": "Tyto soubory překračují limit serveru {{size}} MB. Před sdílením je zmenšete nebo odeberte.",
     "renamed": "Některé názvy nefungují na každém počítači. Ostatní dostanou tyto soubory pod mírně odlišným názvem.",
     "excluded": "Nesdílí se: ostatní výstup sestavení, nastavení Oleafly a historie Gitu. Nejnovější zkompilované PDF se sdílí, aby si ho spoluautoři mohli přečíst v prohlížeči.",
+    "noteExcluded": "Nesdílí se: nastavení Oleafly a historie Gitu.",
     "start": "Sdílet",
     "preparing": "Připravuje se projekt…",
     "uploading": "Nahrávání obrázků a dalších souborů: {{done}} z {{total}}",
     "saving": "Projekt se ukládá na server…",
     "failed": "Sdílení se nedokončilo, takže se nic nesdílelo.",
-    "trustAgain": "Kdokoli, koho do projektu přidáte, může měnit jeho soubory, a proto vás Oleafly v tomto počítači znovu požádá o důvěru, než pro něj spustí agenty, příkazy terminálu nebo shell escape."
+    "trustAgain": "Kdokoli, koho do projektu přidáte, může měnit jeho soubory, a proto vás Oleafly v tomto počítači znovu požádá o důvěru, než pro něj spustí agenty, příkazy terminálu nebo shell escape.",
+    "projectNotesShared": "Poznámky projektu se sdílejí se všemi, kdo na tomto projektu pracují. Osobní poznámky zůstávají soukromé.",
+    "personalNotesPrivate": "Osobní poznámky zůstávají soukromé. Sdílejí se jen poznámky ve složce s poznámkami projektu."
   },
   "manage": {
     "sharedOn": "Sdíleno na serveru {{server}}",
@@ -789,7 +806,8 @@
       "settings": "Nastavení serveru",
       "email": "E-mail",
       "log": "Protokol zabezpečení",
-      "checks": "Kontroly připojení"
+      "checks": "Kontroly připojení",
+      "pages": "Publikované poznámky"
     },
     "health": {
       "label": "Stav serveru: {{status}}",
@@ -956,6 +974,30 @@
     },
     "checks": {
       "description": "Zkontrolujte připojení z tohoto počítače k serveru."
+    },
+    "pages": {
+      "description": "Stránky jen pro čtení, které lidé vytvořili ze svých poznámek. Kdokoli s odkazem na stránku si ji může přečíst.",
+      "loading": "Načítají se publikované poznámky…",
+      "empty": "Na tomto serveru zatím nikdo žádnou poznámku nepublikoval.",
+      "limit": "Zobrazeny jsou jen nejnovější stránky: {{shown}}.",
+      "columns": {
+        "title": "Poznámka",
+        "author": "Autor",
+        "updated": "Publikováno",
+        "actions": "Akce"
+      },
+      "noAuthor": "Odebraný účet",
+      "takenDown": "Zablokováno",
+      "openNamed": "Otevřít {{title}}",
+      "takeDown": "Zablokovat",
+      "takeDownNamed": "Zablokovat {{title}}",
+      "restore": "Odblokovat",
+      "restoreNamed": "Odblokovat {{title}}",
+      "takeDownConfirm": {
+        "title": "Zablokovat {{title}}?",
+        "description": "Veřejný odkaz přestane fungovat, dokud stránku neodblokujete. Autor si poznámku ponechá, ale mezitím ji nemůže znovu publikovat.",
+        "confirm": "Zablokovat"
+      }
     }
   },
   "links": {
@@ -1229,5 +1271,41 @@
     "broughtIn": "Vaše změny z {{name}} jsou teď v tomto projektu.",
     "retry": "Zkusit znovu",
     "dismiss": "Zavřít"
+  },
+  "publish": {
+    "tabs": {
+      "people": "Lidé",
+      "publish": "Publikovat"
+    },
+    "intro": "Publikováním se kopie této poznámky jen pro čtení zveřejní na veřejném odkazu. Kdokoli s odkazem si ji může přečíst bez přihlášení.",
+    "contents": "Obrázky, grafy, diagramy, matematika, Typst a molekuly se zahrnou. Bloky HTML, React, CSV, sekvencí a poznámkových bloků se vynechají.",
+    "checking": "Hledá se veřejná stránka…",
+    "loadFailed": "Oleafly nemohl zkontrolovat veřejnou stránku této poznámky.",
+    "notAllowed": "Server {{server}} nepovoluje veřejné odkazy na poznámky. Administrátor je může zapnout v nastavení serveru.",
+    "ownerOnly": "Publikovat ji může jen vlastník poznámky.",
+    "linkLabel": "Veřejný odkaz",
+    "open": "Otevřít",
+    "publishedAt": "Naposledy publikováno {{date}}",
+    "stale": "Od posledního publikování jste tuto poznámku změnili. Stránku aktualizujete opětovným publikováním.",
+    "publish": "Publikovat",
+    "republish": "Publikovat znovu",
+    "unpublish": "Zrušit publikování",
+    "failed": "Publikování se nedokončilo.",
+    "unpublishConfirm": {
+      "title": "Zrušit publikování poznámky {{name}}?",
+      "description": "Veřejný odkaz okamžitě přestane fungovat. Kdo si uložil kopii stránky, tomu zůstane.",
+      "confirm": "Zrušit publikování"
+    },
+    "list": {
+      "title": "Publikované poznámky",
+      "description": "Stránky jen pro čtení z vašich poznámek na tomto serveru. Kdokoli s odkazem si je může přečíst.",
+      "loadFailed": "Oleafly nemohl načíst vaše publikované poznámky.",
+      "empty": "Zatím jste tu žádné poznámky nepublikovali.",
+      "openNamed": "Otevřít {{name}}",
+      "unpublishNamed": "Zrušit publikování {{name}}",
+      "updated": "Publikováno {{date}}"
+    },
+    "takenDown": "Administrátor tuto stránku zablokoval. Čtenáři ji nemohou otevřít a vy ji nemůžete znovu publikovat, dokud ji neodblokuje. Publikování ale zrušit můžete.",
+    "tooOld": "Server {{server}} je na veřejné odkazy na poznámky příliš starý. Jeho administrátor musí aktualizovat Oleafly Server."
   }
 }

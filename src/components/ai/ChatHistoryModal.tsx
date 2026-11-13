@@ -193,7 +193,7 @@ export function ChatHistoryModal({
       </div>
 
       <div className="shrink-0 px-4 pb-2">
-        <div className="flex items-center gap-2 rounded-md border bg-background px-2 transition-colors focus-within:border-ring">
+        <div className="flex items-center gap-2 rounded-md border bg-background px-2 transition-colors">
           <Search className="size-3.5 shrink-0 text-muted-foreground" />
           <input
             aria-label={t(($) => $.ai.history.searchLabel)}

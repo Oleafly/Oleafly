@@ -1,0 +1,830 @@
+.note-diff-delete {
+  border-radius: 2px;
+  background: color-mix(in oklch, var(--destructive) 18%, transparent);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklch, var(--destructive) 70%, transparent);
+}
+.note-diff-delete.note-diff-active {
+  background: var(--diff-delete-strong);
+}
+.note-diff-insert {
+  border-radius: 2px;
+  background: color-mix(in oklch, oklch(0.72 0.19 149) 20%, transparent);
+}
+.note-diff-insert.note-diff-active {
+  background: var(--diff-insert-strong);
+}
+.note-diff-delete-block {
+  border-radius: var(--radius-md);
+  background: color-mix(in oklch, var(--destructive) 12%, transparent);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklch, var(--destructive) 70%, transparent);
+}
+.note-diff-delete-block.note-diff-active {
+  background: var(--diff-delete);
+}
+.note-diff-block {
+  margin-block: 0.5rem;
+  border-radius: var(--radius-md);
+  padding: 0.125rem 0.5rem;
+  background: color-mix(in oklch, oklch(0.72 0.19 149) 14%, transparent);
+}
+.note-diff-block.note-diff-active {
+  background: var(--diff-insert);
+}
+.note-code {
+  margin-block: 0.75rem;
+}
+.note-drawn > pre {
+  display: none;
+}
+.note-drawn-source > pre,
+.note-drawn-editing > pre {
+  display: block;
+}
+.note-drawn-preview {
+  display: flex;
+  justify-content: center;
+  min-height: 3rem;
+}
+.note-drawn-preview svg {
+  max-width: 100%;
+  height: auto;
+}
+.note-drawn[data-block="notebook"] .note-drawn-preview {
+  display: block;
+  user-select: text;
+}
+.note-notebook [data-notebook-cell] p {
+  margin-block: 0 0.5rem;
+}
+.note-chart-grid {
+  stroke: var(--border);
+  stroke-dasharray: 1 1;
+}
+.note-chart-base {
+  stroke: var(--border);
+}
+.note-chart-label {
+  fill: var(--muted-foreground);
+  font-size: 0.625rem;
+}
+.note-chart-hit {
+  fill: transparent;
+}
+.note-chart-group:hover .note-chart-hit {
+  fill: var(--accent);
+  fill-opacity: 0.6;
+}
+.note-image {
+  margin-block: 0.75rem;
+  border-radius: 0.5rem;
+}
+.note-image img {
+  display: block;
+  max-width: 100%;
+}
+.note-image-frame {
+  position: relative;
+  display: block;
+  max-width: 100%;
+}
+.note-image-frame[hidden] {
+  display: none;
+}
+.note-image-frame[data-sized] img {
+  width: 100%;
+  height: auto;
+}
+.note-image-handle {
+  position: absolute;
+  top: 50%;
+  right: -0.25rem;
+  width: 0.375rem;
+  height: min(3rem, 40%);
+  transform: translateY(-50%);
+  border-radius: 9999px;
+  background: var(--primary);
+  opacity: 0;
+  cursor: ew-resize;
+  touch-action: none;
+  transition: opacity 120ms ease-out;
+}
+.ProseMirror[contenteditable="true"] .note-image-frame:hover .note-image-handle,
+.ProseMirror[contenteditable="true"] .note-image.ProseMirror-selectednode .note-image-handle {
+  opacity: 0.85;
+}
+.ProseMirror:not([contenteditable="true"]) .note-image-handle {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-image-handle {
+    transition: none;
+  }
+}
+.note-image.ProseMirror-selectednode {
+  background: var(--accent);
+}
+.note-media {
+  margin-block: 0.75rem;
+  border-radius: 0.5rem;
+}
+.note-media.ProseMirror-selectednode {
+  background: var(--accent);
+}
+.note-media[data-media="video"] .note-media-play,
+.note-media[data-media="embed"] .note-media-play {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+}
+.note-media-poster {
+  position: relative;
+  overflow: hidden;
+}
+.note-media-thumb {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.note-media-badge {
+  position: relative;
+  display: flex;
+  width: 3.5rem;
+  height: 3.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: color-mix(in oklch, black 62%, transparent);
+  color: white;
+  transition: background-color 120ms ease-out, transform 120ms ease-out;
+}
+.note-media-poster:hover .note-media-badge,
+.note-media-poster:focus-visible .note-media-badge {
+  background: color-mix(in oklch, black 78%, transparent);
+  transform: scale(1.06);
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-media-badge {
+    transition: none;
+  }
+}
+.note-media[data-media="embed"] {
+  display: grid;
+}
+.note-media[data-media="embed"] > :is(.note-media-poster, .note-media-frame, .note-media-bar) {
+  grid-area: 1 / 1;
+}
+.note-media-bar {
+  z-index: 1;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  align-self: end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 1px;
+  padding: 2rem 0.75rem 0.625rem;
+  border-radius: 0 0 calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px);
+  background: linear-gradient(to top, color-mix(in oklch, black 78%, transparent) 45%, transparent);
+  color: white;
+  font-size: 0.8125rem;
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+.wysiwyg-content .ProseMirror .note-media-bar a {
+  color: inherit;
+  text-decoration: none;
+}
+.note-media[data-media="embed"]:hover > .note-media-bar,
+.note-media[data-media="embed"]:focus-within > .note-media-bar,
+.note-media[data-media="embed"].ProseMirror-selectednode > .note-media-bar {
+  opacity: 1;
+}
+.note-media[data-media="embed"].ProseMirror-selectednode > :is(.note-media-poster, .note-media-frame) {
+  border-color: color-mix(in oklch, var(--primary) 55%, transparent);
+}
+@media (hover: none) {
+  .note-media-bar {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-media-bar {
+    transition: none;
+  }
+}
+.note-media-frame {
+  display: block;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  background: var(--muted);
+}
+.note-media-player {
+  display: block;
+  width: 100%;
+  border-radius: 0.5rem;
+}
+.note-media[data-media="audio"] .note-media-player {
+  height: 2.5rem;
+}
+.note-chip {
+  background: color-mix(in oklch, var(--note-color) 34%, transparent);
+  color: color-mix(in oklch, var(--note-color) 45%, black);
+}
+.dark .note-chip {
+  background: color-mix(in oklch, var(--note-color) 16%, transparent);
+  color: var(--note-color);
+}
+/* oklab, not oklch: --background resolves to oklch(1 0 0), a hue of 0 rather than CSS Color 4's missing hue, so an oklch mix bends Blue toward pink. */
+.note-body {
+  --note-table-head: color-mix(in oklab, var(--note-color, var(--muted)) calc(55% + (16% - 55%) * var(--note-tint, 0)), var(--background));
+  --note-table-foot: color-mix(in oklab, var(--note-color, var(--muted)) calc(30% + (9% - 30%) * var(--note-tint, 0)), var(--background));
+  --note-table-line: color-mix(in oklab, var(--note-color, var(--border)) calc(45% + (22% - 45%) * var(--note-tint, 0)), var(--border));
+}
+.dark .note-body {
+  --note-table-head: color-mix(in oklab, var(--note-color, var(--muted)) calc(24% + (30% - 24%) * var(--note-tint, 0)), var(--background));
+  --note-table-foot: color-mix(in oklab, var(--note-color, var(--muted)) calc(14% + (18% - 14%) * var(--note-tint, 0)), var(--background));
+  --note-table-line: color-mix(in oklab, var(--note-color, var(--border)) 22%, var(--border));
+}
+[data-note-preview] .contains-task-list {
+  list-style: none;
+  padding-left: 0;
+}
+.wysiwyg-content .ProseMirror a[href^="oleafly://note/" i],
+.wysiwyg-content .ProseMirror a[href^="oleafly://project/" i] {
+  color: inherit;
+  text-decoration: none;
+}
+.note-link {
+  border-radius: 0.3125rem;
+  padding: 0.0625rem 0.25rem;
+  background: color-mix(in oklch, var(--note-color, var(--primary)) 24%, transparent);
+  color: color-mix(in oklch, var(--note-color, var(--primary)) 45%, black);
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  transition: background-color 120ms ease;
+}
+.note-link:hover {
+  background: color-mix(in oklch, var(--note-color, var(--primary)) 36%, transparent);
+}
+.dark .note-link {
+  background: color-mix(in oklch, var(--note-color, var(--primary)) 16%, transparent);
+  color: var(--note-color, var(--primary));
+}
+.dark .note-link:hover {
+  background: color-mix(in oklch, var(--note-color, var(--primary)) 26%, transparent);
+}
+.note-link[data-note-link="project"],
+.dark .note-link[data-note-link="project"] {
+  background: color-mix(in srgb, var(--note-project, var(--muted-foreground)) 14%, transparent);
+  color: var(--foreground);
+}
+.note-link[data-note-link="project"]:hover,
+.dark .note-link[data-note-link="project"]:hover {
+  background: color-mix(in srgb, var(--note-project, var(--muted-foreground)) 24%, transparent);
+}
+.note-link-start[data-note-link="project"]::before {
+  content: "";
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  margin-inline-end: 0.3125rem;
+  border-radius: 9999px;
+  vertical-align: 0.0625em;
+  background: var(--note-project, transparent);
+  border: 1px solid color-mix(in srgb, var(--note-project, var(--muted-foreground)) 55%, var(--foreground));
+}
+.note-link.note-link-missing,
+.dark .note-link.note-link-missing {
+  background: transparent;
+  color: var(--muted-foreground);
+  font-weight: 400;
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
+  cursor: default;
+}
+.note-link-missing.note-link-start[data-note-link="project"]::before {
+  background: transparent;
+  border-color: var(--muted-foreground);
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-link {
+    transition: none;
+  }
+}
+
+.note-prompt-glow-ring {
+  position: absolute;
+  inset: -1px;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: calc(1.375rem + 1px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms ease;
+  padding: 1.5px;
+  container-type: size;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box exclude,
+    linear-gradient(#000 0 0);
+}
+.note-prompt-glow-ring::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 200%;
+  width: calc(hypot(100cqw, 100cqh) + 4px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  background: conic-gradient(
+    transparent 0deg,
+    #1982c4 70deg,
+    #cfbaf0 140deg,
+    #90dbf4 210deg,
+    #98f5e1 260deg,
+    transparent 320deg
+  );
+}
+.note-prompt-glow[data-working] > .note-prompt-glow-ring {
+  opacity: 1;
+}
+.note-prompt-glow[data-working] > .note-prompt-glow-ring::before {
+  animation: note-glow-spin 2.6s linear infinite;
+}
+@keyframes note-glow-spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-prompt-glow[data-working] > .note-prompt-glow-ring::before {
+    animation: none;
+  }
+}
+.note-chart-segment {
+  stroke: var(--background);
+  stroke-width: 1.5px;
+}
+.note-chart-error {
+  fill: none;
+  stroke: var(--foreground);
+  stroke-opacity: 0.7;
+  stroke-width: 1.25px;
+  stroke-linecap: round;
+}
+.note-chart-lines {
+  pointer-events: none;
+}
+.note-chart-line {
+  fill: none;
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.note-chart-area {
+  fill-opacity: 0.18;
+  stroke: none;
+}
+.note-chart-marker {
+  stroke: var(--background);
+  stroke-width: 1px;
+}
+.note-chart-axis-title {
+  fill: var(--muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 500;
+}
+.note-chart-point:hover .note-chart-hit {
+  fill: var(--accent);
+  fill-opacity: 0.8;
+}
+.note-chart-slice:hover .note-chart-wedge {
+  opacity: 0.82;
+}
+.note-plot-grid {
+  stroke: var(--border);
+  stroke-dasharray: 1 1;
+  vector-effect: non-scaling-stroke;
+}
+.note-plot-frame {
+  fill: none;
+  stroke: var(--border);
+  vector-effect: non-scaling-stroke;
+}
+.note-plot-axis {
+  stroke: var(--muted-foreground);
+  stroke-opacity: 0.7;
+  vector-effect: non-scaling-stroke;
+}
+.note-plot-curve {
+  fill: none;
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+.note-plot-point {
+  fill: var(--foreground);
+  stroke: var(--background);
+  stroke-width: 1.5px;
+}
+.note-plot-point-label {
+  fill: var(--foreground);
+  font-size: 0.6875rem;
+}
+.note-callout {
+  --callout: oklch(0.6 0.15 255);
+  position: relative;
+  margin: 1rem 0;
+  border-radius: 0.625rem;
+  border: 1px solid color-mix(in oklch, var(--callout) 28%, transparent);
+  background: color-mix(in oklch, var(--callout) 9%, transparent);
+  padding: 0.625em 0.75em 0.625em 2.5em;
+  --callout-line: 1.6em;
+}
+.note-callout[data-tone="cyan"] {
+  --callout: oklch(0.65 0.12 210);
+}
+.note-callout[data-tone="teal"] {
+  --callout: oklch(0.62 0.11 180);
+}
+.note-callout[data-tone="green"] {
+  --callout: oklch(0.62 0.15 150);
+}
+.note-callout[data-tone="yellow"] {
+  --callout: oklch(0.75 0.15 85);
+}
+.note-callout[data-tone="orange"] {
+  --callout: oklch(0.7 0.17 55);
+}
+.note-callout[data-tone="red"] {
+  --callout: oklch(0.6 0.2 25);
+}
+.note-callout[data-tone="purple"] {
+  --callout: oklch(0.6 0.17 300);
+}
+.note-callout[data-tone="gray"] {
+  --callout: oklch(0.6 0.02 260);
+}
+.note-callout-chrome {
+  position: absolute;
+  inset: 0.625em 0.5em auto 0.5em;
+  display: flex;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.note-callout-icon,
+.note-callout-fold {
+  pointer-events: auto;
+  display: inline-flex;
+  width: var(--callout-line);
+  height: var(--callout-line);
+  align-items: center;
+  justify-content: center;
+  color: var(--callout);
+}
+.note-callout-content > * {
+  margin-top: 0.375rem;
+  margin-bottom: 0;
+}
+.note-callout-content > .note-callout-title {
+  margin-top: 0;
+  padding-right: calc(var(--callout-line) + 0.25em);
+  min-height: var(--callout-line);
+  line-height: var(--callout-line);
+  font-weight: 600;
+  color: color-mix(in oklch, var(--callout) 70%, var(--foreground));
+}
+.note-callout-title.is-empty::before {
+  content: attr(data-default);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.note-callout[data-folded] .note-callout-content > :not(.note-callout-title) {
+  display: none;
+}
+.note-callout-option[data-tone] svg {
+  color: var(--muted-foreground);
+}
+.wysiwyg-content .ProseMirror ul.note-tasks {
+  list-style: none;
+  padding-left: 0.25rem;
+}
+.note-task {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+.note-task[data-checked="none"] {
+  padding-left: 1.5rem;
+  position: relative;
+}
+.note-task[data-checked="none"]::before {
+  content: "";
+  position: absolute;
+  left: 0.5rem;
+  top: 0.7em;
+  width: 0.3125rem;
+  height: 0.3125rem;
+  border-radius: 9999px;
+  background: currentColor;
+}
+.note-task-handle {
+  display: inline-flex;
+  height: 1.6em;
+  align-items: center;
+  user-select: none;
+}
+.note-task-box {
+  appearance: none;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  border: 1.5px solid color-mix(in oklch, var(--muted-foreground) 70%, transparent);
+  background: var(--background);
+  cursor: pointer;
+  display: inline-grid;
+  place-content: center;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.note-task-box:hover,
+.note-task-box:focus-visible {
+  border-color: var(--primary);
+}
+.note-task-box:checked {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+:is(.note-task-box, .note-body span[data-checked], .note-task-check) {
+  border-radius: 9999px;
+}
+[data-notes-task-box="square"] :is(.note-task-box, .note-body span[data-checked], .note-task-check) {
+  border-radius: 0.25rem;
+}
+.note-task-box:checked::after {
+  content: "";
+  width: 0.5rem;
+  height: 0.3rem;
+  border-left: 2px solid var(--primary-foreground);
+  border-bottom: 2px solid var(--primary-foreground);
+  transform: translateY(-0.05rem) rotate(-45deg);
+}
+.note-task-content {
+  min-width: 0;
+  flex: 1;
+}
+.note-task[data-checked="true"] > .note-task-content > p {
+  color: var(--muted-foreground);
+  text-decoration: line-through;
+  text-decoration-color: color-mix(in oklch, var(--muted-foreground) 60%, transparent);
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-task-box {
+    transition: none;
+  }
+}
+.note-highlight {
+  --note-highlight: oklch(0.92 0.12 95 / 0.75);
+  border-radius: 0.1875rem;
+  padding: 0 0.0625rem;
+  background: var(--note-highlight);
+  color: inherit;
+}
+.note-highlight[data-color="orange"] {
+  --note-highlight: oklch(0.88 0.11 60 / 0.7);
+}
+.note-highlight[data-color="red"] {
+  --note-highlight: oklch(0.87 0.09 25 / 0.7);
+}
+.note-highlight[data-color="pink"] {
+  --note-highlight: oklch(0.9 0.08 350 / 0.75);
+}
+.note-highlight[data-color="purple"] {
+  --note-highlight: oklch(0.88 0.09 300 / 0.7);
+}
+.note-highlight[data-color="blue"] {
+  --note-highlight: oklch(0.9 0.08 240 / 0.75);
+}
+.note-highlight[data-color="green"] {
+  --note-highlight: oklch(0.9 0.11 150 / 0.7);
+}
+.dark .note-highlight {
+  --note-highlight: oklch(0.55 0.12 95 / 0.45);
+}
+.dark .note-highlight[data-color="orange"] {
+  --note-highlight: oklch(0.55 0.13 60 / 0.45);
+}
+.dark .note-highlight[data-color="red"] {
+  --note-highlight: oklch(0.5 0.14 25 / 0.5);
+}
+.dark .note-highlight[data-color="pink"] {
+  --note-highlight: oklch(0.52 0.12 350 / 0.45);
+}
+.dark .note-highlight[data-color="purple"] {
+  --note-highlight: oklch(0.5 0.12 300 / 0.5);
+}
+.dark .note-highlight[data-color="blue"] {
+  --note-highlight: oklch(0.5 0.11 240 / 0.5);
+}
+.dark .note-highlight[data-color="green"] {
+  --note-highlight: oklch(0.52 0.11 150 / 0.45);
+}
+.note-tag {
+  border-radius: 9999px;
+  padding: 0.0625rem 0.4375rem;
+  font-size: 0.9em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.note-tag[data-tooltip] {
+  cursor: pointer;
+}
+.note-embed-content .ProseMirror > :first-child,
+.note-hover-body .ProseMirror > :first-child {
+  margin-top: 0;
+}
+.note-drawn-preview > .note-scripted {
+  width: 100%;
+  min-width: 0;
+}
+.note-svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+.note-code-lang > pre {
+  margin-block: 0;
+}
+.wysiwyg-content.note-body .ProseMirror {
+  max-width: none;
+  font-family: var(--notes-text-font, var(--font-sans));
+  font-size: var(--notes-text-size, 0.9375rem);
+  line-height: var(--notes-line-height, 1.7);
+}
+.note-body .ProseMirror > * + * {
+  margin-top: var(--notes-block-gap, 0.75em);
+}
+.wysiwyg-content.note-body .ProseMirror :is(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--notes-heading-font, var(--notes-text-font, var(--font-sans)));
+}
+.wysiwyg-content.note-body .ProseMirror h1 {
+  font-size: var(--notes-h1, 1.5em);
+}
+.wysiwyg-content.note-body .ProseMirror h2 {
+  font-size: var(--notes-h2, 1.25em);
+}
+.wysiwyg-content.note-body .ProseMirror h3 {
+  font-size: var(--notes-h3, 1.1em);
+}
+.note-title {
+  font-family: var(--notes-heading-font, var(--notes-text-font, var(--font-sans)));
+  font-size: var(--notes-title-size, 1.5rem);
+}
+.wysiwyg-content.note-body .ProseMirror :is(code, pre) {
+  font-family: var(--notes-code-font, var(--font-mono));
+}
+[data-notes-code-theme] .wysiwyg-content.note-body .ProseMirror pre {
+  background: var(--notes-code-bg);
+  color: var(--notes-code-fg);
+}
+[data-notes-code-theme] .note-body .note-code {
+  --cm-comment: var(--notes-code-comment);
+  --cm-keyword: var(--notes-code-keyword);
+  --cm-number: var(--notes-code-number);
+  --cm-string: var(--notes-code-string);
+  --cm-bracket: var(--notes-code-bracket);
+  --cm-variable: var(--notes-code-variable);
+  --cm-meta: var(--notes-code-meta);
+  --cm-tag: var(--notes-code-tag);
+  --cm-operator: var(--notes-code-operator);
+}
+[data-notes-accent] .note-body {
+  --primary: var(--notes-accent);
+  --primary-foreground: var(--notes-accent-foreground);
+}
+[data-notes-callout="filled"] .note-callout {
+  border-color: color-mix(in oklch, var(--callout) 40%, transparent);
+  background: color-mix(in oklch, var(--callout) 18%, transparent);
+}
+[data-notes-callout="outlined"] .note-callout {
+  border-color: color-mix(in oklch, var(--callout) 55%, transparent);
+  background: transparent;
+}
+[data-notes-callout="bar"] .note-callout {
+  border-width: 0 0 0 3px;
+  border-color: var(--callout);
+  border-radius: 0.25rem;
+  background: color-mix(in oklch, var(--callout) 6%, transparent);
+}
+.note-body .ProseMirror {
+  --note-selection: color-mix(in srgb, var(--primary) 26%, transparent);
+}
+.note-body .ProseMirror[data-note-selecting],
+.note-body .ProseMirror[data-note-selecting] > .relative,
+.note-body .ProseMirror :is(.note-callout, .note-code, td, th).note-selection-root,
+.note-body .ProseMirror .note-selection-root > :is(pre, .note-task-content) {
+  transform: translate(0);
+}
+.note-body .ProseMirror::selection,
+.note-body .ProseMirror *::selection {
+  background-color: transparent;
+}
+.note-body .ProseMirror :is(p, h1, h2, h3, h4, h5, h6, pre, .note-callout-title)::selection,
+.note-body .ProseMirror :is(p, h1, h2, h3, h4, h5, h6, pre, .note-callout-title) *::selection,
+.note-body .ProseMirror :is(.note-table, .note-notebook, .note-plot, .note-seq) *::selection {
+  background-color: var(--note-selection);
+}
+:where(.note-body .ProseMirror)
+  :is(
+    .note-drawn-preview,
+    .note-callout-chrome,
+    .note-task-handle,
+    .note-task-handle *,
+    .note-diff-insert,
+    .note-diff-block,
+    .math-rendered
+  ) {
+  -webkit-user-select: none;
+  user-select: none;
+}
+.note-body .ProseMirror .note-in-selection {
+  position: relative;
+}
+.note-body .ProseMirror:not([data-note-stray-selection]) .note-in-selection::selection,
+.note-body .ProseMirror:not([data-note-stray-selection]) .note-in-selection *::selection {
+  background-color: transparent;
+}
+.note-body .ProseMirror:not([data-note-stray-selection]) .note-in-selection::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  background-color: var(--note-selection);
+  pointer-events: none;
+}
+.note-body .ProseMirror .note-find-match {
+  border-radius: 2px;
+  background-color: color-mix(in oklch, var(--primary) 25%, transparent);
+}
+.note-body .ProseMirror .note-find-match-active {
+  background-color: color-mix(in oklch, var(--primary) 50%, transparent);
+}
+@keyframes note-block-flash {
+  from {
+    background-color: color-mix(in oklch, var(--primary) 22%, transparent);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+.note-body .ProseMirror .note-block-flash {
+  border-radius: 4px;
+  animation: note-block-flash 1.6s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .note-body .ProseMirror .note-block-flash {
+    animation-duration: 0.01s;
+    background-color: color-mix(in oklch, var(--primary) 12%, transparent);
+  }
+}
+.note-body .ProseMirror .note-block-refs {
+  display: inline-flex;
+  min-width: 1.125rem;
+  height: 1.125rem;
+  margin-inline-start: 0.375rem;
+  padding: 0 0.3125rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background-color: color-mix(in oklch, var(--primary) 14%, transparent);
+  color: var(--primary);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: 0.125em;
+  cursor: pointer;
+  user-select: none;
+}
+.note-body .ProseMirror .note-block-refs:hover,
+.note-body .ProseMirror .note-block-refs:focus-visible {
+  background-color: color-mix(in oklch, var(--primary) 26%, transparent);
+}
+[data-capture-body] .ProseMirror[data-blank]::before {
+  content: attr(aria-placeholder);
+  position: absolute;
+  color: var(--muted-foreground);
+  pointer-events: none;
+}

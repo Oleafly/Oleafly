@@ -24,7 +24,7 @@ export type ProofreadingFormat =
   | "plaintext"
   | "typst";
 export type ProofreadingMode = "grammar" | "spelling" | "combined";
-export type ProofreadingSurface = "source" | "visual";
+export type ProofreadingSurface = "source" | "visual" | "notes";
 export type ProofreadingDialect =
   | "american"
   | "british"
@@ -180,6 +180,12 @@ export function sameProofreadingIdentity(
   );
 }
 
+export function isProofreadingSurface(
+  value: unknown,
+): value is ProofreadingSurface {
+  return value === "source" || value === "visual" || value === "notes";
+}
+
 function validResponseIdentity(value: unknown): boolean {
   const identity =
     value && typeof value === "object"
@@ -199,7 +205,7 @@ function validResponseIdentity(value: unknown): boolean {
     typeof identity.requestGeneration === "number" &&
     Number.isSafeInteger(identity.requestGeneration) &&
     identity.requestGeneration > 0 &&
-    (identity.surface === "source" || identity.surface === "visual")
+    isProofreadingSurface(identity.surface)
   );
 }
 

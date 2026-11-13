@@ -320,6 +320,36 @@
       "keywords": "pdf プレビュー 表示 非表示 分割 エディタのみ",
       "label": "PDF プレビューの表示を切り替え"
     },
+    "swapEditorPreview": {
+      "keywords": "入れ替え エディタ プレビュー pdf 左右 ペイン 順序 レイアウト",
+      "label": "エディタとプレビューを入れ替え"
+    },
+    "movePaneToEdge": {
+      "bottom": "{{pane}} を下端に移動",
+      "keywords": "移動 ペイン 端 ドック 側面 分割 重ねる レイアウト",
+      "left": "{{pane}} を左端に移動",
+      "right": "{{pane}} を右端に移動",
+      "top": "{{pane}} を上端に移動"
+    },
+    "paneNames": {
+      "assistant": "アシスタント",
+      "editor": "エディタ",
+      "pdf": "プレビュー",
+      "sidebar": "サイドバー",
+      "terminal": "ターミナル"
+    },
+    "resetPaneLayout": {
+      "keywords": "リセット ペイン レイアウト 順序 移動 パネル サイドバー アシスタント エディタ プレビュー ターミナル 既定",
+      "label": "すべてのプロジェクトでペインの配置をリセット"
+    },
+    "saveLayout": {
+      "keywords": "レイアウト 保存 カスタム 配置 ペイン サイズ 名前",
+      "label": "現在のレイアウトを保存"
+    },
+    "applySavedLayout": {
+      "keywords": "レイアウト 保存済み カスタム 配置 ペイン 切り替え 適用",
+      "label": "レイアウト: {{name}}"
+    },
     "zoomIn": {
       "keywords": "拡大 大きく",
       "label": "拡大"
@@ -347,6 +377,20 @@
     "insertFileLink": {
       "label": "ファイルへのリンクを挿入",
       "keywords": "リンク ファイル パス ノート 参照"
+    },
+    "projectNotes": {
+      "open": "このプロジェクトのノートを開く",
+      "newShared": "プロジェクトのノートを新規作成",
+      "newPersonal": "このプロジェクトの個人のノートを新規作成",
+      "keywords": "ノート 研究 リンク 関連 プロジェクト"
+    },
+    "notes": {
+      "label": "ノートを開く",
+      "keywords": "ノート ノートブック ナレッジ 知識 アイデア 研究 日誌 notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "クイックメモ",
+      "keywords": "クイックメモ メモ ノート 受信箱 今日 キャプチャ"
     }
   },
   "community": {
@@ -451,6 +495,11 @@
   },
   "datePicker": {
     "placeholder": "日付を選択"
+  },
+  "monthPicker": {
+    "label": "月を選択",
+    "previousYear": "前の年",
+    "nextYear": "次の年"
   },
   "devMenu": {
     "inspect": "検証",
@@ -643,7 +692,6 @@
   "home": {
     "ariaLabel": "ホーム",
     "label": "ホーム",
-    "title": "ライブラリに戻る",
     "tooltip": "プロジェクトライブラリに戻ります"
   },
   "importDestination": {
@@ -671,6 +719,7 @@
     "groups": {
       "action": "操作",
       "documents": "文書",
+      "notes": "ノート",
       "references": "参考文献"
     },
     "label": "検索",
@@ -678,11 +727,13 @@
     "openReferences": "このプロジェクトの参考文献を開く",
     "placeholder": "プロジェクトや文書を検索、または / でコマンド…",
     "placeholderDocuments": "文書の中を検索…",
+    "placeholderNotes": "ノートとその中のブロックを検索…",
     "placeholderProjects": "名前、エンジン、種類、日付、メタデータでプロジェクトを検索…",
     "referencesNeedProject": "参考文献を見るには、先にプロジェクトを開いてください。",
     "slash": {
       "create": "テンプレートギャラリーを開く",
       "docs": "文書の中を検索する",
+      "notes": "ノートとその中のブロックを検索する",
       "projects": "プロジェクトを検索する",
       "refs": "このプロジェクトの参考文献を開く",
       "settings": "設定を開く",
@@ -788,7 +839,8 @@
     "research": "リサーチワークスペース",
     "search": "プロジェクトを検索",
     "sourceControl": "ソース管理",
-    "withShortcut": "{{label}}（{{shortcut}}）"
+    "withShortcut": "{{label}}（{{shortcut}}）",
+    "notes": "ノート"
   },
   "remoteMenu": {
     "accountLabel": "{{host}} の {{login}}",
@@ -880,7 +932,8 @@
           "folders_other": "{{count}} 件のフォルダ",
           "images": "画像",
           "pdfs": "PDF",
-          "projects": "プロジェクト"
+          "projects": "プロジェクト",
+          "projectsAndNotes": "プロジェクトとノート"
         },
         "subtitle": "プロジェクト、プレビュー、履歴、アプリのデータ",
         "title": "使用容量",
@@ -921,6 +974,10 @@
       "latexTools": {
         "description": "Oleafly ツールのギャラリーと個々のツール（PDF の読み込み、数式、表、BibTeX、研究室と文献の検索、締め切り）、およびそのスラッシュコマンドを表示します。ベータ版のため、既定ではオフです。",
         "label": "LaTeX ツール"
+      },
+      "notes": {
+        "description": "ホームのドックに「ノート」を追加します。ノートは、ダイアグラム、グラフ、数式を入れられる Markdown ファイルで、あなたとエージェントの両方が編集できます。ノートはプロジェクトのライブラリには含まれず、各ノートをプロジェクトにリンクできます。まだベータ版のため、既定ではオフです。",
+        "label": "ノート"
       },
       "researchTasks": {
         "description": "エージェントがプロジェクトのコピー上で自律的に作業し、変更はあなたが確認できるように残します。非常に不安定で、実行が止まったり、失敗したり、手作業で整理が必要な変更が残ったりすることがあり、その間ずっとプロバイダの利用枠を消費します。設定に「研究」セクションを追加します。オフにすると、実行中のタスクはすべて停止します。既定ではオフです。自己責任でオンにしてください。",
@@ -1257,6 +1314,24 @@
       "split": "分割表示"
     },
     "moreActions": "その他の操作",
+    "resetPaneLayout": "ペインの配置をリセット",
+    "resetPaneLayoutScope": "すべてのプロジェクト",
+    "savedLayouts": {
+      "close": "閉じる",
+      "delete": "削除",
+      "deleteConfirm": "レイアウト「{{name}}」を削除しますか？",
+      "limit": "レイアウトは最大 {{count}} 個まで保存できます。別のレイアウトを保存するには、どれかを削除してください。",
+      "manage": "レイアウトを管理",
+      "name": "レイアウト名",
+      "rename": "名前を変更",
+      "renameTitle": "レイアウトの名前を変更",
+      "replace": "置き換える",
+      "replaceConfirm": "「{{name}}」という名前のレイアウトはすでにあります。置き換えますか？",
+      "save": "現在のレイアウトを保存",
+      "saveButton": "保存",
+      "saveTitle": "レイアウトを保存",
+      "update": "現在の状態に更新"
+    },
     "renameFailed": "プロジェクトの名前を変更できませんでした。"
   },
   "tour": {

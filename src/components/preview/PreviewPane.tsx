@@ -11,15 +11,8 @@ import { PdfViewerOverlay } from "./PdfViewerOverlay";
 import { usePdfKeyboardShortcuts } from "./use-pdf-keyboard-shortcuts";
 import { usePdfPosition } from "@/lib/use-pdf-position";
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
-import {
-  lazy,
-  Suspense,
-  useCallback,
-  useDeferredValue,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { Suspense, useCallback, useDeferredValue, useEffect, useRef, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { Trans, useTranslation } from "react-i18next";
 import { isTauri } from "@tauri-apps/api/core";
 import {
@@ -59,6 +52,7 @@ import { mainDocumentMissing } from "@/lib/main-document";
 import { usePdfViewStore } from "@/store/pdf-view";
 import { useSettingsStore } from "@/store/settings";
 import { SidebarCollapseToggle } from "@/components/layout/WorkspaceControls";
+import { PANE_BAR_CLASS, usePaneBar } from "@/components/layout/pane-reorder";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { projectFilesystemEpoch, useIndexStore } from "@/store/project-index";
 import { useTourStore } from "@/store/tours";
@@ -696,6 +690,7 @@ function StaleTooltipLabel({
 
 export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const { t } = useTranslation(["common", "preview", "shell"]);
+  const paneBar = usePaneBar();
   const status = useCompileStore((s) => s.status);
   const compileMode = useCompileStore((s) => s.compileMode);
   const phase = useCompileStore((s) => s.phase);
@@ -1279,8 +1274,10 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
 
   const renderPreviewToolbar = () => (
     <div
+      {...paneBar}
       className={cn(
         "flex min-h-10 shrink-0 flex-wrap items-center gap-1 border-b px-2 py-1 [&_button]:shrink-0",
+        PANE_BAR_CLASS,
         isFs && fsToolbarHidden && "hidden",
       )}
     >

@@ -993,7 +993,8 @@
       "editor": "Düzenleyici",
       "files": "Proje",
       "pdf": "PDF Önizleme",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Notlar"
     },
     "terminal": {
       "colorTheme": {
@@ -2337,6 +2338,66 @@
       "resetZoom": {
         "description": "Uygulamayı %100'e döndürür.",
         "label": "Yakınlaştırmayı sıfırla"
+      },
+      "notesQuickSwitcher": {
+        "description": "Bir notu adıyla bulun ve açın.",
+        "label": "Notlar: nota git"
+      },
+      "notesTodayNote": {
+        "description": "Bugünün notunu açın veya başlatın.",
+        "label": "Notlar: bugünün notu"
+      },
+      "notesGraph": {
+        "description": "Tüm notlarınızın çizgesini açın.",
+        "label": "Notlar: çizge"
+      },
+      "notesLocalGraph": {
+        "description": "Açık notun çevresindeki bağlantıları gösterin veya gizleyin.",
+        "label": "Notlar: yerel çizge"
+      },
+      "notesOutline": {
+        "description": "Açık notun anahattını gösterin veya gizleyin.",
+        "label": "Notlar: anahat"
+      },
+      "notesAskAgent": {
+        "description": "Seçili metin hakkında ajana sorun veya notun ajanını açıp kapatın.",
+        "label": "Notlar: ajana sor"
+      },
+      "notesNewNote": {
+        "label": "Notlar: yeni not",
+        "description": "Geçerli panelde yeni bir not başlatın."
+      },
+      "notesSearch": {
+        "label": "Notlar: notlarda ara",
+        "description": "Notlar kenar çubuğunun üstündeki arama kutusuna gidin."
+      },
+      "notesBookmark": {
+        "label": "Notlar: notu favorilere ekle",
+        "description": "Açık notu Favoriler'e ekleyin veya oradan çıkarın."
+      },
+      "notesCopyLink": {
+        "label": "Notlar: notun bağlantısını kopyala",
+        "description": "Açık notun, başka bir nota veya sohbete yapıştırabileceğiniz bağlantısını kopyalayın."
+      },
+      "notesProperties": {
+        "label": "Notlar: özellikleri göster veya gizle",
+        "description": "Not başlığının altındaki özellikleri açın veya kapatın."
+      },
+      "notesQuickCapture": {
+        "description": "Oleafly arka plandayken bile herhangi bir uygulamadan bir şey not almak için küçük bir pencere açın.",
+        "label": "Notlar: hızlı not"
+      },
+      "notesCopyBlockLink": {
+        "description": "İmlecin bulunduğu paragrafın, liste öğesinin veya tablonun bağlantısını kopyalayın.",
+        "label": "Notlar: bloğun bağlantısını kopyala"
+      },
+      "notesBack": {
+        "description": "Bu sekmede önceki konumunuza geri dönün.",
+        "label": "Notlar: geri"
+      },
+      "notesForward": {
+        "description": "Geri döndükten sonra yeniden ileri gidin.",
+        "label": "Notlar: ileri"
       }
     },
     "application": {
@@ -2362,14 +2423,41 @@
         "renameSymbol": "Sembolü veya dosyayı proje genelinde yeniden adlandır",
         "slashCommandMenu": "Eğik çizgi komutu ekleme menüsü",
         "triggerAutocomplete": "Otomatik tamamlamayı başlat",
-        "undo": "Geri al"
+        "undo": "Geri al",
+        "noteBold": "Kalın",
+        "noteItalic": "İtalik",
+        "noteUnderline": "Altı çizili",
+        "noteStrike": "Üstü çizili",
+        "noteCode": "Satır içi kod",
+        "noteHighlight": "Son kullanılan renkle vurgula",
+        "noteSuperscript": "Üst simge",
+        "noteSubscript": "Alt simge",
+        "noteHeadings": "Başlık 1 ile 6 arası",
+        "noteText": "Metne dönüştür",
+        "noteQuote": "Alıntı",
+        "noteCodeBlock": "Kod bloğu",
+        "noteBulletList": "Madde işaretli liste",
+        "noteNumberedList": "Numaralı liste",
+        "noteTaskList": "Görev listesi",
+        "noteToggleTask": "Bir görevi işaretle veya işareti kaldır",
+        "noteIndent": "Liste öğesine girinti ver",
+        "noteOutdent": "Liste öğesinin girintisini azalt",
+        "noteLineBreak": "Aynı paragrafta satır sonu",
+        "noteFind": "Bul ve değiştir",
+        "noteSelectAll": "Notun tamamını seç",
+        "noteUndo": "Geri al",
+        "noteRedo": "Yinele",
+        "noteInsertMenu": "Satır başında ekleme menüsünü aç",
+        "noteLinkMenu": "Bir nota bağlantı ver",
+        "noteTag": "Etiket ekle"
       },
       "managed": "Düzenleyici tarafından yönetilir"
     },
     "categories": {
       "codeIntelligence": "Kod zekası",
       "editor": "Düzenleyici",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Notlar"
     },
     "error": {
       "conflict": "Zaten {{action}} eylemine atanmış.",
@@ -2415,6 +2503,15 @@
         "uppercase": "Büyük harf"
       },
       "unbound": "Atanmadı"
+    },
+    "quickCapture": {
+      "label": "Her yerden hızlı not",
+      "description": "Hızlı not kısayolu bu bilgisayardaki tüm uygulamalarda çalışır.",
+      "ready": "Hızlı notu açmak için herhangi bir uygulamada {{shortcut}} tuşlarına basın.",
+      "taken": "{{shortcut}} kısayolunu zaten başka bir uygulama kullanıyor. Notlar: hızlı not için farklı bir kısayol seçin.",
+      "invalid": "{{shortcut}} Oleafly dışında çalışamaz. Harf, rakam veya işlev tuşuyla biten bir kısayol seçin.",
+      "failed": "Oleafly kısayolu ayarlayamadı. Yeniden denemek için hızlı notu kapatıp tekrar açın.",
+      "wayland": "Wayland, uygulamaların kendi pencereleri dışındaki tuşları dinlemesine izin vermez. Hızlı notu bir tuşla açmak için sistem klavye ayarlarınıza bu komutu çalıştıran özel bir kısayol ekleyin:"
     }
   },
   "systemIntegration": {

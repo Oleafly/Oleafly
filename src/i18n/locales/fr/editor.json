@@ -223,7 +223,13 @@
     "closeAssistantTabs": "Fermer les fichiers ouverts par l'assistant",
     "closeAssistantTabsCount_one": "Fermer le fichier ouvert par l'assistant",
     "closeAssistantTabsCount_many": "Fermer les {{count}} fichiers ouverts par l'assistant",
-    "closeAssistantTabsCount_other": "Fermer les {{count}} fichiers ouverts par l'assistant"
+    "closeAssistantTabsCount_other": "Fermer les {{count}} fichiers ouverts par l'assistant",
+    "editAsMarkdown": "Modifier en Markdown",
+    "editAsNote": "Modifier comme une note",
+    "noteAsMarkdown": "Vous modifiez cette note en Markdown.",
+    "openInNotes": "Ouvrir dans Notes",
+    "moveIntoProject": "Déplacer dans le projet",
+    "copyToMyNotes": "Copier dans mes notes"
   },
   "projectInfo": {
     "trigger": "Infos du projet",
@@ -1010,13 +1016,14 @@
         "environment": "Environnement {{environment}}",
         "command": "Commande \\{{command}}",
         "latexSource": "Source LaTeX",
+        "html": "HTML",
         "maketitlePreview": "Généré à partir du titre du document et des métadonnées d'auteur.",
         "figurePreserved": "Source exact de la figure préservé.",
         "tablePreserved": "Source exact du tableau préservé.",
         "sourcePreserved": "Source exact préservé",
         "editSource": "Modifier le source",
-        "summaryLabel": "{{label}}. Source LaTeX exact préservé.",
-        "inputLabel": "Source exact du bloc LaTeX"
+        "summaryLabel": "{{label}}. Source exacte préservée.",
+        "inputLabel": "Source exacte du bloc"
       },
       "inline": {
         "label": "Source brut en ligne",

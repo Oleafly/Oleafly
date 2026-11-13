@@ -377,7 +377,7 @@ export function AgentProgramField({
             id={inputId}
             data-testid={`acp-agent-program-input-${id}`}
             data-settings-path-field={typed ? "" : undefined}
-            className="h-8 font-mono text-xs focus-visible:border-ring"
+            className="h-8 font-mono text-xs"
             value={typed}
             maxLength={4096}
             spellCheck={false}

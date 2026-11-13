@@ -11,6 +11,8 @@
   "landing.open": "Openen in Oleafly",
   "landing.get": "Oleafly downloaden",
   "landing.open_browser": "Openen in browser",
+  "published.gone_title": "Deze pagina is niet beschikbaar",
+  "published.gone_body": "De auteur heeft de publicatie misschien ingetrokken, of deze server toont geen openbare pagina's meer.",
   "web.sign_in_body": "Meld je aan om je gedeelde projecten in deze browser te openen.",
   "web.try_again": "Opnieuw proberen",
   "web.other_browser": "Deze link rondt het aanmelden af op {device}, de browser waarin je begon. Open de e-mail in plaats daarvan daar. De link werkt nog.",

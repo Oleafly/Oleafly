@@ -224,6 +224,7 @@ vi.mock("@/lib/toast", () => ({
     errorUnique: (...args: unknown[]) => mocks.toastErrorUnique(...args),
     success: (...args: unknown[]) => mocks.toastSuccess(...args),
     info: (...args: unknown[]) => mocks.toastInfo(...args),
+    infoUnique: vi.fn(),
   },
 }));
 

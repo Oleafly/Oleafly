@@ -978,9 +978,9 @@ export async function openProject(page: Page & { getByText(t: string): { click()
   );
   if (!libraryVisible) {
     const hasBack = await page.evaluate<boolean>(
-      `!!document.querySelector('[title="Back to library"]')`,
+      `!!document.querySelector('[data-toolbar-part="home"][aria-label="Home"]')`,
     );
-    if (hasBack) await page.click('[title="Back to library"]');
+    if (hasBack) await page.click('[data-toolbar-part="home"][aria-label="Home"]');
   }
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',
@@ -1545,9 +1545,9 @@ export async function openDiagramComposer(page: Page) {
   );
   if (!libraryVisible) {
     const hasBack = await page.evaluate<boolean>(
-      `!!document.querySelector('[title="Back to library"]')`,
+      `!!document.querySelector('[data-toolbar-part="home"][aria-label="Home"]')`,
     );
-    if (hasBack) await page.click('[title="Back to library"]');
+    if (hasBack) await page.click('[data-toolbar-part="home"][aria-label="Home"]');
   }
   const library = page.locator(
     '[data-testid="library"][data-projects-loaded="true"]',
@@ -1630,8 +1630,8 @@ export async function clickLiveToolbarPopoverTrigger(page: Page, ariaLabel: stri
   const encodedLabel = JSON.stringify(ariaLabel);
   const directSelector = `button[aria-label=${encodedLabel}].size-7`;
   const menuSelector =
-    `[data-radix-popper-content-wrapper] [data-state="open"] ` +
-    `button[aria-label=${encodedLabel}].w-full`;
+    `[data-radix-popper-content-wrapper] [data-state="open"] button[aria-label=${encodedLabel}].w-full, ` +
+    `[data-radix-popper-content-wrapper] [data-state="open"] [role="menuitem"][aria-label=${encodedLabel}]`;
   // Probe and click in the SAME browser task: a ResizeObserver relayout or
   // Radix remount between a readiness probe and a separate click call leaves
   // the click targeting a node that no longer exists (the race class
@@ -1814,7 +1814,7 @@ export async function clickToolbarControl(page: Page, barSelector: string, menuT
       }
     }
     const button = Array.from(
-      document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+      document.querySelectorAll('[data-radix-popper-content-wrapper] button, [data-radix-popper-content-wrapper] [role="menuitem"]')
     ).find((candidate) => {
       if (candidate.textContent?.trim() !== ${scriptValue(menuText)}) return false;
       const style = getComputedStyle(candidate);

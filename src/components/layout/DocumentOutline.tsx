@@ -1,7 +1,5 @@
 import { useTranslation } from "react-i18next";
 import {
-  ChevronDown,
-  ChevronRight,
   CopyMinus,
   CopyPlus,
   FileText,
@@ -19,7 +17,9 @@ import { useEditorViewportSelection } from "@/components/editor/cm/use-viewport-
 import { useScrollMemory } from "@/hooks/use-scroll-memory";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { readSidebarView } from "@/store/sidebar-view-state";
-import { Button } from "@/components/ui/button";
+import { useDelegatedTooltips } from "@/components/ui/delegated-tooltip";
+import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
+import { TreeRow } from "@/components/ui/tree-row";
 import { PanelState } from "@/components/layout/IntelligenceTree";
 import { SidebarSection } from "@/components/layout/SidebarSection";
 import {
@@ -279,6 +279,7 @@ export function DocumentOutline({
   const typstTitles = useTypstTitles(items);
 
   const listRef = useRef<HTMLDivElement>(null);
+  const tooltips = useDelegatedTooltips(listRef);
   useOverlayScrollbar(listRef);
   useScrollMemory({
     scrollRef: listRef,
@@ -339,16 +340,9 @@ export function DocumentOutline({
       className={collapsed ? "shrink-0" : "h-full flex-1"}
       contentClassName="flex min-h-0 flex-1 flex-col pb-0"
       actions={
-        <Button
-          variant="ghost"
-          size="icon"
+        <TooltipIconButton
           className="size-6"
-          aria-label={t(
-            allHeadingsCollapsed
-              ? ($) => $.workspace.outline.expandAll
-              : ($) => $.workspace.outline.collapseAll,
-          )}
-          title={t(
+          label={t(
             allHeadingsCollapsed
               ? ($) => $.workspace.outline.expandAll
               : ($) => $.workspace.outline.collapseAll,
@@ -363,11 +357,11 @@ export function DocumentOutline({
           ) : (
             <CopyMinus aria-hidden className="size-3.5" />
           )}
-        </Button>
+        </TooltipIconButton>
       }
     >
         {items.length === 0 ? (
-          <div className="flex min-h-0 flex-1 flex-col overflow-auto [scrollbar-width:thin]">
+          <div className="flex min-h-0 flex-1 flex-col overflow-auto">
             <PanelState
               state="empty"
               icon={<List aria-hidden className="size-4" />}
@@ -379,7 +373,8 @@ export function DocumentOutline({
         ) : (
         <div
           ref={listRef}
-          className="min-h-0 flex-1 overflow-auto py-1 [scrollbar-width:thin]"
+          data-keep-scroll
+          className="min-h-0 flex-1 overflow-auto py-1"
           onPointerEnter={() => {
             hoveringRef.current = true;
           }}
@@ -393,67 +388,40 @@ export function DocumentOutline({
               const headingCollapsed = collapsedHeadingIds.has(id);
               const displayTitle = outlineDisplayTitle(item, latexMacros, headingsByLabel, typstTitles);
               return (
-                <div
+                <TreeRow
                   key={`${item.file}:${item.line}:${item.kind}:${item.title}`}
-                  style={{ paddingLeft: `${item.level * 12 + 12 - (active ? 2 : 0)}px` }}
-                  className={cn(
-                    "group flex min-h-7 w-full items-center gap-1 py-1 pr-2 text-[0.8125rem] leading-5 hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                    active
-                      ? "border-l-2 border-primary bg-sidebar-accent/60 font-medium text-sidebar-foreground"
-                      : "text-sidebar-foreground/80",
+                  depth={item.level}
+                  expanded={hasDescendants ? !headingCollapsed : undefined}
+                  onToggle={() => toggleHeading(id)}
+                  toggleLabel={t(
+                    headingCollapsed
+                      ? ($) => $.workspace.outline.expandHeading
+                      : ($) => $.workspace.outline.collapseHeading,
+                    { title: displayTitle },
                   )}
-                >
-                  {hasDescendants ? (
-                    <button
-                      type="button"
-                      aria-label={t(
-                        headingCollapsed
-                          ? ($) => $.workspace.outline.expandHeading
-                          : ($) => $.workspace.outline.collapseHeading,
-                        { title: displayTitle },
-                      )}
-                      aria-expanded={!headingCollapsed}
-                      onClick={() => toggleHeading(id)}
-                      className="flex size-3.5 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-sidebar-foreground focus-visible:bg-accent/60"
-                    >
-                      {headingCollapsed ? (
-                        <ChevronRight aria-hidden className="size-3" />
-                      ) : (
-                        <ChevronDown aria-hidden className="size-3" />
-                      )}
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    ref={active ? activeRef : undefined}
-                    onClick={() => jump(item)}
-                    aria-current={active ? "location" : undefined}
-                    className="min-w-0 flex-1 truncate text-left text-[0.8125rem] leading-5 focus-visible:bg-accent/60"
-                    title={`${displayTitle} — ${item.file}:${item.line}`}
-                  >
-                    <span
-                      className={cn(
-                        "truncate",
-                        item.kind === "file" && "text-muted-foreground",
-                      )}
-                    >
+                  active={active}
+                  labelRef={active ? activeRef : undefined}
+                  onSelect={() => jump(item)}
+                  tooltip={`${displayTitle} · ${item.file}:${item.line}`}
+                  label={
+                    <span className={cn("truncate", item.kind === "file" && "text-muted-foreground")}>
                       {item.kind === "file" ? (
-                        <FileText
-                          aria-hidden
-                          className="mr-1 inline-block size-3 shrink-0 text-muted-foreground"
-                        />
+                        <FileText aria-hidden className="mr-1 inline-block size-3 shrink-0 text-muted-foreground" />
                       ) : null}
                       {displayTitle}
                     </span>
-                  </button>
-                  {crossFile ? (
-                    <span className="ml-auto shrink-0 rounded bg-muted px-1 font-mono text-[0.5625rem] text-muted-foreground/70">
-                      {basename(item.file).replace(/\.[^.]+$/, "")}
-                    </span>
-                  ) : null}
-                </div>
+                  }
+                  trailing={
+                    crossFile ? (
+                      <span className="ml-auto shrink-0 rounded bg-muted px-1 font-mono text-[0.5625rem] text-muted-foreground/70">
+                        {basename(item.file).replace(/\.[^.]+$/, "")}
+                      </span>
+                    ) : null
+                  }
+                />
               );
             })}
+          {tooltips}
         </div>
         )}
     </SidebarSection>

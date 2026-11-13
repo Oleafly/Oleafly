@@ -473,6 +473,72 @@ fn publication_request(
     }
 }
 
+fn version_folder(
+    project_id: &str,
+    project_root: &Path,
+    main_document: &str,
+    text: &str,
+) -> Result<tempfile::TempDir, String> {
+    let _worktree = crate::worktree_lock::ProjectWorktreeLock::shared(project_id)?;
+    let folder =
+        tempfile::tempdir().map_err(|error| format!("Could not prepare the version: {error}"))?;
+    let walk = crate::checkpoint_capture::walk_project(project_root)?;
+    for input in walk.capture_inputs()? {
+        let relative = input.relative_path();
+        let target = folder.path().join(relative);
+        if let Some(parent) = target.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|error| format!("Could not prepare the version: {error}"))?;
+        }
+        if relative != main_document {
+            let source = project_root.join(relative);
+            if std::fs::hard_link(&source, &target).is_err() {
+                std::fs::copy(&source, &target)
+                    .map_err(|error| format!("Could not read {relative}: {error}"))?;
+            }
+        }
+    }
+    std::fs::write(folder.path().join(main_document), text)
+        .map_err(|error| format!("Could not prepare the version: {error}"))?;
+    Ok(folder)
+}
+
+pub(crate) async fn save_version(
+    project_id: &str,
+    text: Option<String>,
+) -> Result<CheckpointPublicationOutcome, String> {
+    let meta = crate::project::read_meta(project_id)?;
+    oleafly_history::CaptureInput::explicit(meta.main_doc.clone())
+        .map_err(|error| error.to_string())?;
+    let project_root = crate::paths::project_dir(project_id)?;
+    let folder = match text {
+        None => None,
+        Some(text) => {
+            let (id, root, main) = (
+                project_id.to_owned(),
+                project_root.clone(),
+                meta.main_doc.clone(),
+            );
+            Some(
+                tokio::task::spawn_blocking(move || version_folder(&id, &root, &main, &text))
+                    .await
+                    .map_err(|error| format!("Could not prepare the version: {error}"))??,
+            )
+        }
+    };
+    let root = folder
+        .as_ref()
+        .map_or(project_root.as_path(), tempfile::TempDir::path);
+    let request = publication_request(project_id, root, &meta.engine, &meta.main_doc);
+    let outcome = attempt_publication(&request, None)
+        .await
+        .map_err(|failure| failure.detail);
+    if let Some(folder) = folder {
+        let _ = tokio::task::spawn_blocking(move || drop(folder)).await;
+    }
+    outcome
+}
+
 pub(crate) fn schedule_after_successful_compile<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     project_id: &str,

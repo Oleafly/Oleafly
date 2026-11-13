@@ -321,6 +321,36 @@
       "keywords": "pdf preview show hide split editor only",
       "label": "Toggle PDF Preview"
     },
+    "swapEditorPreview": {
+      "keywords": "swap editor preview pdf sides pane order layout",
+      "label": "Swap editor and preview"
+    },
+    "movePaneToEdge": {
+      "bottom": "Move the {{pane}} to the bottom edge",
+      "keywords": "move pane edge dock side split stack layout",
+      "left": "Move the {{pane}} to the left edge",
+      "right": "Move the {{pane}} to the right edge",
+      "top": "Move the {{pane}} to the top edge"
+    },
+    "paneNames": {
+      "assistant": "assistant",
+      "editor": "editor",
+      "pdf": "preview",
+      "sidebar": "sidebar",
+      "terminal": "terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "reset pane layout order move panels sidebar assistant editor preview terminal default",
+      "label": "Reset pane arrangement in every project"
+    },
+    "saveLayout": {
+      "keywords": "save layout custom arrangement panes sizes name",
+      "label": "Save current layout"
+    },
+    "applySavedLayout": {
+      "keywords": "layout saved custom arrangement panes switch apply",
+      "label": "Layout: {{name}}"
+    },
     "zoomIn": {
       "keywords": "bigger larger magnify",
       "label": "Zoom In"
@@ -348,6 +378,20 @@
     "insertFileLink": {
       "label": "Insert link to file",
       "keywords": "link file path note reference"
+    },
+    "projectNotes": {
+      "open": "Open notes for this project",
+      "newShared": "New project note",
+      "newPersonal": "New personal note for this project",
+      "keywords": "notes research linked related project"
+    },
+    "notes": {
+      "label": "Open Notes",
+      "keywords": "notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Quick capture",
+      "keywords": "quick capture jot note inbox today"
     }
   },
   "community": {
@@ -452,6 +496,11 @@
   },
   "datePicker": {
     "placeholder": "Pick a date"
+  },
+  "monthPicker": {
+    "label": "Choose a month",
+    "previousYear": "Previous year",
+    "nextYear": "Next year"
   },
   "devMenu": {
     "inspect": "Inspect",
@@ -645,7 +694,6 @@
   "home": {
     "ariaLabel": "Home",
     "label": "Home",
-    "title": "Back to library",
     "tooltip": "Go back to project library"
   },
   "importDestination": {
@@ -673,6 +721,7 @@
     "groups": {
       "action": "Action",
       "documents": "Documents",
+      "notes": "Notes",
       "references": "References"
     },
     "label": "Search",
@@ -680,11 +729,13 @@
     "openReferences": "Open references for this project",
     "placeholder": "Search projects, documents, or type / for commands…",
     "placeholderDocuments": "Search inside documents…",
+    "placeholderNotes": "Search notes and the blocks inside them…",
     "placeholderProjects": "Search projects by name, engine, kind, date, or metadata…",
     "referencesNeedProject": "Open a project first to browse its references.",
     "slash": {
       "create": "open the template gallery",
       "docs": "search inside documents",
+      "notes": "search notes and the blocks inside them",
       "projects": "search your projects",
       "refs": "open references for this project",
       "settings": "open settings",
@@ -791,7 +842,8 @@
     "research": "Research workspace",
     "search": "Search Project",
     "sourceControl": "Source Control",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notes"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} on {{host}}",
@@ -893,7 +945,8 @@
           "folders_other": "{{count}} folders",
           "images": "Images",
           "pdfs": "PDFs",
-          "projects": "Projects"
+          "projects": "Projects",
+          "projectsAndNotes": "Projects and notes"
         },
         "subtitle": "Projects, previews, history, and app data",
         "title": "Storage usage",
@@ -935,6 +988,10 @@
       "latexTools": {
         "description": "Show the Oleafly Tools gallery and the individual tools (PDF import, equations, tables, BibTeX, lab and literature search, deadlines) plus their slash commands. Off by default while still in beta.",
         "label": "LaTeX tools"
+      },
+      "notes": {
+        "description": "Adds Notes to the Home dock. A note is a Markdown file with diagrams, charts and math that you and your agents can both edit. Notes stay out of your project library, and each note can be linked to a project. Off by default while still in beta.",
+        "label": "Notes"
       },
       "researchTasks": {
         "description": "An agent works on its own in a copy of the project and leaves its changes for you to review. Highly unstable: runs can stall, fail or leave changes to sort out by hand, and they use your provider's quota the whole time. Adds a Research section to Settings. Turning it off stops every running task. Off by default. Turn it on at your own risk.",
@@ -1277,6 +1334,24 @@
       "split": "Split View"
     },
     "moreActions": "More actions",
+    "resetPaneLayout": "Reset pane arrangement",
+    "resetPaneLayoutScope": "All projects",
+    "savedLayouts": {
+      "close": "Close",
+      "delete": "Delete",
+      "deleteConfirm": "Delete the layout {{name}}?",
+      "limit": "You can keep up to {{count}} layouts. Delete one to save another.",
+      "manage": "Manage layouts",
+      "name": "Layout name",
+      "rename": "Rename",
+      "renameTitle": "Rename layout",
+      "replace": "Replace",
+      "replaceConfirm": "A layout named {{name}} already exists. Replace it?",
+      "save": "Save current layout",
+      "saveButton": "Save",
+      "saveTitle": "Save layout",
+      "update": "Update to current"
+    },
     "renameFailed": "Couldn't rename the project."
   },
   "tour": {

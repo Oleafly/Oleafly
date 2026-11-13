@@ -993,7 +993,8 @@
       "editor": "Editor",
       "files": "Project",
       "pdf": "PDF-voorbeeld",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Notities"
     },
     "terminal": {
       "colorTheme": {
@@ -2337,6 +2338,66 @@
       "resetZoom": {
         "description": "Zet de app terug op 100%.",
         "label": "Zoom herstellen"
+      },
+      "notesQuickSwitcher": {
+        "description": "Zoek een notitie op naam en open die.",
+        "label": "Notities: naar notitie gaan"
+      },
+      "notesTodayNote": {
+        "description": "Open de notitie van vandaag, of begin eraan.",
+        "label": "Notities: notitie van vandaag"
+      },
+      "notesGraph": {
+        "description": "Open de graaf van al je notities.",
+        "label": "Notities: graaf"
+      },
+      "notesLocalGraph": {
+        "description": "Toon of verberg de links rond de geopende notitie.",
+        "label": "Notities: lokale graaf"
+      },
+      "notesOutline": {
+        "description": "Toon of verberg het overzicht van de geopende notitie.",
+        "label": "Notities: overzicht"
+      },
+      "notesAskAgent": {
+        "description": "Vraag de agent iets over de geselecteerde tekst, of open en sluit de agent van de notitie.",
+        "label": "Notities: agent vragen"
+      },
+      "notesNewNote": {
+        "label": "Notities: nieuwe notitie",
+        "description": "Begin een nieuwe notitie in het huidige paneel."
+      },
+      "notesSearch": {
+        "label": "Notities: notities zoeken",
+        "description": "Spring naar het zoekveld boven in de zijbalk van Notities."
+      },
+      "notesBookmark": {
+        "label": "Notities: bladwijzer voor notitie",
+        "description": "Voeg de geopende notitie toe aan Favorieten of haal hem eruit."
+      },
+      "notesCopyLink": {
+        "label": "Notities: link naar notitie kopiëren",
+        "description": "Kopieer een link naar de geopende notitie die je in een andere notitie of een chat kunt plakken."
+      },
+      "notesProperties": {
+        "label": "Notities: eigenschappen tonen of verbergen",
+        "description": "Open of sluit de eigenschappen onder de titel van de notitie."
+      },
+      "notesQuickCapture": {
+        "description": "Open een klein venster om vanuit elke app iets te noteren, ook als Oleafly op de achtergrond staat.",
+        "label": "Notities: snel noteren"
+      },
+      "notesCopyBlockLink": {
+        "description": "Kopieer een link naar de alinea, het lijstitem of de tabel waar de cursor in staat.",
+        "label": "Notities: link naar blok kopiëren"
+      },
+      "notesBack": {
+        "description": "Ga terug naar waar je was in dit tabblad.",
+        "label": "Notities: terug"
+      },
+      "notesForward": {
+        "description": "Ga weer vooruit nadat je bent teruggegaan.",
+        "label": "Notities: vooruit"
       }
     },
     "application": {
@@ -2362,14 +2423,41 @@
         "renameSymbol": "Symbool of bestand in het hele project hernoemen",
         "slashCommandMenu": "Invoegmenu met slash-opdrachten",
         "triggerAutocomplete": "Automatisch aanvullen oproepen",
-        "undo": "Ongedaan maken"
+        "undo": "Ongedaan maken",
+        "noteBold": "Vet",
+        "noteItalic": "Cursief",
+        "noteUnderline": "Onderstrepen",
+        "noteStrike": "Doorhalen",
+        "noteCode": "Inline code",
+        "noteHighlight": "Markeren in de laatst gebruikte kleur",
+        "noteSuperscript": "Superscript",
+        "noteSubscript": "Subscript",
+        "noteHeadings": "Kop 1 tot 6",
+        "noteText": "Omzetten naar tekst",
+        "noteQuote": "Citaat",
+        "noteCodeBlock": "Codeblok",
+        "noteBulletList": "Opsommingslijst",
+        "noteNumberedList": "Genummerde lijst",
+        "noteTaskList": "Takenlijst",
+        "noteToggleTask": "Taak afvinken of weer openzetten",
+        "noteIndent": "Lijstitem laten inspringen",
+        "noteOutdent": "Lijstitem minder laten inspringen",
+        "noteLineBreak": "Regeleinde in dezelfde alinea",
+        "noteFind": "Zoeken en vervangen",
+        "noteSelectAll": "De hele notitie selecteren",
+        "noteUndo": "Ongedaan maken",
+        "noteRedo": "Opnieuw",
+        "noteInsertMenu": "Het invoegmenu openen aan het begin van een regel",
+        "noteLinkMenu": "Naar een notitie linken",
+        "noteTag": "Een tag toevoegen"
       },
       "managed": "Beheerd door de editor"
     },
     "categories": {
       "codeIntelligence": "Code-intelligentie",
       "editor": "Editor",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Notities"
     },
     "error": {
       "conflict": "Al toegewezen aan {{action}}.",
@@ -2415,6 +2503,15 @@
         "uppercase": "Hoofdletters"
       },
       "unbound": "Niet ingesteld"
+    },
+    "quickCapture": {
+      "label": "Snel noteren vanuit elke app",
+      "description": "De sneltoets voor snel noteren werkt in elke app op deze computer.",
+      "ready": "Druk in een willekeurige app op {{shortcut}} om snel noteren te openen.",
+      "taken": "Een andere app gebruikt {{shortcut}} al. Kies een andere sneltoets voor Notities: snel noteren.",
+      "invalid": "{{shortcut}} kan niet werken buiten Oleafly. Kies een sneltoets die eindigt op een letter, een cijfer of een functietoets.",
+      "failed": "Oleafly kon de sneltoets niet instellen. Zet snel noteren uit en weer aan om het opnieuw te proberen.",
+      "wayland": "Wayland laat apps niet luisteren naar toetsen buiten hun eigen vensters. Wil je snel noteren met een toets openen, voeg dan in de toetsenbordinstellingen van je systeem een eigen sneltoets toe die deze opdracht uitvoert:"
     }
   },
   "systemIntegration": {

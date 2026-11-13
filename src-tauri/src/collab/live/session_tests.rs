@@ -987,6 +987,45 @@ fn typing_in_an_open_file_reaches_disk_without_calling_it_an_outside_change() {
 }
 
 #[test]
+fn a_note_a_session_writes_is_checked_under_its_project_id_not_its_folder_name() {
+    let _env_guard = crate::paths::data_dir_env_lock();
+    let (_dir, root, _host, rig) = watched_rig(
+        "linked-note-7",
+        &[("note.md", "---\nkind: note\n---\nPlain\n")],
+    );
+    let listed = crate::project::ProjectInfo {
+        id: "linked-note-7".into(),
+        name: "Lab".into(),
+        main_doc: "note.md".into(),
+        engine: "markdown".into(),
+        kind: crate::project::NOTE_KIND.into(),
+        created_at: 0.0,
+        updated_at: 0.0,
+        color: String::new(),
+        has_preview: false,
+        exports: Vec::new(),
+        forked_from: None,
+        recovery_pending: false,
+        location: crate::project_availability::ProjectLocationInfo::Library,
+        last_opened_at: 0.0,
+        shared: None,
+        imported_from: None,
+        related_project: None,
+    };
+    let (revision, mark) = crate::note_index::listing_marks();
+    crate::note_index::remember(&[listed], revision, mark);
+    rig.remote("note.md", "Plain, no longer a note\n");
+    rig.settle();
+
+    assert_ne!(root.file_name().unwrap(), "linked-note-7");
+    assert_eq!(
+        std::fs::read_to_string(root.join("note.md")).unwrap(),
+        "Plain, no longer a note\n"
+    );
+    assert!(crate::note_index::revision() > revision);
+}
+
+#[test]
 fn the_window_hash_matches_the_one_the_window_computes() {
     use super::payloads::window_hash;
     assert_eq!(window_hash(b""), "cbf29ce484222325");

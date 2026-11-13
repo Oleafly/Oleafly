@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "Modalità di ricerca: {{mode}}",
+    "heading": "Modalità di ricerca",
+    "ranked": {
+      "label": "Migliore corrispondenza",
+      "description": "Ordina i risultati in base a quanto corrispondono. Le parole possono trovarsi ovunque."
+    },
+    "exact": {
+      "label": "Testo esatto",
+      "description": "Trova esattamente questi caratteri. Una lettera maiuscola fa distinguere tra maiuscole e minuscole."
+    },
+    "regex": {
+      "label": "Espressione regolare",
+      "description": "Usa la sintassi dei pattern di ripgrep. Metti un pattern tra virgolette se contiene spazi o parentesi."
+    },
+    "fuzzy": {
+      "label": "Approssimativa",
+      "description": "Trova i nomi che contengono le tue lettere in ordine, come fa fzf. Accetta anche 'esatto, ^inizio, fine$ e !escludi."
+    },
+    "invalid": "Questo pattern non è valido: {{error}}"
+  },
   "querySearch": {
     "suggestions": "Suggerimenti di ricerca",
     "exclude": "Escludi",
@@ -76,12 +97,17 @@
       "invalidValue": "{{value}} non è un valore valido per {{key}}",
       "invalidDate": "{{value}} non è una data. Prova 2026-10-02 o @today-7d",
       "invalidNumber": "{{value}} non è un numero",
-      "sortNegated": "{{key}} non può essere escluso"
+      "sortNegated": "{{key}} non può essere escluso",
+      "tooManyBranches": "Questa ricerca ha troppe combinazioni OR, quindi alcuni risultati potrebbero mancare"
     }
   },
   "avatar": {
     "more_one": "{{count}} altra persona",
     "more_many": "{{count}} altre persone",
     "more_other": "{{count}} altre persone"
+  },
+  "remoteImage": {
+    "blocked": "Immagine ospitata su {{host}}",
+    "load": "Carica l'immagine"
   }
 }

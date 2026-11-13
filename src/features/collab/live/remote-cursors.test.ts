@@ -3,9 +3,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { labelLightness } from "@/lib/peer-colors";
 import {
   flashRemoteCursor,
-  labelLightness,
   REMOTE_CURSOR_STYLES,
   REMOTE_FLASH_MS,
   remoteCursors,

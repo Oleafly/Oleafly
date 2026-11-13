@@ -174,7 +174,7 @@ test("every accent color repaints the primary color", async ({ tauriPage }) => {
     ["Blue", "#2563eb"],
   ] as const;
   for (const [name, hex] of accents) {
-    await tauriPage.click(`button[title="${name}"]`);
+    await tauriPage.click(`button[aria-label="${name} accent"]`);
     await tauriPage.waitForFunction(
       `document.documentElement.style.getPropertyValue('--primary') === '${hex}'`,
       5_000,
@@ -194,7 +194,7 @@ test("open-projects-in controls new project landing layouts", async ({ tauriPage
     await tauriPage.click('[aria-label="Close settings"]');
   };
   const createNextProject = async (name: string) => {
-    await tauriPage.click('[title="Back to library"]');
+    await tauriPage.click('[data-toolbar-part="home"][aria-label="Home"]');
     await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
     await createBlankProject(tauriPage, `E2E Default ${name} ${run}`);
   };
@@ -228,7 +228,7 @@ test("show-file-tree-on-open controls new project sidebars", async ({ tauriPage 
     })()`,
   );
   await tauriPage.click('[aria-label="Close settings"]');
-  await tauriPage.click('[title="Back to library"]');
+  await tauriPage.click('[data-toolbar-part="home"][aria-label="Home"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
   await createBlankProject(tauriPage, `E2E Sidebar Hidden ${run}`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -246,7 +246,7 @@ test("show-file-tree-on-open controls new project sidebars", async ({ tauriPage 
     })()`,
   );
   await tauriPage.click('[aria-label="Close settings"]');
-  await tauriPage.click('[title="Back to library"]');
+  await tauriPage.click('[data-toolbar-part="home"][aria-label="Home"]');
   await expect(tauriPage.getByTestId("library")).toBeVisible({ timeout: 10_000 });
   await createBlankProject(tauriPage, `E2E Sidebar Visible ${run}`);
   await expect(tauriPage.locator(".cm-content")).toBeVisible({ timeout: 20_000 });
@@ -288,7 +288,7 @@ test("reset to defaults restores factory preferences", async ({ tauriPage }) => 
   await openAppearanceTab(tauriPage, "editor");
   await pickOption(tauriPage, "Editor font size", "20px");
   await tauriPage.press('[data-testid="appearance-tab-app"]', "Enter");
-  await tauriPage.click('button[title="Teal"]');
+  await tauriPage.click('button[aria-label="Teal accent"]');
   await tauriPage.waitForFunction(
     `getComputedStyle(document.querySelector('.cm-content')).fontSize === '20px'`,
     5_000,

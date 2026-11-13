@@ -11,6 +11,8 @@
   "landing.open": "Oleafly で開く",
   "landing.get": "Oleafly を入手",
   "landing.open_browser": "ブラウザで開く",
+  "published.gone_title": "このページは表示できません",
+  "published.gone_body": "作成者が公開を取り消したか、このサーバーで公開ページが表示されなくなった可能性があります。",
   "web.sign_in_body": "サインインすると、このブラウザで共有プロジェクトを開けます。",
   "web.try_again": "もう一度試す",
   "web.other_browser": "このリンクは、サインインを始めたブラウザである {device} でサインインを完了します。そちらでメールを開いてください。リンクはまだ使えます。",

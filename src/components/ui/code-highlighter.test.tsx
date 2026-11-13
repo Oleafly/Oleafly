@@ -59,7 +59,7 @@ describe("HighlightedCode", () => {
     observer.disconnect();
 
     expect(pre.querySelectorAll(".tok-keyword")).toHaveLength(400);
-    expect(pre.querySelector("code")?.textContent).toBe(`${source}\n`);
+    expect(pre.querySelector("code")?.textContent).toBe(source);
     expect(records.length).toBeLessThanOrEqual(2);
   });
 

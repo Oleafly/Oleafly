@@ -29,7 +29,7 @@ describe("NewEntryInput accessibility", () => {
     });
     expect(input).toHaveAttribute("placeholder", enWorkspace.files.newEntry.filePlaceholder);
     expect(input).toHaveFocus();
-    expect(input).toHaveClass("focus-visible:border-ring");
+    expect(input.className).not.toMatch(/focus[\w-]*:border/);
     expect(input.className).not.toMatch(/ring-[0-9]|ring-offset/);
   });
 

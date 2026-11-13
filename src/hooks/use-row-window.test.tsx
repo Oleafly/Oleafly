@@ -252,6 +252,25 @@ describe("useRowWindow with layout", () => {
     expect(errors).not.toHaveBeenCalledWith(expect.stringContaining("Maximum update depth"));
   });
 
+  it("settles when the list's width flips on every measure and the row height follows it", () => {
+    let narrow = false;
+    const layout = laidOutRows(
+      () => (narrow ? 22 : 20),
+      200,
+      () => {
+        narrow = !narrow;
+        return narrow ? 92 : 100;
+      },
+    );
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const view = render(<ScrolledRows count={1_000} />);
+
+    expect(() => layout.scrollTo(view.getByTestId("scroller"), 4_000)).not.toThrow();
+
+    expect(view.getAllByText(/^row /).length).toBeGreaterThan(0);
+    expect(errors).not.toHaveBeenCalledWith(expect.stringContaining("Maximum update depth"));
+  });
+
   it("follows a row that grows in place, such as after a font size change", () => {
     let height = 20;
     const layout = laidOutRows(() => height, 200);

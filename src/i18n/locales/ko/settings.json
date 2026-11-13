@@ -987,7 +987,8 @@
       "editor": "편집기",
       "files": "프로젝트",
       "pdf": "PDF 미리보기",
-      "terminal": "터미널"
+      "terminal": "터미널",
+      "notes": "노트"
     },
     "terminal": {
       "colorTheme": {
@@ -2316,6 +2317,66 @@
       "resetZoom": {
         "description": "앱을 100%로 되돌립니다.",
         "label": "확대/축소 초기화"
+      },
+      "notesQuickSwitcher": {
+        "description": "이름으로 노트를 찾아 엽니다.",
+        "label": "노트: 노트로 이동"
+      },
+      "notesTodayNote": {
+        "description": "오늘의 노트를 열거나 새로 시작합니다.",
+        "label": "노트: 오늘의 노트"
+      },
+      "notesGraph": {
+        "description": "모든 노트의 그래프를 엽니다.",
+        "label": "노트: 그래프"
+      },
+      "notesLocalGraph": {
+        "description": "열린 노트 주변의 링크를 표시하거나 숨깁니다.",
+        "label": "노트: 로컬 그래프"
+      },
+      "notesOutline": {
+        "description": "열린 노트의 개요를 표시하거나 숨깁니다.",
+        "label": "노트: 개요"
+      },
+      "notesAskAgent": {
+        "description": "선택한 텍스트에 대해 에이전트에게 묻거나, 노트의 에이전트를 열고 닫습니다.",
+        "label": "노트: 에이전트에게 요청"
+      },
+      "notesNewNote": {
+        "label": "노트: 새 노트",
+        "description": "현재 패널에서 새 노트를 시작합니다."
+      },
+      "notesSearch": {
+        "label": "노트: 노트 검색",
+        "description": "노트 사이드바 맨 위의 검색 상자로 이동합니다."
+      },
+      "notesBookmark": {
+        "label": "노트: 노트 북마크",
+        "description": "열린 노트를 즐겨찾기에 추가하거나 뺍니다."
+      },
+      "notesCopyLink": {
+        "label": "노트: 노트 링크 복사",
+        "description": "다른 노트나 채팅에 붙여 넣을 수 있는 열린 노트의 링크를 복사합니다."
+      },
+      "notesProperties": {
+        "label": "노트: 속성 표시 또는 숨기기",
+        "description": "노트 제목 아래의 속성을 열거나 닫습니다."
+      },
+      "notesQuickCapture": {
+        "description": "Oleafly가 백그라운드에 있어도 어떤 앱에서나 작은 창을 열어 무언가를 적을 수 있습니다.",
+        "label": "노트: 빠른 캡처"
+      },
+      "notesCopyBlockLink": {
+        "description": "커서가 있는 문단, 목록 항목 또는 표의 링크를 복사합니다.",
+        "label": "노트: 블록 링크 복사"
+      },
+      "notesBack": {
+        "description": "이 탭에서 이전에 있던 위치로 돌아갑니다.",
+        "label": "노트: 뒤로"
+      },
+      "notesForward": {
+        "description": "뒤로 이동한 뒤 다시 앞으로 이동합니다.",
+        "label": "노트: 앞으로"
       }
     },
     "application": {
@@ -2341,14 +2402,41 @@
         "renameSymbol": "프로젝트 전체에서 심볼 또는 파일 이름 바꾸기",
         "slashCommandMenu": "슬래시 명령 삽입 메뉴",
         "triggerAutocomplete": "자동 완성 실행",
-        "undo": "실행 취소"
+        "undo": "실행 취소",
+        "noteBold": "굵게",
+        "noteItalic": "기울임",
+        "noteUnderline": "밑줄",
+        "noteStrike": "취소선",
+        "noteCode": "인라인 코드",
+        "noteHighlight": "마지막에 쓴 색으로 형광펜 칠하기",
+        "noteSuperscript": "위 첨자",
+        "noteSubscript": "아래 첨자",
+        "noteHeadings": "제목 1~6",
+        "noteText": "텍스트로 바꾸기",
+        "noteQuote": "인용문",
+        "noteCodeBlock": "코드 블록",
+        "noteBulletList": "글머리 기호 목록",
+        "noteNumberedList": "번호 목록",
+        "noteTaskList": "할 일 목록",
+        "noteToggleTask": "할 일 체크 또는 체크 해제",
+        "noteIndent": "목록 항목 들여쓰기",
+        "noteOutdent": "목록 항목 내어쓰기",
+        "noteLineBreak": "같은 문단 안에서 줄 바꿈",
+        "noteFind": "찾기 및 바꾸기",
+        "noteSelectAll": "노트 전체 선택",
+        "noteUndo": "실행 취소",
+        "noteRedo": "다시 실행",
+        "noteInsertMenu": "줄 처음에서 삽입 메뉴 열기",
+        "noteLinkMenu": "노트에 링크",
+        "noteTag": "태그 추가"
       },
       "managed": "편집기가 관리합니다"
     },
     "categories": {
       "codeIntelligence": "코드 인텔리전스",
       "editor": "편집기",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "노트"
     },
     "error": {
       "conflict": "이미 {{action}}에 할당되어 있습니다.",
@@ -2394,6 +2482,15 @@
         "uppercase": "대문자로"
       },
       "unbound": "설정 안 됨"
+    },
+    "quickCapture": {
+      "label": "어디서나 빠른 캡처",
+      "description": "빠른 캡처 단축키는 이 컴퓨터의 모든 앱에서 작동합니다.",
+      "ready": "아무 앱에서나 {{shortcut}}을(를) 누르면 빠른 캡처가 열립니다.",
+      "taken": "다른 앱이 이미 {{shortcut}}을(를) 쓰고 있습니다. 노트: 빠른 캡처에 다른 단축키를 지정하세요.",
+      "invalid": "{{shortcut}}은(는) Oleafly 밖에서 작동할 수 없습니다. 문자, 숫자 또는 기능 키로 끝나는 단축키를 고르세요.",
+      "failed": "Oleafly가 단축키를 설정하지 못했습니다. 빠른 캡처를 껐다가 다시 켜서 재시도하세요.",
+      "wayland": "Wayland에서는 앱이 자기 창 밖의 키 입력을 받을 수 없습니다. 키로 빠른 캡처를 열려면 시스템 키보드 설정에서 다음 명령을 실행하는 사용자 지정 단축키를 추가하세요:"
     }
   },
   "systemIntegration": {

@@ -14,6 +14,7 @@ surface is designed to provide without duplicating task walkthroughs.
 | Reusable AI skills, bundled and your own | [Skills](Skills.md) |
 | Research and document tools | [Tools gallery](Tools.md) |
 | Citations and literature metadata | [Citations](Citations.md) |
+| Markdown notes with drawn blocks, links and an assistant (experimental) | [Notes](Notes.md) |
 | Templates and diagrams | [Templates](Templates.md), [Diagram composer](DiagramComposer.md) |
 | Computer Use and terminal workspace | [General](General.md), [Computer Use](desktop-apps.md) |
 | Compilation and conversion | [Compilation engines](CompilationEngines.md), [Export](Export.md) |

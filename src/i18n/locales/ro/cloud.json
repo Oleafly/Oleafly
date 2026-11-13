@@ -115,6 +115,8 @@
     "conflictsHelp_few": "Aceste fișiere s-au modificat aici și pe alt computer înainte ca modificările să fie sincronizate, așa că Oleafly a păstrat ambele versiuni. Păstrează ce îți trebuie, apoi șterge copiile de conflict.",
     "conflictsHelp_other": "Aceste fișiere s-au modificat aici și pe alt computer înainte ca modificările să fie sincronizate, așa că Oleafly a păstrat ambele versiuni. Păstrează ce îți trebuie, apoi șterge copiile de conflict.",
     "conflictsLabel": "Copii de conflict în proiectul {{name}}",
+    "compare": "Compară",
+    "compareLabel": "Compară {{path}} cu notița",
     "dismiss": "Închide",
     "skipped_one": "{{count}} fișier a fost omis",
     "skipped_few": "{{count}} fișiere au fost omise",
@@ -151,6 +153,16 @@
       "downloadFailed": "Nu a putut fi descărcat",
       "uploadFailed": "Nu a putut fi încărcat"
     }
+  },
+  "conflictCopy": {
+    "title": "Două versiuni ale notiței „{{name}}”",
+    "description": "Această notiță s-a modificat aici și pe alt computer înainte ca modificările să fie sincronizate, așa că Oleafly a păstrat ambele versiuni. Păstrează una dintre ele. Cealaltă ajunge în Coșul de reciclare.",
+    "diffLabel": "Diferențele dintre cele două versiuni",
+    "loading": "Se citesc ambele versiuni…",
+    "readFailed": "Copia de conflict nu a putut fi citită.",
+    "resolveFailed": "Versiunea aleasă nu a putut fi păstrată.",
+    "keepMine": "Păstrează versiunea de pe acest computer",
+    "useCopy": "Folosește versiunea de pe celălalt computer"
   },
   "confirm": {
     "removeTitle": "Elimini {{name}} din {{provider}}?",
@@ -221,6 +233,81 @@
     "pathStyle": "Folosește adrese în stil path",
     "pathStyleHint": "MinIO și majoritatea serverelor autogăzduite au nevoie de asta."
   },
+  "backups": {
+    "title": "Copii de rezervă",
+    "none": "Nicio copie de rezervă încă",
+    "last": "Ultima copie de rezervă {{time}} · {{contents}} · {{size}}",
+    "notes_one": "{{count}} notiță",
+    "notes_few": "{{count}} notițe",
+    "notes_other": "{{count}} de notițe",
+    "projects_one": "{{count}} proiect",
+    "projects_few": "{{count}} proiecte",
+    "projects_other": "{{count}} de proiecte",
+    "running": "Se face copia de rezervă",
+    "failed": "Ultima copie de rezervă nu s-a finalizat. {{reason}}",
+    "backUpNow": "Fă o copie de rezervă acum",
+    "auto": {
+      "label": "Fă automat copii de rezervă",
+      "description": "Păstrează în {{provider}} copii datate ale notițelor tale. Modificările și ștergerile ulterioare, chiar și cele care se sincronizează, nu le afectează."
+    },
+    "every": {
+      "label": "Cât de des",
+      "description": "O copie de rezervă încarcă doar ce s-a schimbat de la cea anterioară.",
+      "options": {
+        "6": "La fiecare 6 ore",
+        "24": "În fiecare zi",
+        "168": "În fiecare săptămână"
+      }
+    },
+    "keep": {
+      "label": "Păstrează",
+      "description": "Copiile de rezervă mai vechi sunt șterse din {{provider}} ca să se economisească spațiu.",
+      "option_one": "Ultima copie de rezervă",
+      "option_few": "Ultimele {{count}} copii de rezervă",
+      "option_other": "Ultimele {{count}} de copii de rezervă"
+    },
+    "includeProjects": {
+      "label": "Include proiectele",
+      "description": "Proiectele se sincronizează deja cu punctele lor de control. Activează opțiunea ca să păstrezi și copii datate ale lor. Prima copie de rezervă a unui proiect mare poate dura ceva timp și poate ocupa mult spațiu."
+    },
+    "list": {
+      "title": "Copii de rezervă în {{provider}}",
+      "label": "Copii de rezervă",
+      "loading": "Se citesc copiile de rezervă",
+      "failed": "Copiile de rezervă nu au putut fi citite. {{reason}}",
+      "empty": "Încă nu există copii de rezervă în {{provider}}."
+    },
+    "row": {
+      "thisComputer": "Acest computer",
+      "manual": "Manuală",
+      "restore": "Restabilește",
+      "restoreLabel": "Restabilește copia de rezervă din {{date}}"
+    },
+    "restore": {
+      "title": "Restabilește copia din {{date}}",
+      "description": "Restabilirea nu înlocuiește niciodată ce ai. O notiță sau un proiect care încă există aici revine ca o copie alături de original, ca să le poți compara.",
+      "loading": "Se citește copia de rezervă",
+      "loadFailed": "Această copie de rezervă nu a putut fi citită. {{reason}}",
+      "search": "Caută în această copie de rezervă",
+      "clearSearch": "Șterge căutarea",
+      "noMatch": "Nimic din această copie de rezervă nu se potrivește.",
+      "listLabel": "Notițe și proiecte din această copie de rezervă",
+      "here": "Încă există aici",
+      "missing": "Nu este pe acest computer",
+      "restored": "Restabilit",
+      "restoredCopy": "Restabilit ca o copie",
+      "files_one": "{{count}} fișier",
+      "files_few": "{{count}} fișiere",
+      "files_other": "{{count}} de fișiere",
+      "one": "Restabilește",
+      "oneLabel": "Restabilește {{name}}",
+      "allMissing_one": "Restabilește elementul care lipsește",
+      "allMissing_few": "Restabilește cele {{count}} elemente care lipsesc",
+      "allMissing_other": "Restabilește cele {{count}} de elemente care lipsesc",
+      "nothingMissing": "Nu lipsește nimic",
+      "copyName": "(copia de rezervă din {{date}})"
+    }
+  },
   "errors": {
     "clock_skew": "Ceasul acestui computer nu arată ora corectă, așa că {{provider}} nu acceptă cereri de la el. Setează data și ora corecte ca sincronizarea să continue.",
     "code_invalid": "Codul acela nu a funcționat. Încearcă din nou.",
@@ -249,6 +336,8 @@
     "sign_in_timeout": "Conectarea a durat prea mult. Încearcă din nou.",
     "too_many_files": "Acest proiect are peste 100.000 de fișiere. Sunt prea multe pentru sincronizare.",
     "traffic_limit": "Spațiul tău din {{provider}} a atins limita de încărcare. Modificările noi rămân pe acest computer până când {{provider}} permite din nou încărcările.",
-    "verify_failed": "Un fișier din {{provider}} nu corespundea cu ce aștepta Oleafly, așa că a fost lăsat neatins. Sincronizarea va încerca din nou."
+    "verify_failed": "Un fișier din {{provider}} nu corespundea cu ce aștepta Oleafly, așa că a fost lăsat neatins. Sincronizarea va încerca din nou.",
+    "backup_missing": "Această copie de rezervă nu mai este în {{provider}}.",
+    "backup_label": "Oleafly nu a putut denumi copia restabilită."
   }
 }

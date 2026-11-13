@@ -222,7 +222,13 @@
     "closeAll": "Stäng alla",
     "closeAssistantTabs": "Stäng filer som assistenten har öppnat",
     "closeAssistantTabsCount_one": "Stäng filen som assistenten har öppnat",
-    "closeAssistantTabsCount_other": "Stäng de {{count}} filerna som assistenten har öppnat"
+    "closeAssistantTabsCount_other": "Stäng de {{count}} filerna som assistenten har öppnat",
+    "editAsMarkdown": "Redigera som Markdown",
+    "editAsNote": "Redigera som anteckning",
+    "noteAsMarkdown": "Du redigerar den här anteckningen som Markdown.",
+    "openInNotes": "Öppna i Anteckningar",
+    "moveIntoProject": "Flytta till projektet",
+    "copyToMyNotes": "Kopiera till mina anteckningar"
   },
   "projectInfo": {
     "trigger": "Projektinfo",
@@ -996,13 +1002,14 @@
         "environment": "Miljön {{environment}}",
         "command": "Kommandot \\{{command}}",
         "latexSource": "LaTeX-källkod",
+        "html": "HTML",
         "maketitlePreview": "Genereras från dokumentets titel och författarmetadata.",
         "figurePreserved": "Figurens exakta källkod är bevarad.",
         "tablePreserved": "Tabellens exakta källkod är bevarad.",
         "sourcePreserved": "Exakt källkod bevarad",
         "editSource": "Redigera källkoden",
-        "summaryLabel": "{{label}}. Exakt LaTeX-källkod bevarad.",
-        "inputLabel": "Exakt källkod för LaTeX-blocket"
+        "summaryLabel": "{{label}}. Exakt källkod bevarad.",
+        "inputLabel": "Exakt källkod för blocket"
       },
       "inline": {
         "label": "Rå källkod i löptext",

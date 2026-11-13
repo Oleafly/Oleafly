@@ -40,6 +40,14 @@ const READ_TOOLS = new Set([
   "list_agents",
   "close_agent",
   "research_task_status",
+  "read_note",
+  "propose_note_edits",
+  "search_notes",
+  "list_knowledge_notes",
+  "read_note_by_id",
+  "related_project_files",
+  "read_related_project_file",
+  "search_related_project",
 ]);
 
 const WRITE_TOOLS = new Set([
@@ -53,6 +61,7 @@ const WRITE_TOOLS = new Set([
   "import_overleaf_projects",
   "desktop_apps",
   "research_task_create",
+  "create_note",
 ]);
 
 const NETWORK_TOOLS = new Set([
@@ -85,6 +94,13 @@ const READ_ONLY_TOOLS = new Set([
   "verify_citation",
   "list_overleaf_projects",
   "research_task_status",
+  "read_note",
+  "search_notes",
+  "list_knowledge_notes",
+  "read_note_by_id",
+  "related_project_files",
+  "read_related_project_file",
+  "search_related_project",
 ]);
 
 export const PLAN_MODE_TOOL_ERROR =

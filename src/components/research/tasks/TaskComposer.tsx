@@ -1,4 +1,6 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy } from "@/lib/preloadable";
+import { researchTasksEnabled } from "@/store/research-tasks-flag";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,8 +41,7 @@ import { BriefFields, briefErrors, startError, upcomingStart } from "./brief/Bri
 const ComputeBriefFields = lazy(() =>
   import("@/components/settings/research/ComputeBriefFields").then((module) => ({
     default: module.ComputeBriefFields,
-  })),
-);
+  })), { warm: researchTasksEnabled });
 
 export interface ResearchTaskStarter {
   id: string;

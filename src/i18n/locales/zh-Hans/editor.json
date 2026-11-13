@@ -221,7 +221,13 @@
     "closeRight": "关闭右侧所有标签页",
     "closeAll": "关闭全部标签页",
     "closeAssistantTabs": "关闭助手打开的文件",
-    "closeAssistantTabsCount_other": "关闭助手打开的 {{count}} 个文件"
+    "closeAssistantTabsCount_other": "关闭助手打开的 {{count}} 个文件",
+    "editAsMarkdown": "以 Markdown 编辑",
+    "editAsNote": "以笔记编辑",
+    "noteAsMarkdown": "你正在以 Markdown 编辑这篇笔记。",
+    "openInNotes": "在笔记中打开",
+    "moveIntoProject": "移入项目",
+    "copyToMyNotes": "复制到我的笔记"
   },
   "projectInfo": {
     "trigger": "项目信息",
@@ -982,13 +988,14 @@
         "environment": "{{environment}} 环境",
         "command": "\\{{command}} 命令",
         "latexSource": "LaTeX 源码",
+        "html": "HTML",
         "maketitlePreview": "根据文档标题和作者元数据生成。",
         "figurePreserved": "图片源码已原样保留。",
         "tablePreserved": "表格源码已原样保留。",
         "sourcePreserved": "已原样保留源码",
         "editSource": "编辑源码",
-        "summaryLabel": "{{label}}。LaTeX 源码已原样保留。",
-        "inputLabel": "LaTeX 块的原始源码"
+        "summaryLabel": "{{label}}。源码已原样保留。",
+        "inputLabel": "块的原始源码"
       },
       "inline": {
         "label": "原始行内源码",

@@ -354,6 +354,23 @@ describe("the diagram host adapters", () => {
     ]);
   });
 
+  it("leaves notes out of the project list while Notes is on", async () => {
+    const projects = [
+      { id: "a", name: "Thesis", engine: "latexmk", main_doc: "main.tex", kind: "document" },
+      { id: "n", name: "Idea", engine: "markdown", main_doc: "note.md", kind: "note" },
+    ];
+    useFilesStore.setState({ refreshProjects: vi.fn(async () => useFilesStore.setState({ projects } as never)) } as never);
+    useSettingsStore.setState({ notes: true });
+    try {
+      const props = await openComposer();
+      await expect(props.host.listProjectNames()).resolves.toEqual([
+        { id: "a", name: "Thesis", typst: false, language: "tikz" },
+      ]);
+    } finally {
+      useSettingsStore.setState({ notes: false });
+    }
+  });
+
   it("caches figures and creates diagram projects through the backend", async () => {
     const props = await openComposer();
     vi.mocked(tauriApi.saveFigureToCache).mockResolvedValue({

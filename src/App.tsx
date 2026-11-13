@@ -1,30 +1,12 @@
 import { startPreviewWorkspaceBridge } from "@/lib/preview-workspace";
 import { usePreviewDetachedStore } from "@/store/preview-detached";
-import { restoreWorkspaceLayout, workspacePanelId } from "@/lib/workspace-layout";
+import { restoreWorkspaceLayout } from "@/lib/workspace-layout";
 import { useTranslation } from "react-i18next";
 import { CiteOleaflyDialog } from "@/components/layout/CiteOleaflyDialog";
-import {
-  Fragment,
-  lazy,
-  memo,
-  Suspense,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEventHandler,
-  type ReactNode,
-} from "react";
+import { memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { lazy, preloadIntent, startWarming, warmDeferred } from "@/lib/preloadable";
+import { logError } from "@/lib/log";
 import { createPortal } from "react-dom";
-import {
-  Group,
-  Panel,
-  Separator,
-  type GroupImperativeHandle,
-  type Layout,
-  type PanelImperativeHandle,
-} from "react-resizable-panels";
 import { RefreshCw } from "lucide-react";
 import { EditorView } from "@codemirror/view";
 import { redo as cmRedo, undo as cmUndo } from "@codemirror/commands";
@@ -35,7 +17,7 @@ import { TopToolbar } from "@/components/layout/TopToolbar";
 import { BackendProtocolBanner } from "@/components/layout/BackendProtocolBanner";
 import { FolderUnavailableBanner } from "@/components/layout/FolderUnavailableBanner";
 import { OpenedFolderBanners } from "@/components/open-folder/OpenedFolderBanners";
-import { CollabActivitySlot, CollabSyncPauseSlot } from "@/components/collab/CollabSlots";
+import { CollabActivitySlot, CollabSyncPauseSlot, ShareDialogHost } from "@/components/collab/CollabSlots";
 import { ShellCommandsBanner } from "@/components/layout/ShellCommandsBanner";
 import { isNotebookEngine } from "@/lib/notebook-engines";
 import { ZenSession } from "@/components/layout/ZenSession";
@@ -54,8 +36,13 @@ import {
   editorVimRedo,
   getEditorView,
 } from "@/components/editor/cm/controller";
+import { getWysiwygEditor } from "@/components/editor/wysiwyg/controller";
+import type { Editor as RichTextEditor } from "@tiptap/react";
 import { PreviewPane } from "@/components/preview/PreviewPane";
-import { KeptAliveSlot, useKeptAliveHost } from "@/components/layout/KeptAliveSlot";
+import { useKeptAliveHost } from "@/components/layout/KeptAliveSlot";
+import { PaneReorderProvider } from "@/components/layout/pane-reorder";
+import { PaneTreeGroup, PaneTreeProvider, type PaneTreeConfig } from "@/components/layout/PaneTree";
+import { paneVisibility, usePaneLayoutStore, type PaneId } from "@/store/pane-layout";
 import { PdfImportView } from "@/components/import/PdfImportView";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { CommandPalette } from "@/components/layout/CommandPalette";
@@ -67,6 +54,7 @@ import { TableToolView } from "@/components/tools/TableToolView";
 import { DeadlinesView } from "@/components/deadlines/DeadlinesView";
 import { LatexToolsView } from "@/components/tools/LatexToolsView";
 import { LabSearchToolView } from "@/components/tools/LabSearchToolView";
+import { loadNamespace } from "@/i18n";
 import { useHomeViewStore } from "@/store/home-view";
 import {
   LanguageServiceRuntimeBoundary,
@@ -84,6 +72,8 @@ import {
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
 import { editorLetterSpacingValue, editorLineHeightValue, useSettingsStore, type ViewMode } from "@/store/settings";
+import { useNoteTabsStore } from "@/store/note-tabs";
+import { useResearchTasksFlagStore } from "@/store/research-tasks-flag";
 import { editorCjkFontStack, fontFamilyName, fontFamilyStack, quotedFontFamily } from "@/lib/font-families";
 import { applyAppTypography } from "@/lib/app-typography";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
@@ -92,7 +82,10 @@ import { useTypstFormsStore } from "@/store/typst-forms";
 import { AVAILABLE_TOUR_IDS } from "@/lib/tours/registry";
 import { START_TOUR_EVENT } from "@/lib/tour";
 import { useDiagramComposerStore } from "@/store/diagram-composer";
+import { OpeningIndicator } from "@/components/ui/opening-indicator";
 import { mountOnFirstOpen } from "@/lib/mount-on-first-open";
+import { coversProject, projectCovered } from "@/lib/project-covered";
+import { noteHistoryAt } from "@/lib/open-note-editors";
 import { useZenStore } from "@/store/zen";
 import { exitZenMode } from "@/lib/zen-mode";
 import {
@@ -109,23 +102,7 @@ import { checkForUpdatesOnStartup, openUpdateWindow } from "@/lib/updater";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTauriEvent, useTauriSubscription } from "@/hooks/use-tauri-event";
-import { cn } from "@/lib/utils";
-import {
-  PANEL_STYLE,
-  afterPanelLayout,
-  collapsePanel,
-  expandPanel,
-  hasStoredPanelLayout,
-  panelLimitProps,
-  percent,
-  useCollapseTransitions,
-  useDismissiblePanelLayout,
-  usePersistentPanelLayout,
-  useSeparatorHitArea,
-  useSeparatorKeyboard,
-  useSteadyPanelWidth,
-  type PanelLimits,
-} from "@/lib/panel-layout";
+import { useSeparatorHitArea } from "@/lib/panel-layout";
 import { AssistantOutputsBridge } from "@/components/ai/AssistantOutputsBridge";
 import { ExternalToolApprovals } from "@/components/ai/ExternalToolApprovals";
 import { ChatPanel } from "@/components/ai/ChatPanel";
@@ -145,6 +122,7 @@ import {
 
 import { applyRemoteCompileSuccess } from "@/lib/compile-sync";
 import { startDefaultLatexEngineSync } from "@/lib/default-latex-engine";
+import { startKeptUndoTidy } from "@/components/notes/note-undo-tidy";
 import { applyEditorColors } from "@/lib/editor-themes";
 import { useEditorColorKey } from "@/hooks/use-editor-theme";
 import { handleDockShortcut, handleTerminalTabShortcut } from "@/lib/dock-shortcuts";
@@ -162,12 +140,6 @@ import {
   usesNativeDockMenu,
 } from "@/lib/native-dock-shortcuts";
 import type { ProjectStateChanged } from "@/lib/tauri";
-import {
-  FILE_SIDEBAR_MIN_WIDTH,
-  assistantMinimumWidth,
-  sidebarMinimumPercent,
-  sidebarPanelGroupWidth,
-} from "@/lib/assistant-layout";
 import {
   applyExternalFileChange,
   refreshOpenFilesFromDisk,
@@ -195,53 +167,65 @@ function useTourStartRequests(): number {
 }
 
 const SettingsModal = mountOnFirstOpen(
-  lazy(() =>
-    import("@/components/layout/SettingsModal").then((m) => ({ default: m.SettingsModal })),
-  ),
+  lazy(() => import("@/components/layout/SettingsModal").then((m) => ({ default: m.SettingsModal })), {
+    warm: true,
+    priority: 1,
+    intent: "settings",
+  }),
   () => useSettingsStore((s) => s.settingsOpen),
   () => useSettingsStore.getState().setSettingsOpen(false),
+  { loading: <OpeningIndicator /> },
 );
 const DiagramComposer = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/diagram/DiagramComposer").then((m) => ({ default: m.DiagramComposer })),
-  ),
+    import("@/components/diagram/DiagramComposer").then((m) => ({ default: m.DiagramComposer })), { intent: "diagram-composer" }),
   () => useHomeViewStore((s) => s.page === "diagram-composer"),
   () => useHomeViewStore.getState().goTo("library"),
+  { loading: <OpeningIndicator /> },
+);
+const NotesHost = mountOnFirstOpen(
+  lazy(() =>
+    Promise.all([import("@/components/notes/NotesHost"), loadNamespace("notes")]).then(([module]) => ({
+      default: module.NotesHost,
+    })), { intent: "notes" }),
+  () => useHomeViewStore((s) => s.page === "notes"),
+  () => useHomeViewStore.getState().goTo("library"),
+  { loading: <OpeningIndicator /> },
 );
 const DiagramComposerChooserHost = mountOnFirstOpen(
   lazy(() =>
     import("@/components/diagram/composer-chooser/DiagramComposerChooser").then((m) => ({
       default: m.DiagramComposerChooserHost,
-    })),
-  ),
+    })), { warm: true }),
   () => useDiagramComposerStore((s) => s.chooserOpen),
   () => useDiagramComposerStore.getState().setChooserOpen(false),
+  { loading: <OpeningIndicator /> },
 );
 const CopilotOverlay = lazy(() =>
   import("@/components/ai/CopilotOverlay").then((m) => ({ default: m.CopilotOverlay })),
 );
 const WordCountModal = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/editor/WordCountModal").then((m) => ({ default: m.WordCountModal })),
-  ),
+    import("@/components/editor/WordCountModal").then((m) => ({ default: m.WordCountModal })), { warm: true }),
   () => useSettingsStore((s) => s.wordCountOpen),
   () => useSettingsStore.getState().setWordCountOpen(false),
+  { loading: <OpeningIndicator /> },
 );
 const VersioningModal = mountOnFirstOpen(
   lazy(() =>
     import("@/components/editor/VersioningModal").then((m) => ({
       default: m.VersioningModal,
-    })),
-  ),
+    })), { warm: true }),
   () => useSettingsStore((s) => s.versioningOpen),
   () => useSettingsStore.getState().closeVersioning(),
+  { loading: <OpeningIndicator /> },
 );
 const HotkeysModal = mountOnFirstOpen(
   lazy(() =>
-    import("@/components/editor/HotkeysModal").then((m) => ({ default: m.HotkeysModal })),
-  ),
+    import("@/components/editor/HotkeysModal").then((m) => ({ default: m.HotkeysModal })), { warm: true }),
   () => useSettingsStore((s) => s.hotkeysOpen),
   () => useSettingsStore.getState().setHotkeysOpen(false),
+  { loading: <OpeningIndicator /> },
 );
 const TourGuide = mountOnFirstOpen(
   lazy(() => import("@/components/tour/TourGuide").then((m) => ({ default: m.TourGuide }))),
@@ -258,41 +242,31 @@ const LanguageServiceRuntime = mountOnFirstOpen(
     fallback: <LanguageServiceRuntimeUnavailable />,
   },
 );
+const latexToolsOn = () => useSettingsStore.getState().latexTools;
 const StatsToolView = lazy(() =>
-  import("@/components/tools/StatsToolView").then((m) => ({ default: m.StatsToolView })),
-);
+  import("@/components/tools/StatsToolView").then((m) => ({ default: m.StatsToolView })), { warm: latexToolsOn });
 const GeneratorsToolView = lazy(() =>
-  import("@/components/tools/GeneratorsToolView").then((m) => ({ default: m.GeneratorsToolView })),
-);
+  import("@/components/tools/GeneratorsToolView").then((m) => ({ default: m.GeneratorsToolView })), { warm: latexToolsOn });
 const SymbolsToolView = lazy(() =>
-  import("@/components/tools/SymbolsToolView").then((m) => ({ default: m.SymbolsToolView })),
-);
+  import("@/components/tools/SymbolsToolView").then((m) => ({ default: m.SymbolsToolView })), { warm: latexToolsOn });
 const EquationToolView = lazy(() =>
-  import("@/components/tools/EquationToolView").then((m) => ({ default: m.EquationToolView })),
-);
+  import("@/components/tools/EquationToolView").then((m) => ({ default: m.EquationToolView })), { intent: "equation" });
 const ConverterToolView = lazy(() =>
-  import("@/components/tools/ConverterToolView").then((m) => ({ default: m.ConverterToolView })),
-);
+  import("@/components/tools/ConverterToolView").then((m) => ({ default: m.ConverterToolView })), { warm: latexToolsOn });
 const ReferenceToolView = lazy(() =>
-  import("@/components/tools/ReferenceToolView").then((m) => ({ default: m.ReferenceToolView })),
-);
+  import("@/components/tools/ReferenceToolView").then((m) => ({ default: m.ReferenceToolView })), { intent: "reference" });
 const LiteratureSearchToolView = lazy(() =>
   import("@/components/tools/LiteratureSearchToolView").then((m) => ({
     default: m.LiteratureSearchToolView,
-  })),
-);
+  })), { warm: true });
 const TerminalDock = lazy(() =>
-  import("@/components/dock/TerminalDock").then((m) => ({ default: memo(m.TerminalDock) })),
-);
+  import("@/components/dock/TerminalDock").then((m) => ({ default: memo(m.TerminalDock) })));
 const EnginePickerModal = lazy(() =>
-  import("@/components/layout/EnginePickerModal").then((m) => ({ default: m.EnginePickerModal })),
-);
+  import("@/components/layout/EnginePickerModal").then((m) => ({ default: m.EnginePickerModal })), { warm: true });
 const MainDocumentPicker = lazy(() =>
-  import("@/components/open-folder/MainDocumentPicker").then((m) => ({ default: m.MainDocumentPicker })),
-);
+  import("@/components/open-folder/MainDocumentPicker").then((m) => ({ default: m.MainDocumentPicker })), { warm: true });
 const CopyIntoLibraryDialog = lazy(() =>
-  import("@/components/library/CopyIntoLibraryDialog").then((m) => ({ default: m.CopyIntoLibraryDialog })),
-);
+  import("@/components/library/CopyIntoLibraryDialog").then((m) => ({ default: m.CopyIntoLibraryDialog })), { warm: true });
 const QuickActionOffer = lazy(() =>
   import("@/components/layout/QuickActionOffer").then((m) => ({ default: m.QuickActionOffer })),
 );
@@ -348,58 +322,13 @@ function SurfaceLoading({ label }: Readonly<{ label: string }>) {
   );
 }
 
-function VHandle({
-  id,
-  onKeyDownCapture,
-}: Readonly<{
-  id: string;
-  onKeyDownCapture: KeyboardEventHandler<HTMLElement>;
-}>) {
-  return (
-    <Separator
-      id={id}
-      disableDoubleClick
-      onKeyDownCapture={onKeyDownCapture}
-      style={{ cursor: "col-resize" }}
-      className="resize-handle-col group relative flex w-1.5 shrink-0 select-none bg-background"
-    >
-      <span
-        className={cn(
-          "absolute inset-0 flex items-center justify-center",
-          "transition-colors hover:bg-accent/40"
-        )}
-      >
-        <span
-          className={cn(
-            "pointer-events-none h-10 w-1 rounded-full bg-border opacity-0 transition-[opacity,background-color]",
-            "group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[separator=active]:opacity-100",
-            "group-hover:bg-ring group-data-[separator=active]:bg-ring"
-          )}
-        />
-      </span>
-    </Separator>
-  );
-}
-
-const VERTICAL_PANELS = ["content-band", "terminal"];
-const HORIZONTAL_PANELS = ["sidebar", "editorpdf", "assistant"];
-const DOCUMENT_PANELS = ["editor", "pdf"];
-const VERTICAL_LIMITS = {
-  "content-band": { minSize: 25 },
-  terminal: { minSize: 10, collapsible: true, collapsedSize: 0 },
-} satisfies Record<string, PanelLimits>;
-const DOCUMENT_LIMITS = {
-  editor: { minSize: 15 },
-  pdf: { minSize: 15 },
-} satisfies Record<string, PanelLimits>;
-
 function closeAssistant() {
   const settings = useSettingsStore.getState();
   if (settings.assistantOpen) settings.setAssistantOpen(false);
 }
 
-function workspaceGroupId(projectId: string | null, group: string): string | undefined {
-  return projectId ? workspacePanelId(projectId, group) : undefined;
+function closeTerminal() {
+  if (useSettingsStore.getState().terminalOpen) useSettingsStore.getState().setTerminalOpen(false);
 }
 
 const AUTO_COMPILE_DEBOUNCE_MS = 2500;
@@ -429,6 +358,30 @@ function runSecondaryEditorHistory(active: HTMLElement | null, redo: boolean): v
   else cmUndo(view);
 }
 
+type RichTextHost = HTMLElement & { editor?: RichTextEditor };
+
+function visualEditorOwns(element: Element | null): boolean {
+  const visual = getWysiwygEditor();
+  return !!element && !!visual && !visual.isDestroyed && visual.view.dom.contains(element);
+}
+
+function separateRichTextEditor(element: Element | null): RichTextHost | null {
+  const host = element?.closest<RichTextHost>(".ProseMirror") ?? null;
+  return host && !visualEditorOwns(host) ? host : null;
+}
+
+function runRichTextHistory(host: RichTextHost, redo: boolean): void {
+  const chain = host.editor?.chain().focus();
+  if (redo) chain?.redo().run();
+  else chain?.undo().run();
+}
+
+function recompileWanted(event: KeyboardEvent): boolean {
+  const target = event.target instanceof Element ? event.target : null;
+  if (separateRichTextEditor(target)) return false;
+  return !event.defaultPrevented || !!target?.closest(".cm-editor") || visualEditorOwns(target);
+}
+
 function runDocumentMenuHistory(active: HTMLElement | null, redo: boolean): void {
   // Native menu events have no key event for Vim to intercept. Use its
   // history adapter directly so menu Undo/Redo preserves modal cursor and
@@ -442,8 +395,21 @@ function runDocumentMenuHistory(active: HTMLElement | null, redo: boolean): void
 }
 
 function runMenuHistory(redo: boolean): void {
-  if (!useFilesStore.getState().projectId) return;
   const active = document.activeElement as HTMLElement | null;
+  const noteHistory = inPlainField(active) ? null : noteHistoryAt(active);
+  if (noteHistory) {
+    noteHistory(redo);
+    return;
+  }
+  const richText = separateRichTextEditor(active);
+  if (richText) {
+    runRichTextHistory(richText, redo);
+    return;
+  }
+  if (!useFilesStore.getState().projectId || projectCovered()) {
+    if (inPlainField(active)) runFieldHistory(document, redo ? "redo" : "undo");
+    return;
+  }
   const form = visualFormHistory(active);
   if (form === "document") {
     runDocumentMenuHistory(active, redo);
@@ -468,36 +434,16 @@ function loadStuckWindowRestore(): Promise<() => void> {
   return import("@/lib/stuck-window-restore").then((m) => m.startStuckWindowRestore());
 }
 
+function loadQuickCaptureBridge(): Promise<() => void> {
+  return import("@/components/notes/quick-capture-bridge").then((m) => m.startQuickCaptureBridge());
+}
+
 function loadResearchPdfBridge(): Promise<() => void> {
   return import("@/lib/research-pdf-bridge").then((m) => m.mountResearchPdfBridge());
 }
 
-const SIDEBAR_DEFAULT_PX = 340;
-
 function shownViewMode(detached: boolean, selected: ViewMode): ViewMode {
   return detached ? "editor" : selected;
-}
-
-function horizontalPanelSizes(groupWidth: number, appFontSize: number, workspaceHidden: boolean) {
-  const sidebarDefaultSize =
-    groupWidth > 0 ? Math.min(65, (SIDEBAR_DEFAULT_PX / groupWidth) * 100) : 15;
-  const assistantMinSize =
-    groupWidth > 0
-      ? Math.min(55, (assistantMinimumWidth(appFontSize) / groupWidth) * 100)
-      : 22;
-  const assistantDefaultSize = workspaceHidden ? 100 : Math.max(28, assistantMinSize);
-  return { sidebarDefaultSize, assistantMinSize, assistantDefaultSize };
-}
-
-function splitPanelDefaultSize(viewMode: ViewMode): number {
-  return viewMode === "split" ? 50 : 100;
-}
-
-function defaultVerticalLayout(terminalOpen: boolean): Layout {
-  return {
-    "content-band": terminalOpen ? 72 : 100,
-    terminal: terminalOpen ? 28 : 0,
-  };
 }
 
 function AppContent() {
@@ -545,32 +491,17 @@ function AppContent() {
     !detached && projectId !== null && (previewShown || previewKeptFor === projectId);
   const homePage = useHomeViewStore((state) => state.page);
   const projectToolOpen = homePage === "generators" || homePage === "symbols";
-  const projectComposerOpen = homePage === "diagram-composer";
-  const sidebarPanelRef = useRef<PanelImperativeHandle>(null);
-  const editorPanelRef = useRef<PanelImperativeHandle>(null);
-  const pdfPanelRef = useRef<PanelImperativeHandle>(null);
-  const terminalPanelRef = useRef<PanelImperativeHandle>(null);
-  const verticalGroupRef = useRef<GroupImperativeHandle>(null);
-  const horizontalGroupRef = useRef<GroupImperativeHandle>(null);
-  const documentGroupRef = useRef<GroupImperativeHandle>(null);
-  const verticalGroupId = workspaceGroupId(projectId, "vertical");
-  const horizontalGroupId = workspaceGroupId(projectId, "horizontal");
-  const documentGroupId = workspaceGroupId(projectId, "document");
-  const hasStoredHorizontalLayout = useMemo(
-    () => (horizontalGroupId ? hasStoredPanelLayout(horizontalGroupId) : false),
-    [horizontalGroupId],
+  const sidebarHost = useKeptAliveHost("h-full min-h-0 min-w-0");
+  const editorHost = useKeptAliveHost("h-full min-h-0 min-w-0");
+  const terminalHost = useKeptAliveHost("h-full min-h-0 min-w-0");
+  const assistantHost = useKeptAliveHost("h-full min-h-0 min-w-0");
+  const paneLayout = usePaneLayoutStore((s) => s.layout);
+  const paneEpoch = usePaneLayoutStore((s) => s.epoch);
+  const paneRootElement = useRef<HTMLDivElement>(null);
+  const shownPanes = useMemo(
+    () => paneVisibility({ viewMode, showTree, assistantOpen, workspaceHidden, terminalOpen }),
+    [assistantOpen, showTree, terminalOpen, viewMode, workspaceHidden],
   );
-  const verticalLayout = usePersistentPanelLayout(verticalGroupId, VERTICAL_PANELS, VERTICAL_PANELS);
-  const documentLayout = usePersistentPanelLayout(
-    documentGroupId,
-    DOCUMENT_PANELS,
-    DOCUMENT_PANELS.filter(
-      (id) => (id === "editor" && viewMode !== "pdf") || (id === "pdf" && viewMode !== "editor"),
-    ),
-  );
-  const trackVerticalCollapse = useCollapseTransitions();
-  const onVerticalSeparatorKeyDown = useSeparatorKeyboard(verticalGroupRef, VERTICAL_LIMITS);
-  const onDocumentSeparatorKeyDown = useSeparatorKeyboard(documentGroupRef, DOCUMENT_LIMITS);
   const separatorHitArea = useSeparatorHitArea(0.375);
 
   useLayoutEffect(() => {
@@ -581,74 +512,44 @@ function AppContent() {
     if (zenProjectId !== null && zenProjectId !== projectId) exitZenMode({ restoreLayout: false });
   }, [projectId, zenProjectId]);
 
-  useLayoutEffect(() => {
-    if (!projectId) return;
-    const groupId = workspacePanelId(projectId, "vertical");
-    return afterPanelLayout(
-      () => terminalPanelRef.current,
-      (panel) => {
-        if (terminalOpen) expandPanel(groupId, "terminal", panel, 30);
-        else collapsePanel(groupId, "terminal", panel);
-      },
-    );
-  }, [terminalOpen, projectId]);
-
   useOpenFolderIntake();
   useTemplateLinkIntake();
 
-  const panelAreaRef = useRef<HTMLDivElement>(null);
-  const [panelAreaWidth, setPanelAreaWidth] = useState(0);
-  useEffect(() => {
-    if (!projectId) return;
-    const el = panelAreaRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver((entries) => {
-      const width = entries[0]?.contentRect.width;
-      if (width) setPanelAreaWidth(width);
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [projectId]);
-  const panelGroupWidth = sidebarPanelGroupWidth(panelAreaWidth, appFontSize);
-  const sidebarMinSize = sidebarMinimumPercent(
-    panelGroupWidth,
-    false,
-    appFontSize,
+  const paneTree = useMemo<PaneTreeConfig>(
+    () => ({
+      projectId,
+      shown: shownPanes,
+      workspaceHidden,
+      appFontSize,
+      hosts: {
+        sidebar: sidebarHost,
+        editor: editorHost,
+        pdf: previewHost,
+        terminal: terminalHost,
+        assistant: assistantHost,
+      },
+      separatorHitArea,
+      rootRef: paneRootElement,
+      onAssistantDismiss: closeAssistant,
+      onTerminalDismiss: closeTerminal,
+    }),
+    [
+      appFontSize,
+      assistantHost,
+      editorHost,
+      previewHost,
+      projectId,
+      separatorHitArea,
+      shownPanes,
+      sidebarHost,
+      terminalHost,
+      workspaceHidden,
+    ],
   );
-  const { sidebarDefaultSize, assistantMinSize, assistantDefaultSize } = horizontalPanelSizes(
-    panelGroupWidth,
-    appFontSize,
-    workspaceHidden,
+  const visiblePanes = useMemo(
+    () => (Object.keys(shownPanes) as PaneId[]).filter((pane) => shownPanes[pane]),
+    [shownPanes],
   );
-  const workspacePanelDefaultSize = splitPanelDefaultSize(viewMode);
-  const horizontalLimits = useMemo(
-    () =>
-      ({
-        sidebar: { minSize: sidebarMinSize, maxSize: 65 },
-        editorpdf: {},
-        assistant: {
-          minSize: assistantMinSize,
-          maxSize: workspaceHidden ? 100 : 55,
-          collapsible: true,
-          collapsedSize: 0,
-        },
-      }) satisfies Record<string, PanelLimits>,
-    [assistantMinSize, sidebarMinSize, workspaceHidden],
-  );
-  const horizontalLayout = useDismissiblePanelLayout(
-    horizontalGroupRef,
-    horizontalGroupId,
-    HORIZONTAL_PANELS,
-    HORIZONTAL_PANELS.filter(
-      (id) =>
-        (id === "sidebar" && showTree) ||
-        (id === "editorpdf" && !workspaceHidden) ||
-        (id === "assistant" && assistantOpen),
-    ),
-    horizontalLimits,
-    { id: "assistant", defaultSize: assistantDefaultSize, onDismiss: closeAssistant },
-  );
-  const onHorizontalSeparatorKeyDown = useSeparatorKeyboard(horizontalGroupRef, horizontalLimits);
 
   useEffect(() => {
     markBootStage("react-mounted");
@@ -664,14 +565,6 @@ function AppContent() {
     }
   }, [projectId]);
 
-  useSteadyPanelWidth({
-    panelRef: sidebarPanelRef,
-    active: showTree,
-    groupWidth: panelGroupWidth,
-    defaultSize: sidebarDefaultSize,
-    applyDefault: !hasStoredHorizontalLayout,
-  });
-
   useEffect(() => {
     const id = window.setTimeout(() => checkForUpdatesOnStartup(), 3000);
     return () => window.clearTimeout(id);
@@ -682,6 +575,7 @@ function AppContent() {
   useTauriEvent("menu://check-updates", () => void openUpdateWindow({ manual: true }), native);
   useTauriEvent("menu://about", () => setAboutOpen(true), native);
   useTauriSubscription(startNativeDockShortcutBridge, "start the dock shortcut bridge");
+  useTauriSubscription(startKeptUndoTidy, "tidy the kept note undo");
 
   useEffect(() => {
     if (!native) return;
@@ -690,6 +584,7 @@ function AppContent() {
   }, [native]);
   useTauriSubscription(native ? loadMcpBridge : null, "start the MCP bridge");
   useTauriSubscription(native ? loadResearchPdfBridge : null, "start the research PDF bridge");
+  useTauriSubscription(native ? loadQuickCaptureBridge : null, "start quick capture");
   useTauriSubscription(
     native ? loadStuckWindowRestore : null,
     "reopen the work after a stuck window reload",
@@ -855,10 +750,12 @@ function AppContent() {
       if (useTourStore.getState().activeTourId) return;
       const bindings = useShortcutStore.getState().bindings;
       if (matchesShortcut(e, bindings.recompile)) {
+        if (projectCovered() || !recompileWanted(e)) return;
         e.preventDefault();
         revealPreviewForCompile();
         void recompile();
       } else if (matchesShortcut(e, bindings.forwardSync)) {
+        if (projectCovered()) return;
         e.preventDefault();
         void forwardFromCursor();
       } else if (matchesShortcut(e, bindings.shortcutReference)) {
@@ -878,7 +775,7 @@ function AppContent() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (useTourStore.getState().activeTourId) return;
-      if (!useFilesStore.getState().projectId) return;
+      if (!useFilesStore.getState().projectId || projectCovered()) return;
       if (terminalOwnsKey(e)) return;
       if (matchesShortcut(e, useShortcutStore.getState().bindings.toggleSidebar)) {
         const el = document.activeElement as HTMLElement | null;
@@ -910,10 +807,18 @@ function AppContent() {
       if (isTerminalTarget(e.target)) return;
       const isRedo = command === "redo";
       if (useTourStore.getState().activeTourId) return;
-      if (!useFilesStore.getState().projectId) return;
+      const focused = document.activeElement;
+      const noteHistory = focused?.closest(".ProseMirror") || inPlainField(focused) ? null : noteHistoryAt(focused);
+      if (noteHistory) {
+        e.preventDefault();
+        e.stopPropagation();
+        noteHistory(isRedo);
+        return;
+      }
+      if (!useFilesStore.getState().projectId || projectCovered()) return;
       const active = document.activeElement as HTMLElement | null;
       if (inVisualForm(active)) return;
-      if (secondaryCodeEditorOwns(active)) return;
+      if (secondaryCodeEditorOwns(active) || separateRichTextEditor(active)) return;
       // Once Vim owns the source editor, let its modal handler see the key
       // first. Keys it declines still fall through to CodeMirror's ordinary
       // history keymap; capturing them here bypasses Vim entirely.
@@ -944,7 +849,7 @@ function AppContent() {
   useEffect(() => {
     if (!projectId) return;
     const onKey = (event: KeyboardEvent) => {
-      if (useTourStore.getState().activeTourId) return;
+      if (useTourStore.getState().activeTourId || projectCovered()) return;
       if (handleTerminalTabShortcut(event)) return;
       if (!usesNativeDockMenu()) handleDockShortcut(event);
     };
@@ -1031,6 +936,8 @@ function AppContent() {
         </Contained>
         <HotkeysModal />
         <DiagramComposer />
+        <NotesHost />
+        <ShareDialogHost overNotes />
         <DiagramComposerChooserHost />
         <TourGuide />
       </ThemeProvider>
@@ -1044,7 +951,7 @@ function AppContent() {
         data-zen={zen ? "true" : undefined}
         className="flex h-full flex-col"
       >
-        <div className="contents" inert={projectToolOpen || projectComposerOpen || undefined}>
+        <div className="contents" inert={coversProject(homePage) || undefined}>
           <div hidden={zen} className={zen ? undefined : "contents"}>
             <Contained resetKey={projectId}>
               <TopToolbar />
@@ -1079,7 +986,8 @@ function AppContent() {
         <Contained resetKey={projectId}>
           <TypstCjkFontSlot />
         </Contained>
-        <div ref={panelAreaRef} className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
+        <div className="relative z-0 flex min-h-0 flex-1 overflow-hidden">
+          <PaneReorderProvider rootRef={paneRootElement} visiblePanes={visiblePanes}>
           <ErrorBoundary
             resetKey={projectId}
             fallback={
@@ -1096,185 +1004,39 @@ function AppContent() {
               </div>
             }
           >
-            <Group
-              key={projectId}
-              groupRef={verticalGroupRef}
-              orientation="vertical"
-              defaultLayout={verticalLayout.defaultLayout ?? defaultVerticalLayout(terminalOpen)}
-              onLayoutChange={(layout: Layout) =>
-                trackVerticalCollapse(layout, {
-                  terminal: {
-                    collapsedSize: 0,
-                    onCollapse: () => {
-                      if (useSettingsStore.getState().terminalOpen) {
-                        useSettingsStore.getState().setTerminalOpen(false);
-                      }
-                    },
-                    onExpand: () => {
-                      if (!useSettingsStore.getState().terminalOpen) {
-                        useSettingsStore.getState().setTerminalOpen(true);
-                      }
-                    },
-                  },
-                })
-              }
-              onLayoutChanged={verticalLayout.onLayoutChanged}
-              resizeTargetMinimumSize={separatorHitArea}
-              className="min-h-0 min-w-0 flex-1"
-            >
-              <Panel
-                id="content-band"
-                defaultSize={percent(72)}
-                {...panelLimitProps(VERTICAL_LIMITS["content-band"])}
-                style={PANEL_STYLE}
-                className="min-h-0 min-w-0"
-              >
-                <Group
-                  groupRef={horizontalGroupRef}
-                  orientation="horizontal"
-                  defaultLayout={horizontalLayout.defaultLayout}
-                  onLayoutChange={horizontalLayout.onLayoutChange}
-                  onLayoutChanged={horizontalLayout.onLayoutChanged}
-                  resizeTargetMinimumSize={separatorHitArea}
-                  className="h-full min-h-0 min-w-0"
-                >
-              {showTree && (
-                <Fragment key="sidebar">
-                  <Panel
-                    panelRef={sidebarPanelRef}
-                    id="sidebar"
-                    defaultSize={percent(sidebarDefaultSize)}
-                    {...panelLimitProps(horizontalLimits.sidebar)}
-                    minSize={`${FILE_SIDEBAR_MIN_WIDTH}px`}
-                    groupResizeBehavior="preserve-pixel-size"
-                    style={PANEL_STYLE}
-                    className="bg-sidebar"
-                  >
-                    <WorkspaceSidebar />
-                  </Panel>
-                  <VHandle id="h-tree" onKeyDownCapture={onHorizontalSeparatorKeyDown} />
-                </Fragment>
+            <PaneTreeProvider value={paneTree}>
+              <PaneTreeGroup key={`${projectId}:${paneEpoch}:${paneLayout.id}`} node={paneLayout} root />
+            </PaneTreeProvider>
+            {shownPanes.sidebar && createPortal(<WorkspaceSidebar />, sidebarHost, `sidebar:${projectId}`)}
+            {shownPanes.editor &&
+              createPortal(
+                <ErrorBoundary surface="editor" resetKey={projectId}>
+                  <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.editor)} />}>
+                    <WorkspaceEditor />
+                  </Suspense>
+                </ErrorBoundary>,
+                editorHost,
+                `editor:${projectId}`,
               )}
-
-              {!workspaceHidden && (
-              <Panel
-                  key="editorpdf"
-                  id="editorpdf"
-                  defaultSize={percent(showTree ? 85 : 100)}
-                  {...panelLimitProps(horizontalLimits.editorpdf)}
-                  style={PANEL_STYLE}
-                  className="min-h-0 min-w-0"
-                >
-                  <Group
-                    groupRef={documentGroupRef}
-                    orientation="horizontal"
-                    defaultLayout={documentLayout.defaultLayout}
-                    onLayoutChanged={documentLayout.onLayoutChanged}
-                    resizeTargetMinimumSize={separatorHitArea}
-                    className="h-full min-h-0 min-w-0"
-                  >
-                        {viewMode !== "pdf" && (
-                          <Panel
-                            panelRef={editorPanelRef}
-                            id="editor"
-                            defaultSize={percent(workspacePanelDefaultSize)}
-                            {...panelLimitProps(DOCUMENT_LIMITS.editor)}
-                            style={PANEL_STYLE}
-                            className="min-h-0 min-w-0"
-                          >
-                            <ErrorBoundary surface="editor" resetKey={projectId}>
-                              <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.editor)} />}>
-                                <WorkspaceEditor />
-                              </Suspense>
-                            </ErrorBoundary>
-                          </Panel>
-                        )}
-                        {viewMode === "split" && (
-                          <VHandle id="h-mid" onKeyDownCapture={onDocumentSeparatorKeyDown} />
-                        )}
-                        {viewMode !== "editor" && (
-                          <Panel
-                            panelRef={pdfPanelRef}
-                            id="pdf"
-                            defaultSize={percent(workspacePanelDefaultSize)}
-                            {...panelLimitProps(DOCUMENT_LIMITS.pdf)}
-                            style={PANEL_STYLE}
-                            className="min-h-0 min-w-0"
-                          >
-                            <KeptAliveSlot host={previewHost} className="h-full min-h-0 min-w-0" />
-                          </Panel>
-                        )}
-                  </Group>
-                </Panel>
+            {shownPanes.assistant &&
+              createPortal(
+                <ErrorBoundary surface="AI assistant" resetKey={projectId}>
+                  <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.assistant)} />}>
+                    <WorkspaceAssistant />
+                  </Suspense>
+                </ErrorBoundary>,
+                assistantHost,
+                `assistant:${projectId}`,
               )}
-
-              {assistantOpen && (
-                <Fragment key="assistant">
-                  {!workspaceHidden && (
-                    <VHandle id="h-assistant" onKeyDownCapture={onHorizontalSeparatorKeyDown} />
-                  )}
-                  <Panel
-                    id="assistant"
-                    defaultSize={percent(assistantDefaultSize)}
-                    {...panelLimitProps(horizontalLimits.assistant)}
-                    style={PANEL_STYLE}
-                    className="min-h-0 min-w-0 border-l"
-                  >
-                    <ErrorBoundary surface="AI assistant" resetKey={projectId}>
-                      <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.assistant)} />}>
-                        <WorkspaceAssistant />
-                      </Suspense>
-                    </ErrorBoundary>
-                  </Panel>
-                </Fragment>
-              )}
-                </Group>
-              </Panel>
-              <Separator
-                id="v-terminal"
-                disabled={!terminalOpen}
-                disableDoubleClick
-                onKeyDownCapture={onVerticalSeparatorKeyDown}
-                style={{ cursor: "row-resize" }}
-                className={cn(
-                  "resize-handle-row group relative z-10 h-px select-none border-t bg-background",
-                  "before:absolute before:inset-x-0 before:-inset-y-1 before:content-['']",
-                  !terminalOpen && "invisible h-0 overflow-hidden border-t-0",
-                )}
-              >
-                <span
-                  className={cn(
-                    "pointer-events-none absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 opacity-0 transition-opacity",
-                    "bg-[color-mix(in_srgb,var(--ring)_40%,var(--background))]",
-                    "group-hover:opacity-100 group-data-[separator=hover]:opacity-100 group-data-[separator=active]:opacity-100",
-                  )}
-                />
-              </Separator>
-              <Panel
-                panelRef={terminalPanelRef}
-                id="terminal"
-                defaultSize={percent(28)}
-                {...panelLimitProps(VERTICAL_LIMITS.terminal)}
-                style={PANEL_STYLE}
-                className="min-h-0 min-w-0"
-              >
-                <div
-                  className={cn(
-                    "h-full min-h-0 min-w-0",
-                    !terminalOpen && "invisible pointer-events-none",
-                  )}
-                >
-                  <ErrorBoundary surface="terminal dock" resetKey={projectId}>
-                    <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.terminal)} />}>
-                      <TerminalDock
-                        projectId={projectId}
-                        visible={terminalOpen}
-                      />
-                    </Suspense>
-                  </ErrorBoundary>
-                </div>
-              </Panel>
-            </Group>
+            {createPortal(
+              <ErrorBoundary surface="terminal dock" resetKey={projectId}>
+                <Suspense fallback={<SurfaceLoading label={t(($) => $.workspace.surfaces.terminal)} />}>
+                  <TerminalDock projectId={projectId} visible={terminalOpen} />
+                </Suspense>
+              </ErrorBoundary>,
+              terminalHost,
+              `terminal:${projectId}`,
+            )}
           </ErrorBoundary>
           {keepPreview &&
             createPortal(
@@ -1285,6 +1047,7 @@ function AppContent() {
               </ErrorBoundary>,
               previewHost,
             )}
+          </PaneReorderProvider>
         </div>
 
         <Contained resetKey={projectId}>
@@ -1363,6 +1126,8 @@ function AppContent() {
         </div>
         <SettingsModal />
         <DiagramComposer />
+        <NotesHost />
+        <ShareDialogHost overNotes />
         <DiagramComposerChooserHost />
         {projectToolOpen && (
           <Contained resetKey={homePage} close={() => useHomeViewStore.getState().goTo("library")}>
@@ -1565,8 +1330,30 @@ function OpenCompileKeeper() {
   return null;
 }
 
+function leaveNotes(): void {
+  const home = useHomeViewStore.getState();
+  if (home.page === "notes") home.goTo("library");
+  const noteTabs = useNoteTabsStore.getState();
+  noteTabs.closeMany(noteTabs.tabs.map((tab) => tab.id));
+}
+
 export default function App() {
   const projectId = useFilesStore((state) => state.projectId);
+  useEffect(() => startWarming((error) => void logError("load a view ahead of time", error)), []);
+  useEffect(() => {
+    const stopSettings = useSettingsStore.subscribe((state, previous) => {
+      if (state.settingsOpen && !previous.settingsOpen) preloadIntent("settings");
+      if ((state.notes && !previous.notes) || (state.latexTools && !previous.latexTools)) warmDeferred();
+      if (!state.notes && previous.notes) leaveNotes();
+    });
+    const stopResearch = useResearchTasksFlagStore.subscribe((state, previous) => {
+      if (state.enabled && !previous.enabled) warmDeferred();
+    });
+    return () => {
+      stopSettings();
+      stopResearch();
+    };
+  }, []);
   return (
     <>
       <LanguageServiceRuntime />

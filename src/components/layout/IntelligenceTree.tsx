@@ -13,12 +13,11 @@ import {
   Heading,
   Link2,
   Quote,
-  Search,
   Sigma,
   Tags,
-  X,
 } from "lucide-react";
 import {
+  Fragment,
   memo,
   startTransition,
   useCallback,
@@ -32,10 +31,10 @@ import {
   type ComponentType,
   type MouseEvent,
   type KeyboardEvent,
-  type Ref,
   type ReactNode,
 } from "react";
 import { FileIcon } from "@/components/files/fileIcon";
+import { Breadcrumb, BreadcrumbItem, BreadcrumbList, BreadcrumbSeparator } from "@/components/ui/breadcrumb";
 import { useDelegatedTooltips } from "@/components/ui/delegated-tooltip";
 import { useRowWindow } from "@/hooks/use-row-window";
 import { type ScrollMemory, useScrollMemoryLayout } from "@/hooks/use-scroll-memory";
@@ -756,53 +755,6 @@ function IntelligenceTreeView({
 
 export const IntelligenceTree = memo(IntelligenceTreeView);
 
-export function IntelligenceFilter({
-  value,
-  onChange,
-  placeholder,
-  label,
-  inputRef,
-}: Readonly<{
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  label: string;
-  inputRef?: Ref<HTMLInputElement>;
-}>) {
-  const { t } = useTranslation(["workspace"]);
-  const inputId = useId();
-  return (
-    <div className="relative block rounded-md">
-      <label htmlFor={inputId} className="sr-only">
-        {label}
-      </label>
-      <Search
-        aria-hidden
-        className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-      />
-      <input
-        id={inputId}
-        ref={inputRef}
-        type="search"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder ?? t(($) => $.workspace.tree.filterPlaceholder)}
-        className="h-7 w-full rounded-md border border-input bg-background/70 pl-7 pr-7 text-xs text-foreground placeholder:text-muted-foreground/75 focus-visible:border-ring"
-      />
-      {value ? (
-        <button
-          type="button"
-          aria-label={t(($) => $.workspace.tree.clearFilter)}
-          onClick={() => onChange("")}
-          className="absolute right-0 top-1/2 flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
-        >
-          <X aria-hidden className="size-3" />
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
 export function PanelBreadcrumb({
   project,
   path,
@@ -845,34 +797,25 @@ export function PanelBreadcrumb({
   };
 
   return (
-    <nav
-      aria-label={breadcrumbLabel()}
-      className="flex min-w-0 items-center gap-1 overflow-hidden text-[0.625rem] text-muted-foreground"
-    >
-      {project ? (
-        <span className="max-w-[40%] shrink truncate font-medium text-sidebar-foreground/75">
-          {project}
-        </span>
-      ) : null}
-      {visibleSegments.map((segment, index) => (
-        <span
-          key={segment.id}
-          className="contents"
-          aria-hidden
-        >
-          <ChevronRight className="size-2.5 shrink-0 opacity-50" />
-          <span
-            className={cn(
-              "truncate",
-              index === visibleSegments.length - 1 &&
-                "font-mono text-sidebar-foreground/75",
-            )}
-          >
-            {segment.label}
-          </span>
-        </span>
-      ))}
-    </nav>
+    <Breadcrumb aria-label={breadcrumbLabel()} className="min-w-0 overflow-hidden">
+      <BreadcrumbList aria-hidden className="text-[0.625rem]">
+        {project ? (
+          <BreadcrumbItem className="max-w-[40%] font-medium text-sidebar-foreground/75">
+            <span className="truncate">{project}</span>
+          </BreadcrumbItem>
+        ) : null}
+        {visibleSegments.map((segment, index) => (
+          <Fragment key={segment.id}>
+            <BreadcrumbSeparator className="opacity-50 [&>svg]:size-2.5" />
+            <BreadcrumbItem
+              className={cn(index === visibleSegments.length - 1 && "font-mono text-sidebar-foreground/75")}
+            >
+              <span className="truncate">{segment.label}</span>
+            </BreadcrumbItem>
+          </Fragment>
+        ))}
+      </BreadcrumbList>
+    </Breadcrumb>
   );
 }
 

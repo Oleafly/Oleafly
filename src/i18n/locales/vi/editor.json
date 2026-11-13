@@ -221,7 +221,13 @@
     "closeRight": "Đóng tất cả bên phải",
     "closeAll": "Đóng tất cả",
     "closeAssistantTabs": "Đóng các tệp trợ lý đã mở",
-    "closeAssistantTabsCount_other": "Đóng {{count}} tệp trợ lý đã mở"
+    "closeAssistantTabsCount_other": "Đóng {{count}} tệp trợ lý đã mở",
+    "editAsMarkdown": "Sửa dưới dạng Markdown",
+    "editAsNote": "Sửa dưới dạng ghi chú",
+    "noteAsMarkdown": "Bạn đang sửa ghi chú này dưới dạng Markdown.",
+    "openInNotes": "Mở trong Ghi chú",
+    "moveIntoProject": "Chuyển vào dự án",
+    "copyToMyNotes": "Sao chép vào ghi chú của tôi"
   },
   "projectInfo": {
     "trigger": "Thông tin dự án",
@@ -982,13 +988,14 @@
         "environment": "Môi trường {{environment}}",
         "command": "Lệnh \\{{command}}",
         "latexSource": "Mã nguồn LaTeX",
+        "html": "HTML",
         "maketitlePreview": "Được tạo từ tiêu đề tài liệu và siêu dữ liệu tác giả.",
         "figurePreserved": "Giữ nguyên mã nguồn hình.",
         "tablePreserved": "Giữ nguyên mã nguồn bảng.",
         "sourcePreserved": "Giữ nguyên mã nguồn",
         "editSource": "Sửa mã nguồn",
-        "summaryLabel": "{{label}}. Giữ nguyên mã nguồn LaTeX.",
-        "inputLabel": "Mã nguồn khối LaTeX nguyên vẹn"
+        "summaryLabel": "{{label}}. Giữ nguyên mã nguồn.",
+        "inputLabel": "Mã nguồn khối nguyên vẹn"
       },
       "inline": {
         "label": "Mã nguồn trong dòng thô",

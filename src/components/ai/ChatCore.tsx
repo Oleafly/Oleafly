@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo } from "react";
+import { Suspense, useState, useRef, useEffect, useImperativeHandle, useLayoutEffect, useCallback, useMemo, type ReactNode } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
@@ -97,6 +98,7 @@ import { ToolConfirm } from "@/components/ai/ToolConfirm";
 import { DelegatedPermissions } from "@/components/ai/DelegatedPermissions";
 import { ApprovalModeSelector } from "@/components/ai/ApprovalModeSelector";
 import { AiToolManager } from "@/components/ai/AiToolManager";
+import { ProviderConnect } from "@/components/ai/ProviderConnect";
 import { McpBrandIcon } from "@/components/ai/McpBrandIcon";
 import {
   ModelSelector,
@@ -143,7 +145,6 @@ import {
   turnsToDrop,
   userTurnsFrom,
 } from "@/components/ai/chat-replay";
-import type { MessageAction } from "@/components/ai/chat-parts";
 import {
   attachmentNotice,
   attachmentText,
@@ -190,6 +191,7 @@ import { WorkspaceBanner } from "@/components/ui/workspace-banner";
 import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { isProviderConfigured, mergeCustomProviders, pickActiveProvider } from "@/lib/ai-providers";
+import { rememberedModel } from "./scope-model-memory";
 import {
   configuredModelGroups,
   configuredProviders as listConfiguredProviders,
@@ -204,9 +206,11 @@ import {
 import { useSettingsStore } from "@/store/settings";
 import {
   messageAttachmentRefs,
+  shownChats,
   useChatsStore,
   type ChatMessage,
   type ChatTurnChanges,
+  type ChatUsage,
   type ReasoningBlockData,
   type StoredChat,
 } from "@/store/chats";
@@ -242,10 +246,9 @@ import {
   useMcpAgentTools,
 } from "@/lib/mcp-agent-tools";
 import { resolveResearchToolAliases } from "@/lib/research-tool-aliases";
-import { useAgentTodoStore, type AgentTodo } from "@/store/agent-todos";
+import { agentTodoView, useAgentTodoStore, type AgentTodo } from "@/store/agent-todos";
 import { useAgentMemoryStore } from "@/store/agent-memory";
 import { useAgentHandoffStore } from "@/store/agent-handoff";
-import { useAssistantRuntimeStore } from "@/store/assistant-runtime";
 import { useAcpSessionsStore } from "@/store/acp-sessions";
 import { acpUsable } from "@/lib/acp";
 import { SessionTranscriptDialog } from "@/components/ai/activity/SessionTranscriptDialog";
@@ -300,9 +303,19 @@ import {
   InfoHint,
   formatError,
   formatToolOutput,
+  type MessageAction,
 } from "@/components/ai/chat-parts";
-import { textToBase64 } from "@/lib/base64";
+import { textDataUrl } from "@/lib/base64";
+import { noteLinkAttachments } from "@/components/notes/note-link-context";
 import { Spinner } from "@/components/ui/spinner";
+import {
+  WORKSPACE_ASSISTANT_SCOPE,
+  useProvidedAssistantScope,
+  useWorkspaceAssistantScope,
+  type AssistantLayoutParts,
+  type AssistantScopeRun,
+  type AssistantScopeValue,
+} from "@/components/ai/assistant-scope";
 
 const MAX_AGENT_TOOL_DEFINITIONS = 128;
 const IMAGE_TOOLS = new Set(["preview_figure", "load_image", "verify_pdf_pages"]);
@@ -332,10 +345,11 @@ function saveStoppedReply(
   runProjectId: string | null,
   runChatId: string | null,
   pending: { chatId: string; msgs: ChatMessage[] } | null,
+  scope?: string,
 ): void {
   let latest: ChatMessage[] | undefined;
   if (pending?.chatId === runChatId) latest = pending.msgs;
-  else if (runChatId) latest = useChatsStore.getState().byId(runChatId)?.messages;
+  else if (runChatId) latest = useChatsStore.getState().byId(runChatId, scope)?.messages;
   const reply = latest?.at(-1);
   if (!runProjectId || !runChatId || !latest || reply?.role !== "assistant") return;
   const content = reply.content ?? "";
@@ -649,10 +663,6 @@ export function buildToolContinuation(
 const MENTION_FILE_MAX_BYTES = 200 * 1024;
 const MENTION_LISTING_MAX_ENTRIES = 400;
 
-function textDataUrl(text: string): string {
-  return `data:text/plain;base64,${textToBase64(text)}`;
-}
-
 function cappedMentionText(text: string): string {
   const bytes = new TextEncoder().encode(text);
   if (bytes.length <= MENTION_FILE_MAX_BYTES) return text;
@@ -851,19 +861,175 @@ function withStoredToolImage(
 }
 
 const UsageReportDialog = lazy(() =>
-  import("@/components/usage/UsageReport").then((module) => ({ default: module.UsageReportDialog })),
-);
+  import("@/components/usage/UsageReport").then((module) => ({ default: module.UsageReportDialog })), { warm: true });
+
+const NO_RUN_TOOLS: Omit<AssistantScopeRun, "projectId"> = {
+  confirm: () => Promise.resolve(false),
+  onImage: () => {},
+  runId: () => null,
+  isActive: () => false,
+};
+
+function scopeToolAdditions(scope: AssistantScopeValue, run: AssistantScopeRun | null): RuntimeToolset[] {
+  if (!scope.toolAdditions || !run) return [];
+  return scope.toolAdditions(run);
+}
+
+function scopeExcludedNames(
+  scope: AssistantScopeValue,
+  features: readonly EngineFeature[],
+  figureTools: boolean,
+): string[] {
+  return [...excludedToolNames(features, figureTools), ...scope.excludedNames];
+}
+
+const PROJECT_CHANGED_TOOL_ERROR =
+  "The open project changed while this run was active. The tool was not executed to protect the newly opened project. Ask the user to re-run the request in the project it applies to.";
 
 export function ChatCore() {
+  const provided = useProvidedAssistantScope();
+  return provided ? <ChatCoreBody scope={provided} /> : <WorkspaceChatCore />;
+}
+
+function WorkspaceChatCore() {
+  return <ChatCoreBody scope={useWorkspaceAssistantScope()} />;
+}
+
+function enabledAction<T>(enabled: boolean, action: T): T | undefined {
+  return enabled ? action : undefined;
+}
+
+function dataFlag(on: unknown): "true" | "false" {
+  return on ? "true" : "false";
+}
+
+function personaById(personas: readonly Persona[], id: string | null): Persona | null {
+  if (!id) return null;
+  return personas.find((persona) => persona.id === id) ?? null;
+}
+
+function composerPlaceholder(
+  engineLoaded: boolean,
+  planApprovalStatus: PlanApprovalStatus,
+  scopePlaceholder: string | undefined,
+): string {
+  if (!engineLoaded) return i18n.t(($) => $.ai.composer.placeholderEngineUnavailable);
+  if (planApprovalStatus === "awaiting") return i18n.t(($) => $.ai.composer.planRevisionPlaceholder);
+  return scopePlaceholder ?? i18n.t(($) => $.ai.composer.placeholderDefault);
+}
+
+function skillPromptCategoriesFor(skills: ReturnType<typeof enabledSkills>) {
+  if (skills.length === 0) return [];
+  return [
+    {
+      id: "skills",
+      label: i18n.t(($) => $.ai.commands.groups.skills),
+      items: skills.map((skill) => ({
+        id: `skill:${skill.id}`,
+        icon: Sparkles,
+        label: skill.name,
+        description: skill.description,
+        prompt: `/${skill.id} `,
+      })),
+    },
+  ];
+}
+
+function noticeForModel(notice: ModelNotice | null, providerId: string, modelId: string): ModelNotice | null {
+  return notice?.providerId === providerId && notice?.modelId === modelId ? notice : null;
+}
+
+function canRecheckBlockedModel(notice: ModelNotice | null, trust: ReturnType<typeof resolveModelTrust>): boolean {
+  return notice?.kind === "blocked" && trust.trust === "blocked" && trust.source === "probe";
+}
+
+function lastIndexWithRole(messages: readonly ChatMessage[], role: ChatMessage["role"]): number {
+  for (let index = messages.length - 1; index >= 0; index--) {
+    if (messages[index].role === role) return index;
+  }
+  return -1;
+}
+
+function agentStatusVisibility(
+  todos: readonly AgentTodo[],
+  turn: ReturnType<typeof agentFileChangeTurnForChat>,
+  streaming: boolean,
+  planApprovalStatus: PlanApprovalStatus,
+): { pillVisible: boolean; runSummaryVisible: boolean } {
+  const active = todos.filter((todo) => todo.status !== "cancelled");
+  const open = active.some((todo) => todo.status !== "completed");
+  const filesChanged = Object.keys(turn?.changedFiles ?? {}).length > 0 || (turn?.committedFiles.length ?? 0) > 0;
+  const statusActive = streaming || planApprovalStatus !== "planning" || open;
+  return {
+    pillVisible: statusActive && (planApprovalStatus !== "planning" || active.length > 0 || (streaming && filesChanged)),
+    runSummaryVisible: !statusActive && active.length > 0,
+  };
+}
+
+function statusCardRoomFor(pillVisible: boolean, pinned: boolean, overlayHeight: number): number {
+  if (pillVisible && pinned && overlayHeight > 0) {
+    return Math.max(STATUS_PILL_ROOM_PX, overlayHeight + STATUS_OVERLAY_OFFSET_PX + STATUS_CARD_GAP_PX);
+  }
+  return 0;
+}
+
+function usageRecorded(runUsage: RunUsageView | null, chatUsage: ChatUsage | undefined): boolean {
+  return Boolean(
+    runUsage || (chatUsage && (chatUsage.inputTokens > 0 || chatUsage.outputTokens > 0 || chatUsage.steps > 0)),
+  );
+}
+
+function usageSummaryText(runUsage: RunUsageView | null, chatUsage: ChatUsage | undefined): string {
+  if (runUsage) {
+    return runUsage.input === null || runUsage.output === null
+      ? i18n.t(($) => $.ai.usage.summaryRunNoTokens, { count: runUsage.steps })
+      : i18n.t(($) => $.ai.usage.summaryRunWithTokens, {
+          count: runUsage.steps,
+          tokens: formatNumber(runUsage.input + runUsage.output),
+        });
+  }
+  if (chatUsage) {
+    return i18n.t(($) => $.ai.usage.summaryChat, {
+      steps: chatUsage.steps,
+      tokens: formatNumber(chatUsage.inputTokens + chatUsage.outputTokens),
+    });
+  }
+  return i18n.t(($) => $.ai.usage.summaryFallback);
+}
+
+function usageTooltipText(summary: string, share: number | null): string {
+  if (share === null) return summary;
+  const percent = formatNumber(share, { style: "percent", maximumFractionDigits: 0 });
+  return `${summary}. ${i18n.t(($) => $.ai.usage.contextShare, { percent })}`;
+}
+
+function pickerModelGroups(
+  groups: ModelSelectorGroup[],
+  scopeGroups: readonly ModelSelectorGroup[] | undefined,
+): ModelSelectorGroup[] {
+  return scopeGroups ? [...groups, ...scopeGroups] : groups;
+}
+
+function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
   const { t } = useTranslation(["common", "ai"]);
-  const projectId = useFilesStore((s) => s.projectId);
+  const scopeKey = scope.key;
+  const scopeRef = useRef(scope);
+  scopeRef.current = scope;
+  const chatScopeOptions = useCallback(
+    <T extends object>(options?: T): (T & { scope?: string }) | undefined =>
+      scopeKey === WORKSPACE_ASSISTANT_SCOPE ? options : { ...options, scope: scopeKey } as T & { scope: string },
+    [scopeKey],
+  );
+  const projectId = scope.projectId;
+  const storageKey = scope.storageKey;
+  const stateKey = storageKey ?? projectId;
   const researchChatActions = useResearchChatActions(projectId);
   const [transcriptThreadId, setTranscriptThreadId] = useState<string | null>(null);
   const openSession = useCallback(
     (target: { threadId: string; runtime?: string | null }) => {
       if (target.runtime === "acp") {
         if (!projectId) return;
-        useAssistantRuntimeStore.getState().setRuntime("acp");
+        scopeRef.current.setRuntime("acp");
         void useAcpSessionsStore
           .getState()
           .open(projectId, target.threadId)
@@ -878,12 +1044,12 @@ export function ChatCore() {
     () => ({ ...researchChatActions, openSession }),
     [researchChatActions, openSession],
   );
-  const projectName = useFilesStore((s) => s.projectName);
-  const documentEngine = useFilesStore((s) => s.engine);
-  const engineLoaded = useFilesStore((s) => s.engineLoaded);
-  const figureToolsAvailable = supportsFigureTools(documentEngine, engineLoaded);
-  const projectKind = useFilesStore((s) => s.projectKind);
-  const projectTree = useFilesStore((s) => s.tree);
+  const projectName = scope.projectName;
+  const documentEngine = scope.engine;
+  const engineLoaded = scope.engineLoaded;
+  const figureToolsAvailable = scope.features.figures && supportsFigureTools(documentEngine, engineLoaded);
+  const projectKind = scope.projectKind;
+  const projectTree = scope.tree;
   const setSettingsOpen = useSettingsStore((s) => s.setSettingsOpen);
   const setSettingsInitialSection = useSettingsStore((s) => s.setSettingsInitialSection);
   const setSettingsScrollTarget = useSettingsStore((s) => s.setSettingsScrollTarget);
@@ -895,17 +1061,17 @@ export function ChatCore() {
   const planModes = usePlanModeStore((s) => s.enabledByProject);
   const loadPlanMode = usePlanModeStore((s) => s.load);
   const togglePlanMode = usePlanModeStore((s) => s.toggle);
-  const planMode = planModeForProject(planModes, projectId);
+  const planMode = planModeForProject(planModes, stateKey);
   const goals = useChatGoalStore((s) => s.goalsByProject);
   const loadGoal = useChatGoalStore((s) => s.load);
   const setGoal = useChatGoalStore((s) => s.setGoal);
   const clearGoal = useChatGoalStore((s) => s.clearGoal);
-  const goal = goalForProject(goals, projectId);
+  const goal = goalForProject(goals, stateKey);
   const shellLeading = useAssistantShellLeading();
   const workspaceHidden = useSettingsStore((s) => s.workspaceHidden);
-  const chats = useChatsStore((s) => s.chats);
-  const chatsProjectId = useChatsStore((s) => s.projectId);
-  const activeChatId = useChatsStore((s) => s.activeId);
+  const chats = useChatsStore((s) => shownChats(s, scopeKey).chats);
+  const chatsProjectId = useChatsStore((s) => shownChats(s, scopeKey).projectId);
+  const activeChatId = useChatsStore((s) => shownChats(s, scopeKey).activeId);
   const planApprovalByChat = usePlanApprovalStore((s) => s.byChat);
   const planApprovalStatus: PlanApprovalStatus = planMode
     ? planApprovalForChat(planApprovalByChat, activeChatId)
@@ -925,9 +1091,21 @@ export function ChatCore() {
   const markRunSteerable = useCallback((id: string) => {
     if (activeRunRequestIdRef.current === id) setSteerableRunId(id);
   }, []);
-  const loadChats = useChatsStore((s) => s.load);
-  const removeChat = useChatsStore((s) => s.remove);
-  const setActiveChat = useChatsStore((s) => s.setActive);
+  const loadChatsInStore = useChatsStore((s) => s.load);
+  const removeChatInStore = useChatsStore((s) => s.remove);
+  const setActiveChatInStore = useChatsStore((s) => s.setActive);
+  const loadChats = useCallback(
+    (id: string) => loadChatsInStore(id, scopeKey, storageKey),
+    [loadChatsInStore, scopeKey, storageKey],
+  );
+  const removeChat = useCallback(
+    (id: string, opts?: { deleteThread?: boolean }) => removeChatInStore(id, { ...opts, scope: scopeKey }),
+    [removeChatInStore, scopeKey],
+  );
+  const setActiveChat = useCallback(
+    (id: string | null) => setActiveChatInStore(id, scopeKey),
+    [setActiveChatInStore, scopeKey],
+  );
   const activeChat = chats.find((c) => c.id === activeChatId) ?? null;
   const agentFileChangeTurn = useAgentFileChangesStore((state) =>
     agentFileChangeTurnForChat(state, activeChatId),
@@ -974,12 +1152,12 @@ export function ChatCore() {
   }, [loadApprovalMode, projectId]);
 
   useEffect(() => {
-    loadPlanMode(projectId);
-  }, [loadPlanMode, projectId]);
+    loadPlanMode(stateKey);
+  }, [loadPlanMode, stateKey]);
 
   useEffect(() => {
-    loadGoal(projectId);
-  }, [loadGoal, projectId]);
+    loadGoal(stateKey);
+  }, [loadGoal, stateKey]);
 
   const changeApprovalMode = useCallback(
     (nextMode: ApprovalMode) => {
@@ -991,15 +1169,14 @@ export function ChatCore() {
   );
 
   const changePlanMode = useCallback(() => {
-    if (usePlanModeStore.getState().isEnabled(projectId)) {
-      const projectChatIds = useChatsStore
-        .getState()
+    if (usePlanModeStore.getState().isEnabled(stateKey)) {
+      const projectChatIds = shownChats(useChatsStore.getState(), scopeKey)
         .chats.filter((chat) => chat.projectId === projectId)
         .map((chat) => chat.id);
       usePlanApprovalStore.getState().discardForChats(projectChatIds);
     }
-    togglePlanMode(projectId);
-  }, [projectId, togglePlanMode]);
+    togglePlanMode(stateKey);
+  }, [projectId, scopeKey, stateKey, togglePlanMode]);
 
   const [messages, setMessagesState] = useState<ChatMessage[]>([]);
   const messagesRef = useRef<ChatMessage[]>([]);
@@ -1043,7 +1220,7 @@ export function ChatCore() {
   const agentThreadId = useAgentTurnsStore((s) =>
     activeChatId ? s.threadByChat[activeChatId] : undefined,
   );
-  const composerId = builtinComposerId(projectId, chatsProjectId === projectId ? activeChatId : null);
+  const composerId = builtinComposerId(stateKey, chatsProjectId === projectId ? activeChatId : null);
   const composerIdRef = useRef(composerId);
   composerIdRef.current = composerId;
   const shownDraftRef = useRef(composerId);
@@ -1072,8 +1249,11 @@ export function ChatCore() {
     const cfg = knownProviderConfig();
     return cfg ? { cfg, state: deriveProviderState(cfg) } : null;
   });
-  const [provider, setProvider] = useState(initialProvider?.state.provider ?? "openai");
-  const [model, setModel] = useState(initialProvider?.state.model ?? "gpt-4o");
+  const [initialChoice] = useState(() =>
+    initialProvider ? rememberedModel(scope.modelMemory, initialProvider.cfg) : null,
+  );
+  const [provider, setProvider] = useState(initialChoice?.providerId ?? initialProvider?.state.provider ?? "openai");
+  const [model, setModel] = useState(initialChoice?.modelId ?? initialProvider?.state.model ?? "gpt-4o");
   const [providerConfigReady, setProviderConfigReady] = useState(initialProvider !== null);
   const [providerConfigError, setProviderConfigError] = useState(false);
   const [keysMap, setKeysMap] = useState<Record<string, string>>(
@@ -1111,7 +1291,7 @@ export function ChatCore() {
   newChatSettingsRef.current = newChatSettings;
   const [droppedTurns, setDroppedTurns] = useState(0);
   const saveProblems = useChatsStore((s) => s.saveProblems);
-  const skippedOnLoad = useChatsStore((s) => s.skippedOnLoad);
+  const skippedOnLoad = useChatsStore((s) => shownChats(s, scopeKey).skippedOnLoad);
   const [editTarget, setEditTarget] = useState<{
     messageId: string;
     userIndex: number;
@@ -1142,14 +1322,14 @@ export function ChatCore() {
   const [sendingFollowUpId, setSendingFollowUpId] = useState<string | null>(null);
   const sendingFollowUpIdRef = useRef<string | null>(null);
   const openGoalEditor = useCallback(() => {
-    setGoalDraft(useChatGoalStore.getState().goal(projectId));
+    setGoalDraft(useChatGoalStore.getState().goal(stateKey));
     setGoalEditorProjectId(projectId);
-  }, [projectId]);
+  }, [projectId, stateKey]);
   const saveGoal = useCallback(() => {
-    setGoal(projectId, goalDraft);
+    setGoal(stateKey, goalDraft);
     setGoalEditorProjectId(null);
-  }, [goalDraft, projectId, setGoal]);
-  const agentTodos = useAgentTodoStore((s) => s.todos);
+  }, [goalDraft, setGoal, stateKey]);
+  const agentTodos = useAgentTodoStore((s) => agentTodoView(s, scopeKey).todos);
   const [runUsage, setRunUsage] = useState<
     (RunUsageView & { context?: { used: number; size: number } }) | null
   >(null);
@@ -1166,9 +1346,7 @@ export function ChatCore() {
     () => initialProvider?.state.personas ?? [],
   );
   const [activePersonaId, setActivePersonaId] = useState<string | null>(null);
-  const activePersona = activePersonaId
-    ? personas.find((persona) => persona.id === activePersonaId) ?? null
-    : null;
+  const activePersona = personaById(personas, activePersonaId);
   const customPromptRef = useRef(customPrompt);
   customPromptRef.current = customPrompt;
   const personasRef = useRef<Persona[]>(personas);
@@ -1182,11 +1360,7 @@ export function ChatCore() {
     const frame = requestAnimationFrame(() => goalInputRef.current?.focus());
     return () => cancelAnimationFrame(frame);
   }, [goalEditorOpen]);
-  let inputPlaceholder: string;
-  if (!engineLoaded) inputPlaceholder = t(($) => $.ai.composer.placeholderEngineUnavailable);
-  else if (planApprovalStatus === "awaiting")
-    inputPlaceholder = t(($) => $.ai.composer.planRevisionPlaceholder);
-  else inputPlaceholder = t(($) => $.ai.composer.placeholderDefault);
+  const inputPlaceholder = composerPlaceholder(engineLoaded, planApprovalStatus, scope.composer?.placeholder);
   const scrollRef = useRef<HTMLDivElement>(null);
   const nearBottomRef = useRef(true);
   const abortRef = useRef<AbortController | null>(null);
@@ -1223,6 +1397,9 @@ export function ChatCore() {
     [mcpAgentToolsQuery.data],
   );
   const aiToolsets = useAiToolsets();
+  const scopeAdditions = scope.toolAdditions;
+  const scopeHost = scope.toolHost;
+  const scopeExcluded = scope.excludedNames;
   const toolManagerAvailability = useMemo(() => {
     const additions: RuntimeToolset[] = [
       { id: "research-workspace", source: { kind: "project" }, tools: createResearchWorkspaceTools(projectId) },
@@ -1230,6 +1407,7 @@ export function ChatCore() {
       ...(Object.keys(availableSkillTools).length > 0
         ? [{ id: "skills", source: { kind: "skills" } as const, tools: availableSkillTools }]
         : []),
+      ...(scopeAdditions && projectId ? scopeAdditions({ ...NO_RUN_TOOLS, projectId }) : []),
     ];
     return resolveAvailableTools({
       toolsets: aiToolsets,
@@ -1238,14 +1416,18 @@ export function ChatCore() {
         confirm: () => Promise.resolve(false),
         onImage: () => {},
         runId: () => null,
+        host: scopeHost,
       },
       additions,
-      excludedNames: excludedToolNames(
-        documentEngine.capabilities.features,
-        figureToolsAvailable,
-      ),
+      excludedNames: [
+        ...excludedToolNames(documentEngine.capabilities.features, figureToolsAvailable),
+        ...scopeExcluded,
+      ],
     });
   }, [
+    scopeAdditions,
+    scopeHost,
+    scopeExcluded,
     projectId,
     aiToolsets,
     availableMcpToolsets,
@@ -1263,25 +1445,10 @@ export function ChatCore() {
     () => new Set(mentionEntries.map((entry) => entry.path)),
     [mentionEntries],
   );
-  const skillPromptCategories =
-    availableSkills.length > 0
-      ? [
-          {
-            id: "skills",
-            label: i18n.t(($) => $.ai.commands.groups.skills),
-            items: availableSkills.map((skill) => ({
-              id: `skill:${skill.id}`,
-              icon: Sparkles,
-              label: skill.name,
-              description: skill.description,
-              prompt: `/${skill.id} `,
-            })),
-          },
-        ]
-      : [];
+  const skillPromptCategories = skillPromptCategoriesFor(availableSkills);
   const recordCurrentChatSkill = useCallback(async () => {
-    const currentProjectId = useFilesStore.getState().projectId;
-    const currentChats = useChatsStore.getState();
+    const currentProjectId = scopeRef.current.currentProjectId();
+    const currentChats = shownChats(useChatsStore.getState(), scopeKey);
     if (
       !currentProjectId ||
       currentChats.projectId !== currentProjectId ||
@@ -1291,7 +1458,7 @@ export function ChatCore() {
     }
     const draft = draftSkillFromChat({
       messages: messagesRef.current,
-      todos: useAgentTodoStore.getState().todos,
+      todos: agentTodoView(useAgentTodoStore.getState(), scopeKey).todos,
     });
     if (!draft) return;
     try {
@@ -1305,7 +1472,7 @@ export function ChatCore() {
     } catch (error) {
       toast.error(i18n.t(($) => $.ai.toasts.skillDraftFailed, { error: describeError(error) }));
     }
-  }, [openSkillsSettings, queryClient]);
+  }, [openSkillsSettings, queryClient, scopeKey]);
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const persistPendingRef = useRef<{ chatId: string; msgs: ChatMessage[] } | null>(null);
   const persistSinceRef = useRef(0);
@@ -1343,7 +1510,7 @@ export function ChatCore() {
   useEffect(() => {
     if (!streaming) return;
     const id = window.setInterval(() => {
-      const run = activeChatRun();
+      const run = activeChatRun(scopeKey);
       if (run?.pendingApproval) return;
       const quietMs = Date.now() - (run?.lastPartAt ?? lastPartAtRef.current);
       if (quietMs > 20000) {
@@ -1352,7 +1519,7 @@ export function ChatCore() {
       }
     }, 5000);
     return () => window.clearInterval(id);
-  }, [streaming]);
+  }, [scopeKey, streaming]);
 
   useEffect(() => {
     let active = true;
@@ -1376,8 +1543,9 @@ export function ChatCore() {
         return merged;
       });
       setCustomProviders(next.customProviders);
-      setProvider(next.provider);
-      setModel(next.model);
+      const kept = rememberedModel(scopeRef.current.modelMemory, cfg);
+      setProvider(kept?.providerId ?? next.provider);
+      setModel(kept?.modelId ?? next.model);
       setProviderConfigReady(true);
       setProviderConfigError(false);
     };
@@ -1414,6 +1582,7 @@ export function ChatCore() {
     (pid: string, mid: string) => {
       setProvider(pid);
       setModel(mid);
+      scopeRef.current.modelMemory?.save({ providerId: pid, modelId: mid });
     },
     []
   );
@@ -1432,15 +1601,9 @@ export function ChatCore() {
     activeStoredModel,
     modelProbes[probeKey(provider, model)],
   );
-  const visibleModelNotice =
-    modelNotice?.providerId === provider && modelNotice?.modelId === model
-      ? modelNotice
-      : null;
+  const visibleModelNotice = noticeForModel(modelNotice, provider, model);
   const modelNoticeLine = modelNoticeText(visibleModelNotice, activeModelChatOnly);
-  const canRecheckModel =
-    visibleModelNotice?.kind === "blocked" &&
-    activeModelTrust.trust === "blocked" &&
-    activeModelTrust.source === "probe";
+  const canRecheckModel = canRecheckBlockedModel(visibleModelNotice, activeModelTrust);
   const recheckModel = useCallback(async () => {
     const providerId = provider;
     const modelId = model;
@@ -1481,9 +1644,15 @@ export function ChatCore() {
   const delegationTargets = useAgentTargets(projectId, modelGroups);
   const delegationTargetsRef = useRef<DelegationTarget[]>(delegationTargets);
   delegationTargetsRef.current = delegationTargets;
+  const scopeMentions = scope.mentions;
   const composerMentionTargets = useMemo(
-    () => new Set([...mentionPaths, ...delegationTargets.map((target) => target.id)]),
-    [mentionPaths, delegationTargets],
+    () =>
+      new Set([
+        ...mentionPaths,
+        ...delegationTargets.map((target) => target.id),
+        ...(scopeMentions?.paths ?? []),
+      ]),
+    [mentionPaths, delegationTargets, scopeMentions],
   );
   const mentionItems = useCallback(
     (query: string): MentionItem[] => [
@@ -1499,8 +1668,9 @@ export function ChatCore() {
         kind: entry.isDir ? ("folder" as const) : ("file" as const),
         path: entry.path,
       })),
+      ...(scopeMentions?.items(query) ?? []),
     ],
-    [delegationTargets, mentionEntries],
+    [delegationTargets, mentionEntries, scopeMentions],
   );
   const composerHighlight = useMemo(
     () => ({ skillIds: invocableSkillIds, paths: composerMentionTargets }),
@@ -1508,18 +1678,18 @@ export function ChatCore() {
   );
 
   useEffect(() => {
-    if (projectId) useAgentMemoryStore.getState().load(projectId);
-    useAgentTodoStore.getState().bindProject(projectId);
-  }, [projectId]);
+    if (stateKey) useAgentMemoryStore.getState().load(stateKey, scopeKey);
+    useAgentTodoStore.getState().bindProject(projectId, scopeKey);
+  }, [projectId, scopeKey, stateKey]);
 
   useEffect(() => {
     if (!activeChatId) return;
     const approval = usePlanApprovalStore.getState();
-    if (approval.load(activeChatId) === "approved" && !activeChatRun()) {
+    if (approval.load(activeChatId) === "approved" && !activeChatRun(scopeKey)) {
       approval.setStatus(activeChatId, "planning");
     }
-    useAgentTodoStore.getState().selectChat(activeChatId);
-  }, [activeChatId]);
+    useAgentTodoStore.getState().selectChat(activeChatId, scopeKey);
+  }, [activeChatId, scopeKey]);
 
   useEffect(() => {
     if (!projectId) {
@@ -1529,14 +1699,18 @@ export function ChatCore() {
       return;
     }
     let cancelled = false;
-    const cs = useChatsStore.getState();
+    const cs = shownChats(useChatsStore.getState(), scopeKey);
     if (cs.projectId === projectId) {
-      const active = cs.activeId ? cs.byId(cs.activeId) : undefined;
+      const active = cs.activeId ? useChatsStore.getState().byId(cs.activeId, scopeKey) : undefined;
       if (active) setMessages(active.messages);
     } else {
       setMessages([]);
       setActiveChat(null);
       void loadChats(projectId);
+    }
+    if (!scopeRef.current.features.checkpoints) {
+      setCurrentHead(null);
+      return;
     }
     void gitLog(projectId)
       .then((log) => {
@@ -1548,11 +1722,11 @@ export function ChatCore() {
     return () => {
       cancelled = true;
     };
-  }, [projectId, loadChats, setActiveChat, setMessages]);
+  }, [projectId, scopeKey, loadChats, setActiveChat, setMessages]);
 
   const persist = useCallback((chatId: string | null, msgs: ChatMessage[]) => {
-    if (chatId) useChatsStore.getState().saveMessages(chatId, msgs, { index: false });
-  }, []);
+    if (chatId) useChatsStore.getState().saveMessages(chatId, msgs, chatScopeOptions({ index: false }));
+  }, [chatScopeOptions]);
 
   const persistDebounced = useCallback(
     (chatId: string | null, msgs: ChatMessage[]) => {
@@ -1584,19 +1758,19 @@ export function ChatCore() {
   const refreshChatCost = useCallback(
     async (costProjectId: string, chatId: string, threadId: string | null) => {
       if (!threadId) return;
-      const chat = useChatsStore.getState().byId(chatId);
+      const chat = useChatsStore.getState().byId(chatId, scopeKey);
       if (!chat) return;
       try {
         const cost = await ledgerChatCost(threadId, chat.createdAt);
         if (cost === undefined) return;
         const chats = useChatsStore.getState();
-        if (chats.projectId !== costProjectId) return;
-        chats.setChatCost(chatId, cost);
+        if (shownChats(chats, scopeKey).projectId !== costProjectId) return;
+        chats.setChatCost(chatId, cost, scopeKey);
       } catch (error) {
         void logError("chat cost", error);
       }
     },
-    [],
+    [scopeKey],
   );
 
   const dropPendingPersist = useCallback(() => {
@@ -1627,9 +1801,9 @@ export function ChatCore() {
       if (streaming || sendPreparingRef.current || runOwnerRef.current) return;
       let body = chat;
       if (chat.stub) {
-        const openingProject = useFilesStore.getState().projectId;
+        const openingProject = scopeRef.current.currentProjectId();
         try {
-          body = (await useChatsStore.getState().loadChatBody(chat.id)) ?? chat;
+          body = (await useChatsStore.getState().loadChatBody(chat.id, scopeKey)) ?? chat;
         } catch (error) {
           void logError("open chat", error);
           toast.error(i18n.t(($) => $.ai.history.openFailed));
@@ -1640,23 +1814,23 @@ export function ChatCore() {
           return;
         }
         if (sendPreparingRef.current || runOwnerRef.current) return;
-        if (useFilesStore.getState().projectId !== openingProject) return;
+        if (scopeRef.current.currentProjectId() !== openingProject) return;
       }
       setActiveChat(body.id);
       setMessages(body.messages);
-      useAgentTodoStore.getState().selectChat(body.id);
+      useAgentTodoStore.getState().selectChat(body.id, scopeKey);
       setHistoryOpen(false);
       setRunUsage(null);
       setDroppedTurns(0);
       cancelEdit();
     },
-    [streaming, setActiveChat, setMessages, cancelEdit]
+    [streaming, scopeKey, setActiveChat, setMessages, cancelEdit]
   );
 
   const startNewChat = useCallback(() => {
     setActiveChat(null);
     setMessages([]);
-    useAgentTodoStore.getState().selectChat(null);
+    useAgentTodoStore.getState().selectChat(null, scopeKey);
     setActivePersonaId(null);
     setNewChatSettings({});
     setDroppedTurns(0);
@@ -1664,11 +1838,11 @@ export function ChatCore() {
     cancelEdit();
     const cfg = cfgRef.current;
     if (cfg) {
-      const { providerId, modelId } = pickActiveProvider(cfg);
+      const { providerId, modelId } = rememberedModel(scopeRef.current.modelMemory, cfg) ?? pickActiveProvider(cfg);
       setProvider(providerId);
       setModel(modelId);
     }
-  }, [setActiveChat, setMessages, cancelEdit]);
+  }, [scopeKey, setActiveChat, setMessages, cancelEdit]);
 
   const newChat = useCallback(() => {
     if (streaming || sendPreparingRef.current || runOwnerRef.current) return;
@@ -1677,20 +1851,20 @@ export function ChatCore() {
 
   const deleteChat = useCallback(
     (id: string) => {
-      const run = activeChatRun();
+      const run = activeChatRun(scopeKey);
       const running = run?.chatId === id;
       if (running) {
         pendingImagesRef.current = [];
         run.controller.abort();
       }
-      const wasShown = useChatsStore.getState().activeId === id;
+      const wasShown = shownChats(useChatsStore.getState(), scopeKey).activeId === id;
       const drafts = useComposerDrafts.getState();
-      const deletedDraft = builtinComposerId(projectId, id);
+      const deletedDraft = builtinComposerId(stateKey, id);
       const editing = editTargetRef.current;
       if (editing && wasShown) {
         drafts.setText(deletedDraft, editing.stash.text);
         drafts.setAttachments(deletedDraft, editing.stash.attachments);
-        drafts.moveDraft(deletedDraft, builtinComposerId(projectId));
+        drafts.moveDraft(deletedDraft, builtinComposerId(stateKey));
         editTargetRef.current = null;
         setEditTarget(null);
       }
@@ -1699,7 +1873,7 @@ export function ChatCore() {
       removeChat(id);
       if (wasShown || running) startNewChat();
     },
-    [projectId, removeChat, startNewChat],
+    [scopeKey, stateKey, removeChat, startNewChat],
   );
 
   const archiveCurrentChat = useCallback(async () => {
@@ -1707,7 +1881,7 @@ export function ChatCore() {
     try {
       const archived = await agentThreadArchive(activeThreadId);
       if (!archived) throw new Error("The native thread was not found.");
-      const wasActive = useChatsStore.getState().activeId === activeChatId;
+      const wasActive = shownChats(useChatsStore.getState(), scopeKey).activeId === activeChatId;
       removeChat(activeChatId, { deleteThread: false });
       useAgentTurnsStore.setState((state) => {
         const threadByChat = { ...state.threadByChat };
@@ -1716,36 +1890,36 @@ export function ChatCore() {
       });
       if (wasActive) {
         setMessages([]);
-        useAgentTodoStore.getState().selectChat(null);
+        useAgentTodoStore.getState().selectChat(null, scopeKey);
       }
       toast.success(i18n.t(($) => $.ai.toasts.chatArchived));
     } catch {
       toast.error(i18n.t(($) => $.ai.toasts.chatArchiveFailed));
     }
-  }, [activeChatId, activeThreadId, removeChat, setMessages]);
+  }, [activeChatId, activeThreadId, removeChat, scopeKey, setMessages]);
 
   const forkCurrentChat = useCallback(async () => {
     if (!activeChatId || !activeThreadId || !projectId) return;
-    const source = useChatsStore.getState().byId(activeChatId);
+    const source = useChatsStore.getState().byId(activeChatId, scopeKey);
     const messages = structuredClone(
-      useChatsStore.getState().liveOrSaved(activeChatId) ?? [],
+      useChatsStore.getState().liveOrSaved(activeChatId, scopeKey) ?? [],
     );
     try {
       const threadId = await agentThreadFork(activeThreadId, projectId);
       const chats = useChatsStore.getState();
-      if (chats.projectId !== projectId) return;
-      const fork = chats.create(projectId, source?.headOid ?? currentHead);
-      chats.saveMessages(fork.id, messages);
+      if (shownChats(chats, scopeKey).projectId !== projectId) return;
+      const fork = chats.create(projectId, source?.headOid ?? currentHead, undefined, scopeKey);
+      chats.saveMessages(fork.id, messages, chatScopeOptions());
       useAgentTurnsStore.setState((state) => ({
         threadByChat: { ...state.threadByChat, [fork.id]: threadId },
       }));
       setMessages(messages);
-      useAgentTodoStore.getState().selectChat(fork.id);
+      useAgentTodoStore.getState().selectChat(fork.id, scopeKey);
       toast.success(i18n.t(($) => $.ai.toasts.chatForked));
     } catch {
       toast.error(i18n.t(($) => $.ai.toasts.chatForkFailed));
     }
-  }, [activeChatId, activeThreadId, currentHead, projectId, setMessages]);
+  }, [activeChatId, activeThreadId, chatScopeOptions, currentHead, projectId, scopeKey, setMessages]);
 
   const canMutateCurrentChat = Boolean(
     projectId && activeChatId && activeThreadId && !approvalModeLocked,
@@ -1758,18 +1932,20 @@ export function ChatCore() {
       draftSkillFromChat({ messages, todos: agentTodos }),
   );
   const commandActions = {
-    archiveChat: canMutateCurrentChat ? () => void archiveCurrentChat() : undefined,
-    attachFiles: projectId ? () => composerRef.current?.openFilePicker() : undefined,
-    forkChat: canMutateCurrentChat ? () => void forkCurrentChat() : undefined,
-    openGoalEditor: projectId ? openGoalEditor : undefined,
+    archiveChat: enabledAction(canMutateCurrentChat, () => void archiveCurrentChat()),
+    attachFiles: enabledAction(Boolean(projectId), () => composerRef.current?.openFilePicker()),
+    forkChat: enabledAction(canMutateCurrentChat, () => void forkCurrentChat()),
+    openGoalEditor: enabledAction(Boolean(projectId), openGoalEditor),
     openMcpSettings,
-    openModelPicker:
-      configuredProviders.length > 0 ? () => setModelPickerOpen(true) : undefined,
+    openModelPicker: enabledAction(configuredProviders.length > 0, () => setModelPickerOpen(true)),
     planMode,
-    recordSkill: canRecordSkill ? () => void recordCurrentChatSkill() : undefined,
-    togglePlanMode: projectId && !approvalModeLocked ? changePlanMode : undefined,
+    recordSkill: enabledAction(canRecordSkill, () => void recordCurrentChatSkill()),
+    togglePlanMode: enabledAction(Boolean(projectId) && !approvalModeLocked, changePlanMode),
   };
   const slashCommands = [
+    ...(scope.composer?.slashCommands?.((text) => {
+      void sendRef.current(text);
+    }) ?? []),
     ...createSlashCommands(commandActions),
     ...createSkillCommands(invocableSkills),
   ];
@@ -1794,6 +1970,7 @@ export function ChatCore() {
   }, []);
   const attachCommands = createAttachCommands(commandActions);
 
+  const sendRef = useRef<(text: string) => Promise<void>>(() => Promise.resolve());
   const focusComposerAt = useCallback((position: number) => {
     requestAnimationFrame(() => {
       composerRef.current?.setCaret(position);
@@ -1825,7 +2002,7 @@ export function ChatCore() {
 
   const dropProjectPaths = useCallback(
     (paths: string[]) => {
-      const tree = useFilesStore.getState().tree;
+      const tree = scopeRef.current.currentTree();
       const text = paths
         .map((path) =>
           mentionInsertText(
@@ -1871,7 +2048,7 @@ export function ChatCore() {
     chatId: string | null;
     apply: (message: ChatMessage) => ChatMessage;
   }>) => {
-    const shownChatId = useChatsStore.getState().activeId;
+    const shownChatId = shownChats(useChatsStore.getState(), scopeKey).activeId;
     const applicable = patches.filter((patch) => patch.chatId === shownChatId);
     if (!applicable.length) return;
     const prev = messagesRef.current;
@@ -1887,7 +2064,7 @@ export function ChatCore() {
     const chatId = shownChatId;
     if (chatId) useChatsStore.getState().setLive(chatId, copy);
     persistDebounced(chatId, copy);
-  }, [persistDebounced, publishMessages]);
+  }, [persistDebounced, publishMessages, scopeKey]);
 
   const queueStreamDrain = useCallback((tier: "text" | "output") => {
     if (streamDrainQueuedRef.current[tier]) return;
@@ -1959,7 +2136,8 @@ export function ChatCore() {
     const sendSequence = sendSequenceRef.current + 1;
     sendSequenceRef.current = sendSequence;
     const inputRevision = inputRevisionRef.current;
-    if (streaming || activeChatRun()) {
+    const runScope = scopeRef.current;
+    if (streaming || activeChatRun(scopeKey)) {
       if (!queued && !options?.replay && activeChatId) {
         useAgentTurnsStore.getState().queueFollowUp(activeChatId, text, outgoing);
         setInput("");
@@ -2024,12 +2202,17 @@ export function ChatCore() {
     const runText = skillCommand
       ? `${skillDirectiveLine(skillCommand.skill)}\n${skillCommand.text}`.trim()
       : text;
-    const runTree = useFilesStore.getState().tree;
+    const runTree = runScope.currentTree();
     const mentionedPaths = composerMentionPaths(text, [
       ...runTree.map((entry) => normalizeMentionPath(entry.path)),
       ...delegationTargetsRef.current.map((target) => target.id),
+      ...(runScope.mentions?.paths ?? []),
     ]);
-    const mentioned = await mentionAttachments(projectId, text, runTree);
+    const mentioned = [
+      ...(await mentionAttachments(projectId, text, runTree)),
+      ...((await runScope.mentions?.attachments(text)) ?? []),
+      ...(await noteLinkAttachments(text)),
+    ];
     let runMcpServers: McpAgentServer[] = [];
     try {
       const result = await mcpAgentToolsQueryRef.current.refetch();
@@ -2037,7 +2220,7 @@ export function ChatCore() {
     } catch {
       runMcpServers = [];
     }
-    if (streaming || activeChatRun() || useFilesStore.getState().projectId !== projectId) {
+    if (streaming || activeChatRun(scopeKey) || runScope.currentProjectId() !== projectId) {
       cancelSendPreparation();
       return;
     }
@@ -2060,6 +2243,7 @@ export function ChatCore() {
       ...(Object.keys(capacitySkillTools).length > 0
         ? [{ id: "skills", source: { kind: "skills" } as const, tools: capacitySkillTools }]
         : []),
+      ...scopeToolAdditions(runScope, projectId ? { ...NO_RUN_TOOLS, projectId } : null),
     ];
     const enabledToolCount = Object.keys(
       filterResolvedTools(
@@ -2070,9 +2254,11 @@ export function ChatCore() {
             confirm: () => Promise.resolve(false),
             onImage: () => {},
             runId: () => null,
+            host: runScope.toolHost,
           },
           additions: capacityAdditions,
-          excludedNames: excludedToolNames(
+          excludedNames: scopeExcludedNames(
+            runScope,
             documentEngine.capabilities.features,
             figureToolsAvailable,
           ),
@@ -2123,7 +2309,7 @@ export function ChatCore() {
         return;
       }
       setModelNotice(null);
-      if (streaming || activeChatRun() || useFilesStore.getState().projectId !== projectId) {
+      if (streaming || activeChatRun(scopeKey) || runScope.currentProjectId() !== projectId) {
         cancelSendPreparation();
         return;
       }
@@ -2140,7 +2326,7 @@ export function ChatCore() {
       Promise.resolve();
     const runIsCurrent = () => runIsolationRef.current.allows(
       runIdentity,
-      useFilesStore.getState().projectId,
+      runScope.currentProjectId(),
     );
     const updateRunLast = (fn: (message: ChatMessage) => ChatMessage) => {
       if (runIsCurrent()) updateLast(runChatId, fn);
@@ -2175,10 +2361,13 @@ export function ChatCore() {
           return;
         }
         const chats = useChatsStore.getState();
-        const saved = runChatId && chats.projectId === runProjectId ? chats.byId(runChatId)?.messages : undefined;
+        const saved =
+          runChatId && shownChats(chats, scopeKey).projectId === runProjectId
+            ? chats.byId(runChatId, scopeKey)?.messages
+            : undefined;
         const next = saved?.map((m) => withStoredToolImage(m, toolId, ref));
         if (runChatId && saved && next?.some((m, index) => m !== saved[index])) {
-          chats.saveMessages(runChatId, next);
+          chats.saveMessages(runChatId, next, chatScopeOptions());
         }
       });
       runImageStores.push(stored);
@@ -2190,22 +2379,22 @@ export function ChatCore() {
 
     const ac = new AbortController();
     abortRef.current = ac;
-    const runHandle = beginChatRun(ac, projectId);
+    const runHandle = beginChatRun(ac, projectId, scopeKey);
     sendPreparingRef.current = false;
     runOwnerRef.current = true;
     setApprovalModeLocked(true);
     const releaseRunReservation = () => {
       if (abortRef.current === ac) abortRef.current = null;
-      if (activeChatRun() !== runHandle) return;
+      if (activeChatRun(scopeKey) !== runHandle) return;
       runOwnerRef.current = false;
       setApprovalModeLocked(false);
       endChatRun(runHandle);
     };
     const reservationIsCurrent = () =>
-      !ac.signal.aborted && activeChatRun() === runHandle && runIsCurrent();
+      !ac.signal.aborted && activeChatRun(scopeKey) === runHandle && runIsCurrent();
 
     let runApprovalMode = DEFAULT_APPROVAL_MODE;
-    const runPlanMode = usePlanModeStore.getState().isEnabled(runProjectId);
+    const runPlanMode = usePlanModeStore.getState().isEnabled(stateKey);
     try {
       runApprovalMode = await useApprovalModeStore.getState().ready(projectId);
     } catch {
@@ -2376,22 +2565,28 @@ export function ChatCore() {
 
     {
       const cs = useChatsStore.getState();
-      let chatId = cs.projectId === projectId ? cs.activeId : null;
+      const shown = shownChats(cs, scopeKey);
+      let chatId = shown.projectId === projectId ? shown.activeId : null;
       if (!chatId && projectId) {
-        const created = cs.create(projectId, currentHead, {
-          effort: newChatSettingsRef.current.effort,
-          web: options?.web ? WEB_ON : newChatSettingsRef.current.web,
-        });
+        const created = cs.create(
+          projectId,
+          currentHead,
+          {
+            effort: newChatSettingsRef.current.effort,
+            web: options?.web ? WEB_ON : newChatSettingsRef.current.web,
+          },
+          scopeKey,
+        );
         chatId = created.id;
-        if (sendComposerId === builtinComposerId(projectId)) {
-          useComposerDrafts.getState().moveDraft(sendComposerId, builtinComposerId(projectId, created.id));
+        if (sendComposerId === builtinComposerId(stateKey)) {
+          useComposerDrafts.getState().moveDraft(sendComposerId, builtinComposerId(stateKey, created.id));
         }
       } else if (chatId && options?.web) {
-        cs.setChatSettings(chatId, { web: WEB_ON });
+        cs.setChatSettings(chatId, { web: WEB_ON }, scopeKey);
       }
       runChatId = chatId;
       updateChatRun(runHandle, { chatId });
-      if (chatId) cs.saveMessages(chatId, nextMessages);
+      if (chatId) cs.saveMessages(chatId, nextMessages, chatScopeOptions());
     }
     let planTurn: PlanTurn | null = null;
     if (runPlanMode) {
@@ -2415,14 +2610,15 @@ export function ChatCore() {
             () =>
               projectId ? agentThreadClaimPrewarmed(projectId) : Promise.resolve(null),
             {
-              persistedThreadId: useChatsStore.getState().byId(runChatId)?.threadId,
+              persistedThreadId: useChatsStore.getState().byId(runChatId, scopeKey)?.threadId,
               persist: (threadId) =>
-                useChatsStore.getState().setThreadId(runChatId, threadId),
+                useChatsStore.getState().setThreadId(runChatId, threadId, scopeKey),
             },
           );
         useAgentTurnsStore.getState().beginTurn(runChatId, turnThreadId, clientTurnId, runText);
         useAgentTodoStore.getState().beginTurn(runChatId, {
           keep: planTurn === "revision" || planTurn === "execution",
+          scope: scopeKey,
         });
         if (planGated) planTodosAtStart = useAgentTodoStore.getState().todosForChat(runChatId);
       } catch (error) {
@@ -2445,21 +2641,29 @@ USER_CUSTOM_INSTRUCTIONS`
       : "";
 
     let workspaceCtx = "";
-    try {
-      workspaceCtx = await buildWorkspaceContext();
-    } catch {
-      workspaceCtx = "(workspace context unavailable)";
-    }
-    try {
-      const chunks = await retrieveProjectChunks(runText, { topK: 4 });
-      const rag = formatRagContext(chunks);
-      if (rag) workspaceCtx = `${workspaceCtx}\n\n${rag}`;
-    } catch {
-      /* non-fatal */
+    if (runScope.contextBlock) {
+      try {
+        workspaceCtx = await runScope.contextBlock(runText);
+      } catch {
+        workspaceCtx = "(context unavailable)";
+      }
+    } else {
+      try {
+        workspaceCtx = await buildWorkspaceContext();
+      } catch {
+        workspaceCtx = "(workspace context unavailable)";
+      }
+      try {
+        const chunks = await retrieveProjectChunks(runText, { topK: 4 });
+        const rag = formatRagContext(chunks);
+        if (rag) workspaceCtx = `${workspaceCtx}\n\n${rag}`;
+      } catch {
+        /* non-fatal */
+      }
     }
 
-    const mainDocument = useFilesStore.getState().mainDoc || documentEngine.main_document || "main.tex";
-    const activeGoalLine = goalPromptLine(useChatGoalStore.getState().goal(projectId));
+    const mainDocument = runScope.mainDoc();
+    const activeGoalLine = goalPromptLine(useChatGoalStore.getState().goal(stateKey));
     const runSkillTools = createLoadSkillTools(
       runSkills,
       requestedSkillIds,
@@ -2478,6 +2682,13 @@ USER_CUSTOM_INSTRUCTIONS`
       ...(Object.keys(runSkillTools).length > 0
         ? [{ id: "skills", source: { kind: "skills" } as const, tools: runSkillTools }]
         : []),
+      ...scopeToolAdditions(runScope, runProjectId ? {
+        projectId: runProjectId,
+        confirm,
+        onImage: collectRunImage,
+        runId: () => activeRunRequestIdRef.current,
+        isActive: () => !ac.signal.aborted && runIsCurrent(),
+      } : null),
     ];
     const resolvedToolsForRun = resolveAvailableTools({
       toolsets: runToolsets,
@@ -2486,9 +2697,11 @@ USER_CUSTOM_INSTRUCTIONS`
         confirm,
         onImage: collectRunImage,
         runId: () => activeRunRequestIdRef.current,
+        host: runScope.toolHost,
       },
       additions: runToolAdditions,
-      excludedNames: excludedToolNames(
+      excludedNames: scopeExcludedNames(
+        runScope,
         documentEngine.capabilities.features,
         figureToolsAvailable,
       ),
@@ -2532,7 +2745,7 @@ Research rules:
 - Never delete a file the user wrote without asking first.
 - When the user asks for a review, report your findings and leave the files alone unless they ask you to edit.
 `;
-    const systemPrompt = `You are Oleafly AI, a fully agentic writing partner inside Oleafly, a local-first technical document editor.
+    const workspaceSystemPrompt = () => `You are Oleafly AI, a fully agentic writing partner inside Oleafly, a local-first technical document editor.
 Available tools for this run: ${toolInventory.length > 0 ? toolInventory.join(", ") : "none"}.
 The current project is "${projectName}" (ID: ${projectId}). Main document: ${mainDocument}. The document engine is ${documentEngine.label}. Use only valid ${sourceVocabulary} source rules.${imageProjectBlock}${goalBlock}
 
@@ -2563,6 +2776,14 @@ Do not stop until the task is genuinely complete, then explain what you did in a
 ${researchRulesBlock}${figureBlock}
 ${workspaceCtx}
 ${sandboxedCustom}`;
+    const systemPrompt = runScope.systemPrompt
+      ? runScope.systemPrompt({
+          tools: toolInventory,
+          context: workspaceCtx,
+          goalLine: activeGoalLine,
+          custom: sandboxedCustom,
+        })
+      : workspaceSystemPrompt();
 
     const skillCatalogBlock = runSkillCatalog ? `\n\n${runSkillCatalog}` : "";
     const requestedSkillSuffix = requestedSkillBlock ? `\n\n${requestedSkillBlock}` : "";
@@ -2607,7 +2828,7 @@ ${sandboxedCustom}`;
       ];
     }
     if (runIsCurrent()) setDroppedTurns(runDroppedTurns);
-    const runChat = runChatId ? useChatsStore.getState().byId(runChatId) : undefined;
+    const runChat = runChatId ? useChatsStore.getState().byId(runChatId, scopeKey) : undefined;
     const runEffort = resolveRunEffort(
       runChat ? runChat.effort : newChatSettingsRef.current.effort,
       effortChoicesFor(provider, model, effortMetadata(runStoredModel, provider, model, ollamaThinking)),
@@ -2626,8 +2847,8 @@ ${sandboxedCustom}`;
       setMessages(withoutOptimisticTurn);
       if (!runChatId) return;
       const chatsState = useChatsStore.getState();
-      const saved = chatsState.byId(runChatId)?.messages;
-      if (saved) chatsState.saveMessages(runChatId, withoutOptimisticTurn(saved));
+      const saved = chatsState.byId(runChatId, scopeKey)?.messages;
+      if (saved) chatsState.saveMessages(runChatId, withoutOptimisticTurn(saved), chatScopeOptions());
       const live = chatsState.live[runChatId];
       if (live) chatsState.setLive(runChatId, withoutOptimisticTurn(live));
       useAgentTurnsStore.getState().rollbackTurn(runChatId, clientTurnId);
@@ -2638,12 +2859,14 @@ ${sandboxedCustom}`;
     let activeAssistantId = assistantMsg.id;
     try {
       if (turnSetupError) throw turnSetupError;
-      if (runProjectId && runChatId) builtInTurn = await beginBuiltInTurn(runProjectId);
+      if (runProjectId && runChatId && runScope.features.turnChanges) {
+        builtInTurn = await beginBuiltInTurn(runProjectId);
+      }
       if (runChatId) {
         const trackingChatId = runChatId;
         const trackingTurnId = clientTurnId;
         trackedTurnId = trackingTurnId;
-        const initialHeadOid = runProjectId
+        const initialHeadOid = runProjectId && runScope.features.checkpoints
           ? await gitHeadOid(runProjectId).catch(() => null)
           : null;
         useAgentFileChangesStore
@@ -2652,7 +2875,7 @@ ${sandboxedCustom}`;
         queueCommitReconciliation = (commitId) => {
           commitTracking = commitTracking
             .then(async () => {
-              if (!runProjectId) return;
+              if (!runProjectId || !runScope.features.checkpoints) return;
               const state = useAgentFileChangesStore.getState();
               const turn = state.turns[agentFileChangeTurnKey(trackingChatId, trackingTurnId)];
               if (!turn) return;
@@ -2734,7 +2957,10 @@ ${sandboxedCustom}`;
         created?: boolean;
       };
       const outputToolCalls = new Map<string, OutputToolCall>();
-      const assistantOutputs = useAssistantOutputsStore.getState();
+      const workspaceOutputs = useAssistantOutputsStore.getState();
+      const assistantOutputs = runScope.features.outputs
+        ? workspaceOutputs
+        : { openFile: () => {}, openPdf: () => {} };
       const argRecord = (args: unknown): Record<string, unknown> | null =>
         args && typeof args === "object" ? (args as Record<string, unknown>) : null;
       const argPath = (args: unknown): string | null => {
@@ -2764,7 +2990,7 @@ ${sandboxedCustom}`;
           call.created = true;
           return;
         }
-        const cached = useFilesStore.getState().files[path]?.content;
+        const cached = runScope.cachedContent(path);
         if (cached !== undefined) {
           call.beforeContent = cached;
           return;
@@ -2783,7 +3009,7 @@ ${sandboxedCustom}`;
         if (isDirectory || !call.path) return;
         assistantOutputs.openFile(call.path, "write");
         if (!runChatId || !trackedTurnId || call.beforeContent === undefined) return;
-        const cachedAfter = useFilesStore.getState().files[call.path]?.content;
+        const cachedAfter = runScope.cachedContent(call.path);
         const argumentContent = args?.content;
         const afterContent =
           cachedAfter ?? (typeof argumentContent === "string" ? argumentContent : "");
@@ -2850,13 +3076,14 @@ ${sandboxedCustom}`;
         },
         guardToolCall: (call) => {
           if (planGated && !isReadOnlyTool(call.name)) return PLAN_MODE_TOOL_ERROR;
-          const current = useFilesStore.getState().projectId;
-          if (current === runProjectId) return null;
-          return `The open project changed while this run was active. The tool was not executed to protect the newly opened project. Ask the user to re-run the request in the project it applies to.`;
+          const current = scopeRef.current;
+          if (current.currentProjectId() !== runProjectId) return PROJECT_CHANGED_TOOL_ERROR;
+          return current.guardToolCall?.(call) ?? null;
         },
         providerOverride: { provider_id: provider, model_id: model },
         effort: runEffort,
         web: runWeb,
+        networkNeedsApproval: runScope.networkNeedsApproval,
         takePendingImages: () =>
           drainPendingImages(
             runPendingImages,
@@ -3089,8 +3316,8 @@ ${sandboxedCustom}`;
         if (runIsCurrent()) {
           updateRunLast(attach);
         } else if (runChatId) {
-          const saved = useChatsStore.getState().byId(runChatId)?.messages;
-          if (saved) useChatsStore.getState().saveMessages(runChatId, saved.map(attach));
+          const saved = useChatsStore.getState().byId(runChatId, scopeKey)?.messages;
+          if (saved) useChatsStore.getState().saveMessages(runChatId, saved.map(attach), chatScopeOptions());
         }
       }
       if (runChatId) {
@@ -3101,6 +3328,7 @@ ${sandboxedCustom}`;
             runEndedCleanly && planTurn !== "planning" && planTurn !== "revision"
               ? "completed"
               : "paused",
+            scopeKey,
           );
       }
       if (runChatId && planTurn) {
@@ -3151,7 +3379,7 @@ ${sandboxedCustom}`;
           setRunThinking(null);
           dropPendingPersist();
           if (runChatId) {
-            useChatsStore.getState().saveMessages(runChatId, messagesRef.current);
+            useChatsStore.getState().saveMessages(runChatId, messagesRef.current, chatScopeOptions());
           }
         }
       }
@@ -3162,7 +3390,7 @@ ${sandboxedCustom}`;
       }
       if (runChatId) useChatsStore.getState().clearLive(runChatId);
       runPendingImages.length = 0;
-      if (activeChatRun() === runHandle) {
+      if (activeChatRun(scopeKey) === runHandle) {
         streamQueuesRef.current?.dispose();
         streamQueuesRef.current = null;
         streamDrainQueuedRef.current = { text: false, output: false };
@@ -3188,17 +3416,30 @@ ${sandboxedCustom}`;
         }
       }
     }
-  }, [streaming, projectId, projectName, currentHead, figureToolsAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeChatId, trackRunRequestId, markRunSteerable, persistDebounced, dropPendingPersist, refreshChatCost]);
+  }, [streaming, scopeKey, chatScopeOptions, projectId, stateKey, projectName, currentHead, figureToolsAvailable, engineLoaded, documentEngine, projectKind, openAISettings, flushStreamPatches, updateLast, setMessages, setInput, activeChatId, trackRunRequestId, markRunSteerable, persistDebounced, dropPendingPersist, refreshChatCost]);
+
+  sendRef.current = (text: string) => send(text);
 
   const stop = useCallback(() => {
     pendingImagesRef.current = [];
     abortRef.current?.abort();
   }, []);
 
+  useImperativeHandle(
+    scope.composer?.handle,
+    () => ({
+      focus: () => composerRef.current?.focus(),
+      setCaret: (position: number) => composerRef.current?.setCaret(position),
+      insertText: (value: string) => composerRef.current?.insertText(value),
+      openFilePicker: () => composerRef.current?.openFilePicker(),
+    }),
+    [],
+  );
+
   const approvePlan = useCallback(() => {
-    if (!activeChatId || streaming || activeChatRun()) return;
+    if (!activeChatId || streaming || activeChatRun(scopeKey)) return;
     void send(PLAN_APPROVED_MESSAGE, undefined, { approvedPlan: true });
-  }, [activeChatId, send, streaming]);
+  }, [activeChatId, scopeKey, send, streaming]);
 
   const actionsEnabled = Boolean(
     projectId &&
@@ -3207,7 +3448,7 @@ ${sandboxedCustom}`;
       engineLoaded &&
       !streaming &&
       !approvalModeLocked &&
-      !activeChatRun(),
+      !activeChatRun(scopeKey),
   );
   const savedAttachmentsAsDrafts = useCallback(
     (message: ChatMessage): DraftAttachment[] => {
@@ -3236,9 +3477,9 @@ ${sandboxedCustom}`;
       onCommit?: () => void;
     }) => {
       const chatsState = useChatsStore.getState();
-      const chatId = chatsState.activeId;
-      if (!projectId || !chatId || streaming || activeChatRun()) return;
-      const chat = chatsState.byId(chatId);
+      const chatId = shownChats(chatsState, scopeKey).activeId;
+      if (!projectId || !chatId || streaming || activeChatRun(scopeKey)) return;
+      const chat = chatsState.byId(chatId, scopeKey);
       const current = messagesRef.current;
       const userMessage = current[args.userIndex];
       if (!chat || !userMessage) return;
@@ -3261,7 +3502,7 @@ ${sandboxedCustom}`;
               commit: async () => {
                 args.onCommit?.();
                 setMessages(kept);
-                useChatsStore.getState().saveMessages(chatId, kept);
+                useChatsStore.getState().saveMessages(chatId, kept, chatScopeOptions());
                 if (threadId && drop > 0) {
                   await agentThreadRollback(threadId, drop).catch((error: unknown) =>
                     logError("roll back thread", error),
@@ -3286,16 +3527,21 @@ ${sandboxedCustom}`;
               args.onCommit?.();
               const fork = useChatsStore
                 .getState()
-                .create(projectId, chat.headOid ?? currentHead, { effort: chat.effort, web: chat.web });
-              useChatsStore.getState().saveMessages(fork.id, kept);
+                .create(
+                  projectId,
+                  chat.headOid ?? currentHead,
+                  { effort: chat.effort, web: chat.web },
+                  scopeKey,
+                );
+              useChatsStore.getState().saveMessages(fork.id, kept, chatScopeOptions());
               if (newThread) {
                 useAgentTurnsStore.setState((state) => ({
                   threadByChat: { ...state.threadByChat, [fork.id]: newThread },
                 }));
-                useChatsStore.getState().setThreadId(fork.id, newThread);
+                useChatsStore.getState().setThreadId(fork.id, newThread, scopeKey);
               }
               setMessages(kept);
-              useAgentTodoStore.getState().selectChat(fork.id);
+              useAgentTodoStore.getState().selectChat(fork.id, scopeKey);
               toast.success(i18n.t(($) => $.ai.messageActions.forked));
             },
           },
@@ -3305,7 +3551,7 @@ ${sandboxedCustom}`;
         toast.error(i18n.t(($) => $.ai.messageActions.failed));
       }
     },
-    [currentHead, projectId, send, setMessages, streaming],
+    [chatScopeOptions, currentHead, projectId, scopeKey, send, setMessages, streaming],
   );
 
   const confirmReplace = useCallback((from: number, proceed: () => void) => {
@@ -3384,7 +3630,7 @@ ${sandboxedCustom}`;
   }, []);
 
   const exportActiveChat = useCallback(async () => {
-    const chat = activeChatId ? useChatsStore.getState().byId(activeChatId) : undefined;
+    const chat = activeChatId ? useChatsStore.getState().byId(activeChatId, scopeKey) : undefined;
     if (!chat) return;
     try {
       const { exportChatMarkdown } = await import("@/lib/chat-export");
@@ -3397,11 +3643,12 @@ ${sandboxedCustom}`;
       void logError("export chat", error);
       toast.error(i18n.t(($) => $.ai.conversation.exportFailed));
     }
-  }, [activeChatId, projectName]);
+  }, [activeChatId, projectName, scopeKey]);
 
+  const homeSuggestions = scope.features.homeSuggestions;
   const homeQuickStarts = useMemo(
     () =>
-      availableSuggestions(chatSuggestions(), skillsQuery.data).map((suggestion) => ({
+      (homeSuggestions ? availableSuggestions(chatSuggestions(), skillsQuery.data) : []).map((suggestion) => ({
         id: suggestion.id,
         label: suggestion.label,
         icon: suggestion.icon,
@@ -3412,20 +3659,14 @@ ${sandboxedCustom}`;
             WEB_DEFAULT_SUGGESTIONS.has(suggestion.id) ? { web: true } : undefined,
           ),
       })),
-    [skillsQuery.data, send],
+    [homeSuggestions, skillsQuery.data, send],
   );
 
   const revisePlan = useCallback(() => {
     requestAnimationFrame(() => composerRef.current?.focus());
   }, []);
 
-  let lastAssistantIndex = -1;
-  for (let index = messages.length - 1; index >= 0; index--) {
-    if (messages[index].role === "assistant") {
-      lastAssistantIndex = index;
-      break;
-    }
-  }
+  const lastAssistantIndex = lastIndexWithRole(messages, "assistant");
   const renderedMessages: RenderedMessage[] = messages.map((msg, index) => ({
     key: msg.id ?? objectKey(msg, activeChatId ?? "chat"),
     index,
@@ -3442,17 +3683,12 @@ ${sandboxedCustom}`;
     0,
   );
   const showMinimap = workspaceHidden && userPromptCount >= 2;
-  const agentTodosActive = agentTodos.filter((todo) => todo.status !== "cancelled");
-  const agentTodosOpen = agentTodosActive.some((todo) => todo.status !== "completed");
-  const agentFilesChanged =
-    Object.keys(agentFileChangeTurn?.changedFiles ?? {}).length > 0 ||
-    (agentFileChangeTurn?.committedFiles.length ?? 0) > 0;
-  const agentStatusActive =
-    streaming || planApprovalStatus !== "planning" || agentTodosOpen;
-  const agentStatusPillVisible =
-    agentStatusActive &&
-    (planApprovalStatus !== "planning" || agentTodosActive.length > 0 || (streaming && agentFilesChanged));
-  const agentRunSummaryVisible = !agentStatusActive && agentTodosActive.length > 0;
+  const { pillVisible: agentStatusPillVisible, runSummaryVisible: agentRunSummaryVisible } = agentStatusVisibility(
+    agentTodos,
+    agentFileChangeTurn,
+    streaming,
+    planApprovalStatus,
+  );
   const firstUnavailableTurnId =
     messages.find((message) => message.role === "assistant" && message.turnChanges?.unavailable)?.id ?? null;
 
@@ -3483,26 +3719,14 @@ ${sandboxedCustom}`;
       setStatusOverlayBox(NO_STATUS_OVERLAY_BOX);
     };
   }, []);
-  const statusCardRoom =
-    agentStatusPillVisible && statusCardPinned && statusOverlayBox.overlay > 0
-      ? Math.max(
-          STATUS_PILL_ROOM_PX,
-          statusOverlayBox.overlay + STATUS_OVERLAY_OFFSET_PX + STATUS_CARD_GAP_PX,
-        )
-      : 0;
+  const statusCardRoom = statusCardRoomFor(agentStatusPillVisible, statusCardPinned, statusOverlayBox.overlay);
   useLayoutEffect(() => {
     if (statusCardRoom === 0 || !nearBottomRef.current) return;
     const scroller = scrollRef.current;
     scroller?.scrollTo({ top: scroller.scrollHeight });
   }, [statusCardRoom]);
 
-  let lastUserIndex = -1;
-  for (let index = messages.length - 1; index >= 0; index--) {
-    if (messages[index].role === "user") {
-      lastUserIndex = index;
-      break;
-    }
-  }
+  const lastUserIndex = lastIndexWithRole(messages, "user");
   const lastTurnWasPlanExecution =
     lastUserIndex >= 0 && messages[lastUserIndex].content === PLAN_APPROVED_MESSAGE;
 
@@ -3520,15 +3744,15 @@ ${sandboxedCustom}`;
         await useFilesStore
           .getState()
           .restoreFromGit(projectId, message.checkpointOid);
-        if (useFilesStore.getState().projectId !== projectId) return;
+        if (scopeRef.current.currentProjectId() !== projectId) return;
         setMessages((current) => {
           const restored = current.map((item) =>
             item.id === message.id ? { ...item, checkpointRestored: true } : item,
           );
-          if (activeChatId) useChatsStore.getState().saveMessages(activeChatId, restored);
+          if (activeChatId) useChatsStore.getState().saveMessages(activeChatId, restored, chatScopeOptions());
           return restored;
         });
-        useAgentTodoStore.getState().clear();
+        useAgentTodoStore.getState().clear(scopeKey);
         const approval = usePlanApprovalStore.getState();
         if (activeChatId && approval.status(activeChatId) === "awaiting") {
           approval.setStatus(activeChatId, "planning");
@@ -3539,20 +3763,21 @@ ${sandboxedCustom}`;
         setRestoringCheckpoint(null);
       }
     },
-    [activeChatId, projectId, restoringCheckpoint, setMessages],
+    [activeChatId, chatScopeOptions, projectId, restoringCheckpoint, scopeKey, setMessages],
   );
 
+  const acceptsHandoff = scope.features.handoff;
   useEffect(() => {
-    if (!handoffPending || providerReady || !providerConfigReady || handoffCatalogChecked) return;
+    if (!acceptsHandoff || !handoffPending || providerReady || !providerConfigReady || handoffCatalogChecked) return;
     void useAcpSessionsStore
       .getState()
       .refreshCatalog()
       .catch(() => false)
       .finally(() => setHandoffCatalogChecked(true));
-  }, [handoffPending, providerReady, providerConfigReady, handoffCatalogChecked]);
+  }, [acceptsHandoff, handoffPending, providerReady, providerConfigReady, handoffCatalogChecked]);
 
   useEffect(() => {
-    if (!handoffPending || streaming || !providerConfigReady) return;
+    if (!acceptsHandoff || !handoffPending || streaming || !providerConfigReady) return;
     if (handoffTarget === "acp") return;
     if (!providerReady && projectId) {
       // With no provider here, a connected CLI agent takes it instead.
@@ -3572,6 +3797,7 @@ ${sandboxedCustom}`;
     }
     setInput(appendHandoffPrompt(inputRef.current, h.prompt));
   }, [
+    acceptsHandoff,
     handoffPending,
     handoffAutoSend,
     handoffTarget,
@@ -3592,7 +3818,7 @@ ${sandboxedCustom}`;
     prevProjectIdRef.current = projectId;
     if (prev === undefined || prev === projectId) return;
     runIsolationRef.current.invalidate();
-    const run = activeChatRun();
+    const run = activeChatRun(scopeKey);
     if (run && run.projectId !== projectId) {
       run.pendingApproval?.resolve(false);
       if (run.chatId) useChatsStore.getState().clearLive(run.chatId);
@@ -3604,7 +3830,7 @@ ${sandboxedCustom}`;
       });
       const pending = persistPendingRef.current;
       dropPendingPersist();
-      saveStoppedReply(prev, run.chatId, pending);
+      saveStoppedReply(prev, run.chatId, pending, scopeKey);
       trackRunRequestId(null);
       runOwnerRef.current = false;
       endChatRun(run);
@@ -3628,7 +3854,7 @@ ${sandboxedCustom}`;
     }
     useComposerDrafts.getState().moveDraft(leaving, builtinComposerId(prev));
     setEditTarget(null);
-  }, [projectId, trackRunRequestId, dropPendingPersist]);
+  }, [projectId, scopeKey, trackRunRequestId, dropPendingPersist]);
 
   useEffect(() => {
     if (shownDraftRef.current === composerId) return;
@@ -3637,63 +3863,54 @@ ${sandboxedCustom}`;
   }, [composerId]);
 
   useEffect(() => {
-    type ChatsState = ReturnType<typeof useChatsStore.getState>;
-    const adoptActiveRun = (run: NonNullable<ReturnType<typeof activeChatRun>>, cs: ChatsState) => {
+    const adoptActiveRun = (run: NonNullable<ReturnType<typeof activeChatRun>>, activeId: string | null) => {
       setApprovalModeLocked(true);
-      if (!run.chatId || run.chatId !== cs.activeId) return;
+      if (!run.chatId || run.chatId !== activeId) return;
       abortRef.current = run.controller;
       setStreaming(true);
       setPendingApproval(run.pendingApproval);
       if (runOwnerRef.current) return;
-      const current = cs.liveOrSaved(run.chatId);
+      const current = useChatsStore.getState().liveOrSaved(run.chatId, scopeKey);
       if (current) setMessages(current);
     };
-    const releaseRunState = (cs: ChatsState) => {
+    const releaseRunState = () => {
       setStreaming(false);
       setApprovalModeLocked(false);
       setThinkingText(null);
       setPendingApproval(null);
-      if (cs.projectId !== projectId || !cs.activeId) return;
-      const chat = cs.byId(cs.activeId);
+      const shown = shownChats(useChatsStore.getState(), scopeKey);
+      if (shown.projectId !== projectId || !shown.activeId) return;
+      const chat = useChatsStore.getState().byId(shown.activeId, scopeKey);
       if (chat) setMessages(chat.messages);
     };
     const sync = () => {
-      const run = activeChatRun();
-      const cs = useChatsStore.getState();
-      if (run && run.projectId === projectId && cs.projectId === projectId) {
-        adoptActiveRun(run, cs);
+      const run = activeChatRun(scopeKey);
+      const shown = shownChats(useChatsStore.getState(), scopeKey);
+      if (run?.projectId === projectId && shown.projectId === projectId) {
+        adoptActiveRun(run, shown.activeId);
       } else if (!run && !runOwnerRef.current) {
-        releaseRunState(cs);
+        releaseRunState();
       }
     };
     sync();
     const unsubRun = subscribeChatRun(sync);
     const unsubStore = useChatsStore.subscribe(() => {
       if (runOwnerRef.current) return;
-      const run = activeChatRun();
-      if (!run || run.projectId !== projectId || !run.chatId) return;
-      const cs = useChatsStore.getState();
-      if (cs.projectId !== projectId || run.chatId !== cs.activeId) return;
-      const current = cs.liveOrSaved(run.chatId);
+      const run = activeChatRun(scopeKey);
+      if (run?.projectId !== projectId || !run.chatId) return;
+      const shown = shownChats(useChatsStore.getState(), scopeKey);
+      if (shown.projectId !== projectId || run.chatId !== shown.activeId) return;
+      const current = useChatsStore.getState().liveOrSaved(run.chatId, scopeKey);
       if (current) publishMessages(current);
     });
     return () => {
       unsubRun();
       unsubStore();
     };
-  }, [projectId, publishMessages, setMessages]);
+  }, [projectId, publishMessages, scopeKey, setMessages]);
 
   const chatUsage = activeChat?.usage;
-  const chatTotal = chatUsage
-    ? chatUsage.inputTokens + chatUsage.outputTokens
-    : 0;
-  const hasUsage = Boolean(
-    runUsage ||
-      (chatUsage &&
-        (chatUsage.inputTokens > 0 ||
-          chatUsage.outputTokens > 0 ||
-          chatUsage.steps > 0)),
-  );
+  const hasUsage = usageRecorded(runUsage, chatUsage);
   const activeContextWindow = activeStoredModel?.metadata?.contextWindow;
   const usageContext = (() => {
     const context = runUsage?.context ?? chatUsage?.context ?? null;
@@ -3712,44 +3929,22 @@ ${sandboxedCustom}`;
     threadId: activeThreadId ?? activeChat?.threadId ?? null,
     chatCreatedAt: activeChat?.createdAt ?? null,
   });
-  let usageSummary: string;
-  if (runUsage) {
-    usageSummary =
-      runUsage.input === null || runUsage.output === null
-        ? t(($) => $.ai.usage.summaryRunNoTokens, { count: runUsage.steps })
-        : t(($) => $.ai.usage.summaryRunWithTokens, {
-            count: runUsage.steps,
-            tokens: formatNumber(runUsage.input + runUsage.output),
-          });
-  } else if (chatUsage) {
-    usageSummary = t(($) => $.ai.usage.summaryChat, {
-      steps: chatUsage.steps,
-      tokens: formatNumber(chatTotal),
-    });
-  } else {
-    usageSummary = t(($) => $.ai.usage.summaryFallback);
-  }
-  const usageShare = contextFraction(usageSnapshot);
-  const usageTooltip =
-    usageShare === null
-      ? usageSummary
-      : `${usageSummary}. ${t(($) => $.ai.usage.contextShare, {
-          percent: formatNumber(usageShare, { style: "percent", maximumFractionDigits: 0 }),
-        })}`;
+  const usageTooltip = usageTooltipText(usageSummaryText(runUsage, chatUsage), contextFraction(usageSnapshot));
   const effortChoices = effortChoicesFor(
     provider,
     model,
     effortMetadata(activeStoredModel, provider, model, ollamaThinking),
   );
-  const selectedEffort = activeChat ? activeChat.effort : newChatSettings.effort;
-  const selectedWeb = activeChat ? activeChat.web : newChatSettings.web;
+  const chatSettings = activeChat ?? newChatSettings;
+  const selectedEffort = chatSettings.effort;
+  const selectedWeb = chatSettings.web;
   const changeEffort = (next: EffortLevel | undefined) => {
-    if (activeChat) useChatsStore.getState().setChatSettings(activeChat.id, { effort: next ?? null });
+    if (activeChat) useChatsStore.getState().setChatSettings(activeChat.id, { effort: next ?? null }, scopeKey);
     else setNewChatSettings((current) => ({ ...current, effort: next }));
   };
   const changeWeb = (on: boolean) => {
     const next = on ? WEB_ON : undefined;
-    if (activeChat) useChatsStore.getState().setChatSettings(activeChat.id, { web: next ?? null });
+    if (activeChat) useChatsStore.getState().setChatSettings(activeChat.id, { web: next ?? null }, scopeKey);
     else setNewChatSettings((current) => ({ ...current, web: next }));
   };
   const webOn = isWebOn(selectedWeb);
@@ -3780,28 +3975,864 @@ ${sandboxedCustom}`;
     nativePdf: activeStoredModel?.metadata?.inputModalities?.includes("pdf") === true,
   });
 
+  const messageListNode = (
+    <ErrorBoundary
+      resetKey={activeChatId}
+      fallback={
+        <div className="px-1 py-4 text-center text-sm text-muted-foreground">
+          {t(($) => $.ai.conversation.renderFailed)}
+        </div>
+      }
+    >
+      <div className="flex flex-col gap-3">
+        <MessageList
+          messages={renderedMessages}
+          live={liveMessage}
+          actions={chatActions}
+          onMessageAction={onMessageAction}
+          chatId={activeChatId}
+          scrollRef={scrollRef}
+          nearBottomRef={nearBottomRef}
+          renderExtras={({ live, isLatestAssistant, msg }) => (
+            <>
+              {msg.role === "assistant" && msg.planNote && !live && (
+                <PlanNote note={msg.planNote} />
+              )}
+              {msg.role === "assistant" &&
+                isLatestAssistant &&
+                !live &&
+                agentRunSummaryVisible && (
+                  <div className="mt-1.5 px-1">
+                    <AgentRunSummary
+                      todos={agentTodos}
+                      turn={null}
+                      plan={lastTurnWasPlanExecution}
+                    />
+                  </div>
+                )}
+              {msg.role === "assistant" && msg.turnChanges && !live && projectId && (
+                <TurnChangesCard
+                  projectId={projectId}
+                  changes={msg.turnChanges}
+                  showUnavailable={msg.id === firstUnavailableTurnId}
+                  className="mx-1 mt-1.5"
+                />
+              )}
+              {msg.role === "assistant" &&
+                msg.checkpointOid &&
+                msg.toolCalls?.some(
+                  (tool) =>
+                    CODE_EDIT_TOOLS.has(tool.name) &&
+                    tool.approval !== "rejected" &&
+                    tool.status === "done",
+                ) &&
+                !live && (
+                  <div data-tour="ai-restore" className="mt-1.5 flex items-center justify-end px-1">
+                    {msg.checkpointRestored ? (
+                      <span className="text-[0.625rem] text-muted-foreground">
+                        {t(($) => $.ai.conversation.checkpointRestored)}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        data-testid="ai-restore-checkpoint"
+                        disabled={restoringCheckpoint !== null}
+                        onClick={() => void restoreCheckpoint(msg, isLatestAssistant)}
+                        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.6875rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
+                      >
+                        <RotateCcw className="size-3" />
+                        {restoringCheckpoint === msg.id
+                          ? t(($) => $.ai.conversation.restoring)
+                          : t(($) => $.ai.conversation.restoreCheckpoint)}
+                      </button>
+                    )}
+                  </div>
+                )}
+            </>
+          )}
+        />
+        {streaming &&
+          !messages.at(-1)?.reasoningBlocks?.some(
+            (b) => b.ms === undefined,
+          ) && (
+            <div className="max-w-[85%] text-xs">
+              <div className="flex w-full items-center gap-2 py-1 text-sm text-muted-foreground">
+                <Brain className="ai-shimmer-icon size-3.5 shrink-0" />
+                <Shimmer text={thinkingText || t(($) => $.ai.chat.reasoning.thinking)} />
+              </div>
+            </div>
+          )}
+        {!streaming &&
+          messages.at(-1)?.role === "user" && (
+            <div className="max-w-[85%] rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
+              {t(($) => $.ai.conversation.noResponse)}
+            </div>
+          )}
+      </div>
+    </ErrorBoundary>
+  );
+  const renderSubagents = () => {
+    if (!activeChatId) return null;
+    return (
+      <SubagentActivity
+        chatId={activeChatId}
+        projectId={projectId}
+        streaming={streaming}
+        activeRunId={() => activeRunRequestIdRef.current}
+        onError={(message) => toast.error(message)}
+        onOpenSession={(sessionId, runtime) => openSession({ threadId: sessionId, runtime })}
+      />
+    );
+  };
+  const subagentNode = renderSubagents();
+  const transcriptNode = (
+    <SessionTranscriptDialog
+      threadId={transcriptThreadId}
+      onClose={() => setTranscriptThreadId(null)}
+    />
+  );
+  const renderFollowUps = () => {
+    if (queuedFollowUps.length === 0) return null;
+    return (
+      <div className="mb-2 flex flex-col gap-1.5">
+        {queuedFollowUps.map((item) => {
+          const summary =
+            item.text ||
+            item.attachments.map((attachment) => attachment.name).join(", ");
+          const awaitingSafePoint = steeringFollowUpIds.has(item.id);
+          const beingSent = sendingFollowUpId === item.id;
+          let chipText: string;
+          if (item.status === "steered")
+            chipText = t(($) => $.ai.followUps.steered, { summary });
+          else if (beingSent) chipText = t(($) => $.ai.followUps.sending, { summary });
+          else if (awaitingSafePoint)
+            chipText = t(($) => $.ai.followUps.waiting, { summary });
+          else chipText = t(($) => $.ai.followUps.queued, { summary });
+          return (
+          <div
+            key={item.id}
+            data-testid="agent-follow-up-chip"
+            className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground"
+          >
+            <span className="min-w-0 flex-1 truncate">{chipText}</span>
+            {item.status === "pending" && streaming && (
+              <button
+                type="button"
+                data-testid="agent-follow-up-steer"
+                disabled={awaitingSafePoint || beingSent || !steerableRunId}
+                title={steerableRunId ? undefined : t(($) => $.ai.followUps.startingRun)}
+                className="shrink-0 rounded-md px-2 py-0.5 font-medium text-primary transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
+                onClick={() => {
+                  const runId = activeRunRequestIdRef.current;
+                  const chatId = activeChatId;
+                  if (!runId || !chatId) return;
+                  if (
+                    steeringFollowUpIdsRef.current.has(item.id) ||
+                    sendingFollowUpIdRef.current === item.id
+                  ) return;
+                  steeringFollowUpIdsRef.current.add(item.id);
+                  setSteeringFollowUpIds(new Set(steeringFollowUpIdsRef.current));
+                  Promise.all([
+                    mentionAttachments(
+                      projectId,
+                      item.text,
+                      scopeRef.current.currentTree(),
+                    ),
+                    import("@/lib/chat-attachments"),
+                  ])
+                    .then(async ([mentioned, chatAttachments]) => {
+                      const metadata = activeStoredModel?.metadata;
+                      const vision = modelSupportsVision(
+                        provider,
+                        model,
+                        metadata?.inputModalities,
+                      );
+                      const message = toAgentMessages([
+                        await chatAttachments.userModelMessage(
+                          steeredSkillText(item.text, skillsRef.current),
+                          item.attachments,
+                          mentioned,
+                          {
+                            readText: attachmentText,
+                            textBudget: chatAttachments.attachmentTextBudget(
+                              metadata?.contextWindow,
+                            ),
+                            pageImages:
+                              vision && metadata?.inputModalities?.includes("pdf") !== true,
+                          },
+                        ),
+                      ])[0];
+                      if (!message) return;
+                      return steerQueuedFollowUp(runId, message, chatId, item.id);
+                    })
+                    .catch((error: unknown) => {
+                      if (steerRunAlreadyEnded(error)) return;
+                      toast.error(i18n.t(($) => $.ai.toasts.steerFailed));
+                    })
+                    .finally(() => {
+                      steeringFollowUpIdsRef.current.delete(item.id);
+                      setSteeringFollowUpIds(
+                        new Set(steeringFollowUpIdsRef.current),
+                      );
+                    });
+                }}
+              >
+                {t(($) => $.ai.followUps.steerNow)}
+              </button>
+            )}
+            {item.status === "pending" && (
+              <button
+                type="button"
+                data-testid="agent-follow-up-discard"
+                aria-label={t(($) => $.ai.followUps.discard)}
+                title={t(($) => $.ai.followUps.discard)}
+                disabled={awaitingSafePoint || beingSent}
+                className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+                onClick={() => {
+                  if (
+                    steeringFollowUpIdsRef.current.has(item.id) ||
+                    sendingFollowUpIdRef.current === item.id
+                  ) return;
+                  const chatId = activeChatId;
+                  if (chatId) {
+                    useAgentTurnsStore.getState().removeFollowUp(chatId, item.id);
+                  }
+                }}
+              >
+                <Trash2 className="size-3" />
+              </button>
+            )}
+          </div>
+          );
+        })}
+      </div>
+    );
+  };
+  const followUpsNode = renderFollowUps();
+  const renderToolConfirm = () => {
+    if (!pendingApproval) return null;
+    return (
+      <ToolConfirm
+        req={pendingApproval.req}
+        onApprove={() => pendingApproval.resolve(true)}
+        onReject={() => pendingApproval.resolve(false)}
+        onApproveProject={
+          pendingApproval.mode === "custom" && projectId
+            ? () => {
+                void approvalsSet(projectId, pendingApproval.req.tool, "allow")
+                  .then(() => {
+                    projectApprovalsRef.current = {
+                      ...projectApprovalsRef.current,
+                      [pendingApproval.req.tool]: "allow",
+                    };
+                    pendingApproval.resolve(true);
+                  })
+                  .catch(() => {
+                    toast.error(i18n.t(($) => $.ai.toasts.approvalRuleSaveFailed));
+                  });
+              }
+            : undefined
+        }
+      />
+    );
+  };
+  const toolConfirmNode = renderToolConfirm();
+  const delegatedNode = (
+    <DelegatedPermissions
+      projectId={projectId}
+      parentSessionId={agentThreadId}
+      subagents={delegatedSubagents}
+      onError={(message) => toast.error(describeError(message))}
+    />
+  );
+  const renderGoalChip = () => {
+    if (!goal) return null;
+    return (
+      <div className="mb-2 flex min-w-0 items-center gap-1.5">
+        <button
+          type="button"
+          aria-label={t(($) => $.ai.goal.editAriaLabel, { goal })}
+          onClick={openGoalEditor}
+          className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <Target className="size-3.5 shrink-0" />
+          <span className="truncate">{goal}</span>
+        </button>
+        <button
+          type="button"
+          aria-label={t(($) => $.ai.goal.clear)}
+          title={t(($) => $.ai.goal.clear)}
+          onClick={() => clearGoal(stateKey)}
+          className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <X className="size-3.5" />
+        </button>
+      </div>
+    );
+  };
+  const goalChipNode = renderGoalChip();
+  const renderGoalEditor = () => {
+    if (!goalEditorOpen) return null;
+    return (
+      <form
+        aria-label={t(($) => $.ai.goal.formAriaLabel)}
+        className="mb-2 rounded-lg border bg-card p-2.5 shadow-sm"
+        onSubmit={(event) => {
+          event.preventDefault();
+          saveGoal();
+        }}
+      >
+        <label htmlFor="ai-chat-goal" className="mb-1.5 block text-xs font-medium">
+          {t(($) => $.ai.goal.label)}
+        </label>
+        <Input
+          ref={goalInputRef}
+          id="ai-chat-goal"
+          aria-label={t(($) => $.ai.goal.label)}
+          value={goalDraft}
+          onChange={(event) => setGoalDraft(event.target.value)}
+          placeholder={t(($) => $.ai.goal.placeholder)}
+          className="h-8 text-xs"
+        />
+        <div className="mt-2 flex justify-end gap-1.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setGoalEditorProjectId(null)}
+          >
+            {t(($) => $.common.actions.cancel)}
+          </Button>
+          <Button type="submit" size="sm" disabled={!goalDraft.trim()}>
+            {t(($) => $.ai.goal.save)}
+          </Button>
+        </div>
+      </form>
+    );
+  };
+  const goalEditorNode = renderGoalEditor();
+  const renderEditBanner = () => {
+    if (!editTarget) return null;
+    return (
+      <output
+        data-testid="ai-edit-banner"
+        className="mb-2 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-xs text-foreground"
+      >
+        <span className="min-w-0 flex-1">
+          {editTarget.mode === "inPlace"
+            ? t(($) => $.ai.messageActions.editingLatest)
+            : t(($) => $.ai.messageActions.editingEarlier)}
+        </span>
+        <Button type="button" variant="ghost" size="xs" onClick={cancelEdit}>
+          {t(($) => $.ai.messageActions.cancelEdit)}
+        </Button>
+      </output>
+    );
+  };
+  const editBannerNode = renderEditBanner();
+  const renderTooLarge = () => {
+    if (!activeChatId || saveProblems[activeChatId] !== "tooLarge") return null;
+    return (
+      <WorkspaceBanner
+        tone="warning"
+        data-testid="ai-chat-too-large"
+        role="status"
+        className="mb-2 flex-nowrap rounded-md border px-2.5"
+      >
+        <span className="min-w-0 flex-1">{t(($) => $.ai.conversation.tooLargeToSave)}</span>
+        <Button type="button" size="xs" variant="outline" onClick={() => void exportActiveChat()}>
+          {t(($) => $.ai.conversation.exportChat)}
+        </Button>
+      </WorkspaceBanner>
+    );
+  };
+  const tooLargeNode = renderTooLarge();
+  const pickerGroups = pickerModelGroups(modelGroups, scope.composer?.modelGroups);
+  const pickModel = (nextProvider: string, nextModel: string) => {
+    if (scope.composer?.onPickModelGroup?.(nextProvider, nextModel)) return;
+    selectModel(nextProvider, nextModel);
+  };
+  const renderPersonaPicker = () => (
+    <span
+      data-tour="ai-persona"
+      className="ai-composer-persona inline-flex shrink-0"
+    >
+      <Tooltip
+        side="top"
+        label={
+          activePersona
+            ? t(($) => $.ai.composer.personaActiveTooltip, {
+                name: activePersona.name,
+              })
+            : t(($) => $.ai.composer.personaChoose)
+        }
+      >
+        <Popover
+          align="left"
+          ariaLabel={
+            activePersona
+              ? t(($) => $.ai.composer.personaActiveAriaLabel, {
+                  name: activePersona.name,
+                })
+              : t(($) => $.ai.composer.personaChoose)
+          }
+          triggerClassName="ai-composer-persona-trigger h-7 max-w-40 shrink-0 gap-1.5 px-2 text-xs font-medium"
+          className="max-h-64 w-64 overflow-y-auto p-1.5"
+          trigger={
+            <>
+              {activePersona ? (
+                <span
+                  data-testid="ai-active-persona-indicator"
+                  className="size-2.5 shrink-0 rounded-full border border-background"
+                  style={{
+                    background: personaGradient(activePersona.color),
+                  }}
+                />
+              ) : (
+                <span
+                  data-testid="ai-inactive-persona-indicator"
+                  className="size-2.5 shrink-0 rounded-full border border-muted-foreground/50"
+                />
+              )}
+              <span className="ai-composer-persona-value truncate">
+                {activePersona ? activePersona.name : t(($) => $.ai.composer.persona)}
+              </span>
+              <ChevronDown className="size-3.5 shrink-0" />
+            </>
+          }
+        >
+          {personas.length === 0 ? (
+            <button
+              type="button"
+              data-testid="ai-persona-create"
+              onClick={() => {
+                setSettingsInitialSection("ai");
+                setSettingsScrollTarget("ai-personas");
+                setSettingsOpen(true);
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <Plus className="size-3.5 shrink-0" />
+              {t(($) => $.ai.composer.personaCreate)}
+            </button>
+          ) : (
+            <div className="space-y-0.5">
+              <button
+                type="button"
+                data-testid="ai-persona-none"
+                onClick={() => setActivePersonaId(null)}
+                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
+              >
+                <span className="size-3 shrink-0 rounded-full border border-muted-foreground/40" />
+                <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                  {t(($) => $.ai.composer.personaNone)}
+                </span>
+                {activePersonaId === null && (
+                  <Check className="size-3.5 shrink-0 text-emerald-500" />
+                )}
+              </button>
+              {personas.map((persona) => (
+                <button
+                  type="button"
+                  key={persona.id}
+                  data-testid={`ai-persona-${persona.name}`}
+                  onClick={() => setActivePersonaId(persona.id)}
+                  className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
+                >
+                  <span
+                    className="size-3 shrink-0 rounded-full"
+                    style={{ background: personaGradient(persona.color) }}
+                  />
+                  <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                    {persona.name}
+                  </span>
+                  {activePersonaId === persona.id && (
+                    <Check className="size-3.5 shrink-0 text-emerald-500" />
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </Popover>
+      </Tooltip>
+    </span>
+  );
+  const renderPlanModeToggle = () => (
+    <Tooltip
+      label={
+        planMode
+          ? t(($) => $.ai.composer.planModeOn)
+          : t(($) => $.ai.composer.planModeOff)
+      }
+    >
+      <button
+        type="button"
+        aria-label={t(($) => $.ai.composer.planModeAriaLabel)}
+        aria-pressed={planMode}
+        data-state={planMode ? "on" : "off"}
+        onClick={changePlanMode}
+        disabled={approvalModeLocked}
+        className={cn(
+          "ai-composer-plan flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50",
+          planMode
+            ? "bg-violet-500/15 text-violet-600 hover:bg-violet-500/20 dark:text-violet-300"
+            : "text-muted-foreground",
+        )}
+      >
+        <Lightbulb className={cn("size-4 shrink-0", planMode && "fill-current")} />
+        <span className="ai-composer-plan-value">{t(($) => $.ai.composer.plan)}</span>
+      </button>
+    </Tooltip>
+  );
+  const renderComposer = () => (
+    <ChatComposer
+      ref={composerRef}
+      composerId={composerId}
+      value={inputText}
+      onChange={setInput}
+      onSubmit={submitComposer}
+      busy={streaming}
+      onQueue={submitComposer}
+      onStop={stop}
+      disabled={!engineLoaded}
+      placeholder={inputPlaceholder}
+      attachments={attachments}
+      onAddFiles={projectId ? addComposerFiles : undefined}
+      onRemoveAttachment={(id) => removeAttachments([id])}
+      onDropProjectPaths={projectId && scope.kind === "workspace" ? dropProjectPaths : undefined}
+      slashItems={slashItems}
+      onSlashSelect={onSlashSelect}
+      mentionItems={mentionItems}
+      highlight={composerHighlight}
+      dataTour={scope.kind === "workspace" ? "ai-input" : undefined}
+      shellClassName={scope.composer?.shellClassName}
+      labels={scope.composer?.textareaLabel ? { textarea: scope.composer.textareaLabel } : undefined}
+      notice={
+        <>
+          {modelNoticeLine && (
+            <p
+              data-testid="ai-model-notice"
+              data-kind={visibleModelNotice?.kind ?? "chat-only"}
+              role={modelNoticeRole(visibleModelNotice)}
+              className={cn(
+                "mt-1.5 flex items-center gap-1.5 px-0.5 text-[0.6875rem]",
+                visibleModelNotice?.kind === "blocked" || visibleModelNotice?.kind === "error"
+                  ? "text-destructive"
+                  : "text-muted-foreground",
+              )}
+            >
+              {visibleModelNotice?.kind === "checking" && (
+                <Spinner size="xs" />
+              )}
+              <span className="min-w-0">{modelNoticeLine}</span>
+              {canRecheckModel && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="xs"
+                  data-testid="ai-model-recheck"
+                  onClick={() => void recheckModel()}
+                  className="h-5 shrink-0 px-1 text-foreground"
+                >
+                  {t(($) => $.ai.composer.checkAgain)}
+                </Button>
+              )}
+            </p>
+          )}
+          {composerAttachmentNotice && (
+            <output
+              data-testid="ai-attachment-notice"
+              className="mt-1.5 block px-0.5 text-[0.6875rem] text-muted-foreground"
+            >
+              {composerAttachmentNotice}
+            </output>
+          )}
+        </>
+      }
+      controls={
+        <>
+          <ComposerAttachMenu commands={attachCommands} />
+          <ApprovalModeSelector
+            mode={approvalMode}
+            onChange={changeApprovalMode}
+            onOpenProjectRules={openProjectApprovalSettings}
+            disabled={approvalModeLocked}
+          />
+          {scope.features.promptShortcuts && <span
+            data-tour="ai-prompts"
+            className="ai-composer-prompts inline-flex shrink-0"
+          >
+            <Tooltip label={t(($) => $.ai.composer.prompts)}>
+              <Popover
+                align="left"
+                ariaLabel={t(($) => $.ai.composer.promptShortcutsAriaLabel)}
+                triggerClassName="ai-composer-prompts-trigger h-7 shrink-0 gap-1 px-2 text-xs font-medium"
+                className="max-h-96 w-80 overflow-y-auto p-1.5"
+                trigger={
+                  <>
+                    <WalletCards className="ai-composer-prompts-icon hidden size-4 shrink-0" />
+                    <span className="ai-composer-prompts-value">{t(($) => $.ai.composer.prompts)}</span>
+                    <ChevronDown className="ai-composer-prompts-chevron size-3.5 shrink-0" />
+                  </>
+                }
+              >
+                {[...promptCategories(documentEngine.capabilities.formatting_profile), ...skillPromptCategories].map((category, i) => (
+                  <div
+                    key={category.id}
+                    className={cn("py-2", i > 0 && "mt-1 border-t pt-2.5")}
+                  >
+                    <span className="block px-2.5 pb-1.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground/70">
+                      {category.label}
+                    </span>
+                    <div className="space-y-0.5">
+                      {category.items.map((item) => (
+                        <button
+                          type="button"
+                          key={item.id}
+                          onClick={() => {
+                            setInput(item.prompt);
+                            focusComposerAt(item.prompt.length);
+                          }}
+                          className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2.5 text-left transition-colors hover:bg-accent"
+                        >
+                          <item.icon className="mt-0.5 size-4 shrink-0 text-primary" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-xs font-medium leading-snug">{item.label}</span>
+                            <span className="block truncate text-[0.6875rem] leading-snug text-muted-foreground">
+                              {item.description}
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </Popover>
+            </Tooltip>
+          </span>}
+          {renderPersonaPicker()}
+          {renderPlanModeToggle()}
+          {planMode && (
+            <Tooltip label={planModeHint()} side="top" wide>
+              <button
+                type="button"
+                aria-label={t(($) => $.ai.composer.planModeInfo)}
+                data-testid="ai-plan-mode-info"
+                className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Info className="size-3.5" />
+              </button>
+            </Tooltip>
+          )}
+          <WebToggle
+            on={webOn}
+            needsKey={!webSearchReady}
+            onChange={changeWeb}
+            disabled={approvalModeLocked}
+          />
+        </>
+      }
+      trailingControls={
+        <>
+          {configuredProviders.length > 0 && (
+            <UsageMeter
+              snapshot={usageSnapshot}
+              tooltip={usageTooltip}
+              loadExtras={loadUsageExtras}
+              dataTour="ai-usage"
+            />
+          )}
+          <EffortSelector
+            choices={effortChoices}
+            value={selectedEffort}
+            onChange={changeEffort}
+            disabled={approvalModeLocked}
+          />
+          {configuredProviders.length > 0 && (
+            <div
+              data-tour="ai-provider-model"
+              className="ai-composer-model shrink-0"
+            >
+              <ModelSelector
+                compact
+                open={modelPickerOpen}
+                onOpenChange={setModelPickerOpen}
+                className="h-7 min-w-0 shrink-0 gap-1 px-2 text-xs font-medium text-foreground hover:text-foreground"
+                providerId={provider}
+                modelId={model}
+                groups={pickerGroups}
+                onChange={pickModel}
+              />
+            </div>
+          )}
+        </>
+      }
+    />
+  );
+  const composerInner = renderComposer();
+  const composerFrame = scope.composer?.frame;
+  const composerNode: ReactNode = composerFrame ? composerFrame(composerInner, streaming) : composerInner;
+  const historyNode = (
+    <ChatHistoryModal
+      open={historyOpen}
+      chats={chats}
+      activeId={activeChatId}
+      currentHead={currentHead}
+      onClose={() => setHistoryOpen(false)}
+      onOpen={(chat) => void openChat(chat)}
+      onDelete={deleteChat}
+      skipped={skippedOnLoad}
+    />
+  );
+  const replaceDialogNode = (
+    <ConfirmationDialog
+      open={replaceConfirm !== null}
+      title={t(($) => $.ai.messageActions.replaceTitle)}
+      description={t(($) => $.ai.messageActions.replaceDescription, {
+        count: replaceConfirm?.files ?? 0,
+      })}
+      confirmLabel={t(($) => $.ai.messageActions.replaceConfirm)}
+      onConfirm={() => {
+        const pending = replaceConfirm;
+        setReplaceConfirm(null);
+        pending?.proceed();
+      }}
+      onCancel={() => setReplaceConfirm(null)}
+    />
+  );
+
+  const renderAgentStatusPill = () => (
+    <AgentStatusPill
+      todos={agentTodos}
+      turn={streaming ? agentFileChangeTurn : null}
+      approval={
+        planApprovalStatus === "planning"
+          ? undefined
+          : {
+              status: planApprovalStatus,
+              busy: streaming || approvalModeLocked,
+              onApprove: approvePlan,
+              onRevise: revisePlan,
+            }
+      }
+      panelMaxHeight={statusCardMaxHeight(statusOverlayBox.scroller)}
+      onPinnedChange={setStatusCardPinned}
+    />
+  );
+  const agentStatusPill = renderAgentStatusPill();
+
+  const toolManagerNode = (
+    <AiToolManager groups={toolManagerAvailability.groups} onOpen={() => void mcpAgentToolsQuery.refetch()} />
+  );
+
+  const renderConversation = () => (
+    <div
+      ref={scrollRef}
+      data-keep-scroll
+      onScroll={onMessagesScroll}
+      className={cn(
+        "h-full overflow-auto pt-3",
+        agentStatusPillVisible ? "pb-12" : "pb-3",
+        showMinimap ? "pl-10 pr-3" : "px-3",
+      )}
+      style={statusCardRoom > 0 ? { paddingBottom: statusCardRoom } : undefined}
+    >
+      {messages.length === 0 ? (
+        <div className="flex min-h-full flex-col items-center justify-center px-1">
+          <AssistantHome
+            before={<OleaflyAssistantMascot />}
+            subtitle={
+              projectName
+                ? t(($) => $.ai.conversation.projectSubtitle, { project: projectName })
+                : undefined
+            }
+            skills={skills}
+            onPickSkill={pickHomeSkill}
+            onOpenSkills={openSkillsSettings}
+            quickStarts={homeQuickStarts}
+          >
+            <RecentChats
+              chats={chats}
+              currentHead={currentHead}
+              onOpen={(chat) => void openChat(chat)}
+              onShowAll={() => setHistoryOpen(true)}
+            />
+          </AssistantHome>
+        </div>
+      ) : (
+        messageListNode
+      )}
+      {subagentNode}
+      {transcriptNode}
+    </div>
+  );
+  const layoutParts = (): AssistantLayoutParts => ({
+    working: streaming,
+    hasMessages: messages.length > 0,
+    scrollRef,
+    onScroll: onMessagesScroll,
+    messages: (
+      <>
+        {messages.length > 0 && messageListNode}
+        {subagentNode}
+        {transcriptNode}
+      </>
+    ),
+    footer: (
+      <>
+        {quotaWarning && <WorkspaceBanner tone="warning">{t(($) => $.ai.provider.quotaWarning)}</WorkspaceBanner>}
+        {saveFailedWarning && (
+          <WorkspaceBanner tone="warning" data-testid="ai-chat-save-failed" role="status">
+            {t(($) => $.ai.conversation.saveFailed)}
+          </WorkspaceBanner>
+        )}
+        {agentStatusPillVisible && <div className="mb-2">{agentStatusPill}</div>}
+        {followUpsNode}
+        {toolConfirmNode}
+        {delegatedNode}
+        {goalChipNode}
+        {goalEditorNode}
+        {editBannerNode}
+        {tooLargeNode}
+      </>
+    ),
+    composer: providerReady ? composerNode : null,
+    dialogs: (
+      <>
+        {historyNode}
+        {replaceDialogNode}
+      </>
+    ),
+    newChat,
+    openHistory: () => setHistoryOpen(true),
+    stop,
+    chatCount: chats.length,
+    canStartChat: !streaming && configuredProviders.length > 0,
+    setup: providerConfigReady && !providerReady ? <ProviderConnect onConnect={() => openAISettings()} /> : null,
+    tools: toolManagerNode,
+  });
+  if (scope.layout) return scope.layout.render(layoutParts());
+
   return (
     <div
       data-tour="ai-assistant"
-      data-tour-ready={providerConfigReady ? "true" : "false"}
-      data-tour-config-error={providerConfigError ? "true" : "false"}
-      data-tour-configured={providerReady ? "true" : "false"}
-      data-tour-has-usage={hasUsage ? "true" : "false"}
-      data-tour-has-restore={
+      data-tour-ready={dataFlag(providerConfigReady)}
+      data-tour-config-error={dataFlag(providerConfigError)}
+      data-tour-configured={dataFlag(providerReady)}
+      data-tour-has-usage={dataFlag(hasUsage)}
+      data-tour-has-restore={dataFlag(
         renderedMessages.some(
           ({ msg }) =>
             msg.role === "assistant" &&
             (msg.turnChanges?.files.length ?? 0) + (msg.turnChanges?.moreFiles ?? 0) > 0,
-        )
-          ? "true"
-          : "false"
-      }
+        ),
+      )}
       data-composer-panel
       className="ai-chat-shell flex h-full flex-col bg-sidebar"
     >
       <AssistantShellHeader
         data-tour="ai-assistant-header"
-        data-tour-ready={providerConfigReady ? "true" : "false"}
+        data-tour-ready={dataFlag(providerConfigReady)}
         leading={shellLeading}
         actions={
           <>
@@ -3817,10 +4848,7 @@ ${sandboxedCustom}`;
                 <McpBrandIcon className="size-4" />
               </Button>
             </Tooltip>
-            <AiToolManager
-              groups={toolManagerAvailability.groups}
-              onOpen={() => void mcpAgentToolsQuery.refetch()}
-            />
+            {toolManagerNode}
             <Tooltip label={t(($) => $.ai.header.settings)}>
               <Button
                 type="button"
@@ -3895,24 +4923,8 @@ ${sandboxedCustom}`;
       )}
 
       {providerConfigReady && !providerReady && (
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center">
-          <OleaflyAssistantMascot />
-          <div className="space-y-1">
-            <div className="text-sm font-medium">{t(($) => $.ai.provider.connectTitle)}</div>
-            <p className="mx-auto max-w-[18rem] text-xs text-muted-foreground">
-              {t(($) => $.ai.provider.connectBody)}
-            </p>
-          </div>
-          <Button data-tour="ai-connect-provider" onClick={() => openAISettings()}>
-            <Sparkles className="size-4" />
-            {t(($) => $.ai.provider.connectButton)}
-          </Button>
-          <button type="button"
-            onClick={() => openAISettings()}
-            className="text-[0.6875rem] text-muted-foreground hover:text-foreground"
-          >
-            {t(($) => $.ai.provider.runLocal)}
-          </button>
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center p-6">
+          <ProviderConnect tour onConnect={() => openAISettings()} />
         </div>
       )}
 
@@ -3920,170 +4932,13 @@ ${sandboxedCustom}`;
         <>
           <div className="relative min-h-0 flex-1">
           <ChatMinimap scrollRef={scrollRef} messages={messages} visible={showMinimap} />
-          <div
-            ref={scrollRef}
-            onScroll={onMessagesScroll}
-            className={cn(
-              "h-full overflow-auto pt-3",
-              agentStatusPillVisible ? "pb-12" : "pb-3",
-              showMinimap ? "pl-10 pr-3" : "px-3",
-            )}
-            style={statusCardRoom > 0 ? { paddingBottom: statusCardRoom } : undefined}
-          >
-            {messages.length === 0 ? (
-              <div className="flex min-h-full flex-col items-center justify-center px-1">
-                <AssistantHome
-                  before={<OleaflyAssistantMascot />}
-                  subtitle={
-                    projectName
-                      ? t(($) => $.ai.conversation.projectSubtitle, { project: projectName })
-                      : undefined
-                  }
-                  skills={skills}
-                  onPickSkill={pickHomeSkill}
-                  onOpenSkills={openSkillsSettings}
-                  quickStarts={homeQuickStarts}
-                >
-                  <RecentChats
-                    chats={chats}
-                    currentHead={currentHead}
-                    onOpen={(chat) => void openChat(chat)}
-                    onShowAll={() => setHistoryOpen(true)}
-                  />
-                </AssistantHome>
-              </div>
-            ) : (
-              <ErrorBoundary
-                resetKey={activeChatId}
-                fallback={
-                  <div className="px-1 py-4 text-center text-sm text-muted-foreground">
-                    {t(($) => $.ai.conversation.renderFailed)}
-                  </div>
-                }
-              >
-                <div className="flex flex-col gap-3">
-                  <MessageList
-                    messages={renderedMessages}
-                    live={liveMessage}
-                    actions={chatActions}
-                    onMessageAction={onMessageAction}
-                    chatId={activeChatId}
-                    scrollRef={scrollRef}
-                    nearBottomRef={nearBottomRef}
-                    renderExtras={({ live, isLatestAssistant, msg }) => (
-                      <>
-                        {msg.role === "assistant" && msg.planNote && !live && (
-                          <PlanNote note={msg.planNote} />
-                        )}
-                        {msg.role === "assistant" &&
-                          isLatestAssistant &&
-                          !live &&
-                          agentRunSummaryVisible && (
-                            <div className="mt-1.5 px-1">
-                              <AgentRunSummary
-                                todos={agentTodos}
-                                turn={null}
-                                plan={lastTurnWasPlanExecution}
-                              />
-                            </div>
-                          )}
-                        {msg.role === "assistant" && msg.turnChanges && !live && projectId && (
-                          <TurnChangesCard
-                            projectId={projectId}
-                            changes={msg.turnChanges}
-                            showUnavailable={msg.id === firstUnavailableTurnId}
-                            className="mx-1 mt-1.5"
-                          />
-                        )}
-                        {msg.role === "assistant" &&
-                          msg.checkpointOid &&
-                          msg.toolCalls?.some(
-                            (tool) =>
-                              CODE_EDIT_TOOLS.has(tool.name) &&
-                              tool.approval !== "rejected" &&
-                              tool.status === "done",
-                          ) &&
-                          !live && (
-                            <div data-tour="ai-restore" className="mt-1.5 flex items-center justify-end px-1">
-                              {msg.checkpointRestored ? (
-                                <span className="text-[0.625rem] text-muted-foreground">
-                                  {t(($) => $.ai.conversation.checkpointRestored)}
-                                </span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  data-testid="ai-restore-checkpoint"
-                                  disabled={restoringCheckpoint !== null}
-                                  onClick={() => void restoreCheckpoint(msg, isLatestAssistant)}
-                                  className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[0.6875rem] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-50"
-                                >
-                                  <RotateCcw className="size-3" />
-                                  {restoringCheckpoint === msg.id
-                                    ? t(($) => $.ai.conversation.restoring)
-                                    : t(($) => $.ai.conversation.restoreCheckpoint)}
-                                </button>
-                              )}
-                            </div>
-                          )}
-                      </>
-                    )}
-                  />
-                  {streaming &&
-                    !messages[messages.length - 1]?.reasoningBlocks?.some(
-                      (b) => b.ms === undefined,
-                    ) && (
-                      <div className="max-w-[85%] text-xs">
-                        <div className="flex w-full items-center gap-2 py-1 text-sm text-muted-foreground">
-                          <Brain className="ai-shimmer-icon size-3.5 shrink-0" />
-                          <Shimmer text={thinkingText || t(($) => $.ai.chat.reasoning.thinking)} />
-                        </div>
-                      </div>
-                    )}
-                  {!streaming &&
-                    messages[messages.length - 1]?.role === "user" && (
-                      <div className="max-w-[85%] rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground">
-                        {t(($) => $.ai.conversation.noResponse)}
-                      </div>
-                    )}
-                </div>
-              </ErrorBoundary>
-            )}
-            {activeChatId && (
-              <SubagentActivity
-                chatId={activeChatId}
-                projectId={projectId}
-                streaming={streaming}
-                activeRunId={() => activeRunRequestIdRef.current}
-                onError={(message) => toast.error(message)}
-                onOpenSession={(sessionId, runtime) => openSession({ threadId: sessionId, runtime })}
-              />
-            )}
-            <SessionTranscriptDialog
-              threadId={transcriptThreadId}
-              onClose={() => setTranscriptThreadId(null)}
-            />
-          </div>
+          {renderConversation()}
             {agentStatusPillVisible && (
               <div
                 ref={statusOverlayRef}
                 className="pointer-events-none absolute inset-x-3 bottom-2 z-20"
               >
-                <AgentStatusPill
-                  todos={agentTodos}
-                  turn={streaming ? agentFileChangeTurn : null}
-                  approval={
-                    planApprovalStatus === "planning"
-                      ? undefined
-                      : {
-                          status: planApprovalStatus,
-                          busy: streaming || approvalModeLocked,
-                          onApprove: approvePlan,
-                          onRevise: revisePlan,
-                        }
-                  }
-                  panelMaxHeight={statusCardMaxHeight(statusOverlayBox.scroller)}
-                  onPinnedChange={setStatusCardPinned}
-                />
+                {agentStatusPill}
               </div>
             )}
             {showScrollDown && (
@@ -4100,576 +4955,23 @@ ${sandboxedCustom}`;
           </div>
 
           <div className="relative shrink-0">
-                {queuedFollowUps.length > 0 && (
-                  <div className="mb-2 flex flex-col gap-1.5">
-                    {queuedFollowUps.map((item) => {
-                      const summary =
-                        item.text ||
-                        item.attachments.map((attachment) => attachment.name).join(", ");
-                      const awaitingSafePoint = steeringFollowUpIds.has(item.id);
-                      const beingSent = sendingFollowUpId === item.id;
-                      let chipText: string;
-                      if (item.status === "steered")
-                        chipText = t(($) => $.ai.followUps.steered, { summary });
-                      else if (beingSent) chipText = t(($) => $.ai.followUps.sending, { summary });
-                      else if (awaitingSafePoint)
-                        chipText = t(($) => $.ai.followUps.waiting, { summary });
-                      else chipText = t(($) => $.ai.followUps.queued, { summary });
-                      return (
-                      <div
-                        key={item.id}
-                        data-testid="agent-follow-up-chip"
-                        className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground"
-                      >
-                        <span className="min-w-0 flex-1 truncate">{chipText}</span>
-                        {item.status === "pending" && streaming && (
-                          <button
-                            type="button"
-                            data-testid="agent-follow-up-steer"
-                            disabled={awaitingSafePoint || beingSent || !steerableRunId}
-                            title={steerableRunId ? undefined : t(($) => $.ai.followUps.startingRun)}
-                            className="shrink-0 rounded-md px-2 py-0.5 font-medium text-primary transition-colors hover:bg-accent disabled:pointer-events-none disabled:opacity-40"
-                            onClick={() => {
-                              const runId = activeRunRequestIdRef.current;
-                              const chatId = activeChatId;
-                              if (!runId || !chatId) return;
-                              if (
-                                steeringFollowUpIdsRef.current.has(item.id) ||
-                                sendingFollowUpIdRef.current === item.id
-                              ) return;
-                              steeringFollowUpIdsRef.current.add(item.id);
-                              setSteeringFollowUpIds(new Set(steeringFollowUpIdsRef.current));
-                              Promise.all([
-                                mentionAttachments(
-                                  projectId,
-                                  item.text,
-                                  useFilesStore.getState().tree,
-                                ),
-                                import("@/lib/chat-attachments"),
-                              ])
-                                .then(async ([mentioned, chatAttachments]) => {
-                                  const metadata = activeStoredModel?.metadata;
-                                  const vision = modelSupportsVision(
-                                    provider,
-                                    model,
-                                    metadata?.inputModalities,
-                                  );
-                                  const message = toAgentMessages([
-                                    await chatAttachments.userModelMessage(
-                                      steeredSkillText(item.text, skillsRef.current),
-                                      item.attachments,
-                                      mentioned,
-                                      {
-                                        readText: attachmentText,
-                                        textBudget: chatAttachments.attachmentTextBudget(
-                                          metadata?.contextWindow,
-                                        ),
-                                        pageImages:
-                                          vision && metadata?.inputModalities?.includes("pdf") !== true,
-                                      },
-                                    ),
-                                  ])[0];
-                                  if (!message) return;
-                                  return steerQueuedFollowUp(runId, message, chatId, item.id);
-                                })
-                                .catch((error: unknown) => {
-                                  if (steerRunAlreadyEnded(error)) return;
-                                  toast.error(i18n.t(($) => $.ai.toasts.steerFailed));
-                                })
-                                .finally(() => {
-                                  steeringFollowUpIdsRef.current.delete(item.id);
-                                  setSteeringFollowUpIds(
-                                    new Set(steeringFollowUpIdsRef.current),
-                                  );
-                                });
-                            }}
-                          >
-                            {t(($) => $.ai.followUps.steerNow)}
-                          </button>
-                        )}
-                        {item.status === "pending" && (
-                          <button
-                            type="button"
-                            data-testid="agent-follow-up-discard"
-                            aria-label={t(($) => $.ai.followUps.discard)}
-                            title={t(($) => $.ai.followUps.discard)}
-                            disabled={awaitingSafePoint || beingSent}
-                            className="flex size-5 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
-                            onClick={() => {
-                              if (
-                                steeringFollowUpIdsRef.current.has(item.id) ||
-                                sendingFollowUpIdRef.current === item.id
-                              ) return;
-                              const chatId = activeChatId;
-                              if (chatId) {
-                                useAgentTurnsStore.getState().removeFollowUp(chatId, item.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="size-3" />
-                          </button>
-                        )}
-                      </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {pendingApproval && (
-                  <ToolConfirm
-                    req={pendingApproval.req}
-                    onApprove={() => pendingApproval.resolve(true)}
-                    onReject={() => pendingApproval.resolve(false)}
-                    onApproveProject={
-                      pendingApproval.mode === "custom" && projectId
-                        ? () => {
-                            void approvalsSet(projectId, pendingApproval.req.tool, "allow")
-                              .then(() => {
-                                projectApprovalsRef.current = {
-                                  ...projectApprovalsRef.current,
-                                  [pendingApproval.req.tool]: "allow",
-                                };
-                                pendingApproval.resolve(true);
-                              })
-                              .catch(() => {
-                                toast.error(i18n.t(($) => $.ai.toasts.approvalRuleSaveFailed));
-                              });
-                          }
-                        : undefined
-                    }
-                  />
-                )}
-                <DelegatedPermissions
-                  projectId={projectId}
-                  parentSessionId={agentThreadId}
-                  subagents={delegatedSubagents}
-                  onError={(message) => toast.error(describeError(message))}
-                />
+                {followUpsNode}
+                {toolConfirmNode}
+                {delegatedNode}
 
                 <div className="px-3 pb-3 pt-1.5">
-            {goal && (
-              <div className="mb-2 flex min-w-0 items-center gap-1.5">
-                <button
-                  type="button"
-                  aria-label={t(($) => $.ai.goal.editAriaLabel, { goal })}
-                  onClick={openGoalEditor}
-                  className="inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <Target className="size-3.5 shrink-0" />
-                  <span className="truncate">{goal}</span>
-                </button>
-                <button
-                  type="button"
-                  aria-label={t(($) => $.ai.goal.clear)}
-                  title={t(($) => $.ai.goal.clear)}
-                  onClick={() => clearGoal(projectId)}
-                  className="flex size-6 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                >
-                  <X className="size-3.5" />
-                </button>
-              </div>
-            )}
-            {goalEditorOpen && (
-              <form
-                aria-label={t(($) => $.ai.goal.formAriaLabel)}
-                className="mb-2 rounded-lg border bg-card p-2.5 shadow-sm"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  saveGoal();
-                }}
-              >
-                <label htmlFor="ai-chat-goal" className="mb-1.5 block text-xs font-medium">
-                  {t(($) => $.ai.goal.label)}
-                </label>
-                <Input
-                  ref={goalInputRef}
-                  id="ai-chat-goal"
-                  aria-label={t(($) => $.ai.goal.label)}
-                  value={goalDraft}
-                  onChange={(event) => setGoalDraft(event.target.value)}
-                  placeholder={t(($) => $.ai.goal.placeholder)}
-                  className="h-8 text-xs"
-                />
-                <div className="mt-2 flex justify-end gap-1.5">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setGoalEditorProjectId(null)}
-                  >
-                    {t(($) => $.common.actions.cancel)}
-                  </Button>
-                  <Button type="submit" size="sm" disabled={!goalDraft.trim()}>
-                    {t(($) => $.ai.goal.save)}
-                  </Button>
-                </div>
-              </form>
-            )}
-            {editTarget && (
-              <output
-                data-testid="ai-edit-banner"
-                className="mb-2 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1.5 text-xs text-foreground"
-              >
-                <span className="min-w-0 flex-1">
-                  {editTarget.mode === "inPlace"
-                    ? t(($) => $.ai.messageActions.editingLatest)
-                    : t(($) => $.ai.messageActions.editingEarlier)}
-                </span>
-                <Button type="button" variant="ghost" size="xs" onClick={cancelEdit}>
-                  {t(($) => $.ai.messageActions.cancelEdit)}
-                </Button>
-              </output>
-            )}
-            {activeChatId && saveProblems[activeChatId] === "tooLarge" && (
-              <WorkspaceBanner
-                tone="warning"
-                data-testid="ai-chat-too-large"
-                role="status"
-                className="mb-2 flex-nowrap rounded-md border px-2.5"
-              >
-                <span className="min-w-0 flex-1">{t(($) => $.ai.conversation.tooLargeToSave)}</span>
-                <Button type="button" size="xs" variant="outline" onClick={() => void exportActiveChat()}>
-                  {t(($) => $.ai.conversation.exportChat)}
-                </Button>
-              </WorkspaceBanner>
-            )}
-            <ChatComposer
-              ref={composerRef}
-              composerId={composerId}
-              value={inputText}
-              onChange={setInput}
-              onSubmit={submitComposer}
-              busy={streaming}
-              onQueue={submitComposer}
-              onStop={stop}
-              disabled={!engineLoaded}
-              placeholder={inputPlaceholder}
-              attachments={attachments}
-              onAddFiles={projectId ? addComposerFiles : undefined}
-              onRemoveAttachment={(id) => removeAttachments([id])}
-              onDropProjectPaths={projectId ? dropProjectPaths : undefined}
-              slashItems={slashItems}
-              onSlashSelect={onSlashSelect}
-              mentionItems={mentionItems}
-              highlight={composerHighlight}
-              dataTour="ai-input"
-              notice={
-                <>
-                  {modelNoticeLine && (
-                    <p
-                      data-testid="ai-model-notice"
-                      data-kind={visibleModelNotice?.kind ?? "chat-only"}
-                      role={modelNoticeRole(visibleModelNotice)}
-                      className={cn(
-                        "mt-1.5 flex items-center gap-1.5 px-0.5 text-[0.6875rem]",
-                        visibleModelNotice?.kind === "blocked" || visibleModelNotice?.kind === "error"
-                          ? "text-destructive"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      {visibleModelNotice?.kind === "checking" && (
-                        <Spinner size="xs" />
-                      )}
-                      <span className="min-w-0">{modelNoticeLine}</span>
-                      {canRecheckModel && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="xs"
-                          data-testid="ai-model-recheck"
-                          onClick={() => void recheckModel()}
-                          className="h-5 shrink-0 px-1 text-foreground"
-                        >
-                          {t(($) => $.ai.composer.checkAgain)}
-                        </Button>
-                      )}
-                    </p>
-                  )}
-                  {composerAttachmentNotice && (
-                    <output
-                      data-testid="ai-attachment-notice"
-                      className="mt-1.5 block px-0.5 text-[0.6875rem] text-muted-foreground"
-                    >
-                      {composerAttachmentNotice}
-                    </output>
-                  )}
-                </>
-              }
-              controls={
-                <>
-                  <ComposerAttachMenu commands={attachCommands} />
-                  <ApprovalModeSelector
-                    mode={approvalMode}
-                    onChange={changeApprovalMode}
-                    onOpenProjectRules={openProjectApprovalSettings}
-                    disabled={approvalModeLocked}
-                  />
-                  <span
-                    data-tour="ai-prompts"
-                    className="ai-composer-prompts inline-flex shrink-0"
-                  >
-                    <Tooltip label={t(($) => $.ai.composer.prompts)}>
-                      <Popover
-                        align="left"
-                        ariaLabel={t(($) => $.ai.composer.promptShortcutsAriaLabel)}
-                        triggerClassName="ai-composer-prompts-trigger h-7 shrink-0 gap-1 px-2 text-xs font-medium"
-                        className="max-h-96 w-80 overflow-y-auto p-1.5"
-                        trigger={
-                          <>
-                            <WalletCards className="ai-composer-prompts-icon hidden size-4 shrink-0" />
-                            <span className="ai-composer-prompts-value">{t(($) => $.ai.composer.prompts)}</span>
-                            <ChevronDown className="ai-composer-prompts-chevron size-3.5 shrink-0" />
-                          </>
-                        }
-                      >
-                        {[...promptCategories(documentEngine.capabilities.formatting_profile), ...skillPromptCategories].map((category, i) => (
-                          <div
-                            key={category.id}
-                            className={cn("py-2", i > 0 && "mt-1 border-t pt-2.5")}
-                          >
-                            <span className="block px-2.5 pb-1.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground/70">
-                              {category.label}
-                            </span>
-                            <div className="space-y-0.5">
-                              {category.items.map((item) => (
-                                <button
-                                  type="button"
-                                  key={item.id}
-                                  onClick={() => {
-                                    setInput(item.prompt);
-                                    focusComposerAt(item.prompt.length);
-                                  }}
-                                  className="flex w-full items-start gap-2.5 rounded-md px-2.5 py-2.5 text-left transition-colors hover:bg-accent"
-                                >
-                                  <item.icon className="mt-0.5 size-4 shrink-0 text-primary" />
-                                  <span className="min-w-0 flex-1">
-                                    <span className="block truncate text-xs font-medium leading-snug">{item.label}</span>
-                                    <span className="block truncate text-[0.6875rem] leading-snug text-muted-foreground">
-                                      {item.description}
-                                    </span>
-                                  </span>
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        ))}
-                      </Popover>
-                    </Tooltip>
-                  </span>
-                  <span
-                    data-tour="ai-persona"
-                    className="ai-composer-persona inline-flex shrink-0"
-                  >
-                    <Tooltip
-                      side="top"
-                      label={
-                        activePersona
-                          ? t(($) => $.ai.composer.personaActiveTooltip, {
-                              name: activePersona.name,
-                            })
-                          : t(($) => $.ai.composer.personaChoose)
-                      }
-                    >
-                      <Popover
-                        align="left"
-                        ariaLabel={
-                          activePersona
-                            ? t(($) => $.ai.composer.personaActiveAriaLabel, {
-                                name: activePersona.name,
-                              })
-                            : t(($) => $.ai.composer.personaChoose)
-                        }
-                        triggerClassName="ai-composer-persona-trigger h-7 max-w-40 shrink-0 gap-1.5 px-2 text-xs font-medium"
-                        className="max-h-64 w-64 overflow-y-auto p-1.5"
-                        trigger={
-                          <>
-                            {activePersona ? (
-                              <span
-                                data-testid="ai-active-persona-indicator"
-                                className="size-2.5 shrink-0 rounded-full border border-background"
-                                style={{
-                                  background: personaGradient(activePersona.color),
-                                }}
-                              />
-                            ) : (
-                              <span
-                                data-testid="ai-inactive-persona-indicator"
-                                className="size-2.5 shrink-0 rounded-full border border-muted-foreground/50"
-                              />
-                            )}
-                            <span className="ai-composer-persona-value truncate">
-                              {activePersona ? activePersona.name : t(($) => $.ai.composer.persona)}
-                            </span>
-                            <ChevronDown className="size-3.5 shrink-0" />
-                          </>
-                        }
-                      >
-                        {personas.length === 0 ? (
-                          <button
-                            type="button"
-                            data-testid="ai-persona-create"
-                            onClick={() => {
-                              setSettingsInitialSection("ai");
-                              setSettingsScrollTarget("ai-personas");
-                              setSettingsOpen(true);
-                            }}
-                            className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                          >
-                            <Plus className="size-3.5 shrink-0" />
-                            {t(($) => $.ai.composer.personaCreate)}
-                          </button>
-                        ) : (
-                          <div className="space-y-0.5">
-                            <button
-                              type="button"
-                              data-testid="ai-persona-none"
-                              onClick={() => setActivePersonaId(null)}
-                              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
-                            >
-                              <span className="size-3 shrink-0 rounded-full border border-muted-foreground/40" />
-                              <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                                {t(($) => $.ai.composer.personaNone)}
-                              </span>
-                              {activePersonaId === null && (
-                                <Check className="size-3.5 shrink-0 text-emerald-500" />
-                              )}
-                            </button>
-                            {personas.map((persona) => (
-                              <button
-                                type="button"
-                                key={persona.id}
-                                data-testid={`ai-persona-${persona.name}`}
-                                onClick={() => setActivePersonaId(persona.id)}
-                                className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors hover:bg-accent"
-                              >
-                                <span
-                                  className="size-3 shrink-0 rounded-full"
-                                  style={{ background: personaGradient(persona.color) }}
-                                />
-                                <span className="min-w-0 flex-1 truncate text-xs font-medium">
-                                  {persona.name}
-                                </span>
-                                {activePersonaId === persona.id && (
-                                  <Check className="size-3.5 shrink-0 text-emerald-500" />
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </Popover>
-                    </Tooltip>
-                  </span>
-                  <Tooltip
-                    label={
-                      planMode
-                        ? t(($) => $.ai.composer.planModeOn)
-                        : t(($) => $.ai.composer.planModeOff)
-                    }
-                  >
-                    <button
-                      type="button"
-                      aria-label={t(($) => $.ai.composer.planModeAriaLabel)}
-                      aria-pressed={planMode}
-                      data-state={planMode ? "on" : "off"}
-                      onClick={changePlanMode}
-                      disabled={approvalModeLocked}
-                      className={cn(
-                        "ai-composer-plan flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium transition-colors hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50",
-                        planMode
-                          ? "bg-violet-500/15 text-violet-600 hover:bg-violet-500/20 dark:text-violet-300"
-                          : "text-muted-foreground",
-                      )}
-                    >
-                      <Lightbulb className={cn("size-4 shrink-0", planMode && "fill-current")} />
-                      <span className="ai-composer-plan-value">{t(($) => $.ai.composer.plan)}</span>
-                    </button>
-                  </Tooltip>
-                  {planMode && (
-                    <Tooltip label={planModeHint()} side="top" wide>
-                      <button
-                        type="button"
-                        aria-label={t(($) => $.ai.composer.planModeInfo)}
-                        data-testid="ai-plan-mode-info"
-                        className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground"
-                      >
-                        <Info className="size-3.5" />
-                      </button>
-                    </Tooltip>
-                  )}
-                  <WebToggle
-                    on={webOn}
-                    needsKey={!webSearchReady}
-                    onChange={changeWeb}
-                    disabled={approvalModeLocked}
-                  />
-                </>
-              }
-              trailingControls={
-                <>
-                  {configuredProviders.length > 0 && (
-                    <UsageMeter
-                      snapshot={usageSnapshot}
-                      tooltip={usageTooltip}
-                      loadExtras={loadUsageExtras}
-                      dataTour="ai-usage"
-                    />
-                  )}
-                  <EffortSelector
-                    choices={effortChoices}
-                    value={selectedEffort}
-                    onChange={changeEffort}
-                    disabled={approvalModeLocked}
-                  />
-                  {configuredProviders.length > 0 && (
-                    <div
-                      data-tour="ai-provider-model"
-                      className="ai-composer-model shrink-0"
-                    >
-                      <ModelSelector
-                        compact
-                        open={modelPickerOpen}
-                        onOpenChange={setModelPickerOpen}
-                        className="h-7 min-w-0 shrink-0 gap-1 px-2 text-xs font-medium text-foreground hover:text-foreground"
-                        providerId={provider}
-                        modelId={model}
-                        groups={modelGroups}
-                        onChange={(nextProvider, nextModel) =>
-                          selectModel(nextProvider, nextModel)
-                        }
-                      />
-                    </div>
-                  )}
-                </>
-              }
-            />
+            {goalChipNode}
+            {goalEditorNode}
+            {editBannerNode}
+            {tooLargeNode}
+            {composerNode}
           </div>
           </div>
         </>
       )}
 
-      <ChatHistoryModal
-        open={historyOpen}
-        chats={chats}
-        activeId={activeChatId}
-        currentHead={currentHead}
-        onClose={() => setHistoryOpen(false)}
-        onOpen={(chat) => void openChat(chat)}
-        onDelete={deleteChat}
-        skipped={skippedOnLoad}
-      />
-      <ConfirmationDialog
-        open={replaceConfirm !== null}
-        title={t(($) => $.ai.messageActions.replaceTitle)}
-        description={t(($) => $.ai.messageActions.replaceDescription, {
-          count: replaceConfirm?.files ?? 0,
-        })}
-        confirmLabel={t(($) => $.ai.messageActions.replaceConfirm)}
-        onConfirm={() => {
-          const pending = replaceConfirm;
-          setReplaceConfirm(null);
-          pending?.proceed();
-        }}
-        onCancel={() => setReplaceConfirm(null)}
-      />
+      {historyNode}
+      {replaceDialogNode}
     </div>
   );
 }

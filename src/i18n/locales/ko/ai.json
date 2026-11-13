@@ -44,14 +44,16 @@
       "externalTool": "외부 도구 작업 확인",
       "internet": "인터넷 접속 확인",
       "edit": "AI 편집 확인",
-      "researchTask": "연구 작업 확인"
+      "researchTask": "연구 작업 확인",
+      "note": "새 노트 확인"
     },
     "headline": {
       "command": "어시스턴트가 이 명령을 실행하려고 합니다",
       "externalTool": "어시스턴트가 외부 도구를 쓰려고 합니다",
       "internet": "어시스턴트가 인터넷에 접속하려고 합니다",
       "edit": "어시스턴트가 파일을 바꾸려고 합니다",
-      "researchTask": "어시스턴트가 연구 작업을 만들려고 합니다"
+      "researchTask": "어시스턴트가 연구 작업을 만들려고 합니다",
+      "note": "어시스턴트가 노트를 만들려고 합니다"
     },
     "mcpNote": "아래 인자를 설정된 MCP 서버로 보냅니다.",
     "line": "{{line}}번째 줄",
@@ -86,6 +88,14 @@
       "minutes_other": "{{count}}분",
       "planFirst": "계획 먼저",
       "startNow": "즉시 시작"
+    },
+    "noteDraft": {
+      "title": "제목",
+      "project": "연결된 프로젝트",
+      "tags": "태그",
+      "text": "본문",
+      "empty": "본문 없음",
+      "more": "노트가 이 뒤로 더 이어집니다."
     }
   },
   "attachments": {
@@ -1082,5 +1092,19 @@
     "replaceConfirm": "답변 바꾸기",
     "forked": "편집한 메시지에서 새 채팅을 시작했습니다.",
     "failed": "메시지를 다시 보내지 못했습니다."
+  },
+  "noteScope": {
+    "notesOnly": "노트 어시스턴트에서만 사용할 수 있습니다.",
+    "tools": {
+      "readNote": "열린 노트를 검토 대기 중인 제안까지 포함해 읽습니다.",
+      "proposeNoteEdits": "열린 노트에 대한 변경을 제안하고, 사용자가 수락하거나 거부합니다.",
+      "searchNotes": "모든 노트를 검색합니다.",
+      "listKnowledgeNotes": "노트를 태그나 프로젝트별로 나열합니다.",
+      "readNoteById": "다른 노트를 읽습니다.",
+      "createNote": "새 노트를 만듭니다.",
+      "relatedProjectFiles": "노트가 연결된 프로젝트의 파일을 나열합니다.",
+      "readRelatedProjectFile": "노트가 연결된 프로젝트의 파일을 읽습니다.",
+      "searchRelatedProject": "노트가 연결된 프로젝트를 검색합니다."
+    }
   }
 }

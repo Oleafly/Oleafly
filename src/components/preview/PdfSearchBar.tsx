@@ -1,9 +1,7 @@
 import type { RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import type { PdfSearchState, PdfViewerHandle } from "@/components/pdf/PdfViewer";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { FindBar } from "@/components/ui/find-bar";
 
 export function pdfSearchCounterLabel(state: PdfSearchState, query: string): string {
   if (state.status === "searching") {
@@ -30,71 +28,30 @@ export function PdfSearchBar({
   pdfRef: RefObject<PdfViewerHandle | null>;
   onClose: () => void;
 }>) {
-  const { t } = useTranslation(["common", "preview"]);
-  const stepDisabled = state.status !== "success" || state.total === 0;
+  const { t } = useTranslation(["preview"]);
   return (
-    <form
+    <FindBar
       id={id}
       aria-label={t(($) => $.preview.search.panel)}
-      onSubmit={(event) => event.preventDefault()}
-      className="absolute right-2 top-2 z-30 flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
-    >
-      <Search className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
-      <Input
-        ref={inputRef}
-        value={query}
-        onChange={(event) => onQueryChange(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && state.status === "success") {
-            if (event.shiftKey) {
-              pdfRef.current?.findPrevious();
-            } else {
-              pdfRef.current?.findNext();
-            }
-          }
-        }}
-        placeholder={t(($) => $.preview.search.placeholder)}
-        aria-label={t(($) => $.preview.search.input)}
-        className="h-7 w-40 border-0 bg-transparent px-1 text-xs shadow-none"
-      />
-      <span
-        className="min-w-14 text-center text-[0.6875rem] tabular-nums text-muted-foreground"
-        aria-live="polite"
-      >
-        {pdfSearchCounterLabel(state, query)}
-      </span>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-7"
-        disabled={stepDisabled}
-        onClick={() => pdfRef.current?.findPrevious()}
-        aria-label={t(($) => $.preview.search.previous)}
-      >
-        <ChevronLeft className="size-3.5" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-7"
-        disabled={stepDisabled}
-        onClick={() => pdfRef.current?.findNext()}
-        aria-label={t(($) => $.preview.search.next)}
-      >
-        <ChevronRight className="size-3.5" />
-      </Button>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="size-7"
-        onClick={onClose}
-        aria-label={t(($) => $.preview.search.close)}
-      >
-        <X className="size-3.5" />
-      </Button>
-    </form>
+      className="absolute right-2 top-2 z-30 max-w-[calc(100%-1rem)]"
+      inputRef={inputRef}
+      value={query}
+      onValueChange={onQueryChange}
+      inputLabel={t(($) => $.preview.search.input)}
+      placeholder={t(($) => $.preview.search.placeholder)}
+      status={pdfSearchCounterLabel(state, query)}
+      stepDisabled={state.status !== "success" || state.total === 0}
+      onStep={(forward) => {
+        if (state.status !== "success") return;
+        if (forward) pdfRef.current?.findNext();
+        else pdfRef.current?.findPrevious();
+      }}
+      onClose={onClose}
+      labels={{
+        previous: t(($) => $.preview.search.previous),
+        next: t(($) => $.preview.search.next),
+        close: t(($) => $.preview.search.close),
+      }}
+    />
   );
 }

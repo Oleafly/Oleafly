@@ -79,7 +79,7 @@ export function RenameDialog() {
           if (e.key === "Enter") void submit();
           if (e.key === "Escape") close();
         }}
-        className="mt-2 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm focus:border-ring"
+        className="mt-2 w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
       />
       <p className="mt-2 h-4 text-[0.6875rem] text-muted-foreground">
         {renameSummary()}

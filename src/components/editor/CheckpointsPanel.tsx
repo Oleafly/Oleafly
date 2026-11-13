@@ -20,6 +20,7 @@ import {
   FolderOpen,
   Pencil,
   RotateCcw,
+  Save,
   ShieldCheck,
   Trash2,
   X,
@@ -62,6 +63,19 @@ import { cn, isMac, isWindows } from "@/lib/utils";
 import { runWithEditorMutationLease, useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { Spinner } from "@/components/ui/spinner";
+
+export interface CheckpointSource {
+  projectId: string;
+  name: string;
+  summary: string;
+  emptyHint: string;
+  saveLabel: string;
+  restoreLabel: string;
+  save: () => Promise<void>;
+  restore: (snapshotRoot: string) => Promise<boolean>;
+  preview: (snapshotRoot: string) => ReactNode;
+  close: () => void;
+}
 
 type Confirmation =
   | { kind: "restore" | "delete"; snapshotRoot: string }
@@ -119,7 +133,7 @@ function shortRoot(snapshotRoot: string): string {
 }
 
 function safeArchiveName(name: string): string {
-  const collapsed = name.trim().replace(/[^\w.-]+/g, "_");
+  const collapsed = name.trim().replaceAll(/[^\w.-]+/g, "_");
   let start = 0;
   while (start < collapsed.length && collapsed[start] === ".") start += 1;
   let end = collapsed.length;
@@ -420,6 +434,8 @@ interface TimelineEntryProps {
   editingLabel: boolean;
   labelDraft: string;
   savingLabel: boolean;
+  preview?: ReactNode;
+  restoreLabel?: string;
   onToggleFiles: () => void;
   onConfirm: (confirmation: Confirmation) => void;
   onRestore: () => void;
@@ -446,6 +462,8 @@ function TimelineEntry({
   editingLabel,
   labelDraft,
   savingLabel,
+  preview,
+  restoreLabel,
   onToggleFiles,
   onConfirm,
   onRestore,
@@ -478,9 +496,9 @@ function TimelineEntry({
             size="sm"
             disabled={busy}
             onClick={onRestore}
-            title={t(($) => $.editor.checkpoints.entry.restoreTooltip, { version })}
+            title={restoreLabel ? undefined : t(($) => $.editor.checkpoints.entry.restoreTooltip, { version })}
           >
-            {t(($) => $.editor.checkpoints.entry.restoreFiles)}
+            {restoreLabel ?? t(($) => $.editor.checkpoints.entry.restoreFiles)}
           </Button>
           <Button variant="ghost" size="sm" disabled={busy} onClick={() => onConfirm(null)}>
             {t(($) => $.common.actions.cancel)}
@@ -703,6 +721,8 @@ function TimelineEntry({
         </div>
       </div>
 
+      {restoring && preview ? <div className="mt-2">{preview}</div> : null}
+
       {restoring && unstored > 0 ? (
         <output className="mt-2 block rounded-md bg-amber-500/10 px-3 py-2 text-xs">
           {unstoredSentence(unstored)}
@@ -772,6 +792,8 @@ type TimelineRowProps = Pick<
   | "editingLabel"
   | "labelDraft"
   | "savingLabel"
+  | "preview"
+  | "restoreLabel"
 > & { actions: TimelineActions };
 
 const TimelineRow = memo(function TimelineRow({ actions, ...entry }: Readonly<TimelineRowProps>) {
@@ -804,15 +826,53 @@ function entryConfirmation(confirmation: Confirmation, snapshotRoot: string): Co
     : null;
 }
 
-export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (busy: boolean) => void }>) {
+function panelTarget(
+  source: CheckpointSource | undefined,
+  versioningOpen: boolean,
+  openProjectId: string | null,
+  openProjectName: string | null,
+) {
+  if (!source) return { open: versioningOpen, projectId: openProjectId, projectName: openProjectName };
+  return { open: true, projectId: source.projectId, projectName: source.name };
+}
+
+function CheckpointSourceAction({
+  source,
+  busy,
+  saving,
+  onSave,
+}: Readonly<{ source?: CheckpointSource; busy: boolean; saving: boolean; onSave: () => void }>) {
+  const { t } = useTranslation(["common", "editor"]);
+  if (!source) {
+    return (
+      <Badge variant="primaryGhost" size="sm">
+        {t(($) => $.editor.checkpoints.panel.sourceOnly)}
+      </Badge>
+    );
+  }
+  return (
+    <Button variant="outline" size="sm" disabled={busy} onClick={onSave}>
+      {saving ? <Spinner size="sm" /> : <Save className="size-3.5" />}
+      {source.saveLabel}
+    </Button>
+  );
+}
+
+export function CheckpointsPanel({
+  onBusyChange,
+  source,
+}: Readonly<{ onBusyChange?: (busy: boolean) => void; source?: CheckpointSource }>) {
   const { t } = useTranslation(["common", "editor"]);
   const displayPath = useDisplayPath();
-  const open = useSettingsStore((state) => state.versioningOpen);
+  const versioningOpen = useSettingsStore((state) => state.versioningOpen);
   const closeVersioning = useSettingsStore((state) => state.closeVersioning);
   const checkpointsRevision = useSettingsStore((state) => state.checkpointsRevision);
   const publishingProjectId = useSettingsStore((state) => state.checkpointPublishingProjectId);
-  const projectId = useFilesStore((state) => state.projectId);
-  const projectName = useFilesStore((state) => state.projectName);
+  const openProjectId = useFilesStore((state) => state.projectId);
+  const openProjectName = useFilesStore((state) => state.projectName);
+  const { open, projectId, projectName } = panelTarget(source, versioningOpen, openProjectId, openProjectName);
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
   const [checkpoints, setCheckpoints] = useState<CheckpointSummary[]>([]);
   const [stats, setStats] = useState<CheckpointStoreStats | null>(null);
   const [loading, setLoading] = useState(false);
@@ -873,8 +933,9 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
   const isCurrentSession = useCallback(
     (targetProjectId: string | null, session: number) =>
       session === sessionRequest.current &&
-      useFilesStore.getState().projectId === targetProjectId &&
-      checkpointsPanelIsActive(),
+      (sourceRef.current
+        ? sourceRef.current.projectId === targetProjectId
+        : useFilesStore.getState().projectId === targetProjectId && checkpointsPanelIsActive()),
     [],
   );
 
@@ -1160,6 +1221,10 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
     if (!action || !isCurrentAction(action)) return;
     setBusyAction(`restore:${checkpoint.snapshot_root}`);
     try {
+      if (source) {
+        if (await source.restore(checkpoint.snapshot_root)) source.close();
+        return;
+      }
       const restored = await runWithEditorMutationLease(action.projectId, async () => {
         const files = useFilesStore.getState();
         const expectedGeneration = await files.prepareExternalMutation(action.projectId);
@@ -1188,6 +1253,19 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
         setBusyAction(null);
         setConfirmation(null);
       }
+    }
+  };
+
+  const saveVersion = async () => {
+    if (!source || !projectId) return;
+    const action = beginAction(projectId);
+    if (!action || !isCurrentAction(action)) return;
+    setBusyAction("save");
+    try {
+      await source.save();
+      if (isCurrentAction(action)) await refresh(action.projectId, false, action.session);
+    } finally {
+      if (isCurrentAction(action)) setBusyAction(null);
     }
   };
 
@@ -1414,7 +1492,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
           className="min-h-44"
           icon={<ShieldCheck className="size-7 text-muted-foreground" />}
           title={t(($) => $.editor.checkpoints.panel.empty)}
-          description={t(($) => $.editor.checkpoints.panel.emptyHint)}
+          description={source?.emptyHint ?? t(($) => $.editor.checkpoints.panel.emptyHint)}
         />
       );
     }
@@ -1443,6 +1521,7 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
         {shownCheckpoints.map((checkpoint) => {
           const root = checkpoint.snapshot_root;
           const editingLabel = editingLabelRoot === root;
+          const restoring = confirmation?.kind === "restore" && confirmation.snapshotRoot === root;
           return (
             <TimelineRow
               key={root}
@@ -1457,6 +1536,8 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
               editingLabel={editingLabel}
               labelDraft={editingLabel ? labelDraft : ""}
               savingLabel={busyAction === `label:${root}`}
+              preview={source && restoring ? source.preview(root) : undefined}
+              restoreLabel={source?.restoreLabel}
               actions={timelineActions}
             />
           );
@@ -1812,11 +1893,14 @@ export function CheckpointsPanel({ onBusyChange }: Readonly<{ onBusyChange?: (bu
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 flex-wrap items-center gap-2 px-4 pb-3">
         <p className="min-w-0 flex-1 text-xs text-muted-foreground">
-          {t(($) => $.editor.checkpoints.panel.summary)}
+          {source?.summary ?? t(($) => $.editor.checkpoints.panel.summary)}
         </p>
-        <Badge variant="primaryGhost" size="sm">
-          {t(($) => $.editor.checkpoints.panel.sourceOnly)}
-        </Badge>
+        <CheckpointSourceAction
+          source={source}
+          busy={busy}
+          saving={busyAction === "save"}
+          onSave={() => void saveVersion()}
+        />
       </div>
       {captureNotice ? (
         <p

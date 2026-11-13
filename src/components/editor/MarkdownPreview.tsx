@@ -73,7 +73,7 @@ export function MarkdownPreview() {
   const path = useFilesStore((state) => state.activePath) ?? "";
   const components = useMemo(() => previewComponents(projectId, path), [projectId, path]);
   return <section data-testid="markdown-preview" aria-label={t(($) => $.editor.preview.markdown)}
-    className="h-full min-w-0 overflow-auto px-6 py-5 text-sm text-foreground [overflow-wrap:anywhere] [scrollbar-width:thin] [&_h1]:mb-3 [&_h1]:text-2xl [&_h2]:mb-2 [&_h2]:mt-5 [&_h2]:text-xl [&_h3]:mt-4 [&_h3]:text-lg [&_.katex-display]:overflow-x-auto">
+    className="h-full min-w-0 overflow-auto px-6 py-5 text-sm text-foreground [overflow-wrap:anywhere] [&_h1]:mb-3 [&_h1]:text-2xl [&_h2]:mb-2 [&_h2]:mt-5 [&_h2]:text-xl [&_h3]:mt-4 [&_h3]:text-lg [&_.katex-display]:overflow-x-auto">
     <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components} urlTransform={urlTransform}>
       {content}
     </ReactMarkdown>

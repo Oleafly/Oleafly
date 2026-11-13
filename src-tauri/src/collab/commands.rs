@@ -70,7 +70,7 @@ impl From<CollabError> for CollabCommandError {
     }
 }
 
-const PASSED_THROUGH: [&str; 33] = [
+const PASSED_THROUGH: [&str; 37] = [
     "not_admitted",
     "setup_code_invalid",
     "device_in_use",
@@ -104,6 +104,10 @@ const PASSED_THROUGH: [&str; 33] = [
     "account_storage_full",
     "too_many_projects",
     "too_many_uploads",
+    "public_notes_off",
+    "too_many_pages",
+    "page_too_large",
+    "page_taken_down",
 ];
 
 fn api_code(status: u16, code: &str) -> &'static str {
@@ -1693,7 +1697,7 @@ mod tests {
         );
     }
 
-    const NEW_CODES: [(u16, &str); 32] = [
+    const NEW_CODES: [(u16, &str); 36] = [
         (400, "invalid_domain"),
         (400, "invalid_email"),
         (400, "invalid_login"),
@@ -1726,6 +1730,10 @@ mod tests {
         (413, "account_storage_full"),
         (429, "too_many_projects"),
         (429, "too_many_uploads"),
+        (403, "public_notes_off"),
+        (429, "too_many_pages"),
+        (413, "page_too_large"),
+        (403, "page_taken_down"),
     ];
 
     #[test]
@@ -2437,6 +2445,7 @@ mod tests {
             email_notifications: None,
             comments_allowed: None,
             email_link_sign_in: None,
+            public_notes_allowed: None,
         };
         assert!(
             admin_patch_settings(&state, &host, id, patch)

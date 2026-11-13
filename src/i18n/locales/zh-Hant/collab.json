@@ -230,7 +230,11 @@
     "history_unavailable": "這個專案的歷史記錄尚未同步到這台電腦。請在同步完成後再試一次。",
     "account_storage_full": "專案擁有者的帳號在這個伺服器上的儲存空間已用完。請移除一些檔案來騰出空間，或請伺服器的管理員提供更多空間。",
     "too_many_projects": "你分享的專案數量已達到這個伺服器允許的上限。請先停止分享其中一個，再分享其他專案。",
-    "too_many_uploads": "你在過去一小時內上傳的次數太多。請稍後再試。"
+    "too_many_uploads": "你在過去一小時內上傳的次數太多。請稍後再試。",
+    "public_notes_off": "這個伺服器不允許筆記公開連結。管理員可以在伺服器設定中開啟。",
+    "too_many_pages": "你的公開頁面數量已達到這個伺服器允許的上限。請取消發布其中一個，然後再試一次。",
+    "page_too_large": "這篇筆記太大，無法發布。請移除一些圖片，然後再試一次。",
+    "page_taken_down": "管理員已將這個頁面下架，在管理員恢復之前，這篇筆記無法再次發布。"
   },
   "roles": {
     "admin": "管理員",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "透過電子郵件登入",
         "description": "使用者可以透過寄到其電子郵件地址的連結登入。這需要伺服器的電子郵件設定。誰能進入仍由你的存取規則決定。"
+      },
+      "publicNotesAllowed": {
+        "label": "允許筆記公開連結",
+        "description": "成員可以將筆記的唯讀副本發布到一個連結，任何人不必登入就能開啟。"
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "拒絕訪客邀請",
         "guestInvitationRevoked": "撤回訪客邀請",
         "guestAdmissionEnded": "結束訪客對伺服器的存取",
-        "unknown": "其他伺服器事件"
+        "unknown": "其他伺服器事件",
+        "notePublished": "將筆記發布到公開連結",
+        "noteUnpublished": "取消發布筆記",
+        "noteTakenDown": "下架已發布的筆記",
+        "noteRestored": "恢復已發布的筆記"
       },
       "details": {
         "project": "專案：{{title}}",
@@ -455,7 +467,8 @@
         "device": "裝置：{{name}}",
         "byAdmin": "來自管理主控台",
         "settingOn": "{{setting}}：開啟",
-        "settingOff": "{{setting}}：關閉"
+        "settingOff": "{{setting}}：關閉",
+        "note": "筆記：{{title}}"
       }
     },
     "email": {
@@ -509,6 +522,7 @@
     "copyAndShare": "複製到 Oleafly 並分享",
     "title": "分享 {{name}}",
     "description": "透過協作伺服器，與其他人一起編輯這個專案。",
+    "noteDescription": "透過協作伺服器，與其他人一起撰寫這篇筆記。",
     "loading": "正在載入…",
     "linked": "這個專案是位於 Oleafly 之外的資料夾。Oleafly 會將它複製到你的專案庫，並分享該副本。原本的資料夾不會被更動。",
     "editCopy": "這是分享的副本。從現在起請編輯這份副本，而不是原本的資料夾。",
@@ -526,12 +540,15 @@
     "tooLarge": "這些檔案超過伺服器 {{size}} MB 的上限。請在分享前縮小或移除這些檔案。",
     "renamed": "有些名稱無法在每台電腦上使用。其他人收到這些檔案時，名稱會略有不同。",
     "excluded": "不會分享：其他建置輸出、Oleafly 設定與 Git 歷史記錄。最新編譯的 PDF 會分享，方便共同作者在瀏覽器中閱讀。",
+    "noteExcluded": "不會分享：Oleafly 設定與 Git 歷史記錄。",
     "start": "分享",
     "preparing": "正在準備專案…",
     "uploading": "正在上傳圖片和其他檔案：{{done}}/{{total}}",
     "saving": "正在把專案儲存到伺服器…",
     "failed": "分享未完成，因此沒有分享任何內容。",
-    "trustAgain": "你加入這個專案的任何人都能變更它的檔案，所以 Oleafly 在這台電腦上為它執行代理程式、終端機命令或 shell escape 之前，會請你再次信任這個專案。"
+    "trustAgain": "你加入這個專案的任何人都能變更它的檔案，所以 Oleafly 在這台電腦上為它執行代理程式、終端機命令或 shell escape 之前，會請你再次信任這個專案。",
+    "projectNotesShared": "專案筆記會分享給這個專案的每個人，個人筆記則只有你看得到。",
+    "personalNotesPrivate": "個人筆記只有你看得到。只有專案筆記資料夾中的筆記會被分享。"
   },
   "manage": {
     "sharedOn": "已在 {{server}} 上分享",
@@ -789,7 +806,8 @@
       "settings": "伺服器設定",
       "email": "電子郵件",
       "log": "安全性記錄",
-      "checks": "連線檢查"
+      "checks": "連線檢查",
+      "pages": "已發布的筆記"
     },
     "health": {
       "label": "伺服器狀態：{{status}}",
@@ -956,6 +974,30 @@
     },
     "checks": {
       "description": "檢查這台電腦與伺服器之間的連線。"
+    },
+    "pages": {
+      "description": "使用者以自己的筆記建立的唯讀頁面。任何擁有頁面連結的人都能閱讀。",
+      "loading": "正在載入已發布的筆記…",
+      "empty": "這個伺服器上還沒有人發布筆記。",
+      "limit": "顯示最新的 {{shown}} 個頁面。",
+      "columns": {
+        "title": "筆記",
+        "author": "作者",
+        "updated": "發布時間",
+        "actions": "操作"
+      },
+      "noAuthor": "已移除的帳號",
+      "takenDown": "已下架",
+      "openNamed": "開啟 {{title}}",
+      "takeDown": "下架",
+      "takeDownNamed": "下架 {{title}}",
+      "restore": "恢復",
+      "restoreNamed": "恢復 {{title}}",
+      "takeDownConfirm": {
+        "title": "要下架 {{title}} 嗎？",
+        "description": "在你恢復頁面之前，公開連結都無法使用。作者仍保有筆記，但在這段期間無法再次發布。",
+        "confirm": "下架"
+      }
     }
   },
   "links": {
@@ -1229,5 +1271,41 @@
     "broughtIn": "你在 {{name}} 中的變更現已加入此專案。",
     "retry": "重試",
     "dismiss": "關閉"
+  },
+  "publish": {
+    "tabs": {
+      "people": "人員",
+      "publish": "發布"
+    },
+    "intro": "發布會將這篇筆記的唯讀副本放到公開連結上。任何擁有連結的人不必登入就能閱讀。",
+    "contents": "圖片、統計圖、圖表、數學式、Typst 和分子都會包含在內。HTML、React、CSV、序列和筆記本區塊不會包含在內。",
+    "checking": "正在檢查公開頁面…",
+    "loadFailed": "Oleafly 無法檢查這篇筆記的公開頁面。",
+    "notAllowed": "{{server}} 不允許筆記公開連結。管理員可以在伺服器設定中開啟。",
+    "ownerOnly": "只有筆記的擁有者可以發布它。",
+    "linkLabel": "公開連結",
+    "open": "開啟",
+    "publishedAt": "上次發布：{{date}}",
+    "stale": "自上次發布以來，你變更了這篇筆記。再次發布即可更新頁面。",
+    "publish": "發布",
+    "republish": "再次發布",
+    "unpublish": "取消發布",
+    "failed": "發布沒有完成。",
+    "unpublishConfirm": {
+      "title": "要取消發布 {{name}} 嗎？",
+      "description": "公開連結會立即失效。已儲存頁面副本的人仍會保有副本。",
+      "confirm": "取消發布"
+    },
+    "list": {
+      "title": "已發布的筆記",
+      "description": "你在這個伺服器上筆記的唯讀頁面。任何擁有連結的人都能閱讀。",
+      "loadFailed": "Oleafly 無法載入你已發布的筆記。",
+      "empty": "你還沒有在這裡發布任何筆記。",
+      "openNamed": "開啟 {{name}}",
+      "unpublishNamed": "取消發布 {{name}}",
+      "updated": "發布於 {{date}}"
+    },
+    "takenDown": "管理員已將這個頁面下架。在管理員恢復之前，讀者無法開啟它，你也無法再次發布。你仍然可以取消發布。",
+    "tooOld": "{{server}} 的版本太舊，不支援筆記公開連結。伺服器的管理員需要更新 Oleafly Server。"
   }
 }

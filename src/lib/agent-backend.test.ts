@@ -528,3 +528,25 @@ describe("events that land after the command result", () => {
     }
   });
 });
+
+describe("asking before network tools", () => {
+  it("sends networkNeedsApproval only for runs that ask for it", async () => {
+    const sent: Record<string, unknown>[] = [];
+    mocks.invoke.mockImplementation((invoked: string, args: Record<string, unknown>) => {
+      if (invoked !== "agent_run") return Promise.resolve();
+      sent.push(args);
+      (args.onEvent as FakeChannel).onmessage?.({ kind: "runEnd" });
+      return Promise.resolve(runOutcome);
+    });
+    await runViaBackend({ messages: [] }, { onEvent: () => {}, ...noTools }, undefined, undefined, undefined, "note-1", {
+      networkNeedsApproval: true,
+    });
+    await runViaBackend({ messages: [] }, { onEvent: () => {}, ...noTools }, undefined, undefined, undefined, "paper", {
+      networkNeedsApproval: false,
+    });
+    await runViaBackend({ messages: [] }, { onEvent: () => {}, ...noTools });
+    expect(sent[0].networkNeedsApproval).toBe(true);
+    expect(sent[1]).not.toHaveProperty("networkNeedsApproval");
+    expect(sent[2]).not.toHaveProperty("networkNeedsApproval");
+  });
+});

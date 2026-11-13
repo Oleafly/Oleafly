@@ -49,6 +49,10 @@ const KIND_KEYS = {
   guest_admission_ended: "guestAdmissionEnded",
   project_rejoin_refused: "projectRejoinRefused",
   comments_changed_while_off: "commentsChangedWhileOff",
+  note_published: "notePublished",
+  note_unpublished: "noteUnpublished",
+  note_taken_down: "noteTakenDown",
+  note_restored: "noteRestored",
   unknown: "unknown",
 } as const satisfies Record<CollabSecurityLogKind, string>;
 
@@ -138,6 +142,10 @@ function isProjectKind(kind: string): boolean {
   return kind.startsWith("project_") || kind.startsWith("guest_") || kind === COMMENTS_CHANGED_WHILE_OFF;
 }
 
+function isNoteKind(kind: string): boolean {
+  return kind.startsWith("note_");
+}
+
 export function eventKindKey(kind: string): KindKey {
   return Object.hasOwn(KIND_KEYS, kind) ? KIND_KEYS[kind as keyof typeof KIND_KEYS] : "unknown";
 }
@@ -222,6 +230,14 @@ function useEventDescription(names: ReadonlyMap<string, string>) {
     ];
   };
 
+  const noteFacts = (detail: Detail): (string | null)[] => {
+    const title = text(detail, "title");
+    return [
+      title ? t(($) => $.collab.admin.log.details.note, { title }) : null,
+      flag(detail, "by_admin") === true ? t(($) => $.collab.admin.log.details.byAdmin) : null,
+    ];
+  };
+
   const roleChangeFacts = (detail: Detail): (string | null)[] => {
     const from = toServerRole(text(detail, "from"));
     const to = toServerRole(text(detail, "to"));
@@ -251,6 +267,7 @@ function useEventDescription(names: ReadonlyMap<string, string>) {
     else if (event.kind === "role_changed") facts = roleChangeFacts(detail);
     else if (event.kind === "settings_changed") facts = settingFacts(detail);
     else if (isProjectKind(event.kind)) facts = projectFacts(event, detail);
+    else if (isNoteKind(event.kind)) facts = noteFacts(detail);
     return facts.filter((fact): fact is string => fact !== null);
   };
 
@@ -284,6 +301,7 @@ function useEventDescription(names: ReadonlyMap<string, string>) {
     const rule = ruleTarget(event, detail);
     if (rule !== null) return rule;
     if (DEVICE_KINDS.has(event.kind)) return text(detail, "name") ? null : (event.device_name ?? null);
+    if (isNoteKind(event.kind)) return null;
     return accountTarget(event, detail);
   };
 

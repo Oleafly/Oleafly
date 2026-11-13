@@ -295,6 +295,28 @@ describe("Settings Data Storage recycle bin", () => {
     expect(mocks.recycleProject).toHaveBeenCalledTimes(1);
   });
 
+  it("labels the count as projects and notes and leaves notes out of delete all while Notes is on", async () => {
+    const [active] = useFilesStore.getState().projects;
+    useFilesStore.setState({
+      projects: [{ ...active, id: "idea", name: "Idea", kind: "note", main_doc: "note.md" }, active],
+    });
+    useSettingsStore.setState({ notes: true });
+    try {
+      render(<SettingsModal />);
+      await screen.findByText(/across the Oleafly data folder/);
+      expect(screen.getByText("Projects and notes")).toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Delete all" }));
+      expect(screen.getByRole("alertdialog")).toHaveTextContent("Delete all 1 project?");
+      fireEvent.click(screen.getByRole("button", { name: "Delete all projects" }));
+      await waitFor(() => {
+        expect(mocks.recycleProject).toHaveBeenCalledWith("active-paper");
+      });
+      expect(mocks.recycleProject).not.toHaveBeenCalledWith("idea");
+    } finally {
+      useSettingsStore.setState({ notes: false });
+    }
+  });
+
   it("shows what Oleafly keeps for folders opened in place", async () => {
     mocks.libraryStorageSummary.mockResolvedValue({
       ...storageSummary,

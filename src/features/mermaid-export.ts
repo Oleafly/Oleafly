@@ -487,14 +487,26 @@ function withMountedSvg(svg: Element, work: (measurable: boolean) => void) {
   }
 }
 
+function textLabels(svg: Element, measurable: boolean) {
+  for (const node of Array.from(svg.getElementsByTagNameNS(SVG_NS, "foreignObject"))) {
+    replaceForeignObject(node, measurable);
+  }
+}
+
+export function svgWithTextLabels(markup: string): string {
+  const parsed = new DOMParser().parseFromString(markup, "image/svg+xml");
+  if (parsed.getElementsByTagName("parsererror").length > 0 || parsed.documentElement.localName !== "svg") return markup;
+  const svg = document.importNode(parsed.documentElement, true);
+  withMountedSvg(svg, (measurable) => textLabels(svg, measurable));
+  return new XMLSerializer().serializeToString(svg);
+}
+
 export function standaloneMermaidSvg(diagram: Element, source = ""): StandaloneMermaidSvg {
   const svg = document.importNode(diagram, true);
   withMountedSvg(svg, (measurable) => {
     centerMindmapLabels(svg);
     rewriteFormattedLabels(svg, source, measurable);
-    for (const node of Array.from(svg.getElementsByTagNameNS(SVG_NS, "foreignObject"))) {
-      replaceForeignObject(node, measurable);
-    }
+    textLabels(svg, measurable);
   });
   const { width, height } = naturalSize(svg);
   if (width > 0 && height > 0) {

@@ -205,8 +205,12 @@ export class RemoteDocumentSession implements DocumentSession {
     this.settle();
   }
 
+  private get confirming(): boolean {
+    return (this.current === "open" || this.current === "opening") && !this.synchronized;
+  }
+
   settled(): Promise<void> {
-    if (this.current !== "open" || this.synchronized) return Promise.resolve();
+    if (!this.confirming) return Promise.resolve();
     return new Promise((resolve) => this.waiters.push(resolve));
   }
 
@@ -425,7 +429,7 @@ export class RemoteDocumentSession implements DocumentSession {
   }
 
   private settle(): void {
-    if (this.current === "open" && !this.synchronized) return;
+    if (this.confirming) return;
     const waiters = this.waiters;
     this.waiters = [];
     for (const resolve of waiters) resolve();

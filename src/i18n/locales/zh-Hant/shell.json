@@ -320,6 +320,36 @@
       "keywords": "pdf 預覽 顯示 隱藏 分割 僅編輯器",
       "label": "切換 PDF 預覽"
     },
+    "swapEditorPreview": {
+      "keywords": "交換 編輯器 預覽 pdf 兩側 面板 順序 版面配置 swap editor preview pdf sides pane order layout",
+      "label": "交換編輯器與預覽的位置"
+    },
+    "movePaneToEdge": {
+      "bottom": "將{{pane}}移到下方",
+      "keywords": "移動 面板 邊緣 停駐 側邊 分割 堆疊 版面配置 move pane edge dock side split stack layout",
+      "left": "將{{pane}}移到左側",
+      "right": "將{{pane}}移到右側",
+      "top": "將{{pane}}移到上方"
+    },
+    "paneNames": {
+      "assistant": "助理",
+      "editor": "編輯器",
+      "pdf": "預覽",
+      "sidebar": "側邊欄",
+      "terminal": "終端機"
+    },
+    "resetPaneLayout": {
+      "keywords": "重設 面板 版面配置 順序 移動 側邊欄 助理 編輯器 預覽 終端機 預設 reset pane layout order move panels sidebar assistant editor preview terminal default",
+      "label": "在所有專案中重設面板排列"
+    },
+    "saveLayout": {
+      "keywords": "儲存 版面配置 自訂 排列 面板 大小 名稱 save layout custom arrangement panes sizes name",
+      "label": "儲存目前的版面配置"
+    },
+    "applySavedLayout": {
+      "keywords": "版面配置 已儲存 自訂 排列 面板 切換 套用 layout saved custom arrangement panes switch apply",
+      "label": "版面配置：{{name}}"
+    },
     "zoomIn": {
       "keywords": "放大 變大",
       "label": "放大"
@@ -347,6 +377,20 @@
     "insertFileLink": {
       "label": "插入檔案連結",
       "keywords": "連結 檔案 路徑 筆記 參照"
+    },
+    "projectNotes": {
+      "open": "開啟這個專案的筆記",
+      "newShared": "新增專案筆記",
+      "newPersonal": "為這個專案新增個人筆記",
+      "keywords": "筆記 研究 連結 相關 專案 notes research linked related project"
+    },
+    "notes": {
+      "label": "開啟筆記",
+      "keywords": "筆記 筆記本 知識 想法 點子 研究 日誌 notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "快速記錄",
+      "keywords": "快速記錄 隨手記 筆記 收件匣 今天 quick capture jot note inbox today"
     }
   },
   "community": {
@@ -451,6 +495,11 @@
   },
   "datePicker": {
     "placeholder": "選擇日期"
+  },
+  "monthPicker": {
+    "label": "選擇月份",
+    "previousYear": "上一年",
+    "nextYear": "下一年"
   },
   "devMenu": {
     "inspect": "檢查",
@@ -643,7 +692,6 @@
   "home": {
     "ariaLabel": "首頁",
     "label": "首頁",
-    "title": "返回專案庫",
     "tooltip": "返回專案庫"
   },
   "importDestination": {
@@ -671,6 +719,7 @@
     "groups": {
       "action": "動作",
       "documents": "文件",
+      "notes": "筆記",
       "references": "參考文獻"
     },
     "label": "搜尋",
@@ -678,11 +727,13 @@
     "openReferences": "開啟這個專案的參考文獻",
     "placeholder": "搜尋專案、文件，或輸入 / 使用指令…",
     "placeholderDocuments": "在文件中搜尋…",
+    "placeholderNotes": "搜尋筆記及其中的區塊…",
     "placeholderProjects": "依名稱、引擎、類型、日期或中繼資料搜尋專案…",
     "referencesNeedProject": "請先開啟專案才能瀏覽其中的參考文獻。",
     "slash": {
       "create": "開啟範本庫",
       "docs": "在文件中搜尋",
+      "notes": "搜尋筆記及其中的區塊",
       "projects": "搜尋你的專案",
       "refs": "開啟這個專案的參考文獻",
       "settings": "開啟設定",
@@ -788,7 +839,8 @@
     "research": "研究工作區",
     "search": "搜尋專案",
     "sourceControl": "原始檔控制",
-    "withShortcut": "{{label}}（{{shortcut}}）"
+    "withShortcut": "{{label}}（{{shortcut}}）",
+    "notes": "筆記"
   },
   "remoteMenu": {
     "accountLabel": "{{host}} 上的 {{login}}",
@@ -880,7 +932,8 @@
           "folders_other": "{{count}} 個資料夾",
           "images": "圖片",
           "pdfs": "PDF 檔案",
-          "projects": "專案"
+          "projects": "專案",
+          "projectsAndNotes": "專案與筆記"
         },
         "subtitle": "專案、預覽、歷史記錄與應用程式資料",
         "title": "儲存空間用量",
@@ -921,6 +974,10 @@
       "latexTools": {
         "description": "顯示 Oleafly 工具庫與各項工具（PDF 匯入、方程式、表格、BibTeX、實驗與文獻搜尋、截止日期）以及它們的斜線指令。仍在 beta 階段，預設為關閉。",
         "label": "LaTeX 工具"
+      },
+      "notes": {
+        "description": "在首頁 Dock 中加入「筆記」。筆記是一個 Markdown 檔案，可以包含圖表、統計圖與數學式，你和你的代理程式都能編輯。筆記不會出現在專案庫中，每篇筆記都可以連結到一個專案。仍在 beta 階段，預設為關閉。",
+        "label": "筆記"
       },
       "researchTasks": {
         "description": "代理程式會在專案的副本中自行運作，並把修改留給你審閱。極不穩定：執行可能卡住、失敗，或留下需要手動處理的修改，而且全程都會用掉你的供應商額度。會在「設定」中新增「研究」分區。關閉後會停止所有執行中的任務。預設為關閉，開啟後風險自負。",
@@ -1257,6 +1314,24 @@
       "split": "分割檢視"
     },
     "moreActions": "更多操作",
+    "resetPaneLayout": "重設面板排列",
+    "resetPaneLayoutScope": "所有專案",
+    "savedLayouts": {
+      "close": "關閉",
+      "delete": "刪除",
+      "deleteConfirm": "要刪除版面配置 {{name}} 嗎？",
+      "limit": "最多可保留 {{count}} 個版面配置。請先刪除一個，再儲存新的。",
+      "manage": "管理版面配置",
+      "name": "版面配置名稱",
+      "rename": "重新命名",
+      "renameTitle": "重新命名版面配置",
+      "replace": "取代",
+      "replaceConfirm": "已有名為 {{name}} 的版面配置。要取代它嗎？",
+      "save": "儲存目前的版面配置",
+      "saveButton": "儲存",
+      "saveTitle": "儲存版面配置",
+      "update": "更新為目前的版面配置"
+    },
     "renameFailed": "無法重新命名專案。"
   },
   "tour": {

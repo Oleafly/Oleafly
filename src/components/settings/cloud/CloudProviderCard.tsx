@@ -1,3 +1,4 @@
+import { CloudBackupsCard } from "@/components/settings/cloud/CloudBackupsCard";
 import { CloudConnectPanel } from "@/components/settings/cloud/CloudConnectPanel";
 import { CloudNotice } from "@/components/settings/cloud/CloudNotice";
 import { CloudProjectsCard } from "@/components/settings/cloud/CloudProjectsCard";
@@ -423,6 +424,7 @@ function AccountView({ kind }: Readonly<{ kind: CloudProviderKind }>) {
         {revoked ? null : <SettingsNotice provider={provider} />}
         <CloudSyncControls />
         <CloudProjectsCard />
+        <CloudBackupsCard />
         <AdvancedSection
           provider={provider}
           disconnecting={disconnecting}

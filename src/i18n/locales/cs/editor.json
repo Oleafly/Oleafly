@@ -224,7 +224,13 @@
     "closeAssistantTabsCount_one": "Zavřít soubor otevřený asistentem",
     "closeAssistantTabsCount_few": "Zavřít {{count}} soubory otevřené asistentem",
     "closeAssistantTabsCount_many": "Zavřít {{count}} souboru otevřeného asistentem",
-    "closeAssistantTabsCount_other": "Zavřít {{count}} souborů otevřených asistentem"
+    "closeAssistantTabsCount_other": "Zavřít {{count}} souborů otevřených asistentem",
+    "editAsMarkdown": "Upravit jako Markdown",
+    "editAsNote": "Upravit jako poznámku",
+    "noteAsMarkdown": "Tuto poznámku upravujete jako Markdown.",
+    "openInNotes": "Otevřít v Poznámkách",
+    "moveIntoProject": "Přesunout do projektu",
+    "copyToMyNotes": "Zkopírovat do mých poznámek"
   },
   "projectInfo": {
     "trigger": "Informace o projektu",
@@ -1024,13 +1030,14 @@
         "environment": "Prostředí {{environment}}",
         "command": "Příkaz \\{{command}}",
         "latexSource": "Zdroj LaTeX",
+        "html": "HTML",
         "maketitlePreview": "Vygenerováno z názvu dokumentu a metadat autorů.",
         "figurePreserved": "Přesný zdroj obrázku je zachován.",
         "tablePreserved": "Přesný zdroj tabulky je zachován.",
         "sourcePreserved": "Přesný zdroj je zachován",
         "editSource": "Upravit zdroj",
-        "summaryLabel": "{{label}}. Přesný zdroj LaTeX je zachován.",
-        "inputLabel": "Přesný zdroj bloku LaTeX"
+        "summaryLabel": "{{label}}. Přesný zdroj je zachován.",
+        "inputLabel": "Přesný zdroj bloku"
       },
       "inline": {
         "label": "Nezpracovaný zdroj v řádku",

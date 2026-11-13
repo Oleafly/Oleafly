@@ -320,6 +320,36 @@
       "keywords": "xem trước pdf hiện ẩn chia đôi chỉ trình soạn thảo",
       "label": "Bật tắt Xem trước PDF"
     },
+    "swapEditorPreview": {
+      "keywords": "đổi chỗ trình soạn thảo xem trước pdf bên khung thứ tự bố cục",
+      "label": "Đổi chỗ trình soạn thảo và bản xem trước"
+    },
+    "movePaneToEdge": {
+      "bottom": "Chuyển {{pane}} xuống cạnh dưới",
+      "keywords": "chuyển khung cạnh gắn bên chia xếp chồng bố cục",
+      "left": "Chuyển {{pane}} sang cạnh trái",
+      "right": "Chuyển {{pane}} sang cạnh phải",
+      "top": "Chuyển {{pane}} lên cạnh trên"
+    },
+    "paneNames": {
+      "assistant": "trợ lý",
+      "editor": "trình soạn thảo",
+      "pdf": "bản xem trước",
+      "sidebar": "thanh bên",
+      "terminal": "terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "đặt lại bố cục khung thứ tự chuyển bảng thanh bên trợ lý trình soạn thảo xem trước terminal mặc định",
+      "label": "Đặt lại cách sắp xếp khung ở mọi dự án"
+    },
+    "saveLayout": {
+      "keywords": "lưu bố cục tuỳ chỉnh sắp xếp khung kích thước tên",
+      "label": "Lưu bố cục hiện tại"
+    },
+    "applySavedLayout": {
+      "keywords": "bố cục đã lưu tuỳ chỉnh sắp xếp khung chuyển áp dụng",
+      "label": "Bố cục: {{name}}"
+    },
     "zoomIn": {
       "keywords": "to hơn lớn hơn phóng to",
       "label": "Phóng to"
@@ -347,6 +377,20 @@
     "insertFileLink": {
       "label": "Chèn liên kết tới tệp",
       "keywords": "liên kết tệp đường dẫn ghi chú tham chiếu"
+    },
+    "projectNotes": {
+      "open": "Mở ghi chú của dự án này",
+      "newShared": "Ghi chú dự án mới",
+      "newPersonal": "Ghi chú cá nhân mới cho dự án này",
+      "keywords": "ghi chú nghiên cứu liên kết liên quan dự án"
+    },
+    "notes": {
+      "label": "Mở Ghi chú",
+      "keywords": "ghi chú sổ tay kiến thức ý tưởng nghiên cứu nhật ký notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Ghi nhanh",
+      "keywords": "ghi nhanh ghi chú hộp thư đến hôm nay quick capture jot note inbox today"
     }
   },
   "community": {
@@ -451,6 +495,11 @@
   },
   "datePicker": {
     "placeholder": "Chọn ngày"
+  },
+  "monthPicker": {
+    "label": "Chọn tháng",
+    "previousYear": "Năm trước",
+    "nextYear": "Năm sau"
   },
   "devMenu": {
     "inspect": "Kiểm tra",
@@ -643,7 +692,6 @@
   "home": {
     "ariaLabel": "Trang chủ",
     "label": "Trang chủ",
-    "title": "Về thư viện",
     "tooltip": "Quay về thư viện dự án"
   },
   "importDestination": {
@@ -671,6 +719,7 @@
     "groups": {
       "action": "Hành động",
       "documents": "Tài liệu",
+      "notes": "Ghi chú",
       "references": "Tài liệu tham khảo"
     },
     "label": "Tìm kiếm",
@@ -678,11 +727,13 @@
     "openReferences": "Mở tài liệu tham khảo của dự án này",
     "placeholder": "Tìm dự án, tài liệu, hoặc nhập / để dùng lệnh…",
     "placeholderDocuments": "Tìm trong tài liệu…",
+    "placeholderNotes": "Tìm ghi chú và các khối bên trong…",
     "placeholderProjects": "Tìm dự án theo tên, engine, loại, ngày hoặc metadata…",
     "referencesNeedProject": "Hãy mở một dự án trước để duyệt tài liệu tham khảo của dự án đó.",
     "slash": {
       "create": "mở thư viện mẫu",
       "docs": "tìm trong tài liệu",
+      "notes": "tìm ghi chú và các khối bên trong",
       "projects": "tìm dự án của bạn",
       "refs": "mở tài liệu tham khảo của dự án này",
       "settings": "mở cài đặt",
@@ -788,7 +839,8 @@
     "research": "Không gian nghiên cứu",
     "search": "Tìm trong dự án",
     "sourceControl": "Quản lý mã nguồn",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Ghi chú"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} trên {{host}}",
@@ -880,7 +932,8 @@
           "folders_other": "{{count}} thư mục",
           "images": "Hình ảnh",
           "pdfs": "PDF",
-          "projects": "Dự án"
+          "projects": "Dự án",
+          "projectsAndNotes": "Dự án và ghi chú"
         },
         "subtitle": "Dự án, bản xem trước, lịch sử và dữ liệu ứng dụng",
         "title": "Dung lượng lưu trữ",
@@ -921,6 +974,10 @@
       "latexTools": {
         "description": "Hiện thư viện Công cụ Oleafly và từng công cụ (nhập PDF, công thức, bảng, BibTeX, tìm kiếm phòng thí nghiệm và tài liệu, hạn chót) cùng các lệnh slash của chúng. Mặc định tắt khi còn beta.",
         "label": "Công cụ LaTeX"
+      },
+      "notes": {
+        "description": "Thêm Ghi chú vào thanh dock ở Trang chủ. Mỗi ghi chú là một tệp Markdown có sơ đồ, biểu đồ và công thức toán mà cả bạn và các agent đều có thể chỉnh sửa. Ghi chú nằm ngoài thư viện dự án của bạn và mỗi ghi chú có thể liên kết với một dự án. Mặc định tắt vì vẫn đang trong giai đoạn beta.",
+        "label": "Ghi chú"
       },
       "researchTasks": {
         "description": "Một agent làm việc tự động trong bản sao của dự án và để lại thay đổi cho bạn xem lại. Rất không ổn định: các lần chạy có thể kẹt, lỗi hoặc để lại thay đổi phải xử lý tay, và chúng dùng hạn mức của nhà cung cấp suốt thời gian đó. Thêm mục Nghiên cứu vào Cài đặt. Tắt sẽ dừng mọi tác vụ đang chạy. Mặc định tắt. Bật với rủi ro của bạn.",
@@ -1257,6 +1314,24 @@
       "split": "Chế độ chia đôi"
     },
     "moreActions": "Thao tác khác",
+    "resetPaneLayout": "Đặt lại cách sắp xếp khung",
+    "resetPaneLayoutScope": "Tất cả dự án",
+    "savedLayouts": {
+      "close": "Đóng",
+      "delete": "Xoá",
+      "deleteConfirm": "Xoá bố cục {{name}}?",
+      "limit": "Bạn có thể giữ tối đa {{count}} bố cục. Hãy xoá một bố cục để lưu bố cục khác.",
+      "manage": "Quản lý bố cục",
+      "name": "Tên bố cục",
+      "rename": "Đổi tên",
+      "renameTitle": "Đổi tên bố cục",
+      "replace": "Thay thế",
+      "replaceConfirm": "Đã có bố cục tên {{name}}. Thay thế nó?",
+      "save": "Lưu bố cục hiện tại",
+      "saveButton": "Lưu",
+      "saveTitle": "Lưu bố cục",
+      "update": "Cập nhật theo hiện tại"
+    },
     "renameFailed": "Không đổi tên được dự án."
   },
   "tour": {

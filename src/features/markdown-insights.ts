@@ -1,3 +1,4 @@
+import { trimTrailingCharacters } from "@/lib/trim-character";
 import {
   bibtexKeys,
   citationList,
@@ -93,12 +94,6 @@ function spaceRunStart(text: string, end: number): number {
   let start = end;
   while (start > 0 && isSpace(text[start - 1])) start -= 1;
   return start;
-}
-
-function trimTrailing(text: string, characters: string): string {
-  let end = text.length;
-  while (end > 0 && characters.includes(text[end - 1])) end -= 1;
-  return text.slice(0, end);
 }
 
 function untilLineBreak(text: string, from: number): string {
@@ -813,7 +808,7 @@ class MarkdownScan {
   private collectCitations(source: string, index: number): void {
     for (const match of source.matchAll(CITATION)) {
       const raw = match[1];
-      const key = raw.startsWith("{") ? raw.slice(1, -1) : trimTrailing(raw, ".:,;!?/-");
+      const key = raw.startsWith("{") ? raw.slice(1, -1) : trimTrailingCharacters(raw, ".:,;!?/-");
       if (!key || CROSSREF_PREFIX.test(key)) continue;
       if (QUARTO_SOURCE.test(this.mainDoc) && QUARTO_CROSSREF_PREFIX.test(key)) continue;
       this.cites.push({ key, location: this.at(index, match.index + match[0].indexOf("@") + 1) });

@@ -432,6 +432,7 @@ export interface ProjectInfo {
     last_opened_at?: number;
     shared?: ProjectSharing | null;
     imported_from?: string | null;
+    related_project?: string | null;
 }
 export interface LibraryStorageSummary {
     total_bytes: number;
@@ -1268,7 +1269,11 @@ export type CollabErrorCode =
     | "history_unavailable"
     | "account_storage_full"
     | "too_many_projects"
-    | "too_many_uploads";
+    | "too_many_uploads"
+    | "public_notes_off"
+    | "too_many_pages"
+    | "page_too_large"
+    | "page_taken_down";
 export interface CollabCommandError {
     code: CollabErrorCode;
     message: string;
@@ -2303,7 +2308,11 @@ export type CollabSecurityLogKind =
     | "guest_invitation_declined"
     | "guest_invitation_revoked"
     | "guest_admission_ended"
-    | "project_rejoin_refused";
+    | "project_rejoin_refused"
+    | "note_published"
+    | "note_unpublished"
+    | "note_taken_down"
+    | "note_restored";
 export interface CollabSecurityEvent {
     project_title?: string | null;
 }
@@ -2416,4 +2425,38 @@ export interface BackendPort {
   collabVersionName: (projectId: string, versionId: string, name: string) => Promise<void>;
   collabVersionUnname: (projectId: string, versionId: string) => Promise<void>;
   collabOutputInfo: (projectId: string) => Promise<CollabOutputInfo[]>;
+}
+
+export interface CollabRuntimeSettings {
+    public_notes_allowed?: boolean;
+}
+export interface CollabPublishedNote {
+    id: string;
+    source: string;
+    title: string;
+    url: string;
+    size: number;
+    published_at: number;
+    updated_at: number;
+    taken_down?: boolean;
+}
+export interface CollabAdminPublishedNote {
+    note: CollabPublishedNote;
+    author: CollabPerson | null;
+}
+export interface CollabPublishedNotes {
+    allowed: boolean;
+    notes: CollabPublishedNote[];
+}
+export interface CollabNoteUpload {
+    source: string;
+    title: string;
+    html: string;
+}
+export interface BackendPort {
+  collabPublishedNotes: (serverId: string) => Promise<CollabPublishedNotes>;
+  collabPublishNote: (serverId: string, note: CollabNoteUpload) => Promise<CollabPublishedNote>;
+  collabUnpublishNote: (serverId: string, noteId: string) => Promise<void>;
+  collabAdminPublishedNotes: (serverId: string) => Promise<CollabAdminPublishedNote[]>;
+  collabAdminSetNoteTakenDown: (serverId: string, noteId: string, takenDown: boolean) => Promise<CollabAdminPublishedNote>;
 }

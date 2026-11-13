@@ -5,6 +5,7 @@ import { closeAfterCrash } from "@/lib/close-after-crash";
 export interface MountOnFirstOpenOptions {
   readonly useResetKey?: () => unknown;
   readonly fallback?: ReactNode;
+  readonly loading?: ReactNode;
 }
 
 const noResetKey = () => undefined;
@@ -13,7 +14,7 @@ export function mountOnFirstOpen(
   Surface: ComponentType,
   useOpen: () => boolean,
   close?: () => void,
-  { useResetKey = noResetKey, fallback = null }: MountOnFirstOpenOptions = {},
+  { useResetKey = noResetKey, fallback = null, loading = null }: MountOnFirstOpenOptions = {},
 ) {
   const onError = close ? () => closeAfterCrash(close) : undefined;
   return function MountOnFirstOpen() {
@@ -32,7 +33,7 @@ export function mountOnFirstOpen(
     if (!open && !seen.mounted) return null;
     return (
       <ErrorBoundary fallback={fallback} resetKey={seen.attempt} onError={onError}>
-        <Suspense fallback={null}>
+        <Suspense fallback={loading}>
           <Surface />
         </Suspense>
       </ErrorBoundary>

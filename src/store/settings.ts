@@ -19,6 +19,16 @@ import {
   primaryFontFamily,
   withoutControlCharacters,
 } from "@/lib/font-families";
+import {
+  NOTES_APPEARANCE_DEFAULTS,
+  NOTES_APPEARANCE_STORAGE_KEYS,
+  NOTES_LINE_HEIGHTS,
+  normalizeNotesSetting,
+  readNotesAppearance,
+  type NotesAppearance,
+  type NotesAppearanceKey,
+} from "@/lib/notes-appearance";
+import { NOTES_PERIODIC_DEFAULTS, NOTES_PERIODIC_KEY, normalizePeriodic, type NotesPeriodic, type PeriodicKind, type PeriodicNoteSettings, readPeriodic, type WeekStartSetting } from "@/lib/notes-periodic";
 
 const SETTINGS_SECTIONS = new Set([
   "general",
@@ -67,6 +77,7 @@ export function layoutPresetHidesWorkspace(preset: LayoutPreset): boolean {
 
 export type RailTab =
   | "files"
+  | "notes"
   | "search"
   | "source"
   | "review"
@@ -1099,6 +1110,36 @@ interface SettingsState {
   setHomeProjectLayout: (v: HomeProjectLayout) => void;
   latexTools: boolean;
   setLatexTools: (v: boolean) => void;
+  notes: boolean;
+  setNotes: (v: boolean) => void;
+  notesTypeface: NotesAppearance["notesTypeface"];
+  notesFontFamily: string;
+  notesFontSize: number;
+  notesLineHeight: NotesAppearance["notesLineHeight"];
+  notesCustomLineHeight: number;
+  notesParagraphSpacing: NotesAppearance["notesParagraphSpacing"];
+  notesHeadingTypeface: NotesAppearance["notesHeadingTypeface"];
+  notesHeadingFontFamily: string;
+  notesHeadingSize: NotesAppearance["notesHeadingSize"];
+  notesTitleSize: number;
+  notesWidth: NotesAppearance["notesWidth"];
+  notesCodeFontFamily: string;
+  notesCodeTheme: NotesAppearance["notesCodeTheme"];
+  notesAccentColor: string;
+  notesCalloutStyle: NotesAppearance["notesCalloutStyle"];
+  notesTaskBox: NotesAppearance["notesTaskBox"];
+  notesFieldStyle: NotesAppearance["notesFieldStyle"];
+  notesInfo: NotesAppearance["notesInfo"];
+  notesShowWordCount: boolean;
+  notesSpellcheck: boolean;
+  notesTextReplace: boolean;
+  notesTextReplacements: NotesAppearance["notesTextReplacements"];
+  notesKeepUndo: boolean;
+  notesTikzPreamble: string;
+  setNotesAppearance: <K extends NotesAppearanceKey>(key: K, value: NotesAppearance[K]) => void;
+  notesPeriodic: NotesPeriodic;
+  setNotesPeriodic: (kind: PeriodicKind, patch: Partial<PeriodicNoteSettings>) => void;
+  setNotesWeekStart: (weekStart: WeekStartSetting) => void;
   defaultLatexEngine: DefaultLatexEngine;
   setDefaultLatexEngine: (v: DefaultLatexEngine) => void;
   resetGeneralPreferences: () => void;
@@ -1273,6 +1314,9 @@ const PREF_DEFAULTS = {
   appIcon: "classic" as AppIconId,
   homeProjectLayout: "grid" as HomeProjectLayout,
   latexTools: false,
+  notes: false,
+  ...NOTES_APPEARANCE_DEFAULTS,
+  notesPeriodic: NOTES_PERIODIC_DEFAULTS,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
 } as const;
 
@@ -1365,9 +1409,12 @@ export const SECTION_SETTINGS = {
     bgPattern: "oleafly.bgPattern",
     appIcon: "oleafly.appIcon",
     homeProjectLayout: "oleafly.library.projectLayout",
+    ...NOTES_APPEARANCE_STORAGE_KEYS,
+    notesPeriodic: NOTES_PERIODIC_KEY,
   },
   experimentation: {
     latexTools: "oleafly.latexTools",
+    notes: "oleafly.notes",
   },
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
@@ -2073,6 +2120,37 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setLatexTools: (v) => {
     saveLs("oleafly.latexTools", v ? "1" : "0");
     set({ latexTools: v });
+  },
+  notes: ls("oleafly.notes", "0") === "1",
+  setNotes: (v) => {
+    saveLs("oleafly.notes", v ? "1" : "0");
+    set({ notes: v });
+  },
+  ...readNotesAppearance((key) => ls(key, "")),
+  setNotesAppearance: (key, v) => {
+    const value = normalizeNotesSetting(key, v);
+    saveLs(NOTES_APPEARANCE_STORAGE_KEYS[key], storedDefault(value));
+    const previous = get().notesLineHeight;
+    const customKey = NOTES_APPEARANCE_STORAGE_KEYS.notesCustomLineHeight;
+    if (key === "notesLineHeight" && value === "custom" && previous !== "custom" && ls(customKey, "") === "") {
+      const seeded = NOTES_LINE_HEIGHTS[previous];
+      saveLs(customKey, String(seeded));
+      set({ notesLineHeight: "custom", notesCustomLineHeight: seeded });
+      return;
+    }
+    set({ [key]: value } as Partial<SettingsState>);
+  },
+  notesPeriodic: readPeriodic(ls(NOTES_PERIODIC_KEY, "")),
+  setNotesPeriodic: (kind, patch) => {
+    const current = get().notesPeriodic;
+    const notesPeriodic = normalizePeriodic({ ...current, [kind]: { ...current[kind], ...patch } });
+    saveLs(NOTES_PERIODIC_KEY, JSON.stringify(notesPeriodic));
+    set({ notesPeriodic });
+  },
+  setNotesWeekStart: (weekStart) => {
+    const notesPeriodic = normalizePeriodic({ ...get().notesPeriodic, weekStart });
+    saveLs(NOTES_PERIODIC_KEY, JSON.stringify(notesPeriodic));
+    set({ notesPeriodic });
   },
   showTree: true,
   toggleTree: () => set((s) => ({ showTree: !s.showTree })),

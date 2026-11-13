@@ -4,10 +4,11 @@ import { toast } from "@/lib/toast";
 import { useDiagramComposerStore, type DiagramComposerLanguage } from "@/store/diagram-composer";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore, type HomePage } from "@/store/home-view";
+import { useNotesViewStore } from "@/store/notes-view";
 import { useSettingsStore } from "@/store/settings";
 import { i18n } from "@/i18n";
 
-const OVERLAY_PAGES: ReadonlySet<HomePage> = new Set(["generators", "symbols", "diagram-composer"]);
+const OVERLAY_PAGES: ReadonlySet<HomePage> = new Set(["generators", "symbols", "diagram-composer", "notes"]);
 
 export async function openHomePage(page: HomePage): Promise<void> {
   const files = useFilesStore.getState();
@@ -26,6 +27,11 @@ export async function openHomePage(page: HomePage): Promise<void> {
 
 export function openToolsGallery(): Promise<void> {
   return openHomePage("tools");
+}
+
+export function openNotes(noteId: string | null = null, fragment: string | null = null): Promise<void> {
+  useNotesViewStore.getState().request(noteId, fragment);
+  return openHomePage("notes");
 }
 
 export function openDiagramComposerChooser(): void {

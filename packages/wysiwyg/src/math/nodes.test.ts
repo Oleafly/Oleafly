@@ -2,7 +2,9 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { Editor, type JSONContent } from "@tiptap/core";
 import type { MathRenderPort, WysiwygExtensionOptions } from "../options";
+import { serializeMarkdownBody } from "../markdown/serialize";
 import { createWysiwygExtensions } from "../schema";
+import { typeText } from "../test-helpers";
 import { paintMath } from "./nodes";
 
 const renderMath: MathRenderPort = (body, display) =>
@@ -148,5 +150,66 @@ describe("math nodes", () => {
       return true;
     });
     expect(element.querySelector(".math-rendered .katex")).toHaveTextContent("I:w");
+  });
+});
+
+describe("typed math", () => {
+  function typedInto(before: string, typed: string, after = "") {
+    const { editor } = mount({ type: "doc", content: [{ type: "paragraph", content: before || after ? [{ type: "text", text: before + after }] : [] }] });
+    editor.commands.setTextSelection(1 + before.length);
+    typeText(editor, typed);
+    const doc: JSONContent = editor.getJSON();
+    return { doc, markdown: serializeMarkdownBody(doc) };
+  }
+
+  it.each([
+    ["", " $\\alpha + \\beta$ end", "$\\alpha + \\beta$"],
+    ["Area ", "$\\pi r^2$", "$\\pi r^2$"],
+    ["", "$x$", "$x$"],
+  ])("turns %j + %j into inline math", (before, typed, source) => {
+    const { doc, markdown } = typedInto(before, typed);
+    const nodes = doc.content?.[0].content ?? [];
+    expect(nodes.find((node) => node.type === "mathInline")?.attrs?.source).toBe(source);
+    expect(markdown).toContain(source);
+    expect(markdown).not.toContain("\\\\");
+  });
+
+  it.each([
+    ["two amounts", "", "$5 and $6", ""],
+    ["a closing dollar after a space", "", "$x $", ""],
+    ["an escaped opener", "\\", "$x$", ""],
+    ["a digit after the closing dollar", "", "$5,$", "6"],
+    ["a doubled dollar", "a ", "$$", ""],
+  ])("leaves %s as text", (_name, before, typed, after) => {
+    const { doc } = typedInto(before, typed, after);
+    expect(JSON.stringify(doc)).not.toContain("math");
+  });
+
+  it("does not fire inside inline code", () => {
+    const { editor } = mount({
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "a$b", marks: [{ type: "code" }] }] }],
+    });
+    editor.commands.setTextSelection(4);
+    typeText(editor, " c$");
+    expect(JSON.stringify(editor.getJSON())).not.toContain("mathInline");
+  });
+
+  it("does not fire in a code block", () => {
+    const { editor } = mount({ type: "doc", content: [{ type: "codeBlock", content: [{ type: "text", text: "x" }] }] });
+    editor.commands.setTextSelection(2);
+    typeText(editor, " $y$");
+    expect(editor.state.doc.textContent).toBe("x $y$");
+  });
+
+  it("turns $$ on an empty line into a selected display formula", () => {
+    const { editor } = mount({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Intro" }] }, { type: "paragraph" }] });
+    editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+    typeText(editor, "$$");
+    const formula = editor.state.doc.child(1);
+    expect(formula.type.name).toBe("mathDisplay");
+    expect(formula.attrs.source).toBe("$$x^2$$");
+    expect(editor.state.selection.from).toBe(editor.state.doc.child(0).nodeSize);
+    expect(editor.state.selection.to).toBe(editor.state.doc.child(0).nodeSize + formula.nodeSize);
   });
 });

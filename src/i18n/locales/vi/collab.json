@@ -230,7 +230,11 @@
     "history_unavailable": "Lịch sử của dự án này chưa có trên máy tính này. Hãy thử lại sau khi đồng bộ xong.",
     "account_storage_full": "Tài khoản của chủ sở hữu dự án đã hết dung lượng trên máy chủ này. Hãy gỡ bớt tệp để có chỗ, hoặc đề nghị quản trị viên máy chủ cấp thêm.",
     "too_many_projects": "Bạn đã có số dự án được chia sẻ tối đa mà máy chủ này cho phép. Hãy ngừng chia sẻ một dự án trước khi chia sẻ dự án khác.",
-    "too_many_uploads": "Bạn đã tải lên quá nhiều trong giờ qua. Hãy thử lại sau."
+    "too_many_uploads": "Bạn đã tải lên quá nhiều trong giờ qua. Hãy thử lại sau.",
+    "public_notes_off": "Máy chủ này không cho phép liên kết công khai tới ghi chú. Quản trị viên có thể bật trong cài đặt của máy chủ.",
+    "too_many_pages": "Bạn đã có số trang công khai tối đa mà máy chủ này cho phép. Hãy huỷ xuất bản một trang rồi thử lại.",
+    "page_too_large": "Ghi chú này quá lớn để xuất bản. Hãy gỡ bớt ảnh rồi thử lại.",
+    "page_taken_down": "Quản trị viên đã gỡ trang này xuống, nên không thể xuất bản lại ghi chú này cho đến khi họ khôi phục trang."
   },
   "roles": {
     "admin": "Quản trị viên",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "Đăng nhập bằng email",
         "description": "Mọi người có thể đăng nhập bằng liên kết gửi đến địa chỉ email của họ. Tuỳ chọn này cần cài đặt email của máy chủ. Các quy tắc truy cập của bạn vẫn quyết định ai được vào."
+      },
+      "publicNotesAllowed": {
+        "label": "Cho phép liên kết công khai tới ghi chú",
+        "description": "Thành viên có thể xuất bản một bản sao chỉ đọc của ghi chú tại một liên kết mà ai cũng mở được, không cần đăng nhập."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "Đã từ chối lời mời khách",
         "guestInvitationRevoked": "Đã rút lại lời mời khách",
         "guestAdmissionEnded": "Đã chấm dứt quyền truy cập máy chủ của khách",
-        "unknown": "Sự kiện máy chủ khác"
+        "unknown": "Sự kiện máy chủ khác",
+        "notePublished": "Đã xuất bản một ghi chú tại liên kết công khai",
+        "noteUnpublished": "Đã huỷ xuất bản một ghi chú",
+        "noteTakenDown": "Đã gỡ xuống một ghi chú đã xuất bản",
+        "noteRestored": "Đã khôi phục một ghi chú đã xuất bản"
       },
       "details": {
         "project": "Dự án: {{title}}",
@@ -455,7 +467,8 @@
         "device": "Thiết bị: {{name}}",
         "byAdmin": "Từ bảng điều khiển quản trị",
         "settingOn": "{{setting}}: bật",
-        "settingOff": "{{setting}}: tắt"
+        "settingOff": "{{setting}}: tắt",
+        "note": "Ghi chú: {{title}}"
       }
     },
     "email": {
@@ -509,6 +522,7 @@
     "copyAndShare": "Sao chép vào Oleafly và chia sẻ",
     "title": "Chia sẻ {{name}}",
     "description": "Làm việc trên dự án này cùng người khác qua một máy chủ cộng tác.",
+    "noteDescription": "Cùng viết ghi chú này với người khác qua một máy chủ cộng tác.",
     "loading": "Đang tải…",
     "linked": "Dự án này là một thư mục bên ngoài Oleafly. Oleafly sao chép nó vào thư viện của bạn và chia sẻ bản sao đó. Thư mục gốc không bị đụng tới.",
     "editCopy": "Đây là bản sao được chia sẻ. Từ giờ hãy chỉnh sửa bản này, không sửa thư mục gốc.",
@@ -526,12 +540,15 @@
     "tooLarge": "Các tệp này vượt quá giới hạn {{size}} MB của máy chủ. Hãy làm chúng nhỏ hơn hoặc gỡ bớt trước khi chia sẻ.",
     "renamed": "Một số tên không dùng được trên mọi máy tính. Người khác sẽ nhận những tệp này dưới tên hơi khác.",
     "excluded": "Không được chia sẻ: các tệp build khác, cài đặt Oleafly và lịch sử Git. PDF đã biên dịch gần nhất được chia sẻ để đồng tác giả có thể đọc trong trình duyệt.",
+    "noteExcluded": "Không được chia sẻ: cài đặt Oleafly và lịch sử Git.",
     "start": "Chia sẻ",
     "preparing": "Đang chuẩn bị dự án…",
     "uploading": "Đang tải hình và các tệp khác: {{done}} trên {{total}}",
     "saving": "Đang lưu dự án trên máy chủ…",
     "failed": "Chia sẻ chưa hoàn tất nên chưa có gì được chia sẻ.",
-    "trustAgain": "Bất kỳ ai bạn thêm vào dự án này đều có thể thay đổi tệp của nó, nên Oleafly yêu cầu bạn tin cậy lại dự án trên máy tính này trước khi chạy agent, lệnh terminal hay lệnh shell cho nó."
+    "trustAgain": "Bất kỳ ai bạn thêm vào dự án này đều có thể thay đổi tệp của nó, nên Oleafly yêu cầu bạn tin cậy lại dự án trên máy tính này trước khi chạy agent, lệnh terminal hay lệnh shell cho nó.",
+    "projectNotesShared": "Ghi chú của dự án được chia sẻ với mọi người trong dự án này. Ghi chú cá nhân vẫn là riêng tư.",
+    "personalNotesPrivate": "Ghi chú cá nhân vẫn là riêng tư. Chỉ những ghi chú trong thư mục ghi chú của dự án mới được chia sẻ."
   },
   "manage": {
     "sharedOn": "Được chia sẻ trên {{server}}",
@@ -789,7 +806,8 @@
       "settings": "Cài đặt máy chủ",
       "email": "Email",
       "log": "Nhật ký bảo mật",
-      "checks": "Kiểm tra kết nối"
+      "checks": "Kiểm tra kết nối",
+      "pages": "Ghi chú đã xuất bản"
     },
     "health": {
       "label": "Tình trạng máy chủ: {{status}}",
@@ -956,6 +974,30 @@
     },
     "checks": {
       "description": "Kiểm tra kết nối từ máy tính này tới máy chủ."
+    },
+    "pages": {
+      "description": "Các trang chỉ đọc mà mọi người tạo từ ghi chú của họ. Ai có liên kết của trang đều có thể đọc.",
+      "loading": "Đang tải ghi chú đã xuất bản…",
+      "empty": "Chưa ai xuất bản ghi chú nào trên máy chủ này.",
+      "limit": "Đang hiển thị {{shown}} trang mới nhất.",
+      "columns": {
+        "title": "Ghi chú",
+        "author": "Tác giả",
+        "updated": "Ngày xuất bản",
+        "actions": "Hành động"
+      },
+      "noAuthor": "Tài khoản đã bị gỡ",
+      "takenDown": "Đã gỡ xuống",
+      "openNamed": "Mở {{title}}",
+      "takeDown": "Gỡ xuống",
+      "takeDownNamed": "Gỡ xuống {{title}}",
+      "restore": "Khôi phục",
+      "restoreNamed": "Khôi phục {{title}}",
+      "takeDownConfirm": {
+        "title": "Gỡ xuống {{title}}?",
+        "description": "Liên kết công khai sẽ ngừng hoạt động cho đến khi bạn khôi phục trang. Tác giả vẫn giữ ghi chú nhưng không thể xuất bản lại trong thời gian đó.",
+        "confirm": "Gỡ xuống"
+      }
     }
   },
   "links": {
@@ -1229,5 +1271,41 @@
     "broughtIn": "Các thay đổi của bạn từ {{name}} đã có trong dự án này.",
     "retry": "Thử lại",
     "dismiss": "Bỏ qua"
+  },
+  "publish": {
+    "tabs": {
+      "people": "Mọi người",
+      "publish": "Xuất bản"
+    },
+    "intro": "Khi xuất bản, một bản sao chỉ đọc của ghi chú này sẽ được đặt tại một liên kết công khai. Ai có liên kết đều có thể đọc mà không cần đăng nhập.",
+    "contents": "Ảnh, biểu đồ, sơ đồ, công thức toán, Typst và phân tử đều được đưa vào. Các khối HTML, React, CSV, trình tự và notebook bị bỏ qua.",
+    "checking": "Đang kiểm tra trang công khai…",
+    "loadFailed": "Oleafly không thể kiểm tra trang công khai của ghi chú này.",
+    "notAllowed": "{{server}} không cho phép liên kết công khai tới ghi chú. Quản trị viên có thể bật trong cài đặt của máy chủ.",
+    "ownerOnly": "Chỉ chủ sở hữu ghi chú mới có thể xuất bản.",
+    "linkLabel": "Liên kết công khai",
+    "open": "Mở",
+    "publishedAt": "Xuất bản lần cuối {{date}}",
+    "stale": "Bạn đã thay đổi ghi chú này kể từ lần xuất bản gần nhất. Hãy xuất bản lại để cập nhật trang.",
+    "publish": "Xuất bản",
+    "republish": "Xuất bản lại",
+    "unpublish": "Huỷ xuất bản",
+    "failed": "Xuất bản chưa hoàn tất.",
+    "unpublishConfirm": {
+      "title": "Huỷ xuất bản {{name}}?",
+      "description": "Liên kết công khai sẽ ngừng hoạt động ngay. Ai đã lưu bản sao của trang vẫn giữ được bản đó.",
+      "confirm": "Huỷ xuất bản"
+    },
+    "list": {
+      "title": "Ghi chú đã xuất bản",
+      "description": "Các trang chỉ đọc từ ghi chú của bạn trên máy chủ này. Ai có liên kết đều có thể đọc.",
+      "loadFailed": "Oleafly không thể tải các ghi chú đã xuất bản của bạn.",
+      "empty": "Bạn chưa xuất bản ghi chú nào ở đây.",
+      "openNamed": "Mở {{name}}",
+      "unpublishNamed": "Huỷ xuất bản {{name}}",
+      "updated": "Xuất bản {{date}}"
+    },
+    "takenDown": "Quản trị viên đã gỡ trang này xuống. Người đọc không thể mở trang, và bạn không thể xuất bản lại cho đến khi họ khôi phục. Bạn vẫn có thể huỷ xuất bản.",
+    "tooOld": "{{server}} quá cũ để dùng liên kết công khai tới ghi chú. Quản trị viên cần cập nhật Oleafly Server."
   }
 }

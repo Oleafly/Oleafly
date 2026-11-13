@@ -75,8 +75,8 @@ const limits = {
   // GitLab, Codeberg, Gitea and Forgejo logos the remote menu shows (4.2 KB of
   // it). The Dropbox and Google Drive logos moved to the Cloud tab and left the
   // entry. The entry measures 4,657,262 bytes with them.
-  largestJavaScript: 5_010_000,
-  entryJavaScript: 5_010_000,
+  largestJavaScript: 5_040_000,
+  entryJavaScript: 5_040_000,
   // The selectable preview lazily loads pdf.js' official viewer helpers for
   // link actions and tagged-PDF structure. Keep narrow headroom above that
   // independently emitted 180 KB chunk without relaxing the startup gate.
@@ -190,13 +190,28 @@ const limits = {
   // +30 KB for LaTeX compilation units (#389), which ship twice because the
   // editor and the project-intelligence worker both run them: 21,092,330 bytes
   // on macOS.
-  totalJavaScript: 21_210_000,
-  // Russian is the largest catalog. Main measures 979,405 bytes, and the strings
-  // for CLI agents in the Tools and the other AI features add 1,939. This gate
-  // is here to catch a catalog bundled twice, which adds hundreds of KB, so real
-  // growth raises it by a small step.
-  largestLocaleChunk: 990_000,
+  // +1.74 MB for Notes, measured against main at 21,205,543 bytes. Almost all
+  // of it is in 53 chunks that load only when Notes is on: 3Dmol (572 KB) and
+  // the SMILES drawer (189 KB) for molecule blocks, KaTeX's mhchem (32 KB), the
+  // Notes workspace, editor, graph and graph worker, icons and emoji grid (about
+  // 750 KB), and code highlighting grammars. The entry grows 97 KB, to 4,967,488
+  // bytes, for the Notes settings, the shared command dialog, the front matter
+  // reader and the shared docking helpers. The combined graph measures
+  // 22,949,633 bytes on macOS.
+  // +61 KB for the second Notes audit: find and replace in notes, the Mermaid
+  // remote-load guard, the conflict copy dialog, Zotero search in note
+  // citations, the trusted image hosts list and the shared suggestion menu.
+  // The entry grows 8 KB, to 4,975,382 bytes. The combined graph measures
+  // 23,010,241 bytes on macOS.
+  totalJavaScript: 23_550_000,
+  // Russian is the largest catalog. Main measures 983,290 bytes, and the
+  // translated Notes settings, shortcuts, errors and agent strings add 13,383.
+  // The Notes namespace itself is its own lazy chunk. This gate is here to
+  // catch a catalog bundled twice, which adds hundreds of KB, so real growth
+  // raises it by a small step.
+  largestLocaleChunk: 1_010_000,
   largestCss: 400_000,
+  artifactRuntime: 2_790_000,
   harperWasm: 19_000_000,
   // The real worker and the independently loaded recovery module are each
   // emitted once. The recovery module is lazy and never affects startup.
@@ -297,6 +312,15 @@ if (totalJavaScript > limits.totalJavaScript) {
 if (largestCss > limits.largestCss) {
   failures.push(`largest CSS asset is ${largestCss} bytes`);
 }
+const artifactRuntime = await stat(new URL("../dist/artifact-runtime/react-runtime.js", import.meta.url)).then(
+  (file) => file.size,
+  () => null,
+);
+if (artifactRuntime === null) {
+  failures.push("dist/artifact-runtime/react-runtime.js is missing");
+} else if (artifactRuntime > limits.artifactRuntime) {
+  failures.push(`artifact runtime is ${artifactRuntime} bytes`);
+}
 if (!harper || harper.bytes > limits.harperWasm) {
   failures.push(`Harper WASM is ${harper?.bytes ?? 0} bytes`);
 }
@@ -340,6 +364,7 @@ console.log(
     localeChunks: localeChunks.length,
     largestLocaleChunk,
     largestCss,
+    artifactRuntime,
     harperWasm: harper.bytes,
     pdfWorkers: workers.length,
     pdfFallbacks: fallbacks.length,

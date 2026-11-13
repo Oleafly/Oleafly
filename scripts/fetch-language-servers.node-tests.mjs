@@ -862,7 +862,7 @@ test("Tauri resources and package scripts mirror the manifest without a Tinymist
     packageManifest.scripts["language-servers:smoke"],
     "node scripts/smoke-language-servers.mjs",
   );
-  assert.equal(packageManifest.scripts.build, "tsc -b && vite build");
+  assert.equal(packageManifest.scripts.build, "node scripts/build-artifact-runtime.mjs && tsc -b && vite build");
 });
 
 test("every clean CI and release Tauri build fetches only pinned Tinymist", async () => {

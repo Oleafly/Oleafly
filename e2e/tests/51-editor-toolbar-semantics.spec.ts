@@ -72,13 +72,13 @@ async function chooseList(page: Page, label: "Bulleted list" | "Numbered list") 
         `(() => {
           const label = ${JSON.stringify(label)};
           const triggers = Array.from(
-            document.querySelectorAll('button[aria-label="Insert list"]')
+            document.querySelectorAll('button[aria-label="Insert list"], [role="menuitem"][aria-label="Insert list"]')
           );
           const expanded = triggers.some(
             (trigger) => trigger.getAttribute("aria-expanded") === "true"
           );
           const items = Array.from(
-            document.querySelectorAll('[data-radix-popper-content-wrapper] button')
+            document.querySelectorAll('[data-radix-popper-content-wrapper] button, [data-radix-popper-content-wrapper] [role="menuitem"]')
           ).filter((button) => button.textContent?.trim() === label);
           return (
             expanded &&

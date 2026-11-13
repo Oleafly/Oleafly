@@ -4,6 +4,7 @@ import {
   collectLatexOutlineMacros,
   renderLatexOutlineTitle,
 } from "@oleafly/latex";
+import { trimTrailingCharacters } from "@/lib/trim-character";
 import {
   bibtexKeys,
   citationList,
@@ -328,7 +329,7 @@ function maskVerbatim(text: string): string {
     const pattern = new RegExp(String.raw`\\begin\s*\{${name}\*?\}[\s\S]*?(?:\\end\s*\{${name}\*?\}|$)`, "gu");
     result = result.replace(pattern, blank);
   }
-  return result.replace(/\\(?:verb|lstinline)\*?([^A-Za-z\s{])[^\n]*?\1/gu, blank);
+  return result.replaceAll(/\\(?:verb|lstinline)\*?([^A-Za-z\s{])[^\n]*?\1/gu, blank);
 }
 
 function matchBrace(text: string, open: number): number {
@@ -356,12 +357,6 @@ function skipSpace(text: string, index: number): number {
   let cursor = index;
   while (cursor < text.length && /\s/u.test(text[cursor])) cursor += 1;
   return cursor;
-}
-
-function trimTrailing(text: string, characters: string): string {
-  let end = text.length;
-  while (end > 0 && characters.includes(text[end - 1])) end -= 1;
-  return text.slice(0, end);
 }
 
 function optionalEnd(text: string, open: number): number {
@@ -1013,7 +1008,7 @@ function splitKeywordSource(source: string): string[] {
 
 function splitKeywords(source: string, macros: Macros): string[] {
   return splitKeywordSource(source)
-    .map((keyword) => trimTrailing(latexPlainText(keyword, macros), ".;,").trim())
+    .map((keyword) => trimTrailingCharacters(latexPlainText(keyword, macros), ".;,").trim())
     .filter(Boolean);
 }
 

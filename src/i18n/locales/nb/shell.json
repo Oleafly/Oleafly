@@ -321,6 +321,36 @@
       "keywords": "pdf forhåndsvisning vis skjul delt bare editor",
       "label": "Vis eller skjul PDF-forhåndsvisning"
     },
+    "swapEditorPreview": {
+      "keywords": "bytt om editor forhåndsvisning pdf sider rute rekkefølge oppsett swap preview sides pane order layout",
+      "label": "Bytt om editor og forhåndsvisning"
+    },
+    "movePaneToEdge": {
+      "bottom": "Flytt {{pane}} til nederkanten",
+      "keywords": "flytt rute kant fest side del stable oppsett move pane edge dock split stack layout",
+      "left": "Flytt {{pane}} til venstrekanten",
+      "right": "Flytt {{pane}} til høyrekanten",
+      "top": "Flytt {{pane}} til overkanten"
+    },
+    "paneNames": {
+      "assistant": "assistenten",
+      "editor": "editoren",
+      "pdf": "forhåndsvisningen",
+      "sidebar": "sidepanelet",
+      "terminal": "terminalen"
+    },
+    "resetPaneLayout": {
+      "keywords": "tilbakestill ruteoppsett rekkefølge flytt paneler sidepanel assistent editor forhåndsvisning terminal standard reset pane layout order move panels sidebar assistant preview default",
+      "label": "Tilbakestill plasseringen av rutene i hvert prosjekt"
+    },
+    "saveLayout": {
+      "keywords": "lagre oppsett gjeldende tilpasset ordning ruter størrelser navn save layout custom arrangement panes sizes name",
+      "label": "Lagre gjeldende oppsett"
+    },
+    "applySavedLayout": {
+      "keywords": "oppsett lagret tilpasset ordning ruter bytt bruk layout saved custom arrangement panes switch apply",
+      "label": "Oppsett: {{name}}"
+    },
     "zoomIn": {
       "keywords": "større forstørr",
       "label": "Zoom inn"
@@ -348,6 +378,20 @@
     "insertFileLink": {
       "label": "Sett inn lenke til fil",
       "keywords": "lenke fil sti notat referanse"
+    },
+    "projectNotes": {
+      "open": "Åpne notatene for dette prosjektet",
+      "newShared": "Nytt prosjektnotat",
+      "newPersonal": "Nytt personlig notat for dette prosjektet",
+      "keywords": "notater forskning knyttet relatert prosjekt notes research linked related project"
+    },
+    "notes": {
+      "label": "Åpne Notater",
+      "keywords": "notater notatbok kunnskap ideer forskning dagbok notes notebook knowledge ideas research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Hurtignotat",
+      "keywords": "hurtignotat skriv ned notat innboks i dag quick capture jot note inbox today"
     }
   },
   "community": {
@@ -452,6 +496,11 @@
   },
   "datePicker": {
     "placeholder": "Velg en dato"
+  },
+  "monthPicker": {
+    "label": "Velg en måned",
+    "previousYear": "Forrige år",
+    "nextYear": "Neste år"
   },
   "devMenu": {
     "inspect": "Inspiser",
@@ -645,7 +694,6 @@
   "home": {
     "ariaLabel": "Hjem",
     "label": "Hjem",
-    "title": "Tilbake til biblioteket",
     "tooltip": "Gå tilbake til prosjektbiblioteket"
   },
   "importDestination": {
@@ -673,6 +721,7 @@
     "groups": {
       "action": "Handling",
       "documents": "Dokumenter",
+      "notes": "Notater",
       "references": "Referanser"
     },
     "label": "Søk",
@@ -680,11 +729,13 @@
     "openReferences": "Åpne referansene for dette prosjektet",
     "placeholder": "Søk i prosjekter og dokumenter, eller skriv / for kommandoer…",
     "placeholderDocuments": "Søk inne i dokumenter…",
+    "placeholderNotes": "Søk i notater og blokkene i dem…",
     "placeholderProjects": "Søk i prosjekter på navn, motor, type, dato eller metadata…",
     "referencesNeedProject": "Åpne et prosjekt først for å bla i referansene.",
     "slash": {
       "create": "åpne malgalleriet",
       "docs": "søk inne i dokumenter",
+      "notes": "søk i notater og blokkene i dem",
       "projects": "søk i prosjektene dine",
       "refs": "åpne referansene for dette prosjektet",
       "settings": "åpne innstillingene",
@@ -791,7 +842,8 @@
     "research": "Forskningsarbeidsområde",
     "search": "Søk i prosjektet",
     "sourceControl": "Versjonskontroll",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notater"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} på {{host}}",
@@ -893,7 +945,8 @@
           "folders_other": "{{count}} mapper",
           "images": "Bilder",
           "pdfs": "PDF-er",
-          "projects": "Prosjekter"
+          "projects": "Prosjekter",
+          "projectsAndNotes": "Prosjekter og notater"
         },
         "subtitle": "Prosjekter, forhåndsvisninger, historikk og appdata",
         "title": "Lagringsbruk",
@@ -935,6 +988,10 @@
       "latexTools": {
         "description": "Vis galleriet Oleafly Tools og de enkelte verktøyene (PDF-import, ligninger, tabeller, BibTeX, søk etter forskningsgrupper og litteratur, frister) med skråstrekkommandoene sine. Av som standard mens det fortsatt er i beta.",
         "label": "LaTeX-verktøy"
+      },
+      "notes": {
+        "description": "Legger til Notater i dokken under Hjem. Et notat er en Markdown-fil med diagrammer, grafer og matematikk som både du og agentene dine kan redigere. Notater holdes utenfor prosjektbiblioteket ditt, og hvert notat kan knyttes til et prosjekt. Av som standard mens funksjonen fortsatt er i beta.",
+        "label": "Notater"
       },
       "researchTasks": {
         "description": "En agent jobber på egen hånd i en kopi av prosjektet og lar endringene stå klare til gjennomgang. Svært ustabilt: kjøringer kan stoppe opp, mislykkes eller etterlate endringer du må rydde opp i for hånd, og de bruker leverandørens kvote hele tiden. Legger til seksjonen Forskning i Innstillinger. Hvis du slår det av, stoppes alle oppgaver som kjører. Av som standard. Aktiver det på eget ansvar.",
@@ -1277,6 +1334,24 @@
       "split": "Delt visning"
     },
     "moreActions": "Flere handlinger",
+    "resetPaneLayout": "Tilbakestill plasseringen av rutene",
+    "resetPaneLayoutScope": "Alle prosjekter",
+    "savedLayouts": {
+      "close": "Lukk",
+      "delete": "Slett",
+      "deleteConfirm": "Slette oppsettet «{{name}}»?",
+      "limit": "Du kan beholde opptil {{count}} oppsett. Slett ett for å lagre et nytt.",
+      "manage": "Administrer oppsett",
+      "name": "Navn på oppsettet",
+      "rename": "Gi nytt navn",
+      "renameTitle": "Gi oppsettet nytt navn",
+      "replace": "Erstatt",
+      "replaceConfirm": "Det finnes allerede et oppsett som heter «{{name}}». Erstatte det?",
+      "save": "Lagre gjeldende oppsett",
+      "saveButton": "Lagre",
+      "saveTitle": "Lagre oppsett",
+      "update": "Oppdater til gjeldende"
+    },
     "renameFailed": "Kunne ikke gi prosjektet nytt navn."
   },
   "tour": {

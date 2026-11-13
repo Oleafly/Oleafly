@@ -11,6 +11,8 @@
   "landing.open": "在 Oleafly 中打开",
   "landing.get": "获取 Oleafly",
   "landing.open_browser": "在浏览器中打开",
+  "published.gone_title": "此页面不可用",
+  "published.gone_body": "作者可能已取消发布，或此服务器不再显示公开页面。",
   "web.sign_in_body": "登录后即可在此浏览器中打开你的共享项目。",
   "web.try_again": "重试",
   "web.other_browser": "这个链接会在 {device} 上完成登录，也就是你开始登录的那个浏览器。请改在那里打开这封邮件。链接仍然有效。",

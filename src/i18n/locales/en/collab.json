@@ -230,7 +230,11 @@
     "history_unavailable": "This project's history isn't on this computer yet. Try again once it has synced.",
     "account_storage_full": "The project owner's account is out of storage on this server. Remove some files to make room, or ask the server's admin for more space.",
     "too_many_projects": "You already have as many shared projects as this server allows. Stop sharing one before you share another.",
-    "too_many_uploads": "You made too many uploads in the last hour. Try again later."
+    "too_many_uploads": "You made too many uploads in the last hour. Try again later.",
+    "public_notes_off": "This server doesn't allow public note links. An admin can turn them on in the server's settings.",
+    "too_many_pages": "You have as many public pages as this server allows. Unpublish one, then try again.",
+    "page_too_large": "This note is too big to publish. Remove some images, then try again.",
+    "page_taken_down": "An admin took this page down, so this note can't be published again until they put it back."
   },
   "roles": {
     "admin": "Admin",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "Sign in by email",
         "description": "People can sign in with a link sent to their email address. This needs the server's email settings. Your access rules still decide who gets in."
+      },
+      "publicNotesAllowed": {
+        "label": "Allow public note links",
+        "description": "Members can publish a read-only copy of a note at a link anyone can open without signing in."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "Declined a guest invitation",
         "guestInvitationRevoked": "Withdrew a guest invitation",
         "guestAdmissionEnded": "Ended a guest's access to the server",
-        "unknown": "Other server event"
+        "unknown": "Other server event",
+        "notePublished": "Published a note at a public link",
+        "noteUnpublished": "Unpublished a note",
+        "noteTakenDown": "Took down a published note",
+        "noteRestored": "Put back a published note"
       },
       "details": {
         "project": "Project: {{title}}",
@@ -455,7 +467,8 @@
         "device": "Device: {{name}}",
         "byAdmin": "From the admin console",
         "settingOn": "{{setting}}: on",
-        "settingOff": "{{setting}}: off"
+        "settingOff": "{{setting}}: off",
+        "note": "Note: {{title}}"
       }
     },
     "email": {
@@ -509,6 +522,7 @@
     "copyAndShare": "Copy into Oleafly and share",
     "title": "Share {{name}}",
     "description": "Work on this project with other people through a collaboration server.",
+    "noteDescription": "Write this note with other people through a collaboration server.",
     "loading": "Loading…",
     "linked": "This project is a folder outside Oleafly. Oleafly copies it into your library and shares that copy. The original folder isn't touched.",
     "editCopy": "This is the shared copy. Edit this one from now on, not the original folder.",
@@ -526,12 +540,15 @@
     "tooLarge": "These files are over the server's limit of {{size}} MB. Make them smaller or remove them before you share.",
     "renamed": "Some names don't work on every computer. Other people get these files under a slightly different name.",
     "excluded": "Not shared: other build files, Oleafly settings and Git history. The latest compiled PDF is shared, so co-authors can read it in a browser.",
+    "noteExcluded": "Not shared: Oleafly settings and Git history.",
     "start": "Share",
     "preparing": "Getting the project ready…",
     "uploading": "Uploading figures and other files: {{done}} of {{total}}",
     "saving": "Saving the project on the server…",
     "failed": "Sharing didn't finish, so nothing was shared.",
-    "trustAgain": "Anyone you add to this project can change its files, so Oleafly asks you to trust it again on this computer before it runs agents, terminal commands or shell escape for it."
+    "trustAgain": "Anyone you add to this project can change its files, so Oleafly asks you to trust it again on this computer before it runs agents, terminal commands or shell escape for it.",
+    "projectNotesShared": "The project's notes are shared with everyone on this project. Personal notes stay private.",
+    "personalNotesPrivate": "Personal notes stay private. Only notes in the project's notes folder are shared."
   },
   "manage": {
     "sharedOn": "Shared on {{server}}",
@@ -789,7 +806,8 @@
       "settings": "Server settings",
       "email": "Email",
       "log": "Security log",
-      "checks": "Connection checks"
+      "checks": "Connection checks",
+      "pages": "Published notes"
     },
     "health": {
       "label": "Server health: {{status}}",
@@ -956,6 +974,30 @@
     },
     "checks": {
       "description": "Check the connection from this computer to the server."
+    },
+    "pages": {
+      "description": "Read-only pages that people made from their notes. Anyone with a page's link can read it.",
+      "loading": "Loading published notes…",
+      "empty": "Nobody has published a note on this server yet.",
+      "limit": "Showing the newest {{shown}} pages.",
+      "columns": {
+        "title": "Note",
+        "author": "Author",
+        "updated": "Published",
+        "actions": "Actions"
+      },
+      "noAuthor": "Removed account",
+      "takenDown": "Taken down",
+      "openNamed": "Open {{title}}",
+      "takeDown": "Take down",
+      "takeDownNamed": "Take down {{title}}",
+      "restore": "Put back",
+      "restoreNamed": "Put back {{title}}",
+      "takeDownConfirm": {
+        "title": "Take down {{title}}?",
+        "description": "The public link stops working until you put the page back. The author keeps the note but can't publish it again in the meantime.",
+        "confirm": "Take down"
+      }
     }
   },
   "links": {
@@ -1229,5 +1271,41 @@
     "broughtIn": "Your changes from {{name}} are in this project now.",
     "retry": "Retry",
     "dismiss": "Dismiss"
+  },
+  "publish": {
+    "tabs": {
+      "people": "People",
+      "publish": "Publish"
+    },
+    "intro": "Publishing puts a read-only copy of this note at a public link. Anyone with the link can read it without signing in.",
+    "contents": "Images, charts, diagrams, math, Typst and molecules are included. HTML, React, CSV, sequence and notebook blocks are left out.",
+    "checking": "Checking for a public page…",
+    "loadFailed": "Oleafly couldn't check this note's public page.",
+    "notAllowed": "{{server}} doesn't allow public note links. An admin can turn them on in the server's settings.",
+    "ownerOnly": "Only the note's owner can publish it.",
+    "linkLabel": "Public link",
+    "open": "Open",
+    "publishedAt": "Last published {{date}}",
+    "stale": "You've changed this note since you last published it. Publish again to update the page.",
+    "publish": "Publish",
+    "republish": "Publish again",
+    "unpublish": "Unpublish",
+    "failed": "Publishing didn't finish.",
+    "unpublishConfirm": {
+      "title": "Unpublish {{name}}?",
+      "description": "The public link stops working right away. Anyone who saved a copy of the page keeps it.",
+      "confirm": "Unpublish"
+    },
+    "list": {
+      "title": "Published notes",
+      "description": "Read-only pages of your notes on this server. Anyone with a link can read them.",
+      "loadFailed": "Oleafly couldn't load your published notes.",
+      "empty": "You haven't published any notes here.",
+      "openNamed": "Open {{name}}",
+      "unpublishNamed": "Unpublish {{name}}",
+      "updated": "Published {{date}}"
+    },
+    "takenDown": "An admin took this page down. Readers can't open it, and you can't publish it again until they put it back. You can still unpublish it.",
+    "tooOld": "{{server}} is too old for public note links. Its admin needs to update Oleafly Server."
   }
 }

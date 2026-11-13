@@ -44,14 +44,16 @@
       "externalTool": "Bekreft handlingen i det eksterne verktøyet",
       "internet": "Bekreft nettilgang",
       "edit": "Bekreft AI-endringen",
-      "researchTask": "Bekreft forskningsoppgaven"
+      "researchTask": "Bekreft forskningsoppgaven",
+      "note": "Bekreft det nye notatet"
     },
     "headline": {
       "command": "Assistenten vil kjøre denne kommandoen",
       "externalTool": "Assistenten vil bruke et eksternt verktøy",
       "internet": "Assistenten vil koble seg til internett",
       "edit": "Assistenten vil endre filene dine",
-      "researchTask": "Assistenten vil opprette en forskningsoppgave"
+      "researchTask": "Assistenten vil opprette en forskningsoppgave",
+      "note": "Assistenten vil opprette et notat"
     },
     "mcpNote": "Dette sender argumentene nedenfor til MCP-serveren som er satt opp.",
     "line": "linje {{line}}",
@@ -88,6 +90,14 @@
       "minutes_other": "{{count}} minutter",
       "planFirst": "Plan først",
       "startNow": "Start nå"
+    },
+    "noteDraft": {
+      "title": "Tittel",
+      "project": "Tilknyttet prosjekt",
+      "tags": "Etiketter",
+      "text": "Tekst",
+      "empty": "Ingen tekst",
+      "more": "Notatet fortsetter etter dette punktet."
     }
   },
   "attachments": {
@@ -1103,5 +1113,19 @@
     "replaceConfirm": "Erstatt svaret",
     "forked": "Startet en ny samtale fra den redigerte meldingen.",
     "failed": "Kunne ikke sende meldingen på nytt."
+  },
+  "noteScope": {
+    "notesOnly": "Bare i en notatassistent.",
+    "tools": {
+      "readNote": "Les det åpne notatet, også forslag som venter på gjennomgang.",
+      "proposeNoteEdits": "Foreslå endringer i det åpne notatet som du kan godta eller avslå.",
+      "searchNotes": "Søk i alle notatene dine.",
+      "listKnowledgeNotes": "List opp notatene dine etter etikett eller prosjekt.",
+      "readNoteById": "Les et annet notat.",
+      "createNote": "Opprett et nytt notat.",
+      "relatedProjectFiles": "List opp filene i prosjektet som notatet er knyttet til.",
+      "readRelatedProjectFile": "Les en fil fra prosjektet som notatet er knyttet til.",
+      "searchRelatedProject": "Søk i prosjektet som notatet er knyttet til."
+    }
   }
 }

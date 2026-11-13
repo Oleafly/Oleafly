@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "Arama kipi: {{mode}}",
+    "heading": "Arama kipi",
+    "ranked": {
+      "label": "En iyi eşleşme",
+      "description": "Sonuçları ne kadar iyi eşleştiklerine göre sıralar. Sözcükler herhangi bir yerde olabilir."
+    },
+    "exact": {
+      "label": "Tam metin",
+      "description": "Tam olarak bu karakterleri bulur. Büyük harf kullanırsanız arama büyük/küçük harfe duyarlı olur."
+    },
+    "regex": {
+      "label": "Düzenli ifade",
+      "description": "ripgrep'in desen söz dizimini kullanır. Boşluk veya parantez içeren bir deseni tırnak içine alın."
+    },
+    "fuzzy": {
+      "label": "Bulanık",
+      "description": "fzf gibi, harflerinizi aynı sırayla içeren adları bulur. 'tam, ^baş, son$ ve !hariç biçimlerini de kabul eder."
+    },
+    "invalid": "Bu desen geçerli değil: {{error}}"
+  },
   "querySearch": {
     "suggestions": "Arama önerileri",
     "exclude": "Hariç tut",
@@ -76,11 +97,16 @@
       "invalidValue": "{{value}}, {{key}} için geçerli bir değer değil",
       "invalidDate": "{{value}} bir tarih değil. 2026-10-02 veya @today-7d deneyin",
       "invalidNumber": "{{value}} bir sayı değil",
-      "sortNegated": "{{key}} hariç tutulamaz"
+      "sortNegated": "{{key}} hariç tutulamaz",
+      "tooManyBranches": "Bu aramada çok fazla OR birleşimi var, bu yüzden bazı sonuçlar eksik olabilir"
     }
   },
   "avatar": {
     "more_one": "{{count}} kişi daha",
     "more_other": "{{count}} kişi daha"
+  },
+  "remoteImage": {
+    "blocked": "{{host}} kaynaklı görsel",
+    "load": "Görseli yükle"
   }
 }

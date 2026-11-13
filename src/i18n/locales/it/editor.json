@@ -223,7 +223,13 @@
     "closeAssistantTabs": "Chiudi i file aperti dall'assistente",
     "closeAssistantTabsCount_one": "Chiudi il file aperto dall'assistente",
     "closeAssistantTabsCount_many": "Chiudi i {{count}} file aperti dall'assistente",
-    "closeAssistantTabsCount_other": "Chiudi i {{count}} file aperti dall'assistente"
+    "closeAssistantTabsCount_other": "Chiudi i {{count}} file aperti dall'assistente",
+    "editAsMarkdown": "Modifica come Markdown",
+    "editAsNote": "Modifica come nota",
+    "noteAsMarkdown": "Stai modificando questa nota come Markdown.",
+    "openInNotes": "Apri in Note",
+    "moveIntoProject": "Sposta nel progetto",
+    "copyToMyNotes": "Copia nelle mie note"
   },
   "projectInfo": {
     "trigger": "Informazioni sul progetto",
@@ -1010,13 +1016,14 @@
         "environment": "Ambiente {{environment}}",
         "command": "Comando \\{{command}}",
         "latexSource": "Sorgente LaTeX",
+        "html": "HTML",
         "maketitlePreview": "Generato dal titolo del documento e dai metadati dell'autore.",
         "figurePreserved": "Sorgente esatto della figura conservato.",
         "tablePreserved": "Sorgente esatto della tabella conservato.",
         "sourcePreserved": "Sorgente esatto conservato",
         "editSource": "Modifica il sorgente",
-        "summaryLabel": "{{label}}. Sorgente LaTeX esatto conservato.",
-        "inputLabel": "Sorgente esatto del blocco LaTeX"
+        "summaryLabel": "{{label}}. Sorgente esatto conservato.",
+        "inputLabel": "Sorgente esatto del blocco"
       },
       "inline": {
         "label": "Sorgente grezzo in linea",

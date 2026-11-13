@@ -99,9 +99,17 @@ export function activeContextProvider(
   return registry.contextProviders.find((p) => p.isActive(ctx));
 }
 
+export const RAIL_SECTIONS: readonly RailTabContribution["section"][] = ["explore", "review", "assist"];
+
+export function railTabIds(): string[] {
+  const ids = RAIL_SECTIONS.flatMap((section) =>
+    registry.railTabs.filter((tab) => tab.section === section && !tab.hidden).map((tab) => tab.id),
+  );
+  return [...new Set(ids)];
+}
+
 export function railSections(ctx: AppContext): RailTabContribution[][] {
-  const sections: RailTabContribution["section"][] = ["explore", "review", "assist"];
-  return sections
+  return RAIL_SECTIONS
     .map((s) =>
       registry.railTabs.filter(
         (t) => t.section === s && !t.hidden && (t.when?.(ctx) ?? true),

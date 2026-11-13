@@ -72,6 +72,14 @@ describe("theme preference storage", () => {
     localStorage.setItem("oleafly.theme", "sepia");
     expect(getStoredPreference()).toBe("system");
   });
+
+  it("reads a store that can't be read as the system preference", () => {
+    const read = vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new Error("storage is blocked");
+    });
+    expect(getStoredPreference()).toBe("system");
+    read.mockRestore();
+  });
 });
 
 describe("theme resolution", () => {

@@ -120,6 +120,8 @@
     "conflictsHelp_many": "Te pliki zostały zmienione tutaj i na innym komputerze, zanim zmiany zostały zsynchronizowane, więc Oleafly zachował obie wersje. Zostaw to, czego potrzebujesz, a potem usuń kopie konfliktowe.",
     "conflictsHelp_other": "Te pliki zostały zmienione tutaj i na innym komputerze, zanim zmiany zostały zsynchronizowane, więc Oleafly zachował obie wersje. Zostaw to, czego potrzebujesz, a potem usuń kopie konfliktowe.",
     "conflictsLabel": "Kopie konfliktowe w projekcie {{name}}",
+    "compare": "Porównaj",
+    "compareLabel": "Porównaj {{path}} z notatką",
     "dismiss": "Zamknij",
     "skipped_one": "Pominięto {{count}} plik",
     "skipped_few": "Pominięto {{count}} pliki",
@@ -160,6 +162,16 @@
       "downloadFailed": "Nie udało się pobrać",
       "uploadFailed": "Nie udało się przesłać"
     }
+  },
+  "conflictCopy": {
+    "title": "Dwie wersje notatki „{{name}}”",
+    "description": "Ta notatka została zmieniona tutaj i na innym komputerze, zanim zmiany zostały zsynchronizowane, więc Oleafly zachował obie wersje. Zostaw jedną z nich. Druga trafi do Kosza.",
+    "diffLabel": "Różnice między obiema wersjami",
+    "loading": "Odczytywanie obu wersji…",
+    "readFailed": "Nie udało się odczytać kopii konfliktowej.",
+    "resolveFailed": "Nie udało się zachować wybranej wersji.",
+    "keepMine": "Zachowaj wersję z tego komputera",
+    "useCopy": "Użyj wersji z innego komputera"
   },
   "confirm": {
     "removeTitle": "Usunąć {{name}} z usługi {{provider}}?",
@@ -235,6 +247,86 @@
     "pathStyle": "Używaj adresów w stylu ścieżki",
     "pathStyleHint": "Wymaga tego MinIO i większość serwerów hostowanych samodzielnie."
   },
+  "backups": {
+    "title": "Kopie zapasowe",
+    "none": "Nie ma jeszcze kopii zapasowych",
+    "last": "Ostatnia kopia zapasowa {{time}} · {{contents}} · {{size}}",
+    "notes_one": "{{count}} notatka",
+    "notes_few": "{{count}} notatki",
+    "notes_many": "{{count}} notatek",
+    "notes_other": "{{count}} notatki",
+    "projects_one": "{{count}} projekt",
+    "projects_few": "{{count}} projekty",
+    "projects_many": "{{count}} projektów",
+    "projects_other": "{{count}} projektu",
+    "running": "Tworzenie kopii zapasowej",
+    "failed": "Ostatnie tworzenie kopii zapasowej nie zostało ukończone. {{reason}}",
+    "backUpNow": "Utwórz kopię teraz",
+    "auto": {
+      "label": "Twórz kopie zapasowe automatycznie",
+      "description": "Przechowuje datowane kopie twoich notatek w usłudze {{provider}}. Późniejsze zmiany i usunięcia, nawet te zsynchronizowane, ich nie dotyczą."
+    },
+    "every": {
+      "label": "Jak często",
+      "description": "Kopia zapasowa przesyła tylko to, co zmieniło się od poprzedniej.",
+      "options": {
+        "6": "Co 6 godzin",
+        "24": "Codziennie",
+        "168": "Co tydzień"
+      }
+    },
+    "keep": {
+      "label": "Zachowuj",
+      "description": "Starsze kopie zapasowe są usuwane z usługi {{provider}}, aby oszczędzić miejsce.",
+      "option_one": "Ostatnia kopia zapasowa",
+      "option_few": "Ostatnie {{count}} kopie zapasowe",
+      "option_many": "Ostatnie {{count}} kopii zapasowych",
+      "option_other": "Ostatnie {{count}} kopii zapasowej"
+    },
+    "includeProjects": {
+      "label": "Uwzględnij projekty",
+      "description": "Projekty są już synchronizowane razem z punktami kontrolnymi. Włącz tę opcję, aby przechowywać także ich datowane kopie. Pierwsza kopia dużego projektu może chwilę potrwać i zająć dużo miejsca."
+    },
+    "list": {
+      "title": "Kopie zapasowe w usłudze {{provider}}",
+      "label": "Kopie zapasowe",
+      "loading": "Odczytywanie kopii zapasowych",
+      "failed": "Nie udało się odczytać kopii zapasowych. {{reason}}",
+      "empty": "W usłudze {{provider}} nie ma jeszcze kopii zapasowych."
+    },
+    "row": {
+      "thisComputer": "Ten komputer",
+      "manual": "Ręcznie",
+      "restore": "Przywróć",
+      "restoreLabel": "Przywróć kopię zapasową z {{date}}"
+    },
+    "restore": {
+      "title": "Przywracanie kopii z {{date}}",
+      "description": "Przywracanie nigdy nie zastępuje tego, co masz. Notatka lub projekt, które nadal tu są, wracają jako kopia obok, więc możesz je porównać.",
+      "loading": "Odczytywanie kopii zapasowej",
+      "loadFailed": "Nie udało się odczytać tej kopii zapasowej. {{reason}}",
+      "search": "Szukaj w tej kopii zapasowej",
+      "clearSearch": "Wyczyść wyszukiwanie",
+      "noMatch": "Nic w tej kopii zapasowej nie pasuje.",
+      "listLabel": "Notatki i projekty w tej kopii zapasowej",
+      "here": "Nadal tutaj",
+      "missing": "Brak na tym komputerze",
+      "restored": "Przywrócono",
+      "restoredCopy": "Przywrócono jako kopię",
+      "files_one": "{{count}} plik",
+      "files_few": "{{count}} pliki",
+      "files_many": "{{count}} plików",
+      "files_other": "{{count}} pliku",
+      "one": "Przywróć",
+      "oneLabel": "Przywróć {{name}}",
+      "allMissing_one": "Przywróć brakujący element",
+      "allMissing_few": "Przywróć {{count}} brakujące elementy",
+      "allMissing_many": "Przywróć {{count}} brakujących elementów",
+      "allMissing_other": "Przywróć {{count}} brakującego elementu",
+      "nothingMissing": "Niczego nie brakuje",
+      "copyName": "(przywrócono {{date}})"
+    }
+  },
   "errors": {
     "clock_skew": "Zegar na tym komputerze jest źle ustawiony, więc usługa {{provider}} nie przyjmuje od niego żądań. Ustaw poprawną datę i godzinę, aby kontynuować synchronizację.",
     "code_invalid": "Ten kod nie zadziałał. Spróbuj ponownie.",
@@ -263,6 +355,8 @@
     "sign_in_timeout": "Logowanie trwało zbyt długo. Spróbuj ponownie.",
     "too_many_files": "Ten projekt ma ponad 100 000 plików. To zbyt wiele do synchronizacji.",
     "traffic_limit": "Osiągnięto limit przesyłania w usłudze {{provider}}. Nowe zmiany zostaną na tym komputerze, dopóki usługa {{provider}} znowu nie pozwoli na przesyłanie.",
-    "verify_failed": "Plik z usługi {{provider}} nie zgadzał się z tym, czego oczekuje Oleafly, więc pozostawiono go bez zmian. Synchronizacja spróbuje ponownie."
+    "verify_failed": "Plik z usługi {{provider}} nie zgadzał się z tym, czego oczekuje Oleafly, więc pozostawiono go bez zmian. Synchronizacja spróbuje ponownie.",
+    "backup_missing": "Tej kopii zapasowej nie ma już w usłudze {{provider}}.",
+    "backup_label": "Oleafly nie mógł nazwać przywróconej kopii."
   }
 }

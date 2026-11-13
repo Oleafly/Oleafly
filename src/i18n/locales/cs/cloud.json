@@ -120,6 +120,8 @@
     "conflictsHelp_many": "Tyto soubory se změnily tady i na jiném počítači ještě před synchronizací, proto Oleafly zachoval obě verze. Ponechte si, co potřebujete, a pak kopie smažte.",
     "conflictsHelp_other": "Tyto soubory se změnily tady i na jiném počítači ještě před synchronizací, proto Oleafly zachoval obě verze. Ponechte si, co potřebujete, a pak kopie smažte.",
     "conflictsLabel": "Konfliktní kopie v projektu {{name}}",
+    "compare": "Porovnat",
+    "compareLabel": "Porovnat {{path}} s poznámkou",
     "dismiss": "Zavřít",
     "skipped_one": "{{count}} soubor byl přeskočen",
     "skipped_few": "{{count}} soubory byly přeskočeny",
@@ -160,6 +162,16 @@
       "downloadFailed": "Nepodařilo se stáhnout",
       "uploadFailed": "Nepodařilo se nahrát"
     }
+  },
+  "conflictCopy": {
+    "title": "Dvě verze poznámky „{{name}}“",
+    "description": "Tato poznámka se změnila tady i na jiném počítači ještě před synchronizací, proto Oleafly zachoval obě verze. Ponechte si jednu z nich. Druhá se přesune do koše.",
+    "diffLabel": "Rozdíly mezi oběma verzemi",
+    "loading": "Načítají se obě verze…",
+    "readFailed": "Konfliktní kopii se nepodařilo načíst.",
+    "resolveFailed": "Vybranou verzi se nepodařilo zachovat.",
+    "keepMine": "Ponechat verzi z tohoto počítače",
+    "useCopy": "Použít verzi z jiného počítače"
   },
   "confirm": {
     "removeTitle": "Odebrat {{name}} z úložiště {{provider}}?",
@@ -235,6 +247,86 @@
     "pathStyle": "Používat adresy ve stylu cesty",
     "pathStyleHint": "Vyžaduje to MinIO a většina serverů, které si provozujete sami."
   },
+  "backups": {
+    "title": "Zálohy",
+    "none": "Zatím žádné zálohy",
+    "last": "Poslední záloha {{time}} · {{contents}} · {{size}}",
+    "notes_one": "{{count}} poznámka",
+    "notes_few": "{{count}} poznámky",
+    "notes_many": "{{count}} poznámky",
+    "notes_other": "{{count}} poznámek",
+    "projects_one": "{{count}} projekt",
+    "projects_few": "{{count}} projekty",
+    "projects_many": "{{count}} projektu",
+    "projects_other": "{{count}} projektů",
+    "running": "Zálohování",
+    "failed": "Poslední zálohování se nedokončilo. {{reason}}",
+    "backUpNow": "Zálohovat teď",
+    "auto": {
+      "label": "Zálohovat automaticky",
+      "description": "Uchovává datované kopie vašich poznámek v úložišti {{provider}}. Pozdější úpravy a smazání se jich netýkají, ani když se synchronizují."
+    },
+    "every": {
+      "label": "Jak často",
+      "description": "Záloha nahraje jen to, co se od té předchozí změnilo.",
+      "options": {
+        "6": "Každých 6 hodin",
+        "24": "Každý den",
+        "168": "Každý týden"
+      }
+    },
+    "keep": {
+      "label": "Ponechat",
+      "description": "Starší zálohy se z úložiště {{provider}} mažou, aby se ušetřilo místo.",
+      "option_one": "Poslední záloha",
+      "option_few": "Poslední {{count}} zálohy",
+      "option_many": "Posledních {{count}} zálohy",
+      "option_other": "Posledních {{count}} záloh"
+    },
+    "includeProjects": {
+      "label": "Zahrnout projekty",
+      "description": "Projekty se už synchronizují i se svými záchytnými body. Zapněte tuto volbu, pokud chcete mít i jejich datované kopie. První záloha velkého projektu může chvíli trvat a zabrat hodně místa."
+    },
+    "list": {
+      "title": "Zálohy v úložišti {{provider}}",
+      "label": "Zálohy",
+      "loading": "Načítání záloh",
+      "failed": "Zálohy se nepodařilo načíst. {{reason}}",
+      "empty": "V úložišti {{provider}} zatím nejsou žádné zálohy."
+    },
+    "row": {
+      "thisComputer": "Tento počítač",
+      "manual": "Ručně",
+      "restore": "Obnovit",
+      "restoreLabel": "Obnovit zálohu z {{date}}"
+    },
+    "restore": {
+      "title": "Obnovení zálohy z {{date}}",
+      "description": "Obnovení nikdy nenahradí to, co máte. Poznámka nebo projekt, který tu stále je, se vrátí jako kopie vedle původního, takže je můžete porovnat.",
+      "loading": "Načítání zálohy",
+      "loadFailed": "Tuto zálohu se nepodařilo načíst. {{reason}}",
+      "search": "Hledat v této záloze",
+      "clearSearch": "Vymazat hledání",
+      "noMatch": "V této záloze nic neodpovídá.",
+      "listLabel": "Poznámky a projekty v této záloze",
+      "here": "Stále tady",
+      "missing": "Není na tomto počítači",
+      "restored": "Obnoveno",
+      "restoredCopy": "Obnoveno jako kopie",
+      "files_one": "{{count}} soubor",
+      "files_few": "{{count}} soubory",
+      "files_many": "{{count}} souboru",
+      "files_other": "{{count}} souborů",
+      "one": "Obnovit",
+      "oneLabel": "Obnovit {{name}}",
+      "allMissing_one": "Obnovit chybějící položku",
+      "allMissing_few": "Obnovit {{count}} chybějící položky",
+      "allMissing_many": "Obnovit {{count}} chybějící položky",
+      "allMissing_other": "Obnovit {{count}} chybějících položek",
+      "nothingMissing": "Nic nechybí",
+      "copyName": "(obnoveno {{date}})"
+    }
+  },
   "errors": {
     "clock_skew": "Hodiny tohoto počítače nejsou správně nastavené, proto služba {{provider}} nepřijímá jeho požadavky. Nastavte správné datum a čas, aby synchronizace mohla pokračovat.",
     "code_invalid": "Tento kód nefungoval. Zkuste to znovu.",
@@ -263,6 +355,8 @@
     "sign_in_timeout": "Přihlášení trvalo příliš dlouho. Zkuste to znovu.",
     "too_many_files": "Tento projekt má více než 100 000 souborů. To je na synchronizaci příliš mnoho.",
     "traffic_limit": "Úložiště {{provider}} dosáhlo limitu nahrávání. Nové změny zůstanou na tomto počítači, dokud služba {{provider}} nahrávání zase nepovolí.",
-    "verify_failed": "Soubor z úložiště {{provider}} neodpovídal tomu, co Oleafly očekával, proto zůstal beze změny. Synchronizace to zkusí znovu."
+    "verify_failed": "Soubor z úložiště {{provider}} neodpovídal tomu, co Oleafly očekával, proto zůstal beze změny. Synchronizace to zkusí znovu.",
+    "backup_missing": "Tato záloha už ve vašem úložišti {{provider}} není.",
+    "backup_label": "Oleafly nedokázal pojmenovat obnovenou kopii."
   }
 }

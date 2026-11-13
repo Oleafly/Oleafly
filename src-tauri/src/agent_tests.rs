@@ -1,12 +1,13 @@
 use super::{
     acquire_request_slot, agent_tool_result, allowlisted_tool_runner, approval_classifier,
-    await_tool_result, begin_request, cancel_all_requests, cancel_for_update, cancel_request,
-    drop_pending_tools, endpoint_override_allowed, finish_request, lock_or_recover,
-    native_agent_tool, native_dispatch_allowed, pause_for_update, provider_config,
-    restricted_tool_runner, resume_after_failed_update, run_registered, sanitized_run_config,
-    tool_error, tool_key, tool_pipeline, tool_reply_id, tool_risk, unwrap_mcp_text, Abortable,
-    AgentState, AppConfig, CompletionRequest, Duration, PendingTool, ProviderConfig,
-    RestrictedConfirm, RunConfig, ToolOutput, MAX_CONCURRENT_AGENT_REQUESTS,
+    assistant_network_message, await_tool_result, begin_request, cancel_all_requests,
+    cancel_for_update, cancel_request, drop_pending_tools, endpoint_override_allowed,
+    fetch_approval_runner, fetch_needs_approval, fetch_requested, finish_request, hosted_web_for,
+    lock_or_recover, native_agent_tool, native_dispatch_allowed, pause_for_update, project_is_note,
+    provider_config, restricted_tool_runner, resume_after_failed_update, run_registered,
+    sanitized_run_config, tool_error, tool_key, tool_pipeline, tool_reply_id, tool_risk,
+    unwrap_mcp_text, Abortable, AgentState, AppConfig, CompletionRequest, Duration, PendingTool,
+    ProviderConfig, RestrictedConfirm, RunConfig, ToolOutput, MAX_CONCURRENT_AGENT_REQUESTS,
     MAX_EARLY_CANCELLATIONS, MAX_RETRY_BASE_MS, MAX_RUN_RETRIES, MAX_RUN_STEPS, MIN_RETRY_BASE_MS,
 };
 
@@ -470,15 +471,81 @@ async fn malformed_native_arguments_become_a_tool_error_not_a_fallthrough() {
 
 #[test]
 fn native_dispatch_requires_the_pinned_project_to_still_be_active() {
-    assert!(native_dispatch_allowed("proj-a", Some("proj-a")));
+    let not_note = |_: &str| false;
+    assert!(native_dispatch_allowed("proj-a", Some("proj-a"), not_note));
     assert!(
-        !native_dispatch_allowed("proj-a", Some("proj-b")),
+        !native_dispatch_allowed("proj-a", Some("proj-b"), not_note),
         "a run surviving a project switch must not read the old project natively"
     );
     assert!(
-        !native_dispatch_allowed("proj-a", None),
+        !native_dispatch_allowed("proj-a", None, not_note),
         "no active project (home screen) refuses native dispatch"
     );
+}
+
+#[test]
+fn native_dispatch_allows_a_note_whatever_project_is_open() {
+    let note = |id: &str| id == "note-a";
+    assert!(native_dispatch_allowed("note-a", Some("paper-b"), note));
+    assert!(native_dispatch_allowed("note-a", None, note));
+    assert!(!native_dispatch_allowed("paper-c", Some("paper-b"), note));
+    let mut asked = None;
+    assert!(native_dispatch_allowed(
+        "proj-a",
+        Some("proj-a"),
+        |id: &str| {
+            asked = Some(id.to_string());
+            false
+        }
+    ));
+    assert_eq!(asked, None, "the open project never needs a note lookup");
+}
+
+#[allow(clippy::await_holding_lock)]
+#[tokio::test]
+async fn native_dispatch_reads_note_projects_but_not_other_closed_projects() {
+    let _env_guard = crate::paths::data_dir_env_lock();
+    let root = std::env::temp_dir().join(format!("oleafly-native-note-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    std::fs::create_dir_all(&root).unwrap();
+    std::env::set_var("OLEAFLY_DATA_DIR", &root);
+    let note = crate::project::create_note_project_from(
+        "Masking".to_string(),
+        "---\ntitle: Masking\n---\n\nRun 3 reached 64.1%.\n".to_string(),
+        None,
+    )
+    .unwrap();
+    let paper = crate::project::create_blank_project("Paper".into()).unwrap();
+
+    assert!(project_is_note(&note));
+    assert!(!project_is_note(&paper));
+    assert!(
+        crate::trust::is_trusted(&note),
+        "a note folder passes the folder trust check that agents need, like any library project"
+    );
+    assert!(!project_is_note("missing-project"));
+    assert!(fetch_requested(false, Some(&note)));
+    assert!(!fetch_requested(false, Some(&paper)));
+    assert!(fetch_requested(true, Some(&paper)));
+    assert!(!fetch_requested(false, None));
+    assert!(native_dispatch_allowed(
+        &note,
+        Some(&paper),
+        project_is_note
+    ));
+    assert!(!native_dispatch_allowed(
+        &paper,
+        Some(&note),
+        project_is_note
+    ));
+
+    let output = native_agent_tool(&note, "read_file", "{\"path\":\"note.md\"}")
+        .await
+        .expect("read_file is native");
+    assert!(output.output.contains("64.1%"), "got: {}", output.output);
+
+    std::env::remove_var("OLEAFLY_DATA_DIR");
+    std::fs::remove_dir_all(root).unwrap();
 }
 
 #[allow(clippy::await_holding_lock)]
@@ -1244,4 +1311,355 @@ fn the_rollout_seed_ignores_extracted_attachment_text() {
     .unwrap();
     assert!(crate::agent::initiating_user_text(&request).contains("extracted body text"));
     assert_eq!(seed, "summarize the paper");
+}
+
+#[test]
+fn note_fetches_ask_unless_the_project_allows_them() {
+    use crate::approvals::{ApprovalMode, ToolDecision};
+    type Policy = Result<(ApprovalMode, Option<ToolDecision>), String>;
+    let asks = |requested: bool, trusted: bool, project: Option<&str>, policy: Policy| {
+        fetch_needs_approval(requested, trusted, project, move |_| policy)
+    };
+    let plain = || Ok((ApprovalMode::ApproveForMe, None));
+    assert!(!asks(false, true, Some("note"), plain()));
+    assert!(!asks(true, false, Some("note"), plain()));
+    assert!(asks(true, true, Some("note"), plain()));
+    assert!(asks(
+        true,
+        true,
+        Some("note"),
+        Ok((ApprovalMode::AskForApproval, None))
+    ));
+    assert!(asks(
+        true,
+        true,
+        Some("note"),
+        Ok((ApprovalMode::Custom, None))
+    ));
+    assert!(!asks(
+        true,
+        true,
+        Some("note"),
+        Ok((ApprovalMode::FullAccess, None))
+    ));
+    assert!(!asks(
+        true,
+        true,
+        Some("note"),
+        Ok((ApprovalMode::Custom, Some(ToolDecision::Allow)))
+    ));
+    for mode in [
+        ApprovalMode::ApproveForMe,
+        ApprovalMode::FullAccess,
+        ApprovalMode::Custom,
+    ] {
+        for requested in [true, false] {
+            assert!(
+                asks(
+                    requested,
+                    true,
+                    Some("paper"),
+                    Ok((mode, Some(ToolDecision::Deny)))
+                ),
+                "{mode:?} {requested}"
+            );
+        }
+    }
+    assert!(!asks(
+        true,
+        false,
+        Some("note"),
+        Ok((ApprovalMode::ApproveForMe, Some(ToolDecision::Deny)))
+    ));
+    assert!(asks(true, true, Some("note"), Err("unreadable".into())));
+    assert!(asks(false, true, Some("paper"), Err("unreadable".into())));
+    assert!(!asks(false, true, Some("paper"), plain()));
+    assert!(!asks(
+        false,
+        true,
+        Some("paper"),
+        Ok((ApprovalMode::AskForApproval, None))
+    ));
+    assert!(asks(true, true, None, Ok((ApprovalMode::FullAccess, None))));
+    assert!(!asks(
+        false,
+        true,
+        None,
+        Ok((ApprovalMode::FullAccess, None))
+    ));
+}
+
+#[test]
+fn a_denied_fetch_keeps_the_provider_fetch_off_and_goes_through_the_classifier() {
+    use crate::agent::web::HostedWeb;
+    use crate::approvals::{ApprovalMode, ToolDecision};
+    let denied = fetch_needs_approval(false, true, Some("paper"), |_| {
+        Ok((ApprovalMode::FullAccess, Some(ToolDecision::Deny)))
+    });
+    assert_eq!(hosted_web_for(true, denied), HostedWeb::SearchOnly);
+    let decision = Some(oleafly_agent::PolicyDecision::Deny);
+    assert_eq!(
+        oleafly_agent::classification_from_policy(tool_risk("web_fetch"), decision),
+        oleafly_agent::tools::orchestrator::ApprovalRequirement::Forbidden
+    );
+}
+
+#[test]
+fn related_project_reads_follow_the_related_projects_denials() {
+    use crate::approvals::ToolDecision;
+    let decisions = |project: &str, tool: &str| match (project, tool) {
+        ("paper", "read_file") => Some(ToolDecision::Deny),
+        ("note", "read_related_project_file") => Some(ToolDecision::Allow),
+        ("note", "search_related_project") => Some(ToolDecision::Allow),
+        ("other", "search_project") => Some(ToolDecision::Allow),
+        _ => None,
+    };
+    let related = |id: &str| (id == "note").then(|| "paper".to_string());
+    assert_eq!(
+        super::tool_decision("note", "read_related_project_file", related, decisions),
+        Some(ToolDecision::Deny)
+    );
+    assert_eq!(
+        super::tool_decision("note", "search_related_project", related, decisions),
+        Some(ToolDecision::Allow)
+    );
+    assert_eq!(
+        super::tool_decision("note", "related_project_files", related, decisions),
+        None
+    );
+    assert_eq!(
+        super::tool_decision("note", "read_file", related, decisions),
+        None
+    );
+    assert_eq!(
+        super::tool_decision("note", "read_related_project_file", |_| None, decisions),
+        Some(ToolDecision::Allow)
+    );
+}
+
+#[test]
+fn research_tasks_from_a_linked_note_follow_the_related_projects_rules() {
+    use crate::approvals::ToolDecision;
+    let decisions = |project: &str, tool: &str| match (project, tool) {
+        ("paper", "research_task_create") => Some(ToolDecision::Deny),
+        ("note", "research_task_create") => Some(ToolDecision::Allow),
+        ("note", "research_task_status") => Some(ToolDecision::Allow),
+        _ => None,
+    };
+    let related = |id: &str| (id == "note").then(|| "paper".to_string());
+    assert_eq!(
+        super::tool_decision("note", "research_task_create", related, decisions),
+        Some(ToolDecision::Deny)
+    );
+    assert_eq!(
+        super::tool_decision("note", "research_task_status", related, decisions),
+        Some(ToolDecision::Allow)
+    );
+}
+
+#[test]
+fn a_project_notes_alias_tools_follow_the_projects_own_rules() {
+    use crate::approvals::ToolDecision;
+    let decisions = |project: &str, tool: &str| match (project, tool) {
+        ("paper", "read_file") => Some(ToolDecision::Deny),
+        ("paper", "list_files") => Some(ToolDecision::Allow),
+        _ => None,
+    };
+    assert_eq!(
+        super::tool_decision("paper", "read_related_project_file", |_| None, decisions),
+        Some(ToolDecision::Deny)
+    );
+    assert_eq!(
+        super::tool_decision("paper", "related_project_files", |_| None, decisions),
+        None
+    );
+}
+
+#[test]
+fn a_note_is_trusted_only_when_its_related_project_is() {
+    let trusted = |id: &str| id != "untrusted-paper";
+    let related = |id: &str| match id {
+        "linked-note" => Some("untrusted-paper".to_string()),
+        "fine-note" => Some("paper".to_string()),
+        _ => None,
+    };
+    assert!(!super::run_trusted_with(
+        Some("linked-note"),
+        related,
+        trusted
+    ));
+    assert!(super::run_trusted_with(Some("fine-note"), related, trusted));
+    assert!(super::run_trusted_with(
+        Some("lonely-note"),
+        related,
+        trusted
+    ));
+    assert!(!super::run_trusted_with(
+        Some("untrusted-paper"),
+        related,
+        trusted
+    ));
+    assert!(super::run_trusted_with(None, related, trusted));
+}
+
+#[test]
+fn a_related_project_that_denies_fetches_gates_the_notes_fetches() {
+    use crate::approvals::{ApprovalMode, ToolDecision};
+    let deny = |_: &str| Ok((ApprovalMode::FullAccess, Some(ToolDecision::Deny)));
+    let allow = |_: &str| Ok((ApprovalMode::FullAccess, Some(ToolDecision::Allow)));
+    assert!(super::related_fetch_denied(true, Some("paper"), deny));
+    assert!(!super::related_fetch_denied(true, Some("paper"), allow));
+    assert!(!super::related_fetch_denied(true, None, deny));
+    assert!(!super::related_fetch_denied(false, Some("paper"), deny));
+    assert!(super::related_fetch_denied(true, Some("paper"), |_| Err(
+        "unreadable".to_string()
+    )));
+}
+
+#[tokio::test]
+async fn fetch_prompts_for_one_run_open_one_at_a_time() {
+    let open = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let most = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let (now, peak) = (open.clone(), most.clone());
+    let confirm: RestrictedConfirm = std::sync::Arc::new(move |_| {
+        let now = now.clone();
+        let peak = peak.clone();
+        Box::pin(async move {
+            let current = now.fetch_add(1, std::sync::atomic::Ordering::SeqCst) + 1;
+            peak.fetch_max(current, std::sync::atomic::Ordering::SeqCst);
+            tokio::time::sleep(Duration::from_millis(20)).await;
+            now.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+            Ok(true)
+        })
+    });
+    let inner: oleafly_agent::ToolRunner =
+        std::sync::Arc::new(|_| Box::pin(async { oleafly_agent::ToolOutput::text("executed") }));
+    let runner = fetch_approval_runner(true, confirm, inner);
+    let calls = (0..4).map(|index| {
+        runner(oleafly_agent::ToolCall {
+            id: format!("call-{index}"),
+            name: "web_fetch".into(),
+            arguments: serde_json::json!({ "url": format!("https://x.example/{index}") })
+                .to_string(),
+            ..Default::default()
+        })
+    });
+    let outputs = futures_util::future::join_all(calls).await;
+    assert!(outputs.iter().all(|output| output.output == "executed"));
+    assert_eq!(most.load(std::sync::atomic::Ordering::SeqCst), 1);
+}
+
+#[test]
+fn a_gated_run_keeps_hosted_search_but_fetches_locally() {
+    use crate::agent::web::HostedWeb;
+    assert_eq!(hosted_web_for(true, false), HostedWeb::All);
+    assert_eq!(hosted_web_for(true, true), HostedWeb::SearchOnly);
+    assert_eq!(hosted_web_for(false, true), HostedWeb::Off);
+    assert_eq!(hosted_web_for(false, false), HostedWeb::Off);
+}
+
+#[tokio::test]
+async fn gated_runs_ask_before_web_fetch_and_nothing_else() {
+    let executed = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    let executed_by_runner = executed.clone();
+    let inner: oleafly_agent::ToolRunner = std::sync::Arc::new(move |call| {
+        let executed = executed_by_runner.clone();
+        Box::pin(async move {
+            executed.lock().unwrap().push(call.name.clone());
+            oleafly_agent::ToolOutput::text("executed")
+        })
+    });
+    let asked = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let answers = std::sync::Arc::new(std::sync::Mutex::new(vec![
+        Err("the dialog closed".to_string()),
+        Ok(true),
+        Ok(false),
+    ]));
+    let asked_by_confirm = asked.clone();
+    let confirm: RestrictedConfirm = std::sync::Arc::new(move |request| {
+        asked_by_confirm.lock().unwrap().push(request);
+        let answer = answers.lock().unwrap().pop().unwrap();
+        Box::pin(async move { answer })
+    });
+    let call = |name: &str, arguments: serde_json::Value| oleafly_agent::ToolCall {
+        id: "call".into(),
+        name: name.into(),
+        arguments: arguments.to_string(),
+        ..Default::default()
+    };
+    let fetch = || {
+        call(
+            "web_fetch",
+            serde_json::json!({"url": "https://x.example/c?d=secret"}),
+        )
+    };
+    let runner = fetch_approval_runner(true, confirm, inner.clone());
+    let declined = runner(fetch()).await;
+    assert!(declined.output.contains("declined"), "{}", declined.output);
+    assert!(executed.lock().unwrap().is_empty());
+    assert_eq!(runner(fetch()).await.output, "executed");
+    let failed = runner(fetch()).await;
+    assert!(
+        failed.output.contains("the dialog closed"),
+        "{}",
+        failed.output
+    );
+    assert_eq!(
+        runner(call("web_search", serde_json::json!({"query": "masks"})))
+            .await
+            .output,
+        "executed"
+    );
+    assert_eq!(
+        runner(call("read_note", serde_json::json!({})))
+            .await
+            .output,
+        "executed"
+    );
+    let expected = crate::trust::AiConfirm::Network {
+        tool: "web_fetch".into(),
+        target: Some("https://x.example/c?d=secret".into()),
+    };
+    assert_eq!(
+        *asked.lock().unwrap(),
+        vec![expected.clone(), expected.clone(), expected]
+    );
+    assert_eq!(
+        *executed.lock().unwrap(),
+        vec!["web_fetch", "web_search", "read_note"]
+    );
+
+    let never: RestrictedConfirm =
+        std::sync::Arc::new(|_| Box::pin(async { Err("asked without a gate".to_string()) }));
+    let ungated = fetch_approval_runner(false, never, inner);
+    assert_eq!(ungated(fetch()).await.output, "executed");
+}
+
+#[test]
+fn the_note_fetch_prompt_is_translated_and_shows_the_address() {
+    let key = "dialog.assistantNetwork.message";
+    for locale in crate::i18n::SUPPORTED {
+        let text = crate::i18n::t_in(locale, key);
+        assert_ne!(text, key, "{locale}");
+        let filled = crate::i18n::t_with_in(locale, key, &[("tool", "VALUE")]);
+        assert!(
+            filled.contains("VALUE") && !filled.contains("{{"),
+            "{locale}"
+        );
+    }
+    let message = assistant_network_message(&crate::trust::AiConfirm::Network {
+        tool: "web_fetch".into(),
+        target: Some("https://x.example/c?d=secret".into()),
+    });
+    assert!(message.contains("web_fetch"), "{message}");
+    assert!(
+        message.ends_with("\n\nhttps://x.example/c?d=secret"),
+        "{message}"
+    );
+    assert!(!message.contains("trust"), "{message}");
+    let bare = assistant_network_message(&crate::trust::AiConfirm::Network {
+        tool: "web_fetch".into(),
+        target: None,
+    });
+    assert!(!bare.contains("\n\n"), "{bare}");
 }

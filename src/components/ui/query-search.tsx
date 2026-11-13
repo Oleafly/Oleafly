@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type ReactNode,
   type RefObject,
 } from "react";
 import { useTranslation } from "react-i18next";
@@ -32,6 +33,7 @@ import {
   type Segment,
   type SuggestContext,
 } from "@oleafly/search-query";
+import { isImeEnter } from "@/components/ai/composer/ime";
 import { INLINE_KEYWORD, INLINE_TOKEN_AMBER, INLINE_TOKEN_BLUE } from "@/components/ui/inline-token";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import {
@@ -45,6 +47,7 @@ import { CheckBadge } from "@/components/ui/check-badge";
 
 const MENU_WIDTH = 288;
 const UNFINISHED = new Set<Diagnostic["code"]>(["unclosed-group", "dangling-operator", "unterminated-quote"]);
+const WHOLE_QUERY = new Set<Diagnostic["code"]>(["too-many-branches"]);
 const OPTION_CLASS = "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors";
 const HEADING_CLASS = "px-2.5 pb-1 pt-0.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground";
 
@@ -60,6 +63,7 @@ const ISSUE_KEYS = {
   "invalid-value": "invalidValue",
   "invalid-range": "invalidDate",
   "sort-negated": "sortNegated",
+  "too-many-branches": "tooManyBranches",
 } as const satisfies Record<Diagnostic["code"], string>;
 
 type Translate = ReturnType<typeof useTranslation<["common"]>>["t"];
@@ -95,8 +99,8 @@ function visibleIssues(diagnostics: readonly Diagnostic[], source: string, caret
   const typingAtEnd = caret >= source.trimEnd().length;
   return diagnostics.filter(
     (diagnostic) =>
-      !(diagnostic.span.start <= caret && caret <= diagnostic.span.end) &&
-      !(typingAtEnd && UNFINISHED.has(diagnostic.code)),
+      WHOLE_QUERY.has(diagnostic.code) ||
+      (!(diagnostic.span.start <= caret && caret <= diagnostic.span.end) && !(typingAtEnd && UNFINISHED.has(diagnostic.code))),
   );
 }
 
@@ -164,7 +168,7 @@ function QueryHighlight({ value, segments, scroll, anchorText, measureRef }: Rea
     <div
       aria-hidden
       data-testid="query-search-highlight"
-      className="pointer-events-none absolute inset-0 flex items-center whitespace-pre pl-10 pr-10 text-sm text-foreground"
+      className="pointer-events-none absolute inset-0 flex items-center whitespace-pre pl-10 pr-2 text-sm text-foreground"
     >
       <div className="relative min-w-0 flex-1 overflow-hidden">
         <span className="inline-block" style={{ transform: `translateX(${-scroll}px)` }}>
@@ -303,6 +307,12 @@ function SuggestionMenu<T>({
   );
 }
 
+export interface QuerySearchResults {
+  readonly listId: string;
+  readonly open: boolean;
+  readonly activeId?: string;
+}
+
 export interface QuerySearchProps<T> {
   readonly value: string;
   readonly onChange: (value: string) => void;
@@ -312,7 +322,13 @@ export interface QuerySearchProps<T> {
   readonly placeholder: string;
   readonly clearLabel: string;
   readonly className?: string;
+  readonly results?: QuerySearchResults;
+  readonly onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
+  readonly focusKey?: number;
+  readonly trailing?: ReactNode;
 }
+
+const MENU_KEYS = new Set(["ArrowDown", "ArrowUp", "Escape"]);
 
 export function QuerySearch<T>({
   value,
@@ -323,10 +339,21 @@ export function QuerySearch<T>({
   placeholder,
   clearLabel,
   className,
+  results,
+  onKeyDown: onOuterKeyDown,
+  focusKey = 0,
+  trailing,
 }: QuerySearchProps<T>) {
   const id = useId();
   const listId = `${id}-suggestions`;
+  const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const focusedKey = useRef(focusKey);
+  useEffect(() => {
+    if (focusKey === focusedKey.current) return;
+    focusedKey.current = focusKey;
+    inputRef.current?.focus();
+  }, [focusKey]);
   const measureRef = useRef<HTMLSpanElement>(null);
   const pendingCaret = useRef<number | null>(null);
   const [caret, setCaret] = useState(value.length);
@@ -355,6 +382,7 @@ export function QuerySearch<T>({
   const open = focused && !dismissed && hasContent;
   const anchorText = value.slice(0, anchorOf(context, caret));
   const activeDescendant = open && activeIndex >= 0 ? `${id}-${options[activeIndex].id}` : undefined;
+  const resultsListId = results?.open ? results.listId : undefined;
 
   useLayoutEffect(() => {
     const input = inputRef.current;
@@ -373,7 +401,7 @@ export function QuerySearch<T>({
     const measure = measureRef.current;
     if (!open || !input || measure?.textContent !== anchorText) return;
     const padding = Number.parseFloat(getComputedStyle(input).paddingLeft) || 0;
-    const width = input.parentElement?.clientWidth ?? input.clientWidth;
+    const width = rootRef.current?.clientWidth ?? input.clientWidth;
     const x = padding + measure.offsetWidth - scroll - 10;
     setMenuLeft(Math.max(0, Math.min(x, width - MENU_WIDTH)));
   }, [open, anchorText, scroll]);
@@ -423,7 +451,10 @@ export function QuerySearch<T>({
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.nativeEvent.isComposing) return;
+    if (isImeEnter(event)) return;
+    const menuTakes = open && (MENU_KEYS.has(event.key) || (event.key === "Enter" && activeIndex >= 0));
+    if (!menuTakes) onOuterKeyDown?.(event);
+    if (event.defaultPrevented) return;
     if (event.key === "ArrowDown" || event.key === "ArrowUp") onArrow(event);
     else if (event.key === "Enter") onEnter(event);
     else if (event.key === "Tab") close();
@@ -436,8 +467,9 @@ export function QuerySearch<T>({
 
   return (
     <div
+      ref={rootRef}
       className={cn(
-        "relative flex min-w-0 items-center rounded-md border border-input focus-within:border-ring",
+        "relative flex min-w-0 items-center rounded-md border border-input focus-within:bg-accent/40",
         className,
       )}
     >
@@ -445,59 +477,66 @@ export function QuerySearch<T>({
         aria-hidden
         className="pointer-events-none absolute left-4 top-1/2 z-10 size-4 -translate-y-1/2 text-muted-foreground"
       />
-      <QueryHighlight
-        value={value}
-        segments={segments}
-        scroll={scroll}
-        anchorText={anchorText}
-        measureRef={measureRef}
-      />
-      <input
-        ref={inputRef}
-        type="search"
-        role="combobox"
-        aria-label={ariaLabel}
-        aria-autocomplete="list"
-        aria-expanded={open}
-        aria-controls={open && options.length > 0 ? listId : undefined}
-        aria-activedescendant={activeDescendant}
-        autoComplete="off"
-        spellCheck={false}
-        placeholder={placeholder}
-        value={value}
-        onChange={(event) => {
-          setActiveId(null);
-          setDismissed(false);
-          onChange(event.target.value);
-          setCaret(event.target.selectionStart ?? event.target.value.length);
-        }}
-        onSelect={syncCaret}
-        onScroll={(event) => setScroll(event.currentTarget.scrollLeft)}
-        onFocus={() => {
-          setFocused(true);
-          setDismissed(value !== "");
-          syncCaret();
-        }}
-        onBlur={() => {
-          setFocused(false);
-          setActiveId(null);
-        }}
-        onKeyDown={onKeyDown}
-        className="relative h-full w-full min-w-0 rounded-[inherit] bg-transparent py-0 pl-10 pr-10 text-sm text-transparent caret-foreground placeholder:text-muted-foreground selection:bg-primary/25 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
-      />
-      {value ? (
-        <button
-          type="button"
-          aria-label={clearLabel}
-          onClick={() => {
-            inputRef.current?.focus();
-            apply({ value: "", caret: 0 }, true);
+      <div className="relative h-full min-w-0 flex-1">
+        <QueryHighlight
+          value={value}
+          segments={segments}
+          scroll={scroll}
+          anchorText={anchorText}
+          measureRef={measureRef}
+        />
+        <input
+          ref={inputRef}
+          type="search"
+          role="combobox"
+          aria-label={ariaLabel}
+          aria-autocomplete="list"
+          aria-expanded={open || Boolean(results?.open)}
+          aria-controls={open && options.length > 0 ? listId : resultsListId}
+          aria-activedescendant={open ? activeDescendant : results?.activeId}
+          autoComplete="off"
+          spellCheck={false}
+          placeholder={placeholder}
+          value={value}
+          onChange={(event) => {
+            setActiveId(null);
+            setDismissed(false);
+            onChange(event.target.value);
+            setCaret(event.target.selectionStart ?? event.target.value.length);
           }}
-          className="absolute right-2 top-1/2 flex size-6 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
-        >
-          <X aria-hidden className="size-3.5" />
-        </button>
-      ) : null}
+          onSelect={syncCaret}
+          onScroll={(event) => setScroll(event.currentTarget.scrollLeft)}
+          onFocus={() => {
+            setFocused(true);
+            setDismissed(value !== "");
+            syncCaret();
+          }}
+          onBlur={() => {
+            setFocused(false);
+            setActiveId(null);
+          }}
+          onKeyDown={onKeyDown}
+          className="relative h-full w-full min-w-0 rounded-[inherit] bg-transparent py-0 pl-10 pr-2 text-sm text-transparent caret-foreground placeholder:text-muted-foreground selection:bg-primary/25 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+        />
+      </div>
+      <div className={cn("flex shrink-0 items-center gap-0.5", trailing ? "pr-1" : "pr-2")}>
+        {value ? (
+          <button
+            type="button"
+            aria-label={clearLabel}
+            onClick={() => {
+              inputRef.current?.focus();
+              apply({ value: "", caret: 0 }, true);
+            }}
+            className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground"
+          >
+            <X aria-hidden className="size-3.5" />
+          </button>
+        ) : (
+          <span aria-hidden className="size-6" />
+        )}
+        {trailing}
+      </div>
       {open ? (
         <SuggestionMenu
           idPrefix={id}

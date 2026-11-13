@@ -7,6 +7,7 @@ declare module "@tiptap/core" {
     markdown: {
       getMarkdown(): string;
       parser: {
+        parse(content: string): string;
         md: {
           parse(source: string, env: object): MarkdownBlockToken[];
         };

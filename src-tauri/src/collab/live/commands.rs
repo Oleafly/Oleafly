@@ -30,9 +30,7 @@ pub async fn collab_live_start(
 
 pub(crate) async fn settle_started(app: tauri::AppHandle, project_id: String) {
     announce(&project_id, &app);
-    if !crate::folder_watch::is_watching(&project_id) {
-        let _ = crate::folder_watch::watch_project_folder(app, project_id).await;
-    }
+    crate::folder_watch::keep_watching(app, project_id).await;
 }
 
 #[tauri::command]

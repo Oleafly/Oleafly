@@ -18,38 +18,19 @@ export interface TableOptions {
   boldHeader?: boolean;
 }
 
-function splitRecord(line: string, delimiter: string): string[] {
-  const cells: string[] = [];
-  let current = "";
-  let quoted = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (quoted) {
-      if (ch === '"') {
-        if (line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          quoted = false;
-        }
-      } else {
-        current += ch;
-      }
-    } else if (ch === '"' && current === "") {
-      quoted = true;
-    } else if (ch === delimiter) {
-      cells.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
-  }
-  cells.push(current);
-  return cells;
+export interface DelimitedOptions {
+  delimiter?: string;
+  limit?: number;
+  trim?: boolean;
 }
 
+const LINE_FEED = 10;
+const CARRIAGE_RETURN = 13;
+const QUOTE = '"';
+const BYTE_ORDER_MARK = 0xfeff;
+
 export function delimiterOf(text: string): string {
-  return detectDelimiter(text.replace(/\r\n?/g, "\n"));
+  return detectDelimiter(text);
 }
 
 function detectDelimiter(text: string): string {
@@ -65,42 +46,97 @@ function detectDelimiter(text: string): string {
       }
       continue;
     }
-    if (!quoted && character === "\n") break;
+    if (!quoted && (character === "\n" || character === "\r")) break;
     if (!quoted && character === "\t") tabs += 1;
   }
   return tabs > 0 ? "\t" : ",";
 }
 
-export function parseDelimited(text: string): string[][] {
-  const normalized = text.replace(/\r\n?/g, "\n");
-  const delimiter = detectDelimiter(normalized);
-  const physical = normalized.split("\n");
+function quotedText(text: string): string {
+  return text.includes("\r") ? text.replaceAll(/\r\n?/g, "\n") : text;
+}
 
-  const records: string[] = [];
-  let open = false;
-  let carry = "";
-  for (const line of physical) {
-    carry = open ? `${carry}\n${line}` : line;
-    const quotes = (line.match(/"/g) ?? []).length;
-    if (quotes % 2 === 1) {
-      open = !open;
-    }
-    if (!open) {
-      records.push(carry);
-      carry = "";
-    }
+function readQuotedField(text: string, start: number): { value: string; next: number } {
+  let value = "";
+  let index = start;
+  while (index < text.length) {
+    const close = text.indexOf(QUOTE, index);
+    if (close === -1) return { value: value + quotedText(text.slice(index)), next: text.length };
+    value += quotedText(text.slice(index, close));
+    if (text[close + 1] !== QUOTE) return { value, next: close + 1 };
+    value += QUOTE;
+    index = close + 2;
   }
-  if (carry !== "" || open) {
-    records.push(carry);
-  }
+  return { value, next: index };
+}
 
-  const rows = records
-    .filter((record) => record !== "")
-    .map((record) => splitRecord(record, delimiter).map((cell) => cell.trim()));
-  while (rows.length > 0 && rows[rows.length - 1].every((cell) => cell === "")) {
-    rows.pop();
+function unquotedFieldEnd(text: string, start: number, separator: number | undefined): number {
+  let stop = start;
+  while (stop < text.length) {
+    const code = text.codePointAt(stop);
+    if (code === separator || code === LINE_FEED || code === CARRIAGE_RETURN) return stop;
+    stop += 1;
   }
+  return stop;
+}
+
+function lineBreakWidth(text: string, index: number): number {
+  return text.codePointAt(index) === CARRIAGE_RETURN && text.codePointAt(index + 1) === LINE_FEED ? 2 : 1;
+}
+
+function scanDelimited(text: string, delimiter: string, limit: number): string[][] {
+  const rows: string[][] = [];
+  const separator = delimiter.codePointAt(0);
+  const end = text.length;
+  let row: string[] = [];
+  let field = "";
+  let quoted = false;
+  let index = text.codePointAt(0) === BYTE_ORDER_MARK ? 1 : 0;
+  const finishRow = () => {
+    row.push(field);
+    if (row.length > 1 || field !== "" || quoted) rows.push(row);
+    row = [];
+    field = "";
+    quoted = false;
+  };
+  while (index < end && rows.length < limit) {
+    if (text[index] === QUOTE && field === "" && !quoted) {
+      const quotedField = readQuotedField(text, index + 1);
+      field = quotedField.value;
+      quoted = true;
+      index = quotedField.next;
+      continue;
+    }
+    const stop = unquotedFieldEnd(text, index, separator);
+    field += text.slice(index, stop);
+    index = stop;
+    if (index >= end) break;
+    if (text.codePointAt(index) === separator) {
+      row.push(field);
+      field = "";
+      quoted = false;
+      index += 1;
+      continue;
+    }
+    finishRow();
+    index += lineBreakWidth(text, index);
+  }
+  if (rows.length < limit && (row.length > 0 || field !== "" || quoted)) finishRow();
   return rows;
+}
+
+export function parseDelimited(text: string, options: DelimitedOptions = {}): string[][] {
+  const rows = scanDelimited(
+    text,
+    options.delimiter ?? detectDelimiter(text),
+    options.limit ?? Number.POSITIVE_INFINITY,
+  );
+  if (options.trim === false) return rows;
+  const trimmed = rows.map((row) => row.map((cell) => cell.trim()));
+  while (trimmed.at(-1)?.every((cell) => cell === "")) {
+    trimmed.pop();
+  }
+  return trimmed;
 }
 
 function padRows(rows: string[][]): { rows: string[][]; width: number } {
@@ -121,7 +157,7 @@ function isNumericCell(value: string): boolean {
   let text = value;
   if (text.endsWith("%")) text = text.slice(0, -1);
   if (!text) return false;
-  if (text[0] === "-" || text[0] === "+") text = text.slice(1);
+  if (text.startsWith("-") || text.startsWith("+")) text = text.slice(1);
   if (!text) return false;
 
   let decimal = false;
@@ -269,21 +305,18 @@ export function emitLatexTable(rowsInput: string[][], options: TableOptions): st
     ?? inferAlignment(rowsInput, options.header);
   const lines: string[] = ["\\begin{table}[htbp]", "  \\centering"];
   if (options.caption) {
-    lines.push(`  \\caption{${escapeLatexCell(options.caption)}}`);
+    lines.push(String.raw`  \caption{${escapeLatexCell(options.caption)}}`);
   }
   const label = options.label?.trim();
   if (label && isValidLatexLabel(label)) {
-    lines.push(`  \\label{${label}}`);
+    lines.push(String.raw`  \label{${label}}`);
   }
-  lines.push(`  \\begin{tabular}{${alignment}}`, "    \\toprule");
+  lines.push(String.raw`  \begin{tabular}{${alignment}}`, "    \\toprule");
   rows.forEach((row, index) => {
     const cells = row.map(escapeLatexCell);
     const isHeader = options.header && index === 0;
-    if (isHeader && bold) {
-      lines.push(`    ${cells.map((cell) => `\\textbf{${cell}}`).join(" & ")} \\\\`);
-    } else {
-      lines.push(`    ${cells.join(" & ")} \\\\`);
-    }
+    const shown = isHeader && bold ? cells.map((cell) => String.raw`\textbf{${cell}}`) : cells;
+    lines.push(`    ${shown.join(" & ")} \\\\`);
     if (isHeader) {
       lines.push("    \\midrule");
     }

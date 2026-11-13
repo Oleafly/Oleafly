@@ -1,16 +1,5 @@
-import {
-  lazy,
-  memo,
-  Suspense,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type RefObject,
-} from "react";
+import { memo, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import type {
   GitCommit,
@@ -96,8 +85,7 @@ import { readSidebarView } from "@/store/sidebar-view-state";
 const PublishDialog = lazy(() =>
   import("@/components/integrations/PublishDialog").then((module) => ({
     default: module.PublishDialog,
-  })),
-);
+  })), { warm: true });
 
 type GitGraphCommit = GitCommit;
 type Translate = ReturnType<typeof useTranslation<["shell"]>>["t"];

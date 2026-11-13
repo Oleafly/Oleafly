@@ -183,6 +183,7 @@ async fn finish(active: Arc<Active>) {
     active.save_now();
     active.announce_written();
     active.handle.stop();
+    crate::folder_watch::release_live(&active.project_id);
 }
 
 async fn stop_any() {

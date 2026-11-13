@@ -733,3 +733,44 @@ async fn a_robots_txt_that_redirects_is_followed() {
         .unwrap();
     assert_eq!(page.markdown, "visible");
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn link_previews_follow_redirects_read_the_head_and_skip_robots() {
+    let site = site(vec![
+        (
+            "/robots.txt",
+            route("200 OK", "text/plain", "User-agent: *\nDisallow: /\n"),
+        ),
+        ("/old", redirect("301 Moved Permanently", "/new")),
+        (
+            "/new",
+            route(
+                "200 OK",
+                "text/html; charset=windows-1252",
+                b"<html><head><title>Caf\xe9 notes</title></head><body></body></html>".to_vec(),
+            ),
+        ),
+        ("/paper.pdf", route("200 OK", "application/pdf", "%PDF-1.7")),
+    ]);
+    let client = WebClient::for_tests();
+    let preview = link_preview(&client, &format!("{}/old#part", site.base), "Oleafly/test")
+        .await
+        .unwrap();
+    assert_eq!(preview.url, format!("{}/new", site.base));
+    assert_eq!(preview.title.as_deref(), Some("Caf\u{e9} notes"));
+    assert_eq!(preview.favicon, None);
+    let pdf = link_preview(&client, &format!("{}/paper.pdf", site.base), "Oleafly/test")
+        .await
+        .unwrap();
+    assert_eq!(pdf.title, None);
+    let missing = link_preview(&client, &format!("{}/gone", site.base), "Oleafly/test")
+        .await
+        .unwrap_err();
+    assert_eq!(missing, WebError::Http(404));
+    assert!(site
+        .requests
+        .lock()
+        .unwrap()
+        .iter()
+        .all(|request| !request.starts_with("GET /robots.txt")));
+}

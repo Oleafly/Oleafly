@@ -44,14 +44,16 @@
       "externalTool": "Bekræft handlingen i det eksterne værktøj",
       "internet": "Bekræft adgang til internettet",
       "edit": "Bekræft AI-ændringen",
-      "researchTask": "Bekræft forskningsopgaven"
+      "researchTask": "Bekræft forskningsopgaven",
+      "note": "Bekræft den nye note"
     },
     "headline": {
       "command": "Assistenten vil køre denne kommando",
       "externalTool": "Assistenten vil bruge et eksternt værktøj",
       "internet": "Assistenten vil have adgang til internettet",
       "edit": "Assistenten vil ændre dine filer",
-      "researchTask": "Assistenten vil oprette en forskningsopgave"
+      "researchTask": "Assistenten vil oprette en forskningsopgave",
+      "note": "Assistenten vil oprette en note"
     },
     "mcpNote": "Det sender argumenterne nedenfor til den konfigurerede MCP-server.",
     "line": "linje {{line}}",
@@ -88,6 +90,14 @@
       "minutes_other": "{{count}} minutter",
       "planFirst": "Plan først",
       "startNow": "Start nu"
+    },
+    "noteDraft": {
+      "title": "Titel",
+      "project": "Tilknyttet projekt",
+      "tags": "Tags",
+      "text": "Tekst",
+      "empty": "Ingen tekst",
+      "more": "Noten fortsætter efter dette punkt."
     }
   },
   "attachments": {
@@ -1103,5 +1113,19 @@
     "replaceConfirm": "Erstat svaret",
     "forked": "Startede en ny chat fra den redigerede besked.",
     "failed": "Kunne ikke sende beskeden igen."
+  },
+  "noteScope": {
+    "notesOnly": "Kun i assistenten til en note.",
+    "tools": {
+      "readNote": "Læs den åbne note, inklusive forslag, der venter på gennemgang.",
+      "proposeNoteEdits": "Foreslå ændringer i den åbne note, som du kan acceptere eller afvise.",
+      "searchNotes": "Søg i alle dine noter.",
+      "listKnowledgeNotes": "Vis dine noter efter tag eller projekt.",
+      "readNoteById": "Læs en anden note.",
+      "createNote": "Opret en ny note.",
+      "relatedProjectFiles": "Vis filerne i det projekt, noten er knyttet til.",
+      "readRelatedProjectFile": "Læs en fil fra det projekt, noten er knyttet til.",
+      "searchRelatedProject": "Søg i det projekt, noten er knyttet til."
+    }
   }
 }

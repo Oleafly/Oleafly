@@ -202,6 +202,7 @@ export async function runAgentHarness(args: {
   guardToolCall?: (call: HarnessToolCall) => string | null;
   effort?: EffortLevel;
   web?: WebToggle;
+  networkNeedsApproval?: boolean;
   handlers: HarnessHandlers;
 }): Promise<AgentRunOutcome> {
   const { handlers } = args;
@@ -369,6 +370,7 @@ export async function runAgentHarness(args: {
       threadId: args.threadId,
       clientTurnId: args.clientTurnId,
       onRequestId: args.onRequestId,
+      networkNeedsApproval: args.networkNeedsApproval,
     },
   );
 }

@@ -10,7 +10,7 @@ import {
 import { useTranslation } from "react-i18next";
 import type { ComposerCommand } from "./composer-command-registry";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
-import { cn } from "@/lib/utils";
+import { Listbox, ListboxHeading, ListboxOption } from "@/components/ui/listbox";
 
 interface SlashCommandKeyEvent {
   key: string;
@@ -120,51 +120,37 @@ export const SlashCommandMenu = forwardRef<SlashCommandMenuHandle, SlashCommandM
     if (filteredCommands.length === 0) return null;
 
     return (
-      <div
+      <Listbox
         ref={listRef}
         id="ai-slash-command-menu"
-        role="listbox"
         aria-label={t(($) => $.ai.composer.slashMenuAriaLabel)}
-        className="absolute bottom-full left-0 z-50 mb-2 max-h-72 w-full overflow-y-auto rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
+        className="absolute bottom-full left-0 z-50 mb-2 max-h-72 w-full"
       >
         {filteredCommands.map((command, index) => {
-            const selected = index === activeIndex;
-            const group = command.group ?? "";
-            const heading =
-              group && group !== (filteredCommands[index - 1]?.group ?? "") ? group : null;
-            return (
-              <Fragment key={command.id}>
-                {heading && (
-                  <span className="mt-1 block border-t px-2.5 pb-1 pt-2 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground/70">
-                    {heading}
+          const group = command.group ?? "";
+          const heading = group && group !== (filteredCommands[index - 1]?.group ?? "") ? group : null;
+          return (
+            <Fragment key={command.id}>
+              {heading && <ListboxHeading separated>{heading}</ListboxHeading>}
+              <ListboxOption
+                id={`ai-slash-command-${command.id}`}
+                selected={index === activeIndex}
+                onHighlight={() => setActiveCommandId(command.id)}
+                onChoose={() => select(command)}
+                className="items-start gap-2.5 py-2"
+              >
+                <command.icon className="mt-0.5 size-4 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-medium leading-snug">{command.label}</span>
+                  <span className="line-clamp-2 block text-[0.6875rem] leading-snug text-muted-foreground">
+                    {command.description}
                   </span>
-                )}
-                <button
-                  id={`ai-slash-command-${command.id}`}
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  tabIndex={-1}
-                  onMouseEnter={() => setActiveCommandId(command.id)}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => select(command)}
-                  className={cn(
-                    "flex w-full items-start gap-2.5 rounded-md px-2.5 py-2 text-left transition-colors",
-                    selected && "bg-accent text-accent-foreground",
-                  )}
-                >
-                  <command.icon className="mt-0.5 size-4 shrink-0 text-primary" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-xs font-medium leading-snug">{command.label}</span>
-                    <span className="line-clamp-2 block text-[0.6875rem] leading-snug text-muted-foreground">
-                      {command.description}
-                    </span>
-                  </span>
-                </button>
-              </Fragment>
-            );
+                </span>
+              </ListboxOption>
+            </Fragment>
+          );
         })}
-      </div>
+      </Listbox>
     );
   },
 );

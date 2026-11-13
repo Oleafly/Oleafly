@@ -158,7 +158,7 @@ export function useDelegatedTooltips(containerRef: RefObject<HTMLElement | null>
       role="tooltip"
       className={cn(
         TOOLTIP_BUBBLE_CLASS,
-        "w-max max-w-[260px] whitespace-normal font-medium [overflow-wrap:anywhere]",
+        "w-max max-w-[260px] whitespace-pre-line font-medium [overflow-wrap:anywhere]",
         !position && "opacity-0",
       )}
       style={position ?? { top: -9999, left: -9999 }}

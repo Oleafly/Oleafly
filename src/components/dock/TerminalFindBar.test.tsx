@@ -60,7 +60,7 @@ describe("terminal find bar", () => {
   it("shows '{{current}} of {{total}}' and 'No matches'", () => {
     const { search, report } = fakeSearch();
     render(<TerminalFindBar search={search} onClose={() => {}} />);
-    const status = screen.getByTestId("terminal-find-status");
+    const status = screen.getByRole("status");
     expect(status).toHaveTextContent("");
 
     fireEvent.change(input(), { target: { value: "warn" } });

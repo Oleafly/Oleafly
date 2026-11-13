@@ -140,7 +140,7 @@ describe("settings document", () => {
       "shortcuts",
       "experimentation",
     ]);
-    expect(Object.keys(document.appearance as object)).toEqual(["app", "editor", "terminal", "pdf", "files"]);
+    expect(Object.keys(document.appearance as object)).toEqual(["app", "editor", "terminal", "pdf", "files", "notes"]);
     const text = serializeSettingsDocument(document);
     expect(text).toContain('\n  "general": {\n    "language": "system",');
     expect(text).toContain('"fontSize": 16');
@@ -170,6 +170,52 @@ describe("settings document", () => {
       shortcuts: { app: { commandPalette: "Mod-Shift-Space" }, editor: { titleCase: "Mod-Alt-t" } },
     });
     expect(readSettingsFile(text, snapshot())).toMatchObject({ ok: true, changed: [], ignored: [] });
+  });
+
+  it("carries the text replacement pairs out and back, and refuses a pair it can't use", () => {
+    useSettingsStore.getState().setNotesAppearance("notesTextReplace", false);
+    useSettingsStore.getState().setNotesAppearance("notesTextReplacements", { "->": "→", "(c)": "©" });
+    const text = serializeSettingsDocument(buildSettingsDocument(snapshot()));
+    expect(JSON.parse(text)).toMatchObject({ appearance: { notes: { textReplace: false, textReplacements: { "->": "→", "(c)": "©" } } } });
+    expect(readSettingsFile(text, snapshot())).toMatchObject({ ok: true, changed: [], ignored: [] });
+    const read = readSettingsFile(fileWith({ appearance: { notes: { textReplacements: { "->": "" } } } }), snapshot());
+    if (read.ok || read.reason !== "invalid") throw new Error("expected problems");
+    expect(read.problems).toMatchObject([{ path: 'appearance.notes.textReplacements."->"', issue: { kind: "listItem" } }]);
+  });
+
+  it("carries the periodic note settings out and back, and refuses ones it can't use", async () => {
+    useSettingsStore.getState().setNotesPeriodic("daily", { format: "DD.MM.YYYY", tag: "journal", template: "note:tpl" });
+    useSettingsStore.getState().setNotesPeriodic("weekly", { enabled: false });
+    useSettingsStore.getState().setNotesWeekStart("monday");
+    const saved = useSettingsStore.getState().notesPeriodic;
+    const text = serializeSettingsDocument(buildSettingsDocument(snapshot()));
+    expect(JSON.parse(text)).toMatchObject({ appearance: { notes: { periodic: saved } } });
+    expect(readSettingsFile(text, snapshot())).toMatchObject({ ok: true, changed: [], ignored: [] });
+
+    useSettingsStore.setState(initial.settings, true);
+    const read = readSettingsFile(text, snapshot());
+    if (!read.ok) throw new Error(read.reason);
+    expect(read.changed).toEqual(["appearance.notes.periodic"]);
+    await applySettingsPlan(read.plan, THEME);
+    expect(useSettingsStore.getState().notesPeriodic).toEqual(saved);
+    expect(JSON.parse(localStorage.getItem("oleafly.notes.periodic") ?? "null")).toEqual(saved);
+
+    const partial = readSettingsFile(fileWith({ appearance: { notes: { periodic: { daily: { tag: "#Log" }, weekStart: "sunday" } } } }), snapshot());
+    if (!partial.ok) throw new Error(partial.reason);
+    expect(partial.plan.preferences.notesPeriodic).toMatchObject({ daily: { tag: "Log", format: "YYYY-MM-DD" }, weekStart: "sunday" });
+
+    const bad = (periodic: unknown) => {
+      const result = readSettingsFile(fileWith({ appearance: { notes: { periodic } } }), snapshot());
+      return result.ok || result.reason !== "invalid" ? null : result.problems;
+    };
+    expect(bad({ daily: { format: "[no date]" } })).toMatchObject([{ path: "appearance.notes.periodic.daily.format", issue: { kind: "listItem" } }]);
+    expect(bad({ daily: { tag: "two words" } })).toMatchObject([{ path: "appearance.notes.periodic.daily.tag", issue: { kind: "listItem" } }]);
+    expect(bad({ daily: { enabled: "yes" } })).toMatchObject([{ path: "appearance.notes.periodic.daily.enabled", issue: { kind: "boolean" } }]);
+    expect(bad({ daily: { colour: "red" } })).toMatchObject([{ path: "appearance.notes.periodic.daily.colour", issue: { kind: "unknownKey" } }]);
+    expect(bad({ yearly: {} })).toMatchObject([{ path: "appearance.notes.periodic.yearly", issue: { kind: "unknownKey" } }]);
+    expect(bad({ weekly: "off" })).toMatchObject([{ path: "appearance.notes.periodic.weekly", issue: { kind: "object" } }]);
+    expect(bad({ weekStart: "friday" })).toMatchObject([{ path: "appearance.notes.periodic.weekStart", issue: { kind: "oneOf" } }]);
+    expect(bad("daily")).toMatchObject([{ path: "appearance.notes.periodic", issue: { kind: "object" } }]);
   });
 
   it("reads a file saved with a byte order mark", () => {
@@ -659,5 +705,103 @@ describe("applying a settings file", () => {
       }),
     );
     expect(localStorage.getItem("oleafly:ai_pdf_capture")).toBe("0");
+  });
+});
+
+describe("Notes switch in a settings file", () => {
+  it("writes the Notes switch under Experimentation", () => {
+    useSettingsStore.getState().setNotes(true);
+    const document = buildSettingsDocument(snapshot());
+    expect(document.experimentation).toMatchObject({ notes: true });
+  });
+
+  it("reads the Notes switch and turns Notes on", async () => {
+    const read = readSettingsFile(fileWith({ experimentation: { notes: true } }), snapshot());
+    if (!read.ok) throw new Error("expected a valid file");
+    expect(read.changed).toEqual(["experimentation.notes"]);
+    await applySettingsPlan(read.plan, THEME);
+    expect(useSettingsStore.getState().notes).toBe(true);
+  });
+
+  it("refuses a Notes switch that is not on or off", () => {
+    const read = readSettingsFile(fileWith({ experimentation: { notes: "maybe" } }), snapshot());
+    expect(read.ok).toBe(false);
+  });
+});
+
+describe("Notes appearance in a settings file", () => {
+  it("writes the Notes look under Appearance and reads it back unchanged", () => {
+    const store = useSettingsStore.getState();
+    store.setNotesAppearance("notesTypeface", "serif");
+    store.setNotesAppearance("notesFontSize", 17.5);
+    store.setNotesAppearance("notesWidth", "wide");
+    store.setNotesAppearance("notesAccentColor", "#0d9488");
+    store.setNotesAppearance("notesSpellcheck", false);
+    const document = buildSettingsDocument(snapshot());
+    expect((document.appearance as Record<string, unknown>).notes).toMatchObject({
+      typeface: "serif",
+      fontSize: 17.5,
+      width: "wide",
+      accentColor: "#0d9488",
+      spellcheck: false,
+      codeTheme: "system",
+      calloutStyle: "tinted",
+      taskBox: "round",
+      fieldStyle: "tint",
+    });
+    const text = serializeSettingsDocument(document);
+    expect(readSettingsFile(text, snapshot())).toMatchObject({ ok: true, changed: [], ignored: [] });
+  });
+
+  it("applies a Notes look from a file, width included", async () => {
+    const read = readSettingsFile(
+      fileWith({
+        appearance: {
+          notes: {
+            headingTypeface: "mono",
+            lineHeight: "custom",
+            customLineHeight: 2.2,
+            width: "full",
+            wordCount: "off",
+            codeTheme: "editor",
+          },
+        },
+      }),
+      snapshot(),
+    );
+    if (!read.ok) throw new Error(read.reason);
+    expect([...read.changed].sort()).toEqual([
+      "appearance.notes.codeTheme",
+      "appearance.notes.customLineHeight",
+      "appearance.notes.headingTypeface",
+      "appearance.notes.lineHeight",
+      "appearance.notes.width",
+      "appearance.notes.wordCount",
+    ]);
+    await applySettingsPlan(read.plan, THEME);
+    expect(useSettingsStore.getState()).toMatchObject({
+      notesHeadingTypeface: "mono",
+      notesLineHeight: "custom",
+      notesCustomLineHeight: 2.2,
+      notesWidth: "full",
+      notesShowWordCount: false,
+      notesCodeTheme: "editor",
+    });
+    expect(localStorage.getItem("oleafly.notes.width")).toBe("full");
+    expect(localStorage.getItem("oleafly.notes.wordCount")).toBe("0");
+  });
+
+  it.each([
+    ["typeface", "comic"],
+    ["fontSize", 200],
+    ["titleSize", 25],
+    ["accentColor", "teal"],
+    ["calloutStyle", "neon"],
+    ["taskBox", "oval"],
+    ["fieldStyle", "ghost"],
+    ["width", "narrow"],
+  ])("refuses a %s of %j", (key, value) => {
+    const read = readSettingsFile(fileWith({ appearance: { notes: { [key]: value } } }), snapshot());
+    expect(read.ok).toBe(false);
   });
 });

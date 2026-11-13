@@ -11,6 +11,8 @@
   "landing.open": "Avaa Oleafly-sovelluksessa",
   "landing.get": "Hanki Oleafly",
   "landing.open_browser": "Avaa selaimessa",
+  "published.gone_title": "Sivu ei ole saatavilla",
+  "published.gone_body": "Tekijä on ehkä poistanut julkaisun, tai tämä palvelin ei enää näytä julkisia sivuja.",
   "web.sign_in_body": "Kirjaudu sisään, niin voit avata jaetut projektisi tässä selaimessa.",
   "web.try_again": "Yritä uudelleen",
   "web.other_browser": "Tämä linkki viimeistelee kirjautumisen laitteella {device}, eli selaimessa, jossa aloitit. Avaa sähköposti sen sijaan siellä. Linkki toimii edelleen.",

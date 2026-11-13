@@ -987,7 +987,8 @@
       "editor": "Trình biên tập",
       "files": "Dự án",
       "pdf": "Xem trước PDF",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Ghi chú"
     },
     "terminal": {
       "colorTheme": {
@@ -2316,6 +2317,66 @@
       "resetZoom": {
         "description": "Đặt ứng dụng về 100%.",
         "label": "Đặt lại thu phóng"
+      },
+      "notesQuickSwitcher": {
+        "description": "Tìm ghi chú theo tên và mở nó.",
+        "label": "Ghi chú: đi tới ghi chú"
+      },
+      "notesTodayNote": {
+        "description": "Mở ghi chú hôm nay, hoặc tạo mới.",
+        "label": "Ghi chú: ghi chú hôm nay"
+      },
+      "notesGraph": {
+        "description": "Mở đồ thị của tất cả ghi chú.",
+        "label": "Ghi chú: đồ thị"
+      },
+      "notesLocalGraph": {
+        "description": "Hiện hoặc ẩn các liên kết quanh ghi chú đang mở.",
+        "label": "Ghi chú: đồ thị cục bộ"
+      },
+      "notesOutline": {
+        "description": "Hiện hoặc ẩn dàn ý của ghi chú đang mở.",
+        "label": "Ghi chú: dàn ý"
+      },
+      "notesAskAgent": {
+        "description": "Hỏi agent về đoạn văn bản đã chọn, hoặc mở và đóng agent của ghi chú.",
+        "label": "Ghi chú: hỏi agent"
+      },
+      "notesNewNote": {
+        "label": "Ghi chú: ghi chú mới",
+        "description": "Tạo một ghi chú mới trong khung hiện tại."
+      },
+      "notesSearch": {
+        "label": "Ghi chú: tìm ghi chú",
+        "description": "Nhảy tới ô tìm kiếm ở đầu thanh bên Ghi chú."
+      },
+      "notesBookmark": {
+        "label": "Ghi chú: đánh dấu ghi chú",
+        "description": "Thêm ghi chú đang mở vào Yêu thích, hoặc bỏ ra khỏi đó."
+      },
+      "notesCopyLink": {
+        "label": "Ghi chú: sao chép liên kết tới ghi chú",
+        "description": "Sao chép liên kết tới ghi chú đang mở để dán vào ghi chú khác hoặc cuộc trò chuyện."
+      },
+      "notesProperties": {
+        "label": "Ghi chú: hiện hoặc ẩn thuộc tính",
+        "description": "Mở hoặc đóng phần thuộc tính bên dưới tiêu đề ghi chú."
+      },
+      "notesQuickCapture": {
+        "description": "Mở một cửa sổ nhỏ để ghi nhanh từ bất kỳ ứng dụng nào, kể cả khi Oleafly đang chạy nền.",
+        "label": "Ghi chú: ghi nhanh"
+      },
+      "notesCopyBlockLink": {
+        "description": "Sao chép liên kết tới đoạn văn, mục danh sách hoặc bảng nơi con trỏ đang đứng.",
+        "label": "Ghi chú: sao chép liên kết tới khối"
+      },
+      "notesBack": {
+        "description": "Quay lại chỗ bạn vừa ở trong tab này.",
+        "label": "Ghi chú: quay lại"
+      },
+      "notesForward": {
+        "description": "Tiến tới lại sau khi đã quay lại.",
+        "label": "Ghi chú: tiến tới"
       }
     },
     "application": {
@@ -2341,14 +2402,41 @@
         "renameSymbol": "Đổi tên ký hiệu hoặc tệp trong toàn dự án",
         "slashCommandMenu": "Menu chèn bằng lệnh gạch chéo",
         "triggerAutocomplete": "Kích hoạt tự động hoàn thành",
-        "undo": "Hoàn tác"
+        "undo": "Hoàn tác",
+        "noteBold": "In đậm",
+        "noteItalic": "In nghiêng",
+        "noteUnderline": "Gạch chân",
+        "noteStrike": "Gạch ngang",
+        "noteCode": "Mã trong dòng",
+        "noteHighlight": "Tô sáng bằng màu dùng gần nhất",
+        "noteSuperscript": "Chỉ số trên",
+        "noteSubscript": "Chỉ số dưới",
+        "noteHeadings": "Tiêu đề 1 đến 6",
+        "noteText": "Chuyển thành văn bản",
+        "noteQuote": "Trích dẫn",
+        "noteCodeBlock": "Khối mã",
+        "noteBulletList": "Danh sách dấu đầu dòng",
+        "noteNumberedList": "Danh sách đánh số",
+        "noteTaskList": "Danh sách công việc",
+        "noteToggleTask": "Đánh dấu hoặc bỏ đánh dấu công việc",
+        "noteIndent": "Thụt lề mục danh sách",
+        "noteOutdent": "Giảm thụt lề mục danh sách",
+        "noteLineBreak": "Xuống dòng trong cùng đoạn",
+        "noteFind": "Tìm và thay thế",
+        "noteSelectAll": "Chọn toàn bộ ghi chú",
+        "noteUndo": "Hoàn tác",
+        "noteRedo": "Làm lại",
+        "noteInsertMenu": "Mở menu chèn ở đầu dòng",
+        "noteLinkMenu": "Liên kết tới ghi chú",
+        "noteTag": "Thêm thẻ"
       },
       "managed": "Do trình biên tập quản lý"
     },
     "categories": {
       "codeIntelligence": "Hiểu mã",
       "editor": "Trình biên tập",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Ghi chú"
     },
     "error": {
       "conflict": "Đã được gán cho {{action}}.",
@@ -2394,6 +2482,15 @@
         "uppercase": "Chữ hoa"
       },
       "unbound": "Chưa đặt"
+    },
+    "quickCapture": {
+      "label": "Ghi nhanh từ mọi nơi",
+      "description": "Phím tắt ghi nhanh hoạt động trong mọi ứng dụng trên máy tính này.",
+      "ready": "Nhấn {{shortcut}} trong bất kỳ ứng dụng nào để mở ghi nhanh.",
+      "taken": "Một ứng dụng khác đã dùng {{shortcut}}. Hãy chọn phím tắt khác cho Ghi chú: ghi nhanh.",
+      "invalid": "{{shortcut}} không thể hoạt động bên ngoài Oleafly. Hãy chọn phím tắt kết thúc bằng một chữ cái, chữ số hoặc phím chức năng.",
+      "failed": "Oleafly không thể thiết lập phím tắt. Hãy tắt rồi bật lại ghi nhanh để thử lại.",
+      "wayland": "Wayland không cho ứng dụng nhận phím bên ngoài cửa sổ của chính nó. Để mở ghi nhanh bằng phím, hãy thêm một phím tắt tuỳ chỉnh trong cài đặt bàn phím của hệ thống để chạy lệnh này:"
     }
   },
   "systemIntegration": {

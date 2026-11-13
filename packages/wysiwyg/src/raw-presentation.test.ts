@@ -83,6 +83,11 @@ describe("rawBlockPresentation labels and previews", () => {
     expect(rawBlockPresentation("plain words").label).toBe("block.latexSource");
   });
 
+  it("labels HTML blocks and previews their text", () => {
+    expect(rawBlockPresentation("<details>\n<summary>More</summary>")).toEqual({ label: "block.html", preview: "More" });
+    expect(rawBlockPresentation("</details>")).toEqual({ label: "block.html", preview: "block.sourcePreserved" });
+  });
+
   it("falls back to a preserved-source note when nothing readable is left", () => {
     expect(rawBlockPresentation(String.raw`\begin{center}\end{center}`).preview).toBe("block.sourcePreserved");
     expect(rawBlockPresentation("% only a comment").preview).toBe("block.sourcePreserved");

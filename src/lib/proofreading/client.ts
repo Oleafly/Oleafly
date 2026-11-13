@@ -561,6 +561,7 @@ class ProofreadingWorkerClient {
     this.retained.clear();
     useProofreadingStore.getState().clear("source");
     useProofreadingStore.getState().clear("visual");
+    useProofreadingStore.getState().clear("notes");
   }
 
   private ensureWorker(): WorkerLike {

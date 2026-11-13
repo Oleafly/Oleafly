@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronRight, MoreHorizontal, type LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { badgeVariants } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import { type SectionReorder, useSectionReorder } from "./section-reorder";
 
 export const SIDEBAR_TITLE_CLASS =
   "text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-sidebar-foreground/75";
@@ -50,6 +51,19 @@ export function SidebarPanelHeader({
   );
 }
 
+function reorderToggleProps(reorder: SectionReorder | null, id: string) {
+  if (!reorder) return {};
+  return {
+    "aria-keyshortcuts": "Alt+ArrowUp Alt+ArrowDown",
+    onPointerDown: (event: Parameters<SectionReorder["begin"]>[1]) => reorder.begin(id, event),
+    onKeyDown: (event: KeyboardEvent<HTMLButtonElement>) => {
+      if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown")) return;
+      event.preventDefault();
+      reorder.step(id, event.key === "ArrowUp" ? -1 : 1, event.currentTarget);
+    },
+  };
+}
+
 export function SidebarSection({
   id,
   title,
@@ -68,6 +82,7 @@ export function SidebarSection({
   children,
   className,
   contentClassName,
+  headingLevel,
 }: Readonly<{
   id: string;
   title: string;
@@ -86,8 +101,49 @@ export function SidebarSection({
   children: ReactNode;
   className?: string;
   contentClassName?: string;
+  headingLevel?: "h2" | "h3" | "h4";
 }>) {
   const contentId = `${id}-content`;
+  const reorder = useSectionReorder();
+  const Heading = headingLevel;
+  const toggle = (
+    <button
+      type="button"
+      aria-label={title}
+      aria-expanded={open}
+      aria-controls={contentId}
+      {...reorderToggleProps(reorder, id)}
+      onClick={() => onOpenChange(!open)}
+      className={cn(
+        "flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5 text-left [&_svg]:shrink-0",
+        SIDEBAR_TITLE_CLASS,
+      )}
+    >
+      {open ? (
+        <ChevronDown aria-hidden className="size-3 shrink-0" />
+      ) : (
+        <ChevronRight aria-hidden className="size-3 shrink-0" />
+      )}
+      {icon}
+      <span className="truncate">
+        <Tooltip label={titleHint ?? title} wide className="inline">
+          {title}
+        </Tooltip>
+      </span>
+      {typeof count === "number" ? (
+        <output
+          aria-label={countLabel}
+          className={cn(
+            badgeVariants({ variant: "primaryGhost", size: "sm" }),
+            "font-mono font-normal tabular-nums tracking-normal",
+          )}
+        >
+          {count}
+        </output>
+      ) : null}
+      {titleAdornment}
+    </button>
+  );
   return (
     <section
       data-testid={id}
@@ -99,46 +155,20 @@ export function SidebarSection({
       )}
     >
       <div
+        data-section-header={id}
         className={cn(
           "flex h-8 shrink-0 items-center pr-2 transition-colors hover:bg-sidebar-accent focus-within:bg-sidebar-accent",
           open && "border-b border-sidebar-border/65",
+          reorder?.dragging === id && "bg-sidebar-accent",
         )}
       >
-        <button
-          type="button"
-          aria-label={title}
-          aria-expanded={open}
-          aria-controls={contentId}
-          onClick={() => onOpenChange(!open)}
-          className={cn(
-            "flex h-full min-w-0 flex-1 items-center gap-1.5 px-2.5 text-left [&_svg]:shrink-0",
-            SIDEBAR_TITLE_CLASS,
-          )}
-        >
-          {open ? (
-            <ChevronDown aria-hidden className="size-3 shrink-0" />
-          ) : (
-            <ChevronRight aria-hidden className="size-3 shrink-0" />
-          )}
-          {icon}
-          <span className="truncate">
-            <Tooltip label={titleHint ?? title} wide className="inline">
-              {title}
-            </Tooltip>
-          </span>
-          {typeof count === "number" ? (
-            <output
-              aria-label={countLabel}
-              className={cn(
-                badgeVariants({ variant: "primaryGhost", size: "sm" }),
-                "font-mono font-normal tabular-nums tracking-normal",
-              )}
-            >
-              {count}
-            </output>
-          ) : null}
-          {titleAdornment}
-        </button>
+        {Heading ? (
+          <Heading aria-label={title} className="flex h-full min-w-0 flex-1">
+            {toggle}
+          </Heading>
+        ) : (
+          toggle
+        )}
         {actions ? (
           <div
             data-testid={`${id}-actions`}

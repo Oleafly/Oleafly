@@ -44,14 +44,16 @@
       "externalTool": "确认外部工具操作。",
       "internet": "确认互联网访问",
       "edit": "确认 AI 编辑",
-      "researchTask": "确认研究任务"
+      "researchTask": "确认研究任务",
+      "note": "确认新建笔记"
     },
     "headline": {
       "command": "助手想要运行此命令。",
       "externalTool": "助手想要使用外部工具。",
       "internet": "助手想要访问互联网。",
       "edit": "助手想要修改你的文件。",
-      "researchTask": "助手想要创建研究任务。"
+      "researchTask": "助手想要创建研究任务。",
+      "note": "助手想要创建一篇笔记"
     },
     "mcpNote": "这会将以下参数发送到已配置的 MCP 服务器。",
     "line": "第 {{line}} 行",
@@ -86,6 +88,14 @@
       "minutes_other": "{{count}} 分钟",
       "planFirst": "先定计划",
       "startNow": "立即开始"
+    },
+    "noteDraft": {
+      "title": "标题",
+      "project": "关联的项目",
+      "tags": "标签",
+      "text": "正文",
+      "empty": "没有正文",
+      "more": "笔记在此之后还有更多内容。"
     }
   },
   "attachments": {
@@ -1082,5 +1092,19 @@
     "replaceConfirm": "替换回复",
     "forked": "已从编辑后的消息开始新聊天。",
     "failed": "无法重新发送消息。"
+  },
+  "noteScope": {
+    "notesOnly": "仅在笔记助手中可用。",
+    "tools": {
+      "readNote": "读取打开的笔记，包括等待审阅的建议。",
+      "proposeNoteEdits": "为打开的笔记提出修改建议，由你接受或拒绝。",
+      "searchNotes": "搜索你的所有笔记。",
+      "listKnowledgeNotes": "按标签或项目列出你的笔记。",
+      "readNoteById": "读取另一篇笔记。",
+      "createNote": "新建一篇笔记。",
+      "relatedProjectFiles": "列出笔记所关联项目中的文件。",
+      "readRelatedProjectFile": "读取笔记所关联项目中的文件。",
+      "searchRelatedProject": "搜索笔记所关联的项目。"
+    }
   }
 }

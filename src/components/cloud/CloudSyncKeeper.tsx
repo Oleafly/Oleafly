@@ -8,6 +8,7 @@ import {
   waitRetryDelay,
 } from "@/components/cloud/cloud-schedule";
 import { CloudSettingsChoiceDialog } from "@/components/cloud/CloudSettingsChoiceDialog";
+import { useCloudBackupSchedule } from "@/components/cloud/use-cloud-backup-schedule";
 import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { loadNamespace } from "@/i18n";
 import { useCatalogUpdates } from "@/i18n/use-catalog-updates";
@@ -86,6 +87,7 @@ export default function CloudSyncKeeper() {
   const active = useCloudStore((s) => s.status === "connected" && s.state?.enabled === true);
   const noteProgress = useCloudStore((s) => s.noteProgress);
   const attention = useCloudAttention();
+  useCloudBackupSchedule();
   const mountedAt = useRef(Date.now());
   const lastRoundAt = useRef<number | null>(null);
 

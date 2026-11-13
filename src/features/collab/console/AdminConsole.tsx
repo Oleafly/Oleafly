@@ -18,6 +18,7 @@ import { useServerMembers } from "../use-server-members";
 import { ChecksSection } from "./ChecksSection";
 import { OverviewSection } from "./OverviewSection";
 import { ProjectsSection } from "./ProjectsSection";
+import { PublishedNotesSection } from "./PublishedNotesSection";
 import { SECTION_ICONS, visibleConsoleSections, type ConsoleSection } from "./sections";
 import { useAdminOverview, type OverviewState } from "./use-admin-overview";
 
@@ -208,6 +209,8 @@ export function AdminConsole({ server, actor }: Readonly<{ server: CollabServer;
             now={ready?.now ?? Date.now()}
           />
         );
+      case "pages":
+        return <PublishedNotesSection serverId={serverId} now={ready?.now ?? Date.now()} />;
       case "settings":
         return <RuntimeSettingsTab serverId={serverId} actor={actor} />;
       case "email":

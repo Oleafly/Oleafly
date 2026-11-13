@@ -999,7 +999,8 @@
       "editor": "Editor",
       "files": "Progetto",
       "pdf": "Anteprima PDF",
-      "terminal": "Terminale"
+      "terminal": "Terminale",
+      "notes": "Note"
     },
     "terminal": {
       "colorTheme": {
@@ -2358,6 +2359,66 @@
       "resetZoom": {
         "description": "Riporta l'app al 100%.",
         "label": "Reimposta zoom"
+      },
+      "notesQuickSwitcher": {
+        "description": "Trova una nota per nome e aprila.",
+        "label": "Note: vai a una nota"
+      },
+      "notesTodayNote": {
+        "description": "Apri la nota di oggi, o creala.",
+        "label": "Note: nota di oggi"
+      },
+      "notesGraph": {
+        "description": "Apri il grafo di tutte le tue note.",
+        "label": "Note: grafo"
+      },
+      "notesLocalGraph": {
+        "description": "Mostra o nascondi i collegamenti attorno alla nota aperta.",
+        "label": "Note: grafo locale"
+      },
+      "notesOutline": {
+        "description": "Mostra o nascondi la struttura della nota aperta.",
+        "label": "Note: struttura"
+      },
+      "notesAskAgent": {
+        "description": "Fai una domanda all'agente sul testo selezionato, oppure apri e chiudi l'agente della nota.",
+        "label": "Note: chiedi all'agente"
+      },
+      "notesNewNote": {
+        "label": "Note: nuova nota",
+        "description": "Inizia una nuova nota nel pannello attuale."
+      },
+      "notesSearch": {
+        "label": "Note: cerca nelle note",
+        "description": "Vai alla casella di ricerca in cima alla barra laterale delle note."
+      },
+      "notesBookmark": {
+        "label": "Note: aggiungi ai preferiti",
+        "description": "Aggiungi la nota aperta ai Preferiti o toglila."
+      },
+      "notesCopyLink": {
+        "label": "Note: copia il collegamento alla nota",
+        "description": "Copia un collegamento alla nota aperta da incollare in un'altra nota o in una chat."
+      },
+      "notesProperties": {
+        "label": "Note: mostra o nascondi le proprietà",
+        "description": "Apri o chiudi le proprietà sotto il titolo della nota."
+      },
+      "notesQuickCapture": {
+        "description": "Apri una piccola finestra per annotare qualcosa da qualsiasi app, anche quando Oleafly è in background.",
+        "label": "Note: cattura rapida"
+      },
+      "notesCopyBlockLink": {
+        "description": "Copia un collegamento al paragrafo, all'elemento di elenco o alla tabella in cui si trova il cursore.",
+        "label": "Note: copia il collegamento al blocco"
+      },
+      "notesBack": {
+        "description": "Torna dove eri in questa scheda.",
+        "label": "Note: indietro"
+      },
+      "notesForward": {
+        "description": "Vai di nuovo avanti dopo un passo indietro.",
+        "label": "Note: avanti"
       }
     },
     "application": {
@@ -2383,14 +2444,41 @@
         "renameSymbol": "Rinomina il simbolo o il file in tutto il progetto",
         "slashCommandMenu": "Menu di inserimento con comandi slash",
         "triggerAutocomplete": "Attiva il completamento automatico",
-        "undo": "Annulla"
+        "undo": "Annulla",
+        "noteBold": "Grassetto",
+        "noteItalic": "Corsivo",
+        "noteUnderline": "Sottolineato",
+        "noteStrike": "Barrato",
+        "noteCode": "Codice in linea",
+        "noteHighlight": "Evidenzia con l'ultimo colore usato",
+        "noteSuperscript": "Apice",
+        "noteSubscript": "Pedice",
+        "noteHeadings": "Titoli da 1 a 6",
+        "noteText": "Trasforma in testo",
+        "noteQuote": "Citazione",
+        "noteCodeBlock": "Blocco di codice",
+        "noteBulletList": "Elenco puntato",
+        "noteNumberedList": "Elenco numerato",
+        "noteTaskList": "Elenco di attività",
+        "noteToggleTask": "Spunta o togli la spunta a un'attività",
+        "noteIndent": "Aumenta il rientro di un elemento di elenco",
+        "noteOutdent": "Riduci il rientro di un elemento di elenco",
+        "noteLineBreak": "A capo nello stesso paragrafo",
+        "noteFind": "Trova e sostituisci",
+        "noteSelectAll": "Seleziona tutta la nota",
+        "noteUndo": "Annulla",
+        "noteRedo": "Ripristina",
+        "noteInsertMenu": "Apri il menu di inserimento all'inizio di una riga",
+        "noteLinkMenu": "Collega a una nota",
+        "noteTag": "Aggiungi un tag"
       },
       "managed": "Gestita dall'editor"
     },
     "categories": {
       "codeIntelligence": "Analisi del codice",
       "editor": "Editor",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Note"
     },
     "error": {
       "conflict": "Già assegnata a {{action}}.",
@@ -2436,6 +2524,15 @@
         "uppercase": "Maiuscolo"
       },
       "unbound": "Non impostata"
+    },
+    "quickCapture": {
+      "label": "Cattura rapida da qualsiasi app",
+      "description": "La scorciatoia per la cattura rapida funziona in tutte le app di questo computer.",
+      "ready": "Premi {{shortcut}} in qualsiasi app per aprire la cattura rapida.",
+      "taken": "Un'altra app usa già {{shortcut}}. Scegli una scorciatoia diversa per Note: cattura rapida.",
+      "invalid": "{{shortcut}} non può funzionare fuori da Oleafly. Scegli una scorciatoia che termini con una lettera, un numero o un tasto funzione.",
+      "failed": "Oleafly non è riuscito a configurare la scorciatoia. Disattiva e riattiva la cattura rapida per riprovare.",
+      "wayland": "Wayland non permette alle app di ricevere i tasti premuti fuori dalle proprie finestre. Per aprire la cattura rapida con un tasto, aggiungi nelle impostazioni della tastiera del sistema una scorciatoia personalizzata che esegua questo comando:"
     }
   },
   "systemIntegration": {

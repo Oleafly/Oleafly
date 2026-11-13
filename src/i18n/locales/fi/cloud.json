@@ -110,6 +110,8 @@
     "conflictsHelp_one": "Tätä tiedostoa muutettiin täällä ja toisella tietokoneella, ennen kuin muutokset ehdittiin synkronoida, joten Oleafly säilytti molemmat versiot. Säilytä tarvitsemasi ja poista sitten kopio.",
     "conflictsHelp_other": "Näitä tiedostoja muutettiin täällä ja toisella tietokoneella, ennen kuin muutokset ehdittiin synkronoida, joten Oleafly säilytti molemmat versiot. Säilytä tarvitsemasi ja poista sitten kopiot.",
     "conflictsLabel": "Ristiriitakopiot projektissa {{name}}",
+    "compare": "Vertaa",
+    "compareLabel": "Vertaa kohdetta {{path}} muistiinpanoon",
     "dismiss": "Sulje",
     "skipped_one": "{{count}} tiedosto ohitettiin",
     "skipped_other": "{{count}} tiedostoa ohitettiin",
@@ -142,6 +144,16 @@
       "downloadFailed": "Ei voitu ladata",
       "uploadFailed": "Ei voitu lähettää"
     }
+  },
+  "conflictCopy": {
+    "title": "Muistiinpanosta \"{{name}}\" on kaksi versiota",
+    "description": "Tätä muistiinpanoa muutettiin täällä ja toisella tietokoneella, ennen kuin muutokset ehdittiin synkronoida, joten Oleafly säilytti molemmat versiot. Valitse, kumman version säilytät. Toinen siirtyy roskakoriin.",
+    "diffLabel": "Versioiden väliset erot",
+    "loading": "Luetaan molempia versioita…",
+    "readFailed": "Ristiriitakopion lukeminen ei onnistunut.",
+    "resolveFailed": "Valitun version säilyttäminen ei onnistunut.",
+    "keepMine": "Säilytä tämän tietokoneen versio",
+    "useCopy": "Käytä toisen tietokoneen versiota"
   },
   "confirm": {
     "removeTitle": "Poistetaanko projekti {{name}} palvelusta {{provider}}?",
@@ -207,6 +219,76 @@
     "pathStyle": "Käytä polkutyylisiä osoitteita",
     "pathStyleHint": "MinIO ja useimmat itse ylläpidetyt palvelimet tarvitsevat tätä."
   },
+  "backups": {
+    "title": "Varmuuskopiot",
+    "none": "Ei vielä varmuuskopioita",
+    "last": "Viimeisin varmuuskopio {{time}} · {{contents}} · {{size}}",
+    "notes_one": "{{count}} muistiinpano",
+    "notes_other": "{{count}} muistiinpanoa",
+    "projects_one": "{{count}} projekti",
+    "projects_other": "{{count}} projektia",
+    "running": "Varmuuskopioidaan",
+    "failed": "Viimeisin varmuuskopiointi ei valmistunut. {{reason}}",
+    "backUpNow": "Varmuuskopioi nyt",
+    "auto": {
+      "label": "Varmuuskopioi automaattisesti",
+      "description": "Säilyttää päivättyjä kopioita muistiinpanoistasi palvelussa {{provider}}. Myöhemmät muokkaukset ja poistot eivät vaikuta niihin, eivät edes synkronoidut."
+    },
+    "every": {
+      "label": "Kuinka usein",
+      "description": "Varmuuskopio lähettää vain sen, mikä on muuttunut edellisen jälkeen.",
+      "options": {
+        "6": "6 tunnin välein",
+        "24": "Päivittäin",
+        "168": "Viikoittain"
+      }
+    },
+    "keep": {
+      "label": "Säilytä",
+      "description": "Vanhemmat varmuuskopiot poistetaan palvelusta {{provider}} tilan säästämiseksi.",
+      "option_one": "Viimeisin varmuuskopio",
+      "option_other": "{{count}} viimeisintä varmuuskopiota"
+    },
+    "includeProjects": {
+      "label": "Sisällytä projektit",
+      "description": "Projektit synkronoidaan jo tarkistuspisteineen. Ota tämä käyttöön, jos haluat säilyttää niistäkin päivättyjä kopioita. Suuren projektin ensimmäinen varmuuskopio voi kestää jonkin aikaa ja viedä paljon tilaa."
+    },
+    "list": {
+      "title": "Varmuuskopiot palvelussa {{provider}}",
+      "label": "Varmuuskopiot",
+      "loading": "Luetaan varmuuskopioita",
+      "failed": "Varmuuskopioita ei voitu lukea. {{reason}}",
+      "empty": "Palvelussa {{provider}} ei ole vielä varmuuskopioita."
+    },
+    "row": {
+      "thisComputer": "Tämä tietokone",
+      "manual": "Käsin",
+      "restore": "Palauta",
+      "restoreLabel": "Palauta varmuuskopio: {{date}}"
+    },
+    "restore": {
+      "title": "Palautus varmuuskopiosta: {{date}}",
+      "description": "Palautus ei koskaan korvaa sitä, mitä sinulla on. Jos muistiinpano tai projekti on yhä täällä, se palautuu kopiona sen viereen, jotta voit verrata niitä.",
+      "loading": "Luetaan varmuuskopiota",
+      "loadFailed": "Tätä varmuuskopiota ei voitu lukea. {{reason}}",
+      "search": "Hae tästä varmuuskopiosta",
+      "clearSearch": "Tyhjennä haku",
+      "noMatch": "Mikään tässä varmuuskopiossa ei vastaa hakua.",
+      "listLabel": "Tämän varmuuskopion muistiinpanot ja projektit",
+      "here": "Yhä täällä",
+      "missing": "Ei tällä tietokoneella",
+      "restored": "Palautettu",
+      "restoredCopy": "Palautettu kopiona",
+      "files_one": "{{count}} tiedosto",
+      "files_other": "{{count}} tiedostoa",
+      "one": "Palauta",
+      "oneLabel": "Palauta {{name}}",
+      "allMissing_one": "Palauta puuttuva",
+      "allMissing_other": "Palauta {{count}} puuttuvaa",
+      "nothingMissing": "Mitään ei puutu",
+      "copyName": "(palautettu {{date}})"
+    }
+  },
   "errors": {
     "clock_skew": "Tämän tietokoneen kello on väärässä, joten palvelu {{provider}} ei hyväksy sen pyyntöjä. Aseta oikea päivämäärä ja kellonaika, jotta synkronointi voi jatkua.",
     "code_invalid": "Koodi ei toiminut. Yritä uudelleen.",
@@ -235,6 +317,8 @@
     "sign_in_timeout": "Kirjautuminen kesti liian kauan. Yritä uudelleen.",
     "too_many_files": "Tässä projektissa on yli 100 000 tiedostoa. Niitä on liian monta synkronoitavaksi.",
     "traffic_limit": "Palvelusi {{provider}} on saavuttanut lähetysrajan. Uudet muutokset pysyvät tällä tietokoneella, kunnes {{provider}} sallii lähetykset taas.",
-    "verify_failed": "Palvelusta {{provider}} tullut tiedosto ei vastannut sitä, mitä Oleafly odotti, joten siihen ei koskettu. Synkronointi yrittää uudelleen."
+    "verify_failed": "Palvelusta {{provider}} tullut tiedosto ei vastannut sitä, mitä Oleafly odotti, joten siihen ei koskettu. Synkronointi yrittää uudelleen.",
+    "backup_missing": "Tätä varmuuskopiota ei ole enää palvelussasi {{provider}}.",
+    "backup_label": "Oleafly ei voinut nimetä palautettua kopiota."
   }
 }

@@ -1,4 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { Trans, useTranslation } from "react-i18next";
 import {
   BookmarkX,
@@ -57,6 +58,7 @@ import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { WindowControls } from "@/components/layout/WindowControls";
 import { Tooltip } from "@/components/ui/tooltip";
+import { ColorDot } from "@/components/ui/color-swatch";
 import { LayoutToggle } from "@/components/library/LayoutToggle";
 import { ModalShell } from "@/components/ui/modal-shell";
 import {
@@ -81,7 +83,7 @@ import {
 import { DotPattern } from "@/components/ui/dot-pattern";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { useFavoritesStore } from "@/store/favorites";
-import { useProjectColorsStore } from "@/store/project-colors";
+import { useProjectColorOf, useProjectColorsStore } from "@/store/project-colors";
 import { decodeAppError, PROJECT_NOT_FOUND } from "@/lib/app-error";
 import { useDisplayPath } from "@/lib/display-path";
 import { logError } from "@/lib/log";
@@ -102,6 +104,7 @@ import {
 import {
   folderAvailability,
   isFolderProject,
+  libraryProjects,
   projectUpdatedAt,
 } from "@/lib/library-projects";
 import {
@@ -190,13 +193,14 @@ function FilterSelect({
   className?: string;
 }>) {
   const id = `project-filter-${name}`;
+  const shown = value === CUSTOM_FILTER || options.some((option) => option.value === value) ? value : CUSTOM_FILTER;
   return (
     <label
       htmlFor={id}
       className={cn("flex min-w-0 flex-col gap-1 text-xs font-medium", className)}
     >
       {label}
-      <Select value={value} onValueChange={onChange}>
+      <Select value={shown} onValueChange={onChange}>
         <SelectTrigger
           id={id}
           className="h-10 border-white/20 bg-background/35 text-sm backdrop-blur-md dark:border-white/10"
@@ -210,7 +214,7 @@ function FilterSelect({
                 {option.label}
               </SelectItem>
             ))}
-            {value === CUSTOM_FILTER ? (
+            {shown === CUSTOM_FILTER ? (
               <SelectItem value={CUSTOM_FILTER} disabled>
                 {customLabel}
               </SelectItem>
@@ -227,13 +231,14 @@ export function Library() {
   const displayPath = useDisplayPath();
   const colorLabels = useBookColorLabels();
   const page = useHomeViewStore((s) => s.page);
-  const projects = useFilesStore((s) => s.projects);
+  const allProjects = useFilesStore((s) => s.projects);
+  const notesOn = useSettingsStore((s) => s.notes);
+  const projects = useMemo(() => libraryProjects(allProjects, notesOn), [allProjects, notesOn]);
   const projectsLoaded = useFilesStore((s) => s.projectsLoaded);
   const refreshProjects = useFilesStore((s) => s.refreshProjects);
   const openProject = useFilesStore((s) => s.openProject);
   const favs = useFavoritesStore((s) => s.favs);
   const toggleFav = useFavoritesStore((s) => s.toggle);
-  const projectColors = useProjectColorsStore((s) => s.colors);
   const setProjectColor = useProjectColorsStore((s) => s.setColor);
   const setNewProjectOpen = useSettingsStore((s) => s.setNewProjectOpen);
   const hoverPreview = useSettingsStore((s) => s.hoverPreview);
@@ -276,10 +281,7 @@ export function Library() {
   const availabilityOf = (project: ProjectInfo): ProjectAvailability =>
     folderAvailability(project, checkedFolders);
   const updatedAtOf = (project: ProjectInfo) => projectUpdatedAt(project, modifiedFolders);
-  const coverColor = useCallback(
-    (project: ProjectInfo) => projectColors[project.id] ?? (project.color || DEFAULT_BOOK_COLOR),
-    [projectColors],
-  );
+  const coverColor = useProjectColorOf();
   const collabKit = useCollabLibraryKit();
   const hasShared = useMemo(() => projects.some((project) => Boolean(project.shared)), [projects]);
   const searchSchema = useMemo(
@@ -291,10 +293,11 @@ export function Library() {
           modified: modifiedFolders,
           colorOf: coverColor,
           colorLabels,
+          hideNotes: notesOn,
         },
         collabKit ? [collabKit.extension] : [],
       ),
-    [t, favs, modifiedFolders, coverColor, colorLabels, collabKit],
+    [t, favs, modifiedFolders, coverColor, colorLabels, collabKit, notesOn],
   );
   const analyzedQuery = useMemo(
     () => analyze(query, searchSchema, { now: Date.now() }),
@@ -791,13 +794,8 @@ export function Library() {
               {t(($) => $.library.projects.detailsDialog.color)}
             </dt>
             <dd className="flex items-center gap-2">
-              <span
-                className="size-3.5 rounded-full border"
-                style={{ background: currentDetailsProject.color || DEFAULT_BOOK_COLOR }}
-              />
-              <span className="font-mono text-xs">
-                {currentDetailsProject.color || DEFAULT_BOOK_COLOR}
-              </span>
+              <ColorDot color={coverColor(currentDetailsProject)} size="md" />
+              <span className="font-mono text-xs">{coverColor(currentDetailsProject)}</span>
             </dd>
             <dt className="text-muted-foreground">
               {t(($) => $.library.projects.detailsDialog.bookmarked)}
@@ -1100,6 +1098,7 @@ export function Library() {
                 { value: "document", label: t(($) => $.library.home.filters.kindDocument) },
                 { value: "image", label: t(($) => $.library.home.filters.kindImage) },
                 { value: "diagram", label: t(($) => $.library.home.filters.kindDiagram) },
+                ...(notesOn ? [] : [{ value: "note", label: t(($) => $.library.home.filters.kindNote) }]),
               ]}
             />
             <FilterSelect

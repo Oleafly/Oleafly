@@ -95,7 +95,7 @@ jobs:
   frontend:
     name: Frontend (typecheck + build)
     runs-on: ubuntu-22.04
-    timeout-minutes: 40
+    timeout-minutes: 55
     env:
       # The 0.4.8 vite build peaks near Node's default 4 GB heap (same
       # setting as release.yml).
@@ -215,12 +215,93 @@ jobs:
       - name: Check performance budgets
         run: pnpm check:performance
 
+      # Deterministic p95 gates for the core editor's book-scale synchronous
+      # paths. The native E2E jobs below cover WebView rendering and scrolling.
+      - name: Test book-scale editor performance
+        run: pnpm test:editor:performance
+
+  # The unit suite with coverage took 31 minutes on one runner and started 10
+  # minutes into the job above, which no longer fit its 40-minute limit. It
+  # runs here instead, beside the build, as three shards that each write a
+  # blob report. Thresholds are off inside a shard (one shard never covers the
+  # whole tree); `unit-coverage` merges the three and checks them there.
+  unit:
+    name: Unit tests (shard ${{ matrix.shard }}/3)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+      OLEAFLY_COVERAGE_SHARD: "1"
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Test with coverage
-        if: github.event_name == 'push' || github.event_name == 'pull_request'
-        run: pnpm test:coverage
+        run: >-
+          pnpm exec vitest run --coverage --maxWorkers=4
+          --reporter=default --reporter=blob
+          --shard=${{ matrix.shard }}/3
+
+      - name: Upload the shard report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: unit-blob-${{ matrix.shard }}
+          path: .vitest-reports
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  unit-coverage:
+    name: Unit coverage (merged)
+    needs: unit
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    env:
+      NODE_OPTIONS: --max-old-space-size=6144
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Install Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download the shard reports
+        uses: actions/download-artifact@v8
+        with:
+          pattern: unit-blob-*
+          path: .vitest-reports
+          merge-multiple: true
+
+      # Fails when the merged coverage is under the thresholds in
+      # vitest.config.ts, exactly as the single run used to.
+      - name: Merge coverage and check thresholds
+        run: pnpm test:coverage:merge
 
       - name: Upload frontend coverage
-        if: github.event_name == 'push' || github.event_name == 'pull_request'
         uses: actions/upload-artifact@v7
         with:
           name: frontend-coverage
@@ -228,19 +309,10 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
-      - name: Test
-        if: github.event_name != 'push' && github.event_name != 'pull_request'
-        run: pnpm test
-
-      # Deterministic p95 gates for the core editor's book-scale synchronous
-      # paths. The native E2E jobs below cover WebView rendering and scrolling.
-      - name: Test book-scale editor performance
-        run: pnpm test:editor:performance
-
   frontend-windows:
     name: Frontend (Windows)
     runs-on: windows-2022
-    timeout-minutes: 45
+    timeout-minutes: 55
     env:
       # The 0.4.8 vite build peaks near Node's default 4 GB heap (same
       # setting as release.yml).
@@ -556,7 +628,7 @@ jobs:
 
   sonarqube:
     name: SonarQube Cloud
-    needs: [frontend, rust]
+    needs: [frontend, unit-coverage, rust]
     if: >-
       github.actor != 'dependabot[bot]' &&
       (github.event_name == 'push' ||
@@ -608,7 +680,7 @@ jobs:
     # test hooks (VITE_E2E_HOOKS=1) and must never ship; the production build
     # keeps its hook audit fatal.
     name: E2E app build (macOS)
-    needs: [frontend, rust]
+    needs: [frontend, unit-coverage, rust]
     runs-on: macos-15
     # About 30 minutes with a warm cache, before the shared crates' macOS tests
     # and clippy were added below.
@@ -762,7 +834,7 @@ jobs:
     # 2-core runners on software GL, and a concurrent cargo build starves the
     # webview badly enough that single evals exceed the bridge's hard 30s cap.
     name: E2E app build (Linux)
-    needs: [frontend, rust]
+    needs: [frontend, unit-coverage, rust]
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
@@ -1352,7 +1424,7 @@ jobs:
           if-no-files-found: ignore
 
   e2e-browser-harness:
-    # The four browser-harness specs drive Playwright's own Chromium against
+    # The browser-harness specs drive Playwright's own Chromium against
     # fixture pages that Vite serves from e2e/, with the Tauri bridge mocked
     # inside the page. They need no app build, and every packaged shard skips
     # them, so this lane is where they run now that Windows no longer runs the
@@ -1361,7 +1433,7 @@ jobs:
     name: E2E (browser harness, Linux)
     needs: frontend
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
 
@@ -1432,7 +1504,7 @@ jobs:
     # and hand it to scripts/e2e.ps1 through OLEAFLY_E2E_APP_BINARY, the path
     # the runner already supports for a prebuilt binary.
     name: E2E app build (Windows)
-    needs: [frontend, rust]
+    needs: [frontend, unit-coverage, rust]
     runs-on: windows-2022
     timeout-minutes: 45
     env:

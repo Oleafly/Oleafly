@@ -1,5 +1,6 @@
 import {
   forwardRef,
+  type ReactNode,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -12,7 +13,7 @@ import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import type { DelegationTarget } from "@/lib/agent-mentions";
 import { mentionInsertText, normalizeMentionPath } from "@/lib/composer-tokens";
 import { basename } from "@/lib/path-utils";
-import { cn } from "@/lib/utils";
+import { Listbox, ListboxHeading, ListboxOption } from "@/components/ui/listbox";
 
 export interface MentionEntry {
   path: string;
@@ -210,53 +211,48 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
 
     if (items.length === 0) return null;
 
-    const optionClass = (selected: boolean) =>
-      cn(
-        "flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-left transition-colors",
-        selected && "bg-accent text-accent-foreground",
-      );
     const showHeadings = agents.length > 0 && entries.length > 0;
 
     return (
-      <div
+      <Listbox
         ref={listRef}
         id="ai-mention-menu"
-        role="listbox"
         aria-label={
           agents.length > 0
             ? t(($) => $.ai.composer.mentionMenuAgentsAndFiles)
             : t(($) => $.ai.composer.mentionMenuFiles)
         }
-        className="absolute bottom-full left-0 z-50 mb-2 max-h-72 w-full overflow-y-auto rounded-lg border bg-popover p-1.5 text-popover-foreground shadow-xl"
+        className="absolute bottom-full left-0 z-50 mb-2 max-h-72 w-full"
       >
         {items.map((item, index) => {
           const selected = index === activeIndex;
+          const option = (id: string, children: ReactNode) => (
+            <ListboxOption
+              id={id}
+              selected={selected}
+              onHighlight={() => setActiveKey(item.key)}
+              onChoose={() => select(item)}
+            >
+              {children}
+            </ListboxOption>
+          );
           if (item.kind === "agent") {
             const { target } = item;
             return (
               <div key={item.key}>
                 {showHeadings && index === 0 && (
-                  <p className="px-2.5 pb-1 pt-0.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
-                    {t(($) => $.ai.composer.mentionHeadingAgents)}
-                  </p>
+                  <ListboxHeading className="pt-0.5">{t(($) => $.ai.composer.mentionHeadingAgents)}</ListboxHeading>
                 )}
-                <button
-                  id={`ai-mention-${item.key}`}
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  tabIndex={-1}
-                  onMouseEnter={() => setActiveKey(item.key)}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => select(item)}
-                  className={optionClass(selected)}
-                >
-                  <Bot className="size-4 shrink-0 text-primary" />
-                  <span className="min-w-0 flex-1 truncate text-xs leading-snug">
-                    <span className="font-medium">{target.label}</span>
-                    <span className="text-muted-foreground"> · {target.detail}</span>
-                  </span>
-                </button>
+                {option(
+                  `ai-mention-${item.key}`,
+                  <>
+                    <Bot className="size-4 shrink-0 text-primary" />
+                    <span className="min-w-0 flex-1 truncate text-xs leading-snug">
+                      <span className="font-medium">{target.label}</span>
+                      <span className="text-muted-foreground"> · {target.detail}</span>
+                    </span>
+                  </>,
+                )}
               </div>
             );
           }
@@ -267,34 +263,23 @@ export const MentionMenu = forwardRef<MentionMenuHandle, MentionMenuProps>(
           return (
             <div key={item.key}>
               {showHeadings && index === agents.length && (
-                <p className="px-2.5 pb-1 pt-1.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted-foreground">
-                  {t(($) => $.ai.composer.mentionHeadingFiles)}
-                </p>
+                <ListboxHeading>{t(($) => $.ai.composer.mentionHeadingFiles)}</ListboxHeading>
               )}
-              <button
-                id={`ai-mention-${entry.path}`}
-                type="button"
-                role="option"
-                aria-selected={selected}
-                tabIndex={-1}
-                onMouseEnter={() => setActiveKey(item.key)}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => select(item)}
-                className={optionClass(selected)}
-              >
-                <Icon className="size-4 shrink-0 text-primary" />
-                <span className="min-w-0 flex-1 truncate text-xs leading-snug">
-                  {directory && (
-                    <span className="text-muted-foreground">{directory}</span>
-                  )}
-                  <span className="font-medium">{name}</span>
-                  {entry.isDir && <span className="text-muted-foreground">/</span>}
-                </span>
-              </button>
+              {option(
+                `ai-mention-${entry.path}`,
+                <>
+                  <Icon className="size-4 shrink-0 text-primary" />
+                  <span className="min-w-0 flex-1 truncate text-xs leading-snug">
+                    {directory && <span className="text-muted-foreground">{directory}</span>}
+                    <span className="font-medium">{name}</span>
+                    {entry.isDir && <span className="text-muted-foreground">/</span>}
+                  </span>
+                </>,
+              )}
             </div>
           );
         })}
-      </div>
+      </Listbox>
     );
   },
 );

@@ -12,13 +12,13 @@ import {
 import { useSettingsStore } from "@/store/settings";
 import { useFilesStore } from "@/store/files";
 import { useTheme } from "@/lib/theme";
-import { cn } from "@/lib/utils";
 import { commandAliasSearchText } from "@/lib/command-search";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { useTourStore } from "@/store/tours";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { useModalLayer } from "@/components/ui/use-modal-accessibility";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
+import { COMMAND_GROUP, COMMAND_ITEM, CommandDialogShell } from "@/components/ui/command-dialog";
 
 export function CommandPalette() {
   const open = useSettingsStore((s) => s.paletteOpen);
@@ -131,50 +131,41 @@ export function CommandPalette() {
   }, [bestMatchValue]);
 
   return (
-    <Command.Dialog
+    <CommandDialogShell
       open={open}
       onOpenChange={setPaletteOpen}
       label={t(($) => $.shell.commandPalette.label)}
       shouldFilter={false}
       value={selectedValue}
       onValueChange={setSelectedValue}
-      overlayClassName="fixed inset-0 z-[90] bg-black/55 backdrop-blur-sm"
-      className={cn("fixed left-1/2 top-[20%] z-[90] w-[min(560px,92vw)] -translate-x-1/2")}
+      query={query}
+      onQueryChange={setQuery}
+      placeholder={t(($) => $.shell.commandPalette.placeholder)}
+      listRef={listRef}
     >
-      <div className="overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-2xl">
-        <Command.Input
-          value={query}
-          onValueChange={setQuery}
-          autoFocus
-          placeholder={t(($) => $.shell.commandPalette.placeholder)}
-          className="flex h-12 w-full border-b border-border bg-transparent px-4 text-sm placeholder:text-muted-foreground"
-        />
-        <Command.List ref={listRef} className="max-h-[min(60vh,360px)] overflow-auto p-1.5">
-          <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
-            {t(($) => $.shell.commandPalette.empty)}
-          </Command.Empty>
+      <Command.Empty className="py-6 text-center text-sm text-muted-foreground">
+        {t(($) => $.shell.commandPalette.empty)}
+      </Command.Empty>
 
-          {groups.map(([heading, cmds]) => (
-            <Command.Group
-              key={heading}
-              heading={heading}
-              className="px-1 text-xs font-medium text-muted-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
-            >
-              {cmds.map((c) => (
-                <PaletteItem
-                  key={c.id}
-                  icon={c.icon?.(ctx)}
-                  label={commandLabel(c, ctx)}
-                  hint={commandHint(c, ctx)}
-                  searchValue={`${commandLabel(c, ctx)} ${commandKeywords(c, ctx)} ${commandAliasSearchText(c.slash)}`}
-                  onSelect={run(() => c.run(ctx))}
-                />
-              ))}
-            </Command.Group>
+      {groups.map(([heading, cmds]) => (
+        <Command.Group
+          key={heading}
+          heading={heading}
+          className={COMMAND_GROUP}
+        >
+          {cmds.map((c) => (
+            <PaletteItem
+              key={c.id}
+              icon={c.icon?.(ctx)}
+              label={commandLabel(c, ctx)}
+              hint={commandHint(c, ctx)}
+              searchValue={`${commandLabel(c, ctx)} ${commandKeywords(c, ctx)} ${commandAliasSearchText(c.slash)}`}
+              onSelect={run(() => c.run(ctx))}
+            />
           ))}
-        </Command.List>
-      </div>
-    </Command.Dialog>
+        </Command.Group>
+      ))}
+    </CommandDialogShell>
   );
 }
 
@@ -195,7 +186,7 @@ function PaletteItem({
     <Command.Item
       value={searchValue}
       onSelect={onSelect}
-      className="flex items-center gap-2.5 rounded-md px-2 py-2 text-sm data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground"
+      className={COMMAND_ITEM}
     >
       <span className="text-muted-foreground">{icon}</span>
       <span>{label}</span>

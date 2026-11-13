@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,8 +15,7 @@ import { useCiteOleaflyStore } from "@/store/cite-oleafly";
 import { useSettingsStore } from "@/store/settings";
 
 const CiteOleaflyCard = lazy(() =>
-  import("@/components/settings/CiteOleaflyCard").then((module) => ({ default: module.CiteOleaflyCard })),
-);
+  import("@/components/settings/CiteOleaflyCard").then((module) => ({ default: module.CiteOleaflyCard })), { warm: true });
 
 export function CiteOleaflyDialog() {
   const { t } = useTranslation(["common", "shell"]);

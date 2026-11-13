@@ -1,10 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { analyze, compile, readFacet, sortItems, writeFacet } from "@oleafly/search-query";
 import { i18n } from "@/i18n";
+import enLibrary from "@/i18n/locales/en/library.json" with { type: "json" };
 import type { ProjectInfo } from "@/lib/tauri";
 import {
   buildProjectSearchSchema,
   PROJECT_FACETS,
+  PROJECT_KINDS,
+  PROJECT_KINDS_WITHOUT_NOTES,
   projectEngine,
   projectEngineLabel,
   type ProjectSearchExtension,
@@ -87,6 +90,36 @@ describe("project search schema", () => {
     expect(ids("-engine:latex")).toEqual(["notes", "poster"]);
     expect(ids("-engine:tectonic")).toEqual(["notes", "poster"]);
     expect(ids("type:image")).toEqual(["poster"]);
+  });
+
+  it("finds notes by kind and names them in the kind suggestions", () => {
+    const schema = buildProjectSearchSchema(i18n.t.bind(i18n) as never, {
+      favorites: [],
+      modified: {},
+      colorOf: () => "#1982c4",
+      colorLabels: {},
+    });
+    const note = schema.field("kind")?.options?.find((option) => option.value === "note");
+    expect(note?.meta?.label).toBe(enLibrary.home.filters.kindNote);
+    expect(note?.meta?.icon).toBeTruthy();
+    const projects = [...PROJECTS, project("masking", { name: "Masking", main_doc: "note.md", kind: "note" })];
+    const compiled = compile(analyze("kind:note", schema, { now: NOW * 1000 }), schema, { now: NOW * 1000 });
+    expect(projects.filter(compiled.test).map((item) => item.id)).toEqual(["masking"]);
+    const others = compile(analyze("-type:note", schema, { now: NOW * 1000 }), schema, { now: NOW * 1000 });
+    expect(projects.filter(others.test).map((item) => item.id)).not.toContain("masking");
+  });
+
+  it("leaves notes out of the kind suggestions while Notes keeps them", () => {
+    const schema = buildProjectSearchSchema(i18n.t.bind(i18n) as never, {
+      favorites: [],
+      modified: {},
+      colorOf: () => "#1982c4",
+      colorLabels: {},
+      hideNotes: true,
+    });
+    expect(schema.field("kind")?.options?.map((option) => option.value)).toEqual(["document", "image", "diagram"]);
+    expect(PROJECT_KINDS_WITHOUT_NOTES).toEqual(["document", "image", "diagram"]);
+    expect(PROJECT_KINDS).toEqual(["document", "image", "diagram", "note"]);
   });
 
   it("supports is:, has: and no: flags", () => {

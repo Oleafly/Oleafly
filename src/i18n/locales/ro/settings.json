@@ -999,7 +999,8 @@
       "editor": "Editor",
       "files": "Proiect",
       "pdf": "Previzualizare PDF",
-      "terminal": "Terminal"
+      "terminal": "Terminal",
+      "notes": "Notițe"
     },
     "terminal": {
       "colorTheme": {
@@ -2358,6 +2359,66 @@
       "resetZoom": {
         "description": "Readuce aplicația la 100%.",
         "label": "Resetează zoomul"
+      },
+      "notesQuickSwitcher": {
+        "description": "Găsește o notiță după nume și deschide-o.",
+        "label": "Notițe: mergi la o notiță"
+      },
+      "notesTodayNote": {
+        "description": "Deschide notița de azi sau începe-o.",
+        "label": "Notițe: notița de azi"
+      },
+      "notesGraph": {
+        "description": "Deschide graful tuturor notițelor tale.",
+        "label": "Notițe: graf"
+      },
+      "notesLocalGraph": {
+        "description": "Arată sau ascunde legăturile din jurul notiței deschise.",
+        "label": "Notițe: graf local"
+      },
+      "notesOutline": {
+        "description": "Arată sau ascunde cuprinsul notiței deschise.",
+        "label": "Notițe: cuprins"
+      },
+      "notesAskAgent": {
+        "description": "Întreabă agentul despre textul selectat sau deschide și închide agentul notiței.",
+        "label": "Notițe: întreabă agentul"
+      },
+      "notesNewNote": {
+        "label": "Notițe: notiță nouă",
+        "description": "Începe o notiță nouă în panoul curent."
+      },
+      "notesSearch": {
+        "label": "Notițe: caută în notițe",
+        "description": "Mergi la caseta de căutare din partea de sus a barei laterale Notițe."
+      },
+      "notesBookmark": {
+        "label": "Notițe: adaugă la favorite",
+        "description": "Adaugă notița deschisă la Favorite sau scoate-o de acolo."
+      },
+      "notesCopyLink": {
+        "label": "Notițe: copiază legătura către notiță",
+        "description": "Copiază o legătură către notița deschisă, pe care o poți lipi în altă notiță sau într-o conversație."
+      },
+      "notesProperties": {
+        "label": "Notițe: arată sau ascunde proprietățile",
+        "description": "Deschide sau închide proprietățile de sub titlul notiței."
+      },
+      "notesQuickCapture": {
+        "description": "Deschide o fereastră mică pentru a nota ceva din orice aplicație, chiar și când Oleafly este în fundal.",
+        "label": "Notițe: notare rapidă"
+      },
+      "notesCopyBlockLink": {
+        "description": "Copiază o legătură către paragraful, elementul de listă sau tabelul în care se află cursorul.",
+        "label": "Notițe: copiază legătura către bloc"
+      },
+      "notesBack": {
+        "description": "Revino unde erai în această filă.",
+        "label": "Notițe: înapoi"
+      },
+      "notesForward": {
+        "description": "Mergi din nou înainte după ce te-ai întors.",
+        "label": "Notițe: înainte"
       }
     },
     "application": {
@@ -2383,14 +2444,41 @@
         "renameSymbol": "Redenumește simbolul sau fișierul în tot proiectul",
         "slashCommandMenu": "Meniu de inserare cu bară oblică",
         "triggerAutocomplete": "Pornește completarea automată",
-        "undo": "Anulează"
+        "undo": "Anulează",
+        "noteBold": "Aldin",
+        "noteItalic": "Cursiv",
+        "noteUnderline": "Subliniat",
+        "noteStrike": "Tăiat",
+        "noteCode": "Cod în text",
+        "noteHighlight": "Evidențiază cu ultima culoare folosită",
+        "noteSuperscript": "Exponent",
+        "noteSubscript": "Indice",
+        "noteHeadings": "Titlu 1 până la 6",
+        "noteText": "Transformă în text",
+        "noteQuote": "Citat",
+        "noteCodeBlock": "Bloc de cod",
+        "noteBulletList": "Listă cu marcatori",
+        "noteNumberedList": "Listă numerotată",
+        "noteTaskList": "Listă de sarcini",
+        "noteToggleTask": "Bifează sau debifează o sarcină",
+        "noteIndent": "Indentează un element de listă",
+        "noteOutdent": "Reduce indentarea unui element de listă",
+        "noteLineBreak": "Rând nou în același paragraf",
+        "noteFind": "Caută și înlocuiește",
+        "noteSelectAll": "Selectează toată notița",
+        "noteUndo": "Anulează",
+        "noteRedo": "Refă",
+        "noteInsertMenu": "Deschide meniul de inserare la începutul unei linii",
+        "noteLinkMenu": "Legătură către o notiță",
+        "noteTag": "Adaugă o etichetă"
       },
       "managed": "Gestionate de editor"
     },
     "categories": {
       "codeIntelligence": "Inteligență de cod",
       "editor": "Editor",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "Notițe"
     },
     "error": {
       "conflict": "Este deja atribuită acțiunii {{action}}.",
@@ -2436,6 +2524,15 @@
         "uppercase": "Litere mari"
       },
       "unbound": "Nesetată"
+    },
+    "quickCapture": {
+      "label": "Notare rapidă de oriunde",
+      "description": "Scurtătura pentru notare rapidă funcționează în toate aplicațiile de pe acest computer.",
+      "ready": "Apasă {{shortcut}} în orice aplicație ca să deschizi notarea rapidă.",
+      "taken": "Altă aplicație folosește deja {{shortcut}}. Alege altă scurtătură pentru Notițe: notare rapidă.",
+      "invalid": "{{shortcut}} nu poate funcționa în afara Oleafly. Alege o scurtătură care se termină cu o literă, o cifră sau o tastă funcțională.",
+      "failed": "Oleafly nu a putut configura scurtătura. Dezactivează și reactivează notarea rapidă ca să încerci din nou.",
+      "wayland": "Wayland nu permite aplicațiilor să asculte tastele în afara propriilor ferestre. Ca să deschizi notarea rapidă cu o tastă, adaugă în setările de tastatură ale sistemului o scurtătură personalizată care rulează această comandă:"
     }
   },
   "systemIntegration": {

@@ -322,6 +322,36 @@
       "keywords": "pdf vista previa mostrar ocultar dividir solo editor",
       "label": "Alternar la vista previa del PDF"
     },
+    "swapEditorPreview": {
+      "keywords": "intercambiar editor vista previa pdf lados panel orden disposición",
+      "label": "Intercambiar el editor y la vista previa"
+    },
+    "movePaneToEdge": {
+      "bottom": "Mover {{pane}} al borde inferior",
+      "keywords": "mover panel borde acoplar lado dividir apilar disposición",
+      "left": "Mover {{pane}} al borde izquierdo",
+      "right": "Mover {{pane}} al borde derecho",
+      "top": "Mover {{pane}} al borde superior"
+    },
+    "paneNames": {
+      "assistant": "el asistente",
+      "editor": "el editor",
+      "pdf": "la vista previa",
+      "sidebar": "la barra lateral",
+      "terminal": "el terminal"
+    },
+    "resetPaneLayout": {
+      "keywords": "restablecer disposición paneles orden mover barra lateral asistente editor vista previa terminal predeterminado",
+      "label": "Restablecer la distribución de los paneles en todos los proyectos"
+    },
+    "saveLayout": {
+      "keywords": "guardar disposición personalizada distribución paneles tamaños nombre",
+      "label": "Guardar la disposición actual"
+    },
+    "applySavedLayout": {
+      "keywords": "disposición guardada personalizada distribución paneles cambiar aplicar",
+      "label": "Disposición: {{name}}"
+    },
     "zoomIn": {
       "keywords": "agrandar más grande",
       "label": "Acercar"
@@ -349,6 +379,20 @@
     "insertFileLink": {
       "label": "Insertar enlace a un archivo",
       "keywords": "enlace archivo ruta nota referencia"
+    },
+    "projectNotes": {
+      "open": "Abrir las notas de este proyecto",
+      "newShared": "Nota nueva del proyecto",
+      "newPersonal": "Nota personal nueva para este proyecto",
+      "keywords": "notas investigación vinculado relacionado proyecto"
+    },
+    "notes": {
+      "label": "Abrir Notas",
+      "keywords": "notas cuaderno conocimiento ideas investigación diario notes notebook knowledge research journal"
+    },
+    "notesQuickCapture": {
+      "label": "Captura rápida",
+      "keywords": "captura rápida apuntar nota bandeja de entrada hoy quick capture jot note inbox today"
     }
   },
   "community": {
@@ -453,6 +497,11 @@
   },
   "datePicker": {
     "placeholder": "Elige una fecha"
+  },
+  "monthPicker": {
+    "label": "Elegir un mes",
+    "previousYear": "Año anterior",
+    "nextYear": "Año siguiente"
   },
   "devMenu": {
     "inspect": "Inspeccionar",
@@ -647,7 +696,6 @@
   "home": {
     "ariaLabel": "Inicio",
     "label": "Inicio",
-    "title": "Volver a la biblioteca",
     "tooltip": "Volver a la biblioteca de proyectos"
   },
   "importDestination": {
@@ -675,6 +723,7 @@
     "groups": {
       "action": "Acción",
       "documents": "Documentos",
+      "notes": "Notas",
       "references": "Referencias"
     },
     "label": "Buscar",
@@ -682,11 +731,13 @@
     "openReferences": "Abrir las referencias de este proyecto",
     "placeholder": "Busca proyectos y documentos, o escribe / para ver los comandos…",
     "placeholderDocuments": "Buscar dentro de los documentos…",
+    "placeholderNotes": "Buscar en las notas y en sus bloques…",
     "placeholderProjects": "Busca proyectos por nombre, motor, tipo, fecha o metadatos…",
     "referencesNeedProject": "Abre antes un proyecto para explorar sus referencias.",
     "slash": {
       "create": "abrir la galería de plantillas",
       "docs": "buscar dentro de los documentos",
+      "notes": "buscar en las notas y en sus bloques",
       "projects": "buscar en tus proyectos",
       "refs": "abrir las referencias de este proyecto",
       "settings": "abrir los ajustes",
@@ -794,7 +845,8 @@
     "research": "Espacio de investigación",
     "search": "Buscar en el proyecto",
     "sourceControl": "Control de versiones",
-    "withShortcut": "{{label}} ({{shortcut}})"
+    "withShortcut": "{{label}} ({{shortcut}})",
+    "notes": "Notas"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} en {{host}}",
@@ -906,7 +958,8 @@
           "folders_other": "{{count}} carpetas",
           "images": "Imágenes",
           "pdfs": "PDF",
-          "projects": "Proyectos"
+          "projects": "Proyectos",
+          "projectsAndNotes": "Proyectos y notas"
         },
         "subtitle": "Proyectos, vistas previas, historial y datos de la aplicación",
         "title": "Uso de almacenamiento",
@@ -949,6 +1002,10 @@
       "latexTools": {
         "description": "Muestra la galería de Herramientas de Oleafly y las herramientas sueltas (importación de PDF, ecuaciones, tablas, BibTeX, búsqueda de laboratorios y de literatura, fechas límite) junto con sus comandos de barra. Desactivado por omisión mientras siga en beta.",
         "label": "Herramientas de LaTeX"
+      },
+      "notes": {
+        "description": "Añade Notas al panel de inicio. Una nota es un archivo Markdown con diagramas, gráficos y fórmulas que pueden editar tanto tú como tus agentes. Las notas quedan fuera de tu biblioteca de proyectos y cada nota se puede vincular a un proyecto. Desactivado por omisión mientras siga en beta.",
+        "label": "Notas"
       },
       "researchTasks": {
         "description": "Un agente trabaja por su cuenta en una copia del proyecto y deja sus cambios para que los revises. Muy inestable: las ejecuciones pueden quedarse atascadas, fallar o dejar cambios que tendrás que arreglar a mano, y consumen la cuota de tu proveedor todo el tiempo. Añade una sección Investigación a los Ajustes. Al desactivarlo se detienen todas las tareas en curso. Desactivado por omisión. Actívalo por tu cuenta y riesgo.",
@@ -1297,6 +1354,24 @@
       "split": "Vista dividida"
     },
     "moreActions": "Más acciones",
+    "resetPaneLayout": "Restablecer la distribución de los paneles",
+    "resetPaneLayoutScope": "Todos los proyectos",
+    "savedLayouts": {
+      "close": "Cerrar",
+      "delete": "Eliminar",
+      "deleteConfirm": "¿Eliminar la disposición {{name}}?",
+      "limit": "Puedes conservar hasta {{count}} disposiciones. Elimina una para guardar otra.",
+      "manage": "Gestionar disposiciones",
+      "name": "Nombre de la disposición",
+      "rename": "Renombrar",
+      "renameTitle": "Renombrar disposición",
+      "replace": "Reemplazar",
+      "replaceConfirm": "Ya existe una disposición llamada {{name}}. ¿Reemplazarla?",
+      "save": "Guardar la disposición actual",
+      "saveButton": "Guardar",
+      "saveTitle": "Guardar disposición",
+      "update": "Actualizar con la actual"
+    },
     "renameFailed": "No se pudo cambiar el nombre del proyecto."
   },
   "tour": {

@@ -1,16 +1,18 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { PenTool, Plus, Search, Settings as SettingsIcon, ToolCase } from "lucide-react";
+import { NotebookPen, PenTool, Plus, Search, Settings as SettingsIcon, ToolCase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ThemeMenu } from "@/components/layout/ThemeControls";
+import { isNoteProject } from "@/lib/library-projects";
 import { cn, isMac, shortcut } from "@/lib/utils";
 import { useFullscreen } from "@/lib/use-fullscreen";
+import { intentProps } from "@/lib/preloadable";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
 import { shortcutLabel, useShortcutStore } from "@/store/shortcuts";
 import { useSettingsStore } from "@/store/settings";
-import { openDiagramComposerChooser, openToolsGallery } from "@/features/open-tool";
+import { openDiagramComposerChooser, openNotes, openToolsGallery } from "@/features/open-tool";
 import { HOME_CHROME_SURFACE } from "@/components/library/home-chrome";
 import { CLOUD_ATTENTION_HINT_ID } from "@/components/cloud/cloud-attention";
 
@@ -35,6 +37,7 @@ function DockButton({
   tour,
   describedBy,
   tooltipSide,
+  intent,
 }: Readonly<{
   label: string;
   tooltip?: string;
@@ -46,6 +49,7 @@ function DockButton({
   tour?: string;
   describedBy?: string;
   tooltipSide: "top" | "left" | "right";
+  intent?: string;
 }>) {
   return (
     <Tooltip label={tooltip} side={tooltipSide}>
@@ -59,6 +63,7 @@ function DockButton({
         aria-describedby={describedBy}
         className={primary ? DOCK_BUTTON_SHAPE : dockButtonClass(active)}
         onClick={onClick}
+        {...(intent ? intentProps(intent) : {})}
       >
         {icon}
       </Button>
@@ -77,7 +82,8 @@ export function HomeDock() {
   const setSearchOpen = useSettingsStore((s) => s.setSearchOpen);
   const dockPlacement = useSettingsStore((s) => s.dockPlacement);
   const latexTools = useSettingsStore((s) => s.latexTools);
-  const hasProjects = useFilesStore((s) => s.projects.length > 0);
+  const notes = useSettingsStore((s) => s.notes);
+  const hasProjects = useFilesStore((s) => s.projects.some((project) => !notes || !isNoteProject(project)));
   const fullscreen = useFullscreen();
   const page = useHomeViewStore((s) => s.page);
   const horizontal = dockPlacement === "bottom";
@@ -112,6 +118,17 @@ export function HomeDock() {
         testId="open-diagram-composer"
         tooltipSide={tooltipSide}
       />
+      {notes && (
+        <DockButton
+          label={t(($) => $.library.dock.notes)}
+          icon={<NotebookPen className="size-4" />}
+          onClick={() => void openNotes()}
+          active={page === "notes"}
+          testId="open-notes"
+          intent="notes"
+          tooltipSide={tooltipSide}
+        />
+      )}
       {latexTools && (
         <DockButton
           label={t(($) => $.library.dock.tools)}
@@ -137,6 +154,7 @@ export function HomeDock() {
         icon={<SettingsIcon className="size-4" />}
         onClick={() => setSettingsOpen(true)}
         testId="open-settings"
+        intent="settings"
         tour="settings"
         describedBy={CLOUD_ATTENTION_HINT_ID}
         tooltipSide={tooltipSide}

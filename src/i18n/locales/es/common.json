@@ -59,6 +59,27 @@
     "gigabytes": "{{value}} GB",
     "terabytes": "{{value}} TB"
   },
+  "searchModes": {
+    "label": "Modo de búsqueda: {{mode}}",
+    "heading": "Modo de búsqueda",
+    "ranked": {
+      "label": "Mejor coincidencia",
+      "description": "Ordena los resultados según lo bien que coinciden. Las palabras pueden estar en cualquier parte."
+    },
+    "exact": {
+      "label": "Texto exacto",
+      "description": "Busca exactamente estos caracteres. Si escribes una mayúscula, distingue entre mayúsculas y minúsculas."
+    },
+    "regex": {
+      "label": "Expresión regular",
+      "description": "Usa la sintaxis de patrones de ripgrep. Pon un patrón entre comillas si tiene espacios o corchetes."
+    },
+    "fuzzy": {
+      "label": "Aproximada",
+      "description": "Encuentra nombres que tienen tus letras en orden, como fzf. También admite 'exacto, ^inicio, fin$ y !excluir."
+    },
+    "invalid": "Este patrón no es válido: {{error}}"
+  },
   "querySearch": {
     "suggestions": "Sugerencias de búsqueda",
     "exclude": "Excluir",
@@ -76,12 +97,17 @@
       "invalidValue": "{{value}} no es un valor válido para {{key}}",
       "invalidDate": "{{value}} no es una fecha. Prueba con 2026-10-02 o @today-7d",
       "invalidNumber": "{{value}} no es un número",
-      "sortNegated": "{{key}} no se puede excluir"
+      "sortNegated": "{{key}} no se puede excluir",
+      "tooManyBranches": "Esta búsqueda tiene demasiadas combinaciones OR, así que pueden faltar algunos resultados"
     }
   },
   "avatar": {
     "more_one": "{{count}} persona más",
     "more_many": "{{count}} personas más",
     "more_other": "{{count}} personas más"
+  },
+  "remoteImage": {
+    "blocked": "Imagen alojada en {{host}}",
+    "load": "Cargar la imagen"
   }
 }

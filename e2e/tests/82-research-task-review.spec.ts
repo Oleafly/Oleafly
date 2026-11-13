@@ -19,8 +19,8 @@ test.afterAll(async () => {
 });
 
 test.beforeEach(async ({ tauriPage }) => {
-  const hasBack = await tauriPage.evaluate<boolean>(`!!document.querySelector('[title="Back to library"]')`);
-  if (hasBack) await tauriPage.click('[title="Back to library"]');
+  const hasBack = await tauriPage.evaluate<boolean>(`!!document.querySelector('[data-toolbar-part="home"][aria-label="Home"]')`);
+  if (hasBack) await tauriPage.click('[data-toolbar-part="home"][aria-label="Home"]');
 });
 
 async function createProject(page: Page, run: string) {

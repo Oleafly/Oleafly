@@ -333,7 +333,7 @@ export function TemplateGenerateModal({
 
         {phase === "prompt" && (
           <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
-            <div className="rounded-xl border-2 border-primary/60 bg-background p-4 focus-within:border-primary">
+            <div className="rounded-xl border-2 border-primary/60 bg-background p-4">
               <Textarea
                 autoFocus
                 data-testid="template-generate-input"

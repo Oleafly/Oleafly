@@ -230,7 +230,11 @@
     "history_unavailable": "El historial de este proyecto todavía no está en este equipo. Vuelve a intentarlo cuando se haya sincronizado.",
     "account_storage_full": "La cuenta de la persona propietaria del proyecto se quedó sin almacenamiento en este servidor. Quita algunos archivos para liberar espacio o pide más espacio al administrador del servidor.",
     "too_many_projects": "Ya tienes tantos proyectos compartidos como permite este servidor. Deja de compartir uno antes de compartir otro.",
-    "too_many_uploads": "Has subido demasiados archivos en la última hora. Vuelve a intentarlo más tarde."
+    "too_many_uploads": "Has subido demasiados archivos en la última hora. Vuelve a intentarlo más tarde.",
+    "public_notes_off": "Este servidor no permite enlaces públicos a notas. Un administrador puede activarlos en los ajustes del servidor.",
+    "too_many_pages": "Ya tienes todas las páginas públicas que permite este servidor. Deja de publicar una y vuelve a intentarlo.",
+    "page_too_large": "Esta nota es demasiado grande para publicarla. Quita algunas imágenes y vuelve a intentarlo.",
+    "page_taken_down": "Un administrador retiró esta página, así que no se puede volver a publicar esta nota hasta que la restablezca."
   },
   "roles": {
     "admin": "Administrador",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "Iniciar sesión por correo",
         "description": "Las personas pueden iniciar sesión con un enlace enviado a su dirección de correo. Necesita la configuración de correo del servidor. Tus reglas de acceso siguen decidiendo quién entra."
+      },
+      "publicNotesAllowed": {
+        "label": "Permitir enlaces públicos a notas",
+        "description": "Los miembros pueden publicar una copia de solo lectura de una nota en un enlace que cualquiera puede abrir sin iniciar sesión."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "Rechazó una invitación de invitado",
         "guestInvitationRevoked": "Retiró una invitación de invitado",
         "guestAdmissionEnded": "Terminó el acceso de un invitado al servidor",
-        "unknown": "Otro evento del servidor"
+        "unknown": "Otro evento del servidor",
+        "notePublished": "Publicó una nota en un enlace público",
+        "noteUnpublished": "Dejó de publicar una nota",
+        "noteTakenDown": "Retiró una nota publicada",
+        "noteRestored": "Restableció una nota publicada"
       },
       "details": {
         "project": "Proyecto: {{title}}",
@@ -455,7 +467,8 @@
         "device": "Dispositivo: {{name}}",
         "byAdmin": "Desde la consola de administración",
         "settingOn": "{{setting}}: activado",
-        "settingOff": "{{setting}}: desactivado"
+        "settingOff": "{{setting}}: desactivado",
+        "note": "Nota: {{title}}"
       }
     },
     "email": {
@@ -509,6 +522,7 @@
     "copyAndShare": "Copiar en Oleafly y compartir",
     "title": "Compartir {{name}}",
     "description": "Trabaja en este proyecto con otras personas a través de un servidor de colaboración.",
+    "noteDescription": "Escribe esta nota con otras personas a través de un servidor de colaboración.",
     "loading": "Cargando…",
     "linked": "Este proyecto es una carpeta fuera de Oleafly. Oleafly la copia en tu biblioteca y comparte esa copia. La carpeta original no se toca.",
     "editCopy": "Esta es la copia compartida. A partir de ahora, edita esta y no la carpeta original.",
@@ -526,12 +540,15 @@
     "tooLarge": "Estos archivos superan el límite del servidor, que es de {{size}} MB. Redúcelos o quítalos antes de compartir.",
     "renamed": "Algunos nombres no funcionan en todos los equipos. Las demás personas reciben estos archivos con un nombre un poco distinto.",
     "excluded": "No se comparten: los demás archivos de compilación, los ajustes de Oleafly y el historial de Git. El PDF compilado más reciente sí se comparte, para que los coautores puedan leerlo en un navegador.",
+    "noteExcluded": "No se comparten: los ajustes de Oleafly ni el historial de Git.",
     "start": "Compartir",
     "preparing": "Preparando el proyecto…",
     "uploading": "Subiendo figuras y otros archivos: {{done}} de {{total}}",
     "saving": "Guardando el proyecto en el servidor…",
     "failed": "No se terminó de compartir, así que no se compartió nada.",
-    "trustAgain": "Cualquiera que añadas a este proyecto puede cambiar sus archivos, así que Oleafly te pide que vuelvas a confiar en él en este equipo antes de ejecutar agentes, comandos del terminal o shell escape para él."
+    "trustAgain": "Cualquiera que añadas a este proyecto puede cambiar sus archivos, así que Oleafly te pide que vuelvas a confiar en él en este equipo antes de ejecutar agentes, comandos del terminal o shell escape para él.",
+    "projectNotesShared": "Las notas del proyecto se comparten con todos los miembros de este proyecto. Las notas personales siguen siendo privadas.",
+    "personalNotesPrivate": "Las notas personales siguen siendo privadas. Solo se comparten las notas de la carpeta de notas del proyecto."
   },
   "manage": {
     "sharedOn": "Compartido en {{server}}",
@@ -789,7 +806,8 @@
       "settings": "Ajustes del servidor",
       "email": "Correo",
       "log": "Registro de seguridad",
-      "checks": "Pruebas de conexión"
+      "checks": "Pruebas de conexión",
+      "pages": "Notas publicadas"
     },
     "health": {
       "label": "Estado del servidor: {{status}}",
@@ -956,6 +974,30 @@
     },
     "checks": {
       "description": "Comprueba la conexión de este equipo con el servidor."
+    },
+    "pages": {
+      "description": "Páginas de solo lectura que las personas crearon a partir de sus notas. Cualquiera con el enlace de una página puede leerla.",
+      "loading": "Cargando las notas publicadas…",
+      "empty": "Nadie ha publicado todavía una nota en este servidor.",
+      "limit": "Se muestran las {{shown}} páginas más recientes.",
+      "columns": {
+        "title": "Nota",
+        "author": "Autor",
+        "updated": "Publicada",
+        "actions": "Acciones"
+      },
+      "noAuthor": "Cuenta eliminada",
+      "takenDown": "Retirada",
+      "openNamed": "Abrir {{title}}",
+      "takeDown": "Retirar",
+      "takeDownNamed": "Retirar {{title}}",
+      "restore": "Restablecer",
+      "restoreNamed": "Restablecer {{title}}",
+      "takeDownConfirm": {
+        "title": "¿Retirar {{title}}?",
+        "description": "El enlace público deja de funcionar hasta que restablezcas la página. El autor conserva la nota, pero mientras tanto no puede volver a publicarla.",
+        "confirm": "Retirar"
+      }
     }
   },
   "links": {
@@ -1229,5 +1271,41 @@
     "broughtIn": "Tus cambios de {{name}} ya están en este proyecto.",
     "retry": "Reintentar",
     "dismiss": "Descartar"
+  },
+  "publish": {
+    "tabs": {
+      "people": "Personas",
+      "publish": "Publicar"
+    },
+    "intro": "Al publicar, se pone una copia de solo lectura de esta nota en un enlace público. Cualquiera con el enlace puede leerla sin iniciar sesión.",
+    "contents": "Se incluyen imágenes, gráficos, diagramas, fórmulas, Typst y moléculas. Se omiten los bloques de HTML, React, CSV, secuencias y cuadernos.",
+    "checking": "Buscando una página pública…",
+    "loadFailed": "Oleafly no pudo comprobar la página pública de esta nota.",
+    "notAllowed": "{{server}} no permite enlaces públicos a notas. Un administrador puede activarlos en los ajustes del servidor.",
+    "ownerOnly": "Solo el propietario de la nota puede publicarla.",
+    "linkLabel": "Enlace público",
+    "open": "Abrir",
+    "publishedAt": "Última publicación: {{date}}",
+    "stale": "Has cambiado esta nota desde la última vez que la publicaste. Vuelve a publicarla para actualizar la página.",
+    "publish": "Publicar",
+    "republish": "Volver a publicar",
+    "unpublish": "Dejar de publicar",
+    "failed": "La publicación no terminó.",
+    "unpublishConfirm": {
+      "title": "¿Dejar de publicar {{name}}?",
+      "description": "El enlace público deja de funcionar de inmediato. Quien haya guardado una copia de la página la conserva.",
+      "confirm": "Dejar de publicar"
+    },
+    "list": {
+      "title": "Notas publicadas",
+      "description": "Páginas de solo lectura de tus notas en este servidor. Cualquiera con un enlace puede leerlas.",
+      "loadFailed": "Oleafly no pudo cargar tus notas publicadas.",
+      "empty": "No has publicado ninguna nota aquí.",
+      "openNamed": "Abrir {{name}}",
+      "unpublishNamed": "Dejar de publicar {{name}}",
+      "updated": "Publicada el {{date}}"
+    },
+    "takenDown": "Un administrador retiró esta página. Los lectores no pueden abrirla y no puedes volver a publicarla hasta que la restablezca. Aún puedes dejar de publicarla.",
+    "tooOld": "{{server}} es demasiado antiguo para los enlaces públicos a notas. Su administrador tiene que actualizar Oleafly Server."
   }
 }

@@ -3,6 +3,8 @@ import { describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   startCollabLive: vi.fn(() => () => {}),
   startLiveEditing: vi.fn(),
+  startLiveTarget: vi.fn(),
+  installNoteLive: vi.fn(() => () => {}),
   startSyncPause: vi.fn(() => () => {}),
   stopSyncPause: vi.fn(),
   startRemovedNotices: vi.fn(() => () => {}),
@@ -15,6 +17,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("./live-store", () => ({ startCollabLive: mocks.startCollabLive }));
 vi.mock("./live-editing", () => ({ startLiveEditing: mocks.startLiveEditing }));
+vi.mock("./note-slot", () => ({ startLiveTarget: mocks.startLiveTarget }));
+vi.mock("../notes/note-live-port", () => ({ installNoteLive: mocks.installNoteLive }));
 vi.mock("./sync-pause", () => ({ startSyncPause: mocks.startSyncPause }));
 vi.mock("./removed-notices", () => ({ startRemovedNotices: mocks.startRemovedNotices }));
 vi.mock("./file-notices", () => ({ startFileNotices: mocks.startFileNotices }));
@@ -25,7 +29,8 @@ import { startLive } from "./index";
 describe("live collaboration entry", () => {
   it("runs the live lifecycle with shared editing attached", () => {
     const stop = startLive();
-    expect(mocks.startCollabLive).toHaveBeenCalledWith({ started: mocks.startLiveEditing });
+    expect(mocks.startCollabLive).toHaveBeenCalledWith({ started: mocks.startLiveTarget });
+    expect(mocks.installNoteLive).toHaveBeenCalledTimes(1);
     expect(typeof stop).toBe("function");
   });
 

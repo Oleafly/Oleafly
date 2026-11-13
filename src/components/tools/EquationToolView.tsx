@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import katex from "katex";
 import {
@@ -40,6 +40,8 @@ import {
   writeProjectBytes,
 } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { useSettingsStore } from "@/store/settings";
+import { libraryProjects } from "@/lib/library-projects";
 import {
   equationToSvgDocument,
   equationFailureMessage,
@@ -130,7 +132,9 @@ export function EquationToolView() {
   const [display, setDisplay] = useState(true);
   const [previewTheme, setPreviewTheme] = useState<"light" | "dark">("dark");
   const [zoom, setZoom] = useState(100);
-  const projects = useFilesStore((state) => state.projects);
+  const allProjects = useFilesStore((state) => state.projects);
+  const notesOn = useSettingsStore((state) => state.notes);
+  const projects = useMemo(() => libraryProjects(allProjects, notesOn), [allProjects, notesOn]);
   const refreshProjects = useFilesStore((state) => state.refreshProjects);
   const [assetName, setAssetName] = useState("equation.png");
   const [savingProject, setSavingProject] = useState(false);

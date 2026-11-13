@@ -7,3 +7,4 @@ export * from "./evaluate";
 export * from "./edit";
 export * from "./suggest";
 export * from "./highlight";
+export * from "./expand";

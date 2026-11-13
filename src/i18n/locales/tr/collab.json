@@ -230,7 +230,11 @@
     "history_unavailable": "Bu projenin geçmişi henüz bu bilgisayarda yok. Proje eşitlendikten sonra yeniden deneyin.",
     "account_storage_full": "Proje sahibinin hesabının bu sunucudaki depolama alanı doldu. Yer açmak için bazı dosyaları kaldırın veya sunucunun yöneticisinden daha fazla alan isteyin.",
     "too_many_projects": "Bu sunucunun izin verdiği kadar paylaşılan projeniz zaten var. Başka bir projeyi paylaşmadan önce birinin paylaşımını durdurun.",
-    "too_many_uploads": "Son bir saatte çok fazla yükleme yaptınız. Daha sonra yeniden deneyin."
+    "too_many_uploads": "Son bir saatte çok fazla yükleme yaptınız. Daha sonra yeniden deneyin.",
+    "public_notes_off": "Bu sunucu herkese açık not bağlantılarına izin vermiyor. Bir yönetici bunları sunucu ayarlarından açabilir.",
+    "too_many_pages": "Bu sunucunun izin verdiği kadar herkese açık sayfanız var. Birinin yayımını geri çekip yeniden deneyin.",
+    "page_too_large": "Bu not yayımlanamayacak kadar büyük. Bazı görselleri kaldırıp yeniden deneyin.",
+    "page_taken_down": "Bir yönetici bu sayfayı yayından kaldırdı, bu yüzden sayfa yeniden yayına alınana kadar bu not tekrar yayımlanamaz."
   },
   "roles": {
     "admin": "Yönetici",
@@ -371,6 +375,10 @@
       "emailLinkSignIn": {
         "label": "E-postayla oturum açma",
         "description": "Kişiler, e-posta adreslerine gönderilen bir bağlantıyla oturum açabilir. Bunun için sunucunun e-posta ayarları gerekir. Kimin girebileceğine yine erişim kurallarınız karar verir."
+      },
+      "publicNotesAllowed": {
+        "label": "Herkese açık not bağlantılarına izin ver",
+        "description": "Üyeler, bir notun salt okunur kopyasını herkesin oturum açmadan açabileceği bir bağlantıda yayımlayabilir."
       }
     },
     "log": {
@@ -421,7 +429,11 @@
         "guestInvitationDeclined": "Bir konuk davetini reddetti",
         "guestInvitationRevoked": "Bir konuk davetini geri çekti",
         "guestAdmissionEnded": "Bir konuğun sunucu erişimini sonlandırdı",
-        "unknown": "Diğer sunucu olayı"
+        "unknown": "Diğer sunucu olayı",
+        "notePublished": "Bir notu herkese açık bir bağlantıda yayımladı",
+        "noteUnpublished": "Bir notun yayımını geri çekti",
+        "noteTakenDown": "Yayımlanmış bir notu yayından kaldırdı",
+        "noteRestored": "Yayımlanmış bir notu yeniden yayına aldı"
       },
       "details": {
         "project": "Proje: {{title}}",
@@ -455,7 +467,8 @@
         "device": "Cihaz: {{name}}",
         "byAdmin": "Yönetici konsolundan",
         "settingOn": "{{setting}}: açık",
-        "settingOff": "{{setting}}: kapalı"
+        "settingOff": "{{setting}}: kapalı",
+        "note": "Not: {{title}}"
       }
     },
     "email": {
@@ -509,6 +522,7 @@
     "copyAndShare": "Oleafly'ye kopyala ve paylaş",
     "title": "{{name}} projesini paylaş",
     "description": "Bu proje üzerinde bir iş birliği sunucusu aracılığıyla başkalarıyla birlikte çalışın.",
+    "noteDescription": "Bu notu bir iş birliği sunucusu üzerinden başkalarıyla birlikte yazın.",
     "loading": "Yükleniyor…",
     "linked": "Bu proje, Oleafly dışındaki bir klasör. Oleafly onu kitaplığınıza kopyalar ve bu kopyayı paylaşır. Özgün klasöre dokunulmaz.",
     "editCopy": "Bu, paylaşılan kopyadır. Bundan sonra özgün klasörü değil, bu kopyayı düzenleyin.",
@@ -526,12 +540,15 @@
     "tooLarge": "Bu dosyalar sunucunun {{size}} MB sınırını aşıyor. Paylaşmadan önce dosyaları küçültün veya kaldırın.",
     "renamed": "Bazı adlar her bilgisayarda çalışmaz. Diğer kişiler bu dosyaları biraz farklı bir adla alır.",
     "excluded": "Paylaşılmayanlar: diğer derleme çıktıları, Oleafly ayarları ve Git geçmişi. En son derlenen PDF paylaşılır, böylece ortak yazarlar onu tarayıcıda okuyabilir.",
+    "noteExcluded": "Paylaşılmayanlar: Oleafly ayarları ve Git geçmişi.",
     "start": "Paylaş",
     "preparing": "Proje hazırlanıyor…",
     "uploading": "Şekiller ve diğer dosyalar yükleniyor: {{done}} / {{total}}",
     "saving": "Proje sunucuya kaydediliyor…",
     "failed": "Paylaşım tamamlanmadı, bu yüzden hiçbir şey paylaşılmadı.",
-    "trustAgain": "Bu projeye eklediğiniz herkes dosyalarını değiştirebilir, bu yüzden Oleafly bu bilgisayarda proje için ajanlar, terminal komutları veya shell escape çalıştırmadan önce projeye yeniden güvenmenizi ister."
+    "trustAgain": "Bu projeye eklediğiniz herkes dosyalarını değiştirebilir, bu yüzden Oleafly bu bilgisayarda proje için ajanlar, terminal komutları veya shell escape çalıştırmadan önce projeye yeniden güvenmenizi ister.",
+    "projectNotesShared": "Projenin notları bu projedeki herkesle paylaşılır. Kişisel notlar gizli kalır.",
+    "personalNotesPrivate": "Kişisel notlar gizli kalır. Yalnızca projenin notlar klasöründeki notlar paylaşılır."
   },
   "manage": {
     "sharedOn": "{{server}} sunucusunda paylaşıldı",
@@ -789,7 +806,8 @@
       "settings": "Sunucu ayarları",
       "email": "E-posta",
       "log": "Güvenlik günlüğü",
-      "checks": "Bağlantı denetimleri"
+      "checks": "Bağlantı denetimleri",
+      "pages": "Yayımlanan notlar"
     },
     "health": {
       "label": "Sunucu durumu: {{status}}",
@@ -956,6 +974,30 @@
     },
     "checks": {
       "description": "Bu bilgisayardan sunucuya olan bağlantıyı denetleyin."
+    },
+    "pages": {
+      "description": "Kişilerin notlarından oluşturduğu salt okunur sayfalar. Bir sayfanın bağlantısına sahip olan herkes onu okuyabilir.",
+      "loading": "Yayımlanan notlar yükleniyor…",
+      "empty": "Bu sunucuda henüz kimse not yayımlamadı.",
+      "limit": "En yeni {{shown}} sayfa gösteriliyor.",
+      "columns": {
+        "title": "Not",
+        "author": "Yazar",
+        "updated": "Yayımlanma",
+        "actions": "Eylemler"
+      },
+      "noAuthor": "Kaldırılmış hesap",
+      "takenDown": "Yayından kaldırıldı",
+      "openNamed": "{{title}} notunu aç",
+      "takeDown": "Yayından kaldır",
+      "takeDownNamed": "{{title}} notunu yayından kaldır",
+      "restore": "Yeniden yayına al",
+      "restoreNamed": "{{title}} notunu yeniden yayına al",
+      "takeDownConfirm": {
+        "title": "{{title}} yayından kaldırılsın mı?",
+        "description": "Siz sayfayı yeniden yayına alana kadar herkese açık bağlantı çalışmaz. Yazar notu elinde tutar, ancak bu sürede yeniden yayımlayamaz.",
+        "confirm": "Yayından kaldır"
+      }
     }
   },
   "links": {
@@ -1229,5 +1271,41 @@
     "broughtIn": "{{name}} içindeki değişiklikleriniz artık bu projede.",
     "retry": "Yeniden dene",
     "dismiss": "Kapat"
+  },
+  "publish": {
+    "tabs": {
+      "people": "Kişiler",
+      "publish": "Yayımla"
+    },
+    "intro": "Yayımlama, bu notun salt okunur bir kopyasını herkese açık bir bağlantıya koyar. Bağlantıya sahip olan herkes notu oturum açmadan okuyabilir.",
+    "contents": "Görseller, grafikler, diyagramlar, matematik ifadeleri, Typst ve moleküller dahil edilir. HTML, React, CSV, dizi ve not defteri blokları dışarıda bırakılır.",
+    "checking": "Herkese açık sayfa denetleniyor…",
+    "loadFailed": "Oleafly bu notun herkese açık sayfasını denetleyemedi.",
+    "notAllowed": "{{server}} sunucusu herkese açık not bağlantılarına izin vermiyor. Bir yönetici bunları sunucu ayarlarından açabilir.",
+    "ownerOnly": "Bu notu yalnızca sahibi yayımlayabilir.",
+    "linkLabel": "Herkese açık bağlantı",
+    "open": "Aç",
+    "publishedAt": "Son yayımlanma: {{date}}",
+    "stale": "Son yayımlamanızdan sonra bu notu değiştirdiniz. Sayfayı güncellemek için yeniden yayımlayın.",
+    "publish": "Yayımla",
+    "republish": "Yeniden yayımla",
+    "unpublish": "Yayımı geri çek",
+    "failed": "Yayımlama tamamlanmadı.",
+    "unpublishConfirm": {
+      "title": "{{name}} notunun yayımı geri çekilsin mi?",
+      "description": "Herkese açık bağlantı hemen çalışmayı bırakır. Sayfanın bir kopyasını kaydeden herkes onu saklamaya devam eder.",
+      "confirm": "Yayımı geri çek"
+    },
+    "list": {
+      "title": "Yayımlanan notlar",
+      "description": "Bu sunucudaki notlarınızın salt okunur sayfaları. Bağlantıya sahip olan herkes bunları okuyabilir.",
+      "loadFailed": "Oleafly yayımlanan notlarınızı yükleyemedi.",
+      "empty": "Burada henüz not yayımlamadınız.",
+      "openNamed": "{{name}} notunu aç",
+      "unpublishNamed": "{{name}} notunun yayımını geri çek",
+      "updated": "Yayımlanma: {{date}}"
+    },
+    "takenDown": "Bir yönetici bu sayfayı yayından kaldırdı. Okuyucular sayfayı açamaz ve yönetici yeniden yayına alana kadar siz de yeniden yayımlayamazsınız. Yine de yayımı geri çekebilirsiniz.",
+    "tooOld": "{{server}} sunucusu herkese açık not bağlantıları için çok eski. Yöneticisinin Oleafly Server'ı güncellemesi gerekiyor."
   }
 }

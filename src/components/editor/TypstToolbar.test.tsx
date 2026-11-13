@@ -327,6 +327,7 @@ describe("TypstToolbar", () => {
     fireEvent.click(screen.getByText(TYPST_HEADING_LEVELS[5].label()));
     expect(commands.insertTypstHeading).toHaveBeenCalledWith(TYPST_HEADING_LEVELS[5]);
 
+    fireEvent.click(screen.getByLabelText(toolbar.moreOptions));
     fireEvent.click(screen.getByLabelText(toolbar.listType));
     fireEvent.click(screen.getByText(toolbar.numberedList));
     expect(commands.insertTypstNumberedList).toHaveBeenCalledOnce();

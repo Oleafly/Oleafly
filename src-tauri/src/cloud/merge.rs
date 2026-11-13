@@ -2,13 +2,14 @@ use oleafly_core::content::ContentHash;
 use serde_json::{Map, Value};
 
 pub(crate) const PROJECT_META: &str = "project.json";
-pub(crate) const DEVICE_META_FIELDS: [&str; 6] = [
+pub(crate) const DEVICE_META_FIELDS: [&str; 7] = [
     "exports",
     "hidden",
     "tex",
     "checkpoints",
     "forked_from",
     "allow_shell_escape",
+    "relatedProject",
 ];
 
 pub(crate) fn merge3(base: Option<&Value>, local: &Value, remote: &Value) -> Value {
@@ -311,6 +312,24 @@ mod tests {
             meta_digest(b"not json"),
             oleafly_core::content::ContentHash::digest(b"not json")
         );
+    }
+
+    #[test]
+    fn a_notes_linked_project_is_a_choice_each_computer_keeps() {
+        let desk = br#"{"name":"Masking","main_doc":"note.md","kind":"note","relatedProject":"swift-teal-otter"}"#;
+        let laptop = br#"{"name":"Masking","main_doc":"note.md","kind":"note","relatedProject":"brave-mint-fox"}"#;
+        let unlinked = br#"{"name":"Masking","main_doc":"note.md","kind":"note"}"#;
+        assert_eq!(meta_digest(desk), meta_digest(laptop));
+        assert_eq!(meta_digest(desk), meta_digest(unlinked));
+        let incoming: serde_json::Value = serde_json::from_slice(desk).unwrap();
+        let local: serde_json::Value = serde_json::from_slice(laptop).unwrap();
+        assert_eq!(
+            with_device_fields(&incoming, Some(&local))["relatedProject"],
+            "brave-mint-fox"
+        );
+        let first = with_device_fields(&incoming, None);
+        assert!(first.get("relatedProject").is_none());
+        assert_eq!(first["kind"], "note");
     }
 
     #[test]

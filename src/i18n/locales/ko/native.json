@@ -155,6 +155,9 @@
       "spacesMessage": "Cua Spaces를 사용하는 에이전트가 다음을 할 수 있게 됩니다:",
       "spacesChanges": "Space 만들기와 삭제, 그 안에서 명령 실행",
       "spacesSignIns": "Space 안에서 내 Claude Code 또는 Codex 로그인 사용"
+    },
+    "assistantNetwork": {
+      "message": "어시스턴트가 {{tool}}을(를) 사용하려고 합니다. 이 도구는 텍스트를 온라인 서비스로 보냅니다."
     }
   },
   "errors": {
@@ -214,6 +217,11 @@
     "blockedMode": {
       "title": "권한 확인이 꺼져 있음({{mode}})",
       "description": "에이전트가 묻지 않고 파일을 편집하고 명령을 실행할 수 있습니다. Oleafly가 다른 모드로 전환하지 못했습니다. 에이전트 자체 설정에서 모드를 바꾸세요."
+    }
+  },
+  "notes": {
+    "quickCapture": {
+      "title": "빠른 캡처"
     }
   }
 }

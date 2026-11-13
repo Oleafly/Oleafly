@@ -2,7 +2,7 @@ use crate::collab::guard::{MassChangeGuard, SyncPauseHost, SyncResumed};
 use notify::event::ModifyKind;
 use notify::{Config, Event, EventKind, PollWatcher, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::sync::{Arc, Mutex, PoisonError};
@@ -38,24 +38,247 @@ pub(crate) enum WatchMode {
     Poll(Duration),
 }
 
-struct ActiveWatch {
-    project_id: String,
-    token: u64,
-    _watcher: Box<dyn Watcher + Send>,
+const MAX_WATCHES: usize = 64;
+
+type Restart = Arc<dyn Fn(u64) + Send + Sync>;
+type Rank = (bool, bool, u64);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Claim {
+    Hold,
+    Revive,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Holder {
+    Window(String),
+    Live,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Ask {
+    id: u64,
+    claim: Claim,
+}
+
+struct Plan {
+    ask: Ask,
+    background: bool,
+    restart: Option<Restart>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Installed {
+    Started,
+    Joined,
+    Skipped,
+}
+
+enum Room {
+    Free,
+    Evict(String),
+    Full,
+}
+
+struct ProjectWatch {
+    generation: u64,
+    holders: BTreeSet<u64>,
+    watcher: Option<Box<dyn Watcher + Send>>,
+    background: bool,
+    touched: u64,
+    evicted: bool,
+    restart: Option<Restart>,
+}
+
+impl ProjectWatch {
+    fn rank(&self) -> Rank {
+        (!self.holders.is_empty(), !self.background, self.touched)
+    }
 }
 
 struct Hub {
-    active: Option<ActiveWatch>,
+    watches: BTreeMap<String, ProjectWatch>,
+    owners: BTreeMap<u64, (String, Holder)>,
     latest_request: u64,
 }
 
+impl Hub {
+    fn live(&self) -> usize {
+        self.watches
+            .values()
+            .filter(|watch| watch.watcher.is_some())
+            .count()
+    }
+
+    fn settle(&mut self, project_id: &str, ask: Ask) -> Option<Installed> {
+        match (ask.claim, self.watches.get_mut(project_id)) {
+            (Claim::Hold, Some(watch)) if watch.generation > ask.id => {
+                watch.holders.insert(ask.id);
+                watch.touched = watch.touched.max(ask.id);
+                Some(Installed::Joined)
+            }
+            (Claim::Revive, Some(watch))
+                if watch.watcher.is_none() && watch.generation == ask.id =>
+            {
+                None
+            }
+            (Claim::Revive, _) => Some(Installed::Skipped),
+            _ => None,
+        }
+    }
+
+    fn rank_of(&self, project_id: &str, plan: &Plan) -> Rank {
+        let existing = self.watches.get(project_id);
+        let held = plan.ask.claim == Claim::Hold
+            || existing.is_some_and(|watch| !watch.holders.is_empty());
+        if plan.ask.claim == Claim::Revive {
+            let (background, touched) = existing.map_or((plan.background, plan.ask.id), |watch| {
+                (watch.background, watch.touched)
+            });
+            return (held, !background, touched);
+        }
+        let touched = existing.map_or(0, |watch| watch.touched).max(plan.ask.id);
+        (held, !plan.background, touched)
+    }
+
+    fn room(&self, project_id: &str, rank: Rank) -> Room {
+        let others = || {
+            self.watches
+                .iter()
+                .filter(|(id, watch)| id.as_str() != project_id && watch.watcher.is_some())
+        };
+        if others().count() < MAX_WATCHES {
+            return Room::Free;
+        }
+        match others().min_by_key(|(_, watch)| watch.rank()) {
+            Some((id, watch)) if watch.rank() <= rank => Room::Evict(id.clone()),
+            _ => Room::Full,
+        }
+    }
+
+    fn park(&mut self, project_id: &str, plan: Plan) -> Installed {
+        if plan.ask.claim != Claim::Hold {
+            if let Some(watch) = self
+                .watches
+                .get_mut(project_id)
+                .filter(|watch| watch.watcher.is_none() && !watch.holders.is_empty())
+            {
+                watch.evicted = true;
+            }
+            return Installed::Skipped;
+        }
+        let watch = self.entry(project_id, plan.background);
+        watch.holders.insert(plan.ask.id);
+        watch.touched = watch.touched.max(plan.ask.id);
+        if watch.watcher.is_none() {
+            watch.generation = plan.ask.id;
+            watch.background = plan.background;
+            watch.evicted = true;
+            if plan.restart.is_some() {
+                watch.restart = plan.restart;
+            }
+        }
+        Installed::Joined
+    }
+
+    fn put(
+        &mut self,
+        project_id: &str,
+        plan: Plan,
+        watcher: Box<dyn Watcher + Send>,
+    ) -> Option<Box<dyn Watcher + Send>> {
+        let watch = self.entry(project_id, plan.background);
+        let replaced = watch.watcher.replace(watcher);
+        watch.generation = plan.ask.id;
+        watch.evicted = false;
+        if plan.ask.claim == Claim::Hold {
+            watch.holders.insert(plan.ask.id);
+        }
+        if plan.ask.claim != Claim::Revive {
+            watch.background = plan.background;
+            watch.touched = watch.touched.max(plan.ask.id);
+        }
+        if plan.restart.is_some() {
+            watch.restart = plan.restart;
+        }
+        replaced
+    }
+
+    fn entry(&mut self, project_id: &str, background: bool) -> &mut ProjectWatch {
+        self.watches
+            .entry(project_id.to_owned())
+            .or_insert_with(|| ProjectWatch {
+                generation: 0,
+                holders: BTreeSet::new(),
+                watcher: None,
+                background,
+                touched: 0,
+                evicted: false,
+                restart: None,
+            })
+    }
+
+    fn evict(&mut self, project_id: &str) -> Option<Box<dyn Watcher + Send>> {
+        let watch = self.watches.get_mut(project_id)?;
+        let watcher = watch.watcher.take();
+        watch.evicted = true;
+        if watch.holders.is_empty() {
+            self.watches.remove(project_id);
+        }
+        watcher
+    }
+
+    fn join(&mut self, project_id: &str, id: u64) -> bool {
+        let Some(watch) = self
+            .watches
+            .get_mut(project_id)
+            .filter(|watch| watch.watcher.is_some() || !watch.holders.is_empty())
+        else {
+            return false;
+        };
+        watch.holders.insert(id);
+        watch.touched = watch.touched.max(id);
+        true
+    }
+
+    fn held_by(&self, wanted: impl Fn(&str, &Holder) -> bool) -> Vec<(String, u64)> {
+        self.owners
+            .iter()
+            .filter(|(_, (project_id, holder))| wanted(project_id, holder))
+            .map(|(token, (project_id, _))| (project_id.clone(), *token))
+            .collect()
+    }
+
+    fn wake(&mut self) -> Option<(Restart, u64)> {
+        if self.live() >= MAX_WATCHES {
+            return None;
+        }
+        let (_, watch) = self
+            .watches
+            .iter_mut()
+            .filter(|(_, watch)| {
+                watch.evicted && watch.watcher.is_none() && watch.restart.is_some()
+            })
+            .max_by_key(|(_, watch)| watch.rank())?;
+        watch.evicted = false;
+        Some((Arc::clone(watch.restart.as_ref()?), watch.generation))
+    }
+}
+
 static HUB: Mutex<Hub> = Mutex::new(Hub {
-    active: None,
+    watches: BTreeMap::new(),
+    owners: BTreeMap::new(),
     latest_request: 0,
 });
 
 fn hub() -> std::sync::MutexGuard<'static, Hub> {
     HUB.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+fn wake_next(next: Option<(Restart, u64)>) {
+    if let Some((restart, generation)) = next {
+        restart(generation);
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -311,9 +534,9 @@ fn create_watcher(
 
 fn still_active(project_id: &str, token: u64) -> bool {
     hub()
-        .active
-        .as_ref()
-        .is_some_and(|active| active.project_id == project_id && active.token == token)
+        .watches
+        .get(project_id)
+        .is_some_and(|watch| watch.generation == token && watch.watcher.is_some())
 }
 
 fn unwanted<'a>(root: &'a Path, project_id: &'a str) -> impl Fn(&str) -> bool + 'a {
@@ -380,39 +603,44 @@ fn run(
     }
 }
 
-pub(crate) fn begin_request() -> u64 {
-    let (request, replaced) = {
-        let mut hub = hub();
-        hub.latest_request += 1;
-        (hub.latest_request, hub.active.take())
-    };
-    drop(replaced);
-    request
-}
-
-fn is_latest(request: u64) -> bool {
-    hub().latest_request == request
+fn begin_request() -> u64 {
+    let mut hub = hub();
+    hub.latest_request += 1;
+    hub.latest_request
 }
 
 fn install(
-    request: u64,
+    plan: Plan,
     project_id: &str,
     root: &Path,
     mode: WatchMode,
     sink: ChangeSink,
     on_root_changed: Box<dyn Fn() + Send>,
-) -> Result<Option<u64>, String> {
-    if !is_latest(request) {
-        return Ok(None);
+) -> Result<Installed, String> {
+    let ask = plan.ask;
+    if let Some(settled) = hub().settle(project_id, ask) {
+        return Ok(settled);
     }
     let (sender, receiver) = std::sync::mpsc::channel();
     let watcher = create_watcher(sender, mode, root)?;
     let mut hub = hub();
-    if hub.latest_request != request {
-        drop(hub);
-        drop(watcher);
-        return Ok(None);
-    }
+    let victim = match hub.settle(project_id, ask) {
+        Some(settled) => {
+            drop(hub);
+            drop(watcher);
+            return Ok(settled);
+        }
+        None => match hub.room(project_id, hub.rank_of(project_id, &plan)) {
+            Room::Free => None,
+            Room::Evict(victim) => Some(victim),
+            Room::Full => {
+                let parked = hub.park(project_id, plan);
+                drop(hub);
+                drop(watcher);
+                return Ok(parked);
+            }
+        },
+    };
     let worker_root = root.to_path_buf();
     let worker_project = project_id.to_owned();
     std::thread::Builder::new()
@@ -422,18 +650,18 @@ fn install(
                 receiver,
                 worker_root,
                 worker_project,
-                request,
+                ask.id,
                 sink,
                 on_root_changed,
             )
         })
         .map_err(|error| format!("could not start watching the folder: {error}"))?;
-    hub.active = Some(ActiveWatch {
-        project_id: project_id.to_owned(),
-        token: request,
-        _watcher: watcher,
-    });
-    Ok(Some(request))
+    let replaced = hub.put(project_id, plan, watcher);
+    let evicted = victim.and_then(|victim| hub.evict(&victim));
+    drop(hub);
+    drop(replaced);
+    drop(evicted);
+    Ok(Installed::Started)
 }
 
 #[cfg(test)]
@@ -444,52 +672,92 @@ pub(crate) fn start(
     sink: ChangeSink,
     on_root_changed: Box<dyn Fn() + Send>,
 ) -> Result<u64, String> {
-    install(
-        begin_request(),
-        project_id,
-        root,
-        mode,
-        sink,
-        on_root_changed,
-    )?
-    .ok_or_else(|| "a newer watch request replaced this one".to_string())
+    let ask = Ask {
+        id: begin_request(),
+        claim: Claim::Hold,
+    };
+    let plan = Plan {
+        ask,
+        background: false,
+        restart: None,
+    };
+    match install(plan, project_id, root, mode, sink, on_root_changed)? {
+        Installed::Skipped => Err("a newer watch request replaced this one".to_string()),
+        Installed::Started | Installed::Joined => Ok(ask.id),
+    }
 }
 
-pub(crate) fn is_watching(project_id: &str) -> bool {
-    hub()
-        .active
-        .as_ref()
-        .is_some_and(|active| active.project_id == project_id)
+fn awaits_root(project_id: &str, generation: u64) -> bool {
+    hub().watches.get(project_id).is_some_and(|watch| {
+        watch.watcher.is_none() && watch.generation == generation && !watch.evicted
+    })
+}
+
+fn suspend(project_id: &str, generation: u64) {
+    let (dropped, next) = {
+        let mut hub = hub();
+        let Some(watch) = hub
+            .watches
+            .get_mut(project_id)
+            .filter(|watch| watch.generation == generation && watch.watcher.is_some())
+        else {
+            return;
+        };
+        let dropped = watch.watcher.take();
+        watch.evicted = false;
+        if watch.holders.is_empty() {
+            hub.watches.remove(project_id);
+        }
+        (dropped, hub.wake())
+    };
+    drop(dropped);
+    wake_next(next);
 }
 
 pub(crate) fn stop(project_id: &str, token: Option<u64>) -> bool {
-    let removed = {
+    let (removed, next) = {
         let mut hub = hub();
-        let matches = hub.active.as_ref().is_some_and(|active| {
-            active.project_id == project_id && token.is_none_or(|token| token == active.token)
-        });
-        if matches {
-            hub.active.take()
-        } else {
-            None
+        let Some(watch) = hub.watches.get_mut(project_id) else {
+            return false;
+        };
+        if let Some(token) = token {
+            if !watch.holders.remove(&token) {
+                return false;
+            }
+            let still_held = !watch.holders.is_empty();
+            hub.owners.remove(&token);
+            if still_held {
+                return true;
+            }
         }
+        let removed = hub.watches.remove(project_id);
+        let freed = removed
+            .as_ref()
+            .is_some_and(|watch| watch.watcher.is_some());
+        (removed, freed.then(|| hub.wake()).flatten())
     };
-    removed.is_some()
+    drop(removed);
+    wake_next(next);
+    true
 }
 
 #[cfg(test)]
 pub(crate) fn stop_all() {
-    let removed = hub().active.take();
+    let removed = {
+        let mut hub = hub();
+        hub.owners.clear();
+        std::mem::take(&mut hub.watches)
+    };
     drop(removed);
 }
 
 #[cfg(test)]
 pub(crate) fn active_token(project_id: &str) -> Option<u64> {
     hub()
-        .active
-        .as_ref()
-        .filter(|active| active.project_id == project_id)
-        .map(|active| active.token)
+        .watches
+        .get(project_id)
+        .filter(|watch| watch.watcher.is_some())
+        .map(|watch| watch.generation)
 }
 
 #[cfg(test)]
@@ -513,17 +781,67 @@ pub(crate) fn watch_project_reporting(
     host: Arc<dyn SyncPauseHost>,
     mode_override: Option<WatchMode>,
 ) -> Result<Option<u64>, String> {
-    watch_project_as(begin_request(), project_id, sink, host, mode_override, true)
+    let ask = Ask {
+        id: begin_request(),
+        claim: Claim::Hold,
+    };
+    watch_project_as(ask, project_id, sink, host, mode_override)
+}
+
+fn is_note_project(project_id: &str) -> bool {
+    crate::project::read_meta(project_id)
+        .is_ok_and(|meta| crate::project::is_note(project_id, &meta))
+}
+
+fn rescan(project_id: &str) -> FolderChange {
+    FolderChange {
+        project_id: project_id.to_owned(),
+        paths: Vec::new(),
+        rescan: true,
+        structural: true,
+        renamed: Vec::new(),
+        deleted: Vec::new(),
+    }
+}
+
+fn revival(
+    project_id: &str,
+    outer: &ChangeSink,
+    host: &Arc<dyn SyncPauseHost>,
+    mode_override: Option<WatchMode>,
+) -> Restart {
+    let project_id = project_id.to_owned();
+    let outer = Arc::clone(outer);
+    let host = Arc::clone(host);
+    Arc::new(move |generation| {
+        let project_id = project_id.clone();
+        let outer = Arc::clone(&outer);
+        let host = Arc::clone(&host);
+        let _ = std::thread::Builder::new()
+            .name("oleafly-folder-wake".into())
+            .spawn(move || {
+                let ask = Ask {
+                    id: generation,
+                    claim: Claim::Revive,
+                };
+                let revived =
+                    watch_project_as(ask, &project_id, Arc::clone(&outer), host, mode_override);
+                if matches!(revived, Ok(Some(_))) {
+                    outer(rescan(&project_id));
+                }
+            });
+    })
 }
 
 fn watch_project_as(
-    request: u64,
+    ask: Ask,
     project_id: &str,
     sink: ChangeSink,
     host: Arc<dyn SyncPauseHost>,
     mode_override: Option<WatchMode>,
-    fresh: bool,
 ) -> Result<Option<u64>, String> {
+    let request = ask.id;
+    let fresh = ask.claim != Claim::Revive;
     let location = crate::project_location::locate(project_id)?;
     let shared = crate::collab::registry::is_shared(project_id);
     let network = crate::linked_registry::cached_membership(project_id)
@@ -556,6 +874,11 @@ fn watch_project_as(
         }
         sink(change);
     });
+    let plan = Plan {
+        ask,
+        background: fresh && is_note_project(project_id),
+        restart: Some(revival(project_id, &outer_sink, &host, mode_override)),
+    };
     let probe_id = project_id.to_owned();
     let composed = Arc::clone(&sink);
     let announce = (fresh && guard.is_some()).then(|| Arc::clone(&host));
@@ -564,7 +887,7 @@ fn watch_project_as(
             let _ = guard.root_changed();
         }
         if crate::project_location::locate(&probe_id).is_err() {
-            stop(&probe_id, Some(request));
+            suspend(&probe_id, request);
             if let Some(guard) = guard.as_ref().filter(|guard| guard.begin_waiting()) {
                 let waiter = RootWaiter {
                     request,
@@ -586,19 +909,19 @@ fn watch_project_as(
         }
     });
     let installed = install(
-        request,
+        plan,
         project_id,
         &location.root,
         mode,
         sink,
         on_root_changed,
     )?;
-    if let (Some(_), Some(host)) = (installed, announce) {
+    if let (Installed::Started, Some(host)) = (installed, announce) {
         host.sync_resumed(&SyncResumed {
             project_id: project_id.to_owned(),
         });
     }
-    Ok(installed)
+    Ok((installed != Installed::Skipped).then_some(request))
 }
 
 struct RootWaiter {
@@ -615,7 +938,7 @@ impl RootWaiter {
     fn run(self) {
         loop {
             std::thread::sleep(ROOT_POLL);
-            if !is_latest(self.request) || is_watching(&self.project_id) {
+            if !awaits_root(&self.project_id, self.request) {
                 self.guard.end_waiting();
                 return;
             }
@@ -624,45 +947,127 @@ impl RootWaiter {
             }
         }
         self.guard.end_waiting();
+        let ask = Ask {
+            id: self.request,
+            claim: Claim::Revive,
+        };
         let watched = watch_project_as(
-            self.request,
+            ask,
             &self.project_id,
             Arc::clone(&self.outer),
             Arc::clone(&self.host),
             self.mode_override,
-            false,
         );
         if !matches!(watched, Ok(Some(_))) {
             return;
         }
-        (self.composed)(FolderChange {
-            project_id: self.project_id.clone(),
-            paths: Vec::new(),
-            rescan: true,
-            structural: true,
-            renamed: Vec::new(),
-            deleted: Vec::new(),
-        });
+        (self.composed)(rescan(&self.project_id));
         crate::collab::live::root_returned(&self.project_id);
+    }
+}
+
+fn touches_listing(change: &FolderChange) -> bool {
+    change.rescan
+        || change.paths.iter().any(|path| {
+            Path::new(path).file_name()
+                == Some(std::ffi::OsStr::new(crate::project_location::MANIFEST_FILE))
+        })
+}
+
+async fn request_watch<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    project_id: String,
+    holder: Holder,
+) -> Result<Option<u64>, String> {
+    let ask = Ask {
+        id: begin_request(),
+        claim: Claim::Hold,
+    };
+    let joins = holder == Holder::Live;
+    hub().owners.insert(ask.id, (project_id.clone(), holder));
+    let watched_id = project_id.clone();
+    let watched = tauri::async_runtime::spawn_blocking(move || {
+        use tauri::Emitter as _;
+        let host: Arc<dyn SyncPauseHost> = Arc::new(app.clone());
+        let sink: ChangeSink = Arc::new(move |change| {
+            if touches_listing(&change) {
+                crate::note_index::invalidate();
+            }
+            let _ = app.emit(FOLDER_CHANGED_EVENT, change);
+        });
+        if joins && hub().join(&watched_id, ask.id) {
+            return Ok(Some(ask.id));
+        }
+        watch_project_as(ask, &watched_id, sink, host, None)
+    })
+    .await
+    .map_err(|error| error.to_string())
+    .and_then(|watched| watched);
+    let owned = hub().owners.contains_key(&ask.id);
+    match watched {
+        Ok(Some(token)) if !owned => {
+            stop(&project_id, Some(token));
+            Ok(None)
+        }
+        Ok(Some(token)) => Ok(Some(token)),
+        other => {
+            hub().owners.remove(&ask.id);
+            other
+        }
+    }
+}
+
+fn release(wanted: impl Fn(&str, &Holder) -> bool) {
+    let held = {
+        let mut hub = hub();
+        let held = hub.held_by(wanted);
+        for (_, token) in &held {
+            hub.owners.remove(token);
+        }
+        held
+    };
+    for (project_id, token) in held {
+        stop(&project_id, Some(token));
+    }
+}
+
+pub(crate) fn release_window(label: &str) {
+    release(|_, holder| matches!(holder, Holder::Window(window) if window == label));
+}
+
+pub(crate) fn on_page_load<R: tauri::Runtime>(
+    webview: &tauri::Webview<R>,
+    payload: &tauri::webview::PageLoadPayload<'_>,
+) {
+    if matches!(payload.event(), tauri::webview::PageLoadEvent::Started) {
+        release_window(webview.label());
     }
 }
 
 #[tauri::command]
 pub async fn watch_project_folder<R: tauri::Runtime>(
     app: tauri::AppHandle<R>,
+    webview: tauri::Webview<R>,
     project_id: String,
 ) -> Result<Option<u64>, String> {
-    let request = begin_request();
-    tauri::async_runtime::spawn_blocking(move || {
-        use tauri::Emitter as _;
-        let host: Arc<dyn SyncPauseHost> = Arc::new(app.clone());
-        let sink: ChangeSink = Arc::new(move |change| {
-            let _ = app.emit(FOLDER_CHANGED_EVENT, change);
-        });
-        watch_project_as(request, &project_id, sink, host, None, true)
-    })
-    .await
-    .map_err(|error| error.to_string())?
+    let holder = Holder::Window(webview.label().to_owned());
+    request_watch(app, project_id, holder).await
+}
+
+pub(crate) async fn keep_watching<R: tauri::Runtime>(app: tauri::AppHandle<R>, project_id: String) {
+    let previous = hub().held_by(|id, holder| id == project_id && *holder == Holder::Live);
+    if matches!(
+        request_watch(app, project_id.clone(), Holder::Live).await,
+        Ok(Some(_))
+    ) {
+        for (_, token) in previous {
+            stop(&project_id, Some(token));
+        }
+    }
+}
+
+pub(crate) fn release_live(project_id: &str) {
+    release(|id, holder| id == project_id && *holder == Holder::Live);
 }
 
 #[tauri::command]
@@ -989,23 +1394,111 @@ mod tests {
         let older = begin_request();
         let newer = begin_request();
         let installed = install(
-            newer,
+            plan(newer, Claim::Hold, false),
             "linked-race",
             &root,
             poll,
             sink.clone(),
             Box::new(|| {}),
         );
-        let late = install(older, "linked-race", &root, poll, sink, Box::new(|| {}));
+        let late = install(
+            plan(older, Claim::Hold, false),
+            "linked-race",
+            &root,
+            poll,
+            sink,
+            Box::new(|| {}),
+        );
+        let after_late = active_token("linked-race");
         let stale_stop = stop("linked-race", Some(older));
         let active = active_token("linked-race");
-        stop("linked-race", Some(newer));
+        let last_stop = stop("linked-race", Some(newer));
 
-        assert_eq!(installed.unwrap(), Some(newer));
-        assert_eq!(late.unwrap(), None);
-        assert!(!stale_stop);
+        assert_eq!(installed.unwrap(), Installed::Started);
+        assert_eq!(late.unwrap(), Installed::Joined);
+        assert_eq!(after_late, Some(newer));
+        assert!(stale_stop);
         assert_eq!(active, Some(newer));
+        assert!(last_stop);
         assert_eq!(active_token("linked-race"), None);
+    }
+
+    fn plan(id: u64, claim: Claim, background: bool) -> Plan {
+        Plan {
+            ask: Ask { id, claim },
+            background,
+            restart: None,
+        }
+    }
+
+    fn folder(parent: &Path, name: &str) -> PathBuf {
+        let path = parent.join(name);
+        std::fs::create_dir_all(&path).unwrap();
+        path.canonicalize().unwrap()
+    }
+
+    #[test]
+    fn a_late_request_for_a_folder_whose_newer_watch_is_waiting_never_restarts_it() {
+        let _guard = crate::paths::data_dir_env_lock();
+        let directory = tempfile::tempdir().unwrap();
+        let root = folder(directory.path(), "race");
+        let (sink, _receiver) = recorder();
+        let poll = WatchMode::Poll(Duration::from_millis(50));
+
+        let older = begin_request();
+        let newer = begin_request();
+        install(
+            plan(newer, Claim::Hold, false),
+            "linked-race-gone",
+            &root,
+            poll,
+            sink.clone(),
+            Box::new(|| {}),
+        )
+        .unwrap();
+        suspend("linked-race-gone", newer);
+        let waiting = awaits_root("linked-race-gone", newer);
+        let late = install(
+            plan(older, Claim::Hold, false),
+            "linked-race-gone",
+            &root,
+            poll,
+            sink.clone(),
+            Box::new(|| {}),
+        );
+        let after_late = (
+            active_token("linked-race-gone"),
+            awaits_root("linked-race-gone", newer),
+        );
+        let stale_revive = install(
+            plan(older, Claim::Revive, false),
+            "linked-race-gone",
+            &root,
+            poll,
+            sink.clone(),
+            Box::new(|| {}),
+        );
+        let revived = install(
+            plan(newer, Claim::Revive, false),
+            "linked-race-gone",
+            &root,
+            poll,
+            sink,
+            Box::new(|| {}),
+        );
+        let back = active_token("linked-race-gone");
+        stop("linked-race-gone", Some(older));
+        let held_by_newer = active_token("linked-race-gone");
+        stop("linked-race-gone", Some(newer));
+
+        assert!(waiting);
+        assert_eq!(late.unwrap(), Installed::Joined);
+        assert_eq!(after_late, (None, true));
+        assert_eq!(stale_revive.unwrap(), Installed::Skipped);
+        assert_eq!(revived.unwrap(), Installed::Started);
+        assert_eq!(back, Some(newer));
+        assert_eq!(held_by_newer, Some(newer));
+        assert_eq!(active_token("linked-race-gone"), None);
     }
 
     fn recorder() -> (ChangeSink, mpsc::Receiver<FolderChange>) {
@@ -1214,10 +1707,12 @@ mod tests {
             std::thread::sleep(Duration::from_millis(50));
         }
         let remaining = active_token(&record.id);
+        let released = stop(&record.id, token);
         std::env::remove_var("OLEAFLY_DATA_DIR");
 
         assert!(token.is_some());
         assert_eq!(remaining, None);
+        assert!(released);
     }
 
     fn age(path: &Path) {
@@ -1389,6 +1884,7 @@ mod tests {
         }
         let remaining = active_token("watch-vanish");
         let heard = pauses.taken();
+        stop("watch-vanish", token);
 
         assert!(token.is_some());
         assert_eq!(remaining, None);
@@ -1499,6 +1995,299 @@ mod tests {
         assert!(
             edit.rescan || edit.paths.contains(&"main.tex".to_string()),
             "{edit:?}"
+        );
+    }
+
+    #[test]
+    fn a_manifest_change_or_rescan_refreshes_the_note_listing() {
+        let change = |paths: &[&str], rescan: bool| FolderChange {
+            project_id: "p".into(),
+            paths: paths.iter().map(|path| path.to_string()).collect(),
+            rescan,
+            structural: false,
+            renamed: Vec::new(),
+            deleted: Vec::new(),
+        };
+        assert!(touches_listing(&change(&["project.json"], false)));
+        assert!(touches_listing(&change(&["nested/project.json"], false)));
+        assert!(touches_listing(&change(&[], true)));
+        assert!(!touches_listing(&change(&["note.md"], false)));
+    }
+
+    fn in_background(project_id: &str) -> Option<bool> {
+        hub().watches.get(project_id).map(|watch| watch.background)
+    }
+
+    fn holds(project_id: &str, token: u64) -> bool {
+        hub()
+            .watches
+            .get(project_id)
+            .is_some_and(|watch| watch.holders.contains(&token))
+    }
+
+    #[test]
+    fn two_projects_are_watched_at_once_and_each_change_names_its_own_project() {
+        let library = crate::collab::testing::TempLibrary::new();
+        let paper = library.project("watch-pair-paper", &[("main.tex", "one")]);
+        let thesis = library.project("watch-pair-thesis", &[("main.tex", "one")]);
+        age(&paper.join("main.tex"));
+        age(&thesis.join("main.tex"));
+        let poll = Some(WatchMode::Poll(Duration::from_millis(50)));
+        let (paper_sink, paper_changes) = recorder();
+        let (thesis_sink, thesis_changes) = recorder();
+
+        let paper_token = watch_project("watch-pair-paper", paper_sink, poll)
+            .unwrap()
+            .unwrap();
+        let thesis_token = watch_project("watch-pair-thesis", thesis_sink, poll)
+            .unwrap()
+            .unwrap();
+        std::thread::sleep(Duration::from_millis(200));
+        let both = (
+            active_token("watch-pair-paper"),
+            active_token("watch-pair-thesis"),
+        );
+        std::fs::write(paper.join("main.tex"), "two, longer").unwrap();
+        let paper_change = next_change(&paper_changes);
+        std::fs::write(thesis.join("main.tex"), "two, longer").unwrap();
+        let thesis_change = next_change(&thesis_changes);
+        stop("watch-pair-paper", Some(paper_token));
+        stop("watch-pair-thesis", Some(thesis_token));
+
+        assert_eq!(both, (Some(paper_token), Some(thesis_token)));
+        let paper_change = paper_change.expect("an edit to the paper is reported");
+        assert_eq!(paper_change.project_id, "watch-pair-paper");
+        assert_eq!(paper_change.paths, ["main.tex"]);
+        let thesis_change = thesis_change.expect("an edit to the thesis is reported");
+        assert_eq!(thesis_change.project_id, "watch-pair-thesis");
+        assert_eq!(thesis_change.paths, ["main.tex"]);
+    }
+
+    #[test]
+    fn a_note_watch_that_starts_and_stops_leaves_the_open_project_watched() {
+        let library = crate::collab::testing::TempLibrary::new();
+        let paper = library.project("watch-open-paper", &[("main.tex", "one")]);
+        library.project(
+            "watch-open-note",
+            &[
+                (
+                    "project.json",
+                    r#"{"name":"Ideas","main_doc":"note.md","kind":"note"}"#,
+                ),
+                ("note.md", "---\nkind: note\n---\nIdeas\n"),
+            ],
+        );
+        age(&paper.join("main.tex"));
+        let poll = Some(WatchMode::Poll(Duration::from_millis(50)));
+        let (paper_sink, paper_changes) = recorder();
+        let (note_sink, _note_changes) = recorder();
+
+        let paper_token = watch_project("watch-open-paper", paper_sink, poll)
+            .unwrap()
+            .unwrap();
+        let note_token = watch_project("watch-open-note", note_sink, poll)
+            .unwrap()
+            .unwrap();
+        let background = (
+            in_background("watch-open-paper"),
+            in_background("watch-open-note"),
+        );
+        let note_released = stop("watch-open-note", Some(note_token));
+        let note_after = active_token("watch-open-note");
+        std::thread::sleep(Duration::from_millis(200));
+        std::fs::write(paper.join("main.tex"), "two, longer").unwrap();
+        let change = next_change(&paper_changes);
+        let still_watched = active_token("watch-open-paper");
+        stop("watch-open-paper", Some(paper_token));
+
+        assert_eq!(background, (Some(false), Some(true)));
+        assert!(note_released);
+        assert_eq!(note_after, None);
+        assert_eq!(still_watched, Some(paper_token));
+        let change = change.expect("an edit to the open project is still reported");
+        assert_eq!(change.project_id, "watch-open-paper");
+        assert_eq!(change.paths, ["main.tex"]);
+    }
+
+    #[test]
+    fn two_callers_on_one_project_keep_it_watched_until_the_last_lets_go() {
+        let library = crate::collab::testing::TempLibrary::new();
+        let root = library.project("watch-twice", &[("main.tex", "one")]);
+        age(&root.join("main.tex"));
+        let poll = Some(WatchMode::Poll(Duration::from_millis(50)));
+        let (sink, receiver) = recorder();
+
+        let first = watch_project("watch-twice", Arc::clone(&sink), poll)
+            .unwrap()
+            .unwrap();
+        let second = watch_project("watch-twice", sink, poll).unwrap().unwrap();
+        let second_released = stop("watch-twice", Some(second));
+        let released_twice = stop("watch-twice", Some(second));
+        let after_second = active_token("watch-twice");
+        std::thread::sleep(Duration::from_millis(200));
+        std::fs::write(root.join("main.tex"), "two, longer").unwrap();
+        let change = next_change(&receiver);
+        let first_released = stop("watch-twice", Some(first));
+        let after_first = active_token("watch-twice");
+
+        assert!(first < second);
+        assert!(second_released);
+        assert!(!released_twice);
+        assert_eq!(after_second, Some(second));
+        let change = change.expect("the caller still holding the project hears about edits");
+        assert_eq!(change.project_id, "watch-twice");
+        assert_eq!(change.paths, ["main.tex"]);
+        assert!(first_released);
+        assert_eq!(after_first, None);
+    }
+
+    fn app_window(
+        label: &str,
+    ) -> (
+        tauri::App<tauri::test::MockRuntime>,
+        tauri::Webview<tauri::test::MockRuntime>,
+    ) {
+        use tauri::Manager as _;
+        let app = tauri::test::mock_builder()
+            .build(tauri::test::mock_context(tauri::test::noop_assets()))
+            .unwrap();
+        tauri::WebviewWindowBuilder::new(&app, label, Default::default())
+            .build()
+            .unwrap();
+        let webview = app.get_webview(label).unwrap();
+        (app, webview)
+    }
+
+    fn watch_from(webview: &tauri::Webview<tauri::test::MockRuntime>, project_id: &str) -> u64 {
+        use tauri::Manager as _;
+        tauri::async_runtime::block_on(watch_project_folder(
+            webview.app_handle().clone(),
+            webview.clone(),
+            project_id.to_owned(),
+        ))
+        .unwrap()
+        .unwrap()
+    }
+
+    #[test]
+    fn a_page_that_loads_again_lets_go_of_what_it_watched() {
+        let library = crate::collab::testing::TempLibrary::new();
+        library.project("reload-paper", &[("main.tex", "one")]);
+        library.project("reload-other", &[("main.tex", "one")]);
+        let (_app, main) = app_window("main");
+        let (_preview_app, preview) = app_window("preview");
+
+        let stale = watch_from(&main, "reload-paper");
+        watch_from(&main, "reload-other");
+        let kept = watch_from(&preview, "reload-other");
+        release_window("main");
+        let after_reload = (
+            active_token("reload-paper"),
+            active_token("reload-other").is_some(),
+        );
+        let fresh = watch_from(&main, "reload-paper");
+        let closed = unwatch_project_folder("reload-paper".into(), Some(fresh));
+        let after_close = active_token("reload-paper");
+        let stale_again = unwatch_project_folder("reload-paper".into(), Some(stale));
+        unwatch_project_folder("reload-other".into(), Some(kept));
+
+        assert_eq!(after_reload, (None, true));
+        assert!(closed);
+        assert_eq!(after_close, None);
+        assert!(!stale_again);
+        assert_eq!(active_token("reload-other"), None);
+    }
+
+    #[test]
+    fn a_live_session_holds_its_watch_until_it_stops() {
+        let library = crate::collab::testing::TempLibrary::new();
+        library.project("live-held", &[("main.tex", "one")]);
+        let (app, main) = app_window("main");
+        let handle = app.handle().clone();
+
+        tauri::async_runtime::block_on(keep_watching(handle.clone(), "live-held".into()));
+        let started = active_token("live-held").is_some();
+        let opened = watch_from(&main, "live-held");
+        unwatch_project_folder("live-held".into(), Some(opened));
+        let after_tab_closed = active_token("live-held").is_some();
+        tauri::async_runtime::block_on(keep_watching(handle, "live-held".into()));
+        release_live("live-held");
+        let after_stop = active_token("live-held");
+
+        assert!(started);
+        assert!(after_tab_closed);
+        assert_eq!(after_stop, None);
+        assert!(hub().owners.values().all(|(id, _)| id != "live-held"));
+    }
+
+    #[test]
+    fn past_the_cap_the_least_recent_note_gives_way_and_the_open_project_stays() {
+        let _guard = crate::paths::data_dir_env_lock();
+        stop_all();
+        let directory = tempfile::tempdir().unwrap();
+        let (sink, _receiver) = recorder();
+        let poll = WatchMode::Poll(Duration::from_millis(100));
+        let (woken_sender, woken) = mpsc::channel();
+        let woken_sender = Mutex::new(woken_sender);
+        let restart: Restart = Arc::new(move |generation| {
+            let _ = woken_sender
+                .lock()
+                .unwrap_or_else(PoisonError::into_inner)
+                .send(generation);
+        });
+        let open = |project_id: &str, plan: Plan| {
+            install(
+                plan,
+                project_id,
+                &folder(directory.path(), project_id),
+                poll,
+                Arc::clone(&sink),
+                Box::new(|| {}),
+            )
+            .unwrap()
+        };
+        let note = |id: u64, claim: Claim| Plan {
+            ask: Ask { id, claim },
+            background: true,
+            restart: Some(Arc::clone(&restart)),
+        };
+
+        let project = begin_request();
+        let opened = open("cap-project", plan(project, Claim::Hold, false));
+        let notes: Vec<u64> = (0..MAX_WATCHES).map(|_| begin_request()).collect();
+        let started: Vec<Installed> = notes
+            .iter()
+            .enumerate()
+            .map(|(index, id)| open(&format!("cap-note-{index}"), note(*id, Claim::Hold)))
+            .collect();
+        let full = hub().live();
+        let oldest_note = active_token("cap-note-0");
+        let oldest_still_held = holds("cap-note-0", notes[0]);
+        let released = stop("cap-note-7", Some(notes[7]));
+        let woke = woken.recv_timeout(Duration::from_secs(1)).ok();
+        let revived = open("cap-note-0", note(notes[0], Claim::Revive));
+        let live = hub().live();
+        let after = (
+            live,
+            active_token("cap-note-0"),
+            active_token("cap-project"),
+            active_token("cap-note-1"),
+        );
+        stop_all();
+
+        assert_eq!(opened, Installed::Started);
+        assert!(started
+            .iter()
+            .all(|installed| *installed == Installed::Started));
+        assert_eq!(full, MAX_WATCHES);
+        assert_eq!(oldest_note, None);
+        assert!(oldest_still_held);
+        assert!(released);
+        assert_eq!(woke, Some(notes[0]));
+        assert_eq!(revived, Installed::Started);
+        assert_eq!(
+            after,
+            (MAX_WATCHES, Some(notes[0]), Some(project), Some(notes[1]),)
         );
     }
 }

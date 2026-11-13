@@ -3,6 +3,7 @@
     "newProject": "Nieuw project",
     "search": "Documenten zoeken ({{shortcut}})",
     "diagramComposer": "Diagrameditor",
+    "notes": "Notities",
     "tools": "Oleafly Tools",
     "settings": "Instellingen"
   },
@@ -54,6 +55,7 @@
       "kindDocument": "Document",
       "kindImage": "Afbeelding",
       "kindDiagram": "Diagram",
+      "kindNote": "Notitie",
       "bookmark": "Bladwijzer",
       "bookmarkAll": "Elke status",
       "bookmarkYes": "Met bladwijzer",
@@ -137,6 +139,7 @@
       "document": "document",
       "image": "afbeelding",
       "diagram": "diagram",
+      "note": "notitie",
       "external": "extern",
       "overleaf": "Overleaf"
     },

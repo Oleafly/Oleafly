@@ -44,14 +44,16 @@
       "externalTool": "Actie van externe tool bevestigen",
       "internet": "Internettoegang bevestigen",
       "edit": "AI-bewerking bevestigen",
-      "researchTask": "Onderzoekstaak bevestigen"
+      "researchTask": "Onderzoekstaak bevestigen",
+      "note": "Nieuwe notitie bevestigen"
     },
     "headline": {
       "command": "De assistent wil deze opdracht uitvoeren",
       "externalTool": "De assistent wil een externe tool gebruiken",
       "internet": "De assistent wil toegang tot internet",
       "edit": "De assistent wil je bestanden wijzigen",
-      "researchTask": "De assistent wil een onderzoekstaak aanmaken"
+      "researchTask": "De assistent wil een onderzoekstaak aanmaken",
+      "note": "De assistent wil een notitie maken"
     },
     "mcpNote": "Hiermee gaan de argumenten hieronder naar de ingestelde MCP-server.",
     "line": "regel {{line}}",
@@ -88,6 +90,14 @@
       "minutes_other": "{{count}} minuten",
       "planFirst": "Eerst een plan maken",
       "startNow": "Nu starten"
+    },
+    "noteDraft": {
+      "title": "Titel",
+      "project": "Gekoppeld project",
+      "tags": "Tags",
+      "text": "Tekst",
+      "empty": "Geen tekst",
+      "more": "De notitie gaat na dit punt nog verder."
     }
   },
   "attachments": {
@@ -1103,5 +1113,19 @@
     "replaceConfirm": "Antwoord vervangen",
     "forked": "Een nieuwe chat is gestart vanaf het bewerkte bericht.",
     "failed": "Kon het bericht niet opnieuw versturen."
+  },
+  "noteScope": {
+    "notesOnly": "Alleen in de assistent van een notitie.",
+    "tools": {
+      "readNote": "Leest de geopende notitie, inclusief suggesties die nog op beoordeling wachten.",
+      "proposeNoteEdits": "Stelt wijzigingen in de geopende notitie voor die je kunt accepteren of afwijzen.",
+      "searchNotes": "Doorzoekt al je notities.",
+      "listKnowledgeNotes": "Somt je notities op, per tag of project.",
+      "readNoteById": "Leest een andere notitie.",
+      "createNote": "Maakt een nieuwe notitie.",
+      "relatedProjectFiles": "Somt de bestanden op van het project waaraan de notitie is gekoppeld.",
+      "readRelatedProjectFile": "Leest een bestand uit het project waaraan de notitie is gekoppeld.",
+      "searchRelatedProject": "Doorzoekt het project waaraan de notitie is gekoppeld."
+    }
   }
 }

@@ -15,6 +15,7 @@ export const WYSIWYG_MESSAGE_KEYS = [
   "block.environment",
   "block.command",
   "block.latexSource",
+  "block.html",
   "block.maketitlePreview",
   "block.figurePreserved",
   "block.tablePreserved",

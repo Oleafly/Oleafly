@@ -70,6 +70,7 @@ interface TerminalsState {
   closeTerminalsToTheLeft: (id: string) => TerminalTab[];
   activateTerminal: (id: string) => void;
   activateRelativeTerminal: (step: 1 | -1) => void;
+  reorderTerminals: (ids: readonly string[]) => void;
   renameTerminal: (id: string, title: string) => void;
   setTerminalColor: (id: string, color: TerminalColorKey | null) => void;
   markTerminalBell: (id: string) => void;
@@ -260,6 +261,14 @@ export const useTerminalsStore = create<TerminalsState>((set, get) => {
       );
       const next = tabs[(position + step + tabs.length) % tabs.length];
       if (next && next.id !== activeId) set({ activeId: next.id });
+    },
+    reorderTerminals: (ids) => {
+      const { tabs } = get();
+      const byId = new Map(tabs.map((tab) => [tab.id, tab]));
+      const unique = new Set(ids);
+      if (unique.size !== tabs.length || ids.length !== tabs.length || !ids.every((id) => byId.has(id))) return;
+      if (ids.every((id, position) => tabs[position]?.id === id)) return;
+      set({ tabs: ids.map((id) => byId.get(id) as TerminalTab) });
     },
     markTerminalBell: (id) => {
       const state = get();

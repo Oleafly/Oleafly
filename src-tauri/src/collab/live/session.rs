@@ -326,6 +326,14 @@ impl Active {
         self.announce_removed(&previous, &removed);
         self.note_arrivals(&previous, &changed);
         self.note_written(&written);
+        if written.contains(crate::project::NOTE_FILE) {
+            if let Some((_, text)) = texts
+                .iter()
+                .find(|(path, _)| path == crate::project::NOTE_FILE)
+            {
+                crate::note_index::note_file_written(&self.project_id, text.as_bytes());
+            }
+        }
         let layout = {
             let disk = guard(&self.disk);
             self.save_index_if_changed(&disk);

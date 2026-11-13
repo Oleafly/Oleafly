@@ -110,6 +110,8 @@
     "conflictsHelp_one": "Denne filen ble endret både her og på en annen datamaskin før endringene ble synkronisert, så Oleafly beholdt begge versjonene. Behold det du trenger, og slett deretter kopien.",
     "conflictsHelp_other": "Disse filene ble endret både her og på en annen datamaskin før endringene ble synkronisert, så Oleafly beholdt begge versjonene. Behold det du trenger, og slett deretter kopiene.",
     "conflictsLabel": "Konfliktkopier i {{name}}",
+    "compare": "Sammenlign",
+    "compareLabel": "Sammenlign {{path}} med notatet",
     "dismiss": "Lukk",
     "skipped_one": "{{count}} fil ble hoppet over",
     "skipped_other": "{{count}} filer ble hoppet over",
@@ -142,6 +144,16 @@
       "downloadFailed": "Kunne ikke lastes ned",
       "uploadFailed": "Kunne ikke lastes opp"
     }
+  },
+  "conflictCopy": {
+    "title": "To versjoner av «{{name}}»",
+    "description": "Dette notatet ble endret både her og på en annen datamaskin før endringene ble synkronisert, så Oleafly beholdt begge versjonene. Behold én versjon. Den andre flyttes til papirkurven.",
+    "diffLabel": "Forskjeller mellom de to versjonene",
+    "loading": "Leser begge versjonene…",
+    "readFailed": "Kunne ikke lese konfliktkopien.",
+    "resolveFailed": "Kunne ikke beholde den versjonen.",
+    "keepMine": "Behold versjonen på denne datamaskinen",
+    "useCopy": "Bruk versjonen fra den andre datamaskinen"
   },
   "confirm": {
     "removeTitle": "Vil du fjerne {{name}} fra {{provider}}?",
@@ -207,6 +219,76 @@
     "pathStyle": "Bruk path-style-adresser",
     "pathStyleHint": "MinIO og de fleste selvdrevne servere trenger dette."
   },
+  "backups": {
+    "title": "Sikkerhetskopier",
+    "none": "Ingen sikkerhetskopier ennå",
+    "last": "Siste sikkerhetskopi {{time}} · {{contents}} · {{size}}",
+    "notes_one": "{{count}} notat",
+    "notes_other": "{{count}} notater",
+    "projects_one": "{{count}} prosjekt",
+    "projects_other": "{{count}} prosjekter",
+    "running": "Sikkerhetskopierer",
+    "failed": "Den siste sikkerhetskopieringen ble ikke fullført. {{reason}}",
+    "backUpNow": "Sikkerhetskopier nå",
+    "auto": {
+      "label": "Sikkerhetskopier automatisk",
+      "description": "Lagrer daterte kopier av notatene dine i {{provider}}. Senere endringer og slettinger, også de som synkroniseres, rører ikke disse kopiene."
+    },
+    "every": {
+      "label": "Hvor ofte",
+      "description": "En sikkerhetskopi laster bare opp det som er endret siden forrige gang.",
+      "options": {
+        "6": "Hver 6. time",
+        "24": "Hver dag",
+        "168": "Hver uke"
+      }
+    },
+    "keep": {
+      "label": "Behold",
+      "description": "Eldre sikkerhetskopier slettes fra {{provider}} for å spare plass.",
+      "option_one": "Den siste sikkerhetskopien",
+      "option_other": "De siste {{count}} sikkerhetskopiene"
+    },
+    "includeProjects": {
+      "label": "Ta med prosjekter",
+      "description": "Prosjekter synkroniseres allerede med sjekkpunktene sine. Slå på dette for å lagre daterte kopier av dem også. Den første sikkerhetskopien av et stort prosjekt kan ta en stund og bruke mye plass."
+    },
+    "list": {
+      "title": "Sikkerhetskopier i {{provider}}",
+      "label": "Sikkerhetskopier",
+      "loading": "Leser sikkerhetskopiene",
+      "failed": "Kunne ikke lese sikkerhetskopiene. {{reason}}",
+      "empty": "Ingen sikkerhetskopier i {{provider}} ennå."
+    },
+    "row": {
+      "thisComputer": "Denne datamaskinen",
+      "manual": "Manuell",
+      "restore": "Gjenopprett",
+      "restoreLabel": "Gjenopprett sikkerhetskopien fra {{date}}"
+    },
+    "restore": {
+      "title": "Gjenopprett fra {{date}}",
+      "description": "Gjenoppretting erstatter aldri det du har. Et notat eller prosjekt som fortsatt finnes her, kommer tilbake som en kopi ved siden av, slik at du kan sammenligne de to.",
+      "loading": "Leser sikkerhetskopien",
+      "loadFailed": "Kunne ikke lese denne sikkerhetskopien. {{reason}}",
+      "search": "Søk i denne sikkerhetskopien",
+      "clearSearch": "Tøm søket",
+      "noMatch": "Ingenting i denne sikkerhetskopien passer.",
+      "listLabel": "Notater og prosjekter i denne sikkerhetskopien",
+      "here": "Finnes fortsatt",
+      "missing": "Ikke på denne datamaskinen",
+      "restored": "Gjenopprettet",
+      "restoredCopy": "Gjenopprettet som kopi",
+      "files_one": "{{count}} fil",
+      "files_other": "{{count}} filer",
+      "one": "Gjenopprett",
+      "oneLabel": "Gjenopprett {{name}}",
+      "allMissing_one": "Gjenopprett den som mangler",
+      "allMissing_other": "Gjenopprett de {{count}} som mangler",
+      "nothingMissing": "Ingenting mangler",
+      "copyName": "(gjenopprettet {{date}})"
+    }
+  },
   "errors": {
     "clock_skew": "Klokken på denne datamaskinen går feil, så {{provider}} godtar ikke forespørsler fra den. Still inn riktig dato og klokkeslett for å fortsette synkroniseringen.",
     "code_invalid": "Koden virket ikke. Prøv igjen.",
@@ -235,6 +317,8 @@
     "sign_in_timeout": "Innloggingen tok for lang tid. Prøv igjen.",
     "too_many_files": "Dette prosjektet har mer enn 100 000 filer. Det er for mange til å synkronisere.",
     "traffic_limit": "{{provider}} har nådd opplastingsgrensen. Nye endringer blir værende på denne datamaskinen til {{provider}} tillater opplastinger igjen.",
-    "verify_failed": "En fil fra {{provider}} samsvarte ikke med det Oleafly forventet, så den ble ikke rørt. Synkroniseringen prøver igjen."
+    "verify_failed": "En fil fra {{provider}} samsvarte ikke med det Oleafly forventet, så den ble ikke rørt. Synkroniseringen prøver igjen.",
+    "backup_missing": "Denne sikkerhetskopien er ikke lenger i {{provider}}.",
+    "backup_label": "Oleafly kunne ikke gi navn til den gjenopprettede kopien."
   }
 }

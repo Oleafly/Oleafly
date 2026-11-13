@@ -526,6 +526,12 @@ describe("request validation", () => {
     expect(response.status).toBe("ready");
     expect(response.identity.projectId).toBeNull();
   });
+
+  it("checks a note on its own surface", async () => {
+    const response = await result(request("alpha note", { identity: { surface: "notes" } }));
+    expect(response.status).toBe("ready");
+    expect(response.identity.surface).toBe("notes");
+  });
 });
 
 describe("worker messages", () => {
@@ -549,6 +555,15 @@ describe("worker messages", () => {
     send({ protocolVersion: PROOFREADING_PROTOCOL_VERSION, type: "cancel", surface: "source" });
     const marker = request("alpha omega", { identity: { path: "marker.txt" } });
     await analyze(marker);
+    await flush();
+    expect(responseFor(value.requestId)).toBeUndefined();
+  });
+
+  it("drops a running note check when the notes lane is cancelled", async () => {
+    const value = request("alpha note psi", { identity: { surface: "notes" } });
+    send(value);
+    send({ protocolVersion: PROOFREADING_PROTOCOL_VERSION, type: "cancel", surface: "notes" });
+    await analyze(request("alpha note omega", { identity: { path: "marker.txt" } }));
     await flush();
     expect(responseFor(value.requestId)).toBeUndefined();
   });

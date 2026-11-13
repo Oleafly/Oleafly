@@ -117,6 +117,7 @@ export interface StoredChat {
   web?: WebSetting;
   stub?: boolean;
   messageCount?: number;
+  scope?: string;
 }
 
 export type ChatSaveProblem = "tooLarge";
@@ -131,36 +132,138 @@ interface UsageDelta {
   context?: { used: number; size: number };
 }
 
+export const WORKSPACE_CHAT_SCOPE = "workspace";
+
+export interface ShownChats {
+  projectId: string | null;
+  chats: StoredChat[];
+  activeId: string | null;
+  skippedOnLoad: number;
+  owner?: string;
+}
+
+const EMPTY_SHOWN: ShownChats = { projectId: null, chats: [], activeId: null, skippedOnLoad: 0 };
+
 interface ChatsState {
   projectId: string | null;
   chats: StoredChat[];
   activeId: string | null;
   skippedOnLoad: number;
+  shownByScope: Readonly<Record<string, ShownChats>>;
   saveProblems: Readonly<Record<string, ChatSaveProblem>>;
-  load: (projectId: string) => Promise<void>;
+  load: (projectId: string, scope?: string, owner?: string) => Promise<void>;
   create: (
     projectId: string,
     headOid: string | null,
     settings?: { effort?: EffortLevel; web?: WebSetting },
+    scope?: string,
   ) => StoredChat;
-  saveMessages: (chatId: string, messages: ChatMessage[], opts?: { index?: boolean; projectId?: string }) => void;
-  patchTitleIfEmpty: (chatId: string, title: string) => void;
-  addUsage: (chatId: string, delta: UsageDelta) => void;
+  saveMessages: (
+    chatId: string,
+    messages: ChatMessage[],
+    opts?: { index?: boolean; projectId?: string; scope?: string },
+  ) => void;
+  patchTitleIfEmpty: (chatId: string, title: string, scope?: string) => void;
+  addUsage: (chatId: string, delta: UsageDelta, scope?: string) => void;
   addUsageForProject: (projectId: string, chatId: string, delta: UsageDelta) => Promise<void>;
   setChatSettings: (
     chatId: string,
     patch: { effort?: EffortLevel | null; web?: WebSetting | null },
+    scope?: string,
   ) => void;
-  setChatCost: (chatId: string, usd: number) => void;
-  loadChatBody: (chatId: string) => Promise<StoredChat | null>;
-  remove: (chatId: string, opts?: { deleteThread?: boolean }) => void;
-  setThreadId: (chatId: string, threadId: string) => void;
-  setActive: (chatId: string | null) => void;
-  byId: (chatId: string) => StoredChat | undefined;
+  setChatCost: (chatId: string, usd: number, scope?: string) => void;
+  loadChatBody: (chatId: string, scope?: string) => Promise<StoredChat | null>;
+  remove: (chatId: string, opts?: { deleteThread?: boolean; scope?: string }) => void;
+  setThreadId: (chatId: string, threadId: string, scope?: string) => void;
+  setActive: (chatId: string | null, scope?: string) => void;
+  byId: (chatId: string, scope?: string) => StoredChat | undefined;
+  forgetScope: (scope: string) => void;
   live: Record<string, ChatMessage[]>;
   setLive: (chatId: string, messages: ChatMessage[]) => void;
   clearLive: (chatId: string) => void;
-  liveOrSaved: (chatId: string) => ChatMessage[] | undefined;
+  liveOrSaved: (chatId: string, scope?: string) => ChatMessage[] | undefined;
+}
+
+type ShownState = Pick<
+  ChatsState,
+  "projectId" | "chats" | "activeId" | "skippedOnLoad" | "shownByScope"
+>;
+
+export function shownChats(state: ShownState, scope: string = WORKSPACE_CHAT_SCOPE): ShownChats {
+  if (scope === WORKSPACE_CHAT_SCOPE) {
+    return {
+      projectId: state.projectId,
+      chats: state.chats,
+      activeId: state.activeId,
+      skippedOnLoad: state.skippedOnLoad,
+    };
+  }
+  return state.shownByScope[scope] ?? EMPTY_SHOWN;
+}
+
+function withShown(
+  state: ShownState,
+  scope: string,
+  patch: Partial<ShownChats>,
+): Partial<ShownState> {
+  if (scope === WORKSPACE_CHAT_SCOPE) return patch;
+  return {
+    shownByScope: {
+      ...state.shownByScope,
+      [scope]: { ...(state.shownByScope[scope] ?? EMPTY_SHOWN), ...patch },
+    },
+  };
+}
+
+function shownProjects(state: ShownState): Set<string> {
+  const projects = new Set<string>();
+  if (state.projectId) projects.add(state.projectId);
+  for (const shown of Object.values(state.shownByScope)) if (shown.projectId) projects.add(shown.projectId);
+  return projects;
+}
+
+function ownedChats(chats: StoredChat[], owner: string | undefined): StoredChat[] {
+  return chats.every((chat) => chat.scope === owner) ? chats : chats.filter((chat) => chat.scope === owner);
+}
+
+function publishChats(state: ShownState, projectId: string, chats: StoredChat[]): Partial<ShownState> {
+  const patch: Partial<ShownState> = state.projectId === projectId ? { chats: ownedChats(chats, undefined) } : {};
+  const scoped = Object.entries(state.shownByScope).filter(([, shown]) => shown.projectId === projectId);
+  if (scoped.length > 0) {
+    patch.shownByScope = {
+      ...state.shownByScope,
+      ...Object.fromEntries(scoped.map(([key, shown]) => [key, { ...shown, chats: ownedChats(chats, shown.owner) }])),
+    };
+  }
+  return patch;
+}
+
+function publishAndShow(
+  state: ShownState,
+  projectId: string,
+  chats: StoredChat[],
+  scope: string,
+  patch: Partial<ShownChats>,
+): Partial<ShownState> {
+  const published = publishChats(state, projectId, chats);
+  return { ...published, ...withShown({ ...state, ...published }, scope, patch) };
+}
+
+function scopedChatIds(state: ShownState, except: string): Set<string> {
+  const ids = new Set<string>();
+  for (const [key, shown] of Object.entries(state.shownByScope)) {
+    if (key === except) continue;
+    for (const chat of shown.chats) ids.add(chat.id);
+  }
+  if (except !== WORKSPACE_CHAT_SCOPE) for (const chat of state.chats) ids.add(chat.id);
+  return ids;
+}
+
+function keepLive(
+  live: Record<string, ChatMessage[]>,
+  keep: ReadonlySet<string>,
+): Record<string, ChatMessage[]> {
+  return Object.fromEntries(Object.entries(live).filter(([chatId]) => keep.has(chatId)));
 }
 
 const legacyKey = (pid: string) => `oleafly.chats.${pid}`;
@@ -420,10 +523,10 @@ const removedChats = new Set<string>();
 function cacheProjectChats(projectId: string, chats: StoredChat[]) {
   memoryByProject.delete(projectId);
   memoryByProject.set(projectId, chats);
-  const shown = useChatsStore.getState().projectId;
+  const shown = shownProjects(useChatsStore.getState());
   for (const candidate of memoryByProject.keys()) {
     if (memoryByProject.size <= MAX_CACHED_PROJECTS) break;
-    if (candidate === projectId || candidate === shown) continue;
+    if (candidate === projectId || shown.has(candidate)) continue;
     memoryByProject.delete(candidate);
     loadedFromDisk.delete(candidate);
   }
@@ -470,10 +573,16 @@ function applyUsage(chats: StoredChat[], chatId: string, delta: UsageDelta): Sto
   });
 }
 
-let loadSeq = 0;
+const loadSeq = new Map<string, number>();
 
 export const useChatsStore = create<ChatsState>((set, get) => {
-  const current = (projectId: string) => memoryByProject.get(projectId) ?? get().chats;
+  const shown = (scope: string = WORKSPACE_CHAT_SCOPE) => shownChats(get(), scope);
+  const current = (projectId: string, scope?: string) =>
+    memoryByProject.get(projectId) ?? shown(scope).chats;
+
+  const publish = (projectId: string, chats: StoredChat[]) => {
+    set((state) => publishChats(state, projectId, chats));
+  };
 
   const update = (
     projectId: string,
@@ -484,7 +593,7 @@ export const useChatsStore = create<ChatsState>((set, get) => {
     const next = opts?.sort ? [...chats].sort((a, b) => b.updatedAt - a.updatedAt) : chats;
     cacheProjectChats(projectId, next);
     persistChange(projectId, chatId, next, opts?.index ?? true);
-    if (get().projectId === projectId) set({ chats: next });
+    publish(projectId, next);
   };
 
   return {
@@ -492,29 +601,37 @@ export const useChatsStore = create<ChatsState>((set, get) => {
     chats: [],
     activeId: null,
     skippedOnLoad: 0,
+    shownByScope: {},
     saveProblems: {},
 
-    load: async (projectId) => {
-      const my = ++loadSeq;
+    load: async (projectId, scope = WORKSPACE_CHAT_SCOPE, owner) => {
+      const my = (loadSeq.get(scope) ?? 0) + 1;
+      loadSeq.set(scope, my);
       const loaded = await readAll(projectId);
       const cached = memoryByProject.get(projectId);
       const chats = cached ? mergeLoaded(projectId, cached, loaded.chats) : loaded.chats;
       cacheProjectChats(projectId, chats);
       if (loaded.fromDisk) loadedFromDisk.add(projectId);
-      if (my !== loadSeq) return;
+      if (my !== loadSeq.get(scope)) return;
+      const workspace = scope === WORKSPACE_CHAT_SCOPE;
+      const shownList = ownedChats(chats, workspace ? undefined : owner);
       set((state) => {
-        const shown = state.projectId === projectId;
+        const previous = shownChats(state, scope);
+        const same = previous.projectId === projectId;
         return {
-          projectId,
-          chats,
-          activeId: shown && chats.some((chat) => chat.id === state.activeId) ? state.activeId : null,
-          skippedOnLoad: loaded.skipped,
-          live: shown ? state.live : {},
+          ...withShown(state, scope, {
+            projectId,
+            chats: shownList,
+            activeId: same && shownList.some((chat) => chat.id === previous.activeId) ? previous.activeId : null,
+            skippedOnLoad: loaded.skipped,
+            ...(workspace ? {} : { owner }),
+          }),
+          live: same ? state.live : keepLive(state.live, scopedChatIds(state, scope)),
         };
       });
     },
 
-    create: (projectId, headOid, settings) => {
+    create: (projectId, headOid, settings, scope = WORKSPACE_CHAT_SCOPE) => {
       const chat: StoredChat = {
         id: newId(),
         projectId,
@@ -526,19 +643,29 @@ export const useChatsStore = create<ChatsState>((set, get) => {
       };
       if (settings?.effort) chat.effort = settings.effort;
       if (settings?.web) chat.web = { ...settings.web };
+      const { owner } = shown(scope);
+      if (owner) chat.scope = owner;
       const existing =
-        memoryByProject.get(projectId) ?? get().chats.filter((c) => c.projectId === projectId);
+        memoryByProject.get(projectId) ?? shown(scope).chats.filter((c) => c.projectId === projectId);
       const next = [chat, ...existing.filter((c) => c.id !== chat.id)];
       cacheProjectChats(projectId, next);
       persistChange(projectId, chat.id, next);
-      set({ projectId, chats: next, activeId: chat.id });
+      set((state) =>
+        publishAndShow(state, projectId, next, scope, {
+          projectId,
+          chats: ownedChats(next, owner),
+          activeId: chat.id,
+        }),
+      );
       return chat;
     },
 
     saveMessages: (chatId, messages, opts) => {
-      const projectId = opts?.projectId ?? get().projectId;
+      const scope = opts?.scope ?? WORKSPACE_CHAT_SCOPE;
+      const view = shown(scope);
+      const projectId = opts?.projectId ?? view.projectId;
       if (!projectId) return;
-      const chats = projectId === get().projectId ? current(projectId) : memoryByProject.get(projectId);
+      const chats = projectId === view.projectId ? current(projectId, scope) : memoryByProject.get(projectId);
       if (!chats) return;
       const target = chats.find((c) => c.id === chatId);
       if (!target || target.stub) return;
@@ -558,20 +685,20 @@ export const useChatsStore = create<ChatsState>((set, get) => {
       update(projectId, chatId, updated, { index: opts?.index, sort: true });
     },
 
-    patchTitleIfEmpty: (chatId, title) => {
-      const { projectId } = get();
+    patchTitleIfEmpty: (chatId, title, scope) => {
+      const { projectId } = shown(scope);
       if (!projectId) return;
-      const chats = current(projectId);
+      const chats = current(projectId, scope);
       const target = chats.find((c) => c.id === chatId);
       if (!target || (target.title !== "New chat" && target.title)) return;
       const updated = chats.map((c) => (c.id === chatId ? { ...c, title: titleFrom(title) } : c));
       update(projectId, chatId, updated);
     },
 
-    addUsage: (chatId, delta) => {
-      const { projectId } = get();
+    addUsage: (chatId, delta, scope) => {
+      const { projectId } = shown(scope);
       if (!projectId) return;
-      const chats = current(projectId);
+      const chats = current(projectId, scope);
       const target = chats.find((c) => c.id === chatId);
       if (!target || target.stub) return;
       update(projectId, chatId, applyUsage(chats, chatId, delta));
@@ -591,10 +718,10 @@ export const useChatsStore = create<ChatsState>((set, get) => {
       if (read?.fromDisk) loadedFromDisk.add(projectId);
     },
 
-    setChatSettings: (chatId, patch) => {
-      const { projectId } = get();
+    setChatSettings: (chatId, patch, scope) => {
+      const { projectId } = shown(scope);
       if (!projectId) return;
-      const chats = current(projectId);
+      const chats = current(projectId, scope);
       if (!chats.some((c) => c.id === chatId)) return;
       const updated = chats.map((c) => {
         if (c.id !== chatId) return c;
@@ -608,10 +735,10 @@ export const useChatsStore = create<ChatsState>((set, get) => {
       update(projectId, chatId, updated);
     },
 
-    setChatCost: (chatId, usd) => {
-      const { projectId } = get();
+    setChatCost: (chatId, usd, scope) => {
+      const { projectId } = shown(scope);
       if (!projectId || !Number.isFinite(usd) || usd < 0) return;
-      const chats = current(projectId);
+      const chats = current(projectId, scope);
       const target = chats.find((c) => c.id === chatId);
       if (!target || target.stub) return;
       const updated = chats.map((c) =>
@@ -628,27 +755,29 @@ export const useChatsStore = create<ChatsState>((set, get) => {
       update(projectId, chatId, updated);
     },
 
-    loadChatBody: async (chatId) => {
-      const { projectId } = get();
+    loadChatBody: async (chatId, scope) => {
+      const { projectId } = shown(scope);
       if (!projectId) return null;
-      const chat = current(projectId).find((c) => c.id === chatId);
+      const chat = current(projectId, scope).find((c) => c.id === chatId);
       if (!chat) return null;
       if (!chat.stub) return chat;
       const body = JSON.parse(await chatRead(projectId, chatId)) as StoredChat;
       if (!body || body.id !== chatId || !Array.isArray(body.messages)) {
         throw new Error(`chat ${chatId} could not be read`);
       }
-      const updated = current(projectId).map((c) => (c.id === chatId ? body : c));
+      const updated = current(projectId, scope).map((c) => (c.id === chatId ? body : c));
       cacheProjectChats(projectId, updated);
-      if (get().projectId === projectId) set({ chats: updated });
+      publish(projectId, updated);
       return body;
     },
 
     remove: (chatId, opts) => {
-      const { projectId, activeId } = get();
+      const scope = opts?.scope ?? WORKSPACE_CHAT_SCOPE;
+      const { projectId, activeId, owner } = shown(scope);
       if (!projectId) return;
-      const chats = current(projectId);
+      const chats = current(projectId, scope);
       const removed = chats.find((c) => c.id === chatId);
+      if (removed && removed.scope !== owner) return;
       const updated = chats.filter((c) => c.id !== chatId);
       cacheProjectChats(projectId, updated);
       if (isTauri()) {
@@ -669,7 +798,12 @@ export const useChatsStore = create<ChatsState>((set, get) => {
       } else {
         void queueBrowserPersist(projectId, updated);
       }
-      set({ chats: updated, activeId: activeId === chatId ? null : activeId });
+      set((state) =>
+        publishAndShow(state, projectId, updated, scope, {
+          chats: ownedChats(updated, owner),
+          activeId: activeId === chatId ? null : activeId,
+        }),
+      );
       setSaveProblem(chatId, null);
       get().clearLive(chatId);
       const threadId =
@@ -679,19 +813,29 @@ export const useChatsStore = create<ChatsState>((set, get) => {
       useAgentTurnsStore.getState().dropChat(chatId);
     },
 
-    setThreadId: (chatId, threadId) => {
-      const { projectId } = get();
+    setThreadId: (chatId, threadId, scope) => {
+      const { projectId } = shown(scope);
       if (!projectId) return;
-      const chats = current(projectId);
+      const chats = current(projectId, scope);
       const target = chats.find((c) => c.id === chatId);
       if (!target || target.threadId === threadId) return;
       const updated = chats.map((c) => (c.id === chatId ? { ...c, threadId } : c));
       update(projectId, chatId, updated);
     },
 
-    setActive: (chatId) => set({ activeId: chatId }),
+    setActive: (chatId, scope = WORKSPACE_CHAT_SCOPE) =>
+      set((state) => withShown(state, scope, { activeId: chatId })),
 
-    byId: (chatId) => get().chats.find((c) => c.id === chatId),
+    byId: (chatId, scope) => shown(scope).chats.find((c) => c.id === chatId),
+
+    forgetScope: (scope) => {
+      if (scope === WORKSPACE_CHAT_SCOPE || !(scope in get().shownByScope)) return;
+      loadSeq.delete(scope);
+      set((state) => {
+        const { [scope]: _gone, ...rest } = state.shownByScope;
+        return { shownByScope: rest };
+      });
+    },
 
     live: {},
 
@@ -705,7 +849,7 @@ export const useChatsStore = create<ChatsState>((set, get) => {
         return { live: next };
       }),
 
-    liveOrSaved: (chatId) => get().live[chatId] ?? get().byId(chatId)?.messages,
+    liveOrSaved: (chatId, scope) => get().live[chatId] ?? get().byId(chatId, scope)?.messages,
   };
 });
 

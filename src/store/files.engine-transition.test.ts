@@ -84,10 +84,12 @@ vi.mock("@/components/editor/wysiwyg/controller", () => ({
   invalidateWysiwygProjectSession: mocks.invalidateWysiwygProjectSession,
 }));
 
-import { projectCompatibilityFindings, useFilesStore } from "./files";
+import { projectCompatibilityFindings, SaveFlushError, useFilesStore } from "./files";
 import { acquireEditorMutationLease, isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
 import { useMcpApprovalStore } from "./mcp-approvals";
 import { useSettingsStore } from "./settings";
+import { registerNoteEditor } from "@/lib/open-note-editors";
+import { noteEditorHandle } from "@/lib/tests/open-note-editor-fixtures";
 
 let projectStateRevision = 10_000;
 
@@ -1050,6 +1052,54 @@ describe("transactional quit flush", () => {
     expect(mocks.writeFileContent).not.toHaveBeenCalled();
   });
 
+  it("saves open notes before quitting, even with no project open", async () => {
+    const flush = vi.fn(async () => null);
+    const stop = registerNoteEditor("bench", noteEditorHandle({ title: () => "Bench notes", timedOut: () => "slow", flush }));
+    try {
+      await useFilesStore.getState().flushForQuit();
+    } finally {
+      stop();
+    }
+    expect(flush).toHaveBeenCalledOnce();
+  });
+
+  it("counts notes that could not be saved with the project files that could not", async () => {
+    mocks.writeFileContent.mockRejectedValue(new Error("disk full"));
+    useFilesStore.setState({
+      projectId: "project",
+      files: { "main.tex": { content: "must survive", dirty: true } },
+      openTabs: ["main.tex"],
+      activePath: "main.tex",
+    });
+    const stop = registerNoteEditor(
+      "bench",
+      noteEditorHandle({ title: () => "Bench notes", timedOut: () => "slow", flush: async () => "locked" }),
+    );
+    try {
+      const error = await useFilesStore.getState().flushForQuit().catch((caught: unknown) => caught);
+      expect(error).toBeInstanceOf(SaveFlushError);
+      expect((error as SaveFlushError).failures).toEqual([
+        { path: "main.tex", reason: "disk full" },
+        { path: "Bench notes", reason: "locked" },
+      ]);
+      mocks.writeFileContent.mockResolvedValue(undefined);
+      await expect(useFilesStore.getState().flushForQuit()).rejects.toThrow("Bench notes: locked");
+      useFilesStore.setState({ files: {} });
+      const project = new Error("Project changed while its files were being saved.");
+      vi.spyOn(useFilesStore.getState(), "saveAllDirty").mockRejectedValueOnce(project);
+      const mixed = await useFilesStore.getState().flushForQuit().catch((caught: unknown) => caught);
+      expect((mixed as SaveFlushError).failures).toEqual([
+        { path: "project", reason: project.message },
+        { path: "Bench notes", reason: "locked" },
+      ]);
+    } finally {
+      stop();
+    }
+    const project = new Error("other");
+    vi.spyOn(useFilesStore.getState(), "saveAllDirty").mockRejectedValueOnce(project);
+    await expect(useFilesStore.getState().flushForQuit()).rejects.toBe(project);
+  });
+
   it("runs behind an in-flight project transition instead of interleaving with it", async () => {
     const write = deferred<void>();
     mocks.writeFileContent.mockImplementation(() => write.promise);
@@ -1072,6 +1122,26 @@ describe("transactional quit flush", () => {
     await flushing;
 
     expect(mocks.writeFileContent).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("writing a file of a project that is not open", () => {
+  it("writes a closed project's file at the generation it reads for that project", async () => {
+    useFilesStore.setState({ projectId: "workspace", files: {} });
+    mocks.projectMutationGeneration.mockResolvedValue(7);
+    mocks.writeFileContent.mockResolvedValue({ generation: 8 });
+    await useFilesStore.getState().writeProjectFile("note-1", "note.md", "a\nb\n", { closedProject: true, crlf: true });
+    expect(mocks.projectMutationGeneration).toHaveBeenCalledWith("note-1");
+    expect(mocks.writeFileContent).toHaveBeenCalledWith("note-1", "note.md", "a\r\nb\r\n", 7);
+    expect(useFilesStore.getState().projectId).toBe("workspace");
+  });
+
+  it("refuses to write a project that is not open without the option", async () => {
+    useFilesStore.setState({ projectId: "workspace", files: {} });
+    await expect(useFilesStore.getState().writeProjectFile("note-1", "note.md", "a\n")).rejects.toThrow(
+      "Project changed before the external mutation could run.",
+    );
+    expect(mocks.writeFileContent).not.toHaveBeenCalled();
   });
 });
 

@@ -987,7 +987,8 @@
       "editor": "エディタ",
       "files": "プロジェクト",
       "pdf": "PDF プレビュー",
-      "terminal": "ターミナル"
+      "terminal": "ターミナル",
+      "notes": "ノート"
     },
     "terminal": {
       "colorTheme": {
@@ -2316,6 +2317,66 @@
       "resetZoom": {
         "description": "アプリを 100% に戻します。",
         "label": "ズームをリセット"
+      },
+      "notesQuickSwitcher": {
+        "description": "名前でノートを探して開きます。",
+        "label": "ノート: ノートへ移動"
+      },
+      "notesTodayNote": {
+        "description": "今日のノートを開くか、新しく作成します。",
+        "label": "ノート: 今日のノート"
+      },
+      "notesGraph": {
+        "description": "すべてのノートのグラフを開きます。",
+        "label": "ノート: グラフ"
+      },
+      "notesLocalGraph": {
+        "description": "開いているノートの周りのリンクを表示または非表示にします。",
+        "label": "ノート: ローカルグラフ"
+      },
+      "notesOutline": {
+        "description": "開いているノートのアウトラインを表示または非表示にします。",
+        "label": "ノート: アウトライン"
+      },
+      "notesAskAgent": {
+        "description": "選択したテキストについてエージェントに尋ねるか、ノートのエージェントを開いたり閉じたりします。",
+        "label": "ノート: エージェントに依頼"
+      },
+      "notesNewNote": {
+        "label": "ノート: 新規ノート",
+        "description": "現在のパネルで新しいノートを作成します。"
+      },
+      "notesSearch": {
+        "label": "ノート: ノートを検索",
+        "description": "ノートのサイドバー上部にある検索ボックスに移動します。"
+      },
+      "notesBookmark": {
+        "label": "ノート: ノートをブックマーク",
+        "description": "開いているノートをお気に入りに追加するか、お気に入りから外します。"
+      },
+      "notesCopyLink": {
+        "label": "ノート: ノートへのリンクをコピー",
+        "description": "開いているノートへのリンクをコピーします。別のノートやチャットに貼り付けられます。"
+      },
+      "notesProperties": {
+        "label": "ノート: プロパティの表示を切り替え",
+        "description": "ノートのタイトルの下にあるプロパティを開閉します。"
+      },
+      "notesQuickCapture": {
+        "description": "どのアプリからでもメモを書ける小さなウィンドウを開きます。Oleafly がバックグラウンドにあっても使えます。",
+        "label": "ノート: クイックメモ"
+      },
+      "notesCopyBlockLink": {
+        "description": "カーソルがある段落、リスト項目、表へのリンクをコピーします。",
+        "label": "ノート: ブロックへのリンクをコピー"
+      },
+      "notesBack": {
+        "description": "このタブで前にいた場所に戻ります。",
+        "label": "ノート: 戻る"
+      },
+      "notesForward": {
+        "description": "戻った後に、もう一度進みます。",
+        "label": "ノート: 進む"
       }
     },
     "application": {
@@ -2341,14 +2402,41 @@
         "renameSymbol": "プロジェクト全体でシンボルまたはファイルの名前を変更",
         "slashCommandMenu": "スラッシュコマンドの挿入メニュー",
         "triggerAutocomplete": "補完を呼び出す",
-        "undo": "元に戻す"
+        "undo": "元に戻す",
+        "noteBold": "太字",
+        "noteItalic": "斜体",
+        "noteUnderline": "下線",
+        "noteStrike": "取り消し線",
+        "noteCode": "インラインコード",
+        "noteHighlight": "最後に使った色でハイライト",
+        "noteSuperscript": "上付き",
+        "noteSubscript": "下付き",
+        "noteHeadings": "見出し 1〜6",
+        "noteText": "テキストに変換",
+        "noteQuote": "引用",
+        "noteCodeBlock": "コードブロック",
+        "noteBulletList": "箇条書き",
+        "noteNumberedList": "番号付きリスト",
+        "noteTaskList": "タスクリスト",
+        "noteToggleTask": "タスクのチェックを付ける、または外す",
+        "noteIndent": "リスト項目をインデント",
+        "noteOutdent": "リスト項目のインデントを戻す",
+        "noteLineBreak": "同じ段落内で改行",
+        "noteFind": "検索と置換",
+        "noteSelectAll": "ノート全体を選択",
+        "noteUndo": "元に戻す",
+        "noteRedo": "やり直す",
+        "noteInsertMenu": "行頭で挿入メニューを開く",
+        "noteLinkMenu": "ノートにリンク",
+        "noteTag": "タグを追加"
       },
       "managed": "エディタが管理します"
     },
     "categories": {
       "codeIntelligence": "コードインテリジェンス",
       "editor": "エディタ",
-      "pdf": "PDF"
+      "pdf": "PDF",
+      "notes": "ノート"
     },
     "error": {
       "conflict": "すでに {{action}} に割り当てられています。",
@@ -2394,6 +2482,15 @@
         "uppercase": "大文字にする"
       },
       "unbound": "未設定"
+    },
+    "quickCapture": {
+      "label": "どこからでもクイックメモ",
+      "description": "クイックメモのショートカットは、このコンピュータのすべてのアプリで使えます。",
+      "ready": "どのアプリでも {{shortcut}} を押すとクイックメモが開きます。",
+      "taken": "{{shortcut}} はすでに別のアプリで使われています。「ノート: クイックメモ」には別のショートカットを選んでください。",
+      "invalid": "{{shortcut}} は Oleafly の外では使えません。英字、数字、ファンクションキーで終わるショートカットを選んでください。",
+      "failed": "Oleafly はショートカットを設定できませんでした。再試行するには、クイックメモをオフにしてから再びオンにしてください。",
+      "wayland": "Wayland では、アプリが自分のウィンドウの外でキー入力を受け取れません。キーでクイックメモを開くには、システムのキーボード設定で、次のコマンドを実行するカスタムショートカットを追加してください:"
     }
   },
   "systemIntegration": {
