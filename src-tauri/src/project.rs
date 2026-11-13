@@ -2555,7 +2555,7 @@ pub fn delete_file(
             let folder = root
                 .as_deref()
                 .map(|root| crate::folder_write::Folder::new(kind, root));
-            if kind == ProjectKind::Linked && !permanent.unwrap_or(false) {
+            if permanent.map_or(kind == ProjectKind::Linked, |permanent| !permanent) {
                 #[cfg(unix)]
                 {
                     if folder.is_some_and(|folder| folder.refuses_trash(&p)) {
@@ -10674,7 +10674,7 @@ mod tests {
     }
 
     #[test]
-    fn deleting_in_a_library_project_never_uses_the_trash() {
+    fn deleting_in_a_library_project_skips_the_trash_by_default() {
         let _env_guard = crate::paths::data_dir_env_lock();
         let data = tempfile::tempdir().unwrap();
         std::env::set_var("OLEAFLY_DATA_DIR", data.path());
@@ -10691,6 +10691,40 @@ mod tests {
         assert!(!crate::os_trash::test_support::trashed(
             &project.join("notes.tex")
         ));
+    }
+
+    #[test]
+    fn a_library_project_file_goes_to_the_trash_when_the_caller_asks() {
+        let _env_guard = crate::paths::data_dir_env_lock();
+        let data = tempfile::tempdir().unwrap();
+        std::env::set_var("OLEAFLY_DATA_DIR", data.path());
+        let project_id = mutation_project_id("library-trash");
+        let project = crate::paths::create_project_dir(&project_id).unwrap();
+        std::fs::write(project.join("main.tex"), "x").unwrap();
+        std::fs::write(project.join("note (Laptop).md"), "theirs").unwrap();
+        std::fs::write(project.join("old.md"), "old").unwrap();
+
+        let trashed = super::delete_file(
+            project_id.clone(),
+            "note (Laptop).md".into(),
+            None,
+            Some(false),
+        );
+        crate::os_trash::test_support::refuse(&project.join("old.md"));
+        let refused = super::delete_file(project_id, "old.md".into(), None, Some(false));
+        std::env::remove_var("OLEAFLY_DATA_DIR");
+
+        trashed.unwrap();
+        assert!(!project.join("note (Laptop).md").exists());
+        assert!(crate::os_trash::test_support::trashed(
+            &project.join("note (Laptop).md")
+        ));
+        let error = refused.unwrap_err();
+        assert!(
+            error.contains("\"code\":\"project.trash_unavailable\""),
+            "{error}"
+        );
+        assert!(project.join("old.md").is_file());
     }
 
     #[test]

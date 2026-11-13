@@ -147,7 +147,7 @@
   },
   "conflictCopy": {
     "title": "Muistiinpanosta \"{{name}}\" on kaksi versiota",
-    "description": "Tätä muistiinpanoa muutettiin täällä ja toisella tietokoneella, ennen kuin muutokset ehdittiin synkronoida, joten Oleafly säilytti molemmat versiot. Valitse, kumman version säilytät. Toinen siirtyy roskakoriin.",
+    "description": "Tätä muistiinpanoa muutettiin täällä ja toisella tietokoneella, ennen kuin muutokset ehdittiin synkronoida, joten Oleafly säilytti molemmat versiot. Valitse, kumman version säilytät. Toinen siirtyy tämän tietokoneen roskakoriin.",
     "diffLabel": "Versioiden väliset erot",
     "loading": "Luetaan molempia versioita…",
     "readFailed": "Ristiriitakopion lukeminen ei onnistunut.",

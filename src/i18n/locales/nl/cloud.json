@@ -147,7 +147,7 @@
   },
   "conflictCopy": {
     "title": "Twee versies van “{{name}}”",
-    "description": "Deze notitie is hier en op een andere computer gewijzigd voordat de wijzigingen waren gesynchroniseerd, dus Oleafly heeft beide versies bewaard. Bewaar één versie. De andere gaat naar de Prullenbak.",
+    "description": "Deze notitie is hier en op een andere computer gewijzigd voordat de wijzigingen waren gesynchroniseerd, dus Oleafly heeft beide versies bewaard. Bewaar één versie. De andere gaat naar de Prullenbak van deze computer.",
     "diffLabel": "Verschillen tussen de twee versies",
     "loading": "Beide versies worden gelezen…",
     "readFailed": "Kon de conflictkopie niet lezen.",
