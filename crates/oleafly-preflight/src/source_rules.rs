@@ -3,12 +3,15 @@ use std::sync::LazyLock;
 use crate::contact::contains_contact_token;
 use crate::document_metadata::{find_document_metadata, parse_metadata_keys};
 use crate::jsre::{JsMatch, JsRegex};
+use crate::latex::lexical::{latex_balanced_group_end, latex_heading_title_brace};
 use crate::mask::mask_comments;
 use crate::messages::{message, MessageRef};
 use crate::msg;
 use crate::resume::match_resume_section_heading;
 use crate::standards::annotate;
-use crate::text::{js_trim, lines_with_offsets, strip_one_each_end, utf16_len, SourceText};
+use crate::text::{
+    js_trim, lines_with_offsets, strip_one_each_end, utf16_len, SourceText, CLOSE_BRACE, OPEN_BRACE,
+};
 use crate::types::{Certainty, Finding, FindingMethod, Lens, PreflightEngine, Severity};
 
 fn make(
@@ -81,11 +84,11 @@ regex!(
 );
 regex!(
     HEADING,
-    r"\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\s*(?:\*\s*)?\{"
+    r"\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\s*(?:\*\s*)?[\[{]"
 );
 regex!(
-    SECTION_TITLE,
-    r"\\(?:section|subsection)\s*(?:\*\s*)?\{([^}]*)\}"
+    SECTION_HEADING,
+    r"\\(?:section|subsection)\s*(?:\*\s*)?[\[{]"
 );
 regex!(COLOR, r"\\(?:textcolor|color)\s*\{");
 regex!(
@@ -399,6 +402,9 @@ fn heading_skip(text: &SourceText) -> Vec<Finding> {
     let mut out = Vec::new();
     let mut previous: Option<u32> = None;
     for found in HEADING.find_all(text).matches {
+        let Some(open) = latex_heading_title_brace(text.units(), found.to - 1) else {
+            continue;
+        };
         let level = heading_level(found.text(text, 1).unwrap_or(""));
         if previous.is_some_and(|previous| level > previous + 1) {
             out.push(make(
@@ -407,7 +413,7 @@ fn heading_skip(text: &SourceText) -> Vec<Finding> {
                 Severity::Warning,
                 message("rules.heading-skip.title"),
                 message("rules.heading-skip.detail"),
-                span(&found),
+                Some((found.from, open + 1)),
                 None,
             ));
         }
@@ -417,16 +423,19 @@ fn heading_skip(text: &SourceText) -> Vec<Finding> {
 }
 
 fn nonstandard_headings(text: &SourceText) -> Vec<Finding> {
-    let titles: Vec<(String, usize, usize)> = SECTION_TITLE
+    let units = text.units();
+    let titles: Vec<(String, usize, usize)> = SECTION_HEADING
         .find_all(text)
         .matches
         .into_iter()
-        .map(|found| {
-            (
-                js_trim(found.text(text, 1).unwrap_or("")).to_string(),
+        .filter_map(|found| {
+            let open = latex_heading_title_brace(units, found.to - 1)?;
+            let close = latex_balanced_group_end(units, open, OPEN_BRACE, CLOSE_BRACE)? - 1;
+            Some((
+                js_trim(&text.slice(open + 1, close)).to_string(),
                 found.from,
-                found.to,
-            )
+                close + 1,
+            ))
         })
         .collect();
     let looks_like_resume = titles

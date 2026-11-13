@@ -517,6 +517,34 @@ fn skip_spaces(chars: &[char], mut at: usize) -> usize {
     at
 }
 
+fn paragraph_end(chars: &[char], from: usize) -> usize {
+    (from..chars.len())
+        .find(|&at| {
+            chars[at] == '\n' && chars.get(skip_inline_spaces(chars, at + 1)) == Some(&'\n')
+        })
+        .unwrap_or(chars.len())
+}
+
+fn heading_title_brace(chars: &[char], from: usize) -> Option<usize> {
+    let mut at = from;
+    if chars.get(at) == Some(&'[') {
+        let end = paragraph_end(chars, at);
+        at += 1;
+        while at < end && chars[at] != ']' {
+            at = match chars[at] {
+                '\\' => at + 2,
+                '{' => match_brace(chars, at).filter(|close| *close < end)? + 1,
+                _ => at + 1,
+            };
+        }
+        if at >= end {
+            return None;
+        }
+        at = skip_spaces(chars, at + 1);
+    }
+    (chars.get(at) == Some(&'{')).then_some(at)
+}
+
 fn definition_bodies(chars: &[char]) -> Vec<(usize, usize)> {
     let mut spans = Vec::new();
     for (name, _, after) in commands(chars) {
@@ -623,11 +651,13 @@ fn sections(facts: &mut Facts<'_>, legacy: &[char]) {
         if legacy.get(open) == Some(&'*') {
             open += 1;
         }
-        open = skip_spaces(legacy, open);
-        if legacy.get(open) != Some(&'{')
-            || bodies
-                .iter()
-                .any(|(from, to)| cursor >= *from && cursor < *to)
+        let Some(open) = heading_title_brace(legacy, skip_spaces(legacy, open)) else {
+            cursor = end;
+            continue;
+        };
+        if bodies
+            .iter()
+            .any(|(from, to)| cursor >= *from && cursor < *to)
         {
             cursor = end;
             continue;

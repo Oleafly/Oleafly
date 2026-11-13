@@ -259,6 +259,13 @@
     ]
   },
   {
+    "name": "resume-source-5",
+    "fn": "looksLikeResumeSource",
+    "args": [
+      "\\section[Exp]{Experience}\n\\section[{Edu}]\n{Education}"
+    ]
+  },
+  {
     "name": "profile-0",
     "fn": "detectSubmissionProfile",
     "args": [

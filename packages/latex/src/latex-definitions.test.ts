@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   insideLatexDefinition,
+  latexHeadingTitleBrace,
   latexWrapperSections,
   scanLatexDefinitions,
 } from "./latex-definitions";
@@ -31,6 +32,11 @@ describe("scanLatexDefinitions", () => {
       ["command", "unit", 1, 3],
       ["environment", "lesson", 2, 2],
     ]);
+  });
+
+  it("finds a wrapper's title past a short title with a bracket in braces", () => {
+    const { wrappers } = scanLatexDefinitions(String.raw`\newcommand{\bounded}[2]{\section[{$[0,1]$} #1]{#2}}`);
+    expect(wrappers.map((wrapper) => [wrapper.name, wrapper.level, wrapper.argument])).toEqual([["bounded", 2, 2]]);
   });
 
   it("ignores definitions it cannot read", () => {
@@ -111,5 +117,31 @@ describe("latexWrapperSections", () => {
     expect(
       latexWrapperSections(String.raw`\newcommand{\both}[1]{\nsubsection{#1}}\newcommand{\fixed}{\nsubsection{Inner}}`, wrappers),
     ).toEqual([]);
+  });
+});
+
+describe("latexHeadingTitleBrace", () => {
+  const titleAt = (text: string) => {
+    const open = latexHeadingTitleBrace(text, text.search(/[[{]/));
+    return open < 0 ? null : text.slice(open);
+  };
+
+  it("finds the title brace right away or past a short title", () => {
+    expect(titleAt("\\section{Full}")).toBe("{Full}");
+    expect(titleAt("\\section[Short]\n  {Full}")).toBe("{Full}");
+  });
+
+  it("ends a short title at the first bracket outside braces", () => {
+    expect(titleAt(String.raw`\section[{$[0,1]$} bound]{Bounds}`)).toBe("{Bounds}");
+    expect(titleAt(String.raw`\section[a\]b]{Escaped}`)).toBe("{Escaped}");
+    expect(titleAt("\\section[Short] text")).toBeNull();
+  });
+
+  it("does not let a short title run past a blank line", () => {
+    expect(titleAt("\\section[{Intro}\n\nWe follow \\cite[p.~3]{knuth}.")).toBeNull();
+    expect(titleAt("\\section[{Intro\n \n}]{Full}")).toBeNull();
+    expect(titleAt("\\section[Two\nlines]{Full}")).toBe("{Full}");
+    expect(titleAt("\\section[{Intro}\r\n \r\nWe follow \\cite[p.~3]{knuth}.")).toBeNull();
+    expect(titleAt("\\section[Two\r\nlines]{Full}")).toBe("{Full}");
   });
 });

@@ -45,7 +45,7 @@ type Head = Readonly<{
 
 const NAME = String.raw`(?:\{\s*\\([\p{L}\p{M}@]+)\s*\}|\\([\p{L}\p{M}@]+))`;
 const COUNT_AND_DEFAULT = String.raw`(?:\[\s*(\d)\s*\]\s*)?(\[[^\]]*\]\s*)?`;
-const SECTIONING = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*(?:\[[^\]]*\]\s*)?\{/gu;
+const SECTIONING = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*(?=[[{])/gu;
 
 function counted(count: string | undefined, optionalFirst: boolean): ArgumentToken[] {
   const total = Number(count ?? 0);
@@ -156,6 +156,26 @@ export function matchingBrace(text: string, open: number): number {
   return -1;
 }
 
+export function latexHeadingTitleBrace(text: string, from: number): number {
+  let at = from;
+  if (text[at] === "[") {
+    const paragraph = /\n[ \t\r]*\n/g;
+    paragraph.lastIndex = at;
+    const end = paragraph.exec(text)?.index ?? text.length;
+    for (at += 1; at < end && text[at] !== "]"; at++) {
+      if (text[at] === "\\") at++;
+      else if (text[at] === "{") {
+        at = matchingBrace(text, at);
+        if (at < 0 || at >= end) return -1;
+      }
+    }
+    if (at >= end) return -1;
+    at++;
+    while (at < text.length && /\s/.test(text[at])) at++;
+  }
+  return text[at] === "{" ? at : -1;
+}
+
 function skipSpace(text: string, from: number): number {
   let index = from;
   while (index < text.length && /\s/u.test(text[index])) index += 1;
@@ -165,7 +185,8 @@ function skipSpace(text: string, from: number): number {
 function wrapperSection(body: string): { level: number; argument: number } | null {
   SECTIONING.lastIndex = 0;
   for (let match = SECTIONING.exec(body); match; match = SECTIONING.exec(body)) {
-    const open = SECTIONING.lastIndex - 1;
+    const open = latexHeadingTitleBrace(body, SECTIONING.lastIndex);
+    if (open < 0) continue;
     const close = matchingBrace(body, open);
     if (close < 0) return null;
     const argument = /#(\d)/u.exec(body.slice(open + 1, close));

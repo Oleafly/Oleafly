@@ -1,3 +1,4 @@
+import { latexHeadingTitleBrace } from "@oleafly/latex";
 import type { DocumentParagraph } from "./types";
 
 const DEFAULT_MIN_LENGTH = 30;
@@ -146,6 +147,21 @@ const STRUCTURAL_RE =
 const HEADING_ONLY_RE =
   /^\\(section|subsection|subsubsection|chapter|part)\*?\{[^}]*\}\s*$/;
 
+const SHORT_TITLE_RE =
+  /(\\(?:part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?)\s*\[/g;
+
+function dropShortTitles(text: string): string {
+  let out = "";
+  let last = 0;
+  for (const m of text.matchAll(SHORT_TITLE_RE)) {
+    const open = latexHeadingTitleBrace(text, m.index + m[0].length - 1);
+    if (m.index < last || open < 0) continue;
+    out += text.slice(last, m.index) + m[1];
+    last = open;
+  }
+  return out + text.slice(last);
+}
+
 export interface SplitParagraphOptions {
   minLength?: number;
   maxParagraphs?: number;
@@ -178,7 +194,7 @@ export function splitIntoParagraphs(
     if (trimmed.length < minLength) continue;
     if (STRUCTURAL_RE.test(trimmed)) continue;
     if (trimmed.split("\n").every((line) => line.trim().startsWith("%"))) continue;
-    if (HEADING_ONLY_RE.test(trimmed)) continue;
+    if (HEADING_ONLY_RE.test(dropShortTitles(trimmed))) continue;
     paragraphs.push({ index: paragraphs.length, text: trimmed });
     if (paragraphs.length >= maxParagraphs) break;
   }
@@ -205,6 +221,7 @@ export function extractKeywords(text: string, maxTerms: number = DEFAULT_MAX_TER
     /\\(textbf|textit|emph|underline|text|textrm|textsc|texttt)\{([^}]*)\}/g,
     "$2",
   );
+  cleaned = dropShortTitles(cleaned);
   cleaned = cleaned.replace(
     /\\(section|subsection|subsubsection|chapter|paragraph|subparagraph)\*?\{([^}]*)\}/g,
     "$2",
