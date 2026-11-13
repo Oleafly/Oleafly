@@ -301,7 +301,7 @@ mod tests {
     unsafe extern "C" fn exit_in_the_forked_child() {
         if FORKING_THREAD.load(std::sync::atomic::Ordering::SeqCst) == libc::pthread_self() as usize
         {
-            libc::_exit(0);
+            libc::_exit(1);
         }
     }
 
@@ -322,6 +322,7 @@ mod tests {
                 0
             );
         });
+        unsafe { exit_in_the_forked_child() };
         let mut command = std::process::Command::new("/no/such/program");
         isolate_std_process_tree(&mut command);
         FORKING_THREAD.store(

@@ -181,10 +181,11 @@ fn run_git(
 pub(crate) fn detach(command: &mut std::process::Command) {
     #[cfg(unix)]
     unsafe {
+        use std::io;
         use std::os::unix::process::CommandExt;
         command.pre_exec(|| {
             if libc::setsid() == -1 {
-                Err(std::io::Error::last_os_error())
+                Err(io::Error::last_os_error())
             } else {
                 Ok(())
             }
