@@ -456,7 +456,7 @@ jobs:
 
       - name: Install cargo-llvm-cov
         if: github.event_name == 'push' || github.event_name == 'pull_request'
-        uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
         with:
           tool: cargo-llvm-cov@0.8.7
 
@@ -486,7 +486,7 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Install minimum supported Rust toolchain
-        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
         with:
           toolchain: 1.87.0
 
@@ -505,7 +505,7 @@ jobs:
       # needs 1.88 for zip 9, the first zip release with the fixes for its 2026
       # advisories.
       - name: Install the PDF crate's minimum supported Rust toolchain
-        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
         with:
           toolchain: 1.88.0
 
@@ -519,7 +519,7 @@ jobs:
       # with rusqlite 0.41, the first release that bundles SQLite 3.54 with the
       # fix for RUSTSEC-2026-0459. All of them need Rust 1.89.
       - name: Install the CLI's minimum supported Rust toolchain
-        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
         with:
           toolchain: 1.89.0
 
@@ -603,7 +603,7 @@ jobs:
         run: cargo clippy --workspace --exclude oleafly-server --all-targets -- -D warnings
 
       - name: Install minimum supported Rust toolchain
-        uses: dtolnay/rust-toolchain@02cb101ec7c40f2c49e1d9714d64511d8e1b74de
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
         with:
           toolchain: 1.89.0
 
@@ -666,7 +666,7 @@ jobs:
           test -n "$SONAR_TOKEN" || { echo "SONAR_TOKEN repository secret is missing" >&2; exit 1; }
 
       - name: Analyze with SonarQube Cloud
-        uses: SonarSource/sonarqube-scan-action@ba9859eae8dd6bd29e412f25ddbbef3d032000f4 # v8.2.2
+        uses: SonarSource/sonarqube-scan-action@e805d875275f728fac1885b413934be6d7c63f65 # v8.4.1
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
