@@ -225,13 +225,15 @@ fn claim_default_apps_once(
     Ok(true)
 }
 
-#[cfg(any(target_os = "macos", target_os = "linux"))]
-fn claim_default_apps(claim: impl FnOnce() -> Result<(), String>) {
-    let claimed = prefs_path().and_then(|prefs| claim_default_apps_once(&prefs, claim));
-    match claimed {
-        Ok(true) => log("Oleafly is now the default app for .tex, .typ and .md files.".into()),
-        Ok(false) => {}
-        Err(error) => log(format!(
+#[cfg(any(target_os = "macos", target_os = "linux", test))]
+fn claim_default_apps(
+    prefs: Result<PathBuf, String>,
+    claim: impl FnOnce() -> Result<(), String>,
+) -> Option<String> {
+    match prefs.and_then(|prefs| claim_default_apps_once(&prefs, claim)) {
+        Ok(true) => Some("Oleafly is now the default app for .tex, .typ and .md files.".into()),
+        Ok(false) => None,
+        Err(error) => Some(format!(
             "Oleafly could not become the default app for its file types: {error}"
         )),
     }
@@ -373,18 +375,25 @@ fn launcher() -> Option<launcher::Launcher> {
 }
 
 #[cfg(target_os = "linux")]
-fn sync_launcher(launcher: &launcher::Launcher, may_create: bool) -> Option<launcher::Outcome> {
+fn sync_launcher(
+    launcher: &launcher::Launcher,
+    may_create: bool,
+    prefs: Result<PathBuf, String>,
+) -> Option<launcher::Outcome> {
     // Read at run time, so a launch-time sync that runs late keeps the icon picked meanwhile.
     let icon = crate::app_icon::current().png();
-    prefs_path()
+    prefs
         .and_then(|prefs| sync_launcher_at(launcher, icon, may_create, &prefs))
         .inspect_err(|error| log(format!("AppImage menu entry: {error}")))
         .ok()
 }
 
 #[cfg(target_os = "linux")]
-fn appimage_desktop_id(launcher: &launcher::Launcher) -> Option<String> {
-    let outcome = sync_launcher(launcher, true)?;
+fn appimage_desktop_id(
+    launcher: &launcher::Launcher,
+    prefs: Result<PathBuf, String>,
+) -> Option<String> {
+    let outcome = sync_launcher(launcher, true, prefs)?;
     if !matches!(
         outcome,
         launcher::Outcome::Written | launcher::Outcome::Current
@@ -405,10 +414,29 @@ fn appimage_desktop_id(launcher: &launcher::Launcher) -> Option<String> {
 }
 
 #[cfg(target_os = "linux")]
-fn packaged_desktop_id(product_name: Option<String>) -> Option<String> {
+fn packaged_desktop_id(product_name: Option<String>, applications: &Path) -> Option<String> {
     product_name
         .map(|name| format!("{name}.desktop"))
-        .filter(|id| Path::new("/usr/share/applications").join(id).is_file())
+        .filter(|id| applications.join(id).is_file())
+}
+
+#[cfg(target_os = "linux")]
+fn settle_launch(
+    launcher: Option<&launcher::Launcher>,
+    product_name: Option<String>,
+    claims: bool,
+    applications: &Path,
+    prefs: Result<PathBuf, String>,
+    config_home: Result<PathBuf, String>,
+) -> Option<String> {
+    let desktop_id = match launcher {
+        Some(launcher) => appimage_desktop_id(launcher, prefs.clone()),
+        None => packaged_desktop_id(product_name, applications),
+    }?;
+    if !claims {
+        return None;
+    }
+    claim_default_apps(prefs, || default_apps::claim(&config_home?, &desktop_id))
 }
 
 /// Syncs the menu entry and notes in the prefs file at `prefs` that it was written, so a
@@ -442,12 +470,18 @@ pub(crate) fn install_launcher_at_launch(product_name: Option<String>) {
     let launcher = launcher();
     let claims = integrates_with_the_system();
     tauri::async_runtime::spawn_blocking(move || {
-        let desktop_id = match &launcher {
-            Some(launcher) => appimage_desktop_id(launcher),
-            None => packaged_desktop_id(product_name),
-        };
-        if let (true, Some(desktop_id)) = (claims, desktop_id) {
-            claim_default_apps(|| default_apps::claim(&config_home()?, &desktop_id));
+        let applications = Path::new("/usr/share/applications");
+        let prefs = prefs_path();
+        let settled = settle_launch(
+            launcher.as_ref(),
+            product_name,
+            claims,
+            applications,
+            prefs,
+            config_home(),
+        );
+        if let Some(message) = settled {
+            log(message);
         }
     });
 }
@@ -457,7 +491,7 @@ pub(crate) fn install_launcher_at_launch(product_name: Option<String>) {
 pub(crate) fn refresh_launcher_icon() {
     if let Some(launcher) = launcher() {
         tauri::async_runtime::spawn_blocking(move || {
-            sync_launcher(&launcher, false);
+            sync_launcher(&launcher, false, prefs_path());
         });
     }
 }
@@ -559,7 +593,11 @@ pub(crate) fn on_run_event<R: Runtime>(app: &AppHandle<R>, event: &tauri::RunEve
         let claims_defaults = integrates_with_the_system();
         std::thread::spawn(move || {
             if claims_defaults {
-                claim_default_apps(|| default_apps::claim(&context.identifier));
+                if let Some(message) =
+                    claim_default_apps(prefs_path(), || default_apps::claim(&context.identifier))
+                {
+                    log(message);
+                }
             }
             let Ok(services) = quick_action::services_dir() else {
                 return;

@@ -993,6 +993,7 @@ fn a_library_folder_opens_its_library_project_with_its_saved_main() {
     let project = crate::paths::projects_root().unwrap().join("thesis-1");
     std::fs::create_dir_all(project.join("chapters")).unwrap();
     std::fs::write(project.join("thesis.tex"), ARTICLE).unwrap();
+    std::fs::write(project.join("chapters/intro.tex"), "\\section{Intro}\n").unwrap();
     std::fs::write(
         project.join("project.json"),
         r#"{"name":"Thesis","main_doc":"thesis.tex"}"#,
@@ -1005,6 +1006,13 @@ fn a_library_folder_opens_its_library_project_with_its_saved_main() {
         reply.detection.source,
         oleafly_core::DetectionSource::SavedChoice
     );
+    let file = validate(&project.join("chapters/intro.tex")).unwrap();
+    assert_eq!(file.identity, None);
+    assert_eq!(file.file.as_deref(), Some("intro.tex"));
+    let reply = open_validated(&file, None, &SingleWindowRouter).unwrap();
+    assert_eq!(reply.project_id, "thesis-1");
+    assert_eq!(reply.file.as_deref(), Some("chapters/intro.tex"));
+    assert_eq!(reply.detection.main.as_deref(), Some("thesis.tex"));
     assert!(crate::linked_registry::list().unwrap().is_empty());
 }
 

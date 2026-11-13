@@ -1985,6 +1985,21 @@ fn the_menu_icon_size_comes_from_the_png() {
 }
 
 #[test]
+fn claiming_the_file_types_reports_what_happened_once() {
+    let temp = tempfile::tempdir().unwrap();
+    let prefs = temp.path().join("system-integration.json");
+    assert_eq!(
+        claim_default_apps(Ok(prefs.clone()), || Err("busy".into())).as_deref(),
+        Some("Oleafly could not become the default app for its file types: busy")
+    );
+    assert_eq!(
+        claim_default_apps(Ok(prefs.clone()), || Ok(())).as_deref(),
+        Some("Oleafly is now the default app for .tex, .typ and .md files.")
+    );
+    assert_eq!(claim_default_apps(Ok(prefs), || Ok(())), None);
+}
+
+#[test]
 fn oleafly_claims_its_file_types_once_and_tries_again_after_a_failure() {
     let temp = tempfile::tempdir().unwrap();
     let prefs = temp.path().join("system-integration.json");
@@ -2077,8 +2092,95 @@ fn the_linux_claim_writes_through_a_linked_mimeapps_list_and_creates_a_missing_o
     );
     let fresh = temp.path().join("fresh");
     default_apps::claim(&fresh, "Oleafly.desktop").unwrap();
+    let written = default_apps::with_defaults("", "Oleafly.desktop").unwrap();
     assert_eq!(
         std::fs::read_to_string(fresh.join("mimeapps.list")).unwrap(),
-        default_apps::with_defaults("", "Oleafly.desktop").unwrap()
+        written
     );
+    default_apps::claim(&fresh, "Other.desktop").unwrap();
+    assert_eq!(
+        std::fs::read_to_string(fresh.join("mimeapps.list")).unwrap(),
+        written
+    );
+    let unreadable = temp.path().join("unreadable");
+    std::fs::create_dir_all(unreadable.join("mimeapps.list")).unwrap();
+    assert!(default_apps::claim(&unreadable, "Oleafly.desktop").is_err());
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn an_appimage_takes_the_document_types_once_through_its_own_menu_entry() {
+    let temp = tempfile::tempdir().unwrap();
+    let launcher = appimage_launcher(temp.path());
+    let prefs = temp.path().join("system-integration.json");
+    let config = temp.path().join("config");
+    let settle = |claims| {
+        settle_launch(
+            Some(&launcher),
+            Some("Oleafly".to_string()),
+            claims,
+            &temp.path().join("share/applications"),
+            Ok(prefs.clone()),
+            Ok(config.clone()),
+        )
+    };
+    assert_eq!(settle(false), None);
+    assert!(launcher.entry_path().is_file());
+    assert!(launcher
+        .data_home
+        .join(launcher::MIME_PACKAGE_PATH)
+        .is_file());
+    assert!(!config.join("mimeapps.list").exists());
+    assert_eq!(
+        settle(true).as_deref(),
+        Some("Oleafly is now the default app for .tex, .typ and .md files.")
+    );
+    assert_eq!(
+        std::fs::read_to_string(config.join("mimeapps.list")).unwrap(),
+        default_apps::with_defaults("", &format!("{LINUX_BINARY}.desktop")).unwrap()
+    );
+    std::fs::remove_file(config.join("mimeapps.list")).unwrap();
+    assert_eq!(settle(true), None);
+    assert!(!config.join("mimeapps.list").exists());
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn a_package_takes_the_document_types_only_for_the_launcher_it_installed() {
+    let temp = tempfile::tempdir().unwrap();
+    let applications = temp.path().join("applications");
+    let prefs = temp.path().join("system-integration.json");
+    let config = temp.path().join("config");
+    let settle = |prefs: Result<PathBuf, String>| {
+        settle_launch(
+            None,
+            Some("Oleafly".to_string()),
+            true,
+            &applications,
+            prefs,
+            Ok(config.clone()),
+        )
+    };
+    assert_eq!(settle(Ok(prefs.clone())), None);
+    assert!(!config.join("mimeapps.list").exists());
+    std::fs::create_dir_all(&applications).unwrap();
+    std::fs::write(applications.join("Oleafly.desktop"), "").unwrap();
+    assert_eq!(
+        settle(Err("no home".to_string())).as_deref(),
+        Some("Oleafly could not become the default app for its file types: no home")
+    );
+    assert_eq!(
+        settle(Ok(prefs.clone())).as_deref(),
+        Some("Oleafly is now the default app for .tex, .typ and .md files.")
+    );
+    assert!(std::fs::read_to_string(config.join("mimeapps.list"))
+        .unwrap()
+        .contains("\ntext/x-tex=Oleafly.desktop;\n"));
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn test_builds_never_take_defaults_and_read_the_users_config_folder() {
+    assert!(!integrates_with_the_system());
+    assert!(config_home().is_ok_and(|path| path.is_absolute()));
 }
