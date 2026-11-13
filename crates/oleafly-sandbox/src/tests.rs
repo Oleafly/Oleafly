@@ -340,6 +340,46 @@ fn a_disarmed_guard_leaves_the_process_running() {
 
 #[cfg(target_os = "macos")]
 #[test]
+fn a_confined_process_cannot_isolate_a_child_out_of_the_commands_process_group() {
+    const PROBE: &str = "OLEAFLY_TEST_ISOLATE_INSIDE";
+    if std::env::var_os(PROBE).is_some() {
+        let mut command = std::process::Command::new("/no/such/program");
+        process::isolate_std_process_tree(&mut command);
+        let spawned = command
+            .spawn()
+            .map(drop)
+            .map_err(|error| error.raw_os_error());
+        println!("isolated spawn: {spawned:?}");
+        return;
+    }
+    let fixture = Fixture::new();
+    let mut spec = fixture.spec(false);
+    spec.child_processes = true;
+    spec.read_only = vec![program()];
+    spec.env.insert(PROBE.into(), "1".into());
+    let args: Vec<OsString> = vec![
+        "--exact".into(),
+        "tests::a_confined_process_cannot_isolate_a_child_out_of_the_commands_process_group".into(),
+        "--nocapture".into(),
+    ];
+    let output = command(&spec, &program(), &args)
+        .unwrap()
+        .stdin(std::process::Stdio::null())
+        .output()
+        .unwrap();
+    let text = format!(
+        "{}{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(
+        text.contains(&format!("isolated spawn: Err(Some({}))", libc::EPERM)),
+        "{text}"
+    );
+}
+
+#[cfg(target_os = "macos")]
+#[test]
 fn child_processes_drop_only_the_posix_spawn_deny() {
     let fixture = Fixture::new();
     let readable = vec![];

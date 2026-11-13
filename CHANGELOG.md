@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- On macOS, a program that Oleafly or `oleafly` started, such as an MCP
+  server, an agent or a compiler, could be reported as running when it had
+  died at launch. This was rare: it took the program starting at the moment
+  Oleafly made its first secure connection or time lookup. A program that
+  wasn't installed then failed later with a vague error, and one that was
+  installed quit at once. Oleafly now starts them with `posix_spawn`, which
+  doesn't have this race.
+
 ## [0.4.12] - 2026-11-12
 
 ### Added

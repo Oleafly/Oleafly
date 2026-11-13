@@ -1,6 +1,5 @@
 use crate::app_paths::InstalledApp;
 use crate::contract::{CliError, ErrorKind as CliErrorKind};
-use crate::process;
 use crate::typst::PinnedTypst;
 use crate::typst_settings::TypstSettings;
 use oleafly_core::biber_env::{
@@ -2238,7 +2237,7 @@ pub(crate) async fn run_command_with_stdin(
     for (name, value) in launch.variables {
         command.env(name, value);
     }
-    process::isolate(&mut command);
+    oleafly_sandbox::process::isolate_process_tree(&mut command);
     let mut child = command.spawn().map_err(|error| {
         Error::new(
             ErrorKind::Build,
@@ -2248,7 +2247,7 @@ pub(crate) async fn run_command_with_stdin(
     let pid = child
         .id()
         .ok_or_else(|| Error::new(ErrorKind::Build, "compiler process has no identifier"))?;
-    let containment = match process::contain(pid) {
+    let containment = match oleafly_sandbox::process::contain_process_tree(pid) {
         Ok(containment) => containment,
         Err(error) => {
             let _ = child.start_kill();
