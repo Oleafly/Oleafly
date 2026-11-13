@@ -232,6 +232,28 @@ describe("heading-skip", () => {
   });
 });
 
+describe("headings with a short title", () => {
+  it("counts them for heading-skip", () => {
+    expect(has("\\section{A}\\subsection[b]{B}\\subsubsection{C}", "heading-skip")).toBe(false);
+    expect(has("\\section{A}\\subsubsection [b]\n{B}", "heading-skip")).toBe(true);
+    expect(has(String.raw`\section{A}\subsubsection[{$[0,1]$} b]{B}`, "heading-skip")).toBe(true);
+  });
+
+  it("does not let an unclosed short title run past a blank line", () => {
+    expect(has("\\section{A}\\subsubsection[{B}\n\nSee \\cite[p.~3]{knuth}.", "heading-skip")).toBe(false);
+    expect(has("\\section{A}\\subsubsection[{B}\r\n\r\nSee \\cite[p.~3]{knuth}.", "heading-skip")).toBe(false);
+  });
+
+  it("reads the full title for nonstandard-headings", () => {
+    const found = runSourceRules("\\section[Exp]{Experience}\\section[Fun]{My \\textbf{Journey}}").filter(
+      (f) => f.id === "nonstandard-headings",
+    );
+    expect(found.map((f) => f.title)).toEqual([
+      { key: "rules.nonstandard-headings.title", params: { heading: "My \\textbf{Journey}" } },
+    ]);
+  });
+});
+
 describe("nonstandard-headings", () => {
   it("flags a nonstandard heading when standard resume headings are present", () => {
     expect(has("\\section{Experience}\\section{My Journey}", "nonstandard-headings")).toBe(true);

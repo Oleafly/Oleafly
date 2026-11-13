@@ -2148,6 +2148,67 @@
   ],
   "header-title": [],
   "heading-nested": [],
+  "heading-short-title-nested": [],
+  "heading-short-title-skip": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.mathml-export-hint.detail"
+      },
+      "id": "mathml-export-hint",
+      "lens": "a11y",
+      "method": "source-heuristic",
+      "severity": "info",
+      "title": {
+        "key": "rules.mathml-export-hint.title"
+      }
+    },
+    {
+      "detail": {
+        "key": "rules.heading-skip.detail"
+      },
+      "from": 15,
+      "id": "heading-skip",
+      "lens": "both",
+      "machineCheckable": true,
+      "method": "source-heuristic",
+      "severity": "warning",
+      "standards": [
+        {
+          "clause": "7.4",
+          "label": "Headings",
+          "standard": "PDF/UA-1",
+          "url": "https://pdfa.org/resource/iso-14289-pdfua/",
+          "verapdfRule": "7.4.2-1"
+        },
+        {
+          "clause": "14-003",
+          "label": "Headings",
+          "standard": "Matterhorn-1.1",
+          "url": "https://pdfa.org/rules-for-accessible-pdf-matterhorn-protocol-1-1-is-now-available/"
+        },
+        {
+          "clause": "1.3.1",
+          "label": "Info and Relationships",
+          "standard": "WCAG-2.2",
+          "technique": "PDF9",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/pdf/PDF9"
+        },
+        {
+          "clause": "2.4.6",
+          "label": "Headings and Labels",
+          "standard": "WCAG-2.2",
+          "url": "https://www.w3.org/WAI/WCAG22/Techniques/#pdf"
+        }
+      ],
+      "title": {
+        "key": "rules.heading-skip.title"
+      },
+      "to": 48
+    }
+  ],
+  "heading-short-title-unclosed": [],
+  "heading-short-title-unclosed-crlf": [],
   "heading-skip": [
     {
       "detail": {
@@ -3696,6 +3757,26 @@
         }
       },
       "to": 40
+    }
+  ],
+  "resume-short-title": [
+    {
+      "certainty": "advisory",
+      "detail": {
+        "key": "rules.nonstandard-headings.detail"
+      },
+      "from": 26,
+      "id": "nonstandard-headings",
+      "lens": "ats",
+      "method": "source-heuristic",
+      "severity": "info",
+      "title": {
+        "key": "rules.nonstandard-headings.title",
+        "params": {
+          "heading": "My \\textbf{Journey}"
+        }
+      },
+      "to": 60
     }
   ],
   "resume-standard": [],

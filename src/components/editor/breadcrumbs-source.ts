@@ -2,7 +2,7 @@ import { language, syntaxTree } from "@codemirror/language";
 import type { EditorState, Text } from "@codemirror/state";
 import type { ViewUpdate } from "@codemirror/view";
 import type { SyntaxNode } from "@lezer/common";
-import { decodeLatexAccents } from "@oleafly/latex";
+import { decodeLatexAccents, latexHeadingTitleBrace } from "@oleafly/latex";
 import { typstTools } from "@oleafly/editor/typst";
 
 export interface SectionCrumb {
@@ -23,7 +23,7 @@ const SECTION_LEVELS: Record<string, number> = {
 };
 
 export const SECTION_LINE_RE =
-  /^[ \t]*\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?[ \t]*(?:\[[^\]]*\][ \t]*)?\{/u;
+  /^[ \t]*\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?[ \t]*(?=[[{])/u;
 
 const MAX_SCANNED_LINES = 50_000;
 
@@ -66,8 +66,9 @@ function headingFromLine(
   lineFrom: number,
 ): SectionCrumb | null {
   const match = SECTION_LINE_RE.exec(text);
-  if (!match) return null;
-  const extracted = balancedTitle(text, match[0].length - 1);
+  const open = match ? latexHeadingTitleBrace(text, match[0].length) : -1;
+  if (!match || open < 0) return null;
+  const extracted = balancedTitle(text, open);
   if (!extracted) return null;
   const title = readableTitle(extracted.title);
   return {

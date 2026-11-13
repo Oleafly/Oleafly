@@ -9,6 +9,7 @@ describe("looksLikeResumeSource", () => {
 
   it("detects two or more standard resume headings", () => {
     expect(looksLikeResumeSource("\\section{Experience}\\section{Education}")).toBe(true);
+    expect(looksLikeResumeSource("\\section[Exp]{Experience}\\section[{Edu}]\n{Education}")).toBe(true);
   });
 
   it("does not fire on a single resume-ish heading", () => {

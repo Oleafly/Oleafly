@@ -1,6 +1,6 @@
 use crate::text::{
     index_of_units, is_js_space_unit, is_letter_unit, is_mark_unit, units_eq_str, BACKSLASH,
-    CLOSE_BRACE, NEWLINE, OPEN_BRACE, PERCENT, SPACE, TAB,
+    CARRIAGE_RETURN, CLOSE_BRACE, NEWLINE, OPEN_BRACE, PERCENT, SPACE, TAB,
 };
 
 const AT: u16 = b'@' as u16;
@@ -92,6 +92,45 @@ pub fn latex_balanced_group_end(
         cursor += 1;
     }
     None
+}
+
+fn paragraph_end(text: &[u16], start: usize) -> usize {
+    let mut cursor = start;
+    while let Some(newline) = index_of_units(text, &[NEWLINE], cursor) {
+        let mut after = newline + 1;
+        while matches!(text.get(after), Some(&(SPACE | TAB | CARRIAGE_RETURN))) {
+            after += 1;
+        }
+        if text.get(after) == Some(&NEWLINE) {
+            return newline;
+        }
+        cursor = newline + 1;
+    }
+    text.len()
+}
+
+pub fn latex_heading_title_brace(text: &[u16], from: usize) -> Option<usize> {
+    let mut cursor = from;
+    if text.get(cursor) == Some(&OPEN_BRACKET) {
+        let end = paragraph_end(text, cursor);
+        cursor += 1;
+        while cursor < end && text[cursor] != CLOSE_BRACKET {
+            cursor = match text[cursor] {
+                BACKSLASH => cursor + 2,
+                OPEN_BRACE => latex_balanced_group_end(text, cursor, OPEN_BRACE, CLOSE_BRACE)
+                    .filter(|after| *after <= end)?,
+                _ => cursor + 1,
+            };
+        }
+        if cursor >= end {
+            return None;
+        }
+        cursor += 1;
+        while text.get(cursor).copied().is_some_and(is_js_space_unit) {
+            cursor += 1;
+        }
+    }
+    (text.get(cursor) == Some(&OPEN_BRACE)).then_some(cursor)
 }
 
 pub fn line_end(text: &[u16], start: usize) -> usize {
