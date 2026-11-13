@@ -156,7 +156,7 @@
   },
   "conflictCopy": {
     "title": "Două versiuni ale notiței „{{name}}”",
-    "description": "Această notiță s-a modificat aici și pe alt computer înainte ca modificările să fie sincronizate, așa că Oleafly a păstrat ambele versiuni. Păstrează una dintre ele. Cealaltă ajunge în Coșul de reciclare.",
+    "description": "Această notiță s-a modificat aici și pe alt computer înainte ca modificările să fie sincronizate, așa că Oleafly a păstrat ambele versiuni. Păstrează una dintre ele. Cealaltă ajunge în Coșul de reciclare de pe acest computer.",
     "diffLabel": "Diferențele dintre cele două versiuni",
     "loading": "Se citesc ambele versiuni…",
     "readFailed": "Copia de conflict nu a putut fi citită.",

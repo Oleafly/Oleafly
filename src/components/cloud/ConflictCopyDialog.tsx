@@ -1,11 +1,13 @@
-import { useEffect, useId, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { InlineDiffPreview } from "@/components/editor/diff/InlineDiffPreview";
 import { Button } from "@/components/ui/button";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Spinner } from "@/components/ui/spinner";
+import { decodeAppError } from "@/lib/app-error";
 import { diskHash } from "@/lib/disk-hash";
 import { logError } from "@/lib/log";
+import { deleteAskingWithoutTrash } from "@/lib/project-file-delete";
 import { deleteFile, existingProjectFiles, readFileContent } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 import { useCloudStore } from "@/store/cloud";
@@ -56,23 +58,30 @@ export default function ConflictCopyDialog({ conflict, onClose }: Readonly<{ con
     onClose();
   }, [onClose, projectId, remaining]);
 
+  const readVersions = useCallback(
+    (path: string, live: () => boolean) => {
+      setVersions(null);
+      Promise.all([readFileContent(projectId, mainDoc), readFileContent(projectId, path)]).then(
+        ([mine, theirs]) => {
+          if (live()) setVersions({ copy: path, mine, theirs });
+        },
+        (error: unknown) => {
+          void logError("read a conflict copy", error);
+          if (live()) setVersions("failed");
+        },
+      );
+    },
+    [mainDoc, projectId],
+  );
+
   useEffect(() => {
     if (copy === null) return;
     let live = true;
-    setVersions(null);
-    Promise.all([readFileContent(projectId, mainDoc), readFileContent(projectId, copy)]).then(
-      ([mine, theirs]) => {
-        if (live) setVersions({ copy, mine, theirs });
-      },
-      (error: unknown) => {
-        void logError("read a conflict copy", error);
-        if (live) setVersions("failed");
-      },
-    );
+    readVersions(copy, () => live);
     return () => {
       live = false;
     };
-  }, [copy, mainDoc, projectId]);
+  }, [copy, readVersions]);
 
   const keep = async (theirs: boolean) => {
     if (versions === null || versions === "failed" || busy) return;
@@ -90,10 +99,23 @@ export default function ConflictCopyDialog({ conflict, onClose }: Readonly<{ con
         );
         await writeProjectFile(projectId, versions.copy, versions.mine, { closedProject: true, crlf: versions.mine.includes("\r\n") });
       }
-      await deleteFile(projectId, versions.copy);
-      setRemaining((list) => (list ?? []).filter((path) => path !== versions.copy));
+      const removed = await deleteAskingWithoutTrash(
+        versions.copy,
+        () => deleteFile(projectId, versions.copy, undefined, false),
+        () => deleteFile(projectId, versions.copy, undefined, true),
+      );
+      if (removed) {
+        setRemaining((list) => (list ?? []).filter((path) => path !== versions.copy));
+      } else {
+        readVersions(versions.copy, () => true);
+      }
     } catch (error) {
-      notifyError("resolve a conflict copy", error, t(($) => $.cloud.conflictCopy.resolveFailed));
+      notifyError(
+        "resolve a conflict copy",
+        error,
+        decodeAppError(error) ? undefined : t(($) => $.cloud.conflictCopy.resolveFailed),
+      );
+      readVersions(versions.copy, () => true);
     } finally {
       setBusy(false);
     }

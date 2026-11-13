@@ -147,7 +147,7 @@
   },
   "conflictCopy": {
     "title": "To versioner af »{{name}}«",
-    "description": "Denne note blev ændret både her og på en anden computer, før ændringerne blev synkroniseret, så Oleafly beholdt begge versioner. Behold én version. Den anden flyttes til papirkurven.",
+    "description": "Denne note blev ændret både her og på en anden computer, før ændringerne blev synkroniseret, så Oleafly beholdt begge versioner. Behold én version. Den anden flyttes til papirkurven på denne computer.",
     "diffLabel": "Forskelle mellem de to versioner",
     "loading": "Læser begge versioner…",
     "readFailed": "Kunne ikke læse konfliktkopien.",

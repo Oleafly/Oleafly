@@ -165,7 +165,7 @@
   },
   "conflictCopy": {
     "title": "Dwie wersje notatki „{{name}}”",
-    "description": "Ta notatka została zmieniona tutaj i na innym komputerze, zanim zmiany zostały zsynchronizowane, więc Oleafly zachował obie wersje. Zostaw jedną z nich. Druga trafi do Kosza.",
+    "description": "Ta notatka została zmieniona tutaj i na innym komputerze, zanim zmiany zostały zsynchronizowane, więc Oleafly zachował obie wersje. Zostaw jedną z nich. Druga trafi do Kosza tego komputera.",
     "diffLabel": "Różnice między obiema wersjami",
     "loading": "Odczytywanie obu wersji…",
     "readFailed": "Nie udało się odczytać kopii konfliktowej.",

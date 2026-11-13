@@ -147,7 +147,7 @@
   },
   "conflictCopy": {
     "title": "Two versions of \"{{name}}\"",
-    "description": "This note changed here and on another computer before they synced, so Oleafly kept both. Keep one version. The other goes to the Recycle Bin.",
+    "description": "This note changed here and on another computer before they synced, so Oleafly kept both. Keep one version. The other goes to this computer's trash.",
     "diffLabel": "Differences between the two versions",
     "loading": "Reading both versions…",
     "readFailed": "Couldn't read the conflict copy.",
