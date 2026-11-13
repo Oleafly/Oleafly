@@ -482,7 +482,7 @@ export const deleteFile = (
       projectId,
       path,
       expectedGeneration,
-      ...(permanent ? { permanent: true } : {}),
+      ...(permanent === undefined ? {} : { permanent }),
     }),
   );
 

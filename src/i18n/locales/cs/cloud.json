@@ -165,7 +165,7 @@
   },
   "conflictCopy": {
     "title": "Dvě verze poznámky „{{name}}“",
-    "description": "Tato poznámka se změnila tady i na jiném počítači ještě před synchronizací, proto Oleafly zachoval obě verze. Ponechte si jednu z nich. Druhá se přesune do koše.",
+    "description": "Tato poznámka se změnila tady i na jiném počítači ještě před synchronizací, proto Oleafly zachoval obě verze. Ponechte si jednu z nich. Druhá se přesune do koše na tomto počítači.",
     "diffLabel": "Rozdíly mezi oběma verzemi",
     "loading": "Načítají se obě verze…",
     "readFailed": "Konfliktní kopii se nepodařilo načíst.",

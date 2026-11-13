@@ -156,7 +156,7 @@
   },
   "conflictCopy": {
     "title": "Deux versions de « {{name}} »",
-    "description": "Cette note a été modifiée ici et sur un autre ordinateur avant que les modifications soient synchronisées, Oleafly a donc conservé les deux versions. Gardez-en une. L'autre part dans la corbeille.",
+    "description": "Cette note a été modifiée ici et sur un autre ordinateur avant que les modifications soient synchronisées, Oleafly a donc conservé les deux versions. Gardez-en une. L'autre part dans la corbeille de cet ordinateur.",
     "diffLabel": "Différences entre les deux versions",
     "loading": "Lecture des deux versions…",
     "readFailed": "Impossible de lire la copie de conflit.",

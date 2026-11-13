@@ -11,6 +11,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Double-click a `.tex`, `.typ` or `.md` file in Finder, File Explorer or a Linux file manager and it opens in Oleafly, in a tab inside a project for its folder. Oleafly also becomes the default app for these files, on macOS and Linux the first time it runs and on Windows when it's installed. If you already picked another app for one of them, that app stays the default.
 
+### Fixed
+
+- When cloud sync left two versions of a note and you kept one, the other was
+  deleted for good, although the dialog said it went to the Recycle Bin. It
+  now goes to this computer's trash, so you can still get it back.
+
 ## [0.4.12] - 2026-11-12
 
 ### Added

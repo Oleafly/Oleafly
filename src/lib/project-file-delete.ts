@@ -12,21 +12,16 @@ export function projectDeleteQuestion(path: string, openedInPlace: boolean): str
     : i18n.t(($) => $.workspace.files.confirmTrash, { path });
 }
 
-export async function deleteProjectEntry(path: string): Promise<boolean> {
-  const { deleteEntry } = useFilesStore.getState();
-  const failed = (error: unknown) => {
-    notifyError(
-      "delete file",
-      error,
-      decodeAppError(error) ? undefined : i18n.t(($) => $.workspace.files.deleteFailed, { path }),
-    );
-    return false;
-  };
+export async function deleteAskingWithoutTrash(
+  path: string,
+  attempt: () => Promise<unknown>,
+  deleteForGood: () => Promise<unknown>,
+): Promise<boolean> {
   try {
-    await deleteEntry(path);
+    await attempt();
     return true;
   } catch (error) {
-    if (decodeAppError(error)?.code !== "project.trash_unavailable") return failed(error);
+    if (decodeAppError(error)?.code !== "project.trash_unavailable") throw error;
   }
   const confirmed = await confirmAction({
     message: isWindows
@@ -36,10 +31,24 @@ export async function deleteProjectEntry(path: string): Promise<boolean> {
     destructive: true,
   });
   if (!confirmed) return false;
+  await deleteForGood();
+  return true;
+}
+
+export async function deleteProjectEntry(path: string): Promise<boolean> {
+  const { deleteEntry } = useFilesStore.getState();
   try {
-    await deleteEntry(path, { permanent: true });
-    return true;
+    return await deleteAskingWithoutTrash(
+      path,
+      () => deleteEntry(path),
+      () => deleteEntry(path, { permanent: true }),
+    );
   } catch (error) {
-    return failed(error);
+    notifyError(
+      "delete file",
+      error,
+      decodeAppError(error) ? undefined : i18n.t(($) => $.workspace.files.deleteFailed, { path }),
+    );
+    return false;
   }
 }

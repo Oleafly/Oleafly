@@ -147,7 +147,7 @@
   },
   "conflictCopy": {
     "title": "Två versioner av \"{{name}}\"",
-    "description": "Den här anteckningen ändrades både här och på en annan dator innan ändringarna hann synkroniseras, så Oleafly behöll båda versionerna. Behåll en version. Den andra hamnar i papperskorgen.",
+    "description": "Den här anteckningen ändrades både här och på en annan dator innan ändringarna hann synkroniseras, så Oleafly behöll båda versionerna. Behåll en version. Den andra hamnar i papperskorgen på den här datorn.",
     "diffLabel": "Skillnader mellan de två versionerna",
     "loading": "Läser båda versionerna…",
     "readFailed": "Det gick inte att läsa konfliktkopian.",

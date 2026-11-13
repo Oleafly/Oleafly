@@ -130,6 +130,20 @@ describe("model metadata bridge", () => {
   });
 });
 
+describe("file deletion bridge", () => {
+  it("sends delete_file the caller's choice between the trash and a permanent delete", async () => {
+    mocks.invoke.mockResolvedValue({ generation: 1 });
+    await deleteFile("lib-1", "a.md");
+    await deleteFile("lib-1", "a.md", undefined, false);
+    await deleteFile("lib-1", "a.md", 4, true);
+    expect(mocks.invoke.mock.calls).toEqual([
+      ["delete_file", { projectId: "lib-1", path: "a.md", expectedGeneration: undefined }],
+      ["delete_file", { projectId: "lib-1", path: "a.md", expectedGeneration: undefined, permanent: false }],
+      ["delete_file", { projectId: "lib-1", path: "a.md", expectedGeneration: 4, permanent: true }],
+    ]);
+  });
+});
+
 describe("project write failures", () => {
   it("tells listeners which project refused a write and still rejects with the same error", async () => {
     const heard = vi.fn();

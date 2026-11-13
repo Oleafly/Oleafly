@@ -138,7 +138,7 @@
   },
   "conflictCopy": {
     "title": "Hai phiên bản của “{{name}}”",
-    "description": "Ghi chú này đã thay đổi ở đây và trên máy tính khác trước khi đồng bộ, nên Oleafly giữ cả hai. Hãy giữ một phiên bản. Phiên bản còn lại sẽ được chuyển vào Thùng rác.",
+    "description": "Ghi chú này đã thay đổi ở đây và trên máy tính khác trước khi đồng bộ, nên Oleafly giữ cả hai. Hãy giữ một phiên bản. Phiên bản còn lại sẽ được chuyển vào thùng rác của máy tính này.",
     "diffLabel": "Khác biệt giữa hai phiên bản",
     "loading": "Đang đọc cả hai phiên bản…",
     "readFailed": "Không thể đọc bản sao xung đột.",
