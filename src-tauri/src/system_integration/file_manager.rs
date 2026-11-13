@@ -357,13 +357,20 @@ pub(crate) fn set(
 }
 
 #[cfg(target_os = "linux")]
-fn refresh_desktop_database(dir: Option<&Path>) {
+pub(crate) fn refresh_desktop_database(dir: Option<&Path>) {
     let Some(dir) = dir else {
         return;
     };
     let mut command = std::process::Command::new("update-desktop-database");
     command.arg(dir);
     let _ = crate::proc::output_contained_with_timeout(command, std::time::Duration::from_secs(5));
+}
+
+#[cfg(target_os = "linux")]
+pub(crate) fn refresh_mime_database(dir: &Path) {
+    let mut command = std::process::Command::new("update-mime-database");
+    command.arg(dir);
+    let _ = crate::proc::output_contained_with_timeout(command, std::time::Duration::from_secs(10));
 }
 
 #[cfg(target_os = "linux")]

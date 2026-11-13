@@ -84,6 +84,7 @@ function opened(project_id: string, decision: "auto" | "ask" = "auto"): OpenedFo
       truncated: false,
       compile_dir: null,
     },
+    file: null,
   };
 }
 
@@ -91,6 +92,7 @@ const openProject = vi.fn(async (id: string) => {
   useFilesStore.setState({ projectId: id, projectName: id, loading: false });
 });
 const refreshProjects = vi.fn(async () => {});
+const openFile = vi.fn(async () => {});
 const stopCompile = vi.fn(async () => {});
 
 function flush() {
@@ -120,6 +122,7 @@ beforeEach(() => {
     projects: [],
     openProject,
     refreshProjects,
+    openFile,
   });
   useCompileStore.setState({ status: "idle", stopCompile });
   useHomeViewStore.setState({ page: "library" });
@@ -357,6 +360,21 @@ describe("switching to an opened folder", () => {
     expect(useOpenFolderFlowStore.getState().prompt).toBeNull();
     expect(openProject).not.toHaveBeenCalled();
     expect(useOpenFolderStore.getState().opened?.project_id).toBe(THESIS_ID);
+  });
+
+  it("opens the file the OS sent once its folder is shown, and again when that folder is already open", async () => {
+    mocks.openFolderRequest.mockResolvedValue({ ...opened(NOTES_ID), file: "letters/resume.tex" });
+
+    await expect(openPendingRequest(request("d1", "resume.tex"))).resolves.toBe("opened");
+    expect(openFile).toHaveBeenCalledWith("letters/resume.tex");
+    expect(openProject.mock.invocationCallOrder[0]).toBeLessThan(openFile.mock.invocationCallOrder[0] ?? 0);
+
+    await expect(openPendingRequest(request("d2", "resume.tex"))).resolves.toBe("focused");
+    expect(openFile).toHaveBeenCalledTimes(2);
+
+    mocks.openFolderRequest.mockResolvedValue(opened(THESIS_ID));
+    await openPendingRequest(request("f1", "thesis"));
+    expect(openFile).toHaveBeenCalledTimes(2);
   });
 
   it("presents the folder only after a save-blocked switch finally goes through", async () => {

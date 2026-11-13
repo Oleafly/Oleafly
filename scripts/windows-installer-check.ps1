@@ -15,6 +15,7 @@ $VerbKeys = @(
 )
 $InstallKey = "Software\Oleafly"
 $SchemeKey = "Software\Classes\oleafly"
+$DocumentTypes = @("tex", "typ", "md", "markdown")
 $AppExe = "oleafly.exe"
 $ForeignExe = "C:\Elsewhere\oleafly.exe"
 $InstallerTimeoutMs = 300000
@@ -85,11 +86,22 @@ function Write-Verbs([string]$exe) {
   }
 }
 
+function Get-ProgId([string]$ext) {
+  return "Oleafly.$ext"
+}
+
+function Get-ProgIdKey([string]$ext) {
+  return "Software\Classes\$(Get-ProgId $ext)"
+}
+
 function Clear-Leftovers {
-  foreach ($key in @($VerbKeys) + @($InstallKey) + @($SchemeKey)) {
+  $progIds = @($DocumentTypes | ForEach-Object { Get-ProgIdKey $_ })
+  foreach ($key in @($VerbKeys) + @($InstallKey) + @($SchemeKey) + $progIds) {
     Remove-RegistryTree $key
   }
-  [Microsoft.Win32.Registry]::LocalMachine.DeleteSubKeyTree($SchemeKey, $false)
+  foreach ($key in @($SchemeKey) + $progIds) {
+    [Microsoft.Win32.Registry]::LocalMachine.DeleteSubKeyTree($key, $false)
+  }
 }
 
 function Get-SchemeHive([string]$kind) {
@@ -125,6 +137,59 @@ function Test-SchemeRemoved([string]$label, [string]$kind) {
   $command = Get-SchemeValue $kind "$SchemeKey\shell\open\command" ""
   if ($null -ne $command) {
     Add-Failure "$label left oleafly:// links registered in $hive\$SchemeKey after the uninstall ('$command')"
+  }
+}
+
+function Test-SchemeKey([string]$kind, [string]$key) {
+  $handle = (Get-SchemeHive $kind).OpenSubKey($key)
+  if ($null -eq $handle) { return $false }
+  $handle.Close()
+  return $true
+}
+
+function Get-DocumentOwners([string]$kind) {
+  $owners = @{}
+  foreach ($ext in $DocumentTypes) {
+    $owners[$ext] = [string](Get-SchemeValue $kind "Software\Classes\.$ext" "")
+  }
+  return $owners
+}
+
+function Test-DocumentTypesRegistered([string]$label, [string]$kind, [string]$exe) {
+  $hive = Get-SchemeHiveName $kind
+  $expected = "`"$exe`" `"%1`""
+  foreach ($ext in $DocumentTypes) {
+    $progIdKey = Get-ProgIdKey $ext
+    $progId = Get-ProgId $ext
+    $owner = Get-SchemeValue $kind "Software\Classes\.$ext" ""
+    if ($owner -ne $progId) {
+      Add-Failure "$label did not set $hive\Software\Classes\.$ext to $progId (it names '$owner')"
+    }
+    if (-not (Test-SchemeKey $kind "$progIdKey\shell\open\command")) {
+      Add-Failure "$label did not give $hive\$progIdKey an open command"
+    } elseif ($kind -eq "NSIS") {
+      $command = Get-SchemeValue $kind "$progIdKey\shell\open\command" ""
+      if ($command -ne $expected) {
+        Add-Failure "$label set $hive\$progIdKey to run '$command' instead of '$expected'"
+      }
+    }
+  }
+}
+
+function Test-DocumentTypesRemoved([string]$label, [string]$kind, [hashtable]$before) {
+  $hive = Get-SchemeHiveName $kind
+  foreach ($ext in $DocumentTypes) {
+    $progIdKey = Get-ProgIdKey $ext
+    $progId = Get-ProgId $ext
+    if (Test-SchemeKey $kind $progIdKey) {
+      Add-Failure "$label left $hive\$progIdKey behind after the uninstall"
+    }
+    $owner = [string](Get-SchemeValue $kind "Software\Classes\.$ext" "")
+    if ($owner -eq $progId) {
+      Add-Failure "$label left $hive\Software\Classes\.$ext naming $progId after the uninstall"
+    } elseif ($kind -eq "NSIS" -and $owner -cne $before[$ext]) {
+      Add-Failure "$label did not give .$ext back to '$($before[$ext])' after the uninstall (it names '$owner')"
+    }
   }
 }
 
@@ -228,6 +293,7 @@ function Invoke-Pass([string]$kind, [string]$installer, [int]$pass, [bool]$own) 
     Write-Information "== $label installs into $dir and the verbs point at $ForeignExe"
   }
   Clear-Leftovers
+  $owners = Get-DocumentOwners $kind
   if ($kind -eq "NSIS") {
     $code = Invoke-Installer $installer "/S /D=$dir"
   } else {
@@ -245,6 +311,7 @@ function Invoke-Pass([string]$kind, [string]$installer, [int]$pass, [bool]$own) 
   }
   Show-Scheme "after the $label install"
   Test-SchemeRegistered $label $kind $exe
+  Test-DocumentTypesRegistered $label $kind $exe
   if ($own) { Write-Verbs $exe } else { Write-Verbs $ForeignExe }
   Show-Verbs "before the $label uninstall"
   if ($kind -eq "NSIS") {
@@ -261,6 +328,7 @@ function Invoke-Pass([string]$kind, [string]$installer, [int]$pass, [bool]$own) 
   Show-Scheme "after the $label uninstall"
   if ($own) { Test-Removed $label } else { Test-Kept $label }
   Test-SchemeRemoved $label $kind
+  Test-DocumentTypesRemoved $label $kind $owners
   Remove-Item -LiteralPath $dir -Recurse -Force -ErrorAction SilentlyContinue
 }
 
@@ -322,5 +390,5 @@ if ($Failures.Count -gt 0) {
   foreach ($failure in $Failures) { Write-Host "  $failure" }
   exit 1
 }
-Write-Host "Both installers register oleafly:// links, remove this install's Explorer verbs and links on uninstall, and keep another copy's verbs."
+Write-Host "Both installers register oleafly:// links and the .tex, .typ, .md and .markdown file types, remove this install's Explorer verbs, links and file types on uninstall, and keep another copy's verbs."
 exit 0

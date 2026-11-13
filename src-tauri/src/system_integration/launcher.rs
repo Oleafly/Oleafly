@@ -12,6 +12,10 @@ use std::path::{Path, PathBuf};
 /// Marks the entries Oleafly writes, so it only ever changes or removes its own.
 pub(crate) const MARKER: &str = "X-Oleafly-AppImage=true";
 const BUNDLED: &str = include_str!("../../linux/appimage.desktop");
+#[cfg(any(target_os = "linux", all(test, unix)))]
+const MIME_PACKAGE: &str = include_str!("../../linux/oleafly.mime.xml");
+#[cfg(any(target_os = "linux", all(test, unix)))]
+pub(crate) const MIME_PACKAGE_PATH: &str = "mime/packages/oleafly.xml";
 const ICON_NAME: &str = "oleafly-desktop";
 #[cfg(any(target_os = "linux", all(test, unix)))]
 const DEFAULT_DATA_DIRS: [&str; 2] = ["/usr/local/share", "/usr/share"];
@@ -74,10 +78,27 @@ pub(crate) fn data_home(
     xdg_data_home: Option<std::ffi::OsString>,
     home: Result<PathBuf, String>,
 ) -> Result<PathBuf, String> {
-    xdg_data_home
+    xdg_home(xdg_data_home, home, ".local/share")
+}
+
+#[cfg(any(target_os = "linux", all(test, unix)))]
+pub(crate) fn config_home(
+    xdg_config_home: Option<std::ffi::OsString>,
+    home: Result<PathBuf, String>,
+) -> Result<PathBuf, String> {
+    xdg_home(xdg_config_home, home, ".config")
+}
+
+#[cfg(any(target_os = "linux", all(test, unix)))]
+fn xdg_home(
+    value: Option<std::ffi::OsString>,
+    home: Result<PathBuf, String>,
+    fallback: &str,
+) -> Result<PathBuf, String> {
+    value
         .map(PathBuf::from)
         .filter(|path| path.is_absolute())
-        .map_or_else(|| home.map(|home| home.join(".local/share")), Ok)
+        .map_or_else(|| home.map(|home| home.join(fallback)), Ok)
 }
 
 /// The launcher for this run, read from the environment through `var`, or `None` outside an
@@ -156,14 +177,20 @@ fn served_elsewhere(launcher: &Launcher, ours: &Path) -> bool {
         })
 }
 
-fn write_if_changed(path: &Path, bytes: &[u8]) -> Result<(), String> {
+fn write_if_changed(path: &Path, bytes: &[u8]) -> Result<bool, String> {
     if std::fs::read(path).is_ok_and(|current| current == bytes) {
-        return Ok(());
+        return Ok(false);
     }
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|error| error.to_string())?;
     }
-    std::fs::write(path, bytes).map_err(|error| format!("{}: {error}", path.display()))
+    std::fs::write(path, bytes).map_err(|error| format!("{}: {error}", path.display()))?;
+    Ok(true)
+}
+
+#[cfg(any(target_os = "linux", all(test, unix)))]
+pub(crate) fn sync_mime_package(data_home: &Path) -> Result<bool, String> {
+    write_if_changed(&data_home.join(MIME_PACKAGE_PATH), MIME_PACKAGE.as_bytes())
 }
 
 /// Writes or updates the entry and its icon. `wrote_before` says an earlier run wrote the

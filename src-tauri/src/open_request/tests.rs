@@ -273,6 +273,7 @@ fn ready(path: &str) -> Result<ValidatedFolder, Refusal> {
     Ok(ValidatedFolder {
         canonical: PathBuf::from(path),
         identity: None,
+        file: None,
     })
 }
 
@@ -317,6 +318,7 @@ fn tokens_are_random_and_a_claimed_token_can_never_be_replayed() {
         Claim::Ready(ValidatedFolder {
             canonical: PathBuf::from("/srv/thesis"),
             identity: None,
+            file: None,
         })
     );
     assert_eq!(
@@ -636,8 +638,16 @@ impl Drop for DataDir {
 
 const ARTICLE: &str = "\\documentclass{article}\n\\begin{document}\nHello\n\\end{document}\n";
 
+fn unchecked(path: &Path) -> ValidatedFolder {
+    ValidatedFolder {
+        canonical: path.to_path_buf(),
+        identity: None,
+        file: None,
+    }
+}
+
 fn opened(path: &Path, shown: Option<&str>) -> OpenedFolderReply {
-    open_validated(path, shown, &SingleWindowRouter).unwrap()
+    open_validated(&unchecked(path), shown, &SingleWindowRouter).unwrap()
 }
 
 #[test]
@@ -983,6 +993,7 @@ fn a_library_folder_opens_its_library_project_with_its_saved_main() {
     let project = crate::paths::projects_root().unwrap().join("thesis-1");
     std::fs::create_dir_all(project.join("chapters")).unwrap();
     std::fs::write(project.join("thesis.tex"), ARTICLE).unwrap();
+    std::fs::write(project.join("chapters/intro.tex"), "\\section{Intro}\n").unwrap();
     std::fs::write(
         project.join("project.json"),
         r#"{"name":"Thesis","main_doc":"thesis.tex"}"#,
@@ -995,6 +1006,13 @@ fn a_library_folder_opens_its_library_project_with_its_saved_main() {
         reply.detection.source,
         oleafly_core::DetectionSource::SavedChoice
     );
+    let file = validate(&project.join("chapters/intro.tex")).unwrap();
+    assert_eq!(file.identity, None);
+    assert_eq!(file.file.as_deref(), Some("intro.tex"));
+    let reply = open_validated(&file, None, &SingleWindowRouter).unwrap();
+    assert_eq!(reply.project_id, "thesis-1");
+    assert_eq!(reply.file.as_deref(), Some("chapters/intro.tex"));
+    assert_eq!(reply.detection.main.as_deref(), Some("thesis.tex"));
     assert!(crate::linked_registry::list().unwrap().is_empty());
 }
 
@@ -1004,7 +1022,7 @@ fn a_folder_that_became_broad_is_refused_when_it_is_opened() {
     let Ok(home) = crate::paths::home_dir() else {
         return;
     };
-    match open_validated(&home, None, &SingleWindowRouter) {
+    match open_validated(&unchecked(&home), None, &SingleWindowRouter) {
         Err(OpenFailure::Refused(refusal)) => {
             assert!(matches!(refusal.error, OpenFolderError::TooBroad { .. }));
             assert_eq!(refusal.browse, Some(home.canonicalize().unwrap()));
@@ -1023,6 +1041,7 @@ fn claims_become_folders_or_translatable_refusals() {
     let folder = ValidatedFolder {
         canonical: PathBuf::from("/srv/thesis"),
         identity: None,
+        file: None,
     };
     assert_eq!(
         claimed_folder(&intake, Claim::Ready(folder.clone())),
@@ -1175,6 +1194,7 @@ fn inspecting_a_request_keeps_it_until_it_is_claimed_or_declined() {
             Claim::Ready(ValidatedFolder {
                 canonical: PathBuf::from("/srv/b"),
                 identity: None,
+                file: None,
             })
         );
     }
@@ -1285,7 +1305,7 @@ fn previewing_a_folder_names_its_project_without_registering_it() {
     let data = DataDir::new();
     let thesis = data.folder("work/thesis", &[("chapters/intro.tex", ARTICLE)]);
     assert_eq!(
-        preview(&thesis),
+        preview(&unchecked(&thesis)),
         Ok(OpenPreview {
             project_id: None,
             display_name: "thesis".into(),
@@ -1294,11 +1314,11 @@ fn previewing_a_folder_names_its_project_without_registering_it() {
     assert!(crate::linked_registry::list().unwrap().is_empty());
     let reply = opened(&thesis, None);
     assert_eq!(
-        preview(&thesis).unwrap().project_id.as_deref(),
+        preview(&unchecked(&thesis)).unwrap().project_id.as_deref(),
         Some(reply.project_id.as_str())
     );
     assert_eq!(
-        preview(&thesis.join("chapters"))
+        preview(&unchecked(&thesis.join("chapters")))
             .unwrap()
             .project_id
             .as_deref(),
@@ -1309,10 +1329,58 @@ fn previewing_a_folder_names_its_project_without_registering_it() {
         return;
     };
     assert!(matches!(
-        preview(&home),
+        preview(&unchecked(&home)),
         Err(Refusal {
             error: OpenFolderError::TooBroad { .. },
             browse: Some(_),
         })
     ));
+}
+
+#[test]
+fn a_file_opens_its_folder_and_becomes_the_main_document_when_the_folder_has_none() {
+    let data = DataDir::new();
+    let letters = data.folder(
+        "work/letters",
+        &[("cover.tex", ARTICLE), ("resume.tex", ARTICLE)],
+    );
+    let validated = validate(&letters.join("resume.tex")).unwrap();
+    assert_eq!(validated.canonical, letters);
+    assert_eq!(validated.file.as_deref(), Some("resume.tex"));
+    assert_eq!(
+        preview(&validated),
+        Ok(OpenPreview {
+            project_id: None,
+            display_name: "resume.tex".into(),
+        })
+    );
+    let folder_only = opened(&letters, None);
+    assert_eq!(folder_only.detection.decision, oleafly_core::Decision::Ask);
+    let reply = open_validated(&validated, None, &SingleWindowRouter).unwrap();
+    assert_eq!(reply.project_id, folder_only.project_id);
+    assert_eq!(reply.file.as_deref(), Some("resume.tex"));
+    assert_eq!(reply.detection.decision, oleafly_core::Decision::Auto);
+    assert_eq!(reply.detection.main.as_deref(), Some("resume.tex"));
+    let stored = crate::project::linked_listing_meta(&reply.project_id).unwrap();
+    assert_eq!(stored.main_doc, "resume.tex");
+}
+
+#[test]
+fn a_file_inside_an_opened_folder_opens_in_that_project_and_keeps_its_main_document() {
+    let data = DataDir::new();
+    let thesis = data.folder(
+        "work/thesis",
+        &[
+            ("main.tex", ARTICLE),
+            ("chapters/intro.tex", "\\section{Intro}\n"),
+        ],
+    );
+    let project = opened(&thesis, None).project_id;
+    let validated = validate(&thesis.join("chapters/intro.tex")).unwrap();
+    assert_eq!(validated.canonical, thesis.join("chapters"));
+    let reply = open_validated(&validated, None, &SingleWindowRouter).unwrap();
+    assert_eq!(reply.project_id, project);
+    assert_eq!(reply.file.as_deref(), Some("chapters/intro.tex"));
+    assert_eq!(reply.detection.main.as_deref(), Some("main.tex"));
+    assert_eq!(crate::linked_registry::list().unwrap().len(), 1);
 }

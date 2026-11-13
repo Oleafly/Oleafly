@@ -67,6 +67,7 @@ pub(crate) struct KnownFolders {
     pub(crate) protected: Vec<PathBuf>,
     pub(crate) exact: Vec<PathBuf>,
     pub(crate) cloud_parents: Vec<PathBuf>,
+    pub(crate) files_in_exact: bool,
 }
 
 impl KnownFolders {
@@ -105,9 +106,17 @@ impl KnownFolders {
             .map(resolved)
             .collect(),
             cloud_parents: Vec::new(),
+            files_in_exact: false,
         };
         add_platform_folders(&mut known);
         known
+    }
+
+    pub(crate) fn for_a_file() -> Self {
+        Self {
+            files_in_exact: true,
+            ..Self::current()
+        }
     }
 }
 
@@ -269,6 +278,9 @@ pub(crate) fn classify(path: &Path, known: &KnownFolders) -> FolderScope {
     if let Some(root) = known.protected.iter().find(|root| path.starts_with(root)) {
         return FolderScope::Protected(root.clone());
     }
+    if known.files_in_exact && known.exact.iter().any(|folder| folder == path) {
+        return FolderScope::Narrow;
+    }
     let bases: Vec<&Path> = known
         .enclosing
         .iter()
@@ -351,11 +363,48 @@ mod tests {
                 home.join("Library/Mobile Documents/com~apple~CloudDocs/Documents"),
             ],
             cloud_parents: vec![PathBuf::from("/run/user/1000/gvfs")],
+            files_in_exact: false,
         }
     }
 
     fn scope(path: &str) -> FolderScope {
         classify(Path::new(path), &ada())
+    }
+
+    #[test]
+    fn a_file_opens_inside_the_named_user_folders_and_nowhere_broader() {
+        let known = KnownFolders {
+            files_in_exact: true,
+            ..ada()
+        };
+        for folder in [
+            "/Users/ada/OneDrive/Desktop",
+            "/Users/ada/Library/Mobile Documents/com~apple~CloudDocs/Documents",
+        ] {
+            assert_eq!(scope(folder), FolderScope::Broad, "{folder}");
+            assert_eq!(
+                classify(Path::new(folder), &known),
+                FolderScope::Narrow,
+                "{folder}"
+            );
+        }
+        for folder in [
+            "/Users/ada",
+            "/Users/ada/Library",
+            "/Users/ada/Library/Mobile Documents/com~apple~CloudDocs",
+            "/private/var/folders/xy/T",
+            "/",
+        ] {
+            assert_eq!(
+                classify(Path::new(folder), &known),
+                FolderScope::Broad,
+                "{folder}"
+            );
+        }
+        assert_eq!(
+            classify(Path::new("/Users/ada/.oleafly"), &known),
+            FolderScope::AppData
+        );
     }
 
     #[test]

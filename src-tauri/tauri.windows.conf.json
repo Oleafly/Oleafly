@@ -2,6 +2,32 @@
   "bundle": {
     "resources": {
       "binaries/vcruntime140.dll": "vcruntime140.dll"
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": ["tex"],
+        "name": "Oleafly.tex",
+        "description": "LaTeX document",
+        "role": "Editor"
+      },
+      {
+        "ext": ["typ"],
+        "name": "Oleafly.typ",
+        "description": "Typst document",
+        "role": "Editor"
+      },
+      {
+        "ext": ["md"],
+        "name": "Oleafly.md",
+        "description": "Markdown document",
+        "role": "Editor"
+      },
+      {
+        "ext": ["markdown"],
+        "name": "Oleafly.markdown",
+        "description": "Markdown document",
+        "role": "Editor"
+      }
+    ]
   }
 }

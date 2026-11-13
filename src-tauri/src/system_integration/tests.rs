@@ -132,7 +132,7 @@ fn the_folder_document_type_takes_dock_drops_without_becoming_the_default() {
         .get("CFBundleDocumentTypes")
         .and_then(|value| value.as_array())
         .unwrap();
-    assert_eq!(types.len(), 1);
+    assert_eq!(types.len(), 4);
     let folder = types[0].as_dictionary().unwrap();
     let text = |key: &str| folder.get(key).and_then(|value| value.as_string());
     let content_types: Vec<&str> = folder
@@ -147,6 +147,49 @@ fn the_folder_document_type_takes_dock_drops_without_becoming_the_default() {
     assert_eq!(text("LSHandlerRank"), Some("Alternate"));
     assert_eq!(text("CFBundleTypeName"), Some("Folder"));
     assert!(folder.get("CFBundleTypeExtensions").is_none());
+    let documents: Vec<(&str, Vec<&str>)> = types[1..]
+        .iter()
+        .map(|entry| {
+            let entry = entry.as_dictionary().unwrap();
+            assert!(entry.get("LSItemContentTypes").is_none());
+            assert_eq!(
+                entry
+                    .get("CFBundleTypeRole")
+                    .and_then(|value| value.as_string()),
+                Some("Editor")
+            );
+            assert_eq!(
+                entry
+                    .get("LSHandlerRank")
+                    .and_then(|value| value.as_string()),
+                Some("Default")
+            );
+            let name = entry
+                .get("CFBundleTypeName")
+                .and_then(|value| value.as_string());
+            let extensions = entry
+                .get("CFBundleTypeExtensions")
+                .and_then(|value| value.as_array())
+                .unwrap()
+                .iter()
+                .filter_map(|value| value.as_string())
+                .collect();
+            (name.unwrap(), extensions)
+        })
+        .collect();
+    assert_eq!(
+        documents,
+        [
+            ("LaTeX document", vec!["tex"]),
+            ("Typst document", vec!["typ"]),
+            ("Markdown document", vec!["md", "markdown"]),
+        ]
+    );
+    let claimed: Vec<&str> = documents
+        .iter()
+        .flat_map(|(_, extensions)| extensions.iter().copied())
+        .collect();
+    assert_eq!(claimed, default_apps::EXTENSIONS);
 }
 
 #[test]
@@ -165,6 +208,28 @@ fn no_platform_config_declares_a_folder_type_outside_macos() {
         );
         assert!(!text.contains("inode/directory"), "{name}");
     }
+}
+
+#[test]
+fn both_windows_installers_name_each_document_type_after_the_product_and_its_extension() {
+    let windows = config(include_str!("../../tauri.windows.conf.json"));
+    let tauri = config(include_str!("../../tauri.conf.json"));
+    let associations: Vec<tauri::utils::config::FileAssociation> =
+        serde_json::from_value(windows["bundle"]["fileAssociations"].clone()).unwrap();
+    let declared: Vec<String> = associations
+        .iter()
+        .map(|association| {
+            let [ext] = association.ext.as_slice() else {
+                panic!("one extension per association, got {:?}", association.ext);
+            };
+            let prog_id = format!("{}.{ext}", tauri["productName"].as_str().unwrap());
+            assert_eq!(association.name.as_deref(), Some(prog_id.as_str()));
+            assert!(association.description.is_some(), "{prog_id}");
+            assert!(association.content_types.is_none(), "{prog_id}");
+            ext.to_string()
+        })
+        .collect();
+    assert_eq!(declared, default_apps::EXTENSIONS);
 }
 
 #[test]
@@ -1209,7 +1274,11 @@ fn packages_ship_the_dolphin_and_nemo_actions_the_builders_describe() {
             "{format}"
         );
         assert_eq!(files["/usr/libexec/oleafly"], "binaries/linux", "{format}");
-        assert_eq!(files.as_object().unwrap().len(), 6, "{format}");
+        assert_eq!(
+            files["/usr/share/mime/packages/oleafly.xml"], "linux/oleafly.mime.xml",
+            "{format}"
+        );
+        assert_eq!(files.as_object().unwrap().len(), 7, "{format}");
     }
 }
 
@@ -1837,6 +1906,26 @@ fn menu_entries_go_under_xdg_data_home_or_local_share() {
         local_share
     );
     assert!(launcher::data_home(None, Err("no home".to_string())).is_err());
+    assert_eq!(
+        launcher::config_home(None, home()),
+        Ok(PathBuf::from("/home/ada/.config"))
+    );
+    assert_eq!(
+        launcher::config_home(Some(OsString::from("/data/ada/config")), home()),
+        Ok(PathBuf::from("/data/ada/config"))
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn an_appimage_writes_the_typst_file_type_once() {
+    let temp = tempfile::tempdir().unwrap();
+    assert_eq!(launcher::sync_mime_package(temp.path()), Ok(true));
+    assert_eq!(
+        std::fs::read_to_string(temp.path().join(launcher::MIME_PACKAGE_PATH)).unwrap(),
+        include_str!("../../linux/oleafly.mime.xml")
+    );
+    assert_eq!(launcher::sync_mime_package(temp.path()), Ok(false));
 }
 
 #[cfg(target_os = "linux")]
@@ -1893,4 +1982,205 @@ fn the_menu_icon_size_comes_from_the_png() {
         assert_eq!(launcher::png_edge(variant.png()), Some(512), "{variant:?}");
     }
     assert_eq!(launcher::png_edge(b"not a png"), None);
+}
+
+#[test]
+fn claiming_the_file_types_reports_what_happened_once() {
+    let temp = tempfile::tempdir().unwrap();
+    let prefs = temp.path().join("system-integration.json");
+    assert_eq!(
+        claim_default_apps(Ok(prefs.clone()), || Err("busy".into())).as_deref(),
+        Some("Oleafly could not become the default app for its file types: busy")
+    );
+    assert_eq!(
+        claim_default_apps(Ok(prefs.clone()), || Ok(())).as_deref(),
+        Some("Oleafly is now the default app for .tex, .typ and .md files.")
+    );
+    assert_eq!(claim_default_apps(Ok(prefs), || Ok(())), None);
+}
+
+#[test]
+fn oleafly_claims_its_file_types_once_and_tries_again_after_a_failure() {
+    let temp = tempfile::tempdir().unwrap();
+    let prefs = temp.path().join("system-integration.json");
+    assert_eq!(
+        claim_default_apps_once(&prefs, || Err("busy".into())),
+        Err("busy".into())
+    );
+    assert!(!prefs.exists());
+    let mut calls = 0;
+    assert_eq!(
+        claim_default_apps_once(&prefs, || {
+            calls += 1;
+            Ok(())
+        }),
+        Ok(true)
+    );
+    assert_eq!(
+        claim_default_apps_once(&prefs, || {
+            calls += 1;
+            Ok(())
+        }),
+        Ok(false)
+    );
+    assert_eq!(calls, 1);
+    assert_eq!(read_prefs_at(&prefs)[DEFAULT_APPS_PREF], Value::Bool(true));
+}
+
+#[test]
+fn every_linux_launcher_lists_the_document_types_and_typst_has_a_definition() {
+    let types: String = default_apps::MIME_TYPES
+        .iter()
+        .map(|(mime, _)| format!("{mime};"))
+        .collect();
+    let line = format!("\nMimeType={types}\n");
+    assert!(include_str!("../../linux/main.desktop").contains(&line));
+    assert!(include_str!("../../linux/appimage.desktop").contains(&line));
+    let package = include_str!("../../linux/oleafly.mime.xml");
+    assert!(package.contains("<mime-type type=\"text/vnd.typst\">"));
+    assert!(package.contains("<glob pattern=\"*.typ\"/>"));
+    assert!(package.contains("<alias type=\"text/x-typst\"/>"));
+}
+
+#[test]
+fn oleafly_becomes_the_default_only_for_types_nobody_chose() {
+    assert_eq!(
+        default_apps::with_defaults("", "Oleafly.desktop").as_deref(),
+        Some(
+            "[Default Applications]\ntext/x-tex=Oleafly.desktop;\ntext/vnd.typst=Oleafly.desktop;\ntext/markdown=Oleafly.desktop;\n"
+        )
+    );
+    let chosen = "[Added Associations]\ntext/x-tex=texstudio.desktop;\n\n[Default Applications]\ntext/x-markdown=typora.desktop;\nimage/png=org.gnome.eog.desktop;\ntext/x-tex=\n\n[Removed Associations]\ntext/plain=vim.desktop;\n";
+    assert_eq!(
+        default_apps::with_defaults(chosen, "oleafly-desktop.desktop").as_deref(),
+        Some(
+            "[Added Associations]\ntext/x-tex=texstudio.desktop;\n\n[Default Applications]\ntext/x-markdown=typora.desktop;\nimage/png=org.gnome.eog.desktop;\ntext/x-tex=\ntext/vnd.typst=oleafly-desktop.desktop;\n\n[Removed Associations]\ntext/plain=vim.desktop;\n"
+        )
+    );
+    let all = "[Default Applications]\napplication/x-tex=a.desktop;\ntext/x-typst=b.desktop;\ntext/markdown=c.desktop;";
+    assert_eq!(default_apps::with_defaults(all, "Oleafly.desktop"), None);
+    assert_eq!(
+        default_apps::with_defaults("[Added Associations]\ntext/markdown=c.desktop;\n", "O.desktop")
+            .as_deref(),
+        Some("[Added Associations]\ntext/markdown=c.desktop;\n\n[Default Applications]\ntext/x-tex=O.desktop;\ntext/vnd.typst=O.desktop;\ntext/markdown=O.desktop;\n")
+    );
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn the_linux_claim_writes_through_a_linked_mimeapps_list_and_creates_a_missing_one() {
+    let temp = tempfile::tempdir().unwrap();
+    let config = temp.path().join("config");
+    let dotfiles = temp.path().join("dotfiles");
+    std::fs::create_dir_all(&config).unwrap();
+    std::fs::create_dir_all(&dotfiles).unwrap();
+    let kept = dotfiles.join("mimeapps.list");
+    std::fs::write(
+        &kept,
+        "[Default Applications]\ntext/markdown=typora.desktop;\n",
+    )
+    .unwrap();
+    std::os::unix::fs::symlink(&kept, config.join("mimeapps.list")).unwrap();
+    default_apps::claim(&config, "Oleafly.desktop").unwrap();
+    assert!(std::fs::symlink_metadata(config.join("mimeapps.list"))
+        .unwrap()
+        .file_type()
+        .is_symlink());
+    assert_eq!(
+        std::fs::read_to_string(&kept).unwrap(),
+        "[Default Applications]\ntext/markdown=typora.desktop;\ntext/x-tex=Oleafly.desktop;\ntext/vnd.typst=Oleafly.desktop;\n"
+    );
+    let fresh = temp.path().join("fresh");
+    default_apps::claim(&fresh, "Oleafly.desktop").unwrap();
+    let written = default_apps::with_defaults("", "Oleafly.desktop").unwrap();
+    assert_eq!(
+        std::fs::read_to_string(fresh.join("mimeapps.list")).unwrap(),
+        written
+    );
+    default_apps::claim(&fresh, "Other.desktop").unwrap();
+    assert_eq!(
+        std::fs::read_to_string(fresh.join("mimeapps.list")).unwrap(),
+        written
+    );
+    let unreadable = temp.path().join("unreadable");
+    std::fs::create_dir_all(unreadable.join("mimeapps.list")).unwrap();
+    assert!(default_apps::claim(&unreadable, "Oleafly.desktop").is_err());
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn an_appimage_takes_the_document_types_once_through_its_own_menu_entry() {
+    let temp = tempfile::tempdir().unwrap();
+    let launcher = appimage_launcher(temp.path());
+    let prefs = temp.path().join("system-integration.json");
+    let config = temp.path().join("config");
+    let settle = |claims| {
+        settle_launch(
+            Some(&launcher),
+            Some("Oleafly".to_string()),
+            claims,
+            &temp.path().join("share/applications"),
+            Ok(prefs.clone()),
+            Ok(config.clone()),
+        )
+    };
+    assert_eq!(settle(false), None);
+    assert!(launcher.entry_path().is_file());
+    assert!(launcher
+        .data_home
+        .join(launcher::MIME_PACKAGE_PATH)
+        .is_file());
+    assert!(!config.join("mimeapps.list").exists());
+    assert_eq!(
+        settle(true).as_deref(),
+        Some("Oleafly is now the default app for .tex, .typ and .md files.")
+    );
+    assert_eq!(
+        std::fs::read_to_string(config.join("mimeapps.list")).unwrap(),
+        default_apps::with_defaults("", &format!("{LINUX_BINARY}.desktop")).unwrap()
+    );
+    std::fs::remove_file(config.join("mimeapps.list")).unwrap();
+    assert_eq!(settle(true), None);
+    assert!(!config.join("mimeapps.list").exists());
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn a_package_takes_the_document_types_only_for_the_launcher_it_installed() {
+    let temp = tempfile::tempdir().unwrap();
+    let applications = temp.path().join("applications");
+    let prefs = temp.path().join("system-integration.json");
+    let config = temp.path().join("config");
+    let settle = |prefs: Result<PathBuf, String>| {
+        settle_launch(
+            None,
+            Some("Oleafly".to_string()),
+            true,
+            &applications,
+            prefs,
+            Ok(config.clone()),
+        )
+    };
+    assert_eq!(settle(Ok(prefs.clone())), None);
+    assert!(!config.join("mimeapps.list").exists());
+    std::fs::create_dir_all(&applications).unwrap();
+    std::fs::write(applications.join("Oleafly.desktop"), "").unwrap();
+    assert_eq!(
+        settle(Err("no home".to_string())).as_deref(),
+        Some("Oleafly could not become the default app for its file types: no home")
+    );
+    assert_eq!(
+        settle(Ok(prefs.clone())).as_deref(),
+        Some("Oleafly is now the default app for .tex, .typ and .md files.")
+    );
+    assert!(std::fs::read_to_string(config.join("mimeapps.list"))
+        .unwrap()
+        .contains("\ntext/x-tex=Oleafly.desktop;\n"));
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn test_builds_never_take_defaults_and_read_the_users_config_folder() {
+    assert!(!integrates_with_the_system());
+    assert!(config_home().is_ok_and(|path| path.is_absolute()));
 }

@@ -115,7 +115,10 @@ fn relative_missing_and_file_paths_are_refused_with_typed_errors() {
 fn a_plain_folder_is_inspected_at_its_canonical_path_with_its_identity() {
     let fixture = Fixture::new();
     let paper = fixture.folder("work/paper");
-    let folder = inspected(inspect_folder(&fixture.temp.path().join("work/./paper")));
+    let folder = inspected(inspect_folder(
+        &fixture.temp.path().join("work/./paper"),
+        Opening::Folder,
+    ));
     let observed = crate::fs_identity::identify_directory(&paper).unwrap();
     assert_eq!(folder.canonical, paper);
     assert_eq!(folder.canonical_text, paper.to_str().unwrap());
@@ -343,13 +346,18 @@ fn a_path_inside_a_library_project_opens_that_project_without_registering_it() {
     let project = library_project("alpha", "Alpha");
     std::fs::create_dir_all(project.join("sections/intro")).unwrap();
     assert_eq!(
-        register_or_resolve_folder(&project.join("sections/intro")).unwrap(),
+        register_or_resolve_folder(&project.join("sections/intro"), Opening::Folder).unwrap(),
         OpenedFolder::library("alpha".into(), Some("sections/intro".into()))
     );
-    assert_eq!(register_or_resolve_folder(&project).unwrap().reveal, None);
+    assert_eq!(
+        register_or_resolve_folder(&project, Opening::Folder)
+            .unwrap()
+            .reveal,
+        None
+    );
     let scratch = library_project(crate::project::SCRATCH_PROJECT_ID, "Scratch");
     assert_eq!(
-        register_or_resolve_folder(&scratch),
+        register_or_resolve_folder(&scratch, Opening::Folder),
         Err(OpenFolderError::AppData)
     );
     assert!(!fixture.temp.path().join("data/linked").exists());
@@ -359,7 +367,7 @@ fn a_path_inside_a_library_project_opens_that_project_without_registering_it() {
 fn opening_a_new_folder_registers_it_once_and_writes_nothing_inside() {
     let fixture = Fixture::new();
     let paper = fixture.folder("work/paper");
-    let first = register_or_resolve_folder(&paper).unwrap();
+    let first = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     assert!(
         crate::linked_registry::is_linked_id(&first.project_id),
         "{}",
@@ -369,7 +377,7 @@ fn opening_a_new_folder_registers_it_once_and_writes_nothing_inside() {
         (first.kind, first.outcome.clone(), first.reattach.clone()),
         (OpenedKind::Linked, FolderOutcome::New, None)
     );
-    let second = register_or_resolve_folder(&paper).unwrap();
+    let second = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     assert_eq!(second.project_id, first.project_id);
     assert_eq!(second.outcome, FolderOutcome::Existing);
     let records = records();
@@ -389,9 +397,9 @@ fn a_subfolder_opens_the_registered_project_and_an_ancestor_is_refused() {
     let fixture = Fixture::new();
     let paper = fixture.folder("work/thesis/paper");
     let chapters = fixture.folder("work/thesis/paper/chapters");
-    let opened = register_or_resolve_folder(&paper).unwrap();
+    let opened = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     assert_eq!(
-        register_or_resolve_folder(&chapters).unwrap(),
+        register_or_resolve_folder(&chapters, Opening::Folder).unwrap(),
         OpenedFolder::linked(
             opened.project_id.clone(),
             Some("chapters".into()),
@@ -400,7 +408,7 @@ fn a_subfolder_opens_the_registered_project_and_an_ancestor_is_refused() {
         )
     );
     assert_eq!(
-        register_or_resolve_folder(&fixture.folder("work/thesis")),
+        register_or_resolve_folder(&fixture.folder("work/thesis"), Opening::Folder),
         Err(OpenFolderError::ContainsProjects {
             children: vec![OverlapChild {
                 id: opened.project_id.clone(),
@@ -416,7 +424,7 @@ fn a_subfolder_opens_the_registered_project_and_an_ancestor_is_refused() {
 fn a_renamed_folder_keeps_its_id() {
     let fixture = Fixture::new();
     let paper = fixture.folder("work/paper");
-    let opened = register_or_resolve_folder(&paper).unwrap();
+    let opened = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     if !has_birth_time() {
         eprintln!("skipping: this filesystem reports no birth time");
         return;
@@ -424,7 +432,7 @@ fn a_renamed_folder_keeps_its_id() {
     let renamed = fixture.temp.path().join("work/renamed");
     std::fs::rename(&paper, &renamed).unwrap();
     let renamed = renamed.canonicalize().unwrap();
-    let moved = register_or_resolve_folder(&renamed).unwrap();
+    let moved = register_or_resolve_folder(&renamed, Opening::Folder).unwrap();
     assert_eq!(moved.project_id, opened.project_id);
     assert_eq!(moved.outcome, FolderOutcome::Moved { from: text(&paper) });
     assert_eq!(records()[0].canonical_path, text(&renamed));
@@ -441,10 +449,10 @@ fn a_copied_folder_gets_its_own_id() {
     let fixture = Fixture::new();
     let paper = fixture.folder("work/paper");
     std::fs::write(paper.join("main.tex"), "x").unwrap();
-    let original = register_or_resolve_folder(&paper).unwrap();
+    let original = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     let copy = fixture.folder("work/copy");
     std::fs::copy(paper.join("main.tex"), copy.join("main.tex")).unwrap();
-    let copied = register_or_resolve_folder(&copy).unwrap();
+    let copied = register_or_resolve_folder(&copy, Opening::Folder).unwrap();
     assert_ne!(copied.project_id, original.project_id);
     assert_eq!(copied.outcome, FolderOutcome::New);
 }
@@ -454,15 +462,15 @@ fn a_folder_moved_onto_a_registered_path_takes_it_over() {
     let fixture = Fixture::new();
     let first_path = fixture.folder("work/a");
     let second_path = fixture.folder("work/b");
-    let first = register_or_resolve_folder(&first_path).unwrap();
-    let second = register_or_resolve_folder(&second_path).unwrap();
+    let first = register_or_resolve_folder(&first_path, Opening::Folder).unwrap();
+    let second = register_or_resolve_folder(&second_path, Opening::Folder).unwrap();
     if !has_birth_time() {
         eprintln!("skipping: this filesystem reports no birth time");
         return;
     }
     std::fs::remove_dir(&second_path).unwrap();
     std::fs::rename(&first_path, &second_path).unwrap();
-    let moved = register_or_resolve_folder(&second_path).unwrap();
+    let moved = register_or_resolve_folder(&second_path, Opening::Folder).unwrap();
     assert_eq!(moved.project_id, first.project_id);
     let records = records();
     let old = records
@@ -486,7 +494,9 @@ fn two_simultaneous_opens_of_a_new_folder_share_one_id() {
             let paper = paper.clone();
             std::thread::spawn(move || {
                 barrier.wait();
-                register_or_resolve_folder(&paper).unwrap().project_id
+                register_or_resolve_folder(&paper, Opening::Folder)
+                    .unwrap()
+                    .project_id
             })
         })
         .collect();
@@ -505,8 +515,9 @@ fn composed_and_decomposed_spellings_open_the_same_folder_on_macos() {
     let work = fixture.folder("work");
     let decomposed = work.join("re\u{301}sume\u{301}");
     std::fs::create_dir(&decomposed).unwrap();
-    let first = register_or_resolve_folder(&work.join("r\u{e9}sum\u{e9}")).unwrap();
-    let second = register_or_resolve_folder(&decomposed).unwrap();
+    let first =
+        register_or_resolve_folder(&work.join("r\u{e9}sum\u{e9}"), Opening::Folder).unwrap();
+    let second = register_or_resolve_folder(&decomposed, Opening::Folder).unwrap();
     assert_eq!(first.project_id, second.project_id);
     assert_eq!(second.outcome, FolderOutcome::Existing);
     assert!(records()[0]
@@ -521,8 +532,12 @@ fn composed_and_decomposed_spellings_are_different_folders_on_linux() {
     let composed = fixture.folder("work/r\u{e9}sum\u{e9}");
     let decomposed = fixture.folder("work/re\u{301}sume\u{301}");
     assert_ne!(
-        register_or_resolve_folder(&composed).unwrap().project_id,
-        register_or_resolve_folder(&decomposed).unwrap().project_id
+        register_or_resolve_folder(&composed, Opening::Folder)
+            .unwrap()
+            .project_id,
+        register_or_resolve_folder(&decomposed, Opening::Folder)
+            .unwrap()
+            .project_id
     );
 }
 
@@ -539,14 +554,15 @@ fn a_case_only_rename_keeps_subfolders_inside_the_registered_project() {
         return;
     }
     fixture.folder("work/Paper/chapters");
-    let opened = register_or_resolve_folder(&paper).unwrap();
+    let opened = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     std::fs::rename(work.join("Paper"), work.join("paper")).unwrap();
-    let inside = register_or_resolve_folder(&work.join("paper").join("chapters")).unwrap();
+    let inside =
+        register_or_resolve_folder(&work.join("paper").join("chapters"), Opening::Folder).unwrap();
     assert_eq!(
         (inside.project_id.as_str(), inside.reveal.as_deref()),
         (opened.project_id.as_str(), Some("chapters"))
     );
-    let again = register_or_resolve_folder(&work.join("paper")).unwrap();
+    let again = register_or_resolve_folder(&work.join("paper"), Opening::Folder).unwrap();
     assert_eq!(again.outcome, FolderOutcome::Existing);
     assert!(records()[0].canonical_path.ends_with("paper"));
 }
@@ -564,8 +580,12 @@ fn case_variants_are_different_folders_on_case_sensitive_volumes() {
         return;
     }
     assert_ne!(
-        register_or_resolve_folder(&upper).unwrap().project_id,
-        register_or_resolve_folder(&lower).unwrap().project_id
+        register_or_resolve_folder(&upper, Opening::Folder)
+            .unwrap()
+            .project_id,
+        register_or_resolve_folder(&lower, Opening::Folder)
+            .unwrap()
+            .project_id
     );
 }
 
@@ -577,8 +597,12 @@ fn a_junction_and_its_target_are_one_project() {
     let link = fixture.temp.path().join("work").join("link");
     make_junction(&link, &target);
     assert_eq!(
-        register_or_resolve_folder(&link).unwrap().project_id,
-        register_or_resolve_folder(&target).unwrap().project_id
+        register_or_resolve_folder(&link, Opening::Folder)
+            .unwrap()
+            .project_id,
+        register_or_resolve_folder(&target, Opening::Folder)
+            .unwrap()
+            .project_id
     );
 }
 
@@ -601,7 +625,7 @@ fn a_folder_another_project_can_write_to_is_not_opened_as_a_second_project() {
     let raw = fixture.folder("work/outer/shared/raw");
     link_research_folder("survey", &shared, ResearchRootAccess::ReadWrite);
     for candidate in [shared, raw, fixture.folder("work/outer")] {
-        match register_or_resolve_folder(&candidate) {
+        match register_or_resolve_folder(&candidate, Opening::Folder) {
             Err(OpenFolderError::WritableResearchRoot {
                 project_id,
                 project_name,
@@ -625,7 +649,9 @@ fn a_read_only_research_folder_can_still_be_opened() {
     let shared = fixture.folder("work/shared");
     link_research_folder("survey", &shared, ResearchRootAccess::ReadOnly);
     assert_eq!(
-        register_or_resolve_folder(&shared).unwrap().outcome,
+        register_or_resolve_folder(&shared, Opening::Folder)
+            .unwrap()
+            .outcome,
         FolderOutcome::New
     );
 }
@@ -635,9 +661,9 @@ fn a_registered_folder_stays_openable_after_its_research_link_changes() {
     let fixture = Fixture::new();
     library_project("survey", "Survey");
     let shared = fixture.folder("work/shared");
-    let opened = register_or_resolve_folder(&shared).unwrap();
+    let opened = register_or_resolve_folder(&shared, Opening::Folder).unwrap();
     link_research_folder("survey", &shared, ResearchRootAccess::ReadOnly);
-    let again = register_or_resolve_folder(&shared).unwrap();
+    let again = register_or_resolve_folder(&shared, Opening::Folder).unwrap();
     assert_eq!(
         (again.project_id, again.outcome),
         (opened.project_id, FolderOutcome::Existing)
@@ -648,10 +674,10 @@ fn a_registered_folder_stays_openable_after_its_research_link_changes() {
 fn a_folder_replaced_at_the_same_path_gets_a_new_id_and_a_reattach_offer() {
     let fixture = Fixture::new();
     let paper = fixture.folder("work/paper");
-    let original = register_or_resolve_folder(&paper).unwrap();
+    let original = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     std::fs::rename(&paper, fixture.temp.path().join("work/old")).unwrap();
     std::fs::create_dir(&paper).unwrap();
-    let replaced = register_or_resolve_folder(&paper).unwrap();
+    let replaced = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     assert_ne!(replaced.project_id, original.project_id);
     assert_eq!(
         replaced.outcome,
@@ -668,7 +694,9 @@ fn a_folder_replaced_at_the_same_path_gets_a_new_id_and_a_reattach_offer() {
     dismiss_reattach(&replaced.project_id).unwrap();
     assert_eq!(pending_reattach(&replaced.project_id).unwrap(), None);
     assert_eq!(
-        register_or_resolve_folder(&paper).unwrap().outcome,
+        register_or_resolve_folder(&paper, Opening::Folder)
+            .unwrap()
+            .outcome,
         FolderOutcome::Existing
     );
 }
@@ -683,13 +711,15 @@ fn a_replacement_that_cannot_mark_the_old_record_registers_nothing() {
     }
     let fixture = Fixture::new();
     let paper = fixture.folder("work/paper");
-    let original = register_or_resolve_folder(&paper).unwrap().project_id;
+    let original = register_or_resolve_folder(&paper, Opening::Folder)
+        .unwrap()
+        .project_id;
     std::fs::rename(&paper, fixture.temp.path().join("work/old")).unwrap();
     std::fs::create_dir(&paper).unwrap();
     let linked_root = crate::paths::linked_root().unwrap();
     let entry = linked_root.join(&original);
     std::fs::set_permissions(&entry, std::fs::Permissions::from_mode(0o500)).unwrap();
-    let result = register_or_resolve_folder(&paper);
+    let result = register_or_resolve_folder(&paper, Opening::Folder);
     std::fs::set_permissions(&entry, std::fs::Permissions::from_mode(0o700)).unwrap();
     assert!(
         matches!(result, Err(OpenFolderError::Failed(_))),
@@ -705,7 +735,7 @@ fn a_replacement_that_cannot_mark_the_old_record_registers_nothing() {
     let records = records();
     assert_eq!(records.len(), 1);
     assert!(records[0].is_current());
-    let replaced = register_or_resolve_folder(&paper).unwrap();
+    let replaced = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     assert_eq!(
         replaced.outcome,
         FolderOutcome::Replaced {
@@ -724,10 +754,12 @@ fn a_replacement_that_cannot_mark_the_old_record_registers_nothing() {
 fn refusals_name_a_linked_project_the_way_the_library_does() {
     let fixture = Fixture::new();
     let survey = fixture.folder("work/survey");
-    let owner = register_or_resolve_folder(&survey).unwrap().project_id;
+    let owner = register_or_resolve_folder(&survey, Opening::Folder)
+        .unwrap()
+        .project_id;
     let shared = fixture.folder("work/shared");
     link_research_folder(&owner, &shared, ResearchRootAccess::ReadWrite);
-    let research_owner = || match register_or_resolve_folder(&shared) {
+    let research_owner = || match register_or_resolve_folder(&shared, Opening::Folder) {
         Err(OpenFolderError::WritableResearchRoot {
             project_id,
             project_name,
@@ -752,14 +784,16 @@ fn refusals_name_a_linked_project_the_way_the_library_does() {
     .unwrap();
     assert_eq!(research_owner(), "Survey 2026");
     let paper = fixture.folder("work/thesis/paper");
-    let child = register_or_resolve_folder(&paper).unwrap().project_id;
+    let child = register_or_resolve_folder(&paper, Opening::Folder)
+        .unwrap()
+        .project_id;
     crate::linked_registry::update(&child, |record| {
         record.display_name = Some("Thesis draft".into());
         Ok(())
     })
     .unwrap();
     assert_eq!(
-        register_or_resolve_folder(&fixture.folder("work/thesis")),
+        register_or_resolve_folder(&fixture.folder("work/thesis"), Opening::Folder),
         Err(OpenFolderError::ContainsProjects {
             children: vec![OverlapChild {
                 id: child,
@@ -774,16 +808,16 @@ fn refusals_name_a_linked_project_the_way_the_library_does() {
 fn a_replaced_folder_reopened_elsewhere_gets_its_old_id_back() {
     let fixture = Fixture::new();
     let paper = fixture.folder("work/paper");
-    let original = register_or_resolve_folder(&paper).unwrap();
+    let original = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     std::fs::rename(&paper, fixture.temp.path().join("work/old")).unwrap();
     std::fs::create_dir(&paper).unwrap();
-    let replaced = register_or_resolve_folder(&paper).unwrap();
+    let replaced = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     if !has_birth_time() {
         eprintln!("skipping: this filesystem reports no birth time");
         return;
     }
     let old = fixture.temp.path().join("work/old").canonicalize().unwrap();
-    let back = register_or_resolve_folder(&old).unwrap();
+    let back = register_or_resolve_folder(&old, Opening::Folder).unwrap();
     assert_eq!(back.project_id, original.project_id);
     assert_eq!(back.outcome, FolderOutcome::Moved { from: text(&paper) });
     assert_eq!(pending_reattach(&replaced.project_id).unwrap(), None);
@@ -793,13 +827,13 @@ fn a_replaced_folder_reopened_elsewhere_gets_its_old_id_back() {
 fn a_removed_folder_reopened_comes_back_under_its_old_id() {
     let fixture = Fixture::new();
     let paper = fixture.folder("work/paper");
-    let original = register_or_resolve_folder(&paper).unwrap();
+    let original = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     crate::linked_registry::update(&original.project_id, |record| {
         record.removed_at = Some(1);
         Ok(())
     })
     .unwrap();
-    let revived = register_or_resolve_folder(&paper).unwrap();
+    let revived = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     assert_eq!(revived.project_id, original.project_id);
     assert_eq!(
         revived.outcome,
@@ -812,7 +846,7 @@ fn a_removed_folder_reopened_comes_back_under_its_old_id() {
 fn a_different_folder_at_a_removed_path_offers_to_reattach_the_removed_project() {
     let fixture = Fixture::new();
     let paper = fixture.folder("work/paper");
-    let original = register_or_resolve_folder(&paper).unwrap();
+    let original = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     crate::linked_registry::update(&original.project_id, |record| {
         record.removed_at = Some(1);
         Ok(())
@@ -820,7 +854,7 @@ fn a_different_folder_at_a_removed_path_offers_to_reattach_the_removed_project()
     .unwrap();
     std::fs::rename(&paper, fixture.temp.path().join("work/old")).unwrap();
     std::fs::create_dir(&paper).unwrap();
-    let newcomer = register_or_resolve_folder(&paper).unwrap();
+    let newcomer = register_or_resolve_folder(&paper, Opening::Folder).unwrap();
     assert_eq!(newcomer.outcome, FolderOutcome::New);
     let offer = newcomer.reattach.unwrap();
     assert_eq!(

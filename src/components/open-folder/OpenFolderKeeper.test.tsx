@@ -203,6 +203,7 @@ describe("OpenFolderKeeper", () => {
     act(() =>
       useOpenFolderStore.getState().present({
         project_id: "linked-a",
+        file: null,
         detection: { ...detection("no_main", null), candidates: [] },
       }),
     );
@@ -217,6 +218,7 @@ describe("OpenFolderKeeper", () => {
     act(() =>
       useOpenFolderStore.getState().present({
         project_id: "linked-a",
+        file: null,
         detection: detection("ask", null),
       }),
     );
@@ -231,6 +233,7 @@ describe("OpenFolderKeeper", () => {
     act(() =>
       useOpenFolderStore.getState().present({
         project_id: "linked-a",
+        file: null,
         detection: detection("ask", null),
       }),
     );
@@ -250,6 +253,7 @@ describe("OpenFolderKeeper", () => {
     act(() =>
       useOpenFolderStore.getState().present({
         project_id: "linked-a",
+        file: null,
         detection: detection("auto", "paper/main.tex"),
       }),
     );
@@ -263,6 +267,7 @@ describe("OpenFolderKeeper", () => {
     act(() =>
       useOpenFolderStore.getState().present({
         project_id: "linked-b",
+        file: null,
         detection: detection("auto", "paper/main.tex"),
       }),
     );
@@ -291,6 +296,7 @@ describe("OpenFolderKeeper", () => {
     act(() =>
       useOpenFolderStore.getState().present({
         project_id: "linked-a",
+        file: null,
         detection: detection("ask", null),
       }),
     );
@@ -305,6 +311,7 @@ describe("OpenFolderKeeper", () => {
     act(() =>
       useOpenFolderStore.getState().present({
         project_id: "linked-a",
+        file: null,
         detection: {
           ...detection("auto", "paper/main.tex"),
           source: "manifest",

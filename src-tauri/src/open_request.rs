@@ -3,7 +3,7 @@ mod tests;
 
 use crate::app_error::AppError;
 use crate::fs_identity::FsIdentity;
-use crate::open_folder::OpenFolderError;
+use crate::open_folder::{OpenFolderError, Opening};
 use serde::Serialize;
 use std::collections::{HashMap, VecDeque};
 use std::ffi::{OsStr, OsString};
@@ -220,6 +220,23 @@ pub(crate) struct PendingOpen {
 pub(crate) struct ValidatedFolder {
     pub(crate) canonical: PathBuf,
     pub(crate) identity: Option<FsIdentity>,
+    pub(crate) file: Option<String>,
+}
+
+impl ValidatedFolder {
+    fn opening(&self) -> Opening {
+        if self.file.is_some() {
+            Opening::File
+        } else {
+            Opening::Folder
+        }
+    }
+
+    fn display_name(&self) -> String {
+        self.file
+            .clone()
+            .unwrap_or_else(|| display_name(&self.canonical))
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -438,7 +455,7 @@ impl OpenIntake {
         {
             request.stage = match outcome {
                 Ok(folder) => {
-                    request.display_name = display_name(&folder.canonical);
+                    request.display_name = folder.display_name();
                     Stage::Ready(folder)
                 }
                 Err(refusal) => Stage::Refused(refusal),
@@ -634,6 +651,7 @@ pub(crate) fn launch_targets_from(
 pub(crate) struct OpenedFolderReply {
     pub(crate) project_id: String,
     pub(crate) detection: oleafly_core::Detection,
+    pub(crate) file: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -650,20 +668,43 @@ pub(crate) enum OpenFailure {
 
 pub(crate) fn validate(path: &Path) -> Result<ValidatedFolder, Refusal> {
     use crate::open_folder::Inspection;
-    match crate::open_folder::inspect_folder(path) {
+    let (path, file) = folder_of(path).map_err(|error| refusal(error, path))?;
+    let opening = if file.is_some() {
+        Opening::File
+    } else {
+        Opening::Folder
+    };
+    match crate::open_folder::inspect_folder(&path, opening) {
         Ok(Inspection::Folder(folder)) => Ok(ValidatedFolder {
             canonical: folder.canonical,
             identity: Some(folder.identity),
+            file,
         }),
         Ok(Inspection::Library { .. }) => path
             .canonicalize()
             .map(|canonical| ValidatedFolder {
                 canonical,
                 identity: None,
+                file,
             })
-            .map_err(|error| refusal(OpenFolderError::Failed(error.to_string()), path)),
-        Err(error) => Err(refusal(error, path)),
+            .map_err(|error| refusal(OpenFolderError::Failed(error.to_string()), &path)),
+        Err(error) => Err(refusal(error, &path)),
     }
+}
+
+fn folder_of(path: &Path) -> Result<(PathBuf, Option<String>), OpenFolderError> {
+    if !std::fs::metadata(path).is_ok_and(|metadata| metadata.is_file()) {
+        return Ok((path.to_path_buf(), None));
+    }
+    let file = path
+        .canonicalize()
+        .map_err(|error| OpenFolderError::Failed(error.to_string()))?;
+    let name = file
+        .file_name()
+        .and_then(OsStr::to_str)
+        .ok_or(OpenFolderError::NotUnicode)?;
+    let folder = file.parent().ok_or(OpenFolderError::NotAFolder)?;
+    Ok((folder.to_path_buf(), Some(name.to_string())))
 }
 
 fn refusal(error: OpenFolderError, path: &Path) -> Refusal {
@@ -673,29 +714,38 @@ fn refusal(error: OpenFolderError, path: &Path) -> Refusal {
     Refusal { error, browse }
 }
 
-pub(crate) fn preview(path: &Path) -> Result<OpenPreview, Refusal> {
-    crate::open_folder::resolve_folder(path)
+pub(crate) fn preview(folder: &ValidatedFolder) -> Result<OpenPreview, Refusal> {
+    let path = &folder.canonical;
+    crate::open_folder::resolve_folder(path, folder.opening())
         .map(|project_id| OpenPreview {
             project_id,
-            display_name: display_name(path),
+            display_name: folder.display_name(),
         })
         .map_err(|error| refusal(error, path))
 }
 
 pub(crate) fn open_validated(
-    path: &Path,
+    folder: &ValidatedFolder,
     shown: Option<&str>,
     router: &dyn WindowRouter,
 ) -> Result<OpenedFolderReply, OpenFailure> {
     use crate::open_folder::OpenedKind;
-    let opened = crate::open_folder::register_or_resolve_folder(path)
+    let path = &folder.canonical;
+    let opened = crate::open_folder::register_or_resolve_folder(path, folder.opening())
         .map_err(|error| OpenFailure::Refused(refusal(error, path)))?;
     let project_id = opened.project_id;
-    let detection =
+    let file = folder.file.as_ref().map(|name| match &opened.reveal {
+        Some(inside) => format!("{inside}/{name}"),
+        None => name.clone(),
+    });
+    let mut detection =
         crate::project::detect_main_on_open(&project_id).map_err(OpenFailure::Failed)?;
     let switches = router.placement(&project_id, shown) == Placement::SwitchInPlace;
     if opened.kind == OpenedKind::Linked && switches {
         mark_opened(&project_id);
+        if let Some(file) = &file {
+            prefer_opened_file(&mut detection, file);
+        }
         if let (oleafly_core::Decision::Auto, Some(main)) = (detection.decision, &detection.main) {
             crate::project::remember_detected_main(&project_id, main)
                 .map_err(OpenFailure::Failed)?;
@@ -705,7 +755,20 @@ pub(crate) fn open_validated(
     Ok(OpenedFolderReply {
         project_id,
         detection,
+        file,
     })
+}
+
+fn prefer_opened_file(detection: &mut oleafly_core::Detection, file: &str) {
+    if detection.decision != oleafly_core::Decision::Auto
+        && detection
+            .candidates
+            .iter()
+            .any(|candidate| candidate.path == file)
+    {
+        detection.decision = oleafly_core::Decision::Auto;
+        detection.main = Some(file.to_string());
+    }
 }
 
 fn mark_opened(project_id: &str) {
@@ -858,7 +921,7 @@ pub async fn prepare_open_request(
         &intake,
         intake.inspect(&token, &caller, CLAIM_TIMEOUT).await,
     )?;
-    let outcome = tauri::async_runtime::spawn_blocking(move || preview(&folder.canonical))
+    let outcome = tauri::async_runtime::spawn_blocking(move || preview(&folder))
         .await
         .map_err(|error| OpenFolderError::Failed(error.to_string()).app_error())?;
     outcome.map_err(|refused| {
@@ -898,7 +961,7 @@ pub async fn open_folder_request(
     #[cfg(target_os = "macos")]
     let canonical = folder.canonical.clone();
     let outcome = tauri::async_runtime::spawn_blocking(move || {
-        open_validated(&folder.canonical, shown.as_deref(), router.as_ref())
+        open_validated(&folder, shown.as_deref(), router.as_ref())
     })
     .await;
     intake.finish(&token);

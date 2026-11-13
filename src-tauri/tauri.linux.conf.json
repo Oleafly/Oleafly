@@ -20,7 +20,8 @@
           "/usr/share/kio/servicemenus/oleafly-open-folder.desktop": "linux/oleafly-open-folder.desktop",
           "/usr/share/nemo/actions/oleafly-open-folder.nemo_action": "linux/oleafly-open-folder.nemo_action",
           "/usr/share/applications/oleafly-url-handler.desktop": "linux/oleafly-url-handler.desktop",
-          "/usr/share/metainfo/com.oleafly.app.metainfo.xml": "linux/com.oleafly.app.metainfo.xml"
+          "/usr/share/metainfo/com.oleafly.app.metainfo.xml": "linux/com.oleafly.app.metainfo.xml",
+          "/usr/share/mime/packages/oleafly.xml": "linux/oleafly.mime.xml"
         },
         "desktopTemplate": "linux/main.desktop",
         "section": "editors"
@@ -32,7 +33,8 @@
           "/usr/share/kio/servicemenus/oleafly-open-folder.desktop": "linux/oleafly-open-folder.desktop",
           "/usr/share/nemo/actions/oleafly-open-folder.nemo_action": "linux/oleafly-open-folder.nemo_action",
           "/usr/share/applications/oleafly-url-handler.desktop": "linux/oleafly-url-handler.desktop",
-          "/usr/share/metainfo/com.oleafly.app.metainfo.xml": "linux/com.oleafly.app.metainfo.xml"
+          "/usr/share/metainfo/com.oleafly.app.metainfo.xml": "linux/com.oleafly.app.metainfo.xml",
+          "/usr/share/mime/packages/oleafly.xml": "linux/oleafly.mime.xml"
         },
         "desktopTemplate": "linux/main.desktop",
         "recommends": ["libnsl", "libxcrypt-compat"]

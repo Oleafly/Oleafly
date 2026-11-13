@@ -5,6 +5,7 @@ Exec=oleafly-desktop %F
 StartupWMClass=oleafly-desktop
 Icon=oleafly-desktop
 Keywords=LaTeX;TeX;Typst;Markdown;PDF;BibTeX;Citation;Paper;Thesis;Research;
+MimeType=text/x-tex;text/vnd.typst;text/markdown;
 Name=Oleafly
 Terminal=false
 Type=Application
