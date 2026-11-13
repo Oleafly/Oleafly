@@ -7,6 +7,24 @@
         "contentTypes": ["public.folder"],
         "role": "Editor",
         "rank": "Alternate"
+      },
+      {
+        "ext": ["tex"],
+        "name": "LaTeX document",
+        "role": "Editor",
+        "rank": "Default"
+      },
+      {
+        "ext": ["typ"],
+        "name": "Typst document",
+        "role": "Editor",
+        "rank": "Default"
+      },
+      {
+        "ext": ["md", "markdown"],
+        "name": "Markdown document",
+        "role": "Editor",
+        "rank": "Default"
       }
     ]
   }

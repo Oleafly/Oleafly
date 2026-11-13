@@ -4,6 +4,7 @@ import { useOpenFolderStore } from "./open-folder";
 
 const opened: OpenedFolder = {
   project_id: "linked-0123456789abcdef0123456789abcdef",
+  file: null,
   detection: {
     main: null,
     decision: "ask",

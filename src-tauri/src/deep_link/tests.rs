@@ -350,7 +350,7 @@ fn linux_packages_hand_links_to_a_handler_that_takes_urls() {
     assert!(handler.contains("\nNoDisplay=true\n"));
     assert!(handler.contains("\nIcon=oleafly-desktop\n"));
     let main = include_str!("../../linux/main.desktop");
-    assert!(!main.contains("MimeType"));
+    assert!(!main.contains("x-scheme-handler"));
     assert!(!main.contains("mime_type"));
     assert!(!include_str!("../../linux/appimage.desktop").contains("x-scheme-handler"));
     let linux = config(include_str!("../../tauri.linux.conf.json"));

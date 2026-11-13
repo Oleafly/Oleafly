@@ -67,7 +67,7 @@ const ambiguous: FolderDetection = {
 };
 
 function present(detection: FolderDetection = ambiguous, projectId = "linked-a") {
-  const opened: OpenedFolder = { project_id: projectId, detection };
+  const opened: OpenedFolder = { project_id: projectId, detection, file: null };
   act(() => useOpenFolderStore.getState().present(opened));
 }
 

@@ -61,4 +61,5 @@ export interface FolderDetection {
 export interface OpenedFolder {
   project_id: string;
   detection: FolderDetection;
+  file: string | null;
 }

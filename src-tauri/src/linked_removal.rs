@@ -415,7 +415,11 @@ mod tests {
         assert_eq!(std::fs::read(&seeded.chats).unwrap(), chats);
         assert!(seeded.checkpoints.exists());
 
-        let reopened = crate::open_folder::register_or_resolve_folder(&seeded.folder).unwrap();
+        let reopened = crate::open_folder::register_or_resolve_folder(
+            &seeded.folder,
+            crate::open_folder::Opening::Folder,
+        )
+        .unwrap();
 
         assert_eq!(reopened.project_id, seeded.project_id);
         assert!(matches!(reopened.outcome, FolderOutcome::Revived { .. }));
@@ -497,7 +501,11 @@ mod tests {
             PurgeOutcome::default()
         );
 
-        let reopened = crate::open_folder::register_or_resolve_folder(&seeded.folder).unwrap();
+        let reopened = crate::open_folder::register_or_resolve_folder(
+            &seeded.folder,
+            crate::open_folder::Opening::Folder,
+        )
+        .unwrap();
         assert_ne!(reopened.project_id, seeded.project_id);
         assert!(matches!(reopened.outcome, FolderOutcome::New));
     }
@@ -549,7 +557,11 @@ mod tests {
             removed_at: 1_000,
         })
         .unwrap();
-        crate::open_folder::register_or_resolve_folder(&seeded.folder).unwrap();
+        crate::open_folder::register_or_resolve_folder(
+            &seeded.folder,
+            crate::open_folder::Opening::Folder,
+        )
+        .unwrap();
         remove_folder_project(&seeded.project_id, 5 * DAY_MS).unwrap();
 
         let outcome = purge_expired_removals(1_000 + REMOVED_RETENTION_MS).unwrap();

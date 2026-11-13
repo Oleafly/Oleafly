@@ -1,3 +1,5 @@
+#[cfg(any(target_os = "macos", target_os = "linux", test))]
+mod default_apps;
 #[cfg(any(windows, test))]
 mod explorer_menu;
 #[cfg(any(target_os = "linux", test))]
@@ -201,6 +203,49 @@ fn claim_offer(_context: &Context) -> Result<bool, String> {
     Ok(false)
 }
 
+#[cfg(any(target_os = "macos", target_os = "linux", test))]
+const DEFAULT_APPS_PREF: &str = "default_apps_claimed";
+
+#[cfg(any(target_os = "macos", target_os = "linux", test))]
+fn claim_default_apps_once(
+    prefs: &Path,
+    claim: impl FnOnce() -> Result<(), String>,
+) -> Result<bool, String> {
+    let claimed = read_prefs_at(prefs)
+        .get(DEFAULT_APPS_PREF)
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    if claimed {
+        return Ok(false);
+    }
+    claim()?;
+    update_prefs_at(prefs, |prefs| {
+        prefs.insert(DEFAULT_APPS_PREF.to_string(), Value::Bool(true))
+    })?;
+    Ok(true)
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+fn claim_default_apps(claim: impl FnOnce() -> Result<(), String>) {
+    let claimed = prefs_path().and_then(|prefs| claim_default_apps_once(&prefs, claim));
+    match claimed {
+        Ok(true) => log("Oleafly is now the default app for .tex, .typ and .md files.".into()),
+        Ok(false) => {}
+        Err(error) => log(format!(
+            "Oleafly could not become the default app for its file types: {error}"
+        )),
+    }
+}
+
+#[cfg(any(target_os = "macos", windows, target_os = "linux"))]
+fn integrates_with_the_system() -> bool {
+    crate::single_instance::should_enable(
+        cfg!(debug_assertions),
+        cfg!(feature = "e2e-testing"),
+        std::env::var_os("OLEAFLY_DATA_DIR").as_deref(),
+    )
+}
+
 #[cfg(windows)]
 const EXPLORER_MENU_PREF: &str = "explorer_menu";
 #[cfg(windows)]
@@ -307,6 +352,14 @@ fn data_home() -> Result<PathBuf, String> {
     launcher::data_home(std::env::var_os("XDG_DATA_HOME"), crate::paths::home_dir())
 }
 
+#[cfg(target_os = "linux")]
+fn config_home() -> Result<PathBuf, String> {
+    launcher::config_home(
+        std::env::var_os("XDG_CONFIG_HOME"),
+        crate::paths::home_dir(),
+    )
+}
+
 /// GTK names the window after its program name, which Wayland desktops match to a desktop
 /// entry. Tauri sets no GTK application id here (`enableGTKAppId` is off).
 #[cfg(target_os = "linux")]
@@ -320,14 +373,42 @@ fn launcher() -> Option<launcher::Launcher> {
 }
 
 #[cfg(target_os = "linux")]
-fn sync_launcher(launcher: &launcher::Launcher, may_create: bool) {
+fn sync_launcher(launcher: &launcher::Launcher, may_create: bool) -> Option<launcher::Outcome> {
     // Read at run time, so a launch-time sync that runs late keeps the icon picked meanwhile.
     let icon = crate::app_icon::current().png();
-    let synced =
-        prefs_path().and_then(|prefs| sync_launcher_at(launcher, icon, may_create, &prefs));
-    if let Err(error) = synced {
-        log(format!("AppImage menu entry: {error}"));
+    prefs_path()
+        .and_then(|prefs| sync_launcher_at(launcher, icon, may_create, &prefs))
+        .inspect_err(|error| log(format!("AppImage menu entry: {error}")))
+        .ok()
+}
+
+#[cfg(target_os = "linux")]
+fn appimage_desktop_id(launcher: &launcher::Launcher) -> Option<String> {
+    let outcome = sync_launcher(launcher, true)?;
+    if !matches!(
+        outcome,
+        launcher::Outcome::Written | launcher::Outcome::Current
+    ) {
+        return None;
     }
+    if outcome == launcher::Outcome::Written {
+        file_manager::refresh_desktop_database(Some(
+            &launcher.data_home.join(file_manager::APPLICATIONS_DIR),
+        ));
+    }
+    match launcher::sync_mime_package(&launcher.data_home) {
+        Ok(true) => file_manager::refresh_mime_database(&launcher.data_home.join("mime")),
+        Ok(false) => {}
+        Err(error) => log(format!("AppImage file types: {error}")),
+    }
+    Some(format!("{}.desktop", launcher.app_id))
+}
+
+#[cfg(target_os = "linux")]
+fn packaged_desktop_id(product_name: Option<String>) -> Option<String> {
+    product_name
+        .map(|name| format!("{name}.desktop"))
+        .filter(|id| Path::new("/usr/share/applications").join(id).is_file())
 }
 
 /// Syncs the menu entry and notes in the prefs file at `prefs` that it was written, so a
@@ -357,17 +438,27 @@ fn sync_launcher_at(
 
 /// Puts the AppImage in the applications menu, so Wayland docks and taskbars show its icon.
 #[cfg(target_os = "linux")]
-pub(crate) fn install_launcher_at_launch() {
-    if let Some(launcher) = launcher() {
-        tauri::async_runtime::spawn_blocking(move || sync_launcher(&launcher, true));
-    }
+pub(crate) fn install_launcher_at_launch(product_name: Option<String>) {
+    let launcher = launcher();
+    let claims = integrates_with_the_system();
+    tauri::async_runtime::spawn_blocking(move || {
+        let desktop_id = match &launcher {
+            Some(launcher) => appimage_desktop_id(launcher),
+            None => packaged_desktop_id(product_name),
+        };
+        if let (true, Some(desktop_id)) = (claims, desktop_id) {
+            claim_default_apps(|| default_apps::claim(&config_home()?, &desktop_id));
+        }
+    });
 }
 
 /// Gives the menu entry the icon picked under App icon, if Oleafly wrote that entry.
 #[cfg(target_os = "linux")]
 pub(crate) fn refresh_launcher_icon() {
     if let Some(launcher) = launcher() {
-        tauri::async_runtime::spawn_blocking(move || sync_launcher(&launcher, false));
+        tauri::async_runtime::spawn_blocking(move || {
+            sync_launcher(&launcher, false);
+        });
     }
 }
 
@@ -410,11 +501,7 @@ fn set(_context: &Context, id: ItemId, _enabled: bool) -> Result<Item, String> {
 
 #[cfg(windows)]
 pub(crate) fn repair_at_launch() {
-    if crate::single_instance::should_enable(
-        cfg!(debug_assertions),
-        cfg!(feature = "e2e-testing"),
-        std::env::var_os("OLEAFLY_DATA_DIR").as_deref(),
-    ) {
+    if integrates_with_the_system() {
         tauri::async_runtime::spawn_blocking(repair);
     }
 }
@@ -469,7 +556,11 @@ pub(crate) fn lifecycle_plugin<R: Runtime>() -> tauri::plugin::TauriPlugin<R> {
 pub(crate) fn on_run_event<R: Runtime>(app: &AppHandle<R>, event: &tauri::RunEvent) {
     if matches!(event, tauri::RunEvent::Ready) {
         let context = Context::of(app);
+        let claims_defaults = integrates_with_the_system();
         std::thread::spawn(move || {
+            if claims_defaults {
+                claim_default_apps(|| default_apps::claim(&context.identifier));
+            }
             let Ok(services) = quick_action::services_dir() else {
                 return;
             };

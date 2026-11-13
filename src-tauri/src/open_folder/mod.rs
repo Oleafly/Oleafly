@@ -98,8 +98,26 @@ pub(crate) enum Inspection {
     Folder(InspectedFolder),
 }
 
-pub(crate) fn inspect_folder(requested: &Path) -> Result<Inspection, OpenFolderError> {
-    inspect_folder_with(requested, &KnownFolders::current())
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Opening {
+    Folder,
+    File,
+}
+
+impl Opening {
+    fn known_folders(self) -> KnownFolders {
+        match self {
+            Self::Folder => KnownFolders::current(),
+            Self::File => KnownFolders::for_a_file(),
+        }
+    }
+}
+
+pub(crate) fn inspect_folder(
+    requested: &Path,
+    opening: Opening,
+) -> Result<Inspection, OpenFolderError> {
+    inspect_folder_with(requested, &opening.known_folders())
 }
 
 fn inspect_folder_with(
@@ -321,8 +339,9 @@ fn recorded_main_document(project_id: &str) -> Option<String> {
 
 pub(crate) fn register_or_resolve_folder(
     requested: &Path,
+    opening: Opening,
 ) -> Result<OpenedFolder, OpenFolderError> {
-    register_or_resolve_folder_with(requested, &KnownFolders::current(), &DiskProbe)
+    register_or_resolve_folder_with(requested, &opening.known_folders(), &DiskProbe)
 }
 
 fn register_or_resolve_folder_with(
@@ -352,8 +371,11 @@ fn register_or_resolve_folder_with(
     .map_err(name_projects)
 }
 
-pub(crate) fn resolve_folder(requested: &Path) -> Result<Option<String>, OpenFolderError> {
-    resolve_folder_with(requested, &KnownFolders::current(), &DiskProbe)
+pub(crate) fn resolve_folder(
+    requested: &Path,
+    opening: Opening,
+) -> Result<Option<String>, OpenFolderError> {
+    resolve_folder_with(requested, &opening.known_folders(), &DiskProbe)
 }
 
 fn resolve_folder_with(

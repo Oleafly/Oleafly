@@ -217,7 +217,7 @@ async function clearRunningWork(
 async function switchToFolder(folder: OpenedFolder): Promise<OpenFolderOutcome> {
   const target = folder.project_id;
   if (useFilesStore.getState().projectId === target) {
-    useOpenFolderStore.getState().present(folder);
+    presentFolder(folder);
     return "focused";
   }
   await useFilesStore.getState().openProject(target);
@@ -227,7 +227,7 @@ async function switchToFolder(folder: OpenedFolder): Promise<OpenFolderOutcome> 
     .catch((error) => void logError("refresh projects after opening a folder", error));
   const files = useFilesStore.getState();
   if (files.projectId === target && !files.saveBlocked) {
-    useOpenFolderStore.getState().present(folder);
+    presentFolder(folder);
     return "opened";
   }
   if (files.saveBlocked?.targetProjectId === target) {
@@ -242,9 +242,14 @@ function presentOnceOpen(folder: OpenedFolder, blocked: SaveBlockedState): void 
     stop();
     if (settled !== blocked || !left) return;
     if (useFilesStore.getState().projectId === folder.project_id) {
-      useOpenFolderStore.getState().present(folder);
+      presentFolder(folder);
     }
   });
+}
+
+function presentFolder(folder: OpenedFolder): void {
+  useOpenFolderStore.getState().present(folder);
+  if (folder.file) void useFilesStore.getState().openFile(folder.file);
 }
 
 function projectRuns(projectId: string) {
