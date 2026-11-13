@@ -7,8 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.12] - 2026-11-12
+
 ### Added
 
+- Notes, a knowledge base for research notes, ships in this release as an
+  experiment and is off until you turn it on in Settings > Experimentation.
+  Each note is a Markdown file you own, edited in a rich editor with
+  callouts, tables, charts, diagrams, math, notebooks, links and backlinks,
+  tags, and tasks with due dates. Notes open as tabs you can split and dock,
+  each tab with its own Back and Forward, and Notes Home lists them with
+  search, tags, a task list and a calendar. A note can start from a template,
+  live inside a project as `notes/<Title>.md`, be edited together through a
+  collaboration server, and take suggestions from the assistant or a CLI
+  agent that you accept or reject in place. Quick capture is a small floating
+  window for a thought you want to keep, and Notes has its own Appearance tab
+  in Settings with a live preview.
 - A Markdown document can say what it is with `type:` in its front matter:
   `article`, `report` (or `thesis`), `book`, `slides`, `poster`, `letter` or
   `cv`. Slides build as 16:9 Beamer slides that the Present button can show, a
@@ -17,6 +31,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   book starts chapters at `#` headings. Your own front matter still wins, LaTeX
   and PowerPoint exports follow the type, and Document settings has a Document
   type field for it. The same works in `oleafly build`.
+
+### Changed
+
+- Windows and panels that load on demand open as soon as their code has
+  loaded, and the ones you open by hand load in the background while the app
+  is idle. Settings opens in about 90 ms the first time, down from about
+  380 ms.
+- With no TeX installed, the engine window puts Download and use TinyTeX
+  first, marked Recommended, instead of a greyed-out Switch to pdfLaTeX
+  button that looked broken. The Keep using Tectonic card and the compile
+  failure heading now read as plain sentences, and the terminal setting is
+  called Open folders in, because the terminal panel always uses the
+  built-in terminal.
 
 ### Fixed
 
@@ -28,7 +55,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as a file name you are renaming in the explorer, added box characters. The
   webview typed the arrow key's hidden Apple code point as text. Every field in
   Oleafly now drops those code points (#445).
-
 - After a research project was created, New project did nothing until Oleafly
   restarted. Setup tried to add the project's first research task while
   research tasks were still turned off, which they are on a fresh install.
@@ -58,6 +84,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The "needs LaTeX" and missing-character hints for Quarto suggested
   `pdf-engine: tectonic` without saying it only runs when code is allowed in
   the project, so following them with code off ended in another error.
+- `oleafly watch` reported a watcher error when a build wrote and renamed a
+  temporary file inside the project. A file that disappears while the watcher
+  scans no longer counts as an error.
+- A long list, such as the template packs list, could crash the window with
+  a React error when its rows kept changing size while it measured them. It
+  now stops measuring after a few passes.
+
+### Security
+
+- Oleafly now bundles SQLite 3.54. Older SQLite could hand back stale memory
+  when it opened a database next to a crafted `-wal` file
+  (RUSTSEC-2026-0459), and online import opens databases the app didn't
+  write, such as a browser's cookie store, which can come with a `-wal`
+  file.
 
 ## [0.4.11] - 2026-11-07
 
@@ -4754,7 +4794,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.11...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.12...HEAD
+[0.4.12]: https://github.com/Oleafly/Oleafly/compare/v0.4.11...v0.4.12
 [0.4.11]: https://github.com/Oleafly/Oleafly/compare/v0.4.10...v0.4.11
 [0.4.10]: https://github.com/Oleafly/Oleafly/compare/v0.4.9...v0.4.10
 [0.4.9]: https://github.com/Oleafly/Oleafly/compare/v0.4.8...v0.4.9
