@@ -6203,7 +6203,7 @@ dependencies = [
 
 [[package]]
 name = "oleafly"
-version = "0.4.11"
+version = "0.4.12"
 dependencies = [
  "aes 0.9.3",
  "aho-corasick",
@@ -6665,7 +6665,7 @@ dependencies = [
 
 [[package]]
 name = "oleafly-server"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "ammonia",
  "async-trait",
