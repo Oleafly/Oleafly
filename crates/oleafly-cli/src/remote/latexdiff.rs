@@ -75,9 +75,9 @@ pub(crate) fn run_latexdiff(
     // a child of its own, so the whole tree is contained (as compiler runs
     // are) and a timeout ends perl too.
     let mut command = latexdiff_command(program, old_main, new_main);
-    crate::process::isolate_std(&mut command);
+    oleafly_sandbox::process::isolate_std_process_tree(&mut command);
     let mut child = command.spawn().map_err(|error| failed(error.to_string()))?;
-    let tree = match crate::process::contain(child.id()) {
+    let tree = match oleafly_sandbox::process::contain_process_tree(child.id()) {
         Ok(tree) => tree,
         Err(error) => {
             let _ = child.kill();

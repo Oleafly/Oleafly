@@ -11,20 +11,44 @@ pub fn isolate_process_tree(command: &mut tokio::process::Command) {
 
 pub fn isolate_std_process_tree(command: &mut std::process::Command) {
     #[cfg(unix)]
-    unsafe {
-        use std::os::unix::process::CommandExt;
-        command.pre_exec(move || {
-            if libc::setpgid(0, 0) != 0 {
-                return Err(std::io::Error::last_os_error());
-            }
-            Ok(())
-        });
+    use std::os::unix::process::CommandExt;
+    // Seatbelt filters the setpgid syscall but not posix_spawn's
+    // POSIX_SPAWN_SETPGROUP, so a confined process keeps fork and setpgid.
+    #[cfg(target_os = "macos")]
+    if confined_by_seatbelt() {
+        unsafe {
+            command.pre_exec(|| {
+                if libc::setpgid(0, 0) != 0 {
+                    return Err(std::io::Error::last_os_error());
+                }
+                Ok(())
+            });
+        }
+        return;
     }
+    // A pre_exec closure makes std fork, and macOS runs libSystem's atfork
+    // handlers in the child, which can kill it before exec while spawn
+    // reports success. process_group lets std use posix_spawn instead.
+    #[cfg(unix)]
+    command.process_group(0);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
         command.creation_flags(CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | CREATE_SUSPENDED);
     }
+}
+
+#[cfg(target_os = "macos")]
+fn confined_by_seatbelt() -> bool {
+    extern "C" {
+        fn sandbox_check(
+            pid: libc::pid_t,
+            operation: *const libc::c_char,
+            filter: libc::c_int,
+            ...
+        ) -> libc::c_int;
+    }
+    unsafe { sandbox_check(libc::getpid(), std::ptr::null(), 0) != 0 }
 }
 
 #[cfg(not(windows))]
@@ -266,6 +290,49 @@ mod tests {
         #[cfg(windows)]
         assert!(guard.process_ids().expect("list the job").is_empty());
         drop(guard);
+    }
+
+    #[cfg(unix)]
+    static FORKING_THREAD: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+    // Stands in for libnotify's atfork handler, which aborts a fork() child
+    // while another thread is in libnotify's first-time setup.
+    #[cfg(unix)]
+    unsafe extern "C" fn exit_in_the_forked_child() {
+        if FORKING_THREAD.load(std::sync::atomic::Ordering::SeqCst) == libc::pthread_self() as usize
+        {
+            libc::_exit(1);
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_isolated_spawn_reports_a_missing_program_when_fork_handlers_kill_the_child() {
+        extern "C" {
+            fn pthread_atfork(
+                prepare: Option<unsafe extern "C" fn()>,
+                parent: Option<unsafe extern "C" fn()>,
+                child: Option<unsafe extern "C" fn()>,
+            ) -> libc::c_int;
+        }
+        static REGISTER: std::sync::Once = std::sync::Once::new();
+        REGISTER.call_once(|| {
+            assert_eq!(
+                unsafe { pthread_atfork(None, None, Some(exit_in_the_forked_child)) },
+                0
+            );
+        });
+        unsafe { exit_in_the_forked_child() };
+        let mut command = std::process::Command::new("/no/such/program");
+        isolate_std_process_tree(&mut command);
+        FORKING_THREAD.store(
+            unsafe { libc::pthread_self() } as usize,
+            std::sync::atomic::Ordering::SeqCst,
+        );
+        let spawned = command.spawn().map(drop);
+        FORKING_THREAD.store(0, std::sync::atomic::Ordering::SeqCst);
+        let error = spawned.expect_err("spawning a program that doesn't exist reported success");
+        assert_eq!(error.kind(), std::io::ErrorKind::NotFound, "{error}");
     }
 }
 
