@@ -173,6 +173,7 @@ fn ended_with(statuses: &[StatusPayload]) -> Vec<(String, LiveStatus)> {
 
 #[test]
 fn the_pump_forwards_people_changes_and_lets_go_when_access_ended() {
+    let _library = crate::collab::testing::TempLibrary::new();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -260,6 +261,7 @@ fn the_pump_forwards_people_changes_and_lets_go_when_access_ended() {
 
 #[test]
 fn a_session_the_spent_engine_ends_keeps_its_project_and_stays_stopped() {
+    let _library = crate::collab::testing::TempLibrary::new();
     let _turn = write::rig::live_turn();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -444,6 +446,7 @@ fn opening_a_project_after_its_session_ended_says_why() {
 
 #[test]
 fn the_pump_forwards_new_devices_and_merges_with_their_authors_and_review_marks() {
+    let _library = crate::collab::testing::TempLibrary::new();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -550,6 +553,7 @@ fn the_pump_forwards_new_devices_and_merges_with_their_authors_and_review_marks(
 
 #[test]
 fn the_pump_tells_the_window_about_a_change_it_had_to_skip() {
+    let _library = crate::collab::testing::TempLibrary::new();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -668,6 +672,7 @@ impl LiveHost for CommentHost {
 
 #[test]
 fn the_pump_announces_comments_that_arrive_from_others() {
+    let _library = crate::collab::testing::TempLibrary::new();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
