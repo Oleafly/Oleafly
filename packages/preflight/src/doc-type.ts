@@ -11,8 +11,9 @@ const SOURCE_HEADING = /\\(?:section|subsection|cvsection|resumeSection)\*?\s*(?
 const SOURCE_TITLE = /\{([^{}]{1,200})\}/uy;
 
 function headingTitle(text: string, from: number): string | undefined {
-  const open = latexHeadingTitleBrace(text, from);
-  if (open < 0) return undefined;
+  const head = latexHeadingTitleBrace(text, from);
+  if (!head) return undefined;
+  const open = head.titleOpen;
   SOURCE_TITLE.lastIndex = open;
   return SOURCE_TITLE.exec(text)?.[1];
 }
@@ -21,7 +22,7 @@ export function looksLikeResumeSource(text: string): boolean {
   if (RESUME_CLASS.test(text)) return true;
   const sections = new Set(
     [...text.matchAll(SOURCE_HEADING)]
-      .map((match) => headingTitle(text, match.index + match[0].length))
+      .map((match) => headingTitle(text, match.index))
       .filter((title) => title !== undefined)
       .map(matchResumeSectionHeading)
       .filter(isAtsResumeSection),

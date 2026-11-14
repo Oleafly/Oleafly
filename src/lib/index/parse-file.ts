@@ -140,8 +140,9 @@ function collectSections(sink: SymSink): void {
   const sec = /\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*(?=[[{])/g;
   for (let m = sec.exec(text); m; m = sec.exec(text)) {
     if (insideLatexDefinition(spans, m.index)) continue;
-    const open = latexHeadingTitleBrace(text, sec.lastIndex);
-    if (open < 0) continue;
+    const head = latexHeadingTitleBrace(text, m.index);
+    if (!head) continue;
+    const open = head.titleOpen;
     const close = matchingBrace(text, open);
     if (close < 0) continue;
     const inner = text.slice(open + 1, close);

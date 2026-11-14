@@ -122,8 +122,8 @@ describe("latexWrapperSections", () => {
 
 describe("latexHeadingTitleBrace", () => {
   const titleAt = (text: string) => {
-    const open = latexHeadingTitleBrace(text, text.search(/[[{]/));
-    return open < 0 ? null : text.slice(open);
+    const head = latexHeadingTitleBrace(text, text.indexOf("\\"));
+    return head === null ? null : text.slice(head.titleOpen);
   };
 
   it("finds the title brace right away or past a short title", () => {
@@ -143,5 +143,22 @@ describe("latexHeadingTitleBrace", () => {
     expect(titleAt("\\section[Two\nlines]{Full}")).toBe("{Full}");
     expect(titleAt("\\section[{Intro}\r\n \r\nWe follow \\cite[p.~3]{knuth}.")).toBeNull();
     expect(titleAt("\\section[Two\r\nlines]{Full}")).toBe("{Full}");
+  });
+
+  it("reads the star and short title up to the title brace", () => {
+    const text = String.raw`\section*[{$[0,1]$} bound] {Bounds}`;
+    expect(latexHeadingTitleBrace(text, 0)).toEqual({
+      starred: true,
+      shortTitle: "{$[0,1]$} bound",
+      titleOpen: text.indexOf("{B"),
+    });
+    expect(latexHeadingTitleBrace(String.raw`\section{A}`, 0)).toEqual({
+      starred: false,
+      shortTitle: null,
+      titleOpen: 8,
+    });
+    expect(latexHeadingTitleBrace(String.raw`\section *{A}`, 0)).toMatchObject({ starred: true });
+    expect(latexHeadingTitleBrace(String.raw`\section[A`, 0)).toBeNull();
+    expect(latexHeadingTitleBrace("\\section[A\n\n]{B}", 0)).toBeNull();
   });
 });

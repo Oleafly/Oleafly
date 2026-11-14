@@ -19,9 +19,12 @@ import {
   auxNumberFor,
   auxNumberForDefinition,
   clearAuxNumbers,
+  currentAuxToc,
   installAuxNumbers,
   parseAuxLabels,
+  parseAuxToc,
   refreshAuxNumbers,
+  subscribeAuxNumbers,
 } from "./aux-numbers";
 import { createCompileSuccessCheckpoint } from "@/lib/compile-checkpoint";
 import type { LatexUnitScope } from "@/lib/project-intelligence/latex-units";
@@ -202,6 +205,103 @@ describe("refreshAuxNumbers", () => {
   });
 });
 
+const tocLine = (kind: string, text: string, anchor = "x") =>
+  String.raw`\@writefile{toc}{\contentsline {${kind}}{${text}}{1}{${anchor}}\protected@file@percent }`;
+
+describe("parseAuxToc", () => {
+  it("reads numbered and unnumbered headings and ignores other lists", () => {
+    const aux = [
+      String.raw`\relax`,
+      tocLine("section", String.raw`\numberline {1}Introduction`, "section.1"),
+      tocLine("section", "Acknowledgments", "section*.2"),
+      String.raw`\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces A plot}}{3}{figure.1}}`,
+      String.raw`\@writefile{toc}{\boolfalse {citerequest}}`,
+      tocLine("subsection", String.raw`\numberline {6.2}Results on a {\em small} dataset`),
+      tocLine("theorem", String.raw`\numberline {3}Not a heading`),
+      String.raw`\newlabel{sec:a}{{1}{1}}`,
+    ].join("\n");
+    expect(parseAuxToc(new Map([[ENTRY_AUX, aux]]))).toEqual([
+      { level: 2, number: "1", title: "Introduction" },
+      { level: 2, number: null, title: "Acknowledgments" },
+      { level: 3, number: "6.2", title: String.raw`Results on a {\em small} dataset` },
+    ]);
+  });
+
+  it("reads the numbers of parts and of the AMS and memoir classes", () => {
+    const aux = [
+      tocLine("part", String.raw`II\hspace {1em}Applications`),
+      tocLine("chapter", String.raw`\chapternumberline {3}Flows`),
+      tocLine("section", String.raw`\tocsection {Appendix}{A}{Proofs}`),
+      tocLine("chapter", String.raw`\numberline {}Preface`),
+    ].join("\n");
+    expect(parseAuxToc(new Map([[ENTRY_AUX, aux]]))).toEqual([
+      { level: 0, number: "II", title: "Applications" },
+      { level: 1, number: "3", title: "Flows" },
+      { level: 2, number: "A", title: "Proofs" },
+      { level: 1, number: null, title: "Preface" },
+    ]);
+  });
+
+  it("reads an included file's headings where it is included, once", () => {
+    const files = new Map([
+      [
+        ENTRY_AUX,
+        [
+          tocLine("chapter", String.raw`\numberline {1}One`),
+          String.raw`\@input{chapters/two.aux}`,
+          tocLine("chapter", String.raw`\numberline {3}Three`),
+          String.raw`\@input{chapters/two.aux}`,
+          String.raw`\@input{../outside.aux}`,
+        ].join("\n"),
+      ],
+      ["chapters/two.aux", tocLine("chapter", String.raw`\numberline {2}Two`)],
+      ["../outside.aux", tocLine("chapter", String.raw`\numberline {9}Outside`)],
+    ]);
+    expect(parseAuxToc(files).map((entry) => entry.number)).toEqual(["1", "2", "3"]);
+  });
+
+  it("stops at a record that never closes, so a crafted aux stays fast", () => {
+    const truncated = [
+      tocLine("section", String.raw`\numberline {1}Intro`),
+      String.raw`\@writefile{toc}{\contentsline {section}{\numberline {2}Cut`,
+    ].join("\n");
+    expect(parseAuxToc(new Map([[ENTRY_AUX, truncated]])).map((entry) => entry.number)).toEqual(["1"]);
+    const crafted = String.raw`\@writefile{toc}{`.repeat(60_000);
+    const started = performance.now();
+    expect(parseAuxToc(new Map([[ENTRY_AUX, crafted]]))).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(2_000);
+  });
+});
+
+describe("currentAuxToc", () => {
+  it("holds the compiled contents and tells subscribers when they change", async () => {
+    serveAuxFiles({
+      [ENTRY_AUX]: `${tocLine("section", String.raw`\numberline {1}Intro`)}\n\\@input{ch.aux}\n`,
+      "ch.aux": tocLine("section", String.raw`\numberline {2}Body`),
+    });
+    seedFilesStore("p1", "main.tex");
+    const listener = vi.fn();
+    const unsubscribe = subscribeAuxNumbers(listener);
+    await refreshAuxNumbers("p1", "main.tex", "out-1");
+    const toc = currentAuxToc();
+    expect(toc).toEqual({
+      projectId: "p1",
+      mainDocument: "main.tex",
+      entries: [
+        { level: 2, number: "1", title: "Intro" },
+        { level: 2, number: "2", title: "Body" },
+      ],
+    });
+    expect(currentAuxToc()).toBe(toc);
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    unsubscribe();
+    clearAuxNumbers();
+    expect(currentAuxToc()).toBeNull();
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("auxNumberFor identity guards", () => {
   beforeEach(async () => {
     serveAuxFiles({ [ENTRY_AUX]: "\\newlabel{sec:x}{{3}{9}}\n" });
@@ -261,5 +361,32 @@ describe("installAuxNumbers", () => {
     useCompileStore.setState({ log: "noise" });
     await Promise.resolve();
     expect(readBuildArtifactMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("installAuxNumbers after a compile", () => {
+  it("reads the aux of a compile that finished before the install", async () => {
+    vi.resetModules();
+    const aux = await import("./aux-numbers");
+    const { useCompileStore: compileStore } = await import("@/store/compile");
+    const { useFilesStore: filesStore } = await import("@/store/files");
+    serveAuxFiles({ [ENTRY_AUX]: "\\newlabel{fig:one}{{1}{5}}\n" });
+    filesStore.setState({ projectId: "p1", mainDoc: "main.tex", activePath: null, tree: [], files: {} });
+    compileStore.setState({
+      status: "success",
+      lastCompileCheckpoint: createCompileSuccessCheckpoint({
+        projectId: "p1",
+        mainDocument: "main.tex",
+        outputKind: "standard",
+        producerId: "test-producer",
+        outputRevision: 1,
+        outputId: "pdf-v1:10:0123456789abcdef",
+        previousCompletedAt: null,
+      }),
+    });
+
+    aux.installAuxNumbers();
+
+    await vi.waitFor(() => expect(aux.auxNumberFor("fig:one")).toEqual({ number: "1", page: "5" }));
   });
 });

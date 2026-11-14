@@ -217,7 +217,7 @@ export function createLatexOutlineMacroCollector(): (
   };
 }
 
-const LATEX_DOCUMENT_SOURCE = /\.(?:latex|ltx|tex)$/iu;
+export const LATEX_DOCUMENT_SOURCE = /\.(?:latex|ltx|tex)$/iu;
 
 type FileDefinitions = Readonly<{ source: string; masked: string; definitions: LatexDefinitions }>;
 type FileWrapperSections = Readonly<{ source: string; key: string; sections: readonly LatexWrapperSection[] }>;

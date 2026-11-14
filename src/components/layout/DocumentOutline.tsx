@@ -5,7 +5,7 @@ import {
   FileText,
   List,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import {
   createLatexOutlineMacroCollector,
   createLatexWrapperSectionCollector,
@@ -28,13 +28,16 @@ import {
   outlineSources,
   type OutlineItem,
 } from "@/lib/index/outline";
+import { latexOutlineNumbers } from "@/lib/index/outline-numbers";
 import { activeOutlineIndex } from "@/lib/outline-active";
+import { currentAuxToc, subscribeAuxNumbers } from "@/lib/aux-numbers";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { cn } from "@/lib/utils";
 import { basename } from "@/lib/path-utils";
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
+import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 
 export const OUTLINE_REVEAL_SETTLE_MS = 120;
 
@@ -127,6 +130,7 @@ function visibleHeadings(
 
 const NO_WRAPPER_SECTIONS: ReadonlyMap<string, readonly LatexWrapperSection[]> = new Map();
 const NO_LATEX_MACROS: ReadonlyMap<string, string> = new Map();
+const NO_HEADING_NUMBERS: readonly (string | null)[] = [];
 
 export function DocumentOutline({
   collapsed: controlledCollapsed,
@@ -140,6 +144,7 @@ export function DocumentOutline({
   const building = useIndexStore((state) => state.building);
   const projectId = useFilesStore((state) => state.projectId);
   const activePath = useFilesStore((state) => state.activePath);
+  const mainDoc = useFilesStore(() => resolveEffectiveMainDoc().mainDoc);
   const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
   const [remembered] = useState(() => readSidebarView(projectId, "outline"));
   const evaluatedDocumentKey = useRef<string | null>(
@@ -277,6 +282,22 @@ export function DocumentOutline({
     [collectMacros, macroSources],
   );
   const typstTitles = useTypstTitles(items);
+  const auxToc = useSyncExternalStore(subscribeAuxNumbers, currentAuxToc);
+  const headingNumbers = useMemo(
+    () =>
+      index && activePath && auxToc?.projectId === projectId && auxToc.mainDocument === mainDoc
+        ? latexOutlineNumbers({
+            items,
+            viewer: activePath,
+            toc: auxToc,
+            index,
+            texts: useIndexStore.getState().texts,
+            extraSections: (file) => wrapperSections.get(file) ?? [],
+            render: (tex) => renderLatexOutlineTitle(tex, latexMacros, headingsByLabel),
+          })
+        : NO_HEADING_NUMBERS,
+    [activePath, auxToc, headingsByLabel, index, items, latexMacros, mainDoc, projectId, wrapperSections],
+  );
 
   const listRef = useRef<HTMLDivElement>(null);
   const tooltips = useDelegatedTooltips(listRef);
@@ -387,6 +408,8 @@ export function DocumentOutline({
               const active = itemIndex === activeIndex;
               const headingCollapsed = collapsedHeadingIds.has(id);
               const displayTitle = outlineDisplayTitle(item, latexMacros, headingsByLabel, typstTitles);
+              const number = headingNumbers[itemIndex] ?? null;
+              const label = number === null ? displayTitle : `${number} ${displayTitle}`;
               return (
                 <TreeRow
                   key={`${item.file}:${item.line}:${item.kind}:${item.title}`}
@@ -397,14 +420,18 @@ export function DocumentOutline({
                     headingCollapsed
                       ? ($) => $.workspace.outline.expandHeading
                       : ($) => $.workspace.outline.collapseHeading,
-                    { title: displayTitle },
+                    { title: label },
                   )}
                   active={active}
                   labelRef={active ? activeRef : undefined}
                   onSelect={() => jump(item)}
-                  tooltip={`${displayTitle} · ${item.file}:${item.line}`}
+                  ariaLabel={label}
+                  tooltip={`${label} · ${item.file}:${item.line}`}
                   label={
                     <span className={cn("truncate", item.kind === "file" && "text-muted-foreground")}>
+                      {number === null ? null : (
+                        <span className="mr-1.5 tabular-nums text-muted-foreground">{number}</span>
+                      )}
                       {item.kind === "file" ? (
                         <FileText aria-hidden className="mr-1 inline-block size-3 shrink-0 text-muted-foreground" />
                       ) : null}

@@ -284,8 +284,9 @@ const headingSkip: Rule = (text) => {
   let m: RegExpExecArray | null;
   let prev: number | null = null;
   while ((m = re.exec(text))) {
-    const open = latexHeadingTitleBrace(text, re.lastIndex - 1);
-    if (open < 0) continue;
+    const head = latexHeadingTitleBrace(text, m.index);
+    if (!head) continue;
+    const open = head.titleOpen;
     const level = HEADING_LEVEL[m[1]];
     if (prev !== null && level > prev + 1) {
       out.push(
@@ -309,7 +310,8 @@ const nonstandardHeadings: Rule = (text) => {
   const titles: { label: string; from: number; to: number }[] = [];
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
-    const open = latexHeadingTitleBrace(text, re.lastIndex - 1);
+    const head = latexHeadingTitleBrace(text, m.index);
+    const open = head?.titleOpen ?? -1;
     const close = open < 0 ? -1 : matchingBrace(text, open);
     if (close < 0) continue;
     titles.push({ label: text.slice(open + 1, close).trim(), from: m.index, to: close + 1 });
