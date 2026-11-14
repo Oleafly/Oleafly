@@ -954,6 +954,7 @@ async fn person(
 
 #[test]
 fn a_figure_added_while_the_link_is_down_reaches_the_other_person_after_reconnecting() {
+    let _library = crate::collab::testing::TempLibrary::new();
     run(async {
         let server = TestServer::start(test_config()).await;
         let server_id = server.state().server_id;
@@ -1041,6 +1042,7 @@ fn a_figure_added_while_the_link_is_down_reaches_the_other_person_after_reconnec
 
 #[test]
 fn a_figure_whose_download_failed_arrives_later_and_after_a_restart_without_another_edit() {
+    let _library = crate::collab::testing::TempLibrary::new();
     run(async {
         let server = TestServer::start(test_config()).await;
         let server_id = server.state().server_id;
