@@ -268,6 +268,8 @@
       "keyPlaceholderStored": "新しく入力しない限り、保存済みのキーが使われます",
       "namePlaceholder": "Acme",
       "presetsLabel": "よく使われるプロバイダ",
+      "reasoningEffortDescription": "サーバーが reasoning_effort フィールドに対応している場合はオンにしてください。チャットの推論レベルメニューで 低・中・高 を選べるようになります。",
+      "reasoningEffortLabel": "推論レベルを送信",
       "saveAnyway": "そのまま保存",
       "submitAdd": "プロバイダを追加",
       "submitAddAnyway": "モデルなしで追加"

@@ -270,6 +270,8 @@
       "keyPlaceholderStored": "Cheia salvată rămâne dacă nu introduci alta",
       "namePlaceholder": "Acme",
       "presetsLabel": "Furnizori obișnuiți",
+      "reasoningEffortDescription": "Activează opțiunea dacă serverul acceptă câmpul reasoning_effort. Meniul Efort din chat oferă atunci Scăzut, Mediu și Ridicat.",
+      "reasoningEffortLabel": "Trimite efortul de raționament",
       "saveAnyway": "Salvează oricum",
       "submitAdd": "Adaugă furnizorul",
       "submitAddAnyway": "Adaugă fără modele"

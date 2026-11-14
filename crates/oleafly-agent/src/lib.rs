@@ -22,7 +22,7 @@ pub use caps::{BudgetRange, ModelCaps, ReasoningCaps, MAX_AGENT_DOCUMENTS, MAX_R
 pub use complete::{
     complete, CompletionRequest, CompletionResponse, InputTokenSemantics, Usage, WebTools,
 };
-pub use effort::{clamp_effort, effective_effort, effort_choices, Effort};
+pub use effort::{apply_custom_effort, clamp_effort, effective_effort, effort_choices, Effort};
 pub use error::{AgentError, Result};
 pub use event::AgentEvent;
 pub use message::{ContentPart, Message, ProviderWire, Role, SUPPORTED_IMAGE_TYPES};

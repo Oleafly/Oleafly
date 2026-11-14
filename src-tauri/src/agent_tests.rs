@@ -28,6 +28,7 @@ fn with_custom(provider: &str, key: &str, base_url: &str) -> ProviderConfig {
         id: provider.into(),
         base_url: base_url.into(),
         key_optional: false,
+        reasoning_effort: false,
     });
     cfg
 }
@@ -107,6 +108,7 @@ fn provider_config_carries_every_field_resolution_depends_on() {
             name: "Local".into(),
             base_url: "http://127.0.0.1:8000/v1".into(),
             key_optional: true,
+            reasoning_effort: true,
         }],
         ..config_with("anthropic", &[("anthropic", "sk-ant")])
     };
@@ -126,6 +128,7 @@ fn provider_config_carries_every_field_resolution_depends_on() {
         .unwrap()
         .is_empty());
     assert_eq!(projected.custom[0].base_url, "http://127.0.0.1:8000/v1");
+    assert!(projected.custom[0].reasoning_effort);
     assert!(projected.custom[0].key_optional);
 }
 

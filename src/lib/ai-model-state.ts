@@ -1,8 +1,8 @@
 import { i18n } from "@/i18n";
 import { formatNumber } from "@/lib/intl";
-import type { ModelMetadata, ModelProbe, ModelTrust, StoredModel } from "@/lib/tauri";
+import type { CustomProvider, ModelMetadata, ModelProbe, ModelTrust, StoredModel } from "@/lib/tauri";
 import { getProvider, type AIModel } from "@/lib/ai-providers";
-import type { ModelReasoningMetadata } from "@oleafly/ai-core";
+import type { ModelReasoningMetadata, ReasoningOption } from "@oleafly/ai-core";
 
 export interface FetchedModel extends AIModel {
   trust?: ModelTrust;
@@ -202,16 +202,25 @@ const SWITCHABLE_THINKING: ModelReasoningMetadata = {
   reasoningOptions: [{ type: "toggle" }],
 };
 
-/** What the effort menu reads for a model: its saved metadata, or for Ollama,
- * whose model list Settings doesn't keep, whether Ollama says it thinks. */
+const CUSTOM_EFFORT: ReasoningOption = { type: "effort", values: ["low", "medium", "high"] };
+
 export function effortMetadata(
   stored: Pick<StoredModel, "metadata"> | undefined,
   providerId: string,
   modelId: string,
   ollamaThinking: ReadonlySet<string>,
+  customProviders: readonly Pick<CustomProvider, "id" | "reasoningEffort">[],
 ): ModelReasoningMetadata | undefined {
-  if (stored?.metadata) return stored.metadata;
-  return providerId === "ollama" && ollamaThinking.has(modelId) ? SWITCHABLE_THINKING : undefined;
+  const metadata =
+    stored?.metadata ??
+    (providerId === "ollama" && ollamaThinking.has(modelId) ? SWITCHABLE_THINKING : undefined);
+  if (getProvider(providerId)) return metadata;
+  const sendsEffort = customProviders.some(
+    (provider) => provider.id === providerId && provider.reasoningEffort === true,
+  );
+  if (!metadata && !sendsEffort) return undefined;
+  const options = (metadata?.reasoningOptions ?? []).filter((option) => option.type !== "effort");
+  return { ...metadata, reasoningOptions: sendsEffort ? [...options, CUSTOM_EFFORT] : options };
 }
 
 export function formatContextWindow(tokens: number): string {

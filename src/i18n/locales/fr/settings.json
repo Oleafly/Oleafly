@@ -270,6 +270,8 @@
       "keyPlaceholderStored": "La clé enregistrée est conservée tant que vous n'en saisissez pas une autre",
       "namePlaceholder": "Acme",
       "presetsLabel": "Fournisseurs courants",
+      "reasoningEffortDescription": "Activez cette option si le serveur accepte le champ reasoning_effort. Le menu Effort du chat propose alors Faible, Moyen et Élevé.",
+      "reasoningEffortLabel": "Envoyer le niveau de raisonnement",
       "saveAnyway": "Enregistrer quand même",
       "submitAdd": "Ajouter le fournisseur",
       "submitAddAnyway": "Ajouter sans modèles"

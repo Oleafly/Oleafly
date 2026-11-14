@@ -269,6 +269,8 @@
       "keyPlaceholderStored": "Tallennettu avain säilyy, ellet anna uutta",
       "namePlaceholder": "Acme",
       "presetsLabel": "Yleiset palvelut",
+      "reasoningEffortDescription": "Ota tämä käyttöön, jos palvelin hyväksyy reasoning_effort-kentän. Keskustelun Panostus-valikko tarjoaa silloin vaihtoehdot Matala, Keskitaso ja Korkea.",
+      "reasoningEffortLabel": "Lähetä päättelyn panostus",
       "saveAnyway": "Tallenna silti",
       "submitAdd": "Lisää palvelu",
       "submitAddAnyway": "Lisää ilman malleja"

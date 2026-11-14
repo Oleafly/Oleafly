@@ -167,9 +167,11 @@ pub(crate) fn chat_reasoning_fields(
             }
         }
         "deepseek" => deepseek_thinking(req, effort),
-        custom if catalog_entry(custom).is_none() && effort == Some(Effort::Off) => {
-            custom_thinking_off()
-        }
+        custom if catalog_entry(custom).is_none() => match effort {
+            Some(Effort::Off) => custom_thinking_off(),
+            Some(effort) => vec![("reasoning_effort", json!(effort.as_str()))],
+            None => Vec::new(),
+        },
         _ => Vec::new(),
     }
 }

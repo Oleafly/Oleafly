@@ -2112,8 +2112,8 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
     [queueStreamDrain],
   );
 
-  const pickedModelRef = useRef({ provider, model, providerModelsMap, providerReady, activeProviderName, ollamaThinking });
-  pickedModelRef.current = { provider, model, providerModelsMap, providerReady, activeProviderName, ollamaThinking };
+  const pickedModelRef = useRef({ provider, model, providerModelsMap, providerReady, activeProviderName, ollamaThinking, customProviders });
+  pickedModelRef.current = { provider, model, providerModelsMap, providerReady, activeProviderName, ollamaThinking, customProviders };
 
   const send = useCallback(async (
     text: string,
@@ -2124,7 +2124,7 @@ function ChatCoreBody({ scope }: Readonly<{ scope: AssistantScopeValue }>) {
       web?: boolean;
     },
   ) => {
-    const { provider, model, providerModelsMap, providerReady, activeProviderName, ollamaThinking } = pickedModelRef.current;
+    const { provider, model, providerModelsMap, providerReady, activeProviderName, ollamaThinking, customProviders } = pickedModelRef.current;
     const sendComposerId = composerIdRef.current;
     const draft = draftAttachments(sendComposerId);
     if (!options?.replay && !queued && draft.some((item) => item.status === "processing")) return;
@@ -2831,7 +2831,11 @@ ${sandboxedCustom}`;
     const runChat = runChatId ? useChatsStore.getState().byId(runChatId, scopeKey) : undefined;
     const runEffort = resolveRunEffort(
       runChat ? runChat.effort : newChatSettingsRef.current.effort,
-      effortChoicesFor(provider, model, effortMetadata(runStoredModel, provider, model, ollamaThinking)),
+      effortChoicesFor(
+        provider,
+        model,
+        effortMetadata(runStoredModel, provider, model, ollamaThinking, customProviders),
+      ),
     );
     const runWeb = runWebTools(runChat ? runChat.web : newChatSettingsRef.current.web);
     let queuedAccepted = false;
@@ -3933,7 +3937,7 @@ ${sandboxedCustom}`;
   const effortChoices = effortChoicesFor(
     provider,
     model,
-    effortMetadata(activeStoredModel, provider, model, ollamaThinking),
+    effortMetadata(activeStoredModel, provider, model, ollamaThinking, customProviders),
   );
   const chatSettings = activeChat ?? newChatSettings;
   const selectedEffort = chatSettings.effort;

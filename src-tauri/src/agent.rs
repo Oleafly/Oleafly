@@ -247,6 +247,7 @@ pub fn provider_config(cfg: &AppConfig) -> ProviderConfig {
                 id: c.id.clone(),
                 base_url: c.base_url.clone(),
                 key_optional: c.key_optional,
+                reasoning_effort: c.reasoning_effort,
             })
             .collect(),
     }
@@ -1779,6 +1780,7 @@ async fn projected_provider_config(
                 id: provider_id.to_string(),
                 base_url,
                 key_optional: true,
+                reasoning_effort: false,
             }),
         }
     }
@@ -1799,6 +1801,7 @@ const PROBE_STATUS_PREFIX: &str = "The provider answered the probe with HTTP ";
 const PROBE_VERIFIED_REASON: &str = "The model called the ping tool.";
 const PROBE_OUTPUT_LIMIT_REASON: &str = "The model ran out of output before calling the tool.";
 const PROBE_REPLAY_REASON: &str = "The model could not reuse its own reasoning on the next step.";
+const PROBE_EFFORT_REASON: &str = "The server rejected the reasoning_effort field. Turn off Send reasoning effort for this provider and test again.";
 
 #[tauri::command]
 pub async fn agent_probe_model(
@@ -1814,8 +1817,10 @@ pub async fn agent_probe_model(
         return Err("Choose a model to probe.".into());
     }
     let (projected, _) = projected_provider_config(&provider_id, key, base_url).await?;
-    let resolved = oleafly_agent::provider::resolve_for_probe(&projected, &provider_id, &model_id)
-        .map_err(|e| e.to_string())?;
+    let mut resolved =
+        oleafly_agent::provider::resolve_for_probe(&projected, &provider_id, &model_id)
+            .map_err(|e| e.to_string())?;
+    oleafly_agent::apply_custom_effort(&mut resolved, &projected.custom);
     let client = state.client()?;
     probe_and_record(&client, &resolved, probe_timeout(&resolved)).await
 }
@@ -1915,13 +1920,21 @@ pub(crate) async fn probe_model(
     timeout: Duration,
 ) -> Result<ModelProbe, oleafly_agent::AgentError> {
     let request = probe_request(timeout);
-    let outcome = tokio::time::timeout(
-        timeout,
-        oleafly_agent::stream_completion(client, resolved, &request, |_| {}),
-    )
-    .await
-    .map_err(|_| oleafly_agent::AgentError::Timeout)?;
+    let outcome = probe_stream(client, resolved, &request, timeout).await?;
     let (verdict, reason) = match outcome {
+        Err(error) if turned_down_custom_effort(resolved, &request, &error) => {
+            let plain = CompletionRequest {
+                effort: None,
+                ..request.clone()
+            };
+            match probe_stream(client, resolved, &plain, timeout).await? {
+                Ok(_) => (ProbeVerdict::Blocked, PROBE_EFFORT_REASON.to_string()),
+                Err(error) => (
+                    ProbeVerdict::Blocked,
+                    model_verdict_reason(resolved, error)?,
+                ),
+            }
+        }
         Err(error) => (
             ProbeVerdict::Blocked,
             model_verdict_reason(resolved, error)?,
@@ -1943,6 +1956,39 @@ pub(crate) async fn probe_model(
         reason,
         probed_at: unix_time_ms(),
     })
+}
+
+async fn probe_stream(
+    client: &reqwest::Client,
+    resolved: &oleafly_agent::Resolved,
+    request: &CompletionRequest,
+    timeout: Duration,
+) -> Result<
+    Result<oleafly_agent::StreamOutcome, oleafly_agent::AgentError>,
+    oleafly_agent::AgentError,
+> {
+    tokio::time::timeout(
+        timeout,
+        oleafly_agent::stream_completion(client, resolved, request, |_| {}),
+    )
+    .await
+    .map_err(|_| oleafly_agent::AgentError::Timeout)
+}
+
+fn turned_down_custom_effort(
+    resolved: &oleafly_agent::Resolved,
+    request: &CompletionRequest,
+    error: &oleafly_agent::AgentError,
+) -> bool {
+    matches!(
+        error,
+        oleafly_agent::AgentError::Provider {
+            status: 400 | 422,
+            ..
+        }
+    ) && oleafly_agent::provider::catalog_entry(&resolved.provider_id).is_none()
+        && oleafly_agent::effective_effort(resolved, request.effort)
+            .is_some_and(|effort| effort != oleafly_agent::Effort::Off)
 }
 
 /// Whether the next step would send the model's thinking back to it: the
@@ -2177,6 +2223,7 @@ fn resolve_with(
         &resolved.provider_id,
         &resolved.model_id,
     );
+    oleafly_agent::apply_custom_effort(&mut resolved, &projected.custom);
     Ok(resolved)
 }
 
@@ -3047,6 +3094,107 @@ mod probe_tests {
 
         assert_eq!(probe.verdict, ProbeVerdict::Verified, "{}", probe.reason);
         assert_eq!(seen.lock().unwrap().len(), 1);
+    }
+
+    fn sends_effort(resolved: &mut oleafly_agent::Resolved, on: bool) {
+        oleafly_agent::apply_custom_effort(
+            resolved,
+            &[oleafly_agent::CustomProvider {
+                id: resolved.provider_id.clone(),
+                reasoning_effort: on,
+                ..Default::default()
+            }],
+        );
+    }
+
+    #[tokio::test]
+    async fn a_custom_provider_that_sends_effort_is_probed_with_it() {
+        let (mut resolved, seen, server) = serve(
+            StatusCode::OK,
+            SSE,
+            &tool_call_stream(PROBE_TOOL, "{}"),
+            Duration::ZERO,
+        )
+        .await;
+        sends_effort(&mut resolved, true);
+        let client = oleafly_agent::build_client().unwrap();
+
+        let probe = probe_model(&client, &resolved, Duration::from_secs(5))
+            .await
+            .unwrap();
+        server.abort();
+
+        assert_eq!(probe.verdict, ProbeVerdict::Verified, "{}", probe.reason);
+        let requests = seen.lock().unwrap().clone();
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0]["reasoning_effort"], "low");
+    }
+
+    #[tokio::test]
+    async fn a_server_that_turns_down_reasoning_effort_is_named_as_the_cause() {
+        let seen: SeenRequests = Arc::default();
+        let recorder = seen.clone();
+        let accepted = tool_call_stream(PROBE_TOOL, "{}");
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let app = Router::new().route(
+            "/v1/chat/completions",
+            post(move |Json(request): Json<serde_json::Value>| {
+                let turned_down = request.get("reasoning_effort").is_some();
+                recorder.lock().unwrap().push(request);
+                let reply = if turned_down {
+                    (
+                        StatusCode::BAD_REQUEST,
+                        [(header::CONTENT_TYPE, "application/json")],
+                        r#"{"error":{"message":"Unsupported parameter: reasoning_effort"}}"#
+                            .to_string(),
+                    )
+                } else {
+                    (
+                        StatusCode::OK,
+                        [(header::CONTENT_TYPE, SSE)],
+                        accepted.clone(),
+                    )
+                };
+                async move { reply }
+            }),
+        );
+        let server = tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+        let mut resolved = oleafly_agent::Resolved {
+            provider_id: "gateway".into(),
+            model_id: "probe-model".into(),
+            credential: SECRET.into(),
+            auth: Some(SECRET.into()),
+            wire: oleafly_agent::Wire::OpenAiChat {
+                base_url: format!("http://{address}/v1"),
+                reasoning_content: false,
+            },
+            caps: oleafly_agent::ModelCaps::default(),
+        };
+        let client = oleafly_agent::build_client().unwrap();
+
+        sends_effort(&mut resolved, true);
+        let probe = probe_model(&client, &resolved, Duration::from_secs(5))
+            .await
+            .unwrap();
+        assert_eq!(
+            (probe.verdict, probe.reason.as_str()),
+            (ProbeVerdict::Blocked, PROBE_EFFORT_REASON)
+        );
+        {
+            let requests = seen.lock().unwrap();
+            assert_eq!(requests.len(), 2);
+            assert_eq!(requests[0]["reasoning_effort"], "low");
+            assert!(requests[1].get("reasoning_effort").is_none());
+        }
+
+        sends_effort(&mut resolved, false);
+        let probe = probe_model(&client, &resolved, Duration::from_secs(5))
+            .await
+            .unwrap();
+        server.abort();
+        assert_eq!(probe.verdict, ProbeVerdict::Verified, "{}", probe.reason);
+        assert_eq!(seen.lock().unwrap().len(), 3);
     }
 
     fn with_data_dir<T>(body: impl std::future::Future<Output = T>) -> T {

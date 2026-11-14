@@ -326,6 +326,7 @@ pub fn resolve(
     if let Some(entry) = &entry {
         resolved.caps = ModelCaps::from_metadata_json(entry);
     }
+    oleafly_agent::apply_custom_effort(&mut resolved, &ai.custom);
     Ok(ResolvedProvider {
         resolved,
         source,
@@ -636,6 +637,7 @@ mod tests {
                 id: "mock".into(),
                 base_url: "http://127.0.0.1:9/v1".into(),
                 key_optional: true,
+                reasoning_effort: false,
             }],
             ..Default::default()
         });
@@ -656,6 +658,7 @@ mod tests {
                 id: "lemonade".into(),
                 base_url: "http://localhost:13305/v1".into(),
                 key_optional,
+                reasoning_effort: false,
             }],
             ..Default::default()
         })

@@ -270,6 +270,8 @@
       "keyPlaceholderStored": "A chave salva permanece, a menos que você digite outra",
       "namePlaceholder": "Acme",
       "presetsLabel": "Provedores comuns",
+      "reasoningEffortDescription": "Ative se o servidor aceitar o campo reasoning_effort. O menu Esforço do chat passa a oferecer Baixo, Médio e Alto.",
+      "reasoningEffortLabel": "Enviar esforço de raciocínio",
       "saveAnyway": "Salvar mesmo assim",
       "submitAdd": "Adicionar provedor",
       "submitAddAnyway": "Adicionar sem modelos"

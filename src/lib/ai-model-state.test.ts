@@ -1,5 +1,6 @@
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import { beforeEach, describe, it, expect } from "vitest";
+import { effortChoicesFor } from "@oleafly/ai-core";
 import type { ModelMetadata, StoredModel } from "@/lib/tauri";
 import {
   MODEL_LIST_AUTO_REFRESH_MS,
@@ -239,17 +240,41 @@ describe("model trust resolution", () => {
 describe("effort metadata", () => {
   it("lets an Ollama model that thinks switch it off", () => {
     const thinking = new Set(["qwen3:latest"]);
-    expect(effortMetadata(undefined, "ollama", "qwen3:latest", thinking)).toEqual({
+    expect(effortMetadata(undefined, "ollama", "qwen3:latest", thinking, [])).toEqual({
       reasoning: true,
       reasoningOptions: [{ type: "toggle" }],
     });
-    expect(effortMetadata(undefined, "ollama", "llama3.2:latest", thinking)).toBeUndefined();
-    expect(effortMetadata(undefined, "lemonade", "qwen3:latest", thinking)).toBeUndefined();
+    expect(effortMetadata(undefined, "ollama", "llama3.2:latest", thinking, [])).toBeUndefined();
+    expect(effortMetadata(undefined, "lemonade", "qwen3:latest", thinking, [])).toBeUndefined();
   });
 
   it("prefers the saved metadata", () => {
     const saved = metadata({ reasoning: false });
-    expect(effortMetadata({ metadata: saved }, "ollama", "qwen3:latest", new Set(["qwen3:latest"]))).toBe(saved);
+    expect(effortMetadata({ metadata: saved }, "ollama", "qwen3:latest", new Set(["qwen3:latest"]), [])).toBe(saved);
+  });
+
+  it("gives a custom provider levels only when it sends reasoning effort", () => {
+    const none = new Set<string>();
+    const switchable = metadata({ reasoning: true, reasoningOptions: [{ type: "toggle" }] });
+    const listed = metadata({ reasoningOptions: [{ type: "effort", values: ["low", "high"] }] });
+    const on = [{ id: "gateway", reasoningEffort: true }];
+    const off = [{ id: "gateway", reasoningEffort: false }];
+
+    expect(effortChoicesFor("gateway", "m", effortMetadata(undefined, "gateway", "m", none, on))).toEqual([
+      "low",
+      "medium",
+      "high",
+    ]);
+    expect(effortMetadata(undefined, "gateway", "m", none, off)).toBeUndefined();
+    expect(effortChoicesFor("gateway", "m", effortMetadata({ metadata: listed }, "gateway", "m", none, off))).toEqual(
+      [],
+    );
+    expect(
+      effortChoicesFor("gateway", "m", effortMetadata({ metadata: switchable }, "gateway", "m", none, on)),
+    ).toEqual(["none", "low", "medium", "high"]);
+    expect(effortMetadata({ metadata: listed }, "openai", "gpt-5", none, [{ id: "openai", reasoningEffort: true }])).toBe(
+      listed,
+    );
   });
 });
 

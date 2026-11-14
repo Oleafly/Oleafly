@@ -466,7 +466,13 @@ export function AISection() {
     }
     const baseURL = res.baseURL;
     const models: StoredModel[] = res.ok ? mergeFetchedModels([], res.models) : [];
-    const customProvider: CustomProvider = { id, name, baseURL, keyOptional: !apiKey };
+    const customProvider: CustomProvider = {
+      id,
+      name,
+      baseURL,
+      keyOptional: !apiKey,
+      reasoningEffort: input.reasoningEffort,
+    };
     const nextKeys = apiKey ? { ...cfg.ai_keys, [id]: apiKey } : cfg.ai_keys;
     const isFirst = !cfg.ai_provider;
     const next: AppConfig = {
@@ -532,6 +538,7 @@ export function AISection() {
       name,
       baseURL,
       keyOptional: apiKey ? false : current.keyOptional || leavesKeyBehind,
+      reasoningEffort: input.reasoningEffort,
     };
     const nextKeys = apiKey ? { ...cfg.ai_keys, [id]: apiKey } : cfg.ai_keys;
     const nextModel =
@@ -587,6 +594,7 @@ export function AISection() {
         name: target.name,
         baseURL: target.baseURL,
         hasStoredKey: (cfg.ai_keys[id] ?? "").trim().length > 0,
+        reasoningEffort: target.reasoningEffort === true,
       },
     });
   };

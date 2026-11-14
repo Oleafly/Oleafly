@@ -270,6 +270,8 @@
       "keyPlaceholderStored": "La clave guardada se mantiene salvo que escribas otra",
       "namePlaceholder": "Acme",
       "presetsLabel": "Proveedores habituales",
+      "reasoningEffortDescription": "Actívalo si el servidor acepta el campo reasoning_effort. El menú Esfuerzo del chat ofrecerá entonces Bajo, Medio y Alto.",
+      "reasoningEffortLabel": "Enviar esfuerzo de razonamiento",
       "saveAnyway": "Guardar de todos modos",
       "submitAdd": "Añadir el proveedor",
       "submitAddAnyway": "Añadir sin modelos"

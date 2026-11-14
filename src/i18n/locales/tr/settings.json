@@ -269,6 +269,8 @@
       "keyPlaceholderStored": "Yeni bir anahtar girmedikçe kayıtlı anahtar kalır",
       "namePlaceholder": "Acme",
       "presetsLabel": "Yaygın sağlayıcılar",
+      "reasoningEffortDescription": "Sunucu reasoning_effort alanını kabul ediyorsa bunu açın. Sohbetteki Çaba menüsü bu durumda Düşük, Orta ve Yüksek seçeneklerini sunar.",
+      "reasoningEffortLabel": "Akıl yürütme çabasını gönder",
       "saveAnyway": "Yine de kaydet",
       "submitAdd": "Sağlayıcı ekle",
       "submitAddAnyway": "Modelsiz ekle"

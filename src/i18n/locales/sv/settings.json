@@ -269,6 +269,8 @@
       "keyPlaceholderStored": "Den sparade nyckeln blir kvar om du inte anger en ny",
       "namePlaceholder": "Acme",
       "presetsLabel": "Vanliga leverantörer",
+      "reasoningEffortDescription": "Slå på detta om servern godtar fältet reasoning_effort. Menyn Ansträngning i chatten erbjuder då Låg, Medel och Hög.",
+      "reasoningEffortLabel": "Skicka resonemangsansträngning",
       "saveAnyway": "Spara ändå",
       "submitAdd": "Lägg till leverantör",
       "submitAddAnyway": "Lägg till utan modeller"

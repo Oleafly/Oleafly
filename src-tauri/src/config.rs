@@ -62,6 +62,8 @@ pub struct CustomProvider {
     pub base_url: String,
     #[serde(rename = "keyOptional")]
     pub key_optional: bool,
+    #[serde(rename = "reasoningEffort")]
+    pub reasoning_effort: bool,
 }
 
 /// A custom provider as it arrives. The webview and the saved file say
@@ -78,6 +80,8 @@ struct RawCustomProvider {
     key_optional: bool,
     #[serde(rename = "key_optional", default)]
     legacy_key_optional: bool,
+    #[serde(rename = "reasoningEffort", default)]
+    reasoning_effort: bool,
 }
 
 impl From<RawCustomProvider> for CustomProvider {
@@ -87,6 +91,7 @@ impl From<RawCustomProvider> for CustomProvider {
             name: raw.name,
             base_url: raw.base_url,
             key_optional: raw.key_optional || raw.legacy_key_optional,
+            reasoning_effort: raw.reasoning_effort,
         }
     }
 }
@@ -1638,6 +1643,7 @@ mod tests {
             name: id.into(),
             base_url: base.into(),
             key_optional: false,
+            reasoning_effort: false,
         }
     }
 
@@ -2772,10 +2778,11 @@ mod tests {
             "id": "lemonade",
             "name": "Lemonade",
             "baseURL": "http://localhost:13305/v1",
-            "keyOptional": true
+            "keyOptional": true,
+            "reasoningEffort": true
         });
         let provider: CustomProvider = serde_json::from_value(source.clone()).unwrap();
-        assert!(provider.key_optional);
+        assert!(provider.key_optional && provider.reasoning_effort);
         assert_eq!(serde_json::to_value(&provider).unwrap(), source);
 
         let older: CustomProvider = serde_json::from_value(serde_json::json!({
@@ -2785,7 +2792,7 @@ mod tests {
             "key_optional": true
         }))
         .unwrap();
-        assert!(older.key_optional);
+        assert!(older.key_optional && !older.reasoning_effort);
         let json = serde_json::to_string(&older).unwrap();
         assert!(json.contains("\"keyOptional\":true"));
         assert!(!json.contains("key_optional"));

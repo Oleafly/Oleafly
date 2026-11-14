@@ -271,6 +271,8 @@
       "keyPlaceholderStored": "Збережений ключ лишиться, якщо ви не введете новий",
       "namePlaceholder": "Acme",
       "presetsLabel": "Поширені постачальники",
+      "reasoningEffortDescription": "Увімкніть, якщо сервер приймає поле reasoning_effort. Тоді в меню Зусилля в чаті з'являться варіанти Низьке, Середнє та Високе.",
+      "reasoningEffortLabel": "Надсилати зусилля міркування",
       "saveAnyway": "Усе одно зберегти",
       "submitAdd": "Додати постачальника",
       "submitAddAnyway": "Додати без моделей"

@@ -1430,6 +1430,32 @@ fn chat_providers_get_their_own_reasoning_field() {
 }
 
 #[test]
+fn a_custom_provider_that_sends_effort_gets_the_chosen_level() {
+    let sends_effort = ModelCaps::from_metadata_json(&json!({
+        "reasoningOptions": [{"type": "effort", "values": ["low", "medium", "high"]}]
+    }));
+    let high = openai_body(
+        &chat("my-gateway", "gpt-6.1-sol", sends_effort.clone()),
+        &with_effort(Effort::High),
+    )
+    .unwrap();
+    assert_eq!(high["reasoning_effort"], "high");
+    assert!(high.get("enable_thinking").is_none() && high.get("reasoning").is_none());
+    let auto = openai_body(
+        &chat("my-gateway", "gpt-6.1-sol", sends_effort),
+        &CompletionRequest::prompt("s", "u"),
+    )
+    .unwrap();
+    assert!(auto.get("reasoning_effort").is_none());
+    let silent = openai_body(
+        &chat("my-gateway", "gpt-6.1-sol", ModelCaps::default()),
+        &with_effort(Effort::High),
+    )
+    .unwrap();
+    assert!(silent.get("reasoning_effort").is_none());
+}
+
+#[test]
 fn a_local_model_that_can_stop_thinking_is_told_to() {
     let switchable = ModelCaps::from_metadata_json(&json!({
         "reasoning": true,

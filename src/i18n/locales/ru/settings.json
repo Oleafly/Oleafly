@@ -271,6 +271,8 @@
       "keyPlaceholderStored": "Сохранённый ключ останется, пока вы не введёте новый",
       "namePlaceholder": "Acme",
       "presetsLabel": "Популярные поставщики",
+      "reasoningEffortDescription": "Включите, если сервер принимает поле reasoning_effort. Тогда в меню Усилие в чате появятся варианты Низкое, Среднее и Высокое.",
+      "reasoningEffortLabel": "Отправлять усилие рассуждения",
       "saveAnyway": "Всё равно сохранить",
       "submitAdd": "Добавить поставщика",
       "submitAddAnyway": "Добавить без моделей"
