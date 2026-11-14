@@ -156,9 +156,22 @@ export function matchingBrace(text: string, open: number): number {
   return -1;
 }
 
-export function latexHeadingTitleBrace(text: string, from: number): number {
-  let at = from;
+export interface LatexHeadingHead {
+  readonly starred: boolean;
+  readonly shortTitle: string | null;
+  readonly titleOpen: number;
+}
+
+const HEADING_HEAD = /\\[\p{L}\p{M}@]+\s*(\*?)\s*/uy;
+
+export function latexHeadingTitleBrace(text: string, from: number): LatexHeadingHead | null {
+  HEADING_HEAD.lastIndex = from;
+  const command = HEADING_HEAD.exec(text);
+  if (!command) return null;
+  let at = HEADING_HEAD.lastIndex;
+  let shortTitle: string | null = null;
   if (text[at] === "[") {
+    const open = at;
     const paragraph = /\n[ \t\r]*\n/g;
     paragraph.lastIndex = at;
     const end = paragraph.exec(text)?.index ?? text.length;
@@ -166,14 +179,15 @@ export function latexHeadingTitleBrace(text: string, from: number): number {
       if (text[at] === "\\") at++;
       else if (text[at] === "{") {
         at = matchingBrace(text, at);
-        if (at < 0 || at >= end) return -1;
+        if (at < 0 || at >= end) return null;
       }
     }
-    if (at >= end) return -1;
+    if (at >= end) return null;
+    shortTitle = text.slice(open + 1, at);
     at++;
     while (at < text.length && /\s/.test(text[at])) at++;
   }
-  return text[at] === "{" ? at : -1;
+  return text[at] === "{" ? { starred: command[1] === "*", shortTitle, titleOpen: at } : null;
 }
 
 function skipSpace(text: string, from: number): number {
@@ -185,8 +199,9 @@ function skipSpace(text: string, from: number): number {
 function wrapperSection(body: string): { level: number; argument: number } | null {
   SECTIONING.lastIndex = 0;
   for (let match = SECTIONING.exec(body); match; match = SECTIONING.exec(body)) {
-    const open = latexHeadingTitleBrace(body, SECTIONING.lastIndex);
-    if (open < 0) continue;
+    const head = latexHeadingTitleBrace(body, match.index);
+    if (!head) continue;
+    const open = head.titleOpen;
     const close = matchingBrace(body, open);
     if (close < 0) return null;
     const argument = /#(\d)/u.exec(body.slice(open + 1, close));

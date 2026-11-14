@@ -66,8 +66,9 @@ function headingFromLine(
   lineFrom: number,
 ): SectionCrumb | null {
   const match = SECTION_LINE_RE.exec(text);
-  const open = match ? latexHeadingTitleBrace(text, match[0].length) : -1;
-  if (!match || open < 0) return null;
+  const head = match ? latexHeadingTitleBrace(text, match[0].indexOf("\\")) : null;
+  if (!match || !head) return null;
+  const open = head.titleOpen;
   const extracted = balancedTitle(text, open);
   if (!extracted) return null;
   const title = readableTitle(extracted.title);

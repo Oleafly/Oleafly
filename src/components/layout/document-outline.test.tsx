@@ -10,6 +10,7 @@ import {
 } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AuxToc } from "@/lib/aux-numbers";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
@@ -17,6 +18,12 @@ import { DocumentOutline } from "./DocumentOutline";
 
 vi.mock("@/lib/project-intelligence/navigation", () => ({
   navigateToProjectRange: vi.fn(),
+}));
+
+const aux = vi.hoisted(() => ({ toc: null as AuxToc | null }));
+vi.mock("@/lib/aux-numbers", () => ({
+  currentAuxToc: () => aux.toc,
+  subscribeAuxNumbers: () => () => undefined,
 }));
 
 function indexWith(
@@ -49,9 +56,10 @@ function mount(
   activePath: string,
   texts: Record<string, string> = {},
   projectId = "outline-project-a",
+  mainDoc = "main.tex",
 ) {
   useIndexStore.setState({ index: index as never, texts });
-  useFilesStore.setState({ projectId, activePath } as never);
+  useFilesStore.setState({ projectId, activePath, mainDoc, files: {}, tree: [] } as never);
   return render(<DocumentOutline />);
 }
 
@@ -75,7 +83,8 @@ function ControlledOutline() {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
-  useFilesStore.setState({ projectId: null, activePath: null } as never);
+  aux.toc = null;
+  useFilesStore.setState({ projectId: null, activePath: null, mainDoc: "main.tex", files: {}, tree: [] } as never);
 });
 
 describe("DocumentOutline", () => {
@@ -92,6 +101,68 @@ describe("DocumentOutline", () => {
     expect(screen.getByText("Introduction")).toBeInTheDocument();
     expect(screen.getByText("Background")).toBeInTheDocument();
     expect(screen.getByText("Attention")).toBeInTheDocument();
+  });
+
+  it("numbers headings as the last compile of the project did", () => {
+    aux.toc = {
+      projectId: "outline-project-a",
+      mainDocument: "main.tex",
+      entries: [
+        { level: 2, number: "1", title: "Introduction" },
+        { level: 3, number: "1.1", title: "Scope" },
+      ],
+    };
+    const text = "\\section{Introduction}\n\\section*{Notation}\n\\subsection{Scope}";
+    mount(
+      indexWith([
+        { name: "Introduction", line: 1, from: 0, level: 2 },
+        { name: "Notation", line: 2, from: text.indexOf("\\section*"), level: 2 },
+        { name: "Scope", line: 3, from: text.indexOf("\\subsection"), level: 3 },
+      ]),
+      "main.tex",
+      { "main.tex": text },
+    );
+
+    expect(screen.getByRole("button", { name: "1 Introduction" })).toHaveAttribute(
+      "data-tooltip",
+      "1 Introduction · main.tex:1",
+    );
+    expect(screen.getByRole("button", { name: "Notation" })).toHaveAttribute(
+      "data-tooltip",
+      "Notation · main.tex:2",
+    );
+    expect(screen.getByRole("button", { name: "1.1 Scope" })).toHaveAttribute(
+      "data-tooltip",
+      "1.1 Scope · main.tex:3",
+    );
+    cleanup();
+
+    mount(indexWith([{ name: "Introduction", line: 1, from: 0, level: 2 }]), "main.tex", { "main.tex": text }, "other");
+    expect(screen.getByRole("button", { name: "Introduction" })).toHaveAttribute(
+      "data-tooltip",
+      "Introduction · main.tex:1",
+    );
+  });
+
+  it("hides numbers after the current main document changes", () => {
+    aux.toc = {
+      projectId: "outline-project-a",
+      mainDocument: "main.tex",
+      entries: [{ level: 2, number: "1", title: "Introduction" }],
+    };
+    const text = "\\section{Introduction}";
+    mount(
+      indexWith([{ name: "Introduction", line: 1, from: 0, level: 2 }]),
+      "main.tex",
+      { "main.tex": text },
+      "outline-project-a",
+      "other.tex",
+    );
+
+    expect(screen.getByRole("button", { name: "Introduction" })).toHaveAttribute(
+      "data-tooltip",
+      "Introduction · main.tex:1",
+    );
   });
 
   it("presents escaped characters and project macros as readable titles", () => {

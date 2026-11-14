@@ -185,7 +185,7 @@ function latexDefinition(
   const head = inDefinition
     ? null
     : /^\s*\\(part|chapter|section|subsection|subsubsection|paragraph|subparagraph)\*?\s*(?=[[{])/u.exec(excerpt);
-  const section = head && latexHeadingTitleBrace(excerpt, head[0].length) >= 0 ? head : null;
+  const section = head && latexHeadingTitleBrace(excerpt, head[0].indexOf("\\")) ? head : null;
   const definitionHead = startsWithDefinitionHead(excerpt);
   if (section || (symbol.kind === 2 && !inDefinition && !definitionHead)) {
     const levels: Readonly<Record<string, number>> = {

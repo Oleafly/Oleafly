@@ -154,10 +154,10 @@ function dropShortTitles(text: string): string {
   let out = "";
   let last = 0;
   for (const m of text.matchAll(SHORT_TITLE_RE)) {
-    const open = latexHeadingTitleBrace(text, m.index + m[0].length - 1);
-    if (m.index < last || open < 0) continue;
+    const head = latexHeadingTitleBrace(text, m.index);
+    if (m.index < last || !head) continue;
     out += text.slice(last, m.index) + m[1];
-    last = open;
+    last = head.titleOpen;
   }
   return out + text.slice(last);
 }
