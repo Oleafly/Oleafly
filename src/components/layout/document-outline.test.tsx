@@ -10,6 +10,8 @@ import {
 } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { indexFromSymbols } from "@/lib/index/build";
+import { parseFile } from "@/lib/index/parse-file";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
@@ -530,6 +532,42 @@ describe("DocumentOutline", () => {
     });
     await waitFor(() =>
       expect(outlineToggle).toHaveAttribute("aria-expanded", "false"),
+    );
+  });
+
+  it("renders indented, deep (>6) and #heading Typst sections from parsed source (#428)", async () => {
+    const source = [
+      "= One",
+      "  = Indented",
+      "======= Seven",
+      "#heading[Call]",
+      "#heading(level: 2)[*Styled* call]",
+      "#heading(outlined: false)[Hidden]",
+    ].join("\n");
+    const parsed = parseFile("main.typ", source);
+    const index = indexFromSymbols(parsed.defs, parsed.uses);
+    mount(index as never, "main.typ", { "main.typ": source });
+
+    expect(await screen.findByText("Styled call")).toBeInTheDocument();
+    expect(screen.getByText("One")).toBeInTheDocument();
+    expect(screen.getByText("Indented")).toBeInTheDocument();
+    expect(screen.getByText("Seven")).toBeInTheDocument();
+    expect(screen.getByText("Call")).toBeInTheDocument();
+    expect(screen.queryByText("Hidden")).not.toBeInTheDocument();
+
+    const indent = (element: Element | null | undefined) =>
+      Number.parseFloat((element as HTMLElement | null)?.style.paddingLeft ?? "0");
+    expect(indent(screen.getByText("Seven").closest("div"))).toBeGreaterThan(
+      indent(screen.getByText("One").closest("div")),
+    );
+
+    const callStart = source.indexOf("#heading[Call]");
+    fireEvent.click(screen.getByText("Call"));
+    expect(navigateToProjectRange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        path: "main.typ",
+        range: { from: callStart, to: callStart + "#heading[Call]".length },
+      }),
     );
   });
 });

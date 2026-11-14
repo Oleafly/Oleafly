@@ -212,3 +212,118 @@ describe("parseFile: Typst comments and code masking", () => {
     expect(parsed.defs.map((s) => s.name)).toEqual(["Real"]);
   });
 });
+
+describe("parseFile: Typst heading syntax (#428)", () => {
+  it("indexes indented, deep (>6) and #heading sections from issue #428", () => {
+    const text = ["= One", "  = Indented", "======= Seven", "#heading[Call]"].join("\n");
+    const parsed = parseFile("main.typ", text);
+    const sections = parsed.defs.filter((s) => s.kind === "section");
+    expect(sections.map((s) => [s.name, s.level, s.line])).toEqual([
+      ["One", 0, 1],
+      ["Indented", 0, 2],
+      ["Seven", 6, 3],
+      ["Call", 0, 4],
+    ]);
+    expect(sections.map((s) => text.slice(s.from, s.to))).toEqual([
+      "= One",
+      "= Indented",
+      "======= Seven",
+      "#heading[Call]",
+    ]);
+    expect(sections.map((s) => text.slice(s.nameFrom, s.nameTo))).toEqual([
+      "One",
+      "Indented",
+      "Seven",
+      "Call",
+    ]);
+  });
+
+  it("supports tab indentation, arbitrary marker depth, inline raw in titles and trailing labels", () => {
+    const text = [
+      "\t== Tabbed <sec:tab>",
+      "  /* note */ === After comment",
+      "======== Eight `code` <sec:eight>",
+      "#heading[Labelled call] <sec:call>",
+    ].join("\n");
+    const parsed = parseFile("main.typ", text);
+    expect(
+      parsed.defs.filter((s) => s.kind === "section").map((s) => [s.name, s.level, s.line]),
+    ).toEqual([
+      ["Tabbed", 1, 1],
+      ["After comment", 2, 2],
+      ["Eight `code`", 7, 3],
+      ["Labelled call", 0, 4],
+    ]);
+    expect(parsed.defs.filter((s) => s.kind === "label").map((s) => s.name)).toEqual([
+      "sec:tab",
+      "sec:eight",
+      "sec:call",
+    ]);
+  });
+
+  it("parses #heading calls with level, depth, offset, positional content, strings and code blocks", () => {
+    const text = [
+      "#heading(level: 2)[Second]",
+      "#heading(level: 3, outlined: true)[Third]",
+      "#heading(depth: 2, offset: 1)[Shifted]",
+      "#heading([Positional], level: 4)",
+      '#heading("String body", level: 2)',
+      '#heading("Escaped \\"quote\\"")',
+      "#heading[\n  Multi-line\n  title\n]",
+      "#heading[Nested [brackets] and *markup*]",
+      "#{ heading(level: 5)[From code] }",
+    ].join("\n");
+    const parsed = parseFile("main.typ", text);
+    expect(
+      parsed.defs.filter((s) => s.kind === "section").map((s) => [s.name, s.level]),
+    ).toEqual([
+      ["Second", 1],
+      ["Third", 2],
+      ["Shifted", 2],
+      ["Positional", 3],
+      ["String body", 1],
+      ['Escaped "quote"', 0],
+      ["Multi-line title", 0],
+      ["Nested [brackets] and *markup*", 0],
+      ["From code", 4],
+    ]);
+  });
+
+  it("excludes #heading calls with outlined: false and non-heading constructs", () => {
+    const text = [
+      "#set heading(numbering: \"1.1\")",
+      "#show heading: it => it",
+      "#show heading.where(level: 1): it => it",
+      "#let heading(body) = body",
+      "#heading(outlined: false)[Hidden]",
+      "#heading(level: 2, outlined: false)[Also hidden]",
+      "#heading([Hidden positional], outlined: false)",
+      "#heading[]",
+      "#heading[   ]",
+      '#heading("")',
+      "==NoSpace",
+      "// = Commented",
+      "// #heading[Commented call]",
+      "/*\n  = Block commented\n  #heading[Block call]\n*/",
+      "```typ\n= Raw heading\n  = Raw indented\n#heading[Raw call]\n```",
+      "```\ncode\n``` = After fence",
+      '#let str = "line 1\n  = String heading\n#heading[String call]"',
+      "#{\n  let ok =\n    == rhs\n}",
+      "$\n  a + b\n  = c\n$",
+      "Plain heading[not code] text",
+      "= Visible",
+    ].join("\n");
+    const parsed = parseFile("main.typ", text);
+    expect(
+      parsed.defs.filter((s) => s.kind === "section").map((s) => [s.name, s.level]),
+    ).toEqual([["Visible", 0]]);
+  });
+
+  it("keeps indexing later headings after an unclosed #heading call", () => {
+    const text = "#heading[Unclosed\n= Still indexed";
+    const parsed = parseFile("main.typ", text);
+    expect(
+      parsed.defs.filter((s) => s.kind === "section").map((s) => [s.name, s.level]),
+    ).toEqual([["Still indexed", 0]]);
+  });
+});
