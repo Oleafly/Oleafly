@@ -209,11 +209,10 @@ function deepSeekChoices(id: string, caps: ReasoningCaps): ProviderChoices {
   return { wire, base: [] };
 }
 
-/** A custom provider gets no levels, since Oleafly cannot know what its
- * server accepts. The one exception is a model the server itself lists as
- * able to switch thinking off, like Lemonade's `reasoning` models. */
 function customChoices(caps: ReasoningCaps): ProviderChoices {
-  return { wire: ["none"], base: caps.toggle ? ["none"] : [] };
+  const base = [...(caps.efforts ?? [])];
+  if (caps.toggle) base.push("none");
+  return { wire: ["none", ...LOW_TO_HIGH], base };
 }
 
 function providerChoices(providerId: string, id: string, caps: ReasoningCaps): ProviderChoices {

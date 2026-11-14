@@ -890,6 +890,7 @@ describe("AISection custom provider editing", () => {
       name: "Local Lab",
       baseURL: "http://127.0.0.1:9000/v1",
       hasStoredKey: false,
+      reasoningEffort: false,
     });
 
     let result: { ok: boolean; message?: string } | undefined;
@@ -899,6 +900,7 @@ describe("AISection custom provider editing", () => {
         name: "Lab",
         baseURL: "http://127.0.0.1:9100/v1/",
         apiKey: "",
+        reasoningEffort: true,
       });
     });
 
@@ -910,7 +912,13 @@ describe("AISection custom provider editing", () => {
     });
     const written = lastConfigWrite();
     expect(written.ai_custom_providers).toEqual([
-      { id: "local-lab", name: "Lab", baseURL: "http://127.0.0.1:9100/v1", keyOptional: true },
+      {
+        id: "local-lab",
+        name: "Lab",
+        baseURL: "http://127.0.0.1:9100/v1",
+        keyOptional: true,
+        reasoningEffort: true,
+      },
     ]);
     expect(written.ai_provider_models["local-lab"].map((m) => m.id)).toEqual([
       "research-model",
@@ -936,6 +944,7 @@ describe("AISection custom provider editing", () => {
         name: "Local Lab",
         baseURL: "http://127.0.0.1:9100/v1",
         apiKey: "",
+        reasoningEffort: false,
       });
     });
 
@@ -964,6 +973,7 @@ describe("AISection custom provider editing", () => {
         name: "Renamed Lab",
         baseURL: "http://127.0.0.1:9000/v1",
         apiKey: "",
+        reasoningEffort: false,
       });
     });
 
@@ -998,6 +1008,7 @@ describe("AISection custom provider editing", () => {
         name: "Local Lab",
         baseURL: "http://127.0.0.1:9100/v1",
         apiKey: "sk-again",
+        reasoningEffort: false,
       });
     });
 
@@ -1028,6 +1039,7 @@ describe("AISection custom provider editing", () => {
         name: "Local Lab",
         baseURL: "http://127.0.0.1:9100/v1",
         apiKey: "sk-again",
+        reasoningEffort: false,
       });
     });
 
@@ -1193,6 +1205,7 @@ describe("AISection provider messages", () => {
         name: "Local Lab",
         baseURL: "http://localhost:13305/v1",
         apiKey: "",
+        reasoningEffort: false,
       });
     });
 
@@ -1207,6 +1220,7 @@ describe("AISection provider messages", () => {
       name: "Local Lab",
       baseURL: "http://localhost:13305/v1",
       keyOptional: true,
+      reasoningEffort: false,
     });
   });
 
@@ -1220,6 +1234,7 @@ describe("AISection provider messages", () => {
         name: "Another Lab",
         baseURL: "http://127.0.0.1:9100/v1",
         apiKey: "",
+        reasoningEffort: false,
       });
     });
 
@@ -1236,6 +1251,7 @@ describe("AISection provider messages", () => {
         name: "Second Lab",
         baseURL: "http://127.0.0.1:9100/v1",
         apiKey: "sk-second",
+        reasoningEffort: false,
       });
     });
 
@@ -1271,6 +1287,7 @@ describe("AISection provider messages", () => {
         name: "Lemonade",
         baseURL: "http://localhost:13305/",
         apiKey: "",
+        reasoningEffort: false,
       });
     });
 
@@ -1281,6 +1298,7 @@ describe("AISection provider messages", () => {
       name: "Lemonade",
       baseURL: "http://localhost:13305/v1",
       keyOptional: true,
+      reasoningEffort: false,
     });
     expect(written.ai_provider_models.lemonade.map((model) => model.id)).toEqual(["Bonsai-8B-gguf"]);
     expect(
@@ -1302,7 +1320,13 @@ describe("AISection provider messages", () => {
       return undefined;
     });
     await readySection();
-    const input = { id: "lemonade", name: "Lemonade", baseURL: "http://localhost:13305/v1", apiKey: "" };
+    const input = {
+      id: "lemonade",
+      name: "Lemonade",
+      baseURL: "http://localhost:13305/v1",
+      apiKey: "",
+      reasoningEffort: false,
+    };
 
     let result: CustomProviderSubmitResult | undefined;
     await act(async () => {
@@ -1337,6 +1361,7 @@ describe("AISection provider messages", () => {
         name: "My Mathpix",
         baseURL: "http://127.0.0.1:9100/v1",
         apiKey: "",
+        reasoningEffort: false,
       });
     });
 
@@ -1354,6 +1379,7 @@ describe("AISection provider messages", () => {
         name: "Gone Lab",
         baseURL: "http://127.0.0.1:9100/v1",
         apiKey: "",
+        reasoningEffort: false,
       });
     });
 
@@ -1377,6 +1403,7 @@ describe("AISection provider messages", () => {
       name: "Local Lab",
       baseURL: "http://127.0.0.1:9500/v1",
       apiKey: "",
+      reasoningEffort: false,
     };
     let result: CustomProviderSubmitResult | undefined;
     await act(async () => {

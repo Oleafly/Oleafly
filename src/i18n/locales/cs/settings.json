@@ -271,6 +271,8 @@
       "keyPlaceholderStored": "Uložený klíč zůstane, dokud nezadáte nový",
       "namePlaceholder": "Acme",
       "presetsLabel": "Běžní poskytovatelé",
+      "reasoningEffortDescription": "Zapněte, pokud server přijímá pole reasoning_effort. Nabídka Úsilí v chatu pak nabídne Nízké, Střední a Vysoké.",
+      "reasoningEffortLabel": "Odesílat úsilí uvažování",
       "saveAnyway": "Přesto uložit",
       "submitAdd": "Přidat poskytovatele",
       "submitAddAnyway": "Přidat bez modelů"

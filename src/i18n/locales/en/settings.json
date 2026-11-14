@@ -269,6 +269,8 @@
       "keyPlaceholderStored": "Saved key stays unless you enter a new one",
       "namePlaceholder": "Acme",
       "presetsLabel": "Common providers",
+      "reasoningEffortDescription": "Turn this on if the server accepts the reasoning_effort field. The effort menu in chat then offers Low, Medium and High.",
+      "reasoningEffortLabel": "Send reasoning effort",
       "saveAnyway": "Save anyway",
       "submitAdd": "Add provider",
       "submitAddAnyway": "Add without models"

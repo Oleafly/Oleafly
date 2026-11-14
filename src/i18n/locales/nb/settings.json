@@ -269,6 +269,8 @@
       "keyPlaceholderStored": "Den lagrede nøkkelen blir stående til du skriver inn en ny",
       "namePlaceholder": "Acme",
       "presetsLabel": "Vanlige leverandører",
+      "reasoningEffortDescription": "Slå på dette hvis serveren godtar feltet reasoning_effort. Innsats-menyen i chatten tilbyr da Lav, Middels og Høy.",
+      "reasoningEffortLabel": "Send resonneringsinnsats",
       "saveAnyway": "Lagre likevel",
       "submitAdd": "Legg til leverandør",
       "submitAddAnyway": "Legg til uten modeller"

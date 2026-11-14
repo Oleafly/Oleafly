@@ -15,6 +15,7 @@ const ACME: CustomProviderEditTarget = {
   name: "Acme",
   baseURL: "https://api.acme.test/v1",
   hasStoredKey: true,
+  reasoningEffort: false,
 };
 
 function fill(testId: string, value: string) {
@@ -45,9 +46,41 @@ describe("AddCustomProviderDialog", () => {
         name: "Acme",
         baseURL: "https://api.acme.test/v1",
         apiKey: "",
+        reasoningEffort: false,
       }),
     );
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+  });
+
+  it("saves whether the provider sends reasoning effort", async () => {
+    const onSubmit = vi.fn().mockResolvedValue({ ok: true });
+    const { unmount } = render(
+      <AddCustomProviderDialog
+        open
+        onOpenChange={vi.fn()}
+        onSubmit={onSubmit}
+        editing={{ ...ACME, reasoningEffort: true }}
+      />,
+    );
+    const toggle = screen.getByTestId("custom-provider-reasoning-effort");
+    expect(toggle).toHaveAttribute("data-state", "checked");
+    expect(screen.getByText(enSettings.ai.customProvider.reasoningEffortLabel)).toBeInTheDocument();
+    fireEvent.click(toggle);
+    fireEvent.click(screen.getByTestId("custom-provider-submit"));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ id: "acme", reasoningEffort: false })),
+    );
+    unmount();
+
+    render(<AddCustomProviderDialog open onOpenChange={vi.fn()} onSubmit={onSubmit} />);
+    fill("custom-provider-id", "lab");
+    fill("custom-provider-name", "Lab");
+    fill("custom-provider-baseurl", "http://localhost:8000/v1");
+    fireEvent.click(screen.getByTestId("custom-provider-reasoning-effort"));
+    fireEvent.click(screen.getByTestId("custom-provider-submit"));
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenLastCalledWith(expect.objectContaining({ id: "lab", reasoningEffort: true })),
+    );
   });
 
   it("prefills an existing provider and locks its id in edit mode", () => {
@@ -91,6 +124,7 @@ describe("AddCustomProviderDialog", () => {
         name: "Acme",
         baseURL: "http://localhost:13305/v1",
         apiKey: "",
+        reasoningEffort: false,
       }),
     );
   });
@@ -211,6 +245,7 @@ describe("AddCustomProviderDialog", () => {
         name: "Acme Labs",
         baseURL: "https://api.acme.test/v1/",
         apiKey: "",
+        reasoningEffort: false,
       }),
     );
   });
@@ -235,6 +270,7 @@ describe("AddCustomProviderDialog", () => {
         name: "Acme",
         baseURL: "http://localhost:1234/v1",
         apiKey: "",
+        reasoningEffort: false,
       }),
     );
   });
@@ -296,6 +332,7 @@ describe("AddCustomProviderDialog presets", () => {
         name: "Qwen (DashScope)",
         baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
         apiKey: "sk-qwen",
+        reasoningEffort: false,
       }),
     );
   });
@@ -334,7 +371,13 @@ describe("AddCustomProviderDialog presets", () => {
     fireEvent.click(screen.getByTestId("custom-provider-submit"));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2));
     expect(onSubmit.mock.calls[1]).toEqual([
-      { id: "kimi", name: "Kimi (Moonshot)", baseURL: "https://api.moonshot.cn/v1", apiKey: "sk-qwen" },
+      {
+        id: "kimi",
+        name: "Kimi (Moonshot)",
+        baseURL: "https://api.moonshot.cn/v1",
+        apiKey: "sk-qwen",
+        reasoningEffort: false,
+      },
     ]);
   });
 });
@@ -375,6 +418,7 @@ describe("AddCustomProviderDialog validation", () => {
         name: "Acme",
         baseURL: "http://localhost:1234/v1",
         apiKey: "sk-local",
+        reasoningEffort: false,
       }),
     );
   });

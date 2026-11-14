@@ -269,6 +269,8 @@
       "keyPlaceholderStored": "De opgeslagen sleutel blijft staan tenzij je een nieuwe invult",
       "namePlaceholder": "Acme",
       "presetsLabel": "Veelgebruikte providers",
+      "reasoningEffortDescription": "Zet dit aan als de server het veld reasoning_effort accepteert. Het menu Inspanning in de chat biedt dan Laag, Gemiddeld en Hoog.",
+      "reasoningEffortLabel": "Redeneerinspanning meesturen",
       "saveAnyway": "Toch opslaan",
       "submitAdd": "Provider toevoegen",
       "submitAddAnyway": "Toevoegen zonder modellen"

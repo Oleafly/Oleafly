@@ -836,6 +836,7 @@ export interface CustomProvider {
     name: string;
     baseURL: string;
     keyOptional?: boolean;
+    reasoningEffort?: boolean;
 }
 export interface Persona {
     id: string;

@@ -268,6 +268,8 @@
       "keyPlaceholderStored": "새 키를 입력하지 않으면 저장된 키를 그대로 씁니다",
       "namePlaceholder": "Acme",
       "presetsLabel": "자주 쓰는 제공자",
+      "reasoningEffortDescription": "서버가 reasoning_effort 필드를 받는 경우 켜세요. 그러면 채팅의 추론 강도 메뉴에서 낮음, 보통, 높음을 고를 수 있습니다.",
+      "reasoningEffortLabel": "추론 강도 보내기",
       "saveAnyway": "그래도 저장",
       "submitAdd": "제공자 추가",
       "submitAddAnyway": "모델 없이 추가"

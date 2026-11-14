@@ -134,6 +134,7 @@ pub struct CustomProvider {
     pub id: String,
     pub base_url: String,
     pub key_optional: bool,
+    pub reasoning_effort: bool,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -485,6 +486,7 @@ mod tests {
                 id: "openai".into(),
                 base_url: "http://attacker.example".into(),
                 key_optional: false,
+                reasoning_effort: false,
             }],
             ..Default::default()
         };
@@ -509,6 +511,7 @@ mod tests {
                 id: "openai".into(),
                 base_url: "http://attacker.example".into(),
                 key_optional: true,
+                reasoning_effort: false,
             }],
             ..Default::default()
         };
@@ -558,6 +561,7 @@ mod tests {
                 id: "mycorp".into(),
                 base_url: "http://attacker.example".into(),
                 key_optional: false,
+                reasoning_effort: false,
             }],
             ..Default::default()
         };
@@ -652,6 +656,7 @@ mod tests {
             id: "corp".into(),
             base_url: "https://models.example/v1".into(),
             key_optional: false,
+            reasoning_effort: false,
         });
         cfg.enabled_models
             .insert("corp".into(), vec!["corp-reasoner".into()]);
@@ -722,6 +727,7 @@ mod tests {
             id: "local-vllm".into(),
             base_url: "http://127.0.0.1:8000/v1".into(),
             key_optional: true,
+            reasoning_effort: false,
         }];
         let resolved = resolve(&cfg).unwrap();
         assert_eq!(resolved.provider_id, "local-vllm");
@@ -812,6 +818,7 @@ mod tests {
             id: "corp".into(),
             base_url: "https://models.example/v1".into(),
             key_optional: false,
+            reasoning_effort: false,
         });
         cfg.enabled_models.insert("corp".into(), vec![]);
 
@@ -862,6 +869,7 @@ mod tests {
             id: "local-vllm".into(),
             base_url: "http://127.0.0.1:8000/v1".into(),
             key_optional: true,
+            reasoning_effort: false,
         }];
         assert_eq!(resolve(&cfg).unwrap().auth, None);
     }
@@ -875,6 +883,7 @@ mod tests {
             id: "my-gateway".into(),
             base_url: "https://gateway.example.com/v1/".into(),
             key_optional: false,
+            reasoning_effort: false,
         }];
         let resolved = resolve(&cfg).unwrap();
 
@@ -1009,6 +1018,7 @@ mod tests {
             id: "lemonade".into(),
             base_url: "http://localhost:13305/v1".into(),
             key_optional: true,
+            reasoning_effort: false,
         }
     }
 
@@ -1049,6 +1059,7 @@ mod tests {
             id: "corp".into(),
             base_url: "https://models.example/v1".into(),
             key_optional: false,
+            reasoning_effort: false,
         });
 
         assert!(matches!(
@@ -1155,6 +1166,7 @@ mod tests {
             id: "corp".into(),
             base_url: "https://models.example/v1".into(),
             key_optional: false,
+            reasoning_effort: false,
         });
 
         let (id, model, credential) = pick_provider(&cfg);

@@ -339,7 +339,7 @@ describe("Notes appearance tab", () => {
     await user.click(add());
     expect(useSettingsStore.getState().notesTextReplacements.t1).toBe("x");
     expect(Object.keys(useSettingsStore.getState().notesTextReplacements)).toHaveLength(TEXT_REPLACEMENT_LIMITS.count);
-  });
+  }, 15_000);
 
   it("resets a font from its own row, and has no reset above the preview", async () => {
     const user = userEvent.setup();

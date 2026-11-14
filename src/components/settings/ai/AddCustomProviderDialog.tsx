@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { i18n } from "@/i18n";
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import {
@@ -24,6 +25,7 @@ export interface AddCustomProviderInput {
   name: string;
   baseURL: string;
   apiKey: string;
+  reasoningEffort: boolean;
 }
 
 export interface CustomProviderEditTarget {
@@ -31,6 +33,7 @@ export interface CustomProviderEditTarget {
   name: string;
   baseURL: string;
   hasStoredKey: boolean;
+  reasoningEffort: boolean;
 }
 
 export interface CustomProviderSubmitResult {
@@ -50,11 +53,13 @@ export interface AddCustomProviderDialogProps {
   takenIds?: readonly string[];
 }
 
-const EMPTY: AddCustomProviderInput = { id: "", name: "", baseURL: "", apiKey: "" };
+const EMPTY: AddCustomProviderInput = { id: "", name: "", baseURL: "", apiKey: "", reasoningEffort: false };
 
 const MAX_ID_LENGTH = 64;
 
-type FieldErrors = Partial<Record<"id" | "name" | "baseURL" | "apiKey", string>>;
+type TextField = "id" | "name" | "baseURL" | "apiKey";
+
+type FieldErrors = Partial<Record<TextField, string>>;
 
 export function normalizeBaseURL(url: string): string {
   return trimEndpointPath(url);
@@ -129,18 +134,25 @@ export function AddCustomProviderDialog({
   const editingId = editing?.id ?? "";
   const editingName = editing?.name ?? "";
   const editingBaseURL = editing?.baseURL ?? "";
+  const editingReasoningEffort = editing?.reasoningEffort ?? false;
 
   useEffect(() => {
     if (!open) return;
     setForm(
       editingId
-        ? { id: editingId, name: editingName, baseURL: editingBaseURL, apiKey: "" }
+        ? {
+            id: editingId,
+            name: editingName,
+            baseURL: editingBaseURL,
+            apiKey: "",
+            reasoningEffort: editingReasoningEffort,
+          }
         : EMPTY,
     );
     setError("");
     setFieldErrors({});
     setForceReady(false);
-  }, [open, editingId, editingName, editingBaseURL]);
+  }, [open, editingId, editingName, editingBaseURL, editingReasoningEffort]);
 
   const reset = () => {
     setForm(EMPTY);
@@ -155,7 +167,7 @@ export function AddCustomProviderDialog({
     onOpenChange(next);
   };
 
-  const setField = (key: keyof AddCustomProviderInput) => (value: string) => {
+  const setField = (key: TextField) => (value: string) => {
     setForm((f) => ({ ...f, [key]: value }));
     setFieldErrors((e) => ({ ...e, [key]: undefined }));
     setForceReady(false);
@@ -181,6 +193,7 @@ export function AddCustomProviderDialog({
         name: form.name.trim(),
         baseURL: form.baseURL.trim(),
         apiKey: form.apiKey.trim(),
+        reasoningEffort: form.reasoningEffort,
       };
       const res = forceReady ? await onSubmit(input, { force: true }) : await onSubmit(input);
       if (!res.ok) {
@@ -355,6 +368,24 @@ export function AddCustomProviderDialog({
               </p>
             )}
           </div>
+          <label htmlFor="custom-provider-reasoning-effort" className="flex cursor-pointer items-start gap-2.5 text-xs">
+            <Checkbox
+              id="custom-provider-reasoning-effort"
+              data-testid="custom-provider-reasoning-effort"
+              className="mt-0.5"
+              checked={form.reasoningEffort}
+              disabled={busy}
+              onCheckedChange={(checked) => setForm((f) => ({ ...f, reasoningEffort: checked === true }))}
+            />
+            <span>
+              <span className="font-medium text-foreground">
+                {t(($) => $.settings.ai.customProvider.reasoningEffortLabel)}
+              </span>
+              <span className="mt-0.5 block text-muted-foreground">
+                {t(($) => $.settings.ai.customProvider.reasoningEffortDescription)}
+              </span>
+            </span>
+          </label>
           {error && (
             <p data-testid="custom-provider-error" className="text-xs text-destructive">
               {error}

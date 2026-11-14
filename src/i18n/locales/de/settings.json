@@ -269,6 +269,8 @@
       "keyPlaceholderStored": "Der gespeicherte Schlüssel bleibt, bis Sie einen neuen eingeben",
       "namePlaceholder": "Acme",
       "presetsLabel": "Gängige Anbieter",
+      "reasoningEffortDescription": "Aktivieren Sie dies, wenn der Server das Feld reasoning_effort akzeptiert. Das Menü Aufwand im Chat bietet dann Niedrig, Mittel und Hoch an.",
+      "reasoningEffortLabel": "Denkaufwand senden",
       "saveAnyway": "Trotzdem speichern",
       "submitAdd": "Anbieter hinzufügen",
       "submitAddAnyway": "Ohne Modelle hinzufügen"

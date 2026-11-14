@@ -271,6 +271,8 @@
       "keyPlaceholderStored": "Zapisany klucz zostaje, dopóki nie wpiszesz nowego",
       "namePlaceholder": "Acme",
       "presetsLabel": "Popularni dostawcy",
+      "reasoningEffortDescription": "Włącz, jeśli serwer akceptuje pole reasoning_effort. Menu Wysiłek w czacie zaoferuje wtedy Niski, Średni i Wysoki.",
+      "reasoningEffortLabel": "Wysyłaj wysiłek rozumowania",
       "saveAnyway": "Zapisz mimo to",
       "submitAdd": "Dodaj dostawcę",
       "submitAddAnyway": "Dodaj bez modeli"

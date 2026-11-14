@@ -269,6 +269,8 @@
       "keyPlaceholderStored": "Den gemte nøgle bliver, medmindre du indtaster en ny",
       "namePlaceholder": "Acme",
       "presetsLabel": "Almindelige udbydere",
+      "reasoningEffortDescription": "Slå dette til, hvis serveren accepterer feltet reasoning_effort. Menuen Indsats i chatten tilbyder så Lav, Mellem og Høj.",
+      "reasoningEffortLabel": "Send ræsonneringsindsats",
       "saveAnyway": "Gem alligevel",
       "submitAdd": "Tilføj udbyderen",
       "submitAddAnyway": "Tilføj uden modeller"

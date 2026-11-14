@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::caps::{ModelCaps, ReasoningCaps};
-use crate::provider::{catalog_entry, Resolved};
+use crate::provider::{catalog_entry, CustomProvider, Resolved};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -136,7 +136,9 @@ pub fn effort_choices(provider_id: &str, model_id: &str, caps: &ModelCaps) -> Ve
         "openrouter" => (all, reasoning.efforts.clone().unwrap_or_default()),
         "ollama" => (all, ollama_base(&id, reasoning)),
         "deepseek" => deepseek_levels(&id, reasoning),
-        custom if catalog_entry(custom).is_none() => (vec![Off], custom_base(reasoning)),
+        custom if catalog_entry(custom).is_none() => {
+            (vec![Off, Low, Medium, High], custom_base(reasoning))
+        }
         _ => (Vec::new(), Vec::new()),
     };
     let mut choices: Vec<Effort> = base
@@ -263,15 +265,24 @@ fn ollama_base(id: &str, reasoning: &ReasoningCaps) -> Vec<Effort> {
     }
 }
 
-/// A custom provider gets no levels, since Oleafly cannot know what its
-/// server accepts. The one exception is a model the server itself lists as
-/// able to switch thinking off, like Lemonade's `reasoning` models.
 fn custom_base(reasoning: &ReasoningCaps) -> Vec<Effort> {
+    let mut base = reasoning.efforts.clone().unwrap_or_default();
     if reasoning.toggle {
-        vec![Off]
-    } else {
-        Vec::new()
+        base.push(Off);
     }
+    base
+}
+
+pub const CUSTOM_EFFORTS: [Effort; 3] = [Low, Medium, High];
+
+pub fn apply_custom_effort(resolved: &mut Resolved, custom: &[CustomProvider]) {
+    if catalog_entry(&resolved.provider_id).is_some() {
+        return;
+    }
+    let sends_effort = custom
+        .iter()
+        .any(|provider| provider.id == resolved.provider_id && provider.reasoning_effort);
+    resolved.caps.reasoning.efforts = sends_effort.then(|| CUSTOM_EFFORTS.to_vec());
 }
 
 pub fn clamp_effort(requested: Effort, choices: &[Effort]) -> Option<Effort> {
@@ -405,6 +416,57 @@ mod tests {
             effective_effort(&opus, Some(Effort::Off)),
             Some(Effort::Low)
         );
+    }
+
+    #[test]
+    fn a_custom_provider_offers_levels_only_when_it_sends_effort() {
+        let gateway = |reasoning_effort: bool| CustomProvider {
+            id: "my-gateway".into(),
+            base_url: "https://gateway.test/v1".into(),
+            key_optional: false,
+            reasoning_effort,
+        };
+        let mut model = resolved(
+            "my-gateway",
+            "gpt-6.1-sol",
+            Wire::OpenAiChat {
+                base_url: "https://gateway.test/v1".into(),
+                reasoning_content: true,
+            },
+        );
+        model.caps = ModelCaps::from_metadata_json(&serde_json::json!({
+            "reasoningOptions": [{"type": "effort", "values": ["low", "high"]}]
+        }));
+
+        apply_custom_effort(&mut model, &[gateway(false)]);
+        assert_eq!(effective_effort(&model, Some(High)), None);
+
+        apply_custom_effort(&mut model, &[gateway(true)]);
+        assert_eq!(model.caps.reasoning.efforts, Some(CUSTOM_EFFORTS.to_vec()));
+        assert_eq!(effective_effort(&model, Some(Medium)), Some(Medium));
+        assert_eq!(effective_effort(&model, Some(Xhigh)), Some(High));
+        assert_eq!(effective_effort(&model, Some(Off)), Some(Low));
+        assert_eq!(effective_effort(&model, None), None);
+
+        model.caps.reasoning.toggle = true;
+        assert_eq!(effective_effort(&model, Some(Off)), Some(Off));
+
+        let mut openai = resolved(
+            "openai",
+            "gpt-5",
+            Wire::OpenAiResponses {
+                base_url: "https://api.openai.com/v1".into(),
+            },
+        );
+        let before = openai.caps.clone();
+        apply_custom_effort(
+            &mut openai,
+            &[CustomProvider {
+                id: "openai".into(),
+                ..gateway(true)
+            }],
+        );
+        assert_eq!(openai.caps, before);
     }
 
     #[test]

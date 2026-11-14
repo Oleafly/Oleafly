@@ -268,6 +268,8 @@
       "keyPlaceholderStored": "除非输入新密钥，否则已保存的密钥保持不变。",
       "namePlaceholder": "Acme",
       "presetsLabel": "常用提供商",
+      "reasoningEffortDescription": "如果服务器接受 reasoning_effort 字段，请开启此项。之后聊天中的推理强度菜单会提供低、中、高三档。",
+      "reasoningEffortLabel": "发送推理强度",
       "saveAnyway": "仍然保存",
       "submitAdd": "添加提供商",
       "submitAddAnyway": "添加但不含模型"

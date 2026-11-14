@@ -786,6 +786,7 @@ impl TaskHost for DaemonTaskHost {
                     .map(|price| price.for_provider(&resolved.resolved.provider_id))
                     .or(resolved.price);
             }
+            oleafly_agent::apply_custom_effort(&mut resolved.resolved, &config.ai.custom);
             let usage = SpoolUsage::new(
                 &data_root,
                 &context.task_id,

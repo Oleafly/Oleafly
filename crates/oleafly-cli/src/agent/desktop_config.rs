@@ -226,6 +226,8 @@ struct RawCustomProvider {
     key_optional_camel: Option<bool>,
     #[serde(default)]
     key_optional: bool,
+    #[serde(rename = "reasoningEffort", default)]
+    reasoning_effort: bool,
 }
 
 #[derive(Deserialize)]
@@ -448,6 +450,7 @@ pub fn load(root: &Path) -> Result<DesktopConfig, ConfigError> {
                 key_optional: flagged,
                 id: custom.id,
                 base_url: custom.base_url,
+                reasoning_effort: custom.reasoning_effort,
             }
         })
         .collect();

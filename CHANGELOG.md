@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Double-click a `.tex`, `.typ` or `.md` file in Finder, File Explorer or a Linux file manager and it opens in Oleafly, in a tab inside a project for its folder. Oleafly also becomes the default app for these files, on macOS and Linux the first time it runs and on Windows when it's installed. If you already picked another app for one of them, that app stays the default.
+- You can now set the reasoning effort for a custom provider. Turn on Send reasoning effort when you add or edit it, and the effort menu in chat offers Low, Medium and High, which Oleafly sends as `reasoning_effort`. If the server rejects the field, testing the model tells you.
 
 ### Fixed
 
