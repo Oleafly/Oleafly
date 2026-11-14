@@ -425,12 +425,15 @@ describe("PreviewPane toolbar actions", () => {
     const field = screen.getByLabelText(enPreview.pages.number);
     mocks.gotoPage.mockClear();
 
+    await userEvent.click(field);
     fireEvent.change(field, { target: { value: "2" } });
-    fireEvent.keyDown(field, { key: "Enter" });
+    await userEvent.keyboard("{Enter}");
     expect(mocks.gotoPage).toHaveBeenCalledWith(2);
+    expect(mocks.gotoPage).toHaveBeenCalledTimes(1);
 
+    await userEvent.click(field);
     fireEvent.change(field, { target: { value: "0" } });
-    fireEvent.keyDown(field, { key: "Enter" });
+    await userEvent.keyboard("{Enter}");
     expect(field).toHaveValue("1");
     expect(mocks.gotoPage).toHaveBeenCalledTimes(1);
   });

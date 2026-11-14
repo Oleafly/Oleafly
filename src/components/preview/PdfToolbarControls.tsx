@@ -382,8 +382,13 @@ export function PdfToolbarControls({
                   onChange={(e) => setPageInput(e.target.value.replace(/\D/g, ""))}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
-                      jumpToPage();
-                      (e.target as HTMLInputElement).blur();
+                      // Commit through onBlur only. Jumping here as well sends
+                      // two scroll commands before the viewer can settle; the
+                      // handled Enter must not reach native/default actions
+                      // after the input has relinquished focus.
+                      e.preventDefault();
+                      e.stopPropagation();
+                      e.currentTarget.blur();
                     }
                   }}
                   onBlur={jumpToPage}

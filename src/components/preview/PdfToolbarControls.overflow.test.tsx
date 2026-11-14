@@ -82,6 +82,40 @@ async function openMore(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole("button", { name: copy.toolbar.more }));
 }
 
+describe("PDF page number input", () => {
+  it("consumes Enter and commits once when the focused input blurs", async () => {
+    width.value = 10_000;
+    const jumpToPage = vi.fn();
+    const onKeyDown = vi.fn();
+    render(
+      <div role="toolbar" aria-label={copy.toolbar.more} onKeyDown={onKeyDown}>
+        <PdfToolbarControls {...props({ jumpToPage })} />
+      </div>,
+    );
+    const input = screen.getByRole("textbox", { name: copy.pages.number });
+    await userEvent.click(input);
+    expect(input).toHaveFocus();
+
+    const enter = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    fireEvent(input, enter);
+
+    expect(jumpToPage).toHaveBeenCalledTimes(1);
+    expect(input).not.toHaveFocus();
+    expect(enter.defaultPrevented).toBe(true);
+    expect(onKeyDown).not.toHaveBeenCalled();
+  });
+
+  it("also commits once when Tab leaves the input", async () => {
+    width.value = 10_000;
+    const jumpToPage = vi.fn();
+    render(<PdfToolbarControls {...props({ jumpToPage })} />);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("textbox", { name: copy.pages.number }));
+    await user.tab();
+    expect(jumpToPage).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("PdfToolbarControls collapsed into the overflow menu", () => {
   it("turns pages two at a time in the two-page view", async () => {
     const { gotoPage, ref } = viewer();
