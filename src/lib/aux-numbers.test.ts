@@ -259,6 +259,18 @@ describe("parseAuxToc", () => {
     ]);
     expect(parseAuxToc(files).map((entry) => entry.number)).toEqual(["1", "2", "3"]);
   });
+
+  it("stops at a record that never closes, so a crafted aux stays fast", () => {
+    const truncated = [
+      tocLine("section", String.raw`\numberline {1}Intro`),
+      String.raw`\@writefile{toc}{\contentsline {section}{\numberline {2}Cut`,
+    ].join("\n");
+    expect(parseAuxToc(new Map([[ENTRY_AUX, truncated]])).map((entry) => entry.number)).toEqual(["1"]);
+    const crafted = String.raw`\@writefile{toc}{`.repeat(60_000);
+    const started = performance.now();
+    expect(parseAuxToc(new Map([[ENTRY_AUX, crafted]]))).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(2_000);
+  });
 });
 
 describe("currentAuxToc", () => {

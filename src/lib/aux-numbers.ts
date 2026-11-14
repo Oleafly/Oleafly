@@ -214,7 +214,7 @@ export function parseAuxToc(files: ReadonlyMap<string, string>): AuxTocEntry[] {
         continue;
       }
       const group = readBalancedGroup(content, record.lastIndex);
-      if (!group) continue;
+      if (!group) break;
       record.lastIndex = group.end;
       const parsed = parseTocRecord(group.content);
       if (parsed) entries.push(parsed);
