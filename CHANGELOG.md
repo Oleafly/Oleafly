@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The Document Outline for a Typst file now includes indented `=` headings,
+  headings deeper than six `=` signs, and `#heading[...]` calls, while skipping
+  `outlined: false` headings and `=` inside code, strings, raw blocks or math.
 - When cloud sync left two versions of a note and you kept one, the other was
   deleted for good, although the dialog said it went to the Recycle Bin. It
   now goes to this computer's trash, so you can still get it back.
