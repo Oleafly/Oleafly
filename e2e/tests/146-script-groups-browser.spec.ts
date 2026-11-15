@@ -42,7 +42,7 @@ async function typeKeys(page: Page, text: string): Promise<void> {
   for (const character of text) await page.keyboard.type(character);
 }
 
-async function scriptsGroupAsTyped(page: Page): Promise<void> {
+async function scriptsGroupAsTyped(page: Page): Promise<string[]> {
   const errors = await open(page);
 
   await mount(page, "latex", "|");
@@ -60,12 +60,11 @@ async function scriptsGroupAsTyped(page: Page): Promise<void> {
   await mount(page, "typst", "$|$");
   await typeKeys(page, "x^-1 + e^-pi + x^10");
   expect(await marked(page)).toBe("$x^(-1) + e^(-pi) + x^10|$");
-
-  expect(errors).toEqual([]);
+  return errors;
 }
 
-async function keysShapeTheGroup(page: Page): Promise<void> {
-  await open(page);
+async function keysShapeTheGroup(page: Page): Promise<string[]> {
+  const errors = await open(page);
 
   await mount(page, "latex", "$|$");
   await typeKeys(page, "x^ab");
@@ -81,19 +80,21 @@ async function keysShapeTheGroup(page: Page): Promise<void> {
   await page.keyboard.press("Enter");
   await typeKeys(page, "y");
   expect(await marked(page)).toBe("\\[\n  x^{ab}\n  y|\n\\]");
+  return errors;
 }
 
 test.describe("subscript and superscript groups in Chromium", () => {
   test("groups multi-character scripts as they are typed", async ({ page }) => {
-    await scriptsGroupAsTyped(page);
+    expect(await scriptsGroupAsTyped(page)).toEqual([]);
   });
 
   test("Backspace, undo and Enter shape the group", async ({ page }) => {
-    await keysShapeTheGroup(page);
+    expect(await keysShapeTheGroup(page)).toEqual([]);
   });
 });
 
 test.describe("subscript and superscript groups in WebKit", () => {
+  // WebKit is skipped on purpose until CI installs it next to Chromium.
   test.skip(!existsSync(webkit.executablePath()), "WebKit is not installed for Playwright on this machine");
 
   let browser: Browser;
@@ -104,20 +105,20 @@ test.describe("subscript and superscript groups in WebKit", () => {
     await browser.close();
   });
 
-  async function inWebKit(run: (page: Page) => Promise<void>): Promise<void> {
+  async function inWebKit(run: (page: Page) => Promise<string[]>): Promise<string[]> {
     const page = await browser.newPage();
     try {
-      await run(page);
+      return await run(page);
     } finally {
       await page.close();
     }
   }
 
   test("groups multi-character scripts as they are typed", async () => {
-    await inWebKit(scriptsGroupAsTyped);
+    expect(await inWebKit(scriptsGroupAsTyped)).toEqual([]);
   });
 
   test("Backspace, undo and Enter shape the group", async () => {
-    await inWebKit(keysShapeTheGroup);
+    expect(await inWebKit(keysShapeTheGroup)).toEqual([]);
   });
 });

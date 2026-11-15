@@ -249,6 +249,32 @@ function startGroups(
   return true;
 }
 
+function groupStartIn(
+  text: string,
+  last: number,
+  syntax: ScriptGroupSyntax,
+): number | null {
+  let depth = 0;
+  for (let index = last; index >= 0; index -= 1) {
+    const character = text[index];
+    if (escapedIn(text, index)) continue;
+    if (character === syntax.close) depth += 1;
+    if (character !== syntax.open) continue;
+    depth -= 1;
+    if (depth === 0) return index;
+  }
+  return null;
+}
+
+function wordStartIn(text: string, last: number): number {
+  if (!isScriptLetter(text[last])) return last;
+  let start = last;
+  while (start > 0 && isScriptLetter(text[start - 1])) start -= 1;
+  const command =
+    start > 0 && text[start - 1] === "\\" && !escapedIn(text, start - 1);
+  return command ? start - 1 : last;
+}
+
 function tokenStartBefore(
   state: EditorState,
   syntax: ScriptGroupSyntax,
@@ -256,25 +282,12 @@ function tokenStartBefore(
 ): number | null {
   const from = Math.max(0, end - BASE_SCAN_LIMIT);
   const text = state.sliceDoc(from, end);
-  let index = text.length - 1;
-  if (text[index] === syntax.close && !escapedIn(text, index)) {
-    let depth = 0;
-    for (; index >= 0; index -= 1) {
-      const character = text[index];
-      if (escapedIn(text, index)) continue;
-      if (character === syntax.close) depth += 1;
-      if (character !== syntax.open) continue;
-      depth -= 1;
-      if (depth === 0) return from + index;
-    }
-    return null;
-  }
-  if (!isScriptLetter(text[index])) return from + index;
-  let start = index;
-  while (start > 0 && isScriptLetter(text[start - 1])) start -= 1;
-  return start > 0 && text[start - 1] === "\\" && !escapedIn(text, start - 1)
-    ? from + start - 1
-    : from + index;
+  const last = text.length - 1;
+  const start =
+    text[last] === syntax.close && !escapedIn(text, last)
+      ? groupStartIn(text, last, syntax)
+      : wordStartIn(text, last);
+  return start === null ? null : from + start;
 }
 
 function baseCarries(
@@ -431,13 +444,12 @@ function shrinkGroups(view: EditorView, syntax: ScriptGroupSyntax): boolean {
 function leaveBeforeNewline(
   view: EditorView,
   syntax: ScriptGroupSyntax,
-): boolean {
+): void {
   if (!keyOwnedByEditor(view) || completionStatus(view.state) === "active") {
-    return false;
+    return;
   }
   const groups = activeGroups(view.state, syntax);
   if (groups) leaveGroups(view, groups);
-  return false;
 }
 
 export function scriptGroups(syntax: ScriptGroupSyntax): Extension {
@@ -452,7 +464,13 @@ export function scriptGroups(syntax: ScriptGroupSyntax): Extension {
     Prec.highest(
       keymap.of([
         { key: "Backspace", run: (view) => shrinkGroups(view, syntax) },
-        { key: "Enter", run: (view) => leaveBeforeNewline(view, syntax) },
+        {
+          key: "Enter",
+          run: (view) => {
+            leaveBeforeNewline(view, syntax);
+            return false;
+          },
+        },
       ]),
     ),
   ];

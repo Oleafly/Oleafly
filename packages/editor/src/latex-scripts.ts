@@ -13,8 +13,25 @@ import {
   type ScriptMark,
 } from "./script-groups";
 
-const TEXT_ARGUMENT =
-  /^(?:text[a-z]*|emph|[fhm]box|makebox|framebox|(?:short)?intertext|label|tag|[a-z]*ref|[a-z]*cite[a-z]*|url|href|begin|end|color|f?colorbox)$/iu;
+const TEXT_ARGUMENTS: ReadonlySet<string> = new Set([
+  "emph",
+  "mbox",
+  "hbox",
+  "fbox",
+  "makebox",
+  "framebox",
+  "intertext",
+  "shortintertext",
+  "label",
+  "tag",
+  "url",
+  "href",
+  "begin",
+  "end",
+  "color",
+  "colorbox",
+  "fcolorbox",
+]);
 
 const COMMAND_BEFORE_GROUP = /\\([A-Za-z@]+)\*?\s*$/u;
 
@@ -23,6 +40,16 @@ const COMMAND_WINDOW = 64;
 const ARGUMENT_SCAN_LIMIT = 1024;
 
 const TRANSPOSE_LETTERS: ReadonlySet<string> = new Set(["T", "H"]);
+
+function textArgumentCommand(command: string): boolean {
+  const name = command.toLowerCase();
+  return (
+    TEXT_ARGUMENTS.has(name) ||
+    name.startsWith("text") ||
+    name.endsWith("ref") ||
+    name.includes("cite")
+  );
+}
 
 function latexTextArgumentOpen(text: string): boolean {
   let depth = 0;
@@ -41,7 +68,7 @@ function latexTextArgumentOpen(text: string): boolean {
     const command = COMMAND_BEFORE_GROUP.exec(
       text.slice(Math.max(0, index - COMMAND_WINDOW), index),
     )?.[1];
-    return command !== undefined && TEXT_ARGUMENT.test(command);
+    return command !== undefined && textArgumentCommand(command);
   }
   return false;
 }
