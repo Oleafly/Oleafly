@@ -17,15 +17,17 @@ fn sharejs(text: &str) -> FormatState {
         .1
 }
 
-fn apply_steps(text: &str, steps: &[TextOperation]) -> String {
-    steps
-        .iter()
-        .fold(text.to_string(), |text, step| step.apply(&text).unwrap())
+fn apply_steps(text: &str, steps: &[Step]) -> String {
+    steps.iter().fold(text.to_string(), |text, step| {
+        step.confirmed.apply(&text).unwrap()
+    })
 }
 
 fn ranges(state: &FormatState) -> &ShareJsRanges {
-    let FormatState::ShareJs(ranges) = state;
-    ranges
+    match state {
+        FormatState::ShareJs(ranges) => ranges,
+        FormatState::HistoryOt(_) => panic!("a ShareJS doc"),
+    }
 }
 
 fn update(op: Value, tc: bool, user: &str) -> AppliedUpdate {
@@ -238,8 +240,8 @@ fn a_suggestion_carries_a_fresh_eighteen_hex_seed() {
         user_id: "u1".into(),
         ts: "2026-11-15T00:00:00.000Z".into(),
     };
-    let first = state.encode("abc", &edit, Some(&tracking)).unwrap();
-    let second = state.encode("abc", &edit, Some(&tracking)).unwrap();
+    let first = state.encode("abc", &edit, Some(&tracking), None).unwrap();
+    let second = state.encode("abc", &edit, Some(&tracking), None).unwrap();
     let seed = first.tc.clone().unwrap();
     assert_eq!(seed.len(), 18);
     assert!(seed
@@ -252,7 +254,7 @@ fn a_suggestion_carries_a_fresh_eighteen_hex_seed() {
             tracked_by: Some("u1".into())
         }
     );
-    assert_eq!(state.encode("abc", &edit, None).unwrap().tc, None);
+    assert_eq!(state.encode("abc", &edit, None, None).unwrap().tc, None);
 }
 
 #[test]

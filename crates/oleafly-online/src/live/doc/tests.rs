@@ -622,7 +622,9 @@ fn tracking_turned_on_mid_flight_reencodes_the_resend() {
         doc.applied(&ack(0), &[me()]).unwrap(),
         Applied::Acknowledged
     );
-    let FormatState::ShareJs(ranges) = doc.format();
+    let FormatState::ShareJs(ranges) = doc.format() else {
+        panic!("a ShareJS doc")
+    };
     let change = &ranges.changes()[0];
     assert_eq!(
         (change.kind, change.at, change.user.as_deref()),

@@ -10,12 +10,15 @@ pub use ranges::{
     ChangeKind, CommentAnchor, ShareJsRanges, TrackedChange, MAX_CHANGES, MAX_COMMENTS,
 };
 
+use super::history_ot::{edits_from_json, Edit, RawDoc, RawOp};
 use super::{AppliedUpdate, Tracking};
 
 pub const SHAREJS_TYPE: &str = "sharejs-text-ot";
 pub const HISTORY_OT_TYPE: &str = "history-ot";
 pub const SHAREJS_MAX_DOC_LENGTH: usize = 2 * 1024 * 1024;
 pub const SHAREJS_REPLAY_WINDOW: u64 = 80;
+pub const HISTORY_OT_MAX_LENGTH: usize = 3 * 1024 * 1024;
+pub const HISTORY_OT_REPLAY_WINDOW: u64 = 100;
 const REPLACEMENT: char = '\u{FFFD}';
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -57,9 +60,25 @@ pub struct Limits {
     pub hashes: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Echo {
-    ShareJs { tracked_by: Option<String> },
+    ShareJs {
+        tracked_by: Option<String>,
+    },
+    HistoryOt {
+        raw: RawOp,
+        tracked_by: Option<String>,
+    },
+}
+
+impl Echo {
+    pub fn tracked_by(&self) -> Option<&str> {
+        match self {
+            Echo::ShareJs { tracked_by } | Echo::HistoryOt { tracked_by, .. } => {
+                tracked_by.as_deref()
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -67,6 +86,12 @@ pub struct Encoded {
     pub op: Value,
     pub tc: Option<String>,
     pub echo: Echo,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Step {
+    pub confirmed: TextOperation,
+    pub past_inflight: TextOperation,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -91,6 +116,11 @@ pub(crate) enum Piece {
 #[derive(Clone, Debug, PartialEq)]
 pub enum FormatState {
     ShareJs(ShareJsRanges),
+    HistoryOt(RawDoc),
+}
+
+fn tracking_props(tracking: &Tracking) -> Value {
+    json!({ "type": "insert", "userId": tracking.user_id, "ts": tracking.ts })
 }
 
 impl FormatState {
@@ -117,13 +147,17 @@ impl FormatState {
                     FormatState::ShareJs(ShareJsRanges::from_join(ranges)?),
                 ))
             }
-            DocFormat::HistoryOt => Err(CodecError::Unsupported(HISTORY_OT_TYPE.into())),
+            DocFormat::HistoryOt => {
+                let raw = RawDoc::from_raw(lines)?;
+                Ok((raw.visible()?, FormatState::HistoryOt(raw)))
+            }
         }
     }
 
     pub fn format(&self) -> DocFormat {
         match self {
             FormatState::ShareJs(_) => DocFormat::ShareJs,
+            FormatState::HistoryOt(_) => DocFormat::HistoryOt,
         }
     }
 
@@ -134,6 +168,11 @@ impl FormatState {
                 replay_window: SHAREJS_REPLAY_WINDOW,
                 hashes: true,
             },
+            FormatState::HistoryOt(_) => Limits {
+                max_length: HISTORY_OT_MAX_LENGTH,
+                replay_window: HISTORY_OT_REPLAY_WINDOW,
+                hashes: false,
+            },
         }
     }
 
@@ -141,8 +180,8 @@ impl FormatState {
         &mut self,
         visible: &str,
         update: &AppliedUpdate,
-        _inflight: Option<&mut Echo>,
-    ) -> Result<Vec<TextOperation>, CodecError> {
+        mut inflight: Option<(&mut TextOperation, &mut Echo)>,
+    ) -> Result<Vec<Step>, CodecError> {
         let op = update.op.as_ref().unwrap_or(&Value::Null);
         match self {
             FormatState::ShareJs(ranges) => {
@@ -151,6 +190,57 @@ impl FormatState {
                 let tracked = update.tc.is_some();
                 for piece in &pieces {
                     ranges.apply(piece, tracked, update.user_id.as_deref())?;
+                }
+                steps
+                    .into_iter()
+                    .map(|step| match inflight.as_mut() {
+                        Some((ours, _)) => {
+                            let (ours_after, theirs) = TextOperation::transform(ours, &step)
+                                .map_err(|_| CodecError::Mismatch)?;
+                            **ours = ours_after;
+                            Ok(Step {
+                                confirmed: step,
+                                past_inflight: theirs,
+                            })
+                        }
+                        None => Ok(Step {
+                            past_inflight: step.clone(),
+                            confirmed: step,
+                        }),
+                    })
+                    .collect()
+            }
+            FormatState::HistoryOt(raw) => {
+                let mut steps = Vec::new();
+                for edit in edits_from_json(op)? {
+                    let Edit::Text(remote) = edit else {
+                        raw.edit_comments(&edit);
+                        continue;
+                    };
+                    let confirmed = raw.project(&remote)?;
+                    match inflight.as_mut() {
+                        Some((ours, Echo::HistoryOt { raw: sent, .. })) => {
+                            let (sent_after, remote_after) = RawOp::transform(sent, &remote)?;
+                            let mut mine = raw.clone();
+                            mine.apply(sent)?;
+                            let past_inflight = mine.project(&remote_after)?;
+                            raw.apply(&remote)?;
+                            **ours = raw.project(&sent_after)?;
+                            *sent = sent_after;
+                            steps.push(Step {
+                                confirmed,
+                                past_inflight,
+                            });
+                        }
+                        Some((_, Echo::ShareJs { .. })) => return Err(CodecError::Mismatch),
+                        None => {
+                            raw.apply(&remote)?;
+                            steps.push(Step {
+                                past_inflight: confirmed.clone(),
+                                confirmed,
+                            });
+                        }
+                    }
                 }
                 Ok(steps)
             }
@@ -162,7 +252,9 @@ impl FormatState {
         visible: &str,
         op: &TextOperation,
         tracking: Option<&Tracking>,
+        previous: Option<&Echo>,
     ) -> Result<Encoded, CodecError> {
+        let tracked_by = tracking.map(|tracking| tracking.user_id.clone());
         match self {
             FormatState::ShareJs(_) => {
                 let pieces = pieces_of(visible, op)?;
@@ -170,8 +262,23 @@ impl FormatState {
                 Ok(Encoded {
                     op: Value::Array(pieces.iter().map(piece_to_json).collect()),
                     tc,
-                    echo: Echo::ShareJs {
-                        tracked_by: tracking.map(|tracking| tracking.user_id.clone()),
+                    echo: Echo::ShareJs { tracked_by },
+                })
+            }
+            FormatState::HistoryOt(raw) => {
+                let sent = match previous {
+                    Some(Echo::HistoryOt {
+                        raw: sent,
+                        tracked_by: before,
+                    }) if *before == tracked_by => sent.clone(),
+                    _ => raw.encode(op, tracking.map(tracking_props).as_ref())?,
+                };
+                Ok(Encoded {
+                    op: json!([{ "textOperation": sent.to_json()? }]),
+                    tc: None,
+                    echo: Echo::HistoryOt {
+                        raw: sent,
+                        tracked_by,
                     },
                 })
             }
@@ -184,17 +291,30 @@ impl FormatState {
         op: &TextOperation,
         echo: &Echo,
     ) -> Result<(), CodecError> {
-        let FormatState::ShareJs(ranges) = self;
-        let Echo::ShareJs { tracked_by } = echo;
-        for piece in pieces_of(visible, op)? {
-            ranges.apply(&piece, tracked_by.is_some(), tracked_by.as_deref())?;
+        match (self, echo) {
+            (FormatState::ShareJs(ranges), Echo::ShareJs { tracked_by }) => {
+                for piece in pieces_of(visible, op)? {
+                    ranges.apply(&piece, tracked_by.is_some(), tracked_by.as_deref())?;
+                }
+                Ok(())
+            }
+            (FormatState::HistoryOt(raw), Echo::HistoryOt { raw: sent, .. }) => {
+                raw.apply(sent)?;
+                let expected = op.apply(visible).map_err(|_| CodecError::Mismatch)?;
+                if raw.visible()? == expected {
+                    Ok(())
+                } else {
+                    Err(CodecError::Mismatch)
+                }
+            }
+            _ => Err(CodecError::Mismatch),
         }
-        Ok(())
     }
 
-    pub fn length_after(&self, op: &TextOperation) -> usize {
-        match self {
-            FormatState::ShareJs(_) => op.target_len(),
+    pub fn length_after(&self, op: &TextOperation, echo: &Echo) -> usize {
+        match echo {
+            Echo::HistoryOt { raw, .. } => raw.target_len(),
+            Echo::ShareJs { .. } => op.target_len(),
         }
     }
 
@@ -204,13 +324,18 @@ impl FormatState {
         op: &TextOperation,
         echo: &Echo,
     ) -> Result<Option<(usize, usize)>, CodecError> {
-        let FormatState::ShareJs(ranges) = self;
-        let Echo::ShareJs { tracked_by } = echo;
+        let (FormatState::ShareJs(ranges), Echo::ShareJs { tracked_by }) = (self, echo) else {
+            return Ok(None);
+        };
         let mut after = ranges.clone();
         for piece in pieces_of(visible, op)? {
             after.apply(&piece, tracked_by.is_some(), tracked_by.as_deref())?;
         }
         Ok(Some(after.counts()))
+    }
+
+    pub fn reencodes_on_one_connection(&self) -> bool {
+        matches!(self, FormatState::ShareJs(_))
     }
 
     pub fn sanitize(&self, op: &TextOperation) -> Sanitized {

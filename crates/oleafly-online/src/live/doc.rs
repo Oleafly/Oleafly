@@ -115,7 +115,7 @@ pub struct OverleafDoc {
     inflight: Option<Inflight>,
     pending: Option<TextOperation>,
     format: FormatState,
-    max_length: usize,
+    page_limit: Option<usize>,
     hashed_at: Option<Instant>,
     last_sent: Option<u64>,
 }
@@ -130,7 +130,7 @@ impl OverleafDoc {
             local: text,
             inflight: None,
             pending: None,
-            max_length: format.limits().max_length,
+            page_limit: None,
             format,
             hashed_at: None,
             last_sent: None,
@@ -146,7 +146,15 @@ impl OverleafDoc {
     }
 
     pub fn limit_length(&mut self, max_length: usize) {
-        self.max_length = max_length.min(self.format.limits().max_length);
+        self.page_limit = Some(max_length);
+    }
+
+    fn max_length(&self) -> usize {
+        let limit = self.format.limits().max_length;
+        match (self.format.format(), self.page_limit) {
+            (DocFormat::ShareJs, Some(page)) => limit.min(page),
+            _ => limit,
+        }
     }
 
     pub fn text(&self) -> &str {
@@ -202,6 +210,16 @@ impl OverleafDoc {
                 return Ok(None);
             }
             if !inflight.op.is_noop() {
+                let tracked_by = match mode {
+                    SendMode::Suggest(tracking) => Some(tracking.user_id.as_str()),
+                    SendMode::Edit | SendMode::Hold => None,
+                };
+                if this_connection
+                    && !self.format.reencodes_on_one_connection()
+                    && inflight.echo.tracked_by() != tracked_by
+                {
+                    return Ok(None);
+                }
                 let op = inflight.op.clone();
                 return self.send(op, on, mode, now).map(Some);
             }
@@ -239,10 +257,13 @@ impl OverleafDoc {
         if self.known.saturating_sub(self.version) > limits.replay_window {
             return Err(DocError::Blocked(Limit::TooOld));
         }
-        if self.format.length_after(&op) > self.max_length {
+        let previous = self.inflight.as_ref().map(|inflight| &inflight.echo);
+        let encoded = self
+            .format
+            .encode(&self.confirmed, &op, tracking, previous)?;
+        if self.format.length_after(&op, &encoded.echo) > self.max_length() {
             return Err(DocError::Blocked(Limit::DocLength));
         }
-        let encoded = self.format.encode(&self.confirmed, &op, tracking)?;
         if let Some((comments, changes)) =
             self.format
                 .range_counts_after(&self.confirmed, &op, &encoded.echo)?
@@ -362,21 +383,19 @@ impl OverleafDoc {
     }
 
     fn remote(&mut self, update: &AppliedUpdate) -> Result<Applied, DocError> {
-        let echo = self.inflight.as_mut().map(|inflight| &mut inflight.echo);
-        let steps = self.format.decode(&self.confirmed, update, echo)?;
+        let inflight = self
+            .inflight
+            .as_mut()
+            .map(|inflight| (&mut inflight.op, &mut inflight.echo));
+        let steps = self.format.decode(&self.confirmed, update, inflight)?;
         let mut editor = TextOperation::new();
         editor.retain(utf16_len(&self.local));
         for step in steps {
             self.confirmed = step
+                .confirmed
                 .apply(&self.confirmed)
                 .map_err(|_| DocError::OutOfStep)?;
-            let mut step = step;
-            if let Some(inflight) = &mut self.inflight {
-                let (ours, theirs) = TextOperation::transform(&inflight.op, &step)
-                    .map_err(|_| DocError::OutOfStep)?;
-                inflight.op = ours;
-                step = theirs;
-            }
+            let mut step = step.past_inflight;
             if let Some(pending) = self.pending.take() {
                 let (ours, theirs) =
                     TextOperation::transform(&pending, &step).map_err(|_| DocError::OutOfStep)?;
@@ -417,7 +436,7 @@ impl OverleafDoc {
             .filter(|applied| *applied == text)
             .unwrap_or_else(|| self.confirmed.clone());
         *self = OverleafDoc {
-            max_length: self.max_length.min(format.limits().max_length),
+            page_limit: self.page_limit,
             ..OverleafDoc::joined(self.id.clone(), version, text, format)
         };
         if mine == base || mine == self.local {

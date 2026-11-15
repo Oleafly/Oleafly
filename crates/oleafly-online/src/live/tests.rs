@@ -10,13 +10,14 @@ use super::format::{operation_of, pieces_from_json, DocFormat, FormatState};
 use super::harness::{parse_join, Editor, Wire};
 use super::{AppliedUpdate, DocId, PublicId, SendMode, Tracking};
 use crate::test_support::mock_overleaf::{
-    MockOverleaf, MockPeer, MockProject, MockUser, Privilege,
+    DocFormat as MockFormat, MockOverleaf, MockPeer, MockProject, MockUser, Privilege,
 };
 use crate::test_support::overleaf_rt::{recordings, DocEvent};
 use crate::test_support::sharejs_text::{self, Component};
 
 const ROUNDS: usize = 10_000;
 const PEERS: [&str; 3] = ["bob", "erin", "frank"];
+const COMMENTER: &str = "grace";
 const TYPED: [&str; 10] = ["a", "b", " ", "\n", "é", "x", "ok ", "😀", "\0", "\r\n"];
 
 fn seed() -> u64 {
@@ -26,12 +27,14 @@ fn seed() -> u64 {
         .unwrap_or(0x07_458)
 }
 
-fn sharejs_project() -> MockProject {
+fn project(format: MockFormat) -> MockProject {
     PEERS
         .iter()
+        .chain([&COMMENTER])
         .fold(MockProject::new("converge"), |project, name| {
             project.member(MockUser::named(name), Privilege::ReadAndWrite)
         })
+        .format(format)
         .doc("main.tex", "\\section{Intro}\nShared text.\n")
 }
 
@@ -43,6 +46,7 @@ struct Oleafly {
     id: String,
     tracking: Tracking,
     rejoins: usize,
+    mock: MockOverleaf,
 }
 
 impl Oleafly {
@@ -57,11 +61,31 @@ impl Oleafly {
             let Some(update) = self.inbox.pop_front() else {
                 return;
             };
-            match self.doc.applied(&update, &self.wire.own) {
+            let outcome = self.doc.applied(&update, &self.wire.own);
+            match outcome {
                 Ok(Applied::Remote(op)) => self.editor.remote(op),
                 Ok(_) => {}
                 Err(error) => panic!("round {round}: {error} on {update:?}"),
             }
+            self.check_caught_up(round, &update);
+        }
+    }
+
+    fn check_caught_up(&self, round: usize, update: &AppliedUpdate) {
+        if !self.doc.is_settled() || self.doc.version() != self.mock.doc_version(&self.id) {
+            return;
+        }
+        match self.doc.format() {
+            FormatState::ShareJs(_) => assert_eq!(
+                self.doc.text(),
+                self.mock.doc_text(&self.id),
+                "round {round}: out of step after {update:?}"
+            ),
+            FormatState::HistoryOt(raw) => assert_eq!(
+                raw.content().unwrap(),
+                self.mock.raw_doc(&self.id)["content"].as_str().unwrap(),
+                "round {round}: raw content out of step after {update:?}"
+            ),
         }
     }
 
@@ -103,12 +127,16 @@ fn random_insert(rng: &mut Rng) -> String {
     (0..1 + rng.below(3)).map(|_| *rng.pick(&TYPED)).collect()
 }
 
-fn peer_edit(peer: &mut MockPeer, id: &str, rng: &mut Rng) {
+fn peer_edit(peer: &mut MockPeer, id: &str, rng: &mut Rng, tracked_deletes: bool) -> bool {
     let text = peer.text(id);
     let length = utf16_len(&text);
     if length > 30 && rng.chance(45) {
         let at = rng.below(length);
         let count = (1 + rng.below(4)).min(length - at);
+        if tracked_deletes && rng.chance(40) {
+            peer.track_delete(id, at, count);
+            return true;
+        }
         peer.delete(id, at, count);
     } else {
         let typed: String = (0..1 + rng.below(3))
@@ -116,6 +144,24 @@ fn peer_edit(peer: &mut MockPeer, id: &str, rng: &mut Rng) {
             .collect();
         peer.type_at(id, rng.below(length + 1), &typed);
     }
+    false
+}
+
+fn comment(mock: &MockOverleaf, commenter: &mut MockPeer, id: &str, rng: &mut Rng, count: usize) {
+    let length = utf16_len(mock.raw_doc(id)["content"].as_str().unwrap_or_default());
+    if length < 2 {
+        return;
+    }
+    let pos = rng.below(length - 1);
+    let span = (1 + rng.below(5)).min(length - pos);
+    let edit =
+        json!({ "commentId": format!("{count:024x}"), "ranges": [{ "pos": pos, "length": span }] });
+    let update = json!({ "doc": id, "v": mock.doc_version(id), "op": [edit] });
+    let reply = commenter
+        .emit("applyOtUpdate", vec![json!(id), update])
+        .unwrap();
+    assert!(reply.first().is_none_or(Value::is_null), "{reply:?}");
+    commenter.take_events("otUpdateApplied");
 }
 
 fn editor_edit(editor: &mut Editor, rng: &mut Rng) {
@@ -132,11 +178,22 @@ fn editor_edit(editor: &mut Editor, rng: &mut Rng) {
     editor.typed(sent.expect("the editor edit applies"));
 }
 
-#[tokio::test]
-async fn random_sharejs_clients_converge_with_one_oleafly_editor() {
+struct Converged {
+    seed: u64,
+    mock: MockOverleaf,
+    id: String,
+    oleafly: Oleafly,
+    peers: Vec<MockPeer>,
+    reconnects: usize,
+    tracked_deletes: usize,
+    comments: usize,
+}
+
+async fn converge(format: MockFormat) -> Converged {
     let seed = seed();
     let mut rng = Rng::new(seed);
-    let mock = MockOverleaf::start(sharejs_project()).await;
+    let history_ot = format == MockFormat::HistoryOt;
+    let mock = MockOverleaf::start(project(format)).await;
     mock.configure(|config| config.rate_limits.joins_per_minute = usize::MAX);
     let id = mock.doc_id("main.tex");
     let mut peers: Vec<MockPeer> = PEERS
@@ -147,6 +204,8 @@ async fn random_sharejs_clients_converge_with_one_oleafly_editor() {
             peer
         })
         .collect();
+    let mut commenter = mock.peer(COMMENTER);
+    commenter.join(&id);
     let mut held = [false; PEERS.len()];
     let mut wire = Wire::connect(&mock, "alice");
     let doc = wire.open(&id);
@@ -161,17 +220,20 @@ async fn random_sharejs_clients_converge_with_one_oleafly_editor() {
         },
         id: id.clone(),
         rejoins: 0,
+        mock: mock.clone(),
     };
     let start = Instant::now();
     let mut clock = Duration::ZERO;
-    let mut reconnects = 0;
+    let (mut reconnects, mut tracked_deletes, mut comments) = (0, 0, 0);
     for round in 0..ROUNDS {
         clock += Duration::from_millis(rng.below(1_200) as u64);
         let now = start + clock;
         match rng.below(100) {
             0..=17 => {
                 let index = rng.below(PEERS.len());
-                peer_edit(&mut peers[index], &id, &mut rng);
+                if peer_edit(&mut peers[index], &id, &mut rng, history_ot) {
+                    tracked_deletes += 1;
+                }
             }
             18..=21 => {
                 let index = rng.below(PEERS.len());
@@ -201,6 +263,10 @@ async fn random_sharejs_clients_converge_with_one_oleafly_editor() {
             73..=96 => {
                 let count = 1 + rng.below(4);
                 oleafly.process(count, round);
+            }
+            97 if history_ot => {
+                comments += 1;
+                comment(&mock, &mut commenter, &id, &mut rng, comments);
             }
             _ => {
                 if rng.chance(30) {
@@ -234,7 +300,29 @@ async fn random_sharejs_clients_converge_with_one_oleafly_editor() {
             break;
         }
     }
-    let server = mock.doc_text(&id);
+    Converged {
+        seed,
+        mock,
+        id,
+        oleafly,
+        peers,
+        reconnects,
+        tracked_deletes,
+        comments,
+    }
+}
+
+fn assert_converged(run: &mut Converged) -> String {
+    let Converged {
+        seed,
+        mock,
+        id,
+        oleafly,
+        peers,
+        reconnects,
+        ..
+    } = run;
+    let server = mock.doc_text(id);
     assert!(
         oleafly.doc.is_settled(),
         "seed {seed}: unsent work at the end"
@@ -246,14 +334,14 @@ async fn random_sharejs_clients_converge_with_one_oleafly_editor() {
         "seed {seed}: EditorChannel"
     );
     assert_eq!(oleafly.editor.doc.content, server, "seed {seed}: editor");
-    assert_eq!(oleafly.doc.version(), mock.doc_version(&id));
-    for (name, peer) in PEERS.iter().zip(&mut peers) {
+    assert_eq!(oleafly.doc.version(), mock.doc_version(id));
+    for (name, peer) in PEERS.iter().zip(peers.iter_mut()) {
         assert!(
             peer.is_connected(),
             "seed {seed}: {name} was disconnected: {:?}",
             peer.events("otUpdateError")
         );
-        assert_eq!(peer.text(&id), server, "seed {seed}: {name}");
+        assert_eq!(peer.text(id), server, "seed {seed}: {name}");
     }
     assert!(!server.contains(['\0', '\r']), "seed {seed}");
     assert!(server.chars().all(|c| c.len_utf16() == 1), "seed {seed}");
@@ -261,7 +349,7 @@ async fn random_sharejs_clients_converge_with_one_oleafly_editor() {
         oleafly.editor.corrections > 0,
         "seed {seed}: no sanitising happened"
     );
-    assert!(reconnects > 0, "seed {seed}: never reconnected");
+    assert!(*reconnects > 0, "seed {seed}: never reconnected");
     assert_eq!(oleafly.editor.doc.resyncs + oleafly.editor.doc.resets, 0);
     assert_eq!(
         oleafly.rejoins, 0,
@@ -269,10 +357,66 @@ async fn random_sharejs_clients_converge_with_one_oleafly_editor() {
     );
     oleafly.wire.assert_healthy();
     assert!(
-        mock.doc_version(&id) > 1_000,
+        mock.doc_version(id) > 1_000,
         "seed {seed}: only {} updates reached the server",
-        mock.doc_version(&id)
+        mock.doc_version(id)
     );
+    server
+}
+
+#[tokio::test]
+async fn random_sharejs_clients_converge_with_one_oleafly_editor() {
+    let mut run = converge(MockFormat::ShareJs).await;
+    assert_converged(&mut run);
+}
+
+#[tokio::test]
+async fn random_history_ot_clients_converge_with_one_oleafly_editor() {
+    let mut run = converge(MockFormat::HistoryOt).await;
+    assert_converged(&mut run);
+    let seed = run.seed;
+    let FormatState::HistoryOt(raw) = run.oleafly.doc.format() else {
+        panic!("seed {seed}: the doc is not history-ot")
+    };
+    let server = run.mock.raw_doc(&run.id);
+    assert_eq!(
+        raw.content().unwrap(),
+        server["content"].as_str().unwrap(),
+        "seed {seed}: raw content"
+    );
+    let ours: Vec<(usize, usize, Value)> = raw
+        .tracked()
+        .into_iter()
+        .map(|range| (range.pos, range.length, range.tracking["type"].clone()))
+        .collect();
+    let theirs: Vec<(usize, usize, Value)> = server["trackedChanges"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|change| {
+            (
+                change["range"]["pos"].as_u64().unwrap() as usize,
+                change["range"]["length"].as_u64().unwrap() as usize,
+                change["tracking"]["type"].clone(),
+            )
+        })
+        .collect();
+    assert_eq!(ours, theirs, "seed {seed}: tracked changes");
+    assert!(
+        ours.iter().any(|(_, _, kind)| kind == "delete"),
+        "seed {seed}: nothing is hidden at the end"
+    );
+    assert!(
+        run.tracked_deletes > 100,
+        "seed {seed}: {} tracked deletes",
+        run.tracked_deletes
+    );
+    assert!(
+        run.comments > 20,
+        "seed {seed}: {} comment ops",
+        run.comments
+    );
+    assert!(!raw.comments().is_empty(), "seed {seed}: no comments kept");
 }
 
 fn random_sharejs_op(rng: &mut Rng, text: &str) -> Vec<Component> {
@@ -500,4 +644,311 @@ fn applied_update_payloads_decode_from_the_wire() {
     ] {
         assert_eq!(AppliedUpdate::from_value(&bad, None), None, "{bad}");
     }
+}
+
+fn history_ot_project() -> MockProject {
+    MockProject::new("history")
+        .member(MockUser::named("bob"), Privilege::ReadAndWrite)
+        .member(MockUser::named("carol"), Privilege::Review)
+        .format(MockFormat::HistoryOt)
+        .doc("main.tex", "Keep this sentence. Remove this word please.\n")
+}
+
+fn raw_of(doc: &OverleafDoc) -> &super::history_ot::RawDoc {
+    match doc.format() {
+        FormatState::HistoryOt(raw) => raw,
+        FormatState::ShareJs(_) => panic!("a history-ot doc"),
+    }
+}
+
+fn settle(wire: &mut Wire, doc: &mut OverleafDoc, id: &str) {
+    for update in wire.incoming(id) {
+        doc.applied(&update, &wire.own).unwrap();
+    }
+}
+
+fn suggesting(user_id: &str) -> SendMode {
+    SendMode::Suggest(Tracking {
+        user_id: user_id.to_string(),
+        ts: "2026-11-15T11:00:00.000Z".into(),
+    })
+}
+
+#[tokio::test]
+async fn an_emoji_on_a_history_ot_doc_matches_overleaf_web() {
+    let mock = MockOverleaf::start(history_ot_project()).await;
+    let id = mock.doc_id("main.tex");
+    let mut wire = Wire::connect(&mock, "alice");
+    let mut doc = wire.open(&id);
+    let mut bob = mock.peer("bob");
+    bob.join(&id);
+    let mut editor = Editor::new(doc.text());
+    editor.doc.jump(4);
+    editor.type_text(" 😀");
+    editor.drain(&mut doc);
+    assert_eq!(editor.corrections, 1);
+    let update = doc
+        .next_update(&wire.public_id(), &SendMode::Edit, Instant::now())
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        update.op,
+        json!([{ "textOperation": [4, " \u{FFFD}\u{FFFD}", 41] }])
+    );
+    assert!(update.hash.is_none() && update.tc.is_none());
+    wire.send(&update);
+    settle(&mut wire, &mut doc, &id);
+    let expected = "Keep \u{FFFD}\u{FFFD} this sentence. Remove this word please.\n";
+    for text in [
+        mock.doc_text(&id),
+        bob.text(&id),
+        doc.text().to_string(),
+        editor.channel.text(),
+        editor.doc.content.clone(),
+    ] {
+        assert_eq!(text, expected);
+    }
+    wire.assert_healthy();
+}
+
+#[tokio::test]
+async fn an_unknown_edit_operation_stops_that_document_only() {
+    let mock = MockOverleaf::start(history_ot_project().doc("other.tex", "Other\n")).await;
+    let (main, other) = (mock.doc_id("main.tex"), mock.doc_id("other.tex"));
+    let mut wire = Wire::connect(&mock, "alice");
+    let mut stopped = wire.open(&main);
+    let mut going = wire.open(&other);
+    let unknown = AppliedUpdate::from_value(
+        &json!({ "doc": main, "v": 0, "op": [{ "moveFile": { "to": "x" } }], "meta": { "source": "P.web" } }),
+        None,
+    )
+    .unwrap();
+    assert!(matches!(
+        stopped.applied(&unknown, &wire.own),
+        Err(super::doc::DocError::Codec(
+            super::format::CodecError::Unsupported(_)
+        ))
+    ));
+    let mut bob = mock.peer("bob");
+    bob.join(&other);
+    bob.type_at(&other, 0, "Still ");
+    settle(&mut wire, &mut going, &other);
+    assert_eq!(going.text(), "Still Other\n");
+    assert_eq!(
+        going.applied(&unknown, &wire.own).unwrap(),
+        Applied::Ignored
+    );
+}
+
+#[tokio::test]
+async fn a_history_ot_resend_keeps_its_encoding_until_a_new_connection() {
+    let mock = MockOverleaf::start(history_ot_project()).await;
+    let id = mock.doc_id("main.tex");
+    let mut wire = Wire::connect(&mock, "alice");
+    let mut doc = wire.open(&id);
+    let mut bob = mock.peer("bob");
+    bob.join(&id);
+    let start = Instant::now();
+    let alice = mock.user("alice").id;
+    let total = utf16_len(doc.text());
+    doc.local(oleafly_ot::testing::deletion(total, 32, 5))
+        .unwrap();
+    let on = wire.public_id();
+    let plain = doc
+        .next_update(&on, &SendMode::Edit, start)
+        .unwrap()
+        .unwrap();
+    wire.send(&plain);
+    bob.type_at(&id, 0, ">> ");
+    let later = start + Duration::from_secs(6);
+    assert_eq!(
+        doc.next_update(&on, &suggesting(&alice), later).unwrap(),
+        None
+    );
+    let same = doc
+        .next_update(&on, &SendMode::Edit, later)
+        .unwrap()
+        .unwrap();
+    assert_eq!(same.op, plain.op);
+    assert_eq!(same.dup_if_source, vec![on.clone()]);
+    wire.send(&same);
+    settle(&mut wire, &mut doc, &id);
+    assert!(doc.is_settled());
+    assert_eq!(
+        raw_of(&doc).content().unwrap(),
+        mock.raw_doc(&id)["content"].as_str().unwrap()
+    );
+
+    let total = utf16_len(doc.text());
+    doc.local(oleafly_ot::testing::insertion(total, 3, "!"))
+        .unwrap();
+    let first = doc
+        .next_update(&wire.public_id(), &SendMode::Edit, later)
+        .unwrap()
+        .unwrap();
+    assert!(!first.op.to_string().contains("tracking"));
+    wire.reconnect(&mock, "alice");
+    let joined = wire.join(&id, Some(doc.version())).unwrap();
+    doc.catch_up(&joined.updates, &wire.own).unwrap();
+    let reencoded = doc
+        .next_update(&wire.public_id(), &suggesting(&alice), later)
+        .unwrap()
+        .unwrap();
+    assert!(reencoded.op.to_string().contains("\"tracking\""));
+    wire.send(&reencoded);
+    settle(&mut wire, &mut doc, &id);
+    assert!(doc.is_settled());
+    let server = mock.raw_doc(&id);
+    assert_eq!(
+        raw_of(&doc).content().unwrap(),
+        server["content"].as_str().unwrap()
+    );
+    assert_eq!(doc.text(), mock.doc_text(&id));
+    assert_eq!(doc.version(), mock.doc_version(&id));
+    wire.assert_healthy();
+}
+
+#[tokio::test]
+async fn a_reviewer_on_a_history_ot_doc_sends_only_suggestions() {
+    let mock = MockOverleaf::start(history_ot_project()).await;
+    let id = mock.doc_id("main.tex");
+    let mut bob = mock.peer("bob");
+    bob.join(&id);
+    bob.track_delete(&id, 32, 5);
+    let mut wire = Wire::connect(&mock, "carol");
+    let mut doc = wire.open(&id);
+    assert_eq!(doc.text(), "Keep this sentence. Remove this please.\n");
+    let carol = mock.user("carol").id;
+    let mut editor = Editor::new(doc.text());
+    editor.doc.jump(31);
+    let deleted = editor.doc.delete_ahead(2).unwrap();
+    editor.typed(deleted);
+    editor.doc.jump(20);
+    editor.type_text("Do ");
+    editor.drain(&mut doc);
+    let start = Instant::now();
+    let update = doc
+        .next_update(&wire.public_id(), &suggesting(&carol), start)
+        .unwrap()
+        .unwrap();
+    let scans = update.op[0]["textOperation"].as_array().unwrap().clone();
+    assert!(scans.iter().all(|scan| scan.as_u64().is_some()
+        || scan
+            .get("tracking")
+            .is_some_and(|tracking| tracking["type"] != "none")));
+    assert!(scans.iter().any(|scan| scan["r"].as_u64() == Some(7)));
+    wire.send(&update);
+    settle(&mut wire, &mut doc, &id);
+    assert_eq!(doc.text(), mock.doc_text(&id));
+    assert_eq!(doc.text(), "Keep this sentence. Do Remove thislease.\n");
+    assert_eq!(
+        raw_of(&doc).content().unwrap(),
+        "Keep this sentence. Do Remove this word please.\n"
+    );
+    assert_eq!(bob.text(&id), doc.text());
+    let plain = {
+        let total = utf16_len(doc.text());
+        doc.local(oleafly_ot::testing::insertion(total, 0, "x"))
+            .unwrap();
+        doc.next_update(&wire.public_id(), &SendMode::Edit, start)
+            .unwrap()
+            .unwrap()
+    };
+    assert_eq!(wire.send_raw(&plain)[0]["message"], "not authorized");
+}
+
+fn tracking_in(scans: &Value) -> Option<Tracking> {
+    scans.as_array()?.iter().find_map(|scan| {
+        let tracking = scan.get("tracking")?;
+        Some(Tracking {
+            user_id: tracking["userId"].as_str()?.to_string(),
+            ts: tracking["ts"].as_str()?.to_string(),
+        })
+    })
+}
+
+#[test]
+fn recorded_history_ot_sessions_replay_through_overleaf_doc() {
+    let start = Instant::now();
+    let (mut replayed, mut sends, mut exact, mut remote) = (0, 0, 0, 0);
+    for recording in recordings()
+        .iter()
+        .filter(|recording| recording.format == "history-ot" && recording.converged)
+    {
+        for trace in recording.traces.iter().filter(|trace| !trace.scripted) {
+            let Some(expected) = recording.final_text(&trace.name) else {
+                continue;
+            };
+            let label = format!("{}: {}", recording.name, trace.name);
+            let (reply, events) = trace.last_session(&recording.doc_id).unwrap();
+            let joined = parse_join(&reply).unwrap();
+            let mut doc = OverleafDoc::joined(
+                DocId(recording.doc_id.clone()),
+                joined.version,
+                joined.text,
+                joined.format,
+            );
+            let on = PublicId(trace.public_ids().last().cloned().unwrap());
+            let own = [on.clone()];
+            for (step, event) in events.into_iter().enumerate() {
+                let now = start + Duration::from_secs(10 * step as u64);
+                match event {
+                    DocEvent::Sent { v, update } => {
+                        assert!(doc.is_settled(), "{label}: sent with work in flight");
+                        let scans = &update["op"][0]["textOperation"];
+                        let raw = super::history_ot::RawOp::from_json(scans).unwrap();
+                        let op = raw_of(&doc).project(&raw).unwrap();
+                        assert_eq!(doc.local(op).unwrap(), None, "{label}");
+                        let mode = tracking_in(scans).map_or(SendMode::Edit, SendMode::Suggest);
+                        let ours = doc
+                            .next_update(&on, &mode, now)
+                            .unwrap()
+                            .unwrap_or_else(|| panic!("{label}: nothing to send"));
+                        assert_eq!(ours.v, v, "{label}");
+                        if ours.op[0]["textOperation"] == *scans {
+                            exact += 1;
+                        }
+                        assert!(ours.hash.is_none() && ours.tc.is_none());
+                        sends += 1;
+                    }
+                    DocEvent::Acked { v } => {
+                        let ack = AppliedUpdate::from_value(
+                            &json!({ "doc": recording.doc_id, "v": v }),
+                            None,
+                        )
+                        .unwrap();
+                        assert_eq!(
+                            doc.applied(&ack, &own).unwrap(),
+                            Applied::Acknowledged,
+                            "{label}"
+                        );
+                    }
+                    DocEvent::Remote { update, .. } => {
+                        let update = AppliedUpdate::from_value(&update, None).unwrap();
+                        doc.applied(&update, &own)
+                            .unwrap_or_else(|error| panic!("{label}: {error}"));
+                        remote += 1;
+                    }
+                    DocEvent::Error { args } => panic!("{label}: {args:?}"),
+                }
+            }
+            assert_eq!(doc.text(), expected, "{label}");
+            if let Some(raw) = recording.extra("final.raw.json") {
+                let raw: Value = serde_json::from_str(&raw).unwrap();
+                assert_eq!(
+                    raw_of(&doc).content().unwrap(),
+                    raw["raw"]["content"].as_str().unwrap(),
+                    "{label}: raw"
+                );
+            }
+            replayed += 1;
+        }
+    }
+    assert!(replayed >= 4, "only {replayed} sessions replayed");
+    assert!(sends >= 4, "only {sends} recorded sends replayed");
+    assert_eq!(
+        exact, sends,
+        "only {exact} of {sends} sends matched exactly"
+    );
+    assert!(remote >= 4, "only {remote} remote updates replayed");
 }

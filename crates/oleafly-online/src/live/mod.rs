@@ -2,6 +2,7 @@ pub mod doc;
 pub mod format;
 #[cfg(test)]
 mod harness;
+pub mod history_ot;
 #[cfg(test)]
 mod tests;
 
