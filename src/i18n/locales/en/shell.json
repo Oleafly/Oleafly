@@ -561,7 +561,7 @@
       },
       "glossaries-index": {
         "title": "Glossary or index tool",
-        "detail": "glossaries and makeindex need an extra run of makeindex or xindy, which the built-in engine doesn't do."
+        "detail": "glossaries and makeindex need an extra run of makeindex, xindy or bib2gls, which the built-in engine doesn't do."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref is set to the pdfTeX driver",

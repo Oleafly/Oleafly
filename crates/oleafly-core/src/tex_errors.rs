@@ -501,6 +501,7 @@ pub fn parse_tex_log_errors(log: &str) -> Vec<CompileError> {
     out.extend(lost_characters.warning(&lines));
     out.extend(compiler_crash_error(&lines));
     out.extend(script_engine_error(&lines));
+    out.extend(latexmk_startup_error(&lines));
     out.extend(format_file_error(&lines));
     out.extend(crate::tex_engine_notices::font_download_error(&lines));
     crate::tex_engine_notices::point_to_bundled_fonts(&mut out, &lines);
@@ -520,7 +521,7 @@ pub fn parse_tectonic_log_errors(log: &str) -> Vec<CompileError> {
     errors
 }
 
-const LATEXMK_PROGRAMS: [&str; 16] = [
+const LATEXMK_PROGRAMS: [&str; 17] = [
     "pdflatex",
     "xelatex",
     "lualatex",
@@ -537,7 +538,70 @@ const LATEXMK_PROGRAMS: [&str; 16] = [
     "dvipdfmx",
     "xdvipdfmx",
     "makeglossaries",
+    "bib2gls",
 ];
+
+const LATEXMK_PREFIX: &str = "Latexmk: ";
+const LATEXMK_RC_FAILED: &str = "Initialization file '";
+const LATEXMK_GAVE_ERROR: &str = "gave an error:";
+const LATEXMK_RC_MISSING: &str = "RC file [";
+const LATEXMK_UNKNOWN_OPTION: &str = " unknown option";
+const WRAPPER_TRAILER: [&str; 2] = ["runscript.tlu:", ": command failed with exit code "];
+
+pub(crate) fn is_wrapper_trailer(line: &str) -> bool {
+    WRAPPER_TRAILER.iter().all(|part| line.contains(part))
+}
+
+pub fn compiler_output_lines(log: &str) -> Vec<&str> {
+    let mut lines = Vec::new();
+    let mut after_trailer = false;
+    for line in log.lines() {
+        if std::mem::take(&mut after_trailer) {
+            continue;
+        }
+        if is_wrapper_trailer(line) {
+            after_trailer = true;
+            continue;
+        }
+        lines.push(line);
+    }
+    lines
+}
+
+fn latexmk_stop_message(lines: &[&str], header: usize) -> Option<String> {
+    let message: Vec<&str> = lines[header + 1..]
+        .iter()
+        .map(|line| line.trim())
+        .take_while(|line| {
+            !line.is_empty() && !line.starts_with(LATEXMK_PREFIX) && !is_wrapper_trailer(line)
+        })
+        .collect();
+    (!message.is_empty()).then(|| message.join(" "))
+}
+
+fn latexmk_startup_error(lines: &[&str]) -> Option<CompileError> {
+    let message = lines.iter().enumerate().find_map(|(index, line)| {
+        let rest = line.trim().strip_prefix(LATEXMK_PREFIX)?;
+        if rest.starts_with(LATEXMK_RC_FAILED) && rest.ends_with(LATEXMK_GAVE_ERROR) {
+            return latexmk_stop_message(lines, index);
+        }
+        (rest.starts_with(LATEXMK_RC_MISSING) || rest.ends_with(LATEXMK_UNKNOWN_OPTION))
+            .then(|| rest.to_owned())
+    })?;
+    let message = if message.ends_with(['.', '!', '?']) {
+        message
+    } else {
+        format!("{message}.")
+    };
+    Some(CompileError {
+        message: message.clone(),
+        kind: "error".into(),
+        explanation: Some(format!("latexmk stopped before LaTeX started, so nothing was compiled. It said: {message} Your document didn't cause this. Oleafly passed latexmk a setting it couldn't use, so please report it and attach the log.")),
+        code: Some("tex.latexmk_stopped".into()),
+        params: BTreeMap::from([("line".to_owned(), message)]),
+        ..Default::default()
+    })
+}
 
 pub fn latexmk_programs_run(output: &str) -> Vec<String> {
     let mut programs: Vec<String> = Vec::new();
@@ -756,6 +820,76 @@ pub fn resolve_extensionless_inputs(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const WINDOWS_RC_FAILURE_LOG: &str = concat!(
+        "Latexmk: Initialization file './.oleafly/build/.oleafly-latexmkrc' gave an error:\n",
+        "     Unterminated \\g... pattern in regex; marked by <-- HERE in m/^\\g <-- HERE lossaryentry/ at (eval 14) line 41.\n",
+        "\n",
+        "Latexmk: Stopping because of problem with rc file\n",
+        "C:\\texlive\\2026\\bin\\windows\\runscript.tlu:933: command failed with exit code 255:\n",
+        "perl.exe c:\\texlive\\2026\\texmf-dist\\scripts\\latexmk\\latexmk.pl -norc -shell-restricted -lualatex -r ./.oleafly/build/.oleafly-latexmkrc -interaction=nonstopmode -synctex=1 -outdir=./.oleafly/build -jobname=_oleafly_entry -f ./template.tex\n",
+    );
+
+    #[test]
+    fn a_windows_rc_failure_names_the_perl_error_and_not_the_wrapper() {
+        let errors = parse_tex_log_errors(WINDOWS_RC_FAILURE_LOG);
+        assert_eq!(errors.len(), 1, "{errors:?}");
+        assert_eq!(errors[0].kind, "error");
+        assert_eq!(errors[0].code.as_deref(), Some("tex.latexmk_stopped"));
+        assert_eq!(
+            errors[0].params["line"],
+            "Unterminated \\g... pattern in regex; marked by <-- HERE in m/^\\g <-- HERE lossaryentry/ at (eval 14) line 41."
+        );
+        let lines = compiler_output_lines(WINDOWS_RC_FAILURE_LOG);
+        assert!(lines
+            .iter()
+            .all(|line| !line.contains("runscript.tlu") && !line.starts_with("perl.exe")));
+        assert_eq!(
+            lines.last().unwrap().trim(),
+            "Latexmk: Stopping because of problem with rc file"
+        );
+        assert!(
+            crate::compile_log::parse_latex_log(WINDOWS_RC_FAILURE_LOG, None)
+                .iter()
+                .all(|diagnostic| !diagnostic
+                    .file
+                    .as_deref()
+                    .is_some_and(|file| file.contains("runscript.tlu")))
+        );
+    }
+
+    #[test]
+    fn every_latexmk_startup_failure_gets_the_startup_card() {
+        for (log, line) in [
+            (
+                "Latexmk: Initialization file './.oleafly/build/.oleafly-latexmkrc' gave an error:\n     syntax error at ./.oleafly/build/.oleafly-latexmkrc line 3, near \"}\"\n     Execution aborted.\n\nLatexmk: Stopping because of problem with rc file\n",
+                "syntax error at ./.oleafly/build/.oleafly-latexmkrc line 3, near \"}\" Execution aborted.",
+            ),
+            (
+                "Latexmk: RC file [./.oleafly/build/.oleafly-latexmkrc] does not exist\n",
+                "RC file [./.oleafly/build/.oleafly-latexmkrc] does not exist.",
+            ),
+            (
+                "Latexmk: -bogus unknown option\nLatexmk: Bad options specified\nUse\n   latexmk -help\nto get usage information\n",
+                "-bogus unknown option.",
+            ),
+        ] {
+            let errors = parse_tex_log_errors(log);
+            assert_eq!(errors.len(), 1, "{log}");
+            assert_eq!(errors[0].code.as_deref(), Some("tex.latexmk_stopped"));
+            assert_eq!(errors[0].params["line"], line);
+        }
+        assert!(parse_tex_log_errors(
+            "Latexmk: This is Latexmk, John Collins\nLatexmk: All targets () are up-to-date\n"
+        )
+        .is_empty());
+    }
+
+    #[test]
+    fn a_tool_run_by_oleaflys_own_rules_is_seen_as_run_by_latexmk() {
+        let output = "Running 'bib2gls --tex-encoding UTF-8 --group --dir .oleafly/build/ _oleafly_entry'\nRunning 'makeindex -s _oleafly_entry.ist -t _oleafly_entry.glg -o _oleafly_entry.gls _oleafly_entry.glo'\n";
+        assert_eq!(latexmk_programs_run(output), ["bib2gls", "makeindex"]);
+    }
 
     #[test]
     fn a_fatal_biber_syntax_error_in_engine_output_is_a_coded_error_on_the_bib_file() {

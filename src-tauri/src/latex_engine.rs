@@ -191,39 +191,19 @@ async fn spawn_tex_utility(program: &Path, args: &[String]) -> Result<SpawnedUti
 }
 
 #[cfg(any(windows, test))]
-fn is_command_script(program: &Path) -> bool {
-    program.extension().is_some_and(|extension| {
-        extension.eq_ignore_ascii_case("bat") || extension.eq_ignore_ascii_case("cmd")
-    })
-}
-
-#[cfg(any(windows, test))]
 fn script_command_line(program: &Path, args: &[String]) -> Result<String, String> {
-    let program = program.to_string_lossy().into_owned();
-    for value in std::iter::once(&program).chain(args) {
-        if value.contains('"') || value.contains('%') {
-            return Err(format!(
-                "refusing to pass {value} to a Windows command script"
-            ));
-        }
-    }
-    let mut line = String::from("\"\"");
-    line.push_str(&program);
-    line.push('"');
-    for arg in args {
-        line.push_str(" \"");
-        line.push_str(arg);
-        line.push('"');
-    }
-    line.push('"');
-    Ok(line)
+    let words: Vec<String> = std::iter::once(program.to_string_lossy().into_owned())
+        .chain(args.iter().cloned())
+        .collect();
+    oleafly_sandbox::cmdline::quoted_cmd_words(&words)
+        .map_err(|value| format!("refusing to pass {value} to a Windows command script"))
 }
 
 fn tex_utility_command(program: &Path, args: &[String]) -> Result<tokio::process::Command, String> {
     use std::process::Stdio;
 
     #[cfg(windows)]
-    let mut command = if is_command_script(program) {
+    let mut command = if oleafly_core::engine_spec::is_windows_batch_script(program) {
         let line = script_command_line(program, args)?;
         let mut command = tokio::process::Command::new("cmd.exe");
         command
@@ -3581,13 +3561,6 @@ mod tests {
 
     #[test]
     fn a_windows_tlmgr_script_runs_through_the_command_interpreter() {
-        assert!(is_command_script(Path::new(
-            "C:\\texlive\\2025\\bin\\windows\\tlmgr.bat"
-        )));
-        assert!(is_command_script(Path::new("C:\\tools\\TLMGR.CMD")));
-        assert!(!is_command_script(Path::new("C:\\texlive\\bin\\tlmgr.exe")));
-        assert!(!is_command_script(Path::new("/Library/TeX/texbin/tlmgr")));
-
         let line = script_command_line(
             Path::new("C:\\Program Files\\texlive\\2025\\bin\\windows\\tlmgr.bat"),
             &[
@@ -3606,7 +3579,7 @@ mod tests {
         assert!(line.starts_with("\"\""));
         assert!(line.ends_with("\"\""));
 
-        for hostile in [r#"a"b"#, "%PATH%"] {
+        for hostile in [r#"a"b"#, "%PATH%", r"C:\texmf\", "two\nlines"] {
             assert!(
                 script_command_line(Path::new("C:\\tex\\tlmgr.bat"), &[hostile.into()]).is_err(),
                 "accepted {hostile}"

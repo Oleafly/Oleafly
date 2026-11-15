@@ -561,7 +561,7 @@
       },
       "glossaries-index": {
         "title": "Sanasto- tai hakemistotyökalu",
-        "detail": "glossaries ja makeindex tarvitsevat ylimääräisen makeindex- tai xindy-ajon, jota sisäänrakennettu moottori ei tee."
+        "detail": "glossaries ja makeindex tarvitsevat ylimääräisen makeindex-, xindy- tai bib2gls-ajon, jota sisäänrakennettu moottori ei tee."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref on asetettu käyttämään pdfTeX-ajuria",

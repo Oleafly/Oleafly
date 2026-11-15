@@ -1146,11 +1146,15 @@ async fn convert_staged_html(
     staged: StagedHtml,
     job: &HtmlConversion<'_>,
 ) -> Result<TypstHtmlNotes, CliError> {
+    let root = oleafly_core::plain_path(&staged.run.root);
     let source = ExportSource {
         file_name: staged.html.to_string_lossy().into_owned(),
-        resource_path: oleafly_core::plain_path(&staged.run.root)
-            .to_string_lossy()
-            .into_owned(),
+        resources: oleafly_core::pandoc_search_path(
+            job.staging,
+            &root,
+            std::slice::from_ref(&root),
+        )
+        .map_err(CliError::from)?,
     };
     let mut pandoc_args = export_args(job.format, &source, job.output, None)
         .ok_or_else(|| CliError::internal(format!("{} has no Pandoc writer.", job.format)))?;
@@ -1162,7 +1166,7 @@ async fn convert_staged_html(
     }
     prepare_html(&staged.html).map_err(export_tool_error)?;
     let (log, code) = CliToolRunner
-        .run(job.pandoc, &pandoc_args, job.staging, &[])
+        .run(job.pandoc, &pandoc_args, job.staging, &source.variables())
         .await
         .map_err(export_tool_error)?;
     if code != Some(0) {

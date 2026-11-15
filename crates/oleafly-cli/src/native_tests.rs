@@ -520,7 +520,7 @@ fn only_a_failed_latexmk_build_blames_a_bibliography_path_bibtex_cannot_follow()
         )
         .unwrap();
         let (mut log, mut errors) = (String::new(), Vec::new());
-        apply_tex_output_notes(&build, out.path(), succeeded, &mut log, &mut errors);
+        apply_tex_output_notes(&build, out.path(), succeeded, true, &mut log, &mut errors);
         assert_eq!(
             errors
                 .iter()
@@ -528,7 +528,23 @@ fn only_a_failed_latexmk_build_blames_a_bibliography_path_bibtex_cannot_follow()
             expected,
             "{engine:?} succeeded={succeeded}"
         );
+        let (mut log, mut errors) = (String::new(), Vec::new());
+        apply_tex_output_notes(&build, out.path(), succeeded, false, &mut log, &mut errors);
+        assert!(
+            errors.is_empty(),
+            "a .blg from an earlier build blamed a run where TeX never started: {errors:?}"
+        );
     }
+}
+
+#[test]
+fn a_latexmk_startup_failure_is_an_error_and_not_an_empty_list() {
+    let errors = parse_errors(
+        Engine::Latexmk,
+        "Latexmk: Initialization file './.oleafly/build/.oleafly-latexmkrc' gave an error:\n     Unterminated \\g... pattern in regex\n\nLatexmk: Stopping because of problem with rc file\n",
+    );
+    assert_eq!(errors.len(), 1, "{errors:?}");
+    assert_eq!(errors[0].code.as_deref(), Some("tex.latexmk_stopped"));
 }
 
 #[test]
@@ -550,6 +566,21 @@ fn a_nested_latexmk_build_keeps_root_relative_paths_working() {
     let command = compiler
         .command(&build, BuildOptions::default(), true)
         .unwrap();
+    let rc_at = command
+        .arguments
+        .iter()
+        .position(|arg| arg == "-r")
+        .unwrap()
+        + 1;
+    let rc = command.working_directory.join(&command.arguments[rc_at]);
+    assert_eq!(
+        std::fs::read_to_string(&rc).unwrap(),
+        engine_spec::latexmk_rc(TexFlavor::Pdflatex)
+    );
+    assert!(command
+        .arguments
+        .iter()
+        .all(|arg| arg != "-e" && !arg.to_string_lossy().contains(['\\', '"'])));
     let variables = environment(&command);
     let root = build.project_root().file_name().unwrap().to_string_lossy();
     assert!(

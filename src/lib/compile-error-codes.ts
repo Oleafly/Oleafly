@@ -133,6 +133,23 @@ const EXPLANATIONS: Readonly<Record<string, Explain>> = {
       command: params.command ?? "",
     }),
   "tex.latexmk_biber_mismatch": () => i18n.t(($) => $.errors.tex.latexmk_biber_mismatch),
+  "tex.latexmk_stopped": (params) =>
+    i18n.t(($) => $.errors.tex.latexmk_stopped, { line: params.line ?? "" }),
+  "tex.bib2gls_needs_java": () => i18n.t(($) => $.errors.tex.bib2gls_needs_java),
+  "tex.glossary_resources_not_built": () =>
+    i18n.t(($) => $.errors.tex.glossary_resources_not_built),
+  "tex.glossary_resources_need_latexmk": () =>
+    i18n.t(($) => $.errors.tex.glossary_resources_need_latexmk),
+  "tex.compiler_differs_from_latexmkrc": (params) =>
+    i18n.t(($) => $.errors.tex.compiler_differs_from_latexmkrc, {
+      declared: params.declared ?? "",
+      compiler: params.compiler ?? "",
+    }),
+  "tex.compiler_differs_from_magic_comment": (params) =>
+    i18n.t(($) => $.errors.tex.compiler_differs_from_magic_comment, {
+      declared: params.declared ?? "",
+      compiler: params.compiler ?? "",
+    }),
   "tex.bibtex_folder_brace": () => i18n.t(($) => $.errors.tex.bibtex_folder_brace),
   "tex.missing_characters": (params) =>
     i18n.t(($) => $.errors.tex.missing_characters, { sample: params.sample ?? "" }),

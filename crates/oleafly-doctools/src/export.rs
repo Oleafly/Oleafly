@@ -245,14 +245,15 @@ pub fn export_warnings(log: &str, format: &str) -> Vec<DocError> {
     warnings
 }
 
-pub fn export_search_path(root: &Path, main_doc: &str) -> (String, String) {
+pub fn export_search_path(
+    scratch: &Path,
+    root: &Path,
+    main_doc: &str,
+) -> std::io::Result<(oleafly_core::PandocResourcePath, String)> {
     let root = oleafly_core::plain_path(root);
     let dirs = oleafly_core::document_search_folders(&root, Path::new(main_doc));
-    let main_dir = dirs[0].clone();
-    let resource_path = std::env::join_paths(&dirs)
-        .map(|joined| joined.to_string_lossy().into_owned())
-        .unwrap_or_else(|_| ".".into());
-    let relative = main_dir.strip_prefix(&root).ok().and_then(|relative| {
+    let resources = oleafly_core::pandoc_search_path(scratch, &root, &dirs)?;
+    let relative = dirs[0].strip_prefix(&root).ok().and_then(|relative| {
         relative
             .components()
             .map(|component| match component {
@@ -267,7 +268,7 @@ pub fn export_search_path(root: &Path, main_doc: &str) -> (String, String) {
         }
         _ => ".".into(),
     };
-    (resource_path, texinputs)
+    Ok((resources, texinputs))
 }
 
 pub fn is_markdown_document(main_doc: &str) -> bool {
@@ -344,7 +345,27 @@ pub async fn run_export_with_media(
     job: ExportJob<'_>,
     media: Option<SourceMedia<'_>>,
 ) -> Result<Vec<DocError>, DocError> {
-    let (resource_path, texinputs) = export_search_path(job.root, job.main_doc);
+    let temp_base = job
+        .temp_dir
+        .map_or_else(std::env::temp_dir, Path::to_path_buf);
+    let folders = oleafly_core::document_search_folders(
+        &oleafly_core::plain_path(job.root),
+        Path::new(job.main_doc),
+    );
+    let scratch = oleafly_core::pandoc_search_path_needs_defaults(&folders)
+        .then(|| {
+            tempfile::Builder::new()
+                .prefix("oleafly-export-")
+                .tempdir_in(&temp_base)
+        })
+        .transpose()?;
+    let (resources, texinputs) = export_search_path(
+        scratch
+            .as_ref()
+            .map_or(temp_base.as_path(), |dir| dir.path()),
+        job.root,
+        job.main_doc,
+    )?;
     let file_name = match &media {
         Some(_) => oleafly_core::plain_path(job.root)
             .join(job.main_doc)
@@ -354,7 +375,7 @@ pub async fn run_export_with_media(
     };
     let source = ExportSource {
         file_name,
-        resource_path,
+        resources,
     };
     let renders = export_renders_citations(job.format);
     let staged = export_uses_filter(job.format, job.main_doc);
@@ -369,9 +390,7 @@ pub async fn run_export_with_media(
         let build_dir = job.build_dir.clone();
         let staging_dir = job.staging_dir.clone();
         let format = job.format.to_string();
-        let temp_dir = job
-            .temp_dir
-            .map_or_else(std::env::temp_dir, Path::to_path_buf);
+        let temp_dir = temp_base.clone();
         tokio::task::spawn_blocking(move || -> Result<_, DocError> {
             let filter = staged
                 .then(|| {
@@ -452,6 +471,7 @@ pub async fn run_export_with_media(
         ("TEXINPUTS".to_string(), texinputs),
         (PROJECT_IMAGES_VARIABLE.to_string(), "1".to_string()),
     ];
+    variables.extend(source.variables());
     if let Some(typst) = &job.typst {
         variables.push((
             oleafly_core::engine_spec::MARKDOWN_TYPST_VARIABLE.to_string(),
@@ -487,16 +507,84 @@ pub async fn run_export_with_media(
 mod tests {
     use super::*;
 
+    fn resource_argument(folders: &[PathBuf]) -> std::ffi::OsString {
+        let mut argument = std::ffi::OsString::from("--resource-path=");
+        argument.push(std::env::join_paths(folders).unwrap());
+        argument
+    }
+
     #[test]
     fn search_paths_list_the_main_folder_first() {
+        let scratch = tempfile::tempdir().unwrap();
         let root = Path::new("/p");
-        let (resources, texinputs) = export_search_path(root, "paper/main.tex");
-        // The platform's own list: `;` and backslashes on Windows.
-        let expected = std::env::join_paths([root.join("paper"), root.to_path_buf()]).unwrap();
-        assert_eq!(resources, expected.to_string_lossy());
-        // Pandoc splits TEXINPUTS on ':' on every platform.
+        let (resources, texinputs) =
+            export_search_path(scratch.path(), root, "paper/main.tex").unwrap();
+        assert_eq!(
+            resources.argument,
+            resource_argument(&[root.join("paper"), root.to_path_buf()])
+        );
         assert_eq!(texinputs, "paper:.");
-        assert_eq!(export_search_path(root, "main.tex").1, ".");
+        for (main_doc, expected) in [("a/b/main.tex", "a/b:."), ("main.tex", ".")] {
+            let (_, texinputs) = export_search_path(scratch.path(), root, main_doc).unwrap();
+            assert_eq!(texinputs, expected, "{main_doc}");
+        }
+        #[cfg(unix)]
+        assert_eq!(
+            export_search_path(scratch.path(), root, "odd:name/main.tex")
+                .unwrap()
+                .1,
+            "."
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn search_paths_drop_the_verbatim_prefix() {
+        let scratch = tempfile::tempdir().unwrap();
+        for (root, plain) in [
+            (r"\\?\UNC\server\share\proj", r"\\server\share\proj"),
+            (r"\\?\C:\Users\x\proj", r"C:\Users\x\proj"),
+        ] {
+            let plain = Path::new(plain);
+            let (resources, _) =
+                export_search_path(scratch.path(), Path::new(root), "paper/main.tex").unwrap();
+            assert_eq!(
+                resources.argument,
+                resource_argument(&[plain.join("paper"), plain.to_path_buf()])
+            );
+            let (resources, _) =
+                export_search_path(scratch.path(), Path::new(root), "main.tex").unwrap();
+            assert_eq!(
+                resources.argument,
+                resource_argument(&[plain.to_path_buf()])
+            );
+        }
+    }
+
+    #[test]
+    fn a_project_folder_named_with_the_search_path_separator_goes_through_a_defaults_file() {
+        let scratch = tempfile::tempdir().unwrap();
+        let separator = if cfg!(windows) { ';' } else { ':' };
+        let root = scratch.path().join(format!("Thesis 2024{separator}25"));
+        let (resources, _) = export_search_path(scratch.path(), &root, "paper/main.md").unwrap();
+        let defaults = resources
+            .argument
+            .to_str()
+            .and_then(|argument| argument.strip_prefix("--defaults="))
+            .map(PathBuf::from)
+            .unwrap_or_else(|| panic!("{:?}", resources.argument));
+        let written: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(defaults).unwrap()).unwrap();
+        assert_eq!(
+            written,
+            serde_json::json!({
+                "resource-path": [
+                    root.join("paper").to_str().unwrap(),
+                    root.to_str().unwrap(),
+                ]
+            })
+        );
+        assert_eq!(resources.variable, None);
     }
 
     #[test]

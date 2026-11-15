@@ -561,7 +561,7 @@
       },
       "glossaries-index": {
         "title": "Terimler sözlüğü veya dizin aracı",
-        "detail": "glossaries ve makeindex, yerleşik motorun yapmadığı ek bir makeindex veya xindy çalıştırması gerektirir."
+        "detail": "glossaries ve makeindex, yerleşik motorun yapmadığı ek bir makeindex, xindy veya bib2gls çalıştırması gerektirir."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref pdfTeX sürücüsüne ayarlı",

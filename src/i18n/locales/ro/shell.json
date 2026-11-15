@@ -562,7 +562,7 @@
       },
       "glossaries-index": {
         "title": "Instrument pentru glosar sau index",
-        "detail": "glossaries și makeindex au nevoie de o rulare suplimentară a makeindex sau xindy, pe care motorul inclus nu o face."
+        "detail": "glossaries și makeindex au nevoie de o rulare suplimentară a makeindex, xindy sau bib2gls, pe care motorul inclus nu o face."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref este setat pe driverul pdfTeX",

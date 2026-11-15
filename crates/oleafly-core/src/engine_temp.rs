@@ -107,63 +107,74 @@ impl EngineScratch {
         project: &Path,
         folders: &[PathBuf],
     ) -> io::Result<PandocResourcePath> {
-        let splits = |folder: &PathBuf| {
-            folder
-                .as_os_str()
-                .as_encoded_bytes()
-                .contains(&SEARCH_PATH_SEPARATOR)
-        };
-        if !folders.iter().any(splits) {
-            let mut argument = OsString::from("--resource-path=");
-            for (index, folder) in folders.iter().enumerate() {
-                if index > 0 {
-                    argument.push(char::from(SEARCH_PATH_SEPARATOR).to_string());
-                }
-                argument.push(folder);
-            }
-            return Ok(PandocResourcePath {
-                argument,
-                variable: None,
-            });
-        }
-        let literal = project.to_str().filter(|text| !text.contains("${"));
-        let entry = literal.map_or_else(
-            || format!("${{{PANDOC_RESOURCE_PATH_VARIABLE}}}"),
-            str::to_owned,
-        );
-        let entries: Vec<String> = folders
-            .iter()
-            .filter_map(|folder| {
-                let relative = folder.strip_prefix(project).ok()?;
-                if relative.as_os_str().is_empty() {
-                    return Some(entry.clone());
-                }
-                let relative = relative.to_str().filter(|text| !text.contains("${"))?;
-                Some(
-                    Path::new(&entry)
-                        .join(relative)
-                        .to_string_lossy()
-                        .into_owned(),
-                )
-            })
-            .collect();
-        let defaults = self.path().join(PANDOC_DEFAULTS_FILE);
-        std::fs::write(
-            &defaults,
-            serde_json::json!({ "resource-path": entries }).to_string(),
-        )?;
-        let mut argument = OsString::from("--defaults=");
-        argument.push(&defaults);
-        Ok(PandocResourcePath {
-            argument,
-            variable: literal.is_none().then(|| {
-                (
-                    PANDOC_RESOURCE_PATH_VARIABLE,
-                    project.as_os_str().to_owned(),
-                )
-            }),
-        })
+        pandoc_search_path(self.path(), project, folders)
     }
+}
+
+pub fn pandoc_search_path_needs_defaults(folders: &[PathBuf]) -> bool {
+    folders.iter().any(|folder| {
+        folder
+            .as_os_str()
+            .as_encoded_bytes()
+            .contains(&SEARCH_PATH_SEPARATOR)
+    })
+}
+
+pub fn pandoc_search_path(
+    scratch: &Path,
+    project: &Path,
+    folders: &[PathBuf],
+) -> io::Result<PandocResourcePath> {
+    if !pandoc_search_path_needs_defaults(folders) {
+        let mut argument = OsString::from("--resource-path=");
+        for (index, folder) in folders.iter().enumerate() {
+            if index > 0 {
+                argument.push(char::from(SEARCH_PATH_SEPARATOR).to_string());
+            }
+            argument.push(folder);
+        }
+        return Ok(PandocResourcePath {
+            argument,
+            variable: None,
+        });
+    }
+    let literal = project.to_str().filter(|text| !text.contains("${"));
+    let entry = literal.map_or_else(
+        || format!("${{{PANDOC_RESOURCE_PATH_VARIABLE}}}"),
+        str::to_owned,
+    );
+    let entries: Vec<String> = folders
+        .iter()
+        .filter_map(|folder| {
+            let relative = folder.strip_prefix(project).ok()?;
+            if relative.as_os_str().is_empty() {
+                return Some(entry.clone());
+            }
+            let relative = relative.to_str().filter(|text| !text.contains("${"))?;
+            Some(
+                Path::new(&entry)
+                    .join(relative)
+                    .to_string_lossy()
+                    .into_owned(),
+            )
+        })
+        .collect();
+    let defaults = scratch.join(PANDOC_DEFAULTS_FILE);
+    std::fs::write(
+        &defaults,
+        serde_json::json!({ "resource-path": entries }).to_string(),
+    )?;
+    let mut argument = OsString::from("--defaults=");
+    argument.push(&defaults);
+    Ok(PandocResourcePath {
+        argument,
+        variable: literal.is_none().then(|| {
+            (
+                PANDOC_RESOURCE_PATH_VARIABLE,
+                project.as_os_str().to_owned(),
+            )
+        }),
+    })
 }
 
 pub fn document_search_folders(project: &Path, main_document: &Path) -> Vec<PathBuf> {

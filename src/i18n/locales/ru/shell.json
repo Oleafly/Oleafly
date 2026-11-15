@@ -563,7 +563,7 @@
       },
       "glossaries-index": {
         "title": "Инструмент глоссария или указателя",
-        "detail": "glossaries и makeindex требуют дополнительного запуска makeindex или xindy, а встроенный движок этого не делает."
+        "detail": "glossaries и makeindex требуют дополнительного запуска makeindex, xindy или bib2gls, а встроенный движок этого не делает."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref настроен на драйвер pdfTeX",

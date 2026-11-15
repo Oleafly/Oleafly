@@ -401,6 +401,22 @@ fn existing_reference(
         .find(|candidate| root.join(candidate).is_file())
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DeclaredFlavorSource {
+    MagicComment,
+    Latexmkrc,
+}
+
+pub fn declared_tex_flavor(root: &Path, main: &Path) -> Option<(TexFlavor, DeclaredFlavorSource)> {
+    let head = flavor_source(main).unwrap_or_default();
+    if let Some(flavor) = tex_program_flavor(&head) {
+        return Some((flavor, DeclaredFlavorSource::MagicComment));
+    }
+    let relative = main.strip_prefix(root).ok()?;
+    let directory = crate::slash_path(relative.parent().unwrap_or(relative));
+    rc_tex_flavor(root, &directory).map(|flavor| (flavor, DeclaredFlavorSource::Latexmkrc))
+}
+
 pub fn project_tex_flavor(root: &Path, main: &Path) -> TexFlavor {
     let head = flavor_source(main).unwrap_or_default();
     if let Some(flavor) = tex_program_flavor(&head).or_else(|| source_tex_flavor(&head)) {

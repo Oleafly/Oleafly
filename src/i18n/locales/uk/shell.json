@@ -563,7 +563,7 @@
       },
       "glossaries-index": {
         "title": "Інструмент глосарія чи покажчика",
-        "detail": "glossaries і makeindex потребують додаткового запуску makeindex чи xindy, чого вбудований рушій не робить."
+        "detail": "glossaries і makeindex потребують додаткового запуску makeindex, xindy чи bib2gls, чого вбудований рушій не робить."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref налаштовано на драйвер pdfTeX",

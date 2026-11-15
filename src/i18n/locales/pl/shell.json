@@ -563,7 +563,7 @@
       },
       "glossaries-index": {
         "title": "Narzędzie do glosariusza lub indeksu",
-        "detail": "glossaries i makeindex wymagają dodatkowego uruchomienia makeindex lub xindy, czego wbudowany silnik nie robi."
+        "detail": "glossaries i makeindex wymagają dodatkowego uruchomienia makeindex, xindy lub bib2gls, czego wbudowany silnik nie robi."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref ma ustawiony sterownik pdfTeX",

@@ -560,7 +560,7 @@
       },
       "glossaries-index": {
         "title": "Công cụ thuật ngữ hoặc chỉ mục",
-        "detail": "glossaries và makeindex cần chạy thêm makeindex hoặc xindy, điều mà engine tích hợp sẵn không làm."
+        "detail": "glossaries và makeindex cần chạy thêm makeindex, xindy hoặc bib2gls, điều mà engine tích hợp sẵn không làm."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref được đặt sang driver pdfTeX",
