@@ -1083,7 +1083,8 @@
       "help": "Help & About",
       "integrations": "Integrations",
       "shortcuts": "Keyboard Shortcuts",
-      "research": "Research"
+      "research": "Research",
+      "logs": "Logs"
     },
     "search": {
       "empty": "No settings match",
@@ -1100,7 +1101,8 @@
         "help": "about, version, updates, changelog, what's new, documentation, support, community, Discord, license, crash report",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git hosting, Computer Use, desktop apps, Cua, MCP, citations, accounts, connections",
         "shortcuts": "keybindings, hotkeys, keys, keyboard",
-        "research": "research tasks budget notifications keep awake experiments runs"
+        "research": "research tasks budget notifications keep awake experiments runs",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Search settings",
       "results_one": "{{count}} section matches",

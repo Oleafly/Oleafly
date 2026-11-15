@@ -28,6 +28,7 @@ import {
   HardDriveDownload,
   Keyboard,
   LifeBuoy,
+  Logs,
   Palette,
   RotateCcw,
   RefreshCw,
@@ -65,6 +66,7 @@ import { ShellCommandRow } from "@/components/settings/ShellCommandRow";
 import { SystemIntegrationSection } from "@/components/settings/SystemIntegrationSection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ShortcutsSection } from "@/components/settings/ShortcutsSection";
+import { LogsSection } from "@/components/settings/LogsSection";
 import {
   Select,
   SelectContent,
@@ -286,6 +288,13 @@ const NAV: { id: Section; label: string; icon: typeof Palette }[] = [
       return i18n.t(($) => $.shell.settings.nav.experimentation);
     },
     icon: FlaskConical,
+  },
+  {
+    id: "logs",
+    get label() {
+      return i18n.t(($) => $.shell.settings.nav.logs);
+    },
+    icon: Logs,
   },
   {
     id: "help",
@@ -884,6 +893,7 @@ export function SettingsModal() {
         <developerSettings.DeveloperSettings />
       ) : null}
 
+      {section === "logs" && <LogsSection />}
       {section === "help" && <HelpSection />}
     </div>
   );

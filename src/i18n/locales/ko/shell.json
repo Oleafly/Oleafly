@@ -1067,7 +1067,8 @@
       "help": "도움말 및 정보",
       "integrations": "연동",
       "shortcuts": "키보드 단축키",
-      "research": "연구"
+      "research": "연구",
+      "logs": "Logs"
     },
     "search": {
       "empty": "일치하는 설정이 없습니다",
@@ -1084,7 +1085,8 @@
         "help": "정보, 버전, 업데이트, 변경 내역, 새로운 기능, 문서, 지원, 커뮤니티, Discord, 라이선스, 충돌 보고서",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git 호스팅, Computer Use, 데스크톱 앱, Cua, MCP, 인용, 계정, 연결",
         "shortcuts": "키 바인딩, 단축키, 핫키, 키, 키보드",
-        "research": "연구 작업 예산 알림 깨어 있음 실험 실행 research tasks"
+        "research": "연구 작업 예산 알림 깨어 있음 실험 실행 research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "설정 검색",
       "results_other": "섹션 {{count}}개가 일치합니다"

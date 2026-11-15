@@ -1099,7 +1099,8 @@
       "help": "Aiuto e informazioni",
       "integrations": "Integrazioni",
       "shortcuts": "Scorciatoie da tastiera",
-      "research": "Ricerca"
+      "research": "Ricerca",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Nessuna impostazione corrisponde",
@@ -1116,7 +1117,8 @@
         "help": "informazioni, versione, aggiornamenti, registro delle modifiche, novità, documentazione, assistenza, supporto, comunità, Discord, licenza, segnalazione di crash",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hosting Git, Computer Use, app desktop, Cua, MCP, citazioni, account, connessioni",
         "shortcuts": "scorciatoie da tastiera, tasti di scelta rapida, tasti, tastiera",
-        "research": "ricerca attività budget notifiche tieni attivo esperimenti esecuzioni research tasks"
+        "research": "ricerca attività budget notifiche tieni attivo esperimenti esecuzioni research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Cerca nelle impostazioni",
       "results_one": "{{count}} sezione corrisponde",

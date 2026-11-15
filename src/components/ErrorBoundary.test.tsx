@@ -6,12 +6,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { i18n } from "@/i18n";
 
 const mocks = vi.hoisted(() => ({
-  appendAppLog: vi.fn(() => Promise.resolve()),
+  logError: vi.fn((_scope: string, _detail: unknown) => Promise.resolve()),
   reportCrashToGithub: vi.fn(() => Promise.resolve()),
   writeText: vi.fn(async (_text: string) => {}),
 }));
 
-vi.mock("@/lib/tauri", () => ({ appendAppLog: mocks.appendAppLog }));
+vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/crash-report", () => ({
   reportCrashToGithub: mocks.reportCrashToGithub,
 }));
@@ -171,7 +171,7 @@ describe("ErrorBoundary crash screen", () => {
   let consoleError: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    mocks.appendAppLog.mockClear();
+    mocks.logError.mockClear();
     mocks.reportCrashToGithub.mockClear();
     mocks.writeText.mockClear();
     mocks.writeText.mockResolvedValue(undefined);
@@ -198,7 +198,7 @@ describe("ErrorBoundary crash screen", () => {
       </ErrorBoundary>,
     );
     expect(screen.getByTestId("quiet")).toBeInTheDocument();
-    expect(mocks.appendAppLog).toHaveBeenCalled();
+    expect(mocks.logError).toHaveBeenCalledWith("UI crash", expect.stringContaining("componentStack:"));
   });
 
   it("copies the diagnostics of a crashed surface", async () => {

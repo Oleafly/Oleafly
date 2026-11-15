@@ -1083,7 +1083,8 @@
       "help": "Ohje ja tietoja",
       "integrations": "Integraatiot",
       "shortcuts": "Pikanäppäimet",
-      "research": "Tutkimus"
+      "research": "Tutkimus",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Ei vastaavia asetuksia",
@@ -1100,7 +1101,8 @@
         "help": "tietoja, versio, päivitykset, muutosloki, mitä uutta, dokumentaatio, ohjeet, tuki, yhteisö, Discord, lisenssi, kaatumisraportti",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-palvelut, Computer Use, työpöytäsovellukset, Cua, MCP, viittaukset, viitteet, tilit, yhteydet",
         "shortcuts": "pikanäppäimet, näppäinyhdistelmät, näppäimet, näppäimistö",
-        "research": "tutkimus tehtävät budjetti ilmoitukset hereillä pito kokeet ajot"
+        "research": "tutkimus tehtävät budjetti ilmoitukset hereillä pito kokeet ajot",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Hae asetuksista",
       "results_one": "{{count}} osio vastaa hakua",

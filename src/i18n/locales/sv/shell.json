@@ -1083,7 +1083,8 @@
       "help": "Hjälp och om",
       "integrations": "Integrationer",
       "shortcuts": "Kortkommandon",
-      "research": "Forskning"
+      "research": "Forskning",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Inga inställningar matchar",
@@ -1100,7 +1101,8 @@
         "help": "om, version, uppdateringar, ändringslogg, nyheter, dokumentation, support, gemenskap, Discord, licens, kraschrapport",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-värdtjänster, Computer Use, skrivbordsappar, Cua, MCP, citeringar, konton, anslutningar",
         "shortcuts": "kortkommandon, snabbtangenter, tangentbindningar, tangenter, tangentbord",
-        "research": "forskning uppgifter budget aviseringar håll vaken experiment körningar"
+        "research": "forskning uppgifter budget aviseringar håll vaken experiment körningar",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Sök i inställningar",
       "results_one": "{{count}} avsnitt matchar",

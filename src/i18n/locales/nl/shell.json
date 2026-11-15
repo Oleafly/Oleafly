@@ -1083,7 +1083,8 @@
       "help": "Help en Over",
       "integrations": "Integraties",
       "shortcuts": "Sneltoetsen",
-      "research": "Onderzoek"
+      "research": "Onderzoek",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Geen instellingen gevonden",
@@ -1100,7 +1101,8 @@
         "help": "over, versie, updates, wijzigingen, releaseopmerkingen, wat is er nieuw, documentatie, ondersteuning, community, Discord, licentie, crashrapport",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-hosting, Computer Use, desktop-apps, Cua, MCP, citaties, accounts, verbindingen",
         "shortcuts": "sneltoetsen, toetscombinaties, toetsen, toetsenbord",
-        "research": "onderzoek taken budget meldingen wakker houden experimenten runs research tasks"
+        "research": "onderzoek taken budget meldingen wakker houden experimenten runs research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Instellingen doorzoeken",
       "results_one": "{{count}} sectie komt overeen",

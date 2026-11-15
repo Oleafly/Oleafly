@@ -1115,7 +1115,8 @@
       "help": "Pomoc i informacje",
       "integrations": "Integracje",
       "shortcuts": "Skróty klawiaturowe",
-      "research": "Badania"
+      "research": "Badania",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Brak pasujących ustawień",
@@ -1132,7 +1133,8 @@
         "help": "o programie, wersja, aktualizacje, lista zmian, co nowego, dokumentacja, pomoc, wsparcie, społeczność, Discord, licencja, raport o awarii",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hosting Git, Computer Use, aplikacje na komputerze, Cua, MCP, cytowania, konta, połączenia",
         "shortcuts": "skróty klawiszowe, skróty, klawisze, klawiatura",
-        "research": "badania zadania budżet powiadomienia nie usypiaj eksperymenty uruchomienia research tasks"
+        "research": "badania zadania budżet powiadomienia nie usypiaj eksperymenty uruchomienia research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Szukaj w ustawieniach",
       "results_one": "{{count}} sekcja pasuje",

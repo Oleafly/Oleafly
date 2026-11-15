@@ -14,7 +14,6 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { appQueryClient } from "@/lib/query";
 import { Toaster } from "@/components/ui/sonner";
 import { ConfirmHost } from "@/components/ui/confirm-host";
-import { appendAppLog } from "@/lib/tauri";
 import { loadDisplayHomes } from "@/lib/display-path";
 import { logError } from "@/lib/log";
 import { installQuitFallback } from "@/lib/quit-flush";
@@ -84,13 +83,10 @@ function currentWindowView(): WindowView {
 
 function installErrorLogging(): void {
   window.addEventListener("unhandledrejection", (event) => {
-    const reason = event.reason;
-    const message = reason?.stack || reason?.message || String(reason);
-    void appendAppLog(`Unhandled promise rejection: ${message}`).catch(() => {});
+    void logError("Unhandled promise rejection", event.reason);
   });
   window.addEventListener("error", (event) => {
-    const message = event.error?.stack || event.message || String(event.error);
-    void appendAppLog(`Uncaught error: ${message}`).catch(() => {});
+    void logError("Uncaught error", event.error ?? event.message);
   });
 }
 
@@ -352,6 +348,5 @@ async function bootstrap(): Promise<void> {
 }
 
 void bootstrap().catch((error) => {
-  const message = error instanceof Error ? error.stack || error.message : String(error);
-  void appendAppLog(`Application bootstrap failed: ${message}`).catch(() => {});
+  void logError("Application bootstrap failed", error);
 });

@@ -1099,7 +1099,8 @@
       "help": "Ajutor și Despre",
       "integrations": "Integrări",
       "shortcuts": "Scurtături de tastatură",
-      "research": "Cercetare"
+      "research": "Cercetare",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Nicio setare nu se potrivește",
@@ -1116,7 +1117,8 @@
         "help": "despre, versiune, actualizări, jurnal de modificări, noutăți, documentație, asistență, ajutor, comunitate, Discord, licență, raport de eroare",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, găzduire Git, Computer Use, aplicații desktop, Cua, MCP, citări, conturi, conexiuni",
         "shortcuts": "scurtături de tastatură, scurtături, combinații de taste, taste, tastatură",
-        "research": "cercetare sarcini buget notificări treaz experimente rulări research tasks"
+        "research": "cercetare sarcini buget notificări treaz experimente rulări research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Caută în setări",
       "results_one": "{{count}} secțiune se potrivește",

@@ -1067,7 +1067,8 @@
       "help": "ヘルプと情報",
       "integrations": "連携",
       "shortcuts": "キーボードショートカット",
-      "research": "研究"
+      "research": "研究",
+      "logs": "Logs"
     },
     "search": {
       "empty": "一致する設定はありません",
@@ -1084,7 +1085,8 @@
         "help": "情報、バージョン、アップデート、更新履歴、変更履歴、新着情報、ドキュメント、サポート、コミュニティ、Discord、ライセンス、クラッシュレポート",
         "integrations": "Zotero、GitHub、GitLab、Gitea、Forgejo、Codeberg、Git ホスティング、Computer Use、デスクトップアプリ、Cua、MCP、引用、アカウント、接続",
         "shortcuts": "キー割り当て、キーバインド、ホットキー、キー、キーボード、ショートカット",
-        "research": "研究 タスク 予算 通知 スリープ 実験 実行 research tasks"
+        "research": "研究 タスク 予算 通知 スリープ 実験 実行 research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "設定を検索",
       "results_other": "{{count}} 件のセクションが一致します"
