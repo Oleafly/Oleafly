@@ -1224,7 +1224,7 @@ fn a_file_another_program_holds_costs_a_flush_one_quick_check() {
         "the held file cost the flush {:?}",
         started.elapsed()
     );
-    assert_eq!(active.tries_of("main.tex"), 2);
+    assert_eq!(active.local.tries_of("main.tex"), 2);
     drop(holder);
     tauri::async_runtime::block_on(active.write_out()).unwrap();
     assert_eq!(
