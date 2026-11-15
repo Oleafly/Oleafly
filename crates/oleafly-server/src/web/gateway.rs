@@ -7,13 +7,13 @@ use axum::extract::{Query, State};
 use axum::http::HeaderMap;
 use axum::response::{IntoResponse, Response};
 use oleafly_collab::comments::CommentMember;
-use oleafly_collab::ot::TextOperation;
 use oleafly_collab_protocol::crypto::b64url_decode;
 use oleafly_collab_protocol::frames::{FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
 use oleafly_collab_protocol::projects::{
     project_role_allows, PresenceState, ProjectAction, ProjectRole, ProjectStatus,
 };
+use oleafly_ot::TextOperation;
 use ring::signature::{Ed25519KeyPair, KeyPair};
 use serde::Deserialize;
 use tokio::sync::mpsc;

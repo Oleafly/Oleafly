@@ -3,10 +3,11 @@ use std::time::Duration;
 use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::BatchId;
+use oleafly_net::reconnect::Reached;
 use tokio::sync::mpsc::{self, UnboundedReceiver, UnboundedSender};
 
 use super::incoming::{next_frame, ready_updates, take_in};
-use super::reconnect::{busy, ending_for_version, refused_version, Exit, Reached};
+use super::reconnect::{busy, ending_for_version, refused_version, Exit};
 use super::snapshot_hint::{hint_snapshot, should_snapshot};
 use super::subscribe::subscribe;
 use super::trust::Refreshed;

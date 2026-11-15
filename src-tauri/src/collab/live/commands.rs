@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use oleafly_collab::editor::DocMessage;
-use oleafly_collab::live::DocSink;
-use oleafly_collab::ot::TextOperation;
+use oleafly_ot::{DocMessage, DocSink, TextOperation};
 use tauri::ipc::Channel;
 
 use super::editor::{doc_change, doc_close, doc_open, presence_leave, presence_set};

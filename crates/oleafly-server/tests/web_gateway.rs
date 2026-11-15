@@ -3,10 +3,10 @@
 mod people;
 mod web_support;
 
-use oleafly_collab::ot::TextOperation;
 use oleafly_collab_protocol::frames::{ClientFrame, ServerFrame};
 use oleafly_collab_protocol::outputs::MAIN_FILE_HEADER;
 use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
+use oleafly_ot::TextOperation;
 use oleafly_server::snapshots::Budget;
 use people::{call, grant, send_frame};
 use reqwest::{Method, StatusCode};

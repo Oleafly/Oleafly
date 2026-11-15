@@ -120,7 +120,7 @@ fn write_renaming(
             match merged {
                 Some(operation) if suggested => live.suggested_operation(&id, &operation)?,
                 None if suggested => {
-                    live.suggested_operation(&id, &oleafly_collab::merge::diff(&current, &text))?
+                    live.suggested_operation(&id, &oleafly_ot::diff(&current, &text))?
                 }
                 Some(operation) => live.local_operation(&id, &operation)?,
                 None => live.local_text(&id, &text)?,
@@ -486,14 +486,13 @@ mod tests {
     use std::time::Duration;
 
     use oleafly_collab::doc::{NodeKind, ProjectDoc};
-    use oleafly_collab::editor::DocMessage;
-    use oleafly_collab::live::{DocSink, OpenedFile};
+    use oleafly_collab::live::OpenedFile;
     use oleafly_collab::materialize;
-    use oleafly_collab::ot::TextOperation;
     use oleafly_collab::sync::{spawn_live, LiveLink, LiveStatus, SharedLive};
     use oleafly_collab::{ServerClient, ServerUrl};
     use oleafly_collab_protocol::ids::{AccountId, DeviceId};
     use oleafly_collab_protocol::projects::ProjectRole;
+    use oleafly_ot::{DocMessage, DocSink, TextOperation};
     use tokio::sync::mpsc;
 
     use super::super::{writer_loop, LiveHost};

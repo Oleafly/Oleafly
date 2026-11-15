@@ -7,10 +7,10 @@ use loro::{
     TextDelta, TreeID, TreeParentId, UpdateOptions, ValueOrContainer, VersionVector, ID,
 };
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, FileId};
+use oleafly_ot::{Component, TextOperation};
 use ring::rand::{SecureRandom, SystemRandom};
 use serde::{Deserialize, Serialize};
 
-use crate::ot::{Component, TextOperation};
 use crate::CollabError;
 
 mod tree;
@@ -671,7 +671,7 @@ impl ProjectDoc {
             Ok(())
         })?;
         for id in &texts {
-            let operation = crate::merge::diff(&rebuilt.text(id)?, &self.text(id)?);
+            let operation = oleafly_ot::diff(&rebuilt.text(id)?, &self.text(id)?);
             if !operation.is_noop()
                 && rebuilt
                     .suggest_operation(id, &operation, author, device, now)
@@ -957,7 +957,7 @@ impl ProjectDoc {
                 Component::Retain(count) => position += count,
                 Component::Insert(inserted) => {
                     text.insert_utf16(position, inserted).map_err(doc_error)?;
-                    position += crate::ot::utf16_len(inserted);
+                    position += oleafly_ot::utf16_len(inserted);
                 }
                 Component::Delete(count) => {
                     text.delete_utf16(position, *count).map_err(doc_error)?;

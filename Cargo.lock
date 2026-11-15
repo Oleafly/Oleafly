@@ -6249,6 +6249,7 @@ dependencies = [
  "oleafly-forge",
  "oleafly-history",
  "oleafly-online",
+ "oleafly-ot",
  "oleafly-research",
  "oleafly-s3",
  "oleafly-sandbox",
@@ -6401,14 +6402,13 @@ version = "0.1.0"
 dependencies = [
  "futures-util",
  "httpdate",
- "hyper-util",
  "loro",
  "oleafly-collab-protocol",
+ "oleafly-net",
+ "oleafly-ot",
  "oleafly-server",
  "reqwest 0.12.28",
  "ring",
- "rustls",
- "rustls-native-certs",
  "serde",
  "serde_json",
  "tempfile",
@@ -6417,7 +6417,6 @@ dependencies = [
  "tokio-tungstenite 0.30.0",
  "unicode-normalization",
  "url",
- "webpki-roots 1.0.10",
 ]
 
 [[package]]
@@ -6546,6 +6545,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "oleafly-net"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "hyper-util",
+ "ring",
+ "rustls",
+ "rustls-native-certs",
+ "thiserror 2.0.20",
+ "tokio",
+ "tokio-tungstenite 0.30.0",
+ "url",
+ "webpki-roots 1.0.10",
+]
+
+[[package]]
 name = "oleafly-online"
 version = "0.1.0"
 dependencies = [
@@ -6566,6 +6581,15 @@ dependencies = [
  "url",
  "zeroize",
  "zip 9.1.3",
+]
+
+[[package]]
+name = "oleafly-ot"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
 ]
 
 [[package]]
@@ -6678,6 +6702,7 @@ dependencies = [
  "loro",
  "oleafly-collab",
  "oleafly-collab-protocol",
+ "oleafly-ot",
  "oleafly-s3",
  "oleafly-server",
  "reqwest 0.12.28",

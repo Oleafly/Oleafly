@@ -323,8 +323,8 @@ fn bring_text(
         if current == ours {
             return Ok(());
         }
-        if let Some(operation) = oleafly_collab::merge::rebase(base, ours, &current) {
-            live.local_operation(id, &operation)?;
+        if let Some(rebased) = oleafly_ot::rebase(base, ours, &current) {
+            live.local_operation(id, &rebased.operation)?;
             return Ok(());
         }
     }

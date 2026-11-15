@@ -9,15 +9,12 @@ use oleafly_collab_protocol::projects::{
     project_role_allows, ProjectAction, ProjectDevice, ProjectRole,
 };
 use oleafly_collab_protocol::snapshots::ProjectPeer;
+use oleafly_ot::{ChannelError, DocMessage, DocSink, EditorChannel, TextOperation};
 use serde::{Deserialize, Serialize};
 
 use crate::devices::{DeviceRegistry, NewDevice};
 use crate::doc::{advance, decode_version, encode_version, DocChanges, ProjectDoc};
-use crate::editor::{ChannelError, DocMessage, EditorChannel};
-use crate::ot::TextOperation;
 use crate::{write_atomic, CollabError};
-
-pub type DocSink = Arc<dyn Fn(DocMessage) + Send + Sync>;
 
 static NEXT_SESSION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
 
@@ -1004,9 +1001,7 @@ impl LiveProject {
             let Some(open) = self.open.get_mut(&id) else {
                 continue;
             };
-            let routed = open
-                .channel
-                .operation_for(&deltas)
+            let routed = crate::loro_text::operation_for(&open.channel, &deltas)
                 .ok()
                 .and_then(|operation| {
                     open.channel
@@ -1742,7 +1737,7 @@ impl LiveProject {
 
     fn suggesting_text(&mut self, id: &str, content: &str) -> Result<bool, CollabError> {
         let current = self.doc.text(id)?;
-        self.suggesting_operation(id, &crate::merge::diff(&current, content))
+        self.suggesting_operation(id, &oleafly_ot::diff(&current, content))
     }
 
     pub fn suggested_operation(

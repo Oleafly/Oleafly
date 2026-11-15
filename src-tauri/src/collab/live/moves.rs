@@ -603,13 +603,11 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use oleafly_collab::doc::ProjectDoc;
-    use oleafly_collab::editor::DocMessage;
-    use oleafly_collab::live::DocSink;
-    use oleafly_collab::ot::TextOperation;
     use oleafly_collab::sync::{spawn_live, LiveLink, LiveStatus, SharedLive};
     use oleafly_collab::{ServerClient, ServerUrl};
     use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
     use oleafly_collab_protocol::projects::ProjectRole;
+    use oleafly_ot::{DocMessage, DocSink, TextOperation};
     use tokio::sync::mpsc;
 
     use super::super::super::disk::{exists_exact, move_path, sha256_hex};

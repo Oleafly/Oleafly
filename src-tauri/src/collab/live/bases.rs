@@ -3,7 +3,7 @@ use std::path::Path;
 
 use oleafly_collab::doc::NodeKind;
 use oleafly_collab::live::LiveProject;
-use oleafly_collab::ot::TextOperation;
+use oleafly_ot::TextOperation;
 
 use crate::collab::disk::{as_text, safe_target, sha256_hex, written_as, DiskState};
 
@@ -69,7 +69,7 @@ pub(super) fn nearest<'a>(
     }
     distinct
         .into_iter()
-        .min_by_key(|candidate| oleafly_collab::merge::distance(candidate, found))
+        .min_by_key(|candidate| oleafly_ot::distance(candidate, found))
 }
 
 pub(super) fn initial_bases(root: &Path, disk: &DiskState, live: &LiveProject) -> WrittenTexts {
@@ -103,5 +103,5 @@ pub(super) fn merged_onto(base: &str, disk: &str, current: &str) -> Option<TextO
     if base == current {
         return None;
     }
-    oleafly_collab::merge::rebase(base, disk, current)
+    oleafly_ot::rebase(base, disk, current).map(|rebased| rebased.operation)
 }

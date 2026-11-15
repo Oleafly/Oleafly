@@ -5,14 +5,13 @@ use std::time::Duration;
 
 use oleafly_collab::comments::{mentions_in, CommentMember};
 use oleafly_collab::doc::{DocChanges, NodeKind, ProjectDoc};
-use oleafly_collab::editor::{ChannelError, EditorChannel};
 use oleafly_collab::materialize;
-use oleafly_collab::ot::TextOperation;
 use oleafly_collab::settings::Settings;
 use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
 use oleafly_collab_protocol::frames::ServerFrame;
 use oleafly_collab_protocol::ids::{AccountId, BatchId, CommentId, DeviceId, SharedProjectId};
 use oleafly_collab_protocol::snapshots::ProjectPeer;
+use oleafly_ot::{ChannelError, EditorChannel, TextOperation};
 use ring::rand::{SecureRandom, SystemRandom};
 use ring::signature::Ed25519KeyPair;
 use serde_json::Value;
@@ -798,9 +797,11 @@ impl RoomDoc {
             let mut broken = Vec::new();
             if let Some(channels) = self.channels.get_mut(file) {
                 for (session, channel) in channels.iter_mut() {
-                    let routed = channel.operation_for(deltas).ok().and_then(|operation| {
-                        channel.remote(operation.clone()).ok().map(|()| operation)
-                    });
+                    let routed = oleafly_collab::loro_text::operation_for(channel, deltas)
+                        .ok()
+                        .and_then(|operation| {
+                            channel.remote(operation.clone()).ok().map(|()| operation)
+                        });
                     match routed {
                         Some(operation) => {
                             let remote = Outgoing::Remote {

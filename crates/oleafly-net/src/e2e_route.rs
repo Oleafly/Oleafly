@@ -15,7 +15,7 @@ pub(crate) fn parse(text: &str) -> Option<(String, SocketAddr)> {
     Some((host, address.trim().parse().ok()?))
 }
 
-pub(crate) fn route_for(host: &str) -> Option<SocketAddr> {
+pub fn route_for(host: &str) -> Option<SocketAddr> {
     matching(ROUTE.as_ref(), host)
 }
 

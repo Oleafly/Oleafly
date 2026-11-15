@@ -1,9 +1,9 @@
 use oleafly_collab::comments::CommentThread;
-use oleafly_collab::ot::TextOperation;
 use oleafly_collab::settings::Settings;
 use oleafly_collab_protocol::ids::{AccountId, CommentId, DeviceId};
 use oleafly_collab_protocol::outputs::{OutputKind, ProjectOutput};
 use oleafly_collab_protocol::projects::ProjectRole;
+use oleafly_ot::TextOperation;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

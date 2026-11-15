@@ -3,12 +3,14 @@ use std::time::Instant;
 
 use loro::{ExportMode, LoroDoc, VersionVector};
 use oleafly_collab::doc::{NodeKind, ProjectDoc};
-use oleafly_collab::live::{DocSink, LiveProject};
+use oleafly_collab::live::LiveProject;
 use oleafly_collab_protocol::projects::ProjectRole;
+use oleafly_ot::testing::Rng;
+use oleafly_ot::DocSink;
 
 use crate::content;
 use crate::measure::Percentiles;
-use crate::typist::{phrase, Rng};
+use crate::typist::phrase;
 
 pub struct Cost {
     pub writers: usize,

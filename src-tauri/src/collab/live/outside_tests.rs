@@ -4,8 +4,8 @@ use std::path::Path;
 use oleafly_collab::doc::{NodeKind, ProjectDoc};
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize;
-use oleafly_collab::ot::{utf16_len, TextOperation};
 use oleafly_collab_protocol::projects::ProjectRole;
+use oleafly_ot::{utf16_len, TextOperation};
 
 use super::super::disk::{sha256_hex, DiskState};
 use super::{apply_local_import, apply_to_disk, merged_onto, read_local_changes, WrittenTexts};

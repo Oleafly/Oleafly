@@ -1,15 +1,17 @@
 use std::collections::VecDeque;
+use std::sync::Arc;
 
-use loro::TextDelta;
 use serde::{Deserialize, Serialize};
 
 use crate::ot::{OtError, TextOperation};
 
 mod pieces;
 
-use pieces::Pieces;
+pub use pieces::{CharWalk, Pieces};
 
 pub const HISTORY_LIMIT: usize = 5_000;
+
+pub type DocSink = Arc<dyn Fn(DocMessage) + Send + Sync>;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
@@ -84,6 +86,10 @@ impl EditorChannel {
         self.text.units()
     }
 
+    pub fn pieces(&self) -> &Pieces {
+        &self.text
+    }
+
     fn record(&mut self, operation: TextOperation) {
         self.history.push_back(operation);
         self.rev += 1;
@@ -121,10 +127,6 @@ impl EditorChannel {
         self.text.apply(&operation)?;
         self.record(operation);
         Ok(())
-    }
-
-    pub fn operation_for(&self, deltas: &[TextDelta]) -> Result<TextOperation, ChannelError> {
-        Ok(self.text.operation_for(deltas)?)
     }
 
     pub fn reset(&mut self, text: String) -> u64 {

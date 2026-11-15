@@ -1486,13 +1486,13 @@ mod tests {
         });
     }
 
-    fn quiet_sink() -> oleafly_collab::live::DocSink {
+    fn quiet_sink() -> oleafly_ot::DocSink {
         Arc::new(|_| {})
     }
 
     fn typed_at_start(live: &mut LiveProject, file: &str, rev: u64) {
         let length = live.doc().text(file).unwrap().encode_utf16().count();
-        let mut operation = oleafly_collab::ot::TextOperation::new();
+        let mut operation = oleafly_ot::TextOperation::new();
         operation.insert("So ").retain(length);
         live.editor_change(file, rev, operation).unwrap();
     }

@@ -63,6 +63,8 @@ for path in \
   crates/oleafly-server/migrations/0018_web_sessions.sql \
   crates/oleafly-collab/src/suggestions.rs \
   crates/oleafly-collab-protocol/src/page.rs \
+  crates/oleafly-ot/src/merge.rs \
+  crates/oleafly-net/src/lib.rs \
   crates/oleafly-s3/src/lib.rs \
   web/src/controller.ts \
   web/index.html \

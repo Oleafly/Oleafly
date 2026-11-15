@@ -860,7 +860,7 @@ mod tests {
     fn replacing_a_file_that_is_open_here_stays_an_edit() {
         run(async {
             let arrived = plan_from(ALICE, "Alice Chen", "Third plan by alice.\n").await;
-            let sink: oleafly_collab::live::DocSink = Arc::new(|_| {});
+            let sink: oleafly_ot::DocSink = Arc::new(|_| {});
             lock(&arrived.active.live)
                 .open_file(&arrived.plan, sink)
                 .unwrap();

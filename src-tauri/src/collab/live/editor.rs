@@ -1,10 +1,10 @@
 use oleafly_collab::doc::NodeKind;
-use oleafly_collab::live::{DocSink, LiveProject};
+use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize;
-use oleafly_collab::ot::TextOperation;
 use oleafly_collab::CollabError;
 use oleafly_collab_protocol::ids::AccountId;
 use oleafly_collab_protocol::projects::PresenceState;
+use oleafly_ot::{DocSink, TextOperation};
 
 use super::payloads::DocOpened;
 use super::session::{active_for, lock, not_live};
@@ -160,8 +160,8 @@ pub fn presence_leave(project_id: &str) {
 mod tests {
     use std::sync::{Arc, Mutex};
 
-    use oleafly_collab::ot::TextOperation;
     use oleafly_collab_protocol::ids::AccountId;
+    use oleafly_ot::TextOperation;
 
     use super::*;
     use crate::collab::live::write::rig::LiveRig;

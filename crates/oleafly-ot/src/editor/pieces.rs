@@ -1,5 +1,3 @@
-use loro::TextDelta;
-
 use crate::ot::{utf16_len, Component, OtError, TextOperation};
 
 const PIECE_BYTES: usize = 4096;
@@ -58,18 +56,18 @@ struct Edit<'a> {
 }
 
 #[derive(Clone, Debug)]
-pub(super) struct Pieces {
+pub struct Pieces {
     pieces: Vec<Piece>,
     units: usize,
     limit: usize,
 }
 
 impl Pieces {
-    pub(super) fn new(text: &str) -> Pieces {
+    pub fn new(text: &str) -> Pieces {
         Pieces::sized(text, PIECE_BYTES)
     }
 
-    fn sized(text: &str, limit: usize) -> Pieces {
+    pub fn sized(text: &str, limit: usize) -> Pieces {
         let pieces = cut(text, limit);
         let units = pieces.iter().map(|piece| piece.units).sum();
         Pieces {
@@ -79,18 +77,18 @@ impl Pieces {
         }
     }
 
-    pub(super) fn units(&self) -> usize {
+    pub fn units(&self) -> usize {
         self.units
     }
 
-    pub(super) fn text(&self) -> String {
+    pub fn text(&self) -> String {
         self.pieces
             .iter()
             .map(|piece| piece.text.as_str())
             .collect()
     }
 
-    pub(super) fn holds(&self, text: &str) -> bool {
+    pub fn holds(&self, text: &str) -> bool {
         let mut rest = text;
         for piece in &self.pieces {
             match rest.strip_prefix(piece.text.as_str()) {
@@ -137,7 +135,7 @@ impl Pieces {
         Ok(passed)
     }
 
-    pub(super) fn apply(&mut self, operation: &TextOperation) -> Result<(), OtError> {
+    pub fn apply(&mut self, operation: &TextOperation) -> Result<(), OtError> {
         if operation.base_len() != self.units {
             return Err(OtError::LengthMismatch);
         }
@@ -232,38 +230,28 @@ impl Pieces {
             .collect();
     }
 
-    // Loro counts a change's retained and deleted spans in characters; the
-    // editor counts UTF-16 units.
-    pub(super) fn operation_for(&self, deltas: &[TextDelta]) -> Result<TextOperation, OtError> {
-        let mut at = Spot::default();
-        let mut passed = 0;
-        let mut operation = TextOperation::new();
-        for delta in deltas {
-            match delta {
-                TextDelta::Retain { retain, .. } => {
-                    let units = self.advance(&mut at, *retain, By::Chars)?;
-                    passed += units;
-                    operation.retain(units);
-                }
-                TextDelta::Insert { insert, .. } => {
-                    operation.insert(insert);
-                }
-                TextDelta::Delete { delete } => {
-                    let units = self.advance(&mut at, *delete, By::Chars)?;
-                    passed += units;
-                    operation.delete(units);
-                }
-            }
+    pub fn walk_chars(&self) -> CharWalk<'_> {
+        CharWalk {
+            pieces: self,
+            at: Spot::default(),
         }
-        operation.retain(self.units - passed);
-        Ok(operation)
+    }
+}
+
+pub struct CharWalk<'a> {
+    pieces: &'a Pieces,
+    at: Spot,
+}
+
+impl CharWalk<'_> {
+    pub fn units(&mut self, chars: usize) -> Result<usize, OtError> {
+        self.pieces.advance(&mut self.at, chars, By::Chars)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::doc::delta_to_operation;
 
     struct Dice(u64);
 
@@ -301,27 +289,6 @@ mod tests {
             let last = TextOperation::between(&middle, &self.edit(&middle));
             first.compose(&last).unwrap()
         }
-
-        fn deltas(&mut self, text: &str) -> Vec<TextDelta> {
-            let mut left = text.chars().count();
-            let mut deltas = Vec::new();
-            while left > 0 && self.roll(4) > 0 {
-                let retain = self.roll(left + 1);
-                left -= retain;
-                deltas.push(TextDelta::Retain {
-                    retain,
-                    attributes: None,
-                });
-                let delete = self.roll(left.min(4) + 1);
-                left -= delete;
-                deltas.push(TextDelta::Delete { delete });
-                deltas.push(TextDelta::Insert {
-                    insert: self.words(),
-                    attributes: None,
-                });
-            }
-            deltas
-        }
     }
 
     #[test]
@@ -343,32 +310,6 @@ mod tests {
                     .all(|piece| !piece.text.is_empty() && piece.text.len() <= 2 * limit.max(4)));
             }
         }
-    }
-
-    #[test]
-    fn a_loro_change_turns_into_the_same_operation_as_from_the_whole_text() {
-        let mut dice = Dice(0x2545_f491_4f6c_dd1d);
-        for limit in [1, 3, 7, 4096] {
-            let mut plain = "ab😀cd\néf 𝄞 gh".repeat(4);
-            for round in 0..300 {
-                let pieces = Pieces::sized(&plain, limit);
-                let deltas = dice.deltas(&plain);
-                let expected = delta_to_operation(&plain, &deltas).unwrap();
-                assert_eq!(
-                    pieces.operation_for(&deltas).unwrap(),
-                    expected,
-                    "limit {limit} round {round}"
-                );
-                plain = expected.apply(&plain).unwrap();
-            }
-        }
-        let pieces = Pieces::sized("abc", 2);
-        assert!(pieces
-            .operation_for(&[TextDelta::Retain {
-                retain: 4,
-                attributes: None
-            }])
-            .is_err());
     }
 
     #[test]

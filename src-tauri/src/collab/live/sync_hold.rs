@@ -5,8 +5,8 @@ use std::sync::{Mutex, MutexGuard, PoisonError};
 use oleafly_collab::doc::NodeKind;
 use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize::{self, DiskPlan, Layout};
-use oleafly_collab::ot::TextOperation;
 use oleafly_collab::{evaluate, write_atomic, CollabError, MassChangeThreshold, MassChangeVerdict};
+use oleafly_ot::TextOperation;
 use serde::{Deserialize, Serialize};
 
 use super::super::disk::{as_text, exists_exact, safe_target, sha256_hex, written_as, DiskState};
@@ -187,7 +187,7 @@ impl Hold {
 }
 
 fn rebase(base: &str, changed: &str, onto: &str) -> Option<TextOperation> {
-    oleafly_collab::merge::rebase(base, changed, onto)
+    oleafly_ot::rebase(base, changed, onto).map(|rebased| rebased.operation)
 }
 
 fn read_text(root: &Path, path: &str) -> Option<String> {
@@ -1341,7 +1341,7 @@ mod tests {
             rig.outside(&["main.tex"], pause_of(&["main.tex"], 3)).await;
             rig.active.decide(SyncDecision::KeepLocal).await.unwrap();
             let main = rig.id_of("main.tex").unwrap();
-            let quiet: oleafly_collab::live::DocSink = Arc::new(|_| {});
+            let quiet: oleafly_ot::DocSink = Arc::new(|_| {});
             lock(&rig.active.live).open_file(&main, quiet).unwrap();
             rig.active.note_written([&"main.tex".to_owned()]);
 

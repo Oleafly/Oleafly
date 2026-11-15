@@ -1408,7 +1408,7 @@ fn a_viewer_write_is_refused_as_read_only_and_never_reaches_the_document() {
 fn closing_an_older_editor_channel_leaves_the_newer_one_open() {
     let (_dir, _root, _host, rig) = watched_rig("channels", &[("main.tex", "abc")]);
     let _live = rig.go_live();
-    let quiet: oleafly_collab::live::DocSink = Arc::new(|_| {});
+    let quiet: oleafly_ot::DocSink = Arc::new(|_| {});
     let first = super::editor::doc_open("channels", "main.tex", Arc::clone(&quiet))
         .unwrap()
         .expect("main.tex opens");

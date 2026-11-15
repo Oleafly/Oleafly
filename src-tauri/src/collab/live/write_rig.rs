@@ -232,7 +232,7 @@ impl LiveRig {
 
     pub(crate) fn open(&self, path: &str) -> (String, u64) {
         let id = self.id_of(path).expect("the opened path is shared");
-        let sink: oleafly_collab::live::DocSink = Arc::new(|_| {});
+        let sink: oleafly_ot::DocSink = Arc::new(|_| {});
         let opened = lock(&self.active.live).open_file(&id, sink).unwrap();
         (id, opened.rev)
     }
@@ -240,7 +240,7 @@ impl LiveRig {
     pub(crate) fn typed(&self, id: &str, rev: u64, at_end: &str) {
         let mut live = lock(&self.active.live);
         let text = live.doc().text(id).unwrap();
-        let mut operation = oleafly_collab::ot::TextOperation::new();
+        let mut operation = oleafly_ot::TextOperation::new();
         operation.retain(text.encode_utf16().count()).insert(at_end);
         live.editor_change(id, rev, operation).unwrap();
     }

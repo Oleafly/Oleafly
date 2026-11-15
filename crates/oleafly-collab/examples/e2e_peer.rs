@@ -10,10 +10,8 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
 use oleafly_collab::doc::{NodeKind, ProjectDoc};
-use oleafly_collab::editor::DocMessage;
-use oleafly_collab::live::{DocSink, LiveProject};
+use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize;
-use oleafly_collab::ot::{utf16_len, TextOperation};
 use oleafly_collab::sync::{spawn_live, LiveEvent, LiveHandle, LiveLink, LiveStatus, SharedLive};
 use oleafly_collab::{
     CollabError, DeviceKey, MemorySecrets, ServerClient, ServerUrl, SessionManager,
@@ -22,6 +20,8 @@ use oleafly_collab_protocol::admin::NewDomainRule;
 use oleafly_collab_protocol::ids::{ServerId, SharedProjectId};
 use oleafly_collab_protocol::projects::PresenceState;
 use oleafly_collab_protocol::roles::ServerRole;
+use oleafly_ot::testing::{EditorDoc, Reaction};
+use oleafly_ot::{utf16_len, DocMessage, DocSink, TextOperation};
 use oleafly_server::clock::SystemClock;
 use oleafly_server::config::ServerConfig;
 use oleafly_server::state::AppState;
@@ -34,7 +34,6 @@ use serde_json::{json, Value};
 use tokio::sync::{mpsc, watch};
 
 use crate::relay::Relay;
-use crate::typist::{EditorDoc, Reaction};
 
 const PREFIX: &str = "e2e-peer ";
 const SETUP_CODE: &str = "E2E-SETUP-CODE-0001";

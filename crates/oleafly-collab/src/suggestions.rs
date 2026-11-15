@@ -6,11 +6,11 @@ use loro::{
     Container, ContainerID, ContainerTrait, Index, LoroMap, LoroText, LoroValue, ValueOrContainer,
 };
 use oleafly_collab_protocol::ids::{AccountId, CommentId, DeviceId, SuggestionId};
+use oleafly_ot::{utf16_len, Component, TextOperation};
 use serde::{Deserialize, Serialize};
 
 use crate::comments::{number_of, parsed, string_of, CommentThread};
 use crate::doc::ProjectDoc;
-use crate::ot::{utf16_len, Component, TextOperation};
 use crate::CollabError;
 
 pub const SUGGESTIONS: &str = "suggestions";
@@ -842,7 +842,7 @@ impl ProjectDoc {
         now: i64,
     ) -> Result<TextOperation, CollabError> {
         let current = self.text(file_id)?;
-        let operation = crate::merge::diff(&current, content);
+        let operation = oleafly_ot::diff(&current, content);
         if !operation.is_noop() {
             self.suggest_operation(file_id, &operation, author, device, now)?;
         }

@@ -61,6 +61,8 @@ for path in \
   crates/oleafly-collab/src/sync.rs \
   crates/oleafly-collab/examples/e2e_peer.rs \
   crates/oleafly-collab-protocol/src/frames.rs \
+  crates/oleafly-ot/src/editor.rs \
+  crates/oleafly-net/src/lib.rs \
   crates/oleafly-server/src/routes/ws.rs \
   crates/oleafly-server/Cargo.toml \
   src-tauri/src/collab/live.rs \

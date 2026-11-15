@@ -25,7 +25,8 @@ pub struct RemoteProject {
     pub imported_as: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct ImportedFrom {
     pub server: String,
     pub project_id: String,

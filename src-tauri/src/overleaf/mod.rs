@@ -13,6 +13,7 @@ mod sync_tests;
 #[cfg(test)]
 mod tests;
 
+use oleafly_online::projects::ImportedFrom;
 use serde::Serialize;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Runtime};
@@ -216,13 +217,6 @@ pub async fn overleaf_import_projects<R: Runtime>(
 
 #[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportedFrom {
-    pub server: String,
-    pub project_id: String,
-}
-
-#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
 pub struct SyncStatus {
     pub linked: bool,
     pub server: String,
@@ -247,11 +241,7 @@ pub struct SyncReport {
 
 fn imported_from(project_id: &str) -> Option<ImportedFrom> {
     let meta = crate::project::read_meta(project_id).ok()?;
-    let origin = oleafly_online::projects::imported_from(meta.extra.get("importedFrom")?)?;
-    Some(ImportedFrom {
-        server: origin.server,
-        project_id: origin.project_id,
-    })
+    oleafly_online::projects::imported_from(meta.extra.get("importedFrom")?)
 }
 
 pub(crate) fn forget_sync_copy(project_id: &str) -> Result<(), String> {

@@ -15,6 +15,7 @@ use oleafly_collab_protocol::auth::SessionTokens;
 use oleafly_collab_protocol::ids::{ServerId, SharedProjectId};
 use oleafly_collab_protocol::projects::ProjectRole;
 use oleafly_collab_protocol::roles::ServerRole;
+use oleafly_ot::testing::Rng;
 use oleafly_server::clock::SystemClock;
 use oleafly_server::state::AppState;
 use oleafly_server::test_support::{test_config, BlockingProxy};
@@ -25,7 +26,7 @@ use tokio::task::JoinHandle;
 use crate::content;
 use crate::measure::{sample, storage, LogHistogram, Percentiles, Storage};
 use crate::relay::Relay;
-use crate::typist::{Rng, NAMES};
+use crate::typist::NAMES;
 use crate::{
     identity, lock, new_person, seed_from_env, settle_on, type_along, verify, Editor, Logs, Person,
     Plan,

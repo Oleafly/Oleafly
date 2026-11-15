@@ -13,15 +13,15 @@ use std::time::{Duration, Instant};
 
 use loro::VersionVector;
 use oleafly_collab::doc::{FileNode, NodeKind, NodeParent, ProjectDoc};
-use oleafly_collab::editor::DocMessage;
-use oleafly_collab::live::{DocSink, LiveProject};
-use oleafly_collab::ot::TextOperation;
+use oleafly_collab::live::LiveProject;
 use oleafly_collab::sync::{spawn_live, EndReason, LiveEvent, LiveHandle, LiveLink, LiveStatus};
 use oleafly_collab::{DeviceKey, MemorySecrets, ServerClient, ServerUrl, SessionManager};
 use oleafly_collab_protocol::auth::SessionTokens;
 use oleafly_collab_protocol::ids::{ServerId, SharedProjectId};
 use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
 use oleafly_collab_protocol::roles::ServerRole;
+use oleafly_ot::testing::{EditorDoc, Reaction, Rng};
+use oleafly_ot::{DocMessage, DocSink, TextOperation};
 use oleafly_server::projects;
 use oleafly_server::state::AppState;
 use oleafly_server::test_support::{project_log, seed_person, test_config, PersonSeed, TestServer};
@@ -31,7 +31,7 @@ use tokio::task::JoinHandle;
 
 use crate::measure::{Percentiles, ProcessSampler};
 use crate::relay::Relay;
-use crate::typist::{keystroke, phrase, EditorDoc, Reaction, Rng, NAMES};
+use crate::typist::{keystroke, phrase, NAMES};
 
 static SERIAL: Mutex<()> = Mutex::new(());
 

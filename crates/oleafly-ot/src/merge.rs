@@ -1,17 +1,18 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
-use loro::event::Diff;
-use loro::{LoroDoc, TextDelta, UpdateOptions};
-
-use crate::doc::delta_to_operation;
+use crate::myers::{self, Edits};
 use crate::ot::{split_utf16, utf16_len, Component, OtError, TextOperation};
 
 const DIFF_BUDGET: Duration = Duration::from_millis(400);
 const DISTANCE_BUDGET: Duration = Duration::from_millis(40);
-const DIFF_TEXT: &str = "diff";
 const PAIRED_BLOCK: usize = 4_096;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Rebased {
+    pub operation: TextOperation,
+    pub overlapped: bool,
+}
 
 struct Budget(Instant);
 
@@ -20,9 +21,8 @@ impl Budget {
         Budget(Instant::now() + length)
     }
 
-    fn left_ms(&self) -> Option<f64> {
-        let left = self.0.saturating_duration_since(Instant::now());
-        (!left.is_zero()).then_some(left.as_secs_f64() * 1_000.0)
+    fn deadline(&self) -> Option<Instant> {
+        (self.0 > Instant::now()).then_some(self.0)
     }
 }
 
@@ -58,43 +58,79 @@ fn replacement(old: &str, new: &str) -> TextOperation {
     operation
 }
 
-fn scripted(old: &str, new: &str, by_line: bool, budget: &Budget) -> Option<TextOperation> {
-    let timeout_ms = budget.left_ms()?;
-    let doc = LoroDoc::new();
-    let text = doc.get_text(DIFF_TEXT);
-    text.insert(0, old).ok()?;
-    doc.commit();
-    let seen: Arc<Mutex<Vec<Vec<TextDelta>>>> = Arc::default();
-    let sink = Arc::clone(&seen);
-    let _subscription = doc.subscribe_root(Arc::new(move |event| {
-        let mut seen = sink.lock().unwrap_or_else(PoisonError::into_inner);
-        for change in &event.events {
-            if let Diff::Text(deltas) = &change.diff {
-                seen.push(deltas.clone());
-            }
-        }
-    }));
-    let options = UpdateOptions {
-        timeout_ms: Some(timeout_ms),
-        use_refined_diff: false,
-    };
-    let applied = if by_line {
-        text.update_by_line(new, options)
-    } else {
-        text.update(new, options)
-    };
-    applied.ok()?;
-    doc.commit();
-    let batches = std::mem::take(&mut *seen.lock().unwrap_or_else(PoisonError::into_inner));
-    let mut current = old.to_owned();
-    let mut script = TextOperation::new();
-    script.retain(utf16_len(old));
-    for deltas in batches {
-        let step = delta_to_operation(&current, &deltas).ok()?;
-        current = step.apply(&current).ok()?;
-        script = script.compose(&step).ok()?;
+struct Script<'a> {
+    old_units: Vec<usize>,
+    new_parts: Vec<&'a str>,
+    last_old: usize,
+    operation: TextOperation,
+}
+
+impl Script<'_> {
+    fn units(&self, from: usize, to: usize) -> usize {
+        self.old_units[from..to].iter().sum()
     }
-    (current == new).then_some(script)
+}
+
+impl Edits for Script<'_> {
+    fn insert(&mut self, old_index: usize, new_index: usize, new_len: usize) {
+        if old_index > self.last_old {
+            let skipped = self.units(self.last_old, old_index);
+            self.operation.retain(skipped);
+            self.last_old = old_index;
+        }
+        for part in &self.new_parts[new_index..new_index + new_len] {
+            self.operation.insert(part);
+        }
+    }
+
+    fn delete(&mut self, old_index: usize, old_len: usize) {
+        let skipped = self.units(self.last_old, old_index);
+        let removed = self.units(old_index, old_index + old_len);
+        self.operation.retain(skipped).delete(removed);
+        self.last_old = old_index + old_len;
+    }
+}
+
+fn characters(text: &str) -> Vec<&str> {
+    text.char_indices()
+        .map(|(at, character)| &text[at..at + character.len_utf8()])
+        .collect()
+}
+
+fn numbered<'a>(parts: &[&'a str], ids: &mut HashMap<&'a str, u32>) -> Vec<u32> {
+    parts
+        .iter()
+        .map(|part| {
+            let next = ids.len() as u32;
+            *ids.entry(part).or_insert(next)
+        })
+        .collect()
+}
+
+fn scripted(old: &str, new: &str, by_line: bool, budget: &Budget) -> Option<TextOperation> {
+    let deadline = budget.deadline()?;
+    let (old_parts, new_parts): (Vec<&str>, Vec<&str>) = if by_line {
+        (
+            old.split_inclusive('\n').collect(),
+            new.split_inclusive('\n').collect(),
+        )
+    } else {
+        (characters(old), characters(new))
+    };
+    let mut ids = HashMap::new();
+    let old_ids = numbered(&old_parts, &mut ids);
+    let new_ids = numbered(&new_parts, &mut ids);
+    let mut script = Script {
+        old_units: old_parts.iter().map(|part| utf16_len(part)).collect(),
+        new_parts,
+        last_old: 0,
+        operation: TextOperation::new(),
+    };
+    myers::diff(&mut script, deadline, &old_ids, &new_ids).ok()?;
+    let rest = script.units(script.last_old, script.old_units.len());
+    let mut operation = script.operation;
+    operation.retain(rest);
+    (operation.apply(old).ok()? == new).then_some(operation)
 }
 
 enum Piece {
@@ -410,20 +446,23 @@ pub fn distance(old: &str, new: &str) -> usize {
     edited(&diff_within(old, new, DISTANCE_BUDGET))
 }
 
-fn woven(result: &mut TextOperation, mine: &str, theirs: &str) {
+fn woven(result: &mut TextOperation, mine: &str, theirs: &str) -> bool {
     let prefix = common_prefix(mine, theirs);
     let suffix = common_suffix(&mine[prefix..], &theirs[prefix..]);
     let mine_middle = &mine[prefix..mine.len() - suffix];
     let theirs_middle = &theirs[prefix..theirs.len() - suffix];
     if mine_middle.is_empty() {
         result.retain(utf16_len(theirs));
+        false
     } else if theirs_middle.is_empty() {
         result
             .retain(utf16_len(&theirs[..prefix]))
             .insert(mine_middle)
             .retain(utf16_len(&theirs[prefix..]));
+        false
     } else {
         result.insert(mine).retain(utf16_len(theirs));
+        true
     }
 }
 
@@ -431,11 +470,12 @@ fn rest_of(count: usize, step: usize, make: fn(usize) -> Component) -> Option<Co
     (count > step).then(|| make(count - step))
 }
 
-fn merged(change: &TextOperation, onto: &TextOperation) -> Result<TextOperation, OtError> {
+fn merged(change: &TextOperation, onto: &TextOperation) -> Result<Rebased, OtError> {
     if change.base_len() != onto.base_len() {
         return Err(OtError::LengthMismatch);
     }
     let mut result = TextOperation::new();
+    let mut overlapped = false;
     let mut first = change.components().iter().cloned();
     let mut second = onto.components().iter().cloned();
     let mut a = first.next();
@@ -444,7 +484,7 @@ fn merged(change: &TextOperation, onto: &TextOperation) -> Result<TextOperation,
         match (a.take(), b.take()) {
             (None, None) => break,
             (Some(Component::Insert(mine)), Some(Component::Insert(theirs))) => {
-                woven(&mut result, &mine, &theirs);
+                overlapped |= woven(&mut result, &mine, &theirs);
                 a = first.next();
                 b = second.next();
             }
@@ -483,18 +523,24 @@ fn merged(change: &TextOperation, onto: &TextOperation) -> Result<TextOperation,
             }
         }
     }
-    Ok(result)
+    Ok(Rebased {
+        operation: result,
+        overlapped,
+    })
 }
 
-pub fn rebase(base: &str, changed: &str, onto: &str) -> Option<TextOperation> {
+pub fn rebase(base: &str, changed: &str, onto: &str) -> Option<Rebased> {
     let change = diff(base, changed);
     if base == onto {
-        return Some(change);
+        return Some(Rebased {
+            operation: change,
+            overlapped: false,
+        });
     }
     let other = diff(base, onto);
     merged(&change, &other)
         .ok()
-        .filter(|operation| operation.base_len() == utf16_len(onto))
+        .filter(|rebased| rebased.operation.base_len() == utf16_len(onto))
 }
 
 #[cfg(test)]
@@ -555,6 +601,7 @@ mod tests {
     fn applied(base: &str, changed: &str, onto: &str) -> String {
         rebase(base, changed, onto)
             .expect("the change merges")
+            .operation
             .apply(onto)
             .unwrap()
     }
@@ -691,7 +738,25 @@ mod tests {
 
     #[test]
     fn merging_onto_an_unchanged_base_is_the_change_itself() {
-        let operation = rebase("abc", "aXbc", "abc").unwrap();
+        let operation = rebase("abc", "aXbc", "abc").unwrap().operation;
         assert_eq!(operation.apply("abc").unwrap(), "aXbc");
+    }
+
+    #[test]
+    fn only_different_text_typed_at_the_same_place_counts_as_an_overlap() {
+        let overlapped = |base: &str, changed: &str, onto: &str| {
+            rebase(base, changed, onto)
+                .expect("the change merges")
+                .overlapped
+        };
+        assert!(overlapped("list\n", "list\n\\item A\n", "list\n\\item B\n"));
+        assert!(!overlapped("a b c", "a X b c", "a X b c"));
+        assert!(!overlapped("start end", "start ab end", "start abcd end"));
+        assert!(!overlapped(
+            "one two three",
+            "ONE two three",
+            "one two THREE"
+        ));
+        assert!(!overlapped("abc", "aXbc", "abc"));
     }
 }
