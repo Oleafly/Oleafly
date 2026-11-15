@@ -21,6 +21,7 @@ const users = [
   { key: 'bob', first: 'Bob', last: 'Editor', privilege: 'readAndWrite' },
   { key: 'carol', first: 'Carol', last: 'Reviewer', privilege: 'review' },
   { key: 'dave', first: 'Dave', last: 'Viewer', privilege: 'readOnly' },
+  { key: 'erin', first: 'Erin', last: 'Outsider' },
 ]
 
 const projects = [
@@ -234,6 +235,7 @@ async function main() {
   for (const user of users) {
     people[user.key] = await ensureUser(user)
   }
+  await db.users.updateOne({ email: people.alice.email }, { $set: { isAdmin: true } })
   const owner = await db.users.findOne({ email: people.alice.email })
   const state = {
     site: process.env.OVERLEAF_SITE_URL,

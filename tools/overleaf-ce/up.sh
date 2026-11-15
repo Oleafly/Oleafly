@@ -16,13 +16,16 @@ if [ ! -f "$env_file" ]; then
       echo "OVERLEAF_CE_PORT=8480"
       echo "OVERLEAF_INVITE_TOKEN_SECRET=$(secret)"
       echo "OVERLEAF_SESSION_SECRET=$(secret)"
-      for user in ALICE BOB CAROL DAVE; do
-        echo "${user}_PASSWORD=$(secret)"
-      done
     } >"$env_file"
   )
-  echo "Wrote $env_file with new passwords."
+  echo "Wrote $env_file with new secrets."
 fi
+
+for user in ALICE BOB CAROL DAVE ERIN; do
+  if ! grep -q "^${user}_PASSWORD=" "$env_file"; then
+    echo "${user}_PASSWORD=$(secret)" >>"$env_file"
+  fi
+done
 
 set -a
 . "./$env_file"
@@ -36,7 +39,7 @@ echo "Starting Overleaf CE on http://localhost:${OVERLEAF_CE_PORT} (the first st
 compose up -d --wait --wait-timeout 900
 
 output=$(compose exec -T \
-  -e ALICE_PASSWORD -e BOB_PASSWORD -e CAROL_PASSWORD -e DAVE_PASSWORD \
+  -e ALICE_PASSWORD -e BOB_PASSWORD -e CAROL_PASSWORD -e DAVE_PASSWORD -e ERIN_PASSWORD \
   overleaf bash -c 'source /etc/container_environment.sh && cd /overleaf/services/web && node /oleafly-harness/seed.mjs')
 
 state=$(printf '%s\n' "$output" | sed -n 's/^OLEAFLY_SEED_STATE //p' | tail -n 1)
@@ -52,4 +55,4 @@ fi
 )
 
 printf '%s\n' "$output" | grep '^seed:' || true
-echo "Overleaf CE is up at http://localhost:${OVERLEAF_CE_PORT}. Sign in as alice@example.test with ALICE_PASSWORD from $env_file."
+echo "Overleaf CE is up at http://localhost:${OVERLEAF_CE_PORT}. Sign in as alice@example.test (a site admin) with ALICE_PASSWORD from $env_file."

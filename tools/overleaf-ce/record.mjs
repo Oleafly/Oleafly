@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -106,19 +107,53 @@ class ScriptedClient {
   }
 
   async connect(site, email, password, projectId, secrets) {
-    this.jar = await signIn(site, email, password, secrets)
-    const query = `projectId=${projectId}`
+    const jar = await signIn(site, email, password, secrets)
+    await this.open(site, jar, projectId, secrets)
+    await until(`${this.name} to join the project`, () =>
+      this.events.some(event => event.name === 'joinProjectResponse')
+    )
+  }
+
+  async open(site, jar, projectId, secrets, { websocket = false, query: extra = '' } = {}) {
+    this.jar = jar ?? cookieJar()
+    const query = `projectId=${encodeURIComponent(projectId)}${extra}`
     const handshake = await fetch(`${site}/socket.io/1/?${query}&t=${Date.now()}`, {
       headers: { cookie: this.jar.header() },
     })
     this.jar.absorb(handshake)
     for (const value of this.jar.values()) secrets.add(value)
     const sid = (await handshake.text()).split(':')[0]
-    this.channel = `${site}/socket.io/1/xhr-polling/${sid}?${query}`
-    this.loop = this.poll()
-    await until(`${this.name} to join the project`, () =>
-      this.events.some(event => event.name === 'joinProjectResponse')
+    if (websocket) {
+      this.socket = new WebSocket(`${site.replace('http', 'ws')}/socket.io/1/websocket/${sid}?${query}`, {
+        headers: { cookie: this.jar.header() },
+      })
+      this.socket.onmessage = message => this.receive(String(message.data))
+      this.socket.onclose = () => {
+        this.closed = true
+      }
+      await until(`${this.name}'s websocket to open`, () => this.socket.readyState === 1 || this.closed)
+    } else {
+      this.channel = `${site}/socket.io/1/xhr-polling/${sid}?${query}`
+      this.loop = this.poll()
+    }
+  }
+
+  outcome() {
+    return until(`${this.name} to be accepted or rejected`, () =>
+      this.closed || this.events.some(event => ['joinProjectResponse', 'connectionRejected'].includes(event.name))
     )
+  }
+
+  receive(packet) {
+    this.note('in', packet)
+    if (packet.startsWith('2::')) this.send('2::')
+    else if (packet.startsWith('0::') || packet.startsWith('7:')) this.closed = true
+    else if (packet.startsWith('5:')) this.events.push(JSON.parse(packet.slice(packet.indexOf('{'))))
+    else if (packet.startsWith('6:::')) {
+      const body = packet.slice(4)
+      const plus = body.indexOf('+')
+      this.acks.set(Number(plus < 0 ? body : body.slice(0, plus)), plus < 0 ? [] : JSON.parse(body.slice(plus + 1)))
+    }
   }
 
   async poll() {
@@ -126,28 +161,25 @@ class ScriptedClient {
       const response = await fetch(`${this.channel}&t=${Date.now()}`, {
         headers: { cookie: this.jar.header() },
       }).catch(() => null)
-      if (!response || !response.ok) break
-      for (const packet of packets(await response.text())) {
-        this.note('in', packet)
-        if (packet.startsWith('2::')) await this.send('2::')
-        else if (packet.startsWith('0::')) this.closed = true
-        else if (packet.startsWith('5:')) this.events.push(JSON.parse(packet.slice(packet.indexOf('{'))))
-        else if (packet.startsWith('6:::')) {
-          const body = packet.slice(4)
-          const plus = body.indexOf('+')
-          this.acks.set(Number(plus < 0 ? body : body.slice(0, plus)), plus < 0 ? [] : JSON.parse(body.slice(plus + 1)))
-        }
+      if (!response || !response.ok) {
+        this.closed = true
+        break
       }
+      for (const packet of packets(await response.text())) this.receive(packet)
     }
   }
 
   async send(packet) {
     this.note('out', packet)
+    if (this.socket) {
+      if (this.socket.readyState === 1) this.socket.send(packet)
+      return
+    }
     await fetch(`${this.channel}&t=${Date.now()}`, {
       method: 'POST',
       headers: { cookie: this.jar.header(), 'content-type': 'text/plain;charset=UTF-8' },
       body: packet,
-    })
+    }).catch(() => {})
   }
 
   async call(name, args) {
@@ -170,8 +202,9 @@ class ScriptedClient {
 
   async close() {
     if (this.closed) return
+    await this.send('0::')
     this.closed = true
-    await this.send('0::').catch(() => {})
+    this.socket?.close()
   }
 }
 
@@ -799,15 +832,330 @@ async function record(name, browser, env, state) {
   }
 }
 
+
+const keptHeaders = new Set(['content-type', 'retry-after', 'location', 'x-ratelimit-limit', 'x-ratelimit-remaining', 'x-ratelimit-reset'])
+
+async function csrfFor(site, jar, projectId) {
+  const page = await fetch(`${site}/project/${projectId}`, { headers: { cookie: jar.header() } })
+  jar.absorb(page)
+  return (await page.text()).match(/name="ol-csrfToken" content="([^"]+)"/)?.[1]
+}
+
+async function httpStep(site, jar, method, route, { body, token, secrets } = {}) {
+  if (token) secrets.add(token)
+  const response = await fetch(`${site}${route}`, {
+    method,
+    redirect: 'manual',
+    headers: {
+      accept: 'application/json',
+      cookie: jar?.header() ?? '',
+      ...(body ? { 'content-type': 'application/json' } : {}),
+      ...(token ? { 'x-csrf-token': token } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  const headers = Object.fromEntries([...response.headers].filter(([name]) => keptHeaders.has(name)))
+  const text = await response.text()
+  let parsed = text
+  try {
+    parsed = JSON.parse(text)
+  } catch {
+    parsed = text.length > 400 ? `${text.slice(0, 400)}…` : text
+  }
+  return { request: { method, route }, status: response.status, headers, body: parsed }
+}
+
+function dockerExec(command) {
+  return new Promise((resolve, reject) => {
+    execFile(
+      'docker',
+      ['compose', '--env-file', '.env.local', '-f', 'compose.yml', 'exec', '-T', 'overleaf', 'bash', '-c', command],
+      { cwd: here },
+      (error, stdout, stderr) => (error ? reject(new Error(stderr || error.message)) : resolve(stdout))
+    )
+  })
+}
+
+async function rejectionProbe(ctx, who, projectId, notes) {
+  const steps = []
+  for (const websocket of [true, false]) {
+    const client = new ScriptedClient(who ?? 'anonymous', ctx.clock)
+    const jar = who ? await ctx.signInAs(who) : null
+    await client.open(ctx.site, jar, projectId, ctx.secrets, { websocket })
+    await client.outcome()
+    await sleep(500)
+    await client.close()
+    const transport = websocket ? 'websocket' : 'xhr-polling'
+    const rejected = client.events.find(event => event.name === 'connectionRejected')
+    const error = client.frames.find(frame => frame.dir === 'in' && frame.frame.startsWith('7:'))
+    notes.push(
+      `${transport}: ${rejected ? `connectionRejected ${JSON.stringify(rejected.args)}` : error ? `error packet ${error.frame}` : 'not rejected'}`
+    )
+    steps.push({ socket: { user: who, projectId, transport, frames: client.frames } })
+  }
+  return steps
+}
+
+const probes = {
+  'connection-rejected-no-session': {
+    description: 'A socket handshake with no session cookie.',
+    run: (ctx, notes) => rejectionProbe(ctx, null, ctx.state.projects['sharejs-project'].id, notes),
+  },
+  'connection-rejected-not-a-member': {
+    description: 'Erin is signed in but has no access to the project.',
+    run: (ctx, notes) => rejectionProbe(ctx, 'erin', ctx.state.projects['sharejs-project'].id, notes),
+  },
+  'connection-rejected-project-not-found': {
+    description: 'Alice connects to a well-formed project id that does not exist.',
+    run: (ctx, notes) => rejectionProbe(ctx, 'alice', 'ffffffffffffffffffffffff', notes),
+  },
+  'connection-rejected-bad-project-id': {
+    description: 'Alice connects with a projectId that is not an ObjectId.',
+    run: (ctx, notes) => rejectionProbe(ctx, 'alice', 'not-a-project', notes),
+  },
+  'connection-rejected-rate-limit': {
+    description: 'Dave joins the same project over and over until the join rate limit refuses him.',
+    async run(ctx, notes) {
+      const jar = await ctx.signInAs('dave')
+      const projectId = ctx.state.projects['sharejs-project'].id
+      for (let attempt = 1; attempt <= 80; attempt++) {
+        const client = new ScriptedClient('dave', ctx.clock)
+        await client.open(ctx.site, jar, projectId, ctx.secrets)
+        await client.outcome()
+        const rejected = client.events.find(event => event.name === 'connectionRejected')
+        await client.close()
+        if (rejected) {
+          notes.push(`attempt ${attempt} was refused with ${JSON.stringify(rejected.args)}`)
+          return [{ socket: { user: 'dave', projectId, attempt, frames: client.frames } }]
+        }
+      }
+      throw new Error('80 joins in a row were never rate limited')
+    },
+  },
+  'server-ping': {
+    description: 'A websocket client that asks for server pings (esh=1&ssp=1) waits for one and answers with clientPong.',
+    async run(ctx, notes) {
+      const client = new ScriptedClient('alice', ctx.clock)
+      const projectId = ctx.state.projects['sharejs-project'].id
+      await client.open(ctx.site, await ctx.signInAs('alice'), projectId, ctx.secrets, { websocket: true, query: '&esh=1&ssp=1' })
+      await client.outcome()
+      await until('a serverPing', () => client.events.some(event => event.name === 'serverPing'), 40000)
+      const ping = client.events.find(event => event.name === 'serverPing')
+      await client.send(`5:::${JSON.stringify({ name: 'clientPong', args: [...ping.args, 'websocket', ping.args[3]] })}`)
+      await sleep(1000)
+      await client.close()
+      notes.push(`serverPing args ${JSON.stringify(ping.args.map(arg => typeof arg))}`)
+      return [{ socket: { user: 'alice', projectId, transport: 'websocket', frames: client.frames } }]
+    },
+  },
+  'reconnect-gracefully': {
+    description: 'Real-time is asked to drain (its internal POST /drain), which sends reconnectGracefully to every client.',
+    async run(ctx, notes) {
+      const client = new ScriptedClient('bob', ctx.clock)
+      const projectId = ctx.state.projects['sharejs-project'].id
+      await client.open(ctx.site, await ctx.signInAs('bob'), projectId, ctx.secrets)
+      await client.outcome()
+      try {
+        await dockerExec("curl -fsS -X POST 'http://127.0.0.1:3026/drain?rate=50'")
+        await until('reconnectGracefully', () => client.events.some(event => event.name === 'reconnectGracefully'), 20000)
+      } finally {
+        await dockerExec("curl -fsS -X POST 'http://127.0.0.1:3026/drain?rate=0'")
+      }
+      await sleep(1000)
+      notes.push(`still connected after the drain request: ${!client.closed}`)
+      await client.close()
+      return [{ socket: { user: 'bob', projectId, frames: client.frames } }]
+    },
+  },
+  'force-disconnect': {
+    description: 'A site admin (Alice) uses POST /admin/disconnectAllUsers?delay=2, which sends forceDisconnect(message, delay) to every client.',
+    async run(ctx, notes) {
+      const client = new ScriptedClient('bob', ctx.clock)
+      const projectId = ctx.state.projects['sharejs-project'].id
+      await client.open(ctx.site, await ctx.signInAs('bob'), projectId, ctx.secrets)
+      await client.outcome()
+      const admin = await ctx.signInAs('alice')
+      const token = await csrfFor(ctx.site, admin, projectId)
+      const request = await httpStep(ctx.site, admin, 'POST', '/admin/disconnectAllUsers?delay=2', { token, secrets: ctx.secrets })
+      await until('forceDisconnect', () => client.events.some(event => event.name === 'forceDisconnect'), 20000)
+      await sleep(10000)
+      notes.push(
+        client.closed
+          ? 'the server closed the socket within 10 s of forceDisconnect'
+          : 'the server left the socket open for 10 s after forceDisconnect; the client is expected to leave'
+      )
+      await client.close()
+      return [request, { socket: { user: 'bob', projectId, frames: client.frames } }]
+    },
+  },
+  'join-doc-missing-ops': {
+    description: 'Alice applies 110 updates to a new doc, then asks joinDoc for ops from version 0 (no longer kept) and from a version ahead of the doc.',
+    async run(ctx, notes) {
+      const projectId = ctx.state.projects['sharejs-project'].id
+      const jar = await ctx.signInAs('alice')
+      const token = await csrfFor(ctx.site, jar, projectId)
+      const created = await httpStep(ctx.site, jar, 'POST', `/project/${projectId}/doc`, {
+        token,
+        secrets: ctx.secrets,
+        body: { name: `missing-ops-${stamp()}.tex`, parent_folder_id: ctx.state.projects['sharejs-project'].rootFolderId },
+      })
+      const docId = created.body._id
+      const client = new ScriptedClient('alice', ctx.clock)
+      await client.open(ctx.site, jar, projectId, ctx.secrets)
+      await client.outcome()
+      const options = { encodeRanges: true, supportsHistoryOT: true }
+      const joined = await client.call('joinDoc', [docId, options])
+      let version = joined[2]
+      for (let n = 0; n < 110; n++) {
+        await client.update(docId, { doc: docId, op: [{ p: n, i: 'x' }], v: version })
+        version += 1
+      }
+      const missing = await client.call('joinDoc', [docId, 0, options])
+      const ahead = await client.call('joinDoc', [docId, version + 5, options])
+      notes.push(`from 0: ${JSON.stringify(missing[0])}`)
+      notes.push(`from ${version + 5}: ${JSON.stringify(ahead[0] ?? ahead.slice(2, 4))}`)
+      await client.close()
+      return [created, { socket: { user: 'alice', projectId, docId, frames: client.frames } }]
+    },
+  },
+  'join-doc-without-history-ot-support': {
+    description: 'Alice joins a history-ot doc without supportsHistoryOT.',
+    async run(ctx, notes) {
+      const project = ctx.state.projects['history-ot-project']
+      const client = new ScriptedClient('alice', ctx.clock)
+      await client.open(ctx.site, await ctx.signInAs('alice'), project.id, ctx.secrets)
+      await client.outcome()
+      const reply = await client.call('joinDoc', [project.rootDocId, { encodeRanges: true }])
+      notes.push(`reply ${JSON.stringify(reply[0])}`)
+      await sleep(500)
+      await client.close()
+      return [{ socket: { user: 'alice', projectId: project.id, frames: client.frames } }]
+    },
+  },
+  'rest-refusals': {
+    description: 'A tree write without the anti-forgery token, one from a viewer, and reads without a session.',
+    async run(ctx) {
+      const project = ctx.state.projects['sharejs-project']
+      const body = { name: 'refused.tex', parent_folder_id: project.rootFolderId }
+      const alice = await ctx.signInAs('alice')
+      const dave = await ctx.signInAs('dave')
+      const daveToken = await csrfFor(ctx.site, dave, project.id)
+      return [
+        await httpStep(ctx.site, alice, 'POST', `/project/${project.id}/doc`, { body, secrets: ctx.secrets }),
+        await httpStep(ctx.site, dave, 'POST', `/project/${project.id}/doc`, { body, token: daveToken, secrets: ctx.secrets }),
+        await httpStep(ctx.site, null, 'GET', `/project/${project.id}`, { secrets: ctx.secrets }),
+        await httpStep(ctx.site, null, 'GET', `/project/${project.id}/entities`, { secrets: ctx.secrets }),
+      ]
+    },
+  },
+  'rest-rate-limited': {
+    description: 'Bob creates docs in a throwaway project until the doc-creation rate limit answers 429.',
+    async run(ctx, notes) {
+      const bob = await ctx.signInAs('bob')
+      const anyProject = ctx.state.projects['sharejs-project'].id
+      const token = await csrfFor(ctx.site, bob, anyProject)
+      const created = await httpStep(ctx.site, bob, 'POST', '/project/new', {
+        token,
+        secrets: ctx.secrets,
+        body: { projectName: `rate-limit-probe-${stamp()}`, template: 'none' },
+      })
+      const projectId = created.body.project_id
+      const client = new ScriptedClient('bob', ctx.clock)
+      await client.open(ctx.site, bob, projectId, ctx.secrets)
+      await client.outcome()
+      const root = client.events.find(event => event.name === 'joinProjectResponse').args[0].project.rootFolder[0]._id
+      await client.close()
+      for (let attempt = 1; attempt <= 60; attempt++) {
+        const step = await httpStep(ctx.site, bob, 'POST', `/project/${projectId}/doc`, {
+          token,
+          secrets: ctx.secrets,
+          body: { name: `doc-${attempt}.tex`, parent_folder_id: root },
+        })
+        if (step.status === 429) {
+          notes.push(`doc ${attempt} got 429 with headers ${JSON.stringify(step.headers)}`)
+          step.attempt = attempt
+          return [created, step]
+        }
+      }
+      throw new Error('60 doc creations were never rate limited')
+    },
+  },
+  'rest-reads': {
+    description: 'The read routes a live session uses: entities, members, history updates, the file-tree diff, threads and chat.',
+    async run(ctx) {
+      const project = ctx.state.projects['sharejs-project']
+      const alice = await ctx.signInAs('alice')
+      const updates = await httpStep(ctx.site, alice, 'GET', `/project/${project.id}/updates?min_count=3`, { secrets: ctx.secrets })
+      if (Array.isArray(updates.body?.updates)) updates.body.updates = updates.body.updates.slice(0, 3)
+      const to = updates.body?.updates?.[0]?.toV ?? 1
+      const diff = await httpStep(ctx.site, alice, 'GET', `/project/${project.id}/filetree/diff?from=${Math.max(0, to - 1)}&to=${to}`, { secrets: ctx.secrets })
+      if (Array.isArray(diff.body?.diff)) {
+        diff.body.diff = diff.body.diff.filter(entry => entry.operation || /^(main\.tex|refs\.bib|figure\.png)$/.test(entry.pathname)).slice(0, 8)
+      }
+      const entities = await httpStep(ctx.site, alice, 'GET', `/project/${project.id}/entities`, { secrets: ctx.secrets })
+      if (Array.isArray(entities.body?.entities)) entities.body.entities = entities.body.entities.filter(entity => !/-\d{8}-\d{6}/.test(entity.path))
+      return [
+        entities,
+        await httpStep(ctx.site, alice, 'GET', `/project/${project.id}/members`, { secrets: ctx.secrets }),
+        updates,
+        diff,
+        await httpStep(ctx.site, alice, 'GET', `/project/${project.id}/threads`, { secrets: ctx.secrets }),
+        await httpStep(ctx.site, alice, 'GET', `/project/${project.id}/messages?limit=5`, { secrets: ctx.secrets }),
+      ]
+    },
+  },
+}
+
+async function runProbe(name, env, state) {
+  const probe = probes[name]
+  if (!probe) throw new Error(`unknown probe ${name}`)
+  const secrets = new Set(
+    Object.entries(env)
+      .filter(([key]) => /PASSWORD|SECRET/.test(key))
+      .map(([, value]) => value)
+  )
+  const ctx = {
+    site: state.site,
+    state,
+    secrets,
+    clock: { start: Date.now() },
+    signInAs: key => signIn(state.site, state.users[key].email, env[`${key.toUpperCase()}_PASSWORD`], secrets),
+  }
+  const notes = []
+  const steps = await probe.run(ctx, notes)
+  const summary = {
+    probe: name,
+    description: probe.description,
+    server: `Overleaf Community Edition 6.3.3 (${image})`,
+    recordedAt: new Date().toISOString().slice(0, 10),
+    notes,
+    steps,
+  }
+  const clean = redact(`${JSON.stringify(summary, null, 2)}\n`, secrets)
+  const leak = clean.match(forbidden)
+  if (leak) throw new Error(`probe ${name} still contains "${leak[0]}" after redaction`)
+  const target = path.join(fixtures, 'probes')
+  await fs.mkdir(target, { recursive: true })
+  await fs.writeFile(path.join(target, `${name}.json`), clean)
+  console.log(`probed ${name}`)
+  for (const note of notes) console.log(`  ${note}`)
+}
+
 async function main() {
   const asked = process.argv.slice(2)
   if (asked.includes('--list')) {
     for (const [name, scenario] of Object.entries(scenarios)) console.log(`${name}: ${scenario.description}`)
+    for (const [name, probe] of Object.entries(probes)) console.log(`--probes ${name}: ${probe.description}`)
+    return
+  }
+  const env = await readEnv()
+  const state = JSON.parse(await fs.readFile(path.join(here, 'seed-state.json'), 'utf8'))
+  if (asked.includes('--probes')) {
+    const wanted = asked.filter(arg => arg !== '--probes')
+    for (const name of wanted.length ? wanted : Object.keys(probes)) await runProbe(name, env, state)
     return
   }
   const names = asked.length === 0 || asked.includes('--all') ? Object.keys(scenarios) : asked
-  const env = await readEnv()
-  const state = JSON.parse(await fs.readFile(path.join(here, 'seed-state.json'), 'utf8'))
   const browser = await chromium.launch()
   try {
     for (const name of names) await record(name, browser, env, state)

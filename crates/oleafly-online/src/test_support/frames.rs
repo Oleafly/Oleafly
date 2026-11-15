@@ -63,6 +63,9 @@ impl Packet {
 }
 
 pub fn event(name: &str, args: &[Value]) -> String {
+    if args.is_empty() {
+        return format!("5:::{}", json!({ "name": name }));
+    }
     format!("5:::{}", json!({ "name": name, "args": args }))
 }
 

@@ -115,6 +115,62 @@ impl Recording {
     }
 }
 
+pub fn probe(name: &str) -> Value {
+    let path = Path::new(FIXTURES)
+        .join("probes")
+        .join(format!("{name}.json"));
+    serde_json::from_str(&read(&path)).unwrap()
+}
+
+pub fn probe_frames(name: &str, transport: &str) -> Vec<Frame> {
+    probe(name)["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|step| step.get("socket"))
+        .find(|socket| {
+            socket
+                .get("transport")
+                .is_none_or(|found| found == transport)
+        })
+        .map(|socket| {
+            socket["frames"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|frame| Frame {
+                    t: frame["t"].as_u64().unwrap_or_default(),
+                    outgoing: frame["dir"] == "out",
+                    raw: frame["frame"].as_str().unwrap().to_string(),
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+pub fn probe_event(name: &str, transport: &str, event: &str) -> Option<Vec<Value>> {
+    probe_frames(name, transport)
+        .iter()
+        .filter(|frame| !frame.outgoing)
+        .filter_map(|frame| Packet::parse(&frame.raw)?.event())
+        .find(|(found, _)| found == event)
+        .map(|(_, args)| args)
+}
+
+pub fn probe_http(name: &str, route_contains: &str) -> Value {
+    probe(name)["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|step| {
+            step.pointer("/request/route")
+                .and_then(Value::as_str)
+                .is_some_and(|route| route.contains(route_contains))
+        })
+        .cloned()
+        .unwrap_or_else(|| panic!("probe {name} has no request to {route_contains}"))
+}
+
 pub fn recordings() -> Vec<Recording> {
     let mut dirs: Vec<PathBuf> = std::fs::read_dir(FIXTURES)
         .unwrap()

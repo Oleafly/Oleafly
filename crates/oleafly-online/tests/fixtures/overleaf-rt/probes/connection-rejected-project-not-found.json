@@ -1,0 +1,60 @@
+{
+  "probe": "connection-rejected-project-not-found",
+  "description": "Alice connects to a well-formed project id that does not exist.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-15",
+  "notes": [
+    "websocket: connectionRejected [{\"message\":\"project not found\",\"code\":\"ProjectNotFound\"}]",
+    "xhr-polling: connectionRejected [{\"message\":\"project not found\",\"code\":\"ProjectNotFound\"}]"
+  ],
+  "steps": [
+    {
+      "socket": {
+        "user": "alice",
+        "projectId": "ffffffffffffffffffffffff",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 421,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 446,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"connectionRejected\",\"args\":[{\"message\":\"project not found\",\"code\":\"ProjectNotFound\"}]}"
+          },
+          {
+            "t": 446,
+            "dir": "in",
+            "frame": "0::"
+          }
+        ]
+      }
+    },
+    {
+      "socket": {
+        "user": "alice",
+        "projectId": "ffffffffffffffffffffffff",
+        "transport": "xhr-polling",
+        "frames": [
+          {
+            "t": 1412,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 1457,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"connectionRejected\",\"args\":[{\"message\":\"project not found\",\"code\":\"ProjectNotFound\"}]}"
+          },
+          {
+            "t": 1472,
+            "dir": "in",
+            "frame": "7:::1+0"
+          }
+        ]
+      }
+    }
+  ]
+}
