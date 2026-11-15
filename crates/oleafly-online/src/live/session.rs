@@ -36,6 +36,8 @@ pub trait LivePort: Send + Sync + 'static {
     fn merged(&self, doc: &DocId, review: MergeReview);
     fn journal_failed(&self, reason: Option<String>);
     fn disk_text(&self, path: &str) -> Option<String>;
+    fn account_changed(&self, _typed_as: Account) {}
+    fn doc_pending(&self, _doc: &DocId, _pending: bool) {}
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -43,7 +45,26 @@ pub enum LiveState {
     Connecting,
     Online { pending: u64 },
     Offline { retry_in: Duration, pending: u64 },
+    SignedOut { pending: u64 },
     Ended(LiveEnd),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Account {
+    pub user_id: String,
+    pub email: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SignedIn {
+    Resumed,
+    AccountChanged { typed_as: Account },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct UnsentDoc {
+    pub doc: DocId,
+    pub path: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -147,6 +168,7 @@ impl Shared {
             let mut state = self.lock();
             let value = work(&mut state);
             state.report_pending(false);
+            state.report_docs();
             (value, std::mem::take(&mut state.notices))
         };
         state::deliver(self.port.as_ref(), notices);
@@ -247,8 +269,12 @@ impl OverleafSession {
         self.shared.with(|state| state.close(doc, session));
     }
 
-    pub fn local_edit(&self, doc: &DocId, op: TextOperation) -> Result<(), LiveError> {
-        let result = self.shared.with(|state| state.local_edit(doc, op));
+    pub fn local_edit_with(
+        &self,
+        doc: &DocId,
+        edit: impl FnOnce(&str) -> Option<TextOperation>,
+    ) -> Result<bool, LiveError> {
+        let result = self.shared.with(|state| state.local_edit_with(doc, edit));
         self.poke();
         result
     }
@@ -282,6 +308,11 @@ impl OverleafSession {
             self.poke();
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
+    }
+
+    pub async fn unsent(&self, wait: Duration) -> Vec<UnsentDoc> {
+        self.settle(wait).await;
+        self.shared.lock().unsent()
     }
 
     pub async fn stop(&self) {

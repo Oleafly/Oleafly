@@ -3,15 +3,15 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
-use oleafly_ot::testing::{EditorDoc, Reaction};
-use oleafly_ot::{DocMessage, DocSink, TextOperation};
+use oleafly_ot::testing::{insertion, EditorDoc, Reaction};
+use oleafly_ot::{utf16_len, DocMessage, DocSink, OtError, TextOperation};
 use serde_json::{json, Value};
 
 use super::catch_up::History;
 use super::state::{iso_time, JoinKind, State};
 use super::{
     DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview, OverleafSession,
-    SessionConfig, SessionTuning,
+    SessionConfig, SessionTuning, UnsentDoc,
 };
 use crate::client::Http;
 use crate::live::format::{operation_of, pieces_from_json, FormatState};
@@ -67,6 +67,7 @@ struct Seen {
     stopped: Vec<(DocId, DocStopReason)>,
     merged: Vec<(DocId, MergeReview)>,
     journal: Vec<Option<String>>,
+    pending_docs: Vec<(DocId, bool)>,
 }
 
 #[derive(Default)]
@@ -101,11 +102,16 @@ impl Port {
             })
     }
 
-    fn went_offline(&self) -> bool {
+    fn offline_count(&self) -> usize {
         self.seen()
             .states
             .iter()
-            .any(|state| matches!(state, LiveState::Offline { .. }))
+            .filter(|state| matches!(state, LiveState::Offline { .. }))
+            .count()
+    }
+
+    fn went_offline(&self) -> bool {
+        self.offline_count() > 0
     }
 }
 
@@ -144,6 +150,10 @@ impl LivePort for Port {
 
     fn disk_text(&self, path: &str) -> Option<String> {
         self.disk.lock().unwrap().get(path).cloned()
+    }
+
+    fn doc_pending(&self, doc: &DocId, pending: bool) {
+        self.seen().pending_docs.push((doc.clone(), pending));
     }
 }
 
@@ -755,7 +765,12 @@ async fn format_follows_join_doc_every_time() {
         if round > 0 {
             rig.mock.set_doc_format(&main.0, format);
             let before = rig.connection_of("alice").unwrap();
+            let drops = port.offline_count();
             rig.mock.disconnect(&before);
+            eventually("the session sees the drop", || port.offline_count() > drops).await;
+            let offline_word = format!(" {round}a");
+            tab.type_end(&live, &offline_word);
+            expected.push_str(&offline_word);
             eventually("alice reconnects and rejoins", || {
                 rig.connection_of("alice").is_some_and(|now| now != before)
                     && rig.joined("alice").contains(&main.0)
@@ -1124,7 +1139,7 @@ async fn overlapping_typing_before_the_first_join_waits_for_review() {
         .filter(|received| received.public_id != bob.public_id)
         .count();
     assert_eq!(sent_by_alice, 0);
-    let edit = live.local_edit(&main, TextOperation::new());
+    let edit = live.local_edit_with(&main, |_| Some(TextOperation::new()));
     assert_eq!(edit, Err(LiveError::NotWritable));
     live.stop().await;
 }
@@ -1307,6 +1322,47 @@ async fn an_update_error_rejoins_once_then_stops_the_doc() {
 }
 
 #[tokio::test]
+async fn a_stopped_doc_with_unsent_text_never_reads_as_settled() {
+    let rig = Rig::start(project()).await;
+    rig.seed("alice", 0).await;
+    let port = Port::new(&FILES);
+    let live = rig.live("alice", &port).await;
+    let main = rig.id(MAIN);
+    let mut tab = Tab::open(&live, MAIN);
+    eventually("the doc is joined", || {
+        rig.joined("alice").contains(&main.0)
+    })
+    .await;
+    rig.mock
+        .fail_updates(&main.0, "Delete component does not match", 2);
+    tab.type_end(&live, " kept");
+    eventually("the doc stops", || {
+        port.seen()
+            .stopped
+            .iter()
+            .any(|(doc, reason)| doc == &main && matches!(reason, DocStopReason::Server(_)))
+    })
+    .await;
+    assert!(!live.settle(Duration::from_millis(300)).await);
+    let unsent = live.unsent(Duration::from_millis(100)).await;
+    let expected = UnsentDoc {
+        doc: main.clone(),
+        path: MAIN.into(),
+    };
+    assert_eq!(unsent, vec![expected]);
+    assert!(record_of(&live, &main).is_some_and(|record| record.local_text == "Hello kept"));
+    eventually("the status counts the stopped doc", || {
+        matches!(
+            port.seen().states.last(),
+            Some(LiveState::Online { pending: 1 })
+        )
+    })
+    .await;
+    assert_ne!(rig.mock.doc_text(&main.0), "Hello kept");
+    live.stop().await;
+}
+
+#[tokio::test]
 async fn a_journal_for_a_deleted_doc_is_kept_as_a_copy() {
     let rig = Rig::start(project()).await;
     let gone = DocId("deadbeefdeadbeefdeadbeef".into());
@@ -1368,7 +1424,7 @@ async fn a_viewer_cannot_change_the_doc() {
     assert_eq!(tab.editor.content, "Hello");
     assert_eq!(tab.editor.resets, 1);
     assert_eq!(
-        live.local_edit(&main, TextOperation::new()),
+        live.local_edit_with(&main, |_| Some(TextOperation::new())),
         Err(LiveError::NotWritable)
     );
     tokio::time::sleep(Duration::from_millis(200)).await;
@@ -1550,6 +1606,96 @@ async fn presence_goes_out_and_peers_come_in() {
     live.stop().await;
 }
 
+#[tokio::test]
+async fn an_edit_sees_a_coauthors_op_that_landed_after_the_read() {
+    let rig = Rig::start(project()).await;
+    rig.seed("alice", 0).await;
+    let port = Port::new(&FILES);
+    let live = rig.live("alice", &port).await;
+    let main = rig.id(MAIN);
+    let mut tab = Tab::open(&live, MAIN);
+    eventually("the doc is joined", || {
+        rig.joined("alice").contains(&main.0)
+    })
+    .await;
+    let read = live.text(&main).unwrap();
+    assert_eq!(read, "Hello");
+    let mut bob = rig.mock.peer("bob");
+    bob.join(&main.0);
+    bob.type_at(&main.0, 0, "Bob: ");
+    eventually("the coauthor's op lands", || {
+        live.text(&main).as_deref() == Some("Bob: Hello")
+    })
+    .await;
+    let mut seen = String::new();
+    let edited = live.local_edit_with(&main, |text| {
+        seen = text.to_string();
+        Some(insertion(utf16_len(text), utf16_len(text), "!"))
+    });
+    assert_eq!(edited, Ok(true));
+    assert_eq!(seen, "Bob: Hello");
+    let stale = live.local_edit_with(&main, |_| Some(insertion(utf16_len(&read), 0, "x")));
+    assert_eq!(stale, Err(LiveError::Invalid(OtError::LengthMismatch)));
+    assert!(live.settle(WAIT).await);
+    assert_eq!(rig.mock.doc_text(&main.0), "Bob: Hello!");
+    assert_eq!(tab.text(&live), "Bob: Hello!");
+    assert_eq!(tab.editor.resets, 0);
+    live.stop().await;
+}
+
+#[tokio::test]
+async fn an_edit_that_changes_nothing_sends_nothing() {
+    let rig = Rig::start(project()).await;
+    rig.seed("alice", 0).await;
+    let port = Port::new(&FILES);
+    let live = rig.live("alice", &port).await;
+    let main = rig.id(MAIN);
+    let _tab = Tab::open(&live, MAIN);
+    eventually("the doc is joined", || {
+        rig.joined("alice").contains(&main.0)
+    })
+    .await;
+    assert_eq!(live.local_edit_with(&main, |_| None), Ok(false));
+    let unchanged = live.local_edit_with(&main, |text| {
+        let mut op = TextOperation::new();
+        op.retain(utf16_len(text));
+        Some(op)
+    });
+    assert_eq!(unchanged, Ok(false));
+    assert!(live.settle(WAIT).await);
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert!(rig.updates_for(&main).is_empty());
+    assert!(port.seen().pending_docs.is_empty());
+    assert!(record_of(&live, &main).is_none());
+    live.stop().await;
+}
+
+#[tokio::test]
+async fn doc_pending_flips_on_an_edit_and_back_on_the_ack() {
+    let rig = Rig::start(project()).await;
+    rig.seed("alice", 0).await;
+    let port = Port::new(&FILES);
+    let live = rig.live("alice", &port).await;
+    let main = rig.id(MAIN);
+    let mut tab = Tab::open(&live, MAIN);
+    eventually("the doc is joined", || {
+        rig.joined("alice").contains(&main.0)
+    })
+    .await;
+    rig.mock.stall();
+    tab.type_end(&live, " soon");
+    assert_eq!(port.seen().pending_docs, vec![(main.clone(), true)]);
+    tab.type_end(&live, " now");
+    assert_eq!(port.seen().pending_docs, vec![(main.clone(), true)]);
+    rig.mock.resume();
+    assert!(live.settle(WAIT).await);
+    eventually("the dot clears", || port.seen().pending_docs.len() == 2).await;
+    let flips = port.seen().pending_docs.clone();
+    assert_eq!(flips, vec![(main.clone(), true), (main.clone(), false)]);
+    assert_eq!(rig.mock.doc_text(&main.0), "Hello soon now");
+    live.stop().await;
+}
+
 #[test]
 fn an_unknown_doc_type_stops_only_that_doc() {
     let docs = vec![
@@ -1631,7 +1777,7 @@ fn replay_event(
         }
         DocEvent::Sent { v, update } => {
             let op = replayed_op(state, doc, &update);
-            state.local_edit(doc, op).unwrap();
+            assert!(state.local_edit_with(doc, |_| Some(op)).unwrap(), "{label}");
             let now = Instant::now() + Duration::from_secs(10 * step as u64);
             let sent = state.next_sends(now);
             assert_eq!(sent.len(), 1, "{label}");

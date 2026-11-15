@@ -3,12 +3,13 @@ use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use oleafly_ot::{
-    diff, ChannelError, DocMessage, DocOpened, DocSink, EditorChannel, OtError, TextOperation,
+    diff, utf16_len, ChannelError, DocMessage, DocOpened, DocSink, EditorChannel, OtError,
+    TextOperation,
 };
 use serde_json::Value;
 
 use super::catch_up::History;
-use super::{DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview};
+use super::{DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview, UnsentDoc};
 use crate::live::doc::{Applied, DocError, Limit, OutgoingUpdate, OverleafDoc, Rejoin};
 use crate::live::format::{CodecError, DocFormat, FormatState};
 use crate::live::join::{JoinFailure, JoinedDoc};
@@ -32,6 +33,7 @@ pub(super) enum Notice {
     Project(ProjectEvent),
     Merged(DocId, MergeReview),
     Journal(Option<String>),
+    Pending(DocId, bool),
     Editor(DocSink, DocMessage),
 }
 
@@ -48,6 +50,7 @@ pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
             Notice::Project(event) => port.project_event(event),
             Notice::Merged(doc, review) => port.merged(&doc, review),
             Notice::Journal(reason) => port.journal_failed(reason),
+            Notice::Pending(doc, pending) => port.doc_pending(&doc, pending),
             Notice::Editor(sink, message) => sink(message),
         }
     }
@@ -117,15 +120,15 @@ struct Slot {
     resume: Option<DocRecord>,
     held: Option<DocRecord>,
     errors: u8,
+    shown_pending: bool,
     dirty: bool,
 }
 
 impl Slot {
-    fn has_unsent(&self) -> bool {
-        let sendable = !matches!(self.phase, Phase::Held | Phase::Stopped);
-        let unsent =
-            self.resume.is_some() || self.doc.as_ref().is_some_and(|doc| !doc.is_settled());
-        sendable && unsent
+    fn unconfirmed(&self) -> bool {
+        self.resume.is_some()
+            || (self.phase == Phase::Held && self.held.is_some())
+            || self.doc.as_ref().is_some_and(|doc| !doc.is_settled())
     }
 
     fn record(&self) -> Option<DocRecord> {
@@ -296,7 +299,10 @@ impl State {
     }
 
     fn pending(&self) -> u64 {
-        self.slots.values().filter(|slot| slot.has_unsent()).count() as u64
+        self.slots
+            .values()
+            .filter(|slot| slot.unconfirmed())
+            .count() as u64
     }
 
     pub(super) fn report_pending(&mut self, always: bool) {
@@ -308,6 +314,16 @@ impl State {
             self.last_pending = Some(pending);
             self.notices
                 .push(Notice::State(LiveState::Online { pending }));
+        }
+    }
+
+    pub(super) fn report_docs(&mut self) {
+        for (doc, slot) in &mut self.slots {
+            let pending = slot.unconfirmed();
+            if pending != slot.shown_pending {
+                slot.shown_pending = pending;
+                self.notices.push(Notice::Pending(doc.clone(), pending));
+            }
         }
     }
 
@@ -328,6 +344,17 @@ impl State {
             self.ended = Some(end.clone());
             self.notices.push(Notice::State(LiveState::Ended(end)));
         }
+    }
+
+    pub(super) fn unsent(&self) -> Vec<UnsentDoc> {
+        self.slots
+            .iter()
+            .filter(|(_, slot)| slot.unconfirmed())
+            .map(|(doc, _)| UnsentDoc {
+                doc: doc.clone(),
+                path: self.path_of(doc).unwrap_or_default(),
+            })
+            .collect()
     }
 
     pub(super) fn is_settled(&self) -> bool {
@@ -645,7 +672,11 @@ impl State {
         }
     }
 
-    pub(super) fn local_edit(&mut self, doc: &DocId, op: TextOperation) -> Result<(), LiveError> {
+    pub(super) fn local_edit_with(
+        &mut self,
+        doc: &DocId,
+        edit: impl FnOnce(&str) -> Option<TextOperation>,
+    ) -> Result<bool, LiveError> {
         if self.ended.is_some() {
             return Err(LiveError::Ended);
         }
@@ -659,12 +690,21 @@ impl State {
         if blocked || self.mode() == SendMode::Hold {
             return Err(LiveError::NotWritable);
         }
-        let before = self.text(doc).or_else(|| {
-            let path = self.path_of(doc)?;
-            self.port.disk_text(&path)
-        });
+        let before = self
+            .text(doc)
+            .or_else(|| {
+                let path = self.path_of(doc)?;
+                self.port.disk_text(&path)
+            })
+            .unwrap_or_default();
+        let Some(op) = edit(&before).filter(|op| !op.is_noop()) else {
+            return Ok(false);
+        };
+        if op.base_len() != utf16_len(&before) {
+            return Err(LiveError::Invalid(OtError::LengthMismatch));
+        }
         self.forward(doc, op.clone());
-        self.take_local(doc, op, before)
+        self.take_local(doc, op, Some(before)).map(|()| true)
     }
 
     pub(super) fn on_applied(&mut self, update: AppliedUpdate) {
@@ -924,6 +964,10 @@ impl State {
             self.fresh(doc, joined);
             return;
         };
+        if known.format().format() != joined.format.format() {
+            self.keep_and_rejoin(doc, known);
+            return;
+        }
         let own = self.own.clone();
         let Ok(remote) = known.catch_up(&joined.updates, &own) else {
             self.keep_and_rejoin(doc, known);
