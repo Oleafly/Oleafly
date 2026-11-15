@@ -124,6 +124,7 @@ pub struct MockProject {
     pub owner: MockUser,
     pub members: Vec<(MockUser, Privilege)>,
     pub outsiders: Vec<MockUser>,
+    pub token_viewers: Vec<MockUser>,
     pub format: DocFormat,
     pub compiler: String,
     pub track_changes: Value,
@@ -138,6 +139,7 @@ impl MockProject {
             owner: MockUser::named("alice"),
             members: Vec::new(),
             outsiders: Vec::new(),
+            token_viewers: Vec::new(),
             format: DocFormat::ShareJs,
             compiler: "pdflatex".into(),
             track_changes: json!({}),
@@ -189,6 +191,11 @@ impl MockProject {
 
     pub fn track_changes(mut self, state: Value) -> Self {
         self.track_changes = state;
+        self
+    }
+
+    pub fn token_viewer(mut self, user: MockUser) -> Self {
+        self.token_viewers.push(user);
         self
     }
 }
@@ -507,7 +514,11 @@ struct State {
     owner: MockUser,
     members: Vec<(MockUser, Privilege)>,
     outsiders: Vec<MockUser>,
+    token_viewers: Vec<MockUser>,
     compiler: String,
+    image_name: Option<String>,
+    spell_language: String,
+    main_bibliography: Option<String>,
     track_changes: Value,
     format: DocFormat,
     root: Folder,
@@ -558,7 +569,11 @@ impl State {
             owner: project.owner.clone(),
             members: project.members.clone(),
             outsiders: project.outsiders.clone(),
+            token_viewers: project.token_viewers.clone(),
             compiler: project.compiler.clone(),
+            image_name: None,
+            spell_language: "en".into(),
+            main_bibliography: None,
             track_changes: project.track_changes.clone(),
             format: project.format,
             root: Folder::default(),
@@ -694,6 +709,11 @@ impl State {
         std::iter::once(&self.owner)
             .chain(self.members.iter().map(|(user, _)| user))
             .chain(&self.outsiders)
+            .chain(&self.token_viewers)
+    }
+
+    fn restricted(&self, user_id: &str) -> bool {
+        self.token_viewers.iter().any(|user| user.id == user_id)
     }
 
     fn user(&self, id: &str) -> Option<&MockUser> {
@@ -703,6 +723,9 @@ impl State {
     fn privilege(&self, user_id: &str) -> Option<Privilege> {
         if self.owner.id == user_id {
             return Some(Privilege::Owner);
+        }
+        if self.restricted(user_id) {
+            return Some(Privilege::ReadOnly);
         }
         self.members
             .iter()
@@ -746,25 +769,33 @@ impl State {
         })
     }
 
-    fn project_json(&self) -> Value {
-        json!({
+    fn project_json(&self, viewer: Option<&str>) -> Value {
+        let restricted = viewer.is_some_and(|viewer| self.restricted(viewer));
+        let mut project = json!({
             "_id": self.project_id,
             "name": self.project_name,
             "rootDoc_id": self.root_doc,
             "rootFolder": [self.folder_json(&self.root)],
-            "publicAccesLevel": "private",
+            "publicAccesLevel": if self.token_viewers.is_empty() { "private" } else { "tokenBased" },
             "dropboxEnabled": false,
             "compiler": self.compiler,
             "description": "",
-            "spellCheckLanguage": "en",
+            "spellCheckLanguage": self.spell_language,
             "deletedByExternalDataSource": false,
-            "owner": State::person_json(&self.owner, Privilege::Owner),
-            "members": self.members.iter().map(|(user, privilege)| State::person_json(user, *privilege)).collect::<Vec<_>>(),
+            "owner": if restricted { json!({ "_id": self.owner.id }) } else { State::person_json(&self.owner, Privilege::Owner) },
+            "members": if restricted { Vec::new() } else { self.members.iter().map(|(user, privilege)| State::person_json(user, *privilege)).collect::<Vec<_>>() },
             "invites": [],
-            "editAccessRequests": [],
             "features": { "collaborators": -1, "versioning": true, "trackChanges": true, "compileTimeout": 180, "compileGroup": "standard" },
             "trackChangesState": self.track_changes,
-        })
+        });
+        if let Some(image) = &self.image_name {
+            project["imageName"] = json!(image);
+        }
+        if let Some(doc) = &self.main_bibliography {
+            project["mainBibliographyDoc_id"] = json!(doc);
+        }
+        project["editAccessRequests"] = json!([]);
+        project
     }
 
     fn push(&mut self, sid: &str, packet: String) {
@@ -915,7 +946,11 @@ impl State {
         let mut found = false;
         let owner = std::iter::once(&mut self.owner);
         let members = self.members.iter_mut().map(|(user, _)| user);
-        for user in owner.chain(members).chain(self.outsiders.iter_mut()) {
+        let others = self
+            .outsiders
+            .iter_mut()
+            .chain(self.token_viewers.iter_mut());
+        for user in owner.chain(members).chain(others) {
             if user.session == current {
                 user.session.clone_from(&fresh);
                 found = true;
@@ -1021,7 +1056,7 @@ impl State {
             .unwrap_or(Privilege::ReadOnly);
         let response = json!({
             "publicId": public_id,
-            "project": self.project_json(),
+            "project": self.project_json(user.as_deref()),
             "permissionsLevel": privilege.wire_name(),
             "protocolVersion": self.config.protocol_version,
         });
@@ -1485,7 +1520,7 @@ impl State {
                 ) else {
                     return Reply::status(400);
                 };
-                match self.add_doc(parent, name, "", &user) {
+                match self.add_doc(parent, name, "", &user, "editor") {
                     Some(id) => json_reply(&json!({ "_id": id, "name": name })),
                     None => Reply::status(404),
                 }
@@ -1541,8 +1576,13 @@ impl State {
                         && text.chars().all(|character| (character as u32) < 0x10000)
                         && bytes.len() <= MAX_DOC_LENGTH
                 });
+                if let Some(reply) =
+                    self.clear_upload_target(&folder, &name, text.as_deref(), &user)
+                {
+                    return reply;
+                }
                 match text {
-                    Some(text) => match self.add_doc(&folder, &name, &text, &user) {
+                    Some(text) => match self.add_doc(&folder, &name, &text, &user, "upload") {
                         Some(id) => json_reply(
                             &json!({ "success": true, "entity_id": id, "entity_type": "doc" }),
                         ),
@@ -1629,20 +1669,11 @@ impl State {
                 Reply::status(204)
             }
             ("DELETE", [_, id]) => {
-                let id = id.to_string();
-                let Some(detached) = self.root.detach(&id) else {
-                    return Reply::status(404);
-                };
-                let mut gone = vec![id.clone()];
-                if let Some(folder) = detached {
-                    gone.extend(folder.ids());
+                if self.remove_entity(id, "editor") {
+                    Reply::status(204)
+                } else {
+                    Reply::status(404)
                 }
-                for entity in &gone {
-                    self.docs.remove(entity);
-                    self.files.remove(entity);
-                }
-                self.emit_room("removeEntity", &[json!(id), json!("editor")], None);
-                Reply::status(204)
             }
             ("GET", ["updates"]) => {
                 if self.config.history_status != 200 {
@@ -1696,14 +1727,143 @@ impl State {
                 200 => json_reply(&json!([])),
                 status => Reply::status(status),
             },
+            ("GET", ["members"]) if self.restricted(&user) => {
+                json_reply(&json!({ "message": "restricted" })).with_status(403)
+            }
             ("GET", ["members"]) => json_reply(&json!({
                 "members": self.members.iter().map(|(user, privilege)| State::person_json(user, *privilege)).collect::<Vec<_>>(),
             })),
+            ("POST", ["settings"]) => self.update_settings(body),
             _ => Reply::status(404),
         }
     }
 
-    fn add_doc(&mut self, folder: &str, name: &str, text: &str, user: &str) -> Option<String> {
+    fn clear_upload_target(
+        &mut self,
+        folder: &str,
+        name: &str,
+        text: Option<&str>,
+        user: &str,
+    ) -> Option<Reply> {
+        let docs = &self.docs;
+        let files = &self.files;
+        let Some(target) = self.root.find_mut(folder) else {
+            return Some(Reply::status(404));
+        };
+        let existing_doc = target
+            .docs
+            .iter()
+            .find(|id| docs.get(*id).is_some_and(|doc| doc.name == name))
+            .cloned();
+        let existing_file = target
+            .files
+            .iter()
+            .find(|id| files.get(*id).is_some_and(|file| file.name == name))
+            .cloned();
+        match (text, existing_doc, existing_file) {
+            (Some(text), Some(doc), _) => {
+                self.replace_doc_text(&doc, text, user);
+                return Some(json_reply(
+                    &json!({ "success": true, "entity_id": doc, "entity_type": "doc" }),
+                ));
+            }
+            (Some(_), None, Some(file)) => {
+                self.remove_entity(&file, "convertFileToDoc");
+            }
+            (None, Some(doc), _) => {
+                self.remove_entity(&doc, "convertDocToFile");
+            }
+            (None, None, Some(file)) => {
+                self.remove_entity(&file, "upload");
+            }
+            _ => {}
+        }
+        None
+    }
+
+    fn remove_entity(&mut self, id: &str, source: &str) -> bool {
+        let Some(detached) = self.root.detach(id) else {
+            return false;
+        };
+        let mut gone = vec![id.to_string()];
+        if let Some(folder) = detached {
+            gone.extend(folder.ids());
+        }
+        for entity in &gone {
+            self.docs.remove(entity);
+            self.files.remove(entity);
+        }
+        if self.root_doc.as_deref() == Some(id) {
+            self.root_doc = None;
+        }
+        self.emit_room("removeEntity", &[json!(id), json!(source)], None);
+        true
+    }
+
+    fn replace_doc_text(&mut self, doc_id: &str, text: &str, user: &str) {
+        let Some(doc) = self.docs.get_mut(doc_id) else {
+            return;
+        };
+        let old = sharejs_text::text(&doc.content);
+        let v = doc.version;
+        let op = match doc.format {
+            DocFormat::ShareJs => json!([{ "p": 0, "d": old }, { "p": 0, "i": text }]),
+            DocFormat::HistoryOt => {
+                json!([{ "textOperation": [-(doc.content.len() as i64), text] }])
+            }
+        };
+        doc.content = sharejs_text::units(text);
+        doc.tracked = vec![None; doc.content.len()];
+        doc.version += 1;
+        let update = json!({ "doc": doc_id, "op": op, "v": v, "meta": { "source": "upload", "user_id": user, "ts": now_ms() as u64 } });
+        self.emit_room("otUpdateApplied", &[update], None);
+    }
+
+    fn update_settings(&mut self, body: &[u8]) -> Reply {
+        let Ok(settings) = serde_json::from_slice::<Value>(body) else {
+            return Reply::status(400);
+        };
+        let field = |key: &str| {
+            settings
+                .get(key)
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        };
+        if let Some(compiler) = field("compiler") {
+            self.compiler.clone_from(&compiler);
+            self.emit_room("compilerUpdated", &[json!(compiler)], None);
+        }
+        if let Some(image) = field("imageName") {
+            self.image_name = Some(image.rsplit('/').next().unwrap_or_default().to_string());
+            self.emit_room("imageNameUpdated", &[json!(image)], None);
+        }
+        if let Some(name) = field("name") {
+            self.project_name.clone_from(&name);
+            self.emit_room("projectNameUpdated", &[json!(name)], None);
+        }
+        if let Some(language) = field("spellCheckLanguage") {
+            self.spell_language.clone_from(&language);
+            self.emit_room("spellCheckLanguageUpdated", &[json!(language)], None);
+        }
+        if let Some(doc) = field("rootDocId") {
+            self.root_doc = Some(doc.clone());
+            self.emit_room("rootDocUpdated", &[json!(doc)], None);
+        }
+        if let Some(doc) = field("mainBibliographyDocId") {
+            self.main_bibliography = Some(doc.clone());
+            self.emit_room("mainBibliographyDocUpdated", &[json!(doc)], None);
+        }
+        Reply::status(204)
+    }
+
+    fn add_doc(
+        &mut self,
+        folder: &str,
+        name: &str,
+        text: &str,
+        user: &str,
+        source: &str,
+    ) -> Option<String> {
         let id = self.new_id();
         self.root.find_mut(folder)?.docs.push(id.clone());
         self.docs
@@ -1713,7 +1873,7 @@ impl State {
             &[
                 json!(folder),
                 json!({ "_id": id, "name": name }),
-                json!("editor"),
+                json!(source),
                 json!(user),
             ],
             None,
@@ -2303,6 +2463,51 @@ impl MockOverleaf {
 
     pub fn project_id(&self) -> String {
         self.state().project_id.clone()
+    }
+
+    pub fn set_privilege(&self, name: &str, privilege: Option<Privilege>) {
+        let mut state = self.state();
+        let user = state
+            .people()
+            .find(|user| user.first_name.eq_ignore_ascii_case(name))
+            .cloned()
+            .unwrap_or_else(|| MockUser::named(name));
+        let known = state
+            .members
+            .iter()
+            .position(|(member, _)| member.id == user.id);
+        match (known, privilege) {
+            (Some(at), Some(privilege)) => {
+                state.members[at].1 = privilege;
+                state.emit_room(
+                    "project:collaboratorAccessLevel:changed",
+                    &[json!({ "userId": user.id })],
+                    None,
+                );
+                return;
+            }
+            (Some(at), None) => {
+                let (removed, _) = state.members.remove(at);
+                state.outsiders.push(removed);
+                state.emit_room("userRemovedFromProject", &[json!(user.id)], None);
+            }
+            (None, Some(privilege)) => {
+                state.outsiders.retain(|outsider| outsider.id != user.id);
+                state.members.push((user, privilege));
+            }
+            (None, None) => return,
+        }
+        state.emit_room(
+            "project:membership:changed",
+            &[json!({ "members": true })],
+            None,
+        );
+    }
+
+    pub fn set_track_changes(&self, value: Value) {
+        let mut state = self.state();
+        state.track_changes = value.clone();
+        state.emit_room("toggle-track-changes", &[value], None);
     }
 
     pub fn ws_url(&self) -> String {

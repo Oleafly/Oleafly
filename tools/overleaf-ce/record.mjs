@@ -896,6 +896,35 @@ async function rejectionProbe(ctx, who, projectId, notes) {
   return steps
 }
 
+async function uploadStep(site, jar, projectId, folderId, name, bytes, { token, secrets }) {
+  const form = new FormData()
+  form.append('name', name)
+  form.append('qqfile', new Blob([bytes]), name)
+  const response = await fetch(`${site}/project/${projectId}/upload?folder_id=${folderId}`, {
+    method: 'POST',
+    headers: { accept: 'application/json', cookie: jar.header(), 'x-csrf-token': token },
+    body: form,
+  })
+  secrets.add(token)
+  const text = await response.text()
+  let body = text
+  try {
+    body = JSON.parse(text)
+  } catch {}
+  return { request: { method: 'POST', route: `/project/${projectId}/upload?folder_id=${folderId}`, name }, status: response.status, body }
+}
+
+async function watcher(ctx, who, projectId) {
+  const client = new ScriptedClient(who, ctx.clock)
+  await client.open(ctx.site, await ctx.signInAs(who), projectId, ctx.secrets, { websocket: true })
+  await client.outcome()
+  return client
+}
+
+function eventsAfter(client, seen, names) {
+  return client.events.slice(seen).filter(event => names.includes(event.name))
+}
+
 const probes = {
   'connection-rejected-no-session': {
     description: 'A socket handshake with no session cookie.',
@@ -1078,6 +1107,154 @@ const probes = {
         }
       }
       throw new Error('60 doc creations were never rate limited')
+    },
+  },
+  'settings-events': {
+    description:
+      'Alice changes the compiler, name, spell-check language, main document and main bibliography in project settings while Bob watches, then puts them back.',
+    async run(ctx, notes) {
+      const project = ctx.state.projects['sharejs-project']
+      const bob = await watcher(ctx, 'bob', project.id)
+      const original = bob.events.find(event => event.name === 'joinProjectResponse').args[0].project
+      const alice = await ctx.signInAs('alice')
+      const token = await csrfFor(ctx.site, alice, project.id)
+      const names = ['compilerUpdated', 'imageNameUpdated', 'projectNameUpdated', 'spellCheckLanguageUpdated', 'rootDocUpdated', 'mainBibliographyDocUpdated']
+      const seen = bob.events.length
+      const change = await httpStep(ctx.site, alice, 'POST', `/project/${project.id}/settings`, {
+        token,
+        secrets: ctx.secrets,
+        body: {
+          compiler: 'xelatex',
+          name: `${original.name} (settings probe)`,
+          spellCheckLanguage: 'de',
+          rootDocId: project.docs['sections/intro.tex'],
+          mainBibliographyDocId: project.docs['refs.bib'],
+        },
+      })
+      await until('five settings events', () => eventsAfter(bob, seen, names).length >= 5, 20000)
+      const image = await httpStep(ctx.site, alice, 'POST', `/project/${project.id}/settings`, {
+        token,
+        secrets: ctx.secrets,
+        body: { imageName: 'texlive-full:2025.1' },
+      })
+      await sleep(1500)
+      const changed = eventsAfter(bob, seen, names)
+      notes.push(`events in order: ${changed.map(event => `${event.name}(${JSON.stringify(event.args)})`).join(', ')}`)
+      notes.push(`imageName answered ${image.status}`)
+      const restore = await httpStep(ctx.site, alice, 'POST', `/project/${project.id}/settings`, {
+        token,
+        secrets: ctx.secrets,
+        body: {
+          compiler: original.compiler,
+          name: original.name,
+          spellCheckLanguage: original.spellCheckLanguage,
+          rootDocId: original.rootDoc_id,
+        },
+      })
+      await sleep(1500)
+      await bob.close()
+      return [change, image, restore, { socket: { user: 'bob', projectId: project.id, transport: 'websocket', frames: bob.frames } }]
+    },
+  },
+  'upload-replace-and-convert': {
+    description:
+      'Alice uploads over existing entries while Bob watches: a binary over a binary (replace), a binary over a doc (convertDocToFile) and text over a binary (convertFileToDoc). Throwaway names, deleted afterwards.',
+    async run(ctx, notes) {
+      const project = ctx.state.projects['sharejs-project']
+      const bob = await watcher(ctx, 'bob', project.id)
+      const alice = await ctx.signInAs('alice')
+      const token = await csrfFor(ctx.site, alice, project.id)
+      const tree = ['reciveNewDoc', 'reciveNewFile', 'reciveNewFolder', 'removeEntity', 'reciveEntityRename', 'reciveEntityMove']
+      const name = `convert-probe-${stamp()}`
+      const steps = []
+      const watch = async (label, act, count) => {
+        const seen = bob.events.length
+        steps.push(await act())
+        await until(`${label}: ${count} tree events`, () => eventsAfter(bob, seen, tree).length >= count, 20000)
+        await sleep(500)
+        notes.push(`${label}: ${eventsAfter(bob, seen, tree).map(event => `${event.name}(${JSON.stringify(event.args)})`).join(', ')}`)
+      }
+      const binary = suffix => new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0, 1, 2, ...new TextEncoder().encode(suffix)])
+      await watch('a new doc', () =>
+        httpStep(ctx.site, alice, 'POST', `/project/${project.id}/doc`, {
+          token,
+          secrets: ctx.secrets,
+          body: { name: `${name}.tex`, parent_folder_id: project.rootFolderId },
+        }), 1)
+      await watch('a binary over the doc', () => uploadStep(ctx.site, alice, project.id, project.rootFolderId, `${name}.tex`, binary('one'), { token, secrets: ctx.secrets }), 2)
+      await watch('text over the binary', () => uploadStep(ctx.site, alice, project.id, project.rootFolderId, `${name}.tex`, new TextEncoder().encode('text again'), { token, secrets: ctx.secrets }), 2)
+      await watch('a new binary', () => uploadStep(ctx.site, alice, project.id, project.rootFolderId, `${name}.png`, binary('two'), { token, secrets: ctx.secrets }), 1)
+      await watch('a binary over the binary', () => uploadStep(ctx.site, alice, project.id, project.rootFolderId, `${name}.png`, binary('three'), { token, secrets: ctx.secrets }), 2)
+      const ids = steps.map(step => step.body?.entity_id ?? step.body?._id).filter(Boolean)
+      const last = (kind, at) => ({ kind, id: ids[at] })
+      for (const { kind, id } of [last('doc', 2), last('file', 4)]) {
+        steps.push(await httpStep(ctx.site, alice, 'DELETE', `/project/${project.id}/${kind}/${id}`, { token, secrets: ctx.secrets }))
+      }
+      await sleep(1000)
+      await bob.close()
+      return [...steps, { socket: { user: 'bob', projectId: project.id, transport: 'websocket', frames: bob.frames } }]
+    },
+  },
+  'collaborator-access-change': {
+    description: "Alice makes Dave a reviewer, then a viewer again, while Bob watches the room's access events.",
+    async run(ctx, notes) {
+      const project = ctx.state.projects['sharejs-project']
+      const bob = await watcher(ctx, 'bob', project.id)
+      const alice = await ctx.signInAs('alice')
+      const token = await csrfFor(ctx.site, alice, project.id)
+      const names = ['project:collaboratorAccessLevel:changed', 'project:membership:changed', 'toggle-track-changes', 'userRemovedFromProject']
+      const dave = ctx.state.users.dave.id
+      const steps = []
+      for (const level of ['review', 'readOnly']) {
+        const seen = bob.events.length
+        steps.push(await httpStep(ctx.site, alice, 'PUT', `/project/${project.id}/users/${dave}`, { token, secrets: ctx.secrets, body: { privilegeLevel: level } }))
+        await until(`access events for ${level}`, () => eventsAfter(bob, seen, names).length >= 1, 20000)
+        await sleep(1500)
+        notes.push(`${level}: ${eventsAfter(bob, seen, names).map(event => `${event.name}(${JSON.stringify(event.args)})`).join(', ')}`)
+      }
+      steps.push(await httpStep(ctx.site, alice, 'GET', `/project/${project.id}/members`, { secrets: ctx.secrets }))
+      await bob.close()
+      return [...steps, { socket: { user: 'bob', projectId: project.id, transport: 'websocket', frames: bob.frames } }]
+    },
+  },
+  'restricted-link-join': {
+    description:
+      'Alice turns on link sharing for a throwaway project, and Erin opens its read-only link and joins: the join a restricted (token read-only) user gets, and whether the members route refuses her.',
+    async run(ctx, notes) {
+      const alice = await ctx.signInAs('alice')
+      const anyProject = ctx.state.projects['sharejs-project'].id
+      const token = await csrfFor(ctx.site, alice, anyProject)
+      const created = await httpStep(ctx.site, alice, 'POST', '/project/new', {
+        token,
+        secrets: ctx.secrets,
+        body: { projectName: `link-probe-${stamp()}`, template: 'none' },
+      })
+      const projectId = created.body.project_id
+      const share = await httpStep(ctx.site, alice, 'POST', `/project/${projectId}/settings/admin`, { token, secrets: ctx.secrets, body: { publicAccessLevel: 'tokenBased' } })
+      const tokens = await httpStep(ctx.site, alice, 'GET', `/project/${projectId}/tokens`, { secrets: ctx.secrets })
+      notes.push(`link sharing answered ${share.status}, tokens answered ${tokens.status}`)
+      const readOnly = tokens.body?.readOnly
+      if (!readOnly) return [created, share, tokens]
+      ctx.secrets.add(readOnly)
+      const erin = await ctx.signInAs('erin')
+      const landing = await fetch(`${ctx.site}/read/${readOnly}`, { headers: { cookie: erin.header() } })
+      erin.absorb(landing)
+      const erinToken = (await landing.text()).match(/name="ol-csrfToken" content="([^"]+)"/)?.[1]
+      const grant = await httpStep(ctx.site, erin, 'POST', `/read/${readOnly}/grant`, { token: erinToken, secrets: ctx.secrets, body: { confirmedByUser: true } })
+      notes.push(`grant answered ${grant.status} ${JSON.stringify(grant.body).slice(0, 120)}`)
+      const client = new ScriptedClient('erin', ctx.clock)
+      await client.open(ctx.site, erin, projectId, ctx.secrets, { websocket: true })
+      await client.outcome()
+      const join = client.events.find(event => event.name === 'joinProjectResponse')?.args?.[0]
+      if (join) {
+        notes.push(`permissionsLevel ${join.permissionsLevel}; owner keys ${Object.keys(join.project.owner).join(',')}; members ${join.project.members.length}; invites ${join.project.invites.length}`)
+      } else {
+        notes.push(`no join: ${JSON.stringify(client.events.map(event => event.name))}`)
+      }
+      const members = await httpStep(ctx.site, erin, 'GET', `/project/${projectId}/members`, { secrets: ctx.secrets })
+      notes.push(`members answered ${members.status}`)
+      await client.close()
+      return [created, share, grant, members, { socket: { user: 'erin', projectId, transport: 'websocket', frames: client.frames } }]
     },
   },
   'rest-reads': {

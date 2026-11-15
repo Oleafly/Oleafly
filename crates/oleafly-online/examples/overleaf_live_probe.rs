@@ -2,7 +2,8 @@ use std::time::{Duration, Instant};
 
 use oleafly_online::client::Http;
 use oleafly_online::html;
-use oleafly_online::realtime::{connect, Carrier, ProjectPage};
+use oleafly_online::realtime::project::{CapabilityCache, ProjectState};
+use oleafly_online::realtime::{connect, Carrier, ProjectPage, ServerEvent};
 use oleafly_online::session::{self, SessionHandle};
 use serde_json::json;
 
@@ -130,19 +131,81 @@ async fn run(options: Options) -> Result<(), String> {
         join.response["permissionsLevel"],
         join.response["protocolVersion"]
     );
+    let mut state = ProjectState::from_join(join.response.clone())
+        .map_err(|unsupported| format!("the join can't be read: {unsupported:?}"))?;
+    println!(
+        "role {} (restricted {}), track changes for me {}, {} members",
+        state.role.collab_name(),
+        state.restricted,
+        state.tracks_changes_for(handle.user_id()),
+        state.members.all().count()
+    );
+    for member in state.members.all() {
+        println!(
+            "  member {} <{}> {}",
+            member.first_name,
+            member.email,
+            member.role.collab_name()
+        );
+    }
+    println!("settings {:?}", state.settings());
+    println!(
+        "names a Windows coauthor can check out: {:?}",
+        state.tree.paths_report().map_err(|error| error.kind)
+    );
+    for node in state.tree.nodes() {
+        println!(
+            "  {:?} {}",
+            node.kind,
+            state.tree.path_of(&node.id).unwrap_or_default()
+        );
+    }
+    let capabilities = CapabilityCache::default()
+        .refresh(&http, &handle, &options.project, &state.features)
+        .await;
+    println!("capabilities {capabilities:?}");
     let deadline = Instant::now() + Duration::from_secs(options.seconds);
     loop {
+        for change in state.tree.due(Instant::now()) {
+            println!("  tree {change:?}");
+        }
         let left = deadline.saturating_duration_since(Instant::now());
         if left.is_zero() {
             break;
         }
-        match tokio::time::timeout(left, connection.next_event()).await {
-            Ok(Some(event)) => println!("{event:?}"),
+        match tokio::time::timeout(left.min(Duration::from_secs(1)), connection.next_event()).await
+        {
+            Ok(Some(event)) => {
+                println!("{event:?}");
+                match &event {
+                    ServerEvent::Tree(change) => {
+                        for change in state.tree.apply(change, Instant::now()) {
+                            println!("  tree {change:?}");
+                        }
+                    }
+                    ServerEvent::Project(change) => {
+                        state.apply_project(change);
+                        println!("  settings {:?}", state.settings());
+                    }
+                    ServerEvent::Access(change) => {
+                        let refresh = state.apply_access(change);
+                        if refresh
+                            && state
+                                .refresh_members(&http, &handle, &options.project)
+                                .await
+                                .is_ok()
+                        {
+                            println!("  {} members now", state.members.all().count());
+                        }
+                    }
+                    _ => {}
+                }
+            }
             Ok(None) => {
                 println!("the connection ended: {:?}", connection.dropped());
                 return Ok(());
             }
-            Err(_) => break,
+            Err(_) => {}
         }
     }
     connection.close().await;

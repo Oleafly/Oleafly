@@ -1,0 +1,94 @@
+{
+  "probe": "restricted-link-join",
+  "description": "Alice turns on link sharing for a throwaway project, and Erin opens its read-only link and joins: the join a restricted (token read-only) user gets, and whether the members route refuses her.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-15",
+  "notes": [
+    "link sharing answered 204, tokens answered 200",
+    "grant answered 200 {\"redirect\":\"/project/6af9cb5e1dd46ac4250d787e\",\"tokenAccessGranted\":\"readOnly\"}",
+    "permissionsLevel readOnly; owner keys _id; members 0; invites 0",
+    "members answered 403"
+  ],
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/new"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "project_id": "6af9cb5e1dd46ac4250d787e",
+        "owner_ref": "6af963e9c9037022065bb526",
+        "owner": {
+          "first_name": "Alice",
+          "last_name": "Owner",
+          "email": "alice@example.test",
+          "_id": "6af963e9c9037022065bb526"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6af9cb5e1dd46ac4250d787e/settings/admin"
+      },
+      "status": 204,
+      "headers": {},
+      "body": ""
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/read/[redacted]/grant"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "redirect": "/project/6af9cb5e1dd46ac4250d787e",
+        "tokenAccessGranted": "readOnly"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6af9cb5e1dd46ac4250d787e/members"
+      },
+      "status": 403,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      }
+    },
+    {
+      "socket": {
+        "user": "erin",
+        "projectId": "6af9cb5e1dd46ac4250d787e",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 781,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 789,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"joinProjectResponse\",\"args\":[{\"publicId\":\"P.jQN2gk4Bz_2NCFZ9AAAF\",\"project\":{\"_id\":\"6af9cb5e1dd46ac4250d787e\",\"name\":\"link-probe-20261115-151022\",\"rootDoc_id\":\"6af9cb5e1dd46ac4250d7883\",\"rootFolder\":[{\"_id\":\"6af9cb5e1dd46ac4250d787d\",\"name\":\"rootFolder\",\"folders\":[],\"fileRefs\":[],\"docs\":[{\"_id\":\"6af9cb5e1dd46ac4250d7883\",\"name\":\"main.tex\"}]}],\"publicAccesLevel\":\"tokenBased\",\"dropboxEnabled\":false,\"compiler\":\"pdflatex\",\"description\":\"\",\"spellCheckLanguage\":\"en_US\",\"deletedByExternalDataSource\":false,\"owner\":{\"_id\":\"6af963e9c9037022065bb526\"},\"members\":[],\"invites\":[],\"myAccessRequest\":null,\"features\":{\"collaborators\":-1,\"versioning\":true,\"dropbox\":true,\"github\":true,\"gitBridge\":true,\"compileTimeout\":180,\"compileGroup\":\"standard\",\"references\":true,\"trackChanges\":true,\"aiUsageQuota\":\"basic\",\"offlineMode\":false,\"templates\":false,\"referencesSearch\":true,\"mendeley\":true,\"trackChangesVisible\":false,\"symbolPalette\":false},\"trackChangesState\":false},\"permissionsLevel\":\"readOnly\",\"protocolVersion\":2}]}"
+          },
+          {
+            "t": 889,
+            "dir": "out",
+            "frame": "0::"
+          }
+        ]
+      }
+    }
+  ]
+}
