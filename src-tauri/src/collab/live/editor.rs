@@ -62,10 +62,11 @@ pub fn doc_change(
     active.kick();
     active.refresh_pending();
     if let Some(path) = suggested {
-        crate::collab::suggesting::tell(active.host.as_ref(), project_id, path, true);
+        crate::collab::suggesting::tell(active.local.host.as_ref(), project_id, path, true);
     }
     if let Some((code, path)) = refused {
         active
+            .local
             .host
             .suggestion_refused(crate::collab::suggesting::SuggestionRefusedPayload {
                 project_id: project_id.to_owned(),
@@ -116,7 +117,7 @@ pub(in crate::collab) fn review_live<T>(
 }
 
 pub(in crate::collab) fn live_root(project_id: &str) -> Option<std::path::PathBuf> {
-    active_for(project_id).map(|active| active.root.clone())
+    active_for(project_id).map(|active| active.local.root.clone())
 }
 
 pub(in crate::collab) fn edit_live<T>(

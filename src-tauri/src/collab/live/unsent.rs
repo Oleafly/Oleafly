@@ -128,7 +128,7 @@ pub(crate) async fn unsent_changes(
         .map(|tokens| tokens.device_id);
     let live = active.map(|active| {
         let changes = changes_in(&lock(&active.live));
-        (active.project_id.clone(), changes)
+        (active.local.project_id.clone(), changes)
     });
     tauri::async_runtime::spawn_blocking(move || {
         bound_to(&paths, server)

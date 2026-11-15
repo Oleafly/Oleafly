@@ -270,7 +270,8 @@ fn route(
 
 impl Active {
     pub(super) fn hold_dir(&self) -> PathBuf {
-        self.disk_file
+        self.local
+            .disk_file
             .parent()
             .map_or_else(|| self.document_dir.clone(), Path::to_path_buf)
     }
@@ -282,7 +283,14 @@ impl Active {
         verdict: MassChangeVerdict,
         host: &dyn SyncPauseHost,
     ) -> Result<(), CollabError> {
-        if route(&self.hold_dir(), &self.project_id, change, verdict, host)? == Route::Import {
+        if route(
+            &self.hold_dir(),
+            &self.local.project_id,
+            change,
+            verdict,
+            host,
+        )? == Route::Import
+        {
             self.import_paths((!change.rescan).then(|| change.paths.clone()))
                 .await?;
         }
@@ -322,7 +330,7 @@ impl Active {
             })
         };
         let moved = {
-            let mut disk = guard(&self.disk);
+            let mut disk = guard(&self.local.disk);
             let now = materialize::layout(&lock(&self.live).doc().nodes()?);
             let owed = disk.owed_paths();
             let wanted: Vec<(String, String)> = disk
@@ -338,8 +346,8 @@ impl Active {
             if wanted.is_empty() {
                 return Ok(only);
             }
-            let followed = super::super::disk::follow_layout(&self.root, wanted);
-            let mut bases = guard(&self.bases);
+            let followed = super::super::disk::follow_layout(&self.local.root, wanted);
+            let mut bases = guard(&self.local.bases);
             for (from, to) in &followed.moved {
                 for (old, new) in super::super::disk::rekey_moved(&mut disk.hashes, from, to) {
                     bases.rename(&old, &new);
@@ -351,7 +359,7 @@ impl Active {
                 }
             }
             if !followed.moved.is_empty() {
-                self.save_index(&disk)?;
+                self.local.save_index(&disk)?;
                 let dir = self.hold_dir();
                 let _lock = hold_lock();
                 let mut hold = Hold::load(&dir);
@@ -363,8 +371,8 @@ impl Active {
             followed.moved
         };
         if !moved.is_empty() {
-            self.host.folder_changed(FolderChange {
-                project_id: self.project_id.clone(),
+            self.local.host.folder_changed(FolderChange {
+                project_id: self.local.project_id.clone(),
                 paths: moved
                     .iter()
                     .flat_map(|(from, to)| [from.clone(), to.clone()])
@@ -391,12 +399,12 @@ impl Active {
     fn keep_local(&self, only: Option<&[String]>) -> Result<(), CollabError> {
         let dir = self.hold_dir();
         {
-            let mut disk = guard(&self.disk);
-            let placed = super::import::placed_now(&lock(&self.live))?;
-            let scanned = super::import::scan_local(&self.root, &disk, &placed, only)?;
+            let mut disk = guard(&self.local.disk);
+            let placed = super::import::placed_now(&*lock(&self.live))?;
+            let scanned = super::import::scan_local(&self.local.root, &disk, &placed, only)?;
             let mut live = lock(&self.live);
-            let mut bases = guard(&self.bases);
-            let import = scanned.classify(&live);
+            let mut bases = guard(&self.local.bases);
+            let import = scanned.classify(&*live);
             let placed = by_path(&materialize::layout(&live.doc().nodes()?));
             let _lock = hold_lock();
             let mut hold = Hold::load(&dir);
@@ -454,7 +462,7 @@ impl Active {
             }
             hold.pending = None;
             hold.save(&dir)?;
-            self.save_index(&disk)?;
+            self.local.save_index(&disk)?;
             live.mark_all_dirty()?;
         }
         self.kick();
@@ -884,8 +892,8 @@ pub(crate) fn root_returned(project_id: &str) {
 #[cfg(test)]
 mod tests {
     use super::super::{
-        initial_bases, lock, LiveHost, MergedPayload, NewDevicePayload, PresenceLeftPayload,
-        PresencePayload, RolePayload, StatusPayload, WriterSignal,
+        initial_bases, lock, LiveDisk, LiveHost, MergedPayload, NewDevicePayload,
+        PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload, WriterSignal,
     };
     use super::*;
     use crate::collab::guard::{PauseReason, SyncPaused};
@@ -990,22 +998,24 @@ mod tests {
         let handle = spawn_live(link.clone(), Arc::clone(&shared), events);
         let collab = collab_of(&dir);
         let active = Arc::new(Active {
-            project_id: "held".to_owned(),
-            root: root.clone(),
+            local: LiveDisk {
+                project_id: "held".to_owned(),
+                root: root.clone(),
+                disk_file: collab.join("materializer-index.json"),
+                disk: Mutex::new(disk),
+                bases: Mutex::new(bases),
+                host: Arc::new(Quiet),
+                writer,
+                upkeep: Default::default(),
+            },
             document_dir: collab.join("document"),
-            disk_file: collab.join("materializer-index.json"),
             live: shared,
             handle,
             link,
-            disk: Mutex::new(disk),
-            host: Arc::new(Quiet),
-            writer,
             account_id: AccountId::new_v7(),
             quiet_merge: AtomicBool::new(false),
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
-            bases: Mutex::new(bases),
-            upkeep: Default::default(),
         });
         Rig {
             dir,
@@ -1029,7 +1039,7 @@ mod tests {
             ..
         } = rig;
         let document_dir = active.document_dir.clone();
-        let disk_file = active.disk_file.clone();
+        let disk_file = active.local.disk_file.clone();
         drop(active);
         let live = LiveProject::load(&document_dir, ProjectRole::Owner).unwrap();
         let disk = DiskState::load(&disk_file);
@@ -1342,7 +1352,7 @@ mod tests {
             let main = rig.id_of("main.tex").unwrap();
             let quiet: oleafly_ot::DocSink = Arc::new(|_| {});
             lock(&rig.active.live).open_file(&main, quiet).unwrap();
-            rig.active.note_written([&"main.tex".to_owned()]);
+            rig.active.local.note_written([&"main.tex".to_owned()]);
 
             rig.remote("main.tex", "alpha\nbeta\nremote\n");
             let typing = rig.active.write_out_paced(false).await.unwrap();

@@ -23,7 +23,7 @@ use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
 use super::super::{
-    guard, initial_bases, lock, pump, writer_loop, Active, LiveHost, MergedPayload,
+    guard, initial_bases, lock, pump, writer_loop, Active, LiveDisk, LiveHost, MergedPayload,
     NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
     WriterSignal,
 };
@@ -182,7 +182,7 @@ impl Side {
 
     async fn flush(&self) {
         let (done, flushed) = tokio::sync::oneshot::channel();
-        let _ = self.active.writer.send(WriterSignal::Flush(done));
+        let _ = self.active.local.writer.send(WriterSignal::Flush(done));
         let _ = flushed.await;
     }
 }
@@ -254,22 +254,24 @@ async fn side(seat: Seat<'_>, live: LiveProject, files: &[(&str, &str)], pumped:
     tokio::fs::create_dir_all(&collab).await.unwrap();
     let host = Arc::new(Recording::default());
     let active = Arc::new(Active {
-        project_id: "uploads".to_owned(),
-        root: root.clone(),
+        local: LiveDisk {
+            project_id: "uploads".to_owned(),
+            root: root.clone(),
+            disk_file: collab.join("materializer-index.json"),
+            disk: Mutex::new(disk),
+            bases: Mutex::new(bases),
+            host: Arc::clone(&host) as Arc<dyn LiveHost>,
+            writer,
+            upkeep: Default::default(),
+        },
         document_dir: collab.join("document"),
-        disk_file: collab.join("materializer-index.json"),
         live: shared,
         handle,
         link,
-        disk: Mutex::new(disk),
-        host: Arc::clone(&host) as Arc<dyn LiveHost>,
-        writer,
         account_id: tokens.account_id,
         quiet_merge: AtomicBool::new(false),
         waiting: AtomicBool::new(false),
         last_status: Mutex::new(LiveStatus::Connecting),
-        bases: Mutex::new(bases),
-        upkeep: Default::default(),
     });
     attach(&active);
     tauri::async_runtime::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
@@ -1255,7 +1257,7 @@ fn a_figure_waiting_to_be_written_holds_up_neither_closing_nor_a_bounded_wait() 
         alice.arrived("figures", "plot.png", figure);
         alice.pass().await;
         // Holding the index stands in for a write that Windows holds up.
-        let writing = guard(&alice.active.disk);
+        let writing = guard(&alice.active.local.disk);
         tokio::task::block_in_place(|| {
             let deadline = std::time::Instant::now() + WAIT;
             while server.gets.load(Ordering::SeqCst) < 1 {

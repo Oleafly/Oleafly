@@ -4,7 +4,8 @@ use std::time::{Duration, Instant};
 use oleafly_collab::materialize::Layout;
 use oleafly_collab::CollabError;
 
-use super::session::{guard, lock, Active, Alarm};
+use super::live_tree::LiveTree;
+use super::session::{guard, Active, Alarm, LiveDisk};
 use super::unwritten::backoff;
 use crate::collab::disk::{sha256_hex, DiskState};
 
@@ -22,6 +23,109 @@ pub(super) struct Pace {
     counted: Counted,
 }
 
+impl LiveDisk {
+    pub(super) fn hold_back_typing(
+        &self,
+        tree: &dyn LiveTree,
+        next: &Layout,
+        texts: &mut Vec<(String, String)>,
+    ) {
+        let lately = self.paced(|pace| {
+            pace.written.retain(|_, at| at.elapsed() < PACE);
+            pace.written.clone()
+        });
+        if lately.is_empty() {
+            return;
+        }
+        let id_at = |path: &str| {
+            next.iter()
+                .find(|(_, placed)| placed.path == path)
+                .map(|(id, _)| id.clone())
+        };
+        let candidates: Vec<String> = texts
+            .iter()
+            .filter(|(path, _)| lately.contains_key(path))
+            .filter_map(|(path, _)| id_at(path))
+            .collect();
+        let open = tree.open(&candidates);
+        let mut held = Vec::new();
+        texts.retain(|(path, _)| {
+            if !lately.contains_key(path) {
+                return true;
+            }
+            match id_at(path).filter(|id| open.contains(id)) {
+                Some(id) => {
+                    held.push(id);
+                    false
+                }
+                None => true,
+            }
+        });
+        if held.is_empty() {
+            return;
+        }
+        tree.mark_dirty(&held);
+        self.come_back_in(PACE);
+    }
+
+    fn paced<T>(&self, work: impl FnOnce(&mut Pace) -> T) -> T {
+        work(&mut guard(&self.upkeep.pace))
+    }
+
+    fn write_index(&self, json: &[u8], fingerprint: String) -> Result<(), CollabError> {
+        oleafly_collab::write_atomic(&self.disk_file, json)?;
+        self.paced(|pace| {
+            pace.index = Some(fingerprint);
+            #[cfg(test)]
+            {
+                pace.counted.indexes += 1;
+            }
+        });
+        Ok(())
+    }
+
+    pub(super) fn save_index(&self, disk: &DiskState) -> Result<(), CollabError> {
+        let json =
+            serde_json::to_vec(disk).map_err(|error| CollabError::Corrupt(error.to_string()))?;
+        let fingerprint = sha256_hex(&json);
+        self.write_index(&json, fingerprint)
+    }
+
+    pub(super) fn save_index_if_changed(&self, disk: &DiskState) {
+        let Ok(json) = serde_json::to_vec(disk) else {
+            return;
+        };
+        let fingerprint = sha256_hex(&json);
+        if self.paced(|pace| pace.index.as_deref() == Some(fingerprint.as_str())) {
+            return;
+        }
+        let _ = self.write_index(&json, fingerprint);
+    }
+
+    fn come_back_in(&self, delay: Duration) {
+        self.paced(|pace| pace.timer.clone())
+            .ring_in(&self.writer, delay);
+    }
+
+    #[cfg(test)]
+    pub(super) fn counted(&self) -> Counted {
+        self.paced(|pace| pace.counted)
+    }
+
+    pub(super) fn note_written<'a>(&self, paths: impl IntoIterator<Item = &'a String>) {
+        self.paced(|pace| {
+            let now = Instant::now();
+            for path in paths {
+                pace.written.insert(path.clone(), now);
+                #[cfg(test)]
+                {
+                    pace.counted.writes += 1;
+                }
+            }
+        });
+    }
+}
+
 #[cfg(test)]
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(super) struct Counted {
@@ -31,16 +135,12 @@ pub(super) struct Counted {
 }
 
 impl Active {
-    fn paced<T>(&self, work: impl FnOnce(&mut Pace) -> T) -> T {
-        work(&mut guard(&self.upkeep.pace))
-    }
-
     pub(super) fn save_owed(&self) -> bool {
-        self.paced(|pace| pace.owed)
+        self.local.paced(|pace| pace.owed)
     }
 
     pub(super) fn save_due(&self, urgent: bool) -> bool {
-        let (due, gap) = self.paced(|pace| {
+        let (due, gap) = self.local.paced(|pace| {
             let gap = if pace.failures == 0 {
                 PACE
             } else {
@@ -60,14 +160,14 @@ impl Active {
             (due, gap)
         });
         if !due {
-            self.come_back_in(gap);
+            self.local.come_back_in(gap);
         }
         due
     }
 
     pub(super) async fn save_document(&self) {
         let saved = self.persist().await;
-        let failures = self.paced(|pace| {
+        let failures = self.local.paced(|pace| {
             if saved.is_ok() {
                 pace.failures = 0;
             } else {
@@ -82,99 +182,9 @@ impl Active {
         if failures == 1 {
             let _ = crate::project::append_app_log(format!(
                 "Live collaboration could not save the shared document of project {}: {error}; it tries again",
-                self.project_id
+                self.local.project_id
             ));
         }
-        self.come_back_in(backoff(failures));
-    }
-
-    pub(super) fn hold_back_typing(&self, next: &Layout, texts: &mut Vec<(String, String)>) {
-        let lately = self.paced(|pace| {
-            pace.written.retain(|_, at| at.elapsed() < PACE);
-            pace.written.clone()
-        });
-        if lately.is_empty() {
-            return;
-        }
-        let mut held = Vec::new();
-        {
-            let mut live = lock(&self.live);
-            texts.retain(|(path, _)| {
-                if !lately.contains_key(path) {
-                    return true;
-                }
-                let open = next
-                    .iter()
-                    .find(|(_, placed)| placed.path == *path)
-                    .filter(|(id, _)| live.is_open(id))
-                    .map(|(id, _)| id.clone());
-                match open {
-                    Some(id) => {
-                        held.push(id);
-                        false
-                    }
-                    None => true,
-                }
-            });
-            for id in &held {
-                live.mark_dirty(id);
-            }
-        }
-        if !held.is_empty() {
-            self.come_back_in(PACE);
-        }
-    }
-
-    pub(super) fn note_written<'a>(&self, paths: impl IntoIterator<Item = &'a String>) {
-        self.paced(|pace| {
-            let now = Instant::now();
-            for path in paths {
-                pace.written.insert(path.clone(), now);
-                #[cfg(test)]
-                {
-                    pace.counted.writes += 1;
-                }
-            }
-        });
-    }
-
-    pub(super) fn save_index_if_changed(&self, disk: &DiskState) {
-        let Ok(json) = serde_json::to_vec(disk) else {
-            return;
-        };
-        let fingerprint = sha256_hex(&json);
-        if self.paced(|pace| pace.index.as_deref() == Some(fingerprint.as_str())) {
-            return;
-        }
-        let _ = self.write_index(&json, fingerprint);
-    }
-
-    pub(super) fn save_index(&self, disk: &DiskState) -> Result<(), CollabError> {
-        let json =
-            serde_json::to_vec(disk).map_err(|error| CollabError::Corrupt(error.to_string()))?;
-        let fingerprint = sha256_hex(&json);
-        self.write_index(&json, fingerprint)
-    }
-
-    fn write_index(&self, json: &[u8], fingerprint: String) -> Result<(), CollabError> {
-        oleafly_collab::write_atomic(&self.disk_file, json)?;
-        self.paced(|pace| {
-            pace.index = Some(fingerprint);
-            #[cfg(test)]
-            {
-                pace.counted.indexes += 1;
-            }
-        });
-        Ok(())
-    }
-
-    fn come_back_in(&self, delay: Duration) {
-        self.paced(|pace| pace.timer.clone())
-            .ring_in(&self.writer, delay);
-    }
-
-    #[cfg(test)]
-    pub(super) fn counted(&self) -> Counted {
-        self.paced(|pace| pace.counted)
+        self.local.come_back_in(backoff(failures));
     }
 }

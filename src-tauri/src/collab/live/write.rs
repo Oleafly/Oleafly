@@ -210,18 +210,18 @@ impl Active {
         let (handled, renamed, suggested) = {
             let reads = guard(&READS);
             let mut live = lock(&self.live);
-            if kept_from_a_viewer(&live, &self.root, path)? {
+            if kept_from_a_viewer(&live, &self.local.root, path)? {
                 return Ok(WriteOutcome {
                     handled: false,
                     reason: Some(READ_ONLY.to_owned()),
                 });
             }
-            let mut bases = guard(&self.bases);
+            let mut bases = guard(&self.local.bases);
             let (handled, renamed) = write_renaming(
                 &mut live,
                 &mut bases,
-                reads.get(&self.project_id),
-                &self.root,
+                reads.get(&self.local.project_id),
+                &self.local.root,
                 path,
                 base,
                 text,
@@ -238,12 +238,17 @@ impl Active {
             });
         }
         if let Some(path) = suggested {
-            crate::collab::suggesting::tell(self.host.as_ref(), &self.project_id, Some(path), true);
+            crate::collab::suggesting::tell(
+                self.local.host.as_ref(),
+                &self.local.project_id,
+                Some(path),
+                true,
+            );
         }
         self.handle.flush();
         self.refresh_pending();
         let (done, wait) = oneshot::channel();
-        let _ = self.writer.send(WriterSignal::Flush(done));
+        let _ = self.local.writer.send(WriterSignal::Flush(done));
         let _ = tokio::time::timeout(WRITE_SETTLE, wait).await;
         self.announce_new_names(renamed);
         Ok(WriteOutcome {
@@ -402,7 +407,7 @@ impl SharedDocument {
         let Some(path) = normalized(path) else {
             return false;
         };
-        if safe_target(&self.0.root, &path).is_none() {
+        if safe_target(&self.0.local.root, &path).is_none() {
             return false;
         }
         let live = lock(&self.0.live);
@@ -423,8 +428,8 @@ impl SharedDocument {
     pub(crate) fn write(&self, texts: &[SharedText<'_>]) -> Result<Option<String>, CollabError> {
         let written = {
             let mut live = lock(&self.0.live);
-            let mut bases = guard(&self.0.bases);
-            write_all_shared(&mut live, &mut bases, &self.0.root, texts)?
+            let mut bases = guard(&self.0.local.bases);
+            write_all_shared(&mut live, &mut bases, &self.0.local.root, texts)?
         };
         self.0.handle.flush();
         self.0.refresh_pending();
@@ -433,10 +438,10 @@ impl SharedDocument {
             Err(refused) => return Ok(Some(refused)),
         };
         for shared in texts {
-            crate::agent_turns::note_app_write(&self.0.project_id, shared.path);
+            crate::agent_turns::note_app_write(&self.0.local.project_id, shared.path);
         }
         let (done, wait) = oneshot::channel();
-        let _ = self.0.writer.send(WriterSignal::Flush(done));
+        let _ = self.0.local.writer.send(WriterSignal::Flush(done));
         tauri::async_runtime::block_on(async move {
             let _ = tokio::time::timeout(WRITE_SETTLE, wait).await;
         });
@@ -445,7 +450,7 @@ impl SharedDocument {
     }
 
     pub(crate) fn wrote_on_disk(&self, path: &str) {
-        let target = self.0.root.join(path);
+        let target = self.0.local.root.join(path);
         if std::fs::symlink_metadata(&target).is_ok() {
             crate::folder_watch::note_own_write(&target);
         } else {
@@ -496,7 +501,7 @@ mod tests {
     use oleafly_ot::{DocMessage, DocSink, TextOperation};
     use tokio::sync::mpsc;
 
-    use super::super::{writer_loop, LiveHost};
+    use super::super::{writer_loop, LiveDisk, LiveHost};
     use super::*;
     use crate::collab::disk::{sha256_hex, DiskState};
     use crate::collab::state::CollabState;
@@ -1049,22 +1054,24 @@ mod tests {
             let mut bases = WrittenTexts::default();
             bases.record("main.tex", "alpha\nbeta\n");
             let active = Arc::new(Active {
-                project_id: "written-live".to_owned(),
-                root: root.clone(),
+                local: LiveDisk {
+                    project_id: "written-live".to_owned(),
+                    root: root.clone(),
+                    disk_file: dir.path().join("disk.json"),
+                    disk: Mutex::new(disk),
+                    bases: Mutex::new(bases),
+                    host: Arc::new(QuietHost),
+                    writer,
+                    upkeep: Default::default(),
+                },
                 document_dir: dir.path().join("document"),
-                disk_file: dir.path().join("disk.json"),
                 live: Arc::clone(&shared_live),
                 handle,
                 link,
-                disk: Mutex::new(disk),
-                host: Arc::new(QuietHost),
-                writer,
                 account_id: AccountId::new_v7(),
                 quiet_merge: AtomicBool::new(false),
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
-                bases: Mutex::new(bases),
-                upkeep: Default::default(),
             });
             tokio::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
             let created = tokio::time::timeout(
@@ -1085,7 +1092,7 @@ mod tests {
                 .local_text(&main, "alpha\nbeta\ngamma\n")
                 .unwrap();
             {
-                let mut bases = active.bases.lock().unwrap();
+                let mut bases = active.local.bases.lock().unwrap();
                 for typed in ["g", "ga", "gam", "gamm"] {
                     bases.record("main.tex", &format!("alpha\nbeta\n{typed}"));
                 }

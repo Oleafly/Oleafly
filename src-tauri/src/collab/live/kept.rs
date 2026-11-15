@@ -9,10 +9,9 @@ use oleafly_collab::materialize::{self, Layout, Placed};
 use oleafly_collab::CollabError;
 use serde::Serialize;
 
-use super::{guard, lock, name_of, parent_of, Active};
+use super::{guard, lock, name_of, parent_of, Active, LiveDisk};
 
 pub const LIVE_KEPT_EVENT: &str = "collab-live-kept";
-const SHORT_HASH: usize = 6;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -103,7 +102,7 @@ impl Active {
         if previous.is_empty() || written.is_empty() {
             return;
         }
-        let fresh: Vec<(String, String)> = guard(&self.disk)
+        let fresh: Vec<(String, String)> = guard(&self.local.disk)
             .layout
             .iter()
             .filter(|(id, placed)| {
@@ -127,7 +126,7 @@ impl Active {
             return;
         }
         let mut all = guard(&ARRIVALS);
-        let arrivals = all.entry(self.root.clone()).or_default();
+        let arrivals = all.entry(self.local.root.clone()).or_default();
         recent(arrivals);
         for (id, path) in theirs {
             if arrivals.get(&path).is_some_and(|known| known.id == id) {
@@ -168,31 +167,6 @@ pub(super) struct LostFigure {
     by: Option<String>,
 }
 
-fn tagged(name: &str, tag: &str) -> String {
-    match name.rfind('.') {
-        Some(dot) if dot > 0 => format!("{} ({tag}){}", &name[..dot], &name[dot..]),
-        _ => format!("{name} ({tag})"),
-    }
-}
-
-pub(super) fn copy_name(
-    name: &str,
-    author: Option<&str>,
-    hash: &str,
-    taken: &mut BTreeSet<String>,
-) -> String {
-    let credited = author.and_then(|author| {
-        materialize::credited_name(name, author, hash, |named| {
-            taken.insert(named.to_lowercase())
-        })
-    });
-    credited.unwrap_or_else(|| {
-        let named = tagged(name, &hash[..hash.len().min(SHORT_HASH)]);
-        taken.insert(named.to_lowercase());
-        named
-    })
-}
-
 pub(super) fn keep_lost_figures(
     live: &mut LiveProject,
     previous: &mut Layout,
@@ -230,7 +204,7 @@ pub(super) fn keep_lost_figures(
                 .map(|other| other.name.to_lowercase())
                 .collect()
         });
-        let name = copy_name(&node.name, doc.author_name(), &ours, siblings);
+        let name = LiveDisk::copy_name(&node.name, doc.author_name(), &ours, siblings);
         let parent = match &node.parent {
             NodeParent::Node(parent) => Some(parent.as_str()),
             _ => None,
@@ -338,7 +312,7 @@ mod tests {
     use tokio::sync::mpsc;
 
     use super::super::{
-        initial_bases, lock, Active, LiveHost, MergedPayload, NewDevicePayload,
+        initial_bases, lock, Active, LiveDisk, LiveHost, MergedPayload, NewDevicePayload,
         PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
     };
     use super::*;
@@ -405,22 +379,24 @@ mod tests {
         let collab: PathBuf = dir.join("collab");
         std::fs::create_dir_all(&collab).unwrap();
         Arc::new(Active {
-            project_id: "kept".to_owned(),
-            root: root.to_path_buf(),
+            local: LiveDisk {
+                project_id: "kept".to_owned(),
+                root: root.to_path_buf(),
+                disk_file: collab.join("materializer-index.json"),
+                disk: Mutex::new(disk),
+                bases: Mutex::new(bases),
+                host,
+                writer,
+                upkeep: Default::default(),
+            },
             document_dir: collab.join("document"),
-            disk_file: collab.join("materializer-index.json"),
             live: shared,
             handle,
             link,
-            disk: Mutex::new(disk),
-            host,
-            writer,
             account_id: AccountId::new_v7(),
             quiet_merge: AtomicBool::new(false),
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
-            bases: Mutex::new(bases),
-            upkeep: Default::default(),
         })
     }
 
@@ -934,14 +910,14 @@ mod tests {
         fn replace_on_disk(&self) {
             std::fs::write(self.root.join("figs/plot.png"), self.bytes).unwrap();
             let only = ["figs/plot.png".to_owned()];
-            let snapshot = guard(&self.active.disk).clone();
+            let snapshot = guard(&self.active.local.disk).clone();
             let import = {
                 let live = lock(&self.active.live);
                 super::super::read_local_changes(&self.root, &snapshot, &live, Some(&only)).unwrap()
             };
-            let mut disk = guard(&self.active.disk);
+            let mut disk = guard(&self.active.local.disk);
             let mut live = lock(&self.active.live);
-            let mut bases = guard(&self.active.bases);
+            let mut bases = guard(&self.active.local.bases);
             assert!(super::super::apply_local_import(
                 &mut live, &mut disk, &mut bases, import, &self.root
             )

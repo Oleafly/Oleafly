@@ -369,7 +369,7 @@ impl Active {
             };
             let files = listed(uploads);
             let payload = (uploads.told.as_ref() != Some(&files)).then(|| UploadsPayload {
-                project_id: self.project_id.clone(),
+                project_id: self.local.project_id.clone(),
                 files: files.clone(),
             });
             uploads.told = Some(files);
@@ -389,7 +389,7 @@ impl Active {
             (payload, timer)
         };
         if let Some(payload) = payload {
-            self.host.uploads(payload);
+            self.local.host.uploads(payload);
         }
         if let Some((wait, token, active)) = timer {
             let wait = wait.max(self.link.client.asked_wait().unwrap_or_default());
@@ -426,13 +426,13 @@ impl Active {
             None
         };
         let paths: Vec<String> = {
-            let hashes = guard(&self.disk).hashes.clone();
+            let hashes = guard(&self.local.disk).hashes.clone();
             let mut all = guard(&UPLOADS);
             let Some(uploads) = all.get_mut(&self.upload_key()) else {
                 return;
             };
             uploads.files.retain(|path, pending| {
-                safe_target(&self.root, path).is_some_and(|target| target.is_file())
+                safe_target(&self.local.root, path).is_some_and(|target| target.is_file())
                     && hashes.get(path) != Some(&pending.hash)
             });
             for pending in uploads.files.values_mut() {

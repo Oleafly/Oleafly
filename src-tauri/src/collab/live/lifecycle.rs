@@ -10,11 +10,12 @@ use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
 use super::host::LiveHost;
+use super::live_disk::writer_loop;
 use super::payloads::{LiveInfo, RolePayload, StatusPayload};
 use super::pump::pump;
 use super::session::{
-    active_for, guard, io, live_for, lock, not_live, writer_loop, Active, Live, WriterSignal,
-    ACTIVE, FRESH_JOINS, LIFECYCLE,
+    active_for, guard, io, live_for, lock, not_live, Active, Live, LiveDisk, WriterSignal, ACTIVE,
+    FRESH_JOINS, LIFECYCLE,
 };
 use super::{local_copy, settings, sync_hold, uploads};
 use crate::collab::commands::signed_out;
@@ -48,7 +49,7 @@ async fn start_locked(
         let role = lock(&active.live).role();
         let status = guard(&active.last_status).clone();
         active.emit_status(status);
-        active.host.role(RolePayload {
+        active.local.host.role(RolePayload {
             project_id: project_id.to_owned(),
             role,
             tracking: false,
@@ -134,32 +135,37 @@ async fn start_locked(
     let handle = spawn_live(link.clone(), Arc::clone(&shared), events_tx);
     let fresh = guard(&FRESH_JOINS).remove(project_id);
     let active = Arc::new(Active {
-        project_id: project_id.to_owned(),
-        root,
+        local: LiveDisk {
+            project_id: project_id.to_owned(),
+            root,
+            disk_file,
+            disk: Mutex::new(disk),
+            bases: Mutex::new(bases),
+            host,
+            writer: writer_tx,
+            upkeep: Default::default(),
+        },
         document_dir,
-        disk_file,
         live: Arc::clone(&shared),
         handle,
         link,
-        disk: Mutex::new(disk),
-        host,
-        writer: writer_tx,
         account_id: tokens.account_id,
         quiet_merge: AtomicBool::new(fresh),
         waiting: AtomicBool::new(false),
         last_status: Mutex::new(LiveStatus::Connecting),
-        bases: Mutex::new(bases),
-        upkeep: Default::default(),
     });
     lock(&shared).mark_all_dirty()?;
     tauri::async_runtime::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
     tauri::async_runtime::spawn(pump(Arc::downgrade(&active), events_rx, paths));
     active.kick();
     *guard(&ACTIVE) = Some(Live::Server(Arc::clone(&active)));
-    active.host.unwritten(super::unwritten::UnwrittenPayload {
-        project_id: project_id.to_owned(),
-        files: Vec::new(),
-    });
+    active
+        .local
+        .host
+        .unwritten(super::unwritten::UnwrittenPayload {
+            project_id: project_id.to_owned(),
+            files: Vec::new(),
+        });
     active.announce_new_names(renamed);
     settings::schedule(&active);
     uploads::attach(&active);
@@ -180,13 +186,13 @@ async fn start_locked(
 async fn finish(live: Live) {
     let Live::Server(active) = live;
     let (done, wait) = oneshot::channel();
-    let _ = active.writer.send(WriterSignal::Flush(done));
+    let _ = active.local.writer.send(WriterSignal::Flush(done));
     let _ = tokio::time::timeout(Duration::from_secs(5), wait).await;
     active.close_figures();
     active.save_now();
-    active.announce_written();
+    active.local.announce_written();
     active.handle.stop();
-    crate::folder_watch::release_live(&active.project_id);
+    crate::folder_watch::release_live(&active.local.project_id);
 }
 
 async fn stop_any() {
@@ -207,7 +213,7 @@ pub fn finish_for_quit(wait: Duration) {
         };
         let Live::Server(active) = live;
         let (done, flushed) = oneshot::channel();
-        let _ = active.writer.send(WriterSignal::Flush(done));
+        let _ = active.local.writer.send(WriterSignal::Flush(done));
         let _ = tokio::time::timeout(wait.saturating_sub(started.elapsed()), flushed).await;
         active.close_figures();
         active.save_now();
@@ -278,7 +284,7 @@ pub async fn flush(project_id: &str, figures: bool) {
     };
     let Live::Server(active) = live;
     let (done, wait) = oneshot::channel();
-    let _ = active.writer.send(WriterSignal::Flush(done));
+    let _ = active.local.writer.send(WriterSignal::Flush(done));
     let _ = tokio::time::timeout(Duration::from_secs(10), wait).await;
     if figures {
         active.wait_for_figures(FIGURE_WAIT).await;

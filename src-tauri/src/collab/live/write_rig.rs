@@ -14,7 +14,7 @@ use oleafly_collab_protocol::projects::ProjectRole;
 use tokio::sync::{mpsc, oneshot};
 
 use super::super::{
-    guard, initial_bases, lock, writer_loop, Active, Live, LiveHost, MergedPayload,
+    guard, initial_bases, lock, writer_loop, Active, Live, LiveDisk, LiveHost, MergedPayload,
     NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
     WriterSignal, ACTIVE,
 };
@@ -111,22 +111,24 @@ impl LiveRig {
             let (writer, writer_rx) = mpsc::unbounded_channel();
             let handle = spawn_live(link.clone(), Arc::clone(&shared), events);
             let active = Arc::new(Active {
-                project_id,
-                root,
+                local: LiveDisk {
+                    project_id,
+                    root,
+                    disk_file: collab.join("materializer-index.json"),
+                    disk: Mutex::new(disk),
+                    bases: Mutex::new(bases),
+                    host,
+                    writer,
+                    upkeep: Default::default(),
+                },
                 document_dir: collab.join("document"),
-                disk_file: collab.join("materializer-index.json"),
                 live: shared,
                 handle,
                 link,
-                disk: Mutex::new(disk),
-                host,
-                writer,
                 account_id: AccountId::new_v7(),
                 quiet_merge: AtomicBool::new(false),
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
-                bases: Mutex::new(bases),
-                upkeep: Default::default(),
             });
             tauri::async_runtime::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
             active
@@ -268,7 +270,7 @@ impl LiveRig {
     }
 
     pub(in crate::collab::live) fn counted(&self) -> super::super::pacing::Counted {
-        self.active.counted()
+        self.active.local.counted()
     }
 
     pub(crate) fn shared_live(&self) -> SharedLive {
@@ -288,7 +290,7 @@ impl LiveRig {
 
     pub(crate) fn settle(&self) {
         let (done, wait) = oneshot::channel();
-        let _ = self.active.writer.send(WriterSignal::Flush(done));
+        let _ = self.active.local.writer.send(WriterSignal::Flush(done));
         tauri::async_runtime::block_on(async move {
             let _ = tokio::time::timeout(Duration::from_secs(10), wait).await;
         });

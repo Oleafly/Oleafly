@@ -123,7 +123,7 @@ impl Figures {
 impl Active {
     pub(super) fn want_figures(self: &Arc<Self>, wanted: Vec<(String, String)>) {
         let start = {
-            let mut figures = guard(&self.upkeep.figures);
+            let mut figures = guard(&self.local.upkeep.figures);
             if self.figures_closed() {
                 return;
             }
@@ -137,12 +137,15 @@ impl Active {
     }
 
     fn figures_closed(&self) -> bool {
-        self.upkeep.figures_closed.load(Ordering::SeqCst)
+        self.local.upkeep.figures_closed.load(Ordering::SeqCst)
     }
 
     pub(super) fn close_figures(&self) {
-        self.upkeep.figures_closed.store(true, Ordering::SeqCst);
-        let mut figures = guard(&self.upkeep.figures);
+        self.local
+            .upkeep
+            .figures_closed
+            .store(true, Ordering::SeqCst);
+        let mut figures = guard(&self.local.upkeep.figures);
         figures.wanted.clear();
         figures.fetched.clear();
         figures.wake.notify_one();
@@ -174,7 +177,7 @@ impl Active {
     }
 
     fn figures_now(&self) -> Option<MutexGuard<'_, Figures>> {
-        match self.upkeep.figures.try_lock() {
+        match self.local.upkeep.figures.try_lock() {
             Ok(figures) => Some(figures),
             Err(TryLockError::Poisoned(poisoned)) => Some(poisoned.into_inner()),
             Err(TryLockError::WouldBlock) => None,
@@ -195,12 +198,12 @@ impl Active {
 
     #[cfg(test)]
     pub(super) fn figures_running(&self) -> bool {
-        guard(&self.upkeep.figures).running
+        guard(&self.local.upkeep.figures).running
     }
 
     async fn place_figure(&self, path: &str, hash: &str, fetched: Option<Bytes>, last: bool) {
         let wanted = {
-            let mut figures = guard(&self.upkeep.figures);
+            let mut figures = guard(&self.local.upkeep.figures);
             figures.in_flight.remove(path);
             !self.figures_closed() && figures.wanted.get(path).map(String::as_str) == Some(hash)
         };
@@ -213,7 +216,7 @@ impl Active {
             },
         };
         if wanted {
-            let mut figures = guard(&self.upkeep.figures);
+            let mut figures = guard(&self.local.upkeep.figures);
             if figures.wanted.get(path).map(String::as_str) == Some(hash) {
                 if matches!(placed, Placed::Failed(_)) {
                     if let Some(bytes) = &fetched {
@@ -226,10 +229,10 @@ impl Active {
             }
         }
         if last {
-            let disk = guard(&self.disk);
-            self.save_index_if_changed(&disk);
+            let disk = guard(&self.local.disk);
+            self.local.save_index_if_changed(&disk);
         }
-        let landed = Arc::clone(&guard(&self.upkeep.figures).landed);
+        let landed = Arc::clone(&guard(&self.local.upkeep.figures).landed);
         landed.notify_waiters();
         let settled = match placed {
             Placed::Written { .. } | Placed::Already => Settled {
@@ -246,11 +249,11 @@ impl Active {
             }
             Placed::Dropped => return,
         };
-        let layout = guard(&self.disk).layout.clone();
+        let layout = guard(&self.local.disk).layout.clone();
         self.settle_unwritten(&layout, settled);
         if let Placed::Written { added } = placed {
-            self.host.folder_changed(FolderChange {
-                project_id: self.project_id.clone(),
+            self.local.host.folder_changed(FolderChange {
+                project_id: self.local.project_id.clone(),
                 paths: vec![path.to_owned()],
                 rescan: false,
                 structural: added,
@@ -261,14 +264,14 @@ impl Active {
     }
 
     fn held_now(&self, path: &str) -> Option<UnwrittenReason> {
-        safe_target(&self.root, path).and_then(|target| held_now(&target))
+        safe_target(&self.local.root, path).and_then(|target| held_now(&target))
     }
 
     fn write_figure(&self, path: &str, hash: &str, bytes: &[u8]) -> Placed {
-        if !self.root.is_dir() || super::sync_hold::keeps_back(&self.hold_dir(), path) {
+        if !self.local.root.is_dir() || super::sync_hold::keeps_back(&self.hold_dir(), path) {
             return Placed::Dropped;
         }
-        let mut disk = guard(&self.disk);
+        let mut disk = guard(&self.local.disk);
         if self.figures_closed() {
             return Placed::Dropped;
         }
@@ -280,16 +283,16 @@ impl Active {
         if !still_placed || disk.hashes.get(path).map(String::as_str) == Some(hash) {
             return Placed::Dropped;
         }
-        let added = safe_target(&self.root, path)
+        let added = safe_target(&self.local.root, path)
             .is_some_and(|target| std::fs::symlink_metadata(target).is_err());
-        let placed = match figure_state(&self.root, &disk, path, hash) {
+        let placed = match figure_state(&self.local.root, &disk, path, hash) {
             FigureState::OnDisk => Placed::Already,
             FigureState::Conflict => return Placed::Conflict,
             FigureState::Missing(stamp) => {
-                match write_file_over(&self.root, path, bytes, stamp.as_ref()) {
+                match write_file_over(&self.local.root, path, bytes, stamp.as_ref()) {
                     Ok(WriteOutcome::ChangedOutside) => return Placed::Conflict,
                     Ok(_) => Placed::Written { added },
-                    Err(error) => return Placed::Failed(reason_of(&self.root, path, &error)),
+                    Err(error) => return Placed::Failed(reason_of(&self.local.root, path, &error)),
                 }
             }
         };
@@ -315,7 +318,7 @@ async fn fetch_figures(session: Weak<Active>) {
                 return;
             };
             let closed = active.figures_closed();
-            let mut figures = guard(&active.upkeep.figures);
+            let mut figures = guard(&active.local.upkeep.figures);
             running.retain(|path, (hash, abort)| {
                 let keep = !closed && figures.wanted.get(path) == Some(hash);
                 if !keep {
@@ -375,7 +378,7 @@ async fn fetch_figures(session: Weak<Active>) {
                         active.place_figure(&path, &hash, bytes, running.is_empty()).await;
                     }
                     None => {
-                        guard(&active.upkeep.figures).in_flight.remove(&path);
+                        guard(&active.local.upkeep.figures).in_flight.remove(&path);
                     }
                 }
             }

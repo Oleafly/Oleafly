@@ -8,6 +8,7 @@ use oleafly_collab::CollabError;
 
 use super::bases::{merged_onto, WrittenTexts};
 use super::kept;
+use super::live_tree::TreeRead;
 use super::session::io;
 use crate::collab::disk::{
     as_text, crlf_only, excluded_name, exists_exact, follow_layout, inside, moved_key, rekey_moved,
@@ -63,10 +64,10 @@ pub(super) struct Scanned {
 }
 
 impl Scanned {
-    pub(super) fn classify(self, live: &LiveProject) -> LocalImport {
+    pub(super) fn classify(self, read: &(impl TreeRead + ?Sized)) -> LocalImport {
         let mut import = self.import;
         for (path, id, text, hash) in self.known_texts {
-            if live.doc().text(&id).ok().as_deref() == Some(text.as_str()) {
+            if read.text(&id).ok().as_deref() == Some(text.as_str()) {
                 import.restamped.push((path, hash));
             } else {
                 import.texts.push((path, text, hash));
@@ -76,8 +77,8 @@ impl Scanned {
     }
 }
 
-pub(super) fn placed_now(live: &LiveProject) -> Result<Placed, CollabError> {
-    Ok(by_path(&materialize::layout(&live.doc().nodes()?)))
+pub(super) fn placed_now(read: &(impl TreeRead + ?Sized)) -> Result<Placed, CollabError> {
+    Ok(by_path(&materialize::layout(&read.nodes()?)))
 }
 
 pub(super) fn read_local_changes(

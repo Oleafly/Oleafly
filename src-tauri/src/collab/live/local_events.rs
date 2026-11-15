@@ -30,7 +30,7 @@ fn saved_disk(project_id: &str) -> DiskState {
 pub(crate) fn known_content(project_id: &str) -> KnownContent {
     if let Some(live) = live_for(project_id) {
         let Live::Server(active) = live;
-        let hashes = guard(&active.disk).hashes.clone();
+        let hashes = guard(&active.local.disk).hashes.clone();
         return KnownContent {
             active: Some(active),
             hashes,
@@ -66,7 +66,7 @@ pub(crate) fn shared_files(project_id: &str) -> std::collections::BTreeSet<Strin
             .collect()
     };
     match live_for(project_id) {
-        Some(Live::Server(active)) => files(&guard(&active.disk)),
+        Some(Live::Server(active)) => files(&guard(&active.local.disk)),
         None => files(&saved_disk(project_id)),
     }
 }
