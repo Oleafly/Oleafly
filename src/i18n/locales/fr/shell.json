@@ -1099,7 +1099,8 @@
       "help": "Aide et à propos",
       "integrations": "Intégrations",
       "shortcuts": "Raccourcis clavier",
-      "research": "Recherche"
+      "research": "Recherche",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Aucun paramètre ne correspond",
@@ -1116,7 +1117,8 @@
         "help": "à propos, version, mises à jour, journal des modifications, nouveautés, documentation, assistance, aide, communauté, Discord, licence, rapport de plantage",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hébergement Git, Computer Use, applications de bureau, Cua, MCP, citations, comptes, connexions",
         "shortcuts": "raccourcis clavier, raccourcis, touches, clavier",
-        "research": "recherche tâches budget notifications veille expériences exécutions research tasks"
+        "research": "recherche tâches budget notifications veille expériences exécutions research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Rechercher dans les paramètres",
       "results_one": "{{count}} section correspond",

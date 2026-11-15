@@ -738,6 +738,25 @@ export const readAppLogChunked = (maxBytes: number) =>
     invoke<void>("read_app_log_chunked", { maxBytes, channel }),
   );
 
+export type LogLevel = "info" | "warning" | "error";
+
+export interface LogEntry {
+  ts_ms: number;
+  level: LogLevel;
+  message: string;
+  safe: unknown;
+  sensitive: unknown;
+}
+
+export const readLogEntries = () => invoke<LogEntry[]>("read_log_entries");
+
+export const clearLogs = () => invoke<void>("clear_logs");
+
+export const revealAppLog = () => invoke<void>("reveal_app_log");
+
+export const exportLogArchive = (dest: string) =>
+  invoke<void>("export_log_archive", { dest, includeSensitive: false });
+
 export const projectCompileFolder = (projectId: string, mainDoc: string) =>
   invoke<string | null>("project_compile_folder", { projectId, mainDoc });
 

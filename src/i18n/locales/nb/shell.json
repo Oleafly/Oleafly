@@ -1083,7 +1083,8 @@
       "help": "Hjelp og om",
       "integrations": "Integrasjoner",
       "shortcuts": "Hurtigtaster",
-      "research": "Forskning"
+      "research": "Forskning",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Ingen innstillinger passer",
@@ -1100,7 +1101,8 @@
         "help": "om, versjon, oppdateringer, endringslogg, hva er nytt, dokumentasjon, støtte, hjelp, fellesskap, Discord, lisens, krasjrapport",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-hosting, Computer Use, skrivebordsapper, Cua, MCP, siteringer, kontoer, tilkoblinger",
         "shortcuts": "tastebindinger, hurtigtaster, taster, tastatur, snarveier",
-        "research": "forskning oppgaver budsjett varsler hold våken eksperimenter kjøringer"
+        "research": "forskning oppgaver budsjett varsler hold våken eksperimenter kjøringer",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Søk i innstillingene",
       "results_one": "{{count}} seksjon passer",

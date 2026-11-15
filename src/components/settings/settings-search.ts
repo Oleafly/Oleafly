@@ -13,6 +13,7 @@ export const SETTINGS_SEARCH_SECTIONS = [
   "collaboration",
   "shortcuts",
   "experimentation",
+  "logs",
   "developer",
   "help",
 ] as const;
@@ -73,6 +74,7 @@ export const SETTINGS_SEARCH_SOURCES: Readonly<Record<SettingsSearchSection, rea
   collaboration: [keywords("collaboration")],
   shortcuts: [["settings", "shortcuts"], keywords("shortcuts")],
   experimentation: [["shell", "settings", "experimentation"], keywords("experimentation")],
+  logs: [["settings", "logs"], keywords("logs")],
   developer: [["core", "developer"]],
   help: [["shell", "settings", "help"], ["settings", "cite"], keywords("help")],
 };

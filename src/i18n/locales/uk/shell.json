@@ -1115,7 +1115,8 @@
       "help": "Довідка та про застосунок",
       "integrations": "Інтеграції",
       "shortcuts": "Комбінації клавіш",
-      "research": "Дослідження"
+      "research": "Дослідження",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Немає відповідних налаштувань",
@@ -1132,7 +1133,8 @@
         "help": "про застосунок, версія, оновлення, журнал змін, що нового, документація, підтримка, спільнота, Discord, ліцензія, звіт про збій",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-хостинг, Computer Use, застосунки на комп’ютері, Cua, MCP, цитування, облікові записи, підключення",
         "shortcuts": "прив’язки клавіш, гарячі клавіші, комбінації клавіш, клавіші, клавіатура",
-        "research": "дослідження завдання бюджет сповіщення не засинати експерименти запуски research tasks"
+        "research": "дослідження завдання бюджет сповіщення не засинати експерименти запуски research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Пошук у налаштуваннях",
       "results_one": "{{count}} розділ відповідає запиту",

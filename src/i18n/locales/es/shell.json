@@ -1099,7 +1099,8 @@
       "help": "Ayuda y Acerca de",
       "integrations": "Integraciones",
       "shortcuts": "Atajos de teclado",
-      "research": "Investigación"
+      "research": "Investigación",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Ningún ajuste coincide",
@@ -1116,7 +1117,8 @@
         "help": "acerca de, versión, actualizaciones, registro de cambios, novedades, documentación, soporte, ayuda, comunidad, Discord, licencia, informe de fallos",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, alojamiento Git, Computer Use, aplicaciones de escritorio, Cua, MCP, citas, cuentas, conexiones",
         "shortcuts": "atajos de teclado, atajos, combinaciones de teclas, teclas, teclado",
-        "research": "investigación tareas presupuesto notificaciones mantener despierto experimentos ejecuciones research tasks"
+        "research": "investigación tareas presupuesto notificaciones mantener despierto experimentos ejecuciones research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Buscar en ajustes",
       "results_one": "{{count}} sección coincide",
