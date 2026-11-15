@@ -6563,6 +6563,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
+ "tokio-tungstenite 0.30.0",
  "url",
  "zeroize",
  "zip 9.1.3",
