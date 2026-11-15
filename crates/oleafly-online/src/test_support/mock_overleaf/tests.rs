@@ -1139,6 +1139,40 @@ async fn mock_refuses_a_sharejs_update_with_a_wrong_hash() {
 }
 
 #[tokio::test]
+async fn mock_checks_the_hash_only_on_an_update_it_did_not_transform() {
+    let mock = MockOverleaf::start(project()).await;
+    let doc = mock.doc_id("main.tex");
+    let text = mock.doc_text(&doc);
+    let mut alice = mock.peer("alice");
+    alice.join(&doc);
+    let mut bob = mock.peer("bob");
+    bob.join(&doc);
+    bob.type_at(&doc, 0, "B");
+    let update = json!({ "doc": doc, "op": [{ "p": 0, "i": "x" }], "v": 0, "hash": blob_hash(&format!("x{text}")) });
+    alice.emit("applyOtUpdate", vec![json!(doc), update]);
+    assert!(alice.events("otUpdateError").is_empty());
+    assert_eq!(mock.doc_text(&doc), format!("xB{text}"));
+}
+
+#[tokio::test]
+async fn a_mock_peer_drops_an_op_that_cancelled_out() {
+    let mock = MockOverleaf::start(project()).await;
+    let doc = mock.doc_id("main.tex");
+    let mut alice = mock.peer("alice");
+    alice.join(&doc);
+    let mut bob = mock.peer("bob");
+    bob.join(&doc);
+    bob.hold();
+    bob.delete(&doc, 0, 1);
+    alice.delete(&doc, 0, 1);
+    bob.sync();
+    bob.release();
+    assert!(bob.is_connected());
+    assert_eq!(bob.text(&doc), mock.doc_text(&doc));
+    assert_eq!(mock.doc_version(&doc), 1);
+}
+
+#[tokio::test]
 async fn mock_replaces_surrogates_in_sharejs_inserts() {
     let mock = MockOverleaf::start(project()).await;
     let doc = mock.doc_id("main.tex");

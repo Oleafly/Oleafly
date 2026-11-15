@@ -1800,7 +1800,7 @@ fn apply_sharejs(
     if content.len() > MAX_DOC_LENGTH {
         return Err("Update takes doc over max doc size".into());
     }
-    if let Some(hash) = update["hash"].as_str() {
+    if let Some(hash) = update["hash"].as_str().filter(|_| v == doc.version) {
         if blob_hash(&sharejs_text::text(&content)) != hash {
             return Err("Invalid hash".into());
         }
@@ -2703,6 +2703,8 @@ impl MockPeer {
                 if doc.inflight.is_some() {
                     continue;
                 }
+                doc.pending
+                    .retain(|(op, _)| !matches!(op, PeerOp::ShareJs(op) if op.is_empty()));
                 let Some(next) = doc.pending.pop_front() else {
                     continue;
                 };
@@ -2829,6 +2831,15 @@ impl MockPeer {
             .filter(|(event, _)| event == name)
             .map(|(_, args)| args.clone())
             .collect()
+    }
+
+    pub fn take_events(&mut self, name: &str) -> Vec<Vec<Value>> {
+        self.sync();
+        let (taken, kept) = std::mem::take(&mut self.events)
+            .into_iter()
+            .partition(|(event, _)| event == name);
+        self.events = kept;
+        taken.into_iter().map(|(_, args)| args).collect()
     }
 }
 

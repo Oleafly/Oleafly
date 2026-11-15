@@ -303,9 +303,7 @@ fn sha1_blob(length: usize, bytes: &[u8]) -> String {
         .collect()
 }
 
-pub fn blob_hash(text: &str) -> String {
-    sha1_blob(text.encode_utf16().count(), text.as_bytes())
-}
+pub use crate::live::format::blob_hash;
 
 pub fn git_blob_hash(bytes: &[u8]) -> String {
     sha1_blob(bytes.len(), bytes)
