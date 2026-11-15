@@ -46,6 +46,7 @@ pub struct Http {
     client: reqwest::Client,
     pub base: String,
     pub origin: String,
+    pub user_agent: String,
 }
 
 fn build_client(user_agent: &str) -> Result<reqwest::Client, OnlineError> {
@@ -94,6 +95,7 @@ impl Http {
             client: shared_client(user_agent)?,
             base: base.to_string(),
             origin: session::origin_of(base),
+            user_agent: user_agent.to_string(),
         })
     }
 
@@ -104,6 +106,20 @@ impl Http {
     pub fn get(&self, path: &str, cookie: &str) -> reqwest::RequestBuilder {
         self.client
             .get(self.url(path))
+            .header(COOKIE, cookie)
+            .header(ORIGIN, &self.origin)
+    }
+
+    pub fn get_at(&self, url: &str, cookie: &str) -> reqwest::RequestBuilder {
+        self.client
+            .get(url)
+            .header(COOKIE, cookie)
+            .header(ORIGIN, &self.origin)
+    }
+
+    pub fn post_at(&self, url: &str, cookie: &str) -> reqwest::RequestBuilder {
+        self.client
+            .post(url)
             .header(COOKIE, cookie)
             .header(ORIGIN, &self.origin)
     }
@@ -143,7 +159,7 @@ impl Http {
         target.origin() == base.origin() && target.path().trim_end_matches('/').ends_with("/login")
     }
 
-    fn classify(&self, response: &Response) -> Result<(), OnlineError> {
+    pub(crate) fn classify(&self, response: &Response) -> Result<(), OnlineError> {
         let status = response.status();
         if status.is_redirection() {
             let location = response

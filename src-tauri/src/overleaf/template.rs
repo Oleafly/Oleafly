@@ -6,6 +6,9 @@
 //! that account (its Open as Template button). Importing a gallery link does
 //! the same with the saved sign-in, then downloads the copy.
 
+use oleafly_online::realtime::project::{
+    fetch_project, flavor_for_compiler, settings_from_project,
+};
 use serde::Serialize;
 use serde_json::{Map, Value};
 use tauri::AppHandle;
@@ -14,7 +17,6 @@ use super::client::{self, Http};
 use super::html;
 use super::import;
 use super::session;
-use super::socket;
 use crate::app_error::AppError;
 use crate::custom_templates::{self, TemplateDraft, TemplateSource};
 use crate::templates::TemplateLicense;
@@ -323,7 +325,7 @@ fn details_for(link: &TemplateLink, page: TemplatePage) -> TemplateDetails {
         license: page.license,
         description: page.description,
         compiler: compiler_name(open.engine.as_deref())
-            .and_then(socket::flavor_for_compiler)
+            .and_then(flavor_for_compiler)
             .map(str::to_string),
         main_file: open.main_file,
         has_pdf: page.has_pdf,
@@ -489,7 +491,7 @@ pub(crate) async fn import_template(
             description: page.description.clone().unwrap_or_default(),
             main_doc: open.main_file.clone(),
             tex_flavor: compiler_name(open.engine.as_deref())
-                .and_then(socket::flavor_for_compiler)
+                .and_then(flavor_for_compiler)
                 .map(str::to_string),
             license: Some(TemplateLicense {
                 spdx: page.license.clone().unwrap_or_default(),
@@ -528,9 +530,9 @@ pub(crate) async fn save_project_as_template(
             return Err(AppError::new("overleaf.project_unavailable").into());
         }
         let http = Http::new(&base)?;
-        let settings = socket::fetch_project(&http, &session.cookie, project_id)
+        let settings = fetch_project(http.online(), &session.cookie, project_id)
             .await
-            .map(|project| socket::settings_from_project(&project))
+            .map(|project| settings_from_project(&project))
             .unwrap_or_default();
         let draft = TemplateDraft {
             name,
@@ -538,7 +540,7 @@ pub(crate) async fn save_project_as_template(
             tex_flavor: settings
                 .compiler
                 .as_deref()
-                .and_then(socket::flavor_for_compiler)
+                .and_then(flavor_for_compiler)
                 .map(str::to_string),
             ..TemplateDraft::default()
         };

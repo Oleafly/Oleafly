@@ -14,8 +14,9 @@ test-support = ["tokio/sync"]
 [dependencies]
 aes = { version = "0.9", features = ["zeroize"] }
 cbc = { version = "0.2", features = ["zeroize"] }
-futures-util = "0.3"
+futures-util = { version = "0.3", features = ["sink"] }
 oleafly-core = { path = "../oleafly-core" }
+oleafly-net = { path = "../oleafly-net" }
 oleafly-secrets = { path = "../oleafly-secrets" }
 rand = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json", "stream"] }
@@ -44,7 +45,14 @@ windows-sys = { version = "0.61", features = ["Win32_Foundation"] }
 name = "browser_signin"
 harness = false
 
+[[test]]
+name = "realtime_tls"
+required-features = ["test-support"]
+
 [dev-dependencies]
+oleafly-net = { path = "../oleafly-net", features = ["test-support"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tempfile = { workspace = true }
-tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "rt", "rt-multi-thread", "sync", "time"] }
+tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "rt", "rt-multi-thread", "sync", "test-util", "time"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
 tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect", "handshake"] }

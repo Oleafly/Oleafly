@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use serde_json::Value;
 
-use super::frames::Packet;
+use crate::realtime::codec::{self, Frame as Wire};
 
 pub const FIXTURES: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/fixtures/overleaf-rt");
 
@@ -152,7 +152,7 @@ pub fn probe_event(name: &str, transport: &str, event: &str) -> Option<Vec<Value
     probe_frames(name, transport)
         .iter()
         .filter(|frame| !frame.outgoing)
-        .filter_map(|frame| Packet::parse(&frame.raw)?.event())
+        .filter_map(|frame| codec::decode(&frame.raw).ok()?.into_event())
         .find(|(found, _)| found == event)
         .map(|(_, args)| args)
 }
@@ -183,16 +183,18 @@ pub fn recordings() -> Vec<Recording> {
 }
 
 impl Trace {
-    pub fn packets(&self) -> impl Iterator<Item = (bool, Packet)> + '_ {
-        self.frames
-            .iter()
-            .filter_map(|frame| Packet::parse(&frame.raw).map(|packet| (frame.outgoing, packet)))
+    pub fn packets(&self) -> impl Iterator<Item = (bool, Wire)> + '_ {
+        self.frames.iter().filter_map(|frame| {
+            codec::decode(&frame.raw)
+                .ok()
+                .map(|packet| (frame.outgoing, packet))
+        })
     }
 
     pub fn public_ids(&self) -> Vec<String> {
         self.packets()
             .filter(|(outgoing, _)| !outgoing)
-            .filter_map(|(_, packet)| packet.event())
+            .filter_map(|(_, packet)| packet.into_event())
             .filter(|(name, _)| name == "joinProjectResponse")
             .filter_map(|(_, args)| args.first()?.get("publicId")?.as_str().map(str::to_string))
             .collect()
@@ -202,19 +204,20 @@ impl Trace {
         let mut asked = Vec::new();
         let mut replies = Vec::new();
         for (outgoing, packet) in self.packets() {
-            if outgoing {
-                if let Some((name, args)) = packet.event() {
+            match packet {
+                Wire::Event { ack, name, args } if outgoing => {
                     if name == "joinDoc" && args.first().and_then(Value::as_str) == Some(doc_id) {
-                        asked.extend(packet.id);
+                        asked.extend(ack.map(|id| id.0));
                     }
                 }
-            } else if packet.kind == 1 {
-                asked.clear();
-            } else if let Some((id, args)) = packet.ack() {
-                if let Some(at) = asked.iter().position(|asked| *asked == id) {
-                    asked.remove(at);
-                    replies.push(args);
+                Wire::Connect if !outgoing => asked.clear(),
+                Wire::Ack { id, args } if !outgoing => {
+                    if let Some(at) = asked.iter().position(|asked| *asked == id.0) {
+                        asked.remove(at);
+                        replies.push(args);
+                    }
                 }
+                _ => {}
             }
         }
         replies
@@ -224,19 +227,20 @@ impl Trace {
         let mut asked = Vec::new();
         let mut last = None;
         for (at, (outgoing, packet)) in self.packets().enumerate() {
-            if outgoing {
-                if let Some((name, args)) = packet.event() {
+            match packet {
+                Wire::Event { ack, name, args } if outgoing => {
                     if name == "joinDoc" && args.first().and_then(Value::as_str) == Some(doc_id) {
-                        asked.extend(packet.id);
+                        asked.extend(ack.map(|id| id.0));
                     }
                 }
-            } else if packet.kind == 1 {
-                asked.clear();
-            } else if let Some((id, args)) = packet.ack() {
-                if let Some(index) = asked.iter().position(|asked| *asked == id) {
-                    asked.remove(index);
-                    last = Some((at, args));
+                Wire::Connect if !outgoing => asked.clear(),
+                Wire::Ack { id, args } if !outgoing => {
+                    if let Some(index) = asked.iter().position(|asked| *asked == id.0) {
+                        asked.remove(index);
+                        last = Some((at, args));
+                    }
                 }
+                _ => {}
             }
         }
         let (at, reply) = last?;
@@ -250,7 +254,7 @@ impl Trace {
     fn events_from(&self, doc_id: &str, skip: usize) -> Vec<DocEvent> {
         let mut events = Vec::new();
         for (outgoing, packet) in self.packets().skip(skip) {
-            let Some((name, args)) = packet.event() else {
+            let Some((name, args)) = packet.into_event() else {
                 continue;
             };
             let first = args.first().cloned().unwrap_or(Value::Null);

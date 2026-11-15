@@ -4,7 +4,6 @@ mod html;
 mod import;
 mod session;
 mod signin;
-mod socket;
 mod sync;
 pub(crate) mod template;
 

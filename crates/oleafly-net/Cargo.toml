@@ -21,6 +21,7 @@ webpki-roots = "1"
 
 [features]
 e2e-hooks = []
+test-support = ["tokio/rt"]
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

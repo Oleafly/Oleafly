@@ -1,12 +1,16 @@
 use super::*;
 use crate::test_support::overleaf_rt::{
-    probe_event, probe_frames, probe_http, recordings, DocEvent,
+    probe, probe_event, probe_frames, probe_http, recordings, DocEvent,
 };
 use rand::{Rng, SeedableRng};
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
 use tokio_tungstenite::tungstenite::http::HeaderValue;
 
 const WAIT: Duration = Duration::from_secs(10);
+
+fn call(id: u64, name: &str, args: &[Value]) -> String {
+    codec::encode(&Frame::call(id, name, args))
+}
 
 fn project() -> MockProject {
     MockProject::new("demo")
@@ -178,7 +182,7 @@ impl Socket {
                         .ok()?;
                     let body = reply.text().await.ok()?;
                     self.queued.extend(
-                        crate::socket::decode_payload(&body)
+                        codec::decode_payload(&body)
                             .into_iter()
                             .filter(|packet| packet != "8::"),
                     );
@@ -212,7 +216,7 @@ impl Socket {
     async fn event(&mut self, wanted: &str) -> Vec<Value> {
         loop {
             let packet = self.next().await;
-            if let Some((name, args)) = Packet::parse(&packet).and_then(|packet| packet.event()) {
+            if let Some((name, args)) = codec::decode(&packet).ok().and_then(Frame::into_event) {
                 if name == wanted {
                     return args;
                 }
@@ -223,7 +227,7 @@ impl Socket {
     async fn ack(&mut self, id: u64) -> Vec<Value> {
         loop {
             let packet = self.next().await;
-            if let Some((got, args)) = Packet::parse(&packet).and_then(|packet| packet.ack()) {
+            if let Some((got, args)) = codec::decode(&packet).ok().and_then(Frame::into_ack) {
                 if got == id {
                     return args;
                 }
@@ -274,7 +278,7 @@ fn ce_ack_error(probe: &str) -> Value {
     probe_frames(probe, "xhr-polling")
         .iter()
         .filter(|frame| !frame.outgoing)
-        .filter_map(|frame| Packet::parse(&frame.raw)?.ack())
+        .filter_map(|frame| codec::decode(&frame.raw).ok()?.into_ack())
         .map(|(_, args)| args)
         .find(|args| {
             args.first()
@@ -317,11 +321,7 @@ async fn mock_serves_both_transports() {
         assert_eq!(joined[0]["permissionsLevel"], "owner");
         assert_eq!(joined[0]["project"]["_id"], mock.project_id());
         socket
-            .send(&frames::event_with_ack(
-                1,
-                "joinDoc",
-                &[json!(doc), join_options()],
-            ))
+            .send(&call(1, "joinDoc", &[json!(doc), join_options()]))
             .await;
         let reply = socket.ack(1).await;
         assert!(reply[0].is_null());
@@ -330,11 +330,7 @@ async fn mock_serves_both_transports() {
         let update =
             json!({ "doc": doc, "op": [{ "p": 0, "i": format!("{kind:?} ") }], "v": index });
         socket
-            .send(&frames::event_with_ack(
-                2,
-                "applyOtUpdate",
-                &[json!(doc), update],
-            ))
+            .send(&call(2, "applyOtUpdate", &[json!(doc), update]))
             .await;
         assert_eq!(socket.ack(2).await, Vec::<Value>::new());
         let applied = socket.event("otUpdateApplied").await;
@@ -494,7 +490,7 @@ async fn mock_frames_have_the_shapes_ce_sent() {
             trace
                 .packets()
                 .filter(|(outgoing, _)| !outgoing)
-                .filter_map(|(_, packet)| packet.event())
+                .filter_map(|(_, packet)| packet.into_event())
                 .find(|(found, _)| found == name)
                 .map(|(_, args)| args[0].clone())
                 .unwrap()
@@ -595,7 +591,7 @@ async fn rejection(
 fn rejected_with(packets: &[String]) -> Option<Vec<Value>> {
     packets
         .iter()
-        .filter_map(|packet| Packet::parse(packet)?.event())
+        .filter_map(|packet| codec::decode(packet).ok()?.into_event())
         .find(|(name, _)| name == "connectionRejected")
         .map(|(_, args)| args)
 }
@@ -773,7 +769,7 @@ async fn mock_serves_history_ot_docs_only_to_clients_that_support_them() {
     let doc = mock.doc_id("main.tex");
     let (mut socket, _) = Socket::joined(&mock, "alice", Kind::WebSocket).await;
     socket
-        .send(&frames::event_with_ack(
+        .send(&call(
             1,
             "joinDoc",
             &[json!(doc), json!({ "encodeRanges": true })],
@@ -784,11 +780,7 @@ async fn mock_serves_history_ot_docs_only_to_clients_that_support_them() {
         ce_ack_error("join-doc-without-history-ot-support")
     );
     socket
-        .send(&frames::event_with_ack(
-            2,
-            "joinDoc",
-            &[json!(doc), join_options()],
-        ))
+        .send(&call(2, "joinDoc", &[json!(doc), join_options()]))
         .await;
     let reply = socket.ack(2).await;
     assert_eq!(reply[5], "history-ot");
@@ -852,7 +844,7 @@ async fn mock_join_doc_ahead_of_the_doc_answers_with_no_updates_like_ce() {
     assert_eq!((reply[2].clone(), reply[3].clone()), (json!(1), json!([])));
     let ce = probe_frames("join-doc-missing-ops", "xhr-polling")
         .iter()
-        .filter_map(|frame| Packet::parse(&frame.raw)?.ack())
+        .filter_map(|frame| codec::decode(&frame.raw).ok()?.into_ack())
         .map(|(_, args)| args)
         .find(|args| args.len() > 3 && args[3] == json!([]) && args[2] == json!(110))
         .expect("the probe answered a joinDoc ahead of the doc");
@@ -877,25 +869,17 @@ async fn mock_acks_an_update_before_announcing_it_like_ce() {
     let doc = mock.doc_id("main.tex");
     let (mut socket, _) = Socket::joined(&mock, "alice", Kind::WebSocket).await;
     socket
-        .send(&frames::event_with_ack(
-            1,
-            "joinDoc",
-            &[json!(doc), join_options()],
-        ))
+        .send(&call(1, "joinDoc", &[json!(doc), join_options()]))
         .await;
     socket.ack(1).await;
     let update = json!({ "doc": doc, "op": [{ "p": 0, "i": "x" }], "v": 0 });
     socket
-        .send(&frames::event_with_ack(
-            2,
-            "applyOtUpdate",
-            &[json!(doc), update],
-        ))
+        .send(&call(2, "applyOtUpdate", &[json!(doc), update]))
         .await;
     assert_eq!(socket.next().await, "6:::2");
     assert_eq!(
         socket.next().await,
-        frames::event("otUpdateApplied", &[json!({ "v": 0, "doc": doc })])
+        event("otUpdateApplied", &[json!({ "v": 0, "doc": doc })])
     );
 }
 
@@ -949,12 +933,8 @@ async fn mock_doc_error_disconnects_every_joined_client() {
     alice.join(&main);
     erin.join(&other);
     let (mut bob, _) = Socket::joined(&mock, "bob", Kind::WebSocket).await;
-    bob.send(&frames::event_with_ack(
-        1,
-        "joinDoc",
-        &[json!(main), join_options()],
-    ))
-    .await;
+    bob.send(&call(1, "joinDoc", &[json!(main), join_options()]))
+        .await;
     bob.ack(1).await;
     let bad = json!({ "doc": main, "op": [{ "p": 0, "d": "not there" }], "v": 0 });
     assert_eq!(
@@ -970,7 +950,7 @@ async fn mock_doc_error_disconnects_every_joined_client() {
     let ce = recorded
         .trace("alice")
         .packets()
-        .filter_map(|(_, packet)| packet.event())
+        .filter_map(|(_, packet)| packet.into_event())
         .find(|(name, _)| name == "otUpdateError")
         .unwrap()
         .1;
@@ -1024,7 +1004,7 @@ async fn mock_updates_to_a_deleted_doc_fail_with_doc_not_found_like_ce() {
     let ce = recorded
         .trace("alice")
         .packets()
-        .filter_map(|(_, packet)| packet.event())
+        .filter_map(|(_, packet)| packet.into_event())
         .find(|(name, _)| name == "otUpdateError")
         .unwrap()
         .1;
@@ -1345,7 +1325,7 @@ async fn mock_records_client_pongs() {
     let ping = socket.event("serverPing").await;
     let mut args = ping.clone();
     args.extend([json!("websocket"), ping[3].clone()]);
-    socket.send(&frames::event("clientPong", &args)).await;
+    socket.send(&event("clientPong", &args)).await;
     eventually(|| mock.received("clientPong").len() == 1).await;
     assert_eq!(mock.received("clientPong")[0].args, args);
 }
@@ -1859,4 +1839,272 @@ async fn mock_entities_members_threads_and_messages_answer_like_ce() {
             .unwrap()
     );
     assert_eq!(messages.json::<Value>().await.unwrap(), json!([]));
+}
+
+fn ce_room_events(probe: &str) -> Vec<(String, Vec<Value>)> {
+    probe_frames(probe, "websocket")
+        .iter()
+        .filter(|frame| !frame.outgoing)
+        .filter_map(|frame| codec::decode(&frame.raw).ok()?.into_event())
+        .filter(|(name, _)| {
+            !matches!(
+                name.as_str(),
+                "joinProjectResponse"
+                    | "serverPing"
+                    | "clientTracking.clientUpdated"
+                    | "otUpdateApplied"
+            )
+        })
+        .collect()
+}
+
+fn upload_body(name: &str, bytes: &[u8]) -> Vec<u8> {
+    let mut body =
+        b"--XyZ\r\nContent-Disposition: form-data; name=\"qqfile\"; filename=\"".to_vec();
+    body.extend_from_slice(name.as_bytes());
+    body.extend_from_slice(b"\"\r\nContent-Type: application/octet-stream\r\n\r\n");
+    body.extend_from_slice(bytes);
+    body.extend_from_slice(b"\r\n--XyZ--\r\n");
+    body
+}
+
+#[tokio::test]
+async fn mock_project_settings_announce_each_change_like_ce() {
+    let mock = MockOverleaf::start(project()).await;
+    let mut watcher = mock.peer("bob");
+    let intro = mock.doc_id("sections/other.tex");
+    let main = mock.doc_id("main.tex");
+    let changed = http()
+        .post(url(&mock, "/settings"))
+        .header("Cookie", mock.user("alice").cookie())
+        .header("X-Csrf-Token", MOCK_CSRF)
+        .json(&json!({
+            "compiler": "xelatex",
+            "name": "demo (settings probe)",
+            "spellCheckLanguage": "de",
+            "rootDocId": intro,
+            "mainBibliographyDocId": main,
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(changed.status(), 204);
+    let names = [
+        "compilerUpdated",
+        "projectNameUpdated",
+        "spellCheckLanguageUpdated",
+        "rootDocUpdated",
+        "mainBibliographyDocUpdated",
+    ];
+    watcher.sync();
+    let ce: Vec<String> = ce_room_events("settings-events")
+        .into_iter()
+        .map(|(name, _)| name)
+        .take(5)
+        .collect();
+    assert_eq!(ce, names);
+    for name in names {
+        assert_eq!(watcher.events(name).len(), 1, "{name}");
+    }
+    assert_eq!(watcher.events("compilerUpdated")[0], vec![json!("xelatex")]);
+    assert_eq!(watcher.events("rootDocUpdated")[0], vec![json!(intro)]);
+    let join = mock
+        .peer("carol")
+        .emit("clientTracking.getConnectedUsers", vec![]);
+    assert!(join.is_some());
+    let viewer = http()
+        .post(url(&mock, "/settings"))
+        .header("Cookie", mock.user("dave").cookie())
+        .header("X-Csrf-Token", MOCK_CSRF)
+        .json(&json!({ "compiler": "lualatex" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(viewer.status(), 403);
+}
+
+#[tokio::test]
+async fn mock_uploads_replace_and_convert_like_ce() {
+    let mock = MockOverleaf::start(project()).await;
+    let mut watcher = mock.peer("bob");
+    let cookie = mock.user("alice").cookie();
+    let upload = |name: &str, bytes: &[u8]| {
+        http()
+            .post(url(
+                &mock,
+                &format!("/upload?folder_id={}", mock.root_folder_id()),
+            ))
+            .header("Cookie", &cookie)
+            .header("X-Csrf-Token", MOCK_CSRF)
+            .header("Content-Type", "multipart/form-data; boundary=XyZ")
+            .body(upload_body(name, bytes))
+            .send()
+    };
+    let doc = http()
+        .post(url(&mock, "/doc"))
+        .header("Cookie", &cookie)
+        .header("X-Csrf-Token", MOCK_CSRF)
+        .json(&json!({ "name": "convert.tex", "parent_folder_id": mock.root_folder_id() }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(doc.status(), 200);
+    upload("convert.tex", b"\x89PNG\x00one").await.unwrap();
+    upload("convert.tex", b"text again").await.unwrap();
+    upload("convert.png", b"\x89PNG\x00two").await.unwrap();
+    upload("convert.png", b"\x89PNG\x00three").await.unwrap();
+    watcher.sync();
+    let tree = |events: Vec<(String, Vec<Value>)>| -> Vec<String> {
+        events
+            .into_iter()
+            .filter(|(name, _)| name.starts_with("recive") || name == "removeEntity")
+            .map(|(name, args)| {
+                let source = if name == "removeEntity" {
+                    &args[1]
+                } else {
+                    &args[2]
+                };
+                format!("{name}:{}", source.as_str().unwrap_or_default())
+            })
+            .collect()
+    };
+    let expected = vec![
+        "reciveNewDoc:editor",
+        "removeEntity:convertDocToFile",
+        "reciveNewFile:upload",
+        "removeEntity:convertFileToDoc",
+        "reciveNewDoc:upload",
+        "reciveNewFile:upload",
+        "removeEntity:upload",
+        "reciveNewFile:upload",
+    ];
+    assert_eq!(
+        tree(ce_room_events("upload-replace-and-convert"))[..8],
+        expected
+    );
+    let seen: Vec<(String, Vec<Value>)> = ["reciveNewDoc", "reciveNewFile", "removeEntity"]
+        .iter()
+        .flat_map(|name| {
+            watcher
+                .events(name)
+                .into_iter()
+                .map(move |args| (name.to_string(), args))
+        })
+        .collect();
+    let mut ours = tree(seen);
+    ours.sort();
+    let mut wanted = expected.iter().map(ToString::to_string).collect::<Vec<_>>();
+    wanted.sort();
+    assert_eq!(ours, wanted);
+    assert!(mock.entity_id("convert.tex").is_some());
+    assert_eq!(mock.doc_text(&mock.doc_id("convert.tex")), "text again");
+    let refreshed = upload("convert.tex", b"newer text").await.unwrap();
+    let refreshed: Value = refreshed.json().await.unwrap();
+    assert_eq!(refreshed["entity_id"], json!(mock.doc_id("convert.tex")));
+    assert_eq!(mock.doc_text(&mock.doc_id("convert.tex")), "newer text");
+}
+
+#[tokio::test]
+async fn mock_access_changes_announce_like_ce() {
+    let mock = MockOverleaf::start(project()).await;
+    let mut watcher = mock.peer("bob");
+    let dave = mock.user("dave").id;
+    mock.set_privilege("dave", Some(Privilege::Review));
+    mock.set_privilege("dave", Some(Privilege::ReadOnly));
+    watcher.sync();
+    let ce: Vec<(String, Vec<Value>)> = ce_room_events("collaborator-access-change");
+    let ce_dave = probe("collaborator-access-change")["steps"][0]["request"]["route"]
+        .as_str()
+        .unwrap()
+        .rsplit('/')
+        .next()
+        .unwrap()
+        .to_string();
+    assert_eq!(
+        ce,
+        vec![
+            (
+                "project:collaboratorAccessLevel:changed".to_string(),
+                vec![json!({ "userId": ce_dave })]
+            ),
+            (
+                "project:collaboratorAccessLevel:changed".to_string(),
+                vec![json!({ "userId": ce_dave })]
+            ),
+        ]
+    );
+    assert_eq!(
+        watcher.events("project:collaboratorAccessLevel:changed"),
+        vec![
+            vec![json!({ "userId": dave })],
+            vec![json!({ "userId": dave })]
+        ]
+    );
+    assert!(watcher.events("project:membership:changed").is_empty());
+    let erin = mock.user("erin").id;
+    mock.set_privilege("erin", None);
+    mock.set_privilege("dave", None);
+    mock.set_privilege("zed", None);
+    watcher.sync();
+    assert_eq!(
+        watcher.events("userRemovedFromProject"),
+        vec![vec![json!(erin)], vec![json!(dave)]]
+    );
+    assert_eq!(watcher.events("project:membership:changed").len(), 2);
+    mock.set_privilege("dave", Some(Privilege::ReadAndWrite));
+    mock.set_track_changes(json!({ dave.clone(): true }));
+    watcher.sync();
+    assert_eq!(watcher.events("project:membership:changed").len(), 3);
+    assert_eq!(
+        watcher.events("toggle-track-changes"),
+        vec![vec![json!({ dave: true })]]
+    );
+}
+
+#[tokio::test]
+async fn mock_link_viewers_get_the_restricted_join_like_ce() {
+    let mock = MockOverleaf::start(project().token_viewer(MockUser::named("tess"))).await;
+    let mut tess = mock.peer("tess");
+    let join = tess.events("joinProjectResponse").remove(0).remove(0);
+    let ce = probe_frames("restricted-link-join", "websocket")
+        .iter()
+        .filter(|frame| !frame.outgoing)
+        .find_map(
+            |frame| match codec::decode(&frame.raw).ok()?.into_event()? {
+                (name, mut args) if name == "joinProjectResponse" => Some(args.remove(0)),
+                _ => None,
+            },
+        )
+        .unwrap();
+    assert_eq!(join["permissionsLevel"], ce["permissionsLevel"]);
+    let keys = |value: &Value| {
+        value
+            .as_object()
+            .unwrap()
+            .keys()
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        keys(&join["project"]["owner"]),
+        keys(&ce["project"]["owner"])
+    );
+    assert_eq!(join["project"]["members"], ce["project"]["members"]);
+    assert_eq!(join["project"]["invites"], ce["project"]["invites"]);
+    let members = http()
+        .get(url(&mock, "/members"))
+        .header("Cookie", mock.user("tess").cookie())
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(members.status(), 403);
+    let ce_members = probe_http("restricted-link-join", "/members");
+    assert_eq!(ce_members["status"], 403);
+    assert_eq!(members.json::<Value>().await.unwrap(), ce_members["body"]);
+    let owner_view = mock
+        .peer("bob")
+        .events("joinProjectResponse")
+        .remove(0)
+        .remove(0);
+    assert!(owner_view["project"]["owner"]["email"].is_string());
 }

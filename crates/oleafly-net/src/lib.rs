@@ -134,14 +134,41 @@ pub async fn open_websocket(target: &Url, headers: HeaderMap) -> Result<WebSocke
     open_through(target, headers, Matcher::from_system).await
 }
 
+pub async fn open_websocket_through(
+    target: &Url,
+    headers: HeaderMap,
+    proxy: &str,
+) -> Result<WebSocket, NetError> {
+    let invalid = || NetError::Network("the proxy address is not valid".to_string());
+    let host = target.host_str().ok_or_else(invalid)?;
+    let port = target.port_or_known_default().ok_or_else(invalid)?;
+    let uri: http::Uri = format!("http://{host}:{port}")
+        .parse()
+        .map_err(|_| invalid())?;
+    let route = Matcher::builder()
+        .all(proxy.to_string())
+        .build()
+        .intercept(&uri)
+        .ok_or_else(invalid)?;
+    open_routed(target, headers, Some(route)).await
+}
+
 async fn open_through(
     target: &Url,
     headers: HeaderMap,
     matcher: impl FnOnce() -> Matcher,
 ) -> Result<WebSocket, NetError> {
+    open_routed(target, headers, proxy_for(target, &matcher())).await
+}
+
+async fn open_routed(
+    target: &Url,
+    headers: HeaderMap,
+    proxy: Option<Intercept>,
+) -> Result<WebSocket, NetError> {
     let mut request = target.as_str().into_client_request()?;
     request.headers_mut().extend(headers);
-    let stream = Counted::new(connect_with(target, matcher).await?);
+    let stream = Counted::new(connect_routed(target, proxy).await?);
     let connector = if target.scheme() == "wss" {
         Connector::Rustls(tls_config()?)
     } else {
@@ -170,6 +197,10 @@ async fn connect_with(
     target: &Url,
     matcher: impl FnOnce() -> Matcher,
 ) -> Result<TcpStream, NetError> {
+    connect_routed(target, proxy_for(target, &matcher())).await
+}
+
+async fn connect_routed(target: &Url, proxy: Option<Intercept>) -> Result<TcpStream, NetError> {
     let host = target
         .host_str()
         .unwrap_or_default()
@@ -184,7 +215,7 @@ async fn connect_with(
         if let Some(address) = e2e_route::route_for(&host) {
             return TcpStream::connect(address).await;
         }
-        match proxy_for(target, &matcher()) {
+        match proxy {
             Some(proxy) => through_proxy(&proxy, &host, port).await,
             None => connect_host(&host, port).await,
         }
@@ -343,6 +374,64 @@ fn root_store(native: rustls_native_certs::CertificateResult) -> rustls::RootCer
     roots
 }
 
+#[cfg(any(test, feature = "test-support"))]
+pub mod testing {
+    use std::net::SocketAddr;
+    use std::sync::Arc;
+
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    use tokio::net::TcpStream;
+
+    pub async fn connect_proxy(
+        answer: &'static str,
+        upstream: Option<SocketAddr>,
+    ) -> (SocketAddr, Arc<std::sync::Mutex<Vec<String>>>) {
+        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
+            .await
+            .expect("bind");
+        let address = listener.local_addr().expect("address");
+        let asked: Arc<std::sync::Mutex<Vec<String>>> = Arc::default();
+        let kept = Arc::clone(&asked);
+        tokio::spawn(async move {
+            while let Ok((mut client, _)) = listener.accept().await {
+                let kept = Arc::clone(&kept);
+                tokio::spawn(async move {
+                    let mut head = Vec::new();
+                    let mut byte = [0u8; 1];
+                    while !head.ends_with(b"\r\n\r\n") {
+                        match client.read(&mut byte).await {
+                            Ok(0) | Err(_) => return,
+                            Ok(_) => head.push(byte[0]),
+                        }
+                    }
+                    let head = String::from_utf8_lossy(&head).to_string();
+                    kept.lock().expect("asked").push(head.clone());
+                    let target = upstream.map_or_else(
+                        || {
+                            head.split_whitespace()
+                                .nth(1)
+                                .unwrap_or_default()
+                                .to_owned()
+                        },
+                        |upstream| upstream.to_string(),
+                    );
+                    if !answer.starts_with("HTTP/1.1 200") {
+                        let _ = client.write_all(answer.as_bytes()).await;
+                        return;
+                    }
+                    let Ok(mut server) = TcpStream::connect(target).await else {
+                        return;
+                    };
+                    if client.write_all(answer.as_bytes()).await.is_ok() {
+                        let _ = tokio::io::copy_bidirectional(&mut client, &mut server).await;
+                    }
+                });
+            }
+        });
+        (address, asked)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -470,55 +559,6 @@ mod tests {
         );
     }
 
-    async fn connect_proxy(
-        answer: &'static str,
-        upstream: Option<SocketAddr>,
-    ) -> (SocketAddr, Arc<std::sync::Mutex<Vec<String>>>) {
-        let listener = tokio::net::TcpListener::bind(("127.0.0.1", 0))
-            .await
-            .expect("bind");
-        let address = listener.local_addr().expect("address");
-        let asked: Arc<std::sync::Mutex<Vec<String>>> = Arc::default();
-        let kept = Arc::clone(&asked);
-        tokio::spawn(async move {
-            while let Ok((mut client, _)) = listener.accept().await {
-                let kept = Arc::clone(&kept);
-                tokio::spawn(async move {
-                    let mut head = Vec::new();
-                    let mut byte = [0u8; 1];
-                    while !head.ends_with(b"\r\n\r\n") {
-                        match client.read(&mut byte).await {
-                            Ok(0) | Err(_) => return,
-                            Ok(_) => head.push(byte[0]),
-                        }
-                    }
-                    let head = String::from_utf8_lossy(&head).to_string();
-                    kept.lock().expect("asked").push(head.clone());
-                    let target = upstream.map_or_else(
-                        || {
-                            head.split_whitespace()
-                                .nth(1)
-                                .unwrap_or_default()
-                                .to_owned()
-                        },
-                        |upstream| upstream.to_string(),
-                    );
-                    if !answer.starts_with("HTTP/1.1 200") {
-                        let _ = client.write_all(answer.as_bytes()).await;
-                        return;
-                    }
-                    let Ok(mut server) = TcpStream::connect(target).await else {
-                        return;
-                    };
-                    if client.write_all(answer.as_bytes()).await.is_ok() {
-                        let _ = tokio::io::copy_bidirectional(&mut client, &mut server).await;
-                    }
-                });
-            }
-        });
-        (address, asked)
-    }
-
     fn proxied_by(proxy: SocketAddr) -> Intercept {
         Matcher::builder()
             .all(format!("http://user:secret@{proxy}"))
@@ -558,7 +598,7 @@ mod tests {
         let server_id = "0192f0c4-7a3e-7c2b-9d4e-5f6a7b8c9d0e";
         let upstream = answering_with(server_id).await;
         let (proxy, asked) =
-            connect_proxy("HTTP/1.1 200 Connection established\r\n\r\n", None).await;
+            testing::connect_proxy("HTTP/1.1 200 Connection established\r\n\r\n", None).await;
         let mut stream = through_proxy(
             &proxied_by(proxy),
             &upstream.ip().to_string(),
@@ -580,7 +620,8 @@ mod tests {
         assert!(asked[0].starts_with(&format!("CONNECT {upstream} HTTP/1.1\r\n")));
         assert!(asked[0].contains("Proxy-Authorization: Basic dXNlcjpzZWNyZXQ="));
         let (refusing, _) =
-            connect_proxy("HTTP/1.1 407 Proxy Authentication Required\r\n\r\n", None).await;
+            testing::connect_proxy("HTTP/1.1 407 Proxy Authentication Required\r\n\r\n", None)
+                .await;
         let refused = through_proxy(&proxied_by(refusing), "uni.edu", 443)
             .await
             .expect_err("the proxy said no");
@@ -615,7 +656,7 @@ mod tests {
                 }
             }
         });
-        let (proxy, asked) = connect_proxy(
+        let (proxy, asked) = testing::connect_proxy(
             "HTTP/1.1 200 Connection established\r\n\r\n",
             Some(upstream),
         )

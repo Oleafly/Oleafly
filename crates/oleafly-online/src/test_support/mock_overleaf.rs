@@ -12,12 +12,13 @@ use tokio_tungstenite::tungstenite::protocol::Role;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 
-use super::frames::{self, Packet};
 use super::history_ot_text::{Marks, Part, TextOperation};
 use super::sharejs_text::{self, Component, Side};
 use super::{read_message, Reply, Request};
+use crate::realtime::codec::{self, Frame, FrameError};
 
 pub const MOCK_CSRF: &str = "mock-csrf-token";
+pub const WS_URL_PATH: &str = "/rt/socket.io";
 pub const MAX_DOC_LENGTH: usize = 2 * 1024 * 1024;
 
 const TEXT_EXTENSIONS: &[&str] = &[
@@ -129,6 +130,7 @@ pub struct MockProject {
     pub owner: MockUser,
     pub members: Vec<(MockUser, Privilege)>,
     pub outsiders: Vec<MockUser>,
+    pub token_viewers: Vec<MockUser>,
     pub format: DocFormat,
     pub compiler: String,
     pub track_changes: Value,
@@ -143,6 +145,7 @@ impl MockProject {
             owner: MockUser::named("alice"),
             members: Vec::new(),
             outsiders: Vec::new(),
+            token_viewers: Vec::new(),
             format: DocFormat::ShareJs,
             compiler: "pdflatex".into(),
             track_changes: json!({}),
@@ -194,6 +197,11 @@ impl MockProject {
 
     pub fn track_changes(mut self, state: Value) -> Self {
         self.track_changes = state;
+        self
+    }
+
+    pub fn token_viewer(mut self, user: MockUser) -> Self {
+        self.token_viewers.push(user);
         self
     }
 }
@@ -293,6 +301,10 @@ pub struct MockConfig {
     pub kept_ops: usize,
     pub max_op_age: u64,
     pub history_ot_applied_version: bool,
+    pub balancer_cookie: Option<String>,
+    pub rotate_sessions: bool,
+    pub ws_url_handshake_reply: Option<(u16, String)>,
+    pub upgrade_status: Option<u16>,
 }
 
 impl Default for MockConfig {
@@ -317,6 +329,10 @@ impl Default for MockConfig {
             kept_ops: 100,
             max_op_age: 80,
             history_ot_applied_version: false,
+            balancer_cookie: None,
+            rotate_sessions: false,
+            ws_url_handshake_reply: None,
+            upgrade_status: None,
         }
     }
 }
@@ -504,7 +520,11 @@ struct State {
     owner: MockUser,
     members: Vec<(MockUser, Privilege)>,
     outsiders: Vec<MockUser>,
+    token_viewers: Vec<MockUser>,
     compiler: String,
+    image_name: Option<String>,
+    spell_language: String,
+    main_bibliography: Option<String>,
     track_changes: Value,
     format: DocFormat,
     root: Folder,
@@ -555,7 +575,11 @@ impl State {
             owner: project.owner.clone(),
             members: project.members.clone(),
             outsiders: project.outsiders.clone(),
+            token_viewers: project.token_viewers.clone(),
             compiler: project.compiler.clone(),
+            image_name: None,
+            spell_language: "en".into(),
+            main_bibliography: None,
             track_changes: project.track_changes.clone(),
             format: project.format,
             root: Folder::default(),
@@ -691,6 +715,11 @@ impl State {
         std::iter::once(&self.owner)
             .chain(self.members.iter().map(|(user, _)| user))
             .chain(&self.outsiders)
+            .chain(&self.token_viewers)
+    }
+
+    fn restricted(&self, user_id: &str) -> bool {
+        self.token_viewers.iter().any(|user| user.id == user_id)
     }
 
     fn user(&self, id: &str) -> Option<&MockUser> {
@@ -700,6 +729,9 @@ impl State {
     fn privilege(&self, user_id: &str) -> Option<Privilege> {
         if self.owner.id == user_id {
             return Some(Privilege::Owner);
+        }
+        if self.restricted(user_id) {
+            return Some(Privilege::ReadOnly);
         }
         self.members
             .iter()
@@ -743,25 +775,33 @@ impl State {
         })
     }
 
-    fn project_json(&self) -> Value {
-        json!({
+    fn project_json(&self, viewer: Option<&str>) -> Value {
+        let restricted = viewer.is_some_and(|viewer| self.restricted(viewer));
+        let mut project = json!({
             "_id": self.project_id,
             "name": self.project_name,
             "rootDoc_id": self.root_doc,
             "rootFolder": [self.folder_json(&self.root)],
-            "publicAccesLevel": "private",
+            "publicAccesLevel": if self.token_viewers.is_empty() { "private" } else { "tokenBased" },
             "dropboxEnabled": false,
             "compiler": self.compiler,
             "description": "",
-            "spellCheckLanguage": "en",
+            "spellCheckLanguage": self.spell_language,
             "deletedByExternalDataSource": false,
-            "owner": State::person_json(&self.owner, Privilege::Owner),
-            "members": self.members.iter().map(|(user, privilege)| State::person_json(user, *privilege)).collect::<Vec<_>>(),
+            "owner": if restricted { json!({ "_id": self.owner.id }) } else { State::person_json(&self.owner, Privilege::Owner) },
+            "members": if restricted { Vec::new() } else { self.members.iter().map(|(user, privilege)| State::person_json(user, *privilege)).collect::<Vec<_>>() },
             "invites": [],
-            "editAccessRequests": [],
             "features": { "collaborators": -1, "versioning": true, "trackChanges": true, "compileTimeout": 180, "compileGroup": "standard" },
             "trackChangesState": self.track_changes,
-        })
+        });
+        if let Some(image) = &self.image_name {
+            project["imageName"] = json!(image);
+        }
+        if let Some(doc) = &self.main_bibliography {
+            project["mainBibliographyDoc_id"] = json!(doc);
+        }
+        project["editAccessRequests"] = json!([]);
+        project
     }
 
     fn push(&mut self, sid: &str, packet: String) {
@@ -785,7 +825,7 @@ impl State {
     fn emit_room(&mut self, name: &str, args: &[Value], except: Option<&str>) {
         for sid in self.live() {
             if Some(sid.as_str()) != except {
-                self.push(&sid, frames::event(name, args));
+                self.push(&sid, event(name, args));
             }
         }
     }
@@ -815,8 +855,9 @@ impl State {
         &mut self,
         query: &HashMap<String, String>,
         headers: &HashMap<String, String>,
+        via_ws_url: bool,
     ) -> Reply {
-        if let Some((status, body)) = &self.config.handshake_reply {
+        if let Some((status, body)) = &self.planned_handshake(via_ws_url) {
             return Reply {
                 status: *status,
                 headers: Vec::new(),
@@ -853,7 +894,115 @@ impl State {
         } else {
             "xhr-polling"
         };
-        Reply::ok(format!("{sid}:60:60:{transports}"))
+        let reply = Reply::ok(format!("{sid}:60:60:{transports}"));
+        self.handshake_cookies(reply, headers, &sid)
+    }
+
+    fn planned_handshake(&self, via_ws_url: bool) -> Option<(u16, String)> {
+        let routed = self
+            .config
+            .ws_url_handshake_reply
+            .clone()
+            .filter(|_| via_ws_url);
+        routed.or_else(|| self.config.handshake_reply.clone())
+    }
+
+    fn handshake_cookies(
+        &mut self,
+        mut reply: Reply,
+        headers: &HashMap<String, String>,
+        sid: &str,
+    ) -> Reply {
+        if let Some(cookie) = &self.config.balancer_cookie {
+            reply = reply.header("Set-Cookie", &format!("{cookie}; Path=/"));
+        }
+        if self.config.rotate_sessions {
+            if let Some(rotated) = self.rotate_session(headers, sid) {
+                reply = reply.header("Set-Cookie", &rotated);
+            }
+        }
+        reply
+    }
+
+    fn route(
+        &mut self,
+        method: &str,
+        path: &str,
+        query: &HashMap<String, String>,
+        headers: &HashMap<String, String>,
+        body: &[u8],
+    ) -> Reply {
+        if method == "GET" && path == "/project" {
+            self.dashboard(headers)
+        } else {
+            self.rest(method, path, query, headers, body)
+        }
+    }
+
+    fn session_of(headers: &HashMap<String, String>) -> Option<String> {
+        headers.get("cookie")?.split(';').find_map(|pair| {
+            let (name, value) = pair.trim().split_once('=')?;
+            (name == "overleaf.sid").then(|| value.to_string())
+        })
+    }
+
+    fn rotate_session(&mut self, headers: &HashMap<String, String>, sid: &str) -> Option<String> {
+        let current = State::session_of(headers)?;
+        let fresh = format!("{current}-{sid}");
+        let mut found = false;
+        let owner = std::iter::once(&mut self.owner);
+        let members = self.members.iter_mut().map(|(user, _)| user);
+        let others = self
+            .outsiders
+            .iter_mut()
+            .chain(self.token_viewers.iter_mut());
+        for user in owner.chain(members).chain(others) {
+            if user.session == current {
+                user.session.clone_from(&fresh);
+                found = true;
+            }
+        }
+        found.then(|| format!("overleaf.sid={fresh}; Path=/; HttpOnly"))
+    }
+
+    fn balanced(&self, headers: &HashMap<String, String>) -> bool {
+        let Some(wanted) = &self.config.balancer_cookie else {
+            return true;
+        };
+        headers
+            .get("cookie")
+            .is_some_and(|cookie| cookie.split(';').any(|pair| pair.trim() == wanted))
+    }
+
+    fn dashboard(&self, headers: &HashMap<String, String>) -> Reply {
+        let Some(user) = self
+            .user_for(headers)
+            .and_then(|id| self.user(&id).cloned())
+        else {
+            return Reply::status(302).header("Location", "/login");
+        };
+        let metas = [
+            ("ol-csrfToken", MOCK_CSRF.to_string()),
+            ("ol-user_id", user.id.clone()),
+            ("ol-usersEmail", user.email.clone()),
+            (
+                "ol-prefetchedProjectsBlob",
+                json!({ "projects": [], "totalSize": 0 }).to_string(),
+            ),
+        ];
+        let tags: String = metas
+            .iter()
+            .map(|(name, content)| {
+                format!(
+                    "<meta name=\"{name}\" content=\"{}\">",
+                    super::escape(content)
+                )
+            })
+            .collect();
+        Reply::ok(format!(
+            "<!DOCTYPE html><html><head>{tags}</head><body></body></html>"
+        ))
+        .header("Content-Type", "text/html; charset=utf-8")
     }
 
     fn connect(&mut self, sid: &str, transport: Transport) {
@@ -904,10 +1053,7 @@ impl State {
                 }
                 return;
             }
-            self.push(
-                sid,
-                frames::event("connectionRejected", &[rejection.payload()]),
-            );
+            self.push(sid, event("connectionRejected", &[rejection.payload()]));
             self.close(sid);
             return;
         }
@@ -916,11 +1062,11 @@ impl State {
             .unwrap_or(Privilege::ReadOnly);
         let response = json!({
             "publicId": public_id,
-            "project": self.project_json(),
+            "project": self.project_json(user.as_deref()),
             "permissionsLevel": privilege.wire_name(),
             "protocolVersion": self.config.protocol_version,
         });
-        self.push(sid, frames::event("joinProjectResponse", &[response]));
+        self.push(sid, event("joinProjectResponse", &[response]));
     }
 
     fn take_fault(&mut self, method: &str, target: &str) -> Option<Fault> {
@@ -940,7 +1086,7 @@ impl State {
         };
         let counter = client.pings;
         client.pings += 1;
-        let ping = frames::event(
+        let ping = event(
             "serverPing",
             &[
                 json!(counter),
@@ -987,26 +1133,18 @@ impl State {
     }
 
     fn handle_raw(&mut self, sid: &str, raw: &str) {
-        let Some(packet) = Packet::parse(raw) else {
-            self.close(sid);
-            return;
-        };
-        match packet.kind {
-            0 => self.close(sid),
-            5 => {
-                let Some((name, args)) = packet.event() else {
-                    self.close(sid);
-                    return;
-                };
-                self.handle_event(sid, &name, args, packet.id.filter(|_| packet.wants_ack));
+        match codec::decode(raw) {
+            Ok(Frame::Disconnect) | Err(FrameError::Malformed(_)) => self.close(sid),
+            Ok(Frame::Event { ack, name, args }) => {
+                self.handle_event(sid, &name, args, ack.map(|id| id.0));
             }
-            _ => {}
+            Ok(_) | Err(FrameError::UnknownType(_)) => {}
         }
     }
 
     fn reply(&mut self, sid: &str, id: Option<u64>, args: &[Value]) {
         if let Some(id) = id {
-            self.push(sid, frames::ack(id, args));
+            self.push(sid, codec::encode(&Frame::ack(id, args)));
         }
     }
 
@@ -1241,7 +1379,7 @@ impl State {
             Ok(Outcome::Dup { v }) => {
                 self.push(
                     sid,
-                    frames::event("otUpdateApplied", &[json!({ "v": v, "doc": doc_id })]),
+                    event("otUpdateApplied", &[json!({ "v": v, "doc": doc_id })]),
                 );
             }
             Ok(Outcome::Applied(applied)) => {
@@ -1278,7 +1416,7 @@ impl State {
         let v = update["v"].clone();
         self.push(
             sender,
-            frames::event("otUpdateApplied", &[json!({ "v": v, "doc": doc_id })]),
+            event("otUpdateApplied", &[json!({ "v": v, "doc": doc_id })]),
         );
         let legacy = self.config.legacy_doc_rooms;
         for sid in self.live() {
@@ -1288,10 +1426,7 @@ impl State {
             if legacy && !self.clients[&sid].joined.contains(doc_id) {
                 continue;
             }
-            self.push(
-                &sid,
-                frames::event("otUpdateApplied", std::slice::from_ref(update)),
-            );
+            self.push(&sid, event("otUpdateApplied", std::slice::from_ref(update)));
         }
     }
 
@@ -1308,7 +1443,7 @@ impl State {
             if self.clients[&sid].joined.contains(doc_id) {
                 self.push(
                     &sid,
-                    frames::event("otUpdateError", &[json!(message), details.clone()]),
+                    event("otUpdateError", &[json!(message), details.clone()]),
                 );
                 self.close(&sid);
             }
@@ -1354,9 +1489,13 @@ impl State {
                 200 => json_reply(&json!([])),
                 status => Reply::status(status),
             },
+            ("GET", ["members"]) if self.restricted(&user) => {
+                json_reply(&json!({ "message": "restricted" })).with_status(403)
+            }
             ("GET", ["members"]) => json_reply(&json!({
                 "members": self.members.iter().map(|(user, privilege)| State::person_json(user, *privilege)).collect::<Vec<_>>(),
             })),
+            ("POST", ["settings"]) => self.update_settings(body),
             _ => Reply::status(404),
         }
     }
@@ -1429,7 +1568,7 @@ impl State {
         ) else {
             return Reply::status(400);
         };
-        match self.add_doc(parent, name, "", user) {
+        match self.add_doc(parent, name, "", user, "editor") {
             Some(id) => json_reply(&json!({ "_id": id, "name": name })),
             None => Reply::status(404),
         }
@@ -1480,10 +1619,14 @@ impl State {
         ) else {
             return Reply::status(400);
         };
-        let Some(text) = uploaded_text(&name, &bytes) else {
+        let text = uploaded_text(&name, &bytes);
+        if let Some(reply) = self.clear_upload_target(&folder, &name, text.as_deref(), user) {
+            return reply;
+        }
+        let Some(text) = text else {
             return self.add_file(&folder, name, bytes, user);
         };
-        match self.add_doc(&folder, &name, &text, user) {
+        match self.add_doc(&folder, &name, &text, user, "upload") {
             Some(id) => {
                 json_reply(&json!({ "success": true, "entity_id": id, "entity_type": "doc" }))
             }
@@ -1565,11 +1708,61 @@ impl State {
     }
 
     fn delete_entity(&mut self, id: &str) -> Reply {
-        let id = id.to_string();
-        let Some(detached) = self.root.detach(&id) else {
-            return Reply::status(404);
+        if self.remove_entity(id, "editor") {
+            Reply::status(204)
+        } else {
+            Reply::status(404)
+        }
+    }
+
+    fn clear_upload_target(
+        &mut self,
+        folder: &str,
+        name: &str,
+        text: Option<&str>,
+        user: &str,
+    ) -> Option<Reply> {
+        let docs = &self.docs;
+        let files = &self.files;
+        let Some(target) = self.root.find_mut(folder) else {
+            return Some(Reply::status(404));
         };
-        let mut gone = vec![id.clone()];
+        let existing_doc = target
+            .docs
+            .iter()
+            .find(|id| docs.get(*id).is_some_and(|doc| doc.name == name))
+            .cloned();
+        let existing_file = target
+            .files
+            .iter()
+            .find(|id| files.get(*id).is_some_and(|file| file.name == name))
+            .cloned();
+        match (text, existing_doc, existing_file) {
+            (Some(text), Some(doc), _) => {
+                self.replace_doc_text(&doc, text, user);
+                return Some(json_reply(
+                    &json!({ "success": true, "entity_id": doc, "entity_type": "doc" }),
+                ));
+            }
+            (Some(_), None, Some(file)) => {
+                self.remove_entity(&file, "convertFileToDoc");
+            }
+            (None, Some(doc), _) => {
+                self.remove_entity(&doc, "convertDocToFile");
+            }
+            (None, None, Some(file)) => {
+                self.remove_entity(&file, "upload");
+            }
+            _ => {}
+        }
+        None
+    }
+
+    fn remove_entity(&mut self, id: &str, source: &str) -> bool {
+        let Some(detached) = self.root.detach(id) else {
+            return false;
+        };
+        let mut gone = vec![id.to_string()];
         if let Some(folder) = detached {
             gone.extend(folder.ids());
         }
@@ -1577,8 +1770,11 @@ impl State {
             self.docs.remove(entity);
             self.files.remove(entity);
         }
-        self.emit_room("removeEntity", &[json!(id), json!("editor")], None);
-        Reply::status(204)
+        if self.root_doc.as_deref() == Some(id) {
+            self.root_doc = None;
+        }
+        self.emit_room("removeEntity", &[json!(id), json!(source)], None);
+        true
     }
 
     fn updates(&self) -> Reply {
@@ -1622,7 +1818,70 @@ impl State {
         json_reply(&json!({ "diff": diff }))
     }
 
-    fn add_doc(&mut self, folder: &str, name: &str, text: &str, user: &str) -> Option<String> {
+    fn replace_doc_text(&mut self, doc_id: &str, text: &str, user: &str) {
+        let Some(doc) = self.docs.get_mut(doc_id) else {
+            return;
+        };
+        let old = sharejs_text::text(&doc.content);
+        let v = doc.version;
+        let op = match doc.format {
+            DocFormat::ShareJs => json!([{ "p": 0, "d": old }, { "p": 0, "i": text }]),
+            DocFormat::HistoryOt => {
+                json!([{ "textOperation": [-(doc.content.len() as i64), text] }])
+            }
+        };
+        doc.content = sharejs_text::units(text);
+        doc.tracked = vec![None; doc.content.len()];
+        doc.version += 1;
+        let update = json!({ "doc": doc_id, "op": op, "v": v, "meta": { "source": "upload", "user_id": user, "ts": now_ms() as u64 } });
+        self.emit_room("otUpdateApplied", &[update], None);
+    }
+
+    fn update_settings(&mut self, body: &[u8]) -> Reply {
+        let Ok(settings) = serde_json::from_slice::<Value>(body) else {
+            return Reply::status(400);
+        };
+        let field = |key: &str| {
+            settings
+                .get(key)
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        };
+        if let Some(compiler) = field("compiler") {
+            self.compiler.clone_from(&compiler);
+            self.emit_room("compilerUpdated", &[json!(compiler)], None);
+        }
+        if let Some(image) = field("imageName") {
+            self.image_name = Some(image.rsplit('/').next().unwrap_or_default().to_string());
+            self.emit_room("imageNameUpdated", &[json!(image)], None);
+        }
+        if let Some(name) = field("name") {
+            self.project_name.clone_from(&name);
+            self.emit_room("projectNameUpdated", &[json!(name)], None);
+        }
+        if let Some(language) = field("spellCheckLanguage") {
+            self.spell_language.clone_from(&language);
+            self.emit_room("spellCheckLanguageUpdated", &[json!(language)], None);
+        }
+        if let Some(doc) = field("rootDocId") {
+            self.root_doc = Some(doc.clone());
+            self.emit_room("rootDocUpdated", &[json!(doc)], None);
+        }
+        if let Some(doc) = field("mainBibliographyDocId") {
+            self.main_bibliography = Some(doc.clone());
+            self.emit_room("mainBibliographyDocUpdated", &[json!(doc)], None);
+        }
+        Reply::status(204)
+    }
+
+    fn add_doc(
+        &mut self,
+        folder: &str,
+        name: &str,
+        text: &str,
+        user: &str,
+        source: &str,
+    ) -> Option<String> {
         let id = self.new_id();
         self.root.find_mut(folder)?.docs.push(id.clone());
         self.docs
@@ -1632,7 +1891,7 @@ impl State {
             &[
                 json!(folder),
                 json!({ "_id": id, "name": name }),
-                json!("editor"),
+                json!(source),
                 json!(user),
             ],
             None,
@@ -1693,6 +1952,10 @@ impl State {
         ))
         .header("Content-Type", "text/html; charset=utf-8")
     }
+}
+
+fn event(name: &str, args: &[Value]) -> String {
+    codec::encode(&Frame::event(name, args))
 }
 
 fn json_reply(value: &Value) -> Reply {
@@ -1946,6 +2209,19 @@ pub struct MockOverleaf {
     shared: Arc<Mutex<State>>,
 }
 
+fn wants_upgrade(headers: &HashMap<String, String>) -> bool {
+    headers
+        .get("upgrade")
+        .is_some_and(|value| value.eq_ignore_ascii_case("websocket"))
+}
+
+fn split_ws_url(path: String) -> (String, bool) {
+    match path.strip_prefix(WS_URL_PATH.trim_end_matches("/socket.io")) {
+        Some(rest) if rest.starts_with("/socket.io/") => (rest.to_string(), true),
+        _ => (path, false),
+    }
+}
+
 fn split_target(target: &str) -> (String, HashMap<String, String>) {
     let (path, query) = target.split_once('?').unwrap_or((target, ""));
     let query = query
@@ -2005,52 +2281,18 @@ impl MockOverleaf {
         let Some((method, target, headers, body)) = read_message(&mut stream).await else {
             return;
         };
-        let (path, query) = split_target(&target);
-        if let Some(sid) = path.strip_prefix("/socket.io/1/websocket/") {
-            if headers
-                .get("upgrade")
-                .is_some_and(|value| value.eq_ignore_ascii_case("websocket"))
-            {
-                let key = headers
-                    .get("sec-websocket-key")
-                    .cloned()
-                    .unwrap_or_default();
-                self.websocket(stream, sid.to_string(), key).await;
-                return;
-            }
+        let (path, _) = split_target(&target);
+        let (path, _) = split_ws_url(path);
+        if let Some(sid) = path
+            .strip_prefix("/socket.io/1/websocket/")
+            .filter(|_| wants_upgrade(&headers))
+        {
+            let sid = sid.to_string();
+            return self.upgrade(stream, sid, &method, &target, &headers).await;
         }
-        let (reply, fault) = if let Some(sid) = path.strip_prefix("/socket.io/1/xhr-polling/") {
-            let reply = if method == "GET" {
-                self.poll(sid).await
-            } else {
-                self.post(sid, &body)
-            };
-            (reply, None)
-        } else {
-            let mut state = self.state();
-            state.requests.push(Request {
-                method: method.clone(),
-                path: target.clone(),
-                headers: headers.clone(),
-                body: String::from_utf8_lossy(&body).to_string(),
-            });
-            let fault = state.take_fault(&method, &target);
-            let reply = if state.down {
-                text_reply(503, "Service Unavailable")
-            } else if let Some(Fault::Reply(status, text)) = &fault {
-                let reply = text_reply(*status, text);
-                match (status, state.config.retry_after) {
-                    (429, Some(seconds)) => reply.header("Retry-After", &seconds.to_string()),
-                    _ => reply,
-                }
-            } else if path == "/socket.io/socket.io.js" {
-                Reply::ok("js").header("Set-Cookie", "GCLB=mock-affinity; Path=/")
-            } else if path == "/socket.io/1/" || path == "/socket.io/1" {
-                state.handshake(&query, &headers)
-            } else {
-                state.rest(&method, &path, &query, &headers, &body)
-            };
-            (reply, fault)
+        let (reply, fault) = match path.strip_prefix("/socket.io/1/xhr-polling/") {
+            Some(sid) => (self.polling(sid, &method, &headers, &body).await, None),
+            None => self.answer(&method, &target, &headers, &body),
         };
         match fault {
             Some(Fault::LoseReply) => return,
@@ -2058,6 +2300,97 @@ impl MockOverleaf {
             _ => {}
         }
         write_reply(&mut stream, reply).await;
+    }
+
+    async fn upgrade(
+        self,
+        mut stream: TcpStream,
+        sid: String,
+        method: &str,
+        target: &str,
+        headers: &HashMap<String, String>,
+    ) {
+        if let Some(status) = self.upgrade_refusal(method, target, headers) {
+            write_reply(&mut stream, text_reply(status, "Upgrade refused")).await;
+            return;
+        }
+        let key = headers
+            .get("sec-websocket-key")
+            .cloned()
+            .unwrap_or_default();
+        self.websocket(stream, sid, key).await;
+    }
+
+    fn answer(
+        &self,
+        method: &str,
+        target: &str,
+        headers: &HashMap<String, String>,
+        body: &[u8],
+    ) -> (Reply, Option<Fault>) {
+        let (path, query) = split_target(target);
+        let (path, via_ws_url) = split_ws_url(path);
+        let mut state = self.state();
+        state.requests.push(Request {
+            method: method.to_string(),
+            path: target.to_string(),
+            headers: headers.clone(),
+            body: String::from_utf8_lossy(body).to_string(),
+        });
+        let fault = state.take_fault(method, target);
+        let reply = if state.down {
+            text_reply(503, "Service Unavailable")
+        } else if let Some(Fault::Reply(status, text)) = &fault {
+            let reply = text_reply(*status, text);
+            match (status, state.config.retry_after) {
+                (429, Some(seconds)) => reply.header("Retry-After", &seconds.to_string()),
+                _ => reply,
+            }
+        } else if path == "/socket.io/socket.io.js" {
+            Reply::ok("js").header("Set-Cookie", "GCLB=mock-affinity; Path=/")
+        } else if path == "/socket.io/1/" || path == "/socket.io/1" {
+            state.handshake(&query, headers, via_ws_url)
+        } else {
+            state.route(method, &path, &query, headers, body)
+        };
+        (reply, fault)
+    }
+
+    fn upgrade_refusal(
+        &self,
+        method: &str,
+        target: &str,
+        headers: &HashMap<String, String>,
+    ) -> Option<u16> {
+        let mut state = self.state();
+        state.requests.push(Request {
+            method: method.to_string(),
+            path: target.to_string(),
+            headers: headers.clone(),
+            body: String::new(),
+        });
+        match state.config.upgrade_status {
+            Some(status) => Some(status),
+            None if !state.balanced(headers) => Some(400),
+            None => None,
+        }
+    }
+
+    async fn polling(
+        &self,
+        sid: &str,
+        method: &str,
+        headers: &HashMap<String, String>,
+        body: &[u8],
+    ) -> Reply {
+        if !self.state().balanced(headers) {
+            return Reply::ok(NOT_HANDSHAKEN);
+        }
+        if method == "GET" {
+            self.poll(sid).await
+        } else {
+            self.post(sid, body)
+        }
     }
 
     fn post(&self, sid: &str, body: &[u8]) -> Reply {
@@ -2068,7 +2401,7 @@ impl MockOverleaf {
         if !state.clients.contains_key(sid) {
             return Reply::ok(NOT_HANDSHAKEN);
         }
-        for packet in crate::socket::decode_payload(&String::from_utf8_lossy(body)) {
+        for packet in codec::decode_payload(&String::from_utf8_lossy(body)) {
             state.handle_raw(sid, &packet);
         }
         Reply::ok("1")
@@ -2175,7 +2508,7 @@ impl MockOverleaf {
                     if client.closed {
                         state.clients.remove(sid);
                     }
-                    return Reply::ok(frames::payload(&packets));
+                    return Reply::ok(codec::encode_payload(&packets));
                 }
                 if client.closed && !stalled {
                     state.clients.remove(sid);
@@ -2192,6 +2525,55 @@ impl MockOverleaf {
 
     pub fn project_id(&self) -> String {
         self.state().project_id.clone()
+    }
+
+    pub fn set_privilege(&self, name: &str, privilege: Option<Privilege>) {
+        let mut state = self.state();
+        let user = state
+            .people()
+            .find(|user| user.first_name.eq_ignore_ascii_case(name))
+            .cloned()
+            .unwrap_or_else(|| MockUser::named(name));
+        let known = state
+            .members
+            .iter()
+            .position(|(member, _)| member.id == user.id);
+        match (known, privilege) {
+            (Some(at), Some(privilege)) => {
+                state.members[at].1 = privilege;
+                state.emit_room(
+                    "project:collaboratorAccessLevel:changed",
+                    &[json!({ "userId": user.id })],
+                    None,
+                );
+                return;
+            }
+            (Some(at), None) => {
+                let (removed, _) = state.members.remove(at);
+                state.outsiders.push(removed);
+                state.emit_room("userRemovedFromProject", &[json!(user.id)], None);
+            }
+            (None, Some(privilege)) => {
+                state.outsiders.retain(|outsider| outsider.id != user.id);
+                state.members.push((user, privilege));
+            }
+            (None, None) => return,
+        }
+        state.emit_room(
+            "project:membership:changed",
+            &[json!({ "members": true })],
+            None,
+        );
+    }
+
+    pub fn set_track_changes(&self, value: Value) {
+        let mut state = self.state();
+        state.track_changes = value.clone();
+        state.emit_room("toggle-track-changes", &[value], None);
+    }
+
+    pub fn ws_url(&self) -> String {
+        format!("{}{WS_URL_PATH}", self.base)
     }
 
     pub fn project_page_url(&self) -> String {
@@ -2383,7 +2765,7 @@ impl MockOverleaf {
         headers.insert("cookie".to_string(), user.cookie());
         let mut query = HashMap::new();
         query.insert("projectId".to_string(), project_id);
-        let reply = state.handshake(&query, &headers);
+        let reply = state.handshake(&query, &headers, false);
         let sid = String::from_utf8_lossy(&reply.body)
             .split(':')
             .next()
@@ -2564,20 +2946,18 @@ impl MockPeer {
             }
         };
         for raw in packets {
-            let Some(packet) = Packet::parse(&raw) else {
-                continue;
-            };
-            if packet.kind == 0 {
-                self.connected = false;
-                self.mock.state().clients.remove(&self.sid);
-                continue;
-            }
-            if let Some((id, args)) = packet.ack() {
-                self.acks.insert(id, args);
-                continue;
-            }
-            let Some((name, args)) = packet.event() else {
-                continue;
+            let (name, args) = match codec::decode(&raw) {
+                Ok(Frame::Disconnect) => {
+                    self.connected = false;
+                    self.mock.state().clients.remove(&self.sid);
+                    continue;
+                }
+                Ok(Frame::Ack { id, args }) => {
+                    self.acks.insert(id.0, args);
+                    continue;
+                }
+                Ok(Frame::Event { name, args, .. }) => (name, args),
+                _ => continue,
             };
             if name == "otUpdateApplied" {
                 if let Some(update) = args.first() {

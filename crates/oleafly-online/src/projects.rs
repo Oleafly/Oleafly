@@ -7,9 +7,9 @@ use serde_json::{json, Value};
 
 use crate::client::{self, Http};
 use crate::error::{OnlineError, OnlineErrorKind};
+use crate::realtime::project::ProjectSettings;
 use crate::service::SERVICE_ID;
 use crate::session::{self, Session};
-use crate::socket::ProjectSettings;
 
 #[derive(Serialize, Clone, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
