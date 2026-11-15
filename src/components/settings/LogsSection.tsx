@@ -164,7 +164,7 @@ function LogRowView({
   query,
   open,
   onToggle,
-}: Readonly<{ row: LogRow; query: string; open: boolean; onToggle: () => void }>) {
+}: Readonly<{ row: LogRow; query: string; open: boolean; onToggle: (key: string) => void }>) {
   const { t } = useTranslation(["settings"]);
   const { entry } = row;
   return (
@@ -172,7 +172,7 @@ function LogRowView({
       <button
         type="button"
         aria-expanded={open}
-        onClick={onToggle}
+        onClick={() => onToggle(row.key)}
         className={cn(ROW_GRID, "w-full py-2 text-left text-xs transition-colors hover:bg-accent/40 focus-visible:bg-accent/40")}
       >
         <span className="whitespace-nowrap font-mono text-[0.6875rem] text-muted-foreground">
@@ -295,6 +295,10 @@ export function LogsSection() {
     }
   };
 
+  const toggleRow = (key: string) => {
+    setExpanded((current) => (current === key ? null : key));
+  };
+
   const resetFilters = () => {
     setQuery("");
     setLevel("all");
@@ -357,7 +361,7 @@ export function LogsSection() {
                 row={row}
                 query={needle}
                 open={expanded === row.key}
-                onToggle={() => setExpanded((current) => (current === row.key ? null : row.key))}
+                onToggle={toggleRow}
               />
             ))}
           </section>
