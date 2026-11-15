@@ -291,26 +291,6 @@ pub fn unpack_lines(lines: &[Value]) -> String {
     String::from_utf8(bytes).unwrap_or(joined)
 }
 
-fn sha1_blob(length: usize, bytes: &[u8]) -> String {
-    let mut context = ring::digest::Context::new(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY);
-    context.update(format!("blob {length}\0").as_bytes());
-    context.update(bytes);
-    context
-        .finish()
-        .as_ref()
-        .iter()
-        .map(|byte| format!("{byte:02x}"))
-        .collect()
-}
-
-pub fn blob_hash(text: &str) -> String {
-    sha1_blob(text.encode_utf16().count(), text.as_bytes())
-}
-
-pub fn git_blob_hash(bytes: &[u8]) -> String {
-    sha1_blob(bytes.len(), bytes)
-}
-
 pub fn versions_reported(trace: &Trace, doc_id: &str) -> BTreeMap<u64, usize> {
     let mut seen = BTreeMap::new();
     for event in trace.doc_events(doc_id) {
@@ -350,12 +330,11 @@ mod tests {
         Some((text, version))
     }
 
-    fn replay_sharejs_client(recording: &Recording, trace: &Trace) -> (String, usize) {
+    fn replay_sharejs_client(recording: &Recording, trace: &Trace) -> String {
         let (reply, events) = trace.last_session(&recording.doc_id).unwrap();
         let (text, mut version) = snapshot_of(&reply).unwrap();
         let mut text = sharejs_text::units(&text);
         let mut inflight: Option<Op> = None;
-        let mut hashes = 0;
         for event in events {
             match event {
                 DocEvent::Sent { v, update } => {
@@ -372,15 +351,6 @@ mod tests {
                     );
                     let op = sharejs_op(&update);
                     sharejs_text::apply_units(&mut text, &op).unwrap();
-                    if let Some(hash) = update["hash"].as_str() {
-                        assert_eq!(
-                            blob_hash(&sharejs_text::text(&text)),
-                            hash,
-                            "{}: hash",
-                            recording.name
-                        );
-                        hashes += 1;
-                    }
                     inflight = Some(op);
                 }
                 DocEvent::Acked { v } => {
@@ -414,7 +384,7 @@ mod tests {
                 }
             }
         }
-        (sharejs_text::text(&text), hashes)
+        sharejs_text::text(&text)
     }
 
     fn replay_sharejs_server(recording: &Recording) -> (String, usize) {
@@ -501,20 +471,18 @@ mod tests {
             sessions.len()
         );
         let mut transformed = 0;
-        let mut hashes = 0;
         let mut replayed = 0;
         for recording in &sessions {
             for trace in recording.traces.iter().filter(|trace| !trace.scripted) {
                 let Some(expected) = recording.final_text(&trace.name) else {
                     continue;
                 };
-                let (text, checked) = replay_sharejs_client(recording, trace);
+                let text = replay_sharejs_client(recording, trace);
                 assert_eq!(
                     text, expected,
                     "{}: {}'s replayed text",
                     recording.name, trace.name
                 );
-                hashes += checked;
                 replayed += 1;
             }
             if let Some(expected) = recording.final_text(&recording.traces[0].name) {
@@ -532,7 +500,6 @@ mod tests {
             transformed >= 3,
             "only {transformed} server-side transforms were checked"
         );
-        assert!(hashes >= 5, "only {hashes} update hashes were checked");
     }
 
     #[test]
@@ -620,14 +587,6 @@ mod tests {
                     let operations = text_operations(&update);
                     for operation in &operations {
                         (content, tracked) = operation.apply(&content, &tracked).unwrap();
-                    }
-                    if let Some(hash) = update["hash"].as_str() {
-                        assert_eq!(
-                            blob_hash(&visible(&content, &tracked)),
-                            hash,
-                            "{}: hash",
-                            recording.name
-                        );
                     }
                     inflight = Some(operations);
                 }

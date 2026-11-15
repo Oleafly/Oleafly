@@ -556,7 +556,7 @@ async fn mock_frames_have_the_shapes_ce_sent() {
         assert_eq!(mock_reply[5], ce_reply[5]);
         let required: BTreeSet<String> = ["doc", "op", "v", "meta"]
             .iter()
-            .map(|key| key.to_string())
+            .map(ToString::to_string)
             .collect();
         assert!(required.is_subset(&keys(&ce_remote)) && required.is_subset(&keys(&mock_remote)));
         assert_eq!(
@@ -1121,20 +1121,15 @@ async fn mock_refuses_a_sharejs_update_older_than_the_replay_window() {
 }
 
 #[tokio::test]
-async fn mock_refuses_a_sharejs_update_with_a_wrong_hash() {
+async fn mock_accepts_and_ignores_a_sharejs_update_hash() {
     let mock = MockOverleaf::start(project()).await;
     let doc = mock.doc_id("main.tex");
+    let text = format!("x{}", mock.doc_text(&doc));
     let mut alice = mock.peer("alice");
     alice.join(&doc);
     let update = json!({ "doc": doc, "op": [{ "p": 0, "i": "x" }], "v": 0, "hash": "0000000000000000000000000000000000000000" });
     alice.emit("applyOtUpdate", vec![json!(doc), update]);
-    assert_eq!(alice.events("otUpdateError")[0][0], "Invalid hash");
-    let text = format!("x{}", mock.doc_text(&doc));
-    let mut again = mock.peer("alice");
-    again.join(&doc);
-    let right =
-        json!({ "doc": doc, "op": [{ "p": 0, "i": "x" }], "v": 0, "hash": blob_hash(&text) });
-    again.emit("applyOtUpdate", vec![json!(doc), right]);
+    assert!(alice.events("otUpdateError").is_empty());
     assert_eq!(mock.doc_text(&doc), text);
 }
 

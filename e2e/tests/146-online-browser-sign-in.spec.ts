@@ -4,6 +4,7 @@ import { startOverleafFixtureServer } from "../overleaf-fixture-server";
 
 const FAKE_BROWSER = process.env.OLEAFLY_E2E_SIGN_IN_BROWSER;
 
+// Ignored on purpose without OLEAFLY_E2E_SIGN_IN_BROWSER, because the sign-in needs the scripted browser.
 test.skip(
   !FAKE_BROWSER,
   "Needs OLEAFLY_E2E_SIGN_IN_BROWSER, the scripted browser built with `cargo build -p oleafly-online --example fake_browser`, and an app built with the e2e-testing feature.",

@@ -121,7 +121,8 @@ async fn announced_endpoint(
                 return Ok(endpoint);
             }
         }
-        if let Some(endpoint) = std::fs::read_to_string(&server_file)
+        if let Some(endpoint) = tokio::fs::read_to_string(&server_file)
+            .await
             .ok()
             .and_then(|text| endpoint_in_server_file(&text))
         {
@@ -147,7 +148,9 @@ impl Bidi {
         url: &str,
     ) -> Result<Self, BrowserSignInError> {
         let launch_error = |error: std::io::Error| BrowserSignInError::Launch(error.to_string());
-        std::fs::write(profile.join("user.js"), USER_PREFS).map_err(launch_error)?;
+        tokio::fs::write(profile.join("user.js"), USER_PREFS)
+            .await
+            .map_err(launch_error)?;
         let mut command = Command::new(&browser.path);
         command.args(firefox_args(platform, profile, url));
         let (mut running, stderr) = spawn_with_stderr(command).map_err(launch_error)?;

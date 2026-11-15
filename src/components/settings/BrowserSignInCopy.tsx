@@ -320,7 +320,7 @@ export function BrowserSignIn({ variant = "row" }: Readonly<{ variant?: "row" | 
   const server = useOverleafImportStore((state) => state.server);
   const phase = useOverleafImportStore((state) => state.phase);
   const signingWith = useOverleafImportStore((state) => state.signingWith);
-  const error = useOverleafImportStore((state) => state.error);
+  const importError = useOverleafImportStore((state) => state.error);
   const signInWithBrowser = useOverleafImportStore((state) => state.signInWithBrowser);
   const [browsers, setBrowsers] = useState<OverleafSignInBrowser[] | null>(null);
   const [chosen, setChosen] = useState("");
@@ -332,8 +332,8 @@ export function BrowserSignIn({ variant = "row" }: Readonly<{ variant?: "row" | 
       .then((found) => {
         if (live) setBrowsers(found);
       })
-      .catch((failure: unknown) => {
-        void logError("list browsers for Overleaf sign-in", failure);
+      .catch((error: unknown) => {
+        void logError("list browsers for Overleaf sign-in", error);
         if (live) setBrowsers([]);
       });
     return () => {
@@ -345,7 +345,7 @@ export function BrowserSignIn({ variant = "row" }: Readonly<{ variant?: "row" | 
   if (!picked || !browsers) return null;
   const signing = phase === "signing-in";
   const waiting = signing && signingWith !== null;
-  const failed = attempted && !signing && phase === "signed-out" && error !== null;
+  const failed = attempted && !signing && phase === "signed-out" && importError !== null;
   const host = serverHostname(server) ?? server;
   const label = t(($) => $.settings.integrations.overleaf.browserLabel);
 
@@ -401,7 +401,7 @@ export function BrowserSignIn({ variant = "row" }: Readonly<{ variant?: "row" | 
   } else if (failed) {
     details = (
       <p role="alert" className="mt-2 select-text text-xs text-destructive">
-        {describeError(error)}
+        {describeError(importError)}
       </p>
     );
   }

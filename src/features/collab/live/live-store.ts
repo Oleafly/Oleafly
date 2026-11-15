@@ -352,35 +352,47 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
       }
       info = await driver.start(projectId);
     } catch (error) {
-      if (disposed) return;
-      const code = collabErrorCode(error);
-      if (START_REFUSALS.has(code)) {
-        if (live === run) live = null;
-        if (live === null && current() === projectId) refuseStart(projectId, code);
-        return;
-      }
-      if (live !== run) return;
-      if (attempt === 0) void logError("collab live start", error);
-      const delay = START_RETRY_MS[Math.min(attempt, START_RETRY_MS.length - 1)];
-      run.retry = setTimeout(() => {
-        run.retry = null;
-        if (disposed || live !== run || !driver.wants(store.getState())) return;
-        void goLive(projectId, driver, attempt + 1);
-      }, delay);
+      startFailed(run, error, attempt);
       return;
     }
+    wentLive(run, info);
+  };
+
+  const startFailed = (run: LiveRun, error: unknown, attempt: number) => {
+    if (disposed) return;
+    const code = collabErrorCode(error);
+    if (START_REFUSALS.has(code)) {
+      if (live === run) live = null;
+      if (live === null && current() === run.projectId) refuseStart(run.projectId, code);
+      return;
+    }
+    if (live !== run) return;
+    if (attempt === 0) void logError("collab live start", error);
+    retryStart(run, attempt);
+  };
+
+  const retryStart = (run: LiveRun, attempt: number) => {
+    const delay = START_RETRY_MS[Math.min(attempt, START_RETRY_MS.length - 1)];
+    run.retry = setTimeout(() => {
+      run.retry = null;
+      if (disposed || live !== run || !run.driver.wants(store.getState())) return;
+      void goLive(run.projectId, run.driver, attempt + 1);
+    }, delay);
+  };
+
+  const wentLive = (run: LiveRun, info: CollabLiveInfo) => {
     run.ready = true;
     if (disposed || live !== run) {
-      void driver.stop(projectId).catch((error) => logError("collab live stop", error));
+      void run.driver.stop(run.projectId).catch((error) => logError("collab live stop", error));
       return;
     }
     run.deviceId = info.device_id;
-    releaseEditors(projectId);
+    releaseEditors(run.projectId);
     store.setState({ role: info.role });
     void store.getState().refreshMembers();
     run.release =
       hooks.started?.({
-        projectId,
+        projectId: run.projectId,
         role: info.role,
         accountId: info.account_id,
         deviceId: info.device_id,

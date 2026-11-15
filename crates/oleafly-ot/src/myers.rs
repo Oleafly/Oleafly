@@ -60,6 +60,29 @@ impl IndexMut<isize> for Diagonals {
     }
 }
 
+struct Window {
+    old_start: usize,
+    old_end: usize,
+    new_start: usize,
+    new_end: usize,
+    delta: isize,
+    odd: bool,
+}
+
+impl Window {
+    fn lengths(&self) -> (usize, usize) {
+        (self.old_end - self.old_start, self.new_end - self.new_start)
+    }
+}
+
+fn furthest(diagonals: &Diagonals, d: isize, k: isize) -> usize {
+    if k == -d || (k != d && diagonals[k - 1] < diagonals[k + 1]) {
+        diagonals[k + 1]
+    } else {
+        diagonals[k - 1] + 1
+    }
+}
+
 struct Search<'a> {
     old: &'a [u32],
     new: &'a [u32],
@@ -101,57 +124,72 @@ impl Search<'_> {
         new_start: usize,
         new_end: usize,
     ) -> Result<Option<(usize, usize)>, TimedOut> {
-        let (old, new) = (self.old, self.new);
         let n = old_end - old_start;
         let m = new_end - new_start;
         let delta = n as isize - m as isize;
-        let odd = delta & 1 != 0;
+        let window = Window {
+            old_start,
+            old_end,
+            new_start,
+            new_end,
+            delta,
+            odd: delta & 1 != 0,
+        };
         self.forward[1] = 0;
         self.backward[1] = 0;
         let d_max = (n + m).div_ceil(2) + 1;
         for d in 0..d_max as isize {
             for k in (-d..=d).rev().step_by(2) {
-                let vf = &mut self.forward;
-                let mut x = if k == -d || (k != d && vf[k - 1] < vf[k + 1]) {
-                    vf[k + 1]
-                } else {
-                    vf[k - 1] + 1
-                };
-                let y = (x as isize - k) as usize;
-                let (x0, y0) = (x, y);
-                if x < n && y < m {
-                    x += common_prefix(&old[old_start + x..old_end], &new[new_start + y..new_end]);
-                }
-                vf[k] = x;
-                if odd && (k - delta).abs() <= (d - 1) && vf[k] + self.backward[delta - k] >= n {
-                    return Ok(Some((x0 + old_start, y0 + new_start)));
+                if let Some(found) = self.forward_snake(&window, d, k) {
+                    return Ok(Some(found));
                 }
                 self.waited_too_long()?;
             }
             for k in (-d..=d).rev().step_by(2) {
-                let vb = &mut self.backward;
-                let mut x = if k == -d || (k != d && vb[k - 1] < vb[k + 1]) {
-                    vb[k + 1]
-                } else {
-                    vb[k - 1] + 1
-                };
-                let mut y = (x as isize - k) as usize;
-                if x < n && y < m {
-                    let advance = common_suffix(
-                        &old[old_start..old_start + n - x],
-                        &new[new_start..new_start + m - y],
-                    );
-                    x += advance;
-                    y += advance;
-                }
-                vb[k] = x;
-                if !odd && (k - delta).abs() <= d && vb[k] + self.forward[delta - k] >= n {
-                    return Ok(Some((n - x + old_start, m - y + new_start)));
+                if let Some(found) = self.backward_snake(&window, d, k) {
+                    return Ok(Some(found));
                 }
                 self.waited_too_long()?;
             }
         }
         Ok(None)
+    }
+
+    fn forward_snake(&mut self, window: &Window, d: isize, k: isize) -> Option<(usize, usize)> {
+        let (n, m) = window.lengths();
+        let mut x = furthest(&self.forward, d, k);
+        let y = (x as isize - k) as usize;
+        let (x0, y0) = (x, y);
+        if x < n && y < m {
+            x += common_prefix(
+                &self.old[window.old_start + x..window.old_end],
+                &self.new[window.new_start + y..window.new_end],
+            );
+        }
+        self.forward[k] = x;
+        if window.odd && (k - window.delta).abs() < d && x + self.backward[window.delta - k] >= n {
+            return Some((x0 + window.old_start, y0 + window.new_start));
+        }
+        None
+    }
+
+    fn backward_snake(&mut self, window: &Window, d: isize, k: isize) -> Option<(usize, usize)> {
+        let (n, m) = window.lengths();
+        let mut x = furthest(&self.backward, d, k);
+        let mut y = (x as isize - k) as usize;
+        if x < n && y < m {
+            let advance = common_suffix(
+                &self.old[window.old_start..window.old_start + n - x],
+                &self.new[window.new_start..window.new_start + m - y],
+            );
+            x += advance;
+            y += advance;
+        }
+        self.backward[k] = x;
+        if !window.odd && (k - window.delta).abs() <= d && x + self.forward[window.delta - k] >= n {
+            return Some((n - x + window.old_start, m - y + window.new_start));
+        }
+        None
     }
 
     fn conquer(

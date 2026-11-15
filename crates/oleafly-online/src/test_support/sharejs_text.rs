@@ -302,134 +302,154 @@ pub fn transform_component(
                     p: transform_position(*p, other, side == Side::Right),
                 },
             );
+            Ok(())
         }
-        Component::Delete { p, d } => match other {
-            Component::Insert {
-                p: other_p,
-                i: other_i,
-            } => {
-                let mut rest = d.clone();
-                if p < other_p {
+        Component::Delete { p, d } => transform_delete(dest, component, *p, d, other),
+        Component::Comment { p, c, t } => transform_comment(dest, component, (*p, c, t), other),
+    }
+}
+
+fn kept_outside(text: &[u16], p: usize, other_p: usize, other_d: &[u16]) -> Vec<u16> {
+    let mut kept = Vec::new();
+    if p < other_p {
+        kept = slice(text, 0, other_p - p);
+    }
+    if p + text.len() > other_p + other_d.len() {
+        kept.extend(tail(text, other_p + other_d.len() - p));
+    }
+    kept
+}
+
+fn transform_delete(
+    dest: &mut Op,
+    component: &Component,
+    p: usize,
+    d: &[u16],
+    other: &Component,
+) -> Result<(), OracleError> {
+    match other {
+        Component::Insert {
+            p: other_p,
+            i: other_i,
+        } => {
+            let mut rest = d.to_vec();
+            if p < *other_p {
+                append(
+                    dest,
+                    Component::Delete {
+                        d: slice(&rest, 0, other_p - p),
+                        p,
+                    },
+                );
+                rest = tail(&rest, other_p - p);
+            }
+            if !rest.is_empty() {
+                append(
+                    dest,
+                    Component::Delete {
+                        d: rest,
+                        p: p + other_i.len(),
+                    },
+                );
+            }
+        }
+        Component::Delete {
+            p: other_p,
+            d: other_d,
+        } => {
+            if p >= other_p + other_d.len() {
+                append(
+                    dest,
+                    Component::Delete {
+                        d: d.to_vec(),
+                        p: p - other_d.len(),
+                    },
+                );
+            } else if p + d.len() <= *other_p {
+                append(dest, component.clone());
+            } else {
+                let kept = kept_outside(d, p, *other_p, other_d);
+                overlap_check(d, p, other_d, *other_p)?;
+                if !kept.is_empty() {
                     append(
                         dest,
                         Component::Delete {
-                            d: slice(&rest, 0, other_p - p),
-                            p: *p,
-                        },
-                    );
-                    rest = tail(&rest, other_p - p);
-                }
-                if !rest.is_empty() {
-                    append(
-                        dest,
-                        Component::Delete {
-                            d: rest,
-                            p: p + other_i.len(),
+                            p: transform_position(p, other, false),
+                            d: kept,
                         },
                     );
                 }
             }
-            Component::Delete {
-                p: other_p,
-                d: other_d,
-            } => {
-                if *p >= other_p + other_d.len() {
-                    append(
-                        dest,
-                        Component::Delete {
-                            d: d.clone(),
-                            p: p - other_d.len(),
-                        },
-                    );
-                } else if p + d.len() <= *other_p {
-                    append(dest, component.clone());
-                } else {
-                    let mut kept = Vec::new();
-                    if p < other_p {
-                        kept = slice(d, 0, other_p - p);
-                    }
-                    if p + d.len() > other_p + other_d.len() {
-                        kept.extend(tail(d, other_p + other_d.len() - p));
-                    }
-                    overlap_check(d, *p, other_d, *other_p)?;
-                    if !kept.is_empty() {
-                        append(
-                            dest,
-                            Component::Delete {
-                                p: transform_position(*p, other, false),
-                                d: kept,
-                            },
-                        );
-                    }
-                }
+        }
+        Component::Comment { .. } => append(dest, component.clone()),
+    }
+    Ok(())
+}
+
+fn transform_comment(
+    dest: &mut Op,
+    component: &Component,
+    (p, c, t): (usize, &[u16], &Option<Value>),
+    other: &Component,
+) -> Result<(), OracleError> {
+    match other {
+        Component::Insert {
+            p: other_p,
+            i: other_i,
+        } => {
+            if p < *other_p && *other_p < p + c.len() {
+                let offset = other_p - p;
+                let mut widened = slice(c, 0, offset);
+                widened.extend_from_slice(other_i);
+                widened.extend(tail(c, offset));
+                append(
+                    dest,
+                    Component::Comment {
+                        c: widened,
+                        p,
+                        t: t.clone(),
+                    },
+                );
+            } else {
+                append(
+                    dest,
+                    Component::Comment {
+                        c: c.to_vec(),
+                        p: transform_position(p, other, true),
+                        t: t.clone(),
+                    },
+                );
             }
-            Component::Comment { .. } => append(dest, component.clone()),
-        },
-        Component::Comment { p, c, t } => match other {
-            Component::Insert {
-                p: other_p,
-                i: other_i,
-            } => {
-                if p < other_p && *other_p < p + c.len() {
-                    let offset = other_p - p;
-                    let mut widened = slice(c, 0, offset);
-                    widened.extend_from_slice(other_i);
-                    widened.extend(tail(c, offset));
-                    append(
-                        dest,
-                        Component::Comment {
-                            c: widened,
-                            p: *p,
-                            t: t.clone(),
-                        },
-                    );
-                } else {
-                    append(
-                        dest,
-                        Component::Comment {
-                            c: c.clone(),
-                            p: transform_position(*p, other, true),
-                            t: t.clone(),
-                        },
-                    );
-                }
+        }
+        Component::Delete {
+            p: other_p,
+            d: other_d,
+        } => {
+            if p >= other_p + other_d.len() {
+                append(
+                    dest,
+                    Component::Comment {
+                        c: c.to_vec(),
+                        p: p - other_d.len(),
+                        t: t.clone(),
+                    },
+                );
+            } else if p + c.len() <= *other_p {
+                append(dest, component.clone());
+            } else {
+                let kept = kept_outside(c, p, *other_p, other_d);
+                overlap_check(c, p, other_d, *other_p)?;
+                append(
+                    dest,
+                    Component::Comment {
+                        c: kept,
+                        p: transform_position(p, other, false),
+                        t: t.clone(),
+                    },
+                );
             }
-            Component::Delete {
-                p: other_p,
-                d: other_d,
-            } => {
-                if *p >= other_p + other_d.len() {
-                    append(
-                        dest,
-                        Component::Comment {
-                            c: c.clone(),
-                            p: p - other_d.len(),
-                            t: t.clone(),
-                        },
-                    );
-                } else if p + c.len() <= *other_p {
-                    append(dest, component.clone());
-                } else {
-                    let mut kept = Vec::new();
-                    if p < other_p {
-                        kept = slice(c, 0, other_p - p);
-                    }
-                    if p + c.len() > other_p + other_d.len() {
-                        kept.extend(tail(c, other_p + other_d.len() - p));
-                    }
-                    overlap_check(c, *p, other_d, *other_p)?;
-                    append(
-                        dest,
-                        Component::Comment {
-                            c: kept,
-                            p: transform_position(*p, other, false),
-                            t: t.clone(),
-                        },
-                    );
-                }
-            }
-            Component::Comment { .. } => append(dest, component.clone()),
-        },
+        }
+        Component::Comment { .. } => append(dest, component.clone()),
     }
     Ok(())
 }

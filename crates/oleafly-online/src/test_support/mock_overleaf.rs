@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap, VecDeque};
-use std::sync::{Arc, Mutex, MutexGuard, Weak};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use futures_util::{SinkExt, StreamExt};
@@ -14,7 +14,6 @@ use tokio_tungstenite::WebSocketStream;
 
 use super::frames::{self, Packet};
 use super::history_ot_text::{Marks, Part, TextOperation};
-use super::overleaf_rt::{blob_hash, git_blob_hash};
 use super::sharejs_text::{self, Component, Side};
 use super::{read_message, Reply, Request};
 
@@ -75,6 +74,13 @@ pub struct MockUser {
     pub first_name: String,
     pub last_name: String,
     pub session: String,
+}
+
+fn content_hash(bytes: &[u8]) -> String {
+    ring::digest::digest(&ring::digest::SHA256, bytes).as_ref()[..20]
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
 }
 
 fn object_id(seed: &str) -> String {
@@ -587,7 +593,7 @@ impl State {
                         id.clone(),
                         Blob {
                             name,
-                            hash: git_blob_hash(bytes),
+                            hash: content_hash(bytes),
                             bytes: bytes.clone(),
                         },
                     );
@@ -1320,274 +1326,26 @@ impl State {
         let Some(rest) = path.strip_prefix(&format!("/project/{}", self.project_id)) else {
             return Reply::status(404);
         };
-        let Some(user) = self.user_for(headers) else {
-            return text_reply(401, "Unauthorized");
+        let route = rest.trim_start_matches('/');
+        let user = match self.rest_caller(method, route, headers) {
+            Ok(user) => user,
+            Err(refused) => return refused,
         };
-        let writes = method != "GET";
-        if writes && headers.get("x-csrf-token").map(String::as_str) != Some(MOCK_CSRF) {
-            return text_reply(403, "Forbidden");
-        }
-        let Some(privilege) = self.privilege(&user) else {
-            return json_reply(&json!({ "message": "restricted" })).with_status(403);
-        };
-        if writes && !privilege.can_write() {
-            return json_reply(&json!({ "message": "restricted" })).with_status(403);
-        }
-        let limited = match (method, rest.trim_start_matches('/')) {
-            ("POST", "doc") => Some((
-                "doc",
-                self.config.rate_limits.docs_per_minute,
-                Duration::from_secs(60),
-            )),
-            ("POST", "folder") => Some((
-                "folder",
-                self.config.rate_limits.folders_per_minute,
-                Duration::from_secs(60),
-            )),
-            ("POST", "upload") => Some((
-                "upload",
-                self.config.rate_limits.uploads_per_quarter_hour,
-                Duration::from_secs(900),
-            )),
-            _ => None,
-        };
-        if let Some((route, limit, window)) = limited {
-            if !self.allow(&format!("{route}:{user}"), limit, window) {
-                let reply = Reply {
-                    status: 429,
-                    headers: Vec::new(),
-                    body: RATE_LIMITED.as_bytes().to_vec(),
-                };
-                return match self.config.retry_after {
-                    Some(seconds) => reply.header("Retry-After", &seconds.to_string()),
-                    None => reply,
-                };
-            }
-        }
         let json_body = || serde_json::from_slice::<Value>(body).unwrap_or(Value::Null);
-        let parts: Vec<&str> = rest.trim_start_matches('/').split('/').collect();
+        let parts: Vec<&str> = route.split('/').collect();
         match (method, parts.as_slice()) {
             ("GET", [""]) => self.page(&user, query),
-            ("GET", ["entities"]) => {
-                let entities: Vec<Value> = self
-                    .paths()
-                    .into_iter()
-                    .filter(|(_, kind, _)| *kind != "folder")
-                    .map(|(path, kind, _)| json!({ "path": format!("/{path}"), "type": kind }))
-                    .collect();
-                json_reply(&json!({ "project_id": self.project_id, "entities": entities }))
-            }
-            ("POST", ["doc"]) => {
-                let request = json_body();
-                let (Some(name), Some(parent)) = (
-                    request["name"].as_str(),
-                    request["parent_folder_id"].as_str(),
-                ) else {
-                    return Reply::status(400);
-                };
-                match self.add_doc(parent, name, "", &user) {
-                    Some(id) => json_reply(&json!({ "_id": id, "name": name })),
-                    None => Reply::status(404),
-                }
-            }
-            ("POST", ["folder"]) => {
-                let request = json_body();
-                let (Some(name), Some(parent)) = (
-                    request["name"].as_str(),
-                    request["parent_folder_id"].as_str(),
-                ) else {
-                    return Reply::status(400);
-                };
-                let id = self.new_id();
-                let Some(folder) = self.root.find_mut(parent) else {
-                    return Reply::status(404);
-                };
-                folder.folders.push(Folder {
-                    id: id.clone(),
-                    name: name.to_string(),
-                    ..Folder::default()
-                });
-                let created =
-                    json!({ "_id": id, "name": name, "docs": [], "fileRefs": [], "folders": [] });
-                self.emit_room(
-                    "reciveNewFolder",
-                    &[json!(parent), created.clone(), json!(user)],
-                    None,
-                );
-                json_reply(&created)
-            }
-            ("POST", ["upload"]) => {
-                let folder = query
-                    .get("folder_id")
-                    .cloned()
-                    .unwrap_or_else(|| self.root.id.clone());
-                let Some((name, bytes)) = multipart_file(
-                    headers
-                        .get("content-type")
-                        .map(String::as_str)
-                        .unwrap_or_default(),
-                    body,
-                ) else {
-                    return Reply::status(400);
-                };
-                let text = String::from_utf8(bytes.clone()).ok().filter(|text| {
-                    let extension = name
-                        .rsplit('.')
-                        .next()
-                        .unwrap_or_default()
-                        .to_ascii_lowercase();
-                    TEXT_EXTENSIONS.contains(&extension.as_str())
-                        && !text.contains('\0')
-                        && text.chars().all(|character| (character as u32) < 0x10000)
-                        && bytes.len() <= MAX_DOC_LENGTH
-                });
-                match text {
-                    Some(text) => match self.add_doc(&folder, &name, &text, &user) {
-                        Some(id) => json_reply(
-                            &json!({ "success": true, "entity_id": id, "entity_type": "doc" }),
-                        ),
-                        None => Reply::status(404),
-                    },
-                    None => {
-                        let id = self.new_id();
-                        let hash = git_blob_hash(&bytes);
-                        let Some(target) = self.root.find_mut(&folder) else {
-                            return Reply::status(404);
-                        };
-                        target.files.push(id.clone());
-                        self.files.insert(
-                            id.clone(),
-                            Blob {
-                                name: name.clone(),
-                                bytes,
-                                hash: hash.clone(),
-                            },
-                        );
-                        let file = json!({ "_id": id, "name": name, "linkedFileData": null, "created": "2026-11-15T00:00:00.000Z", "hash": hash });
-                        self.emit_room(
-                            "reciveNewFile",
-                            &[
-                                json!(folder),
-                                file,
-                                json!("upload"),
-                                Value::Null,
-                                json!(user),
-                            ],
-                            None,
-                        );
-                        json_reply(
-                            &json!({ "success": true, "entity_id": id, "entity_type": "file", "hash": hash }),
-                        )
-                    }
-                }
-            }
-            ("GET", ["blob", hash]) => match self.files.values().find(|file| file.hash == *hash) {
-                Some(file) => Reply::ok(file.bytes.clone()),
-                None => Reply::status(404),
-            },
-            ("GET", ["file", id]) => match self.files.get(*id) {
-                Some(file) => Reply::ok(file.bytes.clone()),
-                None => Reply::status(404),
-            },
-            ("POST", [_, id, "rename"]) => {
-                let Some(name) = json_body()["name"].as_str().map(str::to_string) else {
-                    return Reply::status(400);
-                };
-                let renamed = if let Some(doc) = self.docs.get_mut(*id) {
-                    doc.name = name.clone();
-                    true
-                } else if let Some(file) = self.files.get_mut(*id) {
-                    file.name = name.clone();
-                    true
-                } else {
-                    self.root.rename(id, &name)
-                };
-                if !renamed {
-                    return Reply::status(404);
-                }
-                self.emit_room("reciveEntityRename", &[json!(id), json!(name)], None);
-                Reply::status(204)
-            }
-            ("POST", [_, id, "move"]) => {
-                let Some(target) = json_body()["folder_id"].as_str().map(str::to_string) else {
-                    return Reply::status(400);
-                };
-                let id = id.to_string();
-                let Some(detached) = self.root.detach(&id) else {
-                    return Reply::status(404);
-                };
-                let is_doc = self.docs.contains_key(&id);
-                let Some(folder) = self.root.find_mut(&target) else {
-                    return Reply::status(404);
-                };
-                match detached {
-                    Some(moved) => folder.folders.push(moved),
-                    None if is_doc => folder.docs.push(id.clone()),
-                    None => folder.files.push(id.clone()),
-                }
-                self.emit_room("reciveEntityMove", &[json!(id), json!(target)], None);
-                Reply::status(204)
-            }
-            ("DELETE", [_, id]) => {
-                let id = id.to_string();
-                let Some(detached) = self.root.detach(&id) else {
-                    return Reply::status(404);
-                };
-                let mut gone = vec![id.clone()];
-                if let Some(folder) = detached {
-                    gone.extend(folder.ids());
-                }
-                for entity in &gone {
-                    self.docs.remove(entity);
-                    self.files.remove(entity);
-                }
-                self.emit_room("removeEntity", &[json!(id), json!("editor")], None);
-                Reply::status(204)
-            }
-            ("GET", ["updates"]) => {
-                if self.config.history_status != 200 {
-                    return Reply::status(self.config.history_status);
-                }
-                let updates: Vec<Value> = self.history.iter().rev().cloned().collect();
-                json_reply(&json!({ "updates": updates }))
-            }
-            ("GET", ["filetree", "diff"]) => {
-                if self.config.history_status != 200 {
-                    return Reply::status(self.config.history_status);
-                }
-                let from: u64 = query
-                    .get("from")
-                    .and_then(|value| value.parse().ok())
-                    .unwrap_or(0);
-                let to: u64 = query
-                    .get("to")
-                    .and_then(|value| value.parse().ok())
-                    .unwrap_or(self.history.len() as u64);
-                let edited: BTreeSet<String> = self
-                    .history
-                    .iter()
-                    .filter(|entry| {
-                        entry["fromV"].as_u64().unwrap_or_default() >= from
-                            && entry["toV"].as_u64().unwrap_or_default() <= to
-                    })
-                    .flat_map(|entry| entry["pathnames"].as_array().cloned().unwrap_or_default())
-                    .filter_map(|name| name.as_str().map(str::to_string))
-                    .collect();
-                let diff: Vec<Value> = self
-                    .paths()
-                    .into_iter()
-                    .filter(|(_, kind, _)| *kind != "folder")
-                    .map(|(path, kind, _)| {
-                        let name = path.rsplit('/').next().unwrap_or_default().to_string();
-                        if edited.contains(&name) {
-                            json!({ "pathname": path, "operation": "edited" })
-                        } else {
-                            json!({ "pathname": path, "editable": kind == "doc" })
-                        }
-                    })
-                    .collect();
-                json_reply(&json!({ "diff": diff }))
-            }
+            ("GET", ["entities"]) => self.entities(),
+            ("POST", ["doc"]) => self.create_doc(&json_body(), &user),
+            ("POST", ["folder"]) => self.create_folder(&json_body(), &user),
+            ("POST", ["upload"]) => self.upload(query, headers, body, &user),
+            ("GET", ["blob", hash]) => served(self.files.values().find(|file| file.hash == *hash)),
+            ("GET", ["file", id]) => served(self.files.get(*id)),
+            ("POST", [_, id, "rename"]) => self.rename_entity(id, &json_body()),
+            ("POST", [_, id, "move"]) => self.move_entity(id, &json_body()),
+            ("DELETE", [_, id]) => self.delete_entity(id),
+            ("GET", ["updates"]) => self.updates(),
+            ("GET", ["filetree", "diff"]) => self.filetree_diff(query),
             ("GET", ["threads"]) => match self.config.threads_status {
                 200 => json_reply(&json!({})),
                 status => Reply::status(status),
@@ -1601,6 +1359,267 @@ impl State {
             })),
             _ => Reply::status(404),
         }
+    }
+
+    fn rest_caller(
+        &mut self,
+        method: &str,
+        route: &str,
+        headers: &HashMap<String, String>,
+    ) -> Result<String, Reply> {
+        let Some(user) = self.user_for(headers) else {
+            return Err(text_reply(401, "Unauthorized"));
+        };
+        let writes = method != "GET";
+        if writes && headers.get("x-csrf-token").map(String::as_str) != Some(MOCK_CSRF) {
+            return Err(text_reply(403, "Forbidden"));
+        }
+        let Some(privilege) = self.privilege(&user) else {
+            return Err(restricted());
+        };
+        if writes && !privilege.can_write() {
+            return Err(restricted());
+        }
+        match self.rate_limited(method, route, &user) {
+            Some(reply) => Err(reply),
+            None => Ok(user),
+        }
+    }
+
+    fn rate_limited(&mut self, method: &str, route: &str, user: &str) -> Option<Reply> {
+        let limits = &self.config.rate_limits;
+        let (name, limit, window) = match (method, route) {
+            ("POST", "doc") => ("doc", limits.docs_per_minute, Duration::from_secs(60)),
+            ("POST", "folder") => ("folder", limits.folders_per_minute, Duration::from_secs(60)),
+            ("POST", "upload") => (
+                "upload",
+                limits.uploads_per_quarter_hour,
+                Duration::from_secs(900),
+            ),
+            _ => return None,
+        };
+        if self.allow(&format!("{name}:{user}"), limit, window) {
+            return None;
+        }
+        let reply = Reply {
+            status: 429,
+            headers: Vec::new(),
+            body: RATE_LIMITED.as_bytes().to_vec(),
+        };
+        Some(match self.config.retry_after {
+            Some(seconds) => reply.header("Retry-After", &seconds.to_string()),
+            None => reply,
+        })
+    }
+
+    fn entities(&self) -> Reply {
+        let entities: Vec<Value> = self
+            .paths()
+            .into_iter()
+            .filter(|(_, kind, _)| *kind != "folder")
+            .map(|(path, kind, _)| json!({ "path": format!("/{path}"), "type": kind }))
+            .collect();
+        json_reply(&json!({ "project_id": self.project_id, "entities": entities }))
+    }
+
+    fn create_doc(&mut self, request: &Value, user: &str) -> Reply {
+        let (Some(name), Some(parent)) = (
+            request["name"].as_str(),
+            request["parent_folder_id"].as_str(),
+        ) else {
+            return Reply::status(400);
+        };
+        match self.add_doc(parent, name, "", user) {
+            Some(id) => json_reply(&json!({ "_id": id, "name": name })),
+            None => Reply::status(404),
+        }
+    }
+
+    fn create_folder(&mut self, request: &Value, user: &str) -> Reply {
+        let (Some(name), Some(parent)) = (
+            request["name"].as_str(),
+            request["parent_folder_id"].as_str(),
+        ) else {
+            return Reply::status(400);
+        };
+        let id = self.new_id();
+        let Some(folder) = self.root.find_mut(parent) else {
+            return Reply::status(404);
+        };
+        folder.folders.push(Folder {
+            id: id.clone(),
+            name: name.to_string(),
+            ..Folder::default()
+        });
+        let created = json!({ "_id": id, "name": name, "docs": [], "fileRefs": [], "folders": [] });
+        self.emit_room(
+            "reciveNewFolder",
+            &[json!(parent), created.clone(), json!(user)],
+            None,
+        );
+        json_reply(&created)
+    }
+
+    fn upload(
+        &mut self,
+        query: &HashMap<String, String>,
+        headers: &HashMap<String, String>,
+        body: &[u8],
+        user: &str,
+    ) -> Reply {
+        let folder = query
+            .get("folder_id")
+            .cloned()
+            .unwrap_or_else(|| self.root.id.clone());
+        let Some((name, bytes)) = multipart_file(
+            headers
+                .get("content-type")
+                .map(String::as_str)
+                .unwrap_or_default(),
+            body,
+        ) else {
+            return Reply::status(400);
+        };
+        let Some(text) = uploaded_text(&name, &bytes) else {
+            return self.add_file(&folder, name, bytes, user);
+        };
+        match self.add_doc(&folder, &name, &text, user) {
+            Some(id) => {
+                json_reply(&json!({ "success": true, "entity_id": id, "entity_type": "doc" }))
+            }
+            None => Reply::status(404),
+        }
+    }
+
+    fn add_file(&mut self, folder: &str, name: String, bytes: Vec<u8>, user: &str) -> Reply {
+        let id = self.new_id();
+        let hash = content_hash(&bytes);
+        let Some(target) = self.root.find_mut(folder) else {
+            return Reply::status(404);
+        };
+        target.files.push(id.clone());
+        self.files.insert(
+            id.clone(),
+            Blob {
+                name: name.clone(),
+                bytes,
+                hash: hash.clone(),
+            },
+        );
+        let file = json!({ "_id": id, "name": name, "linkedFileData": null, "created": "2026-11-15T00:00:00.000Z", "hash": hash });
+        self.emit_room(
+            "reciveNewFile",
+            &[
+                json!(folder),
+                file,
+                json!("upload"),
+                Value::Null,
+                json!(user),
+            ],
+            None,
+        );
+        json_reply(
+            &json!({ "success": true, "entity_id": id, "entity_type": "file", "hash": hash }),
+        )
+    }
+
+    fn rename_entity(&mut self, id: &str, request: &Value) -> Reply {
+        let Some(name) = request["name"].as_str().map(str::to_string) else {
+            return Reply::status(400);
+        };
+        let renamed = if let Some(doc) = self.docs.get_mut(id) {
+            doc.name = name.clone();
+            true
+        } else if let Some(file) = self.files.get_mut(id) {
+            file.name = name.clone();
+            true
+        } else {
+            self.root.rename(id, &name)
+        };
+        if !renamed {
+            return Reply::status(404);
+        }
+        self.emit_room("reciveEntityRename", &[json!(id), json!(name)], None);
+        Reply::status(204)
+    }
+
+    fn move_entity(&mut self, id: &str, request: &Value) -> Reply {
+        let Some(target) = request["folder_id"].as_str().map(str::to_string) else {
+            return Reply::status(400);
+        };
+        let id = id.to_string();
+        let Some(detached) = self.root.detach(&id) else {
+            return Reply::status(404);
+        };
+        let is_doc = self.docs.contains_key(&id);
+        let Some(folder) = self.root.find_mut(&target) else {
+            return Reply::status(404);
+        };
+        match detached {
+            Some(moved) => folder.folders.push(moved),
+            None if is_doc => folder.docs.push(id.clone()),
+            None => folder.files.push(id.clone()),
+        }
+        self.emit_room("reciveEntityMove", &[json!(id), json!(target)], None);
+        Reply::status(204)
+    }
+
+    fn delete_entity(&mut self, id: &str) -> Reply {
+        let id = id.to_string();
+        let Some(detached) = self.root.detach(&id) else {
+            return Reply::status(404);
+        };
+        let mut gone = vec![id.clone()];
+        if let Some(folder) = detached {
+            gone.extend(folder.ids());
+        }
+        for entity in &gone {
+            self.docs.remove(entity);
+            self.files.remove(entity);
+        }
+        self.emit_room("removeEntity", &[json!(id), json!("editor")], None);
+        Reply::status(204)
+    }
+
+    fn updates(&self) -> Reply {
+        if self.config.history_status != 200 {
+            return Reply::status(self.config.history_status);
+        }
+        let updates: Vec<Value> = self.history.iter().rev().cloned().collect();
+        json_reply(&json!({ "updates": updates }))
+    }
+
+    fn filetree_diff(&self, query: &HashMap<String, String>) -> Reply {
+        if self.config.history_status != 200 {
+            return Reply::status(self.config.history_status);
+        }
+        let bound = |key: &str| query.get(key).and_then(|value| value.parse::<u64>().ok());
+        let from = bound("from").unwrap_or(0);
+        let to = bound("to").unwrap_or(self.history.len() as u64);
+        let edited: BTreeSet<String> = self
+            .history
+            .iter()
+            .filter(|entry| {
+                entry["fromV"].as_u64().unwrap_or_default() >= from
+                    && entry["toV"].as_u64().unwrap_or_default() <= to
+            })
+            .flat_map(|entry| entry["pathnames"].as_array().cloned().unwrap_or_default())
+            .filter_map(|name| name.as_str().map(str::to_string))
+            .collect();
+        let diff: Vec<Value> = self
+            .paths()
+            .into_iter()
+            .filter(|(_, kind, _)| *kind != "folder")
+            .map(|(path, kind, _)| {
+                let name = path.rsplit('/').next().unwrap_or_default().to_string();
+                if edited.contains(&name) {
+                    json!({ "pathname": path, "operation": "edited" })
+                } else {
+                    json!({ "pathname": path, "editable": kind == "doc" })
+                }
+            })
+            .collect();
+        json_reply(&json!({ "diff": diff }))
     }
 
     fn add_doc(&mut self, folder: &str, name: &str, text: &str, user: &str) -> Option<String> {
@@ -1705,6 +1724,31 @@ fn find(haystack: &[u8], needle: &[u8], from: usize) -> Option<usize> {
         .map(|at| at + from)
 }
 
+fn restricted() -> Reply {
+    json_reply(&json!({ "message": "restricted" })).with_status(403)
+}
+
+fn served(file: Option<&Blob>) -> Reply {
+    match file {
+        Some(file) => Reply::ok(file.bytes.clone()),
+        None => Reply::status(404),
+    }
+}
+
+fn uploaded_text(name: &str, bytes: &[u8]) -> Option<String> {
+    let extension = name
+        .rsplit('.')
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    String::from_utf8(bytes.to_vec()).ok().filter(|text| {
+        TEXT_EXTENSIONS.contains(&extension.as_str())
+            && !text.contains('\0')
+            && text.chars().all(|character| (character as u32) < 0x10000)
+            && bytes.len() <= MAX_DOC_LENGTH
+    })
+}
+
 fn multipart_file(content_type: &str, body: &[u8]) -> Option<(String, Vec<u8>)> {
     let boundary = content_type.split("boundary=").nth(1)?.trim_matches('"');
     let marker = format!("--{boundary}");
@@ -1799,11 +1843,6 @@ fn apply_sharejs(
     sharejs_text::apply_units(&mut content, &op).map_err(|error| error.0)?;
     if content.len() > MAX_DOC_LENGTH {
         return Err("Update takes doc over max doc size".into());
-    }
-    if let Some(hash) = update["hash"].as_str() {
-        if blob_hash(&sharejs_text::text(&content)) != hash {
-            return Err("Invalid hash".into());
-        }
     }
     let at = doc.version;
     doc.tracked = vec![None; content.len()];
@@ -1959,9 +1998,7 @@ impl MockOverleaf {
     }
 
     fn state(&self) -> MutexGuard<'_, State> {
-        self.shared
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner())
+        self.shared.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     async fn serve(self, mut stream: TcpStream) {
@@ -2378,9 +2415,7 @@ async fn server_pings(shared: Weak<Mutex<State>>) {
             let Some(shared) = shared.upgrade() else {
                 return;
             };
-            let state = shared
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let state = shared.lock().unwrap_or_else(PoisonError::into_inner);
             state.config.server_ping
         };
         tokio::time::sleep(interval.unwrap_or(Duration::from_secs(1))).await;
@@ -2390,9 +2425,7 @@ async fn server_pings(shared: Weak<Mutex<State>>) {
         let Some(shared) = shared.upgrade() else {
             return;
         };
-        let mut state = shared
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut state = shared.lock().unwrap_or_else(PoisonError::into_inner);
         for sid in state.live() {
             let client = &state.clients[&sid];
             if client.transport == Transport::WebSocket && client.wants_ping {
@@ -2408,9 +2441,7 @@ async fn heartbeats(shared: Weak<Mutex<State>>) {
             let Some(shared) = shared.upgrade() else {
                 return;
             };
-            let state = shared
-                .lock()
-                .unwrap_or_else(|poisoned| poisoned.into_inner());
+            let state = shared.lock().unwrap_or_else(PoisonError::into_inner);
             state.config.heartbeat
         };
         tokio::time::sleep(interval.unwrap_or(Duration::from_secs(1))).await;
@@ -2420,9 +2451,7 @@ async fn heartbeats(shared: Weak<Mutex<State>>) {
         let Some(shared) = shared.upgrade() else {
             return;
         };
-        let mut state = shared
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let mut state = shared.lock().unwrap_or_else(PoisonError::into_inner);
         for sid in state.live() {
             if state.clients[&sid].transport != Transport::Peer {
                 state.push(&sid, "2::".into());
