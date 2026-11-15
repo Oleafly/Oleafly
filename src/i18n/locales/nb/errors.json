@@ -497,7 +497,9 @@
     "template_link_invalid": "Den lenken går ikke til en malside på Overleaf. Kopier adressen til en side fra overleaf.com/latex/templates, og prøv igjen.",
     "template_unavailable": "Oleafly kunne ikke åpne denne malen. Den kan ha blitt fjernet fra malgalleriet til Overleaf.",
     "browser_sign_in_missing": "Oleafly fant ingen innlogging for {{server}} i den nettleserprofilen. Logg inn i stedet.",
-    "browser_sign_in_failed": "Innloggingen fra nettleseren din fungerte ikke. Den kan ha utløpt. Logg inn i stedet."
+    "browser_sign_in_failed": "Innloggingen fra nettleseren din fungerte ikke. Den kan ha utløpt. Logg inn i stedet.",
+    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
+    "browser_missing": "That browser isn't installed anymore. Pick another one."
   },
   "collab": {
     "suggestion_role": "Rollen din i dette prosjektet gir ikke lov til forslag."

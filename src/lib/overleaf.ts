@@ -57,6 +57,19 @@ export function overleafSignInWithAppCookies(server: string | null | undefined):
   return invoke<OverleafStatus>("overleaf_sign_in_with_app_cookies", { server: serverArg(server) });
 }
 
+export interface OverleafSignInBrowser {
+  key: string;
+  name: string;
+}
+
+export function overleafSignInBrowsers(): Promise<OverleafSignInBrowser[]> {
+  return invoke<OverleafSignInBrowser[]>("overleaf_sign_in_browsers");
+}
+
+export function overleafSignInWithBrowser(server: string | null | undefined, browser: string): Promise<OverleafStatus> {
+  return invoke<OverleafStatus>("overleaf_sign_in_with_browser", { server: serverArg(server), browser });
+}
+
 export function overleafSignOut(server?: string | null): Promise<OverleafStatus> {
   return invoke<OverleafStatus>("overleaf_sign_out", { server: serverArg(server) });
 }

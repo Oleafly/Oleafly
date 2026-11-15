@@ -1796,7 +1796,12 @@
       "gitLabel": "Git-token fra Overleaf",
       "gitSave": "Gem",
       "gitRemove": "Fjern",
-      "gitFailed": "Oleafly kunne ikke gemme Git-tokenet. Tjek, at du har indsat hele tokenet."
+      "gitFailed": "Oleafly kunne ikke gemme Git-tokenet. Tjek, at du har indsat hele tokenet.",
+      "browserLabel": "Sign in with your browser",
+      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
+      "browserAction": "Sign in",
+      "browserPick": "Browser to sign in with",
+      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels."
     },
     "desktopApps": {
       "tab": "Computer Use",

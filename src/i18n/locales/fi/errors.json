@@ -497,7 +497,9 @@
     "template_link_invalid": "Linkki ei vie Overleafin mallipohjasivulle. Avaa mallipohjan sivu osoitteessa overleaf.com/latex/templates, kopioi sen osoite ja yritä uudelleen.",
     "template_unavailable": "Oleafly ei voinut avata tätä mallipohjaa. Se on ehkä poistettu Overleafin mallipohjagalleriasta.",
     "browser_sign_in_missing": "Oleafly ei löytänyt palvelun {{server}} kirjautumista tästä selainprofiilista. Kirjaudu sen sijaan sisään.",
-    "browser_sign_in_failed": "Selaimesi kirjautuminen ei toiminut. Se on voinut vanhentua. Kirjaudu sen sijaan sisään."
+    "browser_sign_in_failed": "Selaimesi kirjautuminen ei toiminut. Se on voinut vanhentua. Kirjaudu sen sijaan sisään.",
+    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
+    "browser_missing": "That browser isn't installed anymore. Pick another one."
   },
   "collab": {
     "suggestion_role": "Roolisi tässä projektissa ei salli ehdotuksia."

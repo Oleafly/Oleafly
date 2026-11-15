@@ -497,7 +497,9 @@
     "template_link_invalid": "Die link is geen sjabloonpagina van Overleaf. Kopieer het adres van een pagina op overleaf.com/latex/templates en probeer het opnieuw.",
     "template_unavailable": "Oleafly kon dit sjabloon niet openen. Misschien is het uit de sjabloongalerij van Overleaf verwijderd.",
     "browser_sign_in_missing": "Oleafly vond geen aanmelding voor {{server}} in dat browserprofiel. Meld je rechtstreeks aan.",
-    "browser_sign_in_failed": "De aanmelding uit je browser werkte niet. Misschien is hij verlopen. Meld je rechtstreeks aan."
+    "browser_sign_in_failed": "De aanmelding uit je browser werkte niet. Misschien is hij verlopen. Meld je rechtstreeks aan.",
+    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
+    "browser_missing": "That browser isn't installed anymore. Pick another one."
   },
   "collab": {
     "suggestion_role": "Je rol in dit project staat geen suggesties toe."

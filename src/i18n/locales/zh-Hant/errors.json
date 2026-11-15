@@ -495,7 +495,9 @@
     "template_link_invalid": "這個連結不是 Overleaf 範本頁面。請複製 overleaf.com/latex/templates 中某個頁面的網址，再試一次。",
     "template_unavailable": "Oleafly 無法開啟這個範本。它可能已從 Overleaf 的範本庫移除。",
     "browser_sign_in_missing": "Oleafly 在這個瀏覽器設定檔中找不到 {{server}} 的登入資訊。請直接登入。",
-    "browser_sign_in_failed": "來自瀏覽器的登入資訊無效，可能已經過期。請直接登入。"
+    "browser_sign_in_failed": "來自瀏覽器的登入資訊無效，可能已經過期。請直接登入。",
+    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
+    "browser_missing": "That browser isn't installed anymore. Pick another one."
   },
   "collab": {
     "suggestion_role": "你在這個專案中的角色不允許提出建議。"

@@ -10,15 +10,20 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
+import { cn } from "@/lib/utils";
 import {
   isOverleafError,
+  overleafSignInBrowsers,
   overleafSignInWithAppCookies,
+  type OverleafSignInBrowser,
   type OverleafStatus,
 } from "@/lib/overleaf";
+import { useOverleafImportStore } from "@/store/overleaf-import";
 import {
   detectBrowserCookieSources,
   importBrowserCookies,
@@ -307,5 +312,107 @@ export function BrowserSignInCopy({ server, onSignedIn, variant = "row" }: Reado
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+export function BrowserSignIn({ variant = "row" }: Readonly<{ variant?: "row" | "button" }>) {
+  const { t } = useTranslation(["settings"]);
+  const server = useOverleafImportStore((state) => state.server);
+  const phase = useOverleafImportStore((state) => state.phase);
+  const signingWith = useOverleafImportStore((state) => state.signingWith);
+  const error = useOverleafImportStore((state) => state.error);
+  const signInWithBrowser = useOverleafImportStore((state) => state.signInWithBrowser);
+  const [browsers, setBrowsers] = useState<OverleafSignInBrowser[] | null>(null);
+  const [chosen, setChosen] = useState("");
+  const [attempted, setAttempted] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    overleafSignInBrowsers()
+      .then((found) => {
+        if (live) setBrowsers(found);
+      })
+      .catch((failure: unknown) => {
+        void logError("list browsers for Overleaf sign-in", failure);
+        if (live) setBrowsers([]);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  const picked = browsers?.find((browser) => browser.key === chosen) ?? browsers?.[0];
+  if (!picked || !browsers) return null;
+  const signing = phase === "signing-in";
+  const waiting = signing && signingWith !== null;
+  const failed = attempted && !signing && phase === "signed-out" && error !== null;
+  const host = serverHostname(server) ?? server;
+  const label = t(($) => $.settings.integrations.overleaf.browserLabel);
+
+  const picker = (
+    <Select value={picked.key} onValueChange={setChosen} disabled={signing}>
+      <SelectTrigger
+        className="h-8 w-[168px] text-xs"
+        data-testid="browser-sign-in-picker"
+        aria-label={t(($) => $.settings.integrations.overleaf.browserPick)}
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent className="z-[130]">
+        {browsers.map((browser) => (
+          <SelectItem key={browser.key} value={browser.key} className="text-xs">
+            {browser.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+  const trigger = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      data-testid="browser-sign-in"
+      disabled={signing}
+      onClick={() => {
+        setAttempted(true);
+        void signInWithBrowser(picked);
+      }}
+    >
+      {waiting ? <Spinner size="sm" /> : null}
+      {variant === "row" ? t(($) => $.settings.integrations.overleaf.browserAction) : label}
+    </Button>
+  );
+  const controls = (
+    <div className={cn("flex flex-wrap items-center gap-2", variant === "row" ? "justify-end" : "justify-center")}>
+      {picker}
+      {trigger}
+    </div>
+  );
+
+  if (variant === "button") return controls;
+  let details = null;
+  if (waiting) {
+    details = (
+      <output className="mt-2 block text-xs text-muted-foreground">
+        {t(($) => $.settings.integrations.overleaf.browserWaiting, { browser: signingWith, server: host })}
+      </output>
+    );
+  } else if (failed) {
+    details = (
+      <p role="alert" className="mt-2 select-text text-xs text-destructive">
+        {describeError(error)}
+      </p>
+    );
+  }
+  return (
+    <SettingsRow
+      className="mt-4"
+      testId="browser-sign-in-row"
+      label={label}
+      description={t(($) => $.settings.integrations.overleaf.browserDescription, { server: host })}
+      details={details}
+      control={controls}
+    />
   );
 }

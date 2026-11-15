@@ -5,12 +5,13 @@ import {
   overleafImportProjects,
   overleafListProjects,
   overleafSignIn,
-  overleafSignInWithAppCookies,
+  overleafSignInWithBrowser,
   overleafSignOut,
   overleafStatus,
   type OverleafImportEvent,
   type OverleafImportOutcome,
   type OverleafProject,
+  type OverleafSignInBrowser,
   type OverleafStatus,
 } from "@/lib/overleaf";
 import { logError } from "@/lib/log";
@@ -31,6 +32,7 @@ interface OverleafImportState {
   status: OverleafStatus | null;
   projects: OverleafProject[];
   phase: OverleafPhase;
+  signingWith: string | null;
   error: unknown;
   selected: string[];
   progress: Record<string, OverleafRowProgress>;
@@ -41,7 +43,7 @@ interface OverleafImportState {
   open(): Promise<void>;
   load(): Promise<void>;
   signIn(title: string): Promise<boolean>;
-  signInWithAppCookies(): Promise<boolean>;
+  signInWithBrowser(browser: OverleafSignInBrowser): Promise<boolean>;
   signOut(): Promise<void>;
   toggle(id: string): void;
   setSelected(ids: readonly string[]): void;
@@ -85,11 +87,38 @@ function progressFor(event: OverleafImportEvent): OverleafRowProgress {
   }
 }
 
+type SetState = (partial: Partial<OverleafImportState>) => void;
+
+async function signInVia(
+  set: SetState,
+  get: () => OverleafImportState,
+  signingWith: string | null,
+  start: (server: string) => Promise<OverleafStatus>,
+): Promise<boolean> {
+  if (get().phase === "signing-in") return false;
+  set({ phase: "signing-in", signingWith, error: null });
+  try {
+    const status = await start(get().server);
+    set({ status, server: status.server, signingWith: null });
+    await get().load();
+    return true;
+  } catch (error) {
+    if (isOverleafError(error, "sign_in_cancelled")) {
+      set({ phase: "signed-out", signingWith: null });
+    } else {
+      void logError("overleaf sign in", error);
+      set({ phase: "signed-out", signingWith: null, error });
+    }
+    return false;
+  }
+}
+
 export const useOverleafImportStore = create<OverleafImportState>((set, get) => ({
   server: readServer(),
   status: null,
   projects: [],
   phase: "idle",
+  signingWith: null,
   error: null,
   selected: [],
   progress: {},
@@ -152,38 +181,12 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
     }
   },
 
-  async signIn(title) {
-    if (get().phase === "signing-in") return false;
-    set({ phase: "signing-in", error: null });
-    try {
-      const status = await overleafSignIn(get().server, title);
-      set({ status, server: status.server });
-      await get().load();
-      return true;
-    } catch (error) {
-      if (!isOverleafError(error, "sign_in_cancelled")) {
-        void logError("overleaf sign in", error);
-        set({ phase: "signed-out", error });
-      } else {
-        set({ phase: "signed-out" });
-      }
-      return false;
-    }
+  signIn(title) {
+    return signInVia(set, get, null, (server) => overleafSignIn(server, title));
   },
 
-  async signInWithAppCookies() {
-    if (get().phase === "signing-in") return false;
-    set({ phase: "signing-in", error: null });
-    try {
-      const status = await overleafSignInWithAppCookies(get().server);
-      set({ status, server: status.server });
-      await get().load();
-      return true;
-    } catch (error) {
-      void logError("overleaf sign in with browser cookies", error);
-      set({ phase: "signed-out", error });
-      return false;
-    }
+  signInWithBrowser(browser) {
+    return signInVia(set, get, browser.name, (server) => overleafSignInWithBrowser(server, browser.key));
   },
 
   async signOut() {

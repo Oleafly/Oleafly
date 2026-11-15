@@ -1811,7 +1811,12 @@
       "gitLabel": "Token Git di Overleaf",
       "gitSave": "Salva",
       "gitRemove": "Rimuovi",
-      "gitFailed": "Oleafly non è riuscito a salvare il token Git. Controlla di aver incollato tutto il token."
+      "gitFailed": "Oleafly non è riuscito a salvare il token Git. Controlla di aver incollato tutto il token.",
+      "browserLabel": "Sign in with your browser",
+      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
+      "browserAction": "Sign in",
+      "browserPick": "Browser to sign in with",
+      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels."
     },
     "desktopApps": {
       "tab": "Computer Use",

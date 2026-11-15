@@ -85,6 +85,20 @@ pub fn normalize_server(input: Option<&str>) -> Result<String, OnlineError> {
     Ok(format!("{}://{host}{port}{path}", url.scheme()))
 }
 
+pub fn is_dashboard(url: &url::Url, base: &str) -> bool {
+    let Ok(base_url) = url::Url::parse(base) else {
+        return false;
+    };
+    if url.origin() != base_url.origin() {
+        return false;
+    }
+    let prefix = base_url.path().trim_end_matches('/');
+    let Some(rest) = url.path().strip_prefix(prefix) else {
+        return false;
+    };
+    matches!(rest, "/project" | "/project/")
+}
+
 pub fn origin_of(base: &str) -> String {
     url::Url::parse(base)
         .map(|url| url.origin().ascii_serialization())

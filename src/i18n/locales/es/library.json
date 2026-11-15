@@ -334,6 +334,7 @@
       "loadFailed": "Oleafly no pudo cargar tus proyectos de Overleaf.",
       "signInPrompt": "Inicia sesión en Overleaf para ver tus proyectos. Se abre una ventana de inicio de sesión que se cierra sola cuando entras.",
       "signingIn": "Termina de iniciar sesión en Overleaf en la ventana que se abrió.",
+      "signingInBrowser": "Finish signing in to Overleaf in {{browser}}. The window closes by itself once you're in.",
       "passkeyHint": "Si tu llave de acceso no funciona en la ventana de inicio de sesión, elige allí otra opción, como tu contraseña o un aviso en tu teléfono.",
       "expired": "Tu sesión de Overleaf caducó. Vuelve a iniciar sesión para ver tus proyectos.",
       "signIn": "Iniciar sesión en Overleaf",

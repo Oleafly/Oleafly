@@ -501,7 +501,9 @@
     "template_link_invalid": "Эта ссылка не ведёт на страницу шаблона Overleaf. Скопируйте адрес страницы с overleaf.com/latex/templates и попробуйте снова.",
     "template_unavailable": "Oleafly не удалось открыть этот шаблон. Возможно, его удалили из галереи Overleaf.",
     "browser_sign_in_missing": "Oleafly не нашёл данных входа для {{server}} в этом профиле браузера. Войдите напрямую.",
-    "browser_sign_in_failed": "Вход из вашего браузера не сработал. Возможно, срок его действия истёк. Войдите напрямую."
+    "browser_sign_in_failed": "Вход из вашего браузера не сработал. Возможно, срок его действия истёк. Войдите напрямую.",
+    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
+    "browser_missing": "That browser isn't installed anymore. Pick another one."
   },
   "collab": {
     "suggestion_role": "Ваша роль в этом проекте не позволяет предлагать изменения."

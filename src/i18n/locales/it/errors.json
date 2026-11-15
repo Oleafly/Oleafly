@@ -499,7 +499,9 @@
     "template_link_invalid": "Questo link non porta a una pagina di modello Overleaf. Copia l'indirizzo di una pagina di overleaf.com/latex/templates e riprova.",
     "template_unavailable": "Oleafly non è riuscito ad aprire questo modello. Potrebbe essere stato rimosso dalla galleria di Overleaf.",
     "browser_sign_in_missing": "Oleafly non ha trovato nessun accesso a {{server}} in quel profilo del browser. Accedi direttamente.",
-    "browser_sign_in_failed": "L'accesso preso dal tuo browser non ha funzionato. Potrebbe essere scaduto. Accedi direttamente."
+    "browser_sign_in_failed": "L'accesso preso dal tuo browser non ha funzionato. Potrebbe essere scaduto. Accedi direttamente.",
+    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
+    "browser_missing": "That browser isn't installed anymore. Pick another one."
   },
   "collab": {
     "suggestion_role": "Il tuo ruolo in questo progetto non consente suggerimenti."

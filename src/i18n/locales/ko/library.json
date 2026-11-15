@@ -324,6 +324,7 @@
       "loadFailed": "Oleafly가 Overleaf 프로젝트를 불러오지 못했습니다.",
       "signInPrompt": "프로젝트를 보려면 Overleaf에 로그인하세요. 로그인 창이 열리고, 로그인이 끝나면 저절로 닫힙니다.",
       "signingIn": "열린 창에서 Overleaf 로그인을 마치세요.",
+      "signingInBrowser": "Finish signing in to Overleaf in {{browser}}. The window closes by itself once you're in.",
       "passkeyHint": "로그인 창에서 패스키가 작동하지 않으면 비밀번호나 휴대폰 확인 같은 다른 방법을 선택하세요.",
       "expired": "Overleaf 로그인이 만료되었습니다. 프로젝트를 보려면 다시 로그인하세요.",
       "signIn": "Overleaf에 로그인",

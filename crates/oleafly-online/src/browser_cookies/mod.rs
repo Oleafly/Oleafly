@@ -40,6 +40,7 @@ pub enum BrowserId {
     Chrome,
     Brave,
     Edge,
+    Chromium,
     Firefox,
     Safari,
 }
@@ -50,6 +51,7 @@ impl BrowserId {
             Self::Chrome => "Google Chrome",
             Self::Brave => "Brave",
             Self::Edge => "Microsoft Edge",
+            Self::Chromium => "Chromium",
             Self::Firefox => "Firefox",
             Self::Safari => "Safari",
         }
@@ -111,7 +113,7 @@ pub enum ImportPolicy {
 impl ImportPolicy {
     pub fn supports(self, platform: HostPlatform, browser: BrowserId) -> bool {
         match (self, browser) {
-            (_, BrowserId::Safari) => false,
+            (_, BrowserId::Safari | BrowserId::Chromium) => false,
             (Self::App, _) => platform == HostPlatform::Macos,
             (Self::Cli, BrowserId::Firefox) => matches!(
                 platform,
@@ -128,7 +130,9 @@ impl ImportPolicy {
     ) -> Result<(), CookieImportError> {
         if self.supports(platform, browser) {
             Ok(())
-        } else if browser == BrowserId::Safari && platform == HostPlatform::Macos {
+        } else if browser == BrowserId::Chromium
+            || (browser == BrowserId::Safari && platform == HostPlatform::Macos)
+        {
             Err(CookieImportError::UnsupportedBrowser { browser })
         } else {
             Err(CookieImportError::UnsupportedPlatform)
@@ -295,7 +299,7 @@ impl SafeStoragePasswordProvider for MacSafeStorage {
                 BrowserId::Chrome => ("Chrome Safe Storage", "Chrome"),
                 BrowserId::Brave => ("Brave Safe Storage", "Brave"),
                 BrowserId::Edge => ("Microsoft Edge Safe Storage", "Microsoft Edge"),
-                BrowserId::Firefox | BrowserId::Safari => {
+                BrowserId::Chromium | BrowserId::Firefox | BrowserId::Safari => {
                     return Err(CookieImportError::UnsupportedBrowser { browser });
                 }
             };

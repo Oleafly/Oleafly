@@ -6566,7 +6566,9 @@ version = "0.1.0"
 dependencies = [
  "aes 0.9.3",
  "cbc 0.2.1",
+ "core-foundation 0.9.4",
  "futures-util",
+ "libc",
  "oleafly-core",
  "oleafly-secrets",
  "rand 0.8.7",
@@ -6580,6 +6582,8 @@ dependencies = [
  "tokio",
  "tokio-tungstenite 0.30.0",
  "url",
+ "windows-registry 0.6.1",
+ "windows-sys 0.61.2",
  "zeroize",
  "zip 9.1.3",
 ]

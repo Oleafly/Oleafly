@@ -1781,7 +1781,12 @@
       "gitLabel": "Token Git Overleaf",
       "gitSave": "Lưu",
       "gitRemove": "Gỡ",
-      "gitFailed": "Oleafly không thể lưu token Git. Hãy kiểm tra bạn đã dán toàn bộ token."
+      "gitFailed": "Oleafly không thể lưu token Git. Hãy kiểm tra bạn đã dán toàn bộ token.",
+      "browserLabel": "Sign in with your browser",
+      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
+      "browserAction": "Sign in",
+      "browserPick": "Browser to sign in with",
+      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels."
     },
     "desktopApps": {
       "tab": "Computer Use",
