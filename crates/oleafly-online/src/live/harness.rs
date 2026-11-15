@@ -7,44 +7,8 @@ use serde_json::{json, Value};
 use crate::test_support::mock_overleaf::{MockOverleaf, MockPeer};
 
 use super::doc::{OutgoingUpdate, OverleafDoc, Rejoin};
-use super::format::{DocFormat, FormatState};
-use super::{AppliedUpdate, PublicId};
-
-pub struct Joined {
-    pub version: u64,
-    pub text: String,
-    pub format: FormatState,
-    pub updates: Vec<AppliedUpdate>,
-}
-
-pub fn parse_join(reply: &[Value]) -> Result<Joined, String> {
-    if !reply.first().is_some_and(Value::is_null) {
-        return Err(reply
-            .first()
-            .and_then(|error| error["message"].as_str())
-            .unwrap_or("joinDoc failed")
-            .to_string());
-    }
-    let kind = reply[5].as_str().unwrap_or("sharejs-text-ot");
-    let format = DocFormat::from_join_type(kind).map_err(|error| error.to_string())?;
-    let (text, format) =
-        FormatState::from_join(format, &reply[1], &reply[4]).map_err(|error| error.to_string())?;
-    let updates = reply[3]
-        .as_array()
-        .map(|updates| {
-            updates
-                .iter()
-                .filter_map(|update| AppliedUpdate::from_value(update, None))
-                .collect()
-        })
-        .unwrap_or_default();
-    Ok(Joined {
-        version: reply[2].as_u64().unwrap_or_default(),
-        text,
-        format,
-        updates,
-    })
-}
+use super::join::{parse_join, JoinFailure, JoinedDoc};
+use super::{AppliedUpdate, DocId, PublicId};
 
 pub struct Wire {
     pub peer: MockPeer,
@@ -68,7 +32,7 @@ impl Wire {
         self.own.push(self.public_id());
     }
 
-    pub fn join(&mut self, doc: &str, from: Option<u64>) -> Result<Joined, String> {
+    pub fn join(&mut self, doc: &str, from: Option<u64>) -> Result<JoinedDoc, JoinFailure> {
         let options = json!({ "encodeRanges": true, "supportsHistoryOT": true });
         let args = match from {
             Some(from) => vec![json!(doc), json!(from), options],
@@ -77,14 +41,14 @@ impl Wire {
         let reply = self
             .peer
             .emit("joinDoc", args)
-            .ok_or("joinDoc got no reply")?;
-        parse_join(&reply)
+            .ok_or_else(|| JoinFailure::Refused("joinDoc got no reply".into()))?;
+        parse_join(&DocId(doc.to_string()), &reply)
     }
 
     pub fn open(&mut self, doc: &str) -> OverleafDoc {
         let joined = self.join(doc, None).expect("joinDoc");
         OverleafDoc::joined(
-            super::DocId(doc.to_string()),
+            DocId(doc.to_string()),
             joined.version,
             joined.text,
             joined.format,

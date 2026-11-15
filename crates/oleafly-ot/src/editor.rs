@@ -13,6 +13,14 @@ pub const HISTORY_LIMIT: usize = 5_000;
 
 pub type DocSink = Arc<dyn Fn(DocMessage) + Send + Sync>;
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct DocOpened {
+    pub file_id: String,
+    pub rev: u64,
+    pub text: String,
+    pub session: u64,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum DocMessage {

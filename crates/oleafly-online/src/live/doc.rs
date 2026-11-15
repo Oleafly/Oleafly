@@ -7,6 +7,7 @@ use oleafly_ot::{diff, rebase, utf16_len, OtError, TextOperation};
 use serde_json::{json, Map, Value};
 
 use super::format::{CodecError, DocFormat, Echo, FormatState, MAX_CHANGES, MAX_COMMENTS};
+use super::journal::{DocRecord, InflightRecord, SCHEMA};
 use super::{AppliedUpdate, DocId, PublicId, SendMode, Tracking};
 
 pub const RESEND_AFTER: Duration = Duration::from_secs(5);
@@ -102,15 +103,6 @@ impl OutgoingUpdate {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct DocJournal {
-    pub doc: DocId,
-    pub format: DocFormat,
-    pub version: u64,
-    pub confirmed: String,
-    pub local: String,
-}
-
 #[derive(Clone, Debug, PartialEq)]
 pub struct OverleafDoc {
     id: DocId,
@@ -123,6 +115,7 @@ pub struct OverleafDoc {
     format: FormatState,
     page_limit: Option<usize>,
     last_sent: Option<u64>,
+    provisional: bool,
 }
 
 impl OverleafDoc {
@@ -138,7 +131,86 @@ impl OverleafDoc {
             page_limit: None,
             format,
             last_sent: None,
+            provisional: false,
         }
+    }
+
+    pub fn provisional(id: DocId, text: String) -> OverleafDoc {
+        OverleafDoc {
+            provisional: true,
+            ..OverleafDoc::joined(id, 0, text, FormatState::ShareJs(Default::default()))
+        }
+    }
+
+    pub fn is_provisional(&self) -> bool {
+        self.provisional
+    }
+
+    pub fn resume(id: DocId, record: &DocRecord, now: Instant) -> Result<OverleafDoc, DocError> {
+        let format = DocFormat::from_join_type(&record.format)?;
+        let state = FormatState::restored(format, record.base_raw.as_ref())?;
+        let mut doc = OverleafDoc::joined(id, record.base_version, record.base_text.clone(), state);
+        let mut after = doc.confirmed.clone();
+        if let Some(inflight) = &record.inflight {
+            after = inflight
+                .op
+                .apply(&doc.confirmed)
+                .map_err(|_| DocError::OutOfStep)?;
+            doc.inflight = Some(Inflight {
+                op: inflight.op.clone(),
+                sent_versions: vec![inflight.base_version],
+                sent_on: inflight.public_ids.clone(),
+                sent_at: now,
+                echo: Echo::restored(format, inflight.raw.as_ref(), inflight.tracked_by.clone())?,
+            });
+            doc.last_sent = Some(inflight.base_version);
+        }
+        let pending = diff(&after, &record.local_text);
+        doc.pending = (!pending.is_noop()).then_some(pending);
+        doc.local = record.local_text.clone();
+        doc.provisional = record.provisional;
+        Ok(doc)
+    }
+
+    pub fn record(&self) -> Result<DocRecord, CodecError> {
+        let inflight = self
+            .inflight
+            .as_ref()
+            .map(|inflight| -> Result<InflightRecord, CodecError> {
+                Ok(InflightRecord {
+                    op: inflight.op.clone(),
+                    raw: inflight.echo.raw_json()?,
+                    tracked_by: inflight.echo.tracked_by().map(str::to_string),
+                    public_ids: inflight.sent_on.clone(),
+                    base_version: inflight
+                        .sent_versions
+                        .last()
+                        .copied()
+                        .unwrap_or(self.version),
+                })
+            })
+            .transpose()?;
+        Ok(DocRecord {
+            schema: SCHEMA,
+            format: self.format.format().wire_name().to_string(),
+            base_text: self.confirmed.clone(),
+            base_raw: self.format.snapshot()?,
+            base_version: self.version,
+            local_text: self.local.clone(),
+            inflight,
+            provisional: self.provisional,
+        })
+    }
+
+    pub fn adopt_join(&mut self, version: u64, text: &str, format: FormatState) -> bool {
+        let fits = version == self.version
+            && text == self.confirmed
+            && format.format() == self.format.format()
+            && self.inflight.is_none();
+        if fits {
+            self.format = format;
+        }
+        fits
     }
 
     pub fn version(&self) -> u64 {
@@ -169,16 +241,6 @@ impl OverleafDoc {
         self.inflight.is_none() && self.pending.is_none()
     }
 
-    pub fn journal(&self) -> DocJournal {
-        DocJournal {
-            doc: self.id.clone(),
-            format: self.format.format(),
-            version: self.version,
-            confirmed: self.confirmed.clone(),
-            local: self.local.clone(),
-        }
-    }
-
     pub fn local(&mut self, op: TextOperation) -> Result<Option<TextOperation>, DocError> {
         if op.base_len() != utf16_len(&self.local) {
             return Err(DocError::Local(OtError::LengthMismatch));
@@ -205,7 +267,7 @@ impl OverleafDoc {
         mode: &SendMode,
         now: Instant,
     ) -> Result<Option<OutgoingUpdate>, DocError> {
-        if *mode == SendMode::Hold {
+        if *mode == SendMode::Hold || self.provisional {
             return Ok(None);
         }
         match self.resend(on, mode, now) {

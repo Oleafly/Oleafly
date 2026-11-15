@@ -375,7 +375,7 @@ struct Doc {
     tracked: Vec<Option<Value>>,
     version: u64,
     applied: VecDeque<Applied>,
-    fail_next: Option<String>,
+    failing: Option<(String, usize)>,
 }
 
 impl Doc {
@@ -388,8 +388,19 @@ impl Doc {
             content,
             version: 0,
             applied: VecDeque::new(),
-            fail_next: None,
+            failing: None,
         }
+    }
+
+    fn take_failure(&mut self) -> Option<String> {
+        let (message, left) = self.failing.as_mut()?;
+        *left -= 1;
+        let message = message.clone();
+        let done = *left == 0;
+        if done {
+            self.failing = None;
+        }
+        Some(message)
     }
 
     fn visible(&self) -> Vec<u16> {
@@ -1361,7 +1372,7 @@ impl State {
             self.doc_error(&doc_id, "doc not found");
             return;
         };
-        if let Some(message) = doc.fail_next.take() {
+        if let Some(message) = doc.take_failure() {
             self.doc_error(&doc_id, &message);
             return;
         }
@@ -2750,7 +2761,12 @@ impl MockOverleaf {
     }
 
     pub fn fail_next_update(&self, doc_id: &str, message: &str) {
-        self.state().docs.get_mut(doc_id).unwrap().fail_next = Some(message.to_string());
+        self.fail_updates(doc_id, message, 1);
+    }
+
+    pub fn fail_updates(&self, doc_id: &str, message: &str, times: usize) {
+        let failing = (times > 0).then(|| (message.to_string(), times));
+        self.state().docs.get_mut(doc_id).unwrap().failing = failing;
     }
 
     pub fn doc_error(&self, doc_id: &str, message: &str) {

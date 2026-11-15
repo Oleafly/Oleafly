@@ -1,0 +1,1229 @@
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::sync::Arc;
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
+
+use oleafly_ot::{
+    diff, ChannelError, DocMessage, DocOpened, DocSink, EditorChannel, OtError, TextOperation,
+};
+use serde_json::Value;
+
+use super::catch_up::History;
+use super::{DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview};
+use crate::live::doc::{Applied, DocError, Limit, OutgoingUpdate, OverleafDoc, Rejoin};
+use crate::live::format::{CodecError, DocFormat, FormatState};
+use crate::live::join::{JoinFailure, JoinedDoc};
+use crate::live::journal::{DocRecord, Journal, ProjectManifest, WRITE_EVERY};
+use crate::live::{AppliedUpdate, DocId, PublicId, SendMode, Tracking};
+use crate::realtime::events::{AccessEvent, EntityId, PeerPosition, ProjectEvent};
+use crate::realtime::project::{Members, ProjectState, Rejoined, Role};
+use crate::realtime::tree::{NodeKind, PathChange};
+
+const JOURNAL_BACKOFF: Duration = Duration::from_millis(250);
+const JOURNAL_BACKOFF_MAX: Duration = Duration::from_secs(5);
+
+pub(super) enum Notice {
+    State(LiveState),
+    Role(Role, bool),
+    Texts(Vec<DocId>),
+    Tree(Vec<PathChange>),
+    Peer(PeerPosition),
+    PeerLeft(PublicId),
+    Stopped(DocId, DocStopReason),
+    Project(ProjectEvent),
+    Merged(DocId, MergeReview),
+    Journal(Option<String>),
+    Editor(DocSink, DocMessage),
+}
+
+pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
+    for notice in notices {
+        match notice {
+            Notice::State(state) => port.state(state),
+            Notice::Role(role, tracking) => port.role(role, tracking),
+            Notice::Texts(docs) => port.texts_changed(docs),
+            Notice::Tree(changes) => port.tree_changed(changes),
+            Notice::Peer(peer) => port.peer(peer),
+            Notice::PeerLeft(id) => port.peer_left(&id),
+            Notice::Stopped(doc, reason) => port.doc_stopped(&doc, reason),
+            Notice::Project(event) => port.project_event(event),
+            Notice::Merged(doc, review) => port.merged(&doc, review),
+            Notice::Journal(reason) => port.journal_failed(reason),
+            Notice::Editor(sink, message) => sink(message),
+        }
+    }
+}
+
+pub(super) fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_millis() as u64)
+        .unwrap_or_default()
+}
+
+fn civil(days: u64) -> (u64, u64, u64) {
+    let shifted = days + 719_468;
+    let era = shifted / 146_097;
+    let day_of_era = shifted % 146_097;
+    let year_of_era =
+        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let shifted_month = (5 * day_of_year + 2) / 153;
+    let day = day_of_year - (153 * shifted_month + 2) / 5 + 1;
+    let month = if shifted_month < 10 {
+        shifted_month + 3
+    } else {
+        shifted_month - 9
+    };
+    let year = year_of_era + era * 400 + u64::from(month <= 2);
+    (year, month, day)
+}
+
+pub(super) fn iso_time(ms: u64) -> String {
+    let seconds = ms / 1_000;
+    let (year, month, day) = civil(seconds / 86_400);
+    let in_day = seconds % 86_400;
+    format!(
+        "{year:04}-{month:02}-{day:02}T{:02}:{:02}:{:02}.{:03}Z",
+        in_day / 3_600,
+        in_day / 60 % 60,
+        in_day % 60,
+        ms % 1_000
+    )
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum Phase {
+    #[default]
+    Unjoined,
+    Wanted,
+    CatchUp,
+    Joined,
+    Held,
+    Stopped,
+}
+
+struct Editor {
+    channel: EditorChannel,
+    sink: DocSink,
+    session: u64,
+}
+
+#[derive(Default)]
+struct Slot {
+    doc: Option<OverleafDoc>,
+    editor: Option<Editor>,
+    buffer: Vec<AppliedUpdate>,
+    phase: Phase,
+    resume: Option<DocRecord>,
+    held: Option<DocRecord>,
+    errors: u8,
+    dirty: bool,
+}
+
+impl Slot {
+    fn has_unsent(&self) -> bool {
+        let sendable = !matches!(self.phase, Phase::Held | Phase::Stopped);
+        let unsent =
+            self.resume.is_some() || self.doc.as_ref().is_some_and(|doc| !doc.is_settled());
+        sendable && unsent
+    }
+
+    fn record(&self) -> Option<DocRecord> {
+        if self.phase == Phase::Held {
+            return self.held.clone();
+        }
+        if let Some(record) = &self.resume {
+            return Some(record.clone());
+        }
+        let known = self.doc.as_ref().filter(|known| !known.is_settled())?;
+        known.record().ok()
+    }
+
+    fn unsent_text(&mut self) -> Option<String> {
+        let unsent = self.doc.take().filter(|known| !known.is_settled());
+        self.resume
+            .take()
+            .or_else(|| self.held.take())
+            .map(|record| record.local_text)
+            .or_else(|| unsent.map(|known| known.text().to_string()))
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum JoinKind {
+    Fresh,
+    From(u64),
+}
+
+pub(super) struct JournalBatch {
+    pub(super) manifest: Option<ProjectManifest>,
+    pub(super) docs: Vec<(DocId, Option<DocRecord>)>,
+}
+
+pub(super) struct State {
+    pub(super) project: ProjectState,
+    pub(super) notices: Vec<Notice>,
+    pub(super) page_limit: Option<usize>,
+    pub(super) ended: Option<LiveEnd>,
+    me: String,
+    port: Arc<dyn LivePort>,
+    connected_wall_ms: u64,
+    broadcasts: BTreeSet<DocId>,
+    slots: BTreeMap<DocId, Slot>,
+    own: Vec<PublicId>,
+    current: Option<PublicId>,
+    online: bool,
+    urgent: VecDeque<DocId>,
+    paced: VecDeque<DocId>,
+    pace: Option<(usize, Duration)>,
+    next_paced: Option<Instant>,
+    queued: BTreeSet<DocId>,
+    next_session: u64,
+    presence: Option<(DocId, usize)>,
+    presence_due: bool,
+    manifest: ProjectManifest,
+    manifest_dirty: bool,
+    history_target: Option<u64>,
+    journal_written: Option<Instant>,
+    journal_retry: Option<(Instant, Duration)>,
+    journal_failing: bool,
+    last_pending: Option<u64>,
+}
+
+impl State {
+    pub(super) fn new(
+        project: ProjectState,
+        me: String,
+        journal: &Journal,
+        port: Arc<dyn LivePort>,
+    ) -> State {
+        let mut state = State {
+            project,
+            notices: Vec::new(),
+            page_limit: None,
+            ended: None,
+            me,
+            port,
+            connected_wall_ms: 0,
+            broadcasts: BTreeSet::new(),
+            slots: BTreeMap::new(),
+            own: Vec::new(),
+            current: None,
+            online: false,
+            urgent: VecDeque::new(),
+            paced: VecDeque::new(),
+            pace: None,
+            next_paced: None,
+            queued: BTreeSet::new(),
+            next_session: 0,
+            presence: None,
+            presence_due: false,
+            manifest: journal.manifest().clone(),
+            manifest_dirty: false,
+            history_target: None,
+            journal_written: None,
+            journal_retry: None,
+            journal_failing: false,
+            last_pending: None,
+        };
+        state.take_journal(journal.docs());
+        state
+    }
+
+    fn take_journal(&mut self, records: &BTreeMap<DocId, DocRecord>) {
+        let previous = std::mem::take(&mut self.manifest.user_id);
+        let foreign = !previous.is_empty() && previous != self.me;
+        for (doc, record) in records {
+            let slot = self.slots.entry(doc.clone()).or_default();
+            if foreign {
+                slot.dirty = true;
+                self.notices.push(Notice::Merged(
+                    doc.clone(),
+                    MergeReview::Kept {
+                        text: record.local_text.clone(),
+                    },
+                ));
+                continue;
+            }
+            slot.resume = Some(record.clone());
+            slot.phase = Phase::CatchUp;
+            self.want(doc);
+        }
+        self.manifest.user_id = self.me.clone();
+        self.manifest_dirty = true;
+    }
+
+    pub(super) fn connected(&mut self, public_id: PublicId, wall_ms: u64) {
+        if !self.own.contains(&public_id) {
+            self.own.push(public_id.clone());
+        }
+        self.current = Some(public_id);
+        self.connected_wall_ms = wall_ms;
+        self.broadcasts.clear();
+    }
+
+    pub(super) fn connected_wall_ms(&self) -> u64 {
+        self.connected_wall_ms
+    }
+
+    pub(super) fn announce(&mut self) {
+        self.online = true;
+        self.announce_role();
+        self.report_pending(true);
+    }
+
+    fn announce_role(&mut self) {
+        let tracking = self.tracking();
+        self.notices.push(Notice::Role(self.project.role, tracking));
+    }
+
+    fn tracking(&self) -> bool {
+        self.project.role == Role::Reviewer
+            || (self.project.role.can_edit() && self.project.tracks_changes_for(&self.me))
+    }
+
+    fn mode(&self) -> SendMode {
+        if !self.project.role.can_review() {
+            return SendMode::Hold;
+        }
+        if !self.tracking() {
+            return SendMode::Edit;
+        }
+        SendMode::Suggest(Tracking {
+            user_id: self.me.clone(),
+            ts: iso_time(now_ms()),
+        })
+    }
+
+    fn pending(&self) -> u64 {
+        self.slots.values().filter(|slot| slot.has_unsent()).count() as u64
+    }
+
+    pub(super) fn report_pending(&mut self, always: bool) {
+        if !self.online || self.ended.is_some() {
+            return;
+        }
+        let pending = self.pending();
+        if always || self.last_pending != Some(pending) {
+            self.last_pending = Some(pending);
+            self.notices
+                .push(Notice::State(LiveState::Online { pending }));
+        }
+    }
+
+    pub(super) fn offline(&mut self, retry_in: Duration) {
+        if self.ended.is_some() {
+            return;
+        }
+        self.online = false;
+        self.last_pending = None;
+        let pending = self.pending();
+        self.notices
+            .push(Notice::State(LiveState::Offline { retry_in, pending }));
+    }
+
+    pub(super) fn end(&mut self, end: LiveEnd) {
+        if self.ended.is_none() {
+            self.online = false;
+            self.ended = Some(end.clone());
+            self.notices.push(Notice::State(LiveState::Ended(end)));
+        }
+    }
+
+    pub(super) fn is_settled(&self) -> bool {
+        self.pending() == 0 && !self.journal_due()
+    }
+
+    fn is_text_doc(&self, doc: &DocId) -> bool {
+        self.project
+            .tree
+            .node(&EntityId::from(doc))
+            .is_some_and(|node| node.kind == NodeKind::Doc)
+    }
+
+    fn doc_at(&self, path: &str) -> Option<DocId> {
+        let id = self.project.tree.id_at(path)?;
+        let node = self.project.tree.node(id)?;
+        (node.kind == NodeKind::Doc).then(|| DocId(id.0.clone()))
+    }
+
+    fn path_of(&self, doc: &DocId) -> Option<String> {
+        self.project.tree.path_of(&EntityId::from(doc))
+    }
+
+    fn want(&mut self, doc: &DocId) {
+        let slot = self.slots.entry(doc.clone()).or_default();
+        if slot.phase == Phase::Unjoined {
+            slot.phase = Phase::Wanted;
+        }
+        if self.queued.insert(doc.clone()) {
+            self.urgent.push_back(doc.clone());
+        }
+    }
+
+    fn pace_all(&mut self, batch: usize, every: Duration) {
+        self.pace = Some((batch, every));
+        let docs = self.project.tree.nodes();
+        for node in docs.into_iter().filter(|node| node.kind == NodeKind::Doc) {
+            let doc = DocId(node.id.0);
+            let joined = self
+                .slots
+                .get(&doc)
+                .is_some_and(|slot| slot.phase != Phase::Unjoined);
+            if !joined && !self.paced.contains(&doc) {
+                self.paced.push_back(doc);
+            }
+        }
+    }
+
+    pub(super) fn next_joins(
+        &mut self,
+        now: Instant,
+        urgent_batch: usize,
+    ) -> Vec<(DocId, JoinKind)> {
+        let mut picked = Vec::new();
+        while picked.len() < urgent_batch {
+            let Some(doc) = self.urgent.pop_front() else {
+                break;
+            };
+            self.queued.remove(&doc);
+            picked.extend(self.join_kind(&doc).map(|kind| (doc, kind)));
+        }
+        let Some((batch, every)) = self.pace else {
+            return picked;
+        };
+        if self.paced.is_empty() || self.next_paced.is_some_and(|due| now < due) {
+            return picked;
+        }
+        self.next_paced = Some(now + every);
+        for doc in self.take_paced(batch) {
+            picked.extend(self.join_kind(&doc).map(|kind| (doc, kind)));
+        }
+        picked
+    }
+
+    fn take_paced(&mut self, batch: usize) -> Vec<DocId> {
+        let mut taken = Vec::new();
+        while taken.len() < batch {
+            let Some(doc) = self.paced.pop_front() else {
+                break;
+            };
+            let slot = self.slots.entry(doc.clone()).or_default();
+            if slot.phase == Phase::Unjoined {
+                slot.phase = Phase::Wanted;
+                taken.push(doc);
+            }
+        }
+        taken
+    }
+
+    fn join_kind(&self, doc: &DocId) -> Option<JoinKind> {
+        let slot = self.slots.get(doc)?;
+        if let Some(record) = &slot.resume {
+            return Some(if record.provisional {
+                JoinKind::Fresh
+            } else {
+                JoinKind::From(record.base_version)
+            });
+        }
+        match (slot.phase, &slot.doc) {
+            (Phase::CatchUp, Some(known)) if !known.is_provisional() => {
+                Some(JoinKind::From(known.version()))
+            }
+            (Phase::Wanted | Phase::CatchUp, _) => Some(JoinKind::Fresh),
+            _ => None,
+        }
+    }
+
+    pub(super) fn requeue(&mut self, joins: &[(DocId, JoinKind)]) {
+        for (doc, _) in joins {
+            self.want(doc);
+        }
+    }
+
+    pub(super) fn open(&mut self, path: &str, sink: DocSink) -> Option<DocOpened> {
+        let doc = self.doc_at(path)?;
+        let text = self
+            .text(&doc)
+            .or_else(|| self.port.disk_text(path))
+            .unwrap_or_default();
+        self.next_session += 1;
+        let session = self.next_session;
+        let channel = EditorChannel::new(text.clone());
+        let rev = channel.rev();
+        let slot = self.slots.entry(doc.clone()).or_default();
+        slot.editor = Some(Editor {
+            channel,
+            sink,
+            session,
+        });
+        self.want_if_unjoined(&doc);
+        Some(DocOpened {
+            file_id: doc.0,
+            rev,
+            text,
+            session,
+        })
+    }
+
+    pub(super) fn close(&mut self, doc: &DocId, session: u64) {
+        if let Some(slot) = self.slots.get_mut(doc) {
+            if slot
+                .editor
+                .as_ref()
+                .is_some_and(|editor| editor.session == session)
+            {
+                slot.editor = None;
+            }
+        }
+    }
+
+    pub(super) fn text(&self, doc: &DocId) -> Option<String> {
+        let slot = self.slots.get(doc)?;
+        if let Some(held) = slot.held.as_ref().filter(|_| slot.phase == Phase::Held) {
+            return Some(held.local_text.clone());
+        }
+        if let Some(known) = &slot.doc {
+            return Some(known.text().to_string());
+        }
+        if let Some(record) = &slot.resume {
+            return Some(record.local_text.clone());
+        }
+        slot.editor.as_ref().map(|editor| editor.channel.text())
+    }
+
+    pub(super) fn set_presence(&mut self, at: Option<(DocId, usize)>) {
+        self.presence = at;
+        self.presence_due = true;
+    }
+
+    pub(super) fn take_presence(&mut self) -> Option<(DocId, u64, u64)> {
+        if !std::mem::take(&mut self.presence_due) {
+            return None;
+        }
+        let (doc, offset) = self.presence.clone()?;
+        let slot = self
+            .slots
+            .get(&doc)
+            .filter(|slot| slot.phase == Phase::Joined)?;
+        let (row, column) = crate::live::presence::row_column(slot.doc.as_ref()?.text(), offset);
+        Some((doc, row, column))
+    }
+
+    fn reset_editor(&mut self, doc: &DocId) {
+        let text = self.text(doc);
+        let Some(editor) = self
+            .slots
+            .get_mut(doc)
+            .and_then(|slot| slot.editor.as_mut())
+        else {
+            return;
+        };
+        let text = text.unwrap_or_else(|| editor.channel.text());
+        let rev = editor.channel.reset(text.clone());
+        self.notices.push(Notice::Editor(
+            Arc::clone(&editor.sink),
+            DocMessage::Reset { rev, text },
+        ));
+    }
+
+    fn forward(&mut self, doc: &DocId, op: TextOperation) {
+        if op.is_noop() {
+            return;
+        }
+        let Some(editor) = self
+            .slots
+            .get_mut(doc)
+            .and_then(|slot| slot.editor.as_mut())
+        else {
+            return;
+        };
+        if editor.channel.remote(op.clone()).is_err() {
+            self.reset_editor(doc);
+            return;
+        }
+        self.notices.push(Notice::Editor(
+            Arc::clone(&editor.sink),
+            DocMessage::Remote {
+                rev: editor.channel.rev(),
+                op,
+                length: editor.channel.length(),
+            },
+        ));
+    }
+
+    pub(super) fn editor_change(
+        &mut self,
+        doc: &DocId,
+        rev: u64,
+        op: TextOperation,
+    ) -> Result<(), LiveError> {
+        if self.ended.is_some() {
+            return Err(LiveError::Ended);
+        }
+        let hold = self.mode() == SendMode::Hold;
+        let slot = self.slots.get_mut(doc).ok_or(LiveError::UnknownDoc)?;
+        let editor = slot.editor.as_mut().ok_or(LiveError::UnknownDoc)?;
+        let before = (slot.doc.is_none() && slot.resume.is_none()).then(|| editor.channel.text());
+        let applied = match editor.channel.receive(rev, op) {
+            Ok(applied) => applied,
+            Err(ChannelError::BeforeReset) => return Ok(()),
+            Err(_) => {
+                self.reset_editor(doc);
+                return Ok(());
+            }
+        };
+        self.notices.push(Notice::Editor(
+            Arc::clone(&editor.sink),
+            DocMessage::Ack {
+                rev: editor.channel.rev(),
+                length: editor.channel.length(),
+            },
+        ));
+        if hold {
+            self.reset_editor(doc);
+            return Ok(());
+        }
+        match slot.phase {
+            Phase::Held => {
+                let mine = editor.channel.text();
+                if let Some(held) = slot.held.as_mut() {
+                    held.local_text = mine;
+                    slot.dirty = true;
+                }
+                Ok(())
+            }
+            Phase::Stopped => Ok(()),
+            _ => self.take_local(doc, applied, before),
+        }
+    }
+
+    fn take_local(
+        &mut self,
+        doc: &DocId,
+        op: TextOperation,
+        before: Option<String>,
+    ) -> Result<(), LiveError> {
+        if self
+            .slots
+            .get(doc)
+            .is_some_and(|slot| slot.doc.is_none() && slot.resume.is_some())
+        {
+            let resumed = self.take_base(doc);
+            self.slots.entry(doc.clone()).or_default().doc = resumed;
+        }
+        let slot = self.slots.entry(doc.clone()).or_default();
+        let local = slot.doc.get_or_insert_with(|| {
+            OverleafDoc::provisional(doc.clone(), before.unwrap_or_default())
+        });
+        match local.local(op) {
+            Ok(correction) => {
+                slot.dirty = true;
+                if let Some(correction) = correction {
+                    self.forward(doc, correction);
+                }
+                self.want_if_unjoined(doc);
+                Ok(())
+            }
+            Err(error) => {
+                self.reset_editor(doc);
+                Err(LiveError::Invalid(match error {
+                    DocError::Local(error) => error,
+                    _ => OtError::Incompatible,
+                }))
+            }
+        }
+    }
+
+    fn want_if_unjoined(&mut self, doc: &DocId) {
+        if self
+            .slots
+            .get(doc)
+            .is_some_and(|slot| slot.phase == Phase::Unjoined)
+        {
+            self.want(doc);
+        }
+    }
+
+    pub(super) fn local_edit(&mut self, doc: &DocId, op: TextOperation) -> Result<(), LiveError> {
+        if self.ended.is_some() {
+            return Err(LiveError::Ended);
+        }
+        if !self.is_text_doc(doc) {
+            return Err(LiveError::UnknownDoc);
+        }
+        let blocked = self
+            .slots
+            .get(doc)
+            .is_some_and(|slot| matches!(slot.phase, Phase::Held | Phase::Stopped));
+        if blocked || self.mode() == SendMode::Hold {
+            return Err(LiveError::NotWritable);
+        }
+        let before = self.text(doc).or_else(|| {
+            let path = self.path_of(doc)?;
+            self.port.disk_text(&path)
+        });
+        self.forward(doc, op.clone());
+        self.take_local(doc, op, before)
+    }
+
+    pub(super) fn on_applied(&mut self, update: AppliedUpdate) {
+        let doc = update.doc.clone();
+        self.broadcasts.insert(doc.clone());
+        if !self.slots.contains_key(&doc) && !self.is_text_doc(&doc) {
+            return;
+        }
+        let slot = self.slots.entry(doc.clone()).or_default();
+        match slot.phase {
+            Phase::Joined | Phase::Held => self.apply_remote(&doc, &update),
+            Phase::Stopped => {}
+            Phase::Unjoined => {
+                slot.buffer.push(update);
+                self.want(&doc);
+            }
+            Phase::Wanted | Phase::CatchUp => slot.buffer.push(update),
+        }
+    }
+
+    fn apply_remote(&mut self, doc: &DocId, update: &AppliedUpdate) {
+        let own = self.own.clone();
+        let Some(slot) = self.slots.get_mut(doc) else {
+            return;
+        };
+        let held = slot.phase == Phase::Held;
+        let Some(known) = slot.doc.as_mut() else {
+            return;
+        };
+        match known.applied(update, &own) {
+            Ok(Applied::Remote(op)) => {
+                slot.dirty = true;
+                if !held {
+                    self.forward(doc, op);
+                    self.notices.push(Notice::Texts(vec![doc.clone()]));
+                }
+            }
+            Ok(Applied::Acknowledged) => {
+                slot.dirty = true;
+                slot.errors = 0;
+            }
+            Ok(Applied::Ignored) => {}
+            Err(error) => self.doc_failed(doc, error, Some(update.clone())),
+        }
+    }
+
+    fn doc_failed(&mut self, doc: &DocId, error: DocError, update: Option<AppliedUpdate>) {
+        match error {
+            DocError::Codec(CodecError::Unsupported(kind)) => {
+                self.stop_doc(doc, DocStopReason::Unsupported(kind))
+            }
+            DocError::Blocked(Limit::DocLength | Limit::UpdateSize | Limit::RangeCount) => {
+                self.stop_doc(doc, DocStopReason::TooLarge)
+            }
+            DocError::Gap { .. } | DocError::Blocked(Limit::TooOld) => {
+                self.rejoin(doc, Phase::CatchUp, update)
+            }
+            _ => self.rejoin(doc, Phase::Wanted, update),
+        }
+    }
+
+    fn rejoin(&mut self, doc: &DocId, phase: Phase, update: Option<AppliedUpdate>) {
+        let Some(slot) = self.slots.get_mut(doc) else {
+            return;
+        };
+        if matches!(slot.phase, Phase::Held | Phase::Stopped) {
+            return;
+        }
+        slot.phase = phase;
+        slot.buffer.extend(update);
+        self.want(doc);
+    }
+
+    fn stop_doc(&mut self, doc: &DocId, reason: DocStopReason) {
+        let resumed = self.take_base(doc);
+        if let Some(slot) = self.slots.get_mut(doc) {
+            slot.doc = resumed;
+            slot.phase = Phase::Stopped;
+            slot.buffer.clear();
+        }
+        self.notices.push(Notice::Stopped(doc.clone(), reason));
+    }
+
+    fn drop_unsent(&mut self, doc: &DocId) {
+        let Some(slot) = self.slots.get_mut(doc) else {
+            return;
+        };
+        let unsent = slot.unsent_text();
+        slot.buffer.clear();
+        slot.phase = Phase::Stopped;
+        slot.dirty = true;
+        if let Some(text) = unsent {
+            self.notices
+                .push(Notice::Merged(doc.clone(), MergeReview::Kept { text }));
+        }
+        self.notices
+            .push(Notice::Stopped(doc.clone(), DocStopReason::Removed));
+    }
+
+    pub(super) fn joined(
+        &mut self,
+        doc: &DocId,
+        kind: JoinKind,
+        reply: Result<JoinedDoc, JoinFailure>,
+    ) {
+        match reply {
+            Ok(joined) if kind == JoinKind::Fresh => self.fresh(doc, joined),
+            Ok(joined) => self.caught_up(doc, joined),
+            Err(JoinFailure::MissingOps) => self.missing_ops(doc),
+            Err(JoinFailure::Refused(message)) if message.contains("not found") => {
+                self.drop_unsent(doc)
+            }
+            Err(JoinFailure::Refused(message)) => {
+                self.stop_doc(doc, DocStopReason::Server(message))
+            }
+            Err(JoinFailure::Codec(CodecError::Unsupported(kind))) => {
+                self.stop_doc(doc, DocStopReason::Unsupported(kind))
+            }
+            Err(JoinFailure::Codec(error)) => {
+                self.stop_doc(doc, DocStopReason::Server(error.to_string()))
+            }
+        }
+        self.settle_history();
+    }
+
+    fn missing_ops(&mut self, doc: &DocId) {
+        let base = self.take_base(doc);
+        if let Some(slot) = self.slots.get_mut(doc) {
+            slot.doc = base;
+        }
+        self.rejoin(doc, Phase::Wanted, None);
+    }
+
+    fn take_base(&mut self, doc: &DocId) -> Option<OverleafDoc> {
+        let slot = self.slots.get_mut(doc)?;
+        let known = slot.doc.take();
+        let Some(record) = slot.resume.take() else {
+            return known;
+        };
+        match OverleafDoc::resume(doc.clone(), &record, Instant::now()) {
+            Ok(resumed) => Some(resumed),
+            Err(_) => {
+                slot.dirty = true;
+                self.notices.push(Notice::Merged(
+                    doc.clone(),
+                    MergeReview::Kept {
+                        text: record.local_text,
+                    },
+                ));
+                known
+            }
+        }
+    }
+
+    fn fresh(&mut self, doc: &DocId, joined: JoinedDoc) {
+        let JoinedDoc {
+            version,
+            text,
+            format,
+            ..
+        } = joined;
+        let kind = format.format();
+        let mut known = match self.take_base(doc) {
+            Some(known) => self.rebase_onto(doc, known, version, text, format),
+            None => self.first_join(doc, version, text, format),
+        };
+        if let Some(limit) = self.page_limit {
+            known.limit_length(limit);
+        }
+        self.install(doc, known);
+        self.apply_buffered(doc, kind, version);
+    }
+
+    fn first_join(
+        &mut self,
+        doc: &DocId,
+        version: u64,
+        text: String,
+        format: FormatState,
+    ) -> OverleafDoc {
+        let known = OverleafDoc::joined(doc.clone(), version, text, format);
+        let shown = self
+            .slots
+            .get(doc)
+            .and_then(|slot| slot.editor.as_ref())
+            .map(|editor| editor.channel.text());
+        if let Some(shown) = shown {
+            self.forward(doc, diff(&shown, known.text()));
+        }
+        known
+    }
+
+    fn rebase_onto(
+        &mut self,
+        doc: &DocId,
+        mut known: OverleafDoc,
+        version: u64,
+        text: String,
+        format: FormatState,
+    ) -> OverleafDoc {
+        let before = known.text().to_string();
+        let record = known.record().ok();
+        match known.rejoin_fresh(version, text, format) {
+            Rejoin::Clean(op) => self.forward(doc, op),
+            Rejoin::Merged(op) if op.is_noop() => {}
+            Rejoin::Merged(op) => {
+                self.forward(doc, op);
+                let after = known.text().to_string();
+                self.notices.push(Notice::Merged(
+                    doc.clone(),
+                    MergeReview::Merged { before, after },
+                ));
+            }
+            Rejoin::Conflict { mine, theirs } => {
+                if let Some(slot) = self.slots.get_mut(doc) {
+                    slot.phase = Phase::Held;
+                    slot.held = record;
+                }
+                self.notices.push(Notice::Merged(
+                    doc.clone(),
+                    MergeReview::NeedsReview { mine, theirs },
+                ));
+            }
+        }
+        known
+    }
+
+    fn install(&mut self, doc: &DocId, known: OverleafDoc) {
+        let slot = self.slots.entry(doc.clone()).or_default();
+        if slot.phase != Phase::Held {
+            slot.phase = Phase::Joined;
+        }
+        if known.is_settled() {
+            slot.errors = 0;
+        }
+        slot.doc = Some(known);
+        slot.dirty = true;
+        self.notices.push(Notice::Texts(vec![doc.clone()]));
+    }
+
+    fn apply_buffered(&mut self, doc: &DocId, format: DocFormat, version: u64) {
+        let buffered = self
+            .slots
+            .get_mut(doc)
+            .map(|slot| std::mem::take(&mut slot.buffer))
+            .unwrap_or_default();
+        for update in buffered {
+            if format == DocFormat::HistoryOt && update.v < version {
+                continue;
+            }
+            self.apply_remote(doc, &update);
+        }
+    }
+
+    fn caught_up(&mut self, doc: &DocId, joined: JoinedDoc) {
+        let Some(mut known) = self.take_base(doc) else {
+            self.fresh(doc, joined);
+            return;
+        };
+        let own = self.own.clone();
+        let Ok(remote) = known.catch_up(&joined.updates, &own) else {
+            self.keep_and_rejoin(doc, known);
+            return;
+        };
+        for op in remote {
+            self.forward(doc, op);
+        }
+        let kind = joined.format.format();
+        let version = joined.version;
+        let fits = known.adopt_join(version, &joined.text, joined.format);
+        if known.is_settled() && !fits {
+            self.keep_and_rejoin(doc, known);
+            return;
+        }
+        if let Some(limit) = self.page_limit {
+            known.limit_length(limit);
+        }
+        self.install(doc, known);
+        self.apply_buffered(doc, kind, version);
+    }
+
+    fn keep_and_rejoin(&mut self, doc: &DocId, known: OverleafDoc) {
+        if let Some(slot) = self.slots.get_mut(doc) {
+            slot.doc = Some(known);
+            slot.dirty = true;
+        }
+        self.rejoin(doc, Phase::Wanted, None);
+    }
+
+    pub(super) fn next_sends(&mut self, now: Instant) -> Vec<OutgoingUpdate> {
+        let Some(on) = self.current.clone() else {
+            return Vec::new();
+        };
+        let mode = self.mode();
+        let joined: Vec<DocId> = self
+            .slots
+            .iter()
+            .filter(|(_, slot)| slot.phase == Phase::Joined)
+            .map(|(doc, _)| doc.clone())
+            .collect();
+        let mut sends = Vec::new();
+        for doc in joined {
+            let Some(slot) = self.slots.get_mut(&doc) else {
+                continue;
+            };
+            let Some(known) = slot.doc.as_mut() else {
+                continue;
+            };
+            match known.next_update(&on, &mode, now) {
+                Ok(Some(update)) => {
+                    slot.dirty = true;
+                    sends.push(update);
+                }
+                Ok(None) => {}
+                Err(error) => self.doc_failed(&doc, error, None),
+            }
+        }
+        sends
+    }
+
+    pub(super) fn send_refused(&mut self, doc: &DocId, message: &str) {
+        self.stop_doc(doc, DocStopReason::Server(message.to_string()));
+    }
+
+    pub(super) fn update_error(&mut self, doc: &DocId, message: &str) {
+        let Some(slot) = self.slots.get_mut(doc) else {
+            return;
+        };
+        if matches!(slot.phase, Phase::Held | Phase::Stopped) {
+            return;
+        }
+        if message.contains("not found") {
+            self.drop_unsent(doc);
+            return;
+        }
+        let ours = slot.doc.as_ref().is_some_and(|known| !known.is_settled());
+        slot.errors = slot.errors.saturating_add(u8::from(ours));
+        if slot.errors > 1 {
+            self.stop_doc(doc, DocStopReason::Server(message.to_string()));
+        } else {
+            self.rejoin(doc, Phase::CatchUp, None);
+        }
+    }
+
+    pub(super) fn rejoined(&mut self, public_id: PublicId, response: Value) -> bool {
+        match self.project.rejoin(response) {
+            Ok(Rejoined::Repaired(changes)) => self.tree_changed(changes),
+            Ok(Rejoined::Everything { .. }) => self.rejoin_all(Phase::Wanted),
+            Err(unsupported) => {
+                self.end(LiveEnd::Unsupported(format!("{unsupported:?}")));
+                return false;
+            }
+        }
+        self.connected(public_id, now_ms());
+        self.rejoin_all(Phase::CatchUp);
+        self.presence_due = self.presence.is_some();
+        self.announce();
+        true
+    }
+
+    fn rejoin_all(&mut self, phase: Phase) {
+        let known: Vec<DocId> = self
+            .slots
+            .iter()
+            .filter(|(_, slot)| matches!(slot.phase, Phase::Joined | Phase::CatchUp))
+            .map(|(doc, _)| doc.clone())
+            .collect();
+        for doc in known {
+            self.rejoin(&doc, phase, None);
+        }
+    }
+
+    pub(super) fn tree_changed(&mut self, changes: Vec<PathChange>) {
+        for change in &changes {
+            if let Some(doc) = removed_doc(change) {
+                self.drop_unsent(&doc);
+            }
+        }
+        if !changes.is_empty() {
+            self.notices.push(Notice::Tree(changes));
+        }
+    }
+
+    pub(super) fn peer(&mut self, peer: PeerPosition) {
+        self.notices.push(Notice::Peer(peer));
+    }
+
+    pub(super) fn peer_left(&mut self, id: PublicId) {
+        self.notices.push(Notice::PeerLeft(id));
+    }
+
+    pub(super) fn project_event(&mut self, event: ProjectEvent) {
+        self.project.apply_project(&event);
+        self.notices.push(Notice::Project(event));
+    }
+
+    pub(super) fn access(&mut self, event: &AccessEvent) -> bool {
+        match event {
+            AccessEvent::Revoked => {
+                self.end(LiveEnd::AccessEnded);
+                false
+            }
+            AccessEvent::UserRemoved(Some(user)) if *user == self.me => {
+                self.end(LiveEnd::AccessEnded);
+                false
+            }
+            AccessEvent::TrackChanges(_) => {
+                self.project.apply_access(event);
+                self.announce_role();
+                false
+            }
+            _ => self.project.apply_access(event),
+        }
+    }
+
+    pub(super) fn members_refreshed(&mut self, members: Members) {
+        self.project.members = members;
+        let Some(role) = self.project.members.role_of(&self.me) else {
+            return;
+        };
+        if role != self.project.role {
+            self.project.role = role;
+            self.announce_role();
+        }
+    }
+
+    pub(super) fn start_history(&mut self, history: History, trickle: Duration) {
+        self.history_target = history.latest;
+        match history.changed {
+            Some(paths) => {
+                for doc in paths
+                    .iter()
+                    .filter_map(|path| self.doc_at(path))
+                    .collect::<Vec<_>>()
+                {
+                    self.want(&doc);
+                }
+            }
+            None if self.pace.is_none() => self.pace_all(1, trickle),
+            None => {}
+        }
+        self.settle_history();
+    }
+
+    fn settle_history(&mut self) {
+        let joining = !self.urgent.is_empty()
+            || !self.paced.is_empty()
+            || self
+                .slots
+                .values()
+                .any(|slot| matches!(slot.phase, Phase::Wanted | Phase::CatchUp));
+        if joining {
+            return;
+        }
+        if let Some(version) = self.history_target.take() {
+            if self.manifest.history_version != Some(version) {
+                self.manifest.history_version = Some(version);
+                self.manifest_dirty = true;
+            }
+        }
+    }
+
+    pub(super) fn history_version(&self) -> Option<u64> {
+        self.manifest.history_version
+    }
+
+    #[cfg(test)]
+    pub(super) fn doc(&self, doc: &DocId) -> Option<&OverleafDoc> {
+        self.slots.get(doc)?.doc.as_ref()
+    }
+
+    pub(super) fn legacy_from(
+        &mut self,
+        paths: &BTreeSet<String>,
+        batch: usize,
+        every: Duration,
+    ) -> bool {
+        let missed = paths
+            .iter()
+            .filter_map(|path| self.doc_at(path))
+            .any(|doc| !self.broadcasts.contains(&doc));
+        if missed {
+            self.next_paced = None;
+            self.pace_all(batch, every);
+        }
+        missed
+    }
+
+    fn journal_due(&self) -> bool {
+        self.manifest_dirty || self.slots.values().any(|slot| slot.dirty)
+    }
+
+    pub(super) fn take_journal_batch(
+        &mut self,
+        now: Instant,
+        forced: bool,
+    ) -> Option<JournalBatch> {
+        if !self.journal_due() {
+            return None;
+        }
+        let waiting = self
+            .journal_written
+            .is_some_and(|written| now < written + WRITE_EVERY);
+        let backing_off = self.journal_retry.is_some_and(|(at, _)| now < at);
+        if !forced && (waiting || backing_off) {
+            return None;
+        }
+        let mut docs = Vec::new();
+        for (doc, slot) in &mut self.slots {
+            if std::mem::take(&mut slot.dirty) {
+                docs.push((doc.clone(), slot.record()));
+            }
+        }
+        let manifest = std::mem::take(&mut self.manifest_dirty).then(|| self.manifest.clone());
+        Some(JournalBatch { manifest, docs })
+    }
+
+    pub(super) fn journal_result(
+        &mut self,
+        batch: JournalBatch,
+        result: Result<(), String>,
+        now: Instant,
+    ) {
+        self.journal_written = Some(now);
+        let Err(reason) = result else {
+            self.journal_retry = None;
+            if std::mem::take(&mut self.journal_failing) {
+                self.notices.push(Notice::Journal(None));
+            }
+            return;
+        };
+        let wait = self.journal_retry.map_or(JOURNAL_BACKOFF, |(_, wait)| {
+            (wait * 2).min(JOURNAL_BACKOFF_MAX)
+        });
+        self.journal_retry = Some((now + wait, wait));
+        for (doc, _) in batch.docs {
+            if let Some(slot) = self.slots.get_mut(&doc) {
+                slot.dirty = true;
+            }
+        }
+        self.manifest_dirty |= batch.manifest.is_some();
+        if !std::mem::replace(&mut self.journal_failing, true) {
+            self.notices.push(Notice::Journal(Some(reason)));
+        }
+    }
+}
+
+fn removed_doc(change: &PathChange) -> Option<DocId> {
+    match change {
+        PathChange::Removed {
+            id,
+            kind: NodeKind::Doc,
+            ..
+        }
+        | PathChange::Replaced {
+            old: id,
+            from: NodeKind::Doc,
+            ..
+        } => Some(DocId(id.0.clone())),
+        _ => None,
+    }
+}

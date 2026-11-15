@@ -3,6 +3,10 @@ pub mod format;
 #[cfg(test)]
 mod harness;
 pub mod history_ot;
+pub mod join;
+pub mod journal;
+pub mod presence;
+pub mod session;
 #[cfg(test)]
 mod tests;
 

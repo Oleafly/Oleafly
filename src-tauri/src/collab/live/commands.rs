@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
-use oleafly_ot::{DocMessage, DocSink, TextOperation};
+use oleafly_ot::{DocMessage, DocOpened, DocSink, TextOperation};
 use tauri::ipc::Channel;
 
 use super::editor::{doc_change, doc_close, doc_open, presence_leave, presence_set};
 use super::host::{AppLiveHost, LiveHost};
 use super::lifecycle::{flush, reconnect_now, start, stop};
 use super::local_events::resume;
-use super::payloads::{DocOpened, LiveInfo};
+use super::payloads::LiveInfo;
 use super::sync_hold::{announce, SyncDecision};
 use crate::collab::commands::CollabCommandError;
 use crate::collab::state::CollabState;

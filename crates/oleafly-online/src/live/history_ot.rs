@@ -505,6 +505,27 @@ impl RawDoc {
         text_of(&self.content)
     }
 
+    pub fn to_json(&self) -> Result<Value, CodecError> {
+        let tracked: Vec<Value> = self
+            .tracked()
+            .into_iter()
+            .map(|range| json!({ "range": { "pos": range.pos, "length": range.length }, "tracking": range.tracking }))
+            .collect();
+        let comments: Vec<Value> = self
+            .comments
+            .iter()
+            .map(|comment| {
+                let ranges: Vec<Value> = comment
+                    .ranges
+                    .iter()
+                    .map(|(pos, length)| json!({ "pos": pos, "length": length }))
+                    .collect();
+                json!({ "id": comment.id, "ranges": ranges, "resolved": comment.resolved })
+            })
+            .collect();
+        Ok(json!({ "content": self.content()?, "trackedChanges": tracked, "comments": comments }))
+    }
+
     pub fn comments(&self) -> &[CommentRanges] {
         &self.comments
     }

@@ -7,7 +7,8 @@ use serde_json::{json, Value};
 
 use super::doc::{Applied, OverleafDoc};
 use super::format::{operation_of, pieces_from_json, DocFormat, FormatState};
-use super::harness::{parse_join, Editor, Wire};
+use super::harness::{Editor, Wire};
+use super::join::parse_join;
 use super::{AppliedUpdate, DocId, PublicId, SendMode, Tracking};
 use crate::test_support::mock_overleaf::{
     DocFormat as MockFormat, MockOverleaf, MockPeer, MockProject, MockUser, Privilege,
@@ -570,7 +571,7 @@ struct Replay {
 impl Replay {
     fn new(recording: &Recording, trace: &Trace) -> (Replay, Vec<DocEvent>) {
         let (reply, events) = trace.last_session(&recording.doc_id).unwrap();
-        let joined = parse_join(&reply).unwrap();
+        let joined = parse_join(&DocId(recording.doc_id.clone()), &reply).unwrap();
         let doc = OverleafDoc::joined(
             DocId(recording.doc_id.clone()),
             joined.version,

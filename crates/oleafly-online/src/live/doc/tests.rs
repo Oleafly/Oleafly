@@ -593,7 +593,7 @@ async fn role_downgrade_with_inflight_op_never_loops() {
     assert_eq!(sends, 2);
     assert!(!doc.is_settled());
     assert_eq!(doc.text(), "Again. Hi. Hello world\n");
-    assert_eq!(doc.journal().confirmed, "Hi. Hello world\n");
+    assert_eq!(doc.record().unwrap().base_text, "Hi. Hello world\n");
     assert_eq!(mock.doc_text(&id), "Hi. Hello world\n");
     wire.assert_healthy();
 }

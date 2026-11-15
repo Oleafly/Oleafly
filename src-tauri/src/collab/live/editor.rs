@@ -4,9 +4,8 @@ use oleafly_collab::materialize;
 use oleafly_collab::CollabError;
 use oleafly_collab_protocol::ids::AccountId;
 use oleafly_collab_protocol::projects::PresenceState;
-use oleafly_ot::{DocSink, TextOperation};
+use oleafly_ot::{DocOpened, DocSink, TextOperation};
 
-use super::payloads::DocOpened;
 use super::session::{active_for, live_for, lock, not_live, Live};
 use crate::collab::commands::CollabCommandError;
 

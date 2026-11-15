@@ -35,6 +35,13 @@ impl DocFormat {
             other => Err(CodecError::Unsupported(other.to_string())),
         }
     }
+
+    pub fn wire_name(self) -> &'static str {
+        match self {
+            DocFormat::ShareJs => SHAREJS_TYPE,
+            DocFormat::HistoryOt => HISTORY_OT_TYPE,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
@@ -71,6 +78,30 @@ pub enum Echo {
 }
 
 impl Echo {
+    pub fn restored(
+        format: DocFormat,
+        raw: Option<&Value>,
+        tracked_by: Option<String>,
+    ) -> Result<Echo, CodecError> {
+        match (format, raw) {
+            (DocFormat::ShareJs, _) => Ok(Echo::ShareJs { tracked_by }),
+            (DocFormat::HistoryOt, Some(raw)) => Ok(Echo::HistoryOt {
+                raw: RawOp::from_json(raw)?,
+                tracked_by,
+            }),
+            (DocFormat::HistoryOt, None) => Err(CodecError::Malformed(
+                "a history-ot op without its raw form".into(),
+            )),
+        }
+    }
+
+    pub fn raw_json(&self) -> Result<Option<Value>, CodecError> {
+        match self {
+            Echo::ShareJs { .. } => Ok(None),
+            Echo::HistoryOt { raw, .. } => raw.to_json().map(Some),
+        }
+    }
+
     pub fn tracked_by(&self) -> Option<&str> {
         match self {
             Echo::ShareJs { tracked_by } | Echo::HistoryOt { tracked_by, .. } => {
@@ -157,6 +188,23 @@ impl FormatState {
         match self {
             FormatState::ShareJs(_) => DocFormat::ShareJs,
             FormatState::HistoryOt(_) => DocFormat::HistoryOt,
+        }
+    }
+
+    pub fn restored(format: DocFormat, raw: Option<&Value>) -> Result<FormatState, CodecError> {
+        match (format, raw) {
+            (DocFormat::ShareJs, _) => Ok(FormatState::ShareJs(ShareJsRanges::default())),
+            (DocFormat::HistoryOt, Some(raw)) => Ok(FormatState::HistoryOt(RawDoc::from_raw(raw)?)),
+            (DocFormat::HistoryOt, None) => Err(CodecError::Malformed(
+                "a history-ot doc without its raw snapshot".into(),
+            )),
+        }
+    }
+
+    pub fn snapshot(&self) -> Result<Option<Value>, CodecError> {
+        match self {
+            FormatState::ShareJs(_) => Ok(None),
+            FormatState::HistoryOt(raw) => raw.to_json().map(Some),
         }
     }
 

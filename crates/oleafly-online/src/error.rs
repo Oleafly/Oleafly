@@ -36,6 +36,7 @@ pub enum OnlineErrorKind {
     SyncPathBlocked,
     FolderExists,
     WorktreeBusy,
+    LiveElsewhere,
     Io,
 }
 
@@ -74,6 +75,7 @@ impl OnlineErrorKind {
             Self::SyncPathBlocked => "sync_path_blocked",
             Self::FolderExists => "folder_exists",
             Self::WorktreeBusy => "worktree_busy",
+            Self::LiveElsewhere => "live_elsewhere",
             Self::Io => "io",
         }
     }

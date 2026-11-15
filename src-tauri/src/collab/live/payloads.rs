@@ -140,11 +140,3 @@ pub struct LiveInfo {
     pub account_id: String,
     pub device_id: String,
 }
-
-#[derive(Clone, Debug, Serialize)]
-pub struct DocOpened {
-    pub file_id: String,
-    pub rev: u64,
-    pub text: String,
-    pub session: u64,
-}

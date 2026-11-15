@@ -6,7 +6,7 @@ mod ot;
 pub mod testing;
 
 pub use editor::{
-    ChannelError, CharWalk, DocMessage, DocSink, EditorChannel, Pieces, HISTORY_LIMIT,
+    ChannelError, CharWalk, DocMessage, DocOpened, DocSink, EditorChannel, Pieces, HISTORY_LIMIT,
 };
 pub use merge::{diff, distance, rebase, Rebased};
 pub use ot::{utf16_len, Component, OtError, TextOperation};
