@@ -438,6 +438,7 @@ pub async fn compile_project(
         result
             .log
             .push_str(&format!("\nOleafly rejected the compile output: {error}"));
+        crate::logsafe::build_finished(&meta.engine, &result, &project_id, &main_doc);
         return Ok(result);
     }
     let stopped = cancel_scope.finish();
@@ -492,6 +493,7 @@ pub async fn compile_project(
             );
         }
     }
+    crate::logsafe::build_finished(&meta.engine, &result, &project_id, &main_doc);
     #[cfg(debug_assertions)]
     eprintln!(
         "compile: t{ticket} {project_id} done ok={} in {}ms",

@@ -1,13 +1,17 @@
 use std::collections::VecDeque;
-use std::io::Write;
+use std::io::{BufRead, Write};
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 const RING_CAPACITY: usize = 2000;
+const PERSISTED_FILE: &str = "logs.jsonl";
+const APP_LOG_FILE: &str = "app.log";
+const PERSISTED_TRIM_BYTES: u64 = 1_048_576;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Level {
     Info,
@@ -15,12 +19,14 @@ pub enum Level {
     Error,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LogEntry {
     pub ts_ms: u64,
     pub level: Level,
     pub message: String,
+    #[serde(default)]
     pub safe: Value,
+    #[serde(default)]
     pub sensitive: Value,
 }
 
@@ -44,6 +50,93 @@ fn now_ms() -> u64 {
         .unwrap_or(0)
 }
 
+fn log_dir() -> Option<PathBuf> {
+    crate::paths::oleafly_root().ok()
+}
+
+fn load_persisted(path: &Path) -> VecDeque<LogEntry> {
+    let mut ring = VecDeque::with_capacity(RING_CAPACITY);
+    let Ok(file) = std::fs::File::open(path) else {
+        return ring;
+    };
+    for line in std::io::BufReader::new(file).lines().map_while(Result::ok) {
+        let Ok(entry) = serde_json::from_str::<LogEntry>(&line) else {
+            continue;
+        };
+        if ring.len() >= RING_CAPACITY {
+            ring.pop_front();
+        }
+        ring.push_back(entry);
+    }
+    ring
+}
+
+fn rewrite_persisted(path: &Path, ring: &VecDeque<LogEntry>) -> std::io::Result<()> {
+    let budget = (PERSISTED_TRIM_BYTES / 2) as usize;
+    let mut kept: Vec<String> = Vec::new();
+    let mut size = 0usize;
+    for entry in ring.iter().rev() {
+        let line = serde_json::to_string(&entry.redacted())?;
+        if !kept.is_empty() && size + line.len() + 1 > budget {
+            break;
+        }
+        size += line.len() + 1;
+        kept.push(line);
+    }
+    let mut text = String::with_capacity(size);
+    for line in kept.iter().rev() {
+        text.push_str(line);
+        text.push('\n');
+    }
+    let staging = path.with_extension("jsonl.tmp");
+    std::fs::write(&staging, text)?;
+    std::fs::rename(&staging, path)
+}
+
+fn append_persisted(path: &Path, ring: &VecDeque<LogEntry>) -> std::io::Result<()> {
+    let Some(entry) = ring.back() else {
+        return Ok(());
+    };
+    let line = serde_json::to_string(&entry.redacted())?;
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?;
+    writeln!(file, "{line}")?;
+    if file.metadata()?.len() > PERSISTED_TRIM_BYTES {
+        drop(file);
+        rewrite_persisted(path, ring)?;
+    }
+    Ok(())
+}
+
+fn with_ring<R>(dir: Option<&Path>, f: impl FnOnce(&mut VecDeque<LogEntry>) -> R) -> R {
+    let mut guard = RING.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let ring = guard.get_or_insert_with(|| {
+        dir.map(|dir| load_persisted(&dir.join(PERSISTED_FILE)))
+            .unwrap_or_default()
+    });
+    f(ring)
+}
+
+fn push_entry(ring: &mut VecDeque<LogEntry>, dir: Option<&Path>, entry: LogEntry) {
+    if ring.len() >= RING_CAPACITY {
+        ring.pop_front();
+    }
+    ring.push_back(entry);
+    if let Some(dir) = dir {
+        let _ = append_persisted(&dir.join(PERSISTED_FILE), ring);
+    }
+}
+
+fn app_log_line(entry: &LogEntry) -> String {
+    match &entry.safe {
+        Value::Null => entry.message.clone(),
+        Value::Object(fields) if fields.is_empty() => entry.message.clone(),
+        safe => format!("{} {}", entry.message, safe),
+    }
+}
+
 pub fn log(level: Level, message: &str, safe: Value, sensitive: Value) {
     let entry = LogEntry {
         ts_ms: now_ms(),
@@ -52,13 +145,11 @@ pub fn log(level: Level, message: &str, safe: Value, sensitive: Value) {
         safe,
         sensitive,
     };
-    let _ = crate::project::append_app_log(format!("{} {}", message, entry.safe));
-    let mut ring = RING.lock().expect("log ring poisoned");
-    let ring = ring.get_or_insert_with(|| VecDeque::with_capacity(RING_CAPACITY));
-    if ring.len() >= RING_CAPACITY {
-        ring.pop_front();
-    }
-    ring.push_back(entry);
+    let _ = crate::project::append_app_log(app_log_line(&entry));
+    let dir = log_dir();
+    with_ring(dir.as_deref(), |ring| {
+        push_entry(ring, dir.as_deref(), entry)
+    });
 }
 
 pub fn info(message: &str, safe: Value, sensitive: Value) {
@@ -73,12 +164,77 @@ pub fn error(message: &str, safe: Value, sensitive: Value) {
     log(Level::Error, message, safe, sensitive);
 }
 
+fn build_entry(
+    engine: &str,
+    result: &crate::document_engine::CompileResult,
+) -> (Level, &'static str, Value) {
+    let safe = json!({
+        "engine": engine,
+        "duration_ms": result.compile_time_ms,
+        "errors": result.errors.len(),
+    });
+    if result.stopped {
+        (Level::Info, "build stopped", safe)
+    } else if result.ok {
+        (Level::Info, "build succeeded", safe)
+    } else {
+        (Level::Error, "build failed", safe)
+    }
+}
+
+pub fn build_finished(
+    engine: &str,
+    result: &crate::document_engine::CompileResult,
+    project_id: &str,
+    main_file: &str,
+) {
+    let (level, message, safe) = build_entry(engine, result);
+    log(
+        level,
+        message,
+        safe,
+        json!({ "project_id": project_id, "main_file": main_file }),
+    );
+}
+
 fn snapshot() -> Vec<LogEntry> {
-    RING.lock()
-        .expect("log ring poisoned")
-        .as_ref()
-        .map(|ring| ring.iter().cloned().collect())
-        .unwrap_or_default()
+    with_ring(log_dir().as_deref(), |ring| ring.iter().cloned().collect())
+}
+
+fn truncate_if_present(path: &Path) -> Result<(), String> {
+    match std::fs::OpenOptions::new()
+        .write(true)
+        .truncate(true)
+        .open(path)
+    {
+        Ok(_) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("failed to clear {}: {error}", path.display())),
+    }
+}
+
+fn clear_entries(ring: &mut VecDeque<LogEntry>, dir: Option<&Path>) -> Result<(), String> {
+    ring.clear();
+    match dir {
+        Some(dir) => {
+            truncate_if_present(&dir.join(PERSISTED_FILE))?;
+            truncate_if_present(&dir.join(APP_LOG_FILE))
+        }
+        None => Ok(()),
+    }
+}
+
+fn ensure_app_log(dir: &Path) -> Result<PathBuf, String> {
+    std::fs::create_dir_all(dir)
+        .map_err(|error| format!("failed to create log folder: {error}"))?;
+    let path = dir.join(APP_LOG_FILE);
+    std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|error| format!("failed to open app log: {error}"))?;
+    path.canonicalize()
+        .map_err(|error| format!("cannot resolve app log: {error}"))
 }
 
 pub fn export_archive_to(dest: &std::path::Path, include_sensitive: bool) -> Result<(), String> {
@@ -151,15 +307,42 @@ pub fn export_log_archive(dest: String, include_sensitive: Option<bool>) -> Resu
     export_archive_to(path, include_sensitive.unwrap_or(false))
 }
 
+#[tauri::command(async)]
+pub fn read_log_entries() -> Vec<LogEntry> {
+    snapshot()
+}
+
+#[tauri::command(async)]
+pub fn clear_logs() -> Result<(), String> {
+    let dir = log_dir();
+    with_ring(dir.as_deref(), |ring| clear_entries(ring, dir.as_deref()))
+}
+
+#[tauri::command(async)]
+pub fn reveal_app_log() -> Result<(), String> {
+    let dir = crate::paths::oleafly_root()?;
+    let path = ensure_app_log(&dir)?;
+    crate::commands::reveal_canonical_path(&path)
+}
+
+#[tauri::command(async)]
+pub fn log_frontend_error(message: String) {
+    error(&message, Value::Null, Value::Null);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::io::Read;
 
-    static TEST_LOCK: Mutex<()> = Mutex::new(());
-
-    fn reset_ring() {
-        *RING.lock().unwrap() = Some(VecDeque::new());
+    fn entry(ts_ms: u64, level: Level, message: &str) -> LogEntry {
+        LogEntry {
+            ts_ms,
+            level,
+            message: message.into(),
+            safe: json!({ "n": ts_ms }),
+            sensitive: json!({ "secret": format!("SECRET-{ts_ms}") }),
+        }
     }
 
     #[test]
@@ -179,42 +362,193 @@ mod tests {
 
     #[test]
     fn ring_is_capped() {
-        let _guard = TEST_LOCK.lock().unwrap();
-        reset_ring();
+        let mut ring = VecDeque::new();
         for i in 0..(RING_CAPACITY + 10) {
-            let mut ring = RING.lock().unwrap();
-            let ring = ring.as_mut().unwrap();
-            if ring.len() >= RING_CAPACITY {
-                ring.pop_front();
-            }
-            ring.push_back(LogEntry {
-                ts_ms: i as u64,
-                level: Level::Info,
-                message: String::new(),
-                safe: Value::Null,
-                sensitive: Value::Null,
-            });
+            push_entry(&mut ring, None, entry(i as u64, Level::Info, "tick"));
         }
-        assert_eq!(RING.lock().unwrap().as_ref().unwrap().len(), RING_CAPACITY);
+        assert_eq!(ring.len(), RING_CAPACITY);
+        assert_eq!(ring.front().unwrap().ts_ms, 10);
+    }
+
+    #[test]
+    fn entries_persist_without_their_sensitive_fields() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut ring = VecDeque::new();
+        push_entry(
+            &mut ring,
+            Some(dir.path()),
+            entry(1, Level::Warning, "sidecar exited"),
+        );
+        push_entry(
+            &mut ring,
+            Some(dir.path()),
+            entry(2, Level::Error, "build failed"),
+        );
+
+        let on_disk = std::fs::read_to_string(dir.path().join(PERSISTED_FILE)).unwrap();
+        assert_eq!(on_disk.lines().count(), 2);
+        assert!(on_disk.contains("sidecar exited"));
+        assert!(!on_disk.contains("SECRET-"));
+        assert_eq!(ring[1].sensitive, json!({ "secret": "SECRET-2" }));
+
+        let reloaded = load_persisted(&dir.path().join(PERSISTED_FILE));
+        assert_eq!(reloaded.len(), 2);
+        assert_eq!(reloaded[0].message, "sidecar exited");
+        assert_eq!(reloaded[0].level, Level::Warning);
+        assert_eq!(reloaded[1].safe, json!({ "n": 2 }));
+        assert_eq!(reloaded[1].sensitive, Value::Null);
+    }
+
+    #[test]
+    fn loading_skips_broken_lines_and_keeps_the_newest_entries() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(PERSISTED_FILE);
+        let mut text = String::from("not json\n");
+        for i in 0..(RING_CAPACITY + 5) {
+            let line =
+                serde_json::to_string(&entry(i as u64, Level::Info, "x").redacted()).unwrap();
+            text.push_str(&line);
+            text.push('\n');
+        }
+        std::fs::write(&path, text).unwrap();
+        let ring = load_persisted(&path);
+        assert_eq!(ring.len(), RING_CAPACITY);
+        assert_eq!(ring.front().unwrap().ts_ms, 5);
+        assert!(load_persisted(&dir.path().join("missing.jsonl")).is_empty());
+    }
+
+    #[test]
+    fn a_large_file_is_trimmed_to_the_newest_half() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(PERSISTED_FILE);
+        let big = "x".repeat(4096);
+        let mut ring = VecDeque::new();
+        for i in 0..400u64 {
+            push_entry(&mut ring, Some(dir.path()), entry(i, Level::Info, &big));
+        }
+        let size = std::fs::metadata(&path).unwrap().len();
+        assert!(size <= PERSISTED_TRIM_BYTES, "file grew to {size} bytes");
+        let kept = load_persisted(&path);
+        assert_eq!(kept.back().unwrap().ts_ms, 399);
+        assert!(kept.len() < 400);
+        assert!(!dir.path().join("logs.jsonl.tmp").exists());
+        append_persisted(&path, &VecDeque::new()).unwrap();
+    }
+
+    #[test]
+    fn trimming_keeps_an_entry_larger_than_the_budget() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(PERSISTED_FILE);
+        let mut ring = VecDeque::new();
+        ring.push_back(entry(
+            1,
+            Level::Error,
+            &"y".repeat(PERSISTED_TRIM_BYTES as usize),
+        ));
+        rewrite_persisted(&path, &ring).unwrap();
+        assert_eq!(load_persisted(&path).len(), 1);
+    }
+
+    #[test]
+    fn clearing_empties_the_ring_and_both_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut ring = VecDeque::new();
+        push_entry(
+            &mut ring,
+            Some(dir.path()),
+            entry(1, Level::Info, "kept until cleared"),
+        );
+        std::fs::write(dir.path().join(APP_LOG_FILE), "[1] something\n").unwrap();
+
+        clear_entries(&mut ring, Some(dir.path())).unwrap();
+
+        assert!(ring.is_empty());
+        assert_eq!(
+            std::fs::read_to_string(dir.path().join(PERSISTED_FILE)).unwrap(),
+            ""
+        );
+        assert_eq!(
+            std::fs::read_to_string(dir.path().join(APP_LOG_FILE)).unwrap(),
+            ""
+        );
+
+        let empty = tempfile::tempdir().unwrap();
+        clear_entries(&mut ring, Some(empty.path())).unwrap();
+        assert!(!empty.path().join(APP_LOG_FILE).exists());
+        clear_entries(&mut ring, None).unwrap();
+    }
+
+    #[test]
+    fn clearing_reports_a_file_it_cannot_open() {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::create_dir(dir.path().join(APP_LOG_FILE)).unwrap();
+        let error = clear_entries(&mut VecDeque::new(), Some(dir.path())).unwrap_err();
+        assert!(error.contains("failed to clear"), "{error}");
+    }
+
+    #[test]
+    fn the_app_log_is_created_before_it_is_revealed() {
+        let dir = tempfile::tempdir().unwrap();
+        let nested = dir.path().join("data");
+        let path = ensure_app_log(&nested).unwrap();
+        assert!(path.ends_with(APP_LOG_FILE));
+        assert!(path.exists());
+        std::fs::write(&path, "keep\n").unwrap();
+        ensure_app_log(&nested).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "keep\n");
+    }
+
+    #[test]
+    fn app_log_lines_leave_out_empty_fields() {
+        let mut line = entry(1, Level::Info, "plain");
+        line.safe = Value::Null;
+        assert_eq!(app_log_line(&line), "plain");
+        line.safe = json!({});
+        assert_eq!(app_log_line(&line), "plain");
+        line.safe = json!({ "code": 2 });
+        assert_eq!(app_log_line(&line), "plain {\"code\":2}");
+    }
+
+    #[test]
+    fn build_results_map_to_levels_and_messages() {
+        let mut result = crate::document_engine::CompileResult {
+            ok: true,
+            compile_time_ms: 1812,
+            ..Default::default()
+        };
+        let (level, message, safe) = build_entry("tectonic", &result);
+        assert_eq!((level, message), (Level::Info, "build succeeded"));
+        assert_eq!(
+            safe,
+            json!({ "engine": "tectonic", "duration_ms": 1812, "errors": 0 })
+        );
+
+        result.ok = false;
+        let (level, message, _) = build_entry("tectonic", &result);
+        assert_eq!((level, message), (Level::Error, "build failed"));
+
+        result.stopped = true;
+        let (level, message, _) = build_entry("typst", &result);
+        assert_eq!((level, message), (Level::Info, "build stopped"));
     }
 
     #[test]
     fn exported_archive_contains_no_sensitive_fields_by_default() {
-        let _guard = TEST_LOCK.lock().unwrap();
-        reset_ring();
-        {
-            let mut ring = RING.lock().unwrap();
-            ring.as_mut().unwrap().push_back(LogEntry {
-                ts_ms: 7,
-                level: Level::Warning,
-                message: "sidecar exited".into(),
-                safe: json!({ "code": 137 }),
-                sensitive: json!({ "stderr": "TOP-SECRET-VALUE" }),
-            });
-        }
-        let dir = std::env::temp_dir().join(format!("oleafly-logsafe-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let dest = dir.join("archive.zip");
+        with_ring(None, |ring| {
+            push_entry(
+                ring,
+                None,
+                LogEntry {
+                    ts_ms: 7,
+                    level: Level::Warning,
+                    message: "sidecar exited".into(),
+                    safe: json!({ "code": 137 }),
+                    sensitive: json!({ "stderr": "TOP-SECRET-VALUE" }),
+                },
+            )
+        });
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("archive.zip");
         export_archive_to(&dest, false).unwrap();
 
         let mut archive = zip::ZipArchive::new(std::fs::File::open(&dest).unwrap()).unwrap();
@@ -227,7 +561,9 @@ mod tests {
         assert!(structured.contains("sidecar exited"));
         assert!(structured.contains("137"));
         assert!(!structured.contains("TOP-SECRET-VALUE"));
-        std::fs::remove_dir_all(&dir).ok();
+        assert!(read_log_entries()
+            .iter()
+            .any(|entry| entry.message == "sidecar exited"));
     }
 
     #[test]
