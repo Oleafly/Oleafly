@@ -14,8 +14,9 @@ use oleafly_collab_protocol::projects::ProjectRole;
 use tokio::sync::{mpsc, oneshot};
 
 use super::super::{
-    guard, initial_bases, lock, writer_loop, Active, LiveHost, MergedPayload, NewDevicePayload,
-    PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload, WriterSignal, ACTIVE,
+    guard, initial_bases, lock, writer_loop, Active, Live, LiveHost, MergedPayload,
+    NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
+    WriterSignal, ACTIVE,
 };
 use super::SharedDocument;
 use crate::collab::disk::{sha256_hex, DiskState};
@@ -247,7 +248,7 @@ impl LiveRig {
 
     pub(crate) fn go_live(&self) -> LiveNow {
         let turn = live_turn();
-        *guard(&ACTIVE) = Some(Arc::clone(&self.active));
+        *guard(&ACTIVE) = Some(Live::Server(Arc::clone(&self.active)));
         LiveNow { _turn: turn }
     }
 

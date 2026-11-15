@@ -20,7 +20,7 @@ use super::import_tests::project;
 #[cfg(unix)]
 use super::WriterSignal;
 use super::{
-    guard, lock, pump, start, write, Active, ChangeSkippedPayload, LiveHost, MembersPayload,
+    guard, lock, pump, start, write, Active, ChangeSkippedPayload, Live, LiveHost, MembersPayload,
     MergeMarks, MergedAuthor, MergedFile, MergedPayload, NewDevicePayload, PresenceLeftPayload,
     PresencePayload, RolePayload, StatusPayload, WrittenTexts, ACTIVE,
 };
@@ -90,7 +90,7 @@ fn starting_live_again_for_a_live_project_answers() {
                 bases: Mutex::new(WrittenTexts::default()),
                 upkeep: Default::default(),
             });
-            *guard(&ACTIVE) = Some(Arc::clone(&active));
+            *guard(&ACTIVE) = Some(Live::Server(Arc::clone(&active)));
             let again = start(&state, Arc::new(SilentHost), "already-live").await;
             *guard(&ACTIVE) = None;
             active.handle.stop();
@@ -313,7 +313,7 @@ fn a_session_the_spent_engine_ends_keeps_its_project_and_stays_stopped() {
             bases: Mutex::new(WrittenTexts::default()),
             upkeep: Default::default(),
         });
-        *guard(&ACTIVE) = Some(Arc::clone(&active));
+        *guard(&ACTIVE) = Some(Live::Server(Arc::clone(&active)));
         let (events, receiver) = mpsc::unbounded_channel();
         let pumping = tokio::spawn(pump(Arc::downgrade(&active), receiver, paths.clone()));
         events
@@ -1843,4 +1843,23 @@ fn typing_saves_the_document_and_writes_the_file_about_once_a_second() {
     assert!(counted.writes <= bound, "{counted:?} in {elapsed:?}");
     assert!(counted.indexes <= bound, "{counted:?} in {elapsed:?}");
     assert_eq!(rig.saved_text("main.tex"), Some(format!("abc{typed}")));
+}
+
+#[test]
+fn live_for_returns_the_server_backend_only_for_its_project() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("project");
+    std::fs::create_dir_all(&root).unwrap();
+    let rig = super::write::rig::LiveRig::start("slot-project", &root, &[("main.tex", "abc")]);
+    assert!(super::live_for("slot-project").is_none());
+    let live = rig.go_live();
+    let slot = super::live_for("slot-project").expect("the project is live");
+    assert_eq!(slot.project_id(), "slot-project");
+    let Live::Server(active) = slot;
+    assert!(Arc::ptr_eq(&active, &rig.active()));
+    assert!(super::live_for("another-project").is_none());
+    assert!(super::active_for("slot-project").is_some_and(|found| Arc::ptr_eq(&found, &active)));
+    assert!(super::active_for("another-project").is_none());
+    drop(live);
+    assert!(super::live_for("slot-project").is_none());
 }

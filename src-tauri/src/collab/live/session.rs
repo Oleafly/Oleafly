@@ -96,7 +96,24 @@ pub(super) struct Upkeep {
     pub(super) unannounced: Mutex<BTreeSet<String>>,
 }
 
-pub(super) static ACTIVE: LazyLock<Mutex<Option<Arc<Active>>>> = LazyLock::new(|| Mutex::new(None));
+#[derive(Clone)]
+pub enum Live {
+    Server(Arc<Active>),
+}
+
+impl Live {
+    pub fn project_id(&self) -> &str {
+        let Live::Server(active) = self;
+        &active.project_id
+    }
+
+    pub(super) fn server(&self) -> Option<&Arc<Active>> {
+        let Live::Server(active) = self;
+        Some(active)
+    }
+}
+
+pub(super) static ACTIVE: LazyLock<Mutex<Option<Live>>> = LazyLock::new(|| Mutex::new(None));
 pub(super) static LIFECYCLE: LazyLock<tokio::sync::Mutex<()>> =
     LazyLock::new(|| tokio::sync::Mutex::new(()));
 pub(super) static FRESH_JOINS: LazyLock<Mutex<BTreeSet<String>>> =
@@ -110,11 +127,15 @@ pub(super) fn lock(live: &SharedLive) -> MutexGuard<'_, LiveProject> {
     live.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-pub fn active_for(project_id: &str) -> Option<Arc<Active>> {
+pub fn live_for(project_id: &str) -> Option<Live> {
     guard(&ACTIVE)
         .as_ref()
-        .filter(|active| active.project_id == project_id)
+        .filter(|live| live.project_id() == project_id)
         .cloned()
+}
+
+pub fn active_for(project_id: &str) -> Option<Arc<Active>> {
+    live_for(project_id).and_then(|live| live.server().cloned())
 }
 
 pub fn note_fresh_join(project_id: &str) {

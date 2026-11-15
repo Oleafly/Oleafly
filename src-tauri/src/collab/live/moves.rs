@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use super::super::disk::{safe_target, DiskState};
 use super::super::state::CollabState;
 use super::{
-    active_for, by_path, ensure_dir, guard, lock, name_of, parent_of, writable, Active,
-    LocalImport, WrittenTexts,
+    active_for, by_path, ensure_dir, guard, live_for, lock, name_of, parent_of, writable, Active,
+    Live, LocalImport, WrittenTexts,
 };
 
 pub const LIVE_REMOVED_EVENT: &str = "collab-live-removed";
@@ -578,8 +578,8 @@ pub(crate) fn renaming<R>(
     work: impl FnOnce() -> Result<R, String>,
     landed: impl FnOnce(&R) -> Option<String>,
 ) -> Result<R, String> {
-    match active_for(project_id) {
-        Some(active) => active.rename_with(from, work, landed),
+    match live_for(project_id) {
+        Some(Live::Server(active)) => active.rename_with(from, work, landed),
         None => work(),
     }
 }
@@ -589,8 +589,8 @@ pub(crate) fn deleting<R>(
     path: &str,
     work: impl FnOnce() -> Result<R, String>,
 ) -> Result<R, String> {
-    match active_for(project_id) {
-        Some(active) => active.delete_with(path, work),
+    match live_for(project_id) {
+        Some(Live::Server(active)) => active.delete_with(path, work),
         None => work(),
     }
 }
@@ -1367,7 +1367,7 @@ mod tests {
         let state = rig.state();
         assert_eq!(lost_notices(&state, "moving").unwrap().len(), 1);
         let turn = super::super::write::rig::live_turn();
-        *guard(&super::super::ACTIVE) = Some(Arc::clone(&rig.active));
+        *guard(&super::super::ACTIVE) = Some(super::super::Live::Server(Arc::clone(&rig.active)));
         let restored = rig
             .runtime
             .block_on(crate::collab::tree::collab_trash_restore(

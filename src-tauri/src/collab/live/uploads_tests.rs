@@ -166,7 +166,7 @@ impl Side {
 
     fn go_live(&self) -> LiveHere {
         let turn = super::super::write::rig::live_turn();
-        *guard(&super::super::ACTIVE) = Some(Arc::clone(&self.active));
+        *guard(&super::super::ACTIVE) = Some(super::super::Live::Server(Arc::clone(&self.active)));
         LiveHere { _turn: turn }
     }
 

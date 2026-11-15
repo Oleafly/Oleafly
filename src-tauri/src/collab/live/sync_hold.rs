@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use super::super::disk::{as_text, exists_exact, safe_target, sha256_hex, written_as, DiskState};
 use super::super::guard::{PauseReason, SyncPauseHost, SyncPaused};
-use super::{active_for, by_path, guard, lock, Active, LocalImport, WrittenTexts};
+use super::{by_path, guard, live_for, lock, Active, Live, LocalImport, WrittenTexts};
 use crate::folder_watch::FolderChange;
 
 const HOLD_FILE: &str = "sync-hold.json";
@@ -837,10 +837,8 @@ pub(crate) fn outside_change(
     verdict: MassChangeVerdict,
     host: &dyn SyncPauseHost,
 ) {
-    let active = active_for(&change.project_id);
-    let Some(dir) = active
-        .as_ref()
-        .map(|active| active.hold_dir())
+    let Some(dir) = live_for(&change.project_id)
+        .map(|Live::Server(active)| active.hold_dir())
         .or_else(|| collab_dir(&change.project_id))
     else {
         return;
@@ -868,8 +866,8 @@ fn announce_in(dir: &Path, project_id: &str, host: &dyn SyncPauseHost) {
 }
 
 pub(crate) fn announce(project_id: &str, host: &dyn SyncPauseHost) {
-    let dir = active_for(project_id)
-        .map(|active| active.hold_dir())
+    let dir = live_for(project_id)
+        .map(|Live::Server(active)| active.hold_dir())
         .or_else(|| collab_dir(project_id));
     if let Some(dir) = dir {
         announce_in(&dir, project_id, host);
@@ -877,7 +875,8 @@ pub(crate) fn announce(project_id: &str, host: &dyn SyncPauseHost) {
 }
 
 pub(crate) fn root_returned(project_id: &str) {
-    if let Some(active) = active_for(project_id) {
+    if let Some(live) = live_for(project_id) {
+        let Live::Server(active) = live;
         active.kick();
     }
 }

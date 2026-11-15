@@ -53,6 +53,8 @@ pub struct StatusPayload {
 pub struct RolePayload {
     pub project_id: String,
     pub role: ProjectRole,
+    pub tracking: bool,
+    pub restricted: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -118,8 +120,8 @@ pub struct ProjectFullPayload {
 #[serde(rename_all = "camelCase")]
 pub struct PresencePayload {
     pub project_id: String,
-    pub device_id: DeviceId,
-    pub account_id: AccountId,
+    pub device_id: String,
+    pub account_id: String,
     pub path: Option<String>,
     pub cursor: Option<u32>,
     pub anchor: Option<u32>,
@@ -129,14 +131,14 @@ pub struct PresencePayload {
 #[serde(rename_all = "camelCase")]
 pub struct PresenceLeftPayload {
     pub project_id: String,
-    pub device_id: DeviceId,
+    pub device_id: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct LiveInfo {
     pub role: ProjectRole,
-    pub account_id: AccountId,
-    pub device_id: DeviceId,
+    pub account_id: String,
+    pub device_id: String,
 }
 
 #[derive(Clone, Debug, Serialize)]

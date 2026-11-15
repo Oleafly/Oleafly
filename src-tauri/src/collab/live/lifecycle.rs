@@ -13,8 +13,8 @@ use super::host::LiveHost;
 use super::payloads::{LiveInfo, RolePayload, StatusPayload};
 use super::pump::pump;
 use super::session::{
-    active_for, guard, io, lock, not_live, writer_loop, Active, WriterSignal, ACTIVE, FRESH_JOINS,
-    LIFECYCLE,
+    active_for, guard, io, live_for, lock, not_live, writer_loop, Active, Live, WriterSignal,
+    ACTIVE, FRESH_JOINS, LIFECYCLE,
 };
 use super::{local_copy, settings, sync_hold, uploads};
 use crate::collab::commands::signed_out;
@@ -51,11 +51,13 @@ async fn start_locked(
         active.host.role(RolePayload {
             project_id: project_id.to_owned(),
             role,
+            tracking: false,
+            restricted: false,
         });
         return Ok(LiveInfo {
             role,
-            account_id: active.account_id,
-            device_id: active.link.device_id,
+            account_id: active.account_id.to_string(),
+            device_id: active.link.device_id.to_string(),
         });
     }
     stop_any().await;
@@ -153,7 +155,7 @@ async fn start_locked(
     tauri::async_runtime::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
     tauri::async_runtime::spawn(pump(Arc::downgrade(&active), events_rx, paths));
     active.kick();
-    *guard(&ACTIVE) = Some(Arc::clone(&active));
+    *guard(&ACTIVE) = Some(Live::Server(Arc::clone(&active)));
     active.host.unwritten(super::unwritten::UnwrittenPayload {
         project_id: project_id.to_owned(),
         files: Vec::new(),
@@ -170,12 +172,13 @@ async fn start_locked(
     }
     Ok(LiveInfo {
         role,
-        account_id: tokens.account_id,
-        device_id: tokens.device_id,
+        account_id: tokens.account_id.to_string(),
+        device_id: tokens.device_id.to_string(),
     })
 }
 
-async fn finish(active: Arc<Active>) {
+async fn finish(live: Live) {
+    let Live::Server(active) = live;
     let (done, wait) = oneshot::channel();
     let _ = active.writer.send(WriterSignal::Flush(done));
     let _ = tokio::time::timeout(Duration::from_secs(5), wait).await;
@@ -188,8 +191,8 @@ async fn finish(active: Arc<Active>) {
 
 async fn stop_any() {
     let previous = guard(&ACTIVE).take();
-    if let Some(active) = previous {
-        finish(active).await;
+    if let Some(live) = previous {
+        finish(live).await;
     }
 }
 
@@ -199,9 +202,10 @@ pub fn finish_for_quit(wait: Duration) {
     tauri::async_runtime::block_on(async move {
         let started = Instant::now();
         let _lifecycle = tokio::time::timeout(wait, LIFECYCLE.lock()).await.ok();
-        let Some(active) = guard(&ACTIVE).take() else {
+        let Some(live) = guard(&ACTIVE).take() else {
             return;
         };
+        let Live::Server(active) = live;
         let (done, flushed) = oneshot::channel();
         let _ = active.writer.send(WriterSignal::Flush(done));
         let _ = tokio::time::timeout(wait.saturating_sub(started.elapsed()), flushed).await;
@@ -217,15 +221,15 @@ pub async fn stop(project_id: &str) {
         let mut slot = guard(&ACTIVE);
         if slot
             .as_ref()
-            .is_some_and(|active| active.project_id == project_id)
+            .is_some_and(|live| live.project_id() == project_id)
         {
             slot.take()
         } else {
             None
         }
     };
-    if let Some(active) = previous {
-        finish(active).await;
+    if let Some(live) = previous {
+        finish(live).await;
     }
 }
 
@@ -235,7 +239,7 @@ pub async fn resumed_if_failed<T, E>(
     project_id: &str,
     work: impl std::future::Future<Output = Result<T, E>>,
 ) -> (Result<T, E>, bool) {
-    let was_live = active_for(project_id).is_some();
+    let was_live = live_for(project_id).is_some();
     let done = work.await;
     let restarted = done.is_err() && was_live && start_if_idle(state, host, project_id).await;
     (done, restarted)
@@ -259,7 +263,8 @@ async fn start_if_idle(state: &CollabState, host: Arc<dyn LiveHost>, project_id:
 
 pub fn reconnect_now() -> bool {
     let running = guard(&ACTIVE).clone();
-    running.is_some_and(|active| {
+    running.is_some_and(|live| {
+        let Live::Server(active) = live;
         active.handle.reconnect_now();
         true
     })
@@ -268,9 +273,10 @@ pub fn reconnect_now() -> bool {
 const FIGURE_WAIT: Duration = Duration::from_secs(5);
 
 pub async fn flush(project_id: &str, figures: bool) {
-    let Some(active) = active_for(project_id) else {
+    let Some(live) = live_for(project_id) else {
         return;
     };
+    let Live::Server(active) = live;
     let (done, wait) = oneshot::channel();
     let _ = active.writer.send(WriterSignal::Flush(done));
     let _ = tokio::time::timeout(Duration::from_secs(10), wait).await;

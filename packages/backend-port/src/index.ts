@@ -1383,6 +1383,8 @@ export interface CollabShareCheck {
 export interface CollabLiveRole {
     projectId: string;
     role: CollabProjectRole;
+    tracking: boolean;
+    restricted: boolean;
 }
 export interface CollabPresence {
     projectId: string;

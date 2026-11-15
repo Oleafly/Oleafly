@@ -30,7 +30,7 @@ pub use lifecycle::{finish_for_quit, forget, resumed_if_failed, stop, QUIT_WAIT}
 pub use local_events::{app_wrote, folder_changed};
 pub(crate) use local_events::{known_content, shared_files, KnownContent};
 pub(crate) use moves::{deleting, dismiss_notice, lost_notices, renaming, restored, RemovedFile};
-pub use session::{active_for, announce_renames, note_fresh_join, Active};
+pub use session::{active_for, announce_renames, live_for, note_fresh_join, Active, Live};
 pub(crate) use sync_hold::{outside_change, root_returned};
 pub(crate) use unsent::{
     detach_projects, keep_local_copies, unsent_changes, UnsentProject, SIGN_OUT_WAIT,

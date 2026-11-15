@@ -933,7 +933,7 @@ mod tests {
             removed.project,
         ));
         let turn = super::super::write::rig::live_turn();
-        *guard(&super::super::ACTIVE) = Some(Arc::clone(&active));
+        *guard(&super::super::ACTIVE) = Some(super::super::Live::Server(Arc::clone(&active)));
         let brought = removed
             .runtime
             .block_on(bring_in(&removed.paths, "r4-again", "r4-paper"));

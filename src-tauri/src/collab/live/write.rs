@@ -12,8 +12,8 @@ use tokio::sync::oneshot;
 
 use super::import::Renamed;
 use super::{
-    active_for, by_path, ensure_dir, guard, lock, merged_onto, name_of, nearest, parent_of, Active,
-    WriterSignal, WrittenTexts,
+    by_path, ensure_dir, guard, live_for, lock, merged_onto, name_of, nearest, parent_of, Active,
+    Live, WriterSignal, WrittenTexts,
 };
 use crate::collab::commands::CollabCommandError;
 use crate::collab::disk::{crlf_only, lf_text, safe_target, ShareRules};
@@ -266,7 +266,7 @@ fn remember_read(project_id: &str, path: &str, text: &str) {
 }
 
 pub fn note_read(project_id: &str, path: &str, text: &str) {
-    if active_for(project_id).is_some() {
+    if live_for(project_id).is_some() {
         remember_read(project_id, path, text);
     }
 }
@@ -277,12 +277,13 @@ pub async fn write_text(
     base: Option<&str>,
     text: &str,
 ) -> Result<WriteOutcome, CollabError> {
-    let Some(active) = active_for(project_id) else {
+    let Some(live) = live_for(project_id) else {
         return Ok(WriteOutcome {
             handled: false,
             reason: None,
         });
     };
+    let Live::Server(active) = live;
     let outcome = active.write_text(path, base, text).await?;
     if outcome.handled {
         crate::agent_turns::note_app_write(project_id, path);
@@ -388,8 +389,8 @@ fn write_all_shared(
 
 impl SharedDocument {
     pub(crate) fn of(project_id: &str) -> Option<SharedDocument> {
-        active_for(project_id)
-            .map(SharedDocument)
+        live_for(project_id)
+            .map(|Live::Server(active)| SharedDocument(active))
             .filter(SharedDocument::can_edit)
     }
 

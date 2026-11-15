@@ -12,7 +12,7 @@ use super::payloads::{
     ChangeSkippedPayload, MembersPayload, MergeMarks, MergedAuthor, MergedFile, MergedPayload,
     NewDevicePayload, PresenceLeftPayload, PresencePayload, ProjectFullPayload, RolePayload,
 };
-use super::session::{guard, lock, Active, ACTIVE};
+use super::session::{guard, lock, Active, Live, ACTIVE};
 
 fn placed_files(
     layout: &Layout,
@@ -74,8 +74,8 @@ pub(super) async fn pump(
                 state,
             } => active.host.presence(PresencePayload {
                 project_id: active.project_id.clone(),
-                device_id,
-                account_id,
+                device_id: device_id.to_string(),
+                account_id: account_id.to_string(),
                 path: state.file_id,
                 cursor: state.cursor,
                 anchor: state.anchor,
@@ -83,7 +83,7 @@ pub(super) async fn pump(
             LiveEvent::PresenceLeft { device_id } => {
                 active.host.presence_left(PresenceLeftPayload {
                     project_id: active.project_id.clone(),
-                    device_id,
+                    device_id: device_id.to_string(),
                 })
             }
             LiveEvent::Members(change) => active.host.members(MembersPayload {
@@ -188,6 +188,7 @@ async fn on_status(active: &Arc<Active>, status: LiveStatus, paths: &oleafly_col
         let mut slot = guard(&ACTIVE);
         if slot
             .as_ref()
+            .and_then(Live::server)
             .is_some_and(|current| Arc::ptr_eq(current, active))
         {
             *slot = None;
@@ -210,6 +211,8 @@ fn on_role(active: &Active, role: ProjectRole, paths: &oleafly_collab::CollabPat
     active.host.role(RolePayload {
         project_id: active.project_id.clone(),
         role,
+        tracking: false,
+        restricted: false,
     });
 }
 

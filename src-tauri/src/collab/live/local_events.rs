@@ -5,7 +5,7 @@ use oleafly_collab::doc::NodeKind;
 use oleafly_collab::materialize;
 use oleafly_collab::CollabError;
 
-use super::session::{active_for, guard, lock, not_live, Active};
+use super::session::{guard, live_for, lock, not_live, Active, Live};
 use super::sync_hold::SyncDecision;
 use crate::collab::disk::{as_text, safe_target, sha256_hex, DiskState};
 use crate::folder_watch::FolderChange;
@@ -28,7 +28,8 @@ fn saved_disk(project_id: &str) -> DiskState {
 }
 
 pub(crate) fn known_content(project_id: &str) -> KnownContent {
-    if let Some(active) = active_for(project_id) {
+    if let Some(live) = live_for(project_id) {
+        let Live::Server(active) = live;
         let hashes = guard(&active.disk).hashes.clone();
         return KnownContent {
             active: Some(active),
@@ -64,8 +65,8 @@ pub(crate) fn shared_files(project_id: &str) -> std::collections::BTreeSet<Strin
             )
             .collect()
     };
-    match active_for(project_id) {
-        Some(active) => files(&guard(&active.disk)),
+    match live_for(project_id) {
+        Some(Live::Server(active)) => files(&guard(&active.disk)),
         None => files(&saved_disk(project_id)),
     }
 }
@@ -99,7 +100,8 @@ impl KnownContent {
 }
 
 pub fn app_wrote(project_id: &str, path: &str) {
-    if let Some(active) = active_for(project_id) {
+    if let Some(live) = live_for(project_id) {
+        let Live::Server(active) = live;
         let paths = vec![path.to_owned()];
         tauri::async_runtime::spawn(async move {
             let _ = active.import_paths(Some(paths)).await;
@@ -108,12 +110,13 @@ pub fn app_wrote(project_id: &str, path: &str) {
 }
 
 pub async fn resume(project_id: &str, decision: SyncDecision) -> Result<(), CollabError> {
-    let active = active_for(project_id).ok_or_else(not_live)?;
+    let Live::Server(active) = live_for(project_id).ok_or_else(not_live)?;
     active.decide(decision).await
 }
 
 pub fn folder_changed(change: &FolderChange) {
-    if let Some(active) = active_for(&change.project_id) {
+    if let Some(live) = live_for(&change.project_id) {
+        let Live::Server(active) = live;
         let only = (!change.rescan).then(|| change.paths.clone());
         tauri::async_runtime::spawn(async move {
             let _ = active.import_paths(only).await;

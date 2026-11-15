@@ -7,7 +7,7 @@ use oleafly_collab_protocol::projects::PresenceState;
 use oleafly_ot::{DocSink, TextOperation};
 
 use super::payloads::DocOpened;
-use super::session::{active_for, lock, not_live};
+use super::session::{active_for, live_for, lock, not_live, Live};
 use crate::collab::commands::CollabCommandError;
 
 pub fn doc_open(
@@ -15,9 +15,10 @@ pub fn doc_open(
     path: &str,
     sink: DocSink,
 ) -> Result<Option<DocOpened>, CollabError> {
-    let Some(active) = active_for(project_id) else {
+    let Some(slot) = live_for(project_id) else {
         return Ok(None);
     };
+    let Live::Server(active) = slot;
     let mut live = lock(&active.live);
     let layout = materialize::layout(&live.doc().nodes()?);
     let Some((id, _)) = layout
@@ -42,7 +43,7 @@ pub fn doc_change(
     rev: u64,
     operation: TextOperation,
 ) -> Result<(), CollabError> {
-    let active = active_for(project_id).ok_or_else(not_live)?;
+    let Live::Server(active) = live_for(project_id).ok_or_else(not_live)?;
     let (suggested, refused) = {
         let mut live = lock(&active.live);
         let reviewed = live.suggesting()
@@ -76,7 +77,8 @@ pub fn doc_change(
 }
 
 pub fn document_snapshot(project_id: &str) -> Option<Result<Vec<u8>, CollabError>> {
-    active_for(project_id).map(|active| lock(&active.live).guarded(|live| live.doc().snapshot()))
+    live_for(project_id)
+        .map(|Live::Server(active)| lock(&active.live).guarded(|live| live.doc().snapshot()))
 }
 
 pub(in crate::collab) fn read_live<T>(
@@ -130,7 +132,8 @@ pub(in crate::collab) fn edit_live<T>(
 }
 
 pub fn doc_close(project_id: &str, file_id: &str, session: u64) {
-    if let Some(active) = active_for(project_id) {
+    if let Some(live) = live_for(project_id) {
+        let Live::Server(active) = live;
         lock(&active.live).close_file(file_id, session);
     }
 }
@@ -141,7 +144,8 @@ pub fn presence_set(
     cursor: Option<u32>,
     anchor: Option<u32>,
 ) {
-    if let Some(active) = active_for(project_id) {
+    if let Some(live) = live_for(project_id) {
+        let Live::Server(active) = live;
         active.handle.presence(PresenceState {
             file_id: path.filter(|path| path.len() <= 256),
             cursor,
@@ -151,7 +155,8 @@ pub fn presence_set(
 }
 
 pub fn presence_leave(project_id: &str) {
-    if let Some(active) = active_for(project_id) {
+    if let Some(live) = live_for(project_id) {
+        let Live::Server(active) = live;
         active.handle.leave_presence();
     }
 }

@@ -10,7 +10,7 @@ use serde::Serialize;
 
 use super::super::commands::DetachedProject;
 use super::super::state::CollabState;
-use super::{guard, local_copy, lock, stop, Active, ACTIVE};
+use super::{guard, local_copy, lock, stop, Active, Live, ACTIVE};
 
 pub const SIGN_OUT_WAIT: Duration = Duration::from_secs(5);
 const POLL: Duration = Duration::from_millis(50);
@@ -25,6 +25,7 @@ pub struct UnsentProject {
 fn live_on(server: ServerId) -> Option<Arc<Active>> {
     guard(&ACTIVE)
         .as_ref()
+        .and_then(Live::server)
         .filter(|active| active.link.server_id == server)
         .cloned()
 }
@@ -789,7 +790,7 @@ mod tests {
         let (failed, restarted): (Result<(), String>, bool) = tauri::async_runtime::block_on(
             crate::collab::live::resumed_if_failed(&lab.state, Arc::new(Quiet), PROJECT, async {
                 stop(PROJECT).await;
-                *guard(&super::super::ACTIVE) = Some(other.active());
+                *guard(&super::super::ACTIVE) = Some(Live::Server(other.active()));
                 Err("the recycle bin refused".to_owned())
             }),
         );
