@@ -930,6 +930,8 @@ interface SettingsState {
   setEditorAutoCloseBrackets: (v: boolean) => void;
   editorAutoCloseMath: boolean;
   setEditorAutoCloseMath: (v: boolean) => void;
+  editorGroupScripts: boolean;
+  setEditorGroupScripts: (v: boolean) => void;
   editorAutoCloseEnvironments: boolean;
   setEditorAutoCloseEnvironments: (v: boolean) => void;
   editorGhostCompletion: boolean;
@@ -1248,6 +1250,7 @@ const PREF_DEFAULTS = {
   editorAutocomplete: true,
   editorAutoCloseBrackets: true,
   editorAutoCloseMath: true,
+  editorGroupScripts: true,
   editorAutoCloseEnvironments: true,
   editorGhostCompletion: true,
   editorCursorBlinking: "blink" as EditorCursorBlinking,
@@ -1355,6 +1358,7 @@ export const SECTION_SETTINGS = {
     editorAutocomplete: "oleafly.editor.autocomplete",
     editorAutoCloseBrackets: "oleafly.editor.closeBrackets",
     editorAutoCloseMath: "oleafly.editor.closeMath",
+    editorGroupScripts: "oleafly.editor.groupScripts",
     editorAutoCloseEnvironments: "oleafly.editor.closeEnvironments",
     editorGhostCompletion: "oleafly.editor.ghostCompletion",
     editorCursorBlinking: "oleafly.editor.cursorBlinking",
@@ -1569,6 +1573,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setEditorAutoCloseMath: (v) => {
     saveLs("oleafly.editor.closeMath", v ? "1" : "0");
     set({ editorAutoCloseMath: v });
+  },
+  editorGroupScripts: ls("oleafly.editor.groupScripts", "1") !== "0",
+  setEditorGroupScripts: (v) => {
+    saveLs("oleafly.editor.groupScripts", v ? "1" : "0");
+    set({ editorGroupScripts: v });
   },
   editorAutoCloseEnvironments:
     ls("oleafly.editor.closeEnvironments", "1") !== "0",

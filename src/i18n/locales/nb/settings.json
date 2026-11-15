@@ -761,6 +761,10 @@
         "description": "Par opp $, \\( og \\[ mens du skriver.",
         "label": "Lukk matematikk automatisk"
       },
+      "groupScripts": {
+        "description": "Setter krøllparenteser rundt senket eller hevet skrift så snart det er mer enn ett tegn, så x^10 blir x^{10}. I Typst blir x^-1 til x^(-1).",
+        "label": "Klammer rundt senket og hevet skrift"
+      },
       "autocomplete": {
         "description": "Vis kodefullføringer mens du skriver. Ctrl+Space åpner dem fortsatt når dette er av.",
         "label": "Autofullføring"

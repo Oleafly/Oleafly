@@ -285,6 +285,7 @@ const HOST: EditorHost = {
     autocomplete: useSettingsStore((s) => s.editorAutocomplete),
     autoCloseBrackets: useSettingsStore((s) => s.editorAutoCloseBrackets),
     autoCloseMath: useSettingsStore((s) => s.editorAutoCloseMath),
+    groupScripts: useSettingsStore((s) => s.editorGroupScripts),
     cursorBlinking: useSettingsStore((s) => s.editorCursorBlinking),
     highlightCurrentLine: useSettingsStore((s) => s.editorHighlightCurrentLine),
     cursorHeight: useSettingsStore((s) => s.editorCursorHeight),

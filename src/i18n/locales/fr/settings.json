@@ -767,6 +767,10 @@
         "description": "Apparier $, \\( et \\[ au fil de la frappe.",
         "label": "Fermeture automatique des maths"
       },
+      "groupScripts": {
+        "description": "Entoure un indice ou un exposant d'accolades dès qu'il dépasse un caractère : x^10 devient x^{10}. En Typst, x^-1 devient x^(-1).",
+        "label": "Accolades autour des indices et exposants"
+      },
       "autocomplete": {
         "description": "Afficher les complétions de code au fil de la frappe. Ctrl+Space les ouvre toujours quand l'option est désactivée.",
         "label": "Autocomplétion"

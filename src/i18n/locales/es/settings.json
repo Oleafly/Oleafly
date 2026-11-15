@@ -767,6 +767,10 @@
         "description": "Empareja $, \\( y \\[ mientras escribes.",
         "label": "Cerrar fórmulas automáticamente"
       },
+      "groupScripts": {
+        "description": "Pone entre llaves un subíndice o superíndice en cuanto tiene más de un carácter, así x^10 pasa a ser x^{10}. En Typst, x^-1 pasa a ser x^(-1).",
+        "label": "Llaves en subíndices y superíndices"
+      },
       "autocomplete": {
         "description": "Muestra el autocompletado mientras escribes. Con esto desactivado, Ctrl+Space sigue abriéndolo.",
         "label": "Autocompletado"

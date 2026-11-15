@@ -29,6 +29,18 @@ export function vimOwnsInput(view: { state: EditorState }): boolean {
   return vim !== undefined && vim.insertMode !== true;
 }
 
+export function typedAtSelection(
+  view: EditorView,
+  from: number,
+  to: number,
+): boolean {
+  if (view.composing || view.compositionStarted || vimOwnsInput(view)) {
+    return false;
+  }
+  const main = view.state.selection.main;
+  return from === main.from && to === main.to;
+}
+
 const LIST_NAMES = new Set(["itemize", "enumerate", "description"]);
 
 const ANY_ENVIRONMENT = /\\(begin|end)\s*\{([^{}]+)\}/g;

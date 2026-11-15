@@ -755,6 +755,10 @@
         "description": "입력하는 대로 $, \\(, \\[를 짝지어 줍니다.",
         "label": "수식 자동 닫기"
       },
+      "groupScripts": {
+        "description": "아래첨자나 위첨자가 두 글자 이상이 되면 중괄호로 감쌉니다. x^10은 x^{10}이 됩니다. Typst에서는 x^-1이 x^(-1)이 됩니다.",
+        "label": "아래첨자와 위첨자에 중괄호 넣기"
+      },
       "autocomplete": {
         "description": "입력하는 대로 코드 완성을 표시합니다. 꺼도 Ctrl+Space로 열 수 있습니다.",
         "label": "자동 완성"

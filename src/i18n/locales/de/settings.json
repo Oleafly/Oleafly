@@ -761,6 +761,10 @@
         "description": "$, \\( und \\[ beim Tippen paaren.",
         "label": "Formeln automatisch schließen"
       },
+      "groupScripts": {
+        "description": "Setzt einen Index oder Exponenten in geschweifte Klammern, sobald er länger als ein Zeichen ist, sodass aus x^10 x^{10} wird. In Typst wird aus x^-1 x^(-1).",
+        "label": "Indizes und Exponenten klammern"
+      },
       "autocomplete": {
         "description": "Codevervollständigungen beim Tippen anzeigen. Ctrl+Space öffnet sie weiterhin, wenn das aus ist.",
         "label": "Autovervollständigung"

@@ -755,6 +755,10 @@
         "description": "輸入時自動配對 $、\\( 與 \\[。",
         "label": "自動關閉數學符號"
       },
+      "groupScripts": {
+        "description": "上標或下標超過一個字元時自動加上大括號，例如 x^10 變成 x^{10}。在 Typst 中，x^-1 變成 x^(-1)。",
+        "label": "上下標自動加大括號"
+      },
       "autocomplete": {
         "description": "輸入時顯示程式碼補完。關閉後仍可按 Ctrl+Space 開啟。",
         "label": "自動完成"

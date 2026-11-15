@@ -70,6 +70,7 @@ describe("Appearance settings tabs", () => {
       editorLineHeight: "normal",
       editorAutocomplete: false,
       editorAutoCloseBrackets: false,
+      editorGroupScripts: false,
       editorGhostCompletion: false,
       editorCursorBlinking: "blink",
       editorStickyScroll: false,
@@ -216,6 +217,7 @@ describe("Appearance settings tabs", () => {
       appearance.editor.lineWrap.label,
       appearance.editor.autocomplete.label,
       appearance.editor.autoCloseBrackets.label,
+      appearance.editor.groupScripts.label,
       appearance.editor.ghostCompletion.label,
       appearance.editor.stickyScroll.label,
     ]) {
@@ -225,6 +227,7 @@ describe("Appearance settings tabs", () => {
       editorLineWrap: true,
       editorAutocomplete: true,
       editorAutoCloseBrackets: true,
+      editorGroupScripts: true,
       editorGhostCompletion: true,
       editorStickyScroll: true,
     });

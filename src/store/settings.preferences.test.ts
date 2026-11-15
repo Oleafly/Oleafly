@@ -42,6 +42,7 @@ describe("on/off preferences", () => {
     ["setLatexTools", "latexTools", "oleafly.latexTools"],
     ["setNotes", "notes", "oleafly.notes"],
     ["setEditorAutoCloseMath", "editorAutoCloseMath", "oleafly.editor.closeMath"],
+    ["setEditorGroupScripts", "editorGroupScripts", "oleafly.editor.groupScripts"],
     ["setEditorAutoCloseEnvironments", "editorAutoCloseEnvironments", "oleafly.editor.closeEnvironments"],
     ["setEditorStickyScroll", "editorStickyScroll", "oleafly.editor.stickyScroll"],
     ["setEditorMathPreview", "editorMathPreview", "oleafly.editor.mathPreview"],

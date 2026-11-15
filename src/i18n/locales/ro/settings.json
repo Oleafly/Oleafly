@@ -767,6 +767,10 @@
         "description": "Împerechează $, \\( și \\[ pe măsură ce scrii.",
         "label": "Închidere automată a formulelor"
       },
+      "groupScripts": {
+        "description": "Pune între acolade un indice sau un exponent imediat ce are mai mult de un caracter, astfel x^10 devine x^{10}. În Typst, x^-1 devine x^(-1).",
+        "label": "Acolade pentru indici și exponenți"
+      },
       "autocomplete": {
         "description": "Arată completările de cod pe măsură ce scrii. Ctrl+Space le deschide oricum, chiar dacă este dezactivată.",
         "label": "Completare automată"

@@ -761,6 +761,10 @@
         "description": "Parita merkit $, \\( ja \\[ kirjoittaessa.",
         "label": "Sulje matematiikka automaattisesti"
       },
+      "groupScripts": {
+        "description": "Lisää ala- tai yläindeksin ympärille aaltosulkeet heti, kun se on yhtä merkkiä pidempi, joten x^10 muuttuu muotoon x^{10}. Typstissä x^-1 muuttuu muotoon x^(-1).",
+        "label": "Aaltosulkeet ala- ja yläindekseihin"
+      },
       "autocomplete": {
         "description": "Näytä koodin täydennykset kirjoittaessa. Ctrl+Space avaa ne edelleen, vaikka tämä olisi pois.",
         "label": "Automaattitäydennys"

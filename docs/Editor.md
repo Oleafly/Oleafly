@@ -90,6 +90,22 @@ are exercised by `src/lib/editor-support-contract.test.ts`.
   once `\left\`, `\middle\` or `\right\` is typed the list narrows to the
   delimiters that can follow. Accepting `\right\rangle` while that closer is
   already pending replaces it rather than adding a second one.
+- Subscripts and superscripts: in LaTeX math, a script that gets longer than
+  one character gets braces as you type. `x^10` becomes `x^{10}`, `x_ij`
+  becomes `x_{ij}` and `x^-1` becomes `x^{-1}`. Letters and digits go inside
+  the braces, and a number stops at the first letter, so `x^2y` stays as you
+  typed it. Anything else, such as a space, an operator, `$`, `\` or Enter,
+  lands after the closing brace, so `x^ab + c` comes out as `x^{ab} + c`.
+  Typing `}` steps over the brace. A Backspace that leaves one character
+  removes the braces, and undo right after they appear puts back what you
+  typed. When the next script cannot belong to the same base, the last letter
+  becomes a new base instead, so `x_iy_i`, `a^nb^n` and `\sum_{i=1}^nx_i` stay
+  as typed. A superscript `T` or `H` reads as a transpose, so `X^TX` is left
+  alone. Text arguments such as `\text{...}`, `\label{...}` and `\ref{...}`
+  are never changed. In Typst, `x^10` is already one superscript and `x^ab` is
+  a variable name, so only a leading sign gets grouped there: `x^-1` becomes
+  `x^(-1)`. To turn it off, use Settings > Appearance > Editor > Brace
+  subscripts and superscripts, or switch off Auto-close brackets.
 - Turning the syntax check off: a comment line that reads `%novalidate` and
   nothing else silences the LaTeX syntax check for the whole file, wherever
   it sits. `%begin novalidate` and `%end novalidate` silence a region, and
@@ -353,8 +369,9 @@ Reset to defaults at the foot of Appearance.
   Markdown Visual editor's caret.
 - Wrap long lines: on by default. Turn it off and the editor scrolls
   sideways instead.
-- Auto-complete, auto-close brackets, auto-close math, auto-close
-  environments, inline suggestion, non-blinking cursor and sticky scroll.
+- Auto-complete, auto-close brackets, auto-close math, brace subscripts and
+  superscripts, auto-close environments, inline suggestion, non-blinking
+  cursor and sticky scroll.
 - Typst: Format on save, Formatter line width, Formatter indent, Parameter
   name hints and Typst lint checks.
 

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { EditorView } from "@codemirror/view";
 import { act, cleanup, render } from "@testing-library/react";
 import { createElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -98,6 +99,23 @@ function settings(store: Awaited<ReturnType<typeof mountEditor>>, next: Partial<
   return act(async () => store.setState((state) => ({ settings: { ...state.settings, ...next } })));
 }
 
+function typeAfter(doc: string, needle: string, text: string): string {
+  const current = view();
+  current.dispatch({
+    changes: { from: 0, to: current.state.doc.length, insert: doc },
+    selection: { anchor: doc.indexOf(needle) + needle.length },
+  });
+  for (const character of text) {
+    const { from, to } = current.state.selection.main;
+    const insert = () => current.state.update(current.state.replaceSelection(character));
+    const handled = current.state
+      .facet(EditorView.inputHandler)
+      .some((handler) => handler(current, from, to, character, insert));
+    if (!handled) current.dispatch(insert());
+  }
+  return current.state.doc.toString();
+}
+
 describe("CodeMirrorEditor document lifecycle", () => {
   it("clears the document and forgets its path when no file is active", async () => {
     const store = await mountEditor();
@@ -164,6 +182,20 @@ describe("CodeMirrorEditor settings", () => {
     expect(view().dom.querySelector(".cm-activeLine")).toBeNull();
     await settings(store, { highlightCurrentLine: true });
     expect(view().dom.querySelector(".cm-activeLine")).not.toBeNull();
+  });
+
+  it("groups multi-character scripts while both switches are on", async () => {
+    const store = await mountEditor({ settings: { ...SETTINGS, autoCloseBrackets: true } });
+    await vi.waitFor(() => expect(typeAfter("$x^$", "x^", "10")).toBe("$x^{10}$"));
+    await settings(store, { groupScripts: false });
+    expect(typeAfter("$x^$", "x^", "10")).toBe("$x^10$");
+    await settings(store, { groupScripts: true, autoCloseBrackets: false });
+    expect(typeAfter("$x^$", "x^", "10")).toBe("$x^10$");
+    await settings(store, { autoCloseBrackets: true });
+    await act(async () => store.setState({ path: "paper.typ" }));
+    await vi.waitFor(() => expect(typeAfter("$x^$", "x^", "-1")).toBe("$x^(-1)$"));
+    await act(async () => store.setState({ path: "notes.md" }));
+    expect(typeAfter("$x^$", "x^", "10")).toBe("$x^10$");
   });
 
   it("applies tab size, keymap and cursor preferences without remounting", async () => {

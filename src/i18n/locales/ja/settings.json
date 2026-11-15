@@ -755,6 +755,10 @@
         "description": "入力に合わせて $、\\(、\\[ を対にします。",
         "label": "数式の自動補完"
       },
+      "groupScripts": {
+        "description": "下付き・上付きが 2 文字以上になった時点で波括弧で囲みます。x^10 は x^{10} になります。Typst では x^-1 が x^(-1) になります。",
+        "label": "添字と上付きを波括弧で囲む"
+      },
       "autocomplete": {
         "description": "入力に合わせてコードの候補を表示します。オフでも Ctrl+Space で開けます。",
         "label": "自動補完"
