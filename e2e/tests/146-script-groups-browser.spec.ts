@@ -23,7 +23,7 @@ async function open(page: Page): Promise<string[]> {
 
 async function mount(page: Page, engine: Engine, marked: string): Promise<void> {
   const caret = marked.indexOf("|");
-  const doc = marked.replace("|", "");
+  const doc = marked.slice(0, caret) + marked.slice(caret + 1);
   await page.evaluate(
     ([kind, text, at]) =>
       (window as unknown as { __scriptGroups: Harness }).__scriptGroups.mount(kind as Engine, text as string, at as number),
