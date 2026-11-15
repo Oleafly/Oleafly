@@ -111,7 +111,9 @@ fn append_persisted(path: &Path, ring: &VecDeque<LogEntry>) -> std::io::Result<(
 }
 
 fn with_ring<R>(dir: Option<&Path>, f: impl FnOnce(&mut VecDeque<LogEntry>) -> R) -> R {
-    let mut guard = RING.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut guard = RING
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let ring = guard.get_or_insert_with(|| {
         dir.map(|dir| load_persisted(&dir.join(PERSISTED_FILE)))
             .unwrap_or_default()
