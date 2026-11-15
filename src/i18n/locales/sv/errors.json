@@ -497,7 +497,9 @@
     "template_link_invalid": "Länken leder inte till en mallsida på Overleaf. Kopiera adressen till en sida på overleaf.com/latex/templates och försök igen.",
     "template_unavailable": "Oleafly kunde inte öppna den här mallen. Den kan ha tagits bort från Overleafs mallgalleri.",
     "browser_sign_in_missing": "Oleafly hittade ingen inloggning för {{server}} i den webbläsarprofilen. Logga in i stället.",
-    "browser_sign_in_failed": "Inloggningen från din webbläsare fungerade inte. Den kan ha gått ut. Logga in i stället."
+    "browser_sign_in_failed": "Inloggningen från din webbläsare fungerade inte. Den kan ha gått ut. Logga in i stället.",
+    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
+    "browser_missing": "That browser isn't installed anymore. Pick another one."
   },
   "collab": {
     "suggestion_role": "Din roll i det här projektet tillåter inte förslag."

@@ -324,6 +324,7 @@
       "loadFailed": "Oleafly 无法加载你的 Overleaf 项目。",
       "signInPrompt": "登录 Overleaf 即可查看你的项目。系统会打开一个登录窗口，登录完成后它会自动关闭。",
       "signingIn": "请在打开的窗口中完成 Overleaf 登录。",
+      "signingInBrowser": "Finish signing in to Overleaf in {{browser}}. The window closes by itself once you're in.",
       "passkeyHint": "如果通行密钥在登录窗口中无法使用，请在该页面选择其他方式，例如密码或手机上的确认提示。",
       "expired": "你的 Overleaf 登录已过期。请重新登录以查看你的项目。",
       "signIn": "登录 Overleaf",

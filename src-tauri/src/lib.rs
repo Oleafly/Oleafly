@@ -373,6 +373,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     tauri::async_runtime::spawn_blocking(crate::biber_toolchain::prune_stale_unpacks);
     tauri::async_runtime::spawn_blocking(crate::build_hygiene::evict_idle_linked_builds_at_startup);
     tauri::async_runtime::spawn_blocking(crate::linked_removal::purge_expired_removals_at_startup);
+    tauri::async_runtime::spawn_blocking(crate::overleaf::sweep_browser_profiles);
 
     let handle = app.handle().clone();
     tauri::async_runtime::spawn(async move {
@@ -1297,6 +1298,8 @@ pub fn run() {
             mathpix::mathpix_pdf_wait,
             mathpix::mathpix_pdf_cancel,
             overleaf::overleaf_sign_in_with_app_cookies,
+            overleaf::overleaf_sign_in_browsers,
+            overleaf::overleaf_sign_in_with_browser,
             cua_driver::commands::cua_driver_status,
             cua_driver::commands::cua_driver_settings_set,
             cua_driver::commands::cua_driver_installed_apps,

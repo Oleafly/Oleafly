@@ -19,31 +19,131 @@ async fn serve(handler: Handler) -> FixtureServer {
 #[test]
 fn dashboard_urls_match_only_the_project_list() {
     let url = |text: &str| tauri::Url::parse(text).unwrap();
-    assert!(signin::is_dashboard(
+    assert!(session::is_dashboard(
         &url("https://www.overleaf.com/project"),
         "https://www.overleaf.com"
     ));
-    assert!(signin::is_dashboard(
+    assert!(session::is_dashboard(
         &url("https://www.overleaf.com/project/"),
         "https://www.overleaf.com"
     ));
-    assert!(!signin::is_dashboard(
+    assert!(!session::is_dashboard(
         &url("https://www.overleaf.com/project/abc"),
         "https://www.overleaf.com"
     ));
-    assert!(!signin::is_dashboard(
+    assert!(!session::is_dashboard(
         &url("https://evil.example/project"),
         "https://www.overleaf.com"
     ));
-    assert!(signin::is_dashboard(
+    assert!(session::is_dashboard(
         &url("https://latex.uni.edu/sl/project"),
         "https://latex.uni.edu/sl"
     ));
-    assert!(!signin::is_dashboard(
+    assert!(!session::is_dashboard(
         &url("https://latex.uni.edu/project"),
         "https://latex.uni.edu/sl"
     ));
     assert!(signin::cancelled().contains("\"overleaf.sign_in_cancelled\""));
+}
+
+#[test]
+fn browser_sign_in_failures_become_coded_errors() {
+    use oleafly_online::browser_signin::BrowserSignInError;
+    for closed in [BrowserSignInError::Cancelled, BrowserSignInError::TimedOut] {
+        assert!(
+            signin::browser_error(&closed, "Firefox").contains("\"overleaf.sign_in_cancelled\"")
+        );
+    }
+    for broken in [
+        BrowserSignInError::Launch("not found".into()),
+        BrowserSignInError::Protocol("the browser stopped answering".into()),
+    ] {
+        let error = signin::browser_error(&broken, "Chromium (Snap)");
+        assert!(
+            error.contains("\"overleaf.browser_unavailable\""),
+            "{error}"
+        );
+        assert!(error.contains("Chromium (Snap)"), "{error}");
+    }
+}
+
+#[test]
+fn only_an_e2e_build_lists_the_scripted_sign_in_browser() {
+    let program = std::ffi::OsString::from("/opt/e2e/fake_browser");
+    assert_eq!(
+        signin::scripted_sign_in_browser(false, Some(program.clone())),
+        None
+    );
+    assert_eq!(signin::scripted_sign_in_browser(true, None), None);
+    assert_eq!(
+        signin::scripted_sign_in_browser(true, Some(std::ffi::OsString::new())),
+        None
+    );
+    let scripted = signin::scripted_sign_in_browser(true, Some(program)).unwrap();
+    assert_eq!(
+        scripted.path,
+        std::path::PathBuf::from("/opt/e2e/fake_browser")
+    );
+    assert_eq!(
+        (scripted.key(), scripted.name()),
+        ("chrome".to_string(), "Google Chrome".to_string())
+    );
+    assert_eq!(
+        scripted.engine,
+        oleafly_online::browser_signin::Engine::Chromium
+    );
+}
+
+#[test]
+fn browser_sign_in_answers_only_the_main_window() {
+    let app = tauri::test::mock_builder()
+        .build(tauri::test::mock_context(tauri::test::noop_assets()))
+        .unwrap();
+    let main = tauri::WebviewWindowBuilder::new(&app, "main", Default::default())
+        .build()
+        .unwrap();
+    let pane = main
+        .as_ref()
+        .window()
+        .add_child(
+            tauri::webview::WebviewBuilder::new("oleafly-browser-pane-test", Default::default()),
+            tauri::LogicalPosition::new(0, 0),
+            tauri::LogicalSize::new(400, 600),
+        )
+        .unwrap();
+    let refused = |error: String| assert!(error.contains("\"overleaf.sign_in_failed\""), "{error}");
+    refused(
+        tauri::async_runtime::block_on(super::overleaf_sign_in_browsers(pane.clone())).unwrap_err(),
+    );
+    refused(
+        tauri::async_runtime::block_on(super::overleaf_sign_in_with_browser(
+            pane.clone(),
+            None,
+            "chrome".into(),
+        ))
+        .unwrap_err(),
+    );
+    let missing = tauri::async_runtime::block_on(super::overleaf_sign_in_with_browser(
+        main.as_ref().clone(),
+        None,
+        "no-such-browser".into(),
+    ))
+    .unwrap_err();
+    assert!(
+        missing.contains("\"overleaf.browser_missing\""),
+        "{missing}"
+    );
+    let invalid = tauri::async_runtime::block_on(super::overleaf_sign_in_with_browser(
+        main.as_ref().clone(),
+        Some("http://evil.example".into()),
+        "chrome".into(),
+    ))
+    .unwrap_err();
+    assert!(invalid.contains("\"overleaf.invalid_server\""), "{invalid}");
+    assert!(
+        tauri::async_runtime::block_on(super::overleaf_sign_in_browsers(main.as_ref().clone()))
+            .is_ok()
+    );
 }
 
 #[test]

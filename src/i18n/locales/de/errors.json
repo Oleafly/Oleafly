@@ -497,7 +497,9 @@
     "template_link_invalid": "Dieser Link führt nicht zu einer Vorlagenseite von Overleaf. Kopieren Sie die Adresse einer Seite unter overleaf.com/latex/templates und versuchen Sie es erneut.",
     "template_unavailable": "Oleafly konnte diese Vorlage nicht öffnen. Möglicherweise wurde sie aus der Vorlagengalerie von Overleaf entfernt.",
     "browser_sign_in_missing": "Oleafly hat in diesem Browserprofil keine Anmeldung für {{server}} gefunden. Melden Sie sich stattdessen an.",
-    "browser_sign_in_failed": "Die Anmeldung aus Ihrem Browser hat nicht funktioniert. Sie ist vielleicht abgelaufen. Melden Sie sich stattdessen an."
+    "browser_sign_in_failed": "Die Anmeldung aus Ihrem Browser hat nicht funktioniert. Sie ist vielleicht abgelaufen. Melden Sie sich stattdessen an.",
+    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
+    "browser_missing": "That browser isn't installed anymore. Pick another one."
   },
   "collab": {
     "suggestion_role": "Ihre Rolle in diesem Projekt erlaubt keine Vorschläge."

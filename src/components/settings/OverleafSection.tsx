@@ -17,15 +17,8 @@ import {
   IntegrationError,
 } from "@/components/settings/IntegrationCard";
 import { useOverleafImportStore } from "@/store/overleaf-import";
-import { BrowserSignInCopy } from "@/components/settings/BrowserSignInCopy";
-
-function serverHost(server: string): string {
-  try {
-    return new URL(server).host;
-  } catch {
-    return server;
-  }
-}
+import { BrowserSignIn, BrowserSignInCopy } from "@/components/settings/BrowserSignInCopy";
+import { OverleafServerField, serverHost } from "@/components/library/overleaf/OverleafServerField";
 
 export function OverleafSection() {
   const { t } = useTranslation("settings");
@@ -33,6 +26,7 @@ export function OverleafSection() {
   const server = useOverleafImportStore((state) => state.server);
   const refreshStatus = useOverleafImportStore((state) => state.refreshStatus);
   const signOut = useOverleafImportStore((state) => state.signOut);
+  const signing = useOverleafImportStore((state) => state.phase === "signing-in");
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -78,7 +72,15 @@ export function OverleafSection() {
       ) : null}
       {failed ? <IntegrationError>{t(($) => $.settings.integrations.overleaf.signOutFailed)}</IntegrationError> : null}
       {signedIn ? null : (
-        <BrowserSignInCopy server={status?.server ?? server} onSignedIn={() => void refreshStatus()} />
+        <>
+          <OverleafServerField
+            className="mt-1"
+            disabled={signing}
+            onChanged={() => void refreshStatus()}
+          />
+          <BrowserSignIn />
+          <BrowserSignInCopy server={status?.server ?? server} onSignedIn={() => void refreshStatus()} />
+        </>
       )}
       <GitTokenField server={status?.server ?? server} />
     </IntegrationCard>

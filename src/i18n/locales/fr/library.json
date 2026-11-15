@@ -334,6 +334,7 @@
       "loadFailed": "Oleafly n'a pas pu charger vos projets Overleaf.",
       "signInPrompt": "Connectez-vous à Overleaf pour voir vos projets. Une fenêtre de connexion s'ouvre, puis se ferme d'elle-même une fois la connexion établie.",
       "signingIn": "Terminez la connexion à Overleaf dans la fenêtre qui s'est ouverte.",
+      "signingInBrowser": "Finish signing in to Overleaf in {{browser}}. The window closes by itself once you're in.",
       "passkeyHint": "Si votre clé d'accès ne fonctionne pas dans la fenêtre de connexion, choisissez une autre option, comme votre mot de passe ou une invite sur votre téléphone.",
       "expired": "Votre connexion à Overleaf a expiré. Reconnectez-vous pour voir vos projets.",
       "signIn": "Se connecter à Overleaf",

@@ -5,7 +5,8 @@ import { RotateCw, Search } from "lucide-react";
 import { Book, BOOK_SWATCHES } from "@/components/library/Book";
 import { LayoutToggle } from "@/components/library/LayoutToggle";
 import { OverleafBrandIcon } from "@/components/settings/IntegrationBrandIcons";
-import { BrowserSignInCopy } from "@/components/settings/BrowserSignInCopy";
+import { BrowserSignIn, BrowserSignInCopy } from "@/components/settings/BrowserSignInCopy";
+import { LINK_BUTTON, OverleafServerField } from "@/components/library/overleaf/OverleafServerField";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckBadge } from "@/components/ui/check-badge";
@@ -13,7 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { describeError } from "@/lib/app-error";
-import { DEFAULT_OVERLEAF_SERVER, isOverleafError, type OverleafProject } from "@/lib/overleaf";
+import { isOverleafError, type OverleafProject } from "@/lib/overleaf";
 import { projectModifiedLabel } from "@/lib/project-format";
 import { cn, isLinux } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
@@ -24,8 +25,6 @@ type Filter = "all" | "owned" | "shared";
 type LibraryTranslate = ReturnType<typeof useTranslation<["library"]>>["t"];
 
 const FILTERS: readonly Filter[] = ["all", "owned", "shared"];
-const LINK_BUTTON =
-  "rounded px-1 font-medium text-foreground transition-colors hover:bg-accent focus-visible:bg-accent disabled:opacity-50";
 const MAX_NAMED_CARDS = 60;
 
 function transitionName(id: string): string {
@@ -60,14 +59,6 @@ function editedLabel(project: OverleafProject): string | undefined {
   return Number.isNaN(time) ? undefined : projectModifiedLabel(time / 1000);
 }
 
-function serverHost(server: string): string {
-  try {
-    return new URL(server).host;
-  } catch {
-    return server;
-  }
-}
-
 function filterLabel(t: LibraryTranslate, filter: Filter): string {
   const labels: Record<Filter, string> = {
     all: t(($) => $.library.import.overleaf.filter.all),
@@ -83,7 +74,8 @@ function ownerLabel(t: LibraryTranslate, project: OverleafProject): string | nul
   return null;
 }
 
-function promptText(t: LibraryTranslate, signing: boolean, expired: boolean): string {
+function promptText(t: LibraryTranslate, signing: boolean, signingWith: string | null, expired: boolean): string {
+  if (signing && signingWith) return t(($) => $.library.import.overleaf.signingInBrowser, { browser: signingWith });
   if (signing) return t(($) => $.library.import.overleaf.signingIn);
   if (expired) return t(($) => $.library.import.overleaf.expired);
   return t(($) => $.library.import.overleaf.signInPrompt);
@@ -374,28 +366,27 @@ function PickerFooter() {
 function SignInPanel() {
   const { t } = useTranslation(["library"]);
   const store = useOverleafImportStore();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(store.server);
   const signing = store.phase === "signing-in";
+  const inWindow = signing && store.signingWith === null;
   const expired = isOverleafError(store.error, "session_expired");
-  const custom = store.server !== DEFAULT_OVERLEAF_SERVER;
 
   return (
     <div data-testid="overleaf-sign-in-panel" className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-lg border bg-card px-6 py-8 text-center">
       <OverleafBrandIcon className="size-8 text-[#47A141]" />
-      <p className="max-w-md text-sm text-muted-foreground">{promptText(t, signing, expired)}</p>
+      <p className="max-w-md text-sm text-muted-foreground">{promptText(t, signing, store.signingWith, expired)}</p>
       <Button
         type="button"
         data-testid="overleaf-sign-in"
         disabled={signing}
         onClick={() => void store.signIn(t(($) => $.library.import.overleaf.signInWindowTitle))}
       >
-        {signing ? <Spinner size="sm" /> : null}
+        {inWindow ? <Spinner size="sm" /> : null}
         {t(($) => $.library.import.overleaf.signIn)}
       </Button>
       <p data-testid="overleaf-passkey-hint" className="max-w-md text-xs text-muted-foreground">
         {t(($) => $.library.import.overleaf.passkeyHint)}
       </p>
+      {inWindow ? null : <BrowserSignIn variant="button" />}
       {signing ? null : (
         <BrowserSignInCopy server={store.server} variant="button" onSignedIn={() => void store.load()} />
       )}
@@ -404,58 +395,7 @@ function SignInPanel() {
           {describeError(store.error)}
         </p>
       ) : null}
-      {editing ? (
-        <form
-          className="flex w-full max-w-md items-center gap-2"
-          onSubmit={(event) => {
-            event.preventDefault();
-            store.setServer(draft);
-            setEditing(false);
-            void store.open();
-          }}
-        >
-          <Input
-            data-testid="overleaf-server-input"
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            aria-label={t(($) => $.library.import.overleaf.serverLabel)}
-            placeholder={DEFAULT_OVERLEAF_SERVER}
-            className="h-8"
-          />
-          <Button type="submit" size="sm" variant="outline" data-testid="overleaf-save-server" disabled={!draft.trim()}>
-            {t(($) => $.library.import.overleaf.saveServer)}
-          </Button>
-        </form>
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          {t(($) => $.library.import.overleaf.server, { server: serverHost(store.server) })}{" "}
-          <button
-            type="button"
-            data-testid="overleaf-change-server"
-            disabled={signing}
-            onClick={() => {
-              setDraft(store.server);
-              setEditing(true);
-            }}
-            className={LINK_BUTTON}
-          >
-            {t(($) => $.library.import.overleaf.useDifferentServer)}
-          </button>
-          {custom ? (
-            <button
-              type="button"
-              disabled={signing}
-              onClick={() => {
-                store.setServer(DEFAULT_OVERLEAF_SERVER);
-                void store.open();
-              }}
-              className={LINK_BUTTON}
-            >
-              {t(($) => $.library.import.overleaf.useDefaultServer)}
-            </button>
-          ) : null}
-        </p>
-      )}
+      <OverleafServerField disabled={signing} onChanged={() => void store.open()} />
     </div>
   );
 }

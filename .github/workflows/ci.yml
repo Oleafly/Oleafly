@@ -1388,6 +1388,9 @@ jobs:
       - name: Build the headless collaboration peer
         run: cargo build -p oleafly-collab --example e2e_peer
 
+      - name: Build the scripted sign-in browser
+        run: cargo build -p oleafly-online --example fake_browser
+
       - name: Cache Playwright browser
         uses: actions/cache@v6
         with:
@@ -1407,6 +1410,13 @@ jobs:
           OLEAFLY_E2E_COLLAB_STACK: ${{ github.workspace }}/src-tauri/target/debug/examples/e2e_peer
           OLEAFLY_E2E_BROWSER: ${{ github.workspace }}/scripts/e2e-collab-browser.sh
         run: xvfb-run -a ./scripts/e2e.sh e2e/tests/109-live-collaboration-peer.spec.ts
+
+      - name: Run the browser sign-in spec
+        env:
+          WEBKIT_DISABLE_COMPOSITING_MODE: "1"
+          WEBKIT_DISABLE_DMABUF_RENDERER: "1"
+          OLEAFLY_E2E_SIGN_IN_BROWSER: ${{ github.workspace }}/src-tauri/target/debug/examples/fake_browser
+        run: xvfb-run -a ./scripts/e2e.sh e2e/tests/146-online-browser-sign-in.spec.ts
 
       - name: Upload failure artifacts
         if: always()

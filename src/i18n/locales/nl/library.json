@@ -329,6 +329,7 @@
       "loadFailed": "Oleafly kon je Overleaf-projecten niet laden.",
       "signInPrompt": "Meld je aan bij Overleaf om je projecten te zien. Er opent een aanmeldvenster dat vanzelf sluit zodra je bent aangemeld.",
       "signingIn": "Rond het aanmelden bij Overleaf af in het venster dat is geopend.",
+      "signingInBrowser": "Finish signing in to Overleaf in {{browser}}. The window closes by itself once you're in.",
       "passkeyHint": "Werkt je passkey niet in het aanmeldvenster, kies daar dan een andere optie, zoals je wachtwoord of een melding op je telefoon.",
       "expired": "Je Overleaf-aanmelding is verlopen. Meld je opnieuw aan om je projecten te zien.",
       "signIn": "Aanmelden bij Overleaf",

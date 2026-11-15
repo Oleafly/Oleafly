@@ -495,7 +495,9 @@
     "template_link_invalid": "Liên kết đó không phải trang mẫu Overleaf. Hãy sao chép địa chỉ trang từ overleaf.com/latex/templates và thử lại.",
     "template_unavailable": "Oleafly không thể mở mẫu này. Nó có thể đã bị xoá khỏi thư viện mẫu Overleaf.",
     "browser_sign_in_missing": "Oleafly không tìm thấy đăng nhập cho {{server}} trong hồ sơ trình duyệt đó. Hãy đăng nhập thay vào.",
-    "browser_sign_in_failed": "Đăng nhập từ trình duyệt không dùng được. Nó có thể đã hết hạn. Hãy đăng nhập thay vào."
+    "browser_sign_in_failed": "Đăng nhập từ trình duyệt không dùng được. Nó có thể đã hết hạn. Hãy đăng nhập thay vào.",
+    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
+    "browser_missing": "That browser isn't installed anymore. Pick another one."
   },
   "collab": {
     "suggestion_role": "Vai trò của bạn trong dự án này không cho phép gợi ý."

@@ -1,5 +1,6 @@
 pub mod archive;
 pub mod browser_cookies;
+pub mod browser_signin;
 pub mod client;
 pub mod error;
 pub mod git;

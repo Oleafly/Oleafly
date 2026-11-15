@@ -18,6 +18,7 @@ use tauri::ipc::Channel;
 use tauri::{AppHandle, Runtime};
 
 pub use import::{ImportEvent, ImportOutcome, RemoteProject};
+pub(crate) use signin::sweep_browser_profiles;
 pub(crate) use signin::LABEL_PREFIX as SIGN_IN_LABEL_PREFIX;
 pub use sync::Side;
 
@@ -82,6 +83,60 @@ pub async fn overleaf_sign_in<R: Runtime>(
     Ok(status_for(&base, Some(&signed_in)))
 }
 
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SignInBrowser {
+    pub key: String,
+    pub name: String,
+}
+
+fn main_window_only<R: Runtime>(webview: &tauri::Webview<R>) -> Result<(), String> {
+    if crate::caller::own_window_label(webview).as_deref() == Some("main") {
+        Ok(())
+    } else {
+        Err(AppError::new("overleaf.sign_in_failed").into())
+    }
+}
+
+#[tauri::command]
+pub async fn overleaf_sign_in_browsers<R: Runtime>(
+    webview: tauri::Webview<R>,
+) -> Result<Vec<SignInBrowser>, String> {
+    main_window_only(&webview)?;
+    blocking(|| {
+        Ok(signin::sign_in_browsers()
+            .iter()
+            .map(|browser| SignInBrowser {
+                key: browser.key(),
+                name: browser.name(),
+            })
+            .collect())
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn overleaf_sign_in_with_browser<R: Runtime>(
+    webview: tauri::Webview<R>,
+    server: Option<String>,
+    browser: String,
+) -> Result<OverleafStatus, String> {
+    main_window_only(&webview)?;
+    let base = session::normalize_server(server.as_deref())?;
+    let chosen = blocking(move || {
+        signin::sign_in_browsers()
+            .into_iter()
+            .find(|installed| installed.key() == browser)
+            .ok_or_else(|| AppError::new("overleaf.browser_missing").into())
+    })
+    .await?;
+    let signed_in = signin::sign_in_with_browser(&base, chosen).await?;
+    let saved = signed_in.clone();
+    let save_base = base.clone();
+    blocking(move || session::save(&save_base, &saved)).await?;
+    Ok(status_for(&base, Some(&signed_in)))
+}
+
 pub(crate) type AppCookie = (String, String, Option<String>, Option<String>, bool);
 
 const KEPT_SIGN_IN_ERRORS: &[&str] = &[
@@ -98,9 +153,7 @@ pub async fn overleaf_sign_in_with_app_cookies<R: Runtime>(
     webview: tauri::Webview<R>,
     server: Option<String>,
 ) -> Result<OverleafStatus, String> {
-    if crate::caller::own_window_label(&webview).as_deref() != Some("main") {
-        return Err(AppError::new("overleaf.sign_in_failed").into());
-    }
+    main_window_only(&webview)?;
     let base = session::normalize_server(server.as_deref())?;
     let stored = webview
         .cookies()
