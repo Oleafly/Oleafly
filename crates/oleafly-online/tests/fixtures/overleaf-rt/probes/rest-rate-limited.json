@@ -1,0 +1,41 @@
+{
+  "probe": "rest-rate-limited",
+  "description": "Bob creates docs in a throwaway project until the doc-creation rate limit answers 429.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-15",
+  "notes": [
+    "doc 31 got 429 with headers {}"
+  ],
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/new"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "project_id": "6af97f16176744c11ff62e70",
+        "owner_ref": "6af963eac9037022065bb52c",
+        "owner": {
+          "first_name": "Bob",
+          "last_name": "Editor",
+          "email": "bob@example.test",
+          "_id": "6af963eac9037022065bb52c"
+        }
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6af97f16176744c11ff62e70/doc"
+      },
+      "status": 429,
+      "headers": {},
+      "body": "Rate limit reached, please try again later",
+      "attempt": 31
+    }
+  ]
+}

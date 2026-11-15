@@ -1,0 +1,55 @@
+{
+  "probe": "rest-refusals",
+  "description": "A tree write without the anti-forgery token, one from a viewer, and reads without a session.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-15",
+  "notes": [],
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6af963ebc9037022065bb53f/doc"
+      },
+      "status": 403,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "Forbidden"
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6af963ebc9037022065bb53f/doc"
+      },
+      "status": 403,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "message": "restricted"
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6af963ebc9037022065bb53f"
+      },
+      "status": 401,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "Unauthorized"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6af963ebc9037022065bb53f/entities"
+      },
+      "status": 401,
+      "headers": {
+        "content-type": "text/plain; charset=utf-8"
+      },
+      "body": "Unauthorized"
+    }
+  ]
+}

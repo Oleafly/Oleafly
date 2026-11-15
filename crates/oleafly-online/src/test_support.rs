@@ -1,3 +1,9 @@
+pub mod frames;
+pub mod history_ot_text;
+pub mod mock_overleaf;
+pub mod overleaf_rt;
+pub mod sharejs_text;
+
 use std::collections::HashMap;
 use std::io::Write as _;
 use std::sync::{Arc, Mutex};
@@ -51,6 +57,18 @@ pub struct FixtureServer {
 }
 
 async fn read_request(stream: &mut tokio::net::TcpStream) -> Option<Request> {
+    let (method, path, headers, body) = read_message(stream).await?;
+    Some(Request {
+        method,
+        path,
+        headers,
+        body: String::from_utf8_lossy(&body).to_string(),
+    })
+}
+
+type Message = (String, String, HashMap<String, String>, Vec<u8>);
+
+async fn read_message(stream: &mut tokio::net::TcpStream) -> Option<Message> {
     let mut raw = Vec::new();
     let mut buffer = [0_u8; 4096];
     let head_end = loop {
@@ -84,12 +102,7 @@ async fn read_request(stream: &mut tokio::net::TcpStream) -> Option<Request> {
         }
         body.extend_from_slice(&buffer[..read]);
     }
-    Some(Request {
-        method,
-        path,
-        headers,
-        body: String::from_utf8_lossy(&body).to_string(),
-    })
+    Some((method, path, headers, body))
 }
 
 impl FixtureServer {

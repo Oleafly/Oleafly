@@ -1,0 +1,35 @@
+{
+  "probe": "connection-rejected-rate-limit",
+  "description": "Dave joins the same project over and over until the join rate limit refuses him.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-15",
+  "notes": [
+    "attempt 46 was refused with [{\"message\":\"rate-limit hit when joining project\",\"code\":\"TooManyRequests\"}]"
+  ],
+  "steps": [
+    {
+      "socket": {
+        "user": "dave",
+        "projectId": "6af963ebc9037022065bb53f",
+        "attempt": 46,
+        "frames": [
+          {
+            "t": 7805,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 7844,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"connectionRejected\",\"args\":[{\"message\":\"rate-limit hit when joining project\",\"code\":\"TooManyRequests\"}]}"
+          },
+          {
+            "t": 7856,
+            "dir": "in",
+            "frame": "7:::1+0"
+          }
+        ]
+      }
+    }
+  ]
+}

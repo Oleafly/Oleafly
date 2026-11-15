@@ -1,0 +1,65 @@
+name: oleafly-overleaf-ce
+
+services:
+  overleaf:
+    image: sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712
+    platform: linux/amd64
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${OVERLEAF_CE_PORT:-8480}:80"
+    stop_grace_period: 60s
+    environment:
+      OVERLEAF_APP_NAME: Overleaf CE harness
+      OVERLEAF_SITE_URL: http://localhost:${OVERLEAF_CE_PORT:-8480}
+      OVERLEAF_MONGO_URL: mongodb://mongo/sharelatex
+      OVERLEAF_REDIS_HOST: redis
+      REDIS_HOST: redis
+      OVERLEAF_INVITE_TOKEN_SECRET: ${OVERLEAF_INVITE_TOKEN_SECRET:?run up.sh, which writes .env.local}
+      OVERLEAF_SESSION_SECRET: ${OVERLEAF_SESSION_SECRET:?run up.sh, which writes .env.local}
+      ENABLED_LINKED_FILE_TYPES: project_file,project_output_file
+      ENABLE_CONVERSIONS: "true"
+      EMAIL_CONFIRMATION_DISABLED: "true"
+    volumes:
+      - overleaf-data:/var/lib/overleaf
+      - ./:/oleafly-harness:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "-o", "/dev/null", "http://127.0.0.1/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 120
+      start_period: 30s
+
+  mongo:
+    image: mongo:8.2.12@sha256:e0ce8c35124d4a9f9785532d1f268f39e9728ffa1cb38f46fa482436424c4bd3
+    command: --replSet overleaf
+    environment:
+      MONGO_INITDB_DATABASE: sharelatex
+    extra_hosts:
+      - mongo:127.0.0.1
+    volumes:
+      - mongo-data:/data/db
+      - ./mongo-init-replica-set.js:/docker-entrypoint-initdb.d/mongo-init-replica-set.js:ro
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'db.stats().ok' | mongosh localhost:27017/test --quiet"]
+      interval: 5s
+      timeout: 10s
+      retries: 60
+
+  redis:
+    image: redis:7.4@sha256:2e3eb11462c4e3759e6972678dd051d150ff54b1e60714b3c33b701260172a90
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+volumes:
+  overleaf-data:
+  mongo-data:
+  redis-data:
