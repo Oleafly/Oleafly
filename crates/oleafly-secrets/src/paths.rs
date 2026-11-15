@@ -39,14 +39,8 @@ fn default_root() -> Result<PathBuf, String> {
 #[cfg(test)]
 fn default_root() -> Result<PathBuf, String> {
     static DIR: std::sync::OnceLock<Result<PathBuf, String>> = std::sync::OnceLock::new();
-    DIR.get_or_init(|| {
-        tempfile::Builder::new()
-            .prefix("oleafly-secrets-test-data-")
-            .tempdir()
-            .map(tempfile::TempDir::keep)
-            .map_err(|e| format!("failed to create the test data folder: {e}"))
-    })
-    .clone()
+    DIR.get_or_init(|| oleafly_core::test_support::test_data_dir("oleafly-secrets-test-data-"))
+        .clone()
 }
 
 #[cfg(test)]

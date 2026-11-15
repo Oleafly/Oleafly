@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::hash::{Hash, Hasher};
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use oleafly_collab_protocol::ids::{AccountId, DeviceId};
@@ -19,6 +20,22 @@ pub const TEST_PUBLIC_URL: &str = "https://collab.test";
 pub const TEST_SETUP_CODE: &str = "TEST-SETUP-CODE-0001";
 pub const TEST_START_MS: i64 = 1_760_000_000_000;
 
+pub fn test_data_dir() -> PathBuf {
+    let test_id = std::env::var_os("NEXTEST_ATTEMPT_ID")
+        .unwrap_or_else(|| std::process::id().to_string().into());
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    test_id.hash(&mut hasher);
+    let directory = match std::env::var_os("NEXTEST_RUN_ID") {
+        Some(run_id) => std::env::temp_dir()
+            .join("oleafly-test-data")
+            .join(run_id)
+            .join(format!("oleafly-server-{:016x}", hasher.finish())),
+        None => std::env::temp_dir().join("oleafly-server-test-data"),
+    };
+    std::fs::create_dir_all(&directory).expect("create the test server data directory");
+    directory
+}
+
 pub struct TestApp {
     pub state: AppState,
     pub router: axum::Router,
@@ -35,13 +52,7 @@ pub fn test_config() -> ServerConfig {
     let vars: BTreeMap<String, String> = [
         ("OLEAFLY_PUBLIC_URL", TEST_PUBLIC_URL.to_string()),
         ("OLEAFLY_SETUP_CODE", TEST_SETUP_CODE.to_string()),
-        (
-            "OLEAFLY_DATA_DIR",
-            std::env::temp_dir()
-                .join("oleafly-server-test-data")
-                .display()
-                .to_string(),
-        ),
+        ("OLEAFLY_DATA_DIR", test_data_dir().display().to_string()),
     ]
     .into_iter()
     .map(|(key, value)| (key.to_string(), value))

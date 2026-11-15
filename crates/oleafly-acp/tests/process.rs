@@ -65,12 +65,7 @@ fn self_command(role: &str) -> tokio::process::Command {
 }
 
 fn run_cases() {
-    let runtime = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-    let mut failed = 0;
-    for (name, case) in [
+    let trials = [
         (
             "shutting_down_the_client_kills_the_agent_s_children",
             shutting_down_the_client_kills_the_agent_s_children as fn() -> Result<(), String>,
@@ -79,23 +74,13 @@ fn run_cases() {
             "stderr_tail_keeps_the_last_lines_without_control_characters",
             stderr_tail_keeps_the_last_lines_without_control_characters,
         ),
-    ] {
-        let result = runtime.block_on(async { tokio::task::spawn_blocking(case).await });
-        match result {
-            Ok(Ok(())) => println!("test {name} ... ok"),
-            Ok(Err(error)) => {
-                failed += 1;
-                println!("test {name} ... FAILED: {error}");
-            }
-            Err(error) => {
-                failed += 1;
-                println!("test {name} ... FAILED (panicked): {error}");
-            }
-        }
-    }
-    if failed > 0 {
-        std::process::exit(1);
-    }
+    ]
+    .into_iter()
+    .map(|(name, case)| {
+        libtest_mimic::Trial::test(name, move || case().map_err(libtest_mimic::Failed::from))
+    })
+    .collect();
+    libtest_mimic::run(&libtest_mimic::Arguments::from_args(), trials).exit();
 }
 
 fn shutting_down_the_client_kills_the_agent_s_children() -> Result<(), String> {

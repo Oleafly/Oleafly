@@ -7,6 +7,9 @@ publish = false
 edition = "2021"
 rust-version = "1.87"
 
+[features]
+test-support = []
+
 [dependencies]
 aho-corasick = "1"
 blake3 = "1.8"

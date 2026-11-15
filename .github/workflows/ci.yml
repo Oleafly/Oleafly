@@ -378,6 +378,14 @@ jobs:
       - name: Install Rust toolchain
         uses: ./.github/actions/rust-toolchain
 
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
+        with:
+          tool: nextest@0.9.152
+
+      - name: Test the nextest wrapper
+        run: python3 scripts/run-nextest.test.py
+
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
@@ -462,9 +470,12 @@ jobs:
 
       - name: Test with coverage
         if: github.event_name == 'push' || github.event_name == 'pull_request'
+        env:
+          LLVM_PROFILE_FILE_NAME: oleafly-%4m.profraw
+          NEXTEST_PROFILE: ci
         run: |
           mkdir -p coverage/rust
-          cargo llvm-cov --workspace --all-targets --lcov --output-path coverage/rust/lcov.info
+          python3 scripts/run-nextest.py cargo llvm-cov nextest --workspace --all-targets --lcov --output-path coverage/rust/lcov.info
 
       - name: Upload Rust coverage
         if: github.event_name == 'push' || github.event_name == 'pull_request'
@@ -477,7 +488,7 @@ jobs:
 
       - name: Test
         if: github.event_name != 'push' && github.event_name != 'pull_request'
-        run: cargo test --workspace --all-targets --no-fail-fast
+        run: python3 scripts/run-nextest.py cargo nextest run --workspace --all-targets --profile ci
 
       - name: Format check
         run: cargo fmt --all -- --check
@@ -544,6 +555,12 @@ jobs:
         if: steps.changes.outputs.run == 'true'
         uses: ./.github/actions/rust-toolchain
 
+      - name: Install cargo-nextest
+        if: steps.changes.outputs.run == 'true'
+        uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
+        with:
+          tool: nextest@0.9.152
+
       - name: Cache Rust build
         if: steps.changes.outputs.run == 'true'
         uses: Swatinem/rust-cache@v2
@@ -554,7 +571,7 @@ jobs:
         if: steps.changes.outputs.run == 'true'
         run: |
           cargo clippy -p oleafly-server --all-targets --features web -- -D warnings
-          cargo test -p oleafly-server --all-targets --features web --no-fail-fast
+          python3 scripts/run-nextest.py cargo nextest run -p oleafly-server --all-targets --features web --profile ci
 
   rust-windows:
     name: Rust checks (Windows)
@@ -571,6 +588,14 @@ jobs:
 
       - name: Install Rust toolchain
         uses: ./.github/actions/rust-toolchain
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
+        with:
+          tool: nextest@0.9.152
+
+      - name: Test the nextest wrapper
+        run: python scripts/run-nextest.test.py
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -597,7 +622,7 @@ jobs:
       - name: Run the native Windows test suite
         env:
           OLEAFLY_EMBED_TEST_MANIFEST: "1"
-        run: cargo test --workspace --exclude oleafly-server --all-targets --no-fail-fast
+        run: python scripts/run-nextest.py cargo nextest run --workspace --exclude oleafly-server --all-targets --profile ci
 
       - name: Lint all native Windows targets
         run: cargo clippy --workspace --exclude oleafly-server --all-targets -- -D warnings
@@ -608,7 +633,7 @@ jobs:
           toolchain: 1.89.0
 
       - name: Test history on Rust 1.89
-        run: cargo +1.89.0 test -p oleafly-history --all-targets
+        run: python scripts/run-nextest.py cargo +1.89.0 nextest run -p oleafly-history --all-targets --profile ci
 
   cargo-deny:
     # RustSec advisories plus a permissive-only license gate for the Rust workspace.
@@ -721,6 +746,11 @@ jobs:
 
       - name: Install Rust toolchain
         uses: ./.github/actions/rust-toolchain
+
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@94c31af3204a9f15ab40b35ad084410b905bbc73 # v2.87.17
+        with:
+          tool: nextest@0.9.152
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
