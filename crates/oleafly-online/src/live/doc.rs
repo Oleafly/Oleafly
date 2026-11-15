@@ -6,13 +6,10 @@ use std::time::{Duration, Instant};
 use oleafly_ot::{diff, rebase, utf16_len, OtError, TextOperation};
 use serde_json::{json, Map, Value};
 
-use super::format::{
-    blob_hash, CodecError, DocFormat, Echo, FormatState, MAX_CHANGES, MAX_COMMENTS,
-};
+use super::format::{CodecError, DocFormat, Echo, FormatState, MAX_CHANGES, MAX_COMMENTS};
 use super::{AppliedUpdate, DocId, PublicId, SendMode};
 
 pub const RESEND_AFTER: Duration = Duration::from_secs(5);
-pub const HASH_EVERY: Duration = Duration::from_secs(5);
 pub const MAX_UPDATE_BYTES: usize = 7 * 1024 * 1024 + 64 * 1024;
 const FRAME_ALLOWANCE: usize = 1024;
 
@@ -69,7 +66,6 @@ pub struct OutgoingUpdate {
     pub v: u64,
     pub op: Value,
     pub dup_if_source: Vec<PublicId>,
-    pub hash: Option<String>,
     pub last_v: Option<u64>,
     pub tc: Option<String>,
 }
@@ -82,9 +78,6 @@ impl OutgoingUpdate {
         update.insert("v".into(), json!(self.v));
         if let Some(last_v) = self.last_v {
             update.insert("lastV".into(), json!(last_v));
-        }
-        if let Some(hash) = &self.hash {
-            update.insert("hash".into(), json!(hash));
         }
         if !self.dup_if_source.is_empty() {
             update.insert("dupIfSource".into(), json!(self.dup_if_source));
@@ -116,7 +109,6 @@ pub struct OverleafDoc {
     pending: Option<TextOperation>,
     format: FormatState,
     page_limit: Option<usize>,
-    hashed_at: Option<Instant>,
     last_sent: Option<u64>,
 }
 
@@ -132,7 +124,6 @@ impl OverleafDoc {
             pending: None,
             page_limit: None,
             format,
-            hashed_at: None,
             last_sent: None,
         }
     }
@@ -272,13 +263,6 @@ impl OverleafDoc {
                 return Err(DocError::Blocked(Limit::RangeCount));
             }
         }
-        let after = op
-            .apply(&self.confirmed)
-            .map_err(|_| DocError::Blocked(Limit::BaseLength))?;
-        let hash_due = self
-            .hashed_at
-            .is_none_or(|at| now.saturating_duration_since(at) >= HASH_EVERY);
-        let hash = (limits.hashes && hash_due && self.local == after).then(|| blob_hash(&after));
         let dup_if_source = self
             .inflight
             .as_ref()
@@ -289,16 +273,12 @@ impl OverleafDoc {
             v: self.version,
             op: encoded.op,
             dup_if_source,
-            hash,
             last_v: self.last_sent,
             tc: encoded.tc,
         };
         let size = serde_json::to_vec(&update.payload()).map_or(usize::MAX, |bytes| bytes.len());
         if size.saturating_add(FRAME_ALLOWANCE) > MAX_UPDATE_BYTES {
             return Err(DocError::Blocked(Limit::UpdateSize));
-        }
-        if update.hash.is_some() {
-            self.hashed_at = Some(now);
         }
         self.last_sent = Some(self.version);
         match &mut self.inflight {

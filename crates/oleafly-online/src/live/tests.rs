@@ -529,7 +529,6 @@ fn recorded_sharejs_sessions_replay_through_overleaf_doc() {
     let mut replayed = 0;
     let mut sends = 0;
     let mut exact = 0;
-    let mut hashes = 0;
     for recording in recordings()
         .iter()
         .filter(|recording| recording.format == "sharejs-text-ot")
@@ -570,10 +569,6 @@ fn recorded_sharejs_sessions_replay_through_overleaf_doc() {
                         if ours.op == update["op"] {
                             exact += 1;
                         }
-                        if let (Some(mine), Some(theirs)) = (&ours.hash, update["hash"].as_str()) {
-                            assert_eq!(mine, theirs, "{label}: hash");
-                            hashes += 1;
-                        }
                         if let (Some(mine), Some(theirs)) = (ours.last_v, update["lastV"].as_u64())
                         {
                             assert_eq!(mine, theirs, "{label}: lastV");
@@ -611,7 +606,6 @@ fn recorded_sharejs_sessions_replay_through_overleaf_doc() {
         exact * 10 >= sends * 9,
         "only {exact} of {sends} sends matched exactly"
     );
-    assert!(hashes >= 5, "only {hashes} hashes compared");
 }
 
 #[test]
@@ -695,7 +689,7 @@ async fn an_emoji_on_a_history_ot_doc_matches_overleaf_web() {
         update.op,
         json!([{ "textOperation": [4, " \u{FFFD}\u{FFFD}", 41] }])
     );
-    assert!(update.hash.is_none() && update.tc.is_none());
+    assert!(update.tc.is_none());
     wire.send(&update);
     settle(&mut wire, &mut doc, &id);
     let expected = "Keep \u{FFFD}\u{FFFD} this sentence. Remove this word please.\n";
@@ -908,7 +902,7 @@ fn recorded_history_ot_sessions_replay_through_overleaf_doc() {
                         if ours.op[0]["textOperation"] == *scans {
                             exact += 1;
                         }
-                        assert!(ours.hash.is_none() && ours.tc.is_none());
+                        assert!(ours.tc.is_none());
                         sends += 1;
                     }
                     DocEvent::Acked { v } => {

@@ -57,7 +57,6 @@ pub struct Sanitized {
 pub struct Limits {
     pub max_length: usize,
     pub replay_window: u64,
-    pub hashes: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -166,12 +165,10 @@ impl FormatState {
             FormatState::ShareJs(_) => Limits {
                 max_length: SHAREJS_MAX_DOC_LENGTH,
                 replay_window: SHAREJS_REPLAY_WINDOW,
-                hashes: true,
             },
             FormatState::HistoryOt(_) => Limits {
                 max_length: HISTORY_OT_MAX_LENGTH,
                 replay_window: HISTORY_OT_REPLAY_WINDOW,
-                hashes: false,
             },
         }
     }
@@ -395,13 +392,6 @@ fn sanitize(op: &TextOperation) -> Sanitized {
         send,
         correction: changed.then_some(correction),
     }
-}
-
-pub fn blob_hash(text: &str) -> String {
-    let mut context = ring::digest::Context::new(&ring::digest::SHA1_FOR_LEGACY_USE_ONLY);
-    context.update(format!("blob {}\0", utf16_len(text)).as_bytes());
-    context.update(text.as_bytes());
-    hex(context.finish().as_ref())
 }
 
 fn hex(bytes: &[u8]) -> String {

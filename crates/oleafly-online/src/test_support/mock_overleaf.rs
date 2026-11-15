@@ -1800,7 +1800,7 @@ fn apply_sharejs(
     if content.len() > MAX_DOC_LENGTH {
         return Err("Update takes doc over max doc size".into());
     }
-    if let Some(hash) = update["hash"].as_str().filter(|_| v == doc.version) {
+    if let Some(hash) = update["hash"].as_str() {
         if blob_hash(&sharejs_text::text(&content)) != hash {
             return Err("Invalid hash".into());
         }

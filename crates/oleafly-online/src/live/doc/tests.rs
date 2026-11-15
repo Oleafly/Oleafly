@@ -107,9 +107,7 @@ fn assert_strict(update: &Value) {
         assert_eq!(meta.keys().collect::<Vec<_>>(), ["tc"], "{update}");
         assert!(is_hex(meta["tc"].as_str().unwrap(), 18));
     }
-    if let Some(hash) = object.get("hash") {
-        assert!(is_hex(hash.as_str().unwrap(), 40));
-    }
+    assert!(object.get("hash").is_none(), "a hash: {update}");
     if let Some(last_v) = object.get("lastV") {
         assert!(last_v.is_u64());
     }
@@ -142,7 +140,6 @@ async fn outbound_update_matches_server_schema() {
         .next_update(&on, &SendMode::Edit, start)
         .unwrap()
         .unwrap();
-    assert!(first.hash.is_some());
     assert!(first.last_v.is_none() && first.dup_if_source.is_empty() && first.tc.is_none());
     let resend = doc
         .next_update(&on, &SendMode::Edit, start + 6 * SECOND)
@@ -409,7 +406,7 @@ fn a_huge_update_is_held_not_sent() {
     let mut doc = doc("");
     doc.limit_length(usize::MAX);
     type_at(&mut doc, 0, &"\"".repeat(1024 * 1024));
-    assert!(send(&mut doc, start).hash.is_some());
+    send(&mut doc, start);
     let mut doc = self::doc(&"\"".repeat(2_000_000));
     doc.local(deletion(2_000_000, 0, 2_000_000)).unwrap();
     type_at(&mut doc, 0, &"\\".repeat(2_000_000));
@@ -420,51 +417,57 @@ fn a_huge_update_is_held_not_sent() {
 }
 
 #[test]
-fn hash_at_most_every_five_seconds() {
+fn outgoing_updates_never_carry_a_hash() {
     let start = Instant::now();
     let mut doc = doc("abc");
-    let mut hashes = Vec::new();
-    for (round, at) in [0, 1, 4, 5, 6, 11].into_iter().enumerate() {
-        type_at(&mut doc, 0, "x");
-        let update = send(&mut doc, start + at * SECOND);
-        if let Some(hash) = &update.hash {
-            assert_eq!(*hash, blob_hash(doc.text()));
-        }
-        hashes.push(update.hash.is_some());
-        assert_eq!(
-            doc.applied(&ack(round as u64), &[me()]).unwrap(),
-            Applied::Acknowledged
-        );
-    }
-    assert_eq!(hashes, [true, false, false, true, false, true]);
-}
-
-#[test]
-fn hash_only_when_text_is_exactly_known() {
-    let start = Instant::now();
-    let mut doc = doc("abc");
+    let mut sent = Vec::new();
     type_at(&mut doc, 3, "d");
-    assert!(send(&mut doc, start).hash.is_some());
+    sent.push(send(&mut doc, start));
     type_at(&mut doc, 4, "e");
     let resend = send(&mut doc, start + 6 * SECOND);
-    assert_eq!(resend.hash, None);
     assert_eq!(resend.op, json!([{ "p": 3, "i": "d" }]));
+    sent.push(resend);
     assert_eq!(
         doc.applied(&ack(0), &[me()]).unwrap(),
         Applied::Acknowledged
     );
-    let pending = send(&mut doc, start + 12 * SECOND);
-    assert_eq!(pending.hash, Some(blob_hash("abcde")));
+    sent.push(send(&mut doc, start + 12 * SECOND));
     assert_eq!(
         doc.applied(&remote(1, json!([{ "p": 0, "i": ">" }])), &[me()])
             .unwrap(),
         Applied::Remote(insertion(5, 0, ">"))
     );
     let resend = send(&mut doc, start + 18 * SECOND);
-    assert_eq!(resend.v, 2);
-    assert_eq!(resend.op, json!([{ "p": 5, "i": "e" }]));
-    assert_eq!(resend.hash, Some(blob_hash(">abcde")));
+    assert_eq!(
+        (resend.v, resend.op.clone()),
+        (2, json!([{ "p": 5, "i": "e" }]))
+    );
+    sent.push(resend);
+    sent.push(
+        doc.next_update(&me(), &suggest("u1"), start + 24 * SECOND)
+            .unwrap()
+            .unwrap(),
+    );
     assert_eq!(doc.text(), ">abcde");
+    let (text, format) = FormatState::from_join(
+        DocFormat::HistoryOt,
+        &json!({ "content": "abc" }),
+        &json!({}),
+    )
+    .unwrap();
+    let mut history = OverleafDoc::joined(DocId("doc".into()), 0, text, format);
+    type_at(&mut history, 0, "x");
+    sent.push(send(&mut history, start));
+    for update in &sent {
+        assert!(
+            update.payload().get("hash").is_none(),
+            "{}",
+            update.payload()
+        );
+        if update.op[0].get("textOperation").is_none() {
+            assert_strict(&update.payload());
+        }
+    }
 }
 
 #[tokio::test]

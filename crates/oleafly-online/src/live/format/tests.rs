@@ -221,16 +221,6 @@ fn lone_surrogate_and_nul_become_replacement_char() {
 }
 
 #[test]
-fn the_hash_is_sha1_of_the_utf16_length_and_utf8_text() {
-    assert_eq!(
-        blob_hash("Keep this sentence. Remove this word please.\nSecond line.\n"),
-        "4d4d198e695485906c39cc5fd9e5d50dceea66ea"
-    );
-    assert_eq!(blob_hash(""), "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391");
-    assert_ne!(blob_hash("😀"), blob_hash("\u{FFFD}\u{FFFD}"));
-}
-
-#[test]
 fn a_suggestion_carries_a_fresh_eighteen_hex_seed() {
     let state = sharejs("abc");
     let edit = op(|o| {
