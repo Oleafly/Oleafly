@@ -7,11 +7,13 @@ use serde::Serialize;
 use serde_json::Value;
 
 pub use oleafly_online::projects::RemoteProject;
+use oleafly_online::realtime::project::{
+    fetch_project, flavor_for_compiler, settings_from_project, ProjectSettings,
+};
 
 use super::client::{self, Http};
 use super::errors::app_error;
 use super::session::{self, Session};
-use super::socket;
 use crate::app_error::AppError;
 
 const CONCURRENT_IMPORTS: usize = 2;
@@ -94,7 +96,7 @@ impl Drop for Staged {
 pub(crate) fn origin_record(
     base: &str,
     remote: &RemoteProject,
-    settings: &socket::ProjectSettings,
+    settings: &ProjectSettings,
 ) -> Value {
     oleafly_online::projects::origin_record(
         base,
@@ -108,13 +110,13 @@ pub(crate) fn import_archive(
     archive: &Path,
     base: &str,
     remote: &RemoteProject,
-    settings: &socket::ProjectSettings,
+    settings: &ProjectSettings,
 ) -> Result<String, String> {
     let origin = origin_record(base, remote, settings);
     let flavor = settings
         .compiler
         .as_deref()
-        .and_then(socket::flavor_for_compiler)
+        .and_then(flavor_for_compiler)
         .map(str::to_string);
     let main_doc = settings.main_doc.clone();
     crate::project::import_online_project_archive_with(
@@ -136,10 +138,10 @@ async fn import_one(
     cookie: &str,
     remote: &RemoteProject,
     emit: &(dyn Fn(ImportEvent) + Send + Sync),
-) -> Result<(String, socket::ProjectSettings), String> {
-    let settings = socket::fetch_project(http, cookie, &remote.id)
+) -> Result<(String, ProjectSettings), String> {
+    let settings = fetch_project(http.online(), cookie, &remote.id)
         .await
-        .map(|project| socket::settings_from_project(&project))
+        .map(|project| settings_from_project(&project))
         .unwrap_or_default();
     let staged = Staged(staging_path()?);
     let remote_id = remote.id.clone();

@@ -8,6 +8,10 @@ use tokio_tungstenite::tungstenite::http::HeaderValue;
 
 const WAIT: Duration = Duration::from_secs(10);
 
+fn call(id: u64, name: &str, args: &[Value]) -> String {
+    codec::encode(&Frame::call(id, name, args))
+}
+
 fn project() -> MockProject {
     MockProject::new("demo")
         .member(MockUser::named("bob"), Privilege::ReadAndWrite)
@@ -178,7 +182,7 @@ impl Socket {
                         .ok()?;
                     let body = reply.text().await.ok()?;
                     self.queued.extend(
-                        crate::socket::decode_payload(&body)
+                        codec::decode_payload(&body)
                             .into_iter()
                             .filter(|packet| packet != "8::"),
                     );
@@ -212,7 +216,7 @@ impl Socket {
     async fn event(&mut self, wanted: &str) -> Vec<Value> {
         loop {
             let packet = self.next().await;
-            if let Some((name, args)) = Packet::parse(&packet).and_then(|packet| packet.event()) {
+            if let Some((name, args)) = codec::decode(&packet).ok().and_then(Frame::into_event) {
                 if name == wanted {
                     return args;
                 }
@@ -223,7 +227,7 @@ impl Socket {
     async fn ack(&mut self, id: u64) -> Vec<Value> {
         loop {
             let packet = self.next().await;
-            if let Some((got, args)) = Packet::parse(&packet).and_then(|packet| packet.ack()) {
+            if let Some((got, args)) = codec::decode(&packet).ok().and_then(Frame::into_ack) {
                 if got == id {
                     return args;
                 }
@@ -274,7 +278,7 @@ fn ce_ack_error(probe: &str) -> Value {
     probe_frames(probe, "xhr-polling")
         .iter()
         .filter(|frame| !frame.outgoing)
-        .filter_map(|frame| Packet::parse(&frame.raw)?.ack())
+        .filter_map(|frame| codec::decode(&frame.raw).ok()?.into_ack())
         .map(|(_, args)| args)
         .find(|args| {
             args.first()
@@ -317,11 +321,7 @@ async fn mock_serves_both_transports() {
         assert_eq!(joined[0]["permissionsLevel"], "owner");
         assert_eq!(joined[0]["project"]["_id"], mock.project_id());
         socket
-            .send(&frames::event_with_ack(
-                1,
-                "joinDoc",
-                &[json!(doc), join_options()],
-            ))
+            .send(&call(1, "joinDoc", &[json!(doc), join_options()]))
             .await;
         let reply = socket.ack(1).await;
         assert!(reply[0].is_null());
@@ -330,11 +330,7 @@ async fn mock_serves_both_transports() {
         let update =
             json!({ "doc": doc, "op": [{ "p": 0, "i": format!("{kind:?} ") }], "v": index });
         socket
-            .send(&frames::event_with_ack(
-                2,
-                "applyOtUpdate",
-                &[json!(doc), update],
-            ))
+            .send(&call(2, "applyOtUpdate", &[json!(doc), update]))
             .await;
         assert_eq!(socket.ack(2).await, Vec::<Value>::new());
         let applied = socket.event("otUpdateApplied").await;
@@ -494,7 +490,7 @@ async fn mock_frames_have_the_shapes_ce_sent() {
             trace
                 .packets()
                 .filter(|(outgoing, _)| !outgoing)
-                .filter_map(|(_, packet)| packet.event())
+                .filter_map(|(_, packet)| packet.into_event())
                 .find(|(found, _)| found == name)
                 .map(|(_, args)| args[0].clone())
                 .unwrap()
@@ -595,7 +591,7 @@ async fn rejection(
 fn rejected_with(packets: &[String]) -> Option<Vec<Value>> {
     packets
         .iter()
-        .filter_map(|packet| Packet::parse(packet)?.event())
+        .filter_map(|packet| codec::decode(packet).ok()?.into_event())
         .find(|(name, _)| name == "connectionRejected")
         .map(|(_, args)| args)
 }
@@ -773,7 +769,7 @@ async fn mock_serves_history_ot_docs_only_to_clients_that_support_them() {
     let doc = mock.doc_id("main.tex");
     let (mut socket, _) = Socket::joined(&mock, "alice", Kind::WebSocket).await;
     socket
-        .send(&frames::event_with_ack(
+        .send(&call(
             1,
             "joinDoc",
             &[json!(doc), json!({ "encodeRanges": true })],
@@ -784,11 +780,7 @@ async fn mock_serves_history_ot_docs_only_to_clients_that_support_them() {
         ce_ack_error("join-doc-without-history-ot-support")
     );
     socket
-        .send(&frames::event_with_ack(
-            2,
-            "joinDoc",
-            &[json!(doc), join_options()],
-        ))
+        .send(&call(2, "joinDoc", &[json!(doc), join_options()]))
         .await;
     let reply = socket.ack(2).await;
     assert_eq!(reply[5], "history-ot");
@@ -852,7 +844,7 @@ async fn mock_join_doc_ahead_of_the_doc_answers_with_no_updates_like_ce() {
     assert_eq!((reply[2].clone(), reply[3].clone()), (json!(1), json!([])));
     let ce = probe_frames("join-doc-missing-ops", "xhr-polling")
         .iter()
-        .filter_map(|frame| Packet::parse(&frame.raw)?.ack())
+        .filter_map(|frame| codec::decode(&frame.raw).ok()?.into_ack())
         .map(|(_, args)| args)
         .find(|args| args.len() > 3 && args[3] == json!([]) && args[2] == json!(110))
         .expect("the probe answered a joinDoc ahead of the doc");
@@ -877,25 +869,17 @@ async fn mock_acks_an_update_before_announcing_it_like_ce() {
     let doc = mock.doc_id("main.tex");
     let (mut socket, _) = Socket::joined(&mock, "alice", Kind::WebSocket).await;
     socket
-        .send(&frames::event_with_ack(
-            1,
-            "joinDoc",
-            &[json!(doc), join_options()],
-        ))
+        .send(&call(1, "joinDoc", &[json!(doc), join_options()]))
         .await;
     socket.ack(1).await;
     let update = json!({ "doc": doc, "op": [{ "p": 0, "i": "x" }], "v": 0 });
     socket
-        .send(&frames::event_with_ack(
-            2,
-            "applyOtUpdate",
-            &[json!(doc), update],
-        ))
+        .send(&call(2, "applyOtUpdate", &[json!(doc), update]))
         .await;
     assert_eq!(socket.next().await, "6:::2");
     assert_eq!(
         socket.next().await,
-        frames::event("otUpdateApplied", &[json!({ "v": 0, "doc": doc })])
+        event("otUpdateApplied", &[json!({ "v": 0, "doc": doc })])
     );
 }
 
@@ -949,12 +933,8 @@ async fn mock_doc_error_disconnects_every_joined_client() {
     alice.join(&main);
     erin.join(&other);
     let (mut bob, _) = Socket::joined(&mock, "bob", Kind::WebSocket).await;
-    bob.send(&frames::event_with_ack(
-        1,
-        "joinDoc",
-        &[json!(main), join_options()],
-    ))
-    .await;
+    bob.send(&call(1, "joinDoc", &[json!(main), join_options()]))
+        .await;
     bob.ack(1).await;
     let bad = json!({ "doc": main, "op": [{ "p": 0, "d": "not there" }], "v": 0 });
     assert_eq!(
@@ -970,7 +950,7 @@ async fn mock_doc_error_disconnects_every_joined_client() {
     let ce = recorded
         .trace("alice")
         .packets()
-        .filter_map(|(_, packet)| packet.event())
+        .filter_map(|(_, packet)| packet.into_event())
         .find(|(name, _)| name == "otUpdateError")
         .unwrap()
         .1;
@@ -1024,7 +1004,7 @@ async fn mock_updates_to_a_deleted_doc_fail_with_doc_not_found_like_ce() {
     let ce = recorded
         .trace("alice")
         .packets()
-        .filter_map(|(_, packet)| packet.event())
+        .filter_map(|(_, packet)| packet.into_event())
         .find(|(name, _)| name == "otUpdateError")
         .unwrap()
         .1;
@@ -1350,7 +1330,7 @@ async fn mock_records_client_pongs() {
     let ping = socket.event("serverPing").await;
     let mut args = ping.clone();
     args.extend([json!("websocket"), ping[3].clone()]);
-    socket.send(&frames::event("clientPong", &args)).await;
+    socket.send(&event("clientPong", &args)).await;
     eventually(|| mock.received("clientPong").len() == 1).await;
     assert_eq!(mock.received("clientPong")[0].args, args);
 }

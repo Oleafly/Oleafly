@@ -8,7 +8,7 @@ use serde_json::Value;
 use crate::client::Http;
 use crate::error::{OnlineError, OnlineErrorKind};
 use crate::projects::{origin_record, RemoteProject};
-use crate::socket::{self, ProjectSettings};
+use crate::realtime::project::{self, ProjectSettings};
 use crate::sync::{check_remote_paths, now_seconds};
 
 const SKIPPED_NAMES: [&str; 5] = ["__MACOSX", ".DS_Store", ".git", ".oleafly", "Thumbs.db"];
@@ -260,7 +260,7 @@ pub fn write_folder_manifest(
     let flavor = settings
         .compiler
         .as_deref()
-        .and_then(socket::flavor_for_compiler);
+        .and_then(project::flavor_for_compiler);
     let (engine, tex_flavor) = match (Engine::infer(&main_doc), flavor) {
         (Ok(Engine::Tectonic), Some(flavor)) => (Engine::Latexmk, Some(flavor.to_string())),
         (Ok(engine), _) => (engine, None),
@@ -336,9 +336,9 @@ pub async fn import_into_folder(
         archive: parent.join(format!(".{name}.oleafly-import-{tag}.zip")),
         folder: parent.join(format!(".{name}.oleafly-import-{tag}.tmp")),
     };
-    let settings = socket::fetch_project(http, cookie, &remote.id)
+    let settings = project::fetch_project(http, cookie, &remote.id)
         .await
-        .map(|project| socket::settings_from_project(&project))
+        .map(|fetched| project::settings_from_project(&fetched))
         .unwrap_or_default();
     http.download_zip(cookie, &remote.id, &staging.archive, |received, total| {
         progress(ImportProgress::Downloading { received, total });

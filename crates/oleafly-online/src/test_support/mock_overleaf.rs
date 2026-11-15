@@ -12,13 +12,14 @@ use tokio_tungstenite::tungstenite::protocol::Role;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::WebSocketStream;
 
-use super::frames::{self, Packet};
 use super::history_ot_text::{Marks, Part, TextOperation};
 use super::overleaf_rt::{blob_hash, git_blob_hash};
 use super::sharejs_text::{self, Component, Side};
 use super::{read_message, Reply, Request};
+use crate::realtime::codec::{self, Frame, FrameError};
 
 pub const MOCK_CSRF: &str = "mock-csrf-token";
+pub const WS_URL_PATH: &str = "/rt/socket.io";
 pub const MAX_DOC_LENGTH: usize = 2 * 1024 * 1024;
 
 const TEXT_EXTENSIONS: &[&str] = &[
@@ -287,6 +288,10 @@ pub struct MockConfig {
     pub kept_ops: usize,
     pub max_op_age: u64,
     pub history_ot_applied_version: bool,
+    pub balancer_cookie: Option<String>,
+    pub rotate_sessions: bool,
+    pub ws_url_handshake_reply: Option<(u16, String)>,
+    pub upgrade_status: Option<u16>,
 }
 
 impl Default for MockConfig {
@@ -311,6 +316,10 @@ impl Default for MockConfig {
             kept_ops: 100,
             max_op_age: 80,
             history_ot_applied_version: false,
+            balancer_cookie: None,
+            rotate_sessions: false,
+            ws_url_handshake_reply: None,
+            upgrade_status: None,
         }
     }
 }
@@ -779,7 +788,7 @@ impl State {
     fn emit_room(&mut self, name: &str, args: &[Value], except: Option<&str>) {
         for sid in self.live() {
             if Some(sid.as_str()) != except {
-                self.push(&sid, frames::event(name, args));
+                self.push(&sid, event(name, args));
             }
         }
     }
@@ -809,8 +818,9 @@ impl State {
         &mut self,
         query: &HashMap<String, String>,
         headers: &HashMap<String, String>,
+        via_ws_url: bool,
     ) -> Reply {
-        if let Some((status, body)) = &self.config.handshake_reply {
+        if let Some((status, body)) = &self.planned_handshake(via_ws_url) {
             return Reply {
                 status: *status,
                 headers: Vec::new(),
@@ -847,7 +857,111 @@ impl State {
         } else {
             "xhr-polling"
         };
-        Reply::ok(format!("{sid}:60:60:{transports}"))
+        let reply = Reply::ok(format!("{sid}:60:60:{transports}"));
+        self.handshake_cookies(reply, headers, &sid)
+    }
+
+    fn planned_handshake(&self, via_ws_url: bool) -> Option<(u16, String)> {
+        let routed = self
+            .config
+            .ws_url_handshake_reply
+            .clone()
+            .filter(|_| via_ws_url);
+        routed.or_else(|| self.config.handshake_reply.clone())
+    }
+
+    fn handshake_cookies(
+        &mut self,
+        mut reply: Reply,
+        headers: &HashMap<String, String>,
+        sid: &str,
+    ) -> Reply {
+        if let Some(cookie) = &self.config.balancer_cookie {
+            reply = reply.header("Set-Cookie", &format!("{cookie}; Path=/"));
+        }
+        if self.config.rotate_sessions {
+            if let Some(rotated) = self.rotate_session(headers, sid) {
+                reply = reply.header("Set-Cookie", &rotated);
+            }
+        }
+        reply
+    }
+
+    fn route(
+        &mut self,
+        method: &str,
+        path: &str,
+        query: &HashMap<String, String>,
+        headers: &HashMap<String, String>,
+        body: &[u8],
+    ) -> Reply {
+        if method == "GET" && path == "/project" {
+            self.dashboard(headers)
+        } else {
+            self.rest(method, path, query, headers, body)
+        }
+    }
+
+    fn session_of(headers: &HashMap<String, String>) -> Option<String> {
+        headers.get("cookie")?.split(';').find_map(|pair| {
+            let (name, value) = pair.trim().split_once('=')?;
+            (name == "overleaf.sid").then(|| value.to_string())
+        })
+    }
+
+    fn rotate_session(&mut self, headers: &HashMap<String, String>, sid: &str) -> Option<String> {
+        let current = State::session_of(headers)?;
+        let fresh = format!("{current}-{sid}");
+        let mut found = false;
+        let owner = std::iter::once(&mut self.owner);
+        let members = self.members.iter_mut().map(|(user, _)| user);
+        for user in owner.chain(members).chain(self.outsiders.iter_mut()) {
+            if user.session == current {
+                user.session.clone_from(&fresh);
+                found = true;
+            }
+        }
+        found.then(|| format!("overleaf.sid={fresh}; Path=/; HttpOnly"))
+    }
+
+    fn balanced(&self, headers: &HashMap<String, String>) -> bool {
+        let Some(wanted) = &self.config.balancer_cookie else {
+            return true;
+        };
+        headers
+            .get("cookie")
+            .is_some_and(|cookie| cookie.split(';').any(|pair| pair.trim() == wanted))
+    }
+
+    fn dashboard(&self, headers: &HashMap<String, String>) -> Reply {
+        let Some(user) = self
+            .user_for(headers)
+            .and_then(|id| self.user(&id).cloned())
+        else {
+            return Reply::status(302).header("Location", "/login");
+        };
+        let metas = [
+            ("ol-csrfToken", MOCK_CSRF.to_string()),
+            ("ol-user_id", user.id.clone()),
+            ("ol-usersEmail", user.email.clone()),
+            (
+                "ol-prefetchedProjectsBlob",
+                json!({ "projects": [], "totalSize": 0 }).to_string(),
+            ),
+        ];
+        let tags: String = metas
+            .iter()
+            .map(|(name, content)| {
+                format!(
+                    "<meta name=\"{name}\" content=\"{}\">",
+                    super::escape(content)
+                )
+            })
+            .collect();
+        Reply::ok(format!(
+            "<!DOCTYPE html><html><head>{tags}</head><body></body></html>"
+        ))
+        .header("Content-Type", "text/html; charset=utf-8")
     }
 
     fn connect(&mut self, sid: &str, transport: Transport) {
@@ -898,10 +1012,7 @@ impl State {
                 }
                 return;
             }
-            self.push(
-                sid,
-                frames::event("connectionRejected", &[rejection.payload()]),
-            );
+            self.push(sid, event("connectionRejected", &[rejection.payload()]));
             self.close(sid);
             return;
         }
@@ -914,7 +1025,7 @@ impl State {
             "permissionsLevel": privilege.wire_name(),
             "protocolVersion": self.config.protocol_version,
         });
-        self.push(sid, frames::event("joinProjectResponse", &[response]));
+        self.push(sid, event("joinProjectResponse", &[response]));
     }
 
     fn take_fault(&mut self, method: &str, target: &str) -> Option<Fault> {
@@ -934,7 +1045,7 @@ impl State {
         };
         let counter = client.pings;
         client.pings += 1;
-        let ping = frames::event(
+        let ping = event(
             "serverPing",
             &[
                 json!(counter),
@@ -981,26 +1092,18 @@ impl State {
     }
 
     fn handle_raw(&mut self, sid: &str, raw: &str) {
-        let Some(packet) = Packet::parse(raw) else {
-            self.close(sid);
-            return;
-        };
-        match packet.kind {
-            0 => self.close(sid),
-            5 => {
-                let Some((name, args)) = packet.event() else {
-                    self.close(sid);
-                    return;
-                };
-                self.handle_event(sid, &name, args, packet.id.filter(|_| packet.wants_ack));
+        match codec::decode(raw) {
+            Ok(Frame::Disconnect) | Err(FrameError::Malformed(_)) => self.close(sid),
+            Ok(Frame::Event { ack, name, args }) => {
+                self.handle_event(sid, &name, args, ack.map(|id| id.0));
             }
-            _ => {}
+            Ok(_) | Err(FrameError::UnknownType(_)) => {}
         }
     }
 
     fn reply(&mut self, sid: &str, id: Option<u64>, args: &[Value]) {
         if let Some(id) = id {
-            self.push(sid, frames::ack(id, args));
+            self.push(sid, codec::encode(&Frame::ack(id, args)));
         }
     }
 
@@ -1235,7 +1338,7 @@ impl State {
             Ok(Outcome::Dup { v }) => {
                 self.push(
                     sid,
-                    frames::event("otUpdateApplied", &[json!({ "v": v, "doc": doc_id })]),
+                    event("otUpdateApplied", &[json!({ "v": v, "doc": doc_id })]),
                 );
             }
             Ok(Outcome::Applied(applied)) => {
@@ -1272,7 +1375,7 @@ impl State {
         let v = update["v"].clone();
         self.push(
             sender,
-            frames::event("otUpdateApplied", &[json!({ "v": v, "doc": doc_id })]),
+            event("otUpdateApplied", &[json!({ "v": v, "doc": doc_id })]),
         );
         let legacy = self.config.legacy_doc_rooms;
         for sid in self.live() {
@@ -1282,10 +1385,7 @@ impl State {
             if legacy && !self.clients[&sid].joined.contains(doc_id) {
                 continue;
             }
-            self.push(
-                &sid,
-                frames::event("otUpdateApplied", std::slice::from_ref(update)),
-            );
+            self.push(&sid, event("otUpdateApplied", std::slice::from_ref(update)));
         }
     }
 
@@ -1302,7 +1402,7 @@ impl State {
             if self.clients[&sid].joined.contains(doc_id) {
                 self.push(
                     &sid,
-                    frames::event("otUpdateError", &[json!(message), details.clone()]),
+                    event("otUpdateError", &[json!(message), details.clone()]),
                 );
                 self.close(&sid);
             }
@@ -1676,6 +1776,10 @@ impl State {
     }
 }
 
+fn event(name: &str, args: &[Value]) -> String {
+    codec::encode(&Frame::event(name, args))
+}
+
 fn json_reply(value: &Value) -> Reply {
     Reply::ok(value.to_string()).header("Content-Type", "application/json; charset=utf-8")
 }
@@ -1907,6 +2011,13 @@ pub struct MockOverleaf {
     shared: Arc<Mutex<State>>,
 }
 
+fn split_ws_url(path: String) -> (String, bool) {
+    match path.strip_prefix(WS_URL_PATH.trim_end_matches("/socket.io")) {
+        Some(rest) if rest.starts_with("/socket.io/") => (rest.to_string(), true),
+        _ => (path, false),
+    }
+}
+
 fn split_target(target: &str) -> (String, HashMap<String, String>) {
     let (path, query) = target.split_once('?').unwrap_or((target, ""));
     let query = query
@@ -1969,11 +2080,16 @@ impl MockOverleaf {
             return;
         };
         let (path, query) = split_target(&target);
+        let (path, via_ws_url) = split_ws_url(path);
         if let Some(sid) = path.strip_prefix("/socket.io/1/websocket/") {
             if headers
                 .get("upgrade")
                 .is_some_and(|value| value.eq_ignore_ascii_case("websocket"))
             {
+                if let Some(status) = self.upgrade_refusal(&method, &target, &headers) {
+                    write_reply(&mut stream, text_reply(status, "Upgrade refused")).await;
+                    return;
+                }
                 let key = headers
                     .get("sec-websocket-key")
                     .cloned()
@@ -1983,12 +2099,7 @@ impl MockOverleaf {
             }
         }
         let (reply, fault) = if let Some(sid) = path.strip_prefix("/socket.io/1/xhr-polling/") {
-            let reply = if method == "GET" {
-                self.poll(sid).await
-            } else {
-                self.post(sid, &body)
-            };
-            (reply, None)
+            (self.polling(sid, &method, &headers, &body).await, None)
         } else {
             let mut state = self.state();
             state.requests.push(Request {
@@ -2009,9 +2120,9 @@ impl MockOverleaf {
             } else if path == "/socket.io/socket.io.js" {
                 Reply::ok("js").header("Set-Cookie", "GCLB=mock-affinity; Path=/")
             } else if path == "/socket.io/1/" || path == "/socket.io/1" {
-                state.handshake(&query, &headers)
+                state.handshake(&query, &headers, via_ws_url)
             } else {
-                state.rest(&method, &path, &query, &headers, &body)
+                state.route(&method, &path, &query, &headers, &body)
             };
             (reply, fault)
         };
@@ -2023,6 +2134,43 @@ impl MockOverleaf {
         write_reply(&mut stream, reply).await;
     }
 
+    fn upgrade_refusal(
+        &self,
+        method: &str,
+        target: &str,
+        headers: &HashMap<String, String>,
+    ) -> Option<u16> {
+        let mut state = self.state();
+        state.requests.push(Request {
+            method: method.to_string(),
+            path: target.to_string(),
+            headers: headers.clone(),
+            body: String::new(),
+        });
+        match state.config.upgrade_status {
+            Some(status) => Some(status),
+            None if !state.balanced(headers) => Some(400),
+            None => None,
+        }
+    }
+
+    async fn polling(
+        &self,
+        sid: &str,
+        method: &str,
+        headers: &HashMap<String, String>,
+        body: &[u8],
+    ) -> Reply {
+        if !self.state().balanced(headers) {
+            return Reply::ok(NOT_HANDSHAKEN);
+        }
+        if method == "GET" {
+            self.poll(sid).await
+        } else {
+            self.post(sid, body)
+        }
+    }
+
     fn post(&self, sid: &str, body: &[u8]) -> Reply {
         let mut state = self.state();
         if state.down {
@@ -2031,7 +2179,7 @@ impl MockOverleaf {
         if !state.clients.contains_key(sid) {
             return Reply::ok(NOT_HANDSHAKEN);
         }
-        for packet in crate::socket::decode_payload(&String::from_utf8_lossy(body)) {
+        for packet in codec::decode_payload(&String::from_utf8_lossy(body)) {
             state.handle_raw(sid, &packet);
         }
         Reply::ok("1")
@@ -2138,7 +2286,7 @@ impl MockOverleaf {
                     if client.closed {
                         state.clients.remove(sid);
                     }
-                    return Reply::ok(frames::payload(&packets));
+                    return Reply::ok(codec::encode_payload(&packets));
                 }
                 if client.closed && !stalled {
                     state.clients.remove(sid);
@@ -2155,6 +2303,10 @@ impl MockOverleaf {
 
     pub fn project_id(&self) -> String {
         self.state().project_id.clone()
+    }
+
+    pub fn ws_url(&self) -> String {
+        format!("{}{WS_URL_PATH}", self.base)
     }
 
     pub fn project_page_url(&self) -> String {
@@ -2346,7 +2498,7 @@ impl MockOverleaf {
         headers.insert("cookie".to_string(), user.cookie());
         let mut query = HashMap::new();
         query.insert("projectId".to_string(), project_id);
-        let reply = state.handshake(&query, &headers);
+        let reply = state.handshake(&query, &headers, false);
         let sid = String::from_utf8_lossy(&reply.body)
             .split(':')
             .next()
@@ -2535,20 +2687,18 @@ impl MockPeer {
             }
         };
         for raw in packets {
-            let Some(packet) = Packet::parse(&raw) else {
-                continue;
-            };
-            if packet.kind == 0 {
-                self.connected = false;
-                self.mock.state().clients.remove(&self.sid);
-                continue;
-            }
-            if let Some((id, args)) = packet.ack() {
-                self.acks.insert(id, args);
-                continue;
-            }
-            let Some((name, args)) = packet.event() else {
-                continue;
+            let (name, args) = match codec::decode(&raw) {
+                Ok(Frame::Disconnect) => {
+                    self.connected = false;
+                    self.mock.state().clients.remove(&self.sid);
+                    continue;
+                }
+                Ok(Frame::Ack { id, args }) => {
+                    self.acks.insert(id.0, args);
+                    continue;
+                }
+                Ok(Frame::Event { name, args, .. }) => (name, args),
+                _ => continue,
             };
             if name == "otUpdateApplied" {
                 if let Some(update) = args.first() {

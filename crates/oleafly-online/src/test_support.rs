@@ -1,4 +1,3 @@
-pub mod frames;
 pub mod history_ot_text;
 pub mod mock_overleaf;
 pub mod overleaf_rt;
@@ -10,6 +9,8 @@ use std::sync::{Arc, Mutex};
 
 use serde_json::{json, Value};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+use crate::realtime::codec::{self, Frame};
 
 #[derive(Clone, Debug)]
 pub struct Request {
@@ -185,16 +186,16 @@ pub fn remote_project_json(id: &str, name: &str) -> Value {
 }
 
 pub fn project_reply(project: &Value) -> String {
-    let event = json!({ "name": "joinProjectResponse", "args": [{ "publicId": "p", "project": project, "permissionsLevel": "owner", "protocolVersion": 2 }] });
-    frame(&[&format!("5:::{event}")])
+    codec::encode(&Frame::event(
+        "joinProjectResponse",
+        &[
+            json!({ "publicId": "p", "project": project, "permissionsLevel": "owner", "protocolVersion": 2 }),
+        ],
+    ))
 }
 
-pub fn frame(packets: &[&str]) -> String {
-    let marker = char::REPLACEMENT_CHARACTER;
-    packets
-        .iter()
-        .map(|packet| format!("{marker}{}{marker}{packet}", packet.encode_utf16().count()))
-        .collect()
+pub fn payload(frames: &[&str]) -> String {
+    codec::encode_payload(&frames.iter().map(ToString::to_string).collect::<Vec<_>>())
 }
 
 /// A current Firefox `cookies.sqlite` schema.
@@ -273,7 +274,7 @@ pub fn socket_handler(
             let mut count = polls.lock().unwrap();
             *count += 1;
             return Some(match *count {
-                1 => Reply::ok(frame(&["1::", "2::"])),
+                1 => Reply::ok(payload(&["1::", "2::"])),
                 _ => Reply::ok(project_reply(&project)),
             });
         }

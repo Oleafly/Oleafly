@@ -308,6 +308,73 @@ pub fn refresh_cookie(
     })
 }
 
+#[derive(Clone)]
+pub struct SessionHandle {
+    inner: std::sync::Arc<HandleInner>,
+}
+
+struct HandleInner {
+    base: String,
+    session: Session,
+    cookie: std::sync::Mutex<String>,
+    store: Option<SecretStore>,
+}
+
+impl std::fmt::Debug for SessionHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SessionHandle")
+            .field("base", &self.inner.base)
+            .field("user_id", &self.inner.session.user_id)
+            .field("cookie", &"[redacted]")
+            .finish()
+    }
+}
+
+impl SessionHandle {
+    pub fn new(base: &str, session: Session, store: Option<SecretStore>) -> SessionHandle {
+        SessionHandle {
+            inner: std::sync::Arc::new(HandleInner {
+                base: base.to_string(),
+                cookie: std::sync::Mutex::new(session.cookie.clone()),
+                session,
+                store,
+            }),
+        }
+    }
+
+    pub fn user_id(&self) -> &str {
+        &self.inner.session.user_id
+    }
+
+    pub fn cookie(&self) -> String {
+        self.inner
+            .cookie
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
+    }
+
+    pub fn absorb<'a>(&self, set_cookies: impl IntoIterator<Item = &'a str>) -> bool {
+        let merged = {
+            let mut cookie = self
+                .inner
+                .cookie
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner);
+            let merged = merge_set_cookies(&cookie, set_cookies);
+            if merged == *cookie {
+                return false;
+            }
+            cookie.clone_from(&merged);
+            merged
+        };
+        if let Some(store) = &self.inner.store {
+            let _ = refresh_cookie(store, &self.inner.base, &self.inner.session, &merged);
+        }
+        true
+    }
+}
+
 pub fn session_servers(store: &SecretStore) -> Result<Vec<String>, OnlineError> {
     let raw = store.get(SESSIONS_ACCOUNT).map_err(store_error)?;
     let sessions: BTreeMap<String, Session> = decode(&raw);

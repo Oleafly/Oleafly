@@ -6,9 +6,9 @@ pub mod error;
 pub mod git;
 pub mod html;
 pub mod projects;
+pub mod realtime;
 pub mod service;
 pub mod session;
-pub mod socket;
 pub mod sync;
 #[cfg(any(test, feature = "test-support"))]
 pub mod test_support;
