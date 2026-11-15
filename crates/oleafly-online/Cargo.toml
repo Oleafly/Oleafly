@@ -17,6 +17,7 @@ cbc = { version = "0.2", features = ["zeroize"] }
 futures-util = { version = "0.3", features = ["sink"] }
 oleafly-core = { path = "../oleafly-core" }
 oleafly-net = { path = "../oleafly-net" }
+oleafly-ot = { path = "../oleafly-ot" }
 oleafly-secrets = { path = "../oleafly-secrets" }
 rand = "0.8"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "rustls-tls-native-roots", "json", "stream"] }
@@ -24,6 +25,7 @@ ring = "0.17"
 rusqlite = { version = "0.41", features = ["bundled"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+thiserror = "2"
 tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "rt", "time"] }
 tokio-tungstenite = { version = "0.30", default-features = false, features = ["handshake"] }
 url = "2.5"
@@ -51,6 +53,7 @@ required-features = ["test-support"]
 
 [dev-dependencies]
 oleafly-net = { path = "../oleafly-net", features = ["test-support"] }
+oleafly-ot = { path = "../oleafly-ot", features = ["test-support"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 tempfile = { workspace = true }
 tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "rt", "rt-multi-thread", "sync", "test-util", "time"] }

@@ -5,6 +5,7 @@ pub mod client;
 pub mod error;
 pub mod git;
 pub mod html;
+pub mod live;
 pub mod projects;
 pub mod realtime;
 pub mod service;

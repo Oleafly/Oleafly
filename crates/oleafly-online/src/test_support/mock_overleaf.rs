@@ -2991,8 +2991,10 @@ impl MockPeer {
                     .into_iter()
                     .flatten()
                     .collect();
-                let mut combined = operations.into_iter();
-                let first = combined.next().unwrap_or_default();
+                let Some(first) = operations.into_iter().next() else {
+                    doc.version += 1;
+                    return;
+                };
                 PeerOp::HistoryOt(first)
             }
         };
@@ -3112,6 +3114,8 @@ impl MockPeer {
                 if doc.inflight.is_some() {
                     continue;
                 }
+                doc.pending
+                    .retain(|(op, _)| !matches!(op, PeerOp::ShareJs(op) if op.is_empty()));
                 let Some(next) = doc.pending.pop_front() else {
                     continue;
                 };
@@ -3142,6 +3146,7 @@ impl MockPeer {
     }
 
     pub fn type_at(&mut self, doc_id: &str, at: usize, inserted: &str) {
+        self.sync();
         let doc = &self.docs[doc_id];
         let op = match doc.format {
             DocFormat::ShareJs => PeerOp::ShareJs(vec![Component::insert(at, inserted)]),
@@ -3198,11 +3203,13 @@ impl MockPeer {
     }
 
     pub fn delete(&mut self, doc_id: &str, at: usize, length: usize) {
+        self.sync();
         let op = self.removal(doc_id, at, length, None);
         self.local(doc_id, op, false);
     }
 
     pub fn track_delete(&mut self, doc_id: &str, at: usize, length: usize) {
+        self.sync();
         let tracking =
             json!({ "type": "delete", "userId": self.user.id, "ts": "2026-11-15T00:00:00.000Z" });
         let op = self.removal(doc_id, at, length, Some(tracking));
@@ -3238,6 +3245,15 @@ impl MockPeer {
             .filter(|(event, _)| event == name)
             .map(|(_, args)| args.clone())
             .collect()
+    }
+
+    pub fn take_events(&mut self, name: &str) -> Vec<Vec<Value>> {
+        self.sync();
+        let (taken, kept) = std::mem::take(&mut self.events)
+            .into_iter()
+            .partition(|(event, _)| event == name);
+        self.events = kept;
+        taken.into_iter().map(|(_, args)| args).collect()
     }
 }
 
