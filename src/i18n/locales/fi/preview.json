@@ -256,6 +256,74 @@
     "downloadSaved": "PDF tallennettiin onnistuneesti.",
     "downloadFailed": "Näytössä olevaa PDF-tiedostoa ei voitu tallentaa."
   },
+  "annotations": {
+    "toolbar": {
+      "region": "Merkitse alue",
+      "list": "Merkinnät ({{n}})"
+    },
+    "composer": {
+      "title": "Uusi merkintä",
+      "action": {
+        "comment": "Kommentoi",
+        "delete": "Poista",
+        "replace": "Korvaa",
+        "insert": "Lisää teksti"
+      },
+      "label": {
+        "comment": "Kommentti",
+        "delete": "Poista",
+        "replace": "Korvaava teksti",
+        "insert": "Lisättävä teksti",
+        "region": "Kommentti alueesta"
+      },
+      "placeholder": {
+        "comment": "Kommentoi tätä kohtaa…",
+        "delete": "Miksi poistaa? (valinnainen)",
+        "replace": "Korvaa tekstillä…",
+        "insert": "Lisää valinnan perään…",
+        "region": "Kommentoi tätä aluetta…"
+      },
+      "placeHere": "Sijoita tähän",
+      "cancel": "Peruuta",
+      "save": "Lisää",
+      "saving": "Tallennetaan",
+      "notSaved": "Ei tallennettu."
+    },
+    "kind": {
+      "comment": "Kommentti",
+      "delete": "Poisto",
+      "replace": "Korvaus",
+      "insert": "Lisäys",
+      "region": "Alue"
+    },
+    "status": {
+      "draft": "Luonnos",
+      "sent": "Lähetetty",
+      "addressed": "Käsitelty",
+      "resolved": "Ratkaistu",
+      "needsPlacing": "Odottaa sijoitusta"
+    },
+    "panel": {
+      "title": "Merkinnät",
+      "close": "Sulje merkinnät",
+      "empty": "Valitse tekstiä PDF:stä ja valitse Kommentoi, Poista, Korvaa tai Lisää teksti. Tai ota Merkitse alue käyttöön ja vedä laatikko kaavan tai kuvan ympärille.",
+      "failed": "Merkintöjä ei voitu tallentaa. {{error}}",
+      "noSource": "Ei sijaintia lähteessä",
+      "page": "s. {{page}}",
+      "notFound": "Tätä kohtaa ei löytynyt uudesta PDF:stä.",
+      "placing": "Valitse kohta PDF:stä ja valitse sitten Sijoita tähän.",
+      "placeAgain": "Sijoita uudelleen",
+      "include": "Ota mukaan merkintä {{number}}",
+      "resolve": "Merkitse merkintä {{number}} ratkaistuksi",
+      "reopen": "Avaa merkintä {{number}} uudelleen",
+      "delete": "Poista merkintä {{number}}",
+      "editComment": "Muokkaa merkinnän {{number}} kommenttia",
+      "addComment": "Lisää kommentti",
+      "clear": "Poista kaikki",
+      "clearConfirm": "Poistetaanko kaikki tämän projektin merkinnät? Tätä ei voi kumota.",
+      "send": "Lähetä avustajalle ({{n}})"
+    }
+  },
   "package": {
     "error": {
       "passwordIncorrect": "PDF:n salasanaa ei hyväksytty.",
@@ -293,6 +361,9 @@
       "title": "Ruudunlukijatila",
       "pageLabel": "Sivu {{page}}/{{total}}",
       "empty": "Tältä sivulta ei löytynyt luettavaa tekstiä."
+    },
+    "mark": {
+      "badge": "Merkintä {{label}}"
     }
   },
   "presentation": {

@@ -1026,6 +1026,10 @@
         "label": "Edycja na żywo z Overleaf",
         "description": "Edytuj projekty zaimportowane z Overleaf jednocześnie ze współautorami. Zmiany pojawiają się po obu stronach w trakcie pisania. Domyślnie wyłączone, dopóki funkcja jest w wersji beta."
       },
+      "pdfReview": {
+        "description": "Dodawaj adnotacje do skompilowanego PDF: zaznacz tekst albo obrysuj ramką równanie lub rysunek i napisz komentarz. Wyślij adnotacje do asystenta razem z wierszami źródła, na które wskazują. Adnotacje zostają na tym komputerze. Domyślnie wyłączone, dopóki funkcja jest w wersji beta.",
+        "label": "Przegląd PDF"
+      },
       "researchTasks": {
         "description": "Agent pracuje samodzielnie w kopii projektu, a zmiany zostawia Tobie do przejrzenia. Bardzo niestabilne: uruchomienia mogą się zawiesić, zakończyć błędem albo zostawić zmiany do ręcznego uporządkowania, a przez cały czas zużywają limit Twojego dostawcy. Dodaje do Ustawień sekcję Badania. Wyłączenie zatrzymuje wszystkie trwające zadania. Domyślnie wyłączone. Włącz na własne ryzyko.",
         "label": "Zadania badawcze",

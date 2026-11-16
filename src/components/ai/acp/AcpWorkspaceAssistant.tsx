@@ -269,19 +269,21 @@ export function AcpWorkspaceAssistant({
 
   // A hand-off from elsewhere in the app (Generators, Ask AI, selection
   // actions) lands here when this is the assistant in use.
-  const handoffPending = useAgentHandoffStore((state) => (workspace && state.target === "acp" ? state.pendingPrompt : null));
+  const handoffPending = useAgentHandoffStore((state) => workspace && state.target === "acp" && state.pendingPrompt !== null);
   useEffect(() => {
     if (!handoffPending || !agentId || !selectedAgent) return;
     const handoff = useAgentHandoffStore.getState().consume();
     if (!handoff) return;
     const draftId = acpDraftId(projectId, agentId, session);
     const typed = useComposerDrafts.getState().drafts[draftId]?.text ?? "";
-    const text = typed.trim() ? `${typed.trimEnd()}\n\n${handoff.prompt}` : handoff.prompt;
+    let text = handoff.prompt;
+    if (typed.trim()) text = handoff.prompt ? `${typed.trimEnd()}\n\n${handoff.prompt}` : typed;
     const status = session?.status;
     const busy = status === "connecting" || status === "running" || status === "cancelling";
     const sendable = !session || status === "ready" || busy;
     if (!handoff.autoSend || !acpUsable(selectedAgent) || !sendable) {
       useComposerDrafts.getState().setText(draftId, text);
+      useComposerDrafts.getState().addContext(draftId, handoff.context);
       focusComposer();
       return;
     }
@@ -291,6 +293,7 @@ export function AcpWorkspaceAssistant({
       mentions: promptMentions(text, useFilesStore.getState().tree),
       selections: [],
       skill: null,
+      context: [...handoff.context],
     };
     if (!session) {
       startWithDraft(draft);

@@ -1268,6 +1268,27 @@ describe("MessageItem step grouping", () => {
   });
 });
 
+describe("MessageItem context chips", () => {
+  it("shows the context a user message carried as chips, with or without text", () => {
+    const context = [
+      { id: "note:a", kind: "pdfAnnotation", refId: "a", label: "Note on page 2" },
+      { id: "note:b", kind: "pdfAnnotation", refId: "b", label: "Note on page 5" },
+    ];
+    const { getAllByTestId, queryByTestId, rerender, getByText } = render(
+      <MessageItem msg={{ id: "u1", role: "user", content: "", context }} />,
+    );
+    expect(getAllByTestId("user-context-chip").map((chip) => chip.textContent)).toEqual([
+      "Note on page 2",
+      "Note on page 5",
+    ]);
+    rerender(<MessageItem msg={{ id: "u1", role: "user", content: "Please fix these", context }} />);
+    expect(getAllByTestId("user-context-chip")).toHaveLength(2);
+    expect(getByText("Please fix these")).toBeInTheDocument();
+    rerender(<MessageItem msg={{ id: "u2", role: "user", content: "No context" }} />);
+    expect(queryByTestId("user-context-chips")).toBeNull();
+  });
+});
+
 describe("MessageItem streaming render", () => {
   const streamedContent = "# Findings\n\n**bold** and `code`";
 

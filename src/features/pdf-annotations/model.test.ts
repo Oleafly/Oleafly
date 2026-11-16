@@ -1,0 +1,142 @@
+import { describe, expect, it } from "vitest";
+import type { PdfAnnotation } from "@/lib/tauri";
+import {
+  annotationLabel,
+  annotationPrompt,
+  currentSource,
+  followSource,
+  sectionHeading,
+  sourceExcerpt,
+} from "./model";
+
+function annotation(patch: Partial<PdfAnnotation> = {}): PdfAnnotation {
+  return {
+    id: "a1",
+    number: 3,
+    kind: "comment",
+    comment: "Say why this matters.",
+    quote: { text: "the result holds", before: "We show that ", after: " for every n" },
+    page: 4,
+    source: { path: "chapters/intro.tex", startLine: 3, endLine: 4, excerpt: "We show that\nthe result holds" },
+    boxes: [],
+    build: null,
+    origin: "pdf",
+    status: "draft",
+    createdAt: 1,
+    updatedAt: 1,
+    ...patch,
+  };
+}
+
+const TEXT = "\\section{Introduction}\n\nWe show that\nthe result holds\nfor every n.\n";
+
+describe("sourceExcerpt", () => {
+  it("takes the lines in either order and stops at the end of the file", () => {
+    expect(sourceExcerpt("a\nb\nc", 3, 2)).toBe("b\nc");
+    expect(sourceExcerpt("a\nb", 2, 9)).toBe("b");
+    expect(sourceExcerpt("a", 5, 6)).toBe("");
+  });
+});
+
+describe("followSource", () => {
+  const source = { path: "main.tex", startLine: 3, endLine: 4, excerpt: "We show that\nthe result holds" };
+
+  it("keeps the lines when nothing moved", () => {
+    expect(followSource(source, TEXT)).toEqual(source);
+  });
+
+  it("follows the lines when text is added above them", () => {
+    expect(followSource(source, `% new\n% lines\n${TEXT}`)).toEqual({ ...source, startLine: 5, endLine: 6 });
+  });
+
+  it("picks the copy nearest the old lines", () => {
+    const text = "We show that\nthe result holds\nx\ny\nWe show that\nthe result holds\n";
+    expect(followSource({ ...source, startLine: 5, endLine: 6 }, text)).toMatchObject({ startLine: 5 });
+    expect(followSource({ ...source, startLine: 1, endLine: 2 }, text)).toMatchObject({ startLine: 1 });
+  });
+
+  it("returns null when the lines are gone", () => {
+    expect(followSource(source, "\\section{Introduction}\nSomething else\n")).toBeNull();
+  });
+
+  it("follows a long range when a line inside it is edited", () => {
+    const before = Array.from({ length: 30 }, (_, index) => `line number ${index + 1} of the figure`);
+    const long = { path: "main.tex", startLine: 11, endLine: 40, excerpt: before.join("\n") };
+    const edited = [...before];
+    edited[14] = "an edited line that is new";
+    const text = ["% a", "% b", ...Array.from({ length: 10 }, (_, index) => `head ${index}`), ...edited].join("\n");
+    expect(followSource(long, text)).toMatchObject({ startLine: 13, endLine: 42 });
+  });
+
+  it("grows the range when lines are added inside it", () => {
+    const text = "x\ny\nWe show that\n% inserted\n% more\nthe result holds\n";
+    expect(followSource({ ...source, startLine: 3, endLine: 4 }, text)).toMatchObject({ startLine: 3, endLine: 6 });
+  });
+
+  it("keeps the full span when the stored excerpt was cut short", () => {
+    const text = Array.from({ length: 200 }, (_, index) => `distinct line ${index + 1}`).join("\n");
+    const cut = { path: "main.tex", startLine: 50, endLine: 149, excerpt: sourceExcerpt(text, 50, 149) };
+    expect(followSource(cut, `new\n${text}`)).toMatchObject({ startLine: 51, endLine: 150 });
+  });
+
+  it("finds a rewritten paragraph by its words near the old place", () => {
+    const paragraph = { path: "main.tex", startLine: 2, endLine: 2, excerpt: "In this work we employ h = 8 parallel attention heads." };
+    const text = "intro\nfiller\nIn this work we use h = 16 parallel attention heads.\nend\n";
+    expect(followSource(paragraph, text)).toMatchObject({ startLine: 3, endLine: 3 });
+  });
+
+  it("ignores trailing spaces and CRLF", () => {
+    expect(followSource(source, "a\r\nb\r\nWe show that  \r\nthe result holds\r\n")).toMatchObject({ startLine: 3 });
+  });
+});
+
+describe("sectionHeading", () => {
+  it("finds the heading above a line in LaTeX, Typst and Markdown", () => {
+    expect(sectionHeading("a.tex", TEXT, 4)).toBe("Introduction");
+    expect(sectionHeading("a.tex", "\\subsection*[Short]{Long title}\ntext", 2)).toBe("Long title");
+    expect(sectionHeading("a.typ", "= Results\n\ntext", 3)).toBe("Results");
+    expect(sectionHeading("a.md", "## Method ##\ntext", 2)).toBe("Method");
+    expect(sectionHeading("a.bib", "@article{x,}", 1)).toBeNull();
+    expect(sectionHeading("a.tex", "text\nmore", 2)).toBeNull();
+  });
+});
+
+describe("annotationLabel", () => {
+  it("names the note, the file and its lines", () => {
+    expect(annotationLabel(annotation())).toBe("3 · intro.tex:3-4");
+    expect(annotationLabel(annotation({ source: null }))).toBe("3");
+  });
+});
+
+describe("annotationPrompt", () => {
+  it("says what is asked, where it is now, the section, the quote and the source", () => {
+    const note = annotation();
+    const prompt = annotationPrompt(note, currentSource(note, `% one\n${TEXT}`));
+    expect(prompt).toContain("Note 3 on the compiled PDF");
+    expect(prompt).toContain('Location: chapters/intro.tex:4-5 (page 4), in "Introduction".');
+    expect(prompt).toContain("Asked: A comment on this passage.");
+    expect(prompt).toContain("Comment: Say why this matters.");
+    expect(prompt).toContain("Text on the PDF: …We show that [the result holds] for every n…");
+    expect(prompt).toContain("```latex\nWe show that\nthe result holds\n```");
+  });
+
+  it("says so when the lines are gone", () => {
+    const note = annotation({ kind: "delete" });
+    const prompt = annotationPrompt(note, currentSource(note, "nothing here\n"));
+    expect(prompt).toContain("are no longer in the file");
+    expect(prompt).toContain("Asked: Delete this passage.");
+    expect(prompt).not.toContain("Source:");
+  });
+
+  it("says so when the file could not be checked", () => {
+    const note = annotation();
+    expect(annotationPrompt(note, currentSource(note, null))).toContain("were not checked again");
+  });
+
+  it("handles a note with no source", () => {
+    const note = annotation({ source: null, kind: "region", quote: { text: "", before: "", after: "" } });
+    const prompt = annotationPrompt(note, currentSource(note, null));
+    expect(prompt).toContain("Location: page 4. No source location was found.");
+    expect(prompt).not.toContain("Text on the PDF");
+  });
+});

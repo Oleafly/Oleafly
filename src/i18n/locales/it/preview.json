@@ -257,6 +257,74 @@
     "downloadSaved": "PDF salvato correttamente.",
     "downloadFailed": "Non è stato possibile salvare il PDF visualizzato."
   },
+  "annotations": {
+    "toolbar": {
+      "region": "Annota un'area",
+      "list": "Annotazioni ({{n}})"
+    },
+    "composer": {
+      "title": "Nuova annotazione",
+      "action": {
+        "comment": "Commenta",
+        "delete": "Elimina",
+        "replace": "Sostituisci",
+        "insert": "Inserisci"
+      },
+      "label": {
+        "comment": "Commento",
+        "delete": "Elimina",
+        "replace": "Testo sostitutivo",
+        "insert": "Testo da inserire",
+        "region": "Commento sull'area"
+      },
+      "placeholder": {
+        "comment": "Commenta questo passaggio…",
+        "delete": "Perché eliminarlo? (facoltativo)",
+        "replace": "Sostituisci con…",
+        "insert": "Inserisci dopo la selezione…",
+        "region": "Commenta quest'area…"
+      },
+      "placeHere": "Posiziona qui",
+      "cancel": "Annulla",
+      "save": "Aggiungi",
+      "saving": "Salvataggio",
+      "notSaved": "Non salvata."
+    },
+    "kind": {
+      "comment": "Commento",
+      "delete": "Eliminazione",
+      "replace": "Sostituzione",
+      "insert": "Inserimento",
+      "region": "Area"
+    },
+    "status": {
+      "draft": "Bozza",
+      "sent": "Inviata",
+      "addressed": "Gestita",
+      "resolved": "Risolta",
+      "needsPlacing": "Da posizionare"
+    },
+    "panel": {
+      "title": "Annotazioni",
+      "close": "Chiudi le annotazioni",
+      "empty": "Seleziona del testo nel PDF e scegli Commenta, Elimina, Sostituisci o Inserisci. Oppure attiva Annota un'area e trascina un riquadro attorno a un'equazione o a una figura.",
+      "failed": "Impossibile salvare le annotazioni. {{error}}",
+      "noSource": "Nessuna posizione nella sorgente",
+      "page": "p. {{page}}",
+      "notFound": "Questo passaggio non è stato trovato nel nuovo PDF.",
+      "placing": "Seleziona il passaggio nel PDF, poi scegli Posiziona qui.",
+      "placeAgain": "Posiziona di nuovo",
+      "include": "Includi l'annotazione {{number}}",
+      "resolve": "Segna l'annotazione {{number}} come risolta",
+      "reopen": "Riapri l'annotazione {{number}}",
+      "delete": "Elimina l'annotazione {{number}}",
+      "editComment": "Modifica il commento dell'annotazione {{number}}",
+      "addComment": "Aggiungi un commento",
+      "clear": "Elimina tutte",
+      "clearConfirm": "Eliminare tutte le annotazioni di questo progetto? L'operazione non si può annullare.",
+      "send": "Invia all'assistente ({{n}})"
+    }
+  },
   "package": {
     "error": {
       "passwordIncorrect": "La password del PDF non è stata accettata.",
@@ -294,6 +362,9 @@
       "title": "Modalità screen reader",
       "pageLabel": "Pagina {{page}} di {{total}}",
       "empty": "Non è stato trovato nessun testo leggibile in questa pagina."
+    },
+    "mark": {
+      "badge": "Annotazione {{label}}"
     }
   },
   "presentation": {

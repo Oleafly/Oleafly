@@ -1012,6 +1012,10 @@
         "label": "Edição ao vivo com o Overleaf",
         "description": "Edite projetos importados do Overleaf ao mesmo tempo que seus coautores. As alterações aparecem dos dois lados enquanto você digita. Desligado por padrão enquanto está em beta."
       },
+      "pdfReview": {
+        "description": "Anote o PDF compilado: selecione um texto ou arraste um quadro em volta de uma equação ou figura e escreva um comentário. Envie suas anotações ao assistente com as linhas da fonte a que elas se referem. As anotações ficam neste computador. Desativado por padrão enquanto estiver em beta.",
+        "label": "Revisão do PDF"
+      },
       "researchTasks": {
         "description": "Um agente trabalha sozinho em uma cópia do projeto e deixa as alterações para você revisar. Muito instável: as execuções podem travar, falhar ou deixar alterações para resolver à mão, e usam a cota do seu provedor o tempo todo. Adiciona uma seção Pesquisa às Configurações. Ao desligar, todas as tarefas em andamento são interrompidas. Desligado por padrão. Ligue por sua conta e risco.",
         "label": "Tarefas de pesquisa",

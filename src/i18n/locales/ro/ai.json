@@ -248,7 +248,9 @@
     "send": "Trimite",
     "checkAgain": "Verifică din nou",
     "resizeHandle": "Redimensionează caseta de mesaj",
-    "resizeHint": "Trage ca să redimensionezi. Dublu clic pentru dimensiunea inițială."
+    "resizeHint": "Trage ca să redimensionezi. Dublu clic pentru dimensiunea inițială.",
+    "removeContext": "Elimină {{label}}",
+    "contextFailed": "Contextul atașat nu a putut fi citit. Mesajul nu a fost trimis."
   },
   "commands": {
     "groups": {

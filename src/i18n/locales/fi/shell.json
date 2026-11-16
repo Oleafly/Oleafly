@@ -998,6 +998,10 @@
         "label": "Reaaliaikainen muokkaus Overleafin kanssa",
         "description": "Muokkaa Overleafista tuomiasi projekteja samaan aikaan kanssakirjoittajiesi kanssa. Muutokset näkyvät molemmilla puolilla kirjoittaessasi. Oletuksena pois käytöstä beta-vaiheen ajan."
       },
+      "pdfReview": {
+        "description": "Merkitse käännettyyn PDF:ään: valitse tekstiä tai vedä laatikko kaavan tai kuvan ympärille ja kirjoita kommentti. Lähetä merkinnät avustajalle yhdessä lähderivien kanssa, joihin ne osoittavat. Merkinnät pysyvät tällä tietokoneella. Oletuksena pois päältä, kun toiminto on vielä beetavaiheessa.",
+        "label": "PDF-tarkastus"
+      },
       "researchTasks": {
         "description": "Agentti työskentelee itsenäisesti projektin kopiossa ja jättää muutokset sinun tarkistettavaksesi. Erittäin epävakaa: ajot voivat jumittua, epäonnistua tai jättää muutoksia, jotka pitää selvittää käsin, ja ne kuluttavat tekoälypalvelusi kiintiötä koko ajan. Lisää asetuksiin Tutkimus-osion. Kun kytket sen pois, kaikki käynnissä olevat tehtävät pysähtyvät. Oletuksena pois. Ota käyttöön omalla vastuullasi.",
         "label": "Tutkimustehtävät",

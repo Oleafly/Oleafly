@@ -255,6 +255,74 @@
     "downloadSaved": "PDF 已成功儲存。",
     "downloadFailed": "無法儲存顯示中的 PDF。"
   },
+  "annotations": {
+    "toolbar": {
+      "region": "註解區域",
+      "list": "註解（{{n}}）"
+    },
+    "composer": {
+      "title": "新增註解",
+      "action": {
+        "comment": "意見",
+        "delete": "刪除",
+        "replace": "取代",
+        "insert": "插入"
+      },
+      "label": {
+        "comment": "意見",
+        "delete": "刪除",
+        "replace": "取代文字",
+        "insert": "要插入的文字",
+        "region": "對該區域的意見"
+      },
+      "placeholder": {
+        "comment": "對這段內容的意見…",
+        "delete": "為什麼要刪除？（選填）",
+        "replace": "取代為…",
+        "insert": "插入到選取範圍之後…",
+        "region": "對這個區域的意見…"
+      },
+      "placeHere": "放在這裡",
+      "cancel": "取消",
+      "save": "新增",
+      "saving": "正在儲存",
+      "notSaved": "未儲存。"
+    },
+    "kind": {
+      "comment": "意見",
+      "delete": "刪除",
+      "replace": "取代",
+      "insert": "插入",
+      "region": "區域"
+    },
+    "status": {
+      "draft": "草稿",
+      "sent": "已傳送",
+      "addressed": "已處理",
+      "resolved": "已解決",
+      "needsPlacing": "待放置"
+    },
+    "panel": {
+      "title": "註解",
+      "close": "關閉註解",
+      "empty": "在 PDF 上選取文字，然後選擇「意見」「刪除」「取代」或「插入」。也可以開啟「註解區域」，在數學式或圖片周圍拖出一個框。",
+      "failed": "無法儲存註解。{{error}}",
+      "noSource": "沒有原始碼位置",
+      "page": "第 {{page}} 頁",
+      "notFound": "在新的 PDF 中找不到這段內容。",
+      "placing": "在 PDF 上選取這段內容，然後選擇「放在這裡」。",
+      "placeAgain": "重新放置",
+      "include": "包含註解 {{number}}",
+      "resolve": "將註解 {{number}} 標為已解決",
+      "reopen": "重新開啟註解 {{number}}",
+      "delete": "刪除註解 {{number}}",
+      "editComment": "編輯註解 {{number}} 的意見",
+      "addComment": "新增意見",
+      "clear": "全部刪除",
+      "clearConfirm": "要刪除這個專案中的所有註解嗎？此動作無法復原。",
+      "send": "傳送給助理（{{n}}）"
+    }
+  },
   "package": {
     "error": {
       "passwordIncorrect": "PDF 密碼不正確。",
@@ -292,6 +360,9 @@
       "title": "螢幕閱讀器模式",
       "pageLabel": "第 {{page}} 頁，共 {{total}} 頁",
       "empty": "這一頁找不到可讀取的文字。"
+    },
+    "mark": {
+      "badge": "註解 {{label}}"
     }
   },
   "presentation": {

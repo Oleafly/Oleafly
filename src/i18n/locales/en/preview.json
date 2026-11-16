@@ -256,6 +256,74 @@
     "downloadSaved": "PDF saved successfully.",
     "downloadFailed": "The displayed PDF could not be saved."
   },
+  "annotations": {
+    "toolbar": {
+      "region": "Annotate a region",
+      "list": "Annotations ({{n}})"
+    },
+    "composer": {
+      "title": "New annotation",
+      "action": {
+        "comment": "Comment",
+        "delete": "Delete",
+        "replace": "Replace",
+        "insert": "Insert"
+      },
+      "label": {
+        "comment": "Comment",
+        "delete": "Delete",
+        "replace": "Replacement text",
+        "insert": "Text to insert",
+        "region": "Comment on the region"
+      },
+      "placeholder": {
+        "comment": "Comment on this passage…",
+        "delete": "Why delete it? (optional)",
+        "replace": "Replace with…",
+        "insert": "Insert after the selection…",
+        "region": "Comment on this region…"
+      },
+      "placeHere": "Place here",
+      "cancel": "Cancel",
+      "save": "Add",
+      "saving": "Saving",
+      "notSaved": "Not saved."
+    },
+    "kind": {
+      "comment": "Comment",
+      "delete": "Delete",
+      "replace": "Replace",
+      "insert": "Insert",
+      "region": "Region"
+    },
+    "status": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "addressed": "Addressed",
+      "resolved": "Resolved",
+      "needsPlacing": "Needs placing"
+    },
+    "panel": {
+      "title": "Annotations",
+      "close": "Close annotations",
+      "empty": "Select text on the PDF and pick Comment, Delete, Replace or Insert. Or turn on Annotate a region and drag a box around an equation or figure.",
+      "failed": "Annotations couldn't be saved. {{error}}",
+      "noSource": "No source location",
+      "page": "p. {{page}}",
+      "notFound": "This passage wasn't found on the new PDF.",
+      "placing": "Select the passage on the PDF, then choose Place here.",
+      "placeAgain": "Place again",
+      "include": "Include annotation {{number}}",
+      "resolve": "Mark annotation {{number}} resolved",
+      "reopen": "Reopen annotation {{number}}",
+      "delete": "Delete annotation {{number}}",
+      "editComment": "Edit the comment on annotation {{number}}",
+      "addComment": "Add a comment",
+      "clear": "Delete all",
+      "clearConfirm": "Delete all annotations in this project? This can't be undone.",
+      "send": "Send to assistant ({{n}})"
+    }
+  },
   "package": {
     "error": {
       "passwordIncorrect": "The PDF password was not accepted.",
@@ -293,6 +361,9 @@
       "title": "Screen reader mode",
       "pageLabel": "Page {{page}} of {{total}}",
       "empty": "No readable text was found on this page."
+    },
+    "mark": {
+      "badge": "Annotation {{label}}"
     }
   },
   "presentation": {

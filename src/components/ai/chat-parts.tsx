@@ -13,6 +13,7 @@ import {
   Info,
   Paperclip,
   Pencil,
+  Quote,
   RotateCcw,
   Sparkles,
   XCircle,
@@ -1535,6 +1536,21 @@ export const MessageItem = memo(function MessageItem({
         </span>
       )}
       {msg.attachments && <MessageAttachmentRows attachments={msg.attachments} />}
+      {msg.role === "user" && msg.context?.length ? (
+        <div data-testid="user-context-chips" className="flex max-w-[85%] flex-wrap justify-end gap-1">
+          {msg.context.map((item) => (
+            <span
+              key={item.id}
+              data-testid="user-context-chip"
+              data-context-kind={item.kind}
+              className="flex max-w-full items-center gap-1 rounded-md border bg-muted/60 px-1.5 py-0.5 text-[0.6875rem] text-muted-foreground"
+            >
+              <Quote aria-hidden className="size-3 shrink-0" />
+              <span className="truncate">{item.label}</span>
+            </span>
+          ))}
+        </div>
+      ) : null}
       {msg.role === "user" && msg.skill ? (
         <span
           data-testid="user-skill-chip"

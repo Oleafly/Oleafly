@@ -1012,6 +1012,10 @@
         "label": "Édition en direct avec Overleaf",
         "description": "Modifiez les projets importés depuis Overleaf en même temps que vos coauteurs. Les modifications apparaissent des deux côtés pendant que vous tapez. Désactivé par défaut tant que c'est en bêta."
       },
+      "pdfReview": {
+        "description": "Annotez le PDF compilé : sélectionnez du texte ou tracez un cadre autour d'une équation ou d'une figure, puis écrivez un commentaire. Envoyez vos annotations à l'assistant avec les lignes de la source qu'elles désignent. Les annotations restent sur cet ordinateur. Désactivé par défaut tant que la fonction est en bêta.",
+        "label": "Relecture du PDF"
+      },
       "researchTasks": {
         "description": "Un agent travaille seul dans une copie du projet et vous laisse ses modifications à relire. Très instable. Une exécution peut se bloquer, échouer ou laisser des modifications à trier à la main, et elle consomme en continu le quota de votre fournisseur. Ajoute une section Recherche aux Paramètres. La désactiver arrête toutes les tâches en cours. Désactivé par défaut, à activer à vos risques et périls.",
         "label": "Tâches de recherche",

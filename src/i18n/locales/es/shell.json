@@ -1012,6 +1012,10 @@
         "label": "Edición en directo con Overleaf",
         "description": "Edita los proyectos que importaste de Overleaf al mismo tiempo que tus coautores. Los cambios aparecen en ambos lados mientras escribes. Desactivado por omisión mientras siga en beta."
       },
+      "pdfReview": {
+        "description": "Anota el PDF compilado: selecciona texto o arrastra un recuadro alrededor de una ecuación o figura y escribe un comentario. Envía tus anotaciones al asistente con las líneas de la fuente a las que apuntan. Las anotaciones se quedan en este equipo. Desactivado de forma predeterminada mientras siga en beta.",
+        "label": "Revisión del PDF"
+      },
       "researchTasks": {
         "description": "Un agente trabaja por su cuenta en una copia del proyecto y deja sus cambios para que los revises. Muy inestable: las ejecuciones pueden quedarse atascadas, fallar o dejar cambios que tendrás que arreglar a mano, y consumen la cuota de tu proveedor todo el tiempo. Añade una sección Investigación a los Ajustes. Al desactivarlo se detienen todas las tareas en curso. Desactivado por omisión. Actívalo por tu cuenta y riesgo.",
         "label": "Tareas de investigación",

@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DraftAttachment } from "@/components/ai/composer/types";
+import type { ComposerContextItem } from "@/lib/composer-context";
 import {
   builtinComposerId,
   composerHistoryKey,
   composerHolding,
   HISTORY_PROJECT_CHARS,
   draftAttachmentRefs,
+  draftContext,
   draftText,
   holdDraftAttachments,
   registerAttachmentHolder,
@@ -27,6 +29,10 @@ function attachment(id: string, patch: Partial<DraftAttachment> = {}): DraftAtta
     scope: "p1",
     ...patch,
   };
+}
+
+function context(refId: string, kind = "note"): ComposerContextItem {
+  return { id: `${kind}:${refId}`, kind, refId, label: `${kind} ${refId}` };
 }
 
 beforeEach(() => {
@@ -74,6 +80,48 @@ describe("composer drafts", () => {
     ]);
     store.addAttachments("p2:builtin", [attachment("four", { sha256: "c" })]);
     expect(draftAttachmentRefs("p1").sort()).toEqual(["a", "b", "p1"]);
+  });
+});
+
+describe("context in a draft", () => {
+  it("adds context once per kind and reference, and removes it by id", () => {
+    const store = useComposerDrafts.getState();
+    store.addContext("p1:builtin", [context("a"), context("b")]);
+    store.addContext("p1:builtin", [{ ...context("a"), id: "copy", label: "again" }, context("a", "mark")]);
+    expect(draftContext("p1:builtin").map((item) => item.id)).toEqual(["note:a", "note:b", "mark:a"]);
+
+    const before = useComposerDrafts.getState().drafts;
+    store.addContext("p1:builtin", [context("b")]);
+    store.removeContext("p1:builtin", ["missing"]);
+    expect(useComposerDrafts.getState().drafts).toBe(before);
+
+    store.removeContext("p1:builtin", ["note:b"]);
+    expect(draftContext("p1:builtin").map((item) => item.id)).toEqual(["note:a", "mark:a"]);
+  });
+
+  it("keeps a draft that holds only context, and drops it once the context is cleared", () => {
+    const store = useComposerDrafts.getState();
+    store.addContext("p1:builtin", [context("a")]);
+    expect(useComposerDrafts.getState().drafts["p1:builtin"]).toEqual({ text: "", attachments: [], context: [context("a")] });
+    store.setText("p1:builtin", "typed");
+    store.clearContext("p1:builtin");
+    expect(useComposerDrafts.getState().drafts["p1:builtin"]?.context).toEqual([]);
+    store.setText("p1:builtin", "");
+    expect(useComposerDrafts.getState().drafts).not.toHaveProperty("p1:builtin");
+
+    store.addContext("p1:builtin", [context("a")]);
+    store.removeContext("p1:builtin", ["note:a"]);
+    expect(useComposerDrafts.getState().drafts).not.toHaveProperty("p1:builtin");
+    expect(draftContext("p1:builtin")).toEqual([]);
+  });
+
+  it("carries context when a draft moves, without doubling what the target holds", () => {
+    const store = useComposerDrafts.getState();
+    store.addContext("p1:builtin", [context("a"), context("b")]);
+    store.addContext("p1:builtin:chat", [context("b"), context("c")]);
+    store.moveDraft("p1:builtin", "p1:builtin:chat");
+    expect(useComposerDrafts.getState().drafts).not.toHaveProperty("p1:builtin");
+    expect(draftContext("p1:builtin:chat").map((item) => item.refId)).toEqual(["a", "b", "c"]);
   });
 });
 

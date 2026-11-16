@@ -998,6 +998,10 @@
         "label": "Live editing with Overleaf",
         "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
       },
+      "pdfReview": {
+        "description": "Annotate the compiled PDF: select text, or drag a box around an equation or figure, and write a comment. Send your annotations to the assistant with the source lines they point at. Annotations stay on this computer. Off by default while still in beta.",
+        "label": "PDF review"
+      },
       "researchTasks": {
         "description": "An agent works on its own in a copy of the project and leaves its changes for you to review. Highly unstable: runs can stall, fail or leave changes to sort out by hand, and they use your provider's quota the whole time. Adds a Research section to Settings. Turning it off stops every running task. Off by default. Turn it on at your own risk.",
         "label": "Research tasks",

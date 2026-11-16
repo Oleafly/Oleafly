@@ -248,7 +248,9 @@
     "send": "Envoyer",
     "checkAgain": "Vérifier à nouveau",
     "resizeHandle": "Redimensionner la zone de message",
-    "resizeHint": "Faites glisser pour redimensionner. Double-cliquez pour rétablir la taille."
+    "resizeHint": "Faites glisser pour redimensionner. Double-cliquez pour rétablir la taille.",
+    "removeContext": "Retirer {{label}}",
+    "contextFailed": "Impossible de lire le contexte joint. Le message n’a pas été envoyé."
   },
   "commands": {
     "groups": {

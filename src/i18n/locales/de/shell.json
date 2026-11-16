@@ -998,6 +998,10 @@
         "label": "Live-Bearbeitung mit Overleaf",
         "description": "Bearbeiten Sie aus Overleaf importierte Projekte gleichzeitig mit Ihren Koautoren. Änderungen erscheinen beim Tippen auf beiden Seiten. Standardmäßig aus, solange es noch in der Beta ist."
       },
+      "pdfReview": {
+        "description": "Kommentieren Sie das kompilierte PDF: Markieren Sie Text oder ziehen Sie einen Rahmen um eine Formel oder Abbildung, und schreiben Sie einen Kommentar. Senden Sie Ihre Anmerkungen mit den Quellzeilen, auf die sie verweisen, an den Assistenten. Anmerkungen bleiben auf diesem Computer. Standardmäßig aus, solange die Funktion in der Beta ist.",
+        "label": "PDF-Durchsicht"
+      },
       "researchTasks": {
         "description": "Ein Agent arbeitet eigenständig in einer Kopie des Projekts und hinterlässt seine Änderungen, damit Sie sie prüfen können. Sehr instabil: Läufe können hängen bleiben, fehlschlagen oder Änderungen hinterlassen, die Sie von Hand bereinigen müssen, und sie verbrauchen während der gesamten Laufzeit das Kontingent Ihres Anbieters. Fügt den Einstellungen den Bereich Forschung hinzu. Beim Ausschalten werden alle laufenden Aufgaben beendet. Standardmäßig aus. Schalten Sie es auf eigenes Risiko ein.",
         "label": "Forschungsaufgaben",

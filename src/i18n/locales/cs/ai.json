@@ -256,7 +256,9 @@
     "send": "Odeslat",
     "checkAgain": "Zkontrolovat znovu",
     "resizeHandle": "Změnit velikost pole zprávy",
-    "resizeHint": "Přetažením změníte velikost. Dvojitým kliknutím ji obnovíte."
+    "resizeHint": "Přetažením změníte velikost. Dvojitým kliknutím ji obnovíte.",
+    "removeContext": "Odebrat {{label}}",
+    "contextFailed": "Připojený kontext se nepodařilo načíst. Zpráva nebyla odeslána."
   },
   "commands": {
     "groups": {

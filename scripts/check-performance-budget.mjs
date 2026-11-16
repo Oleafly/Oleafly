@@ -216,7 +216,14 @@ const limits = {
   // paste choice, paper export and the live-post setting), 15,569 bytes in all.
   // The entry measures 4,994,041 bytes, and the combined graph 27,231,970
   // bytes on macOS.
-  totalJavaScript: 27_245_000,
+  // +40 KB, on top of 27,245,000, for PDF annotations: the marks layer,
+  // quote search and word snapping in the viewer, placing notes again after a
+  // build, the annotations panel and composer, and context chips in both
+  // composers, 46,118 bytes in all. The panel, the composer and the comment
+  // kit they use load on demand, so the entry grows 19,221 bytes, to
+  // 5,013,262. The combined graph measures 27,278,916 bytes on Linux, against
+  // 27,232,798 for main on the same machine.
+  totalJavaScript: 27_285_000,
   // Russian is the largest catalog. Main measures 983,290 bytes, and the
   // translated Notes settings, shortcuts, errors and agent strings add 13,383.
   // Live editing with an online LaTeX service adds 17,172 more, for 1,013,845.

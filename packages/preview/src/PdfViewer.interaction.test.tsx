@@ -120,6 +120,7 @@ vi.mock("pdfjs-dist", () => {
     readonly width: number;
     readonly height: number;
     readonly userUnit = 1;
+    readonly viewBox: number[];
     readonly rawDims: { pageWidth: number; pageHeight: number; pageX: number; pageY: number };
 
     constructor(
@@ -131,6 +132,7 @@ vi.mock("pdfjs-dist", () => {
       this.width = (quarterTurn ? spec.height : spec.width) * scale;
       this.height = (quarterTurn ? spec.width : spec.height) * scale;
       this.rawDims = { pageWidth: spec.width, pageHeight: spec.height, pageX: 0, pageY: 0 };
+      this.viewBox = [0, 0, spec.width, spec.height];
     }
 
     clone({ scale = this.scale }: { scale?: number; dontFlip?: boolean } = {}) {
@@ -1477,5 +1479,131 @@ describe("PdfViewer geometry", () => {
     await waitFor(() => expect(pageWrap(39)).toHaveStyle({ width: "1224px", height: "1584px" }));
     expect(pageWrap(40)).toHaveStyle({ width: "1280px", height: "1640px" });
     expect(pageWrap(40).dataset.pdfGeometry).toBe("pending");
+  });
+});
+
+describe("PdfViewer annotations", () => {
+  function pointer(type: string, clientX: number, clientY: number): PointerEvent {
+    return new PointerEvent(type, { bubbles: true, cancelable: true, clientX, clientY, button: 0, pointerId: 1 });
+  }
+
+  function toClientPoint() {
+    harness.pageClickToBp.mockImplementation((_wrap, pageNumber, point) => {
+      const { clientX, clientY } = point as { clientX: number; clientY: number };
+      return { page: pageNumber as number, x: clientX, y: clientY };
+    });
+  }
+
+  it("draws marks on their page and opens one from its badge without syncing", async () => {
+    harness.pages = [page("alpha beta"), page("gamma")];
+    const onInverse = vi.fn();
+    const onMarkActivate = vi.fn();
+    const marks = [
+      { id: "a", label: "1", rects: [{ page: 1, x: 10, y: 10, width: 50, height: 12 }] },
+      { id: "b", label: "2", rects: [{ page: 2, x: 10, y: 10, width: 50, height: 12 }] },
+    ];
+    const view = renderViewer({ marks, onInverse, onMarkActivate });
+    await ready();
+
+    await waitFor(() => expect(pageWrap(1).querySelector(".pdf-mark-badge")).not.toBeNull());
+    const badge = pageWrap(1).querySelector<HTMLButtonElement>(".pdf-mark-badge");
+    expect(badge?.textContent).toBe("1");
+    expect(badge?.getAttribute("aria-label")).toBe(t("mark.badge", { label: "1" }));
+    expect(pageWrap(1).querySelectorAll(".pdf-mark-badge")).toHaveLength(1);
+
+    badge?.click();
+    expect(onMarkActivate).toHaveBeenCalledWith("a");
+    expect(onInverse).not.toHaveBeenCalled();
+
+    view.rerender({ marks: [] });
+    await waitFor(() => expect(pageWrap(1).querySelector(".pdf-mark-layer")).toBeNull());
+  });
+
+  it("reports a dragged box while region selection is on, and keeps clicks from syncing", async () => {
+    harness.pages = [page("alpha beta")];
+    toClientPoint();
+    const onInverse = vi.fn();
+    const onSelectRegion = vi.fn();
+    renderViewer({ regionSelect: true, onSelectRegion, onInverse });
+    await ready();
+    const wrap = pageWrap(1);
+    wrap.getBoundingClientRect = () => rect(0, 0, 612, 792);
+
+    wrap.dispatchEvent(pointer("pointerdown", 100, 100));
+    wrap.dispatchEvent(pointer("pointermove", 150, 160));
+    expect(wrap.querySelector(".pdf-region-selection")).not.toBeNull();
+    wrap.dispatchEvent(pointer("pointerup", 200, 220));
+
+    expect(wrap.querySelector(".pdf-region-selection")).toBeNull();
+    expect(onSelectRegion).toHaveBeenCalledWith({
+      page: 1,
+      rect: { page: 1, x: 100, y: 100, width: 100, height: 120 },
+      clientRect: { left: 100, top: 100, width: 100, height: 120 },
+    });
+
+    wrap.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: 120, clientY: 120 }));
+    expect(onInverse).not.toHaveBeenCalled();
+  });
+
+  it("ignores a box too small to mean anything", async () => {
+    harness.pages = [page("alpha beta")];
+    toClientPoint();
+    const onSelectRegion = vi.fn();
+    renderViewer({ regionSelect: true, onSelectRegion });
+    await ready();
+    const wrap = pageWrap(1);
+    wrap.getBoundingClientRect = () => rect(0, 0, 612, 792);
+
+    wrap.dispatchEvent(pointer("pointerdown", 100, 100));
+    wrap.dispatchEvent(pointer("pointerup", 103, 140));
+
+    expect(onSelectRegion).not.toHaveBeenCalled();
+  });
+
+  function stubRangeRects(rects: DOMRect[]) {
+    const original = Object.getOwnPropertyDescriptor(Range.prototype, "getClientRects");
+    Object.defineProperty(Range.prototype, "getClientRects", { configurable: true, value: () => rects });
+    return () => {
+      if (original) Object.defineProperty(Range.prototype, "getClientRects", original);
+      else delete (Range.prototype as { getClientRects?: unknown }).getClientRects;
+    };
+  }
+
+  it("snaps a finished text selection to whole words, reports it with its context, then its end once", async () => {
+    harness.pages = [page("intro alpha beta", "gamma delta")];
+    toClientPoint();
+    const onSelectText = vi.fn();
+    renderViewer({ onSelectText });
+    await pageTextRendered(1);
+    const wrap = pageWrap(1);
+    wrap.getBoundingClientRect = () => rect(0, 0, 612, 792);
+    const container = renderer();
+    const restore = stubRangeRects([rect(40, 20, 60, 12)]);
+    try {
+      const text = wrap.querySelector(".textLayer span")?.firstChild as Text;
+      const selection = document.getSelection() as Selection;
+      selection.setBaseAndExtent(text, 8, text, 13);
+
+      container.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+      await waitFor(() => expect(onSelectText).toHaveBeenCalledTimes(1));
+      expect(selection.toString()).toBe("alpha beta");
+      expect(onSelectText.mock.calls[0][0]).toMatchObject({
+        page: 1,
+        text: "alpha beta",
+        before: "intro",
+        after: "gamma delta",
+        rects: [{ page: 1, x: 40, y: 20, width: 60, height: 12 }],
+      });
+
+      selection.removeAllRanges();
+      document.dispatchEvent(new Event("selectionchange"));
+      await waitFor(() => expect(onSelectText).toHaveBeenLastCalledWith(null));
+      document.dispatchEvent(new Event("selectionchange"));
+      container.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(onSelectText).toHaveBeenCalledTimes(2);
+    } finally {
+      restore();
+    }
   });
 });

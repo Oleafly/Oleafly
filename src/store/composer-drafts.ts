@@ -1,9 +1,11 @@
 import { create } from "zustand";
 import type { DraftAttachment } from "@/components/ai/composer/types";
+import { sameComposerContext, type ComposerContextItem } from "@/lib/composer-context";
 
 export interface ComposerDraft {
   text: string;
   attachments: readonly DraftAttachment[];
+  context: readonly ComposerContextItem[];
 }
 
 interface ComposerDraftsState {
@@ -13,19 +15,34 @@ interface ComposerDraftsState {
   updateAttachment(composerId: string, id: string, patch: Partial<DraftAttachment>): boolean;
   removeAttachments(composerId: string, ids: readonly string[]): void;
   setAttachments(composerId: string, items: readonly DraftAttachment[]): void;
+  addContext(composerId: string, items: readonly ComposerContextItem[]): void;
+  removeContext(composerId: string, ids: readonly string[]): void;
+  clearContext(composerId: string): void;
   moveDraft(fromId: string, toId: string): void;
 }
 
 export const EMPTY_ATTACHMENTS: readonly DraftAttachment[] = Object.freeze([]);
+export const EMPTY_CONTEXT: readonly ComposerContextItem[] = Object.freeze([]);
 
-const EMPTY_DRAFT: ComposerDraft = { text: "", attachments: EMPTY_ATTACHMENTS };
+const EMPTY_DRAFT: ComposerDraft = { text: "", attachments: EMPTY_ATTACHMENTS, context: EMPTY_CONTEXT };
+
+export function mergeComposerContext(
+  current: readonly ComposerContextItem[],
+  items: readonly ComposerContextItem[],
+): readonly ComposerContextItem[] {
+  const merged = [...current];
+  for (const item of items) {
+    if (!merged.some((entry) => sameComposerContext(entry, item))) merged.push(item);
+  }
+  return merged.length === current.length ? current : merged;
+}
 
 function withDraft(
   drafts: Readonly<Record<string, ComposerDraft>>,
   composerId: string,
   draft: ComposerDraft,
 ): Readonly<Record<string, ComposerDraft>> {
-  if (!draft.text && draft.attachments.length === 0) {
+  if (!draft.text && draft.attachments.length === 0 && draft.context.length === 0) {
     if (!(composerId in drafts)) return drafts;
     const { [composerId]: _removed, ...rest } = drafts;
     return rest;
@@ -96,6 +113,37 @@ export const useComposerDrafts = create<ComposerDraftsState>()((set, get) => ({
       };
     });
   },
+  addContext(composerId, items) {
+    if (items.length === 0) return;
+    set((state) => {
+      const current = state.drafts[composerId] ?? EMPTY_DRAFT;
+      const context = mergeComposerContext(current.context, items);
+      if (context === current.context) return state;
+      return { drafts: withDraft(state.drafts, composerId, { ...current, context }) };
+    });
+  },
+  removeContext(composerId, ids) {
+    if (ids.length === 0) return;
+    const remove = new Set(ids);
+    set((state) => {
+      const draft = state.drafts[composerId];
+      if (!draft?.context.some((item) => remove.has(item.id))) return state;
+      const context = draft.context.filter((item) => !remove.has(item.id));
+      return {
+        drafts: withDraft(state.drafts, composerId, {
+          ...draft,
+          context: context.length > 0 ? context : EMPTY_CONTEXT,
+        }),
+      };
+    });
+  },
+  clearContext(composerId) {
+    set((state) => {
+      const draft = state.drafts[composerId];
+      if (!draft || draft.context.length === 0) return state;
+      return { drafts: withDraft(state.drafts, composerId, { ...draft, context: EMPTY_CONTEXT }) };
+    });
+  },
   moveDraft(fromId, toId) {
     if (fromId === toId) return;
     set((state) => {
@@ -108,6 +156,7 @@ export const useComposerDrafts = create<ComposerDraftsState>()((set, get) => ({
         drafts: withDraft(rest, toId, {
           text: [moved.text, target.text].filter(Boolean).join("\n\n"),
           attachments: [...moved.attachments.filter((item) => !known.has(item.id)), ...target.attachments],
+          context: mergeComposerContext(moved.context, target.context),
         }),
       };
     });
@@ -130,6 +179,10 @@ export function draftText(composerId: string): string {
 
 export function draftAttachments(composerId: string): readonly DraftAttachment[] {
   return useComposerDrafts.getState().drafts[composerId]?.attachments ?? EMPTY_ATTACHMENTS;
+}
+
+export function draftContext(composerId: string): readonly ComposerContextItem[] {
+  return useComposerDrafts.getState().drafts[composerId]?.context ?? EMPTY_CONTEXT;
 }
 
 export function composerHolding(composerId: string, attachmentId: string): string | null {

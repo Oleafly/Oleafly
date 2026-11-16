@@ -165,6 +165,22 @@ describe("history", () => {
     );
   });
 
+  it("names the context an earlier message carried instead of sending it again", async () => {
+    const context = [{ id: "note:a", kind: "note", refId: "a", label: "Note on page 2" }];
+    const { messages } = await historyModelMessages(
+      [
+        { role: "user", content: "", context },
+        reply("ok"),
+        { role: "user", content: "And this", context },
+        reply("done"),
+      ],
+      "p1",
+      ctx(),
+    );
+    expect(messages[0].content).toBe("[Context sent with this message, not sent again: Note on page 2.]");
+    expect(messages[2].content).toBe("And this\n\n[Context sent with this message, not sent again: Note on page 2.]");
+  });
+
   it("reports how many turns the history dropped", async () => {
     const prior = Array.from({ length: 30 }, (_, index) => (index % 2 === 0 ? user(`q${index}`) : reply(`a${index}`)));
     const { droppedTurns, messages } = await historyModelMessages(prior, "p1", ctx());

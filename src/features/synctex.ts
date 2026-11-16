@@ -339,6 +339,51 @@ function placeInverseCursor(line: number, column: number | null, word?: string, 
   gotoLine(line);
 }
 
+interface InverseTarget {
+  path: string | null;
+  line: number;
+  column: number | null;
+}
+
+async function resolveInverse(
+  page: number,
+  x: number,
+  y: number,
+  expectedCheckpoint: CompileSuccessCheckpoint | null,
+  beforeLookup?: () => void,
+): Promise<{ context: SyncTexContext; target: InverseTarget } | null> {
+  const store = useFilesStore.getState();
+  const { projectId } = store;
+  if (!projectId) return null;
+  if (!store.engineLoaded || !store.engine.capabilities.supports_synctex) return null;
+  const context = currentSyncTexContext(expectedCheckpoint);
+  if (!context) return null;
+  beforeLookup?.();
+  const mainDoc = resolveEffectiveMainDoc().mainDoc;
+  const typst = store.engine.id === "typst";
+  try {
+    const hit = typst
+      ? await typstInverse(projectId, mainDoc, page, x, y)
+      : await synctexInverse(projectId, mainDoc, page, x, y);
+    if (!hit || !contextStillValid(context)) return null;
+    const target = await resolveInverseTarget(context, hit.file, hit.line);
+    if (!target) return null;
+    return { context, target: { ...target, column: typst && !context[1] ? hit.column : null } };
+  } catch (e) {
+    void logError("synctex inverse", e);
+    return null;
+  }
+}
+
+export async function sourceLineAt(
+  page: number,
+  x: number,
+  y: number,
+  expectedCheckpoint: CompileSuccessCheckpoint | null = null,
+): Promise<InverseTarget | null> {
+  return (await resolveInverse(page, x, y, expectedCheckpoint))?.target ?? null;
+}
+
 export async function inverseFromClick(
   page: number,
   x: number,
@@ -348,29 +393,67 @@ export async function inverseFromClick(
   wordContext?: WordContext,
 ) {
   const store = useFilesStore.getState();
-  const { projectId } = store;
-  const mainDoc = resolveEffectiveMainDoc().mainDoc;
-  if (!projectId) return;
-  if (!store.engineLoaded || !store.engine.capabilities.supports_synctex) return;
-  const context = currentSyncTexContext(expectedCheckpoint);
-  if (!context) return;
-  const currentLine = getCurrentLine();
-  if (word && currentLine != null) selectWordNearLine(currentLine, word, wordContext);
-  const typst = store.engine.id === "typst";
+  const resolved = await resolveInverse(page, x, y, expectedCheckpoint, () => {
+    const currentLine = getCurrentLine();
+    if (word && currentLine != null) selectWordNearLine(currentLine, word, wordContext);
+  });
+  if (!resolved) return;
+  const { context, target } = resolved;
   try {
-    const hit = typst
-      ? await typstInverse(projectId, mainDoc, page, x, y)
-      : await synctexInverse(projectId, mainDoc, page, x, y);
-    if (!contextStillValid(context)) return;
-    if (!hit) return;
-
-    const target = await resolveInverseTarget(context, hit.file, hit.line);
-    if (!target) return;
-    const targetLine = target.line;
-
     if (!(await focusInverseTarget(store, context, target.path))) return;
-    placeInverseCursor(targetLine, typst && !context[1] ? hit.column : null, word, wordContext);
+    placeInverseCursor(target.line, target.column, word, wordContext);
   } catch (e) {
     void logError("synctex inverse", e);
   }
+}
+
+const MAX_FORWARD_LINES = 40;
+
+export async function typesetLinesOf(
+  path: string,
+  startLine: number,
+  endLine: number,
+  expectedCheckpoint: CompileSuccessCheckpoint | null = null,
+): Promise<SynctexRect[] | null> {
+  const files = useFilesStore.getState();
+  const { projectId } = files;
+  if (!projectId || !files.engineLoaded || !files.engine.capabilities.supports_synctex) return null;
+  const context = currentSyncTexContext(expectedCheckpoint);
+  if (!context) return null;
+  const mainDoc = resolveEffectiveMainDoc().mainDoc;
+  const typst = files.engine.id === "typst";
+  const first = Math.min(startLine, endLine);
+  const last = Math.min(Math.max(startLine, endLine), first + MAX_FORWARD_LINES - 1);
+  const rects: SynctexRect[] = [];
+  try {
+    for (let line = first; line <= last; line += 1) {
+      let compiledPath = path;
+      let compiledLine = line;
+      if (context[1]) {
+        const mapped = await mapStaleLine(context, path, line, true);
+        if (!mapped) continue;
+        compiledPath = mapped[0];
+        compiledLine = mapped[2];
+      }
+      const hit: SynctexForwardHit | null = typst
+        ? await typstForward(projectId, mainDoc, compiledPath, compiledLine, null)
+        : await synctexForward(projectId, mainDoc, compiledPath, compiledLine);
+      if (!contextStillValid(context)) return null;
+      if (!hit) continue;
+      const lines: readonly SynctexRect[] = hit.lines?.length ? hit.lines : [hit];
+      for (const rect of lines) {
+        if (!rects.some((seen) => seen.page === rect.page && seen.x === rect.x && seen.y === rect.y)) {
+          rects.push({ page: rect.page, x: rect.x, y: rect.y, width: rect.width, height: rect.height });
+        }
+      }
+    }
+  } catch (e) {
+    void logError("synctex forward", e);
+    return null;
+  }
+  return rects;
+}
+
+export function sourceText(path: string): string | null {
+  return currentSource(path);
 }

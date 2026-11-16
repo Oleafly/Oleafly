@@ -35,6 +35,17 @@ rounded pill with the toolbar role, made of frosted glass (`GLASS_PANEL` from
 `lib/utils`) so the content underneath shows through, blurred, in both themes. The caller places it and gives it an
 `aria-label`; its buttons are `rounded-full` `TooltipIconButton`s.
 
+A panel that slides in over a preview from its left or right edge, such as
+the PDF outline or the annotation list, is a `FloatingSidePanel` from
+`ui/floating-side-panel.tsx`. It brings the frosted card, the header with an
+icon, a title and a close button, and a body that scrolls. Give it `open`,
+`side`, `title`, `closeLabel` and `onClose`. `icon` sits before the title and
+`headerActions` sit before the close button. `ariaLabel` names the panel when
+the title alone is not enough. `width` is a CSS length and defaults to
+`19rem`, and the panel never grows wider than its container. A closed panel
+slides off towards its own edge and turns `inert`, so focus and clicks skip
+it. Its parent needs `relative`. `bodyClassName` changes the body padding.
+
 A file or folder icon is a `FileIcon` or `FolderIcon` from
 `files/fileIcon.tsx`, and a type badge (`TEX`, `PDF`) is a `FileBadge` from the
 same file. Related kinds share a colour token (`--color-file-source`,
@@ -226,6 +237,21 @@ replace one part of the grid, such as the day button, the week number or the
 caption. The kit keeps its own chevrons. The bar with the month arrows lets
 clicks through everywhere but the arrows, so a caption can be a button. It
 lines up with the caption whatever padding you give the grid.
+
+A menu or small form that opens from a button is a `Popover` from
+`ui/popover.tsx`. The button is part of it and the popover keeps its own open
+state. `PopoverItem` is a row that runs an action and closes the popover.
+
+A card that belongs to something on screen that is not a button, such as a
+text selection in a PDF, is an `AnchoredPopover` from the same file. The
+caller owns `open` and `onOpenChange`, and there is no trigger. `anchor` is a
+function that returns a `DOMRect`, or any object with `getBoundingClientRect`,
+such as a `Range`. The popover reads it again whenever it repositions, so the
+card follows the selection while the page scrolls or zooms. Pass the element
+that scrolls with the anchor, or any element inside it, as `contextElement`.
+Without it the popover only follows scrolling of the window. `side`, `align`
+and `sideOffset` place the card, and `hideWhenDetached` hides it while the
+anchor is scrolled out of view. `ariaLabel` names the dialog.
 
 A caption that lets people jump to any month is a `MonthPicker` from
 `ui/month-picker.tsx`. Its trigger reads like "November 2026" with a small
