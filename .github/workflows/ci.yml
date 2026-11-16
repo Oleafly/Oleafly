@@ -610,6 +610,147 @@ jobs:
       - name: Test history on Rust 1.89
         run: cargo +1.89.0 test -p oleafly-history --all-targets
 
+  latexmk-windows:
+    name: Real latexmk (Windows TinyTeX)
+    runs-on: windows-2022
+    timeout-minutes: 90
+    env:
+      OLEAFLY_REQUIRE_REAL_TEX: "1"
+      TINYTEX_URL: https://mirrors.oleafly.com/binaries/tinytex/v2026.08/TinyTeX-v2026.08.zip
+      TINYTEX_SHA256: 313314cdf15ad94e78931f6eff9bfc978f233ece7e5877f26467afe0b40f377b
+      TINYTEX_FINAL_REPOSITORY: https://ftp.math.utah.edu/pub/tex/historic/systems/texlive/2026/tlnet-final
+      TEX_PACKAGES_FILE: crates/oleafly-cli/tests/fixtures/real-latexmk-tex-packages.txt
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: ./.github/actions/rust-toolchain
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: . -> src-tauri/target
+          cache-on-failure: true
+
+      - name: Restore TinyTeX
+        id: tinytex
+        uses: actions/cache/restore@v6
+        with:
+          path: ${{ runner.temp }}\tinytex
+          key: tinytex-${{ env.TINYTEX_SHA256 }}-v1-${{ hashFiles('crates/oleafly-cli/tests/fixtures/real-latexmk-tex-packages.txt') }}
+
+      - name: Install TinyTeX and the packages the tests use
+        if: steps.tinytex.outputs.cache-hit != 'true'
+        timeout-minutes: 30
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $ProgressPreference = 'SilentlyContinue'
+          $archive = Join-Path $env:RUNNER_TEMP 'TinyTeX.zip'
+          $target = Join-Path $env:RUNNER_TEMP 'tinytex'
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            try {
+              Invoke-WebRequest -Uri $env:TINYTEX_URL -OutFile $archive -ConnectionTimeoutSeconds 30 -OperationTimeoutSeconds 120
+              break
+            } catch {
+              if ($attempt -eq 3) { throw }
+              Start-Sleep -Seconds (10 * $attempt)
+            }
+          }
+          $hash = (Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne $env:TINYTEX_SHA256) { throw "TinyTeX archive sha256 is $hash" }
+          & (Join-Path $env:SystemRoot 'System32\tar.exe') -xf $archive -C $env:RUNNER_TEMP
+          if ($LASTEXITCODE -ne 0) { throw "tar exited $LASTEXITCODE" }
+          $extracted = Get-ChildItem $env:RUNNER_TEMP -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'bin\windows\tlmgr.bat') } | Select-Object -First 1
+          if (-not $extracted) { Get-ChildItem $env:RUNNER_TEMP | Format-Table Name; throw 'no bin\windows\tlmgr.bat after extracting TinyTeX' }
+          if ($extracted.FullName -ne $target) { Move-Item $extracted.FullName $target }
+          $tlmgr = Join-Path $target 'bin\windows\tlmgr.bat'
+          function Invoke-Tlmgr([string[]] $Arguments) {
+            for ($attempt = 1; $attempt -le 3; $attempt++) {
+              $output = & $tlmgr @Arguments 2>&1 | Out-String
+              $code = $LASTEXITCODE
+              Write-Output $output
+              if ($output -match 'Cross release updates|older than remote repository') {
+                & $tlmgr option repository $env:TINYTEX_FINAL_REPOSITORY
+                continue
+              }
+              if ($code -eq 0) { return }
+              Get-Content (Join-Path $target 'temp\update-self.log') -ErrorAction SilentlyContinue
+              Start-Sleep -Seconds (20 * $attempt)
+            }
+            throw "tlmgr $($Arguments -join ' ') kept failing"
+          }
+          Invoke-Tlmgr @('-v', 'update', '--self')
+          $packages = Get-Content $env:TEX_PACKAGES_FILE | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+          Invoke-Tlmgr (@('install') + $packages)
+          & (Join-Path $target 'bin\windows\luaotfload-tool.exe') --update
+          if ($LASTEXITCODE -ne 0) { throw "luaotfload-tool exited $LASTEXITCODE" }
+
+      - name: Put TinyTeX and Java on PATH
+        shell: pwsh
+        run: |
+          Add-Content -Path $env:GITHUB_PATH -Value (Join-Path $env:RUNNER_TEMP 'tinytex\bin\windows')
+          if (-not (Get-Command java -ErrorAction SilentlyContinue) -and $env:JAVA_HOME) {
+            Add-Content -Path $env:GITHUB_PATH -Value (Join-Path $env:JAVA_HOME 'bin')
+          }
+
+      - name: Check the TeX install and show its versions
+        shell: pwsh
+        run: |
+          $styles = @('glossaries.sty', 'glossaries-extra.sty', 'nomencl.sty', 'supertabular.sty', 'datatool-base.sty', 'tracklang.sty', 'mfirstuc.sty', 'xfor.sty', 'tocbasic.sty', 'makeidx.sty')
+          $found = @(kpsewhich @styles)
+          if ($found.Count -ne $styles.Count) { throw "kpsewhich found $($found.Count) of $($styles.Count) packages: $($found -join ', ')" }
+          $jar = kpsewhich -format=texmfscripts bib2gls.jar
+          if (-not $jar) { throw 'bib2gls.jar is not installed' }
+          Get-Command latexmk, makeindex, bib2gls, lualatex, java | Format-Table Name, Source
+          latexmk -v
+          java -version
+          tlmgr info --only-installed --data name,cat-version,revision latex l3kernel latexmk glossaries glossaries-extra datatool mfirstuc tracklang xfor nomencl bib2gls supertabular koma-script
+          $global:LASTEXITCODE = 0
+
+      - name: Save TinyTeX
+        if: steps.tinytex.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: ${{ runner.temp }}\tinytex
+          key: ${{ steps.tinytex.outputs.cache-primary-key }}
+
+      - name: Check that latexmk runs under TinyTeX's own Perl
+        shell: pwsh
+        run: |
+          $who = latexmk -norc -e 'print qq/perl=$^X os=$^O\n/; exit 0' | Out-String
+          Write-Output $who
+          if ($who -notmatch 'tlperl' -or $who -notmatch 'os=MSWin32') { throw 'latexmk did not run under TinyTeX tlperl' }
+          latexmk -norc -e 'my $kept = (q/\g/ =~ /^\\g/); exit 0'
+          if ($LASTEXITCODE -ne 0) { throw "tlperl rewrote a backslash pair (latexmk exit $LASTEXITCODE)" }
+
+      - name: Build real documents under TinyTeX's Perl
+        id: tlperl-tests
+        timeout-minutes: 35
+        run: cargo test -p oleafly-cli --test real_latexmk -- --ignored --test-threads=1 --nocapture
+
+      - name: Build real documents under an MSYS Perl (the #452 transport)
+        if: ${{ !cancelled() && steps.tlperl-tests.outcome != 'skipped' }}
+        timeout-minutes: 25
+        shell: pwsh
+        env:
+          TEXLIVE_WINDOWS_TRY_EXTERNAL_PERL: "1"
+        run: |
+          $msys = @((Join-Path $env:ProgramFiles 'Git\usr\bin'), 'C:\msys64\usr\bin') | Where-Object { Test-Path (Join-Path $_ 'perl.exe') } | Select-Object -First 1
+          if (-not $msys) { throw 'no MSYS perl.exe on this runner' }
+          $env:PATH = "$msys;$env:PATH"
+          $who = latexmk -norc -e 'print qq/perl=$^X os=$^O\n/; exit 0' | Out-String
+          Write-Output $who
+          if ($who -notmatch 'os=(msys|cygwin)') { throw "latexmk did not run under the MSYS Perl in $msys" }
+          latexmk -norc -e 'my $kept = (q/\g/ =~ /^\\g/); exit 0'
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output '::notice::The MSYS Perl rewrites backslash pairs, so this pass reproduces the #452 transport'
+          } else {
+            Write-Output '::warning::The MSYS Perl kept backslash pairs, so this pass does not reproduce #452'
+          }
+          $global:LASTEXITCODE = 0
+          cargo test -p oleafly-cli --test real_latexmk -- --ignored --test-threads=1 --nocapture
+
   cargo-deny:
     # RustSec advisories plus a permissive-only license gate for the Rust workspace.
     # Policy lives in src-tauri/deny.toml.
