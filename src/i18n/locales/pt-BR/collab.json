@@ -1313,5 +1313,11 @@
     },
     "takenDown": "Um administrador tirou esta página do ar. Os leitores não conseguem abri-la, e você só pode publicá-la de novo quando ela voltar ao ar. Você ainda pode cancelar a publicação.",
     "tooOld": "O servidor {{server}} é antigo demais para links públicos de notas. O administrador dele precisa atualizar o Oleafly Server."
+  },
+  "overleafBanners": {
+    "signedOut": "You're signed out of {{server}}, so this project isn't syncing. You can keep typing. Your changes stay on this computer and go to Overleaf once you sign in again.",
+    "accountChangedOne": "You're signed in with a different account now, so the changes you made as {{email}} weren't sent. They're kept as {{copy}}.",
+    "accountChangedMany": "You're signed in with a different account now, so the changes you made as {{email}} weren't sent. They're kept as copies next to their files:",
+    "keptAs": "{{file}} is kept as {{copy}}"
   }
 }

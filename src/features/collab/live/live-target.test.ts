@@ -31,6 +31,7 @@ vi.mock("@/lib/tauri-collab", () => ({
   onCollabCommentsNotSent: mocks.listen(),
   onCollabLiveUnwritten: mocks.listen(),
   onCollabLiveDocPending: mocks.listen(),
+  onOverleafLiveAccountChanged: mocks.listen(),
   onCollabLiveProjectFull: mocks.listen(),
 }));
 vi.mock("./live-editing", () => ({ startLiveEditing: mocks.startLiveEditing }));

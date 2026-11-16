@@ -1313,5 +1313,11 @@
     },
     "takenDown": "Un administrator a retras această pagină. Cititorii nu o pot deschide, iar tu nu o poți publica din nou până când nu este repusă. Poți totuși să anulezi publicarea.",
     "tooOld": "{{server}} este prea vechi pentru linkuri publice către notițe. Administratorul lui trebuie să actualizeze Oleafly Server."
+  },
+  "overleafBanners": {
+    "signedOut": "You're signed out of {{server}}, so this project isn't syncing. You can keep typing. Your changes stay on this computer and go to Overleaf once you sign in again.",
+    "accountChangedOne": "You're signed in with a different account now, so the changes you made as {{email}} weren't sent. They're kept as {{copy}}.",
+    "accountChangedMany": "You're signed in with a different account now, so the changes you made as {{email}} weren't sent. They're kept as copies next to their files:",
+    "keptAs": "{{file}} is kept as {{copy}}"
   }
 }

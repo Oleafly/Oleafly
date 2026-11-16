@@ -1873,6 +1873,7 @@ export interface CollabUnsentProject {
   project_id: string;
   name: string;
   changes: number;
+  paths?: string[];
 }
 export interface CollabWriteOutcome {
   handled: boolean;
@@ -1935,6 +1936,11 @@ export interface CollabLiveKeptFile {
   copy: string;
   kind: "replaced" | "added" | "beside";
   by: string | null;
+}
+export interface OverleafLiveAccountChanged {
+  projectId: string;
+  typedAs: { userId: string; email: string };
+  files: CollabLiveKeptFile[];
 }
 export interface CollabLiveKept {
   projectId: string;

@@ -1313,5 +1313,11 @@
     },
     "takenDown": "管理员已下架此页面。在管理员恢复之前，读者无法打开它，你也无法再次发布。你仍然可以取消发布。",
     "tooOld": "{{server}} 版本太旧，不支持笔记公开链接。其管理员需要更新 Oleafly Server。"
+  },
+  "overleafBanners": {
+    "signedOut": "You're signed out of {{server}}, so this project isn't syncing. You can keep typing. Your changes stay on this computer and go to Overleaf once you sign in again.",
+    "accountChangedOne": "You're signed in with a different account now, so the changes you made as {{email}} weren't sent. They're kept as {{copy}}.",
+    "accountChangedMany": "You're signed in with a different account now, so the changes you made as {{email}} weren't sent. They're kept as copies next to their files:",
+    "keptAs": "{{file}} is kept as {{copy}}"
   }
 }

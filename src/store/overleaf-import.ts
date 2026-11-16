@@ -15,6 +15,7 @@ import {
   type OverleafStatus,
 } from "@/lib/overleaf";
 import { logError } from "@/lib/log";
+import type { CollabUnsentProject } from "@oleafly/backend-port";
 
 const SERVER_KEY = "oleafly.overleaf.server";
 
@@ -30,6 +31,7 @@ export type OverleafRowProgress =
 interface OverleafImportState {
   server: string;
   status: OverleafStatus | null;
+  unsent: CollabUnsentProject[] | null;
   projects: OverleafProject[];
   phase: OverleafPhase;
   signingWith: string | null;
@@ -44,7 +46,8 @@ interface OverleafImportState {
   load(): Promise<void>;
   signIn(title: string): Promise<boolean>;
   signInWithBrowser(browser: OverleafSignInBrowser): Promise<boolean>;
-  signOut(): Promise<void>;
+  signOut(keepLocalCopy?: boolean): Promise<void>;
+  staySignedIn(): void;
   toggle(id: string): void;
   setSelected(ids: readonly string[]): void;
   importSelected(ids?: readonly string[]): Promise<OverleafImportOutcome[]>;
@@ -116,6 +119,7 @@ async function signInVia(
 export const useOverleafImportStore = create<OverleafImportState>((set, get) => ({
   server: readServer(),
   status: null,
+  unsent: null,
   projects: [],
   phase: "idle",
   signingWith: null,
@@ -189,14 +193,22 @@ export const useOverleafImportStore = create<OverleafImportState>((set, get) => 
     return signInVia(set, get, browser.name, (server) => overleafSignInWithBrowser(server, browser.key));
   },
 
-  async signOut() {
+  async signOut(keepLocalCopy = false) {
     try {
-      const status = await overleafSignOut(get().server);
-      set({ status, projects: [], selected: [], progress: {}, run: null, phase: "signed-out", error: null });
+      const { unsent = [], ...status } = await overleafSignOut(get().server, keepLocalCopy);
+      if (status.signedIn && unsent.length > 0) {
+        set({ status, unsent, error: null });
+        return;
+      }
+      set({ status, unsent: null, projects: [], selected: [], progress: {}, run: null, phase: "signed-out", error: null });
     } catch (error) {
       void logError("overleaf sign out", error);
-      set({ error });
+      set({ unsent: null, error });
     }
+  },
+
+  staySignedIn() {
+    set({ unsent: null });
   },
 
   toggle(id) {

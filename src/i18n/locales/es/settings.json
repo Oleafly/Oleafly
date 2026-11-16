@@ -1816,7 +1816,14 @@
       "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
       "browserAction": "Sign in",
       "browserPick": "Browser to sign in with",
-      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels."
+      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
+      "unsent": {
+        "title": "Some changes haven't been sent to Overleaf",
+        "description": "If you sign out now, these changes stay on this computer and go to Overleaf the next time you sign in with this account. Sign in with a different account and they come back as copies next to their files instead. Or stay signed in and try again in a moment.",
+        "files": "Not sent yet: {{files}}",
+        "signOut": "Sign out anyway",
+        "stay": "Stay signed in"
+      }
     },
     "desktopApps": {
       "tab": "Computer Use",

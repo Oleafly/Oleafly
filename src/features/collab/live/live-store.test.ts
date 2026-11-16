@@ -70,6 +70,7 @@ vi.mock("@/lib/tauri-collab", () => ({
   onCollabCommentsNotSent: listener("notSent"),
   onCollabLiveUnwritten: listener("unwritten"),
   onCollabLiveDocPending: listener("docPending"),
+  onOverleafLiveAccountChanged: listener("accountChanged"),
   onCollabLiveProjectFull: listener("projectFull"),
 }));
 
@@ -936,7 +937,7 @@ describe("collab live store", () => {
     stop = null;
     await settle();
     expect(mocks.collabLiveStop).toHaveBeenCalledWith(PROJECT);
-    expect(mocks.unlisten).toHaveBeenCalledTimes(12);
+    expect(mocks.unlisten).toHaveBeenCalledTimes(13);
     expect(useCollabLiveStore.getState()).toMatchObject({ projectId: null, share: null, peers: {} });
   });
 });
@@ -1118,7 +1119,7 @@ describe("collab live store edges", () => {
     stop();
     await settle();
     expect(mocks.collabLiveStop).toHaveBeenCalledOnce();
-    expect(mocks.unlisten).toHaveBeenCalledTimes(12);
+    expect(mocks.unlisten).toHaveBeenCalledTimes(13);
   });
 });
 

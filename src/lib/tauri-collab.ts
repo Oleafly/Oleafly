@@ -342,6 +342,7 @@ export const COLLAB_OUTPUT_NOT_SHARED_EVENT = "collab-output-not-shared";
 export const COLLAB_LIVE_UNWRITTEN_EVENT = "collab-live-unwritten";
 export const COLLAB_LIVE_PROJECT_FULL_EVENT = "collab-live-project-full";
 export const COLLAB_LIVE_DOC_PENDING_EVENT = "collab-live-doc-pending";
+export const OVERLEAF_LIVE_ACCOUNT_CHANGED_EVENT = "overleaf-live-account-changed";
 export const COLLAB_UPLOAD_PROGRESS_EVENT = "collab-upload-progress";
 
 export function onCollabUploadProgress(
@@ -357,6 +358,15 @@ export function onCollabLiveProjectFull(
 ): Promise<UnlistenFn> {
   return listen<import("@oleafly/backend-port").CollabLiveProjectFull>(COLLAB_LIVE_PROJECT_FULL_EVENT, ({ payload }) =>
     handler(payload),
+  );
+}
+
+export function onOverleafLiveAccountChanged(
+  handler: (payload: import("@oleafly/backend-port").OverleafLiveAccountChanged) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").OverleafLiveAccountChanged>(
+    OVERLEAF_LIVE_ACCOUNT_CHANGED_EVENT,
+    ({ payload }) => handler(payload),
   );
 }
 

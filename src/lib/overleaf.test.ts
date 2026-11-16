@@ -45,7 +45,7 @@ describe("overleaf bridge", () => {
       ["overleaf_status", { server: null }],
       ["overleaf_status", { server: "https://latex.uni.edu" }],
       ["overleaf_sign_in", { server: null, title: "Sign in" }],
-      ["overleaf_sign_out", { server: "https://www.overleaf.com" }],
+      ["overleaf_sign_out", { server: "https://www.overleaf.com", keepLocalCopy: false }],
       ["overleaf_list_projects", { server: null }],
     ]);
   });

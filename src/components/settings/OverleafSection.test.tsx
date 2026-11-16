@@ -54,7 +54,14 @@ beforeEach(() => {
   cookies.importBrowserCookies.mockReset();
   Element.prototype.hasPointerCapture = vi.fn(() => false);
   Element.prototype.scrollIntoView = vi.fn();
-  useOverleafImportStore.setState({ server: SERVER, status: null, phase: "idle", signingWith: null, error: null });
+  useOverleafImportStore.setState({
+    server: SERVER,
+    status: null,
+    unsent: null,
+    phase: "idle",
+    signingWith: null,
+    error: null,
+  });
 });
 
 describe("OverleafSection", () => {
@@ -80,6 +87,46 @@ describe("OverleafSection", () => {
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent("Oleafly could not sign out of Overleaf."),
     );
+  });
+
+  it("asks before signing out with unsent changes, then signs out and keeps them", async () => {
+    const thesis = { project_id: "p1", name: "Thesis", changes: 2, paths: ["main.tex", "intro.tex"] };
+    api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: true, email: "ada@uni.edu" });
+    api.overleafSignOut
+      .mockResolvedValueOnce({ server: SERVER, signedIn: true, email: "ada@uni.edu", unsent: [thesis] })
+      .mockResolvedValueOnce({ server: SERVER, signedIn: false, email: null, unsent: [thesis] });
+    render(<OverleafSection />);
+    await screen.findByTestId("overleaf-connected");
+    fireEvent.click(screen.getByTestId("overleaf-settings-sign-out"));
+    const question = await screen.findByRole("alertdialog");
+    expect(question).toHaveTextContent("Some changes haven't been sent to Overleaf");
+    expect(within(question).getByTestId("overleaf-unsent-projects")).toHaveTextContent(
+      "ThesisNot sent yet: main.tex, intro.tex",
+    );
+    expect(screen.getByTestId("overleaf-connected")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await userEvent.click(within(question).getByRole("button", { name: /^Sign out anyway/ }));
+    await waitFor(() => expect(screen.queryByTestId("overleaf-connected")).not.toBeInTheDocument());
+    expect(api.overleafSignOut.mock.calls).toEqual([
+      [SERVER, false],
+      [SERVER, true],
+    ]);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("stays signed in when asked about unsent changes", async () => {
+    const thesis = { project_id: "p1", name: "Thesis", changes: 1, paths: ["main.tex"] };
+    api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: true, email: "ada@uni.edu" });
+    api.overleafSignOut.mockResolvedValue({ server: SERVER, signedIn: true, email: "ada@uni.edu", unsent: [thesis] });
+    render(<OverleafSection />);
+    await screen.findByTestId("overleaf-connected");
+    fireEvent.click(screen.getByTestId("overleaf-settings-sign-out"));
+    const question = await screen.findByRole("alertdialog");
+    await userEvent.click(within(question).getByRole("button", { name: /^Stay signed in/ }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    expect(screen.getByTestId("overleaf-connected")).toBeInTheDocument();
+    expect(api.overleafSignOut).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("saves, replaces and removes the Git token for sync", async () => {

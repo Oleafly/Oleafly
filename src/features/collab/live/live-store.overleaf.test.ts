@@ -40,6 +40,7 @@ vi.mock("@/lib/tauri-collab", () => ({
   onCollabCommentsNotSent: listener("notSent"),
   onCollabLiveUnwritten: listener("unwritten"),
   onCollabLiveDocPending: listener("docPending"),
+  onOverleafLiveAccountChanged: listener("accountChanged"),
   onCollabLiveProjectFull: listener("projectFull"),
 }));
 vi.mock("@/lib/overleaf-live", () => ({
@@ -224,6 +225,19 @@ describe("live editing with Overleaf", () => {
     expect(useLiveBackend.getState().pendingPaths).toEqual(["intro.tex"]);
     status({ state: "ended", reason: "failed" });
     expect(useLiveBackend.getState().pendingPaths).toEqual([]);
+  });
+
+  it("keeps an account change for this project until it is dismissed", async () => {
+    begin();
+    await settle();
+    const kept = { id: "k1", path: "main.tex", copy: "main (from ada@uni.edu).tex", kind: "beside" as const, by: "ada@uni.edu" };
+    const typedAs = { userId: "u-ada", email: "ada@uni.edu" };
+    mocks.handlers.accountChanged?.({ projectId: "other", typedAs, files: [kept] });
+    expect(useCollabLiveStore.getState().accountChanged).toBeNull();
+    mocks.handlers.accountChanged?.({ projectId: PROJECT, typedAs, files: [kept] });
+    expect(useCollabLiveStore.getState().accountChanged).toEqual({ projectId: PROJECT, typedAs, files: [kept] });
+    useCollabLiveStore.getState().dismissAccountChanged();
+    expect(useCollabLiveStore.getState().accountChanged).toBeNull();
   });
 
   it("pauses through the installed actions and stays local afterwards", async () => {

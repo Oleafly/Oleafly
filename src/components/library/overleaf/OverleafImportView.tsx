@@ -7,6 +7,7 @@ import { LayoutToggle } from "@/components/library/LayoutToggle";
 import { OverleafBrandIcon } from "@/components/settings/IntegrationBrandIcons";
 import { BrowserSignIn, BrowserSignInCopy } from "@/components/settings/BrowserSignInCopy";
 import { LINK_BUTTON, OverleafServerField } from "@/components/library/overleaf/OverleafServerField";
+import { OverleafSignOutQuestion } from "@/components/library/overleaf/OverleafSignOutQuestion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckBadge } from "@/components/ui/check-badge";
@@ -267,6 +268,7 @@ function SelectionBar({ visibleIds }: Readonly<{ visibleIds: string[] }>) {
           {t(($) => $.library.import.overleaf.signOut)}
         </button>
       </span>
+      <OverleafSignOutQuestion />
     </div>
   );
 }

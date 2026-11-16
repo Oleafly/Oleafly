@@ -19,6 +19,7 @@ import {
 import { useOverleafImportStore } from "@/store/overleaf-import";
 import { BrowserSignIn, BrowserSignInCopy } from "@/components/settings/BrowserSignInCopy";
 import { OverleafServerField, serverHost } from "@/components/library/overleaf/OverleafServerField";
+import { OverleafSignOutQuestion } from "@/components/library/overleaf/OverleafSignOutQuestion";
 
 export function OverleafSection() {
   const { t } = useTranslation("settings");
@@ -53,8 +54,8 @@ export function OverleafSection() {
               setBusy(true);
               setFailed(false);
               await signOut();
-              const after = useOverleafImportStore.getState().status;
-              setFailed(after?.signedIn === true);
+              const after = useOverleafImportStore.getState();
+              setFailed(after.status?.signedIn === true && after.unsent === null);
               setBusy(false);
             }}
           >
@@ -83,6 +84,7 @@ export function OverleafSection() {
         </>
       )}
       <GitTokenField server={status?.server ?? server} />
+      <OverleafSignOutQuestion />
     </IntegrationCard>
   );
 }

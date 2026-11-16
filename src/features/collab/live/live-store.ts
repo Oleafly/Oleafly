@@ -8,6 +8,7 @@ import {
 } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
 import type { OverleafLiveProject } from "@/lib/overleaf-live";
+import type { OverleafLiveAccountChanged } from "@oleafly/backend-port";
 import type {
   CollabCommentNotSent,
   CollabCommentsNotSent,
@@ -36,6 +37,7 @@ import {
   collabShareInfo,
   onCollabCommentsNotSent,
   onCollabLiveDocPending,
+  onOverleafLiveAccountChanged,
   onCollabLiveMembers,
   onCollabLiveMerged,
   onCollabLiveNewDevice,
@@ -138,12 +140,14 @@ export interface CollabLiveStoreState {
   commentsNotSent: CollabCommentNotSent[] | null;
   unwritten: CollabLiveUnwritten["files"];
   projectFull: boolean;
+  accountChanged: OverleafLiveAccountChanged | null;
   refreshShare: () => Promise<void>;
   refreshMembers: () => Promise<void>;
   dismissMerged: () => void;
   dismissEnded: () => void;
   dismissAccessNotice: () => void;
   dismissCommentsNotSent: () => void;
+  dismissAccountChanged: () => void;
   goLiveAgain: () => void;
 }
 
@@ -170,6 +174,7 @@ type LiveData = Omit<
   | "dismissEnded"
   | "dismissAccessNotice"
   | "dismissCommentsNotSent"
+  | "dismissAccountChanged"
   | "goLiveAgain"
 >;
 
@@ -193,6 +198,7 @@ function emptyLive(projectId: string | null): LiveData {
     commentsNotSent: null,
     unwritten: [],
     projectFull: false,
+    accountChanged: null,
   };
 }
 
@@ -260,6 +266,7 @@ export const useCollabLiveStore: UseBoundStore<StoreApi<CollabLiveStoreState>> =
     dismissEnded: () => set({ ended: null }),
     dismissAccessNotice: () => set({ accessNotice: null }),
     dismissCommentsNotSent: () => set({ commentsNotSent: null }),
+    dismissAccountChanged: () => set({ accountChanged: null }),
     goLiveAgain: () => goLiveAgainNow?.(),
   }),
 );
@@ -599,6 +606,11 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     });
   };
 
+  const onAccountChanged = (payload: OverleafLiveAccountChanged) => {
+    if (payload.projectId !== current()) return;
+    store.setState({ accountChanged: payload });
+  };
+
   const expirePeers = () => {
     const peers = store.getState().peers;
     const cutoff = Date.now() - PEER_TTL_MS;
@@ -619,6 +631,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     onCollabServerChanged(onServerChanged),
     onCollabLiveUnwritten(onUnwritten),
     onCollabLiveDocPending(onDocPending),
+    onOverleafLiveAccountChanged(onAccountChanged),
     onCollabLiveProjectFull(onProjectFull),
   ].map((pending) =>
     pending.catch((error) => {

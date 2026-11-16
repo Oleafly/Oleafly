@@ -1,4 +1,5 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
+import type { CollabUnsentProject } from "@oleafly/backend-port";
 
 export const DEFAULT_OVERLEAF_SERVER = "https://www.overleaf.com";
 
@@ -70,8 +71,12 @@ export function overleafSignInWithBrowser(server: string | null | undefined, bro
   return invoke<OverleafStatus>("overleaf_sign_in_with_browser", { server: serverArg(server), browser });
 }
 
-export function overleafSignOut(server?: string | null): Promise<OverleafStatus> {
-  return invoke<OverleafStatus>("overleaf_sign_out", { server: serverArg(server) });
+export interface OverleafSignOut extends OverleafStatus {
+  unsent?: CollabUnsentProject[];
+}
+
+export function overleafSignOut(server?: string | null, keepLocalCopy = false): Promise<OverleafSignOut> {
+  return invoke<OverleafSignOut>("overleaf_sign_out", { server: serverArg(server), keepLocalCopy });
 }
 
 export function overleafListProjects(server?: string | null): Promise<OverleafProjects> {

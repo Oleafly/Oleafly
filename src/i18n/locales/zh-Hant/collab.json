@@ -1313,5 +1313,11 @@
     },
     "takenDown": "管理員已將這個頁面下架。在管理員恢復之前，讀者無法開啟它，你也無法再次發布。你仍然可以取消發布。",
     "tooOld": "{{server}} 的版本太舊，不支援筆記公開連結。伺服器的管理員需要更新 Oleafly Server。"
+  },
+  "overleafBanners": {
+    "signedOut": "You're signed out of {{server}}, so this project isn't syncing. You can keep typing. Your changes stay on this computer and go to Overleaf once you sign in again.",
+    "accountChangedOne": "You're signed in with a different account now, so the changes you made as {{email}} weren't sent. They're kept as {{copy}}.",
+    "accountChangedMany": "You're signed in with a different account now, so the changes you made as {{email}} weren't sent. They're kept as copies next to their files:",
+    "keptAs": "{{file}} is kept as {{copy}}"
   }
 }
