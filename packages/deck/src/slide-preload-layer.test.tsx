@@ -192,6 +192,27 @@ describe("SlidePreloadLayer", () => {
     expect(onDone).toHaveBeenCalledTimes(1);
   });
 
+  it("still finishes when the document's fonts fail to load", async () => {
+    let fontsFailed: () => void = () => {};
+    const ready = new Promise<void>((_resolve, reject) => {
+      fontsFailed = () => reject(new Error("font load failed"));
+    });
+    Object.defineProperty(document, "fonts", { configurable: true, value: { ready } });
+    const onDone = vi.fn();
+    render(<SlidePreloadLayer pages={deck(2)} index={0} onDone={onDone} />);
+
+    await frame();
+    await frame(100);
+    expect(onDone).not.toHaveBeenCalled();
+
+    await act(async () => {
+      fontsFailed();
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    expect(onDone).toHaveBeenCalledTimes(1);
+    expect(root()).toBeNull();
+  });
+
   it("starts over when the deck changes", async () => {
     const view = render(<SlidePreloadLayer pages={deck(3)} index={0} />);
     await frame();
