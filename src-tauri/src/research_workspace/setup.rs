@@ -50,13 +50,32 @@ fn latex_escape(value: &str) -> String {
     escaped
 }
 
-fn typst_escape(value: &str) -> String {
+fn quoted_escape(value: &str) -> String {
     value.replace('\\', "\\\\").replace('"', "\\\"")
 }
 
-fn markdown_escape(value: &str) -> String {
-    value.replace('\\', "\\\\").replace('"', "\\\"")
+fn markdown_text(value: &str) -> String {
+    let mut text = String::with_capacity(value.len());
+    for character in value.chars() {
+        match character {
+            '{' | '}' => {
+                text.push_str("[\\");
+                text.push(character);
+                text.push_str("]{}");
+            }
+            '\'' | '"' => text.push(character),
+            _ if character.is_ascii_punctuation() => {
+                text.push('\\');
+                text.push(character);
+            }
+            _ => text.push(character),
+        }
+    }
+    text
 }
+
+const CALEPIN_PRELUDE: &str =
+    "#import \"/.calepin/calepin.typ\" as calepin\n#show: calepin.document\n\n";
 
 fn section_names(starter: ResearchStarter) -> &'static [&'static str] {
     match starter {
@@ -111,17 +130,21 @@ fn main_document(
                 ),
             )
         }
-        ResearchDocumentEngine::Typst => {
+        ResearchDocumentEngine::Typst | ResearchDocumentEngine::Calepin => {
+            let prelude = if engine == ResearchDocumentEngine::Calepin {
+                CALEPIN_PRELUDE
+            } else {
+                ""
+            };
             let sections = section_names(starter)
                 .iter()
                 .map(|section| format!("== {section}\n\n"))
                 .collect::<String>();
+            let title = quoted_escape(name);
             (
                 "main.typ".into(),
                 format!(
-                    "#set document(title: \"{}\")\n#set page(paper: \"us-letter\", margin: 1in)\n#set text(size: 11pt)\n\n= #text(\"{}\")\n\n#emph[Describe the question, method, and main finding.]\n\n{sections}",
-                    typst_escape(name),
-                    typst_escape(name)
+                    "{prelude}#set document(title: \"{title}\")\n#set page(paper: \"us-letter\", margin: 1in)\n#set text(size: 11pt)\n\n= #text(\"{title}\")\n\n#emph[Describe the question, method, and main finding.]\n\n{sections}"
                 ),
             )
         }
@@ -130,12 +153,25 @@ fn main_document(
                 .iter()
                 .map(|section| format!("## {section}\n\n"))
                 .collect::<String>();
+            let title = markdown_text(name);
             (
                 "main.md".into(),
                 format!(
-                    "---\ntitle: \"{}\"\nauthor: \"\"\n---\n\n# {}\n\n_Describe the question, method, and main finding._\n\n{sections}",
-                    markdown_escape(name),
-                    name
+                    "---\ntitle: \"{}\"\nauthor: \"\"\n---\n\n# {title}\n\n_Describe the question, method, and main finding._\n\n{sections}",
+                    quoted_escape(&title)
+                ),
+            )
+        }
+        ResearchDocumentEngine::Quarto => {
+            let sections = section_names(starter)
+                .iter()
+                .map(|section| format!("# {section}\n\n"))
+                .collect::<String>();
+            (
+                "main.qmd".into(),
+                format!(
+                    "---\ntitle: \"{}\"\nauthor: \"\"\nabstract: \"Describe the question, method, and main finding.\"\nformat: typst\n---\n\n{sections}",
+                    quoted_escape(&markdown_text(name))
                 ),
             )
         }
@@ -237,19 +273,13 @@ pub fn build_preview(request: ResearchProjectRequest) -> Result<ResearchProjectP
     })
 }
 
-fn template_id(engine: ResearchDocumentEngine) -> &'static str {
-    match engine {
-        ResearchDocumentEngine::Latex => "blank",
-        ResearchDocumentEngine::Typst => "blank-typst",
-        ResearchDocumentEngine::Markdown => "blank-markdown",
-    }
-}
-
 fn engine_id(engine: ResearchDocumentEngine, main_document: &str) -> Result<String, String> {
     match engine {
         ResearchDocumentEngine::Latex => crate::project::engine_for_new_project(main_document),
         ResearchDocumentEngine::Typst => Ok("typst".into()),
         ResearchDocumentEngine::Markdown => Ok("markdown".into()),
+        ResearchDocumentEngine::Quarto => Ok("quarto".into()),
+        ResearchDocumentEngine::Calepin => Ok("calepin".into()),
     }
 }
 
@@ -322,15 +352,11 @@ fn write_preview_tree(path: &Path, preview: &ResearchProjectPreview) -> Result<(
     Ok(())
 }
 
-fn create_at(
-    root: &Path,
-    request: ResearchProjectRequest,
-    initialize_template: impl FnOnce(&str, &Path) -> Result<(), String>,
-) -> Result<String, String> {
+pub(super) fn create_at(root: &Path, request: ResearchProjectRequest) -> Result<String, String> {
     let preview = build_preview(request)?;
     let engine = engine_id(preview.engine, &preview.main_document)?;
+    crate::document_engine::engine_for(&engine, &preview.main_document)?;
     let reservation = ProjectReservation::reserve(root)?;
-    initialize_template(template_id(preview.engine), &reservation.path)?;
     write_preview_tree(&reservation.path, &preview)?;
     let mut project = serde_json::json!({
         "name": preview.name,
@@ -361,21 +387,9 @@ fn create_at(
 }
 
 pub fn create(app: &tauri::AppHandle, request: ResearchProjectRequest) -> Result<String, String> {
-    let root = crate::paths::projects_root()?;
-    let project_id = create_at(&root, request, |id, destination| {
-        crate::templates::instantiate(app, id, destination).map(|_| ())
-    })?;
+    let project_id = create_at(&crate::paths::projects_root()?, request)?;
     crate::project::record_tex_spec_for_new_project(app, &project_id);
     Ok(project_id)
-}
-
-#[cfg(test)]
-pub(super) fn create_at_for_test(
-    root: &Path,
-    request: ResearchProjectRequest,
-    initialize_template: impl FnOnce(&str, &Path) -> Result<(), String>,
-) -> Result<String, String> {
-    create_at(root, request, initialize_template)
 }
 
 #[cfg(test)]
