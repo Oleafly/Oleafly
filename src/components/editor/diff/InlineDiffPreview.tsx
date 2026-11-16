@@ -60,6 +60,7 @@ export function InlineDiffPreview({
           },
           ".cm-content": { padding: "6px 0" },
           ".cm-line": { padding: "0 10px" },
+          ".cm-deletedChunk": { paddingLeft: "10px" },
           ".cm-gutters": { paddingRight: "4px" },
         }),
       ],

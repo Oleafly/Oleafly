@@ -143,8 +143,9 @@ describe("OverleafLiveButton", () => {
   it("counts down to the next try while offline", async () => {
     show({ status: { state: "offline", retry_in_ms: 8_000 } });
     await openMenu();
-    expect(screen.getByTestId("overleaf-live-status").textContent).toBe(
-      `${live.reconnecting} ${live.reconnectingIn.replace("{{seconds}}", "8")}`,
+    expect(screen.getByTestId("overleaf-live-status").textContent).toBe(live.reconnecting);
+    expect(screen.getByTestId("overleaf-live-status-note").textContent).toBe(
+      live.reconnectingIn.replace("{{seconds}}", "8"),
     );
   });
 
@@ -152,7 +153,8 @@ describe("OverleafLiveButton", () => {
     useOverleafNotices.setState({ slowAck: true });
     show({ status: { state: "online" }, pending: 1 });
     await openMenu();
-    expect(screen.getByTestId("overleaf-live-status").textContent).toBe(`${live.sending} ${live.notConfirmed}`);
+    expect(screen.getByTestId("overleaf-live-status").textContent).toBe(live.sending);
+    expect(screen.getByTestId("overleaf-live-status-note").textContent).toBe(live.notConfirmed);
     useOverleafNotices.setState({ slowAck: false });
   });
 

@@ -126,6 +126,17 @@ describe("OverleafBanners", () => {
     expect(screen.queryAllByTestId("overleaf-review-row")).toHaveLength(0);
   });
 
+  it("says under the message when a choice could not be applied", async () => {
+    vi.mocked(overleafLiveResolve).mockRejectedValueOnce(new Error("refused"));
+    notices({ reviews: [REVIEW] });
+    render(<OverleafBanners />);
+    const row = screen.getByTestId("overleaf-review-row");
+    await userEvent.click(within(row).getByRole("button", { name: banners.useMine }));
+    const alert = await within(row).findByRole("alert");
+    expect(alert).toHaveTextContent(banners.resolveFailed);
+    expect(alert.parentElement).toHaveTextContent(banners.review.replace("{{path}}", "main.tex"));
+  });
+
   it("compares both copies before choosing", async () => {
     notices({ reviews: [REVIEW] });
     render(<OverleafBanners />);

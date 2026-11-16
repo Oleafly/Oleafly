@@ -46,17 +46,26 @@ function useRetryIn(): number | null {
   return seconds > 0 ? seconds : null;
 }
 
-function useOverleafWords(state: SyncState): { words: string; plain: string } {
+function useOverleafWords(state: SyncState): { words: string; plain: string; notes: string[] } {
   const { t } = useTranslation(["shell"]);
   const pending = useCollabLiveStore((live) => live.pending);
   const slowAck = useOverleafNotices((notices) => notices.slowAck);
   const retryIn = useRetryIn();
   const plain = useSyncWords(state, pending);
-  const notes = [useLiveWords(state, plain)];
+  const words = useLiveWords(state, plain);
+  const notes: string[] = [];
   const dropped = state === "offline" || state === "reconnecting";
   if (dropped && retryIn !== null) notes.push(t(($) => $.shell.overleafLive.reconnectingIn, { seconds: retryIn }));
   if (slowAck) notes.push(t(($) => $.shell.overleafLive.notConfirmed));
-  return { words: notes.join(" "), plain };
+  return { words, plain, notes };
+}
+
+function StatusNotes({ notes }: Readonly<{ notes: string[] }>) {
+  return notes.map((note) => (
+    <span key={note} data-testid="overleaf-live-status-note" className="block">
+      {note}
+    </span>
+  ));
 }
 
 function copyDetails(projectId: string, copied: string, failed: string) {
@@ -87,7 +96,7 @@ export function OverleafLiveButton() {
   const link = useCollabLiveStore((state) => state.overleaf);
   const live = useCollabLiveStore((state) => state.backend === "overleaf" && state.status?.state !== "ended");
   const state = useQuietDrop(useCollabLiveStore(overleafSyncState));
-  const { words, plain } = useOverleafWords(state);
+  const { words, plain, notes } = useOverleafWords(state);
   const { unsent, busy, pause, keepLive } = usePauseLive();
   if (!projectId || !link) return null;
 
@@ -100,7 +109,15 @@ export function OverleafLiveButton() {
   return (
     <>
       <DropdownMenu>
-        <Tooltip label={words} side="bottom">
+        <Tooltip
+          label={
+            <>
+              {words}
+              <StatusNotes notes={notes} />
+            </>
+          }
+          side="bottom"
+        >
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
@@ -118,8 +135,11 @@ export function OverleafLiveButton() {
         <DropdownMenuContent align="end" className="w-72">
           <DropdownMenuLabel className="space-y-0.5">
             <span className="block text-sm">{t(($) => $.shell.overleafLive.title)}</span>
-            <span data-testid="overleaf-live-status" className="block select-text text-xs font-normal text-muted-foreground">
-              {state === "upToDate" ? plain : words}
+            <span className="block select-text text-xs font-normal text-muted-foreground">
+              <span data-testid="overleaf-live-status" className="block">
+                {state === "upToDate" ? plain : words}
+              </span>
+              <StatusNotes notes={notes} />
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />

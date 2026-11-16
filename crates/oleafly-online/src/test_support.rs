@@ -234,14 +234,14 @@ pub fn write_firefox_cookie_store(path: &std::path::Path, rows: &[(&str, &str, &
     }
 }
 
-pub fn zip_bytes(files: &[(&str, &str)]) -> Vec<u8> {
+pub fn zip_bytes(files: &[(impl AsRef<str>, impl AsRef<[u8]>)]) -> Vec<u8> {
     let mut cursor = std::io::Cursor::new(Vec::new());
     {
         let mut writer = zip::ZipWriter::new(&mut cursor);
         let options = zip::write::SimpleFileOptions::default();
         for (name, body) in files {
-            writer.start_file(*name, options).unwrap();
-            writer.write_all(body.as_bytes()).unwrap();
+            writer.start_file(name.as_ref(), options).unwrap();
+            writer.write_all(body.as_ref()).unwrap();
         }
         writer.finish().unwrap();
     }

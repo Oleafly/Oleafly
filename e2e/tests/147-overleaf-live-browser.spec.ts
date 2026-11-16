@@ -43,3 +43,28 @@ test("a paused project with a Git token keeps the Git sync button, marked paused
   await expect(page.getByRole("menuitem", { name: "Resume live editing" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: "Sync now" })).toBeVisible();
 });
+
+test("while offline the toolbar counts down to the next try on its own line", async ({ page }) => {
+  await openHarness(page, "live=offline");
+  await page.getByTestId("overleaf-live-button").click();
+  await expect(page.getByTestId("overleaf-live-status")).toHaveText("Offline. Changes waiting: 3");
+  await expect(page.getByTestId("overleaf-live-status-note")).toHaveText(/^Trying again in [1-4] s\.$/);
+});
+
+test("the banners show maintenance, a review, a merge and an unsteady file, and a review compares both copies", async ({
+  page,
+}) => {
+  await openHarness(page, "live=maintenance&notice=maintenance&notice=review&notice=merged&notice=unsteady");
+  await expect(page.getByTestId("overleaf-maintenance-banner")).toContainText("The server is restarting for an update.");
+  await expect(page.getByTestId("overleaf-merged-row")).toContainText("main.tex");
+  await expect(page.getByTestId("overleaf-unsteady-row")).toContainText("refs.bib");
+  const review = page.getByTestId("overleaf-review-row");
+  await expect(review).toContainText("sections/results.tex");
+  await review.getByRole("button", { name: "Compare" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("Red lines are yours and green lines are Overleaf's.");
+  await expect(dialog.getByRole("button", { name: "Use Overleaf's" })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Use mine" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Close" }).first().click();
+  await expect(dialog).toBeHidden();
+});

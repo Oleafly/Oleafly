@@ -308,6 +308,7 @@ pub struct MockConfig {
     pub upgrade_status: Option<u16>,
     pub permissions_override: Option<String>,
     pub doc_type_override: Option<String>,
+    pub sign_in_as: Option<String>,
 }
 
 impl Default for MockConfig {
@@ -338,6 +339,7 @@ impl Default for MockConfig {
             upgrade_status: None,
             permissions_override: None,
             doc_type_override: None,
+            sign_in_as: None,
         }
     }
 }
@@ -962,7 +964,9 @@ impl State {
         headers: &HashMap<String, String>,
         body: &[u8],
     ) -> Reply {
-        if method == "GET" && path == "/project" {
+        if method == "GET" && path == "/login" {
+            self.login()
+        } else if method == "GET" && path == "/project" {
             self.dashboard(headers)
         } else {
             self.rest(method, path, query, headers, body)
@@ -1008,6 +1012,59 @@ impl State {
             .is_some_and(|cookie| cookie.split(';').any(|pair| pair.trim() == wanted))
     }
 
+    fn login(&self) -> Reply {
+        let Some(user) = self.config.sign_in_as.as_deref().and_then(|name| {
+            self.people()
+                .find(|user| user.email.starts_with(&format!("{name}@")))
+        }) else {
+            return Reply::status(404);
+        };
+        Reply::status(302).header("Location", "/project").header(
+            "Set-Cookie",
+            &format!("overleaf.sid={}; Path=/; HttpOnly", user.session),
+        )
+    }
+
+    fn listed(&self, user: &MockUser) -> Value {
+        let projects: Vec<Value> = self
+            .privilege(&user.id)
+            .map(|privilege| {
+                json!({
+                    "id": self.project_id,
+                    "name": self.project_name,
+                    "lastUpdated": "2026-11-16T10:00:00.000Z",
+                    "accessLevel": privilege.wire_name(),
+                    "owner": {
+                        "id": self.owner.id,
+                        "firstName": self.owner.first_name,
+                        "lastName": self.owner.last_name,
+                        "email": self.owner.email,
+                    },
+                    "archived": false,
+                    "trashed": false,
+                })
+            })
+            .into_iter()
+            .collect();
+        json!({ "totalSize": projects.len(), "projects": projects })
+    }
+
+    fn archive(&self) -> Reply {
+        let entries: Vec<(String, Vec<u8>)> = self
+            .paths()
+            .into_iter()
+            .filter_map(|(path, kind, id)| match kind {
+                "doc" => Some((
+                    path,
+                    sharejs_text::text(&self.docs[&id].visible()).into_bytes(),
+                )),
+                "file" => Some((path, self.files[&id].bytes.clone())),
+                _ => None,
+            })
+            .collect();
+        Reply::ok(super::zip_bytes(&entries)).header("Content-Type", "application/zip")
+    }
+
     fn dashboard(&self, headers: &HashMap<String, String>) -> Reply {
         let Some(user) = self
             .user_for(headers)
@@ -1019,10 +1076,7 @@ impl State {
             ("ol-csrfToken", self.csrf.clone()),
             ("ol-user_id", user.id.clone()),
             ("ol-usersEmail", user.email.clone()),
-            (
-                "ol-prefetchedProjectsBlob",
-                json!({ "projects": [], "totalSize": 0 }).to_string(),
-            ),
+            ("ol-prefetchedProjectsBlob", self.listed(&user).to_string()),
         ];
         let tags: String = metas
             .iter()
@@ -1541,6 +1595,7 @@ impl State {
         match (method, parts.as_slice()) {
             ("GET", [""]) => self.page(&user, query),
             ("GET", ["entities"]) => self.entities(),
+            ("GET", ["download", "zip"]) => self.archive(),
             ("POST", ["doc"]) => self.create_doc(&json_body(), &user),
             ("POST", ["folder"]) => self.create_folder(&json_body(), &user),
             ("POST", ["upload"]) => self.upload(query, headers, body, &user),

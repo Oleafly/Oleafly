@@ -1,4 +1,5 @@
 import { mockIPC, mockWindows } from "@tauri-apps/api/mocks";
+import { loadNamespace } from "/src/i18n";
 import { prepareHarnessI18n } from "./harness-i18n";
 import "/src/styles/globals.css";
 
@@ -32,7 +33,20 @@ mockIPC(
 Object.assign(window, { __calls: calls });
 
 await prepareHarnessI18n();
-const [{ createRoot }, { OverleafSyncButton }, { OverleafLiveSetting }, { applyTheme }, files, react, bridge, liveStore, settings] = await Promise.all([
+await loadNamespace("collab");
+const [
+  { createRoot },
+  { OverleafSyncButton },
+  { OverleafLiveSetting },
+  { applyTheme },
+  files,
+  react,
+  bridge,
+  liveStore,
+  settings,
+  { OverleafBanners },
+  { useOverleafNotices },
+] = await Promise.all([
   import("react-dom/client"),
   import("/src/components/layout/overleaf-sync/OverleafSyncButton"),
   import("/src/components/layout/overleaf-sync/OverleafLiveSetting"),
@@ -42,6 +56,8 @@ const [{ createRoot }, { OverleafSyncButton }, { OverleafLiveSetting }, { applyT
   import("/src/lib/collab-live-bridge"),
   import("/src/features/collab/live/live-store"),
   import("/src/store/settings"),
+  import("/src/features/collab/live/OverleafBanners"),
+  import("/src/features/collab/live/overleaf-notices"),
 ]);
 applyTheme(params.get("theme") === "dark" ? "dark" : "light");
 files.useFilesStore.setState({ projectId: "project-1" });
@@ -55,6 +71,9 @@ if (live) {
     sending: { state: "online" },
     connecting: { state: "connecting" },
     offline: { state: "offline", retry_in_ms: 4000 },
+    reconnecting: { state: "offline", retry_in_ms: 4000 },
+    maintenance: { state: "offline", retry_in_ms: 45_000 },
+    idle: { state: "idle" },
     signedout: null,
     paused: null,
     gitpaused: null,
@@ -75,14 +94,38 @@ if (live) {
     unlink: async () => undefined,
   });
 }
+const notices = new Set(params.getAll("notice"));
+const RESULTS = "\\section{Results}\nThe model converges after 40 epochs.\nAccuracy on the held-out set is 91.2\\%.\n";
+useOverleafNotices.setState({
+  projectId: "project-1",
+  maintenance: notices.has("maintenance")
+    ? { message: "The server is restarting for an update.", until: Date.now() + 45_000 }
+    : null,
+  reviews: notices.has("review")
+    ? [
+        {
+          path: "sections/results.tex",
+          mine: RESULTS,
+          theirs: "\\section{Results}\nThe model converges after 55 epochs.\nAccuracy on the held-out set is 91.2\\%.\n",
+        },
+      ]
+    : [],
+  merged: notices.has("merged")
+    ? [{ path: "main.tex", before: RESULTS, after: `${RESULTS}We report the mean of five runs.\n` }]
+    : [],
+  unsteady: notices.has("unsteady") ? ["refs.bib"] : [],
+  slowAck: params.get("slow") === "1",
+  failed: params.get("failed") === "1" ? "sections/results.tex" : null,
+});
 settings.useSettingsStore.getState().setOverleafLive(params.get("on") === "1");
+const toolbar = react.createElement(
+  "div",
+  { "data-testid": "harness-toolbar", className: "flex h-10 items-center justify-end gap-1 border-b bg-background px-3" },
+  react.createElement(OverleafSyncButton),
+);
 createRoot(document.getElementById("root") as HTMLElement).render(
   params.get("view") === "card"
     ? react.createElement("div", { className: "max-w-2xl space-y-2 p-6" }, react.createElement(OverleafLiveSetting))
-    : react.createElement(
-        "div",
-        { "data-testid": "harness-toolbar", className: "flex h-10 items-center justify-end gap-1 border-b bg-background px-3" },
-        react.createElement(OverleafSyncButton),
-      ),
+    : react.createElement("div", { className: "flex flex-col" }, toolbar, react.createElement(OverleafBanners)),
 );
 document.body.dataset.fixtureState = "mounted";

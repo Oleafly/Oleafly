@@ -51,6 +51,10 @@ harness = false
 name = "realtime_tls"
 required-features = ["test-support"]
 
+[[example]]
+name = "e2e_overleaf"
+required-features = ["test-support"]
+
 [dev-dependencies]
 oleafly-net = { path = "../oleafly-net", features = ["test-support"] }
 oleafly-ot = { path = "../oleafly-ot", features = ["test-support"] }

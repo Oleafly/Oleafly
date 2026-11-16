@@ -2126,3 +2126,61 @@ async fn mock_link_viewers_get_the_restricted_join_like_ce() {
         .remove(0);
     assert!(owner_view["project"]["owner"]["email"].is_string());
 }
+
+#[tokio::test]
+async fn a_configured_login_signs_in_lists_the_project_and_downloads_it() {
+    let mock = MockOverleaf::start(project()).await;
+    let login = format!("{}/login", mock.base);
+    assert_eq!(http().get(&login).send().await.unwrap().status(), 404);
+    mock.configure(|config| config.sign_in_as = Some("bob".into()));
+    let signed = http().get(&login).send().await.unwrap();
+    assert_eq!(signed.status(), 302);
+    assert_eq!(signed.headers()["location"], "/project");
+    let cookie = signed.headers()["set-cookie"]
+        .to_str()
+        .unwrap()
+        .split(';')
+        .next()
+        .unwrap()
+        .to_string();
+    assert_eq!(cookie, mock.user("bob").cookie());
+    let dashboard = |cookie: String| {
+        let base = mock.base.clone();
+        async move {
+            http()
+                .get(format!("{base}/project"))
+                .header("cookie", cookie)
+                .send()
+                .await
+                .unwrap()
+                .text()
+                .await
+                .unwrap()
+        }
+    };
+    let listed = dashboard(cookie.clone()).await;
+    assert!(listed.contains(&mock.project_id()));
+    assert!(listed.contains("readAndWrite"));
+    assert!(!dashboard(mock.user("zed").cookie())
+        .await
+        .contains(&mock.project_id()));
+    let bytes = http()
+        .get(url(&mock, "/download/zip"))
+        .header("cookie", &cookie)
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+    let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes.to_vec())).unwrap();
+    let mut names: Vec<String> = archive
+        .file_names()
+        .map(|name| name.unwrap().into_owned())
+        .collect();
+    names.sort();
+    assert_eq!(names, ["figure.png", "main.tex", "sections/other.tex"]);
+    let mut main = String::new();
+    std::io::Read::read_to_string(&mut archive.by_name("main.tex").unwrap(), &mut main).unwrap();
+    assert_eq!(main, "\\documentclass{article}\nHello");
+}

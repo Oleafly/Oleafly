@@ -1325,14 +1325,14 @@
     "merged": "Merged changes from Overleaf into {{path}}.",
     "showChanges": "Show changes",
     "mergedTitle": "Changes merged into {{path}}",
-    "mergedDescription": "What the merge changed in your text.",
+    "mergedDescription": "Changes from Overleaf are now in your text. Green lines are new and red lines were taken out.",
     "review": "{{path}} changed here and on Overleaf. Choose which version to keep.",
     "compare": "Compare",
     "useMine": "Use mine",
     "useTheirs": "Use Overleaf's",
-    "reviewTitle": "{{path}}: yours and Overleaf's",
-    "reviewDescription": "Use mine sends your text to Overleaf. Use Overleaf's keeps your text as a copy beside the file.",
-    "resolveFailed": "Couldn't apply your choice for {{path}}. Try again.",
+    "reviewTitle": "{{path}}: your version and Overleaf's",
+    "reviewDescription": "Red lines are yours and green lines are Overleaf's. \"Use mine\" sends your text to Overleaf. \"Use Overleaf's\" puts Overleaf's text in the file and saves yours as a copy next to it.",
+    "resolveFailed": "Couldn't apply your choice. Try again.",
     "unsteady": "Overleaf keeps disconnecting {{path}} after someone else's edits. It reconnects on its own.",
     "diffLabel": "Differences"
   }

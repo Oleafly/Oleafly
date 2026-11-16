@@ -108,17 +108,17 @@ function ReviewRows({ onShow }: { onShow: (shown: Shown) => void }) {
   return reviews.map((entry) => (
     <WorkspaceBanner key={entry.path} tone="warning" data-testid="overleaf-review-row">
       <TriangleAlert aria-hidden className="size-3.5 shrink-0" />
-      <p className="min-w-0 flex-1 select-text">{t(($) => $.collab.overleafBanners.review, { path: entry.path })}</p>
+      <div className="min-w-0 flex-1 select-text">
+        <p>{t(($) => $.collab.overleafBanners.review, { path: entry.path })}</p>
+        {failed === entry.path ? (
+          <p role="alert" className="font-semibold">
+            {t(($) => $.collab.overleafBanners.resolveFailed)}
+          </p>
+        ) : null}
+      </div>
       <span className="flex shrink-0 items-center gap-1">
         <WorkspaceBannerButton tone="warning" onClick={() => onShow({ kind: "review", entry })}>
           {t(($) => $.collab.overleafBanners.compare)}
-        </WorkspaceBannerButton>
-        <WorkspaceBannerButton
-          tone="warning"
-          disabled={resolving !== null}
-          onClick={() => void resolve(entry.path, "mine")}
-        >
-          {t(($) => $.collab.overleafBanners.useMine)}
         </WorkspaceBannerButton>
         <WorkspaceBannerButton
           tone="warning"
@@ -127,12 +127,14 @@ function ReviewRows({ onShow }: { onShow: (shown: Shown) => void }) {
         >
           {t(($) => $.collab.overleafBanners.useTheirs)}
         </WorkspaceBannerButton>
+        <WorkspaceBannerButton
+          tone="warning"
+          disabled={resolving !== null}
+          onClick={() => void resolve(entry.path, "mine")}
+        >
+          {t(($) => $.collab.overleafBanners.useMine)}
+        </WorkspaceBannerButton>
       </span>
-      {failed === entry.path ? (
-        <p role="alert" className="basis-full pb-1 text-destructive">
-          {t(($) => $.collab.overleafBanners.resolveFailed, { path: entry.path })}
-        </p>
-      ) : null}
     </WorkspaceBanner>
   ));
 }
@@ -201,7 +203,7 @@ function CompareDialog({ shown, onClose }: { shown: Shown; onClose: () => void }
             <Button type="button" variant="outline" size="sm" disabled={resolving !== null} onClick={() => keep("theirs")}>
               {t(($) => $.collab.overleafBanners.useTheirs)}
             </Button>
-            <Button type="button" size="sm" disabled={resolving !== null} onClick={() => keep("mine")}>
+            <Button type="button" variant="outline" size="sm" disabled={resolving !== null} onClick={() => keep("mine")}>
               {t(($) => $.collab.overleafBanners.useMine)}
             </Button>
           </>
