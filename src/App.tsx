@@ -43,7 +43,6 @@ import { useKeptAliveHost } from "@/components/layout/KeptAliveSlot";
 import { PaneReorderProvider } from "@/components/layout/pane-reorder";
 import { PaneTreeGroup, PaneTreeProvider, type PaneTreeConfig } from "@/components/layout/PaneTree";
 import { paneVisibility, usePaneLayoutStore, type PaneId } from "@/store/pane-layout";
-import { PdfImportView } from "@/components/import/PdfImportView";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { SearchOmnibar } from "@/components/layout/SearchOmnibar";
@@ -51,7 +50,6 @@ import { GlobalNewProject } from "@/components/library/GlobalNewProject";
 import { SaveAsTemplateHost } from "@/components/library/SaveAsTemplateHost";
 import { BibtexToolView } from "@/components/tools/BibtexToolView";
 import { TableToolView } from "@/components/tools/TableToolView";
-import { DeadlinesView } from "@/components/deadlines/DeadlinesView";
 import { LatexToolsView } from "@/components/tools/LatexToolsView";
 import { LabSearchToolView } from "@/components/tools/LabSearchToolView";
 import { loadNamespace } from "@/i18n";
@@ -251,6 +249,10 @@ const ConverterToolView = lazy(() =>
   import("@/components/tools/ConverterToolView").then((m) => ({ default: m.ConverterToolView })), { warm: latexToolsOn });
 const ReferenceToolView = lazy(() =>
   import("@/components/tools/ReferenceToolView").then((m) => ({ default: m.ReferenceToolView })), { intent: "reference" });
+const PdfImportView = lazy(() =>
+  import("@/components/import/PdfImportView").then((m) => ({ default: m.PdfImportView })), { warm: true });
+const DeadlinesView = lazy(() =>
+  import("@/components/deadlines/DeadlinesView").then((m) => ({ default: m.DeadlinesView })), { warm: true });
 const LiteratureSearchToolView = lazy(() =>
   import("@/components/tools/LiteratureSearchToolView").then((m) => ({
     default: m.LiteratureSearchToolView,
