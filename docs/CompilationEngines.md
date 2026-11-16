@@ -180,9 +180,13 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
   DVI settings above. A file's name decides its content, so two builds sharing
   a folder never rewrite each other's settings. The rules come from
   `crates/oleafly-core/resources/latexmk/oleafly.latexmkrc`. No Perl goes on
-  the command line. On Windows, TeX Live's `latexmk.exe` passes its command line to Perl
-  as raw text, and Perl's own parsing turned `\\` into `\`, which broke every
-  compile (#452). The rules build the `makeindex` route of `glossaries`,
+  the command line. On Windows, TeX Live's `latexmk.exe` passes its command
+  line to Perl as raw text. When `TEXLIVE_WINDOWS_TRY_EXTERNAL_PERL` is 1,
+  which install-tl sets if it finds a Perl at install time (TinyTeX's portable
+  install doesn't), runscript runs the first `perl.exe` on PATH. An MSYS or
+  Cygwin Perl, such as the one in Git for Windows, turns `\\` into `\` there,
+  which broke every compile (#452). TeX Live's own Perl keeps the pair. The
+  `latexmk-windows` CI job builds real documents under both. The rules build the `makeindex` route of `glossaries`,
   including `order=letter`, `nomencl` lists, and `glossaries-extra` record
   glossaries with `bib2gls`. bib2gls runs for the resources
   `\GlsXtrLoadResources` writes, which are named after the job, and runs again
