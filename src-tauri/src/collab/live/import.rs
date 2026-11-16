@@ -67,7 +67,7 @@ impl Scanned {
     pub(super) fn classify(self, read: &(impl TreeRead + ?Sized)) -> LocalImport {
         let mut import = self.import;
         for (path, id, text, hash) in self.known_texts {
-            if read.text(&id).ok().as_deref() == Some(text.as_str()) {
+            if read.text(&id).ok().flatten().as_deref() == Some(text.as_str()) {
                 import.restamped.push((path, hash));
             } else {
                 import.texts.push((path, text, hash));

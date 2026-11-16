@@ -15,6 +15,7 @@ vi.mock("@tauri-apps/plugin-shell", () => ({ open: vi.fn(async () => {}) }));
 vi.mock("@/lib/log", () => ({ logError: vi.fn(async () => {}) }));
 
 import { open as openExternal } from "@tauri-apps/plugin-shell";
+import { useLiveBackend } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "@/store/files";
 import { useOverleafSyncStore } from "@/store/overleaf-sync";
 import { OverleafSyncButton } from "./OverleafSyncButton";
@@ -61,6 +62,7 @@ beforeEach(() => {
   for (const action of Object.values(actions)) action.mockClear();
   (useFilesStore as unknown as { setState: (state: unknown) => void }).setState({ projectId: "p1", files: {} });
   setSync();
+  useLiveBackend.setState({ projectId: null, backend: null });
 });
 
 afterEach(() => {
@@ -189,5 +191,23 @@ describe("OverleafSyncButton", () => {
       vi.advanceTimersByTime(4 * 60_000);
     });
     expect(actions.sync).not.toHaveBeenCalled();
+  });
+
+  it("never syncs on its own while the project is live on Overleaf", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    useLiveBackend.setState({ projectId: "p1", backend: "overleaf" });
+    setSync({ status: status({ linked: true, remoteId: "ov1", tokenSaved: true, auto: true }) });
+    render(<OverleafSyncButton />);
+    await act(async () => {
+      vi.advanceTimersByTime(4 * 60_000);
+    });
+    expect(actions.sync).not.toHaveBeenCalled();
+
+    useLiveBackend.setState({ backend: null });
+    await act(async () => {
+      vi.advanceTimersByTime(3 * 60_000);
+    });
+    expect(actions.sync).toHaveBeenCalledWith(null, "auto");
   });
 });

@@ -17,6 +17,7 @@ use super::bases::WrittenTexts;
 use super::host::LiveHost;
 use super::live_disk::{LiveWriter, Mirrored};
 use super::live_tree::LiveTree;
+use super::overleaf::OverleafLive;
 use super::payloads::StatusPayload;
 use super::{local_copy, settings};
 use crate::collab::disk::DiskState;
@@ -90,17 +91,22 @@ pub(super) struct Upkeep {
 #[derive(Clone)]
 pub enum Live {
     Server(Arc<Active>),
+    Overleaf(Arc<OverleafLive>),
 }
 
 impl Live {
     pub fn project_id(&self) -> &str {
-        let Live::Server(active) = self;
-        &active.local.project_id
+        match self {
+            Live::Server(active) => &active.local.project_id,
+            Live::Overleaf(live) => live.project_id(),
+        }
     }
 
     pub(super) fn server(&self) -> Option<&Arc<Active>> {
-        let Live::Server(active) = self;
-        Some(active)
+        match self {
+            Live::Server(active) => Some(active),
+            Live::Overleaf(_) => None,
+        }
     }
 }
 

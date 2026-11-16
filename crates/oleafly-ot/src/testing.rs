@@ -280,6 +280,7 @@ impl EditorDoc {
                 self.clamp_cursor();
                 Reaction::Nothing
             }
+            DocMessage::Detached { .. } => Reaction::Nothing,
         }
     }
 

@@ -14,6 +14,7 @@ mod live_tree;
 pub mod local_copy;
 mod local_events;
 mod moves;
+pub(crate) mod overleaf;
 mod owed;
 mod pacing;
 mod payloads;

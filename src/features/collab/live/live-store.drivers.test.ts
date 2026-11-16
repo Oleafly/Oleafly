@@ -54,6 +54,7 @@ vi.mock("@/store/files", async () => {
   };
 });
 
+import { liveOnOverleaf } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "@/store/files";
 import { startCollabLive, useCollabLiveStore } from "./live-store";
 
@@ -114,6 +115,26 @@ describe("live backend drivers", () => {
       backend: "overleaf",
       role: "editor",
     });
+    expect(liveOnOverleaf(ON_OVERLEAF)).toBe(true);
+    expect(liveOnOverleaf(ON_SERVER)).toBe(false);
+  });
+
+  it("tells the rest of the app a project is live on Overleaf only while it is", async () => {
+    const calls: string[] = [];
+    const server = driverFor("server", ON_SERVER, calls);
+    const overleaf = driverFor("overleaf", ON_OVERLEAF, calls);
+    openProject(ON_OVERLEAF);
+    stop = startCollabLive({ drivers: [server, overleaf] });
+    await settle();
+    expect(liveOnOverleaf(ON_OVERLEAF)).toBe(true);
+    mocks.handlers.status?.({ projectId: ON_OVERLEAF, status: { state: "ended", reason: "stopped" }, pending: 0 });
+    expect(liveOnOverleaf(ON_OVERLEAF)).toBe(false);
+    openProject(ON_SERVER);
+    await settle();
+    expect(liveOnOverleaf(ON_OVERLEAF)).toBe(false);
+    stop();
+    stop = null;
+    expect(liveOnOverleaf(ON_SERVER)).toBe(false);
   });
 
   it("switching projects stops the previous driver first", async () => {

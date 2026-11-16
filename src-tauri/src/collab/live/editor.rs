@@ -17,7 +17,10 @@ pub fn doc_open(
     let Some(slot) = live_for(project_id) else {
         return Ok(None);
     };
-    let Live::Server(active) = slot;
+    let active = match slot {
+        Live::Server(active) => active,
+        Live::Overleaf(live) => return Ok(live.open(path, sink)),
+    };
     let mut live = lock(&active.live);
     let layout = materialize::layout(&live.doc().nodes()?);
     let Some((id, _)) = layout
@@ -42,7 +45,10 @@ pub fn doc_change(
     rev: u64,
     operation: TextOperation,
 ) -> Result<(), CollabError> {
-    let Live::Server(active) = live_for(project_id).ok_or_else(not_live)?;
+    let active = match live_for(project_id).ok_or_else(not_live)? {
+        Live::Server(active) => active,
+        Live::Overleaf(live) => return live.change(file_id, rev, operation),
+    };
     let (suggested, refused) = {
         let mut live = lock(&active.live);
         let reviewed = live.suggesting()
@@ -77,8 +83,10 @@ pub fn doc_change(
 }
 
 pub fn document_snapshot(project_id: &str) -> Option<Result<Vec<u8>, CollabError>> {
-    live_for(project_id)
-        .map(|Live::Server(active)| lock(&active.live).guarded(|live| live.doc().snapshot()))
+    live_for(project_id).and_then(|live| match live {
+        Live::Server(active) => Some(lock(&active.live).guarded(|live| live.doc().snapshot())),
+        Live::Overleaf(_) => None,
+    })
 }
 
 pub(in crate::collab) fn read_live<T>(
@@ -132,9 +140,12 @@ pub(in crate::collab) fn edit_live<T>(
 }
 
 pub fn doc_close(project_id: &str, file_id: &str, session: u64) {
-    if let Some(live) = live_for(project_id) {
-        let Live::Server(active) = live;
-        lock(&active.live).close_file(file_id, session);
+    match live_for(project_id) {
+        Some(Live::Server(active)) => {
+            lock(&active.live).close_file(file_id, session);
+        }
+        Some(Live::Overleaf(live)) => live.close(file_id, session),
+        None => {}
     }
 }
 
@@ -144,20 +155,20 @@ pub fn presence_set(
     cursor: Option<u32>,
     anchor: Option<u32>,
 ) {
-    if let Some(live) = live_for(project_id) {
-        let Live::Server(active) = live;
-        active.handle.presence(PresenceState {
+    match live_for(project_id) {
+        Some(Live::Server(active)) => active.handle.presence(PresenceState {
             file_id: path.filter(|path| path.len() <= 256),
             cursor,
             anchor,
-        });
+        }),
+        Some(Live::Overleaf(_)) | None => {}
     }
 }
 
 pub fn presence_leave(project_id: &str) {
-    if let Some(live) = live_for(project_id) {
-        let Live::Server(active) = live;
-        active.handle.leave_presence();
+    match live_for(project_id) {
+        Some(Live::Server(active)) => active.handle.leave_presence(),
+        Some(Live::Overleaf(_)) | None => {}
     }
 }
 

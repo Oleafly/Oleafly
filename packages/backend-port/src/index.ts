@@ -1259,6 +1259,9 @@ export type CollabErrorCode =
     | "share_in_progress"
     | "cancelled"
     | "cloud_synced"
+    | "overleaf_linked"
+    | "collab_shared"
+    | "live_elsewhere"
     | "owner_away"
     | "wrong_server"
     | "suggestion_not_found"
@@ -1348,6 +1351,7 @@ export type CollabLiveState =
     | { state: "connecting" }
     | { state: "online" }
     | { state: "offline"; retry_in_ms: number }
+    | { state: "signed_out" }
     | { state: "ended"; reason: CollabLiveEndReason | CollabSessionEnd };
 export interface CollabLiveStatus {
     projectId: string;
@@ -1407,7 +1411,8 @@ export type CollabTextOperation = (number | string)[];
 export type CollabDocMessage =
     | { kind: "ack"; rev: number; length: number }
     | { kind: "remote"; rev: number; op: CollabTextOperation; length: number }
-    | { kind: "reset"; rev: number; text: string };
+    | { kind: "reset"; rev: number; text: string }
+    | { kind: "detached"; reason: string };
 export interface CollabDocOpened {
     file_id: string;
     rev: number;

@@ -35,7 +35,7 @@ pub(super) enum TreeAnswer {
 
 pub(super) trait TreeRead {
     fn nodes(&self) -> Result<Vec<FileNode>, CollabError>;
-    fn text(&self, id: &str) -> Result<String, CollabError>;
+    fn text(&self, id: &str) -> Result<Option<String>, CollabError>;
     fn crlf(&self, id: &str) -> bool;
 }
 
@@ -66,8 +66,8 @@ impl TreeRead for LiveProject {
         self.doc().nodes()
     }
 
-    fn text(&self, id: &str) -> Result<String, CollabError> {
-        self.doc().text(id)
+    fn text(&self, id: &str) -> Result<Option<String>, CollabError> {
+        self.doc().text(id).map(Some)
     }
 
     fn crlf(&self, id: &str) -> bool {
@@ -80,8 +80,8 @@ impl TreeRead for Active {
         lock(&self.live).doc().nodes()
     }
 
-    fn text(&self, id: &str) -> Result<String, CollabError> {
-        lock(&self.live).doc().text(id)
+    fn text(&self, id: &str) -> Result<Option<String>, CollabError> {
+        lock(&self.live).doc().text(id).map(Some)
     }
 
     fn crlf(&self, id: &str) -> bool {

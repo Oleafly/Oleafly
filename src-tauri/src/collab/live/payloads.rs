@@ -14,6 +14,22 @@ pub const LIVE_MEMBERS_EVENT: &str = "collab-live-members";
 pub const CHANGE_SKIPPED_EVENT: &str = "collab-change-skipped";
 pub const PROJECT_FULL_EVENT: &str = "collab-live-project-full";
 pub const LIVE_WRITTEN_EVENT: &str = "collab-live-written";
+pub const ACCOUNT_CHANGED_EVENT: &str = "overleaf-live-account-changed";
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TypedAs {
+    pub user_id: String,
+    pub email: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountChangedPayload {
+    pub project_id: String,
+    pub typed_as: TypedAs,
+    pub files: Vec<super::kept::KeptFile>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]

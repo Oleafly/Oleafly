@@ -10,14 +10,14 @@ use oleafly_collab::materialize::{self, Layout};
 use oleafly_collab::CollabError;
 
 use super::disk_pass::{apply_to_disk, DiskPass, LeftAlone};
-use super::import::{placed_now, scan_local};
+use super::import::{name_of, parent_of, placed_now, scan_local};
 use super::kept::KeptPayload;
 use super::live_tree::{LiveTree, Mirror, TreeAnswer, TreeRead, TreeRequest};
 use super::session::{guard, io, WriterSignal};
 use super::sync_hold;
 use super::unwritten::Settled;
 use super::LiveDisk;
-use crate::collab::disk::inside;
+use crate::collab::disk::{inside, safe_target, sha256_hex};
 use crate::folder_watch::FolderChange;
 use tokio::sync::mpsc::UnboundedReceiver;
 
@@ -103,6 +103,41 @@ impl LiveDisk {
         })
     }
 
+    pub(super) fn keep_copy(
+        &self,
+        path: &str,
+        text: &str,
+        author: Option<&str>,
+    ) -> Result<String, CollabError> {
+        let parent = parent_of(path);
+        let folder = parent.map_or_else(|| self.root.clone(), |parent| self.root.join(parent));
+        let taken: BTreeSet<String> = std::fs::read_dir(&folder)
+            .map(|entries| {
+                entries
+                    .filter_map(Result::ok)
+                    .map(|entry| entry.file_name().to_string_lossy().to_lowercase())
+                    .collect()
+            })
+            .unwrap_or_default();
+        let free = |named: &str| !taken.contains(&named.to_lowercase());
+        let name = name_of(path);
+        let hash = sha256_hex(text.as_bytes());
+        let named = author
+            .and_then(|author| materialize::credited_name(name, author, &hash, free))
+            .or_else(|| {
+                [SHORT_HASH, 12, hash.len()]
+                    .into_iter()
+                    .map(|length| tagged(name, &hash[..length]))
+                    .find(|named| free(named))
+            })
+            .ok_or_else(|| CollabError::Io(format!("no free name to keep a copy of {path}")))?;
+        let copy = parent.map_or_else(|| named.clone(), |parent| format!("{parent}/{named}"));
+        let target = safe_target(&self.root, &copy)
+            .ok_or_else(|| CollabError::Io(format!("no place to keep a copy of {path}")))?;
+        oleafly_collab::write_atomic(&target, text.as_bytes())?;
+        Ok(copy)
+    }
+
     pub(super) fn draw(
         read: &(impl TreeRead + ?Sized),
         work: &DiskWork,
@@ -122,11 +157,15 @@ impl LiveDisk {
         let mut texts = Vec::new();
         let mut crlf = BTreeSet::new();
         for id in ids {
-            if let Some(placed) = next.get(&id).filter(|placed| placed.kind == NodeKind::Text) {
-                texts.push((placed.path.clone(), read.text(&id)?));
-                if read.crlf(&id) {
-                    crlf.insert(placed.path.clone());
-                }
+            let Some(placed) = next.get(&id).filter(|placed| placed.kind == NodeKind::Text) else {
+                continue;
+            };
+            let Some(text) = read.text(&id)? else {
+                continue;
+            };
+            texts.push((placed.path.clone(), text));
+            if read.crlf(&id) {
+                crlf.insert(placed.path.clone());
             }
         }
         Ok(Drawn {

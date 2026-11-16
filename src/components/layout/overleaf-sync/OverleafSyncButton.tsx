@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { describeError } from "@/lib/app-error";
+import { liveOnOverleaf } from "@/lib/collab-live-bridge";
 import { formatRelativeTimeFrom } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { overleafTokenPage, type SyncSide } from "@/lib/overleaf-sync";
@@ -77,6 +78,7 @@ function useAutoSync(projectId: string) {
         !sync.status.auto ||
         !sync.status.tokenSaved ||
         sync.conflicts.length > 0 ||
+        liveOnOverleaf(projectId) ||
         !awake ||
         dirty ||
         Date.now() - lastEdit.current < QUIET_AFTER_TYPING

@@ -401,6 +401,21 @@ describe("live editing edges", () => {
     expect(mocks.collabDocOpen).not.toHaveBeenCalled();
   });
 
+  it("hands a detached document's unsent typing to autosave and never says it was discarded", async () => {
+    start();
+    const session = collabDocumentSession("main.tex");
+    await settle();
+    session?.applyLocal([{ from: 6, to: 6, insert: "!" }], session.version());
+    channels.get("id-main.tex")?.({ kind: "detached", reason: "unknown_op" });
+    await settle();
+    expect(useFilesStore.getState().setContent).toHaveBeenCalledWith("main.tex", "shared!", {
+      unsaved: true,
+      base: "shared",
+    });
+    expect(mocks.toastInfo).not.toHaveBeenCalled();
+    expect(collabDocumentSession("main.tex")).toBeNull();
+  });
+
   it("hands typing done before the server said no back to the files store", async () => {
     start();
     useFilesStore.setState({ activePath: "main.tex" });

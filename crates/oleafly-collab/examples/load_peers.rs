@@ -1721,6 +1721,10 @@ impl Session {
                 self.went_down();
                 self.peer.set_state("connecting");
             }
+            LiveStatus::SignedOut => {
+                self.went_down();
+                self.peer.set_state("signed_out");
+            }
             LiveStatus::Offline { retry_in_ms } => {
                 self.went_down();
                 self.peer.stats().offline_events += 1;

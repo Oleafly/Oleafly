@@ -65,6 +65,10 @@ export class FakeChannel {
     }
   }
 
+  detach(id: string, reason: string): void {
+    this.clients.get(id)?.outbox.push({ kind: "detached", reason });
+  }
+
   reset(text: string): void {
     this.text = text;
     this.rev += 1;

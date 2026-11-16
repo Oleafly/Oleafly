@@ -6,6 +6,7 @@ export interface LiveSessionsOptions {
   readOnly: () => boolean;
   initialText(path: string): string | null;
   mirror(path: string, text: string): void;
+  coauthorEdited?(path: string, text: string): void;
   detached(path: string, text: string, edited: boolean, shared: string): void;
   discarded?(path: string, reason: DiscardReason): void;
   shown?(path: string): boolean;
@@ -65,6 +66,7 @@ export class LiveSessions {
       },
       onDiscarded: (reason) => this.options.discarded?.(session.path, reason),
     });
+    session.subscribe(() => this.options.coauthorEdited?.(session.path, session.text()));
     this.sessions.set(path, session);
     void session.open();
     return session;

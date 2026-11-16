@@ -1,5 +1,11 @@
 import { create, type StoreApi, type UseBoundStore } from "zustand";
-import { collabHandBack, collabNoteHandBack, useCollabEditorGate, useCollabLiveNote } from "@/lib/collab-live-bridge";
+import {
+  collabHandBack,
+  collabNoteHandBack,
+  useCollabEditorGate,
+  useCollabLiveNote,
+  useLiveBackend,
+} from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
 import type {
   CollabCommentNotSent,
@@ -621,6 +627,15 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     }
   });
 
+  const publishBackend = (state: CollabLiveStoreState) => {
+    const backend = state.status?.state === "ended" ? null : state.backend;
+    const published = useLiveBackend.getState();
+    if (published.projectId !== state.projectId || published.backend !== backend) {
+      useLiveBackend.setState({ projectId: state.projectId, backend });
+    }
+  };
+  const unsubscribeBackend = store.subscribe(publishBackend);
+
   let projectId = liveTarget();
   let turn = 0;
   const follow = () => {
@@ -650,10 +665,12 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     unsubscribeFiles();
     unsubscribeNote();
     unsubscribeStore();
+    unsubscribeBackend();
     unsubscribeSweep();
     if (sweep !== null) clearInterval(sweep);
     stopLive();
     for (const pending of unlisteners) void pending.then((unlisten) => unlisten());
     store.setState(emptyLive(null));
+    useLiveBackend.setState({ projectId: null, backend: null });
   };
 }

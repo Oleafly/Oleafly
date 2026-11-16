@@ -184,7 +184,10 @@ async fn start_locked(
 }
 
 async fn finish(live: Live) {
-    let Live::Server(active) = live;
+    let active = match live {
+        Live::Server(active) => active,
+        Live::Overleaf(live) => return live.finish().await,
+    };
     let (done, wait) = oneshot::channel();
     let _ = active.local.writer.send(WriterSignal::Flush(done));
     let _ = tokio::time::timeout(Duration::from_secs(5), wait).await;
@@ -195,7 +198,7 @@ async fn finish(live: Live) {
     crate::folder_watch::release_live(&active.local.project_id);
 }
 
-async fn stop_any() {
+pub(super) async fn stop_any() {
     let previous = guard(&ACTIVE).take();
     if let Some(live) = previous {
         finish(live).await;
@@ -211,7 +214,14 @@ pub fn finish_for_quit(wait: Duration) {
         let Some(live) = guard(&ACTIVE).take() else {
             return;
         };
-        let Live::Server(active) = live;
+        let active = match live {
+            Live::Server(active) => active,
+            Live::Overleaf(live) => {
+                let _ = tokio::time::timeout(wait.saturating_sub(started.elapsed()), live.finish())
+                    .await;
+                return;
+            }
+        };
         let (done, flushed) = oneshot::channel();
         let _ = active.local.writer.send(WriterSignal::Flush(done));
         let _ = tokio::time::timeout(wait.saturating_sub(started.elapsed()), flushed).await;
@@ -269,10 +279,12 @@ async fn start_if_idle(state: &CollabState, host: Arc<dyn LiveHost>, project_id:
 
 pub fn reconnect_now() -> bool {
     let running = guard(&ACTIVE).clone();
-    running.is_some_and(|live| {
-        let Live::Server(active) = live;
-        active.handle.reconnect_now();
-        true
+    running.is_some_and(|live| match live {
+        Live::Server(active) => {
+            active.handle.reconnect_now();
+            true
+        }
+        Live::Overleaf(_) => true,
     })
 }
 
@@ -282,7 +294,10 @@ pub async fn flush(project_id: &str, figures: bool) {
     let Some(live) = live_for(project_id) else {
         return;
     };
-    let Live::Server(active) = live;
+    let active = match live {
+        Live::Server(active) => active,
+        Live::Overleaf(live) => return live.flush().await,
+    };
     let (done, wait) = oneshot::channel();
     let _ = active.local.writer.send(WriterSignal::Flush(done));
     let _ = tokio::time::timeout(Duration::from_secs(10), wait).await;

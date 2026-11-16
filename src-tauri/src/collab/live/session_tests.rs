@@ -1874,7 +1874,9 @@ fn live_for_returns_the_server_backend_only_for_its_project() {
     let live = rig.go_live();
     let slot = super::live_for("slot-project").expect("the project is live");
     assert_eq!(slot.project_id(), "slot-project");
-    let Live::Server(active) = slot;
+    let Live::Server(active) = slot else {
+        panic!("a shared project goes live on the server backend");
+    };
     assert!(Arc::ptr_eq(&active, &rig.active()));
     assert!(super::live_for("another-project").is_none());
     assert!(super::active_for("slot-project").is_some_and(|found| Arc::ptr_eq(&found, &active)));

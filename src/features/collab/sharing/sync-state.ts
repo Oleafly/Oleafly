@@ -45,6 +45,8 @@ export function syncState(status: CollabLiveSyncState | null, pending: number): 
       return pending > 0 ? "syncing" : "upToDate";
     case "offline":
       return pending > 0 ? "offline" : "reconnecting";
+    case "signed_out":
+      return "signedOut";
     case "ended":
       return ENDED[status.reason];
   }

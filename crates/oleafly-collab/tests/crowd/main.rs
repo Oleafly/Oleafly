@@ -228,7 +228,7 @@ impl Person {
                     self.problem(format!("the live session ended: {reason:?}"));
                 }
             }
-            LiveStatus::Connecting => {}
+            LiveStatus::Connecting | LiveStatus::SignedOut => {}
         }
     }
 }

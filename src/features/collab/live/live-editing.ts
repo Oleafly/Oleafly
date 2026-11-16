@@ -7,7 +7,7 @@ import {
   useCollabEditorGate,
 } from "@/lib/collab-live-bridge";
 import { i18n } from "@/i18n";
-import { mirrorFileText } from "@/lib/live-file-mirror";
+import { mirrorFileText, noteCoauthorText } from "@/lib/live-file-mirror";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import {
@@ -123,6 +123,7 @@ export function startLiveEditing(live: LiveSession): () => void {
       mirrorFileText(projectId, path, text);
       indexer.schedule(path);
     },
+    coauthorEdited: (path, text) => noteCoauthorText(projectId, path, text),
     detached: (path, text, edited, shared) => {
       const files = useFilesStore.getState();
       if (files.projectId !== projectId) return;

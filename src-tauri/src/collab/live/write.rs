@@ -288,8 +288,10 @@ pub async fn write_text(
             reason: None,
         });
     };
-    let Live::Server(active) = live;
-    let outcome = active.write_text(path, base, text).await?;
+    let outcome = match live {
+        Live::Server(active) => active.write_text(path, base, text).await?,
+        Live::Overleaf(live) => live.write_text(path, base, text).await?,
+    };
     if outcome.handled {
         crate::agent_turns::note_app_write(project_id, path);
     }
@@ -395,7 +397,8 @@ fn write_all_shared(
 impl SharedDocument {
     pub(crate) fn of(project_id: &str) -> Option<SharedDocument> {
         live_for(project_id)
-            .map(|Live::Server(active)| SharedDocument(active))
+            .and_then(|live| live.server().cloned())
+            .map(SharedDocument)
             .filter(SharedDocument::can_edit)
     }
 

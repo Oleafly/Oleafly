@@ -308,6 +308,45 @@ fn current_link(project_id: &str) -> Result<Option<sync::SyncLink>, String> {
     Ok(owned.then_some(link))
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct OverleafLink {
+    pub(crate) server: String,
+    pub(crate) project_id: String,
+}
+
+pub(crate) fn overleaf_link_of(project_id: &str) -> Result<Option<OverleafLink>, String> {
+    if let Some(link) = current_link(project_id)? {
+        return Ok(Some(OverleafLink {
+            server: link.server,
+            project_id: link.remote_id,
+        }));
+    }
+    Ok(imported_from(project_id).map(|origin| OverleafLink {
+        server: origin.server,
+        project_id: origin.project_id,
+    }))
+}
+
+pub(crate) fn live_session(
+    base: &str,
+) -> Result<
+    Option<(
+        oleafly_online::client::Http,
+        oleafly_online::session::SessionHandle,
+    )>,
+    String,
+> {
+    let Some(stored) = session::load(base)? else {
+        return Ok(None);
+    };
+    let http = client::Http::new(base)?.online().clone();
+    let store = crate::secrets::store()?;
+    Ok(Some((
+        http,
+        oleafly_online::session::SessionHandle::new(base, stored, Some(store)),
+    )))
+}
+
 fn linked(project_id: &str) -> Result<sync::SyncLink, String> {
     current_link(project_id)?.ok_or_else(|| AppError::new("overleaf.sync_not_linked").into())
 }
@@ -315,10 +354,8 @@ fn linked(project_id: &str) -> Result<sync::SyncLink, String> {
 fn sync_status(project_id: &str) -> Result<SyncStatus, String> {
     let link = current_link(project_id)?;
     let imported = imported_from(project_id);
-    let server = link
-        .as_ref()
-        .map(|link| link.server.clone())
-        .or_else(|| imported.as_ref().map(|origin| origin.server.clone()))
+    let server = overleaf_link_of(project_id)?
+        .map(|link| link.server)
         .unwrap_or_else(|| session::DEFAULT_SERVER.to_string());
     Ok(SyncStatus {
         token_saved: session::git_token(&server)?.is_some(),
@@ -547,8 +584,20 @@ fn quiet_report(outcome: &str, pushed: bool) -> SyncReport {
     }
 }
 
+fn live_stands_down(project_id: &str) -> Result<(), String> {
+    if crate::collab::live::overleaf::git_sync_waits(project_id)
+        .map_err(|error| error.to_string())?
+    {
+        return Err(errors::app_error(oleafly_online::error::OnlineError::new(
+            oleafly_online::error::OnlineErrorKind::SyncBusy,
+        )));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn overleaf_sync_check(project_id: String) -> Result<SyncReport, String> {
+    live_stands_down(&project_id)?;
     let _guard = sync::claim(&project_id)?;
     let target = sync_target(&project_id).await?;
     let remote = fetch_remote(&target).await?;
@@ -692,6 +741,7 @@ pub async fn overleaf_sync_now<R: Runtime>(
     resolutions: Option<BTreeMap<String, Side>>,
     fetched: Option<bool>,
 ) -> Result<SyncReport, String> {
+    live_stands_down(&project_id)?;
     let _guard = sync::claim(&project_id)?;
     let target = sync_target(&project_id).await?;
     let mut progress = Progress {

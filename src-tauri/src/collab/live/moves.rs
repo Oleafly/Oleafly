@@ -543,7 +543,7 @@ pub(crate) fn renaming<R>(
 ) -> Result<R, String> {
     match live_for(project_id) {
         Some(Live::Server(active)) => active.rename_with(from, work, landed),
-        None => work(),
+        Some(Live::Overleaf(_)) | None => work(),
     }
 }
 
@@ -554,7 +554,7 @@ pub(crate) fn deleting<R>(
 ) -> Result<R, String> {
     match live_for(project_id) {
         Some(Live::Server(active)) => active.delete_with(path, work),
-        None => work(),
+        Some(Live::Overleaf(_)) | None => work(),
     }
 }
 

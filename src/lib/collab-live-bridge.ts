@@ -164,6 +164,18 @@ export function installNoteLivePort(port: NoteLivePort): () => void {
   };
 }
 
+interface LiveBackendState {
+  projectId: string | null;
+  backend: "server" | "overleaf" | null;
+}
+
+export const useLiveBackend = create<LiveBackendState>(() => ({ projectId: null, backend: null }));
+
+export function liveOnOverleaf(projectId: string | null): boolean {
+  const live = useLiveBackend.getState();
+  return projectId !== null && live.projectId === projectId && live.backend === "overleaf";
+}
+
 export interface CollabEditorPort {
   documentSession(path: string): DocumentSession | null;
   holds?(path: string): boolean;

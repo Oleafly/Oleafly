@@ -37,6 +37,9 @@ pub enum DocMessage {
         rev: u64,
         text: String,
     },
+    Detached {
+        reason: String,
+    },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -288,6 +291,14 @@ mod tests {
         assert_eq!(
             remote,
             serde_json::json!({ "kind": "remote", "rev": 4, "op": ["a", 1], "length": 2 })
+        );
+        let detached = serde_json::to_value(DocMessage::Detached {
+            reason: "unknown_op".to_owned(),
+        })
+        .unwrap();
+        assert_eq!(
+            detached,
+            serde_json::json!({ "kind": "detached", "reason": "unknown_op" })
         );
     }
 }

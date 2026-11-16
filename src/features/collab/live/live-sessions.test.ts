@@ -48,6 +48,26 @@ describe("LiveSessions", () => {
     expect(mirror).toHaveBeenLastCalledWith("main.tex", "abc!");
   });
 
+  it("reports a coauthor's edit before mirroring it, and never a local one", async () => {
+    const channel = new FakeChannel("abc");
+    const calls: string[] = [];
+    const sessions = new LiveSessions(
+      options(channel, {
+        mirror: (_path, text) => calls.push(`mirror ${text}`),
+        coauthorEdited: (path, text) => calls.push(`coauthor ${path} ${text}`),
+      }),
+    );
+    const session = sessions.documentSession("main.tex");
+    await flush();
+    session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    expect(calls).toEqual(["mirror abc!"]);
+    calls.length = 0;
+    channel.remote(new TextOperation().insert("X").retain(3));
+    channel.drain();
+    await flush();
+    expect(calls).toEqual(["coauthor main.tex Xabc!", "mirror Xabc!"]);
+  });
+
   it("brings the files store up to date when an open session is reused", async () => {
     const channel = new FakeChannel("abc");
     const mirror = vi.fn();
@@ -57,6 +77,21 @@ describe("LiveSessions", () => {
     mirror.mockClear();
     sessions.documentSession("main.tex");
     expect(mirror).toHaveBeenCalledWith("main.tex", "abc");
+  });
+
+  it("hands a document back with its unsent typing when the backend detaches it", async () => {
+    const channel = new FakeChannel("abc");
+    const detached = vi.fn();
+    const sessions = new LiveSessions(options(channel, { detached }));
+    const session = sessions.documentSession("main.tex");
+    await flush();
+    session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    const id = channel.opens.at(-1) ?? "";
+    channel.detach(id, "unknown_op");
+    channel.deliverOne(id);
+    expect(detached).toHaveBeenCalledWith("main.tex", "abc!", true, "abc");
+    expect(channel.closes).toContain(id);
+    expect(sessions.documentSession("main.tex")).toBeNull();
   });
 
   it("hands a file that is not shared back to local editing, with any typing", async () => {

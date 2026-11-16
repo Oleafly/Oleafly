@@ -61,14 +61,10 @@ import {
   LanguageServiceRuntimeUnavailable,
 } from "@/components/editor/LanguageServiceRuntimeBoundary";
 import { Library } from "@/components/library/Library";
+import { AutoCompileKeeper } from "@/components/layout/AutoCompileKeeper";
 import { bootSplashHeld, dismissBootSplash, markBootStage } from "@/lib/boot-telemetry";
-import { useFilesStore, useActiveContent } from "@/store/files";
-import {
-  isCompileCheckpointCurrent,
-  stopOutdatedAutomaticCompile,
-  typstLivePreviewWanted,
-  useCompileStore,
-} from "@/store/compile";
+import { useFilesStore } from "@/store/files";
+import { isCompileCheckpointCurrent, useCompileStore } from "@/store/compile";
 import { useProjectAnalysisStore } from "@/store/project-analysis";
 import { usePreflightStore } from "@/store/preflight";
 import { editorLetterSpacingValue, editorLineHeightValue, useSettingsStore, type ViewMode } from "@/store/settings";
@@ -331,7 +327,6 @@ function closeTerminal() {
   if (useSettingsStore.getState().terminalOpen) useSettingsStore.getState().setTerminalOpen(false);
 }
 
-const AUTO_COMPILE_DEBOUNCE_MS = 2500;
 const WINDOW_WAKE_COALESCE_MS = 1_000;
 const RESTORE_PREVIEW_FROM_FINGERPRINT = false;
 
@@ -1141,46 +1136,6 @@ function AppContent() {
       </div>
     </ThemeProvider>
   );
-}
-
-function AutoCompileKeeper() {
-  const projectId = useFilesStore((state) => state.projectId);
-  const activePath = useFilesStore((state) => state.activePath);
-  const activeContent = useActiveContent();
-  const autoCompile = useCompileStore((state) => state.autoCompile);
-  const recompile = useCompileStore((state) => state.recompile);
-  const pathRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    void activeContent;
-    if (!autoCompile || !projectId || typstLivePreviewWanted()) {
-      pathRef.current = activePath;
-      return;
-    }
-    if (pathRef.current !== activePath) {
-      pathRef.current = activePath;
-      return;
-    }
-    let timer: ReturnType<typeof setTimeout>;
-    let cancelled = false;
-    const editedAt = Date.now();
-    const attempt = () => {
-      if (cancelled || typstLivePreviewWanted()) return;
-      if (useCompileStore.getState().status === "compiling") {
-        stopOutdatedAutomaticCompile(editedAt);
-        timer = setTimeout(attempt, 500);
-        return;
-      }
-      void recompile({ origin: "automatic" });
-    };
-    timer = setTimeout(attempt, AUTO_COMPILE_DEBOUNCE_MS);
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [activeContent, activePath, autoCompile, projectId, recompile]);
-
-  return null;
 }
 
 function OpenCompileKeeper() {

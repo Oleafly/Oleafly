@@ -47,11 +47,8 @@ impl TreeRead for Room {
         Ok(self.nodes.clone())
     }
 
-    fn text(&self, id: &str) -> Result<String, CollabError> {
-        self.texts
-            .get(id)
-            .cloned()
-            .ok_or_else(|| CollabError::Corrupt(format!("no text {id}")))
+    fn text(&self, id: &str) -> Result<Option<String>, CollabError> {
+        Ok(self.texts.get(id).cloned())
     }
 
     fn crlf(&self, id: &str) -> bool {
@@ -106,7 +103,7 @@ impl TreeRead for FakeTree {
         guard(&self.0).nodes()
     }
 
-    fn text(&self, id: &str) -> Result<String, CollabError> {
+    fn text(&self, id: &str) -> Result<Option<String>, CollabError> {
         TreeRead::text(&*guard(&self.0), id)
     }
 
@@ -304,4 +301,27 @@ fn the_mirror_keeps_crlf_and_suppresses_its_own_echo() {
 
     assert!(tree.received().is_empty());
     assert_eq!(tree.text_of("main"), "one\ntwo\n");
+}
+
+#[test]
+fn a_kept_copy_lands_beside_the_file_and_never_over_another() {
+    let mirror = Mirrorer::new();
+    std::fs::create_dir_all(mirror.disk.root.join("sections")).unwrap();
+    mirror.edit("sections/intro.tex", "current\n");
+
+    let first = mirror
+        .disk
+        .keep_copy("sections/intro.tex", "typed by the other account\n", None)
+        .unwrap();
+    let second = mirror
+        .disk
+        .keep_copy("sections/intro.tex", "typed later\n", None)
+        .unwrap();
+
+    assert!(first.starts_with("sections/intro ("), "{first}");
+    assert!(first.ends_with(".tex"), "{first}");
+    assert_ne!(first, second);
+    assert_eq!(mirror.read(&first), b"typed by the other account\n");
+    assert_eq!(mirror.read(&second), b"typed later\n");
+    assert_eq!(mirror.read("sections/intro.tex"), b"current\n");
 }

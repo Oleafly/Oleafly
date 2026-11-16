@@ -840,13 +840,20 @@ fn catch_up_here(
     Ok((to_upload, renamed))
 }
 
+fn live_hold_dir(live: &Live) -> PathBuf {
+    match live {
+        Live::Server(active) => active.hold_dir(),
+        Live::Overleaf(live) => live.hold_dir(),
+    }
+}
+
 pub(crate) fn outside_change(
     change: &FolderChange,
     verdict: MassChangeVerdict,
     host: &dyn SyncPauseHost,
 ) {
     let Some(dir) = live_for(&change.project_id)
-        .map(|Live::Server(active)| active.hold_dir())
+        .map(|live| live_hold_dir(&live))
         .or_else(|| collab_dir(&change.project_id))
     else {
         return;
@@ -875,7 +882,7 @@ fn announce_in(dir: &Path, project_id: &str, host: &dyn SyncPauseHost) {
 
 pub(crate) fn announce(project_id: &str, host: &dyn SyncPauseHost) {
     let dir = live_for(project_id)
-        .map(|Live::Server(active)| active.hold_dir())
+        .map(|live| live_hold_dir(&live))
         .or_else(|| collab_dir(project_id));
     if let Some(dir) = dir {
         announce_in(&dir, project_id, host);
@@ -883,9 +890,10 @@ pub(crate) fn announce(project_id: &str, host: &dyn SyncPauseHost) {
 }
 
 pub(crate) fn root_returned(project_id: &str) {
-    if let Some(live) = live_for(project_id) {
-        let Live::Server(active) = live;
-        active.kick();
+    match live_for(project_id) {
+        Some(Live::Server(active)) => active.kick(),
+        Some(Live::Overleaf(live)) => live.kick(),
+        None => {}
     }
 }
 

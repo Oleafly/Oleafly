@@ -187,7 +187,7 @@ export class RemoteDocumentSession implements DocumentSession {
     this.setPhase("open");
     for (const message of queued) {
       if (generation !== this.generation) return;
-      if (message.rev > opened.rev) this.receive(message);
+      if (message.kind === "detached" || message.rev > opened.rev) this.receive(message);
     }
     this.settle();
   }
@@ -276,10 +276,16 @@ export class RemoteDocumentSession implements DocumentSession {
     try {
       if (message.kind === "ack") this.acknowledge(message.rev, message.length);
       else if (message.kind === "remote") this.remote(message.rev, message.op, message.length);
+      else if (message.kind === "detached") this.detached();
       else this.reset(message.rev, message.text);
     } catch {
       this.resync();
     }
+  }
+
+  private detached(): void {
+    this.setPhase("detached");
+    this.settle();
   }
 
   private acknowledge(rev: number, length: number): void {
