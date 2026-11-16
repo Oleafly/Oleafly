@@ -13,6 +13,7 @@ export default defineConfig({
       "@oleafly/backend-port": path.resolve(__dirname, "./packages/backend-port/src"),
       "@oleafly/compile-port/testing": path.resolve(__dirname, "./packages/compile-port/src/testing.ts"),
       "@oleafly/compile-port": path.resolve(__dirname, "./packages/compile-port/src"),
+      "@oleafly/deck": path.resolve(__dirname, "./packages/deck/src"),
       "@oleafly/diagram": path.resolve(__dirname, "./packages/diagram/src"),
       "@oleafly/editor": path.resolve(__dirname, "./packages/editor/src"),
       "@oleafly/ai-tools": path.resolve(__dirname, "./packages/ai-tools/src"),

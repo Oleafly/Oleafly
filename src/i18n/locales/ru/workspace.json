@@ -132,6 +132,8 @@
     "entryCount_other": "{{count}} элемента оглавления",
     "expandHeading": "Развернуть {{title}}",
     "expandAll": "Развернуть все заголовки",
+    "onPage": "{{heading}}, страница {{page}}",
+    "page": "с.{{page}}",
     "title": "Оглавление"
   },
   "panelError": {

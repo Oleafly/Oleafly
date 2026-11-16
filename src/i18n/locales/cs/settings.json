@@ -984,6 +984,12 @@
         "label": "Výchozí zobrazení domovské obrazovky",
         "list": "Seznam"
       },
+      "markers": {
+        "badges": "Štítky typu",
+        "description": "Každý soubor ve stromu projektu dostane ikonu nebo krátký štítek typu, například TEX nebo PDF, ve stejných barvách.",
+        "icons": "Ikony",
+        "label": "Zobrazit soubory jako"
+      },
       "openIn": {
         "description": "Zvolte rozvržení, které se použije při otevření projektu.",
         "label": "Otevírat projekty v"

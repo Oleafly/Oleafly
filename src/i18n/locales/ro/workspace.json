@@ -129,6 +129,8 @@
     "entryCount_other": "{{count}} de intrări în cuprins",
     "expandHeading": "Extinde {{title}}",
     "expandAll": "Extinde toate titlurile",
+    "onPage": "{{heading}}, pagina {{page}}",
+    "page": "p.{{page}}",
     "title": "Cuprins"
   },
   "panelError": {

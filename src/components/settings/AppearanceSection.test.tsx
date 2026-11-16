@@ -661,6 +661,12 @@ describe("Appearance settings tabs", () => {
     );
     expect(useSettingsStore.getState().openInTree).toBe(true);
 
+    const markers = screen.getByLabelText(appearance.files.markers.label);
+    expect(markers).toHaveTextContent(appearance.files.markers.icons);
+    await user.click(markers);
+    await user.click(await screen.findByRole("option", { name: appearance.files.markers.badges }));
+    expect(useSettingsStore.getState().fileMarkers).toBe("badges");
+
     const hiddenFiles = screen.getByTestId("hidden-files-toggle");
     expect(hiddenFiles).toHaveAttribute("aria-expanded", "false");
     expect(hiddenFiles).toHaveTextContent(appearance.files.hidden.title);

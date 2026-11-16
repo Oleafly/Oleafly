@@ -1681,5 +1681,9 @@
   "stuckWindow": {
     "reloaded": "Oleafly recargó esta ventana porque dejó de responder durante 30 segundos. Puede que los cambios hechos justo antes no se hayan guardado.",
     "reloadedAgain": "Oleafly volvió a recargar esta ventana porque dejó de responder otra vez. No volvió a abrir tu proyecto, por si algo en él causó el problema."
+  },
+  "zoomIndicator": {
+    "label": "Zoom",
+    "reset": "Restablecer"
   }
 }

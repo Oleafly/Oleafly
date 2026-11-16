@@ -972,6 +972,12 @@
         "label": "Standardansicht der Startseite",
         "list": "Liste"
       },
+      "markers": {
+        "badges": "Typ-Etiketten",
+        "description": "Jede Datei im Projektbaum erhält ein Symbol oder ein kurzes Typ-Etikett wie TEX oder PDF, in denselben Farben.",
+        "icons": "Symbole",
+        "label": "Dateien anzeigen als"
+      },
       "openIn": {
         "description": "Wählen Sie das Layout, mit dem ein Projekt geöffnet wird.",
         "label": "Projekte öffnen in"

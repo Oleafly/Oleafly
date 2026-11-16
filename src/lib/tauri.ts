@@ -218,6 +218,9 @@ export const readCompiledPdf = (projectId: string) =>
 export const readBuildArtifact = (projectId: string, name: string) =>
   invoke<string | null>("read_build_artifact", { projectId, name });
 
+export const projectHtmlPreviewUrl = (projectId: string, path: string) =>
+  invoke<string>("project_html_preview_url", { projectId, path });
+
 export const validateCompileFingerprint = (projectId: string, mainDoc: string) =>
   invoke<ValidatedCompileFingerprint | null>("validate_compile_fingerprint", {
     projectId,

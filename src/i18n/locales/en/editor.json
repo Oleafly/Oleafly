@@ -159,7 +159,8 @@
     "imageToTypst": "Image to Typst",
     "imageToTypstTooltip": "Image to Typst (transcribe with AI)",
     "typstPackages": "Typst packages",
-    "latexPackages": "LaTeX packages"
+    "latexPackages": "LaTeX packages",
+    "preview": "Preview"
   },
   "contextMenu": {
     "engineUnavailable": "Document engine actions unavailable",
@@ -209,6 +210,8 @@
     "pdfLoadFailed": "Failed to load PDF: {{detail}}",
     "imageLoadFailed": "Failed to load image: {{detail}}",
     "imageUnreadable": "This file can't be shown as an image. It may be damaged, or it may not be an image.",
+    "imageFit": "Fit to window",
+    "htmlPreviewFailed": "Failed to preview the page: {{detail}}",
     "binaryFile": "Binary file. No preview available.",
     "managedFileReadOnly": "{{file}} is managed by Oleafly and is read-only here. Project settings change through Oleafly itself, not by editing this file.",
     "noFileOpen": "No file open.",
@@ -1671,5 +1674,19 @@
       "duplicateArg": "Duplicate argument",
       "unknownKind": "Unknown field kind"
     }
+  },
+  "bibList": {
+    "count_one": "{{count}} reference",
+    "count_other": "{{count}} references",
+    "empty": "This file has no references yet.",
+    "etAl": "{{author}} et al.",
+    "noMatch": "No references match your search.",
+    "search": "Search references"
+  },
+  "deck": {
+    "noSlides": "This deck has no slides yet. Export an array of slide components as its default export."
+  },
+  "board": {
+    "unreadable": "This whiteboard couldn't be read. The file may be damaged, or it isn't an Excalidraw drawing."
   }
 }

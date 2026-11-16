@@ -1375,6 +1375,8 @@ function FileManagementTab() {
   const setDefaultView = useSettingsStore((state) => state.setDefaultView);
   const openInTree = useSettingsStore((state) => state.openInTree);
   const setOpenInTree = useSettingsStore((state) => state.setOpenInTree);
+  const fileMarkers = useSettingsStore((state) => state.fileMarkers);
+  const setFileMarkers = useSettingsStore((state) => state.setFileMarkers);
   const hiddenFilePatterns = useSettingsStore((state) => state.hiddenFilePatterns);
   const addHiddenFilePattern = useSettingsStore(
     (state) => state.addHiddenFilePattern,
@@ -1452,6 +1454,23 @@ function FileManagementTab() {
         description={t(($) => $.settings.appearance.files.showTree.description)}
         checked={openInTree}
         onChange={setOpenInTree}
+      />
+
+      <SettingsRow
+        testId="settings-row-file-markers"
+        label={t(($) => $.settings.appearance.files.markers.label)}
+        description={t(($) => $.settings.appearance.files.markers.description)}
+        control={
+          <Select value={fileMarkers} onValueChange={(value) => setFileMarkers(value as typeof fileMarkers)}>
+            <SelectTrigger className="w-[140px]" aria-label={t(($) => $.settings.appearance.files.markers.label)}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              <SelectItem value="icons">{t(($) => $.settings.appearance.files.markers.icons)}</SelectItem>
+              <SelectItem value="badges">{t(($) => $.settings.appearance.files.markers.badges)}</SelectItem>
+            </SelectContent>
+          </Select>
+        }
       />
 
       <ZenModeSettings />

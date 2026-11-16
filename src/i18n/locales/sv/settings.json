@@ -972,6 +972,12 @@
         "label": "Standardvy på startsidan",
         "list": "Lista"
       },
+      "markers": {
+        "badges": "Typetiketter",
+        "description": "Varje fil i projektträdet får en ikon eller en kort typetikett, till exempel TEX eller PDF, i samma färger.",
+        "icons": "Ikoner",
+        "label": "Visa filer som"
+      },
       "openIn": {
         "description": "Välj layouten som används när ett projekt öppnas.",
         "label": "Öppna projekt i"

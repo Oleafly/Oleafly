@@ -108,8 +108,8 @@ describe("DocumentOutline", () => {
       projectId: "outline-project-a",
       mainDocument: "main.tex",
       entries: [
-        { level: 2, number: "1", title: "Introduction" },
-        { level: 3, number: "1.1", title: "Scope" },
+        { level: 2, number: "1", title: "Introduction", page: "1" },
+        { level: 3, number: "1.1", title: "Scope", page: "2" },
       ],
     };
     const text = "\\section{Introduction}\n\\section*{Notation}\n\\subsection{Scope}";
@@ -148,7 +148,7 @@ describe("DocumentOutline", () => {
     aux.toc = {
       projectId: "outline-project-a",
       mainDocument: "main.tex",
-      entries: [{ level: 2, number: "1", title: "Introduction" }],
+      entries: [{ level: 2, number: "1", title: "Introduction", page: "1" }],
     };
     const text = "\\section{Introduction}";
     mount(

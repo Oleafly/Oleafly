@@ -58,7 +58,7 @@ import {
   latexCompletions,
   slashCompletions,
 } from "./latex";
-import { languageForPath } from "./languages";
+import { editorLanguageForPath } from "./languages";
 import { openEnvironmentCompletion } from "./latex-environments";
 import { latexPairInputHandler, latexPairKeymap } from "./latex-pairs";
 import { lazyExtension } from "./lazy-extension";
@@ -571,7 +571,7 @@ function loadVisualModule(): Promise<VisualModule> {
 function languageExtensionFor(path: string | null, visual: VisualModule | null): Extension {
   if (!path) return [];
   if (visual && isLatexDocumentPath(path)) return visual.latexTreeSupport();
-  return languageForPath(path) ?? [];
+  return editorLanguageForPath(path);
 }
 
 function visualExtensionFor(

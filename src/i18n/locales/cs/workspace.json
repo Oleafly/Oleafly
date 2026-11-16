@@ -132,6 +132,8 @@
     "entryCount_other": "{{count}} položek osnovy",
     "expandHeading": "Rozbalit {{title}}",
     "expandAll": "Rozbalit všechny nadpisy",
+    "onPage": "{{heading}}, stránka {{page}}",
+    "page": "s.{{page}}",
     "title": "Osnova"
   },
   "panelError": {

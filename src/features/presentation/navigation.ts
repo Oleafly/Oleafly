@@ -1,6 +1,9 @@
 export type SlideAction = "next" | "previous" | "first" | "last" | "end" | "blank";
 
-export type PresentationSource = { readonly kind: "compiled" } | { readonly kind: "file"; readonly path: string };
+export type PresentationSource =
+  | { readonly kind: "compiled" }
+  | { readonly kind: "file"; readonly path: string }
+  | { readonly kind: "deck"; readonly path: string };
 
 export interface PresentationParams {
   readonly session: string;
@@ -23,6 +26,7 @@ export const PRESENTATION_EVENTS = {
   goto: "presentation:goto",
   blank: "presentation:blank",
   end: "presentation:end",
+  step: "presentation:step",
 } as const;
 
 const KEY_ACTIONS: Readonly<Record<string, SlideAction>> = {
@@ -98,7 +102,7 @@ export function presentationQuery(params: PresentationParams, view: Presentation
     presenter: params.presenter ? "1" : "0",
     typst: params.typst ? "1" : "0",
   });
-  if (params.source.kind === "file") query.set("path", params.source.path);
+  if (params.source.kind !== "compiled") query.set("path", params.source.path);
   if (params.main) query.set("main", params.main);
   if (params.variant) query.set("variant", params.variant);
   if (params.offline) query.set("offline", "1");
@@ -116,10 +120,11 @@ export function readPresentationParams(search: string): PresentationParams | nul
   const projectId = bounded(query.get("project"));
   if (!session || !projectId) return null;
   let source: PresentationSource = { kind: "compiled" };
-  if (query.get("source") === "file") {
+  const kind = query.get("source");
+  if (kind === "file" || kind === "deck") {
     const path = bounded(query.get("path"));
     if (!path) return null;
-    source = { kind: "file", path };
+    source = { kind, path };
   }
   const start = Number.parseInt(query.get("start") ?? "1", 10);
   const variant = bounded(query.get("variant"));

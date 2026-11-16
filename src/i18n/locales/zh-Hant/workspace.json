@@ -123,6 +123,8 @@
     "entryCount_other": "{{count}} 個大綱項目",
     "expandHeading": "展開 {{title}}",
     "expandAll": "展開所有標題",
+    "onPage": "{{heading}}，第 {{page}} 頁",
+    "page": "第 {{page}} 頁",
     "title": "大綱"
   },
   "panelError": {

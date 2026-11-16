@@ -146,6 +146,7 @@ describe("value preferences", () => {
     settings.setAccentColor("#db2777");
     settings.setBgPattern("grid");
     settings.setHomeProjectLayout("list");
+    settings.setFileMarkers("badges");
 
     expect(useSettingsStore.getState()).toMatchObject({
       dictionaryLocale: "en_GB",
@@ -154,6 +155,7 @@ describe("value preferences", () => {
       accentColor: "#db2777",
       bgPattern: "grid",
       homeProjectLayout: "list",
+      fileMarkers: "badges",
     });
     expect(localStorage.getItem("oleafly.dictionary.locale")).toBe("en_GB");
     expect(localStorage.getItem("oleafly.editorTheme.dark")).toBe("dracula");
@@ -161,6 +163,7 @@ describe("value preferences", () => {
     expect(localStorage.getItem("oleafly.accent")).toBe("#db2777");
     expect(localStorage.getItem("oleafly.bgPattern")).toBe("grid");
     expect(localStorage.getItem("oleafly.library.projectLayout")).toBe("list");
+    expect(localStorage.getItem("oleafly.fileTree.markers")).toBe("badges");
   });
 
   it("opens settings at a section and tab", () => {

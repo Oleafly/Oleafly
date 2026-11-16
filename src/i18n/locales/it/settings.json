@@ -978,6 +978,12 @@
         "label": "Vista Home predefinita",
         "list": "Elenco"
       },
+      "markers": {
+        "badges": "Etichette del tipo",
+        "description": "Ogni file nell'albero del progetto riceve un'icona o una breve etichetta del tipo, come TEX o PDF, con gli stessi colori.",
+        "icons": "Icone",
+        "label": "Mostra i file come"
+      },
       "openIn": {
         "description": "Scegli la disposizione usata quando si apre un progetto.",
         "label": "Apri i progetti in"

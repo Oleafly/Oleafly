@@ -984,6 +984,12 @@
         "label": "Domyślny widok biblioteki",
         "list": "Lista"
       },
+      "markers": {
+        "badges": "Etykiety typu",
+        "description": "Każdy plik w drzewie projektu dostaje ikonę albo krótką etykietę typu, na przykład TEX lub PDF, w tych samych kolorach.",
+        "icons": "Ikony",
+        "label": "Pokazuj pliki jako"
+      },
       "openIn": {
         "description": "Wybierz układ używany przy otwieraniu projektu.",
         "label": "Otwieraj projekty w układzie"

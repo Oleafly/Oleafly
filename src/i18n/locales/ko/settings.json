@@ -966,6 +966,12 @@
         "label": "기본 홈 보기",
         "list": "목록"
       },
+      "markers": {
+        "badges": "유형 배지",
+        "description": "프로젝트 트리의 각 파일에 아이콘이나 TEX, PDF 같은 짧은 유형 배지를 같은 색으로 표시합니다.",
+        "icons": "아이콘",
+        "label": "파일 표시 방식"
+      },
       "openIn": {
         "description": "프로젝트를 열 때 쓸 배치를 고르세요.",
         "label": "프로젝트 열기 방식"

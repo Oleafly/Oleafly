@@ -972,6 +972,12 @@
         "label": "Varsayılan ana ekran görünümü",
         "list": "Liste"
       },
+      "markers": {
+        "badges": "Tür etiketleri",
+        "description": "Proje ağacındaki her dosya aynı renklerde bir simge ya da TEX veya PDF gibi kısa bir tür etiketi alır.",
+        "icons": "Simgeler",
+        "label": "Dosyaları şöyle göster"
+      },
       "openIn": {
         "description": "Bir proje açıldığında kullanılacak düzeni seçin.",
         "label": "Projeleri şu düzende aç"

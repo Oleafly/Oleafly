@@ -5,15 +5,7 @@ import {
   FileText,
   List,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import {
-  createLatexOutlineMacroCollector,
-  createLatexWrapperSectionCollector,
-  renderLatexOutlineTitle,
-  type LatexWrapperSection,
-} from "@oleafly/latex";
-import { loadTypstParser, typstTools } from "@oleafly/editor/typst";
-import { useEditorViewportSelection } from "@/components/editor/cm/use-viewport-anchor";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useScrollMemory } from "@/hooks/use-scroll-memory";
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { readSidebarView } from "@/store/sidebar-view-state";
@@ -22,58 +14,15 @@ import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
 import { TreeRow } from "@/components/ui/tree-row";
 import { PanelState } from "@/components/layout/IntelligenceTree";
 import { SidebarSection } from "@/components/layout/SidebarSection";
-import {
-  headingTitlesByLabel,
-  outlineFromIndex,
-  outlineSources,
-  type OutlineItem,
-} from "@/lib/index/outline";
-import { latexOutlineNumbers } from "@/lib/index/outline-numbers";
-import { activeOutlineIndex } from "@/lib/outline-active";
-import { currentAuxToc, subscribeAuxNumbers } from "@/lib/aux-numbers";
-import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
+import { OutlineFileBadge } from "@/components/layout/OutlineFileBadge";
+import { jumpToOutlineItem, useDocumentOutline } from "@/components/layout/use-document-outline";
+import type { OutlineItem } from "@/lib/index/outline";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { cn } from "@/lib/utils";
-import { basename } from "@/lib/path-utils";
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
-import { resolveEffectiveMainDoc } from "@/lib/tex-root";
 
 export const OUTLINE_REVEAL_SETTLE_MS = 120;
-
-function useTypstTitles(items: readonly OutlineItem[]): boolean {
-  const wanted = items.some((item) => /\.typ$/iu.test(item.file));
-  const [ready, setReady] = useState(() => typstTools() !== null);
-  useEffect(() => {
-    if (!wanted || ready) return;
-    let live = true;
-    loadTypstParser().then(
-      () => {
-        if (live) setReady(true);
-      },
-      () => undefined,
-    );
-    return () => {
-      live = false;
-    };
-  }, [ready, wanted]);
-  return ready;
-}
-
-function outlineDisplayTitle(
-  item: OutlineItem,
-  latexMacros: ReadonlyMap<string, string>,
-  headingsByLabel: ReadonlyMap<string, string>,
-  typstTitles: boolean,
-): string {
-  if (/\.(?:latex|ltx|tex)$/iu.test(item.file)) {
-    return renderLatexOutlineTitle(item.title, latexMacros, headingsByLabel);
-  }
-  if (typstTitles && /\.typ$/iu.test(item.file)) {
-    return typstTools()?.typstPlainTitle(item.title) ?? item.title;
-  }
-  return item.title;
-}
 
 function normalizedHeadingTitle(title: string): string {
   return title.replace(/\s+/gu, " ").trim().toLowerCase();
@@ -128,10 +77,6 @@ function visibleHeadings(
   return visible;
 }
 
-const NO_WRAPPER_SECTIONS: ReadonlyMap<string, readonly LatexWrapperSection[]> = new Map();
-const NO_LATEX_MACROS: ReadonlyMap<string, string> = new Map();
-const NO_HEADING_NUMBERS: readonly (string | null)[] = [];
-
 export function DocumentOutline({
   collapsed: controlledCollapsed,
   onCollapsedChange,
@@ -144,7 +89,6 @@ export function DocumentOutline({
   const building = useIndexStore((state) => state.building);
   const projectId = useFilesStore((state) => state.projectId);
   const activePath = useFilesStore((state) => state.activePath);
-  const mainDoc = useFilesStore(() => resolveEffectiveMainDoc().mainDoc);
   const [uncontrolledCollapsed, setUncontrolledCollapsed] = useState(false);
   const [remembered] = useState(() => readSidebarView(projectId, "outline"));
   const evaluatedDocumentKey = useRef<string | null>(
@@ -169,35 +113,7 @@ export function DocumentOutline({
     onCollapsedChange?.(next);
   };
 
-  const macroSources = useMemo(
-    () => (index ? outlineSources(useIndexStore.getState().texts, index, activePath) : null),
-    [index, activePath],
-  );
-  const [collectWrapperSections] = useState(createLatexWrapperSectionCollector);
-  const wrapperSections = useMemo(
-    () => (macroSources ? collectWrapperSections(macroSources) : NO_WRAPPER_SECTIONS),
-    [collectWrapperSections, macroSources],
-  );
-  const items = useMemo(
-    () =>
-      index && activePath
-        ? outlineFromIndex(index, activePath, (file) => wrapperSections.get(file) ?? []).filter(
-            (item) => item.kind === "section",
-          )
-        : [],
-    [index, activePath, wrapperSections],
-  );
-  const headingsByLabel = useMemo(
-    () =>
-      index
-        ? headingTitlesByLabel(
-            index,
-            (file) => wrapperSections.get(file) ?? [],
-            activePath ?? undefined,
-          )
-        : new Map<string, string>(),
-    [index, activePath, wrapperSections],
-  );
+  const { items, marks, activeIndex, title } = useDocumentOutline("file");
   const itemIds = useMemo(() => headingIds(items), [items]);
   const collapsibleHeadingIds = useMemo(() => {
     const collapsible = new Set<string>();
@@ -269,35 +185,12 @@ export function DocumentOutline({
     });
   }, [collapsibleHeadingIds, projectId, resolvedDocumentKey]);
 
-  const activeIndex = useEditorViewportSelection((anchor) => activeOutlineIndex(items, anchor));
   const activeHeadingVisible = useMemo(() => {
     const activeId = activeIndex >= 0 ? itemIds[activeIndex] : undefined;
     return activeId
       ? headings.some((heading) => heading.id === activeId)
       : false;
   }, [activeIndex, headings, itemIds]);
-  const [collectMacros] = useState(createLatexOutlineMacroCollector);
-  const latexMacros = useMemo(
-    () => (macroSources ? collectMacros(macroSources) : NO_LATEX_MACROS),
-    [collectMacros, macroSources],
-  );
-  const typstTitles = useTypstTitles(items);
-  const auxToc = useSyncExternalStore(subscribeAuxNumbers, currentAuxToc);
-  const headingNumbers = useMemo(
-    () =>
-      index && activePath && auxToc?.projectId === projectId && auxToc.mainDocument === mainDoc
-        ? latexOutlineNumbers({
-            items,
-            viewer: activePath,
-            toc: auxToc,
-            index,
-            texts: useIndexStore.getState().texts,
-            extraSections: (file) => wrapperSections.get(file) ?? [],
-            render: (tex) => renderLatexOutlineTitle(tex, latexMacros, headingsByLabel),
-          })
-        : NO_HEADING_NUMBERS,
-    [activePath, auxToc, headingsByLabel, index, items, latexMacros, mainDoc, projectId, wrapperSections],
-  );
 
   const listRef = useRef<HTMLDivElement>(null);
   const tooltips = useDelegatedTooltips(listRef);
@@ -318,14 +211,6 @@ export function DocumentOutline({
     }, OUTLINE_REVEAL_SETTLE_MS);
     return () => clearTimeout(timer);
   }, [activeHeadingVisible, activeIndex, collapsed]);
-
-  const jump = useCallback((item: OutlineItem) => {
-    void navigateToProjectRange({
-      path: item.file,
-      range: { from: item.from, to: item.to },
-      source: "outline",
-    });
-  }, []);
 
   const toggleHeading = useCallback((id: string) => {
     setCollapsedHeadingIds((current) => {
@@ -407,8 +292,8 @@ export function DocumentOutline({
               const crossFile = item.file !== activePath;
               const active = itemIndex === activeIndex;
               const headingCollapsed = collapsedHeadingIds.has(id);
-              const displayTitle = outlineDisplayTitle(item, latexMacros, headingsByLabel, typstTitles);
-              const number = headingNumbers[itemIndex] ?? null;
+              const displayTitle = title(item);
+              const number = marks[itemIndex]?.number ?? null;
               const label = number === null ? displayTitle : `${number} ${displayTitle}`;
               return (
                 <TreeRow
@@ -424,7 +309,7 @@ export function DocumentOutline({
                   )}
                   active={active}
                   labelRef={active ? activeRef : undefined}
-                  onSelect={() => jump(item)}
+                  onSelect={() => jumpToOutlineItem(item)}
                   ariaLabel={label}
                   tooltip={`${label} · ${item.file}:${item.line}`}
                   label={
@@ -438,13 +323,7 @@ export function DocumentOutline({
                       {displayTitle}
                     </span>
                   }
-                  trailing={
-                    crossFile ? (
-                      <span className="ml-auto shrink-0 rounded bg-muted px-1 font-mono text-[0.5625rem] text-muted-foreground/70">
-                        {basename(item.file).replace(/\.[^.]+$/, "")}
-                      </span>
-                    ) : null
-                  }
+                  trailing={crossFile ? <OutlineFileBadge file={item.file} className="ml-auto" /> : null}
                 />
               );
             })}

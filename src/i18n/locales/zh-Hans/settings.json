@@ -966,6 +966,12 @@
         "label": "默认主页视图",
         "list": "列表"
       },
+      "markers": {
+        "badges": "类型标签",
+        "description": "项目文件树中的每个文件都会显示图标，或 TEX、PDF 这样的简短类型标签，颜色相同。",
+        "icons": "图标",
+        "label": "文件显示为"
+      },
       "openIn": {
         "description": "选择项目打开时使用的布局。",
         "label": "项目打开方式"

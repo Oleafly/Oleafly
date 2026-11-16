@@ -1646,5 +1646,9 @@
   "stuckWindow": {
     "reloaded": "Oleafly heeft dit venster opnieuw geladen omdat het 30 seconden niet reageerde. Wijzigingen van vlak daarvoor zijn misschien niet opgeslagen.",
     "reloadedAgain": "Oleafly heeft dit venster nog een keer opnieuw geladen omdat het weer niet reageerde. Je project is niet opnieuw geopend, voor het geval iets daarin de oorzaak is."
+  },
+  "zoomIndicator": {
+    "label": "Zoom",
+    "reset": "Herstellen"
   }
 }

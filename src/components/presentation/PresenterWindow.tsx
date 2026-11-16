@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, EyeOff, Pause, Play, RotateCcw, X } from "lucide-react";
 import { loadPresentationNotes } from "@/features/presentation/load";
@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { formatTime } from "@/lib/intl";
+import type { DeckInfo } from "@/components/editor/deck/use-deck-frame";
+import { DeckSlide } from "./DeckSlide";
 import { SlideCanvas } from "./SlideCanvas";
 import { usePresentationControls, usePresentationDeck } from "./use-presentation";
 
@@ -89,10 +91,28 @@ export function PresenterWindow() {
   const { t } = useTranslation(["preview"]);
   const [params] = useState(() => readPresentationParams(window.location.search));
   const deck = usePresentationDeck(params);
-  const total = deck.status === "ready" ? deck.document.numPages : 0;
-  const { page, blank, act, end } = usePresentationControls(params, total);
+  const [deckInfo, setDeckInfo] = useState<DeckInfo | null>(null);
+  const stepRef = useRef<((action: "next" | "previous") => void) | null>(null);
+  const total = deck.status === "ready" ? deck.document.numPages : (deckInfo?.pages ?? 0);
+  const { page, blank, act, end, step } = usePresentationControls(
+    params,
+    total,
+    deck.status === "deck"
+      ? {
+          route: (action) => {
+            stepRef.current?.(action);
+            return true;
+          },
+        }
+      : {},
+  );
+  stepRef.current = step;
   const timer = useTimer();
-  const notes = useNotes(params);
+  const pdfNotes = useNotes(deck.status === "deck" ? null : params);
+  const notes: ReadonlyMap<number, string> | null =
+    deck.status === "deck"
+      ? new Map((deckInfo?.notes ?? []).flatMap((text, index) => (text ? [[index + 1, text] as const] : [])))
+      : pdfNotes;
   const note = notes?.get(page);
 
   const notesBody = () => {
@@ -119,6 +139,47 @@ export function PresenterWindow() {
           <Spinner />
           {t(($) => $.preview.presentation.loading)}
         </output>
+      );
+    }
+    if (deck.status === "deck") {
+      if (!params) return null;
+      return (
+        <>
+          <Panel title={t(($) => $.preview.presentation.current)}>
+            <DeckSlide
+              projectId={params.projectId}
+              path={deck.path}
+              code={deck.code}
+              page={page}
+              mode="page"
+              label={t(($) => $.preview.presentation.slideLabel, { page, total })}
+              className="flex-1 rounded-md bg-muted/60"
+              onInfo={setDeckInfo}
+            />
+          </Panel>
+          <div className="flex min-h-0 flex-col gap-4">
+            <Panel title={t(($) => $.preview.presentation.next)} className="h-2/5">
+              {total === 0 || page < total ? (
+                <DeckSlide
+                  projectId={params.projectId}
+                  path={deck.path}
+                  code={deck.code}
+                  page={Math.min(page + 1, Math.max(total, 1))}
+                  mode="page"
+                  label={t(($) => $.preview.presentation.slideLabel, { page: page + 1, total })}
+                  className="flex-1 rounded-md bg-muted/60"
+                />
+              ) : (
+                <p className="flex flex-1 items-center justify-center rounded-md bg-muted/60 text-sm text-muted-foreground">
+                  {t(($) => $.preview.presentation.lastSlide)}
+                </p>
+              )}
+            </Panel>
+            <Panel title={t(($) => $.preview.presentation.notes)} className="flex-1">
+              <div className="min-h-0 flex-1 overflow-auto rounded-md border p-3">{notesBody()}</div>
+            </Panel>
+          </div>
+        </>
       );
     }
     if (deck.status === "failed") {

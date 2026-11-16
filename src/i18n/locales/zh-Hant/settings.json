@@ -966,6 +966,12 @@
         "label": "預設首頁檢視",
         "list": "清單"
       },
+      "markers": {
+        "badges": "類型標籤",
+        "description": "專案檔案樹中的每個檔案都會顯示圖示，或 TEX、PDF 這類簡短的類型標籤，顏色相同。",
+        "icons": "圖示",
+        "label": "檔案顯示為"
+      },
       "openIn": {
         "description": "選擇專案開啟時使用的版面配置。",
         "label": "專案開啟方式"

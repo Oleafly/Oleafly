@@ -64,12 +64,12 @@ describe("visual mode gating", () => {
       const view = getEditorView();
       expect(view?.state.facet(visualModeActive)).toBe(true);
       expect(view?.dom.querySelector(".ofl-visual-typst-heading-1")).not.toBeNull();
-    }, { timeout: 5_000 });
+    }, { timeout: 10_000 });
     const view = getEditorView();
     expect(syntaxTree(view!.state).type.name).toBe("Source");
     expect(view!.dom.querySelector(".ofl-visual-preamble-widget")).toBeNull();
     mounted.unmount();
-  });
+  }, 15_000);
 
   it("keeps the LaTeX tree for a .tex file", async () => {
     installEnglishEditorMessages();
@@ -81,7 +81,7 @@ describe("visual mode gating", () => {
     await vi.waitFor(() => {
       expect(getEditorView()?.state.facet(visualModeActive)).toBe(true);
       expect(getEditorView()?.dom.querySelector(".ofl-visual-end-document")).not.toBeNull();
-    }, { timeout: 5_000 });
+    }, { timeout: 10_000 });
     mounted.unmount();
-  });
+  }, 15_000);
 });

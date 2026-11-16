@@ -1029,6 +1029,7 @@ pub fn run() {
             notebook_toolchain::remove_notebook_tool,
             notebook_toolchain::open_compiled_html,
             html_preview::compiled_html_preview_url,
+            html_preview::project_html_preview_url,
             typst_watch::typst_watch_start,
             typst_watch::typst_watch_compile,
             typst_watch::typst_watch_stop,

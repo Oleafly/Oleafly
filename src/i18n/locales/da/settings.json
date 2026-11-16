@@ -972,6 +972,12 @@
         "label": "Standardvisning på startsiden",
         "list": "Liste"
       },
+      "markers": {
+        "badges": "Typemærker",
+        "description": "Hver fil i projekttræet får et ikon eller et kort typemærke, fx TEX eller PDF, i de samme farver.",
+        "icons": "Ikoner",
+        "label": "Vis filer som"
+      },
       "openIn": {
         "description": "Vælg det layout, der bruges, når et projekt åbnes.",
         "label": "Åbn projekter i"

@@ -126,6 +126,8 @@
     "entryCount_other": "{{count}} poster i dispositionen",
     "expandHeading": "Expandera {{title}}",
     "expandAll": "Expandera alla rubriker",
+    "onPage": "{{heading}}, sida {{page}}",
+    "page": "s.{{page}}",
     "title": "Disposition"
   },
   "panelError": {

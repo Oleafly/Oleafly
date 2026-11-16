@@ -1611,5 +1611,9 @@
   "stuckWindow": {
     "reloaded": "此窗口 30 秒没有响应，Oleafly 已重新加载它。在此之前刚做的更改可能没有保存。",
     "reloadedAgain": "此窗口再次停止响应，Oleafly 又重新加载了它。由于问题可能出在你的项目里，这次没有重新打开项目。"
+  },
+  "zoomIndicator": {
+    "label": "缩放",
+    "reset": "重置"
   }
 }

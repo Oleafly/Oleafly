@@ -589,6 +589,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.files.projectLayout", "homeProjectLayout", oneOf(["grid", "list"] as const)),
   pref("appearance.files.defaultLayout", "defaultView", oneOf(LAYOUT_PRESETS)),
   pref("appearance.files.openFileTree", "openInTree", bool),
+  pref("appearance.files.fileMarkers", "fileMarkers", oneOf(["icons", "badges"] as const)),
   pref("appearance.files.hiddenFiles", "hiddenFilePatterns", hiddenFiles),
   pref("appearance.files.zenMode.fullScreen", "zenFullScreen", bool),
   pref("appearance.files.zenMode.showPdfOnCompile", "zenShowPdfOnCompile", bool),

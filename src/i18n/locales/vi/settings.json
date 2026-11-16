@@ -966,6 +966,12 @@
         "label": "Chế độ xem trang chủ mặc định",
         "list": "Danh sách"
       },
+      "markers": {
+        "badges": "Nhãn loại",
+        "description": "Mỗi tệp trong cây dự án có một biểu tượng hoặc một nhãn loại ngắn như TEX hay PDF, cùng màu sắc.",
+        "icons": "Biểu tượng",
+        "label": "Hiển thị tệp dưới dạng"
+      },
       "openIn": {
         "description": "Chọn bố cục dùng khi mở dự án.",
         "label": "Mở dự án trong"

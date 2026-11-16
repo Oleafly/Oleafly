@@ -159,7 +159,8 @@
     "imageToTypst": "이미지를 Typst로",
     "imageToTypstTooltip": "이미지를 Typst로(AI로 옮겨 적기)",
     "typstPackages": "Typst 패키지",
-    "latexPackages": "LaTeX 패키지"
+    "latexPackages": "LaTeX 패키지",
+    "preview": "미리 보기"
   },
   "contextMenu": {
     "engineUnavailable": "문서 엔진 작업을 사용할 수 없음",
@@ -209,6 +210,8 @@
     "pdfLoadFailed": "PDF를 불러오지 못했습니다: {{detail}}",
     "imageLoadFailed": "이미지를 불러오지 못했습니다: {{detail}}",
     "imageUnreadable": "이 파일은 이미지로 표시할 수 없습니다. 손상되었거나 이미지가 아닐 수 있습니다.",
+    "imageFit": "창에 맞추기",
+    "htmlPreviewFailed": "페이지를 미리 보지 못했습니다: {{detail}}",
     "binaryFile": "바이너리 파일입니다. 미리보기를 제공하지 않습니다.",
     "managedFileReadOnly": "{{file}}은(는) Oleafly가 관리하므로 여기에서는 읽기 전용입니다. 프로젝트 설정은 이 파일을 편집하는 대신 Oleafly에서 바꾸세요.",
     "noFileOpen": "열린 파일이 없습니다.",
@@ -1650,5 +1653,18 @@
       "duplicateArg": "중복된 인자",
       "unknownKind": "알 수 없는 필드 종류"
     }
+  },
+  "bibList": {
+    "count_other": "참고문헌 {{count}}건",
+    "empty": "이 파일에는 아직 참고문헌이 없습니다.",
+    "etAl": "{{author}} 외",
+    "noMatch": "검색과 일치하는 참고문헌이 없습니다.",
+    "search": "참고문헌 검색"
+  },
+  "deck": {
+    "noSlides": "이 슬라이드에는 아직 페이지가 없습니다. 슬라이드 컴포넌트 배열을 기본 내보내기로 지정하세요."
+  },
+  "board": {
+    "unreadable": "이 화이트보드를 읽을 수 없습니다. 파일이 손상되었거나 Excalidraw 그림이 아닐 수 있습니다."
   }
 }

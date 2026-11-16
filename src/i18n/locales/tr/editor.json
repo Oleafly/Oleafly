@@ -159,7 +159,8 @@
     "imageToTypst": "Görselden Typst'e",
     "imageToTypstTooltip": "Görselden Typst'e (yapay zeka ile metne dök)",
     "typstPackages": "Typst paketleri",
-    "latexPackages": "LaTeX paketleri"
+    "latexPackages": "LaTeX paketleri",
+    "preview": "Önizleme"
   },
   "contextMenu": {
     "engineUnavailable": "Belge motoru eylemleri kullanılamıyor",
@@ -209,6 +210,8 @@
     "pdfLoadFailed": "PDF yüklenemedi: {{detail}}",
     "imageLoadFailed": "Görsel yüklenemedi: {{detail}}",
     "imageUnreadable": "Bu dosya görüntü olarak gösterilemiyor. Dosya bozuk olabilir ya da bir görüntü olmayabilir.",
+    "imageFit": "Pencereye sığdır",
+    "htmlPreviewFailed": "Sayfa önizlenemedi: {{detail}}",
     "binaryFile": "İkili dosya. Önizleme yok.",
     "managedFileReadOnly": "{{file}} Oleafly tarafından yönetilir ve burada salt okunurdur. Proje ayarları bu dosya düzenlenerek değil, Oleafly üzerinden değişir.",
     "noFileOpen": "Açık dosya yok.",
@@ -1671,5 +1674,19 @@
       "duplicateArg": "Yinelenen argüman",
       "unknownKind": "Bilinmeyen alan türü"
     }
+  },
+  "bibList": {
+    "count_one": "{{count}} kaynak",
+    "count_other": "{{count}} kaynak",
+    "empty": "Bu dosyada henüz kaynak yok.",
+    "etAl": "{{author}} vd.",
+    "noMatch": "Aramanızla eşleşen kaynak yok.",
+    "search": "Kaynaklarda ara"
+  },
+  "deck": {
+    "noSlides": "Bu sunuda henüz slayt yok. Slayt bileşenlerinden oluşan bir diziyi varsayılan dışa aktarım olarak verin."
+  },
+  "board": {
+    "unreadable": "Bu beyaz tahta okunamadı. Dosya bozuk olabilir veya bir Excalidraw çizimi değil."
   }
 }

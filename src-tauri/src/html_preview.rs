@@ -98,6 +98,20 @@ fn port() -> std::io::Result<u16> {
     Ok(started)
 }
 
+fn site_url<'a>(root: &Path, page: impl IntoIterator<Item = &'a str>) -> Result<String, String> {
+    let failed = |detail: &dyn std::fmt::Display| {
+        String::from(AppError::new("notebook.open_html_failed").detail(detail))
+    };
+    let port = port().map_err(|error| failed(&error))?;
+    let mut url =
+        tauri::Url::parse(&format!("http://127.0.0.1:{port}/")).map_err(|error| failed(&error))?;
+    url.path_segments_mut()
+        .map_err(|()| failed(&"no path"))?
+        .push(&token_for(root.to_path_buf()))
+        .extend(page);
+    Ok(url.into())
+}
+
 fn preview_url(html: &Path) -> Result<String, String> {
     let missing = || String::from(AppError::new("notebook.no_html_output"));
     let root = html
@@ -108,19 +122,41 @@ fn preview_url(html: &Path) -> Result<String, String> {
         .file_name()
         .and_then(std::ffi::OsStr::to_str)
         .ok_or_else(missing)?;
-    let port = port()
-        .map_err(|error| String::from(AppError::new("notebook.open_html_failed").detail(error)))?;
-    let mut url = tauri::Url::parse(&format!("http://127.0.0.1:{port}/")).map_err(|_| missing())?;
-    url.path_segments_mut()
-        .map_err(|()| missing())?
-        .extend([token_for(root).as_str(), name]);
-    Ok(url.into())
+    site_url(&root, [name])
+}
+
+fn project_page_url(project: &Path, page: &str) -> Result<String, String> {
+    let refused = || String::from(AppError::new("notebook.open_html_failed").detail(page));
+    let segments: Vec<&str> = page.split('/').collect();
+    if segments.iter().any(|segment| {
+        segment.is_empty()
+            || *segment == "."
+            || *segment == ".."
+            || segment.contains(['\\', ':', '\0'])
+    }) {
+        return Err(refused());
+    }
+    let root = project.canonicalize().map_err(|_| refused())?;
+    let file = root.join(page).canonicalize().map_err(|_| refused())?;
+    if !file.starts_with(&root) || !file.is_file() {
+        return Err(refused());
+    }
+    site_url(&root, segments)
 }
 
 #[tauri::command]
 pub async fn compiled_html_preview_url(project_id: String) -> Result<String, String> {
     tauri::async_runtime::spawn_blocking(move || {
         preview_url(&crate::notebook_toolchain::compiled_html(&project_id)?)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+}
+
+#[tauri::command]
+pub async fn project_html_preview_url(project_id: String, path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        project_page_url(&crate::paths::project_dir(&project_id)?, &path)
     })
     .await
     .map_err(|error| error.to_string())?
@@ -204,5 +240,40 @@ mod tests {
         assert_eq!(reqwest::get(&escape).await.unwrap().status(), 404);
         let posted = reqwest::Client::new().post(&url).send().await.unwrap();
         assert_eq!(posted.status(), 405);
+    }
+
+    #[tokio::test]
+    async fn a_project_page_is_served_with_the_whole_project_beside_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let project = dir.path().join("paper");
+        std::fs::create_dir_all(project.join("demos")).unwrap();
+        std::fs::create_dir_all(project.join("figures")).unwrap();
+        std::fs::write(
+            project.join("demos/attention demo.html"),
+            "<img src=\"../figures/a.png\">",
+        )
+        .unwrap();
+        std::fs::write(project.join("figures/a.png"), [0x89, b'P', b'N', b'G']).unwrap();
+        std::fs::write(dir.path().join("secret.txt"), "secret").unwrap();
+
+        let url = project_page_url(&project, "demos/attention demo.html").unwrap();
+        assert!(url.ends_with("/demos/attention%20demo.html"), "{url}");
+        let page = reqwest::get(&url).await.unwrap();
+        assert_eq!(page.headers()["content-type"], "text/html");
+        let figure = url.replace("demos/attention%20demo.html", "figures/a.png");
+        assert_eq!(reqwest::get(&figure).await.unwrap().status(), 200);
+        let outside = url.replace("demos/attention%20demo.html", "..%2Fsecret.txt");
+        assert_eq!(reqwest::get(&outside).await.unwrap().status(), 404);
+
+        for refused in [
+            "../secret.txt",
+            "demos/../../secret.txt",
+            "/etc/hosts",
+            "demos//x.html",
+            "missing.html",
+            "demos",
+        ] {
+            assert!(project_page_url(&project, refused).is_err(), "{refused}");
+        }
     }
 }

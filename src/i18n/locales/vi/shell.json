@@ -1611,5 +1611,9 @@
   "stuckWindow": {
     "reloaded": "Oleafly đã tải lại cửa sổ này vì nó ngừng phản hồi trong 30 giây. Các thay đổi ngay trước đó có thể chưa được lưu.",
     "reloadedAgain": "Oleafly đã tải lại cửa sổ này lần nữa vì nó ngừng phản hồi. Nó không mở lại dự án của bạn, phòng trường hợp có gì đó trong dự án gây ra việc này."
+  },
+  "zoomIndicator": {
+    "label": "Thu phóng",
+    "reset": "Đặt lại"
   }
 }

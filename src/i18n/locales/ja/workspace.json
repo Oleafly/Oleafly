@@ -123,6 +123,8 @@
     "entryCount_other": "アウトラインの項目 {{count}} 件",
     "expandHeading": "{{title}} を展開",
     "expandAll": "すべての見出しを展開",
+    "onPage": "{{heading}}、{{page}} ページ目",
+    "page": "p.{{page}}",
     "title": "アウトライン"
   },
   "panelError": {

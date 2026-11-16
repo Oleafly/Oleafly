@@ -978,6 +978,12 @@
         "label": "Visualização inicial padrão",
         "list": "Lista"
       },
+      "markers": {
+        "badges": "Etiquetas de tipo",
+        "description": "Cada arquivo na árvore do projeto ganha um ícone ou uma etiqueta curta com o tipo, como TEX ou PDF, nas mesmas cores.",
+        "icons": "Ícones",
+        "label": "Mostrar arquivos como"
+      },
       "openIn": {
         "description": "Escolha o layout usado quando um projeto abre.",
         "label": "Abrir os projetos em"
