@@ -18,6 +18,7 @@ pub const LIVE_DIR: &str = "overleaf-live";
 pub const SCHEMA: u64 = 1;
 pub const WRITE_EVERY: Duration = Duration::from_millis(250);
 const MANIFEST: &str = "project.json";
+const JOINED: &str = "project-join.json";
 const LOCK: &str = "lock";
 const KEPT: &str = "kept";
 const FOLDER_LOCK: [&str; 3] = [".oleafly", "online", "live.lock"];
@@ -114,6 +115,14 @@ pub struct Journal {
     kept: Vec<PathBuf>,
     dirty_docs: BTreeSet<DocId>,
     dirty_manifest: bool,
+    joined: Option<Value>,
+    dirty_joined: bool,
+}
+
+#[derive(Serialize, Deserialize)]
+struct JoinSnapshot {
+    schema: u64,
+    response: Value,
 }
 
 pub fn origin_dir(base: &str) -> Result<String, JournalError> {
@@ -213,6 +222,8 @@ impl Journal {
             kept: Vec::new(),
             dirty_docs: BTreeSet::new(),
             dirty_manifest: false,
+            joined: None,
+            dirty_joined: false,
         };
         journal.load()?;
         Ok(journal)
@@ -224,6 +235,9 @@ impl Journal {
             Some((SCHEMA, Some(found))) => self.manifest = found,
             Some(_) => self.keep(&manifest)?,
             None => {}
+        }
+        if let Some((SCHEMA, Some(snapshot))) = read_json::<JoinSnapshot>(&self.dir.join(JOINED)) {
+            self.joined = Some(snapshot.response);
         }
         for entry in std::fs::read_dir(&self.dir)? {
             let path = entry?.path();
@@ -290,10 +304,29 @@ impl Journal {
     }
 
     pub fn is_dirty(&self) -> bool {
-        self.dirty_manifest || !self.dirty_docs.is_empty()
+        self.dirty_manifest || self.dirty_joined || !self.dirty_docs.is_empty()
+    }
+
+    pub fn joined(&self) -> Option<&Value> {
+        self.joined.as_ref()
+    }
+
+    pub fn remember_join(&mut self, response: Value) {
+        self.joined = Some(response);
+        self.dirty_joined = true;
     }
 
     pub fn flush(&mut self) -> Result<(), String> {
+        if self.dirty_joined {
+            if let Some(response) = &self.joined {
+                let snapshot = JoinSnapshot {
+                    schema: SCHEMA,
+                    response: response.clone(),
+                };
+                write_json(&self.dir.join(JOINED), &snapshot)?;
+            }
+            self.dirty_joined = false;
+        }
         if self.dirty_manifest {
             write_json(&self.dir.join(MANIFEST), &self.manifest)?;
             self.dirty_manifest = false;

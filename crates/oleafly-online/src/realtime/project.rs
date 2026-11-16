@@ -215,6 +215,26 @@ fn trimmed(project: &Value, key: &str) -> Option<String> {
 }
 
 impl ProjectState {
+    pub fn unjoined() -> ProjectState {
+        ProjectState {
+            public_id: PublicId(String::new()),
+            protocol_version: None,
+            role: Role::Viewer,
+            restricted: false,
+            deleted_externally: false,
+            name: String::new(),
+            root_doc: None,
+            main_bibliography: None,
+            compiler: None,
+            image: None,
+            spell_language: None,
+            features: Value::Null,
+            track_changes: TrackChanges::default(),
+            members: Members::default(),
+            tree: OverleafTree::default(),
+        }
+    }
+
     pub fn from_join(join: Value) -> Result<ProjectState, Unsupported> {
         if !join.is_object() {
             return Err(Unsupported::NotAnObject);
@@ -265,7 +285,8 @@ impl ProjectState {
 
     pub fn rejoin(&mut self, join: Value) -> Result<Rejoined, Unsupported> {
         let mut fresh = ProjectState::from_join(join)?;
-        if fresh.protocol_version != self.protocol_version {
+        let first = self.public_id.0.is_empty();
+        if !first && fresh.protocol_version != self.protocol_version {
             let from = self.protocol_version;
             let to = fresh.protocol_version;
             *self = fresh;

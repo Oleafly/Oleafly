@@ -10,8 +10,8 @@ use serde_json::Value;
 
 use super::catch_up::History;
 use super::{
-    Account, DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview, SignedIn,
-    UnsentDoc,
+    Account, DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview, Resolution,
+    SignedIn, UnsentDoc,
 };
 use crate::live::doc::{Applied, DocError, Limit, OutgoingUpdate, OverleafDoc, Rejoin};
 use crate::live::format::{CodecError, DocFormat, FormatState};
@@ -24,6 +24,7 @@ use crate::realtime::tree::{NodeKind, PathChange};
 
 const JOURNAL_BACKOFF: Duration = Duration::from_millis(250);
 const JOURNAL_BACKOFF_MAX: Duration = Duration::from_secs(5);
+const UNSTEADY_WITHIN: Duration = Duration::from_secs(10 * 60);
 
 pub(super) enum Notice {
     State(LiveState),
@@ -39,6 +40,9 @@ pub(super) enum Notice {
     Pending(DocId, bool),
     AccountChanged(Account),
     Editor(DocSink, DocMessage),
+    Maintenance(String, Duration),
+    SlowAck(bool),
+    Unsteady(DocId),
 }
 
 pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
@@ -57,6 +61,9 @@ pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
             Notice::Pending(doc, pending) => port.doc_pending(&doc, pending),
             Notice::AccountChanged(account) => port.account_changed(account),
             Notice::Editor(sink, message) => sink(message),
+            Notice::Maintenance(message, delay) => port.maintenance(&message, delay),
+            Notice::SlowAck(waiting) => port.slow_ack(waiting),
+            Notice::Unsteady(doc) => port.doc_unsteady(&doc),
         }
     }
 }
@@ -125,6 +132,7 @@ struct Slot {
     resume: Option<DocRecord>,
     held: Option<DocRecord>,
     errors: u8,
+    foreign: Option<Instant>,
     shown_pending: bool,
     dirty: bool,
 }
@@ -134,6 +142,10 @@ impl Slot {
         self.resume.is_some()
             || (self.phase == Phase::Held && self.held.is_some())
             || self.doc.as_ref().is_some_and(|doc| !doc.is_settled())
+    }
+
+    fn waits_for_server(&self) -> bool {
+        !matches!(self.phase, Phase::Held | Phase::Stopped) && self.unconfirmed()
     }
 
     fn record(&self) -> Option<DocRecord> {
@@ -198,6 +210,7 @@ pub(super) struct State {
     journal_retry: Option<(Instant, Duration)>,
     journal_failing: bool,
     last_pending: Option<u64>,
+    acks: u64,
 }
 
 impl State {
@@ -237,6 +250,7 @@ impl State {
             journal_retry: None,
             journal_failing: false,
             last_pending: None,
+            acks: 0,
         };
         state.take_journal(journal.docs());
         state
@@ -414,6 +428,38 @@ impl State {
         let pending = self.pending();
         self.notices
             .push(Notice::State(LiveState::Offline { retry_in, pending }));
+    }
+
+    pub(super) fn idle(&mut self) {
+        if self.ended.is_none() {
+            self.online = false;
+            self.last_pending = None;
+            self.notices.push(Notice::State(LiveState::Idle));
+        }
+    }
+
+    pub(super) fn maintenance(&mut self, message: String, delay: Duration) {
+        self.notices.push(Notice::Maintenance(message, delay));
+    }
+
+    pub(super) fn slow_ack(&mut self, waiting: bool) {
+        self.notices.push(Notice::SlowAck(waiting));
+    }
+
+    pub(super) fn is_online(&self) -> bool {
+        self.online
+    }
+
+    pub(super) fn acks(&self) -> u64 {
+        self.acks
+    }
+
+    pub(super) fn needs_server(&self) -> bool {
+        self.slots.values().any(Slot::waits_for_server)
+    }
+
+    pub(super) fn can_rest(&self) -> bool {
+        !self.needs_server() && !self.journal_due()
     }
 
     pub(super) fn end(&mut self, end: LiveEnd) {
@@ -617,6 +663,10 @@ impl State {
 
     fn reset_editor(&mut self, doc: &DocId) {
         let text = self.text(doc);
+        self.reset_editor_to(doc, text);
+    }
+
+    fn reset_editor_to(&mut self, doc: &DocId, text: Option<String>) {
         let Some(editor) = self
             .slots
             .get_mut(doc)
@@ -686,7 +736,8 @@ impl State {
             },
         ));
         if hold {
-            self.reset_editor(doc);
+            let text = before.or_else(|| self.text(doc));
+            self.reset_editor_to(doc, text);
             return Ok(());
         }
         match slot.phase {
@@ -823,6 +874,7 @@ impl State {
             Ok(Applied::Acknowledged) => {
                 slot.dirty = true;
                 slot.errors = 0;
+                self.acks += 1;
             }
             Ok(Applied::Ignored) => {}
             Err(error) => self.doc_failed(doc, error, Some(update.clone())),
@@ -1126,9 +1178,63 @@ impl State {
         slot.errors = slot.errors.saturating_add(u8::from(ours));
         if slot.errors > 1 {
             self.stop_doc(doc, DocStopReason::Server(message.to_string()));
-        } else {
-            self.rejoin(doc, Phase::CatchUp, None);
+            return;
         }
+        if !ours {
+            let now = Instant::now();
+            let again = slot
+                .foreign
+                .replace(now)
+                .is_some_and(|last| now.duration_since(last) < UNSTEADY_WITHIN);
+            if again {
+                self.notices.push(Notice::Unsteady(doc.clone()));
+            }
+        }
+        self.rejoin(doc, Phase::CatchUp, None);
+    }
+
+    pub(super) fn resolve(&mut self, doc: &DocId, choice: Resolution) -> Result<(), LiveError> {
+        let slot = self.slots.get_mut(doc).ok_or(LiveError::UnknownDoc)?;
+        if slot.phase != Phase::Held || slot.doc.is_none() {
+            return Err(LiveError::NotWritable);
+        }
+        let mine = slot
+            .held
+            .take()
+            .map(|record| record.local_text)
+            .unwrap_or_default();
+        slot.phase = Phase::Joined;
+        slot.dirty = true;
+        match choice {
+            Resolution::Mine => self.keep_mine(doc, &mine)?,
+            Resolution::Theirs => {
+                self.notices.push(Notice::Merged(
+                    doc.clone(),
+                    MergeReview::Kept { text: mine },
+                ));
+                self.reset_editor(doc);
+            }
+        }
+        self.notices.push(Notice::Texts(vec![doc.clone()]));
+        self.rejoin(doc, Phase::CatchUp, None);
+        Ok(())
+    }
+
+    fn keep_mine(&mut self, doc: &DocId, mine: &str) -> Result<(), LiveError> {
+        let known = self
+            .slots
+            .get_mut(doc)
+            .and_then(|slot| slot.doc.as_mut())
+            .ok_or(LiveError::UnknownDoc)?;
+        let op = diff(known.text(), mine);
+        let correction = known.local(op).map_err(|error| match error {
+            DocError::Local(error) => LiveError::Invalid(error),
+            _ => LiveError::Invalid(OtError::Incompatible),
+        })?;
+        if let Some(correction) = correction {
+            self.forward(doc, correction);
+        }
+        Ok(())
     }
 
     pub(super) fn rejoined(&mut self, public_id: PublicId, response: Value) -> bool {

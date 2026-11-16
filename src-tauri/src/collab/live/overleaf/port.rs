@@ -98,6 +98,7 @@ pub(super) fn status_of(state: &LiveState) -> (LiveStatus, u64) {
             *pending,
         ),
         LiveState::SignedOut { pending } => (LiveStatus::SignedOut, *pending),
+        LiveState::Idle => (LiveStatus::Idle, 0),
         LiveState::Ended(end) => (
             LiveStatus::Ended {
                 reason: end_reason(end),

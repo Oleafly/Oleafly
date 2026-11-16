@@ -92,6 +92,7 @@ pub enum LiveStatus {
     Online,
     Offline { retry_in_ms: u64 },
     SignedOut,
+    Idle,
     Ended { reason: EndReason },
 }
 

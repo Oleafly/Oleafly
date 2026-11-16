@@ -1,5 +1,6 @@
 mod catch_up;
 mod driver;
+mod pacing;
 mod state;
 #[cfg(test)]
 mod tests;
@@ -10,6 +11,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
 use oleafly_ot::{DocOpened, DocSink, OtError, TextOperation};
+use serde::Serialize;
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
@@ -17,7 +19,7 @@ use super::journal::Journal;
 use super::DocId;
 use crate::client::Http;
 use crate::error::{OnlineError, OnlineErrorKind};
-use crate::realtime::connection::{connect_tuned, Carrier, RealtimeError, Tuning};
+use crate::realtime::connection::{connect_tuned, Carrier, Connection, RealtimeError, Tuning};
 use crate::realtime::events::{PeerPosition, ProjectEvent, PublicId, Rejection};
 use crate::realtime::project::{ProjectState, Role};
 use crate::realtime::tree::{OverleafNode, PathChange};
@@ -38,6 +40,9 @@ pub trait LivePort: Send + Sync + 'static {
     fn disk_text(&self, path: &str) -> Option<String>;
     fn account_changed(&self, _typed_as: Account) {}
     fn doc_pending(&self, _doc: &DocId, _pending: bool) {}
+    fn maintenance(&self, _message: &str, _delay: Duration) {}
+    fn slow_ack(&self, _waiting: bool) {}
+    fn doc_unsteady(&self, _doc: &DocId) {}
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -46,6 +51,7 @@ pub enum LiveState {
     Online { pending: u64 },
     Offline { retry_in: Duration, pending: u64 },
     SignedOut { pending: u64 },
+    Idle,
     Ended(LiveEnd),
 }
 
@@ -92,6 +98,22 @@ pub enum MergeReview {
     Kept { text: String },
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Resolution {
+    Mine,
+    Theirs,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ConnectionDetails {
+    pub server: String,
+    pub transport: Option<String>,
+    pub public_id: Option<String>,
+    pub last_rejection: Option<String>,
+    pub pending_docs: Vec<String>,
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum LiveError {
     #[error("the project is no longer live")]
@@ -115,6 +137,12 @@ pub struct SessionTuning {
     pub legacy_grace: Duration,
     pub urgent_batch: usize,
     pub call_timeout: Duration,
+    pub join_limit: usize,
+    pub join_window: Duration,
+    pub drain_within: Duration,
+    pub typing_pause: Duration,
+    pub idle_after: Duration,
+    pub slow_ack_after: Duration,
 }
 
 impl Default for SessionTuning {
@@ -129,6 +157,12 @@ impl Default for SessionTuning {
             legacy_grace: Duration::from_secs(1),
             urgent_batch: 8,
             call_timeout: Duration::from_secs(30),
+            join_limit: 40,
+            join_window: Duration::from_secs(60),
+            drain_within: Duration::from_secs(45),
+            typing_pause: Duration::from_secs(2),
+            idle_after: Duration::from_secs(30 * 60),
+            slow_ack_after: Duration::from_secs(60),
         }
     }
 }
@@ -142,33 +176,85 @@ pub struct SessionConfig {
     pub tuning: SessionTuning,
 }
 
+struct Activity {
+    last: tokio::time::Instant,
+    typed: tokio::time::Instant,
+    focused: bool,
+}
+
+#[derive(Default)]
+struct Link {
+    transport: Option<&'static str>,
+    public_id: Option<PublicId>,
+    rejection: Option<String>,
+}
+
 struct Shared {
     state: Mutex<state::State>,
     journal: Mutex<Journal>,
     sign_in: Mutex<Option<SessionHandle>>,
     wake: Notify,
+    nudge: Notify,
+    nudged: AtomicBool,
     stopping: AtomicBool,
     port: Arc<dyn LivePort>,
+    activity: Mutex<Activity>,
+    link: Mutex<Link>,
+    server: String,
+}
+
+fn locked<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 impl Shared {
     fn lock(&self) -> MutexGuard<'_, state::State> {
-        self.state.lock().unwrap_or_else(PoisonError::into_inner)
+        locked(&self.state)
     }
 
     fn journal(&self) -> MutexGuard<'_, Journal> {
-        self.journal.lock().unwrap_or_else(PoisonError::into_inner)
+        locked(&self.journal)
     }
 
     fn take_sign_in(&self) -> Option<SessionHandle> {
-        self.sign_in
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take()
+        locked(&self.sign_in).take()
     }
 
     fn is_stopping(&self) -> bool {
         self.stopping.load(Ordering::SeqCst)
+    }
+
+    fn touched(&self, typed: bool) {
+        let now = tokio::time::Instant::now();
+        let mut activity = locked(&self.activity);
+        activity.last = now;
+        if typed {
+            activity.typed = now;
+        }
+    }
+
+    fn active_since(&self, since: tokio::time::Instant) -> bool {
+        let activity = locked(&self.activity);
+        activity.focused || activity.last > since
+    }
+
+    fn quiet_for(&self, idle_after: Duration) -> bool {
+        let activity = locked(&self.activity);
+        !activity.focused && activity.last.elapsed() >= idle_after
+    }
+
+    fn typing_paused(&self, pause: Duration) -> bool {
+        locked(&self.activity).typed.elapsed() >= pause
+    }
+
+    fn linked(&self, transport: &'static str, public_id: PublicId) {
+        let mut link = locked(&self.link);
+        link.transport = Some(transport);
+        link.public_id = Some(public_id);
+    }
+
+    fn rejected(&self, rejection: String) {
+        locked(&self.link).rejection = Some(rejection);
     }
 
     fn with<T>(&self, work: impl FnOnce(&mut state::State) -> T) -> T {
@@ -216,43 +302,90 @@ pub(super) fn online_error(error: RealtimeError) -> OnlineError {
     }
 }
 
+async fn first_connect(
+    config: &SessionConfig,
+    page: &ProjectPage,
+    journal: &mut Journal,
+) -> Result<(ProjectState, Option<Connection>), OnlineError> {
+    if let Some(project) = journal
+        .joined()
+        .cloned()
+        .and_then(|join| ProjectState::from_join(join).ok())
+    {
+        return Ok((project, None));
+    }
+    let attempt = match page.reload(&config.http, &config.session, false).await {
+        Ok(()) => {
+            connect_tuned(
+                &config.http,
+                &config.session,
+                page,
+                &config.carriers,
+                &config.tuning.connection,
+            )
+            .await
+        }
+        Err(error) => Err(RealtimeError::Page(error)),
+    };
+    match attempt {
+        Ok((connection, join)) => {
+            journal.remember_join(join.response.clone());
+            let _ = journal.flush();
+            let project = ProjectState::from_join(join.response).map_err(|unsupported| {
+                OnlineError::new(OnlineErrorKind::Unrecognized).detail(format!("{unsupported:?}"))
+            })?;
+            Ok((project, Some(connection)))
+        }
+        Err(error) if error.retry_after(0).is_none() || driver::signed_out_error(&error) => {
+            Err(online_error(error))
+        }
+        Err(_) => Ok((ProjectState::unjoined(), None)),
+    }
+}
+
 impl OverleafSession {
     pub async fn start(
         config: SessionConfig,
         port: Arc<dyn LivePort>,
-        journal: Journal,
+        mut journal: Journal,
     ) -> Result<Arc<OverleafSession>, OnlineError> {
         port.state(LiveState::Connecting);
-        let page =
-            ProjectPage::load(&config.http, &config.session, &config.project_id, false).await?;
-        let (connection, join) = connect_tuned(
-            &config.http,
-            &config.session,
-            &page,
-            &config.carriers,
-            &config.tuning.connection,
-        )
-        .await
-        .map_err(online_error)?;
-        let project = ProjectState::from_join(join.response).map_err(|unsupported| {
-            OnlineError::new(OnlineErrorKind::Unrecognized).detail(format!("{unsupported:?}"))
-        })?;
+        let page = ProjectPage::unloaded(&config.project_id)?;
+        let (project, connection) = first_connect(&config, &page, &mut journal).await?;
         let account = Account {
             user_id: config.session.user_id().to_string(),
             email: config.session.email().to_string(),
         };
         let mut state = state::State::new(project, account, &journal, Arc::clone(&port));
         state.page_limit = page.max_doc_length().map(|limit| limit as usize);
-        state.connected(connection.public_id().clone(), state::now_ms());
+        if let Some(connection) = &connection {
+            state.connected(connection.public_id().clone(), state::now_ms());
+        }
+        let now = tokio::time::Instant::now();
         let shared = Arc::new(Shared {
             state: Mutex::new(state),
             journal: Mutex::new(journal),
             sign_in: Mutex::new(None),
             wake: Notify::new(),
+            nudge: Notify::new(),
+            nudged: AtomicBool::new(false),
             stopping: AtomicBool::new(false),
             port,
+            activity: Mutex::new(Activity {
+                last: now,
+                typed: now,
+                focused: true,
+            }),
+            link: Mutex::new(Link::default()),
+            server: config.http.url(""),
         });
-        shared.with(state::State::announce);
+        if let Some(connection) = &connection {
+            shared.linked(
+                connection.carrier().wire_name(),
+                connection.public_id().clone(),
+            );
+            shared.with(state::State::announce);
+        }
         let driver = driver::Driver::new(Arc::clone(&shared), connection, page, config);
         let handle = tokio::spawn(driver.run());
         Ok(Arc::new(OverleafSession {
@@ -273,6 +406,7 @@ impl OverleafSession {
 
     pub fn editor_change(&self, doc: &DocId, rev: u64, op: TextOperation) -> Result<(), LiveError> {
         let result = self.shared.with(|state| state.editor_change(doc, rev, op));
+        self.shared.touched(true);
         self.poke();
         result
     }
@@ -287,8 +421,54 @@ impl OverleafSession {
         edit: impl FnOnce(&str) -> Option<TextOperation>,
     ) -> Result<bool, LiveError> {
         let result = self.shared.with(|state| state.local_edit_with(doc, edit));
+        self.shared.touched(true);
         self.poke();
         result
+    }
+
+    pub fn resolve(&self, doc: &DocId, choice: Resolution) -> Result<(), LiveError> {
+        let result = self.shared.with(|state| state.resolve(doc, choice));
+        self.shared.touched(false);
+        self.poke();
+        result
+    }
+
+    pub fn set_focused(&self, focused: bool) {
+        locked(&self.shared.activity).focused = focused;
+        self.shared.touched(false);
+        self.poke();
+    }
+
+    pub fn touch(&self) {
+        self.shared.touched(false);
+        self.poke();
+    }
+
+    pub fn reconnect_now(&self) {
+        self.shared.touched(false);
+        if !self.shared.lock().is_online() {
+            self.shared.nudged.store(true, Ordering::SeqCst);
+            self.shared.nudge.notify_waiters();
+        }
+        self.poke();
+    }
+
+    pub fn details(&self) -> ConnectionDetails {
+        let pending_docs = self
+            .shared
+            .lock()
+            .unsent()
+            .into_iter()
+            .map(|unsent| unsent.path)
+            .collect();
+        let link = locked(&self.shared.link);
+        ConnectionDetails {
+            server: self.shared.server.clone(),
+            transport: link.transport.map(str::to_string),
+            public_id: link.public_id.as_ref().map(|id| id.0.clone()),
+            last_rejection: link.rejection.clone(),
+            pending_docs,
+        }
     }
 
     pub fn text(&self, doc: &DocId) -> Option<String> {
@@ -328,11 +508,7 @@ impl OverleafSession {
             email: session.email().to_string(),
         };
         let outcome = self.shared.with(|state| state.signed_in(account));
-        *self
-            .shared
-            .sign_in
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner) = Some(session);
+        *locked(&self.shared.sign_in) = Some(session);
         self.poke();
         outcome
     }
@@ -346,11 +522,7 @@ impl OverleafSession {
         self.shared.stopping.store(true, Ordering::SeqCst);
         self.shared.wake.notify_waiters();
         self.poke();
-        let handle = self
-            .driver
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take();
+        let handle = locked(&self.driver).take();
         if let Some(handle) = handle {
             let _ = handle.await;
         }
@@ -359,12 +531,7 @@ impl OverleafSession {
 
 impl Drop for OverleafSession {
     fn drop(&mut self) {
-        if let Some(handle) = self
-            .driver
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take()
-        {
+        if let Some(handle) = locked(&self.driver).take() {
             handle.abort();
         }
     }

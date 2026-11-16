@@ -249,6 +249,7 @@ impl Peer {
             LiveStatus::Online => ("online", None),
             LiveStatus::Offline { .. } => ("offline", None),
             LiveStatus::SignedOut => ("signed_out", None),
+            LiveStatus::Idle => ("idle", None),
             LiveStatus::Ended { reason } => (
                 "ended",
                 serde_json::to_value(reason)

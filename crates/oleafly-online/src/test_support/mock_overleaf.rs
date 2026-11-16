@@ -550,6 +550,7 @@ struct State {
     counters: HashMap<String, VecDeque<tokio::time::Instant>>,
     stalled: bool,
     down: bool,
+    held_updates: Option<Vec<(String, String, Value)>>,
 }
 
 const RATE_LIMITED: &str = "Rate limit reached, please try again later";
@@ -604,6 +605,7 @@ impl State {
             faults: Vec::new(),
             counters: HashMap::new(),
             stalled: false,
+            held_updates: None,
             down: false,
         };
         state.root = Folder {
@@ -1354,7 +1356,6 @@ impl State {
         }
         let client = &self.clients[sid];
         let user_id = client.user.clone().unwrap_or_default();
-        let public_id = client.public_id.clone();
         let joined = client.joined.contains(&doc_id);
         let tracked = update.pointer("/meta/tc").is_some()
             || update["op"].to_string().contains("\"tracking\"");
@@ -1372,6 +1373,21 @@ impl State {
             return;
         }
         self.reply(sid, id, &[]);
+        if let Some(held) = self.held_updates.as_mut() {
+            held.push((sid.to_string(), doc_id, update));
+            return;
+        }
+        self.commit_update(sid, &doc_id, &update);
+    }
+
+    fn commit_update(&mut self, sid: &str, doc_id: &str, update: &Value) {
+        let Some(client) = self.clients.get(sid) else {
+            return;
+        };
+        let user_id = client.user.clone().unwrap_or_default();
+        let public_id = client.public_id.clone();
+        let doc_id = doc_id.to_string();
+        let update = update.clone();
         let Some(doc) = self.docs.get_mut(&doc_id) else {
             self.doc_error(&doc_id, "doc not found");
             return;
@@ -2776,6 +2792,17 @@ impl MockOverleaf {
             prefix: prefix.to_string(),
             fault,
         });
+    }
+
+    pub fn hold_updates(&self) {
+        self.state().held_updates.get_or_insert_with(Vec::new);
+    }
+
+    pub fn release_updates(&self) {
+        let mut state = self.state();
+        for (sid, doc_id, update) in state.held_updates.take().unwrap_or_default() {
+            state.commit_update(&sid, &doc_id, &update);
+        }
     }
 
     pub fn fail_next_update(&self, doc_id: &str, message: &str) {

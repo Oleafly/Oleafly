@@ -69,6 +69,9 @@ struct Seen {
     journal: Vec<Option<String>>,
     pending_docs: Vec<(DocId, bool)>,
     accounts: Vec<Account>,
+    maintenance: Vec<(String, Duration)>,
+    slow_acks: Vec<bool>,
+    unsteady: Vec<DocId>,
 }
 
 #[derive(Default)]
@@ -159,6 +162,18 @@ impl LivePort for Port {
 
     fn account_changed(&self, typed_as: Account) {
         self.seen().accounts.push(typed_as);
+    }
+
+    fn maintenance(&self, message: &str, delay: Duration) {
+        self.seen().maintenance.push((message.to_string(), delay));
+    }
+
+    fn slow_ack(&self, waiting: bool) {
+        self.seen().slow_acks.push(waiting);
+    }
+
+    fn doc_unsteady(&self, doc: &DocId) {
+        self.seen().unsteady.push(doc.clone());
     }
 }
 
@@ -254,10 +269,18 @@ impl Rig {
         tuning: SessionTuning,
     ) -> Arc<OverleafSession> {
         let journal = self.journal(name).await;
-        let port = Arc::clone(port) as Arc<dyn LivePort>;
-        OverleafSession::start(self.config(name, tuning), port, journal)
+        let shared = Arc::clone(port) as Arc<dyn LivePort>;
+        let live = OverleafSession::start(self.config(name, tuning), shared, journal)
             .await
-            .unwrap()
+            .unwrap();
+        eventually("the session leaves connecting", || {
+            port.seen()
+                .states
+                .iter()
+                .any(|state| *state != LiveState::Connecting)
+        })
+        .await;
+        live
     }
 
     fn connection_of(&self, name: &str) -> Option<String> {
@@ -1985,3 +2008,5 @@ fn recorded_sessions_replay_through_the_session_state() {
     assert!(sharejs.0 >= 10 && sharejs.1 >= 20, "sharejs {sharejs:?}");
     assert!(history_ot.0 >= 1, "history-ot {history_ot:?}");
 }
+
+mod resilience;
