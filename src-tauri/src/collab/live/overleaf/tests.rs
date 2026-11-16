@@ -12,7 +12,7 @@ use oleafly_online::realtime::DocId;
 
 use super::account::overleaf_signed_in;
 use super::refuse_overleaf_linked;
-use super::rig::{eventually, session_of, OverleafRig, Place, Quiet};
+use super::rig::{eventually, run, session_of, OverleafRig, Place, Quiet};
 use crate::collab::live::session::{guard, live_for};
 use crate::collab::live::UnsentProject;
 use crate::collab::testing::TempLibrary;
@@ -26,11 +26,6 @@ fn project(main: &str, intro: &str) -> MockProject {
         .member(MockUser::named("bob"), Privilege::ReadAndWrite)
         .doc(MAIN, main)
         .doc(INTRO, intro)
-}
-
-fn run(test: impl std::future::Future<Output = ()>) {
-    let _turn = crate::collab::live::write::rig::live_turn();
-    tauri::async_runtime::block_on(test);
 }
 
 #[test]

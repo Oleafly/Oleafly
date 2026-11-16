@@ -3,7 +3,7 @@ use std::time::Duration;
 use oleafly_online::test_support::mock_overleaf::MockProject;
 
 use super::notices::OverleafNotice;
-use super::rig::{eventually, FirstStart, OverleafRig, Place};
+use super::rig::{eventually, run, FirstStart, OverleafRig, Place};
 
 const MAIN: &str = "main.tex";
 const IMPORTED: &str = "Hello";
@@ -55,83 +55,91 @@ async fn unbased(server: &str) -> OverleafRig {
     .await
 }
 
-#[tokio::test]
-async fn a_local_edit_with_no_base_and_a_changed_server_waits_for_review() {
-    let rig = unbased("Hello world").await;
-    let mut tab = rig.open(MAIN);
-    joined(&rig).await;
-    tab.catch_up();
-    assert_eq!(rig.read(MAIN), LOCAL);
-    assert_eq!(tab.text, LOCAL);
-    assert_eq!(rig.mock.doc_text(&rig.doc(MAIN)), "Hello world");
-    assert_eq!(reviews(&rig), vec![review("Hello world")]);
-    rig.finish().await;
+#[test]
+fn a_local_edit_with_no_base_and_a_changed_server_waits_for_review() {
+    run(async {
+        let rig = unbased("Hello world").await;
+        let mut tab = rig.open(MAIN);
+        joined(&rig).await;
+        tab.catch_up();
+        assert_eq!(rig.read(MAIN), LOCAL);
+        assert_eq!(tab.text, LOCAL);
+        assert_eq!(rig.mock.doc_text(&rig.doc(MAIN)), "Hello world");
+        assert_eq!(reviews(&rig), vec![review("Hello world")]);
+        rig.finish().await;
+    });
 }
 
-#[tokio::test]
-async fn a_local_edit_with_no_base_waits_for_review_even_when_the_server_kept_the_import() {
-    let rig = unbased(IMPORTED).await;
-    let mut tab = rig.open(MAIN);
-    joined(&rig).await;
-    tab.catch_up();
-    assert_eq!(rig.read(MAIN), LOCAL);
-    assert_eq!(tab.text, LOCAL);
-    assert_eq!(rig.mock.doc_text(&rig.doc(MAIN)), IMPORTED);
-    assert_eq!(reviews(&rig), vec![review(IMPORTED)]);
-    rig.finish().await;
+#[test]
+fn a_local_edit_with_no_base_waits_for_review_even_when_the_server_kept_the_import() {
+    run(async {
+        let rig = unbased(IMPORTED).await;
+        let mut tab = rig.open(MAIN);
+        joined(&rig).await;
+        tab.catch_up();
+        assert_eq!(rig.read(MAIN), LOCAL);
+        assert_eq!(tab.text, LOCAL);
+        assert_eq!(rig.mock.doc_text(&rig.doc(MAIN)), IMPORTED);
+        assert_eq!(reviews(&rig), vec![review(IMPORTED)]);
+        rig.finish().await;
+    });
 }
 
-#[tokio::test]
-async fn an_imported_base_lets_the_first_live_start_send_the_local_edit() {
-    let rig = OverleafRig::start_first(
-        project(IMPORTED),
-        &[(MAIN, LOCAL)],
-        Place::Scratch,
-        FirstStart {
-            imported: &[(MAIN, IMPORTED)],
-            ..FirstStart::default()
-        },
-    )
-    .await;
-    let mut tab = rig.open(MAIN);
-    joined(&rig).await;
-    eventually("the local edit reaches the server", || {
-        rig.mock.doc_text(&rig.doc(MAIN)) == LOCAL
-    })
-    .await;
-    tab.catch_up();
-    assert_eq!(rig.read(MAIN), LOCAL);
-    assert_eq!(tab.text, LOCAL);
-    assert!(reviews(&rig).is_empty());
-    rig.finish().await;
+#[test]
+fn an_imported_base_lets_the_first_live_start_send_the_local_edit() {
+    run(async {
+        let rig = OverleafRig::start_first(
+            project(IMPORTED),
+            &[(MAIN, LOCAL)],
+            Place::Scratch,
+            FirstStart {
+                imported: &[(MAIN, IMPORTED)],
+                ..FirstStart::default()
+            },
+        )
+        .await;
+        let mut tab = rig.open(MAIN);
+        joined(&rig).await;
+        eventually("the local edit reaches the server", || {
+            rig.mock.doc_text(&rig.doc(MAIN)) == LOCAL
+        })
+        .await;
+        tab.catch_up();
+        assert_eq!(rig.read(MAIN), LOCAL);
+        assert_eq!(tab.text, LOCAL);
+        assert!(reviews(&rig).is_empty());
+        rig.finish().await;
+    });
 }
 
-#[tokio::test]
-async fn an_imported_base_merges_a_local_edit_with_a_coauthors() {
-    let rig = OverleafRig::start_first(
-        project("Hello world"),
-        &[(MAIN, LOCAL)],
-        Place::Scratch,
-        FirstStart {
-            imported: &[(MAIN, IMPORTED)],
-            ..FirstStart::default()
-        },
-    )
-    .await;
-    let mut tab = rig.open(MAIN);
-    joined(&rig).await;
-    eventually("the merge reaches the server", || {
-        rig.mock.doc_text(&rig.doc(MAIN)) == "Oh, Hello world"
-    })
-    .await;
-    eventually("the merge reaches the disk", || {
-        rig.read(MAIN) == "Oh, Hello world"
-    })
-    .await;
-    tab.catch_up();
-    assert_eq!(tab.text, "Oh, Hello world");
-    assert!(reviews(&rig).is_empty());
-    rig.finish().await;
+#[test]
+fn an_imported_base_merges_a_local_edit_with_a_coauthors() {
+    run(async {
+        let rig = OverleafRig::start_first(
+            project("Hello world"),
+            &[(MAIN, LOCAL)],
+            Place::Scratch,
+            FirstStart {
+                imported: &[(MAIN, IMPORTED)],
+                ..FirstStart::default()
+            },
+        )
+        .await;
+        let mut tab = rig.open(MAIN);
+        joined(&rig).await;
+        eventually("the merge reaches the server", || {
+            rig.mock.doc_text(&rig.doc(MAIN)) == "Oh, Hello world"
+        })
+        .await;
+        eventually("the merge reaches the disk", || {
+            rig.read(MAIN) == "Oh, Hello world"
+        })
+        .await;
+        tab.catch_up();
+        assert_eq!(tab.text, "Oh, Hello world");
+        assert!(reviews(&rig).is_empty());
+        rig.finish().await;
+    });
 }
 
 async fn linked(server: &str) -> OverleafRig {
@@ -147,44 +155,48 @@ async fn linked(server: &str) -> OverleafRig {
     .await
 }
 
-#[tokio::test]
-async fn a_git_linked_first_start_sends_the_local_edit() {
-    let rig = linked(IMPORTED).await;
-    let mut tab = rig.open(MAIN);
-    joined(&rig).await;
-    eventually("the local edit reaches the server", || {
-        rig.mock.doc_text(&rig.doc(MAIN)) == LOCAL
-    })
-    .await;
-    tab.catch_up();
-    assert_eq!(rig.read(MAIN), LOCAL);
-    assert_eq!(tab.text, LOCAL);
-    assert!(reviews(&rig).is_empty());
-    rig.finish().await;
+#[test]
+fn a_git_linked_first_start_sends_the_local_edit() {
+    run(async {
+        let rig = linked(IMPORTED).await;
+        let mut tab = rig.open(MAIN);
+        joined(&rig).await;
+        eventually("the local edit reaches the server", || {
+            rig.mock.doc_text(&rig.doc(MAIN)) == LOCAL
+        })
+        .await;
+        tab.catch_up();
+        assert_eq!(rig.read(MAIN), LOCAL);
+        assert_eq!(tab.text, LOCAL);
+        assert!(reviews(&rig).is_empty());
+        rig.finish().await;
+    });
 }
 
-#[tokio::test]
-async fn a_git_linked_first_start_merges_with_a_coauthors_edit() {
-    let rig = linked("Hello world").await;
-    let mut tab = rig.open(MAIN);
-    joined(&rig).await;
-    eventually("the merge reaches the server and the disk", || {
-        rig.mock.doc_text(&rig.doc(MAIN)) == "Oh, Hello world"
-            && rig.read(MAIN) == "Oh, Hello world"
-    })
-    .await;
-    tab.catch_up();
-    assert_eq!(tab.text, "Oh, Hello world");
-    assert!(reviews(&rig).is_empty());
-    let merged = rig
-        .host
-        .notices
-        .lock()
-        .unwrap()
-        .iter()
-        .any(|payload| matches!(payload.notice, OverleafNotice::Merged { .. }));
-    assert!(merged);
-    rig.finish().await;
+#[test]
+fn a_git_linked_first_start_merges_with_a_coauthors_edit() {
+    run(async {
+        let rig = linked("Hello world").await;
+        let mut tab = rig.open(MAIN);
+        joined(&rig).await;
+        eventually("the merge reaches the server and the disk", || {
+            rig.mock.doc_text(&rig.doc(MAIN)) == "Oh, Hello world"
+                && rig.read(MAIN) == "Oh, Hello world"
+        })
+        .await;
+        tab.catch_up();
+        assert_eq!(tab.text, "Oh, Hello world");
+        assert!(reviews(&rig).is_empty());
+        let merged = rig
+            .host
+            .notices
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|payload| matches!(payload.notice, OverleafNotice::Merged { .. }));
+        assert!(merged);
+        rig.finish().await;
+    });
 }
 
 #[test]

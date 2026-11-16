@@ -308,6 +308,11 @@ impl OverleafRig {
     }
 }
 
+pub(crate) fn run(test: impl std::future::Future<Output = ()>) {
+    let _turn = crate::collab::live::write::rig::live_turn();
+    tauri::async_runtime::block_on(test);
+}
+
 pub(crate) async fn eventually(what: &str, mut check: impl FnMut() -> bool) {
     let started = Instant::now();
     while !check() {
