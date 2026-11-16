@@ -224,6 +224,7 @@
     "overleaf_linked": "Dit project is gekoppeld aan Overleaf. Ontkoppel het om het op een Oleafly Server te delen.",
     "collab_shared": "Dit project wordt gedeeld op een Oleafly Server. Stop daar met delen om het live met Overleaf te bewerken.",
     "live_elsewhere": "Dit project is live in een ander Oleafly-venster.",
+    "overleaf_unsent": "Some changes haven't reached Overleaf yet. Resume live editing to send them, then unlink.",
     "suggestion_not_found": "Die suggestie bestaat niet meer. Misschien heeft iemand haar al geaccepteerd of geweigerd.",
     "suggestion_not_yours": "Alleen wie deze suggestie heeft gedaan, kan haar intrekken.",
     "suggestion_role": "Je rol in dit project staat geen suggesties toe.",
@@ -551,7 +552,8 @@
     "failed": "Het delen is niet afgerond, dus er is niets gedeeld.",
     "trustAgain": "Iedereen die je aan dit project toevoegt, kan de bestanden wijzigen, dus vraagt Oleafly je op deze computer het project opnieuw te vertrouwen voordat het er agents, terminalopdrachten of shell escape voor uitvoert.",
     "projectNotesShared": "De notities van het project worden gedeeld met iedereen in dit project. Persoonlijke notities blijven privé.",
-    "personalNotesPrivate": "Persoonlijke notities blijven privé. Alleen notities in de notitiemap van het project worden gedeeld."
+    "personalNotesPrivate": "Persoonlijke notities blijven privé. Alleen notities in de notitiemap van het project worden gedeeld.",
+    "unlinkOverleaf": "Unlink from Overleaf"
   },
   "manage": {
     "sharedOn": "Gedeeld via {{server}}",
@@ -619,6 +621,7 @@
     "offline": "Offline. Wachtende wijzigingen: {{number}}",
     "reconnecting": "Opnieuw verbinden",
     "signedOut": "Afgemeld",
+    "idle": "Paused while you're away",
     "suspended": "Account geschorst",
     "accessEnded": "Geen toegang",
     "removed": "Toegang ingetrokken",

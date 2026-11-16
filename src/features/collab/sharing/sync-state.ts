@@ -6,6 +6,7 @@ export const SYNC_STATES = [
   "offline",
   "reconnecting",
   "signedOut",
+  "idle",
   "suspended",
   "accessEnded",
   "removed",
@@ -47,6 +48,8 @@ export function syncState(status: CollabLiveSyncState | null, pending: number): 
       return pending > 0 ? "offline" : "reconnecting";
     case "signed_out":
       return "signedOut";
+    case "idle":
+      return "idle";
     case "ended":
       return ENDED[status.reason];
   }

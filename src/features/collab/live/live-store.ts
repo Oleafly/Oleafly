@@ -7,11 +7,13 @@ import {
   useLiveBackend,
 } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
+import type { OverleafLiveProject } from "@/lib/overleaf-live";
 import type {
   CollabCommentNotSent,
   CollabCommentsNotSent,
   CollabErrorCode,
   CollabLiveEndedReason,
+  CollabLiveDocPending,
   CollabLiveInfo,
   CollabLiveMembers,
   CollabLiveMerged,
@@ -33,6 +35,7 @@ import {
   collabServersList,
   collabShareInfo,
   onCollabCommentsNotSent,
+  onCollabLiveDocPending,
   onCollabLiveMembers,
   onCollabLiveMerged,
   onCollabLiveNewDevice,
@@ -120,9 +123,11 @@ export interface CollabLiveStoreState {
   projectId: string | null;
   backend: LiveBackend | null;
   share: CollabShareInfo | null;
+  overleaf: OverleafLiveProject | null;
   role: CollabProjectRole | null;
   status: CollabLiveSyncState | null;
   pending: number;
+  pendingPaths: readonly string[];
   peers: Record<string, LivePeer>;
   members: CollabProjectMember[];
   merged: CollabLiveMerged | null;
@@ -173,9 +178,11 @@ function emptyLive(projectId: string | null): LiveData {
     projectId,
     backend: null,
     share: null,
+    overleaf: null,
     role: null,
     status: null,
     pending: 0,
+    pendingPaths: [],
     peers: {},
     members: [],
     merged: null,
@@ -408,7 +415,8 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
   const goLiveAgain = () => {
     const state = store.getState();
     const driver = driverFor(state);
-    if (disposed || live !== null || !state.projectId || !driver || state.ended !== "failed") return;
+    if (disposed || live !== null || !state.projectId || !driver || !state.ended) return;
+    if (state.ended !== "failed" && !(resumable && driver.resumable(state.ended))) return;
     store.setState({ status: null, ended: null });
     void goLive(state.projectId, driver);
   };
@@ -446,6 +454,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     }));
     if (payload.status.state !== "ended") return;
     releaseEditors(payload.projectId);
+    store.setState({ pendingPaths: [] });
     if (payload.status.reason === "stopped") return;
     const ending = live?.projectId === payload.projectId ? live : null;
     const driver = ending?.driver ?? driverOf(store.getState().backend);
@@ -577,6 +586,19 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     store.setState({ unwritten: payload.files });
   };
 
+  const onDocPending = (payload: CollabLiveDocPending) => {
+    if (payload.projectId !== current()) return;
+    store.setState((state) => {
+      const has = state.pendingPaths.includes(payload.path);
+      if (has === payload.pending) return state;
+      return {
+        pendingPaths: payload.pending
+          ? [...state.pendingPaths, payload.path]
+          : state.pendingPaths.filter((path) => path !== payload.path),
+      };
+    });
+  };
+
   const expirePeers = () => {
     const peers = store.getState().peers;
     const cutoff = Date.now() - PEER_TTL_MS;
@@ -596,6 +618,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     onCollabCommentsNotSent(onCommentsNotSent),
     onCollabServerChanged(onServerChanged),
     onCollabLiveUnwritten(onUnwritten),
+    onCollabLiveDocPending(onDocPending),
     onCollabLiveProjectFull(onProjectFull),
   ].map((pending) =>
     pending.catch((error) => {
@@ -623,15 +646,33 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
       void goLive(state.projectId, driver);
     } else if (!driver && live) {
       stopLive();
-      store.setState({ backend: null, role: null, status: null, pending: 0, peers: {}, members: [] });
+      store.setState({
+        backend: null,
+        role: null,
+        status: null,
+        pending: 0,
+        pendingPaths: [],
+        peers: {},
+        members: [],
+      });
     }
   });
 
   const publishBackend = (state: CollabLiveStoreState) => {
     const backend = state.status?.state === "ended" ? null : state.backend;
     const published = useLiveBackend.getState();
-    if (published.projectId !== state.projectId || published.backend !== backend) {
-      useLiveBackend.setState({ projectId: state.projectId, backend });
+    if (
+      published.projectId !== state.projectId ||
+      published.backend !== backend ||
+      published.overleaf !== state.overleaf ||
+      published.pendingPaths !== state.pendingPaths
+    ) {
+      useLiveBackend.setState({
+        projectId: state.projectId,
+        backend,
+        overleaf: state.overleaf,
+        pendingPaths: state.pendingPaths,
+      });
     }
   };
   const unsubscribeBackend = store.subscribe(publishBackend);
@@ -671,6 +712,6 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     stopLive();
     for (const pending of unlisteners) void pending.then((unlisten) => unlisten());
     store.setState(emptyLive(null));
-    useLiveBackend.setState({ projectId: null, backend: null });
+    useLiveBackend.setState({ projectId: null, backend: null, overleaf: null, pendingPaths: [] });
   };
 }

@@ -47,6 +47,7 @@ export const COLLAB_ERROR_CODES = [
   "overleaf_linked",
   "collab_shared",
   "live_elsewhere",
+  "overleaf_unsent",
   "owner_away",
   "wrong_server",
   "suggestion_not_found",

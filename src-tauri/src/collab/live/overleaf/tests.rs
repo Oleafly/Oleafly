@@ -260,12 +260,35 @@ fn unsent_overleaf_work_refuses_sharing_even_with_the_card_off() {
 }
 
 #[test]
+fn unlinking_an_import_only_project_lets_it_share_with_the_card_on() {
+    let library = TempLibrary::new();
+    let project = imported_project();
+    tauri::async_runtime::block_on(super::commands::unlink(&project)).unwrap();
+    assert!(refuse_overleaf_linked(&collab_paths(), &project, true).is_ok());
+    let meta = crate::project::read_meta(&project).unwrap();
+    assert!(!meta.extra.contains_key("importedFrom"));
+    drop(library);
+}
+
+#[test]
+fn unlinking_is_refused_while_overleaf_work_is_unsent() {
+    let library = TempLibrary::new();
+    let project = imported_project();
+    journal_unsent(SERVER, LINKED, MAIN);
+    let refused = tauri::async_runtime::block_on(super::commands::unlink(&project)).unwrap_err();
+    assert_eq!(code(refused), "overleaf_unsent");
+    let refused = refuse_overleaf_linked(&collab_paths(), &project, false).unwrap_err();
+    assert_eq!(code(refused), "overleaf_linked");
+    drop(library);
+}
+
+#[test]
 fn going_live_on_overleaf_is_refused_for_a_project_shared_on_a_server() {
     let library = TempLibrary::new();
     let project = imported_project();
     let shared = crate::collab::testing::share(&project);
     let refused = tauri::async_runtime::block_on(super::commands::start(
-        Arc::new(Quiet),
+        Arc::new(Quiet::default()),
         &collab_paths(),
         &project,
     ))
@@ -303,6 +326,124 @@ fn a_stopped_doc_with_unsent_text_keeps_git_sync_refused_and_pause_asks_first() 
         assert!(paused.paused);
         assert!(live_for(&project_id).is_none());
         assert!(super::git_sync_waits(&project_id).unwrap());
+        assert!(
+            super::commands::live_project(&project_id)
+                .unwrap()
+                .unwrap()
+                .paused
+        );
+
+        super::commands::resume(&project_id).await.unwrap();
+        let resumed = super::commands::live_project(&project_id).unwrap().unwrap();
+        assert!(!resumed.paused);
+        assert!(!resumed.signed_in);
+        assert!(super::git_sync_waits(&project_id).unwrap());
+    });
+    drop(library);
+}
+
+#[test]
+fn a_typed_doc_is_marked_pending_until_the_server_confirms_it() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        let doc = rig.doc(MAIN);
+        let mut tab = rig.open(MAIN);
+        tab.typed(&rig.live, "Hello, pending\n");
+        eventually("the server has the typing", || {
+            rig.mock.doc_text(&doc) == "Hello, pending\n"
+        })
+        .await;
+        eventually("the doc is confirmed again", || {
+            rig.host
+                .pending
+                .lock()
+                .unwrap()
+                .last()
+                .is_some_and(|last| !last.pending)
+        })
+        .await;
+        let marks: Vec<(String, String, bool)> = rig
+            .host
+            .pending
+            .lock()
+            .unwrap()
+            .iter()
+            .map(|mark| (mark.project_id.clone(), mark.path.clone(), mark.pending))
+            .collect();
+        assert_eq!(
+            marks.first(),
+            Some(&("overleaf-rig".to_owned(), MAIN.to_owned(), true))
+        );
+        assert!(marks.iter().all(|(_, path, _)| path == MAIN));
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn project_name_follows_overleaf() {
+    let library = TempLibrary::new();
+    run(async {
+        let rig = OverleafRig::start_at(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+            Place::Library,
+        )
+        .await;
+        let project_id = rig.project_id.clone();
+        rig.mock
+            .emit_to_room("projectNameUpdated", &[serde_json::json!("Thesis, final")]);
+        eventually("the name follows Overleaf", || {
+            crate::project::read_meta(&project_id).is_ok_and(|meta| meta.name == "Thesis, final")
+        })
+        .await;
+        assert!(tokio::fs::metadata(rig.root.join(MAIN))
+            .await
+            .unwrap()
+            .is_file());
+        rig.finish().await;
+    });
+    drop(library);
+}
+
+#[test]
+fn settings_events_update_the_manifest() {
+    let library = TempLibrary::new();
+    run(async {
+        let rig = OverleafRig::start_at(
+            project("\\documentclass{article}\n", "\\documentclass{book}\n"),
+            &[
+                (MAIN, "\\documentclass{article}\n"),
+                (INTRO, "\\documentclass{book}\n"),
+            ],
+            Place::Library,
+        )
+        .await;
+        let project_id = rig.project_id.clone();
+        let meta = || crate::project::read_meta(&project_id).unwrap();
+        rig.mock
+            .emit_to_room("rootDocUpdated", &[serde_json::json!(rig.doc(INTRO))]);
+        eventually("the main document follows Overleaf", || {
+            meta().main_doc == INTRO
+        })
+        .await;
+        rig.mock
+            .emit_to_room("compilerUpdated", &[serde_json::json!("xelatex")]);
+        eventually("the compiler follows Overleaf", || {
+            meta().tex_flavor.as_deref() == Some("xelatex")
+        })
+        .await;
+        rig.mock
+            .emit_to_room("compilerUpdated", &[serde_json::json!("latex")]);
+        rig.mock
+            .emit_to_room("projectNameUpdated", &[serde_json::json!("Marker")]);
+        eventually("a later event is followed", || meta().name == "Marker").await;
+        assert_eq!(meta().tex_flavor.as_deref(), Some("xelatex"));
+        assert_eq!(meta().engine, crate::config::LATEXMK_ENGINE);
+        rig.finish().await;
     });
     drop(library);
 }
@@ -545,4 +686,24 @@ fn signing_in_again_resumes_a_signed_out_live_session() {
         rig.finish().await;
     });
     drop(library);
+}
+
+#[test]
+fn reconnecting_now_reaches_the_overleaf_session() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        assert!(crate::collab::live::lifecycle::reconnect_now());
+        let doc = rig.doc(MAIN);
+        let mut tab = rig.open(MAIN);
+        tab.typed(&rig.live, "Hello again\n");
+        eventually("typing still reaches the server", || {
+            rig.mock.doc_text(&doc) == "Hello again\n"
+        })
+        .await;
+        rig.finish().await;
+    });
 }

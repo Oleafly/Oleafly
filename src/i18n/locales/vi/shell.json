@@ -491,7 +491,8 @@
       "off": "Tắt",
       "run": "Chạy mã trên máy này"
     },
-    "sharedViewer": "Chỉ chủ sở hữu và người chỉnh sửa mới đổi được các cài đặt này trong dự án chia sẻ."
+    "sharedViewer": "Chỉ chủ sở hữu và người chỉnh sửa mới đổi được các cài đặt này trong dự án chia sẻ.",
+    "coauthorsChanged": "Changed by coauthors since your last compile"
   },
   "datePicker": {
     "placeholder": "Chọn ngày"
@@ -978,6 +979,10 @@
       "notes": {
         "description": "Thêm Ghi chú vào thanh dock ở Trang chủ. Mỗi ghi chú là một tệp Markdown có sơ đồ, biểu đồ và công thức toán mà cả bạn và các agent đều có thể chỉnh sửa. Ghi chú nằm ngoài thư viện dự án của bạn và mỗi ghi chú có thể liên kết với một dự án. Mặc định tắt vì vẫn đang trong giai đoạn beta.",
         "label": "Ghi chú"
+      },
+      "overleafLive": {
+        "label": "Live editing with Overleaf",
+        "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
       },
       "researchTasks": {
         "description": "Một agent làm việc tự động trong bản sao của dự án và để lại thay đổi cho bạn xem lại. Rất không ổn định: các lần chạy có thể kẹt, lỗi hoặc để lại thay đổi phải xử lý tay, và chúng dùng hạn mức của nhà cung cấp suốt thời gian đó. Thêm mục Nghiên cứu vào Cài đặt. Tắt sẽ dừng mọi tác vụ đang chạy. Mặc định tắt. Bật với rủi ro của bạn.",
@@ -1604,6 +1609,26 @@
       "allMine": "Giữ tất cả của tôi",
       "allTheirs": "Dùng tất cả của Overleaf",
       "apply": "Áp dụng và đồng bộ"
+    }
+  },
+  "overleafLive": {
+    "title": "Live editing with Overleaf",
+    "live": "Live with Overleaf",
+    "connecting": "Connecting to Overleaf…",
+    "sending": "Sending changes to Overleaf…",
+    "reconnecting": "Reconnecting to Overleaf…",
+    "pausedBadge": "Live editing paused",
+    "pause": "Pause live editing",
+    "resume": "Resume live editing",
+    "reconnectNow": "Reconnect now",
+    "open": "Open in Overleaf",
+    "share": "Share on Overleaf…",
+    "signIn": "Sign in…",
+    "pauseDialog": {
+      "title": "Some changes haven't reached Overleaf yet",
+      "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",
+      "keepLive": "Keep editing live",
+      "pauseAnyway": "Pause anyway"
     }
   },
   "stuckWindow": {

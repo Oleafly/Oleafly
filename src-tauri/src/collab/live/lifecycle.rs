@@ -284,7 +284,10 @@ pub fn reconnect_now() -> bool {
             active.handle.reconnect_now();
             true
         }
-        Live::Overleaf(_) => true,
+        Live::Overleaf(live) => {
+            live.reconnect_now();
+            true
+        }
     })
 }
 

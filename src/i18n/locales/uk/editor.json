@@ -1272,6 +1272,9 @@
     "failed": "Oleafly не вдалося оновити {{file}}. Спробуйте ще раз.",
     "tabMark": "Змінено на диску. Відкрийте цю вкладку, щоб вибрати, яку версію залишити."
   },
+  "liveTab": {
+    "notOnOverleafYet": "Not on Overleaf yet"
+  },
   "labels": {
     "filterPlaceholder": "Назва мітки",
     "filterLabel": "Фільтр міток проєкту",

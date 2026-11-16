@@ -224,6 +224,7 @@
     "overleaf_linked": "Este proyecto está vinculado con Overleaf. Desvincúlalo para compartirlo en un Oleafly Server.",
     "collab_shared": "Este proyecto se comparte en un Oleafly Server. Deja de compartirlo allí para editarlo en directo con Overleaf.",
     "live_elsewhere": "Este proyecto está en directo en otra ventana de Oleafly.",
+    "overleaf_unsent": "Some changes haven't reached Overleaf yet. Resume live editing to send them, then unlink.",
     "suggestion_not_found": "Esa sugerencia ya no existe. Puede que alguien la haya aceptado o rechazado.",
     "suggestion_not_yours": "Solo la persona que hizo esta sugerencia puede retirarla.",
     "suggestion_role": "Tu rol en este proyecto no permite sugerencias.",
@@ -551,7 +552,8 @@
     "failed": "No se terminó de compartir, así que no se compartió nada.",
     "trustAgain": "Cualquiera que añadas a este proyecto puede cambiar sus archivos, así que Oleafly te pide que vuelvas a confiar en él en este equipo antes de ejecutar agentes, comandos del terminal o shell escape para él.",
     "projectNotesShared": "Las notas del proyecto se comparten con todos los miembros de este proyecto. Las notas personales siguen siendo privadas.",
-    "personalNotesPrivate": "Las notas personales siguen siendo privadas. Solo se comparten las notas de la carpeta de notas del proyecto."
+    "personalNotesPrivate": "Las notas personales siguen siendo privadas. Solo se comparten las notas de la carpeta de notas del proyecto.",
+    "unlinkOverleaf": "Unlink from Overleaf"
   },
   "manage": {
     "sharedOn": "Compartido en {{server}}",
@@ -619,6 +621,7 @@
     "offline": "Sin conexión. Cambios pendientes: {{number}}",
     "reconnecting": "Reconectando",
     "signedOut": "Sesión cerrada",
+    "idle": "Paused while you're away",
     "suspended": "Cuenta suspendida",
     "accessEnded": "Sin acceso",
     "removed": "Acceso retirado",

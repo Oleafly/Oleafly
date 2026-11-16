@@ -224,6 +224,7 @@
     "overleaf_linked": "Acest proiect este legat de Overleaf. Anulează legătura ca să-l partajezi pe un Oleafly Server.",
     "collab_shared": "Acest proiect este partajat pe un Oleafly Server. Oprește partajarea acolo ca să-l editezi live cu Overleaf.",
     "live_elsewhere": "Acest proiect este live într-o altă fereastră Oleafly.",
+    "overleaf_unsent": "Some changes haven't reached Overleaf yet. Resume live editing to send them, then unlink.",
     "suggestion_not_found": "Această sugestie nu mai există. Poate că cineva a acceptat-o sau a respins-o.",
     "suggestion_not_yours": "Doar persoana care a făcut această sugestie o poate retrage.",
     "suggestion_role": "Rolul tău în acest proiect nu permite sugestii.",
@@ -551,7 +552,8 @@
     "failed": "Partajarea nu s-a terminat, așa că nu s-a partajat nimic.",
     "trustAgain": "Oricine adaugi la acest proiect îi poate modifica fișierele, așa că Oleafly îți cere să ai din nou încredere în el pe acest computer înainte să ruleze pentru el agenți, comenzi în terminal sau shell escape.",
     "projectNotesShared": "Notițele proiectului sunt partajate cu toți cei din acest proiect. Notițele personale rămân private.",
-    "personalNotesPrivate": "Notițele personale rămân private. Se partajează doar notițele din folderul de notițe al proiectului."
+    "personalNotesPrivate": "Notițele personale rămân private. Se partajează doar notițele din folderul de notițe al proiectului.",
+    "unlinkOverleaf": "Unlink from Overleaf"
   },
   "manage": {
     "sharedOn": "Partajat pe {{server}}",
@@ -619,6 +621,7 @@
     "offline": "Offline. Modificări în așteptare: {{number}}",
     "reconnecting": "Se reconectează",
     "signedOut": "Deconectat",
+    "idle": "Paused while you're away",
     "suspended": "Cont suspendat",
     "accessEnded": "Fără acces",
     "removed": "Acces eliminat",

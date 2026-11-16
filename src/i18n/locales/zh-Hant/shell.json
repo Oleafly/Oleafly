@@ -491,7 +491,8 @@
       "off": "關閉",
       "run": "在這台電腦上執行程式碼"
     },
-    "sharedViewer": "在共享專案中，只有擁有者和編輯者可以變更這些設定。"
+    "sharedViewer": "在共享專案中，只有擁有者和編輯者可以變更這些設定。",
+    "coauthorsChanged": "Changed by coauthors since your last compile"
   },
   "datePicker": {
     "placeholder": "選擇日期"
@@ -978,6 +979,10 @@
       "notes": {
         "description": "在首頁 Dock 中加入「筆記」。筆記是一個 Markdown 檔案，可以包含圖表、統計圖與數學式，你和你的代理程式都能編輯。筆記不會出現在專案庫中，每篇筆記都可以連結到一個專案。仍在 beta 階段，預設為關閉。",
         "label": "筆記"
+      },
+      "overleafLive": {
+        "label": "Live editing with Overleaf",
+        "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
       },
       "researchTasks": {
         "description": "代理程式會在專案的副本中自行運作，並把修改留給你審閱。極不穩定：執行可能卡住、失敗，或留下需要手動處理的修改，而且全程都會用掉你的供應商額度。會在「設定」中新增「研究」分區。關閉後會停止所有執行中的任務。預設為關閉，開啟後風險自負。",
@@ -1604,6 +1609,26 @@
       "allMine": "全部保留我的",
       "allTheirs": "全部使用 Overleaf 的",
       "apply": "套用並同步"
+    }
+  },
+  "overleafLive": {
+    "title": "Live editing with Overleaf",
+    "live": "Live with Overleaf",
+    "connecting": "Connecting to Overleaf…",
+    "sending": "Sending changes to Overleaf…",
+    "reconnecting": "Reconnecting to Overleaf…",
+    "pausedBadge": "Live editing paused",
+    "pause": "Pause live editing",
+    "resume": "Resume live editing",
+    "reconnectNow": "Reconnect now",
+    "open": "Open in Overleaf",
+    "share": "Share on Overleaf…",
+    "signIn": "Sign in…",
+    "pauseDialog": {
+      "title": "Some changes haven't reached Overleaf yet",
+      "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",
+      "keepLive": "Keep editing live",
+      "pauseAnyway": "Pause anyway"
     }
   },
   "stuckWindow": {

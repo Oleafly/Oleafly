@@ -492,7 +492,8 @@
       "off": "Av",
       "run": "Kör kod på den här datorn"
     },
-    "sharedViewer": "Bara ägare och redigerare kan ändra de här inställningarna i ett delat projekt."
+    "sharedViewer": "Bara ägare och redigerare kan ändra de här inställningarna i ett delat projekt.",
+    "coauthorsChanged": "Changed by coauthors since your last compile"
   },
   "datePicker": {
     "placeholder": "Välj ett datum"
@@ -992,6 +993,10 @@
       "notes": {
         "description": "Lägger till Anteckningar i dockan på startsidan. En anteckning är en Markdown-fil med diagram, grafer och matematik som både du och dina agenter kan redigera. Anteckningar hålls utanför ditt projektbibliotek, och varje anteckning kan länkas till ett projekt. Av som standard under betaperioden.",
         "label": "Anteckningar"
+      },
+      "overleafLive": {
+        "label": "Live editing with Overleaf",
+        "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
       },
       "researchTasks": {
         "description": "En agent arbetar på egen hand i en kopia av projektet och lämnar sina ändringar åt dig att granska. Mycket instabilt: körningar kan hänga sig, misslyckas eller lämna ändringar att ordna upp för hand, och de använder din leverantörs kvot hela tiden. Lägger till avsnittet Forskning i Inställningar. Avstängning stoppar alla pågående uppgifter. Av som standard. Slå på det på egen risk.",
@@ -1639,6 +1644,26 @@
       "allMine": "Behåll alla mina",
       "allTheirs": "Använd alla Overleafs",
       "apply": "Tillämpa och synka"
+    }
+  },
+  "overleafLive": {
+    "title": "Live editing with Overleaf",
+    "live": "Live with Overleaf",
+    "connecting": "Connecting to Overleaf…",
+    "sending": "Sending changes to Overleaf…",
+    "reconnecting": "Reconnecting to Overleaf…",
+    "pausedBadge": "Live editing paused",
+    "pause": "Pause live editing",
+    "resume": "Resume live editing",
+    "reconnectNow": "Reconnect now",
+    "open": "Open in Overleaf",
+    "share": "Share on Overleaf…",
+    "signIn": "Sign in…",
+    "pauseDialog": {
+      "title": "Some changes haven't reached Overleaf yet",
+      "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",
+      "keepLive": "Keep editing live",
+      "pauseAnyway": "Pause anyway"
     }
   },
   "stuckWindow": {

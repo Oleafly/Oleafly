@@ -34,6 +34,7 @@ vi.mock("@/lib/tauri-collab", () => ({
   onCollabPresenceLeft: listener("left"),
   onCollabCommentsNotSent: listener("notSent"),
   onCollabLiveUnwritten: listener("unwritten"),
+  onCollabLiveDocPending: listener("docPending"),
   onCollabLiveProjectFull: listener("projectFull"),
 }));
 

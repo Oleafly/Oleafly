@@ -224,6 +224,7 @@
     "overleaf_linked": "이 프로젝트는 Overleaf에 연결되어 있습니다. Oleafly Server에서 공유하려면 연결을 해제하세요.",
     "collab_shared": "이 프로젝트는 Oleafly Server에서 공유되고 있습니다. Overleaf와 실시간으로 편집하려면 그곳에서 공유를 중지하세요.",
     "live_elsewhere": "이 프로젝트는 다른 Oleafly 창에서 실시간 편집 중입니다.",
+    "overleaf_unsent": "Some changes haven't reached Overleaf yet. Resume live editing to send them, then unlink.",
     "suggestion_not_found": "이미 없는 제안입니다. 다른 사람이 수락하거나 거부했을 수 있습니다.",
     "suggestion_not_yours": "이 제안은 제안한 사람만 철회할 수 있습니다.",
     "suggestion_role": "이 프로젝트에서 내 역할로는 제안할 수 없습니다.",
@@ -551,7 +552,8 @@
     "failed": "공유가 끝나지 않아 아무것도 공유되지 않았습니다.",
     "trustAgain": "이 프로젝트에 추가한 사람은 누구나 파일을 바꿀 수 있으므로, Oleafly는 이 컴퓨터에서 에이전트, 터미널 명령, shell escape를 실행하기 전에 이 프로젝트를 다시 신뢰할지 묻습니다.",
     "projectNotesShared": "프로젝트의 노트는 이 프로젝트에 참여한 모든 사람과 공유됩니다. 개인 노트는 비공개로 유지됩니다.",
-    "personalNotesPrivate": "개인 노트는 비공개로 유지됩니다. 프로젝트의 노트 폴더에 있는 노트만 공유됩니다."
+    "personalNotesPrivate": "개인 노트는 비공개로 유지됩니다. 프로젝트의 노트 폴더에 있는 노트만 공유됩니다.",
+    "unlinkOverleaf": "Unlink from Overleaf"
   },
   "manage": {
     "sharedOn": "{{server}}에서 공유 중",
@@ -619,6 +621,7 @@
     "offline": "오프라인. 대기 중인 변경 사항: {{number}}",
     "reconnecting": "다시 연결하는 중",
     "signedOut": "로그아웃됨",
+    "idle": "Paused while you're away",
     "suspended": "계정 정지됨",
     "accessEnded": "접근 권한 없음",
     "removed": "접근 권한 제거됨",

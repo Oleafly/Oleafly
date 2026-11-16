@@ -1112,6 +1112,8 @@ interface SettingsState {
   setLatexTools: (v: boolean) => void;
   notes: boolean;
   setNotes: (v: boolean) => void;
+  overleafLive: boolean;
+  setOverleafLive: (v: boolean) => void;
   notesTypeface: NotesAppearance["notesTypeface"];
   notesFontFamily: string;
   notesFontSize: number;
@@ -1315,6 +1317,7 @@ const PREF_DEFAULTS = {
   homeProjectLayout: "grid" as HomeProjectLayout,
   latexTools: false,
   notes: false,
+  overleafLive: false,
   ...NOTES_APPEARANCE_DEFAULTS,
   notesPeriodic: NOTES_PERIODIC_DEFAULTS,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
@@ -1415,6 +1418,7 @@ export const SECTION_SETTINGS = {
   experimentation: {
     latexTools: "oleafly.latexTools",
     notes: "oleafly.notes",
+    overleafLive: "oleafly.overleafLive",
   },
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
@@ -2120,6 +2124,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setLatexTools: (v) => {
     saveLs("oleafly.latexTools", v ? "1" : "0");
     set({ latexTools: v });
+  },
+  overleafLive: ls("oleafly.overleafLive", "0") === "1",
+  setOverleafLive: (v) => {
+    saveLs("oleafly.overleafLive", v ? "1" : "0");
+    set({ overleafLive: v });
   },
   notes: ls("oleafly.notes", "0") === "1",
   setNotes: (v) => {

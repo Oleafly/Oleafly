@@ -154,21 +154,24 @@ pub(crate) async fn pause(
     let link = live.link.clone();
     drop(live);
     stop(project_id).await;
-    mark_paused(&link).await?;
+    set_paused(&link, true).await?;
     Ok(PauseOutcome {
         paused: true,
         unsent: Vec::new(),
     })
 }
 
-async fn mark_paused(link: &OverleafLink) -> Result<(), CollabError> {
+async fn set_paused(link: &OverleafLink, paused: bool) -> Result<(), CollabError> {
     let data = crate::paths::oleafly_root().map_err(CollabError::Io)?;
     let started = Instant::now();
     loop {
         match Journal::open(&data, &link.server, &link.project_id, None) {
             Ok(mut journal) => {
+                if journal.manifest().paused == paused {
+                    return Ok(());
+                }
                 let mut manifest = journal.manifest().clone();
-                manifest.paused = true;
+                manifest.paused = paused;
                 journal.set_manifest(manifest);
                 return journal.flush().map_err(CollabError::Io);
             }
@@ -189,4 +192,103 @@ pub async fn overleaf_live_pause(
     pause(&project_id, anyway.unwrap_or(false), PAUSE_WAIT)
         .await
         .map_err(CollabCommandError::from)
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OverleafLiveProject {
+    pub server: String,
+    pub remote_id: String,
+    pub signed_in: bool,
+    pub paused: bool,
+}
+
+pub(crate) fn live_project(project_id: &str) -> Result<Option<OverleafLiveProject>, CollabError> {
+    let Some(link) = crate::overleaf::overleaf_link_of(project_id).map_err(CollabError::Io)? else {
+        return Ok(None);
+    };
+    let signed_in = crate::overleaf::live_session(&link.server)
+        .map_err(CollabError::Io)?
+        .is_some();
+    let live = matches!(live_for(project_id), Some(Live::Overleaf(_)));
+    Ok(Some(OverleafLiveProject {
+        paused: !live && paused(&link)?,
+        server: link.server,
+        remote_id: link.project_id,
+        signed_in,
+    }))
+}
+
+fn paused(link: &OverleafLink) -> Result<bool, CollabError> {
+    let data = crate::paths::oleafly_root().map_err(CollabError::Io)?;
+    let dir = oleafly_online::live::journal::journal_dir(&data, &link.server, &link.project_id)
+        .map_err(|error| CollabError::Io(error.to_string()))?;
+    if !dir.is_dir() {
+        return Ok(false);
+    }
+    match Journal::open(&data, &link.server, &link.project_id, None) {
+        Ok(journal) => Ok(journal.manifest().paused),
+        Err(JournalError::Busy) => Ok(false),
+        Err(error) => Err(CollabError::Io(error.to_string())),
+    }
+}
+
+#[tauri::command]
+pub async fn overleaf_live_project(
+    project_id: String,
+) -> Result<Option<OverleafLiveProject>, CollabCommandError> {
+    tauri::async_runtime::spawn_blocking(move || live_project(&project_id))
+        .await
+        .map_err(io)
+        .and_then(|result| result)
+        .map_err(CollabCommandError::from)
+}
+
+pub(crate) async fn resume(project_id: &str) -> Result<(), CollabError> {
+    let id = project_id.to_owned();
+    let link = tauri::async_runtime::spawn_blocking(move || crate::overleaf::overleaf_link_of(&id))
+        .await
+        .map_err(io)?
+        .map_err(CollabError::Io)?
+        .ok_or_else(not_live)?;
+    set_paused(&link, false).await
+}
+
+#[tauri::command]
+pub async fn overleaf_live_resume(project_id: String) -> Result<(), CollabCommandError> {
+    resume(&project_id).await.map_err(CollabCommandError::from)
+}
+
+fn overleaf_unsent() -> CollabError {
+    CollabError::Api {
+        status: 409,
+        code: "overleaf_unsent".to_owned(),
+        message: "this project has changes that haven't reached Overleaf".to_owned(),
+    }
+}
+
+pub(crate) async fn unlink(project_id: &str) -> Result<(), CollabError> {
+    if let Some(Live::Overleaf(live)) = live_for(project_id) {
+        if !live.session.unsent(PAUSE_WAIT).await.is_empty() {
+            return Err(overleaf_unsent());
+        }
+        drop(live);
+        stop(project_id).await;
+    }
+    let id = project_id.to_owned();
+    tauri::async_runtime::spawn_blocking(move || {
+        if let Some(link) = crate::overleaf::overleaf_link_of(&id).map_err(CollabError::Io)? {
+            if super::unsent_journal(&link)? {
+                return Err(overleaf_unsent());
+            }
+        }
+        crate::overleaf::unlink_project(&id).map_err(CollabError::Io)
+    })
+    .await
+    .map_err(io)?
+}
+
+#[tauri::command]
+pub async fn overleaf_live_unlink(project_id: String) -> Result<(), CollabCommandError> {
+    unlink(&project_id).await.map_err(CollabCommandError::from)
 }

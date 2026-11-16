@@ -13,8 +13,8 @@ use oleafly_ot::{DocMessage, DocSink};
 use super::{OverleafLive, Parts};
 use crate::collab::live::host::LiveHost;
 use crate::collab::live::payloads::{
-    MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload,
-    StatusPayload,
+    DocPendingPayload, MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload,
+    RolePayload, StatusPayload,
 };
 use crate::collab::live::session::{guard, Live, ACTIVE};
 use crate::folder_watch::FolderChange;
@@ -22,7 +22,10 @@ use crate::overleaf::OverleafLink;
 
 pub(crate) const WAIT: Duration = Duration::from_secs(20);
 
-pub(crate) struct Quiet;
+#[derive(Default)]
+pub(crate) struct Quiet {
+    pub(crate) pending: Mutex<Vec<DocPendingPayload>>,
+}
 
 impl LiveHost for Quiet {
     fn status(&self, _: StatusPayload) {}
@@ -32,6 +35,9 @@ impl LiveHost for Quiet {
     fn presence_left(&self, _: PresenceLeftPayload) {}
     fn folder_changed(&self, _: FolderChange) {}
     fn new_device(&self, _: NewDevicePayload) {}
+    fn doc_pending(&self, payload: DocPendingPayload) {
+        self.pending.lock().unwrap().push(payload);
+    }
 }
 
 pub(crate) struct Tab {
@@ -71,6 +77,7 @@ impl Tab {
 pub(crate) struct OverleafRig {
     pub(crate) mock: MockOverleaf,
     pub(crate) live: Arc<OverleafLive>,
+    pub(crate) host: Arc<Quiet>,
     pub(crate) project_id: String,
     pub(crate) root: PathBuf,
     _dir: tempfile::TempDir,
@@ -157,11 +164,12 @@ impl OverleafRig {
             ..ProjectManifest::default()
         });
         journal.flush().unwrap();
+        let host = Arc::new(Quiet::default());
         let parts = Parts {
             project_id: project_id.clone(),
             root: root.clone(),
             mirror_dir: dir.path().join("mirror"),
-            host: Arc::new(Quiet),
+            host: Arc::clone(&host) as Arc<dyn LiveHost>,
             link: OverleafLink {
                 server: mock.base.clone(),
                 project_id: mock.project_id(),
@@ -180,6 +188,7 @@ impl OverleafRig {
         OverleafRig {
             mock,
             live,
+            host,
             project_id,
             root,
             _dir: dir,

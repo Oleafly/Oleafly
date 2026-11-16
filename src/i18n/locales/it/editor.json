@@ -1258,6 +1258,9 @@
     "failed": "Oleafly non è riuscito ad aggiornare {{file}}. Riprova.",
     "tabMark": "Cambiato sul disco. Apri questa scheda per scegliere quale versione tenere."
   },
+  "liveTab": {
+    "notOnOverleafYet": "Not on Overleaf yet"
+  },
   "labels": {
     "filterPlaceholder": "Nome dell'etichetta",
     "filterLabel": "Filtra le etichette del progetto",

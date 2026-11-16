@@ -9,7 +9,7 @@ mod tree;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock, Weak};
 use std::time::Duration;
 
 use oleafly_collab::live::DiskWork;
@@ -45,6 +45,7 @@ pub(crate) struct Mirror {
     status: Mutex<(LiveStatus, u64)>,
     sinks: Mutex<BTreeMap<DocId, DocSink>>,
     kept: Mutex<Vec<super::kept::KeptFile>>,
+    session: OnceLock<Weak<OverleafSession>>,
 }
 
 impl Mirror {
@@ -59,7 +60,22 @@ impl Mirror {
             status: Mutex::new((LiveStatus::Connecting, 0)),
             sinks: Mutex::new(BTreeMap::new()),
             kept: Mutex::new(Vec::new()),
+            session: OnceLock::new(),
         }
+    }
+
+    fn path_of(&self, doc: &DocId) -> Option<String> {
+        let mirrored = guard(&self.disk.disk)
+            .layout
+            .get(&doc.0)
+            .map(|placed| placed.path.clone());
+        mirrored.or_else(|| {
+            let session = self.session.get()?.upgrade()?;
+            oleafly_collab::materialize::layout(&tree::file_nodes(&session.nodes()))
+                .into_iter()
+                .find(|(id, _)| *id == doc.0)
+                .map(|(_, placed)| placed.path)
+        })
     }
 
     fn kick(&self) {
@@ -305,6 +321,7 @@ impl OverleafLive {
         let session = OverleafSession::start(config, port, journal)
             .await
             .map_err(|error| port::online_error(&error))?;
+        let _ = mirror.session.set(Arc::downgrade(&session));
         let live = Arc::new(OverleafLive {
             session,
             mirror,
@@ -329,6 +346,10 @@ impl OverleafLive {
             account_id: self.me.clone(),
             device_id: self.me.clone(),
         }
+    }
+
+    pub(crate) fn reconnect_now(&self) {
+        self.session.reconnect_now();
     }
 
     pub(crate) fn repeat_status(&self) {

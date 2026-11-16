@@ -29,7 +29,10 @@ import { startLive } from "./index";
 describe("live collaboration entry", () => {
   it("runs the live lifecycle with shared editing attached", () => {
     const stop = startLive();
-    expect(mocks.startCollabLive).toHaveBeenCalledWith({ started: mocks.startLiveTarget });
+    expect(mocks.startCollabLive).toHaveBeenCalledWith({
+      started: mocks.startLiveTarget,
+      drivers: [expect.objectContaining({ kind: "server" }), expect.objectContaining({ kind: "overleaf" })],
+    });
     expect(mocks.installNoteLive).toHaveBeenCalledTimes(1);
     expect(typeof stop).toBe("function");
   });

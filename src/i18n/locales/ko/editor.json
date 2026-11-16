@@ -1230,6 +1230,9 @@
     "failed": "Oleafly가 {{file}}을(를) 업데이트하지 못했습니다. 다시 시도하세요.",
     "tabMark": "디스크에서 바뀌었습니다. 이 탭을 열어 남길 버전을 고르세요."
   },
+  "liveTab": {
+    "notOnOverleafYet": "Not on Overleaf yet"
+  },
   "labels": {
     "filterPlaceholder": "레이블 이름",
     "filterLabel": "프로젝트 레이블 필터",

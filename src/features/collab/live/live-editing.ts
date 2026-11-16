@@ -21,7 +21,7 @@ import { isProjectIntelligencePath } from "@/lib/project-intelligence/source";
 import { onPathsDeleted, onPathsMoved, useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
 import { collabErrorMessage } from "../errors";
-import { canEditProjectRole, isReadOnlyProjectRole } from "../roles";
+import { canEditProjectRole, viewsOnlyOn } from "../roles";
 import { LiveSessions } from "./live-sessions";
 import { type LiveSession, useCollabLiveStore } from "./live-store";
 import { createPresencePublisher, inOrder, type Presence, peerCursors } from "./presence";
@@ -103,7 +103,10 @@ function currentPresence(projectId: string): Presence {
 
 export function startLiveEditing(live: LiveSession): () => void {
   const { projectId } = live;
-  const isViewer = () => isReadOnlyProjectRole(useCollabLiveStore.getState().role);
+  const isViewer = () => {
+    const state = useCollabLiveStore.getState();
+    return viewsOnlyOn(state.backend, state.role);
+  };
   const indexer = backgroundIndexer(projectId);
   const refusals = new Map<string, { code: CollabErrorCode; at: number }>();
   const stopRefusals = onCollabSuggestionRefused((refused) => {
@@ -169,7 +172,7 @@ export function startLiveEditing(live: LiveSession): () => void {
   const unsubscribeRole = useCollabLiveStore.subscribe((state, previous) => {
     if (state.role !== previous.role) {
       useCollabEditorGate.setState({
-        viewer: isReadOnlyProjectRole(state.role),
+        viewer: viewsOnlyOn(state.backend, state.role),
         locked: !canEditProjectRole(state.role),
       });
     }

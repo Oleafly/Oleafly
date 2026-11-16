@@ -1,4 +1,5 @@
-import type { CollabServerRole } from "@/lib/tauri";
+import { canEditProjectRole, isReadOnlyProjectRole } from "@/lib/collab-roles";
+import type { CollabProjectRole, CollabServerRole } from "@/lib/tauri";
 
 export const SERVER_ROLES = ["admin", "maintainer", "member", "guest"] as const satisfies readonly CollabServerRole[];
 
@@ -66,6 +67,10 @@ export function canChangeMember(actor: ServerRole, target: ServerRole): boolean 
 
 export function canManageServer(role: ServerRole | null): boolean {
   return role !== null && serverRoleAllows(role, "manageMembers");
+}
+
+export function viewsOnlyOn(backend: "server" | "overleaf" | null, role: CollabProjectRole | null): boolean {
+  return backend === "overleaf" ? !canEditProjectRole(role) : isReadOnlyProjectRole(role);
 }
 
 export {

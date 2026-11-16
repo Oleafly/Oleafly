@@ -1244,6 +1244,9 @@
     "failed": "Oleafly kon {{file}} niet bijwerken. Probeer het opnieuw.",
     "tabMark": "Op schijf gewijzigd. Open dit tabblad om te kiezen welke versie je wilt houden."
   },
+  "liveTab": {
+    "notOnOverleafYet": "Not on Overleaf yet"
+  },
   "labels": {
     "filterPlaceholder": "Labelnaam",
     "filterLabel": "Projectlabels filteren",

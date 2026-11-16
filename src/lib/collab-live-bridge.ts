@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { DocumentSession } from "@oleafly/editor/document-session";
+import type { OverleafLiveProject, OverleafPauseOutcome } from "@/lib/overleaf-live";
 import type { CollabProjectRole } from "@/lib/tauri";
 
 export interface LiveNoteSession {
@@ -167,9 +168,45 @@ export function installNoteLivePort(port: NoteLivePort): () => void {
 interface LiveBackendState {
   projectId: string | null;
   backend: "server" | "overleaf" | null;
+  overleaf: OverleafLiveProject | null;
+  pendingPaths: readonly string[];
 }
 
-export const useLiveBackend = create<LiveBackendState>(() => ({ projectId: null, backend: null }));
+export const useLiveBackend = create<LiveBackendState>(() => ({
+  projectId: null,
+  backend: null,
+  overleaf: null,
+  pendingPaths: [],
+}));
+
+export function useNotOnOverleafYet(projectId: string | null, path: string): boolean {
+  return useLiveBackend(
+    (live) =>
+      projectId !== null &&
+      live.projectId === projectId &&
+      live.backend === "overleaf" &&
+      live.pendingPaths.includes(path),
+  );
+}
+
+export interface OverleafLiveActions {
+  pause(projectId: string, anyway: boolean): Promise<OverleafPauseOutcome>;
+  resume(projectId: string): Promise<void>;
+  unlink(projectId: string): Promise<void>;
+}
+
+let overleafActions: OverleafLiveActions | null = null;
+
+export function installOverleafLiveActions(next: OverleafLiveActions): () => void {
+  overleafActions = next;
+  return () => {
+    if (overleafActions === next) overleafActions = null;
+  };
+}
+
+export function overleafLiveActions(): OverleafLiveActions | null {
+  return overleafActions;
+}
 
 export function liveOnOverleaf(projectId: string | null): boolean {
   const live = useLiveBackend.getState();

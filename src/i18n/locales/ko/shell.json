@@ -491,7 +491,8 @@
       "off": "끄기",
       "run": "이 컴퓨터에서 코드 실행"
     },
-    "sharedViewer": "공유 프로젝트에서는 소유자와 편집자만 이 설정을 변경할 수 있습니다."
+    "sharedViewer": "공유 프로젝트에서는 소유자와 편집자만 이 설정을 변경할 수 있습니다.",
+    "coauthorsChanged": "Changed by coauthors since your last compile"
   },
   "datePicker": {
     "placeholder": "날짜 선택"
@@ -978,6 +979,10 @@
       "notes": {
         "description": "홈 독에 노트를 추가합니다. 노트는 다이어그램, 차트, 수식을 넣을 수 있는 Markdown 파일로, 사용자와 에이전트가 함께 편집할 수 있습니다. 노트는 프로젝트 라이브러리에 포함되지 않으며, 각 노트를 프로젝트에 연결할 수 있습니다. 아직 베타라서 기본적으로 꺼져 있습니다.",
         "label": "노트"
+      },
+      "overleafLive": {
+        "label": "Live editing with Overleaf",
+        "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
       },
       "researchTasks": {
         "description": "에이전트가 프로젝트 사본에서 혼자 작업하고, 바뀐 내용은 검토할 수 있도록 남겨 둡니다. 매우 불안정합니다. 실행이 멈추거나 실패할 수 있고, 직접 정리해야 하는 변경이 남을 수도 있으며, 실행하는 동안 내내 제공자의 할당량을 사용합니다. 설정에 연구 섹션이 추가됩니다. 끄면 실행 중인 모든 작업이 중지됩니다. 기본은 꺼짐입니다. 위험을 감수하고 켜세요.",
@@ -1604,6 +1609,26 @@
       "allMine": "모두 내 버전 유지",
       "allTheirs": "모두 Overleaf 버전 사용",
       "apply": "적용하고 동기화"
+    }
+  },
+  "overleafLive": {
+    "title": "Live editing with Overleaf",
+    "live": "Live with Overleaf",
+    "connecting": "Connecting to Overleaf…",
+    "sending": "Sending changes to Overleaf…",
+    "reconnecting": "Reconnecting to Overleaf…",
+    "pausedBadge": "Live editing paused",
+    "pause": "Pause live editing",
+    "resume": "Resume live editing",
+    "reconnectNow": "Reconnect now",
+    "open": "Open in Overleaf",
+    "share": "Share on Overleaf…",
+    "signIn": "Sign in…",
+    "pauseDialog": {
+      "title": "Some changes haven't reached Overleaf yet",
+      "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",
+      "keepLive": "Keep editing live",
+      "pauseAnyway": "Pause anyway"
     }
   },
   "stuckWindow": {

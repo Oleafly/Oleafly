@@ -61,6 +61,7 @@ import { EngineSection } from "@/components/settings/EngineSection";
 import { DownloadsSection } from "@/components/settings/DownloadsSection";
 import { AISection } from "@/components/settings/AISection";
 import { IntegrationsSection } from "@/components/settings/IntegrationsSection";
+import { OverleafLiveSetting } from "@/components/layout/overleaf-sync/OverleafLiveSetting";
 import { ShellCommandRow } from "@/components/settings/ShellCommandRow";
 import { SystemIntegrationSection } from "@/components/settings/SystemIntegrationSection";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -817,6 +818,7 @@ export function SettingsModal() {
           checked={notesEnabled}
           onChange={setNotesEnabled}
         />
+        <OverleafLiveSetting />
         <SettingsToggleRow
           testId="settings-research-tasks"
           label={t(($) => $.shell.settings.experimentation.researchTasks.label)}

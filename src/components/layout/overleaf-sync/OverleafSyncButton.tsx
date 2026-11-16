@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { ExternalLink, KeyRound, RefreshCw, Unlink } from "lucide-react";
+import { CirclePause, ExternalLink, KeyRound, Play, RefreshCw, Unlink } from "lucide-react";
+import { OverleafLiveSlot } from "@/components/collab/CollabSlots";
 import { OverleafBrandIcon } from "@/components/settings/IntegrationBrandIcons";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,17 +26,17 @@ import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { describeError } from "@/lib/app-error";
-import { liveOnOverleaf } from "@/lib/collab-live-bridge";
+import { liveOnOverleaf, overleafLiveActions, useLiveBackend } from "@/lib/collab-live-bridge";
 import { formatRelativeTimeFrom } from "@/lib/intl";
 import { logError } from "@/lib/log";
 import { overleafTokenPage, type SyncSide } from "@/lib/overleaf-sync";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
 import { useOverleafSyncStore } from "@/store/overleaf-sync";
+import { FileList } from "./FileList";
 
 const AUTO_SYNC_EVERY = 3 * 60_000;
 const QUIET_AFTER_TYPING = 15_000;
-const MAX_SHOWN = 12;
 
 type ShellTranslate = ReturnType<typeof useTranslation<["shell"]>>["t"];
 
@@ -105,6 +106,7 @@ export function OverleafSyncButton() {
   const choice = useOverleafSyncStore((state) => state.choice);
   const error = useOverleafSyncStore((state) => state.error);
   const refresh = useOverleafSyncStore((state) => state.refresh);
+  const overleaf = useLiveBackend((live) => (live.projectId === projectId ? live.overleaf : null));
   const [tokenOpen, setTokenOpen] = useState(false);
   const [conflictsOpen, setConflictsOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -114,7 +116,10 @@ export function OverleafSyncButton() {
   }, [projectId, refresh]);
   useAutoSync(projectId ?? "");
 
-  if (!projectId || !status || (!status.linked && !status.importedFrom)) return null;
+  if (!projectId) return null;
+  const gitWhilePaused = overleaf?.paused === true && status?.linked === true && status.tokenSaved;
+  if (overleaf && !gitWhilePaused) return <OverleafLiveSlot />;
+  if (!status || (!status.linked && !status.importedFrom)) return null;
 
   const busy = phase !== "idle";
   const attention = conflicts.length > 0 || Boolean(error);
@@ -133,23 +138,37 @@ export function OverleafSyncButton() {
   return (
     <>
       <DropdownMenu onOpenChange={(open) => open && setNow(Date.now())}>
-        <Tooltip label={t(($) => $.shell.overleafSync.button)} side="bottom">
+        <Tooltip
+          label={gitWhilePaused ? t(($) => $.shell.overleafLive.pausedBadge) : t(($) => $.shell.overleafSync.button)}
+          side="bottom"
+        >
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              size="icon"
+              size={gitWhilePaused ? "sm" : "icon"}
               data-testid="overleaf-sync-button"
               aria-label={t(($) => $.shell.overleafSync.button)}
-              className="relative size-7 text-muted-foreground hover:text-foreground"
+              className={cn(
+                "relative text-muted-foreground hover:text-foreground",
+                gitWhilePaused ? "h-7 gap-1 px-1.5" : "size-7",
+              )}
             >
-              {busy ? <Spinner size="sm" /> : <OverleafBrandIcon className="size-4 text-[#47A141]" />}
-              <span
-                aria-hidden
-                className={cn(
-                  "absolute right-1 top-1 size-1.5 rounded-full",
-                  attention ? "bg-amber-500" : "hidden",
-                )}
-              />
+              <span className="relative inline-flex">
+                {busy ? <Spinner size="sm" /> : <OverleafBrandIcon className="size-4 text-[#47A141]" />}
+                <span
+                  aria-hidden
+                  className={cn(
+                    "absolute -right-0.5 -top-0.5 size-1.5 rounded-full",
+                    attention ? "bg-amber-500" : "hidden",
+                  )}
+                />
+              </span>
+              {gitWhilePaused ? (
+                <span data-testid="overleaf-live-paused-badge" className="inline-flex">
+                  <CirclePause aria-hidden className="size-3.5 text-muted-foreground" />
+                  <span className="sr-only">{t(($) => $.shell.overleafLive.pausedBadge)}</span>
+                </span>
+              ) : null}
             </Button>
           </DropdownMenuTrigger>
         </Tooltip>
@@ -161,6 +180,19 @@ export function OverleafSyncButton() {
             </span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          {gitWhilePaused ? (
+            <DropdownMenuItem
+              data-testid="overleaf-live-resume"
+              onSelect={() => {
+                overleafLiveActions()
+                  ?.resume(projectId)
+                  .catch((error) => void logError("resume overleaf live editing", error));
+              }}
+            >
+              <Play className="size-4 text-muted-foreground" />
+              {t(($) => $.shell.overleafLive.resume)}
+            </DropdownMenuItem>
+          ) : null}
           {status.linked ? (
             <LinkedItems
               busy={busy}
@@ -312,25 +344,6 @@ function TokenDialog({
         </form>
       </DialogContent>
     </Dialog>
-  );
-}
-
-function FileList({ files }: Readonly<{ files: readonly string[] }>) {
-  const { t } = useTranslation(["shell"]);
-  const shown = files.slice(0, MAX_SHOWN);
-  return (
-    <ul className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2 font-mono text-xs">
-      {shown.map((file) => (
-        <li key={file} className="truncate" title={file}>
-          {file}
-        </li>
-      ))}
-      {files.length > shown.length ? (
-        <li className="font-sans text-muted-foreground">
-          {t(($) => $.shell.overleafSync.more, { count: files.length - shown.length })}
-        </li>
-      ) : null}
-    </ul>
   );
 }
 

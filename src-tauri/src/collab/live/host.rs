@@ -41,6 +41,7 @@ pub trait LiveHost: Send + Sync + 'static {
     fn settings_changed(&self, _applied: crate::collab::settings::Applied) {}
     fn written(&self, _payload: WrittenPayload) {}
     fn account_changed(&self, _payload: super::payloads::AccountChangedPayload) {}
+    fn doc_pending(&self, _payload: super::payloads::DocPendingPayload) {}
     fn app(&self) -> Option<tauri::AppHandle> {
         None
     }
@@ -154,6 +155,10 @@ impl LiveHost for AppLiveHost {
         let _ = self
             .app
             .emit(super::payloads::ACCOUNT_CHANGED_EVENT, payload);
+    }
+
+    fn doc_pending(&self, payload: super::payloads::DocPendingPayload) {
+        let _ = self.app.emit(super::payloads::DOC_PENDING_EVENT, payload);
     }
 
     fn uploads(&self, payload: uploads::UploadsPayload) {

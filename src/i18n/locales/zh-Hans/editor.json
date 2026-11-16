@@ -1230,6 +1230,9 @@
     "failed": "Oleafly 无法更新 {{file}}。请重试。",
     "tabMark": "已在磁盘上更改。打开此标签页以选择要保留的版本。"
   },
+  "liveTab": {
+    "notOnOverleafYet": "Not on Overleaf yet"
+  },
   "labels": {
     "filterPlaceholder": "标签名称",
     "filterLabel": "筛选项目标签",

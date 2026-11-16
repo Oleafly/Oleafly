@@ -491,7 +491,8 @@
       "off": "オフ",
       "run": "このコンピュータでコードを実行"
     },
-    "sharedViewer": "共有プロジェクトでは、これらの設定を変更できるのは所有者と編集者だけです。"
+    "sharedViewer": "共有プロジェクトでは、これらの設定を変更できるのは所有者と編集者だけです。",
+    "coauthorsChanged": "Changed by coauthors since your last compile"
   },
   "datePicker": {
     "placeholder": "日付を選択"
@@ -978,6 +979,10 @@
       "notes": {
         "description": "ホームのドックに「ノート」を追加します。ノートは、ダイアグラム、グラフ、数式を入れられる Markdown ファイルで、あなたとエージェントの両方が編集できます。ノートはプロジェクトのライブラリには含まれず、各ノートをプロジェクトにリンクできます。まだベータ版のため、既定ではオフです。",
         "label": "ノート"
+      },
+      "overleafLive": {
+        "label": "Live editing with Overleaf",
+        "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
       },
       "researchTasks": {
         "description": "エージェントがプロジェクトのコピー上で自律的に作業し、変更はあなたが確認できるように残します。非常に不安定で、実行が止まったり、失敗したり、手作業で整理が必要な変更が残ったりすることがあり、その間ずっとプロバイダの利用枠を消費します。設定に「研究」セクションを追加します。オフにすると、実行中のタスクはすべて停止します。既定ではオフです。自己責任でオンにしてください。",
@@ -1604,6 +1609,26 @@
       "allMine": "すべて自分の版にする",
       "allTheirs": "すべて Overleaf の版にする",
       "apply": "適用して同期"
+    }
+  },
+  "overleafLive": {
+    "title": "Live editing with Overleaf",
+    "live": "Live with Overleaf",
+    "connecting": "Connecting to Overleaf…",
+    "sending": "Sending changes to Overleaf…",
+    "reconnecting": "Reconnecting to Overleaf…",
+    "pausedBadge": "Live editing paused",
+    "pause": "Pause live editing",
+    "resume": "Resume live editing",
+    "reconnectNow": "Reconnect now",
+    "open": "Open in Overleaf",
+    "share": "Share on Overleaf…",
+    "signIn": "Sign in…",
+    "pauseDialog": {
+      "title": "Some changes haven't reached Overleaf yet",
+      "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",
+      "keepLive": "Keep editing live",
+      "pauseAnyway": "Pause anyway"
     }
   },
   "stuckWindow": {

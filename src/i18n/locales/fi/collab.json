@@ -224,6 +224,7 @@
     "overleaf_linked": "Tämä projekti on yhdistetty Overleafiin. Poista yhteys, niin voit jakaa sen Oleafly Serverillä.",
     "collab_shared": "Tämä projekti on jaettu Oleafly Serverillä. Lopeta jakaminen siellä, niin voit muokata sitä livenä Overleafissa.",
     "live_elsewhere": "Tämä projekti on livenä toisessa Oleafly-ikkunassa.",
+    "overleaf_unsent": "Some changes haven't reached Overleaf yet. Resume live editing to send them, then unlink.",
     "suggestion_not_found": "Ehdotusta ei enää ole. Joku on ehkä jo hyväksynyt tai hylännyt sen.",
     "suggestion_not_yours": "Vain ehdotuksen tekijä voi perua sen.",
     "suggestion_role": "Roolisi tässä projektissa ei salli ehdotuksia.",
@@ -551,7 +552,8 @@
     "failed": "Jakaminen ei valmistunut, joten mitään ei jaettu.",
     "trustAgain": "Kuka tahansa, jonka lisäät projektiin, voi muuttaa sen tiedostoja, joten Oleafly pyytää sinua luottamaan siihen uudelleen tällä koneella ennen kuin se ajaa sille agentteja, päätteen komentoja tai shell escapea.",
     "projectNotesShared": "Projektin muistiinpanot jaetaan kaikille tämän projektin jäsenille. Henkilökohtaiset muistiinpanot pysyvät yksityisinä.",
-    "personalNotesPrivate": "Henkilökohtaiset muistiinpanot pysyvät yksityisinä. Vain projektin muistiinpanokansiossa olevat muistiinpanot jaetaan."
+    "personalNotesPrivate": "Henkilökohtaiset muistiinpanot pysyvät yksityisinä. Vain projektin muistiinpanokansiossa olevat muistiinpanot jaetaan.",
+    "unlinkOverleaf": "Unlink from Overleaf"
   },
   "manage": {
     "sharedOn": "Jaettu palvelimella {{server}}",
@@ -619,6 +621,7 @@
     "offline": "Ei yhteyttä. Odottavia muutoksia: {{number}}",
     "reconnecting": "Yhdistetään uudelleen",
     "signedOut": "Ei kirjautunut",
+    "idle": "Paused while you're away",
     "suspended": "Tili jäädytetty",
     "accessEnded": "Ei pääsyä",
     "removed": "Pääsy poistettu",

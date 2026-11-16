@@ -224,6 +224,7 @@
     "overleaf_linked": "此專案已連結 Overleaf。要在 Oleafly Server 上分享，請先取消連結。",
     "collab_shared": "此專案已在 Oleafly Server 上分享。要與 Overleaf 即時編輯，請先在那裡停止分享。",
     "live_elsewhere": "此專案正在另一個 Oleafly 視窗中即時編輯。",
+    "overleaf_unsent": "Some changes haven't reached Overleaf yet. Resume live editing to send them, then unlink.",
     "suggestion_not_found": "這個建議已經不存在。可能已有人接受或拒絕了它。",
     "suggestion_not_yours": "只有提出這個建議的人才能撤回它。",
     "suggestion_role": "你在這個專案中的角色不允許提出建議。",
@@ -551,7 +552,8 @@
     "failed": "分享未完成，因此沒有分享任何內容。",
     "trustAgain": "你加入這個專案的任何人都能變更它的檔案，所以 Oleafly 在這台電腦上為它執行代理程式、終端機命令或 shell escape 之前，會請你再次信任這個專案。",
     "projectNotesShared": "專案筆記會分享給這個專案的每個人，個人筆記則只有你看得到。",
-    "personalNotesPrivate": "個人筆記只有你看得到。只有專案筆記資料夾中的筆記會被分享。"
+    "personalNotesPrivate": "個人筆記只有你看得到。只有專案筆記資料夾中的筆記會被分享。",
+    "unlinkOverleaf": "Unlink from Overleaf"
   },
   "manage": {
     "sharedOn": "已在 {{server}} 上分享",
@@ -619,6 +621,7 @@
     "offline": "離線。等待同步的變更：{{number}}",
     "reconnecting": "正在重新連線",
     "signedOut": "已登出",
+    "idle": "Paused while you're away",
     "suspended": "帳號已停權",
     "accessEnded": "無存取權",
     "removed": "存取權已移除",

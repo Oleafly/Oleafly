@@ -15,12 +15,21 @@ pub const CHANGE_SKIPPED_EVENT: &str = "collab-change-skipped";
 pub const PROJECT_FULL_EVENT: &str = "collab-live-project-full";
 pub const LIVE_WRITTEN_EVENT: &str = "collab-live-written";
 pub const ACCOUNT_CHANGED_EVENT: &str = "overleaf-live-account-changed";
+pub const DOC_PENDING_EVENT: &str = "collab-live-doc-pending";
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TypedAs {
     pub user_id: String,
     pub email: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocPendingPayload {
+    pub project_id: String,
+    pub path: String,
+    pub pending: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]

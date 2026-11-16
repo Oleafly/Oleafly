@@ -224,6 +224,7 @@
     "overleaf_linked": "Tento projekt je propojený s Overleaf. Pokud ho chcete sdílet na Oleafly Server, zrušte propojení.",
     "collab_shared": "Tento projekt je sdílený na Oleafly Server. Pokud ho chcete živě upravovat s Overleaf, přestaňte ho tam sdílet.",
     "live_elsewhere": "Tento projekt je živě otevřený v jiném okně Oleafly.",
+    "overleaf_unsent": "Some changes haven't reached Overleaf yet. Resume live editing to send them, then unlink.",
     "suggestion_not_found": "Tento návrh už neexistuje. Někdo ho možná přijal nebo odmítl.",
     "suggestion_not_yours": "Tento návrh může vzít zpět jen ten, kdo ho vytvořil.",
     "suggestion_role": "Vaše role v tomto projektu nedovoluje navrhovat změny.",
@@ -551,7 +552,8 @@
     "failed": "Sdílení se nedokončilo, takže se nic nesdílelo.",
     "trustAgain": "Kdokoli, koho do projektu přidáte, může měnit jeho soubory, a proto vás Oleafly v tomto počítači znovu požádá o důvěru, než pro něj spustí agenty, příkazy terminálu nebo shell escape.",
     "projectNotesShared": "Poznámky projektu se sdílejí se všemi, kdo na tomto projektu pracují. Osobní poznámky zůstávají soukromé.",
-    "personalNotesPrivate": "Osobní poznámky zůstávají soukromé. Sdílejí se jen poznámky ve složce s poznámkami projektu."
+    "personalNotesPrivate": "Osobní poznámky zůstávají soukromé. Sdílejí se jen poznámky ve složce s poznámkami projektu.",
+    "unlinkOverleaf": "Unlink from Overleaf"
   },
   "manage": {
     "sharedOn": "Sdíleno na serveru {{server}}",
@@ -619,6 +621,7 @@
     "offline": "Offline. Čekající změny: {{number}}",
     "reconnecting": "Znovu se připojuje",
     "signedOut": "Odhlášeno",
+    "idle": "Paused while you're away",
     "suspended": "Účet pozastaven",
     "accessEnded": "Bez přístupu",
     "removed": "Přístup odebrán",

@@ -224,6 +224,7 @@
     "overleaf_linked": "Dette prosjektet er koblet til Overleaf. Fjern koblingen for å dele det på en Oleafly Server.",
     "collab_shared": "Dette prosjektet er delt på en Oleafly Server. Slutt å dele det der for å redigere det live med Overleaf.",
     "live_elsewhere": "Dette prosjektet er live i et annet Oleafly-vindu.",
+    "overleaf_unsent": "Some changes haven't reached Overleaf yet. Resume live editing to send them, then unlink.",
     "suggestion_not_found": "Det forslaget finnes ikke lenger. Noen kan ha godtatt eller avslått det.",
     "suggestion_not_yours": "Bare personen som kom med forslaget, kan trekke det tilbake.",
     "suggestion_role": "Rollen din i dette prosjektet gir ikke lov til forslag.",
@@ -551,7 +552,8 @@
     "failed": "Delingen ble ikke fullført, så ingenting ble delt.",
     "trustAgain": "Alle du legger til i prosjektet, kan endre filene, så Oleafly ber deg stole på det igjen på denne maskinen før det kjører agenter, terminalkommandoer eller shell escape for det.",
     "projectNotesShared": "Prosjektets notater deles med alle i dette prosjektet. Personlige notater forblir private.",
-    "personalNotesPrivate": "Personlige notater forblir private. Bare notater i prosjektets notatmappe deles."
+    "personalNotesPrivate": "Personlige notater forblir private. Bare notater i prosjektets notatmappe deles.",
+    "unlinkOverleaf": "Unlink from Overleaf"
   },
   "manage": {
     "sharedOn": "Delt på {{server}}",
@@ -619,6 +621,7 @@
     "offline": "Frakoblet. Ventende endringer: {{number}}",
     "reconnecting": "Kobler til på nytt",
     "signedOut": "Logget ut",
+    "idle": "Paused while you're away",
     "suspended": "Konto suspendert",
     "accessEnded": "Ingen tilgang",
     "removed": "Tilgang fjernet",

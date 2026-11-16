@@ -493,7 +493,8 @@
       "off": "Oprit",
       "run": "Rulează codul pe acest computer"
     },
-    "sharedViewer": "Doar proprietarii și editorii pot modifica aceste setări într-un proiect partajat."
+    "sharedViewer": "Doar proprietarii și editorii pot modifica aceste setări într-un proiect partajat.",
+    "coauthorsChanged": "Changed by coauthors since your last compile"
   },
   "datePicker": {
     "placeholder": "Alege o dată"
@@ -1006,6 +1007,10 @@
       "notes": {
         "description": "Adaugă Notițele în bara de pe ecranul principal. O notiță este un fișier Markdown cu diagrame, grafice și formule matematice, pe care îl puteți edita atât tu, cât și agenții tăi. Notițele stau în afara bibliotecii de proiecte, iar fiecare notiță poate fi asociată cu un proiect. Dezactivată implicit, cât timp este în beta.",
         "label": "Notițe"
+      },
+      "overleafLive": {
+        "label": "Live editing with Overleaf",
+        "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
       },
       "researchTasks": {
         "description": "Un agent lucrează singur într-o copie a proiectului și îți lasă modificările spre revizuire. Foarte instabilă: rulările se pot bloca, pot eșua sau pot lăsa modificări de rezolvat manual și folosesc cota furnizorului tău pe toată durata lor. Adaugă secțiunea Cercetare în Setări. Dezactivarea oprește toate sarcinile în curs. Dezactivată implicit. Activeaz-o pe propria răspundere.",
@@ -1674,6 +1679,26 @@
       "allMine": "Păstrează toate versiunile mele",
       "allTheirs": "Folosește toate versiunile din Overleaf",
       "apply": "Aplică și sincronizează"
+    }
+  },
+  "overleafLive": {
+    "title": "Live editing with Overleaf",
+    "live": "Live with Overleaf",
+    "connecting": "Connecting to Overleaf…",
+    "sending": "Sending changes to Overleaf…",
+    "reconnecting": "Reconnecting to Overleaf…",
+    "pausedBadge": "Live editing paused",
+    "pause": "Pause live editing",
+    "resume": "Resume live editing",
+    "reconnectNow": "Reconnect now",
+    "open": "Open in Overleaf",
+    "share": "Share on Overleaf…",
+    "signIn": "Sign in…",
+    "pauseDialog": {
+      "title": "Some changes haven't reached Overleaf yet",
+      "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",
+      "keepLive": "Keep editing live",
+      "pauseAnyway": "Pause anyway"
     }
   },
   "stuckWindow": {

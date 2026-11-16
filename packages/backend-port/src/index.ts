@@ -1262,6 +1262,7 @@ export type CollabErrorCode =
     | "overleaf_linked"
     | "collab_shared"
     | "live_elsewhere"
+    | "overleaf_unsent"
     | "owner_away"
     | "wrong_server"
     | "suggestion_not_found"
@@ -1352,6 +1353,7 @@ export type CollabLiveState =
     | { state: "online" }
     | { state: "offline"; retry_in_ms: number }
     | { state: "signed_out" }
+    | { state: "idle" }
     | { state: "ended"; reason: CollabLiveEndReason | CollabSessionEnd };
 export interface CollabLiveStatus {
     projectId: string;
@@ -1850,6 +1852,11 @@ export type CollabUnwrittenReason = "locked" | "read_only" | "no_space" | "not_d
 export interface CollabLiveUnwritten {
   projectId: string;
   files: { path: string; reason: CollabUnwrittenReason }[];
+}
+export interface CollabLiveDocPending {
+  projectId: string;
+  path: string;
+  pending: boolean;
 }
 export type CollabSettingNotice =
   | { kind: "mainDocument"; path: string }

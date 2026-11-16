@@ -10,6 +10,7 @@ describe("syncState", () => {
     [{ state: "offline", retry_in_ms: 2000 }, 47, "offline"],
     [{ state: "offline", retry_in_ms: 2000 }, 0, "reconnecting"],
     [{ state: "signed_out" }, 3, "signedOut"],
+    [{ state: "idle" }, 0, "idle"],
     [{ state: "ended", reason: "signed_out" }, 0, "signedOut"],
     [{ state: "ended", reason: "removed" }, 2, "removed"],
     [{ state: "ended", reason: "archived" }, 0, "archived"],

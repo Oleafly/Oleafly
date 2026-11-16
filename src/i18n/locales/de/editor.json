@@ -1244,6 +1244,9 @@
     "failed": "Oleafly konnte {{file}} nicht aktualisieren. Versuchen Sie es erneut.",
     "tabMark": "Auf dem Datenträger geändert. Öffnen Sie diesen Reiter, um zu wählen, welche Version bleibt."
   },
+  "liveTab": {
+    "notOnOverleafYet": "Not on Overleaf yet"
+  },
   "labels": {
     "filterPlaceholder": "Labelname",
     "filterLabel": "Labels im Projekt filtern",

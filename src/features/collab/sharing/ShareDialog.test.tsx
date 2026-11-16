@@ -8,6 +8,7 @@ import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabShareProgress } from "@/lib/tauri";
 import { useShareDialog } from "@/components/collab/share-dialog";
+import { installOverleafLiveActions, useLiveBackend } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore } from "../live/live-store";
@@ -51,6 +52,7 @@ const mocks = vi.hoisted(() => ({
   collabServerSignIn: vi.fn(),
   collabServerSignInCancel: vi.fn(),
   copyIntoLibrary: vi.fn(),
+  unlinkOverleaf: vi.fn(),
 }));
 
 vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
@@ -135,7 +137,7 @@ describe("ShareDialog before sharing", () => {
     expect(screen.getByText("Figure:1.png")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: share.start }));
-    expect(mocks.collabShareProject).toHaveBeenCalledWith("grant", SERVER_ID);
+    expect(mocks.collabShareProject).toHaveBeenCalledWith("grant", SERVER_ID, false);
     await waitFor(() => expect(progress).not.toBeNull());
     progress?.({ projectId: "other", done: 9, total: 9 });
     progress?.({ projectId: "grant", done: 3, total: 12 });
@@ -442,5 +444,55 @@ describe("ShareDialog for a note", () => {
     expect(screen.queryByText(share.description)).not.toBeInTheDocument();
     expect(await screen.findByText(share.noteExcluded)).toBeInTheDocument();
     expect(screen.queryByText(share.excluded)).not.toBeInTheDocument();
+  });
+});
+
+describe("ShareDialog for a project linked to Overleaf", () => {
+  const linked = { server: "https://www.overleaf.com", remoteId: "ov1", signedIn: true, paused: false };
+
+  let uninstall: () => void = () => undefined;
+
+  beforeEach(() => {
+    uninstall = installOverleafLiveActions({ pause: vi.fn(), resume: vi.fn(), unlink: mocks.unlinkOverleaf });
+  });
+
+  afterEach(() => {
+    uninstall();
+    useLiveBackend.setState({ projectId: null, backend: null, overleaf: null, pendingPaths: [] });
+    useSettingsStore.getState().setOverleafLive(false);
+  });
+
+  it("explains why sharing is off and unlinks the project from Overleaf", async () => {
+    mocks.collabShareInfo.mockResolvedValue(null);
+    mocks.unlinkOverleaf.mockImplementation(async () => {
+      useLiveBackend.setState({ overleaf: null });
+    });
+    useLiveBackend.setState({ projectId: "grant", backend: null, overleaf: linked });
+    openDialog();
+    const notice = await screen.findByTestId("collab-share-overleaf-linked");
+    expect(within(notice).getByText(enCollab.errors.overleaf_linked)).toBeInTheDocument();
+    await userEvent.setup().click(within(notice).getByRole("button", { name: share.unlinkOverleaf }));
+    expect(mocks.unlinkOverleaf).toHaveBeenCalledWith("grant");
+    await waitFor(() => expect(screen.queryByTestId("collab-share-overleaf-linked")).toBeNull());
+  });
+
+  it("says why when unsent Overleaf work stops the unlink", async () => {
+    mocks.collabShareInfo.mockResolvedValue(null);
+    mocks.unlinkOverleaf.mockRejectedValue(collabError("overleaf_unsent"));
+    useLiveBackend.setState({ projectId: "grant", backend: null, overleaf: linked });
+    openDialog();
+    const notice = await screen.findByTestId("collab-share-overleaf-linked");
+    await userEvent.setup().click(within(notice).getByRole("button", { name: share.unlinkOverleaf }));
+    expect(await within(notice).findByText(enCollab.errors.overleaf_unsent)).toBeInTheDocument();
+  });
+
+  it("tells the server sharing step whether live editing with Overleaf is on", async () => {
+    useSettingsStore.getState().setOverleafLive(true);
+    mocks.collabShareInfo.mockResolvedValue(null);
+    mocks.collabShareCheck.mockResolvedValue(shareCheck());
+    mocks.collabShareProject.mockRejectedValue(collabError("overleaf_linked"));
+    openDialog();
+    await userEvent.setup().click(await screen.findByRole("button", { name: share.start }));
+    await waitFor(() => expect(mocks.collabShareProject).toHaveBeenCalledWith("grant", SERVER_ID, true));
   });
 });

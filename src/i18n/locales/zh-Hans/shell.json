@@ -491,7 +491,8 @@
       "off": "关闭",
       "run": "在这台电脑上运行代码"
     },
-    "sharedViewer": "在共享项目中，只有所有者和编辑者可以更改这些设置。"
+    "sharedViewer": "在共享项目中，只有所有者和编辑者可以更改这些设置。",
+    "coauthorsChanged": "Changed by coauthors since your last compile"
   },
   "datePicker": {
     "placeholder": "选择日期"
@@ -978,6 +979,10 @@
       "notes": {
         "description": "在主页程序坞中添加“笔记”。笔记是一个 Markdown 文件，可以包含图表、统计图和公式，你和你的代理都能编辑。笔记不会出现在项目库中，每篇笔记都可以关联到一个项目。仍处于测试阶段，默认关闭。",
         "label": "笔记"
+      },
+      "overleafLive": {
+        "label": "Live editing with Overleaf",
+        "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
       },
       "researchTasks": {
         "description": "代理会在项目的副本中自行工作，并把修改留给你审阅。极不稳定：运行可能卡住、失败，或留下需要手动处理的修改，而且全程都会占用你的提供商额度。会在设置中添加“研究”分区。关闭后会停止所有正在运行的任务。默认关闭，开启后风险自负。",
@@ -1604,6 +1609,26 @@
       "allMine": "全部保留我的",
       "allTheirs": "全部使用 Overleaf 的",
       "apply": "应用并同步"
+    }
+  },
+  "overleafLive": {
+    "title": "Live editing with Overleaf",
+    "live": "Live with Overleaf",
+    "connecting": "Connecting to Overleaf…",
+    "sending": "Sending changes to Overleaf…",
+    "reconnecting": "Reconnecting to Overleaf…",
+    "pausedBadge": "Live editing paused",
+    "pause": "Pause live editing",
+    "resume": "Resume live editing",
+    "reconnectNow": "Reconnect now",
+    "open": "Open in Overleaf",
+    "share": "Share on Overleaf…",
+    "signIn": "Sign in…",
+    "pauseDialog": {
+      "title": "Some changes haven't reached Overleaf yet",
+      "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",
+      "keepLive": "Keep editing live",
+      "pauseAnyway": "Pause anyway"
     }
   },
   "stuckWindow": {

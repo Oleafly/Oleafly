@@ -8,15 +8,18 @@ use oleafly_online::live::session::{
     Account, DocStopReason, LiveEnd, LivePort, LiveState, MergeReview,
 };
 use oleafly_online::realtime::events::{PeerPosition, ProjectEvent, PublicId};
-use oleafly_online::realtime::project::Role;
+use oleafly_online::realtime::project::{flavor_for_compiler, Role};
 use oleafly_online::realtime::tree::PathChange;
 use oleafly_online::realtime::DocId;
 use oleafly_ot::DocMessage;
 
 use super::Mirror;
 use crate::collab::live::kept::{KeptFile, KeptKind};
-use crate::collab::live::payloads::{AccountChangedPayload, RolePayload, TypedAs};
+use crate::collab::live::payloads::{
+    AccountChangedPayload, DocPendingPayload, RolePayload, TypedAs,
+};
 use crate::collab::live::session::guard;
+use crate::collab::settings::Applied;
 
 pub(crate) struct AppOverleafPort {
     mirror: Arc<Mirror>,
@@ -27,12 +30,25 @@ impl AppOverleafPort {
         AppOverleafPort { mirror }
     }
 
+    fn follow(
+        &self,
+        main_doc: Option<&str>,
+        flavor: Option<&str>,
+    ) -> Result<Option<crate::project::ProjectMeta>, String> {
+        let root = self.mirror.disk.root.clone();
+        crate::project::follow_shared_settings(&self.mirror.disk.project_id, |meta| {
+            let flavor = flavor
+                .map(str::to_owned)
+                .or_else(|| meta.tex_flavor.clone());
+            let changed =
+                crate::project::adopt_online_settings(&root, meta, main_doc, flavor.as_deref());
+            Ok(((), changed))
+        })
+        .map(|(_, meta)| meta)
+    }
+
     fn keep(&self, doc: &DocId, text: &str) {
-        let path = guard(&self.mirror.disk.disk)
-            .layout
-            .get(&doc.0)
-            .map(|placed| placed.path.clone());
-        let Some(path) = path else {
+        let Some(path) = self.mirror.path_of(doc) else {
             return;
         };
         match self.mirror.disk.keep_copy(&path, text, None) {
@@ -152,7 +168,45 @@ impl LivePort for AppOverleafPort {
         }
     }
 
-    fn project_event(&self, _event: ProjectEvent) {}
+    fn project_event(&self, event: ProjectEvent) {
+        let project_id = self.mirror.disk.project_id.clone();
+        let followed = match event {
+            ProjectEvent::Name(name) => {
+                crate::project::rename_project_blocking(project_id.clone(), name).map(Some)
+            }
+            ProjectEvent::RootDoc(doc) => match self.mirror.path_of(&doc) {
+                Some(path) => self.follow(Some(&path), None),
+                None => Ok(None),
+            },
+            ProjectEvent::Compiler(compiler) => match flavor_for_compiler(&compiler) {
+                Some(flavor) => self.follow(None, Some(flavor)),
+                None => {
+                    let _ = crate::project::append_app_log(format!(
+                        "Overleaf switched project {project_id} to the {compiler} compiler, which Oleafly doesn't run; the project keeps its engine"
+                    ));
+                    Ok(None)
+                }
+            },
+            ProjectEvent::Image(_)
+            | ProjectEvent::SpellLanguage(_)
+            | ProjectEvent::MainBibliography(_)
+            | ProjectEvent::DeletedOrRenamedExternally => Ok(None),
+        };
+        match followed {
+            Ok(Some(meta)) => self.mirror.disk.host.settings_changed(Applied {
+                project_id,
+                meta: Some(meta),
+                notices: Vec::new(),
+                pushed: false,
+            }),
+            Ok(None) => {}
+            Err(error) => {
+                let _ = crate::project::append_app_log(format!(
+                    "Live editing could not follow a project setting from Overleaf for project {project_id}: {error}"
+                ));
+            }
+        }
+    }
 
     fn merged(&self, doc: &DocId, review: MergeReview) {
         match review {
@@ -193,6 +247,17 @@ impl LivePort for AppOverleafPort {
 
     fn disk_text(&self, path: &str) -> Option<String> {
         self.mirror.mirrored_text(path)
+    }
+
+    fn doc_pending(&self, doc: &DocId, pending: bool) {
+        let Some(path) = self.mirror.path_of(doc) else {
+            return;
+        };
+        self.mirror.disk.host.doc_pending(DocPendingPayload {
+            project_id: self.mirror.disk.project_id.clone(),
+            path,
+            pending,
+        });
     }
 }
 

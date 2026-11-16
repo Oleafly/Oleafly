@@ -330,6 +330,18 @@ fn imported_from(project_id: &str) -> Option<ImportedFrom> {
     oleafly_online::projects::imported_from(meta.extra.get("importedFrom")?)
 }
 
+pub(crate) fn unlink_project(project_id: &str) -> Result<(), String> {
+    let _guard = sync::claim(project_id)?;
+    if sync::read_link(project_id)?.is_some() {
+        sync::retire_mirror(project_id)?;
+    }
+    let mut meta = crate::project::read_meta(project_id)?;
+    if meta.extra.remove("importedFrom").is_some() {
+        crate::project::write_meta(project_id, &meta)?;
+    }
+    Ok(())
+}
+
 pub(crate) fn forget_sync_copy(project_id: &str) -> Result<(), String> {
     sync::remove_link(project_id)
 }

@@ -224,6 +224,7 @@
     "overleaf_linked": "Det här projektet är länkat till Overleaf. Ta bort länken för att dela det på en Oleafly Server.",
     "collab_shared": "Det här projektet delas på en Oleafly Server. Sluta dela det där för att redigera det live med Overleaf.",
     "live_elsewhere": "Det här projektet är live i ett annat Oleafly-fönster.",
+    "overleaf_unsent": "Some changes haven't reached Overleaf yet. Resume live editing to send them, then unlink.",
     "suggestion_not_found": "Förslaget finns inte längre. Någon kan ha accepterat eller avvisat det.",
     "suggestion_not_yours": "Bara den som gjorde förslaget kan dra tillbaka det.",
     "suggestion_role": "Din roll i det här projektet tillåter inte förslag.",
@@ -551,7 +552,8 @@
     "failed": "Delningen slutfördes inte, så inget delades.",
     "trustAgain": "Alla du lägger till i projektet kan ändra dess filer, så Oleafly ber dig lita på det igen på den här datorn innan det kör agenter, terminalkommandon eller shell escape för det.",
     "projectNotesShared": "Projektets anteckningar delas med alla i det här projektet. Personliga anteckningar förblir privata.",
-    "personalNotesPrivate": "Personliga anteckningar förblir privata. Bara anteckningar i projektets anteckningsmapp delas."
+    "personalNotesPrivate": "Personliga anteckningar förblir privata. Bara anteckningar i projektets anteckningsmapp delas.",
+    "unlinkOverleaf": "Unlink from Overleaf"
   },
   "manage": {
     "sharedOn": "Delat på {{server}}",
@@ -619,6 +621,7 @@
     "offline": "Offline. Väntande ändringar: {{number}}",
     "reconnecting": "Ansluter igen",
     "signedOut": "Utloggad",
+    "idle": "Paused while you're away",
     "suspended": "Kontot avstängt",
     "accessEnded": "Ingen åtkomst",
     "removed": "Åtkomst borttagen",
