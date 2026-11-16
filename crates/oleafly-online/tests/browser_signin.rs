@@ -99,10 +99,27 @@ struct Fake {
     log: PathBuf,
 }
 
+#[cfg(unix)]
+fn copy_executable(from: &Path, to: &Path) {
+    // Linux won't exec a file that any process, such as a sibling test's fork, holds open for writing.
+    let status = Command::new("cp").arg(from).arg(to).status().unwrap();
+    assert!(
+        status.success(),
+        "cp {} {}: {status}",
+        from.display(),
+        to.display()
+    );
+}
+
+#[cfg(not(unix))]
+fn copy_executable(from: &Path, to: &Path) {
+    std::fs::copy(from, to).unwrap();
+}
+
 fn fake_in(dir: &Path, engine: Engine, mode: &str, profiles: &Path) -> (InstalledBrowser, PathBuf) {
     std::fs::create_dir_all(dir).unwrap();
     let path = dir.join(format!("fake-{mode}{}", std::env::consts::EXE_SUFFIX));
-    std::fs::copy(std::env::current_exe().unwrap(), &path).unwrap();
+    copy_executable(&std::env::current_exe().unwrap(), &path);
     let log = path.with_extension("log");
     let browser = InstalledBrowser {
         id: if engine == Engine::Firefox {
