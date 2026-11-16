@@ -1,6 +1,7 @@
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import readline from 'node:readline'
 import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
 
@@ -1318,15 +1319,275 @@ async function runProbe(name, env, state) {
   for (const note of notes) console.log(`  ${note}`)
 }
 
+const gateBinary = path.join(repo, 'src-tauri/target/debug/examples/live_doc_gate')
+
+class GateClient {
+  constructor(name) {
+    this.name = name
+    this.nextId = 1
+    this.waiting = new Map()
+    this.errors = []
+  }
+
+  async start(site, projectId, jar, carrier) {
+    this.child = spawn(gateBinary, ['--server', site, '--project', projectId, '--carrier', carrier], {
+      env: { ...process.env, GATE_COOKIE: jar.header() },
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+    this.child.stderr.on('data', data => this.errors.push(String(data)))
+    const ready = new Promise((resolve, reject) => {
+      this.child.once('exit', code => reject(new Error(`${this.name}'s gate client exited with ${code}: ${this.errors.join('')}`)))
+      readline.createInterface({ input: this.child.stdout }).on('line', line => {
+        const message = JSON.parse(line)
+        if (message.ready) return resolve(message)
+        const waiter = this.waiting.get(message.id)
+        if (!waiter) return
+        this.waiting.delete(message.id)
+        if (message.ok) waiter.resolve(message.result)
+        else waiter.reject(new Error(`${this.name}: ${message.error}`))
+      })
+    })
+    this.user = (await ready).user
+    return this
+  }
+
+  send(cmd, args = {}) {
+    const id = this.nextId++
+    const reply = new Promise((resolve, reject) => this.waiting.set(id, { resolve, reject }))
+    this.child.stdin.write(`${JSON.stringify({ id, cmd, ...args })}\n`)
+    return reply
+  }
+
+  async doc(docId) {
+    const { docs } = await this.send('state')
+    return docs.find(doc => doc.doc === docId)
+  }
+
+  async stop() {
+    this.child.stdin.end()
+    await new Promise(resolve => this.child.once('exit', resolve))
+  }
+}
+
+function snapshotOf(reply) {
+  if (reply[0]) throw new Error(`the final joinDoc failed: ${JSON.stringify(reply[0])}`)
+  if (reply[5] === 'history-ot') {
+    const raw = reply[1]
+    const tracked = (raw.trackedChanges ?? []).map(change => ({
+      pos: change.range.pos,
+      length: change.range.length,
+      type: change.tracking.type,
+      user: change.tracking.userId,
+    }))
+    let visible = ''
+    let at = 0
+    for (const change of [...tracked].sort((a, b) => a.pos - b.pos)) {
+      if (change.type !== 'delete') continue
+      visible += raw.content.slice(at, change.pos)
+      at = change.pos + change.length
+    }
+    visible += raw.content.slice(at)
+    return { format: 'history-ot', text: visible, content: raw.content, tracked }
+  }
+  const text = reply[1].map(line => Buffer.from(line, 'latin1').toString('utf8')).join('\n')
+  const changes = (reply[4]?.changes ?? []).map(change => ({
+    kind: change.op.i !== undefined ? 'Insert' : 'Delete',
+    at: change.op.p,
+    text: change.op.i ?? change.op.d,
+    user: change.metadata?.user_id ?? null,
+  }))
+  return { format: 'sharejs-text-ot', text, changes }
+}
+
+const shareJsChange = change => ({ kind: change.kind, at: change.at, text: change.text, user: change.user })
+const trackedRange = range => ({ pos: range.pos, length: range.length, type: range.type, user: range.user })
+const byPosition = list => [...list].sort((a, b) => (a.at ?? a.pos) - (b.at ?? b.pos) || JSON.stringify(a).localeCompare(JSON.stringify(b)))
+
+function rangesOf(state) {
+  return state.ranges.format === 'history-ot'
+    ? { content: state.ranges.content, tracked: byPosition(state.ranges.tracked.map(trackedRange)) }
+    : { changes: byPosition(state.ranges.changes.map(shareJsChange)) }
+}
+
+function webHealth(person) {
+  const incoming = person.frames.filter(frame => frame.dir === 'in').map(frame => frame.frame)
+  return {
+    closed: person.closed,
+    disconnects: incoming.filter(frame => frame.startsWith('0::')).length,
+    updateErrors: incoming.filter(frame => frame.includes('"otUpdateError"')),
+    rejections: incoming.filter(frame => frame.includes('"connectionRejected"')),
+  }
+}
+
+async function gateProject(key, browser, env, state, folder) {
+  const project = state.projects[key]
+  const history = project.format === 'history-ot'
+  const webTyping = !history || process.env.GATE_HISTORY_WEB === '1'
+  const site = state.site
+  const secrets = new Set(Object.entries(env).filter(([name]) => /PASSWORD|SECRET/.test(name)).map(([, value]) => value))
+  const signInAs = who => signIn(site, state.users[who].email, env[`${who.toUpperCase()}_PASSWORD`], secrets)
+  const steps = []
+  const note = (step, detail) => {
+    steps.push({ step, ...detail })
+    console.log(`  ${key}: ${step}${detail.ok === false ? ' FAILED' : ''}`)
+  }
+  const aliceJar = await signInAs('alice')
+  const token = await csrfFor(site, aliceJar, project.id)
+  const name = `gate-${stamp()}.tex`
+  const created = await httpStep(site, aliceJar, 'POST', `/project/${project.id}/doc`, {
+    token,
+    secrets,
+    body: { name, parent_folder_id: project.rootFolderId },
+  })
+  const docId = created.body._id
+  const alice = await new GateClient('alice').start(site, project.id, aliceJar, 'websocket')
+  const carol = await new GateClient('carol').start(site, project.id, await signInAs('carol'), 'xhr-polling')
+  const rust = [alice, carol]
+  for (const client of rust) {
+    note(`${client.name} connects`, { ok: true, ...(await client.send('connect')) })
+    await client.send('open', { doc: docId })
+  }
+  await carol.send('suggest', { ts: new Date().toISOString() })
+  const harPath = path.join(folder, `${key}-bob.har`)
+  let bob = null
+  const startBob = async () => {
+    bob = new Participant('bob', { start: Date.now() })
+    await bob.start(browser, site, state.users.bob.email, env.BOB_PASSWORD, harPath, secrets)
+    await bob.openProject(site, project.id)
+    await bob.openDoc(name, docId)
+  }
+  const settleAll = async label => {
+    const settled = await Promise.all(rust.map(client => client.send('settle', { quietMs: 2500, limitMs: 90000 })))
+    const target = settled[0].docs[0].text
+    const texts = { alice: target, carol: settled[1].docs[0].text }
+    if (bob) {
+      await settle([bob], { open: false })
+      texts.bob = await bob.text()
+      for (let tries = 0; tries < 100 && texts.bob !== target; tries++) {
+        await sleep(200)
+        texts.bob = await bob.text()
+      }
+    }
+    const ok = settled.every(result => result.settled) && Object.values(texts).every(text => text === target)
+    note(label, { ok, texts })
+    return ok
+  }
+  if (webTyping) await startBob()
+  const end = async () => (await alice.doc(docId)).text.length
+  await alice.send('type', { doc: docId, at: 0, text: 'Gate base text for live editing, with words to change.\n' })
+  await settleAll('base text from Alice')
+  if (webTyping) {
+    bob.hold()
+    await bob.cursor(0)
+    await bob.type('B1 ')
+    await until('Bob to queue his update', () => bob.queue.some(message => String(message).includes('"applyOtUpdate"')), 15000)
+    await alice.send('type', { doc: docId, at: await end(), text: ' A1' })
+    await alice.send('settle', { quietMs: 1500, limitMs: 30000 })
+    bob.release()
+    await settleAll('the server transforms the web editor against Alice')
+    await alice.send('deafen')
+    await bob.cursor((await bob.text()).length)
+    await bob.type(' B2')
+    await settle([bob], { open: false })
+    await alice.send('type', { doc: docId, at: 0, text: 'A2 ' })
+    await sleep(1500)
+    await alice.send('hear')
+    await settleAll('the server transforms Alice against the web editor')
+  }
+  await alice.send('deafen')
+  await carol.send('deafen')
+  const middle = Math.floor((await end()) / 2)
+  await alice.send('type', { doc: docId, at: middle, text: '[A3]' })
+  await carol.send('type', { doc: docId, at: middle, text: '[C3]' })
+  await sleep(1500)
+  await alice.send('hear')
+  await carol.send('hear')
+  await settleAll('Alice and a suggesting Carol type at the same spot')
+  if (!webTyping) await startBob()
+  const words = (await alice.doc(docId)).text.indexOf('words')
+  await carol.send('type', { doc: docId, at: 0, text: 'Suggested opening. ' })
+  await carol.send('delete', { doc: docId, at: words + 'Suggested opening. '.length, length: 'words'.length })
+  await settleAll('Carol suggests an insert and a delete')
+  await bob.cursor((await bob.text()).length)
+  await bob.type(' bob turn')
+  await settleAll('Bob types on his own')
+  for (const [client, sent, label] of [
+    [alice, true, 'Alice drops mid-op after sending'],
+    [alice, false, 'Alice drops mid-op before sending'],
+    [carol, true, 'Carol drops mid-op after sending a suggestion over polling'],
+  ]) {
+    await client.send('hold')
+    await client.send('type', { doc: docId, at: await end(), text: ` ${client.name[0].toUpperCase()}R` })
+    if (webTyping) {
+      await bob.cursor(0)
+      await bob.type('b ')
+    }
+    const dropped = await client.send('drop', { sent })
+    await client.send('release')
+    note(`${label}: reconnected`, { ok: true, dropped })
+    await settleAll(label)
+  }
+  const checker = new ScriptedClient('dave', { start: Date.now() })
+  await checker.open(site, await signInAs('dave'), project.id, secrets)
+  await checker.outcome()
+  const server = snapshotOf(await checker.call('joinDoc', [docId, { encodeRanges: true, supportsHistoryOT: true }]))
+  await checker.close()
+  const finals = Object.fromEntries(await Promise.all(rust.map(async client => [client.name, await client.doc(docId)])))
+  const serverRanges = server.format === 'history-ot'
+    ? { content: server.content, tracked: byPosition(server.tracked.map(trackedRange)) }
+    : { changes: byPosition(server.changes.map(shareJsChange)) }
+  const texts = { server: server.text, alice: finals.alice.text, carol: finals.carol.text, bob: await bob.text() }
+  const textsAgree = Object.values(texts).every(text => text === texts.server)
+  const rangesAgree = rust.every(client => JSON.stringify(rangesOf(finals[client.name])) === JSON.stringify(serverRanges))
+  const trackedSeen = server.format === 'history-ot' ? server.tracked.length > 0 : server.changes.length > 0
+  note('final texts match the server', { ok: textsAgree, texts })
+  note('tracked changes match the server', { ok: rangesAgree && trackedSeen, server: serverRanges, alice: rangesOf(finals.alice), carol: rangesOf(finals.carol) })
+  const health = {}
+  for (const client of rust) health[client.name] = await client.send('health')
+  health.bob = webHealth(bob)
+  const rustHealthy = rust.every(client => {
+    const found = health[client.name].health
+    return client.errors.length === 0 && !found.updateErrors.length && !found.refusals.length && !found.drops.length && !found.unexpected.length && !found.rejoins.some(rejoin => rejoin.includes('conflict')) && health[client.name].connected
+  })
+  const webHealthy = !health.bob.closed && !health.bob.disconnects && !health.bob.updateErrors.length && !health.bob.rejections.length
+  note('no client was disconnected or refused', { ok: rustHealthy && webHealthy, health })
+  for (const client of rust) await client.stop()
+  await bob.context.close()
+  await fs.rm(harPath, { force: true })
+  await httpStep(site, aliceJar, 'DELETE', `/project/${project.id}/doc/${docId}`, { token, secrets })
+  return { project: key, format: project.format, doc: name, ok: steps.every(step => step.ok !== false), steps }
+}
+
+async function runGate(env, state, only) {
+  const folder = path.join(here, `.gate-${stamp()}`)
+  await fs.mkdir(folder, { recursive: true })
+  const browser = await chromium.launch()
+  const results = []
+  try {
+    for (const key of only.length ? only : ['sharejs-project', 'history-ot-project']) results.push(await gateProject(key, browser, env, state, folder))
+  } finally {
+    await browser.close()
+  }
+  await fs.writeFile(path.join(folder, 'report.json'), `${JSON.stringify({ server: image, results }, null, 2)}\n`)
+  for (const result of results) console.log(`${result.ok ? 'PASS' : 'FAIL'} ${result.project} (${result.format})`)
+  console.log(`report: ${path.join(folder, 'report.json')}`)
+  if (results.some(result => !result.ok)) process.exitCode = 1
+}
+
 async function main() {
   const asked = process.argv.slice(2)
   if (asked.includes('--list')) {
     for (const [name, scenario] of Object.entries(scenarios)) console.log(`${name}: ${scenario.description}`)
     for (const [name, probe] of Object.entries(probes)) console.log(`--probes ${name}: ${probe.description}`)
+    console.log('--gate [sharejs-project|history-ot-project]: drive the live doc client, a web editor and a suggesting reviewer at once, with reconnects mid-op, and check that everyone converges')
     return
   }
   const env = await readEnv()
   const state = JSON.parse(await fs.readFile(path.join(here, 'seed-state.json'), 'utf8'))
+  if (asked.includes('--gate')) {
+    await runGate(env, state, asked.filter(arg => arg !== '--gate'))
+    return
+  }
   if (asked.includes('--probes')) {
     const wanted = asked.filter(arg => arg !== '--probes')
     for (const name of wanted.length ? wanted : Object.keys(probes)) await runProbe(name, env, state)
