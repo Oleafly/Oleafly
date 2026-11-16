@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { Editor } from "@tiptap/core";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode, RefObject } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
@@ -346,10 +346,9 @@ describe("opening a note", () => {
     try {
       await openNote(fakeData({ text: "Body\n\n```html\n<script>go()</script>\n```\n" }), { note: { ...NOTE, shared } });
       await screen.findByRole("button", { name: enNotes.blocks.artifact.run });
-      for (let tick = 0; tick < 50 && !screen.queryByRole("checkbox"); tick += 1) {
-        await act(() => new Promise((resolve) => setImmediate(resolve)));
-      }
-      expect(screen.queryAllByRole("checkbox", { name: enNotes.blocks.artifact.alwaysRun })).toHaveLength(offered);
+      await waitFor(() =>
+        expect(screen.queryAllByRole("checkbox", { name: enNotes.blocks.artifact.alwaysRun })).toHaveLength(offered),
+      );
     } finally {
       Reflect.deleteProperty(globalThis, "isTauri");
     }
