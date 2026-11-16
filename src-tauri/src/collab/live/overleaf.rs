@@ -1,3 +1,4 @@
+pub(crate) mod account;
 pub(crate) mod commands;
 mod port;
 #[cfg(test)]
@@ -275,16 +276,17 @@ impl OverleafLive {
             config,
             journal,
         } = parts;
-        std::fs::create_dir_all(&mirror_dir).map_err(io)?;
         let disk_file = mirror_dir.join(INDEX_FILE);
         let (disk, bases) = {
             let (disk_file, root) = (disk_file.clone(), root.clone());
             tauri::async_runtime::spawn_blocking(move || {
+                std::fs::create_dir_all(&mirror_dir)?;
                 let mut disk = DiskState::load(&disk_file);
                 let bases = go_live_bases(&root, &mut disk);
-                (disk, bases)
+                Ok::<_, std::io::Error>((disk, bases))
             })
             .await
+            .map_err(io)?
             .map_err(io)?
         };
         let (writer, signals) = mpsc::unbounded_channel();

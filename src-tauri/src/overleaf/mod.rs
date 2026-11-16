@@ -25,6 +25,10 @@ pub use sync::Side;
 use std::collections::BTreeMap;
 
 use crate::app_error::AppError;
+use crate::collab::live::overleaf::account::{
+    overleaf_signed_in, overleaf_stop_live, overleaf_unsent,
+};
+use crate::collab::live::{UnsentProject, SIGN_OUT_WAIT};
 
 #[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -59,6 +63,16 @@ async fn blocking<T: Send + 'static>(
         .map_err(|error| error.to_string())?
 }
 
+async fn keep_session(base: String, signed_in: session::Session) -> Result<OverleafStatus, String> {
+    let status = status_for(&base, Some(&signed_in));
+    blocking(move || {
+        session::save(&base, &signed_in)?;
+        overleaf_signed_in(&base, &signed_in)
+    })
+    .await?;
+    Ok(status)
+}
+
 #[tauri::command]
 pub async fn overleaf_status(server: Option<String>) -> Result<OverleafStatus, String> {
     let base = session::normalize_server(server.as_deref())?;
@@ -77,10 +91,7 @@ pub async fn overleaf_sign_in<R: Runtime>(
 ) -> Result<OverleafStatus, String> {
     let base = session::normalize_server(server.as_deref())?;
     let signed_in = signin::sign_in_with_window(&app, &base, &title).await?;
-    let saved = signed_in.clone();
-    let save_base = base.clone();
-    blocking(move || session::save(&save_base, &saved)).await?;
-    Ok(status_for(&base, Some(&signed_in)))
+    keep_session(base, signed_in).await
 }
 
 #[derive(Serialize, Clone, Debug, PartialEq, Eq)]
@@ -131,10 +142,7 @@ pub async fn overleaf_sign_in_with_browser<R: Runtime>(
     })
     .await?;
     let signed_in = signin::sign_in_with_browser(&base, chosen).await?;
-    let saved = signed_in.clone();
-    let save_base = base.clone();
-    blocking(move || session::save(&save_base, &saved)).await?;
-    Ok(status_for(&base, Some(&signed_in)))
+    keep_session(base, signed_in).await
 }
 
 pub(crate) type AppCookie = (String, String, Option<String>, Option<String>, bool);
@@ -187,10 +195,7 @@ pub async fn overleaf_sign_in_with_app_cookies<R: Runtime>(
                 String::from(AppError::new("overleaf.browser_sign_in_failed"))
             }
         })?;
-    let saved = signed_in.clone();
-    let save_base = base.clone();
-    blocking(move || session::save(&save_base, &saved)).await?;
-    Ok(status_for(&base, Some(&signed_in)))
+    keep_session(base, signed_in).await
 }
 
 fn copied_cookies(cookies: &[AppCookie], base: &str) -> Vec<usize> {
@@ -228,12 +233,41 @@ fn app_cookie_header(cookies: &[AppCookie], base: &str) -> Result<String, String
     Ok(header)
 }
 
-#[tauri::command]
-pub async fn overleaf_sign_out(server: Option<String>) -> Result<OverleafStatus, String> {
-    let base = session::normalize_server(server.as_deref())?;
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct OverleafSignOut {
+    #[serde(flatten)]
+    pub status: OverleafStatus,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub unsent: Vec<UnsentProject>,
+}
+
+pub(crate) async fn sign_out_within(
+    base: String,
+    keep_local_copy: bool,
+    wait: std::time::Duration,
+) -> Result<OverleafSignOut, String> {
+    let unsent = overleaf_unsent(&base, wait).await?;
+    if !unsent.is_empty() && !keep_local_copy {
+        let status = overleaf_status(Some(base)).await?;
+        return Ok(OverleafSignOut { status, unsent });
+    }
+    overleaf_stop_live(&base).await;
     let forget_base = base.clone();
     blocking(move || session::forget(&forget_base)).await?;
-    Ok(status_for(&base, None))
+    Ok(OverleafSignOut {
+        status: status_for(&base, None),
+        unsent,
+    })
+}
+
+#[tauri::command]
+pub async fn overleaf_sign_out(
+    server: Option<String>,
+    keep_local_copy: Option<bool>,
+) -> Result<OverleafSignOut, String> {
+    let base = session::normalize_server(server.as_deref())?;
+    sign_out_within(base, keep_local_copy.unwrap_or(false), SIGN_OUT_WAIT).await
 }
 
 #[tauri::command]

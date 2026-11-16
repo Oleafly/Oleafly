@@ -108,6 +108,13 @@ impl Live {
             Live::Overleaf(_) => None,
         }
     }
+
+    pub(super) fn overleaf(&self) -> Option<&Arc<OverleafLive>> {
+        match self {
+            Live::Overleaf(live) => Some(live),
+            Live::Server(_) => None,
+        }
+    }
 }
 
 pub(super) static ACTIVE: LazyLock<Mutex<Option<Live>>> = LazyLock::new(|| Mutex::new(None));

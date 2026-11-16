@@ -20,6 +20,8 @@ pub struct UnsentProject {
     pub project_id: String,
     pub name: String,
     pub changes: u64,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub paths: Vec<String>,
 }
 
 fn live_on(server: ServerId) -> Option<Arc<Active>> {
@@ -101,12 +103,13 @@ fn name_of(project_id: &str) -> Option<String> {
     })
 }
 
-fn named(project_id: String, changes: u64) -> Option<UnsentProject> {
+pub(super) fn named(project_id: String, changes: u64) -> Option<UnsentProject> {
     let name = name_of(&project_id)?;
     Some(UnsentProject {
         project_id,
         name,
         changes,
+        paths: Vec::new(),
     })
 }
 

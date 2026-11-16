@@ -7,7 +7,7 @@ use oleafly_online::live::journal::{Journal, ProjectManifest};
 use oleafly_online::live::session::{SessionConfig, SessionTuning};
 use oleafly_online::realtime::Carrier;
 use oleafly_online::session::{Session, SessionHandle};
-use oleafly_online::test_support::mock_overleaf::{MockOverleaf, MockProject};
+use oleafly_online::test_support::mock_overleaf::{MockOverleaf, MockProject, MockUser};
 use oleafly_ot::{DocMessage, DocSink};
 
 use super::{OverleafLive, Parts};
@@ -86,6 +86,15 @@ pub(crate) struct LetGo {
     _dir: tempfile::TempDir,
 }
 
+pub(crate) fn session_of(user: &MockUser) -> Session {
+    Session {
+        cookie: user.cookie(),
+        user_id: user.id.clone(),
+        email: user.email.clone(),
+        saved_by: None,
+    }
+}
+
 fn tuning() -> SessionTuning {
     SessionTuning {
         tick: Duration::from_millis(20),
@@ -134,20 +143,13 @@ impl OverleafRig {
         };
         for (path, text) in disk {
             let target = root.join(path);
-            std::fs::create_dir_all(target.parent().unwrap()).unwrap();
-            std::fs::write(target, text).unwrap();
+            tokio::fs::create_dir_all(target.parent().unwrap())
+                .await
+                .unwrap();
+            tokio::fs::write(target, text).await.unwrap();
         }
         let user = mock.user("alice");
-        let session = SessionHandle::new(
-            &mock.base,
-            Session {
-                cookie: user.cookie(),
-                user_id: user.id.clone(),
-                email: user.email.clone(),
-                saved_by: None,
-            },
-            None,
-        );
+        let session = SessionHandle::new(&mock.base, session_of(&user), None);
         let mut journal = Journal::open(&data, &mock.base, &mock.project_id(), None).unwrap();
         journal.set_manifest(ProjectManifest {
             user_id: user.id.clone(),

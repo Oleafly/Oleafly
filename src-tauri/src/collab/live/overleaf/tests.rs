@@ -5,16 +5,21 @@ use oleafly_ot::DocMessage;
 
 use std::sync::Arc;
 
+use oleafly_collab::sync::LiveStatus;
 use oleafly_collab::{CollabError, CollabPaths};
-use oleafly_online::live::journal::{DocRecord, Journal, SCHEMA};
+use oleafly_online::live::journal::{self, DocRecord, Journal, SCHEMA};
 use oleafly_online::realtime::DocId;
 
+use super::account::overleaf_signed_in;
 use super::refuse_overleaf_linked;
-use super::rig::{eventually, OverleafRig, Place, Quiet};
+use super::rig::{eventually, session_of, OverleafRig, Place, Quiet};
+use crate::collab::live::session::{guard, live_for};
+use crate::collab::live::UnsentProject;
 use crate::collab::testing::TempLibrary;
 
 const MAIN: &str = "main.tex";
 const INTRO: &str = "sections/intro.tex";
+const STRANDED: &str = "Hello\nfirst\nkept\n";
 
 fn project(main: &str, intro: &str) -> MockProject {
     MockProject::new("live")
@@ -182,14 +187,38 @@ const SERVER: &str = "https://www.overleaf.com";
 const LINKED: &str = "6af963ebc9037022065bb53f";
 
 fn imported_project() -> String {
+    linked_to(SERVER, LINKED)
+}
+
+fn linked_to(server: &str, remote: &str) -> String {
     let project_id = crate::project::create_blank_project("Imported".into()).unwrap();
     let mut meta = crate::project::read_meta(&project_id).unwrap();
     meta.extra.insert(
         "importedFrom".to_owned(),
-        serde_json::json!({ "service": "overleaf", "server": SERVER, "projectId": LINKED }),
+        serde_json::json!({ "service": "overleaf", "server": server, "projectId": remote }),
     );
     crate::project::write_meta(&project_id, &meta).unwrap();
     project_id
+}
+
+fn journal_unsent(server: &str, remote: &str, path: &str) {
+    let data = crate::paths::oleafly_root().unwrap();
+    let mut journal = Journal::open(&data, server, remote, None).unwrap();
+    journal.put(
+        &DocId("doc1".to_owned()),
+        Some(DocRecord {
+            schema: SCHEMA,
+            format: "sharejs-text-ot".to_owned(),
+            base_text: "a".to_owned(),
+            base_raw: None,
+            base_version: 1,
+            local_text: "ab".to_owned(),
+            inflight: None,
+            provisional: false,
+            path: Some(path.to_owned()),
+        }),
+    );
+    journal.flush().unwrap();
 }
 
 fn collab_paths() -> CollabPaths {
@@ -224,24 +253,7 @@ fn sharing_an_overleaf_linked_project_is_refused_while_the_card_is_on() {
 fn unsent_overleaf_work_refuses_sharing_even_with_the_card_off() {
     let library = TempLibrary::new();
     let project = imported_project();
-    let data = crate::paths::oleafly_root().unwrap();
-    let mut journal = Journal::open(&data, SERVER, LINKED, None).unwrap();
-    journal.put(
-        &DocId("doc1".to_owned()),
-        Some(DocRecord {
-            schema: SCHEMA,
-            format: "sharejs-text-ot".to_owned(),
-            base_text: "a".to_owned(),
-            base_raw: None,
-            base_version: 1,
-            local_text: "ab".to_owned(),
-            inflight: None,
-            provisional: false,
-            path: Some(MAIN.to_owned()),
-        }),
-    );
-    journal.flush().unwrap();
-    drop(journal);
+    journal_unsent(SERVER, LINKED, MAIN);
     let refused = refuse_overleaf_linked(&collab_paths(), &project, false).unwrap_err();
     assert_eq!(code(refused), "overleaf_linked");
     drop(library);
@@ -273,24 +285,7 @@ fn a_stopped_doc_with_unsent_text_keeps_git_sync_refused_and_pause_asks_first() 
             Place::Library,
         )
         .await;
-        let doc = rig.doc(MAIN);
-        let mut tab = rig.open(MAIN);
-        tab.typed(&rig.live, "Hello\nfirst\n");
-        eventually("the first line reaches the server", || {
-            rig.mock.doc_text(&doc) == "Hello\nfirst\n"
-        })
-        .await;
-        rig.mock
-            .fail_updates(&doc, "Delete component does not match", 2);
-        tab.typed(&rig.live, "Hello\nfirst\nkept\n");
-        eventually("the doc stops and the tab is told", || {
-            tab.inbox
-                .lock()
-                .unwrap()
-                .iter()
-                .any(|message| matches!(message, DocMessage::Detached { .. }))
-        })
-        .await;
+        strand_unsent(&rig).await;
         let project_id = rig.project_id.clone();
         assert!(super::git_sync_waits(&project_id).unwrap());
         let _rest = rig.let_go();
@@ -306,8 +301,248 @@ fn a_stopped_doc_with_unsent_text_keeps_git_sync_refused_and_pause_asks_first() 
             .await
             .unwrap();
         assert!(paused.paused);
-        assert!(crate::collab::live::session::live_for(&project_id).is_none());
+        assert!(live_for(&project_id).is_none());
         assert!(super::git_sync_waits(&project_id).unwrap());
+    });
+    drop(library);
+}
+
+async fn strand_unsent(rig: &OverleafRig) {
+    let doc = rig.doc(MAIN);
+    let mut tab = rig.open(MAIN);
+    tab.typed(&rig.live, "Hello\nfirst\n");
+    eventually("the first line reaches the server", || {
+        rig.mock.doc_text(&doc) == "Hello\nfirst\n"
+    })
+    .await;
+    rig.mock
+        .fail_updates(&doc, "Delete component does not match", 2);
+    tab.typed(&rig.live, STRANDED);
+    eventually("the doc stops and the tab is told", || {
+        tab.inbox
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|message| matches!(message, DocMessage::Detached { .. }))
+    })
+    .await;
+}
+
+fn signed_in_as(base: &str, user: &MockUser) {
+    let store = crate::secrets::store().unwrap();
+    oleafly_online::session::save(&store, base, &session_of(user)).unwrap();
+}
+
+fn stored_session(base: &str) -> bool {
+    let store = crate::secrets::store().unwrap();
+    oleafly_online::session::load(&store, base)
+        .unwrap()
+        .is_some()
+}
+
+fn journaled_text(base: &str, remote: &str, doc: &str) -> Option<String> {
+    let data = crate::paths::oleafly_root().unwrap();
+    let file = journal::journal_dir(&data, base, remote)
+        .unwrap()
+        .join(format!("{doc}.json"));
+    let record: DocRecord = serde_json::from_slice(&std::fs::read(file).ok()?).ok()?;
+    Some(record.local_text)
+}
+
+fn listed(unsent: &[UnsentProject]) -> Vec<(String, Vec<String>)> {
+    unsent
+        .iter()
+        .map(|project| (project.project_id.clone(), project.paths.clone()))
+        .collect()
+}
+
+#[test]
+fn sign_out_lists_unsent_overleaf_docs() {
+    let library = TempLibrary::new();
+    run(async {
+        let rig = OverleafRig::start_at(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+            Place::Library,
+        )
+        .await;
+        let (base, remote, doc) = (rig.mock.base.clone(), rig.mock.project_id(), rig.doc(MAIN));
+        signed_in_as(&base, &rig.mock.user("alice"));
+        strand_unsent(&rig).await;
+        let other = linked_to(&base, LINKED);
+        journal_unsent(&base, LINKED, INTRO);
+
+        let asked =
+            crate::overleaf::sign_out_within(base.clone(), false, Duration::from_millis(300))
+                .await
+                .unwrap();
+
+        assert!(asked.status.signed_in);
+        assert_eq!(
+            listed(&asked.unsent),
+            vec![
+                (rig.project_id.clone(), vec![MAIN.to_owned()]),
+                (other, vec![INTRO.to_owned()]),
+            ]
+        );
+        assert!(stored_session(&base));
+        assert!(live_for(&rig.project_id).is_some());
+        assert_eq!(
+            journaled_text(&base, &remote, &doc).as_deref(),
+            Some(STRANDED)
+        );
+        let mut journals = vec![
+            (remote, vec![MAIN.to_owned()]),
+            (LINKED.to_owned(), vec![INTRO.to_owned()]),
+        ];
+        journals.sort();
+        let data = crate::paths::oleafly_root().unwrap();
+        assert_eq!(journal::unsent_on(&data, &base), journals);
+        rig.finish().await;
+    });
+    drop(library);
+}
+
+#[test]
+fn keep_local_copy_stops_live_and_keeps_the_journal() {
+    let library = TempLibrary::new();
+    run(async {
+        let rig = OverleafRig::start_at(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+            Place::Library,
+        )
+        .await;
+        let base = rig.mock.base.clone();
+        signed_in_as(&base, &rig.mock.user("alice"));
+        strand_unsent(&rig).await;
+        let (project_id, remote, doc) =
+            (rig.project_id.clone(), rig.mock.project_id(), rig.doc(MAIN));
+        let _rest = rig.let_go();
+
+        let out = crate::overleaf::sign_out_within(base.clone(), true, Duration::from_millis(300))
+            .await
+            .unwrap();
+
+        assert!(!out.status.signed_in);
+        assert_eq!(
+            listed(&out.unsent),
+            vec![(project_id.clone(), vec![MAIN.to_owned()])]
+        );
+        assert!(!stored_session(&base));
+        assert!(live_for(&project_id).is_none());
+        let data = crate::paths::oleafly_root().unwrap();
+        assert_eq!(
+            journal::unsent_on(&data, &base),
+            vec![(remote.clone(), vec![MAIN.to_owned()])]
+        );
+        assert_eq!(
+            journaled_text(&base, &remote, &doc).as_deref(),
+            Some(STRANDED)
+        );
+    });
+    drop(library);
+}
+
+#[test]
+fn sign_out_with_nothing_live_and_nothing_unsent_answers_as_before() {
+    let library = TempLibrary::new();
+    signed_in_as(SERVER, &MockUser::named("alice"));
+    run(async {
+        let out =
+            crate::overleaf::sign_out_within(SERVER.to_owned(), false, Duration::from_millis(300))
+                .await
+                .unwrap();
+        assert_eq!(
+            serde_json::to_value(&out).unwrap(),
+            serde_json::json!({ "server": SERVER, "signedIn": false, "email": null })
+        );
+    });
+    assert!(!stored_session(SERVER));
+    drop(library);
+}
+
+#[test]
+fn sign_out_with_nothing_unsent_stops_live_and_signs_out_without_asking() {
+    let library = TempLibrary::new();
+    run(async {
+        let rig = OverleafRig::start_at(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+            Place::Library,
+        )
+        .await;
+        let base = rig.mock.base.clone();
+        signed_in_as(&base, &rig.mock.user("alice"));
+        let doc = rig.doc(MAIN);
+        let mut tab = rig.open(MAIN);
+        tab.typed(&rig.live, "Hello\nsent\n");
+        eventually("the typing reaches the server", || {
+            rig.mock.doc_text(&doc) == "Hello\nsent\n"
+        })
+        .await;
+        let project_id = rig.project_id.clone();
+        let _rest = rig.let_go();
+
+        let out = crate::overleaf::sign_out_within(base.clone(), false, Duration::from_secs(2))
+            .await
+            .unwrap();
+
+        assert_eq!(
+            serde_json::to_value(&out).unwrap(),
+            serde_json::json!({ "server": base, "signedIn": false, "email": null })
+        );
+        assert!(!stored_session(&base));
+        assert!(live_for(&project_id).is_none());
+    });
+    drop(library);
+}
+
+#[test]
+fn signing_in_again_resumes_a_signed_out_live_session() {
+    let library = TempLibrary::new();
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        let doc = rig.doc(MAIN);
+        let mut tab = rig.open(MAIN);
+        tab.typed(&rig.live, "Hello\nonline\n");
+        eventually("the first line reaches the server", || {
+            rig.mock.doc_text(&doc) == "Hello\nonline\n"
+        })
+        .await;
+        let alice = rig.mock.user("alice");
+        let renewed = rig.mock.expire_session("alice");
+        let connection = rig
+            .mock
+            .connections()
+            .into_iter()
+            .rev()
+            .find(|connection| connection.user_id.as_deref() == Some(alice.id.as_str()))
+            .unwrap();
+        rig.mock.drop_client(&connection.public_id);
+        let status = || guard(&rig.live.mirror.status).0.clone();
+        eventually("the session waits signed out", || {
+            status() == LiveStatus::SignedOut
+        })
+        .await;
+        tab.typed(&rig.live, "Hello\nonline\nsigned out\n");
+
+        overleaf_signed_in(&rig.mock.base, &session_of(&renewed)).unwrap();
+
+        eventually("the typing reaches the server once", || {
+            rig.mock.doc_text(&doc) == "Hello\nonline\nsigned out\n"
+        })
+        .await;
+        eventually("the session is online again", || {
+            status() == LiveStatus::Online
+        })
+        .await;
+        assert_eq!(rig.mock.doc_text(&doc), "Hello\nonline\nsigned out\n");
+        rig.finish().await;
     });
     drop(library);
 }
