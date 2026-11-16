@@ -10,8 +10,8 @@ use serde_json::{json, Value};
 use super::catch_up::History;
 use super::state::{iso_time, JoinKind, State};
 use super::{
-    DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview, OverleafSession,
-    SessionConfig, SessionTuning, UnsentDoc,
+    Account, DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview, OverleafSession,
+    SessionConfig, SessionTuning, SignedIn, UnsentDoc,
 };
 use crate::client::Http;
 use crate::live::format::{operation_of, pieces_from_json, FormatState};
@@ -68,6 +68,7 @@ struct Seen {
     merged: Vec<(DocId, MergeReview)>,
     journal: Vec<Option<String>>,
     pending_docs: Vec<(DocId, bool)>,
+    accounts: Vec<Account>,
 }
 
 #[derive(Default)]
@@ -155,6 +156,10 @@ impl LivePort for Port {
     fn doc_pending(&self, doc: &DocId, pending: bool) {
         self.seen().pending_docs.push((doc.clone(), pending));
     }
+
+    fn account_changed(&self, typed_as: Account) {
+        self.seen().accounts.push(typed_as);
+    }
 }
 
 struct Rig {
@@ -182,9 +187,8 @@ impl Rig {
         self.mock.user(name).id
     }
 
-    fn config(&self, name: &str, tuning: SessionTuning) -> SessionConfig {
-        let user = self.mock.user(name);
-        let session = SessionHandle::new(
+    fn handle_for(&self, user: &MockUser) -> SessionHandle {
+        SessionHandle::new(
             &self.mock.base,
             Session {
                 cookie: user.cookie(),
@@ -193,7 +197,11 @@ impl Rig {
                 saved_by: None,
             },
             None,
-        );
+        )
+    }
+
+    fn config(&self, name: &str, tuning: SessionTuning) -> SessionConfig {
+        let session = self.handle_for(&self.mock.user(name));
         SessionConfig {
             http: self.http.clone(),
             session,
@@ -728,7 +736,10 @@ fn watcher(docs: &[(String, String)]) -> Watcher {
     let port = Port::new(&[]);
     let mut state = State::new(
         project,
-        "alice".into(),
+        Account {
+            user_id: "alice".into(),
+            email: "alice@example.com".into(),
+        },
         &journal,
         Arc::clone(&port) as Arc<dyn LivePort>,
     );
@@ -961,6 +972,7 @@ async fn a_journal_from_another_user_is_not_sent() {
                 local_text: "Hello from someone else".into(),
                 inflight: None,
                 provisional: false,
+                path: None,
             }),
         );
         journal.flush().unwrap();
@@ -1362,6 +1374,150 @@ async fn a_stopped_doc_with_unsent_text_never_reads_as_settled() {
     live.stop().await;
 }
 
+fn parked(port: &Port) -> bool {
+    matches!(port.seen().states.last(), Some(LiveState::SignedOut { .. }))
+}
+
+async fn sign_out_mid_session(rig: &Rig, port: &Port, name: &str) -> MockUser {
+    let renewed = rig.mock.expire_session(name);
+    rig.mock.drop_client(&rig.connection_of(name).unwrap());
+    eventually("the session parks signed out", || parked(port)).await;
+    renewed
+}
+
+#[tokio::test]
+async fn expired_session_keeps_typing_and_resumes_once() {
+    let rig = Rig::start(project()).await;
+    rig.seed("alice", 0).await;
+    let port = Port::new(&FILES);
+    let live = rig.live("alice", &port).await;
+    let main = rig.id(MAIN);
+    let mut tab = Tab::open(&live, MAIN);
+    eventually("the doc is joined", || {
+        rig.joined("alice").contains(&main.0)
+    })
+    .await;
+    let renewed = sign_out_mid_session(&rig, &port, "alice").await;
+    tab.type_end(&live, " offline");
+    assert_eq!(tab.text(&live), "Hello offline");
+    eventually("the typing is journaled", || {
+        record_of(&live, &main).is_some_and(|record| record.local_text == "Hello offline")
+    })
+    .await;
+    assert!(matches!(
+        port.seen().states.last(),
+        Some(LiveState::SignedOut { pending: 1 })
+    ));
+    assert_eq!(port.ended(), None);
+    assert!(rig.updates_for(&main).is_empty());
+    assert_eq!(live.signed_in(rig.handle_for(&renewed)), SignedIn::Resumed);
+    assert!(live.settle(WAIT).await);
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert_eq!(rig.mock.doc_text(&main.0), "Hello offline");
+    assert_eq!(rig.updates_for(&main).len(), 1);
+    assert!(matches!(
+        port.seen().states.last(),
+        Some(LiveState::Online { pending: 0 })
+    ));
+    assert!(port.seen().accounts.is_empty());
+    live.stop().await;
+}
+
+#[tokio::test]
+async fn a_mid_session_account_switch_keeps_the_old_text_as_copies_and_sends_none() {
+    let rig = Rig::start(project()).await;
+    rig.seed("alice", 0).await;
+    let port = Port::new(&FILES);
+    let live = rig.live("alice", &port).await;
+    let main = rig.id(MAIN);
+    let mut tab = Tab::open(&live, MAIN);
+    eventually("the doc is joined", || {
+        rig.joined("alice").contains(&main.0)
+    })
+    .await;
+    sign_out_mid_session(&rig, &port, "alice").await;
+    tab.type_end(&live, " from alice");
+    let alice = rig.mock.user("alice");
+    let bob = rig.mock.user("bob");
+    let typed_as = Account {
+        user_id: alice.id.clone(),
+        email: alice.email.clone(),
+    };
+    let outcome = live.signed_in(rig.handle_for(&bob));
+    assert_eq!(
+        outcome,
+        SignedIn::AccountChanged {
+            typed_as: typed_as.clone()
+        }
+    );
+    let kept = MergeReview::Kept {
+        text: "Hello from alice".into(),
+    };
+    assert!(port.seen().merged.contains(&(main.clone(), kept)));
+    assert_eq!(port.seen().accounts, vec![typed_as]);
+    eventually("the tab shows the server's text", || {
+        tab.text(&live) == "Hello"
+    })
+    .await;
+    assert!(live.settle(WAIT).await);
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert_eq!(rig.mock.doc_text(&main.0), "Hello");
+    assert!(rig.updates_for(&main).is_empty());
+    assert!(record_of(&live, &main).is_none());
+    let manifest = manifest_of(&live).unwrap();
+    assert_eq!((manifest.user_id, manifest.user_email), (bob.id, bob.email));
+    live.stop().await;
+}
+
+#[tokio::test]
+async fn signing_in_again_as_the_same_user_while_live_sends_nothing_twice() {
+    let rig = Rig::start(project()).await;
+    rig.seed("alice", 0).await;
+    let port = Port::new(&FILES);
+    let live = rig.live("alice", &port).await;
+    let main = rig.id(MAIN);
+    let mut tab = Tab::open(&live, MAIN);
+    eventually("the doc is joined", || {
+        rig.joined("alice").contains(&main.0)
+    })
+    .await;
+    tab.type_end(&live, " one");
+    let before = rig.connection_of("alice").unwrap();
+    let alice = rig.mock.user("alice");
+    assert_eq!(live.signed_in(rig.handle_for(&alice)), SignedIn::Resumed);
+    eventually("the session reconnects with the new handle", || {
+        rig.connection_of("alice").is_some_and(|now| now != before)
+            && rig.joined("alice").contains(&main.0)
+    })
+    .await;
+    tab.type_end(&live, " two");
+    assert!(live.settle(WAIT).await);
+    assert_eq!(rig.mock.doc_text(&main.0), "Hello one two");
+    assert_eq!(rig.updates_for(&main).len(), 2);
+    assert!(port.seen().accounts.is_empty());
+    live.stop().await;
+}
+
+#[tokio::test]
+async fn a_false_sign_out_alarm_never_parks_the_session() {
+    let rig = Rig::start(project()).await;
+    rig.seed("alice", 0).await;
+    let port = Port::new(&FILES);
+    let live = rig.live("alice", &port).await;
+    rig.mock
+        .configure(|config| config.reject_connections = Some(MockRejection::InvalidSession));
+    rig.mock.drop_client(&rig.connection_of("alice").unwrap());
+    eventually("the session ends", || port.ended().is_some()).await;
+    assert_eq!(port.ended(), Some(LiveEnd::AccessEnded));
+    let parked_ever = port
+        .seen()
+        .states
+        .iter()
+        .any(|state| matches!(state, LiveState::SignedOut { .. }));
+    assert!(!parked_ever);
+    live.stop().await;
+}
+
 #[tokio::test]
 async fn a_journal_for_a_deleted_doc_is_kept_as_a_copy() {
     let rig = Rig::start(project()).await;
@@ -1384,6 +1540,7 @@ async fn a_journal_for_a_deleted_doc_is_kept_as_a_copy() {
                 local_text: "Old and unsent".into(),
                 inflight: None,
                 provisional: false,
+                path: None,
             }),
         );
         journal.flush().unwrap();

@@ -145,6 +145,7 @@ pub struct SessionConfig {
 struct Shared {
     state: Mutex<state::State>,
     journal: Mutex<Journal>,
+    sign_in: Mutex<Option<SessionHandle>>,
     wake: Notify,
     stopping: AtomicBool,
     port: Arc<dyn LivePort>,
@@ -157,6 +158,13 @@ impl Shared {
 
     fn journal(&self) -> MutexGuard<'_, Journal> {
         self.journal.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    fn take_sign_in(&self) -> Option<SessionHandle> {
+        self.sign_in
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take()
     }
 
     fn is_stopping(&self) -> bool {
@@ -229,13 +237,17 @@ impl OverleafSession {
         let project = ProjectState::from_join(join.response).map_err(|unsupported| {
             OnlineError::new(OnlineErrorKind::Unrecognized).detail(format!("{unsupported:?}"))
         })?;
-        let me = config.session.user_id().to_string();
-        let mut state = state::State::new(project, me, &journal, Arc::clone(&port));
+        let account = Account {
+            user_id: config.session.user_id().to_string(),
+            email: config.session.email().to_string(),
+        };
+        let mut state = state::State::new(project, account, &journal, Arc::clone(&port));
         state.page_limit = page.max_doc_length().map(|limit| limit as usize);
         state.connected(connection.public_id().clone(), state::now_ms());
         let shared = Arc::new(Shared {
             state: Mutex::new(state),
             journal: Mutex::new(journal),
+            sign_in: Mutex::new(None),
             wake: Notify::new(),
             stopping: AtomicBool::new(false),
             port,
@@ -308,6 +320,21 @@ impl OverleafSession {
             self.poke();
             tokio::time::sleep(Duration::from_millis(20)).await;
         }
+    }
+
+    pub fn signed_in(&self, session: SessionHandle) -> SignedIn {
+        let account = Account {
+            user_id: session.user_id().to_string(),
+            email: session.email().to_string(),
+        };
+        let outcome = self.shared.with(|state| state.signed_in(account));
+        *self
+            .shared
+            .sign_in
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner) = Some(session);
+        self.poke();
+        outcome
     }
 
     pub async fn unsent(&self, wait: Duration) -> Vec<UnsentDoc> {

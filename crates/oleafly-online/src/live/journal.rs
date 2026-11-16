@@ -28,6 +28,8 @@ pub struct ProjectManifest {
     #[serde(default)]
     pub user_id: String,
     #[serde(default)]
+    pub user_email: String,
+    #[serde(default)]
     pub history_version: Option<u64>,
     #[serde(default)]
     pub paused: bool,
@@ -40,6 +42,7 @@ impl Default for ProjectManifest {
         ProjectManifest {
             schema: SCHEMA,
             user_id: String::new(),
+            user_email: String::new(),
             history_version: None,
             paused: false,
             kept_away: Vec::new(),
@@ -71,6 +74,8 @@ pub struct DocRecord {
     pub inflight: Option<InflightRecord>,
     #[serde(default)]
     pub provisional: bool,
+    #[serde(default)]
+    pub path: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
@@ -303,6 +308,48 @@ impl Journal {
         }
         Ok(())
     }
+}
+
+pub fn unsent_on(data_root: &Path, base: &str) -> Vec<(String, Vec<String>)> {
+    let Ok(origin) = origin_dir(base) else {
+        return Vec::new();
+    };
+    let Ok(projects) = std::fs::read_dir(data_root.join(LIVE_DIR).join(origin)) else {
+        return Vec::new();
+    };
+    let mut found: Vec<(String, Vec<String>)> = projects
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let project = entry
+                .file_name()
+                .to_str()
+                .filter(|id| plain_id(id))?
+                .to_string();
+            let paths = unsent_paths(&entry.path());
+            (!paths.is_empty()).then_some((project, paths))
+        })
+        .collect();
+    found.sort();
+    found
+}
+
+fn unsent_paths(dir: &Path) -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    let mut paths: Vec<String> = entries
+        .filter_map(Result::ok)
+        .filter_map(|entry| {
+            let path = entry.path();
+            let doc = doc_of(&path)?;
+            match read_json::<DocRecord>(&path) {
+                Some((SCHEMA, Some(record))) => Some(record.path.unwrap_or(doc.0)),
+                _ => None,
+            }
+        })
+        .collect();
+    paths.sort();
+    paths
 }
 
 fn doc_of(path: &Path) -> Option<DocId> {

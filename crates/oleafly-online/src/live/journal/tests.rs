@@ -4,8 +4,8 @@ use oleafly_ot::TextOperation;
 use serde_json::json;
 
 use super::{
-    journal_dir, origin_dir, DocRecord, InflightRecord, Journal, JournalError, ProjectManifest,
-    KEPT, LIVE_DIR, SCHEMA,
+    journal_dir, origin_dir, unsent_on, DocRecord, InflightRecord, Journal, JournalError,
+    ProjectManifest, KEPT, LIVE_DIR, SCHEMA,
 };
 use crate::error::{OnlineError, OnlineErrorKind};
 use crate::live::{DocId, PublicId};
@@ -32,6 +32,7 @@ fn record(text: &str) -> DocRecord {
             base_version: 7,
         }),
         provisional: false,
+        path: None,
     }
 }
 
@@ -192,4 +193,45 @@ fn unknown_journal_schema_is_kept_not_replayed() {
     let copy: serde_json::Value = serde_json::from_slice(&std::fs::read(&kept).unwrap()).unwrap();
     assert_eq!(copy, future);
     assert!(!dir.join(format!("{doc}.json")).exists());
+}
+
+#[test]
+fn unsent_on_lists_each_project_with_its_unsent_paths_without_taking_locks() {
+    let data = tempfile::tempdir().unwrap();
+    let mut live = open(data.path(), None).unwrap();
+    live.put(
+        &DocId("aaaaaaaaaaaaaaaaaaaaaaaa".into()),
+        Some(DocRecord {
+            path: Some("main.tex".into()),
+            ..record("Hello there")
+        }),
+    );
+    live.put(
+        &DocId("bbbbbbbbbbbbbbbbbbbbbbbb".into()),
+        Some(record("Hello there, too")),
+    );
+    live.flush().unwrap();
+    let empty = "64f0c0ffee0123456789abce";
+    drop(Journal::open(data.path(), BASE, empty, None).unwrap());
+    let mut elsewhere =
+        Journal::open(data.path(), "https://other.example.org", PROJECT, None).unwrap();
+    elsewhere.put(
+        &DocId("cccccccccccccccccccccccc".into()),
+        Some(record("Other server")),
+    );
+    elsewhere.flush().unwrap();
+    let future = journal_dir(data.path(), BASE, PROJECT)
+        .unwrap()
+        .join("dddddddddddddddddddddddd.json");
+    std::fs::write(future, json!({ "schema": SCHEMA + 1 }).to_string()).unwrap();
+
+    let found = unsent_on(data.path(), BASE);
+    let paths = vec![
+        "bbbbbbbbbbbbbbbbbbbbbbbb".to_string(),
+        "main.tex".to_string(),
+    ];
+    assert_eq!(found, vec![(PROJECT.to_string(), paths)]);
+    assert!(unsent_on(data.path(), "not a url").is_empty());
+    assert!(unsent_on(&data.path().join("missing"), BASE).is_empty());
+    drop(live);
 }

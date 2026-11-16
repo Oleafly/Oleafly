@@ -9,7 +9,10 @@ use oleafly_ot::{
 use serde_json::Value;
 
 use super::catch_up::History;
-use super::{DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview, UnsentDoc};
+use super::{
+    Account, DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview, SignedIn,
+    UnsentDoc,
+};
 use crate::live::doc::{Applied, DocError, Limit, OutgoingUpdate, OverleafDoc, Rejoin};
 use crate::live::format::{CodecError, DocFormat, FormatState};
 use crate::live::join::{JoinFailure, JoinedDoc};
@@ -34,6 +37,7 @@ pub(super) enum Notice {
     Merged(DocId, MergeReview),
     Journal(Option<String>),
     Pending(DocId, bool),
+    AccountChanged(Account),
     Editor(DocSink, DocMessage),
 }
 
@@ -51,6 +55,7 @@ pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
             Notice::Merged(doc, review) => port.merged(&doc, review),
             Notice::Journal(reason) => port.journal_failed(reason),
             Notice::Pending(doc, pending) => port.doc_pending(&doc, pending),
+            Notice::AccountChanged(account) => port.account_changed(account),
             Notice::Editor(sink, message) => sink(message),
         }
     }
@@ -169,6 +174,8 @@ pub(super) struct State {
     pub(super) page_limit: Option<usize>,
     pub(super) ended: Option<LiveEnd>,
     me: String,
+    email: String,
+    signed_out: bool,
     port: Arc<dyn LivePort>,
     connected_wall_ms: u64,
     broadcasts: BTreeSet<DocId>,
@@ -196,7 +203,7 @@ pub(super) struct State {
 impl State {
     pub(super) fn new(
         project: ProjectState,
-        me: String,
+        account: Account,
         journal: &Journal,
         port: Arc<dyn LivePort>,
     ) -> State {
@@ -205,7 +212,9 @@ impl State {
             notices: Vec::new(),
             page_limit: None,
             ended: None,
-            me,
+            me: account.user_id,
+            email: account.email,
+            signed_out: false,
             port,
             connected_wall_ms: 0,
             broadcasts: BTreeSet::new(),
@@ -234,8 +243,11 @@ impl State {
     }
 
     fn take_journal(&mut self, records: &BTreeMap<DocId, DocRecord>) {
-        let previous = std::mem::take(&mut self.manifest.user_id);
-        let foreign = !previous.is_empty() && previous != self.me;
+        let previous = Account {
+            user_id: std::mem::take(&mut self.manifest.user_id),
+            email: std::mem::take(&mut self.manifest.user_email),
+        };
+        let foreign = !previous.user_id.is_empty() && previous.user_id != self.me;
         for (doc, record) in records {
             let slot = self.slots.entry(doc.clone()).or_default();
             if foreign {
@@ -252,8 +264,70 @@ impl State {
             slot.phase = Phase::CatchUp;
             self.want(doc);
         }
+        if foreign && !records.is_empty() {
+            self.notices.push(Notice::AccountChanged(previous));
+        }
+        self.note_account();
+    }
+
+    fn note_account(&mut self) {
         self.manifest.user_id = self.me.clone();
+        self.manifest.user_email = self.email.clone();
         self.manifest_dirty = true;
+    }
+
+    pub(super) fn park_signed_out(&mut self) {
+        if self.ended.is_none() {
+            self.online = false;
+            self.signed_out = true;
+            self.last_pending = None;
+        }
+    }
+
+    pub(super) fn is_signed_out(&self) -> bool {
+        self.signed_out
+    }
+
+    pub(super) fn signed_in(&mut self, account: Account) -> SignedIn {
+        self.signed_out = false;
+        if account.user_id == self.me {
+            self.email = account.email;
+            self.note_account();
+            return SignedIn::Resumed;
+        }
+        let typed_as = Account {
+            user_id: std::mem::replace(&mut self.me, account.user_id),
+            email: std::mem::replace(&mut self.email, account.email),
+        };
+        self.hand_back_all();
+        self.note_account();
+        self.notices.push(Notice::AccountChanged(typed_as.clone()));
+        SignedIn::AccountChanged { typed_as }
+    }
+
+    fn hand_back_all(&mut self) {
+        let docs: Vec<DocId> = self.slots.keys().cloned().collect();
+        for doc in docs {
+            let Some(slot) = self.slots.get_mut(&doc) else {
+                continue;
+            };
+            if slot.phase == Phase::Stopped && slot.doc.is_none() {
+                continue;
+            }
+            let unsent = slot.unsent_text();
+            slot.buffer.clear();
+            slot.errors = 0;
+            slot.dirty = true;
+            slot.phase = Phase::Unjoined;
+            let open = slot.editor.is_some();
+            if let Some(text) = unsent {
+                self.notices
+                    .push(Notice::Merged(doc.clone(), MergeReview::Kept { text }));
+            }
+            if open {
+                self.want(&doc);
+            }
+        }
     }
 
     pub(super) fn connected(&mut self, public_id: PublicId, wall_ms: u64) {
@@ -306,14 +380,18 @@ impl State {
     }
 
     pub(super) fn report_pending(&mut self, always: bool) {
-        if !self.online || self.ended.is_some() {
+        if self.ended.is_some() || !(self.online || self.signed_out) {
             return;
         }
         let pending = self.pending();
         if always || self.last_pending != Some(pending) {
             self.last_pending = Some(pending);
-            self.notices
-                .push(Notice::State(LiveState::Online { pending }));
+            let state = if self.signed_out {
+                LiveState::SignedOut { pending }
+            } else {
+                LiveState::Online { pending }
+            };
+            self.notices.push(Notice::State(state));
         }
     }
 
@@ -1216,10 +1294,16 @@ impl State {
         if !forced && (waiting || backing_off) {
             return None;
         }
+        let tree = &self.project.tree;
         let mut docs = Vec::new();
         for (doc, slot) in &mut self.slots {
             if std::mem::take(&mut slot.dirty) {
-                docs.push((doc.clone(), slot.record()));
+                let path = tree.path_of(&EntityId::from(doc));
+                let record = slot.record().map(|mut record| {
+                    record.path = path.or(record.path.take());
+                    record
+                });
+                docs.push((doc.clone(), record));
             }
         }
         let manifest = std::mem::take(&mut self.manifest_dirty).then(|| self.manifest.clone());

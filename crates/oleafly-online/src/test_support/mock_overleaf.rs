@@ -957,17 +957,21 @@ impl State {
         })
     }
 
-    fn rotate_session(&mut self, headers: &HashMap<String, String>, sid: &str) -> Option<String> {
-        let current = State::session_of(headers)?;
-        let fresh = format!("{current}-{sid}");
-        let mut found = false;
+    fn people_mut(&mut self) -> impl Iterator<Item = &mut MockUser> {
         let owner = std::iter::once(&mut self.owner);
         let members = self.members.iter_mut().map(|(user, _)| user);
         let others = self
             .outsiders
             .iter_mut()
             .chain(self.token_viewers.iter_mut());
-        for user in owner.chain(members).chain(others) {
+        owner.chain(members).chain(others)
+    }
+
+    fn rotate_session(&mut self, headers: &HashMap<String, String>, sid: &str) -> Option<String> {
+        let current = State::session_of(headers)?;
+        let fresh = format!("{current}-{sid}");
+        let mut found = false;
+        for user in self.people_mut() {
             if user.session == current {
                 user.session.clone_from(&fresh);
                 found = true;
@@ -2575,6 +2579,20 @@ impl MockOverleaf {
             &[json!({ "members": true })],
             None,
         );
+    }
+
+    pub fn expire_session(&self, name: &str) -> MockUser {
+        let mut state = self.state();
+        state.next_id += 1;
+        let fresh = format!("renewed-{name}-{}", state.next_id);
+        let mut renewed = None;
+        for user in state.people_mut() {
+            if user.first_name.eq_ignore_ascii_case(name) {
+                user.session.clone_from(&fresh);
+                renewed = Some(user.clone());
+            }
+        }
+        renewed.unwrap_or_else(|| panic!("the mock has no user {name}"))
     }
 
     pub fn set_track_changes(&self, value: Value) {

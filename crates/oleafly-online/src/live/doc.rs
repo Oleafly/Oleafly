@@ -199,6 +199,7 @@ impl OverleafDoc {
             local_text: self.local.clone(),
             inflight,
             provisional: self.provisional,
+            path: None,
         })
     }
 

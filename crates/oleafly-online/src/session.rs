@@ -346,6 +346,10 @@ impl SessionHandle {
         &self.inner.session.user_id
     }
 
+    pub fn email(&self) -> &str {
+        &self.inner.session.email
+    }
+
     pub fn cookie(&self) -> String {
         self.inner
             .cookie

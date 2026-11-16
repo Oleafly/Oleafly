@@ -56,14 +56,21 @@ fn refusal(reply: &[Value]) -> Option<String> {
     Some(message.to_string())
 }
 
+fn signed_out_error(error: &RealtimeError) -> bool {
+    match error {
+        RealtimeError::Rejected(rejection) => *rejection == Rejection::SignedOut,
+        RealtimeError::Page(error) => matches!(
+            error.kind,
+            OnlineErrorKind::SessionExpired | OnlineErrorKind::SignedOut
+        ),
+        _ => false,
+    }
+}
+
 fn end_of(error: &RealtimeError) -> LiveEnd {
     match error {
-        RealtimeError::Rejected(Rejection::SignedOut) => LiveEnd::SignedOut,
         RealtimeError::Rejected(Rejection::NotAuthorized) => LiveEnd::AccessEnded,
         RealtimeError::Rejected(Rejection::ProjectGone) => LiveEnd::ProjectGone,
-        RealtimeError::Page(error) if matches!(error.kind, OnlineErrorKind::SessionExpired) => {
-            LiveEnd::SignedOut
-        }
         RealtimeError::Page(error) if matches!(error.kind, OnlineErrorKind::ProjectUnavailable) => {
             LiveEnd::AccessEnded
         }
@@ -154,6 +161,10 @@ impl Driver {
     }
 
     async fn step(&mut self, connection: &mut Connection) -> Step {
+        if let Some(session) = self.shared.take_sign_in() {
+            self.config.session = session;
+            return Step::Lost;
+        }
         let joined = self.joins(connection).await;
         if !matches!(joined, Step::Go) {
             return joined;
@@ -295,10 +306,12 @@ impl Driver {
 
     fn rejected(&mut self, rejection: Rejection) {
         let end = match rejection {
-            Rejection::SignedOut => LiveEnd::SignedOut,
             Rejection::NotAuthorized => LiveEnd::AccessEnded,
             Rejection::ProjectGone => LiveEnd::ProjectGone,
-            Rejection::Retry | Rejection::RateLimited | Rejection::Other(_) => {
+            Rejection::SignedOut
+            | Rejection::Retry
+            | Rejection::RateLimited
+            | Rejection::Other(_) => {
                 self.reconnect_after = Some(Duration::ZERO);
                 return;
             }
@@ -395,6 +408,13 @@ impl Driver {
             }
             match self.connect().await? {
                 Ok((connection, join)) => return self.rejoined(connection, join),
+                Err(error) if signed_out_error(&error) => {
+                    if !self.wait_for_sign_in().await {
+                        return None;
+                    }
+                    wait = Duration::ZERO;
+                    attempt = 0;
+                }
                 Err(error) => {
                     let Some(next) = error.retry_after(attempt) else {
                         self.shared.with(|state| state.end(end_of(&error)));
@@ -403,6 +423,20 @@ impl Driver {
                     wait = next;
                     attempt += 1;
                 }
+            }
+        }
+    }
+
+    async fn wait_for_sign_in(&mut self) -> bool {
+        self.shared.with(State::park_signed_out);
+        loop {
+            if let Some(session) = self.shared.take_sign_in() {
+                self.config.session = session;
+                return true;
+            }
+            let tick = self.config.tuning.tick;
+            if self.over() || self.guard(tokio::time::sleep(tick)).await.is_none() {
+                return false;
             }
         }
     }
@@ -432,7 +466,12 @@ impl Driver {
         self.shared.with(|state| {
             let changes = state.project.tree.flush();
             state.tree_changed(changes);
-            state.end(LiveEnd::Stopped);
+            let end = if state.is_signed_out() {
+                LiveEnd::SignedOut
+            } else {
+                LiveEnd::Stopped
+            };
+            state.end(end);
         });
         self.write_journal(true);
     }
