@@ -64,7 +64,7 @@ export function AcpComposerChips({
             </span>{" "}
             {preview(item.text)}
           </span>
-          {steerable && !item.failed && item.attachments.length === 0 && item.selections.length === 0 && !item.skill && (
+          {steerable && !item.failed && item.attachments.length === 0 && item.selections.length === 0 && !item.skill && !item.context?.length && (
             <Button
               type="button"
               variant="ghost"

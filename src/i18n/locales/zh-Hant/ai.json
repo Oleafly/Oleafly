@@ -232,7 +232,9 @@
     "send": "傳送",
     "checkAgain": "重新檢查",
     "resizeHandle": "調整訊息方塊大小",
-    "resizeHint": "拖曳即可調整大小，按兩下可還原。"
+    "resizeHint": "拖曳即可調整大小，按兩下可還原。",
+    "removeContext": "移除 {{label}}",
+    "contextFailed": "無法讀取附加的上下文，訊息未傳送。"
   },
   "commands": {
     "groups": {

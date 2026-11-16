@@ -155,6 +155,14 @@ export function skippedAttachmentNote(attachments: readonly AttachmentMeta[]): s
   return `[Attachments from this message are not sent again: ${attachments.map(describe).join(", ")}.]`;
 }
 
+function withNote(text: string, note: string): string {
+  return text.trim() ? `${text}\n\n${note}` : note;
+}
+
+export function contextNote(labels: readonly string[]): string {
+  return `[Context sent with this message, not sent again: ${labels.join(", ")}.]`;
+}
+
 function replyReasoning(message: ChatMessage): string {
   const blocks = (message.reasoningBlocks ?? []).map((block) => block.text).filter(Boolean);
   return blocks.length > 0 ? blocks.join("\n\n") : (message.reasoning ?? "");
@@ -174,12 +182,15 @@ function assistantMessage(message: ChatMessage, content: string): ModelMessage {
 
 async function historyMessage(
   message: ChatMessage,
-  content: string,
+  packed: string,
   resend: boolean,
   scope: string | null,
   ctx: AttachmentModelContext,
 ): Promise<ModelMessage> {
-  if (message.role === "assistant") return assistantMessage(message, content);
+  if (message.role === "assistant") return assistantMessage(message, packed);
+  const content = message.context?.length
+    ? withNote(packed, contextNote(message.context.map((item) => item.label)))
+    : packed;
   const attachments = message.attachments ?? [];
   if (attachments.length === 0) return { role: "user", content };
   const files = resend

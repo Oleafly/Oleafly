@@ -286,6 +286,84 @@ export const pdfSyncSet = (projectId: string, enabled: boolean, outputId: string
 export const pdfSyncNoteSaved = (projectId: string, path: string) =>
   invoke<void>("pdf_sync_note_saved", { projectId, path });
 
+export type PdfAnnotationKind = "comment" | "delete" | "replace" | "insert" | "region";
+
+export type PdfAnnotationOrigin = "pdf" | "review" | "aiReview";
+
+export type PdfAnnotationStatus = "draft" | "sent" | "addressed" | "resolved" | "needsPlacing";
+
+export interface PdfAnnotationQuote {
+  text: string;
+  before: string;
+  after: string;
+}
+
+export interface PdfAnnotationSource {
+  path: string;
+  startLine: number;
+  endLine: number;
+  excerpt: string;
+}
+
+export interface PdfAnnotationBox {
+  page: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface PdfAnnotation {
+  id: string;
+  number: number;
+  kind: PdfAnnotationKind;
+  comment: string;
+  quote: PdfAnnotationQuote;
+  page: number;
+  source: PdfAnnotationSource | null;
+  boxes: PdfAnnotationBox[];
+  build: string | null;
+  origin: PdfAnnotationOrigin;
+  status: PdfAnnotationStatus;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface NewPdfAnnotation {
+  kind: PdfAnnotationKind;
+  comment: string;
+  quote: PdfAnnotationQuote;
+  page: number;
+  source: PdfAnnotationSource | null;
+  boxes: PdfAnnotationBox[];
+  build: string | null;
+  origin: PdfAnnotationOrigin;
+}
+
+export interface PdfAnnotationUpdate {
+  id: string;
+  comment?: string;
+  kind?: PdfAnnotationKind;
+  status?: PdfAnnotationStatus;
+  quote?: PdfAnnotationQuote;
+  page?: number;
+  source?: PdfAnnotationSource | null;
+  boxes?: PdfAnnotationBox[];
+  build?: string | null;
+}
+
+export const pdfAnnotationsList = (projectId: string) =>
+  invoke<PdfAnnotation[]>("pdf_annotations_list", { projectId });
+
+export const pdfAnnotationsAdd = (projectId: string, annotation: NewPdfAnnotation) =>
+  invoke<PdfAnnotation>("pdf_annotations_add", { projectId, annotation });
+
+export const pdfAnnotationsUpdate = (projectId: string, updates: PdfAnnotationUpdate[]) =>
+  invoke<PdfAnnotation[]>("pdf_annotations_update", { projectId, updates });
+
+export const pdfAnnotationsDelete = (projectId: string, ids: string[]) =>
+  invoke<PdfAnnotation[]>("pdf_annotations_delete", { projectId, ids });
+
 export const checkpointInspect = (projectId: string) =>
   invoke<CheckpointStoreInspection>("checkpoint_inspect", { projectId });
 

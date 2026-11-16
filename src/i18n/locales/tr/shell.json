@@ -1014,6 +1014,10 @@
         "notFound": "Oleafly bu bilgisayarda PhiTeX'i bulamıyor, bu yüzden latexmk projeleri hâlâ latexmk ile derleniyor.",
         "saveFailed": "PhiTeX anahtarı kaydedilemedi. Yeniden deneyin."
       },
+      "pdfReview": {
+        "description": "Derlenmiş PDF'e not ekleyin: metin seçin ya da bir denklemin veya şeklin çevresine kutu çizip yorum yazın. Notlarınızı işaret ettikleri kaynak satırlarıyla birlikte asistana gönderin. Notlar bu bilgisayarda kalır. Beta aşamasında olduğu için varsayılan olarak kapalıdır.",
+        "label": "PDF incelemesi"
+      },
       "researchTasks": {
         "description": "Bir ajan, projenin bir kopyasında kendi başına çalışır ve değişikliklerini sizin incelemeniz için bırakır. Çok kararsızdır: çalıştırmalar takılabilir, başarısız olabilir veya elle düzeltmeniz gereken değişiklikler bırakabilir, üstelik sağlayıcınızın kotasını baştan sona kullanır. Ayarlar'a bir Araştırma bölümü ekler. Kapatmak, çalışan tüm görevleri durdurur. Varsayılan olarak kapalıdır. Açarsanız sorumluluk size aittir.",
         "label": "Araştırma görevleri",

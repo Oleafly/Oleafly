@@ -1014,6 +1014,10 @@
         "notFound": "Oleafly kan PhiTeX niet vinden op deze computer, dus latexmk-projecten worden nog steeds met latexmk gecompileerd.",
         "saveFailed": "De schakelaar voor PhiTeX kon niet worden opgeslagen. Probeer het opnieuw."
       },
+      "pdfReview": {
+        "description": "Annoteer de gecompileerde PDF: selecteer tekst of sleep een kader om een vergelijking of figuur en schrijf een opmerking. Stuur je annotaties naar de assistent, samen met de bronregels waar ze naar wijzen. Annotaties blijven op deze computer. Standaard uit zolang de functie in bèta is.",
+        "label": "PDF-review"
+      },
       "researchTasks": {
         "description": "Een agent werkt zelfstandig in een kopie van het project en laat de wijzigingen voor jou achter om te beoordelen. Zeer onstabiel: runs kunnen vastlopen, mislukken of wijzigingen achterlaten die je met de hand moet opruimen, en ze gebruiken de hele tijd het quotum van je provider. Voegt de sectie Onderzoek toe aan Instellingen. Als je het uitzet, stoppen alle lopende taken. Staat standaard uit. Zet het op eigen risico aan.",
         "label": "Onderzoekstaken",

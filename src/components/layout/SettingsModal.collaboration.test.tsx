@@ -52,7 +52,7 @@ describe("Collaboration section", () => {
     expect(screen.getByTestId("settings-section-collaboration")).toHaveAttribute("aria-current", "page");
   });
 
-  it("leaves only the LaTeX tools, PhiTeX, Notes, Overleaf live editing and research tasks switches in Experimentation", () => {
+  it("leaves only the LaTeX tools, PhiTeX, Notes, Overleaf live editing, PDF review and research tasks switches in Experimentation", () => {
     useSettingsStore.getState().setSettingsInitialSection("experimentation");
     render(<SettingsModal />);
     const body = within(screen.getByTestId("settings-body"));
@@ -61,6 +61,7 @@ describe("Collaboration section", () => {
       body.getByTestId("settings-phitex"),
       body.getByTestId("settings-notes"),
       body.getByTestId("settings-overleaf-live"),
+      body.getByTestId("settings-pdf-review"),
       body.getByTestId("settings-research-tasks"),
     ]);
     expect(body.queryByText(/collaboration/i)).toBeNull();

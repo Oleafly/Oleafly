@@ -8,6 +8,7 @@ import { present } from "@/features/presentation/launch";
 import { PdfOutlinePanel } from "./PdfOutlinePanel";
 import { PdfSearchBar } from "./PdfSearchBar";
 import { PdfViewerOverlay } from "./PdfViewerOverlay";
+import { usePdfAnnotations } from "./use-pdf-annotations";
 import { PdfStateMessage } from "./PdfStateMessage";
 import {
   INITIAL_PDF_LOAD_STATE,
@@ -862,6 +863,19 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   });
   const syncTexAvailable = canUseSyncTexForCheckpoint(displayedCheckpoint);
   const staleSyncTexAvailable = pdfIsStale && syncTexAvailable;
+  const pdfReview = useSettingsStore((state) => state.pdfReview);
+  const annotationLayerRef = useRef<HTMLDivElement>(null);
+  const annotations = usePdfAnnotations({
+    enabled: pdfReview && !isImage,
+    projectId,
+    build: viewerDocument?.identity ?? null,
+    documentReady:
+      pdfLoadState.status === "ready" && pdfLoadState.documentIdentity === (viewerDocument?.identity ?? null),
+    checkpoint: displayedCheckpoint,
+    syncAvailable: syncTexAvailable,
+    pdfRef,
+    containerRef: annotationLayerRef,
+  });
   const displayedBytes = viewerDocument?.bytes ?? null;
   const htmlBuiltAt =
     htmlEngine && htmlOutput !== null && htmlOutput.projectId === projectId
@@ -1201,6 +1215,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
           userZoom={userZoom} fitPreview={fitPreview} exporting={exporting}
           exportDisplayedPreview={exportDisplayedPreview} downloadActionLabel={downloadActionLabel}
           pdfSync={pdfSync}
+          annotations={annotations.toolbar}
           onSave={() => {
             const base = isImage
               ? trimEdgeCharacter((projectName || "figure").replace(UNSAFE_FILE_NAME_CHARACTERS, "-"), "-") || "figure"
@@ -1308,6 +1323,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
           onLoadStateChange={handlePdfLoadState}
           onSearchStateChange={setSearchState}
           onOutlineStateChange={setOutlineState}
+          {...annotations.viewerProps}
           onInverse={
             syncTexAvailable
               ? (pageNumber, clickX, clickY, word, wordContext) =>
@@ -1402,7 +1418,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const renderPreviewBody = () => (
     tab !== "logs" && (displayedBytes && viewerDocument && !showHtmlOutput ? (
       <div className="flex h-full min-h-0 flex-col bg-sidebar">
-        <div className="relative min-h-0 flex-1 overflow-hidden">
+        <div ref={annotationLayerRef} className="relative min-h-0 flex-1 overflow-hidden">
           {renderStaleMarker()}
           <PdfOutlinePanel
             id="pdf-outline-panel"
@@ -1411,6 +1427,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
             pdfRef={pdfRef}
             onClose={() => setOutlineOpen(false)}
           />
+          {annotations.overlay}
 
           {searchOpen && (
             <PdfSearchBar

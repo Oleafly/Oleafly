@@ -48,6 +48,16 @@ import {
 } from "./pdfRenderScheduler";
 import { registerPdfTextSelection } from "./pdfTextSelection";
 import {
+  clientBoxToPageRect,
+  describePdfSelection,
+  MARK_BADGE_CLASS,
+  paintPdfMarks,
+  snapSelectionToWords,
+  type PdfMark,
+  type PdfRegionSelectionInfo,
+  type PdfTextSelectionInfo,
+} from "./pdfMarks";
+import {
   normalizePdfOutline,
   type PdfOutlineItem,
   type PdfOutlineTarget,
@@ -1212,6 +1222,11 @@ export interface PdfViewerProps {
   pageColors?: PdfPageColors;
   reportWarning?: (scope: string, error: unknown) => void;
   t?: PreviewTranslator;
+  marks?: readonly PdfMark[];
+  onMarkActivate?: (id: string) => void;
+  onSelectText?: (selection: PdfTextSelectionInfo | null) => void;
+  regionSelect?: boolean;
+  onSelectRegion?: (region: PdfRegionSelectionInfo) => void;
 }
 
 export interface PdfViewerHandle {
@@ -1250,10 +1265,25 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     pageColors,
     reportWarning,
     t = keyEchoTranslator,
+    marks,
+    onMarkActivate,
+    onSelectText,
+    regionSelect = false,
+    onSelectRegion,
   },
   ref
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const marksRef = useRef<readonly PdfMark[]>(marks ?? []);
+  marksRef.current = marks ?? [];
+  const onMarkActivateRef = useRef(onMarkActivate);
+  onMarkActivateRef.current = onMarkActivate;
+  const onSelectTextRef = useRef(onSelectText);
+  onSelectTextRef.current = onSelectText;
+  const regionSelectRef = useRef(regionSelect);
+  regionSelectRef.current = regionSelect;
+  const onSelectRegionRef = useRef(onSelectRegion);
+  onSelectRegionRef.current = onSelectRegion;
   const dataRef = useRef(data);
   dataRef.current = data;
   const tRef = useRef(t);
@@ -1309,6 +1339,18 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   const fastScrollUntilRef = useRef(0);
   const fastScrollTimerRef = useRef<number | null>(null);
   const schedulerRef = useRef<PdfRenderScheduler | null>(null);
+  const paintMarksOnPage = useCallback((pageNumber: number) => {
+    const wrap = wrapsRef.current.get(pageNumber);
+    if (!wrap) return;
+    try {
+      paintPdfMarks(wrap, pageNumber, pageViewportsRef.current.get(pageNumber), marksRef.current, {
+        badgeLabel: (mark) => tRef.current("mark.badge", { label: mark.label }),
+        onActivate: (id) => onMarkActivateRef.current?.(id),
+      });
+    } catch {
+      return;
+    }
+  }, []);
   const releaseStaleRaster = useCallback((pageNumber: number) => {
     const canvas = staleRastersRef.current.get(pageNumber);
     if (!canvas) return;
@@ -1485,6 +1527,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       for (const [pageNumber, viewport] of entries) {
         const wrap = wrapsRef.current.get(pageNumber);
         pageViewportsRef.current.set(pageNumber, viewport);
+        if (marksRef.current.length > 0) paintMarksOnPage(pageNumber);
         if (wrap) {
           wrap.dataset.pdfGeometry = "exact";
           wrap.dataset.pdfRotation = String(viewport.rotation);
@@ -1508,7 +1551,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         }
       }
     },
-    [],
+    [paintMarksOnPage],
   );
 
   const queuedViewportsRef = useRef(new Map<number, PdfPageViewport>());
@@ -2886,6 +2929,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           window.devicePixelRatio || 1,
         );
         wrap.addEventListener("click", (ev: MouseEvent) => {
+          if (regionSelectRef.current) return;
+          if ((ev.target as HTMLElement)?.closest?.(`.${MARK_BADGE_CLASS}`)) return;
           if ((ev.target as HTMLElement)?.closest?.("a")) return;
           if ((ev.target as HTMLElement)?.closest?.(".pdf-screen-reader-layer")) return;
           const selection = document.getSelection();
@@ -3024,10 +3069,14 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         pageGeometry: syncPageGeometry,
         pageText: syncPageText,
       });
+      if (marksRef.current.length > 0) {
+        for (const pageNumber of wrapsRef.current.keys()) paintMarksOnPage(pageNumber);
+      }
 
       onPageChangeRef.current?.(currentPageRef.current, doc.numPages);
     },
     [
+      paintMarksOnPage,
       dropQueuedViewports,
       ensurePageGeometry,
       queueExactPageViewport,
@@ -3625,6 +3674,154 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       layerQueueRef.current?.setPaused(zoomSettlingRef.current);
     };
   }, [emitCurrentPage, data, scheduleDetailUpdate, syncViewportPages]);
+
+  useEffect(() => {
+    marksRef.current = marks ?? [];
+    for (const pageNumber of wrapsRef.current.keys()) paintMarksOnPage(pageNumber);
+  }, [marks, paintMarksOnPage]);
+
+  const selectTextEnabled = Boolean(onSelectText);
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!data || !container || !selectTextEnabled) return;
+    let frame = 0;
+    let reported = false;
+    const report = () => {
+      frame = 0;
+      if (regionSelectRef.current) return;
+      const selection = document.getSelection();
+      if (selection) snapSelectionToWords(selection, container);
+      const info = selection
+        ? describePdfSelection(selection, container, pageClickToBp, pdfjsLib.normalizeUnicode)
+        : null;
+      if (!info && !reported) return;
+      reported = Boolean(info);
+      onSelectTextRef.current?.(info);
+    };
+    const schedule = () => {
+      if (frame === 0) frame = requestAnimationFrame(report);
+    };
+    const onSelectionChange = () => {
+      if (!reported) return;
+      const selection = document.getSelection();
+      if (!selection || selection.isCollapsed) schedule();
+    };
+    container.addEventListener("mouseup", schedule);
+    container.addEventListener("keyup", schedule);
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => {
+      if (frame !== 0) cancelAnimationFrame(frame);
+      container.removeEventListener("mouseup", schedule);
+      container.removeEventListener("keyup", schedule);
+      document.removeEventListener("selectionchange", onSelectionChange);
+    };
+  }, [data, selectTextEnabled]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!data || !container || !regionSelect) return;
+    const previousCursor = container.style.cursor;
+    const previousUserSelect = container.style.userSelect;
+    container.style.cursor = "crosshair";
+    container.style.userSelect = "none";
+    container.dataset.pdfRegionSelect = "true";
+    let drag: {
+      page: number;
+      wrap: HTMLElement;
+      x: number;
+      y: number;
+      box: HTMLElement;
+      pointerId: number;
+    } | null = null;
+    const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+    const boxFor = (current: { page: number; wrap: HTMLElement; x: number; y: number }, clientX: number, clientY: number) => {
+      const bounds = current.wrap.getBoundingClientRect();
+      const x = clamp(clientX, bounds.left, bounds.right);
+      const y = clamp(clientY, bounds.top, bounds.bottom);
+      const left = Math.min(current.x, x);
+      const top = Math.min(current.y, y);
+      const right = Math.max(current.x, x);
+      const bottom = Math.max(current.y, y);
+      return { left, top, right, bottom, width: right - left, height: bottom - top, bounds };
+    };
+    const cancel = () => {
+      drag?.box.remove();
+      drag = null;
+    };
+    const onPointerDown = (event: PointerEvent) => {
+      if (event.button !== 0) return;
+      const wrap = (event.target as HTMLElement | null)?.closest?.<HTMLElement>("[data-page]");
+      if (!wrap || !container.contains(wrap)) return;
+      if ((event.target as HTMLElement | null)?.closest?.(`.${MARK_BADGE_CLASS}`)) return;
+      const page = Number(wrap.dataset.page);
+      if (!Number.isInteger(page)) return;
+      event.preventDefault();
+      cancel();
+      const box = document.createElement("div");
+      box.className = "pdf-region-selection";
+      box.setAttribute("aria-hidden", "true");
+      Object.assign(box.style, {
+        position: "absolute",
+        zIndex: "4",
+        pointerEvents: "none",
+        border: "1px dashed rgba(37, 99, 235, 0.95)",
+        background: "rgba(37, 99, 235, 0.12)",
+      } as Partial<CSSStyleDeclaration>);
+      wrap.appendChild(box);
+      drag = { page, wrap, x: event.clientX, y: event.clientY, box, pointerId: event.pointerId };
+      try {
+        container.setPointerCapture?.(event.pointerId);
+      } catch {
+        return;
+      }
+    };
+    const onPointerMove = (event: PointerEvent) => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const box = boxFor(drag, event.clientX, event.clientY);
+      Object.assign(drag.box.style, {
+        left: `${box.left - box.bounds.left}px`,
+        top: `${box.top - box.bounds.top}px`,
+        width: `${box.width}px`,
+        height: `${box.height}px`,
+      });
+    };
+    const onPointerUp = (event: PointerEvent) => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const current = drag;
+      cancel();
+      const box = boxFor(current, event.clientX, event.clientY);
+      if (box.width < 6 || box.height < 6) return;
+      const rect = clientBoxToPageRect(box, current.page, current.wrap, pageClickToBp);
+      if (!rect) return;
+      onSelectRegionRef.current?.({
+        page: current.page,
+        rect,
+        clientRect: { left: box.left, top: box.top, width: box.width, height: box.height },
+      });
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && drag) {
+        event.stopPropagation();
+        cancel();
+      }
+    };
+    container.addEventListener("pointerdown", onPointerDown);
+    container.addEventListener("pointermove", onPointerMove);
+    container.addEventListener("pointerup", onPointerUp);
+    container.addEventListener("pointercancel", cancel);
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      cancel();
+      container.removeEventListener("pointerdown", onPointerDown);
+      container.removeEventListener("pointermove", onPointerMove);
+      container.removeEventListener("pointerup", onPointerUp);
+      container.removeEventListener("pointercancel", cancel);
+      window.removeEventListener("keydown", onKeyDown, true);
+      container.style.cursor = previousCursor;
+      container.style.userSelect = previousUserSelect;
+      delete container.dataset.pdfRegionSelect;
+    };
+  }, [data, regionSelect]);
 
   if (!data) return null;
   // The page wrappers are appended imperatively; switching the container between

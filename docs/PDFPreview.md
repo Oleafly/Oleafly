@@ -60,23 +60,52 @@ controls stay hidden.
 Selecting text in the PDF never jumps to the source, so copying text leaves the
 editor where it is. A single click jumps.
 
-## Reliability rules
+## Annotations (experimental)
 
-- A PDF result carries a project revision identity.
-- A result is accepted only when its revision matches the current project.
-- A newer failed compile does not erase the last accepted PDF.
-- PDF bytes are transferred as binary IPC data, not base64 embedded in compile
-  metadata.
-- Rotation, password retry, and reload preserve the visible page where possible
-  to avoid a disruptive jump during recovery.
+Annotations are off by default. Turn them on in Settings > Experimentation >
+PDF review.
 
-## Implementation anchors
+- Select text on the PDF, then pick what you want done with it. The selection
+  snaps to whole words.
+  - **Comment** asks for a change in your own words.
+  - **Delete** asks for the passage to go. It's added straight away.
+  - **Replace** asks for the passage to be replaced with the text you write.
+  - **Insert** asks for the text you write to go right after the selection.
+- For an equation, a figure or anything else you can't select as text, turn on
+  **Annotate a region** in the toolbar and drag a box around it.
+- The card follows the selection while you scroll. Cmd+Enter or Ctrl+Enter
+  adds the annotation and Escape cancels.
+- Each annotation is drawn on the page as a tinted box with a numbered badge.
+  Numbers are never reused, even after you delete one. The **Annotations**
+  button lists them with their kind, status, quote, comment and where they
+  come from in the source. Click one to scroll to it, click its comment to
+  edit it, mark it resolved, or delete one or all of them.
+- **Send to assistant** adds the ticked annotations to the assistant's message
+  box as chips, for the built-in assistant or a connected CLI agent, which gets
+  each one as a selection. Open annotations are ticked by default. The text for
+  each one is written when the message goes out: what you asked for, the file
+  and lines checked again against the current file, the section heading, the
+  quote with the words around it, the source lines and your comment. An
+  annotation is marked sent only once the message has actually gone out.
 
-- `src/components/preview/PreviewPane.tsx`
-- `src/components/preview/PreviewWindow.tsx`
-- `src/components/pdf/PdfViewer.tsx`
-- `src/features/synctex.ts`
-- `src-tauri/src/synctex.rs`
-- `src/features/typst-sync.ts`
-- `src-tauri/src/typst_sync.rs`
-- `src/store/pdf-view.ts`
+An annotation is saved as soon as you add it, and its source location is found
+in the background. It comes from the same sync as a click in the PDF: SyncTeX
+for LaTeX and Tinymist for Typst. When the project's engine has no sync, such
+as Markdown, an annotation keeps its page and quote but no source location.
+
+Annotations are pinned to the source, not to one PDF. After a recompile each
+one follows its lines through any edits, finds where they are typeset now, and
+narrows that down with its quote on the page. If the passage can't be found,
+the annotation is marked **Needs placing** and stays in the list. Choose
+**Place again**, select the passage on the PDF and choose **Place here**.
+
+Annotations are saved per project in the project's state folder, `.oleafly/`
+for library projects and the linked state folder for folders opened in place.
+They stay on this computer, out of Git and out of collaboration sync, and are
+never written into the PDF.
+
+- `src/components/preview/use-pdf-annotations.tsx`
+- `src/features/pdf-annotations/`
+- `src/store/pdf-annotations.ts`
+- `src-tauri/src/pdf_annotations.rs`
+- `packages/preview/src/pdfMarks.ts`

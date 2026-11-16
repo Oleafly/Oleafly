@@ -1139,6 +1139,8 @@ interface SettingsState {
   setOverleafLive: (v: boolean) => void;
   overleafDeletes: OverleafDeletes;
   setOverleafDeletes: (v: OverleafDeletes) => void;
+  pdfReview: boolean;
+  setPdfReview: (v: boolean) => void;
   notesTypeface: NotesAppearance["notesTypeface"];
   notesFontFamily: string;
   notesFontSize: number;
@@ -1350,6 +1352,7 @@ const PREF_DEFAULTS = {
   notes: false,
   overleafLive: false,
   overleafDeletes: "ask" as OverleafDeletes,
+  pdfReview: false,
   ...NOTES_APPEARANCE_DEFAULTS,
   notesPeriodic: NOTES_PERIODIC_DEFAULTS,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
@@ -1457,6 +1460,7 @@ export const SECTION_SETTINGS = {
     notes: "oleafly.notes",
     overleafLive: "oleafly.overleafLive",
     overleafDeletes: "oleafly.overleafDeletes",
+    pdfReview: "oleafly.pdfReview",
   },
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
@@ -2213,6 +2217,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setNotes: (v) => {
     saveLs("oleafly.notes", v ? "1" : "0");
     set({ notes: v });
+  },
+  pdfReview: ls("oleafly.pdfReview", "0") === "1",
+  setPdfReview: (v) => {
+    saveLs("oleafly.pdfReview", v ? "1" : "0");
+    set({ pdfReview: v });
   },
   ...readNotesAppearance((key) => ls(key, "")),
   setNotesAppearance: (key, v) => {

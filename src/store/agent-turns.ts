@@ -9,6 +9,7 @@ import {
 } from "@oleafly/ai-core";
 import type { DraftAttachment } from "@/components/ai/composer/types";
 import { windowFlushScheduler } from "@/lib/agent-stream-scheduler";
+import type { ComposerContextItem } from "@/lib/composer-context";
 
 export type QueuedAttachment = DraftAttachment;
 
@@ -16,6 +17,7 @@ export interface QueuedFollowUp {
   id: string;
   text: string;
   attachments: QueuedAttachment[];
+  context?: ComposerContextItem[];
   status: "pending" | "steered";
 }
 
@@ -29,7 +31,12 @@ interface AgentTurnsState {
   finishTurn: (chatId: string, stoppedAtCap: boolean) => void;
   interruptTurn: (chatId: string) => void;
   rollbackTurn: (chatId: string, clientTurnId: string) => void;
-  queueFollowUp: (chatId: string, text: string, attachments?: QueuedAttachment[]) => void;
+  queueFollowUp: (
+    chatId: string,
+    text: string,
+    attachments?: QueuedAttachment[],
+    context?: readonly ComposerContextItem[],
+  ) => void;
   markSteered: (chatId: string, followUpId: string) => void;
   removeFollowUp: (chatId: string, followUpId: string) => void;
   purgeSteeredFollowUps: (chatId: string) => void;
@@ -210,8 +217,8 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
     });
   },
 
-  queueFollowUp: (chatId, text, attachments = []) => {
-    if (!text.trim() && attachments.length === 0) return;
+  queueFollowUp: (chatId, text, attachments = [], context = []) => {
+    if (!text.trim() && attachments.length === 0 && context.length === 0) return;
     set((state) => ({
       queuedByChat: {
         ...state.queuedByChat,
@@ -221,6 +228,7 @@ export const useAgentTurnsStore = create<AgentTurnsState>((set, get) => ({
             id: crypto.randomUUID(),
             text: text.trim(),
             attachments: attachments.map((attachment) => ({ ...attachment })),
+            ...(context.length > 0 ? { context: [...context] } : {}),
             status: "pending",
           },
         ],

@@ -41,6 +41,7 @@ describe("on/off preferences", () => {
     ["setChatFloating", "chatFloating", "oleafly.ai.floating"],
     ["setLatexTools", "latexTools", "oleafly.latexTools"],
     ["setNotes", "notes", "oleafly.notes"],
+    ["setPdfReview", "pdfReview", "oleafly.pdfReview"],
     ["setEditorAutoCloseMath", "editorAutoCloseMath", "oleafly.editor.closeMath"],
     ["setEditorGroupScripts", "editorGroupScripts", "oleafly.editor.groupScripts"],
     ["setEditorAutoCloseEnvironments", "editorAutoCloseEnvironments", "oleafly.editor.closeEnvironments"],
@@ -72,6 +73,11 @@ describe("on/off preferences", () => {
     expect((await reload({})).notes).toBe(false);
     expect((await reload({ "oleafly.notes": "1" })).notes).toBe(true);
     expect((await reload({ "oleafly.notes": "0" })).notes).toBe(false);
+  });
+
+  it("reads the saved PDF review switch after a restart", async () => {
+    expect((await reload({})).pdfReview).toBe(false);
+    expect((await reload({ "oleafly.pdfReview": "1" })).pdfReview).toBe(true);
   });
 
   it("toggles spellcheck both ways", () => {

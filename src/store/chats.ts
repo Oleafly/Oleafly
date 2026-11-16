@@ -6,6 +6,7 @@ import { agentThreadDelete } from "@/lib/agent-backend";
 import type { TurnChanges } from "@/lib/agent-turns";
 import { attachmentGc } from "@/lib/attachments";
 import type { WebSetting } from "@/lib/chat-settings";
+import type { ComposerContextItem } from "@/lib/composer-context";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { logError } from "@/lib/log";
 import { chatDelete, chatRead, chatSave, chatsLoad } from "@/lib/tauri";
@@ -76,6 +77,7 @@ export interface ChatMessage {
   skillId?: string;
   skill?: { id: string; name: string };
   mentions?: string[];
+  context?: ComposerContextItem[];
   notices?: string[];
   planNote?: ChatPlanNote;
   reasoning?: string;

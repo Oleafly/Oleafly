@@ -367,6 +367,8 @@ export function SettingsModal() {
   const setLatexTools = useSettingsStore((s) => s.setLatexTools);
   const notesEnabled = useSettingsStore((s) => s.notes);
   const setNotesEnabled = useSettingsStore((s) => s.setNotes);
+  const pdfReview = useSettingsStore((s) => s.pdfReview);
+  const setPdfReview = useSettingsStore((s) => s.setPdfReview);
   const researchTasks = useResearchTasksEnabled();
   const phitexEnabled = useEngineStore((s) => s.info?.phitex_enabled === true);
   const setPhitex = useEngineStore((s) => s.setPhitex);
@@ -840,6 +842,13 @@ export function SettingsModal() {
           onChange={setNotesEnabled}
         />
         <OverleafLiveSetting />
+        <SettingsToggleRow
+          testId="settings-pdf-review"
+          label={t(($) => $.shell.settings.experimentation.pdfReview.label)}
+          description={t(($) => $.shell.settings.experimentation.pdfReview.description)}
+          checked={pdfReview}
+          onChange={setPdfReview}
+        />
         <SettingsToggleRow
           testId="settings-research-tasks"
           label={t(($) => $.shell.settings.experimentation.researchTasks.label)}

@@ -27,6 +27,11 @@ it is not a second document model.
   assistant.
 - Chat prompt shortcuts for **Friendly** and **Fire** paper review (mentor-style
   feedback and strict Reviewer #2 critique of the current document).
+- Point at the PDF. With PDF review turned on in Settings > Experimentation,
+  annotations made on the PDF preview go to the assistant you're using as
+  chips, each written out when you send with what you asked for, the source
+  file and lines checked again, the section, the quote and your comment.
+  See [PDF preview](PDFPreview.md#annotations-experimental).
 
 <div align="center">
   <img src="assets/readme/ai-personas.png" alt="Oleafly AI Assistant persona choices for research writing, document editing, critical review, and figure work" width="100%" />

@@ -1028,6 +1028,10 @@
         "notFound": "Oleafly non trova PhiTeX su questo computer, quindi i progetti latexmk vengono ancora compilati con latexmk.",
         "saveFailed": "Impossibile salvare l'impostazione di PhiTeX. Riprova."
       },
+      "pdfReview": {
+        "description": "Annota il PDF compilato: seleziona del testo o trascina un riquadro attorno a un'equazione o a una figura e scrivi un commento. Invia le annotazioni all'assistente insieme alle righe della sorgente a cui si riferiscono. Le annotazioni restano su questo computer. Disattivato per impostazione predefinita finché è in beta.",
+        "label": "Revisione del PDF"
+      },
       "researchTasks": {
         "description": "Un agente lavora in autonomia su una copia del progetto e lascia a te le modifiche da rivedere. Molto instabile: le esecuzioni possono bloccarsi, fallire o lasciare modifiche da sistemare a mano, e consumano di continuo la quota del tuo provider. Aggiunge la sezione Ricerca alle Impostazioni. Disattivandola si interrompono tutte le attività in corso. Disattivata per impostazione predefinita, attivala a tuo rischio.",
         "label": "Attività di ricerca",
