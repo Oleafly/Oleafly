@@ -27,13 +27,13 @@ function noticeText(notice: AccessNotice, t: Translate): string {
   }
 }
 
-export function AccessChangeBanner() {
+export function AccessChangeBanner({ roleChangesOnly = false }: Readonly<{ roleChangesOnly?: boolean }>) {
   const { t } = useTranslation(["collab", "common"]);
   const projectId = useFilesStore((state) => state.projectId);
   const notice = useCollabLiveStore((state) =>
     projectId !== null && state.projectId === projectId ? state.accessNotice : null,
   );
-  if (!notice) return null;
+  if (!notice || (roleChangesOnly && notice.kind === "removed")) return null;
   const tone = notice.kind === "removed" ? "warning" : "primary";
   const Icon = ICONS[notice.kind];
   return (

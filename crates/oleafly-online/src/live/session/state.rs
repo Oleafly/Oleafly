@@ -34,6 +34,7 @@ const UNSTEADY_WITHIN: Duration = Duration::from_secs(10 * 60);
 pub(super) enum Notice {
     State(LiveState),
     Role(Role, bool),
+    Flags(bool, bool),
     Texts(Vec<DocId>),
     Tree(Vec<PathChange>),
     Peer(PeerPosition),
@@ -63,6 +64,7 @@ pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
         match notice {
             Notice::State(state) => port.state(state),
             Notice::Role(role, tracking) => port.role(role, tracking),
+            Notice::Flags(restricted, deleted) => port.project_flags(restricted, deleted),
             Notice::Texts(docs) => port.texts_changed(docs),
             Notice::Tree(changes) => port.tree_changed(changes),
             Notice::Peer(peer) => port.peer(peer),
@@ -358,14 +360,26 @@ impl State {
     }
 
     fn hand_back_all(&mut self) {
-        let docs: Vec<DocId> = self.slots.keys().cloned().collect();
+        self.hand_back(|slot| slot.phase != Phase::Stopped || slot.doc.is_some());
+    }
+
+    fn hand_back_unsendable(&mut self) {
+        if !self.project.role.can_review() {
+            self.hand_back(Slot::unconfirmed);
+        }
+    }
+
+    fn hand_back(&mut self, which: impl Fn(&Slot) -> bool) {
+        let docs: Vec<DocId> = self
+            .slots
+            .iter()
+            .filter(|(_, slot)| which(slot))
+            .map(|(doc, _)| doc.clone())
+            .collect();
         for doc in docs {
             let Some(slot) = self.slots.get_mut(&doc) else {
                 continue;
             };
-            if slot.phase == Phase::Stopped && slot.doc.is_none() {
-                continue;
-            }
             let unsent = slot.unsent_text();
             slot.buffer.clear();
             slot.errors = 0;
@@ -380,6 +394,30 @@ impl State {
                 self.want(&doc);
             }
         }
+    }
+
+    fn keep_unsent(&mut self) {
+        let docs: Vec<DocId> = self
+            .slots
+            .iter()
+            .filter(|(_, slot)| slot.unconfirmed())
+            .map(|(doc, _)| doc.clone())
+            .collect();
+        for doc in docs {
+            let path = self.path_of(&doc);
+            let Some(slot) = self.slots.get_mut(&doc) else {
+                continue;
+            };
+            let unsent = slot.unsent_text();
+            slot.buffer.clear();
+            slot.dirty = true;
+            let on_disk = path.and_then(|path| self.port.disk_text(&path));
+            if let Some(text) = unsent.filter(|text| on_disk.as_ref() != Some(text)) {
+                self.notices
+                    .push(Notice::Merged(doc.clone(), MergeReview::Kept { text }));
+            }
+        }
+        self.forget_tree_queue();
     }
 
     pub(super) fn connected(&mut self, public_id: PublicId, wall_ms: u64) {
@@ -397,6 +435,10 @@ impl State {
 
     pub(super) fn announce(&mut self) {
         self.online = true;
+        self.notices.push(Notice::Flags(
+            self.project.restricted,
+            self.project.deleted_externally,
+        ));
         self.announce_role();
         self.report_pending(true);
     }
@@ -502,6 +544,9 @@ impl State {
 
     pub(super) fn end(&mut self, end: LiveEnd) {
         if self.ended.is_none() {
+            if matches!(end, LiveEnd::Removed | LiveEnd::ProjectGone) {
+                self.keep_unsent();
+            }
             self.online = false;
             self.ended = Some(end.clone());
             self.notices.push(Notice::State(LiveState::Ended(end)));
@@ -751,7 +796,7 @@ impl State {
     }
 
     pub(super) fn take_presence(&mut self) -> Option<(DocId, u64, u64)> {
-        if !std::mem::take(&mut self.presence_due) {
+        if !std::mem::take(&mut self.presence_due) || self.project.restricted {
             return None;
         }
         let (doc, offset) = self.presence.clone()?;
@@ -1443,6 +1488,7 @@ impl State {
         self.unreadable = 0;
         self.connected(public_id, now_ms());
         self.seed(Vec::new());
+        self.hand_back_unsendable();
         self.rejoin_all(Phase::CatchUp);
         self.presence_due = self.presence.is_some();
         self.announce();
@@ -1494,17 +1540,21 @@ impl State {
 
     pub(super) fn project_event(&mut self, event: ProjectEvent) {
         self.project.apply_project(&event);
+        if event == ProjectEvent::DeletedOrRenamedExternally {
+            self.end(LiveEnd::ProjectGone);
+            return;
+        }
         self.notices.push(Notice::Project(event));
     }
 
     pub(super) fn access(&mut self, event: &AccessEvent) -> bool {
         match event {
             AccessEvent::Revoked => {
-                self.end(LiveEnd::AccessEnded);
+                self.end(LiveEnd::Removed);
                 false
             }
             AccessEvent::UserRemoved(Some(user)) if *user == self.me => {
-                self.end(LiveEnd::AccessEnded);
+                self.end(LiveEnd::Removed);
                 false
             }
             AccessEvent::TrackChanges(_) => {
@@ -1523,7 +1573,9 @@ impl State {
         };
         if role != self.project.role {
             self.project.role = role;
+            self.hand_back_unsendable();
             self.announce_role();
+            self.report_pending(false);
         }
     }
 

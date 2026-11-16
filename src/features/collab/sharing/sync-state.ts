@@ -12,6 +12,7 @@ export const SYNC_STATES = [
   "suspended",
   "accessEnded",
   "removed",
+  "projectDeleted",
   "archived",
   "paused",
   "serverRemoved",
@@ -26,6 +27,7 @@ export type SyncState = (typeof SYNC_STATES)[number];
 
 const ENDED: Readonly<Record<CollabLiveEndedReason, SyncState>> = {
   removed: "removed",
+  project_deleted: "projectDeleted",
   archived: "archived",
   signed_out: "signedOut",
   stopped: "paused",

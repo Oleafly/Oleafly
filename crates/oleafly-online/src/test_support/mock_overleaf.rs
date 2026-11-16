@@ -134,6 +134,7 @@ pub struct MockProject {
     pub format: DocFormat,
     pub compiler: String,
     pub track_changes: Value,
+    pub deleted_externally: bool,
     entries: Vec<Entry>,
     root_doc: Option<String>,
 }
@@ -149,6 +150,7 @@ impl MockProject {
             format: DocFormat::ShareJs,
             compiler: "pdflatex".into(),
             track_changes: json!({}),
+            deleted_externally: false,
             entries: Vec::new(),
             root_doc: None,
         }
@@ -202,6 +204,11 @@ impl MockProject {
 
     pub fn token_viewer(mut self, user: MockUser) -> Self {
         self.token_viewers.push(user);
+        self
+    }
+
+    pub fn deleted_by_external_source(mut self) -> Self {
+        self.deleted_externally = true;
         self
     }
 }
@@ -553,6 +560,7 @@ struct State {
     spell_language: String,
     main_bibliography: Option<String>,
     track_changes: Value,
+    deleted_externally: bool,
     format: DocFormat,
     root: Folder,
     root_doc: Option<String>,
@@ -611,6 +619,7 @@ impl State {
             spell_language: "en".into(),
             main_bibliography: None,
             track_changes: project.track_changes.clone(),
+            deleted_externally: project.deleted_externally,
             format: project.format,
             csrf: MOCK_CSRF.to_string(),
             root: Folder::default(),
@@ -819,7 +828,7 @@ impl State {
             "compiler": self.compiler,
             "description": "",
             "spellCheckLanguage": self.spell_language,
-            "deletedByExternalDataSource": false,
+            "deletedByExternalDataSource": self.deleted_externally,
             "owner": if restricted { json!({ "_id": self.owner.id }) } else { State::person_json(&self.owner, Privilege::Owner) },
             "members": if restricted { Vec::new() } else { self.members.iter().map(|(user, privilege)| State::person_json(user, *privilege)).collect::<Vec<_>>() },
             "invites": [],

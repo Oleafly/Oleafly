@@ -8,8 +8,9 @@ import { folderReachable, useProjectAvailabilityStore } from "@/store/project-av
 import { AccessChangeBanner } from "./AccessChangeBanner";
 import { CommentsNotSentBanner } from "./CommentsNotSentBanner";
 import { FileNoticesBanner } from "./FileNoticesBanner";
-import { OverleafBanners } from "./OverleafBanners";
 import { useCollabLiveStore } from "./live-store";
+import { OverleafAccessBanner } from "./OverleafAccessBanner";
+import { OverleafBanners } from "./OverleafBanners";
 import { ProjectFullBanner } from "./ProjectFullBanner";
 import { useSyncPauseStore } from "./sync-pause";
 
@@ -67,7 +68,16 @@ export function SyncPauseBanner() {
 
 export function CollabBanners() {
   const overleaf = useCollabLiveStore((state) => state.backend === "overleaf");
-  if (overleaf) return <OverleafBanners />;
+  if (overleaf) {
+    return (
+      <>
+        <OverleafBanners />
+        <AccessChangeBanner roleChangesOnly />
+        <OverleafAccessBanner />
+        <FileNoticesBanner />
+      </>
+    );
+  }
   return (
     <>
       <AccessChangeBanner />

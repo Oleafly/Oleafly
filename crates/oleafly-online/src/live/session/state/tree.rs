@@ -227,6 +227,13 @@ impl State {
         }
     }
 
+    pub(super) fn forget_tree_queue(&mut self) {
+        if !self.tree_work.queue.is_empty() {
+            self.tree_work.queue.clear();
+            self.report_queue();
+        }
+    }
+
     fn report_queue(&mut self) {
         self.tree_work.dirty = true;
         if self.tree_work.reported.as_ref() != Some(&self.tree_work.queue) {

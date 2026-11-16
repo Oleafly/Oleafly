@@ -1340,6 +1340,7 @@ export interface CollabJoinProgress {
 }
 export type CollabLiveEndReason =
     | "removed"
+    | "project_deleted"
     | "archived"
     | "signed_out"
     | "stopped"
@@ -1391,6 +1392,7 @@ export interface CollabLiveRole {
     role: CollabProjectRole;
     tracking: boolean;
     restricted: boolean;
+    deletedExternally: boolean;
 }
 export interface CollabPresence {
     projectId: string;
@@ -1934,7 +1936,7 @@ export interface CollabLiveKeptFile {
   id: string;
   path: string;
   copy: string;
-  kind: "replaced" | "added" | "beside";
+  kind: "replaced" | "added" | "beside" | "unsent";
   by: string | null;
 }
 export interface OverleafLiveAccountChanged {

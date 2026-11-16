@@ -80,6 +80,7 @@ pub struct RolePayload {
     pub role: ProjectRole,
     pub tracking: bool,
     pub restricted: bool,
+    pub deleted_externally: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]

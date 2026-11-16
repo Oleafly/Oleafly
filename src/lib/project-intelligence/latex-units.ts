@@ -1,4 +1,4 @@
-import { dirname } from "@/lib/path-utils";
+import { dirname, withoutTrailingSlashes } from "@/lib/path-utils";
 import { parseTexMagicComments } from "@/lib/tex-magic-comments";
 import { pathFoldKey } from "./source";
 import type {
@@ -266,12 +266,6 @@ function scanOneArgumentInclude(
 // TeX drops every double quote from a file name, wherever it sits.
 function unquoted(value: string): string {
   return value.trim().replaceAll('"', "");
-}
-
-function withoutTrailingSlashes(value: string): string {
-  let end = value.length;
-  while (end > 0 && value[end - 1] === "/") end -= 1;
-  return value.slice(0, end);
 }
 
 function scanTwoArgumentInclude(

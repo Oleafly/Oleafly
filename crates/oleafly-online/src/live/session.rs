@@ -49,6 +49,7 @@ pub trait LivePort: Send + Sync + 'static {
     fn doc_unsteady(&self, _doc: &DocId) {}
     fn tree_queue(&self, _changes: Vec<Queued>) {}
     fn uploaded(&self, _path: &str, _tag: &str, _hash: Option<&str>) {}
+    fn project_flags(&self, _restricted: bool, _deleted_externally: bool) {}
     fn local_file(&self, _path: &str) -> Option<LocalFile> {
         None
     }
@@ -91,6 +92,7 @@ pub struct UnsentDoc {
 pub enum LiveEnd {
     SignedOut,
     AccessEnded,
+    Removed,
     ProjectGone,
     Unsupported(String),
     Stopped,

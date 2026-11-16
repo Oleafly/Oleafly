@@ -17,7 +17,7 @@ use oleafly_ot::DocMessage;
 
 use super::notices::{OverleafNotice, OverleafNoticePayload};
 use super::Mirror;
-use crate::collab::live::kept::{KeptFile, KeptKind};
+use crate::collab::live::kept::{KeptFile, KeptKind, KeptPayload};
 use crate::collab::live::payloads::{
     AccountChangedPayload, DocPendingPayload, RolePayload, TypedAs,
 };
@@ -75,7 +75,7 @@ impl AppOverleafPort {
                 id: doc.0.clone(),
                 path,
                 copy,
-                kind: KeptKind::Beside,
+                kind: KeptKind::Unsent,
                 by: None,
             }),
             Err(error) => {
@@ -84,6 +84,16 @@ impl AppOverleafPort {
                     self.mirror.disk.project_id
                 ));
             }
+        }
+    }
+
+    fn announce_kept(&self) {
+        let files = std::mem::take(&mut *guard(&self.mirror.kept));
+        if !files.is_empty() {
+            self.mirror.disk.host.kept(KeptPayload {
+                project_id: self.mirror.disk.project_id.clone(),
+                files,
+            });
         }
     }
 }
@@ -116,7 +126,8 @@ fn end_reason(end: &LiveEnd) -> EndReason {
     match end {
         LiveEnd::SignedOut => EndReason::SignedOut,
         LiveEnd::AccessEnded => EndReason::AccessEnded,
-        LiveEnd::ProjectGone => EndReason::Removed,
+        LiveEnd::Removed => EndReason::Removed,
+        LiveEnd::ProjectGone => EndReason::ProjectDeleted,
         LiveEnd::Stopped => EndReason::Stopped,
         LiveEnd::Unsupported(_) => EndReason::ClientTooOld,
         LiveEnd::Failed(_) => EndReason::Failed,
@@ -145,24 +156,32 @@ pub(super) fn status_of(state: &LiveState) -> (LiveStatus, u64) {
 }
 
 pub(super) fn announce_role(mirror: &Mirror, role: ProjectRole, tracking: bool) {
+    let (restricted, deleted_externally) = *guard(&mirror.flags);
     mirror.disk.host.role(RolePayload {
         project_id: mirror.disk.project_id.clone(),
         role,
         tracking,
-        restricted: false,
+        restricted,
+        deleted_externally,
     });
 }
 
 impl LivePort for AppOverleafPort {
     fn state(&self, state: LiveState) {
+        self.announce_kept();
         let (status, pending) = status_of(&state);
         self.mirror.set_status(status, pending);
     }
 
     fn role(&self, role: Role, tracking: bool) {
+        self.announce_kept();
         let role = project_role(role);
         *guard(&self.mirror.role) = Some((role, tracking));
         announce_role(&self.mirror, role, tracking);
+    }
+
+    fn project_flags(&self, restricted: bool, deleted_externally: bool) {
+        *guard(&self.mirror.flags) = (restricted, deleted_externally);
     }
 
     fn texts_changed(&self, docs: Vec<DocId>) {

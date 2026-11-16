@@ -411,8 +411,8 @@ describe("collab live store", () => {
     emit<CollabLiveStatus>("status", { projectId: OTHER, status: { state: "offline", retry_in_ms: 5 }, pending: 9 });
     emit<CollabLiveStatus>("status", { projectId: PROJECT, status: { state: "online" }, pending: 2 });
     expect(useCollabLiveStore.getState()).toMatchObject({ status: { state: "online" }, pending: 2 });
-    emit<CollabLiveRole>("role", { projectId: OTHER, role: "owner", tracking: false, restricted: false });
-    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false });
+    emit<CollabLiveRole>("role", { projectId: OTHER, role: "owner", tracking: false, restricted: false, deletedExternally: false });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false, deletedExternally: false });
     expect(useCollabLiveStore.getState().role).toBe("viewer");
     const merged: CollabLiveMerged = {
       projectId: PROJECT,
@@ -490,7 +490,7 @@ describe("collab live store", () => {
       { ...member(ALICE, "Alice Chen"), role: "viewer" },
       member(BOB, "Bob Jones"),
     ]);
-    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false, deletedExternally: false });
     await settle();
     expect(mocks.collabMembersList.mock.calls).toHaveLength(before + 1);
     expect(useCollabLiveStore.getState().members[0]).toMatchObject({ role: "viewer" });
@@ -545,16 +545,16 @@ describe("collab live store", () => {
     stop = startCollabLive();
     await settle();
     emit("members", { projectId: PROJECT, accountId: ALICE, by: BOB, kind: "role_changed" });
-    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false, deletedExternally: false });
     await settle();
     const notice = useCollabLiveStore.getState().accessNotice;
     expect(notice).toEqual({ kind: "viewer", byName: "Bob Jones" });
-    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false, deletedExternally: false });
     await settle();
     expect(useCollabLiveStore.getState().accessNotice).toBe(notice);
     useCollabLiveStore.getState().dismissAccessNotice();
     expect(useCollabLiveStore.getState().accessNotice).toBeNull();
-    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false, deletedExternally: false });
     await settle();
     expect(useCollabLiveStore.getState().accessNotice).toBeNull();
   });
@@ -563,10 +563,10 @@ describe("collab live store", () => {
     openProject(PROJECT);
     stop = startCollabLive();
     await settle();
-    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false, deletedExternally: false });
     await settle();
     expect(useCollabLiveStore.getState().accessNotice).toEqual({ kind: "viewer", byName: "" });
-    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "editor", tracking: false, restricted: false });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "editor", tracking: false, restricted: false, deletedExternally: false });
     await settle();
     expect(useCollabLiveStore.getState().accessNotice).toBeNull();
   });
@@ -576,13 +576,13 @@ describe("collab live store", () => {
     stop = startCollabLive();
     await settle();
     emit("members", { projectId: PROJECT, accountId: ALICE, by: BOB, kind: "role_changed" });
-    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "reviewer", tracking: false, restricted: false });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "reviewer", tracking: false, restricted: false, deletedExternally: false });
     await settle();
     expect(useCollabLiveStore.getState().accessNotice).toEqual({ kind: "reviewer", byName: "Bob Jones" });
-    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "commenter", tracking: false, restricted: false });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "commenter", tracking: false, restricted: false, deletedExternally: false });
     await settle();
     expect(useCollabLiveStore.getState().accessNotice).toEqual({ kind: "commenter", byName: "" });
-    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "owner", tracking: false, restricted: false });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "owner", tracking: false, restricted: false, deletedExternally: false });
     await settle();
     expect(useCollabLiveStore.getState().accessNotice).toBeNull();
   });
@@ -593,7 +593,7 @@ describe("collab live store", () => {
     await settle();
     const CAROL = "0192a0b0-0000-7000-8000-000000000003";
     emit("members", { projectId: PROJECT, accountId: CAROL, by: BOB, kind: "role_changed" });
-    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false, deletedExternally: false });
     await settle();
     expect(useCollabLiveStore.getState().accessNotice).toEqual({ kind: "viewer", byName: "" });
   });
@@ -627,7 +627,7 @@ describe("collab live store", () => {
     openProject(PROJECT);
     stop = startCollabLive();
     await settle();
-    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false });
+    emit<CollabLiveRole>("role", { projectId: PROJECT, role: "viewer", tracking: false, restricted: false, deletedExternally: false });
     await settle();
     expect(useCollabLiveStore.getState().accessNotice).not.toBeNull();
     openProject(OTHER);

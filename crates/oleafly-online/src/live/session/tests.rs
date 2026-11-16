@@ -75,6 +75,7 @@ struct Seen {
     unsteady: Vec<DocId>,
     external: Vec<DocId>,
     replaced: Vec<DocId>,
+    flags: Vec<(bool, bool)>,
 }
 
 #[derive(Default)]
@@ -185,6 +186,10 @@ impl LivePort for Port {
 
     fn characters_replaced(&self, doc: &DocId) {
         self.seen().replaced.push(doc.clone());
+    }
+
+    fn project_flags(&self, restricted: bool, deleted_externally: bool) {
+        self.seen().flags.push((restricted, deleted_externally));
     }
 }
 
@@ -1598,119 +1603,6 @@ async fn a_journal_for_a_deleted_doc_is_kept_as_a_copy() {
 }
 
 #[tokio::test]
-async fn a_viewer_cannot_change_the_doc() {
-    let rig = Rig::start(project()).await;
-    rig.seed("vera", 0).await;
-    let port = Port::new(&FILES);
-    let live = rig.live("vera", &port).await;
-    let main = rig.id(MAIN);
-    assert_eq!(port.seen().roles.first(), Some(&(Role::Viewer, false)));
-    let mut tab = Tab::open(&live, MAIN);
-    eventually("the doc is joined", || rig.joined("vera").contains(&main.0)).await;
-    tab.editor.jump(0);
-    let (rev, op) = tab.editor.type_text("x").unwrap().unwrap();
-    live.editor_change(&tab.doc, rev, op).unwrap();
-    tab.pump(&live);
-    assert_eq!(tab.editor.content, "Hello");
-    assert_eq!(tab.editor.resets, 1);
-    assert_eq!(
-        live.local_edit_with(&main, |_| Some(TextOperation::new())),
-        Err(LiveError::NotWritable)
-    );
-    tokio::time::sleep(Duration::from_millis(200)).await;
-    assert!(rig.mock.received("applyOtUpdate").is_empty());
-    assert_eq!(rig.mock.doc_text(&main.0), "Hello");
-    live.stop().await;
-}
-
-#[tokio::test]
-async fn track_changes_sends_suggestions() {
-    let rig = Rig::start(project().track_changes(json!(true))).await;
-    rig.seed("alice", 0).await;
-    let port = Port::new(&FILES);
-    let live = rig.live("alice", &port).await;
-    let main = rig.id(MAIN);
-    assert_eq!(port.seen().roles.first(), Some(&(Role::Owner, true)));
-    let mut tab = Tab::open(&live, MAIN);
-    eventually("the doc is joined", || {
-        rig.joined("alice").contains(&main.0)
-    })
-    .await;
-    tab.type_end(&live, " suggested");
-    assert!(live.settle(WAIT).await);
-    let update = rig.updates_for(&main).pop().unwrap();
-    assert!(update["meta"]["tc"].is_string(), "{update}");
-    rig.mock.set_track_changes(json!(false));
-    eventually("tracking turns off", || {
-        port.seen().roles.last() == Some(&(Role::Owner, false))
-    })
-    .await;
-    tab.type_end(&live, " plain");
-    assert!(live.settle(WAIT).await);
-    let update = rig.updates_for(&main).pop().unwrap();
-    assert!(update.get("meta").is_none(), "{update}");
-    live.stop().await;
-}
-
-#[tokio::test]
-async fn removal_from_the_project_ends_the_session() {
-    let rig = Rig::start(project()).await;
-    rig.seed("bob", 0).await;
-    let port = Port::new(&FILES);
-    let live = rig.live("bob", &port).await;
-    let main = rig.id(MAIN);
-    let mut tab = Tab::open(&live, MAIN);
-    eventually("the doc is joined", || rig.joined("bob").contains(&main.0)).await;
-    rig.mock.set_privilege("bob", None);
-    eventually("the session ends", || {
-        port.ended() == Some(LiveEnd::AccessEnded)
-    })
-    .await;
-    tab.editor.jump(0);
-    let (rev, op) = tab.editor.type_text("x").unwrap().unwrap();
-    assert_eq!(live.editor_change(&tab.doc, rev, op), Err(LiveError::Ended));
-    live.stop().await;
-    assert_eq!(port.ended(), Some(LiveEnd::AccessEnded));
-}
-
-#[tokio::test]
-async fn a_downgrade_to_viewer_holds_typing() {
-    let rig = Rig::start(project()).await;
-    rig.seed("bob", 0).await;
-    let port = Port::new(&FILES);
-    let live = rig.live("bob", &port).await;
-    let main = rig.id(MAIN);
-    let mut tab = Tab::open(&live, MAIN);
-    eventually("the doc is joined", || rig.joined("bob").contains(&main.0)).await;
-    rig.mock.set_privilege("bob", Some(Privilege::ReadOnly));
-    eventually("the role drops to viewer", || {
-        port.seen().roles.last() == Some(&(Role::Viewer, false))
-    })
-    .await;
-    tab.type_end(&live, " nope");
-    assert_eq!(tab.text(&live), "Hello");
-    tokio::time::sleep(Duration::from_millis(200)).await;
-    assert!(rig.updates_for(&main).is_empty());
-    live.stop().await;
-}
-
-#[tokio::test]
-async fn a_project_gone_on_reconnect_ends_the_session() {
-    let rig = Rig::start(project()).await;
-    rig.seed("alice", 0).await;
-    let port = Port::new(&FILES);
-    let live = rig.live("alice", &port).await;
-    rig.mock
-        .configure(|config| config.reject_connections = Some(MockRejection::ProjectNotFound));
-    rig.mock.drop_client(&rig.connection_of("alice").unwrap());
-    eventually("the session ends", || {
-        port.ended() == Some(LiveEnd::ProjectGone)
-    })
-    .await;
-    live.stop().await;
-}
-
-#[tokio::test]
 async fn a_forced_disconnect_reconnects_after_the_delay() {
     let rig = Rig::start(project()).await;
     rig.seed("alice", 0).await;
@@ -2019,6 +1911,7 @@ fn recorded_sessions_replay_through_the_session_state() {
     assert!(history_ot.0 >= 1, "history-ot {history_ot:?}");
 }
 
+mod access;
 mod faults;
 mod resilience;
 mod tree;

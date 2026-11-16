@@ -1,4 +1,4 @@
-import { withoutVerbatimPrefix } from "@/lib/path-utils";
+import { withoutTrailingSlashes, withoutVerbatimPrefix } from "@/lib/path-utils";
 
 /**
  * Converts between project paths and the `file:` URIs language servers read.
@@ -56,16 +56,10 @@ function pathForFileUri(uri: string): string | null {
   }
 }
 
-function trimTrailingSlashes(path: string): string {
-  let end = path.length;
-  while (end > 0 && path[end - 1] === "/") end -= 1;
-  return path.slice(0, end);
-}
-
 // The `url` crate lower-cases hosts, and Windows ignores the case of both a
 // drive letter and a server name.
 function comparablePath(path: string): string {
-  return trimTrailingSlashes(withoutVerbatimPrefix(path).replaceAll("\\", "/")).replace(
+  return withoutTrailingSlashes(withoutVerbatimPrefix(path).replaceAll("\\", "/")).replace(
     /^(?:[A-Za-z]:(?=\/|$)|\/\/[^/]+)/,
     (head) => head.toLowerCase(),
   );

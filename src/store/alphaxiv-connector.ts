@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { McpManagedServer, McpServerConfig } from "@oleafly/backend-port";
 import { logError } from "@/lib/log";
 import { notifyMcpAgentToolsChanged } from "@/lib/mcp-agent-tools";
+import { withoutTrailingSlashes } from "@/lib/path-utils";
 import {
   mcpAdoptAlphaXivKey,
   mcpServerAdd,
@@ -33,12 +34,6 @@ function alphaXivServerConfig(apiKey: string, name = ALPHAXIV_SERVER_NAME): McpS
     url: ALPHAXIV_MCP_URL,
     headers: { Authorization: `Bearer ${apiKey}` },
   };
-}
-
-function withoutTrailingSlashes(url: string): string {
-  let end = url.length;
-  while (end > 0 && url[end - 1] === "/") end -= 1;
-  return url.slice(0, end);
 }
 
 function findAlphaXivServer(servers: readonly McpManagedServer[]): McpManagedServer | undefined {

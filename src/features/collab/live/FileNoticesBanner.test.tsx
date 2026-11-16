@@ -259,4 +259,10 @@ describe("FileNoticesBanner", () => {
       screen.getByText(fill(copy.beside, { name: "Bob Smith", file: "plan.tex", copy: "plan (from Bob Smith).tex" })),
     ).toBeTruthy();
   });
+
+  it("says where text that never reached Overleaf was kept", () => {
+    render(<FileNoticesBanner />);
+    show([], [kept({ id: "unsent-id", kind: "unsent", path: "main.tex", copy: "main (3f2a9c).tex", by: null })]);
+    expect(screen.getByText(fill(copy.unsent, { file: "main.tex", copy: "main (3f2a9c).tex" }))).toBeTruthy();
+  });
 });

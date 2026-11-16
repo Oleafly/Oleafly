@@ -139,12 +139,19 @@ function KeptRow({ file, name }: Readonly<{ file: CollabLiveKeptFile; name: stri
   let message: string;
   if (file.kind === "replaced") message = t(($) => $.collab.files.replaced, values);
   else if (file.kind === "beside") message = t(($) => $.collab.files.beside, values);
+  else if (file.kind === "unsent") message = t(($) => $.collab.files.unsent, values);
   else message = t(($) => $.collab.files.added, values);
+  const unsent = file.kind === "unsent";
+  const tone: WorkspaceBannerTone = unsent ? "warning" : "primary";
   return (
-    <WorkspaceBanner tone="primary" data-testid="collab-kept-copy">
-      <Files aria-hidden className="size-3.5 shrink-0 text-primary" />
+    <WorkspaceBanner tone={tone} data-testid="collab-kept-copy">
+      {unsent ? (
+        <CloudAlert aria-hidden className="size-3.5 shrink-0" />
+      ) : (
+        <Files aria-hidden className="size-3.5 shrink-0 text-primary" />
+      )}
       <PathMessage paths={[file.path, file.copy]}>{message}</PathMessage>
-      <Dismiss tone="primary" onDismiss={() => useFileNotices.getState().dismissKept(file.id)} />
+      <Dismiss tone={tone} onDismiss={() => useFileNotices.getState().dismissKept(file.id)} />
     </WorkspaceBanner>
   );
 }

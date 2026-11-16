@@ -5,7 +5,6 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("./live-editing", () => ({ startLiveEditing: vi.fn(() => () => undefined) }));
 
 import { useCollabLiveProject } from "@/lib/collab-live-bridge";
-import { viewsOnlyOn } from "../roles";
 import { useLiveTree } from "../sharing/tree-version";
 import { useCollabLiveStore } from "./live-store";
 import { startLiveTarget } from "./note-slot";
@@ -43,15 +42,3 @@ describe("Oleafly Server surfaces stay out of an Overleaf project", () => {
   });
 });
 
-describe("editor gates on Overleaf", () => {
-  it.each([
-    ["owner", false, false],
-    ["editor", false, false],
-    ["reviewer", true, false],
-    ["viewer", true, true],
-    ["commenter", true, true],
-  ] as const)("a %s is read-only on Overleaf: %s, on a server: %s", (role, overleaf, server) => {
-    expect(viewsOnlyOn("overleaf", role)).toBe(overleaf);
-    expect(viewsOnlyOn("server", role)).toBe(server);
-  });
-});

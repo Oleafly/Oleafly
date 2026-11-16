@@ -1,5 +1,6 @@
 import type { OverleafConnectionDetails } from "@oleafly/backend-port";
 import { invoke } from "@tauri-apps/api/core";
+import { withoutTrailingSlashes } from "@/lib/path-utils";
 import type { CollabLiveInfo } from "@/lib/tauri";
 
 export interface OverleafLiveProject {
@@ -36,5 +37,5 @@ export const overleafLiveConnectionDetails = (projectId: string) =>
   invoke<OverleafConnectionDetails>("overleaf_live_connection_details", { projectId });
 
 export function overleafProjectPage(link: Pick<OverleafLiveProject, "server" | "remoteId">): string {
-  return `${link.server.replace(/\/+$/u, "")}/project/${encodeURIComponent(link.remoteId)}`;
+  return `${withoutTrailingSlashes(link.server)}/project/${encodeURIComponent(link.remoteId)}`;
 }

@@ -216,6 +216,7 @@ fn on_role(active: &Active, role: ProjectRole, paths: &oleafly_collab::CollabPat
         role,
         tracking: false,
         restricted: false,
+        deleted_externally: false,
     });
 }
 

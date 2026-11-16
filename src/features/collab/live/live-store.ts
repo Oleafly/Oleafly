@@ -127,6 +127,8 @@ export interface CollabLiveStoreState {
   share: CollabShareInfo | null;
   overleaf: OverleafLiveProject | null;
   role: CollabProjectRole | null;
+  tracking: boolean;
+  deletedExternally: boolean;
   status: CollabLiveSyncState | null;
   pending: number;
   pendingPaths: readonly string[];
@@ -185,6 +187,8 @@ function emptyLive(projectId: string | null): LiveData {
     share: null,
     overleaf: null,
     role: null,
+    tracking: false,
+    deletedExternally: false,
     status: null,
     pending: 0,
     pendingPaths: [],
@@ -494,7 +498,12 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     } else if (changed && kind === null && notice !== null && notice.kind !== "removed") {
       notice = null;
     }
-    store.setState({ role: payload.role, accessNotice: notice });
+    store.setState({
+      role: payload.role,
+      tracking: payload.tracking,
+      deletedExternally: payload.deletedExternally,
+      accessNotice: notice,
+    });
     if (changed) void store.getState().refreshMembers();
   };
 
@@ -662,6 +671,8 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
       store.setState({
         backend: null,
         role: null,
+        tracking: false,
+        deletedExternally: false,
         status: null,
         pending: 0,
         pendingPaths: [],

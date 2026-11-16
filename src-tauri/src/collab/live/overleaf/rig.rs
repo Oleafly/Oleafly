@@ -13,6 +13,7 @@ use oleafly_ot::{DocMessage, DocSink};
 use super::notices::OverleafNoticePayload;
 use super::{OverleafLive, Parts, IMPORT_BASES};
 use crate::collab::live::host::LiveHost;
+use crate::collab::live::kept::KeptPayload;
 use crate::collab::live::payloads::{
     DocPendingPayload, MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload,
     RolePayload, StatusPayload,
@@ -27,11 +28,21 @@ pub(crate) const WAIT: Duration = Duration::from_secs(20);
 pub(crate) struct Quiet {
     pub(crate) pending: Mutex<Vec<DocPendingPayload>>,
     pub(crate) notices: Mutex<Vec<OverleafNoticePayload>>,
+    pub(crate) statuses: Mutex<Vec<StatusPayload>>,
+    pub(crate) roles: Mutex<Vec<RolePayload>>,
+    pub(crate) kept: Mutex<Vec<KeptPayload>>,
 }
 
 impl LiveHost for Quiet {
-    fn status(&self, _: StatusPayload) {}
-    fn role(&self, _: RolePayload) {}
+    fn status(&self, payload: StatusPayload) {
+        self.statuses.lock().unwrap().push(payload);
+    }
+    fn role(&self, payload: RolePayload) {
+        self.roles.lock().unwrap().push(payload);
+    }
+    fn kept(&self, payload: KeptPayload) {
+        self.kept.lock().unwrap().push(payload);
+    }
     fn merged(&self, _: MergedPayload) {}
     fn presence(&self, _: PresencePayload) {}
     fn presence_left(&self, _: PresenceLeftPayload) {}

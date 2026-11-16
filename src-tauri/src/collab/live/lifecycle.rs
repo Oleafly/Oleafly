@@ -54,6 +54,7 @@ async fn start_locked(
             role,
             tracking: false,
             restricted: false,
+            deleted_externally: false,
         });
         return Ok(LiveInfo {
             role,

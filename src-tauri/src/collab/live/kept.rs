@@ -19,6 +19,7 @@ pub enum KeptKind {
     Replaced,
     Added,
     Beside,
+    Unsent,
 }
 
 pub(super) const ARRIVAL_WINDOW: Duration = Duration::from_secs(10);

@@ -158,6 +158,7 @@ beforeEach(() => {
 afterEach(() => {
   release?.();
   release = null;
+  useCollabLiveStore.setState({ backend: null });
   vi.useRealTimers();
 });
 
@@ -306,6 +307,14 @@ describe("live editing", () => {
     expect(collabSettingsLocked(PROJECT)).toBe(true);
     useCollabLiveStore.setState({ role: "editor" });
     expect(collabSettingsLocked(PROJECT)).toBe(false);
+  });
+
+  it("lets a reviewer type on Overleaf too, where the session sends suggestions", () => {
+    useCollabLiveStore.setState({ backend: "overleaf" });
+    start("reviewer");
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+    useCollabLiveStore.setState({ role: "viewer" });
+    expect(collabProjectReadOnly(PROJECT)).toBe(true);
   });
 
   it("keeps a commenter's editor read-only and locks files and settings", () => {

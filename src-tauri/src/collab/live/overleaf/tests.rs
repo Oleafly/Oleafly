@@ -5,14 +5,16 @@ use oleafly_ot::DocMessage;
 
 use std::sync::Arc;
 
-use oleafly_collab::sync::LiveStatus;
+use oleafly_collab::sync::{EndReason, LiveStatus};
 use oleafly_collab::{CollabError, CollabPaths};
+use oleafly_collab_protocol::projects::ProjectRole;
 use oleafly_online::live::journal::{self, DocRecord, Journal, SCHEMA};
 use oleafly_online::realtime::DocId;
 
 use super::account::overleaf_signed_in;
 use super::refuse_overleaf_linked;
 use super::rig::{eventually, run, session_of, OverleafRig, Place, Quiet};
+use crate::collab::live::kept::{KeptFile, KeptKind};
 use crate::collab::live::session::{guard, live_for};
 use crate::collab::live::UnsentProject;
 use crate::collab::testing::TempLibrary;
@@ -731,6 +733,134 @@ fn reconnecting_now_reaches_the_overleaf_session() {
         tab.typed(&rig.live, "Hello again\n");
         eventually("typing still reaches the server", || {
             rig.mock.doc_text(&doc) == "Hello again\n"
+        })
+        .await;
+        rig.finish().await;
+    });
+}
+
+fn ended(rig: &OverleafRig) -> Option<EndReason> {
+    match guard(&rig.live.mirror.status).0 {
+        LiveStatus::Ended { reason } => Some(reason),
+        _ => None,
+    }
+}
+
+#[test]
+fn removal_keeps_unsent_text_as_a_copy_and_lets_the_project_go_local() {
+    let library = TempLibrary::new();
+    run(async {
+        let rig = OverleafRig::start_at(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+            Place::Library,
+        )
+        .await;
+        let mut tab = rig.open(MAIN);
+        rig.mock.hold_updates();
+        tab.typed(&rig.live, "Hello\nunsent\n");
+        eventually("the edit is sent and still unapplied", || {
+            !rig.mock.received("applyOtUpdate").is_empty()
+        })
+        .await;
+        rig.mock.emit_to_room("project:access:revoked", &[]);
+        eventually("live ends as removed", || {
+            ended(&rig) == Some(EndReason::Removed)
+        })
+        .await;
+        let kept: Vec<KeptFile> = rig
+            .host
+            .kept
+            .lock()
+            .unwrap()
+            .iter()
+            .flat_map(|payload| payload.files.clone())
+            .collect();
+        assert_eq!(kept.len(), 1, "{kept:?}");
+        assert_eq!(
+            (kept[0].path.as_str(), kept[0].kind),
+            (MAIN, KeptKind::Unsent)
+        );
+        assert_eq!(rig.read(&kept[0].copy), "Hello\nunsent\n");
+        let project_id = rig.project_id.clone();
+        rig.finish().await;
+        super::commands::unlink(&project_id).await.unwrap();
+        let meta = crate::project::read_meta(&project_id).unwrap();
+        assert!(!meta.extra.contains_key("importedFrom"));
+    });
+    drop(library);
+}
+
+#[test]
+fn a_project_deleted_on_overleaf_ends_as_project_deleted() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        rig.mock
+            .emit_to_room("projectRenamedOrDeletedByExternalSource", &[]);
+        eventually("live ends as deleted", || {
+            ended(&rig) == Some(EndReason::ProjectDeleted)
+        })
+        .await;
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn the_role_carries_the_project_flags() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n").deleted_by_external_source(),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        eventually("the role is announced", || {
+            !rig.host.roles.lock().unwrap().is_empty()
+        })
+        .await;
+        let role = rig.host.roles.lock().unwrap()[0].clone();
+        assert!(role.deleted_externally && !role.restricted, "{role:?}");
+        assert_eq!(ended(&rig), None);
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn a_reviewers_typing_reaches_the_service_as_tracked_changes() {
+    run(async {
+        let project = MockProject::new("live")
+            .owner(MockUser::named("olga"))
+            .member(MockUser::named("alice"), Privilege::Review)
+            .doc(MAIN, "Hello\n")
+            .doc(INTRO, "Intro\n");
+        let rig = OverleafRig::start(project, &[(MAIN, "Hello\n"), (INTRO, "Intro\n")]).await;
+        eventually("the reviewer role is announced", || {
+            rig.host
+                .roles
+                .lock()
+                .unwrap()
+                .last()
+                .is_some_and(|role| matches!(role.role, ProjectRole::Reviewer) && role.tracking)
+        })
+        .await;
+        let doc = rig.doc(MAIN);
+        let mut tab = rig.open(MAIN);
+        tab.typed(&rig.live, "Hello suggested\n");
+        eventually("the typing reaches the server as a suggestion", || {
+            rig.mock.received("applyOtUpdate").iter().any(|sent| {
+                sent.args.first() == Some(&serde_json::json!(doc))
+                    && sent
+                        .args
+                        .get(1)
+                        .is_some_and(|update| update["meta"]["tc"].is_string())
+            })
+        })
+        .await;
+        eventually("the server has the suggested text", || {
+            rig.mock.doc_text(&doc).contains("suggested")
         })
         .await;
         rig.finish().await;
