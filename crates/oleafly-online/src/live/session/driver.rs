@@ -89,7 +89,7 @@ fn end_of(error: &RealtimeError) -> LiveEnd {
 
 pub(super) struct Driver {
     shared: Arc<Shared>,
-    page: ProjectPage,
+    page: Arc<ProjectPage>,
     config: SessionConfig,
     connection: Option<Connection>,
     connected_at: Instant,
@@ -111,7 +111,7 @@ impl Driver {
     pub(super) fn new(
         shared: Arc<Shared>,
         connection: Option<Connection>,
-        page: ProjectPage,
+        page: Arc<ProjectPage>,
         config: SessionConfig,
     ) -> Driver {
         let now = tokio::time::Instant::now();
@@ -467,16 +467,7 @@ impl Driver {
     }
 
     fn write_journal(&self, forced: bool) {
-        let now = Instant::now();
-        let Some(batch) = self
-            .shared
-            .with(|state| state.take_journal_batch(now, forced))
-        else {
-            return;
-        };
-        let result = self.shared.write_journal(&batch);
-        self.shared
-            .with(|state| state.journal_result(batch, result, now));
+        self.shared.persist(forced);
     }
 
     async fn catch_up(&mut self) {

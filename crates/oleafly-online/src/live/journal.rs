@@ -11,6 +11,7 @@ use oleafly_ot::TextOperation;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::tree_queue::Queued;
 use super::{DocId, PublicId};
 use crate::error::{OnlineError, OnlineErrorKind};
 
@@ -19,6 +20,7 @@ pub const SCHEMA: u64 = 1;
 pub const WRITE_EVERY: Duration = Duration::from_millis(250);
 const MANIFEST: &str = "project.json";
 const JOINED: &str = "project-join.json";
+const TREE: &str = "tree-queue.json";
 const LOCK: &str = "lock";
 const KEPT: &str = "kept";
 const FOLDER_LOCK: [&str; 3] = [".oleafly", "online", "live.lock"];
@@ -117,12 +119,20 @@ pub struct Journal {
     dirty_manifest: bool,
     joined: Option<Value>,
     dirty_joined: bool,
+    tree: Vec<Queued>,
+    dirty_tree: bool,
 }
 
 #[derive(Serialize, Deserialize)]
 struct JoinSnapshot {
     schema: u64,
     response: Value,
+}
+
+#[derive(Serialize, Deserialize)]
+struct TreeSnapshot {
+    schema: u64,
+    changes: Vec<Queued>,
 }
 
 pub fn origin_dir(base: &str) -> Result<String, JournalError> {
@@ -224,6 +234,8 @@ impl Journal {
             dirty_manifest: false,
             joined: None,
             dirty_joined: false,
+            tree: Vec::new(),
+            dirty_tree: false,
         };
         journal.load()?;
         Ok(journal)
@@ -238,6 +250,12 @@ impl Journal {
         }
         if let Some((SCHEMA, Some(snapshot))) = read_json::<JoinSnapshot>(&self.dir.join(JOINED)) {
             self.joined = Some(snapshot.response);
+        }
+        let tree = self.dir.join(TREE);
+        match read_json::<TreeSnapshot>(&tree) {
+            Some((SCHEMA, Some(snapshot))) => self.tree = snapshot.changes,
+            Some(_) => self.keep(&tree)?,
+            None => {}
         }
         for entry in std::fs::read_dir(&self.dir)? {
             let path = entry?.path();
@@ -304,7 +322,18 @@ impl Journal {
     }
 
     pub fn is_dirty(&self) -> bool {
-        self.dirty_manifest || self.dirty_joined || !self.dirty_docs.is_empty()
+        self.dirty_manifest || self.dirty_joined || self.dirty_tree || !self.dirty_docs.is_empty()
+    }
+
+    pub fn tree_queue(&self) -> &[Queued] {
+        &self.tree
+    }
+
+    pub fn set_tree_queue(&mut self, changes: Vec<Queued>) {
+        if changes != self.tree {
+            self.tree = changes;
+            self.dirty_tree = true;
+        }
     }
 
     pub fn joined(&self) -> Option<&Value> {
@@ -330,6 +359,19 @@ impl Journal {
         if self.dirty_manifest {
             write_json(&self.dir.join(MANIFEST), &self.manifest)?;
             self.dirty_manifest = false;
+        }
+        if self.dirty_tree {
+            let path = self.dir.join(TREE);
+            if self.tree.is_empty() {
+                remove(&path)?;
+            } else {
+                let snapshot = TreeSnapshot {
+                    schema: SCHEMA,
+                    changes: self.tree.clone(),
+                };
+                write_json(&path, &snapshot)?;
+            }
+            self.dirty_tree = false;
         }
         while let Some(doc) = self.dirty_docs.first().cloned() {
             let path = self.dir.join(format!("{}.json", doc.0));
@@ -381,7 +423,16 @@ fn unsent_paths(dir: &Path) -> Vec<String> {
             }
         })
         .collect();
+    if let Some((SCHEMA, Some(snapshot))) = read_json::<TreeSnapshot>(&dir.join(TREE)) {
+        paths.extend(
+            snapshot
+                .changes
+                .into_iter()
+                .map(|queued| queued.change.path().to_string()),
+        );
+    }
     paths.sort();
+    paths.dedup();
     paths
 }
 

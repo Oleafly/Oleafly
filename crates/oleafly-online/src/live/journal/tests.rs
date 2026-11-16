@@ -235,3 +235,47 @@ fn unsent_on_lists_each_project_with_its_unsent_paths_without_taking_locks() {
     assert!(unsent_on(&data.path().join("missing"), BASE).is_empty());
     drop(live);
 }
+
+#[test]
+fn a_queued_tree_change_survives_reopening_and_counts_as_unsent() {
+    use crate::live::tree_queue::{QueueState, Queued, TreeChange};
+    let data = tempfile::tempdir().unwrap();
+    let queued = vec![
+        Queued {
+            change: TreeChange::Upload {
+                path: "figures/plot.png".into(),
+            },
+            state: QueueState::Waiting,
+            entity: None,
+        },
+        Queued {
+            change: TreeChange::Delete {
+                path: "old.tex".into(),
+            },
+            state: QueueState::Waiting,
+            entity: Some("e1".into()),
+        },
+    ];
+    {
+        let mut journal = Journal::open(data.path(), BASE, PROJECT, None).unwrap();
+        journal.set_tree_queue(queued.clone());
+        assert!(journal.is_dirty());
+        journal.flush().unwrap();
+    }
+    let found = unsent_on(data.path(), BASE);
+    assert_eq!(
+        found,
+        vec![(
+            PROJECT.to_string(),
+            vec!["figures/plot.png".to_string(), "old.tex".to_string()]
+        )]
+    );
+    let mut journal = Journal::open(data.path(), BASE, PROJECT, None).unwrap();
+    assert_eq!(journal.tree_queue(), queued.as_slice());
+    assert!(journal.docs().is_empty());
+    assert!(journal.kept().is_empty());
+    journal.set_tree_queue(Vec::new());
+    journal.flush().unwrap();
+    drop(journal);
+    assert!(unsent_on(data.path(), BASE).is_empty());
+}

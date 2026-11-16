@@ -17,10 +17,15 @@ use crate::live::doc::{Applied, DocError, Limit, OutgoingUpdate, OverleafDoc, Re
 use crate::live::format::{CodecError, DocFormat, FormatState};
 use crate::live::join::{JoinFailure, JoinedDoc};
 use crate::live::journal::{DocRecord, Journal, ProjectManifest, WRITE_EVERY};
+use crate::live::tree_queue::Queued;
 use crate::live::{AppliedUpdate, DocId, PublicId, SendMode, Tracking};
 use crate::realtime::events::{AccessEvent, EntityId, PeerPosition, ProjectEvent};
 use crate::realtime::project::{Members, ProjectState, Rejoined, Role};
 use crate::realtime::tree::{NodeKind, PathChange};
+
+mod tree;
+
+pub(super) use tree::{name_of, parent_of, Finished, Job};
 
 const JOURNAL_BACKOFF: Duration = Duration::from_millis(250);
 const JOURNAL_BACKOFF_MAX: Duration = Duration::from_secs(5);
@@ -43,6 +48,12 @@ pub(super) enum Notice {
     Maintenance(String, Duration),
     SlowAck(bool),
     Unsteady(DocId),
+    Queue(Vec<Queued>),
+    Uploaded {
+        path: String,
+        tag: String,
+        hash: Option<String>,
+    },
 }
 
 pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
@@ -64,6 +75,8 @@ pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
             Notice::Maintenance(message, delay) => port.maintenance(&message, delay),
             Notice::SlowAck(waiting) => port.slow_ack(waiting),
             Notice::Unsteady(doc) => port.doc_unsteady(&doc),
+            Notice::Queue(changes) => port.tree_queue(changes),
+            Notice::Uploaded { path, tag, hash } => port.uploaded(&path, &tag, hash.as_deref()),
         }
     }
 }
@@ -178,6 +191,7 @@ pub(super) enum JoinKind {
 pub(super) struct JournalBatch {
     pub(super) manifest: Option<ProjectManifest>,
     pub(super) docs: Vec<(DocId, Option<DocRecord>)>,
+    pub(super) tree: Option<Vec<Queued>>,
 }
 
 pub(super) struct State {
@@ -211,6 +225,7 @@ pub(super) struct State {
     journal_failing: bool,
     last_pending: Option<u64>,
     acks: u64,
+    tree_work: tree::TreeWork,
 }
 
 impl State {
@@ -251,8 +266,10 @@ impl State {
             journal_failing: false,
             last_pending: None,
             acks: 0,
+            tree_work: tree::TreeWork::default(),
         };
         state.take_journal(journal.docs());
+        state.take_tree_queue(journal.tree_queue());
         state
     }
 
@@ -459,7 +476,7 @@ impl State {
     }
 
     pub(super) fn can_rest(&self) -> bool {
-        !self.needs_server() && !self.journal_due()
+        !self.needs_server() && !self.journal_due() && !self.tree_work.has_waiting()
     }
 
     pub(super) fn end(&mut self, end: LiveEnd) {
@@ -1240,7 +1257,10 @@ impl State {
     pub(super) fn rejoined(&mut self, public_id: PublicId, response: Value) -> bool {
         match self.project.rejoin(response) {
             Ok(Rejoined::Repaired(changes)) => self.tree_changed(changes),
-            Ok(Rejoined::Everything { .. }) => self.rejoin_all(Phase::Wanted),
+            Ok(Rejoined::Everything { .. }) => {
+                self.relay_tree();
+                self.rejoin_all(Phase::Wanted);
+            }
             Err(unsupported) => {
                 self.end(LiveEnd::Unsupported(format!("{unsupported:?}")));
                 return false;
@@ -1271,6 +1291,7 @@ impl State {
                 self.drop_unsent(&doc);
             }
         }
+        self.tree_followed(&changes);
         if !changes.is_empty() {
             self.notices.push(Notice::Tree(changes));
         }
@@ -1382,7 +1403,9 @@ impl State {
     }
 
     fn journal_due(&self) -> bool {
-        self.manifest_dirty || self.slots.values().any(|slot| slot.dirty)
+        self.manifest_dirty
+            || self.tree_work.is_dirty()
+            || self.slots.values().any(|slot| slot.dirty)
     }
 
     pub(super) fn take_journal_batch(
@@ -1413,7 +1436,12 @@ impl State {
             }
         }
         let manifest = std::mem::take(&mut self.manifest_dirty).then(|| self.manifest.clone());
-        Some(JournalBatch { manifest, docs })
+        let tree = self.tree_work.take_dirty();
+        Some(JournalBatch {
+            manifest,
+            docs,
+            tree,
+        })
     }
 
     pub(super) fn journal_result(
@@ -1440,6 +1468,9 @@ impl State {
             }
         }
         self.manifest_dirty |= batch.manifest.is_some();
+        if batch.tree.is_some() {
+            self.tree_work.mark_dirty();
+        }
         if !std::mem::replace(&mut self.journal_failing, true) {
             self.notices.push(Notice::Journal(Some(reason)));
         }

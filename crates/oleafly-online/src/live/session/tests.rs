@@ -2010,3 +2010,4 @@ fn recorded_sessions_replay_through_the_session_state() {
 }
 
 mod resilience;
+mod tree;

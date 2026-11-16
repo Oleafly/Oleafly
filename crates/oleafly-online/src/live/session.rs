@@ -4,6 +4,7 @@ mod pacing;
 mod state;
 #[cfg(test)]
 mod tests;
+mod tree_worker;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -16,11 +17,13 @@ use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
 use super::journal::Journal;
+use super::rest::{RestError, TreeRest};
+use super::tree_queue::{LocalFile, Queued, TreeChange, TreeRefusal};
 use super::DocId;
 use crate::client::Http;
 use crate::error::{OnlineError, OnlineErrorKind};
 use crate::realtime::connection::{connect_tuned, Carrier, Connection, RealtimeError, Tuning};
-use crate::realtime::events::{PeerPosition, ProjectEvent, PublicId, Rejection};
+use crate::realtime::events::{EntityId, PeerPosition, ProjectEvent, PublicId, Rejection};
 use crate::realtime::project::{ProjectState, Role};
 use crate::realtime::tree::{OverleafNode, PathChange};
 use crate::realtime::ProjectPage;
@@ -43,6 +46,14 @@ pub trait LivePort: Send + Sync + 'static {
     fn maintenance(&self, _message: &str, _delay: Duration) {}
     fn slow_ack(&self, _waiting: bool) {}
     fn doc_unsteady(&self, _doc: &DocId) {}
+    fn tree_queue(&self, _changes: Vec<Queued>) {}
+    fn uploaded(&self, _path: &str, _tag: &str, _hash: Option<&str>) {}
+    fn local_file(&self, _path: &str) -> Option<LocalFile> {
+        None
+    }
+    fn never_online(&self, path: &str) -> bool {
+        crate::sync::excluded(path)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -143,6 +154,14 @@ pub struct SessionTuning {
     pub typing_pause: Duration,
     pub idle_after: Duration,
     pub slow_ack_after: Duration,
+    pub doc_limit: usize,
+    pub folder_limit: usize,
+    pub create_window: Duration,
+    pub upload_limit: usize,
+    pub upload_window: Duration,
+    pub rate_floor: Duration,
+    pub tree_retry: Duration,
+    pub delete_settle: Duration,
 }
 
 impl Default for SessionTuning {
@@ -163,6 +182,14 @@ impl Default for SessionTuning {
             typing_pause: Duration::from_secs(2),
             idle_after: Duration::from_secs(30 * 60),
             slow_ack_after: Duration::from_secs(60),
+            doc_limit: 25,
+            folder_limit: 50,
+            create_window: Duration::from_secs(60),
+            upload_limit: 450,
+            upload_window: Duration::from_secs(15 * 60),
+            rate_floor: Duration::from_secs(15),
+            tree_retry: Duration::from_secs(2),
+            delete_settle: Duration::from_secs(3),
         }
     }
 }
@@ -193,7 +220,9 @@ struct Shared {
     state: Mutex<state::State>,
     journal: Mutex<Journal>,
     sign_in: Mutex<Option<SessionHandle>>,
+    session: Mutex<SessionHandle>,
     wake: Notify,
+    tree_wake: Notify,
     nudge: Notify,
     nudged: AtomicBool,
     stopping: AtomicBool,
@@ -217,7 +246,13 @@ impl Shared {
     }
 
     fn take_sign_in(&self) -> Option<SessionHandle> {
-        locked(&self.sign_in).take()
+        let session = locked(&self.sign_in).take()?;
+        *locked(&self.session) = session.clone();
+        Some(session)
+    }
+
+    fn session(&self) -> SessionHandle {
+        locked(&self.session).clone()
     }
 
     fn is_stopping(&self) -> bool {
@@ -277,13 +312,27 @@ impl Shared {
         for (doc, record) in &batch.docs {
             journal.put(doc, record.clone());
         }
+        if let Some(changes) = &batch.tree {
+            journal.set_tree_queue(changes.clone());
+        }
         journal.flush()
+    }
+
+    fn persist(&self, forced: bool) {
+        let now = Instant::now();
+        let Some(batch) = self.with(|state| state.take_journal_batch(now, forced)) else {
+            return;
+        };
+        let result = self.write_journal(&batch);
+        self.with(|state| state.journal_result(batch, result, now));
     }
 }
 
 pub struct OverleafSession {
     shared: Arc<Shared>,
     driver: Mutex<Option<JoinHandle<()>>>,
+    tree: Mutex<Option<JoinHandle<()>>>,
+    rest: Arc<TreeRest>,
 }
 
 pub(super) fn online_error(error: RealtimeError) -> OnlineError {
@@ -350,7 +399,7 @@ impl OverleafSession {
         mut journal: Journal,
     ) -> Result<Arc<OverleafSession>, OnlineError> {
         port.state(LiveState::Connecting);
-        let page = ProjectPage::unloaded(&config.project_id)?;
+        let page = Arc::new(ProjectPage::unloaded(&config.project_id)?);
         let (project, connection) = first_connect(&config, &page, &mut journal).await?;
         let account = Account {
             user_id: config.session.user_id().to_string(),
@@ -366,7 +415,9 @@ impl OverleafSession {
             state: Mutex::new(state),
             journal: Mutex::new(journal),
             sign_in: Mutex::new(None),
+            session: Mutex::new(config.session.clone()),
             wake: Notify::new(),
+            tree_wake: Notify::new(),
             nudge: Notify::new(),
             nudged: AtomicBool::new(false),
             stopping: AtomicBool::new(false),
@@ -386,11 +437,24 @@ impl OverleafSession {
             );
             shared.with(state::State::announce);
         }
+        let rest = Arc::new(TreeRest::new(
+            config.http.clone(),
+            Arc::clone(&page),
+            &config.project_id,
+        ));
+        let worker = tree_worker::TreeWorker::new(
+            Arc::clone(&shared),
+            Arc::clone(&rest),
+            config.tuning.clone(),
+        );
         let driver = driver::Driver::new(Arc::clone(&shared), connection, page, config);
         let handle = tokio::spawn(driver.run());
+        let tree = tokio::spawn(worker.run());
         Ok(Arc::new(OverleafSession {
             shared,
             driver: Mutex::new(Some(handle)),
+            tree: Mutex::new(Some(tree)),
+            rest,
         }))
     }
 
@@ -479,6 +543,61 @@ impl OverleafSession {
         self.shared.lock().project.tree.nodes()
     }
 
+    pub fn change_tree(&self, change: TreeChange) -> Result<(), TreeRefusal> {
+        let result = self.shared.with(|state| state.change_tree(change));
+        self.after_tree_change();
+        result
+    }
+
+    pub fn keep_away(&self, path: &str) -> Result<(), TreeRefusal> {
+        let result = self.shared.with(|state| state.keep_away(path));
+        self.after_tree_change();
+        result
+    }
+
+    pub fn kept_away(&self) -> Vec<String> {
+        self.shared.lock().kept_away()
+    }
+
+    pub fn tree_queue(&self) -> Vec<Queued> {
+        self.shared.lock().tree_queue()
+    }
+
+    pub fn retry_tree(&self, path: Option<&str>) {
+        self.shared.with(|state| state.retry_tree(path));
+        self.after_tree_change();
+    }
+
+    pub fn dismiss_tree(&self, path: &str) {
+        self.shared.with(|state| state.dismiss_tree(path));
+        self.after_tree_change();
+    }
+
+    fn after_tree_change(&self) {
+        self.shared.persist(true);
+        self.shared.touched(false);
+        self.shared.tree_wake.notify_one();
+        self.poke();
+    }
+
+    pub async fn download(
+        &self,
+        file: &EntityId,
+        progress: &mut (dyn FnMut(u64, Option<u64>) + Send),
+    ) -> Result<Vec<u8>, RestError> {
+        let hash = self
+            .shared
+            .lock()
+            .project
+            .tree
+            .server_node(file)
+            .and_then(|node| node.hash.clone());
+        let session = self.shared.session();
+        self.rest
+            .download(&session, file, hash.as_deref(), progress)
+            .await
+    }
+
     pub fn presence(&self, at: Option<(DocId, usize)>) {
         self.shared.with(|state| state.set_presence(at));
         self.poke();
@@ -522,9 +641,14 @@ impl OverleafSession {
         self.shared.stopping.store(true, Ordering::SeqCst);
         self.shared.wake.notify_waiters();
         self.poke();
+        self.shared.tree_wake.notify_waiters();
         let handle = locked(&self.driver).take();
         if let Some(handle) = handle {
             let _ = handle.await;
+        }
+        let tree = locked(&self.tree).take();
+        if let Some(tree) = tree {
+            let _ = tree.await;
         }
     }
 }
@@ -533,6 +657,9 @@ impl Drop for OverleafSession {
     fn drop(&mut self) {
         if let Some(handle) = locked(&self.driver).take() {
             handle.abort();
+        }
+        if let Some(tree) = locked(&self.tree).take() {
+            tree.abort();
         }
     }
 }

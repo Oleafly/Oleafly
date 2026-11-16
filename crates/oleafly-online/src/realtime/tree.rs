@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 use std::collections::BTreeMap;
 use std::time::{Duration, Instant};
 
@@ -61,11 +64,20 @@ struct Pending {
     inside: Vec<PathChange>,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum Local {
+    Placed { parent: EntityId, name: String },
+    Hidden,
+}
+
+type Located = (EntityId, String, NodeKind);
+
 #[derive(Clone, Debug, Default)]
 pub struct OverleafTree {
     root: Option<EntityId>,
     nodes: BTreeMap<EntityId, OverleafNode>,
     pending: Vec<Pending>,
+    local: BTreeMap<EntityId, Local>,
 }
 
 fn text(value: &Value, key: &str) -> Option<String> {
@@ -131,17 +143,37 @@ impl OverleafTree {
         self.root.as_ref()
     }
 
-    pub fn node(&self, id: &EntityId) -> Option<&OverleafNode> {
-        self.nodes.get(id)
+    fn shown(&self, node: &OverleafNode) -> Option<(Option<EntityId>, String)> {
+        match self.local.get(&node.id) {
+            Some(Local::Hidden) => None,
+            Some(Local::Placed { parent, name }) => Some((Some(parent.clone()), name.clone())),
+            None => Some((node.parent.clone(), node.name.clone())),
+        }
     }
 
-    pub fn path_of(&self, id: &EntityId) -> Option<String> {
+    pub fn node(&self, id: &EntityId) -> Option<OverleafNode> {
+        let node = self.nodes.get(id)?;
+        self.path_of(id)?;
+        let (parent, name) = self.shown(node)?;
+        Some(OverleafNode {
+            parent,
+            name,
+            ..node.clone()
+        })
+    }
+
+    fn walk(
+        &self,
+        id: &EntityId,
+        shown: impl Fn(&OverleafNode) -> Option<(Option<EntityId>, String)>,
+    ) -> Option<String> {
         let mut parts = Vec::new();
         let mut at = self.nodes.get(id)?;
         let mut steps = 0;
         while Some(&at.id) != self.root.as_ref() {
-            parts.push(at.name.as_str());
-            at = self.nodes.get(at.parent.as_ref()?)?;
+            let (parent, name) = shown(at)?;
+            parts.push(name);
+            at = self.nodes.get(parent.as_ref()?)?;
             steps += 1;
             if steps > self.nodes.len() {
                 return None;
@@ -149,6 +181,70 @@ impl OverleafTree {
         }
         parts.reverse();
         Some(parts.join("/"))
+    }
+
+    pub fn path_of(&self, id: &EntityId) -> Option<String> {
+        self.walk(id, |node| self.shown(node))
+    }
+
+    pub fn server_path_of(&self, id: &EntityId) -> Option<String> {
+        self.walk(id, |node| Some((node.parent.clone(), node.name.clone())))
+    }
+
+    pub fn server_node(&self, id: &EntityId) -> Option<&OverleafNode> {
+        self.nodes.get(id)
+    }
+
+    pub fn is_local(&self, id: &EntityId) -> bool {
+        self.local.contains_key(id)
+    }
+
+    pub fn place(&mut self, id: &EntityId, parent: &EntityId, name: &str) -> Vec<PathChange> {
+        if Some(id) == self.root.as_ref()
+            || !self.nodes.contains_key(id)
+            || !self.is_folder(parent)
+            || self.below(id).contains(parent)
+        {
+            return Vec::new();
+        }
+        let moving = self.below(id);
+        let before = self.located(&moving);
+        let same = self
+            .nodes
+            .get(id)
+            .is_some_and(|node| node.parent.as_ref() == Some(parent) && node.name == name);
+        if same {
+            self.local.remove(id);
+        } else {
+            self.local.insert(
+                id.clone(),
+                Local::Placed {
+                    parent: parent.clone(),
+                    name: name.to_string(),
+                },
+            );
+        }
+        let after = self.located(&moving);
+        changes_between(before, after)
+    }
+
+    pub fn hide(&mut self, id: &EntityId) -> Vec<PathChange> {
+        if Some(id) == self.root.as_ref() || !self.nodes.contains_key(id) {
+            return Vec::new();
+        }
+        let before = self.located(&self.below(id));
+        self.local.insert(id.clone(), Local::Hidden);
+        changes_between(before, Vec::new())
+    }
+
+    pub fn clear_local(&mut self, id: &EntityId) -> Vec<PathChange> {
+        if !self.local.contains_key(id) {
+            return Vec::new();
+        }
+        let before = self.located(&self.below(id));
+        self.local.remove(id);
+        let after = self.located(&self.below(id));
+        changes_between(before, after)
     }
 
     pub fn id_at(&self, path: &str) -> Option<&EntityId> {
@@ -160,9 +256,9 @@ impl OverleafTree {
     pub fn nodes(&self) -> Vec<OverleafNode> {
         let mut nodes: Vec<(String, OverleafNode)> = self
             .nodes
-            .values()
-            .filter(|node| Some(&node.id) != self.root.as_ref())
-            .filter_map(|node| Some((self.path_of(&node.id)?, node.clone())))
+            .keys()
+            .filter(|id| Some(*id) != self.root.as_ref())
+            .filter_map(|id| Some((self.path_of(id)?, self.node(id)?)))
             .collect();
         nodes.sort_by(|left, right| left.0.cmp(&right.0));
         nodes.into_iter().map(|(_, node)| node).collect()
@@ -183,15 +279,22 @@ impl OverleafTree {
         check_remote_paths_on(&self.paths(), true)
     }
 
-    fn below(&self, id: &EntityId) -> Vec<EntityId> {
+    fn parent_in(&self, node: &OverleafNode, server: bool) -> Option<EntityId> {
+        match (server, self.local.get(&node.id)) {
+            (false, Some(Local::Placed { parent, .. })) => Some(parent.clone()),
+            _ => node.parent.clone(),
+        }
+    }
+
+    fn below_in(&self, id: &EntityId, server: bool) -> Vec<EntityId> {
         let mut found = vec![id.clone()];
         let mut index = 0;
-        while index < found.len() {
+        while index < found.len() && found.len() <= self.nodes.len() {
             let parent = found[index].clone();
             found.extend(
                 self.nodes
                     .values()
-                    .filter(|node| node.parent.as_ref() == Some(&parent))
+                    .filter(|node| self.parent_in(node, server).as_ref() == Some(&parent))
                     .map(|node| node.id.clone()),
             );
             index += 1;
@@ -199,8 +302,12 @@ impl OverleafTree {
         found
     }
 
-    fn located(&self, ids: &[EntityId]) -> Vec<(EntityId, String, NodeKind)> {
-        let mut located: Vec<(EntityId, String, NodeKind)> = ids
+    fn below(&self, id: &EntityId) -> Vec<EntityId> {
+        self.below_in(id, false)
+    }
+
+    fn located(&self, ids: &[EntityId]) -> Vec<Located> {
+        let mut located: Vec<Located> = ids
             .iter()
             .filter_map(|id| Some((id.clone(), self.path_of(id)?, self.nodes.get(id)?.kind)))
             .collect();
@@ -254,7 +361,7 @@ impl OverleafTree {
             }
             TreeEvent::Renamed { id, name } => self.relocate(id, |node| node.name.clone_from(name)),
             TreeEvent::Moved { id, folder } => {
-                if !self.is_folder(folder) || self.below(id).contains(folder) {
+                if !self.is_folder(folder) || self.below_in(id, true).contains(folder) {
                     Vec::new()
                 } else {
                     self.relocate(id, |node| node.parent = Some(folder.clone()))
@@ -344,11 +451,23 @@ impl OverleafTree {
         if Some(id) == self.root.as_ref() || !self.nodes.contains_key(id) {
             return;
         }
-        let gone = self.located(&self.below(id));
-        for (removed, _, _) in &gone {
-            self.nodes.remove(removed);
+        let removed = self.below_in(id, true);
+        let mut affected = self.below(id);
+        affected.extend(
+            removed
+                .iter()
+                .filter(|entity| !affected.contains(entity))
+                .cloned()
+                .collect::<Vec<_>>(),
+        );
+        let gone = self.located(&affected);
+        for entity in &removed {
+            self.nodes.remove(entity);
+            self.local.remove(entity);
         }
-        let mut gone = gone.into_iter();
+        let mut gone = gone
+            .into_iter()
+            .filter(|(entity, _, _)| self.path_of(entity).is_none());
         let Some((id, path, kind)) = gone.next() else {
             return;
         };
@@ -363,75 +482,100 @@ impl OverleafTree {
         });
     }
 
-    pub fn repair(&mut self, fresh: OverleafTree) -> Vec<PathChange> {
+    pub fn repair(&mut self, mut fresh: OverleafTree) -> Vec<PathChange> {
         let mut flushed = self.flush();
-        let before: BTreeMap<EntityId, (String, NodeKind)> = self.located_all();
-        let after: BTreeMap<EntityId, (String, NodeKind)> = fresh.located_all();
-        let mut removed: Vec<(EntityId, String, NodeKind)> = before
-            .iter()
-            .filter(|(id, _)| !after.contains_key(*id))
-            .map(|(id, (path, kind))| (id.clone(), path.clone(), *kind))
-            .collect();
-        let mut added: Vec<(EntityId, String, NodeKind)> = after
-            .iter()
-            .filter(|(id, _)| !before.contains_key(*id))
-            .map(|(id, (path, kind))| (id.clone(), path.clone(), *kind))
-            .collect();
-        let mut moved: Vec<PathChange> = after
-            .iter()
-            .filter_map(|(id, (to, kind))| {
-                let (from, _) = before.get(id)?;
-                (from != to).then(|| PathChange::Moved {
-                    id: id.clone(),
-                    from: from.clone(),
-                    to: to.clone(),
-                    kind: *kind,
-                })
-            })
-            .collect();
-        let mut replaced = Vec::new();
-        removed.retain(
-            |(old, path, from)| match added.iter().position(|(_, at, _)| at == path) {
-                Some(index) => {
-                    let (new, _, to) = added.remove(index);
-                    replaced.push(PathChange::Replaced {
-                        old: old.clone(),
-                        new,
-                        path: path.clone(),
-                        from: *from,
-                        to,
-                    });
-                    false
+        let before = self.located_all();
+        fresh.local = std::mem::take(&mut self.local);
+        fresh.local.retain(|id, local| {
+            fresh.nodes.contains_key(id)
+                && match local {
+                    Local::Placed { parent, .. } => fresh
+                        .nodes
+                        .get(parent)
+                        .is_some_and(|node| node.kind == NodeKind::Folder),
+                    Local::Hidden => true,
                 }
-                None => true,
-            },
-        );
-        removed.sort_by(|left, right| left.1.cmp(&right.1));
-        added.sort_by(|left, right| left.1.cmp(&right.1));
-        moved.sort_by(|left, right| path_key(left).cmp(path_key(right)));
-        flushed.extend(
-            removed
-                .into_iter()
-                .map(|(id, path, kind)| PathChange::Removed { id, path, kind }),
-        );
-        flushed.append(&mut moved);
-        flushed.append(&mut replaced);
-        flushed.extend(added.into_iter().map(|(id, path, kind)| PathChange::Added {
-            id,
-            path,
-            kind,
-        }));
+        });
+        let after = fresh.located_all();
+        flushed.extend(changes_between(before, after));
         *self = fresh;
         flushed
     }
 
-    fn located_all(&self) -> BTreeMap<EntityId, (String, NodeKind)> {
-        self.nodes
-            .values()
-            .filter(|node| Some(&node.id) != self.root.as_ref())
-            .filter_map(|node| Some((node.id.clone(), (self.path_of(&node.id)?, node.kind))))
-            .collect()
+    fn located_all(&self) -> Vec<Located> {
+        let ids: Vec<EntityId> = self
+            .nodes
+            .keys()
+            .filter(|id| Some(*id) != self.root.as_ref())
+            .cloned()
+            .collect();
+        self.located(&ids)
     }
+}
+
+fn changes_between(before: Vec<Located>, after: Vec<Located>) -> Vec<PathChange> {
+    let before: BTreeMap<EntityId, (String, NodeKind)> = before
+        .into_iter()
+        .map(|(id, path, kind)| (id, (path, kind)))
+        .collect();
+    let after: BTreeMap<EntityId, (String, NodeKind)> = after
+        .into_iter()
+        .map(|(id, path, kind)| (id, (path, kind)))
+        .collect();
+    let mut removed: Vec<Located> = before
+        .iter()
+        .filter(|(id, _)| !after.contains_key(*id))
+        .map(|(id, (path, kind))| (id.clone(), path.clone(), *kind))
+        .collect();
+    let mut added: Vec<Located> = after
+        .iter()
+        .filter(|(id, _)| !before.contains_key(*id))
+        .map(|(id, (path, kind))| (id.clone(), path.clone(), *kind))
+        .collect();
+    let mut moved: Vec<PathChange> = after
+        .iter()
+        .filter_map(|(id, (to, kind))| {
+            let (from, _) = before.get(id)?;
+            (from != to).then(|| PathChange::Moved {
+                id: id.clone(),
+                from: from.clone(),
+                to: to.clone(),
+                kind: *kind,
+            })
+        })
+        .collect();
+    let mut replaced = Vec::new();
+    removed.retain(
+        |(old, path, from)| match added.iter().position(|(_, at, _)| at == path) {
+            Some(index) => {
+                let (new, _, to) = added.remove(index);
+                replaced.push(PathChange::Replaced {
+                    old: old.clone(),
+                    new,
+                    path: path.clone(),
+                    from: *from,
+                    to,
+                });
+                false
+            }
+            None => true,
+        },
+    );
+    removed.sort_by(|left, right| left.1.cmp(&right.1));
+    added.sort_by(|left, right| left.1.cmp(&right.1));
+    moved.sort_by(|left, right| path_key(left).cmp(path_key(right)));
+    let mut changes: Vec<PathChange> = removed
+        .into_iter()
+        .map(|(id, path, kind)| PathChange::Removed { id, path, kind })
+        .collect();
+    changes.append(&mut moved);
+    changes.append(&mut replaced);
+    changes.extend(
+        added
+            .into_iter()
+            .map(|(id, path, kind)| PathChange::Added { id, path, kind }),
+    );
+    changes
 }
 
 fn path_key(change: &PathChange) -> &str {

@@ -252,6 +252,7 @@ pub enum Fault {
     LoseReply,
     Delay(Duration),
     Reply(u16, String),
+    Truncate(usize),
 }
 
 #[derive(Clone, Debug)]
@@ -463,6 +464,13 @@ struct Folder {
 }
 
 impl Folder {
+    fn find(&self, id: &str) -> Option<&Folder> {
+        if self.id == id {
+            return Some(self);
+        }
+        self.folders.iter().find_map(|folder| folder.find(id))
+    }
+
     fn find_mut(&mut self, id: &str) -> Option<&mut Folder> {
         if self.id == id {
             return Some(self);
@@ -551,9 +559,11 @@ struct State {
     stalled: bool,
     down: bool,
     held_updates: Option<Vec<(String, String, Value)>>,
+    csrf: String,
 }
 
 const RATE_LIMITED: &str = "Rate limit reached, please try again later";
+const DUPLICATE_NAME: &str = "A file or folder with this name already exists";
 const NOT_HANDSHAKEN: &str = "7:::1+0";
 
 fn now_ms() -> u128 {
@@ -594,6 +604,7 @@ impl State {
             main_bibliography: None,
             track_changes: project.track_changes.clone(),
             format: project.format,
+            csrf: MOCK_CSRF.to_string(),
             root: Folder::default(),
             root_doc: None,
             docs: BTreeMap::new(),
@@ -999,7 +1010,7 @@ impl State {
             return Reply::status(302).header("Location", "/login");
         };
         let metas = [
-            ("ol-csrfToken", MOCK_CSRF.to_string()),
+            ("ol-csrfToken", self.csrf.clone()),
             ("ol-user_id", user.id.clone()),
             ("ol-usersEmail", user.email.clone()),
             (
@@ -1541,7 +1552,7 @@ impl State {
             return Err(text_reply(401, "Unauthorized"));
         };
         let writes = method != "GET";
-        if writes && headers.get("x-csrf-token").map(String::as_str) != Some(MOCK_CSRF) {
+        if writes && headers.get("x-csrf-token") != Some(&self.csrf) {
             return Err(text_reply(403, "Forbidden"));
         }
         let Some(privilege) = self.privilege(&user) else {
@@ -1592,6 +1603,20 @@ impl State {
         json_reply(&json!({ "project_id": self.project_id, "entities": entities }))
     }
 
+    fn name_taken(&self, folder: &str, name: &str) -> Option<Reply> {
+        let found = self.root.find(folder)?;
+        let taken = found.folders.iter().any(|child| child.name == name)
+            || found
+                .docs
+                .iter()
+                .any(|id| self.docs.get(id).is_some_and(|doc| doc.name == name))
+            || found
+                .files
+                .iter()
+                .any(|id| self.files.get(id).is_some_and(|file| file.name == name));
+        taken.then(|| text_reply(400, DUPLICATE_NAME))
+    }
+
     fn create_doc(&mut self, request: &Value, user: &str) -> Reply {
         let (Some(name), Some(parent)) = (
             request["name"].as_str(),
@@ -1599,6 +1624,9 @@ impl State {
         ) else {
             return Reply::status(400);
         };
+        if let Some(refused) = self.name_taken(parent, name) {
+            return refused;
+        }
         match self.add_doc(parent, name, "", user, "editor") {
             Some(id) => json_reply(&json!({ "_id": id, "name": name })),
             None => Reply::status(404),
@@ -1612,6 +1640,9 @@ impl State {
         ) else {
             return Reply::status(400);
         };
+        if let Some(refused) = self.name_taken(parent, name) {
+            return refused;
+        }
         let id = self.new_id();
         let Some(folder) = self.root.find_mut(parent) else {
             return Reply::status(404);
@@ -1933,7 +1964,7 @@ impl State {
     fn page(&self, user: &str, query: &HashMap<String, String>) -> Reply {
         let fallback = query.get("ws").map(String::as_str) == Some("fallback");
         let mut metas = vec![
-            ("ol-csrfToken", "", MOCK_CSRF.to_string()),
+            ("ol-csrfToken", "", self.csrf.clone()),
             ("ol-user_id", "", user.to_string()),
             ("ol-project_id", "", self.project_id.clone()),
             ("ol-maxDocLength", "json", MAX_DOC_LENGTH.to_string()),
@@ -2277,6 +2308,17 @@ async fn write_reply(stream: &mut TcpStream, reply: Reply) {
     let _ = stream.write_all(&reply.body).await;
 }
 
+async fn write_short_reply(stream: &mut TcpStream, mut reply: Reply, keep: usize) {
+    let head = format!(
+        "HTTP/1.1 {} X\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+        reply.status,
+        reply.body.len()
+    );
+    reply.body.truncate(keep);
+    let _ = stream.write_all(head.as_bytes()).await;
+    let _ = stream.write_all(&reply.body).await;
+}
+
 impl MockOverleaf {
     pub async fn start(project: MockProject) -> MockOverleaf {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -2328,6 +2370,9 @@ impl MockOverleaf {
         match fault {
             Some(Fault::LoseReply) => return,
             Some(Fault::Delay(delay)) => tokio::time::sleep(delay).await,
+            Some(Fault::Truncate(keep)) => {
+                return write_short_reply(&mut stream, reply, keep).await
+            }
             _ => {}
         }
         write_reply(&mut stream, reply).await;
@@ -2784,6 +2829,13 @@ impl MockOverleaf {
 
     pub fn recover(&self) {
         self.state().down = false;
+    }
+
+    pub fn rotate_csrf(&self) -> String {
+        let mut state = self.state();
+        state.next_id += 1;
+        state.csrf = format!("{MOCK_CSRF}-{}", state.next_id);
+        state.csrf.clone()
     }
 
     pub fn plan_fault(&self, method: Option<&str>, prefix: &str, fault: Fault) {
