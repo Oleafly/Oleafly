@@ -14,7 +14,7 @@ services:
       - oleafly-data:/data
 
   caddy:
-    image: caddy:2.11.7
+    image: caddy:2.11.8
     restart: unless-stopped
     depends_on:
       - oleafly-server
