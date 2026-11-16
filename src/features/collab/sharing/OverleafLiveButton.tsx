@@ -1,6 +1,7 @@
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
-import { ExternalLink, LogIn, Pause, Play, RefreshCw, UserPlus } from "lucide-react";
+import { ClipboardCopy, ExternalLink, LogIn, Pause, Play, RefreshCw, UserPlus } from "lucide-react";
 import { PauseLiveDialog } from "@/components/layout/overleaf-sync/PauseLiveDialog";
 import { usePauseLive } from "@/components/layout/overleaf-sync/use-pause-live";
 import { OverleafBrandIcon } from "@/components/settings/IntegrationBrandIcons";
@@ -14,13 +15,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip } from "@/components/ui/tooltip";
+import { useNow } from "@/hooks/use-now";
+import { writeClipboardText } from "@/lib/clipboard";
 import { overleafLiveActions } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
-import { overleafProjectPage, type OverleafLiveProject } from "@/lib/overleaf-live";
+import { overleafLiveConnectionDetails, overleafProjectPage, type OverleafLiveProject } from "@/lib/overleaf-live";
 import { collabLiveReconnectNow } from "@/lib/tauri-collab";
+import { notifyError, toast } from "@/lib/toast";
 import { useSettingsStore } from "@/store/settings";
 import { type CollabLiveStoreState, useCollabLiveStore } from "../live/live-store";
-import { SyncStateIcon, useSyncWords } from "./sync-display";
+import { useOverleafNotices } from "../live/overleaf-notices";
+import { SyncStateIcon, useQuietDrop, useSyncWords } from "./sync-display";
 import { type SyncState, syncState } from "./sync-state";
 
 export function overleafSyncState(state: CollabLiveStoreState): SyncState {
@@ -29,10 +34,38 @@ export function overleafSyncState(state: CollabLiveStoreState): SyncState {
   return syncState(state.status, state.pending);
 }
 
+function useRetryIn(): number | null {
+  const status = useCollabLiveStore((live) => live.status);
+  const [until, setUntil] = useState<number | null>(null);
+  const now = useNow(1_000);
+  useEffect(() => {
+    setUntil(status?.state === "offline" ? Date.now() + status.retry_in_ms : null);
+  }, [status]);
+  if (until === null) return null;
+  const seconds = Math.round((until - now) / 1_000);
+  return seconds > 0 ? seconds : null;
+}
+
 function useOverleafWords(state: SyncState): { words: string; plain: string } {
+  const { t } = useTranslation(["shell"]);
   const pending = useCollabLiveStore((live) => live.pending);
+  const slowAck = useOverleafNotices((notices) => notices.slowAck);
+  const retryIn = useRetryIn();
   const plain = useSyncWords(state, pending);
-  return { words: useLiveWords(state, plain), plain };
+  const notes = [useLiveWords(state, plain)];
+  const dropped = state === "offline" || state === "reconnecting";
+  if (dropped && retryIn !== null) notes.push(t(($) => $.shell.overleafLive.reconnectingIn, { seconds: retryIn }));
+  if (slowAck) notes.push(t(($) => $.shell.overleafLive.notConfirmed));
+  return { words: notes.join(" "), plain };
+}
+
+function copyDetails(projectId: string, copied: string, failed: string) {
+  overleafLiveConnectionDetails(projectId)
+    .then((details) => writeClipboardText(JSON.stringify(details, null, 2)))
+    .then(
+      () => toast.success(copied),
+      (error: unknown) => notifyError("copy overleaf connection details", error, failed),
+    );
 }
 
 function useLiveWords(state: SyncState, words: string): string {
@@ -53,7 +86,7 @@ export function OverleafLiveButton() {
   const projectId = useCollabLiveStore((state) => state.projectId);
   const link = useCollabLiveStore((state) => state.overleaf);
   const live = useCollabLiveStore((state) => state.backend === "overleaf" && state.status?.state !== "ended");
-  const state = useCollabLiveStore(overleafSyncState);
+  const state = useQuietDrop(useCollabLiveStore(overleafSyncState));
   const { words, plain } = useOverleafWords(state);
   const { unsent, busy, pause, keepLive } = usePauseLive();
   if (!projectId || !link) return null;
@@ -111,6 +144,21 @@ export function OverleafLiveButton() {
             >
               <RefreshCw className="size-4 text-muted-foreground" />
               {t(($) => $.shell.overleafLive.reconnectNow)}
+            </DropdownMenuItem>
+          ) : null}
+          {live ? (
+            <DropdownMenuItem
+              data-testid="overleaf-live-copy-details"
+              onSelect={() =>
+                copyDetails(
+                  projectId,
+                  t(($) => $.shell.overleafLive.detailsCopied),
+                  t(($) => $.shell.overleafLive.copyDetailsFailed),
+                )
+              }
+            >
+              <ClipboardCopy className="size-4 text-muted-foreground" />
+              {t(($) => $.shell.overleafLive.copyDetails)}
             </DropdownMenuItem>
           ) : null}
           {state === "signedOut" ? (

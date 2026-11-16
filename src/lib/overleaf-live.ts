@@ -1,3 +1,4 @@
+import type { OverleafConnectionDetails } from "@oleafly/backend-port";
 import { invoke } from "@tauri-apps/api/core";
 import type { CollabLiveInfo } from "@/lib/tauri";
 
@@ -27,6 +28,12 @@ export const overleafLivePause = (projectId: string, anyway = false) =>
 export const overleafLiveResume = (projectId: string) => invoke<void>("overleaf_live_resume", { projectId });
 
 export const overleafLiveUnlink = (projectId: string) => invoke<void>("overleaf_live_unlink", { projectId });
+
+export const overleafLiveResolve = (projectId: string, path: string, keep: "mine" | "theirs") =>
+  invoke<void>("overleaf_live_resolve", { projectId, path, keep });
+
+export const overleafLiveConnectionDetails = (projectId: string) =>
+  invoke<OverleafConnectionDetails>("overleaf_live_connection_details", { projectId });
 
 export function overleafProjectPage(link: Pick<OverleafLiveProject, "server" | "remoteId">): string {
   return `${link.server.replace(/\/+$/u, "")}/project/${encodeURIComponent(link.remoteId)}`;

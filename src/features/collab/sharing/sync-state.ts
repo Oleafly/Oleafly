@@ -1,5 +1,7 @@
 import type { CollabLiveEndedReason, CollabLiveSyncState } from "@/lib/tauri";
 
+export const RECONNECTING_AFTER_MS = 1_000;
+
 export const SYNC_STATES = [
   "upToDate",
   "syncing",

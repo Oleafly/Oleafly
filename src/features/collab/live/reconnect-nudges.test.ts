@@ -69,4 +69,16 @@ describe("reconnect nudges", () => {
     window.dispatchEvent(new Event("online"));
     expect(mocks.collabLiveReconnectNow).toHaveBeenCalledTimes(1);
   });
+
+  it("nudges when the user types while offline, and only then", () => {
+    stop?.();
+    let offline = false;
+    stop = startReconnectNudges(() => offline);
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));
+    expect(mocks.collabLiveReconnectNow).not.toHaveBeenCalled();
+    offline = true;
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "b" }));
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "c" }));
+    expect(mocks.collabLiveReconnectNow).toHaveBeenCalledOnce();
+  });
 });

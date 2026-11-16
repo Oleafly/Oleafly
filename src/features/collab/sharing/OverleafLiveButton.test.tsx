@@ -12,10 +12,23 @@ vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/tauri-collab")>()),
   collabLiveReconnectNow: vi.fn(async () => undefined),
 }));
+vi.mock("@/lib/overleaf-live", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/overleaf-live")>()),
+  overleafLiveConnectionDetails: vi.fn(async () => ({
+    server: "https://www.overleaf.com",
+    transport: "websocket",
+    publicId: "P.1",
+    lastRejection: null,
+    pendingDocs: ["main.tex"],
+  })),
+}));
+vi.mock("@/lib/clipboard", () => ({ writeClipboardText: vi.fn(async () => undefined) }));
 
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { installOverleafLiveActions } from "@/lib/collab-live-bridge";
+import { writeClipboardText } from "@/lib/clipboard";
 import { collabLiveReconnectNow } from "@/lib/tauri-collab";
+import { useOverleafNotices } from "../live/overleaf-notices";
 import type { OverleafLiveProject } from "@/lib/overleaf-live";
 import type { CollabLiveSyncState } from "@/lib/tauri";
 import { useSettingsStore } from "@/store/settings";
@@ -56,8 +69,8 @@ describe("OverleafLiveButton", () => {
     ["online", { status: { state: "online" } as CollabLiveSyncState }, enCollab.sync.upToDate],
     ["connecting", { status: { state: "connecting" } as CollabLiveSyncState }, live.connecting],
     ["sending", { status: { state: "online" } as CollabLiveSyncState, pending: 2 }, live.sending],
-    ["reconnecting", { status: { state: "offline", retry_in_ms: 1000 } as CollabLiveSyncState }, live.reconnecting],
-    ["offline with work waiting", { status: { state: "offline", retry_in_ms: 1000 } as CollabLiveSyncState, pending: 3 }, enCollab.sync.offline.replace("{{number}}", "3")],
+    ["reconnecting", { status: { state: "offline", retry_in_ms: 0 } as CollabLiveSyncState }, live.reconnecting],
+    ["offline with work waiting", { status: { state: "offline", retry_in_ms: 0 } as CollabLiveSyncState, pending: 3 }, enCollab.sync.offline.replace("{{number}}", "3")],
     ["paused", { backend: null, status: null, overleaf: link({ paused: true }) }, enCollab.sync.paused],
     ["signed out", { status: { state: "signed_out" } as CollabLiveSyncState }, enCollab.sync.signedOut],
   ] as const)("says the project is %s", async (_label, state, words) => {
@@ -125,5 +138,36 @@ describe("OverleafLiveButton", () => {
     show({});
     await openMenu();
     expect(screen.queryByRole("menuitem", { name: live.reconnectNow })).toBeNull();
+  });
+
+  it("counts down to the next try while offline", async () => {
+    show({ status: { state: "offline", retry_in_ms: 8_000 } });
+    await openMenu();
+    expect(screen.getByTestId("overleaf-live-status").textContent).toBe(
+      `${live.reconnecting} ${live.reconnectingIn.replace("{{seconds}}", "8")}`,
+    );
+  });
+
+  it("says when the last change is still unconfirmed", async () => {
+    useOverleafNotices.setState({ slowAck: true });
+    show({ status: { state: "online" }, pending: 1 });
+    await openMenu();
+    expect(screen.getByTestId("overleaf-live-status").textContent).toBe(`${live.sending} ${live.notConfirmed}`);
+    useOverleafNotices.setState({ slowAck: false });
+  });
+
+  it("copies the connection details", async () => {
+    show({});
+    const user = await openMenu();
+    await user.click(screen.getByRole("menuitem", { name: live.copyDetails }));
+    await waitFor(() => expect(writeClipboardText).toHaveBeenCalledOnce());
+    const copied = JSON.parse(vi.mocked(writeClipboardText).mock.calls[0][0]);
+    expect(copied).toEqual({
+      server: "https://www.overleaf.com",
+      transport: "websocket",
+      publicId: "P.1",
+      lastRejection: null,
+      pendingDocs: ["main.tex"],
+    });
   });
 });

@@ -41,6 +41,7 @@ vi.mock("@/lib/tauri-collab", () => ({
   onCollabLiveUnwritten: listener("unwritten"),
   onCollabLiveDocPending: listener("docPending"),
   onOverleafLiveAccountChanged: listener("accountChanged"),
+  onOverleafLiveNotice: listener("overleafNotice"),
   onCollabLiveProjectFull: listener("projectFull"),
 }));
 vi.mock("@/lib/overleaf-live", () => ({

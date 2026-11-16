@@ -1,4 +1,4 @@
-import type { ComponentType, SVGProps } from "react";
+import { type ComponentType, type SVGProps, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Archive,
@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
-import type { SyncState } from "./sync-state";
+import { RECONNECTING_AFTER_MS, type SyncState } from "./sync-state";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -76,3 +76,19 @@ export function useSyncWords(state: SyncState, pending: number): string {
   return t(($) => $.collab.sync[state]);
 }
 
+
+const DROPPED: ReadonlySet<SyncState> = new Set(["offline", "reconnecting"]);
+
+export function useQuietDrop(state: SyncState): SyncState {
+  const [shown, setShown] = useState(state);
+  const dropped = DROPPED.has(state);
+  useEffect(() => {
+    if (!dropped) {
+      setShown(state);
+      return;
+    }
+    const timer = window.setTimeout(() => setShown(state), RECONNECTING_AFTER_MS);
+    return () => window.clearTimeout(timer);
+  }, [state, dropped]);
+  return dropped && !DROPPED.has(shown) ? shown : state;
+}

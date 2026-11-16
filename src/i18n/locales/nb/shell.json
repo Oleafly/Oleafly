@@ -1659,6 +1659,11 @@
     "open": "Open in Overleaf",
     "share": "Share on Overleaf…",
     "signIn": "Sign in…",
+    "reconnectingIn": "Trying again in {{seconds}} s.",
+    "notConfirmed": "Overleaf hasn't confirmed your last change yet.",
+    "copyDetails": "Copy connection details",
+    "detailsCopied": "Connection details copied",
+    "copyDetailsFailed": "Couldn't copy the connection details",
     "pauseDialog": {
       "title": "Some changes haven't reached Overleaf yet",
       "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",

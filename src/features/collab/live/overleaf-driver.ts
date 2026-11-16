@@ -12,6 +12,7 @@ import { useOverleafImportStore } from "@/store/overleaf-import";
 import { useSettingsStore } from "@/store/settings";
 import type { CollabLiveStoreState, LiveBackendDriver } from "./live-store";
 import { useCollabLiveStore } from "./live-store";
+import { startOverleafNotices } from "./overleaf-notices";
 
 export function wantsOverleaf(state: CollabLiveStoreState): boolean {
   const link = state.overleaf;
@@ -78,7 +79,9 @@ export function startOverleafLive(): () => void {
       await loadOverleaf(projectId);
     },
   });
+  const stopNotices = startOverleafNotices();
   return () => {
+    stopNotices();
     uninstall();
     unsubscribeSignIn();
     unsubscribePref();

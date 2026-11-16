@@ -20,7 +20,7 @@ export function startLive(): () => void {
     drivers: [serverDriver(() => useCollabLiveStore.getState().refreshShare()), overleafDriver()],
   });
   const stopServers = watchServers();
-  const stopNudges = startReconnectNudges();
+  const stopNudges = startReconnectNudges(() => useCollabLiveStore.getState().status?.state === "offline");
   return () => {
     stopNudges();
     stopServers();

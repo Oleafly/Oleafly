@@ -1318,6 +1318,22 @@
     "signedOut": "You're signed out of {{server}}, so this project isn't syncing. You can keep typing. Your changes stay on this computer and go to Overleaf once you sign in again.",
     "accountChangedOne": "You're signed in with a different account now, so the changes you made as {{email}} weren't sent. They're kept as {{copy}}.",
     "accountChangedMany": "You're signed in with a different account now, so the changes you made as {{email}} weren't sent. They're kept as copies next to their files:",
-    "keptAs": "{{file}} is kept as {{copy}}"
+    "keptAs": "{{file}} is kept as {{copy}}",
+    "maintenance": "Overleaf says: {{message}}",
+    "maintenanceWait": "Reconnecting in {{seconds}} s. You can keep typing.",
+    "reconnecting": "Reconnecting…",
+    "merged": "Merged changes from Overleaf into {{path}}.",
+    "showChanges": "Show changes",
+    "mergedTitle": "Changes merged into {{path}}",
+    "mergedDescription": "What the merge changed in your text.",
+    "review": "{{path}} changed here and on Overleaf. Choose which version to keep.",
+    "compare": "Compare",
+    "useMine": "Use mine",
+    "useTheirs": "Use Overleaf's",
+    "reviewTitle": "{{path}}: yours and Overleaf's",
+    "reviewDescription": "Use mine sends your text to Overleaf. Use Overleaf's keeps your text as a copy beside the file.",
+    "resolveFailed": "Couldn't apply your choice for {{path}}. Try again.",
+    "unsteady": "Overleaf keeps disconnecting {{path}} after someone else's edits. It reconnects on its own.",
+    "diffLabel": "Differences"
   }
 }

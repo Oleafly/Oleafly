@@ -1946,6 +1946,20 @@ export interface CollabLiveKept {
   projectId: string;
   files: CollabLiveKeptFile[];
 }
+export type OverleafLiveNotice = { projectId: string } & (
+  | { kind: "merged"; path: string; before: string; after: string }
+  | { kind: "needs_review"; path: string; mine: string; theirs: string }
+  | { kind: "maintenance"; message: string; delayMs: number }
+  | { kind: "slow_ack"; waiting: boolean }
+  | { kind: "unsteady"; path: string }
+);
+export interface OverleafConnectionDetails {
+  server: string;
+  transport: string | null;
+  publicId: string | null;
+  lastRejection: string | null;
+  pendingDocs: string[];
+}
 export interface CollabLocalCopyOffer {
   copyId: string;
   name: string;
