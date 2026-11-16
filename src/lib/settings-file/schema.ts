@@ -550,6 +550,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.editor.ghostCompletion", "editorGhostCompletion", bool),
   pref("appearance.editor.autoCloseBrackets", "editorAutoCloseBrackets", bool),
   pref("appearance.editor.autoCloseMath", "editorAutoCloseMath", bool),
+  pref("appearance.editor.groupScripts", "editorGroupScripts", bool),
   pref("appearance.editor.autoCloseEnvironments", "editorAutoCloseEnvironments", bool),
   pref("appearance.editor.updateReferencesOnMove", "fileMoveReferences", oneOf(FILE_MOVE_REFERENCE_OPTIONS)),
   pref("appearance.editor.typst.formatOnSave", "typstFormatOnSave", bool),

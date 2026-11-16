@@ -755,6 +755,10 @@
         "description": "Ghép cặp $, \\( và \\[ khi bạn nhập.",
         "label": "Tự đóng công thức"
       },
+      "groupScripts": {
+        "description": "Bọc chỉ số dưới hoặc chỉ số trên trong ngoặc nhọn khi nó dài hơn một ký tự, nên x^10 thành x^{10}. Trong Typst, x^-1 thành x^(-1).",
+        "label": "Thêm ngoặc nhọn cho chỉ số dưới và trên"
+      },
       "autocomplete": {
         "description": "Hiện gợi ý mã khi bạn nhập. Ctrl+Space vẫn mở gợi ý khi tắt tuỳ chọn này.",
         "label": "Tự động hoàn thành"

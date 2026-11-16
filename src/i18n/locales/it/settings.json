@@ -767,6 +767,10 @@
         "description": "Accoppia $, \\( e \\[ mentre scrivi.",
         "label": "Chiusura automatica della matematica"
       },
+      "groupScripts": {
+        "description": "Racchiude un pedice o un apice tra graffe appena supera un carattere, così x^10 diventa x^{10}. In Typst, x^-1 diventa x^(-1).",
+        "label": "Graffe per pedici e apici"
+      },
       "autocomplete": {
         "description": "Mostra i completamenti di codice mentre scrivi. Ctrl+Space li apre comunque quando è disattivato.",
         "label": "Completamento automatico"

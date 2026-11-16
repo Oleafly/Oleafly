@@ -560,6 +560,12 @@ function EditorAppearanceTab() {
   const setEditorAutoCloseMath = useSettingsStore(
     (state) => state.setEditorAutoCloseMath,
   );
+  const editorGroupScripts = useSettingsStore(
+    (state) => state.editorGroupScripts,
+  );
+  const setEditorGroupScripts = useSettingsStore(
+    (state) => state.setEditorGroupScripts,
+  );
   const editorAutoCloseEnvironments = useSettingsStore(
     (state) => state.editorAutoCloseEnvironments,
   );
@@ -877,6 +883,12 @@ function EditorAppearanceTab() {
         description={t(($) => $.settings.appearance.editor.autoCloseMath.description)}
         checked={editorAutoCloseMath}
         onChange={setEditorAutoCloseMath}
+      />
+      <SettingsToggleRow
+        label={t(($) => $.settings.appearance.editor.groupScripts.label)}
+        description={t(($) => $.settings.appearance.editor.groupScripts.description)}
+        checked={editorGroupScripts}
+        onChange={setEditorGroupScripts}
       />
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.editor.autoCloseEnvironments.label)}

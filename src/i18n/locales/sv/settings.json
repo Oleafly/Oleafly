@@ -761,6 +761,10 @@
         "description": "Para ihop $, \\( och \\[ medan du skriver.",
         "label": "Stäng matematik automatiskt"
       },
+      "groupScripts": {
+        "description": "Sätter klammerparenteser runt ett nedsänkt eller upphöjt index så fort det blir längre än ett tecken, så x^10 blir x^{10}. I Typst blir x^-1 till x^(-1).",
+        "label": "Klammerparenteser runt index och exponenter"
+      },
       "autocomplete": {
         "description": "Visa kodkompletteringar medan du skriver. Ctrl+Space öppnar dem ändå när det här är av.",
         "label": "Automatisk komplettering"

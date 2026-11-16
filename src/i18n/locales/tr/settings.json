@@ -761,6 +761,10 @@
         "description": "Siz yazdıkça $, \\( ve \\[ işaretlerini eşler.",
         "label": "Matematiği otomatik kapat"
       },
+      "groupScripts": {
+        "description": "Alt veya üst simge bir karakterden uzun olunca onu süslü paranteze alır. Böylece x^10, x^{10} olur. Typst'te x^-1, x^(-1) olur.",
+        "label": "Alt ve üst simgelere süslü parantez"
+      },
       "autocomplete": {
         "description": "Siz yazdıkça kod tamamlamalarını gösterir. Bu kapalıyken de Ctrl+Space onları açar.",
         "label": "Otomatik tamamlama"

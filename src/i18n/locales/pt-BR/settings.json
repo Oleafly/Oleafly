@@ -767,6 +767,10 @@
         "description": "Emparelha $, \\( e \\[ enquanto você digita.",
         "label": "Fechar matemática automaticamente"
       },
+      "groupScripts": {
+        "description": "Coloca chaves em um subscrito ou sobrescrito assim que ele passa de um caractere, então x^10 vira x^{10}. No Typst, x^-1 vira x^(-1).",
+        "label": "Chaves em subscritos e sobrescritos"
+      },
       "autocomplete": {
         "description": "Mostra sugestões de código enquanto você digita. Ctrl+Space continua abrindo as sugestões quando isso está desligado.",
         "label": "Autocompletar"

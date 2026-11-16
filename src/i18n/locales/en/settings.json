@@ -761,6 +761,10 @@
         "description": "Pair $, \\( and \\[ as you type.",
         "label": "Auto-close math"
       },
+      "groupScripts": {
+        "description": "Wrap a subscript or superscript in braces once it is longer than one character, so x^10 becomes x^{10}. In Typst, x^-1 becomes x^(-1).",
+        "label": "Brace subscripts and superscripts"
+      },
       "autocomplete": {
         "description": "Show code completions as you type. Ctrl+Space still opens them when this is off.",
         "label": "Auto-complete"

@@ -755,6 +755,10 @@
         "description": "输入时自动配对 $、\\( 和 \\[。",
         "label": "自动闭合公式"
       },
+      "groupScripts": {
+        "description": "上标或下标超过一个字符时自动加上花括号，例如 x^10 变成 x^{10}。在 Typst 中，x^-1 变成 x^(-1)。",
+        "label": "上下标自动加花括号"
+      },
       "autocomplete": {
         "description": "输入时显示代码补全。关闭后仍可用 Ctrl+Space 打开。",
         "label": "自动补全"

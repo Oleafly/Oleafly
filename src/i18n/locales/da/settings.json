@@ -761,6 +761,10 @@
         "description": "Par $, \\( og \\[, mens du skriver.",
         "label": "Luk matematik automatisk"
       },
+      "groupScripts": {
+        "description": "Sætter krøllede parenteser om sænket eller hævet skrift, så snart det er mere end ét tegn, så x^10 bliver til x^{10}. I Typst bliver x^-1 til x^(-1).",
+        "label": "Klammer om sænket og hævet skrift"
+      },
       "autocomplete": {
         "description": "Vis kodefuldførelser, mens du skriver. Ctrl+Space åbner dem stadig, når dette er slået fra.",
         "label": "Automatisk fuldførelse"

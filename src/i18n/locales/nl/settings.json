@@ -761,6 +761,10 @@
         "description": "Vul $, \\( en \\[ aan terwijl je typt.",
         "label": "Wiskunde automatisch sluiten"
       },
+      "groupScripts": {
+        "description": "Zet een subscript of superscript tussen accolades zodra het langer is dan één teken, zodat x^10 x^{10} wordt. In Typst wordt x^-1 x^(-1).",
+        "label": "Accolades om sub- en superscript"
+      },
       "autocomplete": {
         "description": "Toon code-aanvullingen terwijl je typt. Ctrl+Space opent ze nog steeds als dit uitstaat.",
         "label": "Automatisch aanvullen"

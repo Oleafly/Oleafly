@@ -773,6 +773,10 @@
         "description": "Při psaní párovat $, \\( a \\[.",
         "label": "Automatické uzavírání matematiky"
       },
+      "groupScripts": {
+        "description": "Jakmile má dolní nebo horní index víc než jeden znak, obalí ho složenými závorkami, takže z x^10 je x^{10}. V Typstu je z x^-1 x^(-1).",
+        "label": "Složené závorky u indexů a exponentů"
+      },
       "autocomplete": {
         "description": "Zobrazovat doplňování kódu už při psaní. Když je vypnuté, otevřete je pomocí Ctrl+Space.",
         "label": "Automatické doplňování"

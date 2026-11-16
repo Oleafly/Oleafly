@@ -773,6 +773,10 @@
         "description": "Paruj $, \\( i \\[ podczas pisania.",
         "label": "Automatyczne zamykanie wzorów"
       },
+      "groupScripts": {
+        "description": "Obejmuje indeks dolny lub górny nawiasami klamrowymi, gdy ma więcej niż jeden znak, więc x^10 zmienia się w x^{10}. W Typst x^-1 zmienia się w x^(-1).",
+        "label": "Nawiasy klamrowe w indeksach"
+      },
       "autocomplete": {
         "description": "Pokazuj uzupełnienia kodu podczas pisania. Ctrl+Space nadal je otwiera, gdy ta opcja jest wyłączona.",
         "label": "Autouzupełnianie"
