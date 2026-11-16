@@ -139,6 +139,8 @@ pub enum ResearchDocumentEngine {
     Latex,
     Typst,
     Markdown,
+    Quarto,
+    Calepin,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
