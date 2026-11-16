@@ -38,6 +38,61 @@ pub enum DocError {
     OutOfStep,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DocFault {
+    DeleteMismatch,
+    BadHash,
+    TooLong,
+    TooLarge,
+    TooManyRanges,
+    TypeMismatch,
+    Unsupported(String),
+    Refused(String),
+}
+
+const SERVER_FAULTS: [(&str, DocFault); 6] = [
+    ("delete component", DocFault::DeleteMismatch),
+    ("invalid hash", DocFault::BadHash),
+    ("max doc size", DocFault::TooLong),
+    ("update is too large", DocFault::TooLarge),
+    (
+        "too many comments or tracked changes",
+        DocFault::TooManyRanges,
+    ),
+    ("ot type mismatch", DocFault::TypeMismatch),
+];
+
+impl DocFault {
+    pub fn from_server(message: &str) -> DocFault {
+        let lower = message.to_lowercase();
+        SERVER_FAULTS
+            .iter()
+            .find(|(text, _)| lower.contains(text))
+            .map_or_else(
+                || DocFault::Refused(message.to_string()),
+                |(_, fault)| fault.clone(),
+            )
+    }
+
+    pub fn is_limit(&self) -> bool {
+        matches!(
+            self,
+            DocFault::TooLong | DocFault::TooLarge | DocFault::TooManyRanges
+        )
+    }
+}
+
+impl Limit {
+    pub fn fault(self) -> Option<DocFault> {
+        match self {
+            Limit::DocLength => Some(DocFault::TooLong),
+            Limit::UpdateSize => Some(DocFault::TooLarge),
+            Limit::RangeCount => Some(DocFault::TooManyRanges),
+            Limit::Empty | Limit::BaseLength | Limit::TooOld => None,
+        }
+    }
+}
+
 enum Resend {
     Wait,
     Send(TextOperation),

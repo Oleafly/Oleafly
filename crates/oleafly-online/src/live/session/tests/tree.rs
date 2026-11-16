@@ -5,7 +5,7 @@ use std::time::{Duration, Instant};
 
 use serde_json::{json, Value};
 
-use super::super::state::State;
+use super::super::state::{Handshake, State};
 use super::super::{
     Account, DocStopReason, LivePort, LiveState, MergeReview, OverleafSession, SessionTuning,
 };
@@ -1118,7 +1118,10 @@ fn a_protocol_change_keeps_queued_moves_and_kept_away_hidden() {
     let mut changed = join;
     changed["protocolVersion"] = json!(3);
     changed["publicId"] = json!("P.after");
-    assert!(replay.state.rejoined(PublicId("P.after".into()), changed));
+    assert_eq!(
+        replay.state.rejoined(PublicId("P.after".into()), changed),
+        Handshake::Joined
+    );
     let paths = replay.paths();
     assert!(paths.contains(&"thesis.tex".to_string()), "{paths:?}");
     assert!(!paths.contains(&"main.tex".to_string()), "{paths:?}");

@@ -39,6 +39,7 @@ fn update(op: Value, tc: bool, user: &str) -> AppliedUpdate {
         user_id: Some(user.into()),
         tc: tc.then(|| "0123456789abcdef01".into()),
         dup: false,
+        external: false,
     }
 }
 

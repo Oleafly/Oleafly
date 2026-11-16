@@ -36,6 +36,7 @@ fn ack(v: u64) -> AppliedUpdate {
         user_id: None,
         tc: None,
         dup: false,
+        external: false,
     }
 }
 
@@ -48,6 +49,7 @@ fn remote(v: u64, op: Value) -> AppliedUpdate {
         user_id: Some("them".into()),
         tc: None,
         dup: false,
+        external: false,
     }
 }
 

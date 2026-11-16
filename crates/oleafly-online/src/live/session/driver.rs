@@ -9,7 +9,7 @@ use oleafly_net::reconnect::{backoff_step, backoff_wait, Reached};
 use serde_json::{json, Value};
 
 use super::pacing::{JoinPacer, Wait};
-use super::state::{now_ms, JoinKind, State};
+use super::state::{now_ms, Handshake, JoinKind, State};
 use super::{catch_up, LiveEnd, SessionConfig, Shared};
 use crate::error::OnlineErrorKind;
 use crate::live::join::parse_join;
@@ -548,7 +548,14 @@ impl Driver {
             }
             self.pacer.record(tokio::time::Instant::now());
             match self.connect().await? {
-                Ok((connection, join)) => return self.rejoined(connection, join),
+                Ok((connection, join)) => match self.rejoined(&connection, join) {
+                    Handshake::Joined => return Some(connection),
+                    Handshake::Ended => return None,
+                    Handshake::Unreadable => {
+                        let error = RealtimeError::Malformed("the project handshake".into());
+                        wait = self.retry(&error).await?;
+                    }
+                },
                 Err(error) => wait = self.retry(&error).await?,
             }
         }
@@ -630,23 +637,25 @@ impl Driver {
         .await
     }
 
-    fn rejoined(&mut self, connection: Connection, join: JoinProject) -> Option<Connection> {
-        self.connected_at = Instant::now();
-        self.online_since = tokio::time::Instant::now();
-        self.legacy_checked = false;
-        self.joined_once = true;
-        self.shared.nudged.store(false, Ordering::SeqCst);
-        {
-            let mut journal = self.shared.journal();
-            journal.remember_join(join.response.clone());
-            let _ = journal.flush();
-        }
+    fn rejoined(&mut self, connection: &Connection, join: JoinProject) -> Handshake {
         let public_id = connection.public_id().clone();
         self.shared
             .linked(connection.carrier().wire_name(), public_id.clone());
-        self.shared
-            .with(|state| state.rejoined(public_id, join.response))
-            .then_some(connection)
+        let response = join.response.clone();
+        let handshake = self
+            .shared
+            .with(|state| state.rejoined(public_id, join.response));
+        if handshake == Handshake::Joined {
+            self.connected_at = Instant::now();
+            self.online_since = tokio::time::Instant::now();
+            self.legacy_checked = false;
+            self.joined_once = true;
+            self.shared.nudged.store(false, Ordering::SeqCst);
+            let mut journal = self.shared.journal();
+            journal.remember_join(response);
+            let _ = journal.flush();
+        }
+        handshake
     }
 
     fn finish(&self) {

@@ -147,7 +147,7 @@ impl Mirror {
 enum Edit {
     Sent,
     Same,
-    NoBase,
+    NotLive,
 }
 
 pub struct OverleafLive {
@@ -335,7 +335,7 @@ pub(crate) fn refuse_overleaf_linked(
 
 fn live_error(error: LiveError) -> CollabError {
     match error {
-        LiveError::Ended | LiveError::UnknownDoc => super::session::not_live(),
+        LiveError::Ended | LiveError::UnknownDoc | LiveError::Stopped => super::session::not_live(),
         other => CollabError::Api {
             status: 409,
             code: "conflict".to_owned(),
@@ -480,21 +480,23 @@ impl OverleafLive {
     ) -> Result<Edit, CollabError> {
         if self.session.text(doc).is_none() && guard(&self.mirror.disk.bases).latest(path).is_none()
         {
-            return Ok(Edit::NoBase);
+            return Ok(Edit::NotLive);
         }
-        let changed = self
-            .session
-            .local_edit_with(doc, |current| {
-                if current == text {
-                    return None;
-                }
-                let op = base
-                    .and_then(|base| merged_onto(base, text, current))
-                    .unwrap_or_else(|| oleafly_ot::diff(current, text));
-                (!op.is_noop()).then_some(op)
-            })
-            .map_err(live_error)?;
-        Ok(if changed { Edit::Sent } else { Edit::Same })
+        let edited = self.session.local_edit_with(doc, |current| {
+            if current == text {
+                return None;
+            }
+            let op = base
+                .and_then(|base| merged_onto(base, text, current))
+                .unwrap_or_else(|| oleafly_ot::diff(current, text));
+            (!op.is_noop()).then_some(op)
+        });
+        match edited {
+            Ok(true) => Ok(Edit::Sent),
+            Ok(false) => Ok(Edit::Same),
+            Err(LiveError::Stopped) => Ok(Edit::NotLive),
+            Err(error) => Err(live_error(error)),
+        }
     }
 
     pub(crate) async fn write_text(
@@ -510,7 +512,7 @@ impl OverleafLive {
             });
         };
         let text = lf_text(text);
-        if self.edit_toward(&doc, path, base, &text)? == Edit::NoBase {
+        if self.edit_toward(&doc, path, base, &text)? == Edit::NotLive {
             return Ok(WriteOutcome {
                 handled: false,
                 reason: None,

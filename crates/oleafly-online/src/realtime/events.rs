@@ -47,6 +47,7 @@ pub struct AppliedUpdate {
     pub user_id: Option<String>,
     pub tc: Option<String>,
     pub dup: bool,
+    pub external: bool,
 }
 
 fn text(value: &Value, key: &str) -> Option<String> {
@@ -73,6 +74,7 @@ impl AppliedUpdate {
             user_id: text(meta, "user_id"),
             tc: text(meta, "tc"),
             dup: update.get("dup").and_then(Value::as_bool).unwrap_or(false),
+            external: meta.get("type").and_then(Value::as_str) == Some("external"),
         })
     }
 }
@@ -340,6 +342,7 @@ mod tests {
                 user_id: Some("u".into()),
                 tc: Some("abc".into()),
                 dup: false,
+                external: false,
             })
         );
         assert_eq!(
@@ -352,6 +355,7 @@ mod tests {
                 user_id: None,
                 tc: None,
                 dup: false,
+                external: false,
             })
         );
         assert_eq!(

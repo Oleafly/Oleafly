@@ -5,6 +5,7 @@ use oleafly_collab::sync::{EndReason, LiveStatus};
 use oleafly_collab::CollabError;
 use oleafly_collab_protocol::projects::ProjectRole;
 use oleafly_online::error::{OnlineError, OnlineErrorKind};
+use oleafly_online::live::doc::DocFault;
 use oleafly_online::live::session::{
     Account, DocStopReason, LiveEnd, LivePort, LiveState, MergeReview,
 };
@@ -117,7 +118,8 @@ fn end_reason(end: &LiveEnd) -> EndReason {
         LiveEnd::AccessEnded => EndReason::AccessEnded,
         LiveEnd::ProjectGone => EndReason::Removed,
         LiveEnd::Stopped => EndReason::Stopped,
-        LiveEnd::Unsupported(_) | LiveEnd::Failed(_) => EndReason::Failed,
+        LiveEnd::Unsupported(_) => EndReason::ClientTooOld,
+        LiveEnd::Failed(_) => EndReason::Failed,
     }
 }
 
@@ -304,10 +306,18 @@ impl LivePort for AppOverleafPort {
 }
 
 fn stop_reason(reason: &DocStopReason) -> String {
-    match reason {
-        DocStopReason::Unsupported(_) => "unsupported".to_owned(),
-        DocStopReason::TooLarge => "too_large".to_owned(),
-        DocStopReason::Removed => "removed".to_owned(),
-        DocStopReason::Server(_) => "server".to_owned(),
-    }
+    let name = match reason {
+        DocStopReason::Removed => "removed",
+        DocStopReason::Fault(fault) => match fault {
+            DocFault::DeleteMismatch => "delete_mismatch",
+            DocFault::BadHash => "bad_hash",
+            DocFault::TooLong => "too_long",
+            DocFault::TooLarge => "too_large",
+            DocFault::TooManyRanges => "too_many_ranges",
+            DocFault::TypeMismatch => "type_mismatch",
+            DocFault::Unsupported(_) => "unsupported",
+            DocFault::Refused(_) => "refused",
+        },
+    };
+    name.to_owned()
 }

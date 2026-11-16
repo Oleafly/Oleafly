@@ -147,6 +147,40 @@ fn a_compile_barrier_flushes_overleaf_texts_to_disk() {
 }
 
 #[test]
+fn a_faulted_file_detaches_its_tab_and_takes_plain_writes() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        let (main, intro) = (rig.doc(MAIN), rig.doc(INTRO));
+        let mut tab = rig.open(MAIN);
+        let mut other = rig.open(INTRO);
+        rig.mock.fail_updates(&main, "update is too large", 1);
+        tab.typed(&rig.live, "Hello\nkept\n");
+        eventually("the tab is detached as too large", || {
+            tab.inbox.lock().unwrap().iter().any(|message| {
+                matches!(message, DocMessage::Detached { reason } if reason == "too_large")
+            })
+        })
+        .await;
+        let outcome =
+            crate::collab::live::write::write_text("overleaf-rig", MAIN, None, "Hello\nplain\n")
+                .await
+                .unwrap();
+        assert!(!outcome.handled);
+        other.typed(&rig.live, "Intro\nstill live\n");
+        eventually("the other file stays live", || {
+            rig.mock.doc_text(&intro) == "Intro\nstill live\n"
+        })
+        .await;
+        assert_eq!(rig.mock.doc_text(&main), "Hello\n");
+        rig.finish().await;
+    });
+}
+
+#[test]
 fn an_agent_write_becomes_one_op_and_shows_in_the_open_tab() {
     run(async {
         let rig = OverleafRig::start(

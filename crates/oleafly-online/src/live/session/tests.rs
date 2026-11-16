@@ -14,6 +14,7 @@ use super::{
     SessionConfig, SessionTuning, SignedIn, UnsentDoc,
 };
 use crate::client::Http;
+use crate::live::doc::DocFault;
 use crate::live::format::{operation_of, pieces_from_json, FormatState};
 use crate::live::history_ot::RawOp;
 use crate::live::join::parse_join;
@@ -72,6 +73,8 @@ struct Seen {
     maintenance: Vec<(String, Duration)>,
     slow_acks: Vec<bool>,
     unsteady: Vec<DocId>,
+    external: Vec<DocId>,
+    replaced: Vec<DocId>,
 }
 
 #[derive(Default)]
@@ -174,6 +177,14 @@ impl LivePort for Port {
 
     fn doc_unsteady(&self, doc: &DocId) {
         self.seen().unsteady.push(doc.clone());
+    }
+
+    fn external_update(&self, doc: &DocId) {
+        self.seen().external.push(doc.clone());
+    }
+
+    fn characters_replaced(&self, doc: &DocId) {
+        self.seen().replaced.push(doc.clone());
     }
 }
 
@@ -1338,10 +1349,9 @@ async fn an_update_error_rejoins_once_then_stops_the_doc() {
         .fail_updates(&main.0, "Delete component does not match", 2);
     tab.type_end(&live, " x");
     eventually("the second failure stops the doc", || {
-        port.seen()
-            .stopped
-            .iter()
-            .any(|(doc, reason)| doc == &main && matches!(reason, DocStopReason::Server(_)))
+        port.seen().stopped.iter().any(|(doc, reason)| {
+            doc == &main && *reason == DocStopReason::Fault(DocFault::DeleteMismatch)
+        })
     })
     .await;
     assert_eq!(live.text(&main).as_deref(), Some("Hello retried x"));
@@ -1373,10 +1383,9 @@ async fn a_stopped_doc_with_unsent_text_never_reads_as_settled() {
         .fail_updates(&main.0, "Delete component does not match", 2);
     tab.type_end(&live, " kept");
     eventually("the doc stops", || {
-        port.seen()
-            .stopped
-            .iter()
-            .any(|(doc, reason)| doc == &main && matches!(reason, DocStopReason::Server(_)))
+        port.seen().stopped.iter().any(|(doc, reason)| {
+            doc == &main && *reason == DocStopReason::Fault(DocFault::DeleteMismatch)
+        })
     })
     .await;
     assert!(!live.settle(Duration::from_millis(300)).await);
@@ -1906,7 +1915,7 @@ fn an_unknown_doc_type_stops_only_that_doc() {
     assert_eq!(state.text(&b).as_deref(), Some("Bee"));
     assert!(state.next_joins(Instant::now(), 8).is_empty());
     state.deliver();
-    let unsupported = DocStopReason::Unsupported("sharejs-json".into());
+    let unsupported = DocStopReason::Fault(DocFault::Unsupported("sharejs-json".into()));
     assert_eq!(state.port.seen().stopped, vec![(a.clone(), unsupported)]);
     assert!(state.doc(&a).is_none());
     assert_eq!(state.doc(&b).map(|doc| doc.version()), Some(2));
@@ -2010,5 +2019,6 @@ fn recorded_sessions_replay_through_the_session_state() {
     assert!(history_ot.0 >= 1, "history-ot {history_ot:?}");
 }
 
+mod faults;
 mod resilience;
 mod tree;

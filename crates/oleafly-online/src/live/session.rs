@@ -16,6 +16,7 @@ use serde::Serialize;
 use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
+use super::doc::DocFault;
 use super::journal::Journal;
 use super::rest::{RestError, TreeRest};
 use super::tree_queue::{LocalFile, Queued, TreeChange, TreeRefusal};
@@ -54,6 +55,8 @@ pub trait LivePort: Send + Sync + 'static {
     fn never_online(&self, path: &str) -> bool {
         crate::sync::excluded(path)
     }
+    fn external_update(&self, _doc: &DocId) {}
+    fn characters_replaced(&self, _doc: &DocId) {}
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -96,10 +99,8 @@ pub enum LiveEnd {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum DocStopReason {
-    Unsupported(String),
-    TooLarge,
+    Fault(DocFault),
     Removed,
-    Server(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -135,6 +136,8 @@ pub enum LiveError {
     Invalid(OtError),
     #[error("this document can't take changes right now")]
     NotWritable,
+    #[error("live editing stopped for that file")]
+    Stopped,
 }
 
 #[derive(Clone, Debug)]
@@ -502,6 +505,18 @@ impl OverleafSession {
     pub fn resolve(&self, doc: &DocId, choice: Resolution) -> Result<(), LiveError> {
         let result = self.shared.with(|state| state.resolve(doc, choice));
         self.shared.touched(false);
+        self.poke();
+        result
+    }
+
+    pub fn retry(&self, doc: &DocId) -> Result<(), LiveError> {
+        let result = self.shared.with(|state| state.retry(doc));
+        self.poke();
+        result
+    }
+
+    pub fn keep_and_reload(&self, doc: &DocId) -> Result<(), LiveError> {
+        let result = self.shared.with(|state| state.keep_and_reload(doc));
         self.poke();
         result
     }

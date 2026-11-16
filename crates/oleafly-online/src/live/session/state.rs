@@ -13,7 +13,7 @@ use super::{
     Account, DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview, Resolution, Seed,
     SignedIn, UnsentDoc,
 };
-use crate::live::doc::{Applied, DocError, Limit, OutgoingUpdate, OverleafDoc, Rejoin};
+use crate::live::doc::{Applied, DocError, DocFault, Limit, OutgoingUpdate, OverleafDoc, Rejoin};
 use crate::live::format::{CodecError, DocFormat, FormatState};
 use crate::live::join::{JoinFailure, JoinedDoc};
 use crate::live::journal::{DocRecord, Journal, ProjectManifest, WRITE_EVERY};
@@ -54,6 +54,8 @@ pub(super) enum Notice {
         tag: String,
         hash: Option<String>,
     },
+    External(DocId),
+    Replaced(DocId),
 }
 
 pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
@@ -69,6 +71,8 @@ pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
             Notice::Project(event) => port.project_event(event),
             Notice::Merged(doc, review) => port.merged(&doc, review),
             Notice::Journal(reason) => port.journal_failed(reason),
+            Notice::External(doc) => port.external_update(&doc),
+            Notice::Replaced(doc) => port.characters_replaced(&doc),
             Notice::Pending(doc, pending) => port.doc_pending(&doc, pending),
             Notice::AccountChanged(account) => port.account_changed(account),
             Notice::Editor(sink, message) => sink(message),
@@ -227,7 +231,19 @@ pub(super) struct State {
     acks: u64,
     tree_work: tree::TreeWork,
     seeds: Vec<Seed>,
+    replaced_shown: bool,
+    unreadable: u8,
+    after_change: Option<BTreeSet<DocId>>,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum Handshake {
+    Joined,
+    Unreadable,
+    Ended,
+}
+
+const UNREADABLE_HANDSHAKES: u8 = 3;
 
 impl State {
     pub(super) fn new(
@@ -269,6 +285,9 @@ impl State {
             acks: 0,
             tree_work: tree::TreeWork::default(),
             seeds: Vec::new(),
+            replaced_shown: false,
+            unreadable: 0,
+            after_change: None,
         };
         state.take_journal(journal.docs());
         state.take_tree_queue(journal.tree_queue());
@@ -860,6 +879,7 @@ impl State {
                 slot.dirty = true;
                 if let Some(correction) = correction {
                     self.forward(doc, correction);
+                    self.replaced(doc);
                 }
                 self.want_if_unjoined(doc);
                 Ok(())
@@ -895,11 +915,11 @@ impl State {
         if !self.is_text_doc(doc) {
             return Err(LiveError::UnknownDoc);
         }
-        let blocked = self
-            .slots
-            .get(doc)
-            .is_some_and(|slot| matches!(slot.phase, Phase::Held | Phase::Stopped));
-        if blocked || self.mode() == SendMode::Hold {
+        let phase = self.slots.get(doc).map(|slot| slot.phase);
+        if phase == Some(Phase::Stopped) {
+            return Err(LiveError::Stopped);
+        }
+        if phase == Some(Phase::Held) || self.mode() == SendMode::Hold {
             return Err(LiveError::NotWritable);
         }
         let before = self
@@ -953,6 +973,9 @@ impl State {
                     self.forward(doc, op);
                     self.notices.push(Notice::Texts(vec![doc.clone()]));
                 }
+                if update.external {
+                    self.notices.push(Notice::External(doc.clone()));
+                }
             }
             Ok(Applied::Acknowledged) => {
                 slot.dirty = true;
@@ -967,15 +990,39 @@ impl State {
     fn doc_failed(&mut self, doc: &DocId, error: DocError, update: Option<AppliedUpdate>) {
         match error {
             DocError::Codec(CodecError::Unsupported(kind)) => {
-                self.stop_doc(doc, DocStopReason::Unsupported(kind))
-            }
-            DocError::Blocked(Limit::DocLength | Limit::UpdateSize | Limit::RangeCount) => {
-                self.stop_doc(doc, DocStopReason::TooLarge)
+                self.fault(doc, DocFault::Unsupported(kind))
             }
             DocError::Gap { .. } | DocError::Blocked(Limit::TooOld) => {
                 self.rejoin(doc, Phase::CatchUp, update)
             }
+            DocError::Blocked(limit) => match limit.fault() {
+                Some(fault) => self.fault(doc, fault),
+                None => self.rejoin(doc, Phase::Wanted, update),
+            },
             _ => self.rejoin(doc, Phase::Wanted, update),
+        }
+    }
+
+    fn fault(&mut self, doc: &DocId, fault: DocFault) {
+        let unsupported = matches!(fault, DocFault::Unsupported(_));
+        self.stop_doc(doc, DocStopReason::Fault(fault));
+        self.after_change_fault(doc, unsupported);
+    }
+
+    fn after_change_fault(&mut self, doc: &DocId, unsupported: bool) {
+        let Some(waiting) = self.after_change.as_mut() else {
+            return;
+        };
+        if !waiting.remove(doc) {
+            return;
+        }
+        if !unsupported {
+            self.after_change = None;
+        } else if waiting.is_empty() {
+            self.after_change = None;
+            self.end(LiveEnd::Unsupported(
+                "every document is in a form this version can't edit".into(),
+            ));
         }
     }
 
@@ -1023,6 +1070,14 @@ impl State {
         kind: JoinKind,
         reply: Result<JoinedDoc, JoinFailure>,
     ) {
+        if reply.is_ok()
+            && self
+                .after_change
+                .as_ref()
+                .is_some_and(|waiting| waiting.contains(doc))
+        {
+            self.after_change = None;
+        }
         match reply {
             Ok(joined) if kind == JoinKind::Fresh => self.fresh(doc, joined),
             Ok(joined) => self.caught_up(doc, joined),
@@ -1030,14 +1085,12 @@ impl State {
             Err(JoinFailure::Refused(message)) if message.contains("not found") => {
                 self.drop_unsent(doc)
             }
-            Err(JoinFailure::Refused(message)) => {
-                self.stop_doc(doc, DocStopReason::Server(message))
-            }
+            Err(JoinFailure::Refused(message)) => self.fault(doc, DocFault::from_server(&message)),
             Err(JoinFailure::Codec(CodecError::Unsupported(kind))) => {
-                self.stop_doc(doc, DocStopReason::Unsupported(kind))
+                self.fault(doc, DocFault::Unsupported(kind))
             }
             Err(JoinFailure::Codec(error)) => {
-                self.stop_doc(doc, DocStopReason::Server(error.to_string()))
+                self.fault(doc, DocFault::Unsupported(error.to_string()))
             }
         }
         self.settle_history();
@@ -1241,7 +1294,7 @@ impl State {
     }
 
     pub(super) fn send_refused(&mut self, doc: &DocId, message: &str) {
-        self.stop_doc(doc, DocStopReason::Server(message.to_string()));
+        self.fault(doc, DocFault::from_server(message));
     }
 
     pub(super) fn update_error(&mut self, doc: &DocId, message: &str) {
@@ -1256,9 +1309,10 @@ impl State {
             return;
         }
         let ours = slot.doc.as_ref().is_some_and(|known| !known.is_settled());
+        let fault = DocFault::from_server(message);
         slot.errors = slot.errors.saturating_add(u8::from(ours));
-        if slot.errors > 1 {
-            self.stop_doc(doc, DocStopReason::Server(message.to_string()));
+        if ours && (fault.is_limit() || slot.errors > 1) {
+            self.fault(doc, fault);
             return;
         }
         if !ours {
@@ -1302,6 +1356,55 @@ impl State {
         Ok(())
     }
 
+    pub(super) fn retry(&mut self, doc: &DocId) -> Result<(), LiveError> {
+        let mine = self.stopped_text(doc)?;
+        if let Some(known) = self.slots.get_mut(doc).and_then(|slot| slot.doc.as_mut()) {
+            let op = diff(known.text(), &mine);
+            if !op.is_noop() {
+                known.local(op).map_err(|_| LiveError::NotWritable)?;
+            }
+        }
+        self.restart(doc);
+        Ok(())
+    }
+
+    pub(super) fn keep_and_reload(&mut self, doc: &DocId) -> Result<(), LiveError> {
+        let mine = self.stopped_text(doc)?;
+        if let Some(slot) = self.slots.get_mut(doc) {
+            slot.doc = None;
+            slot.resume = None;
+            slot.held = None;
+        }
+        self.notices.push(Notice::Merged(
+            doc.clone(),
+            MergeReview::Kept { text: mine },
+        ));
+        self.restart(doc);
+        Ok(())
+    }
+
+    fn stopped_text(&self, doc: &DocId) -> Result<String, LiveError> {
+        let slot = self.slots.get(doc).ok_or(LiveError::UnknownDoc)?;
+        if slot.phase != Phase::Stopped {
+            return Err(LiveError::NotWritable);
+        }
+        let on_disk = self
+            .path_of(doc)
+            .and_then(|path| self.port.disk_text(&path));
+        let known = slot.doc.as_ref().map(|known| known.text().to_string());
+        Ok(on_disk.or(known).unwrap_or_default())
+    }
+
+    fn restart(&mut self, doc: &DocId) {
+        if let Some(slot) = self.slots.get_mut(doc) {
+            slot.phase = Phase::Unjoined;
+            slot.errors = 0;
+            slot.buffer.clear();
+            slot.dirty = true;
+        }
+        self.want(doc);
+    }
+
     fn keep_mine(&mut self, doc: &DocId, mine: &str) -> Result<(), LiveError> {
         let known = self
             .slots
@@ -1315,38 +1418,56 @@ impl State {
         })?;
         if let Some(correction) = correction {
             self.forward(doc, correction);
+            self.replaced(doc);
         }
         Ok(())
     }
 
-    pub(super) fn rejoined(&mut self, public_id: PublicId, response: Value) -> bool {
+    fn replaced(&mut self, doc: &DocId) {
+        if !std::mem::replace(&mut self.replaced_shown, true) {
+            self.notices.push(Notice::Replaced(doc.clone()));
+        }
+    }
+
+    pub(super) fn rejoined(&mut self, public_id: PublicId, response: Value) -> Handshake {
         match self.project.rejoin(response) {
             Ok(Rejoined::Repaired(changes)) => self.tree_changed(changes),
             Ok(Rejoined::Everything { .. }) => {
                 self.relay_tree();
+                let joined = self.joined_docs();
+                self.after_change = (!joined.is_empty()).then_some(joined);
                 self.rejoin_all(Phase::Wanted);
             }
-            Err(unsupported) => {
-                self.end(LiveEnd::Unsupported(format!("{unsupported:?}")));
-                return false;
-            }
+            Err(unsupported) => return self.unreadable(&unsupported),
         }
+        self.unreadable = 0;
         self.connected(public_id, now_ms());
         self.seed(Vec::new());
         self.rejoin_all(Phase::CatchUp);
         self.presence_due = self.presence.is_some();
         self.announce();
-        true
+        Handshake::Joined
     }
 
-    fn rejoin_all(&mut self, phase: Phase) {
-        let known: Vec<DocId> = self
-            .slots
+    fn unreadable(&mut self, unsupported: &impl std::fmt::Debug) -> Handshake {
+        self.unreadable = self.unreadable.saturating_add(1);
+        if self.unreadable < UNREADABLE_HANDSHAKES {
+            return Handshake::Unreadable;
+        }
+        self.end(LiveEnd::Unsupported(format!("{unsupported:?}")));
+        Handshake::Ended
+    }
+
+    fn joined_docs(&self) -> BTreeSet<DocId> {
+        self.slots
             .iter()
             .filter(|(_, slot)| matches!(slot.phase, Phase::Joined | Phase::CatchUp))
             .map(|(doc, _)| doc.clone())
-            .collect();
-        for doc in known {
+            .collect()
+    }
+
+    fn rejoin_all(&mut self, phase: Phase) {
+        for doc in self.joined_docs() {
             self.rejoin(&doc, phase, None);
         }
     }

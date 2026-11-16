@@ -132,7 +132,7 @@ impl LiveTree for OverleafLive {
             let base = guard(&disk.bases).base_for(&path, &text).cloned();
             match self.edit_toward(&doc, &path, base.as_deref(), &text) {
                 Ok(Edit::Sent | Edit::Same) => {}
-                Ok(Edit::NoBase) => continue,
+                Ok(Edit::NotLive) => continue,
                 Err(error) => {
                     let _ = crate::project::append_app_log(format!(
                         "Live editing could not send an outside change to {path} in project {}: {error}",

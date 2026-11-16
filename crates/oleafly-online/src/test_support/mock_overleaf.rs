@@ -306,6 +306,8 @@ pub struct MockConfig {
     pub rotate_sessions: bool,
     pub ws_url_handshake_reply: Option<(u16, String)>,
     pub upgrade_status: Option<u16>,
+    pub permissions_override: Option<String>,
+    pub doc_type_override: Option<String>,
 }
 
 impl Default for MockConfig {
@@ -334,6 +336,8 @@ impl Default for MockConfig {
             rotate_sessions: false,
             ws_url_handshake_reply: None,
             upgrade_status: None,
+            permissions_override: None,
+            doc_type_override: None,
         }
     }
 }
@@ -377,6 +381,7 @@ struct Doc {
     version: u64,
     applied: VecDeque<Applied>,
     failing: Option<(String, usize)>,
+    ranges: Value,
 }
 
 impl Doc {
@@ -390,6 +395,7 @@ impl Doc {
             version: 0,
             applied: VecDeque::new(),
             failing: None,
+            ranges: json!({}),
         }
     }
 
@@ -1091,7 +1097,11 @@ impl State {
         let response = json!({
             "publicId": public_id,
             "project": self.project_json(user.as_deref()),
-            "permissionsLevel": privilege.wire_name(),
+            "permissionsLevel": self
+                .config
+                .permissions_override
+                .clone()
+                .unwrap_or_else(|| privilege.wire_name().to_string()),
             "protocolVersion": self.config.protocol_version,
         });
         self.push(sid, event("joinProjectResponse", &[response]));
@@ -1330,8 +1340,12 @@ impl State {
             lines,
             json!(doc.version),
             Value::Array(updates),
-            json!({}),
-            json!(doc.format.wire_name()),
+            doc.ranges.clone(),
+            json!(self
+                .config
+                .doc_type_override
+                .clone()
+                .unwrap_or_else(|| doc.format.wire_name().to_string())),
             json!({ "canSkipLeaveDoc": true }),
         ];
         if let Some(client) = self.clients.get_mut(sid) {
@@ -1470,6 +1484,20 @@ impl State {
             }
             self.push(&sid, event("otUpdateApplied", std::slice::from_ref(update)));
         }
+    }
+
+    fn external_edit(&mut self, doc_id: &str, at: usize, text: &str) {
+        let max_age = self.config.max_op_age;
+        let Some(doc) = self.docs.get_mut(doc_id) else {
+            return;
+        };
+        let update = json!({ "doc": doc_id, "op": [{ "p": at, "i": text }], "v": doc.version });
+        let Ok(Outcome::Applied(mut applied)) = apply_sharejs(doc, &update, "", "", max_age) else {
+            return;
+        };
+        applied.update["meta"]["type"] = json!("external");
+        doc.applied.push_back(applied.clone());
+        self.broadcast(doc_id, "", &applied.update);
     }
 
     fn doc_error(&mut self, doc_id: &str, message: &str) {
@@ -2864,6 +2892,14 @@ impl MockOverleaf {
     pub fn fail_updates(&self, doc_id: &str, message: &str, times: usize) {
         let failing = (times > 0).then(|| (message.to_string(), times));
         self.state().docs.get_mut(doc_id).unwrap().failing = failing;
+    }
+
+    pub fn external_edit(&self, doc_id: &str, at: usize, text: &str) {
+        self.state().external_edit(doc_id, at, text);
+    }
+
+    pub fn set_ranges(&self, doc_id: &str, ranges: Value) {
+        self.state().docs.get_mut(doc_id).unwrap().ranges = ranges;
     }
 
     pub fn doc_error(&self, doc_id: &str, message: &str) {
