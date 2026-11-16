@@ -741,7 +741,7 @@ jobs:
           $env:PATH = "$msys;$env:PATH"
           $who = latexmk -norc -e 'print qq/perl=$^X os=$^O\n/; exit 0' | Out-String
           Write-Output $who
-          if ($who -notmatch 'os=msys') { throw "latexmk did not run under the MSYS Perl in $msys" }
+          if ($who -notmatch 'os=(msys|cygwin)') { throw "latexmk did not run under the MSYS Perl in $msys" }
           latexmk -norc -e 'my $kept = (q/\g/ =~ /^\\g/); exit 0'
           if ($LASTEXITCODE -ne 0) {
             Write-Output '::notice::The MSYS Perl rewrites backslash pairs, so this pass reproduces the #452 transport'

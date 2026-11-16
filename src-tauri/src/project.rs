@@ -9153,6 +9153,21 @@ mod tests {
             .keep()
     }
 
+    fn open_and_wait_for_git<R: tauri::Runtime>(
+        app: &tauri::AppHandle<R>,
+        state: &crate::state::AppState,
+        project_id: &str,
+    ) -> Result<ProjectMeta, String> {
+        tauri::async_runtime::block_on(async {
+            let (project, git_initialization) =
+                super::open_project(app, state, project_id.to_string()).await?;
+            git_initialization
+                .await
+                .map_err(|error| error.to_string())?;
+            Ok(project)
+        })
+    }
+
     #[test]
     fn a_library_workflow_leaves_the_pinned_on_disk_layout() {
         let _env_guard = crate::paths::data_dir_env_lock();
@@ -12176,17 +12191,7 @@ mod tests {
             .unwrap();
         let handle = app.handle().clone();
         let state = app.state::<crate::state::AppState>();
-        let open = |project_id: &str| {
-            let project_id = project_id.to_string();
-            tauri::async_runtime::block_on(async {
-                let (project, git_initialization) =
-                    super::open_project(&handle, &state, project_id).await?;
-                git_initialization
-                    .await
-                    .map_err(|error| error.to_string())?;
-                Ok::<ProjectMeta, String>(project)
-            })
-        };
+        let open = |project_id: &str| open_and_wait_for_git(&handle, &state, project_id);
 
         write_git_auto_init(false);
         let project_id = super::create_blank_project("Existing".into()).unwrap();
@@ -12261,12 +12266,7 @@ mod tests {
             .unwrap()
             .as_secs_f64();
         for project_id in [&library, &linked.id] {
-            tauri::async_runtime::block_on(super::open_project(
-                &handle,
-                &state,
-                project_id.clone(),
-            ))
-            .unwrap();
+            open_and_wait_for_git(&handle, &state, project_id).unwrap();
         }
 
         assert!(listed_at(&library) >= started.floor());
@@ -12353,18 +12353,8 @@ mod tests {
         };
         assert_eq!(listed(&thesis_link.id).main_doc, "");
 
-        let (opened, _) = tauri::async_runtime::block_on(super::open_project(
-            &handle,
-            &state,
-            thesis_link.id.clone(),
-        ))
-        .unwrap();
-        tauri::async_runtime::block_on(super::open_project(
-            &handle,
-            &state,
-            papers_link.id.clone(),
-        ))
-        .unwrap();
+        let opened = open_and_wait_for_git(&handle, &state, &thesis_link.id).unwrap();
+        open_and_wait_for_git(&handle, &state, &papers_link.id).unwrap();
 
         assert_eq!(opened.main_doc, "paper/main.tex");
         let thesis_info = listed(&thesis_link.id);

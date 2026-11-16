@@ -140,29 +140,29 @@ mod windows_tests {
         let mut child = command.spawn().expect("start cmd");
         let guard = super::super::contain_process_tree(child.id()).expect("contain cmd");
 
+        let ran_ping = |images: &[String]| {
+            images
+                .iter()
+                .any(|image| image.to_ascii_lowercase().ends_with("ping.exe"))
+        };
         let deadline = Instant::now() + Duration::from_secs(10);
         let mut ids = Vec::new();
+        let mut images: Vec<String> = Vec::new();
         while Instant::now() < deadline {
             ids = guard.process_ids().expect("list the job's processes");
-            if ids.contains(&child.id()) && ids.len() >= 2 {
+            images = ids
+                .iter()
+                .filter_map(|id| process_image_name(*id))
+                .collect();
+            if ids.contains(&child.id()) && ran_ping(&images) {
                 break;
             }
             std::thread::sleep(Duration::from_millis(50));
         }
-        let images: Vec<String> = ids
-            .iter()
-            .filter_map(|id| process_image_name(*id))
-            .collect();
         drop(guard);
         let _ = child.wait();
         assert!(ids.contains(&child.id()), "{ids:?}");
-        assert!(ids.len() >= 2, "ping never joined the job: {ids:?}");
-        assert!(
-            images
-                .iter()
-                .any(|image| image.to_ascii_lowercase().ends_with("ping.exe")),
-            "{images:?}"
-        );
+        assert!(ran_ping(&images), "ping never joined the job: {images:?}");
     }
 
     #[test]
