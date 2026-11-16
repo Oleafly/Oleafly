@@ -123,6 +123,8 @@
     "entryCount_other": "{{count}} 个大纲条目",
     "expandHeading": "展开 {{title}}",
     "expandAll": "展开所有标题",
+    "onPage": "{{heading}}，第 {{page}} 页",
+    "page": "第 {{page}} 页",
     "title": "大纲"
   },
   "panelError": {

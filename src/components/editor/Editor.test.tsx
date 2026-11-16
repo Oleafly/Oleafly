@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ReactNode } from "react";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import common from "@/i18n/locales/en/common.json" with { type: "json" };
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
@@ -11,6 +11,7 @@ import type { DocumentEngineDescriptor } from "@/lib/tauri";
 import { getWysiwygMode, setWysiwygMode } from "@/lib/wysiwyg-mode";
 import { useVisualModeStore } from "@/store/visual-mode";
 import { useDiffStore } from "@/store/diff";
+import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { useZenStore } from "@/store/zen";
@@ -61,7 +62,41 @@ vi.mock("./EditorToolbar", () => ({
   EditorToolbar: ({ wysiwyg, onToggleWysiwyg }: { wysiwyg: boolean; onToggleWysiwyg: () => void }) => (
     <button type="button" data-testid="latex-toolbar" aria-label={en.toolbar.switchToVisual} aria-pressed={wysiwyg} onClick={onToggleWysiwyg} />
   ),
+  WysiwygModeSwitch: ({ mode, secondLabel, onModeChange }: {
+    mode: "code" | "visual" | "both"; secondLabel: string;
+    onModeChange: (mode: "code" | "visual" | "both", layout?: "stacked" | "split") => void;
+  }) => (
+    <div data-testid="mode-switch" data-mode={mode}>
+      <button type="button" onClick={() => onModeChange("code")}>{en.toolbar.code}</button>
+      <button type="button" onClick={() => onModeChange("visual")}>{secondLabel}</button>
+      <button type="button" onClick={() => onModeChange("both", "split")}>{en.toolbar.split}</button>
+    </div>
+  ),
 }));
+vi.mock("./HtmlFilePreview", () => ({
+  HtmlFilePreview: ({ path }: { path: string }) => <div data-testid="html-preview">{path}</div>,
+}));
+vi.mock("./BibReferenceList", () => ({
+  BibReferenceList: ({ path, onReveal }: { path: string; onReveal: (from: number) => void }) => (
+    <button type="button" data-testid="bib-preview" onClick={() => onReveal(12)}>{path}</button>
+  ),
+}));
+vi.mock("./SheetFilePreview", () => ({
+  SheetFilePreview: ({ path, workbook }: { path: string; workbook?: boolean }) => (
+    <div data-testid="sheet-preview" data-workbook={workbook ? "" : undefined}>{path}</div>
+  ),
+}));
+vi.mock("./board/BoardFileView", () => ({
+  BoardFileView: ({ path }: { path: string }) => <div data-testid="board-file">{path}</div>,
+}));
+vi.mock("./deck/DeckView", () => ({
+  DeckView: ({ path, onPresent }: { path: string; onPresent: (mode: "page", page: number) => void }) => (
+    <button type="button" data-testid="deck-preview" onClick={() => onPresent("page", 2)}>{path}</button>
+  ),
+}));
+const present = vi.hoisted(() => vi.fn(async () => undefined));
+vi.mock("@/features/presentation/launch", () => ({ present }));
+vi.mock("@/lib/project-intelligence/navigation", () => ({ navigateToProjectRange: vi.fn(async () => undefined) }));
 vi.mock("./MarkdownToolbar", () => ({
   MarkdownToolbar: ({ wysiwyg, onToggleWysiwyg, onModeChange }: {
     wysiwyg: boolean; onToggleWysiwyg: () => void;
@@ -292,6 +327,77 @@ describe("Editor shell", () => {
     openFile("paper.md", { engine: engineWithProfile("markdown", ["md"]) });
     render(<Editor />);
     expect(screen.getByTestId("markdown-toolbar")).toBeInTheDocument();
+  });
+
+  it("gives an HTML file Code, Preview and Split, the page taking the source's place or its side", async () => {
+    openFile("site/attention-demo.html");
+    render(<Editor />);
+    const switcher = screen.getByTestId("mode-switch");
+    expect(switcher).toHaveAttribute("data-mode", "code");
+    expect(screen.queryByTestId("html-preview")).toBeNull();
+
+    fireEvent.click(within(switcher).getByText(en.toolbar.preview));
+    expect(screen.getByTestId("mode-switch")).toHaveAttribute("data-mode", "visual");
+    expect(await screen.findByTestId("html-preview")).toHaveTextContent("site/attention-demo.html");
+    expect(screen.getByTestId("codemirror").closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "true");
+
+    fireEvent.click(within(screen.getByTestId("mode-switch")).getByText(en.toolbar.split));
+    expect(screen.getByTestId("mode-switch")).toHaveAttribute("data-mode", "both");
+    expect(screen.getAllByTestId("html-preview")).toHaveLength(1);
+    expect(screen.getByTestId("codemirror").closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "false");
+    expect(screen.getByRole("separator", { name: `${en.toolbar.code} / ${en.toolbar.preview}` })).toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByTestId("mode-switch")).getByText(en.toolbar.code));
+    expect(screen.queryByTestId("html-preview")).toBeNull();
+  });
+
+  it.each([
+    ["refs.bib", "bib-preview"],
+    ["data/results.csv", "sheet-preview"],
+    ["data/runs.tsv", "sheet-preview"],
+  ])("gives %s Code, Preview and Split with its own preview", async (path, preview) => {
+    openFile(path);
+    render(<Editor />);
+    fireEvent.click(within(screen.getByTestId("mode-switch")).getByText(en.toolbar.preview));
+    expect(await screen.findByTestId(preview)).toHaveTextContent(path);
+    expect(screen.getByTestId("codemirror").closest("[aria-hidden]")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("shows the source beside the reference list when an entry is picked from the preview alone", async () => {
+    openFile("refs.bib");
+    render(<Editor />);
+    fireEvent.click(within(screen.getByTestId("mode-switch")).getByText(en.toolbar.preview));
+    fireEvent.click(await screen.findByTestId("bib-preview"));
+    expect(screen.getByTestId("mode-switch")).toHaveAttribute("data-mode", "both");
+    expect(navigateToProjectRange).toHaveBeenCalledWith({ path: "refs.bib", range: { from: 12, to: 12 }, source: "outline" });
+  });
+
+  it("previews a slide deck beside its source and presents it from the slide on screen", async () => {
+    openFile("slides/talk/index.tsx");
+    render(<Editor />);
+    fireEvent.click(within(screen.getByTestId("mode-switch")).getByText(en.toolbar.split));
+    const deck = await screen.findByTestId("deck-preview");
+    expect(deck).toHaveTextContent("slides/talk/index.tsx");
+    fireEvent.click(deck);
+    expect(present).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "page", page: 3, mainDoc: null, typst: false, source: { kind: "deck", path: "slides/talk/index.tsx" } }),
+    );
+  });
+
+  it("opens a whiteboard straight onto its canvas, with no source to switch to", async () => {
+    openFile("figures/sketch.excalidraw");
+    render(<Editor />);
+    expect(await screen.findByTestId("board-file")).toHaveTextContent("figures/sketch.excalidraw");
+    expect(screen.queryByTestId("mode-switch")).toBeNull();
+    expect(screen.queryByTestId("codemirror")).toBeNull();
+  });
+
+  it("opens a workbook straight into its table, with no source to switch to", async () => {
+    openFile("data/results.xlsx");
+    render(<Editor />);
+    expect(await screen.findByTestId("sheet-preview")).toHaveAttribute("data-workbook");
+    expect(screen.queryByTestId("mode-switch")).toBeNull();
+    expect(screen.queryByTestId("codemirror")).toBeNull();
   });
 
   it("shows the changed-on-disk banner above a Typst file", () => {

@@ -159,7 +159,8 @@
     "imageToTypst": "Kuva Typst-muotoon",
     "imageToTypstTooltip": "Kuva Typst-muotoon (litteroi tekoälyllä)",
     "typstPackages": "Typst-paketit",
-    "latexPackages": "LaTeX-paketit"
+    "latexPackages": "LaTeX-paketit",
+    "preview": "Esikatselu"
   },
   "contextMenu": {
     "engineUnavailable": "Dokumenttimoottorin toiminnot eivät ole käytettävissä",
@@ -209,6 +210,8 @@
     "pdfLoadFailed": "PDF:n lataus epäonnistui: {{detail}}",
     "imageLoadFailed": "Kuvan lataus epäonnistui: {{detail}}",
     "imageUnreadable": "Tätä tiedostoa ei voi näyttää kuvana. Se voi olla vioittunut, tai se ei ehkä ole kuva.",
+    "imageFit": "Sovita ikkunaan",
+    "htmlPreviewFailed": "Sivun esikatselu epäonnistui: {{detail}}",
     "binaryFile": "Binääritiedosto. Esikatselua ei ole.",
     "managedFileReadOnly": "Oleafly hallinnoi tiedostoa {{file}}, joten se on täällä vain luettavissa. Projektin asetuksia muutetaan Oleaflyn kautta, ei tätä tiedostoa muokkaamalla.",
     "noFileOpen": "Ei avointa tiedostoa.",
@@ -1671,5 +1674,19 @@
       "duplicateArg": "Päällekkäinen argumentti",
       "unknownKind": "Tuntematon kentän tyyppi"
     }
+  },
+  "bibList": {
+    "count_one": "{{count}} viite",
+    "count_other": "{{count}} viitettä",
+    "empty": "Tiedostossa ei ole vielä lähteitä.",
+    "etAl": "{{author}} ym.",
+    "noMatch": "Haku ei vastaa yhtään lähdettä.",
+    "search": "Hae lähteistä"
+  },
+  "deck": {
+    "noSlides": "Esityksessä ei ole vielä dioja. Vie diakomponenttien taulukko oletusvientinä."
+  },
+  "board": {
+    "unreadable": "Tätä taulua ei voitu lukea. Tiedosto voi olla vioittunut, tai se ei ole Excalidraw-piirros."
   }
 }

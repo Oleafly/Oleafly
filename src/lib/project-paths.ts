@@ -14,7 +14,7 @@ export function isManagedProjectPath(path: string, home: ManifestHome): boolean 
   return MANAGED_DIRECTORIES.has(lower);
 }
 
-const BINARY_PROJECT_FILE = /\.(pdf|png|jpe?g|gif|webp|svg|eps|zip|gz|ttf|otf|woff2?)$/i;
+const BINARY_PROJECT_FILE = /\.(pdf|png|jpe?g|gif|webp|bmp|svg|eps|zip|gz|ttf|otf|woff2?|xlsx|xls|ods)$/i;
 
 export function isBinaryProjectPath(path: string): boolean {
   return BINARY_PROJECT_FILE.test(path);

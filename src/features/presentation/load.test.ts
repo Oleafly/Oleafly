@@ -14,7 +14,7 @@ vi.mock("@/lib/tauri", () => ({
   readFileContent: mocks.readFileContent,
 }));
 
-import { loadPresentationNotes, loadPresentationPdf } from "./load";
+import { loadPresentationDeck, loadPresentationNotes, loadPresentationPdf } from "./load";
 import type { PresentationParams } from "./navigation";
 
 const COMPILED: PresentationParams = {
@@ -41,6 +41,19 @@ describe("loadPresentationPdf", () => {
     expect([...(await loadPresentationPdf(COMPILED))]).toEqual([1, 2]);
     expect([...(await loadPresentationPdf({ ...COMPILED, source: { kind: "file", path: "talk.pdf" } }))]).toEqual([3]);
     expect(mocks.readProjectBytes).toHaveBeenCalledWith("deck", "talk.pdf");
+  });
+});
+
+describe("loadPresentationDeck", () => {
+  it("reads the deck source and never looks for a pdfpc file beside it", async () => {
+    mocks.readFileContent.mockResolvedValue("export default [];");
+    const deck: PresentationParams = { ...COMPILED, source: { kind: "deck", path: "slides/talk/index.tsx" }, typst: false };
+    expect(await loadPresentationDeck(deck)).toBe("export default [];");
+    expect(mocks.readFileContent).toHaveBeenCalledWith("deck", "slides/talk/index.tsx", true);
+    await expect(loadPresentationDeck(COMPILED)).rejects.toThrow();
+    mocks.readFileContent.mockClear();
+    expect((await loadPresentationNotes(deck)).size).toBe(0);
+    expect(mocks.readFileContent).not.toHaveBeenCalled();
   });
 });
 

@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import {
+  type ComponentProps,
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+} from "react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Button } from "@/components/ui/button";
 import { useDismiss } from "@/components/ui/use-dismiss";
@@ -12,6 +19,7 @@ interface PopoverProps {
   trigger: ReactNode;
   children: ReactNode;
   align?: "left" | "right";
+  side?: "top" | "right" | "bottom" | "left";
   className?: string;
   triggerClassName?: string;
   ariaLabel?: string;
@@ -27,6 +35,7 @@ export function Popover({
   trigger,
   children,
   align = "left",
+  side = "bottom",
   className,
   triggerClassName,
   ariaLabel,
@@ -143,6 +152,7 @@ export function Popover({
           <PopoverPrimitive.Content
             ref={contentRef}
             aria-label={contentAriaLabel}
+            side={side}
             align={align === "right" ? "end" : "start"}
             sideOffset={4}
             collisionPadding={12}
@@ -197,17 +207,22 @@ export function Popover({
 export function PopoverItem({
   onClick,
   children,
-}: Readonly<{
-  onClick: () => void;
-  children: ReactNode;
-}>) {
+  className,
+  ...props
+}: Readonly<
+  {
+    onClick: () => void;
+    children: ReactNode;
+  } & Omit<ComponentProps<typeof Button>, "onClick" | "children" | "variant" | "type">
+>) {
   return (
     <PopoverPrimitive.Close asChild>
       <Button
+        {...props}
         type="button"
         variant="ghost"
         onClick={onClick}
-        className="h-auto w-full justify-start px-2 py-1.5 text-left font-normal"
+        className={cn("h-auto w-full justify-start px-2 py-1.5 text-left font-normal", className)}
       >
         {children}
       </Button>

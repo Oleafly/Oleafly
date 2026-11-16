@@ -703,6 +703,14 @@
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
+  --color-file-folder: var(--chart-4);
+  --color-file-source: var(--chart-1);
+  --color-file-typst: var(--chart-3);
+  --color-file-prose: var(--chart-7);
+  --color-file-pdf: var(--chart-8);
+  --color-file-image: var(--chart-5);
+  --color-file-sheet: var(--chart-6);
+  --color-file-code: var(--chart-2);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);

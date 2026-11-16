@@ -978,6 +978,12 @@
         "label": "Vista de inicio predeterminada",
         "list": "Lista"
       },
+      "markers": {
+        "badges": "Etiquetas de tipo",
+        "description": "Cada archivo del árbol del proyecto lleva un icono o una etiqueta corta con su tipo, como TEX o PDF, con los mismos colores.",
+        "icons": "Iconos",
+        "label": "Mostrar archivos como"
+      },
       "openIn": {
         "description": "Elige la disposición que se usa al abrir un proyecto.",
         "label": "Abrir los proyectos en"

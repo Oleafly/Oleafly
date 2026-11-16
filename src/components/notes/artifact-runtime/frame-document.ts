@@ -94,9 +94,11 @@ else observe();
 window.addEventListener("load", schedule);
 setInterval(() => send({ type: "beat" }), 1000);
 send({ type: "beat" });
+window.addEventListener("oleafly:frame", (event) => { if (event.detail && typeof event.detail === "object") send(event.detail); });
 if (port) port.onmessage = (event) => {
   const data = event.data;
-  if (!data || data.channel !== channel || data.type !== "theme") return;
+  if (!data || data.channel !== channel) return;
+  if (data.type !== "theme") { window.dispatchEvent(new CustomEvent("oleafly:host", { detail: data })); return; }
   const dark = data.theme === "dark";
   const root = document.documentElement;
   root.classList.toggle("dark", dark);
@@ -430,6 +432,21 @@ export function reactFrameDocument(code: string, options: FrameOptions, runtime:
   const darkClass = options.theme === "dark" ? ' class="dark"' : "";
   const start = `__oleaflyArtifact.runReact(${inlineJson(code)}, ${inlineJson(options.messages)});`;
   return `<!doctype html><html lang="en" data-theme="${options.theme}"${darkClass} style="color-scheme:${options.theme}"><head>${headStart(options, runtime)}<style>:where(body){padding:0}</style>${runtimeScript(runtime)}</head><body><div id="root"></div>${withRuntime(start, options.messages)}</body></html>`;
+}
+
+export type DeckFrameMode = "edit" | "present" | "page";
+
+export interface DeckFrameOptions {
+  readonly mode: DeckFrameMode;
+  readonly page: number;
+  readonly assets: Readonly<Record<string, string>>;
+}
+
+export function deckFrameDocument(code: string, options: FrameOptions, runtime: string, deck: DeckFrameOptions): string {
+  const darkClass = options.theme === "dark" ? ' class="dark"' : "";
+  const background = deck.mode === "edit" ? "transparent" : "#000";
+  const start = `__oleaflyArtifact.runDeck(${inlineJson(code)}, ${inlineJson(options.messages)}, ${inlineJson(deck)});`;
+  return `<!doctype html><html lang="en" data-theme="${options.theme}"${darkClass} style="color-scheme:${options.theme}"><head>${headStart(options, runtime)}<style>html,body,#root{height:100%;margin:0;padding:0;overflow:hidden;background:${background}}</style>${runtimeScript(runtime)}</head><body><div id="root"></div>${withRuntime(start, options.messages)}</body></html>`;
 }
 
 export function staticFrameDocument(cleanHtml: string, theme: FrameTheme): string {

@@ -4,6 +4,8 @@ import { readPresentationParams } from "@/features/presentation/navigation";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
+import type { DeckCommand } from "@/components/editor/deck/use-deck-frame";
+import { DeckSlide } from "./DeckSlide";
 import { SlideCanvas } from "./SlideCanvas";
 import { usePresentationControls, usePresentationDeck } from "./use-presentation";
 
@@ -48,8 +50,18 @@ export function PresentationWindow() {
   const { t } = useTranslation(["preview"]);
   const [params] = useState(() => readPresentationParams(window.location.search));
   const deck = usePresentationDeck(params);
-  const total = deck.status === "ready" ? deck.document.numPages : 0;
-  const { page, blank, act, end } = usePresentationControls(params, total);
+  const [deckTotal, setDeckTotal] = useState(0);
+  const commands = useRef<((command: DeckCommand) => void) | null>(null);
+  const total = deck.status === "ready" ? deck.document.numPages : deckTotal;
+  const forward = (action: "next" | "previous") => {
+    commands.current?.({ type: action });
+    return true;
+  };
+  const { page, blank, act, end, show } = usePresentationControls(
+    params,
+    total,
+    deck.status === "deck" ? { route: forward, onStep: forward } : {},
+  );
   const idle = usePointerControls(
     () => act("next"),
     () => act("previous"),
@@ -60,7 +72,7 @@ export function PresentationWindow() {
       data-testid="presentation-audience"
       className={cn(
         "fixed inset-0 flex select-none items-center justify-center bg-black text-white",
-        idle && deck.status === "ready" && "cursor-none",
+        idle && (deck.status === "ready" || deck.status === "deck") && "cursor-none",
       )}
     >
       {deck.status === "ready" && !blank && (
@@ -69,6 +81,20 @@ export function PresentationWindow() {
           page={page}
           className="size-full"
           label={t(($) => $.preview.presentation.slideLabel, { page, total })}
+        />
+      )}
+      {deck.status === "deck" && params && (
+        <DeckSlide
+          projectId={params.projectId}
+          path={deck.path}
+          code={deck.code}
+          page={page}
+          mode="present"
+          label={t(($) => $.preview.presentation.slideLabel, { page, total })}
+          className={cn("size-full", blank && "invisible")}
+          onInfo={(info) => setDeckTotal(info.pages)}
+          onPage={show}
+          commands={commands}
         />
       )}
       {deck.status === "loading" && (

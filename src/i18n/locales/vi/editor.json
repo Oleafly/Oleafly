@@ -159,7 +159,8 @@
     "imageToTypst": "Ảnh sang Typst",
     "imageToTypstTooltip": "Ảnh sang Typst (chép lại bằng AI)",
     "typstPackages": "Gói Typst",
-    "latexPackages": "Gói LaTeX"
+    "latexPackages": "Gói LaTeX",
+    "preview": "Xem trước"
   },
   "contextMenu": {
     "engineUnavailable": "Không dùng được thao tác engine tài liệu",
@@ -209,6 +210,8 @@
     "pdfLoadFailed": "Không tải được PDF: {{detail}}",
     "imageLoadFailed": "Không tải được ảnh: {{detail}}",
     "imageUnreadable": "Không thể hiển thị tệp này dưới dạng hình ảnh. Tệp có thể bị hỏng hoặc không phải là hình ảnh.",
+    "imageFit": "Vừa cửa sổ",
+    "htmlPreviewFailed": "Không xem trước được trang: {{detail}}",
     "binaryFile": "Tệp nhị phân. Không có bản xem trước.",
     "managedFileReadOnly": "{{file}} do Oleafly quản lý và chỉ đọc ở đây. Cài đặt dự án đổi qua chính Oleafly, không bằng sửa tệp này.",
     "noFileOpen": "Không có tệp đang mở.",
@@ -1650,5 +1653,18 @@
       "duplicateArg": "Đối số trùng",
       "unknownKind": "Kiểu trường không rõ"
     }
+  },
+  "bibList": {
+    "count_other": "{{count}} tài liệu tham khảo",
+    "empty": "Tệp này chưa có tài liệu tham khảo nào.",
+    "etAl": "{{author}} và cộng sự",
+    "noMatch": "Không có tài liệu nào khớp với tìm kiếm.",
+    "search": "Tìm tài liệu tham khảo"
+  },
+  "deck": {
+    "noSlides": "Bản trình chiếu này chưa có trang chiếu nào. Hãy xuất một mảng thành phần trang chiếu làm mục xuất mặc định."
+  },
+  "board": {
+    "unreadable": "Không đọc được bảng trắng này. Tệp có thể bị hỏng hoặc không phải bản vẽ Excalidraw."
   }
 }

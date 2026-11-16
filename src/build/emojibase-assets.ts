@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import type { Plugin } from "vite";
+import { servedAssets } from "./served-assets";
 import { EMOJIBASE_LOCALES, EMOJIBASE_PATH } from "../components/notes/emoji-locale";
 
 interface EmojibaseSkin {
@@ -71,26 +72,5 @@ export function emojibaseAssetFiles(dataDir = EMOJIBASE_DATA_DIR): Map<string, (
   return files;
 }
 
-export const emojibaseAssets = (dataDir = EMOJIBASE_DATA_DIR): Plugin => ({
-  name: "emojibase-assets",
-  configureServer(server) {
-    const base = server.config.base;
-    const files = emojibaseAssetFiles(dataDir);
-    const cache = new Map<string, string>();
-    server.middlewares.use((request, response, next) => {
-      const url = request.url?.split("?")[0] ?? "";
-      const name = url.startsWith(base) ? url.slice(base.length) : "";
-      const build = files.get(name);
-      if (!build) return next();
-      const body = cache.get(name) ?? build();
-      cache.set(name, body);
-      response.setHeader("Content-Type", "application/json");
-      response.end(request.method === "HEAD" ? undefined : body);
-    });
-  },
-  generateBundle() {
-    for (const [fileName, build] of emojibaseAssetFiles(dataDir)) {
-      this.emitFile({ type: "asset", fileName, source: build() });
-    }
-  },
-});
+export const emojibaseAssets = (dataDir = EMOJIBASE_DATA_DIR): Plugin =>
+  servedAssets({ name: "emojibase-assets", files: () => emojibaseAssetFiles(dataDir), contentType: () => "application/json" });

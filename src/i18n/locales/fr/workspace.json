@@ -129,6 +129,8 @@
     "entryCount_other": "{{count}} entrées de plan",
     "expandHeading": "Développer {{title}}",
     "expandAll": "Développer tous les titres",
+    "onPage": "{{heading}}, page {{page}}",
+    "page": "p. {{page}}",
     "title": "Plan"
   },
   "panelError": {

@@ -978,6 +978,12 @@
         "label": "Vizualizarea implicită de pe ecranul principal",
         "list": "Listă"
       },
+      "markers": {
+        "badges": "Etichete de tip",
+        "description": "Fiecare fișier din arborele proiectului primește o pictogramă sau o etichetă scurtă de tip, cum ar fi TEX sau PDF, în aceleași culori.",
+        "icons": "Pictograme",
+        "label": "Afișează fișierele ca"
+      },
       "openIn": {
         "description": "Alege aranjarea folosită la deschiderea unui proiect.",
         "label": "Deschide proiectele în"

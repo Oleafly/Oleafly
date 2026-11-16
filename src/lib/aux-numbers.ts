@@ -27,6 +27,7 @@ export interface AuxTocEntry {
   readonly level: number;
   readonly number: string | null;
   readonly title: string;
+  readonly page: string | null;
 }
 
 export interface AuxToc {
@@ -196,7 +197,8 @@ function parseTocRecord(record: string): AuxTocEntry | null {
   if (level === undefined) return null;
   const text = readBalancedGroup(record, skipTabsAndSpaces(record, kind.end));
   if (!text) return null;
-  return { level, ...splitTocText(level, text.content) };
+  const page = readBalancedGroup(record, skipTabsAndSpaces(record, text.end))?.content.trim();
+  return { level, ...splitTocText(level, text.content), page: page || null };
 }
 
 export function parseAuxToc(files: ReadonlyMap<string, string>): AuxTocEntry[] {

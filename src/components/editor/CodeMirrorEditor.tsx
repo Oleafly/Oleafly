@@ -54,6 +54,7 @@ import {
 } from "./cm/language-service";
 import { formatsOnSave, saveTypstDocument } from "./cm/language-service-format";
 import { getEditorView } from "./cm/controller";
+import { isOutlineDocument, outlineRailClearance } from "./cm/outline-rail-clearance";
 import { resolveVisualAsset } from "./wysiwyg/asset-url";
 import { openVisualFigureEditor } from "./visual-figure-edit";
 import { referenceKindIn } from "./visual-reference-kind";
@@ -372,12 +373,13 @@ export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean 
         if (!path || !/\.(?:tex|latex|ltx|sty|cls|md|markdown|qmd|rmd|typ|bib)$/i.test(path)) {
           return [];
         }
+        const clearance = isOutlineDocument(path) ? [outlineRailClearance] : [];
         if (/\.(?:tex|latex|ltx|sty|cls)$/i.test(path)) {
-          return [...LATEX_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS];
+          return [...LATEX_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS, ...clearance];
         }
         return /\.typ$/i.test(path)
-          ? [...TYPST_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS]
-          : PROJECT_INTELLIGENCE_EXTENSIONS;
+          ? [...TYPST_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS, ...clearance]
+          : [...PROJECT_INTELLIGENCE_EXTENSIONS, ...clearance];
       }}
       extraCompletionSourcesForPath={(path) =>
         editorCompletionSourcesForPath(path, languageServiceCompletion)

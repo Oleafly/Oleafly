@@ -1,0 +1,12 @@
+export type { DesignFonts, DesignPalette, DesignSystem, DesignTypeScale } from "./design";
+export { cssVarsToString, defaultDesign, designToCssVars } from "./design";
+export type { ImagePlaceholderProps } from "./image-placeholder";
+export { ImagePlaceholder } from "./image-placeholder";
+export type { MorphElementProps } from "./morph-element";
+export { MorphElement } from "./morph-element";
+export { useSlidePageNumber } from "./page-context";
+export type { Page, SlideMeta, SlideModule } from "./sdk";
+export { CANVAS_HEIGHT, CANVAS_WIDTH } from "./sdk";
+export type { StepProps, StepsProps } from "./step-context";
+export { Step, Steps, useIsActivePage } from "./step-context";
+export type { MorphTransition, SlideTransition, TransitionPhase } from "./transition";

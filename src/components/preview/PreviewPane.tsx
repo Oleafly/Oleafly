@@ -2,40 +2,34 @@ import { previewWindowState } from "@/lib/preview-state";
 import { SavePreviewDialog } from "./SavePreviewDialog";
 import { currentOutputId, usePdfSync } from "./use-pdf-sync";
 import { CompileLogControls } from "./CompileLogControls";
-import { PdfToolbarControls } from "./PdfToolbarControls";
+import { PdfShowToolbarButton, PdfToolbarControls } from "./PdfToolbarControls";
 import { openHtmlInBrowser } from "./open-compiled-html";
 import { present } from "@/features/presentation/launch";
 import { PdfOutlinePanel } from "./PdfOutlinePanel";
 import { PdfSearchBar } from "./PdfSearchBar";
 import { PdfViewerOverlay } from "./PdfViewerOverlay";
-import { usePdfKeyboardShortcuts } from "./use-pdf-keyboard-shortcuts";
-import { usePdfPosition } from "@/lib/use-pdf-position";
-import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
-import { Suspense, useCallback, useDeferredValue, useEffect, useRef, useState } from "react";
+import { PdfStateMessage } from "./PdfStateMessage";
+import {
+  INITIAL_PDF_LOAD_STATE,
+  INITIAL_PDF_OUTLINE_STATE,
+  INITIAL_PDF_SEARCH_STATE,
+  usePdfReader,
+} from "./use-pdf-reader";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { lazy } from "@/lib/preloadable";
 import { Trans, useTranslation } from "react-i18next";
 import { isTauri } from "@tauri-apps/api/core";
 import {
-  AlertTriangle,
   CheckCircle2,
   FileText,
   Minus,
-  PanelTopOpen,
   Play,
   Sparkles,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip } from "@/components/ui/tooltip";
-import {
-  PdfViewer,
-  type PdfLoadState,
-  type PdfOutlineState,
-  type PdfRotation,
-  type PdfSearchState,
-  type PdfViewerHandle,
-  type PdfLayout,
-} from "@/components/pdf/PdfViewer";
+import { PdfViewer, type PdfLoadState } from "@/components/pdf/PdfViewer";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { LogPane } from "@/components/editor/LogPane";
 import {
@@ -90,12 +84,7 @@ import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { cn, shortcut } from "@/lib/utils";
 import { basename, exportFileStem, UNSAFE_FILE_NAME_CHARACTERS } from "@/lib/path-utils";
-import {
-  attachPreviewZoom,
-  MAX_PREVIEW_SCALE,
-  MIN_PREVIEW_SCALE,
-  sessionZoomByProject,
-} from "./preview-zoom";
+import { sessionZoomByProject } from "./preview-zoom";
 import { Spinner } from "@/components/ui/spinner";
 
 interface PreviewDocument {
@@ -108,26 +97,6 @@ const HtmlOutputPanel = lazy(() =>
   import("./HtmlOutputPanel").then((module) => ({ default: module.HtmlOutputPanel })),
 );
 
-const PDF_SCROLL_AXES = ["y", "x"] as const;
-
-const INITIAL_PDF_LOAD_STATE: PdfLoadState = {
-  status: "idle",
-  documentIdentity: "",
-};
-
-const INITIAL_PDF_SEARCH_STATE: PdfSearchState = {
-  status: "idle",
-  query: "",
-  current: 0,
-  total: 0,
-  scannedPages: 0,
-  totalPages: 0,
-};
-
-const INITIAL_PDF_OUTLINE_STATE: PdfOutlineState = {
-  status: "idle",
-  items: [],
-};
 
 export type StartupStageStatus =
   | "pending"
@@ -720,11 +689,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const noMainDocument = useFilesStore(mainDocumentMissing);
   const projectKindForPreview = useFilesStore((s) => s.projectKind);
   const isImage = projectKindForPreview === "image" || projectKindForPreview === "diagram";
-  const inverted = useSettingsStore((state) => state.pdfDarkMode);
-  const setInverted = useSettingsStore((state) => state.setPdfDarkMode);
   const viewMode = useSettingsStore((state) => state.viewMode);
-  const [screenReaderMode, setScreenReaderMode] = useState(false);
-  const [scale, setScale] = useState(1.0);
   const [tab, setTab] = useState<"pdf" | "logs">("pdf");
   const activeTourId = useTourStore((state) => state.activeTourId);
   const zen = useZenStore((state) => state.active);
@@ -735,52 +700,78 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const [saveName, setSaveName] = useState("");
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [page, setPage] = useState(1);
-  const [numPages, setNumPages] = useState(0);
-  const [pageInput, setPageInput] = useState("1");
-  const [layout, setLayout] = useState<PdfLayout>("single");
-  const [rotation, setRotation] = useState<PdfRotation>(0);
-  const [fitMode, setFitMode] = useState<"width" | "height" | null>(
-    null,
-  );
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchInput, setSearchInput] = useState("");
-  const deferredSearch = useDeferredValue(searchInput);
-  const [searchState, setSearchState] = useState<PdfSearchState>(
-    INITIAL_PDF_SEARCH_STATE,
-  );
-  const [outlineOpen, setOutlineOpen] = useState(false);
-  const [outlineState, setOutlineState] = useState<PdfOutlineState>(
-    INITIAL_PDF_OUTLINE_STATE,
-  );
-  const [pdfLoadState, setPdfLoadState] = useState<PdfLoadState>(
-    INITIAL_PDF_LOAD_STATE,
-  );
-  const [pdfPassword, setPdfPassword] = useState("");
   const [pdfReloadGeneration, setPdfReloadGeneration] = useState(0);
-  const [rotationPending, setRotationPending] = useState(false);
   const [hasRendered, setHasRendered] = useState(false);
-  const [passwordDraft, setPasswordDraft] = useState("");
   const [viewerDocument, setViewerDocument] =
     useState<PreviewDocument | null>(null);
   const [retainedLoadFailure, setRetainedLoadFailure] = useState<
     string | null
   >(null);
-  const [isFs, setIsFs] = useState(false);
-  const [fsToolbarHidden, setFsToolbarHidden] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const pdfRef = useRef<PdfViewerHandle>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  const scrollBoxRef = useRef<HTMLDivElement>(null);
-  const readyRotationRef = useRef(rotation);
-  const pdfPosition = usePdfPosition(
-    projectId,
+  const pendingZoomProjectRef = useRef<string | null>(null);
+  const {
+    rootRef,
     pdfRef,
     scrollBoxRef,
-    rotation === readyRotationRef.current,
-  );
-  useOverlayScrollbar(scrollBoxRef, PDF_SCROLL_AXES);
-  const scaleRef = useRef(scale);
+    searchInputRef,
+    userAdjustedZoomRef,
+    scale,
+    setScale,
+    setClampedScale,
+    fitMode,
+    setFitMode,
+    fitPreview,
+    userZoom,
+    layout,
+    setLayout,
+    rotation,
+    setRotation,
+    rotationPending,
+    setRotationPending,
+    rotateClockwise,
+    inverted,
+    setInverted,
+    screenReaderMode,
+    setScreenReaderMode,
+    page,
+    setPage,
+    numPages,
+    setNumPages,
+    pageInput,
+    setPageInput,
+    jumpToPage,
+    searchOpen,
+    setSearchOpen,
+    searchInput,
+    setSearchInput,
+    deferredSearch,
+    searchState,
+    setSearchState,
+    outlineOpen,
+    setOutlineOpen,
+    outlineState,
+    setOutlineState,
+    pdfLoadState,
+    setPdfLoadState,
+    pdfPassword,
+    setPdfPassword,
+    passwordDraft,
+    setPasswordDraft,
+    markLoadState,
+    markPage,
+    isFs,
+    fsToolbarHidden,
+    setFsToolbarHidden,
+    toggleFullscreen,
+  } = usePdfReader({
+    positionKey: projectId,
+    hasDocument: viewerDocument !== null,
+    surfaceKey: tab === "pdf" ? (viewerDocument?.bytes ?? null) : null,
+    active,
+    keyboard: tab === "pdf",
+    onUserZoom: () => {
+      pendingZoomProjectRef.current = projectId;
+    },
+  });
   const lastReadyDocumentRef = useRef<PreviewDocument | null>(null);
   const rejectedDocumentIdentitiesRef = useRef(new Set<string>());
   const adoptedOutputRef = useRef<{
@@ -788,7 +779,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     bytes: typeof pdfBytes;
   } | null>(null);
   const closeSave = () => setSaveOpen(false);
-  scaleRef.current = scale;
 
   useEffect(() => {
     void projectId;
@@ -808,7 +798,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     setRotationPending(false);
     setScreenReaderMode(false);
     setHasRendered(false);
-  }, [projectId]);
+  }, [projectId, setPasswordDraft, setPdfPassword, setOutlineState, setRotationPending, setRotation, setSearchState, setPdfLoadState, setSearchInput, setScreenReaderMode]);
 
   useEffect(() => {
     if (!active) return;
@@ -854,7 +844,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     setPdfPassword("");
     setPasswordDraft("");
     setRetainedLoadFailure(null);
-  }, [active, compileCheckpoint, pdfBytes]);
+  }, [active, compileCheckpoint, pdfBytes, setPasswordDraft, setPage, setOutlineState, setPdfLoadState, setSearchState, setPdfPassword, setNumPages]);
 
   const displayedCheckpoint = viewerDocument?.checkpoint ?? null;
   const displayedCheckpointCurrent = useCheckpointCurrent(displayedCheckpoint);
@@ -905,59 +895,13 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     />
   );
   useEffect(() => {
-    const onChange = () => {
-      const fs = document.fullscreenElement === rootRef.current;
-      setIsFs(fs);
-      if (!fs) setFsToolbarHidden(false);
-    };
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
-
-  const toggleFullscreen = () => {
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
-    else rootRef.current?.requestFullscreen?.().catch(() => {});
-  };
-
-  useEffect(() => {
-    setPageInput(String(page));
-  }, [page]);
-
-  useEffect(() => {
-    if (numPages <= 1 && layout === "double") setLayout("single");
-  }, [layout, numPages]);
-
-  useEffect(() => {
     if (!displayedBytes) {
       setNumPages(0);
       setPage(1);
     }
-  }, [displayedBytes]);
-
-  const jumpToPage = () => {
-    const n = Number.parseInt(pageInput, 10);
-    if (Number.isNaN(n) || n < 1 || n > numPages) {
-      setPageInput(String(page));
-      return;
-    }
-    if (n !== page) pdfRef.current?.gotoPage(n);
-  };
-
-  const setClampedScale = useCallback((next: number) => {
-    setScale(Math.min(MAX_PREVIEW_SCALE, Math.max(MIN_PREVIEW_SCALE, next)));
-  }, []);
-
-  const fitPreview = useCallback((mode: "width" | "height") => {
-    const next = pdfRef.current?.getFitScale(mode);
-    if (next == null) return false;
-    setFitMode(mode);
-    setClampedScale(next);
-    return true;
-  }, [setClampedScale]);
+  }, [displayedBytes, setPage, setNumPages]);
 
   const autoFitProjectRef = useRef<string | null | undefined>(undefined);
-  const userAdjustedZoomRef = useRef(false);
-  const pendingZoomProjectRef = useRef<string | null>(null);
   useEffect(() => {
     if (autoFitProjectRef.current === projectId) return;
     const remembered = projectId
@@ -973,7 +917,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     pendingZoomProjectRef.current = projectId;
     setFitMode(null);
     setScale(remembered.scale);
-  }, [projectId]);
+  }, [projectId, userAdjustedZoomRef, setScale, setFitMode]);
   useEffect(() => {
     if (numPages <= 0 || autoFitProjectRef.current === projectId || userAdjustedZoomRef.current) return;
     const remembered = projectId
@@ -990,63 +934,13 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
       }
     });
     return () => cancelAnimationFrame(raf);
-  }, [fitPreview, numPages, projectId]);
-
-  const userZoom = useCallback((mutate: () => void) => {
-    userAdjustedZoomRef.current = true;
-    pendingZoomProjectRef.current = projectId;
-    setFitMode(null);
-    mutate();
-  }, [projectId]);
+  }, [fitPreview, numPages, projectId, userAdjustedZoomRef]);
 
   useEffect(() => {
     const target = pendingZoomProjectRef.current;
     if (!target || target !== projectId) return;
     sessionZoomByProject.set(target, { scale, fitMode });
   }, [fitMode, projectId, scale]);
-
-  useEffect(() => {
-    void displayedBytes;
-    void tab;
-    const el = scrollBoxRef.current;
-    if (!el) return;
-    return attachPreviewZoom(el, () => scaleRef.current, (updater) =>
-      userZoom(() => setScale(updater)),
-    );
-  }, [displayedBytes, tab, userZoom]);
-
-  useEffect(() => {
-    const element = scrollBoxRef.current;
-    if (!element || !fitMode || !displayedBytes || !active) return;
-    let frame = 0;
-    const observer = new ResizeObserver(() => {
-      if (frame) cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        frame = 0;
-        const next = pdfRef.current?.getFitScale(fitMode);
-        if (next !== null && next !== undefined) {
-          setClampedScale(next);
-        }
-      });
-    });
-    observer.observe(element);
-    return () => {
-      observer.disconnect();
-      if (frame) cancelAnimationFrame(frame);
-    };
-  }, [active, displayedBytes, fitMode, setClampedScale]);
-
-  usePdfKeyboardShortcuts({
-    rootRef,
-    enabled: tab === "pdf",
-    searchOpen,
-    outlineOpen,
-    searchInputRef,
-    setSearchOpen,
-    setSearchInput,
-    setOutlineOpen,
-    setRotation,
-  });
 
   const refreshTreeQuietly = () =>
     refreshTree().catch((error) => void logError("refresh files after preview save", error));
@@ -1170,11 +1064,8 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
   const handlePdfLoadState = (next: PdfLoadState) => {
     const current = viewerDocument;
     if (!current || next.documentIdentity !== current.identity) return;
-    pdfPosition.onLoad(next);
-    setPdfLoadState(next);
-    if (next.status !== "loading") setRotationPending(false);
+    markLoadState(next);
     if (next.status === "ready") {
-      readyRotationRef.current = rotation;
       setHasRendered(true);
       lastReadyDocumentRef.current = current;
       rejectedDocumentIdentitiesRef.current.delete(current.identity);
@@ -1319,7 +1210,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
           inverted={inverted} setInverted={setInverted}
           screenReaderMode={screenReaderMode} setScreenReaderMode={setScreenReaderMode}
           rotation={rotation} rotationPending={rotationPending}
-          onRotate={() => { setRotationPending(true); setRotation((value) => ((value + 90) % 360) as PdfRotation); }}
+          onRotate={rotateClockwise}
           isFs={isFs} setFsToolbarHidden={setFsToolbarHidden} toggleFullscreen={toggleFullscreen}
           onWindow={() => {
             if (!projectId) return;
@@ -1433,9 +1324,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
               : undefined
           }
           onPageChange={(current, total) => {
-              pdfPosition.onPage(current);
-            setPage(current);
-            setNumPages(total);
+            markPage(current, total);
             usePdfViewStore.getState().setPage(current);
           }}
         />
@@ -1560,17 +1449,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
       data-preview-inverted={inverted ? "true" : "false"}
       className="relative flex h-full flex-col bg-background"
     >
-      {isFs && fsToolbarHidden && (
-        <Tooltip label={t(($) => $.preview.actions.showToolbar)}>
-          <button type="button"
-            onClick={() => setFsToolbarHidden(false)}
-            aria-label={t(($) => $.preview.actions.showToolbar)}
-            className="absolute right-3 top-3 z-20 flex size-8 items-center justify-center rounded-full bg-black/40 text-white/80 backdrop-blur transition-colors hover:bg-black/60 hover:text-white"
-          >
-            <PanelTopOpen className="size-4" />
-          </button>
-        </Tooltip>
-      )}
+      {isFs && fsToolbarHidden && <PdfShowToolbarButton onShow={() => setFsToolbarHidden(false)} />}
       {!zen && renderPreviewToolbar()}
 
       <div
@@ -1596,46 +1475,6 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
 
       <SavePreviewDialog saveOpen={saveOpen} closeSave={closeSave} isImage={isImage} pdfIsStale={pdfIsStale}
         saveName={saveName} setSaveName={setSaveName} saving={saving} hasDocument={!!displayedBytes} submitSavePdf={submitSavePdf} />
-    </div>
-  );
-}
-
-export function PdfStateMessage({
-  kind,
-  title,
-  detail,
-  onRetry,
-}: Readonly<{
-  kind: "loading" | "error";
-  title: string;
-  detail: string;
-  onRetry?: () => void;
-}>) {
-  const { t } = useTranslation(["common", "preview"]);
-  return (
-    <div
-      className="mx-auto flex max-w-sm flex-col items-center gap-3 text-center"
-      role={kind === "error" ? "alert" : "status"}
-      aria-live={kind === "error" ? "assertive" : "polite"}
-    >
-      {kind === "loading" ? (
-        <Spinner className="size-7 text-muted-foreground" />
-      ) : (
-        <AlertTriangle className="size-7 text-destructive" />
-      )}
-      <div>
-        <h2 className="text-sm font-semibold text-foreground">
-          {title}
-        </h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {detail}
-        </p>
-      </div>
-      {onRetry && (
-        <Button size="sm" onClick={onRetry}>
-          {t(($) => $.preview.viewer.retry)}
-        </Button>
-      )}
     </div>
   );
 }

@@ -1646,5 +1646,9 @@
   "stuckWindow": {
     "reloaded": "Oleafly latasi tämän ikkunan uudelleen, koska se ei vastannut 30 sekuntiin. Juuri ennen sitä tehdyt muutokset eivät ehkä tallentuneet.",
     "reloadedAgain": "Oleafly latasi tämän ikkunan uudelleen, koska se lakkasi taas vastaamasta. Projektiasi ei avattu uudelleen siltä varalta, että ongelma johtuu jostakin siinä."
+  },
+  "zoomIndicator": {
+    "label": "Zoomaus",
+    "reset": "Palauta"
   }
 }

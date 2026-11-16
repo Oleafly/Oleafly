@@ -972,6 +972,12 @@
         "label": "Standaardweergave op Start",
         "list": "Lijst"
       },
+      "markers": {
+        "badges": "Typelabels",
+        "description": "Elk bestand in de projectboom krijgt een pictogram of een kort typelabel, zoals TEX of PDF, in dezelfde kleuren.",
+        "icons": "Pictogrammen",
+        "label": "Bestanden tonen als"
+      },
       "openIn": {
         "description": "Kies de indeling die wordt gebruikt als een project opent.",
         "label": "Projecten openen in"

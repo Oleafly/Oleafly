@@ -972,6 +972,12 @@
         "label": "Aloitusnäkymän oletus",
         "list": "Luettelo"
       },
+      "markers": {
+        "badges": "Tyyppimerkkeinä",
+        "description": "Jokainen projektipuun tiedosto saa kuvakkeen tai lyhyen tyyppimerkin, kuten TEX tai PDF, samoissa väreissä.",
+        "icons": "Kuvakkeina",
+        "label": "Näytä tiedostot"
+      },
       "openIn": {
         "description": "Valitse asettelu, jota käytetään projektin avautuessa.",
         "label": "Avaa projektit näkymään"

@@ -21,7 +21,8 @@
     "blockquote": "Inserts a quoted block",
     "linkPlaceholder": "Example URL shown in an empty link field",
     "imagePlaceholder": "Example image path shown in an empty image field",
-    "apply": "Confirms the value typed in the link or image popover"
+    "apply": "Confirms the value typed in the link or image popover",
+    "preview": "Mode button for an HTML file that shows the rendered page instead of its source"
   },
   "contextMenu": {
     "itemize": "LaTeX itemize environment, keep the environment name recognisable",
@@ -49,7 +50,8 @@
     "assistantTab": "Screen reader text and tooltip for the small sparkle mark on an editor tab that the AI assistant opened",
     "closeAssistantTabs": "Editor tab right-click menu item that closes every tab the AI assistant opened, leaving the tabs the user opened",
     "closeAssistantTabsCount_one": "Tooltip of the tab bar button that closes the one editor tab the AI assistant opened",
-    "closeAssistantTabsCount_other": "Tooltip of the tab bar button that closes every editor tab the AI assistant opened. {{count}} is how many such tabs are open"
+    "closeAssistantTabsCount_other": "Tooltip of the tab bar button that closes every editor tab the AI assistant opened. {{count}} is how many such tabs are open",
+    "htmlPreviewFailed": "Shown in place of an HTML file's rendered page when it cannot be shown; detail is the error"
   },
   "log": {
     "open": "Jumps to the source line of a compile error",
@@ -213,5 +215,15 @@
     "reload": "Button that discards the unsaved edits and loads the newer file from disk",
     "compare": "Button that opens a side-by-side comparison of the file on disk and the unsaved edits",
     "tabMark": "Tooltip and screen reader label on an editor tab whose file changed on disk while it had unsaved edits"
+  },
+  "bibList": {
+    "etAl": "Short author list in a bibliography row: the first author followed by the usual abbreviation for and others",
+    "search": "Placeholder of the search field above the list of entries in a .bib file"
+  },
+  "deck": {
+    "noSlides": "Shown inside a slide deck preview when the deck file exports no slides; \"default export\" is the TypeScript term"
+  },
+  "board": {
+    "unreadable": "Shown in place of a whiteboard (.excalidraw file) whose JSON could not be parsed; the file name appears below it"
   }
 }

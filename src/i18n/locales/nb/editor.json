@@ -159,7 +159,8 @@
     "imageToTypst": "Bilde til Typst",
     "imageToTypstTooltip": "Bilde til Typst (transkriber med AI)",
     "typstPackages": "Typst-pakker",
-    "latexPackages": "LaTeX-pakker"
+    "latexPackages": "LaTeX-pakker",
+    "preview": "Forhåndsvisning"
   },
   "contextMenu": {
     "engineUnavailable": "Handlinger for dokumentmotoren er utilgjengelige",
@@ -209,6 +210,8 @@
     "pdfLoadFailed": "Kunne ikke laste PDF-en: {{detail}}",
     "imageLoadFailed": "Kunne ikke laste bildet: {{detail}}",
     "imageUnreadable": "Filen kan ikke vises som bilde. Den kan være skadet, eller den er kanskje ikke et bilde.",
+    "imageFit": "Tilpass vinduet",
+    "htmlPreviewFailed": "Kunne ikke forhåndsvise siden: {{detail}}",
     "binaryFile": "Binærfil. Ingen forhåndsvisning tilgjengelig.",
     "managedFileReadOnly": "{{file}} styres av Oleafly og er skrivebeskyttet her. Prosjektinnstillinger endrer du i Oleafly, ikke ved å redigere denne filen.",
     "noFileOpen": "Ingen filer er åpne.",
@@ -1671,5 +1674,19 @@
       "duplicateArg": "Duplisert argument",
       "unknownKind": "Ukjent felttype"
     }
+  },
+  "bibList": {
+    "count_one": "{{count}} referanse",
+    "count_other": "{{count}} referanser",
+    "empty": "Filen har ingen referanser ennå.",
+    "etAl": "{{author}} mfl.",
+    "noMatch": "Ingen referanser samsvarer med søket.",
+    "search": "Søk i referanser"
+  },
+  "deck": {
+    "noSlides": "Presentasjonen har ingen lysbilder ennå. Eksporter en liste med lysbildekomponenter som standardeksport."
+  },
+  "board": {
+    "unreadable": "Denne tavlen kunne ikke leses. Filen kan være skadet, eller den er ikke en Excalidraw-tegning."
   }
 }

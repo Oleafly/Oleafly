@@ -5,13 +5,19 @@ import type { PresentationParams } from "./navigation";
 
 export async function loadPresentationPdf(params: PresentationParams): Promise<Uint8Array> {
   const buffer =
-    params.source.kind === "file"
-      ? await readProjectBytes(params.projectId, params.source.path)
-      : await readCompiledPdf(params.projectId);
+    params.source.kind === "compiled"
+      ? await readCompiledPdf(params.projectId)
+      : await readProjectBytes(params.projectId, params.source.path);
   return new Uint8Array(buffer);
 }
 
+export function loadPresentationDeck(params: PresentationParams): Promise<string> {
+  if (params.source.kind !== "deck") return Promise.reject(new Error("not a deck"));
+  return readFileContent(params.projectId, params.source.path, true);
+}
+
 function notesFilePath(params: PresentationParams): string | null {
+  if (params.source.kind === "deck") return null;
   if (params.source.kind === "file") return pdfpcPathFor(params.source.path);
   return params.main ? pdfpcPathFor(params.main) : null;
 }

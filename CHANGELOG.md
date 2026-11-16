@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Double-click a `.tex`, `.typ` or `.md` file in Finder, File Explorer or a Linux file manager and it opens in Oleafly, in a tab inside a project for its folder. Oleafly also becomes the default app for these files, on macOS and Linux the first time it runs and on Windows when it's installed. If you already picked another app for one of them, that app stays the default.
 - You can now set the reasoning effort for a custom provider. Turn on Send reasoning effort when you add or edit it, and the effort menu in chat offers Low, Medium and High, which Oleafly sends as `reasoning_effort`. If the server rejects the field, testing the model tells you.
+- When you zoom the app with a shortcut or from the command palette, a small bar at the bottom of the window shows the new zoom level. Use its − and + buttons to zoom out or in, or Reset (Cmd+0 or Ctrl+0) to go back to 100%. It goes away after two seconds, unless the pointer is resting on it.
+- The source editor has an outline rail halfway down its right edge: a short mark for each heading, with the section you're reading highlighted. Hover over it or click it to see the outline, with section numbers and the PDF page of each heading from the last compile, and pick a heading to go there. In a project split across files, it shows the whole document from any file the main document includes.
+- HTML files have Code, Preview and Split modes, like Markdown. The preview shows the page as a browser would, with its images, styles and scripts from the project, and reloads each time you save.
+- The source editor highlights HTML, JavaScript, TypeScript, JSX, TSX, Python, R, Julia and SCSS files. Before, they showed as plain text.
+- `.bib` files have a Preview mode too: a searchable list of the references in the file, with title, authors, year and venue. Pick one to see its entry in the source beside the list.
+- CSV and TSV files open as a table in Preview, with filtering, sorting by column and a summary of each number column, and Excel or OpenDocument spreadsheets (`.xlsx`, `.xls`, `.ods`) open straight into that table instead of as unreadable text.
+- Images can be zoomed with the buttons in the corner, a pinch or Ctrl-scroll (Cmd-scroll on a Mac), and each image keeps its zoom and scroll position while the app is open.
+- A PDF you open from the file tree has the same toolbar as the compiled PDF preview: page numbers, zoom and fit, search, the PDF's outline, page layout, rotation, dark mode and full screen. It opens fitted to the width and remembers the page you were on.
+- Slide decks written in TSX open in the editor. A deck lives at `slides/<name>/index.tsx` in the Open Slide format, so decks you already have work unchanged. Preview or Split shows the slides as you type, with their steps, transitions and images from the project, and the speaker notes for the slide on screen sit underneath. Present a deck from the start, from the current slide or with the presenter view, as you would a PDF. The arrow keys play each step before moving on to the next slide.
+- Whiteboards. Name a file `something.excalidraw` and it opens in the editor as an Excalidraw canvas, where you can sketch diagrams and figures by hand. What you draw is saved to the file a moment after you stop, and changes made to the file from outside show up on the board. The board follows the app's theme and language, works offline with its handwriting fonts built in, and opens where you left it while the app is running.
+
+### Changed
+
+- File and folder icons now use the app's chart colours, one for each family of files, with a lightly tinted body. Folders and archives are amber, LaTeX, class and settings files blue, Typst green, Markdown and bibliographies purple, PDFs red, images and whiteboards pink, spreadsheets dark green, and code and slide decks orange. Files Oleafly doesn't recognise stay grey. If you'd rather read a file's type than its icon, switch to type badges in Settings > Appearance > Project: a short label such as TEX or PDF, in the same colour.
 
 ### Fixed
 

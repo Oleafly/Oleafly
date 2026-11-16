@@ -159,7 +159,8 @@
     "imageToTypst": "Imagen a Typst",
     "imageToTypstTooltip": "Imagen a Typst (transcribir con IA)",
     "typstPackages": "Paquetes de Typst",
-    "latexPackages": "Paquetes de LaTeX"
+    "latexPackages": "Paquetes de LaTeX",
+    "preview": "Vista previa"
   },
   "contextMenu": {
     "engineUnavailable": "Acciones del motor de documentos no disponibles",
@@ -209,6 +210,8 @@
     "pdfLoadFailed": "No se pudo cargar el PDF: {{detail}}",
     "imageLoadFailed": "No se pudo cargar la imagen: {{detail}}",
     "imageUnreadable": "Este archivo no se puede mostrar como imagen. Puede estar dañado o no ser una imagen.",
+    "imageFit": "Ajustar a la ventana",
+    "htmlPreviewFailed": "No se pudo previsualizar la página: {{detail}}",
     "binaryFile": "Archivo binario. No hay vista previa disponible.",
     "managedFileReadOnly": "{{file}} lo gestiona Oleafly y aquí es de solo lectura. Los ajustes del proyecto se cambian desde Oleafly, no editando este archivo.",
     "noFileOpen": "Ningún archivo abierto.",
@@ -1692,5 +1695,20 @@
       "duplicateArg": "Argumento duplicado",
       "unknownKind": "Tipo de campo desconocido"
     }
+  },
+  "bibList": {
+    "count_one": "{{count}} referencia",
+    "count_many": "{{count}} referencias",
+    "count_other": "{{count}} referencias",
+    "empty": "Este archivo aún no tiene referencias.",
+    "etAl": "{{author}} et al.",
+    "noMatch": "Ninguna referencia coincide con la búsqueda.",
+    "search": "Buscar referencias"
+  },
+  "deck": {
+    "noSlides": "Esta presentación aún no tiene diapositivas. Exporta una matriz de componentes de diapositiva como exportación predeterminada."
+  },
+  "board": {
+    "unreadable": "No se pudo leer esta pizarra. Puede que el archivo esté dañado o que no sea un dibujo de Excalidraw."
   }
 }

@@ -19,9 +19,7 @@ import {
   CopyPlus,
   FileLock,
   FilePlus,
-  Folder,
   FolderLock,
-  FolderOpen,
   FolderPlus,
   FolderClosed,
   Import,
@@ -60,7 +58,7 @@ import {
 import { useSidebarViewMemory } from "@/hooks/use-sidebar-view-memory";
 import { readSidebarView } from "@/store/sidebar-view-state";
 import { fileTreePathIsHidden, useSettingsStore } from "@/store/settings";
-import { FileIcon } from "@/components/files/fileIcon";
+import { FileBadge, FileIcon, FolderIcon } from "@/components/files/fileIcon";
 import {
   GitFolderDot,
   GitStatusBadge,
@@ -1331,6 +1329,7 @@ function TreeRowIcon({
   expanded,
   isMain,
 }: Readonly<{ node: TreeNode; expanded: boolean; isMain: boolean }>) {
+  const badges = useSettingsStore((state) => state.fileMarkers === "badges");
   if (node.unreadable) {
     return (
       <>
@@ -1352,11 +1351,7 @@ function TreeRowIcon({
             expanded && "rotate-90"
           )}
         />
-        {expanded ? (
-          <FolderOpen className="size-4 shrink-0 text-muted-foreground" />
-        ) : (
-          <Folder className="size-4 shrink-0 text-muted-foreground" />
-        )}
+        <FolderIcon open={expanded} className="size-4 shrink-0" />
       </>
     );
   }
@@ -1365,7 +1360,11 @@ function TreeRowIcon({
       <span className="flex w-3.5 shrink-0 items-center justify-center">
         {isMain && <Star className="size-3 shrink-0 fill-foreground text-foreground" />}
       </span>
-      <FileIcon name={node.name} className="size-4 shrink-0" />
+      {badges ? (
+        <FileBadge name={node.path} />
+      ) : (
+        <FileIcon name={node.path} className="size-4 shrink-0" />
+      )}
     </>
   );
 }

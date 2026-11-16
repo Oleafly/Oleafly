@@ -978,6 +978,12 @@
         "label": "Vue d'accueil par défaut",
         "list": "Liste"
       },
+      "markers": {
+        "badges": "Des badges de type",
+        "description": "Chaque fichier de l'arborescence du projet reçoit une icône ou un court badge de type, comme TEX ou PDF, dans les mêmes couleurs.",
+        "icons": "Des icônes",
+        "label": "Afficher les fichiers avec"
+      },
       "openIn": {
         "description": "Choisissez la disposition utilisée à l'ouverture d'un projet.",
         "label": "Ouvrir les projets en"

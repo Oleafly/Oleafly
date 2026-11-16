@@ -159,7 +159,8 @@
     "imageToTypst": "图片转 Typst",
     "imageToTypstTooltip": "图片转 Typst（用 AI 转写）",
     "typstPackages": "Typst 包",
-    "latexPackages": "LaTeX 宏包"
+    "latexPackages": "LaTeX 宏包",
+    "preview": "预览"
   },
   "contextMenu": {
     "engineUnavailable": "文档引擎操作不可用。",
@@ -209,6 +210,8 @@
     "pdfLoadFailed": "加载 PDF 失败：{{detail}}",
     "imageLoadFailed": "加载图片失败：{{detail}}",
     "imageUnreadable": "无法将此文件显示为图片。它可能已损坏，或者根本不是图片。",
+    "imageFit": "适合窗口",
+    "htmlPreviewFailed": "预览页面失败：{{detail}}",
     "binaryFile": "二进制文件，无法预览。",
     "managedFileReadOnly": "{{file}} 由 Oleafly 管理，在此处为只读。项目设置通过 Oleafly 本身修改，而不是编辑此文件。",
     "noFileOpen": "未打开文件。",
@@ -1650,5 +1653,18 @@
       "duplicateArg": "重复的参数",
       "unknownKind": "未知的字段类型"
     }
+  },
+  "bibList": {
+    "count_other": "{{count}} 条参考文献",
+    "empty": "此文件还没有参考文献。",
+    "etAl": "{{author}} 等",
+    "noMatch": "没有与搜索匹配的参考文献。",
+    "search": "搜索参考文献"
+  },
+  "deck": {
+    "noSlides": "此演示文稿还没有幻灯片。请将幻灯片组件数组作为默认导出。"
+  },
+  "board": {
+    "unreadable": "无法读取此白板。文件可能已损坏，或者不是 Excalidraw 绘图。"
   }
 }

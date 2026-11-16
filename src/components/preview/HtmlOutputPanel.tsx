@@ -7,8 +7,7 @@ import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
 import { compiledHtmlPreviewUrl } from "@/lib/notebook-commands";
 import { openHtmlInBrowser } from "./open-compiled-html";
-
-const FRAME_SANDBOX = "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads";
+import { PreviewFrame } from "./PreviewFrame";
 
 type Frame = { projectId: string; builtAt: number } & ({ url: string } | { error: string });
 
@@ -49,14 +48,7 @@ export function HtmlOutputPanel({
   if (shown && "url" in shown) {
     return (
       <div className="h-full" data-testid="html-output-panel">
-        <iframe
-          key={shown.url}
-          title={pageName(shown.url)}
-          src={`${shown.url}?v=${shown.builtAt}`}
-          sandbox={FRAME_SANDBOX}
-          allow="fullscreen"
-          className="size-full border-0 bg-white"
-        />
+        <PreviewFrame src={`${shown.url}?v=${shown.builtAt}`} title={pageName(shown.url)} />
       </div>
     );
   }

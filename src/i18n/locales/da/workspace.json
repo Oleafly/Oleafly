@@ -126,6 +126,8 @@
     "entryCount_other": "{{count}} punkter i dispositionen",
     "expandHeading": "Fold {{title}} ud",
     "expandAll": "Fold alle overskrifter ud",
+    "onPage": "{{heading}}, side {{page}}",
+    "page": "s.{{page}}",
     "title": "Disposition"
   },
   "panelError": {

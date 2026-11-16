@@ -972,6 +972,12 @@
         "label": "Default home view",
         "list": "List"
       },
+      "markers": {
+        "badges": "Type badges",
+        "description": "Each file in the project tree gets an icon or a short type badge, like TEX or PDF, in the same colours.",
+        "icons": "Icons",
+        "label": "Show files as"
+      },
       "openIn": {
         "description": "Choose the layout used when a project opens.",
         "label": "Open projects in"
