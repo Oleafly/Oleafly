@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - When cloud sync left two versions of a note and you kept one, the other was
   deleted for good, although the dialog said it went to the Recycle Bin. It
   now goes to this computer's trash, so you can still get it back.
+- New research project now offers Quarto and Calepin alongside LaTeX, Typst and Markdown. A Quarto project starts from a `main.qmd` that builds its PDF through Typst, so you don't need TeX installed. Names with `@`, `*` or `{{< >}}` also show up as typed in Markdown and Quarto titles. Before, an `@` became a citation, and in Quarto that could stop the build.
 
 ### Added
 
