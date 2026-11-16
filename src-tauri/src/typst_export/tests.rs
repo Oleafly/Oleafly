@@ -150,21 +150,23 @@ fn versions_without_a_format_refuse_before_running_typst() {
 
 #[test]
 fn pandoc_reads_typst_html_without_wrapper_divs() {
-    let args = pandoc_html_args(
-        "docx",
-        Path::new("/tmp/x/document.html"),
-        Path::new("/project"),
-        "/out/paper.docx",
-    )
-    .unwrap();
+    let source = crate::conversion::ExportSource {
+        file_name: "/tmp/x/document.html".into(),
+        resources: oleafly_core::PandocResourcePath {
+            argument: "--resource-path=/project".into(),
+            variable: None,
+        },
+    };
+    let args = pandoc_html_args("docx", &source, "/out/paper.docx").unwrap();
     assert_eq!(args[0], "--from=html-native_divs-native_spans");
     assert!(args.contains(&"--to=docx".to_string()));
+    assert!(args.contains(&"--resource-path=/project".to_string()));
     assert_eq!(
         args.last().map(String::as_str),
         Some("/tmp/x/document.html")
     );
     assert!(!args.iter().any(|argument| argument.contains("citeproc")));
-    assert!(pandoc_html_args("nope", Path::new("a.html"), Path::new("/p"), "o").is_none());
+    assert!(pandoc_html_args("nope", &source, "o").is_none());
 }
 
 fn sidecar(name: &str) -> Option<PathBuf> {

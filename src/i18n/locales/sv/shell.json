@@ -561,7 +561,7 @@
       },
       "glossaries-index": {
         "title": "Verktyg för ordlista eller index",
-        "detail": "glossaries och makeindex kräver en extra körning av makeindex eller xindy, vilket den inbyggda motorn inte gör."
+        "detail": "glossaries och makeindex kräver en extra körning av makeindex, xindy eller bib2gls, vilket den inbyggda motorn inte gör."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref är inställt på pdfTeX-drivrutinen",

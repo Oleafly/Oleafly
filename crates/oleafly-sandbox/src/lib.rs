@@ -4,6 +4,8 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+#[path = "windows/cmdline.rs"]
+pub mod cmdline;
 mod ledger;
 #[cfg(any(target_os = "linux", test))]
 mod linux;
@@ -21,10 +23,6 @@ mod safe_fs;
 pub mod selftest;
 #[cfg(windows)]
 pub mod windows;
-#[cfg(not(windows))]
-#[path = "windows/cmdline.rs"]
-#[allow(dead_code)]
-mod windows_cmdline;
 #[cfg(not(windows))]
 #[path = "windows/env.rs"]
 #[allow(dead_code)]
@@ -333,8 +331,7 @@ pub fn shell_command(
     {
         check_env(spec)?;
         let resolved = resolve(spec)?;
-        let wide: Vec<u16> = text.encode_utf16().collect();
-        let line = windows::cmdline::cmd_line(&wide)?;
+        let line = cmdline::cmd_line(text)?;
         windows::command_raw(&resolved, &windows::cmd_exe(), line)
     }
     #[cfg(not(windows))]

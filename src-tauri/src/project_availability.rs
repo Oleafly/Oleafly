@@ -246,35 +246,7 @@ fn home_spellings(roots: &[PathBuf]) -> Vec<String> {
         .collect()
 }
 
-/// The 8.3 spelling of an existing `path` (`C:\Users\JOHNSM~1`). A volume
-/// with short names turned off gives the path back unchanged.
-#[cfg(windows)]
-pub(crate) fn short_spelling(path: &Path) -> Option<PathBuf> {
-    use std::os::windows::ffi::{OsStrExt, OsStringExt};
-    use windows_sys::Win32::Storage::FileSystem::GetShortPathNameW;
-
-    let input: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
-    let mut output = vec![0u16; 260];
-    for _ in 0..3 {
-        let capacity = u32::try_from(output.len()).ok()?;
-        let written = unsafe { GetShortPathNameW(input.as_ptr(), output.as_mut_ptr(), capacity) };
-        let written = usize::try_from(written).ok()?;
-        if written == 0 {
-            return None;
-        }
-        if written < output.len() {
-            output.truncate(written);
-            return Some(PathBuf::from(std::ffi::OsString::from_wide(&output)));
-        }
-        output.resize(written, 0);
-    }
-    None
-}
-
-#[cfg(not(windows))]
-pub(crate) fn short_spelling(_path: &Path) -> Option<PathBuf> {
-    None
-}
+use oleafly_core::short_path_name as short_spelling;
 
 fn availability_of(
     result: &Result<crate::project_location::ProjectLocation, crate::project_location::LocateError>,

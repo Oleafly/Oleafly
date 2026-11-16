@@ -560,7 +560,7 @@
       },
       "glossaries-index": {
         "title": "용어집 또는 색인 도구",
-        "detail": "glossaries와 makeindex에는 makeindex나 xindy를 한 번 더 실행해야 하는데, 내장 엔진은 이를 하지 않습니다."
+        "detail": "glossaries와 makeindex에는 makeindex, xindy나 bib2gls를 한 번 더 실행해야 하는데, 내장 엔진은 이를 하지 않습니다."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref가 pdfTeX 드라이버로 설정됨",

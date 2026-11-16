@@ -1,0 +1,8 @@
+Rc files read:
+  NONE
+Latexmk: Initialization file './.oleafly/build/.oleafly-latexmkrc' gave an error:
+     Unterminated \g... pattern in regex; marked by <-- HERE in m/^\g <-- HERE lossaryentry/ at (eval 14) line 41.
+
+Latexmk: Stopping because of problem with rc file
+C:\texlive\2026\bin\windows\runscript.tlu:933: command failed with exit code 255:
+perl.exe c:\texlive\2026\texmf-dist\scripts\latexmk\latexmk.pl -norc -shell-restricted -lualatex -r ./.oleafly/build/.oleafly-latexmkrc -interaction=nonstopmode -synctex=1 -outdir=./.oleafly/build -jobname=_oleafly_entry -f ./template.tex

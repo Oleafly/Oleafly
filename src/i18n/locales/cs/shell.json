@@ -563,7 +563,7 @@
       },
       "glossaries-index": {
         "title": "Nástroj pro glosář nebo rejstřík",
-        "detail": "glossaries a makeindex potřebují další běh makeindexu nebo xindy, což vestavěný engine neumí."
+        "detail": "glossaries a makeindex potřebují další běh makeindexu, xindy nebo bib2gls, což vestavěný engine neumí."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref je nastaven na ovladač pdfTeX",

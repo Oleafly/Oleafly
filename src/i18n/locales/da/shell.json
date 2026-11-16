@@ -561,7 +561,7 @@
       },
       "glossaries-index": {
         "title": "Værktøj til ordliste eller indeks",
-        "detail": "glossaries og makeindex kræver en ekstra kørsel af makeindex eller xindy, og det gør den indbyggede motor ikke."
+        "detail": "glossaries og makeindex kræver en ekstra kørsel af makeindex, xindy eller bib2gls, og det gør den indbyggede motor ikke."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref er sat til pdfTeX-driveren",

@@ -560,7 +560,7 @@
       },
       "glossaries-index": {
         "title": "詞彙表或索引工具",
-        "detail": "glossaries 與 makeindex 需要額外執行一次 makeindex 或 xindy，內建引擎不會這麼做。"
+        "detail": "glossaries 與 makeindex 需要額外執行一次 makeindex、xindy 或 bib2gls，內建引擎不會這麼做。"
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref 設為 pdfTeX 驅動程式",

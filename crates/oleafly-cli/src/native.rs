@@ -30,9 +30,10 @@ use oleafly_core::tex_errors::{
 };
 use oleafly_core::tex_failure::{blocked_shell_escape, tex_failure_reason, DeniedShellEscape};
 use oleafly_core::tex_outputs::{
-    bibliography_above_main_error, jobname_bibliography_warning, latexmk_biber_mismatch_error,
-    nested_input_error, seed_shipped_bibliography, shipped_bibliography, shipped_bibliography_note,
-    source_head, unbuilt_index_warnings, unicode_engine_error,
+    bib2gls_java_error, bibliography_above_main_error, jobname_bibliography_warning,
+    latexmk_biber_mismatch_error, nested_input_error, pinned_compiler_warning,
+    seed_shipped_bibliography, shipped_bibliography, shipped_bibliography_note, source_head,
+    unbuilt_index_warnings, unicode_engine_error,
 };
 use oleafly_core::typst_log::{parse_typst_diagnostics, typst_path_relative_to};
 use oleafly_core::typst_toolchain::{
@@ -789,7 +790,8 @@ impl NativeCompiler {
             }
             None => output,
         };
-        if build.engine() == Engine::Latexmk && !status.success() {
+        let tex_ran = file_log.is_some();
+        if build.engine() == Engine::Latexmk && !status.success() && tex_ran {
             append_bounded(
                 &mut log,
                 biber_log_notes(&file_log_path.with_extension("blg")).as_bytes(),
@@ -805,7 +807,14 @@ impl NativeCompiler {
                 .staging
                 .as_ref()
                 .map_or(build_dir.as_path(), OutputStaging::path);
-            apply_tex_output_notes(build, out_dir, status.success(), &mut log, &mut errors);
+            apply_tex_output_notes(
+                build,
+                out_dir,
+                status.success(),
+                tex_ran,
+                &mut log,
+                &mut errors,
+            );
         }
         let wrote_pdf = pdf_was_written(in_place.as_ref(), &pdf, produced_pdf, status.success());
         let ok = status.success() && wrote_pdf && !errors.iter().any(|error| error.kind == "error");
@@ -1345,7 +1354,12 @@ impl NativeCompiler {
             engine_spec::validate_latexmk_path_characters(&out_dir)?;
             (out_dir, None)
         } else {
-            let absolute = engine_spec::latexmk_absolute_path_text(build_dir, cfg!(windows)).ok_or_else(|| {
+            let absolute = engine_spec::latexmk_owned_path_text(
+                build_dir,
+                cfg!(windows),
+                &oleafly_core::short_path_name,
+            )
+            .ok_or_else(|| {
                 Error::new(
                     ErrorKind::InvalidInput,
                     "latexmk can't write to this project's build folder because its path has characters a shell would read. Move Oleafly's data folder (OLEAFLY_DATA_DIR) to a plainer path.",
@@ -1353,6 +1367,7 @@ impl NativeCompiler {
             })?;
             (absolute.clone(), Some(absolute))
         };
+        engine_spec::write_latexmk_rc(build_dir, flavor)?;
         let distribution =
             oleafly_core::tex_distro::distribution_kind_for_tool(&self.tex_search(), latexmk);
         let mut arguments: Vec<OsString> = engine_spec::latexmk_args(
@@ -2136,6 +2151,7 @@ fn apply_tex_output_notes(
     build: &PreparedBuild,
     out_dir: &Path,
     succeeded: bool,
+    tex_ran: bool,
     log: &mut String,
     errors: &mut Vec<BuildError>,
 ) {
@@ -2156,8 +2172,24 @@ fn apply_tex_output_notes(
     let mut causes: Vec<BuildError> = Vec::new();
     if !bundled {
         causes.extend(latexmk_biber_mismatch_error(log).map(BuildError::from));
+        causes.extend(bib2gls_java_error(log).map(BuildError::from));
+    }
+    if !bundled && tex_ran {
         causes.extend(bibliography_above_main_error(out_dir, ENTRY_STEM).map(BuildError::from));
     }
+    let pinned = (!bundled)
+        .then(|| build.tex_flavor().and_then(TexFlavor::parse))
+        .flatten();
+    causes.extend(pinned.and_then(|pinned| {
+        pinned_compiler_warning(build.project_root(), build.source_path(), pinned).map(|warning| {
+            let flavor = warning.params.get("flavor").cloned().unwrap_or_default();
+            let mut warning = BuildError::from(warning);
+            warning
+                .hints
+                .push(format!("oleafly build --compiler {flavor}"));
+            warning
+        })
+    }));
     if !bundled && build.tex_flavor().is_none() {
         causes.extend(unicode_engine_error(log).map(|error| {
             let compiler = error.params.get("compiler").cloned().unwrap_or_default();
@@ -2207,8 +2239,8 @@ pub(crate) async fn run_command_with_stdin(
 ) -> Result<(String, ExitStatus)> {
     let executable = launch.executable;
     let mut command = tokio::process::Command::new(executable);
+    engine_spec::add_wrapper_safe_args(command.as_std_mut(), executable, launch.arguments);
     command
-        .args(launch.arguments)
         .current_dir(launch.working_directory)
         .env("NoDefaultCurrentDirectoryInExePath", "1")
         .env("openout_any", "p")

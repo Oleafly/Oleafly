@@ -562,7 +562,7 @@
       },
       "glossaries-index": {
         "title": "Herramienta de glosario o de índice",
-        "detail": "glossaries y makeindex necesitan una ejecución adicional de makeindex o xindy, que el motor incluido no hace."
+        "detail": "glossaries y makeindex necesitan una ejecución adicional de makeindex, xindy o bib2gls, que el motor incluido no hace."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref está configurado con el controlador de pdfTeX",

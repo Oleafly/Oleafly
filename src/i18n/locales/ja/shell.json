@@ -560,7 +560,7 @@
       },
       "glossaries-index": {
         "title": "用語集または索引のツール",
-        "detail": "glossaries と makeindex には makeindex または xindy の追加実行が必要ですが、組み込みエンジンでは行われません。"
+        "detail": "glossaries と makeindex には makeindex、xindy または bib2gls の追加実行が必要ですが、組み込みエンジンでは行われません。"
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref が pdfTeX ドライバに設定されています",

@@ -570,6 +570,7 @@ const UNICODE_ENGINE_CODE = "tex.needs_unicode_engine";
 const INDEX_GAP_CODES: ReadonlySet<string> = new Set([
   "tex.index_needs_latexmk",
   "tex.glossary_needs_latexmk",
+  "tex.glossary_resources_need_latexmk",
 ]);
 const JAPANESE_COMPILER_INSTALLABLE = "tex.japanese_compiler_installable";
 const T1_ENCODING_CODE = "tex.t1_fontenc_unicode_engine";

@@ -361,10 +361,19 @@ pub fn parse_latex_log(log: &str, root_file: Option<&str>) -> Vec<LogDiagnostic>
             .unwrap_or_default(),
         out: Vec::new(),
     };
+    let mut after_wrapper_trailer = false;
     for line in head(log).split('\n') {
         // Windows compiler pipes use CRLF. Keep the line terminator out of
         // anchored patterns and diagnostic context, matching the LF path.
-        parser.parse_line(line.strip_suffix('\r').unwrap_or(line));
+        let line = line.strip_suffix('\r').unwrap_or(line);
+        if std::mem::take(&mut after_wrapper_trailer) {
+            continue;
+        }
+        if crate::tex_errors::is_wrapper_trailer(line) {
+            after_wrapper_trailer = true;
+            continue;
+        }
+        parser.parse_line(line);
     }
     if let Some(current) = parser.current.take() {
         if !patterns().bib_empty.is_match(&current.text) {

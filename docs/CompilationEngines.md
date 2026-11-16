@@ -160,11 +160,13 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
   follows the preamble into `\input` files and local classes and packages, two
   levels deep, and leaves alone any file that branches on the engine. Everything
   else uses pdfLaTeX. The rules live in `oleafly-core` (`project_tex_flavor`), so
-  `oleaflyc` picks the same compiler.
+  `oleaflyc` picks the same compiler. A pinned compiler wins over all of this.
+  When the project's `latexmkrc` or `% !TEX program` line asks for another
+  one, a failed compile says so.
 - upLaTeX and pLaTeX run through latexmk's DVI route (`-pdfdvi`) with
-  `dvipdfmx`, `upbibtex` or `pbibtex`, and `upmendex` or `mendex`. These are
-  passed on the command line because latexmk runs with `-norc`. If the
-  compiler or `dvipdfmx` is missing next to latexmk, the compile stops. When
+  `dvipdfmx`, `upbibtex` or `pbibtex`, and `upmendex` or `mendex`. These
+  settings live in Oleafly's own rc file (see below). If the compiler or
+  `dvipdfmx` is missing next to latexmk, the compile stops. When
   Oleafly can write to that distribution, as with managed TinyTeX or a TeX Live
   whose `tlpkg` folder is writable, the failed compile offers
   **Install Japanese support (about 450 MB)**. That installs
@@ -172,10 +174,29 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
   Elsewhere the error is `tex.japanese_compiler_missing_command`, which names
   the install command for that distribution, or
   `tex.japanese_compiler_missing` when Oleafly doesn't know one.
-- `-norc` also means index runs come from the command line. Fixed rules build
-  the `makeindex` route of `glossaries`, including `order=letter`, and `nomencl`
-  lists. `xindy` and lists added with `\newglossary` are not built, and the
-  compile warns when one is missing from the PDF.
+- Before each latexmk run, Oleafly writes its own rc file into the build
+  folder and loads it with `-r`: `.oleafly-latexmkrc`, or
+  `.oleafly-uplatex-latexmkrc` and `.oleafly-platex-latexmkrc`, which add the
+  DVI settings above. A file's name decides its content, so two builds sharing
+  a folder never rewrite each other's settings. The rules come from
+  `crates/oleafly-core/resources/latexmk/oleafly.latexmkrc`. No Perl goes on
+  the command line. On Windows, TeX Live's `latexmk.exe` passes its command line to Perl
+  as raw text, and Perl's own parsing turned `\\` into `\`, which broke every
+  compile (#452). The rules build the `makeindex` route of `glossaries`,
+  including `order=letter`, `nomencl` lists, and `glossaries-extra` record
+  glossaries with `bib2gls`. bib2gls runs for the resources
+  `\GlsXtrLoadResources` writes, which are named after the job, and runs again
+  when a chapter's `\gls` use changes. Glossaries and nomenclature use the flavor's
+  indexer, so upLaTeX gets `upmendex`. `xindy` and lists added with
+  `\newglossary` are not built, and the compile warns when one is missing from
+  the PDF. If bib2gls can't start Java, the error says so.
+- On Windows, an argument Oleafly passes to a compiler or converter, other than
+  a `.bat` or `.cmd` script, goes out in double quotes when it has `'`, `[`,
+  `]`, `{`, `}`, `*` or `?` and no space. A Perl that parses its command line the
+  MSYS way would otherwise read `'` as a quote and `[...]` as a pattern.
+- When latexmk stops before LaTeX starts, the error card shows latexmk's own
+  message (`tex.latexmk_stopped`), and the `runscript.tlu` line that TeX Live
+  adds on Windows is left out.
 - Oleafly pins its managed TinyTeX to a monthly release, but tlmgr talks to the
   live repository. Once the repository's infrastructure moves on, tlmgr refuses
   every install until it updates itself, and on Windows it can still exit with
@@ -211,7 +232,9 @@ MiKTeX, or TinyTeX) via `latexmk` while preserving Oleafly's artifact layout.
   Engines, or the project's own engine choice. An opened folder stays on
   bundled Tectonic until it is trusted.
 - Project, user, and system `.latexmkrc` files are disabled because they are
-  executable Perl. When local consent is enabled, Oleafly passes
+  executable Perl. The only rc file latexmk reads is the one Oleafly writes
+  into the build folder before every run. It replaces a file or a link at that
+  path. When local consent is enabled, Oleafly passes
   `-shell-escape` directly and supervises the resulting process tree. This can
   execute programs with the user's permissions and should be enabled only for
   fully trusted project files.
