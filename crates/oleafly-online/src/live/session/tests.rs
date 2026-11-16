@@ -223,6 +223,7 @@ impl Rig {
             project_id: self.mock.project_id(),
             carriers: vec![Carrier::WebSocket, Carrier::XhrPolling],
             tuning,
+            seeds: Vec::new(),
         }
     }
 

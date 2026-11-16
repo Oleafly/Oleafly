@@ -393,6 +393,11 @@ pub(crate) fn live_session(
     )))
 }
 
+pub(crate) fn linked_mirror(project_id: &str) -> Option<std::path::PathBuf> {
+    sync::read_link(project_id).ok().flatten()?;
+    sync::repo_dir(project_id).ok()
+}
+
 fn linked(project_id: &str) -> Result<sync::SyncLink, String> {
     current_link(project_id)?.ok_or_else(|| AppError::new("overleaf.sync_not_linked").into())
 }

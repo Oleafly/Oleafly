@@ -206,6 +206,9 @@ fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
     if let tauri::WindowEvent::Destroyed = event {
         folder_watch::release_window(window.label());
     }
+    if let tauri::WindowEvent::Focused(focused) = event {
+        collab::live::window_focused(*focused);
+    }
     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
         use tauri::{Emitter, Manager};
         if window.state::<updater::UpdateState>().installing() {
@@ -865,6 +868,8 @@ pub fn run() {
             collab::live::overleaf::commands::overleaf_live_project,
             collab::live::overleaf::commands::overleaf_live_resume,
             collab::live::overleaf::commands::overleaf_live_unlink,
+            collab::live::overleaf::notices::overleaf_live_resolve,
+            collab::live::overleaf::notices::overleaf_live_connection_details,
             collab::live::commands::collab_live_stop,
             collab::live::commands::collab_live_flush,
             collab::live::commands::collab_live_reconnect_now,

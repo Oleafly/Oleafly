@@ -201,6 +201,14 @@ pub struct SessionConfig {
     pub project_id: String,
     pub carriers: Vec<Carrier>,
     pub tuning: SessionTuning,
+    pub seeds: Vec<Seed>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Seed {
+    pub path: String,
+    pub base: Option<String>,
+    pub local: String,
 }
 
 struct Activity {
@@ -394,7 +402,7 @@ async fn first_connect(
 
 impl OverleafSession {
     pub async fn start(
-        config: SessionConfig,
+        mut config: SessionConfig,
         port: Arc<dyn LivePort>,
         mut journal: Journal,
     ) -> Result<Arc<OverleafSession>, OnlineError> {
@@ -406,6 +414,7 @@ impl OverleafSession {
             email: config.session.email().to_string(),
         };
         let mut state = state::State::new(project, account, &journal, Arc::clone(&port));
+        state.seed(std::mem::take(&mut config.seeds));
         state.page_limit = page.max_doc_length().map(|limit| limit as usize);
         if let Some(connection) = &connection {
             state.connected(connection.public_id().clone(), state::now_ms());

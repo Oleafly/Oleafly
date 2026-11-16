@@ -1,5 +1,8 @@
 pub(crate) mod account;
 pub(crate) mod commands;
+#[cfg(test)]
+mod first_start_tests;
+pub(crate) mod notices;
 mod port;
 #[cfg(test)]
 pub(crate) mod rig;
@@ -10,14 +13,14 @@ mod tree;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock, Weak};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use oleafly_collab::live::DiskWork;
 use oleafly_collab::sync::LiveStatus;
 use oleafly_collab::CollabError;
 use oleafly_collab_protocol::projects::ProjectRole;
 use oleafly_online::live::journal::{self, Journal};
-use oleafly_online::live::session::{LiveError, OverleafSession, SessionConfig};
+use oleafly_online::live::session::{LiveError, OverleafSession, Seed, SessionConfig};
 use oleafly_online::realtime::DocId;
 use oleafly_ot::{DocOpened, DocSink, TextOperation};
 use tokio::sync::{mpsc, oneshot};
@@ -35,8 +38,10 @@ use crate::collab::disk::{lf_text, DiskState};
 use crate::overleaf::OverleafLink;
 
 const SETTLE_WAIT: Duration = Duration::from_secs(3);
+const QUIT_SETTLE: Duration = Duration::from_millis(1_500);
 const FLUSH_WAIT: Duration = Duration::from_secs(10);
 const INDEX_FILE: &str = "materializer-index.json";
+pub(crate) const IMPORT_BASES: &str = "import-bases.json";
 
 pub(crate) struct Mirror {
     pub(super) disk: LiveDisk,
@@ -160,6 +165,48 @@ pub(crate) struct Parts {
     pub(crate) link: OverleafLink,
     pub(crate) config: SessionConfig,
     pub(crate) journal: Journal,
+    pub(crate) git_mirror: Option<PathBuf>,
+}
+
+struct FirstBases {
+    imported: BTreeMap<String, String>,
+    git: Option<PathBuf>,
+}
+
+impl FirstBases {
+    fn load(mirror_dir: &Path, git: Option<PathBuf>) -> FirstBases {
+        let imported = std::fs::read(mirror_dir.join(IMPORT_BASES))
+            .ok()
+            .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+            .unwrap_or_default();
+        FirstBases { imported, git }
+    }
+
+    fn base_of(&self, path: &str) -> Option<String> {
+        if let Some(text) = self.imported.get(path) {
+            return Some(text.clone());
+        }
+        let repo = self.git.as_ref()?;
+        let blob = format!("{}:{path}", oleafly_online::sync::BASE_REF);
+        let output = crate::git::run_mirror_git(repo, &["cat-file", "blob", &blob]).ok()?;
+        if !output.status.success() {
+            return None;
+        }
+        crate::collab::disk::as_text(&output.stdout)
+    }
+}
+
+pub(crate) fn record_import_bases(mirror_dir: &Path, root: &Path) -> std::io::Result<()> {
+    let scan = crate::collab::disk::scan_folder(root).map_err(std::io::Error::other)?;
+    let mut texts = BTreeMap::new();
+    for (path, _) in scan.files {
+        if let Some((text, _)) = read_text(root, &path) {
+            texts.insert(path, text);
+        }
+    }
+    std::fs::create_dir_all(mirror_dir)?;
+    let bytes = serde_json::to_vec(&texts).map_err(std::io::Error::other)?;
+    oleafly_core::atomic::write_atomic_private(&mirror_dir.join(IMPORT_BASES), &bytes)
 }
 
 pub(crate) fn mirror_dir(
@@ -176,29 +223,45 @@ pub(crate) fn mirror_dir(
         .join(project_id))
 }
 
-fn go_live_bases(root: &Path, disk: &mut DiskState) -> WrittenTexts {
+fn read_text(root: &Path, path: &str) -> Option<(String, String)> {
+    let target = crate::collab::disk::safe_target(root, path)?;
+    let bytes = std::fs::read(&target).ok()?;
+    let text = crate::collab::disk::as_text(&bytes)?;
+    Some((text, crate::collab::disk::sha256_hex(&bytes)))
+}
+
+fn go_live_bases(
+    root: &Path,
+    disk: &mut DiskState,
+    first: Option<&FirstBases>,
+) -> (WrittenTexts, Vec<Seed>) {
     let mut bases = WrittenTexts::default();
+    let mut seeds = Vec::new();
     let Ok(scan) = crate::collab::disk::scan_folder(root) else {
-        return bases;
+        return (bases, seeds);
     };
     for (path, _) in scan.files {
-        let Some(target) = crate::collab::disk::safe_target(root, &path) else {
+        let Some((text, hash)) = read_text(root, &path) else {
             continue;
         };
-        let Ok(bytes) = std::fs::read(&target) else {
-            continue;
-        };
-        let Some(text) = crate::collab::disk::as_text(&bytes) else {
-            continue;
-        };
-        let hash = crate::collab::disk::sha256_hex(&bytes);
         let known = disk.hashes.get(&path).cloned();
-        if known.as_ref().is_none_or(|known| *known == hash) {
-            bases.record(&path, &text);
-            disk.hashes.insert(path, hash);
+        if known.as_ref().is_some_and(|known| *known != hash) {
+            continue;
         }
+        if let Some(first) = first {
+            let base = first.base_of(&path);
+            if base.as_deref() != Some(text.as_str()) {
+                seeds.push(Seed {
+                    path: path.clone(),
+                    base,
+                    local: text.clone(),
+                });
+            }
+        }
+        bases.record(&path, &text);
+        disk.hashes.insert(path, hash);
     }
-    bases
+    (bases, seeds)
 }
 
 pub(crate) enum Backend {
@@ -289,17 +352,22 @@ impl OverleafLive {
             mirror_dir,
             host,
             link,
-            config,
+            mut config,
             journal,
+            git_mirror,
         } = parts;
         let disk_file = mirror_dir.join(INDEX_FILE);
-        let (disk, bases) = {
+        let (disk, bases, seeds) = {
             let (disk_file, root) = (disk_file.clone(), root.clone());
             tauri::async_runtime::spawn_blocking(move || {
                 std::fs::create_dir_all(&mirror_dir)?;
                 let mut disk = DiskState::load(&disk_file);
-                let bases = go_live_bases(&root, &mut disk);
-                Ok::<_, std::io::Error>((disk, bases))
+                let first = disk
+                    .hashes
+                    .is_empty()
+                    .then(|| FirstBases::load(&mirror_dir, git_mirror));
+                let (bases, seeds) = go_live_bases(&root, &mut disk, first.as_ref());
+                Ok::<_, std::io::Error>((disk, bases, seeds))
             })
             .await
             .map_err(io)?
@@ -318,6 +386,7 @@ impl OverleafLive {
         }));
         let me = config.session.user_id().to_owned();
         let port = Arc::new(AppOverleafPort::new(Arc::clone(&mirror)));
+        config.seeds = seeds;
         let session = OverleafSession::start(config, port, journal)
             .await
             .map_err(|error| port::online_error(&error))?;
@@ -466,7 +535,22 @@ impl OverleafLive {
         crate::folder_watch::release_live(self.project_id());
     }
 
+    pub(crate) async fn quit(&self, within: Duration) {
+        let started = Instant::now();
+        self.session.settle(QUIT_SETTLE.min(within)).await;
+        self.session.stop().await;
+        let left = within.saturating_sub(started.elapsed());
+        let _ = tokio::time::timeout(left, self.mirror.flush()).await;
+        self.mirror.disk.announce_written();
+        crate::folder_watch::release_live(self.project_id());
+    }
+
+    pub(crate) fn set_focused(&self, focused: bool) {
+        self.session.set_focused(focused);
+    }
+
     pub(crate) async fn import_paths(&self, only: Option<Vec<String>>) -> Result<(), CollabError> {
+        self.session.touch();
         self.mirror.disk.import(self, &self.hold_dir(), only).await
     }
 

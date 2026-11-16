@@ -10,7 +10,8 @@ use oleafly_online::session::{Session, SessionHandle};
 use oleafly_online::test_support::mock_overleaf::{MockOverleaf, MockProject, MockUser};
 use oleafly_ot::{DocMessage, DocSink};
 
-use super::{OverleafLive, Parts};
+use super::notices::OverleafNoticePayload;
+use super::{OverleafLive, Parts, IMPORT_BASES};
 use crate::collab::live::host::LiveHost;
 use crate::collab::live::payloads::{
     DocPendingPayload, MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload,
@@ -25,6 +26,7 @@ pub(crate) const WAIT: Duration = Duration::from_secs(20);
 #[derive(Default)]
 pub(crate) struct Quiet {
     pub(crate) pending: Mutex<Vec<DocPendingPayload>>,
+    pub(crate) notices: Mutex<Vec<OverleafNoticePayload>>,
 }
 
 impl LiveHost for Quiet {
@@ -37,6 +39,10 @@ impl LiveHost for Quiet {
     fn new_device(&self, _: NewDevicePayload) {}
     fn doc_pending(&self, payload: DocPendingPayload) {
         self.pending.lock().unwrap().push(payload);
+    }
+
+    fn overleaf_notice(&self, payload: OverleafNoticePayload) {
+        self.notices.lock().unwrap().push(payload);
     }
 }
 
@@ -88,6 +94,52 @@ pub(crate) enum Place {
     Library,
 }
 
+#[derive(Clone, Copy, Default)]
+pub(crate) struct FirstStart<'a> {
+    pub(crate) imported: &'a [(&'a str, &'a str)],
+    pub(crate) git_base: &'a [(&'a str, &'a str)],
+}
+
+fn git(repo: &std::path::Path, args: &[&str]) {
+    let mut full = vec!["-c", "user.name=Rig", "-c", "user.email=rig@example.test"];
+    full.extend_from_slice(args);
+    let output = crate::git::run_mirror_git(repo, &full).unwrap();
+    assert!(
+        output.status.success(),
+        "git {args:?} failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+pub(crate) fn git_base(dir: &std::path::Path, files: &[(&str, &str)]) -> Option<PathBuf> {
+    if files.is_empty() {
+        return None;
+    }
+    let repo = dir.join("git");
+    std::fs::create_dir_all(&repo).unwrap();
+    git(&repo, &["init", "-q"]);
+    for (path, text) in files {
+        std::fs::write(repo.join(path), text).unwrap();
+        git(&repo, &["add", path]);
+    }
+    git(&repo, &["commit", "-q", "-m", "base"]);
+    git(&repo, &["update-ref", "refs/heads/oleafly-base", "HEAD"]);
+    Some(repo)
+}
+
+fn import_base(dir: &std::path::Path, files: &[(&str, &str)]) {
+    if files.is_empty() {
+        return;
+    }
+    let bases: std::collections::BTreeMap<&str, &str> = files.iter().copied().collect();
+    std::fs::create_dir_all(dir.join("mirror")).unwrap();
+    std::fs::write(
+        dir.join("mirror").join(IMPORT_BASES),
+        serde_json::to_vec(&bases).unwrap(),
+    )
+    .unwrap();
+}
+
 pub(crate) struct LetGo {
     _mock: MockOverleaf,
     _dir: tempfile::TempDir,
@@ -124,7 +176,22 @@ impl OverleafRig {
         disk: &[(&str, &str)],
         place: Place,
     ) -> OverleafRig {
+        let imported = FirstStart {
+            imported: disk,
+            ..FirstStart::default()
+        };
+        OverleafRig::start_first(project, disk, place, imported).await
+    }
+
+    pub(crate) async fn start_first(
+        project: MockProject,
+        disk: &[(&str, &str)],
+        place: Place,
+        first: FirstStart<'_>,
+    ) -> OverleafRig {
         let dir = tempfile::tempdir().unwrap();
+        import_base(dir.path(), first.imported);
+        let git_mirror = git_base(dir.path(), first.git_base);
         let mock = MockOverleaf::start(project).await;
         let (project_id, root, data) = match place {
             Place::Scratch => (
@@ -180,8 +247,10 @@ impl OverleafRig {
                 project_id: mock.project_id(),
                 carriers: vec![Carrier::WebSocket, Carrier::XhrPolling],
                 tuning: tuning(),
+                seeds: Vec::new(),
             },
             journal,
+            git_mirror,
         };
         let live = OverleafLive::start_with(parts).await.unwrap();
         *guard(&ACTIVE) = Some(Live::Overleaf(Arc::clone(&live)));

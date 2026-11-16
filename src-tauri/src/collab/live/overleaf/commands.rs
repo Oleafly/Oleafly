@@ -90,9 +90,11 @@ pub(crate) async fn start(
             project_id: link.project_id.clone(),
             carriers: vec![Carrier::WebSocket, Carrier::XhrPolling],
             tuning: SessionTuning::default(),
+            seeds: Vec::new(),
         },
         link,
         journal,
+        git_mirror: crate::overleaf::linked_mirror(project_id),
     };
     let live = OverleafLive::start_with(parts).await?;
     *guard(&ACTIVE) = Some(Live::Overleaf(Arc::clone(&live)));

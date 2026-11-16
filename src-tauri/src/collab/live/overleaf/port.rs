@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use oleafly_collab::sync::{EndReason, LiveStatus};
 use oleafly_collab::CollabError;
@@ -13,6 +14,7 @@ use oleafly_online::realtime::tree::PathChange;
 use oleafly_online::realtime::DocId;
 use oleafly_ot::DocMessage;
 
+use super::notices::{OverleafNotice, OverleafNoticePayload};
 use super::Mirror;
 use crate::collab::live::kept::{KeptFile, KeptKind};
 use crate::collab::live::payloads::{
@@ -45,6 +47,22 @@ impl AppOverleafPort {
             Ok(((), changed))
         })
         .map(|(_, meta)| meta)
+    }
+
+    fn notice(&self, notice: OverleafNotice) {
+        self.mirror
+            .disk
+            .host
+            .overleaf_notice(OverleafNoticePayload {
+                project_id: self.mirror.disk.project_id.clone(),
+                notice,
+            });
+    }
+
+    fn notice_for(&self, doc: &DocId, notice: impl FnOnce(String) -> OverleafNotice) {
+        if let Some(path) = self.mirror.path_of(doc) {
+            self.notice(notice(path));
+        }
     }
 
     fn keep(&self, doc: &DocId, text: &str) {
@@ -211,8 +229,32 @@ impl LivePort for AppOverleafPort {
     fn merged(&self, doc: &DocId, review: MergeReview) {
         match review {
             MergeReview::Kept { text } => self.keep(doc, &text),
-            MergeReview::Merged { .. } | MergeReview::NeedsReview { .. } => {}
+            MergeReview::Merged { before, after } => {
+                self.notice_for(doc, |path| OverleafNotice::Merged {
+                    path,
+                    before,
+                    after,
+                })
+            }
+            MergeReview::NeedsReview { mine, theirs } => self.notice_for(doc, |path| {
+                OverleafNotice::NeedsReview { path, mine, theirs }
+            }),
         }
+    }
+
+    fn maintenance(&self, message: &str, delay: Duration) {
+        self.notice(OverleafNotice::Maintenance {
+            message: message.to_owned(),
+            delay_ms: u64::try_from(delay.as_millis()).unwrap_or(u64::MAX),
+        });
+    }
+
+    fn slow_ack(&self, waiting: bool) {
+        self.notice(OverleafNotice::SlowAck { waiting });
+    }
+
+    fn doc_unsteady(&self, doc: &DocId) {
+        self.notice_for(doc, |path| OverleafNotice::Unsteady { path });
     }
 
     fn account_changed(&self, typed_as: Account) {

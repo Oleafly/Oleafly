@@ -217,8 +217,8 @@ pub fn finish_for_quit(wait: Duration) {
         let active = match live {
             Live::Server(active) => active,
             Live::Overleaf(live) => {
-                let _ = tokio::time::timeout(wait.saturating_sub(started.elapsed()), live.finish())
-                    .await;
+                let left = wait.saturating_sub(started.elapsed());
+                let _ = tokio::time::timeout(left, live.quit(left)).await;
                 return;
             }
         };
@@ -289,6 +289,12 @@ pub fn reconnect_now() -> bool {
             true
         }
     })
+}
+
+pub fn window_focused(focused: bool) {
+    if let Some(Live::Overleaf(live)) = guard(&ACTIVE).clone() {
+        live.set_focused(focused);
+    }
 }
 
 const FIGURE_WAIT: Duration = Duration::from_secs(5);

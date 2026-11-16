@@ -119,7 +119,7 @@ pub(crate) fn import_archive(
         .and_then(flavor_for_compiler)
         .map(str::to_string);
     let main_doc = settings.main_doc.clone();
-    crate::project::import_online_project_archive_with(
+    let project_id = crate::project::import_online_project_archive_with(
         remote.name.clone(),
         archive,
         move |project_id| {
@@ -130,7 +130,32 @@ pub(crate) fn import_archive(
                 origin,
             )
         },
-    )
+    )?;
+    remember_import(base, &remote.id, &project_id);
+    Ok(project_id)
+}
+
+fn remember_import(base: &str, remote_id: &str, project_id: &str) {
+    let link = crate::overleaf::OverleafLink {
+        server: base.to_owned(),
+        project_id: remote_id.to_owned(),
+    };
+    let recorded = crate::paths::oleafly_root()
+        .map_err(|error| error.to_string())
+        .and_then(|data| {
+            crate::collab::live::overleaf::mirror_dir(&data, &link, project_id)
+                .map_err(|error| error.to_string())
+        })
+        .and_then(|mirror| {
+            let root = crate::paths::project_dir(project_id)?;
+            crate::collab::live::overleaf::record_import_bases(&mirror, &root)
+                .map_err(|error| error.to_string())
+        });
+    if let Err(error) = recorded {
+        let _ = crate::project::append_app_log(format!(
+            "Could not record the imported text of project {project_id} for live editing: {error}"
+        ));
+    }
 }
 
 async fn import_one(

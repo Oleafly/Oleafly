@@ -38,6 +38,8 @@ pub struct ProjectManifest {
     pub paused: bool,
     #[serde(default)]
     pub kept_away: Vec<String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub unbased: BTreeMap<String, String>,
 }
 
 impl Default for ProjectManifest {
@@ -49,6 +51,7 @@ impl Default for ProjectManifest {
             history_version: None,
             paused: false,
             kept_away: Vec::new(),
+            unbased: BTreeMap::new(),
         }
     }
 }

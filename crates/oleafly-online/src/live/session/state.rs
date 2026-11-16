@@ -10,7 +10,7 @@ use serde_json::Value;
 
 use super::catch_up::History;
 use super::{
-    Account, DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview, Resolution,
+    Account, DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview, Resolution, Seed,
     SignedIn, UnsentDoc,
 };
 use crate::live::doc::{Applied, DocError, Limit, OutgoingUpdate, OverleafDoc, Rejoin};
@@ -226,6 +226,7 @@ pub(super) struct State {
     last_pending: Option<u64>,
     acks: u64,
     tree_work: tree::TreeWork,
+    seeds: Vec<Seed>,
 }
 
 impl State {
@@ -267,6 +268,7 @@ impl State {
             last_pending: None,
             acks: 0,
             tree_work: tree::TreeWork::default(),
+            seeds: Vec::new(),
         };
         state.take_journal(journal.docs());
         state.take_tree_queue(journal.tree_queue());
@@ -507,6 +509,70 @@ impl State {
             .tree
             .node(&EntityId::from(doc))
             .is_some_and(|node| node.kind == NodeKind::Doc)
+    }
+
+    pub(super) fn seed(&mut self, seeds: Vec<Seed>) {
+        self.seeds.extend(seeds);
+        let waiting = std::mem::take(&mut self.seeds);
+        let unknown_tree = self.project.public_id.0.is_empty();
+        for seed in waiting {
+            match self.doc_at(&seed.path) {
+                Some(doc) => self.seed_doc(&doc, seed),
+                None if unknown_tree => self.seeds.push(seed),
+                None => {}
+            }
+        }
+    }
+
+    fn seed_doc(&mut self, doc: &DocId, seed: Seed) {
+        let slot = self.slots.entry(doc.clone()).or_default();
+        if slot.doc.is_some() || slot.resume.is_some() || slot.phase != Phase::Unjoined {
+            return;
+        }
+        let seeded = seed.base.is_none().then(|| seed_hash(&seed.local));
+        let base = seed.base.unwrap_or_default();
+        let mut known = OverleafDoc::provisional(doc.clone(), base.clone());
+        if known.local(diff(&base, &seed.local)).is_err() {
+            return;
+        }
+        slot.doc = Some(known);
+        slot.dirty = true;
+        if seeded.is_some() {
+            self.mark_unbased(doc, seeded);
+        }
+        self.want(doc);
+    }
+
+    fn mark_unbased(&mut self, doc: &DocId, seeded: Option<String>) {
+        let changed = match seeded {
+            Some(hash) => self.manifest.unbased.insert(doc.0.clone(), hash).is_none(),
+            None => self.manifest.unbased.remove(&doc.0).is_some(),
+        };
+        self.manifest_dirty |= changed;
+    }
+
+    fn hold(&mut self, doc: &DocId, record: Option<DocRecord>, mine: String, theirs: String) {
+        if let Some(slot) = self.slots.get_mut(doc) {
+            slot.phase = Phase::Held;
+            slot.held = record;
+        }
+        self.notices.push(Notice::Merged(
+            doc.clone(),
+            MergeReview::NeedsReview { mine, theirs },
+        ));
+    }
+
+    fn hold_unbased(
+        &mut self,
+        doc: &DocId,
+        known: &OverleafDoc,
+        version: u64,
+        text: String,
+        format: FormatState,
+    ) -> OverleafDoc {
+        let mine = known.text().to_string();
+        self.hold(doc, known.record().ok(), mine, text.clone());
+        OverleafDoc::joined(doc.clone(), version, text, format)
     }
 
     fn doc_at(&self, path: &str) -> Option<DocId> {
@@ -1014,9 +1080,16 @@ impl State {
             ..
         } = joined;
         let kind = format.format();
-        let mut known = match self.take_base(doc) {
-            Some(known) => self.rebase_onto(doc, known, version, text, format),
-            None => self.first_join(doc, version, text, format),
+        let seeded = self.manifest.unbased.get(&doc.0).cloned();
+        let mut known = match (self.take_base(doc), seeded) {
+            (Some(known), Some(seeded)) if seeded == seed_hash(&text) => {
+                self.mark_unbased(doc, None);
+                let based = on_server_text(doc, known, &text);
+                self.rebase_onto(doc, based, version, text, format)
+            }
+            (Some(known), Some(_)) => self.hold_unbased(doc, &known, version, text, format),
+            (Some(known), None) => self.rebase_onto(doc, known, version, text, format),
+            (None, _) => self.first_join(doc, version, text, format),
         };
         if let Some(limit) = self.page_limit {
             known.limit_length(limit);
@@ -1065,16 +1138,7 @@ impl State {
                     MergeReview::Merged { before, after },
                 ));
             }
-            Rejoin::Conflict { mine, theirs } => {
-                if let Some(slot) = self.slots.get_mut(doc) {
-                    slot.phase = Phase::Held;
-                    slot.held = record;
-                }
-                self.notices.push(Notice::Merged(
-                    doc.clone(),
-                    MergeReview::NeedsReview { mine, theirs },
-                ));
-            }
+            Rejoin::Conflict { mine, theirs } => self.hold(doc, record, mine, theirs),
         }
         known
     }
@@ -1222,6 +1286,7 @@ impl State {
             .unwrap_or_default();
         slot.phase = Phase::Joined;
         slot.dirty = true;
+        self.mark_unbased(doc, None);
         match choice {
             Resolution::Mine => self.keep_mine(doc, &mine)?,
             Resolution::Theirs => {
@@ -1267,6 +1332,7 @@ impl State {
             }
         }
         self.connected(public_id, now_ms());
+        self.seed(Vec::new());
         self.rejoin_all(Phase::CatchUp);
         self.presence_due = self.presence.is_some();
         self.announce();
@@ -1474,6 +1540,22 @@ impl State {
         if !std::mem::replace(&mut self.journal_failing, true) {
             self.notices.push(Notice::Journal(Some(reason)));
         }
+    }
+}
+
+fn seed_hash(text: &str) -> String {
+    ring::digest::digest(&ring::digest::SHA256, text.as_bytes())
+        .as_ref()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect()
+}
+
+fn on_server_text(doc: &DocId, known: OverleafDoc, server: &str) -> OverleafDoc {
+    let mut based = OverleafDoc::provisional(doc.clone(), server.to_string());
+    match based.local(diff(server, known.text())) {
+        Ok(_) => based,
+        Err(_) => known,
     }
 }
 
