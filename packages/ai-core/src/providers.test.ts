@@ -275,6 +275,7 @@ describe("suggested provider", () => {
 describe("custom provider presets", () => {
   it("fills in OpenAI-compatible endpoints with ids no built-in provider uses", () => {
     expect(CUSTOM_PROVIDER_PRESETS.map((preset) => preset.id)).toEqual([
+      "llamacpp",
       "qwen",
       "kimi",
       "zhipu",
@@ -284,7 +285,8 @@ describe("custom provider presets", () => {
     for (const preset of CUSTOM_PROVIDER_PRESETS) {
       expect(preset.id).toMatch(/^[a-z0-9][a-z0-9-]*$/u);
       expect(getProvider(preset.id)).toBeUndefined();
-      expect(new URL(preset.baseURL).protocol).toBe("https:");
+      const url = new URL(preset.baseURL);
+      expect(url.protocol === "https:" || url.hostname === "localhost").toBe(true);
       expect(preset.baseURL.endsWith("/")).toBe(false);
     }
   });

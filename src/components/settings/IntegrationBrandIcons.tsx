@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 
-export type BrandIconProps = Readonly<{ className?: string }>;
+export type BrandIconProps = Readonly<{ className?: string; size?: number }>;
 
 export function BrandSvg({
   className,
+  size,
   viewBox,
   children,
 }: BrandIconProps & Readonly<{ viewBox: string; children: ReactNode }>) {
@@ -12,11 +13,22 @@ export function BrandSvg({
       aria-hidden="true"
       focusable="false"
       viewBox={viewBox}
+      width={size}
+      height={size}
       className={className}
       fill="currentColor"
     >
       {children}
     </svg>
+  );
+}
+
+export function LlamaCppBrandIcon({ className, size }: BrandIconProps) {
+  return (
+    <BrandSvg className={className} size={size} viewBox="0 0 600 600">
+      <path d="M600 392L504.249 558L504.137 557.929C487.252 584.069 458.193 600 426.864 600H120L240 392H600Z" />
+      <path d="M240 392H0L199.602 46.0254C216.032 17.5463 246.411 3.25756e-05 279.29 0H466.154L240 392Z" />
+    </BrandSvg>
   );
 }
 

@@ -18,8 +18,16 @@ export function seedProviderModels(providerId: string): StoredModel[] {
   return (p?.models ?? []).map((m) => ({ id: m.id, name: m.name, enabled: true, source: "builtin" }));
 }
 
+const MODEL_FILE = /^(?:.*[\\/])?([^\\/]+)\.gguf$/i;
+
+function fetchedModelName(fetched: FetchedModel): string {
+  if (fetched.name && fetched.name !== fetched.id) return fetched.name;
+  return MODEL_FILE.exec(fetched.id)?.[1] ?? fetched.id;
+}
+
 function withFetchedFacts(prev: StoredModel, fetched: FetchedModel): StoredModel {
-  const next: StoredModel = { ...prev, name: prev.name || fetched.name };
+  const namedByPath = prev.name === prev.id && MODEL_FILE.test(prev.id);
+  const next: StoredModel = { ...prev, name: namedByPath ? fetchedModelName(fetched) : prev.name || fetched.name };
   if (fetched.trust) {
     next.trust = fetched.trust;
     if (fetched.trust === "blocked" && fetched.blockedReason) {
@@ -35,7 +43,7 @@ function withFetchedFacts(prev: StoredModel, fetched: FetchedModel): StoredModel
 function fromFetched(fetched: FetchedModel): StoredModel {
   const next: StoredModel = {
     id: fetched.id,
-    name: fetched.name || fetched.id,
+    name: fetchedModelName(fetched),
     enabled: true,
     source: "fetched",
   };
