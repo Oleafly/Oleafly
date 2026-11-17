@@ -320,6 +320,10 @@ impl Rig {
             .collect()
     }
 
+    fn has_joined(&self, name: &str, doc: &DocId) -> bool {
+        self.mock.has_joined(&self.user_id(name), &doc.0)
+    }
+
     fn joins_except(&self, peers: &[&str]) -> Vec<String> {
         self.mock
             .received("joinDoc")
@@ -501,10 +505,7 @@ async fn editor_ack_does_not_wait_for_overleaf() {
     let live = rig.live("alice", &port).await;
     let main = rig.id(MAIN);
     let mut tab = Tab::open(&live, MAIN);
-    eventually("the doc is joined", || {
-        rig.joined("alice").contains(&main.0)
-    })
-    .await;
+    eventually("the doc is joined", || rig.has_joined("alice", &main)).await;
     rig.mock.stall();
     tab.editor.jump(5);
     let (rev, op) = tab.editor.type_text("!").unwrap().unwrap();
@@ -854,10 +855,7 @@ async fn a_restart_with_an_unacknowledged_op_sends_it_exactly_once() {
     let live = rig.live("alice", &port).await;
     let main = rig.id(MAIN);
     let mut tab = Tab::open(&live, MAIN);
-    eventually("the doc is joined", || {
-        rig.joined("alice").contains(&main.0)
-    })
-    .await;
+    eventually("the doc is joined", || rig.has_joined("alice", &main)).await;
     rig.mock.stall();
     tab.type_end(&live, " once");
     eventually("the server applied it", || {
@@ -893,10 +891,7 @@ async fn the_journal_survives_a_kill_between_send_and_ack() {
     let live = rig.live("alice", &port).await;
     let main = rig.id(MAIN);
     let mut tab = Tab::open(&live, MAIN);
-    eventually("the doc is joined", || {
-        rig.joined("alice").contains(&main.0)
-    })
-    .await;
+    eventually("the doc is joined", || rig.has_joined("alice", &main)).await;
     rig.mock.stall();
     tab.type_end(&live, " sent");
     eventually("the server applied the send", || {
@@ -1040,10 +1035,7 @@ async fn journal_write_failure_banners_and_retries() {
     let live = rig.live("alice", &port).await;
     let main = rig.id(MAIN);
     let mut tab = Tab::open(&live, MAIN);
-    eventually("the doc is joined", || {
-        rig.joined("alice").contains(&main.0)
-    })
-    .await;
+    eventually("the doc is joined", || rig.has_joined("alice", &main)).await;
     let blocker = live.journal_dir().join(format!("{}.json", main.0));
     std::fs::create_dir_all(blocker.join("in-the-way")).unwrap();
     rig.mock.stall();
@@ -1080,10 +1072,7 @@ async fn settled_doc_journal_is_deleted() {
     let live = rig.live("alice", &port).await;
     let main = rig.id(MAIN);
     let mut tab = Tab::open(&live, MAIN);
-    eventually("the doc is joined", || {
-        rig.joined("alice").contains(&main.0)
-    })
-    .await;
+    eventually("the doc is joined", || rig.has_joined("alice", &main)).await;
     rig.mock.stall();
     tab.type_end(&live, " soon");
     eventually("the unsent work is journaled", || {
@@ -1213,10 +1202,7 @@ async fn history_version_and_doc_version_are_never_mixed() {
     })
     .await;
     let mut tab = Tab::open(&live, MAIN);
-    eventually("the doc is joined", || {
-        rig.joined("alice").contains(&main.0)
-    })
-    .await;
+    eventually("the doc is joined", || rig.has_joined("alice", &main)).await;
     let version = rig.mock.doc_version(&main.0);
     rig.mock.stall();
     tab.type_end(&live, "!");
@@ -1243,10 +1229,7 @@ async fn a_dropped_connection_acknowledges_an_applied_op_without_resending() {
     let live = rig.live("alice", &port).await;
     let main = rig.id(MAIN);
     let mut tab = Tab::open(&live, MAIN);
-    eventually("the doc is joined", || {
-        rig.joined("alice").contains(&main.0)
-    })
-    .await;
+    eventually("the doc is joined", || rig.has_joined("alice", &main)).await;
     rig.mock.stall();
     tab.type_end(&live, " once");
     eventually("the server applied it", || {
@@ -1315,10 +1298,7 @@ async fn a_server_that_stops_answering_is_treated_as_lost() {
     let live = rig.live_tuned("alice", &port, tuned).await;
     let main = rig.id(MAIN);
     let mut tab = Tab::open(&live, MAIN);
-    eventually("the doc is joined", || {
-        rig.joined("alice").contains(&main.0)
-    })
-    .await;
+    eventually("the doc is joined", || rig.has_joined("alice", &main)).await;
     rig.mock.stall();
     tab.type_end(&live, " late");
     eventually("the session gives up on the call", || port.went_offline()).await;
@@ -1635,10 +1615,7 @@ async fn stop_keeps_unsent_work_in_the_journal() {
     let live = rig.live("alice", &port).await;
     let main = rig.id(MAIN);
     let mut tab = Tab::open(&live, MAIN);
-    eventually("the doc is joined", || {
-        rig.joined("alice").contains(&main.0)
-    })
-    .await;
+    eventually("the doc is joined", || rig.has_joined("alice", &main)).await;
     rig.mock.stall();
     tab.type_end(&live, " later");
     live.stop().await;
@@ -1760,10 +1737,7 @@ async fn doc_pending_flips_on_an_edit_and_back_on_the_ack() {
     let live = rig.live("alice", &port).await;
     let main = rig.id(MAIN);
     let mut tab = Tab::open(&live, MAIN);
-    eventually("the doc is joined", || {
-        rig.joined("alice").contains(&main.0)
-    })
-    .await;
+    eventually("the doc is joined", || rig.has_joined("alice", &main)).await;
     rig.mock.stall();
     tab.type_end(&live, " soon");
     assert_eq!(port.seen().pending_docs, vec![(main.clone(), true)]);

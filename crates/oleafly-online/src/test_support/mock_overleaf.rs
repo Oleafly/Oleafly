@@ -263,6 +263,13 @@ pub enum Fault {
 }
 
 #[derive(Clone, Debug)]
+struct HeldRoomEvent {
+    name: String,
+    args: Vec<Value>,
+    except: Option<String>,
+}
+
+#[derive(Clone, Debug)]
 struct PlannedFault {
     method: Option<String>,
     prefix: String,
@@ -575,6 +582,7 @@ struct State {
     stalled: bool,
     down: bool,
     held_updates: Option<Vec<(String, String, Value)>>,
+    held_room: Option<Vec<HeldRoomEvent>>,
     csrf: String,
 }
 
@@ -634,6 +642,7 @@ impl State {
             counters: HashMap::new(),
             stalled: false,
             held_updates: None,
+            held_room: None,
             down: false,
         };
         state.root = Folder {
@@ -864,6 +873,14 @@ impl State {
     }
 
     fn emit_room(&mut self, name: &str, args: &[Value], except: Option<&str>) {
+        if let Some(held) = self.held_room.as_mut() {
+            held.push(HeldRoomEvent {
+                name: name.to_string(),
+                args: args.to_vec(),
+                except: except.map(str::to_string),
+            });
+            return;
+        }
         for sid in self.live() {
             if Some(sid.as_str()) != except {
                 self.push(&sid, event(name, args));
@@ -2829,6 +2846,16 @@ impl MockOverleaf {
             .collect()
     }
 
+    pub fn has_joined(&self, user_id: &str, doc_id: &str) -> bool {
+        let state = self.state();
+        state.live().iter().any(|sid| {
+            let client = &state.clients[sid];
+            client.user.as_deref() == Some(user_id)
+                && client.joined.contains(doc_id)
+                && client.outbox.is_empty()
+        })
+    }
+
     pub fn received(&self, name: &str) -> Vec<Received> {
         self.state()
             .received
@@ -2946,6 +2973,17 @@ impl MockOverleaf {
         let mut state = self.state();
         for (sid, doc_id, update) in state.held_updates.take().unwrap_or_default() {
             state.commit_update(&sid, &doc_id, &update);
+        }
+    }
+
+    pub fn hold_room_events(&self) {
+        self.state().held_room.get_or_insert_with(Vec::new);
+    }
+
+    pub fn release_room_events(&self) {
+        let mut state = self.state();
+        for held in state.held_room.take().unwrap_or_default() {
+            state.emit_room(&held.name, &held.args, held.except.as_deref());
         }
     }
 

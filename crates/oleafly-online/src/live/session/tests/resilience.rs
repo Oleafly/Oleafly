@@ -36,7 +36,7 @@ async fn opened(
 }
 
 async fn joined(rig: &Rig, doc: &DocId) {
-    eventually("the doc is joined", || rig.joined("alice").contains(&doc.0)).await;
+    eventually("the doc is joined", || rig.has_joined("alice", doc)).await;
 }
 
 async fn reconnected(rig: &Rig, before: &str) {

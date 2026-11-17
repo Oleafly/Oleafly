@@ -1539,6 +1539,27 @@ async fn mock_rest_can_lose_a_reply_after_applying_it() {
 }
 
 #[tokio::test]
+async fn mock_can_hold_room_events_until_released() {
+    let mock = MockOverleaf::start(project()).await;
+    let mut watcher = mock.peer("bob");
+    mock.hold_room_events();
+    assert_eq!(create_doc(&mock, "late.tex").await.status(), 200);
+    assert!(mock.entity_id("late.tex").is_some(), "the doc exists");
+    assert!(
+        watcher.events("reciveNewDoc").is_empty(),
+        "but nobody heard about it"
+    );
+    mock.release_room_events();
+    assert_eq!(watcher.events("reciveNewDoc").len(), 1);
+    assert_eq!(create_doc(&mock, "next.tex").await.status(), 200);
+    assert_eq!(
+        watcher.events("reciveNewDoc").len(),
+        2,
+        "room events flow again"
+    );
+}
+
+#[tokio::test]
 async fn mock_rest_can_delay_a_reply_past_a_timeout() {
     let mock = MockOverleaf::start(project()).await;
     mock.plan_fault(

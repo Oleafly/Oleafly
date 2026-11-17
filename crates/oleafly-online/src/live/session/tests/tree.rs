@@ -657,7 +657,7 @@ async fn a_lost_create_reply_with_no_room_event_asks_the_entity_list() {
     let rig = Rig::start(project()).await;
     let port = TreePort::new();
     let live = live_as(&rig, "alice", &port, quick()).await;
-    rig.mock.hold_updates();
+    rig.mock.hold_room_events();
     let route = format!("/project/{}/doc", rig.mock.project_id());
     rig.mock.plan_fault(Some("POST"), &route, Fault::LoseReply);
     port.text("quiet.tex", "Quiet");
@@ -669,9 +669,15 @@ async fn a_lost_create_reply_with_no_room_event_asks_the_entity_list() {
         requests(&rig, "GET", "/entities") >= 1
     })
     .await;
-    rig.mock.release_updates();
+    rig.mock.release_room_events();
     queue_empty(&port).await;
     assert_eq!(requests(&rig, "POST", "/doc"), 1);
+    eventually("the doc is filled once its room event lands", || {
+        rig.mock
+            .entity_id("quiet.tex")
+            .is_some_and(|id| rig.mock.doc_text(&id) == "Quiet")
+    })
+    .await;
     live.stop().await;
 }
 
