@@ -220,9 +220,18 @@ const MARKUP_CHARS = /[*_~`^=\\#|+>[\]{}\t -]/gu;
  * go; line breaks (collapsed) and list markers stay, so a key that hops to another line or rewrites another item's
  * marker reads as a different text.
  */
+function withoutTags(text: string): string {
+  let current = text;
+  let previous: string;
+  do {
+    previous = current;
+    current = current.replace(MARKUP_TAGS, "");
+  } while (current !== previous);
+  return current;
+}
+
 export function wordsOf(text: string): string {
-  return text
-    .replace(MARKUP_TAGS, "")
+  return withoutTags(text)
     .replaceAll("&lt;", "<")
     .replaceAll("&gt;", ">")
     .replaceAll("&amp;", "&")

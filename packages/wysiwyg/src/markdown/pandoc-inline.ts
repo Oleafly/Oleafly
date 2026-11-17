@@ -9,7 +9,10 @@ type InlineState = Parameters<InlineRule>[0];
 
 const SPAN_CLASSES: Readonly<Record<string, string>> = { underline: "u", mark: "mark" };
 const SPAN_ATTRIBUTES = /^\{\s*\.(underline|mark)\s*\}/u;
-export const ATTRIBUTE_BLOCK = /^\{\s*(?:(?:[.#][^\s{}]+|[\w-]+=(?:"[^"]*"|'[^']*'|[^\s{}"']*)|-)\s*)*\}/u;
+// Attributes are separated by spaces, as Pandoc reads them; requiring the space keeps the
+// match linear (no way to split "#!#!#" or "--=--=" into items more than one way).
+const ATTRIBUTE = String.raw`(?:[.#][^\s{}]+|[\w-]+=(?:"[^"]*"|'[^']*'|[^\s{}"']*)|-)`;
+export const ATTRIBUTE_BLOCK = new RegExp(String.raw`^\{\s*(?:${ATTRIBUTE}(?:\s+${ATTRIBUTE})*\s*)?\}`, "u");
 const UNESCAPED_SPACE = /(^|[^\\])(\\\\)*[ \t\r\n]/u;
 const withPandoc = new WeakSet<MarkdownIt>();
 export const PANDOC_SYNTAX = "data-markdown-syntax";

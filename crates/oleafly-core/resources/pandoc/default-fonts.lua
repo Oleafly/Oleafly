@@ -443,7 +443,7 @@ local function declare_script(script, header)
     open, close = "\\beginR ", "\\endR"
   end
   local linebreak = ""
-  if script.linebreak then
+  if script.linebreak and pandoc.system.os ~= "linux" then
     linebreak = '\\XeTeXlinebreaklocale "' .. script.linebreak .. '"\\XeTeXlinebreakskip=0pt plus 1pt\\relax '
   end
   local probe = string.format('"%X', script.probe)

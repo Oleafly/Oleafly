@@ -1134,7 +1134,8 @@ describe("thread polish", () => {
   });
 
   it("makes the card's hover border visibly darker than its rest border in light and dark", () => {
-    const globals = readFileSync(resolve(process.cwd(), "src/styles/globals.css"), "utf8");
+    // Windows checks the file out with CRLF line ends.
+    const globals = readFileSync(resolve(process.cwd(), "src/styles/globals.css"), "utf8").replaceAll("\r\n", "\n");
     const alpha = Number(/hover:border-foreground\/(\d+)/u.exec(commentCardClass(false))?.[1]) / 100;
     const block = (selector: string) => {
       const start = globals.indexOf(`${selector} {`);

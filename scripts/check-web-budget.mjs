@@ -7,7 +7,9 @@ const assetsDir = new URL("assets/", dist);
 
 const limits = {
   startupJavaScript: 460_000,
-  totalJavaScript: 7_570_000,
+  // +30 KB for the shared comment kit (threads, reactions, mentions and the
+  // offline outbox) after merging main: 7,586,079 bytes measured.
+  totalJavaScript: 7_600_000,
   wasm: {
     oleafly_synctex: 360_000,
   },
