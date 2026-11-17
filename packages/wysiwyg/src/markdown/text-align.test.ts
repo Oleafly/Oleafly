@@ -97,3 +97,54 @@ describe("editing next to aligned blocks", () => {
     expect(serializeMarkdownBody(doc)).not.toContain(":::");
   });
 });
+
+describe("divs the editor cannot align", () => {
+  it("reads nested aligned divs as aligned paragraphs and keeps both alignments on edit", () => {
+    const source = "::: {.right}\nzarc zard\n\n::: {.center}\nzare zarf\n:::\n:::";
+    expect(blocks(source).map((block) => [block.type, block.attrs?.textAlign])).toEqual([
+      ["paragraph", "right"],
+      ["paragraph", "center"],
+    ]);
+    const { editor, save } = openMarkdown(source);
+    typeAtEndOf(editor, "zarc", "!");
+    expect(save()).toBe("::: {.right}\nzarc! zard\n:::\n\n::: {.center}\nzare zarf\n:::");
+  });
+
+  it.each([
+    ["a rule", "::: {.center}\n---\n:::"],
+    ["a list", "::: {.center}\n- one\n- two\n:::"],
+    ["a code block", "::: {.right}\n```\ncode\n```\n:::"],
+  ])("keeps a div holding %s whole, as source", (_name, div) => {
+    const source = `${div}\n\nText end`;
+    expect(blocks(source)[0]).toMatchObject({ type: "rawBlock", attrs: { source: div } });
+    const { editor, save } = openMarkdown(source);
+    typeAtEndOf(editor, "end", "!");
+    expect(save()).toBe(`${source}!`);
+  });
+});
+
+describe("divs kept as source", () => {
+  it.each([
+    ["a list", "::: {.center}\n- a one\n- b two\n:::"],
+    ["a code block", "::: {.right}\n```\ncode\n```\n:::"],
+    ["a rule", "::: {.center}\nabove\n\n---\n:::"],
+    ["a callout", "::: {.callout-note}\nCallout body\n:::"],
+    ["a figure div in a centred div", "::: {.center}\nIntro text\n\n::: {#fig-a}\n![Cap](a.png)\n:::\n:::"],
+    ["Quarto columns", '::: {.columns}\n::: {.column width="50%"}\n**Before**\n\n- Slow\n- Manual\n:::\n\n::: {.column width="50%"}\n**After**\n:::\n::::'.replace("::::", ":::")],
+  ])("keeps a div holding %s whole and every other block as written", (_name, div) => {
+    const source = `${div}\n\n* star one\n* star two\n\nSetext\n======\n\nLine one\nline two of para.\n\nEdit target para\n`;
+    expect(blocks(source)[0]).toMatchObject({ type: "rawBlock", attrs: { source: div } });
+    const { editor, save } = openMarkdown(source);
+    typeAtEndOf(editor, "Edit", "!");
+    expect(save()).toBe(source.replace("Edit target", "Edit! target"));
+  });
+
+  it.each([
+    ["a quote", "> first quoted\n>\n> ::: {.center}\n> above\n>\n> ---\n> :::\n"],
+    ["a list item", "- item first\n\n  ::: {.center}\n  above\n\n  ---\n  :::\n"],
+  ])("writes no trailing spaces on the blank lines of a div kept as source in %s", (_name, source) => {
+    const { editor, save } = openMarkdown(source);
+    typeAtEndOf(editor, "first", "!");
+    expect(save()).toBe(source.replace("first", "first!"));
+  });
+});

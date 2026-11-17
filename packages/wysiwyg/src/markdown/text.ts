@@ -1,18 +1,21 @@
 import { Node } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { MarkdownNodeSpec } from "tiptap-markdown";
-import { guardInlineDelimiters } from "./inline-delimiters";
+import { markdownParseContext } from "./engine";
+import { guardInlineDelimiters, markAtom } from "./inline-delimiters";
 import { ATTRIBUTE_BLOCK } from "./pandoc-inline";
+
+type MarkdownIt = Parameters<NonNullable<NonNullable<MarkdownNodeSpec["parse"]>["setup"]>>[0];
 
 const FOOTNOTE_REFERENCE = /\[\^[^\]\s[]+\]/uy;
 const BRACKETED_CITATION = /\[(?:[^[\]\n]*?[\s;])?-?@[\p{L}\p{N}_][^[\]\n]*\]/uy;
 const BARE_CITATION =
   /(?<![\p{L}\p{N}_.@\\])@[\p{L}\p{N}_](?:[\p{L}\p{N}_]|[:.#$%&+?~/-](?=[\p{L}\p{N}_]))*/uy;
 const WIKI_LINK = /!?\[\[[^[\]\n]+\]\]/uy;
-const DOLLAR_MATH = /\$\$[^$]+?\$\$|\$(?![\s$])[^$\n]*?(?<![\s\\])\$(?!\d)/uy;
+export const DOLLAR_MATH = /\$\$[^$]+?\$\$|\$(?![\s$])[^$\n]*?(?<![\s\\])\$(?!\d)/uy;
 const PANDOC_SPAN = new RegExp(String.raw`\[[^[\]\n*_~\x60\\<$^]*\]` + ATTRIBUTE_BLOCK.source.slice(1), "uy");
-const VERBATIM_PATTERNS = [WIKI_LINK, FOOTNOTE_REFERENCE, BRACKETED_CITATION, BARE_CITATION, DOLLAR_MATH, PANDOC_SPAN];
-const VERBATIM_STARTS = new Set(["[", "@", "!", "$"]);
+const VERBATIM_PATTERNS = [WIKI_LINK, FOOTNOTE_REFERENCE, BRACKETED_CITATION, BARE_CITATION, PANDOC_SPAN];
+const VERBATIM_STARTS = new Set(["[", "@", "!"]);
 const PANDOC_SPACE = /[ \t\r\n]/u;
 const BLOCK_MARKERS: [node: string, marker: RegExp][] = [
   ["taskItem", /^\[[ xX]\](?=[ \t]|$)/u],
@@ -25,6 +28,17 @@ function unmodeledMarker(text: string, nodes: Record<string, unknown>): number {
     if (length) return length;
   }
   return 0;
+}
+
+const COMMENT = /^<!--[\s\S]*-->$/u;
+
+function matchesWhole(pattern: RegExp, source: string): boolean {
+  pattern.lastIndex = 0;
+  return pattern.exec(source)?.[0].length === source.length;
+}
+
+export function readsAsWord(source: string): boolean {
+  return matchesWhole(DOLLAR_MATH, source) || matchesWhole(FOOTNOTE_REFERENCE, source) || COMMENT.test(source);
 }
 
 export function escapeMarkdownHtml(text: string): string {
@@ -70,6 +84,31 @@ interface CaretRun {
 }
 
 const caretRuns = new WeakMap<object, CaretRun>();
+const withTextParsing = new WeakSet<MarkdownIt>();
+
+function keepTabs(state: { tokens: { type: string; children: { type: string; content: string }[] | null }[] }): boolean {
+  const { tab } = markdownParseContext();
+  if (!tab) return true;
+  for (const block of state.tokens) {
+    for (const child of block.type === "inline" ? (block.children ?? []) : []) {
+      if (child.type === "text" || child.type === "code_inline") child.content = child.content.replaceAll("\t", tab);
+    }
+  }
+  return true;
+}
+
+function setupTextParsing(md: MarkdownIt): void {
+  if (withTextParsing.has(md)) return;
+  withTextParsing.add(md);
+  md.core.ruler.after("inline", "keep_tabs", keepTabs);
+  const render = md.renderer.rules.softbreak;
+  if (!render) return;
+  // tiptap-markdown's normalizeDOM drops a newline that opens the text after any element, inline ones too.
+  md.renderer.rules.softbreak = (...args) => {
+    const written = render(...args);
+    return written === "\n" ? " " : written;
+  };
+}
 
 function caretOpenAfter(written: string, open: boolean): boolean {
   let caret = open;
@@ -119,14 +158,20 @@ export const MarkdownText = Node.create({
           emit(escapeMarkdownHtml(text.slice(cursor, to)), true);
         };
         let cursor = 0;
+        const out = state as unknown as { out: string };
         for (const range of verbatimTextRanges(text, marker)) {
           write(cursor, range.from);
-          emit(text.slice(range.from, range.to), false);
+          const source = text.slice(range.from, range.to);
+          state.write("");
+          const from = out.out.length;
+          emit(source, false);
+          markAtom(state, from, out.out.length, readsAsWord(source));
           cursor = range.to;
         }
         write(cursor, text.length);
         caretRuns.set(state, { parent, index, open });
       },
+      parse: { setup: setupTextParsing },
     };
     return { markdown };
   },

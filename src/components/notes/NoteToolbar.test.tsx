@@ -21,6 +21,7 @@ import { NoteImageDrop } from "./note-image-drop";
 import { NOTE_WIDTH_KEY, saveNoteWidth } from "./note-prefs";
 import { NotesDataProvider, type NotesData } from "./notes-data";
 import { NoteToolbar } from "./NoteToolbar";
+import { alignText } from "@/components/editor/rich-text-controls";
 import { destroyKbEditors, kbEditor, kbMarkdown, positionOf, pressKey } from "./tests/kb-editor-fixtures";
 import type { CitationItem } from "./types";
 import { fakeNotesData } from "./tests/notes-data-fixture";
@@ -376,6 +377,40 @@ describe("NoteToolbar", () => {
     const { editor } = mount(TABLE);
     inCell(editor, "0.75");
     expect(button(enEditor.toolbar.align.center)).toBeDisabled();
+  });
+
+  it.each(["- [ ] task word", "- [x] done word"])("turns alignment off on the task item '%s' and leaves it a task", { timeout: 60_000 }, (markdown) => {
+    const { editor } = mount(markdown);
+    inCell(editor, "word");
+    expect(button(enEditor.toolbar.align.center)).toBeDisabled();
+    expect(button(enEditor.toolbar.align.justify)).toBeDisabled();
+    expect(alignText(editor, "center")).toBe(false);
+    expect(kbMarkdown(editor)).toBe(markdown);
+  });
+
+  it("aligns a paragraph next to a task item and leaves the item alone", { timeout: 60_000 }, () => {
+    const { editor } = mount("Lead word.\n\n- [ ] task word");
+    select(editor, positionOf(editor, "Lead"), positionOf(editor, "task") + 4);
+    expect(alignText(editor, "center")).toBe(true);
+    expect(kbMarkdown(editor)).toBe("::: {.center}\nLead word.\n:::\n\n- [ ] task word");
+  });
+
+  it("turns off Quote and Callout inside a table, where a cell can't hold a quote", { timeout: 60_000 }, () => {
+    const { editor } = mount(TABLE);
+    inCell(editor, "0.75");
+    expect(button(enEditor.contextMenu.quote)).toBeDisabled();
+    expect(button(enNotes.blocks.slash.callout)).toBeDisabled();
+    select(editor, positionOf(editor, "Run"), positionOf(editor, "Run"));
+    expect(button(enEditor.contextMenu.quote)).toBeDisabled();
+  });
+
+  it("takes a quoted list out of the quote with Quote and keeps the list, as Visual and Code do", { timeout: 60_000 }, async () => {
+    const { editor, user } = mount("> - item word\n\nNext.");
+    inCell(editor, "word");
+    expect(button(enEditor.contextMenu.quote)).toHaveAttribute("aria-pressed", "true");
+    await user.click(button(enEditor.contextMenu.quote));
+    expect(kbMarkdown(editor)).toBe("- item word\n\nNext.");
+    expect(button(enEditor.contextMenu.quote)).toHaveAttribute("aria-pressed", "false");
   });
 
   it("colours the selected words with a LaTeX colour name and clears it", async () => {

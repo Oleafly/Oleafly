@@ -1,5 +1,6 @@
 import { ArrowDown, ArrowUp } from "lucide-react";
 import {
+  Component,
   createContext,
   type ReactNode,
   type Ref,
@@ -12,6 +13,7 @@ import {
   useState,
 } from "react";
 import { Button } from "@/components/ui/button";
+import { inPlainField } from "@/lib/field-history";
 
 export interface CommentArrival {
   id: string;
@@ -56,8 +58,9 @@ function groupsOf(items: readonly CommentArrival[]): Set<string> {
   return new Set(items.flatMap((item) => (item.group === undefined ? [] : [item.group])));
 }
 
-function atBottom(element: HTMLElement): boolean {
-  return element.scrollHeight - element.scrollTop - element.clientHeight <= BOTTOM_SLACK_PX;
+function scrolled(from: number, element: HTMLElement): number {
+  const settled = Math.min(from, Math.max(0, element.scrollHeight - element.clientHeight));
+  return Math.abs(element.scrollTop - settled) <= 1 ? 0 : element.scrollTop - from;
 }
 
 function reducedMotion(): boolean {
@@ -67,7 +70,21 @@ function reducedMotion(): boolean {
 interface Anchor {
   element: Element;
   top: number;
+  bottom: number;
 }
+
+interface Aim {
+  anchors: Anchor[];
+  above: Element | null;
+}
+
+interface Place extends Aim {
+  top: number;
+  height: number;
+  client: number;
+}
+
+const NOWHERE: Place = { anchors: [], above: null, top: 0, height: 0, client: 0 };
 
 interface Box {
   top: number;
@@ -79,13 +96,15 @@ interface Touch {
   clicked: number;
   settled: number | null;
   edge: number;
-  top: boolean;
+  scroll: number;
   control: Element;
   boxes: Map<Element, Box>;
   region: { id: string; height: number } | null;
 }
 
-interface Kept extends Anchor {
+interface Kept {
+  element: Element;
+  top: number;
   own: boolean;
 }
 
@@ -114,9 +133,21 @@ function apart(first: Element, second: Element): boolean {
 
 function measure(touch: Touch, container: HTMLElement): void {
   touch.edge = container.getBoundingClientRect().top;
-  touch.top = container.scrollTop <= 0;
+  touch.scroll = container.scrollTop;
   for (const node of touch.boxes.keys()) touch.boxes.set(node, boxOf(node));
   if (touch.region) touch.region.height = spaceOf(document.getElementById(touch.region.id));
+}
+
+function follow(touch: Touch, container: HTMLElement): void {
+  const by = scrolled(touch.scroll, container);
+  if (by === 0) return;
+  for (const [node, box] of touch.boxes) touch.boxes.set(node, { top: box.top - by, bottom: box.bottom - by });
+  touch.scroll = container.scrollTop;
+}
+
+function typing(touch: Touch | null): boolean {
+  const active = document.activeElement;
+  return Boolean(touch && active && touch.control.contains(active) && inPlainField(active));
 }
 
 function touchOf(content: HTMLElement, container: HTMLElement, target: EventTarget, previous: Touch | null, click: boolean): Touch | null {
@@ -132,7 +163,7 @@ function touchOf(content: HTMLElement, container: HTMLElement, target: EventTarg
     clicked: click ? now : Number.NEGATIVE_INFINITY,
     settled: null,
     edge: 0,
-    top: true,
+    scroll: 0,
     control,
     boxes,
     region: id ? { id, height: 0 } : null,
@@ -165,26 +196,48 @@ function userMove(touch: Touch | null, anchor: Element, edge: number): { user: n
   return { user, busy: Boolean(block && (block.matches(BUSY) || block.querySelector(BUSY))) };
 }
 
-function steadiest(live: readonly Anchor[]): { anchor: Anchor; reordered: boolean } {
-  const outer = live.filter((anchor) => !live.some((other) => other !== anchor && other.element.contains(anchor.element)));
-  if (outer.every((anchor, index) => index === 0 || before(outer[index - 1].element, anchor.element))) {
-    return { anchor: live[0], reordered: false };
-  }
-  const counts = outer.map(
-    (anchor, index) => outer.filter((other, at) => at !== index && at < index !== before(other.element, anchor.element)).length,
-  );
-  return { anchor: outer[counts.indexOf(Math.min(...counts))], reordered: true };
+function itemOf(element: Element, container: Element): Element {
+  let item = element;
+  for (let node = element.parentElement?.closest(ITEMS); node && container.contains(node); node = node.parentElement?.closest(ITEMS)) item = node;
+  return item;
 }
 
-function keptAnchor(anchors: readonly Anchor[], touch: Touch | null, container: HTMLElement): Kept | null {
-  const point = touch ? [...touch.boxes.keys()].find((node) => node.isConnected) : undefined;
+function itemBefore(item: Element, container: Element): Element | null {
+  for (let node: Element | null = item; node && node !== container; node = node.parentElement) {
+    for (let sibling = node.previousElementSibling; sibling; sibling = sibling.previousElementSibling) {
+      if (sibling.matches(ITEMS)) return sibling;
+      const inner = sibling.querySelectorAll(ITEMS);
+      const last = inner.item(inner.length - 1);
+      if (last) return itemOf(last, container);
+    }
+  }
+  return null;
+}
+
+function steadiest(live: readonly Anchor[], above: Element | null, container: Element): { anchor: Anchor; reordered: boolean } {
+  const groups = new Map<Element, Anchor>();
+  for (const anchor of live) {
+    const item = itemOf(anchor.element, container);
+    if (!groups.has(item)) groups.set(item, anchor);
+  }
+  const order = [...(above?.isConnected ? [above] : []), ...groups.keys()];
+  if (order.every((item, index) => index === 0 || before(order[index - 1], item))) return { anchor: live[0], reordered: false };
+  const flips = order.map((item, index) => order.filter((other, at) => at !== index && at < index !== before(other, item)).length);
+  const counts = flips.slice(order.length - groups.size);
+  return { anchor: [...groups.values()][counts.indexOf(Math.min(...counts))], reordered: true };
+}
+
+function keptAnchor({ anchors, above }: Aim, touch: Touch | null, container: HTMLElement): Kept | null {
+  const typed = typing(touch);
+  const point = touch && (typed || container.scrollTop > 0) ? [...touch.boxes.keys()].find((node) => node.isConnected) : undefined;
   const box = touch && point ? touch.boxes.get(point) : undefined;
   const view = boxOf(container);
-  const own = touch && !touch.top && point && box && box.bottom > touch.edge && box.top < touch.edge + view.bottom - view.top ? { element: point, top: box.top - touch.edge, own: true } : null;
+  const own = touch && point && box && box.bottom > touch.edge && box.top < touch.edge + view.bottom - view.top ? { element: point, top: box.top - touch.edge, own: true } : null;
   const live = anchors.filter((anchor) => anchor.element.isConnected);
   if (live.length === 0) return own;
-  const { anchor, reordered } = steadiest(live);
-  return reordered && own ? own : { ...anchor, own: false };
+  const { anchor, reordered } = steadiest(live, above, container);
+  const follows = typed || (touch !== null && performance.now() - touch.start <= WAIT_MS);
+  return reordered && own && follows ? own : { element: anchor.element, top: anchor.top, own: false };
 }
 
 function onScreen(container: HTMLElement, element: HTMLElement): boolean {
@@ -201,7 +254,7 @@ function anchorsIn(container: HTMLElement): Anchor[] {
   for (const element of container.querySelectorAll(ITEMS)) {
     const rect = element.getBoundingClientRect();
     if (rect.top >= box.top) {
-      found.push({ element, top: rect.top - box.top });
+      found.push({ element, top: rect.top - box.top, bottom: rect.bottom - box.top });
       if (rect.top >= box.bottom) break;
     } else if (found.length === 0 && rect.bottom > box.top) straddling = element;
   }
@@ -213,7 +266,40 @@ function anchorsIn(container: HTMLElement): Anchor[] {
     inner = child && child.getBoundingClientRect().top < box.top ? child : null;
     if (child && !inner) element = child;
   }
-  return element ? [{ element, top: element.getBoundingClientRect().top - box.top }] : [];
+  if (!element) return [];
+  const rect = element.getBoundingClientRect();
+  return [{ element, top: rect.top - box.top, bottom: rect.bottom - box.top }];
+}
+
+function aimAt(container: HTMLElement): Aim {
+  const anchors = anchorsIn(container);
+  return { anchors, above: anchors[0] ? itemBefore(itemOf(anchors[0].element, container), container) : null };
+}
+
+function placeOf(container: HTMLElement): Place {
+  return { ...aimAt(container), top: container.scrollTop, height: container.scrollHeight, client: container.clientHeight };
+}
+
+function aimNow(place: Place, by: number, container: HTMLElement): Aim {
+  if (by === 0) return place;
+  const view = boxOf(container);
+  const shifted = place.anchors
+    .map((anchor) => ({ element: anchor.element, top: anchor.top - by, bottom: anchor.bottom - by }))
+    .filter((anchor) => anchor.bottom > 0 && anchor.top < view.bottom - view.top);
+  return shifted.length > 0 && container.scrollTop > 0 ? { anchors: shifted, above: place.above } : aimAt(container);
+}
+
+class BeforeChange extends Component<Readonly<{ onChange: () => void; children: ReactNode }>> {
+  getSnapshotBeforeUpdate() {
+    this.props.onChange();
+    return null;
+  }
+
+  componentDidUpdate() {}
+
+  render() {
+    return this.props.children;
+  }
 }
 
 export function CommentScrollArea({
@@ -241,8 +327,7 @@ export function CommentScrollArea({
   const groups = useRef<Set<string>>(new Set());
   const seededScope = useRef(scope);
   const since = useRef(0);
-  const bottom = useRef(true);
-  const anchors = useRef<Anchor[]>([]);
+  const place = useRef<Place>(NOWHERE);
   const touched = useRef<Touch | null>(null);
   const elements = useRef(new Map<string, HTMLElement>());
   const seenAt = useRef(new Map<string, number>());
@@ -255,8 +340,11 @@ export function CommentScrollArea({
     if (!element) return;
     const edge = element.getBoundingClientRect().top;
     const touch = touched.current;
-    const kept = keptAnchor(anchors.current, touch, element);
-    if (stickToBottom && (bottom.current || force)) {
+    const last = place.current;
+    const by = scrolled(last.top, element);
+    if (touch) follow(touch, element);
+    const kept = keptAnchor(aimNow(last, by, element), touch, element);
+    if (stickToBottom && (last.height - last.top - by - last.client <= BOTTOM_SLACK_PX || force)) {
       element.scrollTop = element.scrollHeight;
     } else if (kept) {
       const moved = kept.element.getBoundingClientRect().top - edge - kept.top;
@@ -265,10 +353,17 @@ export function CommentScrollArea({
       if (Math.abs(moved - exempt) > 0.5) element.scrollTop += moved - exempt;
       if (touch && touch.settled === null && Math.abs(exempt) > 0.5 && !busy) touch.settled = performance.now();
     }
-    anchors.current = anchorsIn(element);
+    place.current = placeOf(element);
     if (touch?.control.isConnected) measure(touch, element);
     else if (touch) touched.current = content.current && document.activeElement ? touchOf(content.current, element, document.activeElement, null, false) : null;
   }, [stickToBottom]);
+
+  const beforeChange = useCallback(() => {
+    const element = container.current;
+    if (!element || scrolled(place.current.top, element) === 0) return;
+    place.current = placeOf(element);
+    if (touched.current) measure(touched.current, element);
+  }, []);
 
   const changes = useMemo(() => {
     const none = { added: [] as string[], arrived: [] as string[], mine: false };
@@ -296,7 +391,7 @@ export function CommentScrollArea({
         setHidden(new Set());
       }
       if (element && stickToBottom) element.scrollTop = element.scrollHeight;
-      anchors.current = element ? anchorsIn(element) : [];
+      place.current = element ? placeOf(element) : NOWHERE;
       return;
     }
     const { added, arrived, mine } = changes;
@@ -414,8 +509,7 @@ export function CommentScrollArea({
         <div
           ref={setContainer}
           onScroll={(event) => {
-            anchors.current = anchorsIn(event.currentTarget);
-            bottom.current = atBottom(event.currentTarget);
+            place.current = placeOf(event.currentTarget);
             if (touched.current) measure(touched.current, event.currentTarget);
           }}
           className="min-h-0 flex-1 overflow-y-auto [overflow-anchor:none]"
@@ -427,7 +521,7 @@ export function CommentScrollArea({
             onKeyDownCapture={touch}
             onClickCapture={touch}
           >
-            {children}
+            <BeforeChange onChange={beforeChange}>{children}</BeforeChange>
           </div>
         </div>
         {target ? (

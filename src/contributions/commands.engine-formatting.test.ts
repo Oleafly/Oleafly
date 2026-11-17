@@ -6,11 +6,12 @@ const mocks = vi.hoisted(() => ({
   wrapSelection: vi.fn(),
   insertAtCursor: vi.fn(),
   runMarkdownFormatting: vi.fn(),
+  view: {} as unknown,
 }));
 
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.state } }));
 vi.mock("@/components/editor/cm/controller", () => ({
-  getEditorView: () => null,
+  getEditorView: () => mocks.view,
   wrapSelection: mocks.wrapSelection,
   insertAtCursor: mocks.insertAtCursor,
 }));

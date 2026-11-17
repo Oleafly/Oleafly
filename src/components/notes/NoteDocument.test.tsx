@@ -17,7 +17,7 @@ import { NOTE_WIDTH_KEY, saveNoteWidth } from "./note-prefs";
 import { type NotesData, NotesDataProvider } from "./notes-data";
 import { recordNoteWrite, resetNoteWritesForTest } from "./notes-service";
 import { type NoteColor, NoteConflictError, type NoteItem, type NoteSource } from "./types";
-import { deleteText as removeText, typeBefore as insertBefore, positionOf, selectText } from "./tests/kb-editor-fixtures";
+import { deleteText as removeText, typeBefore as insertBefore, kbMarkdown, positionOf, pressKey, selectText } from "./tests/kb-editor-fixtures";
 import { deferred, fakeNotesData } from "./tests/notes-data-fixture";
 import "./tests/setup";
 
@@ -2411,5 +2411,27 @@ describe("citations", () => {
   it("shows no References section for a note without known citations", async () => {
     await openNote(fakeData());
     expect(screen.queryByRole("region", { name: enNotes.citations.references })).toBeNull();
+  });
+});
+
+describe("the quote key", () => {
+  const quoteKey = (editor: Editor) => act(() => void pressKey(editor, "B", { code: "KeyB", keyCode: 66, ctrlKey: true, shiftKey: true }));
+
+  it("bolds in a table cell and takes a quoted list out of the quote, as the Quote button does", { timeout: 60_000 }, async () => {
+    const { editor } = await openNote(fakeData({ text: "---\ntitle: Keys\n---\n| a | b |\n| --- | --- |\n| c | word |\n\n> - item list\n" }));
+    select(editor, "word");
+    quoteKey(editor);
+    expect(kbMarkdown(editor)).toBe("| a | b |\n| --- | --- |\n| c | **word** |\n\n> - item list");
+    act(() => editor.commands.setTextSelection(positionOf(editor, "list")));
+    quoteKey(editor);
+    expect(kbMarkdown(editor)).toBe("| a | b |\n| --- | --- |\n| c | **word** |\n\n- item list");
+  });
+
+  it("writes no HTML table for a selection across two cells", { timeout: 60_000 }, async () => {
+    const { editor } = await openNote(fakeData({ text: "---\ntitle: Keys\n---\n| a | b |\n| --- | --- |\n| c | word |\n" }));
+    act(() => editor.commands.setTextSelection({ from: positionOf(editor, "c"), to: positionOf(editor, "word") + 4 }));
+    quoteKey(editor);
+    expect(kbMarkdown(editor)).not.toContain("<table");
+    expect(kbMarkdown(editor)).toMatch(/^\| a \| b \|\n\| --- \| --- \|\n\| [^|\n]*c[^|\n]* \| [^|\n]*word[^|\n]* \|$/u);
   });
 });

@@ -1,4 +1,6 @@
-import { Extension } from "@tiptap/core";
+import { Extension, flattenExtensions, type Mark } from "@tiptap/core";
+import type { Mark as ProseMirrorMark, Node as ProseMirrorNode } from "@tiptap/pm/model";
+import { StarterKit } from "@tiptap/starter-kit";
 import type { MarkdownNodeSpec } from "tiptap-markdown";
 
 type MarkdownIt = Parameters<NonNullable<NonNullable<MarkdownNodeSpec["parse"]>["setup"]>>[0];
@@ -10,11 +12,63 @@ const SPAN_ATTRIBUTES = /^\{\s*\.(underline|mark)\s*\}/u;
 export const ATTRIBUTE_BLOCK = /^\{\s*(?:(?:[.#][^\s{}]+|[\w-]+=(?:"[^"]*"|'[^']*'|[^\s{}"']*)|-)\s*)*\}/u;
 const UNESCAPED_SPACE = /(^|[^\\])(\\\\)*[ \t\r\n]/u;
 const withPandoc = new WeakSet<MarkdownIt>();
+export const PANDOC_SYNTAX = "data-markdown-syntax";
+const SCRIPT_CONTENT = /^[^\s^~]*$/u;
+
+export const pandocSyntaxAttribute = {
+  syntax: {
+    default: null,
+    rendered: false,
+    parseHTML: (element: HTMLElement) => (element.getAttribute(PANDOC_SYNTAX) === "pandoc" ? "pandoc" : null),
+  },
+};
+
+function writesPandoc(mark: ProseMirrorMark, parent: ProseMirrorNode, from: number, step: number, fits: RegExp): boolean {
+  if (mark.attrs.syntax !== "pandoc") return false;
+  for (let at = from; at >= 0 && at < parent.childCount && mark.isInSet(parent.child(at).marks); at += step) {
+    const child = parent.child(at);
+    if (child.type.name === "hardBreak" || (child.isText && !fits.test(child.text ?? ""))) return false;
+  }
+  return true;
+}
+
+const OPENS_OTHER_SYNTAX: Readonly<Record<string, RegExp>> = { "^": /\[$/u, "~": /~$/u, "[": /[!^]$/u };
+const pandocMarks = new WeakMap<ProseMirrorMark, boolean>();
+
+export function pandocOrHtml(html: readonly [string, string], pandoc: readonly [string, string], fits = /^/u) {
+  return {
+    tags: html,
+    open: (state: { out: string }, mark: ProseMirrorMark, parent: ProseMirrorNode, index: number) => {
+      const written = writesPandoc(mark, parent, index, 1, fits) && !OPENS_OTHER_SYNTAX[pandoc[0]]?.test(state.out);
+      pandocMarks.set(mark, written);
+      return written ? pandoc[0] : html[0];
+    },
+    close: (_state: unknown, mark: ProseMirrorMark) => (pandocMarks.get(mark) ? pandoc[1] : html[1]),
+  };
+}
+
+export function scriptSyntax(tag: "sup" | "sub", marker: string) {
+  return pandocOrHtml([`<${tag}>`, `</${tag}>`], [marker, marker], SCRIPT_CONTENT);
+}
+
+const StarterUnderline = flattenExtensions([StarterKit]).find((extension) => extension.name === "underline") as Mark;
+
+export const MarkdownUnderline = StarterUnderline.extend({
+  addAttributes() {
+    return { ...this.parent?.(), ...pandocSyntaxAttribute };
+  },
+
+  addStorage() {
+    return { ...this.parent?.(), markdown: { serialize: pandocOrHtml(["<u>", "</u>"], ["[", "]{.underline}"]), parse: {} } };
+  },
+});
 const lastClosers = new WeakMap<InlineState, { posMax: number; at: number }>();
 
 function wrapInline(state: InlineState, tag: string, from: number, to: number, markup = ""): number {
   const max = state.posMax;
-  state.push(`${tag}_open`, tag, 1).markup = markup;
+  const open = state.push(`${tag}_open`, tag, 1);
+  open.markup = markup;
+  open.attrSet(PANDOC_SYNTAX, "pandoc");
   const first = state.tokens.length;
   state.pos = from;
   state.posMax = to;

@@ -2,7 +2,7 @@
 import { Editor } from "@tiptap/core";
 import { WYSIWYG_EXTENSIONS, createMarkdownSourceSnapshot, parseMarkdownBody, serializeMarkdownBody } from "@oleafly/wysiwyg";
 import { afterEach, describe, expect, it } from "vitest";
-import { markdownMathRanges } from "./markdown-source";
+import { markdownMathRanges, noteMathRanges } from "./markdown-source";
 
 const opened: Editor[] = [];
 
@@ -36,8 +36,37 @@ describe("markdownMathRanges", () => {
     expect(reopen(saved)).toEqual(["see [1] here"]);
   });
 
+  it("leaves a dollar sign with no closer as text", () => {
+    expect(markdownMathRanges("It costs <del>$</del>5 and $10 later, so budget $15.")).toEqual([]);
+    expect(markdownMathRanges("It costs $x and more.")).toEqual([]);
+    expect(reopen("It costs <del>$</del>5 and $10 later.")).toEqual(["It costs $5 and $10 later."]);
+  });
+
   it("keeps paragraphs apart when brackets open and close in different ones", () => {
     const source = "see \\[a here\n\nmiddle\n\nand b\\] end";
     expect(reopen(source)).toEqual(["see [a here", "middle", "and b] end"]);
+  });
+});
+
+describe("noteMathRanges", () => {
+  const found = (source: string) => noteMathRanges(source).map(({ from, to }) => source.slice(from, to));
+
+  it("reads bracketed LaTeX math in notes, as notes did before", () => {
+    expect(found("Inline \\(\\alpha + x^2\\) here and $y$.\n\n\\[ \\frac{a}{b} \\]")).toEqual([
+      "\\(\\alpha + x^2\\)",
+      "$y$",
+      "\\[ \\frac{a}{b} \\]",
+    ]);
+  });
+
+  it("leaves escaped brackets inside text, or around plain words, as text", () => {
+    expect(found("See word \\[1\\] and \\[a b\\] here")).toEqual([]);
+    expect(found("\\[TODO\\]\n\nSee \\[1\\] reference")).toEqual([]);
+    expect(found("\\[ x^2 \\]")).toEqual(["\\[ x^2 \\]"]);
+  });
+
+  it("keeps paragraphs apart when brackets or dollars open and close in different ones", () => {
+    expect(found("see \\[a here\n\nmiddle $x$\n\nand b\\] end")).toEqual(["$x$"]);
+    expect(found("costs $5\n\nand $x$")).toEqual(["$x$"]);
   });
 });

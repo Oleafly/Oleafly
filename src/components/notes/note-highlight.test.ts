@@ -156,19 +156,19 @@ describe("saving highlights next to links, spaces and other marks", () => {
   const paper = "Intro text.\n\nSee the paper at [arXiv](https://arxiv.org/abs/1) for details.";
 
   it.each<[NotesHighlightColor, string, string, string, string, string]>([
-    ["yellow", "around a link", paper, "the paper", "details", "Intro text.\n\nSee ==the paper at== [==arXiv==](https://arxiv.org/abs/1) ==for details==."],
+    ["yellow", "around a link", paper, "the paper", "details", "Intro text.\n\nSee ==the paper at [arXiv](https://arxiv.org/abs/1) for details==."],
     [
       "red",
       "around a link",
       paper,
       "the paper",
       "details",
-      'Intro text.\n\nSee <mark data-color="red">the paper at </mark>[<mark data-color="red">arXiv</mark>](https://arxiv.org/abs/1)<mark data-color="red"> for details</mark>.',
+      'Intro text.\n\nSee <mark data-color="red">the paper at [arXiv](https://arxiv.org/abs/1) for details</mark>.',
     ],
-    ["yellow", "into a link", "x a [l](https://e.com) y", "a", "l", "x ==a== [==l==](https://e.com) y"],
-    ["red", "into a link", "x a [l](https://e.com) y", "a", "l", 'x <mark data-color="red">a </mark>[<mark data-color="red">l</mark>](https://e.com) y'],
-    ["yellow", "out of a link", "x [l](https://e.com) a y", "l", " a", "x [==l==](https://e.com) ==a== y"],
-    ["purple", "out of a link", "x [l](https://e.com) a y", "l", " a", 'x [<mark data-color="purple">l</mark>](https://e.com)<mark data-color="purple"> a</mark> y'],
+    ["yellow", "into a link", "x a [l](https://e.com) y", "a", "l", "x ==a [l](https://e.com)== y"],
+    ["red", "into a link", "x a [l](https://e.com) y", "a", "l", 'x <mark data-color="red">a [l](https://e.com)</mark> y'],
+    ["yellow", "out of a link", "x [l](https://e.com) a y", "l", " a", "x ==[l](https://e.com) a== y"],
+    ["purple", "out of a link", "x [l](https://e.com) a y", "l", " a", 'x <mark data-color="purple">[l](https://e.com) a</mark> y'],
     ["yellow", "between spaces", "one two three", " two ", " two ", "one ==two== three"],
     ["green", "between spaces", "one two three", " two ", " two ", 'one <mark data-color="green">two</mark> three'],
     ["yellow", "across bold", "one **two** three", "e", "thr", "on==e **two** thr==ee"],
@@ -183,9 +183,9 @@ describe("saving highlights next to links, spaces and other marks", () => {
 
   it("keeps every highlight of a note with links in several paragraphs", () => {
     const source = "[a](https://e.com) b\n\nc [d](https://e.com)";
-    expect(highlightAndSave(source, "a", "d", "yellow")).toBe("[==a==](https://e.com) ==b==\n\n==c== [==d==](https://e.com)");
+    expect(highlightAndSave(source, "a", "d", "yellow")).toBe("==[a](https://e.com) b==\n\n==c [d](https://e.com)==");
     expect(highlightAndSave(source, "a", "d", "green")).toBe(
-      '[<mark data-color="green">a</mark>](https://e.com)<mark data-color="green"> b</mark>\n\n<mark data-color="green">c </mark>[<mark data-color="green">d</mark>](https://e.com)',
+      '<mark data-color="green">[a](https://e.com) b</mark>\n\n<mark data-color="green">c [d](https://e.com)</mark>',
     );
   });
 });

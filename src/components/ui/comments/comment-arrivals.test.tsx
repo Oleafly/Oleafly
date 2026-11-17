@@ -1238,7 +1238,7 @@ describe("arrivals after the second review", () => {
         expect(list.top()).toBe(0);
       });
 
-      it("never anchors at the very top, not even to the box the reader is typing in", () => {
+      it("never anchors at the very top, not even to a message the reader just clicked", () => {
         const list = mount(<List box />, 0);
         const field = screen.getByRole("textbox", { name: REPLY });
         const rows = (offset: number) => {
@@ -1251,7 +1251,8 @@ describe("arrivals after the second review", () => {
         };
         rows(0);
         list.settle();
-        fireEvent.keyDown(field, { key: "a" });
+        fireEvent.pointerDown(at('[data-comment-entry="r1"]'));
+        fireEvent.click(at('[data-comment-entry="r1"]'));
         rows(100);
         list.resize();
         expect(list.top()).toBe(0);
@@ -1491,6 +1492,520 @@ describe("arrivals after the second review", () => {
         list.view.rerender(<Board order={["a", "c", "d", "e", "b"]} />);
         list.resize();
         expect(list.top()).toBe(200);
+      });
+    });
+
+    describe("after the fifth review", () => {
+      type Spec = Readonly<Record<string, readonly (readonly [string, number])[]>>;
+      const LETTERS = "abcdefghijklmnopqrst".split("");
+      const TEN = LETTERS.slice(0, 10);
+      const TWENTY = LETTERS;
+      const RECT = Element.prototype.getBoundingClientRect;
+
+      afterEach(() => {
+        Element.prototype.getBoundingClientRect = RECT;
+      });
+
+      function entriesOf(spec: Spec, id: string): readonly (readonly [string, number])[] {
+        return spec[id] ?? [[`m${id}`, 100]];
+      }
+
+      function Leaf({ id, size }: Readonly<{ id: string; size: number }>) {
+        if (id.startsWith("box")) return <textarea aria-label={REPLY} data-testid={id} data-size={size} />;
+        if (id.startsWith("btn")) return <button type="button" data-testid={id} data-size={size} />;
+        return (
+          <li data-comment-entry={id} data-size={size}>
+            {id}
+          </li>
+        );
+      }
+
+      function Board({ order, spec = {} }: Readonly<{ order: readonly string[]; spec?: Spec }>) {
+        return (
+          <CommentScrollArea items={order.map((id) => ({ id, mine: false, at: 0 }))} ready label={(count) => `${count} new`}>
+            <ol>
+              {order.map((id) => (
+                <article key={id} data-comment-thread={id}>
+                  {entriesOf(spec, id).map(([entry, size]) => (
+                    <Leaf key={entry} id={entry} size={size} />
+                  ))}
+                </article>
+              ))}
+            </ol>
+          </CommentScrollArea>
+        );
+      }
+
+      function Chat({ ids, sizes = {} }: Readonly<{ ids: readonly string[]; sizes?: Readonly<Record<string, number>> }>) {
+        return (
+          <CommentScrollArea items={ids.map((id) => ({ id, mine: false, at: 0 }))} ready stickToBottom label={(count) => `${count} new`}>
+            <ol>
+              {ids.map((id) => (
+                <Leaf key={id} id={id} size={sizes[id] ?? 100} />
+              ))}
+            </ol>
+          </CommentScrollArea>
+        );
+      }
+
+      const messages = (count: number) => Array.from({ length: count }, (_, index) => `m${index + 1}`);
+
+      function stage(node: ReactNode, start: number, gap = 0) {
+        const list = mount(node, start);
+        const content = list.box.firstElementChild as HTMLElement;
+        let top = start;
+        let client = 300;
+        const spots = () => {
+          const found = new Map<Element, { top: number; bottom: number }>();
+          let y = 0;
+          for (const leaf of content.querySelectorAll<HTMLElement>("[data-size]")) {
+            const size = Number(leaf.dataset.size);
+            found.set(leaf, { top: y, bottom: y + size });
+            y += size + gap;
+          }
+          return found;
+        };
+        const end = () => Math.max(0, ...[...spots().values()].map((spot) => spot.bottom));
+        const max = () => Math.max(0, end() - client);
+        const scroll = () => {
+          top = Math.min(top, max());
+          return top;
+        };
+        Object.defineProperty(list.box, "scrollTop", {
+          configurable: true,
+          get: scroll,
+          set: (value: number) => {
+            top = Math.max(0, Math.min(value, max()));
+          },
+        });
+        Object.defineProperty(list.box, "scrollHeight", { configurable: true, get: () => Math.max(end(), client) });
+        Object.defineProperty(list.box, "clientHeight", { configurable: true, get: () => client });
+        list.box.getBoundingClientRect = () => ({ top: 0, bottom: client }) as DOMRect;
+        Element.prototype.getBoundingClientRect = function (this: Element) {
+          const inside = [...spots()].filter(([leaf]) => this.contains(leaf)).map(([, spot]) => spot);
+          if (inside.length === 0) return RECT.call(this);
+          const y = scroll();
+          return { top: inside[0].top - y, bottom: inside[inside.length - 1].bottom - y } as DOMRect;
+        };
+        return {
+          ...list,
+          top: scroll,
+          where: (element: Element) => element.getBoundingClientRect().top,
+          size: (element: Element, value: number) => {
+            (element as HTMLElement).dataset.size = String(value);
+          },
+          viewport: (height: number) => {
+            client = height;
+          },
+          jump: (value: number) => {
+            top = Math.max(0, Math.min(value, max()));
+          },
+          scrollTo: (value: number) => {
+            top = Math.max(0, Math.min(value, max()));
+            list.settle();
+          },
+        };
+      }
+
+      const thread = (id: string) => at(`[data-comment-thread="${id}"]`);
+      const entry = (id: string) => at(`[data-comment-entry="${id}"]`);
+      const without = (order: readonly string[], id: string) => order.filter((other) => other !== id);
+      const CUT_SPEC: Spec = { a: [["ma", 490]], b: [["mb", 100], ["rb1", 100], ["rb2", 100]] };
+      const CUT = ["a", "b", "c", "d", "e", "f"];
+
+      function cutThread() {
+        const list = stage(<Board order={CUT} spec={CUT_SPEC} />, 600, 10);
+        list.settle();
+        expect(list.where(entry("rb1"))).toBe(10);
+        expect(list.where(thread("c"))).toBe(230);
+        return list;
+      }
+
+      it("keeps the thread below still when a thread cut by the top edge, with only its replies on screen, re-sorts to the end", () => {
+        const list = cutThread();
+        list.view.rerender(<Board order={[...without(CUT, "b"), "b"]} spec={CUT_SPEC} />);
+        list.resize();
+        expect(list.top()).toBe(270);
+        expect(list.where(thread("c"))).toBe(230);
+      });
+
+      function clickedThenSorted(wait: number, spec: Spec = {}, target = "me") {
+        const time = clock();
+        try {
+          const list = stage(<Board order={TEN} spec={spec} />, 400);
+          list.settle();
+          const touched = document.querySelector(`[data-comment-entry="${target}"], [data-testid="${target}"]`) as HTMLElement;
+          if (touched.matches("button, textarea")) touched.focus();
+          fireEvent.pointerDown(touched);
+          fireEvent.click(touched);
+          if (touched.matches("textarea")) fireEvent.keyDown(touched, { key: "a" });
+          time.later(wait);
+          list.view.rerender(<Board order={[...without(TEN, "e"), "e"]} spec={spec} />);
+          list.resize();
+          return list;
+        } finally {
+          time.restore();
+        }
+      }
+
+      it("stops following a thread the reader clicked more than 5 seconds ago when it re-sorts", () => {
+        const list = clickedThenSorted(5_100);
+        expect(list.top()).toBe(300);
+        expect(list.where(thread("f"))).toBe(100);
+      });
+
+      it("still follows a thread the reader clicked a moment ago when it re-sorts", () => {
+        const list = clickedThenSorted(100);
+        expect(list.top()).toBe(700);
+        expect(list.where(entry("me"))).toBe(200);
+      });
+
+      it("keeps following the reply box the reader has open when its thread re-sorts, however long ago they typed", () => {
+        const list = clickedThenSorted(600_000, { e: [["me", 60], ["boxe", 40]] }, "boxe");
+        expect(list.top()).toBe(700);
+        expect(list.where(screen.getByTestId("boxe"))).toBe(260);
+      });
+
+      it("stops following a thread whose button the reader focused long ago, since a button is not a box they type in", () => {
+        const list = clickedThenSorted(600_000, { e: [["me", 60], ["btne", 40]] }, "btne");
+        expect(document.activeElement).toBe(screen.getByTestId("btne"));
+        expect(list.top()).toBe(300);
+        expect(list.where(thread("f"))).toBe(100);
+      });
+
+      it("goes back to holding the top once the reader scrolls up with the message they clicked still on screen", () => {
+        const spec: Spec = { n: [["mn", 50]] };
+        const list = stage(<Board order={TEN} spec={spec} />, 100);
+        list.settle();
+        fireEvent.pointerDown(entry("mc"));
+        fireEvent.click(entry("mc"));
+        list.scrollTo(0);
+        expect(list.where(entry("mc"))).toBe(200);
+        list.view.rerender(<Board order={["n", ...TEN]} spec={spec} />);
+        list.resize();
+        expect(list.top()).toBe(0);
+        expect(list.where(entry("mc"))).toBe(250);
+      });
+
+      it("ends the 5 second wait for the reader's own growth on time, even while co-authors keep changing the list", () => {
+        const time = clock();
+        try {
+          const list = mount(<List box={false} />);
+          shape(-40, 0);
+          list.settle();
+          const text = at('[data-comment-entry="r1"]');
+          fireEvent.pointerDown(text);
+          fireEvent.click(text);
+          for (const grow of [4, 8]) {
+            time.later(2_000);
+            place(at('[data-comment-thread="u"]'), 50, 110 + grow);
+            place(at('[data-comment-entry="u"]'), 50, 110 + grow);
+            list.resize();
+            expect(list.top()).toBe(400);
+          }
+          time.later(2_000);
+          place(at('[data-comment-thread="t"]'), -300, 70);
+          place(at('[data-comment-thread="u"]'), 80, 148);
+          place(at('[data-comment-entry="u"]'), 80, 148);
+          list.resize();
+          expect(list.top()).toBe(430);
+        } finally {
+          time.restore();
+        }
+      });
+
+      it("measures the region the reader opened again once it has opened, so a co-author's growth right after is corrected", () => {
+        const time = clock();
+        try {
+          function Opening() {
+            const [open, setOpen] = useState(false);
+            return (
+              <CommentScrollArea items={ONLY_U} ready label={(count) => `${count} new`}>
+                <article data-comment-thread="t">
+                  <ol>
+                    <Row id="root" />
+                  </ol>
+                  {open ? <ol id="t-replies" data-testid="replies" /> : null}
+                  <div data-testid="toggle-row">
+                    <button type="button" aria-controls="t-replies" onClick={() => setOpen(true)}>
+                      {"3 replies"}
+                    </button>
+                  </div>
+                </article>
+                <article data-comment-thread="u">
+                  <Row id="u" />
+                </article>
+              </CommentScrollArea>
+            );
+          }
+          const list = mount(<Opening />);
+          const toggle = screen.getByRole("button", { name: "3 replies" });
+          const lay = (rootBottom: number, replies: number) => {
+            place(at("article > ol"), -300, rootBottom);
+            place(at('[data-comment-entry="root"]'), -300, rootBottom);
+            const opened = document.querySelector('[data-testid="replies"]');
+            if (opened) place(opened, rootBottom + 20, rootBottom + 20 + replies);
+            const after = rootBottom + 20 + replies;
+            place(screen.getByTestId("toggle-row"), after, after + 20);
+            place(toggle, after, after + 20);
+            place(at('[data-comment-thread="t"]'), -300, after + 20);
+            place(at('[data-comment-thread="u"]'), after + 30, after + 90);
+            place(at('[data-comment-entry="u"]'), after + 30, after + 90);
+          };
+          lay(-10, 0);
+          list.settle();
+          fireEvent.pointerDown(toggle);
+          fireEvent.click(toggle);
+          lay(-10, 90);
+          list.resize();
+          expect(list.top()).toBe(400);
+          time.later(100);
+          lay(20, 90);
+          list.resize();
+          expect(list.top()).toBe(430);
+        } finally {
+          time.restore();
+        }
+      });
+
+      const LANDED: Spec = { n: [["mn", 120]] };
+
+      it("lets an instant scroll to the top stand when a thread lands or grows before its scroll event", () => {
+        const list = stage(<Board order={TEN} spec={LANDED} />, 400);
+        list.settle();
+        list.jump(0);
+        list.view.rerender(<Board order={["n", ...TEN]} spec={LANDED} />);
+        expect(list.top()).toBe(0);
+        list.scrollTo(400);
+        list.jump(0);
+        list.size(entry("ma"), 150);
+        list.resize();
+        expect(list.top()).toBe(0);
+      });
+
+      it("holds the top after a small instant scroll to it, even though what was on screen before is still on screen", () => {
+        const list = stage(<Board order={TEN} />, 100);
+        list.settle();
+        list.jump(0);
+        list.size(entry("ma"), 220);
+        list.resize();
+        expect(list.top()).toBe(0);
+      });
+
+      it("keeps an instant reveal scroll and still holds the view when a thread lands above before the scroll is reported", () => {
+        const list = stage(<Board order={TEN} spec={LANDED} />, 400);
+        list.settle();
+        list.jump(300);
+        list.view.rerender(<Board order={["n", ...TEN]} spec={LANDED} />);
+        expect(list.top()).toBe(420);
+        expect(list.where(thread("d"))).toBe(0);
+      });
+
+      it("keeps what an instant scroll of more than a screen revealed when a thread lands above in the same commit", () => {
+        const up = stage(<Board order={TEN} spec={LANDED} />, 400);
+        up.settle();
+        up.jump(100);
+        up.view.rerender(<Board order={["n", ...TEN]} spec={LANDED} />);
+        expect(up.top()).toBe(220);
+        expect(up.where(thread("b"))).toBe(0);
+        up.view.unmount();
+        const down = stage(<Board order={TWENTY} spec={LANDED} />, 400);
+        down.settle();
+        down.jump(1_000);
+        down.view.rerender(<Board order={["n", ...TWENTY]} spec={LANDED} />);
+        expect(down.top()).toBe(1_120);
+        expect(down.where(thread("k"))).toBe(0);
+      });
+
+      it("keeps what a reader sees after an unreported scroll up of more than a screen when something grows between it and where they were", () => {
+        const list = stage(<Board order={TWENTY} />, 1_000);
+        list.settle();
+        list.jump(400);
+        list.size(entry("mh"), 150);
+        list.resize();
+        expect(list.top()).toBe(400);
+        expect(list.where(thread("e"))).toBe(0);
+      });
+
+      it("keeps the reply box where an instant scroll put it when its thread re-sorts before the scroll is reported", () => {
+        const spec: Spec = { e: [["me", 60], ["boxe", 40]] };
+        const sorted = [...TWENTY.slice(0, 4), ...TWENTY.slice(5, 10), "e", ...TWENTY.slice(10)];
+        const list = stage(<Board order={TWENTY} spec={spec} />, 400);
+        list.settle();
+        const field = screen.getByTestId("boxe");
+        field.focus();
+        fireEvent.keyDown(field, { key: "a" });
+        list.jump(350);
+        expect(list.where(field)).toBe(110);
+        list.view.rerender(<Board order={sorted} spec={spec} />);
+        expect(list.top()).toBe(850);
+        expect(list.where(field)).toBe(110);
+      });
+
+      it("lets a chat's instant reveal scroll stand when a message arrives before the scroll is reported, and still follows from the bottom", () => {
+        const list = stage(<Chat ids={messages(10)} />, 700);
+        list.settle();
+        list.jump(300);
+        list.view.rerender(<Chat ids={messages(11)} />);
+        expect(list.top()).toBe(300);
+        list.scrollTo(800);
+        list.jump(795);
+        list.view.rerender(<Chat ids={messages(12)} />);
+        expect(list.top()).toBe(900);
+      });
+
+      const BOX_B: Spec = { b: [["mb", 30], ["boxb", 70]] };
+
+      function typingAtTop() {
+        const list = stage(<Board order={TWENTY} spec={BOX_B} />, 0);
+        list.settle();
+        const field = screen.getByTestId("boxb");
+        field.focus();
+        fireEvent.keyDown(field, { key: "a" });
+        expect(list.where(field)).toBe(130);
+        return { list, field };
+      }
+
+      it("keeps the reply box the reader is typing in still at the very top when a thread lands above it", () => {
+        const { list, field } = typingAtTop();
+        list.view.rerender(<Board order={["n", ...TWENTY]} spec={{ ...BOX_B, n: [["mn", 240]] }} />);
+        expect(list.top()).toBe(240);
+        expect(list.where(field)).toBe(130);
+      });
+
+      it("keeps the reply box the reader is typing in still at the very top when the thread above it grows", () => {
+        const { list, field } = typingAtTop();
+        list.size(entry("ma"), 340);
+        list.resize();
+        expect(list.top()).toBe(240);
+        expect(list.where(field)).toBe(130);
+      });
+
+      it("keeps the reply box the reader is typing in still at the very top when its thread re-sorts", () => {
+        const { list, field } = typingAtTop();
+        list.view.rerender(<Board order={["a", "c", "d", "e", "b", ...TWENTY.slice(5)]} spec={BOX_B} />);
+        list.resize();
+        expect(list.top()).toBe(300);
+        expect(list.where(field)).toBe(130);
+      });
+
+      describe("final check", () => {
+        it("keeps the screen still when a thread above is removed while the rail is at or near its end", () => {
+          const atEnd = stage(<Board order={TWENTY} />, 1_700);
+          atEnd.settle();
+          atEnd.view.rerender(<Board order={without(TWENTY, "b")} />);
+          atEnd.resize();
+          expect(atEnd.top()).toBe(1_600);
+          expect(atEnd.where(thread("r"))).toBe(0);
+          atEnd.view.unmount();
+          const nearEnd = stage(<Board order={TWENTY} />, 1_650);
+          nearEnd.settle();
+          nearEnd.view.rerender(<Board order={without(TWENTY, "b")} />);
+          nearEnd.resize();
+          expect(nearEnd.top()).toBe(1_550);
+          expect(nearEnd.where(thread("r"))).toBe(50);
+        });
+
+        it("keeps the screen still at the end of the rail when a thread above shrinks without a commit, or a line comes and goes above", () => {
+          const list = stage(<Board order={TWENTY} />, 1_700);
+          list.settle();
+          list.size(entry("mb"), 0);
+          list.resize();
+          expect(list.top()).toBe(1_600);
+          expect(list.where(thread("r"))).toBe(0);
+          list.size(entry("mb"), 120);
+          list.resize();
+          expect(list.top()).toBe(1_720);
+          list.size(entry("mb"), 100);
+          list.resize();
+          expect(list.top()).toBe(1_700);
+          expect(list.where(thread("r"))).toBe(0);
+        });
+
+        it("keeps the reply box the reader is typing in on screen when a thread above is removed at the end of the rail", () => {
+          const spec: Spec = { t: [["mt", 40], ["boxt", 60]] };
+          const list = stage(<Board order={TWENTY} spec={spec} />, 1_700);
+          list.settle();
+          const field = screen.getByTestId("boxt");
+          field.focus();
+          fireEvent.keyDown(field, { key: "a" });
+          expect(list.where(field)).toBe(240);
+          list.view.rerender(<Board order={without(TWENTY, "b")} spec={spec} />);
+          list.resize();
+          expect(list.top()).toBe(1_600);
+          expect(list.where(field)).toBe(240);
+        });
+
+        it("keeps a chat at the bottom, and following, when a message above the view is removed or shrinks", () => {
+          const removed = stage(<Chat ids={messages(10)} />, 700);
+          removed.settle();
+          removed.view.rerender(<Chat ids={without(messages(10), "m2")} />);
+          expect(removed.top()).toBe(600);
+          removed.view.rerender(<Chat ids={[...without(messages(10), "m2"), "m11"]} />);
+          expect(removed.top()).toBe(700);
+          removed.view.unmount();
+          const shrunk = stage(<Chat ids={messages(10)} />, 700);
+          shrunk.settle();
+          shrunk.size(entry("m2"), 40);
+          shrunk.resize();
+          expect(shrunk.top()).toBe(640);
+          shrunk.view.rerender(<Chat ids={messages(11)} />);
+          expect(shrunk.top()).toBe(740);
+        });
+
+        it("keeps following new chat messages after the list got shorter at the bottom because the composer grew", () => {
+          const list = stage(<Chat ids={messages(10)} />, 700);
+          list.settle();
+          list.viewport(240);
+          list.view.rerender(<Chat ids={messages(11)} />);
+          expect(list.top()).toBe(860);
+          expect(list.where(entry("m11"))).toBe(140);
+        });
+
+        it("keeps 'Hide replies' under the pointer near the end of the rail, where hiding shortens the list", () => {
+          const ITEMS_ONLY = [{ id: "r", mine: false, at: 0 }];
+          function Fold() {
+            const [open, setOpen] = useState(true);
+            return (
+              <CommentScrollArea items={ITEMS_ONLY} ready label={(count) => `${count} new`}>
+                <ol>
+                  {LETTERS.slice(0, 18).map((id) => (
+                    <article key={id} data-comment-thread={id}>
+                      <Leaf id={`m${id}`} size={100} />
+                    </article>
+                  ))}
+                  <article data-comment-thread="s">
+                    <Leaf id="ms" size={100} />
+                    {open ? ["rs1", "rs2", "rs3"].map((id) => <Leaf key={id} id={id} size={100} />) : null}
+                    <button type="button" data-size={40} onClick={() => setOpen((value) => !value)}>
+                      {open ? "Hide replies" : "3 replies"}
+                    </button>
+                  </article>
+                  <article data-comment-thread="t">
+                    <Leaf id="mt" size={300} />
+                  </article>
+                </ol>
+              </CommentScrollArea>
+            );
+          }
+          const list = stage(<Fold />, 2_200);
+          list.settle();
+          const toggle = screen.getByRole("button", { name: "Hide replies" });
+          expect(list.where(toggle)).toBe(0);
+          fireEvent.pointerDown(toggle);
+          fireEvent.click(toggle);
+          list.resize();
+          expect(list.top()).toBe(1_900);
+          expect(list.where(toggle)).toBe(0);
+        });
+
+        it("keeps the thread below still when a thread cut by the top edge re-sorts to the top of the list", () => {
+          const list = cutThread();
+          list.view.rerender(<Board order={["b", ...without(CUT, "b")]} spec={CUT_SPEC} />);
+          list.resize();
+          expect(list.top()).toBe(600);
+          expect(list.where(thread("c"))).toBe(230);
+        });
       });
     });
   });

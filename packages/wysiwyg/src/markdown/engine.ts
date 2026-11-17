@@ -5,6 +5,27 @@ const engines = new WeakMap<readonly AnyExtension[], Editor>();
 let sourceParses = 0;
 let markTagModelled = false;
 
+export interface MarkdownParseContext {
+  definitionLead: RegExp | null;
+  tab: string | null;
+}
+
+let parseContext: MarkdownParseContext = { definitionLead: null, tab: null };
+
+export function markdownParseContext(): MarkdownParseContext {
+  return parseContext;
+}
+
+export function withMarkdownParseContext<T>(context: MarkdownParseContext, run: () => T): T {
+  const outer = parseContext;
+  parseContext = context;
+  try {
+    return run();
+  } finally {
+    parseContext = outer;
+  }
+}
+
 export function parsingMarkdownSource(): boolean {
   return sourceParses > 0;
 }
@@ -14,8 +35,8 @@ export function parsingWithMarkTag(): boolean {
 }
 
 function writesMarkTag(editor: Editor): boolean {
-  const storage = (editor.storage as unknown as Record<string, { markdown?: { serialize?: { open?: unknown } } } | undefined>).highlight;
-  return storage?.markdown?.serialize?.open === "<mark>";
+  const storage = (editor.storage as unknown as Record<string, { markdown?: { serialize?: { tags?: readonly string[] } } } | undefined>).highlight;
+  return storage?.markdown?.serialize?.tags?.[0] === "<mark>";
 }
 
 export function markdownEngine(extensions: AnyExtension[]): Editor {
@@ -27,17 +48,24 @@ export function markdownEngine(extensions: AnyExtension[]): Editor {
   return editor;
 }
 
-export function markdownToDoc(editor: Editor, markdown: string): JSONContent {
+function asSourceParse<T>(editor: Editor, run: () => T): T {
   sourceParses++;
   const outer = markTagModelled;
   markTagModelled = writesMarkTag(editor);
-  let html: string;
   try {
-    html = editor.storage.markdown.parser.parse(markdown);
+    return run();
   } finally {
     sourceParses--;
     markTagModelled = outer;
   }
+}
+
+export function markdownTokens<T>(editor: Editor, markdown: string, env: object): T {
+  return asSourceParse(editor, () => editor.storage.markdown.parser.md.parse(markdown, env) as unknown as T);
+}
+
+export function markdownToDoc(editor: Editor, markdown: string): JSONContent {
+  const html: string = asSourceParse(editor, () => editor.storage.markdown.parser.parse(markdown));
   const { state } = editor;
   const parsed = createDocument(html, editor.schema);
   return state.apply(state.tr.replaceWith(0, state.doc.content.size, [parsed])).doc.toJSON();

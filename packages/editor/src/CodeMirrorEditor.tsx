@@ -443,7 +443,7 @@ function dispatchDocumentSync(
   selection: EditorSelection | undefined,
   effects: StateEffect<unknown>[],
 ): void {
-  if (current === next) {
+  if (current === next && !pathChanged) {
     view.dispatch({ effects, selection });
     return;
   }

@@ -4,7 +4,7 @@ import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { Editor } from "@tiptap/core";
 import { WYSIWYG_EXTENSIONS } from "@oleafly/wysiwyg";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -323,5 +323,103 @@ describe("Markdown toolbar in Code, Visual and Both", () => {
     expect(screen.getByRole("button", { name: toolbar.align.center })).not.toHaveClass("ring-1");
     fireEvent.click(screen.getByRole("button", { name: toolbar.align.right }));
     expect(view.state.doc.toString()).toBe("::: {.right}\nMid\n:::\n");
+  });
+
+  it.each([420, 200])("checks the caret's heading level once the headings fold, in every mode, at %i px", async (width) => {
+    widenToolbar(width);
+    await import("./markdown-toolbar-controls");
+    act(() => {
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "## Heading two\n" }, selection: { anchor: 5 } });
+      visual.commands.setContent("<h2>Heading two</h2>");
+      visual.commands.setTextSelection(3);
+      bumpEditorSelectionRevision();
+    });
+    const checkedLevels = async (mode: EditorMode) => {
+      const rendered = render(<MarkdownToolbar wysiwyg={mode === "visual"} mode={mode} onToggleWysiwyg={vi.fn()} onModeChange={vi.fn()} />);
+      await act(async () => {
+        await import("./markdown-toolbar-controls");
+      });
+      if (width === 200) {
+        fireEvent.click(screen.getByLabelText(toolbar.moreOptions));
+        fireEvent.click(screen.getByRole("menuitem", { name: toolbar.headingLevel }));
+      } else {
+        expect(screen.getByRole("button", { name: toolbar.headingLevel })).toHaveClass("bg-primary/10");
+        fireEvent.click(screen.getByRole("button", { name: toolbar.headingLevel }));
+      }
+      const menu = screen.getAllByRole("menu").at(-1) as HTMLElement;
+      const rows = within(menu)
+        .getAllByRole("menuitemcheckbox")
+        .map((row) => [row.textContent, row.getAttribute("aria-checked")]);
+      rendered.unmount();
+      return rows;
+    };
+    const code = await checkedLevels("code");
+    expect(code.filter(([, checked]) => checked === "true")).toEqual([[`H2${en.headings.section}`, "true"]]);
+    expect(code).toHaveLength(6);
+    expect(await checkedLevels("visual")).toEqual(code);
+    expect(await checkedLevels("both")).toEqual(code);
+  });
+
+  it.each([
+    ["visual", 420],
+    ["visual", 200],
+    ["code", 420],
+    ["code", 200],
+  ] as const)("puts focus back in the %s editor after a heading pick at %i px, even when the editor focuses a frame late", async (mode, width) => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (frame: FrameRequestCallback) => frames.push(frame));
+    const rects = { list: Range.prototype.getClientRects, box: Range.prototype.getBoundingClientRect };
+    const rect = new DOMRect(0, 0, 0, 0);
+    Range.prototype.getClientRects = () => [rect] as unknown as DOMRectList;
+    Range.prototype.getBoundingClientRect = () => rect;
+    const nextFrame = () => {
+      for (const frame of frames.splice(0)) frame(0);
+    };
+    const host = document.createElement("div");
+    document.body.append(host);
+    const attached = new Editor({ element: host, extensions: WYSIWYG_EXTENSIONS, content: "<h2>Heading two</h2>" });
+    widenToolbar(width);
+    await import("./markdown-toolbar-controls");
+    act(() => {
+      setWysiwygEditor(attached);
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "## Heading two\n" }, selection: { anchor: 14 } });
+      attached.commands.setTextSelection(12);
+      bumpEditorSelectionRevision();
+    });
+    const rendered = render(<MarkdownToolbar wysiwyg={mode === "visual"} mode={mode} onToggleWysiwyg={vi.fn()} onModeChange={vi.fn()} />);
+    try {
+      await act(async () => {
+        await import("./markdown-toolbar-controls");
+      });
+      const editing = mode === "visual" ? attached.view : view;
+      const focused = () => (mode === "visual" ? attached.view.hasFocus() : view.hasFocus);
+      act(() => editing.focus());
+      expect(focused()).toBe(true);
+      if (width === 200) {
+        fireEvent.click(screen.getByLabelText(toolbar.moreOptions));
+        fireEvent.click(screen.getByRole("menuitem", { name: toolbar.headingLevel }));
+      } else {
+        fireEvent.click(screen.getByRole("button", { name: toolbar.headingLevel }));
+      }
+      const menu = screen.getAllByRole("menu").at(-1) as HTMLElement;
+      fireEvent.click(within(menu).getByRole("menuitemcheckbox", { name: new RegExp(en.headings.subsection, "u") }));
+      await act(async () => {
+        nextFrame();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        nextFrame();
+      });
+      if (mode === "visual") expect(attached.getHTML()).toContain("<h3>Heading two</h3>");
+      else expect(view.state.doc.toString()).toBe("### Heading two\n");
+      expect(document.activeElement?.closest("[role='menu'], [data-markdown-toolbar]") ?? null).toBeNull();
+      expect(focused()).toBe(true);
+    } finally {
+      rendered.unmount();
+      act(() => setWysiwygEditor(visual));
+      attached.destroy();
+      host.remove();
+      Range.prototype.getClientRects = rects.list;
+      Range.prototype.getBoundingClientRect = rects.box;
+      vi.unstubAllGlobals();
+    }
   });
 });

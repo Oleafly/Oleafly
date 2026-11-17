@@ -600,12 +600,12 @@ fn message_of(value: &LoroValue) -> Option<CommentMessage> {
     })
 }
 
-fn authenticate(judge: &Judge<'_>, map: &LoroMap, message: &mut CommentMessage) {
-    if message.removed && !judge.removed_by_owner(map) {
+fn authenticate(judge: &Judge<'_>, map: Option<&LoroMap>, message: &mut CommentMessage) {
+    let Some(map) = map.filter(|map| !message.removed || judge.removed_by_owner(map)) else {
         message.removed = false;
         message.verified = false;
         return;
-    }
+    };
     message.verified = if message.removed {
         judge.wrote(map, &STAMPED, message.author)
     } else {
@@ -843,18 +843,15 @@ impl ProjectDoc {
         };
         let created_by: AccountId = parsed(fields.get(CREATED_BY))?;
         let authors = self.judge();
-        let maps = if authors.checking() {
-            message_maps(map)
-        } else {
-            Vec::new()
-        };
+        let maps = authors.checking().then(|| message_maps(map));
         let mut messages: Vec<CommentMessage> = match fields.get(MESSAGES) {
             Some(LoroValue::List(items)) => items
                 .iter()
                 .enumerate()
                 .filter_map(|(index, item)| {
                     let mut message = message_of(item)?;
-                    if let Some(Some(written)) = maps.get(index) {
+                    if let Some(maps) = &maps {
+                        let written = maps.get(index).and_then(Option::as_ref);
                         authenticate(&authors, written, &mut message);
                     }
                     Some(message)
@@ -943,7 +940,7 @@ impl ProjectDoc {
             return Err(message_gone());
         };
         let judge = self.judge();
-        authenticate(&judge, &map, &mut found);
+        authenticate(&judge, Some(&map), &mut found);
         with_reactions(std::slice::from_mut(&mut found), &thread, &judge);
         Ok(FoundMessage {
             thread,
@@ -2686,6 +2683,64 @@ mod tests {
         let view = seen(&bob_side, &main, thread.id);
         assert_eq!(view.messages[0].body, "Looks awful");
         assert!(!view.messages[0].verified);
+    }
+
+    #[test]
+    fn a_message_that_is_not_a_map_of_its_own_is_never_shown_as_verified() {
+        let (mut alice_side, mut mallory_side, mut bob_side, main) = live_trio();
+        let (alice, mallory, bob) = (
+            AccountId::new_v7(),
+            AccountId::new_v7(),
+            AccountId::new_v7(),
+        );
+        let thread = start_on(&mut alice_side, &main, "quick", alice, "Mine");
+        signed(
+            &mut alice_side,
+            1,
+            &mut [&mut mallory_side, &mut bob_side],
+            Some(alice),
+        );
+        let plain = |body: &str| {
+            LoroValue::from(HashMap::from([
+                (
+                    ID.to_owned(),
+                    LoroValue::from(CommentId::new_v7().to_string()),
+                ),
+                (AUTHOR.to_owned(), LoroValue::from(alice.to_string())),
+                (AT.to_owned(), LoroValue::from(2_i64)),
+                (BODY.to_owned(), LoroValue::from(body)),
+                (MENTIONS.to_owned(), mention_value(&[bob])),
+            ]))
+        };
+        let forged = start_on(&mut mallory_side, &main, "lazy", alice, "Not Alice");
+        let doc = mallory_side.comment_doc();
+        let Some(ValueOrContainer::Container(Container::List(messages))) = doc
+            .thread_container(&main, thread.id)
+            .unwrap()
+            .get(MESSAGES)
+        else {
+            panic!("the thread has messages");
+        };
+        messages.push(plain("@Bob forged as Alice")).unwrap();
+        doc.thread_container(&main, forged.id)
+            .unwrap()
+            .insert(
+                MESSAGES,
+                LoroValue::from(vec![plain("@Bob a list of my own")]),
+            )
+            .unwrap();
+        doc.loro().commit();
+        signed(&mut mallory_side, 2, &mut [&mut bob_side], Some(mallory));
+        let view = seen(&bob_side, &main, thread.id);
+        assert_eq!(view.messages.len(), 2);
+        assert_eq!(view.messages[1].author, alice);
+        assert_eq!(view.messages[1].body, "@Bob forged as Alice");
+        assert!(view.messages[0].verified);
+        assert!(!view.messages[1].verified);
+        let listed = seen(&bob_side, &main, forged.id);
+        assert_eq!(listed.messages.len(), 1);
+        assert_eq!(listed.messages[0].author, alice);
+        assert!(!listed.messages[0].verified);
     }
 
     #[test]

@@ -118,6 +118,12 @@ describe("markdown unit spans", () => {
     ]);
   });
 
+  it("gives each footnote definition its own span", () => {
+    const source = "Text[^a] and[^b].\n\n[^a]: one\n[^b]: two\nlazy";
+    const { spans } = markdownUnits(source);
+    expect(spans.map(({ from, to }) => source.slice(from, to))).toEqual(["Text[^a] and[^b].", "[^a]: one", "[^b]: two\nlazy"]);
+  });
+
   it("measures spans in the original text when math is kept as it is", () => {
     const source = "Area $x^2$ here.\n\nNext $$y$$.";
     const { spans } = markdownUnits(source, { preservedInlineRanges: [{ from: 5, to: 10 }, { from: 23, to: 28 }] });

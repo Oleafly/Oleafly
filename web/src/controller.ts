@@ -115,6 +115,10 @@ function confirmedRange(session: WebDocumentSession, range: PlacedRange): Placed
 
 const QUOTE_CONTEXT = 40;
 const CONTEXT_KEPT = 0.75;
+const SHIFTED = QUOTE_CONTEXT / 4;
+const NEARBY = 1_000;
+const ANCHOR = 3;
+const FAR_SCORED = 5_000;
 
 interface QueuedPlace extends CommentDraft {
   before?: string | null;
@@ -135,19 +139,67 @@ function common(a: string, b: string): number {
   return row[b.length];
 }
 
-function quoted(text: string, target: QueuedPlace, lowest = 0, highest = text.length): PlacedRange | null {
+function intact(text: string, quote: string, before: string, after: string, lowest: number, highest: number): number[] {
+  const whole = before + quote + after;
+  const found: number[] = [];
+  for (let at = text.indexOf(whole, Math.max(0, lowest - before.length)); at >= 0 && found.length < 2; at = text.indexOf(whole, at + 1)) {
+    const from = at + before.length;
+    if (from + quote.length > highest) break;
+    if (from >= lowest) found.push(from);
+  }
+  return found;
+}
+
+function nearest(positions: readonly number[], near: number, limit: number): number[] {
+  let high = positions.findIndex((at) => at >= near);
+  if (high < 0) high = positions.length;
+  let low = high - 1;
+  const picked: number[] = [];
+  while (picked.length < limit && (low >= 0 || high < positions.length)) {
+    if (high >= positions.length || (low >= 0 && near - positions[low] <= positions[high] - near)) {
+      picked.push(positions[low]);
+      low -= 1;
+    } else {
+      picked.push(positions[high]);
+      high += 1;
+    }
+  }
+  return picked;
+}
+
+function quoted(text: string, target: QueuedPlace, near: number, lowest = 0, highest = text.length): PlacedRange | null {
   const { quote } = target;
   const before = target.before ?? "";
   const after = target.after ?? "";
+  if (!quote) return null;
+  const exact = intact(text, quote, before, after, lowest, highest);
+  if (exact.length > 1) return null;
+  if (exact[0] === near) return { from: near, to: near + quote.length };
   const total = before.length + after.length;
-  const found: { at: number; score: number }[] = [];
-  for (let at = quote ? text.indexOf(quote, lowest) : -1; at >= 0 && at + quote.length <= highest; at = text.indexOf(quote, at + 1)) {
-    const end = at + quote.length;
-    found.push({ at, score: common(text.slice(Math.max(0, at - before.length), at), before) + common(text.slice(end, end + after.length), after) });
+  const tail = before.slice(-ANCHOR);
+  const head = after.slice(0, ANCHOR);
+  const close: number[] = [];
+  const far: number[] = [];
+  for (let at = text.indexOf(quote, lowest); at >= 0 && at + quote.length <= highest; at = text.indexOf(quote, at + 1)) {
+    if (Math.abs(at - near) <= NEARBY || at === exact[0]) close.push(at);
+    else if ((tail && at >= tail.length && text.startsWith(tail, at - tail.length)) || (head && text.startsWith(head, at + quote.length))) far.push(at);
   }
-  const [best, next] = found.sort((a, b) => b.score - a.score);
-  if (!best || best.score < total * CONTEXT_KEPT || (next && next.score > best.score - total / 8)) return null;
-  return { from: best.at, to: best.at + quote.length };
+  const found = [...close, ...nearest(far, near, FAR_SCORED)].map((at) => {
+    const end = at + quote.length;
+    return { at, score: common(text.slice(Math.max(0, at - before.length), at), before) + common(text.slice(end, end + after.length), after) };
+  });
+  const gap = (at: number) => Math.abs(at - near);
+  const best = found.reduce<(typeof found)[number] | null>(
+    (top, next) => (!top || next.score > top.score || (next.score === top.score && gap(next.at) < gap(top.at)) ? next : top),
+    null,
+  );
+  if (!best || best.score < total * CONTEXT_KEPT) return null;
+  const anchored = best.at === exact[0] || best.at === near;
+  if (far.length > FAR_SCORED && !anchored) return null;
+  const rival = found.some(
+    (other) => other !== best && other.score > best.score - total / 8 && !(anchored && Math.abs(other.at - best.at) <= SHIFTED),
+  );
+  return rival ? null : { from: best.at, to: best.at + quote.length };
 }
 
 interface QuotedText {
@@ -160,10 +212,14 @@ function located(session: WebDocumentSession, kept: QuotedText, target: QueuedPl
   const changes = changesBetween(kept.text, text);
   const range = mapRange(changes, kept.range);
   const quote = kept.text.slice(kept.range.from, kept.range.to);
+  let near = range.from;
+  changes.iterChangedRanges((fromA, toA, fromB, toB) => {
+    if (fromA <= kept.range.from && kept.range.from < toA) near = Math.min(toB, fromB + kept.range.from - fromA);
+  });
   const found =
     quote && text.slice(range.from, range.to) === quote
       ? range
-      : quoted(text, { ...target, quote }, changes.mapPos(kept.range.from, -1), changes.mapPos(kept.range.to, 1));
+      : quoted(text, { ...target, quote }, near, changes.mapPos(kept.range.from, -1), changes.mapPos(kept.range.to, 1));
   return found && confirmedRange(session, found);
 }
 
@@ -438,7 +494,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
         : kept
           ? located(session, kept, target)
           : queued
-            ? quoted(session.confirmed(), target)
+            ? quoted(session.confirmed(), target, target.from)
             : confirmedRange(session, target);
       if (!session || !placed || placed.to <= placed.from) throw new RefusedError("comment_selection_changed", "");
       try {
@@ -599,6 +655,12 @@ export class ProjectController implements ProjectActions, EditorBridge {
 
   private listed(fileId: string): WebFile | undefined {
     return useWeb.getState().files.find((entry) => entry.fileId === fileId && entry.kind === "text");
+  }
+
+  private requeueReturned(): void {
+    const outbox = useWeb.getState().outbox;
+    const back = (item: OutboxItem) => item.state === "failed" && item.reason === "comment_file_removed" && Boolean(this.listed(item.fileId ?? ""));
+    if (outbox.some(back)) this.setOutbox(outbox.map((item) => (back(item) ? { ...item, state: "waiting", reason: null, retry: false } : item)));
   }
 
   private async reopenedEntry(fileId: string): Promise<Entry> {
@@ -995,6 +1057,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
         });
         this.syncFiles(info.files);
         this.stalled.clear();
+        this.requeueReturned();
         if (!this.greeted) {
           this.greeted = true;
           const stored = recall(`oleafly.web.mode.${this.projectId}`);
@@ -1012,6 +1075,7 @@ export class ProjectController implements ProjectActions, EditorBridge {
         this.syncFiles(files);
         for (const check of Array.from(this.reopening)) check();
         for (const fileId of this.stalled) if (!this.listed(fileId)) this.stalled.delete(fileId);
+        this.requeueReturned();
         void this.sendOutbox();
       },
       presence: (peers) => {

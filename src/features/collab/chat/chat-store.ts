@@ -134,11 +134,49 @@ function requireProject(): string {
   return projectId;
 }
 
-export async function sendChat(body: string): Promise<void> {
-  const projectId = requireProject();
+interface PendingChat {
+  body: string;
+  sent: Promise<void>;
+  shown: boolean;
+  failed: boolean;
+}
+
+const pending = new Map<string, PendingChat>();
+
+export function pendingChat(projectId: string | null): PendingChat | undefined {
+  return projectId ? pending.get(projectId) : undefined;
+}
+
+export function showPendingChat(projectId: string | null): () => void {
+  const kept = pendingChat(projectId);
+  if (projectId && kept?.failed) pending.delete(projectId);
+  else if (kept) kept.shown = true;
+  return () => {
+    const left = pendingChat(projectId);
+    if (left) left.shown = false;
+  };
+}
+
+async function postChat(projectId: string, body: string): Promise<void> {
   const message = await collabChatSend(projectId, body, commentMembers());
   if (useChat.getState().projectId !== projectId) return;
   useChat.setState((state) => ({ messages: merged(state.messages, [message]) }));
+}
+
+export async function sendChat(body: string): Promise<void> {
+  const projectId = requireProject();
+  const kept: PendingChat = { body, sent: postChat(projectId, body), shown: true, failed: false };
+  pending.set(projectId, kept);
+  try {
+    await kept.sent;
+    if (pending.get(projectId) === kept) pending.delete(projectId);
+  } catch (error) {
+    if (pending.get(projectId) === kept) {
+      if (kept.shown) pending.delete(projectId);
+      else kept.failed = true;
+    }
+    throw error;
+  }
 }
 
 export async function deleteChat(id: string): Promise<void> {
@@ -206,6 +244,7 @@ function noteChatMentions(payload: CollabChatChanged): void {
 export function startChat(): () => void {
   let reloadTimer: ReturnType<typeof setTimeout> | null = null;
   drafts.clear();
+  pending.clear();
 
   const cancelReload = () => {
     if (reloadTimer !== null) clearTimeout(reloadTimer);

@@ -14,7 +14,7 @@ import { MarkdownImage } from "./markdown/image";
 import { MarkdownLink } from "./markdown/link";
 import { MarkdownTable } from "./markdown/table";
 import { MarkdownText } from "./markdown/text";
-import { PandocInline } from "./markdown/pandoc-inline";
+import { MarkdownUnderline, PandocInline } from "./markdown/pandoc-inline";
 import { MarkdownHeading, MarkdownParagraph, TextAlignment } from "./markdown/text-align";
 import { MathDisplay, MathInline } from "./math/nodes";
 import type { WysiwygExtensionOptions } from "./options";
@@ -37,7 +37,9 @@ export function createWysiwygExtensions(options: WysiwygExtensionOptions = {}): 
       link: false,
       paragraph: false,
       text: false,
+      underline: false,
     }),
+    MarkdownUnderline,
     MarkdownParagraph,
     MarkdownHeading,
     TextAlignment,

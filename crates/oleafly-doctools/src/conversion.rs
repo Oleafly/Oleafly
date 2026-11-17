@@ -1,8 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use oleafly_core::engine_spec::{
-    MarkdownKind, MarkdownLayout, DEFAULT_FONTS_FILTER, DEFAULT_FONTS_FILTER_NAME,
-    DOCUMENT_KIND_FILTER_NAME, MARKDOWN_MARKS_FILTER_NAME, MERMAID_FIGURES_FILTER_NAME,
+    MarkdownKind, MarkdownLayout, CITATION_MARKS_FILTER_NAME, DEFAULT_FONTS_FILTER,
+    DEFAULT_FONTS_FILTER_NAME, DOCUMENT_KIND_FILTER_NAME, MARKDOWN_MARKS_FILTER_NAME,
+    MERMAID_FIGURES_FILTER_NAME,
 };
 
 pub struct ImportPlan {
@@ -626,6 +627,10 @@ pub fn export_args(
             }
             args.push(format!("--lua-filter={}", filter.to_string_lossy()));
             args.push("--citeproc".into());
+            if export_pairs_marks(format, &source.file_name) {
+                let marks = filter.with_file_name(CITATION_MARKS_FILTER_NAME);
+                args.push(format!("--lua-filter={}", marks.to_string_lossy()));
+            }
         }
         if let Some(filter) = citations
             .filter
@@ -878,6 +883,17 @@ mod tests {
                     assert!(marks_at < at, "{format}: {later} in {args:?}");
                 }
             }
+            let citation_marks = format!(
+                "--lua-filter={}",
+                filter.with_file_name(CITATION_MARKS_FILTER_NAME).display()
+            );
+            let citeproc_at = args.iter().position(|arg| arg == "--citeproc");
+            let citation_marks_at = args.iter().position(|arg| *arg == citation_marks);
+            assert_eq!(
+                citation_marks_at,
+                citeproc_at.map(|at| at + 1),
+                "{format}: {args:?}"
+            );
         }
         for (format, file_name) in [
             ("html", "main.md"),

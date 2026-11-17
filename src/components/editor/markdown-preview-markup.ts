@@ -5,7 +5,7 @@ interface MarkdownNode {
   data?: { hName?: string; hProperties?: Record<string, unknown> };
 }
 
-const PLAIN_TAG = /^<(u|mark|sup|sub)>$/u;
+const PLAIN_TAG = /^<(u|mark|sup|sub|strong|em|del)>$/u;
 const COLOR_SPAN = /^<span data-text-color="[^"<>]*"(?: style="color: ?([^";<>]+);?")?>$/u;
 const SAFE_COLOR = /^(?:#[\da-f]{3,8}|rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(?:,\s*(?:0|1|0?\.\d+)\s*)?\)|[a-z]{3,20})$/iu;
 const OPEN_FENCE = /^:{3,}[ \t]*(?:\{[ \t]*\.(left|center|right|justify)[ \t]*\}|(left|center|right|justify))[ \t]*(?::+[ \t]*)?(?:\n|$)/u;

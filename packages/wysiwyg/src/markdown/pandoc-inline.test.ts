@@ -45,15 +45,40 @@ describe("Pandoc spans nested in links and spans", () => {
   });
 
   it.each([
-    ["Link [[x]{.underline}](https://e.com) tail", "Link [<u>x</u>](https://e.com) tail!"],
-    ["[a [this]{.underline} page](https://e.com) tail", "[a <u>this</u> page](https://e.com) tail!"],
-    ["[[x]{.mark}]{.underline} tail", "<u><mark>x</mark></u> tail!"],
-    ["[[l](https://e.com)]{.underline} tail", "[<u>l</u>](https://e.com) tail!"],
+    ["Link [[x]{.underline}](https://e.com) tail", "Link [[x](https://e.com)]{.underline} tail!"],
+    ["[a [this]{.underline} page](https://e.com) tail", "[a [this]{.underline} page](https://e.com) tail!"],
+    ["[[x]{.mark}]{.underline} tail", "[[x]{.mark}]{.underline} tail!"],
+    ["[[l](https://e.com)]{.underline} tail", "[[l](https://e.com)]{.underline} tail!"],
   ])("keeps the link and both marks of %j when the paragraph is edited", (source, saved) => {
     const { editor, save } = openMarkdown(source);
     typeAtEndOf(editor, "tail", "!");
     expect(save()).toBe(saved);
     expect(marksOf(saved)).toEqual(marksOf(`${source}!`));
+  });
+});
+
+describe("the source's own syntax for underline, highlight and scripts", () => {
+  it("writes Pandoc spans and scripts back as Pandoc syntax when the paragraph is edited", () => {
+    const source = "Old [und]{.underline} and [hl]{.mark} with x^2^ and H~2~O tail";
+    const { editor, save } = openMarkdown(source);
+    typeAtEndOf(editor, "tail", "!");
+    expect(save()).toBe(`${source}!`);
+  });
+
+  it("keeps writing HTML for marks the file wrote as HTML or that are new", () => {
+    const { editor, save } = openMarkdown("A <u>und</u> and x<sup>2</sup> new tail");
+    const to = positionAfter(editor, "new");
+    editor.chain().setTextSelection({ from: to - 3, to }).toggleUnderline().run();
+    expect(save()).toBe("A <u>und</u> and x<sup>2</sup> <u>new</u> tail");
+  });
+
+  it("keeps the Pandoc form while typing inside it and falls back to HTML when the content cannot fit", () => {
+    const { editor, save } = openMarkdown("[und]{.underline} x^2^ tail");
+    typeAtEndOf(editor, "und", "er");
+    typeAtEndOf(editor, "2", "0");
+    expect(save()).toBe("[under]{.underline} x^20^ tail");
+    typeAtEndOf(editor, "20", " a");
+    expect(save()).toBe("[under]{.underline} x<sup>20 a</sup> tail");
   });
 });
 
@@ -93,7 +118,7 @@ describe("Pandoc span attributes", () => {
 describe("code inside other formatting", () => {
   it.each([
     ["A **`c`** and *`d`* and [`e`](https://e.com) tail", "A **`c`** and *`d`* and [`e`](https://e.com) tail!"],
-    ["See [`c`]{.underline} and ^`d`^ tail", "See <u>`c`</u> and <sup>`d`</sup> tail!"],
+    ["See [`c`]{.underline} and ^`d`^ tail", "See [`c`]{.underline} and ^`d`^ tail!"],
     ["A **bold `c` run** and [a `b` c](https://e.com) tail", "A **bold `c` run** and [a `b` c](https://e.com) tail!"],
     ["Ticks [`` a`b ``](https://e.com) tail", "Ticks [`` a`b ``](https://e.com) tail!"],
   ])("keeps the formatting around the code in %j when the paragraph is edited", (source, saved) => {
@@ -103,8 +128,8 @@ describe("code inside other formatting", () => {
   });
 
   it.each([
-    ["Sup ^a~b~^ tail", "Sup <sup>a~b~</sup> tail!"],
-    ["Sub ~a^b^~ tail", "Sub <sub>a^b^</sub> tail!"],
+    ["Sup ^a~b~^ tail", "Sup ^a~b~^ tail!"],
+    ["Sub ~a^b^~ tail", "Sub ~a^b^~ tail!"],
   ])("keeps a script nested in the other script in %j when the paragraph is edited", (source, saved) => {
     const { editor, save } = openMarkdown(source);
     typeAtEndOf(editor, "tail", "!");
@@ -140,9 +165,9 @@ describe("Pandoc superscript and subscript content", () => {
   });
 
   it.each([
-    ["Sup ^**x**^ tail", "Sup **<sup>x</sup>** tail!"],
-    ["Sup ^[a](https://e.com)^ tail", "Sup [<sup>a</sup>](https://e.com) tail!"],
-    ["Sub ~*x*~ tail", "Sub *<sub>x</sub>* tail!"],
+    ["Sup ^**x**^ tail", "Sup ^**x**^ tail!"],
+    ["Sup ^[a](https://e.com)^ tail", "Sup ^[a](https://e.com)^ tail!"],
+    ["Sub ~*x*~ tail", "Sub ~*x*~ tail!"],
   ])("keeps the formatting inside %j when the paragraph is edited", (source, saved) => {
     const { editor, save } = openMarkdown(source);
     typeAtEndOf(editor, "tail", "!");
@@ -190,13 +215,14 @@ describe("typed carets", () => {
   });
 
   it.each([
-    ["Area $x^2$ here", "Area $x^2$ here"],
-    ["Area $x_{1} *y*$ and $a<b$ here", "Area $x_{1} *y*$ and $a<b$ here"],
+    ["Area $x^2$ here", "Area \\$x^2\\$ here"],
+    ["Area $x_{1} *y*$ and $a<b$ here", "Area \\$x\\_{1} \\*y\\*\\$ and \\$a&lt;b\\$ here"],
     ["Cost $5 and x^2^ here", "Cost $5 and x^2\\^ here"],
-  ])("writes math typed as plain text in %j as it was typed", (typed, saved) => {
+  ])("writes dollar pairs put in as plain text in %j so they read back as text", (typed, saved) => {
     const { editor, save } = openMarkdown("");
     editor.view.dispatch(editor.state.tr.insertText(typed, 1));
     expect(save()).toBe(saved);
+    expect(marksOf(saved)).toEqual([[typed, ""]]);
   });
 });
 
@@ -205,8 +231,8 @@ describe("marks around inline math", () => {
     ["See [$x^2$](https://u.example) and word.", "See [$x^2$](https://u.example) and word!."],
     ["A **bold $x^2$** and word.", "A **bold $x^2$** and word!."],
     ["A *$x$* and ~~$y$~~ and word.", "A *$x$* and ~~$y$~~ and word!."],
-    ["Sub ~$x$~ and word.", "Sub <sub>$x$</sub> and word!."],
-    ["A [$x$]{.underline} and word.", "A <u>$x$</u> and word!."],
+    ["Sub ~$x$~ and word.", "Sub ~$x$~ and word!."],
+    ["A [$x$]{.underline} and word.", "A [$x$]{.underline} and word!."],
   ])("keeps the marks on the math in %j when the paragraph is edited", (source, saved) => {
     const { editor, save } = openMarkdown(source, { preservedInlineRanges: mathRanges(source) });
     typeAtEndOf(editor, "word", "!");
@@ -237,7 +263,7 @@ describe("Pandoc inline notes", () => {
     ["Text^[A [nested] note, `]` and $x^2$] and word.", "Text^[A [nested] note, `]` and $x^2$] and word!."],
     ["**Bold ^[note] run** and word.", "**Bold ^[note] run** and word!."],
     ["Two^[a\nb] lines and word.", "Two^[a\nb] lines and word!."],
-    ["Note ^[a]^b^ and word.", "Note ^[a]<sup>b</sup> and word!."],
+    ["Note ^[a]^b^ and word.", "Note ^[a]^b^ and word!."],
   ])("keeps the inline note in %j when the paragraph is edited", (source, saved) => {
     const { editor, save } = openMarkdown(source, { preservedInlineRanges: mathRanges(source) });
     typeAtEndOf(editor, "word", "!");

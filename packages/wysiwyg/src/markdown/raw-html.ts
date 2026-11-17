@@ -8,6 +8,8 @@ interface HtmlToken {
 const MODELED_INLINE = /^<\/?(?:a|b|br|code|del|em|i|s|strike|strong|u)(?=[\s/>])/iu;
 const TAG_START = /^<[a-z]/iu;
 const TABLE_START = /^<table\b/iu;
+const TABLE_OPEN = /<table\b/giu;
+const TABLE_CLOSE = /<\/table\s*>/giu;
 const EDITOR_ATTRIBUTE = /\sdata-(?:type|text-color|color-box)\b/iu;
 const SCRIPT_TAG = /^<\/?(sup|sub)>$/u;
 const MARK_TAG = /^<\/?mark>$/u;
@@ -54,8 +56,12 @@ export function keepsInlineHtml(tokens: readonly HtmlToken[], index: number): bo
   return opener !== null && writtenByEditor(opener);
 }
 
+function wholeTable(html: string): boolean {
+  return TABLE_START.test(html) && html.match(TABLE_OPEN)?.length === html.match(TABLE_CLOSE)?.length;
+}
+
 export function keepsBlockHtml(source: string): boolean {
   if (!parsingMarkdownSource()) return true;
   const html = source.replace(/^[ \t]+/u, "");
-  return TABLE_START.test(html) || writtenByEditor(html);
+  return wholeTable(html) || writtenByEditor(html);
 }

@@ -18,7 +18,7 @@ use crate::error::ServerError;
 use crate::mentions::{self, Span};
 use crate::peers::{self, Reach};
 use crate::projects;
-use crate::role_guard::{self, RoleRule, RoleVerdict};
+use crate::role_guard::{self, Judged, RoleRule, RoleVerdict};
 use crate::security_log::{self, NewSecurityEvent};
 use crate::snapshots::{self, Budgeted, Current, Keep, Replay, Snapshots};
 use crate::state::AppState;
@@ -66,11 +66,33 @@ pub struct CommentGuard {
 }
 
 #[derive(Default)]
+pub(crate) struct MissedTries(std::sync::Mutex<HashMap<SharedProjectId, i64>>);
+
+impl MissedTries {
+    pub(crate) fn due(&self, project: SharedProjectId, now: i64) -> bool {
+        let mut missed = locked(&self.0);
+        if missed.get(&project).is_some_and(|due| now < *due) {
+            return false;
+        }
+        missed.insert(project, next_try(now));
+        true
+    }
+
+    pub(crate) fn hold(&self, project: SharedProjectId, now: i64) {
+        locked(&self.0).insert(project, next_try(now));
+    }
+
+    pub(crate) fn forget(&self, project: SharedProjectId) {
+        locked(&self.0).remove(&project);
+    }
+}
+
+#[derive(Default)]
 struct Rechecks {
     waiting: std::sync::Mutex<HashSet<SharedProjectId>>,
     running: std::sync::Mutex<HashMap<SharedProjectId, bool>>,
     retrying: std::sync::Mutex<HashSet<SharedProjectId>>,
-    missed: std::sync::Mutex<HashMap<SharedProjectId, i64>>,
+    missed: MissedTries,
     busy: AtomicUsize,
     idle: Notify,
 }
@@ -182,14 +204,27 @@ fn waiting_rechecks(
         .collect())
 }
 
+struct Settled {
+    given_up: usize,
+    scans: usize,
+}
+
 fn settle_rechecks(
     conn: &mut Connection,
     project: SharedProjectId,
-    rechecked: &[(Waiting, Rechecked)],
+    rechecked: &[(Waiting, Rechecked, bool)],
+    mail: bool,
     now: i64,
-) -> Result<usize, ServerError> {
+) -> Result<Settled, ServerError> {
     let transaction = conn.transaction()?;
-    for (waiting, outcome) in rechecked {
+    let mut scans = 0;
+    for (waiting, outcome, touched) in rechecked {
+        if *touched
+            && mail
+            && mentions::queue_spans(&transaction, project, waiting.seq, &waiting.spans)?
+        {
+            scans += 1;
+        }
         let kind = match outcome {
             Rechecked::NotHeld => {
                 transaction.execute(
@@ -239,7 +274,7 @@ fn settle_rechecks(
     }
     let given_up = give_up(&transaction, project)?;
     transaction.commit()?;
-    Ok(given_up)
+    Ok(Settled { given_up, scans })
 }
 
 fn next_try(now: i64) -> i64 {
@@ -299,7 +334,7 @@ pub fn noticed(conn: &Connection, now: i64) -> Result<Vec<CommentChangeWhileOff>
         .collect())
 }
 
-fn rechecked(doc: &LoroDoc, spans: &[Span], rule: Option<&RoleRule>) -> Rechecked {
+fn rechecked(doc: &LoroDoc, spans: &[Span], rule: Option<&RoleRule>) -> (Rechecked, bool) {
     let held = doc.oplog_vv();
     let trimmed = doc.shallow_since_vv();
     let whole = spans.iter().all(|(peer, start, end)| {
@@ -307,26 +342,24 @@ fn rechecked(doc: &LoroDoc, spans: &[Span], rule: Option<&RoleRule>) -> Rechecke
             && trimmed.get(peer).copied().unwrap_or(0) <= *start
     });
     if !whole {
-        return Rechecked::NotHeld;
+        return (Rechecked::NotHeld, false);
     }
-    if let Some(rule) = rule {
-        return match role_guard::judge_imported(doc, spans, rule) {
-            RoleVerdict::Refused => Rechecked::BrokeRole,
-            RoleVerdict::ChangesComments => Rechecked::ChangedComments,
-            _ => Rechecked::Clean,
-        };
-    }
-    let changed = spans.iter().any(|(peer, start, end)| {
+    let touched = spans.iter().any(|(peer, start, end)| {
         let length = usize::try_from(end.saturating_sub(*start)).unwrap_or(0);
         doc.get_changed_containers_in(ID::new(*peer, *start), length)
             .iter()
             .any(|container| in_comments(doc, container))
     });
-    if changed {
-        Rechecked::ChangedComments
-    } else {
-        Rechecked::Clean
-    }
+    let outcome = match rule {
+        Some(rule) => match role_guard::judge_imported(doc, spans, rule) {
+            RoleVerdict::Refused => Rechecked::BrokeRole,
+            RoleVerdict::ChangesComments => Rechecked::ChangedComments,
+            _ => Rechecked::Clean,
+        },
+        None if touched => Rechecked::ChangedComments,
+        None => Rechecked::Clean,
+    };
+    (outcome, touched)
 }
 
 pub async fn resume(state: &AppState) {
@@ -350,7 +383,7 @@ pub async fn resume(state: &AppState) {
             let now = state.clock.now_ms();
             for (project, tried) in projects {
                 if tried {
-                    locked(&state.comment_guard.rechecks.missed).insert(project, next_try(now));
+                    state.comment_guard.rechecks.missed.hold(project, now);
                 }
                 state.comment_guard.recheck(state, project);
             }
@@ -379,7 +412,7 @@ async fn recheck_project(state: &AppState, project: SharedProjectId) {
         let rechecks = &state.comment_guard.rechecks;
         if page.is_empty() {
             locked(&rechecks.waiting).remove(&project);
-            locked(&rechecks.missed).remove(&project);
+            rechecks.missed.forget(project);
             return;
         }
         locked(&rechecks.waiting).insert(project);
@@ -416,7 +449,7 @@ async fn recheck_page(
             }
             Current::TooLarge { .. } | Current::Missing => {
                 drop(turn);
-                if guard.try_due(project, state.clock.now_ms()) {
+                if guard.rechecks.missed.due(project, state.clock.now_ms()) {
                     let given_up = state
                         .db
                         .call(move |conn| missed_read(conn, project))
@@ -434,11 +467,12 @@ async fn recheck_page(
     };
     let (replay, seq) = current;
     let (outcomes, replay) = tokio::task::spawn_blocking(move || {
-        let outcomes: Vec<(Waiting, Rechecked)> = page
+        let outcomes: Vec<(Waiting, Rechecked, bool)> = page
             .into_iter()
             .map(|waiting| {
-                let outcome = rechecked(replay.doc(), &waiting.spans, waiting.rule.as_ref());
-                (waiting, outcome)
+                let (outcome, touched) =
+                    rechecked(replay.doc(), &waiting.spans, waiting.rule.as_ref());
+                (waiting, outcome, touched)
             })
             .collect();
         (outcomes, replay)
@@ -451,12 +485,16 @@ async fn recheck_page(
     drop(turn);
     let progress = outcomes
         .iter()
-        .any(|(_, outcome)| !matches!(outcome, Rechecked::NotHeld));
+        .any(|(_, outcome, _)| !matches!(outcome, Rechecked::NotHeld));
     let now = state.clock.now_ms();
-    let given_up = state
+    let mail = state.mailer.is_configured();
+    let Settled { given_up, scans } = state
         .db
-        .call(move |conn| settle_rechecks(conn, project, &outcomes, now))
+        .call(move |conn| settle_rechecks(conn, project, &outcomes, mail, now))
         .await?;
+    if scans > 0 {
+        state.mentions.wake(state, project);
+    }
     if given_up > 0 {
         tracing::warn!(
             "Gave up checking {given_up} changes to project {project} for comment changes, because the server's copy of the project does not hold them."
@@ -502,15 +540,6 @@ impl CommentGuard {
         if locked(&self.rechecks.waiting).contains(&project) {
             self.recheck(state, project);
         }
-    }
-
-    fn try_due(&self, project: SharedProjectId, now: i64) -> bool {
-        let mut missed = locked(&self.rechecks.missed);
-        if missed.get(&project).is_some_and(|due| now < *due) {
-            return false;
-        }
-        missed.insert(project, next_try(now));
-        true
     }
 
     fn recheck_later(&self, state: &AppState, project: SharedProjectId) {
@@ -611,7 +640,7 @@ impl CommentGuard {
         payload: Vec<u8>,
         reach: &Reach,
         rule: RoleRule,
-    ) -> Result<RoleVerdict, ServerError> {
+    ) -> Result<Judged, ServerError> {
         #[cfg(feature = "test-support")]
         self.pass_role_gate().await;
         let slot = self.slot(project);
@@ -621,24 +650,24 @@ impl CommentGuard {
             .current(db, snapshots, project, reach, false, patient)
             .await?;
         let Some((replay, seq)) = current else {
-            return Ok(RoleVerdict::Unchecked);
+            return Ok(RoleVerdict::Unchecked.into());
         };
-        let (verdict, replay) = tokio::task::spawn_blocking(move || {
+        let (judged, replay) = tokio::task::spawn_blocking(move || {
             let before = replay.doc().oplog_frontiers();
-            let (verdict, intact) = role_guard::judge(replay.doc(), &payload, &rule);
+            let (judged, intact) = role_guard::judge_change(replay.doc(), &payload, &rule);
             let replay = if intact {
                 Some(replay)
             } else {
                 rewound(project, &replay, &before).map(|fresh| replay.replaced(fresh))
             };
-            (verdict, replay)
+            (judged, replay)
         })
         .await
         .map_err(|error| ServerError::Internal(format!("a role check failed: {error}")))?;
         if let Some(replay) = replay {
             snapshots.keep(Keep::CommentChecks, project, replay, seq);
         }
-        Ok(verdict)
+        Ok(judged)
     }
 
     pub async fn spares_comments(
@@ -1003,7 +1032,7 @@ mod tests {
             held.import(&base).unwrap();
             held.import(&update).unwrap();
             let end = held.oplog_vv().get(&2).copied().unwrap_or(0);
-            rechecked(&held, &[(2, 0, end)], rule)
+            rechecked(&held, &[(2, 0, end)], rule).0
         };
         let removal = |doc: &LoroDoc| {
             let Some(loro::ValueOrContainer::Container(loro::Container::Map(theirs))) =

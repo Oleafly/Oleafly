@@ -52,6 +52,7 @@ export interface CommentComposerProps {
   canRetry?: (error: unknown) => boolean;
   placeholder?: string;
   initial?: string;
+  sending?: Promise<void>;
   autoFocus?: boolean;
   compact?: boolean;
   mentionButton?: boolean;
@@ -200,6 +201,7 @@ export function CommentComposer({
   canRetry,
   placeholder,
   initial = "",
+  sending,
   autoFocus = false,
   compact = false,
   mentionButton = false,
@@ -215,8 +217,9 @@ export function CommentComposer({
   const [caret, setCaret] = useState(initial.length);
   const [dismissed, setDismissed] = useState<number | null>(null);
   const [highlight, setHighlight] = useState({ key: "", index: 0 });
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(sending !== undefined);
   const [failure, setFailure] = useState<{ text: string; retry: boolean } | null>(null);
+  const adopted = useRef(sending);
   const field = useRef<HTMLTextAreaElement>(null);
   const shell = useRef<HTMLDivElement>(null);
   const placeSelection = useRef<{ start: number; end: number } | null>(null);
@@ -286,20 +289,33 @@ export function CommentComposer({
     apply({ text: next.text, start: next.caret, end: next.caret });
   };
 
+  const settle = useCallback(
+    async (work: () => Promise<void>) => {
+      setBusy(true);
+      setFailure(null);
+      try {
+        await work();
+        setBody("");
+        setCaret(0);
+      } catch (error_) {
+        setFailure({ text: describeError(error_), retry: canRetry?.(error_) ?? false });
+      } finally {
+        setBusy(false);
+      }
+    },
+    [describeError, canRetry],
+  );
+
+  useEffect(() => {
+    const work = adopted.current;
+    adopted.current = undefined;
+    if (work) void settle(() => work);
+  }, [settle]);
+
   const submit = async () => {
     const message = body.trim();
     if (!message || busy) return;
-    setBusy(true);
-    setFailure(null);
-    try {
-      await onSubmit(message);
-      setBody("");
-      setCaret(0);
-    } catch (error_) {
-      setFailure({ text: describeError(error_), retry: canRetry?.(error_) ?? false });
-    } finally {
-      setBusy(false);
-    }
+    await settle(() => onSubmit(message));
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {

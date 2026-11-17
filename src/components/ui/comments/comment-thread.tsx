@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from "react";
+import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from "react";
 import {
   Check,
   CheckCircle2,
@@ -98,14 +98,14 @@ interface ThreadMenu {
 
 const MENU_BUTTON = "shrink-0 text-muted-foreground hover:text-foreground";
 const HEADER_ACTIONS =
-  "absolute inset-y-0 end-0 my-auto flex h-6 items-center rounded-md has-[button]:bg-accent opacity-0 transition-opacity group-hover/item:opacity-100 focus-within:opacity-100 has-[[data-state=open]]:opacity-100 [@media(hover:none)]:opacity-100";
+  "absolute inset-y-0 end-0 my-auto flex h-6 items-center rounded-md has-[button]:bg-accent opacity-0 transition-opacity group-hover/item:opacity-100 has-[:focus-visible]:opacity-100 has-[[data-state=open]]:opacity-100 [@media(hover:none)]:opacity-100";
 const HEADER_BUTTON = "size-6 hover:bg-foreground/10 focus-visible:bg-foreground/10 data-[state=open]:bg-foreground/10";
 const DESTRUCTIVE_ITEM = "text-destructive focus:text-destructive [&_svg]:text-destructive";
 const META = "text-[0.6875rem] text-foreground/60";
 const BUBBLE =
   "min-w-0 w-fit max-w-full rounded-2xl border border-sidebar-border bg-background px-3.5 py-2.5 [overflow-wrap:anywhere]";
 const BUBBLE_ACTIONS =
-  "flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/item:opacity-100 focus-within:opacity-100 has-[[aria-expanded=true]]:opacity-100 pointer-coarse:opacity-100";
+  "flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover/item:opacity-100 has-[:focus-visible]:opacity-100 has-[[aria-expanded=true]]:opacity-100 pointer-coarse:opacity-100";
 const GROUP_GAP_MS = 5 * 60_000;
 
 export interface GroupedMessage {
@@ -200,6 +200,10 @@ function menuEntries(
 function MessageMenu({ entries: { top, bottom }, className = "size-6" }: Readonly<{ entries: MenuEntries; className?: string }>) {
   const { labels } = useCommentKit();
   const picked = useRef<{ keep: boolean; run?: () => void } | null>(null);
+  const pointer = useRef(false);
+  const fromPointer = () => {
+    pointer.current = true;
+  };
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -210,10 +214,15 @@ function MessageMenu({ entries: { top, bottom }, className = "size-6" }: Readonl
       <DropdownMenuContent
         align="end"
         className="min-w-44"
+        onPointerDown={fromPointer}
+        onPointerUp={fromPointer}
+        onKeyDown={() => {
+          pointer.current = false;
+        }}
         onCloseAutoFocus={(event) => {
           const next = picked.current;
           picked.current = null;
-          if (next?.keep) event.preventDefault();
+          if (next && (next.keep || pointer.current)) event.preventDefault();
           next?.run?.();
         }}
       >
@@ -221,8 +230,9 @@ function MessageMenu({ entries: { top, bottom }, className = "size-6" }: Readonl
           <DropdownMenuItem
             key={key}
             onSelect={() => {
-              if (key === "edit") picked.current = { keep: true };
-              run();
+              const later = pointer.current && key !== "edit";
+              picked.current = { keep: key === "edit", run: later ? run : undefined };
+              if (!later) run();
             }}
           >
             <Icon aria-hidden className="size-4" />
@@ -287,10 +297,63 @@ function DeliveryNote({
   );
 }
 
-function withActions(node: ReactNode, actions: ReactNode, wide: boolean): ReactNode {
+const NO_ROOM = { above: false, below: false };
+
+function textRects(element: Element | null | undefined): DOMRect[] {
+  const range = document.createRange();
+  if (!element || typeof range.getClientRects !== "function") return [];
+  const rects: DOMRect[] = [];
+  const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    range.selectNodeContents(node);
+    rects.push(...range.getClientRects());
+  }
+  return rects;
+}
+
+function covers(pill: DOMRect, line: DOMRect, shift: number): boolean {
+  const width = Math.min(pill.right, line.right) - Math.max(pill.left, line.left);
+  const height = Math.min(pill.bottom, line.bottom + shift) - Math.max(pill.top, line.top + shift);
+  return width > 0.5 && height > 0.5;
+}
+
+function pillRoom(row: HTMLElement): typeof NO_ROOM {
+  const tail = row.lastElementChild;
+  const before = tail?.previousElementSibling;
+  const pill = tail?.lastElementChild?.firstElementChild;
+  if (!tail || !pill) return NO_ROOM;
+  const style = getComputedStyle(tail);
+  const box = pill.getBoundingClientRect();
+  const next = row.nextElementSibling;
+  const under = Boolean(before) && tail.getBoundingClientRect().top >= (before?.getBoundingClientRect().bottom ?? 0) - 1;
+  return {
+    above: under && textRects(before).some((line) => covers(box, line, Number.parseFloat(style.marginTop) || 0)),
+    below: textRects(next?.firstElementChild ?? next).some((line) => covers(box, line, -(Number.parseFloat(style.marginBottom) || 0))),
+  };
+}
+
+function usePillRoom<T extends HTMLElement>(enabled: boolean) {
+  const ref = useRef<T>(null);
+  const [room, setRoom] = useState(NO_ROOM);
+  const measure = useCallback(() => {
+    const next = enabled && ref.current ? pillRoom(ref.current) : NO_ROOM;
+    setRoom((current) => (current.above === next.above && current.below === next.below ? current : next));
+  }, [enabled]);
+  useLayoutEffect(measure);
+  useEffect(() => {
+    const row = ref.current;
+    if (!enabled || !row || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(row);
+    return () => observer.disconnect();
+  }, [enabled, measure]);
+  return { ref, room };
+}
+
+function withActions(node: ReactNode, actions: ReactNode, wide: boolean, room?: string): ReactNode {
   if (!actions) return node;
   return (
-    <span className="flex min-w-0 max-w-full grow items-center">
+    <span className={cn("flex min-w-0 max-w-full grow items-center", room)}>
       {node}
       <span className={cn("relative ms-1 grow self-stretch [@media(hover:none)]:min-h-6", wide ? "min-w-12" : "min-w-6")}>
         <span className={HEADER_ACTIONS}>{actions}</span>
@@ -342,10 +405,11 @@ export function CommentByline({
     badged ? <Fragment key="badge">{children}</Fragment> : null,
   ].filter((item) => item !== null);
   const last = items.pop();
+  const { ref, room } = usePillRoom<HTMLSpanElement>(Boolean(actions) && !alone);
   return (
-    <span className={cn("flex min-w-0 flex-wrap items-baseline gap-x-1.5", className)}>
+    <span ref={ref} className={cn("flex min-w-0 flex-wrap items-baseline gap-x-1.5", className)}>
       {items}
-      {withActions(last, actions, wide)}
+      {withActions(last, actions, wide, cn(room.above && (badged ? "mt-0.5" : "mt-1"), room.below && "mb-0.5"))}
     </span>
   );
 }
@@ -467,7 +531,7 @@ function ChatBubble({
               <Badge
                 variant="comment"
                 size="sm"
-                className="pointer-events-none absolute start-0 transition-opacity group-hover/item:opacity-0 group-focus-within/item:opacity-0 pointer-coarse:opacity-0"
+                className="pointer-events-none absolute start-0 transition-opacity group-hover/item:opacity-0 group-has-[:focus-visible]/item:opacity-0 pointer-coarse:opacity-0"
               >
                 {labels.newBadge}
               </Badge>
@@ -517,6 +581,7 @@ export function CommentItem({
   const [editing, setEditing] = useState(false);
   const [confirming, setConfirming] = useState<"delete" | "remove" | null>(null);
   const { error, run } = useCommentAction(kit.describeError);
+  const { ref: goneRow, room: goneRoom } = usePillRoom<HTMLDivElement>(entry.deleted && !entry.author.verified && Boolean(headerAction));
   const delivery = entry.delivery;
   const settled = !entry.deleted && !delivery;
   const own = entry.author.verified && entry.author.id === kit.self;
@@ -628,13 +693,13 @@ export function CommentItem({
       )}
       <div className="min-w-0 flex-1">
         {entry.deleted ? (
-          <div className="flex min-h-6 min-w-0 flex-wrap items-center gap-x-1.5">
+          <div ref={goneRow} className="flex min-h-6 min-w-0 flex-wrap items-center gap-x-1.5">
             {entry.author.verified ? (
               withActions(gone, headerAction, false)
             ) : (
               <>
                 {gone}
-                {withActions(<span className="min-w-0 truncate text-[0.6875rem] italic text-muted-foreground">{entry.author.name}</span>, headerAction, false)}
+                {withActions(<span className="min-w-0 truncate text-[0.6875rem] italic text-muted-foreground">{entry.author.name}</span>, headerAction, false, goneRoom.above ? "mt-1" : undefined)}
               </>
             )}
           </div>
@@ -727,12 +792,14 @@ function ResolvedSummary({
   thread,
   expanded,
   onToggle,
-}: Readonly<{ thread: CommentThreadModel; expanded: boolean; onToggle: () => void }>) {
+  ref,
+}: Readonly<{ thread: CommentThreadModel; expanded: boolean; onToggle: () => void; ref?: Ref<HTMLButtonElement> }>) {
   const { labels } = useCommentKit();
   const replies = thread.messages.length - 1;
   const first = thread.messages[0];
   return (
     <button
+      ref={ref}
       type="button"
       aria-expanded={expanded}
       onClick={onToggle}
@@ -777,7 +844,7 @@ function ResolveButton({
           header
             ? cn(MENU_BUTTON, HEADER_BUTTON)
             : cn(
-                "size-5.5 opacity-0 transition-opacity group-hover/thread:opacity-100 group-focus-within/thread:opacity-100 [@media(hover:none)]:opacity-100",
+                "size-5.5 opacity-0 transition-opacity group-hover/thread:opacity-100 group-has-[:focus-visible]/thread:opacity-100 [@media(hover:none)]:opacity-100",
                 onChip
                   ? "text-comment-ink hover:bg-comment-active hover:text-comment-ink focus-visible:bg-comment-active"
                   : "text-muted-foreground hover:text-foreground focus-visible:bg-accent",
@@ -836,14 +903,33 @@ export function CommentThread({
   const activity = kit.activity;
   const replyingPeople = kit.replyingIn?.(thread.id) ?? [];
   const repliesId = useId();
+  const summary = useRef<HTMLButtonElement>(null);
+  const reopened = useRef<HTMLElement | null>(null);
+  const handoff = useRef<"resolve" | "reopen" | null>(null);
+  const settle = (to: "resolve" | "reopen", action: () => Promise<void>) => {
+    const keep = document.activeElement !== document.body;
+    run(() => {
+      handoff.current = keep ? to : null;
+      return action().catch((failure: unknown) => {
+        handoff.current = null;
+        throw failure;
+      });
+    });
+  };
+  const resolve = () => settle("resolve", actions.resolve);
   const resolveButton = (onChip: boolean) => (
-    <ResolveButton
-      busy={busy}
-      onChip={onChip ? thread.quoteState === "anchored" : null}
-      shown={selected}
-      onResolve={() => run(actions.resolve)}
-    />
+    <ResolveButton busy={busy} onChip={onChip ? thread.quoteState === "anchored" : null} shown={selected} onResolve={resolve} />
   );
+
+  useLayoutEffect(() => {
+    if (handoff.current !== (resolved ? "resolve" : "reopen")) return;
+    handoff.current = null;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    const card = reopened.current;
+    if (resolved) summary.current?.focus();
+    else (card?.querySelector<HTMLElement>('[aria-haspopup="menu"]') ?? card?.querySelector<HTMLElement>("button:not([data-resolve-button])"))?.focus();
+  }, [resolved]);
 
   useEffect(() => {
     if (!selected) return;
@@ -885,7 +971,7 @@ export function CommentThread({
             run(() => copyText(link).then(() => setCopied(true)));
           }
         : undefined,
-    resolve: writable ? () => run(actions.resolve) : undefined,
+    resolve: writable ? resolve : undefined,
     removeThread: writable && thread.deletable && labels.deleteThread ? () => setConfirming(true) : undefined,
   };
 
@@ -899,7 +985,7 @@ export function CommentThread({
     >
       {resolved ? (
         <div className="flex flex-wrap items-start gap-1">
-          <ResolvedSummary thread={thread} expanded={openResolved} onToggle={() => setOpenResolved((value) => !value)} />
+          <ResolvedSummary ref={summary} thread={thread} expanded={openResolved} onToggle={() => setOpenResolved((value) => !value)} />
           {canWrite ? (
             <Button
               type="button"
@@ -907,7 +993,10 @@ export function CommentThread({
               size="xs"
               disabled={busy}
               className="ms-auto shrink-0 text-foreground"
-              onClick={() => run(actions.reopen)}
+              onClick={() => {
+                reopened.current = summary.current?.closest("article") ?? null;
+                settle("reopen", actions.reopen);
+              }}
             >
               <RotateCcw aria-hidden />
               {labels.reopen}

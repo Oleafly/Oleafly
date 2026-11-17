@@ -1,7 +1,8 @@
 import type { AnyExtension, JSONContent } from "@tiptap/core";
 import { splitMarkdownFrontMatter } from "../front-matter";
 import { WYSIWYG_EXTENSIONS } from "../schema";
-import { markdownEngine, markdownToDoc } from "./engine";
+import { disputedEmphasisRanges } from "./emphasis-disputes";
+import { markdownEngine, markdownToDoc, markdownTokens, withMarkdownParseContext } from "./engine";
 import {
   normalizePreservedRanges,
   protectInlineSources,
@@ -43,29 +44,44 @@ function splitAtBoundaries(nodes: readonly JSONContent[], sentinel: string): JSO
   return groups;
 }
 
+const FOOTNOTE_REFERENCE = /^\[\^[^\]\s[]+\]$/u;
+const TAB_STAND_INS = ["\u2008", "\u2007", "\u2009", "\u200a", "\u2006", "\u2005", "\u2004"];
+
+function definitionLead(tokenPrefix: string, sources: readonly string[]): RegExp | null {
+  const references = sources.flatMap((source, index) => (FOOTNOTE_REFERENCE.test(source) ? [index] : []));
+  return references.length > 0 ? new RegExp(`^${tokenPrefix}(?:${references.join("|")})X:`, "u") : null;
+}
+
 function prepare(source: string, options: ParseMarkdownBodyOptions) {
   const { frontmatter, separator, body } = splitMarkdownFrontMatter(source);
   const bodyOffset = source.length - body.length;
   const callerRanges = options.preservedInlineRanges ?? [];
-  const markdownRanges = markdownPreservedRanges(source, bodyOffset).filter(
+  const editor = markdownEngine(options.extensions ?? WYSIWYG_EXTENSIONS);
+  const projectFile = !editor.schema.nodes.callout;
+  const markdownRanges = markdownPreservedRanges(source, bodyOffset, projectFile).filter(
     (preserved) => !callerRanges.some((range) => range.from < preserved.to && preserved.from < range.to),
   );
+  const emphasisRanges = projectFile ? disputedEmphasisRanges(source, bodyOffset, [...callerRanges, ...markdownRanges]) : [];
   const ranges = normalizePreservedRanges(source, bodyOffset, [
     ...callerRanges,
     ...markdownRanges,
+    ...emphasisRanges,
   ]);
   const { protectedContent, tokenPrefix, sources } = protectInlineSources(
     body,
     ranges,
   );
-  const editor = markdownEngine(options.extensions ?? WYSIWYG_EXTENSIONS);
   const env: { references?: Record<string, { href: string; title: string }> } = {};
-  const plan = planMarkdownUnits(
-    protectedContent,
-    editor.storage.markdown.parser.md.parse(protectedContent, env),
+  const context = {
+    definitionLead: definitionLead(tokenPrefix, sources),
+    tab: body.includes("\t") ? (TAB_STAND_INS.find((standIn) => !body.includes(standIn)) ?? null) : null,
+  };
+  const plan = withMarkdownParseContext(context, () =>
+    planMarkdownUnits(protectedContent, markdownTokens(editor, protectedContent, env)),
   );
   const restore = (text: string) => restoreInlineText(text, tokenPrefix, sources);
-  return { frontmatter, separator, bodyOffset, protectedContent, tokenPrefix, sources, editor, plan, restore, env };
+  const toDoc = (markdown: string) => withMarkdownParseContext(context, () => markdownToDoc(editor, markdown));
+  return { frontmatter, separator, bodyOffset, protectedContent, tokenPrefix, sources, plan, restore, env, toDoc, tab: context.tab };
 }
 
 export interface MarkdownUnits {
@@ -95,13 +111,13 @@ export function parseMarkdownBody(
   source: string,
   options: ParseMarkdownBodyOptions = {},
 ): { doc: JSONContent; frontmatter: string; separator: string; layout: MarkdownSourceLayout | null } {
-  const { frontmatter, separator, protectedContent, tokenPrefix, sources, editor, plan, restore } = prepare(source, options);
+  const { frontmatter, separator, protectedContent, tokenPrefix, sources, plan, restore, toDoc, tab } = prepare(source, options);
   let parsed: JSONContent | null = null;
   let counts: number[] | null = null;
   if (plan && plan.units.length > 1) {
     let sentinel = "OLEAFLYXBLOCKBOUNDARY";
     while (protectedContent.includes(sentinel)) sentinel += "X";
-    const json = markdownToDoc(editor, plan.units.join(`\n\n${sentinel}\n\n`));
+    const json = toDoc(plan.units.join(`\n\n${sentinel}\n\n`));
     const groups = splitAtBoundaries(json.content ?? [], sentinel);
     if (groups.length === plan.units.length) {
       parsed = { ...json, content: groups.flat() };
@@ -109,7 +125,7 @@ export function parseMarkdownBody(
     }
   }
   if (!parsed) {
-    parsed = markdownToDoc(editor, protectedContent);
+    parsed = toDoc(protectedContent);
     if (plan?.units.length === 1) counts = [parsed.content?.length ?? 0];
   }
   const last = parsed.content?.at(-1);
@@ -127,7 +143,7 @@ export function parseMarkdownBody(
           trailing: restore(plan.trailing),
         }
       : null;
-  const doc = restoreInlineSources(parsed, tokenPrefix, sources);
+  const doc = restoreInlineSources(parsed, tokenPrefix, sources, tab);
 
   return { doc, frontmatter, separator, layout };
 }

@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { isImeEnter } from "@/components/ai/composer/ime";
+import { QuoteOrBoldKey } from "@/components/editor/rich-text-controls";
 import { Button } from "@/components/ui/button";
 import { useDelegatedTooltips } from "@/components/ui/delegated-tooltip";
 import { Spinner } from "@/components/ui/spinner";
@@ -318,6 +319,7 @@ function NoteEditor({
       NotePeerMarks,
       NoteSelection.configure({ wholeNote: (doc) => serializeNoteMarkdown(doc.toJSON(), snapshotRef.current) }),
       NoteSlash,
+      QuoteOrBoldKey,
       NoteImageDrop.configure({
         target: () => (readOnlyRef.current ? null : imageTargetRef.current),
         attach: () => attachRef.current,

@@ -1,4 +1,7 @@
-import type { Editor } from "@tiptap/core";
+import { type CommandProps, type Editor, Extension } from "@tiptap/core";
+import type { Node as ModelNode, NodeRange } from "@tiptap/pm/model";
+import type { EditorState, Selection } from "@tiptap/pm/state";
+import { findWrapping, liftTarget } from "@tiptap/pm/transform";
 import { latexColorToCss } from "@oleafly/latex";
 import { type TextAlign, textAlignOf } from "@oleafly/wysiwyg/text-align-values";
 import { AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Eraser, type LucideIcon, Smile } from "lucide-react";
@@ -56,10 +59,116 @@ export function alignmentOf(editor: Editor): TextAlign {
   return "left";
 }
 
+const TASK_MARKER = /^\[[ xX]\](?:\s|$)/u;
+
+interface AlignedBlock {
+  pos: number;
+  node: ModelNode;
+  task: boolean;
+}
+
+function opensTask(item: ModelNode, paragraph: ModelNode): boolean {
+  if (item.type.name === "taskItem") return item.attrs.task !== false;
+  return item.type.name === "listItem" && TASK_MARKER.test(paragraph.textContent);
+}
+
+function alignedBlocks(state: EditorState): AlignedBlock[] {
+  const blocks: AlignedBlock[] = [];
+  for (const { $from, $to } of state.selection.ranges) {
+    state.doc.nodesBetween($from.pos, $to.pos, (node, pos, parent, index) => {
+      if (node.type.name !== "paragraph" && node.type.name !== "heading") return true;
+      const task = node.type.name === "paragraph" && index === 0 && parent !== null && opensTask(parent, node);
+      blocks.push({ pos, node, task });
+      return false;
+    });
+  }
+  return blocks;
+}
+
+export function alignable(editor: Editor): boolean {
+  if (editor.isActive("table") || editor.isActive("codeBlock")) return false;
+  const blocks = alignedBlocks(editor.state);
+  return blocks.length === 0 || blocks.some((block) => !block.task || textAlignOf(block.node.attrs.textAlign) !== null);
+}
+
 export function alignText(editor: Editor, align: TextAlign): boolean {
   const chain = editor.chain().focus();
-  return (align === "left" ? chain.unsetTextAlign() : chain.setTextAlign(align)).run();
+  if (align === "left") return chain.unsetTextAlign().run();
+  const blocks = alignedBlocks(editor.state);
+  const tasks = blocks.filter((block) => block.task);
+  if (tasks.length > 0 && tasks.length === blocks.length) return false;
+  return chain
+    .setTextAlign(align)
+    .command(({ tr }) => {
+      for (const { pos, node } of tasks) {
+        if (tr.doc.nodeAt(pos)?.attrs.textAlign !== node.attrs.textAlign) tr.setNodeMarkup(pos, undefined, node.attrs);
+      }
+      return true;
+    })
+    .run();
 }
+
+function insideTable(range: NodeRange): boolean {
+  for (let depth = range.depth; depth >= 0; depth -= 1) if (range.$from.node(depth).type.spec.tableRole) return true;
+  return false;
+}
+
+function blankLeadBefore(range: NodeRange): number | null {
+  const depth = range.depth - 1;
+  const item = range.$from.node(depth);
+  const lead = item.firstChild;
+  if (item.type.name !== "listItem" || range.$from.index(depth) !== 1 || range.startIndex !== 0) return null;
+  if (lead?.type.name !== "paragraph" || lead.content.size > 0 || range.parent.firstChild?.type.name !== "paragraph") return null;
+  return range.$from.start(depth);
+}
+
+type QuotePlan = { lift: NodeRange; target: number; lead: number | null } | { wrap: NodeRange; wrapping: NonNullable<ReturnType<typeof findWrapping>> };
+
+function quotePlan({ $from, $to }: Selection): QuotePlan | null {
+  const quoted = $from.blockRange($to, (node) => node.type.name === "blockquote");
+  if (quoted) {
+    const target = liftTarget(quoted);
+    return target === null ? null : { lift: quoted, target, lead: target === quoted.depth - 1 ? blankLeadBefore(quoted) : null };
+  }
+  const range = $from.blockRange($to);
+  const blockquote = $from.doc.type.schema.nodes.blockquote;
+  const wrapping = range && blockquote && !insideTable(range) ? findWrapping(range, blockquote) : null;
+  return range && wrapping ? { wrap: range, wrapping } : null;
+}
+
+export function quoteCommand({ tr, dispatch }: CommandProps): boolean {
+  const plan = quotePlan(tr.selection);
+  if (!plan) return false;
+  if (!dispatch) return true;
+  if ("wrap" in plan) tr.wrap(plan.wrap, plan.wrapping);
+  else {
+    tr.lift(plan.lift, plan.target);
+    if (plan.lead !== null) tr.delete(plan.lead, plan.lead + 2);
+  }
+  tr.scrollIntoView();
+  return true;
+}
+
+export function quotable(editor: Editor): boolean {
+  return quotePlan(editor.state.selection) !== null;
+}
+
+export function toggleQuote(editor: Editor): boolean {
+  return quotable(editor) && editor.chain().focus().command(quoteCommand).run();
+}
+
+export const QuoteOrBoldKey = Extension.create({
+  name: "quoteOrBoldKey",
+  priority: 1000,
+  addKeyboardShortcuts() {
+    return {
+      "Mod-Shift-b": () => {
+        if (!toggleQuote(this.editor)) this.editor.chain().focus().toggleBold().run();
+        return true;
+      },
+    };
+  },
+});
 
 export function clearFormatting(editor: Editor): boolean {
   return editor.chain().focus().unsetAllMarks().clearNodes().unsetTextAlign().run();

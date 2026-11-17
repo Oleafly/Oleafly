@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 
 import type { ReactNode } from "react";
+import { defaultKeymap } from "@codemirror/commands";
+import { EditorState } from "@codemirror/state";
+import { EditorView, keymap } from "@codemirror/view";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import common from "@/i18n/locales/en/common.json" with { type: "json" };
@@ -51,7 +54,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => {
 
 vi.mock("./cm/controller", () => ({ wrapSelection, ...controller }));
 const runMarkdownFormatting = vi.hoisted(() => vi.fn());
-vi.mock("./markdown-keymap", () => ({ runMarkdownFormatting }));
+const editorKeyTaken = vi.hoisted(() => vi.fn(() => false));
+vi.mock("./markdown-keymap", () => ({ runMarkdownFormatting, editorKeyTaken }));
 
 vi.mock("./CodeMirrorEditor", () => ({
   CodeMirrorEditor: () => <div data-testid="codemirror" />,
@@ -641,6 +645,25 @@ describe("Editor shell", () => {
     expect(wrapSelection).toHaveBeenCalledTimes(1);
   });
 
+
+  it.each([
+    ["main.tex", "\\textit{", "}"],
+    ["notes.typ", "_", "_"],
+  ])("italicizes with Ctrl+I in %s although CodeMirror's own Mod-i binding claims the key", (path, before, after) => {
+    openFile(path);
+    const { container } = render(<Editor />);
+    const view = new EditorView({ state: EditorState.create({ doc: "A word b.", selection: { anchor: 2, head: 6 }, extensions: keymap.of(defaultKeymap) }), parent: container });
+    view.focus();
+    const event = new KeyboardEvent("keydown", { key: "i", ctrlKey: true, bubbles: true, cancelable: true });
+    view.contentDOM.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(wrapSelection).toHaveBeenLastCalledWith(before, after);
+    editorKeyTaken.mockReturnValueOnce(true);
+    wrapSelection.mockClear();
+    view.contentDOM.dispatchEvent(new KeyboardEvent("keydown", { key: "i", ctrlKey: true, bubbles: true, cancelable: true }));
+    expect(wrapSelection).not.toHaveBeenCalled();
+    view.destroy();
+  });
 
   it("leaves Ctrl+Alt and Ctrl+Shift chords with B or I alone", () => {
     openFile("README.md");

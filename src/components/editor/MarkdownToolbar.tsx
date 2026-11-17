@@ -1,6 +1,7 @@
 import type { Text } from "@codemirror/state";
 import type { Editor } from "@tiptap/core";
 import { type RefObject, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { flushSync } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { Redo2, ScanSearch, SlidersHorizontal, Undo2 } from "lucide-react";
 import { isQuartoEngine } from "@/lib/notebook-engines";
@@ -108,7 +109,7 @@ function useWrapped(bar: RefObject<HTMLDivElement | null>, group: RefObject<HTML
     if (!row || !own || typeof ResizeObserver === "undefined") return;
     const measure = () => setWrapped(row.firstElementChild !== own && own.offsetTop > (row.firstElementChild as HTMLElement).offsetTop);
     measure();
-    const observer = new ResizeObserver(measure);
+    const observer = new ResizeObserver(() => flushSync(measure));
     observer.observe(row);
     return () => observer.disconnect();
   }, [bar, group]);

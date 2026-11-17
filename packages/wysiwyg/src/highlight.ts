@@ -1,10 +1,15 @@
 import { Mark, mergeAttributes } from "@tiptap/core";
+import { PANDOC_SYNTAX, pandocOrHtml, pandocSyntaxAttribute } from "./markdown/pandoc-inline";
 
 export const Highlight = Mark.create({
   name: "highlight",
 
+  addAttributes() {
+    return pandocSyntaxAttribute;
+  },
+
   parseHTML() {
-    return [{ tag: "mark", getAttrs: (element) => (element.attributes.length > 0 ? false : null) }];
+    return [{ tag: "mark", getAttrs: (element) => (Array.from(element.attributes).some((attribute) => attribute.name !== PANDOC_SYNTAX) ? false : null) }];
   },
 
   renderHTML({ HTMLAttributes }) {
@@ -12,6 +17,6 @@ export const Highlight = Mark.create({
   },
 
   addStorage() {
-    return { markdown: { serialize: { open: "<mark>", close: "</mark>" }, parse: {} } };
+    return { markdown: { serialize: pandocOrHtml(["<mark>", "</mark>"], ["[", "]{.mark}"]), parse: {} } };
   },
 });

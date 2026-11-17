@@ -24,7 +24,7 @@ export const Footnote = Node.create({
   addStorage() {
     const markdown: MarkdownNodeSpec = {
       serialize(state, node) {
-        writeVerbatim(state, `^[${String(node.attrs.source ?? "")}]`);
+        writeVerbatim(state, `^[${String(node.attrs.source ?? "")}]`, true);
       },
     };
     return { markdown };

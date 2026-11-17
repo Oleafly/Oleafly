@@ -725,7 +725,7 @@ mod tests {
         args: std::sync::Mutex<Vec<String>>,
         variables: std::sync::Mutex<Vec<(String, String)>>,
         working_dir: std::sync::Mutex<PathBuf>,
-        marks_filter: std::sync::Mutex<Option<String>>,
+        filters: std::sync::Mutex<Vec<(String, String)>>,
     }
 
     impl ToolRunner for RecordingRunner {
@@ -740,13 +740,15 @@ mod tests {
                 *self.args.lock().unwrap() = args.to_vec();
                 *self.variables.lock().unwrap() = variables.to_vec();
                 *self.working_dir.lock().unwrap() = working_dir.to_path_buf();
-                *self.marks_filter.lock().unwrap() = args
+                *self.filters.lock().unwrap() = args
                     .iter()
                     .filter_map(|arg| arg.strip_prefix("--lua-filter="))
-                    .find(|path| {
-                        path.ends_with(oleafly_core::engine_spec::MARKDOWN_MARKS_FILTER_NAME)
+                    .filter_map(|path| {
+                        let name = Path::new(path).file_name()?.to_string_lossy().into_owned();
+                        let text = std::fs::read_to_string(working_dir.join(path)).ok()?;
+                        Some((name, text))
                     })
-                    .and_then(|path| std::fs::read_to_string(working_dir.join(path)).ok());
+                    .collect();
                 if let Some(file) = args.iter().find_map(|arg| arg.strip_prefix("--log=")) {
                     std::fs::write(
                         file,
@@ -883,19 +885,19 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn markdown_exports_stage_and_run_the_marks_filter() {
+    async fn markdown_exports_stage_and_run_the_marks_filters() {
         let project = tempfile::tempdir().unwrap();
         let root = project.path();
         std::fs::write(root.join("main.md"), "A <u>u</u> <mark>m</mark>\n").unwrap();
         std::fs::write(root.join("main.tex"), "\\documentclass{article}\n").unwrap();
-        for (main, format, runs) in [
-            ("main.md", "docx", true),
-            ("main.md", "pptx", true),
-            ("main.md", "typst", true),
-            ("main.md", "tex", true),
-            ("main.md", "html", false),
-            ("main.md", "md", false),
-            ("main.tex", "docx", false),
+        for (main, format, runs, after_citeproc) in [
+            ("main.md", "docx", true, true),
+            ("main.md", "pptx", true, true),
+            ("main.md", "typst", true, false),
+            ("main.md", "tex", true, false),
+            ("main.md", "html", false, false),
+            ("main.md", "md", false, false),
+            ("main.tex", "docx", false, false),
         ] {
             let runner = RecordingRunner::default();
             let staged = root.join(format!("out-{format}"));
@@ -908,10 +910,24 @@ mod tests {
             )
             .await
             .unwrap();
-            let staged_filter = runner.marks_filter.lock().unwrap().clone();
+            let staged = |name: &str| {
+                runner
+                    .filters
+                    .lock()
+                    .unwrap()
+                    .iter()
+                    .find(|(staged, _)| staged == name)
+                    .map(|(_, text)| text.clone())
+            };
             assert_eq!(
-                staged_filter.as_deref(),
+                staged(oleafly_core::engine_spec::MARKDOWN_MARKS_FILTER_NAME).as_deref(),
                 runs.then_some(oleafly_core::engine_spec::MARKDOWN_MARKS_FILTER),
+                "{main} {format}: {:?}",
+                runner.args.lock().unwrap()
+            );
+            assert_eq!(
+                staged(oleafly_core::engine_spec::CITATION_MARKS_FILTER_NAME).as_deref(),
+                after_citeproc.then_some(oleafly_core::engine_spec::CITATION_MARKS_FILTER),
                 "{main} {format}: {:?}",
                 runner.args.lock().unwrap()
             );

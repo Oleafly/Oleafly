@@ -67,6 +67,7 @@ import { useTranslation } from "react-i18next";
 import { Divider, IconBtn } from "@/components/editor/EditorToolbar";
 import {
   ALIGNMENTS,
+  alignable,
   alignmentOf,
   alignText,
   applyLink,
@@ -74,10 +75,12 @@ import {
   currentLinkHref,
   EmojiPopover,
   FieldForm,
+  quotable,
   returnFocus,
   applyTextColor,
   TextColorMenu,
   textColorOf,
+  toggleQuote,
   ToolbarPopover,
 } from "@/components/editor/rich-text-controls";
 import { TableSizePicker } from "@/components/editor/TableSizePicker";
@@ -406,11 +409,13 @@ function readFormatting(editor: Editor) {
     highlightColor: editor.isActive("highlight") ? highlightOf({ attrs: editor.getAttributes("highlight") }) : null,
     textColor: textColorOf(editor),
     textAlign: alignmentOf(editor),
+    aligns: alignable(editor),
     link: editor.isActive("link"),
     bullet: editor.isActive("bulletList"),
     ordered: editor.isActive("orderedList"),
     task: editor.isActive("taskList"),
     quote: editor.isActive("blockquote"),
+    quotes: quotable(editor),
     codeBlock,
     language: codeBlock ? String(editor.getAttributes("codeBlock").language ?? "") : null,
     table: editor.isActive("table"),
@@ -443,7 +448,7 @@ function WordCount({ editor, className, as: Tag = "span" }: Readonly<{ editor: E
 }
 
 function calloutAround(editor: Editor): boolean {
-  if (!editor.chain().focus().toggleBlockquote().run()) return false;
+  if (!toggleQuote(editor)) return false;
   const { $from } = editor.state.selection;
   for (let depth = $from.depth; depth > 0; depth -= 1) {
     if ($from.node(depth).type.name !== "blockquote") continue;
@@ -531,11 +536,11 @@ export function NoteToolbar({
   const unlink = item("unlink", Unlink, t(($) => $.editor.toolbar.removeLink), () => run().extendMarkRange("link").unsetLink().run(), {
     disabled: !state.link,
   });
-  const quote = item("quote", Quote, t(($) => $.editor.contextMenu.quote), () => run().toggleBlockquote().run(), { checked: state.quote });
+  const quote = item("quote", Quote, t(($) => $.editor.contextMenu.quote), () => toggleQuote(editor), { checked: state.quote, disabled: !state.quotes });
   const codeBlock = item("codeBlock", SquareCode, t(($) => $.editor.toolbar.codeBlock), () => run().toggleCodeBlock().run(), {
     checked: state.codeBlock,
   });
-  const callout = item("callout", Megaphone, t(($) => $.notes.blocks.slash.callout), () => calloutAround(editor));
+  const callout = item("callout", Megaphone, t(($) => $.notes.blocks.slash.callout), () => calloutAround(editor), { disabled: !state.quotes });
   const divider = item("divider", Minus, t(($) => $.notes.blocks.slash.divider), () => runSlashItem(editor, "divider"));
   const footnote = item("footnote", Asterisk, t(($) => $.editor.toolbar.insertFootnote), () => run().insertFootnoteReference().run());
   const languages = ["", ...HIGHLIGHT_LANGUAGES].map((language) =>
@@ -566,9 +571,8 @@ export function NoteToolbar({
     }),
     item("task", ListChecks, t(($) => $.editor.toolbar.taskList), () => run().toggleTaskList().run(), { checked: state.task, keys: KEYS.task }),
   ];
-  const alignDisabled = state.table || state.codeBlock;
   const aligns = ALIGNMENTS.map(({ align, icon, label }) =>
-    item(`align-${align}`, icon, label(), () => alignText(editor, align), { checked: state.textAlign === align, disabled: alignDisabled }),
+    item(`align-${align}`, icon, label(), () => alignText(editor, align), { checked: state.textAlign === align, disabled: !state.aligns }),
   );
   const math = [
     item("inlineMath", Sigma, t(($) => $.editor.contextMenu.inlineMath), () => insertMath("$x^2$")),

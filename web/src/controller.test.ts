@@ -840,36 +840,41 @@ describe("outbox and presence wire fields", () => {
   });
 });
 
+async function answerUntilSent(answer: () => void) {
+  for (let round = 0; round < 30 && useWeb.getState().outbox.some((item) => item.state === "waiting"); round += 1) {
+    answer();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
+async function placedAfter(text: string, from: number, quote: string, edited: string, reload = false) {
+  const first = await started("commenter");
+  await openMain(first, text, 3);
+  useWeb.setState({ draft: { fileId: "f-main", path: "main.tex", from, to: from + quote.length, quote } });
+  first.server.current.drop();
+  await first.controller.createComment("Which one?");
+  let context = first;
+  if (reload) {
+    first.controller.stop();
+    context = await started("commenter");
+  } else {
+    first.timers.runNext();
+    first.server.current.emit(hello("commenter"));
+  }
+  await flush();
+  const answer = revChecking(context, 0);
+  const begun = performance.now();
+  context.server.current.emit({ t: "opened", fileId: "f-main", rev: 0, text: edited });
+  await answerUntilSent(answer);
+  return { sent: context.server.current.frames("comment"), ms: performance.now() - begun };
+}
+
+async function sentAfter(text: string, from: number, quote: string, edited: string, reload = false) {
+  return (await placedAfter(text, from, quote, edited, reload)).sent;
+}
+
 describe("outbox placement after the second review", () => {
   beforeEach(() => sessionStorage.clear());
-
-  async function answerUntilSent(answer: () => void) {
-    for (let round = 0; round < 30 && useWeb.getState().outbox.some((item) => item.state === "waiting"); round += 1) {
-      answer();
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
-  }
-
-  async function sentAfter(text: string, from: number, quote: string, edited: string, reload = false) {
-    const first = await started("commenter");
-    await openMain(first, text, 3);
-    useWeb.setState({ draft: { fileId: "f-main", path: "main.tex", from, to: from + quote.length, quote } });
-    first.server.current.drop();
-    await first.controller.createComment("Which one?");
-    let context = first;
-    if (reload) {
-      first.controller.stop();
-      context = await started("commenter");
-    } else {
-      first.timers.runNext();
-      first.server.current.emit(hello("commenter"));
-    }
-    await flush();
-    const answer = revChecking(context, 0);
-    context.server.current.emit({ t: "opened", fileId: "f-main", rev: 0, text: edited });
-    await answerUntilSent(answer);
-    return context.server.current.frames("comment");
-  }
 
   it.each([false, true])("keeps a queued comment on its own copy of a repeated quote when a co-author edits right beside it (after a reload: %s)", async (reload) => {
     const text = "Intro: we test the model here. Body: we test the model there.";
@@ -1166,5 +1171,241 @@ describe("outbox placement after the second review", () => {
       code: "comment_selection_changed",
     });
     expect(context.server.current.frames("comment")).toEqual([]);
+  });
+});
+
+const WORDS =
+  "we fit a model to the data and test it on images that were collected in the field last year so each sample was measured twice with one protocol while results stay close to prior work in our study of how groups change over time".split(
+    " ",
+  );
+
+function seeded(start: number): () => number {
+  let seed = start;
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let value = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
+    return ((value ^ (value >>> 14)) >>> 0) / 4_294_967_296;
+  };
+}
+
+function prose(length: number): string {
+  const next = seeded(7);
+  const parts: string[] = [];
+  for (let size = 0; size < length; ) {
+    const word = WORDS[Math.floor(next() * WORDS.length)];
+    const end = next() < 0.07 ? ".\n" : " ";
+    parts.push(word, end);
+    size += word.length + end.length;
+  }
+  return parts.join("").slice(0, length);
+}
+
+function refusedHere() {
+  expect(useWeb.getState().outbox).toEqual([expect.objectContaining({ state: "failed", reason: "comment_selection_changed", retry: false })]);
+}
+
+describe("outbox placement after the third review", () => {
+  beforeEach(() => sessionStorage.clear());
+
+  const RULE = `${"-".repeat(16)}\nSection two starts right below the rule.`;
+  const NEAR_COPIES = [
+    ["We fit a model to a dataset of images collected last year.", 18, "a"],
+    ["We know this is a good result for the whole group of people here.", 13, "is"],
+    ["The count was 1000000 in total across the two sites.", 15, "000"],
+    [RULE, 12, "----"],
+  ] as const;
+
+  it.each(NEAR_COPIES.flatMap(([text, from, quote]) => [true, false].map((reload) => [reload, text, from, quote] as const)))(
+    "sends a queued comment on unchanged text at its own place when a copy of the quote sits a few characters away (after a reload: %s, %j)",
+    async (reload, text, from, quote) => {
+      expect(await sentAfter(text, from, quote, text, reload)).toEqual([
+        expect.objectContaining({ action: "create", from, to: from + quote.length, rev: 0 }),
+      ]);
+      expect(useWeb.getState().outbox).toEqual([]);
+    },
+  );
+
+  it("sends a same-tab queued comment on its intact quote when far edits on both sides merge into one change and a copy sits a few characters away", async () => {
+    const text = "Intro: these opening words are only here as filler text. We fit a model to a dataset of images collected last year in the field, and these closing words are filler too.";
+    const edited = text.replace("Intro", "Intra").replace(/\.$/u, "!");
+    expect(await sentAfter(text, 75, "a", edited)).toEqual([expect.objectContaining({ action: "create", from: 75, to: 76, rev: 0 })]);
+  });
+
+  it.each([true, false])("lands on its own copy when a co-author changed one character of its context and a copy sits a few characters away (after a reload: %s)", async (reload) => {
+    const text = "We fit a model to a dataset of images collected last year.";
+    expect(await sentAfter(text, 18, "a", text.replace("images", "imagery"), reload)).toEqual([
+      expect.objectContaining({ action: "create", from: 18, to: 19, rev: 0 }),
+    ]);
+  });
+
+  it("still asks for a new selection after a reload when another copy has exactly the same surroundings, and sends it in the same tab", async () => {
+    const text = "AB the CD. ".repeat(10);
+    expect(await sentAfter(text, 47, "the", text, true)).toEqual([]);
+    expect(useWeb.getState().outbox).toEqual([
+      expect.objectContaining({ state: "failed", reason: "comment_selection_changed", retry: false }),
+    ]);
+    sessionStorage.clear();
+    expect(await sentAfter(text, 47, "the", text)).toEqual([expect.objectContaining({ action: "create", from: 47, to: 50, rev: 0 })]);
+  });
+
+  it.each([
+    [300_000, false],
+    [300_000, true],
+    [2_000_000, false],
+    [2_000_000, true],
+  ])("places a reloaded one-letter quote in %i characters of prose without freezing the tab (context edited: %s)", async (size, edited) => {
+    const text = prose(size);
+    const from = text.indexOf(" a ", size / 2) + 1;
+    const reopened = edited ? `${text.slice(0, from + 30)}#${text.slice(from + 31)}` : text;
+    const { sent, ms } = await placedAfter(text, from, "a", reopened, true);
+    expect(sent).toEqual([expect.objectContaining({ action: "create", from, to: from + 1, rev: 0 })]);
+    expect(ms).toBeLessThan(1_000);
+  });
+
+  it.each([
+    ["at its stored place", 0, [{ from: 1_000_000, to: 1_000_001 }]],
+    ["moved one character by an edit before it", 1, []],
+  ])("decides quickly on a one-letter quote with an edited context in 2 MB of text where similar copies are everywhere, when it is %s", async (_, shift, expected) => {
+    const next = seeded(11);
+    const text = Array.from({ length: 2_000_000 }, () => (next() < 0.5 ? "a" : "b")).join("").replace(/^(.{1000000})./su, "$1a");
+    const edited = `${text.slice(0, 1_000_010)}#${text.slice(1_000_011)}`;
+    const reopened = `${"#".repeat(shift)}${edited}`;
+    const { sent, ms } = await placedAfter(text, 1_000_000, "a", reopened, true);
+    expect(sent).toEqual(expected.map((range) => expect.objectContaining(range)));
+    if (expected.length === 0) refusedHere();
+    expect(ms).toBeLessThan(1_000);
+  });
+});
+
+describe("queued comments on a file that leaves and comes back", () => {
+  beforeEach(() => sessionStorage.clear());
+
+  async function waitingComment() {
+    const context = await started("commenter");
+    await openMain(context, "Hello world", 3);
+    useWeb.setState({ draft: { fileId: "f-main", path: "main.tex", from: 6, to: 11, quote: "world" } });
+    context.server.current.drop();
+    await context.controller.createComment("Which world?");
+    context.timers.runNext();
+    return context;
+  }
+
+  async function sentOnceOpened(context: Awaited<ReturnType<typeof started>>) {
+    const answer = answered(context);
+    context.server.current.emit({ t: "opened", fileId: "f-main", rev: 0, text: "Hello world" });
+    for (let round = 0; round < 30 && useWeb.getState().outbox.length > 0; round += 1) {
+      answer();
+      await vi.advanceTimersByTimeAsync(20);
+    }
+  }
+
+  it("sends a queued comment once its file is restored from the trash with the same id", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const context = await waitingComment();
+      context.server.current.emit(hello("commenter"));
+      await vi.advanceTimersByTimeAsync(5_000);
+      context.server.current.emit({ t: "tree", files: TEST_FILES.slice(1) });
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(useWeb.getState().outbox).toEqual([expect.objectContaining({ state: "failed", reason: "comment_file_removed", retry: false })]);
+      context.server.current.emit({ t: "tree", files: TEST_FILES });
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(useWeb.getState().outbox).toEqual([expect.objectContaining({ state: "waiting", reason: null })]);
+      await sentOnceOpened(context);
+      expect(useWeb.getState().outbox).toEqual([]);
+      expect(context.server.current.frames("comment")).toEqual([expect.objectContaining({ action: "create", from: 6, to: 11, rev: 0, body: "Which world?" })]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("sends a comment that failed because its file was gone at reconnect once a later reconnect lists the file again", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const context = await waitingComment();
+      context.server.current.emit(hello("commenter", { files: TEST_FILES.slice(1) }));
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(useWeb.getState().outbox).toEqual([expect.objectContaining({ state: "failed", reason: "comment_file_removed" })]);
+      context.server.current.drop();
+      context.timers.runNext();
+      context.server.current.emit(hello("commenter"));
+      await vi.advanceTimersByTimeAsync(1_000);
+      await sentOnceOpened(context);
+      expect(context.server.current.frames("comment")).toEqual([expect.objectContaining({ action: "create", from: 6, to: 11, rev: 0 })]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a queued comment waiting through a rename and sends it at the new path", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      const context = await waitingComment();
+      context.server.current.emit(hello("commenter"));
+      await vi.advanceTimersByTimeAsync(5_000);
+      context.server.current.emit({ t: "tree", files: [{ ...TEST_FILES[0], path: "chapters/main.tex" }, ...TEST_FILES.slice(1)] });
+      await vi.advanceTimersByTimeAsync(1_000);
+      expect(useWeb.getState().outbox).toEqual([expect.objectContaining({ state: "waiting" })]);
+      await sentOnceOpened(context);
+      expect(context.server.current.frames("comment")).toEqual([
+        expect.objectContaining({ action: "create", path: "chapters/main.tex", from: 6, to: 11, rev: 0 }),
+      ]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("outbox placement after the final check", () => {
+  beforeEach(() => sessionStorage.clear());
+
+  const TWIN = "We test the model on the data that we collected in the field last year.\n";
+
+  it.each([
+    ["a twin's end edited", TWIN.repeat(3), TWIN.repeat(3).replace("year.", "year!")],
+    ["its own surroundings edited", TWIN.repeat(3), TWIN.repeat(3).replace(/the data/gu, (match, at: number) => (at > 72 && at < 144 ? "the date" : match))],
+    ["the twin pair 50 KB later", TWIN.repeat(2) + prose(50_000) + TWIN.repeat(2), (TWIN.repeat(2) + prose(50_000) + TWIN.repeat(2)).replace("year.", "year!")],
+  ])("asks for a new selection after a reload, instead of moving to a twin, when one character changed beside its own copy (%s)", async (_, text, edited) => {
+    expect(await sentAfter(text, 84, "model", edited, true)).toEqual([]);
+    refusedHere();
+  });
+
+  it("sends the same twin case in the same tab at its own copy", async () => {
+    const text = TWIN.repeat(3);
+    expect(await sentAfter(text, 84, "model", text.replace("year.", "year!"))).toEqual([expect.objectContaining({ action: "create", from: 84, to: 89, rev: 0 })]);
+  });
+
+  const DATASET = "We fit a model to a dataset of images collected last year.";
+  const MERGED = "Intro: these opening words are only here as filler text. We fit a model to a dataset of images collected last year in the field, and these closing words are filler too.";
+  const merged = (text: string) => text.replace("Intro", "Intra").replace(/\.$/u, "!");
+
+  it.each([
+    [true, DATASET, 18, "a", DATASET.replace("to a dataset", "to dataset")],
+    [true, DATASET, 18, "a", DATASET.replace("to a dataset", "to the dataset")],
+    [true, "We know this is his result for the whole group of people.", 13, "is", "We know this his result for the whole group of people."],
+    [false, MERGED, 75, "a", merged(MERGED.replace("to a dataset", "to dataset"))],
+    [false, MERGED, 75, "a", merged(MERGED.replace("to a dataset", "to the dataset"))],
+  ])("sends nothing when its quote was deleted or replaced and copies of the same letters sit beside it (after a reload: %s, %j)", async (reload, text, from, quote, edited) => {
+    expect(await sentAfter(text, from, quote, edited, reload)).toEqual([]);
+    refusedHere();
+  });
+
+  it("tries the stored place first, so an unchanged comment is sent there even when a copy elsewhere differs from it by one character", async () => {
+    const text = `${TWIN}${TWIN.replace("year.", "year!")}${TWIN}`;
+    expect(await sentAfter(text, 156, "model", text, true)).toEqual([expect.objectContaining({ action: "create", from: 156, to: 161, rev: 0 })]);
+  });
+
+  it.each([
+    [1_000_000, " "],
+    [2_000_000, " "],
+    [2_000_000, "the "],
+  ])("places a reloaded comment in %i characters on its stored copy of %j when one character of its context changed, even with thousands of similar copies far away", async (size, lead) => {
+    const text = prose(size);
+    const from = text.indexOf(lead, size / 2) + lead.length - 1;
+    const reopened = `${text.slice(0, from + 30)}#${text.slice(from + 31)}`;
+    const { sent, ms } = await placedAfter(text, from, " ", reopened, true);
+    expect(sent).toEqual([expect.objectContaining({ action: "create", from, to: from + 1, rev: 0 })]);
+    expect(ms).toBeLessThan(1_000);
   });
 });

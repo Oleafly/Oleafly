@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { type CommentConfirmProps, type CommentKit, CommentKitProvider } from "./comment-kit";
 import { CommentScrollArea } from "./comment-arrivals";
 import { CommentComposer } from "./comment-composer";
@@ -666,7 +667,8 @@ describe("resolve button", () => {
     const { rerender } = renderWith(<CommentThread thread={model([entry("m1", "bob", "Bob Smith", "Root")])} actions={actions()} canWrite />);
     const resolve = screen.getByRole("button", { name: LABELS.resolve });
     expect(resolve.closest('[data-slot="comment-quote"]')).not.toBeNull();
-    expect(resolve).toHaveClass("opacity-0", "group-hover/thread:opacity-100", "group-focus-within/thread:opacity-100");
+    expect(resolve).toHaveClass("opacity-0", "group-hover/thread:opacity-100", "group-has-[:focus-visible]/thread:opacity-100");
+    expect(resolve.className).not.toMatch(/focus-within/u);
     expect(resolve.closest("article")).toHaveClass("group/thread", "bg-background");
     rerender(
       <CommentKitProvider value={kit()}>
@@ -935,7 +937,8 @@ describe("chat bubbles", () => {
     bubbles([{ entry: entry("c1", "bob", "Bob Smith", "Draft is ready", 0, [{ emoji: "👍", by: ["bob"] }]) }]);
     const other = row("Draft is ready");
     const side = other.querySelector("[data-comment-bubble-actions]") as HTMLElement;
-    expect(side).toHaveClass("opacity-0", "group-hover/item:opacity-100", "focus-within:opacity-100");
+    expect(side).toHaveClass("opacity-0", "group-hover/item:opacity-100", "has-[:focus-visible]:opacity-100");
+    expect(side.className).not.toMatch(/focus-within/u);
     expect(within(side).getByRole("button", { name: "Add reaction" })).toBeInTheDocument();
     const pills = other.querySelector("[data-comment-actions]") as HTMLElement;
     expect(within(pills).getByRole("button", { name: "Bob Smith reacted with 👍" })).toBeInTheDocument();
@@ -1028,7 +1031,8 @@ describe("chat bubbles", () => {
     const view = render(list(first));
     view.rerender(list([...first, entry("c2", "bob", "Bob Smith", "New one")]));
     const badge = within(row("New one")).getByText("New");
-    expect(badge).toHaveClass("absolute", "group-hover/item:opacity-0");
+    expect(badge).toHaveClass("absolute", "group-hover/item:opacity-0", "group-has-[:focus-visible]/item:opacity-0");
+    expect(badge.className).not.toMatch(/focus-within/u);
     expect(badge.closest("[data-comment-bubble-side]")).toHaveClass("min-w-[3.125rem]");
   });
 
@@ -1166,16 +1170,17 @@ describe("headers after the third review", () => {
     return node as HTMLElement;
   }
 
-  it("shows the ⋯ and Resolve in one tinted pill, with one rule for hover, focus, an open menu and touch", () => {
+  it("shows the ⋯ and Resolve in one tinted pill, with one rule for hover, keyboard focus, an open menu and touch", () => {
     renderWith(<CommentThread thread={model([entry("m1", "bob", "Daniel Hartmann", "Root")])} actions={actions()} canWrite embedded />);
     const menu = screen.getByRole("button", { name: LABELS.messageActions });
     const resolve = screen.getByRole("button", { name: LABELS.resolve });
     const overlay = overlayOf(menu);
     expect(overlay).toBe(overlayOf(resolve));
     expect(overlay).toHaveClass("absolute", "end-0", "has-[button]:bg-accent", "opacity-0", "transition-opacity");
-    for (const state of ["group-hover/item", "focus-within", "has-[[data-state=open]]", "[@media(hover:none)]"]) {
+    for (const state of ["group-hover/item", "has-[:focus-visible]", "has-[[data-state=open]]", "[@media(hover:none)]"]) {
       expect(overlay).toHaveClass(`${state}:opacity-100`);
     }
+    expect(overlay.className).not.toMatch(/(?:^|\s)focus-within:/u);
     expect(overlay.parentElement).toHaveClass("[@media(hover:none)]:min-h-6");
     for (const button of [menu, resolve]) {
       expect(button.className).not.toMatch(/(?:^|\s)[\w/[\]():@-]+:(?:w|ms|me|size)-/u);
@@ -1362,6 +1367,7 @@ describe("headers after the fourth review", () => {
     const reserve = reserveOf(within(row).getByRole("button", { name: LABELS.messageActions }));
     expect(within(row).getByText("New").parentElement).toBe(reserve.parentElement);
     expect(reserve.parentElement).not.toContainElement(within(row).getByText("8 min ago"));
+    expect(reserve.parentElement?.className.split(" ").filter((name) => /(?:^|:)m[tby]-/u.test(name))).toEqual([]);
   });
 
   it("reserves a deleted root's Resolve beside its text, so the check never covers it", () => {
@@ -1391,7 +1397,6 @@ describe("headers after the fourth review", () => {
   it("returns focus to the ⋯ when the Delete confirm opened from the keyboard is cancelled", async () => {
     const user = userEvent.setup();
     const remove = vi.fn(async () => undefined);
-    const { ConfirmationDialog } = await import("@/components/ui/confirmation-dialog");
     renderWith(<CommentThread thread={model([entry("m1", SELF, "Alice Chen", "Mine")])} actions={{ ...actions(), remove }} canWrite />, {
       ...kit(),
       Confirm: (props) => <ConfirmationDialog {...props} destructive />,
@@ -1408,5 +1413,460 @@ describe("headers after the fourth review", () => {
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     await waitFor(() => expect(document.activeElement).toBe(menu));
     expect(remove).not.toHaveBeenCalled();
+  });
+});
+
+describe("headers after the fifth review", () => {
+  const RESOLVED = "Resolved by Alice Chen";
+  const ELSEWHERE = "Elsewhere";
+
+  function threadKit(): CommentKit {
+    return {
+      ...kit({ deleteThread: "Delete thread", deleteThreadConfirm: { title: "Delete this thread?", description: "Replies go too." } }),
+      moderate: true,
+      Confirm: (props) => <ConfirmationDialog {...props} destructive />,
+    };
+  }
+
+  function resolvable(given: CommentThreadActions, embedded: boolean, resolution: string | null = null) {
+    return (
+      <CommentKitProvider value={kit()}>
+        <CommentThread thread={model([entry("m1", "bob", "Bob Smith", "Root")], { resolution })} actions={given} canWrite embedded={embedded} />
+      </CommentKitProvider>
+    );
+  }
+
+  async function openMenu(user: ReturnType<typeof userEvent.setup>, menu: HTMLElement, item: string) {
+    menu.focus();
+    await user.keyboard("{Enter}");
+    await screen.findByRole("menuitem", { name: item });
+    for (let step = 0; step < 6 && document.activeElement?.textContent !== item; step += 1) await user.keyboard("{ArrowDown}");
+    expect(document.activeElement).toHaveTextContent(item);
+    await user.keyboard("{Enter}");
+  }
+
+  it.each([
+    ["the quote chip's check", false],
+    ["the header check of a thread without a quote", true],
+  ])("moves focus to the resolved summary when Enter on %s resolves the thread and it folds", async (_, embedded) => {
+    const user = userEvent.setup();
+    const given = actions();
+    const view = render(resolvable(given, embedded));
+    screen.getByRole("button", { name: LABELS.resolve }).focus();
+    await user.keyboard("{Enter}");
+    expect(given.resolve).toHaveBeenCalledTimes(1);
+    view.rerender(resolvable(given, embedded, RESOLVED));
+    expect(screen.queryByText("Root")).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: new RegExp(RESOLVED, "u") }));
+  });
+
+  it("returns focus to the ⋯ after Resolve is picked from a menu opened with the keyboard, then to the summary once the thread folds", async () => {
+    const user = userEvent.setup();
+    const given = actions();
+    const view = render(resolvable(given, false));
+    const menu = screen.getByRole("button", { name: LABELS.messageActions });
+    await openMenu(user, menu, LABELS.resolve);
+    await waitFor(() => expect(document.activeElement).toBe(menu));
+    expect(given.resolve).toHaveBeenCalledTimes(1);
+    view.rerender(resolvable(given, false, RESOLVED));
+    expect(menu.isConnected).toBe(false);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: new RegExp(RESOLVED, "u") }));
+  });
+
+  it("moves focus to the summary on a selected thread too, where Resolve unmounts but the thread stays open", async () => {
+    const user = userEvent.setup();
+    const given = actions();
+    const selected = (resolution: string | null) => (
+      <CommentKitProvider value={kit()}>
+        <CommentThread thread={model([entry("m1", "bob", "Bob Smith", "Root")], { resolution })} actions={given} canWrite selected />
+      </CommentKitProvider>
+    );
+    const view = render(selected(null));
+    screen.getByRole("button", { name: LABELS.resolve }).focus();
+    await user.keyboard("{Enter}");
+    view.rerender(selected(RESOLVED));
+    expect(screen.getByText("Root")).toBeInTheDocument();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: new RegExp(RESOLVED, "u") }));
+  });
+
+  it("leaves focus alone when the reader moved on, after a click that left focus on the page, when someone else resolves, and after a Resolve that failed", async () => {
+    const user = userEvent.setup();
+    const given = actions();
+    const outside = (node: ReactNode) => (
+      <>
+        <button type="button">{ELSEWHERE}</button>
+        {node}
+      </>
+    );
+    const view = render(outside(resolvable(given, false)));
+    screen.getByRole("button", { name: LABELS.resolve }).focus();
+    await user.keyboard("{Enter}");
+    screen.getByRole("button", { name: ELSEWHERE }).focus();
+    view.rerender(outside(resolvable(given, false, RESOLVED)));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: ELSEWHERE }));
+    view.unmount();
+
+    const clicked = actions();
+    const click = render(resolvable(clicked, false));
+    fireEvent.click(screen.getByRole("button", { name: LABELS.resolve }));
+    expect(clicked.resolve).toHaveBeenCalledTimes(1);
+    click.rerender(resolvable(clicked, false, RESOLVED));
+    expect(document.activeElement).toBe(document.body);
+    click.unmount();
+
+    const remote = render(resolvable(actions(), false));
+    remote.rerender(resolvable(actions(), false, RESOLVED));
+    expect(document.activeElement).toBe(document.body);
+    remote.unmount();
+
+    const failing = { ...actions(), resolve: vi.fn(async () => Promise.reject(new Error("offline"))) };
+    const failed = render(resolvable(failing, false));
+    screen.getByRole("button", { name: LABELS.resolve }).focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByText("It failed.")).toBeInTheDocument();
+    (document.activeElement as HTMLElement).blur();
+    failed.rerender(resolvable(failing, false, RESOLVED));
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it.each([
+    ["Delete", "m1", SELF, "deleteMessageConfirm"],
+    ["Remove…", "m1", "bob", "removeConfirm"],
+    ["Delete thread", "m1", SELF, "deleteThreadConfirm"],
+  ] as const)("returns focus to the ⋯ when the %s confirm opened from the keyboard is cancelled with its Cancel button, and runs it on confirm", async (item, id, author, confirm) => {
+    const user = userEvent.setup();
+    const given = { ...actions(), remove: vi.fn(async () => undefined), moderate: vi.fn(async () => undefined), removeThread: vi.fn(async () => undefined) };
+    const value = threadKit();
+    renderWith(<CommentThread thread={model([entry(id, author, "Bob Smith", "Root")], { deletable: true })} actions={given} canWrite />, value);
+    const menu = screen.getByRole("button", { name: LABELS.messageActions });
+    const title = (value.labels[confirm] as { title: string }).title;
+    await openMenu(user, menu, item);
+    const dialog = await screen.findByRole("alertdialog", { name: title });
+    await user.click(within(dialog).getByRole("button", { name: /Cancel/u }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(menu));
+    for (const action of [given.remove, given.moderate, given.removeThread]) expect(action).not.toHaveBeenCalled();
+    await openMenu(user, menu, item);
+    await user.click(within(await screen.findByRole("alertdialog", { name: title })).getByRole("button", { name: item }));
+    const ran = { Delete: given.remove, "Remove…": given.moderate, "Delete thread": given.removeThread }[item];
+    await waitFor(() => expect(ran).toHaveBeenCalledTimes(1));
+    if (item !== "Delete thread") expect(ran).toHaveBeenCalledWith(id);
+  });
+});
+
+describe("headers after the final check", () => {
+  type Box = [left: number, top: number, right: number, bottom: number];
+  const MARGINS = /(?:^|:)(?:m[tby]|gap-y)-/u;
+
+  function rect([left, top, right, bottom]: Box): DOMRect {
+    return { left, top, right, bottom, x: left, y: top, width: right - left, height: bottom - top, toJSON: () => ({}) } as DOMRect;
+  }
+
+  type Place = Box | (() => Box);
+  const at = (place: Place | undefined): Box => (typeof place === "function" ? place() : (place ?? [0, 0, 0, 0]));
+
+  function lay(boxes: Map<Element, Place>, lines: Map<Node, Place[]>, tail?: HTMLElement) {
+    const box = vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+      return rect(at(boxes.get(this)));
+    });
+    const real = window.getComputedStyle.bind(window);
+    const style = vi.spyOn(window, "getComputedStyle").mockImplementation((element, pseudo) => {
+      if (element !== tail) return real(element, pseudo);
+      return { marginTop: tail.classList.contains("mt-1") ? "4px" : "0px", marginBottom: tail.classList.contains("mb-0.5") ? "2px" : "0px" } as CSSStyleDeclaration;
+    });
+    Object.defineProperty(Range.prototype, "getClientRects", {
+      configurable: true,
+      value(this: Range) {
+        return (lines.get(this.startContainer) ?? []).map((line) => rect(at(line)));
+      },
+    });
+    return () => {
+      box.mockRestore();
+      style.mockRestore();
+      Reflect.deleteProperty(Range.prototype, "getClientRects");
+    };
+  }
+
+  const shifted = (element: HTMLElement, name: string, by: number, [left, top, right, bottom]: Box) => (): Box =>
+    element.classList.contains(name) ? [left, top + by, right, bottom + by] : [left, top, right, bottom];
+
+  function parts(menu: HTMLElement) {
+    const pill = menu.closest(".absolute") as HTMLElement;
+    const tail = pill.parentElement?.parentElement as HTMLElement;
+    const row = tail.parentElement as HTMLElement;
+    return { pill, tail, row, before: tail.previousElementSibling as HTMLElement, next: row.nextElementSibling as HTMLElement | null };
+  }
+
+  const margins = (element: HTMLElement) => element.className.split(" ").filter((name) => MARGINS.test(name));
+  const textOf = (element: Element) => document.createTreeWalker(element, NodeFilter.SHOW_TEXT).nextNode() as Node;
+
+  function editedReply() {
+    const given = actions();
+    const thread = model([entry("m1", "bob", "Bob Smith", "Root", 60_000), { ...entry("m2", SELF, "Prajwal S Venkatesh", "Mine", 3 * 60_000), editedAt: 4 * 60_000 }]);
+    const tree = () => (
+      <CommentKitProvider value={kit()}>
+        <CommentThread thread={thread} actions={given} canWrite />
+      </CommentKitProvider>
+    );
+    const view = render(tree());
+    const menu = screen.getAllByRole("button", { name: LABELS.messageActions })[1];
+    return { ...parts(menu), relayout: () => view.rerender(tree()), view };
+  }
+
+  it("adds no room at all until the pill would actually reach text", () => {
+    const { tail, row } = editedReply();
+    expect(margins(tail)).toEqual([]);
+    expect(margins(row)).toEqual([]);
+    expect(tail).toContainElement(screen.getByText("· edited"));
+  });
+
+  it("gives the pill 4px above only when its line sits under the time and the time runs under it, never when they share a line", () => {
+    const { tail, pill, before, relayout } = editedReply();
+    const time = textOf(before);
+    const restore = lay(
+      new Map<Element, Place>([[before, [0, 24, 130, 40]], [tail, shifted(tail, "mt-1", 4, [0, 40, 138, 56])], [pill, shifted(tail, "mt-1", 4, [114, 36, 138, 60])]]),
+      new Map([[time, [[0, 25.3, 130, 38.6]]]]),
+      tail,
+    );
+    try {
+      relayout();
+      expect(margins(tail)).toEqual(["mt-1"]);
+      relayout();
+      expect(margins(tail)).toEqual(["mt-1"]);
+    } finally {
+      restore();
+    }
+    const shared = lay(
+      new Map<Element, Place>([[before, [0, 24, 120, 40]], [tail, [84, 24, 138, 40]], [pill, [114, 20, 138, 44]]]),
+      new Map([[time, [[0, 25.3, 120, 38.6]]]]),
+    );
+    try {
+      relayout();
+      expect(margins(tail)).toEqual([]);
+    } finally {
+      shared();
+    }
+    const short = lay(
+      new Map<Element, Place>([[before, [0, 24, 90, 40]], [tail, [0, 40, 138, 56]], [pill, [114, 36, 138, 60]]]),
+      new Map([[time, [[0, 25.3, 90, 38.6]]]]),
+    );
+    try {
+      relayout();
+      expect(margins(tail)).toEqual([]);
+    } finally {
+      short();
+    }
+  });
+
+  it("gives the pill 2px below only when the comment's first line runs under it, whether or not the pill shares its line with the time", () => {
+    const { tail, pill, before, next, relayout } = editedReply();
+    const body = textOf(next as HTMLElement);
+    const restore = lay(
+      new Map<Element, Place>([[before, [0, 0, 60, 24]], [tail, [0, 24, 138, 40]], [pill, [114, 20, 138, 44]]]),
+      new Map([[body, [shifted(tail, "mb-0.5", 2, [0, 43, 138, 58])]]]),
+      tail,
+    );
+    try {
+      relayout();
+      expect(margins(tail)).toEqual(["mb-0.5"]);
+      relayout();
+      expect(margins(tail)).toEqual(["mb-0.5"]);
+    } finally {
+      restore();
+    }
+    const beside = lay(
+      new Map<Element, Place>([[before, [0, 24, 80, 40]], [tail, [84, 24, 138, 40]], [pill, [114, 20, 138, 44]]]),
+      new Map([[body, [[0, 43, 138, 58]]]]),
+    );
+    try {
+      relayout();
+      expect(margins(tail)).toEqual(["mb-0.5"]);
+    } finally {
+      beside();
+    }
+    const clear = lay(
+      new Map<Element, Place>([[before, [0, 0, 60, 24]], [tail, [0, 24, 138, 40]], [pill, [114, 20, 138, 44]]]),
+      new Map([[body, [[0, 44.3, 138, 59]]]]),
+    );
+    try {
+      relayout();
+      expect(margins(tail)).toEqual([]);
+    } finally {
+      clear();
+    }
+  });
+
+  it("re-measures when the row is resized, not only when it renders", () => {
+    const callbacks: (() => void)[] = [];
+    const original = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      constructor(callback: () => void) {
+        callbacks.push(callback);
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    } as unknown as typeof ResizeObserver;
+    try {
+      const { tail, pill, before } = editedReply();
+      const restore = lay(
+        new Map<Element, Place>([[before, [0, 24, 130, 40]], [tail, [0, 40, 138, 56]], [pill, [114, 36, 138, 60]]]),
+        new Map([[textOf(before), [[0, 25.3, 130, 38.6]]]]),
+      );
+      try {
+        expect(margins(tail)).toEqual([]);
+        expect(callbacks.length).toBeGreaterThan(0);
+        act(() => {
+          for (const callback of callbacks) callback();
+        });
+        expect(margins(tail)).toEqual(["mt-1"]);
+      } finally {
+        restore();
+      }
+    } finally {
+      globalThis.ResizeObserver = original;
+    }
+  });
+
+  it("opens 4px under a deleted message's text only when the unverified name wraps under it and the text runs under the check", () => {
+    const given = actions();
+    const thread = model([{ ...entry("m1", "bob", "Bob Smith", ""), deleted: true, author: { id: "bob", name: "Bob Smith", verified: false } }]);
+    const tree = () => (
+      <CommentKitProvider value={kit()}>
+        <CommentThread thread={thread} actions={given} canWrite embedded />
+      </CommentKitProvider>
+    );
+    const view = render(tree());
+    const { tail, pill, before, row } = parts(screen.getByRole("button", { name: LABELS.resolve }));
+    expect(before).toHaveTextContent(LABELS.deleted);
+    expect(margins(row)).toEqual([]);
+    const restore = lay(
+      new Map<Element, Place>([[before, [0, 2.7, 130, 21.3]], [tail, [0, 21.3, 130, 37]], [pill, [106, 17.15, 130, 41.15]]]),
+      new Map([[textOf(before), [[0, 4.4, 128, 19.6]]]]),
+    );
+    try {
+      view.rerender(tree());
+      expect(margins(tail)).toEqual(["mt-1"]);
+      expect(margins(row)).toEqual([]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("hands focus back to nobody after a mouse pick from ⋯, so the pill and the quote's check don't stay shown", async () => {
+    const user = userEvent.setup();
+    const copyText = vi.fn(async () => undefined);
+    const value: CommentKit = {
+      ...kit({ deleteThread: "Delete thread", deleteThreadConfirm: { title: "Delete this thread?", description: "Replies go too." } }),
+      copyText,
+      Confirm: (props) => <ConfirmationDialog {...props} destructive />,
+    };
+    const view = renderWith(<CommentThread thread={model([entry("m1", SELF, "Alice Chen", "Mine")], { link: "oleafly://t1", deletable: true })} actions={actions()} canWrite />, value);
+    const menu = screen.getByRole("button", { name: LABELS.messageActions });
+    await user.click(menu);
+    await user.click(await screen.findByRole("menuitem", { name: LABELS.copyLink }));
+    await waitFor(() => expect(copyText).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    expect(document.activeElement).toBe(document.body);
+    await user.click(menu);
+    await user.click(await screen.findByRole("menuitem", { name: "Delete thread" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Delete this thread?" });
+    await user.click(within(dialog).getByRole("button", { name: /Cancel/u }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(document.activeElement).not.toBe(menu);
+    view.unmount();
+  });
+
+  it("leaves focus with nobody after a mouse pick of Resolve, even once the thread folds", async () => {
+    const user = userEvent.setup();
+    const given = actions();
+    const tree = (resolution: string | null) => (
+      <CommentKitProvider value={kit()}>
+        <CommentThread thread={model([entry("m1", "bob", "Bob Smith", "Root")], { resolution })} actions={given} canWrite />
+      </CommentKitProvider>
+    );
+    const picked = render(tree(null));
+    await user.click(screen.getByRole("button", { name: LABELS.messageActions }));
+    await user.click(await screen.findByRole("menuitem", { name: LABELS.resolve }));
+    await waitFor(() => expect(given.resolve).toHaveBeenCalledTimes(1));
+    picked.rerender(tree("Resolved by Alice Chen"));
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("hands focus back to nobody after a mouse pick from a chat bubble's ⋯", async () => {
+    const user = userEvent.setup();
+    renderWith(
+      <ol>
+        <CommentItem variant="bubble" entry={entry("c1", SELF, "Alice Chen", "Mine")} canWrite actions={{ remove: vi.fn(async () => undefined) }} />
+      </ol>,
+      { ...kit(), Confirm: (props) => <ConfirmationDialog {...props} destructive /> },
+    );
+    const bubbleMenu = screen.getByRole("button", { name: LABELS.messageActions });
+    await user.click(bubbleMenu);
+    await user.click(await screen.findByRole("menuitem", { name: LABELS.delete }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: /Cancel/u }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(document.activeElement).not.toBe(bubbleMenu);
+  });
+
+  it("still returns focus to ⋯ when the pick is made with the keyboard after the menu was opened with the mouse", async () => {
+    const user = userEvent.setup();
+    const copyText = vi.fn(async () => undefined);
+    renderWith(<CommentThread thread={model([entry("m1", "bob", "Bob Smith", "Root")], { link: "oleafly://t1" })} actions={actions()} canWrite />, { ...kit(), copyText });
+    const menu = screen.getByRole("button", { name: LABELS.messageActions });
+    await user.click(menu);
+    await screen.findByRole("menuitem", { name: LABELS.copyLink });
+    for (let step = 0; step < 4 && document.activeElement?.textContent !== LABELS.copyLink; step += 1) await user.keyboard("{ArrowDown}");
+    expect(document.activeElement).toHaveTextContent(String(LABELS.copyLink));
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(copyText).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(document.activeElement).toBe(menu));
+  });
+
+  it("doesn't pull focus to the summary when a check press was dropped while another thread action ran", async () => {
+    const user = userEvent.setup();
+    let release = () => {};
+    const copyText = vi.fn(() => new Promise<void>((done) => { release = done; }));
+    const given = actions();
+    const tree = (resolution: string | null) => (
+      <CommentKitProvider value={{ ...kit(), copyText }}>
+        <CommentThread thread={model([entry("m1", "bob", "Bob Smith", "Root")], { link: "oleafly://t1", resolution })} actions={given} canWrite />
+      </CommentKitProvider>
+    );
+    const view = render(tree(null));
+    const menu = screen.getByRole("button", { name: LABELS.messageActions });
+    menu.focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("menuitem", { name: LABELS.copyLink })).toHaveFocus();
+    await user.keyboard("{Enter}");
+    await waitFor(() => expect(copyText).toHaveBeenCalledTimes(1));
+    screen.getByRole("button", { name: LABELS.resolve }).focus();
+    await user.keyboard("{Enter}");
+    expect(given.resolve).not.toHaveBeenCalled();
+    await act(async () => release());
+    (document.activeElement as HTMLElement).blur();
+    view.rerender(tree("Resolved by Alice Chen"));
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("moves focus to the reopened thread's ⋯ when Enter on Reopen unfolds it, and leaves it alone when someone else reopens", async () => {
+    const user = userEvent.setup();
+    const given = actions();
+    const tree = (resolution: string | null) => (
+      <CommentKitProvider value={kit()}>
+        <CommentThread thread={model([entry("m1", "bob", "Bob Smith", "Root")], { resolution })} actions={given} canWrite />
+      </CommentKitProvider>
+    );
+    const view = render(tree("Resolved by Alice Chen"));
+    screen.getByRole("button", { name: LABELS.reopen }).focus();
+    await user.keyboard("{Enter}");
+    expect(given.reopen).toHaveBeenCalledTimes(1);
+    view.rerender(tree(null));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: LABELS.messageActions }));
+    view.unmount();
+
+    const remote = render(tree("Resolved by Alice Chen"));
+    remote.rerender(tree(null));
+    expect(document.activeElement).toBe(document.body);
   });
 });

@@ -1,162 +1,276 @@
 // @vitest-environment jsdom
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
-import { EditorState } from "@codemirror/state";
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import type { EditorState } from "@codemirror/state";
 import { setEditorErrorReporter } from "@oleafly/editor";
-import { markdownUnits } from "@oleafly/wysiwyg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type MarkdownTarget, modelEdit, modelLinkHref, modelState } from "./markdown-model";
+import { markdownFormatKeymap } from "./markdown-keymap";
+import { modelEdit, modelLinkHref, modelState } from "./markdown-model";
+import {
+  type Act,
+  acceptsOutsideEdit,
+  FUZZ_CORPUS,
+  SHAPE_CORPUS,
+  TOOLBAR_ACTIONS,
+  VisualDocument,
+  codeStates,
+  editedOutside,
+  lineColumn,
+  seeded,
+  shareParsingDocument,
+  touchedRegion,
+  typedLocally,
+  unitsOf,
+} from "./tests/markdown-toolbar-corpus";
 
-const CORPUS: [string, string][] = [
-  ["readme", "# Tool\n\nInstall it with the [installer][inst] and read the [guide][g].\n\n## Use\n\nRun it.\n\n[inst]: https://i.example\n[g]: https://g.example\n"],
-  ["definitions", "[a]: https://first.example\n\nSee [x][a] word.\n\n[^n1]: A note.\n\n[r3]: https://first.example/v\n[r3]: https://ex.com/w\n[r2]: https://ex.com/z\n"],
-  ["centred", "Intro para.\n\n::: {.center}\n## Title here\n:::\n\n::: right\nRight text.\n:::\n\nAfter para.\n"],
-  ["fences", "Text.\n\n```js\nconst a = 1;\n```\n\n~~~\nraw\n~~~\n\n    indented code\n\nEnd.\n"],
-  ["rules", "Intro.\n\n---\n\nBetween rules.\n\n---\n\nTitle\n-----\n\nBody word.\n\n***\n\nLast.\n"],
-  ["lists", "- one\n- two **b**\n  - nested\n\n1. first\n2. second\n\n- [ ] task word\n- [x] done\n\n* star\n* star two\n"],
-  ["quotes", "> quoted line\n> - item in quote\n\n> [!NOTE]\n> callout body\n"],
-  ["table", "| a | b |\n|---|---|\n| c | d^e^ |\n\nAfter.\n"],
-  ["html", "Above.\n\n<!-- a long html comment here -->\n\n<div align=\"center\">\nCentred html\n</div>\n\nBelow <u>u</u> <mark>m</mark> x<sup>2</sup>.\n"],
-  ["math", "Inline $x^2$ and $$y$$ here.\n\n$$\nx + y = z\n$$\n\nAfter math.\n"],
-  ["links", "See [inline](https://a.b/c) and <https://zqz.example> and ![alt](fig/a.png) end.\n\nText.^[An inline note] more.\n"],
-  ["front matter", "---\ntitle: T\nauthor: Me\n---\n\n# Heading\n\nBody word.\n"],
-  ["front matter only", "---\ntitle: T\n---\n\n"],
-  ["mixed", "🎉 Party 中文 é\ttab  \nnext line.\n\nPandoc [u]{.underline} and [m]{.mark} with x^2^ and H~2~O.\n"],
-];
+type Range = readonly [number, number];
 
-const ACTIONS: [string, (target: MarkdownTarget) => void][] = [
-  ["H2", (target) => target.heading(2)],
-  ["Bold", (target) => target.bold()],
-  ["Table", (target) => target.table()],
-];
+interface Depth {
+  reads: "every caret" | "line edges";
+  actionsPerEdge: number;
+  carets: number;
+  ranges: number;
+}
 
-const MORE_ACTIONS: [string, (target: MarkdownTarget) => void][] = [
-  ["Bullet", (target) => target.bullet()],
-  ["Quote", (target) => target.quote()],
-  ["Center", (target) => target.align("center")],
-  ["Link", (target) => target.link("https://c.d")],
-  ["Emoji", (target) => target.emoji("🎉")],
-];
+const DEFAULT_SHAPES: Depth = { reads: "every caret", actionsPerEdge: 6, carets: 2, ranges: 2 };
+const DEFAULT_FUZZ: Depth = { reads: "every caret", actionsPerEdge: 1, carets: 1, ranges: 1 };
+const TREE: Depth = { reads: "line edges", actionsPerEdge: 1, carets: 4, ranges: 2 };
 
-const reported: unknown[] = [];
+const FUZZ: readonly (readonly [string, string])[] = FUZZ_CORPUS.map(([name, source]) => [`fuzz ${name}`, source] as const);
+
+const reported: string[] = [];
+let restoreParsing = () => {};
 
 beforeAll(() => {
-  setEditorErrorReporter((_scope, error) => reported.push(error));
+  setEditorErrorReporter((scope, error) => reported.push(`${scope}: ${String(error)}`));
+  restoreParsing = shareParsingDocument();
 });
 
 afterAll(() => {
-  setEditorErrorReporter((scope, error) => console.error(scope, error));
+  setEditorErrorReporter(null);
+  restoreParsing();
 });
 
-function ownBlock(source: string, at: number): { from: number; to: number } {
-  const { spans } = markdownUnits(source);
-  const own = spans.find((span) => span.from <= at && at <= span.to);
-  if (own) return own;
-  const before = spans.filter((span) => span.to <= at).at(-1);
-  return before ?? spans.find((span) => span.from >= at) ?? { from: 0, to: source.length };
-}
-
-function changed(before: string, after: string): { from: number; to: number } | null {
-  if (before === after) return null;
-  let from = 0;
-  while (from < before.length && before[from] === after[from]) from += 1;
-  let tail = 0;
-  while (tail < before.length - from && before.at(-1 - tail) === after.at(-1 - tail)) tail += 1;
-  return { from, to: before.length - tail };
-}
-
-function failuresAt(source: string, anchor: number, head: number, actions: readonly [string, (target: MarkdownTarget) => void][]): string[] {
-  const failures: string[] = [];
-  const state = EditorState.create({ doc: source, selection: { anchor, head } });
-  const before = reported.length;
-  try {
-    modelState(state);
-    modelLinkHref(state);
-    for (const [name, act] of actions) {
-      const spec = modelEdit(state, act);
-      if (!spec || anchor !== head || name === "Table") continue;
-      const after = state.update(spec).state.doc.toString();
-      const span = changed(source, after);
-      const block = ownBlock(source, anchor);
-      if (span && (span.from < block.from || span.to > block.to + 2)) failures.push(`${name} at ${anchor} edited ${span.from}-${span.to} outside ${block.from}-${block.to}`);
-    }
-  } catch (error) {
-    failures.push(`throw at ${anchor}-${head}: ${String(error)}`);
-  }
-  if (reported.length > before) failures.push(`reported at ${anchor}-${head}: ${String(reported.at(-1))}`);
-  return failures;
-}
-
-function lineRanges(source: string): [number, number][] {
-  const ranges: [number, number][] = [];
-  let at = 0;
-  for (const line of source.split("\n")) {
-    if (line.trim()) ranges.push([at, at + line.length]);
-    at += line.length + 1;
-  }
-  return ranges.concat(ranges.slice(1).map(([, end], index) => [ranges[index][0] + 1, end - 1]));
+function clip(left: string, right: string): [string, string] {
+  let start = 0;
+  while (start < left.length && left[start] === right[start]) start += 1;
+  let end = 0;
+  while (end < left.length - start && end < right.length - start && left.at(-1 - end) === right.at(-1 - end)) end += 1;
+  const show = (text: string) => JSON.stringify(text.slice(Math.max(0, start - 10), Math.min(text.length, text.length - end + 10)));
+  return [show(left), show(right)];
 }
 
 function lineEdges(source: string): number[] {
-  const carets: number[] = [];
+  const carets = new Set<number>();
   let at = 0;
   for (const line of source.split("\n")) {
-    carets.push(at, at + line.length);
+    carets.add(at).add(at + line.length);
     at += line.length + 1;
   }
-  return carets;
+  return [...carets].filter((caret) => caret <= source.length);
 }
 
-const LINE_EDGE_ACTIONS: [string, (target: MarkdownTarget) => void][] = [ACTIONS[0], ACTIONS[1], MORE_ACTIONS[2], ACTIONS[2]];
-
-function sweep(source: string, depth: "state" | "edges" | "full"): string[] {
-  const failures: string[] = [];
-  for (let at = 0; at <= source.length; at += 1) failures.push(...failuresAt(source, at, at, depth === "full" ? [...ACTIONS, ...MORE_ACTIONS] : []));
-  if (depth === "state") return failures;
-  if (depth === "edges") for (const at of lineEdges(source)) failures.push(...failuresAt(source, at, at, LINE_EDGE_ACTIONS));
-  for (const [anchor, head] of lineRanges(source)) failures.push(...failuresAt(source, anchor, head, depth === "full" ? ACTIONS : ACTIONS.slice(1, 2)));
-  return failures;
-}
-
-const CRASHED_BEFORE = new Set(["readme", "definitions", "centred", "front matter only"]);
-
-describe("the Markdown toolbar engine at every caret", () => {
-  it.each(CORPUS)("reads the state at every caret without throwing in %s", (_name, source) => {
-    expect(sweep(source, "state")).toEqual([]);
-  }, 120_000);
-
-  it.each(CORPUS.filter(([name]) => CRASHED_BEFORE.has(name)))("acts at every line start and end, and on every line, without throwing or editing another block, in %s", (_name, source) => {
-    expect(sweep(source, "edges")).toEqual([]);
-  }, 120_000);
-});
-
-// Skipped unless OLEAFLY_MARKDOWN_SWEEP is set: every action at every caret of the whole corpus takes many minutes.
-describe.skipIf(!process.env.OLEAFLY_MARKDOWN_SWEEP)("the Markdown toolbar engine with every action at every caret", () => {
-  it.each(CORPUS)("never throws or edits another block in %s", (_name, source) => {
-    expect(sweep(source, "full")).toEqual([]);
-  }, 3_600_000);
-});
-
-function markdownFiles(folder: string, found: string[] = []): string[] {
-  for (const name of readdirSync(folder)) {
-    if (["node_modules", ".git", "target", "dist", ".claude", "coverage"].includes(name)) continue;
-    const path = join(folder, name);
-    if (statSync(path).isDirectory()) markdownFiles(path, found);
-    else if (/\.(?:md|qmd)$/u.test(name)) found.push(path);
+function lineRanges(source: string): Range[] {
+  const ranges: Range[] = [];
+  let at = 0;
+  for (const line of source.split("\n")) {
+    const end = at + line.length;
+    if (line.trim()) ranges.push([at, end], [end, at]);
+    if (line.trim().length > 2) ranges.push([at + 1, end - 1], [end - 1, at + 1]);
+    at += line.length + 1;
   }
-  return found;
+  return ranges;
 }
 
-// Skipped unless OLEAFLY_MARKDOWN_SWEEP is set: it reads every caret of every Markdown file in the repository, which takes hours.
-describe.skipIf(!process.env.OLEAFLY_MARKDOWN_SWEEP)("the Markdown toolbar engine at every caret of every Markdown file in the repository", () => {
-  const root = join(__dirname, "../../..");
-  it.each(markdownFiles(root).map((path) => [relative(root, path), path]))(
-    "never throws in %s",
-    (_name, path) => {
-      const source = readFileSync(path, "utf8");
-      expect(sweep(source, source.length < 4000 ? "full" : "edges")).toEqual([]);
-    },
-    3_600_000,
-  );
+function crossRanges(source: string): Range[] {
+  const units = unitsOf(source);
+  return units.slice(1).flatMap((unit, index) => {
+    const from = Math.floor((units[index].from + units[index].to) / 2);
+    const to = Math.floor((unit.from + unit.to) / 2);
+    return [[from, to] as const, [to, from] as const];
+  });
+}
+
+function randomFor(seed: string): () => number {
+  let hash = 0x811c9dc5;
+  for (const char of seed) hash = Math.imul(hash ^ char.charCodeAt(0), 0x01000193);
+  return seeded(hash);
+}
+
+function sampled<T>(items: readonly T[], count: number, random: () => number): T[] {
+  const pool = [...items];
+  const picked: T[] = [];
+  while (picked.length < count && pool.length > 0) picked.push(...pool.splice(Math.floor(random() * pool.length), 1));
+  return picked;
+}
+
+class Sweep {
+  private readonly failures: string[] = [];
+  private readonly units: { from: number; to: number }[];
+  private readonly stateAt: (anchor: number, head: number) => EditorState;
+  private visual: VisualDocument | null = null;
+
+  constructor(
+    private readonly name: string,
+    private readonly source: string,
+  ) {
+    this.units = unitsOf(source);
+    this.stateAt = codeStates(source, markdownFormatKeymap);
+  }
+
+  private where(anchor: number, head: number): string {
+    const caret = anchor === head ? `${anchor}` : `${anchor}-${head}`;
+    return `${this.name} caret ${caret} (line ${lineColumn(this.source, anchor)})`;
+  }
+
+  private guarded<T>(where: string, run: () => T): T | null {
+    const before = reported.length;
+    try {
+      return run();
+    } catch (error) {
+      this.failures.push(`${where}: threw ${String(error)}`);
+      return null;
+    } finally {
+      if (reported.length > before) this.failures.push(`${where}: reported ${reported.slice(before).join(" | ")}`);
+    }
+  }
+
+  read(at: number): void {
+    const state = this.stateAt(at, at);
+    this.guarded(`${this.where(at, at)} state`, () => [modelState(state), modelLinkHref(state)]);
+  }
+
+  act([anchor, head]: Range, actions: readonly (readonly [string, Act])[]): void {
+    const state = this.stateAt(anchor, head);
+    const region = touchedRegion(this.units, this.source, Math.min(anchor, head), Math.max(anchor, head));
+    for (const [name, act] of actions) {
+      const where = `${this.where(anchor, head)} ${name}`;
+      const acted = this.guarded(where, () => {
+        const spec = modelEdit(state, act);
+        return spec ? state.update(spec).state : null;
+      });
+      if (!acted) continue;
+      const after = acted.doc.toString();
+      const outside = editedOutside(this.source, after, region);
+      const visual = outside && this.visualOutput(anchor, head, act);
+      if (outside && !acceptsOutsideEdit(this.source, after, visual)) {
+        const [code, other] = visual === null ? [clip(this.source, after)[1], null] : clip(visual.acted, after).reverse();
+        this.failures.push(
+          `${where}: edited ${outside.from}-${outside.to} outside the selection's blocks ${region.from}-${region.to}: Code wrote ${code}${other === null ? " and Visual has no caret here" : ` where Visual wrote ${other}`}`,
+        );
+      }
+      const { from, to } = acted.selection.main;
+      const typed = this.guarded(`${where} then X`, () => acted.update({ changes: { from, to, insert: "X" }, selection: { anchor: from + 1 }, userEvent: "input.type" }).state.doc.toString());
+      if (typed !== null && !typedLocally(after, typed, { from, to }, "X")) this.failures.push(`${where} then X: the key changed text outside the typed span ${from}-${to}: Code wrote ${clip(after, typed)[1]}`);
+    }
+  }
+
+  private visualOutput(anchor: number, head: number, act: Act): { baseline: string; acted: string } | null {
+    this.visual ??= new VisualDocument(this.source);
+    const visualAnchor = this.visual.caretFor(anchor, this.units);
+    const visualHead = anchor === head ? visualAnchor : this.visual.caretFor(head, this.units);
+    if (visualAnchor === null || visualHead === null) return null;
+    return { baseline: this.visual.baseline, acted: this.visual.run(visualAnchor, visualHead, act, null).acted };
+  }
+
+  done(): string[] {
+    this.visual?.destroy();
+    return this.failures.length > 40 ? [...this.failures.slice(0, 40), `and ${this.failures.length - 40} more`] : this.failures;
+  }
+}
+
+function reads(name: string, source: string, depth: Depth): string[] {
+  const run = new Sweep(name, source);
+  const carets = depth.reads === "every caret" ? Array.from({ length: source.length + 1 }, (_, at) => at) : lineEdges(source);
+  for (const at of carets) run.read(at);
+  return run.done();
+}
+
+function acts(name: string, source: string, depth: Depth | "every action everywhere"): string[] {
+  const run = new Sweep(name, source);
+  const carets = Array.from({ length: source.length + 1 }, (_, at): Range => [at, at]);
+  const ranges = [...lineRanges(source), ...crossRanges(source)];
+  if (depth === "every action everywhere") {
+    for (const range of [...carets, ...ranges]) run.act(range, TOOLBAR_ACTIONS);
+    return run.done();
+  }
+  const random = randomFor(name);
+  const offset = Math.floor(random() * TOOLBAR_ACTIONS.length);
+  const rotated = (index: number) =>
+    Array.from({ length: depth.actionsPerEdge }, (_, step) => TOOLBAR_ACTIONS[(offset + index * depth.actionsPerEdge + step) % TOOLBAR_ACTIONS.length]);
+  for (const [index, caret] of lineEdges(source).entries()) run.act([caret, caret], rotated(index));
+  for (const caret of sampled(carets, depth.carets, random)) run.act(caret, TOOLBAR_ACTIONS);
+  for (const range of sampled(ranges, depth.ranges, random)) run.act(range, TOOLBAR_ACTIONS);
+  return run.done();
+}
+
+const SHAPES: readonly [string, RegExp][] = [
+  ["HTML table", /^<table>$/mu],
+  ["list next to a paragraph", /\n\n- \S/u],
+  ["image-only list item", /^- !\[/mu],
+  ["callout", /^> \[!NOTE\]/mu],
+  ["Quarto callout", /^::: \{\.callout-note\}$/mu],
+  ["setext heading", /^\S.*\n(?:=+|-+)$/mu],
+  ["aligned div", /^::: \{\.center\}$/mu],
+  ["nested div", /^::: \{\.right\}\n.*\n\n::: \{\.center\}/mu],
+  ["div in a list", /^- ::: \{\.center\}$/mu],
+  ["footnote definition", /^\[\^\w+\]: /mu],
+  ["inline math", /\$[^$\n]+\$/u],
+  ["display math", /^\$\$$/mu],
+  ["math in a reference label", /\[\$[^$]+\$\]:/u],
+  ["front matter with a body", /^---\n[\s\S]*?\n---\n\n\S/u],
+  ["front matter alone", /^---\ntitle: T\n---\n\n?$/u],
+  ["fence in a list item", /^ {2}```$/mu],
+  ["fence in a quote", /^> ```$/mu],
+];
+
+describe("the Markdown toolbar engine on the closing fence of a centred heading", () => {
+  it("reads the heading's state at each caret of the fence without reporting an error", () => {
+    const stateAt = codeStates("::: {.center}\n## Title here\n:::\n", markdownFormatKeymap);
+    const before = reported.length;
+    const states = [28, 29, 30, 31].map((at) => modelState(stateAt(at, at)));
+    expect(reported.slice(before)).toEqual([]);
+    for (const state of states) expect(state).toMatchObject({ align: "center", heading: 2 });
+  });
+});
+
+describe("the Markdown toolbar engine across the corpus", () => {
+  it.each(SHAPES)("has a %s in the corpus", (_shape, pattern) => {
+    expect(SHAPE_CORPUS.some(([, source]) => pattern.test(source))).toBe(true);
+  });
+
+  it.each(SHAPE_CORPUS)("reads the state and link at every caret of %s without throwing or reporting an error", (name, source) => {
+    expect(reads(name, source, DEFAULT_SHAPES)).toEqual([]);
+  }, 120_000);
+
+  it.each(SHAPE_CORPUS)("acts at every line edge (six actions at each, in turn) and at seeded carets and ranges of %s without throwing, reporting or editing another block", (name, source) => {
+    expect(acts(name, source, DEFAULT_SHAPES)).toEqual([]);
+  }, 120_000);
+
+  it.each(FUZZ)("reads the state at every caret of %s and acts at every line edge and a seeded caret and range without throwing, reporting or editing another block", (name, source) => {
+    expect([...reads(name, source, DEFAULT_FUZZ), ...acts(name, source, DEFAULT_FUZZ)]).toEqual([]);
+  }, 120_000);
+});
+
+// Skipped unless OLEAFLY_MARKDOWN_SWEEP is set: every action at every caret and on every range of the corpus takes hours in jsdom.
+describe.skipIf(!process.env.OLEAFLY_MARKDOWN_SWEEP)("the Markdown toolbar engine with every action at every caret of the corpus", () => {
+  it.each([...SHAPE_CORPUS, ...FUZZ])("never throws, reports or edits another block in %s", (name, source) => {
+    expect([...reads(name, source, { reads: "every caret", actionsPerEdge: 0, carets: 0, ranges: 0 }), ...acts(name, source, "every action everywhere")]).toEqual([]);
+  }, 14_400_000);
+});
+
+const ROOT = join(__dirname, "../../..");
+
+function trackedMarkdown(): string[] {
+  return execFileSync("git", ["ls-files", "-z", "--", "*.md", "*.qmd"], { cwd: ROOT, encoding: "utf8" }).split("\0").filter(Boolean);
+}
+
+// Skipped unless OLEAFLY_MARKDOWN_TREE_SWEEP is set: it reads and acts on all 3.8 MB of tracked Markdown in the repository, which takes an hour or more.
+describe.skipIf(!process.env.OLEAFLY_MARKDOWN_TREE_SWEEP)("the Markdown toolbar engine on every tracked Markdown file", () => {
+  it.each(process.env.OLEAFLY_MARKDOWN_TREE_SWEEP ? trackedMarkdown() : [])("never throws, reports or edits another block in %s", (path) => {
+    const source = readFileSync(join(ROOT, path), "utf8");
+    expect([...reads(path, source, TREE), ...acts(path, source, TREE)]).toEqual([]);
+  }, 14_400_000);
 });

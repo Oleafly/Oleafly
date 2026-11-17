@@ -1,6 +1,8 @@
 mod people;
 
-use loro::{ExportMode, LoroDoc, LoroList, LoroMap};
+use std::collections::HashMap;
+
+use loro::{ExportMode, LoroDoc, LoroList, LoroMap, LoroValue};
 use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose};
 use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
@@ -218,6 +220,110 @@ async fn an_editor_types_and_replies_but_never_removes_or_deletes_someone_elses_
             })
             .await;
         assert!(forbidden(&refused), "{flag}: {refused:?}");
+    }
+}
+
+type Attempt<'a> = (&'static str, Box<dyn Fn(&LoroDoc) + 'a>);
+
+fn plain_message(id: &str, author: &str, body: &str) -> LoroValue {
+    LoroValue::from(HashMap::from([
+        ("id".to_string(), LoroValue::from(id)),
+        ("author".to_string(), LoroValue::from(author)),
+        ("at".to_string(), LoroValue::from(5_i64)),
+        ("body".to_string(), LoroValue::from(body)),
+    ]))
+}
+
+#[tokio::test]
+async fn a_message_that_is_not_a_map_of_its_own_is_refused_for_editors_and_commenters() {
+    let stage = stage().await;
+    for (role, peer) in [(ProjectRole::Editor, 41), (ProjectRole::Commenter, 51)] {
+        let shared = shared_with(&stage, &stage.alice, role).await;
+        let owner_account = account(&stage.bob);
+        let mut owner = Writer::open(&stage, &stage.bob, shared.project, 11, &shared.known).await;
+        let (commented, from_bob) = owner
+            .send(&stage.bob, shared.project, |doc| {
+                let thread = doc
+                    .get_map("comments")
+                    .insert_container("t1", LoroMap::new())
+                    .unwrap();
+                thread.insert("created_by", owner_account.as_str()).unwrap();
+                let messages = thread
+                    .insert_container("messages", LoroList::new())
+                    .unwrap();
+                said_in(&messages, "m1", &owner_account);
+            })
+            .await;
+        assert!(stored(&commented), "{commented:?}");
+        let mut known = shared.known.clone();
+        known.push(from_bob);
+        let me = account(&stage.alice);
+        let attempts: [Attempt; 4] = [
+            (
+                "a plain reply in the thread starter's name",
+                Box::new(|doc| {
+                    messages_of(doc, "t1")
+                        .push(plain_message("m2", &owner_account, "@Bob forged"))
+                        .unwrap();
+                }),
+            ),
+            (
+                "a plain reply in an own name",
+                Box::new(|doc| {
+                    messages_of(doc, "t1")
+                        .push(plain_message("m3", &me, "plain"))
+                        .unwrap();
+                }),
+            ),
+            (
+                "a plain chat message",
+                Box::new(|doc| {
+                    doc.get_list("chat")
+                        .push(plain_message("c1", &me, "plain"))
+                        .unwrap();
+                }),
+            ),
+            (
+                "a thread whose messages are a plain list",
+                Box::new(|doc| {
+                    let thread = doc
+                        .get_map("comments")
+                        .insert_container("t2", LoroMap::new())
+                        .unwrap();
+                    thread.insert("created_by", me.as_str()).unwrap();
+                    thread
+                        .insert(
+                            "messages",
+                            LoroValue::from(vec![plain_message("m4", &me, "plain")]),
+                        )
+                        .unwrap();
+                }),
+            ),
+        ];
+        for (offset, (what, attempt)) in attempts.iter().enumerate() {
+            let mut writer = Writer::open(
+                &stage,
+                &stage.alice,
+                shared.project,
+                peer + offset as u64,
+                &known,
+            )
+            .await;
+            let (refused, _) = writer
+                .send(&stage.alice, shared.project, |doc| attempt(doc))
+                .await;
+            assert!(forbidden(&refused), "{what} as {role:?}: {refused:?}");
+        }
+        let mut writer = Writer::open(&stage, &stage.alice, shared.project, peer + 9, &known).await;
+        let (replied, _) = writer
+            .send(&stage.alice, shared.project, |doc| {
+                said_in(&messages_of(doc, "t1"), "m5", &me);
+            })
+            .await;
+        assert!(
+            stored(&replied),
+            "a reply of its own as {role:?}: {replied:?}"
+        );
     }
 }
 
@@ -658,9 +764,11 @@ async fn a_change_checked_once_is_judged_again_when_its_rule_changes_before_it_i
             rule,
         )
     };
-    assert_eq!(checked(on).await.expect("a check"), RoleVerdict::Allowed);
+    let allowed = checked(on).await.expect("a check");
+    assert_eq!(allowed.verdict, RoleVerdict::Allowed);
+    assert!(allowed.comments);
     assert_eq!(
-        checked(off).await.expect("a check"),
+        checked(off).await.expect("a check").verdict,
         RoleVerdict::ChangesComments
     );
 }

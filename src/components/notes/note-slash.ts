@@ -23,6 +23,7 @@ import {
   SquareFunction,
   Table,
 } from "lucide-react";
+import { quoteCommand } from "@/components/editor/rich-text-controls";
 import { i18n } from "@/i18n";
 import type { BlockGroupId } from "./block-templates";
 import { blockGroups, caretAfterDrawnBlock } from "./block-views";
@@ -167,7 +168,7 @@ function basicItems(): SlashItem[] {
       icon: Quote,
       keywords: ["quote", "blockquote"],
       available: always,
-      run: (editor, range) => chain(editor, range).toggleBlockquote().run(),
+      run: (editor, range) => chain(editor, range).command(quoteCommand).run(),
     },
     {
       id: "callout",
@@ -176,7 +177,7 @@ function basicItems(): SlashItem[] {
       icon: Megaphone,
       keywords: ["callout", "note", "admonition", "tip", "warning"],
       available: always,
-      run: (editor, range) => chain(editor, range).toggleBlockquote().insertContent("[!note] ").run(),
+      run: (editor, range) => chain(editor, range).command(quoteCommand).insertContent("[!note] ").run(),
     },
     {
       id: "table",

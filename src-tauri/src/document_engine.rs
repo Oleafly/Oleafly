@@ -6534,6 +6534,7 @@ mod tests {
                 "--lua-filter=oleafly-markdown-marks.lua",
                 "--lua-filter=oleafly-markdown-bibliography.lua",
                 "--citeproc",
+                "--lua-filter=oleafly-citation-marks.lua",
                 "--lua-filter=oleafly-default-fonts.lua",
                 "--",
                 joined("/project", "chapters/main.md").as_str(),

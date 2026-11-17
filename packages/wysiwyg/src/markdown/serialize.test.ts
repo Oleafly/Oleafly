@@ -2,7 +2,7 @@
 import { Editor } from "@tiptap/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { createWysiwygExtensions } from "../schema";
-import { destroyOpenedEditors, openMarkdown, positionAfter, typeAtEndOf, typeText } from "../test-helpers";
+import { destroyOpenedEditors, mathRanges, openMarkdown, positionAfter, typeAtEndOf, typeText } from "../test-helpers";
 import { parseMarkdownBody } from "./parse";
 import { serializeMarkdownBody } from "./serialize";
 
@@ -165,5 +165,192 @@ describe("thematic breaks", () => {
     typeText(editor, "---");
     expect(editor.state.doc.firstChild?.type.name).toBe(type);
     editor.destroy();
+  });
+});
+
+describe("editing a block keeps the rest of it in place", () => {
+  it.each([
+    ["bold", "**bold**\nnext line", "**bold** next! line"],
+    ["italic", "*em*\nnext line", "*em* next! line"],
+    ["code", "`code`\nnext line", "`code` next! line"],
+    ["a link", "[link](u)\nnext line", "[link](u) next! line"],
+    ["inline HTML", "a <u>und</u>\nnext line", "a <u>und</u> next! line"],
+    ["a list item", "- item **bold**\n  next line", "- item **bold** next! line"],
+    ["a quote", "> quote **bold**\n> next line", "> quote **bold** next! line"],
+    ["an inline note", "a^[n]\nnext line", "a^[n] next! line"],
+  ])("keeps the space of a soft line break after %s", (_name, source, saved) => {
+    const { editor, save } = openMarkdown(source);
+    typeAtEndOf(editor, "next", "!");
+    expect(save()).toBe(saved);
+  });
+
+  it("keeps two bold runs on separate lines apart", () => {
+    const runs = (parseMarkdownBody("end with bold **x**\n**y** starts").doc.content?.[0].content ?? []).map((node) => [
+      node.text,
+      node.marks?.map((mark) => mark.type).join() ?? "",
+    ]);
+    expect(runs).toEqual([["end with bold ", ""], ["x", "bold"], [" ", ""], ["y", "bold"], [" starts", ""]]);
+  });
+
+  it.each([
+    ["an image before text", "![img](a.png) **b** here", "here"],
+    ["an image inside text", "text ![alt](a.png) more", "more"],
+    ["linked images", "[![a](a.svg)](l1) [![b](b.svg)](l2) text", "text"],
+    ["an image in a heading", "# Head ![i](a.png)", "Head"],
+    ["an image in a list item", "- ![alt](fig/a.png)\n- zimb next", "zimb"],
+    ["an image in a table", "| ![i](a.png) | b |\n|---|---|\n| c | word |", "word"],
+    ["an inline note with an escaped pipe in a table", "| a^[x\\|y] | b |\n|---|---|\n| c | word |", "word"],
+    ["a quote that opens a list item", "- > quoted word\n- other item", "other"],
+    ["a heading that opens a list item", "- # Title\n- other item", "other"],
+    ["a code block that opens a list item", "- ```\n  code\n  ```\n- other item", "other"],
+    ["a list that opens a list item", "- - nested\n- other item", "other"],
+    ["a quote that opens a numbered item", "1. > quoted\n2. other item", "other"],
+  ])("keeps %s where it is", (_name, source, needle) => {
+    const { editor, save } = openMarkdown(source);
+    typeAtEndOf(editor, needle, "!");
+    expect(save()).toBe(source.replace(needle, `${needle}!`));
+  });
+
+  it("reads a quote that opens a list item into the item", () => {
+    expect(parseMarkdownBody("- > quoted word").doc.content?.[0]).toMatchObject({
+      type: "bulletList",
+      content: [{ type: "listItem", content: [{ type: "paragraph" }, { type: "blockquote" }] }],
+    });
+  });
+
+  it.each([
+    ["an escaped dollar before math", "\\$5 and $x$ here", "\\$5 and $x$ here!"],
+    ["dollars that cannot close", "costs $5 and $10 here", "costs $5 and $10 here!"],
+    ["a dollar in code, a link or a tag before math", "`$a` [b](u$c) <kbd x=$d>K</kbd> and $x$ here", "`$a` [b](u$c) <kbd x=$d>K</kbd> and $x$ here!"],
+    ["an escaped pair", "Costs \\$5 and 6\\$ here", "Costs \\$5 and 6\\$ here!"],
+    ["an escaped pair around a letter", "Write \\$x\\$ literally here", "Write \\$x\\$ literally here!"],
+    ["an escaped dollar in a table cell", "| \\$5 and $x$ cell | b |\n|---|---|\n| c | here |", "| \\$5 and $x$ cell | b |\n|---|---|\n| c | here! |"],
+  ])("keeps %s from reading back as math", (_name, source, saved) => {
+    const at = source.indexOf("$x$");
+    const { editor, save } = openMarkdown(source, { preservedInlineRanges: at < 0 ? [] : [{ from: at, to: at + 3 }] });
+    typeAtEndOf(editor, "here", "!");
+    expect(save()).toBe(saved);
+  });
+
+  it.each([
+    ["a paragraph", "a\tb and c\td here", "a\tb and c\td **here**"],
+    ["a list item", "- a\tb here\n- next", "- a\tb **here**\n- next"],
+    ["a table cell", "| a\tb | here |\n|---|---|", "| a\tb | **here** |\n|---|---|"],
+  ])("keeps tabs inside the text of %s", (_name, source, saved) => {
+    const { editor, save } = openMarkdown(source);
+    const to = positionAfter(editor, "here");
+    editor.chain().setTextSelection({ from: to - 4, to }).toggleBold().run();
+    expect(save()).toBe(saved);
+  });
+
+  it("keeps a tab that indents code as indentation", () => {
+    const { editor, save } = openMarkdown("Para here\n\n\tcode\tline");
+    expect(editor.getJSON().content?.[1]).toMatchObject({ type: "codeBlock", content: [{ text: "code\tline" }] });
+    typeAtEndOf(editor, "here", "!");
+    expect(save()).toBe("Para here!\n\n\tcode\tline");
+  });
+
+  it.each([
+    "**a.**b and word",
+    "x a**.**b and word",
+    "**a\\_**b and word",
+    "**👍🏽**x and word",
+    "**测试。**中文 and 中文**「引用」**中文 and word",
+    "__foo__bar and foo__bar__ and word",
+  ])("keeps emphasis that Pandoc and Visual read differently exactly as written in %j", (source) => {
+    const { editor, save } = openMarkdown(source);
+    typeAtEndOf(editor, "word", "!");
+    expect(save()).toBe(`${source}!`);
+  });
+
+  it.each([
+    "**bold**. and *it* and __b__ and snake_case and *a **b** c* word",
+    "A **s*trong* word**s end and *em*phasis here.",
+    "Emoji 😀 a*nd 👍🏽 n**ext** t*o end",
+    "**Path C:\\User*s\\me and \\~/home/me* d**iffer.",
+  ])("still models emphasis both readers agree on as marks in %j", (source) => {
+    const nodes = parseMarkdownBody(source).doc.content?.[0].content ?? [];
+    expect(nodes.some((node) => node.type === "rawInline")).toBe(false);
+  });
+
+  it.each([
+    ["- \\[ \\] not a task word\n- [ ] real task", "word", "- \\[ \\] not a task **word**\n- [ ] real task"],
+    ["- [ ] real task\n- \\[x\\] not a task word", "task", "- [ ] real **task**\n- \\[x\\] not a task word"],
+    ["1. \\[ \\] not a task word", "word", "1. \\[ \\] not a task **word**"],
+  ])("keeps escaped task brackets apart from a real task in %j", (source, needle, saved) => {
+    const { editor, save } = openMarkdown(source);
+    const to = positionAfter(editor, needle);
+    editor.chain().setTextSelection({ from: to - needle.length, to }).toggleBold().run();
+    expect(save()).toBe(saved);
+  });
+
+  it("keeps an image inside its aligned div", () => {
+    const { editor, save } = openMarkdown("::: {.center}\n![alt](a.png)\n\nzqe text\n:::");
+    typeAtEndOf(editor, "zqe", "!");
+    expect(save()).toBe("::: {.center}\n![alt](a.png)\n:::\n\n::: {.center}\nzqe! text\n:::");
+  });
+
+  it("escapes a pipe typed into an inline note inside a table, and not one inside its math", () => {
+    const source = "| a^[note] | b |\n|---|---|\n| c | $|x|$^[see $|y|$] |";
+    const { editor, save } = openMarkdown(source, { preservedInlineRanges: mathRanges(source) });
+    let at = -1;
+    editor.state.doc.descendants((node, position) => {
+      if (at < 0 && node.type.name === "footnote") at = position;
+    });
+    editor.view.dispatch(editor.state.tr.setNodeMarkup(at, undefined, { source: "p|q" }));
+    expect(save()).toBe("| a^[p\\|q] | b |\n|---|---|\n| c | $|x|$^[see $|y|$] |");
+  });
+
+  it("keeps an HTML table split by blank lines in its place", () => {
+    const source =
+      "Intro.\n\n<table>\n<tr>\n<th>Identifier</th>\n<th>Description</th>\n</tr>\n\n\n<tr>\n<td>\n\n`code`\n\n</td>\n</tr>\n</table>\n\nAfter.\n";
+    const { editor, save } = openMarkdown(source);
+    expect(editor.getJSON().content?.some((node) => node.type === "table")).toBe(false);
+    typeAtEndOf(editor, "After", "!");
+    expect(save()).toBe(source.replace("After.", "After!."));
+  });
+
+  it("keeps footnote definitions on their own lines when one of them is edited", () => {
+    const source = "Text[^a] and[^b].\n\n[^a]: zber zbes.\n[^b]: zbev zbew\nlazy line.\n";
+    const { editor, save } = openMarkdown(source);
+    expect(editor.state.doc.children.map((node) => node.textBetween(0, node.content.size, undefined, (leaf) => String(leaf.attrs.source ?? "")))).toEqual([
+      "Text[^a] and[^b].",
+      "[^a]: zber zbes.",
+      "[^b]: zbev zbew lazy line.",
+    ]);
+    typeAtEndOf(editor, "zber", "!");
+    expect(save()).toBe("Text[^a] and[^b].\n\n[^a]: zber! zbes.\n\n[^b]: zbev zbew\nlazy line.\n");
+  });
+
+  it("leaves a definition line inside an ordinary paragraph as Pandoc reads it", () => {
+    expect(parseMarkdownBody("Next para\n[^3]: three").doc.content).toHaveLength(1);
+  });
+});
+
+describe("a callout marker in a quote", () => {
+  const SOURCE = "> [!NOTE] zahae callout zahaf\n";
+
+  it.each([
+    ["strike", (editor: Editor) => editor.chain().setTextSelection({ from: 2, to: positionAfter(editor, "zahaf") }).toggleStrike().run(), "> [!NOTE] ~~zahae callout zahaf~~\n"],
+    ["a link", (editor: Editor) => editor.chain().setTextSelection({ from: 2, to: positionAfter(editor, "zahaf") }).setLink({ href: "https://c.d" }).run(), "> [!NOTE] [zahae callout zahaf](https://c.d)\n"],
+    ["a colour", (editor: Editor) => editor.chain().setTextSelection({ from: 2, to: positionAfter(editor, "zahaf") }).setMark("textColor", { color: "teal" }).run(), /^> \[!NOTE\] <span data-text-color="teal"[^>]*>zahae callout zahaf<\/span>\n$/u],
+  ])("keeps the marker first and unformatted when the whole line gets %s", (_name, act, saved) => {
+    const { editor, save } = openMarkdown(SOURCE);
+    act(editor);
+    if (typeof saved === "string") expect(save()).toBe(saved);
+    else expect(save()).toMatch(saved);
+  });
+
+  it("keeps the marker first when a link is put in before it", () => {
+    const { editor, save } = openMarkdown(SOURCE);
+    editor.chain().insertContentAt(2, { type: "text", text: "link text", marks: [{ type: "link", attrs: { href: "https://c.d" } }] }).run();
+    expect(save()).toBe("> [!NOTE] [link text](https://c.d) zahae callout zahaf\n");
+  });
+
+  it("leaves a marker later in the quote as text", () => {
+    expect(openMarkdown("> intro\n> [!NOTE] not a callout\n").save()).toBe("> intro\n> [!NOTE] not a callout\n");
+    const { editor, save } = openMarkdown("> intro\n> [!NOTE] not a callout\n");
+    typeAtEndOf(editor, "intro", "!");
+    expect(save()).toBe("> intro! \\[!NOTE\\] not a callout\n");
   });
 });

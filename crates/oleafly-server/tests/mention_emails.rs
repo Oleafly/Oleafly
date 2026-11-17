@@ -1,6 +1,6 @@
 mod people;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -10,7 +10,7 @@ use loro::{
     VersionVector,
 };
 use oleafly_collab_protocol::envelope::Envelope;
-use oleafly_collab_protocol::frames::ServerFrame;
+use oleafly_collab_protocol::frames::{FrameErrorCode, ServerFrame};
 use oleafly_collab_protocol::ids::{AccountId, SharedProjectId};
 use oleafly_collab_protocol::projects::ProjectRole;
 use oleafly_collab_protocol::roles::ServerRole;
@@ -18,7 +18,7 @@ use oleafly_server::clock::Clock;
 use oleafly_server::members;
 use oleafly_server::mentions;
 use oleafly_server::peers;
-use oleafly_server::snapshots::Keep;
+use oleafly_server::snapshots::{Budget, Current, Keep};
 use oleafly_server::state::AppState;
 use oleafly_server::test_support::{mail_config, test_config, CapturedEmail, MockSmtp, TestServer};
 use people::{
@@ -97,6 +97,7 @@ struct Writer {
     doc: LoroDoc,
     socket: Socket,
     sent: VersionVector,
+    refusing: bool,
 }
 
 impl Writer {
@@ -110,7 +111,12 @@ impl Writer {
             ServerFrame::Subscribed { .. }
         ));
         let sent = doc.oplog_vv();
-        Writer { doc, socket, sent }
+        Writer {
+            doc,
+            socket,
+            sent,
+            refusing: false,
+        }
     }
 
     fn catch_up(&mut self, update: &[u8]) {
@@ -159,7 +165,26 @@ impl Writer {
         edit: impl FnOnce(&LoroDoc),
     ) -> Vec<u8> {
         self.change(edit);
+        if self.refusing {
+            self.refused(person, project).await;
+            return Vec::new();
+        }
         self.flush(person, project).await
+    }
+
+    async fn refused(&mut self, person: &Person, project: SharedProjectId) {
+        let update = self.pending();
+        let reply = self.deliver(&raw_envelope(person, project, &update)).await;
+        assert!(
+            matches!(
+                reply,
+                ServerFrame::Error {
+                    code: FrameErrorCode::Forbidden,
+                    ..
+                }
+            ),
+            "{reply:?}"
+        );
     }
 }
 
@@ -206,9 +231,19 @@ fn start_thread(
     body: &str,
     mentions: &[AccountId],
 ) -> String {
+    thread_at(doc, &format!("{FILE}/{thread}"), author, body, mentions).1
+}
+
+fn thread_at(
+    doc: &LoroDoc,
+    key: &str,
+    author: AccountId,
+    body: &str,
+    mentions: &[AccountId],
+) -> (LoroMap, String) {
     let map = doc
         .get_map("comments")
-        .insert_container(&format!("{FILE}/{thread}"), LoroMap::new())
+        .insert_container(key, LoroMap::new())
         .expect("thread");
     map.insert("quote", "brown fox").expect("quote");
     let text = doc.get_text(format!("text:{FILE}"));
@@ -224,7 +259,7 @@ fn start_thread(
         .expect("messages");
     let message = new_id();
     write_message(&messages, &message, author, body, mentions);
-    message
+    (map, message)
 }
 
 fn messages_of(doc: &LoroDoc, thread: &str) -> LoroList {
@@ -1150,6 +1185,16 @@ enum Step {
     TakeBack(Who),
     Remove(Who),
     Rewrite(Who, Who, &'static str),
+    Plain(Who, Who, &'static str, &'static [Who]),
+    Drop(Who),
+    Creator(Who, Who),
+    Bare(Who),
+    NoTime(Who, &'static str, &'static [Who]),
+    BadId(Who, &'static str, &'static [Who]),
+    BreakTime(Who, Who),
+    BreakAuthor(Who, Who),
+    BreakAnchor(Who),
+    Refused(&'static Step),
 }
 
 impl Step {
@@ -1162,8 +1207,18 @@ impl Step {
             | Step::Delete(who)
             | Step::Flag(who, _)
             | Step::TakeBack(who)
-            | Step::Rewrite(who, ..) => who,
+            | Step::Rewrite(who, ..)
+            | Step::Plain(who, ..)
+            | Step::Drop(who)
+            | Step::Creator(who, _)
+            | Step::Bare(who)
+            | Step::NoTime(who, ..)
+            | Step::BadId(who, ..)
+            | Step::BreakTime(who, _)
+            | Step::BreakAuthor(who, _)
+            | Step::BreakAnchor(who) => who,
             Step::Remove(_) => Who::Bob,
+            Step::Refused(step) => step.by(),
         }
     }
 }
@@ -1256,6 +1311,10 @@ async fn play(case: &Case) -> Emailed {
     let mut updates: Vec<Vec<u8>> = Vec::new();
     let mut written: Vec<(Who, String)> = Vec::new();
     for step in case.steps {
+        let (step, refusing) = match step {
+            Step::Refused(step) => (*step, true),
+            step => (step, false),
+        };
         let who = step.by();
         let index = match actors.iter().position(|actor| actor.who == who) {
             Some(index) => index,
@@ -1270,6 +1329,7 @@ async fn play(case: &Case) -> Emailed {
             }
         };
         let actor = &mut actors[index];
+        actor.writer.refusing = refusing;
         let crossing = matches!(step, Step::Crossing(..));
         if !crossing {
             for update in &updates[actor.heard..] {
@@ -1287,7 +1347,7 @@ async fn play(case: &Case) -> Emailed {
         };
         let id = new_id();
         let update = match *step {
-            Step::Seen(_) => continue,
+            Step::Seen(_) | Step::Refused(_) => continue,
             Step::Start(_, body, mentions) => {
                 let mentions = cast.accounts(mentions);
                 let mut started = String::new();
@@ -1363,7 +1423,129 @@ async fn play(case: &Case) -> Emailed {
                     })
                     .await
             }
+            Step::Plain(_, author, body, mentions) => {
+                let plain = LoroValue::from(HashMap::from([
+                    ("id".to_string(), LoroValue::from(id.as_str())),
+                    (
+                        "author".to_string(),
+                        LoroValue::from(account(cast.person(author)).to_string()),
+                    ),
+                    ("at".to_string(), LoroValue::from(10_i64)),
+                    ("body".to_string(), LoroValue::from(body)),
+                    (
+                        "mentions".to_string(),
+                        mention_list(&cast.accounts(mentions)),
+                    ),
+                ]));
+                actor
+                    .writer
+                    .send(cast.person(who), project, |doc| {
+                        messages_of(doc, &thread).push(plain).unwrap();
+                    })
+                    .await
+            }
+            Step::Drop(_) => {
+                let dropped = latest(who);
+                actor
+                    .writer
+                    .send(cast.person(who), project, |doc| {
+                        let messages = messages_of(doc, &thread);
+                        let index = (0..messages.len())
+                            .find(|index| {
+                                matches!(
+                                    messages.get(*index),
+                                    Some(ValueOrContainer::Container(Container::Map(map)))
+                                        if map.get("id").and_then(|id| id.into_value().ok())
+                                            == Some(LoroValue::from(dropped.as_str()))
+                                )
+                            })
+                            .expect("their message is in the thread");
+                        messages.delete(index, 1).unwrap();
+                    })
+                    .await
+            }
+            Step::Creator(_, creator) => {
+                let creator = account(cast.person(creator)).to_string();
+                actor
+                    .writer
+                    .send(cast.person(who), project, |doc| {
+                        thread_map(doc, &thread)
+                            .insert("created_by", creator)
+                            .unwrap();
+                    })
+                    .await
+            }
+            Step::Bare(_) => {
+                let author = account(cast.person(who)).to_string();
+                actor
+                    .writer
+                    .send(cast.person(who), project, |doc| {
+                        let bare = messages_of(doc, &thread)
+                            .push_container(LoroMap::new())
+                            .unwrap();
+                        bare.insert("id", id.as_str()).unwrap();
+                        bare.insert("author", author).unwrap();
+                        bare.insert("at", 10_i64).unwrap();
+                    })
+                    .await
+            }
+            Step::NoTime(_, body, mentions) | Step::BadId(_, body, mentions) => {
+                let mentions = cast.accounts(mentions);
+                let named = if matches!(step, Step::BadId(..)) {
+                    "not-a-uuid".to_string()
+                } else {
+                    id.clone()
+                };
+                let timed = matches!(step, Step::BadId(..));
+                let author = account(cast.person(who)).to_string();
+                actor
+                    .writer
+                    .send(cast.person(who), project, |doc| {
+                        let odd = messages_of(doc, &thread)
+                            .push_container(LoroMap::new())
+                            .unwrap();
+                        odd.insert("id", named.as_str()).unwrap();
+                        odd.insert("author", author).unwrap();
+                        if timed {
+                            odd.insert("at", 10_i64).unwrap();
+                        }
+                        odd.insert("body", body).unwrap();
+                        odd.insert("mentions", mention_list(&mentions)).unwrap();
+                    })
+                    .await
+            }
+            Step::BreakTime(_, of) | Step::BreakAuthor(_, of) => {
+                let broken = latest(of);
+                let key = if matches!(step, Step::BreakTime(..)) {
+                    "at"
+                } else {
+                    "author"
+                };
+                actor
+                    .writer
+                    .send(cast.person(who), project, |doc| {
+                        message_by(doc, &thread, &broken)
+                            .insert(key, "nobody")
+                            .unwrap();
+                    })
+                    .await
+            }
+            Step::BreakAnchor(_) => {
+                actor
+                    .writer
+                    .send(cast.person(who), project, |doc| {
+                        thread_map(doc, &thread).insert("start", "gone").unwrap();
+                    })
+                    .await
+            }
         };
+        if refusing {
+            actors.remove(index);
+            tokio::time::timeout(WAIT, stage.server.state().mentions.settled())
+                .await
+                .expect("looking for mentions finishes");
+            continue;
+        }
         updates.push(update);
         if !crossing {
             actor.heard = updates.len();
@@ -1441,7 +1623,10 @@ fn shown_by_the_app(cast: &Cast, updates: &[Vec<u8>], thread: &str) -> Emailed {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
 async fn a_mention_emails_exactly_when_the_app_shows_its_thread() {
-    use Step::{Crossing, Delete, Flag, Remove, Reply, Rewrite, Seen, Start, TakeBack};
+    use Step::{
+        BadId, Bare, BreakAnchor, BreakAuthor, BreakTime, Creator, Crossing, Delete, Drop, Flag,
+        NoTime, Plain, Refused, Remove, Reply, Rewrite, Seen, Start, TakeBack,
+    };
     use Who::{Alice, Bob, Carol, Dan, Mallory};
     const CASES: &[Case] = &[
         Case {
@@ -1614,6 +1799,96 @@ async fn a_mention_emails_exactly_when_the_app_shows_its_thread() {
             ],
             emailed: &[(Bob, &["@Bob a1"])],
         },
+        Case {
+            name: "an editor's plain-value reply in someone else's name is refused",
+            steps: &[
+                Start(Alice, "@Bob a1", &[Bob]),
+                Refused(&Plain(Mallory, Alice, "@Dan forged as alice", &[Dan])),
+            ],
+            emailed: &[(Bob, &["@Bob a1"])],
+        },
+        Case {
+            name: "a plain-value reply to a deleted thread is refused and the thread stays hidden",
+            steps: &[
+                Start(Alice, "@Dan a1", &[Dan]),
+                Delete(Alice),
+                Refused(&Plain(Carol, Carol, "c1 plain", &[])),
+            ],
+            emailed: &[],
+        },
+        Case {
+            name: "the writer of a crossing reply cannot take it out of the thread",
+            steps: &[
+                Start(Alice, "@Dan a1", &[Dan]),
+                Seen(Carol),
+                Delete(Alice),
+                Crossing(Carol, "c1", &[]),
+                Refused(&Drop(Carol)),
+            ],
+            emailed: &[(Dan, &["@Dan a1"])],
+        },
+        Case {
+            name: "the owner hands a deleted thread to someone else, so it shows and its mention emails",
+            steps: &[
+                Start(Alice, "@Carol a1", &[Carol]),
+                Delete(Alice),
+                Creator(Bob, Mallory),
+            ],
+            emailed: &[(Carol, &["@Carol a1"])],
+        },
+        Case {
+            name: "an editor can't hand someone else's deleted thread to another person",
+            steps: &[
+                Start(Alice, "@Bob a1", &[Bob]),
+                Delete(Alice),
+                Refused(&Creator(Mallory, Mallory)),
+            ],
+            emailed: &[],
+        },
+        Case {
+            name: "an answer with no text shows a deleted thread again and its mention emails",
+            steps: &[Start(Alice, "@Dan a1", &[Dan]), Delete(Alice), Bare(Carol)],
+            emailed: &[(Dan, &["@Dan a1"])],
+        },
+        Case {
+            name: "a message without a time or with a bad id emails nobody",
+            steps: &[
+                Start(Alice, "@Bob a1", &[Bob]),
+                NoTime(Mallory, "@Bob no time", &[Bob]),
+                BadId(Mallory, "@Dan bad id", &[Dan]),
+            ],
+            emailed: &[(Bob, &["@Bob a1"])],
+        },
+        Case {
+            name: "a reply its writer breaks leaves the thread and its email is withdrawn",
+            steps: &[
+                Start(Alice, "@Bob a1", &[Bob]),
+                Reply(Carol, "@Dan c1", &[Dan]),
+                BreakTime(Carol, Carol),
+            ],
+            emailed: &[(Bob, &["@Bob a1"])],
+        },
+        Case {
+            name: "an editor can't break the time or author of someone else's message",
+            steps: &[
+                Start(Alice, "@Bob a1", &[Bob]),
+                Reply(Carol, "@Dan c1", &[Dan]),
+                Refused(&BreakTime(Mallory, Alice)),
+                Refused(&BreakAuthor(Mallory, Carol)),
+            ],
+            emailed: &[(Bob, &["@Bob a1"]), (Dan, &["@Dan c1"])],
+        },
+        Case {
+            name: "neither an editor nor the creator can move a thread someone answered",
+            steps: &[
+                Start(Carol, "@Bob c1", &[Bob]),
+                Reply(Alice, "@Dan a1", &[Dan]),
+                Refused(&BreakAnchor(Mallory)),
+                Refused(&Creator(Mallory, Mallory)),
+                Refused(&BreakAnchor(Carol)),
+            ],
+            emailed: &[(Bob, &["@Bob c1"]), (Dan, &["@Dan a1"])],
+        },
     ];
     let mut got = Vec::new();
     for cases in CASES.chunks(3) {
@@ -1763,4 +2038,355 @@ async fn turning_email_notifications_off_drops_the_documents_kept_for_scans() {
         .await
         .unwrap();
     assert_eq!(state.snapshots.kept_bytes_for(Keep::MentionScans), 0);
+}
+
+async fn scan_attempts(state: &AppState) -> Vec<i64> {
+    state
+        .db
+        .call(|conn| {
+            Ok(conn
+                .prepare("SELECT attempts FROM mention_scans ORDER BY seq")?
+                .query_map([], |row| row.get(0))?
+                .collect::<Result<Vec<i64>, _>>()?)
+        })
+        .await
+        .expect("the scan queue")
+}
+
+async fn rescanned(state: &AppState, project: SharedProjectId) {
+    state.mentions.wake(state, project);
+    tokio::time::timeout(WAIT, state.mentions.settled())
+        .await
+        .expect("looking for mentions finishes");
+}
+
+fn unreadable() -> Budget {
+    Budget {
+        memory_bytes: 1,
+        ..Budget::default()
+    }
+}
+
+#[tokio::test]
+async fn mention_scans_that_fail_count_one_try_a_minute_and_keep_every_visible_mention() {
+    let smtp = MockSmtp::start().await;
+    let (stage, project) = mail_stage(&smtp).await;
+    let state = stage.server.state();
+    state.snapshots.set_budget(unreadable());
+    let mut alice = Writer::open(&stage, &stage.alice, project, 21).await;
+    let bodies: Vec<String> = (1..=5)
+        .map(|round| format!("@Bob Smith a{round}"))
+        .collect();
+    for body in &bodies {
+        alice
+            .send(&stage.alice, project, |doc| {
+                start_thread(
+                    doc,
+                    &new_id(),
+                    account(&stage.alice),
+                    body,
+                    &[account(&stage.bob)],
+                );
+            })
+            .await;
+        tokio::time::timeout(WAIT, state.mentions.settled())
+            .await
+            .unwrap();
+    }
+    assert_eq!(scan_attempts(state).await, [1, 0, 0, 0, 0]);
+    rescanned(state, project).await;
+    assert_eq!(
+        scan_attempts(state).await,
+        [1, 0, 0, 0, 0],
+        "a try within the minute counts once"
+    );
+    stage.server.clock().advance(60_000);
+    rescanned(state, project).await;
+    assert_eq!(scan_attempts(state).await, [2, 1, 1, 1, 1]);
+    state.snapshots.set_budget(Budget::default());
+    rescanned(state, project).await;
+    assert!(scan_attempts(state).await.is_empty());
+    let sent = mention_emails(&stage.server, &smtp).await;
+    assert_eq!(sent.len(), 1, "{sent:?}");
+    let text = sent[0].text();
+    for body in &bodies {
+        assert!(text.contains(&format!("Comment: {body}")), "{text}");
+    }
+}
+
+#[tokio::test]
+async fn a_server_short_of_memory_for_a_moment_never_ages_a_mention_scan() {
+    let smtp = MockSmtp::start().await;
+    let (stage, project) = mail_stage(&smtp).await;
+    let state = stage.server.state();
+    state.snapshots.set_budget(unreadable());
+    let mut alice = Writer::open(&stage, &stage.alice, project, 21).await;
+    alice
+        .send(&stage.alice, project, |doc| {
+            start_thread(
+                doc,
+                &new_id(),
+                account(&stage.alice),
+                "@Bob Smith while memory is short",
+                &[account(&stage.bob)],
+            );
+        })
+        .await;
+    tokio::time::timeout(WAIT, state.mentions.settled())
+        .await
+        .unwrap();
+    assert_eq!(scan_attempts(state).await, [1]);
+    let needed = match state.snapshots.read_current(&state.db, project).await {
+        Ok(Current::TooLarge { needed, .. }) => needed,
+        _ => panic!("the project does not fit one byte"),
+    };
+    state.snapshots.set_budget(Budget {
+        memory_bytes: needed * 3 / 2,
+        ..Budget::default()
+    });
+    let held = match state.snapshots.read_current(&state.db, project).await {
+        Ok(Current::Read(held, _)) => held,
+        _ => panic!("the project fits the budget once"),
+    };
+    for _ in 0..3 {
+        stage.server.clock().advance(60_000);
+        rescanned(state, project).await;
+        assert_eq!(
+            scan_attempts(state).await,
+            [1],
+            "a read the memory budget is too busy for counts no try"
+        );
+    }
+    drop(held);
+    rescanned(state, project).await;
+    assert!(scan_attempts(state).await.is_empty());
+    let sent = mention_emails(&stage.server, &smtp).await;
+    assert_eq!(sent.len(), 1, "{sent:?}");
+    assert!(sent[0]
+        .text()
+        .contains("Comment: @Bob Smith while memory is short"));
+}
+
+#[tokio::test]
+async fn a_restart_counts_no_mention_scan_try_until_the_minute_after_it() {
+    let smtp = MockSmtp::start().await;
+    let (stage, project) = mail_stage(&smtp).await;
+    let state = stage.server.state();
+    state.snapshots.set_budget(unreadable());
+    let mut alice = Writer::open(&stage, &stage.alice, project, 21).await;
+    alice
+        .send(&stage.alice, project, |doc| {
+            start_thread(
+                doc,
+                &new_id(),
+                account(&stage.alice),
+                "@Bob Smith across restarts",
+                &[account(&stage.bob)],
+            );
+        })
+        .await;
+    tokio::time::timeout(WAIT, state.mentions.settled())
+        .await
+        .unwrap();
+    assert_eq!(scan_attempts(state).await, [1]);
+    let clock: Arc<dyn Clock> = stage.server.clock();
+    let mut restarted = None;
+    for _ in 0..5 {
+        let again = AppState::with_db(
+            (*state.config).clone(),
+            Arc::clone(&clock),
+            state.db.clone(),
+        )
+        .await
+        .expect("the server starts again");
+        again.snapshots.set_budget(unreadable());
+        mentions::resume(&again).await;
+        tokio::time::timeout(WAIT, again.mentions.settled())
+            .await
+            .unwrap();
+        assert_eq!(
+            scan_attempts(&again).await,
+            [1],
+            "a restart counts no try at once"
+        );
+        restarted = Some(again);
+    }
+    let restarted = restarted.expect("the server restarted");
+    stage.server.clock().advance(60_000);
+    rescanned(&restarted, project).await;
+    assert_eq!(
+        scan_attempts(&restarted).await,
+        [2],
+        "the minute after a restart counts"
+    );
+}
+
+#[tokio::test]
+async fn a_thread_the_app_never_lists_emails_nobody() {
+    let smtp = MockSmtp::start().await;
+    let (stage, project) = mail_stage(&smtp).await;
+    let mallory = joined(&stage, project, "Mallory", ProjectRole::Editor).await;
+    let carol = joined(&stage, project, "Carol", ProjectRole::Commenter).await;
+    let (bob, alice) = (account(&stage.bob), account(&stage.alice));
+    let mut editor = Writer::open(&stage, &mallory, project, 31).await;
+    let by = account(&mallory);
+    editor
+        .send(&mallory, project, |doc| {
+            thread_at(
+                doc,
+                &format!("{FILE}/not-a-uuid"),
+                by,
+                "@Bob bad key",
+                &[bob],
+            );
+            thread_at(
+                doc,
+                &format!("{}/{}", new_id(), new_id()),
+                by,
+                "@Bob no such file",
+                &[bob],
+            );
+            let (nobody, _) = thread_at(
+                doc,
+                &format!("{FILE}/{}", new_id()),
+                by,
+                "@Bob nobody started it",
+                &[bob],
+            );
+            nobody.insert("created_by", "nobody").unwrap();
+            let (adrift, _) = thread_at(
+                doc,
+                &format!("{FILE}/{}", new_id()),
+                by,
+                "@Bob no anchor",
+                &[bob],
+            );
+            adrift.insert("start", "gone").unwrap();
+        })
+        .await;
+    let mut commenter = Writer::open(&stage, &carol, project, 41).await;
+    let by = account(&carol);
+    commenter
+        .send(&carol, project, |doc| {
+            thread_at(
+                doc,
+                &format!("{FILE}/zz-commenter"),
+                by,
+                "@Alice from a commenter",
+                &[alice],
+            );
+        })
+        .await;
+    let sent = mention_emails(&stage.server, &smtp).await;
+    assert!(
+        sent.is_empty(),
+        "{:?}",
+        sent.iter().map(|email| email.text()).collect::<Vec<_>>()
+    );
+}
+
+async fn mentions_on(stage: &Stage, person: &Person, on: bool) -> StatusCode {
+    call(
+        &stage.server,
+        Method::PATCH,
+        "/api/v1/me/email-preferences",
+        person.token(),
+        Some(json!({ "mentions": on })),
+    )
+    .await
+    .status()
+}
+
+#[tokio::test]
+async fn a_mention_muted_when_it_was_written_is_not_emailed_when_the_thread_is_read_again() {
+    let smtp = MockSmtp::start().await;
+    let (stage, project) = mail_stage(&smtp).await;
+    let carol = joined(&stage, project, "Carol", ProjectRole::Editor).await;
+    let mallory = joined(&stage, project, "Mallory", ProjectRole::Editor).await;
+    let dan = joined(&stage, project, "Dan", ProjectRole::Commenter).await;
+    assert_eq!(mentions_on(&stage, &carol, false).await, StatusCode::OK);
+    let thread = new_id();
+    let (_, started) =
+        alice_starts(&stage, project, &thread, "@Carol a1", &[account(&carol)]).await;
+    let mut flagger = Writer::open(&stage, &mallory, project, 31).await;
+    flagger.catch_up(&started);
+    let flagged = flagger
+        .send(&mallory, project, |doc| {
+            thread_map(doc, &thread).insert("deleted", true).unwrap();
+        })
+        .await;
+    tokio::time::timeout(WAIT, stage.server.state().mentions.settled())
+        .await
+        .unwrap();
+    assert_eq!(mentions_on(&stage, &carol, true).await, StatusCode::OK);
+    let mut resolver = Writer::open(&stage, &dan, project, 51).await;
+    resolver.catch_up(&started);
+    resolver.catch_up(&flagged);
+    let dan_id = account(&dan).to_string();
+    resolver
+        .send(&dan, project, |doc| {
+            thread_map(doc, &thread)
+                .insert(
+                    "resolved",
+                    LoroValue::from(HashMap::from([
+                        ("by".to_string(), LoroValue::from(dan_id)),
+                        ("at".to_string(), LoroValue::from(20_i64)),
+                    ])),
+                )
+                .unwrap();
+        })
+        .await;
+    let sent = mention_emails(&stage.server, &smtp).await;
+    assert!(
+        sent.is_empty(),
+        "{:?}",
+        sent.iter().map(|email| email.text()).collect::<Vec<_>>()
+    );
+}
+
+#[tokio::test]
+async fn a_change_stored_before_it_could_be_checked_is_checked_for_mentions_once_it_can_be() {
+    let smtp = MockSmtp::start().await;
+    let (stage, project) = mail_stage(&smtp).await;
+    let carol = joined(&stage, project, "Carol", ProjectRole::Editor).await;
+    let dan = joined(&stage, project, "Dan", ProjectRole::Editor).await;
+    let state = stage.server.state();
+    let thread = new_id();
+    let (mut alice, started) =
+        alice_starts(&stage, project, &thread, "@Dan a1", &[account(&dan)]).await;
+    let mut crossing = Writer::open(&stage, &carol, project, 41).await;
+    crossing.catch_up(&started);
+    alice
+        .send(&stage.alice, project, |doc| delete_thread(doc, &thread))
+        .await;
+    let reply = new_id();
+    let by = account(&carol);
+    crossing
+        .send(&carol, project, |doc| {
+            write_message(&messages_of(doc, &thread), &reply, by, "c1", &[]);
+        })
+        .await;
+    tokio::time::timeout(WAIT, state.mentions.settled())
+        .await
+        .unwrap();
+    state.snapshots.set_budget(unreadable());
+    crossing
+        .send(&carol, project, |doc| {
+            let messages = messages_of(doc, &thread);
+            messages.delete(messages.len() - 1, 1).unwrap();
+        })
+        .await;
+    state.comment_guard.rechecks_settled().await;
+    tokio::time::timeout(WAIT, state.mentions.settled())
+        .await
+        .unwrap();
+    state.snapshots.set_budget(Budget::default());
+    state.comment_guard.recheck(state, project);
+    state.comment_guard.rechecks_settled().await;
+    let sent = mention_emails(&stage.server, &smtp).await;
+    assert!(
+        sent.is_empty(),
+        "{:?}",
+        sent.iter().map(|email| email.text()).collect::<Vec<_>>()
+    );
 }

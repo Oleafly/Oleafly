@@ -138,6 +138,14 @@ export function IconBtn({
 
 export type EditorMode = "code" | "visual" | "both";
 
+function modeSegment(selected: boolean, className?: string): string {
+  return cn(
+    "rounded-full px-2.5 py-1 transition-colors",
+    selected ? "bg-primary text-primary-foreground focus-visible:bg-primary/85" : "text-muted-foreground hover:text-foreground",
+    className,
+  );
+}
+
 export function WysiwygModeSwitch({
   wysiwyg,
   onToggle,
@@ -171,10 +179,7 @@ export function WysiwygModeSwitch({
         onClick={() => selectMode("code")}
         aria-label={t(($) => $.editor.toolbar.switchToSource)}
         aria-pressed={mode === "code"}
-        className={cn(
-          "rounded-full px-2.5 py-1 transition-colors",
-          mode === "code" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-        )}
+        className={modeSegment(mode === "code")}
       >
         {t(($) => $.editor.toolbar.code)}
       </button>
@@ -183,10 +188,7 @@ export function WysiwygModeSwitch({
         onClick={() => selectMode("visual")}
         aria-label={t(($) => $.editor.toolbar.switchToVisual)}
         aria-pressed={mode === "visual"}
-        className={cn(
-          "rounded-full px-2.5 py-1 transition-colors",
-          mode === "visual" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-        )}
+        className={modeSegment(mode === "visual")}
       >
         {secondLabel ?? t(($) => $.editor.toolbar.visual)}
       </button>
@@ -195,8 +197,7 @@ export function WysiwygModeSwitch({
           <button
             type="button"
             aria-pressed={mode === "both"}
-            className={cn("flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors",
-              mode === "both" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+            className={modeSegment(mode === "both", "flex items-center gap-1")}
           >
             {t(($) => $.editor.toolbar.both)}
             <ChevronDown aria-hidden className="size-3" />
@@ -276,10 +277,12 @@ export function groupControl(id: string, controls: readonly ToolbarControl[], di
 export function headingItems<L extends { hLabel: string; className: string; label: () => string }>(
   levels: readonly L[],
   insert: (level: L) => void,
+  checked?: (level: L) => boolean,
 ): ToolbarDropdownItem[] {
   return levels.map((level) => ({
     key: level.hLabel,
     onSelect: () => insert(level),
+    checked: checked?.(level),
     content: (
       <>
         <span className="w-6 shrink-0 text-[0.625rem] font-medium text-muted-foreground">{level.hLabel}</span>
@@ -293,19 +296,19 @@ export function HeadingDropdown<L extends { hLabel: string; className: string; l
   variant,
   levels,
   insert,
-  active,
-}: Readonly<{ variant: "bar" | "menu"; levels: readonly L[]; insert: (level: L) => void; active?: boolean }>) {
+  checked,
+}: Readonly<{ variant: "bar" | "menu"; levels: readonly L[]; insert: (level: L) => void; checked?: (level: L) => boolean }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
     <ToolbarDropdown
       variant={variant}
-      active={active}
+      active={checked !== undefined && levels.some(checked)}
       icon={Type}
       label={t(($) => $.editor.toolbar.heading)}
       ariaLabel={t(($) => $.editor.toolbar.headingLevel)}
       heading={t(($) => $.editor.toolbar.heading)}
       className="w-fit min-w-0 max-w-56"
-      items={headingItems(levels, insert)}
+      items={headingItems(levels, insert, checked)}
     />
   );
 }

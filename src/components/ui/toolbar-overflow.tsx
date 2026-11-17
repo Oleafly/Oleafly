@@ -10,6 +10,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { flushSync } from "react-dom";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -97,7 +98,12 @@ export function fitTools(items: readonly ToolbarFitItem[], step: ToolbarFit): nu
   return tools;
 }
 
-export function fitSteps(items: readonly ToolbarFitItem[]): ToolbarFit[] {
+function keepsShown(items: readonly ToolbarFitItem[], wide: ToolbarFit, narrow: ToolbarFit): boolean {
+  if (wide.visible < narrow.visible) return false;
+  return !wide.collapsed || narrow.collapsed || !items.slice(0, narrow.visible).some((item) => item.collapsed);
+}
+
+function fitSteps(items: readonly ToolbarFitItem[]): ToolbarFit[] {
   const steps: ToolbarFit[] = [];
   let folds = false;
   for (let visible = 0; visible <= items.length; visible++) {
@@ -105,10 +111,18 @@ export function fitSteps(items: readonly ToolbarFitItem[]): ToolbarFit[] {
     steps.push({ visible, collapsed: false });
     if (folds) steps.push({ visible, collapsed: true });
   }
-  return steps.sort(
+  steps.sort(
     (left, right) =>
       fitTools(items, right) - fitTools(items, left) || Number(left.collapsed) - Number(right.collapsed) || right.visible - left.visible,
   );
+  const widths = steps.map((step) => fitWidth(items, step));
+  const nested = steps.filter((step) => step.visible === 0);
+  for (const width of [...widths].sort((left, right) => left - right)) {
+    const best = steps[widths.findIndex((used) => used <= width)];
+    const held = nested[nested.length - 1];
+    if (best !== held && keepsShown(items, best, held)) nested.push(best);
+  }
+  return nested.reverse();
 }
 
 export function fitWidth(items: readonly ToolbarFitItem[], step: ToolbarFit): number {
@@ -166,7 +180,7 @@ export function useFittedCount(controls: readonly ToolbarControl[]) {
     };
     recompute();
     if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(recompute);
+    const observer = new ResizeObserver(() => flushSync(recompute));
     observer.observe(element);
     observerRef.current = observer;
   }, []);
@@ -227,22 +241,37 @@ export function ToolbarMenuButton({
   children: ReactNode;
 }>) {
   const [ownOpen, setOwnOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const dismissed = useRef(false);
   const shown = open ?? ownOpen;
   const change = (next: boolean) => {
+    if (next) dismissed.current = false;
     if (open === undefined) setOwnOpen(next);
     onOpenChange?.(next);
+  };
+  const dismiss = () => {
+    dismissed.current = true;
+  };
+  const closeFocus = (event: Event) => {
+    onCloseAutoFocus?.(event);
+    if (event.defaultPrevented || dismissed.current) return;
+    event.preventDefault();
+    requestAnimationFrame(() => {
+      if (!document.activeElement || document.activeElement === document.body) trigger.current?.focus();
+    });
   };
   return (
     <DropdownMenu open={shown} onOpenChange={change} modal={false}>
       <Tooltip label={label} side="bottom" className={cn("shrink-0", className)}>
         <DropdownMenuTrigger asChild>
           <button
+            ref={trigger}
             type="button"
             aria-label={label}
             onClick={(event) => {
               if (event.detail === 0) change(!shown);
             }}
-            className={cn(TOOLBAR_TRIGGER_CLASS, !chevron && "w-7 px-0", active && "bg-primary/10 text-foreground")}
+            className={cn(TOOLBAR_TRIGGER_CLASS, !chevron && "w-7 px-0", active && MENU_ACTIVE)}
           >
             {icon}
             {chevron && <ChevronDown aria-hidden className="size-3" />}
@@ -251,7 +280,9 @@ export function ToolbarMenuButton({
       </Tooltip>
       <DropdownMenuContent
         align={align}
-        onCloseAutoFocus={onCloseAutoFocus}
+        onCloseAutoFocus={closeFocus}
+        onEscapeKeyDown={dismiss}
+        onInteractOutside={dismiss}
         onFocus={entryFocus(onContentFocus)}
         className={cn(MENU_SCROLL, contentClassName)}
       >
@@ -277,16 +308,30 @@ export function ToolbarMenuItem({
       {keys && <ToolbarMenuKeys keys={keys} />}
     </>
   );
+  return (
+    <ToolbarMenuRow checked={checked} inset={inset} disabled={disabled} onSelect={onSelect}>
+      {body}
+    </ToolbarMenuRow>
+  );
+}
+
+function ToolbarMenuRow({
+  checked,
+  inset,
+  disabled,
+  onSelect,
+  children,
+}: Readonly<{ checked?: boolean; inset?: boolean; disabled?: boolean; onSelect: () => void; children: ReactNode }>) {
   if (checked !== undefined) {
     return (
       <DropdownMenuCheckboxItem checked={checked} disabled={disabled} onSelect={onSelect} className={cn("gap-2", checked && MENU_ACTIVE)}>
-        {body}
+        {children}
       </DropdownMenuCheckboxItem>
     );
   }
   return (
     <DropdownMenuItem inset={inset} disabled={disabled} onSelect={onSelect}>
-      {body}
+      {children}
     </DropdownMenuItem>
   );
 }
@@ -350,7 +395,10 @@ export interface ToolbarDropdownItem {
   key: string;
   content: ReactNode;
   onSelect: () => void;
+  checked?: boolean;
 }
+
+const DROPDOWN_HEADING = "px-2 py-1 text-[0.625rem] uppercase tracking-wide text-muted-foreground";
 
 export function ToolbarDropdown({
   variant,
@@ -373,22 +421,32 @@ export function ToolbarDropdown({
   items: readonly ToolbarDropdownItem[];
   active?: boolean;
 }>) {
+  const rows = () =>
+    items.map((item) => (
+      <ToolbarMenuRow key={item.key} checked={item.checked} onSelect={item.onSelect}>
+        {item.content}
+      </ToolbarMenuRow>
+    ));
   if (variant === "menu") {
     return (
       <ToolbarSubMenu icon={Icon} label={label} ariaLabel={ariaLabel} active={active}>
-        {items.map((item) => (
-          <DropdownMenuItem key={item.key} onSelect={item.onSelect}>
-            {item.content}
-          </DropdownMenuItem>
-        ))}
+        {rows()}
       </ToolbarSubMenu>
+    );
+  }
+  if (items.some((item) => item.checked !== undefined)) {
+    return (
+      <ToolbarMenuButton label={ariaLabel} icon={<Icon aria-hidden className="size-4" />} chevron={chevron} active={active} contentClassName={className}>
+        {heading && <div className={DROPDOWN_HEADING}>{heading}</div>}
+        {rows()}
+      </ToolbarMenuButton>
     );
   }
   return (
     <Popover
       ariaLabel={ariaLabel}
       className={className}
-      triggerClassName={cn(TOOLBAR_TRIGGER_CLASS, chevron ? "[&>svg+svg]:size-3" : "w-7 px-0", active && "bg-primary/10 text-foreground")}
+      triggerClassName={cn(TOOLBAR_TRIGGER_CLASS, chevron ? "[&>svg+svg]:size-3" : "w-7 px-0", active && MENU_ACTIVE)}
       trigger={
         <>
           <Icon className="size-4" />
@@ -396,7 +454,7 @@ export function ToolbarDropdown({
         </>
       }
     >
-      {heading && <div className="px-2 py-1 text-[0.625rem] uppercase tracking-wide text-muted-foreground">{heading}</div>}
+      {heading && <div className={DROPDOWN_HEADING}>{heading}</div>}
       {items.map((item) => (
         <PopoverItem key={item.key} onClick={item.onSelect}>
           {item.content}

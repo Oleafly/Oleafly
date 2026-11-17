@@ -158,12 +158,14 @@ describe("MarkdownToolbar", () => {
     }
   });
 
-  it.each([
+  const SETUPS = [
     ["a plain file", { showProjectInfo: true, project: false, lastOneRow: 552 }],
     ["a file without Project info", { showProjectInfo: false, project: false, lastOneRow: 520 }],
     ["a Markdown project", { showProjectInfo: true, project: true, lastOneRow: 552 }],
     ["a Markdown project without Project info", { showProjectInfo: false, project: true, lastOneRow: 520 }],
-  ])("keeps the formatting beside the mode switch down to where it wrapped before, for %s", async (_, setup) => {
+  ] as const;
+
+  function paneModel(setup: (typeof SETUPS)[number][1]) {
     const BASIS: Record<string, number> = { "basis-90": 360, "basis-82": 328, "basis-0": 0 };
     const prototype = HTMLElement.prototype;
     const saved = {
@@ -179,18 +181,18 @@ describe("MarkdownToolbar", () => {
       },
     });
     const files = useFilesStore.getState();
-    let pane = 0;
+    const model = { pane: 0 };
     const group = () => (document.querySelector("[data-markdown-toolbar]") as HTMLElement).children[1] as HTMLElement;
     const ownRow = () => {
-      const basis = [...group().classList].map((name) => BASIS[name]).find((width) => width !== undefined) ?? pane;
-      return 8 + 172 + 2 + basis + 8 > pane;
+      const basis = [...group().classList].map((name) => BASIS[name]).find((width) => width !== undefined) ?? model.pane;
+      return 8 + 172 + 2 + basis + 8 > model.pane;
     };
     const cluster = (setup.project ? 60 : 0) + (setup.showProjectInfo ? 0 : -30);
     Object.defineProperty(prototype, "clientWidth", {
       configurable: true,
       get(this: HTMLElement) {
         if (!this.matches("[data-markdown-toolbar] fieldset > div")) return 0;
-        return Math.max(0, ownRow() ? pane - 117 - cluster : pane - 302 - cluster);
+        return Math.max(0, ownRow() ? model.pane - 117 - cluster : model.pane - 302 - cluster);
       },
     });
     Object.defineProperty(prototype, "offsetTop", {
@@ -214,16 +216,47 @@ describe("MarkdownToolbar", () => {
     );
     const markdown = { ...LATEX_ENGINE, id: "markdown", source_format: "markdown" } as unknown as DocumentEngineDescriptor;
     if (setup.project) useFilesStore.setState({ engineLoaded: true, engine: markdown });
+    return {
+      model,
+      ownRow,
+      leadsWithDivider: () => group().firstElementChild?.classList.contains("w-px") ?? false,
+      notify: () => {
+        for (const callback of [...observers]) callback([], {} as ResizeObserver);
+      },
+      settle: async () => {
+        for (let round = 0; round < 4; round++) {
+          await act(async () => {
+            for (const callback of [...observers]) callback([], {} as ResizeObserver);
+          });
+        }
+      },
+      restore: () => {
+        for (const [name, descriptor] of [["clientWidth", saved.clientWidth], ["offsetTop", saved.offsetTop]] as const) {
+          if (descriptor) Object.defineProperty(prototype, name, descriptor);
+        }
+        if (saved.rect) Object.defineProperty(Element.prototype, "getBoundingClientRect", saved.rect);
+        useFilesStore.setState({ engineLoaded: files.engineLoaded, engine: files.engine });
+        vi.unstubAllGlobals();
+      },
+    };
+  }
+
+  function shownTools(): string[] {
+    const folded = MARKDOWN_HEADING_LEVELS[0].label();
+    return [...document.querySelectorAll("[data-markdown-toolbar] fieldset button")]
+      .map((button) => button.getAttribute("aria-label") ?? "")
+      .filter((label) => label !== toolbar.moreOptions)
+      .map((label) => (label === toolbar.headingLevel ? folded : label));
+  }
+
+  it.each(SETUPS)("keeps the formatting beside the mode switch down to where it wrapped before, for %s", async (_, setup) => {
+    const pane = paneModel(setup);
     const rowsAt = async (width: number) => {
-      pane = width;
+      pane.model.pane = width;
       const { unmount } = await renderBar({ wysiwyg: false, onToggleWysiwyg: vi.fn(), showProjectInfo: setup.showProjectInfo });
-      for (let round = 0; round < 4; round++) {
-        await act(async () => {
-          for (const callback of [...observers]) callback([], {} as ResizeObserver);
-        });
-      }
-      const leadsWithDivider = group().firstElementChild?.classList.contains("w-px") ?? false;
-      const rows = ownRow() ? 2 : 1;
+      await pane.settle();
+      const leadsWithDivider = pane.leadsWithDivider();
+      const rows = pane.ownRow() ? 2 : 1;
       unmount();
       expect(leadsWithDivider).toBe(rows === 1);
       return rows;
@@ -232,12 +265,67 @@ describe("MarkdownToolbar", () => {
       for (const width of [1400, 1000, 760, 640, setup.lastOneRow]) expect(await rowsAt(width)).toBe(1);
       for (const width of [setup.lastOneRow - 4, 420, 300]) expect(await rowsAt(width)).toBe(2);
     } finally {
-      for (const [name, descriptor] of [["clientWidth", saved.clientWidth], ["offsetTop", saved.offsetTop]] as const) {
-        if (descriptor) Object.defineProperty(prototype, name, descriptor);
+      pane.restore();
+    }
+  });
+
+  it.each(SETUPS)("shows at every wider one-row width each tool a narrower one shows, for %s", async (_, setup) => {
+    const pane = paneModel(setup);
+    try {
+      pane.model.pane = setup.lastOneRow;
+      const { unmount } = await renderBar({ wysiwyg: false, onToggleWysiwyg: vi.fn(), showProjectInfo: setup.showProjectInfo });
+      const bands: { from: number; tools: string[] }[] = [];
+      for (let width = setup.lastOneRow; width <= 1400; width += 2) {
+        pane.model.pane = width;
+        act(() => pane.notify());
+        expect(pane.ownRow()).toBe(false);
+        const tools = shownTools();
+        if (bands.at(-1)?.tools.join(" ") !== tools.join(" ")) bands.push({ from: width, tools });
       }
-      if (saved.rect) Object.defineProperty(Element.prototype, "getBoundingClientRect", saved.rect);
-      useFilesStore.setState({ engineLoaded: files.engineLoaded, engine: files.engine });
-      vi.unstubAllGlobals();
+      unmount();
+      const lost: string[] = [];
+      for (let narrow = 0; narrow < bands.length; narrow++) {
+        for (const wide of bands.slice(narrow + 1)) {
+          const gone = bands[narrow].tools.filter((tool) => !wide.tools.includes(tool));
+          if (gone.length > 0) lost.push(`${bands[narrow].from} -> ${wide.from} px: ${gone.join(", ")}`);
+        }
+      }
+      expect(lost).toEqual([]);
+      expect(bands.at(-1)?.tools).toHaveLength(29);
+    } finally {
+      pane.restore();
+    }
+  }, 60_000);
+
+  it.each([
+    [560, 545],
+    [553, 549],
+    [550, 549],
+    [545, 560],
+    [549, 553],
+    [549, 550],
+  ])("draws the settled bar in the same frame as the resize from %i to %i px, across the switch", async (from, to) => {
+    const pane = paneModel(SETUPS[0][1]);
+    try {
+      pane.model.pane = from;
+      const { unmount } = await renderBar({ wysiwyg: false, onToggleWysiwyg: vi.fn() });
+      await pane.settle();
+      let frame = { leadsWithDivider: false, tools: [] as string[] };
+      await act(async () => {
+        pane.model.pane = to;
+        pane.notify();
+        pane.notify();
+        frame = { leadsWithDivider: pane.leadsWithDivider(), tools: shownTools() };
+      });
+      await pane.settle();
+      const settled = { leadsWithDivider: pane.leadsWithDivider(), tools: shownTools() };
+      const rows = pane.ownRow() ? 2 : 1;
+      unmount();
+      expect(rows).toBe(to < from ? 2 : 1);
+      expect(settled.leadsWithDivider).toBe(rows === 1);
+      expect(frame).toEqual(settled);
+    } finally {
+      pane.restore();
     }
   });
 

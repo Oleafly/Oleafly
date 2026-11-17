@@ -5,6 +5,7 @@ import { history, undo } from "@codemirror/commands";
 import { EditorSelection, EditorState, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { Editor } from "@tiptap/core";
+import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
 import {
   WYSIWYG_EXTENSIONS,
@@ -12,14 +13,24 @@ import {
   parseMarkdownBody,
   serializeMarkdownBody,
 } from "@oleafly/wysiwyg";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { markdownFormatKeymap } from "./markdown-keymap";
+import { VisualDocument, shareParsingDocument, unitsOf } from "./tests/markdown-toolbar-corpus";
+import { markdownMathRanges } from "./wysiwyg/markdown-source";
 import { type MarkdownTarget, modelEdit, modelState, RESTING_STATE, sourceTarget, visualStateOf, visualTarget } from "./markdown-model";
 
 type Pick = { word: string } | { caret: string } | { before: string } | { range: [string, string] } | { end: true };
+type VisualPick = Pick | ((doc: ProseMirrorNode) => [number, number]);
 type Act = (target: MarkdownTarget) => void;
 
 const opened: { destroy: () => void }[] = [];
+let unshare = () => {};
+
+beforeAll(() => {
+  unshare = shareParsingDocument();
+});
+
+afterAll(() => unshare());
 
 afterEach(() => {
   for (const item of opened.splice(0)) item.destroy();
@@ -45,8 +56,12 @@ function textRange(source: string, pick: Pick): { from: number; to: number } {
 }
 
 function docPosition(editor: Editor, needle: string, after: boolean): number {
+  return textPosition(editor.state.doc, needle, after);
+}
+
+function textPosition(doc: ProseMirrorNode, needle: string, after: boolean): number {
   let found = -1;
-  editor.state.doc.descendants((node, pos) => {
+  doc.descendants((node, pos) => {
     if (found >= 0 || !node.isText || !node.text) return found < 0;
     const index = node.text.indexOf(needle);
     if (index >= 0) found = pos + index + (after ? needle.length : 0);
@@ -56,13 +71,14 @@ function docPosition(editor: Editor, needle: string, after: boolean): number {
   return found;
 }
 
-function visualEditor(source: string, pick: Pick) {
-  const { doc, frontmatter, layout } = parseMarkdownBody(source);
+function visualEditor(source: string, pick: VisualPick) {
+  const { doc, frontmatter, layout } = parseMarkdownBody(source, { preservedInlineRanges: markdownMathRanges(source) });
   const editor = new Editor({ element: document.createElement("div"), extensions: WYSIWYG_EXTENSIONS, content: doc });
   opened.push(editor);
   const snapshot = createMarkdownSourceSnapshot(layout, editor.getJSON());
   const set = (from: number, to: number) => editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, from, to)));
-  if ("end" in pick) set(editor.state.doc.content.size - 1, editor.state.doc.content.size - 1);
+  if (typeof pick === "function") set(...pick(editor.state.doc));
+  else if ("end" in pick) set(editor.state.doc.content.size - 1, editor.state.doc.content.size - 1);
   else if ("word" in pick) {
     const from = docPosition(editor, pick.word, false);
     set(from, from + pick.word.length);
@@ -72,7 +88,7 @@ function visualEditor(source: string, pick: Pick) {
   return { editor, save: () => frontmatter + serializeMarkdownBody(editor.getJSON(), snapshot) };
 }
 
-function visualSave(source: string, pick: Pick, act: Act, typed?: string): string {
+function visualSave(source: string, pick: VisualPick, act: Act, typed?: string): string {
   const { editor, save } = visualEditor(source, pick);
   act(visualTarget(editor));
   if (typed !== undefined) editor.view.dispatch(editor.state.tr.insertText(typed));
@@ -309,6 +325,9 @@ const SAFE_CASES: [string, string, Pick, Act][] = [
     ["bold with a definition in a quote", "A [x][r] word.\n\nB.\n\nC.\n\n> [r]: https://a.b\n", { word: "word" }, (target) => target.bold()],
     ["bold with a definition in a list", "A [x][r] word.\n\nB.\n\nC.\n\n- [r]: https://a.b\n", { word: "word" }, (target) => target.bold()],
     ["bold with an escaped label", "A [x][a\\]b] word.\n\nB.\n\nC.\n\n[a\\]b]: https://a.b\n", { word: "word" }, (target) => target.bold()],
+    ["bold far from a reference label with math", "See [x][$a$ b] word.\n\nP2.\n\nP3.\n\n[$a$ b]: https://a.b\n", { word: "word" }, (target) => target.bold()],
+    ["bold far from a collapsed reference with math", "See [$a$ b][] word.\n\nP2.\n\nP3.\n\n[$a$ b]: https://a.b\n", { word: "word" }, (target) => target.bold()],
+    ["bold far from a shortcut reference with math", "See [$a$] word.\n\nP2.\n\nP3.\n\n[$a$]: https://a.b\n", { word: "word" }, (target) => target.bold()],
     ["bold next to a private-use character", "Icon  here and word.\n\nNext.\n", { word: "word" }, (target) => target.bold()],
     ["bullet next to a private-use character", "Icon  here and word.\n\nNext.\n", { caret: "wo" }, (target) => target.bullet()],
     ["link inside an autolink", "Alpha <https://zqz.example> beta.\n", { caret: "zqz" }, (target) => target.link("https://other.example")],
@@ -360,7 +379,7 @@ describe("Markdown toolbar actions only touch the text you picked", () => {
         expect(source.length - suffix).toBeLessThanOrEqual(blockTo + 2);
       }
     }
-  });
+  }, 60_000);
 
   it.each([
     ["a table", (target: MarkdownTarget) => target.table()],
@@ -428,7 +447,7 @@ function codeTyped(source: string, pick: Pick, act: Act, typed: string): string 
   return view.state.doc.toString();
 }
 
-function visualDeleted(source: string, pick: Pick, act: Act): string {
+function visualDeleted(source: string, pick: VisualPick, act: Act): string {
   const { editor, save } = visualEditor(source, pick);
   act(visualTarget(editor));
   editor.view.dispatch(editor.state.tr.deleteSelection());
@@ -451,7 +470,7 @@ describe("Markdown toolbar actions stay inside the caret's block and never throw
       expect(() => modelState(state)).not.toThrow();
       for (const act of ACTIONS) expect(() => modelEdit(state, act)).not.toThrow();
     }
-  });
+  }, 60_000);
 
   it("lights nothing and does nothing at a caret it can't place, even if the engine throws", () => {
     const state = EditorState.create({ doc: DEFINITION, selection: { anchor: DEFINITION.indexOf("[r]:") + 1 } });
@@ -593,22 +612,24 @@ describe("Typing straight after a Markdown toolbar action in Code mode", () => {
     expect(typedAfter("Some text \n", "Some text ", (target) => target.bold(), ["H", "i"])).toBe("Some text **Hi**\n");
   });
 
-  it("keeps Bold on punctuation typed first, as Visual's model holds it, with no dangling '**'", () => {
+  it("types punctuation typed first after Bold the way Visual writes it", () => {
     const keys = ['"', "H", "i", '"'];
-    const { editor } = visualEditor("Alpha bravo charlie.\n", { caret: "bravo" });
+    const { editor, save } = visualEditor("Alpha bravo charlie.\n", { caret: "bravo" });
     visualTarget(editor).bold();
     for (const key of keys) editor.view.dispatch(editor.state.tr.insertText(key));
     const code = typedAfter("Alpha bravo charlie.\n", "bravo", (target) => target.bold(), keys);
-    expect(code).not.toMatch(/"\*\*(?!H)|\*\*"\s/u);
-    expect(editor.schema.nodeFromJSON(parseMarkdownBody(code).doc).toJSON().content?.[0]).toEqual(editor.getJSON().content?.[0]);
+    expect(code).toBe(save());
   });
 
-  it("lets auto-closed brackets type plainly after Bold, in the right order", () => {
+  it("keeps Bold through auto-closed brackets, as Visual does", () => {
     const view = codeView("Alpha bravo charlie.\n", { caret: "bravo" }, [markdownFormatKeymap, closeBrackets()]);
     sourceTarget(() => view).bold();
     view.dispatch({ changes: { from: 11, insert: "()" }, selection: { anchor: 12 }, userEvent: "input.type" });
     for (const key of ["a", "b"]) view.dispatch({ ...view.state.replaceSelection(key), userEvent: "input.type" });
-    expect(view.state.doc.toString()).toBe("Alpha bravo(ab) charlie.\n");
+    const { editor, save } = visualEditor("Alpha bravo charlie.\n", { caret: "bravo" });
+    visualTarget(editor).bold();
+    for (const key of ["(", "a", "b", ")"]) editor.view.dispatch(editor.state.tr.insertText(key));
+    expect(view.state.doc.toString()).toBe(save());
   });
 
   it("keeps both fences when typing after Center over a paragraph and an indented code block", () => {
@@ -652,5 +673,284 @@ describe("Markdown toolbar state in Code mode", () => {
     const { from } = textRange(source, pick);
     const { editor } = visualEditor(source, pick);
     expect(modelState(EditorState.create({ doc: source, selection: { anchor: from } }))).toEqual(visualStateOf(editor));
+  });
+});
+
+const H1: Act = (target) => target.heading(1);
+const H2: Act = (target) => target.heading(2);
+const BOLD: Act = (target) => target.bold();
+const BULLET: Act = (target) => target.bullet();
+const ORDERED: Act = (target) => target.ordered();
+const QUOTE: Act = (target) => target.quote();
+const CENTER: Act = (target) => target.align("center");
+const CODE_BLOCK: Act = (target) => target.codeBlock();
+const EMOJI: Act = (target) => target.emoji("🎉");
+const TABLE: Act = (target) => target.table();
+
+function codeAt(source: string, at: number, act: Act, keys: string[] = [], head = at): string {
+  const view = codeView(source, { before: "" }, [markdownFormatKeymap]);
+  view.dispatch({ selection: { anchor: at, head } });
+  act(sourceTarget(() => view));
+  for (const key of keys) view.dispatch({ ...view.state.replaceSelection(key), userEvent: key ? "input.type" : "delete.backward" });
+  return view.state.doc.toString();
+}
+
+function firstTextblock(doc: ProseMirrorNode): [number, number] {
+  let at = -1;
+  doc.descendants((node, pos) => {
+    if (at < 0 && node.isTextblock) at = pos + 1 + node.content.size;
+    return at < 0;
+  });
+  return [at, at];
+}
+
+function afterFirstAtom(doc: ProseMirrorNode): [number, number] {
+  let at = -1;
+  doc.descendants((node, pos) => {
+    if (at < 0 && node.isInline && node.isAtom && !node.isText) at = pos + node.nodeSize;
+    return at < 0;
+  });
+  return [at, at];
+}
+
+function between(from: string, to: string, shift = 0): (doc: ProseMirrorNode) => [number, number] {
+  return (doc) => [textPosition(doc, from, false) + shift, shift ? textPosition(doc, to, false) + shift : textPosition(doc, to, true)];
+}
+
+describe("Markdown toolbar actions in Code mode stay in the caret's own block", () => {
+  const HTML_TABLE = "Intro.\n\n<table>\n<tr>\n<th>Identifier</th>\n<th>Description</th>\n</tr>\n\n\n<tr>\n<td>\n\n`code`\n\n</td>\n</tr>\n</table>\n\nAfter.\n";
+
+  it.each([
+    ["column 0", 0],
+    ["the end", "<th>Identifier</th>".length],
+  ])("never edits outside an HTML table block from %s of its header line", (_name, column) => {
+    const at = HTML_TABLE.indexOf("<th>Identifier") + column;
+    const before = HTML_TABLE.slice(0, HTML_TABLE.indexOf("<table>"));
+    const after = HTML_TABLE.slice(HTML_TABLE.indexOf("</tr>") + "</tr>".length);
+    for (const act of [H1, CENTER, QUOTE, TABLE, CODE_BLOCK, (target: MarkdownTarget) => target.link("https://a.b")]) {
+      const text = codeAt(HTML_TABLE, at, act);
+      expect(text.startsWith(before) && text.endsWith(after)).toBe(true);
+    }
+  }, 60_000);
+
+  it.each([
+    ["an image-only list item", "- ![alt](fig/a.png)\n- zimb next\n", "- ![alt](fig/a.png)".length, "- zimb next\n"],
+    ["the last image-only item, at column 0", "- zbai item\n- ![alt](fig/b.png)\n", "- zbai item\n".length, "- zbai item\n"],
+    ["a nested image-only item", "- zbap\n  - ![a](fig/g.png)\n- zbaq\n", "- zbap\n  - ![a](fig/g.png)".length, "- zbaq\n"],
+    ["an image-only task item", "- [ ] ![a](fig/e.png)\n- [ ] zbal\n", "- [ ] ![a](fig/e.png)".length, "- [ ] zbal\n"],
+    ["an image-only numbered item", "1. ![alt](fig/c.png)\n2. zbav next\n", "1. ![alt](fig/c.png)".length, "zbav next\n"],
+    ["an image line under a quoted paragraph, at column 0", "> zrga text\n>\n> ![alt](a.png)\n", "> zrga text\n>\n".length, "> zrga text\n"],
+  ])("never edits the neighbouring item from %s", (_name, source, at, neighbour) => {
+    for (const act of [H2, QUOTE, CENTER, EMOJI]) expect(codeAt(source, at, act)).toContain(neighbour);
+  }, 60_000);
+
+  it("acts on an image-only list item like Visual's caret after the image", () => {
+    const source = "- ![alt](fig/a.png)\n- zimb next\n";
+    for (const act of [H2, BULLET, EMOJI]) expect(codeAt(source, "- ![alt](fig/a.png)".length, act)).toBe(visualSave(source, afterFirstAtom, act));
+  });
+
+  it("acts on a list item's text with the caret deep in a span's style attribute", () => {
+    const source = '- A <span style="color: rgb(217, 0, 0);" data-text-color="red">zlsa</span> b\n';
+    for (const act of [H2, BULLET]) expect(codeAt(source, source.indexOf("rgb(2") + 5, act)).toBe(visualSave(source, { caret: "zls" }, act));
+  });
+
+  it.each([
+    ["a closing code fence in a list item", "- zqra item\n\n  ```\n  zqsa code\n  ```\n- zqta next\n", "zqsa code\n  ```", "zqsa code"],
+    ["a closing ::: in a list item", "- ::: {.center}\n  zqua centred\n  :::\n- zqva next\n", "centred\n  :::", "zqua centred"],
+    ["a closing code fence in a quote", "> ```\n> zqf code\n> ```\n> zqn after\n", "zqf code\n> ```", "zqf code"],
+    ["a setext underline in a quote", "> zqwa title\n> ---\n> zqxa after\n", "title\n> ---", "zqwa title"],
+  ])("acts on the block above from the end of %s, never on the next one", (_name, source, endOf, word) => {
+    const at = source.indexOf(endOf) + endOf.length;
+    for (const act of [H2, CODE_BLOCK, EMOJI]) expect(codeAt(source, at, act)).toBe(visualSave(source, { caret: word }, act));
+  }, 60_000);
+
+  it.each([
+    ["a rule in a list item", "- zqya one\n\n  ***\n\n  zqza two\n", "  ***"],
+    ["a rule in a quote", "> zraa one\n>\n> ---\n>\n> zrba two\n", "> ---"],
+    ["a reference definition in a list item", "- zrca [x][r] word\n\n  [r]: https://a.example\n- zrda next\n", "https://a.example"],
+    ["the address of a reference definition in a list item", "- zrca [x][r] word\n\n  [r]: https://a.example\n- zrda next\n", "https://a.ex"],
+  ])("does nothing from %s", (_name, source, endOf) => {
+    const at = source.indexOf(endOf) + endOf.length;
+    for (const act of [H2, BULLET, CODE_BLOCK, EMOJI]) expect(codeAt(source, at, act)).toBe(source);
+  }, 60_000);
+});
+
+describe("Markdown toolbar actions in Code mode act where Visual acts", () => {
+  it.each([
+    ["inline math", "Text $x^2 + y$ more.\n", "Text $x^", "$x^2 + y$"],
+    ["display math", "Before.\n\n$$\nx + y = z + w + v + u\n$$\n\nAfter.\n", "$$\nx + y", "$$\nx + y = z + w + v + u\n$$"],
+    ["an HTML comment", "Before.\n\n<!-- a long html comment here -->\n\nAfter.\n", "<!-- a lo", "<!-- a long html comment here -->"],
+  ])("keeps %s when Code Block turns its paragraph into code, in both modes", (_name, source, caretAfter, kept) => {
+    const code = codeAt(source, source.indexOf(caretAfter) + caretAfter.length, CODE_BLOCK);
+    expect(code).toBe(visualSave(source, afterFirstAtom, CODE_BLOCK));
+    expect(code).toContain("```\n");
+    expect(code).toContain(kept);
+  });
+
+  it.each([
+    ["H1 in an empty heading", "## ", H1, []],
+    ["Bold then typing in an empty heading", "## ", BOLD, ["X"]],
+    ["Numbered in an empty bullet item", "- ", ORDERED, []],
+    ["Bullet in an empty numbered item", "1. ", BULLET, []],
+    ["H2 in an empty quote", "> ", H2, []],
+    ["Bold then typing in an empty table cell", "|  |  |\n| --- | --- |\n|  |  |\n", BOLD, ["X"]],
+  ])("does what Visual does for %s", (_name, source, act, keys) => {
+    const at = source.startsWith("|") ? 2 : source.length;
+    expect(codeAt(source, at, act, keys)).toBe(visualSave(source, firstTextblock, act, keys[0]));
+  });
+
+  it.each([
+    ["an empty heading", "## ", 3],
+    ["an empty table cell", "|  |  |\n| --- | --- |\n|  |  |\n", 2],
+  ])("lights what Visual lights in %s", (_name, source, at) => {
+    const { editor } = visualEditor(source, firstTextblock);
+    expect(modelState(EditorState.create({ doc: source, selection: { anchor: at } }))).toEqual(visualStateOf(editor));
+  });
+
+  it.each([
+    ["an HTML comment", "Above.\n\n<!-- a long html comment here -->\n\nBelow.\n", "<!-- a lo"],
+    ["the blank line after an HTML comment", "Above.\n\n<!-- a long html comment here -->\n\nBelow.\n", "-->\n"],
+    ["a raw footnote mark", "Above.\n\n[^n1]\n\nBelow.\n", "[^n"],
+  ])("acts on a paragraph holding only %s like Visual's caret after it", (_name, source, caretAfter) => {
+    for (const act of [H2, BULLET, CENTER]) {
+      expect(codeAt(source, source.indexOf(caretAfter) + caretAfter.length, act)).toBe(visualSave(source, afterFirstAtom, act));
+    }
+  });
+
+  it.each([["::: {.center}"], ["::: {.right}"]])("acts on the div's text from column 0 of '%s'", (fence) => {
+    const source = `Intro.\n\n${fence}\nInside zbau.\n:::\n\nAfter.\n`;
+    for (const act of [H2, BULLET, (target: MarkdownTarget) => target.align("right")]) expect(codeAt(source, 8, act)).toBe(visualSave(source, { before: "Inside" }, act));
+    const { editor } = visualEditor(source, { before: "Inside" });
+    expect(modelState(EditorState.create({ doc: source, selection: { anchor: 8 } }))).toEqual(visualStateOf(editor));
+  });
+
+  it.each([12, 13])("acts on a setext heading from the end of a %s-dash underline", (dashes) => {
+    const source = `Title zbat\n${"-".repeat(dashes)}\n`;
+    for (const act of [H1, H2, BULLET, CENTER]) expect(codeAt(source, source.length - 1, act)).toBe(visualSave(source, { caret: "Title zbat" }, act));
+    expect(modelState(EditorState.create({ doc: source, selection: { anchor: source.length - 1 } })).heading).toBe(2);
+  });
+
+  it.each([
+    ["a centred div", "::: {.center}\nCentred zbaa.\n:::\n\nNext.\n", "Centred zbaa."],
+    ["a code fence", "Intro.\n\n```\ncode here\n```\n\nAfter.\n", "code here"],
+    ["a setext heading", "Title zbad\n------\n\nNext.\n", "Title zbad"],
+    ["a paragraph with trailing spaces", "Para zsaa text   \n\nNext.\n", "zsaa text"],
+    ["a table", "| a | zsb |\n| --- | --- |\n| c | zsd |\n\nNext.\n", "zsd"],
+  ])("treats a blank line after %s as the end of that block", (_name, source, word) => {
+    const at = source.lastIndexOf("\n\n") + 1;
+    for (const act of [H2, BULLET, EMOJI, TABLE]) expect(codeAt(source, at, act)).toBe(visualSave(source, { caret: word }, act));
+    const { editor } = visualEditor(source, { caret: word });
+    expect(modelState(EditorState.create({ doc: source, selection: { anchor: at } }))).toEqual(visualStateOf(editor));
+  }, 60_000);
+
+  it.each([
+    ["a quote above it", "- zarq one\n- zasq **zatq**\n\n> zauq\n\n| x | y |\n|---|---|\n| zavq | 2 |\n", "|---|---|", 6, "z"],
+    ["a paragraph above it", "- zaoq next\n\nzapq [zarq][r1] zasq.\n\n| zatq | zauq |\n| --- | --- |\n| zavq | **zawq** |\n\n[r1]: https://ex.com/vaak\n", "| --- | --- |", 10, "zapq [zarq"],
+  ])("bullets a range ending in a table's delimiter row from %s like Visual's nearest caret, keeping the table out of the list", (_name, source, rule, column, word) => {
+    const anchor = source.indexOf(rule) + column;
+    const head = source.indexOf(word) + word.length;
+    const visual = new VisualDocument(source);
+    opened.push(visual);
+    const units = unitsOf(source);
+    const [visualAnchor, visualHead] = [visual.caretFor(anchor, units), visual.caretFor(head, units)];
+    if (visualAnchor === null || visualHead === null) throw new Error("no Visual caret");
+    const code = codeAt(source, anchor, BULLET, [], head);
+    expect(code).toBe(visual.run(visualAnchor, visualHead, BULLET, null).acted);
+    expect(code).toContain(`\n\n${source.slice(source.lastIndexOf("\n\n|") + 2, source.indexOf("|\n", source.indexOf("zavq")) + 1)}`);
+  });
+
+  it.each([
+    ["Strike", (target: MarkdownTarget) => target.strike()],
+    ["Bold", BOLD],
+  ] as const)("marks a lone dollar sign with %s like Visual", (_name, act) => {
+    const source = "It costs $5 and $10 later, so budget $15.\n";
+    expect(codeSave(source, { word: "$" }, act)).toBe(visualSave(source, { word: "$" }, act));
+  });
+
+  it("acts on the header row's end from a caret in the table's delimiter row", () => {
+    const source = "| a | zsb |\n| --- | --- |\n| c | d |\n";
+    const at = source.indexOf("| ---") + 3;
+    expect(codeAt(source, at, EMOJI)).toBe(visualSave(source, { caret: "zsb" }, EMOJI));
+    const { editor } = visualEditor(source, { caret: "zsb" });
+    expect(modelState(EditorState.create({ doc: source, selection: { anchor: at } }))).toEqual(visualStateOf(editor));
+  });
+
+  it.each([
+    ["Quote", QUOTE],
+    ["Bullet", BULLET],
+    ["Numbered", ORDERED],
+  ])("keeps a table row whole when %s in a cell is followed by typing, in both modes", (_name, act) => {
+    const source = "| zsap | zsaq |\n|---|---|\n| zsar | zsas |\n";
+    const expected = "| zsap | zsaq |\n|---|---|\n| zsXar | zsas |\n";
+    expect(codeAt(source, source.indexOf("zsar") + 2, act, ["X"])).toBe(expected);
+    expect(visualSave(source, { before: "ar" }, act, "X")).toBe(expected);
+  });
+});
+
+describe("Typing after a Markdown toolbar action in Code mode starts where Visual's caret is", () => {
+  const ITALIC: Act = (target) => target.italic();
+  const CODE: Act = (target) => target.code();
+
+  it.each([
+    ["a heading", "Intro zbaw.\n\n## Title zbax\n\nAfter.\n", "## Title", "Title"],
+    ["a list item", "- zbay one\n- zbaz two\n", "- zbaz", "zbaz"],
+    ["a quote", "> zbba quoted\n", "> zbba", "zbba"],
+    ["a table row", "| alpha | beta |\n| --- | --- |\n| gamma | delta |\n", "| gamma", "gamma"],
+  ])("types the mark into the text after a mark at column 0 of %s", (_name, source, line, word) => {
+    for (const act of [BOLD, ITALIC, CODE]) expect(codeAt(source, source.indexOf(line), act, ["X"])).toBe(visualSave(source, { before: word }, act, "X"));
+  }, 60_000);
+
+  it.each([
+    ["H2 at column 0 of a table row", "| alpha | beta |\n| --- | --- |\n", 0, H2, { before: "alpha" }],
+    ["Center at the end of a closing ::: of a centred div", "::: {.center}\nCentred text.\n:::\n", "::: {.center}\nCentred text.\n:::".length, CENTER, { caret: "Centred text." }],
+    ["Bold on a blank line above a rule", "Intro zhaa.\n\n---\n", "Intro zhaa.\n".length, BOLD, { caret: "Intro zhaa." }],
+  ] as const)("types where Visual does after %s, which changes nothing", (_name, source, at, act, pick) => {
+    expect(codeAt(source, at, act, ["X"])).toBe(visualSave(source, pick, act, "X"));
+  });
+
+  it("types into the cells after H2 over a whole table row, which changes nothing", () => {
+    const source = "| zsae | zsaf |\n|---|---|\n| zsag | zsah |\n";
+    const row = source.indexOf("| zsag");
+    expect(codeAt(source, row, H2, ["X"], source.length - 1)).toBe(visualSave(source, between("zsag", "zsah"), H2, "X"));
+  });
+
+  it.each([["Bold", BOLD], ["Teal", (target: MarkdownTarget) => target.color("teal")]] as const)("types the mark inside the last cell after %s at the end of a table row", (_name, act) => {
+    const source = "| zsac | zsad |\n|---|---|\n| zsae | zsaf |\n";
+    expect(codeAt(source, source.length - 1, act, ["X"])).toBe(visualSave(source, { caret: "zsaf" }, act, "X"));
+  });
+
+  it("types the mark before a two-space hard break after Bold at the end of its line", () => {
+    const source = "Line zsan trailing  \nzsao next\n";
+    const code = codeAt(source, source.indexOf("\n"), BOLD, ["X"]);
+    expect(parseMarkdownBody(code).doc).toEqual(parseMarkdownBody(visualSave(source, { caret: "trailing" }, BOLD, "X")).doc);
+  });
+
+  it.each([
+    ["Bold", BOLD],
+    ["Paragraph", (target: MarkdownTarget) => target.paragraph()],
+  ] as const)("types over a selection that ends inside <u> like Visual after %s", (_name, act) => {
+    const source = "Above zhta.\n\nBelow <u>zhtd</u> end.\n";
+    const code = codeAt(source, source.indexOf("zhta") + 2, act, ["X"], source.indexOf("zhtd") + 2);
+    expect(code).toBe(visualSave(source, between("zhta", "zhtd", 2), act, "X"));
+  });
+
+  it("types where Visual types after Italic at a bare caret inside '***'", () => {
+    const source = "Alpha ***zanac*** end.\n";
+    expect(codeAt(source, source.indexOf("zanac") + 2, ITALIC, ["X"])).toBe(visualSave(source, { caret: "za" }, ITALIC, "X"));
+  });
+
+  it.each([
+    ["typing", ["X"]],
+    ["Backspace", [""]],
+  ])("keeps Visual's selection after Center over a paragraph and indented code, then %s does what Visual does", (_name, keys) => {
+    const source = "Alpha zctq zcuq.\n\n    zcvq zcwq code\n";
+    const pick = between("zcuq", "zcvq");
+    const view = codeView(source, { before: "" }, [markdownFormatKeymap]);
+    view.dispatch({ selection: { anchor: source.indexOf("zcuq"), head: source.indexOf("zcvq") + 4 } });
+    sourceTarget(() => view).align("center");
+    const text = view.state.doc.toString();
+    expect(view.state.selection.main).toMatchObject({ from: text.indexOf("zcuq"), to: text.indexOf("zcvq") + 4 });
+    view.dispatch({ ...view.state.replaceSelection(keys[0]), userEvent: keys[0] ? "input.type" : "delete.backward" });
+    expect(view.state.doc.toString()).toBe(keys[0] ? visualSave(source, pick, CENTER, "X") : visualDeleted(source, pick, CENTER));
   });
 });

@@ -3,7 +3,8 @@ import { Table } from "@tiptap/extension-table";
 import { Fragment, type Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { isInTable, selectedRect } from "@tiptap/pm/tables";
 import type { MarkdownNodeSpec } from "tiptap-markdown";
-import { guardInlineDelimiters } from "./inline-delimiters";
+import { escapePairedDollars, guardInlineDelimiters, markAtom, nestMarks } from "./inline-delimiters";
+import { DOLLAR_MATH, readsAsWord } from "./text";
 
 type SerializerState = Parameters<MarkdownNodeSpec["serialize"]>[0];
 
@@ -78,6 +79,16 @@ function escapePipes(text: string): string {
   return text.replaceAll(/(?<!\\)((?:\\\\)*)\|/gu, "$1\\|");
 }
 
+function escapePipesOutsideMath(text: string): string {
+  let result = "";
+  let cursor = 0;
+  for (const math of text.matchAll(new RegExp(DOLLAR_MATH.source, "gu"))) {
+    result += escapePipes(text.slice(cursor, math.index)) + math[0];
+    cursor = math.index + math[0].length;
+  }
+  return result + escapePipes(text.slice(cursor));
+}
+
 function escapeCellPipes(out: string, start: number, verbatim: readonly [number, number][]): string {
   let result = out.slice(0, start);
   let cursor = start;
@@ -89,12 +100,13 @@ function escapeCellPipes(out: string, start: number, verbatim: readonly [number,
   return result + escapePipes(out.slice(cursor));
 }
 
-export function writeVerbatim(state: SerializerState, source: string): void {
+export function writeVerbatim(state: SerializerState, source: string, escapeInCell = false): void {
   guardInlineDelimiters(state);
   const table = state as unknown as TableState;
   state.write("");
   const from = table.out.length;
-  state.write(source);
+  state.write(table.inTable && escapeInCell ? escapePipesOutsideMath(source) : source);
+  markAtom(state, from, table.out.length, readsAsWord(source));
   if (table.inTable) table.verbatim?.push([from, table.out.length]);
 }
 
@@ -211,7 +223,8 @@ export const MarkdownTable = Table.extend({
             const content = cell.firstChild;
             if (content?.content.size) {
               table.verbatim = [];
-              state.renderInline(content);
+              state.renderInline(nestMarks(content));
+              escapePairedDollars(state, start);
               table.out = escapeCellPipes(table.out, start, table.verbatim);
             }
             cells.push(table.out.slice(start).trim());

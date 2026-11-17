@@ -198,6 +198,7 @@ export function markdownRow(
   const insertHeading = (level: (typeof MARKDOWN_HEADING_LEVELS)[number]) => target.heading(level.level);
   const quote = iconControl("blockquote", Quote, t(($) => $.editor.toolbar.blockquote), target.quote, {
     tooltip: t(($) => $.editor.toolbar.insertBlockquote),
+    disabled: !state.quotes,
   });
   const align = ALIGNMENTS.map(({ align: value, icon, label }) =>
     iconControl(`align-${value}`, icon, label(), () => target.align(value), {
@@ -248,14 +249,14 @@ export function markdownRow(
     {
       ...headingGroup,
       renderMenu: () => (
-        <HeadingDropdown key="heading" variant="menu" levels={MARKDOWN_HEADING_LEVELS} insert={insertHeading} active={state.heading !== null} />
+        <HeadingDropdown key="heading" variant="menu" levels={MARKDOWN_HEADING_LEVELS} insert={insertHeading} checked={(level) => level.level === state.heading} />
       ),
       collapsed: {
         width: DIVIDER_WIDTH + CONTROL_GAP + DROPDOWN_TRIGGER_WIDTH,
         render: () => (
           <>
             <Divider />
-            <HeadingDropdown variant="bar" levels={MARKDOWN_HEADING_LEVELS} insert={insertHeading} active={state.heading !== null} />
+            <HeadingDropdown variant="bar" levels={MARKDOWN_HEADING_LEVELS} insert={insertHeading} checked={(level) => level.level === state.heading} />
           </>
         ),
       },

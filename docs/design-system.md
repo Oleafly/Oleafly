@@ -365,16 +365,19 @@ desktop). Thread cards (and the suggestion cards beside them) use
 `commentCardClass(selected)`: `bg-background` on the grey rail, with hover and
 selection shown as a border colour change (`foreground/25` on hover, so it shows
 in light mode too). Every name and time row is a `CommentByline`. The name gets its own 24px
-line. If the time, "· edited" or a "New" badge doesn't fit after it, it wraps
-whole onto the next line, so nothing is cut to a fragment and the name never
-moves. A name is cut only when it's wider than the whole row. A suggestion's
+line. If the time, "· edited" or a "New" badge doesn't fit after it, it moves
+to the next line, so nothing is cut to a fragment and the name never moves. A
+time wider than the whole row wraps at its spaces. A name is cut with an
+ellipsis only when it doesn't fit its line, and when the name is alone on that
+line, the room kept for the pill counts against it. A suggestion's
 Inserted or Deleted tag sits outside the byline, and "Waiting to send" goes on
 its own line under the body. In a message header the ⋯ menu, and the Resolve
 check in a thread without a quote, share one tinted pill at the end of the
 header's last item. Its real width (one or two buttons) is kept free beside the
 time, "· edited", New or the deleted text, and the two wrap together, so the
-pill never covers text. Hover, keyboard focus or an open menu only shows it, so
-nothing moves; touch screens always show it. A resolved thread's "Resolved by
+pill never covers text. Hover, keyboard focus (not a mouse click) or an open
+menu shows it, so nothing moves; touch screens always show it. Keeping that room
+free makes a wrapped header on a mouse screen 2–6px taller. A resolved thread's "Resolved by
 …" line wraps instead of cutting the name, and it breaks inside a name with no
 spaces so the name stays in its column. If a long Reopen label would squeeze
 the summary, Reopen moves under it. Times and other small meta text use `foreground/60`,

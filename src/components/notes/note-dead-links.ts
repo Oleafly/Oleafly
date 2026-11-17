@@ -155,6 +155,17 @@ export function rewriteDocLinks(view: EditorView, match: LinkMatch, fix: LinkFix
       }
       return false;
     }
+    if (node.type.name === "rawInline") {
+      // An image that shares its paragraph with text is kept as its Markdown source; fix the link inside it.
+      const source = String(node.attrs.source ?? "");
+      const rewritten = source.includes("oleafly://") ? rewriteNoteLinks(source, match, fix) : null;
+      if (!rewritten || rewritten.count === 0) return false;
+      const at = tr.mapping.map(pos);
+      if (/^!?\[/u.test(rewritten.text)) tr.setNodeMarkup(at, undefined, { ...node.attrs, source: rewritten.text });
+      else tr.replaceWith(at, tr.mapping.map(pos + node.nodeSize), state.schema.text(rewritten.text || " ", node.marks));
+      count += rewritten.count;
+      return false;
+    }
     if (node.type.name === "image" && linkMatches(String(node.attrs.src ?? ""), match)) {
       const at = tr.mapping.map(pos);
       if (href) tr.setNodeAttribute(at, "src", href);

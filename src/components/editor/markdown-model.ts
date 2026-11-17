@@ -2,9 +2,8 @@ import { isolateHistory } from "@codemirror/commands";
 import { type ChangeSet, EditorSelection, type EditorState, type SelectionRange, type Text, type TransactionSpec } from "@codemirror/state";
 import type { EditorView } from "@codemirror/view";
 import { Editor } from "@tiptap/core";
-import type { Mark, Node as ModelNode } from "@tiptap/pm/model";
-import type { JSONContent } from "@tiptap/core";
-import { NodeSelection, TextSelection } from "@tiptap/pm/state";
+import { Mark, type Node as ModelNode } from "@tiptap/pm/model";
+import { NodeSelection, TextSelection, type Transaction } from "@tiptap/pm/state";
 import { Transform } from "@tiptap/pm/transform";
 import {
   WYSIWYG_EXTENSIONS,
@@ -12,24 +11,23 @@ import {
   type MarkdownSourceSnapshot,
   type MarkdownUnits,
   markdownUnits,
-  parseMarkdownBody,
   serializeMarkdownBody,
 } from "@oleafly/wysiwyg";
 import { readableLinkHref } from "@oleafly/wysiwyg/link-destination";
 import type { TextAlign } from "@oleafly/wysiwyg/text-align-values";
-import { reportEditorError } from "@oleafly/editor";
 import { minimalReplacement } from "@oleafly/editor/CodeMirrorEditor";
-import { myersEditScript } from "@/lib/myers-diff";
 import { visualLinkHref } from "@/components/editor/markdown-commands";
-import { pendingTyping } from "@/components/editor/markdown-keymap";
-import { alignmentOf, alignText, applyTextColor, clearFormatting, textColorOf } from "@/components/editor/rich-text-controls";
+import { bareCaret, changesBetween, endOffset, parse, pendingMarks, reported, settledEnds, typingAfter } from "@/components/editor/markdown-typing";
+import { alignable, alignmentOf, alignText, applyTextColor, clearFormatting, quotable, textColorOf, toggleQuote } from "@/components/editor/rich-text-controls";
 import { markdownMathRanges } from "@/components/editor/wysiwyg/markdown-source";
+import type { MarkdownIt, MdToken } from "@/components/notes/note-markdown-it";
 
 export interface MarkdownToolbarState {
   align: TextAlign;
   textColor: string | null;
   link: boolean;
   aligns: boolean;
+  quotes: boolean;
   heading: number | null;
 }
 
@@ -59,7 +57,7 @@ export interface MarkdownTarget {
   table(): void;
 }
 
-export const RESTING_STATE: MarkdownToolbarState = { align: "left", textColor: null, link: false, aligns: true, heading: null };
+export const RESTING_STATE: MarkdownToolbarState = { align: "left", textColor: null, link: false, aligns: true, quotes: true, heading: null };
 
 export const IDLE_TARGET = new Proxy({}, { get: () => () => "" }) as MarkdownTarget;
 
@@ -69,7 +67,8 @@ export function visualStateOf(editor: Editor | null): MarkdownToolbarState | nul
     align: alignmentOf(editor),
     textColor: textColorOf(editor),
     link: editor.isActive("link"),
-    aligns: !editor.isActive("table") && !editor.isActive("codeBlock"),
+    aligns: alignable(editor),
+    quotes: quotable(editor),
     heading: editor.isActive("heading") ? Number(editor.getAttributes("heading").level) : null,
   };
 }
@@ -81,12 +80,32 @@ export function sameToolbarState(left: MarkdownToolbarState | null, right: Markd
     left.textColor === right.textColor &&
     left.link === right.link &&
     left.aligns === right.aligns &&
+    left.quotes === right.quotes &&
     left.heading === right.heading
   );
 }
 
+function atomsAsSource(tr: Transaction): boolean {
+  const atoms: { at: number; node: ModelNode }[] = [];
+  tr.doc.nodesBetween(tr.selection.from, tr.selection.to, (node, pos) => {
+    if (!node.isTextblock) return true;
+    if (!node.type.spec.code) {
+      node.forEach((child, offset) => {
+        if (child.isInline && child.isAtom && typeof child.attrs.source === "string") atoms.push({ at: pos + 1 + offset, node: child });
+      });
+    }
+    return false;
+  });
+  for (const { at, node } of atoms.reverse()) {
+    const source = serializeMarkdownBody({ type: "doc", content: [{ type: "paragraph", content: [node.toJSON()] }] }).replace(/\n+$/u, "");
+    if (source) tr.replaceWith(at, at + node.nodeSize, tr.doc.type.schema.text(source));
+  }
+  return atoms.length > 0;
+}
+
 export function visualTarget(editor: Editor): MarkdownTarget {
   const chain = () => editor.chain().focus();
+  const listOutsideTables = (toggle: () => boolean) => () => !editor.isActive("table") && toggle();
   return {
     bold: () => chain().toggleBold().run(),
     italic: () => chain().toggleItalic().run(),
@@ -98,10 +117,13 @@ export function visualTarget(editor: Editor): MarkdownTarget {
     subscript: () => chain().toggleMark("subscript").run(),
     heading: (level) => chain().toggleHeading({ level: level as 1 | 2 | 3 | 4 | 5 | 6 }).run(),
     paragraph: () => chain().setParagraph().run(),
-    codeBlock: () => chain().toggleCodeBlock().run(),
-    bullet: () => chain().toggleBulletList().run(),
-    ordered: () => chain().toggleOrderedList().run(),
-    quote: () => chain().toggleBlockquote().run(),
+    codeBlock: () => {
+      if (!editor.isActive("codeBlock")) chain().command(({ tr }) => atomsAsSource(tr)).run();
+      chain().toggleCodeBlock().run();
+    },
+    bullet: listOutsideTables(() => chain().toggleBulletList().run()),
+    ordered: listOutsideTables(() => chain().toggleOrderedList().run()),
+    quote: () => toggleQuote(editor),
     align: (value) => alignText(editor, value),
     clear: () => clearFormatting(editor),
     color: (spec) => applyTextColor(editor, spec),
@@ -126,9 +148,17 @@ export function visualTarget(editor: Editor): MarkdownTarget {
   };
 }
 
-const SNAP_STEPS = 12;
-const SPLIT_DIFF_LIMIT = 20_000;
+const OWN_LINE_STEPS = 32;
+const SPAN_CANDIDATES = 32;
 const LEADING_RULE = /^ {0,3}---[ \t]*(?:\r?\n|$)/u;
+const LEAF_TOKENS = new Set(["paragraph_open", "heading_open", "fence", "code_block", "hr", "html_block", "table_open"]);
+const BLANKISH = /^[\s>]*$/u;
+const TASK_MARKER = /^\s*\[[ xX]\]\s*$/u;
+const EMPTY_CONTAINER = /^[\s>]*(?:(?:[-+*]|\d{1,9}[.)])(?:[ \t]+\[[ xX]\])?)?[ \t]*$/u;
+
+type Span = { from: number; to: number };
+type Spot = { position: number; offset: number };
+type Act = (target: MarkdownTarget) => void;
 
 interface Slice {
   from: number;
@@ -136,7 +166,7 @@ interface Slice {
   text: string;
   head: string;
   lead: string;
-  units: readonly { from: number; to: number }[];
+  units: readonly Span[];
 }
 
 interface Model {
@@ -148,21 +178,42 @@ interface Model {
   snapshot: MarkdownSourceSnapshot | null;
   input: string;
   positions: Map<number, number | null>;
+  attributed: Set<number>;
   slice: Slice;
+  nodes: readonly ([number, number] | null)[];
 }
 
-const unitsOfDoc = new WeakMap<Text, MarkdownUnits>();
+interface Leaf {
+  first: number;
+  last: number;
+  textFirst: number;
+  textLast: number;
+  text: boolean;
+  rule?: number;
+}
+
+interface Structure {
+  starts: number[];
+  lines: string[];
+  leaves: Leaf[];
+  divs: { open: number; close: number; leaves: Leaf[] }[];
+}
+
+const analysed = new WeakMap<Text, { units: MarkdownUnits; math: Span[] }>();
+const structures = new Map<string, Structure>();
 let scratchEditor: Editor | null = null;
+let primed = false;
 let loaded: Omit<Model, "doc" | "slice"> | null = null;
 let loadedInput: string | null = null;
 
-function unitsOf(doc: Text, source: string): MarkdownUnits {
-  let units = unitsOfDoc.get(doc);
-  if (!units) {
-    units = markdownUnits(source, { preservedInlineRanges: markdownMathRanges(source) });
-    unitsOfDoc.set(doc, units);
+function analysisOf(doc: Text, source: string): { units: MarkdownUnits; math: Span[] } {
+  let analysis = analysed.get(doc);
+  if (!analysis) {
+    const math = markdownMathRanges(source);
+    analysis = { units: markdownUnits(source, { preservedInlineRanges: math }), math };
+    analysed.set(doc, analysis);
   }
-  return units;
+  return analysis;
 }
 
 function headOf(references: MarkdownUnits["references"], text: string): string {
@@ -170,34 +221,62 @@ function headOf(references: MarkdownUnits["references"], text: string): string {
   const folded = text.replace(/\s+/gu, " ").toLowerCase().toUpperCase();
   const lines: string[] = [];
   for (const [label, { href, title }] of references) {
-    if (folded.includes(label)) lines.push(`[${label}]: <${href}>${title ? ` "${title.replace(/["\\]/gu, "\\$&")}"` : ""}`);
+    if (folded.includes(label.replace(/\s+/gu, " ").toLowerCase().toUpperCase())) lines.push(`[${label}]: <${href}>${title ? ` "${title.replace(/["\\]/gu, "\\$&")}"` : ""}`);
   }
   return lines.length > 0 ? `${lines.join("\n")}\n\n` : "";
 }
 
+// A fenced div that isn't an alignment (a callout, a Quarto column, a figure div) is one source block in Visual, so
+// its fences can't be broken there. The Code toolbar works inside it on the text between the fences instead.
+const DIV_OPEN = /^ {0,3}:{3,}[ \t]*(?:\{[^{}\n]*\}|[^\s{}:]+)[ \t]*:*[ \t]*\r?\n/u;
+const ALIGN_OPEN = /^ {0,3}:{3,}[ \t]*(?:\{[ \t]*\.(?:left|center|right|justify)[ \t]*\}|(?:left|center|right|justify))[ \t]*(?::+[ \t]*)?\r?\n/u;
+const DIV_CLOSE = /\r?\n {0,3}:{3,}[ \t]*(?:\r?\n)?$/u;
+
+function divBody(source: string, span: Span): Span | null {
+  const text = source.slice(span.from, span.to);
+  const open = DIV_OPEN.exec(text);
+  if (!open || ALIGN_OPEN.test(text)) return null;
+  const close = DIV_CLOSE.exec(text);
+  if (!close || close.index <= open[0].length) return null;
+  return { from: span.from + open[0].length, to: span.from + close.index };
+}
+
+function innerSpans(source: string, body: Span): Span[] {
+  const text = source.slice(body.from, body.to);
+  return markdownUnits(text, { preservedInlineRanges: markdownMathRanges(text) }).spans.map((span) => ({ from: body.from + span.from, to: body.from + span.to }));
+}
+
+function spanIndex(spans: readonly Span[], offset: number, before: boolean): number {
+  let index = 0;
+  for (const [at, span] of spans.entries()) if (before ? span.from < offset : span.from <= offset) index = at;
+  return index;
+}
+
 function sliceOf(doc: Text, source: string, from: number, to: number, margin: number): Slice {
-  const { bodyFrom, spans, references } = unitsOf(doc, source);
-  if (spans.length === 0) {
+  const { bodyFrom, spans: top, references } = analysisOf(doc, source).units;
+  if (top.length === 0) {
     const body = source.slice(bodyFrom);
     if (body.trim() !== "") return { from: bodyFrom, to: source.length, text: body, head: headOf(references, body), lead: "", units: [{ from: bodyFrom, to: source.length }] };
     const gap = Math.min(2, (/\n*$/u.exec(source.slice(0, bodyFrom))?.[0] ?? "").length);
     return { from: source.length, to: source.length, text: "", head: "", lead: bodyFrom > 0 ? "\n\n".slice(gap) : "", units: [{ from: source.length, to: source.length }] };
   }
-  const unitOf = (offset: number, before: boolean) => {
-    let index = 0;
-    for (const [at, span] of spans.entries()) if (before ? span.from < offset : span.from <= offset) index = at;
-    return index;
-  };
+  let spans: readonly Span[] = top;
+  for (;;) {
+    const at = spanIndex(spans, from, false);
+    if (at !== spanIndex(spans, to, to > from)) break;
+    const body = divBody(source, spans[at]);
+    if (!body || from < body.from || to > body.to) break;
+    const inner = innerSpans(source, body);
+    if (inner.length === 0) break;
+    spans = inner;
+  }
+  const unitOf = (offset: number, before: boolean) => spanIndex(spans, offset, before);
   const picked = unitOf(from, false);
   let first = Math.max(0, picked - margin);
   while (first < picked && LEADING_RULE.test(source.slice(spans[first].from, spans[first].to))) first += 1;
   const last = Math.min(spans.length - 1, unitOf(to, to > from) + margin);
   const text = source.slice(spans[first].from, spans[last].to);
   return { from: spans[first].from, to: spans[last].to, text, head: headOf(references, text), lead: "", units: spans.slice(first, last + 1) };
-}
-
-function parse(input: string) {
-  return parseMarkdownBody(input, { preservedInlineRanges: markdownMathRanges(input) });
 }
 
 function sentinelFor(input: string): string {
@@ -211,7 +290,7 @@ function stripped(json: string, mark: string): string {
   return [mark, percent, percent.toLowerCase()].reduce((text, form) => text.replaceAll(form, ""), json);
 }
 
-function loadModel(input: string): Omit<Model, "doc" | "slice"> | null {
+function loadModel(input: string): Omit<Model, "doc" | "slice" | "nodes"> | null {
   const parsed = parse(input);
   if (parsed.frontmatter) return null;
   scratchEditor ??= new Editor({ element: document.createElement("div"), extensions: WYSIWYG_EXTENSIONS });
@@ -223,7 +302,22 @@ function loadModel(input: string): Omit<Model, "doc" | "slice"> | null {
   const clean = editor.schema.nodeFromJSON(parsed.doc);
   const { doc } = editor.state;
   if (clean.childCount > doc.childCount || clean.content.content.some((node, index) => !node.eq(doc.child(index)))) return null;
-  return { editor, mark: sentinelFor(input), clean, cleanJson: JSON.stringify(clean.toJSON()), snapshot, input, positions: new Map() };
+  return { editor, mark: sentinelFor(input), clean, cleanJson: JSON.stringify(clean.toJSON()), snapshot, input, positions: new Map(), attributed: new Set() };
+}
+
+function unitNodes(snapshot: MarkdownSourceSnapshot | null, units: readonly Span[], doc: Text): ([number, number] | null)[] {
+  const layout = snapshot?.layout.units ?? [];
+  const ranges: [number, number][] = [];
+  let index = 0;
+  let node = 0;
+  for (const unit of units) {
+    const source = doc.sliceString(unit.from, unit.to);
+    while (index < layout.length && layout[index].source !== source) node += layout[index++].nodes;
+    if (index >= layout.length) return units.map(() => null);
+    ranges.push([node, node + layout[index].nodes]);
+    node += layout[index++].nodes;
+  }
+  return ranges;
 }
 
 function modelOf(state: EditorState, from: number, to: number, margin: number): Model | null {
@@ -231,7 +325,8 @@ function modelOf(state: EditorState, from: number, to: number, margin: number): 
   const slice = sliceOf(state.doc, source, from, to, margin);
   const input = slice.head + slice.text;
   if (loadedInput !== input) {
-    loaded = loadModel(input);
+    const model = loadModel(input);
+    loaded = model && { ...model, nodes: unitNodes(model.snapshot, slice.units, state.doc) };
     loadedInput = loaded ? input : null;
   }
   return loaded && { ...loaded, doc: state.doc, slice };
@@ -301,18 +396,22 @@ function matches(doc: ModelNode, model: Model, mark = model.mark): boolean {
 }
 
 function exactPosition(model: Model, offset: number): number | null {
-  if (!model.positions.has(offset)) model.positions.set(offset, positionAt(model, offset));
+  if (!model.positions.has(offset)) {
+    const found = positionAt(model, offset);
+    model.positions.set(offset, found?.position ?? null);
+    if (found?.attribute) model.attributed.add(offset);
+  }
   return model.positions.get(offset) ?? null;
 }
 
 const PUNCTUATION_MARKS = ["\u2E3A", "\u2E3B", "\u2E50", "\u2E51"];
 
-function positionAt(model: Model, offset: number): number | null {
+function positionAt(model: Model, offset: number): { position: number; attribute: boolean } | null {
   const punctuation = PUNCTUATION_MARKS.find((mark) => !model.input.includes(mark));
   return positionWith(model, offset, model.mark) ?? (punctuation ? positionWith(model, offset, punctuation) : null);
 }
 
-function positionWith(model: Model, offset: number, mark: string): number | null {
+function positionWith(model: Model, offset: number, mark: string): { position: number; attribute: boolean } | null {
   const { input } = model;
   const at = model.slice.head.length + offset;
   const marked = parse(`${input.slice(0, at)}${mark}${input.slice(at)}`);
@@ -323,59 +422,210 @@ function positionWith(model: Model, offset: number, mark: string): number | null
   const position = found.length === 1 ? found[0] : attributePosition(doc, model.clean);
   if (position === null) return null;
   const back = found.length === 1 ? new Transform(doc).delete(position, position + mark.length).doc : doc;
-  if (matches(back, model, mark)) return position;
-  const relaxed = withCleanMarks(back, model.clean, position);
-  return relaxed && matches(relaxed, model, mark) ? position : null;
+  const relaxed = () => {
+    const doc = withCleanMarks(back, model.clean, position);
+    return doc !== null && matches(doc, model, mark);
+  };
+  return matches(back, model, mark) || relaxed() ? { position, attribute: found.length === 0 } : null;
 }
 
-function blockAround(model: Model, sourceOffset: number): { from: number; to: number } | null {
-  const { slice, doc } = model;
-  const own = slice.units.find((unit) => unit.from <= sourceOffset && sourceOffset <= unit.to);
-  if (own) return own;
-  const line = doc.lineAt(Math.max(0, Math.min(doc.length, sourceOffset)));
-  if (line.text.trim() !== "") return null;
-  const before = slice.units.filter((unit) => unit.to <= sourceOffset).at(-1);
-  const after = slice.units.find((unit) => unit.from >= sourceOffset);
-  if (before) return { from: before.to, to: before.to };
-  return after ? { from: after.from, to: after.from } : null;
-}
-
-const textless = new Map<string, boolean>();
-
-function holdsText(model: Model, block: { from: number; to: number }): boolean {
-  const text = model.doc.sliceString(block.from, block.to);
-  let known = textless.get(text);
-  if (known === undefined) {
-    known = !JSON.stringify(parse(text).doc.content ?? []).includes('"text"') && !/[$`]/u.test(text);
-    if (textless.size > 256) textless.clear();
-    textless.set(text, known);
+function holdsText(doc: ModelNode, [from, to]: readonly [number, number]): boolean {
+  let found = false;
+  for (let index = from; index < Math.min(to, doc.childCount) && !found; index += 1) {
+    const node = doc.child(index);
+    found = node.isTextblock;
+    node.descendants((child) => {
+      if (child.isTextblock) found = true;
+      return !found;
+    });
   }
-  return !known;
+  return found;
 }
 
-function placed(model: Model, sourceOffset: number): { position: number; offset: number } | null {
-  const { slice } = model;
-  const block = blockAround(model, sourceOffset);
-  if (!block || (block.to > block.from && !holdsText(model, block))) return null;
-  const low = block.from - slice.from;
-  const high = block.to - slice.from;
-  const offset = Math.max(low, Math.min(high, sourceOffset - slice.from));
-  const line = model.doc.lineAt(slice.from + offset);
-  const sameLine = (candidate: number) => candidate >= line.from - slice.from && candidate <= line.to - slice.from;
-  for (const onLine of [true, false]) {
-    for (let step = 0; step <= SNAP_STEPS; step += 1) {
-      for (const candidate of step === 0 ? [offset] : [offset - step, offset + step]) {
-        if (candidate < low || candidate > high || sameLine(candidate) !== onLine) continue;
-        const position = exactPosition(model, candidate);
-        if (position !== null) return { position, offset: slice.from + candidate };
-      }
-    }
+function blockParser(editor: Editor): MarkdownIt {
+  const { parser } = (editor.storage as unknown as { markdown: { parser: { md: MarkdownIt; parse(content: string): string } } }).markdown;
+  if (!primed) {
+    parser.parse("");
+    primed = true;
+  }
+  return parser.md;
+}
+
+function maskedMath(text: string, math: readonly Span[], offset: number): string {
+  let out = "";
+  let at = 0;
+  for (const range of math) {
+    const from = Math.max(range.from - offset, at);
+    const to = Math.min(range.to - offset, text.length);
+    if (to <= from) continue;
+    out += text.slice(at, from) + text.slice(from, to).replace(/[^\n]/gu, "x").replace(/^$/gmu, "x");
+    at = to;
+  }
+  return out + text.slice(at);
+}
+
+function imageOnly(group: readonly MdToken[], first: boolean): boolean {
+  return (
+    group.some((child) => child.type === "image") &&
+    group.every((child) => child.type === "image" || (child.type === "text" && (child.content.trim() === "" || (first && TASK_MARKER.test(child.content)))))
+  );
+}
+
+function leaf(first: number, last: number, text = true): Leaf {
+  return { first, last, textFirst: first, textLast: last, text };
+}
+
+function paragraphLeaves(first: number, last: number, inline: MdToken | undefined): Leaf[] {
+  const groups: MdToken[][] = [[]];
+  for (const child of inline?.children ?? []) {
+    if (child.type === "softbreak" || child.type === "hardbreak") groups.push([]);
+    else groups[groups.length - 1].push(child);
+  }
+  if (groups.length !== last - first + 1) return [leaf(first, last)];
+  const leaves: Leaf[] = [];
+  let start = first;
+  groups.forEach((group, index) => {
+    if (!imageOnly(group, index === 0)) return;
+    if (start < first + index) leaves.push(leaf(start, first + index - 1));
+    leaves.push(leaf(first + index, first + index));
+    start = first + index + 1;
+  });
+  if (start <= last) leaves.push(leaf(start, last));
+  return leaves;
+}
+
+function leavesOf(token: MdToken, inline: MdToken | undefined, lines: readonly string[]): Leaf[] {
+  const [first, end] = token.map ?? [0, 0];
+  let last = Math.min(end, lines.length) - 1;
+  while (last > first && BLANKISH.test(lines[last])) last -= 1;
+  if (token.type === "hr") return [leaf(first, last, false)];
+  if (token.type === "paragraph_open") return paragraphLeaves(first, last, inline);
+  if (token.type === "heading_open") return [{ ...leaf(first, last), textLast: (token.markup === "=" || token.markup === "-") && last > first ? last - 1 : last }];
+  if (token.type === "table_open") return [{ ...leaf(first, last), rule: first + 1 }];
+  if (token.type !== "fence") return [leaf(first, last)];
+  const closing = lines[last].replace(/^[\s>]*/u, "");
+  const textLast = last > first && closing.startsWith(token.markup) && /^(?:`+|~+)[ \t]*$/u.test(closing) ? last - 1 : last;
+  return [{ first, last, textFirst: first + 1, textLast, text: first + 1 <= textLast }];
+}
+
+function structureOf(model: Model, unit: Span): Structure {
+  const text = model.doc.sliceString(unit.from, unit.to);
+  const known = structures.get(text);
+  if (known) return known;
+  const lines = text.split("\n");
+  const starts: number[] = [];
+  let at = 0;
+  for (const line of lines) {
+    starts.push(at);
+    at += line.length + 1;
+  }
+  const leaves: Leaf[] = [];
+  const divs: Structure["divs"] = [];
+  const open: { line: number; close: number; from: number }[] = [];
+  const tokens = blockParser(model.editor).parse(maskedMath(text, analysed.get(model.doc)?.math ?? [], unit.from), {});
+  tokens.forEach((token, index) => {
+    if (token.type === "align_div_open" && token.map) open.push({ line: token.map[0], close: token.map[1] - 1, from: leaves.length });
+    else if (token.type === "align_div_close") {
+      const div = open.pop();
+      if (div) divs.push({ open: div.line, close: div.close, leaves: leaves.slice(div.from) });
+    } else if (LEAF_TOKENS.has(token.type) && token.map) leaves.push(...leavesOf(token, tokens[index + 1], lines));
+  });
+  const structure = { starts, lines, leaves, divs };
+  if (structures.size > 64) structures.clear();
+  structures.set(text, structure);
+  return structure;
+}
+
+function spread(range: Span, origin: number, limit: number, skip?: Span): number[] {
+  const out: number[] = [];
+  const keep = (at: number) => at >= range.from && at <= range.to && !(skip && at >= skip.from && at <= skip.to);
+  for (let step = 0; out.length < limit && (origin - step >= range.from || origin + step <= range.to); step += 1) {
+    if (keep(origin - step)) out.push(origin - step);
+    if (step > 0 && out.length < limit && keep(origin + step)) out.push(origin + step);
+  }
+  return out;
+}
+
+interface Around {
+  index: number;
+  inside: boolean;
+  end: boolean;
+}
+
+function unitAround(model: Model, offset: number): Around | null {
+  const { slice, doc } = model;
+  let before = -1;
+  for (const [index, unit] of slice.units.entries()) {
+    if (unit.from <= offset && offset <= unit.to) return { index, inside: true, end: false };
+    if (unit.to <= offset) before = index;
+  }
+  if (doc.lineAt(Math.max(0, Math.min(doc.length, offset))).text.trim() !== "") return null;
+  if (before >= 0) return { index: before, inside: false, end: true };
+  const after = slice.units.findIndex((unit) => unit.from >= offset);
+  return after >= 0 ? { index: after, inside: false, end: false } : null;
+}
+
+function lineAt(starts: readonly number[], offset: number): number {
+  let line = 0;
+  while (line + 1 < starts.length && starts[line + 1] <= offset) line += 1;
+  return line;
+}
+
+function candidatesFor(model: Model, offset: number, around: Around): number[] {
+  const unit = model.slice.units[around.index];
+  const { starts, lines, leaves, divs } = structureOf(model, unit);
+  const span = (first: number, last: number): Span => ({ from: unit.from + starts[first], to: unit.from + starts[last] + lines[last].length });
+  const toward = (target: Leaf | undefined, atEnd: boolean) => {
+    if (!target?.text) return [];
+    const range = span(target.textFirst, target.textLast);
+    return spread(range, atEnd ? range.to : range.from, SPAN_CANDIDATES);
+  };
+  if (!around.inside) return toward(around.end ? leaves.at(-1) : leaves[0], around.end);
+  const line = lineAt(starts, offset - unit.from);
+  const own = span(line, line);
+  const holder = leaves.find((each) => each.first <= line && line <= each.last);
+  if (holder) {
+    if (!holder.text) return [];
+    if (line < holder.textFirst || line > holder.textLast) return toward(holder, line > holder.textLast);
+    const rest = spread(span(holder.textFirst, holder.textLast), offset, SPAN_CANDIDATES, own);
+    return line === holder.rule ? rest : [...spread(own, offset, OWN_LINE_STEPS * 2 + 1), ...rest];
+  }
+  const div = divs.find((each) => each.open === line || each.close === line);
+  if (div) return toward(line === div.open ? div.leaves[0] : div.leaves.at(-1), line !== div.open);
+  if (BLANKISH.test(lines[line])) {
+    const above = leaves.filter((each) => each.last < line).at(-1);
+    if (above) return toward(above, true);
+    const below = leaves.find((each) => each.first > line);
+    if (below) return toward(below, false);
+  }
+  return EMPTY_CONTAINER.test(lines[line]) ? spread(own, offset, OWN_LINE_STEPS * 2 + 1) : [];
+}
+
+function onTextLine(model: Model, offset: number, around: Around): boolean {
+  const unit = model.slice.units[around.index];
+  const { starts, leaves } = structureOf(model, unit);
+  const line = lineAt(starts, offset - unit.from);
+  return leaves.some((each) => each.text && each.textFirst <= line && line <= each.textLast);
+}
+
+function placed(model: Model, sourceOffset: number): Spot | null {
+  const around = unitAround(model, sourceOffset);
+  if (!around) return null;
+  const nodes = model.nodes[around.index] ?? null;
+  if (nodes && !holdsText(model.clean, nodes)) return null;
+  const spot = (offset: number): Spot | null => {
+    const position = exactPosition(model, offset - model.slice.from);
+    if (position === null) return null;
+    const top = model.clean.resolve(position).index(0);
+    return nodes && (top < nodes[0] || top >= nodes[1]) ? null : { position, offset };
+  };
+  const own = around.inside ? spot(sourceOffset) : null;
+  if (own && (!model.attributed.has(sourceOffset - model.slice.from) || onTextLine(model, sourceOffset, around))) return own;
+  for (const candidate of candidatesFor(model, sourceOffset, around)) {
+    const found = spot(candidate);
+    if (found) return found;
   }
   return null;
-}
-
-function modelPosition(model: Model, sourceOffset: number): number | null {
-  return placed(model, sourceOffset)?.position ?? null;
 }
 
 type ModelState = Editor["state"];
@@ -385,41 +635,6 @@ const BLANK = /[ \t\u00a0]/u;
 function select(model: Model, anchor: number, head: number) {
   const { editor } = model;
   editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, anchor, head)));
-}
-
-function lineColumn(marked: string, mark: string, index: number, clean: string): number | null {
-  const cleanLines = clean.split("\n");
-  if (marked.replaceAll(mark, "").split("\n").length !== cleanLines.length) return null;
-  const before = marked.slice(0, index);
-  const line = before.split("\n").length - 1;
-  const column = before.length - (before.lastIndexOf("\n") + 1);
-  const start = cleanLines.slice(0, line).reduce((sum, text) => sum + text.length + 1, 0);
-  return start + Math.min(column, cleanLines[line].length);
-}
-
-function markChoices(state: ModelState, pos: number, side: -1 | 0 | 1): (readonly Mark[])[] {
-  const $pos = state.doc.resolve(pos);
-  const natural = side < 0 ? $pos.nodeBefore?.marks : side > 0 ? $pos.nodeAfter?.marks : $pos.marks();
-  const choices: (readonly Mark[])[] = [];
-  for (const marks of [natural, $pos.marks(), $pos.nodeAfter?.marks, $pos.nodeBefore?.marks, []]) {
-    const allowed = (marks ?? []).filter((mark) => $pos.parent.type.allowsMarkType(mark.type));
-    if (!choices.some((each) => each.length === allowed.length && each.every((mark, index) => mark.eq(allowed[index])))) choices.push(allowed);
-  }
-  return choices;
-}
-
-function endOffset(model: Model, state: ModelState, pos: number, side: -1 | 0 | 1, after: string): number | null {
-  if (!state.doc.resolve(pos).parent.inlineContent) return null;
-  let nearest: number | null = null;
-  for (const marks of markChoices(state, pos, side)) {
-    const doc = new Transform(state.doc).insert(pos, state.schema.text(model.mark, marks)).doc;
-    const marked = serializeMarkdownBody(doc.toJSON(), model.snapshot);
-    const index = marked.indexOf(model.mark);
-    if (index < 0 || marked.includes(model.mark, index + 1)) continue;
-    if (marked.slice(0, index) + marked.slice(index + 1) === after) return index;
-    nearest ??= lineColumn(marked, model.mark, index, after);
-  }
-  return nearest;
 }
 
 function nodeRange(model: Model, state: ModelState, after: string): { anchor: number; head: number } | null {
@@ -433,16 +648,20 @@ function nodeRange(model: Model, state: ModelState, after: string): { anchor: nu
   return start < end ? { anchor: start, head: end } : null;
 }
 
-function sourceSelection(model: Model, state: ModelState, after: string): { anchor: number; head: number } | null {
+function rangeEnd(model: Model, state: ModelState, after: string): number | null {
+  const { $from, $to, to } = state.selection;
+  return endOffset(model, state, to, -1, after, false, $from.marksAcross($to) ?? []);
+}
+
+function sourceSelection(model: Model, state: ModelState, after: string): { anchor: number | null; head: number | null } {
   const { selection } = state;
-  if (selection instanceof NodeSelection) return nodeRange(model, state, after);
+  if (selection instanceof NodeSelection) return nodeRange(model, state, after) ?? { anchor: null, head: null };
   if (selection.empty) {
     const at = endOffset(model, state, selection.head, 0, after);
-    return at === null ? null : { anchor: at, head: at };
+    return { anchor: at, head: at };
   }
   const from = endOffset(model, state, selection.from, 1, after);
-  const to = endOffset(model, state, selection.to, -1, after);
-  if (from === null || to === null) return null;
+  const to = rangeEnd(model, state, after);
   return selection.anchor <= selection.head ? { anchor: from, head: to } : { anchor: to, head: from };
 }
 
@@ -458,159 +677,36 @@ function trimmedSelection(state: ModelState): ModelState {
   return state.apply(state.tr.setSelection(TextSelection.create(doc, forward ? from : to, forward ? to : from)));
 }
 
-const REVERT_LIMIT = 40;
-
-interface Hunk {
-  plainFrom: number;
-  plainTo: number;
-  visualFrom: number;
-  visualTo: number;
+function idle(before: ModelState, after: ModelState): boolean {
+  const [stored, now] = [before.storedMarks, after.storedMarks];
+  return before.doc.eq(after.doc) && before.selection.eq(after.selection) && (stored === now || (stored !== null && now !== null && Mark.sameSet(stored, now)));
 }
 
-function canonical(json: JSONContent): string {
-  const content = [...(json.content ?? [])];
-  while (content.length > 0 && content.at(-1)?.type === "paragraph" && !content.at(-1)?.content?.length) content.pop();
-  return JSON.stringify(content);
+function settled(model: Model, state: EditorState, offset: number, at: Spot): number {
+  if (at.offset >= offset) return at.offset;
+  const skipped = state.doc.sliceString(at.offset, offset);
+  const breaks = model.clean.resolve(Math.min(at.position, model.clean.content.size)).nodeAfter?.type.name === "hardBreak";
+  return skipped.trim() !== "" || (skipped.includes("\n") && !/\n[ \t]*\n/u.test(skipped)) || breaks ? at.offset : offset;
 }
 
-function readsAs(model: Model, text: string): { key: string; text: string } {
-  const doc = model.editor.schema.nodeFromJSON(parse(text).doc);
-  return { key: canonical(doc.toJSON()), text: doc.textContent };
-}
-
-function hunksBetween(plain: string, visual: string): Hunk[] | null {
-  const before = Array.from(plain);
-  const after = Array.from(visual);
-  const script = before.length + after.length <= SPLIT_DIFF_LIMIT ? myersEditScript(before, after) : null;
-  if (!script) return null;
-  const oldAt = [0];
-  for (const char of before) oldAt.push((oldAt.at(-1) ?? 0) + char.length);
-  const newAt = [0];
-  for (const char of after) newAt.push((newAt.at(-1) ?? 0) + char.length);
-  const hunks: Hunk[] = [];
-  for (const edit of script) {
-    if (edit.kind === "same") continue;
-    const plainFrom = oldAt[edit.oldStart];
-    const visualFrom = newAt[edit.newStart];
-    const plainTo = edit.kind === "del" ? oldAt[edit.oldStart + edit.length] : plainFrom;
-    const visualTo = edit.kind === "add" ? newAt[edit.newStart + edit.length] : visualFrom;
-    const last = hunks.at(-1);
-    if (last && last.plainTo === plainFrom && last.visualTo === visualFrom) {
-      last.plainTo = plainTo;
-      last.visualTo = visualTo;
-    } else hunks.push({ plainFrom, plainTo, visualFrom, visualTo });
+function unchanged(model: Model, state: EditorState, start: number, body: string, ends: [Spot, Spot], quiet: boolean): TransactionSpec | null {
+  const main = state.selection.main;
+  const anchor = settled(model, state, main.anchor, ends[0]);
+  const head = main.empty ? anchor : settled(model, state, main.head, ends[1]);
+  const moved = anchor !== main.anchor || head !== main.head;
+  if (main.empty) {
+    const handed = bareCaret(model, moved && !quiet ? state.update({ selection: { anchor } }).state : state, start, body, ends[0]);
+    return moved && !quiet ? { ...handed, selection: { anchor }, scrollIntoView: true } : handed;
   }
-  return hunks;
+  if (quiet) return { effects: typingAfter(model, model.editor.state, start, body, { from: main.from, to: main.to }, true) };
+  return { selection: { anchor, head }, effects: typingAfter(model, model.editor.state, start, body, { from: Math.min(anchor, head), to: Math.max(anchor, head) }), scrollIntoView: moved };
 }
 
-function built(plain: string, visual: string, hunks: readonly Hunk[], kept: readonly boolean[]): string {
-  let out = "";
-  let at = 0;
-  hunks.forEach((hunk, index) => {
-    out += plain.slice(at, hunk.plainFrom) + (kept[index] ? visual.slice(hunk.visualFrom, hunk.visualTo) : plain.slice(hunk.plainFrom, hunk.plainTo));
-    at = hunk.plainTo;
-  });
-  return out + plain.slice(at);
+export function modelEdit(state: EditorState, act: Act): TransactionSpec | null {
+  return guarded(() => editThroughModel(state, act, true), null);
 }
 
-function leastRewrite(model: Model, plain: string, visual: string, target: string, typedFrom: number, typedTo: number): { text: string; hunks: Hunk[]; kept: boolean[] } {
-  const hunks = hunksBetween(plain, visual);
-  if (!hunks) return { text: visual, hunks: [], kept: [] };
-  const reads = (kept: readonly boolean[]) => readsAs(model, model.slice.head + built(plain, visual, hunks, kept)).key === target;
-  const touching = hunks.map((hunk) => hunk.plainTo >= typedFrom - 2 && hunk.plainFrom <= typedTo + 2);
-  if (reads(touching)) return { text: built(plain, visual, hunks, touching), hunks, kept: touching };
-  const kept = hunks.map(() => true);
-  const distance = (hunk: Hunk) => Math.max(0, hunk.plainFrom - typedTo, typedFrom - hunk.plainTo);
-  const order = hunks.map((_, index) => index).sort((left, right) => distance(hunks[right]) - distance(hunks[left]));
-  for (const index of order.slice(0, REVERT_LIMIT)) {
-    kept[index] = false;
-    if (!reads(kept)) kept[index] = true;
-  }
-  return { text: built(plain, visual, hunks, kept), hunks, kept };
-}
-
-function caretThrough(hunks: readonly Hunk[], kept: readonly boolean[], caret: number): number {
-  let shift = 0;
-  for (const [index, hunk] of hunks.entries()) {
-    if (!kept[index]) continue;
-    if (hunk.plainTo <= caret && hunk.plainFrom < caret) shift += hunk.visualTo - hunk.visualFrom - (hunk.plainTo - hunk.plainFrom);
-    else if (hunk.plainFrom < caret && caret < hunk.plainTo) return Math.min(caret + shift, hunk.plainFrom + shift + (hunk.visualTo - hunk.visualFrom));
-  }
-  return caret + shift;
-}
-
-function typedEdit(model: Model, state: ModelState, from: number, body: string, range: { from: number; to: number }, inserted: string, prefix = ""): TransactionSpec | null {
-  const { head } = model.slice;
-  const at = range.from - from;
-  const plain = body.slice(0, at) + inserted + body.slice(range.to - from);
-  const typedEnd = at + inserted.length;
-  const tr = state.tr;
-  if (prefix + inserted) tr.insertText(prefix + inserted);
-  else tr.deleteSelection();
-  const next = state.apply(tr);
-  const after = serializeMarkdownBody(next.doc.toJSON(), model.snapshot);
-  const plainReads = readsAs(model, head + plain);
-  const afterReads = after.startsWith(head) ? readsAs(model, after) : null;
-  if (!afterReads || afterReads.text !== next.doc.textContent) {
-    return plainReads.key === canonical(next.doc.toJSON()) ? null : carriedForward(model, state, from, plain, plainReads.key, at, prefix + inserted, inserted);
-  }
-  const target = afterReads.key;
-  if (plainReads.key === target) return null;
-  const visual = after.slice(head.length);
-  const { text, hunks, kept } = leastRewrite(model, plain, visual, target, at, typedEnd);
-  const caret = hunks.length > 0 ? caretThrough(hunks, kept, typedEnd) : text.length - (plain.length - typedEnd);
-  return {
-    changes: changesBetween(body, text).map((change) => ({ ...change, from: from + change.from, to: from + change.to })),
-    selection: { anchor: from + caret },
-    scrollIntoView: true,
-  };
-}
-
-function carriedForward(model: Model, state: ModelState, from: number, plain: string, plainReads: string, at: number, modelText: string, inserted: string): TransactionSpec | null {
-  if (!inserted || state.storedMarks === null || !state.selection.empty) return null;
-  const position = state.selection.from;
-  const tr = state.tr.insertText(modelText, position);
-  tr.removeMark(position, position + modelText.length);
-  for (const mark of state.selection.$from.marks()) tr.addMark(position, position + modelText.length, mark);
-  const kept = state.apply(tr.setStoredMarks(state.storedMarks));
-  if (canonical(kept.doc.toJSON()) !== plainReads) return null;
-  const caret = from + at + inserted.length;
-  return {
-    changes: { from: from + at, to: from + at, insert: inserted },
-    selection: { anchor: caret },
-    effects: pendingTyping.of({ from: caret, to: caret, replace: (next) => guarded(() => typedEdit(model, kept, from, plain, { from: caret, to: caret }, next), null) }),
-    scrollIntoView: true,
-  };
-}
-
-function changesBetween(before: string, after: string): { from: number; to: number; insert: string }[] {
-  const span = minimalReplacement(before, after);
-  const removed = Array.from(before.slice(span.from, span.to));
-  const added = Array.from(span.insert);
-  const script = removed.length + added.length <= SPLIT_DIFF_LIMIT ? myersEditScript(removed, added) : null;
-  if (!script) return [span];
-  const offsets = [span.from];
-  for (const char of removed) offsets.push((offsets.at(-1) ?? span.from) + char.length);
-  const changes: { from: number; to: number; insert: string }[] = [];
-  for (const edit of script) {
-    if (edit.kind === "same") continue;
-    const from = offsets[edit.oldStart];
-    const to = edit.kind === "del" ? offsets[edit.oldStart + edit.length] : from;
-    const insert = edit.kind === "add" ? added.slice(edit.newStart, edit.newStart + edit.length).join("") : "";
-    const last = changes.at(-1);
-    if (last && last.to === from) {
-      last.to = to;
-      last.insert += insert;
-    } else changes.push({ from, to, insert });
-  }
-  return changes;
-}
-
-export function modelEdit(state: EditorState, act: (target: MarkdownTarget) => void): TransactionSpec | null {
-  return guarded(() => editThroughModel(state, act), null);
-}
-
-function editThroughModel(state: EditorState, act: (target: MarkdownTarget) => void): TransactionSpec | null {
+function editThroughModel(state: EditorState, act: Act, quiet: boolean): TransactionSpec | null {
   const main = state.selection.main;
   const model = modelOf(state, main.from, main.to, 1);
   if (!model) return null;
@@ -618,7 +714,10 @@ function editThroughModel(state: EditorState, act: (target: MarkdownTarget) => v
   const head = main.empty ? anchor : placed(model, main.head);
   if (anchor === null || head === null) return null;
   select(model, anchor.position, head.position);
+  const stored = main.empty ? pendingMarks(state) : null;
+  if (stored) model.editor.view.dispatch(model.editor.state.tr.setStoredMarks([...stored]));
   loadedInput = null;
+  const before = model.editor.state;
   act(visualTarget(model.editor));
   const after = serializeMarkdownBody(model.editor.getJSON(), model.snapshot);
   const { slice } = model;
@@ -630,17 +729,16 @@ function editThroughModel(state: EditorState, act: (target: MarkdownTarget) => v
   );
   const start = slice.from + lead.length;
   const single = state.selection.ranges.length === 1;
-  if (changes.empty) return single && main.empty ? bareCaret(model, state, start, serialized, anchor) : null;
+  if (changes.empty) return single ? unchanged(model, state, start, serialized, [anchor, head], quiet && idle(before, model.editor.state)) : null;
   const typed = trimmedSelection(model.editor.state);
   const picked = sourceSelection(model, typed, after);
-  const exact = picked !== null && Math.min(picked.anchor, picked.head) >= slice.head.length;
+  const toSource = (at: number | null) => (at !== null && at >= slice.head.length ? start + at - slice.head.length : null);
+  const [anchorAt, headAt] = [toSource(picked.anchor), toSource(picked.head)];
+  const exact = anchorAt !== null || headAt !== null;
   const mainRange = exact
-    ? EditorSelection.range(start + picked.anchor - slice.head.length, start + picked.head - slice.head.length)
+    ? settledRange(changes.apply(state.doc).toString(), EditorSelection.range(anchorAt ?? changes.mapPos(main.anchor, 1), headAt ?? changes.mapPos(main.head, 1)))
     : fallbackRange(changes, main);
-  const effects =
-    exact && single
-      ? pendingTyping.of({ from: mainRange.from, to: mainRange.to, replace: (inserted) => guarded(() => typedEdit(model, typed, start, serialized, mainRange, inserted), null) })
-      : [];
+  const effects = exact && single ? typingAfter(model, typed, start, serialized, mainRange) : [];
   const ranges = state.selection.ranges.map((range, index) =>
     index === state.selection.mainIndex ? mainRange : EditorSelection.range(changes.mapPos(range.anchor, 1), changes.mapPos(range.head, 1)),
   );
@@ -654,6 +752,12 @@ function editThroughModel(state: EditorState, act: (target: MarkdownTarget) => v
   };
 }
 
+function settledRange(text: string, range: SelectionRange): SelectionRange {
+  if (range.empty) return range;
+  const [from, to] = settledEnds(text, range.from, range.to);
+  return range.anchor <= range.head ? EditorSelection.range(from, to) : EditorSelection.range(to, from);
+}
+
 function fallbackRange(changes: ChangeSet, main: SelectionRange): SelectionRange {
   const range = EditorSelection.range(changes.mapPos(main.anchor, 1), changes.mapPos(main.head, 1));
   let covers = false;
@@ -663,38 +767,19 @@ function fallbackRange(changes: ChangeSet, main: SelectionRange): SelectionRange
   return covers ? EditorSelection.cursor(range.head) : range;
 }
 
-function bareCaret(model: Model, state: EditorState, start: number, body: string, at: { position: number; offset: number }): TransactionSpec | null {
-  const caret = state.selection.main.head;
-  const typed = model.editor.state;
-  if (!typed.selection.empty || typed.selection.head !== at.position || at.offset > caret) return null;
-  const prefix = state.doc.sliceString(at.offset, caret);
-  if (prefix.trim() !== "") return null;
-  return {
-    effects: pendingTyping.of({
-      from: caret,
-      to: caret,
-      replace: (inserted) => guarded(() => typedEdit(model, typed, start, body, { from: caret, to: caret }, inserted, prefix), null),
-    }),
-  };
-}
-
 function caretModel(state: EditorState): Model | null {
   const { head } = state.selection.main;
   const model = modelOf(state, head, head, 0);
-  const position = model && modelPosition(model, head);
-  if (!model || position === null) return null;
+  const position = model && placed(model, head)?.position;
+  if (!model || position === null || position === undefined) return null;
   select(model, position, position);
   return model;
 }
 
 function guarded<T>(run: () => T, fallback: T): T {
-  try {
-    return run();
-  } catch (error) {
+  return reported(run, fallback, () => {
     loadedInput = null;
-    reportEditorError("markdown toolbar", error);
-    return fallback;
-  }
+  });
 }
 
 export function modelState(state: EditorState): MarkdownToolbarState {
@@ -712,10 +797,10 @@ export function modelLinkHref(state: EditorState): string {
 }
 
 export function sourceTarget(viewOf: () => EditorView | null): MarkdownTarget {
-  const run = (act: (target: MarkdownTarget) => void) => () => {
+  const run = (act: Act) => () => {
     const view = viewOf();
     if (!view || view.state.readOnly) return;
-    const spec = modelEdit(view.state, act);
+    const spec = guarded(() => editThroughModel(view.state, act, false), null);
     if (spec) view.dispatch(spec);
     view.focus();
   };

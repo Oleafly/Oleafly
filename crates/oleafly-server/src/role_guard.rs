@@ -2,8 +2,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 use loro::cursor::{Cursor, Side};
 use loro::{
-    ContainerID, ContainerTrait, ContainerType, Frontiers, IdSpan, Index, JsonMapOp, JsonOpContent,
-    LoroDoc, LoroList, LoroMap, LoroValue, ValueOrContainer, ID,
+    ContainerID, ContainerTrait, ContainerType, Frontiers, IdSpan, Index, JsonListOp, JsonMapOp,
+    JsonOpContent, LoroDoc, LoroList, LoroMap, LoroValue, ValueOrContainer, ID,
 };
 use oleafly_collab_protocol::ids::AccountId;
 use oleafly_collab_protocol::projects::ProjectRole;
@@ -27,12 +27,18 @@ const TEXT: &str = "text";
 const INSERT: &str = "insert";
 const DELETE: &str = "delete";
 const CREATED_BY: &str = "created_by";
+const CREATED_AT: &str = "created_at";
+const QUOTE: &str = "quote";
+const SUGGESTION: &str = "suggestion";
+const AT: &str = "at";
 const MESSAGES: &str = "messages";
 const RESOLVED: &str = "resolved";
 const DELETED: &str = "deleted";
 const ID_KEY: &str = "id";
 const REACTIONS: &str = "reactions";
 const REMOVED: &str = "removed";
+const STAMPED: [&str; 3] = [ID_KEY, AUTHOR, AT];
+const ANCHORED: [&str; 6] = [CREATED_BY, CREATED_AT, QUOTE, START, END, SUGGESTION];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RoleVerdict {
@@ -41,6 +47,21 @@ pub enum RoleVerdict {
     Refused,
     Unreadable,
     Unchecked,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Judged {
+    pub verdict: RoleVerdict,
+    pub comments: bool,
+}
+
+impl From<RoleVerdict> for Judged {
+    fn from(verdict: RoleVerdict) -> Judged {
+        Judged {
+            verdict,
+            comments: false,
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -435,6 +456,7 @@ fn items_kept(before: &[LoroValue], after: &[LoroValue], account: &str) -> bool 
 
 struct Said<'a> {
     author: Option<&'a str>,
+    at: Option<&'a LoroValue>,
     deleted: bool,
     removed: Option<&'a LoroValue>,
 }
@@ -457,6 +479,7 @@ fn said_in(comments: &LoroValue) -> BTreeMap<(&str, &str), Said<'_>> {
                 (thread, id.as_str()),
                 Said {
                     author,
+                    at: value_at(message, AT),
                     deleted: truthy(value_at(message, DELETED)),
                     removed: value_at(message, REMOVED),
                 },
@@ -473,14 +496,15 @@ fn reactions_in<'a>(comments: &'a LoroValue, thread: &str) -> Option<&'a LoroVal
 fn editor_kept(before: &LoroValue, after: &LoroValue, account: &str) -> bool {
     let (old, new) = (said_in(before), said_in(after));
     old.iter().all(|(key, was)| {
-        let own = was.author == Some(account);
-        match new.get(key) {
-            Some(now) => now.removed == was.removed && (own || now.deleted == was.deleted),
-            None => own,
-        }
+        new.get(key).is_some_and(|now| {
+            now.removed == was.removed
+                && now.author == was.author
+                && (was.author == Some(account) || (now.deleted == was.deleted && now.at == was.at))
+        })
     }) && new
         .iter()
         .all(|(key, now)| old.contains_key(key) || now.removed.is_none())
+        && anchors_kept(before, after)
         && keys_of(before).union(&keys_of(after)).all(|thread| {
             reactions_kept(
                 reactions_in(before, thread),
@@ -488,6 +512,15 @@ fn editor_kept(before: &LoroValue, after: &LoroValue, account: &str) -> bool {
                 account,
             )
         })
+}
+
+fn anchors_kept(before: &LoroValue, after: &LoroValue) -> bool {
+    keys_of(before).intersection(&keys_of(after)).all(|thread| {
+        let (old, new) = (value_at(before, thread), value_at(after, thread));
+        ANCHORED.iter().all(|key| {
+            old.and_then(|old| value_at(old, key)) == new.and_then(|new| value_at(new, key))
+        })
+    })
 }
 
 fn thread_messages(thread: &LoroValue) -> &[LoroValue] {
@@ -594,7 +627,7 @@ struct Stamped {
 #[derive(Default)]
 struct Stamps {
     maps: HashMap<ContainerID, Stamped>,
-    lists: HashMap<ContainerID, (bool, HashSet<ContainerID>)>,
+    lists: HashMap<ContainerID, HashSet<ContainerID>>,
 }
 
 impl Stamps {
@@ -651,22 +684,54 @@ impl Stamps {
                 self.map(&message, if chat { Held::Chat } else { Held::Comment });
             }
         });
-        self.lists.insert(list.id(), (chat, items));
+        self.lists.insert(list.id(), items);
     }
 }
 
-fn written_keys(doc: &LoroDoc, piece: &Piece) -> HashSet<(ContainerID, String)> {
-    let mut written = HashSet::new();
+#[derive(Default)]
+struct Written {
+    keys: HashSet<(ContainerID, String)>,
+    misshapen: HashSet<ContainerID>,
+}
+
+fn holds_a(value: &LoroValue, kind: ContainerType) -> bool {
+    matches!(value, LoroValue::Container(id) if id.container_type() == kind)
+}
+
+fn written_in(doc: &LoroDoc, piece: &Piece) -> Written {
+    let mut written = Written::default();
     for change in doc.export_json_in_id_span(IdSpan::new(piece.peer, piece.from, piece.to)) {
         for op in change.ops {
-            if let JsonOpContent::Map(JsonMapOp::Insert { key, .. } | JsonMapOp::Delete { key }) =
-                op.content
-            {
-                written.insert((op.container, key));
+            match op.content {
+                JsonOpContent::Map(JsonMapOp::Insert { key, value }) => {
+                    if key == MESSAGES && !holds_a(&value, ContainerType::List) {
+                        written.misshapen.insert(op.container.clone());
+                    }
+                    written.keys.insert((op.container, key));
+                }
+                JsonOpContent::Map(JsonMapOp::Delete { key }) => {
+                    written.keys.insert((op.container, key));
+                }
+                JsonOpContent::List(JsonListOp::Insert { value, .. })
+                    if !value.iter().all(|item| holds_a(item, ContainerType::Map)) =>
+                {
+                    written.misshapen.insert(op.container);
+                }
+                _ => {}
             }
         }
     }
     written
+}
+
+fn shaped(after: &Stamps, written: &Written) -> bool {
+    written.misshapen.iter().all(|container| {
+        !after.lists.contains_key(container)
+            && after
+                .maps
+                .get(container)
+                .is_none_or(|map| map.held != Held::Thread)
+    })
 }
 
 fn rewritable(map: &Stamped, key: &str, account: &str, editor: bool) -> bool {
@@ -677,9 +742,12 @@ fn rewritable(map: &Stamped, key: &str, account: &str, editor: bool) -> bool {
         Held::Thread => match key {
             RESOLVED => true,
             MESSAGES | REACTIONS => false,
+            _ if ANCHORED.contains(&key) => own,
             _ => editor || own,
         },
-        Held::Comment => key != REMOVED && (own || (editor && key != DELETED)),
+        Held::Comment => {
+            key != REMOVED && (own || (editor && key != DELETED && !STAMPED.contains(&key)))
+        }
         Held::Chat => key != REMOVED && own,
     }
 }
@@ -703,19 +771,10 @@ fn stamps_kept(
         }
     });
     rewrites_kept
-        && before.lists.iter().all(|(id, (chat, items))| {
-            after.lists.get(id).is_none_or(|(_, kept)| {
-                items.iter().all(|item| {
-                    kept.contains(item)
-                        || (editor
-                            && !chat
-                            && before
-                                .maps
-                                .get(item)
-                                .is_some_and(|message| message.by.as_deref() == Some(account)))
-                })
-            })
-        })
+        && before
+            .lists
+            .iter()
+            .all(|(id, items)| after.lists.get(id).is_none_or(|kept| items.is_subset(kept)))
 }
 
 struct Discussion {
@@ -735,7 +794,7 @@ fn discussion(doc: &LoroDoc) -> Discussion {
 }
 
 fn discussed(doc: &LoroDoc, piece: &Piece, account: &str, editor: bool) -> bool {
-    let written = written_keys(doc, piece);
+    let written = written_in(doc, piece);
     let mut checked = Checked { doc, moved: false };
     if !checked.to(&piece.before) {
         return false;
@@ -757,7 +816,14 @@ fn discussed(doc: &LoroDoc, piece: &Piece, account: &str, editor: bool) -> bool 
             Some(&after.chat_reactions),
             account,
         )
-        && stamps_kept(&before.stamps, &after.stamps, &written, account, editor)
+        && shaped(&after.stamps, &written)
+        && stamps_kept(
+            &before.stamps,
+            &after.stamps,
+            &written.keys,
+            account,
+            editor,
+        )
 }
 
 fn placed_in_piece(doc: &LoroDoc, piece: &Piece, changed: &[ContainerID]) -> Option<Vec<Placed>> {
@@ -785,14 +851,14 @@ fn placed_in_piece(doc: &LoroDoc, piece: &Piece, changed: &[ContainerID]) -> Opt
     Some(found)
 }
 
-fn judge_piece(doc: &LoroDoc, piece: &Piece, rule: &RoleRule) -> RoleVerdict {
+fn judge_piece(doc: &LoroDoc, piece: &Piece, rule: &RoleRule) -> Judged {
     let length = usize::try_from(piece.to - piece.from).unwrap_or(0);
     let changed: Vec<ContainerID> = doc
         .get_changed_containers_in(ID::new(piece.peer, piece.from), length)
         .into_iter()
         .collect();
     let Some(found) = placed_in_piece(doc, piece, &changed) else {
-        return RoleVerdict::Refused;
+        return RoleVerdict::Refused.into();
     };
     let mut files = BTreeSet::new();
     let mut records = BTreeSet::new();
@@ -813,54 +879,61 @@ fn judge_piece(doc: &LoroDoc, piece: &Piece, rule: &RoleRule) -> RoleVerdict {
                 files.extend(found.file);
             }
             (_, ProjectRole::Editor) => {}
-            _ => return RoleVerdict::Refused,
+            _ => return RoleVerdict::Refused.into(),
         }
     }
+    let judged = |verdict| Judged { verdict, comments };
     if comments && rule.comments_off {
-        return RoleVerdict::ChangesComments;
+        return judged(RoleVerdict::ChangesComments);
     }
     let account = rule.account.to_string();
     let editor = rule.role == ProjectRole::Editor;
     if (comments || chat) && !discussed(doc, piece, &account, editor) {
-        return RoleVerdict::Refused;
+        return RoleVerdict::Refused.into();
     }
     if review && !reviewed(doc, piece, files, records, &account) {
-        return RoleVerdict::Refused;
+        return RoleVerdict::Refused.into();
     }
-    RoleVerdict::Allowed
+    judged(RoleVerdict::Allowed)
+}
+
+fn judge_spans(doc: &LoroDoc, spans: &[(u64, i32, i32)], rule: &RoleRule) -> Judged {
+    if !RoleRule::needed(rule.role) {
+        return RoleVerdict::Refused.into();
+    }
+    let Some(pieces) = pieces_of(doc, spans) else {
+        return RoleVerdict::Unreadable.into();
+    };
+    let mut overall = Judged::from(RoleVerdict::Allowed);
+    for piece in &pieces {
+        let judged = judge_piece(doc, piece, rule);
+        overall.comments |= judged.comments;
+        match judged.verdict {
+            RoleVerdict::Allowed => {}
+            RoleVerdict::ChangesComments => overall.verdict = RoleVerdict::ChangesComments,
+            _ => return judged,
+        }
+    }
+    overall
 }
 
 pub fn judge_imported(doc: &LoroDoc, spans: &[(u64, i32, i32)], rule: &RoleRule) -> RoleVerdict {
-    if !RoleRule::needed(rule.role) {
-        return RoleVerdict::Refused;
-    }
-    let Some(pieces) = pieces_of(doc, spans) else {
-        return RoleVerdict::Unreadable;
-    };
-    let mut verdict = RoleVerdict::Allowed;
-    for piece in &pieces {
-        match judge_piece(doc, piece, rule) {
-            RoleVerdict::Allowed => {}
-            RoleVerdict::ChangesComments => verdict = RoleVerdict::ChangesComments,
-            refused => return refused,
-        }
-    }
-    verdict
+    judge_spans(doc, spans, rule).verdict
 }
 
-fn read_in(doc: &LoroDoc, payload: &[u8], rule: &RoleRule) -> RoleVerdict {
+fn read_in(doc: &LoroDoc, payload: &[u8], rule: &RoleRule) -> Judged {
     let Ok(status) = snapshots::import_update(doc, payload) else {
-        return RoleVerdict::Unreadable;
+        return RoleVerdict::Unreadable.into();
     };
     if status.pending.is_some() {
-        return RoleVerdict::Unreadable;
+        return RoleVerdict::Unreadable.into();
     }
     let spans: Vec<(u64, i32, i32)> = status
         .success
         .iter()
         .map(|(peer, (start, end))| (*peer, *start, *end))
         .collect();
-    judge_imported(doc, &spans, rule)
+    judge_spans(doc, &spans, rule)
 }
 
 pub fn spares_comments(doc: &LoroDoc, payload: &[u8]) -> Option<bool> {
@@ -887,14 +960,19 @@ pub fn spares_comments(doc: &LoroDoc, payload: &[u8]) -> Option<bool> {
     Some(spared)
 }
 
-pub fn judge(doc: &LoroDoc, payload: &[u8], rule: &RoleRule) -> (RoleVerdict, bool) {
+pub fn judge_change(doc: &LoroDoc, payload: &[u8], rule: &RoleRule) -> (Judged, bool) {
     let attached = peers::update_reach(payload)
         .is_some_and(|reach| snapshots::builds_on(&reach, &doc.oplog_vv()));
     if !attached {
-        return (RoleVerdict::Unreadable, true);
+        return (RoleVerdict::Unreadable.into(), true);
     }
-    let verdict = read_in(doc, payload, rule);
-    (verdict, verdict == RoleVerdict::Allowed)
+    let judged = read_in(doc, payload, rule);
+    (judged, judged.verdict == RoleVerdict::Allowed)
+}
+
+pub fn judge(doc: &LoroDoc, payload: &[u8], rule: &RoleRule) -> (RoleVerdict, bool) {
+    let (judged, intact) = judge_change(doc, payload, rule);
+    (judged.verdict, intact)
 }
 
 #[cfg(test)]
@@ -955,15 +1033,19 @@ mod tests {
         doc.export(ExportMode::updates(&before)).unwrap()
     }
 
-    fn judged(held: &[&[u8]], update: &[u8], rule: RoleRule) -> RoleVerdict {
+    fn judged_whole(held: &[&[u8]], update: &[u8], rule: RoleRule) -> Judged {
         let doc = loaded(held, 99);
-        let (verdict, _) = judge(&doc, update, &rule);
+        let (judged, _) = judge_change(&doc, update, &rule);
         assert_eq!(
             doc.state_frontiers(),
             doc.oplog_frontiers(),
             "the document is back at its latest version"
         );
-        verdict
+        judged
+    }
+
+    fn judged(held: &[&[u8]], update: &[u8], rule: RoleRule) -> RoleVerdict {
+        judged_whole(held, update, rule).verdict
     }
 
     fn me() -> String {
@@ -2102,6 +2184,336 @@ mod tests {
             file_text(doc, FILE).insert(0, "x").unwrap();
         });
         assert_eq!(judged(&[&base], &typed, editor), RoleVerdict::Allowed);
+    }
+
+    fn plain(author: &str, id: &str) -> LoroValue {
+        LoroValue::from(HashMap::from([
+            ("id".to_owned(), LoroValue::from(id)),
+            ("author".to_owned(), LoroValue::from(author)),
+            ("at".to_owned(), LoroValue::from(5_i64)),
+            ("body".to_owned(), LoroValue::from(format!("{id} body"))),
+        ]))
+    }
+
+    #[test]
+    fn a_message_that_is_not_a_map_of_its_own_is_refused_for_every_role() {
+        let base = discussed_base();
+        let refused: Vec<(&str, Edit)> = vec![
+            (
+                "a plain reply in someone else's name",
+                Box::new(|doc| {
+                    list_in(their_thread(doc).get("messages"))
+                        .push(plain(&editor().to_string(), "m2"))
+                        .unwrap();
+                }),
+            ),
+            (
+                "a plain reply in an own name",
+                Box::new(|doc| {
+                    list_in(their_thread(doc).get("messages"))
+                        .push(plain(&me(), "m2"))
+                        .unwrap();
+                }),
+            ),
+            (
+                "a plain chat message",
+                Box::new(|doc| {
+                    doc.get_list(CHAT).push(plain(&me(), "c2")).unwrap();
+                }),
+            ),
+            (
+                "a text where a message goes",
+                Box::new(|doc| {
+                    list_in(their_thread(doc).get("messages"))
+                        .push_container(loro::LoroText::new())
+                        .unwrap();
+                }),
+            ),
+            (
+                "a new thread whose messages are a plain list",
+                Box::new(|doc| {
+                    let thread = doc
+                        .get_map(COMMENTS)
+                        .insert_container("f1/t3", LoroMap::new())
+                        .unwrap();
+                    thread.insert("created_by", me()).unwrap();
+                    thread
+                        .insert("messages", LoroValue::from(vec![plain(&me(), "m3")]))
+                        .unwrap();
+                }),
+            ),
+            (
+                "a new thread whose messages are a map",
+                Box::new(|doc| {
+                    let thread = doc
+                        .get_map(COMMENTS)
+                        .insert_container("f1/t3", LoroMap::new())
+                        .unwrap();
+                    thread.insert("created_by", me()).unwrap();
+                    thread.insert_container("messages", LoroMap::new()).unwrap();
+                }),
+            ),
+        ];
+        for role in [
+            ProjectRole::Editor,
+            ProjectRole::Reviewer,
+            ProjectRole::Commenter,
+        ] {
+            for (what, edit) in &refused {
+                let update = change(&[&base], 2, |doc| edit(doc));
+                assert_eq!(
+                    judged(&[&base], &update, rule(role)),
+                    RoleVerdict::Refused,
+                    "{what} as {role:?}"
+                );
+            }
+            let reply = change(&[&base], 2, |doc| {
+                said(&list_in(their_thread(doc).get("messages")), &me(), "m2");
+            });
+            assert_eq!(
+                judged(&[&base], &reply, rule(role)),
+                RoleVerdict::Allowed,
+                "a reply of its own as {role:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn an_editor_never_takes_a_message_or_a_thread_out_and_never_renames_a_message() {
+        let base = discussed_base();
+        let editor = rule(ProjectRole::Editor);
+        let mine = change(&[&base], 2, |doc| {
+            said(&list_in(their_thread(doc).get("messages")), &me(), "m2");
+            let thread = doc
+                .get_map(COMMENTS)
+                .insert_container("f1/t3", LoroMap::new())
+                .unwrap();
+            thread.insert("created_by", me()).unwrap();
+            let messages = thread
+                .insert_container("messages", LoroList::new())
+                .unwrap();
+            said(&messages, &me(), "m3");
+        });
+        let held: [&[u8]; 2] = [&base, &mine];
+        let refused: Vec<(&str, Edit)> = vec![
+            (
+                "taking an own reply out of the thread",
+                Box::new(|doc| {
+                    list_in(their_thread(doc).get("messages"))
+                        .delete(1, 1)
+                        .unwrap();
+                }),
+            ),
+            (
+                "taking an own thread out of the comments",
+                Box::new(|doc| doc.get_map(COMMENTS).delete("f1/t3").unwrap()),
+            ),
+            (
+                "giving an own reply another id",
+                Box::new(|doc| {
+                    map_in(list_in(their_thread(doc).get("messages")).get(1))
+                        .insert("id", "m4")
+                        .unwrap();
+                }),
+            ),
+        ];
+        for (what, edit) in &refused {
+            let update = change(&held, 2, |doc| edit(doc));
+            assert_eq!(
+                judged(&held, &update, editor),
+                RoleVerdict::Refused,
+                "{what}"
+            );
+        }
+        let deleted = change(&held, 2, |doc| {
+            let message = map_in(list_in(their_thread(doc).get("messages")).get(1));
+            message.insert("deleted", true).unwrap();
+            message.insert("body", "").unwrap();
+        });
+        assert_eq!(judged(&held, &deleted, editor), RoleVerdict::Allowed);
+    }
+
+    fn carol() -> String {
+        "01920000-0000-7000-8000-0000000000c1".to_string()
+    }
+
+    fn anchored(doc: &LoroDoc, key: &str, by: &str) -> LoroList {
+        let thread = doc
+            .get_map(COMMENTS)
+            .insert_container(key, LoroMap::new())
+            .unwrap();
+        let text = file_text(doc, FILE);
+        let cursor = crate::test_support::suggestions::cursor_at;
+        thread.insert("quote", "Hello").unwrap();
+        thread.insert("created_by", by).unwrap();
+        thread.insert("created_at", 1_i64).unwrap();
+        thread.insert("start", cursor(&text, 0)).unwrap();
+        thread.insert("end", cursor(&text, 4)).unwrap();
+        thread
+            .insert_container("messages", LoroList::new())
+            .unwrap()
+    }
+
+    fn timed(list: &LoroList, author: &str, id: &str) {
+        said(list, author, id).insert("at", 1_i64).unwrap();
+    }
+
+    fn message_at(doc: &LoroDoc, key: &str, index: usize) -> LoroMap {
+        map_in(list_in(map_in(doc.get_map(COMMENTS).get(key)).get("messages")).get(index))
+    }
+
+    #[test]
+    fn an_editor_never_rewrites_another_persons_authorship_or_time_or_any_threads_anchor() {
+        let doc = LoroDoc::new();
+        doc.set_peer_id(1).unwrap();
+        file_text(&doc, FILE).insert(0, TEXT_START).unwrap();
+        let messages = anchored(&doc, "f1/t1", &editor().to_string());
+        timed(&messages, &editor().to_string(), "m1");
+        timed(&messages, &carol(), "m2");
+        doc.commit();
+        let base = doc.export(ExportMode::Snapshot).unwrap();
+        let mine = change(&[&base], 2, |doc| {
+            let messages = anchored(doc, "f1/t2", &me());
+            timed(&messages, &me(), "m3");
+        });
+        let answered = change(&[&base, &mine], 4, |doc| {
+            timed(
+                &list_in(map_in(doc.get_map(COMMENTS).get("f1/t2")).get("messages")),
+                &carol(),
+                "m4",
+            );
+        });
+        let held: [&[u8]; 3] = [&base, &mine, &answered];
+        let editor_rule = rule(ProjectRole::Editor);
+        let thread = |doc: &LoroDoc, key: &str| map_in(doc.get_map(COMMENTS).get(key));
+        let refused: Vec<(&str, Edit)> = vec![
+            (
+                "breaking the time of someone else's comment",
+                Box::new(|doc| message_at(doc, "f1/t1", 0).insert("at", "soon").unwrap()),
+            ),
+            (
+                "breaking the author of someone else's reply",
+                Box::new(|doc| {
+                    message_at(doc, "f1/t1", 1)
+                        .insert("author", "nobody")
+                        .unwrap()
+                }),
+            ),
+            (
+                "writing someone else's time again as it was",
+                Box::new(|doc| rewrite(&message_at(doc, "f1/t1", 0), "at")),
+            ),
+            (
+                "giving an own comment to someone else",
+                Box::new(|doc| {
+                    message_at(doc, "f1/t2", 0)
+                        .insert("author", editor().to_string())
+                        .unwrap()
+                }),
+            ),
+            (
+                "moving someone else's thread",
+                Box::new(move |doc| thread(doc, "f1/t1").insert("start", "gone").unwrap()),
+            ),
+            (
+                "handing someone else's thread to nobody",
+                Box::new(move |doc| thread(doc, "f1/t1").insert("created_by", "nobody").unwrap()),
+            ),
+            (
+                "changing when someone else's thread started",
+                Box::new(move |doc| thread(doc, "f1/t1").insert("created_at", 2_i64).unwrap()),
+            ),
+            (
+                "writing someone else's anchor again as it was",
+                Box::new(move |doc| rewrite(&thread(doc, "f1/t1"), "start")),
+            ),
+            (
+                "moving an own thread that someone answered",
+                Box::new(move |doc| thread(doc, "f1/t2").insert("start", "gone").unwrap()),
+            ),
+        ];
+        let mut wrong = Vec::new();
+        for (what, edit) in &refused {
+            let update = change(&held, 2, |doc| edit(doc));
+            let verdict = judged(&held, &update, editor_rule);
+            if verdict != RoleVerdict::Refused {
+                wrong.push(format!("{what}: {verdict:?}"));
+            }
+        }
+        let allowed: Vec<(&str, Edit)> = vec![
+            (
+                "rewriting someone else's comment",
+                Box::new(|doc| {
+                    message_at(doc, "f1/t1", 0)
+                        .insert("body", "changed")
+                        .unwrap()
+                }),
+            ),
+            (
+                "resolving someone else's thread",
+                Box::new(move |doc| thread(doc, "f1/t1").insert("resolved", "done").unwrap()),
+            ),
+            (
+                "changing the time of an own comment",
+                Box::new(|doc| message_at(doc, "f1/t2", 0).insert("at", 2_i64).unwrap()),
+            ),
+            (
+                "deleting an own comment",
+                Box::new(|doc| {
+                    let message = message_at(doc, "f1/t2", 0);
+                    message.insert("deleted", true).unwrap();
+                    message.insert("body", "").unwrap();
+                }),
+            ),
+        ];
+        for (what, edit) in &allowed {
+            let update = change(&held, 2, |doc| edit(doc));
+            let verdict = judged(&held, &update, editor_rule);
+            if verdict != RoleVerdict::Allowed {
+                wrong.push(format!("{what}: {verdict:?}"));
+            }
+        }
+        assert!(wrong.is_empty(), "{wrong:#?}");
+    }
+
+    #[test]
+    fn a_change_is_judged_with_whether_it_touched_comments() {
+        let base = discussed_base();
+        let touched = |update: &[u8], role: ProjectRole| {
+            let judged = judged_whole(&[&base], update, rule(role));
+            assert_eq!(judged.verdict, RoleVerdict::Allowed, "{role:?}");
+            judged.comments
+        };
+        let typed = change(&[&base], 2, |doc| {
+            file_text(doc, FILE).insert(0, "x").unwrap();
+        });
+        let suggested = change(&[&base], 2, |doc| {
+            suggest_insert(doc, "s1", FILE, 5, "!", &me());
+        });
+        let chatted = change(&[&base], 2, |doc| {
+            said(&doc.get_list(CHAT), &me(), "c2");
+        });
+        let bare = change(&[&base], 2, |doc| {
+            let message = list_in(their_thread(doc).get("messages"))
+                .push_container(LoroMap::new())
+                .unwrap();
+            message.insert("id", "m2").unwrap();
+            message.insert("author", me()).unwrap();
+        });
+        let resolved = change(&[&base], 2, |doc| {
+            their_thread(doc).insert("resolved", "done").unwrap();
+        });
+        assert!(!touched(&typed, ProjectRole::Editor));
+        assert!(!touched(&suggested, ProjectRole::Reviewer));
+        assert!(!touched(&chatted, ProjectRole::Commenter));
+        for role in [
+            ProjectRole::Editor,
+            ProjectRole::Reviewer,
+            ProjectRole::Commenter,
+        ] {
+            assert!(touched(&bare, role), "{role:?}");
+            assert!(touched(&resolved, role), "{role:?}");
+        }
     }
 
     #[test]

@@ -73,6 +73,29 @@ function footnoteRangeAt(text: string, cursor: number): PreservedInlineRange | n
   return footnote ? { from: cursor, to: cursor + footnote.length } : null;
 }
 
+const CALLOUT_LINE = /^[ \t]{0,3}(?:>[ \t]?)+(\[![\w-]+\][+-]?)(?=[ \t\r\n]|$)/u;
+const QUOTE_LINE = /^[ \t]{0,3}>/u;
+
+const ESCAPED_TASK_LINE = /^[ \t]*(?:>[ \t]?)*[ \t]*(?:[*+-]|\d{1,9}[.)])[ \t]+(\\\[[ xX]\\?\]|\[[ xX]\\\])(?=[ \t\r\n]|$)/u;
+
+function escapedTaskRangeAt(text: string, cursor: number): PreservedInlineRange | null {
+  if (cursor > 0 && text[cursor - 1] !== "\n") return null;
+  const match = ESCAPED_TASK_LINE.exec(text.slice(cursor, cursor + 128));
+  if (!match) return null;
+  const from = cursor + match[0].length - match[1].length;
+  return { from, to: from + match[1].length };
+}
+
+function calloutRangeAt(text: string, cursor: number): PreservedInlineRange | null {
+  if (cursor > 0 && text[cursor - 1] !== "\n") return null;
+  const match = CALLOUT_LINE.exec(text.slice(cursor, cursor + 128));
+  if (!match) return null;
+  const previous = text.slice(text.lastIndexOf("\n", cursor - 2) + 1, Math.max(0, cursor - 1));
+  if (cursor > 0 && QUOTE_LINE.test(previous)) return null;
+  const from = cursor + match[0].length - match[1].length;
+  return { from, to: from + match[1].length };
+}
+
 function afterUnpreserved(text: string, cursor: number): number {
   const char = text[cursor];
   if (char === "`" || char === "~") {
@@ -85,10 +108,17 @@ function afterUnpreserved(text: string, cursor: number): number {
 export function markdownPreservedRanges(
   text: string,
   from = 0,
+  callouts = false,
 ): PreservedInlineRange[] {
   const ranges: PreservedInlineRange[] = [];
   let cursor = from;
   while (cursor < text.length) {
+    const callout = callouts ? (calloutRangeAt(text, cursor) ?? escapedTaskRangeAt(text, cursor)) : null;
+    if (callout) {
+      ranges.push(callout);
+      cursor = callout.to;
+      continue;
+    }
     if (text[cursor] === "\\") {
       cursor += 2;
       continue;

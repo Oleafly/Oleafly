@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Eraser, MessagesSquare } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
@@ -30,14 +30,16 @@ import {
   keepChatDraft,
   loadChat,
   loadOlderChat,
+  pendingChat,
   reactToChat,
   sendChat,
+  showPendingChat,
   useChat,
 } from "./chat-store";
 
 const TICK_MS = 60_000;
-const SCROLL_KEYS = new Set(["PageUp", "PageDown", "Home", "End", "ArrowUp", "ArrowDown"]);
-const SCROLL_EVENTS = ["wheel", "touchmove", "keydown", "pointerdown"] as const;
+const SCROLL_KEYS = new Set(["PageUp", "PageDown", "Home", "End", "ArrowUp", "ArrowDown", " "]);
+const PRESSED = "button, summary, [role='button']";
 const CHAT_SCOPE = { kind: "chat" } as const;
 
 function chatActivity(active: boolean): void {
@@ -126,6 +128,7 @@ function ProjectChat() {
   const scroller = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLDivElement>(null);
   const asked = useRef<string | null>(null);
+  const placed = useRef(0);
   const now = useNow(TICK_MS);
   const members = useMentionMembers();
   const typing = useChatTyping();
@@ -139,6 +142,7 @@ function ProjectChat() {
   const title = t(($) => $.collab.chat.title);
   const clearLabel = t(($) => $.collab.chat.clear);
   const reactions = useComments((state) => state.status?.reactions === true);
+  const pending = pendingChat(chat.projectId);
   const chatLabels = useMemo(
     () => ({
       deleted: t(($) => $.collab.chat.deleted),
@@ -184,17 +188,47 @@ function ProjectChat() {
   }, [reveal, revealLoaded, listed, chat.loadingOlder, chat.hasOlder, chat.cursor]);
 
   const searching = reveal !== null && !revealLoaded;
+  useLayoutEffect(() => {
+    if (searching && scroller.current) placed.current = scroller.current.scrollTop;
+  });
   useEffect(() => {
     const element = scroller.current;
     if (!searching || !element) return;
-    const scrolled = (event: Event) => {
-      const byReader =
-        event.type === "keydown" ? SCROLL_KEYS.has((event as KeyboardEvent).key) : event.type !== "pointerdown" || event.target === element;
-      if (byReader && useChatRail.getState().reveal === reveal) useChatRail.setState({ reveal: null });
+    let clicked = false;
+    placed.current = element.scrollTop;
+    const moved = () => {
+      if (useChatRail.getState().reveal === reveal) useChatRail.setState({ reveal: null });
     };
-    for (const kind of SCROLL_EVENTS) element.addEventListener(kind, scrolled, { passive: true });
+    const pressed = (event: PointerEvent) => {
+      clicked = event.target instanceof Node && element.contains(event.target);
+      if (event.target === element) moved();
+    };
+    const keyed = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || event.defaultPrevented || !SCROLL_KEYS.has(event.key)) return;
+      const here = element.contains(target) || (clicked && (target === document.body || target === document.documentElement));
+      if (here && !(event.key === " " && target.closest(PRESSED))) moved();
+    };
+    const scrolled = () => {
+      if (Math.abs(element.scrollTop - placed.current) > 1) moved();
+    };
+    const resized = new ResizeObserver(() => {
+      placed.current = element.scrollTop;
+    });
+    resized.observe(element);
+    if (element.firstElementChild) resized.observe(element.firstElementChild);
+    document.addEventListener("pointerdown", pressed, true);
+    document.addEventListener("keydown", keyed);
+    element.addEventListener("scroll", scrolled, { passive: true });
+    element.addEventListener("wheel", moved, { passive: true });
+    element.addEventListener("touchmove", moved, { passive: true });
     return () => {
-      for (const kind of SCROLL_EVENTS) element.removeEventListener(kind, scrolled);
+      resized.disconnect();
+      document.removeEventListener("pointerdown", pressed, true);
+      document.removeEventListener("keydown", keyed);
+      element.removeEventListener("scroll", scrolled);
+      element.removeEventListener("wheel", moved);
+      element.removeEventListener("touchmove", moved);
     };
   }, [searching, reveal]);
 
@@ -202,7 +236,11 @@ function ProjectChat() {
     const field = canPost ? composer.current?.querySelector("textarea") : null;
     if (!field) return;
     const projectId = chat.projectId;
-    return () => keepChatDraft(projectId, field.readOnly ? "" : field.value);
+    const hidden = showPendingChat(projectId);
+    return () => {
+      hidden();
+      keepChatDraft(projectId, field.readOnly ? "" : field.value);
+    };
   }, [canPost, chat.projectId]);
 
   const older = () => {
@@ -323,7 +361,8 @@ function ProjectChat() {
           {canPost ? (
             <CommentComposer
               compact
-              initial={chatDraft(chat.projectId)}
+              initial={pending?.body ?? chatDraft(chat.projectId)}
+              sending={pending?.sent}
               label={t(($) => $.collab.chat.label)}
               placeholder={t(($) => $.collab.chat.placeholder)}
               submitLabel={t(($) => $.collab.chat.send)}

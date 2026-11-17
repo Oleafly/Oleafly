@@ -3,11 +3,14 @@
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
-import { editorCommandKeymap } from "@oleafly/editor";
+import { Editor } from "@tiptap/core";
+import { TextSelection } from "@tiptap/pm/state";
+import { editorCommandKeymap, setEditorErrorReporter } from "@oleafly/editor";
+import { WYSIWYG_EXTENSIONS, createMarkdownSourceSnapshot, parseMarkdownBody, serializeMarkdownBody } from "@oleafly/wysiwyg";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { useEditorKeymapStore } from "@/store/editor-keymap";
 import { markdownFormatKeymap } from "./markdown-keymap";
-import { type MarkdownTarget, sourceTarget } from "./markdown-model";
+import { type MarkdownTarget, sourceTarget, visualTarget } from "./markdown-model";
 
 const views: EditorView[] = [];
 
@@ -16,6 +19,8 @@ beforeAll(() => {
 });
 
 afterEach(() => {
+  vi.doUnmock("./markdown-model");
+  setEditorErrorReporter(null);
   for (const view of views.splice(0)) view.destroy();
   useEditorKeymapStore.getState().resetAll();
   vi.restoreAllMocks();
@@ -35,7 +40,7 @@ function open(doc: string, word: string, extension = markdownFormatKeymap): Edit
   return view;
 }
 
-const SHIFTED: Record<string, [string, number]> = { b: ["B", 66], U: ["U", 85], "7": ["&", 55], "8": ["*", 56] };
+const SHIFTED: Record<string, [string, number]> = { b: ["B", 66], I: ["I", 73], U: ["U", 85], "7": ["&", 55], "8": ["*", 56] };
 
 function press(view: EditorView, key: string, modifiers: { shift?: boolean; alt?: boolean; meta?: boolean } = {}) {
   const [typed, keyCode] = modifiers.shift && SHIFTED[key] ? SHIFTED[key] : [key, 0];
@@ -126,4 +131,92 @@ describe("formatting shortcuts in a Markdown file", () => {
     view.dispatch({ selection: { anchor: view.state.doc.length } });
     await vi.waitFor(() => expect(view.state.doc.toString()).toBe("A **word** b."), { timeout: 5000 });
   });
+
+  it("italicizes with Ctrl+Shift+I, as Visual's Mod-I alias does", async () => {
+    expect(await pressed("Alpha word beta.", "word", "I", { shift: true })).toBe("Alpha *word* beta.");
+    expect(await pressed("- one\n- two word\n", "word", "I", { shift: true })).toBe("- one\n- two *word*\n");
+  });
+
+  it.each([
+    ["a bullet item", "- one\n- two word\n\nNext.\n"],
+    ["a numbered item", "1. one\n2. two word\n\nNext.\n"],
+    ["a task item", "- [ ] task word\n\nNext.\n"],
+  ])("stores Bold for the next key when Ctrl+Shift+B can't quote %s at a bare caret", async (_name, doc) => {
+    const view = open(doc, "word");
+    view.dispatch({ selection: { anchor: doc.indexOf("word") + 4 } });
+    press(view, "b", { shift: true });
+    await import("./markdown-model");
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    for (const key of ["H", "i"]) view.dispatch({ ...view.state.replaceSelection(key), userEvent: "input.type" });
+    expect(view.state.doc.toString()).toBe(visualTyped(doc, "word", (target) => target.bold(), "Hi"));
+  });
+
+  it("drops the keys and reports the error when the engine chunk fails to load, then loads it on the next key", async () => {
+    vi.resetModules();
+    const errors: unknown[] = [];
+    (await import("@oleafly/editor")).setEditorErrorReporter((_scope, error) => errors.push(error));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.doMock("./markdown-model", () => {
+      throw new Error("chunk failed");
+    });
+    const fresh = await import("./markdown-keymap");
+    const view = open("A word b.", "word", fresh.markdownFormatKeymap);
+    press(view, "b");
+    press(view, "i");
+    await vi.waitFor(() => expect(errors.length).toBeGreaterThan(0), { timeout: 5000 });
+    expect(view.state.doc.toString()).toBe("A word b.");
+    vi.doUnmock("./markdown-model");
+    press(view, "b");
+    await vi.waitFor(() => expect(view.state.doc.toString()).toBe("A **word** b."), { timeout: 5000 });
+  });
+
+  it("keeps a caret moved between two keys pressed before the engine loads", async () => {
+    vi.resetModules();
+    const fresh = await import("./markdown-keymap");
+    const view = open("A word b.", "word", fresh.markdownFormatKeymap);
+    press(view, "b");
+    view.dispatch({ selection: { anchor: view.state.doc.length } });
+    press(view, "i");
+    await vi.waitFor(() => expect(view.state.doc.toString()).toBe("A **word** b."), { timeout: 5000 });
+    expect(view.state.selection.main.head).toBe(view.state.doc.length);
+    view.dispatch({ ...view.state.replaceSelection("X"), userEvent: "input.type" });
+    expect(view.state.doc.toString()).toBe("A **word** b.*X*");
+  });
+
+  it("types what was typed after a key pressed before the engine loads, through that key's mark", async () => {
+    vi.resetModules();
+    const fresh = await import("./markdown-keymap");
+    const view = open("A word b.", "word", fresh.markdownFormatKeymap);
+    press(view, "b");
+    view.dispatch({ ...view.state.replaceSelection("X"), userEvent: "input.type" });
+    view.dispatch({ ...view.state.replaceSelection("Y"), userEvent: "input.type" });
+    await vi.waitFor(() => expect(view.state.doc.toString()).toBe("A **XY** b."), { timeout: 5000 });
+  });
+
+  it("drops a key pressed before the engine loads when the file under it is replaced", async () => {
+    vi.resetModules();
+    const fresh = await import("./markdown-keymap");
+    const view = open("A word b.", "word", fresh.markdownFormatKeymap);
+    press(view, "b");
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: "A word b." }, filter: false });
+    await import("./markdown-model");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(view.state.doc.toString()).toBe("A word b.");
+  });
 });
+
+function visualTyped(doc: string, word: string, act: (target: MarkdownTarget) => void, typed: string): string {
+  const { doc: content, layout } = parseMarkdownBody(doc);
+  const editor = new Editor({ element: document.createElement("div"), extensions: WYSIWYG_EXTENSIONS, content });
+  const snapshot = createMarkdownSourceSnapshot(layout, editor.getJSON());
+  let at = -1;
+  editor.state.doc.descendants((node, pos) => {
+    if (at < 0 && node.isText && node.text?.includes(word)) at = pos + node.text.indexOf(word) + word.length;
+  });
+  editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, at)));
+  act(visualTarget(editor));
+  for (const key of typed) editor.view.dispatch(editor.state.tr.insertText(key));
+  const saved = serializeMarkdownBody(editor.getJSON(), snapshot);
+  editor.destroy();
+  return saved;
+}

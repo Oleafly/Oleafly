@@ -655,7 +655,14 @@ enum Check {
     Role {
         role: ProjectRole,
         comments_off: bool,
+        comments: bool,
     },
+}
+
+impl Check {
+    fn touched_comments(self) -> bool {
+        matches!(self, Check::Role { comments: true, .. })
+    }
 }
 
 struct ReadChange {
@@ -916,12 +923,13 @@ impl Peer<'_> {
             Ok(check) => check,
             Err(refusal) => return *refusal,
         };
+        let scan = |check: Check| mention || (mail && check.touched_comments());
         let mut waiting = (envelope, reach, stored);
         let mut checks = 0;
         let appended = loop {
             let (envelope, reach, stored) = waiting;
             let appended = self
-                .append(project, envelope, reach, stored, check, mention)
+                .append(project, envelope, reach, stored, check, scan(check))
                 .await;
             let needed = match appended {
                 Ok(Appendix::Stored(appended)) => {
@@ -965,7 +973,7 @@ impl Peer<'_> {
         };
         match appended {
             Ok(appended) => {
-                if mention && !appended.duplicate {
+                if scan(check) && !appended.duplicate {
                     self.state.mentions.wake(self.state, project);
                 }
                 ServerFrame::Ack {
@@ -1083,9 +1091,10 @@ impl Peer<'_> {
         rule: RoleRule,
     ) -> Result<Check, Box<ServerFrame>> {
         let guard = &self.state.comment_guard;
-        let judged = Check::Role {
+        let judged = |comments| Check::Role {
             role: rule.role,
             comments_off: rule.comments_off,
+            comments,
         };
         if rule.role == ProjectRole::Editor
             && !rule.comments_off
@@ -1101,9 +1110,9 @@ impl Peer<'_> {
                 .unwrap_or(false)
         {
             guard.read_project(self.state, project);
-            return Ok(judged);
+            return Ok(judged(false));
         }
-        let verdict = guard
+        let checked = guard
             .check_role(
                 &self.state.db,
                 &self.state.snapshots,
@@ -1113,6 +1122,8 @@ impl Peer<'_> {
                 rule,
             )
             .await;
+        let comments = checked.as_ref().is_ok_and(|checked| checked.comments);
+        let verdict = checked.map(|checked| checked.verdict);
         if matches!(
             verdict,
             Ok(RoleVerdict::Allowed
@@ -1123,7 +1134,7 @@ impl Peer<'_> {
             guard.read_project(self.state, project);
         }
         match verdict {
-            Ok(RoleVerdict::Allowed) => Ok(judged),
+            Ok(RoleVerdict::Allowed) => Ok(judged(comments)),
             Ok(RoleVerdict::ChangesComments) => Err(Box::new(frame_error(
                 self.code_for(FrameErrorCode::CommentsOff, FrameErrorCode::Forbidden),
                 COMMENTS_OFF,
@@ -1197,6 +1208,7 @@ impl Peer<'_> {
                     Check::Role {
                         role: judged_as,
                         comments_off: judged_off,
+                        ..
                     } => judged_as == role && judged_off == comments_off,
                     Check::Later => role == ProjectRole::Editor,
                     Check::Pending | Check::Passed => false,

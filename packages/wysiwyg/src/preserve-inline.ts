@@ -102,6 +102,11 @@ function restoreText(text: string, token: RegExp, sources: readonly string[]): s
   return text.replace(token, (match: string, index: string) => sources[Number(index)] ?? match);
 }
 
+function restoreTabs(node: JSONContent, tab: string): JSONContent {
+  if (node.type === "text" && node.text?.includes(tab)) return { ...node, text: node.text.replaceAll(tab, "\t") };
+  return node.content ? { ...node, content: node.content.map((child) => restoreTabs(child, tab)) } : node;
+}
+
 function restoreAttributes(
   attrs: Record<string, unknown>,
   token: RegExp,
@@ -145,7 +150,9 @@ export function restoreInlineSources(
   node: JSONContent,
   tokenPrefix: string,
   sources: readonly string[],
+  tab: string | null = null,
 ): JSONContent {
   const token = new RegExp(String.raw`${tokenPrefix}(\d+)X`, "gu");
-  return restoreNode(node, token, sources);
+  const restored = restoreNode(node, token, sources);
+  return tab ? restoreTabs(restored, tab) : restored;
 }

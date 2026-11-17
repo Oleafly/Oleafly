@@ -275,30 +275,13 @@ describe("project chat", () => {
 
   it("doesn't bring back a message that was still sending when you switched projects", async () => {
     const user = userEvent.setup();
-    const sending = deferred<CollabChatMessage>();
-    mocks.collabChatSend.mockReturnValue(sending.promise);
-    const project = (projectId: string) =>
-      act(() => useCollabLiveStore.setState({ projectId, share: shareInfo({ project_id: projectId, role: "editor", account_id: ALICE_ID }) }));
-    await open();
-    await user.type(screen.getByRole("textbox", { name: copy.label }), "On its way");
-    await user.click(screen.getByRole("button", { name: copy.send }));
-    await waitFor(() => expect(mocks.collabChatSend).toHaveBeenCalledWith("paper", "On its way", expect.any(Array)));
-    mocks.collabChatList.mockResolvedValue([message("o1", BOB_ID, "Thesis notes")]);
-    project("thesis");
-    expect(await screen.findByText("Thesis notes")).toBeInTheDocument();
-    await act(async () => sending.resolve(message("c3", ALICE_ID, "On its way", AT + 90_000)));
-    mocks.collabChatList.mockResolvedValue([reply, hello]);
-    project("paper");
-    expect(await screen.findByText("Reading it now")).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: copy.label })).toHaveValue("");
+    const sending = await sendingThenAway(user);
+    await act(async () => sending.resolve(message("c3", ALICE_ID, "Important note", AT + 90_000)));
+    expect(await backToPaper()).toHaveValue("");
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it.each([
-    ["the wheel", (list: HTMLElement) => fireEvent.wheel(list)],
-    ["a touch", (list: HTMLElement) => fireEvent.touchMove(list)],
-    ["Page Up", (list: HTMLElement) => fireEvent.keyDown(list, { key: "PageUp" })],
-    ["the scroll bar", (list: HTMLElement) => fireEvent.pointerDown(list.closest(".overflow-y-auto") as HTMLElement)],
-  ])("stops looking for a mentioned message, without a jump, once the reader scrolls with %s", async (_, scroll) => {
+  async function searchingOlder() {
     const page = Array.from({ length: CHAT_PAGE }, (_, index) => message(`p${index}`, BOB_ID, `Message ${index}`, AT + index * 1_000));
     const older = deferred<CollabChatMessage[]>();
     mocks.collabChatList.mockResolvedValueOnce(page).mockReturnValueOnce(older.promise);
@@ -309,23 +292,194 @@ describe("project chat", () => {
     const reveal = vi.fn();
     const scrollIntoView = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = reveal;
-    try {
-      act(() => useChatRail.setState({ reveal: "old" }));
-      await waitFor(() => expect(mocks.collabChatList).toHaveBeenCalledTimes(2));
-      const list = screen.getByRole("list", { name: copy.list });
-      fireEvent.scroll(list.closest(".overflow-y-auto") as HTMLElement);
-      fireEvent.keyDown(list, { key: "Enter" });
-      fireEvent.pointerDown(list);
+    act(() => useChatRail.setState({ reveal: "old" }));
+    await waitFor(() => expect(mocks.collabChatList).toHaveBeenCalledTimes(2));
+    const list = screen.getByRole("list", { name: copy.list });
+    return {
+      list,
+      scroller: list.closest(".overflow-y-auto") as HTMLElement,
+      reveal,
+      async finish() {
+        try {
+          await act(async () => older.resolve([message("old", BOB_ID, "Mentioned you", AT - 5_000)]));
+          expect(await screen.findByText("Mentioned you")).toBeInTheDocument();
+        } finally {
+          Element.prototype.scrollIntoView = scrollIntoView;
+        }
+      },
+    };
+  }
+
+  async function expectNoJump(search: Awaited<ReturnType<typeof searchingOlder>>) {
+    expect(useChatRail.getState().reveal).toBeNull();
+    await search.finish();
+    expect(search.reveal).not.toHaveBeenCalled();
+    expect(screen.queryByRole("status")).toBeNull();
+  }
+
+  async function sendingThenAway(user: ReturnType<typeof userEvent.setup>) {
+    const sending = deferred<CollabChatMessage>();
+    mocks.collabChatSend.mockReturnValueOnce(sending.promise);
+    await open();
+    await user.type(screen.getByRole("textbox", { name: copy.label }), "Important note");
+    await user.click(screen.getByRole("button", { name: copy.send }));
+    await waitFor(() => expect(mocks.collabChatSend).toHaveBeenCalledWith("paper", "Important note", expect.any(Array)));
+    mocks.collabChatList.mockResolvedValue([message("o1", BOB_ID, "Thesis notes")]);
+    switchTo("thesis");
+    expect(await screen.findByText("Thesis notes")).toBeInTheDocument();
+    return sending;
+  }
+
+  function switchTo(projectId: string) {
+    act(() => useCollabLiveStore.setState({ projectId, share: shareInfo({ project_id: projectId, role: "editor", account_id: ALICE_ID }) }));
+  }
+
+  async function backToPaper() {
+    mocks.collabChatList.mockResolvedValue([reply, hello]);
+    switchTo("paper");
+    expect(await screen.findByText("Reading it now")).toBeInTheDocument();
+    return screen.getByRole("textbox", { name: copy.label });
+  }
+
+  it("brings a message back as Not sent when its send fails after you switched projects, and sends it again only on Retry", async () => {
+    const user = userEvent.setup();
+    const sending = await sendingThenAway(user);
+    await act(async () => sending.reject(collabError("unreachable")));
+    expect(screen.queryByRole("alert")).toBeNull();
+    const field = await backToPaper();
+    expect(field).toHaveValue("Important note");
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.comments.notSentShort);
+    expect(screen.getByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
+    expect(mocks.collabChatSend).toHaveBeenCalledTimes(1);
+    mocks.collabChatSend.mockResolvedValueOnce(message("c3", ALICE_ID, "Important note", AT + 90_000));
+    await user.click(screen.getByRole("button", { name: enCommon.actions.retry }));
+    await waitFor(() => expect(field).toHaveValue(""));
+    expect(mocks.collabChatSend).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("shows a message that is still sending when you come back to its project, and says so when it then fails", async () => {
+    const user = userEvent.setup();
+    const sending = await sendingThenAway(user);
+    const field = await backToPaper();
+    expect(field).toHaveValue("Important note");
+    expect(field).toHaveAttribute("readonly");
+    expect(screen.getByText(enCollab.comments.sending)).toBeInTheDocument();
+    await act(async () => sending.reject(collabError("unreachable")));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
+    expect(field).toHaveValue("Important note");
+    expect(field).not.toHaveAttribute("readonly");
+    expect(mocks.collabChatSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears a message that was still sending when you came back once it is sent", async () => {
+    const user = userEvent.setup();
+    const sending = await sendingThenAway(user);
+    const field = await backToPaper();
+    await act(async () => sending.resolve(message("c3", ALICE_ID, "Important note", AT + 90_000)));
+    await waitFor(() => expect(field).toHaveValue(""));
+    expect(screen.getByText("Important note")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(mocks.collabChatSend).toHaveBeenCalledTimes(1);
+  });
+
+  it("brings a message back as Not sent when its send fails after the chat was closed", async () => {
+    const user = userEvent.setup();
+    const sending = deferred<CollabChatMessage>();
+    mocks.collabChatSend.mockReturnValueOnce(sending.promise);
+    live("editor");
+    stop = startChat();
+    const view = render(<ChatPane />);
+    await screen.findByText("Reading it now");
+    await user.type(screen.getByRole("textbox", { name: copy.label }), "Important note");
+    await user.click(screen.getByRole("button", { name: copy.send }));
+    await waitFor(() => expect(mocks.collabChatSend).toHaveBeenCalledTimes(1));
+    view.unmount();
+    await act(async () => sending.reject(collabError("unreachable")));
+    render(<ChatPane />);
+    expect(await screen.findByRole("textbox", { name: copy.label })).toHaveValue("Important note");
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
+  });
+
+  it.each([
+    ["the wheel", (list: HTMLElement) => fireEvent.wheel(list)],
+    ["a touch", (list: HTMLElement) => fireEvent.touchMove(list)],
+    ["the scroll bar", (list: HTMLElement) => fireEvent.pointerDown(list.closest(".overflow-y-auto") as HTMLElement)],
+  ])("stops looking for a mentioned message, without a jump, once the reader scrolls with %s", async (_, scroll) => {
+    const search = await searchingOlder();
+    fireEvent.scroll(search.scroller);
+    fireEvent.keyDown(search.list, { key: "Enter" });
+    fireEvent.pointerDown(search.list);
+    expect(useChatRail.getState().reveal).toBe("old");
+    scroll(search.list);
+    await expectNoJump(search);
+  });
+
+  it.each(["{PageDown}", "{PageUp}", "{End}", "{Home}", "{ArrowDown}", " ", "{Shift>} {/Shift}"])(
+    "stops looking for a mentioned message, without a jump, when the reader clicks message text and scrolls with %s",
+    async (keys) => {
+      const user = userEvent.setup();
+      const search = await searchingOlder();
+      await user.click(screen.getByText("Message 10"));
+      expect(document.activeElement).toBe(document.body);
       expect(useChatRail.getState().reveal).toBe("old");
-      scroll(list);
-      await act(async () => older.resolve([message("old", BOB_ID, "Mentioned you", AT - 5_000)]));
-      expect(await screen.findByText("Mentioned you")).toBeInTheDocument();
-      expect(reveal).not.toHaveBeenCalled();
-      expect(useChatRail.getState().reveal).toBeNull();
-      expect(screen.queryByRole("status")).toBeNull();
+      await user.keyboard(keys);
+      await expectNoJump(search);
+    },
+  );
+
+  it("stops looking for a mentioned message, without a jump, when something other than the app scrolls the list, such as a screen reader", async () => {
+    const search = await searchingOlder();
+    search.scroller.scrollTop = 240;
+    fireEvent.scroll(search.scroller);
+    await expectNoJump(search);
+  });
+
+  it("keeps looking for a mentioned message when the list scrolls to keep its place after something in it changes size", async () => {
+    const watching: { changed: (entries: never[]) => void; targets: Element[] }[] = [];
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        private readonly targets: Element[] = [];
+        constructor(changed: (entries: never[]) => void) {
+          watching.push({ changed, targets: this.targets });
+        }
+        observe(target: Element) {
+          this.targets.push(target);
+        }
+        disconnect() {}
+      },
+    );
+    try {
+      const search = await searchingOlder();
+      search.scroller.scrollTop = 300;
+      act(() => {
+        for (const watch of watching) if (watch.targets.includes(search.scroller)) watch.changed([]);
+      });
+      fireEvent.scroll(search.scroller);
+      expect(useChatRail.getState().reveal).toBe("old");
+      await search.finish();
+      expect(search.reveal).toHaveBeenCalledWith({ block: "center" });
     } finally {
-      Element.prototype.scrollIntoView = scrollIntoView;
+      vi.unstubAllGlobals();
     }
+  });
+
+  it("keeps looking for a mentioned message when the list scrolls only to keep up with a new message, and ignores keys typed in the composer", async () => {
+    const user = userEvent.setup();
+    const search = await searchingOlder();
+    Object.defineProperty(search.scroller, "scrollHeight", { configurable: true, value: 900 });
+    mocks.collabChatList.mockResolvedValue([message("p49", BOB_ID, "Message 49", AT + 49_000), message("c9", BOB_ID, "One more", AT + 99_000)]);
+    act(() => mocks.listeners.get("collab://chat-changed")?.({ payload: { projectId: "paper", local: false } }));
+    expect(await screen.findByText("One more")).toBeInTheDocument();
+    expect(search.scroller.scrollTop).toBe(900);
+    fireEvent.scroll(search.scroller);
+    await user.click(screen.getByText("Message 10"));
+    await user.type(screen.getByRole("textbox", { name: copy.label }), "Hi {End} there");
+    expect(useChatRail.getState().reveal).toBe("old");
+    await search.finish();
+    expect(search.reveal).toHaveBeenCalledWith({ block: "center" });
+    expect(useChatRail.getState().reveal).toBeNull();
   });
 
   it("asks for an older page once when it fails while looking for a mentioned message, and again when asked again", async () => {

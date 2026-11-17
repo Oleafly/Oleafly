@@ -167,6 +167,16 @@ it("renders the toolbar's underline, highlight, scripts, text colour and alignme
   expect(screen.getByText("Second justified.").closest(".text-justify")).not.toBeNull();
 });
 
+it("renders the bold, italic and strike tags the toolbar writes where delimiters cannot go", () => {
+  openContent("A <strong>strong <u>word</u></strong>s end, a<strong>.</strong>b, <em>x.</em>y and <del>z.</del>w.");
+  const { container } = render(<MarkdownPreview />);
+  expect(screen.getByTestId("markdown-preview").textContent).toBe("A strong words end, a.b, x.y and z.w.");
+  expect([...container.querySelectorAll("strong")].map((node) => node.textContent)).toEqual(["strong word", "."]);
+  expect(container.querySelector("strong u")).toHaveTextContent("word");
+  expect(container.querySelector("em")).toHaveTextContent("x.");
+  expect(container.querySelector("del")).toHaveTextContent("z.");
+});
+
 it("keeps every other piece of raw HTML as text and leaves code alone", () => {
   openContent([
     '<u onclick="steal()">a</u> <span style="color: red">b</span> <span data-text-color="x" style="color: red; background: url(https://e.x/t)">c</span> <img src=x onerror="steal()"> <script>steal()</script> <u>open',

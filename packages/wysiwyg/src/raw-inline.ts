@@ -29,6 +29,10 @@ function unmodelledSource(element: Element): string | null {
   return `${marker}${(element.textContent ?? "").replace(/[\\`*_~^[\]<>$&]/gu, "\\$&")}${marker}`;
 }
 
+export function rawInlineMarkup(source: string, escapeHtml: (text: string) => string): string {
+  return `<span data-type="raw-inline" source="${escapeHtml(source)}"></span>`;
+}
+
 function keepUnmodelledNesting(element: HTMLElement): void {
   if (!parsingMarkdownSource()) return;
   for (const inner of element.querySelectorAll("code, sub, sup")) {
@@ -66,7 +70,7 @@ export const RawInline = Node.create({
           withRawHtml.add(markdownit);
           markdownit.renderer.rules.html_inline = (tokens, index, options, env, self) => {
             if (keepsInlineHtml(tokens, index)) return render(tokens, index, options, env, self);
-            return `<span data-type="raw-inline" source="${markdownit.utils.escapeHtml(tokens[index].content)}"></span>`;
+            return rawInlineMarkup(tokens[index].content, markdownit.utils.escapeHtml);
           };
         },
         updateDOM: keepUnmodelledNesting,
