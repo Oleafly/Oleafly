@@ -1720,8 +1720,8 @@
         "notInstalled": "Ikke installeret"
       },
       "tryAgain": "Prøv igen",
-      "label": "Login fra browseren",
-      "useBrowserSignIn": "Brug login fra min browser",
+      "label": "Kopiér login fra en browser",
+      "useBrowserSignIn": "Kopiér login fra din browser",
       "signInDescription": "Kopiér dit login til {{server}} fra en browser på denne computer, så du ikke behøver at logge ind igen.",
       "site": "Hjemmeside: {{domain}}",
       "confirmCopy": "Oleafly læser cookies til {{domain}} fra profilen {{profile}} i {{browser}}. De bliver i Oleafly og sendes kun til {{domain}}. Du bekræfter en gang til i en systemdialog.",
@@ -1797,17 +1797,31 @@
       "gitSave": "Gem",
       "gitRemove": "Fjern",
       "gitFailed": "Oleafly kunne ikke gemme Git-tokenet. Tjek, at du har indsat hele tokenet.",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
-      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
+      "browserLabel": "Log ind med din browser",
+      "browserDescription": "Til login med Google, din institution eller en adgangsnøgle. Oleafly åbner {{server}} i et nyt browservindue og lukker det, når du er logget ind.",
+      "browserAction": "Log ind",
+      "browserPick": "Browser at logge ind med",
+      "browserWaiting": "Gør dit login på {{server}} færdigt i {{browser}}. Hvis du lukker vinduet, bliver loginet annulleret.",
+      "browserHint": "Brug dette til login med Google, din institution eller en adgangsnøgle.",
+      "windowLabel": "Log ind på {{server}}",
+      "windowDescription": "Oleafly åbner et loginvindue og lukker det, når du er logget ind. Hvis du vil logge ind med Google, din institution eller en adgangsnøgle, skal du installere Chrome, Edge, Brave, Chromium eller Firefox og så logge ind med den her.",
+      "windowAction": "Log ind",
+      "windowWaiting": "Gør dit login på {{server}} færdigt i det vindue, der blev åbnet.",
       "unsent": {
-        "title": "Some changes haven't been sent to Overleaf",
-        "description": "If you sign out now, these changes stay on this computer and go to Overleaf the next time you sign in with this account. Sign in with a different account and they come back as copies next to their files instead. Or stay signed in and try again in a moment.",
-        "files": "Not sent yet: {{files}}",
-        "signOut": "Sign out anyway",
-        "stay": "Stay signed in"
+        "title": "Nogle ændringer er ikke sendt til Overleaf",
+        "description": "Hvis du logger ud nu, bliver disse ændringer på denne computer og sendes til Overleaf, næste gang du logger ind med denne konto. Logger du ind med en anden konto, kommer de i stedet tilbage som kopier ved siden af deres filer. Eller bliv logget ind, og prøv igen om lidt.",
+        "files": "Ikke sendt endnu: {{files}}",
+        "signOut": "Log ud alligevel",
+        "stay": "Bliv logget ind"
+      },
+      "deletes": {
+        "title": "Når du sletter en fil i et live-projekt",
+        "description": "Vælg, hvad der sker på Overleaf, når du sletter en fil eller mappe i Oleafly.",
+        "options": {
+          "ask": "Spørg hver gang",
+          "always": "Slet også på Overleaf",
+          "never": "Behold på Overleaf"
+        }
       }
     },
     "desktopApps": {

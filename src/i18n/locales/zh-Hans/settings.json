@@ -1709,8 +1709,8 @@
         "notInstalled": "未安装"
       },
       "tryAgain": "重试",
-      "label": "浏览器登录",
-      "useBrowserSignIn": "使用我浏览器中的登录信息",
+      "label": "复制浏览器的登录信息",
+      "useBrowserSignIn": "复制浏览器中的登录信息",
       "signInDescription": "从这台计算机上的浏览器复制你在 {{server}} 的登录信息，这样就不必重新登录。",
       "site": "网站：{{domain}}",
       "confirmCopy": "Oleafly 会从 {{browser}} 的 {{profile}} 配置文件中读取 {{domain}} 的 Cookie。它们会留在 Oleafly 中，并且只会发送到 {{domain}}。你还需要在系统对话框中再确认一次。",
@@ -1782,17 +1782,31 @@
       "gitSave": "保存",
       "gitRemove": "移除",
       "gitFailed": "Oleafly 无法保存 Git 令牌。请检查是否粘贴了完整的令牌。",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
-      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
+      "browserLabel": "使用浏览器登录",
+      "browserDescription": "适用于 Google、机构或通行密钥登录。Oleafly 会在新的浏览器窗口中打开 {{server}}，登录完成后自动关闭。",
+      "browserAction": "登录",
+      "browserPick": "用于登录的浏览器",
+      "browserWaiting": "请在 {{browser}} 中完成 {{server}} 的登录。关闭窗口会取消登录。",
+      "browserHint": "使用 Google、机构或通行密钥登录时，请选择此方式。",
+      "windowLabel": "登录 {{server}}",
+      "windowDescription": "Oleafly 会打开登录窗口，登录完成后自动关闭。若要使用 Google、机构或通行密钥登录，请安装 Chrome、Edge、Brave、Chromium 或 Firefox，然后在这里通过它登录。",
+      "windowAction": "登录",
+      "windowWaiting": "请在打开的窗口中完成 {{server}} 的登录。",
       "unsent": {
-        "title": "Some changes haven't been sent to Overleaf",
-        "description": "If you sign out now, these changes stay on this computer and go to Overleaf the next time you sign in with this account. Sign in with a different account and they come back as copies next to their files instead. Or stay signed in and try again in a moment.",
-        "files": "Not sent yet: {{files}}",
-        "signOut": "Sign out anyway",
-        "stay": "Stay signed in"
+        "title": "部分更改尚未发送到 Overleaf",
+        "description": "如果现在退出登录，这些更改会保留在这台电脑上，并在你下次用此账户登录时发送到 Overleaf。如果改用其他账户登录，它们会改为作为副本回到对应文件旁边。你也可以保持登录，稍后再试。",
+        "files": "尚未发送：{{files}}",
+        "signOut": "仍要退出登录",
+        "stay": "保持登录"
+      },
+      "deletes": {
+        "title": "在实时项目中删除文件时",
+        "description": "选择在 Oleafly 中删除文件或文件夹时，Overleaf 上会发生什么。",
+        "options": {
+          "ask": "每次询问",
+          "always": "也在 Overleaf 上删除",
+          "never": "保留在 Overleaf 上"
+        }
       }
     },
     "desktopApps": {

@@ -493,7 +493,7 @@
       "run": "Kjør kode på denne maskinen"
     },
     "sharedViewer": "Bare eiere og redaktører kan endre disse innstillingene i et delt prosjekt.",
-    "coauthorsChanged": "Changed by coauthors since your last compile"
+    "coauthorsChanged": "Endret av medforfattere siden siste kompilering"
   },
   "datePicker": {
     "placeholder": "Velg en dato"
@@ -995,8 +995,8 @@
         "label": "Notater"
       },
       "overleafLive": {
-        "label": "Live editing with Overleaf",
-        "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
+        "label": "Live-redigering med Overleaf",
+        "description": "Rediger prosjekter du har importert fra Overleaf samtidig som medforfatterne dine. Endringene vises på begge sider mens du skriver. Av som standard så lenge det fortsatt er i beta."
       },
       "researchTasks": {
         "description": "En agent jobber på egen hånd i en kopi av prosjektet og lar endringene stå klare til gjennomgang. Svært ustabilt: kjøringer kan stoppe opp, mislykkes eller etterlate endringer du må rydde opp i for hånd, og de bruker leverandørens kvote hele tiden. Legger til seksjonen Forskning i Innstillinger. Hvis du slår det av, stoppes alle oppgaver som kjører. Av som standard. Aktiver det på eget ansvar.",
@@ -1647,28 +1647,28 @@
     }
   },
   "overleafLive": {
-    "title": "Live editing with Overleaf",
-    "live": "Live with Overleaf",
-    "connecting": "Connecting to Overleaf…",
-    "sending": "Sending changes to Overleaf…",
-    "reconnecting": "Reconnecting to Overleaf…",
-    "pausedBadge": "Live editing paused",
-    "pause": "Pause live editing",
-    "resume": "Resume live editing",
-    "reconnectNow": "Reconnect now",
-    "open": "Open in Overleaf",
-    "share": "Share on Overleaf…",
-    "signIn": "Sign in…",
-    "reconnectingIn": "Trying again in {{seconds}} s.",
-    "notConfirmed": "Not confirmed by Overleaf yet.",
-    "copyDetails": "Copy connection details",
-    "detailsCopied": "Connection details copied",
-    "copyDetailsFailed": "Couldn't copy the connection details",
+    "title": "Live-redigering med Overleaf",
+    "live": "Live med Overleaf",
+    "connecting": "Kobler til Overleaf…",
+    "sending": "Sender endringer til Overleaf…",
+    "reconnecting": "Kobler til Overleaf på nytt…",
+    "pausedBadge": "Live-redigering satt på pause",
+    "pause": "Sett live-redigering på pause",
+    "resume": "Gjenoppta live-redigering",
+    "reconnectNow": "Koble til på nytt nå",
+    "open": "Åpne i Overleaf",
+    "share": "Del på Overleaf…",
+    "signIn": "Logg inn…",
+    "reconnectingIn": "Prøver igjen om {{seconds}} s.",
+    "notConfirmed": "Ikke bekreftet av Overleaf ennå.",
+    "copyDetails": "Kopier tilkoblingsdetaljer",
+    "detailsCopied": "Tilkoblingsdetaljene er kopiert",
+    "copyDetailsFailed": "Kunne ikke kopiere tilkoblingsdetaljene",
     "pauseDialog": {
-      "title": "Some changes haven't reached Overleaf yet",
-      "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",
-      "keepLive": "Keep editing live",
-      "pauseAnyway": "Pause anyway"
+      "title": "Noen endringer har ikke nådd Overleaf ennå",
+      "description": "Hvis du setter på pause nå, blir de på denne datamaskinen og sendes til Overleaf når du gjenopptar. Git-synkroniseringen er av til da.",
+      "keepLive": "Fortsett å redigere live",
+      "pauseAnyway": "Sett på pause likevel"
     }
   },
   "stuckWindow": {

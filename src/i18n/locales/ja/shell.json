@@ -492,7 +492,7 @@
       "run": "このコンピュータでコードを実行"
     },
     "sharedViewer": "共有プロジェクトでは、これらの設定を変更できるのは所有者と編集者だけです。",
-    "coauthorsChanged": "Changed by coauthors since your last compile"
+    "coauthorsChanged": "前回のコンパイル以降に共著者が変更"
   },
   "datePicker": {
     "placeholder": "日付を選択"
@@ -981,8 +981,8 @@
         "label": "ノート"
       },
       "overleafLive": {
-        "label": "Live editing with Overleaf",
-        "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
+        "label": "Overleaf とのライブ編集",
+        "description": "Overleaf から取り込んだプロジェクトを、共著者と同時に編集します。入力した内容は両側にその場で反映されます。ベータ版のため、初期設定ではオフです。"
       },
       "researchTasks": {
         "description": "エージェントがプロジェクトのコピー上で自律的に作業し、変更はあなたが確認できるように残します。非常に不安定で、実行が止まったり、失敗したり、手作業で整理が必要な変更が残ったりすることがあり、その間ずっとプロバイダの利用枠を消費します。設定に「研究」セクションを追加します。オフにすると、実行中のタスクはすべて停止します。既定ではオフです。自己責任でオンにしてください。",
@@ -1612,28 +1612,28 @@
     }
   },
   "overleafLive": {
-    "title": "Live editing with Overleaf",
-    "live": "Live with Overleaf",
-    "connecting": "Connecting to Overleaf…",
-    "sending": "Sending changes to Overleaf…",
-    "reconnecting": "Reconnecting to Overleaf…",
-    "pausedBadge": "Live editing paused",
-    "pause": "Pause live editing",
-    "resume": "Resume live editing",
-    "reconnectNow": "Reconnect now",
-    "open": "Open in Overleaf",
-    "share": "Share on Overleaf…",
-    "signIn": "Sign in…",
-    "reconnectingIn": "Trying again in {{seconds}} s.",
-    "notConfirmed": "Not confirmed by Overleaf yet.",
-    "copyDetails": "Copy connection details",
-    "detailsCopied": "Connection details copied",
-    "copyDetailsFailed": "Couldn't copy the connection details",
+    "title": "Overleaf とのライブ編集",
+    "live": "Overleaf とライブ中",
+    "connecting": "Overleaf に接続中…",
+    "sending": "Overleaf に変更を送信中…",
+    "reconnecting": "Overleaf に再接続中…",
+    "pausedBadge": "ライブ編集は一時停止中",
+    "pause": "ライブ編集を一時停止",
+    "resume": "ライブ編集を再開",
+    "reconnectNow": "今すぐ再接続",
+    "open": "Overleaf で開く",
+    "share": "Overleaf で共有…",
+    "signIn": "サインイン…",
+    "reconnectingIn": "{{seconds}} 秒後にもう一度試します。",
+    "notConfirmed": "Overleaf にまだ確認されていません。",
+    "copyDetails": "接続の詳細をコピー",
+    "detailsCopied": "接続の詳細をコピーしました",
+    "copyDetailsFailed": "接続の詳細をコピーできませんでした",
     "pauseDialog": {
-      "title": "Some changes haven't reached Overleaf yet",
-      "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",
-      "keepLive": "Keep editing live",
-      "pauseAnyway": "Pause anyway"
+      "title": "一部の変更がまだ Overleaf に届いていません",
+      "description": "今一時停止すると、変更はこのコンピュータに残り、再開したときに Overleaf に送られます。それまで Git 同期はオフのままです。",
+      "keepLive": "ライブ編集を続ける",
+      "pauseAnyway": "このまま一時停止"
     }
   },
   "stuckWindow": {

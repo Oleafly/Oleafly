@@ -1720,8 +1720,8 @@
         "notInstalled": "Niet geïnstalleerd"
       },
       "tryAgain": "Opnieuw proberen",
-      "label": "Aanmelding uit de browser",
-      "useBrowserSignIn": "De aanmelding uit mijn browser gebruiken",
+      "label": "Aanmelding uit een browser kopiëren",
+      "useBrowserSignIn": "De aanmelding uit je browser kopiëren",
       "signInDescription": "Kopieer je aanmelding voor {{server}} uit een browser op deze computer, zodat je je niet opnieuw hoeft aan te melden.",
       "site": "Site: {{domain}}",
       "confirmCopy": "Oleafly leest de cookies voor {{domain}} uit het profiel {{profile}} in {{browser}}. Ze blijven in Oleafly en gaan alleen naar {{domain}}. Je bevestigt het nog een keer in een systeemvenster.",
@@ -1797,17 +1797,31 @@
       "gitSave": "Opslaan",
       "gitRemove": "Weghalen",
       "gitFailed": "Oleafly kon het Git-token niet opslaan. Controleer of je het hele token hebt geplakt.",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
-      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
+      "browserLabel": "Aanmelden met je browser",
+      "browserDescription": "Voor aanmelden met Google, je instelling of een passkey. Oleafly opent {{server}} in een nieuw browservenster en sluit het zodra je bent aangemeld.",
+      "browserAction": "Aanmelden",
+      "browserPick": "Browser om mee aan te melden",
+      "browserWaiting": "Rond het aanmelden bij {{server}} af in {{browser}}. Als je het venster sluit, wordt het aanmelden geannuleerd.",
+      "browserHint": "Gebruik dit voor aanmelden met Google, je instelling of een passkey.",
+      "windowLabel": "Aanmelden bij {{server}}",
+      "windowDescription": "Oleafly opent een aanmeldvenster en sluit het zodra je bent aangemeld. Wil je je aanmelden met Google, je instelling of een passkey, installeer dan Chrome, Edge, Brave, Chromium of Firefox en meld je hier daarmee aan.",
+      "windowAction": "Aanmelden",
+      "windowWaiting": "Rond het aanmelden bij {{server}} af in het venster dat is geopend.",
       "unsent": {
-        "title": "Some changes haven't been sent to Overleaf",
-        "description": "If you sign out now, these changes stay on this computer and go to Overleaf the next time you sign in with this account. Sign in with a different account and they come back as copies next to their files instead. Or stay signed in and try again in a moment.",
-        "files": "Not sent yet: {{files}}",
-        "signOut": "Sign out anyway",
-        "stay": "Stay signed in"
+        "title": "Een deel van de wijzigingen is nog niet naar Overleaf verstuurd",
+        "description": "Als je je nu afmeldt, blijven deze wijzigingen op deze computer en gaan ze naar Overleaf zodra je je de volgende keer met dit account aanmeldt. Meld je je met een ander account aan, dan komen ze terug als kopieën naast hun bestanden. Of blijf aangemeld en probeer het zo opnieuw.",
+        "files": "Nog niet verstuurd: {{files}}",
+        "signOut": "Toch afmelden",
+        "stay": "Aangemeld blijven"
+      },
+      "deletes": {
+        "title": "Als je een bestand in een live project verwijdert",
+        "description": "Kies wat er op Overleaf gebeurt als je in Oleafly een bestand of map verwijdert.",
+        "options": {
+          "ask": "Elke keer vragen",
+          "always": "Ook op Overleaf verwijderen",
+          "never": "Houden op Overleaf"
+        }
       }
     },
     "desktopApps": {

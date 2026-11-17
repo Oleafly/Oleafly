@@ -9,6 +9,7 @@ import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspac
 import { useNow } from "@/hooks/use-now";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore } from "./live-store";
+import { OverleafDeleteDialog } from "./OverleafDeleteDialog";
 import { type OverleafMerge, type OverleafReview, useOverleafNotices } from "./overleaf-notices";
 
 type Shown = { kind: "merged"; entry: OverleafMerge } | { kind: "review"; entry: OverleafReview };
@@ -79,7 +80,7 @@ function MaintenanceBanner() {
   );
 }
 
-function MergedRows({ onShow }: { onShow: (shown: Shown) => void }) {
+function MergedRows({ onShow }: Readonly<{ onShow: (shown: Shown) => void }>) {
   const { t } = useTranslation(["collab"]);
   const merged = useOverleafNotices((state) => state.merged);
   const dismiss = useOverleafNotices((state) => state.dismissMerged);
@@ -99,7 +100,7 @@ function MergedRows({ onShow }: { onShow: (shown: Shown) => void }) {
   ));
 }
 
-function ReviewRows({ onShow }: { onShow: (shown: Shown) => void }) {
+function ReviewRows({ onShow }: Readonly<{ onShow: (shown: Shown) => void }>) {
   const { t } = useTranslation(["collab"]);
   const reviews = useOverleafNotices((state) => state.reviews);
   const resolving = useOverleafNotices((state) => state.resolving);
@@ -154,7 +155,7 @@ function UnsteadyRows() {
   ));
 }
 
-function CompareDialog({ shown, onClose }: { shown: Shown; onClose: () => void }) {
+function CompareDialog({ shown, onClose }: Readonly<{ shown: Shown; onClose: () => void }>) {
   const { t } = useTranslation(["collab", "common"]);
   const titleId = useId();
   const descriptionId = useId();
@@ -224,6 +225,7 @@ export function OverleafBanners() {
       <MergedRows onShow={setShown} />
       <UnsteadyRows />
       {shown ? <CompareDialog shown={shown} onClose={() => setShown(null)} /> : null}
+      <OverleafDeleteDialog />
     </>
   );
 }

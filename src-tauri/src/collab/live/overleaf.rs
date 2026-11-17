@@ -43,7 +43,6 @@ use super::write::WriteOutcome;
 use crate::collab::disk::{lf_text, DiskState};
 use crate::overleaf::OverleafLink;
 
-const SETTLE_WAIT: Duration = Duration::from_secs(3);
 const QUIT_SETTLE: Duration = Duration::from_millis(1_500);
 const FLUSH_WAIT: Duration = Duration::from_secs(10);
 const INDEX_FILE: &str = "materializer-index.json";
@@ -63,6 +62,8 @@ pub(crate) struct Mirror {
     replaced: Mutex<BTreeSet<DocId>>,
     removing: Mutex<BTreeSet<String>>,
     restorable: Mutex<BTreeMap<String, String>>,
+    adopted: Mutex<BTreeSet<String>>,
+    stored_as_files: Mutex<Vec<String>>,
 }
 
 #[derive(Default)]
@@ -73,7 +74,11 @@ struct Deletes {
 }
 
 impl Mirror {
-    pub(crate) fn new(disk: LiveDisk, blobs: binaries::BlobMap) -> Mirror {
+    pub(crate) fn new(
+        disk: LiveDisk,
+        blobs: binaries::BlobMap,
+        adopted: BTreeSet<String>,
+    ) -> Mirror {
         Mirror {
             disk,
             work: Mutex::new(DiskWork {
@@ -91,6 +96,8 @@ impl Mirror {
             replaced: Mutex::new(BTreeSet::new()),
             removing: Mutex::new(BTreeSet::new()),
             restorable: Mutex::new(BTreeMap::new()),
+            adopted: Mutex::new(adopted),
+            stored_as_files: Mutex::new(Vec::new()),
         }
     }
 
@@ -150,6 +157,13 @@ impl Mirror {
         self.set_status(status, pending);
     }
 
+    fn adopt_file_text(&self, path: &str) -> Option<String> {
+        let (text, hash) = read_text(&self.disk.root, path)?;
+        guard(&self.disk.bases).record(path, &text);
+        guard(&self.disk.disk).hashes.insert(path.to_owned(), hash);
+        Some(text)
+    }
+
     fn mirrored_text(&self, path: &str) -> Option<String> {
         if let Some(text) = guard(&self.disk.bases).latest(path) {
             return Some(text.clone());
@@ -170,8 +184,7 @@ impl Mirror {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Edit {
-    Sent,
-    Same,
+    Live,
     NotLive,
 }
 
@@ -255,15 +268,20 @@ fn read_text(root: &Path, path: &str) -> Option<(String, String)> {
     Some((text, crate::collab::disk::sha256_hex(&bytes)))
 }
 
-fn go_live_bases(
-    root: &Path,
-    disk: &mut DiskState,
-    first: Option<&FirstBases>,
-) -> (WrittenTexts, Vec<Seed>) {
-    let mut bases = WrittenTexts::default();
-    let mut seeds = Vec::new();
+struct GoLive {
+    bases: WrittenTexts,
+    seeds: Vec<Seed>,
+    adopted: BTreeSet<String>,
+}
+
+fn go_live_bases(root: &Path, disk: &mut DiskState, first: Option<&FirstBases>) -> GoLive {
+    let mut found = GoLive {
+        bases: WrittenTexts::default(),
+        seeds: Vec::new(),
+        adopted: BTreeSet::new(),
+    };
     let Ok(scan) = crate::collab::disk::scan_folder(root) else {
-        return (bases, seeds);
+        return found;
     };
     for (path, _) in scan.files {
         let Some((text, hash)) = read_text(root, &path) else {
@@ -276,17 +294,18 @@ fn go_live_bases(
         if let Some(first) = first {
             let base = first.base_of(&path);
             if base.as_deref() != Some(text.as_str()) {
-                seeds.push(Seed {
+                found.seeds.push(Seed {
                     path: path.clone(),
                     base,
                     local: text.clone(),
                 });
             }
+            found.adopted.insert(path.clone());
         }
-        bases.record(&path, &text);
+        found.bases.record(&path, &text);
         disk.hashes.insert(path, hash);
     }
-    (bases, seeds)
+    found
 }
 
 pub(crate) enum Backend {
@@ -382,7 +401,15 @@ impl OverleafLive {
             git_mirror,
         } = parts;
         let disk_file = mirror_dir.join(INDEX_FILE);
-        let (disk, bases, seeds, blobs) = {
+        let (
+            disk,
+            GoLive {
+                bases,
+                seeds,
+                adopted,
+            },
+            blobs,
+        ) = {
             let (disk_file, root) = (disk_file.clone(), root.clone());
             tauri::async_runtime::spawn_blocking(move || {
                 std::fs::create_dir_all(&mirror_dir)?;
@@ -391,9 +418,9 @@ impl OverleafLive {
                     .hashes
                     .is_empty()
                     .then(|| FirstBases::load(&mirror_dir, git_mirror));
-                let (bases, seeds) = go_live_bases(&root, &mut disk, first.as_ref());
+                let found = go_live_bases(&root, &mut disk, first.as_ref());
                 let blobs = binaries::BlobMap::load(&mirror_dir);
-                Ok::<_, std::io::Error>((disk, bases, seeds, blobs))
+                Ok::<_, std::io::Error>((disk, found, blobs))
             })
             .await
             .map_err(io)?
@@ -412,6 +439,7 @@ impl OverleafLive {
                 upkeep: Default::default(),
             },
             blobs,
+            adopted,
         ));
         let me = config.session.user_id().to_owned();
         let port = Arc::new(AppOverleafPort::new(Arc::clone(&mirror)));
@@ -539,7 +567,9 @@ impl OverleafLive {
     ) -> Result<(), CollabError> {
         self.session
             .editor_change(&DocId(file_id.to_owned()), rev, op)
-            .map_err(live_error)
+            .map_err(live_error)?;
+        self.mirror.mark([file_id.to_owned()], false);
+        Ok(())
     }
 
     pub(crate) fn close(&self, file_id: &str, session: u64) {
@@ -569,8 +599,7 @@ impl OverleafLive {
             (!op.is_noop()).then_some(op)
         });
         match edited {
-            Ok(true) => Ok(Edit::Sent),
-            Ok(false) => Ok(Edit::Same),
+            Ok(_) => Ok(Edit::Live),
             Err(LiveError::Stopped) => Ok(Edit::NotLive),
             Err(error) => Err(live_error(error)),
         }
@@ -595,6 +624,7 @@ impl OverleafLive {
                 reason: None,
             });
         }
+        self.mirror.mark([doc.0], false);
         self.mirror.flush().await;
         Ok(WriteOutcome {
             handled: true,
@@ -603,7 +633,6 @@ impl OverleafLive {
     }
 
     pub(crate) async fn flush(&self) {
-        let _ = self.session.settle(SETTLE_WAIT).await;
         self.mirror.flush().await;
     }
 

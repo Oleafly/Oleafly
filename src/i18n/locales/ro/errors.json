@@ -500,8 +500,8 @@
     "template_unavailable": "Oleafly nu a putut deschide acest șablon. Poate a fost eliminat din galeria Overleaf.",
     "browser_sign_in_missing": "Oleafly nu a găsit nicio autentificare pentru {{server}} în acel profil de browser. Autentifică-te direct.",
     "browser_sign_in_failed": "Autentificarea preluată din browser nu a funcționat. Poate a expirat. Autentifică-te direct.",
-    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
-    "browser_missing": "That browser isn't installed anymore. Pick another one."
+    "browser_unavailable": "Oleafly nu a putut deschide {{browser}} pentru autentificare. Încearcă alt browser.",
+    "browser_missing": "Acest browser nu mai este instalat. Alege altul."
   },
   "collab": {
     "suggestion_role": "Rolul tău în acest proiect nu permite sugestii."

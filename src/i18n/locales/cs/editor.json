@@ -1273,7 +1273,8 @@
     "tabMark": "Změněno na disku. Otevřete tuto kartu a vyberte, kterou verzi ponechat."
   },
   "liveTab": {
-    "notOnOverleafYet": "Not on Overleaf yet"
+    "notOnOverleafYet": "Zatím není v Overleafu",
+    "storedAsFile": "Overleaf to ukládá jako soubor, takže se vaše úpravy nahrají při uložení."
   },
   "labels": {
     "filterPlaceholder": "Název návěští",

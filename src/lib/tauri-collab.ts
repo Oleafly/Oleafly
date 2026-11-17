@@ -345,11 +345,20 @@ export const COLLAB_LIVE_DOC_PENDING_EVENT = "collab-live-doc-pending";
 export const OVERLEAF_LIVE_ACCOUNT_CHANGED_EVENT = "overleaf-live-account-changed";
 export const OVERLEAF_LIVE_NOTICE_EVENT = "overleaf-live-notice";
 export const COLLAB_UPLOAD_PROGRESS_EVENT = "collab-upload-progress";
+export const COLLAB_DOWNLOAD_PROGRESS_EVENT = "collab-download-progress";
 
 export function onCollabUploadProgress(
   handler: (payload: import("@oleafly/backend-port").CollabUploadProgress) => void,
 ): Promise<UnlistenFn> {
   return listen<import("@oleafly/backend-port").CollabUploadProgress>(COLLAB_UPLOAD_PROGRESS_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
+
+export function onCollabDownloadProgress(
+  handler: (payload: import("@oleafly/backend-port").CollabUploadProgress) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabUploadProgress>(COLLAB_DOWNLOAD_PROGRESS_EVENT, ({ payload }) =>
     handler(payload),
   );
 }

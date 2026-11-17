@@ -1245,7 +1245,8 @@
     "tabMark": "Endret på disken. Åpne fanen for å velge hvilken versjon du vil beholde."
   },
   "liveTab": {
-    "notOnOverleafYet": "Not on Overleaf yet"
+    "notOnOverleafYet": "Ikke på Overleaf ennå",
+    "storedAsFile": "Overleaf lagrer dette som en fil, så endringene dine lastes opp når du lagrer."
   },
   "labels": {
     "filterPlaceholder": "Etikettnavn",

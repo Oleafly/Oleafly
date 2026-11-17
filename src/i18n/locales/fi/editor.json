@@ -1245,7 +1245,8 @@
     "tabMark": "Muuttui levyllä. Avaa tämä välilehti ja valitse, kumman version pidät."
   },
   "liveTab": {
-    "notOnOverleafYet": "Not on Overleaf yet"
+    "notOnOverleafYet": "Ei vielä Overleafissa",
+    "storedAsFile": "Overleaf tallentaa tämän tiedostona, joten muokkauksesi lähetetään, kun tallennat."
   },
   "labels": {
     "filterPlaceholder": "Nimikkeen nimi",

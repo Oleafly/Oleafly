@@ -493,7 +493,7 @@
       "run": "Suorita koodi tällä koneella"
     },
     "sharedViewer": "Vain omistajat ja muokkaajat voivat muuttaa näitä asetuksia jaetussa projektissa.",
-    "coauthorsChanged": "Changed by coauthors since your last compile"
+    "coauthorsChanged": "Kanssakirjoittajat ovat muuttaneet edellisen käännöksesi jälkeen"
   },
   "datePicker": {
     "placeholder": "Valitse päivämäärä"
@@ -995,8 +995,8 @@
         "label": "Muistiinpanot"
       },
       "overleafLive": {
-        "label": "Live editing with Overleaf",
-        "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
+        "label": "Reaaliaikainen muokkaus Overleafin kanssa",
+        "description": "Muokkaa Overleafista tuomiasi projekteja samaan aikaan kanssakirjoittajiesi kanssa. Muutokset näkyvät molemmilla puolilla kirjoittaessasi. Oletuksena pois käytöstä beta-vaiheen ajan."
       },
       "researchTasks": {
         "description": "Agentti työskentelee itsenäisesti projektin kopiossa ja jättää muutokset sinun tarkistettavaksesi. Erittäin epävakaa: ajot voivat jumittua, epäonnistua tai jättää muutoksia, jotka pitää selvittää käsin, ja ne kuluttavat tekoälypalvelusi kiintiötä koko ajan. Lisää asetuksiin Tutkimus-osion. Kun kytket sen pois, kaikki käynnissä olevat tehtävät pysähtyvät. Oletuksena pois. Ota käyttöön omalla vastuullasi.",
@@ -1647,28 +1647,28 @@
     }
   },
   "overleafLive": {
-    "title": "Live editing with Overleaf",
-    "live": "Live with Overleaf",
-    "connecting": "Connecting to Overleaf…",
-    "sending": "Sending changes to Overleaf…",
-    "reconnecting": "Reconnecting to Overleaf…",
-    "pausedBadge": "Live editing paused",
-    "pause": "Pause live editing",
-    "resume": "Resume live editing",
-    "reconnectNow": "Reconnect now",
-    "open": "Open in Overleaf",
-    "share": "Share on Overleaf…",
-    "signIn": "Sign in…",
-    "reconnectingIn": "Trying again in {{seconds}} s.",
-    "notConfirmed": "Not confirmed by Overleaf yet.",
-    "copyDetails": "Copy connection details",
-    "detailsCopied": "Connection details copied",
-    "copyDetailsFailed": "Couldn't copy the connection details",
+    "title": "Reaaliaikainen muokkaus Overleafin kanssa",
+    "live": "Reaaliaikainen Overleafin kanssa",
+    "connecting": "Yhdistetään Overleafiin…",
+    "sending": "Lähetetään muutoksia Overleafiin…",
+    "reconnecting": "Yhdistetään uudelleen Overleafiin…",
+    "pausedBadge": "Reaaliaikainen muokkaus tauolla",
+    "pause": "Keskeytä reaaliaikainen muokkaus",
+    "resume": "Jatka reaaliaikaista muokkausta",
+    "reconnectNow": "Yhdistä uudelleen nyt",
+    "open": "Avaa Overleafissa",
+    "share": "Jaa Overleafissa…",
+    "signIn": "Kirjaudu sisään…",
+    "reconnectingIn": "Yritetään uudelleen {{seconds}} s kuluttua.",
+    "notConfirmed": "Overleaf ei ole vielä vahvistanut.",
+    "copyDetails": "Kopioi yhteyden tiedot",
+    "detailsCopied": "Yhteyden tiedot kopioitu",
+    "copyDetailsFailed": "Yhteyden tietoja ei voitu kopioida",
     "pauseDialog": {
-      "title": "Some changes haven't reached Overleaf yet",
-      "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",
-      "keepLive": "Keep editing live",
-      "pauseAnyway": "Pause anyway"
+      "title": "Joitakin muutoksia ei ole vielä päätynyt Overleafiin",
+      "description": "Jos keskeytät nyt, ne pysyvät tällä tietokoneella ja menevät Overleafiin, kun jatkat. Git-synkronointi pysyy pois päältä siihen asti.",
+      "keepLive": "Jatka muokkausta reaaliaikaisesti",
+      "pauseAnyway": "Keskeytä silti"
     }
   },
   "stuckWindow": {

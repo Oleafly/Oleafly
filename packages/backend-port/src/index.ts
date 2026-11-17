@@ -1897,6 +1897,7 @@ export interface CollabLiveRemovedFile {
   kind: "dir" | "text" | "blob";
   by: string | null;
   yours: boolean;
+  copy?: string;
 }
 export interface CollabLiveRemoved {
   projectId: string;
@@ -1937,7 +1938,7 @@ export interface CollabLiveKeptFile {
   id: string;
   path: string;
   copy: string;
-  kind: "replaced" | "added" | "beside" | "unsent";
+  kind: "replaced" | "added" | "beside" | "unsent" | "differed";
   by: string | null;
 }
 export interface OverleafLiveAccountChanged {
@@ -1955,7 +1956,20 @@ export type OverleafLiveNotice = { projectId: string } & (
   | { kind: "maintenance"; message: string; delayMs: number }
   | { kind: "slow_ack"; waiting: boolean }
   | { kind: "unsteady"; path: string }
+  | { kind: "fault"; path: string; reason: OverleafStopReason }
+  | { kind: "external"; path: string }
+  | { kind: "replaced"; path: string }
 );
+export type OverleafStopReason =
+  | "delete_mismatch"
+  | "bad_hash"
+  | "too_long"
+  | "too_large"
+  | "too_many_ranges"
+  | "type_mismatch"
+  | "unsupported"
+  | "unavailable"
+  | "refused";
 export interface OverleafConnectionDetails {
   server: string;
   transport: string | null;

@@ -237,6 +237,17 @@ describe("collaboration IPC helpers", () => {
     expect(seen).toEqual([payload]);
   });
 
+  it("forwards how far a big download got", async () => {
+    const seen: unknown[] = [];
+    await tauri.onCollabDownloadProgress((payload) => seen.push(payload));
+    expect(tauri.COLLAB_DOWNLOAD_PROGRESS_EVENT).toBe("collab-download-progress");
+    expect(mocks.listen).toHaveBeenCalledWith("collab-download-progress", expect.any(Function));
+    const handler = mocks.listen.mock.calls[0][1] as (event: { payload: unknown }) => void;
+    const payload = { projectId: "grant", path: "figures/scan.png", done: 1024, total: 4096 };
+    handler({ payload });
+    expect(seen).toEqual([payload]);
+  });
+
   it("asks a waiting live session to reconnect now, with no arguments", async () => {
     await tauri.collabLiveReconnectNow();
     expect(mocks.invoke).toHaveBeenCalledExactlyOnceWith("collab_live_reconnect_now");

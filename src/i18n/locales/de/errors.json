@@ -498,8 +498,8 @@
     "template_unavailable": "Oleafly konnte diese Vorlage nicht öffnen. Möglicherweise wurde sie aus der Vorlagengalerie von Overleaf entfernt.",
     "browser_sign_in_missing": "Oleafly hat in diesem Browserprofil keine Anmeldung für {{server}} gefunden. Melden Sie sich stattdessen an.",
     "browser_sign_in_failed": "Die Anmeldung aus Ihrem Browser hat nicht funktioniert. Sie ist vielleicht abgelaufen. Melden Sie sich stattdessen an.",
-    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
-    "browser_missing": "That browser isn't installed anymore. Pick another one."
+    "browser_unavailable": "Oleafly konnte {{browser}} nicht für die Anmeldung öffnen. Versuchen Sie einen anderen Browser.",
+    "browser_missing": "Dieser Browser ist nicht mehr installiert. Wählen Sie einen anderen."
   },
   "collab": {
     "suggestion_role": "Ihre Rolle in diesem Projekt erlaubt keine Vorschläge."

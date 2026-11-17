@@ -134,6 +134,7 @@ export interface CollabLiveStoreState {
   status: CollabLiveSyncState | null;
   pending: number;
   pendingPaths: readonly string[];
+  storedAsFiles: readonly string[];
   peers: Record<string, LivePeer>;
   members: CollabProjectMember[];
   merged: CollabLiveMerged | null;
@@ -196,6 +197,7 @@ function emptyLive(projectId: string | null): LiveData {
     status: null,
     pending: 0,
     pendingPaths: [],
+    storedAsFiles: [],
     peers: {},
     members: [],
     merged: null,
@@ -324,6 +326,11 @@ function releaseEditors(projectId: string): void {
   if (gate.projectId === projectId && gate.connecting) {
     useCollabEditorGate.setState({ projectId: null, viewer: false, locked: false, connecting: false });
   }
+}
+
+export function noteStoredAsFiles(projectId: string, paths: readonly string[]): void {
+  if (useCollabLiveStore.getState().projectId !== projectId) return;
+  useCollabLiveStore.setState({ storedAsFiles: paths });
 }
 
 export function liveTarget(): string | null {
@@ -484,7 +491,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     }));
     if (payload.status.state !== "ended") return;
     releaseEditors(payload.projectId);
-    store.setState({ pendingPaths: [] });
+    store.setState({ pendingPaths: [], storedAsFiles: [] });
     if (payload.status.reason === "stopped") return;
     const ending = live?.projectId === payload.projectId ? live : null;
     const driver = ending?.driver ?? driverOf(store.getState().backend);
@@ -698,6 +705,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
         status: null,
         pending: 0,
         pendingPaths: [],
+        storedAsFiles: [],
         peers: {},
         members: [],
       });
@@ -711,13 +719,15 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
       published.projectId !== state.projectId ||
       published.backend !== backend ||
       published.overleaf !== state.overleaf ||
-      published.pendingPaths !== state.pendingPaths
+      published.pendingPaths !== state.pendingPaths ||
+      published.storedAsFiles !== state.storedAsFiles
     ) {
       useLiveBackend.setState({
         projectId: state.projectId,
         backend,
         overleaf: state.overleaf,
         pendingPaths: state.pendingPaths,
+        storedAsFiles: state.storedAsFiles,
       });
     }
   };
@@ -758,6 +768,6 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     stopLive();
     for (const pending of unlisteners) void pending.then((unlisten) => unlisten());
     store.setState(emptyLive(null));
-    useLiveBackend.setState({ projectId: null, backend: null, overleaf: null, pendingPaths: [] });
+    useLiveBackend.setState({ projectId: null, backend: null, overleaf: null, pendingPaths: [], storedAsFiles: [] });
   };
 }

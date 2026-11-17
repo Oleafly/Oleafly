@@ -496,8 +496,8 @@
     "template_unavailable": "Oleafly はこのテンプレートを開けませんでした。Overleaf のギャラリーから削除された可能性があります。",
     "browser_sign_in_missing": "Oleafly はそのブラウザのプロファイルで {{server}} のサインイン情報を見つけられませんでした。直接サインインしてください。",
     "browser_sign_in_failed": "ブラウザから取り込んだサインイン情報は使えませんでした。期限が切れている可能性があります。直接サインインしてください。",
-    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
-    "browser_missing": "That browser isn't installed anymore. Pick another one."
+    "browser_unavailable": "Oleafly はサインイン用に {{browser}} を開けませんでした。別のブラウザをお試しください。",
+    "browser_missing": "そのブラウザはもうインストールされていません。別のブラウザを選んでください。"
   },
   "collab": {
     "suggestion_role": "このプロジェクトでのあなたの役割では、提案はできません。"

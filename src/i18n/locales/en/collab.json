@@ -223,7 +223,7 @@
     "cloud_synced": "Your Oleafly library is in a folder that a cloud service syncs. Move it out of Dropbox, OneDrive or iCloud Drive to share or join projects.",
     "overleaf_linked": "This project is linked to Overleaf. Unlink it to share it on an Oleafly Server.",
     "collab_shared": "This project is shared on an Oleafly Server. Stop sharing it there to edit it live with Overleaf.",
-    "live_elsewhere": "This project is live in another Oleafly window.",
+    "live_elsewhere": "This project is live in another Oleafly window. Stop live editing there, then try again.",
     "overleaf_unsent": "Some changes haven't reached Overleaf yet. Resume live editing to send them, then unlink.",
     "suggestion_not_found": "That suggestion is already gone. Someone may have accepted or rejected it.",
     "suggestion_not_yours": "Only the person who made this suggestion can withdraw it.",
@@ -711,7 +711,11 @@
   "removed": {
     "deletedBy": "{{name}} deleted {{file}}.",
     "yoursDeleted": "Your changes to {{file}} are in Recently deleted because {{name}} deleted it.",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "keptCopy": "{{name}} deleted {{file}} on Overleaf. Your unsent changes are saved in {{copy}}.",
+    "deletedOnline": "{{name}} deleted {{file}} on Overleaf.",
+    "restoreOnline": "Restore on Overleaf",
+    "restoreOnlineLabel": "Restore {{name}} on Overleaf"
   },
   "activity": {
     "welcomeEdit": "Shared by {{owner}} on {{server}}. You can edit.",
@@ -1272,6 +1276,7 @@
     "waiting": "Waiting to be shared: {{files}}",
     "failed": "Couldn't be shared: {{files}}",
     "uploading": "Uploading {{file}}: {{done}} of {{total}}",
+    "downloading": "Downloading {{file}}: {{done}} of {{total}}",
     "tooLarge": "{{file}} is {{size}}, larger than this server allows ({{limit}}). It stays on this computer only.",
     "tooLargeUnknown": "{{file}} is larger than this server allows. It stays on this computer only.",
     "projectTooLarge": "{{file}} stays on this computer because this project reached the server's size limit of {{limit}}. Ask the person who runs the server to raise it.",
@@ -1283,6 +1288,7 @@
     "added": "{{file}} is now {{copy}} because {{name}} added a file with the same name.",
     "beside": "{{name}} also has a file named {{file}}. Theirs is kept as {{copy}}.",
     "unsent": "Your last changes to {{file}} didn't reach Overleaf. They're kept in {{copy}}.",
+    "differed": "Overleaf has a different file named {{file}}. Your version is kept as {{copy}}.",
     "localCopy": "You changed {{files}} in {{name}} while you had no access to this project.",
     "bringIn": "Bring changes in",
     "keepSeparate": "Keep separate",
@@ -1346,6 +1352,25 @@
     "reviewDescription": "Red lines are yours and green lines are Overleaf's. \"Use mine\" sends your text to Overleaf. \"Use Overleaf's\" puts Overleaf's text in the file and saves yours as a copy next to it.",
     "resolveFailed": "Couldn't apply your choice. Try again.",
     "unsteady": "Overleaf keeps disconnecting {{path}} after someone else's edits. It reconnects on its own.",
-    "diffLabel": "Differences"
+    "diffLabel": "Differences",
+    "faultRefused": "Live editing stopped for {{file}} because Overleaf turned down a change. Your text stays on this computer.",
+    "faultUnsupported": "This version of Oleafly can't edit {{file}} live. Your text stays on this computer.",
+    "faultUnavailable": "Overleaf couldn't load {{file}}, so live editing stopped for it. Your text stays on this computer.",
+    "limitTooLong": "{{file}} is longer than Overleaf allows for live editing, so new edits stay on this computer.",
+    "limitTooLarge": "A change to {{file}} is too big for Overleaf to take at once, so it stays on this computer.",
+    "limitTooManyRanges": "{{file}} has reached Overleaf's limit of {{comments}} comments or {{changes}} tracked changes, so new edits stay on this computer.",
+    "externalChange": "{{file}} was changed on Overleaf by a restore or sync.",
+    "charactersReplaced": "Some characters in {{file}}, like emoji, were replaced because Overleaf can't store them.",
+    "tryLiveAgain": "Try live again",
+    "keepMineAsCopy": "Keep mine as a copy",
+    "stoppedActionFailed": "That didn't go through for {{file}}. Wait a moment, then click it again."
+  },
+  "overleafTree": {
+    "deleteTitle": "Delete on Overleaf too?",
+    "deleteDescription": "You deleted {{files}} on this computer. Overleaf keeps a file until you delete it there too.",
+    "deleteConfirm": "Delete on Overleaf too",
+    "keep": "Keep on Overleaf",
+    "notAllowed": "You can't change files in this project on Overleaf, so your changes to {{files}} stay on this computer.",
+    "keptAway": "Deleted here but still on Overleaf: {{files}}"
   }
 }

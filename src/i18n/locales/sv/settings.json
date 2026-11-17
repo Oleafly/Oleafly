@@ -1720,8 +1720,8 @@
         "notInstalled": "Inte installerad"
       },
       "tryAgain": "Försök igen",
-      "label": "Inloggning från webbläsaren",
-      "useBrowserSignIn": "Använd inloggningen från min webbläsare",
+      "label": "Kopiera inloggning från en webbläsare",
+      "useBrowserSignIn": "Kopiera inloggningen från din webbläsare",
       "signInDescription": "Kopiera din inloggning för {{server}} från en webbläsare på den här datorn, så att du inte behöver logga in igen.",
       "site": "Webbplats: {{domain}}",
       "confirmCopy": "Oleafly läser cookies för {{domain}} från profilen {{profile}} i {{browser}}. De stannar i Oleafly och skickas bara till {{domain}}. Du bekräftar en gång till i en systemdialog.",
@@ -1797,17 +1797,31 @@
       "gitSave": "Spara",
       "gitRemove": "Ta bort",
       "gitFailed": "Oleafly kunde inte spara Git-token. Kontrollera att du klistrade in hela token.",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
-      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
+      "browserLabel": "Logga in med din webbläsare",
+      "browserDescription": "För inloggning med Google, din institution eller en nyckel. Oleafly öppnar {{server}} i ett nytt webbläsarfönster och stänger det när du är inloggad.",
+      "browserAction": "Logga in",
+      "browserPick": "Webbläsare att logga in med",
+      "browserWaiting": "Slutför inloggningen på {{server}} i {{browser}}. Om du stänger fönstret avbryts inloggningen.",
+      "browserHint": "Använd det här för inloggning med Google, din institution eller en nyckel.",
+      "windowLabel": "Logga in på {{server}}",
+      "windowDescription": "Oleafly öppnar ett inloggningsfönster och stänger det när du är inloggad. Vill du logga in med Google, din institution eller en nyckel installerar du Chrome, Edge, Brave, Chromium eller Firefox och loggar sedan in med den här.",
+      "windowAction": "Logga in",
+      "windowWaiting": "Slutför inloggningen på {{server}} i fönstret som öppnades.",
       "unsent": {
-        "title": "Some changes haven't been sent to Overleaf",
-        "description": "If you sign out now, these changes stay on this computer and go to Overleaf the next time you sign in with this account. Sign in with a different account and they come back as copies next to their files instead. Or stay signed in and try again in a moment.",
-        "files": "Not sent yet: {{files}}",
-        "signOut": "Sign out anyway",
-        "stay": "Stay signed in"
+        "title": "Vissa ändringar har inte skickats till Overleaf",
+        "description": "Om du loggar ut nu finns de här ändringarna kvar på den här datorn och skickas till Overleaf nästa gång du loggar in med det här kontot. Loggar du in med ett annat konto kommer de i stället tillbaka som kopior bredvid sina filer. Eller så förblir du inloggad och försöker igen om en liten stund.",
+        "files": "Inte skickade än: {{files}}",
+        "signOut": "Logga ut ändå",
+        "stay": "Förbli inloggad"
+      },
+      "deletes": {
+        "title": "När du raderar en fil i ett liveprojekt",
+        "description": "Välj vad som händer på Overleaf när du raderar en fil eller mapp i Oleafly.",
+        "options": {
+          "ask": "Fråga varje gång",
+          "always": "Radera även på Overleaf",
+          "never": "Behåll på Overleaf"
+        }
       }
     },
     "desktopApps": {

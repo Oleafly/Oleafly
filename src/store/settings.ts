@@ -92,6 +92,7 @@ export type RailTab =
 export type DockPlacement = "left" | "right" | "bottom";
 export type BackgroundPattern = "dots" | "grid" | "none";
 export type HomeProjectLayout = "grid" | "list";
+export type OverleafDeletes = "ask" | "always" | "never";
 export type GrammarDialect =
   | "american"
   | "british"
@@ -1114,6 +1115,8 @@ interface SettingsState {
   setNotes: (v: boolean) => void;
   overleafLive: boolean;
   setOverleafLive: (v: boolean) => void;
+  overleafDeletes: OverleafDeletes;
+  setOverleafDeletes: (v: OverleafDeletes) => void;
   notesTypeface: NotesAppearance["notesTypeface"];
   notesFontFamily: string;
   notesFontSize: number;
@@ -1318,6 +1321,7 @@ const PREF_DEFAULTS = {
   latexTools: false,
   notes: false,
   overleafLive: false,
+  overleafDeletes: "ask" as OverleafDeletes,
   ...NOTES_APPEARANCE_DEFAULTS,
   notesPeriodic: NOTES_PERIODIC_DEFAULTS,
   defaultLatexEngine: "tectonic" as DefaultLatexEngine,
@@ -1419,6 +1423,7 @@ export const SECTION_SETTINGS = {
     latexTools: "oleafly.latexTools",
     notes: "oleafly.notes",
     overleafLive: "oleafly.overleafLive",
+    overleafDeletes: "oleafly.overleafDeletes",
   },
   engine: {
     defaultLatexEngine: "oleafly.defaultLatexEngine",
@@ -1427,6 +1432,10 @@ export const SECTION_SETTINGS = {
 } satisfies Record<string, Partial<Record<PrefKey, string | null>>>;
 
 export type SettingsSection = keyof typeof SECTION_SETTINGS;
+
+function overleafDeletesFrom(stored: string): OverleafDeletes {
+  return stored === "always" || stored === "never" ? stored : "ask";
+}
 
 function sectionEntries(section: SettingsSection): [PrefKey, string | null][] {
   return Object.entries(SECTION_SETTINGS[section]) as [PrefKey, string | null][];
@@ -2129,6 +2138,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setOverleafLive: (v) => {
     saveLs("oleafly.overleafLive", v ? "1" : "0");
     set({ overleafLive: v });
+  },
+  overleafDeletes: overleafDeletesFrom(ls("oleafly.overleafDeletes", "ask")),
+  setOverleafDeletes: (v) => {
+    saveLs("oleafly.overleafDeletes", v);
+    set({ overleafDeletes: v });
   },
   notes: ls("oleafly.notes", "0") === "1",
   setNotes: (v) => {

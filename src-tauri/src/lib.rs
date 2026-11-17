@@ -869,6 +869,8 @@ pub fn run() {
             collab::live::overleaf::commands::overleaf_live_resume,
             collab::live::overleaf::commands::overleaf_live_unlink,
             collab::live::overleaf::notices::overleaf_live_resolve,
+            collab::live::overleaf::notices::overleaf_live_retry,
+            collab::live::overleaf::notices::overleaf_live_keep_copy,
             collab::live::overleaf::notices::overleaf_live_connection_details,
             collab::live::overleaf::commands::overleaf_live_members,
             collab::live::overleaf::commands::overleaf_live_delete,

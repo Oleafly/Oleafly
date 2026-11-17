@@ -1709,8 +1709,8 @@
         "notInstalled": "Chưa cài"
       },
       "tryAgain": "Thử lại",
-      "label": "Đăng nhập bằng trình duyệt",
-      "useBrowserSignIn": "Dùng đăng nhập từ trình duyệt của tôi",
+      "label": "Sao chép đăng nhập từ trình duyệt",
+      "useBrowserSignIn": "Sao chép đăng nhập từ trình duyệt của bạn",
       "signInDescription": "Sao chép đăng nhập của bạn cho {{server}} từ trình duyệt trên máy tính này để bạn không phải đăng nhập lại.",
       "site": "Trang: {{domain}}",
       "confirmCopy": "Oleafly sẽ đọc cookie cho {{domain}} từ hồ sơ {{profile}} trong {{browser}}. Cookie ở lại trong Oleafly và chỉ được gửi đến {{domain}}. Bạn sẽ xác nhận thêm một lần trong hộp thoại hệ thống.",
@@ -1782,17 +1782,31 @@
       "gitSave": "Lưu",
       "gitRemove": "Gỡ",
       "gitFailed": "Oleafly không thể lưu token Git. Hãy kiểm tra bạn đã dán toàn bộ token.",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
-      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
+      "browserLabel": "Đăng nhập bằng trình duyệt của bạn",
+      "browserDescription": "Dành cho đăng nhập bằng Google, tổ chức hoặc passkey. Oleafly mở {{server}} trong một cửa sổ trình duyệt mới và đóng nó khi bạn đăng nhập xong.",
+      "browserAction": "Đăng nhập",
+      "browserPick": "Trình duyệt dùng để đăng nhập",
+      "browserWaiting": "Hãy hoàn tất đăng nhập {{server}} trong {{browser}}. Đóng cửa sổ sẽ huỷ đăng nhập.",
+      "browserHint": "Dùng cách này để đăng nhập bằng Google, tổ chức hoặc passkey.",
+      "windowLabel": "Đăng nhập {{server}}",
+      "windowDescription": "Oleafly mở một cửa sổ đăng nhập và đóng nó khi bạn đăng nhập xong. Để đăng nhập bằng Google, tổ chức hoặc passkey, hãy cài Chrome, Edge, Brave, Chromium hoặc Firefox rồi đăng nhập bằng trình duyệt đó tại đây.",
+      "windowAction": "Đăng nhập",
+      "windowWaiting": "Hãy hoàn tất đăng nhập {{server}} trong cửa sổ vừa mở.",
       "unsent": {
-        "title": "Some changes haven't been sent to Overleaf",
-        "description": "If you sign out now, these changes stay on this computer and go to Overleaf the next time you sign in with this account. Sign in with a different account and they come back as copies next to their files instead. Or stay signed in and try again in a moment.",
-        "files": "Not sent yet: {{files}}",
-        "signOut": "Sign out anyway",
-        "stay": "Stay signed in"
+        "title": "Một số thay đổi chưa được gửi đến Overleaf",
+        "description": "Nếu bạn đăng xuất bây giờ, các thay đổi này vẫn ở trên máy tính này và được gửi đến Overleaf lần sau bạn đăng nhập bằng tài khoản này. Nếu đăng nhập bằng tài khoản khác, chúng sẽ trở thành các bản sao bên cạnh tệp của chúng. Hoặc hãy giữ trạng thái đăng nhập và thử lại sau giây lát.",
+        "files": "Chưa gửi: {{files}}",
+        "signOut": "Vẫn đăng xuất",
+        "stay": "Giữ đăng nhập"
+      },
+      "deletes": {
+        "title": "Khi bạn xoá một tệp trong dự án trực tiếp",
+        "description": "Chọn điều xảy ra trên Overleaf khi bạn xoá một tệp hoặc thư mục trong Oleafly.",
+        "options": {
+          "ask": "Hỏi mỗi lần",
+          "always": "Xoá cả trên Overleaf",
+          "never": "Giữ trên Overleaf"
+        }
       }
     },
     "desktopApps": {

@@ -1,8 +1,10 @@
-import type { OverleafLiveNotice } from "@oleafly/backend-port";
+import type { OverleafLiveNotice, OverleafStopReason } from "@oleafly/backend-port";
 import { create } from "zustand";
+import { collabRelive } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
-import { overleafLiveResolve } from "@/lib/overleaf-live";
+import { overleafLiveKeepCopy, overleafLiveResolve, overleafLiveRetry } from "@/lib/overleaf-live";
 import { onOverleafLiveNotice } from "@/lib/tauri-collab";
+import { useFilesStore } from "@/store/files";
 import { useCollabLiveStore } from "./live-store";
 
 export interface OverleafMerge {
@@ -17,18 +19,30 @@ export interface OverleafReview {
   theirs: string;
 }
 
+export interface OverleafStopped {
+  path: string;
+  reason: OverleafStopReason;
+}
+
 interface OverleafNoticesState {
   projectId: string | null;
   maintenance: { message: string; until: number } | null;
   merged: OverleafMerge[];
   reviews: OverleafReview[];
   unsteady: string[];
+  stopped: OverleafStopped[];
+  external: string[];
+  replaced: string | null;
   slowAck: boolean;
   resolving: string | null;
   failed: string | null;
   dismissMerged: (path: string) => void;
   dismissUnsteady: (path: string) => void;
+  dismissExternal: (path: string) => void;
+  dismissReplaced: () => void;
   resolve: (path: string, keep: "mine" | "theirs") => Promise<void>;
+  tryLiveAgain: (path: string) => Promise<void>;
+  keepCopy: (path: string) => Promise<void>;
 }
 
 const EMPTY = {
@@ -36,6 +50,9 @@ const EMPTY = {
   merged: [],
   reviews: [],
   unsteady: [],
+  stopped: [],
+  external: [],
+  replaced: null,
   slowAck: false,
   resolving: null,
   failed: null,
@@ -45,26 +62,59 @@ function replacing<T extends { path: string }>(list: T[], next: T): T[] {
   return [...list.filter((entry) => entry.path !== next.path), next];
 }
 
-export const useOverleafNotices = create<OverleafNoticesState>()((set, get) => ({
-  projectId: null,
-  ...EMPTY,
-  dismissMerged: (path) => set((state) => ({ merged: state.merged.filter((entry) => entry.path !== path) })),
-  dismissUnsteady: (path) => set((state) => ({ unsteady: state.unsteady.filter((entry) => entry !== path) })),
-  resolve: async (path, keep) => {
+function adding(list: string[], path: string): string[] {
+  return list.includes(path) ? list : [...list, path];
+}
+
+export const useOverleafNotices = create<OverleafNoticesState>()((set, get) => {
+  const act = async (
+    path: string,
+    task: string,
+    call: (projectId: string) => Promise<void>,
+    done: (state: OverleafNoticesState) => Partial<OverleafNoticesState>,
+  ) => {
     const { projectId } = get();
     if (!projectId) return;
     set({ resolving: path, failed: null });
     try {
-      await overleafLiveResolve(projectId, path, keep);
-      set((state) => ({ reviews: state.reviews.filter((entry) => entry.path !== path) }));
+      await call(projectId);
+      set(done);
     } catch (error) {
-      void logError("resolve an overleaf review", error);
+      void logError(task, error);
       set({ failed: path });
     } finally {
       set({ resolving: null });
     }
-  },
-}));
+  };
+  const restart = (path: string, task: string, command: (projectId: string, path: string) => Promise<void>) =>
+    act(
+      path,
+      task,
+      async (projectId) => {
+        await useFilesStore.getState().saveFile(path);
+        await command(projectId, path);
+        collabRelive(path);
+      },
+      (state) => ({ stopped: state.stopped.filter((entry) => entry.path !== path) }),
+    );
+  return {
+    projectId: null,
+    ...EMPTY,
+    dismissMerged: (path) => set((state) => ({ merged: state.merged.filter((entry) => entry.path !== path) })),
+    dismissUnsteady: (path) => set((state) => ({ unsteady: state.unsteady.filter((entry) => entry !== path) })),
+    dismissExternal: (path) => set((state) => ({ external: state.external.filter((entry) => entry !== path) })),
+    dismissReplaced: () => set({ replaced: null }),
+    resolve: (path, keep) =>
+      act(
+        path,
+        "resolve an overleaf review",
+        (projectId) => overleafLiveResolve(projectId, path, keep),
+        (state) => ({ reviews: state.reviews.filter((entry) => entry.path !== path) }),
+      ),
+    tryLiveAgain: (path) => restart(path, "try an overleaf file live again", overleafLiveRetry),
+    keepCopy: (path) => restart(path, "keep a copy of an overleaf file", overleafLiveKeepCopy),
+  };
+});
 
 export function applyOverleafNotice(notice: OverleafLiveNotice, now = Date.now()): void {
   const state = useOverleafNotices.getState();
@@ -83,9 +133,16 @@ export function applyOverleafNotice(notice: OverleafLiveNotice, now = Date.now()
       useOverleafNotices.setState({ slowAck: notice.waiting });
       return;
     case "unsteady":
-      if (!state.unsteady.includes(notice.path)) {
-        useOverleafNotices.setState({ unsteady: [...state.unsteady, notice.path] });
-      }
+      useOverleafNotices.setState({ unsteady: adding(state.unsteady, notice.path) });
+      return;
+    case "fault":
+      useOverleafNotices.setState({ stopped: replacing(state.stopped, notice) });
+      return;
+    case "external":
+      useOverleafNotices.setState({ external: adding(state.external, notice.path) });
+      return;
+    case "replaced":
+      useOverleafNotices.setState({ replaced: notice.path });
   }
 }
 

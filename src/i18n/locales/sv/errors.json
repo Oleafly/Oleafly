@@ -498,8 +498,8 @@
     "template_unavailable": "Oleafly kunde inte öppna den här mallen. Den kan ha tagits bort från Overleafs mallgalleri.",
     "browser_sign_in_missing": "Oleafly hittade ingen inloggning för {{server}} i den webbläsarprofilen. Logga in i stället.",
     "browser_sign_in_failed": "Inloggningen från din webbläsare fungerade inte. Den kan ha gått ut. Logga in i stället.",
-    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
-    "browser_missing": "That browser isn't installed anymore. Pick another one."
+    "browser_unavailable": "Oleafly kunde inte öppna {{browser}} för inloggning. Prova en annan webbläsare.",
+    "browser_missing": "Den webbläsaren är inte installerad längre. Välj en annan."
   },
   "collab": {
     "suggestion_role": "Din roll i det här projektet tillåter inte förslag."

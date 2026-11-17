@@ -46,6 +46,7 @@ pub enum DocFault {
     TooLarge,
     TooManyRanges,
     TypeMismatch,
+    Unavailable,
     Unsupported(String),
     Refused(String),
 }

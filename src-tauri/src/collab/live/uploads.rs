@@ -15,6 +15,7 @@ use crate::collab::disk::safe_target;
 
 pub const LIVE_UPLOADS_EVENT: &str = "collab-live-uploads";
 pub const UPLOAD_PROGRESS_EVENT: &str = "collab-upload-progress";
+pub const DOWNLOAD_PROGRESS_EVENT: &str = "collab-download-progress";
 const PROGRESS_EVERY: Duration = Duration::from_millis(250);
 const MEBIBYTE: u64 = 1024 * 1024;
 const CHECK_ABOVE: u64 = 4 * MEBIBYTE;
@@ -64,6 +65,27 @@ pub(super) fn progress_for(
     project_id: &str,
     path: &str,
 ) -> TransferProgress {
+    transfer_progress(host, project_id, path, |host, payload| {
+        host.upload_progress(payload)
+    })
+}
+
+pub(super) fn download_progress_for(
+    host: Arc<dyn LiveHost>,
+    project_id: &str,
+    path: &str,
+) -> TransferProgress {
+    transfer_progress(host, project_id, path, |host, payload| {
+        host.download_progress(payload)
+    })
+}
+
+fn transfer_progress(
+    host: Arc<dyn LiveHost>,
+    project_id: &str,
+    path: &str,
+    send: fn(&dyn LiveHost, UploadProgress),
+) -> TransferProgress {
     let (project_id, path) = (project_id.to_owned(), path.to_owned());
     let told: Mutex<Option<Instant>> = Mutex::new(None);
     Arc::new(move |done, total| {
@@ -76,12 +98,15 @@ pub(super) fn progress_for(
             }
             *told = Some(now);
         }
-        host.upload_progress(UploadProgress {
-            project_id: project_id.clone(),
-            path: path.clone(),
-            done,
-            total,
-        });
+        send(
+            host.as_ref(),
+            UploadProgress {
+                project_id: project_id.clone(),
+                path: path.clone(),
+                done,
+                total,
+            },
+        );
     })
 }
 

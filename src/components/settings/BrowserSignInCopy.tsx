@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import {
@@ -315,16 +315,82 @@ export function BrowserSignInCopy({ server, onSignedIn, variant = "row" }: Reado
   );
 }
 
-export function BrowserSignIn({ variant = "row" }: Readonly<{ variant?: "row" | "button" }>) {
+function useSignInOutcome() {
+  const phase = useOverleafImportStore((state) => state.phase);
+  const error = useOverleafImportStore((state) => state.error);
+  const [attempted, setAttempted] = useState(false);
+  const signing = phase === "signing-in";
+  return {
+    signing,
+    error,
+    failed: attempted && !signing && phase === "signed-out" && error !== null,
+    attempt: () => setAttempted(true),
+  };
+}
+
+function SignInDetails({ waiting, failed, error }: Readonly<{ waiting: string | null; failed: boolean; error: unknown }>) {
+  if (waiting) return <output className="mt-2 block text-xs text-muted-foreground">{waiting}</output>;
+  if (!failed) return null;
+  return (
+    <p role="alert" className="mt-2 select-text text-xs text-destructive">
+      {describeError(error)}
+    </p>
+  );
+}
+
+export function WindowSignIn() {
   const { t } = useTranslation(["settings"]);
   const server = useOverleafImportStore((state) => state.server);
-  const phase = useOverleafImportStore((state) => state.phase);
   const signingWith = useOverleafImportStore((state) => state.signingWith);
-  const importError = useOverleafImportStore((state) => state.error);
+  const signIn = useOverleafImportStore((state) => state.signIn);
+  const outcome = useSignInOutcome();
+  const host = serverHostname(server) ?? server;
+  const title = t(($) => $.settings.integrations.overleaf.windowLabel, { server: host });
+  const waiting = outcome.signing && signingWith === null;
+  return (
+    <SettingsRow
+      className="mt-4"
+      testId="window-sign-in-row"
+      label={title}
+      description={t(($) => $.settings.integrations.overleaf.windowDescription)}
+      details={
+        <SignInDetails
+          waiting={waiting ? t(($) => $.settings.integrations.overleaf.windowWaiting, { server: host }) : null}
+          failed={outcome.failed}
+          error={outcome.error}
+        />
+      }
+      control={
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          data-testid="window-sign-in"
+          disabled={outcome.signing}
+          onClick={() => {
+            outcome.attempt();
+            void signIn(title);
+          }}
+        >
+          {waiting ? <Spinner size="sm" /> : null}
+          {t(($) => $.settings.integrations.overleaf.windowAction)}
+        </Button>
+      }
+    />
+  );
+}
+
+export function BrowserSignIn({
+  variant = "row",
+  fallback = null,
+}: Readonly<{ variant?: "row" | "button"; fallback?: ReactNode }>) {
+  const { t } = useTranslation(["settings"]);
+  const server = useOverleafImportStore((state) => state.server);
+  const signingWith = useOverleafImportStore((state) => state.signingWith);
   const signInWithBrowser = useOverleafImportStore((state) => state.signInWithBrowser);
+  const outcome = useSignInOutcome();
   const [browsers, setBrowsers] = useState<OverleafSignInBrowser[] | null>(null);
   const [chosen, setChosen] = useState("");
-  const [attempted, setAttempted] = useState(false);
 
   useEffect(() => {
     let live = true;
@@ -341,11 +407,11 @@ export function BrowserSignIn({ variant = "row" }: Readonly<{ variant?: "row" | 
     };
   }, []);
 
-  const picked = browsers?.find((browser) => browser.key === chosen) ?? browsers?.[0];
-  if (!picked || !browsers) return null;
-  const signing = phase === "signing-in";
+  if (!browsers) return null;
+  const picked = browsers.find((browser) => browser.key === chosen) ?? browsers[0];
+  if (!picked) return fallback;
+  const signing = outcome.signing;
   const waiting = signing && signingWith !== null;
-  const failed = attempted && !signing && phase === "signed-out" && importError !== null;
   const host = serverHostname(server) ?? server;
   const label = t(($) => $.settings.integrations.overleaf.browserLabel);
 
@@ -375,7 +441,7 @@ export function BrowserSignIn({ variant = "row" }: Readonly<{ variant?: "row" | 
       data-testid="browser-sign-in"
       disabled={signing}
       onClick={() => {
-        setAttempted(true);
+        outcome.attempt();
         void signInWithBrowser(picked);
       }}
     >
@@ -390,19 +456,14 @@ export function BrowserSignIn({ variant = "row" }: Readonly<{ variant?: "row" | 
     </div>
   );
 
-  if (variant === "button") return controls;
-  let details = null;
-  if (waiting) {
-    details = (
-      <output className="mt-2 block text-xs text-muted-foreground">
-        {t(($) => $.settings.integrations.overleaf.browserWaiting, { browser: signingWith, server: host })}
-      </output>
-    );
-  } else if (failed) {
-    details = (
-      <p role="alert" className="mt-2 select-text text-xs text-destructive">
-        {describeError(importError)}
-      </p>
+  if (variant === "button") {
+    return (
+      <div className="flex flex-col items-center gap-1">
+        {controls}
+        <p className="max-w-md text-xs text-muted-foreground">
+          {t(($) => $.settings.integrations.overleaf.browserHint)}
+        </p>
+      </div>
     );
   }
   return (
@@ -411,7 +472,17 @@ export function BrowserSignIn({ variant = "row" }: Readonly<{ variant?: "row" | 
       testId="browser-sign-in-row"
       label={label}
       description={t(($) => $.settings.integrations.overleaf.browserDescription, { server: host })}
-      details={details}
+      details={
+        <SignInDetails
+          waiting={
+            waiting
+              ? t(($) => $.settings.integrations.overleaf.browserWaiting, { browser: signingWith, server: host })
+              : null
+          }
+          failed={outcome.failed}
+          error={outcome.error}
+        />
+      }
       control={controls}
     />
   );

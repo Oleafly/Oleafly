@@ -1273,7 +1273,8 @@
     "tabMark": "Изменён на диске. Откройте эту вкладку, чтобы выбрать, какую версию оставить."
   },
   "liveTab": {
-    "notOnOverleafYet": "Not on Overleaf yet"
+    "notOnOverleafYet": "Ещё не в Overleaf",
+    "storedAsFile": "Overleaf хранит это как файл, поэтому ваши правки загружаются при сохранении."
   },
   "labels": {
     "filterPlaceholder": "Имя метки",

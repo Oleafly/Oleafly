@@ -37,6 +37,7 @@ pub trait LiveHost: Send + Sync + 'static {
     fn kept(&self, _payload: kept::KeptPayload) {}
     fn uploads(&self, _payload: uploads::UploadsPayload) {}
     fn upload_progress(&self, _payload: uploads::UploadProgress) {}
+    fn download_progress(&self, _payload: uploads::UploadProgress) {}
     fn unwritten(&self, _payload: unwritten::UnwrittenPayload) {}
     fn settings_changed(&self, _applied: crate::collab::settings::Applied) {}
     fn written(&self, _payload: WrittenPayload) {}
@@ -186,6 +187,10 @@ impl LiveHost for AppLiveHost {
 
     fn upload_progress(&self, payload: uploads::UploadProgress) {
         let _ = self.app.emit(uploads::UPLOAD_PROGRESS_EVENT, payload);
+    }
+
+    fn download_progress(&self, payload: uploads::UploadProgress) {
+        let _ = self.app.emit(uploads::DOWNLOAD_PROGRESS_EVENT, payload);
     }
 
     fn unwritten(&self, payload: unwritten::UnwrittenPayload) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   overleafGitTokenClear,
   overleafGitTokenSet,
@@ -17,7 +18,8 @@ import {
   IntegrationError,
 } from "@/components/settings/IntegrationCard";
 import { useOverleafImportStore } from "@/store/overleaf-import";
-import { BrowserSignIn, BrowserSignInCopy } from "@/components/settings/BrowserSignInCopy";
+import { type OverleafDeletes, useSettingsStore } from "@/store/settings";
+import { BrowserSignIn, BrowserSignInCopy, WindowSignIn } from "@/components/settings/BrowserSignInCopy";
 import { OverleafServerField, serverHost } from "@/components/library/overleaf/OverleafServerField";
 import { OverleafSignOutQuestion } from "@/components/library/overleaf/OverleafSignOutQuestion";
 
@@ -79,13 +81,43 @@ export function OverleafSection() {
             disabled={signing}
             onChanged={() => void refreshStatus()}
           />
-          <BrowserSignIn />
+          <BrowserSignIn fallback={<WindowSignIn />} />
           <BrowserSignInCopy server={status?.server ?? server} onSignedIn={() => void refreshStatus()} />
         </>
       )}
       <GitTokenField server={status?.server ?? server} />
+      <LiveDeletesField />
       <OverleafSignOutQuestion />
     </IntegrationCard>
+  );
+}
+
+const DELETE_CHOICES: readonly OverleafDeletes[] = ["ask", "always", "never"];
+
+function LiveDeletesField() {
+  const { t } = useTranslation("settings");
+  const live = useSettingsStore((state) => state.overleafLive);
+  const deletes = useSettingsStore((state) => state.overleafDeletes);
+  const setDeletes = useSettingsStore((state) => state.setOverleafDeletes);
+  if (!live) return null;
+  const label = t(($) => $.settings.integrations.overleaf.deletes.title);
+  return (
+    <div data-testid="overleaf-live-deletes" className="mt-4 space-y-2 border-t pt-3">
+      <p className="text-xs font-medium text-foreground">{label}</p>
+      <p className="text-xs text-muted-foreground">{t(($) => $.settings.integrations.overleaf.deletes.description)}</p>
+      <Select value={deletes} onValueChange={(value) => setDeletes(value as OverleafDeletes)}>
+        <SelectTrigger className="w-[220px]" aria-label={label} data-testid="overleaf-live-deletes-trigger">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="z-[100]">
+          {DELETE_CHOICES.map((choice) => (
+            <SelectItem key={choice} value={choice}>
+              {t(($) => $.settings.integrations.overleaf.deletes.options[choice])}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 

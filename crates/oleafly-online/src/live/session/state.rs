@@ -157,6 +157,7 @@ struct Slot {
     foreign: Option<Instant>,
     shown_pending: bool,
     dirty: bool,
+    missed_fresh: bool,
 }
 
 impl Slot {
@@ -226,6 +227,7 @@ pub(super) struct State {
     next_session: u64,
     presence: Option<(DocId, usize)>,
     presence_due: bool,
+    check_project: bool,
     manifest: ProjectManifest,
     manifest_dirty: bool,
     history_target: Option<u64>,
@@ -281,6 +283,7 @@ impl State {
             next_session: 0,
             presence: None,
             presence_due: false,
+            check_project: false,
             manifest: journal.manifest().clone(),
             manifest_dirty: false,
             history_target: None,
@@ -1085,8 +1088,15 @@ impl State {
     }
 
     fn drop_unsent(&mut self, doc: &DocId) {
+        if self.keep_dropped(doc) {
+            self.notices
+                .push(Notice::Stopped(doc.clone(), DocStopReason::Removed));
+        }
+    }
+
+    fn keep_dropped(&mut self, doc: &DocId) -> bool {
         let Some(slot) = self.slots.get_mut(doc) else {
-            return;
+            return false;
         };
         let unsent = slot.unsent_text();
         slot.buffer.clear();
@@ -1096,8 +1106,7 @@ impl State {
             self.notices
                 .push(Notice::Merged(doc.clone(), MergeReview::Kept { text }));
         }
-        self.notices
-            .push(Notice::Stopped(doc.clone(), DocStopReason::Removed));
+        true
     }
 
     pub(super) fn joined(
@@ -1117,6 +1126,7 @@ impl State {
         match reply {
             Ok(joined) if kind == JoinKind::Fresh => self.fresh(doc, joined),
             Ok(joined) => self.caught_up(doc, joined),
+            Err(JoinFailure::MissingOps) if kind == JoinKind::Fresh => self.missed_fresh(doc),
             Err(JoinFailure::MissingOps) => self.missing_ops(doc),
             Err(JoinFailure::Refused(message)) if message.contains("not found") => {
                 self.drop_unsent(doc)
@@ -1130,6 +1140,23 @@ impl State {
             }
         }
         self.settle_history();
+    }
+
+    fn missed_fresh(&mut self, doc: &DocId) {
+        let again = self
+            .slots
+            .get_mut(doc)
+            .is_some_and(|slot| std::mem::replace(&mut slot.missed_fresh, true));
+        if again {
+            self.fault(doc, DocFault::Unavailable);
+            return;
+        }
+        self.check_project = true;
+        self.missing_ops(doc);
+    }
+
+    pub(super) fn take_project_check(&mut self) -> bool {
+        std::mem::take(&mut self.check_project)
     }
 
     fn missing_ops(&mut self, doc: &DocId) {
@@ -1234,6 +1261,7 @@ impl State {
 
     fn install(&mut self, doc: &DocId, known: OverleafDoc) {
         let slot = self.slots.entry(doc.clone()).or_default();
+        slot.missed_fresh = false;
         if slot.phase != Phase::Held {
             slot.phase = Phase::Joined;
         }
@@ -1426,7 +1454,7 @@ impl State {
         }
         let on_disk = self
             .path_of(doc)
-            .and_then(|path| self.port.disk_text(&path));
+            .and_then(|path| self.port.adopt_file_text(&path));
         let known = slot.doc.as_ref().map(|known| known.text().to_string());
         Ok(on_disk.or(known).unwrap_or_default())
     }
@@ -1512,19 +1540,26 @@ impl State {
     pub(super) fn tree_changed(&mut self, changes: Vec<PathChange>) {
         let removed: Vec<DocId> = changes.iter().filter_map(removed_doc).collect();
         self.tree_followed(&changes);
+        let stopped: Vec<DocId> = removed
+            .into_iter()
+            .filter(|doc| self.keep_dropped(doc))
+            .collect();
         if !changes.is_empty() {
             self.notices.push(Notice::Tree(changes));
         }
-        for doc in removed {
-            self.drop_unsent(&doc);
+        for doc in stopped {
+            self.notices
+                .push(Notice::Stopped(doc, DocStopReason::Removed));
         }
     }
 
     pub(super) fn project_event(&mut self, event: ProjectEvent) {
         self.project.apply_project(&event);
         if event == ProjectEvent::DeletedOrRenamedExternally {
-            self.end(LiveEnd::ProjectGone);
-            return;
+            self.notices.push(Notice::Flags(
+                self.project.restricted,
+                self.project.deleted_externally,
+            ));
         }
         self.notices.push(Notice::Project(event));
     }

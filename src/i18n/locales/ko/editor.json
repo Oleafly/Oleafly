@@ -1231,7 +1231,8 @@
     "tabMark": "디스크에서 바뀌었습니다. 이 탭을 열어 남길 버전을 고르세요."
   },
   "liveTab": {
-    "notOnOverleafYet": "Not on Overleaf yet"
+    "notOnOverleafYet": "아직 Overleaf에 없음",
+    "storedAsFile": "Overleaf에서는 이것이 파일로 저장되므로 편집 내용은 저장할 때 업로드됩니다."
   },
   "labels": {
     "filterPlaceholder": "레이블 이름",

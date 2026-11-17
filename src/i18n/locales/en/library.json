@@ -329,7 +329,7 @@
       "loadFailed": "Oleafly could not load your Overleaf projects.",
       "signInPrompt": "Sign in to Overleaf to see your projects. A sign-in window opens and closes by itself once you're in.",
       "signingIn": "Finish signing in to Overleaf in the window that opened.",
-      "signingInBrowser": "Finish signing in to Overleaf in {{browser}}. The window closes by itself once you're in.",
+      "signingInBrowser": "Finish signing in to Overleaf in {{browser}}. The window closes by itself once you're in. Closing it cancels.",
       "passkeyHint": "If your passkey doesn't work in the sign-in window, pick another option there, like your password or a prompt on your phone.",
       "expired": "Your Overleaf sign-in expired. Sign in again to see your projects.",
       "signIn": "Sign in to Overleaf",

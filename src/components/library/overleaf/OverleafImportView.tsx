@@ -376,18 +376,20 @@ function SignInPanel() {
     <div data-testid="overleaf-sign-in-panel" className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-lg border bg-card px-6 py-8 text-center">
       <OverleafBrandIcon className="size-8 text-[#47A141]" />
       <p className="max-w-md text-sm text-muted-foreground">{promptText(t, signing, store.signingWith, expired)}</p>
-      <Button
-        type="button"
-        data-testid="overleaf-sign-in"
-        disabled={signing}
-        onClick={() => void store.signIn(t(($) => $.library.import.overleaf.signInWindowTitle))}
-      >
-        {inWindow ? <Spinner size="sm" /> : null}
-        {t(($) => $.library.import.overleaf.signIn)}
-      </Button>
-      <p data-testid="overleaf-passkey-hint" className="max-w-md text-xs text-muted-foreground">
-        {t(($) => $.library.import.overleaf.passkeyHint)}
-      </p>
+      <div className="flex flex-col items-center gap-1">
+        <Button
+          type="button"
+          data-testid="overleaf-sign-in"
+          disabled={signing}
+          onClick={() => void store.signIn(t(($) => $.library.import.overleaf.signInWindowTitle))}
+        >
+          {inWindow ? <Spinner size="sm" /> : null}
+          {t(($) => $.library.import.overleaf.signIn)}
+        </Button>
+        <p data-testid="overleaf-passkey-hint" className="max-w-md text-xs text-muted-foreground">
+          {t(($) => $.library.import.overleaf.passkeyHint)}
+        </p>
+      </div>
       {inWindow ? null : <BrowserSignIn variant="button" />}
       {signing ? null : (
         <BrowserSignInCopy server={store.server} variant="button" onSignedIn={() => void store.load()} />

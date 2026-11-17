@@ -54,6 +54,7 @@ vi.mock("@/lib/overleaf-live", () => ({
   overleafLiveUnlink: vi.fn(async () => undefined),
   overleafLiveMembers: mocks.members,
   onOverleafLiveMembers: listener("overleaf-members"),
+  onOverleafLiveTree: listener("overleaf-tree"),
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({ toast: mocks.toast, notifyError: mocks.toast }));
@@ -229,6 +230,20 @@ describe("live editing with Overleaf", () => {
     expect(useLiveBackend.getState().pendingPaths).toEqual(["intro.tex"]);
     status({ state: "ended", reason: "failed" });
     expect(useLiveBackend.getState().pendingPaths).toEqual([]);
+  });
+
+  it("lists the files Overleaf stores as binaries for the tabs, and forgets them when the session ends", async () => {
+    begin();
+    await settle();
+    mocks.handlers["overleaf-tree"]?.({ projectId: "other", kind: "stored_as_files", paths: ["else.csv"] });
+    expect(useLiveBackend.getState().storedAsFiles).toEqual([]);
+    mocks.handlers["overleaf-tree"]?.({ projectId: PROJECT, kind: "stored_as_files", paths: ["data.csv", "plot.png"] });
+    expect(useLiveBackend.getState().storedAsFiles).toEqual(["data.csv", "plot.png"]);
+    mocks.handlers["overleaf-tree"]?.({ projectId: PROJECT, kind: "stored_as_files", paths: [] });
+    expect(useLiveBackend.getState().storedAsFiles).toEqual([]);
+    mocks.handlers["overleaf-tree"]?.({ projectId: PROJECT, kind: "stored_as_files", paths: ["data.csv"] });
+    status({ state: "ended", reason: "failed" });
+    expect(useLiveBackend.getState().storedAsFiles).toEqual([]);
   });
 
   it("reads members from the session when it goes live and again when they change", async () => {

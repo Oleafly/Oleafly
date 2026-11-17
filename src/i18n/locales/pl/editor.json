@@ -1273,7 +1273,8 @@
     "tabMark": "Zmieniono na dysku. Otwórz tę kartę, aby wybrać, którą wersję zachować."
   },
   "liveTab": {
-    "notOnOverleafYet": "Not on Overleaf yet"
+    "notOnOverleafYet": "Jeszcze nie w Overleaf",
+    "storedAsFile": "Overleaf przechowuje to jako plik, więc Twoje zmiany są przesyłane po zapisaniu."
   },
   "labels": {
     "filterPlaceholder": "Nazwa etykiety",

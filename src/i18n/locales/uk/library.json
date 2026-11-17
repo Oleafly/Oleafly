@@ -339,7 +339,7 @@
       "loadFailed": "Oleafly не вдалося завантажити ваші проєкти Overleaf.",
       "signInPrompt": "Увійдіть в Overleaf, щоб побачити свої проєкти. Відкриється вікно входу, яке закриється саме, щойно ви увійдете.",
       "signingIn": "Завершіть вхід в Overleaf у вікні, що відкрилося.",
-      "signingInBrowser": "Finish signing in to Overleaf in {{browser}}. The window closes by itself once you're in.",
+      "signingInBrowser": "Завершіть вхід в Overleaf у {{browser}}. Вікно закриється само, щойно ви увійдете. Якщо закрити його, вхід скасується.",
       "passkeyHint": "Якщо ключ доступу не працює у вікні входу, виберіть там інший спосіб, наприклад пароль або підтвердження на телефоні.",
       "expired": "Термін входу в Overleaf минув. Увійдіть знову, щоб побачити свої проєкти.",
       "signIn": "Увійти в Overleaf",

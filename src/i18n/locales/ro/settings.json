@@ -1731,8 +1731,8 @@
         "notInstalled": "Neinstalat"
       },
       "tryAgain": "Încearcă din nou",
-      "label": "Autentificare din browser",
-      "useBrowserSignIn": "Folosește autentificarea din browserul meu",
+      "label": "Copiază autentificarea unui browser",
+      "useBrowserSignIn": "Copiază autentificarea din browserul tău",
       "signInDescription": "Copiază autentificarea pentru {{server}} dintr-un browser de pe acest computer, ca să nu fie nevoie să te autentifici din nou.",
       "site": "Site: {{domain}}",
       "confirmCopy": "Oleafly va citi cookie-urile pentru {{domain}} din profilul {{profile}} din {{browser}}. Rămân în Oleafly și ajung doar la {{domain}}. Vei confirma încă o dată într-un dialog al sistemului.",
@@ -1812,17 +1812,31 @@
       "gitSave": "Salvează",
       "gitRemove": "Elimină",
       "gitFailed": "Oleafly nu a putut salva tokenul Git. Verifică dacă ai lipit tot tokenul.",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
-      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
+      "browserLabel": "Autentifică-te cu browserul",
+      "browserDescription": "Pentru autentificare cu Google, instituție sau cheie de acces. Oleafly deschide {{server}} într-o fereastră nouă de browser și o închide după ce te-ai conectat.",
+      "browserAction": "Autentifică-te",
+      "browserPick": "Browser pentru autentificare",
+      "browserWaiting": "Termină autentificarea pe {{server}} în {{browser}}. Dacă închizi fereastra, autentificarea se anulează.",
+      "browserHint": "Folosește asta pentru autentificare cu Google, instituție sau cheie de acces.",
+      "windowLabel": "Autentifică-te pe {{server}}",
+      "windowDescription": "Oleafly deschide o fereastră de autentificare și o închide după ce te-ai conectat. Ca să te autentifici cu Google, cu instituția ta sau cu o cheie de acces, instalează Chrome, Edge, Brave, Chromium sau Firefox, apoi autentifică-te cu el aici.",
+      "windowAction": "Autentifică-te",
+      "windowWaiting": "Termină autentificarea pe {{server}} în fereastra care s-a deschis.",
       "unsent": {
-        "title": "Some changes haven't been sent to Overleaf",
-        "description": "If you sign out now, these changes stay on this computer and go to Overleaf the next time you sign in with this account. Sign in with a different account and they come back as copies next to their files instead. Or stay signed in and try again in a moment.",
-        "files": "Not sent yet: {{files}}",
-        "signOut": "Sign out anyway",
-        "stay": "Stay signed in"
+        "title": "Unele modificări nu au fost trimise în Overleaf",
+        "description": "Dacă te deconectezi acum, aceste modificări rămân pe acest computer și ajung în Overleaf data viitoare când te autentifici cu acest cont. Dacă te autentifici cu alt cont, revin ca copii lângă fișierele lor. Sau rămâi autentificat și încearcă din nou peste câteva momente.",
+        "files": "Netrimise încă: {{files}}",
+        "signOut": "Deconectează-te oricum",
+        "stay": "Rămâi autentificat"
+      },
+      "deletes": {
+        "title": "Când ștergi un fișier într-un proiect live",
+        "description": "Alege ce se întâmplă în Overleaf când ștergi un fișier sau un folder în Oleafly.",
+        "options": {
+          "ask": "Întreabă de fiecare dată",
+          "always": "Șterge și din Overleaf",
+          "never": "Păstrează în Overleaf"
+        }
       }
     },
     "desktopApps": {

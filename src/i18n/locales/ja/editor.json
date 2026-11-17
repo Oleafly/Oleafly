@@ -1231,7 +1231,8 @@
     "tabMark": "ディスク上で変更されました。このタブを開いて、残す版を選んでください。"
   },
   "liveTab": {
-    "notOnOverleafYet": "Not on Overleaf yet"
+    "notOnOverleafYet": "まだ Overleaf にありません",
+    "storedAsFile": "Overleaf ではこれがファイルとして保存されるため、編集内容は保存時にアップロードされます。"
   },
   "labels": {
     "filterPlaceholder": "ラベル名",

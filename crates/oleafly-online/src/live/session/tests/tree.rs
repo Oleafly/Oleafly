@@ -35,6 +35,7 @@ struct Seen {
     merged: Vec<(DocId, MergeReview)>,
     trees: Vec<Vec<PathChange>>,
     states: Vec<LiveState>,
+    order: Vec<String>,
 }
 
 #[derive(Default)]
@@ -90,7 +91,13 @@ impl LivePort for TreePort {
     fn texts_changed(&self, _docs: Vec<DocId>) {}
 
     fn tree_changed(&self, changes: Vec<PathChange>) {
-        self.seen().trees.push(changes);
+        let mut seen = self.seen();
+        for change in &changes {
+            if let PathChange::Removed { id, .. } = change {
+                seen.order.push(format!("removed {}", id.0));
+            }
+        }
+        seen.trees.push(changes);
     }
 
     fn peer(&self, _peer: LivePeer) {}
@@ -98,13 +105,19 @@ impl LivePort for TreePort {
     fn peer_left(&self, _id: &PublicId) {}
 
     fn doc_stopped(&self, doc: &DocId, reason: DocStopReason) {
-        self.seen().stopped.push((doc.clone(), reason));
+        let mut seen = self.seen();
+        seen.order.push(format!("stopped {}", doc.0));
+        seen.stopped.push((doc.clone(), reason));
     }
 
     fn project_event(&self, _event: ProjectEvent) {}
 
     fn merged(&self, doc: &DocId, review: MergeReview) {
-        self.seen().merged.push((doc.clone(), review));
+        let mut seen = self.seen();
+        if matches!(review, MergeReview::Kept { .. }) {
+            seen.order.push(format!("kept {}", doc.0));
+        }
+        seen.merged.push((doc.clone(), review));
     }
 
     fn journal_failed(&self, _reason: Option<String>) {}
@@ -764,6 +777,44 @@ async fn binary_length_mismatch_refetches() {
     }
     let failed = live.download(&figure, &mut |_, _| {}).await;
     assert!(failed.is_err(), "{failed:?}");
+    live.stop().await;
+}
+
+#[tokio::test]
+async fn a_coauthor_delete_hands_over_unsent_text_before_the_tree_change() {
+    let rig = Rig::start(project()).await;
+    let port = TreePort::new();
+    let live = live_as(&rig, "alice", &port, quick()).await;
+    let mut tab = Tab::open(&live, NOTES);
+    let notes = tab.doc.clone();
+    eventually("notes is joined", || rig.joined("alice").contains(&notes.0)).await;
+    rig.mock.hold_updates();
+    tab.type_at(&live, 5, " mine");
+    let (bob_rest, bob) = as_bob(&rig).await;
+    bob_rest
+        .delete(&bob, NodeKind::Doc, &EntityId(notes.0.clone()))
+        .await
+        .unwrap();
+    eventually("notes is stopped", || {
+        port.seen().stopped.iter().any(|(doc, _)| *doc == notes)
+    })
+    .await;
+    let order: Vec<String> = port
+        .seen()
+        .order
+        .iter()
+        .filter(|entry| entry.ends_with(&notes.0))
+        .cloned()
+        .collect();
+    assert_eq!(
+        order,
+        vec![
+            format!("kept {}", notes.0),
+            format!("removed {}", notes.0),
+            format!("stopped {}", notes.0),
+        ]
+    );
+    rig.mock.release_updates();
     live.stop().await;
 }
 

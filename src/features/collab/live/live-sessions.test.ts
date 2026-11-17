@@ -94,6 +94,23 @@ describe("LiveSessions", () => {
     expect(sessions.documentSession("main.tex")).toBeNull();
   });
 
+  it("opens a fresh session for a detached document once it goes live again", async () => {
+    const channel = new FakeChannel("abc");
+    const sessions = new LiveSessions(options(channel));
+    const first = sessions.documentSession("main.tex");
+    await flush();
+    const id = channel.opens.at(-1) ?? "";
+    channel.detach(id, "bad_hash");
+    channel.deliverOne(id);
+    expect(sessions.documentSession("main.tex")).toBeNull();
+    sessions.relive("main.tex");
+    const next = sessions.documentSession("main.tex");
+    await flush();
+    expect(next).not.toBeNull();
+    expect(next).not.toBe(first);
+    expect(channel.opens.at(-1)).not.toBe(id);
+  });
+
   it("hands a file that is not shared back to local editing, with any typing", async () => {
     let release: (value: CollabDocOpened | null) => void = () => {};
     const detached = vi.fn();
@@ -415,3 +432,34 @@ describe("LiveSessions with files kept local", () => {
   });
 });
 
+
+describe("LiveSessions when the service removes or replaces a document", () => {
+  it("keeps unsent typing out of the files store when the doc was removed, since a copy already holds it", async () => {
+    const channel = new FakeChannel("abc");
+    const detached = vi.fn();
+    const sessions = new LiveSessions(options(channel, { detached }));
+    const session = sessions.documentSession("main.tex");
+    await flush();
+    session?.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    const id = channel.opens.at(-1) ?? "";
+    channel.detach(id, "removed");
+    channel.deliverOne(id);
+    expect(detached).toHaveBeenCalledExactlyOnceWith("main.tex", "abc!", false, "abc");
+    expect(sessions.documentSession("main.tex")).toBeNull();
+  });
+
+  it("opens a replaced doc live again instead of keeping it as a plain file", async () => {
+    const channel = new FakeChannel("abc");
+    const detached = vi.fn();
+    const sessions = new LiveSessions(options(channel, { detached }));
+    sessions.documentSession("main.tex");
+    await flush();
+    const id = channel.opens.at(-1) ?? "";
+    channel.detach(id, "replaced");
+    channel.deliverOne(id);
+    expect(detached).toHaveBeenCalledExactlyOnceWith("main.tex", "abc", false, "abc");
+    expect(sessions.documentSession("main.tex")).not.toBeNull();
+    await flush();
+    expect(channel.opens).toHaveLength(2);
+  });
+});

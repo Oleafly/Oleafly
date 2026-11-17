@@ -1742,8 +1742,8 @@
         "notInstalled": "Nenainstalováno"
       },
       "tryAgain": "Zkusit znovu",
-      "label": "Přihlášení z prohlížeče",
-      "useBrowserSignIn": "Použít přihlášení z mého prohlížeče",
+      "label": "Zkopírovat přihlášení z prohlížeče",
+      "useBrowserSignIn": "Zkopírovat přihlášení z vašeho prohlížeče",
       "signInDescription": "Zkopírujte své přihlášení k {{server}} z prohlížeče v tomto počítači, abyste se nemuseli přihlašovat znovu.",
       "site": "Web: {{domain}}",
       "confirmCopy": "Oleafly přečte soubory cookie pro {{domain}} z profilu {{profile}} v prohlížeči {{browser}}. Zůstanou v Oleafly a odesílají se jen na {{domain}}. Ještě jednou to potvrdíte v systémovém dialogu.",
@@ -1827,17 +1827,31 @@
       "gitSave": "Uložit",
       "gitRemove": "Odebrat",
       "gitFailed": "Oleafly nemohl uložit token Git. Zkontrolujte, že jste vložili celý token.",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
-      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
+      "browserLabel": "Přihlásit se přes prohlížeč",
+      "browserDescription": "Pro přihlášení přes Google, instituci nebo přístupový klíč. Oleafly otevře {{server}} v novém okně prohlížeče a po přihlášení ho zavře.",
+      "browserAction": "Přihlásit se",
+      "browserPick": "Prohlížeč pro přihlášení",
+      "browserWaiting": "Dokončete přihlášení k {{server}} v prohlížeči {{browser}}. Zavřením okna se přihlášení zruší.",
+      "browserHint": "Použijte pro přihlášení přes Google, instituci nebo přístupový klíč.",
+      "windowLabel": "Přihlášení k {{server}}",
+      "windowDescription": "Oleafly otevře přihlašovací okno a po přihlášení ho zavře. Pro přihlášení přes Google, instituci nebo přístupový klíč nainstalujte Chrome, Edge, Brave, Chromium nebo Firefox a přihlaste se v něm tady.",
+      "windowAction": "Přihlásit se",
+      "windowWaiting": "Dokončete přihlášení k {{server}} v okně, které se otevřelo.",
       "unsent": {
-        "title": "Some changes haven't been sent to Overleaf",
-        "description": "If you sign out now, these changes stay on this computer and go to Overleaf the next time you sign in with this account. Sign in with a different account and they come back as copies next to their files instead. Or stay signed in and try again in a moment.",
-        "files": "Not sent yet: {{files}}",
-        "signOut": "Sign out anyway",
-        "stay": "Stay signed in"
+        "title": "Některé změny nebyly odeslány do Overleafu",
+        "description": "Když se odhlásíte teď, tyto změny zůstanou v tomto počítači a do Overleafu se odešlou při dalším přihlášení k tomuto účtu. Když se přihlásíte jiným účtem, vrátí se jako kopie vedle svých souborů. Nebo zůstaňte přihlášeni a zkuste to za chvíli znovu.",
+        "files": "Zatím neodesláno: {{files}}",
+        "signOut": "Přesto odhlásit",
+        "stay": "Zůstat přihlášený"
+      },
+      "deletes": {
+        "title": "Když smažete soubor v projektu s živými úpravami",
+        "description": "Vyberte, co se stane v Overleafu, když v Oleafly smažete soubor nebo složku.",
+        "options": {
+          "ask": "Pokaždé se zeptat",
+          "always": "Smazat i v Overleafu",
+          "never": "Ponechat v Overleafu"
+        }
       }
     },
     "desktopApps": {

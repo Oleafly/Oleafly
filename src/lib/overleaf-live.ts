@@ -34,7 +34,13 @@ export const overleafLiveUnlink = (projectId: string) => invoke<void>("overleaf_
 export const overleafLiveResolve = (projectId: string, path: string, keep: "mine" | "theirs") =>
   invoke<void>("overleaf_live_resolve", { projectId, path, keep });
 
-export const overleafLiveConnectionDetails = (projectId: string) =>
+export const overleafLiveRetry = (projectId: string, path: string) =>
+  invoke<void>("overleaf_live_retry", { projectId, path });
+
+export const overleafLiveKeepCopy = (projectId: string, path: string) =>
+  invoke<void>("overleaf_live_keep_copy", { projectId, path });
+
+export const overleafLiveConnectionDetails =(projectId: string) =>
   invoke<OverleafConnectionDetails>("overleaf_live_connection_details", { projectId });
 
 export const overleafLiveMembers = (projectId: string) =>
@@ -47,3 +53,22 @@ export function onOverleafLiveMembers(handler: (projectId: string) => void): Pro
 export function overleafProjectPage(link: Pick<OverleafLiveProject, "server" | "remoteId">): string {
   return `${withoutTrailingSlashes(link.server)}/project/${encodeURIComponent(link.remoteId)}`;
 }
+
+export type OverleafTreeNoticeKind = "delete_asked" | "not_allowed" | "kept_away" | "stored_as_files";
+
+export interface OverleafTreeNotice {
+  projectId: string;
+  kind: OverleafTreeNoticeKind;
+  paths: string[];
+}
+
+export const OVERLEAF_LIVE_TREE_EVENT = "overleaf-live-tree";
+
+export const onOverleafLiveTree = (handler: (notice: OverleafTreeNotice) => void): Promise<UnlistenFn> =>
+  listen<OverleafTreeNotice>(OVERLEAF_LIVE_TREE_EVENT, ({ payload }) => handler(payload));
+
+export const overleafLiveDelete = (projectId: string, paths: string[], onOverleaf: boolean) =>
+  invoke<void>("overleaf_live_delete", { projectId, paths, onOverleaf });
+
+export const overleafLiveRestore = (projectId: string, path: string) =>
+  invoke<void>("overleaf_live_restore", { projectId, path });

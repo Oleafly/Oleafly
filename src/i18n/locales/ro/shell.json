@@ -494,7 +494,7 @@
       "run": "Rulează codul pe acest computer"
     },
     "sharedViewer": "Doar proprietarii și editorii pot modifica aceste setări într-un proiect partajat.",
-    "coauthorsChanged": "Changed by coauthors since your last compile"
+    "coauthorsChanged": "Modificat de coautori de la ultima ta compilare"
   },
   "datePicker": {
     "placeholder": "Alege o dată"
@@ -1009,8 +1009,8 @@
         "label": "Notițe"
       },
       "overleafLive": {
-        "label": "Live editing with Overleaf",
-        "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
+        "label": "Editare live cu Overleaf",
+        "description": "Editează proiectele importate din Overleaf în același timp cu coautorii tăi. Modificările apar pe ambele părți pe măsură ce scrii. Dezactivat implicit cât timp este în beta."
       },
       "researchTasks": {
         "description": "Un agent lucrează singur într-o copie a proiectului și îți lasă modificările spre revizuire. Foarte instabilă: rulările se pot bloca, pot eșua sau pot lăsa modificări de rezolvat manual și folosesc cota furnizorului tău pe toată durata lor. Adaugă secțiunea Cercetare în Setări. Dezactivarea oprește toate sarcinile în curs. Dezactivată implicit. Activeaz-o pe propria răspundere.",
@@ -1682,28 +1682,28 @@
     }
   },
   "overleafLive": {
-    "title": "Live editing with Overleaf",
-    "live": "Live with Overleaf",
-    "connecting": "Connecting to Overleaf…",
-    "sending": "Sending changes to Overleaf…",
-    "reconnecting": "Reconnecting to Overleaf…",
-    "pausedBadge": "Live editing paused",
-    "pause": "Pause live editing",
-    "resume": "Resume live editing",
-    "reconnectNow": "Reconnect now",
-    "open": "Open in Overleaf",
-    "share": "Share on Overleaf…",
-    "signIn": "Sign in…",
-    "reconnectingIn": "Trying again in {{seconds}} s.",
-    "notConfirmed": "Not confirmed by Overleaf yet.",
-    "copyDetails": "Copy connection details",
-    "detailsCopied": "Connection details copied",
-    "copyDetailsFailed": "Couldn't copy the connection details",
+    "title": "Editare live cu Overleaf",
+    "live": "Live cu Overleaf",
+    "connecting": "Se conectează la Overleaf…",
+    "sending": "Se trimit modificările în Overleaf…",
+    "reconnecting": "Se reconectează la Overleaf…",
+    "pausedBadge": "Editare live întreruptă",
+    "pause": "Întrerupe editarea live",
+    "resume": "Reia editarea live",
+    "reconnectNow": "Reconectează acum",
+    "open": "Deschide în Overleaf",
+    "share": "Partajează în Overleaf…",
+    "signIn": "Autentifică-te…",
+    "reconnectingIn": "Se reîncearcă în {{seconds}} s.",
+    "notConfirmed": "Încă neconfirmat de Overleaf.",
+    "copyDetails": "Copiază detaliile conexiunii",
+    "detailsCopied": "Detaliile conexiunii au fost copiate",
+    "copyDetailsFailed": "Detaliile conexiunii nu au putut fi copiate",
     "pauseDialog": {
-      "title": "Some changes haven't reached Overleaf yet",
-      "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",
-      "keepLive": "Keep editing live",
-      "pauseAnyway": "Pause anyway"
+      "title": "Unele modificări nu au ajuns încă în Overleaf",
+      "description": "Dacă întrerupi acum, ele rămân pe acest computer și ajung în Overleaf când reiei. Sincronizarea Git rămâne oprită până atunci.",
+      "keepLive": "Continuă editarea live",
+      "pauseAnyway": "Întrerupe oricum"
     }
   },
   "stuckWindow": {

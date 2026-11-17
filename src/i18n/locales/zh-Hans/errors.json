@@ -496,8 +496,8 @@
     "template_unavailable": "Oleafly 无法打开此模板。它可能已从 Overleaf 的模板库中移除。",
     "browser_sign_in_missing": "Oleafly 在该浏览器配置文件中找不到 {{server}} 的登录信息。请直接登录。",
     "browser_sign_in_failed": "来自浏览器的登录信息无效，可能已经过期。请直接登录。",
-    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
-    "browser_missing": "That browser isn't installed anymore. Pick another one."
+    "browser_unavailable": "Oleafly 无法打开 {{browser}} 进行登录。请换一个浏览器试试。",
+    "browser_missing": "该浏览器已不再安装。请选择另一个浏览器。"
   },
   "collab": {
     "suggestion_role": "你在此项目中的角色不允许提建议。"

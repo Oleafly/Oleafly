@@ -334,7 +334,7 @@
       "loadFailed": "O Oleafly não conseguiu carregar seus projetos do Overleaf.",
       "signInPrompt": "Faça login no Overleaf para ver seus projetos. Uma janela de login abre e fecha sozinha assim que você entrar.",
       "signingIn": "Termine o login no Overleaf na janela que abriu.",
-      "signingInBrowser": "Finish signing in to Overleaf in {{browser}}. The window closes by itself once you're in.",
+      "signingInBrowser": "Termine o login no Overleaf em {{browser}}. A janela fecha sozinha assim que você entrar. Se você fechá-la, o login é cancelado.",
       "passkeyHint": "Se a sua chave de acesso não funcionar na janela de login, escolha outra opção ali, como a sua senha ou uma confirmação no celular.",
       "expired": "Seu login no Overleaf expirou. Faça login de novo para ver seus projetos.",
       "signIn": "Fazer login no Overleaf",

@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import enSettings from "@/i18n/locales/en/settings.json" with { type: "json" };
 import { useOverleafImportStore } from "@/store/overleaf-import";
-import { BrowserSignIn, BrowserSignInCopy } from "./BrowserSignInCopy";
+import { BrowserSignIn, BrowserSignInCopy, WindowSignIn } from "./BrowserSignInCopy";
 
 const mocks = vi.hoisted(() => ({
   detect: vi.fn(),
@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   signInWithCookies: vi.fn(),
   browsers: vi.fn(),
   signInWithBrowser: vi.fn(),
+  signInWindow: vi.fn(),
   listProjects: vi.fn(),
 }));
 
@@ -27,6 +28,7 @@ vi.mock("@/lib/overleaf", async (importOriginal) => ({
   overleafSignInWithAppCookies: mocks.signInWithCookies,
   overleafSignInBrowsers: mocks.browsers,
   overleafSignInWithBrowser: mocks.signInWithBrowser,
+  overleafSignIn: mocks.signInWindow,
   overleafListProjects: mocks.listProjects,
 }));
 
@@ -53,6 +55,7 @@ beforeEach(() => {
   mocks.signInWithCookies.mockReset();
   mocks.browsers.mockReset().mockResolvedValue([]);
   mocks.signInWithBrowser.mockReset();
+  mocks.signInWindow.mockReset();
   mocks.listProjects.mockReset();
   useOverleafImportStore.setState({ server: SERVER, status: null, phase: "idle", signingWith: null, error: null });
   Element.prototype.hasPointerCapture = vi.fn(() => false);
@@ -224,11 +227,42 @@ describe("BrowserSignIn", () => {
     );
   });
 
-  it("renders the button and picker alone for the import panel", async () => {
+  it("renders the button and picker for the import panel, with what the route is for", async () => {
     mocks.browsers.mockResolvedValue([CHROME, FIREFOX]);
     render(<BrowserSignIn variant="button" />);
     expect(await screen.findByRole("button", { name: browserCopy.browserLabel })).toBeVisible();
     expect(screen.getByRole("combobox", { name: browserCopy.browserPick })).toBeVisible();
+    expect(screen.getByText(browserCopy.browserHint)).toBeVisible();
     expect(screen.queryByTestId("browser-sign-in-row")).toBeNull();
+  });
+
+  it("offers the sign-in window instead when no browser is found", async () => {
+    const user = userEvent.setup();
+    let finish: (status: typeof signedIn) => void = () => {};
+    mocks.signInWindow.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    mocks.listProjects.mockResolvedValue({ status: signedIn, projects: [] });
+    render(<BrowserSignIn fallback={<WindowSignIn />} />);
+
+    const row = await screen.findByTestId("window-sign-in-row");
+    expect(row).toHaveTextContent("Sign in to www.latex.example");
+    expect(row).toHaveTextContent(browserCopy.windowDescription);
+    expect(screen.queryByTestId("browser-sign-in-row")).toBeNull();
+    await user.click(screen.getByRole("button", { name: browserCopy.windowAction }));
+
+    expect(mocks.signInWindow).toHaveBeenCalledWith(SERVER, "Sign in to www.latex.example");
+    expect(await screen.findByText("Finish signing in to www.latex.example in the window that opened.")).toBeVisible();
+    expect(screen.getByTestId("window-sign-in")).toBeDisabled();
+    finish(signedIn);
+    await waitFor(() => expect(useOverleafImportStore.getState().status).toEqual(signedIn));
+  });
+
+  it("explains a failed window sign-in in its row", async () => {
+    const user = userEvent.setup();
+    mocks.signInWindow.mockRejectedValueOnce(
+      '@oleafly/error:{"code":"overleaf.sign_in_failed","params":{}}',
+    );
+    render(<WindowSignIn />);
+    await user.click(screen.getByRole("button", { name: browserCopy.windowAction }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Oleafly could not confirm your Overleaf sign-in.");
   });
 });

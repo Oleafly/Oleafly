@@ -16,6 +16,7 @@ import {
   collabUploadDismiss,
   collabUploadList,
   collabUploadRetry,
+  onCollabDownloadProgress,
   onCollabLiveKept,
   onCollabLiveUploads,
   onCollabUploadProgress,
@@ -33,33 +34,44 @@ export interface FileNoticesState {
   projectId: string | null;
   uploads: readonly CollabUploadFile[];
   progress: Readonly<Record<string, UploadProgress>>;
+  downloads: Readonly<Record<string, UploadProgress>>;
   kept: readonly CollabLiveKeptFile[];
   retrying: boolean;
   offer: CollabLocalCopyOffer | null;
   bringing: boolean;
   offerFailure: CollabErrorCode | null;
   broughtIn: string | null;
+  notAllowed: readonly string[];
+  keptAway: readonly string[];
   retry: () => Promise<void>;
   dismissUpload: (path: string) => void;
   dismissKept: (id: string) => void;
   bringIn: () => Promise<void>;
   keepSeparate: () => void;
   dismissBroughtIn: () => void;
+  dismissNotAllowed: () => void;
+  dismissKeptAway: () => void;
 }
+
+export type TreeNoticeKind = "not_allowed" | "kept_away";
 
 const NO_OFFER = { offer: null, bringing: false, offerFailure: null, broughtIn: null } as const;
 
 const NO_UPLOADS: readonly CollabUploadFile[] = [];
 const NO_PROGRESS: Readonly<Record<string, UploadProgress>> = {};
 const NO_KEPT: readonly CollabLiveKeptFile[] = [];
+const NO_PATHS: readonly string[] = [];
+const NO_TREE = { notAllowed: NO_PATHS, keptAway: NO_PATHS } as const;
 
 export const useFileNotices = create<FileNoticesState>((set, get) => ({
   projectId: null,
   uploads: NO_UPLOADS,
   progress: NO_PROGRESS,
+  downloads: NO_PROGRESS,
   kept: NO_KEPT,
   retrying: false,
   ...NO_OFFER,
+  ...NO_TREE,
   retry: async () => {
     const { projectId, retrying } = get();
     if (!projectId || retrying) return;
@@ -101,7 +113,24 @@ export const useFileNotices = create<FileNoticesState>((set, get) => ({
     );
   },
   dismissBroughtIn: () => set({ broughtIn: null }),
+  dismissNotAllowed: () => set({ notAllowed: NO_PATHS }),
+  dismissKeptAway: () => set({ keptAway: NO_PATHS }),
 }));
+
+export function withPaths(known: readonly string[], paths: readonly string[]): readonly string[] {
+  const added = paths.filter((path) => !known.includes(path));
+  return added.length === 0 ? known : [...known, ...added];
+}
+
+export function treeNoticed(projectId: string, kind: TreeNoticeKind, paths: readonly string[]): void {
+  if (useFilesStore.getState().projectId !== projectId) return;
+  const key = kind === "not_allowed" ? "notAllowed" : "keptAway";
+  useFileNotices.setState((state) =>
+    state.projectId === projectId
+      ? { [key]: withPaths(state[key], paths) }
+      : { projectId, uploads: NO_UPLOADS, progress: NO_PROGRESS, downloads: NO_PROGRESS, kept: NO_KEPT, ...NO_TREE, [key]: paths },
+  );
+}
 
 function stillWaiting(
   progress: Readonly<Record<string, UploadProgress>>,
@@ -126,19 +155,31 @@ function uploaded(payload: CollabLiveUploads): void {
   });
 }
 
+function withProgress(
+  known: Readonly<Record<string, UploadProgress>>,
+  payload: CollabUploadProgress,
+): Readonly<Record<string, UploadProgress>> {
+  if (payload.total > 0 && payload.done < payload.total) {
+    return { ...known, [payload.path]: { done: payload.done, total: payload.total } };
+  }
+  const { [payload.path]: _finished, ...rest } = known;
+  return rest;
+}
+
 function progressed(payload: CollabUploadProgress): void {
   if (useFilesStore.getState().projectId !== payload.projectId) return;
-  useFileNotices.setState((state) => {
-    const progress = state.projectId === payload.projectId ? state.progress : NO_PROGRESS;
-    if (payload.total > 0 && payload.done < payload.total) {
-      return {
-        projectId: payload.projectId,
-        progress: { ...progress, [payload.path]: { done: payload.done, total: payload.total } },
-      };
-    }
-    const { [payload.path]: _finished, ...rest } = progress;
-    return { projectId: payload.projectId, progress: rest };
-  });
+  useFileNotices.setState((state) => ({
+    projectId: payload.projectId,
+    progress: withProgress(state.projectId === payload.projectId ? state.progress : NO_PROGRESS, payload),
+  }));
+}
+
+function downloaded(payload: CollabUploadProgress): void {
+  if (useFilesStore.getState().projectId !== payload.projectId) return;
+  useFileNotices.setState((state) => ({
+    projectId: payload.projectId,
+    downloads: withProgress(state.projectId === payload.projectId ? state.downloads : NO_PROGRESS, payload),
+  }));
 }
 
 function keptCopies(payload: CollabLiveKept): void {
@@ -166,9 +207,11 @@ function load(projectId: string | null): void {
     projectId,
     uploads: NO_UPLOADS,
     progress: NO_PROGRESS,
+    downloads: NO_PROGRESS,
     kept: NO_KEPT,
     retrying: false,
     ...NO_OFFER,
+    ...NO_TREE,
   });
   if (!projectId) return;
   collabUploadList(projectId).then(
@@ -198,6 +241,10 @@ export function startFileNotices(): () => void {
     void logError("collab upload progress listen", error);
     return () => {};
   });
+  const stopDownloads = onCollabDownloadProgress(downloaded).catch((error) => {
+    void logError("collab download progress listen", error);
+    return () => {};
+  });
   let projectId = useFilesStore.getState().projectId;
   load(projectId);
   const stopFiles = useFilesStore.subscribe((state) => {
@@ -210,13 +257,16 @@ export function startFileNotices(): () => void {
     void stopUploads.then((stop) => stop());
     void stopKept.then((stop) => stop());
     void stopProgress.then((stop) => stop());
+    void stopDownloads.then((stop) => stop());
     useFileNotices.setState({
       projectId: null,
       uploads: NO_UPLOADS,
       progress: NO_PROGRESS,
+      downloads: NO_PROGRESS,
       kept: NO_KEPT,
       retrying: false,
       ...NO_OFFER,
+      ...NO_TREE,
     });
   };
 }

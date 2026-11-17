@@ -493,7 +493,7 @@
       "run": "Kodu bu bilgisayarda çalıştır"
     },
     "sharedViewer": "Paylaşılan bir projede bu ayarları yalnızca sahipler ve düzenleyenler değiştirebilir.",
-    "coauthorsChanged": "Changed by coauthors since your last compile"
+    "coauthorsChanged": "Son derlemenizden beri ortak yazarlar tarafından değiştirildi"
   },
   "datePicker": {
     "placeholder": "Bir tarih seçin"
@@ -995,8 +995,8 @@
         "label": "Notlar"
       },
       "overleafLive": {
-        "label": "Live editing with Overleaf",
-        "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
+        "label": "Overleaf ile canlı düzenleme",
+        "description": "Overleaf'ten aktardığınız projeleri ortak yazarlarınızla aynı anda düzenleyin. Yazarken değişiklikler iki tarafta da görünür. Beta aşamasında olduğu için varsayılan olarak kapalıdır."
       },
       "researchTasks": {
         "description": "Bir ajan, projenin bir kopyasında kendi başına çalışır ve değişikliklerini sizin incelemeniz için bırakır. Çok kararsızdır: çalıştırmalar takılabilir, başarısız olabilir veya elle düzeltmeniz gereken değişiklikler bırakabilir, üstelik sağlayıcınızın kotasını baştan sona kullanır. Ayarlar'a bir Araştırma bölümü ekler. Kapatmak, çalışan tüm görevleri durdurur. Varsayılan olarak kapalıdır. Açarsanız sorumluluk size aittir.",
@@ -1647,28 +1647,28 @@
     }
   },
   "overleafLive": {
-    "title": "Live editing with Overleaf",
-    "live": "Live with Overleaf",
-    "connecting": "Connecting to Overleaf…",
-    "sending": "Sending changes to Overleaf…",
-    "reconnecting": "Reconnecting to Overleaf…",
-    "pausedBadge": "Live editing paused",
-    "pause": "Pause live editing",
-    "resume": "Resume live editing",
-    "reconnectNow": "Reconnect now",
-    "open": "Open in Overleaf",
-    "share": "Share on Overleaf…",
-    "signIn": "Sign in…",
-    "reconnectingIn": "Trying again in {{seconds}} s.",
-    "notConfirmed": "Not confirmed by Overleaf yet.",
-    "copyDetails": "Copy connection details",
-    "detailsCopied": "Connection details copied",
-    "copyDetailsFailed": "Couldn't copy the connection details",
+    "title": "Overleaf ile canlı düzenleme",
+    "live": "Overleaf ile canlı",
+    "connecting": "Overleaf'e bağlanılıyor…",
+    "sending": "Değişiklikler Overleaf'e gönderiliyor…",
+    "reconnecting": "Overleaf'e yeniden bağlanılıyor…",
+    "pausedBadge": "Canlı düzenleme duraklatıldı",
+    "pause": "Canlı düzenlemeyi duraklat",
+    "resume": "Canlı düzenlemeye devam et",
+    "reconnectNow": "Şimdi yeniden bağlan",
+    "open": "Overleaf'te aç",
+    "share": "Overleaf'te paylaş…",
+    "signIn": "Oturum aç…",
+    "reconnectingIn": "{{seconds}} sn sonra yeniden denenecek.",
+    "notConfirmed": "Overleaf henüz onaylamadı.",
+    "copyDetails": "Bağlantı ayrıntılarını kopyala",
+    "detailsCopied": "Bağlantı ayrıntıları kopyalandı",
+    "copyDetailsFailed": "Bağlantı ayrıntıları kopyalanamadı",
     "pauseDialog": {
-      "title": "Some changes haven't reached Overleaf yet",
-      "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",
-      "keepLive": "Keep editing live",
-      "pauseAnyway": "Pause anyway"
+      "title": "Bazı değişiklikler henüz Overleaf'e ulaşmadı",
+      "description": "Şimdi duraklatırsanız bunlar bu bilgisayarda kalır ve devam ettiğinizde Overleaf'e gider. Git eşitlemesi o zamana kadar kapalı kalır.",
+      "keepLive": "Canlı düzenlemeye devam et",
+      "pauseAnyway": "Yine de duraklat"
     }
   },
   "stuckWindow": {

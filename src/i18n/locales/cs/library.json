@@ -339,7 +339,7 @@
       "loadFailed": "Oleafly nemohl načíst vaše projekty z Overleafu.",
       "signInPrompt": "Přihlaste se k Overleafu, abyste viděli své projekty. Otevře se přihlašovací okno, které se po přihlášení samo zavře.",
       "signingIn": "Dokončete přihlášení k Overleafu v okně, které se otevřelo.",
-      "signingInBrowser": "Finish signing in to Overleaf in {{browser}}. The window closes by itself once you're in.",
+      "signingInBrowser": "Dokončete přihlášení k Overleafu v prohlížeči {{browser}}. Okno se samo zavře, jakmile se přihlásíte. Zavřením se přihlášení zruší.",
       "passkeyHint": "Pokud v přihlašovacím okně nefunguje váš přístupový klíč, zvolte tam jinou možnost, například heslo nebo výzvu v telefonu.",
       "expired": "Vaše přihlášení k Overleafu vypršelo. Přihlaste se znovu, abyste viděli své projekty.",
       "signIn": "Přihlásit se k Overleafu",

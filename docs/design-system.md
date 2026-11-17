@@ -252,6 +252,11 @@ A short list of named items, like the projects a dialog asks about, is a
 one line of `detail` under it. Past about four rows the list scrolls, which
 keeps a `ConfirmationDialog` from growing taller than the window.
 
+A notice strip above the editor is a `WorkspaceBanner` from
+`ui/workspace-banner.tsx`, in the `primary` or `warning` tone. Its buttons
+are `WorkspaceBannerButton`s in the same tone. When a button's action fails,
+a `WorkspaceBannerAlert` under the row says why.
+
 Hover help is a `Tooltip` from `ui/tooltip.tsx`, never the native `title`
 attribute. It renders into the body and stays inside the window.
 

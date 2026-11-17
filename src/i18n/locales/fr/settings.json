@@ -1731,8 +1731,8 @@
         "notInstalled": "Non installé"
       },
       "tryAgain": "Réessayer",
-      "label": "Connexion du navigateur",
-      "useBrowserSignIn": "Utiliser la connexion de mon navigateur",
+      "label": "Copier la connexion d'un navigateur",
+      "useBrowserSignIn": "Copier la connexion depuis votre navigateur",
       "signInDescription": "Copiez votre connexion à {{server}} depuis un navigateur de cet ordinateur, pour ne pas avoir à vous reconnecter.",
       "site": "Site : {{domain}}",
       "confirmCopy": "Oleafly va lire les cookies de {{domain}} dans le profil {{profile}} de {{browser}}. Ils restent dans Oleafly et ne sont envoyés qu'à {{domain}}. Vous confirmerez encore une fois dans une boîte de dialogue du système.",
@@ -1812,17 +1812,31 @@
       "gitSave": "Enregistrer",
       "gitRemove": "Retirer",
       "gitFailed": "Oleafly n'a pas pu enregistrer le jeton Git. Vérifiez que vous avez collé le jeton en entier.",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
-      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
+      "browserLabel": "Se connecter avec votre navigateur",
+      "browserDescription": "Pour la connexion avec Google, un établissement ou une clé d'accès. Oleafly ouvre {{server}} dans une nouvelle fenêtre de navigateur et la ferme une fois la connexion établie.",
+      "browserAction": "Se connecter",
+      "browserPick": "Navigateur pour la connexion",
+      "browserWaiting": "Terminez la connexion à {{server}} dans {{browser}}. Fermer la fenêtre annule la connexion.",
+      "browserHint": "À utiliser pour la connexion avec Google, un établissement ou une clé d'accès.",
+      "windowLabel": "Se connecter à {{server}}",
+      "windowDescription": "Oleafly ouvre une fenêtre de connexion et la ferme une fois la connexion établie. Pour vous connecter avec Google, votre établissement ou une clé d'accès, installez Chrome, Edge, Brave, Chromium ou Firefox, puis connectez-vous ici avec ce navigateur.",
+      "windowAction": "Se connecter",
+      "windowWaiting": "Terminez la connexion à {{server}} dans la fenêtre qui s'est ouverte.",
       "unsent": {
-        "title": "Some changes haven't been sent to Overleaf",
-        "description": "If you sign out now, these changes stay on this computer and go to Overleaf the next time you sign in with this account. Sign in with a different account and they come back as copies next to their files instead. Or stay signed in and try again in a moment.",
-        "files": "Not sent yet: {{files}}",
-        "signOut": "Sign out anyway",
-        "stay": "Stay signed in"
+        "title": "Certaines modifications n'ont pas été envoyées à Overleaf",
+        "description": "Si vous vous déconnectez maintenant, ces modifications restent sur cet ordinateur et partent vers Overleaf à votre prochaine connexion avec ce compte. Si vous vous connectez avec un autre compte, elles reviennent sous forme de copies à côté de leurs fichiers. Vous pouvez aussi rester connecté et réessayer dans un instant.",
+        "files": "Pas encore envoyé : {{files}}",
+        "signOut": "Se déconnecter quand même",
+        "stay": "Rester connecté"
+      },
+      "deletes": {
+        "title": "Quand vous supprimez un fichier dans un projet en direct",
+        "description": "Choisissez ce qui se passe sur Overleaf quand vous supprimez un fichier ou un dossier dans Oleafly.",
+        "options": {
+          "ask": "Demander à chaque fois",
+          "always": "Le supprimer aussi sur Overleaf",
+          "never": "Le garder sur Overleaf"
+        }
       }
     },
     "desktopApps": {

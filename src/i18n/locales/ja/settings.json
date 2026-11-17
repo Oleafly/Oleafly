@@ -1709,8 +1709,8 @@
         "notInstalled": "未インストール"
       },
       "tryAgain": "再試行",
-      "label": "ブラウザのサインイン",
-      "useBrowserSignIn": "ブラウザのサインイン情報を使う",
+      "label": "ブラウザのサインイン情報をコピー",
+      "useBrowserSignIn": "ブラウザのサインイン情報をコピーする",
       "signInDescription": "このコンピュータのブラウザから {{server}} のサインイン情報をコピーすれば、もう一度サインインする必要はありません。",
       "site": "サイト: {{domain}}",
       "confirmCopy": "Oleafly は {{browser}} の {{profile}} プロファイルから {{domain}} の Cookie を読み取ります。Cookie は Oleafly 内に保存され、{{domain}} にだけ送られます。このあとシステムのダイアログでもう一度確認します。",
@@ -1782,17 +1782,31 @@
       "gitSave": "保存",
       "gitRemove": "削除",
       "gitFailed": "Oleafly は Git トークンを保存できませんでした。トークン全体を貼り付けたか確認してください。",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
-      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
+      "browserLabel": "ブラウザでサインイン",
+      "browserDescription": "Google、所属機関、パスキーでのサインイン用です。Oleafly が新しいブラウザウィンドウで {{server}} を開き、サインインが済むと閉じます。",
+      "browserAction": "サインイン",
+      "browserPick": "サインインに使うブラウザ",
+      "browserWaiting": "{{browser}} で {{server}} へのサインインを完了してください。ウィンドウを閉じるとキャンセルされます。",
+      "browserHint": "Google、所属機関、パスキーでのサインインにはこちらを使います。",
+      "windowLabel": "{{server}} にサインイン",
+      "windowDescription": "Oleafly がサインイン用のウィンドウを開き、サインインが済むと閉じます。Google、所属機関、パスキーでサインインするには、Chrome、Edge、Brave、Chromium、Firefox のいずれかをインストールし、ここでそのブラウザからサインインしてください。",
+      "windowAction": "サインイン",
+      "windowWaiting": "開いたウィンドウで {{server}} へのサインインを完了してください。",
       "unsent": {
-        "title": "Some changes haven't been sent to Overleaf",
-        "description": "If you sign out now, these changes stay on this computer and go to Overleaf the next time you sign in with this account. Sign in with a different account and they come back as copies next to their files instead. Or stay signed in and try again in a moment.",
-        "files": "Not sent yet: {{files}}",
-        "signOut": "Sign out anyway",
-        "stay": "Stay signed in"
+        "title": "一部の変更がまだ Overleaf に送信されていません",
+        "description": "今サインアウトすると、これらの変更はこのコンピュータに残り、このアカウントで次にサインインしたときに Overleaf に送られます。別のアカウントでサインインした場合は、代わりに各ファイルの隣にコピーとして戻ります。サインインしたまま、しばらくしてからもう一度試すこともできます。",
+        "files": "未送信: {{files}}",
+        "signOut": "このままサインアウト",
+        "stay": "サインインしたままにする"
+      },
+      "deletes": {
+        "title": "ライブプロジェクトでファイルを削除したとき",
+        "description": "Oleafly でファイルやフォルダを削除したときに、Overleaf 側でどうするかを選びます。",
+        "options": {
+          "ask": "毎回確認する",
+          "always": "Overleaf でも削除する",
+          "never": "Overleaf には残す"
+        }
       }
     },
     "desktopApps": {

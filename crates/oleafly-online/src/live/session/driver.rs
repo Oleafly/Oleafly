@@ -106,6 +106,7 @@ pub(super) struct Driver {
     slow_shown: bool,
     joined_once: bool,
     users_asked: bool,
+    project_checked: Option<tokio::time::Instant>,
 }
 
 impl Driver {
@@ -140,6 +141,7 @@ impl Driver {
             slow_shown: false,
             joined_once,
             users_asked: false,
+            project_checked: None,
         }
     }
 
@@ -189,6 +191,16 @@ impl Driver {
         }
     }
 
+    fn may_check_project(&mut self) -> bool {
+        let now = tokio::time::Instant::now();
+        let every = self.config.tuning.project_check_every;
+        if self.project_checked.is_some_and(|at| now < at + every) {
+            return false;
+        }
+        self.project_checked = Some(now);
+        true
+    }
+
     fn after_drop(&mut self, wait: Wait) -> Wait {
         let online = self.online_since.elapsed();
         self.attempt = backoff_step(self.attempt + 1, Reached::after(online));
@@ -233,6 +245,9 @@ impl Driver {
     fn due(&mut self, connection: &Connection) -> Option<Pumped> {
         if let Some(wait) = self.reconnect_after.take() {
             return Some(Pumped::Lost(wait));
+        }
+        if self.shared.with(State::take_project_check) && self.may_check_project() {
+            return Some(Pumped::Lost(Wait::NOW));
         }
         if connection.dropped().is_some() {
             return Some(Pumped::Lost(Wait::NOW));

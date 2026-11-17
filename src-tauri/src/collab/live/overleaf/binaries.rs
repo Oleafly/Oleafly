@@ -13,10 +13,12 @@ use crate::collab::live::downloads::{Bytes, FigureHost};
 use crate::collab::live::kept::{KeptFile, KeptKind, KeptPayload};
 use crate::collab::live::moves::deleted_here;
 use crate::collab::live::session::{guard, io, LiveDisk};
+use crate::collab::live::uploads::download_progress_for;
 use crate::folder_watch::FolderChange;
 
 const MAP_FILE: &str = "blob-hashes.json";
 const UNKNOWN: &str = "server:";
+const BIG_DOWNLOAD: u64 = 1024 * 1024;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct BlobMap {
@@ -119,9 +121,26 @@ impl FigureHost for OverleafLive {
     fn fetch_figure(&self, path: &str, hash: &str) -> BoxFuture<'static, Option<Vec<u8>>> {
         let entity = self.entity_of(path, hash);
         let session = Arc::clone(&self.session);
+        let report = download_progress_for(
+            Arc::clone(&self.mirror.disk.host),
+            &self.mirror.disk.project_id,
+            path,
+        );
         Box::pin(async move {
             let entity = EntityId(entity?);
-            session.download(&entity, &mut |_, _| {}).await.ok()
+            let mut shown = false;
+            let fetched = session
+                .download(&entity, &mut |done, total| {
+                    if let Some(total) = total.filter(|total| *total >= BIG_DOWNLOAD) {
+                        shown = true;
+                        report(done, total);
+                    }
+                })
+                .await;
+            if shown {
+                report(0, 0);
+            }
+            fetched.ok()
         })
     }
 

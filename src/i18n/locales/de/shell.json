@@ -493,7 +493,7 @@
       "run": "Code auf diesem Computer ausführen"
     },
     "sharedViewer": "Nur Inhaber und Bearbeiter können diese Einstellungen in einem geteilten Projekt ändern.",
-    "coauthorsChanged": "Changed by coauthors since your last compile"
+    "coauthorsChanged": "Seit Ihrer letzten Kompilierung von Koautoren geändert"
   },
   "datePicker": {
     "placeholder": "Datum wählen"
@@ -995,8 +995,8 @@
         "label": "Notizen"
       },
       "overleafLive": {
-        "label": "Live editing with Overleaf",
-        "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
+        "label": "Live-Bearbeitung mit Overleaf",
+        "description": "Bearbeiten Sie aus Overleaf importierte Projekte gleichzeitig mit Ihren Koautoren. Änderungen erscheinen beim Tippen auf beiden Seiten. Standardmäßig aus, solange es noch in der Beta ist."
       },
       "researchTasks": {
         "description": "Ein Agent arbeitet eigenständig in einer Kopie des Projekts und hinterlässt seine Änderungen, damit Sie sie prüfen können. Sehr instabil: Läufe können hängen bleiben, fehlschlagen oder Änderungen hinterlassen, die Sie von Hand bereinigen müssen, und sie verbrauchen während der gesamten Laufzeit das Kontingent Ihres Anbieters. Fügt den Einstellungen den Bereich Forschung hinzu. Beim Ausschalten werden alle laufenden Aufgaben beendet. Standardmäßig aus. Schalten Sie es auf eigenes Risiko ein.",
@@ -1647,28 +1647,28 @@
     }
   },
   "overleafLive": {
-    "title": "Live editing with Overleaf",
-    "live": "Live with Overleaf",
-    "connecting": "Connecting to Overleaf…",
-    "sending": "Sending changes to Overleaf…",
-    "reconnecting": "Reconnecting to Overleaf…",
-    "pausedBadge": "Live editing paused",
-    "pause": "Pause live editing",
-    "resume": "Resume live editing",
-    "reconnectNow": "Reconnect now",
-    "open": "Open in Overleaf",
-    "share": "Share on Overleaf…",
-    "signIn": "Sign in…",
-    "reconnectingIn": "Trying again in {{seconds}} s.",
-    "notConfirmed": "Not confirmed by Overleaf yet.",
-    "copyDetails": "Copy connection details",
-    "detailsCopied": "Connection details copied",
-    "copyDetailsFailed": "Couldn't copy the connection details",
+    "title": "Live-Bearbeitung mit Overleaf",
+    "live": "Live mit Overleaf",
+    "connecting": "Verbindung zu Overleaf wird hergestellt…",
+    "sending": "Änderungen werden an Overleaf gesendet…",
+    "reconnecting": "Verbindung zu Overleaf wird wiederhergestellt…",
+    "pausedBadge": "Live-Bearbeitung pausiert",
+    "pause": "Live-Bearbeitung pausieren",
+    "resume": "Live-Bearbeitung fortsetzen",
+    "reconnectNow": "Jetzt neu verbinden",
+    "open": "In Overleaf öffnen",
+    "share": "Bei Overleaf teilen…",
+    "signIn": "Anmelden…",
+    "reconnectingIn": "Neuer Versuch in {{seconds}} s.",
+    "notConfirmed": "Von Overleaf noch nicht bestätigt.",
+    "copyDetails": "Verbindungsdetails kopieren",
+    "detailsCopied": "Verbindungsdetails kopiert",
+    "copyDetailsFailed": "Die Verbindungsdetails konnten nicht kopiert werden",
     "pauseDialog": {
-      "title": "Some changes haven't reached Overleaf yet",
-      "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",
-      "keepLive": "Keep editing live",
-      "pauseAnyway": "Pause anyway"
+      "title": "Einige Änderungen sind noch nicht bei Overleaf angekommen",
+      "description": "Wenn Sie jetzt pausieren, bleiben sie auf diesem Computer und gehen an Overleaf, sobald Sie fortsetzen. Die Git-Synchronisierung bleibt bis dahin aus.",
+      "keepLive": "Weiter live bearbeiten",
+      "pauseAnyway": "Trotzdem pausieren"
     }
   },
   "stuckWindow": {

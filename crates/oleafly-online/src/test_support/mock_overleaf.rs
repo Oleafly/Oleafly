@@ -568,6 +568,8 @@ struct State {
     main_bibliography: Option<String>,
     track_changes: Value,
     deleted_externally: bool,
+    deleted: bool,
+    lost_ops: BTreeSet<String>,
     format: DocFormat,
     root: Folder,
     root_doc: Option<String>,
@@ -628,6 +630,8 @@ impl State {
             main_bibliography: None,
             track_changes: project.track_changes.clone(),
             deleted_externally: project.deleted_externally,
+            deleted: false,
+            lost_ops: BTreeSet::new(),
             format: project.format,
             csrf: MOCK_CSRF.to_string(),
             root: Folder::default(),
@@ -1143,7 +1147,7 @@ impl State {
             Duration::from_secs(60),
         ) {
             Some(Rejection::RateLimited)
-        } else if query != self.project_id {
+        } else if query != self.project_id || self.deleted {
             Some(Rejection::ProjectNotFound)
         } else if self
             .privilege(user.as_deref().unwrap_or_default())
@@ -1370,6 +1374,14 @@ impl State {
         {
             self.reply(sid, id, &[error_value("unexpected arguments")]);
             self.close(sid);
+            return;
+        }
+        if self.deleted || self.lost_ops.contains(&doc_id) {
+            self.reply(
+                sid,
+                id,
+                &[error_value("doc updater could not load requested ops")],
+            );
             return;
         }
         let Some(doc) = self.docs.get(&doc_id) else {
@@ -2969,6 +2981,14 @@ impl MockOverleaf {
             prefix: prefix.to_string(),
             fault,
         });
+    }
+
+    pub fn delete_project(&self) {
+        self.state().deleted = true;
+    }
+
+    pub fn lose_ops(&self, doc_id: &str) {
+        self.state().lost_ops.insert(doc_id.to_string());
     }
 
     pub fn hold_updates(&self) {

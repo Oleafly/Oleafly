@@ -20,7 +20,7 @@ use crate::collab::live::payloads::{
     RolePayload, StatusPayload,
 };
 use crate::collab::live::session::{guard, Live, ACTIVE};
-use crate::collab::live::uploads::UploadsPayload;
+use crate::collab::live::uploads::{UploadProgress, UploadsPayload};
 use crate::folder_watch::FolderChange;
 use crate::overleaf::OverleafLink;
 
@@ -39,6 +39,7 @@ pub(crate) struct Quiet {
     pub(crate) changes: Mutex<Vec<FolderChange>>,
     pub(crate) removed: Mutex<Vec<RemovedPayload>>,
     pub(crate) uploads: Mutex<Vec<UploadsPayload>>,
+    pub(crate) downloads: Mutex<Vec<UploadProgress>>,
     pub(crate) tree: Mutex<Vec<TreeNotice>>,
 }
 
@@ -78,6 +79,9 @@ impl LiveHost for Quiet {
     }
     fn uploads(&self, payload: UploadsPayload) {
         self.uploads.lock().unwrap().push(payload);
+    }
+    fn download_progress(&self, payload: UploadProgress) {
+        self.downloads.lock().unwrap().push(payload);
     }
     fn overleaf_tree(&self, notice: TreeNotice) {
         self.tree.lock().unwrap().push(notice);
@@ -136,6 +140,7 @@ pub(crate) enum Place {
 pub(crate) struct FirstStart<'a> {
     pub(crate) imported: &'a [(&'a str, &'a str)],
     pub(crate) git_base: &'a [(&'a str, &'a str)],
+    pub(crate) stalled: bool,
 }
 
 fn git(repo: &std::path::Path, args: &[&str]) {
@@ -253,6 +258,9 @@ impl OverleafRig {
         import_base(dir.path(), first.imported);
         let git_mirror = git_base(dir.path(), first.git_base);
         let mock = MockOverleaf::start(project).await;
+        if first.stalled {
+            mock.stall();
+        }
         let (project_id, root, data) = match place {
             Place::Scratch => (
                 "overleaf-rig".to_owned(),

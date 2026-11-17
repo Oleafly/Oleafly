@@ -38,6 +38,7 @@ const shell = vi.hoisted(() => ({ open: vi.fn(async () => undefined) }));
 vi.mock("@tauri-apps/plugin-shell", () => shell);
 
 import { useOverleafImportStore } from "@/store/overleaf-import";
+import { useSettingsStore } from "@/store/settings";
 import { OverleafSection } from "./OverleafSection";
 
 const SERVER = "https://www.overleaf.com";
@@ -222,5 +223,25 @@ describe("OverleafSection", () => {
     fireEvent.click(screen.getByRole("button", { name: "Use overleaf.com" }));
     expect(await screen.findByText("Server: www.overleaf.com")).toBeInTheDocument();
     await waitFor(() => expect(api.overleafStatus).toHaveBeenLastCalledWith(SERVER));
+  });
+
+  it("offers the delete choice for live projects only, asking by default", async () => {
+    api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: true, email: "ada@uni.edu" });
+    useSettingsStore.setState({ overleafLive: false, overleafDeletes: "ask" });
+    const { rerender } = render(<OverleafSection />);
+    await screen.findByTestId("overleaf-connected");
+    expect(screen.queryByTestId("overleaf-live-deletes")).not.toBeInTheDocument();
+    useSettingsStore.setState({ overleafLive: true });
+    rerender(<OverleafSection />);
+    const field = screen.getByTestId("overleaf-live-deletes");
+    expect(field).toHaveTextContent("When you delete a file in a live project");
+    expect(within(field).getByRole("combobox", { name: "When you delete a file in a live project" })).toHaveTextContent(
+      "Ask each time",
+    );
+    const user = userEvent.setup();
+    await user.click(within(field).getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: "Keep it on Overleaf" }));
+    expect(useSettingsStore.getState().overleafDeletes).toBe("never");
+    expect(localStorage.getItem("oleafly.overleafDeletes")).toBe("never");
   });
 });

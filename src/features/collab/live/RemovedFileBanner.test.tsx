@@ -9,6 +9,12 @@ import { BOB, BOB_ID, CAROL_ID, projectMember, shareInfo } from "../tests/fixtur
 const mocks = vi.hoisted(() => ({
   collabTrashRestore: vi.fn(),
   collabLiveFlush: vi.fn(),
+  overleafLiveRestore: vi.fn(),
+}));
+
+vi.mock("@/lib/overleaf-live", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/overleaf-live")>()),
+  overleafLiveRestore: mocks.overleafLiveRestore,
 }));
 
 vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
@@ -67,7 +73,7 @@ beforeEach(() => {
 
 afterEach(() => {
   useRemovedNotices.setState({ projectId: null, notices: [], restoring: null, failure: null });
-  useCollabLiveStore.setState({ projectId: null, share: null, role: null, members: [] });
+  useCollabLiveStore.setState({ projectId: null, share: null, role: null, members: [], backend: null });
 });
 
 describe("RemovedFileBanner", () => {
@@ -129,5 +135,29 @@ describe("RemovedFileBanner", () => {
     render(<RemovedFileBanner />);
     act(() => useRemovedNotices.setState({ projectId: "other", notices: [notice()] }));
     expect(screen.queryByTestId("collab-removed-notice")).toBeNull();
+  });
+
+  it("names the kept copy of an Overleaf file and restores it on Overleaf", async () => {
+    mocks.overleafLiveRestore.mockResolvedValue(undefined);
+    act(() => useCollabLiveStore.setState({ backend: "overleaf", share: null, role: "editor", members: [] }));
+    render(<RemovedFileBanner />);
+    show(notice({ by: null, yours: true, copy: "sections/results (1a2b3c).tex" }));
+    expect(screen.getByTestId("collab-removed-notice")).toHaveTextContent(
+      fill(copy.keptCopy, { name: "Someone", file: "results.tex", copy: "results (1a2b3c).tex" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Restore results.tex on Overleaf" }));
+    expect(mocks.overleafLiveRestore).toHaveBeenCalledWith("paper", "sections/results.tex");
+    expect(mocks.collabTrashRestore).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByTestId("collab-removed-notice")).not.toBeInTheDocument());
+  });
+
+  it("offers no Restore for an Overleaf file without a kept copy", () => {
+    act(() => useCollabLiveStore.setState({ backend: "overleaf", share: null, role: "editor", members: [] }));
+    render(<RemovedFileBanner />);
+    show(notice({ by: null }));
+    expect(screen.getByTestId("collab-removed-notice")).toHaveTextContent(
+      fill(copy.deletedOnline, { name: "Someone", file: "results.tex" }),
+    );
+    expect(screen.queryByRole("button", { name: /Restore/ })).not.toBeInTheDocument();
   });
 });

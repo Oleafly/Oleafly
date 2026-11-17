@@ -1259,7 +1259,8 @@
     "tabMark": "Mudou no disco. Abra esta aba para escolher qual versão manter."
   },
   "liveTab": {
-    "notOnOverleafYet": "Not on Overleaf yet"
+    "notOnOverleafYet": "Ainda não está no Overleaf",
+    "storedAsFile": "O Overleaf guarda isto como arquivo, então suas edições são enviadas quando você salva."
   },
   "labels": {
     "filterPlaceholder": "Nome do rótulo",

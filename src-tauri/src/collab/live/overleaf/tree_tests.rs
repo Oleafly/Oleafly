@@ -10,7 +10,7 @@ use oleafly_online::session::SessionHandle;
 use oleafly_online::test_support::mock_overleaf::{MockProject, MockUser, Privilege};
 use oleafly_ot::DocMessage;
 
-use super::rig::{eventually, run, session_of, OverleafRig};
+use super::rig::{eventually, run, session_of, FirstStart, OverleafRig, Place};
 use super::TreeNoticeKind;
 use crate::collab::disk::sha256_hex;
 use crate::collab::live::kept::KeptKind;
@@ -301,6 +301,56 @@ fn coauthor_folder_delete_closes_tabs_keeps_unsent_copies() {
 }
 
 #[test]
+fn a_folder_delete_keeps_every_unsent_copy_for_its_notice() {
+    run(async {
+        let method = "sections/method.tex";
+        let disk = [DISK, &[(method, "Method\n")]].concat();
+        let rig = ready(OverleafRig::start(project().doc(method, "Method\n"), &disk).await).await;
+        let mut intro = rig.open(INTRO);
+        let mut methods = rig.open(method);
+        eventually("both are joined", || {
+            rig.live.text_at(INTRO).is_some() && rig.live.text_at(method).is_some()
+        })
+        .await;
+        rig.mock.hold_updates();
+        intro.typed(&rig.live, "Intro, mine\n");
+        methods.typed(&rig.live, "Method, mine\n");
+        let bob = bob(&rig).await;
+        let sections = entity(&rig, "sections");
+        bob.rest
+            .delete(&bob.session, NodeKind::Folder, &sections)
+            .await
+            .unwrap();
+        disk_gone(&rig, INTRO).await;
+        disk_gone(&rig, method).await;
+        eventually("the folder removal is announced as mine", || {
+            rig.host.removed.lock().unwrap().iter().any(|payload| {
+                payload
+                    .files
+                    .iter()
+                    .any(|file| file.path == "sections" && file.yours)
+            })
+        })
+        .await;
+        settle(&rig).await;
+        assert!(
+            rig.host.kept.lock().unwrap().is_empty(),
+            "no copy escapes as its own notice"
+        );
+        let mut entries = tokio::fs::read_dir(rig.root.join("sections"))
+            .await
+            .unwrap();
+        let mut copies = Vec::new();
+        while let Some(entry) = entries.next_entry().await.unwrap() {
+            copies.push(entry.file_name().to_string_lossy().into_owned());
+        }
+        assert_eq!(copies.len(), 2, "{copies:?}");
+        rig.mock.release_updates();
+        rig.finish().await;
+    });
+}
+
+#[test]
 fn remove_then_new_is_a_replace_without_banner() {
     run(async {
         let rig = ready(OverleafRig::start(project().file("plot.png", PNG), DISK).await).await;
@@ -360,6 +410,83 @@ fn a_replaced_doc_with_my_unsent_edits_keeps_a_copy_and_says_so() {
         settle(&rig).await;
         assert!(rig.host.removed.lock().unwrap().is_empty());
         rig.mock.release_updates();
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn a_big_download_shows_its_progress_and_clears_at_the_end() {
+    run(async {
+        let big: Vec<u8> = PNG
+            .iter()
+            .copied()
+            .chain(std::iter::repeat_n(7u8, 1536 * 1024))
+            .collect();
+        let rig = ready(
+            OverleafRig::start(project().file("scan.png", &big).file("plot.png", PNG), DISK).await,
+        )
+        .await;
+        disk_matches(&rig, "scan.png", &big).await;
+        disk_matches(&rig, "plot.png", PNG).await;
+        eventually("the big download says it is done", || {
+            rig.host
+                .downloads
+                .lock()
+                .unwrap()
+                .last()
+                .is_some_and(|last| last.path == "scan.png" && last.total == 0)
+        })
+        .await;
+        let downloads = rig.host.downloads.lock().unwrap().clone();
+        assert!(downloads.iter().all(|progress| progress.path == "scan.png"));
+        assert!(downloads
+            .iter()
+            .any(|progress| progress.total == big.len() as u64 && progress.done <= progress.total));
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn files_overleaf_stores_as_binaries_are_listed_for_the_tabs() {
+    run(async {
+        let rig = ready(
+            OverleafRig::start(
+                project()
+                    .file("data.csv", b"a,b\n1,2\n")
+                    .file("plot.png", PNG),
+                DISK,
+            )
+            .await,
+        )
+        .await;
+        disk_matches(&rig, "data.csv", b"a,b\n1,2\n").await;
+        let listed = |rig: &OverleafRig, wanted: &[&str]| {
+            rig.host
+                .tree
+                .lock()
+                .unwrap()
+                .iter()
+                .rev()
+                .find_map(|notice| match &notice.kind {
+                    TreeNoticeKind::StoredAsFiles { paths } => Some(paths.clone()),
+                    _ => None,
+                })
+                == Some(wanted.iter().map(|path| (*path).to_owned()).collect())
+        };
+        eventually("both binaries are listed", || {
+            listed(&rig, &["data.csv", "plot.png"])
+        })
+        .await;
+        let bob = bob(&rig).await;
+        let plot = rig.mock.entity_id("plot.png").unwrap();
+        bob.rest
+            .delete(&bob.session, NodeKind::File, &EntityId(plot))
+            .await
+            .unwrap();
+        eventually("the list drops the deleted one", || {
+            listed(&rig, &["data.csv"])
+        })
+        .await;
         rig.finish().await;
     });
 }
@@ -930,6 +1057,92 @@ fn restore_on_overleaf_recreates_from_kept_copy() {
             on_disk(&rig, NOTES).await.as_deref(),
             Some(&b"Notes and mine\n"[..])
         );
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn a_coauthors_rename_before_the_first_draw_moves_my_local_file() {
+    run(async {
+        let rig = OverleafRig::start_first(
+            project(),
+            &[
+                (MAIN, "Hello\n"),
+                (NOTES, "Notes, mine\n"),
+                (INTRO, "Intro\n"),
+            ],
+            Place::Scratch,
+            FirstStart {
+                imported: &[(MAIN, "Hello\n"), (NOTES, "Notes\n"), (INTRO, "Intro\n")],
+                stalled: true,
+                ..FirstStart::default()
+            },
+        )
+        .await;
+        let doc = rig.doc(NOTES);
+        let hidden = rig.root.with_file_name("project-away");
+        std::fs::rename(&rig.root, &hidden).unwrap();
+        rig.mock.resume();
+        eventually("the session joined", || rig.live.text_at(NOTES).is_some()).await;
+        let bob = bob(&rig).await;
+        bob.rest
+            .rename(
+                &bob.session,
+                NodeKind::Doc,
+                &EntityId(doc.clone()),
+                "renamed.tex",
+            )
+            .await
+            .unwrap();
+        eventually("the session sees the rename", || {
+            rig.live.doc_at("renamed.tex").is_some()
+        })
+        .await;
+        std::fs::rename(&hidden, &rig.root).unwrap();
+        rig.live.kick();
+        disk_matches(&rig, "renamed.tex", b"Notes, mine\n").await;
+        disk_gone(&rig, NOTES).await;
+        eventually("my local edit reaches the server", || {
+            rig.mock.doc_text(&doc) == "Notes, mine\n"
+        })
+        .await;
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn a_server_file_never_overwrites_a_local_text_file_of_the_same_name_at_first_start() {
+    const SERVER: &[u8] = b"\x89PNG\r\n\x1a\nserver";
+    const LOCAL: &str = "a,b\n1,2\n";
+    run(async {
+        let rig = OverleafRig::start_first(
+            MockProject::new("first files")
+                .doc(MAIN, "Hello\n")
+                .file("data.csv", SERVER),
+            &[(MAIN, "Hello\n"), ("data.csv", LOCAL)],
+            Place::Scratch,
+            FirstStart {
+                imported: &[(MAIN, "Hello\n"), ("data.csv", LOCAL)],
+                ..FirstStart::default()
+            },
+        )
+        .await;
+        disk_matches(&rig, "data.csv", SERVER).await;
+        let copy = || {
+            rig.host
+                .kept
+                .lock()
+                .unwrap()
+                .iter()
+                .flat_map(|payload| payload.files.iter())
+                .find(|file| file.path == "data.csv" && file.kind == KeptKind::Differed)
+                .map(|file| file.copy.clone())
+        };
+        eventually("my text is kept beside the server's file", || {
+            copy().is_some()
+        })
+        .await;
+        assert_eq!(rig.read(&copy().unwrap()), LOCAL);
         rig.finish().await;
     });
 }

@@ -1245,7 +1245,8 @@
     "tabMark": "Diskte değişti. Hangi sürümü tutacağınızı seçmek için bu sekmeyi açın."
   },
   "liveTab": {
-    "notOnOverleafYet": "Not on Overleaf yet"
+    "notOnOverleafYet": "Henüz Overleaf'te değil",
+    "storedAsFile": "Overleaf bunu dosya olarak saklar, bu yüzden düzenlemeleriniz kaydettiğinizde yüklenir."
   },
   "labels": {
     "filterPlaceholder": "Etiket adı",

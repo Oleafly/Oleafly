@@ -14,6 +14,7 @@ import { useSettingsStore } from "@/store/settings";
 import type { CollabLiveStoreState, LiveBackendDriver } from "./live-store";
 import { useCollabLiveStore } from "./live-store";
 import { startOverleafNotices } from "./overleaf-notices";
+import { startOverleafTree } from "./overleaf-tree";
 
 export function wantsOverleaf(state: CollabLiveStoreState): boolean {
   const link = state.overleaf;
@@ -59,6 +60,7 @@ async function reload(): Promise<void> {
 }
 
 export function startOverleafLive(): () => void {
+  const stopTree = startOverleafTree();
   const unsubscribePref = useSettingsStore.subscribe((state, previous) => {
     if (state.overleafLive !== previous.overleafLive) void reload();
   });
@@ -94,5 +96,6 @@ export function startOverleafLive(): () => void {
     uninstall();
     unsubscribeSignIn();
     unsubscribePref();
+    stopTree();
   };
 }

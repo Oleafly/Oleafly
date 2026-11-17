@@ -1731,8 +1731,8 @@
         "notInstalled": "Non installato"
       },
       "tryAgain": "Riprova",
-      "label": "Accesso dal browser",
-      "useBrowserSignIn": "Usa l'accesso del mio browser",
+      "label": "Copia l'accesso di un browser",
+      "useBrowserSignIn": "Copia l'accesso dal tuo browser",
       "signInDescription": "Copia il tuo accesso a {{server}} da un browser di questo computer, così non devi accedere di nuovo.",
       "site": "Sito: {{domain}}",
       "confirmCopy": "Oleafly leggerà i cookie di {{domain}} dal profilo {{profile}} di {{browser}}. Restano in Oleafly e vanno solo a {{domain}}. Confermerai ancora una volta in una finestra di dialogo di sistema.",
@@ -1812,17 +1812,31 @@
       "gitSave": "Salva",
       "gitRemove": "Rimuovi",
       "gitFailed": "Oleafly non è riuscito a salvare il token Git. Controlla di aver incollato tutto il token.",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
-      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
+      "browserLabel": "Accedi con il tuo browser",
+      "browserDescription": "Per l'accesso con Google, con l'istituzione o con una passkey. Oleafly apre {{server}} in una nuova finestra del browser e la chiude quando hai effettuato l'accesso.",
+      "browserAction": "Accedi",
+      "browserPick": "Browser con cui accedere",
+      "browserWaiting": "Completa l'accesso a {{server}} in {{browser}}. Chiudere la finestra annulla l'accesso.",
+      "browserHint": "Usalo per l'accesso con Google, con l'istituzione o con una passkey.",
+      "windowLabel": "Accedi a {{server}}",
+      "windowDescription": "Oleafly apre una finestra di accesso e la chiude quando hai effettuato l'accesso. Per accedere con Google, con la tua istituzione o con una passkey, installa Chrome, Edge, Brave, Chromium o Firefox, poi accedi qui con quel browser.",
+      "windowAction": "Accedi",
+      "windowWaiting": "Completa l'accesso a {{server}} nella finestra che si è aperta.",
       "unsent": {
-        "title": "Some changes haven't been sent to Overleaf",
-        "description": "If you sign out now, these changes stay on this computer and go to Overleaf the next time you sign in with this account. Sign in with a different account and they come back as copies next to their files instead. Or stay signed in and try again in a moment.",
-        "files": "Not sent yet: {{files}}",
-        "signOut": "Sign out anyway",
-        "stay": "Stay signed in"
+        "title": "Alcune modifiche non sono state inviate a Overleaf",
+        "description": "Se esci ora, queste modifiche restano su questo computer e vanno su Overleaf la prossima volta che accedi con questo account. Se accedi con un altro account, tornano invece come copie accanto ai rispettivi file. Oppure resta connesso e riprova tra un momento.",
+        "files": "Non ancora inviati: {{files}}",
+        "signOut": "Esci comunque",
+        "stay": "Resta connesso"
+      },
+      "deletes": {
+        "title": "Quando elimini un file in un progetto dal vivo",
+        "description": "Scegli cosa succede su Overleaf quando elimini un file o una cartella in Oleafly.",
+        "options": {
+          "ask": "Chiedi ogni volta",
+          "always": "Eliminalo anche su Overleaf",
+          "never": "Mantienilo su Overleaf"
+        }
       }
     },
     "desktopApps": {

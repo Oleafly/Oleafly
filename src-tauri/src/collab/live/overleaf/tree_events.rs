@@ -16,6 +16,7 @@ pub enum TreeNoticeKind {
     DeleteAsked { paths: Vec<String> },
     NotAllowed { paths: Vec<String> },
     KeptAway { paths: Vec<String> },
+    StoredAsFiles { paths: Vec<String> },
 }
 
 #[cfg(test)]
@@ -33,6 +34,18 @@ mod tests {
         assert_eq!(
             serde_json::to_value(&notice).unwrap(),
             serde_json::json!({ "projectId": "p", "kind": "delete_asked", "paths": ["figures.tex"] })
+        );
+    }
+
+    #[test]
+    fn the_files_stored_as_binaries_read_as_one_flat_object() {
+        let notice = TreeNotice {
+            project_id: "p".into(),
+            kind: TreeNoticeKind::StoredAsFiles { paths: Vec::new() },
+        };
+        assert_eq!(
+            serde_json::to_value(&notice).unwrap(),
+            serde_json::json!({ "projectId": "p", "kind": "stored_as_files", "paths": [] })
         );
     }
 }

@@ -500,8 +500,8 @@
     "template_unavailable": "O Oleafly não conseguiu abrir este modelo. Ele pode ter sido removido da galeria do Overleaf.",
     "browser_sign_in_missing": "O Oleafly não encontrou nenhum login de {{server}} nesse perfil do navegador. Faça login diretamente.",
     "browser_sign_in_failed": "O login vindo do seu navegador não funcionou. Ele pode ter expirado. Faça login diretamente.",
-    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
-    "browser_missing": "That browser isn't installed anymore. Pick another one."
+    "browser_unavailable": "O Oleafly não conseguiu abrir {{browser}} para o login. Tente outro navegador.",
+    "browser_missing": "Esse navegador não está mais instalado. Escolha outro."
   },
   "collab": {
     "suggestion_role": "Sua função neste projeto não permite sugestões."

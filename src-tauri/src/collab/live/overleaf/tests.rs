@@ -12,6 +12,7 @@ use oleafly_online::live::journal::{self, DocRecord, Journal, SCHEMA};
 use oleafly_online::realtime::DocId;
 
 use super::account::overleaf_signed_in;
+use super::notices::{self, OverleafNotice};
 use super::refuse_overleaf_linked;
 use super::rig::{eventually, run, session_of, OverleafRig, Place, Quiet};
 use crate::collab::live::kept::{KeptFile, KeptKind};
@@ -139,6 +140,52 @@ fn a_compile_barrier_flushes_overleaf_texts_to_disk() {
         tab.typed(&rig.live, "Hello, compiled\n");
         crate::collab::live::lifecycle::flush("overleaf-rig", false).await;
         assert_eq!(rig.read(MAIN), "Hello, compiled\n");
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn typing_while_the_server_is_down_reaches_the_disk_and_a_compile() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        let doc = rig.doc(MAIN);
+        let mut tab = rig.open(MAIN);
+        rig.mock.crash();
+        eventually("the session sees that the server is down", || {
+            matches!(guard(&rig.live.mirror.status).0, LiveStatus::Offline { .. })
+        })
+        .await;
+        let typed = std::time::Instant::now();
+        tab.typed(&rig.live, "Hello offline\n");
+        eventually("the mirror wrote the offline typing", || {
+            rig.read(MAIN) == "Hello offline\n"
+        })
+        .await;
+        assert!(
+            typed.elapsed() < Duration::from_secs(2),
+            "the offline typing reached the disk after {:?}",
+            typed.elapsed()
+        );
+        tab.typed(&rig.live, "Hello offline, compiled\n");
+        let flushed = std::time::Instant::now();
+        crate::collab::live::lifecycle::flush("overleaf-rig", false).await;
+        assert_eq!(rig.read(MAIN), "Hello offline, compiled\n");
+        assert!(
+            flushed.elapsed() < Duration::from_secs(1),
+            "the compile barrier waited {:?} for a server that is down",
+            flushed.elapsed()
+        );
+        assert_eq!(rig.mock.doc_text(&doc), "Hello\n");
+        rig.mock.recover();
+        eventually("the server got the offline typing once", || {
+            rig.mock.doc_text(&doc) == "Hello offline, compiled\n"
+        })
+        .await;
+        assert_eq!(rig.read(MAIN), "Hello offline, compiled\n");
         rig.finish().await;
     });
 }
@@ -799,12 +846,40 @@ fn a_project_deleted_on_overleaf_ends_as_project_deleted() {
             &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
         )
         .await;
-        rig.mock
-            .emit_to_room("projectRenamedOrDeletedByExternalSource", &[]);
+        rig.mock.delete_project();
+        let _tab = rig.open(INTRO);
         eventually("live ends as deleted", || {
             ended(&rig) == Some(EndReason::ProjectDeleted)
         })
         .await;
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn a_project_removed_from_its_linked_source_stays_live_and_says_so() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        eventually("the role is announced", || {
+            !rig.host.roles.lock().unwrap().is_empty()
+        })
+        .await;
+        rig.mock
+            .emit_to_room("projectRenamedOrDeletedByExternalSource", &[]);
+        eventually("the role says the project left its linked source", || {
+            rig.host
+                .roles
+                .lock()
+                .unwrap()
+                .last()
+                .is_some_and(|role| role.deleted_externally)
+        })
+        .await;
+        assert_eq!(ended(&rig), None);
         rig.finish().await;
     });
 }
@@ -952,6 +1027,118 @@ fn our_caret_reaches_the_service() {
                 .any(|sent| {
                     sent.args[0] == serde_json::json!({ "row": 0, "column": 4, "doc_id": doc })
                 })
+        })
+        .await;
+        rig.finish().await;
+    });
+}
+
+fn noticed(rig: &OverleafRig, notice: &OverleafNotice) -> bool {
+    rig.host
+        .notices
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|payload| payload.notice == *notice)
+}
+
+fn too_large() -> OverleafNotice {
+    OverleafNotice::Fault {
+        path: MAIN.to_owned(),
+        reason: "too_large".to_owned(),
+    }
+}
+
+async fn faulted(rig: &OverleafRig) {
+    let doc = rig.doc(MAIN);
+    let mut tab = rig.open(MAIN);
+    rig.mock.fail_updates(&doc, "update is too large", 1);
+    tab.typed(&rig.live, "Hello\nkept\n");
+    eventually("the fault is noticed", || noticed(rig, &too_large())).await;
+}
+
+#[test]
+fn a_fault_is_noticed_and_trying_again_sends_the_trimmed_text() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        faulted(&rig).await;
+        eventually("the refused text reaches the disk", || {
+            rig.read(MAIN) == "Hello\nkept\n"
+        })
+        .await;
+        rig.edit(MAIN, "Hello\ntrimmed\n");
+        notices::retry(&rig.project_id, MAIN).unwrap();
+        let doc = rig.doc(MAIN);
+        eventually("the trimmed text goes live", || {
+            rig.mock.doc_text(&doc) == "Hello\ntrimmed\n"
+        })
+        .await;
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn keeping_a_copy_writes_it_beside_the_file_and_reloads_the_server_text() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        faulted(&rig).await;
+        eventually("the refused text reaches the disk", || {
+            rig.read(MAIN) == "Hello\nkept\n"
+        })
+        .await;
+        rig.edit(MAIN, "Hello\nmine\n");
+        notices::keep_copy(&rig.project_id, MAIN).unwrap();
+        eventually("the copy is written and the file reloads", || {
+            let kept = std::fs::read_dir(&rig.root)
+                .unwrap()
+                .filter_map(Result::ok)
+                .any(|entry| {
+                    let name = entry.file_name().to_string_lossy().into_owned();
+                    name != MAIN && name.starts_with("main") && rig.read(&name) == "Hello\nmine\n"
+                });
+            kept && rig.read(MAIN) == "Hello\n"
+        })
+        .await;
+        assert!(notices::retry(&rig.project_id, MAIN).is_err());
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn an_external_update_is_noticed() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        let doc = rig.doc(MAIN);
+        let _tab = rig.open(MAIN);
+        eventually("the doc is joined", || {
+            rig.mock
+                .connections()
+                .iter()
+                .any(|connection| connection.joined.contains(&doc))
+        })
+        .await;
+        rig.mock.external_edit(&doc, 0, "Restored ");
+        let external = OverleafNotice::External {
+            path: MAIN.to_owned(),
+        };
+        eventually("the external update is noticed", || {
+            noticed(&rig, &external)
+        })
+        .await;
+        eventually("the restored text reaches disk", || {
+            rig.read(MAIN) == "Restored Hello\n"
         })
         .await;
         rig.finish().await;

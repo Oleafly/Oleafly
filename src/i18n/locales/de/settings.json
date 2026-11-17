@@ -1720,8 +1720,8 @@
         "notInstalled": "Nicht installiert"
       },
       "tryAgain": "Erneut versuchen",
-      "label": "Browser-Anmeldung",
-      "useBrowserSignIn": "Die Anmeldung aus meinem Browser verwenden",
+      "label": "Anmeldung aus einem Browser kopieren",
+      "useBrowserSignIn": "Die Anmeldung aus Ihrem Browser kopieren",
       "signInDescription": "Übernehmen Sie Ihre Anmeldung für {{server}} aus einem Browser auf diesem Computer, damit Sie sich nicht erneut anmelden müssen.",
       "site": "Website: {{domain}}",
       "confirmCopy": "Oleafly liest die Cookies für {{domain}} aus dem Profil {{profile}} in {{browser}}. Sie bleiben in Oleafly und gehen nur an {{domain}}. Sie bestätigen noch einmal in einem Systemdialog.",
@@ -1797,17 +1797,31 @@
       "gitSave": "Speichern",
       "gitRemove": "Entfernen",
       "gitFailed": "Oleafly konnte das Git-Token nicht speichern. Prüfen Sie, ob Sie das ganze Token eingefügt haben.",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
-      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
+      "browserLabel": "Mit Ihrem Browser anmelden",
+      "browserDescription": "Für die Anmeldung mit Google, über Ihre Hochschule oder per Passkey. Oleafly öffnet {{server}} in einem neuen Browserfenster und schließt es, sobald Sie angemeldet sind.",
+      "browserAction": "Anmelden",
+      "browserPick": "Browser für die Anmeldung",
+      "browserWaiting": "Schließen Sie die Anmeldung bei {{server}} in {{browser}} ab. Schließen Sie das Fenster vorher, wird abgebrochen.",
+      "browserHint": "Verwenden Sie dies für die Anmeldung mit Google, über Ihre Hochschule oder per Passkey.",
+      "windowLabel": "Bei {{server}} anmelden",
+      "windowDescription": "Oleafly öffnet ein Anmeldefenster und schließt es, sobald Sie angemeldet sind. Um sich mit Google, über Ihre Hochschule oder per Passkey anzumelden, installieren Sie Chrome, Edge, Brave, Chromium oder Firefox und melden Sie sich dann hier damit an.",
+      "windowAction": "Anmelden",
+      "windowWaiting": "Schließen Sie die Anmeldung bei {{server}} im geöffneten Fenster ab.",
       "unsent": {
-        "title": "Some changes haven't been sent to Overleaf",
-        "description": "If you sign out now, these changes stay on this computer and go to Overleaf the next time you sign in with this account. Sign in with a different account and they come back as copies next to their files instead. Or stay signed in and try again in a moment.",
-        "files": "Not sent yet: {{files}}",
-        "signOut": "Sign out anyway",
-        "stay": "Stay signed in"
+        "title": "Einige Änderungen wurden noch nicht an Overleaf gesendet",
+        "description": "Wenn Sie sich jetzt abmelden, bleiben diese Änderungen auf diesem Computer und gehen bei der nächsten Anmeldung mit diesem Konto an Overleaf. Melden Sie sich mit einem anderen Konto an, kommen sie stattdessen als Kopien neben ihren Dateien zurück. Oder bleiben Sie angemeldet und versuchen Sie es gleich noch einmal.",
+        "files": "Noch nicht gesendet: {{files}}",
+        "signOut": "Trotzdem abmelden",
+        "stay": "Angemeldet bleiben"
+      },
+      "deletes": {
+        "title": "Beim Löschen einer Datei in einem Live-Projekt",
+        "description": "Legen Sie fest, was bei Overleaf passiert, wenn Sie in Oleafly eine Datei oder einen Ordner löschen.",
+        "options": {
+          "ask": "Jedes Mal fragen",
+          "always": "Auch bei Overleaf löschen",
+          "never": "Bei Overleaf behalten"
+        }
       }
     },
     "desktopApps": {

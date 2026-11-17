@@ -163,6 +163,11 @@ export function startLiveEditing(live: LiveSession): () => void {
         ? sessions.flush(() => collabLiveFlush(projectId, { waitForFigures: true }))
         : Promise.resolve(),
     handBack: (id) => (id === projectId ? sessions.handBack(HAND_BACK_WAIT_MS) : Promise.resolve()),
+    relive: (path) => {
+      sessions.relive(path);
+      const files = useFilesStore.getState();
+      if (files.projectId === projectId && files.activePath === path) files.bumpDocVersion();
+    },
   });
   const isLocked = () => !canEditProjectRole(useCollabLiveStore.getState().role);
   useCollabEditorGate.setState({ projectId, viewer: isViewer(), locked: isLocked(), connecting: false });

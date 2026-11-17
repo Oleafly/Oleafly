@@ -11,7 +11,9 @@ use oleafly_online::realtime::tree::{NodeKind as OverleafKind, OverleafNode};
 use oleafly_online::realtime::DocId;
 
 use super::{Edit, OverleafLive, TreeNotice, TreeNoticeKind};
+use crate::collab::disk::{safe_target, sha256_hex};
 use crate::collab::live::import::{arrival_of, placed_now, LocalImport};
+use crate::collab::live::kept::{KeptFile, KeptKind};
 use crate::collab::live::live_tree::{
     LiveTree, Mirror as Outgoing, TreeAnswer, TreeRead, TreeRequest,
 };
@@ -91,7 +93,8 @@ impl OverleafLive {
         let empty = match &kind {
             TreeNoticeKind::DeleteAsked { paths }
             | TreeNoticeKind::NotAllowed { paths }
-            | TreeNoticeKind::KeptAway { paths } => paths.is_empty(),
+            | TreeNoticeKind::KeptAway { paths }
+            | TreeNoticeKind::StoredAsFiles { paths } => paths.is_empty(),
         };
         if !empty {
             self.mirror.disk.host.overleaf_tree(TreeNotice {
@@ -228,7 +231,7 @@ impl OverleafLive {
         };
         let base = guard(&disk.bases).base_for(&path, &text).cloned();
         match self.edit_toward(&doc, &path, base.as_deref(), &text) {
-            Ok(Edit::Sent | Edit::Same) => {}
+            Ok(Edit::Live) => {}
             Ok(Edit::NotLive) => return,
             Err(error) => {
                 let _ = crate::project::append_app_log(format!(
@@ -240,6 +243,73 @@ impl OverleafLive {
         }
         guard(&disk.bases).record(&path, &text);
         guard(&disk.disk).hashes.insert(path, hash);
+    }
+
+    fn keep_adopted_under_blobs(&self, next: &Layout) -> Vec<KeptFile> {
+        let mut adopted = guard(&self.mirror.adopted);
+        if adopted.is_empty() {
+            return Vec::new();
+        }
+        let mut kept = Vec::new();
+        for (id, placed) in next {
+            if !adopted.remove(&placed.path) || placed.kind != NodeKind::Blob {
+                continue;
+            }
+            let Some(bytes) = safe_target(&self.mirror.disk.root, &placed.path)
+                .and_then(|target| std::fs::read(target).ok())
+            else {
+                continue;
+            };
+            let hash = sha256_hex(&bytes);
+            let adopted_hash = guard(&self.mirror.disk.disk)
+                .hashes
+                .get(&placed.path)
+                .cloned();
+            if placed.blob.as_deref() == Some(hash.as_str())
+                || adopted_hash.as_deref() != Some(hash.as_str())
+            {
+                continue;
+            }
+            match self.mirror.disk.keep_bytes(&placed.path, &bytes, None) {
+                Ok(copy) => kept.push(KeptFile {
+                    id: id.clone(),
+                    path: placed.path.clone(),
+                    copy,
+                    kind: KeptKind::Differed,
+                    by: None,
+                }),
+                Err(error) => {
+                    guard(&self.mirror.disk.disk).hashes.remove(&placed.path);
+                    let _ = crate::project::append_app_log(format!(
+                        "Live editing could not keep {} in project {} before the server's file of the same name: {error}",
+                        placed.path, self.mirror.disk.project_id
+                    ));
+                }
+            }
+        }
+        kept
+    }
+
+    fn announce_stored_as_files(&self) {
+        let paths: Vec<String> = guard(&self.mirror.disk.disk)
+            .layout
+            .values()
+            .filter(|placed| placed.kind == NodeKind::Blob)
+            .map(|placed| placed.path.clone())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect();
+        {
+            let mut told = guard(&self.mirror.stored_as_files);
+            if *told == paths {
+                return;
+            }
+            told.clone_from(&paths);
+        }
+        self.mirror.disk.host.overleaf_tree(TreeNotice {
+            project_id: self.mirror.disk.project_id.clone(),
+            kind: TreeNoticeKind::StoredAsFiles { paths },
+        });
     }
 
     fn announce_removed(&self, previous: &Layout, removed: &[String]) {
@@ -384,12 +454,13 @@ impl LiveTree for OverleafLive {
                 return Err(error);
             }
         };
+        let kept = self.keep_adopted_under_blobs(&drawn.next);
         Ok(Some(Outgoing {
             work,
             next: drawn.next,
             texts: drawn.texts,
             crlf: drawn.crlf,
-            kept: Vec::new(),
+            kept,
             copied: false,
         }))
     }
@@ -437,6 +508,7 @@ impl LiveTree for OverleafLive {
 
     fn noticed(&self, previous: &Layout, _changed: &BTreeSet<String>, removed: &[String]) {
         self.announce_removed(previous, removed);
+        self.announce_stored_as_files();
     }
 
     fn upload<'a>(

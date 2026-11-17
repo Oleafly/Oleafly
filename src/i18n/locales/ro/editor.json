@@ -1259,7 +1259,8 @@
     "tabMark": "Schimbat pe disc. Deschide această filă ca să alegi ce versiune păstrezi."
   },
   "liveTab": {
-    "notOnOverleafYet": "Not on Overleaf yet"
+    "notOnOverleafYet": "Încă nu este în Overleaf",
+    "storedAsFile": "Overleaf stochează acest lucru ca fișier, așa că modificările tale se încarcă la salvare."
   },
   "labels": {
     "filterPlaceholder": "Numele etichetei",

@@ -118,6 +118,10 @@ export class LiveSessions {
     }
   }
 
+  relive(path: string): void {
+    this.local.delete(path);
+  }
+
   release(path: string): void {
     const session = this.sessions.get(path);
     if (!session) return;
@@ -158,10 +162,12 @@ export class LiveSessions {
 
   private detach(path: string, session: RemoteDocumentSession): void {
     if (this.sessions.get(path) !== session) return;
-    const edited = session.unconfirmed;
+    const reason = session.detachedBecause;
+    const gone = reason === "removed" || reason === "replaced";
+    const edited = !gone && session.unconfirmed;
     const shared = sharedText(session);
     this.sessions.delete(path);
-    this.local.add(path);
+    if (reason !== "replaced") this.local.add(path);
     session.close();
     this.options.detached(path, session.text(), edited, shared);
   }

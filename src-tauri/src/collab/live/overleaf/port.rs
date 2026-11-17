@@ -1,6 +1,8 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use oleafly_collab::doc::NodeKind;
+use oleafly_collab::materialize::Placed;
 use oleafly_collab::sync::{EndReason, LiveStatus};
 use oleafly_collab::CollabError;
 use oleafly_collab_protocol::projects::ProjectRole;
@@ -12,7 +14,7 @@ use oleafly_online::live::session::{
 use oleafly_online::live::tree_queue::{LocalFile, QueueState, Queued, TreeChange, TreeFailure};
 use oleafly_online::realtime::events::{ProjectEvent, PublicId};
 use oleafly_online::realtime::project::{flavor_for_compiler, Role};
-use oleafly_online::realtime::tree::PathChange;
+use oleafly_online::realtime::tree::{NodeKind as OverleafKind, PathChange};
 use oleafly_online::realtime::DocId;
 use oleafly_ot::DocMessage;
 
@@ -88,6 +90,36 @@ impl AppOverleafPort {
                     self.mirror.disk.project_id
                 ));
             }
+        }
+    }
+
+    fn place_early_moves(&self, changes: &[PathChange]) {
+        let mut adopted = guard(&self.mirror.adopted);
+        if adopted.is_empty() {
+            return;
+        }
+        let mut disk = guard(&self.mirror.disk.disk);
+        for change in changes {
+            let PathChange::Moved {
+                id,
+                from,
+                kind: OverleafKind::Doc,
+                ..
+            } = change
+            else {
+                continue;
+            };
+            if disk.layout.contains_key(&id.0) || !adopted.remove(from) {
+                continue;
+            }
+            disk.layout.insert(
+                id.0.clone(),
+                Placed {
+                    path: from.clone(),
+                    kind: NodeKind::Text,
+                    blob: None,
+                },
+            );
         }
     }
 
@@ -194,6 +226,10 @@ impl LivePort for AppOverleafPort {
 
     fn project_flags(&self, restricted: bool, deleted_externally: bool) {
         *guard(&self.mirror.flags) = (restricted, deleted_externally);
+        let known = *guard(&self.mirror.role);
+        if let Some((role, tracking)) = known {
+            announce_role(&self.mirror, role, tracking);
+        }
     }
 
     fn texts_changed(&self, docs: Vec<DocId>) {
@@ -213,6 +249,7 @@ impl LivePort for AppOverleafPort {
             .collect();
         guard(&self.mirror.removing).retain(|id| !replaced.iter().any(|old| old.0 == *id));
         guard(&self.mirror.replaced).extend(replaced);
+        self.place_early_moves(&changes);
         self.mirror.mark(std::iter::empty(), true);
     }
 
@@ -253,18 +290,27 @@ impl LivePort for AppOverleafPort {
 
     fn doc_stopped(&self, doc: &DocId, reason: DocStopReason) {
         let replaced = guard(&self.mirror.replaced).remove(doc);
-        if matches!(reason, DocStopReason::Removed) && !replaced {
+        let removed = matches!(reason, DocStopReason::Removed);
+        let deleted = removed && !replaced;
+        if deleted && guard(&self.mirror.kept).iter().any(|file| file.id == doc.0) {
             guard(&self.mirror.removing).insert(doc.0.clone());
         }
+        let reason = match reason {
+            DocStopReason::Removed if replaced => "replaced".to_owned(),
+            other => stop_reason(&other),
+        };
         let sink = guard(&self.mirror.sinks).remove(doc);
         if let Some(sink) = sink {
-            let reason = match reason {
-                DocStopReason::Removed if replaced => "replaced".to_owned(),
-                other => stop_reason(&other),
-            };
-            sink(DocMessage::Detached { reason });
+            sink(DocMessage::Detached {
+                reason: reason.clone(),
+            });
         }
-        self.announce_kept();
+        if !removed {
+            self.notice_for(doc, |path| OverleafNotice::Fault { path, reason });
+        }
+        if !deleted {
+            self.announce_kept();
+        }
     }
 
     fn project_event(&self, event: ProjectEvent) {
@@ -338,6 +384,14 @@ impl LivePort for AppOverleafPort {
         self.notice_for(doc, |path| OverleafNotice::Unsteady { path });
     }
 
+    fn external_update(&self, doc: &DocId) {
+        self.notice_for(doc, |path| OverleafNotice::External { path });
+    }
+
+    fn characters_replaced(&self, doc: &DocId) {
+        self.notice_for(doc, |path| OverleafNotice::Replaced { path });
+    }
+
     fn account_changed(&self, typed_as: Account) {
         let files = std::mem::take(&mut *guard(&self.mirror.kept))
             .into_iter()
@@ -398,6 +452,10 @@ impl LivePort for AppOverleafPort {
         }
     }
 
+    fn adopt_file_text(&self, path: &str) -> Option<String> {
+        self.mirror.adopt_file_text(path)
+    }
+
     fn doc_pending(&self, doc: &DocId, pending: bool) {
         let Some(path) = self.mirror.path_of(doc) else {
             return;
@@ -439,6 +497,7 @@ fn stop_reason(reason: &DocStopReason) -> String {
             DocFault::TooLarge => "too_large",
             DocFault::TooManyRanges => "too_many_ranges",
             DocFault::TypeMismatch => "type_mismatch",
+            DocFault::Unavailable => "unavailable",
             DocFault::Unsupported(_) => "unsupported",
             DocFault::Refused(_) => "refused",
         },

@@ -502,8 +502,8 @@
     "template_unavailable": "Oleafly nemohl tuto šablonu otevřít. Možná byla odstraněna z galerie Overleafu.",
     "browser_sign_in_missing": "Oleafly v tomto profilu prohlížeče nenašel žádné přihlášení k {{server}}. Přihlaste se přímo.",
     "browser_sign_in_failed": "Přihlášení z vašeho prohlížeče nefungovalo. Možná vypršelo. Přihlaste se přímo.",
-    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
-    "browser_missing": "That browser isn't installed anymore. Pick another one."
+    "browser_unavailable": "Oleafly nemohl pro přihlášení otevřít prohlížeč {{browser}}. Zkuste jiný prohlížeč.",
+    "browser_missing": "Tento prohlížeč už není nainstalovaný. Vyberte jiný."
   },
   "collab": {
     "suggestion_role": "Vaše role v tomto projektu nedovoluje navrhovat změny."

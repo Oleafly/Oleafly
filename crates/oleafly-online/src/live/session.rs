@@ -42,6 +42,9 @@ pub trait LivePort: Send + Sync + 'static {
     fn merged(&self, doc: &DocId, review: MergeReview);
     fn journal_failed(&self, reason: Option<String>);
     fn disk_text(&self, path: &str) -> Option<String>;
+    fn adopt_file_text(&self, path: &str) -> Option<String> {
+        self.disk_text(path)
+    }
     fn account_changed(&self, _typed_as: Account) {}
     fn doc_pending(&self, _doc: &DocId, _pending: bool) {}
     fn maintenance(&self, _message: &str, _delay: Duration) {}
@@ -181,6 +184,7 @@ pub struct SessionTuning {
     pub presence_with_peers: Duration,
     pub presence_alone: Duration,
     pub peer_reemit: Duration,
+    pub project_check_every: Duration,
 }
 
 impl Default for SessionTuning {
@@ -212,6 +216,7 @@ impl Default for SessionTuning {
             presence_with_peers: Duration::from_millis(500),
             presence_alone: Duration::from_secs(5 * 60),
             peer_reemit: Duration::from_secs(10),
+            project_check_every: Duration::from_secs(60),
         }
     }
 }

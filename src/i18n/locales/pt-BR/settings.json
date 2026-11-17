@@ -1731,8 +1731,8 @@
         "notInstalled": "Não instalado"
       },
       "tryAgain": "Tentar de novo",
-      "label": "Login do navegador",
-      "useBrowserSignIn": "Usar o login do meu navegador",
+      "label": "Copiar o login de um navegador",
+      "useBrowserSignIn": "Copiar o login do seu navegador",
       "signInDescription": "Copie seu login de {{server}} de um navegador deste computador, para não precisar fazer login de novo.",
       "site": "Site: {{domain}}",
       "confirmCopy": "O Oleafly vai ler os cookies de {{domain}} do perfil {{profile}} do {{browser}}. Eles ficam no Oleafly e só vão para {{domain}}. Você vai confirmar mais uma vez em uma caixa de diálogo do sistema.",
@@ -1812,17 +1812,31 @@
       "gitSave": "Salvar",
       "gitRemove": "Remover",
       "gitFailed": "O Oleafly não conseguiu salvar o token Git. Confira se você colou o token inteiro.",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
-      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
+      "browserLabel": "Fazer login com o seu navegador",
+      "browserDescription": "Para login com Google, instituição ou chave de acesso. O Oleafly abre {{server}} em uma nova janela do navegador e a fecha assim que você entrar.",
+      "browserAction": "Fazer login",
+      "browserPick": "Navegador para fazer login",
+      "browserWaiting": "Termine o login em {{server}} em {{browser}}. Fechar a janela cancela o login.",
+      "browserHint": "Use para login com Google, instituição ou chave de acesso.",
+      "windowLabel": "Fazer login em {{server}}",
+      "windowDescription": "O Oleafly abre uma janela de login e a fecha assim que você entrar. Para entrar com Google, sua instituição ou uma chave de acesso, instale Chrome, Edge, Brave, Chromium ou Firefox e faça login aqui com ele.",
+      "windowAction": "Fazer login",
+      "windowWaiting": "Termine o login em {{server}} na janela que abriu.",
       "unsent": {
-        "title": "Some changes haven't been sent to Overleaf",
-        "description": "If you sign out now, these changes stay on this computer and go to Overleaf the next time you sign in with this account. Sign in with a different account and they come back as copies next to their files instead. Or stay signed in and try again in a moment.",
-        "files": "Not sent yet: {{files}}",
-        "signOut": "Sign out anyway",
-        "stay": "Stay signed in"
+        "title": "Algumas alterações não foram enviadas ao Overleaf",
+        "description": "Se você sair agora, essas alterações ficam neste computador e vão para o Overleaf na próxima vez que você fizer login com esta conta. Se fizer login com outra conta, elas voltam como cópias ao lado dos respectivos arquivos. Ou continue conectado e tente de novo daqui a pouco.",
+        "files": "Ainda não enviado: {{files}}",
+        "signOut": "Sair mesmo assim",
+        "stay": "Continuar conectado"
+      },
+      "deletes": {
+        "title": "Ao excluir um arquivo em um projeto ao vivo",
+        "description": "Escolha o que acontece no Overleaf quando você exclui um arquivo ou pasta no Oleafly.",
+        "options": {
+          "ask": "Perguntar toda vez",
+          "always": "Excluir também no Overleaf",
+          "never": "Manter no Overleaf"
+        }
       }
     },
     "desktopApps": {

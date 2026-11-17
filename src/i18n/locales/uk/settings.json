@@ -1742,8 +1742,8 @@
         "notInstalled": "Не встановлено"
       },
       "tryAgain": "Спробувати ще раз",
-      "label": "Вхід із браузера",
-      "useBrowserSignIn": "Використати вхід із мого браузера",
+      "label": "Скопіювати вхід із браузера",
+      "useBrowserSignIn": "Скопіювати вхід із вашого браузера",
       "signInDescription": "Скопіюйте дані входу в {{server}} із браузера на цьому комп’ютері, щоб не входити знову.",
       "site": "Сайт: {{domain}}",
       "confirmCopy": "Oleafly прочитає файли cookie для {{domain}} з профілю {{profile}} у {{browser}}. Вони зберігаються в Oleafly й надсилаються лише на {{domain}}. Ви ще раз підтвердите це в системному вікні.",
@@ -1827,17 +1827,31 @@
       "gitSave": "Зберегти",
       "gitRemove": "Вилучити",
       "gitFailed": "Oleafly не вдалося зберегти токен Git. Перевірте, чи ви вставили токен повністю.",
-      "browserLabel": "Sign in with your browser",
-      "browserDescription": "For Google, institution or passkey sign-in. Oleafly opens {{server}} in a new browser window and closes it once you're in.",
-      "browserAction": "Sign in",
-      "browserPick": "Browser to sign in with",
-      "browserWaiting": "Finish signing in to {{server}} in {{browser}}. Closing the window cancels.",
+      "browserLabel": "Вхід через браузер",
+      "browserDescription": "Для входу через Google, навчальний заклад або ключ доступу. Oleafly відкриває {{server}} у новому вікні браузера й закриває його, щойно ви увійдете.",
+      "browserAction": "Увійти",
+      "browserPick": "Браузер для входу",
+      "browserWaiting": "Завершіть вхід на {{server}} у {{browser}}. Якщо закрити вікно, вхід скасується.",
+      "browserHint": "Підходить для входу через Google, навчальний заклад або ключ доступу.",
+      "windowLabel": "Вхід на {{server}}",
+      "windowDescription": "Oleafly відкриває вікно входу й закриває його, щойно ви увійдете. Щоб увійти через Google, навчальний заклад або ключ доступу, установіть Chrome, Edge, Brave, Chromium або Firefox і увійдіть через нього тут.",
+      "windowAction": "Увійти",
+      "windowWaiting": "Завершіть вхід на {{server}} у вікні, що відкрилося.",
       "unsent": {
-        "title": "Some changes haven't been sent to Overleaf",
-        "description": "If you sign out now, these changes stay on this computer and go to Overleaf the next time you sign in with this account. Sign in with a different account and they come back as copies next to their files instead. Or stay signed in and try again in a moment.",
-        "files": "Not sent yet: {{files}}",
-        "signOut": "Sign out anyway",
-        "stay": "Stay signed in"
+        "title": "Деякі зміни не надіслано в Overleaf",
+        "description": "Якщо ви вийдете зараз, ці зміни залишаться на цьому комп’ютері й потраплять в Overleaf під час наступного входу з цим обліковим записом. Якщо ввійти з іншим, вони повернуться як копії поруч із їхніми файлами. Можна також залишитися в системі й спробувати ще раз трохи згодом.",
+        "files": "Ще не надіслано: {{files}}",
+        "signOut": "Усе одно вийти",
+        "stay": "Залишитися в системі"
+      },
+      "deletes": {
+        "title": "Коли ви видаляєте файл у проєкті з редагуванням наживо",
+        "description": "Виберіть, що відбувається в Overleaf, коли ви видаляєте файл або теку в Oleafly.",
+        "options": {
+          "ask": "Запитувати щоразу",
+          "always": "Видаляти й в Overleaf",
+          "never": "Залишати в Overleaf"
+        }
       }
     },
     "desktopApps": {

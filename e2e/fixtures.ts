@@ -222,6 +222,11 @@ function adaptForPackagedRuntime<T>(target: T): T {
 
 const BRIDGE_SILENCE_LIMIT_MS = 90_000;
 let bridgeStoppedAnswering: string | null = null;
+const bridges = new WeakMap<object, PluginClient>();
+
+export function releaseBridge(page: object): void {
+  bridges.get(page)?.disconnect();
+}
 
 function failFastOnBridgeSilence(client: PluginClient): PluginClient {
   const send = client.send.bind(client);
@@ -280,6 +285,7 @@ function createNativeTest(dismissTours: boolean) {
       const ping = await client.send({ type: "ping" });
       if (!ping.ok) throw new Error("plugin ping failed");
       const page = adaptForPackagedRuntime(new TauriPage(client));
+      bridges.set(page, client);
       page.setDefaultTimeout(20_000);
       const firstPage = !nativePageOpened;
       try {

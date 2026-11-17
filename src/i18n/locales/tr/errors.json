@@ -498,8 +498,8 @@
     "template_unavailable": "Oleafly bu şablonu açamadı. Overleaf'in galerisinden kaldırılmış olabilir.",
     "browser_sign_in_missing": "Oleafly bu tarayıcı profilinde {{server}} için oturum bilgisi bulamadı. Doğrudan oturum açın.",
     "browser_sign_in_failed": "Tarayıcınızdan alınan oturum bilgisi işe yaramadı. Süresi dolmuş olabilir. Doğrudan oturum açın.",
-    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
-    "browser_missing": "That browser isn't installed anymore. Pick another one."
+    "browser_unavailable": "Oleafly oturum açmak için {{browser}} tarayıcısını açamadı. Başka bir tarayıcı deneyin.",
+    "browser_missing": "Bu tarayıcı artık yüklü değil. Başka birini seçin."
   },
   "collab": {
     "suggestion_role": "Bu projedeki rolünüz öneri yapmaya izin vermiyor."

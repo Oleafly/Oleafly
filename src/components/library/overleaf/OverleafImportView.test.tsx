@@ -117,7 +117,7 @@ describe("OverleafImportView", () => {
     render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
 
     await screen.findByTestId("overleaf-sign-in-panel");
-    await user.click(await screen.findByRole("button", { name: "Use the sign-in from my browser" }));
+    await user.click(await screen.findByRole("button", { name: "Copy the sign-in from your browser" }));
     await user.click(await screen.findByLabelText(/Google Chrome/));
     await user.click(screen.getByRole("button", { name: "Review import" }));
     await user.click(screen.getByRole("button", { name: "Copy sign-in" }));
@@ -144,7 +144,7 @@ describe("OverleafImportView", () => {
     await user.click(await within(panel).findByRole("button", { name: "Sign in with your browser" }));
     expect(api.overleafSignInWithBrowser).toHaveBeenCalledWith(SERVER, "firefox");
     expect(
-      await within(panel).findByText("Finish signing in to Overleaf in Firefox. The window closes by itself once you're in."),
+      await within(panel).findByText("Finish signing in to Overleaf in Firefox. The window closes by itself once you're in. Closing it cancels."),
     ).toBeVisible();
     expect(screen.getByTestId("overleaf-sign-in")).toBeDisabled();
     expect(screen.getByTestId("overleaf-change-server")).toBeDisabled();
@@ -158,7 +158,7 @@ describe("OverleafImportView", () => {
     render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
     await screen.findByTestId("overleaf-sign-in-panel");
     await waitFor(() => expect(cookies.detectBrowserCookieSources).toHaveBeenCalled());
-    expect(screen.queryByRole("button", { name: "Use the sign-in from my browser" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Copy the sign-in from your browser" })).toBeNull();
   });
 
   it("switches to another server and back to overleaf.com", async () => {

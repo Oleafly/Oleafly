@@ -329,7 +329,7 @@
       "loadFailed": "Oleafly kunde inte läsa in dina Overleaf-projekt.",
       "signInPrompt": "Logga in på Overleaf för att se dina projekt. Ett inloggningsfönster öppnas och stängs av sig självt när du är inloggad.",
       "signingIn": "Slutför inloggningen på Overleaf i fönstret som öppnades.",
-      "signingInBrowser": "Finish signing in to Overleaf in {{browser}}. The window closes by itself once you're in.",
+      "signingInBrowser": "Slutför inloggningen på Overleaf i {{browser}}. Fönstret stängs av sig självt när du är inloggad. Om du stänger det avbryts inloggningen.",
       "passkeyHint": "Om din nyckel inte fungerar i inloggningsfönstret väljer du ett annat alternativ där, till exempel ditt lösenord eller en uppmaning i telefonen.",
       "expired": "Din Overleaf-inloggning har gått ut. Logga in igen för att se dina projekt.",
       "signIn": "Logga in på Overleaf",

@@ -492,7 +492,7 @@
       "run": "이 컴퓨터에서 코드 실행"
     },
     "sharedViewer": "공유 프로젝트에서는 소유자와 편집자만 이 설정을 변경할 수 있습니다.",
-    "coauthorsChanged": "Changed by coauthors since your last compile"
+    "coauthorsChanged": "마지막 컴파일 이후 공동 저자가 변경함"
   },
   "datePicker": {
     "placeholder": "날짜 선택"
@@ -981,8 +981,8 @@
         "label": "노트"
       },
       "overleafLive": {
-        "label": "Live editing with Overleaf",
-        "description": "Edit projects you imported from Overleaf at the same time as your coauthors. Changes show up on both sides as you type. Off by default while still in beta."
+        "label": "Overleaf와 실시간 편집",
+        "description": "Overleaf에서 가져온 프로젝트를 공동 저자와 동시에 편집합니다. 입력하는 대로 양쪽에 변경 사항이 나타납니다. 아직 베타라서 기본값은 꺼짐입니다."
       },
       "researchTasks": {
         "description": "에이전트가 프로젝트 사본에서 혼자 작업하고, 바뀐 내용은 검토할 수 있도록 남겨 둡니다. 매우 불안정합니다. 실행이 멈추거나 실패할 수 있고, 직접 정리해야 하는 변경이 남을 수도 있으며, 실행하는 동안 내내 제공자의 할당량을 사용합니다. 설정에 연구 섹션이 추가됩니다. 끄면 실행 중인 모든 작업이 중지됩니다. 기본은 꺼짐입니다. 위험을 감수하고 켜세요.",
@@ -1612,28 +1612,28 @@
     }
   },
   "overleafLive": {
-    "title": "Live editing with Overleaf",
-    "live": "Live with Overleaf",
-    "connecting": "Connecting to Overleaf…",
-    "sending": "Sending changes to Overleaf…",
-    "reconnecting": "Reconnecting to Overleaf…",
-    "pausedBadge": "Live editing paused",
-    "pause": "Pause live editing",
-    "resume": "Resume live editing",
-    "reconnectNow": "Reconnect now",
-    "open": "Open in Overleaf",
-    "share": "Share on Overleaf…",
-    "signIn": "Sign in…",
-    "reconnectingIn": "Trying again in {{seconds}} s.",
-    "notConfirmed": "Not confirmed by Overleaf yet.",
-    "copyDetails": "Copy connection details",
-    "detailsCopied": "Connection details copied",
-    "copyDetailsFailed": "Couldn't copy the connection details",
+    "title": "Overleaf와 실시간 편집",
+    "live": "Overleaf와 실시간 연결 중",
+    "connecting": "Overleaf에 연결하는 중…",
+    "sending": "Overleaf로 변경 사항을 보내는 중…",
+    "reconnecting": "Overleaf에 다시 연결하는 중…",
+    "pausedBadge": "실시간 편집 일시 중지됨",
+    "pause": "실시간 편집 일시 중지",
+    "resume": "실시간 편집 다시 시작",
+    "reconnectNow": "지금 다시 연결",
+    "open": "Overleaf에서 열기",
+    "share": "Overleaf에서 공유…",
+    "signIn": "로그인…",
+    "reconnectingIn": "{{seconds}}초 후에 다시 시도합니다.",
+    "notConfirmed": "아직 Overleaf에서 확인되지 않았습니다.",
+    "copyDetails": "연결 세부 정보 복사",
+    "detailsCopied": "연결 세부 정보를 복사했습니다",
+    "copyDetailsFailed": "연결 세부 정보를 복사하지 못했습니다",
     "pauseDialog": {
-      "title": "Some changes haven't reached Overleaf yet",
-      "description": "If you pause now, they stay on this computer and go to Overleaf when you resume. Git sync stays off until then.",
-      "keepLive": "Keep editing live",
-      "pauseAnyway": "Pause anyway"
+      "title": "일부 변경 사항이 아직 Overleaf에 도착하지 않았습니다",
+      "description": "지금 일시 중지하면 변경 사항은 이 컴퓨터에 남아 있다가 다시 시작할 때 Overleaf로 전송됩니다. 그때까지 Git 동기화는 꺼진 상태로 유지됩니다.",
+      "keepLive": "계속 실시간 편집",
+      "pauseAnyway": "그래도 일시 중지"
     }
   },
   "stuckWindow": {

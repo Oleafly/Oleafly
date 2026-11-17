@@ -498,8 +498,8 @@
     "template_unavailable": "Oleafly kunne ikke åbne denne skabelon. Den er måske blevet fjernet fra Overleafs skabelongalleri.",
     "browser_sign_in_missing": "Oleafly fandt intet login til {{server}} i den browserprofil. Log ind i stedet.",
     "browser_sign_in_failed": "Login fra din browser virkede ikke. Det er måske udløbet. Log ind i stedet.",
-    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
-    "browser_missing": "That browser isn't installed anymore. Pick another one."
+    "browser_unavailable": "Oleafly kunne ikke åbne {{browser}} til login. Prøv en anden browser.",
+    "browser_missing": "Den browser er ikke installeret længere. Vælg en anden."
   },
   "collab": {
     "suggestion_role": "Din rolle i dette projekt giver ikke lov til forslag."

@@ -1,9 +1,9 @@
-import { type ChildProcess, type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import { type ChildProcess, type ChildProcessWithoutNullStreams, execFileSync, spawn } from "node:child_process";
 import { openSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { connect } from "node:net";
 import { createInterface } from "node:readline";
-import { test, expect } from "../fixtures";
+import { test, expect, releaseBridge } from "../fixtures";
 import { appLogPath } from "../ui-crash-guard";
 import {
   chooseProjectKind,
@@ -33,7 +33,7 @@ test.skip(
   !process.env.CI && (!STACK || !APP),
   "Needs OLEAFLY_E2E_OVERLEAF_STACK, the mock Overleaf server built with `cargo build -p oleafly-online --features test-support --example e2e_overleaf`, and OLEAFLY_E2E_APP_BINARY, a packaged app built with the e2e-testing feature.",
 );
-test.describe.configure({ mode: "serial" });
+test.describe.configure({ mode: "serial", retries: 0 });
 
 type Ready = { server: string; project: string };
 type Reply = Record<string, unknown> & { id: number; ok: boolean; error?: string };
@@ -93,9 +93,39 @@ test.afterAll(async () => {
   stack?.stop();
   const app = relaunched;
   if (!app?.pid || app.exitCode !== null) return;
-  app.kill();
+  killTree(app.pid);
   await exited(app.pid, 15_000).catch(() => app.kill("SIGKILL"));
 });
+
+function run(command: string, args: string[]): string {
+  try {
+    return execFileSync(command, args, { encoding: "utf8", timeout: 10_000 });
+  } catch (error) {
+    return `(${command} failed: ${String(error)})`;
+  }
+}
+
+function processReport(): string {
+  if (process.platform !== "win32") {
+    return run("ps", ["-ax", "-o", "pid,ppid,stat,comm"])
+      .split("\n")
+      .filter((line) => /oleafly|WebKit|WebContent/i.test(line))
+      .join("\n");
+  }
+  const ports = run("netstat", ["-ano", "-p", "TCP"])
+    .split("\n")
+    .filter((line) => line.includes(":6274"))
+    .join("\n");
+  return `${run("tasklist", ["/FI", "IMAGENAME eq oleafly.exe"])}\n${run("tasklist", ["/FI", "IMAGENAME eq msedgewebview2.exe"])}\n--- port 6274 ---\n${ports}`;
+}
+
+function killTree(pid: number) {
+  if (process.platform === "win32") {
+    console.log(`e2e: ${run("taskkill", ["/F", "/T", "/PID", String(pid)]).trim()}`);
+  } else {
+    process.kill(pid, "SIGKILL");
+  }
+}
 
 function bridgeAnswers(): Promise<boolean> {
   return new Promise((resolve) => {
@@ -136,12 +166,20 @@ function tail(path: string): string {
   }
 }
 
+async function bridgeDown(timeoutMs: number) {
+  const deadline = Date.now() + timeoutMs;
+  while (await bridgeAnswers()) {
+    if (Date.now() > deadline) throw new Error(`the killed app's test bridge still answers\n${processReport()}`);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+}
+
 async function bridgeUp(app: ChildProcess, output: string, timeoutMs: number) {
   const deadline = Date.now() + timeoutMs;
   while (!(await bridgeAnswers())) {
     if (Date.now() > deadline || app.exitCode !== null) {
       throw new Error(
-        `the relaunched app never opened its test bridge (pid ${app.pid}, exit ${app.exitCode}, signal ${app.signalCode})\n--- its output ---\n${tail(output)}\n--- app.log ---\n${tail(appLogPath())}\n--- mock server ---\n${stack.log.slice(-20).join("\n")}`,
+        `the relaunched app never opened its test bridge (pid ${app.pid}, exit ${app.exitCode}, signal ${app.signalCode})\n--- its output ---\n${tail(output)}\n--- app.log ---\n${tail(appLogPath())}\n--- mock server ---\n${stack.log.slice(-20).join("\n")}\n--- processes ---\n${processReport()}`,
       );
     }
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -222,11 +260,17 @@ test("text typed while Overleaf is unreachable survives the app being killed", a
     if (Date.now() > deadline) throw new Error(`the unsent journal never got ${OFFLINE}`);
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
+  while (!(await readProjectText(page, MAIN)).includes(OFFLINE)) {
+    if (Date.now() > deadline) throw new Error(`${MAIN} on disk never got ${OFFLINE} while the server was down`);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
   expect(occurrences(await stack.text(MAIN), OFFLINE)).toBe(0);
 
   const pid = await appProcessId(page);
-  process.kill(pid, "SIGKILL");
+  releaseBridge(page);
+  killTree(pid);
   await exited(pid, 15_000);
+  await bridgeDown(15_000);
   await stack.request({ cmd: "recover" });
   const output = test.info().outputPath("relaunched-app.log");
   const descriptor = openSync(output, "a");
