@@ -279,8 +279,8 @@ pub fn public_url(base: &Url, slug: &str) -> String {
 }
 
 fn day(ms: i64) -> String {
-    chrono::DateTime::from_timestamp_millis(ms)
-        .map(|at| at.format("%Y-%m-%d").to_string())
+    jiff::Timestamp::from_millisecond(ms)
+        .map(|at| at.strftime("%Y-%m-%d").to_string())
         .unwrap_or_default()
 }
 

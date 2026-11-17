@@ -1,6 +1,5 @@
-use std::fmt::Display;
-
-use chrono::{DateTime, Local, TimeZone};
+use jiff::tz::TimeZone;
+use jiff::{Timestamp, ZonedDateTime};
 use oleafly_collab_protocol::ids::SharedProjectId;
 use oleafly_collab_protocol::markup::plain_text;
 use oleafly_collab_protocol::roles::{ProjectRole, ServerRole};
@@ -88,23 +87,20 @@ pub fn platform_label(platform: &str) -> String {
     }
 }
 
-pub fn format_time<Tz: TimeZone>(at: &DateTime<Tz>) -> String
-where
-    Tz::Offset: Display,
-{
-    let offset = at.format("%:z").to_string();
+pub fn format_time(at: &ZonedDateTime) -> String {
+    let offset = at.strftime("%:z").to_string();
     let zone = if offset == "+00:00" {
         "UTC".to_string()
     } else {
         format!("UTC{offset}")
     };
-    format!("{} ({zone})", at.format("%A %-d %B %Y at %H:%M"))
+    format!("{} ({zone})", at.strftime("%A %-d %B %Y at %H:%M"))
 }
 
 pub fn local_time(at_ms: i64) -> String {
-    match Local.timestamp_millis_opt(at_ms).single() {
-        Some(at) => format_time(&at),
-        None => format!("{at_ms} ms after 1970 (UTC)"),
+    match Timestamp::from_millisecond(at_ms) {
+        Ok(at) => format_time(&at.to_zoned_datetime(TimeZone::system())),
+        Err(_) => format!("{at_ms} ms after 1970 (UTC)"),
     }
 }
 
@@ -503,8 +499,6 @@ pub fn test_message(server_name: &str) -> Content {
 
 #[cfg(test)]
 mod tests {
-    use chrono::FixedOffset;
-
     use super::*;
 
     const PROJECT: &str = "01920000-0000-7000-8000-0000000000aa";
@@ -623,15 +617,14 @@ mod tests {
 
     #[test]
     fn times_name_their_offset_and_utc_is_written_as_utc() {
-        let pacific = FixedOffset::west_opt(7 * 3600).unwrap();
-        let at = pacific.timestamp_millis_opt(1_760_286_600_000).unwrap();
+        let instant = Timestamp::from_millisecond(1_760_286_600_000).unwrap();
+        let pacific = instant.to_zoned_datetime(TimeZone::fixed(jiff::tz::offset(-7)));
         assert_eq!(
-            format_time(&at),
+            format_time(&pacific),
             "Sunday 12 October 2025 at 09:30 (UTC-07:00)"
         );
-        let utc = FixedOffset::east_opt(0).unwrap();
-        let at = utc.timestamp_millis_opt(1_760_286_600_000).unwrap();
-        assert_eq!(format_time(&at), "Sunday 12 October 2025 at 16:30 (UTC)");
+        let utc = instant.to_zoned_datetime(TimeZone::UTC);
+        assert_eq!(format_time(&utc), "Sunday 12 October 2025 at 16:30 (UTC)");
         assert!(local_time(1_760_286_600_000).contains("2025"));
     }
 

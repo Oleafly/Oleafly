@@ -80,6 +80,16 @@ overrides:
   # incompatible editor extension types across the wysiwyg package.
   "@tiptap/pm": 3.29.2
 
+auditConfig:
+  ignoreGhsas:
+    # GHSA-fc5q-39xc-vjpf: ReDoS in picomatch <= 4.0.7 through repeated
+    # single-branch extglobs. No fixed release exists yet (4.0.7 is the latest).
+    # It is reached only through Node tooling inside dependencies: sass >
+    # chokidar (Excalidraw) and sucrase's CLI > tinyglobby. The app calls
+    # sucrase's transform only and bundles neither watcher, so no glob it
+    # matches comes from a user. Drop this once picomatch 4.0.8 ships.
+    - GHSA-fc5q-39xc-vjpf
+
 patchedDependencies:
   '@replit/codemirror-emacs@6.1.0': patches/@replit__codemirror-emacs@6.1.0.patch
   '@terrastruct/d2@0.1.33': patches/@terrastruct__d2@0.1.33.patch
