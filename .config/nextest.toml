@@ -11,5 +11,5 @@ slow-timeout = { period = "120s", terminate-after = 5 }
 timing = { max-threads = 1 }
 
 [[profile.default.overrides]]
-filter = "binary_id(oleafly-server::stalls) | binary_id(oleafly-collab::remote_changes_keep_up) | binary_id(oleafly-collab::crowd)"
+filter = "binary_id(oleafly-server::stalls) | binary_id(oleafly-server::large_file_replay) | binary_id(oleafly-collab::remote_changes_keep_up) | binary_id(oleafly-collab::crowd)"
 test-group = "timing"
