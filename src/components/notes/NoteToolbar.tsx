@@ -743,7 +743,7 @@ export function NoteToolbar({
     ...(state.table
       ? [
           {
-            id: "table",
+            id: "tableTools",
             width: groupWidth(DIVIDER_WIDTH, DROPDOWN_TRIGGER_WIDTH),
             render: () => (
               <>
@@ -763,6 +763,7 @@ export function NoteToolbar({
           {
             id: "image",
             width: groupWidth(DIVIDER_WIDTH, ICON_BUTTON_WIDTH, DROPDOWN_TRIGGER_WIDTH),
+            tools: 2,
             render: () => (
               <>
                 <Divider />
@@ -787,6 +788,7 @@ export function NoteToolbar({
     {
       id: "view",
       width: GROUP_PADDING + groupWidth(DROPDOWN_TRIGGER_WIDTH, DROPDOWN_TRIGGER_WIDTH),
+      tools: 2,
       render: () => (
         <span data-note-toolbar-view className="ml-auto flex shrink-0 items-center gap-0.5 pl-2">
           <ToolbarMenuButton label={t(($) => $.notes.toolbar.width)} icon={<WidthIcon aria-hidden className="size-4" />} onCloseAutoFocus={back}>
@@ -915,6 +917,7 @@ export function NoteToolbar({
     {
       id: "colors",
       width: groupWidth(DIVIDER_WIDTH, DROPDOWN_TRIGGER_WIDTH, DROPDOWN_TRIGGER_WIDTH, ...icons(scriptMarks.length)),
+      tools: 2 + scriptMarks.length,
       active: state.highlightColor !== null || state.textColor !== null || scriptMarks.some((mark) => mark.checked),
       render: () => (
         <>
@@ -941,6 +944,7 @@ export function NoteToolbar({
     {
       id: "link",
       width: groupWidth(DIVIDER_WIDTH, ...icons(2)),
+      tools: 2,
       active: state.link,
       render: () => (
         <>
@@ -964,6 +968,7 @@ export function NoteToolbar({
     {
       id: "colors",
       width: groupWidth(DIVIDER_WIDTH, DROPDOWN_TRIGGER_WIDTH, DROPDOWN_TRIGGER_WIDTH),
+      tools: 2,
       active: state.highlightColor !== null || state.textColor !== null,
       render: () => (
         <>
@@ -982,6 +987,7 @@ export function NoteToolbar({
     {
       id: "embeds",
       width: groupWidth(DIVIDER_WIDTH, ...icons(3)),
+      tools: 3,
       active: state.codeBlock,
       render: () => (
         <>
@@ -1002,6 +1008,7 @@ export function NoteToolbar({
     {
       id: "table",
       width: groupWidth(DIVIDER_WIDTH, ...icons(1 + attachments.length)),
+      tools: 1 + attachments.length,
       render: () => (
         <>
           <Divider />
@@ -1019,6 +1026,7 @@ export function NoteToolbar({
     {
       id: "math",
       width: groupWidth(DIVIDER_WIDTH, ...icons(3), ...(citationMenu ? [DROPDOWN_TRIGGER_WIDTH] : []), DROPDOWN_TRIGGER_WIDTH),
+      tools: math.length + 1 + (citationMenu ? 1 : 0) + 1,
       render: () => (
         <>
           <Divider />

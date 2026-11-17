@@ -150,8 +150,7 @@ test.describe("Notes editing", () => {
     ];
     for (const [words, color, written] of highlights) {
       await notes.selectText(words);
-      await notes.tool("Highlight");
-      await notes.page.getByRole("menuitemcheckbox", { name: color }).click();
+      await notes.tool("Highlight", color);
       await expect.poll(() => notes.text("abstract")).toContain(written);
     }
     await expect(notes.editor.locator('mark.note-highlight[data-color="green"]')).not.toHaveCSS(
@@ -477,7 +476,7 @@ test.describe("Notes editing", () => {
     expect(await oneRow()).toBe(true);
 
     await page.setViewportSize({ width: 2600, height: 800 });
-    await expect(toolbar.getByRole("button", { name: "Insert block", exact: true })).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "Code block", exact: true })).toBeVisible();
     await expect(toolbar.getByRole("button", { name: "Heading 6", exact: true })).toBeVisible();
     expect(await oneRow()).toBe(true);
   });
@@ -502,11 +501,9 @@ test.describe("Notes editing", () => {
     await expect(quote).toHaveAttribute("aria-pressed", "false");
     await code.click();
     await expect(code).toHaveAttribute("aria-pressed", "true");
-    await expect(language).toBeVisible();
     expect((await list.boundingBox())?.x).toBe(listAt);
     expect(await toolbar.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
-    await language.click();
-    await page.getByRole("menuitemcheckbox", { name: "python", exact: true }).click();
+    await notes.tool("Code language", "python");
     await expect.poll(() => notes.text("abstract")).toContain(`\n${FENCE}python\nprint(1)\n${FENCE}`);
   });
 
@@ -518,14 +515,12 @@ test.describe("Notes editing", () => {
     const article = notes.shown.locator("article");
     const widthOf = async () => (await article.boundingBox())?.width ?? 0;
     const standard = await widthOf();
-    await notes.shown.getByRole("button", { name: "Note width" }).click();
-    await expect(page.getByRole("menuitemradio", { name: "Standard" })).toHaveAttribute("aria-checked", "true");
-    await page.getByRole("menuitemradio", { name: "Wide" }).click();
+    await expect(notes.shown.locator("[data-note-width]")).toHaveAttribute("data-note-width", "standard");
+    await notes.tool("Note width", "Wide");
     await expect.poll(widthOf).toBeGreaterThan(standard + 150);
     const wide = await widthOf();
 
-    await notes.shown.getByRole("button", { name: "Note width" }).click();
-    await page.getByRole("menuitemradio", { name: "Full width" }).click();
+    await notes.tool("Note width", "Full width");
     await expect.poll(widthOf).toBeGreaterThan(wide + 100);
     expect((await notes.firstParagraph.boundingBox())?.width ?? 0).toBeGreaterThan(wide);
 
