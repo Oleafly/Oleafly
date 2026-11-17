@@ -638,6 +638,8 @@
   "toolbar": {
     "noFile": "Žádný otevřený soubor",
     "unknownPerson": "Někdo",
+    "youElsewhere": "You, in another window",
+    "hiddenForViewLink": "You joined with a view link, so Overleaf doesn't show you who else is here.",
     "viewing": "Prohlíží {{path}}",
     "editing": "Upravuje {{path}}",
     "reviewing": "Recenzuje {{path}}",

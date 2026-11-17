@@ -7,7 +7,8 @@ use serde_json::{json, Value};
 
 use super::super::state::{Handshake, State};
 use super::super::{
-    Account, DocStopReason, LivePort, LiveState, MergeReview, OverleafSession, SessionTuning,
+    Account, DocStopReason, LivePeer, LivePort, LiveState, MergeReview, OverleafSession,
+    SessionTuning,
 };
 use super::{eventually, project, tuning, Rig, Tab, MAIN, NOTES, WAIT};
 use crate::live::journal::Journal;
@@ -17,7 +18,7 @@ use crate::live::tree_queue::{
 };
 use crate::live::{DocId, PublicId};
 use crate::realtime::codec;
-use crate::realtime::events::{EntityId, PeerPosition, ProjectEvent, ServerEvent};
+use crate::realtime::events::{EntityId, ProjectEvent, ServerEvent};
 use crate::realtime::project::{ProjectState, Role};
 use crate::realtime::tree::{NodeKind, PathChange};
 use crate::realtime::ProjectPage;
@@ -92,7 +93,7 @@ impl LivePort for TreePort {
         self.seen().trees.push(changes);
     }
 
-    fn peer(&self, _peer: PeerPosition) {}
+    fn peer(&self, _peer: LivePeer) {}
 
     fn peer_left(&self, _id: &PublicId) {}
 

@@ -1,6 +1,7 @@
 import { installOverleafLiveActions } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
 import {
+  onOverleafLiveMembers,
   overleafLivePause,
   overleafLiveProject,
   overleafLiveResume,
@@ -64,6 +65,13 @@ export function startOverleafLive(): () => void {
   const unsubscribeSignIn = useOverleafImportStore.subscribe((state, previous) => {
     if (state.status?.signedIn !== previous.status?.signedIn) void reload();
   });
+  const stopMembers = onOverleafLiveMembers((projectId) => {
+    const state = useCollabLiveStore.getState();
+    if (state.projectId === projectId && state.backend === "overleaf") void state.refreshMembers();
+  }).catch((error: unknown) => {
+    void logError("overleaf live members listen", error);
+    return () => undefined;
+  });
   const uninstall = installOverleafLiveActions({
     pause: async (projectId, anyway) => {
       const outcome = await overleafLivePause(projectId, anyway);
@@ -82,6 +90,7 @@ export function startOverleafLive(): () => void {
   const stopNotices = startOverleafNotices();
   return () => {
     stopNotices();
+    void stopMembers.then((stop) => stop());
     uninstall();
     unsubscribeSignIn();
     unsubscribePref();

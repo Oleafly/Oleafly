@@ -161,14 +161,16 @@ pub fn presence_set(
             cursor,
             anchor,
         }),
-        Some(Live::Overleaf(_)) | None => {}
+        Some(Live::Overleaf(live)) => live.presence(path.as_deref(), cursor),
+        None => {}
     }
 }
 
 pub fn presence_leave(project_id: &str) {
     match live_for(project_id) {
         Some(Live::Server(active)) => active.handle.leave_presence(),
-        Some(Live::Overleaf(_)) | None => {}
+        Some(Live::Overleaf(live)) => live.presence(None, None),
+        None => {}
     }
 }
 

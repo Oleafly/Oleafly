@@ -12,7 +12,7 @@ use super::{collab_shared, live_backend_for, mirror_dir, Backend, OverleafLive, 
 use crate::collab::commands::{signed_out, CollabCommandError};
 use crate::collab::live::host::{AppLiveHost, LiveHost};
 use crate::collab::live::lifecycle::{stop, stop_any};
-use crate::collab::live::payloads::{LiveInfo, StatusPayload};
+use crate::collab::live::payloads::{LiveInfo, OverleafMember, StatusPayload};
 use crate::collab::live::session::{guard, io, live_for, not_live, Live, ACTIVE, LIFECYCLE};
 use crate::collab::state::CollabState;
 use crate::overleaf::OverleafLink;
@@ -232,6 +232,14 @@ fn paused(link: &OverleafLink) -> Result<bool, CollabError> {
         Ok(journal) => Ok(journal.manifest().paused),
         Err(JournalError::Busy) => Ok(false),
         Err(error) => Err(CollabError::Io(error.to_string())),
+    }
+}
+
+#[tauri::command]
+pub async fn overleaf_live_members(project_id: String) -> Vec<OverleafMember> {
+    match live_for(&project_id) {
+        Some(Live::Overleaf(live)) => live.members(),
+        _ => Vec::new(),
     }
 }
 

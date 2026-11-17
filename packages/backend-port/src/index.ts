@@ -1401,6 +1401,7 @@ export interface CollabPresence {
     path: string | null;
     cursor: number | null;
     anchor: number | null;
+    person: { name: string | null; email: string | null } | null;
 }
 export interface CollabPresenceLeft {
     projectId: string;

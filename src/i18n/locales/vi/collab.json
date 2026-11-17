@@ -638,6 +638,8 @@
   "toolbar": {
     "noFile": "Không có tệp nào mở",
     "unknownPerson": "Ai đó",
+    "youElsewhere": "You, in another window",
+    "hiddenForViewLink": "You joined with a view link, so Overleaf doesn't show you who else is here.",
     "viewing": "Đang xem {{path}}",
     "editing": "Đang sửa {{path}}",
     "reviewing": "Đang xem xét {{path}}",

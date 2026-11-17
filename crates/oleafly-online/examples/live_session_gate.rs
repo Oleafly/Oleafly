@@ -5,10 +5,11 @@ use std::time::{Duration, Instant};
 use oleafly_online::client::Http;
 use oleafly_online::live::journal::Journal;
 use oleafly_online::live::session::{
-    DocStopReason, LivePort, LiveState, MergeReview, OverleafSession, SessionConfig, SessionTuning,
+    DocStopReason, LivePeer, LivePort, LiveState, MergeReview, OverleafSession, SessionConfig,
+    SessionTuning,
 };
 use oleafly_online::realtime::connection::Carrier;
-use oleafly_online::realtime::events::{DocId, PeerPosition, ProjectEvent, PublicId};
+use oleafly_online::realtime::events::{DocId, ProjectEvent, PublicId};
 use oleafly_online::realtime::project::Role;
 use oleafly_online::realtime::tree::PathChange;
 use oleafly_online::session::{self, SessionHandle};
@@ -70,7 +71,7 @@ impl LivePort for Printer {
 
     fn tree_changed(&self, _changes: Vec<PathChange>) {}
 
-    fn peer(&self, _peer: PeerPosition) {}
+    fn peer(&self, _peer: LivePeer) {}
 
     fn peer_left(&self, _id: &PublicId) {}
 

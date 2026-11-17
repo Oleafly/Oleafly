@@ -31,7 +31,7 @@ use super::bases::{merged_onto, WrittenTexts};
 use super::host::LiveHost;
 use super::live_disk::{writer_loop, LiveWriter, Mirrored};
 use super::live_tree::LiveTree;
-use super::payloads::{LiveInfo, StatusPayload};
+use super::payloads::{LiveInfo, OverleafMember, OverleafPerson, StatusPayload};
 use super::session::{guard, io, LiveDisk, WriterSignal};
 use super::write::WriteOutcome;
 use crate::collab::disk::{lf_text, DiskState};
@@ -421,6 +421,38 @@ impl OverleafLive {
 
     pub(crate) fn reconnect_now(&self) {
         self.session.reconnect_now();
+    }
+
+    pub(crate) fn presence(&self, path: Option<&str>, cursor: Option<u32>) {
+        let doc = path.and_then(|path| self.session.doc_at(path));
+        let at = doc.zip(cursor.and_then(|cursor| usize::try_from(cursor).ok()));
+        self.session.presence(at);
+    }
+
+    pub(crate) fn members(&self) -> Vec<OverleafMember> {
+        self.session
+            .members()
+            .into_iter()
+            .map(|member| {
+                let name = format!("{} {}", member.first_name, member.last_name);
+                let name = name.trim();
+                OverleafMember {
+                    person: OverleafPerson {
+                        display_name: if name.is_empty() {
+                            member.email.clone()
+                        } else {
+                            name.to_owned()
+                        },
+                        account_id: member.id,
+                        avatar_url: None,
+                        email: Some(member.email).filter(|email| !email.is_empty()),
+                        login: None,
+                    },
+                    role: port::project_role(member.role),
+                    granted_at: 0,
+                }
+            })
+            .collect()
     }
 
     pub(crate) fn repeat_status(&self) {

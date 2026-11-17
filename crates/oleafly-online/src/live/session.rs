@@ -24,8 +24,8 @@ use super::DocId;
 use crate::client::Http;
 use crate::error::{OnlineError, OnlineErrorKind};
 use crate::realtime::connection::{connect_tuned, Carrier, Connection, RealtimeError, Tuning};
-use crate::realtime::events::{EntityId, PeerPosition, ProjectEvent, PublicId, Rejection};
-use crate::realtime::project::{ProjectState, Role};
+use crate::realtime::events::{EntityId, ProjectEvent, PublicId, Rejection};
+use crate::realtime::project::{Member, ProjectState, Role};
 use crate::realtime::tree::{OverleafNode, PathChange};
 use crate::realtime::ProjectPage;
 use crate::session::SessionHandle;
@@ -35,7 +35,7 @@ pub trait LivePort: Send + Sync + 'static {
     fn role(&self, role: Role, tracking: bool);
     fn texts_changed(&self, docs: Vec<DocId>);
     fn tree_changed(&self, changes: Vec<PathChange>);
-    fn peer(&self, peer: PeerPosition);
+    fn peer(&self, peer: LivePeer);
     fn peer_left(&self, id: &PublicId);
     fn doc_stopped(&self, doc: &DocId, reason: DocStopReason);
     fn project_event(&self, event: ProjectEvent);
@@ -50,6 +50,7 @@ pub trait LivePort: Send + Sync + 'static {
     fn tree_queue(&self, _changes: Vec<Queued>) {}
     fn uploaded(&self, _path: &str, _tag: &str, _hash: Option<&str>) {}
     fn project_flags(&self, _restricted: bool, _deleted_externally: bool) {}
+    fn members_changed(&self) {}
     fn local_file(&self, _path: &str) -> Option<LocalFile> {
         None
     }
@@ -58,6 +59,16 @@ pub trait LivePort: Send + Sync + 'static {
     }
     fn external_update(&self, _doc: &DocId) {}
     fn characters_replaced(&self, _doc: &DocId) {}
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LivePeer {
+    pub id: PublicId,
+    pub user_id: Option<String>,
+    pub name: Option<String>,
+    pub email: Option<String>,
+    pub doc: Option<DocId>,
+    pub offset: Option<usize>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -167,6 +178,9 @@ pub struct SessionTuning {
     pub rate_floor: Duration,
     pub tree_retry: Duration,
     pub delete_settle: Duration,
+    pub presence_with_peers: Duration,
+    pub presence_alone: Duration,
+    pub peer_reemit: Duration,
 }
 
 impl Default for SessionTuning {
@@ -195,6 +209,9 @@ impl Default for SessionTuning {
             rate_floor: Duration::from_secs(15),
             tree_retry: Duration::from_secs(2),
             delete_settle: Duration::from_secs(3),
+            presence_with_peers: Duration::from_millis(500),
+            presence_alone: Duration::from_secs(5 * 60),
+            peer_reemit: Duration::from_secs(10),
         }
     }
 }
@@ -563,6 +580,14 @@ impl OverleafSession {
 
     pub fn text(&self, doc: &DocId) -> Option<String> {
         self.shared.lock().text(doc)
+    }
+
+    pub fn doc_at(&self, path: &str) -> Option<DocId> {
+        self.shared.lock().doc_at(path)
+    }
+
+    pub fn members(&self) -> Vec<Member> {
+        self.shared.lock().project.members.all().cloned().collect()
     }
 
     pub fn nodes(&self) -> Vec<OverleafNode> {

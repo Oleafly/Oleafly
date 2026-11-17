@@ -13,14 +13,23 @@ export function TreePresence({ onChange }: Readonly<{ onChange: (marks: PeerMark
   const live = useCollabLiveStore(
     useShallow((state) => ({
       members: state.members,
-      selfId: state.share?.account_id ?? null,
+      selfId: state.share?.account_id ?? state.selfId,
+      overleaf: state.backend === "overleaf",
     })),
   );
   const unknownName = t(($) => $.collab.toolbar.unknownPerson);
+  const ownLabel = live.overleaf ? t(($) => $.collab.toolbar.youElsewhere) : null;
   const marks = useMemo(
     () =>
-      peerMarks(peers, live.members, live.selfId, unknownName, (name) => t(($) => $.collab.tree.here, { name })),
-    [peers, live.members, live.selfId, unknownName, t],
+      peerMarks(
+        peers,
+        live.members,
+        live.selfId,
+        unknownName,
+        (name) => t(($) => $.collab.tree.here, { name }),
+        ownLabel,
+      ),
+    [peers, live.members, live.selfId, unknownName, t, ownLabel],
   );
 
   useEffect(() => {

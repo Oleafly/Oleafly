@@ -31,6 +31,9 @@ pub(crate) struct Quiet {
     pub(crate) statuses: Mutex<Vec<StatusPayload>>,
     pub(crate) roles: Mutex<Vec<RolePayload>>,
     pub(crate) kept: Mutex<Vec<KeptPayload>>,
+    pub(crate) presence: Mutex<Vec<PresencePayload>>,
+    pub(crate) left: Mutex<Vec<String>>,
+    pub(crate) members_changed: Mutex<usize>,
 }
 
 impl LiveHost for Quiet {
@@ -44,8 +47,15 @@ impl LiveHost for Quiet {
         self.kept.lock().unwrap().push(payload);
     }
     fn merged(&self, _: MergedPayload) {}
-    fn presence(&self, _: PresencePayload) {}
-    fn presence_left(&self, _: PresenceLeftPayload) {}
+    fn presence(&self, payload: PresencePayload) {
+        self.presence.lock().unwrap().push(payload);
+    }
+    fn presence_left(&self, payload: PresenceLeftPayload) {
+        self.left.lock().unwrap().push(payload.device_id);
+    }
+    fn overleaf_members(&self, _: crate::collab::live::payloads::OverleafMembersPayload) {
+        *self.members_changed.lock().unwrap() += 1;
+    }
     fn folder_changed(&self, _: FolderChange) {}
     fn new_device(&self, _: NewDevicePayload) {}
     fn doc_pending(&self, payload: DocPendingPayload) {

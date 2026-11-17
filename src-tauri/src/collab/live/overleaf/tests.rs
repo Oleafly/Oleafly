@@ -866,3 +866,94 @@ fn a_reviewers_typing_reaches_the_service_as_tracked_changes() {
         rig.finish().await;
     });
 }
+
+#[test]
+fn a_coauthors_position_reaches_presence_with_its_path_and_offset() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        let doc = rig.doc(MAIN);
+        let _tab = rig.open(MAIN);
+        let mut bob = rig.mock.peer("bob");
+        bob.join(&doc);
+        bob.emit(
+            "clientTracking.updatePosition",
+            vec![serde_json::json!({ "row": 0, "column": 3, "doc_id": doc })],
+        );
+        let bob_id = bob.public_id.clone();
+        eventually("bob's caret reaches presence", || {
+            rig.host.presence.lock().unwrap().iter().any(|payload| {
+                payload.device_id == bob_id
+                    && payload.path.as_deref() == Some(MAIN)
+                    && payload.cursor == Some(3)
+            })
+        })
+        .await;
+        let shown = rig
+            .host
+            .presence
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|payload| payload.device_id == bob_id)
+            .cloned()
+            .unwrap();
+        assert_eq!(shown.account_id, rig.mock.user("bob").id);
+        assert_eq!(
+            shown.person.and_then(|person| person.name).as_deref(),
+            Some("Bob Tester")
+        );
+        let members = rig.live.members();
+        let bob_member = members
+            .iter()
+            .find(|member| member.person.account_id == rig.mock.user("bob").id)
+            .unwrap();
+        assert_eq!(bob_member.person.display_name, "Bob Tester");
+        assert!(matches!(bob_member.role, ProjectRole::Editor));
+        bob.drop_connection();
+        eventually("bob leaves", || {
+            rig.host.left.lock().unwrap().contains(&bob_id)
+        })
+        .await;
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn our_caret_reaches_the_service() {
+    run(async {
+        let rig = OverleafRig::start(
+            project("Hello\n", "Intro\n"),
+            &[(MAIN, "Hello\n"), (INTRO, "Intro\n")],
+        )
+        .await;
+        let doc = rig.doc(MAIN);
+        let _tab = rig.open(MAIN);
+        eventually("the doc is joined", || {
+            rig.mock
+                .received("joinDoc")
+                .iter()
+                .any(|sent| sent.args.first() == Some(&serde_json::json!(doc)))
+        })
+        .await;
+        crate::collab::live::editor::presence_set(
+            &rig.project_id,
+            Some(MAIN.to_owned()),
+            Some(4),
+            Some(1),
+        );
+        eventually("the position reaches the server", || {
+            rig.mock
+                .received("clientTracking.updatePosition")
+                .iter()
+                .any(|sent| {
+                    sent.args[0] == serde_json::json!({ "row": 0, "column": 4, "doc_id": doc })
+                })
+        })
+        .await;
+        rig.finish().await;
+    });
+}

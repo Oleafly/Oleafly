@@ -91,6 +91,36 @@ pub struct PeerPosition {
 }
 
 impl PeerPosition {
+    pub fn connected_users(reply: &[Value]) -> Vec<PeerPosition> {
+        reply
+            .get(1)
+            .and_then(Value::as_array)
+            .map(|users| users.iter().filter_map(PeerPosition::from_user).collect())
+            .unwrap_or_default()
+    }
+
+    fn from_user(user: &Value) -> Option<PeerPosition> {
+        let name = [text(user, "first_name"), text(user, "last_name")]
+            .into_iter()
+            .flatten()
+            .collect::<Vec<_>>()
+            .join(" ");
+        let cursor = user.get("cursorData");
+        Some(PeerPosition {
+            id: PublicId(text(user, "client_id")?),
+            user_id: text(user, "user_id"),
+            name: Some(name.trim().to_string()).filter(|name| !name.is_empty()),
+            email: text(user, "email"),
+            doc: cursor.and_then(|cursor| text(cursor, "doc_id")).map(DocId),
+            row: cursor
+                .and_then(|cursor| cursor.get("row"))
+                .and_then(Value::as_u64),
+            column: cursor
+                .and_then(|cursor| cursor.get("column"))
+                .and_then(Value::as_u64),
+        })
+    }
+
     fn from_value(value: &Value) -> Option<PeerPosition> {
         Some(PeerPosition {
             id: PublicId(text(value, "id")?),

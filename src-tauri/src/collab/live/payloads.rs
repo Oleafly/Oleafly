@@ -16,6 +16,7 @@ pub const PROJECT_FULL_EVENT: &str = "collab-live-project-full";
 pub const LIVE_WRITTEN_EVENT: &str = "collab-live-written";
 pub const ACCOUNT_CHANGED_EVENT: &str = "overleaf-live-account-changed";
 pub const DOC_PENDING_EVENT: &str = "collab-live-doc-pending";
+pub const OVERLEAF_MEMBERS_EVENT: &str = "overleaf-live-members";
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -151,6 +152,35 @@ pub struct PresencePayload {
     pub path: Option<String>,
     pub cursor: Option<u32>,
     pub anchor: Option<u32>,
+    pub person: Option<PresencePerson>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct PresencePerson {
+    pub name: Option<String>,
+    pub email: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OverleafMembersPayload {
+    pub project_id: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct OverleafMember {
+    pub person: OverleafPerson,
+    pub role: ProjectRole,
+    pub granted_at: i64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct OverleafPerson {
+    pub account_id: String,
+    pub display_name: String,
+    pub avatar_url: Option<String>,
+    pub email: Option<String>,
+    pub login: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]

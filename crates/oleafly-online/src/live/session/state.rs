@@ -10,8 +10,8 @@ use serde_json::Value;
 
 use super::catch_up::History;
 use super::{
-    Account, DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview, Resolution, Seed,
-    SignedIn, UnsentDoc,
+    Account, DocStopReason, LiveEnd, LiveError, LivePeer, LivePort, LiveState, MergeReview,
+    Resolution, Seed, SignedIn, UnsentDoc,
 };
 use crate::live::doc::{Applied, DocError, DocFault, Limit, OutgoingUpdate, OverleafDoc, Rejoin};
 use crate::live::format::{CodecError, DocFormat, FormatState};
@@ -19,10 +19,11 @@ use crate::live::join::{JoinFailure, JoinedDoc};
 use crate::live::journal::{DocRecord, Journal, ProjectManifest, WRITE_EVERY};
 use crate::live::tree_queue::Queued;
 use crate::live::{AppliedUpdate, DocId, PublicId, SendMode, Tracking};
-use crate::realtime::events::{AccessEvent, EntityId, PeerPosition, ProjectEvent};
+use crate::realtime::events::{AccessEvent, EntityId, ProjectEvent};
 use crate::realtime::project::{Members, ProjectState, Rejoined, Role};
 use crate::realtime::tree::{NodeKind, PathChange};
 
+mod peers;
 mod tree;
 
 pub(super) use tree::{name_of, parent_of, Finished, Job};
@@ -35,9 +36,10 @@ pub(super) enum Notice {
     State(LiveState),
     Role(Role, bool),
     Flags(bool, bool),
+    MembersChanged,
     Texts(Vec<DocId>),
     Tree(Vec<PathChange>),
-    Peer(PeerPosition),
+    Peer(LivePeer),
     PeerLeft(PublicId),
     Stopped(DocId, DocStopReason),
     Project(ProjectEvent),
@@ -65,6 +67,7 @@ pub(super) fn deliver(port: &dyn LivePort, notices: Vec<Notice>) {
             Notice::State(state) => port.state(state),
             Notice::Role(role, tracking) => port.role(role, tracking),
             Notice::Flags(restricted, deleted) => port.project_flags(restricted, deleted),
+            Notice::MembersChanged => port.members_changed(),
             Notice::Texts(docs) => port.texts_changed(docs),
             Notice::Tree(changes) => port.tree_changed(changes),
             Notice::Peer(peer) => port.peer(peer),
@@ -236,6 +239,7 @@ pub(super) struct State {
     replaced_shown: bool,
     unreadable: u8,
     after_change: Option<BTreeSet<DocId>>,
+    peers: peers::Peers,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -290,6 +294,7 @@ impl State {
             replaced_shown: false,
             unreadable: 0,
             after_change: None,
+            peers: peers::Peers::default(),
         };
         state.take_journal(journal.docs());
         state.take_tree_queue(journal.tree_queue());
@@ -332,6 +337,7 @@ impl State {
 
     pub(super) fn park_signed_out(&mut self) {
         if self.ended.is_none() {
+            self.forget_peers();
             self.online = false;
             self.signed_out = true;
             self.last_pending = None;
@@ -503,6 +509,7 @@ impl State {
         if self.ended.is_some() {
             return;
         }
+        self.forget_peers();
         self.online = false;
         self.last_pending = None;
         let pending = self.pending();
@@ -512,6 +519,7 @@ impl State {
 
     pub(super) fn idle(&mut self) {
         if self.ended.is_none() {
+            self.forget_peers();
             self.online = false;
             self.last_pending = None;
             self.notices.push(Notice::State(LiveState::Idle));
@@ -547,6 +555,7 @@ impl State {
             if matches!(end, LiveEnd::Removed | LiveEnd::ProjectGone) {
                 self.keep_unsent();
             }
+            self.forget_peers();
             self.online = false;
             self.ended = Some(end.clone());
             self.notices.push(Notice::State(LiveState::Ended(end)));
@@ -639,7 +648,7 @@ impl State {
         OverleafDoc::joined(doc.clone(), version, text, format)
     }
 
-    fn doc_at(&self, path: &str) -> Option<DocId> {
+    pub(super) fn doc_at(&self, path: &str) -> Option<DocId> {
         let id = self.project.tree.id_at(path)?;
         let node = self.project.tree.node(id)?;
         (node.kind == NodeKind::Doc).then(|| DocId(id.0.clone()))
@@ -788,24 +797,6 @@ impl State {
             return Some(record.local_text.clone());
         }
         slot.editor.as_ref().map(|editor| editor.channel.text())
-    }
-
-    pub(super) fn set_presence(&mut self, at: Option<(DocId, usize)>) {
-        self.presence = at;
-        self.presence_due = true;
-    }
-
-    pub(super) fn take_presence(&mut self) -> Option<(DocId, u64, u64)> {
-        if !std::mem::take(&mut self.presence_due) || self.project.restricted {
-            return None;
-        }
-        let (doc, offset) = self.presence.clone()?;
-        let slot = self
-            .slots
-            .get(&doc)
-            .filter(|slot| slot.phase == Phase::Joined)?;
-        let (row, column) = crate::live::presence::row_column(slot.doc.as_ref()?.text(), offset);
-        Some((doc, row, column))
     }
 
     fn reset_editor(&mut self, doc: &DocId) {
@@ -1490,7 +1481,7 @@ impl State {
         self.seed(Vec::new());
         self.hand_back_unsendable();
         self.rejoin_all(Phase::CatchUp);
-        self.presence_due = self.presence.is_some();
+        self.presence_asked();
         self.announce();
         Handshake::Joined
     }
@@ -1530,14 +1521,6 @@ impl State {
         }
     }
 
-    pub(super) fn peer(&mut self, peer: PeerPosition) {
-        self.notices.push(Notice::Peer(peer));
-    }
-
-    pub(super) fn peer_left(&mut self, id: PublicId) {
-        self.notices.push(Notice::PeerLeft(id));
-    }
-
     pub(super) fn project_event(&mut self, event: ProjectEvent) {
         self.project.apply_project(&event);
         if event == ProjectEvent::DeletedOrRenamedExternally {
@@ -1568,6 +1551,7 @@ impl State {
 
     pub(super) fn members_refreshed(&mut self, members: Members) {
         self.project.members = members;
+        self.notices.push(Notice::MembersChanged);
         let Some(role) = self.project.members.role_of(&self.me) else {
             return;
         };

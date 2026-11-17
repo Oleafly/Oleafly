@@ -1,7 +1,8 @@
 import type { OverleafConnectionDetails } from "@oleafly/backend-port";
 import { invoke } from "@tauri-apps/api/core";
+import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { withoutTrailingSlashes } from "@/lib/path-utils";
-import type { CollabLiveInfo } from "@/lib/tauri";
+import type { CollabLiveInfo, CollabProjectMember } from "@/lib/tauri";
 
 export interface OverleafLiveProject {
   server: string;
@@ -35,6 +36,13 @@ export const overleafLiveResolve = (projectId: string, path: string, keep: "mine
 
 export const overleafLiveConnectionDetails = (projectId: string) =>
   invoke<OverleafConnectionDetails>("overleaf_live_connection_details", { projectId });
+
+export const overleafLiveMembers = (projectId: string) =>
+  invoke<CollabProjectMember[]>("overleaf_live_members", { projectId });
+
+export function onOverleafLiveMembers(handler: (projectId: string) => void): Promise<UnlistenFn> {
+  return listen<{ projectId: string }>("overleaf-live-members", ({ payload }) => handler(payload.projectId));
+}
 
 export function overleafProjectPage(link: Pick<OverleafLiveProject, "server" | "remoteId">): string {
   return `${withoutTrailingSlashes(link.server)}/project/${encodeURIComponent(link.remoteId)}`;

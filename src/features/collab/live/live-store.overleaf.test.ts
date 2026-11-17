@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   stop: vi.fn(async () => undefined),
   pause: vi.fn(),
   resume: vi.fn(async () => undefined),
+  members: vi.fn(async () => [] as unknown[]),
   logError: vi.fn(),
   toast: vi.fn(),
 }));
@@ -51,6 +52,8 @@ vi.mock("@/lib/overleaf-live", () => ({
   overleafLivePause: mocks.pause,
   overleafLiveResume: mocks.resume,
   overleafLiveUnlink: vi.fn(async () => undefined),
+  overleafLiveMembers: mocks.members,
+  onOverleafLiveMembers: listener("overleaf-members"),
 }));
 vi.mock("@/lib/log", () => ({ logError: mocks.logError }));
 vi.mock("@/lib/toast", () => ({ toast: mocks.toast, notifyError: mocks.toast }));
@@ -226,6 +229,25 @@ describe("live editing with Overleaf", () => {
     expect(useLiveBackend.getState().pendingPaths).toEqual(["intro.tex"]);
     status({ state: "ended", reason: "failed" });
     expect(useLiveBackend.getState().pendingPaths).toEqual([]);
+  });
+
+  it("reads members from the session when it goes live and again when they change", async () => {
+    const bob = {
+      person: { account_id: "u-bob", display_name: "Bob Tester", avatar_url: null, email: null, login: null },
+      role: "editor" as const,
+      granted_at: 0,
+    };
+    mocks.members.mockResolvedValueOnce([]).mockResolvedValueOnce([bob]);
+    begin();
+    await settle();
+    expect(mocks.members).toHaveBeenCalledWith(PROJECT);
+    expect(useCollabLiveStore.getState()).toMatchObject({ members: [], selfId: INFO.account_id });
+    mocks.handlers["overleaf-members"]?.("other");
+    await settle();
+    expect(mocks.members).toHaveBeenCalledTimes(1);
+    mocks.handlers["overleaf-members"]?.(PROJECT);
+    await settle();
+    expect(useCollabLiveStore.getState().members).toEqual([bob]);
   });
 
   it("keeps an account change for this project until it is dismissed", async () => {

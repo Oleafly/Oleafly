@@ -15,7 +15,7 @@ use crate::error::OnlineErrorKind;
 use crate::live::join::parse_join;
 use crate::live::DocId;
 use crate::realtime::connection::{connect_tuned, Connection, JoinProject, RealtimeError};
-use crate::realtime::events::{Rejection, ServerEvent};
+use crate::realtime::events::{PeerPosition, Rejection, ServerEvent};
 use crate::realtime::ProjectPage;
 
 enum Asked {
@@ -105,6 +105,7 @@ pub(super) struct Driver {
     waiting_since: Option<tokio::time::Instant>,
     slow_shown: bool,
     joined_once: bool,
+    users_asked: bool,
 }
 
 impl Driver {
@@ -138,6 +139,7 @@ impl Driver {
             waiting_since: None,
             slow_shown: false,
             joined_once,
+            users_asked: false,
         }
     }
 
@@ -293,7 +295,14 @@ impl Driver {
         if !matches!(sent, Step::Go) {
             return sent;
         }
+        let users = self.connected_users(connection).await;
+        if !matches!(users, Step::Go) {
+            return users;
+        }
         self.presence(connection);
+        let every = self.config.tuning.peer_reemit;
+        self.shared
+            .with(|state| state.reemit_peers(Instant::now(), every));
         self.write_journal(false);
         self.shared.with(|state| {
             let changes = state.project.tree.due(Instant::now());
@@ -334,6 +343,24 @@ impl Driver {
             None => Asked::Stopping,
             Some(Ok(Ok(reply))) => Asked::Reply(reply),
             Some(_) => Asked::Lost,
+        }
+    }
+
+    async fn connected_users(&mut self, connection: &Connection) -> Step {
+        if std::mem::replace(&mut self.users_asked, true) {
+            return Step::Go;
+        }
+        match self
+            .ask(connection, "clientTracking.getConnectedUsers", Vec::new())
+            .await
+        {
+            Asked::Reply(reply) => {
+                let users = PeerPosition::connected_users(&reply);
+                self.shared.with(|state| state.connected_users(users));
+                Step::Go
+            }
+            Asked::Lost => Step::Lost,
+            Asked::Stopping => Step::Stopping,
         }
     }
 
@@ -401,7 +428,14 @@ impl Driver {
     }
 
     fn presence(&self, connection: &Connection) {
-        let Some((doc, row, column)) = self.shared.with(State::take_presence) else {
+        let (with_peers, alone) = (
+            self.config.tuning.presence_with_peers,
+            self.config.tuning.presence_alone,
+        );
+        let Some((doc, row, column)) = self
+            .shared
+            .with(|state| state.take_presence(Instant::now(), with_peers, alone))
+        else {
             return;
         };
         connection.emit(
@@ -432,7 +466,8 @@ impl Driver {
                 self.reconnect_after = Some(Wait::held(delay));
             }
             ServerEvent::Rejected(rejection) => self.rejected(rejection),
-            ServerEvent::PeersRefresh | ServerEvent::Unknown { .. } => {}
+            ServerEvent::PeersRefresh => self.shared.with(State::presence_asked),
+            ServerEvent::Unknown { .. } => {}
         }
     }
 
@@ -646,6 +681,7 @@ impl Driver {
             .shared
             .with(|state| state.rejoined(public_id, join.response));
         if handshake == Handshake::Joined {
+            self.users_asked = false;
             self.connected_at = Instant::now();
             self.online_since = tokio::time::Instant::now();
             self.legacy_checked = false;

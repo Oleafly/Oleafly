@@ -43,6 +43,7 @@ pub trait LiveHost: Send + Sync + 'static {
     fn account_changed(&self, _payload: super::payloads::AccountChangedPayload) {}
     fn doc_pending(&self, _payload: super::payloads::DocPendingPayload) {}
     fn overleaf_notice(&self, _payload: super::overleaf::notices::OverleafNoticePayload) {}
+    fn overleaf_members(&self, _payload: super::payloads::OverleafMembersPayload) {}
     fn app(&self) -> Option<tauri::AppHandle> {
         None
     }
@@ -156,6 +157,12 @@ impl LiveHost for AppLiveHost {
         let _ = self
             .app
             .emit(super::payloads::ACCOUNT_CHANGED_EVENT, payload);
+    }
+
+    fn overleaf_members(&self, payload: super::payloads::OverleafMembersPayload) {
+        let _ = self
+            .app
+            .emit(super::payloads::OVERLEAF_MEMBERS_EVENT, payload);
     }
 
     fn doc_pending(&self, payload: super::payloads::DocPendingPayload) {

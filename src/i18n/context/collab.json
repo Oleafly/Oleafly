@@ -445,7 +445,8 @@
     "viewer": "Short line under the role name in the role picker. Keep it as short as the English."
   },
   "toolbar": {
-    "reviewing": "Tooltip on a collaborator's avatar when that person is a reviewer working in a file. {{path}} is the file. Same pattern as Editing {{path}}."
+    "reviewing": "Tooltip on a collaborator's avatar when that person is a reviewer working in a file. {{path}} is the file. Same pattern as Editing {{path}}.",
+    "youElsewhere": "Avatar name for this same person signed in elsewhere, such as Overleaf in a browser tab or Oleafly on another computer. The app can't tell which, so keep it general."
   },
   "access": {
     "reviewerBy": "Banner after the owner changes this person's role to Reviewer. {{name}} is the owner. Use the same words for suggestions as the Suggesting mode.",

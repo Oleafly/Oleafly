@@ -7,7 +7,7 @@ import {
   useLiveBackend,
 } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
-import type { OverleafLiveProject } from "@/lib/overleaf-live";
+import { overleafLiveMembers, type OverleafLiveProject } from "@/lib/overleaf-live";
 import type { OverleafLiveAccountChanged } from "@oleafly/backend-port";
 import type {
   CollabCommentNotSent,
@@ -127,7 +127,9 @@ export interface CollabLiveStoreState {
   share: CollabShareInfo | null;
   overleaf: OverleafLiveProject | null;
   role: CollabProjectRole | null;
+  selfId: string | null;
   tracking: boolean;
+  restricted: boolean;
   deletedExternally: boolean;
   status: CollabLiveSyncState | null;
   pending: number;
@@ -187,7 +189,9 @@ function emptyLive(projectId: string | null): LiveData {
     share: null,
     overleaf: null,
     role: null,
+    selfId: null,
     tracking: false,
+    restricted: false,
     deletedExternally: false,
     status: null,
     pending: 0,
@@ -216,6 +220,18 @@ function nameIn(lists: readonly (readonly CollabProjectMember[])[], accountId: s
     if (found) return found.display_name;
   }
   return "";
+}
+
+function presencePerson(payload: CollabPresence): CollabPerson | null {
+  const name = payload.person?.name;
+  if (!name) return null;
+  return {
+    account_id: payload.accountId,
+    display_name: name,
+    avatar_url: null,
+    email: payload.person?.email ?? null,
+    login: null,
+  };
 }
 
 function withPeople(
@@ -254,11 +270,12 @@ export const useCollabLiveStore: UseBoundStore<StoreApi<CollabLiveStoreState>> =
     },
     refreshMembers: async () => {
       const projectId = get().projectId;
-      if (!projectId || !get().share) return;
+      const overleaf = get().backend === "overleaf";
+      if (!projectId || (!overleaf && !get().share)) return;
       const request = ++membersRequest;
       let members: CollabProjectMember[];
       try {
-        members = await collabMembersList(projectId);
+        members = overleaf ? await overleafLiveMembers(projectId) : await collabMembersList(projectId);
       } catch (error) {
         void logError("collab members", error);
         return;
@@ -412,7 +429,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     }
     run.deviceId = info.device_id;
     releaseEditors(run.projectId);
-    store.setState({ role: info.role });
+    store.setState({ role: info.role, selfId: info.account_id });
     void store.getState().refreshMembers();
     run.release =
       hooks.started?.({
@@ -448,7 +465,9 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     const state = store.getState();
     const unknown = accountIds.filter(
       (accountId) =>
-        accountId !== state.share?.account_id && !personFor(state.members, accountId) && !askedAbout.has(accountId),
+        accountId !== (state.share?.account_id ?? state.selfId) &&
+        !personFor(state.members, accountId) &&
+        !askedAbout.has(accountId),
     );
     if (unknown.length === 0) return;
     for (const accountId of unknown) askedAbout.add(accountId);
@@ -501,6 +520,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     store.setState({
       role: payload.role,
       tracking: payload.tracking,
+      restricted: payload.restricted,
       deletedExternally: payload.deletedExternally,
       accessNotice: notice,
     });
@@ -547,12 +567,12 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
         [payload.deviceId]: {
           deviceId: payload.deviceId,
           accountId: payload.accountId,
-          person: personFor(state.members, payload.accountId),
+          person: personFor(state.members, payload.accountId) ?? presencePerson(payload),
           path: payload.path,
           cursor: payload.cursor,
           anchor: payload.anchor,
           seenAt: Date.now(),
-          hue: peerHue(payload.accountId, state.share?.account_id ?? null),
+          hue: peerHue(payload.accountId, state.share?.account_id ?? state.selfId),
         },
       },
     }));
@@ -671,7 +691,9 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
       store.setState({
         backend: null,
         role: null,
+        selfId: null,
         tracking: false,
+        restricted: false,
         deletedExternally: false,
         status: null,
         pending: 0,

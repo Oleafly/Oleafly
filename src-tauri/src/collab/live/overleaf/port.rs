@@ -7,9 +7,9 @@ use oleafly_collab_protocol::projects::ProjectRole;
 use oleafly_online::error::{OnlineError, OnlineErrorKind};
 use oleafly_online::live::doc::DocFault;
 use oleafly_online::live::session::{
-    Account, DocStopReason, LiveEnd, LivePort, LiveState, MergeReview,
+    Account, DocStopReason, LiveEnd, LivePeer, LivePort, LiveState, MergeReview,
 };
-use oleafly_online::realtime::events::{PeerPosition, ProjectEvent, PublicId};
+use oleafly_online::realtime::events::{ProjectEvent, PublicId};
 use oleafly_online::realtime::project::{flavor_for_compiler, Role};
 use oleafly_online::realtime::tree::PathChange;
 use oleafly_online::realtime::DocId;
@@ -19,7 +19,8 @@ use super::notices::{OverleafNotice, OverleafNoticePayload};
 use super::Mirror;
 use crate::collab::live::kept::{KeptFile, KeptKind, KeptPayload};
 use crate::collab::live::payloads::{
-    AccountChangedPayload, DocPendingPayload, RolePayload, TypedAs,
+    AccountChangedPayload, DocPendingPayload, OverleafMembersPayload, PresenceLeftPayload,
+    PresencePayload, PresencePerson, RolePayload, TypedAs,
 };
 use crate::collab::live::session::guard;
 use crate::collab::settings::Applied;
@@ -113,7 +114,7 @@ pub(super) fn online_error(error: &OnlineError) -> CollabError {
     }
 }
 
-fn project_role(role: Role) -> ProjectRole {
+pub(super) fn project_role(role: Role) -> ProjectRole {
     match role {
         Role::Owner => ProjectRole::Owner,
         Role::Editor => ProjectRole::Editor,
@@ -194,9 +195,40 @@ impl LivePort for AppOverleafPort {
         }
     }
 
-    fn peer(&self, _peer: PeerPosition) {}
+    fn peer(&self, peer: LivePeer) {
+        let path = peer.doc.as_ref().and_then(|doc| self.mirror.path_of(doc));
+        self.mirror.disk.host.presence(PresencePayload {
+            project_id: self.mirror.disk.project_id.clone(),
+            device_id: peer.id.0,
+            account_id: peer.user_id.unwrap_or_default(),
+            cursor: path
+                .as_ref()
+                .and(peer.offset)
+                .and_then(|offset| u32::try_from(offset).ok()),
+            path,
+            anchor: None,
+            person: Some(PresencePerson {
+                name: peer.name,
+                email: peer.email,
+            }),
+        });
+    }
 
-    fn peer_left(&self, _id: &PublicId) {}
+    fn peer_left(&self, id: &PublicId) {
+        self.mirror.disk.host.presence_left(PresenceLeftPayload {
+            project_id: self.mirror.disk.project_id.clone(),
+            device_id: id.0.clone(),
+        });
+    }
+
+    fn members_changed(&self) {
+        self.mirror
+            .disk
+            .host
+            .overleaf_members(OverleafMembersPayload {
+                project_id: self.mirror.disk.project_id.clone(),
+            });
+    }
 
     fn doc_stopped(&self, doc: &DocId, reason: DocStopReason) {
         let sink = guard(&self.mirror.sinks).remove(doc);

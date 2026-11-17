@@ -638,6 +638,8 @@
   "toolbar": {
     "noFile": "Açık dosya yok",
     "unknownPerson": "Biri",
+    "youElsewhere": "You, in another window",
+    "hiddenForViewLink": "You joined with a view link, so Overleaf doesn't show you who else is here.",
     "viewing": "Görüntülüyor: {{path}}",
     "editing": "Düzenliyor: {{path}}",
     "reviewing": "İnceliyor: {{path}}",

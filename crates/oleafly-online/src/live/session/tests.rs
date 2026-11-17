@@ -10,8 +10,8 @@ use serde_json::{json, Value};
 use super::catch_up::History;
 use super::state::{iso_time, JoinKind, State};
 use super::{
-    Account, DocStopReason, LiveEnd, LiveError, LivePort, LiveState, MergeReview, OverleafSession,
-    SessionConfig, SessionTuning, SignedIn, UnsentDoc,
+    Account, DocStopReason, LiveEnd, LiveError, LivePeer, LivePort, LiveState, MergeReview,
+    OverleafSession, SessionConfig, SessionTuning, SignedIn, UnsentDoc,
 };
 use crate::client::Http;
 use crate::live::doc::DocFault;
@@ -21,7 +21,7 @@ use crate::live::join::parse_join;
 use crate::live::journal::{journal_dir, DocRecord, Journal, ProjectManifest, SCHEMA};
 use crate::live::{AppliedUpdate, DocId, PublicId};
 use crate::realtime::connection::Carrier;
-use crate::realtime::events::{PeerPosition, ProjectEvent};
+use crate::realtime::events::ProjectEvent;
 use crate::realtime::project::{ProjectState, Role};
 use crate::realtime::tree::PathChange;
 use crate::session::{Session, SessionHandle};
@@ -64,7 +64,9 @@ fn tuning() -> SessionTuning {
 struct Seen {
     states: Vec<LiveState>,
     roles: Vec<(Role, bool)>,
-    peers: Vec<PeerPosition>,
+    peers: Vec<LivePeer>,
+    left: Vec<PublicId>,
+    members_changed: usize,
     stopped: Vec<(DocId, DocStopReason)>,
     merged: Vec<(DocId, MergeReview)>,
     journal: Vec<Option<String>>,
@@ -136,11 +138,13 @@ impl LivePort for Port {
 
     fn tree_changed(&self, _changes: Vec<PathChange>) {}
 
-    fn peer(&self, peer: PeerPosition) {
+    fn peer(&self, peer: LivePeer) {
         self.seen().peers.push(peer);
     }
 
-    fn peer_left(&self, _id: &PublicId) {}
+    fn peer_left(&self, id: &PublicId) {
+        self.seen().left.push(id.clone());
+    }
 
     fn doc_stopped(&self, doc: &DocId, reason: DocStopReason) {
         self.seen().stopped.push((doc.clone(), reason));
@@ -190,6 +194,10 @@ impl LivePort for Port {
 
     fn project_flags(&self, restricted: bool, deleted_externally: bool) {
         self.seen().flags.push((restricted, deleted_externally));
+    }
+
+    fn members_changed(&self) {
+        self.seen().members_changed += 1;
     }
 }
 
@@ -1659,7 +1667,7 @@ async fn presence_goes_out_and_peers_come_in() {
         port.seen()
             .peers
             .iter()
-            .any(|peer| peer.doc.as_ref() == Some(&main) && peer.column == Some(1))
+            .any(|peer| peer.doc.as_ref() == Some(&main) && peer.offset == Some(1))
     })
     .await;
     live.stop().await;
@@ -1887,5 +1895,6 @@ fn recorded_sessions_replay_through_the_session_state() {
 
 mod access;
 mod faults;
+mod presence;
 mod resilience;
 mod tree;

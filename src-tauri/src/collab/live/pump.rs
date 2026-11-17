@@ -79,6 +79,7 @@ pub(super) async fn pump(
                 path: state.file_id,
                 cursor: state.cursor,
                 anchor: state.anchor,
+                person: None,
             }),
             LiveEvent::PresenceLeft { device_id } => {
                 active.local.host.presence_left(PresenceLeftPayload {

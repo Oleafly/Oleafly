@@ -655,6 +655,24 @@ describe("collab live store", () => {
     expect(useCollabLiveStore.getState().commentsNotSent).toBeNull();
   });
 
+  it("an overleaf peer carries its own name until the member list knows it", async () => {
+    openProject(PROJECT);
+    stop = startCollabLive();
+    await settle();
+    emit("presence", {
+      projectId: PROJECT,
+      deviceId: "P.dana",
+      accountId: "5f00000000000000000000aa",
+      path: "main.tex",
+      cursor: 1,
+      anchor: null,
+      person: { name: "Dana Ruiz", email: "dana@example.test" },
+    } satisfies CollabPresence);
+    const dana = useCollabLiveStore.getState().peers["P.dana"];
+    expect(dana?.person?.display_name).toBe("Dana Ruiz");
+    expect(dana?.person?.email).toBe("dana@example.test");
+  });
+
   it("tracks peers with names from the member list and drops them when they leave", async () => {
     openProject(PROJECT);
     stop = startCollabLive();
@@ -666,6 +684,7 @@ describe("collab live store", () => {
       path: "main.tex",
       cursor: 4,
       anchor: 2,
+      person: null,
     };
     emit("presence", bob);
     emit("presence", { ...bob, deviceId: "device-me", accountId: ALICE });
@@ -764,6 +783,7 @@ describe("collab live store", () => {
       path: "main.tex",
       cursor: 4,
       anchor: 4,
+      person: null,
     };
     emit("presence", bob);
     const places = peerPlaces(useCollabLiveStore.getState().peers);
@@ -804,7 +824,15 @@ describe("collab live store", () => {
     stop = startCollabLive();
     await settle();
     const before = mocks.collabMembersList.mock.calls.length;
-    const bob: CollabPresence = { projectId: PROJECT, deviceId: "d", accountId: BOB, path: "main.tex", cursor: 1, anchor: null };
+    const bob: CollabPresence = {
+      projectId: PROJECT,
+      deviceId: "d",
+      accountId: BOB,
+      path: "main.tex",
+      cursor: 1,
+      anchor: null,
+      person: null,
+    };
     emit("presence", bob);
     emit("presence", { ...bob, cursor: 2 });
     emit("presence", { ...bob, cursor: 3 });
