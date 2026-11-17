@@ -241,17 +241,22 @@ describe("the Markdown toolbar engine across the corpus", () => {
     expect(SHAPE_CORPUS.some(([, source]) => pattern.test(source))).toBe(true);
   });
 
-  it.each(SHAPE_CORPUS)("reads the state and link at every caret of %s without throwing or reporting an error", (name, source) => {
-    expect(reads(name, source, DEFAULT_SHAPES)).toEqual([]);
-  }, 120_000);
+  // The sweep is string and editor-state logic, the same on every platform. It costs about eight
+  // minutes of one worker on the Windows runner, whose test step was already near the job's limit,
+  // so Linux and macOS run it.
+  describe.skipIf(process.platform === "win32")("off Windows", () => {
+    it.each(SHAPE_CORPUS)("reads the state and link at every caret of %s without throwing or reporting an error", (name, source) => {
+      expect(reads(name, source, DEFAULT_SHAPES)).toEqual([]);
+    }, 120_000);
 
-  it.each(SHAPE_CORPUS)("acts at every line edge (six actions at each, in turn) and at seeded carets and ranges of %s without throwing, reporting or editing another block", (name, source) => {
-    expect(acts(name, source, DEFAULT_SHAPES)).toEqual([]);
-  }, 120_000);
+    it.each(SHAPE_CORPUS)("acts at every line edge (six actions at each, in turn) and at seeded carets and ranges of %s without throwing, reporting or editing another block", (name, source) => {
+      expect(acts(name, source, DEFAULT_SHAPES)).toEqual([]);
+    }, 120_000);
 
-  it.each(FUZZ)("reads the state at every caret of %s and acts at every line edge and a seeded caret and range without throwing, reporting or editing another block", (name, source) => {
-    expect([...reads(name, source, DEFAULT_FUZZ), ...acts(name, source, DEFAULT_FUZZ)]).toEqual([]);
-  }, 120_000);
+    it.each(FUZZ)("reads the state at every caret of %s and acts at every line edge and a seeded caret and range without throwing, reporting or editing another block", (name, source) => {
+      expect([...reads(name, source, DEFAULT_FUZZ), ...acts(name, source, DEFAULT_FUZZ)]).toEqual([]);
+    }, 120_000);
+  });
 });
 
 // Skipped unless OLEAFLY_MARKDOWN_SWEEP is set: every action at every caret and on every range of the corpus takes hours in jsdom.

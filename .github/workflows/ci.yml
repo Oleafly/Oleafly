@@ -312,7 +312,10 @@ jobs:
   frontend-windows:
     name: Frontend (Windows)
     runs-on: windows-2022
-    timeout-minutes: 55
+    # The unit tests alone took 30 to 43 minutes on main in Nov 2026, and the
+    # job spends about 15 more installing and building, so 55 cut the test
+    # step off before it finished.
+    timeout-minutes: 70
     env:
       # The 0.4.8 vite build peaks near Node's default 4 GB heap (same
       # setting as release.yml).
