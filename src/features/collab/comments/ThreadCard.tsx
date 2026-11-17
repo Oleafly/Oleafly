@@ -1,35 +1,39 @@
-import { memo, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { memo, useEffect, useMemo, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, CheckCircle2, MoreHorizontal, Pencil, RotateCcw, ShieldQuestion, Trash2 } from "lucide-react";
-import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import type { CommentQuoteState } from "@/components/ui/comments/comment-quote";
+import { mentionedIn } from "@/components/ui/comments/mentions";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Tooltip } from "@/components/ui/tooltip";
-import { formatDateTime, formatRelativeTimeFrom } from "@/lib/intl";
-import type { CollabCommentMember, CollabCommentMessage, CollabCommentThread, CollabPerson } from "@/lib/tauri";
-import { cn } from "@/lib/utils";
-import { InlineAlert } from "../feedback";
-import { peerHue } from "../live/peer-hue";
-import { CommentComposer } from "./CommentComposer";
-import { CommentQuote } from "./CommentQuote";
+  type CommentEntry,
+  type CommentMessageActions,
+  CommentThread,
+  type CommentThreadActions,
+  type CommentThreadModel,
+} from "@/components/ui/comments/comment-thread";
+import { useShallow } from "zustand/react/shallow";
+import type {
+  CollabCommentMember,
+  CollabCommentMessage,
+  CollabCommentNotSent,
+  CollabCommentThread,
+  CollabPerson,
+} from "@/lib/tauri";
+import { useCollabLiveStore } from "../live/live-store";
 import {
   deleteMessage,
   deleteThread,
+  discardRefused,
   editMessage,
   openThreadIn,
+  reactToComment,
+  removeMessage,
   reopenThread,
   replyToThread,
   resolveThread,
   selectThread,
+  useComments,
+  type RefusedComment,
 } from "./comments-store";
-import { mentionSegments } from "./mentions";
-import { commentFailure } from "./refusals";
+import { refusalText } from "./refusals";
 
 export interface ThreadContext {
   now: number;
@@ -37,15 +41,19 @@ export interface ThreadContext {
   self: string | null;
   people: ReadonlyMap<string, CollabPerson>;
   members: readonly CollabCommentMember[];
+  projectLink?: string | null;
 }
 
-function useFailure() {
-  const [error, setError] = useState<string | null>(null);
-  const run = (action: () => Promise<void>) => {
-    setError(null);
-    action().catch((error_: unknown) => setError(commentFailure(error_)));
-  };
-  return [error, run] as const;
+export function threadLink(projectLink: string | null | undefined, thread: CollabCommentThread): string | undefined {
+  if (!projectLink) return undefined;
+  try {
+    const url = new URL(projectLink);
+    url.searchParams.set("file", thread.fileId);
+    url.searchParams.set("thread", thread.id);
+    return url.toString();
+  } catch {
+    return undefined;
+  }
 }
 
 export function moveFocus(event: KeyboardEvent<HTMLButtonElement>) {
@@ -59,237 +67,158 @@ export function moveFocus(event: KeyboardEvent<HTMLButtonElement>) {
   next.focus();
 }
 
-function MessageBody({
-  message,
-  members,
-}: Readonly<{ message: CollabCommentMessage; members: readonly CollabCommentMember[] }>) {
-  const segments = useMemo(
-    () =>
-      mentionSegments(
-        message.body,
-        members.filter((member) => message.mentions.includes(member.accountId)),
-      ),
-    [message.body, message.mentions, members],
-  );
-  let offset = 0;
-  return (
-    <p className="select-text whitespace-pre-wrap break-words text-xs">
-      {segments.map((segment) => {
-        const at = offset;
-        offset += segment.text.length;
-        return segment.mention ? (
-          <span key={at} data-mention className="font-medium text-primary">
-            {segment.text}
-          </span>
-        ) : (
-          <span key={at}>{segment.text}</span>
-        );
-      })}
-    </p>
-  );
-}
-
-export function MessageRow({
-  thread,
-  message,
-  context,
-}: Readonly<{ thread: CollabCommentThread; message: CollabCommentMessage; context: ThreadContext }>) {
-  const { t } = useTranslation(["collab", "common"]);
-  const [editing, setEditing] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [error, run] = useFailure();
-  const person = message.verified ? context.people.get(message.author) : undefined;
-  const name = message.verified
-    ? person?.display_name || t(($) => $.collab.toolbar.unknownPerson)
-    : t(($) => $.collab.comments.unverifiedAuthor);
-  const own = message.verified && message.author === context.self;
-  const actions = t(($) => $.collab.comments.messageActions);
-  const posted = message.deleted ? (
-    <p className="text-xs italic text-muted-foreground">{t(($) => $.collab.comments.deleted)}</p>
-  ) : (
-    <MessageBody message={message} members={context.members} />
-  );
-  return (
-    <li className="flex gap-2">
-      <Avatar
-        person={{ id: message.author, name, imageUrl: person?.avatar_url, hue: peerHue(message.author, context.self) }}
-        size="sm"
-        fallbackIcon={message.verified ? undefined : <ShieldQuestion />}
-        className={cn("mt-0.5", !message.verified && "bg-muted text-muted-foreground")}
-      />
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <div className="flex min-w-0 items-center gap-1.5 text-xs">
-          <span className={cn("truncate font-medium", !message.verified && "italic text-muted-foreground")}>
-            {name}
-          </span>
-          <Tooltip label={formatDateTime(message.at)} className="shrink-0">
-            <time dateTime={new Date(message.at).toISOString()} className="text-[0.6875rem] text-muted-foreground">
-              {formatRelativeTimeFrom(message.at, context.now)}
-            </time>
-          </Tooltip>
-          {message.editedAt !== null && !message.deleted ? (
-            <Tooltip label={formatDateTime(message.editedAt)} className="shrink-0">
-              <span className="text-[0.6875rem] text-muted-foreground">{t(($) => $.collab.comments.edited)}</span>
-            </Tooltip>
-          ) : null}
-          {own && context.canWrite && !message.deleted && !editing ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={actions}
-                  className="ml-auto size-5 shrink-0 text-muted-foreground hover:text-foreground"
-                >
-                  <MoreHorizontal aria-hidden className="size-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" onCloseAutoFocus={(event) => event.preventDefault()}>
-                <DropdownMenuItem onSelect={() => setEditing(true)}>
-                  <Pencil aria-hidden className="size-4" />
-                  {t(($) => $.common.actions.edit)}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setConfirming(true)}>
-                  <Trash2 aria-hidden className="size-4" />
-                  {t(($) => $.common.actions.delete)}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-        </div>
-        {editing ? (
-          <CommentComposer
-            label={t(($) => $.collab.comments.editLabel)}
-            submitLabel={t(($) => $.common.actions.save)}
-            initial={message.body}
-            autoFocus
-            members={context.members}
-            self={context.self}
-            onSubmit={async (body) => {
-              await editMessage(thread, message.id, body);
-              setEditing(false);
-            }}
-            onCancel={() => setEditing(false)}
-          />
-        ) : (
-          posted
-        )}
-        {error ? <InlineAlert>{error}</InlineAlert> : null}
-      </div>
-      <ConfirmationDialog
-        open={confirming}
-        title={t(($) => $.collab.comments.deleteMessageConfirm.title)}
-        description={t(($) => $.collab.comments.deleteMessageConfirm.description)}
-        confirmLabel={t(($) => $.common.actions.delete)}
-        destructive
-        onConfirm={() => {
-          setConfirming(false);
-          run(() => deleteMessage(thread, message.id));
-        }}
-        onCancel={() => setConfirming(false)}
-      />
-    </li>
-  );
-}
-
-function ThreadActions({ thread, self }: Readonly<{ thread: CollabCommentThread; self: string | null }>) {
+function useEntryOf(context: ThreadContext): (message: CollabCommentMessage) => CommentEntry {
   const { t } = useTranslation(["collab"]);
-  const [error, run] = useFailure();
-  const [confirming, setConfirming] = useState(false);
-  const [toggling, setToggling] = useState(false);
-  const inFlight = useRef(false);
-  const toggle = (action: () => Promise<void>) => {
-    if (inFlight.current) return;
-    inFlight.current = true;
-    setToggling(true);
-    run(() =>
-      action().finally(() => {
-        inFlight.current = false;
-        setToggling(false);
-      }),
-    );
+  const unknown = t(($) => $.collab.toolbar.unknownPerson);
+  const unverified = t(($) => $.collab.comments.unverifiedAuthor);
+  return (message) => {
+    const person = message.verified ? context.people.get(message.author) : undefined;
+    return {
+      id: message.id,
+      author: {
+        id: message.author,
+        name: message.verified ? person?.display_name || unknown : unverified,
+        imageUrl: person?.avatar_url,
+        verified: message.verified,
+      },
+      at: message.at,
+      editedAt: message.editedAt,
+      deleted: message.deleted,
+      removed: message.removed === true,
+      body: message.body,
+      mentions: message.mentions,
+      reactions: message.reactions ?? [],
+      delivery: message.pending && !message.deleted ? { state: "waiting" } : undefined,
+    };
   };
-  const resolve = t(($) => $.collab.comments.resolve);
-  const reopen = t(($) => $.collab.comments.reopen);
-  const more = t(($) => $.collab.comments.threadActions);
-  const deletable =
-    thread.verified &&
-    thread.createdBy === self &&
-    thread.messages.every((message) => message.verified && message.author === self);
-  return (
-    <>
-      <div className="flex shrink-0 items-center gap-0.5">
-        {thread.resolved ? (
-          <Tooltip label={reopen}>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={reopen}
-              className="size-6 text-muted-foreground hover:text-foreground"
-              disabled={toggling}
-              onClick={() => toggle(() => reopenThread(thread))}
-            >
-              <RotateCcw aria-hidden className="size-3.5" />
-            </Button>
-          </Tooltip>
-        ) : (
-          <Tooltip label={resolve}>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={resolve}
-              className="size-6 text-muted-foreground hover:text-foreground"
-              disabled={toggling}
-              onClick={() => toggle(() => resolveThread(thread))}
-            >
-              <Check aria-hidden className="size-3.5" />
-            </Button>
-          </Tooltip>
-        )}
-        {deletable ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={more}
-                className="size-6 text-muted-foreground hover:text-foreground"
-              >
-                <MoreHorizontal aria-hidden className="size-3.5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => setConfirming(true)}>
-                <Trash2 aria-hidden className="size-4" />
-                {t(($) => $.collab.comments.deleteThread)}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : null}
-      </div>
-      {error ? (
-        <div className="basis-full">
-          <InlineAlert>{error}</InlineAlert>
-        </div>
-      ) : null}
-      <ConfirmationDialog
-        open={confirming}
-        title={t(($) => $.collab.comments.deleteThreadConfirm.title)}
-        description={t(($) => $.collab.comments.deleteThreadConfirm.description)}
-        confirmLabel={t(($) => $.collab.comments.deleteThread)}
-        destructive
-        onConfirm={() => {
-          setConfirming(false);
-          run(() => deleteThread(thread));
-        }}
-        onCancel={() => setConfirming(false)}
-      />
-    </>
+}
+
+export function selfAuthor(context: Pick<ThreadContext, "self" | "people">, fallback: string): CommentEntry["author"] {
+  const person = context.self ? context.people.get(context.self) : undefined;
+  return { id: context.self ?? "", name: person?.display_name || fallback, imageUrl: person?.avatar_url, verified: true };
+}
+
+function useUnsentEntries(
+  thread: CollabCommentThread,
+  context: ThreadContext,
+): { edits: ReadonlyMap<string, CommentEntry>; added: CommentEntry[] } {
+  const { t } = useTranslation(["collab"]);
+  const refused = useComments(useShallow((state) => state.refused.filter((entry) => entry.threadId === thread.id)));
+  const batch = useCollabLiveStore(
+    useShallow((state) => (state.commentsNotSent ?? []).filter((entry) => entry.threadId === thread.id && !entry.newThread)),
   );
+  const author = selfAuthor(context, t(($) => $.collab.toolbar.unknownPerson));
+  const reason = useNotSentReason();
+  const edited = (comment: CollabCommentNotSent) => comment.edit && thread.messages.some((message) => message.id === comment.messageId);
+  return {
+    edits: new Map(batch.filter(edited).map((comment) => [comment.messageId, notSentEntry(comment, author, reason)])),
+    added: [
+      ...batch.filter((comment) => !edited(comment)).map((comment) => notSentEntry(comment, author, reason)),
+      ...refused.map((entry) => refusedEntry(entry, author)),
+    ],
+  };
+}
+
+export function useNotSentReason(): string {
+  const serverOff = useComments((state) => state.status?.serverAllowed === false);
+  return refusalText(serverOff ? "comment_off_server" : "comment_off_project");
+}
+
+export function refusedEntry(entry: RefusedComment, author: CommentEntry["author"]): CommentEntry {
+  return {
+    id: entry.key,
+    author,
+    at: entry.at,
+    editedAt: null,
+    deleted: false,
+    body: entry.body,
+    mentions: [],
+    delivery: { state: "failed", reason: entry.reason, discard: () => discardRefused(entry.key) },
+  };
+}
+
+export function notSentEntry(comment: CollabCommentNotSent, author: CommentEntry["author"], reason: string): CommentEntry {
+  return {
+    id: `not-sent-${comment.messageId || comment.threadId}`,
+    author,
+    at: comment.at,
+    editedAt: comment.edit ? (comment.editedAt ?? comment.at) : null,
+    deleted: false,
+    body: comment.body,
+    mentions: [],
+    delivery: {
+      state: "failed",
+      reason,
+      discard: () => useCollabLiveStore.getState().discardCommentNotSent(comment),
+    },
+  };
+}
+
+function messageActions(thread: CollabCommentThread): CommentMessageActions {
+  return {
+    edit: (messageId, body) => editMessage(thread, messageId, body),
+    remove: (messageId) => deleteMessage(thread, messageId),
+    moderate: (messageId) => removeMessage(thread, messageId),
+    react: (messageId, emoji, on) => reactToComment(thread, messageId, emoji, on),
+  };
+}
+
+function useThreadView(
+  thread: CollabCommentThread,
+  context: ThreadContext,
+  quoteState: CommentQuoteState,
+): { model: CommentThreadModel; actions: CommentThreadActions } {
+  const { t } = useTranslation(["collab"]);
+  const entryOf = useEntryOf(context);
+  const unsent = useUnsentEntries(thread, context);
+  const unknown = t(($) => $.collab.toolbar.unknownPerson);
+  const author = context.people.get(thread.createdBy)?.display_name || unknown;
+  const resolution = (() => {
+    if (!thread.resolved) return null;
+    if (!thread.resolved.verified) return t(($) => $.collab.comments.resolvedUnverified);
+    const name = context.people.get(thread.resolved.by)?.display_name || unknown;
+    return t(($) => $.collab.comments.resolvedBy, { name });
+  })();
+  const model: CommentThreadModel = {
+    id: thread.id,
+    label: thread.verified
+      ? t(($) => $.collab.comments.thread, { name: author })
+      : t(($) => $.collab.comments.unverifiedThread),
+    quote: thread.anchor.quote,
+    quoteState,
+    resolution,
+    messages: [
+      ...thread.messages.map((message) => {
+        const edit = unsent.edits.get(message.id);
+        const entry = entryOf(message);
+        if (!edit) return entry;
+        const { id, body, editedAt, delivery } = edit;
+        return { ...entry, id, body, editedAt, delivery, deleted: false, removed: false, mentions: mentionedIn(body, context.members) };
+      }),
+      ...unsent.added,
+    ],
+    link: threadLink(context.projectLink, thread),
+    deletable:
+      thread.verified &&
+      thread.createdBy === context.self &&
+      thread.messages.every((message) => message.deleted || (message.verified && message.author === context.self)),
+  };
+  const actions = useMemo<CommentThreadActions>(
+    () => ({
+      ...messageActions(thread),
+      reply: (body) => replyToThread(thread, body),
+      resolve: () => resolveThread(thread),
+      reopen: () => reopenThread(thread),
+      removeThread: () => deleteThread(thread),
+    }),
+    [thread],
+  );
+  return { model, actions };
+}
+
+export function EmbeddedThread({ thread, context }: Readonly<{ thread: CollabCommentThread; context: ThreadContext }>) {
+  const { model, actions } = useThreadView(thread, context, "anchored");
+  return <CommentThread thread={model} actions={actions} canWrite={context.canWrite} embedded />;
 }
 
 export const ThreadCard = memo(function ThreadCard({
@@ -298,26 +227,19 @@ export const ThreadCard = memo(function ThreadCard({
   focus,
   context,
   path,
+  quoteState = "anchored",
 }: Readonly<{
   thread: CollabCommentThread;
   selected: boolean;
   focus: number;
   context: ThreadContext;
   path?: string;
+  quoteState?: CommentQuoteState;
 }>) {
   const { t } = useTranslation(["collab"]);
   const card = useRef<HTMLElement>(null);
   const seen = useRef(focus);
-  const author = context.people.get(thread.createdBy)?.display_name || t(($) => $.collab.toolbar.unknownPerson);
-  const label = thread.verified
-    ? t(($) => $.collab.comments.thread, { name: author })
-    : t(($) => $.collab.comments.unverifiedThread);
-  const resolver = (() => {
-    if (!thread.resolved) return null;
-    if (!thread.resolved.verified) return t(($) => $.collab.comments.resolvedUnverified);
-    const name = context.people.get(thread.resolved.by)?.display_name || t(($) => $.collab.toolbar.unknownPerson);
-    return t(($) => $.collab.comments.resolvedBy, { name });
-  })();
+  const { model, actions } = useThreadView(thread, context, quoteState);
 
   useEffect(() => {
     if (selected && focus !== seen.current) card.current?.scrollIntoView?.({ block: "nearest" });
@@ -326,48 +248,16 @@ export const ThreadCard = memo(function ThreadCard({
 
   return (
     <li>
-      <article
-        ref={card}
-        aria-label={label}
-        aria-current={selected ? "true" : undefined}
-        className={cn(
-          "space-y-2 rounded-md border px-2 py-2 transition-colors",
-          selected ? "border-primary/30 bg-primary/5" : "border-transparent hover:bg-sidebar-accent/60",
-          thread.resolved && "opacity-80",
-        )}
-      >
-        <div className="flex flex-wrap items-start gap-1">
-          <CommentQuote
-            quote={thread.anchor.quote}
-            title={t(($) => $.collab.comments.showInEditor)}
-            onJump={() => (path === undefined ? selectThread(thread.id, { reveal: true }) : openThreadIn(path, thread.id))}
-            onJumpKeyDown={moveFocus}
-          />
-          {context.canWrite ? <ThreadActions thread={thread} self={context.self} /> : null}
-        </div>
-        {resolver ? (
-          <p className="flex items-center gap-1 text-[0.6875rem] text-muted-foreground">
-            <CheckCircle2 aria-hidden className="size-3" />
-            {resolver}
-          </p>
-        ) : null}
-        <ol className="space-y-2">
-          {thread.messages.map((message) => (
-            <MessageRow key={message.id} thread={thread} message={message} context={context} />
-          ))}
-        </ol>
-        {context.canWrite && !thread.resolved ? (
-          <CommentComposer
-            compact
-            label={t(($) => $.collab.comments.replyLabel)}
-            placeholder={t(($) => $.collab.comments.replyPlaceholder)}
-            submitLabel={t(($) => $.collab.comments.reply)}
-            members={context.members}
-            self={context.self}
-            onSubmit={(body) => replyToThread(thread, body)}
-          />
-        ) : null}
-      </article>
+      <CommentThread
+        cardRef={card}
+        thread={model}
+        actions={actions}
+        canWrite={context.canWrite}
+        selected={selected}
+        quoteTitle={t(($) => $.collab.comments.showInEditor)}
+        onJump={() => (path === undefined ? selectThread(thread.id, { reveal: true }) : openThreadIn(path, thread.id))}
+        onJumpKeyDown={moveFocus}
+      />
     </li>
   );
 });

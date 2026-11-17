@@ -29,20 +29,34 @@ import { cn, shortcut } from "@/lib/utils";
 export interface ToolbarControl {
   id: string;
   width: number;
+  tools?: number;
   render: () => ReactNode;
   renderMenu: () => ReactNode;
   active?: boolean;
+  collapsed?: { width: number; tools?: number; render: () => ReactNode };
+}
+
+export interface ToolbarFitItem {
+  readonly width: number;
+  readonly tools?: number;
+  readonly collapsed?: { readonly width: number; readonly tools?: number };
+}
+
+export interface ToolbarFit {
+  readonly visible: number;
+  readonly collapsed: boolean;
 }
 
 export const ICON_BUTTON_WIDTH = 28;
-export const DROPDOWN_TRIGGER_WIDTH = 44;
+export const DROPDOWN_TRIGGER_WIDTH = 42;
 export const DIVIDER_WIDTH = 9;
-export const MORE_BUTTON_WIDTH = 32;
+export const MORE_BUTTON_WIDTH = 28;
 export const CONTROL_GAP = 2;
 
 export const TOOLBAR_TRIGGER_CLASS =
   "flex h-7 w-auto shrink-0 items-center justify-center gap-0.5 rounded px-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent data-[state=open]:bg-accent";
 export const MENU_ICON = "size-4 text-muted-foreground";
+export const MENU_ACTIVE = "bg-primary/10 text-foreground";
 
 export function ToolbarMenuKeys({ keys }: Readonly<{ keys: string }>) {
   return <span className="ml-auto pl-4 text-xs tabular-nums text-muted-foreground">{shortcut(keys)}</span>;
@@ -73,23 +87,49 @@ export function useAvailableWidth() {
   return { containerRef, availableWidth };
 }
 
-export function fitCount(
-  controls: readonly ToolbarControl[],
-  availableWidth: number,
-): number {
-  const total = controls.reduce(
-    (sum, control, index) =>
-      sum + control.width + (index > 0 ? CONTROL_GAP : 0),
-    0,
-  );
-  if (total <= availableWidth) return controls.length;
+function shownForm(item: ToolbarFitItem, step: ToolbarFit): { readonly width: number; readonly tools?: number } {
+  return step.collapsed && item.collapsed ? item.collapsed : item;
+}
 
-  let used = 0;
-  for (let index = 0; index < controls.length; index++) {
-    used += controls[index].width + (index > 0 ? CONTROL_GAP : 0);
-    if (used + CONTROL_GAP + MORE_BUTTON_WIDTH > availableWidth) return index;
+export function fitTools(items: readonly ToolbarFitItem[], step: ToolbarFit): number {
+  let tools = 0;
+  for (let index = 0; index < step.visible; index++) tools += shownForm(items[index], step).tools ?? 1;
+  return tools;
+}
+
+export function fitSteps(items: readonly ToolbarFitItem[]): ToolbarFit[] {
+  const steps: ToolbarFit[] = [];
+  let folds = false;
+  for (let visible = 0; visible <= items.length; visible++) {
+    folds ||= visible > 0 && items[visible - 1].collapsed !== undefined;
+    steps.push({ visible, collapsed: false });
+    if (folds) steps.push({ visible, collapsed: true });
   }
-  return controls.length;
+  return steps.sort(
+    (left, right) =>
+      fitTools(items, right) - fitTools(items, left) || Number(left.collapsed) - Number(right.collapsed) || right.visible - left.visible,
+  );
+}
+
+export function fitWidth(items: readonly ToolbarFitItem[], step: ToolbarFit): number {
+  let used = 0;
+  for (let index = 0; index < step.visible; index++) used += shownForm(items[index], step).width + (index > 0 ? CONTROL_GAP : 0);
+  if (step.visible < items.length) used += (step.visible > 0 ? CONTROL_GAP : 0) + MORE_BUTTON_WIDTH;
+  return used;
+}
+
+function fitIndex(items: readonly ToolbarFitItem[], steps: readonly ToolbarFit[], availableWidth: number): number {
+  const index = steps.findIndex((step) => fitWidth(items, step) <= availableWidth);
+  return index === -1 ? steps.length - 1 : index;
+}
+
+export function fitToolbar(items: readonly ToolbarFitItem[], availableWidth: number): ToolbarFit {
+  const steps = fitSteps(items);
+  return steps[fitIndex(items, steps, availableWidth)];
+}
+
+export function fitCount(controls: readonly ToolbarFitItem[], availableWidth: number): number {
+  return fitToolbar(controls, availableWidth).visible;
 }
 
 function rootFontSize(): number {
@@ -102,11 +142,10 @@ function scaledWidth(width: number): number {
 }
 
 export function useFittedCount(controls: readonly ToolbarControl[]) {
-  const [availableWidth, setAvailableWidth] = useState(
-    Number.POSITIVE_INFINITY,
-  );
+  const [availableWidth, setAvailableWidth] = useState(Number.POSITIVE_INFINITY);
   const observerRef = useRef<ResizeObserver | null>(null);
   const elementRef = useRef<HTMLDivElement | null>(null);
+  const steps = fitSteps(controls);
   const fitted = useRef({ controls, availableWidth, trimmed: 0 });
   const ref = useCallback((element: HTMLDivElement | null) => {
     observerRef.current?.disconnect();
@@ -116,11 +155,12 @@ export function useFittedCount(controls: readonly ToolbarControl[]) {
     const recompute = () => {
       const width = element.clientWidth;
       const current = fitted.current;
+      const ladder = fitSteps(current.controls);
       const unchanged =
         current.trimmed === 0 &&
         Number.isFinite(current.availableWidth) &&
-        fitCount(current.controls, scaledWidth(width)) ===
-          fitCount(current.controls, scaledWidth(current.availableWidth)) &&
+        fitIndex(current.controls, ladder, scaledWidth(width)) ===
+          fitIndex(current.controls, ladder, scaledWidth(current.availableWidth)) &&
         element.scrollWidth <= width + 1;
       if (!unchanged) setAvailableWidth(width);
     };
@@ -133,19 +173,19 @@ export function useFittedCount(controls: readonly ToolbarControl[]) {
   const signature = `${availableWidth}|${controls.map((control) => control.id).join(" ")}`;
   const [trim, setTrim] = useState({ signature, count: 0 });
   const trimmed = trim.signature === signature ? trim.count : 0;
-  const estimate = fitCount(controls, scaledWidth(availableWidth));
-  const visibleCount = Math.max(0, estimate - trimmed);
+  const index = Math.min(steps.length - 1, fitIndex(controls, steps, scaledWidth(availableWidth)) + trimmed);
+  const { visible, collapsed } = steps[index];
   fitted.current = { controls, availableWidth, trimmed };
 
   useLayoutEffect(() => {
     const element = elementRef.current;
-    if (!element || visibleCount === 0) return;
+    if (!element || index === steps.length - 1) return;
     if (element.scrollWidth > element.clientWidth + 1) {
       setTrim({ signature, count: trimmed + 1 });
     }
   });
 
-  return { containerRef: ref, visibleCount };
+  return { containerRef: ref, visibleCount: visible, collapsed };
 }
 
 type ContentFocus = (content: HTMLElement) => void;
@@ -239,7 +279,7 @@ export function ToolbarMenuItem({
   );
   if (checked !== undefined) {
     return (
-      <DropdownMenuCheckboxItem checked={checked} disabled={disabled} onSelect={onSelect} className="gap-2">
+      <DropdownMenuCheckboxItem checked={checked} disabled={disabled} onSelect={onSelect} className={cn("gap-2", checked && MENU_ACTIVE)}>
         {body}
       </DropdownMenuCheckboxItem>
     );
@@ -256,12 +296,21 @@ export function ToolbarSubMenu({
   label,
   ariaLabel,
   inset,
+  active,
   onContentFocus,
   children,
-}: Readonly<{ icon: LucideIcon; label: string; ariaLabel?: string; inset?: boolean; onContentFocus?: ContentFocus; children: ReactNode }>) {
+}: Readonly<{
+  icon: LucideIcon;
+  label: string;
+  ariaLabel?: string;
+  inset?: boolean;
+  active?: boolean;
+  onContentFocus?: ContentFocus;
+  children: ReactNode;
+}>) {
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger inset={inset} aria-label={ariaLabel}>
+      <DropdownMenuSubTrigger inset={inset} aria-label={ariaLabel} className={cn(active && MENU_ACTIVE)}>
         <Icon aria-hidden className={MENU_ICON} />
         {label}
       </DropdownMenuSubTrigger>
@@ -312,6 +361,7 @@ export function ToolbarDropdown({
   heading,
   className,
   items,
+  active,
 }: Readonly<{
   variant: "bar" | "menu";
   icon: LucideIcon;
@@ -321,10 +371,11 @@ export function ToolbarDropdown({
   heading?: string;
   className?: string;
   items: readonly ToolbarDropdownItem[];
+  active?: boolean;
 }>) {
   if (variant === "menu") {
     return (
-      <ToolbarSubMenu icon={Icon} label={label} ariaLabel={ariaLabel}>
+      <ToolbarSubMenu icon={Icon} label={label} ariaLabel={ariaLabel} active={active}>
         {items.map((item) => (
           <DropdownMenuItem key={item.key} onSelect={item.onSelect}>
             {item.content}
@@ -337,7 +388,7 @@ export function ToolbarDropdown({
     <Popover
       ariaLabel={ariaLabel}
       className={className}
-      triggerClassName={chevron ? "gap-0.5 px-1.5" : undefined}
+      triggerClassName={cn(TOOLBAR_TRIGGER_CLASS, chevron ? "[&>svg+svg]:size-3" : "w-7 px-0", active && "bg-primary/10 text-foreground")}
       trigger={
         <>
           <Icon className="size-4" />
@@ -385,13 +436,15 @@ export function ToolbarOverflow({
     pushMenu?: (shown: readonly ToolbarControl[]) => boolean;
   } & Omit<ComponentProps<"div">, "ref" | "children">
 >) {
-  const { containerRef, visibleCount } = useFittedCount(controls);
+  const { containerRef, visibleCount, collapsed } = useFittedCount(controls);
   const shown = controls.slice(0, visibleCount);
   const hidden = controls.slice(visibleCount);
   return (
-    <div ref={containerRef} {...rest} className={cn("flex min-w-0 flex-1 items-center gap-0.5 overflow-hidden", className)}>
+    <div ref={containerRef} {...rest} className={cn("flex min-w-0 flex-1 flex-nowrap items-center gap-0.5 overflow-hidden", className)}>
       {shown.map((control) => (
-        <Fragment key={control.id}>{control.render()}</Fragment>
+        <Fragment key={control.id}>
+          {collapsed && control.collapsed ? control.collapsed.render() : control.render()}
+        </Fragment>
       ))}
       {hidden.length > 0 && (
         <ToolbarMenuButton

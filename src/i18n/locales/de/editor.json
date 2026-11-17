@@ -116,6 +116,7 @@
     "superscript": "Hochgestellt",
     "subscript": "Tiefgestellt",
     "inlineCode": "Code im Text",
+    "clearFormatting": "Formatierung entfernen",
     "insertLink": "Verweis einfügen",
     "insertCrossReference": "Querverweis einfügen",
     "insertFootnote": "Fußnote einfügen",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Zum PDF springen",
     "linkUrl": "URL des Verweises",
     "removeLink": "Verweis entfernen",
+    "alignment": "Ausrichtung",
+    "align": {
+      "left": "Linksbündig",
+      "center": "Zentriert",
+      "right": "Rechtsbündig",
+      "justify": "Blocksatz"
+    },
+    "emoji": "Emoji",
+    "textColor": "Textfarbe",
+    "removeTextColor": "Farbe entfernen",
+    "textColors": {
+      "gray": "Grau",
+      "red": "Rot",
+      "orange": "Orange",
+      "green": "Grün",
+      "teal": "Petrol",
+      "blue": "Blau",
+      "purple": "Lila"
+    },
     "imageFile": "Bilddatei",
     "apply": "Übernehmen",
     "linkPlaceholder": "https://",
@@ -1671,5 +1691,11 @@
       "duplicateArg": "Doppeltes Argument",
       "unknownKind": "Unbekannte Feldart"
     }
+  },
+  "emoji": {
+    "search": "Emoji suchen",
+    "skinTone": "Hautton",
+    "loading": "Emoji werden geladen",
+    "empty": "Keine Emoji gefunden"
   }
 }

@@ -11,7 +11,7 @@ import { LINE_ICONS, NOTE_COLOR_HEX } from "./note-icons";
 import type { NoteColor } from "./types";
 import "./tests/setup";
 
-vi.mock("./EmojiGrid", () => ({
+vi.mock("@/components/ui/emoji-grid", () => ({
   default: ({ selected, onSelect }: Readonly<{ selected?: string; onSelect: (emoji: string) => void }>) => (
     <button type="button" data-selected={selected ?? "none"} onClick={() => onSelect("🧪")}>
       {"emoji grid"}

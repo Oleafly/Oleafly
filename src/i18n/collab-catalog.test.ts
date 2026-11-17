@@ -95,6 +95,7 @@ const EVENT_KINDS = [
   "projectCommentsOff",
   "projectRejoinRefused",
   "commentsChangedWhileOff",
+  "changeBrokeRole",
   "notePublished",
   "noteUnpublished",
   "noteTakenDown",

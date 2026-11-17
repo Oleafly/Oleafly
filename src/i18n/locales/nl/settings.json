@@ -664,6 +664,15 @@
         "grid": "Raster",
         "label": "Achtergrondpatroon"
       },
+      "commentColor": {
+        "accent": "Accentkleur",
+        "description": "Kleur voor tekst met opmerkingen in de editor en voor citaten in het opmerkingenpaneel. Geldt op dit apparaat.",
+        "graphite": "Grafiet",
+        "indigo": "Indigo",
+        "label": "Markeerkleur voor opmerkingen",
+        "leaf": "Bladgroen",
+        "sample": "Tekst met opmerking"
+      },
       "dock": {
         "bottom": "Onder",
         "description": "Kies waar het dock op het startscherm staat.",

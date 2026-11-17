@@ -8,6 +8,7 @@ import { loadNamespace } from "@/i18n";
 import type { CollabCommentThread, CollabSuggestion } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { useComments } from "../comments/comments-store";
+import { DesktopCommentKit } from "../comments/desktop-comment-kit";
 import { commentMessage, commentThread } from "../tests/comment-fixtures";
 import { ALICE_ID, BOB, BOB_ID, CAROL_ID, deferred, fill, person } from "../tests/fixtures";
 import { SUGGESTED_AT, suggestion } from "../tests/suggestion-fixtures";
@@ -19,6 +20,7 @@ const mocks = vi.hoisted(() => ({
   collabSuggestionReply: vi.fn(),
   collabSuggestionCounts: vi.fn(),
   collabCommentThreadList: vi.fn(),
+  collabCommentResolve: vi.fn(),
   openFile: vi.fn(),
 }));
 
@@ -30,6 +32,7 @@ vi.mock("@/lib/tauri-collab", async (importOriginal) => ({
   collabSuggestionReply: mocks.collabSuggestionReply,
   collabSuggestionCounts: mocks.collabSuggestionCounts,
   collabCommentThreadList: mocks.collabCommentThreadList,
+  collabCommentResolve: mocks.collabCommentResolve,
 }));
 
 import { SuggestionCard, type SuggestionContext } from "./SuggestionCard";
@@ -64,17 +67,20 @@ interface CardProps {
 }
 
 function card(props: CardProps = {}) {
+  const shown = props.context ?? context();
   return (
-    <ul>
-      <SuggestionCard
-        suggestion={props.suggestion ?? suggestion("s1")}
-        thread={props.thread ?? null}
-        selected={props.selected ?? false}
-        focus={props.focus ?? 0}
-        context={props.context ?? context()}
-        path={props.path}
-      />
-    </ul>
+    <DesktopCommentKit now={shown.now} self={shown.self} members={[]} people={shown.people} reactions={false}>
+      <ul>
+        <SuggestionCard
+          suggestion={props.suggestion ?? suggestion("s1")}
+          thread={props.thread ?? null}
+          selected={props.selected ?? false}
+          focus={props.focus ?? 0}
+          context={shown}
+          path={props.path}
+        />
+      </ul>
+    </DesktopCommentKit>
   );
 }
 
@@ -109,6 +115,19 @@ afterEach(() => {
 });
 
 describe("a suggestion card", () => {
+  it("keeps the author's name whole and wraps the time under it in a narrow rail", () => {
+    render(card());
+    const found = article(fill(copy.card, { name: "Bob Smith" }));
+    const name = within(found).getByText("Bob Smith");
+    expect(name).toHaveClass("max-w-full", "shrink-0", "truncate");
+    expect(name.parentElement).toHaveClass("min-w-0", "flex-wrap");
+    const time = found.querySelector("time") as HTMLElement;
+    expect(time).toHaveClass("min-w-0");
+    expect(time).not.toHaveClass("truncate");
+    expect(time.parentElement).toHaveClass("min-w-0");
+    expect(time.parentElement).not.toHaveClass("shrink-0");
+  });
+
   it("names a verified author who has left the project as someone", () => {
     render(card({ suggestion: suggestion("s1", { author: CAROL_ID }) }));
     const found = article(fill(copy.card, { name: enCollab.toolbar.unknownPerson }));
@@ -186,7 +205,7 @@ describe("a suggestion card", () => {
     const view = render(card({ selected: true, focus: 0 }));
     const found = article(fill(copy.card, { name: "Bob Smith" }));
     expect(found).toHaveAttribute("aria-current", "true");
-    expect(found).toHaveClass("border-primary/30");
+    expect(found).toHaveClass("border-ring");
     expect(scrollIntoView).not.toHaveBeenCalled();
     view.rerender(card({ selected: true, focus: 1 }));
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
@@ -205,6 +224,21 @@ describe("a suggestion card", () => {
     expect(useSuggestions.getState().hoveredId).toBeNull();
   });
 
+  it("lets a writer resolve the discussion under a suggestion, with replies laid out like a comment thread", async () => {
+    const thread = commentThread("t-why", { from: 4, to: 10 }, {
+      messages: [commentMessage("m-why", BOB_ID, "Is this word right?"), commentMessage("m-yes", ALICE_ID, "Yes, it is.")],
+    });
+    mocks.collabCommentResolve.mockResolvedValue({ ...thread, resolved: { by: ALICE_ID, at: SUGGESTED_AT, verified: true } });
+    useComments.setState({ projectId: "paper", threads: [thread] });
+    const shown = context({ commentsOn: true, canWrite: true });
+    render(card({ suggestion: suggestion("s1", { threadId: "t-why" }), thread, context: shown }));
+    const found = article(fill(copy.card, { name: "Bob Smith" }));
+    expect(found).toHaveClass("space-y-3");
+    expect(within(found).getByText("Yes, it is.").closest("ol")).toHaveClass("space-y-4", "pl-4");
+    fireEvent.click(within(found).getByRole("button", { name: enCollab.comments.resolve }));
+    await waitFor(() => expect(mocks.collabCommentResolve).toHaveBeenCalledWith("paper", thread.fileId, "t-why"));
+  });
+
   it("shows a thread's replies only while comments are on, and sends a reply from the card", async () => {
     const thread = commentThread("t-why", { from: 4, to: 10 }, {
       messages: [commentMessage("m-why", BOB_ID, "Is this word right?")],
@@ -219,7 +253,7 @@ describe("a suggestion card", () => {
     fireEvent.change(screen.getByRole("textbox", { name: enCollab.comments.replyLabel }), {
       target: { value: "Why this word?" },
     });
-    fireEvent.click(screen.getByRole("button", { name: enCollab.comments.reply }));
+    fireEvent.click(screen.getByRole("button", { name: enCollab.comments.send }));
     await waitFor(() =>
       expect(mocks.collabSuggestionReply).toHaveBeenCalledWith("paper", "s1", "Why this word?", expect.any(Array)),
     );

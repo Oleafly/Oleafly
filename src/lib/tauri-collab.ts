@@ -52,6 +52,7 @@ import type {
   CollabPage,
   CollabPerson,
   CollabPresence,
+  CollabPresenceActivity,
   CollabPresenceLeft,
   CollabProjectGuestInvitations,
   CollabProjectMember,
@@ -277,6 +278,8 @@ export const collabPresenceSet = (
   cursor: number | null,
   anchor: number | null,
 ) => invoke<void>("collab_presence_set", { projectId, path, cursor, anchor });
+export const collabPresenceActivity = (projectId: string, activity: CollabPresenceActivity | null) =>
+  invoke<void>("collab_presence_activity", { projectId, activity });
 export const collabPresenceLeave = (projectId: string) => invoke<void>("collab_presence_leave", { projectId });
 export const collabMergeReview = (projectId: string, before: string, after: string) =>
   invoke<CollabMergeReviewFile[]>("collab_merge_review", { projectId, before, after });
@@ -494,6 +497,16 @@ export const collabCommentResolve = (projectId: string, fileId: string, threadId
   invoke<CollabCommentThread>("collab_comment_resolve", { projectId, fileId, threadId });
 export const collabCommentReopen = (projectId: string, fileId: string, threadId: string) =>
   invoke<CollabCommentThread>("collab_comment_reopen", { projectId, fileId, threadId });
+export const collabCommentReact = (
+  projectId: string,
+  fileId: string,
+  threadId: string,
+  messageId: string,
+  emoji: string,
+  on: boolean,
+) => invoke<CollabCommentThread>("collab_comment_react", { projectId, fileId, threadId, messageId, emoji, on });
+export const collabCommentRemove = (projectId: string, fileId: string, threadId: string, messageId: string) =>
+  invoke<void>("collab_comment_remove", { projectId, fileId, threadId, messageId });
 export const collabCommentThreadDelete = (projectId: string, fileId: string, threadId: string) =>
   invoke<void>("collab_comment_thread_delete", { projectId, fileId, threadId });
 
@@ -658,10 +671,12 @@ export function onCollabSuggestionRefused(handler: (payload: CollabSuggestionRef
 
 export const collabChatList = (projectId: string, before: string | null, limit: number) =>
   invoke<CollabChatMessage[]>("collab_chat_list", { projectId, before, limit });
-export const collabChatSend = (projectId: string, body: string) =>
-  invoke<CollabChatMessage>("collab_chat_send", { projectId, body });
+export const collabChatSend = (projectId: string, body: string, members: CollabCommentMember[] = []) =>
+  invoke<CollabChatMessage>("collab_chat_send", { projectId, body, members });
 export const collabChatDelete = (projectId: string, id: string) =>
   invoke<void>("collab_chat_delete", { projectId, id });
+export const collabChatReact = (projectId: string, messageId: string, emoji: string, on: boolean) =>
+  invoke<void>("collab_chat_react", { projectId, messageId, emoji, on });
 export const collabChatClear = (projectId: string) => invoke<void>("collab_chat_clear", { projectId });
 
 export function onCollabChatChanged(handler: (payload: CollabChatChanged) => void): Promise<UnlistenFn> {

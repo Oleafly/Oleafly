@@ -199,7 +199,20 @@ describe("comments for a shared project", () => {
     mocks.collabCommentsStatus.mockResolvedValue(commentsStatus({ projectEnabled: false, canComment: false }));
     act(() =>
       useCollabLiveStore.setState({
-        commentsNotSent: [{ fileId: INTRO_FILE, path: "intro.tex", threadId: "t1", quote: "The", body: "late" }],
+        commentsNotSent: [
+          {
+            fileId: INTRO_FILE,
+            path: "intro.tex",
+            threadId: "t1",
+            messageId: "m1",
+            at: 1,
+            newThread: true,
+            edit: false,
+            editedAt: null,
+            quote: "The",
+            body: "late",
+          },
+        ],
       }),
     );
     await waitFor(() => expect(useCommentsRail.getState()).toMatchObject({ visible: false, canCompose: false }));

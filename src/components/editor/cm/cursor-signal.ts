@@ -18,6 +18,26 @@ export function bumpEditorCursorRevision(): void {
   cursorMoved.emit();
 }
 
+let selectionRevision = 0;
+let selectionTyped = false;
+const selectionMoved = createEmitter();
+
+export function editorSelectionRevision(): number {
+  return selectionRevision;
+}
+
+export function editorSelectionTyped(): boolean {
+  return selectionTyped;
+}
+
+export const subscribeEditorSelection = selectionMoved.subscribe;
+
+export function bumpEditorSelectionRevision(typed = false): void {
+  selectionTyped = typed;
+  selectionRevision++;
+  selectionMoved.emit();
+}
+
 export function noteEditorDocument(path: string | null, version: number): void {
   const key = `${path ?? ""}\u0000${version}`;
   if (key === lastDocument) return;
@@ -30,6 +50,9 @@ export function cursorSignalExtension() {
   return EditorView.updateListener.of((update) => {
     const outlineChanged = typstOutlineChanged(update);
     if (!update.selectionSet && !update.docChanged && !outlineChanged) return;
+    if (update.selectionSet || update.docChanged) {
+      bumpEditorSelectionRevision(update.transactions.some((tr) => tr.isUserEvent("input.type") || tr.isUserEvent("input.paste") || tr.isUserEvent("delete")));
+    }
     const head = update.state.selection.main.head;
     const line = update.state.doc.lineAt(head);
     const movedLine = line.number !== lastLine;

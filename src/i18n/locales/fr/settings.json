@@ -668,6 +668,15 @@
         "grid": "Grille",
         "label": "Motif de fond"
       },
+      "commentColor": {
+        "accent": "Couleur d'accentuation",
+        "description": "Couleur du texte commenté dans l'éditeur et des citations dans le panneau des commentaires. S'applique sur cet appareil.",
+        "graphite": "Graphite",
+        "indigo": "Indigo",
+        "label": "Couleur de surlignage des commentaires",
+        "leaf": "Vert feuille",
+        "sample": "Texte commenté"
+      },
       "dock": {
         "bottom": "En bas",
         "description": "Choisissez l'emplacement du dock de l'écran d'accueil.",

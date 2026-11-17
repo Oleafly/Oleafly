@@ -116,6 +116,7 @@
     "superscript": "Hævet skrift",
     "subscript": "Sænket skrift",
     "inlineCode": "Kode i linjen",
+    "clearFormatting": "Ryd formatering",
     "insertLink": "Indsæt link",
     "insertCrossReference": "Indsæt krydsreference",
     "insertFootnote": "Indsæt fodnote",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Gå til PDF",
     "linkUrl": "URL til linket",
     "removeLink": "Fjern linket",
+    "alignment": "Justering",
+    "align": {
+      "left": "Venstrejuster",
+      "center": "Centrer",
+      "right": "Højrejuster",
+      "justify": "Lige margener"
+    },
+    "emoji": "Emoji",
+    "textColor": "Tekstfarve",
+    "removeTextColor": "Fjern farve",
+    "textColors": {
+      "gray": "Grå",
+      "red": "Rød",
+      "orange": "Orange",
+      "green": "Grøn",
+      "teal": "Blågrøn",
+      "blue": "Blå",
+      "purple": "Lilla"
+    },
     "imageFile": "Billedfil",
     "apply": "Anvend",
     "linkPlaceholder": "https://",
@@ -1671,5 +1691,11 @@
       "duplicateArg": "Dubleret argument",
       "unknownKind": "Ukendt felttype"
     }
+  },
+  "emoji": {
+    "search": "Søg efter emoji",
+    "skinTone": "Hudfarve",
+    "loading": "Indlæser emoji",
+    "empty": "Ingen emoji fundet"
   }
 }

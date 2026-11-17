@@ -310,6 +310,7 @@ fn manifest(max_file_mb: u64, max_project_mb: u64) -> String {
             suggestions: true,
             chat: true,
             web: false,
+            reactions: false,
         },
         limits: Limits {
             max_project_mb,

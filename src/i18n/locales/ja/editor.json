@@ -116,6 +116,7 @@
     "superscript": "上付き",
     "subscript": "下付き",
     "inlineCode": "インラインコード",
+    "clearFormatting": "書式をクリア",
     "insertLink": "リンクを挿入",
     "insertCrossReference": "相互参照を挿入",
     "insertFootnote": "脚注を挿入",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "PDF へ移動",
     "linkUrl": "リンクの URL",
     "removeLink": "リンクを削除",
+    "alignment": "配置",
+    "align": {
+      "left": "左揃え",
+      "center": "中央揃え",
+      "right": "右揃え",
+      "justify": "両端揃え"
+    },
+    "emoji": "絵文字",
+    "textColor": "文字の色",
+    "removeTextColor": "色を解除",
+    "textColors": {
+      "gray": "グレー",
+      "red": "赤",
+      "orange": "オレンジ",
+      "green": "緑",
+      "teal": "ティール",
+      "blue": "青",
+      "purple": "紫"
+    },
     "imageFile": "画像ファイル",
     "apply": "適用",
     "linkPlaceholder": "https://",
@@ -1650,5 +1670,11 @@
       "duplicateArg": "重複した引数",
       "unknownKind": "不明なフィールドの種類"
     }
+  },
+  "emoji": {
+    "search": "絵文字を検索",
+    "skinTone": "肌の色",
+    "loading": "絵文字を読み込んでいます",
+    "empty": "絵文字が見つかりません"
   }
 }

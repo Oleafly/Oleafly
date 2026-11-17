@@ -192,6 +192,7 @@ impl Person {
                 file_id: Some(file.to_owned()),
                 cursor: u32::try_from(cursor).ok(),
                 anchor: None,
+                activity: None,
             });
         }
     }

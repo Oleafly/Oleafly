@@ -664,6 +664,15 @@
         "grid": "Raster",
         "label": "Hintergrundmuster"
       },
+      "commentColor": {
+        "accent": "Akzentfarbe",
+        "description": "Farbe für kommentierten Text im Editor und für Zitate im Kommentarbereich. Gilt auf diesem Gerät.",
+        "graphite": "Graphit",
+        "indigo": "Indigo",
+        "label": "Hervorhebungsfarbe für Kommentare",
+        "leaf": "Blattgrün",
+        "sample": "Kommentierter Text"
+      },
       "dock": {
         "bottom": "Unten",
         "description": "Wählen Sie, wo das Dock der Startseite sitzt.",

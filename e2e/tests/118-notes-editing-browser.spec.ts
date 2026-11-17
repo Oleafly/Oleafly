@@ -453,15 +453,14 @@ test.describe("Notes editing", () => {
     await notes.openNote("Dataloader rewrite: what changed");
     await notes.dockRight("Dataloader rewrite: what changed");
     const panel = page.getByRole("tabpanel", { name: "Abstract draft" });
-    const toolbar = panel.getByRole("toolbar", { name: "Formatting" });
-    const more = toolbar.getByRole("button", { name: "More", exact: true });
+    const toolbar = panel.getByRole("toolbar", { name: "Formatting", exact: true });
+    const more = toolbar.getByRole("button", { name: "More formatting", exact: true });
+    const oneRow = () => toolbar.evaluate((element) => element.scrollWidth <= element.clientWidth + 1 && element.getBoundingClientRect().height < 48);
     await expect(toolbar.getByRole("button", { name: "Undo", exact: true })).toBeVisible();
-    await expect(toolbar.getByRole("button", { name: "Block type" })).toBeVisible();
-    await expect(toolbar.getByRole("button", { name: "Quote", exact: true })).toBeVisible();
-    await expect(toolbar.getByRole("button", { name: "Code block", exact: true })).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "Bold", exact: true })).toBeVisible();
     await expect(more).toBeVisible();
-    await expect(toolbar.getByRole("button", { name: "Chart", exact: true })).toHaveCount(0);
-    expect(await toolbar.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    await expect(toolbar.getByRole("button", { name: "Insert block", exact: true })).toHaveCount(0);
+    expect(await oneRow()).toBe(true);
     const bar = await toolbar.boundingBox();
     const button = await more.boundingBox();
     if (!bar || !button) throw new Error("no geometry");
@@ -469,15 +468,18 @@ test.describe("Notes editing", () => {
     expect(bar.x + bar.width - (button.x + button.width)).toBeLessThan(16);
 
     await panel.locator(".ProseMirror > p").first().click();
-    await more.click();
+    await more.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("menuitem", { name: "Insert block", exact: true })).toBeVisible();
+    await page.getByRole("menuitem", { name: "Insert block", exact: true }).click();
     await page.getByRole("menuitem", { name: "Chart", exact: true }).click();
     await expect(panel.locator('[data-block="chart"]')).toHaveCount(1);
-    await expect(toolbar.getByRole("button", { name: "List", exact: true })).toBeVisible();
-    expect(await toolbar.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+    expect(await oneRow()).toBe(true);
 
     await page.setViewportSize({ width: 2600, height: 800 });
-    await expect(more).toHaveCount(0);
-    await expect(toolbar.getByRole("button", { name: "Chart", exact: true })).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "Insert block", exact: true })).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "Heading 6", exact: true })).toBeVisible();
+    expect(await oneRow()).toBe(true);
   });
 
   test("turns a line into a quote or a code block from the bar and sets the code language", async ({ notes }) => {
@@ -486,11 +488,11 @@ test.describe("Notes editing", () => {
     await notes.openNote("Abstract draft");
     await notes.newParagraph();
     await page.keyboard.type("print(1)");
-    const toolbar = notes.shown.getByRole("toolbar", { name: "Formatting" });
+    const toolbar = notes.shown.getByRole("toolbar", { name: "Formatting", exact: true });
     const quote = toolbar.getByRole("button", { name: "Quote", exact: true });
     const code = toolbar.getByRole("button", { name: "Code block", exact: true });
     const language = toolbar.getByRole("button", { name: "Code language", exact: true });
-    const list = toolbar.getByRole("button", { name: "List", exact: true });
+    const list = toolbar.getByRole("button", { name: "Bullet list", exact: true });
     await expect(language).toHaveCount(0);
     const listAt = (await list.boundingBox())?.x;
     await quote.click();

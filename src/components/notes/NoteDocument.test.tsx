@@ -1985,13 +1985,13 @@ describe("a note that can't be edited right now", () => {
       expect(editor.isEditable).toBe(false);
       expect(title).toHaveAttribute("readonly");
       expect(screen.queryByTestId("pick-icon")).toBeNull();
-      expect(screen.queryByRole("button", { name: enNotes.toolbar.blockType })).toBeNull();
+      expect(screen.queryByRole("button", { name: enNotes.toolbar.moreFormatting })).toBeNull();
       expect(screen.getByRole("textbox", { name: "Value of status" })).toBeDisabled();
       requestInsert({ snippet: "![Loss](figs/loss.png)", id: 1 });
       expect(bodyText(editor)).not.toContain("Loss");
       act(() => useCollabEditorGate.setState({ connecting: false }));
       expect(editor.isEditable).toBe(true);
-      expect(screen.getByRole("button", { name: enNotes.toolbar.blockType })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: enNotes.toolbar.moreFormatting })).toBeInTheDocument();
       expect(screen.getByRole("textbox", { name: "Value of status" })).toBeEnabled();
     } finally {
       useCollabEditorGate.setState({ projectId: null, connecting: false });
@@ -2168,6 +2168,50 @@ describe("selection bubble", () => {
       fireEvent.blur(editor.view.dom);
     });
     expect(bubbleButton(enNotes.document.askAgent)).toBeNull();
+  });
+
+  it("formats the selection from labelled buttons that keep the selection, before the agent actions", async () => {
+    const { editor } = await openWithSelection(fakeData());
+    const bubble = screen.getByRole("toolbar", { name: enNotes.document.selectionMenu });
+    const names = within(bubble)
+      .getAllByRole("button")
+      .map((entry) => entry.getAttribute("aria-label") ?? entry.textContent);
+    expect(names.slice(0, 7)).toEqual([
+      enEditor.toolbar.bold,
+      enEditor.toolbar.italic,
+      enEditor.toolbar.underline,
+      enEditor.toolbar.strikethrough,
+      enEditor.toolbar.inlineCode,
+      enEditor.toolbar.textColor,
+      enNotes.toolbar.link,
+    ]);
+    expect(names[7]).toContain(enNotes.document.askAgent);
+    const bold = within(bubble).getByRole("button", { name: enEditor.toolbar.bold });
+    expect(bold).toHaveAttribute("aria-pressed", "false");
+    expect(fireEvent.mouseDown(bold)).toBe(false);
+    fireEvent.click(bold);
+    expect(editor.isActive("bold")).toBe(true);
+    expect(within(bubble).getByRole("button", { name: enEditor.toolbar.bold })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("keeps only the agent actions for a selection inside a code block", async () => {
+    const opened = await openNote(fakeData({ text: `${TEXT}\n\`\`\`\nmask code\n\`\`\`\n` }));
+    vi.spyOn(opened.editor.view, "coordsAtPos").mockReturnValue({ top: 200, bottom: 216, left: 48, right: 90 });
+    select(opened.editor, "mask code");
+    await frame();
+    expect(bubbleButton(enNotes.document.askAgent)).not.toBeNull();
+    expect(bubbleButton(enEditor.toolbar.bold)).toBeNull();
+  });
+
+  it("stays open while its colour menu has focus", async () => {
+    const { editor } = await openWithSelection(fakeData());
+    fireEvent.pointerDown(screen.getByRole("button", { name: enEditor.toolbar.textColor }), { button: 0, ctrlKey: false });
+    act(() => {
+      fireEvent.blur(editor.view.dom);
+    });
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: enEditor.toolbar.textColors.green }));
+    expect(editor.getAttributes("textColor").color).toBe("green!60!black");
+    expect(bubbleButton(enNotes.document.askAgent)).not.toBeNull();
   });
 
   it("hides when the note scrolls", async () => {

@@ -55,6 +55,13 @@ export interface LivePeer {
   anchor: number | null;
   seenAt: number;
   hue: number;
+  activity?: LivePeerActivity | null;
+  activityAt?: number;
+}
+
+export interface LivePeerActivity {
+  kind: "reply" | "chat";
+  threadId: string | null;
 }
 
 export type PeerPlace = Pick<LivePeer, "deviceId" | "accountId" | "person" | "path" | "hue">;
@@ -113,6 +120,7 @@ export interface CollabLiveStoreState {
   ended: CollabLiveEndedReason | null;
   accessNotice: AccessNotice | null;
   commentsNotSent: CollabCommentNotSent[] | null;
+  notSentBannerHidden: boolean;
   unwritten: CollabLiveUnwritten["files"];
   projectFull: boolean;
   refreshShare: () => Promise<void>;
@@ -121,6 +129,7 @@ export interface CollabLiveStoreState {
   dismissEnded: () => void;
   dismissAccessNotice: () => void;
   dismissCommentsNotSent: () => void;
+  discardCommentNotSent: (comment: CollabCommentNotSent) => void;
   goLiveAgain: () => void;
 }
 
@@ -146,6 +155,7 @@ type LiveData = Omit<
   | "dismissEnded"
   | "dismissAccessNotice"
   | "dismissCommentsNotSent"
+  | "discardCommentNotSent"
   | "goLiveAgain"
 >;
 
@@ -164,6 +174,7 @@ function emptyLive(projectId: string | null): LiveData {
     ended: null,
     accessNotice: null,
     commentsNotSent: null,
+    notSentBannerHidden: false,
     unwritten: [],
     projectFull: false,
   };
@@ -232,7 +243,12 @@ export const useCollabLiveStore: UseBoundStore<StoreApi<CollabLiveStoreState>> =
     dismissMerged: () => set({ merged: null }),
     dismissEnded: () => set({ ended: null }),
     dismissAccessNotice: () => set({ accessNotice: null }),
-    dismissCommentsNotSent: () => set({ commentsNotSent: null }),
+    dismissCommentsNotSent: () => set({ notSentBannerHidden: true }),
+    discardCommentNotSent: (comment) =>
+      set((state) => {
+        const left = (state.commentsNotSent ?? []).filter((entry) => entry !== comment);
+        return { commentsNotSent: left.length > 0 ? left : null };
+      }),
     goLiveAgain: () => goLiveAgainNow?.(),
   }),
 );
@@ -485,6 +501,8 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
           anchor: payload.anchor,
           seenAt: Date.now(),
           hue: peerHue(payload.accountId, state.share?.account_id ?? null),
+          activity: payload.activity ?? null,
+          activityAt: payload.activity ? Date.now() : 0,
         },
       },
     }));
@@ -520,7 +538,10 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
 
   const onCommentsNotSent = (payload: CollabCommentsNotSent) => {
     if (payload.projectId !== current()) return;
-    store.setState((state) => ({ commentsNotSent: [...(state.commentsNotSent ?? []), ...payload.comments] }));
+    store.setState((state) => ({
+      commentsNotSent: [...(state.commentsNotSent ?? []), ...payload.comments],
+      notSentBannerHidden: false,
+    }));
   };
 
   const onProjectFull = (payload: { projectId: string }) => {

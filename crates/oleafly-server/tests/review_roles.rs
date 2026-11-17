@@ -145,6 +145,82 @@ fn chat_as(doc: &LoroDoc, author: &str, body: &str) {
     message.insert("body", body).unwrap();
 }
 
+fn messages_of(doc: &LoroDoc, thread: &str) -> LoroList {
+    let Some(loro::ValueOrContainer::Container(loro::Container::Map(found))) =
+        doc.get_map("comments").get(thread)
+    else {
+        panic!("thread {thread} is there");
+    };
+    let Some(loro::ValueOrContainer::Container(loro::Container::List(messages))) =
+        found.get("messages")
+    else {
+        panic!("thread {thread} has messages");
+    };
+    messages
+}
+
+fn said_in(messages: &LoroList, id: &str, author: &str) -> LoroMap {
+    let message = messages.push_container(LoroMap::new()).unwrap();
+    message.insert("id", id).unwrap();
+    message.insert("author", author).unwrap();
+    message.insert("body", "Why?").unwrap();
+    message
+}
+
+fn first_of(doc: &LoroDoc, thread: &str) -> LoroMap {
+    match messages_of(doc, thread).get(0) {
+        Some(loro::ValueOrContainer::Container(loro::Container::Map(message))) => message,
+        other => panic!("not a message: {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn an_editor_types_and_replies_but_never_removes_or_deletes_someone_elses_comment() {
+    let stage = stage().await;
+    let shared = shared_with(&stage, &stage.alice, ProjectRole::Editor).await;
+    let owner_account = account(&stage.bob);
+    let mut owner = Writer::open(&stage, &stage.bob, shared.project, 11, &shared.known).await;
+    let (commented, from_bob) = owner
+        .send(&stage.bob, shared.project, |doc| {
+            let thread = doc
+                .get_map("comments")
+                .insert_container("t1", LoroMap::new())
+                .unwrap();
+            thread.insert("created_by", owner_account.as_str()).unwrap();
+            let messages = thread
+                .insert_container("messages", LoroList::new())
+                .unwrap();
+            said_in(&messages, "m1", &owner_account);
+        })
+        .await;
+    assert!(stored(&commented), "{commented:?}");
+    let mut known = shared.known.clone();
+    known.push(from_bob);
+    let me = account(&stage.alice);
+    let mut alice = Writer::open(&stage, &stage.alice, shared.project, 41, &known).await;
+    let (typed, _) = alice
+        .send(&stage.alice, shared.project, |doc| {
+            file_text(doc, FILE).insert(0, "Oh, ").unwrap();
+        })
+        .await;
+    assert!(stored(&typed), "{typed:?}");
+    let (replied, _) = alice
+        .send(&stage.alice, shared.project, |doc| {
+            said_in(&messages_of(doc, "t1"), "m2", &me);
+        })
+        .await;
+    assert!(stored(&replied), "{replied:?}");
+    for (peer, flag) in [(42, "removed"), (43, "deleted")] {
+        let mut attempt = Writer::open(&stage, &stage.alice, shared.project, peer, &known).await;
+        let (refused, _) = attempt
+            .send(&stage.alice, shared.project, |doc| {
+                first_of(doc, "t1").insert(flag, true).unwrap();
+            })
+            .await;
+        assert!(forbidden(&refused), "{flag}: {refused:?}");
+    }
+}
+
 #[tokio::test]
 async fn a_reviewer_can_suggest_comment_and_chat() {
     let stage = stage().await;

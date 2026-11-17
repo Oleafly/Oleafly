@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { useNotesPrefsStore } from "@/store/notes-prefs";
 import type { NotesHighlightColor } from "@/lib/notes-appearance";
 import { destroyKbEditors, kbEditor, kbMarkdown, kbNote, placeCursor, positionOf, pressKey, selectText, typeInto } from "./tests/kb-editor-fixtures";
@@ -91,6 +91,19 @@ describe("highlight colours", () => {
     const editor = kbEditor(source);
     expect(colors(editor)).toEqual(["plain:yellow", "go :green", "now:green", "stop:red"]);
     expect(kbMarkdown(editor)).toBe(source);
+  });
+
+  it("registers one highlight mark and keeps a plain mark tag as written after the paragraph is edited", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      const editor = kbEditor("A <mark>hi</mark> b");
+      expect(warn.mock.calls.flat().join(" ")).not.toMatch(/Duplicate extension names/u);
+      placeCursor(editor, " b", 2);
+      typeInto(editor, "Z");
+      expect(kbMarkdown(editor)).toBe("A <mark>hi</mark> bZ");
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("keeps a mark tag with a colour outside the palette as written", () => {

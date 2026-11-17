@@ -2,6 +2,7 @@
 
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
@@ -10,7 +11,7 @@ import { loadNamespace } from "@/i18n";
 import type { CollabChatMessage, CollabProjectRole } from "@/lib/tauri";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore } from "../live/live-store";
-import { ALICE_ID, BOB, BOB_ID, CAROL_ID, collabError, person, projectMember, shareInfo } from "../tests/fixtures";
+import { ALICE_ID, BOB, BOB_ID, CAROL_ID, collabError, deferred, person, projectMember, shareInfo } from "../tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
   collabChatList: vi.fn(),
@@ -35,15 +36,15 @@ vi.mock("@tauri-apps/api/event", () => ({
   }),
 }));
 
-import { CHAT_PAGE, startChat, useChat } from "./chat-store";
+import { CHAT_PAGE, loadChat, startChat, useChat } from "./chat-store";
 import { ChatPane } from "./ChatPane";
 
 const copy = enCollab.chat;
 const AT = 1_760_000_000_000;
 const MEMBERS = [projectMember(person(), "editor"), projectMember(BOB, "owner")];
 
-function message(id: string, author: string, body: string, at = AT, overrides: Partial<CollabChatMessage> = {}) {
-  return { id, author, at, body, deleted: false, verified: true, ...overrides };
+function message(id: string, author: string, body: string, at = AT, overrides: Partial<CollabChatMessage> = {}): CollabChatMessage {
+  return { id, author, at, body, deleted: false, verified: true, reactions: [], pending: false, mentions: [], ...overrides };
 }
 
 const hello = message("c1", BOB_ID, "Draft is ready", AT);
@@ -73,7 +74,7 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  for (const mock of [mocks.collabChatList, mocks.collabChatSend, mocks.collabChatDelete, mocks.collabChatClear]) mock.mockReset();
   mocks.listeners.clear();
   vi.spyOn(Date, "now").mockReturnValue(AT + 120_000);
   mocks.collabChatList.mockResolvedValue([reply, hello]);
@@ -85,22 +86,40 @@ beforeEach(() => {
 afterEach(() => {
   stop?.();
   stop = null;
+  useChatRail.setState({ reveal: null });
   vi.restoreAllMocks();
   useCollabLiveStore.setState({ projectId: null, role: null, status: null, share: null, members: [] });
 });
 
+async function openDelete(row: HTMLElement) {
+  fireEvent.keyDown(within(row).getByRole("button", { name: copy.messageActions }), { key: "Enter" });
+  fireEvent.click(await screen.findByRole("menuitem", { name: enCommon.actions.delete }));
+}
+
 describe("project chat", () => {
-  it("shows the messages oldest first with who wrote them and turns the rail tab on", async () => {
+  it("shows the messages oldest first, names other people, keeps yours on the right, and turns the rail tab on", async () => {
     await open();
     expect(mocks.collabChatList).toHaveBeenCalledWith("paper", null, CHAT_PAGE);
     const list = screen.getByRole("list", { name: copy.list });
     const rows = within(list).getAllByRole("listitem");
-    expect(rows.map((row) => row.textContent)).toEqual([
-      expect.stringContaining("Bob Smith"),
-      expect.stringContaining("Alice Chen"),
-    ]);
+    expect(rows[0]).toHaveTextContent("Bob Smith");
     expect(rows[0]).toHaveTextContent("Draft is ready");
+    expect(rows[0]).not.toHaveAttribute("data-own");
+    expect(rows[1]).toHaveTextContent("Reading it now");
+    expect(rows[1]).toHaveAttribute("data-own");
+    expect(rows[1]).not.toHaveTextContent("Alice Chen");
     expect(useChatRail.getState().visible).toBe(true);
+  });
+
+  it("groups a quick follow-up from the same person under one name", async () => {
+    mocks.collabChatList.mockResolvedValue([reply, message("c3", BOB_ID, "And the tables", AT + 30_000), hello]);
+    await open();
+    const tables = screen.getByText("And the tables").closest("[data-comment-entry]") as HTMLElement;
+    expect(tables).toHaveClass("mt-1");
+    expect(tables).not.toHaveTextContent("Bob Smith");
+    expect(tables.querySelector('[data-slot="avatar"]')).toBeNull();
+    expect(screen.getAllByText("Bob Smith")).toHaveLength(1);
+    expect(screen.getByText("Reading it now").closest("[data-comment-entry]")).toHaveClass("mt-3");
   });
 
   it("sends a message and shows it straight away", async () => {
@@ -109,15 +128,15 @@ describe("project chat", () => {
     await open();
     await user.type(screen.getByRole("textbox", { name: copy.label }), "Done");
     await user.click(screen.getByRole("button", { name: copy.send }));
-    await waitFor(() => expect(mocks.collabChatSend).toHaveBeenCalledWith("paper", "Done"));
+    await waitFor(() => expect(mocks.collabChatSend).toHaveBeenCalledWith("paper", "Done", expect.any(Array)));
     expect(await screen.findByText("Done")).toBeInTheDocument();
   });
 
   it("lets people delete only their own messages, after asking", async () => {
     await open();
     const rows = within(screen.getByRole("list", { name: copy.list })).getAllByRole("listitem");
-    expect(within(rows[0]).queryByRole("button", { name: copy.delete })).toBeNull();
-    fireEvent.click(within(rows[1]).getByRole("button", { name: copy.delete }));
+    expect(within(rows[0]).queryByRole("button", { name: copy.messageActions })).toBeNull();
+    await openDelete(rows[1]);
     const dialog = await screen.findByRole("alertdialog", { name: copy.deleteConfirm.title });
     fireEvent.click(within(dialog).getByRole("button", { name: enCommon.actions.delete }));
     await waitFor(() => expect(mocks.collabChatDelete).toHaveBeenCalledWith("paper", "c2"));
@@ -142,7 +161,7 @@ describe("project chat", () => {
     await open("viewer");
     expect(screen.queryByRole("textbox", { name: copy.label })).toBeNull();
     expect(screen.getByText(copy.readOnly)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: copy.delete })).toBeNull();
+    expect(screen.queryByRole("button", { name: copy.messageActions })).toBeNull();
   });
 
   it("lets commenters and reviewers post", async () => {
@@ -158,6 +177,292 @@ describe("project chat", () => {
     expect(await screen.findByText("Thanks")).toBeInTheDocument();
     act(() => useSettingsStore.setState({ railTab: "chat" }));
     expect(useChatRail.getState().unread).toBe(false);
+  });
+
+  it("marks a new message New when the pane runs under StrictMode, as the app does", async () => {
+    live("editor");
+    stop = startChat();
+    render(
+      <StrictMode>
+        <ChatPane />
+      </StrictMode>,
+    );
+    await screen.findByText("Reading it now");
+    mocks.collabChatList.mockResolvedValue([hello, reply, message("c4", BOB_ID, "Thanks", AT + 100_000)]);
+    act(() => mocks.listeners.get("collab://chat-changed")?.({ payload: { projectId: "paper", local: false } }));
+    expect((await screen.findByText("Thanks")).closest("[data-comment-entry]")).toHaveAttribute("data-fresh");
+    expect(screen.getByText("Reading it now").closest("[data-comment-entry]")).not.toHaveAttribute("data-fresh");
+  });
+
+  it("marks a message New when it only claims to be from you, and highlights a mention of you", async () => {
+    await open();
+    mocks.collabChatList.mockResolvedValue([
+      hello,
+      reply,
+      message("c5", ALICE_ID, "Sent in your name", AT + 100_000, { verified: false }),
+      message("c6", BOB_ID, "@Alice Chen look at this", AT + 110_000, { mentions: [ALICE_ID] }),
+    ]);
+    act(() => mocks.listeners.get("collab://chat-changed")?.({ payload: { projectId: "paper", local: false } }));
+    const forged = (await screen.findByText("Sent in your name")).closest("[data-comment-entry]") as HTMLElement;
+    expect(forged).not.toHaveAttribute("data-own");
+    expect(forged).toHaveAttribute("data-fresh");
+    const mention = screen.getByText("@Alice Chen");
+    expect(mention).toHaveAttribute("data-mention");
+    expect(mention.closest("[data-comment-bubble]")).not.toBeNull();
+  });
+
+  it("scrolls to the message a chat mention opened", async () => {
+    await open();
+    const reveal = vi.fn();
+    const target = screen.getByText("Draft is ready").closest("[data-comment-entry]") as HTMLElement;
+    target.scrollIntoView = reveal;
+    act(() => useChatRail.setState({ reveal: "c1" }));
+    expect(reveal).toHaveBeenCalledWith({ block: "center" });
+    expect(useChatRail.getState().reveal).toBeNull();
+  });
+
+  it("loads older pages to reach a mentioned message that is no longer in the newest page", async () => {
+    const page = Array.from({ length: CHAT_PAGE }, (_, index) => message(`p${index}`, BOB_ID, `Message ${index}`, AT + index * 1_000));
+    mocks.collabChatList.mockResolvedValueOnce(page).mockResolvedValueOnce([message("old", BOB_ID, "Mentioned you", AT - 5_000)]);
+    live("editor");
+    stop = startChat();
+    render(<ChatPane />);
+    await screen.findByText("Message 0");
+    const reveal = vi.fn();
+    const scroll = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = reveal;
+    try {
+      act(() => useChatRail.setState({ reveal: "old" }));
+      await waitFor(() => expect(reveal).toHaveBeenCalledWith({ block: "center" }));
+      expect(mocks.collabChatList).toHaveBeenLastCalledWith("paper", "p0", CHAT_PAGE);
+      expect(useChatRail.getState().reveal).toBeNull();
+    } finally {
+      Element.prototype.scrollIntoView = scroll;
+    }
+  });
+
+  it("says a mentioned message can't be found once every page is loaded, until the next one is found", async () => {
+    await open();
+    act(() => useChatRail.setState({ reveal: "gone" }));
+    expect(await screen.findByText(enCollab.errors.not_found)).toBeInTheDocument();
+    expect(useChatRail.getState().reveal).toBeNull();
+    const target = screen.getByText("Draft is ready").closest("[data-comment-entry]") as HTMLElement;
+    target.scrollIntoView = vi.fn();
+    act(() => useChatRail.setState({ reveal: "c1" }));
+    expect(target.scrollIntoView).toHaveBeenCalledWith({ block: "center" });
+    expect(screen.queryByText(enCollab.errors.not_found)).toBeNull();
+  });
+
+  it("keeps a half-written message for each project and brings it back on return, while Clear chat starts fresh", async () => {
+    const user = userEvent.setup();
+    const project = (projectId: string) =>
+      act(() => useCollabLiveStore.setState({ projectId, share: shareInfo({ project_id: projectId, role: "owner", account_id: ALICE_ID }) }));
+    await open("owner");
+    await user.type(screen.getByRole("textbox", { name: copy.label }), "Half-written note for paper");
+    fireEvent.click(screen.getByRole("button", { name: copy.clear }));
+    await screen.findByRole("alertdialog", { name: copy.clearConfirm.title });
+    mocks.collabChatList.mockResolvedValue([message("o1", BOB_ID, "Thesis notes")]);
+    project("thesis");
+    expect(await screen.findByText("Thesis notes")).toBeInTheDocument();
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.getByRole("textbox", { name: copy.label })).toHaveValue("");
+    mocks.collabChatList.mockResolvedValue([reply, hello]);
+    project("paper");
+    expect(await screen.findByText("Reading it now")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: copy.label })).toHaveValue("Half-written note for paper");
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+  });
+
+  it("doesn't bring back a message that was still sending when you switched projects", async () => {
+    const user = userEvent.setup();
+    const sending = deferred<CollabChatMessage>();
+    mocks.collabChatSend.mockReturnValue(sending.promise);
+    const project = (projectId: string) =>
+      act(() => useCollabLiveStore.setState({ projectId, share: shareInfo({ project_id: projectId, role: "editor", account_id: ALICE_ID }) }));
+    await open();
+    await user.type(screen.getByRole("textbox", { name: copy.label }), "On its way");
+    await user.click(screen.getByRole("button", { name: copy.send }));
+    await waitFor(() => expect(mocks.collabChatSend).toHaveBeenCalledWith("paper", "On its way", expect.any(Array)));
+    mocks.collabChatList.mockResolvedValue([message("o1", BOB_ID, "Thesis notes")]);
+    project("thesis");
+    expect(await screen.findByText("Thesis notes")).toBeInTheDocument();
+    await act(async () => sending.resolve(message("c3", ALICE_ID, "On its way", AT + 90_000)));
+    mocks.collabChatList.mockResolvedValue([reply, hello]);
+    project("paper");
+    expect(await screen.findByText("Reading it now")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: copy.label })).toHaveValue("");
+  });
+
+  it.each([
+    ["the wheel", (list: HTMLElement) => fireEvent.wheel(list)],
+    ["a touch", (list: HTMLElement) => fireEvent.touchMove(list)],
+    ["Page Up", (list: HTMLElement) => fireEvent.keyDown(list, { key: "PageUp" })],
+    ["the scroll bar", (list: HTMLElement) => fireEvent.pointerDown(list.closest(".overflow-y-auto") as HTMLElement)],
+  ])("stops looking for a mentioned message, without a jump, once the reader scrolls with %s", async (_, scroll) => {
+    const page = Array.from({ length: CHAT_PAGE }, (_, index) => message(`p${index}`, BOB_ID, `Message ${index}`, AT + index * 1_000));
+    const older = deferred<CollabChatMessage[]>();
+    mocks.collabChatList.mockResolvedValueOnce(page).mockReturnValueOnce(older.promise);
+    live("editor");
+    stop = startChat();
+    render(<ChatPane />);
+    await screen.findByText("Message 0");
+    const reveal = vi.fn();
+    const scrollIntoView = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = reveal;
+    try {
+      act(() => useChatRail.setState({ reveal: "old" }));
+      await waitFor(() => expect(mocks.collabChatList).toHaveBeenCalledTimes(2));
+      const list = screen.getByRole("list", { name: copy.list });
+      fireEvent.scroll(list.closest(".overflow-y-auto") as HTMLElement);
+      fireEvent.keyDown(list, { key: "Enter" });
+      fireEvent.pointerDown(list);
+      expect(useChatRail.getState().reveal).toBe("old");
+      scroll(list);
+      await act(async () => older.resolve([message("old", BOB_ID, "Mentioned you", AT - 5_000)]));
+      expect(await screen.findByText("Mentioned you")).toBeInTheDocument();
+      expect(reveal).not.toHaveBeenCalled();
+      expect(useChatRail.getState().reveal).toBeNull();
+      expect(screen.queryByRole("status")).toBeNull();
+    } finally {
+      Element.prototype.scrollIntoView = scrollIntoView;
+    }
+  });
+
+  it("asks for an older page once when it fails while looking for a mentioned message, and again when asked again", async () => {
+    const page = Array.from({ length: CHAT_PAGE }, (_, index) => message(`p${index}`, BOB_ID, `Message ${index}`, AT + index * 1_000));
+    mocks.collabChatList.mockResolvedValueOnce(page).mockRejectedValueOnce(collabError("unreachable"));
+    live("editor");
+    stop = startChat();
+    render(<ChatPane />);
+    await screen.findByText("Message 0");
+    act(() => useChatRail.setState({ reveal: "old" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent(enCollab.errors.unreachable);
+    expect(mocks.collabChatList).toHaveBeenCalledTimes(2);
+    expect(useChatRail.getState().reveal).toBeNull();
+    mocks.collabChatList.mockResolvedValueOnce([message("old", BOB_ID, "Mentioned you", AT - 5_000)]);
+    const reveal = vi.fn();
+    const scroll = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = reveal;
+    try {
+      act(() => useChatRail.setState({ reveal: "old" }));
+      await waitFor(() => expect(reveal).toHaveBeenCalledWith({ block: "center" }));
+      expect(screen.queryByRole("alert")).toBeNull();
+    } finally {
+      Element.prototype.scrollIntoView = scroll;
+    }
+  });
+
+  it("drops the chat's alerts when the project changes", async () => {
+    await open();
+    act(() => useChatRail.setState({ reveal: "gone" }));
+    expect(await screen.findByText(enCollab.errors.not_found)).toBeInTheDocument();
+    mocks.collabChatList.mockResolvedValue([message("o1", BOB_ID, "Thesis notes")]);
+    act(() => useCollabLiveStore.setState({ projectId: "thesis", share: shareInfo({ project_id: "thesis", role: "editor", account_id: ALICE_ID }) }));
+    expect(await screen.findByText("Thesis notes")).toBeInTheDocument();
+    expect(screen.queryByText(enCollab.errors.not_found)).toBeNull();
+  });
+
+  it("keeps looking for a mentioned message in older pages after a background reload fails", async () => {
+    const page = Array.from({ length: CHAT_PAGE }, (_, index) => message(`p${index}`, BOB_ID, `Message ${index}`, AT + index * 1_000));
+    mocks.collabChatList
+      .mockResolvedValueOnce(page)
+      .mockRejectedValueOnce(collabError("unreachable"))
+      .mockResolvedValueOnce([message("old", BOB_ID, "Mentioned you", AT - 5_000)]);
+    live("editor");
+    stop = startChat();
+    render(<ChatPane />);
+    await screen.findByText("Message 0");
+    await act(() => loadChat());
+    expect(useChat.getState().phase).toBe("failed");
+    const reveal = vi.fn();
+    const scroll = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = reveal;
+    try {
+      act(() => useChatRail.setState({ reveal: "old" }));
+      await waitFor(() => expect(reveal).toHaveBeenCalledWith({ block: "center" }));
+      expect(mocks.collabChatList).toHaveBeenLastCalledWith("paper", "p0", CHAT_PAGE);
+      expect(useChatRail.getState().reveal).toBeNull();
+    } finally {
+      Element.prototype.scrollIntoView = scroll;
+    }
+  });
+
+  it("doesn't say it is loading a mentioned message while the chat itself couldn't load", async () => {
+    mocks.collabChatList.mockRejectedValueOnce(collabError("unreachable"));
+    live("editor");
+    stop = startChat();
+    render(<ChatPane />);
+    expect(await screen.findByText(copy.loadFailed)).toBeInTheDocument();
+    act(() => useChatRail.setState({ reveal: "c1" }));
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("ignores the failure of a search that a newer Show message replaced", async () => {
+    const page = Array.from({ length: CHAT_PAGE }, (_, index) => message(`p${index}`, BOB_ID, `Message ${index}`, AT + index * 1_000));
+    const older = deferred<CollabChatMessage[]>();
+    mocks.collabChatList.mockResolvedValueOnce(page).mockReturnValueOnce(older.promise);
+    live("editor");
+    stop = startChat();
+    render(<ChatPane />);
+    await screen.findByText("Message 0");
+    const reveal = vi.fn();
+    const scroll = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = reveal;
+    try {
+      act(() => useChatRail.setState({ reveal: "old" }));
+      await waitFor(() => expect(mocks.collabChatList).toHaveBeenCalledTimes(2));
+      act(() => useChatRail.setState({ reveal: "p10" }));
+      await act(async () => older.reject(collabError("unreachable")));
+      await waitFor(() => expect(reveal).toHaveBeenCalledWith({ block: "center" }));
+      expect(useChatRail.getState().reveal).toBeNull();
+      expect(screen.queryByRole("alert")).toBeNull();
+    } finally {
+      Element.prototype.scrollIntoView = scroll;
+    }
+  });
+
+  it("finds a mentioned message by its place in the list when an offline message sorts first by time", async () => {
+    const list = [
+      ...Array.from({ length: 119 }, (_, index) => message(`m${index}`, BOB_ID, `Message ${index}`, AT + index * 1_000)),
+      message("offline", BOB_ID, "Written offline", AT - 3_600_000),
+    ];
+    let asked = 0;
+    mocks.collabChatList.mockImplementation(async (_project: string, before: string | null, limit: number) => {
+      asked += 1;
+      if (asked > 10) return [];
+      const found = before === null ? -1 : list.findIndex((entry) => entry.id === before);
+      const end = found < 0 ? list.length : found;
+      return list.slice(Math.max(0, end - limit), end);
+    });
+    live("editor");
+    stop = startChat();
+    render(<ChatPane />);
+    await screen.findByText("Written offline");
+    const reveal = vi.fn();
+    const scroll = Element.prototype.scrollIntoView;
+    Element.prototype.scrollIntoView = reveal;
+    try {
+      act(() => useChatRail.setState({ reveal: "m5" }));
+      await waitFor(() => expect(useChatRail.getState().reveal).toBeNull());
+      expect(reveal).toHaveBeenCalledWith({ block: "center" });
+      expect(asked).toBeLessThanOrEqual(3);
+    } finally {
+      Element.prototype.scrollIntoView = scroll;
+    }
+  });
+
+  it("says it is loading while it looks for a mentioned message in older pages", async () => {
+    const page = Array.from({ length: CHAT_PAGE }, (_, index) => message(`p${index}`, BOB_ID, `Message ${index}`, AT + index * 1_000));
+    let answer: (messages: CollabChatMessage[]) => void = () => undefined;
+    mocks.collabChatList.mockResolvedValueOnce(page).mockReturnValueOnce(new Promise((resolve) => (answer = resolve)));
+    live("editor");
+    stop = startChat();
+    render(<ChatPane />);
+    await screen.findByText("Message 0");
+    act(() => useChatRail.setState({ reveal: "old" }));
+    expect(await screen.findByRole("status")).toHaveTextContent(enCommon.state.loading);
+    await act(async () => answer([]));
+    expect(screen.queryByRole("status")).toBeNull();
   });
 
   it("loads older messages before the oldest one shown", async () => {
@@ -212,13 +517,13 @@ describe("project chat when things go wrong", () => {
     expect(rows[0]).toHaveTextContent("Left the project");
     expect(rows[1]).toHaveTextContent(enCollab.comments.unverifiedAuthor);
     expect(rows[1]).not.toHaveTextContent("Alice Chen");
-    expect(within(rows[1]).queryByRole("button", { name: copy.delete })).toBeNull();
+    expect(within(rows[1]).queryByRole("button", { name: copy.messageActions })).toBeNull();
   });
 
   it("keeps a message when the deletion is cancelled", async () => {
     await open();
     const rows = within(screen.getByRole("list", { name: copy.list })).getAllByRole("listitem");
-    fireEvent.click(within(rows[1]).getByRole("button", { name: copy.delete }));
+    await openDelete(rows[1]);
     const dialog = await screen.findByRole("alertdialog", { name: copy.deleteConfirm.title });
     fireEvent.click(within(dialog).getByRole("button", { name: new RegExp(`^${enCommon.actions.cancel}`) }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
@@ -230,7 +535,7 @@ describe("project chat when things go wrong", () => {
     mocks.collabChatDelete.mockRejectedValueOnce({ code: "comment_not_live", message: "" });
     await open();
     const rows = within(screen.getByRole("list", { name: copy.list })).getAllByRole("listitem");
-    fireEvent.click(within(rows[1]).getByRole("button", { name: copy.delete }));
+    await openDelete(rows[1]);
     const dialog = await screen.findByRole("alertdialog", { name: copy.deleteConfirm.title });
     fireEvent.click(within(dialog).getByRole("button", { name: enCommon.actions.delete }));
     expect(await within(rows[1]).findByRole("alert")).toHaveTextContent(enCollab.comments.refusals.notLive);
@@ -282,7 +587,54 @@ describe("project chat when things go wrong", () => {
     await screen.findByText("Reading it now");
     expect(screen.getByText(copy.offline)).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: copy.label })).toBeNull();
-    expect(screen.queryByRole("button", { name: copy.delete })).toBeNull();
+    expect(screen.queryByRole("button", { name: copy.messageActions })).toBeNull();
     expect(screen.queryByRole("button", { name: copy.clear })).toBeNull();
+  });
+});
+
+describe("chat test isolation", () => {
+  it("leaves a queued chat page unused, as a test that fails early would", () => {
+    mocks.collabChatList.mockResolvedValueOnce([message("x1", BOB_ID, "Left over")]);
+  });
+
+  it("starts the next test without the page the last one left", async () => {
+    await open();
+    expect(screen.queryByText("Left over")).toBeNull();
+  });
+});
+
+describe("chat live states", () => {
+  it("says who is typing in the chat", async () => {
+    await open();
+    act(() => {
+      useCollabLiveStore.setState({
+        peers: {
+          d1: {
+            deviceId: "d1",
+            accountId: BOB_ID,
+            person: BOB,
+            path: null,
+            cursor: null,
+            anchor: null,
+            seenAt: AT + 120_000,
+            hue: 20,
+            activity: { kind: "chat", threadId: null },
+            activityAt: AT + 120_000,
+          },
+        },
+      });
+    });
+    expect(screen.getByRole("status")).toHaveTextContent(copy.typingOne.replace("{{name}}", "Bob Smith"));
+    act(() => useCollabLiveStore.setState({ peers: {} }));
+    expect(screen.queryByText(/is typing/u)).toBeNull();
+  });
+
+  it("offers the project members with their role when you type @ in the chat", async () => {
+    const user = userEvent.setup();
+    await open();
+    await user.type(screen.getByRole("textbox", { name: copy.label }), "@Bo");
+    const option = within(screen.getByRole("listbox")).getByRole("option");
+    expect(option).toHaveTextContent("Bob Smith");
+    expect(option).toHaveTextContent(enCollab.projectRoles.owner);
   });
 });

@@ -603,11 +603,12 @@ mod tests {
             for on in [false, true] {
                 lab.switch_comments_elsewhere(server_wide, on);
                 let switched = std::time::Instant::now();
-                let wanted = crate::collab::comments::CommentSwitches {
-                    server: on || !server_wide,
-                    project: on || server_wide,
+                let wanted = (on || !server_wide, on || server_wide);
+                let found = || {
+                    let switches = crate::collab::comments::load_switches(&paths, PROJECT);
+                    (switches.server, switches.project)
                 };
-                while crate::collab::comments::load_switches(&paths, PROJECT) != wanted {
+                while found() != wanted {
                     assert!(
                         switched.elapsed() < Duration::from_secs(2),
                         "the app still had {:?} two seconds after comments were turned on: {on} (server wide: {server_wide})",

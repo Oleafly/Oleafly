@@ -1,5 +1,5 @@
 import type { Editor } from "@tiptap/core";
-import { imageWidthPercent, mathNodeJSON } from "@oleafly/wysiwyg";
+import { imageWidthPercent, mathNodeJSON, type TextAlign } from "@oleafly/wysiwyg";
 import type { ZoteroHit } from "@oleafly/backend-port";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { type EditorState, NodeSelection, type Selection } from "@tiptap/pm/state";
@@ -17,7 +17,6 @@ import {
   Bold,
   BookMarked,
   Braces,
-  ChartColumn,
   Code,
   Heading1,
   Heading2,
@@ -34,15 +33,17 @@ import {
   ListChecks,
   ListOrdered,
   ListTree,
+  Megaphone,
   Minus,
   MoveHorizontal,
-  Network,
   Paperclip,
   Pilcrow,
+  Plus,
   Quote,
   RectangleHorizontal,
   RectangleVertical,
   Redo2,
+  RemoveFormatting,
   Search,
   Sigma,
   SquareCode,
@@ -57,14 +58,29 @@ import {
   Type,
   Underline,
   Undo2,
+  Unlink,
+  Youtube,
   type LucideIcon,
 } from "lucide-react";
-import { Fragment, useEffect, useId, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { isImeEnter } from "@/components/ai/composer/ime";
 import { Divider, IconBtn } from "@/components/editor/EditorToolbar";
+import {
+  ALIGNMENTS,
+  alignmentOf,
+  alignText,
+  applyLink,
+  clearFormatting,
+  currentLinkHref,
+  EmojiPopover,
+  FieldForm,
+  returnFocus,
+  applyTextColor,
+  TextColorMenu,
+  textColorOf,
+  ToolbarPopover,
+} from "@/components/editor/rich-text-controls";
 import { TableSizePicker } from "@/components/editor/TableSizePicker";
-import { Button } from "@/components/ui/button";
 import { HIGHLIGHT_LANGUAGES } from "@/components/ui/code-highlighter";
 import {
   DropdownMenuItem,
@@ -74,7 +90,6 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
-import { Popover } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import {
   CONTROL_GAP,
@@ -89,7 +104,6 @@ import {
   ToolbarOverflow,
   ToolbarSubMenu,
 } from "@/components/ui/toolbar-overflow";
-import { Tooltip } from "@/components/ui/tooltip";
 import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
 import { useFreshZoteroHits, ZoteroHitRow } from "@/components/zotero/fresh-hits";
@@ -102,7 +116,8 @@ import { blockGroups } from "./block-views";
 import { highlightOf } from "./note-highlight";
 import { HighlightMenu } from "./note-highlight-menu";
 import { attachFile, canAttach } from "./note-image-drop";
-import { playsInNote } from "./note-path";
+import { insertVideo } from "./note-link-choice";
+import { playsInNote, videoEmbed } from "./note-path";
 import { NOTE_WIDTHS, saveNoteWidth, useNoteWidth, type NoteWidth } from "./note-prefs";
 import { domOutline } from "./note-outline";
 import { slashItems } from "./note-slash";
@@ -113,6 +128,8 @@ import type { CitationItem } from "./types";
 
 type Level = 1 | 2 | 3 | 4 | 5 | 6;
 type Align = "left" | "center" | "right";
+
+export { returnFocus } from "@/components/editor/rich-text-controls";
 
 const HEADINGS: { level: Level; icon: LucideIcon }[] = [
   { level: 1, icon: Heading1 },
@@ -152,136 +169,12 @@ const KEYS = {
   task: "⌘⇧9",
 } as const;
 const EMPTY_ITEM = "px-2 py-1.5 text-xs text-muted-foreground";
+const CALLOUT_MARKER = "[!note] ";
 const WORD_WIDTH = 6;
 const GROUP_PADDING = 8;
 
 function groupWidth(...widths: number[]): number {
   return widths.reduce((sum, width) => sum + width, 0) + CONTROL_GAP * (widths.length - 1);
-}
-
-export function returnFocus(editor: Editor): (event: Event) => void {
-  return (event) => {
-    event.preventDefault();
-    if (editor.isDestroyed || editor.view.hasFocus()) return;
-    const active = document.activeElement;
-    if (active && active !== document.body && active.isConnected) return;
-    editor.view.focus();
-  };
-}
-
-function currentLinkHref(editor: Editor): string {
-  const href: unknown = editor.getAttributes("link").href;
-  return editor.isActive("link") && typeof href === "string" ? href : "";
-}
-
-function applyLink(editor: Editor, value: string): boolean {
-  if (!value) return editor.chain().focus().extendMarkRange("link").unsetLink().run();
-  const { empty } = editor.state.selection;
-  if (!empty || editor.isActive("link")) return editor.chain().focus().extendMarkRange("link").setLink({ href: value }).run();
-  if (!editor.can().setLink({ href: value })) return false;
-  return editor
-    .chain()
-    .focus()
-    .insertContent({ type: "text", text: value, marks: [{ type: "link", attrs: { href: value } }] })
-    .unsetMark("link")
-    .run();
-}
-
-function FieldForm({
-  label,
-  placeholder,
-  initial,
-  allowEmpty,
-  invalidText,
-  removeLabel,
-  onApply,
-  onDone,
-}: Readonly<{
-  label: string;
-  placeholder: string;
-  initial: () => string;
-  allowEmpty?: boolean;
-  invalidText?: string;
-  removeLabel?: string;
-  onApply: (value: string) => boolean;
-  onDone?: () => void;
-}>) {
-  const [start] = useState(initial);
-  const [value, setValue] = useState(start);
-  const [invalid, setInvalid] = useState(false);
-  const errorId = useId();
-  const apply = (next: string) => {
-    if (!onApply(next)) {
-      setInvalid(true);
-      return;
-    }
-    onDone?.();
-  };
-  const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Escape") return;
-    event.stopPropagation();
-    if (isImeEnter(event)) return;
-    const trimmed = value.trim();
-    if (event.key !== "Enter" || (!trimmed && !(allowEmpty ?? start !== ""))) return;
-    event.preventDefault();
-    apply(trimmed);
-  };
-  return (
-    <div className="flex flex-col gap-2">
-      <Input
-        aria-label={label}
-        aria-invalid={invalid || undefined}
-        aria-describedby={invalid ? errorId : undefined}
-        placeholder={placeholder}
-        value={value}
-        onChange={(event) => {
-          setValue(event.target.value);
-          setInvalid(false);
-        }}
-        onKeyDown={onKeyDown}
-      />
-      {invalid && invalidText && (
-        <p id={errorId} role="alert" className="text-xs text-destructive">
-          {invalidText}
-        </p>
-      )}
-      {removeLabel && start !== "" && (
-        <Button variant="ghost" size="sm" className="self-end" onClick={() => apply("")}>
-          {removeLabel}
-        </Button>
-      )}
-    </div>
-  );
-}
-
-function FieldPopover({
-  icon: Icon,
-  label,
-  menuRow,
-  children,
-}: Readonly<{ icon: LucideIcon; label: string; menuRow: boolean; children: ReactNode }>) {
-  const picker = (
-    <Popover
-      ariaLabel={label}
-      closeOnClick={false}
-      className="w-64 min-w-0 p-2"
-      triggerClassName={menuRow ? "w-full justify-start gap-2 px-2 font-normal" : undefined}
-      trigger={
-        <>
-          <Icon aria-hidden className="size-4" />
-          {menuRow && <span className="flex-1 text-left">{label}</span>}
-        </>
-      }
-    >
-      {children}
-    </Popover>
-  );
-  if (menuRow) return <ToolbarMenuHost>{picker}</ToolbarMenuHost>;
-  return (
-    <Tooltip label={label} side="bottom">
-      {picker}
-    </Tooltip>
-  );
 }
 
 function OutlineItems({ editor }: Readonly<{ editor: Editor }>) {
@@ -429,13 +322,6 @@ function CitationItems({
   );
 }
 
-const VIEW_GROUPS: ReadonlySet<string> = new Set(["view", "words"]);
-
-function shownGroups(groups: readonly ToolbarControl[], readOnly: boolean, floating: boolean): readonly ToolbarControl[] {
-  if (readOnly) return groups.filter((group) => VIEW_GROUPS.has(group.id));
-  return floating ? groups.filter((group) => !VIEW_GROUPS.has(group.id)) : groups;
-}
-
 const WIDTH_ICONS: Readonly<Record<NoteWidth, LucideIcon>> = {
   standard: RectangleVertical,
   wide: RectangleHorizontal,
@@ -518,6 +404,9 @@ function readFormatting(editor: Editor) {
   return {
     ...(Object.fromEntries(MARKS.map(({ id }) => [id, editor.isActive(id)])) as Record<Mark, boolean>),
     highlightColor: editor.isActive("highlight") ? highlightOf({ attrs: editor.getAttributes("highlight") }) : null,
+    textColor: textColorOf(editor),
+    textAlign: alignmentOf(editor),
+    link: editor.isActive("link"),
     bullet: editor.isActive("bulletList"),
     ordered: editor.isActive("orderedList"),
     task: editor.isActive("taskList"),
@@ -553,12 +442,27 @@ function WordCount({ editor, className, as: Tag = "span" }: Readonly<{ editor: E
   return <Tag className={className}>{t(($) => $.notes.toolbar.words, { count })}</Tag>;
 }
 
+function calloutAround(editor: Editor): boolean {
+  if (!editor.chain().focus().toggleBlockquote().run()) return false;
+  const { $from } = editor.state.selection;
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    if ($from.node(depth).type.name !== "blockquote") continue;
+    const header = { type: "paragraph", content: [{ type: "text", text: CALLOUT_MARKER }] };
+    return editor.chain().insertContentAt($from.start(depth), header).run();
+  }
+  return false;
+}
+
 function runSlashItem(editor: Editor, id: string): void {
   const { from } = editor.state.selection;
   slashItems(editor)
     .find((item) => item.id === id)
     ?.run(editor, { from, to: from });
 }
+
+const ALIGN_ICONS: Readonly<Record<TextAlign, LucideIcon>> = Object.fromEntries(
+  ALIGNMENTS.map(({ align, icon }) => [align, icon]),
+) as Record<TextAlign, LucideIcon>;
 
 export function NoteToolbar({
   editor,
@@ -584,6 +488,7 @@ export function NoteToolbar({
   const attachable = canAttach(editor);
   const Heading = HEADINGS.find(({ level }) => level === state.heading)?.icon ?? Type;
   const ListIcon = listIconOf(state);
+  const AlignIcon = ALIGN_ICONS[state.textAlign];
   const run = () => editor.chain().focus();
   const back = returnFocus(editor);
   const closeMore = () => setMoreOpen(false);
@@ -595,6 +500,7 @@ export function NoteToolbar({
   const citeFromZotero = (hit: ZoteroHit) => {
     insertZoteroCitation(hit, (key) => (cite(key) ? `[@${key}]` : null));
   };
+  const insertEmoji = (emoji: string) => run().insertContent(emoji).run();
   const widestWords = t(($) => $.notes.toolbar.words, { count: 10 ** Math.max(1, state.wordDigits) - 1 });
   const WidthIcon = WIDTH_ICONS[width];
   const item = (
@@ -602,28 +508,36 @@ export function NoteToolbar({
     icon: LucideIcon,
     label: string,
     onSelect: () => unknown,
-    extra: { checked?: boolean; keys?: string } = {},
+    extra: { checked?: boolean; keys?: string; disabled?: boolean } = {},
   ) => ({ id, icon, label, onSelect: () => void onSelect(), ...extra });
   type Item = ReturnType<typeof item>;
   const menuItems = (items: readonly Item[], inset = false) =>
     items.map(({ id, ...rest }) => <ToolbarMenuItem key={id} inset={inset} {...rest} />);
   const barButtons = (items: readonly Item[]) =>
-    items.map(({ id, icon: Icon, label, checked, onSelect }) => (
-      <IconBtn key={id} title={label} active={checked} onClick={onSelect}>
+    items.map(({ id, icon: Icon, label, checked, disabled, onSelect }) => (
+      <IconBtn key={id} title={label} active={checked} disabled={disabled} onClick={onSelect}>
         <Icon aria-hidden className="size-4" />
       </IconBtn>
     ));
+  const icons = (count: number) => Array.from({ length: count }, () => ICON_BUTTON_WIDTH);
 
   const marks = MARKS.map(({ id, icon, label }) =>
     item(id, icon, t(($) => $.editor.toolbar[label]), () => run().toggleMark(id).run(), { checked: state[id], keys: KEYS[id] }),
   );
   const textMarks = marks.slice(0, 4);
-  const codeMarks = marks.slice(4, 6);
+  const inlineCode = marks[4];
   const scriptMarks = marks.slice(6);
-  const blockToggles = [
-    item("quote", Quote, t(($) => $.editor.contextMenu.quote), () => run().toggleBlockquote().run(), { checked: state.quote }),
-    item("codeBlock", SquareCode, t(($) => $.editor.toolbar.codeBlock), () => run().toggleCodeBlock().run(), { checked: state.codeBlock }),
-  ];
+  const clear = item("clear", RemoveFormatting, t(($) => $.editor.toolbar.clearFormatting), () => clearFormatting(editor));
+  const unlink = item("unlink", Unlink, t(($) => $.editor.toolbar.removeLink), () => run().extendMarkRange("link").unsetLink().run(), {
+    disabled: !state.link,
+  });
+  const quote = item("quote", Quote, t(($) => $.editor.contextMenu.quote), () => run().toggleBlockquote().run(), { checked: state.quote });
+  const codeBlock = item("codeBlock", SquareCode, t(($) => $.editor.toolbar.codeBlock), () => run().toggleCodeBlock().run(), {
+    checked: state.codeBlock,
+  });
+  const callout = item("callout", Megaphone, t(($) => $.notes.blocks.slash.callout), () => calloutAround(editor));
+  const divider = item("divider", Minus, t(($) => $.notes.blocks.slash.divider), () => runSlashItem(editor, "divider"));
+  const footnote = item("footnote", Asterisk, t(($) => $.editor.toolbar.insertFootnote), () => run().insertFootnoteReference().run());
   const languages = ["", ...HIGHLIGHT_LANGUAGES].map((language) =>
     item(
       `language-${language}`,
@@ -633,6 +547,17 @@ export function NoteToolbar({
       { checked: state.language === language },
     ),
   );
+  const headings = HEADINGS.map(({ level, icon }) =>
+    item(`h${level}`, icon, t(($) => $.notes.toolbar.heading, { level }), () => run().toggleHeading({ level }).run(), {
+      checked: state.heading === level,
+    }),
+  );
+  const blockTypes = [
+    item("text", Pilcrow, t(($) => $.notes.toolbar.text), () => run().setParagraph().run()),
+    ...HEADINGS.map(({ level, icon }) =>
+      item(`h${level}`, icon, t(($) => $.notes.toolbar.heading, { level }), () => run().setHeading({ level }).run()),
+    ),
+  ];
   const lists = [
     item("bullet", List, t(($) => $.notes.toolbar.bulletList), () => run().toggleBulletList().run(), { checked: state.bullet, keys: KEYS.bullet }),
     item("ordered", ListOrdered, t(($) => $.editor.toolbar.numberedList), () => run().toggleOrderedList().run(), {
@@ -641,15 +566,13 @@ export function NoteToolbar({
     }),
     item("task", ListChecks, t(($) => $.editor.toolbar.taskList), () => run().toggleTaskList().run(), { checked: state.task, keys: KEYS.task }),
   ];
+  const alignDisabled = state.table || state.codeBlock;
+  const aligns = ALIGNMENTS.map(({ align, icon, label }) =>
+    item(`align-${align}`, icon, label(), () => alignText(editor, align), { checked: state.textAlign === align, disabled: alignDisabled }),
+  );
   const math = [
     item("inlineMath", Sigma, t(($) => $.editor.contextMenu.inlineMath), () => insertMath("$x^2$")),
     item("displayMath", SquareFunction, t(($) => $.notes.toolbar.displayMath), () => insertMath("$$x^2$$")),
-  ];
-  const inserts = [
-    item("footnote", Asterisk, t(($) => $.editor.toolbar.insertFootnote), () => run().insertFootnoteReference().run()),
-    item("divider", Minus, t(($) => $.notes.blocks.slash.divider), () => runSlashItem(editor, "divider")),
-    item("chart", ChartColumn, t(($) => $.notes.toolbar.chart), () => runSlashItem(editor, "block:chart")),
-    item("mermaid", Network, t(($) => $.notes.toolbar.mermaid), () => runSlashItem(editor, "block:mermaid")),
   ];
   const attachments = attachable
     ? [
@@ -675,6 +598,10 @@ export function NoteToolbar({
     ),
     item("deleteTable", Trash2, t(($) => $.editor.tableToolbar.deleteTable), () => run().deleteTable().run()),
   ];
+  const history = [
+    item("undo", Undo2, t(($) => $.editor.hotkeys.actions.undo), () => run().undo().run(), { disabled: !state.canUndo }),
+    item("redo", Redo2, t(($) => $.editor.hotkeys.actions.redo), () => run().redo().run(), { disabled: !state.canRedo }),
+  ];
   const blockMenu = () =>
     blockGroups().map(({ id, kinds }, index) => (
       <Fragment key={id}>
@@ -685,7 +612,7 @@ export function NoteToolbar({
     ));
   const citations = citationMenu && <CitationItems menu={citationMenu} onPick={cite} onZotero={citeFromZotero} />;
   const link = (menuRow: boolean) => (
-    <FieldPopover icon={Link} label={t(($) => $.notes.toolbar.link)} menuRow={menuRow}>
+    <ToolbarPopover icon={Link} label={t(($) => $.notes.toolbar.link)} menuRow={menuRow}>
       <FieldForm
         label={t(($) => $.notes.toolbar.linkAddress)}
         placeholder={t(($) => $.notes.toolbar.linkPlaceholder)}
@@ -695,10 +622,22 @@ export function NoteToolbar({
         onApply={(value) => applyLink(editor, value)}
         onDone={menuRow ? closeMore : undefined}
       />
-    </FieldPopover>
+    </ToolbarPopover>
+  );
+  const video = (menuRow: boolean) => (
+    <ToolbarPopover icon={Youtube} label={t(($) => $.notes.toolbar.video)} menuRow={menuRow}>
+      <FieldForm
+        label={t(($) => $.notes.toolbar.videoAddress)}
+        placeholder={t(($) => $.notes.toolbar.videoPlaceholder)}
+        initial={() => ""}
+        invalidText={t(($) => $.notes.toolbar.videoInvalid)}
+        onApply={(value) => videoEmbed(value) !== null && insertVideo(editor, value)}
+        onDone={menuRow ? closeMore : undefined}
+      />
+    </ToolbarPopover>
   );
   const altText = (menuRow: boolean) => (
-    <FieldPopover icon={ImageIcon} label={t(($) => $.editor.figureDialog.altLabel)} menuRow={menuRow}>
+    <ToolbarPopover icon={ImageIcon} label={t(($) => $.editor.figureDialog.altLabel)} menuRow={menuRow}>
       <FieldForm
         label={t(($) => $.editor.figureDialog.altLabel)}
         placeholder={t(($) => $.editor.figureDialog.altPlaceholder)}
@@ -707,151 +646,71 @@ export function NoteToolbar({
         onApply={(alt) => run().updateAttributes("image", { alt }).run()}
         onDone={menuRow ? closeMore : undefined}
       />
-    </FieldPopover>
+    </ToolbarPopover>
   );
   const table = (menuRow: boolean) => (
     <TableSizePicker
       menuRow={menuRow}
+      inset={menuRow}
       onPick={(rows, cols) => {
         run().insertTable({ rows, cols, withHeaderRow: true }).run();
         if (menuRow) closeMore();
       }}
     />
   );
+  const highlight = (inMenu: boolean) => (
+    <HighlightMenu editor={editor} color={state.highlightColor} keys={KEYS.highlight} inMenu={inMenu} onCloseAutoFocus={inMenu ? undefined : back} />
+  );
+  const textColor = (inMenu: boolean) => (
+    <TextColorMenu onColor={(spec) => applyTextColor(editor, spec)} color={state.textColor} inMenu={inMenu} onCloseAutoFocus={inMenu ? undefined : back} />
+  );
+  const citationButton = citationMenu && (
+    <ToolbarMenuButton
+      label={t(($) => $.notes.toolbar.citation)}
+      icon={<BookMarked aria-hidden className="size-4" />}
+      onCloseAutoFocus={back}
+      onContentFocus={citationMenu.zotero ? focusCitationSearch : undefined}
+    >
+      {citations}
+    </ToolbarMenuButton>
+  );
+  const citationSubMenu = citationMenu && (
+    <ToolbarSubMenu
+      inset
+      icon={BookMarked}
+      label={t(($) => $.notes.toolbar.citation)}
+      onContentFocus={citationMenu.zotero ? focusCitationSearch : undefined}
+    >
+      {citations}
+    </ToolbarSubMenu>
+  );
+  const blocksButton = (
+    <ToolbarMenuButton label={t(($) => $.notes.blocks.insert.label)} icon={<Blocks aria-hidden className="size-4" />} onCloseAutoFocus={back}>
+      {blockMenu()}
+    </ToolbarMenuButton>
+  );
+  const blocksSubMenu = (
+    <ToolbarSubMenu inset icon={Blocks} label={t(($) => $.notes.blocks.insert.label)}>
+      {blockMenu()}
+    </ToolbarSubMenu>
+  );
+  const insertItems = () => (
+    <>
+      {menuItems([codeBlock, quote, callout, divider], true)}
+      <DropdownMenuSeparator />
+      <ToolbarMenuHost>{table(true)}</ToolbarMenuHost>
+      {menuItems(attachments, true)}
+      {video(true)}
+      <EmojiPopover menuRow onPick={insertEmoji} />
+      <DropdownMenuSeparator />
+      {menuItems([footnote, ...math], true)}
+      {citationSubMenu}
+      {blocksSubMenu}
+    </>
+  );
+  const insertActive = state.codeBlock || state.quote;
 
-  const allGroups: ToolbarControl[] = [
-    {
-      id: "blocks",
-      width: groupWidth(...blockToggles.map(() => ICON_BUTTON_WIDTH)),
-      active: state.quote || state.codeBlock,
-      render: () => barButtons(blockToggles),
-      renderMenu: () => menuItems(blockToggles),
-    },
-    {
-      id: "lists",
-      width: groupWidth(DIVIDER_WIDTH, DROPDOWN_TRIGGER_WIDTH),
-      active: state.bullet || state.ordered || state.task,
-      render: () => (
-        <>
-          <Divider />
-          <ToolbarMenuButton
-            label={t(($) => $.notes.toolbar.list)}
-            active={state.bullet || state.ordered || state.task}
-            icon={<ListIcon aria-hidden className="size-4" />}
-            onCloseAutoFocus={back}
-          >
-            {menuItems(lists)}
-          </ToolbarMenuButton>
-        </>
-      ),
-      renderMenu: () => menuItems(lists),
-    },
-    {
-      id: "marks",
-      width: groupWidth(DIVIDER_WIDTH, ...textMarks.map(() => ICON_BUTTON_WIDTH), ICON_BUTTON_WIDTH),
-      active: textMarks.some((mark) => mark.checked),
-      render: () => (
-        <>
-          <Divider />
-          {barButtons(textMarks)}
-          {link(false)}
-        </>
-      ),
-      renderMenu: () => (
-        <>
-          {menuItems(textMarks)}
-          {link(true)}
-        </>
-      ),
-    },
-    {
-      id: "code",
-      width: groupWidth(ICON_BUTTON_WIDTH, DROPDOWN_TRIGGER_WIDTH),
-      active: codeMarks.some((mark) => mark.checked),
-      render: () => (
-        <>
-          {barButtons(codeMarks.slice(0, 1))}
-          <HighlightMenu editor={editor} color={state.highlightColor} keys={KEYS.highlight} onCloseAutoFocus={back} />
-        </>
-      ),
-      renderMenu: () => (
-        <>
-          {menuItems(codeMarks.slice(0, 1))}
-          <HighlightMenu editor={editor} color={state.highlightColor} keys={KEYS.highlight} inMenu />
-        </>
-      ),
-    },
-    {
-      id: "scripts",
-      width: groupWidth(...scriptMarks.map(() => ICON_BUTTON_WIDTH)),
-      active: scriptMarks.some((mark) => mark.checked),
-      render: () => barButtons(scriptMarks),
-      renderMenu: () => menuItems(scriptMarks),
-    },
-    {
-      id: "math",
-      width: groupWidth(DIVIDER_WIDTH, ICON_BUTTON_WIDTH, ICON_BUTTON_WIDTH, ...(citationMenu ? [DROPDOWN_TRIGGER_WIDTH] : [])),
-      render: () => (
-        <>
-          <Divider />
-          {barButtons(math)}
-          {citationMenu && (
-            <ToolbarMenuButton
-              label={t(($) => $.notes.toolbar.citation)}
-              icon={<BookMarked aria-hidden className="size-4" />}
-              onCloseAutoFocus={back}
-              onContentFocus={citationMenu.zotero ? focusCitationSearch : undefined}
-            >
-              {citations}
-            </ToolbarMenuButton>
-          )}
-        </>
-      ),
-      renderMenu: () => (
-        <>
-          {menuItems(math, true)}
-          {citationMenu && (
-            <ToolbarSubMenu
-              inset
-              icon={BookMarked}
-              label={t(($) => $.notes.toolbar.citation)}
-              onContentFocus={citationMenu.zotero ? focusCitationSearch : undefined}
-            >
-              {citations}
-            </ToolbarSubMenu>
-          )}
-        </>
-      ),
-    },
-    {
-      id: "insert",
-      width: groupWidth(
-        DIVIDER_WIDTH,
-        ...[table, ...inserts, ...attachments].map(() => ICON_BUTTON_WIDTH),
-        DROPDOWN_TRIGGER_WIDTH,
-      ),
-      render: () => (
-        <>
-          <Divider />
-          {table(false)}
-          {barButtons(inserts)}
-          <ToolbarMenuButton label={t(($) => $.notes.blocks.insert.label)} icon={<Blocks aria-hidden className="size-4" />} onCloseAutoFocus={back}>
-            {blockMenu()}
-          </ToolbarMenuButton>
-          {barButtons(attachments)}
-        </>
-      ),
-      renderMenu: () => (
-        <>
-          <ToolbarMenuHost>{table(true)}</ToolbarMenuHost>
-          {menuItems(inserts, true)}
-          <ToolbarSubMenu inset icon={Blocks} label={t(($) => $.notes.blocks.insert.label)}>
-            {blockMenu()}
-          </ToolbarSubMenu>
-          {menuItems(attachments, true)}
-        </>
-      ),
-    },
+  const contextual: ToolbarControl[] = [
     ...(state.codeBlock
       ? [
           {
@@ -919,6 +778,8 @@ export function NoteToolbar({
             ),
           },
         ]),
+  ];
+  const viewGroups: ToolbarControl[] = [
     {
       id: "view",
       width: GROUP_PADDING + groupWidth(DROPDOWN_TRIGGER_WIDTH, DROPDOWN_TRIGGER_WIDTH),
@@ -934,8 +795,9 @@ export function NoteToolbar({
       ),
       renderMenu: () => (
         <>
-          <WidthItems width={width} />
-          <DropdownMenuSeparator />
+          <ToolbarSubMenu inset icon={WidthIcon} label={t(($) => $.notes.toolbar.width)}>
+            <WidthItems width={width} />
+          </ToolbarSubMenu>
           <ToolbarSubMenu inset icon={ListTree} label={t(($) => $.notes.toolbar.outline)}>
             <OutlineItems editor={editor} />
           </ToolbarSubMenu>
@@ -955,7 +817,228 @@ export function NoteToolbar({
         ]
       : []),
   ];
-  const groups = shownGroups(allGroups, readOnly, floating);
+
+  const buttons = (id: string, items: readonly Item[], divided: boolean): ToolbarControl => ({
+    id,
+    width: groupWidth(...(divided ? [DIVIDER_WIDTH] : []), ...icons(items.length)),
+    tools: items.length,
+    active: items.some((entry) => entry.checked),
+    render: () => (
+      <>
+        {divided && <Divider />}
+        {barButtons(items)}
+      </>
+    ),
+    renderMenu: () => menuItems(items, true),
+  });
+
+  const blockType: ToolbarControl = {
+    id: "blockType",
+    width: groupWidth(DIVIDER_WIDTH, DROPDOWN_TRIGGER_WIDTH),
+    active: state.heading !== null,
+    render: () => (
+      <>
+        <Divider />
+        <ToolbarMenuButton label={t(($) => $.notes.toolbar.blockType)} active={state.heading !== null} icon={<Heading aria-hidden className="size-4" />} onCloseAutoFocus={back}>
+          {menuItems(blockTypes)}
+        </ToolbarMenuButton>
+      </>
+    ),
+    renderMenu: () => (
+      <ToolbarSubMenu inset active={state.heading !== null} icon={Heading} label={t(($) => $.notes.toolbar.blockType)}>
+        {menuItems(blockTypes)}
+      </ToolbarSubMenu>
+    ),
+  };
+
+  const compact: ToolbarControl[] = [
+    buttons("marks", textMarks, false),
+    blockType,
+    {
+      id: "lists",
+      width: DROPDOWN_TRIGGER_WIDTH,
+      active: state.bullet || state.ordered || state.task,
+      render: () => (
+        <ToolbarMenuButton
+          label={t(($) => $.notes.toolbar.list)}
+          active={state.bullet || state.ordered || state.task}
+          icon={<ListIcon aria-hidden className="size-4" />}
+          onCloseAutoFocus={back}
+        >
+          {menuItems(lists)}
+        </ToolbarMenuButton>
+      ),
+      renderMenu: () => menuItems(lists),
+    },
+    {
+      id: "align",
+      width: DROPDOWN_TRIGGER_WIDTH,
+      render: () => (
+        <ToolbarMenuButton label={t(($) => $.editor.toolbar.alignment)} icon={<AlignIcon aria-hidden className="size-4" />} onCloseAutoFocus={back}>
+          {menuItems(aligns)}
+        </ToolbarMenuButton>
+      ),
+      renderMenu: () => menuItems(aligns),
+    },
+    {
+      id: "link",
+      width: groupWidth(DIVIDER_WIDTH, ICON_BUTTON_WIDTH),
+      active: state.link,
+      render: () => (
+        <>
+          <Divider />
+          {link(false)}
+        </>
+      ),
+      renderMenu: () => link(true),
+    },
+    {
+      id: "insert",
+      width: DROPDOWN_TRIGGER_WIDTH,
+      active: insertActive,
+      render: () => (
+        <ToolbarMenuButton label={t(($) => $.notes.toolbar.insert)} active={insertActive} icon={<Plus aria-hidden className="size-4" />} onCloseAutoFocus={back}>
+          {insertItems()}
+        </ToolbarMenuButton>
+      ),
+      renderMenu: () => (
+        <ToolbarSubMenu inset icon={Plus} label={t(($) => $.notes.toolbar.insert)}>
+          {insertItems()}
+        </ToolbarSubMenu>
+      ),
+    },
+    buttons("inline", [inlineCode, clear, unlink], true),
+    {
+      id: "colors",
+      width: groupWidth(DIVIDER_WIDTH, DROPDOWN_TRIGGER_WIDTH, DROPDOWN_TRIGGER_WIDTH, ...icons(scriptMarks.length)),
+      active: state.highlightColor !== null || state.textColor !== null || scriptMarks.some((mark) => mark.checked),
+      render: () => (
+        <>
+          <Divider />
+          {highlight(false)}
+          {textColor(false)}
+          {barButtons(scriptMarks)}
+        </>
+      ),
+      renderMenu: () => (
+        <>
+          {highlight(true)}
+          {textColor(true)}
+          {menuItems(scriptMarks)}
+        </>
+      ),
+    },
+    ...contextual,
+  ];
+
+  const full: ToolbarControl[] = [
+    buttons("history", history, false),
+    buttons("marks", [...textMarks, inlineCode], true),
+    {
+      id: "link",
+      width: groupWidth(DIVIDER_WIDTH, ...icons(2)),
+      active: state.link,
+      render: () => (
+        <>
+          <Divider />
+          {link(false)}
+          {barButtons([unlink])}
+        </>
+      ),
+      renderMenu: () => (
+        <>
+          {link(true)}
+          {menuItems([unlink], true)}
+        </>
+      ),
+    },
+    buttons("lists", lists, true),
+    { ...buttons("headings", headings, true), renderMenu: blockType.renderMenu, collapsed: { width: blockType.width, render: blockType.render } },
+    buttons("quote", [quote], true),
+    buttons("align", aligns, true),
+    buttons("script", [...scriptMarks, clear], true),
+    {
+      id: "colors",
+      width: groupWidth(DIVIDER_WIDTH, DROPDOWN_TRIGGER_WIDTH, DROPDOWN_TRIGGER_WIDTH),
+      active: state.highlightColor !== null || state.textColor !== null,
+      render: () => (
+        <>
+          <Divider />
+          {textColor(false)}
+          {highlight(false)}
+        </>
+      ),
+      renderMenu: () => (
+        <>
+          {textColor(true)}
+          {highlight(true)}
+        </>
+      ),
+    },
+    {
+      id: "embeds",
+      width: groupWidth(DIVIDER_WIDTH, ...icons(3)),
+      active: state.codeBlock,
+      render: () => (
+        <>
+          <Divider />
+          {barButtons([codeBlock])}
+          <EmojiPopover onPick={insertEmoji} />
+          {video(false)}
+        </>
+      ),
+      renderMenu: () => (
+        <>
+          {menuItems([codeBlock], true)}
+          <EmojiPopover menuRow onPick={insertEmoji} />
+          {video(true)}
+        </>
+      ),
+    },
+    {
+      id: "table",
+      width: groupWidth(DIVIDER_WIDTH, ...icons(1 + attachments.length)),
+      render: () => (
+        <>
+          <Divider />
+          {table(false)}
+          {barButtons(attachments)}
+        </>
+      ),
+      renderMenu: () => (
+        <>
+          <ToolbarMenuHost>{table(true)}</ToolbarMenuHost>
+          {menuItems(attachments, true)}
+        </>
+      ),
+    },
+    {
+      id: "math",
+      width: groupWidth(DIVIDER_WIDTH, ...icons(3), ...(citationMenu ? [DROPDOWN_TRIGGER_WIDTH] : []), DROPDOWN_TRIGGER_WIDTH),
+      render: () => (
+        <>
+          <Divider />
+          {barButtons([...math, footnote])}
+          {citationButton}
+          {blocksButton}
+        </>
+      ),
+      renderMenu: () => (
+        <>
+          {menuItems([...math, footnote], true)}
+          {citationSubMenu}
+          {blocksSubMenu}
+        </>
+      ),
+    },
+    buttons("callout", [callout, divider], true),
+    ...contextual,
+    ...viewGroups,
+  ];
+
+  let groups = full;
+  if (readOnly) groups = viewGroups;
+  else if (floating) groups = compact;
 
   return (
     <div
@@ -963,43 +1046,15 @@ export function NoteToolbar({
       aria-label={t(($) => $.notes.toolbar.label)}
       data-note-toolbar-floating={floating || undefined}
       className={cn(
-        "flex h-9 items-center gap-0.5 px-2",
-        floating ? "min-w-0 rounded-full border bg-popover text-popover-foreground shadow-lg" : "sticky top-0 z-10 shrink-0 border-b bg-background",
+        "flex min-h-9 items-center gap-0.5 px-2",
+        floating ? "h-9 min-w-0 rounded-full border bg-popover text-popover-foreground shadow-lg" : "sticky top-0 z-10 shrink-0 border-b bg-background",
       )}
     >
-      {!readOnly && (
-        <>
-          {!floating && (
-            <>
-              <IconBtn title={t(($) => $.editor.hotkeys.actions.undo)} disabled={!state.canUndo} onClick={() => run().undo().run()}>
-                <Undo2 aria-hidden className="size-4" />
-              </IconBtn>
-              <IconBtn title={t(($) => $.editor.hotkeys.actions.redo)} disabled={!state.canRedo} onClick={() => run().redo().run()}>
-                <Redo2 aria-hidden className="size-4" />
-              </IconBtn>
-              <Divider />
-            </>
-          )}
-          <ToolbarMenuButton
-            label={t(($) => $.notes.toolbar.blockType)}
-            active={state.heading !== null}
-            icon={<Heading aria-hidden className="size-4" />}
-            onCloseAutoFocus={back}
-          >
-            {menuItems([
-              item("text", Pilcrow, t(($) => $.notes.toolbar.text), () => run().setParagraph().run()),
-              ...HEADINGS.map(({ level, icon }) =>
-                item(`h${level}`, icon, t(($) => $.notes.toolbar.heading, { level }), () => run().setHeading({ level }).run()),
-              ),
-            ])}
-          </ToolbarMenuButton>
-        </>
-      )}
       <ToolbarOverflow
         data-note-toolbar-groups
         className="h-full"
         controls={groups}
-        label={t(($) => $.notes.toolbar.more)}
+        label={readOnly ? t(($) => $.notes.toolbar.more) : t(($) => $.notes.toolbar.moreFormatting)}
         separated
         open={moreOpen}
         onOpenChange={setMoreOpen}

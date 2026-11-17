@@ -17,6 +17,7 @@ interface PopoverProps {
   ariaLabel?: string;
   contentAriaLabel?: string;
   closeOnClick?: boolean;
+  open?: boolean;
   onOpenChange?: (open: boolean) => void;
   disabled?: boolean;
   openOnHover?: boolean;
@@ -32,12 +33,15 @@ export function Popover({
   ariaLabel,
   contentAriaLabel,
   closeOnClick = true,
+  open: openProp,
   onOpenChange: onOpenChangeProp,
   disabled = false,
   openOnHover = false,
   onOpenAutoFocus,
 }: Readonly<PopoverProps>) {
-  const [open, setOpen] = useState(false);
+  const [openState, setOpen] = useState(false);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp : openState;
   const [pinned, setPinned] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -53,6 +57,7 @@ export function Popover({
     clearHover();
     setPinned(false);
     openedByHover.current = false;
+    if (controlled && open) onOpenChangeProp?.(false);
     setOpen(false);
   };
 

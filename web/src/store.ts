@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type { DiscardReason } from "@/features/collab/live/remote-session";
 import type { WebMe } from "./api";
 import type { GatewayEnd, GatewayState } from "./gateway";
+import type { OutboxItem } from "./outbox";
 import type { PlacedRange } from "./overlays";
 import type {
   CollabChatMessage,
@@ -72,10 +73,13 @@ export interface WebState {
   threads: Readonly<Record<string, readonly CollabCommentThread[]>>;
   suggestions: Readonly<Record<string, readonly CollabSuggestion[]>>;
   chat: readonly CollabChatMessage[];
+  chatLoaded: boolean;
   output: readonly CollabOutputInfo[];
   compileSettings: CompileSettings;
   compile: CompileState;
   peers: readonly WebPeer[];
+  activityAt: Readonly<Record<string, number>>;
+  outbox: readonly OutboxItem[];
   people: Readonly<Record<string, WebPerson>>;
   notice: Notice | null;
   discarded: DiscardReason | null;
@@ -88,7 +92,7 @@ export interface WebState {
   discussion: DiscussionTab;
 }
 
-export const DEFAULT_FEATURES: WebFeatures = { comments: true, suggestions: true, chat: true };
+export const DEFAULT_FEATURES: WebFeatures = { comments: true, suggestions: true, chat: true, reactions: false };
 
 export function initialCompileState(): CompileState {
   return {
@@ -130,10 +134,13 @@ export function initialWebState(): WebState {
     threads: {},
     suggestions: {},
     chat: [],
+    chatLoaded: false,
     output: [],
     compileSettings: {},
     compile: initialCompileState(),
     peers: [],
+    activityAt: {},
+    outbox: [],
     people: {},
     notice: null,
     discarded: null,
@@ -166,12 +173,14 @@ export function mergePeople(
       name: person.name || known?.name || "",
       avatarUrl: person.avatarUrl ?? known?.avatarUrl ?? null,
       login: person.login ?? known?.login ?? null,
+      role: person.role ?? known?.role ?? null,
     };
     if (
       known &&
       known.name === merged.name &&
       known.avatarUrl === merged.avatarUrl &&
-      known.login === merged.login
+      known.login === merged.login &&
+      (known.role ?? null) === merged.role
     ) {
       continue;
     }

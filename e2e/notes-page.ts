@@ -109,7 +109,7 @@ export class NotesPage {
   }
 
   get toolbar(): Locator {
-    return this.page.getByRole("toolbar", { name: "Formatting" }).filter({ visible: true });
+    return this.page.getByRole("toolbar", { name: "Formatting", exact: true }).filter({ visible: true });
   }
 
   get composer(): Locator {
@@ -191,13 +191,18 @@ export class NotesPage {
   }
 
   async tool(name: string, item?: string): Promise<void> {
+    const itemOnBar = item ? this.toolbar.getByRole("button", { name: item, exact: true }) : null;
+    if (itemOnBar && (await itemOnBar.isVisible())) {
+      await itemOnBar.click();
+      return;
+    }
     const onBar = this.toolbar.getByRole("button", { name, exact: true });
     if (await onBar.isVisible()) {
       await onBar.click();
       if (item) await this.menuEntry(item).click();
       return;
     }
-    await this.toolbar.getByRole("button", { name: "More", exact: true }).click();
+    await this.toolbar.getByRole("button", { name: "More formatting", exact: true }).click();
     if (!item) {
       await this.menuEntry(name).click();
       return;

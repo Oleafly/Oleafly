@@ -41,6 +41,7 @@ import {
   UserX,
 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
+import { openChatMessage } from "@/components/collab/chat-rail";
 import { openCommentThread } from "@/components/collab/comments-rail";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { SidebarPanelHeader, SidebarSection } from "@/components/layout/SidebarSection";
@@ -105,6 +106,7 @@ const ACTIVITY_ICONS: Readonly<Record<ActivityEntry["kind"], Icon>> = {
   newDevice: MonitorSmartphone,
   renamed: PencilLine,
   mentioned: AtSign,
+  chatMentioned: AtSign,
   setting: SlidersHorizontal,
   skipped: TriangleAlert,
   outputNotShared: TriangleAlert,
@@ -327,6 +329,8 @@ function entryText(entry: ActivityEntry, t: ReturnType<typeof useTranslation<["c
       return entry.path
         ? t(($) => $.collab.activity.mentioned, { name: entry.name || unknown, path: entry.path })
         : t(($) => $.collab.activity.mentionedHere, { name: entry.name || unknown });
+    case "chatMentioned":
+      return t(($) => $.collab.activity.mentionedInChat, { name: entry.name || unknown });
     case "setting":
       return settingActivityText(entry.change, entry.name || unknown, t, entry.accountId !== null);
     case "skipped":
@@ -471,6 +475,17 @@ const ActivityRow = memo(function ActivityRow({
           ) : null}
           {(entry.kind === "failed" || entry.kind === "engineSpent") && newestEnding ? (
             <EndedAction kind={entry.kind} className="h-6 px-1.5 text-xs" />
+          ) : null}
+          {entry.kind === "chatMentioned" ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 px-1.5 text-xs"
+              onClick={() => openChatMessage(entry.messageId)}
+            >
+              {t(($) => $.collab.activity.showMessage)}
+            </Button>
           ) : null}
           {entry.kind === "mentioned" && entry.path ? (
             <Button

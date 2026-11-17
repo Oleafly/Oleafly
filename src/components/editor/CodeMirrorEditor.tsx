@@ -10,6 +10,9 @@ import {
   type VisualImage,
   type VisualPorts,
 } from "@oleafly/editor/CodeMirrorEditor";
+import { stickyScrollFor } from "@oleafly/editor/sticky-scroll";
+import { emacsModeExtension } from "@oleafly/editor/emacs-mode";
+import { markdownFormatKeymap } from "./markdown-keymap";
 import {
   setSpellHost,
   setBibKeysProvider,
@@ -257,6 +260,8 @@ export function saveActiveFromKeymap(): void {
 
 const HOST: EditorHost = {
   t: packageMessage,
+  stickyScroll: stickyScrollFor,
+  emacs: emacsModeExtension,
   useActivePath: () => useFilesStore((s) => s.activePath),
   getActivePath: () => useFilesStore.getState().activePath,
   useDocVersion: () => useFilesStore((s) => s.docVersion),
@@ -374,8 +379,9 @@ export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean 
         if (/\.(?:tex|latex|ltx|sty|cls)$/i.test(path)) {
           return [...LATEX_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS];
         }
-        return /\.typ$/i.test(path)
-          ? [...TYPST_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS]
+        if (/\.typ$/i.test(path)) return [...TYPST_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS];
+        return /\.(?:md|markdown|qmd|rmd)$/i.test(path)
+          ? [markdownFormatKeymap, ...PROJECT_INTELLIGENCE_EXTENSIONS]
           : PROJECT_INTELLIGENCE_EXTENSIONS;
       }}
       extraCompletionSourcesForPath={(path) =>

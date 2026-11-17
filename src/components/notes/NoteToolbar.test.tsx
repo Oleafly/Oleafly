@@ -8,7 +8,6 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import { loadNamespace } from "@/i18n";
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import { CONTROL_GAP, DROPDOWN_TRIGGER_WIDTH, ICON_BUTTON_WIDTH } from "@/components/ui/toolbar-overflow";
 import { NEW_BLOCKS, newChartSource } from "./block-templates";
 import { htmlTemplate } from "./html-block";
 import { REACT_TEMPLATE } from "./react-block";
@@ -57,7 +56,7 @@ function layout(width: number) {
   Object.defineProperty(HTMLElement.prototype, "clientWidth", {
     configurable: true,
     get(this: HTMLElement) {
-      return this.hasAttribute("data-note-toolbar-groups") ? width : 0;
+      return this.hasAttribute("data-note-toolbar-groups") || this.hasAttribute("data-note-toolbar-rows") ? width : 0;
     },
   });
 }
@@ -100,7 +99,11 @@ function openMenu(name: string) {
 }
 
 function openMore() {
-  return openMenu(enNotes.toolbar.more);
+  return openMenu(enNotes.toolbar.moreFormatting);
+}
+
+function popover(): HTMLElement {
+  return screen.getByRole("dialog");
 }
 
 function openSub(menu: HTMLElement, name: string) {
@@ -125,6 +128,8 @@ function blocks(editor: Editor): JSONContent[] {
 function rows(editor: Editor): JSONContent[] {
   return blocks(editor).find((block) => block.type === "table")?.content ?? [];
 }
+
+const TEXT_STYLE = 540;
 
 function heading(level: number): string {
   return enNotes.toolbar.heading.replace("{{level}}", String(level));
@@ -176,6 +181,7 @@ describe("NoteToolbar", () => {
   });
 
   it("turns the current block into any heading level or text from a menu that holds only those", async () => {
+    layout(TEXT_STYLE);
     const { editor } = mount("Results so far");
     expect(within(openMenu(enNotes.toolbar.blockType)).getAllByRole("menuitem").map((entry) => entry.textContent)).toEqual([
       enNotes.toolbar.text,
@@ -226,14 +232,14 @@ describe("NoteToolbar", () => {
 
   it("toggles bullet, numbered and task lists and shows which one is on", async () => {
     const { editor } = mount("First point");
-    const pick = (name: string) => fireEvent.click(within(openMenu(enNotes.toolbar.list)).getByRole("menuitemcheckbox", { name: new RegExp(name, "u") }));
-    pick(enNotes.toolbar.bulletList);
+    fireEvent.click(button(enNotes.toolbar.bulletList));
     expect(blocks(editor)[0].type).toBe("bulletList");
-    pick(enEditor.toolbar.numberedList);
+    fireEvent.click(button(enEditor.toolbar.numberedList));
     expect(blocks(editor)[0].type).toBe("orderedList");
-    pick(enEditor.toolbar.taskList);
+    fireEvent.click(button(enEditor.toolbar.taskList));
     expect(kbMarkdown(editor)).toBe("- [ ] First point");
-    expect(within(openMenu(enNotes.toolbar.list)).getByRole("menuitemcheckbox", { name: /Task list/u })).toHaveAttribute("aria-checked", "true");
+    expect(button(enEditor.toolbar.taskList)).toHaveAttribute("aria-pressed", "true");
+    expect(button(enNotes.toolbar.bulletList)).toHaveAttribute("aria-pressed", "false");
     act(() => {
       pressKey(editor, "(", { ctrlKey: true, shiftKey: true, keyCode: 57 });
     });
@@ -316,7 +322,7 @@ describe("NoteToolbar", () => {
     select(editor, 11, 11);
     await user.click(button(enNotes.toolbar.link));
     expect(screen.getByRole("textbox", { name: enNotes.toolbar.linkAddress })).toHaveValue("https://example.org/paper");
-    await user.click(screen.getByRole("button", { name: enEditor.toolbar.removeLink }));
+    await user.click(within(popover()).getByRole("button", { name: enEditor.toolbar.removeLink }));
     expect(kbMarkdown(editor)).toBe("See the paper and [notes](oleafly://note/n-1) here");
 
     inCell(editor, "otes");
@@ -333,7 +339,76 @@ describe("NoteToolbar", () => {
     select(editor, 9, 14);
     await user.click(button(enNotes.toolbar.link));
     expect(screen.getByRole("textbox", { name: enNotes.toolbar.linkAddress })).toHaveValue("");
-    expect(screen.queryByRole("button", { name: enEditor.toolbar.removeLink })).toBeNull();
+    expect(within(popover()).queryByRole("button", { name: enEditor.toolbar.removeLink })).toBeNull();
+  });
+
+  it("removes the link under the cursor from the bar's Remove link button, which is off elsewhere", async () => {
+    const { editor, user } = mount("See the [paper](https://example.org/paper) here");
+    select(editor, 2, 2);
+    expect(button(enEditor.toolbar.removeLink)).toBeDisabled();
+    select(editor, 11, 11);
+    await user.click(button(enEditor.toolbar.removeLink));
+    expect(kbMarkdown(editor)).toBe("See the paper here");
+  });
+
+  it("clears marks and block formatting from the selection", async () => {
+    const { editor, user } = mount("## A **bold** and *slanted* title");
+    select(editor, 3, 25);
+    await user.click(button(enEditor.toolbar.clearFormatting));
+    expect(kbMarkdown(editor)).toBe("A bold and slanted title");
+  });
+
+  it("aligns the current paragraph or heading as a Pandoc div and shows which alignment is on", async () => {
+    const { editor, user } = mount("# Title\n\nBody *text*");
+    inCell(editor, "Body");
+    expect(button(enEditor.toolbar.align.left)).toHaveAttribute("aria-pressed", "true");
+    await user.click(button(enEditor.toolbar.align.center));
+    expect(kbMarkdown(editor)).toBe("# Title\n\n::: {.center}\nBody *text*\n:::");
+    expect(button(enEditor.toolbar.align.center)).toHaveAttribute("aria-pressed", "true");
+    inCell(editor, "Title");
+    await user.click(button(enEditor.toolbar.align.justify));
+    expect(kbMarkdown(editor)).toBe("::: {.justify}\n# Title\n:::\n\n::: {.center}\nBody *text*\n:::");
+    await user.click(button(enEditor.toolbar.align.left));
+    expect(kbMarkdown(editor)).toBe("# Title\n\n::: {.center}\nBody *text*\n:::");
+  });
+
+  it("turns off alignment inside a table, where columns carry it", () => {
+    const { editor } = mount(TABLE);
+    inCell(editor, "0.75");
+    expect(button(enEditor.toolbar.align.center)).toBeDisabled();
+  });
+
+  it("colours the selected words with a LaTeX colour name and clears it", async () => {
+    const { editor } = mount("The mask ratio");
+    select(editor, 5, 9);
+    fireEvent.click(within(openMenu(enEditor.toolbar.textColor)).getByRole("menuitemcheckbox", { name: enEditor.toolbar.textColors.blue }));
+    expect(kbMarkdown(editor)).toMatch(/^The <span data-text-color="cyan!40!blue!85!black" style="[^"]+">mask<\/span> ratio$/u);
+    select(editor, 6, 6);
+    const menu = openMenu(enEditor.toolbar.textColor);
+    expect(within(menu).getByRole("menuitemcheckbox", { name: enEditor.toolbar.textColors.blue })).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(within(menu).getByRole("menuitem", { name: enEditor.toolbar.removeTextColor }));
+    expect(kbMarkdown(editor)).toBe("The mask ratio");
+  });
+
+  it("wraps the current block in a callout from the bar, keeping it as the body", async () => {
+    const { editor, user } = mount("Remember this");
+    select(editor, 3, 3);
+    await user.click(button(enNotes.blocks.slash.callout));
+    expect(blocks(editor)[0].type).toBe("blockquote");
+    expect(blocks(editor)[0].content?.map((block) => block.content?.[0].text)).toEqual(["[!note] ", "Remember this"]);
+  });
+
+  it("embeds a YouTube video from its link and says when the link is not a video", async () => {
+    const { editor, user } = mount("Watch");
+    select(editor, 6, 6);
+    await user.click(button(enNotes.toolbar.video));
+    const field = screen.getByRole("textbox", { name: enNotes.toolbar.videoAddress });
+    fireEvent.change(field, { target: { value: "https://example.org/clip" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(screen.getByRole("alert")).toHaveTextContent(enNotes.toolbar.videoInvalid);
+    fireEvent.change(field, { target: { value: "https://youtu.be/dQw4w9WgXcQ" } });
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(kbMarkdown(editor)).toContain("![](https://youtu.be/dQw4w9WgXcQ)");
   });
 
   it("inserts inline and display math", async () => {
@@ -400,7 +475,7 @@ describe("NoteToolbar", () => {
     const names = within(toolbar)
       .getAllByRole("button")
       .map((entry) => entry.getAttribute("aria-label"));
-    expect(names.slice(0, 3)).toEqual([enNotes.toolbar.blockType, enEditor.contextMenu.quote, enEditor.toolbar.codeBlock]);
+    expect(names.slice(0, 5)).toEqual([enEditor.toolbar.bold, enEditor.toolbar.italic, enEditor.toolbar.underline, enEditor.toolbar.strikethrough, enNotes.toolbar.blockType]);
   });
 
   it("offers no Citation menu when the note has no references to cite", () => {
@@ -478,11 +553,11 @@ describe("NoteToolbar", () => {
     const { editor, user } = mount("Figures");
     select(editor, 8, 8);
     await user.click(button(enNotes.blocks.slash.divider));
-    await user.click(button(enNotes.toolbar.chart));
+    fireEvent.click(within(openMenu(enNotes.blocks.insert.label)).getByRole("menuitem", { name: enNotes.blocks.chart }));
     act(() => {
       editor.commands.insertContent("Caption");
     });
-    await user.click(button(enNotes.toolbar.mermaid));
+    fireEvent.click(within(openMenu(enNotes.blocks.insert.label)).getByRole("menuitem", { name: "Mermaid" }));
     const types = blocks(editor).map((block) => block.type);
     expect(types.slice(0, 4)).toEqual(["paragraph", "horizontalRule", "codeBlock", "paragraph"]);
     const fenced = blocks(editor).filter((block) => block.type === "codeBlock");
@@ -490,7 +565,7 @@ describe("NoteToolbar", () => {
       ["chart", newChartSource()],
       [NEW_BLOCKS.mermaid.info, NEW_BLOCKS.mermaid.source],
     ]);
-    expect(blocks(editor)[3]).toEqual({ type: "paragraph", attrs: { blockId: null }, content: [{ type: "text", text: "Caption" }] });
+    expect(blocks(editor)[3]).toEqual({ type: "paragraph", attrs: { textAlign: null, blockId: null }, content: [{ type: "text", text: "Caption" }] });
   });
 
   it("inserts the next footnote at the cursor and moves the cursor to its text at the end of the note", async () => {
@@ -758,40 +833,85 @@ describe("citing from Zotero", () => {
 });
 
 describe("NoteToolbar in a narrow panel", () => {
+  function shownGroups(): string[] {
+    const names = within(screen.getByRole("toolbar"))
+      .getAllByRole("button")
+      .map((entry) => entry.getAttribute("aria-label") ?? "");
+    return GROUPS.filter(([, name]) => names.includes(name)).map(([group]) => group);
+  }
+
+  const GROUPS = [
+    ["history", enEditor.hotkeys.actions.undo],
+    ["marks", enEditor.toolbar.bold],
+    ["link", enNotes.toolbar.link],
+    ["lists", enNotes.toolbar.bulletList],
+    ["headings", heading(1)],
+    ["textStyle", enNotes.toolbar.blockType],
+    ["quote", enEditor.contextMenu.quote],
+    ["align", enEditor.toolbar.align.left],
+    ["script", enEditor.toolbar.superscript],
+    ["colors", enEditor.toolbar.textColor],
+    ["embeds", enEditor.toolbar.codeBlock],
+    ["table", enEditor.table.trigger],
+    ["math", enEditor.contextMenu.inlineMath],
+    ["callout", enNotes.blocks.slash.callout],
+    ["view", enNotes.toolbar.width],
+  ] as const;
+
   it("keeps every group on the bar and hides More when there is room", () => {
     mount("One");
-    expect(within(screen.getByRole("toolbar")).queryByRole("button", { name: enNotes.toolbar.more })).toBeNull();
-    expect(button(enNotes.toolbar.width)).toBeInTheDocument();
+    expect(within(screen.getByRole("toolbar")).queryByRole("button", { name: enNotes.toolbar.moreFormatting })).toBeNull();
+    expect(shownGroups()).toEqual(GROUPS.map(([group]) => group).filter((group) => group !== "textStyle"));
     expect(screen.getByText("1 word")).toBeInTheDocument();
   });
 
-  it("moves the groups that do not fit into More, from the right, and keeps undo, redo and the block type", () => {
-    layout(390);
+  it.each([
+    [1400, ["history", "marks", "link", "lists", "headings", "quote", "align", "script", "colors", "embeds", "table", "math", "callout"]],
+    [1000, ["history", "marks", "link", "lists", "headings", "quote", "align", "script", "colors"]],
+    [700, ["history", "marks", "link", "lists", "headings", "quote"]],
+    [TEXT_STYLE, ["history", "marks", "link", "lists", "textStyle", "quote"]],
+    [420, ["history", "marks", "link"]],
+  ])("keeps one row at %ipx and moves the rest into More, from the right", (width, shown) => {
+    layout(width);
     mount("One");
-    expect(button(enEditor.hotkeys.actions.undo)).toBeInTheDocument();
-    expect(button(enNotes.toolbar.blockType)).toBeInTheDocument();
-    expect(button(enEditor.contextMenu.quote)).toBeInTheDocument();
-    expect(button(enEditor.toolbar.codeBlock)).toBeInTheDocument();
-    expect(button(enNotes.toolbar.list)).toBeInTheDocument();
-    expect(button(enEditor.toolbar.highlight)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: enEditor.contextMenu.inlineMath })).toBeNull();
-    expect(screen.queryByRole("button", { name: enNotes.toolbar.width })).toBeNull();
+    expect(shownGroups()).toEqual(shown);
+    expect(button(enNotes.toolbar.moreFormatting)).toBeInTheDocument();
     expect(screen.queryByText("1 word")).toBeNull();
+    expect(within(openMore()).getByText("1 word")).toBeInTheDocument();
+  });
+
+  it("folds the headings into one Text style menu before they move into More", () => {
+    layout(TEXT_STYLE);
+    mount("One");
+    expect(screen.queryByRole("button", { name: heading(1) })).toBeNull();
+    expect(button(enNotes.toolbar.blockType)).toBeInTheDocument();
+    cleanup();
+    layout(420);
+    mount("One");
+    expect(screen.queryByRole("button", { name: enNotes.toolbar.blockType })).toBeNull();
     const menu = openMore();
-    expect(within(menu).getByRole("menuitem", { name: enEditor.contextMenu.inlineMath })).toBeInTheDocument();
-    expect(within(menu).getByRole("menuitem", { name: enNotes.toolbar.chart })).toBeInTheDocument();
-    expect(within(menu).getByRole("menuitemradio", { name: enNotes.toolbar.widths.standard })).toBeInTheDocument();
-    expect(within(menu).getByText("1 word")).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: enNotes.toolbar.blockType })).toBeInTheDocument();
+    expect(within(menu).queryByRole("menuitemcheckbox", { name: /Heading 1/u })).toBeNull();
+    expect(within(menu).getByRole("menuitemcheckbox", { name: new RegExp(enNotes.toolbar.bulletList, "u") })).toBeInTheDocument();
     expect(within(menu).queryByRole("menuitemcheckbox", { name: /Bold/u })).toBeNull();
-    expect(within(menu).queryByRole("menuitemcheckbox", { name: enEditor.contextMenu.quote })).toBeNull();
   });
 
   it("puts only the word count in More when everything else fits", () => {
-    layout(800 + DROPDOWN_TRIGGER_WIDTH + ICON_BUTTON_WIDTH + 2 * CONTROL_GAP);
+    layout(1493);
     mount("One", [{ key: "he2022mae", label: "He et al., 2022" }]);
     expect(button(enNotes.toolbar.width)).toBeInTheDocument();
     expect(screen.queryByText("1 word")).toBeNull();
     expect(within(openMore()).getByText("1 word")).toBeInTheDocument();
+  });
+
+  it("shows the tint of the marks that are on, in the bar's More menu and on its button", () => {
+    layout(0);
+    const { editor } = mount("The **mask** ratio");
+    select(editor, 6, 6);
+    expect(button(enNotes.toolbar.moreFormatting)).toHaveClass("bg-primary/10");
+    const menu = openMore();
+    expect(within(menu).getByRole("menuitemcheckbox", { name: /Bold/u })).toHaveClass("bg-primary/10");
+    expect(within(menu).getByRole("menuitemcheckbox", { name: /Italic/u })).not.toHaveClass("bg-primary/10");
   });
 
   it("lists marks and lists in More with their shortcuts and shows which are on", async () => {
@@ -838,9 +958,7 @@ describe("NoteToolbar in a narrow panel", () => {
     const { editor } = mount("Area");
     select(editor, 5, 5);
     fireEvent.click(within(openMore()).getByRole("menuitem", { name: enEditor.contextMenu.inlineMath }));
-    fireEvent.click(within(openMore()).getByRole("menuitem", { name: enNotes.toolbar.chart }));
-    fireEvent.click(within(openMore()).getByRole("menuitem", { name: enNotes.toolbar.mermaid }));
-    for (const name of ["LaTeX", "Typst"]) {
+    for (const name of [enNotes.blocks.chart, "Mermaid", "LaTeX", "Typst"]) {
       fireEvent.keyDown(within(openSub(openMore(), enNotes.blocks.insert.label)).getByRole("menuitem", { name }), { key: "Enter" });
     }
     expect(kbMarkdown(editor)).toContain("$x^2$");
@@ -937,7 +1055,7 @@ describe("note width", () => {
     cleanup();
     layout(0);
     mount("One");
-    fireEvent.click(within(openMore()).getByRole("menuitemradio", { name: enNotes.toolbar.widths.standard }));
+    fireEvent.click(within(openSub(openMore(), enNotes.toolbar.width)).getByRole("menuitemradio", { name: enNotes.toolbar.widths.standard }));
     expect(useSettingsStore.getState().notesWidth).toBe("standard");
   });
 });

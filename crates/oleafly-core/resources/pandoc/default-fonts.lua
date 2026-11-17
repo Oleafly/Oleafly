@@ -198,23 +198,33 @@ local function is_letter(code)
   return (code >= 0x41 and code <= 0x5A) or (code >= 0x61 and code <= 0x7A) or (code >= 0xC0 and code < 0x2000)
 end
 
-local function scan_text(text, seen)
+local function scan_text(text, seen, symbols_only)
   if not utf8.len(text) then
     return
   end
   for _, code in utf8.codes(text) do
-    if code >= 0x80 or is_letter(code) then
+    if code >= 0x80 or (not symbols_only and is_letter(code)) then
       seen.total[code] = (seen.total[code] or 0) + 1
     end
   end
 end
 
-local function scan_document(doc)
-  local seen = { total = {}, skip = false }
-  local function take(text)
-    scan_text(text, seen)
+local function without_markup(text)
+  return (
+    text:gsub("\\begin%s*{[^}]*}", "")
+      :gsub("\\end%s*{[^}]*}", "")
+      :gsub("\\csname.-\\endcsname", "")
+      :gsub("\\[%a@]+", "")
+  )
+end
+
+local function walker(take, take_raw)
+  local function raw(element)
+    if element.format:match("tex") then
+      take_raw(element.text)
+    end
   end
-  doc:walk({
+  return {
     Str = function(element)
       take(element.text)
     end,
@@ -224,17 +234,29 @@ local function scan_document(doc)
     CodeBlock = function(element)
       take(element.text)
     end,
-    RawInline = function(element)
-      if element.format:match("tex") then
-        take(element.text)
-      end
-    end,
-    RawBlock = function(element)
-      if element.format:match("tex") then
-        take(element.text)
-      end
-    end,
-  })
+    RawInline = raw,
+    RawBlock = raw,
+  }
+end
+
+local function scan_document(doc)
+  local seen = { total = {} }
+  local function take(text)
+    scan_text(text, seen)
+  end
+  local function take_symbols(text)
+    scan_text(text, seen, true)
+  end
+  local meta = {}
+  for key, value in pairs(doc.meta) do
+    if key ~= "header-includes" then
+      meta[key] = value
+    end
+  end
+  pandoc.Pandoc(doc.blocks, meta):walk(walker(take, function(text)
+    take(without_markup(text))
+  end))
+  pandoc.Pandoc({}, { probe = doc.meta["header-includes"] }):walk(walker(take_symbols, take_symbols))
   for key, value in pairs(doc.meta) do
     if not SKIPPED_METADATA[key] then
       take(pandoc.utils.stringify(value))
@@ -577,7 +599,13 @@ local function wrap_runs(inlines, skipped)
   return nil
 end
 
+local XMP_QUOTE = "\\providecommand{\\xmpquote}[1]{#1}"
+
 function Pandoc(doc)
+  if FORMAT:match("beamer") and doc.meta.keywords then
+    add_header(doc.meta, XMP_QUOTE)
+    return doc
+  end
   if not FORMAT:match("latex") then
     return nil
   end
@@ -659,7 +687,7 @@ function Pandoc(doc)
   end
 
   if doc.meta.keywords then
-    add_header(doc.meta, "\\providecommand{\\xmpquote}[1]{#1}")
+    add_header(doc.meta, XMP_QUOTE)
   end
 
   if #header > 0 then

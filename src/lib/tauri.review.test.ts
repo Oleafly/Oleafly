@@ -78,7 +78,7 @@ describe("review, chat and history IPC contract", () => {
       "collab_chat_list",
       { projectId: "p", before: "c1", limit: 50 },
     ],
-    ["collabChatSend", () => tauri.collabChatSend("p", "Hi"), "collab_chat_send", { projectId: "p", body: "Hi" }],
+    ["collabChatSend", () => tauri.collabChatSend("p", "Hi"), "collab_chat_send", { projectId: "p", body: "Hi", members: [] }],
     ["collabChatDelete", () => tauri.collabChatDelete("p", "c1"), "collab_chat_delete", { projectId: "p", id: "c1" }],
     ["collabChatClear", () => tauri.collabChatClear("p"), "collab_chat_clear", { projectId: "p" }],
     [
@@ -156,7 +156,7 @@ describe("review and chat events", () => {
     await tauri.onCollabChatChanged((payload) => seen.push(payload));
     expect(mocks.listen).toHaveBeenCalledWith("collab://chat-changed", expect.any(Function));
     const handler = mocks.listen.mock.calls[0][1] as (event: { payload: CollabChatChanged }) => void;
-    handler({ payload: { projectId: "p", local: false } });
-    expect(seen).toEqual([{ projectId: "p", local: false }]);
+    handler({ payload: { projectId: "p", local: false, mentioned: [] } });
+    expect(seen).toEqual([{ projectId: "p", local: false, mentioned: [] }]);
   });
 });

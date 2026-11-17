@@ -672,6 +672,15 @@
         "grid": "Mřížka",
         "label": "Vzor pozadí"
       },
+      "commentColor": {
+        "accent": "Barva zvýraznění",
+        "description": "Barva komentovaného textu v editoru a citací v panelu komentářů. Platí v tomto zařízení.",
+        "graphite": "Grafit",
+        "indigo": "Indigo",
+        "label": "Barva označení komentářů",
+        "leaf": "Listová zelená",
+        "sample": "Komentovaný text"
+      },
       "dock": {
         "bottom": "Dole",
         "description": "Zvolte, kde má být dok na domovské obrazovce.",

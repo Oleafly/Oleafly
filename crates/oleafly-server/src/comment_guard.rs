@@ -8,6 +8,7 @@ use loro::{ContainerID, ExportMode, Frontiers, LoroDoc, ID};
 use oleafly_collab_protocol::admin::SecurityEventKind;
 use oleafly_collab_protocol::console::CommentChangeWhileOff;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, SharedProjectId};
+use oleafly_collab_protocol::projects::ProjectRole;
 use rusqlite::{params, Connection};
 use serde_json::json;
 use tokio::sync::{Mutex, Notify};
@@ -16,6 +17,7 @@ use crate::db::{parse_id, Db};
 use crate::error::ServerError;
 use crate::mentions::{self, Span};
 use crate::peers::{self, Reach};
+use crate::projects;
 use crate::role_guard::{self, RoleRule, RoleVerdict};
 use crate::security_log::{self, NewSecurityEvent};
 use crate::snapshots::{self, Budgeted, Current, Keep, Replay, Snapshots};
@@ -68,6 +70,7 @@ struct Rechecks {
     waiting: std::sync::Mutex<HashSet<SharedProjectId>>,
     running: std::sync::Mutex<HashMap<SharedProjectId, bool>>,
     retrying: std::sync::Mutex<HashSet<SharedProjectId>>,
+    missed: std::sync::Mutex<HashMap<SharedProjectId, i64>>,
     busy: AtomicUsize,
     idle: Notify,
 }
@@ -95,14 +98,17 @@ struct Waiting {
     spans: Vec<Span>,
     account: Option<AccountId>,
     device: String,
+    rule: Option<RoleRule>,
 }
 
 enum Rechecked {
     Clean,
     ChangedComments,
+    BrokeRole,
     NotHeld,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn queue_recheck(
     conn: &Connection,
     project: SharedProjectId,
@@ -111,6 +117,7 @@ pub(crate) fn queue_recheck(
     account: AccountId,
     device: DeviceId,
     now: i64,
+    rule: Option<RoleRule>,
 ) -> Result<(), ServerError> {
     let spans = mentions::spans_of(reach);
     if spans.is_empty() {
@@ -120,14 +127,16 @@ pub(crate) fn queue_recheck(
         ServerError::Internal(format!("could not note a comment check: {error}"))
     })?;
     conn.execute(
-        "INSERT OR IGNORE INTO comment_rechecks (project_id, seq, spans, account_id, device_id, queued_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        "INSERT OR IGNORE INTO comment_rechecks (project_id, seq, spans, account_id, device_id, queued_at, role, comments_off) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         params![
             project.to_string(),
             seq_sql(seq),
             spans,
             account.to_string(),
             device.to_string(),
-            now
+            now,
+            rule.map(|rule| projects::role_to_str(rule.role)),
+            rule.is_some_and(|rule| rule.comments_off)
         ],
     )?;
     Ok(())
@@ -138,7 +147,7 @@ fn waiting_rechecks(
     project: SharedProjectId,
 ) -> Result<Vec<Waiting>, ServerError> {
     let mut statement = conn.prepare_cached(
-        "SELECT seq, spans, account_id, device_id FROM comment_rechecks WHERE project_id = ?1 ORDER BY attempts, seq LIMIT ?2",
+        "SELECT seq, spans, account_id, device_id, role, comments_off FROM comment_rechecks WHERE project_id = ?1 ORDER BY attempts, seq LIMIT ?2",
     )?;
     let rows = statement
         .query_map(params![project.to_string(), RECHECK_PAGE], |row| {
@@ -147,16 +156,28 @@ fn waiting_rechecks(
                 row.get::<_, String>(1)?,
                 row.get::<_, String>(2)?,
                 row.get::<_, String>(3)?,
+                row.get::<_, Option<String>>(4)?,
+                row.get::<_, bool>(5)?,
             ))
         })?
         .collect::<Result<Vec<_>, _>>()?;
     Ok(rows
         .into_iter()
-        .map(|(seq, spans, account, device)| Waiting {
-            seq: u64::try_from(seq).unwrap_or(0),
-            spans: serde_json::from_str(&spans).unwrap_or_default(),
-            account: account.parse().ok(),
-            device,
+        .map(|(seq, spans, account, device, role, comments_off)| {
+            let account: Option<AccountId> = account.parse().ok();
+            Waiting {
+                seq: u64::try_from(seq).unwrap_or(0),
+                spans: serde_json::from_str(&spans).unwrap_or_default(),
+                rule: role.and_then(|role| {
+                    Some(RoleRule {
+                        role: projects::role_from_str(&role).ok()?,
+                        account: account?,
+                        comments_off,
+                    })
+                }),
+                account,
+                device,
+            }
         })
         .collect())
 }
@@ -169,7 +190,7 @@ fn settle_rechecks(
 ) -> Result<usize, ServerError> {
     let transaction = conn.transaction()?;
     for (waiting, outcome) in rechecked {
-        match outcome {
+        let kind = match outcome {
             Rechecked::NotHeld => {
                 transaction.execute(
                     "UPDATE comment_rechecks SET attempts = attempts + 1 WHERE project_id = ?1 AND seq = ?2",
@@ -178,37 +199,67 @@ fn settle_rechecks(
                 continue;
             }
             Rechecked::ChangedComments => {
-                security_log::record(
-                    &transaction,
-                    now,
-                    NewSecurityEvent {
-                        actor: waiting.account,
-                        kind: SecurityEventKind::CommentsChangedWhileOff,
-                        target: Some(project.to_string()),
-                        ip: None,
-                        detail: json!({
-                            "project": project.to_string(),
-                            "seq": waiting.seq,
-                            "device": waiting.device,
-                        }),
-                    },
-                )?;
                 tracing::warn!(
                     "Change {} to project {project} changed comments while they were off. It was stored before it could be checked, so the project's members have it.",
                     waiting.seq
                 );
+                Some(SecurityEventKind::CommentsChangedWhileOff)
             }
-            Rechecked::Clean => {}
+            Rechecked::BrokeRole => {
+                tracing::warn!(
+                    "Change {} to project {project} from device {} did something its writer's role does not allow, such as changing or taking back what someone else wrote. It was stored before it could be checked, so the project's members have it.",
+                    waiting.seq,
+                    waiting.device
+                );
+                Some(SecurityEventKind::ChangeBrokeRole)
+            }
+            Rechecked::Clean => None,
+        };
+        if let Some(kind) = kind {
+            security_log::record(
+                &transaction,
+                now,
+                NewSecurityEvent {
+                    actor: waiting.account,
+                    kind,
+                    target: Some(project.to_string()),
+                    ip: None,
+                    detail: json!({
+                        "project": project.to_string(),
+                        "seq": waiting.seq,
+                        "device": waiting.device,
+                    }),
+                },
+            )?;
         }
         transaction.execute(
             "DELETE FROM comment_rechecks WHERE project_id = ?1 AND seq = ?2",
             params![project.to_string(), seq_sql(waiting.seq)],
         )?;
     }
-    let given_up = transaction.execute(
+    let given_up = give_up(&transaction, project)?;
+    transaction.commit()?;
+    Ok(given_up)
+}
+
+fn next_try(now: i64) -> i64 {
+    now.saturating_add(i64::try_from(RECHECK_RETRY.as_millis()).unwrap_or(i64::MAX))
+}
+
+fn give_up(conn: &Connection, project: SharedProjectId) -> Result<usize, ServerError> {
+    Ok(conn.execute(
         "DELETE FROM comment_rechecks WHERE project_id = ?1 AND attempts >= ?2",
         params![project.to_string(), MAX_RECHECKS],
+    )?)
+}
+
+fn missed_read(conn: &mut Connection, project: SharedProjectId) -> Result<usize, ServerError> {
+    let transaction = conn.transaction()?;
+    transaction.execute(
+        "UPDATE comment_rechecks SET attempts = attempts + 1 WHERE project_id = ?1",
+        [project.to_string()],
     )?;
+    let given_up = give_up(&transaction, project)?;
     transaction.commit()?;
     Ok(given_up)
 }
@@ -248,7 +299,7 @@ pub fn noticed(conn: &Connection, now: i64) -> Result<Vec<CommentChangeWhileOff>
         .collect())
 }
 
-fn rechecked(doc: &LoroDoc, spans: &[Span]) -> Rechecked {
+fn rechecked(doc: &LoroDoc, spans: &[Span], rule: Option<&RoleRule>) -> Rechecked {
     let held = doc.oplog_vv();
     let trimmed = doc.shallow_since_vv();
     let whole = spans.iter().all(|(peer, start, end)| {
@@ -257,6 +308,13 @@ fn rechecked(doc: &LoroDoc, spans: &[Span]) -> Rechecked {
     });
     if !whole {
         return Rechecked::NotHeld;
+    }
+    if let Some(rule) = rule {
+        return match role_guard::judge_imported(doc, spans, rule) {
+            RoleVerdict::Refused => Rechecked::BrokeRole,
+            RoleVerdict::ChangesComments => Rechecked::ChangedComments,
+            _ => Rechecked::Clean,
+        };
     }
     let changed = spans.iter().any(|(peer, start, end)| {
         let length = usize::try_from(end.saturating_sub(*start)).unwrap_or(0);
@@ -275,19 +333,25 @@ pub async fn resume(state: &AppState) {
     let waiting = state
         .db
         .call(|conn| {
-            let projects: Vec<String> = conn
-                .prepare("SELECT DISTINCT project_id FROM comment_rechecks")?
-                .query_map([], |row| row.get(0))?
+            let projects: Vec<(String, bool)> = conn
+                .prepare(
+                    "SELECT project_id, MAX(attempts) > 0 FROM comment_rechecks GROUP BY project_id",
+                )?
+                .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
                 .collect::<Result<Vec<_>, _>>()?;
             projects
                 .iter()
-                .map(|project| parse_id::<SharedProjectId>(project))
-                .collect::<Result<Vec<_>, _>>()
+                .map(|(project, tried)| Ok((parse_id::<SharedProjectId>(project)?, *tried)))
+                .collect::<Result<Vec<_>, ServerError>>()
         })
         .await;
     match waiting {
         Ok(projects) => {
-            for project in projects {
+            let now = state.clock.now_ms();
+            for (project, tried) in projects {
+                if tried {
+                    locked(&state.comment_guard.rechecks.missed).insert(project, next_try(now));
+                }
                 state.comment_guard.recheck(state, project);
             }
         }
@@ -315,6 +379,7 @@ async fn recheck_project(state: &AppState, project: SharedProjectId) {
         let rechecks = &state.comment_guard.rechecks;
         if page.is_empty() {
             locked(&rechecks.waiting).remove(&project);
+            locked(&rechecks.missed).remove(&project);
             return;
         }
         locked(&rechecks.waiting).insert(project);
@@ -323,7 +388,7 @@ async fn recheck_project(state: &AppState, project: SharedProjectId) {
             Ok(false) => return,
             Err(error) => {
                 tracing::warn!(
-                    "Could not check the changes to project {project} stored while comments were off: {error}"
+                    "Could not check the changes to project {project} that were stored without a check: {error}"
                 );
                 state.comment_guard.recheck_later(state, project);
                 return;
@@ -349,7 +414,22 @@ async fn recheck_page(
                 guard.recheck_later(state, project);
                 return Ok(false);
             }
-            Current::TooLarge { .. } | Current::Missing => return Ok(false),
+            Current::TooLarge { .. } | Current::Missing => {
+                drop(turn);
+                if guard.try_due(project, state.clock.now_ms()) {
+                    let given_up = state
+                        .db
+                        .call(move |conn| missed_read(conn, project))
+                        .await?;
+                    if given_up > 0 {
+                        tracing::warn!(
+                            "Gave up checking {given_up} changes to project {project} that were stored without a check, because the server could not read the project in {MAX_RECHECKS} tries. If it is too large for OLEAFLY_SNAPSHOT_MEMORY_MB, raise it."
+                        );
+                    }
+                }
+                guard.recheck_later(state, project);
+                return Ok(false);
+            }
         },
     };
     let (replay, seq) = current;
@@ -357,7 +437,7 @@ async fn recheck_page(
         let outcomes: Vec<(Waiting, Rechecked)> = page
             .into_iter()
             .map(|waiting| {
-                let outcome = rechecked(replay.doc(), &waiting.spans);
+                let outcome = rechecked(replay.doc(), &waiting.spans, waiting.rule.as_ref());
                 (waiting, outcome)
             })
             .collect();
@@ -422,6 +502,15 @@ impl CommentGuard {
         if locked(&self.rechecks.waiting).contains(&project) {
             self.recheck(state, project);
         }
+    }
+
+    fn try_due(&self, project: SharedProjectId, now: i64) -> bool {
+        let mut missed = locked(&self.rechecks.missed);
+        if missed.get(&project).is_some_and(|due| now < *due) {
+            return false;
+        }
+        missed.insert(project, next_try(now));
+        true
     }
 
     fn recheck_later(&self, state: &AppState, project: SharedProjectId) {
@@ -490,7 +579,9 @@ impl CommentGuard {
     ) -> Result<Verdict, ServerError> {
         let slot = self.slot(project);
         let _turn = slot.turn.lock().await;
-        let current = self.current(db, snapshots, project, reach, true).await?;
+        let current = self
+            .current(db, snapshots, project, reach, true, true)
+            .await?;
         let Some((replay, seq)) = current else {
             return Ok(Verdict::Unchecked);
         };
@@ -525,7 +616,10 @@ impl CommentGuard {
         self.pass_role_gate().await;
         let slot = self.slot(project);
         let _turn = slot.turn.lock().await;
-        let current = self.current(db, snapshots, project, reach, false).await?;
+        let patient = rule.role != ProjectRole::Editor;
+        let current = self
+            .current(db, snapshots, project, reach, false, patient)
+            .await?;
         let Some((replay, seq)) = current else {
             return Ok(RoleVerdict::Unchecked);
         };
@@ -547,6 +641,44 @@ impl CommentGuard {
         Ok(verdict)
     }
 
+    pub async fn spares_comments(
+        &self,
+        db: &Db,
+        snapshots: &Snapshots,
+        project: SharedProjectId,
+        payload: Vec<u8>,
+        reach: &Reach,
+    ) -> Result<bool, ServerError> {
+        let slot = self.slot(project);
+        let _turn = slot.turn.lock().await;
+        let kept = snapshots.take_kept(Keep::EditorChecks, project);
+        let current = match snapshots.caught_up(db, project, kept).await? {
+            Some(current) if !holds(current.0.doc(), reach) => Some(current),
+            _ => match snapshots.read_detached(db, project).await? {
+                Current::Read(replay, head) => Some((replay, head)),
+                _ => None,
+            },
+        };
+        let Some((replay, seq)) = current else {
+            return Ok(false);
+        };
+        let (spared, replay) = tokio::task::spawn_blocking(move || {
+            (role_guard::spares_comments(replay.doc(), &payload), replay)
+        })
+        .await
+        .map_err(|error| ServerError::Internal(format!("an editor check failed: {error}")))?;
+        match spared {
+            Some(spared) => {
+                snapshots.keep(Keep::EditorChecks, project, replay, seq);
+                Ok(spared)
+            }
+            None => {
+                snapshots.free([replay]);
+                Ok(false)
+            }
+        }
+    }
+
     async fn current(
         &self,
         db: &Db,
@@ -554,11 +686,12 @@ impl CommentGuard {
         project: SharedProjectId,
         reach: &Reach,
         warn: bool,
+        patient: bool,
     ) -> Result<Option<(Budgeted, u64)>, ServerError> {
         let kept = snapshots.take_kept(Keep::CommentChecks, project);
         match snapshots.caught_up(db, project, kept).await? {
             Some(current) if !holds(current.0.doc(), reach) => Ok(Some(current)),
-            _ => self.read_for(db, snapshots, project, warn).await,
+            _ => self.read_for(db, snapshots, project, warn, patient).await,
         }
     }
 
@@ -568,11 +701,13 @@ impl CommentGuard {
         snapshots: &Snapshots,
         project: SharedProjectId,
         warn: bool,
+        patient: bool,
     ) -> Result<Option<(Budgeted, u64)>, ServerError> {
         let mut waited_for_build = false;
         for _ in 0..BUSY_TRIES {
             match snapshots.read_current(db, project).await? {
                 Current::Read(replay, head) => return Ok(Some((replay, head))),
+                Current::Busy if !patient => return Ok(None),
                 Current::Busy => match snapshots.build_running(project) {
                     Some(mut finished) if !waited_for_build => {
                         waited_for_build = true;
@@ -645,6 +780,7 @@ impl CommentGuard {
         let slot = self.slot(project);
         let _turn = slot.turn.lock().await;
         snapshots.forget_kept(Keep::CommentChecks, project);
+        snapshots.forget_kept(Keep::EditorChecks, project);
     }
 }
 
@@ -830,6 +966,72 @@ mod tests {
         let second = doc.export(ExportMode::updates(&before)).unwrap();
         assert_eq!(checked(&base, &second), Verdict::Unreadable);
         assert_eq!(checked(&base, b"not a change"), Verdict::Unreadable);
+    }
+
+    #[test]
+    fn a_change_stored_unchecked_with_comments_on_is_judged_later_by_its_writers_role() {
+        let doc = LoroDoc::new();
+        doc.set_peer_id(1).unwrap();
+        let message = doc
+            .get_map(COMMENTS)
+            .insert_container("file-1/thread-1", LoroMap::new())
+            .unwrap()
+            .insert_container("messages", loro::LoroList::new())
+            .unwrap()
+            .insert_container(0, LoroMap::new())
+            .unwrap();
+        message.insert("id", "m1").unwrap();
+        message
+            .insert("author", "01920000-0000-7000-8000-0000000000b1")
+            .unwrap();
+        message.insert("body", "first").unwrap();
+        doc.commit();
+        let base = doc.export(ExportMode::Snapshot).unwrap();
+        let editor: AccountId = "01920000-0000-7000-8000-0000000000e1".parse().unwrap();
+        let rule = RoleRule {
+            role: ProjectRole::Editor,
+            account: editor,
+            comments_off: false,
+        };
+        let messages = |doc: &LoroDoc| match thread_of(doc).get("messages") {
+            Some(loro::ValueOrContainer::Container(loro::Container::List(messages))) => messages,
+            _ => panic!("the messages exist"),
+        };
+        let later = |edit: &dyn Fn(&LoroDoc), rule: Option<&RoleRule>| {
+            let update = change(&base, 2, edit);
+            let held = LoroDoc::new();
+            held.import(&base).unwrap();
+            held.import(&update).unwrap();
+            let end = held.oplog_vv().get(&2).copied().unwrap_or(0);
+            rechecked(&held, &[(2, 0, end)], rule)
+        };
+        let removal = |doc: &LoroDoc| {
+            let Some(loro::ValueOrContainer::Container(loro::Container::Map(theirs))) =
+                messages(doc).get(0)
+            else {
+                panic!("the message exists");
+            };
+            theirs.insert("removed", true).unwrap();
+            theirs.insert("deleted", true).unwrap();
+            theirs.insert("body", "").unwrap();
+        };
+        let reply = |doc: &LoroDoc| {
+            let own = messages(doc).insert_container(1, LoroMap::new()).unwrap();
+            own.insert("id", "m2").unwrap();
+            own.insert("author", editor.to_string()).unwrap();
+            own.insert("body", "mine").unwrap();
+        };
+        assert!(matches!(later(&removal, Some(&rule)), Rechecked::BrokeRole));
+        assert!(matches!(later(&reply, Some(&rule)), Rechecked::Clean));
+        assert!(matches!(later(&reply, None), Rechecked::ChangedComments));
+        let off = RoleRule {
+            comments_off: true,
+            ..rule
+        };
+        assert!(matches!(
+            later(&reply, Some(&off)),
+            Rechecked::ChangedComments
+        ));
     }
 
     #[test]

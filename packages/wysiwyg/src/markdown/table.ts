@@ -3,6 +3,7 @@ import { Table } from "@tiptap/extension-table";
 import { Fragment, type Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { isInTable, selectedRect } from "@tiptap/pm/tables";
 import type { MarkdownNodeSpec } from "tiptap-markdown";
+import { guardInlineDelimiters } from "./inline-delimiters";
 
 type SerializerState = Parameters<MarkdownNodeSpec["serialize"]>[0];
 
@@ -89,6 +90,7 @@ function escapeCellPipes(out: string, start: number, verbatim: readonly [number,
 }
 
 export function writeVerbatim(state: SerializerState, source: string): void {
+  guardInlineDelimiters(state);
   const table = state as unknown as TableState;
   state.write("");
   const from = table.out.length;

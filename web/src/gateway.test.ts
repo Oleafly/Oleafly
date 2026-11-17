@@ -46,7 +46,7 @@ describe("WebGateway frames", () => {
     expect(hellos).toEqual([
       expect.objectContaining({
         role: "reviewer",
-        features: { comments: true, suggestions: true, chat: true },
+        features: { comments: true, suggestions: true, chat: true, reactions: false },
         files: expect.arrayContaining([expect.objectContaining({ fileId: "f-main", path: "main.tex", kind: "text" })]),
       }),
     ]);

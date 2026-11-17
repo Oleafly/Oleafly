@@ -26,6 +26,8 @@ pub const MERMAID_FIGURES_FILTER_NAME: &str = "oleafly-mermaid-figures.lua";
 pub const MERMAID_FIGURES_FILTER: &str = include_str!("../resources/pandoc/mermaid-figures.lua");
 pub const IMAGE_COMPAT_FILTER_NAME: &str = "oleafly-image-compat.lua";
 pub const IMAGE_COMPAT_FILTER: &str = include_str!("../resources/pandoc/image-compat.lua");
+pub const MARKDOWN_MARKS_FILTER_NAME: &str = "oleafly-markdown-marks.lua";
+pub const MARKDOWN_MARKS_FILTER: &str = include_str!("../resources/pandoc/markdown-marks.lua");
 pub const MARKDOWN_BIBLIOGRAPHY_FILTER_NAME: &str = "oleafly-markdown-bibliography.lua";
 pub const MARKDOWN_BIBLIOGRAPHY_FILTER: &str =
     include_str!("../resources/pandoc/markdown-bibliography.lua");
@@ -34,9 +36,10 @@ pub const DEFAULT_FONTS_FILTER: &str = include_str!("../resources/pandoc/default
 pub const DOCUMENT_KIND_FILTER_NAME: &str = "oleafly-document-kind.lua";
 pub const DOCUMENT_KIND_FILTER: &str = include_str!("../resources/pandoc/document-kind.lua");
 const DOCUMENT_KIND_METADATA: &str = "oleafly-document-kind";
-pub const MARKDOWN_FILTERS: [(&str, &str); 5] = [
+pub const MARKDOWN_FILTERS: [(&str, &str); 6] = [
     (MERMAID_FIGURES_FILTER_NAME, MERMAID_FIGURES_FILTER),
     (IMAGE_COMPAT_FILTER_NAME, IMAGE_COMPAT_FILTER),
+    (MARKDOWN_MARKS_FILTER_NAME, MARKDOWN_MARKS_FILTER),
     (
         MARKDOWN_BIBLIOGRAPHY_FILTER_NAME,
         MARKDOWN_BIBLIOGRAPHY_FILTER,
@@ -676,6 +679,7 @@ pub fn markdown_pdf_args(spec: &MarkdownPdfArgs<'_>) -> Vec<OsString> {
     args.push("--sandbox".into());
     args.push(format!("--lua-filter={MERMAID_FIGURES_FILTER_NAME}").into());
     args.push(format!("--lua-filter={IMAGE_COMPAT_FILTER_NAME}").into());
+    args.push(format!("--lua-filter={MARKDOWN_MARKS_FILTER_NAME}").into());
     args.push(format!("--lua-filter={MARKDOWN_BIBLIOGRAPHY_FILTER_NAME}").into());
     for bibliography in spec.bibliographies {
         let mut path = spec.project.to_path_buf();

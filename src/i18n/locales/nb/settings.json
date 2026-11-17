@@ -664,6 +664,15 @@
         "grid": "Rutenett",
         "label": "Bakgrunnsmønster"
       },
+      "commentColor": {
+        "accent": "Aksentfarge",
+        "description": "Farge for kommentert tekst i editoren og for sitater i kommentarpanelet. Gjelder på denne enheten.",
+        "graphite": "Grafitt",
+        "indigo": "Indigo",
+        "label": "Uthevingsfarge for kommentarer",
+        "leaf": "Bladgrønn",
+        "sample": "Kommentert tekst"
+      },
       "dock": {
         "bottom": "Nederst",
         "description": "Velg hvor panelet på startsiden skal ligge.",

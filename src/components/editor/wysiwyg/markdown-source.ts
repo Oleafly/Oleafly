@@ -4,6 +4,7 @@ import { splitMarkdownFrontMatter } from "@oleafly/wysiwyg/front-matter";
 export function markdownMathRanges(source: string) {
   return scanMathExpressions(source, {
     format: "markdown",
+    pandoc: true,
     from: source.length - splitMarkdownFrontMatter(source).body.length,
   }).map(({ from, to }) => ({ from, to }));
 }

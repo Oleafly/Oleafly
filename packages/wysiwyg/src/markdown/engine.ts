@@ -3,9 +3,19 @@ import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 
 const engines = new WeakMap<readonly AnyExtension[], Editor>();
 let sourceParses = 0;
+let markTagModelled = false;
 
 export function parsingMarkdownSource(): boolean {
   return sourceParses > 0;
+}
+
+export function parsingWithMarkTag(): boolean {
+  return markTagModelled;
+}
+
+function writesMarkTag(editor: Editor): boolean {
+  const storage = (editor.storage as unknown as Record<string, { markdown?: { serialize?: { open?: unknown } } } | undefined>).highlight;
+  return storage?.markdown?.serialize?.open === "<mark>";
 }
 
 export function markdownEngine(extensions: AnyExtension[]): Editor {
@@ -19,11 +29,14 @@ export function markdownEngine(extensions: AnyExtension[]): Editor {
 
 export function markdownToDoc(editor: Editor, markdown: string): JSONContent {
   sourceParses++;
+  const outer = markTagModelled;
+  markTagModelled = writesMarkTag(editor);
   let html: string;
   try {
     html = editor.storage.markdown.parser.parse(markdown);
   } finally {
     sourceParses--;
+    markTagModelled = outer;
   }
   const { state } = editor;
   const parsed = createDocument(html, editor.schema);

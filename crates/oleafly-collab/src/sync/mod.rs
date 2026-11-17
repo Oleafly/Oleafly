@@ -9,13 +9,13 @@ mod trust;
 mod wire;
 mod writers;
 
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use oleafly_collab_protocol::auth::SessionEndReason;
 use oleafly_collab_protocol::frames::{CommentSwitches, FrameErrorCode, MemberChange};
 use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
-use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
+use oleafly_collab_protocol::projects::{PresenceActivity, PresenceState, ProjectRole};
 use serde::Serialize;
 use tokio::sync::mpsc::{self, UnboundedSender};
 use tokio::task::JoinHandle;
@@ -140,6 +140,7 @@ enum LiveCommand {
 pub struct LiveHandle {
     commands: UnboundedSender<LiveCommand>,
     task: JoinHandle<()>,
+    shown: Mutex<PresenceState>,
 }
 
 impl LiveHandle {
@@ -147,11 +148,42 @@ impl LiveHandle {
         let _ = self.commands.send(LiveCommand::Flush);
     }
 
-    pub fn presence(&self, state: PresenceState) {
+    fn shown(&self) -> MutexGuard<'_, PresenceState> {
+        self.shown.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    fn show(&self, change: impl FnOnce(&mut PresenceState)) {
+        let state = {
+            let mut shown = self.shown();
+            change(&mut shown);
+            shown.clone()
+        };
         let _ = self.commands.send(LiveCommand::Presence(state));
     }
 
+    pub fn presence(&self, state: PresenceState) {
+        self.show(|shown| *shown = state);
+    }
+
+    pub fn place_presence(
+        &self,
+        file_id: Option<String>,
+        cursor: Option<u32>,
+        anchor: Option<u32>,
+    ) {
+        self.show(|shown| {
+            shown.file_id = file_id;
+            shown.cursor = cursor;
+            shown.anchor = anchor;
+        });
+    }
+
+    pub fn presence_activity(&self, activity: Option<PresenceActivity>) {
+        self.show(|shown| shown.activity = activity);
+    }
+
     pub fn leave_presence(&self) {
+        *self.shown() = PresenceState::default();
         let _ = self.commands.send(LiveCommand::LeavePresence);
     }
 
@@ -223,7 +255,11 @@ pub fn spawn_live_with(
 ) -> LiveHandle {
     let (commands, receiver) = mpsc::unbounded_channel();
     let task = tokio::spawn(guarded(link, project, events, receiver, options));
-    LiveHandle { commands, task }
+    LiveHandle {
+        commands,
+        task,
+        shown: Mutex::new(PresenceState::default()),
+    }
 }
 
 async fn guarded(

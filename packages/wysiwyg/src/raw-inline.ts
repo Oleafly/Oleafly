@@ -1,6 +1,7 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import type { MarkdownNodeSpec } from "tiptap-markdown";
 import { footnoteReferenceId, footnoteReferenceView } from "./markdown/footnote-reference";
+import { parsingMarkdownSource } from "./markdown/engine";
 import { keepsInlineHtml } from "./markdown/raw-html";
 import { writeVerbatim } from "./markdown/table";
 import { wysiwygMessage } from "./messages";
@@ -10,6 +11,35 @@ import {
 } from "./raw-presentation";
 
 const withRawHtml = new WeakSet<object>();
+const INLINE_FORMATTING = new Set(["a", "b", "del", "em", "i", "mark", "s", "span", "strike", "strong", "sub", "sup", "u"]);
+const SCRIPT_MARKERS: Readonly<Record<string, string>> = { sup: "^", sub: "~" };
+
+function codeSpanSource(content: string): string {
+  const longest = Math.max(0, ...Array.from(content.matchAll(/`+/gu), (run) => run[0].length));
+  const fence = "`".repeat(longest + 1);
+  return longest > 0 ? `${fence} ${content} ${fence}` : `${fence}${content}${fence}`;
+}
+
+function unmodelledSource(element: Element): string | null {
+  const parent = element.parentElement?.localName ?? "";
+  if (element.localName === "code") return INLINE_FORMATTING.has(parent) ? codeSpanSource(element.textContent ?? "") : null;
+  const marker = SCRIPT_MARKERS[element.localName];
+  const nested = parent === "sup" || parent === "sub";
+  if (!marker || !nested || element.childElementCount > 0) return null;
+  return `${marker}${(element.textContent ?? "").replace(/[\\`*_~^[\]<>$&]/gu, "\\$&")}${marker}`;
+}
+
+function keepUnmodelledNesting(element: HTMLElement): void {
+  if (!parsingMarkdownSource()) return;
+  for (const inner of element.querySelectorAll("code, sub, sup")) {
+    const source = unmodelledSource(inner);
+    if (source === null) continue;
+    const raw = element.ownerDocument.createElement("span");
+    raw.dataset.type = "raw-inline";
+    raw.setAttribute("source", source);
+    inner.replaceWith(raw);
+  }
+}
 
 export const RawInline = Node.create({
   name: "rawInline",
@@ -39,6 +69,7 @@ export const RawInline = Node.create({
             return `<span data-type="raw-inline" source="${markdownit.utils.escapeHtml(tokens[index].content)}"></span>`;
           };
         },
+        updateDOM: keepUnmodelledNesting,
       },
     };
     return { markdown };

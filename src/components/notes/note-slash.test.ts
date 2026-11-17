@@ -253,9 +253,9 @@ describe("slash plugin", () => {
     expect(pick(editor, "footnote")).toBe(true);
     typeInto(editor, "Why.");
     expect(editor.getJSON().content).toEqual([
-      { type: "paragraph", attrs: { blockId: null }, content: [{ type: "rawInline", attrs: { source: "[^1]" } }] },
-      { type: "paragraph", attrs: { blockId: null }, content: [{ type: "text", text: "Last" }] },
-      { type: "paragraph", attrs: { blockId: null }, content: [{ type: "rawInline", attrs: { source: "[^1]" } }, { type: "text", text: ": Why." }] },
+      { type: "paragraph", attrs: { textAlign: null, blockId: null }, content: [{ type: "rawInline", attrs: { source: "[^1]" } }] },
+      { type: "paragraph", attrs: { textAlign: null, blockId: null }, content: [{ type: "text", text: "Last" }] },
+      { type: "paragraph", attrs: { textAlign: null, blockId: null }, content: [{ type: "rawInline", attrs: { source: "[^1]" } }, { type: "text", text: ": Why." }] },
     ]);
   });
 

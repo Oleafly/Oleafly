@@ -116,6 +116,7 @@
     "superscript": "上标",
     "subscript": "下标",
     "inlineCode": "行内代码",
+    "clearFormatting": "清除格式",
     "insertLink": "插入链接",
     "insertCrossReference": "插入交叉引用",
     "insertFootnote": "插入脚注。",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "跳转到 PDF",
     "linkUrl": "链接 URL",
     "removeLink": "移除链接",
+    "alignment": "对齐",
+    "align": {
+      "left": "左对齐",
+      "center": "居中",
+      "right": "右对齐",
+      "justify": "两端对齐"
+    },
+    "emoji": "表情符号",
+    "textColor": "文字颜色",
+    "removeTextColor": "移除颜色",
+    "textColors": {
+      "gray": "灰色",
+      "red": "红色",
+      "orange": "橙色",
+      "green": "绿色",
+      "teal": "青色",
+      "blue": "蓝色",
+      "purple": "紫色"
+    },
     "imageFile": "图片文件",
     "apply": "应用",
     "linkPlaceholder": "https://",
@@ -1650,5 +1670,11 @@
       "duplicateArg": "重复的参数",
       "unknownKind": "未知的字段类型"
     }
+  },
+  "emoji": {
+    "search": "搜索表情符号",
+    "skinTone": "肤色",
+    "loading": "正在加载表情符号",
+    "empty": "未找到表情符号"
   }
 }

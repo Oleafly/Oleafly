@@ -660,6 +660,15 @@
         "grid": "Lưới",
         "label": "Họa tiết nền"
       },
+      "commentColor": {
+        "accent": "Màu nhấn",
+        "description": "Màu cho văn bản có bình luận trong trình biên tập và cho trích dẫn trong khung bình luận. Chỉ áp dụng trên thiết bị này.",
+        "graphite": "Xám than chì",
+        "indigo": "Xanh chàm",
+        "label": "Màu tô sáng bình luận",
+        "leaf": "Xanh lá",
+        "sample": "Văn bản có bình luận"
+      },
       "dock": {
         "bottom": "Dưới",
         "description": "Chọn vị trí của dock trên màn hình chính.",

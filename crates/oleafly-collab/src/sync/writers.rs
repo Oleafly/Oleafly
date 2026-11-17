@@ -19,6 +19,19 @@ pub(super) async fn listed_peers(link: &LiveLink) -> Option<Vec<ProjectPeer>> {
     link.client.project_peers(&access, link.project).await.ok()
 }
 
+pub(super) async fn learn_owner(link: &LiveLink, project: &SharedLive) {
+    let Ok(access) = link
+        .sessions
+        .access_token(link.server_id, &link.client)
+        .await
+    else {
+        return;
+    };
+    if let Ok(summary) = link.client.project(&access, link.project).await {
+        lock(project).set_owner(summary.owner.account_id);
+    }
+}
+
 pub(super) fn admit_writers(live: &mut LiveProject, writers: Option<Vec<ProjectPeer>>) -> bool {
     match writers {
         Some(listed) => {

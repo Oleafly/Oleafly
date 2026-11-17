@@ -100,6 +100,7 @@ impl Refusal {
             "suggestion_not_yours" => "suggestion_not_yours",
             "suggestion_role" => "suggestion_role",
             "chat_role" => "chat_role",
+            "invalid" => "invalid",
             _ => "server",
         };
         Refusal::new(mapped, message)

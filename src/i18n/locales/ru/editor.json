@@ -116,6 +116,7 @@
     "superscript": "Верхний индекс",
     "subscript": "Нижний индекс",
     "inlineCode": "Код в строке",
+    "clearFormatting": "Очистить форматирование",
     "insertLink": "Вставить ссылку",
     "insertCrossReference": "Вставить перекрёстную ссылку",
     "insertFootnote": "Вставить сноску",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Перейти к PDF",
     "linkUrl": "Адрес URL ссылки",
     "removeLink": "Убрать ссылку",
+    "alignment": "Выравнивание",
+    "align": {
+      "left": "По левому краю",
+      "center": "По центру",
+      "right": "По правому краю",
+      "justify": "По ширине"
+    },
+    "emoji": "Эмодзи",
+    "textColor": "Цвет текста",
+    "removeTextColor": "Убрать цвет",
+    "textColors": {
+      "gray": "Серый",
+      "red": "Красный",
+      "orange": "Оранжевый",
+      "green": "Зелёный",
+      "teal": "Бирюзовый",
+      "blue": "Синий",
+      "purple": "Фиолетовый"
+    },
     "imageFile": "Файл изображения",
     "apply": "Применить",
     "linkPlaceholder": "https://",
@@ -1713,5 +1733,11 @@
       "duplicateArg": "Повторяющийся аргумент",
       "unknownKind": "Неизвестный вид поля"
     }
+  },
+  "emoji": {
+    "search": "Поиск эмодзи",
+    "skinTone": "Оттенок кожи",
+    "loading": "Загрузка эмодзи",
+    "empty": "Эмодзи не найдены"
   }
 }

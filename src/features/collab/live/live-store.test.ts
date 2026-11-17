@@ -636,17 +636,39 @@ describe("collab live store", () => {
     openProject(PROJECT);
     stop = startCollabLive();
     await settle();
-    const first = { fileId: "f1", path: "main.tex", threadId: "t1", quote: "quick", body: "written while off" };
-    const second = { fileId: "f1", path: "main.tex", threadId: "t2", quote: "fox", body: "and another" };
+    const first = {
+      fileId: "f1",
+      path: "main.tex",
+      threadId: "t1",
+      messageId: "m1",
+      at: 1,
+      newThread: true,
+      edit: false,
+      editedAt: null,
+      quote: "quick",
+      body: "written while off",
+    };
+    const second = {
+      fileId: "f1",
+      path: "main.tex",
+      threadId: "t2",
+      messageId: "m2",
+      at: 2,
+      newThread: true,
+      edit: false,
+      editedAt: null,
+      quote: "fox",
+      body: "and another",
+    };
     emit<CollabCommentsNotSent>("notSent", { projectId: PROJECT, comments: [first] });
     emit<CollabCommentsNotSent>("notSent", { projectId: OTHER, comments: [second] });
     expect(useCollabLiveStore.getState().commentsNotSent).toEqual([first]);
     emit<CollabCommentsNotSent>("notSent", { projectId: PROJECT, comments: [second] });
     expect(useCollabLiveStore.getState().commentsNotSent).toEqual([first, second]);
     useCollabLiveStore.getState().dismissCommentsNotSent();
-    expect(useCollabLiveStore.getState().commentsNotSent).toBeNull();
+    expect(useCollabLiveStore.getState()).toMatchObject({ commentsNotSent: [first, second], notSentBannerHidden: true });
     emit<CollabCommentsNotSent>("notSent", { projectId: PROJECT, comments: [] });
-    expect(useCollabLiveStore.getState().commentsNotSent).toEqual([]);
+    expect(useCollabLiveStore.getState()).toMatchObject({ commentsNotSent: [first, second], notSentBannerHidden: false });
     openProject(OTHER);
     await settle();
     expect(useCollabLiveStore.getState().commentsNotSent).toBeNull();
@@ -663,6 +685,7 @@ describe("collab live store", () => {
       path: "main.tex",
       cursor: 4,
       anchor: 2,
+      activity: null,
     };
     emit("presence", bob);
     emit("presence", { ...bob, deviceId: "device-me", accountId: ALICE });
@@ -761,6 +784,7 @@ describe("collab live store", () => {
       path: "main.tex",
       cursor: 4,
       anchor: 4,
+      activity: null,
     };
     emit("presence", bob);
     const places = peerPlaces(useCollabLiveStore.getState().peers);
@@ -801,7 +825,15 @@ describe("collab live store", () => {
     stop = startCollabLive();
     await settle();
     const before = mocks.collabMembersList.mock.calls.length;
-    const bob: CollabPresence = { projectId: PROJECT, deviceId: "d", accountId: BOB, path: "main.tex", cursor: 1, anchor: null };
+    const bob: CollabPresence = {
+      projectId: PROJECT,
+      deviceId: "d",
+      accountId: BOB,
+      path: "main.tex",
+      cursor: 1,
+      anchor: null,
+      activity: null,
+    };
     emit("presence", bob);
     emit("presence", { ...bob, cursor: 2 });
     emit("presence", { ...bob, cursor: 3 });

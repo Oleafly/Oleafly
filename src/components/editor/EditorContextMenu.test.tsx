@@ -108,6 +108,8 @@ const typstCommands = vi.hoisted(() => ({
   typstLanguageServiceOffers: vi.fn((_feature: string) => false),
 }));
 
+const markdownTarget = vi.hoisted(() => ({ bold: vi.fn(), italic: vi.fn(), table: vi.fn(), heading: vi.fn(), bullet: vi.fn() }));
+vi.mock("./markdown-model", () => ({ sourceTarget: () => markdownTarget }));
 vi.mock("./cm/controller", () => controller);
 vi.mock("@/components/editor/typst-commands", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/components/editor/typst-commands")>();
@@ -335,7 +337,7 @@ describe("EditorContextMenu", () => {
     expect(equationExport.saveEquationAsSvg).toHaveBeenCalledOnce();
   });
 
-  it("writes Markdown markup from the Markdown menu", () => {
+  it("writes Markdown markup from the Markdown menu, toggling marks, headings, lists and tables like the toolbar", async () => {
     openMenu(engineWithProfile("markdown"), true);
 
     fireEvent.click(screen.getByText(menu.askAi));
@@ -343,27 +345,25 @@ describe("EditorContextMenu", () => {
 
     openMenu(engineWithProfile("markdown"), true);
     clickPath(menu.format, toolbar.bold);
-    expect(controller.wrapSelection).toHaveBeenCalledWith("**", "**");
+    await vi.waitFor(() => expect(markdownTarget.bold).toHaveBeenCalledOnce());
 
     openMenu(engineWithProfile("markdown"), true);
     clickPath(menu.format, toolbar.italic);
-    expect(controller.wrapSelection).toHaveBeenLastCalledWith("*", "*");
+    await vi.waitFor(() => expect(markdownTarget.italic).toHaveBeenCalledOnce());
+    expect(controller.wrapSelection).not.toHaveBeenCalled();
 
     openMenu(engineWithProfile("markdown"), true);
     clickPath(menu.insert, toolbar.heading);
-    expect(controller.insertAtCursor).toHaveBeenCalledWith("# Heading\n");
+    await vi.waitFor(() => expect(markdownTarget.heading).toHaveBeenCalledWith(1));
 
     openMenu(engineWithProfile("markdown"), true);
     clickPath(menu.insert, toolbar.bulletedList);
-    expect(controller.insertAtCursor).toHaveBeenLastCalledWith("- Item\n");
+    await vi.waitFor(() => expect(markdownTarget.bullet).toHaveBeenCalledOnce());
+    expect(controller.insertAtCursor).not.toHaveBeenCalled();
 
     openMenu(engineWithProfile("markdown"), true);
     clickPath(menu.insert, menu.table);
-    expect(controller.insertTemplate).toHaveBeenCalledWith(
-      expect.stringContaining("| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n"),
-      2,
-      10,
-    );
+    await vi.waitFor(() => expect(markdownTarget.table).toHaveBeenCalledOnce());
 
     openMenu(engineWithProfile("markdown"), true);
     clickPath(menu.insert, menu.equation);
@@ -525,11 +525,12 @@ describe("EditorContextMenu", () => {
     expect(latexCommands.insertBold).not.toHaveBeenCalled();
   });
 
-  it("follows the file language for a Markdown file in a Typst project", () => {
+  it("follows the file language for a Markdown file in a Typst project", async () => {
     openMenu(engineWithProfile("typst"), true, "", "README.md");
     expect(screen.queryByText(menu.importExport)).not.toBeInTheDocument();
     clickPath(menu.format, toolbar.bold);
-    expect(controller.wrapSelection).toHaveBeenCalledWith("**", "**");
+    await vi.waitFor(() => expect(markdownTarget.bold).toHaveBeenCalled());
+    expect(typstCommands.insertTypstBold).not.toHaveBeenCalled();
   });
 
   it("follows the file language for a LaTeX file in a Typst project", () => {

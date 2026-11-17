@@ -664,6 +664,15 @@
         "grid": "Ruudukko",
         "label": "Taustakuvio"
       },
+      "commentColor": {
+        "accent": "Korostusväri",
+        "description": "Kommentoidun tekstin väri editorissa ja lainausten väri kommenttipaneelissa. Koskee tätä laitetta.",
+        "graphite": "Grafiitti",
+        "indigo": "Indigo",
+        "label": "Kommenttien merkintäväri",
+        "leaf": "Lehdenvihreä",
+        "sample": "Kommentoitu teksti"
+      },
       "dock": {
         "bottom": "Alhaalla",
         "description": "Valitse, missä aloitusnäkymän telakka sijaitsee.",

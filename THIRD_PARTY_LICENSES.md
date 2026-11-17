@@ -145,6 +145,7 @@ Live release they were built from.
 | Source | Where | License |
 |---|---|---|
 | [OpenResearch](https://github.com/alphaXiv/OpenResearch), Copyright (c) 2026 alphaXiv | ideas in the bundled `oleafly-experiment-loop` and `oleafly-literature-sweep` skills (`src-tauri/resources/skills/`) | MIT |
+| [editorcn](https://github.com/shadcn-labs/editorcn) (commit 357e7ec), Copyright (c) 2026 Abdullah Mukadam | patterns for the rich-text toolbar and selection menu: when the menu shows, its button set, clear formatting and paragraph alignment, rewritten in `src/components/editor/rich-text-controls.tsx` and `src/components/notes/note-selection-menu.tsx` | MIT |
 
 The skills are written in our own words. The MIT notice for OpenResearch:
 
@@ -173,6 +174,10 @@ SOFTWARE.
 ```
 
 ---
+
+The toolbar and selection menu code is our own; editorcn carries the same MIT
+notice as above, with "Copyright (c) 2026 Abdullah Mukadam" in place of the
+alphaXiv line.
 
 Attribution notices for Oleafly itself are in [NOTICE](NOTICE). If you
 redistribute Oleafly or a derivative, keep this file and the notices it

@@ -6531,6 +6531,7 @@ mod tests {
                 "--sandbox",
                 "--lua-filter=oleafly-mermaid-figures.lua",
                 "--lua-filter=oleafly-image-compat.lua",
+                "--lua-filter=oleafly-markdown-marks.lua",
                 "--lua-filter=oleafly-markdown-bibliography.lua",
                 "--citeproc",
                 "--lua-filter=oleafly-default-fonts.lua",

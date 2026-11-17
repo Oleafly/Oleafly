@@ -91,6 +91,18 @@ function paragraphOf(editor: Editor, choice: LinkChoice): { from: number; to: nu
   return { from: $from.before(), to: $from.after() };
 }
 
+function allowVideo(link: string): boolean {
+  const video = videoEmbed(link);
+  if (video) allowRemoteImage(video.thumbnail ?? video.page);
+  return video !== null;
+}
+
+export function insertVideo(editor: Editor, link: string): boolean {
+  const src = link.trim();
+  if (!editor.schema.nodes.image || !allowVideo(src)) return false;
+  return editor.chain().focus().insertContent({ type: "image", attrs: { src, alt: "" } }).run();
+}
+
 function embed(editor: Editor, choice: LinkChoice): void {
   const image = editor.schema.nodes.image;
   const range = paragraphOf(editor, choice);
@@ -98,8 +110,7 @@ function embed(editor: Editor, choice: LinkChoice): void {
     dismiss(editor);
     return;
   }
-  const video = videoEmbed(choice.link);
-  if (video) allowRemoteImage(video.thumbnail ?? video.page);
+  allowVideo(choice.link);
   const tr = editor.state.tr.replaceWith(range.from, range.to, image.create({ src: choice.link, alt: "" }));
   editor.view.dispatch(tr.setMeta(linkChoiceKey, null).scrollIntoView());
   editor.commands.focus();
@@ -212,7 +223,7 @@ export function NoteLinkChoice({ editor }: Readonly<{ editor: Editor }>) {
     };
   }, [asking, choice, editor]);
   if (!choice) return null;
-  const place = bubblePlace(editor.view.coordsAtPos(choice.from), editor.view.coordsAtPos(choice.to), { width: window.innerWidth });
+  const place = bubblePlace({ start: editor.view.coordsAtPos(choice.from), end: editor.view.coordsAtPos(choice.to) }, { width: window.innerWidth });
   let label: string;
   if (choice.kind === "video") label = t(($) => $.notes.blocks.media.pasteChoice);
   else if (choice.kind === "web") label = t(($) => $.notes.blocks.bookmark.pasteChoice);

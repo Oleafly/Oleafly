@@ -116,6 +116,7 @@
     "superscript": "Superscript",
     "subscript": "Subscript",
     "inlineCode": "Code in de tekst",
+    "clearFormatting": "Opmaak wissen",
     "insertLink": "Link invoegen",
     "insertCrossReference": "Kruisverwijzing invoegen",
     "insertFootnote": "Voetnoot invoegen",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Naar de PDF",
     "linkUrl": "URL van de link",
     "removeLink": "Link weghalen",
+    "alignment": "Uitlijning",
+    "align": {
+      "left": "Links uitlijnen",
+      "center": "Centreren",
+      "right": "Rechts uitlijnen",
+      "justify": "Uitvullen"
+    },
+    "emoji": "Emoji",
+    "textColor": "Tekstkleur",
+    "removeTextColor": "Kleur weghalen",
+    "textColors": {
+      "gray": "Grijs",
+      "red": "Rood",
+      "orange": "Oranje",
+      "green": "Groen",
+      "teal": "Blauwgroen",
+      "blue": "Blauw",
+      "purple": "Paars"
+    },
     "imageFile": "Afbeeldingsbestand",
     "apply": "Toepassen",
     "linkPlaceholder": "https://",
@@ -1671,5 +1691,11 @@
       "duplicateArg": "Dubbel argument",
       "unknownKind": "Onbekend veldtype"
     }
+  },
+  "emoji": {
+    "search": "Emoji zoeken",
+    "skinTone": "Huidskleur",
+    "loading": "Emoji laden",
+    "empty": "Geen emoji gevonden"
   }
 }

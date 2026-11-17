@@ -6694,6 +6694,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "uuid",
+ "xxhash-rust",
 ]
 
 [[package]]

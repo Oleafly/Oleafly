@@ -9,8 +9,9 @@ use oleafly_collab_protocol::projects::ProjectRole;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::payloads::{
-    ChangeSkippedPayload, MembersPayload, MergeMarks, MergedAuthor, MergedFile, MergedPayload,
-    NewDevicePayload, PresenceLeftPayload, PresencePayload, ProjectFullPayload, RolePayload,
+    ActivityPayload, ChangeSkippedPayload, MembersPayload, MergeMarks, MergedAuthor, MergedFile,
+    MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload, ProjectFullPayload,
+    RolePayload,
 };
 use super::session::{guard, lock, Active, ACTIVE};
 
@@ -67,7 +68,7 @@ pub(super) async fn pump(
             LiveEvent::Status(status) => on_status(&active, status, &paths).await,
             LiveEvent::Role(role) => on_role(&active, role, &paths),
             LiveEvent::Changed => on_changed(&active),
-            LiveEvent::Acknowledged => active.refresh_pending(),
+            LiveEvent::Acknowledged => on_acknowledged(&active),
             LiveEvent::Presence {
                 device_id,
                 account_id,
@@ -79,6 +80,7 @@ pub(super) async fn pump(
                 path: state.file_id,
                 cursor: state.cursor,
                 anchor: state.anchor,
+                activity: ActivityPayload::shown(state.activity),
             }),
             LiveEvent::PresenceLeft { device_id } => {
                 active.host.presence_left(PresenceLeftPayload {
@@ -213,6 +215,24 @@ fn on_role(active: &Active, role: ProjectRole, paths: &oleafly_collab::CollabPat
     });
 }
 
+fn on_acknowledged(active: &Active) {
+    active.refresh_pending();
+    crate::collab::comments::announce(
+        &active.project_id,
+        &active.live,
+        active.account_id,
+        active.host.as_ref(),
+        true,
+    );
+    crate::collab::chat::announce(
+        &active.project_id,
+        &active.live,
+        active.account_id,
+        active.host.as_ref(),
+        true,
+    );
+}
+
 fn on_changed(active: &Active) {
     let settled = crate::collab::tree::settle(&active.project_id, &active.live);
     if settled.merged {
@@ -227,9 +247,16 @@ fn on_changed(active: &Active) {
         &active.live,
         active.account_id,
         active.host.as_ref(),
+        false,
     );
     crate::collab::suggesting::announce(&active.project_id, &active.live, active.host.as_ref());
-    crate::collab::chat::announce(&active.project_id, &active.live, active.host.as_ref());
+    crate::collab::chat::announce(
+        &active.project_id,
+        &active.live,
+        active.account_id,
+        active.host.as_ref(),
+        false,
+    );
 }
 
 fn on_merged(active: &Active, report: MergeReport) {

@@ -143,6 +143,7 @@ describe("SecurityLogTab", () => {
       "guest_admission_ended",
       "project_rejoin_refused",
       "comments_changed_while_off",
+      "change_broke_role",
       "note_published",
       "note_unpublished",
       "note_taken_down",
@@ -283,14 +284,17 @@ describe("SecurityLogTab", () => {
     for (const item of items) expect(item).not.toHaveTextContent(copy.kinds.unknown);
   });
 
-  it("says who changed comments while they were off and in which project, without the raw ids", async () => {
+  it.each([
+    ["comments_changed_while_off", copy.kinds.commentsChangedWhileOff],
+    ["change_broke_role", copy.kinds.changeBrokeRole],
+  ] as const)("says who made a %s change and in which project, without the raw ids", async (kind, label) => {
     const project = "0192a0b0-0000-7000-8000-0000000000p1";
     mocks.collabAdminSecurityLog.mockResolvedValueOnce({
       items: [
         securityEvent({
           id: 1,
           actor: BOB_ID,
-          kind: "comments_changed_while_off",
+          kind,
           target: project,
           project_title: "Thesis",
           detail: { project, seq: 42, device: "0192a0b0-0000-7000-8000-0000000000d1" },
@@ -300,7 +304,7 @@ describe("SecurityLogTab", () => {
     });
     render(<SecurityLogTab serverId={SERVER_ID} members={members} />);
     const [item] = await screen.findAllByRole("listitem");
-    expect(item).toHaveTextContent(`Bob Smith → ${copy.kinds.commentsChangedWhileOff}`);
+    expect(item).toHaveTextContent(`Bob Smith → ${label}`);
     expect(item).toHaveTextContent(fill(copy.details.project, { title: "Thesis" }));
     expect(item).not.toHaveTextContent(project);
     expect(item).not.toHaveTextContent("0192a0b0-0000-7000-8000-0000000000d1");

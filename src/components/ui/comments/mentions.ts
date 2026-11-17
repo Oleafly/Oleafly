@@ -1,4 +1,11 @@
-import type { CollabCommentMember } from "@/lib/tauri";
+export interface CommentMember {
+  accountId: string;
+  displayName: string;
+  login?: string | null;
+  role?: string | null;
+  here?: boolean;
+  guest?: boolean;
+}
 
 export interface MentionQuery {
   start: number;
@@ -29,7 +36,12 @@ export function mentionQuery(text: string, caret: number): MentionQuery | null {
   return opensMention(text, start) ? { start, query } : null;
 }
 
-function rank(member: CollabCommentMember, needle: string): number | null {
+function standing(member: CommentMember): number {
+  if (member.guest) return 2;
+  return member.here ? 0 : 1;
+}
+
+function rank(member: CommentMember, needle: string): number | null {
   if (!needle) return 0;
   const name = member.displayName.toLocaleLowerCase();
   const login = (member.login ?? "").toLocaleLowerCase();
@@ -41,11 +53,11 @@ function rank(member: CollabCommentMember, needle: string): number | null {
 }
 
 export function matchMembers(
-  members: readonly CollabCommentMember[],
+  members: readonly CommentMember[],
   query: string,
   self: string | null,
   limit = MENTION_LIMIT,
-): CollabCommentMember[] {
+): CommentMember[] {
   const needle = query.trimStart().toLocaleLowerCase();
   return members
     .filter((member) => member.accountId !== self && member.displayName.trim() !== "")
@@ -53,16 +65,35 @@ export function matchMembers(
       const score = rank(member, needle);
       return score === null ? [] : [{ member, score }];
     })
-    .sort((left, right) => left.score - right.score || left.member.displayName.localeCompare(right.member.displayName))
+    .sort(
+      (left, right) =>
+        standing(left.member) - standing(right.member) ||
+        left.score - right.score ||
+        left.member.displayName.localeCompare(right.member.displayName),
+    )
     .slice(0, limit)
     .map(({ member }) => member);
+}
+
+export function mergeMentionPeople(
+  members: readonly CommentMember[],
+  present: ReadonlySet<string>,
+  guests: readonly CommentMember[] = [],
+): CommentMember[] {
+  const known = new Set(members.map((member) => member.accountId));
+  return [
+    ...members.map((member) => ({ ...member, here: present.has(member.accountId) })),
+    ...guests
+      .filter((guest) => !known.has(guest.accountId))
+      .map((guest) => ({ ...guest, guest: true, here: present.has(guest.accountId) })),
+  ];
 }
 
 export function insertMention(
   text: string,
   start: number,
   caret: number,
-  member: CollabCommentMember,
+  member: CommentMember,
 ): { text: string; caret: number } {
   const before = text.slice(0, start);
   const after = text.slice(caret);
@@ -71,7 +102,7 @@ export function insertMention(
   return { text: `${before}${spaced}${after}`, caret: before.length + handle.length + 1 };
 }
 
-function handlesOf(members: readonly CollabCommentMember[]): string[] {
+function handlesOf(members: readonly CommentMember[]): string[] {
   const handles = new Set<string>();
   for (const member of members) {
     for (const handle of [member.displayName, member.login ?? ""]) {
@@ -93,7 +124,7 @@ function mentionAt(body: string, index: number, handles: readonly string[]): num
   return 0;
 }
 
-export function mentionSegments(body: string, members: readonly CollabCommentMember[]): MentionSegment[] {
+export function mentionSegments(body: string, members: readonly CommentMember[]): MentionSegment[] {
   const handles = handlesOf(members);
   const segments: MentionSegment[] = [];
   let plain = "";
@@ -112,4 +143,15 @@ export function mentionSegments(body: string, members: readonly CollabCommentMem
   }
   if (plain || segments.length === 0) segments.push({ text: plain, mention: false });
   return segments;
+}
+
+export function mentionedIn(body: string, members: readonly CommentMember[]): string[] {
+  const named = new Set(
+    mentionSegments(body, members)
+      .filter((segment) => segment.mention)
+      .map((segment) => segment.text.slice(1).toLocaleLowerCase()),
+  );
+  return members
+    .filter((member) => [member.displayName, member.login ?? ""].some((handle) => named.has(handle.trim().toLocaleLowerCase())))
+    .map((member) => member.accountId);
 }

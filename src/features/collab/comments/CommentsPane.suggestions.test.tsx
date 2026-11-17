@@ -209,16 +209,20 @@ describe("suggestions in the Comments pane", () => {
     });
     show([{ ...added, threadId: "t-why" }], { threads: [thread] });
     const list = screen.getByRole("list", { name: "intro.tex" });
-    expect(within(list).getAllByRole("article")).toHaveLength(1);
-    expect(within(cardFor("Bob Smith")).getByText("Is this word right?")).toBeInTheDocument();
-    expect(within(cardFor("Bob Smith")).getByRole("textbox", { name: enCollab.comments.replyLabel })).toBeInTheDocument();
+    expect(list.children).toHaveLength(1);
+    const card = cardFor("Bob Smith");
+    expect(card.querySelector('[data-comment-thread="t-why"]')).not.toBeNull();
+    expect(within(card).getByText("Is this word right?")).toBeInTheDocument();
+    fireEvent.click(within(card).getByRole("button", { name: enCollab.comments.reply }));
+    expect(within(card).getByRole("textbox", { name: enCollab.comments.replyLabel })).toBeInTheDocument();
   });
 
   it("lists suggestions while comments are turned off, without replies or the resolved filter", () => {
     show([added], { comments: false });
     expect(cardFor("Bob Smith")).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).toBeNull();
-    expect(screen.queryByRole("button", { name: enCollab.comments.showResolved })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Comments shown/u })).toBeNull();
+    expect(screen.queryByRole("button", { name: enCollab.comments.resolveAll })).toBeNull();
   });
 
   it("gives another file with suggestions its own section and loads them when it opens", async () => {
@@ -227,7 +231,7 @@ describe("suggestions in the Comments pane", () => {
       suggestions: [suggestion("s-methods", { fileId: "file-methods", text: "carefully " })],
     });
     show([], { counts: [{ path: "chapters/methods.tex", pending: 1 }] });
-    expect(screen.queryByText(enCollab.comments.emptyCanWrite)).toBeNull();
+    expect(screen.queryByText(enCollab.comments.emptyTitle)).toBeNull();
     const section = screen.getByRole("button", { name: "methods.tex" });
     expect(screen.getByLabelText(fill(copy.pendingCount, { number: "1" }))).toBeInTheDocument();
     fireEvent.click(section);
@@ -237,7 +241,7 @@ describe("suggestions in the Comments pane", () => {
 
   it("says once that the project has nothing when there are no comments and no suggestions", () => {
     show([], { counts: [] });
-    expect(screen.getByText(enCollab.comments.emptyCanWrite)).toBeInTheDocument();
+    expect(screen.getByText(enCollab.comments.emptyTitle)).toBeInTheDocument();
     expect(screen.queryAllByRole("region")).toEqual([]);
   });
 });

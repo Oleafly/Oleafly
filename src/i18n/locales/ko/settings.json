@@ -660,6 +660,15 @@
         "grid": "격자",
         "label": "배경 무늬"
       },
+      "commentColor": {
+        "accent": "강조 색상",
+        "description": "편집기에서 댓글이 달린 텍스트와 댓글 패널의 인용문에 쓰이는 색상입니다. 이 기기에만 적용됩니다.",
+        "graphite": "그래파이트",
+        "indigo": "인디고",
+        "label": "댓글 하이라이트 색상",
+        "leaf": "리프 그린",
+        "sample": "댓글이 달린 텍스트"
+      },
       "dock": {
         "bottom": "아래쪽",
         "description": "홈 화면 독의 위치를 고르세요.",

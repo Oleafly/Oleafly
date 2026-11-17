@@ -1,8 +1,8 @@
 use oleafly_collab::sync::LiveStatus;
 use oleafly_collab_protocol::frames::MemberChangeKind;
 use oleafly_collab_protocol::ids::{AccountId, DeviceId};
-use oleafly_collab_protocol::projects::ProjectRole;
-use serde::Serialize;
+use oleafly_collab_protocol::projects::{PresenceActivity, PresenceActivityKind, ProjectRole};
+use serde::{Deserialize, Serialize};
 
 pub const LIVE_STATUS_EVENT: &str = "collab-live-status";
 pub const LIVE_ROLE_EVENT: &str = "collab-live-role";
@@ -123,6 +123,35 @@ pub struct PresencePayload {
     pub path: Option<String>,
     pub cursor: Option<u32>,
     pub anchor: Option<u32>,
+    pub activity: Option<ActivityPayload>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivityPayload {
+    pub kind: PresenceActivityKind,
+    #[serde(default)]
+    pub thread_id: Option<String>,
+}
+
+impl ActivityPayload {
+    pub fn shown(activity: Option<PresenceActivity>) -> Option<ActivityPayload> {
+        activity
+            .filter(|activity| activity.kind != PresenceActivityKind::Unknown)
+            .map(|activity| ActivityPayload {
+                kind: activity.kind,
+                thread_id: activity.thread_id,
+            })
+    }
+
+    pub fn sent(activity: Option<ActivityPayload>) -> Option<PresenceActivity> {
+        activity
+            .filter(|activity| activity.kind != PresenceActivityKind::Unknown)
+            .map(|activity| PresenceActivity {
+                kind: activity.kind,
+                thread_id: activity.thread_id.filter(|thread| thread.len() <= 256),
+            })
+    }
 }
 
 #[derive(Clone, Debug, Serialize)]

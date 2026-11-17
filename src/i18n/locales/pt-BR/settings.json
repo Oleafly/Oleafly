@@ -668,6 +668,15 @@
         "grid": "Grade",
         "label": "Padrão de fundo"
       },
+      "commentColor": {
+        "accent": "Cor de destaque",
+        "description": "Cor do texto comentado no editor e das citações no painel de comentários. Vale para este dispositivo.",
+        "graphite": "Grafite",
+        "indigo": "Índigo",
+        "label": "Cor de realce dos comentários",
+        "leaf": "Verde-folha",
+        "sample": "Texto comentado"
+      },
       "dock": {
         "bottom": "Embaixo",
         "description": "Escolha onde fica o painel da tela inicial.",

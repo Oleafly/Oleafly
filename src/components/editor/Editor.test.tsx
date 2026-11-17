@@ -50,6 +50,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => {
 });
 
 vi.mock("./cm/controller", () => ({ wrapSelection, ...controller }));
+const runMarkdownFormatting = vi.hoisted(() => vi.fn());
+vi.mock("./markdown-keymap", () => ({ runMarkdownFormatting }));
 
 vi.mock("./CodeMirrorEditor", () => ({
   CodeMirrorEditor: () => <div data-testid="codemirror" />,
@@ -556,7 +558,7 @@ describe("Editor shell", () => {
     openFile("main.tex");
     const { container } = render(<Editor />);
 
-    fireEvent.keyDown(window, { key: "b", metaKey: true });
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
     expect(wrapSelection).not.toHaveBeenCalled();
 
     const surface = document.createElement("div");
@@ -566,16 +568,24 @@ describe("Editor shell", () => {
     container.appendChild(surface);
     focusable.focus();
 
-    fireEvent.keyDown(window, { key: "b", metaKey: true });
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
     expect(wrapSelection).toHaveBeenLastCalledWith("\\textbf{", "}");
 
     fireEvent.keyDown(window, { key: "i", ctrlKey: true });
     expect(wrapSelection).toHaveBeenLastCalledWith("\\textit{", "}");
 
-    fireEvent.keyDown(window, { key: "q", metaKey: true });
+    fireEvent.keyDown(window, { key: "q", ctrlKey: true });
     expect(wrapSelection).toHaveBeenCalledTimes(2);
 
     fireEvent.keyDown(window, { key: "b" });
+    expect(wrapSelection).toHaveBeenCalledTimes(2);
+
+    fireEvent.keyDown(window, { key: "b", metaKey: true });
+    expect(wrapSelection).toHaveBeenCalledTimes(2);
+
+    const handled = new KeyboardEvent("keydown", { key: "b", ctrlKey: true, cancelable: true });
+    handled.preventDefault();
+    window.dispatchEvent(handled);
     expect(wrapSelection).toHaveBeenCalledTimes(2);
   });
 
@@ -614,22 +624,51 @@ describe("Editor shell", () => {
     container.appendChild(surface);
     focusable.focus();
 
-    fireEvent.keyDown(window, { key: "b", metaKey: true });
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
     expect(wrapSelection).toHaveBeenLastCalledWith("*", "*");
 
     act(() => {
       useFilesStore.setState({ activePath: "README.md", engine: engineWithProfile("typst", ["typ"]) });
     });
-    fireEvent.keyDown(window, { key: "i", metaKey: true });
-    expect(wrapSelection).toHaveBeenLastCalledWith("*", "*");
+    fireEvent.keyDown(window, { key: "i", ctrlKey: true });
+    expect(runMarkdownFormatting.mock.calls.at(-1)?.[1]).toBe("italic");
+    expect(wrapSelection).toHaveBeenCalledTimes(1);
 
     act(() => {
       useFilesStore.setState({ activePath: "refs.bib", engine: LATEX_ENGINE });
     });
-    fireEvent.keyDown(window, { key: "b", metaKey: true });
-    expect(wrapSelection).toHaveBeenCalledTimes(2);
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    expect(wrapSelection).toHaveBeenCalledTimes(1);
   });
 
+
+  it("leaves Ctrl+Alt and Ctrl+Shift chords with B or I alone", () => {
+    openFile("README.md");
+    const { container } = render(<Editor />);
+    const surface = document.createElement("div");
+    surface.className = "cm-editor";
+    const focusable = document.createElement("input");
+    surface.appendChild(focusable);
+    container.appendChild(surface);
+    focusable.focus();
+
+    for (const key of ["b", "i", "B", "I"]) {
+      fireEvent.keyDown(window, { key, ctrlKey: true, altKey: true });
+      fireEvent.keyDown(window, { key, ctrlKey: true, altKey: true, shiftKey: true });
+      fireEvent.keyDown(window, { key, ctrlKey: true, shiftKey: true });
+    }
+    expect(runMarkdownFormatting).not.toHaveBeenCalled();
+
+    act(() => {
+      useFilesStore.setState({ activePath: "main.tex" });
+    });
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true, altKey: true });
+    fireEvent.keyDown(window, { key: "I", ctrlKey: true, shiftKey: true });
+    expect(wrapSelection).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
+    expect(wrapSelection).toHaveBeenLastCalledWith("\\textbf{", "}");
+  });
 
   it("leaves bold and italic to a form field or a table cell inside the text", () => {
     openFile("notes.typ");
@@ -648,7 +687,7 @@ describe("Editor shell", () => {
     container.appendChild(surface);
 
     field.focus();
-    fireEvent.keyDown(window, { key: "b", metaKey: true });
+    fireEvent.keyDown(window, { key: "b", ctrlKey: true });
     cell.focus();
     fireEvent.keyDown(window, { key: "i", ctrlKey: true });
     expect(wrapSelection).not.toHaveBeenCalled();

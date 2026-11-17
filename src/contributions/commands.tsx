@@ -64,7 +64,10 @@ import {
 } from "lucide-react";
 import { ClockCheck } from "@/components/icons/ClockCheck";
 import { registerCommand, type AppContext } from "@oleafly/registry";
-import { isWysiwygActive } from "@/components/editor/wysiwyg/controller";
+import { getWysiwygEditor, isWysiwygActive } from "@/components/editor/wysiwyg/controller";
+import type { MarkdownTarget } from "@/components/editor/markdown-model";
+import { collabVisualReadOnly } from "@/lib/collab-live-bridge";
+import { activeFileReadOnly } from "@/lib/read-only-files";
 import { linkLanguageFor } from "@/lib/file-links";
 import { i18n } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
@@ -76,6 +79,7 @@ import { useZoteroLibraryStore } from "@/store/zotero-library";
 import { clearBuildCache, quickCaptureOpen } from "@/lib/tauri";
 import { isTauri } from "@tauri-apps/api/core";
 import { getEditorView, insertAtCursor, wrapSelection } from "@/components/editor/cm/controller";
+import { runMarkdownFormatting } from "@/components/editor/markdown-keymap";
 import {
   closeEnvironmentAtCursor,
   deleteLineCommand,
@@ -188,8 +192,32 @@ const supportsSyncTeX = () => engineLoaded() && engineSyncsPath(engine(), useFil
 const activeFormattingProfile = () =>
   formattingProfileForPath(engine(), engineLoaded(), useFilesStore.getState().activePath);
 export const engineFormattingAvailable = () => engineLoaded() && activeFormattingProfile() !== "none";
+const VISUAL_FORMATTING: Readonly<Record<EngineFormattingAction, (target: MarkdownTarget) => void>> = {
+  bold: (target) => target.bold(),
+  italic: (target) => target.italic(),
+  section: (target) => target.heading(1),
+  list: (target) => target.bullet(),
+};
+const visualWritable = (editor: NonNullable<ReturnType<typeof getWysiwygEditor>>) =>
+  !editor.isDestroyed &&
+  editor.isEditable &&
+  getWysiwygEditor() === editor &&
+  !activeFileReadOnly() &&
+  !collabVisualReadOnly(useFilesStore.getState().projectId);
+const runVisualFormatting = (action: EngineFormattingAction) => {
+  const editor = getWysiwygEditor();
+  if (!editor || !visualWritable(editor)) return;
+  void import("@/components/editor/markdown-model").then(({ visualTarget }) => {
+    if (visualWritable(editor)) VISUAL_FORMATTING[action](visualTarget(editor));
+  });
+};
 export const runEngineFormatting = (action: EngineFormattingAction) => {
   if (!engineFormattingAvailable()) return;
+  if (activeFormattingProfile() === "markdown") {
+    if (isWysiwygActive()) runVisualFormatting(action);
+    else runMarkdownFormatting(getEditorView(), action);
+    return;
+  }
   const formatting = formattingForPath(engine(), engineLoaded(), useFilesStore.getState().activePath, action);
   if (!formatting) return;
   if (formatting.kind === "wrap") wrapSelection(formatting.before, formatting.after);

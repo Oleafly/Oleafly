@@ -3,7 +3,7 @@ use oleafly_collab::ot::TextOperation;
 use oleafly_collab::settings::Settings;
 use oleafly_collab_protocol::ids::{AccountId, CommentId, DeviceId};
 use oleafly_collab_protocol::outputs::{OutputKind, ProjectOutput};
-use oleafly_collab_protocol::projects::ProjectRole;
+use oleafly_collab_protocol::projects::{PresenceActivity, PresenceActivityKind, ProjectRole};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -34,6 +34,8 @@ pub struct WebMember {
     pub login: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub avatar_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role: Option<ProjectRole>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -41,6 +43,7 @@ pub struct WebFeatures {
     pub comments: bool,
     pub suggestions: bool,
     pub chat: bool,
+    pub reactions: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -52,6 +55,36 @@ pub struct WebPeer {
     pub file_id: Option<String>,
     pub anchor: Option<u32>,
     pub head: Option<u32>,
+    pub activity: Option<WebActivity>,
+    pub seq: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WebActivity {
+    pub kind: PresenceActivityKind,
+    #[serde(default)]
+    pub thread_id: Option<String>,
+}
+
+impl WebActivity {
+    pub fn shown(activity: Option<PresenceActivity>) -> Option<WebActivity> {
+        activity
+            .filter(|activity| activity.kind != PresenceActivityKind::Unknown)
+            .map(|activity| WebActivity {
+                kind: activity.kind,
+                thread_id: activity.thread_id,
+            })
+    }
+
+    pub fn sent(activity: Option<WebActivity>) -> Option<PresenceActivity> {
+        activity
+            .filter(|activity| activity.kind != PresenceActivityKind::Unknown)
+            .map(|activity| PresenceActivity {
+                kind: activity.kind,
+                thread_id: activity.thread_id,
+            })
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -185,12 +218,16 @@ pub enum CommentAction {
         #[serde(default)]
         rev: Option<u64>,
         body: String,
+        #[serde(default)]
+        client_id: Option<String>,
     },
     Reply {
         #[serde(default)]
         file_id: Option<String>,
         thread_id: CommentId,
         body: String,
+        #[serde(default)]
+        client_id: Option<String>,
     },
     Edit {
         #[serde(default)]
@@ -220,6 +257,14 @@ pub enum CommentAction {
         file_id: Option<String>,
         thread_id: CommentId,
     },
+    React {
+        #[serde(default)]
+        file_id: Option<String>,
+        thread_id: CommentId,
+        message_id: CommentId,
+        emoji: String,
+        on: bool,
+    },
 }
 
 impl CommentAction {
@@ -231,7 +276,17 @@ impl CommentAction {
             | CommentAction::Delete { file_id, .. }
             | CommentAction::DeleteThread { file_id, .. }
             | CommentAction::Resolve { file_id, .. }
-            | CommentAction::Reopen { file_id, .. } => file_id.as_deref(),
+            | CommentAction::Reopen { file_id, .. }
+            | CommentAction::React { file_id, .. } => file_id.as_deref(),
+        }
+    }
+
+    pub fn client_id(&self) -> Option<&str> {
+        match self {
+            CommentAction::Create { client_id, .. } | CommentAction::Reply { client_id, .. } => {
+                client_id.as_deref()
+            }
+            _ => None,
         }
     }
 
@@ -243,7 +298,8 @@ impl CommentAction {
             | CommentAction::Delete { thread_id, .. }
             | CommentAction::DeleteThread { thread_id, .. }
             | CommentAction::Resolve { thread_id, .. }
-            | CommentAction::Reopen { thread_id, .. } => Some(*thread_id),
+            | CommentAction::Reopen { thread_id, .. }
+            | CommentAction::React { thread_id, .. } => Some(*thread_id),
         }
     }
 }
@@ -265,8 +321,19 @@ pub enum SuggestionAction {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum ChatAction {
-    Send { body: String },
-    Delete { id: String },
+    Send {
+        body: String,
+        #[serde(default, rename = "clientId")]
+        client_id: Option<String>,
+    },
+    Delete {
+        id: String,
+    },
+    React {
+        id: String,
+        emoji: String,
+        on: bool,
+    },
     Clear,
 }
 
@@ -298,6 +365,8 @@ pub enum Incoming {
         anchor: Option<u32>,
         #[serde(default)]
         head: Option<u32>,
+        #[serde(default)]
+        activity: Option<WebActivity>,
     },
     Comment(CommentAction),
     Suggestion(SuggestionAction),
@@ -411,6 +480,32 @@ mod tests {
             incoming(json!({ "t": "chat", "action": "clear", "reqId": "c" })).frame,
             Some(Incoming::Chat(ChatAction::Clear))
         ));
+        let message = "01920000-0000-7000-8000-0000000000c2";
+        let react = incoming(json!({
+            "t": "comment", "action": "react", "fileId": "f1", "threadId": thread,
+            "messageId": message, "emoji": "👍", "on": true, "reqId": "r2"
+        }));
+        match react.frame {
+            Some(Incoming::Comment(action)) => {
+                assert_eq!(action.named_file(), Some("f1"));
+                assert_eq!(
+                    action.thread().map(|id| id.to_string()).as_deref(),
+                    Some(thread)
+                );
+                assert!(matches!(
+                    action,
+                    CommentAction::React { emoji, on: true, .. } if emoji == "👍"
+                ));
+            }
+            other => panic!("{other:?}"),
+        }
+        assert!(matches!(
+            incoming(
+                json!({ "t": "chat", "action": "react", "id": "c1", "emoji": "🎉", "on": false })
+            )
+            .frame,
+            Some(Incoming::Chat(ChatAction::React { on: false, .. }))
+        ));
         assert!(matches!(
             incoming(json!({ "t": "mode", "mode": "suggesting" })).frame,
             Some(Incoming::Mode {
@@ -423,7 +518,38 @@ mod tests {
             Some(Incoming::Presence {
                 file_id: None,
                 anchor: None,
-                head: None
+                head: None,
+                activity: None
+            })
+        ));
+        match incoming(json!({
+            "t": "presence", "fileId": "f1", "anchor": 1, "head": 2,
+            "activity": { "kind": "reply", "threadId": "t1" }
+        }))
+        .frame
+        {
+            Some(Incoming::Presence {
+                activity: Some(activity),
+                head: Some(2),
+                ..
+            }) => assert_eq!(
+                WebActivity::sent(Some(activity)),
+                Some(PresenceActivity {
+                    kind: PresenceActivityKind::Reply,
+                    thread_id: Some("t1".to_owned()),
+                })
+            ),
+            other => panic!("{other:?}"),
+        }
+        assert!(matches!(
+            incoming(json!({ "t": "presence", "activity": { "kind": "chat", "threadId": null } }))
+                .frame,
+            Some(Incoming::Presence {
+                activity: Some(WebActivity {
+                    kind: PresenceActivityKind::Chat,
+                    thread_id: None
+                }),
+                ..
             })
         ));
     }
@@ -501,6 +627,32 @@ mod tests {
         })
         .unwrap();
         assert_eq!(resumed["resumed"], json!(true));
+        let peer = serde_json::to_value(WebPeer {
+            device_id: "01920000-0000-7000-8000-0000000000d1".parse().unwrap(),
+            account_id: "01920000-0000-7000-8000-0000000000a1".parse().unwrap(),
+            name: None,
+            file_id: None,
+            anchor: None,
+            head: None,
+            seq: 3,
+            activity: WebActivity::shown(Some(PresenceActivity {
+                kind: PresenceActivityKind::Reply,
+                thread_id: Some("t1".into()),
+            })),
+        })
+        .unwrap();
+        assert_eq!(
+            peer["activity"],
+            json!({ "kind": "reply", "threadId": "t1" })
+        );
+        assert_eq!(peer["seq"], 3);
+        assert_eq!(
+            WebActivity::shown(Some(PresenceActivity {
+                kind: PresenceActivityKind::Unknown,
+                thread_id: None,
+            })),
+            None
+        );
         let done = serde_json::to_value(Outgoing::Done { req_id: "r".into() }).unwrap();
         assert_eq!(done, json!({ "t": "done", "reqId": "r" }));
         let file = serde_json::to_value(WebFile {

@@ -22,7 +22,7 @@ export interface NoteViews {
 
 export function noteBaseExtensions(options: WysiwygExtensionOptions = {}, views: NoteViews | null = null): AnyExtension[] {
   return [
-    ...createWysiwygExtensions({ ...options, markdownTyping: true }),
+    ...createWysiwygExtensions({ ...options, markdownTyping: true }).filter((extension) => extension.name !== "highlight"),
     NoteTaskList,
     NoteTaskItem.configure({ views: views !== null }),
     NoteHighlight,

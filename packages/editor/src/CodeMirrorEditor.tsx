@@ -86,13 +86,10 @@ import { bibtexCompletions } from "./bibtex-completions";
 import { createBibtexLinter } from "./bibtex-linter";
 import { latexFolding } from "./latex-folding";
 import { ghostCompletion } from "./ghost-completion";
-import { stickyScroll } from "./sticky-scroll";
 import { backgroundFullParse, editorOverlayScrollbars } from "./scroll-surface";
-import { typstStickySource } from "./sticky-structure";
 import { foldMarkerDOM, foldMarkerTheme } from "./fold-marker";
 import { gateCompletionSource, type CompletionSyntax } from "./completion-trigger";
 import { editorCommandKeymap, type EditorCommandId } from "./editor-commands";
-import { emacsModeExtension } from "./emacs-mode";
 import { registerHostSave, runHostSave, unregisterHostSave } from "./host-save";
 import type { VisualPorts } from "./visual/types";
 import { changesToUtf16Edits, remoteChange, sessionLineBreaks } from "./collaboration";
@@ -130,6 +127,8 @@ export interface EditorHost {
     setLocked: (locked: boolean) => void;
     reconcile: () => void;
   }): () => void;
+  stickyScroll?(kind: "latex" | "typst"): Extension;
+  emacs?(): Extension;
   useSettings(): {
     keymap: EditorKeymapMode;
     spellcheck: boolean;
@@ -196,9 +195,9 @@ function vimModeExtension(): Extension {
   ]);
 }
 
-function keymapModeExtension(mode: EditorKeymapMode): Extension {
+function keymapModeExtension(mode: EditorKeymapMode, host: EditorHost): Extension {
   if (mode === "vim") return vimModeExtension();
-  if (mode === "emacs") return emacsModeExtension();
+  if (mode === "emacs") return host.emacs?.() ?? [];
   return [];
 }
 
@@ -787,9 +786,9 @@ function sourceToolsForPath(
   ];
 }
 
-function stickyScrollFor(path: string | null): Extension[] {
-  if (isTypstSourcePath(path)) return [stickyScroll(typstStickySource)];
-  return isLatexSourcePath(path) ? [stickyScroll()] : [];
+function stickyScrollFor(host: EditorHost, path: string | null): Extension[] {
+  const kind = isTypstSourcePath(path) ? "typst" : isLatexSourcePath(path) ? "latex" : null;
+  return kind && host.stickyScroll ? [host.stickyScroll(kind)] : [];
 }
 
 interface EditorPrefs {
@@ -1010,7 +1009,7 @@ export function CodeMirrorEditor({
       extensions: [
         lineBreakCompartment.of(initialSession ? boundLineBreaks : []),
         EditorView.clipboardInputFilter.of(lfText),
-        vimCompartment.of(keymapModeExtension(keymapMode)),
+        vimCompartment.of(keymapModeExtension(keymapMode, host)),
         lineNumbers(),
         centerWithinEditor,
         focusOnPointerWithoutScroll,
@@ -1028,7 +1027,7 @@ export function CodeMirrorEditor({
           }),
         ),
         stickyCompartment.of(
-          stickyScrollEnabled ? stickyScrollFor(initialPath) : [],
+          stickyScrollEnabled ? stickyScrollFor(host, initialPath) : [],
         ),
         dropCursor(),
         EditorState.allowMultipleSelections.of(true),
@@ -1320,10 +1319,10 @@ export function CodeMirrorEditor({
     if (!view || !compartment) return;
     view.dispatch({
       effects: compartment.reconfigure(
-        stickyScrollEnabled ? stickyScrollFor(activePath) : [],
+        stickyScrollEnabled ? stickyScrollFor(host, activePath) : [],
       ),
     });
-  }, [activePath, stickyScrollEnabled]);
+  }, [activePath, stickyScrollEnabled, host]);
 
   useEffect(() => {
     const view = viewRef.current;
@@ -1332,10 +1331,10 @@ export function CodeMirrorEditor({
     detachVimModeBridge();
     view.setTabFocusMode(false);
     view.dispatch({
-      effects: compartment.reconfigure(keymapModeExtension(keymapMode)),
+      effects: compartment.reconfigure(keymapModeExtension(keymapMode, host)),
     });
     if (keymapMode === "vim") attachVimModeBridge(view);
-  }, [keymapMode]);
+  }, [keymapMode, host]);
 
   useEffect(() => {
     const view = viewRef.current;

@@ -3,13 +3,16 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use loro::cursor::{Cursor, PosType, Side};
 use loro::event::{ContainerDiff, Diff};
 use loro::{
-    Container, ContainerID, Index, LoroDoc, LoroList, LoroMap, LoroText, LoroValue,
+    Container, ContainerID, ContainerType, Index, LoroDoc, LoroList, LoroMap, LoroText, LoroValue,
     ValueOrContainer, VersionVector, ID,
 };
 use oleafly_collab_protocol::ids::{AccountId, CommentId};
+use oleafly_collab_protocol::markup::code_spans;
+use oleafly_collab_protocol::reactions::Reaction;
 use serde::{Deserialize, Serialize};
 
 use crate::doc::ProjectDoc;
+use crate::reactions::checked_emoji;
 use crate::CollabError;
 
 pub const COMMENTS: &str = "comments";
@@ -30,6 +33,9 @@ const BODY: &str = "body";
 const EDITED_AT: &str = "edited_at";
 const MENTIONS: &str = "mentions";
 const SUGGESTION: &str = "suggestion";
+const REACTIONS: &str = "reactions";
+const REMOVED: &str = "removed";
+const STAMPED: [&str; 3] = [ID, AUTHOR, AT];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -53,7 +59,7 @@ pub struct CommentResolution {
     pub verified: bool,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommentMessage {
     pub id: CommentId,
@@ -64,6 +70,12 @@ pub struct CommentMessage {
     pub deleted: bool,
     pub mentions: Vec<AccountId>,
     pub verified: bool,
+    #[serde(default)]
+    pub reactions: Vec<Reaction>,
+    #[serde(default)]
+    pub removed: bool,
+    #[serde(default)]
+    pub pending: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -112,6 +124,8 @@ pub struct Authorship {
     vouched: bool,
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     awaiting: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    owner: Option<AccountId>,
 }
 
 #[derive(Clone, Copy)]
@@ -148,6 +162,14 @@ impl Authorship {
             changed |= self.witness([peer], account);
         }
         changed
+    }
+
+    pub fn owner(&self) -> Option<AccountId> {
+        self.owner
+    }
+
+    pub fn set_owner(&mut self, owner: AccountId) -> bool {
+        self.owner.replace(owner) != Some(owner)
     }
 
     pub fn account_of(&self, peer: u64) -> Option<AccountId> {
@@ -197,6 +219,14 @@ impl Judge<'_> {
                 .all(|key| self.allows(map.get_last_editor(key), claimed))
     }
 
+    fn removed_by_owner(&self, map: &LoroMap) -> bool {
+        !self.checking()
+            || self
+                .authors
+                .owner
+                .is_some_and(|owner| self.allows(map.get_last_editor(REMOVED), owner))
+    }
+
     pub(crate) fn wrote_all(&self, map: &LoroMap, claimed: AccountId) -> bool {
         !self.checking()
             || map
@@ -206,6 +236,26 @@ impl Judge<'_> {
 }
 
 const THREAD_KEYS: [&str; 5] = [CREATED_BY, CREATED_AT, QUOTE, START, END];
+
+fn reactions_map(thread: &LoroMap) -> Option<LoroMap> {
+    match thread.get(REACTIONS) {
+        Some(ValueOrContainer::Container(Container::Map(map))) => Some(map),
+        _ => None,
+    }
+}
+
+fn with_reactions(messages: &mut [CommentMessage], thread: &LoroMap, judge: &Judge<'_>) {
+    let Some(map) = reactions_map(thread) else {
+        return;
+    };
+    let mut found = crate::reactions::read(&map, judge);
+    if found.is_empty() {
+        return;
+    }
+    for message in messages.iter_mut().filter(|message| !message.deleted) {
+        message.reactions = found.remove(&message.id.to_string()).unwrap_or_default();
+    }
+}
 
 fn message_maps(thread: &LoroMap) -> Vec<Option<LoroMap>> {
     let Some(ValueOrContainer::Container(Container::List(messages))) = thread.get(MESSAGES) else {
@@ -245,6 +295,11 @@ impl CommentEvents {
 pub struct UnsentComment {
     pub file_id: String,
     pub thread_id: CommentId,
+    pub message_id: CommentId,
+    pub at: i64,
+    pub edited_at: Option<i64>,
+    pub new_thread: bool,
+    pub edit: bool,
     pub quote: String,
     pub body: String,
 }
@@ -272,6 +327,34 @@ pub(crate) fn in_comments(doc: &LoroDoc, container: &ContainerID) -> bool {
             .get_path_to_container(container)
             .and_then(|path| path.into_iter().next())
             .is_some_and(|(root, _)| is_comments_root(&root)),
+    }
+}
+
+pub(crate) fn note_thread(doc: &LoroDoc, container: &ContainerID, events: &mut CommentEvents) {
+    let Some(path) = doc.get_path_to_container(container) else {
+        return;
+    };
+    if !path.first().is_some_and(|(root, _)| is_comments_root(root)) {
+        return;
+    }
+    if let Some((_, Index::Key(key))) = path.get(1) {
+        if let Some(found) = split_key(key) {
+            events.threads.insert(found);
+        }
+    }
+}
+
+pub(crate) fn message_id_in(doc: &LoroDoc, container: &ContainerID) -> Option<String> {
+    if container.container_type() != ContainerType::Map {
+        return None;
+    }
+    let (root, _) = doc.get_path_to_container(container)?.into_iter().next()?;
+    if !is_comments_root(&root) && !crate::chat::is_chat_root(&root) {
+        return None;
+    }
+    match doc.get_map(container.clone()).get(ID) {
+        Some(ValueOrContainer::Value(LoroValue::String(id))) => Some(id.to_string()),
+        _ => None,
     }
 }
 
@@ -339,12 +422,13 @@ fn handle_length(rest: &str, handle: &str) -> Option<usize> {
 }
 
 pub fn mentions_in(body: &str, members: &[CommentMember]) -> Vec<AccountId> {
+    let code = code_spans(body);
     let mut found: Vec<AccountId> = Vec::new();
     let mut previous: Option<char> = None;
     for (index, character) in body.char_indices() {
         let at_word_start = previous.is_none_or(|before| !word_character(before) && before != '@');
         previous = Some(character);
-        if character != '@' || !at_word_start {
+        if character != '@' || !at_word_start || code.iter().any(|span| span.contains(&index)) {
             continue;
         }
         let rest = &body[index + 1..];
@@ -367,11 +451,11 @@ pub fn mentions_in(body: &str, members: &[CommentMember]) -> Vec<AccountId> {
     found
 }
 
-fn loro_error<T: std::fmt::Debug>(error: T) -> CollabError {
+pub(crate) fn loro_error<T: std::fmt::Debug>(error: T) -> CollabError {
     CollabError::Corrupt(format!("{error:?}"))
 }
 
-fn refused(status: u16, code: &str, message: &str) -> CollabError {
+pub(crate) fn refused(status: u16, code: &str, message: &str) -> CollabError {
     CollabError::Api {
         status,
         code: code.to_owned(),
@@ -385,6 +469,10 @@ fn thread_gone() -> CollabError {
 
 fn message_gone() -> CollabError {
     refused(404, "not_found", "this comment is gone")
+}
+
+fn message_deleted() -> CollabError {
+    refused(409, "message_deleted", "this comment was deleted")
 }
 
 fn not_yours() -> CollabError {
@@ -419,7 +507,7 @@ fn quoted(text: &str, from: usize, to: usize) -> Option<String> {
     Some(quote.chars().take(MAX_QUOTE_CHARS).collect())
 }
 
-fn unique(accounts: &[AccountId]) -> Vec<AccountId> {
+pub(crate) fn unique(accounts: &[AccountId]) -> Vec<AccountId> {
     let mut seen = Vec::new();
     for account in accounts {
         if !seen.contains(account) {
@@ -429,7 +517,7 @@ fn unique(accounts: &[AccountId]) -> Vec<AccountId> {
     seen
 }
 
-fn mention_value(mentions: &[AccountId]) -> LoroValue {
+pub(crate) fn mention_value(mentions: &[AccountId]) -> LoroValue {
     LoroValue::from(
         mentions
             .iter()
@@ -456,6 +544,13 @@ pub(crate) fn flag_of(value: Option<&LoroValue>) -> bool {
     matches!(value, Some(LoroValue::Bool(true)))
 }
 
+fn flagged_deleted(map: &LoroMap) -> bool {
+    matches!(
+        map.get(DELETED),
+        Some(ValueOrContainer::Value(LoroValue::Bool(true)))
+    )
+}
+
 pub(crate) fn parsed<T: std::str::FromStr>(value: Option<&LoroValue>) -> Option<T> {
     string_of(value)?.parse().ok()
 }
@@ -467,7 +562,7 @@ fn cursor_of(value: Option<&LoroValue>) -> Option<&[u8]> {
     }
 }
 
-fn accounts_of(value: Option<&LoroValue>) -> Vec<AccountId> {
+pub(crate) fn accounts_of(value: Option<&LoroValue>) -> Vec<AccountId> {
     match value {
         Some(LoroValue::List(items)) => {
             items.iter().filter_map(|item| parsed(Some(item))).collect()
@@ -480,7 +575,8 @@ fn message_of(value: &LoroValue) -> Option<CommentMessage> {
     let LoroValue::Map(fields) = value else {
         return None;
     };
-    let deleted = flag_of(fields.get(DELETED));
+    let removed = flag_of(fields.get(REMOVED));
+    let deleted = removed || flag_of(fields.get(DELETED));
     Some(CommentMessage {
         id: parsed(fields.get(ID))?,
         author: parsed(fields.get(AUTHOR))?,
@@ -498,7 +594,23 @@ fn message_of(value: &LoroValue) -> Option<CommentMessage> {
             accounts_of(fields.get(MENTIONS))
         },
         verified: true,
+        reactions: Vec::new(),
+        removed,
+        pending: false,
     })
+}
+
+fn authenticate(judge: &Judge<'_>, map: &LoroMap, message: &mut CommentMessage) {
+    if message.removed && !judge.removed_by_owner(map) {
+        message.removed = false;
+        message.verified = false;
+        return;
+    }
+    message.verified = if message.removed {
+        judge.wrote(map, &STAMPED, message.author)
+    } else {
+        judge.wrote_all(map, message.author)
+    };
 }
 
 fn resolution_of(value: Option<&LoroValue>) -> Option<CommentResolution> {
@@ -613,6 +725,17 @@ impl Anchors {
     }
 }
 
+fn start_thread_map(doc: &LoroDoc, file_id: &str, id: CommentId) -> Result<LoroMap, CollabError> {
+    let thread = doc
+        .get_map(COMMENTS)
+        .insert_container(&thread_key(file_id, id), LoroMap::new())
+        .map_err(loro_error)?;
+    thread
+        .insert_container(REACTIONS, LoroMap::new())
+        .map_err(loro_error)?;
+    Ok(thread)
+}
+
 fn write_message(
     messages: &LoroList,
     author: AccountId,
@@ -637,6 +760,7 @@ fn write_message(
 }
 
 struct FoundMessage {
+    thread: LoroMap,
     map: LoroMap,
     message: CommentMessage,
 }
@@ -660,10 +784,12 @@ pub(crate) fn unsent_comments(before: &ProjectDoc, after: &ProjectDoc) -> Vec<Un
     });
     let mut unsent = Vec::new();
     for thread in threads {
-        let kept: HashMap<CommentId, String> = after
+        let survived = after
             .comment_thread(&thread.file_id, thread.id)
             .ok()
-            .flatten()
+            .flatten();
+        let lost = survived.is_none();
+        let kept: HashMap<CommentId, String> = survived
             .map(|found| {
                 found
                     .messages
@@ -672,6 +798,7 @@ pub(crate) fn unsent_comments(before: &ProjectDoc, after: &ProjectDoc) -> Vec<Un
                     .collect()
             })
             .unwrap_or_default();
+        let first = thread.messages.first().map(|message| message.id);
         for message in thread.messages.iter().filter(|message| !message.deleted) {
             if kept.get(&message.id) == Some(&message.body) {
                 continue;
@@ -679,6 +806,11 @@ pub(crate) fn unsent_comments(before: &ProjectDoc, after: &ProjectDoc) -> Vec<Un
             unsent.push(UnsentComment {
                 file_id: thread.file_id.clone(),
                 thread_id: thread.id,
+                message_id: message.id,
+                at: message.at,
+                edited_at: message.edited_at,
+                new_thread: lost && first == Some(message.id),
+                edit: kept.contains_key(&message.id),
                 quote: thread.anchor.quote.clone(),
                 body: message.body.clone(),
             });
@@ -716,14 +848,14 @@ impl ProjectDoc {
         } else {
             Vec::new()
         };
-        let messages: Vec<CommentMessage> = match fields.get(MESSAGES) {
+        let mut messages: Vec<CommentMessage> = match fields.get(MESSAGES) {
             Some(LoroValue::List(items)) => items
                 .iter()
                 .enumerate()
                 .filter_map(|(index, item)| {
                     let mut message = message_of(item)?;
                     if let Some(Some(written)) = maps.get(index) {
-                        message.verified = authors.wrote_all(written, message.author);
+                        authenticate(&authors, written, &mut message);
                     }
                     Some(message)
                 })
@@ -733,6 +865,7 @@ impl ProjectDoc {
         if messages.is_empty() {
             return None;
         }
+        with_reactions(&mut messages, map, &authors);
         let answered = messages
             .iter()
             .any(|message| message.author != created_by && !message.deleted);
@@ -781,11 +914,7 @@ impl ProjectDoc {
         let map = self
             .thread_container(file_id, thread)
             .ok_or_else(thread_gone)?;
-        let tombstoned = matches!(
-            map.get(DELETED),
-            Some(ValueOrContainer::Value(LoroValue::Bool(true)))
-        );
-        if tombstoned && self.read_thread(file_id, thread, &map, &text).is_none() {
+        if flagged_deleted(&map) && self.read_thread(file_id, thread, &map, &text).is_none() {
             return Err(thread_gone());
         }
         Ok(map)
@@ -797,8 +926,9 @@ impl ProjectDoc {
         thread: CommentId,
         message: CommentId,
     ) -> Result<FoundMessage, CollabError> {
-        let map = self.writable_thread(file_id, thread)?;
-        let Some(ValueOrContainer::Container(Container::List(messages))) = map.get(MESSAGES) else {
+        let thread = self.writable_thread(file_id, thread)?;
+        let Some(ValueOrContainer::Container(Container::List(messages))) = thread.get(MESSAGES)
+        else {
             return Err(message_gone());
         };
         let LoroValue::List(items) = messages.get_deep_value() else {
@@ -809,16 +939,17 @@ impl ProjectDoc {
             .position(|item| message_of(item).is_some_and(|found| found.id == message))
             .ok_or_else(message_gone)?;
         let mut found = message_of(&items[index]).ok_or_else(message_gone)?;
-        match messages.get(index) {
-            Some(ValueOrContainer::Container(Container::Map(map))) => {
-                found.verified = self.judge().wrote_all(&map, found.author);
-                Ok(FoundMessage {
-                    map,
-                    message: found,
-                })
-            }
-            _ => Err(message_gone()),
-        }
+        let Some(ValueOrContainer::Container(Container::Map(map))) = messages.get(index) else {
+            return Err(message_gone());
+        };
+        let judge = self.judge();
+        authenticate(&judge, &map, &mut found);
+        with_reactions(std::slice::from_mut(&mut found), &thread, &judge);
+        Ok(FoundMessage {
+            thread,
+            map,
+            message: found,
+        })
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -854,11 +985,7 @@ impl ProjectDoc {
             .get_cursor(after.checked_sub(1).ok_or_else(stale)?, Side::Right)
             .ok_or_else(stale)?;
         let id = CommentId::new_v7();
-        let thread = self
-            .loro()
-            .get_map(COMMENTS)
-            .insert_container(&thread_key(file_id, id), LoroMap::new())
-            .map_err(loro_error)?;
+        let thread = start_thread_map(self.loro(), file_id, id)?;
         thread.insert(START, start.encode()).map_err(loro_error)?;
         thread.insert(END, end.encode()).map_err(loro_error)?;
         thread.insert(QUOTE, quote).map_err(loro_error)?;
@@ -949,6 +1076,9 @@ impl ProjectDoc {
             deleted: false,
             mentions: unique(mentions),
             verified: true,
+            reactions: Vec::new(),
+            removed: false,
+            pending: false,
         })
     }
 
@@ -970,7 +1100,7 @@ impl ProjectDoc {
             return Err(not_yours());
         }
         if found.message.deleted {
-            return Err(refused(409, "message_deleted", "this comment was deleted"));
+            return Err(message_deleted());
         }
         found.map.insert(BODY, body).map_err(loro_error)?;
         found.map.insert(EDITED_AT, at).map_err(loro_error)?;
@@ -1009,6 +1139,94 @@ impl ProjectDoc {
         found.map.insert(BODY, "").map_err(loro_error)?;
         self.loro().commit();
         Ok(())
+    }
+
+    pub fn remove_comment(
+        &mut self,
+        file_id: &str,
+        thread: CommentId,
+        message: CommentId,
+    ) -> Result<(), CollabError> {
+        self.writable()?;
+        let found = self.find_message(file_id, thread, message)?;
+        if found.message.deleted {
+            return Ok(());
+        }
+        found.map.insert(DELETED, true).map_err(loro_error)?;
+        found.map.insert(REMOVED, true).map_err(loro_error)?;
+        found.map.insert(BODY, "").map_err(loro_error)?;
+        found
+            .map
+            .insert(MENTIONS, mention_value(&[]))
+            .map_err(loro_error)?;
+        self.loro().commit();
+        Ok(())
+    }
+
+    pub fn moderate_comment(
+        &mut self,
+        file_id: &str,
+        thread: CommentId,
+        message: CommentId,
+        by: AccountId,
+    ) -> Result<(), CollabError> {
+        match self.delete_comment(file_id, thread, message, by) {
+            Err(CollabError::Api { code, .. }) if code == "not_yours" => {
+                self.remove_comment(file_id, thread, message)
+            }
+            done => done,
+        }
+    }
+
+    pub fn react_to_comment(
+        &mut self,
+        file_id: &str,
+        thread: CommentId,
+        message: CommentId,
+        emoji: &str,
+        by: AccountId,
+        at: i64,
+    ) -> Result<CommentThread, CollabError> {
+        self.writable()?;
+        let emoji = checked_emoji(emoji)?;
+        let found = self.find_message(file_id, thread, message)?;
+        if found.message.deleted {
+            return Err(message_deleted());
+        }
+        let reactions = match reactions_map(&found.thread) {
+            Some(reactions) => reactions,
+            None => found
+                .thread
+                .insert_container(REACTIONS, LoroMap::new())
+                .map_err(loro_error)?,
+        };
+        let id = message.to_string();
+        if crate::reactions::set(&reactions, &self.judge(), &id, emoji, by, Some(at))? {
+            self.loro().commit();
+        }
+        self.comment_thread(file_id, thread)?
+            .ok_or_else(thread_gone)
+    }
+
+    pub fn unreact_to_comment(
+        &mut self,
+        file_id: &str,
+        thread: CommentId,
+        message: CommentId,
+        emoji: &str,
+        by: AccountId,
+    ) -> Result<CommentThread, CollabError> {
+        self.writable()?;
+        let emoji = checked_emoji(emoji)?;
+        let found = self.find_message(file_id, thread, message)?;
+        if let Some(reactions) = reactions_map(&found.thread) {
+            let id = message.to_string();
+            if crate::reactions::set(&reactions, &self.judge(), &id, emoji, by, None)? {
+                self.loro().commit();
+            }
+        }
+        self.comment_thread(file_id, thread)?
+            .ok_or_else(thread_gone)
     }
 
     pub fn resolve_comment_thread(
@@ -1063,6 +1281,9 @@ impl ProjectDoc {
                 "someone else replied, so this thread stays",
             ));
         }
+        if flagged_deleted(&map) {
+            map.insert(DELETED, false).map_err(loro_error)?;
+        }
         map.insert(DELETED, true).map_err(loro_error)?;
         self.loro().commit();
         Ok(())
@@ -1085,11 +1306,7 @@ impl ProjectDoc {
         let body = checked_body(body)?;
         self.text_of(file_id)?;
         let id = CommentId::new_v7();
-        let thread = self
-            .loro()
-            .get_map(COMMENTS)
-            .insert_container(&thread_key(file_id, id), LoroMap::new())
-            .map_err(loro_error)?;
+        let thread = start_thread_map(self.loro(), file_id, id)?;
         thread.insert(START, start.to_vec()).map_err(loro_error)?;
         thread.insert(END, end.to_vec()).map_err(loro_error)?;
         let quote: String = quote.chars().take(MAX_QUOTE_CHARS).collect();
@@ -1654,6 +1871,408 @@ mod tests {
         assert!(mentions_in("mail me at x@bob or @Alice Smithson", &members).is_empty());
         assert!(mentions_in("no mentions here @ all", &members).is_empty());
         assert_eq!(mentions_in("(@bob)", &members), vec![bob.account_id]);
+        assert_eq!(
+            mentions_in("`@Alice Smith` and ``a @bob b`` but **@al**", &members),
+            vec![al.account_id]
+        );
+        assert_eq!(
+            mentions_in("\\`@bob\\` is not code", &members),
+            vec![bob.account_id]
+        );
+    }
+
+    fn reaction(emoji: &str, by: &[AccountId]) -> Reaction {
+        Reaction {
+            emoji: emoji.to_owned(),
+            by: by.to_vec(),
+        }
+    }
+
+    #[test]
+    fn two_people_reacting_with_the_same_emoji_are_listed_together_in_time_order() {
+        let (mut owner, mut joiner, main) = pair();
+        let (alice, bob) = (AccountId::new_v7(), AccountId::new_v7());
+        let thread = start_thread(&mut owner, &main, "quick", alice, "Fast enough?");
+        sync(&owner, &mut joiner);
+        let first = thread.messages[0].id;
+        owner
+            .react_to_comment(&main, thread.id, first, "👍", alice, 10)
+            .unwrap();
+        joiner
+            .react_to_comment(&main, thread.id, first, "🎉", bob, 15)
+            .unwrap();
+        joiner
+            .react_to_comment(&main, thread.id, first, "👍", bob, 20)
+            .unwrap();
+        sync_both(&mut owner, &mut joiner);
+        let expected = vec![reaction("👍", &[alice, bob]), reaction("🎉", &[bob])];
+        for doc in [&owner, &joiner] {
+            let seen = doc.comment_thread(&main, thread.id).unwrap().unwrap();
+            assert_eq!(seen.messages[0].reactions, expected);
+            assert!(seen.verified);
+            assert!(seen.messages[0].verified);
+        }
+        let again = owner
+            .react_to_comment(&main, thread.id, first, "👍", alice, 99)
+            .unwrap();
+        assert_eq!(again.messages[0].reactions, expected);
+        assert_eq!(
+            serde_json::to_value(&again.messages[0]).unwrap()["reactions"],
+            serde_json::json!([
+                { "emoji": "👍", "by": [alice.to_string(), bob.to_string()] },
+                { "emoji": "🎉", "by": [bob.to_string()] }
+            ])
+        );
+    }
+
+    #[test]
+    fn unreacting_takes_back_only_that_reaction() {
+        let (mut owner, mut joiner, main) = pair();
+        let (alice, bob) = (AccountId::new_v7(), AccountId::new_v7());
+        let thread = start_thread(&mut owner, &main, "lazy", alice, "Too lazy?");
+        let first = thread.messages[0].id;
+        owner
+            .react_to_comment(&main, thread.id, first, "👍", alice, 1)
+            .unwrap();
+        owner
+            .react_to_comment(&main, thread.id, first, "👍", bob, 2)
+            .unwrap();
+        let taken = owner
+            .unreact_to_comment(&main, thread.id, first, "👍", alice)
+            .unwrap();
+        assert_eq!(taken.messages[0].reactions, vec![reaction("👍", &[bob])]);
+        let unchanged = owner
+            .unreact_to_comment(&main, thread.id, first, "👍", alice)
+            .unwrap();
+        assert_eq!(unchanged, taken);
+        owner
+            .unreact_to_comment(&main, thread.id, first, "👍", bob)
+            .unwrap();
+        sync(&owner, &mut joiner);
+        let seen = joiner.comment_thread(&main, thread.id).unwrap().unwrap();
+        assert!(seen.messages[0].reactions.is_empty());
+    }
+
+    #[test]
+    fn reactions_on_a_deleted_message_are_dropped_and_no_new_ones_are_taken() {
+        let (mut owner, _joiner, main) = pair();
+        let (alice, bob) = (AccountId::new_v7(), AccountId::new_v7());
+        let thread = start_thread(&mut owner, &main, "brown", alice, "Colour?");
+        let reply = owner
+            .reply_to_comment(&main, thread.id, bob, 2, "Brown is fine", &[])
+            .unwrap();
+        owner
+            .react_to_comment(&main, thread.id, reply.id, "🎉", alice, 3)
+            .unwrap();
+        owner
+            .react_to_comment(&main, thread.id, thread.messages[0].id, "👀", bob, 4)
+            .unwrap();
+        owner
+            .delete_comment(&main, thread.id, reply.id, bob)
+            .unwrap();
+        let seen = owner.comment_thread(&main, thread.id).unwrap().unwrap();
+        assert!(seen.messages[1].reactions.is_empty());
+        assert_eq!(seen.messages[0].reactions, vec![reaction("👀", &[bob])]);
+        assert_eq!(
+            refused_code(
+                owner
+                    .react_to_comment(&main, thread.id, reply.id, "👍", alice, 5)
+                    .unwrap_err()
+            ),
+            "message_deleted"
+        );
+    }
+
+    #[test]
+    fn a_reaction_forged_by_another_device_is_never_shown_as_the_claimed_person() {
+        let (mut alice_side, mut mallory_side, mut bob_side, main) = live_trio();
+        let (alice, mallory, bob) = (
+            AccountId::new_v7(),
+            AccountId::new_v7(),
+            AccountId::new_v7(),
+        );
+        let thread = start_on(&mut alice_side, &main, "quick", alice, "Hi");
+        signed(
+            &mut alice_side,
+            1,
+            &mut [&mut mallory_side, &mut bob_side],
+            Some(alice),
+        );
+        let first = thread.messages[0].id;
+        mallory_side
+            .comment_doc()
+            .react_to_comment(&main, thread.id, first, "👍", bob, 2)
+            .unwrap();
+        mallory_side
+            .comment_doc()
+            .react_to_comment(&main, thread.id, first, "🎉", mallory, 3)
+            .unwrap();
+        signed(&mut mallory_side, 2, &mut [&mut bob_side], Some(mallory));
+        let view = seen(&bob_side, &main, thread.id);
+        assert_eq!(view.messages[0].reactions, vec![reaction("🎉", &[mallory])]);
+        assert!(view.verified);
+        assert!(view.messages[0].verified);
+        let claimed = bob_side
+            .comment_doc()
+            .react_to_comment(&main, thread.id, first, "👍", bob, 4)
+            .unwrap();
+        assert_eq!(
+            claimed.messages[0].reactions,
+            vec![reaction("🎉", &[mallory]), reaction("👍", &[bob])]
+        );
+    }
+
+    #[test]
+    fn a_reaction_must_be_one_short_emoji() {
+        let (mut owner, _joiner, main) = pair();
+        let alice = AccountId::new_v7();
+        let thread = start_thread(&mut owner, &main, "fox", alice, "Fox?");
+        let long = "x".repeat(oleafly_collab_protocol::reactions::MAX_EMOJI_CHARS + 1);
+        for emoji in ["", "a b", "👍|👍", "\n", "\u{7}", long.as_str()] {
+            let error = owner
+                .react_to_comment(&main, thread.id, thread.messages[0].id, emoji, alice, 1)
+                .unwrap_err();
+            assert_eq!(
+                error,
+                refused(400, "invalid", "a reaction needs a single emoji"),
+                "{emoji:?}"
+            );
+        }
+        let seen = owner.comment_thread(&main, thread.id).unwrap().unwrap();
+        assert!(seen.messages[0].reactions.is_empty());
+    }
+
+    #[test]
+    fn a_thread_made_before_reactions_gets_its_reactions_on_the_first_one() {
+        let (mut owner, _joiner, main) = pair();
+        let alice = AccountId::new_v7();
+        let thread = start_thread(&mut owner, &main, "dog", alice, "Dog?");
+        owner
+            .thread_container(&main, thread.id)
+            .unwrap()
+            .delete(REACTIONS)
+            .unwrap();
+        owner.loro().commit();
+        let reacted = owner
+            .react_to_comment(&main, thread.id, thread.messages[0].id, "🐕", alice, 7)
+            .unwrap();
+        assert_eq!(
+            reacted.messages[0].reactions,
+            vec![reaction("🐕", &[alice])]
+        );
+    }
+
+    #[test]
+    fn an_owner_removes_someone_elses_comment_without_naming_who_and_the_replies_stay() {
+        let (mut owner, mut joiner, main) = pair();
+        let (alice, bob, olive) = (
+            AccountId::new_v7(),
+            AccountId::new_v7(),
+            AccountId::new_v7(),
+        );
+        let thread = start_thread(&mut owner, &main, "quick", alice, "Fast?");
+        let reply = owner
+            .reply_to_comment(&main, thread.id, bob, 2, "@Alice too fast", &[alice])
+            .unwrap();
+        let later = owner
+            .reply_to_comment(&main, thread.id, alice, 3, "Fine", &[])
+            .unwrap();
+        owner
+            .react_to_comment(&main, thread.id, reply.id, "👍", alice, 4)
+            .unwrap();
+        owner
+            .moderate_comment(&main, thread.id, reply.id, olive)
+            .unwrap();
+        sync(&owner, &mut joiner);
+        let seen = joiner.comment_thread(&main, thread.id).unwrap().unwrap();
+        let ids: Vec<CommentId> = seen.messages.iter().map(|message| message.id).collect();
+        assert_eq!(ids, vec![thread.messages[0].id, reply.id, later.id]);
+        let removed = &seen.messages[1];
+        assert!(removed.removed && removed.deleted);
+        assert_eq!(removed.body, "");
+        assert!(removed.mentions.is_empty());
+        assert!(removed.reactions.is_empty());
+        assert_eq!(removed.author, bob);
+        assert_eq!(seen.messages[2].body, "Fine");
+        assert!(!seen.messages[0].removed);
+        let stored = joiner
+            .thread_container(&main, thread.id)
+            .unwrap()
+            .get_deep_value();
+        assert!(!format!("{stored:?}").contains(&olive.to_string()));
+        assert_eq!(
+            serde_json::to_value(removed).unwrap()["removed"],
+            serde_json::json!(true)
+        );
+        owner
+            .moderate_comment(&main, thread.id, later.id, alice)
+            .unwrap();
+        let after = owner.comment_thread(&main, thread.id).unwrap().unwrap();
+        assert!(after.messages[2].deleted && !after.messages[2].removed);
+        assert_eq!(
+            refused_code(
+                owner
+                    .delete_comment(&main, thread.id, thread.messages[0].id, bob)
+                    .unwrap_err()
+            ),
+            "not_yours"
+        );
+        assert_eq!(
+            refused_code(
+                owner
+                    .delete_comment_thread(&main, thread.id, bob)
+                    .unwrap_err()
+            ),
+            "not_yours"
+        );
+        owner
+            .delete_comment_thread(&main, thread.id, alice)
+            .unwrap();
+        assert!(owner.comment_thread(&main, thread.id).unwrap().is_none());
+    }
+
+    #[test]
+    fn a_removal_written_by_the_owner_keeps_the_message_verified_as_its_author() {
+        let (mut bob_side, mut olive_side, mut carol_side, main) = live_trio();
+        let (bob, olive) = (AccountId::new_v7(), AccountId::new_v7());
+        let thread = start_on(&mut bob_side, &main, "quick", bob, "Remove me");
+        signed(
+            &mut bob_side,
+            1,
+            &mut [&mut olive_side, &mut carol_side],
+            Some(bob),
+        );
+        olive_side
+            .comment_doc()
+            .moderate_comment(&main, thread.id, thread.messages[0].id, olive)
+            .unwrap();
+        signed(&mut olive_side, 2, &mut [&mut carol_side], Some(olive));
+        let unknown_owner = seen(&carol_side, &main, thread.id);
+        assert!(unknown_owner.messages[0].deleted);
+        assert!(!unknown_owner.messages[0].removed);
+        assert!(!unknown_owner.messages[0].verified);
+        carol_side.set_owner(olive);
+        let view = seen(&carol_side, &main, thread.id);
+        assert!(view.messages[0].removed);
+        assert!(view.messages[0].verified);
+        assert!(view.verified);
+        assert_eq!(view.messages[0].author, bob);
+        let dir = tempfile::tempdir().unwrap();
+        carol_side.save(dir.path()).unwrap();
+        let reloaded = LiveProject::load(dir.path(), ProjectRole::Editor).unwrap();
+        assert_eq!(reloaded.owner(), Some(olive));
+        assert!(seen(&reloaded, &main, thread.id).messages[0].removed);
+    }
+
+    #[test]
+    fn the_owners_own_removals_read_as_removals_offline_before_the_owner_is_learned() {
+        let (mut olive_side, mut bob_side, main) = live_pair();
+        let (olive, bob) = (AccountId::new_v7(), AccountId::new_v7());
+        olive_side.doc_mut().set_author(&olive.to_string(), "Olive");
+        olive_side.bind_own_peer(DeviceId::new_v7());
+        let thread = start_on(&mut bob_side, &main, "quick", bob, "Remove me");
+        signed(&mut bob_side, 1, &mut [&mut olive_side], Some(bob));
+        olive_side
+            .comment_doc()
+            .moderate_comment(&main, thread.id, thread.messages[0].id, olive)
+            .unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        olive_side.save(dir.path()).unwrap();
+        let removal = |side: &LiveProject| {
+            let view = seen(side, &main, thread.id);
+            (view.messages[0].removed, view.messages[0].verified)
+        };
+        let mut as_editor = LiveProject::load(dir.path(), ProjectRole::Editor).unwrap();
+        as_editor.sign(olive, "Olive");
+        assert_eq!(as_editor.owner(), None);
+        assert_eq!(removal(&as_editor), (false, false));
+        let mut as_owner = LiveProject::load(dir.path(), ProjectRole::Owner).unwrap();
+        as_owner.sign(olive, "Olive");
+        assert_eq!(as_owner.owner(), Some(olive));
+        assert_eq!(removal(&as_owner), (true, true));
+        as_owner.save(dir.path()).unwrap();
+        let reloaded = LiveProject::load(dir.path(), ProjectRole::Viewer).unwrap();
+        assert_eq!(reloaded.owner(), Some(olive));
+    }
+
+    #[test]
+    fn a_removal_written_by_someone_who_is_not_the_owner_reads_as_a_deletion_by_someone_else() {
+        let (mut bob_side, mut mallory_side, mut carol_side, main) = live_trio();
+        let (bob, mallory) = (AccountId::new_v7(), AccountId::new_v7());
+        let thread = start_on(&mut bob_side, &main, "quick", bob, "Mine");
+        signed(
+            &mut bob_side,
+            1,
+            &mut [&mut mallory_side, &mut carol_side],
+            Some(bob),
+        );
+        carol_side.set_owner(AccountId::new_v7());
+        mallory_side
+            .comment_doc()
+            .remove_comment(&main, thread.id, thread.messages[0].id)
+            .unwrap();
+        signed(&mut mallory_side, 2, &mut [&mut carol_side], Some(mallory));
+        let view = seen(&carol_side, &main, thread.id);
+        assert!(view.messages[0].deleted);
+        assert!(!view.messages[0].removed);
+        assert!(!view.messages[0].verified);
+        assert_eq!(view.messages[0].body, "");
+    }
+
+    #[test]
+    fn a_comment_waits_until_the_server_takes_it_and_then_reads_as_sent() {
+        let (mut alice_side, mut bob_side, main) = live_pair();
+        let alice = AccountId::new_v7();
+        let thread = start_on(&mut alice_side, &main, "quick", alice, "Waiting");
+        alice_side
+            .comment_doc()
+            .send_chat(alice, 2, "hi", &[])
+            .unwrap();
+        let pending = |side: &LiveProject| {
+            let mut threads = side.doc().comment_threads(&main).unwrap();
+            side.mark_pending_threads(&mut threads);
+            let mut chat = side.doc().chat_messages(None, 10);
+            side.mark_pending_chat(&mut chat);
+            (threads[0].messages[0].pending, chat[0].pending)
+        };
+        assert_eq!(pending(&alice_side), (true, true));
+        let outgoing = alice_side.next_outgoing().unwrap().unwrap();
+        assert_eq!(pending(&alice_side), (true, true));
+        assert!(alice_side.take_comment_changes().is_empty());
+        assert!(!alice_side.take_chat_changes());
+        alice_side.acknowledged(outgoing.batch, 1);
+        assert_eq!(pending(&alice_side), (false, false));
+        assert_eq!(
+            alice_side.take_comment_changes().files,
+            BTreeSet::from([main.clone()])
+        );
+        assert!(alice_side.take_chat_changes());
+        assert!(bob_side.import_update(1, &outgoing.payload).unwrap());
+        assert_eq!(pending(&bob_side), (false, false));
+        let mut reply = vec![alice_side
+            .comment_doc()
+            .reply_to_comment(&main, thread.id, alice, 3, "Again", &[])
+            .unwrap()];
+        alice_side.mark_pending_messages(&mut reply);
+        assert!(reply[0].pending);
+    }
+
+    #[test]
+    fn a_message_written_before_reactions_existed_still_reads() {
+        let author = AccountId::new_v7();
+        let old = serde_json::json!({
+            "id": CommentId::new_v7().to_string(),
+            "author": author.to_string(),
+            "at": 1,
+            "body": "Hi",
+            "editedAt": null,
+            "deleted": false,
+            "mentions": [],
+            "verified": true
+        });
+        let read: CommentMessage = serde_json::from_value(old).unwrap();
+        assert!(read.reactions.is_empty());
+        assert_eq!(read.author, author);
     }
 
     #[test]
@@ -1990,6 +2609,54 @@ mod tests {
         assert_eq!(resolution.by, alice);
         assert!(!resolution.verified);
         assert!(view.verified);
+    }
+
+    #[test]
+    fn a_creators_delete_after_someone_elses_flag_hides_the_thread_on_every_side() {
+        let (mut alice_side, mut mallory_side, mut bob_side, main) = live_trio();
+        let (alice, mallory) = (AccountId::new_v7(), AccountId::new_v7());
+        let thread = start_on(&mut alice_side, &main, "quick", alice, "Typo?");
+        signed(
+            &mut alice_side,
+            1,
+            &mut [&mut mallory_side, &mut bob_side],
+            Some(alice),
+        );
+        let flagged = mallory_side
+            .comment_doc()
+            .thread_container(&main, thread.id)
+            .unwrap();
+        flagged.insert(DELETED, true).unwrap();
+        mallory_side.comment_doc().loro().commit();
+        signed(
+            &mut mallory_side,
+            2,
+            &mut [&mut alice_side, &mut bob_side],
+            Some(mallory),
+        );
+        assert_eq!(seen(&bob_side, &main, thread.id).messages.len(), 1);
+        alice_side
+            .comment_doc()
+            .delete_comment_thread(&main, thread.id, alice)
+            .unwrap();
+        assert!(alice_side
+            .doc()
+            .comment_thread(&main, thread.id)
+            .unwrap()
+            .is_none());
+        signed(
+            &mut alice_side,
+            3,
+            &mut [&mut mallory_side, &mut bob_side],
+            Some(alice),
+        );
+        for side in [&mallory_side, &bob_side] {
+            assert!(side
+                .doc()
+                .comment_thread(&main, thread.id)
+                .unwrap()
+                .is_none());
+        }
     }
 
     #[test]

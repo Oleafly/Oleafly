@@ -48,11 +48,16 @@ export function protectInlineSources(
   while (content.includes(tokenPrefix)) tokenPrefix += "X";
 
   const sources: string[] = [];
+  const indexes = new Map<string, number>();
   let protectedContent = "";
   let cursor = 0;
   for (const range of ranges) {
     protectedContent += content.slice(cursor, range.from);
-    const index = sources.push(range.source) - 1;
+    let index = indexes.get(range.source);
+    if (index === undefined) {
+      index = sources.push(range.source) - 1;
+      indexes.set(range.source, index);
+    }
     protectedContent += `${tokenPrefix}${index}X`;
     cursor = range.to;
   }
@@ -60,10 +65,11 @@ export function protectInlineSources(
   return { protectedContent, tokenPrefix, sources };
 }
 
-export function preservedInlineNode(source: string): JSONContent {
+function preservedInlineNode(source: string, marks: JSONContent["marks"]): JSONContent {
   return {
     type: splitMathSource(source) ? "mathInline" : "rawInline",
     attrs: { source },
+    ...(marks?.length ? { marks } : {}),
   };
 }
 
@@ -84,7 +90,7 @@ function expandTextNode(
     if (match.index > cursor) {
       parts.push({ ...child, text: text.slice(cursor, match.index) });
     }
-    parts.push(preservedInlineNode(preserved));
+    parts.push(preservedInlineNode(preserved, child.marks));
     cursor = match.index + match[0].length;
   }
   if (!matched) return [child];

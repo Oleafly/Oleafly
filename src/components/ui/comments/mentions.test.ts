@@ -1,10 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { CollabCommentMember } from "@/lib/tauri";
-import { insertMention, matchMembers, mentionQuery, mentionSegments } from "./mentions";
+import { type CommentMember, insertMention, matchMembers, mentionQuery, mentionSegments, mergeMentionPeople } from "./mentions";
 
-const ALICE: CollabCommentMember = { accountId: "alice", displayName: "Alice Chen", login: "alice-chen" };
-const BOB: CollabCommentMember = { accountId: "bob", displayName: "Bob Smith", login: "bobsmith" };
-const CAROL: CollabCommentMember = { accountId: "carol", displayName: "Carol Diaz", login: "carol" };
+const ALICE: CommentMember = { accountId: "alice", displayName: "Alice Chen", login: "alice-chen" };
+const BOB: CommentMember = { accountId: "bob", displayName: "Bob Smith", login: "bobsmith" };
+const CAROL: CommentMember = { accountId: "carol", displayName: "Carol Diaz", login: "carol" };
 const MEMBERS = [CAROL, ALICE, BOB];
 
 describe("finding a mention being typed", () => {
@@ -41,7 +40,7 @@ describe("matching project members", () => {
   });
 
   it("matches inside names and logins, and members without a login by name only", () => {
-    const dana: CollabCommentMember = { accountId: "dana", displayName: "Dana Ito", login: null };
+    const dana: CommentMember = { accountId: "dana", displayName: "Dana Ito", login: null };
     expect(matchMembers([...MEMBERS, dana], "mit", null).map((member) => member.displayName)).toEqual(["Bob Smith"]);
     expect(matchMembers([...MEMBERS, dana], "-ch", null).map((member) => member.displayName)).toEqual(["Alice Chen"]);
     expect(matchMembers([...MEMBERS, dana], "it", null).map((member) => member.displayName)).toEqual([
@@ -81,12 +80,29 @@ describe("showing mentions in a comment", () => {
   });
 
   it("marks a mention at the very start and skips a name that runs on into a longer word", () => {
-    const dana: CollabCommentMember = { accountId: "dana", displayName: "Dana", login: null };
+    const dana: CommentMember = { accountId: "dana", displayName: "Dana", login: null };
     expect(mentionSegments("@Dana see @carolyn and @carol", [dana, CAROL])).toEqual([
       { text: "@Dana", mention: true },
       { text: " see @carolyn and ", mention: false },
       { text: "@carol", mention: true },
     ]);
     expect(mentionSegments("", [dana])).toEqual([{ text: "", mention: false }]);
+  });
+});
+
+describe("mention people", () => {
+  const DANA: CommentMember = { accountId: "dana", displayName: "Dana Abiodun", role: "Reviewer" };
+  const DANIEL: CommentMember = { accountId: "daniel", displayName: "Daniel Hart", role: "Editor" };
+  const DAVE: CommentMember = { accountId: "dave", displayName: "Dave Guest" };
+
+  it("lists the people here now first, then the other members, then peers who are not members", () => {
+    const people = mergeMentionPeople([DANA, DANIEL], new Set(["daniel", "dave"]), [DAVE, DANA]);
+    expect(people.map((member) => [member.accountId, member.here, member.guest ?? false])).toEqual([
+      ["dana", false, false],
+      ["daniel", true, false],
+      ["dave", true, true],
+    ]);
+    expect(matchMembers(people, "da", null).map((member) => member.displayName)).toEqual(["Daniel Hart", "Dana Abiodun", "Dave Guest"]);
+    expect(matchMembers(people, "", "daniel").map((member) => member.displayName)).toEqual(["Dana Abiodun", "Dave Guest"]);
   });
 });

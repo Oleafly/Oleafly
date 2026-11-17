@@ -35,7 +35,7 @@ export function ColorSwatch({
         aria-pressed={pressed}
         style={{ backgroundColor: color, ...style }}
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-full border transition-transform hover:scale-110 focus-visible:scale-110 motion-reduce:transition-none",
+          "flex shrink-0 items-center justify-center rounded-full border transition-transform hover:scale-110 focus-visible:border-2 focus-visible:border-foreground motion-reduce:transition-none",
           pressed ? "border-foreground" : "border-border",
           SWATCH_SIZE[size],
           className,

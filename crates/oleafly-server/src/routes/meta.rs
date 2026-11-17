@@ -137,6 +137,7 @@ async fn manifest(State(state): State<AppState>) -> Result<Response, ServerError
             suggestions: true,
             chat: true,
             web: config.web_enabled(),
+            reactions: true,
         },
         limits: Limits {
             max_project_mb: config.limits.max_project_mb,

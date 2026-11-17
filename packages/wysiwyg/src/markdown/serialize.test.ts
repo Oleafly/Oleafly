@@ -90,6 +90,17 @@ describe("editing a block keeps what the editor does not model", () => {
   });
 });
 
+describe("highlight", () => {
+  it("reads a plain mark tag as highlight and writes it back", () => {
+    const { editor, save } = openMarkdown("A <mark>hi</mark> b\n");
+    expect(editor.getJSON().content?.[0].content?.[1].marks?.[0].type).toBe("highlight");
+    expect(save()).toBe("A <mark>hi</mark> b\n");
+    const end = positionAfter(editor, " b") - 1;
+    editor.chain().setTextSelection({ from: end, to: end + 1 }).toggleMark("highlight").run();
+    expect(save()).toBe("A <mark>hi</mark> <mark>b</mark>\n");
+  });
+});
+
 describe("superscript and subscript", () => {
   it("writes the marks as sup and sub tags", () => {
     const { editor, save } = openMarkdown("H2O and x2 end\n");

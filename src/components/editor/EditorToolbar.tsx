@@ -1,4 +1,4 @@
-import { useMemo, useRef, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -74,6 +74,7 @@ import { SymbolPicker } from "@/components/editor/SymbolPicker";
 import { TableSizePicker } from "@/components/editor/TableSizePicker";
 import { ProjectCitationPicker } from "@/components/editor/ProjectCitationPicker";
 import {
+  CONTROL_GAP,
   DIVIDER_WIDTH,
   DROPDOWN_TRIGGER_WIDTH,
   ICON_BUTTON_WIDTH,
@@ -124,7 +125,7 @@ export function IconBtn({
         disabled={disabled}
         data-tour={dataTour}
         className={cn(
-          "flex h-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50",
+          "flex h-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground disabled:pointer-events-none disabled:opacity-50",
           wide ? "w-auto px-1.5" : "w-7",
           active && "bg-primary/10 text-foreground",
         )}
@@ -247,6 +248,31 @@ export function dividerControl(id: string): ToolbarControl {
   };
 }
 
+export function groupControl(id: string, controls: readonly ToolbarControl[], divided: boolean): ToolbarControl {
+  const widths = [...(divided ? [DIVIDER_WIDTH] : []), ...controls.map((control) => control.width)];
+  return {
+    id,
+    width: widths.reduce((sum, width) => sum + width, 0) + CONTROL_GAP * Math.max(0, widths.length - 1),
+    tools: controls.reduce((sum, control) => sum + (control.tools ?? 1), 0),
+    active: controls.some((control) => control.active),
+    render: () => (
+      <>
+        {divided && <Divider />}
+        {controls.map((control) => (
+          <Fragment key={control.id}>{control.render()}</Fragment>
+        ))}
+      </>
+    ),
+    renderMenu: () => (
+      <Fragment key={id}>
+        {controls.map((control) => (
+          <Fragment key={control.id}>{control.renderMenu()}</Fragment>
+        ))}
+      </Fragment>
+    ),
+  };
+}
+
 export function headingItems<L extends { hLabel: string; className: string; label: () => string }>(
   levels: readonly L[],
   insert: (level: L) => void,
@@ -267,11 +293,13 @@ export function HeadingDropdown<L extends { hLabel: string; className: string; l
   variant,
   levels,
   insert,
-}: Readonly<{ variant: "bar" | "menu"; levels: readonly L[]; insert: (level: L) => void }>) {
+  active,
+}: Readonly<{ variant: "bar" | "menu"; levels: readonly L[]; insert: (level: L) => void; active?: boolean }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
     <ToolbarDropdown
       variant={variant}
+      active={active}
       icon={Type}
       label={t(($) => $.editor.toolbar.heading)}
       ariaLabel={t(($) => $.editor.toolbar.headingLevel)}

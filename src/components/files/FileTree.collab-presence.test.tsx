@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
 const mocks = vi.hoisted(() => ({
@@ -72,6 +72,10 @@ const TREE = [
   { path: "main.tex", is_dir: false },
   { path: "refs.bib", is_dir: false },
 ];
+
+beforeAll(async () => {
+  await import("@/features/collab/sharing/surfaces");
+}, 60_000);
 
 beforeEach(async () => {
   await i18n.changeLanguage("en");

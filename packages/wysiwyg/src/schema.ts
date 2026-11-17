@@ -5,6 +5,7 @@ import type { AnyExtension } from "@tiptap/core";
 import { ColorBox, TextColor } from "./color";
 import { Figure, FigureCaption } from "./figure";
 import { Footnote } from "./footnote";
+import { Highlight } from "./highlight";
 import { LatexHeadingAttributes } from "./heading";
 import { MarkdownCodeBlock } from "./markdown/code-block";
 import { MarkdownFootnotes } from "./markdown/footnote-reference";
@@ -13,6 +14,8 @@ import { MarkdownImage } from "./markdown/image";
 import { MarkdownLink } from "./markdown/link";
 import { MarkdownTable } from "./markdown/table";
 import { MarkdownText } from "./markdown/text";
+import { PandocInline } from "./markdown/pandoc-inline";
+import { MarkdownHeading, MarkdownParagraph, TextAlignment } from "./markdown/text-align";
 import { MathDisplay, MathInline } from "./math/nodes";
 import type { WysiwygExtensionOptions } from "./options";
 import { RawBlock } from "./raw-block";
@@ -29,10 +32,15 @@ export function createWysiwygExtensions(options: WysiwygExtensionOptions = {}): 
   return [
     StarterKit.configure({
       codeBlock: false,
+      heading: false,
       horizontalRule: false,
       link: false,
+      paragraph: false,
       text: false,
     }),
+    MarkdownParagraph,
+    MarkdownHeading,
+    TextAlignment,
     MarkdownCodeBlock.configure({ enableTabIndentation: true }),
     MarkdownText,
     MarkdownHorizontalRule.configure({ typedRule: options.markdownTyping ?? false }),
@@ -58,6 +66,8 @@ export function createWysiwygExtensions(options: WysiwygExtensionOptions = {}): 
     MarkdownFootnotes,
     Superscript,
     Subscript,
+    Highlight,
+    PandocInline,
     MathInline.configure({ renderMath }),
     MathDisplay.configure({ renderMath }),
     Footnote,

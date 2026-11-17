@@ -68,6 +68,7 @@ fn here(cursor: u32) -> PresenceState {
         file_id: Some("main".to_owned()),
         cursor: Some(cursor),
         anchor: None,
+        activity: None,
     }
 }
 
@@ -318,6 +319,7 @@ async fn presence_and_leaving_travel_between_socket_and_long_poll() {
         file_id: Some("x".repeat(300)),
         cursor: None,
         anchor: None,
+        activity: None,
     };
     assert!(matches!(
         alice

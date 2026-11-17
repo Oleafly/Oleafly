@@ -6,7 +6,7 @@ use axum::extract::ws::{close_code, CloseFrame, Message, WebSocket, WebSocketUpg
 use axum::extract::{Query, State};
 use axum::http::HeaderMap;
 use axum::response::{IntoResponse, Response};
-use oleafly_collab::comments::CommentMember;
+use oleafly_collab::comments::{mentions_in, CommentMember};
 use oleafly_collab::ot::TextOperation;
 use oleafly_collab_protocol::crypto::b64url_decode;
 use oleafly_collab_protocol::frames::{FrameErrorCode, ServerFrame};
@@ -33,8 +33,8 @@ use crate::settings;
 use crate::sockets::{SocketControl, SocketSlot};
 use crate::state::AppState;
 use crate::web::frames::{
-    self, ChatAction, CommentAction, EditMode, Incoming, Outgoing, SuggestionAction, WebFeatures,
-    WebMember, WebOutput, WebPeer,
+    self, ChatAction, CommentAction, EditMode, Incoming, Outgoing, SuggestionAction, WebActivity,
+    WebFeatures, WebMember, WebOutput, WebPeer,
 };
 use crate::web::outbox::Answer;
 use crate::web::room::{Applied, Sink, WebRoom};
@@ -180,12 +180,14 @@ fn people(members: &[projects_member::Member]) -> Vec<WebMember> {
             display_name: member.display_name.clone(),
             login: member.login.clone(),
             avatar_url: member.avatar_url.clone(),
+            role: Some(member.role),
         })
         .collect()
 }
 
 mod projects_member {
     use oleafly_collab_protocol::ids::{AccountId, SharedProjectId};
+    use oleafly_collab_protocol::projects::ProjectRole;
     use rusqlite::Connection;
 
     use crate::error::ServerError;
@@ -197,6 +199,7 @@ mod projects_member {
         pub display_name: String,
         pub login: Option<String>,
         pub avatar_url: Option<String>,
+        pub role: ProjectRole,
     }
 
     pub fn list(conn: &Connection, project: SharedProjectId) -> Result<Vec<Member>, ServerError> {
@@ -207,6 +210,7 @@ mod projects_member {
                 display_name: member.person.display_name,
                 login: member.person.login,
                 avatar_url: member.person.avatar_url,
+                role: member.role,
             })
             .collect())
     }
@@ -260,6 +264,7 @@ struct Session {
     understands: Vec<FrameErrorCode>,
     members: Vec<projects_member::Member>,
     peers: BTreeMap<DeviceId, WebPeer>,
+    presence_seq: u64,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -424,6 +429,7 @@ impl Session {
             understands: vec![FrameErrorCode::ProjectTooLarge, FrameErrorCode::CommentsOff],
             members,
             peers: BTreeMap::new(),
+            presence_seq: 0,
         };
         match session.peer().open(project, u64::MAX, member).await {
             Opened::Refused(ServerFrame::Error { code, message }) => {
@@ -481,6 +487,7 @@ impl Session {
                 comments: switches.server && switches.project,
                 suggestions: pending_core::SUGGESTIONS_READY,
                 chat: pending_core::CHAT_READY,
+                reactions: pending_core::REACTIONS_READY,
             },
             files,
             members: people(&self.members),
@@ -667,7 +674,8 @@ impl Session {
                 file_id,
                 anchor,
                 head,
-            } => self.presence(file_id, anchor, head),
+                activity,
+            } => self.presence(file_id, anchor, head, activity),
             Incoming::Comment(action) => {
                 let result = self.comment(action).await;
                 self.answer(result, req_id);
@@ -734,11 +742,18 @@ impl Session {
         Ok(())
     }
 
-    fn presence(&mut self, file_id: Option<String>, anchor: Option<u32>, head: Option<u32>) {
+    fn presence(
+        &mut self,
+        file_id: Option<String>,
+        anchor: Option<u32>,
+        head: Option<u32>,
+        activity: Option<WebActivity>,
+    ) {
         let state = PresenceState {
             file_id,
             cursor: head,
             anchor,
+            activity: WebActivity::sent(activity),
         };
         if let Some(ServerFrame::Error { code, message }) =
             self.peer().presence(self.project, state)
@@ -771,8 +786,17 @@ impl Session {
         }
         let members = self.comment_members();
         let peer = self.peer();
+        let moderator = self.role == ProjectRole::Owner;
         self.room
-            .comment(&self.state, &peer, &self.key, self.id, action, &members)
+            .comment(
+                &self.state,
+                &peer,
+                &self.key,
+                self.id,
+                moderator,
+                action,
+                &members,
+            )
             .await
     }
 
@@ -790,36 +814,43 @@ impl Session {
         let account = self.account;
         let peer = self.peer();
         self.room
-            .apply(&self.state, &peer, &self.key, self.id, move |doc, _| {
-                let files = match action {
-                    SuggestionAction::Accept { ids } => {
-                        pending_core::accept_suggestions(doc, &ids)?
-                    }
-                    SuggestionAction::Reject { ids } => {
-                        pending_core::reject_suggestions(doc, &ids)?
-                    }
-                    SuggestionAction::Withdraw { ids } => {
-                        pending_core::withdraw_suggestions(doc, &ids, account)?
-                    }
-                    SuggestionAction::AcceptFile { file_id } => {
-                        pending_core::accept_file_suggestions(doc, &file_id)?
-                    }
-                    SuggestionAction::RejectFile { file_id } => {
-                        pending_core::reject_file_suggestions(doc, &file_id)?
-                    }
-                };
-                Ok(Applied {
-                    suggestions: files,
-                    chat: false,
-                })
-            })
+            .apply(
+                &self.state,
+                &peer,
+                &self.key,
+                self.id,
+                None,
+                move |doc, _| {
+                    let files = match action {
+                        SuggestionAction::Accept { ids } => {
+                            pending_core::accept_suggestions(doc, &ids)?
+                        }
+                        SuggestionAction::Reject { ids } => {
+                            pending_core::reject_suggestions(doc, &ids)?
+                        }
+                        SuggestionAction::Withdraw { ids } => {
+                            pending_core::withdraw_suggestions(doc, &ids, account)?
+                        }
+                        SuggestionAction::AcceptFile { file_id } => {
+                            pending_core::accept_file_suggestions(doc, &file_id)?
+                        }
+                        SuggestionAction::RejectFile { file_id } => {
+                            pending_core::reject_file_suggestions(doc, &file_id)?
+                        }
+                    };
+                    Ok(Applied {
+                        suggestions: files,
+                        chat: false,
+                    })
+                },
+            )
             .await
     }
 
     async fn chat(&mut self, action: ChatAction) -> Result<Answer, Refusal> {
         let allowed = match &action {
             ChatAction::Clear => self.role == ProjectRole::Owner,
-            ChatAction::Send { .. } | ChatAction::Delete { .. } => {
+            ChatAction::Send { .. } | ChatAction::Delete { .. } | ChatAction::React { .. } => {
                 pending_core::may_chat(self.role)
             }
         };
@@ -831,18 +862,39 @@ impl Session {
         }
         let account = self.account;
         let peer = self.peer();
+        let post = match &action {
+            ChatAction::Send { client_id, .. } => client_id.clone(),
+            _ => None,
+        };
+        let members = self.comment_members();
         self.room
-            .apply(&self.state, &peer, &self.key, self.id, move |doc, now| {
-                match action {
-                    ChatAction::Send { body } => pending_core::send_chat(doc, account, now, &body)?,
-                    ChatAction::Delete { id } => pending_core::delete_chat(doc, &id, account)?,
-                    ChatAction::Clear => pending_core::clear_chat(doc)?,
-                }
-                Ok(Applied {
-                    suggestions: Vec::new(),
-                    chat: true,
-                })
-            })
+            .apply(
+                &self.state,
+                &peer,
+                &self.key,
+                self.id,
+                post,
+                move |doc, now| {
+                    match action {
+                        ChatAction::Send { body, .. } => pending_core::send_chat(
+                            doc,
+                            account,
+                            now,
+                            &body,
+                            &mentions_in(&body, &members),
+                        )?,
+                        ChatAction::Delete { id } => pending_core::delete_chat(doc, &id, account)?,
+                        ChatAction::React { id, emoji, on } => {
+                            pending_core::react_chat(doc, &id, &emoji, account, now, on)?
+                        }
+                        ChatAction::Clear => pending_core::clear_chat(doc)?,
+                    }
+                    Ok(Applied {
+                        suggestions: Vec::new(),
+                        chat: true,
+                    })
+                },
+            )
             .await
     }
 
@@ -869,6 +921,7 @@ impl Session {
                 state,
             } if project_id == self.project && device_id != self.device => {
                 let name = self.name_of(account_id);
+                self.presence_seq += 1;
                 self.peers.insert(
                     device_id,
                     WebPeer {
@@ -878,6 +931,8 @@ impl Session {
                         file_id: state.file_id,
                         anchor: state.anchor,
                         head: state.cursor,
+                        activity: WebActivity::shown(state.activity),
+                        seq: self.presence_seq,
                     },
                 );
                 self.send_peers();

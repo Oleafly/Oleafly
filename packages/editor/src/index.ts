@@ -1,6 +1,6 @@
 export * from "./controller";
 export * from "./messages";
-export { setEditorErrorReporter, type EditorErrorReporter } from "./error-report";
+export { reportEditorError, setEditorErrorReporter, type EditorErrorReporter } from "./error-report";
 export { editorTheme } from "./theme";
 export { EDITOR_CURSOR_BLINKING, type EditorCursorBlinking } from "./cursor-blink";
 export { EDITOR_CURSOR_HEIGHTS, type EditorCursorHeight } from "./cursor-height";
@@ -115,7 +115,6 @@ export {
   type MathSourceFormat,
 } from "./math-source";
 export { preserveCase } from "./preserve-case";
-export { stickyScroll } from "./sticky-scroll";
 export {
   STICKY_MAX_LINES,
   scopesAtLine,

@@ -18,6 +18,7 @@ const MARK_WRAPPERS: Record<string, MarkWrapper> = {
   textColor: (inner, mark) => String.raw`\textcolor${colorArgument(mark)}{${inner}}`,
   colorBox: (inner, mark) => String.raw`\colorbox${colorArgument(mark)}{${inner}}`,
   strike: (inner) => inner,
+  highlight: (inner) => inner,
   link: (inner) => inner,
 };
 

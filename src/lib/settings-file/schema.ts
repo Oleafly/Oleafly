@@ -3,6 +3,7 @@ import { EDITOR_CURSOR_BLINKING } from "@oleafly/editor/cursor-blink";
 import { EDITOR_CURSOR_HEIGHTS } from "@oleafly/editor/cursor-height";
 import { SUPPORTED_LOCALES, type LocalePreference } from "@oleafly/i18n-contract";
 import { APP_FONT_SIZES } from "@/lib/app-font-sizes";
+import { COMMENT_COLORS } from "@/lib/comment-color";
 import { canStoreWord, normalizeDictionaryWord } from "@/lib/dictionary";
 import type { EditorColorSettings, EditorThemeId } from "@/lib/editor-themes";
 import { PERSONA_COLORS } from "@/lib/persona-colors";
@@ -496,6 +497,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
     plan.theme = value;
   }),
   pref("appearance.app.accentColor", "accentColor", hexColor),
+  pref("appearance.app.commentColor", "commentColor", oneOf(COMMENT_COLORS)),
   pref("appearance.app.fontSize", "appFontSize", numberOf(APP_FONT_SIZES)),
   pref("appearance.app.zoom", "appZoom", numberOf(APP_ZOOM_LEVELS)),
   pref("appearance.app.fontFamily", "appFontFamily", fontFamily),

@@ -116,6 +116,7 @@
     "superscript": "上標",
     "subscript": "下標",
     "inlineCode": "行內程式碼",
+    "clearFormatting": "清除格式",
     "insertLink": "插入連結",
     "insertCrossReference": "插入交互參照",
     "insertFootnote": "插入註腳",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "前往 PDF",
     "linkUrl": "連結 URL",
     "removeLink": "移除連結",
+    "alignment": "對齊",
+    "align": {
+      "left": "靠左對齊",
+      "center": "置中",
+      "right": "靠右對齊",
+      "justify": "左右對齊"
+    },
+    "emoji": "表情符號",
+    "textColor": "文字顏色",
+    "removeTextColor": "移除顏色",
+    "textColors": {
+      "gray": "灰色",
+      "red": "紅色",
+      "orange": "橘色",
+      "green": "綠色",
+      "teal": "青色",
+      "blue": "藍色",
+      "purple": "紫色"
+    },
     "imageFile": "影像檔案",
     "apply": "套用",
     "linkPlaceholder": "https://",
@@ -1650,5 +1670,11 @@
       "duplicateArg": "重複的引數",
       "unknownKind": "未知的欄位類型"
     }
+  },
+  "emoji": {
+    "search": "搜尋表情符號",
+    "skinTone": "膚色",
+    "loading": "正在載入表情符號",
+    "empty": "找不到表情符號"
   }
 }

@@ -668,6 +668,15 @@
         "grid": "Grilă",
         "label": "Model de fundal"
       },
+      "commentColor": {
+        "accent": "Culoare de accent",
+        "description": "Culoarea textului comentat din editor și a citatelor din panoul de comentarii. Se aplică pe acest dispozitiv.",
+        "graphite": "Grafit",
+        "indigo": "Indigo",
+        "label": "Culoarea de evidențiere a comentariilor",
+        "leaf": "Verde frunză",
+        "sample": "Text comentat"
+      },
       "dock": {
         "bottom": "Jos",
         "description": "Alege unde stă bara de pe ecranul principal.",

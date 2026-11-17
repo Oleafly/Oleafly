@@ -1,5 +1,6 @@
 import { Node, mergeAttributes } from "@tiptap/core";
 import type { MarkdownNodeSpec } from "tiptap-markdown";
+import { writeVerbatim } from "./markdown/table";
 import { wysiwygMessage } from "./messages";
 import {
   atomNodeViewChrome,
@@ -17,13 +18,13 @@ export const Footnote = Node.create({
   selectable: true,
 
   addAttributes() {
-    return { source: { default: "" } };
+    return { source: { default: "", parseHTML: (element) => element.getAttribute("source") ?? "" } };
   },
 
   addStorage() {
     const markdown: MarkdownNodeSpec = {
       serialize(state, node) {
-        state.write(`^[${String(node.attrs.source ?? "")}]`);
+        writeVerbatim(state, `^[${String(node.attrs.source ?? "")}]`);
       },
     };
     return { markdown };

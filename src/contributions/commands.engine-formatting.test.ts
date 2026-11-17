@@ -5,13 +5,16 @@ const mocks = vi.hoisted(() => ({
   state: { engine: null as unknown, engineLoaded: false, activePath: null as string | null },
   wrapSelection: vi.fn(),
   insertAtCursor: vi.fn(),
+  runMarkdownFormatting: vi.fn(),
 }));
 
 vi.mock("@/store/files", () => ({ useFilesStore: { getState: () => mocks.state } }));
 vi.mock("@/components/editor/cm/controller", () => ({
+  getEditorView: () => null,
   wrapSelection: mocks.wrapSelection,
   insertAtCursor: mocks.insertAtCursor,
 }));
+vi.mock("@/components/editor/markdown-keymap", () => ({ runMarkdownFormatting: mocks.runMarkdownFormatting }));
 vi.mock("@/features/export", () => ({ exportCurrentPdf: vi.fn() }));
 vi.mock("@/features/synctex", () => ({ forwardFromCursor: vi.fn() }));
 vi.mock("@/lib/tauri", () => ({ clearBuildCache: vi.fn() }));
@@ -27,6 +30,7 @@ beforeEach(() => {
   mocks.state.activePath = null;
   mocks.wrapSelection.mockReset();
   mocks.insertAtCursor.mockReset();
+  mocks.runMarkdownFormatting.mockReset();
 });
 
 describe("palette engine formatting", () => {
@@ -75,6 +79,16 @@ describe("palette engine formatting", () => {
     expect(mocks.wrapSelection).toHaveBeenNthCalledWith(2, "_", "_");
     expect(mocks.insertAtCursor).toHaveBeenNthCalledWith(1, "= Heading\n");
     expect(mocks.insertAtCursor).toHaveBeenNthCalledWith(2, "- Item\n");
+  });
+
+  it("runs a Markdown file's formatting through the toolbar's own actions", () => {
+    mocks.state.engine = LATEX_ENGINE;
+    mocks.state.engineLoaded = true;
+    mocks.state.activePath = "README.md";
+    for (const action of ["bold", "italic", "section", "list"] as const) runEngineFormatting(action);
+    expect(mocks.runMarkdownFormatting.mock.calls.map(([, action]) => action)).toEqual(["bold", "italic", "section", "list"]);
+    expect(mocks.wrapSelection).not.toHaveBeenCalled();
+    expect(mocks.insertAtCursor).not.toHaveBeenCalled();
   });
 
   it("is unavailable for a non-source file even after the engine resolves", () => {

@@ -19,6 +19,7 @@ import {
   type ViewUpdate,
 } from "@codemirror/view";
 import { scrollEditorPositionLocally } from "@oleafly/editor";
+import { COMMENT_RANGE_STYLES } from "@/components/ui/comments/comment-mark-styles";
 import { i18n } from "@/i18n";
 
 export interface CommentSpan {
@@ -60,22 +61,7 @@ const NO_SPANS: readonly CommentSpan[] = [];
 const SVG = "http://www.w3.org/2000/svg";
 
 export const COMMENT_MARK_STYLES = {
-  ".cm-comment-range": {
-    backgroundColor: "color-mix(in oklch, oklch(0.82 0.16 85) 30%, transparent)",
-    borderRadius: "2px",
-  },
-  ".dark & .cm-comment-range": {
-    backgroundColor: "color-mix(in oklch, oklch(0.78 0.14 85) 22%, transparent)",
-  },
-  ".cm-comment-range.cm-comment-active, .cm-comment-draft": {
-    backgroundColor: "color-mix(in oklch, oklch(0.82 0.16 85) 55%, transparent)",
-  },
-  ".dark & .cm-comment-range.cm-comment-active, .dark & .cm-comment-draft": {
-    backgroundColor: "color-mix(in oklch, oklch(0.78 0.14 85) 42%, transparent)",
-  },
-  ".cm-comment-range.cm-comment-flash": {
-    backgroundColor: "color-mix(in oklch, oklch(0.82 0.16 85) 80%, transparent)",
-  },
+  ...COMMENT_RANGE_STYLES,
   ".cm-comment-gutter .cm-gutterElement": {
     display: "flex",
     alignItems: "center",
@@ -88,7 +74,7 @@ export const COMMENT_MARK_STYLES = {
     height: "0.875rem",
   },
   ".cm-comment-marker": {
-    color: "oklch(0.7 0.15 75)",
+    color: "var(--comment-active-underline)",
     cursor: "pointer",
   },
   ".cm-comment-marker svg": {

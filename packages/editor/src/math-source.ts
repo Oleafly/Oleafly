@@ -21,6 +21,7 @@ export interface MathScanOptions {
   from?: number;
   to?: number;
   excluded?: readonly { from: number; to: number }[];
+  pandoc?: boolean;
 }
 
 const MAX_SCANNED_EXPRESSIONS = 10_000;
@@ -305,6 +306,7 @@ function mathOpenerKindAt(
   text: string,
   cursor: number,
   format: MathSourceFormat,
+  pandoc: boolean,
 ): number {
   if (
     text.startsWith("$$", cursor) &&
@@ -323,6 +325,7 @@ function mathOpenerKindAt(
   ) {
     return 1;
   }
+  if (pandoc) return 0;
   if (text.startsWith(OPEN_INLINE, cursor) && !isEscaped(text, cursor)) {
     return 3;
   }
@@ -523,9 +526,21 @@ export function scanMathExpressions(
   const to = Math.max(from, Math.min(options.to ?? text.length, text.length));
   const excluded = normalizeExcluded(options.excluded ?? [], from, to);
   if (options.format === "typst") return scanTypstMath(text, from, to, excluded);
+  const pandoc = options.pandoc === true;
   const expressions: MathExpression[] = [];
   let excludedIndex = 0;
   let cursor = from;
+  let blankLine = -1;
+
+  const paragraphEnd = (at: number): number => {
+    if (!pandoc) return to;
+    if (blankLine < at) {
+      const blank = /\n[ \t]*\n/gu;
+      blank.lastIndex = at;
+      blankLine = blank.exec(text)?.index ?? text.length;
+    }
+    return Math.min(to, blankLine);
+  };
 
   const skipExcluded = (at: number): number | null => {
     while (
@@ -554,7 +569,7 @@ export function scanMathExpressions(
       continue;
     }
 
-    const opener = MATH_OPENERS[mathOpenerKindAt(text, cursor, options.format)];
+    const opener = MATH_OPENERS[mathOpenerKindAt(text, cursor, options.format, pandoc)];
     if (!opener) {
       cursor++;
       continue;
@@ -564,7 +579,7 @@ export function scanMathExpressions(
       expressions,
       text,
       cursor,
-      to,
+      paragraphEnd(cursor),
       opener,
       options.format,
       excluded,

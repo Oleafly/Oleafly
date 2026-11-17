@@ -116,6 +116,7 @@
     "superscript": "Apice",
     "subscript": "Pedice",
     "inlineCode": "Codice in linea",
+    "clearFormatting": "Cancella formattazione",
     "insertLink": "Inserisci un collegamento",
     "insertCrossReference": "Inserisci un riferimento incrociato",
     "insertFootnote": "Inserisci una nota a piè di pagina",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Vai al PDF",
     "linkUrl": "URL del collegamento",
     "removeLink": "Rimuovi il collegamento",
+    "alignment": "Allineamento",
+    "align": {
+      "left": "Allinea a sinistra",
+      "center": "Allinea al centro",
+      "right": "Allinea a destra",
+      "justify": "Giustifica"
+    },
+    "emoji": "Emoji",
+    "textColor": "Colore del testo",
+    "removeTextColor": "Rimuovi il colore",
+    "textColors": {
+      "gray": "Grigio",
+      "red": "Rosso",
+      "orange": "Arancione",
+      "green": "Verde",
+      "teal": "Verde acqua",
+      "blue": "Blu",
+      "purple": "Viola"
+    },
     "imageFile": "File immagine",
     "apply": "Applica",
     "linkPlaceholder": "https://",
@@ -1692,5 +1712,11 @@
       "duplicateArg": "Argomento duplicato",
       "unknownKind": "Tipo di campo sconosciuto"
     }
+  },
+  "emoji": {
+    "search": "Cerca emoji",
+    "skinTone": "Tonalità della pelle",
+    "loading": "Caricamento delle emoji",
+    "empty": "Nessuna emoji trovata"
   }
 }

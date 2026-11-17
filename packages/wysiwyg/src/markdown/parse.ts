@@ -43,10 +43,7 @@ function splitAtBoundaries(nodes: readonly JSONContent[], sentinel: string): JSO
   return groups;
 }
 
-export function parseMarkdownBody(
-  source: string,
-  options: ParseMarkdownBodyOptions = {},
-): { doc: JSONContent; frontmatter: string; separator: string; layout: MarkdownSourceLayout | null } {
+function prepare(source: string, options: ParseMarkdownBodyOptions) {
   const { frontmatter, separator, body } = splitMarkdownFrontMatter(source);
   const bodyOffset = source.length - body.length;
   const callerRanges = options.preservedInlineRanges ?? [];
@@ -61,12 +58,44 @@ export function parseMarkdownBody(
     body,
     ranges,
   );
-
   const editor = markdownEngine(options.extensions ?? WYSIWYG_EXTENSIONS);
+  const env: { references?: Record<string, { href: string; title: string }> } = {};
   const plan = planMarkdownUnits(
     protectedContent,
-    editor.storage.markdown.parser.md.parse(protectedContent, {}),
+    editor.storage.markdown.parser.md.parse(protectedContent, env),
   );
+  const restore = (text: string) => restoreInlineText(text, tokenPrefix, sources);
+  return { frontmatter, separator, bodyOffset, protectedContent, tokenPrefix, sources, editor, plan, restore, env };
+}
+
+export interface MarkdownUnits {
+  bodyFrom: number;
+  spans: { from: number; to: number }[];
+  references: Map<string, { href: string; title: string }>;
+}
+
+export function markdownUnits(source: string, options: ParseMarkdownBodyOptions = {}): MarkdownUnits {
+  const { bodyOffset, plan, restore, env } = prepare(source, options);
+  const references = new Map(
+    Object.entries(env.references ?? {}).map(([label, { href, title }]) => [restore(label), { href: restore(href), title: restore(title) }]),
+  );
+  if (!plan) return { bodyFrom: bodyOffset, spans: [], references };
+  let at = bodyOffset + restore(plan.leading).length;
+  const spans = plan.units.map((unit, index) => {
+    const from = at;
+    at += restore(unit).length;
+    const span = { from, to: at };
+    at += restore(plan.separators[index] ?? "").length;
+    return span;
+  });
+  return { bodyFrom: bodyOffset, spans, references };
+}
+
+export function parseMarkdownBody(
+  source: string,
+  options: ParseMarkdownBodyOptions = {},
+): { doc: JSONContent; frontmatter: string; separator: string; layout: MarkdownSourceLayout | null } {
+  const { frontmatter, separator, protectedContent, tokenPrefix, sources, editor, plan, restore } = prepare(source, options);
   let parsed: JSONContent | null = null;
   let counts: number[] | null = null;
   if (plan && plan.units.length > 1) {
@@ -87,7 +116,6 @@ export function parseMarkdownBody(
   if (counts?.at(-1) && last?.type === "paragraph" && !last.content?.length) {
     counts[counts.length - 1]--;
   }
-  const restore = (text: string) => restoreInlineText(text, tokenPrefix, sources);
   const layout: MarkdownSourceLayout | null =
     plan && counts
       ? {

@@ -664,6 +664,15 @@
         "grid": "Grid",
         "label": "Background pattern"
       },
+      "commentColor": {
+        "accent": "Accent color",
+        "description": "Color for commented text in the editor and for quotes in the comments pane. Applies on this device.",
+        "graphite": "Graphite",
+        "indigo": "Indigo",
+        "label": "Comment highlight color",
+        "leaf": "Leaf green",
+        "sample": "Commented text"
+      },
       "dock": {
         "bottom": "Bottom",
         "description": "Choose where the home screen dock sits.",

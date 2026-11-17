@@ -668,6 +668,15 @@
         "grid": "Griglia",
         "label": "Trama dello sfondo"
       },
+      "commentColor": {
+        "accent": "Colore d'accento",
+        "description": "Colore del testo commentato nell'editor e delle citazioni nel pannello dei commenti. Vale su questo dispositivo.",
+        "graphite": "Grafite",
+        "indigo": "Indaco",
+        "label": "Colore di evidenziazione dei commenti",
+        "leaf": "Verde foglia",
+        "sample": "Testo commentato"
+      },
       "dock": {
         "bottom": "In basso",
         "description": "Scegli dove si trova la barra della schermata Home.",

@@ -11,10 +11,10 @@ use rusqlite::{Connection, OpenFlags, OptionalExtension, Transaction, Transactio
 
 use crate::error::ServerError;
 
-pub const SCHEMA_VERSION: i64 = 19;
+pub const SCHEMA_VERSION: i64 = 21;
 pub const SERVER_ID_KEY: &str = "server_id";
 pub const SETUP_CODE_HASH_KEY: &str = "setup_code_hash";
-const MIGRATIONS: [&str; 19] = [
+const MIGRATIONS: [&str; 21] = [
     include_str!("../migrations/0001_core.sql"),
     include_str!("../migrations/0002_projects.sql"),
     include_str!("../migrations/0003_email.sql"),
@@ -34,6 +34,8 @@ const MIGRATIONS: [&str; 19] = [
     include_str!("../migrations/0017_project_outputs.sql"),
     include_str!("../migrations/0018_web_sessions.sql"),
     include_str!("../migrations/0019_published_notes.sql"),
+    include_str!("../migrations/0020_chat_mentions.sql"),
+    include_str!("../migrations/0021_role_rechecks.sql"),
 ];
 
 const READERS: usize = 4;
@@ -219,6 +221,10 @@ impl Db {
     #[cfg(any(test, feature = "test-support"))]
     pub fn waiting_writes(&self) -> usize {
         locked(&self.grouped.waiting).writes.len()
+    }
+
+    pub fn has_readers(&self) -> bool {
+        !self.readers.is_empty()
     }
 
     pub async fn read<T, F>(&self, f: F) -> Result<T, ServerError>

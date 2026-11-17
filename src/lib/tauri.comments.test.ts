@@ -96,6 +96,18 @@ describe("comment IPC contract", () => {
       "collab_comment_thread_delete",
       { projectId: "p", fileId: FILE, threadId: THREAD },
     ],
+    [
+      "collabCommentReact",
+      () => tauri.collabCommentReact("p", FILE, THREAD, MESSAGE, "👍", true),
+      "collab_comment_react",
+      { projectId: "p", fileId: FILE, threadId: THREAD, messageId: MESSAGE, emoji: "👍", on: true },
+    ],
+    [
+      "collabCommentRemove",
+      () => tauri.collabCommentRemove("p", FILE, THREAD, MESSAGE),
+      "collab_comment_remove",
+      { projectId: "p", fileId: FILE, threadId: THREAD, messageId: MESSAGE },
+    ],
   ] as const)("sends %s", async (_label, call, command, args) => {
     await call();
     expect(mocks.invoke).toHaveBeenCalledWith(command, args);
@@ -127,7 +139,7 @@ describe("comment events", () => {
     expect(tauri.COLLAB_COMMENTS_STATUS_EVENT).toBe("collab-comments-status");
     const payload: CollabCommentsStatusChanged = {
       projectId: "p",
-      status: { serverAllowed: true, projectEnabled: false, canComment: false },
+      status: { serverAllowed: true, projectEnabled: false, canComment: false, reactions: false },
     };
     const handler = mocks.listen.mock.calls[0][1] as (event: { payload: CollabCommentsStatusChanged }) => void;
     handler({ payload });
@@ -143,7 +155,20 @@ describe("comments the server would not take", () => {
     expect(mocks.listen).toHaveBeenCalledWith("collab-comments-not-sent", expect.any(Function));
     const payload: CollabCommentsNotSent = {
       projectId: "p",
-      comments: [{ fileId: FILE, path: "main.tex", threadId: THREAD, quote: "quick", body: "written while off" }],
+      comments: [
+        {
+          fileId: FILE,
+          path: "main.tex",
+          threadId: THREAD,
+          messageId: MESSAGE,
+          at: 1,
+          newThread: true,
+          edit: false,
+          editedAt: null,
+          quote: "quick",
+          body: "written while off",
+        },
+      ],
     };
     const handler = mocks.listen.mock.calls[0][1] as (event: { payload: CollabCommentsNotSent }) => void;
     handler({ payload });
@@ -189,7 +214,7 @@ describe("comment command drift", () => {
   const camel = (name: string) => name.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase());
 
   it("gives every comment command a wrapper and a contract entry", () => {
-    expect(registered).toHaveLength(12);
+    expect(registered).toHaveLength(14);
     const wrappers = read("./tauri-collab.ts");
     const contract = read("../../packages/backend-port/src/index.ts");
     for (const name of registered) {
