@@ -6,12 +6,18 @@ use oleafly_collab::doc::{FileNode, NodeKind, NodeParent};
 use oleafly_collab::materialize::{self, Layout};
 use oleafly_collab::CollabError;
 use oleafly_collab_protocol::projects::ProjectRole;
+use oleafly_online::live::tree_queue::{TreeChange, TreeRefusal};
 use oleafly_online::realtime::tree::{NodeKind as OverleafKind, OverleafNode};
 use oleafly_online::realtime::DocId;
 
-use super::{Edit, OverleafLive};
+use super::{Edit, OverleafLive, TreeNotice, TreeNoticeKind};
+use crate::collab::live::import::{arrival_of, placed_now, LocalImport};
 use crate::collab::live::live_tree::{
     LiveTree, Mirror as Outgoing, TreeAnswer, TreeRead, TreeRequest,
+};
+use crate::collab::live::moves::{
+    arrived_paths, folder_arrival, outermost_gone_dirs, took_folder_move, RemovedFile,
+    RemovedPayload,
 };
 use crate::collab::live::session::{guard, LiveDisk};
 
@@ -49,9 +55,303 @@ pub(super) fn doc_at(nodes: &[OverleafNode], path: &str) -> Option<DocId> {
         .map(|(id, _)| DocId(id))
 }
 
+fn file_name(path: &str) -> &str {
+    path.rsplit_once('/').map_or(path, |(_, name)| name)
+}
+
+fn inside(path: &str, folder: &str) -> bool {
+    path == folder || path.starts_with(&format!("{folder}/"))
+}
+
+impl OverleafLive {
+    fn tree_change(&self, change: TreeChange) -> bool {
+        let path = change.path().to_owned();
+        match self.session.change_tree(change) {
+            Ok(()) => true,
+            Err(TreeRefusal::NotAllowed) => {
+                self.refuse(vec![path]);
+                false
+            }
+            Err(_) => false,
+        }
+    }
+
+    fn refuse(&self, paths: Vec<String>) {
+        let fresh: Vec<String> = {
+            let mut told = guard(&self.mirror.deletes);
+            paths
+                .into_iter()
+                .filter(|path| told.refused.insert(path.clone()))
+                .collect()
+        };
+        self.tell(TreeNoticeKind::NotAllowed { paths: fresh });
+    }
+
+    pub(super) fn tell(&self, kind: TreeNoticeKind) {
+        let empty = match &kind {
+            TreeNoticeKind::DeleteAsked { paths }
+            | TreeNoticeKind::NotAllowed { paths }
+            | TreeNoticeKind::KeptAway { paths } => paths.is_empty(),
+        };
+        if !empty {
+            self.mirror.disk.host.overleaf_tree(TreeNotice {
+                project_id: self.mirror.disk.project_id.clone(),
+                kind,
+            });
+        }
+    }
+
+    fn ask_to_delete(&self, paths: Vec<String>) {
+        let fresh: Vec<String> = {
+            let mut deletes = guard(&self.mirror.deletes);
+            paths
+                .into_iter()
+                .filter(|path| {
+                    deletes.mine.insert(path.clone());
+                    deletes.asked.insert(path.clone())
+                })
+                .collect()
+        };
+        self.tell(TreeNoticeKind::DeleteAsked { paths: fresh });
+    }
+
+    pub(crate) async fn restore(&self, path: &str) -> Result<(), CollabError> {
+        let copy = guard(&self.mirror.restorable)
+            .get(path)
+            .cloned()
+            .ok_or_else(|| CollabError::Io(format!("no kept copy of {path}")))?;
+        let root = self.mirror.disk.root.clone();
+        let (from, to) = (copy.clone(), path.to_owned());
+        tauri::async_runtime::spawn_blocking(move || {
+            let source = crate::collab::disk::safe_target(&root, &from);
+            let target = crate::collab::disk::safe_target(&root, &to);
+            match (source, target) {
+                (Some(source), Some(target)) if !target.exists() => std::fs::rename(source, target),
+                _ => Err(std::io::Error::from(std::io::ErrorKind::AlreadyExists)),
+            }
+        })
+        .await
+        .map_err(crate::collab::live::session::io)?
+        .map_err(crate::collab::live::session::io)?;
+        guard(&self.mirror.restorable).remove(path);
+        self.import_paths(Some(vec![copy, path.to_owned()])).await
+    }
+
+    pub(crate) fn decide_deletes(&self, paths: &[String], on_server: bool) {
+        let mut kept = Vec::new();
+        for path in paths {
+            let asked = guard(&self.mirror.deletes).asked.remove(path);
+            if !asked {
+                continue;
+            }
+            let deleted = on_server && self.tree_change(TreeChange::Delete { path: path.clone() });
+            if !deleted && self.session.keep_away(path).is_ok() {
+                kept.push(path.clone());
+            }
+        }
+        self.tell(TreeNoticeKind::KeptAway { paths: kept });
+        self.mirror.kick();
+    }
+
+    fn moves(
+        &self,
+        import: &mut LocalImport,
+        placed: &super::super::import::Placed,
+        disk: &LiveDisk,
+    ) {
+        let state = guard(&disk.disk).clone();
+        let arrived = arrived_paths(import);
+        for old in outermost_gone_dirs(import, placed) {
+            let Some(new) = folder_arrival(&import.dirs, &arrived, &state, &old) else {
+                continue;
+            };
+            let moved = self.tree_change(TreeChange::Move {
+                from: old.clone(),
+                to: new.clone(),
+            });
+            if moved {
+                took_folder_move(import, &state, &old, &new);
+                import.dirs.retain(|dir| !inside(dir, &new));
+            }
+        }
+        for old in import.removed.clone() {
+            let Some(new) = arrival_of(import, placed, &state, &disk.root, &old) else {
+                continue;
+            };
+            let moved = self.tree_change(TreeChange::Move {
+                from: old.clone(),
+                to: new,
+            });
+            if moved {
+                import.removed.retain(|path| *path != old);
+            }
+        }
+    }
+
+    fn texts(
+        &self,
+        disk: &LiveDisk,
+        texts: Vec<(String, String, String)>,
+        placed: &super::super::import::Placed,
+    ) {
+        let nodes = self.session.nodes();
+        for (path, text, hash) in texts {
+            match placed.get(&path) {
+                Some((_, NodeKind::Text, _)) => self.text_edit(disk, &nodes, path, text, hash),
+                Some((_, NodeKind::Dir, _)) => {}
+                Some((_, NodeKind::Blob, _)) => {
+                    if self.tree_change(TreeChange::Upload { path: path.clone() }) {
+                        guard(&disk.disk).hashes.insert(path, hash);
+                    }
+                }
+                None if guard(&disk.disk).hashes.get(&path) == Some(&hash) => {}
+                None => {
+                    if self.tree_change(TreeChange::NewDoc { path: path.clone() }) {
+                        guard(&disk.bases).record(&path, &text);
+                        guard(&disk.disk).hashes.insert(path, hash);
+                    }
+                }
+            }
+        }
+    }
+
+    fn text_edit(
+        &self,
+        disk: &LiveDisk,
+        nodes: &[OverleafNode],
+        path: String,
+        text: String,
+        hash: String,
+    ) {
+        let Some(doc) = doc_at(nodes, &path) else {
+            return;
+        };
+        let base = guard(&disk.bases).base_for(&path, &text).cloned();
+        match self.edit_toward(&doc, &path, base.as_deref(), &text) {
+            Ok(Edit::Sent | Edit::Same) => {}
+            Ok(Edit::NotLive) => return,
+            Err(error) => {
+                let _ = crate::project::append_app_log(format!(
+                    "Live editing could not send an outside change to {path} in project {}: {error}",
+                    disk.project_id
+                ));
+                return;
+            }
+        }
+        guard(&disk.bases).record(&path, &text);
+        guard(&disk.disk).hashes.insert(path, hash);
+    }
+
+    fn announce_removed(&self, previous: &Layout, removed: &[String]) {
+        if removed.is_empty() {
+            return;
+        }
+        let mut files = Vec::new();
+        let placed_again: BTreeSet<String> = guard(&self.mirror.disk.disk)
+            .layout
+            .values()
+            .map(|placed| placed.path.clone())
+            .collect();
+        {
+            let mut deletes = guard(&self.mirror.deletes);
+            let mut kept = guard(&self.mirror.kept);
+            let mut removing = guard(&self.mirror.removing);
+            removing.retain(|id| {
+                previous
+                    .get(id)
+                    .is_none_or(|placed| !removed.iter().any(|path| inside(&placed.path, path)))
+            });
+            for path in removed {
+                if deletes.mine.remove(path) || placed_again.contains(path) {
+                    continue;
+                }
+                let Some((id, placed)) = previous.iter().find(|(_, placed)| placed.path == *path)
+                else {
+                    continue;
+                };
+                let copy = kept
+                    .iter()
+                    .find(|file| inside(&file.path, path))
+                    .map(|file| file.copy.clone());
+                files.push(RemovedFile {
+                    path: path.clone(),
+                    id: id.clone(),
+                    kind: placed.kind,
+                    by: None,
+                    yours: copy.is_some(),
+                    copy,
+                });
+            }
+            deletes
+                .mine
+                .retain(|mine| !removed.iter().any(|path| inside(mine, path)));
+            kept.retain(|file| !files.iter().any(|gone| inside(&file.path, &gone.path)));
+        }
+        guard(&self.mirror.restorable).extend(
+            files
+                .iter()
+                .filter_map(|file| Some((file.path.clone(), file.copy.clone()?))),
+        );
+        let disk = &self.mirror.disk;
+        if !files.is_empty() {
+            disk.host.removed(RemovedPayload {
+                project_id: disk.project_id.clone(),
+                files,
+                restored: Vec::new(),
+            });
+        }
+    }
+
+    fn blobs(
+        &self,
+        disk: &LiveDisk,
+        blobs: Vec<(String, String, u64)>,
+        placed: &super::super::import::Placed,
+    ) {
+        for (path, hash, _) in blobs {
+            let unknown = matches!(
+                placed.get(&path),
+                Some((_, NodeKind::Blob, Some(key))) if super::binaries::is_unknown(key)
+            );
+            let folder = matches!(placed.get(&path), Some((_, NodeKind::Dir, _)));
+            let queued = guard(&disk.disk).hashes.get(&path) == Some(&hash);
+            if unknown || folder || queued {
+                continue;
+            }
+            if self.tree_change(TreeChange::Upload { path: path.clone() }) {
+                guard(&disk.disk).hashes.insert(path, hash);
+            }
+        }
+    }
+}
+
 impl TreeRead for OverleafLive {
     fn nodes(&self) -> Result<Vec<FileNode>, CollabError> {
-        Ok(file_nodes(&self.session.nodes()))
+        let nodes = self.session.nodes();
+        let hashes: BTreeMap<&str, Option<&str>> = nodes
+            .iter()
+            .map(|node| (node.id.0.as_str(), node.hash.as_deref()))
+            .collect();
+        let placed: BTreeMap<String, String> = guard(&self.mirror.disk.disk)
+            .layout
+            .iter()
+            .map(|(id, placed)| (id.clone(), file_name(&placed.path).to_lowercase()))
+            .collect();
+        let blobs = guard(&self.mirror.blobs);
+        Ok(file_nodes(&nodes)
+            .into_iter()
+            .map(|mut node| {
+                if node.kind == NodeKind::Blob {
+                    let hash = hashes.get(node.id.as_str()).copied().flatten();
+                    node.blob = Some(blobs.key(hash, &node.id));
+                }
+                let stayed = placed
+                    .get(&node.id)
+                    .is_some_and(|name| *name == node.name.to_lowercase());
+                node.position = format!("{}{}", u8::from(!stayed), node.name);
+                node
+            })
+            .collect())
     }
 
     fn text(&self, id: &str) -> Result<Option<String>, CollabError> {
@@ -71,6 +371,10 @@ impl LiveTree for OverleafLive {
     ) -> Result<Option<Outgoing>, CollabError> {
         let work = self.mirror.take_work();
         if work.is_empty() {
+            return Ok(None);
+        }
+        if self.session.tree_settling() {
+            self.mirror.mark(work.texts, work.tree);
             return Ok(None);
         }
         let drawn = match LiveDisk::draw(self, &work, previous) {
@@ -97,6 +401,28 @@ impl LiveTree for OverleafLive {
         )
     }
 
+    fn refused(&self, import: &LocalImport) {
+        let mut kept = Vec::new();
+        for path in &import.removed {
+            guard(&self.mirror.deletes).mine.insert(path.clone());
+            if self.session.keep_away(path).is_ok() {
+                kept.push(path.clone());
+            }
+        }
+        let mut changed: Vec<String> = import
+            .texts
+            .iter()
+            .map(|(path, _, _)| path.clone())
+            .chain(import.blobs.iter().map(|(path, _, _)| path.clone()))
+            .chain(import.dirs.iter().cloned())
+            .collect();
+        changed.extend(kept.iter().cloned());
+        self.refuse(changed);
+        if !kept.is_empty() {
+            self.mirror.kick();
+        }
+    }
+
     fn open(&self, ids: &[String]) -> BTreeSet<String> {
         let sinks = guard(&self.mirror.sinks);
         ids.iter()
@@ -109,14 +435,16 @@ impl LiveTree for OverleafLive {
         self.mirror.mark(ids.iter().cloned(), false);
     }
 
-    fn noticed(&self, _previous: &Layout, _changed: &BTreeSet<String>, _removed: &[String]) {}
+    fn noticed(&self, previous: &Layout, _changed: &BTreeSet<String>, removed: &[String]) {
+        self.announce_removed(previous, removed);
+    }
 
     fn upload<'a>(
         &'a self,
         _root: &'a Path,
-        blobs: &'a [(String, String, u64)],
+        _blobs: &'a [(String, String, u64)],
     ) -> BoxFuture<'a, BTreeSet<String>> {
-        Box::pin(async move { blobs.iter().map(|(_, hash, _)| hash.clone()).collect() })
+        Box::pin(async { BTreeSet::new() })
     }
 
     fn request_tree(
@@ -124,28 +452,30 @@ impl LiveTree for OverleafLive {
         disk: &LiveDisk,
         change: TreeRequest<'_>,
     ) -> Result<TreeAnswer, CollabError> {
-        let nodes = self.session.nodes();
-        for (path, text, hash) in change.import.texts {
-            let Some(doc) = doc_at(&nodes, &path) else {
-                continue;
-            };
-            let base = guard(&disk.bases).base_for(&path, &text).cloned();
-            match self.edit_toward(&doc, &path, base.as_deref(), &text) {
-                Ok(Edit::Sent | Edit::Same) => {}
-                Ok(Edit::NotLive) => continue,
-                Err(error) => {
-                    let _ = crate::project::append_app_log(format!(
-                        "Live editing could not send an outside change to {path} in project {}: {error}",
-                        disk.project_id
-                    ));
-                    continue;
-                }
+        let TreeRequest { mut import, .. } = change;
+        let placed = placed_now(self)?;
+        self.moves(&mut import, &placed, disk);
+        for dir in std::mem::take(&mut import.dirs) {
+            if !placed.contains_key(&dir) {
+                self.tree_change(TreeChange::NewFolder { path: dir });
             }
-            guard(&disk.bases).record(&path, &text);
-            guard(&disk.disk).hashes.insert(path, hash);
         }
+        let LocalImport {
+            texts,
+            blobs,
+            removed,
+            restamped,
+            ..
+        } = import;
+        self.texts(disk, texts, &placed);
+        self.blobs(disk, blobs, &placed);
+        let gone: Vec<String> = removed
+            .into_iter()
+            .filter(|path| placed.contains_key(path))
+            .collect();
+        self.ask_to_delete(gone);
         let mut state = guard(&disk.disk);
-        for (path, hash) in change.import.restamped {
+        for (path, hash) in restamped {
             state.hashes.insert(path, hash);
         }
         Ok(TreeAnswer::Applied)

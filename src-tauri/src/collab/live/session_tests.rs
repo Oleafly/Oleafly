@@ -1161,7 +1161,8 @@ fn fail_main(rig: &write::rig::LiveRig, times: usize) {
     let active = rig.active();
     let layout = guard(&active.local.disk).layout.clone();
     for _ in 0..times {
-        active.settle_unwritten(
+        active.local.settle_unwritten(
+            &*active,
             &layout,
             super::unwritten::Settled {
                 failed: vec![(

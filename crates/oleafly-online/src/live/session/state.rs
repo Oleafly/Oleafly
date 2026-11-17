@@ -1510,14 +1510,13 @@ impl State {
     }
 
     pub(super) fn tree_changed(&mut self, changes: Vec<PathChange>) {
-        for change in &changes {
-            if let Some(doc) = removed_doc(change) {
-                self.drop_unsent(&doc);
-            }
-        }
+        let removed: Vec<DocId> = changes.iter().filter_map(removed_doc).collect();
         self.tree_followed(&changes);
         if !changes.is_empty() {
             self.notices.push(Notice::Tree(changes));
+        }
+        for doc in removed {
+            self.drop_unsent(&doc);
         }
     }
 

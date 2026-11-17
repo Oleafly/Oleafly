@@ -469,6 +469,33 @@ fn still_on_disk(root: &Path, path: &str, hash: &str) -> bool {
         .is_some_and(|bytes| sha256_hex(&bytes) == hash)
 }
 
+pub(super) fn arrival_of(
+    import: &mut LocalImport,
+    placed: &Placed,
+    disk: &DiskState,
+    root: &Path,
+    old: &str,
+) -> Option<String> {
+    let (_, kind, _) = placed.get(old)?;
+    let known = disk.hashes.get(old)?;
+    let arrived = |path: &str, hash: &str| {
+        hash == known && !placed.contains_key(path) && still_on_disk(root, path, hash)
+    };
+    match kind {
+        NodeKind::Text => import
+            .texts
+            .iter()
+            .position(|(path, _, hash)| arrived(path, hash))
+            .map(|index| import.texts.remove(index).0),
+        NodeKind::Blob => import
+            .blobs
+            .iter()
+            .position(|(path, hash, _)| arrived(path, hash))
+            .map(|index| import.blobs.remove(index).0),
+        NodeKind::Dir => None,
+    }
+}
+
 fn adopt_moved_files(
     live: &mut LiveProject,
     disk: &mut DiskState,
@@ -482,26 +509,7 @@ fn adopt_moved_files(
         let Some((id, kind, blob)) = placed.get(&old).cloned() else {
             continue;
         };
-        let Some(known) = disk.hashes.get(&old).cloned() else {
-            continue;
-        };
-        let arrived = |path: &str, hash: &str| {
-            hash == known && !placed.contains_key(path) && still_on_disk(root, path, hash)
-        };
-        let found = match kind {
-            NodeKind::Text => import
-                .texts
-                .iter()
-                .position(|(path, _, hash)| arrived(path, hash))
-                .map(|index| import.texts.remove(index).0),
-            NodeKind::Blob => import
-                .blobs
-                .iter()
-                .position(|(path, hash, _)| arrived(path, hash))
-                .map(|index| import.blobs.remove(index).0),
-            NodeKind::Dir => None,
-        };
-        let Some(new) = found else {
+        let Some(new) = arrival_of(import, placed, disk, root, &old) else {
             continue;
         };
         let parent = ensure_dir(live, placed, parent_of(&new))?;

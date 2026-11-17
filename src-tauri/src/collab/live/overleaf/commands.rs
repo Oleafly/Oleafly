@@ -302,3 +302,27 @@ pub(crate) async fn unlink(project_id: &str) -> Result<(), CollabError> {
 pub async fn overleaf_live_unlink(project_id: String) -> Result<(), CollabCommandError> {
     unlink(&project_id).await.map_err(CollabCommandError::from)
 }
+
+#[tauri::command]
+pub async fn overleaf_live_delete(
+    project_id: String,
+    paths: Vec<String>,
+    on_overleaf: bool,
+) -> Result<(), CollabCommandError> {
+    let Some(Live::Overleaf(live)) = live_for(&project_id) else {
+        return Err(CollabCommandError::from(not_live()));
+    };
+    live.decide_deletes(&paths, on_overleaf);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn overleaf_live_restore(
+    project_id: String,
+    path: String,
+) -> Result<(), CollabCommandError> {
+    let Some(Live::Overleaf(live)) = live_for(&project_id) else {
+        return Err(CollabCommandError::from(not_live()));
+    };
+    live.restore(&path).await.map_err(CollabCommandError::from)
+}

@@ -29,6 +29,8 @@ pub struct RemovedFile {
     pub kind: NodeKind,
     pub by: Option<String>,
     pub yours: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copy: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -184,48 +186,12 @@ pub(super) fn adopt_folder_moves(
         return Ok(false);
     }
     let placed = by_path(&materialize::layout(&live.doc().nodes()?));
-    let gone: Vec<String> = import
-        .removed
-        .iter()
-        .filter(|path| matches!(placed.get(*path), Some((_, NodeKind::Dir, _))))
-        .cloned()
-        .collect();
-    let outermost: Vec<String> = gone
-        .iter()
-        .filter(|dir| !gone.iter().any(|other| other != *dir && covers(other, dir)))
-        .cloned()
-        .collect();
-    let arrived: BTreeSet<String> = import
-        .texts
-        .iter()
-        .map(|(path, _, _)| path.clone())
-        .chain(import.blobs.iter().map(|(path, _, _)| path.clone()))
-        .collect();
+    let arrived = arrived_paths(import);
     let mut moved = false;
-    for old in outermost {
-        let inside: Vec<String> = disk
-            .hashes
-            .keys()
-            .filter(|path| covers(&old, path) && **path != old)
-            .map(|path| path[old.len() + 1..].to_owned())
-            .collect();
-        if inside.is_empty() {
-            continue;
-        }
-        let candidates: Vec<&String> = import
-            .dirs
-            .iter()
-            .filter(|new| {
-                !covers(&old, new)
-                    && inside
-                        .iter()
-                        .all(|relative| arrived.contains(&format!("{new}/{relative}")))
-            })
-            .collect();
-        let [new] = candidates.as_slice() else {
+    for old in outermost_gone_dirs(import, &placed) {
+        let Some(new) = folder_arrival(&import.dirs, &arrived, disk, &old) else {
             continue;
         };
-        let new = (*new).clone();
         let Some((id, _, _)) = placed.get(&old) else {
             continue;
         };
@@ -233,16 +199,7 @@ pub(super) fn adopt_folder_moves(
             continue;
         }
         import.moved_dirs.push((id.clone(), new.clone()));
-        import.removed.retain(|path| !covers(&old, path));
-        let unchanged = |path: &str, hash: &str| {
-            covers(&new, path) && disk.hashes.get(path).is_some_and(|known| known == hash)
-        };
-        import
-            .texts
-            .retain(|(path, _, hash)| !unchanged(path, hash));
-        import
-            .blobs
-            .retain(|(path, hash, _)| !unchanged(path, hash));
+        took_folder_move(import, disk, &old, &new);
         moved = true;
     }
     if moved {
@@ -252,6 +209,74 @@ pub(super) fn adopt_folder_moves(
         });
     }
     Ok(moved)
+}
+
+pub(super) fn arrived_paths(import: &LocalImport) -> BTreeSet<String> {
+    import
+        .texts
+        .iter()
+        .map(|(path, _, _)| path.clone())
+        .chain(import.blobs.iter().map(|(path, _, _)| path.clone()))
+        .collect()
+}
+
+pub(super) fn outermost_gone_dirs(
+    import: &LocalImport,
+    placed: &HashMap<String, (String, NodeKind, Option<String>)>,
+) -> Vec<String> {
+    let gone: Vec<String> = import
+        .removed
+        .iter()
+        .filter(|path| matches!(placed.get(*path), Some((_, NodeKind::Dir, _))))
+        .cloned()
+        .collect();
+    gone.iter()
+        .filter(|dir| !gone.iter().any(|other| other != *dir && covers(other, dir)))
+        .cloned()
+        .collect()
+}
+
+pub(super) fn folder_arrival(
+    dirs: &[String],
+    arrived: &BTreeSet<String>,
+    disk: &DiskState,
+    old: &str,
+) -> Option<String> {
+    let inside: Vec<String> = disk
+        .hashes
+        .keys()
+        .filter(|path| covers(old, path) && *path != old)
+        .map(|path| path[old.len() + 1..].to_owned())
+        .collect();
+    if inside.is_empty() {
+        return None;
+    }
+    let candidates: Vec<&String> = dirs
+        .iter()
+        .filter(|new| {
+            !covers(old, new)
+                && inside
+                    .iter()
+                    .all(|relative| arrived.contains(&format!("{new}/{relative}")))
+        })
+        .collect();
+    match candidates.as_slice() {
+        [new] => Some((*new).clone()),
+        _ => None,
+    }
+}
+
+pub(super) fn took_folder_move(import: &mut LocalImport, disk: &DiskState, old: &str, new: &str) {
+    import.removed.retain(|path| !covers(old, path));
+    let unchanged = |path: &str, hash: &str| {
+        covers(new, path) && disk.hashes.get(path).is_some_and(|known| known == hash)
+    };
+    import
+        .texts
+        .retain(|(path, _, hash)| !unchanged(path, hash));
+    import
+        .blobs
+        .retain(|(path, hash, _)| !unchanged(path, hash));
 }
 
 pub(super) fn deleted_here(root: &Path, disk: &DiskState, path: &str) -> bool {
@@ -331,6 +356,7 @@ pub(super) fn removed_notices(
             kind: placed.kind,
             by: item.deleted_by.clone(),
             yours,
+            copy: None,
         });
     }
     (!files.is_empty()).then(|| RemovedPayload {
@@ -1192,6 +1218,7 @@ mod tests {
                     kind: NodeKind::Text,
                     by: Some("acct-bob".to_owned()),
                     yours: false,
+                    copy: None,
                 },
                 RemovedFile {
                     path: "plan.tex".to_owned(),
@@ -1199,6 +1226,7 @@ mod tests {
                     kind: NodeKind::Text,
                     by: Some("acct-bob".to_owned()),
                     yours: true,
+                    copy: None,
                 },
             ]
         );
@@ -1364,6 +1392,7 @@ mod tests {
                 kind: NodeKind::Text,
                 by: Some("acct-bob".to_owned()),
                 yours: true,
+                copy: None,
             }]
         );
         dismiss_notice(&state, "moving", &plan).unwrap();

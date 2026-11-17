@@ -6,7 +6,7 @@ use oleafly_collab::materialize::Layout;
 use serde::Serialize;
 
 use super::live_tree::LiveTree;
-use super::session::{guard, Active, Alarm, LiveDisk};
+use super::session::{guard, Alarm, LiveDisk};
 use crate::collab::disk::safe_target;
 
 pub const LIVE_UNWRITTEN_EVENT: &str = "collab-live-unwritten";
@@ -130,12 +130,6 @@ pub(super) struct Settled {
     pub(super) done: BTreeSet<String>,
     pub(super) failed: Vec<(String, UnwrittenReason)>,
     pub(super) conflicts: Vec<String>,
-}
-
-impl Active {
-    pub(super) fn settle_unwritten(&self, layout: &Layout, settled: Settled) {
-        self.local.settle_unwritten(self, layout, settled);
-    }
 }
 
 impl LiveDisk {

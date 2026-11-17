@@ -8,6 +8,7 @@ use oleafly_collab::{load_binding, save_binding};
 use oleafly_collab_protocol::projects::ProjectRole;
 use tokio::sync::mpsc::UnboundedReceiver;
 
+use super::downloads::FigureHost;
 use super::payloads::{
     ChangeSkippedPayload, MembersPayload, MergeMarks, MergedAuthor, MergedFile, MergedPayload,
     NewDevicePayload, PresenceLeftPayload, PresencePayload, ProjectFullPayload, RolePayload,

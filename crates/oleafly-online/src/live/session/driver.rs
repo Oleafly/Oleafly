@@ -452,10 +452,7 @@ impl Driver {
             }
             ServerEvent::PeerMoved(peer) => self.shared.with(|state| state.peer(peer)),
             ServerEvent::PeerLeft(id) => self.shared.with(|state| state.peer_left(id)),
-            ServerEvent::Tree(event) => self.shared.with(|state| {
-                let changes = state.project.tree.apply(&event, Instant::now());
-                state.tree_changed(changes);
-            }),
+            ServerEvent::Tree(event) => self.shared.with(|state| state.tree_event(&event)),
             ServerEvent::Project(event) => self.shared.with(|state| state.project_event(event)),
             ServerEvent::Access(event) => {
                 self.refresh_members |= self.shared.with(|state| state.access(&event));

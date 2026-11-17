@@ -11,14 +11,16 @@ use oleafly_online::test_support::mock_overleaf::{MockOverleaf, MockProject, Moc
 use oleafly_ot::{DocMessage, DocSink};
 
 use super::notices::OverleafNoticePayload;
-use super::{OverleafLive, Parts, IMPORT_BASES};
+use super::{OverleafLive, Parts, TreeNotice, IMPORT_BASES};
 use crate::collab::live::host::LiveHost;
 use crate::collab::live::kept::KeptPayload;
+use crate::collab::live::moves::RemovedPayload;
 use crate::collab::live::payloads::{
     DocPendingPayload, MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload,
     RolePayload, StatusPayload,
 };
 use crate::collab::live::session::{guard, Live, ACTIVE};
+use crate::collab::live::uploads::UploadsPayload;
 use crate::folder_watch::FolderChange;
 use crate::overleaf::OverleafLink;
 
@@ -34,6 +36,10 @@ pub(crate) struct Quiet {
     pub(crate) presence: Mutex<Vec<PresencePayload>>,
     pub(crate) left: Mutex<Vec<String>>,
     pub(crate) members_changed: Mutex<usize>,
+    pub(crate) changes: Mutex<Vec<FolderChange>>,
+    pub(crate) removed: Mutex<Vec<RemovedPayload>>,
+    pub(crate) uploads: Mutex<Vec<UploadsPayload>>,
+    pub(crate) tree: Mutex<Vec<TreeNotice>>,
 }
 
 impl LiveHost for Quiet {
@@ -56,7 +62,9 @@ impl LiveHost for Quiet {
     fn overleaf_members(&self, _: crate::collab::live::payloads::OverleafMembersPayload) {
         *self.members_changed.lock().unwrap() += 1;
     }
-    fn folder_changed(&self, _: FolderChange) {}
+    fn folder_changed(&self, change: FolderChange) {
+        self.changes.lock().unwrap().push(change);
+    }
     fn new_device(&self, _: NewDevicePayload) {}
     fn doc_pending(&self, payload: DocPendingPayload) {
         self.pending.lock().unwrap().push(payload);
@@ -64,6 +72,15 @@ impl LiveHost for Quiet {
 
     fn overleaf_notice(&self, payload: OverleafNoticePayload) {
         self.notices.lock().unwrap().push(payload);
+    }
+    fn removed(&self, payload: RemovedPayload) {
+        self.removed.lock().unwrap().push(payload);
+    }
+    fn uploads(&self, payload: UploadsPayload) {
+        self.uploads.lock().unwrap().push(payload);
+    }
+    fn overleaf_tree(&self, notice: TreeNotice) {
+        self.tree.lock().unwrap().push(notice);
     }
 }
 
@@ -204,11 +221,33 @@ impl OverleafRig {
         OverleafRig::start_first(project, disk, place, imported).await
     }
 
+    pub(crate) async fn start_as(
+        project: MockProject,
+        disk: &[(&str, &str)],
+        name: &str,
+    ) -> OverleafRig {
+        let imported = FirstStart {
+            imported: disk,
+            ..FirstStart::default()
+        };
+        OverleafRig::start_full(project, disk, Place::Scratch, imported, name).await
+    }
+
     pub(crate) async fn start_first(
         project: MockProject,
         disk: &[(&str, &str)],
         place: Place,
         first: FirstStart<'_>,
+    ) -> OverleafRig {
+        OverleafRig::start_full(project, disk, place, first, "alice").await
+    }
+
+    async fn start_full(
+        project: MockProject,
+        disk: &[(&str, &str)],
+        place: Place,
+        first: FirstStart<'_>,
+        name: &str,
     ) -> OverleafRig {
         let dir = tempfile::tempdir().unwrap();
         import_base(dir.path(), first.imported);
@@ -243,7 +282,7 @@ impl OverleafRig {
                 .unwrap();
             tokio::fs::write(target, text).await.unwrap();
         }
-        let user = mock.user("alice");
+        let user = mock.user(name);
         let session = SessionHandle::new(&mock.base, session_of(&user), None);
         let mut journal = Journal::open(&data, &mock.base, &mock.project_id(), None).unwrap();
         journal.set_manifest(ProjectManifest {

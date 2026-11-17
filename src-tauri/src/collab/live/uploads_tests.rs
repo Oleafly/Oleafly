@@ -22,6 +22,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
+use super::super::downloads::FigureHost;
 use super::super::{
     guard, initial_bases, lock, pump, writer_loop, Active, LiveDisk, LiveHost, MergedPayload,
     NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,

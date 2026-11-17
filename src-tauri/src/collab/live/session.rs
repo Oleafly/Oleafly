@@ -14,6 +14,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::oneshot;
 
 use super::bases::WrittenTexts;
+use super::downloads::FigureHost;
 use super::host::LiveHost;
 use super::live_disk::{LiveWriter, Mirrored};
 use super::live_tree::LiveTree;

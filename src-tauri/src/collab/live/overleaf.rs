@@ -1,4 +1,5 @@
 pub(crate) mod account;
+mod binaries;
 pub(crate) mod commands;
 #[cfg(test)]
 mod first_start_tests;
@@ -9,8 +10,11 @@ pub(crate) mod rig;
 #[cfg(test)]
 mod tests;
 mod tree;
+mod tree_events;
+#[cfg(test)]
+mod tree_tests;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 use std::time::{Duration, Instant};
@@ -26,8 +30,10 @@ use oleafly_ot::{DocOpened, DocSink, TextOperation};
 use tokio::sync::{mpsc, oneshot};
 
 pub(crate) use port::AppOverleafPort;
+pub(crate) use tree_events::{TreeNotice, TreeNoticeKind, TREE_EVENT};
 
 use super::bases::{merged_onto, WrittenTexts};
+use super::downloads::FigureHost;
 use super::host::LiveHost;
 use super::live_disk::{writer_loop, LiveWriter, Mirrored};
 use super::live_tree::LiveTree;
@@ -52,10 +58,22 @@ pub(crate) struct Mirror {
     sinks: Mutex<BTreeMap<DocId, DocSink>>,
     kept: Mutex<Vec<super::kept::KeptFile>>,
     session: OnceLock<Weak<OverleafSession>>,
+    blobs: Mutex<binaries::BlobMap>,
+    deletes: Mutex<Deletes>,
+    replaced: Mutex<BTreeSet<DocId>>,
+    removing: Mutex<BTreeSet<String>>,
+    restorable: Mutex<BTreeMap<String, String>>,
+}
+
+#[derive(Default)]
+struct Deletes {
+    asked: BTreeSet<String>,
+    mine: BTreeSet<String>,
+    refused: BTreeSet<String>,
 }
 
 impl Mirror {
-    pub(crate) fn new(disk: LiveDisk) -> Mirror {
+    pub(crate) fn new(disk: LiveDisk, blobs: binaries::BlobMap) -> Mirror {
         Mirror {
             disk,
             work: Mutex::new(DiskWork {
@@ -68,6 +86,11 @@ impl Mirror {
             sinks: Mutex::new(BTreeMap::new()),
             kept: Mutex::new(Vec::new()),
             session: OnceLock::new(),
+            blobs: Mutex::new(blobs),
+            deletes: Mutex::new(Deletes::default()),
+            replaced: Mutex::new(BTreeSet::new()),
+            removing: Mutex::new(BTreeSet::new()),
+            restorable: Mutex::new(BTreeMap::new()),
         }
     }
 
@@ -359,7 +382,7 @@ impl OverleafLive {
             git_mirror,
         } = parts;
         let disk_file = mirror_dir.join(INDEX_FILE);
-        let (disk, bases, seeds) = {
+        let (disk, bases, seeds, blobs) = {
             let (disk_file, root) = (disk_file.clone(), root.clone());
             tauri::async_runtime::spawn_blocking(move || {
                 std::fs::create_dir_all(&mirror_dir)?;
@@ -369,23 +392,27 @@ impl OverleafLive {
                     .is_empty()
                     .then(|| FirstBases::load(&mirror_dir, git_mirror));
                 let (bases, seeds) = go_live_bases(&root, &mut disk, first.as_ref());
-                Ok::<_, std::io::Error>((disk, bases, seeds))
+                let blobs = binaries::BlobMap::load(&mirror_dir);
+                Ok::<_, std::io::Error>((disk, bases, seeds, blobs))
             })
             .await
             .map_err(io)?
             .map_err(io)?
         };
         let (writer, signals) = mpsc::unbounded_channel();
-        let mirror = Arc::new(Mirror::new(LiveDisk {
-            project_id,
-            root,
-            disk_file,
-            disk: Mutex::new(disk),
-            bases: Mutex::new(bases),
-            host,
-            writer,
-            upkeep: Default::default(),
-        }));
+        let mirror = Arc::new(Mirror::new(
+            LiveDisk {
+                project_id,
+                root,
+                disk_file,
+                disk: Mutex::new(disk),
+                bases: Mutex::new(bases),
+                host,
+                writer,
+                upkeep: Default::default(),
+            },
+            blobs,
+        ));
         let me = config.session.user_id().to_owned();
         let port = Arc::new(AppOverleafPort::new(Arc::clone(&mirror)));
         config.seeds = seeds;
@@ -417,6 +444,22 @@ impl OverleafLive {
             account_id: self.me.clone(),
             device_id: self.me.clone(),
         }
+    }
+
+    pub(crate) fn upload_list(&self) -> Vec<super::uploads::UploadFile> {
+        self.session
+            .tree_queue()
+            .iter()
+            .filter_map(port::upload_row)
+            .collect()
+    }
+
+    pub(crate) fn retry_uploads(&self) {
+        self.session.retry_tree(None);
+    }
+
+    pub(crate) fn dismiss_upload(&self, path: &str) {
+        self.session.dismiss_tree(path);
     }
 
     pub(crate) fn reconnect_now(&self) {
@@ -566,6 +609,7 @@ impl OverleafLive {
 
     pub(crate) async fn finish(&self) {
         self.mirror.flush().await;
+        self.close_figures();
         self.session.stop().await;
         self.mirror.disk.announce_written();
         crate::folder_watch::release_live(self.project_id());
@@ -590,7 +634,7 @@ impl OverleafLive {
         self.mirror.disk.import(self, &self.hold_dir(), only).await
     }
 
-    async fn write_out(&self, urgent: bool) -> Result<Vec<String>, CollabError> {
+    async fn write_out(self: &Arc<Self>, urgent: bool) -> Result<Vec<String>, CollabError> {
         if !self.mirror.disk.root.is_dir() {
             return Ok(Vec::new());
         }
@@ -598,10 +642,25 @@ impl OverleafLive {
         let Some(mirror) = self.read_out(&mut previous, &hashes)? else {
             return Ok(Vec::new());
         };
-        let Mirrored { conflicts, .. } =
-            self.mirror
-                .disk
-                .mirror(self, &self.hold_dir(), &previous, &owed, mirror, urgent)?;
+        let Mirrored {
+            mut conflicts,
+            mut blobs,
+        } = self
+            .mirror
+            .disk
+            .mirror(&**self, &self.hold_dir(), &previous, &owed, mirror, urgent)?;
+        let clashing: Vec<(String, String)> = {
+            let disk = guard(&self.mirror.disk.disk);
+            disk.layout
+                .values()
+                .filter(|placed| placed.kind == oleafly_collab::doc::NodeKind::Blob)
+                .filter(|placed| conflicts.contains(&placed.path))
+                .filter_map(|placed| Some((placed.path.clone(), placed.blob.clone()?)))
+                .collect()
+        };
+        conflicts.retain(|path| !clashing.iter().any(|(clashed, _)| clashed == path));
+        blobs.extend(clashing);
+        self.want_figures(blobs);
         Ok(conflicts)
     }
 }

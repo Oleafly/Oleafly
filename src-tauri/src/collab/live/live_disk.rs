@@ -109,6 +109,15 @@ impl LiveDisk {
         text: &str,
         author: Option<&str>,
     ) -> Result<String, CollabError> {
+        self.keep_bytes(path, text.as_bytes(), author)
+    }
+
+    pub(super) fn keep_bytes(
+        &self,
+        path: &str,
+        bytes: &[u8],
+        author: Option<&str>,
+    ) -> Result<String, CollabError> {
         let parent = parent_of(path);
         let folder = parent.map_or_else(|| self.root.clone(), |parent| self.root.join(parent));
         let taken: BTreeSet<String> = std::fs::read_dir(&folder)
@@ -121,7 +130,7 @@ impl LiveDisk {
             .unwrap_or_default();
         let free = |named: &str| !taken.contains(&named.to_lowercase());
         let name = name_of(path);
-        let hash = sha256_hex(text.as_bytes());
+        let hash = sha256_hex(bytes);
         let named = author
             .and_then(|author| materialize::credited_name(name, author, &hash, free))
             .or_else(|| {
@@ -134,7 +143,7 @@ impl LiveDisk {
         let copy = parent.map_or_else(|| named.clone(), |parent| format!("{parent}/{named}"));
         let target = safe_target(&self.root, &copy)
             .ok_or_else(|| CollabError::Io(format!("no place to keep a copy of {path}")))?;
-        oleafly_collab::write_atomic(&target, text.as_bytes())?;
+        oleafly_collab::write_atomic(&target, bytes)?;
         Ok(copy)
     }
 
@@ -343,6 +352,7 @@ impl LiveDisk {
             return Ok(());
         }
         if !tree.can_edit() {
+            tree.refused(&import);
             return Ok(());
         }
         let failed = tree.upload(&self.root, &import.blobs).await;

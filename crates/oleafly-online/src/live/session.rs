@@ -594,6 +594,15 @@ impl OverleafSession {
         self.shared.lock().project.tree.nodes()
     }
 
+    pub fn tree_settling(&self) -> bool {
+        self.shared
+            .lock()
+            .project
+            .tree
+            .next_due()
+            .is_some_and(|due| due > Instant::now())
+    }
+
     pub fn change_tree(&self, change: TreeChange) -> Result<(), TreeRefusal> {
         let result = self.shared.with(|state| state.change_tree(change));
         self.after_tree_change();

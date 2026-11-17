@@ -460,6 +460,31 @@ impl State {
         self.report_queue();
     }
 
+    pub(in crate::live::session) fn tree_event(&mut self, event: &TreeEvent) {
+        let changes = self.project.tree.apply(event, Instant::now());
+        let arrived: Vec<DocId> = changes
+            .iter()
+            .filter_map(|change| match change {
+                PathChange::Added {
+                    id,
+                    path,
+                    kind: NodeKind::Doc,
+                }
+                | PathChange::Replaced {
+                    new: id,
+                    path,
+                    to: NodeKind::Doc,
+                    ..
+                } if !self.tree_work.to_fill.contains(path) => Some(DocId(id.0.clone())),
+                _ => None,
+            })
+            .collect();
+        self.tree_changed(changes);
+        for doc in arrived {
+            self.want(&doc);
+        }
+    }
+
     pub(in crate::live::session) fn landed(&mut self, event: &TreeEvent) {
         let changes = self.project.tree.apply(event, Instant::now());
         self.tree_changed(changes);

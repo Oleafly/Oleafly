@@ -2787,6 +2787,12 @@ impl MockOverleaf {
         self.state().id_for_path(path)
     }
 
+    pub fn file_bytes(&self, path: &str) -> Option<Vec<u8>> {
+        let state = self.state();
+        let id = state.id_for_path(path)?;
+        state.files.get(&id).map(|file| file.bytes.clone())
+    }
+
     pub fn doc_id(&self, path: &str) -> String {
         self.entity_id(path)
             .unwrap_or_else(|| panic!("the mock has no {path}"))

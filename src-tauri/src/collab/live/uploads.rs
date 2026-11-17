@@ -8,6 +8,7 @@ use oleafly_collab::{CollabError, TransferProgress};
 use oleafly_collab_protocol::ids::{DeviceId, ServerId, SharedProjectId};
 use serde::Serialize;
 
+use super::session::{live_for, Live};
 use super::{active_for, guard, not_live, Active, LiveHost};
 use crate::collab::commands::{with_access, CollabCommandError};
 use crate::collab::disk::safe_target;
@@ -491,6 +492,9 @@ impl Active {
 
 #[tauri::command]
 pub async fn collab_upload_list(project_id: String) -> Result<Vec<UploadFile>, CollabCommandError> {
+    if let Some(Live::Overleaf(live)) = live_for(&project_id) {
+        return Ok(live.upload_list());
+    }
     Ok(active_for(&project_id)
         .map(|active| active.upload_list())
         .unwrap_or_default())
@@ -498,6 +502,10 @@ pub async fn collab_upload_list(project_id: String) -> Result<Vec<UploadFile>, C
 
 #[tauri::command]
 pub async fn collab_upload_retry(project_id: String) -> Result<(), CollabCommandError> {
+    if let Some(Live::Overleaf(live)) = live_for(&project_id) {
+        live.retry_uploads();
+        return Ok(());
+    }
     let active = active_for(&project_id).ok_or_else(|| CollabCommandError::from(not_live()))?;
     active.retry_uploads(Retry::Asked).await;
     Ok(())
@@ -508,6 +516,10 @@ pub async fn collab_upload_dismiss(
     project_id: String,
     path: String,
 ) -> Result<(), CollabCommandError> {
+    if let Some(Live::Overleaf(live)) = live_for(&project_id) {
+        live.dismiss_upload(&path);
+        return Ok(());
+    }
     if let Some(active) = active_for(&project_id) {
         active.dismiss_upload(&path);
     }

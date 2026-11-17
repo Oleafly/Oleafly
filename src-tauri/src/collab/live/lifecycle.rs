@@ -9,6 +9,7 @@ use oleafly_collab_protocol::auth::SessionEndReason;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
+use super::downloads::FigureHost;
 use super::host::LiveHost;
 use super::live_disk::writer_loop;
 use super::payloads::{LiveInfo, RolePayload, StatusPayload};
@@ -306,7 +307,13 @@ pub async fn flush(project_id: &str, figures: bool) {
     };
     let active = match live {
         Live::Server(active) => active,
-        Live::Overleaf(live) => return live.flush().await,
+        Live::Overleaf(live) => {
+            live.flush().await;
+            if figures {
+                live.wait_for_figures(FIGURE_WAIT).await;
+            }
+            return;
+        }
     };
     let (done, wait) = oneshot::channel();
     let _ = active.local.writer.send(WriterSignal::Flush(done));

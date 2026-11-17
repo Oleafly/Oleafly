@@ -46,6 +46,7 @@ pub(super) trait LiveTree: TreeRead + Send + Sync {
         hashes: &BTreeMap<String, String>,
     ) -> Result<Option<Mirror>, CollabError>;
     fn can_edit(&self) -> bool;
+    fn refused(&self, _import: &LocalImport) {}
     fn open(&self, ids: &[String]) -> BTreeSet<String>;
     fn mark_dirty(&self, ids: &[String]);
     fn noticed(&self, previous: &Layout, changed: &BTreeSet<String>, removed: &[String]);
