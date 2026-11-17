@@ -1774,7 +1774,8 @@ mod tests {
     #[cfg(unix)]
     fn stand_in_daemon(endpoint: &str) -> std::process::Child {
         std::process::Command::new("sh")
-            .args(["-c", "sleep 20; true", "serve", "--socket", endpoint])
+            .args(["-c", "read _", "serve", "--socket", endpoint])
+            .stdin(std::process::Stdio::piped())
             .spawn()
             .unwrap()
     }

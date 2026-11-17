@@ -8,7 +8,7 @@ use crate::host::{
     WorkspaceTools,
 };
 use crate::model::{ResearchTask, ResearchTaskDraft, TaskTranscriptDelta, TaskTranscriptEvent};
-use oleafly_core::test_support::{nextest_run_dir, test_attempt_id};
+use oleafly_core::test_support::{nextest_run_dir, test_attempt_key};
 
 pub const CHILD_PATIENCE: Duration = Duration::from_secs(30);
 
@@ -20,7 +20,7 @@ pub(crate) fn literature_cache_path() -> PathBuf {
             std::fs::create_dir_all(&parent).expect("create the nextest literature cache folder");
             parent.join(format!(
                 "oleafly-literature-cache-{}.sqlite3",
-                test_attempt_id()
+                test_attempt_key()
             ))
         }
         None => std::env::temp_dir().join("oleafly-literature-cache.sqlite3"),

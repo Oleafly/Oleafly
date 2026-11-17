@@ -3,8 +3,7 @@ use std::future::Future;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
-use std::sync::OnceLock;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
 use oleafly_agent::tools::registry::{ParallelPolicy, RegisteredTool, ToolRegistry};

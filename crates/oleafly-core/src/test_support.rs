@@ -6,7 +6,7 @@ pub fn nextest_run_dir() -> Option<PathBuf> {
         .map(|run_id| std::env::temp_dir().join("oleafly-test-data").join(run_id))
 }
 
-pub fn test_attempt_id() -> String {
+pub fn test_attempt_key() -> String {
     let test_id = std::env::var_os("NEXTEST_ATTEMPT_ID")
         .unwrap_or_else(|| std::process::id().to_string().into());
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
@@ -18,7 +18,7 @@ pub fn test_data_dir(prefix: &str) -> Result<PathBuf, String> {
     test_data_dir_in(nextest_run_dir(), prefix)
 }
 
-pub fn test_data_dir_in(run_dir: Option<PathBuf>, prefix: &str) -> Result<PathBuf, String> {
+fn test_data_dir_in(run_dir: Option<PathBuf>, prefix: &str) -> Result<PathBuf, String> {
     let mut builder = tempfile::Builder::new();
     builder.prefix(prefix);
     let directory = match run_dir {
