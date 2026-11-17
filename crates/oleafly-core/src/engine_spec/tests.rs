@@ -1167,7 +1167,10 @@ fn through_the_app_chain(pandoc: &Path, markdown: &str) -> String {
         "{markdown}: {}",
         String::from_utf8_lossy(&run.stderr)
     );
-    std::fs::read_to_string(output).unwrap()
+    // Pandoc writes native line ends, CRLF on Windows.
+    std::fs::read_to_string(output)
+        .unwrap()
+        .replace("\r\n", "\n")
 }
 
 fn assert_groups_nest(latex: &str) {
@@ -1227,7 +1230,9 @@ fn with_marks_filter(pandoc: &Path, args: &[&str], markdown: &str) -> String {
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
-    String::from_utf8(output.stdout).unwrap()
+    String::from_utf8(output.stdout)
+        .unwrap()
+        .replace("\r\n", "\n")
 }
 
 fn preamble_and_body(latex: &str) -> (&str, &str) {
@@ -1736,7 +1741,9 @@ fn docx_with_marks(pandoc: &Path, markdown: &str) -> (String, String) {
     );
     (
         String::from_utf8_lossy(&written.stderr).into_owned(),
-        String::from_utf8(read.stdout).unwrap(),
+        String::from_utf8(read.stdout)
+            .unwrap()
+            .replace("\r\n", "\n"),
     )
 }
 
@@ -2165,7 +2172,7 @@ fn citation_locators_keep_their_marks_after_citeproc() {
         ])
         .output()
         .unwrap();
-    let docx = String::from_utf8_lossy(&read.stdout);
+    let docx = String::from_utf8_lossy(&read.stdout).replace("\r\n", "\n");
     for wanted in [
         "(see Doe 2020, [3]{.underline})",
         "(Doe 2020, [12--15]{.mark})",
