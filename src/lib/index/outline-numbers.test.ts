@@ -6,7 +6,7 @@ import { assembleProjectIntelligence } from "@/lib/project-intelligence/assemble
 import { legacyIndexFromProjectIntelligence } from "@/lib/project-intelligence/legacy-index";
 import type { LatexUnitScope } from "@/lib/project-intelligence/latex-units";
 import { outlineFromIndex, type ExtraOutlineSection } from "./outline";
-import { headingKey, latexOutlineNumbers, outlineNumbers } from "./outline-numbers";
+import { headingKey, latexHeadingMarks, outlineEntryMatches, type NumberingTocEntry } from "./outline-numbers";
 import { parseFile } from "./parse-file";
 import type { ProjectIndex } from "./types";
 
@@ -16,11 +16,15 @@ const entry = (level: number, title: string, number: string | null) => ({
   key: headingKey(title),
   number,
 });
+const numbersOf = (
+  headings: Parameters<typeof outlineEntryMatches>[0],
+  toc: readonly NumberingTocEntry[],
+) => outlineEntryMatches(headings, toc).map((at) => (at === null ? null : toc[at].number));
 
-describe("outlineNumbers", () => {
+describe("outlineEntryMatches", () => {
   it("numbers headings that match an entry by level and title, in order", () => {
     expect(
-      outlineNumbers(
+      numbersOf(
         [heading(2, "Intro"), heading(3, "Proof"), heading(2, "Method"), heading(3, "Proof")],
         [entry(2, "Intro", "1"), entry(3, "Proof", "1.1"), entry(2, "Method", "2"), entry(3, "Proof", "2.1")],
       ),
@@ -28,14 +32,14 @@ describe("outlineNumbers", () => {
   });
 
   it("compares titles without spacing, case or punctuation", () => {
-    expect(outlineNumbers([heading(2, "Encoder--decoder  models")], [entry(2, "encoder-decoder models", "6")])).toEqual([
+    expect(numbersOf([heading(2, "Encoder--decoder  models")], [entry(2, "encoder-decoder models", "6")])).toEqual([
       "6",
     ]);
   });
 
   it("gives a heading in the place of a renamed or deleted one the number there", () => {
     expect(
-      outlineNumbers(
+      numbersOf(
         [heading(2, "Intro"), heading(2, "Renamed"), heading(2, "End")],
         [entry(2, "Intro", "1"), entry(2, "Old name", "2"), entry(2, "End", "3")],
       ),
@@ -44,7 +48,7 @@ describe("outlineNumbers", () => {
 
   it("leaves a heading added since the compile unnumbered", () => {
     expect(
-      outlineNumbers(
+      numbersOf(
         [heading(2, "Intro"), heading(2, "New"), heading(2, "End")],
         [entry(2, "Intro", "1"), entry(2, "End", "2")],
       ),
@@ -53,13 +57,13 @@ describe("outlineNumbers", () => {
 
   it("leaves a title unnumbered when it repeats a different number of times", () => {
     expect(
-      outlineNumbers([heading(2, "Same"), heading(2, "Same"), heading(2, "End")], [entry(2, "Same", "1"), entry(2, "End", "2")]),
+      numbersOf([heading(2, "Same"), heading(2, "Same"), heading(2, "End")], [entry(2, "Same", "1"), entry(2, "End", "2")]),
     ).toEqual([null, null, "2"]);
   });
 
   it("pairs a repeated title within each stretch between unique titles", () => {
     expect(
-      outlineNumbers(
+      numbersOf(
         [heading(1, "Basics"), heading(2, "Exercises"), heading(1, "Flows"), heading(2, "Exercises"), heading(2, "Exercises")],
         [entry(1, "Basics", "1"), entry(2, "Exercises", "1.1"), entry(1, "Flows", "2"), entry(2, "Exercises", "2.1")],
       ),
@@ -68,7 +72,7 @@ describe("outlineNumbers", () => {
 
   it("does not guess across runs whose levels differ", () => {
     expect(
-      outlineNumbers(
+      numbersOf(
         [heading(2, "Intro"), heading(3, "Renamed"), heading(2, "End")],
         [entry(2, "Intro", "1"), entry(2, "Old", "2"), entry(2, "End", "3")],
       ),
@@ -77,7 +81,7 @@ describe("outlineNumbers", () => {
 
   it("does not guess a number for a level the document never numbers", () => {
     expect(
-      outlineNumbers(
+      numbersOf(
         [heading(2, "Intro"), heading(5, "Renamed paragraph"), heading(2, "End")],
         [entry(2, "Intro", "1"), entry(5, "Old paragraph", null), entry(2, "End", "2")],
       ),
@@ -85,7 +89,7 @@ describe("outlineNumbers", () => {
   });
 
   it("numbers repeated titles in order when nothing else tells them apart", () => {
-    expect(outlineNumbers([heading(2, "Same"), heading(2, "Same")], [entry(2, "Same", "1"), entry(2, "Same", "2")])).toEqual([
+    expect(numbersOf([heading(2, "Same"), heading(2, "Same")], [entry(2, "Same", "1"), entry(2, "Same", "2")])).toEqual([
       "1",
       "2",
     ]);
@@ -93,7 +97,7 @@ describe("outlineNumbers", () => {
 
   it("keeps unnumbered entries in a fully title-aligned gap", () => {
     expect(
-      outlineNumbers(
+      numbersOf(
         [heading(1, "Introduction"), heading(1, "Introduction")],
         [entry(1, "Introduction", null), entry(1, "Introduction", "1")],
       ),
@@ -102,7 +106,7 @@ describe("outlineNumbers", () => {
 
   it("does not position headings against an unrelated unnumbered entry", () => {
     expect(
-      outlineNumbers(
+      numbersOf(
         [heading(2, "Same"), heading(2, "Same")],
         [entry(2, "Manual", null), entry(2, "Same", "1")],
       ),
@@ -111,7 +115,7 @@ describe("outlineNumbers", () => {
 
   it("does not treat empty title keys as an alignment with unnumbered entries", () => {
     expect(
-      outlineNumbers(
+      numbersOf(
         [heading(2, "+"), heading(2, "-")],
         [entry(2, "!", null), entry(2, "?", "1")],
       ),
@@ -120,20 +124,27 @@ describe("outlineNumbers", () => {
 
   it("numbers nothing when no title matches and the headings do not line up", () => {
     expect(
-      outlineNumbers([heading(2, "A"), heading(2, "B"), heading(2, "C")], [entry(2, "X", "1"), entry(2, "Y", "2")]),
+      numbersOf([heading(2, "A"), heading(2, "B"), heading(2, "C")], [entry(2, "X", "1"), entry(2, "Y", "2")]),
     ).toEqual([null, null, null]);
   });
 
   it("skips headings that take no part", () => {
-    expect(outlineNumbers([heading(2, "Intro"), null, heading(2, "End")], [entry(2, "Intro", "1"), entry(2, "End", "2")]))
+    expect(numbersOf([heading(2, "Intro"), null, heading(2, "End")], [entry(2, "Intro", "1"), entry(2, "End", "2")]))
       .toEqual(["1", null, "2"]);
   });
 });
 
 const render = (tex: string) => renderLatexOutlineTitle(tex);
 
-function tocOf(entries: readonly AuxTocEntry[], mainDocument = "main.tex"): AuxToc {
-  return { projectId: "p1", mainDocument, entries };
+type TocLine = Omit<AuxTocEntry, "page"> & { readonly page?: string };
+
+function tocOf(entries: readonly TocLine[], mainDocument = "main.tex"): AuxToc {
+  return { projectId: "p1", mainDocument, entries: entries.map((line) => ({ ...line, page: line.page ?? null })) };
+}
+
+function marksIn(index: ProjectIndex, texts: Record<string, string>, toc: AuxToc, viewer = "main.tex") {
+  const items = outlineFromIndex(index, viewer);
+  return latexHeadingMarks({ items, viewer, toc, index, texts, render });
 }
 
 function numbersIn(
@@ -144,8 +155,8 @@ function numbersIn(
   extraSections?: (file: string) => readonly ExtraOutlineSection[],
 ) {
   const items = outlineFromIndex(index, viewer, extraSections);
-  const numbers = latexOutlineNumbers({ items, viewer, toc, index, texts, extraSections, render });
-  return items.map((item, at) => [render(item.title), numbers[at]]);
+  const marks = latexHeadingMarks({ items, viewer, toc, index, texts, extraSections, render });
+  return items.map((item, at) => [render(item.title), marks[at]?.number ?? null]);
 }
 
 function numbersFor(
@@ -178,7 +189,29 @@ function analyzedIndex(texts: Record<string, string>): ProjectIndex {
   }));
 }
 
-describe("latexOutlineNumbers", () => {
+describe("latexHeadingMarks", () => {
+  it("carries the page each heading landed on, read from the same contents line", () => {
+    const texts = {
+      "main.tex": "\\section{Intro}\n\\section*{Notes}\n\\input{chapter}",
+      "chapter.tex": "\\section{Body}",
+    };
+    const symbols = Object.entries(texts).map(([file, text]) => parseFile(file, text));
+    const index = {
+      defs: symbols.flatMap((file) => file.defs),
+      uses: symbols.flatMap((file) => file.uses).filter((use) => use.kind === "inputedge"),
+    } as ProjectIndex;
+    const toc = tocOf([
+      { level: 2, number: "1", title: "Intro", page: "1" },
+      { level: 2, number: "2", title: "Body", page: "iv" },
+    ]);
+    expect(marksIn(index, texts, toc)).toEqual([
+      { number: "1", page: "1" },
+      null,
+      { number: "2", page: "iv" },
+    ]);
+  });
+
+
   it("matches a short title, which the table of contents shows", () => {
     const tex = [
       "\\section{Intro}",

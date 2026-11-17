@@ -770,6 +770,10 @@
         "description": "Siz yazdıkça $, \\( ve \\[ işaretlerini eşler.",
         "label": "Matematiği otomatik kapat"
       },
+      "groupScripts": {
+        "description": "Alt veya üst simge bir karakterden uzun olunca onu süslü paranteze alır. Böylece x^10, x^{10} olur. Typst'te x^-1, x^(-1) olur.",
+        "label": "Alt ve üst simgelere süslü parantez"
+      },
       "autocomplete": {
         "description": "Siz yazdıkça kod tamamlamalarını gösterir. Bu kapalıyken de Ctrl+Space onları açar.",
         "label": "Otomatik tamamlama"
@@ -976,6 +980,12 @@
         "grid": "Izgara",
         "label": "Varsayılan ana ekran görünümü",
         "list": "Liste"
+      },
+      "markers": {
+        "badges": "Tür etiketleri",
+        "description": "Proje ağacındaki her dosya aynı renklerde bir simge ya da TEX veya PDF gibi kısa bir tür etiketi alır.",
+        "icons": "Simgeler",
+        "label": "Dosyaları şöyle göster"
       },
       "openIn": {
         "description": "Bir proje açıldığında kullanılacak düzeni seçin.",
@@ -2614,5 +2624,66 @@
       "loadFailed": "MCP sunucu listesi okunamadı.",
       "missing": "{{name}} (bulunamadı)"
     }
+  },
+  "logs": {
+    "searchLabel": "Search logs",
+    "searchPlaceholder": "Search logs",
+    "levels": {
+      "label": "Level",
+      "all": "All",
+      "warning": "Warnings",
+      "error": "Errors"
+    },
+    "level": {
+      "info": "Info",
+      "warning": "Warning",
+      "error": "Error"
+    },
+    "actions": {
+      "export": "Export",
+      "openFolder": "Open log folder",
+      "clear": "Clear"
+    },
+    "groups": {
+      "today": "Today",
+      "yesterday": "Yesterday"
+    },
+    "newestFirst": "Newest first",
+    "privateDetails": "Private, left out when you export",
+    "copyEntry": "Copy entry",
+    "copied": "Copied",
+    "loading": "Reading the logs",
+    "loadFailed": "Couldn't read the logs.",
+    "retry": "Try again",
+    "empty": {
+      "title": "No log entries",
+      "description": "Builds and errors show up here as they happen."
+    },
+    "noMatch": {
+      "title": "No entries match \"{{query}}\"",
+      "levelTitle": "No entries at this level",
+      "description": "Try another search or level.",
+      "clearSearch": "Clear search",
+      "showAll": "Show all levels"
+    },
+    "clear": {
+      "title": "Clear all logs?",
+      "confirm": "Clear logs",
+      "description_one": "This deletes {{count}} entry and the log file on this computer. Logs you already exported stay where you saved them.",
+      "description_other": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them."
+    },
+    "toast": {
+      "exported": "Saved the logs to {{name}}.",
+      "exportFailed": "Couldn't export the logs.",
+      "clearFailed": "Couldn't clear the logs.",
+      "revealFailed": "Couldn't open the log folder."
+    },
+    "dialog": {
+      "filterName": "Zip archive"
+    },
+    "count_one": "{{count}} entry",
+    "count_other": "{{count}} entries",
+    "filteredCount_one": "{{shown}} of {{count}} entry",
+    "filteredCount_other": "{{shown}} of {{count}} entries"
   }
 }

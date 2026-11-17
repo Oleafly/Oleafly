@@ -155,13 +155,13 @@ function outlineMatches(
   return pairs.map(([heading, entry]): Pair => [taking[heading], entry]);
 }
 
-export function outlineNumbers(
+export function outlineEntryMatches(
   headings: readonly (NumberingHeading | null)[],
   toc: readonly NumberingTocEntry[],
-): (string | null)[] {
-  const numbers: (string | null)[] = headings.map(() => null);
-  for (const [heading, entry] of outlineMatches(headings, toc)) numbers[heading] = toc[entry].number;
-  return numbers;
+): (number | null)[] {
+  const matched: (number | null)[] = headings.map(() => null);
+  for (const [heading, entry] of outlineMatches(headings, toc)) matched[heading] = entry;
+  return matched;
 }
 
 // Older LaTeX writes non-ASCII text to the aux file wrapped in `\IeC`.
@@ -208,7 +208,7 @@ function omittedOutlineItems(
   return omitted;
 }
 
-export interface LatexOutlineNumbersInput {
+export interface LatexHeadingMarksInput {
   readonly items: readonly OutlineItem[];
   readonly viewer: string;
   readonly toc: AuxToc;
@@ -218,7 +218,12 @@ export interface LatexOutlineNumbersInput {
   readonly render: (tex: string) => string;
 }
 
-export function latexOutlineNumbers({
+export interface HeadingMark {
+  readonly number: string | null;
+  readonly page: string | null;
+}
+
+export function latexHeadingMarks({
   items,
   viewer,
   toc,
@@ -226,7 +231,7 @@ export function latexOutlineNumbers({
   texts,
   extraSections,
   render,
-}: LatexOutlineNumbersInput): (string | null)[] {
+}: LatexHeadingMarksInput): (HeadingMark | null)[] {
   const scope = index.unitScope;
   const included = scope ? null : new Set(documentSourcePaths(index, toc.mainDocument));
   const compiled = (file: string) =>
@@ -261,9 +266,9 @@ export function latexOutlineNumbers({
   const headings = documentItems.map(numberingHeading);
   const entries = toc.entries.map((entry) => {
     const number = entry.number === null ? "" : render(asTexWrites(entry.number));
-    return { level: entry.level, key: titleKey(entry.title), number: number === "" ? null : number };
+    return { level: entry.level, key: titleKey(entry.title), number: number === "" ? null : number, page: entry.page };
   });
-  const numbersBySource = new Map<string, string | null>();
+  const marksBySource = new Map<string, HeadingMark>();
   const omittedItems = omittedOutlineItems(index, documentItems, Object.keys(texts), compiled, extraSections);
   const reservedEntries = new Set<number>();
   if (omittedItems.length > 0) {
@@ -271,15 +276,17 @@ export function latexOutlineNumbers({
     for (const [heading, entry] of outlineMatches(allHeadings, entries, "unique")) {
       if (heading < headings.length) continue;
       reservedEntries.add(entry);
-      numbersBySource.set(sourceKey(omittedItems[heading - headings.length]), entries[entry].number);
+      const { number, page } = entries[entry];
+      marksBySource.set(sourceKey(omittedItems[heading - headings.length]), { number, page });
     }
   }
   const remainingEntries = entries.filter((_, entry) => !reservedEntries.has(entry));
-  const documentNumbers = outlineNumbers(headings, remainingEntries);
-  documentItems.forEach((item, heading) => {
-    numbersBySource.set(sourceKey(item), documentNumbers[heading]);
+  outlineEntryMatches(headings, remainingEntries).forEach((entry, heading) => {
+    if (entry === null) return;
+    const { number, page } = remainingEntries[entry];
+    marksBySource.set(sourceKey(documentItems[heading]), { number, page });
   });
   return items.map((item) =>
-    item.kind === "section" ? (numbersBySource.get(sourceKey(item)) ?? null) : null,
+    item.kind === "section" ? (marksBySource.get(sourceKey(item)) ?? null) : null,
   );
 }

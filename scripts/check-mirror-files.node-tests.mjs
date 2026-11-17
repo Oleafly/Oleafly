@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -57,6 +58,18 @@ test("every TinyTeX archive maps to its mirror address and pinned size", () => {
       ["https://mirrors.oleafly.com/binaries/tinytex/v2026.08/TinyTeX-linux-arm64-v2026.08.tar.xz", 155871496],
     ],
   );
+});
+
+test("the Windows real-latexmk CI job installs the TinyTeX the app pins", () => {
+  const engine = readFileSync(resolve(ROOT, "src-tauri/src/latex_engine.rs"), "utf8");
+  const workflow = readFileSync(resolve(ROOT, ".github/workflows/ci.yml"), "utf8");
+  const job = workflow.slice(workflow.indexOf("\n  latexmk-windows:\n"));
+  const value = (name) => new RegExp(`\\n\\s+${name}: (\\S+)`).exec(job)?.[1];
+  const windows = tinytexFiles(engine).find(({ url }) => url.endsWith(".zip"));
+  assert.equal(value("TINYTEX_URL"), windows.url);
+  const pinned = /\("windows", "x86_64"\)[\s\S]*?"([0-9a-f]{64})"/.exec(engine)?.[1];
+  assert.ok(pinned, "latex_engine.rs no longer pins a Windows TinyTeX sha256");
+  assert.equal(value("TINYTEX_SHA256"), pinned);
 });
 
 test("a TinyTeX source the pattern no longer understands fails loudly", () => {

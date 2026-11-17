@@ -179,7 +179,8 @@
     "imageToTypst": "Billede til Typst",
     "imageToTypstTooltip": "Billede til Typst (transskriber med AI)",
     "typstPackages": "Typst-pakker",
-    "latexPackages": "LaTeX-pakker"
+    "latexPackages": "LaTeX-pakker",
+    "preview": "Forhåndsvisning"
   },
   "contextMenu": {
     "engineUnavailable": "Handlinger fra dokumentmotoren er ikke tilgængelige",
@@ -229,6 +230,8 @@
     "pdfLoadFailed": "Kunne ikke indlæse PDF'en: {{detail}}",
     "imageLoadFailed": "Kunne ikke indlæse billedet: {{detail}}",
     "imageUnreadable": "Filen kan ikke vises som billede. Den kan være beskadiget, eller den er måske ikke et billede.",
+    "imageFit": "Tilpas til vinduet",
+    "htmlPreviewFailed": "Kunne ikke vise siden: {{detail}}",
     "binaryFile": "Binær fil. Der er ingen forhåndsvisning.",
     "managedFileReadOnly": "{{file}} styres af Oleafly og er skrivebeskyttet her. Projektindstillinger ændres i Oleafly selv, ikke ved at redigere denne fil.",
     "noFileOpen": "Ingen fil er åben.",
@@ -1697,5 +1700,19 @@
     "skinTone": "Hudfarve",
     "loading": "Indlæser emoji",
     "empty": "Ingen emoji fundet"
+  },
+  "bibList": {
+    "count_one": "{{count}} reference",
+    "count_other": "{{count}} referencer",
+    "empty": "Filen har ingen referencer endnu.",
+    "etAl": "{{author}} et al.",
+    "noMatch": "Ingen referencer matcher din søgning.",
+    "search": "Søg i referencer"
+  },
+  "deck": {
+    "noSlides": "Præsentationen har ingen slides endnu. Eksportér en liste af slide-komponenter som standardeksport."
+  },
+  "board": {
+    "unreadable": "Denne tavle kunne ikke læses. Filen kan være beskadiget, eller den er ikke en Excalidraw-tegning."
   }
 }

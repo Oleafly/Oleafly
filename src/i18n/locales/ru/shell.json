@@ -563,7 +563,7 @@
       },
       "glossaries-index": {
         "title": "Инструмент глоссария или указателя",
-        "detail": "glossaries и makeindex требуют дополнительного запуска makeindex или xindy, а встроенный движок этого не делает."
+        "detail": "glossaries и makeindex требуют дополнительного запуска makeindex, xindy или bib2gls, а встроенный движок этого не делает."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref настроен на драйвер pdfTeX",
@@ -1115,7 +1115,8 @@
       "help": "Справка и о программе",
       "integrations": "Интеграции",
       "shortcuts": "Сочетания клавиш",
-      "research": "Исследования"
+      "research": "Исследования",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Нет подходящих настроек",
@@ -1132,7 +1133,8 @@
         "help": "о программе, версия, обновления, список изменений, что нового, документация, поддержка, сообщество, Discord, лицензия, отчёт о сбое",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-хостинг, Computer Use, приложения на компьютере, Cua, MCP, цитаты, цитирование, учётные записи, аккаунты, подключения",
         "shortcuts": "сочетания клавиш, горячие клавиши, клавиши, клавиатура",
-        "research": "исследования задачи бюджет уведомления не засыпать эксперименты запуски research tasks"
+        "research": "исследования задачи бюджет уведомления не засыпать эксперименты запуски research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Поиск по настройкам",
       "results_one": "{{count}} раздел подходит",
@@ -1714,5 +1716,9 @@
   "stuckWindow": {
     "reloaded": "Oleafly перезагрузил это окно, потому что оно не отвечало 30 секунд. Изменения, сделанные прямо перед этим, могли не сохраниться.",
     "reloadedAgain": "Oleafly снова перезагрузил это окно, потому что оно опять перестало отвечать. Ваш проект не открыт заново на случай, если причина в нём."
+  },
+  "zoomIndicator": {
+    "label": "Масштаб",
+    "reset": "Сбросить"
   }
 }

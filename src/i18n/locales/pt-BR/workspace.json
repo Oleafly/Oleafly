@@ -129,6 +129,8 @@
     "entryCount_other": "{{count}} itens no sumário",
     "expandHeading": "Expandir {{title}}",
     "expandAll": "Expandir todos os títulos",
+    "onPage": "{{heading}}, página {{page}}",
+    "page": "p.{{page}}",
     "title": "Sumário"
   },
   "panelError": {

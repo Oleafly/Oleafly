@@ -31,6 +31,8 @@ pub mod portable;
 pub mod process_probe;
 pub mod sidecar;
 pub mod templates;
+#[cfg(any(test, feature = "test-support"))]
+pub mod test_support;
 pub mod tex_distro;
 mod tex_engine_notices;
 pub mod tex_errors;
@@ -52,17 +54,18 @@ pub use compile_log::{
     MAX_COMPILE_LOG_BYTES,
 };
 pub use detect::{
-    compile_dir_for, detect_main_document, project_tex_flavor, tex_magic_comments,
-    typst_uses_calepin, Candidate, Decision, DetectLimits, DetectOptions, Detection,
-    DetectionSource, DocumentKind, Reason, SourceFamily, TexMagicComments, Tier, DETECT_DEADLINE,
-    DETECT_MAX_DEPTH, DETECT_MAX_ENTRIES, DETECT_MAX_SOURCES,
+    compile_dir_for, declared_tex_flavor, detect_main_document, project_tex_flavor,
+    tex_magic_comments, typst_uses_calepin, Candidate, Decision, DeclaredFlavorSource,
+    DetectLimits, DetectOptions, Detection, DetectionSource, DocumentKind, Reason, SourceFamily,
+    TexMagicComments, Tier, DETECT_DEADLINE, DETECT_MAX_DEPTH, DETECT_MAX_ENTRIES,
+    DETECT_MAX_SOURCES,
 };
 #[cfg(windows)]
 pub use engine_temp::long_path_name;
 pub use engine_temp::{
-    document_search_folders, plain_path, short_path_name, tex_safe_path, EngineScratch,
-    EngineScratchBases, PandocResourcePath, ENGINE_TEMP_DIR, PANDOC_RESOURCE_PATH_VARIABLE,
-    TEMP_DIRECTORY_VARIABLES,
+    document_search_folders, pandoc_search_path, pandoc_search_path_needs_defaults, plain_path,
+    short_path_name, tex_safe_path, EngineScratch, EngineScratchBases, PandocResourcePath,
+    ENGINE_TEMP_DIR, PANDOC_RESOURCE_PATH_VARIABLE, TEMP_DIRECTORY_VARIABLES,
 };
 pub use error::{Error, ErrorKind, Result};
 pub use image_check::{

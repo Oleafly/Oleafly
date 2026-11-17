@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use tauri::Emitter;
 
 use crate::proc::{isolate_process_tree, terminate_process_tree, NoConsole};
-use oleafly_core::tex_failure::{denied_shell_escape_feature, DeniedShellEscape};
+use oleafly_core::tex_failure::{blocked_shell_escape, DeniedShellEscape};
 #[cfg(test)]
 use oleafly_core::tex_failure::{log_refused_a_shell_command, runsystem_statuses};
 use oleafly_core::tex_outputs::{
@@ -548,7 +548,7 @@ fn pythontex_job_arg(
         return Ok(relative.join(stem).to_string_lossy().into_owned());
     }
     if owned_output {
-        return Ok(out_dir.join(stem).to_string_lossy().into_owned());
+        return latexmk_owned_path_arg(&out_dir.join(stem));
     }
     Err("PythonTeX output must stay inside the project directory".to_string())
 }
@@ -576,39 +576,8 @@ fn latexmk_absolute_path_arg(path: &Path) -> Result<String, String> {
 /// data under C:\Users\Jörg) came out mangled and every compile stopped. The
 /// folder's 8.3 short spelling is ASCII when the volume keeps short names.
 fn latexmk_owned_path_arg(path: &Path) -> Result<String, String> {
-    owned_path_text(
-        path,
-        cfg!(windows),
-        &crate::project_availability::short_spelling,
-    )
-    .ok_or_else(|| crate::app_error::AppError::new("tex.latexmk_build_path").into())
-}
-
-fn owned_path_text(
-    path: &Path,
-    windows: bool,
-    short_spelling: &dyn Fn(&Path) -> Option<PathBuf>,
-) -> Option<String> {
-    let text = latexmk_absolute_path_text(path, windows)?;
-    if !windows || text.is_ascii() {
-        return Some(text);
-    }
-    // A file the compile writes later has no short name yet, so shorten the
-    // nearest folder that exists and keep the names below it.
-    let mut below = Vec::new();
-    let mut existing = path;
-    let short = loop {
-        if let Some(short) = short_spelling(existing) {
-            break short;
-        }
-        below.push(existing.file_name()?);
-        existing = existing.parent()?;
-    };
-    let shortened = below
-        .into_iter()
-        .rev()
-        .fold(short, |folder, name| folder.join(name));
-    latexmk_absolute_path_text(&shortened, windows).filter(|text| text.is_ascii())
+    latexmk_owned_path_text(path, cfg!(windows), &oleafly_core::short_path_name)
+        .ok_or_else(|| crate::app_error::AppError::new("tex.latexmk_build_path").into())
 }
 
 fn windows_network_path(path: &Path) -> bool {
@@ -690,9 +659,9 @@ fn latexmk_relative_path_arg(path: &Path) -> Result<String, String> {
     })
 }
 
-use oleafly_core::engine_spec::latexmk_absolute_path_text;
 #[cfg(test)]
 use oleafly_core::engine_spec::shell_escape_arg;
+use oleafly_core::engine_spec::{latexmk_absolute_path_text, latexmk_owned_path_text};
 
 fn latexmk_invocation(
     project_dir: &Path,
@@ -845,6 +814,8 @@ impl DocumentEngine for LatexmkEngine {
             &crate::tex_distro::distribution_kind_for_tool(&latexmk),
         )?;
         require_latex_compiler(flavor, &latexmk, &environment, project_dir)?;
+        oleafly_core::engine_spec::write_latexmk_rc(out_dir, flavor)
+            .map_err(|error| error.to_string())?;
         let artifacts = self.artifacts(out_dir, target);
         // latexmk's dependency database is not portable across TeX
         // distributions: after a distro switch it can report "Nothing to do"
@@ -1939,10 +1910,12 @@ async fn recover_bibliography(
         return Ok((String::new(), None));
     }
     if request.engine.id() == DocumentEngineId::Latexmk && *exit_code != Some(0) {
-        return Ok((
-            biber_log_notes(&spec.artifacts.output_dir, crate::paths::ENTRY_STEM),
-            None,
-        ));
+        let notes = if tex_ran(spec) {
+            biber_log_notes(&spec.artifacts.output_dir, crate::paths::ENTRY_STEM)
+        } else {
+            String::new()
+        };
+        return Ok((notes, None));
     }
     if request.engine.id() != DocumentEngineId::Latex {
         return Ok((String::new(), None));
@@ -1986,6 +1959,10 @@ fn bibliography_recovery_needed(
 ) -> bool {
     output_dir.join(format!("{stem}.bcf")).is_file()
         && !crate::biber_toolchain::bbl_refreshed(output_dir, stem, bbl_before)
+}
+
+fn tex_ran(spec: &EngineCompileSpec) -> bool {
+    spec.artifacts.log.as_ref().is_some_and(|log| log.is_file())
 }
 
 fn biber_log_notes(output_dir: &Path, stem: &str) -> String {
@@ -2294,18 +2271,34 @@ fn append_tex_output_notes(
             log,
             &spec.artifacts.output_dir,
             request.options.latex_flavor.is_none(),
+            tex_ran(spec),
         );
+        causes.extend(request.options.latex_flavor.and_then(|pinned| {
+            oleafly_core::tex_outputs::pinned_compiler_warning(
+                request.project_dir,
+                &request.project_dir.join(main_document),
+                pinned,
+            )
+        }));
     }
     causes.extend(nested_input_error(request.project_dir, main_document, log));
     errors.splice(0..0, causes);
 }
 
-fn latexmk_failure_causes(log: &str, output_dir: &Path, auto_flavor: bool) -> Vec<CompileError> {
+fn latexmk_failure_causes(
+    log: &str,
+    output_dir: &Path,
+    auto_flavor: bool,
+    tex_ran: bool,
+) -> Vec<CompileError> {
     let mut causes: Vec<CompileError> = latexmk_biber_mismatch_error(log).into_iter().collect();
-    causes.extend(bibliography_above_main_error(
-        output_dir,
-        crate::paths::ENTRY_STEM,
-    ));
+    causes.extend(oleafly_core::tex_outputs::bib2gls_java_error(log));
+    if tex_ran {
+        causes.extend(bibliography_above_main_error(
+            output_dir,
+            crate::paths::ENTRY_STEM,
+        ));
+    }
     if auto_flavor {
         causes.extend(unicode_engine_error(log));
     }
@@ -2508,7 +2501,10 @@ fn bibtex_folder_brace_error(
     spec: &EngineCompileSpec,
     exit_code: Option<i32>,
 ) -> Option<CompileError> {
-    if exit_code == Some(0) || !oleafly_core::has_unmatched_brace(&spec.working_dir) {
+    if exit_code == Some(0)
+        || !tex_ran(spec)
+        || !oleafly_core::has_unmatched_brace(&spec.working_dir)
+    {
         return None;
     }
     let bibtex_log = read_log_bounded(&spec.artifacts.log.as_ref()?.with_extension("blg")).ok()?;
@@ -2714,6 +2710,7 @@ fn latexmk_setup_gap(
         spec.environment.path_excluded_root(&spec.working_dir),
     );
     let biber_needed = matches!(request.target, CompileTarget::Main { .. })
+        && tex_ran(spec)
         && bibliography_recovery_needed(
             &spec.artifacts.output_dir,
             crate::paths::ENTRY_STEM,
@@ -2766,8 +2763,13 @@ fn append_unreported_failure(
     if ok || stopped {
         return;
     }
+    let lines = oleafly_core::tex_errors::compiler_output_lines(log);
     let last_line = |matches: &dyn Fn(&str) -> bool| {
-        log.lines().rev().map(str::trim).find(|line| matches(line))
+        lines
+            .iter()
+            .rev()
+            .map(|line| line.trim())
+            .find(|line| matches(line))
     };
     if let Some(line) = last_line(&|line| line.starts_with(TIMED_OUT_LOG_PREFIX)) {
         errors.retain(|error| !line.ends_with(error.message.as_str()));
@@ -2806,7 +2808,7 @@ fn append_shell_escape_error(
         return;
     }
     let source_head = read_source_head(spec.input.path());
-    let Some(denied) = denied_shell_escape_feature(&source_head, log) else {
+    let Some(denied) = blocked_shell_escape(&source_head, log) else {
         return;
     };
     let error = shell_escape_denial(denied);
@@ -3664,8 +3666,8 @@ fn supervised_command(
     use std::process::Stdio;
     let mut command = tokio::process::Command::new(path);
     command.no_console();
+    oleafly_core::engine_spec::add_wrapper_safe_args(command.as_std_mut(), path, args);
     command
-        .args(args)
         .current_dir(working_dir)
         // TeX bin dirs + tectonic-biber for all supervised children (LaTeX primary;
         // Typst/others ignore extra PATH entries that are not present or unused).
@@ -4067,10 +4069,9 @@ fn write_in_tree_build_by_absolute_path(spec: &mut EngineCompileSpec, project_di
     if !in_tree_absolute_path_reaches_latexmk(&absolute, cfg!(windows)) {
         return false;
     }
-    let Some(argument) = spec.args.iter_mut().find(|arg| arg.starts_with("-outdir=")) else {
+    if !oleafly_core::engine_spec::set_latexmk_out_dir(&mut spec.args, &absolute) {
         return false;
-    };
-    *argument = format!("-outdir={absolute}");
+    }
     let mut environment =
         std::mem::take(&mut spec.environment).with_variable("TEXMFOUTPUT", absolute);
     for (name, value) in oleafly_core::project_search_environment(project_dir) {
@@ -8201,9 +8202,16 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             CompileOptions::default(),
         )
         .unwrap();
-        assert_eq!(&args[..3], ["-norc", "-shell-restricted", "-pdfdvi"]);
-        assert!(args.contains(&"-latex=uplatex %O %S".to_string()));
-        assert!(args.contains(&"$dvipdf = q/dvipdfmx %O -o %D %S/".to_string()));
+        assert_eq!(
+            &args[..5],
+            [
+                "-norc",
+                "-shell-restricted",
+                "-pdfdvi",
+                "-r",
+                "./.oleafly/build/.oleafly-uplatex-latexmkrc"
+            ]
+        );
         assert!(args.contains(&"-synctex=1".to_string()));
         assert!(!args.contains(&"-pdf".to_string()));
         assert_eq!(args.last().unwrap(), "./main.tex");
@@ -8336,7 +8344,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             "runsystem(repstopdf a.eps)...executed safely (allowed).",
         ] {
             assert_eq!(
-                denied_shell_escape_feature("\\documentclass{article}", allowed),
+                blocked_shell_escape("\\usepackage{minted}", allowed),
                 None,
                 "{allowed}"
             );
@@ -8350,7 +8358,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             "package svg error: you must invoke latex with the -shell-escape flag.",
         ] {
             assert_eq!(
-                denied_shell_escape_feature("\\documentclass{article}", denial),
+                blocked_shell_escape("\\documentclass{article}", denial),
                 Some(DeniedShellEscape::Command),
                 "{denial}"
             );
@@ -8643,6 +8651,8 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         assert!(bibtex_folder_brace_error(&spec, Some(12)).is_none());
 
         std::fs::write(&bibtex_log, failed).unwrap();
+        assert!(bibtex_folder_brace_error(&spec, Some(12)).is_none());
+        std::fs::write(lone.join("_oleafly_entry.log"), "This is pdfTeX").unwrap();
         let error = bibtex_folder_brace_error(&spec, Some(12)).unwrap();
         assert_eq!(error.code.as_deref(), Some("tex.bibtex_folder_brace"));
         assert_eq!(error.kind, "error");
@@ -8653,6 +8663,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
 
         let spec = latexmk_spec(&paired, crate::paths::ENTRY_STEM);
         std::fs::write(paired.join("_oleafly_entry.blg"), failed).unwrap();
+        std::fs::write(paired.join("_oleafly_entry.log"), "This is pdfTeX").unwrap();
         assert!(bibtex_folder_brace_error(&spec, Some(12)).is_none());
     }
 
@@ -8666,6 +8677,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             "I couldn't open database file refs.bib\n",
         )
         .unwrap();
+        std::fs::write(lone.join("figure.v2.log"), "This is pdfTeX").unwrap();
         let spec = latexmk_spec(&lone, "figure.v2");
         assert!(bibtex_folder_brace_error(&spec, None).is_some());
     }
@@ -8786,45 +8798,6 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         assert_eq!(
             crate::app_error::code(&tectonic).as_deref(),
             Some("tex.main_document_characters")
-        );
-    }
-
-    #[test]
-    fn a_non_ascii_owned_build_folder_reaches_latexmk_by_its_short_name() {
-        let build = Path::new("C:/Users/Jörg/.oleafly/linked/p/build");
-        let short = |path: &Path| {
-            (path == build).then(|| PathBuf::from("C:/Users/JRG~1/.oleafly/linked/p/build"))
-        };
-        assert_eq!(
-            owned_path_text(build, true, &short).as_deref(),
-            Some("C:/Users/JRG~1/.oleafly/linked/p/build")
-        );
-        assert_eq!(
-            owned_path_text(&build.join("_figure.tex"), true, &short).as_deref(),
-            Some("C:/Users/JRG~1/.oleafly/linked/p/build/_figure.tex")
-        );
-    }
-
-    #[test]
-    fn a_non_ascii_owned_build_folder_without_a_short_name_is_refused() {
-        let build = Path::new("C:/Users/张三/.oleafly/linked/p/build");
-        assert_eq!(owned_path_text(build, true, &|_| None), None);
-        let unchanged = |path: &Path| Some(path.to_path_buf());
-        assert_eq!(owned_path_text(build, true, &unchanged), None);
-    }
-
-    #[test]
-    fn an_ascii_owned_build_folder_keeps_its_own_name() {
-        let build = Path::new("C:/Users/ada/.oleafly/linked/p/build");
-        let never = |_: &Path| -> Option<PathBuf> { panic!("no short name needed") };
-        assert_eq!(
-            owned_path_text(build, true, &never).as_deref(),
-            Some("C:/Users/ada/.oleafly/linked/p/build")
-        );
-        let unix = Path::new("/home/jörg/.oleafly/linked/p/build");
-        assert_eq!(
-            owned_path_text(unix, false, &never).as_deref(),
-            Some("/home/jörg/.oleafly/linked/p/build")
         );
     }
 
@@ -9143,6 +9116,10 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         assert_eq!(placed.working_dir, paper);
         assert_eq!(placed.args.last().unwrap(), "./main.tex");
         assert!(placed.args.contains(&format!("-outdir={absolute}")));
+        assert!(placed.args.contains(&format!(
+            "{absolute}/{}",
+            oleafly_core::engine_spec::latexmk_rc_file(LatexmkFlavor::Pdflatex)
+        )));
         assert_eq!(placed.args.len(), spec.args.len());
         assert_eq!(placed.environment, spec.environment);
 
@@ -9193,6 +9170,20 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         assert_eq!(placed.args.last().unwrap(), "./main.tex");
         assert!(placed.args.contains(&format!("-outdir={absolute_in_tree}")));
         assert_eq!(placed.args.len(), library.args.len());
+        let rc_at = placed.args.iter().position(|arg| arg == "-r").unwrap() + 1;
+        assert_eq!(
+            placed.args[rc_at],
+            format!(
+                "{absolute_in_tree}/{}",
+                oleafly_core::engine_spec::latexmk_rc_file(LatexmkFlavor::Pdflatex)
+            )
+        );
+        assert_eq!(
+            placed.working_dir.join(&placed.args[rc_at]),
+            in_tree.join(oleafly_core::engine_spec::latexmk_rc_file(
+                LatexmkFlavor::Pdflatex
+            ))
+        );
         let variable = |name: &str| {
             placed
                 .environment
@@ -9357,7 +9348,7 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
     fn a_failed_latexmk_build_names_the_bibliography_path_bibtex_cannot_follow() {
         let out = tempfile::tempdir().unwrap();
         let codes = |log: &str, auto: bool| -> Vec<String> {
-            latexmk_failure_causes(log, out.path(), auto)
+            latexmk_failure_causes(log, out.path(), auto, true)
                 .into_iter()
                 .filter_map(|cause| cause.code)
                 .collect()
@@ -9369,6 +9360,10 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         )
         .unwrap();
         assert_eq!(codes("", true), ["tex.bibliography_above_main"]);
+        assert!(
+            latexmk_failure_causes("", out.path(), true, false).is_empty(),
+            "a .blg from an earlier build blamed a run where TeX never started"
+        );
         let refused =
             "! Fatal Package fontspec Error: The fontspec package requires either XeTeX or\n";
         assert_eq!(
@@ -9489,6 +9484,76 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
             flavors.push((LatexmkFlavor::Platex, "\\documentclass{jsarticle}\n"));
         }
         flavors
+    }
+
+    #[cfg(unix)]
+    #[ignore = "runs the installed TeX distribution"]
+    #[tokio::test]
+    async fn real_latexmk_builds_every_list_oleaflys_rc_file_knows() {
+        if crate::tex_distro::find_tex_tool("latexmk").is_none() {
+            return;
+        }
+        let scratch = tempfile::Builder::new()
+            .prefix("oleafly-real-lists-")
+            .tempdir()
+            .unwrap();
+        let project = scratch.path().canonicalize().unwrap().join("O'Neil lists");
+        let out = project.join(".oleafly/build");
+        std::fs::create_dir_all(&out).unwrap();
+        std::fs::write(
+            project.join("main.tex"),
+            "\\documentclass{article}\n\\usepackage[acronym,symbols,order=letter]{glossaries}\n\\usepackage{nomencl}\n\\usepackage{makeidx}\n\\makeglossaries\n\\makenomenclature\n\\makeindex\n\\newglossaryentry{sea lion}{name={sea lion},description={a mammal}}\n\\newglossaryentry{seal}{name={seal},description={a mammal}}\n\\newacronym{gpu}{GPU}{graphics processing unit}\n\\newglossaryentry{c}{type=symbols,name={\\ensuremath{c}},description={speed}}\n\\begin{document}\n\\gls{sea lion} \\gls{seal} \\gls{gpu} \\gls{c}\\index{word} $c$\\nomenclature{$c$}{speed of light}\n\\printglossaries\n\\printnomenclature\n\\printindex\n\\end{document}\n",
+        )
+        .unwrap();
+        let (spec, log, code) =
+            real_latexmk_compile(&project, &out, LatexmkFlavor::Pdflatex, &[]).await;
+        let output_dir = spec.artifacts.output_dir.clone();
+        let built = |extension: &str| {
+            std::fs::metadata(output_dir.join(format!("{}.{extension}", crate::paths::ENTRY_STEM)))
+                .is_ok_and(|metadata| metadata.len() > 0)
+        };
+        assert!(!log.contains("Stopping because"), "{log}");
+        assert_eq!(code, Some(0), "{log}");
+        for extension in ["gls", "acr", "sls", "nls", "ind"] {
+            assert!(built(extension), "{extension}\n{log}");
+        }
+        let glossary =
+            std::fs::read_to_string(output_dir.join(format!("{}.gls", crate::paths::ENTRY_STEM)))
+                .unwrap();
+        assert!(
+            glossary.find("{seal}").unwrap() < glossary.find("{sea lion}").unwrap(),
+            "order=letter must reach makeindex as -l\n{glossary}"
+        );
+
+        if crate::tex_distro::find_tex_tool("bib2gls").is_none() {
+            return;
+        }
+        std::fs::write(
+            project.join("terms.bib"),
+            "@entry{duck,name={duck},description={a waterbird}}\n@entry{goose,name={goose},description={a waterbird}}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            project.join("main.tex"),
+            "\\documentclass{article}\n\\usepackage[record]{glossaries-extra}\n\\GlsXtrLoadResources[src={terms}]\n\\begin{document}\nMain.\n\\include{chapter}\n\\printunsrtglossaries\n\\end{document}\n",
+        )
+        .unwrap();
+        for chapter in ["\\gls{duck}\n", "\\gls{duck} and \\gls{goose}\n"] {
+            std::fs::write(project.join("chapter.tex"), chapter).unwrap();
+            let (spec, log, code) =
+                real_latexmk_compile(&project, &out, LatexmkFlavor::Pdflatex, &[]).await;
+            assert_eq!(code, Some(0), "{log}");
+            assert!(spec
+                .artifacts
+                .output_dir
+                .join(format!("{}.glstex", crate::paths::ENTRY_STEM))
+                .is_file());
+            let tex_log = std::fs::read_to_string(spec.artifacts.log.unwrap()).unwrap();
+            assert!(
+                !tex_log.contains("has not been defined"),
+                "{chapter}\n{tex_log}"
+            );
+        }
     }
 
     #[cfg(unix)]
@@ -10277,7 +10342,10 @@ printf '%s\n' '%PDF-1.4' '%%EOF' > "$outdir/texput.pdf"
         assert!(pythontex_args(&project, &root.join("outside"), "job", false).is_err());
         assert_eq!(
             pythontex_args(&project, &root.join("outside"), "job", true).unwrap()[2],
-            root.join("outside").join("job").to_string_lossy()
+            root.join("outside")
+                .join("job")
+                .to_string_lossy()
+                .replace('\\', "/")
         );
 
         let latexmk = bin.join(crate::tex_distro::exe("latexmk"));

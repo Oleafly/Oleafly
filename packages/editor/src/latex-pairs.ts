@@ -29,7 +29,7 @@ import {
   type LatexDelimiterCompletionSpec,
 } from "./latex-delimiters";
 import { inLatexIgnoredRegion, mathContextAt } from "./latex-lexical";
-import { vimOwnsInput } from "./latex-structure-commands";
+import { typedAtSelection, vimOwnsInput } from "./latex-structure-commands";
 
 export interface LatexPairOptions {
   math: boolean;
@@ -514,10 +514,7 @@ export function latexPairInputHandler(options: LatexPairOptions): Extension {
     options.math ? trackedPairs : [],
     Prec.high(
       EditorView.inputHandler.of((view, from, to, text) => {
-        if (view.composing || view.compositionStarted) return false;
-        if (vimOwnsInput(view)) return false;
-        const main = view.state.selection.main;
-        if (from !== main.from || to !== main.to) return false;
+        if (!typedAtSelection(view, from, to)) return false;
         const spec = latexPairChange(view.state, text, options);
         if (!spec) return false;
         view.dispatch(spec);

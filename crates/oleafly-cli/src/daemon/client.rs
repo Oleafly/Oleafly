@@ -360,12 +360,13 @@ mod tests {
         let data = tempfile::tempdir().unwrap();
         let paths = helper_paths(data.path());
         std::fs::create_dir_all(&paths.dir).unwrap();
-        let mut sleeper = std::process::Command::new(if cfg!(windows) { "cmd" } else { "sleep" })
+        let mut sleeper = std::process::Command::new(if cfg!(windows) { "ping" } else { "sleep" })
             .args(if cfg!(windows) {
-                vec!["/c", "ping -n 30 127.0.0.1 >NUL"]
+                vec!["-n", "30", "127.0.0.1"]
             } else {
                 vec!["30"]
             })
+            .stdout(std::process::Stdio::null())
             .spawn()
             .unwrap();
         let pid = sleeper.id();

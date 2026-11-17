@@ -40,6 +40,8 @@
     "@codemirror/autocomplete": "*",
     "@codemirror/commands": "*",
     "@codemirror/lang-css": "*",
+    "@codemirror/lang-html": "*",
+    "@codemirror/lang-javascript": "*",
     "@codemirror/lang-json": "*",
     "@codemirror/lang-markdown": "*",
     "@codemirror/language": "*",

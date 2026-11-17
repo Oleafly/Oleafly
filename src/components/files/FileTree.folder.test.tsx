@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -71,7 +71,7 @@ beforeEach(async () => {
     if (command === "project_engine") return LATEX_ENGINE;
     return undefined;
   });
-  useSettingsStore.setState({ hiddenFilePatterns: [] });
+  useSettingsStore.setState({ hiddenFilePatterns: [], fileMarkers: "icons" });
   useFilesStore.setState({
     projectId: "linked-0123456789abcdef0123456789abcdef",
     tree: TREE,
@@ -113,6 +113,20 @@ describe("FileTree in an opened folder", () => {
 
     expect(mocks.invoke.mock.calls.some(([command]) => command === "read_file")).toBe(false);
     expect(useFilesStore.getState().openTabs).toEqual([]);
+  });
+
+  it("marks files with type badges instead of icons when the setting asks, and keeps folder icons", () => {
+    useFilesStore.setState({ tree: FIGURES });
+    render(<FileTree />);
+    const before = screen.getByRole("treeitem", { name: /main\.tex/ });
+    expect(before.querySelector('svg[data-file-kind="tex"]')).toHaveClass("text-file-source");
+    expect(within(before).queryByText("TEX")).toBeNull();
+
+    act(() => useSettingsStore.setState({ fileMarkers: "badges" }));
+    const main = screen.getByRole("treeitem", { name: /main\.tex/ });
+    expect(within(main).getByText("TEX")).toHaveClass("text-file-source");
+    expect(main.querySelector("svg[data-file-kind]")).toBeNull();
+    expect(screen.getByRole("treeitem", { name: /figures/ }).querySelector("svg.text-file-folder")).toBeInTheDocument();
   });
 
   it("offers only rename and delete for an unreadable entry", () => {

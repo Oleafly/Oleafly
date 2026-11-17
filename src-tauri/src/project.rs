@@ -7299,11 +7299,6 @@ impl oleafly_doctools::ToolRunner for AppToolRunner {
     }
 }
 
-#[cfg(test)]
-fn export_search_path(root: &Path, main_doc: &str) -> (String, String) {
-    oleafly_doctools::export::export_search_path(root, main_doc)
-}
-
 fn export_typst() -> Option<PathBuf> {
     crate::document_engine::resolve_bundled_sidecar("typst").ok()
 }
@@ -9156,6 +9151,21 @@ mod tests {
             .tempdir()
             .unwrap()
             .keep()
+    }
+
+    fn open_and_wait_for_git<R: tauri::Runtime>(
+        app: &tauri::AppHandle<R>,
+        state: &crate::state::AppState,
+        project_id: &str,
+    ) -> Result<ProjectMeta, String> {
+        tauri::async_runtime::block_on(async {
+            let (project, git_initialization) =
+                super::open_project(app, state, project_id.to_string()).await?;
+            git_initialization
+                .await
+                .map_err(|error| error.to_string())?;
+            Ok(project)
+        })
     }
 
     #[test]
@@ -12181,17 +12191,7 @@ mod tests {
             .unwrap();
         let handle = app.handle().clone();
         let state = app.state::<crate::state::AppState>();
-        let open = |project_id: &str| {
-            let project_id = project_id.to_string();
-            tauri::async_runtime::block_on(async {
-                let (project, git_initialization) =
-                    super::open_project(&handle, &state, project_id).await?;
-                git_initialization
-                    .await
-                    .map_err(|error| error.to_string())?;
-                Ok::<ProjectMeta, String>(project)
-            })
-        };
+        let open = |project_id: &str| open_and_wait_for_git(&handle, &state, project_id);
 
         write_git_auto_init(false);
         let project_id = super::create_blank_project("Existing".into()).unwrap();
@@ -12266,12 +12266,7 @@ mod tests {
             .unwrap()
             .as_secs_f64();
         for project_id in [&library, &linked.id] {
-            tauri::async_runtime::block_on(super::open_project(
-                &handle,
-                &state,
-                project_id.clone(),
-            ))
-            .unwrap();
+            open_and_wait_for_git(&handle, &state, project_id).unwrap();
         }
 
         assert!(listed_at(&library) >= started.floor());
@@ -12358,18 +12353,8 @@ mod tests {
         };
         assert_eq!(listed(&thesis_link.id).main_doc, "");
 
-        let (opened, _) = tauri::async_runtime::block_on(super::open_project(
-            &handle,
-            &state,
-            thesis_link.id.clone(),
-        ))
-        .unwrap();
-        tauri::async_runtime::block_on(super::open_project(
-            &handle,
-            &state,
-            papers_link.id.clone(),
-        ))
-        .unwrap();
+        let opened = open_and_wait_for_git(&handle, &state, &thesis_link.id).unwrap();
+        open_and_wait_for_git(&handle, &state, &papers_link.id).unwrap();
 
         assert_eq!(opened.main_doc, "paper/main.tex");
         let thesis_info = listed(&thesis_link.id);
@@ -15734,62 +15719,39 @@ mod tests {
     }
 
     #[test]
-    fn export_texinputs_lists_root_relative_folders_split_on_colons() {
-        // Pandoc splits TEXINPUTS on ':' on every platform and runs from the
-        // project root, so the value must hold root-relative folders only:
-        // no drive letter, no ';', and '.' (the root) last.
-        let root = std::env::temp_dir().join("oleafly-texinputs");
-        for (main_doc, expected) in [
-            ("paper/main.tex", "paper:."),
-            ("a/b/main.tex", "a/b:."),
-            ("main.tex", "."),
-        ] {
-            let (_, texinputs) = super::export_search_path(&root, main_doc);
-            assert_eq!(texinputs, expected, "{main_doc}");
-            assert!(!texinputs.contains(';'), "{texinputs}");
-        }
-        #[cfg(unix)]
-        {
-            let (_, texinputs) = super::export_search_path(&root, "odd:name/main.tex");
-            assert_eq!(texinputs, ".");
-        }
-        let (resource_path, _) = super::export_search_path(&root, "paper/main.tex");
-        let expected = std::env::join_paths([root.join("paper"), root.clone()]).unwrap();
-        assert_eq!(resource_path, expected.to_string_lossy());
-    }
-
-    #[test]
-    fn export_resource_path_drops_the_verbatim_prefix() {
-        // Project roots are canonical, so on Windows they start with `\\?\`.
-        // Windows does not read a '/' that pandoc or the citation filter
-        // appends to such a folder as a separator, so the file is not found.
-        // Other systems never spell a path that way, and leave it as it is.
-        let roots = if cfg!(windows) {
-            vec![
-                (
-                    Path::new(r"\\?\UNC\server\share\proj").to_path_buf(),
-                    Path::new(r"\\server\share\proj").to_path_buf(),
-                ),
-                (
-                    Path::new(r"\\?\C:\Users\x\proj").to_path_buf(),
-                    Path::new(r"C:\Users\x\proj").to_path_buf(),
-                ),
-            ]
-        } else {
-            vec![(
-                Path::new("/Users/x/proj").to_path_buf(),
-                Path::new("/Users/x/proj").to_path_buf(),
-            )]
+    fn exports_find_images_in_a_project_folder_named_with_the_search_path_separator() {
+        let Some(pandoc) = pandoc_for_tests() else {
+            return;
         };
-        for (root, plain) in roots {
-            let (resource_path, texinputs) = super::export_search_path(&root, "paper/main.tex");
-            let folders: Vec<_> = std::env::split_paths(&resource_path).collect();
-            assert_eq!(folders, [plain.join("paper"), plain.clone()], "{root:?}");
-            assert!(!resource_path.contains(r"\\?\"), "{resource_path}");
-            assert_eq!(texinputs, "paper:.");
-            let (resource_path, _) = super::export_search_path(&root, "main.tex");
-            assert_eq!(resource_path, plain.to_string_lossy(), "{root:?}");
-        }
+        let project = tempfile::tempdir().unwrap();
+        let separator = if cfg!(windows) { ';' } else { ':' };
+        let root = project.path().join(format!("Thesis 2024{separator}25"));
+        std::fs::create_dir_all(root.join("paper")).unwrap();
+        std::fs::write(root.join("paper/main.md"), "![A figure](figure.png)\n").unwrap();
+        std::fs::write(root.join("paper/figure.png"), tagged_png("separator")).unwrap();
+        let output = tempfile::tempdir().unwrap();
+        let staged = output.path().join("out.docx");
+        tauri::async_runtime::block_on(super::run_export_pandoc(
+            &pandoc,
+            super::ExportJob {
+                root: &root,
+                build_dir: None,
+                main_doc: "paper/main.md",
+                format: "docx",
+                output: &staged.to_string_lossy(),
+                staging_dir: None,
+                temp_dir: None,
+            },
+        ))
+        .unwrap();
+
+        let archive = zip::ZipArchive::new(std::fs::File::open(&staged).unwrap()).unwrap();
+        assert!(
+            archive
+                .file_names()
+                .any(|name| name.is_ok_and(|name| name.starts_with("word/media/"))),
+            "the figure next to the main document is missing"
+        );
     }
 
     const ONE_PIXEL_PNG: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";

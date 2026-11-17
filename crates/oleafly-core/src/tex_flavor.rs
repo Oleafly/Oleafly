@@ -62,23 +62,20 @@ impl TexFlavor {
             Self::Pdflatex => vec!["-pdf".into()],
             Self::Xelatex => vec!["-xelatex".into()],
             Self::Lualatex => vec!["-lualatex".into()],
-            Self::Uplatex => dvi_route("uplatex", "upbibtex", "upmendex"),
-            Self::Platex => dvi_route("platex", "pbibtex", "mendex"),
+            Self::Uplatex | Self::Platex => vec!["-pdfdvi".into()],
         }
     }
-}
 
-fn dvi_route(latex: &str, bibtex: &str, makeindex: &str) -> Vec<String> {
-    vec![
-        "-pdfdvi".into(),
-        format!("-latex={latex} %O %S"),
-        "-e".into(),
-        "$dvipdf = q/dvipdfmx %O -o %D %S/".into(),
-        "-e".into(),
-        format!("$bibtex = q/{bibtex} %O %S/"),
-        "-e".into(),
-        format!("$makeindex = q/{makeindex} %O -o %D %S/"),
-    ]
+    pub fn latexmk_rc_settings(self) -> String {
+        let (latex, bibtex, makeindex) = match self {
+            Self::Uplatex => ("uplatex", "upbibtex", "upmendex"),
+            Self::Platex => ("platex", "pbibtex", "mendex"),
+            Self::Pdflatex | Self::Xelatex | Self::Lualatex => return String::new(),
+        };
+        format!(
+            "$latex = q/{latex} %O %S/;\n$dvipdf = q/dvipdfmx %O -o %D %S/;\n$bibtex = q/{bibtex} %O %S/;\n$makeindex = q/{makeindex} %O -o %D %S/;\n"
+        )
+    }
 }
 
 const UNICODE_ENGINE_MARKERS: [&str; 10] = [
@@ -342,20 +339,32 @@ mod tests {
 
     #[test]
     fn japanese_engines_compile_through_dvipdfmx_with_matching_bibtex_and_index() {
-        let args = TexFlavor::Uplatex.latexmk_args();
-        assert_eq!(args[0], "-pdfdvi");
-        assert!(args.contains(&"-latex=uplatex %O %S".to_string()));
-        assert!(args.contains(&"$dvipdf = q/dvipdfmx %O -o %D %S/".to_string()));
-        assert!(args.contains(&"$bibtex = q/upbibtex %O %S/".to_string()));
-        assert!(args.contains(&"$makeindex = q/upmendex %O -o %D %S/".to_string()));
-        let platex = TexFlavor::Platex.latexmk_args();
-        assert!(platex.contains(&"-latex=platex %O %S".to_string()));
-        assert!(platex.contains(&"$bibtex = q/pbibtex %O %S/".to_string()));
-        assert!(platex.contains(&"$makeindex = q/mendex %O -o %D %S/".to_string()));
+        assert_eq!(
+            TexFlavor::Uplatex.latexmk_args(),
+            vec!["-pdfdvi".to_string()]
+        );
+        let uplatex = TexFlavor::Uplatex.latexmk_rc_settings();
+        for line in [
+            "$latex = q/uplatex %O %S/;",
+            "$dvipdf = q/dvipdfmx %O -o %D %S/;",
+            "$bibtex = q/upbibtex %O %S/;",
+            "$makeindex = q/upmendex %O -o %D %S/;",
+        ] {
+            assert!(uplatex.lines().any(|setting| setting == line), "{line}");
+        }
+        let platex = TexFlavor::Platex.latexmk_rc_settings();
+        for line in [
+            "$latex = q/platex %O %S/;",
+            "$bibtex = q/pbibtex %O %S/;",
+            "$makeindex = q/mendex %O -o %D %S/;",
+        ] {
+            assert!(platex.lines().any(|setting| setting == line), "{line}");
+        }
         assert_eq!(
             TexFlavor::Lualatex.latexmk_args(),
             vec!["-lualatex".to_string()]
         );
+        assert!(TexFlavor::Lualatex.latexmk_rc_settings().is_empty());
         assert!(TexFlavor::Uplatex.goes_through_dvi() && !TexFlavor::Xelatex.goes_through_dvi());
     }
 

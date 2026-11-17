@@ -132,6 +132,8 @@
     "entryCount_other": "{{count}} запису структури",
     "expandHeading": "Розгорнути {{title}}",
     "expandAll": "Розгорнути всі заголовки",
+    "onPage": "{{heading}}, сторінка {{page}}",
+    "page": "с.{{page}}",
     "title": "Структура документа"
   },
   "panelError": {

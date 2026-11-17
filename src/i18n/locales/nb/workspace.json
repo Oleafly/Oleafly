@@ -126,6 +126,8 @@
     "entryCount_other": "{{count}} oppføringer i disposisjonen",
     "expandHeading": "Utvid {{title}}",
     "expandAll": "Utvid alle overskrifter",
+    "onPage": "{{heading}}, side {{page}}",
+    "page": "s.{{page}}",
     "title": "Disposisjon"
   },
   "panelError": {

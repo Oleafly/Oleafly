@@ -6,7 +6,8 @@ use super::model::{
     ResearchStarter, ResearchWorkspace,
 };
 use super::{roots, setup};
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
+use std::path::Path;
 
 fn request(engine: ResearchDocumentEngine, starter: ResearchStarter) -> ResearchProjectRequest {
     ResearchProjectRequest {
@@ -41,12 +42,77 @@ fn workspace_metadata_round_trips() {
     );
 }
 
+fn in_temporary_library(test: impl FnOnce(&Path)) {
+    let _env_guard = crate::paths::data_dir_env_lock();
+    let temp = tempfile::tempdir().unwrap();
+    let previous = std::env::var_os("OLEAFLY_DATA_DIR");
+    std::env::set_var("OLEAFLY_DATA_DIR", temp.path());
+    test(&crate::paths::projects_root().unwrap());
+    match previous {
+        Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
+        None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+    }
+}
+
+const ENGINES: [ResearchDocumentEngine; 5] = [
+    ResearchDocumentEngine::Latex,
+    ResearchDocumentEngine::Typst,
+    ResearchDocumentEngine::Markdown,
+    ResearchDocumentEngine::Quarto,
+    ResearchDocumentEngine::Calepin,
+];
+
+fn create(
+    projects: &Path,
+    engine: ResearchDocumentEngine,
+) -> (String, crate::project::ProjectMeta) {
+    let project_id = setup::create_at(projects, request(engine, ResearchStarter::Article)).unwrap();
+    let bytes = std::fs::read(projects.join(&project_id).join("project.json")).unwrap();
+    (
+        project_id,
+        crate::project::parse_project_meta(&bytes).unwrap(),
+    )
+}
+
+fn tree_entries(root: &Path, relative: &str, entries: &mut BTreeSet<String>) {
+    for entry in std::fs::read_dir(root.join(relative)).unwrap().flatten() {
+        let name = entry.file_name().to_string_lossy().into_owned();
+        if relative.is_empty() && name == ".git" {
+            continue;
+        }
+        let path = if relative.is_empty() {
+            name
+        } else {
+            format!("{relative}/{name}")
+        };
+        if entry.file_type().unwrap().is_dir() {
+            tree_entries(root, &path, entries);
+        }
+        entries.insert(path);
+    }
+}
+
+fn main_source(name: &str, engine: ResearchDocumentEngine) -> String {
+    let preview = setup::build_preview(ResearchProjectRequest {
+        name: name.into(),
+        engine,
+        starter: ResearchStarter::Article,
+    })
+    .unwrap();
+    setup::preview_files(&preview)
+        .remove(&preview.main_document)
+        .flatten()
+        .unwrap()
+}
+
 #[test]
 fn every_engine_preview_has_a_supported_main_document() {
     for (engine, expected_path, expected_engine) in [
         (ResearchDocumentEngine::Latex, "main.tex", "xetex"),
         (ResearchDocumentEngine::Typst, "main.typ", "typst"),
         (ResearchDocumentEngine::Markdown, "main.md", "markdown"),
+        (ResearchDocumentEngine::Quarto, "main.qmd", "quarto"),
+        (ResearchDocumentEngine::Calepin, "main.typ", "calepin"),
     ] {
         let preview = setup::build_preview(request(engine, ResearchStarter::Article)).unwrap();
         assert_eq!(preview.main_document, expected_path);
@@ -61,99 +127,108 @@ fn every_engine_preview_has_a_supported_main_document() {
 }
 
 #[test]
-fn preview_matches_the_created_research_tree() {
-    let _env_guard = crate::paths::data_dir_env_lock();
-    let temp = tempfile::tempdir().unwrap();
-    let previous = std::env::var_os("OLEAFLY_DATA_DIR");
-    std::env::set_var("OLEAFLY_DATA_DIR", temp.path());
-    let projects = crate::paths::projects_root().unwrap();
-    let request = request(
-        ResearchDocumentEngine::Typst,
-        ResearchStarter::ReproducibleAnalysis,
-    );
-    let preview = setup::build_preview(request.clone()).unwrap();
-    let project_id = setup::create_at_for_test(&projects, request, |_, destination| {
-        std::fs::write(destination.join("main.typ"), "template").map_err(|error| error.to_string())
-    })
-    .unwrap();
-    let project = projects.join(project_id);
-    for (relative, content) in setup::preview_files(&preview) {
-        let path = project.join(relative);
-        match content {
-            Some(expected) => assert_eq!(std::fs::read_to_string(path).unwrap(), expected),
-            None => assert!(path.is_dir()),
+fn every_engine_creates_exactly_the_previewed_tree() {
+    in_temporary_library(|projects| {
+        for engine in ENGINES {
+            let request = request(engine, ResearchStarter::ReproducibleAnalysis);
+            let preview = setup::build_preview(request.clone()).unwrap();
+            let project = projects.join(setup::create_at(projects, request).unwrap());
+            let planned = setup::preview_files(&preview);
+            let mut expected = planned.keys().cloned().collect::<BTreeSet<_>>();
+            expected.insert("project.json".into());
+            let mut created = BTreeSet::new();
+            tree_entries(&project, "", &mut created);
+            assert_eq!(created, expected, "{engine:?}");
+            for (relative, content) in planned {
+                let path = project.join(relative);
+                match content {
+                    Some(expected) => assert_eq!(std::fs::read_to_string(path).unwrap(), expected),
+                    None => assert!(path.is_dir()),
+                }
+            }
         }
-    }
-    match previous {
-        Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
-        None => std::env::remove_var("OLEAFLY_DATA_DIR"),
-    }
+    });
 }
 
 #[test]
-fn a_typst_research_project_records_the_default_typst_version() {
-    let _env_guard = crate::paths::data_dir_env_lock();
-    let temp = tempfile::tempdir().unwrap();
-    let previous = std::env::var_os("OLEAFLY_DATA_DIR");
-    std::env::set_var("OLEAFLY_DATA_DIR", temp.path());
-    crate::config::set_typst_default_choice(Some("0.13.1".into())).unwrap();
-    let projects = crate::paths::projects_root().unwrap();
-    let mut pins = Vec::new();
-    for engine in [ResearchDocumentEngine::Typst, ResearchDocumentEngine::Latex] {
-        let project_id = setup::create_at_for_test(
-            &projects,
-            request(engine, ResearchStarter::Article),
-            |_, _| Ok(()),
-        )
-        .unwrap();
-        let bytes = std::fs::read(projects.join(&project_id).join("project.json")).unwrap();
-        let meta = crate::project::parse_project_meta(&bytes).unwrap();
-        pins.push(meta.typst_version_pin().map(str::to_owned));
-    }
-    assert_eq!(pins, [Some("0.13.1".to_string()), None]);
-    match previous {
-        Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
-        None => std::env::remove_var("OLEAFLY_DATA_DIR"),
-    }
+fn every_engine_records_its_engine_and_only_typst_pins_a_version() {
+    in_temporary_library(|projects| {
+        crate::config::set_latex_default_engine_choice("latexmk").unwrap();
+        crate::config::set_typst_default_choice(Some("0.13.1".into())).unwrap();
+        let recorded = ENGINES.map(|engine| {
+            let meta = create(projects, engine).1;
+            let pin = meta.typst_version_pin().map(str::to_owned);
+            (meta.engine, pin)
+        });
+        assert_eq!(
+            recorded,
+            [
+                ("latexmk".to_owned(), None),
+                ("typst".to_owned(), Some("0.13.1".to_owned())),
+                ("markdown".to_owned(), None),
+                ("quarto".to_owned(), None),
+                ("calepin".to_owned(), None),
+            ]
+        );
+    });
 }
 
 #[test]
-fn a_latex_research_project_follows_the_default_engine() {
-    let _env_guard = crate::paths::data_dir_env_lock();
-    let temp = tempfile::tempdir().unwrap();
-    let previous = std::env::var_os("OLEAFLY_DATA_DIR");
-    std::env::set_var("OLEAFLY_DATA_DIR", temp.path());
-    crate::config::set_latex_default_engine_choice("latexmk").unwrap();
-    let projects = crate::paths::projects_root().unwrap();
-    let mut engines = Vec::new();
-    for engine in [ResearchDocumentEngine::Latex, ResearchDocumentEngine::Typst] {
-        let project_id = setup::create_at_for_test(
-            &projects,
-            request(engine, ResearchStarter::Article),
-            |_, _| Ok(()),
-        )
-        .unwrap();
-        let bytes = std::fs::read(projects.join(&project_id).join("project.json")).unwrap();
-        engines.push(crate::project::parse_project_meta(&bytes).unwrap().engine);
-    }
-    assert_eq!(engines, ["latexmk", "typst"]);
-    match previous {
-        Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
-        None => std::env::remove_var("OLEAFLY_DATA_DIR"),
+fn quarto_and_calepin_research_projects_open_with_their_engines() {
+    in_temporary_library(|projects| {
+        let (project_id, meta) = create(projects, ResearchDocumentEngine::Quarto);
+        let quarto = crate::project::project_state_engine(&project_id, &meta).unwrap();
+        assert_eq!(quarto.id, "quarto");
+        assert_eq!(quarto.notebook_output.as_deref(), Some("pdf"));
+        let (project_id, meta) = create(projects, ResearchDocumentEngine::Calepin);
+        let calepin = crate::project::project_state_engine(&project_id, &meta).unwrap();
+        assert_eq!(calepin.id, "calepin");
+    });
+}
+
+#[test]
+fn a_calepin_research_document_imports_the_calepin_runtime() {
+    let source = main_source("Study", ResearchDocumentEngine::Calepin);
+    assert!(source.starts_with(
+        "#import \"/.calepin/calepin.typ\" as calepin\n#show: calepin.document\n\n#set document(title: \"Study\")\n"
+    ));
+    assert_eq!(
+        source.split_once("\n\n").unwrap().1,
+        main_source("Study", ResearchDocumentEngine::Typst)
+    );
+}
+
+#[test]
+fn project_names_reach_every_engine_as_literal_text() {
+    let name = r#"Study of @handles {{< pagebreak >}} "q" it's"#;
+    let markdown = r#"Study of \@handles [\{]{}[\{]{}\< pagebreak \>[\}]{}[\}]{} "q" it's"#;
+    let yaml =
+        r#"title: "Study of \\@handles [\\{]{}[\\{]{}\\< pagebreak \\>[\\}]{}[\\}]{} \"q\" it's""#;
+    let quarto = main_source(name, ResearchDocumentEngine::Quarto);
+    assert!(quarto.starts_with(&format!("---\n{yaml}\n")));
+    assert!(quarto.contains("\nformat: typst\n---\n"));
+    let markdown_source = main_source(name, ResearchDocumentEngine::Markdown);
+    assert!(markdown_source.starts_with(&format!("---\n{yaml}\n")));
+    assert!(markdown_source.contains(&format!("\n# {markdown}\n")));
+    for engine in [
+        ResearchDocumentEngine::Typst,
+        ResearchDocumentEngine::Calepin,
+    ] {
+        assert!(main_source(name, engine)
+            .contains(r#"#set document(title: "Study of @handles {{< pagebreak >}} \"q\" it's")"#));
     }
 }
 
 #[test]
 fn invalid_names_do_not_create_a_destination() {
     let temp = tempfile::tempdir().unwrap();
-    let result = setup::create_at_for_test(
+    let result = setup::create_at(
         temp.path(),
         ResearchProjectRequest {
             name: "../paper".into(),
             engine: ResearchDocumentEngine::Latex,
             starter: ResearchStarter::Thesis,
         },
-        |_, _| Ok(()),
     );
     assert!(result.is_err());
     assert_eq!(std::fs::read_dir(temp.path()).unwrap().count(), 0);
@@ -161,36 +236,13 @@ fn invalid_names_do_not_create_a_destination() {
 
 #[test]
 fn project_ids_do_not_collide_or_overwrite() {
-    let _env_guard = crate::paths::data_dir_env_lock();
-    let temp = tempfile::tempdir().unwrap();
-    let previous = std::env::var_os("OLEAFLY_DATA_DIR");
-    std::env::set_var("OLEAFLY_DATA_DIR", temp.path());
-    let projects = crate::paths::projects_root().unwrap();
-    let first = setup::create_at_for_test(
-        &projects,
-        request(ResearchDocumentEngine::Markdown, ResearchStarter::Article),
-        |_, destination| {
-            std::fs::write(destination.join("main.md"), "template")
-                .map_err(|error| error.to_string())
-        },
-    )
-    .unwrap();
-    let second = setup::create_at_for_test(
-        &projects,
-        request(ResearchDocumentEngine::Markdown, ResearchStarter::Article),
-        |_, destination| {
-            std::fs::write(destination.join("main.md"), "template")
-                .map_err(|error| error.to_string())
-        },
-    )
-    .unwrap();
-    assert_ne!(first, second);
-    assert!(projects.join(first).join("project.json").is_file());
-    assert!(projects.join(second).join("project.json").is_file());
-    match previous {
-        Some(value) => std::env::set_var("OLEAFLY_DATA_DIR", value),
-        None => std::env::remove_var("OLEAFLY_DATA_DIR"),
-    }
+    in_temporary_library(|projects| {
+        let first = create(projects, ResearchDocumentEngine::Markdown).0;
+        let second = create(projects, ResearchDocumentEngine::Markdown).0;
+        assert_ne!(first, second);
+        assert!(projects.join(first).join("project.json").is_file());
+        assert!(projects.join(second).join("project.json").is_file());
+    });
 }
 
 #[cfg(unix)]

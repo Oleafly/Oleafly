@@ -1289,8 +1289,7 @@ fn config_with_hold(raw: Option<&str>) -> Result<ServerConfig, ConfigError> {
     );
     vars.insert(
         "OLEAFLY_DATA_DIR".to_owned(),
-        std::env::temp_dir()
-            .join("oleafly-server-test-data")
+        oleafly_server::test_support::test_data_dir()
             .display()
             .to_string(),
     );

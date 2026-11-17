@@ -563,7 +563,7 @@
       },
       "glossaries-index": {
         "title": "Nástroj pro glosář nebo rejstřík",
-        "detail": "glossaries a makeindex potřebují další běh makeindexu nebo xindy, což vestavěný engine neumí."
+        "detail": "glossaries a makeindex potřebují další běh makeindexu, xindy nebo bib2gls, což vestavěný engine neumí."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref je nastaven na ovladač pdfTeX",
@@ -1115,7 +1115,8 @@
       "help": "Nápověda a informace",
       "integrations": "Integrace",
       "shortcuts": "Klávesové zkratky",
-      "research": "Výzkum"
+      "research": "Výzkum",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Žádné nastavení neodpovídá",
@@ -1132,7 +1133,8 @@
         "help": "o aplikaci, verze, aktualizace, seznam změn, co je nového, dokumentace, podpora, nápověda, komunita, Discord, licence, hlášení pádu",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hosting Git, Computer Use, aplikace v počítači, Cua, MCP, citace, účty, připojení",
         "shortcuts": "klávesové zkratky, zkratky, klávesy, klávesnice",
-        "research": "výzkum úlohy rozpočet oznámení neusínat experimenty běhy research tasks"
+        "research": "výzkum úlohy rozpočet oznámení neusínat experimenty běhy research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Hledat v nastavení",
       "results_one": "{{count}} odpovídající sekce",
@@ -1714,5 +1716,9 @@
   "stuckWindow": {
     "reloaded": "Oleafly toto okno znovu načetlo, protože 30 sekund nereagovalo. Změny provedené těsně předtím se možná neuložily.",
     "reloadedAgain": "Oleafly toto okno znovu načetlo, protože opět přestalo reagovat. Váš projekt tentokrát neotevřelo pro případ, že problém způsobuje něco v něm."
+  },
+  "zoomIndicator": {
+    "label": "Přiblížení",
+    "reset": "Obnovit"
   }
 }

@@ -2472,12 +2472,15 @@ describe("bundled-engine compile failures", () => {
     expect(mocks.dismiss).toHaveBeenCalledWith(id);
   });
 
-  it("offers latexmk after a compile that left out its index, without opening the picker", async () => {
+  it.each([
+    "tex.index_needs_latexmk",
+    "tex.glossary_resources_need_latexmk",
+  ])("offers latexmk after a compile that left out %s, without opening the picker", async (code) => {
     succeedWith({
       errors: [
         {
           kind: "warning",
-          code: "tex.index_needs_latexmk",
+          code,
           message: "The index wasn't built",
           line: null,
           file: null,

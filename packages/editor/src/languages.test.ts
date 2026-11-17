@@ -1,6 +1,12 @@
+// @vitest-environment jsdom
+
+import { language } from "@codemirror/language";
 import { EditorState } from "@codemirror/state";
-import { describe, expect, it } from "vitest";
-import { languageForPath } from "./languages";
+import { EditorView } from "@codemirror/view";
+import { jsxLanguage, tsxLanguage } from "@codemirror/lang-javascript";
+import { describe, expect, it, vi } from "vitest";
+import { codeChunkLanguage } from "./code-chunks";
+import { editorLanguageForPath, languageForPath } from "./languages";
 
 describe("languageForPath", () => {
   it.each([
@@ -24,7 +30,6 @@ describe("languageForPath", () => {
     "main.typ.txt",
     "main.tex.txt",
     "notes.markdown.bak",
-    "paper.qmd.html",
     "plain.bst",
     "PLAIN.BST",
   ])("does not grant contractual support to excluded/lookalike path %s", (path) => {
@@ -52,6 +57,7 @@ describe("languageForPath", () => {
       "json",
     );
     expect(languageForPath("main.tex.json")?.language.name).toBe("json");
+    expect(languageForPath("paper.qmd.html")?.language.name).toBe("html");
   });
 
   it.each([
@@ -64,8 +70,23 @@ describe("languageForPath", () => {
     ["Cargo.toml", "toml"],
     ["build.sh", "shell"],
     ["run.bash", "shell"],
+    ["theme.scss", "css"],
+    ["notebook.ipynb", "json"],
+    ["web/index.html", "html"],
+    ["web/legacy.HTM", "html"],
+    ["web/app.js", "javascript"],
+    ["tools/build.mjs", "javascript"],
+    ["tools/config.cjs", "javascript"],
+    ["src/main.ts", "typescript"],
   ])("highlights the project file %s as %s", (path, language) => {
     expect(languageForPath(path)?.language.name).toBe(language);
+  });
+
+  it.each([
+    ["src/App.jsx", jsxLanguage],
+    ["slides/demo/index.tsx", tsxLanguage],
+  ])("reads JSX in %s", (path, dialect) => {
+    expect(languageForPath(path)?.language).toBe(dialect);
   });
 
   it("uses the Dockerfile mode for a file named Dockerfile", () => {
@@ -91,5 +112,42 @@ describe("languageForPath", () => {
 describe("Quarto sources", () => {
   it.each(["paper.qmd", "analysis.Rmd", "ANALYSIS.RMD"])("reads %s as Markdown", (path) => {
     expect(languageForPath(path)?.language.name).toBe("markdown");
+  });
+});
+
+describe("editorLanguageForPath", () => {
+  function open(path: string) {
+    return new EditorView({ state: EditorState.create({ doc: "x = 1", extensions: editorLanguageForPath(path) }) });
+  }
+
+  it("leaves a file closed before its language loads alone", async () => {
+    const view = open("fit.jl");
+    const dispatch = vi.spyOn(view, "dispatch");
+    view.destroy();
+    await codeChunkLanguage("jl")?.load();
+    await Promise.resolve();
+    expect(dispatch).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["tools/analysis.py", "python"],
+    ["models/fit.R", "r"],
+    ["fit.jl", "julia"],
+  ])("highlights %s as %s once its mode loads", async (path, name) => {
+    const view = open(path);
+    await vi.waitFor(() => expect(view.state.facet(language)?.name).toBe(name));
+    view.destroy();
+  });
+
+  it("gives a file with a ready language that language at once", () => {
+    const view = open("web/index.html");
+    expect(view.state.facet(language)?.name).toBe("html");
+    view.destroy();
+  });
+
+  it("gives a plain text file no language", () => {
+    const view = open("notes.txt");
+    expect(view.state.facet(language)).toBeNull();
+    view.destroy();
   });
 });

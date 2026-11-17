@@ -179,7 +179,8 @@
     "imageToTypst": "Obrázek do formátu Typst",
     "imageToTypstTooltip": "Obrázek do formátu Typst (přepis pomocí AI)",
     "typstPackages": "Balíčky Typst",
-    "latexPackages": "Balíčky LaTeX"
+    "latexPackages": "Balíčky LaTeX",
+    "preview": "Náhled"
   },
   "contextMenu": {
     "engineUnavailable": "Akce dokumentového enginu nejsou k dispozici",
@@ -229,6 +230,8 @@
     "pdfLoadFailed": "Načtení PDF selhalo: {{detail}}",
     "imageLoadFailed": "Načtení obrázku selhalo: {{detail}}",
     "imageUnreadable": "Tento soubor nelze zobrazit jako obrázek. Může být poškozený, nebo to vůbec není obrázek.",
+    "imageFit": "Přizpůsobit oknu",
+    "htmlPreviewFailed": "Náhled stránky selhal: {{detail}}",
     "binaryFile": "Binární soubor. Náhled není k dispozici.",
     "managedFileReadOnly": "{{file}} spravuje Oleafly a je tu jen ke čtení. Nastavení projektu se mění přímo v Oleafly, ne úpravou tohoto souboru.",
     "noFileOpen": "Není otevřený žádný soubor.",
@@ -1739,5 +1742,21 @@
     "skinTone": "Odstín pleti",
     "loading": "Načítají se emoji",
     "empty": "Žádné emoji nenalezeny"
+  },
+  "bibList": {
+    "count_one": "{{count}} reference",
+    "count_few": "{{count}} reference",
+    "count_many": "{{count}} reference",
+    "count_other": "{{count}} referencí",
+    "empty": "Tento soubor zatím neobsahuje žádné citace.",
+    "etAl": "{{author}} a kol.",
+    "noMatch": "Hledání neodpovídá žádná citace.",
+    "search": "Hledat v citacích"
+  },
+  "deck": {
+    "noSlides": "Tato prezentace zatím nemá žádné snímky. Jako výchozí export uveďte pole komponent snímků."
+  },
+  "board": {
+    "unreadable": "Tuto tabuli nelze přečíst. Soubor může být poškozený, nebo nejde o kresbu Excalidraw."
   }
 }

@@ -17,6 +17,7 @@ const EVERY_WINDOW: &[&str] = &[
     "append_app_log",
     "app_version",
     "display_homes",
+    "log_frontend_error",
     "read_app_log",
 ];
 

@@ -561,7 +561,7 @@
       },
       "glossaries-index": {
         "title": "Værktøj til ordliste eller indeks",
-        "detail": "glossaries og makeindex kræver en ekstra kørsel af makeindex eller xindy, og det gør den indbyggede motor ikke."
+        "detail": "glossaries og makeindex kræver en ekstra kørsel af makeindex, xindy eller bib2gls, og det gør den indbyggede motor ikke."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref er sat til pdfTeX-driveren",
@@ -1083,7 +1083,8 @@
       "help": "Hjælp og Om",
       "integrations": "Integrationer",
       "shortcuts": "Tastaturgenveje",
-      "research": "Forskning"
+      "research": "Forskning",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Ingen indstillinger matcher",
@@ -1100,7 +1101,8 @@
         "help": "om, version, opdateringer, ændringslog, nyheder, dokumentation, support, hjælp, fællesskab, Discord, licens, nedbrudsrapport",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-hosting, Computer Use, skrivebordsapps, Cua, MCP, citationer, konti, forbindelser",
         "shortcuts": "tastaturgenveje, genvejstaster, genveje, taster, tastatur",
-        "research": "forskning opgaver budget notifikationer hold vågen eksperimenter kørsler"
+        "research": "forskning opgaver budget notifikationer hold vågen eksperimenter kørsler",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Søg i indstillinger",
       "results_one": "{{count}} afsnit matcher",
@@ -1644,5 +1646,9 @@
   "stuckWindow": {
     "reloaded": "Oleafly genindlæste dette vindue, fordi det ikke svarede i 30 sekunder. Ændringer, du lavede lige før, er måske ikke gemt.",
     "reloadedAgain": "Oleafly genindlæste dette vindue igen, fordi det holdt op med at svare. Dit projekt blev ikke åbnet igen, hvis nu noget i det var årsagen."
+  },
+  "zoomIndicator": {
+    "label": "Zoom",
+    "reset": "Nulstil"
   }
 }

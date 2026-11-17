@@ -1,4 +1,4 @@
-import { existsSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -8,6 +8,8 @@ const config = path.join(root, "vite.artifact-runtime.config.ts");
 const inputs = [
   path.join(root, "src/components/notes/artifact-runtime/react-runtime.ts"),
   path.join(root, "src/components/notes/artifact-runtime/runtime-core.ts"),
+  path.join(root, "src/components/notes/artifact-runtime/deck-host.tsx"),
+  ...readdirSync(path.join(root, "packages/deck/src")).map((file) => path.join(root, "packages/deck/src", file)),
   config,
   path.join(root, "scripts/build-artifact-runtime.mjs"),
   path.join(root, "pnpm-lock.yaml"),

@@ -57,6 +57,7 @@ import {
 } from "./cm/language-service";
 import { formatsOnSave, saveTypstDocument } from "./cm/language-service-format";
 import { getEditorView } from "./cm/controller";
+import { isOutlineDocument, outlineRailClearance } from "./cm/outline-rail-clearance";
 import { resolveVisualAsset } from "./wysiwyg/asset-url";
 import { openVisualFigureEditor } from "./visual-figure-edit";
 import { referenceKindIn } from "./visual-reference-kind";
@@ -290,6 +291,7 @@ const HOST: EditorHost = {
     autocomplete: useSettingsStore((s) => s.editorAutocomplete),
     autoCloseBrackets: useSettingsStore((s) => s.editorAutoCloseBrackets),
     autoCloseMath: useSettingsStore((s) => s.editorAutoCloseMath),
+    groupScripts: useSettingsStore((s) => s.editorGroupScripts),
     cursorBlinking: useSettingsStore((s) => s.editorCursorBlinking),
     highlightCurrentLine: useSettingsStore((s) => s.editorHighlightCurrentLine),
     cursorHeight: useSettingsStore((s) => s.editorCursorHeight),
@@ -376,13 +378,14 @@ export function CodeMirrorEditor({ active = true }: Readonly<{ active?: boolean 
         if (!path || !/\.(?:tex|latex|ltx|sty|cls|md|markdown|qmd|rmd|typ|bib)$/i.test(path)) {
           return [];
         }
+        const clearance = isOutlineDocument(path) ? [outlineRailClearance] : [];
         if (/\.(?:tex|latex|ltx|sty|cls)$/i.test(path)) {
-          return [...LATEX_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS];
+          return [...LATEX_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS, ...clearance];
         }
-        if (/\.typ$/i.test(path)) return [...TYPST_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS];
+        if (/\.typ$/i.test(path)) return [...TYPST_EXTENSIONS, ...PROJECT_INTELLIGENCE_EXTENSIONS, ...clearance];
         return /\.(?:md|markdown|qmd|rmd)$/i.test(path)
-          ? [markdownFormatKeymap, ...PROJECT_INTELLIGENCE_EXTENSIONS]
-          : PROJECT_INTELLIGENCE_EXTENSIONS;
+          ? [markdownFormatKeymap, ...PROJECT_INTELLIGENCE_EXTENSIONS, ...clearance]
+          : [...PROJECT_INTELLIGENCE_EXTENSIONS, ...clearance];
       }}
       extraCompletionSourcesForPath={(path) =>
         editorCompletionSourcesForPath(path, languageServiceCompletion)

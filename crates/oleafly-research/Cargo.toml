@@ -9,7 +9,7 @@ rust-version = "1.89"
 
 [features]
 # Test helpers other crates use in their own tests (owner overrides, counters).
-test-support = []
+test-support = ["oleafly-core/test-support"]
 
 [dependencies]
 oleafly-core = { path = "../oleafly-core" }
@@ -50,5 +50,6 @@ libc = "0.2"
 windows-sys = { version = "0.61", features = ["Win32_System_Power", "Win32_System_Threading"] }
 
 [dev-dependencies]
+oleafly-core = { path = "../oleafly-core", features = ["test-support"] }
 tempfile = { workspace = true }
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "sync", "time", "macros", "process", "io-util", "fs", "net"] }

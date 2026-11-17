@@ -53,6 +53,8 @@
       "@oleafly/ai-tools/approval-risk": ["./packages/ai-tools/src/approval-risk.ts"],
       "@oleafly/preflight": ["./packages/preflight/src/index.ts"],
       "@oleafly/registry": ["./packages/registry/src/index.ts"],
+      "@oleafly/deck": ["./packages/deck/src/index.ts"],
+      "@oleafly/deck/stage": ["./packages/deck/src/stage.tsx"],
       "@oleafly/workspace": ["./packages/workspace/src/index.ts"],
       "@oleafly/workspace/geometry": ["./packages/workspace/src/geometry.ts"],
       "@oleafly/workspace/drag": ["./packages/workspace/src/drag.ts"],

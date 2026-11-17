@@ -1099,7 +1099,7 @@ describe("ChatCore agent turns", () => {
     expect(left).not.toHaveClass("grow");
     expect(left.className).not.toMatch(/ring|outline/);
     expect(left).not.toHaveClass("flex-wrap");
-    expect(right).toHaveClass("shrink-0", "flex-nowrap");
+    expect(right).toHaveClass("min-w-0", "shrink-100", "flex-nowrap");
     const model = rendered.getByRole("button", { name: "AI model" });
     expect(right).toContainElement(model);
     expect(rendered.queryByRole("button", { name: "Voice input (coming soon)" })).toBeNull();

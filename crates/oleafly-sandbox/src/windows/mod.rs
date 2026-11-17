@@ -8,7 +8,6 @@
 //! confined command runs the calling binary itself as a small launcher
 //! (`--oleafly-sandbox-launch`), which starts the real program.
 pub(crate) mod acl;
-pub mod cmdline;
 pub(crate) mod container;
 pub mod env;
 pub mod launcher;
@@ -26,7 +25,7 @@ use crate::ledger::{
 use crate::plan::{self, Sids, Step};
 use crate::probe::ProbeCache;
 use crate::process::identity::{self, ProcessIdentity};
-use crate::{config, safe_fs, Availability, ResolvedSpec, SandboxError, SharedGrantView};
+use crate::{cmdline, config, safe_fs, Availability, ResolvedSpec, SandboxError, SharedGrantView};
 use acl::{Access, Deny};
 use sid::{
     capability_sid, container_name, project_capability, OwnedSid, INTERNET_CLIENT, PRIVATE_NETWORK,

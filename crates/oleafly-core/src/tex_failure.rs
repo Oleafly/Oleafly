@@ -177,7 +177,7 @@ impl DeniedShellEscape {
     }
 }
 
-pub fn denied_shell_escape_feature(source: &str, log: &str) -> Option<DeniedShellEscape> {
+fn denied_shell_escape_feature(source: &str, log: &str) -> Option<DeniedShellEscape> {
     let source = source.to_ascii_lowercase();
     let log = log.to_ascii_lowercase();
     if ["minted", "inputminted", "mintinline", "pygmentize"]
@@ -203,11 +203,13 @@ pub fn denied_shell_escape_feature(source: &str, log: &str) -> Option<DeniedShel
 }
 
 pub fn log_refused_a_shell_command(log: &str) -> bool {
-    const REFUSALS: [&str; 4] = [
+    const REFUSALS: [&str; 6] = [
         "shell escape feature is not enabled",
         "shell-escape feature is not enabled",
         "shell escape is disabled",
         "-shell-escape flag",
+        "you didn't enable `shell escape'",
+        "minted executable is unavailable",
     ];
     if REFUSALS.iter().any(|needle| log.contains(needle)) {
         return true;
@@ -402,6 +404,27 @@ mod tests {
                 "! Package minted Error: You must invoke LaTeX with the -shell-escape flag.\n"
             ),
             Some(DeniedShellEscape::Minted)
+        );
+    }
+
+    #[test]
+    fn svg_and_minted_3_refusals_still_count_as_blocked_shell_escape() {
+        let svg = "Package svg Warning: You didn't enable `shell escape' (or `write18')\n(svg)                so the export of `fig.svg' cannot be executed on\n! Package svg Error: File `fig_svg-tex.pdf' is missing.\n";
+        assert_eq!(
+            blocked_shell_escape("\\usepackage{svg}\n\\includesvg{fig}", svg),
+            Some(DeniedShellEscape::Command)
+        );
+        let minted = "! Package minted Error: Cannot highlight code (minted executable is unavailable\nor disabled).\n";
+        assert_eq!(
+            blocked_shell_escape("\\usepackage{minted}", minted),
+            Some(DeniedShellEscape::Minted)
+        );
+        assert_eq!(
+            blocked_shell_escape(
+                "\\usepackage{minted}",
+                "! Undefined control sequence.\nl.3 \\oops\n(/usr/share/texmf/tex/latex/minted/minted.sty)\n"
+            ),
+            None
         );
     }
 

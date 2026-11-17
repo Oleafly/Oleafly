@@ -14,6 +14,7 @@ import {
   Minimize,
   MoreHorizontal,
   PanelTopClose,
+  PanelTopOpen,
   Presentation,
   RectangleVertical,
   RefreshCw,
@@ -66,10 +67,10 @@ export interface PdfToolbarControlsProps {
   setClampedScale: (scale: number) => void;
   userZoom: (mutate: () => void) => void;
   fitPreview: (mode: "width" | "height") => void;
-  exporting: boolean;
-  exportDisplayedPreview: () => void;
-  downloadActionLabel: () => string;
-  onSave: () => void;
+  exporting?: boolean;
+  exportDisplayedPreview?: () => void;
+  downloadActionLabel?: () => string;
+  onSave?: () => void;
   pdfSync?: PdfSyncToggle | null;
   inverted: boolean;
   setInverted: (value: boolean) => void;
@@ -82,15 +83,15 @@ export interface PdfToolbarControlsProps {
   setFsToolbarHidden: Setter<boolean>;
   toggleFullscreen: () => void;
   detached?: boolean;
-  onWindow: () => void;
-  onSettings: () => void;
+  onWindow?: () => void;
+  onSettings?: () => void;
   onPresent?: (mode: PresentMode) => void;
   onOpenInBrowser?: () => void;
 }
 
 export type PresentMode = "start" | "page" | "presenter";
 
-const PRESENT_MODES: readonly { mode: PresentMode; label: () => string }[] = [
+export const PRESENT_MODES: readonly { mode: PresentMode; label: () => string }[] = [
   { mode: "start", label: () => i18n.t(($) => $.preview.presentation.presentFromStart) },
   { mode: "page", label: () => i18n.t(($) => $.preview.presentation.presentFromPage) },
   { mode: "presenter", label: () => i18n.t(($) => $.preview.presentation.presentWithPresenter) },
@@ -116,7 +117,7 @@ const PAGE_LAYOUTS: readonly {
 ];
 
 export function PdfToolbarControls({
-  isImage, hasDocument, numPages, page, pageInput, setPageInput, jumpToPage, pdfRef, layout, setLayout, outlineOpen, setOutlineOpen, searchOpen, setSearchOpen, searchInputRef, setSearchInput, scale, setScale, setClampedScale, userZoom, fitPreview, exporting, exportDisplayedPreview, downloadActionLabel, onSave, pdfSync = null, inverted, setInverted, screenReaderMode, setScreenReaderMode, rotation, rotationPending, onRotate, isFs, setFsToolbarHidden, toggleFullscreen, detached = false, onWindow, onSettings, onPresent, onOpenInBrowser
+  isImage, hasDocument, numPages, page, pageInput, setPageInput, jumpToPage, pdfRef, layout, setLayout, outlineOpen, setOutlineOpen, searchOpen, setSearchOpen, searchInputRef, setSearchInput, scale, setScale, setClampedScale, userZoom, fitPreview, exporting = false, exportDisplayedPreview, downloadActionLabel, onSave, pdfSync = null, inverted, setInverted, screenReaderMode, setScreenReaderMode, rotation, rotationPending, onRotate, isFs, setFsToolbarHidden, toggleFullscreen, detached = false, onWindow, onSettings, onPresent, onOpenInBrowser
 }: Readonly<PdfToolbarControlsProps>) {
   const { t } = useTranslation(["preview", "ai"]);
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
@@ -173,7 +174,7 @@ export function PdfToolbarControls({
     ? t(($) => $.preview.actions.saveImage)
     : t(($) => $.preview.actions.savePdf);
 
-  const saveMenuItems = (sync: PdfSyncToggle) => (
+  const saveMenuItems = (sync: PdfSyncToggle, onSave: () => void) => (
     <>
       <DropdownMenuItem disabled={!hasDocument} onSelect={onSave}>
         <Save className="size-4" />
@@ -207,7 +208,7 @@ export function PdfToolbarControls({
     </>
   );
 
-  const saveControl = (): ToolbarControl => {
+  const saveControl = (onSave: () => void): ToolbarControl => {
     if (!pdfSync || isImage) {
       return iconControl("save", Save, saveLabel, onSave, { disabled: !hasDocument });
     }
@@ -228,11 +229,11 @@ export function PdfToolbarControls({
             </DropdownMenuTrigger>
           </Tooltip>
           <DropdownMenuContent align="end" className="min-w-56">
-            {saveMenuItems(pdfSync)}
+            {saveMenuItems(pdfSync, onSave)}
           </DropdownMenuContent>
         </DropdownMenu>
       ),
-      renderMenu: () => <Fragment key="save">{saveMenuItems(pdfSync)}</Fragment>,
+      renderMenu: () => <Fragment key="save">{saveMenuItems(pdfSync, onSave)}</Fragment>,
     };
   };
 
@@ -524,7 +525,9 @@ export function PdfToolbarControls({
         </DropdownMenuSub>
       ),
     });
-    fileGroup.push(
+    if (exportDisplayedPreview) {
+      const download = exportDisplayedPreview;
+      fileGroup.push(
       {
         id: "download",
         width: ICON_BUTTON_WIDTH,
@@ -541,8 +544,8 @@ export function PdfToolbarControls({
               size="icon"
               className="size-7"
               disabled={!hasDocument || exporting}
-              onClick={() => void exportDisplayedPreview()}
-              aria-label={downloadActionLabel()}
+              onClick={() => void download()}
+              aria-label={downloadActionLabel?.() ?? t(($) => $.preview.actions.downloadPdf)}
             >
               {exporting ? (
                 <Spinner size="sm" />
@@ -556,7 +559,7 @@ export function PdfToolbarControls({
           <DropdownMenuItem
             key="download"
             disabled={!hasDocument || exporting}
-            onSelect={() => void exportDisplayedPreview()}
+            onSelect={() => void download()}
           >
             <Download className="size-4" />
             {isImage
@@ -565,8 +568,9 @@ export function PdfToolbarControls({
           </DropdownMenuItem>
         ),
       },
-      saveControl(),
-    );
+      );
+    }
+    if (onSave) fileGroup.push(saveControl(onSave));
     inkGroup.push(
       iconControl(
         "invert",
@@ -613,7 +617,7 @@ export function PdfToolbarControls({
       );
     }
     const pushPreviewWindowControls = () => {
-      if (!isFs) {
+      if (!isFs && onWindow) {
         windowGroup.push(
           iconControl(
             "open-window",
@@ -623,7 +627,7 @@ export function PdfToolbarControls({
             { disabled: !hasDocument },
           ),
         );
-      } else {
+      } else if (isFs) {
         windowGroup.push(
           iconControl(
             "hide-toolbar",
@@ -634,14 +638,16 @@ export function PdfToolbarControls({
           ),
         );
       }
-      windowGroup.push(
-        iconControl(
-          "pdf-settings",
-          Settings2,
-          t(($) => $.preview.actions.settings),
-          onSettings,
-        ),
-      );
+      if (onSettings) {
+        windowGroup.push(
+          iconControl(
+            "pdf-settings",
+            Settings2,
+            t(($) => $.preview.actions.settings),
+            onSettings,
+          ),
+        );
+      }
     };
     pushPreviewWindowControls();
     viewGroup.push(
@@ -760,5 +766,21 @@ export function PdfToolbarControls({
             </DropdownMenu>
           )}
         </div>
+  );
+}
+
+export function PdfShowToolbarButton({ onShow }: Readonly<{ onShow: () => void }>) {
+  const { t } = useTranslation(["preview"]);
+  return (
+    <Tooltip label={t(($) => $.preview.actions.showToolbar)}>
+      <button
+        type="button"
+        onClick={onShow}
+        aria-label={t(($) => $.preview.actions.showToolbar)}
+        className="absolute right-3 top-3 z-20 flex size-8 items-center justify-center rounded-full bg-black/40 text-white/80 backdrop-blur transition-colors hover:bg-black/60 hover:text-white"
+      >
+        <PanelTopOpen className="size-4" />
+      </button>
+    </Tooltip>
   );
 }

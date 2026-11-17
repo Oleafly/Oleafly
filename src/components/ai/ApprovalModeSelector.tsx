@@ -55,7 +55,7 @@ export function ApprovalModeSelector({
   const ActiveIcon = active.icon;
 
   return (
-    <Tooltip label={labels[active.key]} className="ai-composer-approval ml-1.5 min-w-0">
+    <Tooltip label={labels[active.key]} className="ai-composer-approval ml-1.5 shrink-0">
       <Popover
         align="left"
         ariaLabel={t(($) => $.ai.approval.selectorAriaLabel, { mode: labels[active.key] })}

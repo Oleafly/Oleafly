@@ -47,8 +47,8 @@ export const STILL_ROWS = 6;
 export const STILL_COLUMNS = 6;
 const FIRST_WINDOW = Math.ceil(VIEW_REM / ROW_REM) + OVERSCAN * 2;
 const MEAN_FORMAT: Intl.NumberFormatOptions = { maximumSignificantDigits: 6 };
-const TABLE_LINE = "border-(--note-table-line)";
-const TABLE_HEAD = "bg-(--note-table-head)";
+const TABLE_LINE = "border-(--note-table-line,var(--border))";
+const TABLE_HEAD = "bg-(--note-table-head,var(--muted))";
 
 function columnName(name: string, index: number): string {
   return name.trim() || i18n.t(($) => $.notes.blocks.table.column, { number: index + 1 });
@@ -74,7 +74,7 @@ function SummaryCell({ summary }: Readonly<{ summary: ColumnSummary }>) {
   );
 }
 
-export function TableView({ table }: Readonly<{ table: TableData }>) {
+export function TableView({ table, fill = false }: Readonly<{ table: TableData; fill?: boolean }>) {
   const { t } = useTranslation(["notes"]);
   const [filter, setFilter] = useState("");
   const [sort, setSort] = useState<SortState<number> | null>(null);
@@ -128,7 +128,7 @@ export function TableView({ table }: Readonly<{ table: TableData }>) {
         });
 
   return (
-    <div className="note-table w-full min-w-0 select-text">
+    <div className={cn("note-table w-full min-w-0 select-text", fill && "flex h-full flex-col")}>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Input
           type="search"
@@ -150,7 +150,10 @@ export function TableView({ table }: Readonly<{ table: TableData }>) {
           {t(($) => $.notes.blocks.table.truncated, { limit: formatNumber(TABLE_MAX_ROWS) })}
         </p>
       ) : null}
-      <div ref={scrollRef} className={cn(BLOCK_SURFACE, TABLE_LINE, "overflow-auto", virtual ? "h-[24rem]" : "max-h-[24rem]")}>
+      <div
+        ref={scrollRef}
+        className={cn(BLOCK_SURFACE, TABLE_LINE, "overflow-auto", fill ? "min-h-0 flex-1" : virtual ? "h-[24rem]" : "max-h-[24rem]")}
+      >
         <table
           className="w-full border-separate border-spacing-0 text-xs"
           aria-rowcount={order.length + (hasSummary ? 2 : 1)}
@@ -205,7 +208,7 @@ export function TableView({ table }: Readonly<{ table: TableData }>) {
                 {columns.map(({ id, index: column }) => {
                   const summary = summaries[column];
                   return (
-                    <td key={id} className={cn("sticky bottom-0 border-t bg-(--note-table-foot) px-2 py-1 align-top", TABLE_LINE)}>
+                    <td key={id} className={cn("sticky bottom-0 border-t bg-(--note-table-foot,var(--muted)) px-2 py-1 align-top", TABLE_LINE)}>
                       {summary ? <SummaryCell summary={summary} /> : null}
                     </td>
                   );
@@ -229,7 +232,7 @@ function tableLabel(): string {
   return i18n.t(($) => $.notes.blocks.table.label);
 }
 
-function problemText(problem: "empty" | "columns"): string {
+export function problemText(problem: "empty" | "columns"): string {
   return problem === "empty"
     ? i18n.t(($) => $.notes.blocks.table.empty)
     : i18n.t(($) => $.notes.blocks.table.columns, { limit: TABLE_MAX_COLUMNS });

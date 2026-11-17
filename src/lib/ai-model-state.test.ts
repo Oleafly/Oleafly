@@ -88,6 +88,25 @@ describe("mergeFetchedModels", () => {
     expect(merged[0].name).toBe("A");
   });
 
+  it("names a model a server lists by its file path after the file", () => {
+    const path = "/Users/me/models/Qwen3-0.6B-Q4_0.gguf";
+    const merged = mergeFetchedModels([], [
+      { id: path, name: path },
+      { id: "..\\models\\Phi-4.GGUF", name: "..\\models\\Phi-4.GGUF" },
+      { id: "ggml-org/gemma-3-4b-it-GGUF:Q4_K_M", name: "ggml-org/gemma-3-4b-it-GGUF:Q4_K_M" },
+      { id: "/srv/models/tuned.gguf", name: "Tuned" },
+    ]);
+    expect(merged.map((m) => [m.id, m.name])).toEqual([
+      [path, "Qwen3-0.6B-Q4_0"],
+      ["..\\models\\Phi-4.GGUF", "Phi-4"],
+      ["ggml-org/gemma-3-4b-it-GGUF:Q4_K_M", "ggml-org/gemma-3-4b-it-GGUF:Q4_K_M"],
+      ["/srv/models/tuned.gguf", "Tuned"],
+    ]);
+
+    const renamed = mergeFetchedModels([{ ...stored(path), name: path }], [{ id: path, name: path }]);
+    expect(renamed[0].name).toBe("Qwen3-0.6B-Q4_0");
+  });
+
   it("stores trust and metadata from the fetch on new and surviving entries", () => {
     const meta = metadata();
     const merged = mergeFetchedModels([stored("a", false)], [

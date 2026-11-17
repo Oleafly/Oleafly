@@ -228,5 +228,9 @@
     "download": "Banner button that downloads the Chinese, Japanese and Korean font pack",
     "downloadSize": "Same button with the download size, such as 154 MB",
     "downloading": "Busy label on the button while the fonts download"
+  },
+  "zoomIndicator": {
+    "label": "Accessible name of the small bar that appears at the bottom of the window while the app zoom changes",
+    "reset": "Button in that bar that sets the app zoom back to 100%"
   }
 }

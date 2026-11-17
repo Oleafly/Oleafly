@@ -203,13 +203,13 @@ const limits = {
   // citations, the trusted image hosts list and the shared suggestion menu.
   // The entry grows 8 KB, to 4,975,382 bytes. The combined graph measures
   // 23,010,241 bytes on macOS.
-  // +50 KB for the Markdown toolbar in Code mode and the shared comment kit:
-  // the Code toolbar runs Visual's commands on a parsed slice of the source
-  // and hands typing over without moving words, and comment threads,
-  // reactions, mentions and chat drafts are one kit with the web app. The
-  // entry measures 5,038,339 bytes. The combined graph measures 23,587,269
-  // bytes on macOS.
-  totalJavaScript: 23_600_000,
+  // +70 KB, on top of main's 27,100,000, for the Markdown toolbar in Code
+  // mode and the shared comment kit: the Code toolbar runs Visual's commands
+  // on a parsed slice of the source and hands typing over without moving
+  // words, and comment threads, reactions, mentions and chat drafts are one
+  // kit with the web app. The entry measures 5,037,657 bytes. The combined graph
+  // measures 27,156,173 bytes on macOS.
+  totalJavaScript: 27_170_000,
   // Russian is the largest catalog. Main measures 983,290 bytes, and the
   // translated Notes settings, shortcuts, errors and agent strings add 13,383.
   // The Notes namespace itself is its own lazy chunk. This gate is here to

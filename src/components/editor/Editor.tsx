@@ -1,19 +1,20 @@
-import { isTauri } from "@tauri-apps/api/core";
-import { Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { type ReactNode, Suspense, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { Group, Panel, Separator, type GroupImperativeHandle, type Layout } from "react-resizable-panels";
 import { registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
-import { FileText, ImageOff, Settings2 } from "lucide-react";
+import { FileText, Settings2 } from "lucide-react";
 import { Breadcrumbs } from "./Breadcrumbs";
 import { CodeMirrorEditor } from "./CodeMirrorEditor";
 import { EditorContextMenu } from "./EditorContextMenu";
-import { EditorToolbar } from "./EditorToolbar";
+import { EditorToolbar, WysiwygModeSwitch, type EditorMode } from "./EditorToolbar";
+import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
+import { isDeckPath } from "./deck/deck-path";
+import { present } from "@/features/presentation/launch";
 import { MarkdownToolbar } from "./MarkdownToolbar";
 import { TypstToolbar } from "./TypstToolbar";
 import { SelectionActionMenu } from "./SelectionActionMenu";
 import { DiffView } from "./diff/DiffView";
-import { PdfViewer } from "@/components/pdf/PdfViewer";
 import { SidebarCollapseToggle } from "@/components/layout/WorkspaceControls";
 import { PANE_BAR_CLASS, usePaneBar } from "@/components/layout/pane-reorder";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -33,9 +34,7 @@ import { isEditorNoteFile } from "@/lib/project-notes";
 import { fileNoteView, type NoteTabView, personalNoteView, useKeptNoteTabs } from "./kept-note-tabs";
 import { loadNamespace } from "@/i18n";
 import { useZenStore } from "@/store/zen";
-import { useTauriEvent } from "@/hooks/use-tauri-event";
-import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
-import { imageMime, isImagePath } from "@/lib/image-mime";
+import { isImagePath } from "@/lib/image-mime";
 import { basename } from "@/lib/path-utils";
 import { cn, isMac } from "@/lib/utils";
 import { CollabRemovedFileSlot } from "@/components/collab/CollabSlots";
@@ -45,7 +44,7 @@ import {
   pathUsesEngineSource,
 } from "@/lib/document-engine";
 import { useVisualModeStore } from "@/store/visual-mode";
-import { getMarkdownSplitSize, setMarkdownSplitSize } from "@/lib/wysiwyg-mode";
+import { getMarkdownSplitSize, setMarkdownSplitSize, type MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
 import {
   PANEL_STYLE,
   panelLimitProps,
@@ -79,98 +78,15 @@ const FORMATTING_SHORTCUTS: ReadonlyMap<string, "bold" | "italic"> = new Map([
   ["i", "italic"],
 ]);
 
-function PdfFileView({ projectId, path }: Readonly<{ projectId: string; path: string }>) {
-  const { t } = useTranslation(["common", "editor"]);
-  const [bytes, setBytes] = useState<Uint8Array | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const latestRead = useRef(0);
-
-  const read = useCallback(() => {
-    latestRead.current += 1;
-    const request = latestRead.current;
-    readFileBase64(projectId, path)
-      .then((b64) => { if (request === latestRead.current) setBytes(base64ToUint8Array(b64)); })
-      .catch((error) => { if (request === latestRead.current) setErr(String(error)); });
-  }, [projectId, path]);
-
-  useTauriEvent<{ projectId?: string; path?: string }>(
-    "pdf-sync:written",
-    (payload) => {
-      if (payload?.projectId === projectId && payload.path === path) read();
-    },
-    isTauri(),
-  );
-
-  useEffect(() => {
-    setBytes(null);
-    setErr(null);
-    read();
-    return () => {
-      latestRead.current += 1;
-    };
-  }, [read]);
-
-  if (err) {
-    return (
-      <div className="p-6 text-sm text-destructive">
-        {t(($) => $.editor.shell.pdfLoadFailed, { detail: err })}
-      </div>
-    );
-  }
-  if (!bytes) return <div className="p-6 text-sm text-muted-foreground">{t(($) => $.common.state.loading)}</div>;
-  return <PdfViewer data={bytes} scale={1} />;
-}
-
-function ImageFileView({ projectId, path }: Readonly<{ projectId: string; path: string }>) {
-  const { t } = useTranslation(["common", "editor"]);
-  const [src, setSrc] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  const [undecodable, setUndecodable] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    setSrc(null);
-    setErr(null);
-    setUndecodable(false);
-    readFileBase64(projectId, path)
-      .then((b64) => { if (!cancelled) setSrc(`data:${imageMime(path)};base64,${b64}`); })
-      .catch((error) => { if (!cancelled) setErr(String(error)); });
-    return () => { cancelled = true; };
-  }, [projectId, path]);
-
-  if (err) {
-    return (
-      <div className="p-6 text-sm text-destructive">
-        {t(($) => $.editor.shell.imageLoadFailed, { detail: err })}
-      </div>
-    );
-  }
-  if (!src) return <div className="p-6 text-sm text-muted-foreground">{t(($) => $.common.state.loading)}</div>;
-  if (undecodable) {
-    return (
-      <div
-        data-testid="image-undecodable"
-        className="flex h-full flex-col items-center justify-center text-center text-muted-foreground"
-      >
-        <ImageOff className="mb-3 size-10 opacity-30" />
-        <p className="text-sm">{basename(path)}</p>
-        <p className="text-xs">{t(($) => $.editor.shell.imageUnreadable)}</p>
-      </div>
-    );
-  }
-  return (
-    <div className="flex h-full items-center justify-center overflow-auto p-4">
-      <img
-        src={src}
-        alt={basename(path)}
-        onError={() => setUndecodable(true)}
-        className="max-h-full max-w-full object-contain"
-      />
-    </div>
-  );
-}
-
 const DiagramMainFileView = lazy(() => import("./DiagramMainFileView"));
+const OutlineRail = lazy(() => import("./OutlineRail").then((module) => ({ default: module.OutlineRail })), {
+  warm: true,
+});
+const BoardFileView = lazy(() => import("./board/BoardFileView").then((module) => ({ default: module.BoardFileView })));
+const PdfFileView = lazy(() => import("./PdfFileView").then((module) => ({ default: module.PdfFileView })));
+const ImageFileView = lazy(() => import("./ImageFileView").then((module) => ({ default: module.ImageFileView })));
+const HtmlFilePreview = lazy(() => import("./HtmlFilePreview").then((module) => ({ default: module.HtmlFilePreview })));
+const BibReferenceList = lazy(() => import("./BibReferenceList").then((module) => ({ default: module.BibReferenceList })));
 
 function keepEditorFocus(event: MouseEvent) {
   if (!(event.target instanceof Element) || !event.target.classList.contains("cm-scroller")) return;
@@ -182,11 +98,35 @@ function openFileKind(activePath: string | null) {
   return {
     isPdfFile: activePath?.toLowerCase().endsWith(".pdf"),
     isImageFile: activePath != null && isImagePath(activePath),
+    isWorkbookFile: activePath != null && /\.(?:xlsx|xls|ods)$/iu.test(activePath),
+    isBoardFile: activePath != null && /\.excalidraw$/iu.test(activePath),
     isOpaqueFile:
       activePath != null &&
       /\.(zip|gz|eps|ttf|otf|woff2?)$/i.test(activePath),
   };
 }
+
+type SourcePreview = "html" | "bib" | "sheet" | "deck";
+
+function sourcePreviewKind(path: string | null): SourcePreview | null {
+  if (!path) return null;
+  if (isDeckPath(path)) return "deck";
+  if (/\.html?$/iu.test(path)) return "html";
+  if (/\.bib$/iu.test(path)) return "bib";
+  return /\.(?:csv|tsv)$/iu.test(path) ? "sheet" : null;
+}
+
+const DeckView = lazy(() =>
+  Promise.all([loadNamespace("notes"), import("./deck/DeckView")]).then(([, module]) => ({
+    default: module.DeckView,
+  })),
+);
+
+const SheetFilePreview = lazy(() =>
+  Promise.all([loadNamespace("notes"), import("./SheetFilePreview")]).then(([, module]) => ({
+    default: module.SheetFilePreview,
+  })),
+);
 
 function markdownModeFor(split: boolean, visual: boolean): "both" | "visual" | "code" {
   if (split) return "both";
@@ -266,7 +206,7 @@ export function Editor() {
   }, []);
 
   const hasOpenFile = activePath !== null;
-  const { isPdfFile, isImageFile, isOpaqueFile } = openFileKind(activePath);
+  const { isPdfFile, isImageFile, isWorkbookFile, isBoardFile, isOpaqueFile } = openFileKind(activePath);
   const projectId = useFilesStore((s) => s.projectId);
   const projectKind = useFilesStore((s) => s.projectKind);
   const mainDoc = useFilesStore((s) => s.mainDoc);
@@ -275,6 +215,7 @@ export function Editor() {
   const engine = useFilesStore((s) => s.engine);
   const formattingProfile = useFilesStore((s) => s.engine.capabilities.formatting_profile);
   const isMarkdownFile = /\.(md|markdown)$/iu.test(activePath ?? "");
+  const sourcePreview = sourcePreviewKind(activePath);
   const notesOn = useSettingsStore((s) => s.notes);
   const noteTab = useNoteTabsStore((s) => (notesOn ? activeNoteTab(s, projectId) : null));
   const asMarkdown = useNoteTabsStore((s) => editsAsMarkdown(s, projectId, activePath));
@@ -304,7 +245,7 @@ export function Editor() {
     useVisualModeStore.getState().setEnabled(next);
   }, []);
   const toggleWysiwyg = () => setWysiwyg(!wysiwyg);
-  const markdownSplit = isMarkdownFile && markdownSplitEnabled;
+  const markdownSplit = (isMarkdownFile || sourcePreview !== null) && markdownSplitEnabled;
   const stackMarkdownSplit = markdownSplitLayout === "stacked";
   const markdownSourceSize = getMarkdownSplitSize(projectId);
   const saveMarkdownSplitSize = useCallback((layout: Layout) => {
@@ -317,7 +258,16 @@ export function Editor() {
   const markdownSplitHitArea = useSeparatorHitArea(0.25);
   const onMarkdownSeparatorKeyDown = useSeparatorKeyboard(markdownGroupRef, MARKDOWN_SPLIT_LIMITS);
   const markdownVisual = wysiwyg && isMarkdownFile && !markdownSplit;
-  const markdownMode = markdownModeFor(markdownSplit, markdownVisual);
+  const previewOnly = wysiwyg && sourcePreview !== null && !markdownSplit;
+  const sourceHidden = markdownVisual || previewOnly;
+  const markdownMode = markdownModeFor(markdownSplit, sourceHidden);
+  const changeDocumentMode = (mode: EditorMode, layout?: MarkdownSplitLayout) => {
+    if (markdownVisual) flushWysiwygPendingEdits();
+    const visualMode = useVisualModeStore.getState();
+    if (layout) visualMode.setMarkdownSplitLayout(layout);
+    visualMode.setMarkdownSplit(mode === "both");
+    if (mode !== "both") setWysiwyg(mode === "visual");
+  };
   const showBreadcrumbs =
     !zen &&
     !isDiagramMainFile && /\.(?:tex|latex|ltx|typ)$/iu.test(activePath ?? "");
@@ -326,6 +276,44 @@ export function Editor() {
     setWysiwygVisibilityController(setWysiwyg);
     return () => setWysiwygVisibilityController(null);
   }, [setWysiwyg]);
+
+  const revealSource = (from: number) => {
+    if (!activePath) return;
+    if (previewOnly) changeDocumentMode("both");
+    void navigateToProjectRange({ path: activePath, range: { from, to: from }, source: "outline" });
+  };
+
+  const loading = <LoadingState className="h-full justify-center" label={t(($) => $.common.state.loading)} />;
+
+  const renderSourcePreview = () => {
+    if (!projectId || !activePath) return null;
+    return (
+      <Suspense fallback={loading}>
+        {sourcePreview === "html" ? (
+          <HtmlFilePreview projectId={projectId} path={activePath} />
+        ) : sourcePreview === "bib" ? (
+          <BibReferenceList path={activePath} onReveal={revealSource} />
+        ) : sourcePreview === "deck" ? (
+          <DeckView
+            projectId={projectId}
+            path={activePath}
+            onPresent={(mode, page) =>
+              void present({
+                projectId,
+                mode,
+                page: page + 1,
+                mainDoc: null,
+                typst: false,
+                source: { kind: "deck", path: activePath },
+              })
+            }
+          />
+        ) : (
+          <SheetFilePreview projectId={projectId} path={activePath} />
+        )}
+      </Suspense>
+    );
+  };
 
   const renderTextArea = () => (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -358,24 +346,18 @@ export function Editor() {
             !markdownVisual && "invisible pointer-events-none select-none",
           )}
         >
-          <Suspense
-            fallback={
-              <LoadingState
-                className="h-full justify-center"
-                label={t(($) => $.common.state.loading)}
-              />
-            }
-          >
+          <Suspense fallback={loading}>
             <WysiwygEditor wysiwyg={markdownVisual} />
           </Suspense>
         </div>
       ) : null}
+      {previewOnly ? <div className="absolute inset-0">{renderSourcePreview()}</div> : null}
       <div
-        aria-hidden={markdownVisual}
-        inert={markdownVisual ? true : undefined}
+        aria-hidden={sourceHidden}
+        inert={sourceHidden ? true : undefined}
         className={cn(
           "absolute inset-0",
-          markdownVisual && "invisible pointer-events-none select-none",
+          sourceHidden && "invisible pointer-events-none select-none",
         )}
       >
         <Group
@@ -390,16 +372,21 @@ export function Editor() {
             {...panelLimitProps(MARKDOWN_PANE_LIMITS)}
             style={PANEL_STYLE}
           >
-            <EditorContextMenu>
-              <CodeMirrorEditor active={!markdownVisual} />
-            </EditorContextMenu>
+            <div className="relative h-full">
+              <EditorContextMenu>
+                <CodeMirrorEditor active={!sourceHidden} />
+              </EditorContextMenu>
+              <Suspense fallback={null}>
+                <OutlineRail />
+              </Suspense>
+            </div>
             <SelectionActionMenu />
           </Panel>
           {markdownSplit && <>
             <Separator
               id="markdown-split-resize"
               disableDoubleClick
-              aria-label={`${t(($) => $.editor.toolbar.code)} / ${t(($) => $.editor.preview.markdown)}`}
+              aria-label={`${t(($) => $.editor.toolbar.code)} / ${sourcePreview ? t(($) => $.editor.toolbar.preview) : t(($) => $.editor.preview.markdown)}`}
               onKeyDownCapture={onMarkdownSeparatorKeyDown}
               className={cn("shrink-0 select-none bg-border/60 transition-colors hover:bg-primary/30 focus-visible:bg-primary/30",
                 stackMarkdownSplit ? "h-1" : "w-1")}
@@ -410,9 +397,13 @@ export function Editor() {
               {...panelLimitProps(MARKDOWN_PANE_LIMITS)}
               style={PANEL_STYLE}
             >
-              <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">{t(($) => $.common.state.loading)}</div>}>
-                <MarkdownPreview key={`${projectId}:${activePath}`} />
-              </Suspense>
+              {sourcePreview ? (
+                renderSourcePreview()
+              ) : (
+                <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">{t(($) => $.common.state.loading)}</div>}>
+                  <MarkdownPreview key={`${projectId}:${activePath}`} />
+                </Suspense>
+              )}
             </Panel>
           </>}
         </Group>
@@ -421,22 +412,15 @@ export function Editor() {
     </div>
   );
 
+  const wholeFile = (className: string, view: ReactNode) => (
+    <div className={cn("min-h-0 flex-1", className)}>
+      <Suspense fallback={loading}>{view}</Suspense>
+    </div>
+  );
+
   const renderFileArea = () => {
     if (isDiagramMainFile && wysiwyg && projectId && activePath) {
-      return (
-        <div className="min-h-0 flex-1 overflow-hidden">
-          <Suspense
-            fallback={
-              <LoadingState
-                className="h-full justify-center"
-                label={t(($) => $.common.state.loading)}
-              />
-            }
-          >
-            <DiagramMainFileView projectId={projectId} path={activePath} />
-          </Suspense>
-        </div>
-      );
+      return wholeFile("overflow-hidden", <DiagramMainFileView projectId={projectId} path={activePath} />);
     }
     if (isDiagramMainFile) {
       return (
@@ -449,18 +433,16 @@ export function Editor() {
       );
     }
     if (isPdfFile && projectId && activePath) {
-      return (
-        <div className="min-h-0 flex-1 overflow-auto bg-sidebar">
-          <PdfFileView projectId={projectId} path={activePath} />
-        </div>
-      );
+      return wholeFile("overflow-auto bg-sidebar", <PdfFileView projectId={projectId} path={activePath} />);
+    }
+    if (isWorkbookFile && projectId && activePath) {
+      return wholeFile("overflow-hidden", <SheetFilePreview projectId={projectId} path={activePath} workbook />);
+    }
+    if (isBoardFile && projectId && activePath) {
+      return wholeFile("overflow-hidden", <BoardFileView projectId={projectId} path={activePath} />);
     }
     if (isImageFile && projectId && activePath) {
-      return (
-        <div className="min-h-0 flex-1 overflow-auto bg-sidebar">
-          <ImageFileView projectId={projectId} path={activePath} />
-        </div>
-      );
+      return wholeFile("overflow-hidden bg-sidebar", <ImageFileView projectId={projectId} path={activePath} />);
     }
     if (isOpaqueFile && activePath) {
       return (
@@ -480,7 +462,7 @@ export function Editor() {
   const renderNote = (view: NoteTabView, shown: boolean) => (
     <div key={view.key} hidden={!shown} className={shown ? "flex min-h-0 flex-1 flex-col" : undefined}>
       <ErrorBoundary surface="editor" resetKey={`${view.key}\u0000${shown}`}>
-        <Suspense fallback={<LoadingState className="h-full justify-center" label={t(($) => $.common.state.loading)} />}>
+        <Suspense fallback={loading}>
           {view.kind === "personal" ? (
             <PersonalNoteTab projectId={view.projectId} noteId={view.noteId} shown={shown} />
           ) : (
@@ -529,14 +511,20 @@ export function Editor() {
               onToggleWysiwyg={isMarkdownFile ? toggleWysiwyg : undefined}
               mode={isMarkdownFile ? markdownMode : undefined}
               splitLayout={markdownSplitLayout}
-              onModeChange={isMarkdownFile ? (mode, layout) => {
-                if (markdownVisual) flushWysiwygPendingEdits();
-                const visualMode = useVisualModeStore.getState();
-                if (layout) visualMode.setMarkdownSplitLayout(layout);
-                visualMode.setMarkdownSplit(mode === "both");
-                if (mode !== "both") setWysiwyg(mode === "visual");
-              } : undefined}
+              onModeChange={isMarkdownFile ? changeDocumentMode : undefined}
               showProjectInfo={markdownIsEngineSource}
+            />
+          </div>
+        )}
+        {sourcePreview && !zen && (
+          <div className="flex min-h-9 shrink-0 items-center border-b px-2">
+            <WysiwygModeSwitch
+              wysiwyg={previewOnly}
+              onToggle={toggleWysiwyg}
+              secondLabel={t(($) => $.editor.toolbar.preview)}
+              mode={markdownMode}
+              splitLayout={markdownSplitLayout}
+              onModeChange={changeDocumentMode}
             />
           </div>
         )}

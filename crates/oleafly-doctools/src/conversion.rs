@@ -5,6 +5,7 @@ use oleafly_core::engine_spec::{
     DEFAULT_FONTS_FILTER_NAME, DOCUMENT_KIND_FILTER_NAME, MARKDOWN_MARKS_FILTER_NAME,
     MERMAID_FIGURES_FILTER_NAME,
 };
+use oleafly_core::PandocResourcePath;
 
 pub struct ImportPlan {
     pub source_name: &'static str,
@@ -463,7 +464,17 @@ pub fn export_renders_citations(format: &str) -> bool {
 
 pub struct ExportSource {
     pub file_name: String,
-    pub resource_path: String,
+    pub resources: PandocResourcePath,
+}
+
+impl ExportSource {
+    pub fn variables(&self) -> Vec<(String, String)> {
+        self.resources
+            .variable
+            .iter()
+            .map(|(name, value)| ((*name).to_string(), value.to_string_lossy().into_owned()))
+            .collect()
+    }
 }
 
 pub struct ExportCitations<'a> {
@@ -581,10 +592,12 @@ pub fn export_args(
 ) -> Option<Vec<String>> {
     let (writer, _) = export_writer(format)?;
     let reader = export_reader(&source.file_name);
-    let mut args = vec![format!("--to={writer}"), "-o".into(), output.into()];
-    if !source.resource_path.is_empty() {
-        args.push(format!("--resource-path={}", source.resource_path));
-    }
+    let mut args = vec![
+        format!("--to={writer}"),
+        "-o".into(),
+        output.into(),
+        source.resources.argument.to_string_lossy().into_owned(),
+    ];
     if export_needs_standalone(format, reader) {
         args.push("--standalone".into());
     }
@@ -716,6 +729,16 @@ fn title_bibliography_from_heading(source: &str) -> Option<String> {
 mod tests {
     use super::*;
 
+    fn export_source(file_name: &str) -> ExportSource {
+        ExportSource {
+            file_name: file_name.into(),
+            resources: PandocResourcePath {
+                argument: "--resource-path=.".into(),
+                variable: None,
+            },
+        }
+    }
+
     #[test]
     fn docx_to_latex_keeps_the_historical_flags() {
         let plan = import_plan("docx", "latex").unwrap();
@@ -808,10 +831,7 @@ mod tests {
             bibliographies: &[],
         };
         let args_for = |format: &str, file_name: &str| {
-            let source = ExportSource {
-                file_name: file_name.into(),
-                resource_path: ".".into(),
-            };
+            let source = export_source(file_name);
             export_args(format, &source, "out", Some(&citations)).unwrap()
         };
         let fonts = format!(
@@ -837,10 +857,7 @@ mod tests {
             bibliographies: &[],
         };
         let args_for = |format: &str, file_name: &str| {
-            let source = ExportSource {
-                file_name: file_name.into(),
-                resource_path: ".".into(),
-            };
+            let source = export_source(file_name);
             export_args(format, &source, "out", Some(&citations)).unwrap()
         };
         for format in ["docx", "html", "epub", "pptx"] {
@@ -911,10 +928,7 @@ mod tests {
     }
 
     fn args_for(format: &str, file_name: &str, citations: Option<&ExportCitations>) -> Vec<String> {
-        let source = ExportSource {
-            file_name: file_name.into(),
-            resource_path: ".".into(),
-        };
+        let source = export_source(file_name);
         export_args(format, &source, "out", citations).unwrap()
     }
 
@@ -1015,10 +1029,7 @@ mod tests {
 
     #[test]
     fn rendered_exports_resolve_citations_and_cross_references() {
-        let source = ExportSource {
-            file_name: "main.tex".into(),
-            resource_path: ".".into(),
-        };
+        let source = export_source("main.tex");
         let filter = Path::new("/tmp/export-references.lua");
         let bibliographies = [PathBuf::from("/p/refs.bib")];
         let citations = ExportCitations {
@@ -1054,10 +1065,7 @@ mod tests {
             );
         }
         for main in ["main.md", "notes/main.markdown", "main.typ"] {
-            let source = ExportSource {
-                file_name: main.into(),
-                resource_path: ".".into(),
-            };
+            let source = export_source(main);
             let relative = [PathBuf::from("refs.bib")];
             let args = export_args(
                 "tex",

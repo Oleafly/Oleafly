@@ -146,6 +146,30 @@ describe("explainCodedCompileErrors", () => {
     ]);
   });
 
+  it("explains latexmk stopping early, bib2gls and a pinned compiler with their own words", () => {
+    const coded = (code: string, params: Record<string, string>) => ({ ...warning(code), params });
+    const pinned = { declared: "LuaLaTeX", compiler: "pdfLaTeX" };
+    const explained = explainCodedCompileErrors([
+      coded("tex.latexmk_stopped", { line: "RC file [./x] does not exist." }),
+      coded("tex.bib2gls_needs_java", {}),
+      coded("tex.glossary_resources_not_built", {}),
+      coded("tex.glossary_resources_need_latexmk", {}),
+      coded("tex.compiler_differs_from_latexmkrc", pinned),
+      coded("tex.compiler_differs_from_magic_comment", pinned),
+    ]);
+    const filled = (text: string) =>
+      text.replaceAll("{{declared}}", "LuaLaTeX").replaceAll("{{compiler}}", "pdfLaTeX");
+    expect(explained.map((error) => error.explanation)).toEqual([
+      enErrors.tex.latexmk_stopped.replace("{{line}}", "RC file [./x] does not exist."),
+      enErrors.tex.bib2gls_needs_java,
+      enErrors.tex.glossary_resources_not_built,
+      enErrors.tex.glossary_resources_need_latexmk,
+      filled(enErrors.tex.compiler_differs_from_latexmkrc),
+      filled(enErrors.tex.compiler_differs_from_magic_comment),
+    ]);
+    for (const error of explained) expect(error.explanation).not.toContain("{{");
+  });
+
   it("shows the spelling BibTeX can read for a path above the build folder", () => {
     const [explained] = explainCodedCompileErrors([
       {

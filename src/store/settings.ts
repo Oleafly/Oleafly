@@ -93,6 +93,7 @@ export type RailTab =
 export type DockPlacement = "left" | "right" | "bottom";
 export type BackgroundPattern = "dots" | "grid" | "none";
 export type HomeProjectLayout = "grid" | "list";
+export type FileMarkers = "icons" | "badges";
 export type GrammarDialect =
   | "american"
   | "british"
@@ -931,6 +932,8 @@ interface SettingsState {
   setEditorAutoCloseBrackets: (v: boolean) => void;
   editorAutoCloseMath: boolean;
   setEditorAutoCloseMath: (v: boolean) => void;
+  editorGroupScripts: boolean;
+  setEditorGroupScripts: (v: boolean) => void;
   editorAutoCloseEnvironments: boolean;
   setEditorAutoCloseEnvironments: (v: boolean) => void;
   editorGhostCompletion: boolean;
@@ -1111,6 +1114,8 @@ interface SettingsState {
   setAppIcon: (v: AppIconId) => void;
   homeProjectLayout: HomeProjectLayout;
   setHomeProjectLayout: (v: HomeProjectLayout) => void;
+  fileMarkers: FileMarkers;
+  setFileMarkers: (v: FileMarkers) => void;
   latexTools: boolean;
   setLatexTools: (v: boolean) => void;
   notes: boolean;
@@ -1251,6 +1256,7 @@ const PREF_DEFAULTS = {
   editorAutocomplete: true,
   editorAutoCloseBrackets: true,
   editorAutoCloseMath: true,
+  editorGroupScripts: true,
   editorAutoCloseEnvironments: true,
   editorGhostCompletion: true,
   editorCursorBlinking: "blink" as EditorCursorBlinking,
@@ -1317,6 +1323,7 @@ const PREF_DEFAULTS = {
   bgPattern: "dots" as BackgroundPattern,
   appIcon: "classic" as AppIconId,
   homeProjectLayout: "grid" as HomeProjectLayout,
+  fileMarkers: "icons" as FileMarkers,
   latexTools: false,
   notes: false,
   ...NOTES_APPEARANCE_DEFAULTS,
@@ -1359,6 +1366,7 @@ export const SECTION_SETTINGS = {
     editorAutocomplete: "oleafly.editor.autocomplete",
     editorAutoCloseBrackets: "oleafly.editor.closeBrackets",
     editorAutoCloseMath: "oleafly.editor.closeMath",
+    editorGroupScripts: "oleafly.editor.groupScripts",
     editorAutoCloseEnvironments: "oleafly.editor.closeEnvironments",
     editorGhostCompletion: "oleafly.editor.ghostCompletion",
     editorCursorBlinking: "oleafly.editor.cursorBlinking",
@@ -1414,6 +1422,7 @@ export const SECTION_SETTINGS = {
     bgPattern: "oleafly.bgPattern",
     appIcon: "oleafly.appIcon",
     homeProjectLayout: "oleafly.library.projectLayout",
+    fileMarkers: "oleafly.fileTree.markers",
     ...NOTES_APPEARANCE_STORAGE_KEYS,
     notesPeriodic: NOTES_PERIODIC_KEY,
   },
@@ -1574,6 +1583,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setEditorAutoCloseMath: (v) => {
     saveLs("oleafly.editor.closeMath", v ? "1" : "0");
     set({ editorAutoCloseMath: v });
+  },
+  editorGroupScripts: ls("oleafly.editor.groupScripts", "1") !== "0",
+  setEditorGroupScripts: (v) => {
+    saveLs("oleafly.editor.groupScripts", v ? "1" : "0");
+    set({ editorGroupScripts: v });
   },
   editorAutoCloseEnvironments:
     ls("oleafly.editor.closeEnvironments", "1") !== "0",
@@ -2126,6 +2140,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setHomeProjectLayout: (v) => {
     saveLs("oleafly.library.projectLayout", v);
     set({ homeProjectLayout: v });
+  },
+  fileMarkers: ls("oleafly.fileTree.markers", "icons") === "badges" ? "badges" : "icons",
+  setFileMarkers: (v) => {
+    saveLs("oleafly.fileTree.markers", v);
+    set({ fileMarkers: v });
   },
   latexTools: ls("oleafly.latexTools", "0") === "1",
   setLatexTools: (v) => {

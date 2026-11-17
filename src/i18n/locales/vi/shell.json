@@ -560,7 +560,7 @@
       },
       "glossaries-index": {
         "title": "Công cụ thuật ngữ hoặc chỉ mục",
-        "detail": "glossaries và makeindex cần chạy thêm makeindex hoặc xindy, điều mà engine tích hợp sẵn không làm."
+        "detail": "glossaries và makeindex cần chạy thêm makeindex, xindy hoặc bib2gls, điều mà engine tích hợp sẵn không làm."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref được đặt sang driver pdfTeX",
@@ -1067,7 +1067,8 @@
       "help": "Trợ giúp & Giới thiệu",
       "integrations": "Tích hợp",
       "shortcuts": "Phím tắt",
-      "research": "Nghiên cứu"
+      "research": "Nghiên cứu",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Không có cài đặt nào khớp",
@@ -1084,7 +1085,8 @@
         "help": "giới thiệu, phiên bản, cập nhật, nhật ký thay đổi, có gì mới, tài liệu, hỗ trợ, cộng đồng, Discord, giấy phép, báo cáo sự cố",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, dịch vụ Git, Computer Use, ứng dụng máy tính, Cua, MCP, trích dẫn, tài khoản, kết nối",
         "shortcuts": "phím tắt, tổ hợp phím, phím, bàn phím",
-        "research": "tác vụ nghiên cứu, hạn mức, thông báo, giữ máy thức, thử nghiệm, lần chạy"
+        "research": "tác vụ nghiên cứu, hạn mức, thông báo, giữ máy thức, thử nghiệm, lần chạy",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Tìm trong cài đặt",
       "results_other": "{{count}} mục khớp"
@@ -1609,5 +1611,9 @@
   "stuckWindow": {
     "reloaded": "Oleafly đã tải lại cửa sổ này vì nó ngừng phản hồi trong 30 giây. Các thay đổi ngay trước đó có thể chưa được lưu.",
     "reloadedAgain": "Oleafly đã tải lại cửa sổ này lần nữa vì nó ngừng phản hồi. Nó không mở lại dự án của bạn, phòng trường hợp có gì đó trong dự án gây ra việc này."
+  },
+  "zoomIndicator": {
+    "label": "Thu phóng",
+    "reset": "Đặt lại"
   }
 }

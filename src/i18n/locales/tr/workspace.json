@@ -126,6 +126,8 @@
     "entryCount_other": "{{count}} anahat ögesi",
     "expandHeading": "{{title}} başlığını genişlet",
     "expandAll": "Tüm başlıkları genişlet",
+    "onPage": "{{heading}}, sayfa {{page}}",
+    "page": "s.{{page}}",
     "title": "Anahat"
   },
   "panelError": {

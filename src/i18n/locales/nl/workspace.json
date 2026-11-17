@@ -126,6 +126,8 @@
     "entryCount_other": "{{count}} items in het overzicht",
     "expandHeading": "{{title}} uitklappen",
     "expandAll": "Alle koppen uitklappen",
+    "onPage": "{{heading}}, pagina {{page}}",
+    "page": "p.{{page}}",
     "title": "Overzicht"
   },
   "panelError": {

@@ -1,7 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Trans } from "react-i18next";
 import { Check, Copy, Github, RefreshCw } from "lucide-react";
-import { appendAppLog } from "@/lib/tauri";
+import { logError } from "@/lib/log";
 import { reportCrashToGithub } from "@/lib/crash-report";
 import { SpecimenIllustration } from "@/components/SpecimenIllustration";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
@@ -103,10 +103,10 @@ export class ErrorBoundary extends Component<Props, State> {
     const failedRetry = this.retriedAt !== null && Date.now() - this.retriedAt < RETRY_WINDOW_MS;
     this.retriedAt = null;
     this.setState({ componentStack: info.componentStack ?? null, failedRetry });
-    const detail = `UI crash: ${error.name}: ${error.message}\n${
+    const detail = `${error.name}: ${error.message}\n${
       error.stack ?? ""
     }\ncomponentStack:${info.componentStack ?? ""}`;
-    void appendAppLog(detail).catch(() => {});
+    void logError("UI crash", detail);
     this.props.onError?.(error);
   }
 

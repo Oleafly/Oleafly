@@ -29,6 +29,23 @@ count that screen readers announce is a `<Badge asChild size="count"><output>`.
 If a component keeps a map from its own states to a tone, map to
 `BadgeVariant` names, not colour classes.
 
+A small set of controls floating over content, such as the zoom controls on an
+image or the app zoom level, is a `FloatingBar` from `ui/floating-bar.tsx`: a
+rounded pill with the toolbar role, made of frosted glass (`GLASS_PANEL` from
+`lib/utils`) so the content underneath shows through, blurred, in both themes. The caller places it and gives it an
+`aria-label`; its buttons are `rounded-full` `TooltipIconButton`s.
+
+A file or folder icon is a `FileIcon` or `FolderIcon` from
+`files/fileIcon.tsx`, and a type badge (`TEX`, `PDF`) is a `FileBadge` from the
+same file. Related kinds share a colour token (`--color-file-source`,
+`--color-file-prose`, `--color-file-pdf` and so on in `globals.css`, each mapped
+to one of the `--chart-*` colours and used as `text-file-*`), and the icon's
+body takes a light tint of it. Unknown files are grey. Add a new extension to
+the kind it belongs to rather than giving it a colour of its own. Pass the
+file's path as `name` where you have it: a slide deck is an `index.tsx` under
+`slides/`, and only its path says so. The project tree shows badges instead of
+icons when the `fileMarkers` setting asks for them.
+
 Labels that need their own colour, not a state tone, take a `Tone` from
 `ui/tones.ts`. Item kinds and tags use it today. Each tone has `icon`, `text`,
 `tint`, `hover` and `dot` classes with the light and dark shades built in.

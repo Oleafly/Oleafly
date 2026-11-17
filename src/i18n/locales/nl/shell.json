@@ -561,7 +561,7 @@
       },
       "glossaries-index": {
         "title": "Tool voor woordenlijst of index",
-        "detail": "glossaries en makeindex hebben een extra run van makeindex of xindy nodig, wat de ingebouwde engine niet doet."
+        "detail": "glossaries en makeindex hebben een extra run van makeindex, xindy of bib2gls nodig, wat de ingebouwde engine niet doet."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref is ingesteld op de pdfTeX-driver",
@@ -1083,7 +1083,8 @@
       "help": "Help en Over",
       "integrations": "Integraties",
       "shortcuts": "Sneltoetsen",
-      "research": "Onderzoek"
+      "research": "Onderzoek",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Geen instellingen gevonden",
@@ -1100,7 +1101,8 @@
         "help": "over, versie, updates, wijzigingen, releaseopmerkingen, wat is er nieuw, documentatie, ondersteuning, community, Discord, licentie, crashrapport",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-hosting, Computer Use, desktop-apps, Cua, MCP, citaties, accounts, verbindingen",
         "shortcuts": "sneltoetsen, toetscombinaties, toetsen, toetsenbord",
-        "research": "onderzoek taken budget meldingen wakker houden experimenten runs research tasks"
+        "research": "onderzoek taken budget meldingen wakker houden experimenten runs research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Instellingen doorzoeken",
       "results_one": "{{count}} sectie komt overeen",
@@ -1644,5 +1646,9 @@
   "stuckWindow": {
     "reloaded": "Oleafly heeft dit venster opnieuw geladen omdat het 30 seconden niet reageerde. Wijzigingen van vlak daarvoor zijn misschien niet opgeslagen.",
     "reloadedAgain": "Oleafly heeft dit venster nog een keer opnieuw geladen omdat het weer niet reageerde. Je project is niet opnieuw geopend, voor het geval iets daarin de oorzaak is."
+  },
+  "zoomIndicator": {
+    "label": "Zoom",
+    "reset": "Herstellen"
   }
 }

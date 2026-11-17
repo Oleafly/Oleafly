@@ -58,9 +58,10 @@ import {
   latexCompletions,
   slashCompletions,
 } from "./latex";
-import { languageForPath } from "./languages";
+import { editorLanguageForPath } from "./languages";
 import { openEnvironmentCompletion } from "./latex-environments";
 import { latexPairInputHandler, latexPairKeymap } from "./latex-pairs";
+import { lazyExtension } from "./lazy-extension";
 import { typstEditing } from "./typst-editing";
 import { typstSlashCompletions } from "./typst-snippets";
 import { markdownSlashCompletions } from "./markdown-snippets";
@@ -139,6 +140,7 @@ export interface EditorHost {
     autocomplete: boolean;
     autoCloseBrackets: boolean;
     autoCloseMath?: boolean;
+    groupScripts?: boolean;
     cursorBlinking: EditorCursorBlinking;
     highlightCurrentLine: boolean;
     cursorHeight: EditorCursorHeight;
@@ -568,7 +570,7 @@ function loadVisualModule(): Promise<VisualModule> {
 function languageExtensionFor(path: string | null, visual: VisualModule | null): Extension {
   if (!path) return [];
   if (visual && isLatexDocumentPath(path)) return visual.latexTreeSupport();
-  return languageForPath(path) ?? [];
+  return editorLanguageForPath(path);
 }
 
 function visualExtensionFor(
@@ -791,9 +793,18 @@ function stickyScrollFor(host: EditorHost, path: string | null): Extension[] {
   return kind && host.stickyScroll ? [host.stickyScroll(kind)] : [];
 }
 
+const latexScriptGroups = lazyExtension(() =>
+  import("./latex-scripts").then((module) => module.latexScriptGroups()),
+);
+
+const typstScriptGroups = lazyExtension(() =>
+  import("./typst-scripts").then((module) => module.typstScriptGroups()),
+);
+
 interface EditorPrefs {
   autoCloseBrackets: boolean;
   autoCloseMath: boolean;
+  groupScripts: boolean;
   cursorBlinking: EditorCursorBlinking;
   highlightCurrentLine: boolean;
   cursorHeight: EditorCursorHeight;
@@ -804,20 +815,26 @@ function editorPrefExtensions(
   {
     autoCloseBrackets,
     autoCloseMath,
+    groupScripts,
     cursorBlinking,
     highlightCurrentLine,
     cursorHeight,
   }: EditorPrefs,
 ): Extension[] {
   const math = autoCloseBrackets && autoCloseMath;
+  const scripts = autoCloseBrackets && groupScripts;
   const latexPairs = isLatexSourcePath(path)
     ? [
+        scripts ? latexScriptGroups() : [],
         latexPairInputHandler({ math, brackets: autoCloseBrackets }),
         ...(math ? [Prec.highest(keymap.of(latexPairKeymap))] : []),
       ]
     : [];
   const typstPairs = isTypstSourcePath(path)
-    ? [typstEditing({ math, wrap: autoCloseBrackets })]
+    ? [
+        scripts ? typstScriptGroups() : [],
+        typstEditing({ math, wrap: autoCloseBrackets }),
+      ]
     : [];
   return [
     autoCloseBrackets ? closeBrackets() : [],
@@ -893,6 +910,7 @@ export function CodeMirrorEditor({
     autocomplete,
     autoCloseBrackets,
     autoCloseMath = true,
+    groupScripts = true,
     cursorBlinking,
     highlightCurrentLine,
     cursorHeight,
@@ -1021,6 +1039,7 @@ export function CodeMirrorEditor({
           editorPrefExtensions(initialPath, {
             autoCloseBrackets,
             autoCloseMath,
+            groupScripts,
             cursorBlinking,
             highlightCurrentLine,
             cursorHeight,
@@ -1399,13 +1418,14 @@ export function CodeMirrorEditor({
         editorPrefExtensions(activePath, {
           autoCloseBrackets,
           autoCloseMath,
+          groupScripts,
           cursorBlinking,
           highlightCurrentLine,
           cursorHeight,
         }),
       ),
     });
-  }, [activePath, autoCloseBrackets, autoCloseMath, cursorBlinking, highlightCurrentLine, cursorHeight]);
+  }, [activePath, autoCloseBrackets, autoCloseMath, groupScripts, cursorBlinking, highlightCurrentLine, cursorHeight]);
 
   useEffect(() => {
     const view = viewRef.current;

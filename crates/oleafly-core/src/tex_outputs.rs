@@ -10,14 +10,6 @@ const SOURCE_SNIFF_BYTES: u64 = 512 * 1024;
 const LOG_FILE_OPEN: &str = "File `";
 const LOG_FILE_CLOSE: &str = "' not found";
 
-pub const LATEXMK_INDEX_RULES: [&str; 5] = [
-    r"sub oleafly_mi { my ($path, $style, $log, $out, $in) = @_; my $base = basename($path); local $ENV{openin_any} = q/r/; pushd(dirname($path)); my $sheet = $style // qq/$base.ist/; my @order = (); if (!defined $style && open(my $aux, q/</, qq/$base.aux/)) { for (<$aux>) { @order = (q/-l/) if /\\\@glsorder\{letter\}/; $sheet = basename($1) if /\\\@istfilename\{([^}]+\.ist)\}/; } close($aux); } my $code = 0; if (defined $style || -e $sheet) { $code = system(q/makeindex/, @order, q/-s/, $sheet, q/-t/, qq/$base.$log/, q/-o/, qq/$base.$out/, qq/$base.$in/); } elsif (open(my $empty, q/>/, qq/$base.$out/)) { close($empty); } popd(); return $code; }",
-    r"add_cus_dep(q/glo/, q/gls/, 0, q/oleafly_glo/); sub oleafly_glo { oleafly_mi($_[0], undef, q/glg/, q/gls/, q/glo/) }",
-    r"add_cus_dep(q/acn/, q/acr/, 0, q/oleafly_acn/); sub oleafly_acn { oleafly_mi($_[0], undef, q/alg/, q/acr/, q/acn/) }",
-    r"add_cus_dep(q/nlo/, q/nls/, 0, q/oleafly_nlo/); sub oleafly_nlo { my $glossary = 0; if (open(my $list, q/</, qq/$_[0].nlo/)) { $glossary = grep { /^\\glossaryentry/ } <$list>; close($list); } oleafly_mi($_[0], $glossary ? undef : q/nomencl.ist/, q/nlg/, q/nls/, q/nlo/) }",
-    r"add_cus_dep(q/slo/, q/sls/, 0, q/oleafly_slo/); sub oleafly_slo { oleafly_mi($_[0], undef, q/slg/, q/sls/, q/slo/) }",
-];
-
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum IndexKind {
     Index,
@@ -33,6 +25,13 @@ const INDEX_OUTPUTS: [(&str, &str, IndexKind); 5] = [
 ];
 
 const AUX_NEW_GLOSSARY: &str = "\\@newglossary{";
+const AUX_GLOSSARY_RESOURCE: &str = "\\glsxtr@resource{";
+const JAVA_MISSING_LINES: [&str; 4] = [
+    "java: not found",
+    "java: command not found",
+    "Unable to locate a Java Runtime",
+    "program not found (not part of TeX Live): java",
+];
 const BLG_OPEN_FAILED: &str = "I couldn't open database file ";
 const PARENT_FOLDER: &str = "../";
 
@@ -149,6 +148,45 @@ fn unbuilt_custom_glossary(log: &str, out_dir: &Path, stem: &str) -> bool {
         .any(|(output, source)| list_unbuilt(log, out_dir, stem, output, source))
 }
 
+fn glossary_resource<'a>(line: &'a str, stem: &str) -> Option<&'a str> {
+    let fields = line
+        .trim_end()
+        .strip_prefix(AUX_GLOSSARY_RESOURCE)?
+        .strip_suffix('}')?;
+    let (_, name) = fields.rsplit_once("}{")?;
+    let suffix = name.strip_prefix(stem)?;
+    let numbered = suffix.strip_prefix('-').is_some_and(|number| {
+        !number.is_empty() && number.bytes().all(|byte| byte.is_ascii_digit())
+    });
+    (suffix.is_empty() || numbered).then_some(name)
+}
+
+fn unbuilt_glossary_resources(out_dir: &Path, stem: &str) -> bool {
+    let Some(aux) = source_head(&out_dir.join(format!("{stem}.aux"))) else {
+        return false;
+    };
+    aux.lines()
+        .filter_map(|line| glossary_resource(line, stem))
+        .any(|name| !non_empty_file(&out_dir.join(format!("{name}.glstex"))))
+}
+
+pub fn bib2gls_java_error(log: &str) -> Option<CompileError> {
+    let runs_bib2gls = log.contains("bib2gls");
+    let line = log.lines().find(|line| {
+        runs_bib2gls
+            && JAVA_MISSING_LINES
+                .iter()
+                .any(|missing| line.contains(missing))
+    })?;
+    Some(CompileError {
+        message: line.trim().to_owned(),
+        kind: "error".into(),
+        explanation: Some("bib2gls builds this document's glossary and needs Java, which isn't installed. Install Java 8 or newer, then compile again.".into()),
+        code: Some("tex.bib2gls_needs_java".into()),
+        ..Default::default()
+    })
+}
+
 fn index_warning(code: &str, message: &str, explanation: &str) -> CompileError {
     CompileError {
         message: message.into(),
@@ -176,13 +214,26 @@ pub fn unbuilt_index_warnings(
     let index = unbuilt_kind(log, out_dir, stem, IndexKind::Index);
     let glossary = unbuilt_kind(log, out_dir, stem, IndexKind::Glossary);
     let custom = unbuilt_custom_glossary(log, out_dir, stem);
-    if !bundled {
-        return (index || glossary || custom)
-            .then(glossary_not_built_warning)
-            .into_iter()
-            .collect();
-    }
+    let resources = unbuilt_glossary_resources(out_dir, stem);
     let mut warnings = Vec::new();
+    if resources && !bundled {
+        warnings.push(index_warning(
+            "tex.glossary_resources_not_built",
+            "The glossary wasn't built",
+            "bib2gls didn't build this glossary, so its entries show as ?? in the PDF. Check that bib2gls and Java are installed, then compile again. Any bib2gls messages are in the log.",
+        ));
+    }
+    if resources && bundled {
+        warnings.push(index_warning(
+            "tex.glossary_resources_need_latexmk",
+            "The glossary wasn't built",
+            "Tectonic can't run bib2gls, so the glossary entries show as ?? in the PDF. Switch this project to latexmk to build them.",
+        ));
+    }
+    if !bundled {
+        warnings.extend((index || glossary || custom).then(glossary_not_built_warning));
+        return warnings;
+    }
     if index {
         warnings.push(index_warning(
             "tex.index_needs_latexmk",
@@ -201,6 +252,47 @@ pub fn unbuilt_index_warnings(
         warnings.push(glossary_not_built_warning());
     }
     warnings
+}
+
+pub fn pinned_compiler_warning(
+    project_root: &Path,
+    main_document: &Path,
+    pinned: TexFlavor,
+) -> Option<CompileError> {
+    let (declared, source) = crate::declared_tex_flavor(project_root, main_document)?;
+    if declared == pinned {
+        return None;
+    }
+    let (code, asks) = match source {
+        crate::DeclaredFlavorSource::MagicComment => (
+            "tex.compiler_differs_from_magic_comment",
+            "The document's % !TEX program line asks",
+        ),
+        crate::DeclaredFlavorSource::Latexmkrc => (
+            "tex.compiler_differs_from_latexmkrc",
+            "This project's latexmkrc asks",
+        ),
+    };
+    Some(CompileError {
+        message: format!(
+            "The compiler is set to {}, but this project asks for {}",
+            pinned.label(),
+            declared.label()
+        ),
+        kind: "warning".into(),
+        explanation: Some(format!(
+            "{asks} for {declared}, but the compiler is set to {pinned}. If the document needs {declared}, switch the compiler to {declared} and compile again.",
+            declared = declared.label(),
+            pinned = pinned.label()
+        )),
+        code: Some(code.into()),
+        params: BTreeMap::from([
+            ("compiler".to_owned(), pinned.label().to_owned()),
+            ("declared".to_owned(), declared.label().to_owned()),
+            ("flavor".to_owned(), declared.as_str().to_owned()),
+        ]),
+        ..Default::default()
+    })
 }
 
 pub fn unicode_engine_error(log: &str) -> Option<CompileError> {
@@ -465,6 +557,128 @@ mod tests {
     }
 
     #[test]
+    fn a_bib2gls_glossary_that_was_never_built_gets_its_own_warning() {
+        let aux = "\\relax\n\\glsxtr@resource{src={entries}}{job}\n\\glsxtr@resource{src={abbrevs},type=abbreviations}{job-1}\n\\glsxtr@resource{src={x}}{../escape}\n";
+        let missing = project(&[("job.aux", aux), ("job.glstex", "\\providecommand")]);
+        assert_eq!(
+            codes(&unbuilt_index_warnings("", missing.path(), "job", false)),
+            ["tex.glossary_resources_not_built"]
+        );
+        assert_eq!(
+            codes(&unbuilt_index_warnings("", missing.path(), "job", true)),
+            ["tex.glossary_resources_need_latexmk"]
+        );
+        let built = project(&[
+            ("job.aux", aux),
+            ("job.glstex", "\\providecommand"),
+            ("job-1.glstex", "\\providecommand"),
+        ]);
+        assert!(unbuilt_index_warnings("", built.path(), "job", false).is_empty());
+        for line in [
+            "\\glsxtr@resource{src={x}}{job-a}",
+            "\\glsxtr@resource{src={x}}{other}",
+        ] {
+            assert_eq!(glossary_resource(line, "job"), None, "{line}");
+        }
+    }
+
+    #[test]
+    fn a_missing_java_names_java_on_every_system() {
+        for log in [
+            "Running 'bib2gls --group job'\n/Library/TeX/texbin/bib2gls: line 15: exec: java: not found\n",
+            "Running 'bib2gls --group job'\n/usr/bin/bib2gls: line 15: java: command not found\n",
+            "Running 'bib2gls --group job'\nThe operation couldn't be completed. Unable to locate a Java Runtime.\n",
+            "Running 'bib2gls --group job'\nC:\\texlive\\2026\\bin\\windows\\runscript.tlu:920: program not found (not part of TeX Live): java.exe\n",
+            "Running 'bib2gls --group job'\nprogram not found (not part of TeX Live): javaw.exe java.exe\n",
+        ] {
+            let error = bib2gls_java_error(log).unwrap();
+            assert_eq!(error.kind, "error");
+            assert_eq!(error.code.as_deref(), Some("tex.bib2gls_needs_java"));
+        }
+        assert!(bib2gls_java_error("sh: java: not found\n").is_none());
+        assert!(bib2gls_java_error("Running 'bib2gls job'\nWriting job.glstex\n").is_none());
+    }
+
+    #[test]
+    fn the_new_glossary_and_compiler_cards_match_the_catalog_word_for_word() {
+        let catalog: serde_json::Value =
+            serde_json::from_str(include_str!("../../../src/i18n/locales/en/errors.json")).unwrap();
+        let english = |error: &CompileError| {
+            let key = error.code.as_deref().unwrap().strip_prefix("tex.").unwrap();
+            let mut text = catalog["tex"][key].as_str().unwrap().to_owned();
+            for (name, value) in &error.params {
+                text = text.replace(&format!("{{{{{name}}}}}"), value);
+            }
+            text
+        };
+        let java = bib2gls_java_error("Running 'bib2gls x'\nexec: java: not found\n").unwrap();
+        let stopped =
+            crate::tex_errors::parse_tex_log_errors("Latexmk: RC file [./x] does not exist\n")
+                .remove(0);
+        let rc = project(&[
+            ("main.tex", "\\documentclass{novathesis}\n"),
+            ("latexmkrc", "$pdf_mode = 4;\n"),
+            ("job.aux", "\\glsxtr@resource{src={x}}{job}\n"),
+        ]);
+        let latexmkrc =
+            pinned_compiler_warning(rc.path(), &rc.path().join("main.tex"), TexFlavor::Pdflatex)
+                .unwrap();
+        let magic = project(&[("main.tex", "% !TEX program = xelatex\n")]);
+        let comment = pinned_compiler_warning(
+            magic.path(),
+            &magic.path().join("main.tex"),
+            TexFlavor::Pdflatex,
+        )
+        .unwrap();
+        let mut cards = vec![java, stopped, latexmkrc, comment];
+        cards.extend(unbuilt_index_warnings("", rc.path(), "job", false));
+        cards.extend(unbuilt_index_warnings("", rc.path(), "job", true));
+        assert_eq!(cards.len(), 6);
+        for card in cards {
+            assert_eq!(
+                card.explanation.as_deref(),
+                Some(english(&card).as_str()),
+                "{:?}",
+                card.code
+            );
+        }
+    }
+
+    #[test]
+    fn a_pinned_compiler_that_contradicts_the_project_gets_a_warning() {
+        let rc = project(&[
+            ("main.tex", "\\documentclass{novathesis}\n"),
+            ("latexmkrc", "$pdf_mode = 4;\n"),
+        ]);
+        let main = rc.path().join("main.tex");
+        let warning = pinned_compiler_warning(rc.path(), &main, TexFlavor::Pdflatex).unwrap();
+        assert_eq!(warning.kind, "warning");
+        assert_eq!(
+            warning.code.as_deref(),
+            Some("tex.compiler_differs_from_latexmkrc")
+        );
+        assert_eq!(warning.params["declared"], "LuaLaTeX");
+        assert_eq!(warning.params["compiler"], "pdfLaTeX");
+        assert_eq!(warning.params["flavor"], "lualatex");
+        assert!(pinned_compiler_warning(rc.path(), &main, TexFlavor::Lualatex).is_none());
+        let magic = project(&[(
+            "main.tex",
+            "% !TEX program = xelatex\n\\documentclass{article}\n",
+        )]);
+        let main = magic.path().join("main.tex");
+        assert_eq!(
+            pinned_compiler_warning(magic.path(), &main, TexFlavor::Pdflatex)
+                .unwrap()
+                .code
+                .as_deref(),
+            Some("tex.compiler_differs_from_magic_comment")
+        );
+        let plain = project(&[("main.tex", "\\documentclass{article}\n")]);
+        let main = plain.path().join("main.tex");
+        assert!(pinned_compiler_warning(plain.path(), &main, TexFlavor::Xelatex).is_none());
+    }
+
+    #[test]
     fn a_skipped_xindy_glossary_is_reported_under_latexmk() {
         let out = project(&[("job.glo", "entry"), ("job.xdy", "style"), ("job.gls", "")]);
         assert_eq!(
@@ -603,16 +817,6 @@ mod tests {
         assert!(bibliography_above_main_error(clean.path(), "job").is_none());
         let missing = project(&[]);
         assert!(bibliography_above_main_error(missing.path(), "job").is_none());
-    }
-
-    #[test]
-    fn index_rules_stay_free_of_double_quotes_and_percent_signs() {
-        for rule in LATEXMK_INDEX_RULES {
-            assert!(!rule.contains('"'), "{rule}");
-            assert!(!rule.contains('%'), "{rule}");
-            assert!(!rule.contains('\n'), "{rule}");
-            assert!(!rule.contains("makeglossaries"), "{rule}");
-        }
     }
 
     #[test]

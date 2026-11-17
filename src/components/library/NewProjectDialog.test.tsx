@@ -246,7 +246,7 @@ describe("NewProjectDialog flow", () => {
       expect(screen.getByTestId("templates-core-generate")).not.toBeDisabled(),
     );
     fireEvent.click(screen.getByTestId("templates-core-generate"));
-    expect(screen.getByTestId("generate-modal")).toBeInTheDocument();
+    expect(await screen.findByTestId("generate-modal")).toBeInTheDocument();
   });
 
   it("withholds AI generation when no provider is available", async () => {
@@ -385,7 +385,7 @@ describe("NewProjectDialog host adapters", () => {
     await waitFor(() => expect(screen.getByTestId("templates-core-generate")).not.toBeDisabled());
     fireEvent.click(screen.getByTestId("templates-core-generate"));
 
-    fireEvent.click(screen.getByRole("button", { name: "saved" }));
+    fireEvent.click(await screen.findByRole("button", { name: "saved" }));
     expect(onTemplatesChanged).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole("button", { name: "close generator" }));

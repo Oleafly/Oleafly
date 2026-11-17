@@ -1,17 +1,27 @@
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { isTauri } from "@tauri-apps/api/core";
+import { create } from "zustand";
+import { Contained } from "@/components/Contained";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { APP_ZOOM_LEVELS, appZoomLevel, useSettingsStore } from "@/store/settings";
 import { logError } from "@/lib/log";
+import { lazy } from "@/lib/preloadable";
 
 export const APP_ZOOM_STORAGE_KEY = "oleafly.appZoom";
-const DEFAULT_ZOOM = 100;
+export const DEFAULT_APP_ZOOM = 100;
+
+export const useAppZoomFeedback = create<{ shown: number }>(() => ({ shown: 0 }));
+
+const AppZoomIndicator = lazy(
+  () => import("@/components/layout/AppZoomIndicator").then((module) => ({ default: module.AppZoomIndicator })),
+  { warm: true },
+);
 
 export function storedAppZoom(): number {
   try {
-    return appZoomLevel(localStorage.getItem(APP_ZOOM_STORAGE_KEY) ?? DEFAULT_ZOOM);
+    return appZoomLevel(localStorage.getItem(APP_ZOOM_STORAGE_KEY) ?? DEFAULT_APP_ZOOM);
   } catch {
-    return DEFAULT_ZOOM;
+    return DEFAULT_APP_ZOOM;
   }
 }
 
@@ -36,7 +46,8 @@ function applyQuietly(level: number): void {
 
 export function zoomApp(direction: 1 | -1 | 0): void {
   const settings = useSettingsStore.getState();
-  settings.setAppZoom(direction === 0 ? DEFAULT_ZOOM : steppedAppZoom(settings.appZoom, direction));
+  settings.setAppZoom(direction === 0 ? DEFAULT_APP_ZOOM : steppedAppZoom(settings.appZoom, direction));
+  useAppZoomFeedback.setState(({ shown }) => ({ shown: shown + 1 }));
 }
 
 function zoomDirection(event: KeyboardEvent): 1 | -1 | 0 | null {
@@ -76,7 +87,15 @@ export function useAppZoom(): void {
   }, []);
 }
 
-export function AppZoom(): null {
+export function AppZoom() {
   useAppZoom();
-  return null;
+  const zoomed = useAppZoomFeedback((state) => state.shown > 0);
+  if (!zoomed) return null;
+  return (
+    <Contained>
+      <Suspense fallback={null}>
+        <AppZoomIndicator />
+      </Suspense>
+    </Contained>
+  );
 }

@@ -573,9 +573,17 @@ fn latexmk_args_match_the_app_contract() {
         false,
         "texlive",
     );
-    assert_eq!(&args[..2], ["-norc", "-shell-restricted"]);
+    assert_eq!(
+        &args[..5],
+        [
+            "-norc",
+            "-shell-restricted",
+            "-lualatex",
+            "-r",
+            "./.oleafly/build/.oleafly-latexmkrc"
+        ]
+    );
     for expected in [
-        "-lualatex",
         "-interaction=nonstopmode",
         "-synctex=1",
         "-outdir=./.oleafly/build",
@@ -589,7 +597,55 @@ fn latexmk_args_match_the_app_contract() {
 }
 
 #[test]
-fn every_flavor_gets_the_glossary_and_nomenclature_rules_after_its_own_arguments() {
+fn no_perl_or_quoting_ever_reaches_the_latexmk_command_line() {
+    for flavor in TexFlavor::ALL {
+        for out_dir in [
+            "./.oleafly/build",
+            "../.oleafly/build",
+            "C:/Users/ana/AppData/Roaming/oleafly/linked/x/build",
+        ] {
+            for (shell_escape, halt_on_error, distribution) in [
+                (false, false, "texlive"),
+                (true, true, "texlive"),
+                (false, true, "tinytex"),
+                (false, false, "oleafly-tinytex"),
+                (false, false, "miktex"),
+                (true, false, "miktex"),
+                (false, false, "other"),
+            ] {
+                let args = latexmk_args(
+                    out_dir,
+                    "./main.tex",
+                    ENTRY_STEM,
+                    flavor,
+                    EngineFlags {
+                        halt_on_error,
+                        ..Default::default()
+                    },
+                    shell_escape,
+                    distribution,
+                );
+                for arg in &args {
+                    assert_ne!(arg, "-e", "{flavor:?} {args:?}");
+                    assert!(
+                        !arg.contains(['\\', '"', '$', '%', '\'', '\n', ';', '{', '}']),
+                        "{flavor:?} {arg}"
+                    );
+                }
+                let rc = args.iter().position(|arg| arg == "-r").unwrap();
+                assert_eq!(
+                    args[rc + 1],
+                    format!("{out_dir}/{}", latexmk_rc_file(flavor))
+                );
+                assert_eq!(args.iter().filter(|arg| *arg == "-r").count(), 1);
+                assert!(args.contains(&format!("-outdir={out_dir}")));
+            }
+        }
+    }
+}
+
+#[test]
+fn every_flavor_keeps_its_own_arguments_and_its_rc_settings() {
     for flavor in TexFlavor::ALL {
         let args = latexmk_args(
             "./.oleafly/build",
@@ -602,52 +658,149 @@ fn every_flavor_gets_the_glossary_and_nomenclature_rules_after_its_own_arguments
         );
         let flavor_args = flavor.latexmk_args();
         assert_eq!(&args[2..2 + flavor_args.len()], &flavor_args[..]);
+        let rc = latexmk_rc(flavor);
+        assert!(rc.starts_with(&flavor.latexmk_rc_settings()));
         for dependency in [
-            "add_cus_dep(q/glo/, q/gls/",
-            "add_cus_dep(q/acn/, q/acr/",
-            "add_cus_dep(q/nlo/, q/nls/",
+            "add_cus_dep(q/glo/, q/gls/, 0, q/oleafly_glo/);",
+            "add_cus_dep(q/acn/, q/acr/, 0, q/oleafly_acn/);",
+            "add_cus_dep(q/nlo/, q/nls/, 0, q/oleafly_nlo/);",
+            "add_cus_dep(q/slo/, q/sls/, 0, q/oleafly_slo/);",
+            "add_cus_dep(q/aux/, q/glstex/, 0, q/oleafly_bib2gls/);",
         ] {
-            let at = args
-                .iter()
-                .position(|arg| arg.contains(dependency))
-                .unwrap_or_else(|| panic!("{dependency} is missing for {flavor:?}"));
-            assert_eq!(args[at - 1], "-e");
+            assert!(
+                rc.lines().any(|line| line == dependency),
+                "{dependency} is missing for {flavor:?}"
+            );
         }
-        assert_eq!(args.last().unwrap(), "./main.tex");
-    }
-}
-
-#[test]
-fn the_symbols_list_and_its_makeindex_step_reach_every_flavor() {
-    for flavor in TexFlavor::ALL {
-        let args = latexmk_args(
-            "./.oleafly/build",
-            "./main.tex",
-            ENTRY_STEM,
-            flavor,
-            EngineFlags::default(),
-            false,
-            "texlive",
-        );
-        let at = args
-            .iter()
-            .position(|arg| arg.contains("add_cus_dep(q/slo/, q/sls/"))
-            .unwrap_or_else(|| panic!("the symbols rule is missing for {flavor:?}"));
-        assert_eq!(args[at - 1], "-e");
-        assert!(args[at].contains("oleafly_mi($_[0], undef, q/slg/, q/sls/, q/slo/)"));
+        assert!(!rc.contains("makeglossaries"));
     }
 }
 
 #[test]
 fn glossary_rules_read_the_style_file_the_document_named() {
-    let rules = crate::tex_outputs::LATEXMK_INDEX_RULES;
-    assert!(rules[0].contains(r"\\\@istfilename\{([^}]+\.ist)\}"));
-    let numbers = rules
-        .iter()
-        .find(|rule| rule.contains("add_cus_dep(q/nlo/"))
+    let rc = latexmk_rc(TexFlavor::Pdflatex);
+    assert!(rc.contains(r"/\\\@istfilename\{([^}]+\.ist)\}/"));
+    assert!(rc.contains(r"/\\\@glsorder\{letter\}/"));
+    assert!(rc.contains(r"/^\\glossaryentry/"));
+    assert!(rc.contains("$glossary ? undef : q/nomencl.ist/"));
+    assert!(rc.contains("oleafly_mi($_[0], undef, q/slg/, q/sls/, q/slo/)"));
+    assert!(rc.contains("split(q/ /, $makeindex"));
+}
+
+#[test]
+fn the_latexmk_rc_compiles_under_perl_for_every_flavor() {
+    let required =
+        std::env::var_os("CI").is_some() || std::env::var_os("OLEAFLY_REQUIRE_REAL_TEX").is_some();
+    let Some(perl) = std::env::var_os("PATH").and_then(|path| {
+        std::env::split_paths(&path)
+            .find_map(|dir| crate::tex_distro::find_tool_in_dir(&dir, "perl"))
+    }) else {
+        assert!(
+            !required,
+            "perl must be on PATH to check the latexmk rc file"
+        );
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    for flavor in TexFlavor::ALL {
+        write_latexmk_rc(dir.path(), flavor).unwrap();
+        let rc = dir.path().join(latexmk_rc_file(flavor));
+        let output = std::process::Command::new(&perl)
+            .arg("-w")
+            .arg("-c")
+            .arg(&rc)
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(output.status.success(), "{flavor:?}: {stderr}");
+        assert!(stderr.contains("syntax OK"), "{flavor:?}: {stderr}");
+        assert!(
+            !stderr.contains("Possible unintended interpolation"),
+            "{flavor:?}: {stderr}"
+        );
+        assert!(!stderr.contains("Unterminated"), "{flavor:?}: {stderr}");
+    }
+    let collapsed = dir.path().join("collapsed.rc");
+    std::fs::write(
+        &collapsed,
+        latexmk_rc(TexFlavor::Pdflatex).replace(r"\\", r"\"),
+    )
+    .unwrap();
+    let output = std::process::Command::new(&perl)
+        .arg("-w")
+        .arg("-c")
+        .arg(&collapsed)
+        .output()
         .unwrap();
-    assert!(numbers.contains(r"/^\\glossaryentry/"));
-    assert!(numbers.contains("$glossary ? undef : q/nomencl.ist/"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!output.status.success(), "{stderr}");
+    assert!(stderr.contains("Unterminated \\g"), "{stderr}");
+}
+
+#[test]
+fn the_rc_file_replaces_a_planted_one_and_moves_with_the_out_dir() {
+    let dir = tempfile::tempdir().unwrap();
+    let rc = dir.path().join(latexmk_rc_file(TexFlavor::Uplatex));
+    std::fs::write(&rc, "system(q/rm -rf ~/)").unwrap();
+    write_latexmk_rc(dir.path(), TexFlavor::Uplatex).unwrap();
+    assert_eq!(
+        std::fs::read_to_string(&rc).unwrap(),
+        latexmk_rc(TexFlavor::Uplatex)
+    );
+    let mut args = latexmk_args(
+        "./.oleafly/build",
+        "./paper/main.tex",
+        ENTRY_STEM,
+        TexFlavor::Pdflatex,
+        EngineFlags::default(),
+        false,
+        "texlive",
+    );
+    assert!(set_latexmk_out_dir(
+        &mut args,
+        "/tmp/project/.oleafly/build"
+    ));
+    assert!(args.contains(&"-outdir=/tmp/project/.oleafly/build".to_string()));
+    let at = args.iter().position(|arg| arg == "-r").unwrap();
+    assert_eq!(
+        args[at + 1],
+        "/tmp/project/.oleafly/build/.oleafly-latexmkrc"
+    );
+    assert!(!set_latexmk_out_dir(&mut ["-norc".to_string()], "/x"));
+    let mut uplatex = latexmk_args(
+        "./.oleafly/build",
+        "./main.tex",
+        ENTRY_STEM,
+        TexFlavor::Uplatex,
+        EngineFlags::default(),
+        false,
+        "texlive",
+    );
+    assert!(set_latexmk_out_dir(&mut uplatex, "/tmp/p/.oleafly/build"));
+    assert!(uplatex.contains(&"/tmp/p/.oleafly/build/.oleafly-uplatex-latexmkrc".to_string()));
+}
+
+#[test]
+fn builds_sharing_a_folder_never_rewrite_each_others_rc_file() {
+    for first in TexFlavor::ALL {
+        for second in TexFlavor::ALL {
+            if latexmk_rc_file(first) == latexmk_rc_file(second) {
+                assert_eq!(
+                    latexmk_rc(first),
+                    latexmk_rc(second),
+                    "{first:?} {second:?}"
+                );
+            }
+        }
+    }
+    assert_ne!(
+        latexmk_rc_file(TexFlavor::Uplatex),
+        latexmk_rc_file(TexFlavor::Pdflatex)
+    );
+    assert_ne!(
+        latexmk_rc_file(TexFlavor::Platex),
+        latexmk_rc_file(TexFlavor::Uplatex)
+    );
 }
 
 #[test]
@@ -2331,4 +2484,80 @@ fn a_switched_latexmk_forces_one_full_rebuild() {
     assert!(latexmk_binary_changed(&out, &latexmk));
     record_latexmk_binary(&out, &latexmk);
     assert!(!latexmk_binary_changed(&out, &latexmk));
+}
+
+#[test]
+fn a_non_ascii_owned_build_folder_reaches_latexmk_by_its_short_name() {
+    let build = Path::new("C:/Users/Jörg/.oleafly/linked/p/build");
+    let short = |path: &Path| {
+        (path == build).then(|| PathBuf::from("C:/Users/JRG~1/.oleafly/linked/p/build"))
+    };
+    assert_eq!(
+        latexmk_owned_path_text(build, true, &short).as_deref(),
+        Some("C:/Users/JRG~1/.oleafly/linked/p/build")
+    );
+    assert_eq!(
+        latexmk_owned_path_text(&build.join("_figure.tex"), true, &short).as_deref(),
+        Some("C:/Users/JRG~1/.oleafly/linked/p/build/_figure.tex")
+    );
+}
+
+#[test]
+fn a_non_ascii_owned_build_folder_without_a_short_name_is_refused() {
+    let build = Path::new("C:/Users/张三/.oleafly/linked/p/build");
+    assert_eq!(latexmk_owned_path_text(build, true, &|_| None), None);
+    let unchanged = |path: &Path| Some(path.to_path_buf());
+    assert_eq!(latexmk_owned_path_text(build, true, &unchanged), None);
+}
+
+#[test]
+fn an_ascii_owned_build_folder_keeps_its_own_name() {
+    let build = Path::new("C:/Users/ada/.oleafly/linked/p/build");
+    let never = |_: &Path| -> Option<PathBuf> { panic!("no short name needed") };
+    assert_eq!(
+        latexmk_owned_path_text(build, true, &never).as_deref(),
+        Some("C:/Users/ada/.oleafly/linked/p/build")
+    );
+    let unix = Path::new("/home/jörg/.oleafly/linked/p/build");
+    assert_eq!(
+        latexmk_owned_path_text(unix, false, &never).as_deref(),
+        Some("/home/jörg/.oleafly/linked/p/build")
+    );
+}
+
+#[test]
+fn a_bare_argument_a_script_wrapper_would_respell_is_quoted_on_windows() {
+    for (arg, quoted) in [
+        (
+            "-outdir=C:/Users/O'Brien/build",
+            "\"-outdir=C:/Users/O'Brien/build\"",
+        ),
+        ("./fig[1].tex", "\"./fig[1].tex\""),
+        ("-r", ""),
+        ("./main.tex", ""),
+        ("C:/a b/O'Brien.tex", ""),
+        ("say\"what'", ""),
+        ("C:\\it's\\", "\"C:\\it's\\\\\""),
+    ] {
+        assert_eq!(wrapper_safe_arg(arg).unwrap_or_default(), quoted, "{arg}");
+    }
+    assert!(is_windows_batch_script(Path::new("C:/tl/bin/tlmgr.BAT")));
+    assert!(is_windows_batch_script(Path::new("quarto.cmd")));
+    assert!(!is_windows_batch_script(Path::new("C:/tl/bin/latexmk.exe")));
+}
+
+#[test]
+fn wrapper_safe_args_keep_every_argument_in_order() {
+    let mut command = std::process::Command::new("latexmk");
+    add_wrapper_safe_args(
+        &mut command,
+        Path::new("latexmk"),
+        &["-norc", "./O'Neil.tex", "a b"],
+    );
+    let args: Vec<_> = command.get_args().collect();
+    if cfg!(windows) {
+        assert_eq!(args, ["-norc", "\"./O'Neil.tex\"", "a b"]);
+    } else {
+        assert_eq!(args, ["-norc", "./O'Neil.tex", "a b"]);
+    }
 }

@@ -406,6 +406,10 @@ export function installNotesAgentMock(options: MockOptions): NotesAgentMock {
       state.logs.push(String(args.message));
       return null;
     },
+    log_frontend_error: (args) => {
+      state.logs.push(String(args.message));
+      return null;
+    },
     "plugin:window|is_fullscreen": () => false,
     "plugin:window|is_maximized": () => false,
   };

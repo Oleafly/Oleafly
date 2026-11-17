@@ -164,7 +164,7 @@ pnpm audit --prod --audit-level high      # registry-backed npm advisory check
 cargo check --workspace                   # all Rust crates compile
 cargo fmt --all -- --check                # Rust formatting
 cargo clippy --workspace --all-targets -- -D warnings  # Rust lints, as CI runs them
-cargo test -p oleafly-core -p oleafly-cli --all-targets  # shared core and CLI
+python3 scripts/run-nextest.py cargo nextest run -p oleafly-core -p oleafly-cli --all-targets  # shared core and CLI
 cargo deny --workspace --all-features --config src-tauri/deny.toml check  # Rust advisories, licenses, and sources
 ```
 
@@ -196,7 +196,7 @@ To move to a newer Rust:
    `1.99.0`. CI rejects `stable` and version ranges on purpose.
 2. Run `cargo fmt --all -- --check`,
    `cargo clippy --workspace --all-targets -- -D warnings`, and
-   `cargo test --workspace --all-targets`. rustup downloads the new version on
+   `python3 scripts/run-nextest.py cargo nextest run --workspace --all-targets`. rustup downloads the new version on
    the first call.
 3. Fix what the newer clippy reports in the same pull request, so the bump
    lands green.

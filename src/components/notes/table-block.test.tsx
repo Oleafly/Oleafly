@@ -85,13 +85,13 @@ describe("TableView", () => {
     const heads = [...container.querySelectorAll("thead th")];
     const sums = [...container.querySelectorAll("tfoot td")];
     expect(heads).toHaveLength(3);
-    for (const cell of heads) expect(cell).toHaveClass("sticky", "top-0", "bg-(--note-table-head)", "border-(--note-table-line)");
-    for (const cell of sums) expect(cell).toHaveClass("sticky", "bottom-0", "bg-(--note-table-foot)", "border-(--note-table-line)");
+    for (const cell of heads) expect(cell).toHaveClass("sticky", "top-0", "bg-(--note-table-head,var(--muted))", "border-(--note-table-line,var(--border))");
+    for (const cell of sums) expect(cell).toHaveClass("sticky", "bottom-0", "bg-(--note-table-foot,var(--muted))", "border-(--note-table-line,var(--border))");
     for (const cell of container.querySelectorAll("tbody td")) {
-      expect(cell).toHaveClass("border-(--note-table-line)");
+      expect(cell).toHaveClass("border-(--note-table-line,var(--border))");
       expect(cell.className).not.toMatch(/\bbg-/u);
     }
-    expect(container.querySelector(".overflow-auto")).toHaveClass("border-(--note-table-line)");
+    expect(container.querySelector(".overflow-auto")).toHaveClass("border-(--note-table-line,var(--border))");
     expect(container.querySelector(".overflow-auto")).not.toHaveClass("border-border");
     expect(container.querySelector(".bg-muted")).toBeNull();
     expect(within(sums[1] as HTMLElement).getByText(copy.count)).toHaveClass("text-foreground/60");
@@ -345,9 +345,9 @@ describe("paintTableStill", () => {
     expect(table.querySelectorAll("tbody tr")).toHaveLength(STILL_ROWS);
     expect(table.querySelectorAll("tbody tr")[0].querySelectorAll("td")).toHaveLength(STILL_COLUMNS);
     expect(element.querySelector("button, input")).toBeNull();
-    for (const cell of table.querySelectorAll("th")) expect(cell).toHaveClass("bg-(--note-table-head)", "border-(--note-table-line)");
+    for (const cell of table.querySelectorAll("th")) expect(cell).toHaveClass("bg-(--note-table-head,var(--muted))", "border-(--note-table-line,var(--border))");
     expect(table.querySelector("td")?.className).not.toMatch(/\bbg-/u);
-    expect(table.querySelector("td")).toHaveClass("border-t", "border-(--note-table-line)");
+    expect(table.querySelector("td")).toHaveClass("border-t", "border-(--note-table-line,var(--border))");
   });
 
   it("names blank headers", () => {
