@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { EditorState } from "@codemirror/state";
 import { setEditorErrorReporter } from "@oleafly/editor";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { markdownFormatKeymap } from "./markdown-keymap";
 import { modelEdit, modelLinkHref, modelState } from "./markdown-model";
 import {
@@ -52,6 +52,13 @@ afterAll(() => {
   setEditorErrorReporter(null);
   restoreParsing();
 });
+
+// Each test runs thousands of toolbar actions without yielding, and every one leaves ProseMirror a
+// DOM-observer flush on a 20 ms timer. Let them run after each test, under its own timeout, rather
+// than all at once in the setup file's afterAll: under coverage that took over its 10 s limit.
+afterEach(async () => {
+  await new Promise((resolve) => setTimeout(resolve, 25));
+}, 120_000);
 
 function clip(left: string, right: string): [string, string] {
   let start = 0;

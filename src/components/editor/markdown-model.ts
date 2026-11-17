@@ -293,7 +293,9 @@ function stripped(json: string, mark: string): string {
 function loadModel(input: string): Omit<Model, "doc" | "slice" | "nodes"> | null {
   const parsed = parse(input);
   if (parsed.frontmatter) return null;
-  scratchEditor ??= new Editor({ element: document.createElement("div"), extensions: WYSIWYG_EXTENSIONS });
+  // Nothing listens for the "delete" event here, and TipTap's core Delete extension queues a timer after every
+  // update: one per toolbar action, which piled up to thousands in the corpus sweep.
+  scratchEditor ??= new Editor({ element: document.createElement("div"), extensions: WYSIWYG_EXTENSIONS, enableCoreExtensions: { delete: false } });
   const editor = scratchEditor;
   editor.chain().setMeta("addToHistory", false).setContent(parsed.doc, { emitUpdate: false }).run();
   const json = editor.getJSON();

@@ -42,7 +42,8 @@ function writesMarkTag(editor: Editor): boolean {
 export function markdownEngine(extensions: AnyExtension[]): Editor {
   let editor = engines.get(extensions);
   if (!editor || editor.isDestroyed) {
-    editor = new Editor({ element: document.createElement("div"), extensions, content: "" });
+    // A parse and serialize engine: nothing listens for the "delete" event, which would queue a timer per update.
+    editor = new Editor({ element: document.createElement("div"), extensions, content: "", enableCoreExtensions: { delete: false } });
     engines.set(extensions, editor);
   }
   return editor;

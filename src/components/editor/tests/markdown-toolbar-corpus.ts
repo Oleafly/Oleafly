@@ -354,7 +354,7 @@ export class VisualDocument {
   constructor(source: string) {
     this.source = source;
     this.parsed = parseMarkdownBody(source, mathRanges(source));
-    this.editor = new Editor({ element: document.createElement("div"), extensions: WYSIWYG_EXTENSIONS, content: this.parsed.doc });
+    this.editor = new Editor({ element: document.createElement("div"), extensions: WYSIWYG_EXTENSIONS, content: this.parsed.doc, enableCoreExtensions: { delete: false } });
     this.cleanJson = JSON.stringify(this.editor.state.doc.toJSON());
     this.baseline = this.save(createMarkdownSourceSnapshot(this.parsed.layout, this.editor.getJSON()));
   }
