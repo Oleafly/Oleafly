@@ -31,6 +31,8 @@ pub mod portable;
 pub mod process_probe;
 pub mod sidecar;
 pub mod templates;
+#[cfg(any(test, feature = "test-support"))]
+pub mod test_support;
 pub mod tex_distro;
 mod tex_engine_notices;
 pub mod tex_errors;

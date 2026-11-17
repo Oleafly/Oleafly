@@ -3,7 +3,8 @@ use std::future::Future;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
-use std::sync::{Arc, Mutex, OnceLock};
+use std::sync::OnceLock;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use oleafly_agent::tools::registry::{ParallelPolicy, RegisteredTool, ToolRegistry};
@@ -138,11 +139,17 @@ pub struct TaskMcpTool {
 fn shared_literature() -> Arc<LiteratureClient> {
     static CLIENT: OnceLock<Arc<LiteratureClient>> = OnceLock::new();
     CLIENT
-        .get_or_init(|| {
-            LiteratureClient::new(std::env::temp_dir().join("oleafly-literature-cache.sqlite3"))
-        })
+        .get_or_init(|| LiteratureClient::new(literature_cache_path()))
         .clone()
 }
+
+#[cfg(not(any(test, feature = "test-support")))]
+fn literature_cache_path() -> PathBuf {
+    std::env::temp_dir().join("oleafly-literature-cache.sqlite3")
+}
+
+#[cfg(any(test, feature = "test-support"))]
+use crate::test_support::literature_cache_path;
 
 pub trait TaskHost: Send + Sync {
     fn skills(&self, context: &TaskRunContext) -> Result<String, String>;

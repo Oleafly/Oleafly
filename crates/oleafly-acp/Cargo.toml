@@ -30,6 +30,7 @@ windows-sys = { version = "0.61", features = ["Win32_Globalization"] }
 
 [dev-dependencies]
 agent-client-protocol-schema = { version = "=1.12.0", default-features = false, features = ["unstable_session_fork", "unstable_llm_providers", "unstable_end_turn_token_usage", "unstable_protocol_v2"] }
+libtest-mimic = "0.8.2"
 tempfile = { workspace = true }
 tokio = { version = "1", features = ["io-util", "macros", "process", "rt", "rt-multi-thread", "sync", "test-util", "time"] }
 

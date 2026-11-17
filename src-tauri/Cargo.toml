@@ -173,6 +173,7 @@ e2e-testing = ["dep:tauri-plugin-playwright", "oleafly-collab/e2e-hooks"]
 [dev-dependencies]
 tauri = { version = "2", features = ["test"] }
 plist = "1"
+oleafly-core = { path = "../crates/oleafly-core", features = ["test-support"] }
 oleafly-server = { path = "../crates/oleafly-server", features = ["test-support"] }
 oleafly-research = { path = "../crates/oleafly-research", features = ["test-support"] }
 oleafly-downloads = { path = "../crates/oleafly-downloads", features = ["test-support"] }

@@ -20,6 +20,7 @@ approach before you invest time.
 | [Node.js](https://nodejs.org) | 22.13+ | Required by pnpm 11 |
 | [pnpm](https://pnpm.io) | 11.9+ | Enable Corepack or install the version declared in `package.json` |
 | [Rust](https://rustup.rs) | pinned in `rust-toolchain.toml` | rustup installs that version the first time you run `cargo` in the repo. It is the version CI uses. |
+| [cargo-nextest](https://nexte.st) | 0.9.x | Required by the Rust test hook. Install it with `cargo install cargo-nextest --locked`. |
 | Platform deps | - | See the [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS (on Linux: `libwebkit2gtk-4.1-dev`, `librsvg2-dev`, `patchelf`, …) |
 
 ## Getting started
@@ -88,17 +89,21 @@ lowercase engineering references contain deeper contracts and release policy.
 
 ```bash
 pnpm test                    # frontend unit tests (Vitest)
-cargo test --workspace --all-targets  # Rust workspace tests
+python3 scripts/run-nextest.py cargo nextest run --workspace --all-targets
 ```
 
 On Windows, run the Rust tests as
-`OLEAFLY_EMBED_TEST_MANIFEST=1 cargo test --workspace --lib` (PowerShell:
-`$env:OLEAFLY_EMBED_TEST_MANIFEST="1"`). The variable makes the build script
-link a Common Controls v6 manifest into test binaries; without it they exit
-with `STATUS_ENTRYPOINT_NOT_FOUND` before running, because only the packaged
-app binary receives the manifest that Tauri normally embeds. Leave the
-variable unset for `cargo build` and `pnpm tauri` commands so the app binary
-keeps its single embedded manifest.
+```powershell
+$env:OLEAFLY_EMBED_TEST_MANIFEST="1"
+python scripts/run-nextest.py cargo nextest run --workspace --lib
+python scripts/run-nextest.py cargo nextest run -p oleafly-cli --test cli
+```
+
+The variable makes the build script link a Common Controls v6 manifest into
+test binaries; without it they exit with `STATUS_ENTRYPOINT_NOT_FOUND` before
+running, because only the packaged app binary receives the manifest that Tauri
+normally embeds. Leave the variable unset for `cargo build` and `pnpm tauri`
+commands so the app binary keeps its single embedded manifest.
 
 The ACP protocol tests also need Python 3 on `PATH` (`python.exe` on Windows,
 `python3` on Unix). On Windows without Developer Mode, tests that require
@@ -172,7 +177,7 @@ what counts as prose.
 
 1. Fork and branch from `main` (`git checkout -b fix/short-description`).
 2. Keep the change focused; unrelated refactors belong in their own PR.
-3. Make sure `pnpm lint`, `pnpm build`, and `cargo test --workspace --all-targets` pass locally.
+3. Make sure `pnpm lint`, `pnpm build`, and `python3 scripts/run-nextest.py cargo nextest run --workspace --all-targets` pass locally.
 4. Fill out the PR template - link the issue, describe the change, note how you
    tested it.
 5. CI must be green (the frontend build and Rust tests are required checks).

@@ -124,8 +124,7 @@ pub fn config_with(pairs: &[(&str, &str)]) -> ServerConfig {
     );
     vars.insert(
         "OLEAFLY_DATA_DIR".to_string(),
-        std::env::temp_dir()
-            .join("oleafly-server-test-data")
+        oleafly_server::test_support::test_data_dir()
             .display()
             .to_string(),
     );
