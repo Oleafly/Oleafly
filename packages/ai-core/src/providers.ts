@@ -208,6 +208,7 @@ export interface CustomProviderPreset {
 }
 
 export const CUSTOM_PROVIDER_PRESETS: readonly CustomProviderPreset[] = [
+  { id: "llamacpp", name: "llama.cpp", baseURL: "http://localhost:9931/v1" },
   { id: "qwen", name: "Qwen (DashScope)", baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
   { id: "kimi", name: "Kimi (Moonshot)", baseURL: "https://api.moonshot.cn/v1" },
   { id: "zhipu", name: "Zhipu GLM", baseURL: "https://open.bigmodel.cn/api/paas/v4" },

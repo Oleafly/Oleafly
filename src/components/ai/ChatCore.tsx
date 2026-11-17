@@ -4655,13 +4655,13 @@ ${sandboxedCustom}`;
           {configuredProviders.length > 0 && (
             <div
               data-tour="ai-provider-model"
-              className="ai-composer-model shrink-0"
+              className="ai-composer-model min-w-10"
             >
               <ModelSelector
                 compact
                 open={modelPickerOpen}
                 onOpenChange={setModelPickerOpen}
-                className="h-7 min-w-0 shrink-0 gap-1 px-2 text-xs font-medium text-foreground hover:text-foreground"
+                className="h-7 min-w-0 gap-1 px-2 text-xs font-medium text-foreground hover:text-foreground"
                 providerId={provider}
                 modelId={model}
                 groups={pickerGroups}

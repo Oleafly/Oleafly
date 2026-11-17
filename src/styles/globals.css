@@ -1641,6 +1641,10 @@ body[data-tour-active] [data-tour-hide] {
     padding-inline: 0.125rem;
   }
 
+  .ai-composer-model {
+    min-width: 2.25rem;
+  }
+
   .ai-composer-model .ai-model-selector-trigger {
     width: 2.25rem;
     min-width: 2.25rem;
