@@ -67,6 +67,7 @@ struct Done {
     peer: u64,
     size: u64,
     change: Option<String>,
+    post: Option<String>,
     reply: Option<Reply>,
 }
 
@@ -131,15 +132,24 @@ struct Lingering {
 }
 
 type Author = (SharedProjectId, DeviceId);
+type Poster = (SharedProjectId, AccountId);
 
-#[derive(Default)]
-struct Changes {
+struct Changes<K> {
     clock: u64,
-    writers: HashMap<Author, (u64, VecDeque<(String, Fate)>)>,
+    writers: HashMap<K, (u64, VecDeque<(String, Fate)>)>,
 }
 
-impl Changes {
-    fn fate(&self, writer: Author, id: &str) -> Option<Fate> {
+impl<K> Default for Changes<K> {
+    fn default() -> Self {
+        Changes {
+            clock: 0,
+            writers: HashMap::new(),
+        }
+    }
+}
+
+impl<K: Copy + Eq + std::hash::Hash> Changes<K> {
+    fn fate(&self, writer: K, id: &str) -> Option<Fate> {
         self.writers
             .get(&writer)?
             .1
@@ -148,7 +158,7 @@ impl Changes {
             .map(|(_, fate)| *fate)
     }
 
-    fn note(&mut self, writer: Author, id: &str, fate: Fate) {
+    fn note(&mut self, writer: K, id: &str, fate: Fate) {
         self.clock += 1;
         if !self.writers.contains_key(&writer) && self.writers.len() >= KEPT_WRITERS {
             let oldest = self
@@ -185,7 +195,8 @@ pub struct Hub {
     sessions: AtomicU64,
     lingering: Mutex<Vec<Lingering>>,
     tickets: AtomicU64,
-    changes: Mutex<Changes>,
+    changes: Mutex<Changes<Author>>,
+    posts: Mutex<Changes<Poster>>,
 }
 
 impl Hub {
@@ -285,6 +296,14 @@ impl Hub {
 
     fn note(&self, project: SharedProjectId, device: DeviceId, id: &str, fate: Fate) {
         locked(&self.changes).note((project, device), id, fate);
+    }
+
+    fn posted(&self, project: SharedProjectId, account: AccountId, id: &str) -> Option<Fate> {
+        locked(&self.posts).fate((project, account), id)
+    }
+
+    fn note_post(&self, project: SharedProjectId, account: AccountId, id: &str, fate: Fate) {
+        locked(&self.posts).note((project, account), id, fate);
     }
 
     fn resumed(&self, project: SharedProjectId, device: DeviceId, id: &str) -> bool {
@@ -394,6 +413,7 @@ struct Written {
     peer: u64,
     texts: Vec<(String, String)>,
     threads: Vec<String>,
+    post: Option<String>,
 }
 
 struct Failed {
@@ -445,9 +465,15 @@ async fn load(state: &AppState, project: SharedProjectId) -> Result<RoomDoc, Ref
         Current::Busy => return Err(busy()),
         Current::Missing => return Err(cannot_open()),
     };
-    let (bound, ends) = state
+    let (bound, ends, owner) = state
         .db
-        .read(move |conn| Ok((peers::table(conn, project)?, peers::ends(conn, project)?)))
+        .read(move |conn| {
+            Ok((
+                peers::table(conn, project)?,
+                peers::ends(conn, project)?,
+                projects::project_row(conn, project)?.map(|row| row.owner),
+            ))
+        })
         .await
         .map_err(|_| cannot_open())?;
     let mut stored: HashMap<DeviceId, Vec<(u64, i64)>> = HashMap::new();
@@ -465,6 +491,9 @@ async fn load(state: &AppState, project: SharedProjectId) -> Result<RoomDoc, Ref
         let mut doc = ProjectDoc::load_contained(&bytes).ok()?;
         let mut authorship = doc.authorship().clone();
         authorship.vouch(bound.iter().map(|row| (row.peer, row.account_id)));
+        if let Some(owner) = owner {
+            authorship.set_owner(owner);
+        }
         doc.set_authorship(authorship);
         let files = files_of(&doc);
         let compile = doc.settings();
@@ -981,6 +1010,7 @@ impl RoomDoc {
                 peer,
                 texts: Vec::new(),
                 threads: Vec::new(),
+                post: None,
             }),
             tracked,
         })
@@ -1053,14 +1083,17 @@ impl RoomDoc {
             peer,
             texts,
             threads,
+            post: None,
         }))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn comment(
         &mut self,
         session: u64,
         device: DeviceId,
         account: AccountId,
+        moderator: bool,
         action: CommentAction,
         members: &[CommentMember],
         now: i64,
@@ -1138,6 +1171,13 @@ impl RoomDoc {
                 thread_id,
                 message_id,
                 ..
+            } if moderator => doc
+                .moderate_comment(&target, thread_id, message_id, account)
+                .map_err(collab),
+            CommentAction::Delete {
+                thread_id,
+                message_id,
+                ..
             } => doc
                 .delete_comment(&target, thread_id, message_id, account)
                 .map_err(collab),
@@ -1150,6 +1190,19 @@ impl RoomDoc {
             CommentAction::Reopen { thread_id, .. } => doc
                 .reopen_comment_thread(&target, thread_id)
                 .map_err(collab),
+            CommentAction::React {
+                thread_id,
+                message_id,
+                emoji,
+                on,
+                ..
+            } => if on {
+                doc.react_to_comment(&target, thread_id, message_id, &emoji, account, now)
+            } else {
+                doc.unreact_to_comment(&target, thread_id, message_id, &emoji, account)
+            }
+            .map(drop)
+            .map_err(collab),
         })
     }
 
@@ -1289,6 +1342,11 @@ impl WebRoom {
                 .web
                 .note(self.project, peer.device, id, Fate::Queued(order));
         }
+        if let Some(id) = written.post.as_deref() {
+            state
+                .web
+                .note_post(self.project, peer.account, id, Fate::Queued(order));
+        }
         let size = written.payload.len() as u64;
         let mut envelope = Envelope {
             v: 1,
@@ -1309,6 +1367,7 @@ impl WebRoom {
             peer: written.peer,
             size,
             change,
+            post: written.post,
             reply,
         });
         if start {
@@ -1339,6 +1398,7 @@ impl WebRoom {
                 peer,
                 size,
                 change,
+                post,
                 reply,
             } = next;
             let cursors = CursorGate::new();
@@ -1355,6 +1415,7 @@ impl WebRoom {
                 peer,
                 size,
                 change,
+                post,
                 reply,
             };
             match answer {
@@ -1382,6 +1443,7 @@ impl WebRoom {
             peer,
             size,
             change,
+            post,
             reply,
         } = done;
         if let Some(room) = guard.as_mut() {
@@ -1403,6 +1465,11 @@ impl WebRoom {
                 .web
                 .note(self.project, writer.device, id, Fate::Applied);
         }
+        if let Some(id) = post.as_deref() {
+            state
+                .web
+                .note_post(self.project, writer.account, id, Fate::Applied);
+        }
         if let Some(reply) = reply {
             let _ = reply.send(Ok(()));
         }
@@ -1422,6 +1489,7 @@ impl WebRoom {
             session,
             writer,
             change,
+            post,
             reply,
             ..
         } = done;
@@ -1450,6 +1518,16 @@ impl WebRoom {
         );
         for (id, device) in abandoned {
             state.web.note(self.project, device, &id, Fate::Abandoned);
+        }
+        let given_up = post.map(|id| (id, writer.account)).into_iter().chain(
+            cancelled
+                .iter()
+                .filter_map(|queued| queued.post.clone().map(|id| (id, queued.writer.account))),
+        );
+        for (id, account) in given_up {
+            state
+                .web
+                .note_post(self.project, account, &id, Fate::Abandoned);
         }
         for queued in cancelled {
             sessions.push(queued.session);
@@ -1810,6 +1888,11 @@ impl WebRoom {
         self.reload_when_idle(state, &mut guard).await;
     }
 
+    #[cfg(feature = "test-support")]
+    pub async fn hold(&self) -> impl Sized + '_ {
+        self.doc.lock().await
+    }
+
     pub async fn reset_file(&self, session: u64, file: &str) {
         let sinks = self.sinks();
         if let Some(room) = self.doc.lock().await.as_mut() {
@@ -1862,19 +1945,56 @@ impl WebRoom {
         Ok(Answer::Later(answer))
     }
 
+    async fn unposted(
+        &self,
+        state: &AppState,
+        account: AccountId,
+        post: Option<&str>,
+    ) -> Option<tokio::sync::MutexGuard<'_, Option<RoomDoc>>> {
+        let fate = || post.and_then(|id| state.web.posted(self.project, account, id));
+        loop {
+            if let Some(Fate::Queued(order)) = fate() {
+                let mut progress = self.progress.subscribe();
+                let _ = progress.wait_for(|done| *done >= order).await;
+            }
+            if fate() == Some(Fate::Applied) {
+                return None;
+            }
+            let guard = self.doc.lock().await;
+            if fate().is_none_or(|fate| fate == Fate::Abandoned) {
+                return Some(guard);
+            }
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
     pub(crate) async fn comment(
         self: &Arc<Self>,
         state: &AppState,
         peer: &Peer<'_>,
         key: &Ed25519KeyPair,
         session: u64,
+        moderator: bool,
         action: CommentAction,
         members: &[CommentMember],
     ) -> Result<Answer, Refusal> {
-        let mut guard = self.doc.lock().await;
+        let post = change_id(action.client_id().map(str::to_owned));
+        let Some(mut guard) = self.unposted(state, peer.account, post.as_deref()).await else {
+            return Ok(Answer::Done);
+        };
         let room = guard.as_mut().ok_or_else(cannot_open)?;
         let now = state.clock.now_ms();
-        let outcome = room.comment(session, peer.device, peer.account, action, members, now);
+        let outcome = room
+            .comment(
+                session,
+                peer.device,
+                peer.account,
+                moderator,
+                action,
+                members,
+                now,
+            )
+            .map(|written| written.map(|written| Written { post, ..written }));
         self.finish_write(
             state,
             &mut guard,
@@ -1893,16 +2013,22 @@ impl WebRoom {
         peer: &Peer<'_>,
         key: &Ed25519KeyPair,
         session: u64,
+        post: Option<String>,
         work: impl FnOnce(&mut ProjectDoc, i64) -> Result<Applied, Refusal>,
     ) -> Result<Answer, Refusal> {
-        let mut guard = self.doc.lock().await;
+        let post = change_id(post);
+        let Some(mut guard) = self.unposted(state, peer.account, post.as_deref()).await else {
+            return Ok(Answer::Done);
+        };
         let room = guard.as_mut().ok_or_else(cannot_open)?;
         let now = state.clock.now_ms();
         let mut applied = Applied::default();
-        let outcome = room.write(peer.device, now, Vec::new(), |doc, now| {
-            applied = work(doc, now)?;
-            Ok(())
-        });
+        let outcome = room
+            .write(peer.device, now, Vec::new(), |doc, now| {
+                applied = work(doc, now)?;
+                Ok(())
+            })
+            .map(|written| written.map(|written| Written { post, ..written }));
         self.finish_write(state, &mut guard, peer, key, session, outcome, applied)
             .await
     }

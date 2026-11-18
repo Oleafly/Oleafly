@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { parseMe, parseProjectDetail, parseProjects, socketUrl } from "./api";
 import { buildTree } from "./components/FileTree";
-import { parseFeatures, parseRole, parseServerFrame } from "./protocol";
+import { parseFeatures, parseRole, parseServerFrame, presenceFrame } from "./protocol";
 import { abilitiesFor, canWithdraw, effectiveMode } from "./roles";
 
-const ALL = { comments: true, suggestions: true, chat: true };
+const ALL = { comments: true, suggestions: true, chat: true, reactions: false };
 
 describe("parseServerFrame", () => {
   it("reads hello with roles, features, files, people and compile settings", () => {
@@ -27,7 +27,7 @@ describe("parseServerFrame", () => {
     ).toEqual({
       t: "hello",
       role: "reviewer",
-      features: { comments: true, suggestions: true, chat: false },
+      features: { comments: true, suggestions: true, chat: false, reactions: false },
       files: [
         { fileId: "a", path: "main.tex", kind: "text", blob: null },
         { fileId: "b", path: "img.png", kind: "blob", blob: "h1" },
@@ -122,8 +122,87 @@ describe("parseServerFrame", () => {
     });
     expect(parseServerFrame('{"t":"chat","messages":[{"id":"m","author":"u","at":1,"body":"hi"}]}')).toEqual({
       t: "chat",
-      messages: [{ id: "m", author: "u", at: 1, body: "hi", deleted: false, verified: false }],
+      messages: [{ id: "m", author: "u", at: 1, body: "hi", deleted: false, verified: false, reactions: [], pending: false, mentions: [] }],
     });
+  });
+
+  it("reads reactions on comments and chat and drops ones that are not emoji with people", () => {
+    const reactions = [
+      { emoji: "👍", by: ["u1", 7, "u2"] },
+      { emoji: "", by: ["u1"] },
+      { emoji: 3, by: ["u1"] },
+      { emoji: "🎉", by: [] },
+      { emoji: "👀" },
+      "👍",
+    ];
+    const threads = parseServerFrame(
+      JSON.stringify({
+        t: "threads",
+        fileId: "a",
+        rev: 1,
+        threads: [{ id: "t", messages: [{ id: "m1", reactions }, { id: "m2" }] }],
+      }),
+    );
+    expect(threads).toMatchObject({
+      threads: [{ messages: [{ id: "m1", reactions: [{ emoji: "👍", by: ["u1", "u2"] }] }, { id: "m2", reactions: [] }] }],
+    });
+    expect(parseServerFrame(JSON.stringify({ t: "chat", messages: [{ id: "c", reactions }, { id: "d", reactions: "no" }] }))).toMatchObject({
+      messages: [{ id: "c", reactions: [{ emoji: "👍", by: ["u1", "u2"] }] }, { id: "d", reactions: [] }],
+    });
+  });
+
+  it("reads activity, people roles, removed and waiting comments, and encodes presence", () => {
+    const presence = parseServerFrame(
+      JSON.stringify({
+        t: "presence",
+        peers: [
+          { deviceId: "d1", accountId: "u1", activity: { kind: "reply", threadId: "t1" } },
+          { deviceId: "d2", accountId: "u2", activity: { kind: "chat" } },
+          { deviceId: "d3", accountId: "u3", activity: { kind: "drawing" } },
+          { deviceId: "d4", accountId: "u4" },
+        ],
+      }),
+    );
+    expect(presence).toMatchObject({
+      peers: [
+        { deviceId: "d1", activity: { kind: "reply", threadId: "t1" } },
+        { deviceId: "d2", activity: { kind: "chat", threadId: null } },
+        { deviceId: "d3", activity: null },
+        { deviceId: "d4", activity: null },
+      ],
+    });
+    const seqs = parseServerFrame(
+      JSON.stringify({ t: "presence", peers: [{ deviceId: "a", accountId: "u", seq: 7 }, { deviceId: "b", accountId: "v", seq: -1 }] }),
+    );
+    expect(seqs).toMatchObject({ peers: [{ seq: 7 }, { seq: 0 }] });
+    expect(
+      parseServerFrame(JSON.stringify({ t: "chat", messages: [{ id: "c", mentions: ["u1", 3, "u2"] }, { id: "d" }] })),
+    ).toMatchObject({ messages: [{ mentions: ["u1", "u2"] }, { mentions: [] }] });
+    const hello = parseServerFrame(
+      JSON.stringify({
+        t: "hello",
+        members: [
+          { accountId: "o", displayName: "Olive", role: "owner" },
+          { accountId: "c", displayName: "Cora", role: "commenter" },
+          { accountId: "x", displayName: "Xavi", role: "admin" },
+        ],
+      }),
+    );
+    expect(hello).toMatchObject({ people: [{ role: "owner" }, { role: "commenter" }, { accountId: "x" }] });
+    expect(hello?.t === "hello" && hello.people[2]?.role).toBeUndefined();
+    const threads = parseServerFrame(
+      JSON.stringify({ t: "threads", fileId: "a", threads: [{ id: "t", messages: [{ id: "m", removed: true, deleted: true, pending: true }] }] }),
+    );
+    expect(threads).toMatchObject({ threads: [{ messages: [{ removed: true, deleted: true, pending: true }] }] });
+    expect(presenceFrame("f", 1, 2)).toEqual({ t: "presence", fileId: "f", anchor: 1, head: 2 });
+    expect(presenceFrame(null, null, null, { kind: "chat", threadId: null })).toEqual({
+      t: "presence",
+      fileId: null,
+      anchor: null,
+      head: null,
+      activity: { kind: "chat", threadId: null },
+    });
+    expect(presenceFrame("f", 1, 2, null)).toMatchObject({ activity: null });
   });
 
   it("maps unknown roles to unknown and keeps features on unless turned off", () => {
@@ -131,6 +210,8 @@ describe("parseServerFrame", () => {
     expect(parseRole("commenter")).toBe("commenter");
     expect(parseFeatures(undefined)).toEqual(ALL);
     expect(parseFeatures({ suggestions: false })).toEqual({ ...ALL, suggestions: false });
+    expect(parseFeatures({ reactions: true })).toEqual({ ...ALL, reactions: true });
+    expect(parseFeatures({ reactions: "yes" })).toEqual(ALL);
   });
 });
 
@@ -168,7 +249,7 @@ describe("roles", () => {
   });
 
   it("turns abilities off with the server features", () => {
-    const off = { comments: false, suggestions: false, chat: false };
+    const off = { comments: false, suggestions: false, chat: false, reactions: false };
     expect(abilitiesFor("reviewer", off)).toMatchObject({ edit: false, comment: false, chat: false });
     expect(abilitiesFor("owner", off)).toMatchObject({
       edit: true,

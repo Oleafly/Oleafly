@@ -16,7 +16,7 @@ import {
 } from "./streaming-markdown";
 
 const codeBlockClassName =
-  "overflow-x-auto rounded-md bg-background/70 p-2.5 text-[0.85em]";
+  "overflow-x-auto rounded-xl bg-code-block px-5 py-4 text-[0.85em]";
 
 const MAX_CACHED_DOCUMENTS = 200;
 const MAX_CACHED_DOCUMENT_CHARS = 1_000_000;

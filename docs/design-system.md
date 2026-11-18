@@ -16,8 +16,10 @@ the icons inside it, so those icons need no size class.
 
 Status pills and counts are a `Badge` from `ui/badge.tsx`. The variant sets
 the tone: `success`, `warning`, `destructive` and `info` for state, `muted`
-for neutral labels and counts, `primaryGhost` for an accent label such as
-"Recommended". The older neutral styles (`outline`, `quiet`, `secondary`,
+for neutral labels and counts (its text is `foreground/60`, which keeps 4.5:1
+on the grey fill even at 10px), `primaryGhost` for an accent label such as
+"Recommended", `comment` for a label in the comment colours (the "New"
+badge on a comment that just arrived). The older neutral styles (`outline`, `quiet`, `secondary`,
 `default`) are still there. `size="sm"` is the compact 10px pill for dense
 rows, and a badge with an icon in it also needs `gap-1`. `size="count"` is
 the small number bubble pinned to the top right corner of an icon button (the
@@ -110,10 +112,68 @@ A formatting toolbar that has to fit its width renders its controls through
 `ToolbarOverflow` from `ui/toolbar-overflow.tsx`. Each `ToolbarControl` has a
 `render` for the bar and a `renderMenu` for the one "More" menu that collects
 whatever does not fit. Menu forms are `ToolbarMenuItem` (an action, or a
-check item when it has `checked`, greyed out with `disabled`), `ToolbarSubMenu`, `ToolbarDropdown` (a
+check item when it has `checked`, tinted `bg-primary/10` while it is on, greyed out with `disabled`), `ToolbarSubMenu` (tinted the same way with `active`), `ToolbarDropdown` (a
 popover on the bar and a submenu in the menu) and `toolbarPicker`, which hosts
 a popover picker such as the table or symbol picker as a menu row. A dropdown
-button on the bar itself is a `ToolbarMenuButton`.
+button on the bar itself is a `ToolbarMenuButton`. A toolbar is one row and
+doesn't wrap; the Markdown toolbar, below, is the one exception. List the
+controls most important first, as whole groups
+with their leading divider (`groupControl` in `EditorToolbar.tsx` joins single
+controls into one): whatever doesn't fit moves into More from the right, and
+the More button stays at the end of the row. A group can give a `collapsed`
+form (its width and render) and says how many tools it holds (`tools`). The
+fit folds whichever groups it must to keep the most tools on the bar, so a
+folded group can sit before groups that still show; the Notes and Markdown
+toolbars fold H1 to H6 into one Text style menu this way. The fit is the pure
+`fitToolbar(items, width)` (`fitSteps` lists every state from all shown to
+none), so a bar's behaviour at a given width can be tested without a DOM.
+
+The rich-text pieces both of those toolbars share live in
+`components/editor/rich-text-controls.tsx`: `TextColorMenu` (LaTeX colour
+names, so a paper still exports them), the alignment items, clear formatting,
+`ToolbarPopover` with `FieldForm` for a link or address field, and
+`EmojiPopover`. `TextColorMenu` takes an `onColor(spec | null)` callback, not
+an editor, so the same menu works on any surface.
+
+A Markdown file has one toolbar in Code, Visual and Both. `markdownRow` in
+`components/editor/markdown-toolbar-controls.tsx` builds the row once and
+runs it against a `MarkdownTarget` from `markdown-model.ts`.
+`visualTarget(editor)` runs the Tiptap commands. `sourceTarget(getView)` runs
+those same commands on the Markdown text. It takes the blocks around the
+selection plus one on each side, adds the reference definitions they use,
+parses them with Visual's parser, applies the command in a hidden editor and
+writes them back with Visual's serializer. Only the characters that changed
+are replaced, as small separate edits, so comments and other people's carets
+stay where they were. A caret is placed only inside the block that holds it,
+trying its own line first; if there's no exact spot there, the action does
+nothing instead of guessing. Code therefore writes what Visual saves, leaves
+the selection where Visual would, and each action is one undo step. The first
+key you type after an action goes through the same model when that changes the
+result, so Bold at a bare caret followed by typing gives bold text, as it does
+in Visual. That key changes only the text next to what you typed: anything else
+Visual would rewrite in the block is kept as you wrote it, and if Visual can't
+spell the result, the key types plain and the bold waits for the next one.
+Nothing in the engine can throw into the editor: an error is reported and the
+toolbar falls back to its resting state.
+
+The same slice gives Code its button tints (`modelState`). They update at once
+when the caret moves, and after a short pause while you type or in a block
+that is slow to read. In a Markdown file Code has Visual's shortcuts: ⌘B, ⌘I,
+⌘U, ⌘E, ⌘⇧S, ⌘. and ⌘⇧, for marks, ⌘⌥0 to ⌘⌥6 for paragraph and headings,
+⌘⇧7, ⌘⇧8 and ⌘⇧B for lists and quotes (⌘⇧B bolds in a list item, where a
+quote can't go, as Visual does), and ⌘⌥C for a code block. An editor key you
+set in Settings wins over them. The right-click menu and the command palette
+run the same actions; in Visual the palette acts on Visual's own selection. Visual also reads Pandoc's own
+`[x]{.underline}`, `[x]{.mark}`, `^x^` and `~x~`, so older files toggle off as
+expected. In Both, the right pane is a read-only preview, so the toolbar edits
+the code. On a read-only file the formatting buttons are disabled; in a live
+shared project only Visual is read-only, so Code and Both keep them. When the
+bar has less than about 22 rem beside the mode switch, the formatting group
+moves to its own row, and that row starts without a divider.
+
+An emoji picker is the `EmojiGrid` from `ui/emoji-grid.tsx`,
+which takes its labels and locale as props; `EmojiChooser` fills them in from
+the app.
 
 Tab strips are a `TabsList` from `ui/tabs.tsx`. Pass `scrollable` when the
 triggers can grow wider than the strip, so it scrolls instead of clipping, and
@@ -215,7 +275,10 @@ the top right corner of the block and shows when the pointer is over the
 block or keyboard focus is inside it, and stays visible on touch screens.
 `code` is the text that gets copied, children (when given) are what the block
 shows, such as highlighted tokens, and `preClassName` adjusts the block's
-size and colors. A block that isn't a `<pre>`, like a rendered diagram, wraps
+size and colors. Code blocks share one surface: the `--code-block-bg` token
+(`bg-code-block`), a soft grey in light mode and the muted tone in dark mode,
+with the `xl` radius. The editor's `pre`, chat replies and published notes use
+the same surface. A block that isn't a `<pre>`, like a rendered diagram, wraps
 its content in `CopyableBlock` from `ui/copyable-block.tsx`. Logs, error output and
 plain text previews stay as a plain `<pre>`.
 
@@ -277,6 +340,139 @@ dialog opened from inside another. Set `animateWidth` when the panel changes
 width while it is open. Settings uses it to widen for the Notes preview. The
 panel opens at its final width. A change after that eases over 200ms, or
 happens at once when the system asks for reduced motion.
+
+Comment threads and project chat, on the desktop and in the web client, come
+from `ui/comments/`. `CommentThread` draws a whole thread from a plain
+`CommentThreadModel`: the quote, author rows with a relative time and the exact
+time in a Tooltip, replies that fold behind a count once there are two or
+more, a Reply link that opens a composer with an @mention of the person being
+answered, a ⋯ menu on hover (Edit, Copy link, Resolve thread, then Delete in
+red), and resolved threads folded to one line until opened. `CommentItem` is
+one message on its own. Its action line
+holds the reaction pills (`ReactionBar` from `comment-reactions.tsx`: border
+pills with `aria-pressed`, your own in `bg-primary/10`, a Tooltip naming who
+reacted, and a smile-plus button that opens the quick six with an optional
+full-picker slot) followed by Reply. `useReactions` holds the optimistic
+reaction state, so `ReactionPills`, `ReactionAdd` and `ReactionError` can sit
+in different places and still share it. Chat rows are
+`CommentItem variant="bubble"`: the body sits in a white `rounded-2xl` bubble
+with the `sidebar-border` border, at most 80% wide. Other people's messages
+sit on the left with the avatar beside the bubble and the name and time above
+it. Your own sit on the right with only the time. The React button and the ⋯
+menu sit beside the bubble on its inner side and fade in on hover or focus.
+That side column always keeps the same width, and the "New" badge sits over it
+until you hover, so a bubble never rewraps when its state changes. The reaction
+pills and "Waiting to send" go under the bubble. `chatGroups(messages)` marks
+which messages continue a group: the same verified author, neither deleted,
+and less than five minutes after the group's first message. A follow-up gets
+`continued`, which drops the avatar and name and sets it 4px under the one
+before instead of 12px. Its time moves to a Tooltip on the bubble, and screen
+readers still hear it. Bodies are a Markdown subset (`**bold**`,
+`_italic_` or `*italic*`, `~~strike~~`, inline code, `-` and `1.` lists, @mentions, plain
+http links, always underlined so they don't depend on colour) parsed by `comment-markdown.ts` and drawn by `CommentBody` as React
+elements, never as HTML. `CommentQuote` is the quoted text, clamped to two
+lines, grey and struck through with an Outdated pill when its text changed or
+was removed. Its `action` slot holds the thread's Resolve check at the chip's
+right end; the check is hidden until the card is hovered, holds keyboard focus
+or is selected (always shown where there is no hover), and moves to the first
+message's header when a thread shows no quote, where it joins the ⋯ pill and
+stays while that message is deleted or being edited. A suggestion's discussion is the same
+`CommentThread` with `embedded` on both clients (`EmbeddedThread` on the
+desktop). Thread cards (and the suggestion cards beside them) use
+`commentCardClass(selected)`: `bg-background` on the grey rail, with hover and
+selection shown as a border colour change (`foreground/25` on hover, so it shows
+in light mode too). Every name and time row is a `CommentByline`. The name gets its own 24px
+line. If the time, "· edited" or a "New" badge doesn't fit after it, it moves
+to the next line, so nothing is cut to a fragment and the name never moves. A
+time wider than the whole row wraps at its spaces. A name is cut with an
+ellipsis only when it doesn't fit its line, and when the name is alone on that
+line, the room kept for the pill counts against it. A suggestion's
+Inserted or Deleted tag sits outside the byline, and "Waiting to send" goes on
+its own line under the body. In a message header the ⋯ menu, and the Resolve
+check in a thread without a quote, share one tinted pill at the end of the
+header's last item. Its real width (one or two buttons) is kept free beside the
+time, "· edited", New or the deleted text, and the two wrap together, so the
+pill never covers text. Hover, keyboard focus (not a mouse click) or an open
+menu shows it, so nothing moves; touch screens always show it. Keeping that room
+free makes a wrapped header on a mouse screen 2–6px taller. A resolved thread's "Resolved by
+…" line wraps instead of cutting the name, and it breaks inside a name with no
+spaces so the name stays in its column. If a long Reopen label would squeeze
+the summary, Reopen moves under it. Times and other small meta text use `foreground/60`,
+which clears 4.5:1 on the grey rail. The exact edit time sits in
+the "· edited" Tooltip as a plain date and time, without the board's "Edited"
+prefix, because the label already says it.
+`CommentComposer` is a bordered box with the text on top and one row under
+it: the format buttons (B, I, S, code, list, and @ where people can be
+mentioned) that wrap the selection in the same Markdown, Cancel on transient
+composers, and the round ArrowUp send button (Check when saving an edit). The
+⌘ Enter shortcut shows only in the send button's Tooltip. The button stays
+hoverable while the box is empty or sending (`aria-disabled`, not `disabled`),
+so the Tooltip always works. A failed send keeps the text
+and shows "Not sent." with the reason, plus Retry when the host says retrying
+can help. The kit has no strings of its own: the host wraps it in a
+`CommentKitProvider` with its labels, time formats, names, error text,
+confirm dialog and reaction support (`DesktopCommentKit` on the desktop,
+`WebCommentKit` in the web client). An error line under an action is an
+`InlineAlert` from `ui/inline-alert.tsx`. `Popover` takes an optional `open`
+for callers that must close it themselves, as the reaction picker does.
+
+Live states come from the same kit. A `CommentEntry` can carry a `delivery`:
+`waiting` (clock, "Waiting to send", muted body, nothing to act on) or `failed`
+(muted body, a red "Not sent." line with the host's reason, Copy text, Discard
+and Retry only when the host passes one). A deleted entry is a grey trash
+avatar with no name or time, and `removed` reads as a moderator removal; a
+host that sets `moderate` on the kit gets a "Remove…" item with a confirm on
+other people's messages. A "+N" on a reaction pill counts everyone else who added
+that emoji, and counts each person once. If someone takes their reaction back,
+they drop out of the count, and adding it again doesn't count them twice. Each emoji keeps its own 2.5 s: another person adding the same
+emoji adds to it and restarts that emoji's clock, while a reaction on a
+different emoji never stretches it. It fades out at the end. `CommentScrollArea` (`comment-arrivals.tsx`) is the
+scroll box for a comments or chat list: it keeps the reader's place when items
+land above them (measured from the box's own top, so a banner or composer
+appearing above the box doesn't move the list), and lets what the reader opens
+or types grow downward instead of pushing it above the top. Only growth
+below the spot the reader clicked or typed counts as theirs. For 300 ms after
+a click, so does the region the clicked control names in `aria-controls`: the
+replies a toggle opens above itself, or the text a quote's Show more opens.
+This lasts until 1 s after the first such change, or up to 5 s while the click
+hasn't changed anything yet. Changes don't start that 1 s while the section is
+marked `aria-busy`, so a file group that shows a spinner first and loads slowly
+still opens downward. Once the control the reader used is gone (a reply box
+closed with Escape, Cancel or Send, or the Reply link that opened it), nothing
+more counts as theirs. A co-author's change above that spot, a collapse, or
+anything else that changes above the reader still keeps their place. If the
+item it's holding disappears, it holds the next item on screen, or the control
+the reader just used when nothing else is left ("Hide replies" in the last
+thread). If a re-sort moves the item it holds, it holds the items that kept
+their order, or the box the reader is typing in. It tints other people's new items with `bg-comment-highlight`
+and a "New" badge until they have been on screen for 4 s, shows a floating
+"N new" pill while they are out of view, and with `stickToBottom` follows a
+chat that is scrolled to the end. `TypingLine` (`comment-presence.tsx`) is the
+"is replying"/"is typing" line with avatars and three dots that stop under
+reduced motion; the kit's `activity` and `replyingIn` carry it, and a composer
+reports `onActivity` while it has text, refreshing every 2 s and stopping 6 s
+after the last keystroke, on blur, send or cancel. `CommentFilterMenu`
+(`comment-filter.tsx`) is the Open / Resolved / All menu with counts.
+`CommentsEmpty` (`comment-empty.tsx`) is the compact `EmptyState` with the
+message-bubble tile, `CommentKeys` the ⌘ ⌥ M keycaps (Ctrl Alt M off macOS)
+and `CommentsFootnote` the grey note under the list for viewers. Mention
+options show a role and a green "here now" dot: `mergeMentionPeople` lists the
+people here first, then other members, then non-members.
+
+Commented text and quotes use the comment tokens: `--comment-highlight` and
+`--comment-underline` for a commented range, `--comment-active` and
+`--comment-active-underline` for the open thread, and `--comment-ink` for quote
+text (`bg-comment-highlight`, `text-comment-ink` and so on in Tailwind).
+`commentMarkStyle()` in `ui/comments/comment-mark-styles.ts` draws the tint
+with its 2px underline, and CodeMirror marks use `COMMENT_RANGE_STYLES` from
+the same file. Indigo is the default; Settings › Appearance › Comment
+highlight color sets `data-comment-color` on the root (`graphite`, `leaf` or
+`accent`) to swap the set. Comments never use yellow or amber. `--success`
+(`text-success`) is the green for a resolved check and the "here now" dot.
+
+`WorkspaceBanner` from `ui/workspace-banner.tsx` takes a `tone`: `primary`,
+`neutral` (grey, for offline and information notices such as unsent comments)
+or `warning`.
 
 ## Shared hooks and helpers
 

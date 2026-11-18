@@ -36,6 +36,7 @@ export type NewActivity =
       threadId: string;
       messageId: string;
     }
+  | { kind: "chatMentioned"; at: number; accountId: string; name: string; messageId: string }
   | { kind: "setting"; at: number; accountId: string | null; name: string; change: CollabSettingNotice }
   | { kind: "skipped"; at: number; deviceId: string | null; name: string }
   | { kind: "outputNotShared"; at: number; reason: CollabOutputNotSharedReason }

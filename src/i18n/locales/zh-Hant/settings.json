@@ -660,6 +660,15 @@
         "grid": "格線",
         "label": "背景圖樣"
       },
+      "commentColor": {
+        "accent": "強調色",
+        "description": "編輯器中被評論文字以及評論面板中引文的顏色。只在這台裝置上生效。",
+        "graphite": "石墨",
+        "indigo": "靛藍",
+        "label": "評論醒目提示顏色",
+        "leaf": "葉綠",
+        "sample": "已評論的文字"
+      },
       "dock": {
         "bottom": "下方",
         "description": "選擇首頁 Dock 的位置。",

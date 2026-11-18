@@ -116,6 +116,7 @@
     "superscript": "Upphöjd",
     "subscript": "Nedsänkt",
     "inlineCode": "Kod i löptext",
+    "clearFormatting": "Rensa formatering",
     "insertLink": "Infoga länk",
     "insertCrossReference": "Infoga korsreferens",
     "insertFootnote": "Infoga fotnot",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Gå till PDF",
     "linkUrl": "Länkens URL",
     "removeLink": "Ta bort länken",
+    "alignment": "Justering",
+    "align": {
+      "left": "Vänsterjustera",
+      "center": "Centrera",
+      "right": "Högerjustera",
+      "justify": "Marginaljustera"
+    },
+    "emoji": "Emoji",
+    "textColor": "Textfärg",
+    "removeTextColor": "Ta bort färgen",
+    "textColors": {
+      "gray": "Grå",
+      "red": "Röd",
+      "orange": "Orange",
+      "green": "Grön",
+      "teal": "Blågrön",
+      "blue": "Blå",
+      "purple": "Lila"
+    },
     "imageFile": "Bildfil",
     "apply": "Tillämpa",
     "linkPlaceholder": "https://",
@@ -1674,6 +1694,12 @@
       "duplicateArg": "Dubblerat argument",
       "unknownKind": "Okänd fälttyp"
     }
+  },
+  "emoji": {
+    "search": "Sök emoji",
+    "skinTone": "Hudton",
+    "loading": "Läser in emoji",
+    "empty": "Inga emoji hittades"
   },
   "bibList": {
     "count_one": "{{count}} referens",

@@ -664,6 +664,15 @@
         "grid": "Gitter",
         "label": "Baggrundsmønster"
       },
+      "commentColor": {
+        "accent": "Accentfarve",
+        "description": "Farve til kommenteret tekst i editoren og til citater i kommentarpanelet. Gælder på denne enhed.",
+        "graphite": "Grafit",
+        "indigo": "Indigo",
+        "label": "Fremhævningsfarve for kommentarer",
+        "leaf": "Bladgrøn",
+        "sample": "Kommenteret tekst"
+      },
       "dock": {
         "bottom": "Nederst",
         "description": "Vælg, hvor docken på startskærmen skal sidde.",

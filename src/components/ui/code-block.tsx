@@ -24,7 +24,7 @@ export function CodeBlock({
         data-select-all-scope
         {...pre}
         className={cn(
-          "select-text overflow-auto rounded-md border bg-muted/40 p-3 pr-10 font-mono text-[0.6875rem] leading-relaxed",
+          "select-text overflow-auto rounded-xl border border-transparent bg-code-block px-5 py-4 pr-10 font-mono text-[0.6875rem] leading-relaxed",
           preClassName,
         )}
       >

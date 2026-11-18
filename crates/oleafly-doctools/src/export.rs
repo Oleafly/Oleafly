@@ -813,6 +813,7 @@ mod tests {
         args: std::sync::Mutex<Vec<String>>,
         variables: std::sync::Mutex<Vec<(String, String)>>,
         working_dir: std::sync::Mutex<PathBuf>,
+        filters: std::sync::Mutex<Vec<(String, String)>>,
     }
 
     impl ToolRunner for RecordingRunner {
@@ -827,6 +828,15 @@ mod tests {
                 *self.args.lock().unwrap() = args.to_vec();
                 *self.variables.lock().unwrap() = variables.to_vec();
                 *self.working_dir.lock().unwrap() = working_dir.to_path_buf();
+                *self.filters.lock().unwrap() = args
+                    .iter()
+                    .filter_map(|arg| arg.strip_prefix("--lua-filter="))
+                    .filter_map(|path| {
+                        let name = Path::new(path).file_name()?.to_string_lossy().into_owned();
+                        let text = std::fs::read_to_string(working_dir.join(path)).ok()?;
+                        Some((name, text))
+                    })
+                    .collect();
                 if let Some(file) = args.iter().find_map(|arg| arg.strip_prefix("--log=")) {
                     std::fs::write(
                         file,
@@ -959,6 +969,56 @@ mod tests {
                 "{args:?}"
             );
             assert!(!args.iter().any(|arg| arg == "--citeproc"), "{args:?}");
+        }
+    }
+
+    #[tokio::test]
+    async fn markdown_exports_stage_and_run_the_marks_filters() {
+        let project = tempfile::tempdir().unwrap();
+        let root = project.path();
+        std::fs::write(root.join("main.md"), "A <u>u</u> <mark>m</mark>\n").unwrap();
+        std::fs::write(root.join("main.tex"), "\\documentclass{article}\n").unwrap();
+        for (main, format, runs, after_citeproc) in [
+            ("main.md", "docx", true, true),
+            ("main.md", "pptx", true, true),
+            ("main.md", "typst", true, false),
+            ("main.md", "tex", true, false),
+            ("main.md", "html", false, false),
+            ("main.md", "md", false, false),
+            ("main.tex", "docx", false, false),
+        ] {
+            let runner = RecordingRunner::default();
+            let staged = root.join(format!("out-{format}"));
+            std::fs::write(&staged, "").unwrap();
+            let output = staged.to_string_lossy().into_owned();
+            run_export_pandoc(
+                &runner,
+                Path::new("pandoc"),
+                job(root, main, format, &output),
+            )
+            .await
+            .unwrap();
+            let staged = |name: &str| {
+                runner
+                    .filters
+                    .lock()
+                    .unwrap()
+                    .iter()
+                    .find(|(staged, _)| staged == name)
+                    .map(|(_, text)| text.clone())
+            };
+            assert_eq!(
+                staged(oleafly_core::engine_spec::MARKDOWN_MARKS_FILTER_NAME).as_deref(),
+                runs.then_some(oleafly_core::engine_spec::MARKDOWN_MARKS_FILTER),
+                "{main} {format}: {:?}",
+                runner.args.lock().unwrap()
+            );
+            assert_eq!(
+                staged(oleafly_core::engine_spec::CITATION_MARKS_FILTER_NAME).as_deref(),
+                after_citeproc.then_some(oleafly_core::engine_spec::CITATION_MARKS_FILTER),
+                "{main} {format}: {:?}",
+                runner.args.lock().unwrap()
+            );
         }
     }
 

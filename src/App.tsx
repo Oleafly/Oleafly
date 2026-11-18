@@ -11,6 +11,7 @@ import { RefreshCw } from "lucide-react";
 import { EditorView } from "@codemirror/view";
 import { redo as cmRedo, undo as cmUndo } from "@codemirror/commands";
 import { ThemeProvider, applyAccentColor, currentTheme, subscribeTheme, type Theme } from "@/lib/theme";
+import { applyCommentColor } from "@/lib/comment-color";
 import { Contained } from "@/components/Contained";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { TopToolbar } from "@/components/layout/TopToolbar";
@@ -472,6 +473,7 @@ function AppContent() {
   const editorColors = useSettingsStore((s) => s.editorColors);
   const activeEditorColorKey = useEditorColorKey();
   const accentColor = useSettingsStore((s) => s.accentColor);
+  const commentColor = useSettingsStore((s) => s.commentColor);
   const chatFloating = useSettingsStore((s) => s.chatFloating);
   const terminalOpen = useSettingsStore((s) => s.terminalOpen);
   const assistantOpen = useSettingsStore((s) => s.assistantOpen);
@@ -653,6 +655,10 @@ function AppContent() {
     apply(currentTheme());
     return subscribeTheme(apply);
   }, [accentColor]);
+
+  useEffect(() => {
+    void applyCommentColor(commentColor);
+  }, [commentColor]);
 
   const refreshGitStatus = useGitStatusStore((s) => s.refresh);
   useEffect(() => {

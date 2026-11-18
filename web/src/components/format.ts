@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import type { WebPerson } from "../protocol";
 
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 365 * 24 * 3600],
@@ -24,11 +23,6 @@ export function dateTime(at: number, locale?: string): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(at));
 }
 
-export function isoTime(at: number): string {
-  const date = new Date(at);
-  return Number.isNaN(date.getTime()) ? "" : date.toISOString();
-}
-
 export function useNow(intervalMs = 30_000): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
@@ -36,8 +30,4 @@ export function useNow(intervalMs = 30_000): number {
     return () => clearInterval(timer);
   }, [intervalMs]);
   return now;
-}
-
-export function knownName(people: Readonly<Record<string, WebPerson>>, accountId: string): string | null {
-  return people[accountId]?.name || null;
 }

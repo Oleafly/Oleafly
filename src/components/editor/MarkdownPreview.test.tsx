@@ -129,3 +129,75 @@ it("loads a project image whose path was saved with the app's own address", asyn
   await waitFor(() => expect(screen.getByRole("img", { name: "plot" })).toHaveAttribute("src", "blob:plot"));
   expect(loadAssetThumbnail).toHaveBeenCalledWith("first", "figures/plot 1.png");
 });
+
+it("renders the toolbar's underline, highlight, scripts, text colour and alignment", () => {
+  openContent([
+    'A <u>under</u>, <mark>marked</mark>, x<sup>2</sup>, H<sub>2</sub>O and <span data-text-color="red!85!black" style="color: rgb(217, 0, 0);">red **bold**</span>.',
+    "",
+    "::: {.center}",
+    "Centred line.",
+    ":::",
+    "",
+    "::: {.right}",
+    "# Right heading",
+    ":::",
+    "",
+    "::: justify",
+    "",
+    "First justified.",
+    "",
+    "Second justified.",
+    "",
+    ":::",
+  ].join("\n"));
+  const { container } = render(<MarkdownPreview />);
+  const preview = screen.getByTestId("markdown-preview");
+  expect(preview.textContent).not.toMatch(/<\/?(?:u|mark|sup|sub|span)\b|:::/u);
+  expect(container.querySelector("u")).toHaveTextContent("under");
+  expect(container.querySelector("mark")).toHaveTextContent("marked");
+  expect(container.querySelector("sup")).toHaveTextContent("2");
+  expect(container.querySelector("sub")).toHaveTextContent("2");
+  const red = container.querySelector("span[style]") as HTMLElement;
+  expect(red).toHaveTextContent("red bold");
+  expect(red).toHaveStyle({ color: "rgb(217, 0, 0)" });
+  expect(red.querySelector("strong")).toHaveTextContent("bold");
+  expect(screen.getByText("Centred line.").closest(".text-center")).not.toBeNull();
+  expect(screen.getByRole("heading", { name: "Right heading" }).closest(".text-right")).not.toBeNull();
+  expect(screen.getByText("First justified.").closest(".text-justify")).not.toBeNull();
+  expect(screen.getByText("Second justified.").closest(".text-justify")).not.toBeNull();
+});
+
+it("renders the bold, italic and strike tags the toolbar writes where delimiters cannot go", () => {
+  openContent("A <strong>strong <u>word</u></strong>s end, a<strong>.</strong>b, <em>x.</em>y and <del>z.</del>w.");
+  const { container } = render(<MarkdownPreview />);
+  expect(screen.getByTestId("markdown-preview").textContent).toBe("A strong words end, a.b, x.y and z.w.");
+  expect([...container.querySelectorAll("strong")].map((node) => node.textContent)).toEqual(["strong word", "."]);
+  expect(container.querySelector("strong u")).toHaveTextContent("word");
+  expect(container.querySelector("em")).toHaveTextContent("x.");
+  expect(container.querySelector("del")).toHaveTextContent("z.");
+});
+
+it("keeps every other piece of raw HTML as text and leaves code alone", () => {
+  openContent([
+    '<u onclick="steal()">a</u> <span style="color: red">b</span> <span data-text-color="x" style="color: red; background: url(https://e.x/t)">c</span> <img src=x onerror="steal()"> <script>steal()</script> <u>open',
+    "",
+    "`<u>code</u>`",
+    "",
+    "```",
+    "::: {.center}",
+    "<mark>kept</mark>",
+    ":::",
+    "```",
+    "",
+    "::: {.center}",
+    "- a list is not aligned",
+    ":::",
+  ].join("\n"));
+  const { container } = render(<MarkdownPreview />);
+  expect(container.querySelector("u, img, script, mark, .text-center")).toBeNull();
+  expect(container.querySelectorAll("span[style]")).toHaveLength(0);
+  const text = screen.getByTestId("markdown-preview").textContent ?? "";
+  for (const raw of ['<u onclick="steal()">', '<span style="color: red">', "<img src=x", "<script>", "<u>open", "<u>code</u>", "<mark>kept</mark>", "::: {.center}"]) {
+    expect(text).toContain(raw);
+  }
+});

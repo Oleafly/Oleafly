@@ -1,4 +1,4 @@
-import { useMemo, useRef, type ReactNode } from "react";
+import { Fragment, useMemo, useRef, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { LucideIcon } from "lucide-react";
 import {
@@ -74,6 +74,7 @@ import { SymbolPicker } from "@/components/editor/SymbolPicker";
 import { TableSizePicker } from "@/components/editor/TableSizePicker";
 import { ProjectCitationPicker } from "@/components/editor/ProjectCitationPicker";
 import {
+  CONTROL_GAP,
   DIVIDER_WIDTH,
   DROPDOWN_TRIGGER_WIDTH,
   ICON_BUTTON_WIDTH,
@@ -124,7 +125,7 @@ export function IconBtn({
         disabled={disabled}
         data-tour={dataTour}
         className={cn(
-          "flex h-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50",
+          "flex h-7 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent focus-visible:text-foreground disabled:pointer-events-none disabled:opacity-50",
           wide ? "w-auto px-1.5" : "w-7",
           active && "bg-primary/10 text-foreground",
         )}
@@ -136,6 +137,14 @@ export function IconBtn({
 }
 
 export type EditorMode = "code" | "visual" | "both";
+
+function modeSegment(selected: boolean, className?: string): string {
+  return cn(
+    "rounded-full px-2.5 py-1 transition-colors",
+    selected ? "bg-primary text-primary-foreground focus-visible:bg-primary/85" : "text-muted-foreground hover:text-foreground",
+    className,
+  );
+}
 
 export function WysiwygModeSwitch({
   wysiwyg,
@@ -170,10 +179,7 @@ export function WysiwygModeSwitch({
         onClick={() => selectMode("code")}
         aria-label={t(($) => $.editor.toolbar.switchToSource)}
         aria-pressed={mode === "code"}
-        className={cn(
-          "rounded-full px-2.5 py-1 transition-colors",
-          mode === "code" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-        )}
+        className={modeSegment(mode === "code")}
       >
         {t(($) => $.editor.toolbar.code)}
       </button>
@@ -182,10 +188,7 @@ export function WysiwygModeSwitch({
         onClick={() => selectMode("visual")}
         aria-label={t(($) => $.editor.toolbar.switchToVisual)}
         aria-pressed={mode === "visual"}
-        className={cn(
-          "rounded-full px-2.5 py-1 transition-colors",
-          mode === "visual" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-        )}
+        className={modeSegment(mode === "visual")}
       >
         {secondLabel ?? t(($) => $.editor.toolbar.visual)}
       </button>
@@ -194,8 +197,7 @@ export function WysiwygModeSwitch({
           <button
             type="button"
             aria-pressed={mode === "both"}
-            className={cn("flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors",
-              mode === "both" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground")}
+            className={modeSegment(mode === "both", "flex items-center gap-1")}
           >
             {t(($) => $.editor.toolbar.both)}
             <ChevronDown aria-hidden className="size-3" />
@@ -247,13 +249,40 @@ export function dividerControl(id: string): ToolbarControl {
   };
 }
 
+export function groupControl(id: string, controls: readonly ToolbarControl[], divided: boolean): ToolbarControl {
+  const widths = [...(divided ? [DIVIDER_WIDTH] : []), ...controls.map((control) => control.width)];
+  return {
+    id,
+    width: widths.reduce((sum, width) => sum + width, 0) + CONTROL_GAP * Math.max(0, widths.length - 1),
+    tools: controls.reduce((sum, control) => sum + (control.tools ?? 1), 0),
+    active: controls.some((control) => control.active),
+    render: () => (
+      <>
+        {divided && <Divider />}
+        {controls.map((control) => (
+          <Fragment key={control.id}>{control.render()}</Fragment>
+        ))}
+      </>
+    ),
+    renderMenu: () => (
+      <Fragment key={id}>
+        {controls.map((control) => (
+          <Fragment key={control.id}>{control.renderMenu()}</Fragment>
+        ))}
+      </Fragment>
+    ),
+  };
+}
+
 export function headingItems<L extends { hLabel: string; className: string; label: () => string }>(
   levels: readonly L[],
   insert: (level: L) => void,
+  checked?: (level: L) => boolean,
 ): ToolbarDropdownItem[] {
   return levels.map((level) => ({
     key: level.hLabel,
     onSelect: () => insert(level),
+    checked: checked?.(level),
     content: (
       <>
         <span className="w-6 shrink-0 text-[0.625rem] font-medium text-muted-foreground">{level.hLabel}</span>
@@ -267,17 +296,19 @@ export function HeadingDropdown<L extends { hLabel: string; className: string; l
   variant,
   levels,
   insert,
-}: Readonly<{ variant: "bar" | "menu"; levels: readonly L[]; insert: (level: L) => void }>) {
+  checked,
+}: Readonly<{ variant: "bar" | "menu"; levels: readonly L[]; insert: (level: L) => void; checked?: (level: L) => boolean }>) {
   const { t } = useTranslation(["common", "editor"]);
   return (
     <ToolbarDropdown
       variant={variant}
+      active={checked !== undefined && levels.some(checked)}
       icon={Type}
       label={t(($) => $.editor.toolbar.heading)}
       ariaLabel={t(($) => $.editor.toolbar.headingLevel)}
       heading={t(($) => $.editor.toolbar.heading)}
       className="w-fit min-w-0 max-w-56"
-      items={headingItems(levels, insert)}
+      items={headingItems(levels, insert, checked)}
     />
   );
 }

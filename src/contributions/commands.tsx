@@ -64,7 +64,13 @@ import {
 } from "lucide-react";
 import { ClockCheck } from "@/components/icons/ClockCheck";
 import { registerCommand, type AppContext } from "@oleafly/registry";
-import { isWysiwygActive } from "@/components/editor/wysiwyg/controller";
+import type { Editor, TiptapEditorHTMLElement } from "@tiptap/core";
+import { getWysiwygEditor, isWysiwygActive } from "@/components/editor/wysiwyg/controller";
+import type { MarkdownTarget } from "@/components/editor/markdown-model";
+import { collabVisualReadOnly } from "@/lib/collab-live-bridge";
+import { noteHistoryAt } from "@/lib/open-note-editors";
+import { projectCovered } from "@/lib/project-covered";
+import { activeFileReadOnly } from "@/lib/read-only-files";
 import { linkLanguageFor } from "@/lib/file-links";
 import { i18n } from "@/i18n";
 import { useSettingsStore } from "@/store/settings";
@@ -76,6 +82,7 @@ import { useZoteroLibraryStore } from "@/store/zotero-library";
 import { clearBuildCache, quickCaptureOpen } from "@/lib/tauri";
 import { isTauri } from "@tauri-apps/api/core";
 import { getEditorView, insertAtCursor, wrapSelection } from "@/components/editor/cm/controller";
+import { runMarkdownFormatting } from "@/components/editor/markdown-keymap";
 import {
   closeEnvironmentAtCursor,
   deleteLineCommand,
@@ -187,9 +194,55 @@ const supportsCitations = () => projectSupportsCitations() && activeUsesEngineSo
 const supportsSyncTeX = () => engineLoaded() && engineSyncsPath(engine(), useFilesStore.getState().activePath);
 const activeFormattingProfile = () =>
   formattingProfileForPath(engine(), engineLoaded(), useFilesStore.getState().activePath);
-export const engineFormattingAvailable = () => engineLoaded() && activeFormattingProfile() !== "none";
+let focusOutsidePalette: Element | null = null;
+const rememberFocus = (event: FocusEvent) => {
+  if (event.target instanceof Element && !event.target.closest("[cmdk-dialog]")) focusOutsidePalette = event.target;
+};
+const shown = (element: Element) => element.isConnected && !element.closest("[hidden], [inert]");
+const dialogInFront = () =>
+  focusOutsidePalette !== null && shown(focusOutsidePalette) && focusOutsidePalette.closest('[role="dialog"], [role="alertdialog"]') !== null;
+const noteWritable = (editor: Editor) => !editor.isDestroyed && editor.isEditable && shown(editor.view.dom);
+const noteEditorInFocus = (): Editor | null => {
+  const dom = focusOutsidePalette?.closest<TiptapEditorHTMLElement>(".ProseMirror");
+  if (!dom?.editor || noteHistoryAt(dom) === null) return null;
+  return noteWritable(dom.editor) ? dom.editor : null;
+};
+const projectEditorShown = () => !projectCovered() && !dialogInFront() && (isWysiwygActive() || getEditorView() !== null);
+const sourceEditorShown = () => projectEditorShown() && !isWysiwygActive();
+const projectFormattingAvailable = () => projectEditorShown() && engineLoaded() && activeFormattingProfile() !== "none";
+export const engineFormattingAvailable = () => noteEditorInFocus() !== null || projectFormattingAvailable();
+const VISUAL_FORMATTING: Readonly<Record<EngineFormattingAction, (target: MarkdownTarget) => void>> = {
+  bold: (target) => target.bold(),
+  italic: (target) => target.italic(),
+  section: (target) => target.heading(1),
+  list: (target) => target.bullet(),
+};
+const visualWritable = (editor: Editor) =>
+  !editor.isDestroyed &&
+  editor.isEditable &&
+  getWysiwygEditor() === editor &&
+  projectEditorShown() &&
+  !activeFileReadOnly() &&
+  !collabVisualReadOnly(useFilesStore.getState().projectId);
+const runRichTextFormatting = (editor: Editor, writable: (editor: Editor) => boolean, action: EngineFormattingAction) => {
+  if (!writable(editor)) return;
+  void import("@/components/editor/markdown-model").then(({ visualTarget }) => {
+    if (writable(editor)) VISUAL_FORMATTING[action](visualTarget(editor));
+  });
+};
 export const runEngineFormatting = (action: EngineFormattingAction) => {
-  if (!engineFormattingAvailable()) return;
+  const note = noteEditorInFocus();
+  if (note) {
+    runRichTextFormatting(note, noteWritable, action);
+    return;
+  }
+  if (!projectFormattingAvailable()) return;
+  if (activeFormattingProfile() === "markdown") {
+    const visual = getWysiwygEditor();
+    if (isWysiwygActive() && visual) runRichTextFormatting(visual, visualWritable, action);
+    else runMarkdownFormatting(getEditorView(), action);
+    return;
+  }
   const formatting = formattingForPath(engine(), engineLoaded(), useFilesStore.getState().activePath, action);
   if (!formatting) return;
   if (formatting.kind === "wrap") wrapSelection(formatting.before, formatting.after);
@@ -330,6 +383,17 @@ function documentScanBibOverride(files: CommandFilesState): string | null {
 
 type PaletteRegistrar = (cmd: Omit<Parameters<typeof registerCommand>[0], "surfaces">) => void;
 
+function onEditor(palette: PaletteRegistrar, editorShown: () => boolean): PaletteRegistrar {
+  return ({ when, run, ...cmd }) =>
+    palette({
+      ...cmd,
+      when: (ctx) => editorShown() && (when?.(ctx) ?? true),
+      run: (ctx) => {
+        if (editorShown()) run(ctx);
+      },
+    });
+}
+
 const TYPST_NAVIGATION_KEYWORDS = {
   goToDefinition: "definition jump symbol navigate typst",
   findReferences: "references usages symbol typst",
@@ -345,7 +409,7 @@ function runWithEditorView(action: (view: NonNullable<ReturnType<typeof getEdito
   if (view) action(view);
 }
 
-function registerTypstPaletteCommands(palette: PaletteRegistrar) {
+function registerTypstPaletteCommands(palette: PaletteRegistrar, editing: PaletteRegistrar) {
   const insertGroup = () => i18n.t(($) => $.shell.commandGroups.insert);
   const editorGroup = () => i18n.t(($) => $.shell.commandGroups.editor);
   const insertions = [
@@ -368,7 +432,7 @@ function registerTypstPaletteCommands(palette: PaletteRegistrar) {
     ["cross-reference", () => i18n.t(($) => $.shell.commands.crossReference.label), Tag, 471, insertTypstReference],
   ] as const;
   for (const [id, label, Icon, order, run] of insertions) {
-    palette({
+    editing({
       id: `palette.typst-${id}`,
       group: insertGroup,
       label,
@@ -443,7 +507,7 @@ function registerTypstPaletteCommands(palette: PaletteRegistrar) {
     },
   ] as const;
   for (const entry of navigation) {
-    palette({
+    editing({
       id: `palette.typst-${entry.id}`,
       group: editorGroup,
       label: entry.label,
@@ -455,7 +519,7 @@ function registerTypstPaletteCommands(palette: PaletteRegistrar) {
       run: () => runWithEditorView(entry.run),
     });
   }
-  palette({
+  editing({
     id: "palette.typst-toggle-comment",
     group: editorGroup,
     label: () => i18n.t(($) => $.shell.commands.toggleComment.label),
@@ -597,9 +661,10 @@ export function registerPaletteCommands() {
   );
   const latexEquation = ins("\\begin{equation}\n  \n\\end{equation}\n");
   const latexLabel = ins(String.raw`\label{}`);
-  const palette = (
-    cmd: Omit<Parameters<typeof registerCommand>[0], "surfaces">,
-  ) => registerCommand({ ...cmd, surfaces: ["palette"] });
+  const palette: PaletteRegistrar = (cmd) => registerCommand({ ...cmd, surfaces: ["palette"] });
+  const editing = onEditor(palette, projectEditorShown);
+  const sourceEditing = onEditor(palette, sourceEditorShown);
+  globalThis.document?.addEventListener("focusin", rememberFocus, true);
 
   palette({
     id: "palette.new-project",
@@ -708,7 +773,7 @@ export function registerPaletteCommands() {
       c.setAutoCompile(!c.autoCompile);
     },
   });
-  palette({
+  editing({
     id: "palette.synctex",
     group: () => i18n.t(($) => $.shell.commandGroups.compile),
     label: () =>
@@ -795,7 +860,7 @@ export function registerPaletteCommands() {
     when: (ctx) => !!ctx.projectId,
     run: () => openNewTerminal(),
   });
-  palette({
+  editing({
     id: "palette.add-citation",
     group: () => i18n.t(($) => $.shell.commandGroups.tools),
     label: () => i18n.t(($) => $.shell.commands.addCitation.label),
@@ -921,7 +986,7 @@ export function registerPaletteCommands() {
     when: engineFormattingAvailable,
     run: () => runEngineFormatting("section"),
   });
-  palette({
+  sourceEditing({
     id: "palette.insert-file-link",
     group: () => i18n.t(($) => $.shell.commandGroups.insert),
     label: () => i18n.t(($) => $.shell.commands.insertFileLink.label),
@@ -929,10 +994,7 @@ export function registerPaletteCommands() {
       `${i18n.t(($) => $.shell.commands.insertFileLink.keywords)} ${ENGLISH_KEYWORDS.insertFileLink}`,
     icon: () => <Link className="size-4" />,
     order: 425,
-    when: (ctx) => {
-      const language = linkLanguageFor(ctx.activeDocumentPath);
-      return language !== null && !(language === "markdown" && isWysiwygActive());
-    },
+    when: (ctx) => linkLanguageFor(ctx.activeDocumentPath) !== null,
     run: () => void import("@/features/file-links").then((links) => links.startFileLinkInsertion()),
   });
   palette({
@@ -944,7 +1006,7 @@ export function registerPaletteCommands() {
     when: engineFormattingAvailable,
     run: () => runEngineFormatting("list"),
   });
-  palette({
+  sourceEditing({
     id: "palette.figure",
     group: () => i18n.t(($) => $.shell.commandGroups.insert),
     label: () => i18n.t(($) => $.shell.commands.figure.label),
@@ -956,7 +1018,7 @@ export function registerPaletteCommands() {
       else latexFigure();
     },
   });
-  palette({
+  sourceEditing({
     id: "palette.table",
     group: () => i18n.t(($) => $.shell.commandGroups.insert),
     label: () => i18n.t(($) => $.shell.commands.table.label),
@@ -968,7 +1030,7 @@ export function registerPaletteCommands() {
       else latexTable();
     },
   });
-  palette({
+  sourceEditing({
     id: "palette.equation",
     group: () => i18n.t(($) => $.shell.commandGroups.insert),
     label: () => i18n.t(($) => $.shell.commands.equation.label),
@@ -980,7 +1042,7 @@ export function registerPaletteCommands() {
       else latexEquation();
     },
   });
-  palette({
+  sourceEditing({
     id: "palette.label",
     group: () => i18n.t(($) => $.shell.commandGroups.insert),
     label: () => i18n.t(($) => $.shell.commands.label.label),
@@ -992,9 +1054,9 @@ export function registerPaletteCommands() {
       else latexLabel();
     },
   });
-  registerTypstPaletteCommands(palette);
+  registerTypstPaletteCommands(palette, sourceEditing);
 
-  palette({
+  sourceEditing({
     id: "palette.close-environment",
     group: () => i18n.t(($) => $.shell.commandGroups.editor),
     label: () => i18n.t(($) => $.shell.commands.closeEnvironment.label),
@@ -1012,7 +1074,7 @@ export function registerPaletteCommands() {
       view.focus();
     },
   });
-  palette({
+  sourceEditing({
     id: "palette.surround-environment",
     group: () => i18n.t(($) => $.shell.commandGroups.editor),
     label: () => i18n.t(($) => $.shell.commands.surroundEnvironment.label),
@@ -1027,7 +1089,7 @@ export function registerPaletteCommands() {
       if (surroundSelectionWithEnvironment(view)) view.focus();
     },
   });
-  palette({
+  sourceEditing({
     id: "palette.format-document",
     group: () => i18n.t(($) => $.shell.commandGroups.editor),
     label: () => i18n.t(($) => $.shell.commands.formatDocument.label),
@@ -1039,7 +1101,7 @@ export function registerPaletteCommands() {
     when: languageServiceFormattingAvailable,
     run: () => runLanguageServiceFormat("document"),
   });
-  palette({
+  sourceEditing({
     id: "palette.format-selection",
     group: () => i18n.t(($) => $.shell.commandGroups.editor),
     label: () => i18n.t(($) => $.shell.commands.formatSelection.label),
@@ -1051,7 +1113,7 @@ export function registerPaletteCommands() {
     run: () => runLanguageServiceFormat("selection"),
   });
   for (const entry of EDITOR_COMMAND_PALETTE) {
-    palette({
+    sourceEditing({
       id: `palette.editor-${entry.id}`,
       group: () => i18n.t(($) => $.shell.commandGroups.editor),
       label: () => i18n.t(($) => $.settings.shortcuts.editorKeys.labels[entry.id]),

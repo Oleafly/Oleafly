@@ -18,7 +18,9 @@ vi.mock("@/components/editor/project-info-data", () => ({
   collectProjectInfo: collectProjectInfoMock,
 }));
 
-import { EditorToolbar, IconBtn } from "./EditorToolbar";
+import { EditorToolbar, HeadingDropdown, IconBtn, WysiwygModeSwitch } from "./EditorToolbar";
+import { HEADING_LEVELS } from "./latex-commands";
+import { MARKDOWN_HEADING_LEVELS } from "./markdown-commands";
 
 class ResizeObserverStub {
   observe() {}
@@ -178,5 +180,46 @@ describe("EditorToolbar focus", () => {
   it("labels the toolbar so focus assertions can scope to it", () => {
     render(<EditorToolbar wysiwyg={false} onToggleWysiwyg={vi.fn()} />);
     expect(screen.getByTestId("editor-toolbar")).toBeInTheDocument();
+  });
+
+  it.each(["code", "visual", "both"] as const)("tints the selected %s segment under keyboard focus, with no ring or outline", (mode) => {
+    render(<WysiwygModeSwitch wysiwyg={mode === "visual"} mode={mode} onToggle={vi.fn()} onModeChange={vi.fn()} />);
+    const selected = screen.getAllByRole("button").filter((button) => button.getAttribute("aria-pressed") === "true");
+    expect(selected).toHaveLength(1);
+    const classes = selected[0].className.split(/\s+/u);
+    expect(classes).toContain("bg-primary");
+    expect(classes.filter((name) => name.startsWith("focus-visible:"))).toEqual(["focus-visible:bg-primary/85"]);
+    expect(classes.filter((name) => /(^|:)(ring|outline|shadow)/u.test(name))).toEqual([]);
+  });
+});
+
+describe("HeadingDropdown", () => {
+  it("checks the level the caret is in when the editor reports one, and picks another", () => {
+    const insert = vi.fn();
+    render(<HeadingDropdown variant="bar" levels={MARKDOWN_HEADING_LEVELS} insert={insert} checked={(level) => level.level === 2} />);
+    const trigger = screen.getByRole("button", { name: "Heading level" });
+    expect(trigger).toHaveClass("bg-primary/10");
+    fireEvent.click(trigger);
+    const rows = screen.getAllByRole("menuitemcheckbox");
+    expect(rows.map((row) => [row.textContent, row.getAttribute("aria-checked")])).toEqual(
+      MARKDOWN_HEADING_LEVELS.map((level) => [`${level.hLabel}${level.label()}`, String(level.level === 2)]),
+    );
+    fireEvent.click(rows[3]);
+    expect(insert).toHaveBeenCalledWith(MARKDOWN_HEADING_LEVELS[3]);
+  });
+
+  it("leaves the levels unchecked and the trigger untinted outside a heading", () => {
+    render(<HeadingDropdown variant="bar" levels={MARKDOWN_HEADING_LEVELS} insert={vi.fn()} checked={() => false} />);
+    const trigger = screen.getByRole("button", { name: "Heading level" });
+    expect(trigger).not.toHaveClass("bg-primary/10");
+    fireEvent.click(trigger);
+    expect(screen.getAllByRole("menuitemcheckbox").map((row) => row.getAttribute("aria-checked"))).toEqual(MARKDOWN_HEADING_LEVELS.map(() => "false"));
+  });
+
+  it("keeps LaTeX's heading popover, which tracks no level, as plain buttons", () => {
+    render(<HeadingDropdown variant="bar" levels={HEADING_LEVELS} insert={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Heading level" }));
+    expect(screen.queryAllByRole("menuitemcheckbox")).toEqual([]);
+    expect(screen.getByRole("button", { name: /Section/u })).toBeInTheDocument();
   });
 });

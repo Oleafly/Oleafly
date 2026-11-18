@@ -16,7 +16,21 @@ const REFUSALS: Readonly<Record<CollabCommentErrorCode, () => string>> = {
   comment_empty: () => i18n.t(($) => $.collab.comments.refusals.empty),
 };
 
+export function refusalText(code: CollabCommentErrorCode): string {
+  return REFUSALS[code]();
+}
+
 export function commentFailure(error: unknown): string {
   if (isCollabCommentError(error)) return REFUSALS[error.code]();
   return collabErrorText(error);
+}
+
+const REFUSED_OUTRIGHT: ReadonlySet<CollabCommentErrorCode> = new Set(["comment_off_server", "comment_off_project", "comment_viewer"]);
+
+export function refusedOutright(error: unknown): boolean {
+  return isCollabCommentError(error) && REFUSED_OUTRIGHT.has(error.code);
+}
+
+export function commentRetryable(error: unknown): boolean {
+  return !isCollabCommentError(error) || error.code === "comment_not_live";
 }

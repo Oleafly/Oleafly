@@ -10,6 +10,8 @@ import { getEditorDocumentPath, getEditorView } from "./controller";
 import { setSpellHost } from "./spellcheck";
 import { englishEditorMessage } from "./test-messages";
 import { isMathPreviewEnabled, setMathPreviewEnabled } from "./visual/math-preview";
+import { stickyScrollFor } from "./sticky-scroll";
+import { emacsModeExtension } from "./emacs-mode";
 import { stubRangeGeometry } from "./test-geometry";
 
 stubRangeGeometry();
@@ -72,6 +74,8 @@ async function mountEditor(initial: Partial<HostState> = {}, setMathPreview = vi
   }));
   const host: EditorHost = {
     t: englishEditorMessage,
+    stickyScroll: stickyScrollFor,
+    emacs: emacsModeExtension,
     useActivePath: () => store((state) => state.path),
     getActivePath: () => store.getState().path,
     useDocVersion: () => store((state) => state.version),

@@ -1,85 +1,140 @@
-import { Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { CommentScrollArea } from "@/components/ui/comments/comment-arrivals";
+import { CommentComposer } from "@/components/ui/comments/comment-composer";
+import { useCommentKit } from "@/components/ui/comments/comment-kit";
+import { presenceText, TypingLine } from "@/components/ui/comments/comment-presence";
+import { chatGroups, type CommentEntry, CommentItem } from "@/components/ui/comments/comment-thread";
 import { EmptyState } from "@/components/ui/empty";
-import { Tooltip } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
 import type { CollabChatMessage } from "../protocol";
 import { abilitiesFor } from "../roles";
 import { useWeb } from "../store";
-import { Composer } from "./Composer";
+import { useOutboxEntry } from "./CommentsPane";
+import { useWebTyping, WebCommentKit } from "./comment-kit";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useActions } from "./context";
 import { type ErrorKey, failureKey } from "./errors";
-import { dateTime, isoTime, relativeTime, useNow } from "./format";
-import { PersonAvatar, usePersonName } from "./people";
+import { usePersonName } from "./people";
 
 export const CHAT_LIMIT = 4_000;
+const CHAT_SCOPE = { kind: "chat" } as const;
+const NO_ACTIONS = {};
+
+function ChatTyping() {
+  const { t } = useTranslation(["web"]);
+  const typing = useWebTyping();
+  if (typing.length === 0) return null;
+  const label = presenceText(
+    {
+      one: (name) => t(($) => $.web.chat.typingOne, { name }),
+      two: (first, second) => t(($) => $.web.chat.typingTwo, { first, second }),
+      many: (count) => t(($) => $.web.chat.typingMany, { number: count }),
+    },
+    typing.map((person) => person.name),
+  );
+  return <TypingLine people={typing} label={label} className="px-3 pb-1" />;
+}
 
 function ChatRow({
   message,
-  canDelete,
-  now,
-  onDelete,
-}: Readonly<{ message: CollabChatMessage; canDelete: boolean; now: number; onDelete: () => void }>) {
-  const { t } = useTranslation(["web"]);
+  canWrite,
+  canReact,
+  continued,
+}: Readonly<{ message: CollabChatMessage; canWrite: boolean; canReact: boolean; continued: boolean }>) {
+  const actions = useActions();
   const nameOf = usePersonName();
-  const name = nameOf(message.author, message.verified);
+  const people = useWeb((state) => state.people);
+  const entry: CommentEntry = {
+    id: message.id,
+    author: {
+      id: message.author,
+      name: nameOf(message.author, message.verified),
+      imageUrl: message.verified ? (people[message.author]?.avatarUrl ?? null) : null,
+      verified: message.verified,
+    },
+    at: message.at,
+    editedAt: null,
+    deleted: message.deleted,
+    body: message.body,
+    mentions: message.mentions ?? [],
+    reactions: message.reactions ?? [],
+  };
   return (
-    <li className="group flex gap-2 px-2 py-1.5">
-      <PersonAvatar accountId={message.author} name={name} verified={message.verified} className="mt-0.5" />
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <div className="flex min-w-0 items-center gap-1.5 text-xs">
-          <span className={cn("truncate font-medium", !message.verified && "italic text-muted-foreground")}>{name}</span>
-          {message.at ? (
-            <Tooltip label={dateTime(message.at)} className="shrink-0">
-              <time dateTime={isoTime(message.at)} className="text-[0.6875rem] text-muted-foreground">
-                {relativeTime(message.at, now)}
-              </time>
-            </Tooltip>
-          ) : null}
-          {canDelete ? (
-            <Tooltip label={t(($) => $.web.chat.delete)} className="ml-auto">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={t(($) => $.web.chat.delete)}
-                className="size-5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100"
-                onClick={onDelete}
-              >
-                <Trash2 aria-hidden className="size-3.5" />
-              </Button>
-            </Tooltip>
-          ) : null}
-        </div>
-        <p className="select-text whitespace-pre-wrap break-words text-xs">{message.body}</p>
-      </div>
-    </li>
+    <CommentItem
+      variant="bubble"
+      continued={continued}
+      entry={entry}
+      canWrite={canWrite}
+      canReact={canReact}
+      actions={{
+        remove: (id) => actions.deleteChat(id),
+        react: (id, emoji, on) => actions.reactChat(id, emoji, on),
+      }}
+    />
+  );
+}
+
+function ChatComposer() {
+  const { t } = useTranslation(["web"]);
+  const actions = useActions();
+  const kit = useCommentKit();
+  return (
+    <CommentComposer
+      compact
+      label={t(($) => $.web.chat.label)}
+      placeholder={t(($) => $.web.chat.placeholder)}
+      submitLabel={t(($) => $.web.chat.send)}
+      labels={kit.labels}
+      describeError={kit.describeError}
+      canRetry={kit.canRetry}
+      maxLength={CHAT_LIMIT}
+      members={kit.members}
+      self={kit.self}
+      hue={kit.hue}
+      onSubmit={(body) => actions.sendChat(body)}
+      onActivity={(active) => actions.setActivity(CHAT_SCOPE, active)}
+    />
   );
 }
 
 export function ChatPane() {
   const { t } = useTranslation(["web"]);
   const actions = useActions();
-  const now = useNow();
   const messages = useWeb((state) => state.chat);
+  const loaded = useWeb((state) => state.chatLoaded);
   const role = useWeb((state) => state.role);
   const features = useWeb((state) => state.features);
-  const self = useWeb((state) => state.me?.accountId ?? null);
   const abilities = abilitiesFor(role, features);
+  const chatLabels = useMemo(
+    () => ({
+      messageActions: t(($) => $.web.chat.messageActions),
+      deleteMessageConfirm: {
+        title: t(($) => $.web.chat.deleteTitle),
+        description: t(($) => $.web.chat.deleteDescription),
+      },
+    }),
+    [t],
+  );
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<ErrorKey | null>(null);
-  const list = useRef<HTMLOListElement>(null);
-  const visible = messages.filter((message) => !message.deleted);
-  const last = visible.at(-1)?.id;
-
-  useEffect(() => {
-    if (!last) return;
-    const element = list.current;
-    if (element) element.scrollTop = element.scrollHeight;
-  }, [last]);
+  const self = useWeb((state) => state.me?.accountId ?? null);
+  const outbox = useWeb((state) => state.outbox);
+  const outboxEntry = useOutboxEntry();
+  const queued = useMemo(() => outbox.filter((item) => item.kind === "chat"), [outbox]);
+  const visible = useMemo(() => messages.filter((message) => !message.deleted), [messages]);
+  const grouped = useMemo(
+    () =>
+      chatGroups([
+        ...visible,
+        ...queued.map((item) => ({ author: self ?? "", verified: self !== null, at: item.at, deleted: false })),
+      ]),
+    [visible, queued, self],
+  );
+  const arrivals = useMemo(
+    () => visible.map((message) => ({ id: message.id, mine: message.verified && message.author === self, at: message.at })),
+    [visible, self],
+  );
 
   const run = (action: () => Promise<void>) => {
     setError(null);
@@ -87,64 +142,78 @@ export function ChatPane() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      {abilities.clearChat && visible.length > 0 ? (
-        <div className="flex justify-end border-b px-2 py-1">
-          <Button type="button" size="xs" variant="ghost" onClick={() => setConfirming(true)}>
-            {t(($) => $.web.chat.clear)}
-          </Button>
-        </div>
-      ) : null}
-      {visible.length === 0 ? (
-        <EmptyState
-          size="compact"
-          className="flex-1 px-6 py-10"
-          title={t(($) => $.web.chat.emptyTitle)}
-          description={t(($) => $.web.chat.emptyDescription)}
-        />
-      ) : (
-        <ol ref={list} aria-label={t(($) => $.web.chat.messages)} className="min-h-0 flex-1 overflow-y-auto py-1">
-          {visible.map((message) => (
-            <ChatRow
-              key={message.id}
-              message={message}
-              now={now}
-              canDelete={abilities.chat && message.verified && message.author === self}
-              onDelete={() => run(() => actions.deleteChat(message.id))}
+    <WebCommentKit labels={chatLabels} maxLength={CHAT_LIMIT}>
+      <div className="flex min-h-0 flex-1 flex-col">
+        {abilities.clearChat && visible.length > 0 ? (
+          <div className="flex justify-end border-b px-2 py-1">
+            <Button type="button" size="xs" variant="ghost" onClick={() => setConfirming(true)}>
+              {t(($) => $.web.chat.clear)}
+            </Button>
+          </div>
+        ) : null}
+        <CommentScrollArea
+          items={arrivals}
+          ready={loaded}
+          stickToBottom
+          className="px-3 py-3"
+          label={(count) => t(($) => $.web.chat.newMessages, { count })}
+        >
+          {visible.length === 0 && queued.length === 0 ? (
+            <EmptyState
+              size="compact"
+              className="px-3 py-7"
+              title={t(($) => $.web.chat.emptyTitle)}
+              description={t(($) => $.web.chat.emptyDescription)}
             />
-          ))}
-        </ol>
-      )}
-      {error ? (
-        <p role="alert" className="px-2 text-[0.6875rem] text-destructive">
-          {t(($) => $.web.errors[error])}
-        </p>
-      ) : null}
-      <div className="border-t px-2 py-2">
-        {abilities.chat ? (
-          <Composer
-            compact
-            label={t(($) => $.web.chat.label)}
-            placeholder={t(($) => $.web.chat.placeholder)}
-            submitLabel={t(($) => $.web.chat.send)}
-            maxLength={CHAT_LIMIT}
-            onSubmit={(body) => actions.sendChat(body)}
-          />
-        ) : (
-          <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.web.chat.readOnly)}</p>
-        )}
+          ) : (
+            <ol aria-label={t(($) => $.web.chat.messages)}>
+              {visible.map((message, index) => (
+                <ChatRow
+                  key={message.id}
+                  message={message}
+                  canWrite={abilities.chat}
+                  canReact={abilities.chat}
+                  continued={grouped[index] ?? false}
+                />
+              ))}
+              {queued.map((item, index) => (
+                <CommentItem
+                  key={item.id}
+                  variant="bubble"
+                  continued={grouped[visible.length + index] ?? false}
+                  entry={outboxEntry(item)}
+                  canWrite={false}
+                  actions={NO_ACTIONS}
+                />
+              ))}
+            </ol>
+          )}
+        </CommentScrollArea>
+        <ChatTyping />
+        {error ? (
+          <p role="alert" className="px-3 text-[0.6875rem] text-destructive">
+            {t(($) => $.web.errors[error])}
+          </p>
+        ) : null}
+        <div className="border-t px-3 py-2">
+          {abilities.chat ? (
+            <ChatComposer />
+          ) : (
+            <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.web.chat.readOnly)}</p>
+          )}
+        </div>
+        <ConfirmDialog
+          open={confirming}
+          title={t(($) => $.web.chat.clearTitle)}
+          description={t(($) => $.web.chat.clearDescription)}
+          confirmLabel={t(($) => $.web.chat.clear)}
+          onConfirm={() => {
+            setConfirming(false);
+            run(() => actions.clearChat());
+          }}
+          onCancel={() => setConfirming(false)}
+        />
       </div>
-      <ConfirmDialog
-        open={confirming}
-        title={t(($) => $.web.chat.clearTitle)}
-        description={t(($) => $.web.chat.clearDescription)}
-        confirmLabel={t(($) => $.web.chat.clear)}
-        onConfirm={() => {
-          setConfirming(false);
-          run(() => actions.clearChat());
-        }}
-        onCancel={() => setConfirming(false)}
-      />
-    </div>
+    </WebCommentKit>
   );
 }

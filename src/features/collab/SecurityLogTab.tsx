@@ -49,6 +49,7 @@ const KIND_KEYS = {
   guest_admission_ended: "guestAdmissionEnded",
   project_rejoin_refused: "projectRejoinRefused",
   comments_changed_while_off: "commentsChangedWhileOff",
+  change_broke_role: "changeBrokeRole",
   note_published: "notePublished",
   note_unpublished: "noteUnpublished",
   note_taken_down: "noteTakenDown",
@@ -136,10 +137,10 @@ function projectRole(value: string | null): CollabProjectRole | null {
   return PROJECT_ROLES.find((role) => role === value) ?? null;
 }
 
-const COMMENTS_CHANGED_WHILE_OFF = "comments_changed_while_off";
+const PROJECT_CHANGE_KINDS: ReadonlySet<string> = new Set(["comments_changed_while_off", "change_broke_role"]);
 
 function isProjectKind(kind: string): boolean {
-  return kind.startsWith("project_") || kind.startsWith("guest_") || kind === COMMENTS_CHANGED_WHILE_OFF;
+  return kind.startsWith("project_") || kind.startsWith("guest_") || PROJECT_CHANGE_KINDS.has(kind);
 }
 
 function isNoteKind(kind: string): boolean {
@@ -296,7 +297,7 @@ function useEventDescription(names: ReadonlyMap<string, string>) {
   };
 
   const targetOf = (event: CollabSecurityEvent, detail: Detail): string | null => {
-    if (event.kind === COMMENTS_CHANGED_WHILE_OFF) return null;
+    if (PROJECT_CHANGE_KINDS.has(event.kind)) return null;
     if (INVITATION_KINDS.has(event.kind)) return text(detail, "email");
     const rule = ruleTarget(event, detail);
     if (rule !== null) return rule;

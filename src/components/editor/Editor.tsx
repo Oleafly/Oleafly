@@ -20,6 +20,7 @@ import { PANE_BAR_CLASS, usePaneBar } from "@/components/layout/pane-reorder";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { getEditorView, wrapSelection } from "./cm/controller";
+import { editorKeyTaken, runMarkdownFormatting } from "./markdown-keymap";
 import { useFilesStore } from "@/store/files";
 import { isManagedProjectPath, isReadOnlyLink } from "@/lib/project-paths";
 import { inWidgetControl } from "@/lib/field-history";
@@ -35,7 +36,7 @@ import { loadNamespace } from "@/i18n";
 import { useZenStore } from "@/store/zen";
 import { isImagePath } from "@/lib/image-mime";
 import { basename } from "@/lib/path-utils";
-import { cn } from "@/lib/utils";
+import { cn, isMac } from "@/lib/utils";
 import { CollabRemovedFileSlot } from "@/components/collab/CollabSlots";
 import {
   formattingForPath,
@@ -184,17 +185,21 @@ export function Editor() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.altKey || e.shiftKey || !(isMac ? e.metaKey : e.ctrlKey)) return;
       const el = document.activeElement as HTMLElement | null;
       if (!el?.closest(".cm-editor")) return;
       if (inWidgetControl(el)) return;
       const { activePath: path, engine, engineLoaded } = useFilesStore.getState();
-      const action = FORMATTING_SHORTCUTS.get(e.key.toLowerCase());
+      const key = e.key.toLowerCase();
+      const action = FORMATTING_SHORTCUTS.get(key);
       if (!action) return;
       const f = formattingForPath(engine, engineLoaded, path, action);
       if (f?.kind !== "wrap") return;
+      const markdown = formattingProfileForPath(engine, engineLoaded, path) === "markdown";
+      if (e.defaultPrevented && (markdown || key !== "i" || editorKeyTaken("Mod-i"))) return;
       e.preventDefault();
-      wrapSelection(f.before, f.after);
+      if (markdown) runMarkdownFormatting(getEditorView(), action);
+      else wrapSelection(f.before, f.after);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

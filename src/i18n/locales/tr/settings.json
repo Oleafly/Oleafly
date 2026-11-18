@@ -664,6 +664,15 @@
         "grid": "Izgara",
         "label": "Arka plan deseni"
       },
+      "commentColor": {
+        "accent": "Vurgu rengi",
+        "description": "Düzenleyicide yorum eklenmiş metnin ve yorumlar panelindeki alıntıların rengi. Bu cihazda geçerlidir.",
+        "graphite": "Grafit",
+        "indigo": "Çivit mavisi",
+        "label": "Yorum işaretleme rengi",
+        "leaf": "Yaprak yeşili",
+        "sample": "Yorum eklenmiş metin"
+      },
       "dock": {
         "bottom": "Alt",
         "description": "Ana ekran yuvasının nerede duracağını seçin.",

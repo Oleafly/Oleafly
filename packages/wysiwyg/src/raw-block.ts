@@ -6,6 +6,10 @@ import { rawBlockPresentation } from "./raw-presentation";
 
 const withRawHtml = new WeakSet<object>();
 
+export function rawBlockMarkup(source: string, escapeHtml: (text: string) => string): string {
+  return `<div data-type="raw-block" source="${escapeHtml(source)}"></div>`;
+}
+
 export const RawBlock = Node.create({
   name: "rawBlock",
   group: "block",
@@ -22,7 +26,19 @@ export const RawBlock = Node.create({
   addStorage() {
     const markdown: MarkdownNodeSpec = {
       serialize(state, node) {
-        state.text(String(node.attrs.source ?? ""), false);
+        const source = String(node.attrs.source ?? "");
+        const written = state as unknown as { out: string };
+        state.write();
+        const start = written.out.length;
+        state.text(source, false);
+        const lines = source.split("\n");
+        written.out =
+          written.out.slice(0, start) +
+          written.out
+            .slice(start)
+            .split("\n")
+            .map((line, index) => (index > 0 && lines[index] === "" ? line.trimEnd() : line))
+            .join("\n");
         state.closeBlock(node);
       },
       parse: {
@@ -33,8 +49,7 @@ export const RawBlock = Node.create({
           markdownit.renderer.rules.html_block = (tokens, index, options, env, self) => {
             const html = tokens[index].content;
             if (keepsBlockHtml(html)) return render(tokens, index, options, env, self);
-            const source = markdownit.utils.escapeHtml(html.replace(/\n$/u, ""));
-            return `<div data-type="raw-block" source="${source}"></div>`;
+            return rawBlockMarkup(html.replace(/\n$/u, ""), markdownit.utils.escapeHtml);
           };
         },
       },

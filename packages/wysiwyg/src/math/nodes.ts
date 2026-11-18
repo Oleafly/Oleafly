@@ -133,7 +133,8 @@ function typedInlineMath(): InputRule {
       const code = state.schema.marks.code;
       if (node?.type !== "mathInline" || /\s/u.test(before) || /\d/u.test(after)) return null;
       if (code && state.doc.rangeHasMark(range.from, range.to, code)) return null;
-      state.tr.replaceWith(range.from, range.to, state.schema.nodeFromJSON(node));
+      const marks = state.doc.resolve(Math.min(range.from + 1, range.to)).marks();
+      state.tr.replaceWith(range.from, range.to, state.schema.nodeFromJSON(node).mark(marks));
     },
   });
 }

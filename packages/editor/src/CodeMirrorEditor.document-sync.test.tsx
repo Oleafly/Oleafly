@@ -98,6 +98,16 @@ describe("switching files", () => {
     expect(store.getState().files["b.tex"]).toBe("\\section{B}\n");
   });
 
+  it("loads a never-opened file with the same text as a new document", async () => {
+    const store = await mountEditor({ activePath: "a.md", docVersion: 0, files: { "a.md": "Same text.\n", "b.md": "Same text.\n" } });
+    const before = getEditorView()!.state.doc;
+    await switchTo(store, "b.md");
+    const view = getEditorView()!;
+    expect(view.state.doc.toString()).toBe("Same text.\n");
+    expect(view.state.doc).not.toBe(before);
+    expect(undoDepth(view.state)).toBe(0);
+  });
+
   it("lets go of the oldest background file after twenty newer ones", async () => {
     const others = Array.from({ length: 21 }, (_, index) => `other-${index}.tex`);
     const store = await mountEditor({

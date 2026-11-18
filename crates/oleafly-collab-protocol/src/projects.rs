@@ -98,11 +98,29 @@ pub struct MemberGrant {
     pub role: ProjectRole,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PresenceActivityKind {
+    Reply,
+    Chat,
+    #[serde(other)]
+    Unknown,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PresenceActivity {
+    pub kind: PresenceActivityKind,
+    #[serde(default)]
+    pub thread_id: Option<String>,
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PresenceState {
     pub file_id: Option<String>,
     pub cursor: Option<u32>,
     pub anchor: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub activity: Option<PresenceActivity>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -416,8 +434,54 @@ mod tests {
                 file_id: Some("f1".to_string()),
                 cursor: Some(3),
                 anchor: Some(1),
+                activity: None,
             },
             json!({ "file_id": "f1", "cursor": 3, "anchor": 1 }),
+        );
+        round_trip(
+            PresenceState {
+                file_id: None,
+                cursor: None,
+                anchor: None,
+                activity: Some(PresenceActivity {
+                    kind: PresenceActivityKind::Reply,
+                    thread_id: Some("t1".to_string()),
+                }),
+            },
+            json!({
+                "file_id": null,
+                "cursor": null,
+                "anchor": null,
+                "activity": { "kind": "reply", "thread_id": "t1" }
+            }),
+        );
+    }
+
+    #[test]
+    fn presence_from_an_older_or_newer_client_still_reads() {
+        let older: PresenceState =
+            serde_json::from_value(json!({ "file_id": "f1", "cursor": 3, "anchor": null }))
+                .unwrap();
+        assert_eq!(older.activity, None);
+        let chat: PresenceState = serde_json::from_value(
+            json!({ "file_id": null, "cursor": null, "anchor": null, "activity": { "kind": "chat" } }),
+        )
+        .unwrap();
+        assert_eq!(
+            chat.activity,
+            Some(PresenceActivity {
+                kind: PresenceActivityKind::Chat,
+                thread_id: None,
+            })
+        );
+        let newer: PresenceState = serde_json::from_value(json!({
+            "file_id": null, "cursor": null, "anchor": null,
+            "activity": { "kind": "drawing", "thread_id": null }
+        }))
+        .unwrap();
+        assert_eq!(
+            newer.activity.map(|activity| activity.kind),
+            Some(PresenceActivityKind::Unknown)
         );
     }
 

@@ -283,6 +283,7 @@ async function storm({ peers, rounds, entries, flips }: StormSize): Promise<Stor
         path: where[index],
         cursor,
         anchor: round % 2 === 0 ? cursor : Math.max(0, cursor - 12),
+        activity: null,
       };
       await act(async () => {
         emit("presence", payload);

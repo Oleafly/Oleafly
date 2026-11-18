@@ -1,3 +1,5 @@
+use oleafly_collab_protocol::projects::{PresenceActivity, PresenceActivityKind};
+
 use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
@@ -44,6 +46,7 @@ async fn two_editors_see_each_others_typing_through_the_server() {
         file_id: Some(main.clone()),
         cursor: Some(2),
         anchor: None,
+        activity: None,
     };
     alice.handle.as_ref().unwrap().presence(here.clone());
     tokio::time::timeout(WAIT, async {
@@ -56,6 +59,110 @@ async fn two_editors_see_each_others_typing_through_the_server() {
     })
     .await
     .expect("presence arrived");
+}
+
+#[tokio::test]
+async fn an_activity_keeps_the_cursor_and_a_cursor_keeps_the_activity() {
+    let (commands, mut sent) = mpsc::unbounded_channel();
+    let handle = LiveHandle {
+        commands,
+        task: tokio::spawn(async {}),
+        shown: Mutex::new(PresenceState::default()),
+    };
+    let replying = PresenceActivity {
+        kind: PresenceActivityKind::Reply,
+        thread_id: Some("t1".to_owned()),
+    };
+    handle.place_presence(Some("f1".to_owned()), Some(4), Some(2));
+    handle.presence_activity(Some(replying.clone()));
+    handle.place_presence(Some("f1".to_owned()), Some(9), None);
+    handle.presence_activity(None);
+    let mut seen = Vec::new();
+    while let Ok(LiveCommand::Presence(state)) = sent.try_recv() {
+        seen.push(state);
+    }
+    let at = |cursor: u32, anchor: Option<u32>, activity: Option<PresenceActivity>| PresenceState {
+        file_id: Some("f1".to_owned()),
+        cursor: Some(cursor),
+        anchor,
+        activity,
+    };
+    assert_eq!(
+        seen,
+        vec![
+            at(4, Some(2), None),
+            at(4, Some(2), Some(replying.clone())),
+            at(9, None, Some(replying)),
+            at(9, None, None),
+        ]
+    );
+    handle.leave_presence();
+    assert!(matches!(sent.try_recv(), Ok(LiveCommand::LeavePresence)));
+    handle.presence_activity(Some(PresenceActivity {
+        kind: PresenceActivityKind::Chat,
+        thread_id: None,
+    }));
+    let Ok(LiveCommand::Presence(after)) = sent.try_recv() else {
+        panic!("the chat activity was not sent");
+    };
+    assert_eq!((after.file_id, after.cursor), (None, None));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn going_online_learns_who_owns_the_project() {
+    let pair = two_people().await;
+    let (project, main, bob_live, alice_live) = shared(&pair).await;
+    let mut alice = side(alice_live, &main);
+    let _bob = side(bob_live, &main);
+    assert_eq!(lock(&alice.live).owner(), None);
+    start(&mut alice, link(&pair, &pair.alice, project));
+    until_status(&mut alice, LiveStatus::Online).await;
+    tokio::time::timeout(WAIT, async {
+        while lock(&alice.live).owner().is_none() {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("the owner was learned");
+    assert_eq!(lock(&alice.live).owner(), Some(pair.bob.tokens.account_id));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn an_activity_reaches_the_others_with_the_cursor_it_was_set_beside() {
+    let pair = two_people().await;
+    let (project, main, bob_live, alice_live) = shared(&pair).await;
+    let mut bob = side(bob_live, &main);
+    let mut alice = side(alice_live, &main);
+    start(&mut bob, link(&pair, &pair.bob, project));
+    start(&mut alice, link(&pair, &pair.alice, project));
+    until_status(&mut bob, LiveStatus::Online).await;
+    until_status(&mut alice, LiveStatus::Online).await;
+    let handle = alice.handle.as_ref().unwrap();
+    handle.place_presence(Some(main.clone()), Some(3), Some(1));
+    handle.presence_activity(Some(PresenceActivity {
+        kind: PresenceActivityKind::Reply,
+        thread_id: Some("thread-1".to_owned()),
+    }));
+    let wanted = PresenceState {
+        file_id: Some(main.clone()),
+        cursor: Some(3),
+        anchor: Some(1),
+        activity: Some(PresenceActivity {
+            kind: PresenceActivityKind::Reply,
+            thread_id: Some("thread-1".to_owned()),
+        }),
+    };
+    tokio::time::timeout(WAIT, async {
+        while let Some(event) = bob.events.recv().await {
+            if let LiveEvent::Presence { state, .. } = event {
+                if state == wanted {
+                    return;
+                }
+            }
+        }
+    })
+    .await
+    .expect("the reply activity arrived with the cursor");
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -73,6 +180,7 @@ async fn hiding_tells_the_others_this_device_left_after_its_last_presence() {
         file_id: Some(main.clone()),
         cursor: Some(1),
         anchor: None,
+        activity: None,
     });
     handle.leave_presence();
     left_without_a_later_cursor(&mut bob, pair.alice.tokens.device_id).await;

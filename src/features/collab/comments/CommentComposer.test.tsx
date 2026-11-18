@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
@@ -44,7 +44,7 @@ describe("comment composer", () => {
     render(
       <CommentComposer
         label={copy.newLabel}
-        submitLabel={copy.post}
+        submitLabel={copy.send}
         autoFocus
         members={MEMBERS}
         self="alice"
@@ -129,7 +129,40 @@ describe("comment composer", () => {
     await user.type(field, "   ");
     fireEvent.keyDown(field, { key: "Enter", metaKey: true });
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: copy.reply })).toBeDisabled();
+    expect(screen.getByRole("button", { name: copy.reply })).toHaveAttribute("aria-disabled", "true");
+  });
+
+  it("keeps the shortcut out of the toolbar and shows it on the send button's tooltip, even while the box is empty", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn(async () => undefined);
+    compose(onSubmit);
+    const send = screen.getByRole("button", { name: copy.reply });
+    expect(send).toHaveAttribute("aria-disabled", "true");
+    expect(send).not.toHaveAttribute("disabled");
+    expect(send.getAttribute("aria-keyshortcuts")).toMatch(/^(?:Meta|Control)\+Enter$/u);
+    expect(document.querySelector('[data-slot="kbd-group"]')).toBeNull();
+    await user.hover(send);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent("Enter");
+    await user.click(send);
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("says it is sending while the comment is on its way", async () => {
+    const user = userEvent.setup();
+    let finish: () => void = () => undefined;
+    const field = compose(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await user.type(field, "Soon");
+    await user.click(screen.getByRole("button", { name: copy.reply }));
+    expect(screen.getByRole("status")).toHaveTextContent(copy.sending);
+    expect(screen.getByRole("button", { name: copy.reply })).toHaveAttribute("aria-disabled", "true");
+    await act(async () => finish());
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(field).toHaveValue("");
   });
 
   it("keeps the text and explains a refusal, then clears the box once the comment is sent", async () => {

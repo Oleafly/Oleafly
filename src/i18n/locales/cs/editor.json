@@ -116,6 +116,7 @@
     "superscript": "Horní index",
     "subscript": "Dolní index",
     "inlineCode": "Kód v řádku",
+    "clearFormatting": "Vymazat formátování",
     "insertLink": "Vložit odkaz",
     "insertCrossReference": "Vložit křížový odkaz",
     "insertFootnote": "Vložit poznámku pod čarou",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Přejít do PDF",
     "linkUrl": "Adresa URL odkazu",
     "removeLink": "Odebrat odkaz",
+    "alignment": "Zarovnání",
+    "align": {
+      "left": "Zarovnat vlevo",
+      "center": "Zarovnat na střed",
+      "right": "Zarovnat vpravo",
+      "justify": "Zarovnat do bloku"
+    },
+    "emoji": "Emoji",
+    "textColor": "Barva textu",
+    "removeTextColor": "Odebrat barvu",
+    "textColors": {
+      "gray": "Šedá",
+      "red": "Červená",
+      "orange": "Oranžová",
+      "green": "Zelená",
+      "teal": "Modrozelená",
+      "blue": "Modrá",
+      "purple": "Fialová"
+    },
     "imageFile": "Soubor obrázku",
     "apply": "Použít",
     "linkPlaceholder": "https://",
@@ -1716,6 +1736,12 @@
       "duplicateArg": "Duplicitní argument",
       "unknownKind": "Neznámý druh pole"
     }
+  },
+  "emoji": {
+    "search": "Hledat emoji",
+    "skinTone": "Odstín pleti",
+    "loading": "Načítají se emoji",
+    "empty": "Žádné emoji nenalezeny"
   },
   "bibList": {
     "count_one": "{{count}} reference",

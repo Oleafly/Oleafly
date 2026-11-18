@@ -1,8 +1,15 @@
 import { Extension } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey, TextSelection, type Transaction } from "@tiptap/pm/state";
+import { ReplaceAroundStep } from "@tiptap/pm/transform";
 import { Decoration, DecorationSet, type NodeView } from "@tiptap/pm/view";
+import type { MarkdownNodeSpec } from "tiptap-markdown";
 import { wysiwygMessage } from "../messages";
+import { markdownParseContext } from "./engine";
+
+type MarkdownIt = Parameters<NonNullable<NonNullable<MarkdownNodeSpec["parse"]>["setup"]>>[0];
+type BlockRule = Parameters<MarkdownIt["block"]["ruler"]["before"]>[2];
+type BlockState = Parameters<BlockRule>[0];
 
 declare module "@tiptap/core" {
   interface Commands<ReturnType> {
@@ -17,6 +24,26 @@ const DEFINITION = /^\[\^[^\]\s[]+\]:/u;
 const NUMBERED = /\[\^(\d+)\]/gu;
 const DEFINITION_ATTRS = { class: "text-sm text-muted-foreground", "data-footnote-definition": "" };
 const LEAD_LENGTH = 300;
+const withDefinitions = new WeakSet<MarkdownIt>();
+
+function definitionLine(state: BlockState, line: number): boolean {
+  if (state.sCount[line] - state.blkIndent >= 4) return false;
+  const lead = markdownParseContext().definitionLead ?? DEFINITION;
+  return lead.test(state.src.slice(state.bMarks[line] + state.tShift[line], state.eMarks[line]));
+}
+
+const nextDefinition: BlockRule = (state, startLine, _endLine, silent) =>
+  silent && state.parentType === "paragraph" && definitionLine(state, startLine) && definitionLine(state, state.line);
+
+function setupDefinitions(md: MarkdownIt): void {
+  if (withDefinitions.has(md)) return;
+  withDefinitions.add(md);
+  md.block.ruler.before("paragraph", "footnote_definition_break", nextDefinition, { alt: ["paragraph"] });
+}
+
+export function isFootnoteDefinitionStart(node: ProseMirrorNode): boolean {
+  return node.childCount > 1 && footnoteReferenceId(sourceText(node.child(0))) !== null && sourceText(node.child(1)).startsWith(":");
+}
 
 export function footnoteReferenceId(source: unknown): string | null {
   return REFERENCE.exec(String(source ?? ""))?.[1] ?? null;
@@ -78,6 +105,27 @@ function redecorated(tr: Transaction, decorations: DecorationSet): DecorationSet
   return next;
 }
 
+function definitionsOf(doc: ProseMirrorNode): Map<string, number> {
+  const found = new Map<string, number>();
+  doc.descendants((node, _position, parent) => {
+    if (!node.isTextblock) return true;
+    if (isDefinition(node)) {
+      const key = [sourceText(node.child(0)), parent?.type.name, node.attrs.textAlign ?? ""].join("\u0000");
+      found.set(key, (found.get(key) ?? 0) + 1);
+    }
+    return false;
+  });
+  return found;
+}
+
+function reshapesDefinition(tr: Transaction, before: ProseMirrorNode): boolean {
+  if (!tr.steps.some((step) => step instanceof ReplaceAroundStep)) return false;
+  const was = definitionsOf(before);
+  if (was.size === 0) return false;
+  const now = definitionsOf(tr.doc);
+  return [...was].some(([key, count]) => (now.get(key) ?? 0) < count);
+}
+
 function nextFootnoteNumber(doc: ProseMirrorNode): number {
   let highest = 0;
   doc.descendants((node) => {
@@ -90,6 +138,15 @@ const definitionsKey = new PluginKey<DecorationSet>("markdownFootnoteDefinitions
 
 export const MarkdownFootnotes = Extension.create({
   name: "markdownFootnotes",
+
+  addStorage() {
+    return { markdown: { parse: { setup: setupDefinitions } } };
+  },
+
+  onBeforeCreate() {
+    const md = (this.editor.storage as unknown as Record<string, { parser?: { md?: MarkdownIt } } | undefined>).markdown?.parser?.md;
+    if (md) setupDefinitions(md);
+  },
 
   addCommands() {
     return {
@@ -123,6 +180,7 @@ export const MarkdownFootnotes = Extension.create({
         props: {
           decorations: (state) => definitionsKey.getState(state),
         },
+        filterTransaction: (tr, state) => !tr.docChanged || !reshapesDefinition(tr, state.doc),
       }),
     ];
   },

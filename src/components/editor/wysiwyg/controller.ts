@@ -1,5 +1,6 @@
 import type { Editor } from "@tiptap/react";
 import type { EditorView } from "@tiptap/pm/view";
+import { useSyncExternalStore } from "react";
 import { createEmitter } from "@/lib/emitter";
 
 export interface VisualFigureOptions {
@@ -20,6 +21,7 @@ let insertions: WysiwygInsertions | null = null;
 let editor: Editor | null = null;
 let loaded: { editor: Editor; path: string } | null = null;
 const documentChanged = createEmitter();
+const editorChanged = createEmitter();
 let visible = false;
 let setVisibility: ((visible: boolean) => void) | null = null;
 let flushPendingEdits: (() => void) | null = null;
@@ -43,7 +45,9 @@ const EMPTY_DOCUMENT_CONTEXT: WysiwygDocumentContext = {
 let documentContext: WysiwygDocumentContext = EMPTY_DOCUMENT_CONTEXT;
 
 export function setWysiwygEditor(e: Editor | null) {
+  if (editor === e) return;
   editor = e;
+  editorChanged.emit();
 }
 
 export function setWysiwygDocumentContext(context: WysiwygDocumentContext | null) {
@@ -56,6 +60,10 @@ export function getWysiwygDocumentContext(): WysiwygDocumentContext {
 
 export function getWysiwygEditor(): Editor | null {
   return editor;
+}
+
+export function useWysiwygEditor(): Editor | null {
+  return useSyncExternalStore(editorChanged.subscribe, getWysiwygEditor);
 }
 
 /** Records the file whose text a Visual editor holds, once it has loaded it. */

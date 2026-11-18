@@ -48,6 +48,7 @@ pub fn kind_to_str(kind: &SecurityEventKind) -> &'static str {
         SecurityEventKind::GuestAdmissionEnded => "guest_admission_ended",
         SecurityEventKind::ProjectRejoinRefused => "project_rejoin_refused",
         SecurityEventKind::CommentsChangedWhileOff => "comments_changed_while_off",
+        SecurityEventKind::ChangeBrokeRole => "change_broke_role",
         SecurityEventKind::NotePublished => "note_published",
         SecurityEventKind::NoteUnpublished => "note_unpublished",
         SecurityEventKind::NoteTakenDown => "note_taken_down",
@@ -88,6 +89,7 @@ pub fn kind_from_str(text: &str) -> Option<SecurityEventKind> {
         "guest_admission_ended" => Some(SecurityEventKind::GuestAdmissionEnded),
         "project_rejoin_refused" => Some(SecurityEventKind::ProjectRejoinRefused),
         "comments_changed_while_off" => Some(SecurityEventKind::CommentsChangedWhileOff),
+        "change_broke_role" => Some(SecurityEventKind::ChangeBrokeRole),
         "note_published" => Some(SecurityEventKind::NotePublished),
         "note_unpublished" => Some(SecurityEventKind::NoteUnpublished),
         "note_taken_down" => Some(SecurityEventKind::NoteTakenDown),
@@ -205,7 +207,7 @@ mod tests {
     use oleafly_collab_protocol::ids::SharedProjectId;
     use serde_json::json;
 
-    const ALL_KINDS: [SecurityEventKind; 34] = [
+    const ALL_KINDS: [SecurityEventKind; 35] = [
         SecurityEventKind::SetupCompleted,
         SecurityEventKind::SignIn,
         SecurityEventKind::SignInRefused,
@@ -236,6 +238,7 @@ mod tests {
         SecurityEventKind::GuestAdmissionEnded,
         SecurityEventKind::ProjectRejoinRefused,
         SecurityEventKind::CommentsChangedWhileOff,
+        SecurityEventKind::ChangeBrokeRole,
         SecurityEventKind::NotePublished,
         SecurityEventKind::NoteUnpublished,
         SecurityEventKind::NoteTakenDown,
@@ -296,6 +299,7 @@ mod tests {
                 "guest_admission_ended",
                 "project_rejoin_refused",
                 "comments_changed_while_off",
+                "change_broke_role",
                 "note_published",
                 "note_unpublished",
                 "note_taken_down",

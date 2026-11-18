@@ -116,6 +116,7 @@
     "superscript": "Верхній індекс",
     "subscript": "Нижній індекс",
     "inlineCode": "Код у рядку",
+    "clearFormatting": "Очистити форматування",
     "insertLink": "Вставити посилання",
     "insertCrossReference": "Вставити перехресне посилання",
     "insertFootnote": "Вставити виноску",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Перейти до PDF",
     "linkUrl": "URL посилання",
     "removeLink": "Вилучити посилання",
+    "alignment": "Вирівнювання",
+    "align": {
+      "left": "За лівим краєм",
+      "center": "По центру",
+      "right": "За правим краєм",
+      "justify": "За шириною"
+    },
+    "emoji": "Емодзі",
+    "textColor": "Колір тексту",
+    "removeTextColor": "Прибрати колір",
+    "textColors": {
+      "gray": "Сірий",
+      "red": "Червоний",
+      "orange": "Помаранчевий",
+      "green": "Зелений",
+      "teal": "Бірюзовий",
+      "blue": "Синій",
+      "purple": "Фіолетовий"
+    },
     "imageFile": "Файл зображення",
     "apply": "Застосувати",
     "linkPlaceholder": "https://",
@@ -1716,6 +1736,12 @@
       "duplicateArg": "Дубльований аргумент",
       "unknownKind": "Невідомий вид поля"
     }
+  },
+  "emoji": {
+    "search": "Пошук емодзі",
+    "skinTone": "Відтінок шкіри",
+    "loading": "Завантаження емодзі",
+    "empty": "Емодзі не знайдено"
   },
   "bibList": {
     "count_one": "{{count}} джерело",

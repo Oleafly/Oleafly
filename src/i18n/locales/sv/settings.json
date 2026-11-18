@@ -664,6 +664,15 @@
         "grid": "Rutnät",
         "label": "Bakgrundsmönster"
       },
+      "commentColor": {
+        "accent": "Accentfärg",
+        "description": "Färg för kommenterad text i redigeraren och för citat i kommentarspanelen. Gäller på den här enheten.",
+        "graphite": "Grafit",
+        "indigo": "Indigo",
+        "label": "Färgmarkering för kommentarer",
+        "leaf": "Bladgrön",
+        "sample": "Kommenterad text"
+      },
       "dock": {
         "bottom": "Nederkant",
         "description": "Välj var dockan på startsidan ska sitta.",

@@ -289,6 +289,7 @@ pub struct DocChanges {
     pub comments: crate::comments::CommentEvents,
     pub suggestions: std::collections::BTreeSet<String>,
     pub chat: bool,
+    pub chat_mentions: Vec<ContainerID>,
     pub versions: bool,
 }
 
@@ -351,6 +352,9 @@ impl Imported {
         self.changes.comments.extend(later.changes.comments);
         self.changes.suggestions.extend(later.changes.suggestions);
         self.changes.chat |= later.changes.chat;
+        self.changes
+            .chat_mentions
+            .extend(later.changes.chat_mentions);
         self.changes.versions |= later.changes.versions;
         self.arrived.extend(later.arrived);
         self.pending |= later.pending;
@@ -381,7 +385,7 @@ fn recorder(doc: &LoroDoc) -> (SharedRecorder, loro::Subscription) {
             if crate::suggestions::record(&mut recorder.changes.suggestions, change) {
                 continue;
             }
-            if crate::chat::record(change) {
+            if crate::chat::record(&mut recorder.changes.chat_mentions, change) {
                 recorder.changes.chat = true;
                 continue;
             }

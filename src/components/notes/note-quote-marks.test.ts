@@ -37,7 +37,7 @@ const CLOSED_AFTER_BREAK = BREAK_MARKS.flatMap(([open, close]) =>
     where,
     open,
     `${first}Intro ${open}bold\\\n${next}[link](https://x.y) text${close} end`,
-    `${first}Intro ${open}bold${close}\\\n${next}[${open}link${close}](https://x.y) ${open}text${close} end!`,
+    `${first}Intro ${open}bold\\\n${next}[link](https://x.y) text${close} end!`,
   ]),
 );
 

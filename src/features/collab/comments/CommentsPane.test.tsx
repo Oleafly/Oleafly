@@ -2,6 +2,7 @@
 
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { StrictMode } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
@@ -26,6 +27,8 @@ const mocks = vi.hoisted(() => ({
   collabCommentResolve: vi.fn(),
   collabCommentReopen: vi.fn(),
   collabCommentThreadDelete: vi.fn(),
+  collabCommentRemove: vi.fn(),
+  collabPresenceActivity: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/lib/tauri", async (importOriginal) => ({
@@ -55,7 +58,7 @@ const COMMENT_MEMBERS = [
   { accountId: CAROL.account_id, displayName: "Carol Diaz", login: "carol" },
 ];
 
-function show(threads: CollabCommentThread[], overrides: Partial<ReturnType<typeof useComments.getState>> = {}) {
+function show(threads: CollabCommentThread[], overrides: Partial<ReturnType<typeof useComments.getState>> = {}, strict = false) {
   useComments.setState({
     projectId: "paper",
     status: commentsStatus(),
@@ -64,13 +67,14 @@ function show(threads: CollabCommentThread[], overrides: Partial<ReturnType<type
     phase: "ready",
     error: null,
     selectedId: null,
-    showResolved: false,
+    filter: "open",
+    refused: [],
     draft: null,
     counts: [],
     elsewhere: {},
     ...overrides,
   });
-  return render(<CommentsPane />);
+  return render(strict ? <StrictMode><CommentsPane /></StrictMode> : <CommentsPane />);
 }
 
 function viewAs(role: "owner" | "editor" | "viewer") {
@@ -83,6 +87,27 @@ function card(quote: string) {
 
 function openMenu(scope: HTMLElement, name: string) {
   fireEvent.keyDown(within(scope).getByRole("button", { name }), { key: "Enter" });
+}
+
+function entry(id: string) {
+  return document.querySelector(`[data-comment-entry="${id}"]`) as HTMLElement;
+}
+
+function resolvedCard(quote: string) {
+  return screen.getByText(quote).closest("article") as HTMLElement;
+}
+
+function filterButton(value: string) {
+  return screen.getByRole("button", { name: fill(copy.filter, { value }) });
+}
+
+async function pickFilter(user: ReturnType<typeof userEvent.setup>, from: string, to: string) {
+  fireEvent.keyDown(filterButton(from), { key: "Enter" });
+  await user.click(await screen.findByRole("menuitemcheckbox", { name: new RegExp(`^${to}`) }));
+}
+
+function headerCount() {
+  return screen.getByTestId("comments-pane").querySelector("header")?.textContent;
 }
 
 const conversation = commentThread("t-quick", { from: 4, to: 9 }, {
@@ -160,9 +185,9 @@ describe("Comments tab", () => {
     await user.hover(times[0] as HTMLElement);
     expect(await screen.findByRole("tooltip")).toHaveTextContent(formatDateTime(AT - 120_000));
     await user.unhover(times[0] as HTMLElement);
-    await user.hover(within(first).getByText(copy.edited));
+    await user.hover(within(first).getByText(`· ${copy.edited}`));
     expect(await screen.findByRole("tooltip")).toHaveTextContent(formatDateTime(AT));
-    await user.unhover(within(first).getByText(copy.edited));
+    await user.unhover(within(first).getByText(`· ${copy.edited}`));
     await waitFor(() => expect(screen.queryByRole("tooltip")).toBeNull());
     const quote = screen.getByRole("button", { name: "quick" });
     fireEvent.keyDown(document, { key: "Tab" });
@@ -184,35 +209,56 @@ describe("Comments tab", () => {
     expect(within(screen.getByRole("list", { name: "intro.tex" })).getAllByRole("article")).toHaveLength(2);
   });
 
-  it("hides resolved threads until the filter shows them", async () => {
+  it("hides resolved threads until the filter shows them, folded to one line until opened", async () => {
     const user = userEvent.setup();
     show([conversation, resolved]);
-    expect(screen.queryByRole("button", { name: "fox" })).not.toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: copy.showResolved }));
-    expect(screen.getByRole("button", { name: copy.hideResolved })).toHaveAttribute("aria-pressed", "true");
-    expect(card("fox")).toHaveTextContent(fill(copy.resolvedBy, { name: "Bob Smith" }));
+    expect(screen.queryByText("fox")).not.toBeInTheDocument();
+    await pickFilter(user, copy.filterOpen, copy.filterAll);
+    expect(filterButton(copy.filterAll)).toBeInTheDocument();
+    const fox = resolvedCard("fox");
+    expect(fox).toHaveTextContent(fill(copy.resolvedBy, { name: "Bob Smith" }));
+    expect(within(fox).queryByRole("button", { name: "fox" })).toBeNull();
     const order = within(screen.getByRole("list", { name: "intro.tex" }))
       .getAllByRole("article")
-      .map((article) => within(article).getAllByRole("button")[0].textContent);
-    expect(order).toEqual(["quick", "fox"]);
+      .map((article) => article.dataset.commentThread);
+    expect(order).toEqual(["t-quick", "t-fox"]);
+    const summary = within(fox).getByRole("button", { name: new RegExp(fill(copy.resolvedBy, { name: "Bob Smith" })) });
+    expect(summary).toHaveAttribute("aria-expanded", "false");
+    await user.click(summary);
+    expect(summary).toHaveAttribute("aria-expanded", "true");
+    expect(within(fox).getByRole("button", { name: "fox" })).toBeInTheDocument();
+    expect(within(fox).queryByRole("button", { name: copy.reply })).toBeNull();
   });
 
-  it("lets viewers read without any way to write", () => {
+  it("lets viewers read without any way to write, leaving them only the thread link", async () => {
     viewAs("viewer");
-    show([conversation, resolved], { status: commentsStatus({ canComment: false }), showResolved: true });
+    show([conversation, resolved], { status: commentsStatus({ canComment: false }), filter: "all" });
     expect(screen.getByText("Is this word right?")).toBeInTheDocument();
     expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: copy.resolve })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: copy.reopen })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: copy.messageActions })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: copy.reply })).not.toBeInTheDocument();
+    const menus = screen.getAllByRole("button", { name: copy.messageActions });
+    expect(menus).toHaveLength(1);
+    fireEvent.keyDown(menus[0], { key: "Enter" });
+    expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([copy.copyLink]);
   });
 
   it("offers editing and deleting only on the person's own messages", async () => {
+    const user = userEvent.setup();
     show([conversation]);
-    const thread = card("quick");
-    const menus = within(thread).getAllByRole("button", { name: copy.messageActions });
-    expect(menus).toHaveLength(1);
-    expect(menus[0].closest("li")).toHaveTextContent("Yes, I checked");
+    openMenu(entry("m-bob"), copy.messageActions);
+    expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([
+      copy.copyLink,
+      copy.resolve,
+    ]);
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    openMenu(entry("m-alice"), copy.messageActions);
+    expect((await screen.findAllByRole("menuitem")).map((item) => item.textContent)).toEqual([
+      actions.edit,
+      actions.delete,
+    ]);
   });
 
   it("replies with the members so mentions resolve, and resolves the thread", async () => {
@@ -221,9 +267,20 @@ describe("Comments tab", () => {
     mocks.collabCommentResolve.mockResolvedValue({ ...conversation, resolved: { by: ALICE_ID, at: AT, verified: true } });
     show([conversation]);
     const thread = card("quick");
-    await user.type(within(thread).getByRole("textbox", { name: copy.replyLabel }), "Thanks");
-    await user.click(within(thread).getByRole("button", { name: copy.reply }));
-    expect(mocks.collabCommentReply).toHaveBeenCalledWith("paper", INTRO_FILE, "t-quick", "Thanks", COMMENT_MEMBERS);
+    expect(within(thread).queryByRole("textbox")).toBeNull();
+    await user.click(within(thread).getAllByRole("button", { name: copy.reply })[0]);
+    const reply = within(thread).getByRole("textbox", { name: copy.replyLabel });
+    expect(reply).toHaveValue("@Bob Smith ");
+    expect(reply).toHaveFocus();
+    await user.type(reply, "Thanks");
+    await user.click(within(thread).getByRole("button", { name: copy.send }));
+    expect(mocks.collabCommentReply).toHaveBeenCalledWith(
+      "paper",
+      INTRO_FILE,
+      "t-quick",
+      "@Bob Smith Thanks",
+      COMMENT_MEMBERS,
+    );
     await waitFor(() => expect(card("quick")).toHaveTextContent("Thanks"));
     await user.click(within(card("quick")).getByRole("button", { name: copy.resolve }));
     expect(mocks.collabCommentResolve).toHaveBeenCalledWith("paper", INTRO_FILE, "t-quick");
@@ -233,8 +290,8 @@ describe("Comments tab", () => {
   it("reopens a resolved thread", async () => {
     const user = userEvent.setup();
     mocks.collabCommentReopen.mockResolvedValue({ ...resolved, resolved: null });
-    show([resolved], { showResolved: true });
-    await user.click(within(card("fox")).getByRole("button", { name: copy.reopen }));
+    show([resolved], { filter: "all" });
+    await user.click(within(resolvedCard("fox")).getByRole("button", { name: copy.reopen }));
     expect(mocks.collabCommentReopen).toHaveBeenCalledWith("paper", INTRO_FILE, "t-fox");
     await waitFor(() => expect(within(card("fox")).getByRole("button", { name: copy.resolve })).toBeInTheDocument());
   });
@@ -251,7 +308,7 @@ describe("Comments tab", () => {
     const button = within(card("quick")).getByRole("button", { name: copy.resolve });
     await user.dblClick(button);
     expect(mocks.collabCommentResolve).toHaveBeenCalledTimes(1);
-    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-disabled", "true");
     await act(async () => finish({ ...conversation, resolved: { by: ALICE_ID, at: AT, verified: true } }));
     await waitFor(() => expect(screen.queryByRole("button", { name: "quick" })).not.toBeInTheDocument());
     expect(mocks.collabCommentResolve).toHaveBeenCalledTimes(1);
@@ -264,7 +321,7 @@ describe("Comments tab", () => {
     );
     mocks.collabCommentDelete.mockResolvedValue(undefined);
     show([conversation]);
-    openMenu(card("quick"), copy.messageActions);
+    openMenu(entry("m-alice"), copy.messageActions);
     await user.click(await screen.findByRole("menuitem", { name: actions.edit }));
     const editor = within(card("quick")).getByRole("textbox", { name: copy.editLabel });
     expect(editor).toHaveValue("Yes, I checked @Bob Smith");
@@ -280,7 +337,7 @@ describe("Comments tab", () => {
       COMMENT_MEMBERS,
     );
     await waitFor(() => expect(card("quick")).toHaveTextContent("Yes, checked twice"));
-    openMenu(card("quick"), copy.messageActions);
+    openMenu(entry("m-alice"), copy.messageActions);
     await user.click(await screen.findByRole("menuitem", { name: actions.delete }));
     await confirmDelete(copy.deleteMessageConfirm.title, actions.delete);
     expect(mocks.collabCommentDelete).toHaveBeenCalledWith("paper", INTRO_FILE, "t-quick", "m-alice");
@@ -296,8 +353,12 @@ describe("Comments tab", () => {
     });
     mocks.collabCommentThreadDelete.mockResolvedValue(undefined);
     show([mine, conversation]);
-    expect(within(card("quick")).queryByRole("button", { name: copy.threadActions })).not.toBeInTheDocument();
-    openMenu(card("brown"), copy.threadActions);
+    openMenu(entry("m-alice"), copy.messageActions);
+    expect(await screen.findByRole("menuitem", { name: actions.edit })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: copy.deleteThread })).toBeNull();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    openMenu(card("brown"), copy.messageActions);
     await user.click(await screen.findByRole("menuitem", { name: copy.deleteThread }));
     const dialog = await screen.findByRole("alertdialog", { name: copy.deleteThreadConfirm.title });
     expect(dialog).toHaveTextContent(copy.deleteThreadConfirm.description);
@@ -305,7 +366,7 @@ describe("Comments tab", () => {
     await user.click(within(dialog).getByRole("button", { name: new RegExp(`^${actions.cancel}`) }));
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
     expect(mocks.collabCommentThreadDelete).not.toHaveBeenCalled();
-    openMenu(card("brown"), copy.threadActions);
+    openMenu(card("brown"), copy.messageActions);
     await user.click(await screen.findByRole("menuitem", { name: copy.deleteThread }));
     await confirmDelete(copy.deleteThreadConfirm.title, copy.deleteThread);
     expect(mocks.collabCommentThreadDelete).toHaveBeenCalledWith("paper", INTRO_FILE, "t-mine");
@@ -363,7 +424,9 @@ describe("Comments tab", () => {
   it("offers project members while typing @ and picks one with the keyboard", async () => {
     const user = userEvent.setup();
     show([conversation]);
+    await user.click(within(card("quick")).getAllByRole("button", { name: copy.reply })[1]);
     const reply = within(card("quick")).getByRole("textbox", { name: copy.replyLabel });
+    expect(reply).toHaveValue("");
     await user.type(reply, "Ask @");
     const people = screen.getByRole("listbox", { name: copy.mentionList });
     expect(within(people).getAllByRole("option").map((option) => option.textContent)).toEqual([
@@ -387,10 +450,11 @@ describe("Comments tab", () => {
   it("explains a project with no comments, with or without a file open, and a failed load", async () => {
     const user = userEvent.setup();
     const { unmount } = show([], { path: null });
-    expect(screen.getByText(copy.emptyCanWrite)).toBeInTheDocument();
+    expect(screen.getByText(copy.emptyTitle)).toBeInTheDocument();
+    expect(screen.getByText(/choose Add comment, or press/u)).toBeInTheDocument();
     unmount();
     const second = show([]);
-    expect(screen.getByText(copy.emptyCanWrite)).toBeInTheDocument();
+    expect(screen.getByText(/choose Add comment, or press/u)).toBeInTheDocument();
     second.unmount();
     mocks.collabCommentThreadList.mockResolvedValue(threadList([conversation]));
     useFilesStore.setState({ projectId: "paper", activePath: "chapters/intro.tex" });
@@ -434,10 +498,10 @@ describe("Comments tab", () => {
       messages: [commentMessage("m1", ALICE_ID, "Done?", { verified: false })],
       resolved: { by: BOB_ID, at: AT, verified: false },
     });
-    show([doubtful], { showResolved: true });
-    const article = card("fox");
+    show([doubtful], { filter: "all" });
+    const article = resolvedCard("fox");
     expect(article).not.toHaveTextContent("Bob Smith");
-    expect(within(article).queryByRole("button", { name: copy.threadActions })).not.toBeInTheDocument();
+    expect(within(article).queryByRole("button", { name: copy.messageActions })).not.toBeInTheDocument();
     expect(article).toHaveTextContent(copy.resolvedUnverified);
     expect(article).toHaveAccessibleName(copy.unverifiedThread);
   });
@@ -453,29 +517,78 @@ describe("Comments tab", () => {
     mocks.collabCommentReply.mockRejectedValue({ code: "comment_too_long", message: "" });
     mocks.collabCommentEdit.mockRejectedValue({ code: "comment_message_deleted", message: "" });
     show([mine]);
-    openMenu(card("brown"), copy.threadActions);
+    openMenu(card("brown"), copy.messageActions);
     await user.click(await screen.findByRole("menuitem", { name: copy.deleteThread }));
     await confirmDelete(copy.deleteThreadConfirm.title, copy.deleteThread);
     const alerts = () => within(card("brown")).queryAllByRole("alert").map((alert) => alert.textContent);
     await waitFor(() => expect(alerts()).toHaveLength(1));
     expect(alerts()[0]).toBe(copy.refusals.someoneReplied);
-    await user.type(within(card("brown")).getByRole("textbox", { name: copy.replyLabel }), "Long");
     await user.click(within(card("brown")).getByRole("button", { name: copy.reply }));
-    await waitFor(() => expect(alerts()).toContain(copy.refusals.tooLong));
+    await user.type(within(card("brown")).getByRole("textbox", { name: copy.replyLabel }), "Long");
+    await user.click(within(card("brown")).getByRole("button", { name: copy.send }));
+    await waitFor(() => expect(alerts()).toContain(`${copy.notSentShort}${copy.refusals.tooLong}`));
     openMenu(card("brown"), copy.messageActions);
     await user.click(await screen.findByRole("menuitem", { name: actions.edit }));
     await user.click(within(card("brown")).getByRole("button", { name: actions.save }));
-    await waitFor(() => expect(alerts()).toContain(copy.refusals.messageDeleted));
+    await waitFor(() => expect(alerts()).toContain(`${copy.notSentShort}${copy.refusals.messageDeleted}`));
   });
 
-  it("explains under its box why a new comment was not posted", async () => {
+  it("explains under its box why a new comment it can fix was not posted", async () => {
     const user = userEvent.setup();
-    mocks.collabCommentCreate.mockRejectedValue({ code: "comment_off_project", message: "" });
+    mocks.collabCommentCreate.mockRejectedValue({ code: "comment_too_long", message: "" });
     show([], { draft: { path: "chapters/intro.tex", from: 10, to: 15, quote: "brown" } });
     await user.type(screen.getByRole("textbox", { name: copy.newLabel }), "Red?");
-    await user.click(screen.getByRole("button", { name: copy.post }));
+    await user.click(screen.getByRole("button", { name: copy.send }));
     const region = screen.getByRole("region", { name: copy.newLabel });
-    await waitFor(() => expect(within(region).getByRole("alert")).toHaveTextContent(copy.refusals.offProject));
+    await waitFor(() => expect(within(region).getByRole("alert")).toHaveTextContent(copy.refusals.tooLong));
+  });
+
+  it("folds two or more replies behind a count and opens them in place", async () => {
+    const user = userEvent.setup();
+    const busy = commentThread("t-busy", { from: 4, to: 9 }, {
+      anchor: { quote: "quick", range: { from: 4, to: 9 } },
+      messages: [
+        commentMessage("m-1", BOB_ID, "First"),
+        commentMessage("m-2", ALICE_ID, "Second"),
+        commentMessage("m-3", CAROL.account_id, "Third"),
+      ],
+    });
+    show([busy]);
+    const thread = card("quick");
+    expect(within(thread).getByText("First")).toBeInTheDocument();
+    expect(within(thread).queryByText("Second")).toBeNull();
+    const toggle = within(thread).getByRole("button", { name: new RegExp(fill(copy.replies, { number: "2" })) });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await user.click(toggle);
+    expect(within(thread).getByText("Third")).toBeInTheDocument();
+    await user.click(within(thread).getByRole("button", { name: new RegExp(copy.hideReplies) }));
+    expect(within(thread).queryByText("Third")).toBeNull();
+  });
+
+  it("resolves every open thread in the open file after asking", async () => {
+    const user = userEvent.setup();
+    mocks.collabCommentResolve.mockImplementation(async (_project: string, _file: string, id: string) => ({
+      ...(id === "t-quick" ? conversation : later),
+      resolved: { by: ALICE_ID, at: AT, verified: true },
+    }));
+    show([conversation, later, resolved]);
+    expect(headerCount()).toContain("2");
+    await user.click(screen.getByRole("button", { name: copy.resolveAll }));
+    const dialog = await screen.findByRole("alertdialog", {
+      name: fill(copy.resolveAllConfirm.title, { file: "intro.tex" }),
+    });
+    expect(dialog).toHaveTextContent(fill(copy.resolveAllConfirm.description, { number: "2" }));
+    expect(mocks.collabCommentResolve).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: new RegExp(`^${copy.resolveAllConfirm.confirm}`) }));
+    await waitFor(() => expect(mocks.collabCommentResolve).toHaveBeenCalledTimes(2));
+    expect(mocks.collabCommentResolve.mock.calls.map((call) => call[2])).toEqual(["t-quick", "t-lazy"]);
+    await waitFor(() => expect(screen.queryByRole("button", { name: "quick" })).toBeNull());
+  });
+
+  it("offers no resolve all to people who cannot comment", () => {
+    viewAs("viewer");
+    show([conversation], { status: commentsStatus({ canComment: false }) });
+    expect(screen.queryByRole("button", { name: copy.resolveAll })).toBeNull();
   });
 });
 
@@ -490,21 +603,20 @@ describe("comments across the project", () => {
   }
 
   it("shows one plain message and no file section when the project has no comments", () => {
-    expect(copy.emptyCanWrite).toBe(
-      "No comments or suggestions yet. Select some text and choose Add comment to start one.",
-    );
+    expect(copy.emptyTitle).toBe("No comments yet");
     show([], { counts: [] });
-    expect(screen.getByText(copy.emptyCanWrite)).toBeInTheDocument();
+    expect(screen.getByText(copy.emptyTitle)).toBeInTheDocument();
+    expect(screen.getByText(/choose Add comment, or press/u).querySelectorAll("kbd")).toHaveLength(3);
     expect(screen.queryAllByRole("region")).toEqual([]);
     expect(screen.queryByRole("button", { name: "intro.tex" })).toBeNull();
   });
 
   it("tells people who cannot comment only that there are no comments yet", () => {
-    expect(copy.empty).toBe("No comments or suggestions yet.");
     viewAs("viewer");
     show([], { status: commentsStatus({ canComment: false }), counts: [] });
-    expect(screen.getByText(copy.empty)).toBeInTheDocument();
-    expect(screen.queryByText(copy.emptyCanWrite)).toBeNull();
+    expect(screen.getByText(copy.emptyTitle)).toBeInTheDocument();
+    expect(screen.queryByText(/choose Add comment, or press/u)).toBeNull();
+    expect(screen.getByText(copy.readOnlyNote)).toBeInTheDocument();
     expect(screen.queryAllByRole("region")).toEqual([]);
   });
 
@@ -513,15 +625,17 @@ describe("comments across the project", () => {
     expect(copy.allResolved).toBe("All comments are resolved.");
     show([resolved], {
       counts: [
-        { path: "chapters/intro.tex", open: 0, resolved: 1 },
-        { path: "old.tex", open: 0, resolved: 2 },
+        { path: "chapters/intro.tex", open: 0, resolved: 1, waiting: 0 },
+        { path: "old.tex", open: 0, resolved: 2, waiting: 0 },
       ],
     });
     expect(screen.getByText(copy.allResolved)).toBeInTheDocument();
-    expect(screen.queryByText(copy.emptyCanWrite)).toBeNull();
+    expect(screen.queryByText(copy.emptyTitle)).toBeNull();
     expect(screen.queryAllByRole("region")).toEqual([]);
-    expect(screen.getByRole("button", { name: copy.showResolved })).toHaveTextContent("3");
-    await user.click(screen.getByRole("button", { name: copy.showResolved }));
+    expect(headerCount()).toContain("0");
+    fireEvent.keyDown(filterButton(copy.filterOpen), { key: "Enter" });
+    expect(await screen.findByRole("menuitemcheckbox", { name: new RegExp(`^${copy.filterAll}`) })).toHaveTextContent("3");
+    await user.click(screen.getByRole("menuitemcheckbox", { name: new RegExp(`^${copy.filterAll}`) }));
     expect(screen.queryByText(copy.allResolved)).toBeNull();
     expect(regions()).toEqual(["intro.tex", "old.tex"]);
   });
@@ -531,15 +645,15 @@ describe("comments across the project", () => {
     show([], {
       path: null,
       status: commentsStatus({ canComment: false }),
-      counts: [{ path: "old.tex", open: 0, resolved: 1 }],
+      counts: [{ path: "old.tex", open: 0, resolved: 1, waiting: 0 }],
     });
     expect(screen.getByText(copy.allResolved)).toBeInTheDocument();
-    expect(screen.queryByText(copy.empty)).toBeNull();
+    expect(screen.queryByText(copy.emptyTitle)).toBeNull();
     expect(screen.queryAllByRole("region")).toEqual([]);
   });
 
   it("shows no section for the open file without comments and a folded one for another file that has some", async () => {
-    show([], { counts: [{ path: "appendix/refs.tex", open: 2, resolved: 0 }] });
+    show([], { counts: [{ path: "appendix/refs.tex", open: 2, resolved: 0, waiting: 0 }] });
     expect(regions()).toEqual(["refs.tex"]);
     const header = screen.getByRole("button", { name: "refs.tex" });
     expect(header).toHaveAttribute("aria-expanded", "false");
@@ -547,7 +661,7 @@ describe("comments across the project", () => {
     expect(within(header).getByText("refs.tex")).not.toHaveAttribute("title");
     fireEvent.mouseEnter(within(header).getByText("refs.tex"));
     expect(await screen.findByRole("tooltip")).toHaveTextContent("appendix/refs.tex");
-    expect(screen.queryByText(copy.emptyCanWrite)).toBeNull();
+    expect(screen.queryByText(copy.emptyTitle)).toBeNull();
     expect(mocks.collabCommentThreadList).not.toHaveBeenCalled();
   });
 
@@ -555,9 +669,9 @@ describe("comments across the project", () => {
     const user = userEvent.setup();
     show([conversation, resolved], {
       counts: [
-        { path: "abstract.tex", open: 1, resolved: 0 },
-        { path: "chapters/intro.tex", open: 1, resolved: 1 },
-        { path: "old.tex", open: 0, resolved: 2 },
+        { path: "abstract.tex", open: 1, resolved: 0, waiting: 0 },
+        { path: "chapters/intro.tex", open: 1, resolved: 1, waiting: 0 },
+        { path: "old.tex", open: 0, resolved: 2, waiting: 0 },
       ],
     });
     expect(regions()).toEqual(["intro.tex", "abstract.tex"]);
@@ -566,8 +680,11 @@ describe("comments across the project", () => {
     expect(intro).toHaveTextContent("1");
     expect(within(intro).getByText("intro.tex")).not.toHaveAttribute("title");
     expect(screen.getByRole("button", { name: "abstract.tex" })).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("button", { name: copy.showResolved })).toHaveTextContent("3");
-    await user.click(screen.getByRole("button", { name: copy.showResolved }));
+    expect(headerCount()).toContain("2");
+    fireEvent.keyDown(filterButton(copy.filterOpen), { key: "Enter" });
+    expect(await screen.findByRole("menuitemcheckbox", { name: new RegExp(`^${copy.filterOpen}`) })).toHaveTextContent("2");
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: new RegExp(`^${copy.filterAll}`) }));
+    expect(headerCount()).toContain("5");
     expect(regions()).toEqual(["intro.tex", "abstract.tex", "old.tex"]);
     expect(screen.getByRole("button", { name: "intro.tex" })).toHaveTextContent("2");
     expect(screen.getByRole("button", { name: "old.tex" })).toHaveTextContent("2");
@@ -582,8 +699,8 @@ describe("comments across the project", () => {
     try {
       show([conversation], {
         counts: [
-          { path: "appendix/refs.tex", open: 1, resolved: 0 },
-          { path: "chapters/intro.tex", open: 1, resolved: 0 },
+          { path: "appendix/refs.tex", open: 1, resolved: 0, waiting: 0 },
+          { path: "chapters/intro.tex", open: 1, resolved: 0, waiting: 0 },
         ],
       });
       await user.click(screen.getByRole("button", { name: "refs.tex" }));
@@ -643,15 +760,15 @@ describe("quoted text", () => {
     const user = userEvent.setup();
     show([thread]);
     const text = document.querySelector("[data-quote-text]") as HTMLElement;
-    expect(text).toHaveClass("line-clamp-3");
+    expect(text).toHaveClass("line-clamp-2");
     const more = within(card(long)).getByRole("button", { name: actions.showMore });
     expect(more).toHaveAttribute("aria-expanded", "false");
     await user.click(more);
-    expect(text).not.toHaveClass("line-clamp-3");
+    expect(text).not.toHaveClass("line-clamp-2");
     const less = within(card(long)).getByRole("button", { name: actions.showLess });
     expect(less).toHaveAttribute("aria-expanded", "true");
     await user.click(less);
-    expect(text).toHaveClass("line-clamp-3");
+    expect(text).toHaveClass("line-clamp-2");
   });
 
   it("offers no toggle for a quote that fits", () => {
@@ -670,9 +787,10 @@ describe("people who left and loads that failed", () => {
       messages: [commentMessage("m-left", LEFT, "Old note")],
       resolved: { by: LEFT, at: AT, verified: true },
     });
-    show([orphan], { showResolved: true });
-    const article = card("fox");
+    show([orphan], { filter: "all" });
+    const article = resolvedCard("fox");
     expect(article).toHaveTextContent("Old note");
+    fireEvent.click(within(article).getByRole("button", { expanded: false }));
     expect(within(article).getAllByText(enCollab.toolbar.unknownPerson).length).toBeGreaterThan(0);
     expect(article).not.toHaveTextContent("Bob Smith");
   });
@@ -681,7 +799,7 @@ describe("people who left and loads that failed", () => {
     const user = userEvent.setup();
     mocks.collabCommentDelete.mockRejectedValue({ code: "comment_message_deleted", message: "" });
     show([conversation]);
-    openMenu(card("quick"), copy.messageActions);
+    openMenu(entry("m-alice"), copy.messageActions);
     await user.click(await screen.findByRole("menuitem", { name: actions.delete }));
     await confirmDelete(copy.deleteMessageConfirm.title, actions.delete);
     await waitFor(() => expect(within(card("quick")).getByRole("alert")).toHaveTextContent(copy.refusals.messageDeleted));
@@ -693,9 +811,9 @@ describe("people who left and loads that failed", () => {
     mocks.collabCommentThreadList.mockReturnValue(new Promise(() => undefined));
     show([conversation], {
       counts: [
-        { path: "appendix/refs.tex", open: 1, resolved: 0 },
-        { path: "appendix/notes.tex", open: 2, resolved: 0 },
-        { path: "chapters/intro.tex", open: 1, resolved: 0 },
+        { path: "appendix/refs.tex", open: 1, resolved: 0, waiting: 0 },
+        { path: "appendix/notes.tex", open: 2, resolved: 0, waiting: 0 },
+        { path: "chapters/intro.tex", open: 1, resolved: 0, waiting: 0 },
       ],
       elsewhere: {
         "appendix/refs.tex": { phase: "failed", error: "unreachable", threads: [] },
@@ -708,6 +826,19 @@ describe("people who left and loads that failed", () => {
     await user.click(screen.getAllByRole("button", { name: actions.retry })[0]);
     expect(mocks.collabCommentThreadList).toHaveBeenCalledTimes(1);
     expect(screen.getAllByText(copy.loadFailed)).toHaveLength(1);
+  });
+
+  it("marks another file's section busy while its comments load, so the list waits for them before it settles", () => {
+    show([conversation], {
+      counts: [
+        { path: "appendix/refs.tex", open: 1, resolved: 0, waiting: 0 },
+        { path: "chapters/intro.tex", open: 1, resolved: 0, waiting: 0 },
+      ],
+      elsewhere: { "appendix/refs.tex": { phase: "loading", error: null, threads: [] } },
+    });
+    expect(screen.getByRole("region", { name: "refs.tex" })).toHaveAttribute("aria-busy", "true");
+    act(() => useComments.setState({ elsewhere: { "appendix/refs.tex": { phase: "ready", error: null, threads: [detached] } } }));
+    expect(screen.getByRole("region", { name: "refs.tex" })).not.toHaveAttribute("aria-busy", "true");
   });
 
   it("says something went wrong when the open file failed to load without a reason", () => {
@@ -726,5 +857,279 @@ describe("people who left and loads that failed", () => {
     await user.click(header);
     expect(header).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByRole("list", { name: "intro.tex" })).toBeInTheDocument();
+  });
+});
+
+describe("live comment states", () => {
+  it("lets the project owner remove someone else's comment, which then reads as removed by a moderator", async () => {
+    const user = userEvent.setup();
+    viewAs("owner");
+    mocks.collabCommentRemove.mockResolvedValue(undefined);
+    show([conversation]);
+    openMenu(entry("m-bob"), copy.messageActions);
+    await user.click(await screen.findByRole("menuitem", { name: copy.remove }));
+    await confirmDelete(copy.removeConfirm.title, copy.removeConfirm.confirm);
+    expect(mocks.collabCommentRemove).toHaveBeenCalledWith("paper", INTRO_FILE, "t-quick", "m-bob");
+    expect(entry("m-bob")).toHaveTextContent(copy.removed);
+    expect(entry("m-alice")).toHaveTextContent("Yes, I checked");
+  });
+
+  it("offers no Remove to anyone but the owner", () => {
+    show([conversation]);
+    openMenu(entry("m-bob"), copy.messageActions);
+    expect(screen.queryByRole("menuitem", { name: copy.remove })).toBeNull();
+  });
+
+  it("keeps a reply the server refuses in its thread as Not sent, with Discard", async () => {
+    const user = userEvent.setup();
+    mocks.collabCommentReply.mockRejectedValue({ code: "comment_off_project", message: "" });
+    show([conversation]);
+    await user.click(within(card("quick")).getAllByRole("button", { name: copy.reply })[0]);
+    await user.type(within(card("quick")).getByRole("textbox", { name: copy.replyLabel }), "Figure 2 first?");
+    await user.click(within(card("quick")).getByRole("button", { name: copy.send }));
+    const row = await within(card("quick")).findByText(/Figure 2 first\?/u);
+    const item = row.closest("[data-comment-entry]") as HTMLElement;
+    expect(item).toHaveAttribute("data-delivery", "failed");
+    expect(item).toHaveTextContent(`${copy.notSentShort} ${copy.refusals.offProject}`);
+    expect(within(card("quick")).queryByRole("textbox", { name: copy.replyLabel })).toBeNull();
+    await user.click(within(item).getByRole("button", { name: copy.discard }));
+    expect(within(card("quick")).queryByText(/Figure 2 first\?/u)).toBeNull();
+  });
+
+  it("marks comments the server hasn't acknowledged and counts them while the server can't be reached", () => {
+    const waiting = commentThread("t-quick", { from: 4, to: 9 }, {
+      anchor: { quote: "quick", range: { from: 4, to: 9 } },
+      messages: [commentMessage("m-wait", ALICE_ID, "Keep the y-axis", { pending: true })],
+    });
+    useCollabLiveStore.setState({ status: { state: "offline", retry_in_ms: 1_000 } });
+    show([waiting]);
+    expect(entry("m-wait")).toHaveAttribute("data-delivery", "waiting");
+    expect(entry("m-wait")).toHaveTextContent(copy.waiting);
+    expect(screen.getByTestId("comments-offline-queue")).toHaveTextContent(copy.offlineQueuedOne);
+  });
+
+  it("filters to resolved threads only", async () => {
+    const user = userEvent.setup();
+    show([conversation, resolved]);
+    await pickFilter(user, copy.filterOpen, copy.filterResolved);
+    expect(screen.queryByRole("button", { name: "quick" })).toBeNull();
+    expect(screen.getByText("fox")).toBeInTheDocument();
+  });
+
+  it("shows who is replying to a thread from the people here", () => {
+    useCollabLiveStore.setState({
+      peers: {
+        d1: {
+          deviceId: "d1",
+          accountId: BOB_ID,
+          person: BOB,
+          path: "chapters/intro.tex",
+          cursor: null,
+          anchor: null,
+          seenAt: AT + 60_000,
+          hue: 20,
+          activity: { kind: "reply", threadId: "t-quick" },
+          activityAt: AT + 60_000,
+        },
+      },
+    });
+    show([conversation]);
+    expect(within(card("quick")).getByRole("status")).toHaveTextContent(fill(copy.replyingOne, { name: "Bob Smith" }));
+    useCollabLiveStore.setState({ peers: {} });
+  });
+
+  it("greys and strikes a thread whose text was removed in another file's section", () => {
+    show([], {
+      counts: [{ path: "appendix/refs.tex", open: 1, resolved: 0, waiting: 0 }],
+      elsewhere: { "appendix/refs.tex": { phase: "ready", threads: [detached], error: null } },
+    });
+    expect(document.querySelector("[data-quote-text]")).toHaveClass("line-through");
+    expect(screen.getByText(copy.outdated)).toBeInTheDocument();
+  });
+});
+
+
+describe("live comment states after review", () => {
+  const notSent = (patch: Record<string, unknown>) => ({
+    fileId: INTRO_FILE,
+    path: "chapters/intro.tex",
+    threadId: "t-lost",
+    messageId: "m-lost",
+    at: AT,
+    newThread: true,
+    edit: false,
+    editedAt: null,
+    quote: "brown",
+    body: "Lost root",
+    ...patch,
+  });
+
+  afterEach(() => {
+    useCollabLiveStore.setState({ commentsNotSent: null });
+  });
+
+  it("flags a reply that arrives as New when the pane runs under StrictMode, as the app does", () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(AT + 40_000);
+    show([conversation], {}, true);
+    const reply = commentMessage("m-late", BOB_ID, "One more thing", { at: AT + 50_000 });
+    act(() => useComments.setState({ threads: [{ ...conversation, messages: [...conversation.messages, reply] }] }));
+    expect(screen.getByText("One more thing").closest("[data-comment-entry]")).toHaveAttribute("data-fresh");
+    expect(screen.getByText("Is this word right?").closest("[data-comment-entry]")).not.toHaveAttribute("data-fresh");
+    clock.mockRestore();
+  });
+
+  it("doesn't flag the comments of a file that just opened as New", () => {
+    const clock = vi.spyOn(Date, "now").mockReturnValue(AT + 40_000);
+    const first = show([conversation]);
+    const other = commentThread("t-other", { from: 1, to: 3 }, {
+      anchor: { quote: "ok", range: { from: 1, to: 3 } },
+      messages: [commentMessage("m-other", BOB_ID, "Other file", { at: AT + 50_000 })],
+    });
+    act(() => useComments.setState({ path: "chapters/methods.tex", threads: [other] }));
+    expect(document.querySelector("[data-fresh]")).toBeNull();
+    first.unmount();
+    clock.mockRestore();
+  });
+
+  it("says there are no resolved comments when Resolved is empty but open ones exist", async () => {
+    const user = userEvent.setup();
+    show([conversation]);
+    await pickFilter(user, copy.filterOpen, copy.filterResolved);
+    expect(screen.getByText(copy.noResolved)).toBeInTheDocument();
+    expect(screen.queryByText(copy.emptyTitle)).toBeNull();
+  });
+
+  it("keeps a refused new comment in place with Discard and clears the draft", async () => {
+    const user = userEvent.setup();
+    mocks.collabCommentCreate.mockRejectedValue({ code: "comment_off_project", message: "" });
+    show([], { draft: { path: "chapters/intro.tex", from: 10, to: 15, quote: "brown" } });
+    await user.type(screen.getByRole("textbox", { name: copy.newLabel }), "Is this right?");
+    await user.click(screen.getByRole("button", { name: copy.send }));
+    await waitFor(() => expect(screen.queryByRole("textbox", { name: copy.newLabel })).toBeNull());
+    const row = (await screen.findByText("Is this right?")).closest("[data-comment-entry]") as HTMLElement;
+    expect(row).toHaveAttribute("data-delivery", "failed");
+    await user.click(within(row).getByRole("button", { name: copy.discard }));
+    expect(screen.queryByText("Is this right?")).toBeNull();
+  });
+
+  it("offers Delete thread when every other message was deleted", () => {
+    const mine = commentThread("t-mine", { from: 10, to: 15 }, {
+      anchor: { quote: "brown", range: { from: 10, to: 15 } },
+      createdBy: ALICE_ID,
+      messages: [commentMessage("m1", ALICE_ID, "Mine"), commentMessage("m2", BOB_ID, "", { deleted: true })],
+    });
+    show([mine]);
+    openMenu(entry("m1"), copy.messageActions);
+    expect(screen.getByRole("menuitem", { name: copy.deleteThread })).toBeInTheDocument();
+  });
+
+  it("keeps the in-place Not sent items after the project banner is closed", () => {
+    useCollabLiveStore.setState({ commentsNotSent: [notSent({})] });
+    show([]);
+    expect(screen.getByText("Lost root")).toBeInTheDocument();
+    act(() => useCollabLiveStore.getState().dismissCommentsNotSent());
+    expect(screen.getByText("Lost root")).toBeInTheDocument();
+  });
+
+  it("gives the server-wide reason when comments are off on the server", () => {
+    useCollabLiveStore.setState({ commentsNotSent: [notSent({})] });
+    show([], { status: commentsStatus({ serverAllowed: false }) });
+    expect(screen.getByText(copy.refusals.offServer)).toBeInTheDocument();
+  });
+
+  it("lists a reply to a lost thread under that thread, and shows a refused edit in place of the message", () => {
+    useCollabLiveStore.setState({
+      commentsNotSent: [
+        notSent({}),
+        notSent({ messageId: "m-lost-reply", newThread: false, body: "Lost reply" }),
+        notSent({ threadId: "t-quick", messageId: "m-alice", newThread: false, edit: true, body: "Edited text" }),
+      ],
+    });
+    show([conversation], { selectedId: "t-quick" });
+    const lost = screen.getByText("Lost root").closest("article") as HTMLElement;
+    expect(within(lost).getByText("Lost reply")).toBeInTheDocument();
+    expect(lost.closest("ul")).toHaveClass("px-3", "py-3");
+    expect(document.querySelectorAll('[data-comment-entry="m-alice"]')).toHaveLength(0);
+    const edited = document.querySelector('[data-comment-entry="not-sent-m-alice"]') as HTMLElement;
+    expect(edited).toHaveTextContent("Edited text");
+    expect(edited).toHaveTextContent(`· ${copy.edited}`);
+    const entries = [...(edited.closest("article") as HTMLElement).querySelectorAll("[data-comment-entry]")];
+    expect(entries.indexOf(edited)).toBe(conversation.messages.findIndex((message) => message.id === "m-alice"));
+  });
+
+  it("keeps the message's reactions and mentions on a refused edit, and dates '· edited' by the edit", async () => {
+    const user = userEvent.setup();
+    const reacted = commentThread("t-quick", { from: 4, to: 9 }, {
+      anchor: { quote: "quick", range: { from: 4, to: 9 } },
+      messages: [
+        commentMessage("m-bob", BOB_ID, "Is this word right?", { at: AT - 120_000 }),
+        commentMessage("m-alice", ALICE_ID, "Yes, I checked @Bob Smith", { mentions: [BOB_ID], reactions: [{ emoji: "👍", by: [BOB_ID] }] }),
+      ],
+    });
+    useCollabLiveStore.setState({
+      commentsNotSent: [
+        notSent({ threadId: "t-quick", messageId: "m-alice", newThread: false, edit: true, at: AT, editedAt: AT + 60_000, body: "Checked again, @Bob Smith" }),
+      ],
+    });
+    show([reacted], { selectedId: "t-quick" });
+    const edited = document.querySelector('[data-comment-entry="not-sent-m-alice"]') as HTMLElement;
+    expect(within(edited).getByText("@Bob Smith")).toHaveAttribute("data-mention");
+    expect(within(edited).getByText("👍")).toBeInTheDocument();
+    await user.hover(within(edited).getByText(`· ${copy.edited}`));
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(formatDateTime(AT + 60_000));
+  });
+
+  it("shows a refused edit's text even when the server has since deleted or removed the message", () => {
+    for (const gone of [{ deleted: true }, { deleted: true, removed: true }]) {
+      const thread = commentThread("t-quick", { from: 4, to: 9 }, {
+        anchor: { quote: "quick", range: { from: 4, to: 9 } },
+        messages: [commentMessage("m-bob", BOB_ID, "Is this word right?", { at: AT - 120_000 }), commentMessage("m-alice", ALICE_ID, "", gone)],
+      });
+      useCollabLiveStore.setState({
+        commentsNotSent: [notSent({ threadId: "t-quick", messageId: "m-alice", newThread: false, edit: true, body: "Edited while offline" })],
+      });
+      const view = show([thread], { selectedId: "t-quick" });
+      const edited = document.querySelector('[data-comment-entry="not-sent-m-alice"]') as HTMLElement;
+      expect(edited).toHaveTextContent("Edited while offline");
+      expect(edited).not.toHaveTextContent(copy.deleted);
+      expect(edited).not.toHaveTextContent(copy.removed);
+      view.unmount();
+    }
+  });
+
+  it("highlights a mention the refused edit added, not only the ones the server's copy had", () => {
+    const thread = commentThread("t-quick", { from: 4, to: 9 }, {
+      anchor: { quote: "quick", range: { from: 4, to: 9 } },
+      messages: [commentMessage("m-bob", BOB_ID, "Is this word right?", { at: AT - 120_000 }), commentMessage("m-alice", ALICE_ID, "Yes, I checked")],
+    });
+    useCollabLiveStore.setState({
+      commentsNotSent: [notSent({ threadId: "t-quick", messageId: "m-alice", newThread: false, edit: true, body: "Yes, checked with @Bob Smith" })],
+    });
+    show([thread], { selectedId: "t-quick" });
+    const edited = document.querySelector('[data-comment-entry="not-sent-m-alice"]') as HTMLElement;
+    expect(within(edited).getByText("@Bob Smith")).toHaveAttribute("data-mention");
+  });
+
+  it("keeps a refused reply out of the not-sent list while no file is open, and calls a lost reply a reply", () => {
+    useCollabLiveStore.setState({
+      commentsNotSent: [notSent({ threadId: "t-refs", messageId: "m-refs", newThread: false, path: "appendix/refs.tex", body: "Reply in refs" })],
+    });
+    const view = show([], { path: null });
+    expect(screen.queryByText("Reply in refs")).toBeNull();
+    view.unmount();
+    useCollabLiveStore.setState({
+      commentsNotSent: [notSent({ threadId: "t-gone", messageId: "m-gone", newThread: false, body: "Reply to a deleted thread" })],
+    });
+    show([]);
+    const card = screen.getByText("Reply to a deleted thread").closest("article") as HTMLElement;
+    expect(card).toHaveAccessibleName(copy.replyLabel);
+  });
+});
+
+describe("offline count", () => {
+  it("counts the comments waiting in files that aren't loaded too", () => {
+    useCollabLiveStore.setState({ status: { state: "offline", retry_in_ms: 1_000 } });
+    show([], { counts: [{ path: "appendix/refs.tex", open: 2, resolved: 0, waiting: 3 }] });
+    expect(screen.getByTestId("comments-offline-queue")).toHaveTextContent(fill(copy.offlineQueued, { number: "3" }));
   });
 });

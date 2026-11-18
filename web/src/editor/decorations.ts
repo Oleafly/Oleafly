@@ -1,5 +1,6 @@
 import { type Extension, type Range, StateEffect, StateField, type Text } from "@codemirror/state";
 import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate, WidgetType } from "@codemirror/view";
+import { COMMENT_RANGE_STYLES } from "@/components/ui/comments/comment-mark-styles";
 import { peerHue } from "@/features/collab/live/peer-hue";
 import type { OverlaySnapshot } from "../overlays";
 
@@ -43,20 +44,8 @@ export const OVERLAY_STYLES = {
   ".cm-suggest-delete.cm-suggest-active": {
     backgroundColor: "hsl(var(--suggest-hue) 85% 55% / 0.24)",
   },
-  ".cm-comment-range": {
-    backgroundColor: "color-mix(in oklch, oklch(0.82 0.16 85) 30%, transparent)",
-    borderRadius: "2px",
-    cursor: "pointer",
-  },
-  ".dark & .cm-comment-range": {
-    backgroundColor: "color-mix(in oklch, oklch(0.78 0.14 85) 22%, transparent)",
-  },
-  ".cm-comment-range.cm-comment-active, .cm-comment-draft": {
-    backgroundColor: "color-mix(in oklch, oklch(0.82 0.16 85) 55%, transparent)",
-  },
-  ".dark & .cm-comment-range.cm-comment-active, .dark & .cm-comment-draft": {
-    backgroundColor: "color-mix(in oklch, oklch(0.78 0.14 85) 42%, transparent)",
-  },
+  ...COMMENT_RANGE_STYLES,
+  ".cm-comment-range": { ...COMMENT_RANGE_STYLES[".cm-comment-range"], cursor: "pointer" },
 };
 
 export function deletedTextLabel(text: string): string {

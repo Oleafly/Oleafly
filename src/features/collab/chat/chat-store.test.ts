@@ -2,10 +2,11 @@
 
 import { listen } from "@tauri-apps/api/event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { useChatRail } from "@/components/collab/chat-rail";
+import { openChatMessage, useChatRail } from "@/components/collab/chat-rail";
 import type { CollabChatMessage, CollabLiveSyncState, CollabProjectRole } from "@/lib/tauri";
 import { useSettingsStore } from "@/store/settings";
 import { useCollabLiveStore } from "../live/live-store";
+import { useCollabActivity } from "../sharing/activity-store";
 import { ALICE_ID, BOB, BOB_ID, collabError, deferred, projectMember, shareInfo } from "../tests/fixtures";
 
 const mocks = vi.hoisted(() => ({
@@ -36,7 +37,7 @@ import { CHAT_PAGE, clearChat, deleteChat, loadChat, loadOlderChat, sendChat, st
 const AT = 1_760_000_000_000;
 
 function message(id: string, body: string, at = AT, author = BOB_ID): CollabChatMessage {
-  return { id, author, at, body, deleted: false, verified: true };
+  return { id, author, at, body, deleted: false, verified: true, reactions: [], mentions: [], pending: false };
 }
 
 const hello = message("c1", "Draft is ready");
@@ -75,13 +76,13 @@ function ids(): string[] {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  for (const mock of [mocks.collabChatList, mocks.collabChatSend, mocks.collabChatDelete, mocks.collabChatClear, vi.mocked(listen)]) mock.mockReset();
   mocks.listeners.clear();
   mocks.collabChatList.mockResolvedValue([reply, hello]);
   mocks.collabChatDelete.mockResolvedValue(undefined);
   mocks.collabChatClear.mockResolvedValue(undefined);
   useSettingsStore.setState({ railTab: "files", showTree: true });
-  useChatRail.setState({ visible: false, unread: false });
+  useChatRail.setState({ visible: false, unread: false, reveal: null });
 });
 
 afterEach(() => {
@@ -186,6 +187,19 @@ describe("replies that arrive after the chat moved on", () => {
     expect(useChat.getState()).toMatchObject({ projectId: "thesis", loadingOlder: false, hasOlder: false });
   });
 
+  it("drops a failed older page for the project the chat has left", async () => {
+    mocks.collabChatList.mockResolvedValueOnce(fullPage);
+    await begin();
+    const older = deferred<CollabChatMessage[]>();
+    mocks.collabChatList.mockReturnValueOnce(older.promise).mockResolvedValueOnce([elsewhere]);
+    const loading = loadOlderChat();
+    share("thesis");
+    await vi.waitFor(() => expect(useChat.getState().phase).toBe("ready"));
+    older.reject(collabError("unreachable"));
+    await expect(loading).resolves.toBeUndefined();
+    expect(ids()).toEqual(["o1"]);
+  });
+
   it("drops a sent message, a deletion and a clear that finish after switching projects", async () => {
     mocks.collabChatList.mockResolvedValueOnce([hello]).mockResolvedValue([elsewhere]);
     await begin();
@@ -202,7 +216,7 @@ describe("replies that arrive after the chat moved on", () => {
     removed.resolve();
     cleared.resolve();
     await work;
-    expect(mocks.collabChatSend).toHaveBeenCalledWith("paper", "Late reply");
+    expect(mocks.collabChatSend).toHaveBeenCalledWith("paper", "Late reply", []);
     expect(mocks.collabChatDelete).toHaveBeenCalledWith("paper", "c1");
     expect(mocks.collabChatClear).toHaveBeenCalledWith("paper");
     expect(useChat.getState().messages).toEqual([elsewhere]);
@@ -265,6 +279,63 @@ describe("older messages", () => {
     await loadChat();
     expect(ids()).toEqual(later.map((entry) => entry.id));
     expect(useChat.getState().hasOlder).toBe(true);
+  });
+});
+
+describe("older pages after the second review", () => {
+  function serverList(list: readonly CollabChatMessage[], answers = Number.POSITIVE_INFINITY) {
+    let asked = 0;
+    mocks.collabChatList.mockImplementation(async (_project: string, before: string | null, limit: number) => {
+      asked += 1;
+      if (asked > answers) return [];
+      const found = before === null ? -1 : list.findIndex((entry) => entry.id === before);
+      const end = found < 0 ? list.length : found;
+      return list.slice(Math.max(0, end - limit), end);
+    });
+  }
+
+  it("pages by place in the list, so a message with an early time can't hold the cursor still", async () => {
+    const list = [
+      ...Array.from({ length: 119 }, (_, index) => message(`m${index}`, `Message ${index}`, AT + index * 1_000)),
+      message("offline", "Written offline", AT - 3_600_000),
+    ];
+    serverList(list, 10);
+    await begin();
+    await loadOlderChat();
+    expect(mocks.collabChatList).toHaveBeenLastCalledWith("paper", "m70", CHAT_PAGE);
+    await loadOlderChat();
+    await loadOlderChat();
+    expect(ids()).toHaveLength(120);
+    expect(useChat.getState().hasOlder).toBe(false);
+  });
+
+  it("stops asking for older pages once a page brings nothing new", async () => {
+    mocks.collabChatList.mockResolvedValue(fullPage);
+    await begin();
+    await loadOlderChat();
+    expect(useChat.getState().hasOlder).toBe(false);
+  });
+});
+
+describe("a pending 'Show message'", () => {
+  it("is dropped when the project changes or stops being shared", async () => {
+    await begin();
+    useChatRail.setState({ reveal: "c1" });
+    share("thesis");
+    expect(useChatRail.getState().reveal).toBeNull();
+    useChatRail.setState({ reveal: "o1" });
+    useCollabLiveStore.setState({ share: null });
+    expect(useChatRail.getState().reveal).toBeNull();
+  });
+
+  it("is dropped when the reader leaves the chat, but not while the chat is being opened for it", async () => {
+    await begin();
+    useSettingsStore.setState({ railTab: "files", showTree: false });
+    openChatMessage("c1");
+    expect(useSettingsStore.getState()).toMatchObject({ railTab: "chat", showTree: true });
+    expect(useChatRail.getState().reveal).toBe("c1");
+    useSettingsStore.getState().setRailTab("files");
+    expect(useChatRail.getState().reveal).toBeNull();
   });
 });
 
@@ -376,5 +447,27 @@ describe("following the live project", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(useChatRail.getState()).toMatchObject({ visible: false, unread: false });
     expect(useChat.getState().projectId).toBeNull();
+  });
+});
+
+describe("chat mentions", () => {
+  it("sends the members with a message so the server can resolve its mentions", async () => {
+    await begin();
+    useCollabLiveStore.setState({ members: [projectMember(BOB, "editor")] });
+    mocks.collabChatSend.mockResolvedValue(message("c9", "Hi @Bob Smith"));
+    await sendChat("Hi @Bob Smith");
+    expect(mocks.collabChatSend).toHaveBeenCalledWith("paper", "Hi @Bob Smith", [
+      expect.objectContaining({ accountId: BOB_ID, displayName: "Bob Smith" }),
+    ]);
+  });
+
+  it("notes a chat mention of you in the activity feed once", async () => {
+    await begin();
+    useCollabActivity.getState().open("paper");
+    const payload = { projectId: "paper", local: false, mentioned: [{ messageId: "c7", author: BOB_ID }] };
+    mocks.listeners.get("collab://chat-changed")?.({ payload });
+    mocks.listeners.get("collab://chat-changed")?.({ payload });
+    const entries = useCollabActivity.getState().entries.filter((entry) => entry.kind === "chatMentioned");
+    expect(entries).toHaveLength(1);
   });
 });

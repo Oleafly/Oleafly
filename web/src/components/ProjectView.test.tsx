@@ -82,3 +82,19 @@ describe("ProjectView", () => {
     expect(new URLSearchParams(window.location.search).get("project")).toBeNull();
   });
 });
+
+describe("offline look", () => {
+  it("shows the offline banner and connection dot in neutral grey, not amber", () => {
+    window.history.replaceState(null, "", projectHref("p1"));
+    resetWebState({ me: ME, projectId: "p1", connection: "offline" });
+    const controller = new ProjectController("p1", {
+      api: api(),
+      socketUrl: "wss://collab.test/web/ws?project=p1",
+      createSocket: new FakeServer().factory,
+    });
+    const { container } = render(
+      <ProjectView controller={controller} api={api()} me={ME} onSignOut={() => undefined} signOutFailed={false} />,
+    );
+    expect(container.innerHTML).not.toMatch(/amber/u);
+  });
+});

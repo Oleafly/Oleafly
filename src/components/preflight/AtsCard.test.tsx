@@ -34,7 +34,7 @@ describe("AtsCard section semantics", () => {
     expect(projects).toHaveAttribute("data-present", "false");
     expect(projects).toHaveAttribute("data-required", "false");
     expect(projects).toHaveAccessibleName("Projects: optional section not detected");
-    expect(projects).toHaveClass("text-muted-foreground");
+    expect(projects).toHaveClass("bg-muted", "text-foreground/60");
     expect(projects).not.toHaveClass("text-red-500");
   });
 

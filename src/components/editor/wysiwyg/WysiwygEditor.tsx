@@ -70,6 +70,7 @@ import { scrollVisualSelectionLocally } from "./scroll";
 import { markdownMathRanges } from "./markdown-source";
 import { resetDesktopDocumentScroll } from "@/lib/desktop-viewport";
 import { publishVisualEditorHistory } from "@/components/editor/history-signal";
+import { QuoteOrBoldKey } from "@/components/editor/rich-text-controls";
 
 function isMarkdownPath(path: string): boolean {
   const p = path.toLowerCase();
@@ -217,6 +218,7 @@ export function WysiwygEditor({ wysiwyg }: Readonly<{ wysiwyg: boolean }>) {
   const editor = useEditor({
     extensions: [
       ...PACKAGE_EXTENSIONS,
+      QuoteOrBoldKey,
       ExternalMutationGate,
       VisualProjectIntelligence,
       VisualProofreading,

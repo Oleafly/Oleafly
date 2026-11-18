@@ -672,6 +672,15 @@
         "grid": "Siatka",
         "label": "Wzór tła"
       },
+      "commentColor": {
+        "accent": "Kolor akcentu",
+        "description": "Kolor skomentowanego tekstu w edytorze i cytatów w panelu komentarzy. Dotyczy tego urządzenia.",
+        "graphite": "Grafit",
+        "indigo": "Indygo",
+        "label": "Kolor wyróżnienia komentarzy",
+        "leaf": "Zieleń liści",
+        "sample": "Skomentowany tekst"
+      },
       "dock": {
         "bottom": "Na dole",
         "description": "Wybierz, gdzie ma być dok ekranu głównego.",

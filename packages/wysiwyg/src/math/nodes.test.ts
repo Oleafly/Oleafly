@@ -185,6 +185,18 @@ describe("typed math", () => {
     expect(JSON.stringify(doc)).not.toContain("math");
   });
 
+  it("keeps the formatting of the text the math is typed into", () => {
+    const { editor } = mount({
+      type: "doc",
+      content: [{ type: "paragraph", content: [{ type: "text", text: "Bold end", marks: [{ type: "bold" }] }] }],
+    });
+    editor.commands.setTextSelection(6);
+    typeText(editor, "$x$ ");
+    const doc: JSONContent = editor.getJSON();
+    expect(doc.content?.[0].content?.find((node) => node.type === "mathInline")?.marks).toEqual([{ type: "bold" }]);
+    expect(serializeMarkdownBody(doc)).toBe("**Bold $x$ end**");
+  });
+
   it("does not fire inside inline code", () => {
     const { editor } = mount({
       type: "doc",

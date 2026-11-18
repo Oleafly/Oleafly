@@ -96,11 +96,10 @@ test.describe("Notes knowledge", () => {
   });
 
   test("lists the project's references when citing from a note", async ({ notes }) => {
-    const { page } = await notes.open();
+    await notes.open();
     await notes.openNote("Abstract draft");
     await notes.newParagraph();
-    await notes.tool("Citation");
-    await page.getByRole("menuitem", { name: /He et al\. 2022, Masked autoencoders/u }).click();
+    await notes.tool("Citation", /^He et al\. 2022, Masked autoencoders/u);
     await expect.poll(() => notes.text("abstract")).toContain("[@he2022mae]");
   });
 

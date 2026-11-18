@@ -92,7 +92,10 @@ export function CommandPalette() {
     ],
   );
 
+  // Built when the palette opens, not only when the context changes: some commands depend on
+  // whether an editor is on screen, and the context changes while a project is still opening.
   const groups = useMemo(() => {
+    if (!open) return [];
     const cmds = commandsFor("palette", ctx);
     const search = query.trim();
     const visibleCommands = search
@@ -118,7 +121,7 @@ export function CommandPalette() {
       else byGroup.set(g, [c]);
     }
     return [...byGroup.entries()];
-  }, [ctx, query, t]);
+  }, [ctx, open, query, t]);
 
   const bestMatchValue = useMemo(() => {
     const command = groups[0]?.[1][0];

@@ -116,6 +116,7 @@
     "superscript": "Superscript",
     "subscript": "Subscript",
     "inlineCode": "Inline code",
+    "clearFormatting": "Clear formatting",
     "insertLink": "Insert link",
     "insertCrossReference": "Insert cross-reference",
     "insertFootnote": "Insert footnote",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Go to PDF",
     "linkUrl": "Link URL",
     "removeLink": "Remove link",
+    "alignment": "Alignment",
+    "align": {
+      "left": "Align left",
+      "center": "Align center",
+      "right": "Align right",
+      "justify": "Justify"
+    },
+    "emoji": "Emoji",
+    "textColor": "Text color",
+    "removeTextColor": "Remove color",
+    "textColors": {
+      "gray": "Gray",
+      "red": "Red",
+      "orange": "Orange",
+      "green": "Green",
+      "teal": "Teal",
+      "blue": "Blue",
+      "purple": "Purple"
+    },
     "imageFile": "Image file",
     "apply": "Apply",
     "linkPlaceholder": "https://",
@@ -1674,6 +1694,12 @@
       "duplicateArg": "Duplicate argument",
       "unknownKind": "Unknown field kind"
     }
+  },
+  "emoji": {
+    "search": "Search emoji",
+    "skinTone": "Skin tone",
+    "loading": "Loading emoji",
+    "empty": "No emoji found"
   },
   "bibList": {
     "count_one": "{{count}} reference",

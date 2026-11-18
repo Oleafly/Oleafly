@@ -1,6 +1,8 @@
 mod people;
 
-use loro::{ExportMode, LoroDoc, LoroList, LoroMap};
+use std::collections::HashMap;
+
+use loro::{ExportMode, LoroDoc, LoroList, LoroMap, LoroValue};
 use oleafly_collab_protocol::auth::{challenge_message, ChallengePurpose};
 use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::frames::{ClientFrame, FrameErrorCode, ServerFrame};
@@ -143,6 +145,186 @@ fn chat_as(doc: &LoroDoc, author: &str, body: &str) {
     let message = doc.get_list("chat").push_container(LoroMap::new()).unwrap();
     message.insert("author", author).unwrap();
     message.insert("body", body).unwrap();
+}
+
+fn messages_of(doc: &LoroDoc, thread: &str) -> LoroList {
+    let Some(loro::ValueOrContainer::Container(loro::Container::Map(found))) =
+        doc.get_map("comments").get(thread)
+    else {
+        panic!("thread {thread} is there");
+    };
+    let Some(loro::ValueOrContainer::Container(loro::Container::List(messages))) =
+        found.get("messages")
+    else {
+        panic!("thread {thread} has messages");
+    };
+    messages
+}
+
+fn said_in(messages: &LoroList, id: &str, author: &str) -> LoroMap {
+    let message = messages.push_container(LoroMap::new()).unwrap();
+    message.insert("id", id).unwrap();
+    message.insert("author", author).unwrap();
+    message.insert("body", "Why?").unwrap();
+    message
+}
+
+fn first_of(doc: &LoroDoc, thread: &str) -> LoroMap {
+    match messages_of(doc, thread).get(0) {
+        Some(loro::ValueOrContainer::Container(loro::Container::Map(message))) => message,
+        other => panic!("not a message: {other:?}"),
+    }
+}
+
+#[tokio::test]
+async fn an_editor_types_and_replies_but_never_removes_or_deletes_someone_elses_comment() {
+    let stage = stage().await;
+    let shared = shared_with(&stage, &stage.alice, ProjectRole::Editor).await;
+    let owner_account = account(&stage.bob);
+    let mut owner = Writer::open(&stage, &stage.bob, shared.project, 11, &shared.known).await;
+    let (commented, from_bob) = owner
+        .send(&stage.bob, shared.project, |doc| {
+            let thread = doc
+                .get_map("comments")
+                .insert_container("t1", LoroMap::new())
+                .unwrap();
+            thread.insert("created_by", owner_account.as_str()).unwrap();
+            let messages = thread
+                .insert_container("messages", LoroList::new())
+                .unwrap();
+            said_in(&messages, "m1", &owner_account);
+        })
+        .await;
+    assert!(stored(&commented), "{commented:?}");
+    let mut known = shared.known.clone();
+    known.push(from_bob);
+    let me = account(&stage.alice);
+    let mut alice = Writer::open(&stage, &stage.alice, shared.project, 41, &known).await;
+    let (typed, _) = alice
+        .send(&stage.alice, shared.project, |doc| {
+            file_text(doc, FILE).insert(0, "Oh, ").unwrap();
+        })
+        .await;
+    assert!(stored(&typed), "{typed:?}");
+    let (replied, _) = alice
+        .send(&stage.alice, shared.project, |doc| {
+            said_in(&messages_of(doc, "t1"), "m2", &me);
+        })
+        .await;
+    assert!(stored(&replied), "{replied:?}");
+    for (peer, flag) in [(42, "removed"), (43, "deleted")] {
+        let mut attempt = Writer::open(&stage, &stage.alice, shared.project, peer, &known).await;
+        let (refused, _) = attempt
+            .send(&stage.alice, shared.project, |doc| {
+                first_of(doc, "t1").insert(flag, true).unwrap();
+            })
+            .await;
+        assert!(forbidden(&refused), "{flag}: {refused:?}");
+    }
+}
+
+type Attempt<'a> = (&'static str, Box<dyn Fn(&LoroDoc) + 'a>);
+
+fn plain_message(id: &str, author: &str, body: &str) -> LoroValue {
+    LoroValue::from(HashMap::from([
+        ("id".to_string(), LoroValue::from(id)),
+        ("author".to_string(), LoroValue::from(author)),
+        ("at".to_string(), LoroValue::from(5_i64)),
+        ("body".to_string(), LoroValue::from(body)),
+    ]))
+}
+
+#[tokio::test]
+async fn a_message_that_is_not_a_map_of_its_own_is_refused_for_editors_and_commenters() {
+    let stage = stage().await;
+    for (role, peer) in [(ProjectRole::Editor, 41), (ProjectRole::Commenter, 51)] {
+        let shared = shared_with(&stage, &stage.alice, role).await;
+        let owner_account = account(&stage.bob);
+        let mut owner = Writer::open(&stage, &stage.bob, shared.project, 11, &shared.known).await;
+        let (commented, from_bob) = owner
+            .send(&stage.bob, shared.project, |doc| {
+                let thread = doc
+                    .get_map("comments")
+                    .insert_container("t1", LoroMap::new())
+                    .unwrap();
+                thread.insert("created_by", owner_account.as_str()).unwrap();
+                let messages = thread
+                    .insert_container("messages", LoroList::new())
+                    .unwrap();
+                said_in(&messages, "m1", &owner_account);
+            })
+            .await;
+        assert!(stored(&commented), "{commented:?}");
+        let mut known = shared.known.clone();
+        known.push(from_bob);
+        let me = account(&stage.alice);
+        let attempts: [Attempt; 4] = [
+            (
+                "a plain reply in the thread starter's name",
+                Box::new(|doc| {
+                    messages_of(doc, "t1")
+                        .push(plain_message("m2", &owner_account, "@Bob forged"))
+                        .unwrap();
+                }),
+            ),
+            (
+                "a plain reply in an own name",
+                Box::new(|doc| {
+                    messages_of(doc, "t1")
+                        .push(plain_message("m3", &me, "plain"))
+                        .unwrap();
+                }),
+            ),
+            (
+                "a plain chat message",
+                Box::new(|doc| {
+                    doc.get_list("chat")
+                        .push(plain_message("c1", &me, "plain"))
+                        .unwrap();
+                }),
+            ),
+            (
+                "a thread whose messages are a plain list",
+                Box::new(|doc| {
+                    let thread = doc
+                        .get_map("comments")
+                        .insert_container("t2", LoroMap::new())
+                        .unwrap();
+                    thread.insert("created_by", me.as_str()).unwrap();
+                    thread
+                        .insert(
+                            "messages",
+                            LoroValue::from(vec![plain_message("m4", &me, "plain")]),
+                        )
+                        .unwrap();
+                }),
+            ),
+        ];
+        for (offset, (what, attempt)) in attempts.iter().enumerate() {
+            let mut writer = Writer::open(
+                &stage,
+                &stage.alice,
+                shared.project,
+                peer + offset as u64,
+                &known,
+            )
+            .await;
+            let (refused, _) = writer
+                .send(&stage.alice, shared.project, |doc| attempt(doc))
+                .await;
+            assert!(forbidden(&refused), "{what} as {role:?}: {refused:?}");
+        }
+        let mut writer = Writer::open(&stage, &stage.alice, shared.project, peer + 9, &known).await;
+        let (replied, _) = writer
+            .send(&stage.alice, shared.project, |doc| {
+                said_in(&messages_of(doc, "t1"), "m5", &me);
+            })
+            .await;
+        assert!(
+            stored(&replied),
+            "a reply of its own as {role:?}: {replied:?}"
+        );
+    }
 }
 
 #[tokio::test]
@@ -582,9 +764,11 @@ async fn a_change_checked_once_is_judged_again_when_its_rule_changes_before_it_i
             rule,
         )
     };
-    assert_eq!(checked(on).await.expect("a check"), RoleVerdict::Allowed);
+    let allowed = checked(on).await.expect("a check");
+    assert_eq!(allowed.verdict, RoleVerdict::Allowed);
+    assert!(allowed.comments);
     assert_eq!(
-        checked(off).await.expect("a check"),
+        checked(off).await.expect("a check").verdict,
         RoleVerdict::ChangesComments
     );
 }

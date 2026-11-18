@@ -660,6 +660,15 @@
         "grid": "网格",
         "label": "背景图案"
       },
+      "commentColor": {
+        "accent": "强调色",
+        "description": "编辑器中被评论文本以及评论面板中引文的颜色。仅在此设备上生效。",
+        "graphite": "石墨",
+        "indigo": "靛蓝",
+        "label": "评论高亮颜色",
+        "leaf": "叶绿",
+        "sample": "已评论的文本"
+      },
       "dock": {
         "bottom": "底部",
         "description": "选择程序坞在主屏幕上的位置。",

@@ -11,7 +11,7 @@ use super::snapshot_hint::{hint_snapshot, should_snapshot};
 use super::subscribe::subscribe;
 use super::trust::Refreshed;
 use super::wire::{probe_socket, Probe, Wire};
-use super::writers::{seed_peers, WriterRetry};
+use super::writers::{learn_owner, seed_peers, WriterRetry};
 use super::{lock, EndReason, LiveCommand, LiveEvent, LiveLink, LiveStatus, SharedLive};
 use crate::client::upload_allowance;
 use crate::live::Outgoing;
@@ -143,6 +143,12 @@ async fn serve_wire(
     };
     if !lock(project).peers_vouched() {
         seed_peers(link, project, events, retry).await;
+    }
+    // A project's owner never changes, so a reconnect does not ask again: the extra round trip
+    // only delayed going back online.
+    let owner_known = lock(project).owner().is_some();
+    if !owner_known {
+        learn_owner(link, project).await;
     }
     let catching_up = {
         let mut live = lock(project);

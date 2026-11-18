@@ -1,8 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use oleafly_core::engine_spec::{
-    MarkdownKind, MarkdownLayout, DEFAULT_FONTS_FILTER, DEFAULT_FONTS_FILTER_NAME,
-    DOCUMENT_KIND_FILTER_NAME, MERMAID_FIGURES_FILTER_NAME,
+    MarkdownKind, MarkdownLayout, CITATION_MARKS_FILTER_NAME, DEFAULT_FONTS_FILTER,
+    DEFAULT_FONTS_FILTER_NAME, DOCUMENT_KIND_FILTER_NAME, MARKDOWN_MARKS_FILTER_NAME,
+    MERMAID_FIGURES_FILTER_NAME,
 };
 use oleafly_core::PandocResourcePath;
 
@@ -498,10 +499,14 @@ pub fn export_settles_source_images(format: &str, file_name: &str) -> bool {
     export_reader(file_name) == "latex" && matches!(format, "md" | "typst")
 }
 
+pub fn export_pairs_marks(format: &str, file_name: &str) -> bool {
+    export_reader(file_name) == "markdown" && matches!(format, "docx" | "pptx" | "typst" | "tex")
+}
+
 pub fn export_uses_filter(format: &str, file_name: &str) -> bool {
     export_renders_citations(format)
         || export_settles_source_images(format, file_name)
-        || (format == "tex" && export_reader(file_name) == "markdown")
+        || export_pairs_marks(format, file_name)
 }
 
 fn without_comment(line: &str) -> &str {
@@ -612,6 +617,13 @@ pub fn export_args(
         args.push("--natbib".into());
     }
     let keeps_bibliography = natbib || writes_source_bibliography(reader, writer);
+    if let Some(filter) = citations
+        .and_then(|citations| citations.filter)
+        .filter(|_| export_pairs_marks(format, &source.file_name))
+    {
+        let marks = filter.with_file_name(MARKDOWN_MARKS_FILTER_NAME);
+        args.push(format!("--lua-filter={}", marks.to_string_lossy()));
+    }
     if let Some(citations) = citations.filter(|_| renders || keeps_bibliography) {
         args.extend(
             citations
@@ -628,6 +640,10 @@ pub fn export_args(
             }
             args.push(format!("--lua-filter={}", filter.to_string_lossy()));
             args.push("--citeproc".into());
+            if export_pairs_marks(format, &source.file_name) {
+                let marks = filter.with_file_name(CITATION_MARKS_FILTER_NAME);
+                args.push(format!("--lua-filter={}", marks.to_string_lossy()));
+            }
         }
         if let Some(filter) = citations
             .filter
@@ -857,6 +873,60 @@ mod tests {
         assert!(!args_for("docx", "main.tex").contains(&figures));
     }
 
+    #[test]
+    fn markdown_exports_pair_toolbar_tags_before_citations_and_fonts() {
+        let filter = Path::new("/tmp/stage/export-references.lua");
+        let marks = format!(
+            "--lua-filter={}",
+            filter.with_file_name(MARKDOWN_MARKS_FILTER_NAME).display()
+        );
+        let citations = ExportCitations {
+            filter: Some(filter),
+            bibliographies: &[],
+        };
+        for format in ["docx", "pptx", "typst", "tex"] {
+            assert!(export_uses_filter(format, "notes/main.md"), "{format}");
+            let args = args_for(format, "notes/main.md", Some(&citations));
+            let marks_at = args
+                .iter()
+                .position(|arg| *arg == marks)
+                .unwrap_or_else(|| panic!("{format}: {args:?}"));
+            for later in [
+                "export-references.lua",
+                DEFAULT_FONTS_FILTER_NAME,
+                "--citeproc",
+            ] {
+                if let Some(at) = args.iter().position(|arg| arg.ends_with(later)) {
+                    assert!(marks_at < at, "{format}: {later} in {args:?}");
+                }
+            }
+            let citation_marks = format!(
+                "--lua-filter={}",
+                filter.with_file_name(CITATION_MARKS_FILTER_NAME).display()
+            );
+            let citeproc_at = args.iter().position(|arg| arg == "--citeproc");
+            let citation_marks_at = args.iter().position(|arg| *arg == citation_marks);
+            assert_eq!(
+                citation_marks_at,
+                citeproc_at.map(|at| at + 1),
+                "{format}: {args:?}"
+            );
+        }
+        for (format, file_name) in [
+            ("html", "main.md"),
+            ("epub", "main.md"),
+            ("md", "main.md"),
+            ("txt", "main.md"),
+            ("docx", "main.tex"),
+            ("typst", "main.typ"),
+        ] {
+            assert!(
+                !args_for(format, file_name, Some(&citations)).contains(&marks),
+                "{format} {file_name}"
+            );
+        }
+    }
+
     fn args_for(format: &str, file_name: &str, citations: Option<&ExportCitations>) -> Vec<String> {
         let source = export_source(file_name);
         export_args(format, &source, "out", citations).unwrap()
@@ -918,7 +988,7 @@ mod tests {
         }
         assert!(!export_settles_source_images("docx", "main.tex"));
         assert!(!export_settles_source_images("typst", "main.md"));
-        assert!(!export_uses_filter("typst", "main.md"));
+        assert!(!export_uses_filter("typst", "main.typ"));
         assert!(export_uses_filter("tex", "main.md"));
         assert!(export_uses_filter("docx", "main.tex"));
     }

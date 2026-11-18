@@ -4,7 +4,7 @@ import type { JSONContent } from "@tiptap/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { withNoteIdentity } from "./note-file";
 import { joinNoteSource, noteMarkdownExtensions, parseNoteMarkdown, serializeNoteMarkdown } from "./note-markdown";
-import { destroyKbEditors, kbEditor, kbMarkdown, placeCursor, typeInto } from "./tests/kb-editor-fixtures";
+import { destroyKbEditors, kbEditor, kbMarkdown, kbNote, placeCursor, typeInto } from "./tests/kb-editor-fixtures";
 
 afterEach(destroyKbEditors);
 
@@ -188,6 +188,28 @@ describe("editing a note keeps what the editor does not model", () => {
     typeInto(editor, " $\\alpha + \\beta$ end");
     expect(kbMarkdown(editor)).toBe("Text $\\alpha + \\beta$ end");
     expect(JSON.stringify(editor.getJSON())).toContain('"mathInline"');
+  });
+
+  it.each([
+    ["inline", "Inline \\(\\alpha + x^2\\) here and word.", "word", "Inline \\(\\alpha + x^2\\) here and word!."],
+    ["display", "\\[ \\frac{a}{b} + \\alpha_1 \\]\n\nNext word.", "word", "\\[ \\frac{a}{b} + \\alpha_1 \\]\n\nNext word!."],
+  ])("reads bracketed %s math as math and keeps it on edit", (_name, source, needle, saved) => {
+    const editor = kbEditor(source);
+    expect(JSON.stringify(editor.getJSON())).toMatch(/"math(?:Inline|Display)"/u);
+    const { editor: note, save } = kbNote(source);
+    placeCursor(note, needle, needle.length);
+    typeInto(note, "!");
+    expect(save()).toBe(saved);
+  });
+
+  it("reads brackets typed into a note back as text", () => {
+    const { editor: note, save } = kbNote("See word here");
+    placeCursor(note, "word", 4);
+    typeInto(note, " [1] and [a b]");
+    const saved = save();
+    expect(saved).toBe("See word \\[1\\] and \\[a b\\] here");
+    expect(JSON.stringify(parseNoteMarkdown(saved).doc)).not.toContain("math");
+    expect(JSON.stringify(parseNoteMarkdown("\\[TODO\\]").doc)).not.toContain("math");
   });
 
   it("turns typed --- on a new line into a divider", () => {

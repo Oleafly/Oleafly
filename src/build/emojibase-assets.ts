@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import type { Plugin } from "vite";
 import { servedAssets } from "./served-assets";
-import { EMOJIBASE_LOCALES, EMOJIBASE_PATH } from "../components/notes/emoji-locale";
+import { EMOJIBASE_LOCALES, EMOJIBASE_PATH } from "../components/ui/emoji-locale";
 
 interface EmojibaseSkin {
   emoji: string;

@@ -193,7 +193,7 @@ beforeEach(() => {
   mocks.compile.autoCompile = false;
   mocks.terminals.projectId = null;
   mocks.terminals.tabs = [];
-  mocks.getEditorView.mockReturnValue(null);
+  mocks.getEditorView.mockReturnValue({ state: { selection: { main: { from: 0, to: 0 } }, sliceDoc: () => "" }, dispatch: vi.fn(), focus: vi.fn() });
   mocks.closeEnvironmentAtCursor.mockReturnValue(null);
   mocks.surroundSelectionWithEnvironment.mockReturnValue(false);
   mocks.typst.typstLanguageServiceOffers.mockImplementation(() => false);
@@ -643,6 +643,7 @@ describe("command contributions behaviour", () => {
   });
 
   it("no-ops the environment commands without an editor view", () => {
+    mocks.getEditorView.mockReturnValue(null);
     run("palette.close-environment");
     run("palette.surround-environment");
     expect(mocks.closeEnvironmentAtCursor).not.toHaveBeenCalled();

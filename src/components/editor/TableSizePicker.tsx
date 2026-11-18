@@ -18,8 +18,9 @@ const TABLE_SIZES = Array.from({ length: MAX_ROWS }, (_, row) =>
 
 export function TableSizePicker({
   menuRow,
+  inset = false,
   onPick = insertTable,
-}: Readonly<{ menuRow?: boolean; onPick?: (rows: number, cols: number) => void }>) {
+}: Readonly<{ menuRow?: boolean; inset?: boolean; onPick?: (rows: number, cols: number) => void }>) {
   const { t } = useTranslation(["common", "editor"]);
   const [hover, setHover] = useState<{ row: number; col: number } | null>(null);
 
@@ -27,11 +28,11 @@ export function TableSizePicker({
     <Popover
       ariaLabel={t(($) => $.editor.table.trigger)}
       className="w-auto p-3"
-      triggerClassName={menuRow ? "w-full justify-start gap-2 px-2 font-normal" : undefined}
+      triggerClassName={menuRow ? cn("w-full justify-start gap-2 pr-2 font-normal", inset ? "pl-8 text-sm" : "pl-2") : undefined}
       trigger={
         menuRow ? (
           <>
-            <TableIcon className="size-4" />
+            <TableIcon className={cn("size-4", inset && "text-muted-foreground")} />
             <span className="flex-1 text-left">{t(($) => $.editor.table.menuLabel)}</span>
           </>
         ) : (

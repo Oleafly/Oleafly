@@ -2,7 +2,7 @@ import { blockIdOf, markdownBlockSpans, markdownPreservedRanges, type MarkdownBl
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { type EditorState, NodeSelection, Plugin, PluginKey, Selection } from "@tiptap/pm/state";
 import { Decoration, DecorationSet, type EditorView } from "@tiptap/pm/view";
-import { markdownMathRanges } from "@/components/editor/wysiwyg/markdown-source";
+import { noteMathRanges } from "@/components/editor/wysiwyg/markdown-source";
 import { frontMatterBody } from "@/lib/front-matter";
 import { trimTrailingCharacters } from "@/lib/trim-character";
 import { newBlockId, stripBlockIdMarkers } from "./note-block-ids";
@@ -61,7 +61,7 @@ export function noteBlocks(markdown: string): NoteBlock[] {
 
 function withSourcesMasked(body: string): string {
   let masked = body;
-  for (const { from, to } of [...markdownMathRanges(body), ...markdownPreservedRanges(body)]) {
+  for (const { from, to } of [...noteMathRanges(body), ...markdownPreservedRanges(body)]) {
     masked = masked.slice(0, from) + masked.slice(from, to).replaceAll(/[^\r\n]/gu, "x") + masked.slice(to);
   }
   return masked;

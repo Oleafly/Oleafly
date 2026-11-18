@@ -1,109 +1,109 @@
-import { memo, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Eraser, MessagesSquare, ShieldQuestion, Trash2 } from "lucide-react";
+import { Eraser, MessagesSquare } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
+import { useChatRail } from "@/components/collab/chat-rail";
 import { SidebarPanelHeader } from "@/components/layout/SidebarSection";
-import { Avatar } from "@/components/ui/avatar";
+import { CommentScrollArea } from "@/components/ui/comments/comment-arrivals";
+import { presenceText, TypingLine } from "@/components/ui/comments/comment-presence";
+import { chatGroups, type CommentEntry, CommentItem } from "@/components/ui/comments/comment-thread";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useNow } from "@/hooks/use-now";
-import { formatDateTime, formatRelativeTimeFrom } from "@/lib/intl";
+import { formatNumber } from "@/lib/intl";
 import type { CollabChatMessage, CollabPerson } from "@/lib/tauri";
-import { cn } from "@/lib/utils";
 import { CommentComposer } from "../comments/CommentComposer";
+import { useComments } from "../comments/comments-store";
+import { DesktopCommentKit, useMentionMembers } from "../comments/desktop-comment-kit";
 import { commentFailure } from "../comments/refusals";
 import { collabErrorMessage } from "../errors";
 import { InlineAlert, LoadFailed } from "../feedback";
 import { useCollabLiveStore } from "../live/live-store";
-import { peerHue } from "../live/peer-hue";
+import { sendPresenceActivity, useChatTyping } from "../live/peer-activity";
 import { canChatProjectRole } from "../roles";
-import { clearChat, deleteChat, loadChat, loadOlderChat, sendChat, useChat } from "./chat-store";
+import {
+  chatDraft,
+  clearChat,
+  deleteChat,
+  keepChatDraft,
+  loadChat,
+  loadOlderChat,
+  pendingChat,
+  reactToChat,
+  sendChat,
+  showPendingChat,
+  useChat,
+} from "./chat-store";
 
 const TICK_MS = 60_000;
-const NO_MEMBERS: readonly never[] = [];
+const SCROLL_KEYS = new Set(["PageUp", "PageDown", "Home", "End", "ArrowUp", "ArrowDown", " "]);
+const PRESSED = "button, summary, [role='button']";
+const CHAT_SCOPE = { kind: "chat" } as const;
+
+function chatActivity(active: boolean): void {
+  sendPresenceActivity(CHAT_SCOPE, active);
+}
+
+const CHAT_LIMIT = 4_000;
+
+const CHAT_ACTIONS = {
+  remove: deleteChat,
+  react: reactToChat,
+};
 
 const MessageRow = memo(function MessageRow({
   message,
   person,
-  self,
-  now,
-  canDelete,
+  canPost,
+  reactions,
+  continued,
 }: Readonly<{
   message: CollabChatMessage;
   person: CollabPerson | undefined;
-  self: string | null;
-  now: number;
-  canDelete: boolean;
+  canPost: boolean;
+  reactions: boolean;
+  continued: boolean;
 }>) {
-  const { t } = useTranslation(["collab", "common"]);
-  const [confirming, setConfirming] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const name = message.verified
-    ? person?.display_name || t(($) => $.collab.toolbar.unknownPerson)
-    : t(($) => $.collab.comments.unverifiedAuthor);
-  const own = message.verified && message.author === self;
-  const deleteLabel = t(($) => $.collab.chat.delete);
+  const { t } = useTranslation(["collab"]);
+  const entry: CommentEntry = {
+    id: message.id,
+    author: {
+      id: message.author,
+      name: message.verified
+        ? person?.display_name || t(($) => $.collab.toolbar.unknownPerson)
+        : t(($) => $.collab.comments.unverifiedAuthor),
+      imageUrl: person?.avatar_url,
+      verified: message.verified,
+    },
+    at: message.at,
+    editedAt: null,
+    deleted: message.deleted,
+    body: message.body,
+    mentions: message.mentions ?? [],
+    reactions: message.reactions ?? [],
+    delivery: message.pending && !message.deleted ? { state: "waiting" } : undefined,
+  };
   return (
-    <li className="group/message flex gap-2 rounded-md px-1 py-1">
-      <Avatar
-        person={{ id: message.author, name, imageUrl: person?.avatar_url, hue: peerHue(message.author, self) }}
-        size="sm"
-        fallbackIcon={message.verified ? undefined : <ShieldQuestion />}
-        className={cn("mt-0.5", !message.verified && "bg-muted text-muted-foreground")}
-      />
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <div className="flex min-w-0 items-center gap-1.5 text-xs">
-          <span className={cn("truncate font-medium", !message.verified && "italic text-muted-foreground")}>
-            {name}
-          </span>
-          <Tooltip label={formatDateTime(message.at)} className="shrink-0">
-            <time dateTime={new Date(message.at).toISOString()} className="text-[0.6875rem] text-muted-foreground">
-              {formatRelativeTimeFrom(message.at, now)}
-            </time>
-          </Tooltip>
-          {own && canDelete && !message.deleted ? (
-            <Tooltip label={deleteLabel} className="ml-auto shrink-0">
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={deleteLabel}
-                className="size-5 text-muted-foreground hover:text-foreground"
-                onClick={() => setConfirming(true)}
-              >
-                <Trash2 aria-hidden className="size-3" />
-              </Button>
-            </Tooltip>
-          ) : null}
-        </div>
-        {message.deleted ? (
-          <p className="text-xs italic text-muted-foreground">{t(($) => $.collab.chat.deleted)}</p>
-        ) : (
-          <p className="select-text whitespace-pre-wrap break-words text-xs">{message.body}</p>
-        )}
-        {error ? <InlineAlert>{error}</InlineAlert> : null}
-      </div>
-      <ConfirmationDialog
-        open={confirming}
-        title={t(($) => $.collab.chat.deleteConfirm.title)}
-        description={t(($) => $.collab.chat.deleteConfirm.description)}
-        confirmLabel={t(($) => $.common.actions.delete)}
-        destructive
-        onConfirm={() => {
-          setConfirming(false);
-          setError(null);
-          deleteChat(message.id).catch((error_: unknown) => setError(commentFailure(error_)));
-        }}
-        onCancel={() => setConfirming(false)}
-      />
-    </li>
+    <CommentItem
+      variant="bubble"
+      continued={continued}
+      entry={entry}
+      canWrite={canPost}
+      canReact={canPost && reactions}
+      actions={CHAT_ACTIONS}
+    />
   );
 });
 
 export function ChatPane() {
-  const { t } = useTranslation(["collab"]);
+  const projectId = useChat((state) => state.projectId);
+  return <ProjectChat key={projectId ?? ""} />;
+}
+
+function ProjectChat() {
+  const { t } = useTranslation(["collab", "common"]);
   const chat = useChat(
     useShallow((state) => ({
       projectId: state.projectId,
@@ -112,6 +112,7 @@ export function ChatPane() {
       error: state.error,
       hasOlder: state.hasOlder,
       loadingOlder: state.loadingOlder,
+      cursor: state.cursor,
     })),
   );
   const live = useCollabLiveStore(
@@ -124,9 +125,13 @@ export function ChatPane() {
   );
   const [clearing, setClearing] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  const scroller = useRef<HTMLDivElement>(null);
+  const composer = useRef<HTMLDivElement>(null);
+  const asked = useRef<string | null>(null);
+  const placed = useRef(0);
   const now = useNow(TICK_MS);
-  const list = useRef<HTMLDivElement>(null);
-  const lastId = chat.messages.at(-1)?.id ?? null;
+  const members = useMentionMembers();
+  const typing = useChatTyping();
   const people = useMemo(
     () => new Map(live.members.map((member) => [member.person.account_id, member.person])),
     [live.members],
@@ -136,11 +141,107 @@ export function ChatPane() {
   const canClear = connected && live.role === "owner" && chat.messages.some((message) => !message.deleted);
   const title = t(($) => $.collab.chat.title);
   const clearLabel = t(($) => $.collab.chat.clear);
+  const reactions = useComments((state) => state.status?.reactions === true);
+  const pending = pendingChat(chat.projectId);
+  const chatLabels = useMemo(
+    () => ({
+      deleted: t(($) => $.collab.chat.deleted),
+      messageActions: t(($) => $.collab.chat.messageActions),
+      deleteMessageConfirm: {
+        title: t(($) => $.collab.chat.deleteConfirm.title),
+        description: t(($) => $.collab.chat.deleteConfirm.description),
+      },
+    }),
+    [t],
+  );
 
+  const arrivals = useMemo(
+    () => chat.messages.map((message) => ({ id: message.id, mine: message.verified && message.author === live.self, at: message.at })),
+    [chat.messages, live.self],
+  );
+
+  const groups = useMemo(() => chatGroups(chat.messages), [chat.messages]);
+  const reveal = useChatRail((state) => state.reveal);
+  const revealLoaded = reveal !== null && chat.messages.some((message) => message.id === reveal);
+  const loadFailed = chat.phase === "failed" && chat.messages.length === 0;
+  const listed = chat.phase === "ready" || (chat.phase === "failed" && !loadFailed);
+  useEffect(() => {
+    if (!reveal) asked.current = null;
+    if (!reveal || !listed || chat.loadingOlder) return;
+    const done = (problem: string | null) => {
+      setFailure(problem);
+      useChatRail.setState({ reveal: null });
+    };
+    if (revealLoaded) {
+      document.querySelector(`[data-comment-entry="${CSS.escape(reveal)}"]`)?.scrollIntoView({ block: "center" });
+      done(null);
+    } else if (chat.hasOlder) {
+      const ask = `${reveal}\n${chat.cursor}`;
+      if (asked.current === ask) return;
+      asked.current = ask;
+      loadOlderChat().catch((error: unknown) => {
+        if (useChatRail.getState().reveal === reveal) done(commentFailure(error));
+      });
+    } else {
+      done(collabErrorMessage("not_found"));
+    }
+  }, [reveal, revealLoaded, listed, chat.loadingOlder, chat.hasOlder, chat.cursor]);
+
+  const searching = reveal !== null && !revealLoaded;
   useLayoutEffect(() => {
-    const element = list.current;
-    if (element && lastId !== null) element.scrollTop = element.scrollHeight;
-  }, [lastId]);
+    if (searching && scroller.current) placed.current = scroller.current.scrollTop;
+  });
+  useEffect(() => {
+    const element = scroller.current;
+    if (!searching || !element) return;
+    let clicked = false;
+    placed.current = element.scrollTop;
+    const moved = () => {
+      if (useChatRail.getState().reveal === reveal) useChatRail.setState({ reveal: null });
+    };
+    const pressed = (event: PointerEvent) => {
+      clicked = event.target instanceof Node && element.contains(event.target);
+      if (event.target === element) moved();
+    };
+    const keyed = (event: KeyboardEvent) => {
+      const target = event.target;
+      if (!(target instanceof Element) || event.defaultPrevented || !SCROLL_KEYS.has(event.key)) return;
+      const here = element.contains(target) || (clicked && (target === document.body || target === document.documentElement));
+      if (here && !(event.key === " " && target.closest(PRESSED))) moved();
+    };
+    const scrolled = () => {
+      if (Math.abs(element.scrollTop - placed.current) > 1) moved();
+    };
+    const resized = new ResizeObserver(() => {
+      placed.current = element.scrollTop;
+    });
+    resized.observe(element);
+    if (element.firstElementChild) resized.observe(element.firstElementChild);
+    document.addEventListener("pointerdown", pressed, true);
+    document.addEventListener("keydown", keyed);
+    element.addEventListener("scroll", scrolled, { passive: true });
+    element.addEventListener("wheel", moved, { passive: true });
+    element.addEventListener("touchmove", moved, { passive: true });
+    return () => {
+      resized.disconnect();
+      document.removeEventListener("pointerdown", pressed, true);
+      document.removeEventListener("keydown", keyed);
+      element.removeEventListener("scroll", scrolled);
+      element.removeEventListener("wheel", moved);
+      element.removeEventListener("touchmove", moved);
+    };
+  }, [searching, reveal]);
+
+  useEffect(() => {
+    const field = canPost ? composer.current?.querySelector("textarea") : null;
+    if (!field) return;
+    const projectId = chat.projectId;
+    const hidden = showPendingChat(projectId);
+    return () => {
+      hidden();
+      keepChatDraft(projectId, field.readOnly ? "" : field.value);
+    };
+  }, [canPost, chat.projectId]);
 
   const older = () => {
     setFailure(null);
@@ -148,7 +249,7 @@ export function ChatPane() {
   };
 
   const body = () => {
-    if (chat.phase === "failed" && chat.messages.length === 0) {
+    if (loadFailed) {
       return (
         <div className="px-3 py-4">
           <LoadFailed
@@ -170,7 +271,7 @@ export function ChatPane() {
       return <p className="px-3 py-2 text-xs text-muted-foreground">{t(($) => $.collab.chat.empty)}</p>;
     }
     return (
-      <div className="space-y-1 px-2 py-1">
+      <div className="space-y-2 px-3 py-3">
         {chat.hasOlder ? (
           <div className="flex justify-center">
             <Button type="button" variant="ghost" size="xs" disabled={chat.loadingOlder} onClick={older}>
@@ -178,15 +279,15 @@ export function ChatPane() {
             </Button>
           </div>
         ) : null}
-        <ol aria-label={t(($) => $.collab.chat.list)} className="space-y-0.5">
-          {chat.messages.map((message) => (
+        <ol aria-label={t(($) => $.collab.chat.list)}>
+          {chat.messages.map((message, index) => (
             <MessageRow
               key={message.id}
               message={message}
               person={message.verified ? people.get(message.author) : undefined}
-              self={live.self}
-              now={now}
-              canDelete={canPost}
+              canPost={canPost}
+              reactions={reactions}
+              continued={groups[index]}
             />
           ))}
         </ol>
@@ -195,61 +296,102 @@ export function ChatPane() {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col" data-testid="chat-pane">
-      <SidebarPanelHeader icon={MessagesSquare} title={title}>
-        {canClear ? (
-          <Tooltip label={clearLabel}>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={clearLabel}
-              className="size-6 text-muted-foreground hover:text-foreground"
-              onClick={() => setClearing(true)}
-            >
-              <Eraser aria-hidden className="size-3.5" />
-            </Button>
-          </Tooltip>
+    <DesktopCommentKit
+      now={now}
+      self={live.self}
+      members={members}
+      people={people}
+      reactions={reactions}
+      labels={chatLabels}
+      maxLength={CHAT_LIMIT}
+    >
+      <div className="flex h-full min-h-0 flex-col" data-testid="chat-pane">
+        <SidebarPanelHeader icon={MessagesSquare} title={title}>
+          {canClear ? (
+            <Tooltip label={clearLabel}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={clearLabel}
+                className="size-6 text-muted-foreground hover:text-foreground"
+                onClick={() => setClearing(true)}
+              >
+                <Eraser aria-hidden className="size-3.5" />
+              </Button>
+            </Tooltip>
+          ) : null}
+        </SidebarPanelHeader>
+        <CommentScrollArea
+          items={arrivals}
+          ready={chat.phase === "ready"}
+          scope={chat.projectId ?? ""}
+          scrollRef={scroller}
+          stickToBottom
+          label={(count) =>
+            count === 1 ? t(($) => $.collab.chat.newOne) : t(($) => $.collab.chat.newMany, { number: formatNumber(count) })
+          }
+        >
+          {body()}
+        </CommentScrollArea>
+        <TypingLine
+          people={typing}
+          label={presenceText(
+            {
+              one: (name) => t(($) => $.collab.chat.typingOne, { name }),
+              two: (first, second) => t(($) => $.collab.chat.typingTwo, { first, second }),
+              many: (count) => t(($) => $.collab.chat.typingMany, { number: formatNumber(count) }),
+            },
+            typing.map((person) => person.name),
+          )}
+          className="px-3 pb-1"
+        />
+        {reveal !== null && !revealLoaded && !loadFailed ? (
+          <output className="flex items-center gap-2 px-3 pb-2 text-xs text-muted-foreground">
+            <Spinner size="xs" />
+            {t(($) => $.common.state.loading)}
+          </output>
         ) : null}
-      </SidebarPanelHeader>
-      <div ref={list} className="min-h-0 flex-1 overflow-y-auto">
-        {body()}
-      </div>
-      {failure ? (
-        <div className="px-3 pb-2">
-          <InlineAlert>{failure}</InlineAlert>
+        {failure ? (
+          <div className="px-3 pb-2">
+            <InlineAlert>{failure}</InlineAlert>
+          </div>
+        ) : null}
+        <div ref={composer} className="shrink-0 border-t border-sidebar-border px-3 py-2">
+          {canPost ? (
+            <CommentComposer
+              compact
+              initial={pending?.body ?? chatDraft(chat.projectId)}
+              sending={pending?.sent}
+              label={t(($) => $.collab.chat.label)}
+              placeholder={t(($) => $.collab.chat.placeholder)}
+              submitLabel={t(($) => $.collab.chat.send)}
+              maxLength={CHAT_LIMIT}
+              members={members}
+              self={live.self}
+              onSubmit={sendChat}
+              onActivity={chatActivity}
+            />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {connected ? t(($) => $.collab.chat.readOnly) : t(($) => $.collab.chat.offline)}
+            </p>
+          )}
         </div>
-      ) : null}
-      <div className="shrink-0 border-t border-sidebar-border px-3 py-2">
-        {canPost ? (
-          <CommentComposer
-            compact
-            label={t(($) => $.collab.chat.label)}
-            placeholder={t(($) => $.collab.chat.placeholder)}
-            submitLabel={t(($) => $.collab.chat.send)}
-            members={NO_MEMBERS}
-            self={live.self}
-            onSubmit={sendChat}
-          />
-        ) : (
-          <p className="text-xs text-muted-foreground">
-            {connected ? t(($) => $.collab.chat.readOnly) : t(($) => $.collab.chat.offline)}
-          </p>
-        )}
+        <ConfirmationDialog
+          open={clearing}
+          title={t(($) => $.collab.chat.clearConfirm.title)}
+          description={t(($) => $.collab.chat.clearConfirm.description)}
+          confirmLabel={t(($) => $.collab.chat.clearConfirm.confirm)}
+          destructive
+          onConfirm={() => {
+            setClearing(false);
+            setFailure(null);
+            clearChat().catch((error: unknown) => setFailure(commentFailure(error)));
+          }}
+          onCancel={() => setClearing(false)}
+        />
       </div>
-      <ConfirmationDialog
-        open={clearing}
-        title={t(($) => $.collab.chat.clearConfirm.title)}
-        description={t(($) => $.collab.chat.clearConfirm.description)}
-        confirmLabel={t(($) => $.collab.chat.clearConfirm.confirm)}
-        destructive
-        onConfirm={() => {
-          setClearing(false);
-          setFailure(null);
-          clearChat().catch((error: unknown) => setFailure(commentFailure(error)));
-        }}
-        onCancel={() => setClearing(false)}
-      />
-    </div>
+    </DesktopCommentKit>
   );
 }

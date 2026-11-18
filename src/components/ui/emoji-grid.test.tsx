@@ -1,16 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
-import "./tests/setup";
-
-const mocks = vi.hoisted(() => ({ locale: "en" }));
-
-vi.mock("@/i18n", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/i18n")>();
-  return { ...actual, currentLocale: () => mocks.locale };
-});
+import { describe, expect, it, vi } from "vitest";
 
 vi.mock("frimousse", async () => {
   const react = await import("react");
@@ -97,11 +88,13 @@ vi.mock("frimousse", async () => {
   };
 });
 
-const { default: EmojiGrid } = await import("./EmojiGrid");
+const { default: Grid } = await import("./emoji-grid");
 
-beforeEach(() => {
-  mocks.locale = "en";
-});
+const LABELS = { search: "Find an emoji", skinTone: "Tone", loading: "Fetching", empty: "Nothing here" };
+
+function EmojiGrid(props: Readonly<Omit<ComponentProps<typeof Grid>, "labels" | "locale"> & { locale?: string }>) {
+  return <Grid locale="en" labels={LABELS} {...props} />;
+}
 
 describe("EmojiGrid", () => {
   it("hands the picked emoji character to the caller", () => {
@@ -123,23 +116,24 @@ describe("EmojiGrid", () => {
     expect(grinning.parentElement).toHaveAttribute("data-row", "0");
   });
 
-  it("marks the note's current emoji pressed", () => {
-    const { rerender } = render(<EmojiGrid selected="🚀" onSelect={vi.fn()} />);
+  it("marks the current emoji pressed with the caller's class", () => {
+    const { rerender } = render(<EmojiGrid selected="🚀" selectedClassName="picked" onSelect={vi.fn()} />);
     const rocket = screen.getByRole("button", { name: "🚀" });
     expect(rocket).toHaveAttribute("aria-pressed", "true");
+    expect(rocket).toHaveClass("picked");
     const grinning = screen.getByRole("button", { name: "😀" });
     expect(grinning).toHaveAttribute("aria-pressed", "false");
     rerender(<EmojiGrid onSelect={vi.fn()} />);
     expect(screen.getByRole("button", { name: "🚀" })).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("labels the search box, the skin tone picker and the loading and empty states", () => {
+  it("labels the search box, the skin tone picker and the loading and empty states from its labels", () => {
     render(<EmojiGrid onSelect={vi.fn()} />);
-    const search = screen.getByRole("searchbox", { name: enNotes.icons.searchEmoji });
-    expect(search).toHaveAttribute("placeholder", enNotes.icons.searchEmoji);
-    expect(screen.getByRole("button", { name: enNotes.icons.skinTone })).toBeInTheDocument();
-    expect(screen.getByTestId("emoji-loading")).toHaveTextContent(enNotes.icons.loading);
-    expect(screen.getByTestId("emoji-empty")).toHaveTextContent(enNotes.icons.noEmoji);
+    const search = screen.getByRole("searchbox", { name: LABELS.search });
+    expect(search).toHaveAttribute("placeholder", LABELS.search);
+    expect(screen.getByRole("button", { name: LABELS.skinTone })).toBeInTheDocument();
+    expect(screen.getByTestId("emoji-loading")).toHaveTextContent(LABELS.loading);
+    expect(screen.getByTestId("emoji-empty")).toHaveTextContent(LABELS.empty);
   });
 
   it("loads emoji data from the bundled emojibase folder in eight columns", () => {
@@ -151,8 +145,7 @@ describe("EmojiGrid", () => {
   });
 
   it("asks for the emojibase locale that matches the app language", () => {
-    mocks.locale = "zh-Hans";
-    render(<EmojiGrid onSelect={vi.fn()} />);
+    render(<EmojiGrid locale="zh-Hans" onSelect={vi.fn()} />);
     expect(screen.getByTestId("emoji-root")).toHaveAttribute("data-locale", "zh");
   });
 });

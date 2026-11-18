@@ -2,15 +2,15 @@ import { memo, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ShieldQuestion } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
+import { CommentByline, commentCardClass } from "@/components/ui/comments/comment-thread";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
-import { formatDateTime, formatRelativeTimeFrom } from "@/lib/intl";
 import type { CollabCommentThread, CollabSuggestion } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { CommentComposer } from "../comments/CommentComposer";
 import { commentFailure } from "../comments/refusals";
-import { MessageRow, moveFocus, type ThreadContext } from "../comments/ThreadCard";
+import { EmbeddedThread, moveFocus, type ThreadContext } from "../comments/ThreadCard";
 import { InlineAlert } from "../feedback";
 import { peerHue } from "../live/peer-hue";
 import {
@@ -53,13 +53,11 @@ function SuggestionHeader({
   name,
   imageUrl,
   hue,
-  now,
 }: Readonly<{
   suggestion: CollabSuggestion;
   name: string;
   imageUrl: string | null | undefined;
   hue: number;
-  now: number;
 }>) {
   const unverified = !suggestion.verified;
   return (
@@ -70,15 +68,11 @@ function SuggestionHeader({
         fallbackIcon={unverified ? <ShieldQuestion /> : undefined}
         className={cn(unverified && "bg-muted text-muted-foreground")}
       />
-      <span className={cn("truncate font-medium", unverified && "italic text-muted-foreground")}>{name}</span>
-      <Tooltip label={formatDateTime(suggestion.createdAt)} className="shrink-0">
-        <time
-          dateTime={new Date(suggestion.createdAt).toISOString()}
-          className="text-[0.6875rem] text-muted-foreground"
-        >
-          {formatRelativeTimeFrom(suggestion.createdAt, now)}
-        </time>
-      </Tooltip>
+      <CommentByline
+        name={name}
+        nameClassName={cn("font-medium", unverified && "italic text-muted-foreground")}
+        at={suggestion.createdAt}
+      />
     </div>
   );
 }
@@ -177,17 +171,13 @@ export const SuggestionCard = memo(function SuggestionCard({
         data-suggestion-card={suggestion.id}
         onMouseEnter={() => hoverSuggestion(suggestion.id)}
         onMouseLeave={() => hoverSuggestion(null)}
-        className={cn(
-          "space-y-2 rounded-md border px-2 py-2 transition-colors",
-          selected ? "border-primary/30 bg-primary/5" : "border-transparent hover:bg-sidebar-accent/60",
-        )}
+        className={cn("space-y-3", commentCardClass(selected))}
       >
         <SuggestionHeader
           suggestion={suggestion}
           name={name}
           imageUrl={person?.avatar_url}
           hue={hue}
-          now={context.now}
         />
         <Tooltip label={t(($) => $.collab.comments.showInEditor)} className="flex w-full">
           <button
@@ -210,18 +200,13 @@ export const SuggestionCard = memo(function SuggestionCard({
         />
         {error ? <InlineAlert>{error}</InlineAlert> : null}
         {messages.length > 0 && thread ? (
-          <ol className="space-y-2">
-            {messages.map((message) => (
-              <MessageRow key={message.id} thread={thread} message={message} context={context} />
-            ))}
-          </ol>
-        ) : null}
-        {context.commentsOn && context.canWrite ? (
+          <EmbeddedThread thread={thread} context={context} />
+        ) : context.commentsOn && context.canWrite ? (
           <CommentComposer
             compact
             label={t(($) => $.collab.comments.replyLabel)}
             placeholder={t(($) => $.collab.comments.replyPlaceholder)}
-            submitLabel={t(($) => $.collab.comments.reply)}
+            submitLabel={t(($) => $.collab.comments.send)}
             members={context.members}
             self={context.self}
             onSubmit={(body) => replyToSuggestion(suggestion, body)}

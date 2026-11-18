@@ -1628,7 +1628,9 @@ export async function selectWord(page: Page, word: string, attempts = 3) {
 
 export async function clickLiveToolbarPopoverTrigger(page: Page, ariaLabel: string) {
   const encodedLabel = JSON.stringify(ariaLabel);
-  const directSelector = `button[aria-label=${encodedLabel}].size-7`;
+  // The bar's own trigger: an icon-sized popover button (size-7) or a toolbar dropdown trigger
+  // (h-7). Rows that host the same picker inside More are full width.
+  const directSelector = `button[aria-label=${encodedLabel}].size-7, button[aria-label=${encodedLabel}].h-7:not(.w-full)`;
   const menuSelector =
     `[data-radix-popper-content-wrapper] [data-state="open"] button[aria-label=${encodedLabel}].w-full, ` +
     `[data-radix-popper-content-wrapper] [data-state="open"] [role="menuitem"][aria-label=${encodedLabel}]`;

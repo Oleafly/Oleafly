@@ -261,7 +261,10 @@ const STAGED_IMPORT_BYTES: usize = 64 * 1024;
 const STAGE_ATOMS: i32 = 16_384;
 
 pub(crate) fn import_update(doc: &LoroDoc, payload: &[u8]) -> LoroResult<ImportStatus> {
-    if payload.len() >= STAGED_IMPORT_BYTES && !continues_its_own_head(doc, payload) {
+    if payload.len() >= STAGED_IMPORT_BYTES
+        && !doc.is_detached()
+        && !continues_its_own_head(doc, payload)
+    {
         if let Some(status) = in_pieces(doc, |scratch| scratch.import(payload)) {
             return Ok(status);
         }
@@ -292,9 +295,10 @@ fn continues_its_own_head(doc: &LoroDoc, payload: &[u8]) -> bool {
 }
 
 fn import_updates(doc: &LoroDoc, payloads: &[Vec<u8>]) -> LoroResult<ImportStatus> {
-    if payloads
-        .iter()
-        .any(|payload| payload.len() >= STAGED_IMPORT_BYTES)
+    if !doc.is_detached()
+        && payloads
+            .iter()
+            .any(|payload| payload.len() >= STAGED_IMPORT_BYTES)
     {
         if let Some(status) = in_pieces(doc, |scratch| scratch.import_batch(payloads)) {
             return Ok(status);
@@ -688,7 +692,9 @@ impl Snapshots {
                 }
             };
             let replay = match self
-                .replayed(db, project, base, after, through, &bindings, reserved)
+                .replayed(
+                    db, project, base, after, through, &bindings, reserved, false,
+                )
                 .await?
             {
                 Replayed::Ready(replay) => replay,
@@ -767,9 +773,14 @@ impl Snapshots {
         through: u64,
         bindings: &Arc<HashMap<u64, DeviceId>>,
         reserved: Reserved,
+        detached: bool,
     ) -> Result<Replayed, ServerError> {
         let started = blocking(move || {
-            Ok(Replay::start(project, &base).map(|replay| Budgeted { replay, reserved }))
+            let replay = Replay::start(project, &base);
+            if let Some(replay) = replay.as_ref().filter(|_| detached) {
+                replay.doc.detach();
+            }
+            Ok(replay.map(|replay| Budgeted { replay, reserved }))
         });
         let Some(replay) = started.await? else {
             return Ok(Replayed::Unreadable);
@@ -797,6 +808,23 @@ impl Snapshots {
         &self,
         db: &Db,
         project: SharedProjectId,
+    ) -> Result<Current, ServerError> {
+        self.read_as(db, project, false).await
+    }
+
+    pub async fn read_detached(
+        &self,
+        db: &Db,
+        project: SharedProjectId,
+    ) -> Result<Current, ServerError> {
+        self.read_as(db, project, true).await
+    }
+
+    async fn read_as(
+        &self,
+        db: &Db,
+        project: SharedProjectId,
+        detached: bool,
     ) -> Result<Current, ServerError> {
         let (candidates, bindings, head) = db
             .read(move |conn| {
@@ -842,7 +870,9 @@ impl Snapshots {
                 continue;
             };
             match self
-                .replayed(db, project, base, after, head, &bindings, reserved)
+                .replayed(
+                    db, project, base, after, head, &bindings, reserved, detached,
+                )
                 .await?
             {
                 Replayed::Ready(replay) => return Ok(Current::Read(replay, head)),

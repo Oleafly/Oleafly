@@ -116,6 +116,7 @@
     "superscript": "Exponent",
     "subscript": "Indice",
     "inlineCode": "Cod în text",
+    "clearFormatting": "Șterge formatarea",
     "insertLink": "Inserează o legătură",
     "insertCrossReference": "Inserează o referință încrucișată",
     "insertFootnote": "Inserează o notă de subsol",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Mergi la PDF",
     "linkUrl": "URL-ul legăturii",
     "removeLink": "Elimină legătura",
+    "alignment": "Aliniere",
+    "align": {
+      "left": "Aliniază la stânga",
+      "center": "Centrează",
+      "right": "Aliniază la dreapta",
+      "justify": "Aliniere stânga-dreapta"
+    },
+    "emoji": "Emoji",
+    "textColor": "Culoarea textului",
+    "removeTextColor": "Elimină culoarea",
+    "textColors": {
+      "gray": "Gri",
+      "red": "Roșu",
+      "orange": "Portocaliu",
+      "green": "Verde",
+      "teal": "Verde-albăstrui",
+      "blue": "Albastru",
+      "purple": "Mov"
+    },
     "imageFile": "Fișier imagine",
     "apply": "Aplică",
     "linkPlaceholder": "https://",
@@ -1695,6 +1715,12 @@
       "duplicateArg": "Argument duplicat",
       "unknownKind": "Tip de câmp necunoscut"
     }
+  },
+  "emoji": {
+    "search": "Caută emoji",
+    "skinTone": "Nuanța pielii",
+    "loading": "Se încarcă emoji",
+    "empty": "Nu s-a găsit niciun emoji"
   },
   "bibList": {
     "count_one": "{{count}} referință",

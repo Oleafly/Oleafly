@@ -1,14 +1,12 @@
+use super::payloads::{ActivityPayload, DocOpened};
+use super::session::{active_for, lock, not_live};
+use crate::collab::commands::CollabCommandError;
 use oleafly_collab::doc::NodeKind;
 use oleafly_collab::live::{DocSink, LiveProject};
 use oleafly_collab::materialize;
 use oleafly_collab::ot::TextOperation;
 use oleafly_collab::CollabError;
 use oleafly_collab_protocol::ids::AccountId;
-use oleafly_collab_protocol::projects::PresenceState;
-
-use super::payloads::DocOpened;
-use super::session::{active_for, lock, not_live};
-use crate::collab::commands::CollabCommandError;
 
 pub fn doc_open(
     project_id: &str,
@@ -142,11 +140,17 @@ pub fn presence_set(
     anchor: Option<u32>,
 ) {
     if let Some(active) = active_for(project_id) {
-        active.handle.presence(PresenceState {
-            file_id: path.filter(|path| path.len() <= 256),
-            cursor,
-            anchor,
-        });
+        active
+            .handle
+            .place_presence(path.filter(|path| path.len() <= 256), cursor, anchor);
+    }
+}
+
+pub fn presence_activity(project_id: &str, activity: Option<ActivityPayload>) {
+    if let Some(active) = active_for(project_id) {
+        active
+            .handle
+            .presence_activity(ActivityPayload::sent(activity));
     }
 }
 

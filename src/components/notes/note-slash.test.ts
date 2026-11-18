@@ -253,10 +253,19 @@ describe("slash plugin", () => {
     expect(pick(editor, "footnote")).toBe(true);
     typeInto(editor, "Why.");
     expect(editor.getJSON().content).toEqual([
-      { type: "paragraph", attrs: { blockId: null }, content: [{ type: "rawInline", attrs: { source: "[^1]" } }] },
-      { type: "paragraph", attrs: { blockId: null }, content: [{ type: "text", text: "Last" }] },
-      { type: "paragraph", attrs: { blockId: null }, content: [{ type: "rawInline", attrs: { source: "[^1]" } }, { type: "text", text: ": Why." }] },
+      { type: "paragraph", attrs: { textAlign: null, blockId: null }, content: [{ type: "rawInline", attrs: { source: "[^1]" } }] },
+      { type: "paragraph", attrs: { textAlign: null, blockId: null }, content: [{ type: "text", text: "Last" }] },
+      { type: "paragraph", attrs: { textAlign: null, blockId: null }, content: [{ type: "rawInline", attrs: { source: "[^1]" } }, { type: "text", text: ": Why." }] },
     ]);
+  });
+
+  it.each(["quote", "callout"])("takes a list out of the quote around it with /%s, as the bar and Code do, and keeps the list", { timeout: 60_000 }, (id) => {
+    const editor = build([{ type: "blockquote", content: [{ type: "bulletList", content: [{ type: "listItem", content: [{ type: "paragraph" }] }] }] }]);
+    editor.commands.setTextSelection(4);
+    typeInto(editor, `/${id}`);
+    expect(pick(editor, id)).toBe(true);
+    expect(topTypes(editor)[0]).toBe("bulletList");
+    expect(editor.getText()).not.toContain(`/${id}`);
   });
 
   it("starts a callout from a quote with a note header", () => {

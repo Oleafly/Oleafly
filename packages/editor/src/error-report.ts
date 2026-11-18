@@ -1,11 +1,12 @@
 export type EditorErrorReporter = (scope: string, error: unknown) => void;
 
-let reporter: EditorErrorReporter = (scope, error) => console.error(scope, error);
+let reporter: EditorErrorReporter | null = null;
 
-export function setEditorErrorReporter(next: EditorErrorReporter): void {
+export function setEditorErrorReporter(next: EditorErrorReporter | null): void {
   reporter = next;
 }
 
 export function reportEditorError(scope: string, error: unknown): void {
-  reporter(scope, error);
+  console.error(scope, error);
+  reporter?.(scope, error);
 }

@@ -51,7 +51,7 @@ import {
   ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
-import { getEditorView, insertAtCursor, wrapSelection, wrapSelectionOrPlaceholder } from "./cm/controller";
+import { getEditorView, wrapSelectionOrPlaceholder } from "./cm/controller";
 import { commentTarget, requestComment, useCommentsRail } from "@/components/collab/comments-rail";
 import { useCollabReady } from "@/components/collab/CollabSlots";
 import { openInlineEdit } from "./cm/inline-ai/openSession";
@@ -69,7 +69,7 @@ import { goToSyncTex } from "@/features/synctex";
 import { engineSyncsPath, sourceLanguageForPath } from "@/lib/document-engine";
 import { saveEquationAsPng, saveEquationAsSvg } from "@/features/equation-export";
 import { convertLatexMathAtSelection } from "./convert-latex-math";
-import { insertMarkdownTable } from "./markdown-commands";
+import type { MarkdownTarget } from "./markdown-model";
 import { useTableImportStore } from "@/store/table-import";
 import { useFilesStore } from "@/store/files";
 import { useIndexStore } from "@/store/project-index";
@@ -408,27 +408,33 @@ function TypstMenuItems({ pdfSync }: Readonly<{ pdfSync: boolean }>) {
   );
 }
 
+function markdownAction(act: (target: MarkdownTarget) => void) {
+  return () => {
+    void import("./markdown-model").then((model) => act(model.sourceTarget(getEditorView)));
+  };
+}
+
 function MarkdownMenuItems() {
   const { t } = useTranslation(["common", "editor"]);
   return (
     <>
       <RenameFileMenuItem separator />
       <Submenu icon={Type} label={t(($) => $.editor.contextMenu.format)}>
-        <ContextMenuItem onClick={() => wrapSelection("**", "**")}>
+        <ContextMenuItem onClick={markdownAction((target) => target.bold())}>
           <Bold className="mr-2 size-4" /> {t(($) => $.editor.toolbar.bold)}
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => wrapSelection("*", "*")}>
+        <ContextMenuItem onClick={markdownAction((target) => target.italic())}>
           <Italic className="mr-2 size-4" /> {t(($) => $.editor.toolbar.italic)}
         </ContextMenuItem>
       </Submenu>
       <Submenu icon={Plus} label={t(($) => $.editor.contextMenu.insert)}>
-        <ContextMenuItem onClick={() => insertAtCursor("# Heading\n")}>
+        <ContextMenuItem onClick={markdownAction((target) => target.heading(1))}>
           <Heading className="mr-2 size-4" /> {t(($) => $.editor.toolbar.heading)}
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => insertAtCursor("- Item\n")}>
+        <ContextMenuItem onClick={markdownAction((target) => target.bullet())}>
           <List className="mr-2 size-4" /> {t(($) => $.editor.toolbar.bulletedList)}
         </ContextMenuItem>
-        <ContextMenuItem onClick={() => insertMarkdownTable(3, 3)}>
+        <ContextMenuItem onClick={markdownAction((target) => target.table())}>
           <Table className="mr-2 size-4" /> {t(($) => $.editor.contextMenu.table)}
         </ContextMenuItem>
         <ContextMenuItem onClick={() => wrapSelectionOrPlaceholder("$$\n", "\n$$\n", "")}>

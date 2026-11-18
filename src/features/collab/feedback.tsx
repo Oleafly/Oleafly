@@ -1,15 +1,8 @@
-import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/empty";
 
-export function InlineAlert({ children }: Readonly<{ children: ReactNode }>) {
-  return (
-    <p role="alert" className="select-text rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
-      {children}
-    </p>
-  );
-}
+export { InlineAlert } from "@/components/ui/inline-alert";
 
 export function LoadFailed({
   message,

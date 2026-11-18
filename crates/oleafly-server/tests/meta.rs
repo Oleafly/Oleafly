@@ -140,6 +140,7 @@ async fn browser_access_is_advertised_only_when_built_in_and_turned_on() {
         serde_json::from_value(support::send_get(&app.router, MANIFEST, None).await.body).unwrap();
     assert!(manifest.features.suggestions);
     assert!(manifest.features.chat);
+    assert!(manifest.features.reactions);
     assert!(!manifest.features.web);
     let mut config = test_config();
     config.web = true;

@@ -668,6 +668,15 @@
         "grid": "Cuadrícula",
         "label": "Patrón de fondo"
       },
+      "commentColor": {
+        "accent": "Color de acento",
+        "description": "Color del texto comentado en el editor y de las citas en el panel de comentarios. Se aplica en este dispositivo.",
+        "graphite": "Grafito",
+        "indigo": "Índigo",
+        "label": "Color de resaltado de comentarios",
+        "leaf": "Verde hoja",
+        "sample": "Texto comentado"
+      },
       "dock": {
         "bottom": "Abajo",
         "description": "Elige dónde se coloca el panel de la pantalla de inicio.",

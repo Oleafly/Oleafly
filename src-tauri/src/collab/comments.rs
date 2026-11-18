@@ -51,6 +51,11 @@ pub struct NotSentComment {
     pub file_id: String,
     pub path: Option<String>,
     pub thread_id: CommentId,
+    pub message_id: CommentId,
+    pub at: i64,
+    pub edited_at: Option<i64>,
+    pub new_thread: bool,
+    pub edit: bool,
     pub quote: String,
     pub body: String,
 }
@@ -75,12 +80,15 @@ pub struct CommentCount {
     pub path: String,
     pub open: usize,
     pub resolved: usize,
+    pub waiting: usize,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CommentSwitches {
     pub server: bool,
     pub project: bool,
+    #[serde(default)]
+    pub reactions: bool,
 }
 
 impl Default for CommentSwitches {
@@ -88,6 +96,7 @@ impl Default for CommentSwitches {
         CommentSwitches {
             server: true,
             project: true,
+            reactions: false,
         }
     }
 }
@@ -98,6 +107,7 @@ pub struct CommentsStatus {
     pub server_allowed: bool,
     pub project_enabled: bool,
     pub can_comment: bool,
+    pub reactions: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -208,18 +218,19 @@ fn status_of(switches: CommentSwitches, role: ProjectRole) -> CommentsStatus {
         can_comment: switches.server
             && switches.project
             && project_role_allows(role, ProjectAction::Comment),
+        reactions: switches.reactions && switches.server,
     }
 }
 
 pub(crate) fn settle_status(
     paths: &CollabPaths,
     project_id: &str,
-    fetched: Result<(bool, bool), CollabError>,
+    fetched: Result<CommentSwitches, CollabError>,
     role: ProjectRole,
 ) -> CommentsStatus {
     let mut switches = load_switches(paths, project_id);
-    if let Ok((server, project)) = fetched {
-        switches = CommentSwitches { server, project };
+    if let Ok(fetched) = fetched {
+        switches = fetched;
         let _ = save_switches(paths, project_id, switches);
     }
     status_of(switches, role)
@@ -243,11 +254,9 @@ fn path_in(layout: &Layout, file_id: &str) -> Option<String> {
     layout.get(file_id).map(|placed| placed.path.clone())
 }
 
-pub(crate) fn threads_at(doc: &ProjectDoc, path: &str) -> Result<Vec<CommentThread>, CollabError> {
-    doc.comment_threads(&file_at(doc, path)?)
-}
-
-pub(crate) fn counts_in(doc: &ProjectDoc) -> Result<Vec<CommentCount>, CollabError> {
+pub(crate) fn counts_in(live: &LiveProject) -> Result<Vec<CommentCount>, CollabError> {
+    let doc = live.doc();
+    let waiting = live.waiting_messages();
     let commented = doc.commented_files();
     let mut counts = Vec::new();
     for (file, placed) in layout_of(doc) {
@@ -266,6 +275,11 @@ pub(crate) fn counts_in(doc: &ProjectDoc) -> Result<Vec<CommentCount>, CollabErr
             path: placed.path,
             open: threads.len() - resolved,
             resolved,
+            waiting: threads
+                .iter()
+                .flat_map(|thread| &thread.messages)
+                .filter(|message| waiting.contains(&message.id.to_string()))
+                .count(),
         });
     }
     counts.sort_by(|left, right| left.path.cmp(&right.path));
@@ -277,10 +291,22 @@ pub(crate) fn thread_list_at(
     path: &str,
 ) -> Result<CommentThreadList, CollabError> {
     let file = file_at(live.doc(), path)?;
+    let mut threads = live.doc().comment_threads(&file)?;
+    live.mark_pending_threads(&mut threads);
     Ok(CommentThreadList {
         rev: live.editor_rev(&file),
-        threads: live.doc().comment_threads(&file)?,
+        threads,
     })
+}
+
+fn with_pending(live: &LiveProject, mut thread: CommentThread) -> CommentThread {
+    live.mark_pending_threads(std::slice::from_mut(&mut thread));
+    thread
+}
+
+fn message_pending(live: &LiveProject, mut message: CommentMessage) -> CommentMessage {
+    live.mark_pending_messages(std::slice::from_mut(&mut message));
+    message
 }
 
 pub(crate) fn command_error(error: CollabError) -> CollabCommandError {
@@ -326,7 +352,7 @@ pub(crate) fn create_at(
             "the text changed while the comment was written",
         ));
     }
-    live.comment_doc().create_comment_thread(
+    let thread = live.comment_doc().create_comment_thread(
         &file,
         from,
         to,
@@ -334,7 +360,8 @@ pub(crate) fn create_at(
         now,
         body,
         &mentions_in(body, members),
-    )
+    )?;
+    Ok(with_pending(live, thread))
 }
 
 pub(crate) fn reply_in(
@@ -347,14 +374,15 @@ pub(crate) fn reply_in(
     now: i64,
 ) -> Result<CommentMessage, CollabError> {
     who.may_write()?;
-    live.comment_doc().reply_to_comment(
+    let message = live.comment_doc().reply_to_comment(
         file_id,
         thread,
         who.account,
         now,
         body,
         &mentions_in(body, members),
-    )
+    )?;
+    Ok(message_pending(live, message))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -369,7 +397,7 @@ pub(crate) fn edit_in(
     now: i64,
 ) -> Result<CommentMessage, CollabError> {
     who.may_write()?;
-    live.comment_doc().edit_comment(
+    let message = live.comment_doc().edit_comment(
         file_id,
         thread,
         message,
@@ -377,7 +405,8 @@ pub(crate) fn edit_in(
         now,
         body,
         &mentions_in(body, members),
-    )
+    )?;
+    Ok(message_pending(live, message))
 }
 
 pub(crate) fn delete_in(
@@ -397,9 +426,11 @@ fn thread_after(
     file_id: &str,
     thread: CommentId,
 ) -> Result<CommentThread, CollabError> {
-    live.doc()
+    let found = live
+        .doc()
         .comment_thread(file_id, thread)?
-        .ok_or_else(|| refused(404, "not_found", "this comment thread is gone"))
+        .ok_or_else(|| refused(404, "not_found", "this comment thread is gone"))?;
+    Ok(with_pending(live, found))
 }
 
 pub(crate) fn resolve_in(
@@ -424,6 +455,46 @@ pub(crate) fn reopen_in(
     who.may_write()?;
     live.comment_doc().reopen_comment_thread(file_id, thread)?;
     thread_after(live, file_id, thread)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn react_in(
+    live: &mut LiveProject,
+    who: &Commenter,
+    file_id: &str,
+    thread: CommentId,
+    message: CommentId,
+    emoji: &str,
+    on: bool,
+    now: i64,
+) -> Result<CommentThread, CollabError> {
+    who.may_write()?;
+    let doc = live.comment_doc();
+    let reacted = if on {
+        doc.react_to_comment(file_id, thread, message, emoji, who.account, now)
+    } else {
+        doc.unreact_to_comment(file_id, thread, message, emoji, who.account)
+    }?;
+    Ok(with_pending(live, reacted))
+}
+
+pub(crate) fn remove_in(
+    live: &mut LiveProject,
+    who: &Commenter,
+    file_id: &str,
+    thread: CommentId,
+    message: CommentId,
+) -> Result<(), CollabError> {
+    who.may_write()?;
+    if who.role != ProjectRole::Owner {
+        return Err(refused(
+            403,
+            "not_yours",
+            "only the project owner can remove someone else's comment",
+        ));
+    }
+    live.comment_doc()
+        .moderate_comment(file_id, thread, message, who.account)
 }
 
 pub(crate) fn delete_thread_in(
@@ -467,7 +538,13 @@ fn payload_for(
     }
 }
 
-pub(crate) fn announce(project_id: &str, live: &SharedLive, me: AccountId, host: &dyn LiveHost) {
+pub(crate) fn announce(
+    project_id: &str,
+    live: &SharedLive,
+    me: AccountId,
+    host: &dyn LiveHost,
+    local: bool,
+) {
     let (changes, layout) = {
         let mut live = live.lock().unwrap_or_else(PoisonError::into_inner);
         let changes = live.take_comment_changes();
@@ -476,7 +553,10 @@ pub(crate) fn announce(project_id: &str, live: &SharedLive, me: AccountId, host:
         }
         (changes, layout_of(live.doc()))
     };
-    host.comments_changed(payload_for(project_id, me, changes, &layout));
+    host.comments_changed(CommentsChangedPayload {
+        local,
+        ..payload_for(project_id, me, changes, &layout)
+    });
 }
 
 pub(crate) fn switched(
@@ -486,12 +566,12 @@ pub(crate) fn switched(
     role: ProjectRole,
     host: &dyn LiveHost,
 ) {
-    let status = settle_status(
-        paths,
-        project_id,
-        Ok((switches.server, switches.project)),
-        role,
-    );
+    let fetched = CommentSwitches {
+        server: switches.server,
+        project: switches.project,
+        reactions: load_switches(paths, project_id).reactions,
+    };
+    let status = settle_status(paths, project_id, Ok(fetched), role);
     host.comments_status(CommentsStatusPayload {
         project_id: project_id.to_owned(),
         status,
@@ -511,6 +591,11 @@ pub(crate) fn tell_not_sent(
             path: path_in(&layout, &comment.file_id),
             file_id: comment.file_id,
             thread_id: comment.thread_id,
+            message_id: comment.message_id,
+            at: comment.at,
+            edited_at: comment.edited_at,
+            new_thread: comment.new_thread,
+            edit: comment.edit,
             quote: comment.quote,
             body: comment.body,
         })
@@ -535,10 +620,7 @@ pub async fn list_threads(
     let path = path.to_owned();
     tokio::task::spawn_blocking(move || {
         let saved = LiveProject::load(&dir, ProjectRole::Viewer)?;
-        Ok(CommentThreadList {
-            rev: None,
-            threads: threads_at(saved.doc(), &path)?,
-        })
+        thread_list_at(&saved, &path)
     })
     .await
     .map_err(io)?
@@ -548,7 +630,7 @@ pub async fn count_comments(
     state: &CollabState,
     project_id: &str,
 ) -> Result<Vec<CommentCount>, CollabError> {
-    if let Some(counted) = super::live::read_live(project_id, |live| counts_in(live.doc())) {
+    if let Some(counted) = super::live::read_live(project_id, counts_in) {
         return counted;
     }
     let paths = state.paths()?;
@@ -556,7 +638,7 @@ pub async fn count_comments(
     let dir = paths.document_dir(project_id)?;
     tokio::task::spawn_blocking(move || {
         let saved = LiveProject::load(&dir, ProjectRole::Viewer)?;
-        counts_in(saved.doc())
+        counts_in(&saved)
     })
     .await
     .map_err(io)?
@@ -597,7 +679,11 @@ pub async fn comments_status(
         Box::pin(async move {
             let manifest = client.capabilities().await?;
             let summary = client.project(access, shared).await?;
-            Ok((manifest.features.comments, summary.comments_enabled))
+            Ok(CommentSwitches {
+                server: manifest.features.comments,
+                project: summary.comments_enabled,
+                reactions: manifest.features.reactions,
+            })
         })
     })
     .await;
@@ -838,6 +924,52 @@ pub async fn collab_comment_reopen(
     Ok(thread)
 }
 
+#[allow(clippy::too_many_arguments)]
+#[tauri::command]
+pub async fn collab_comment_react(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, CollabState>,
+    project_id: String,
+    file_id: String,
+    thread_id: CommentId,
+    message_id: CommentId,
+    emoji: String,
+    on: bool,
+) -> Result<CommentThread, CollabCommandError> {
+    let thread = write_comment(state.inner(), &project_id, |live, who| {
+        react_in(
+            live,
+            who,
+            &file_id,
+            thread_id,
+            message_id,
+            &emoji,
+            on,
+            now_ms(),
+        )
+    })
+    .map_err(command_error)?;
+    tell_local(&app, &project_id, &file_id);
+    Ok(thread)
+}
+
+#[tauri::command]
+pub async fn collab_comment_remove(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, CollabState>,
+    project_id: String,
+    file_id: String,
+    thread_id: CommentId,
+    message_id: CommentId,
+) -> Result<(), CollabCommandError> {
+    write_comment(state.inner(), &project_id, |live, who| {
+        remove_in(live, who, &file_id, thread_id, message_id)
+    })
+    .map_err(command_error)?;
+    tell_local(&app, &project_id, &file_id);
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn collab_comment_thread_delete(
     app: tauri::AppHandle,
@@ -868,6 +1000,10 @@ mod tests {
     use crate::folder_watch::FolderChange;
 
     const TEXT: &str = "The quick brown fox jumps over the lazy dog.\n";
+
+    fn threads_at(doc: &ProjectDoc, path: &str) -> Result<Vec<CommentThread>, CollabError> {
+        doc.comment_threads(&file_at(doc, path)?)
+    }
 
     #[derive(Default)]
     struct HeardComments(
@@ -991,10 +1127,10 @@ mod tests {
         assert_eq!(thread.anchor.quote, "brown fox");
         assert_eq!(thread.messages[0].mentions, vec![bob.who.account]);
         let heard = HeardComments::default();
-        announce("paper", &alice.live, alice.who.account, &heard);
+        announce("paper", &alice.live, alice.who.account, &heard, false);
         assert!(heard.taken().is_empty());
         deliver(&alice, &bob, 1);
-        announce("paper", &bob.live, bob.who.account, &heard);
+        announce("paper", &bob.live, bob.who.account, &heard, false);
         assert_eq!(
             heard.taken(),
             vec![CommentsChangedPayload {
@@ -1011,7 +1147,7 @@ mod tests {
                 local: false,
             }]
         );
-        announce("paper", &bob.live, bob.who.account, &heard);
+        announce("paper", &bob.live, bob.who.account, &heard, false);
         assert!(heard.taken().is_empty());
         let reply = {
             let mut live = bob.live.lock().unwrap();
@@ -1030,10 +1166,25 @@ mod tests {
             .unwrap();
             assert_eq!(edited.edited_at, Some(210));
             resolve_in(&mut live, &bob.who, &intro, thread.id, 220).unwrap();
+            let first = thread.messages[0].id;
+            let reacted = react_in(
+                &mut live, &bob.who, &intro, thread.id, first, "👍", true, 230,
+            )
+            .unwrap();
+            assert_eq!(reacted.messages[0].reactions[0].by, vec![bob.who.account]);
+            react_in(
+                &mut live, &bob.who, &intro, thread.id, first, "👀", true, 231,
+            )
+            .unwrap();
+            let taken = react_in(
+                &mut live, &bob.who, &intro, thread.id, first, "👀", false, 232,
+            )
+            .unwrap();
+            assert_eq!(taken.messages[0].reactions.len(), 1);
             reply
         };
         deliver(&bob, &alice, 2);
-        announce("paper", &alice.live, alice.who.account, &heard);
+        announce("paper", &alice.live, alice.who.account, &heard, false);
         let told = heard.taken();
         assert_eq!(told.len(), 1);
         assert!(told[0].mentioned.is_empty());
@@ -1043,6 +1194,10 @@ mod tests {
         assert_eq!(
             listed[0].resolved.map(|resolved| resolved.by),
             Some(bob.who.account)
+        );
+        assert_eq!(
+            serde_json::to_value(&listed[0].messages[0].reactions).unwrap(),
+            serde_json::json!([{ "emoji": "👍", "by": [bob.who.account.to_string()] }])
         );
         {
             let mut live = alice.live.lock().unwrap();
@@ -1099,6 +1254,7 @@ mod tests {
                 switches: CommentSwitches {
                     server: true,
                     project: false,
+                    reactions: true,
                 },
             },
             Commenter {
@@ -1107,6 +1263,7 @@ mod tests {
                 switches: CommentSwitches {
                     server: false,
                     project: true,
+                    reactions: true,
                 },
             },
         ] {
@@ -1123,14 +1280,51 @@ mod tests {
             )
             .unwrap_err();
             refusals.push(command_error(refused).code);
+            let listed = threads_at(live.doc(), "chapters/intro.tex").unwrap();
+            let thread = &listed[0];
+            let reaction = react_in(
+                &mut live,
+                &who,
+                &thread.file_id,
+                thread.id,
+                thread.messages[0].id,
+                "👍",
+                true,
+                3,
+            )
+            .unwrap_err();
+            refusals.push(command_error(reaction).code);
         }
         assert_eq!(
             refusals,
             vec![
                 "comment_viewer",
+                "comment_viewer",
                 "comment_off_project",
+                "comment_off_project",
+                "comment_off_server",
                 "comment_off_server"
             ]
+        );
+        let listed = threads_at(live.doc(), "chapters/intro.tex").unwrap();
+        let first = &listed[0];
+        assert!(first.messages[0].reactions.is_empty());
+        assert_eq!(
+            command_error(
+                react_in(
+                    &mut live,
+                    &alice.who,
+                    &first.file_id,
+                    first.id,
+                    first.messages[0].id,
+                    "not one",
+                    true,
+                    4
+                )
+                .unwrap_err()
+            )
+            .code,
+            "invalid"
         );
         assert_eq!(
             threads_at(live.doc(), "chapters/intro.tex").unwrap().len(),
@@ -1198,6 +1392,7 @@ mod tests {
                         server_allowed: server,
                         project_enabled: project,
                         can_comment: refused.is_none(),
+                        reactions: false,
                     },
                 })
             );
@@ -1220,13 +1415,24 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let paths = CollabPaths::new(dir.path().join("collab"));
         assert_eq!(load_switches(&paths, "paper"), CommentSwitches::default());
-        let fresh = settle_status(&paths, "paper", Ok((true, false)), ProjectRole::Editor);
+        let switches = |server, project, reactions| CommentSwitches {
+            server,
+            project,
+            reactions,
+        };
+        let fresh = settle_status(
+            &paths,
+            "paper",
+            Ok(switches(true, false, true)),
+            ProjectRole::Editor,
+        );
         assert_eq!(
             fresh,
             CommentsStatus {
                 server_allowed: true,
                 project_enabled: false,
                 can_comment: false,
+                reactions: true,
             }
         );
         let offline = settle_status(
@@ -1236,18 +1442,42 @@ mod tests {
             ProjectRole::Editor,
         );
         assert_eq!(offline, fresh);
-        assert_eq!(
-            load_switches(&paths, "paper"),
-            CommentSwitches {
-                server: true,
-                project: false,
-            }
+        assert_eq!(load_switches(&paths, "paper"), switches(true, false, true));
+        let back = settle_status(
+            &paths,
+            "paper",
+            Ok(switches(true, true, true)),
+            ProjectRole::Editor,
         );
-        let back = settle_status(&paths, "paper", Ok((true, true)), ProjectRole::Editor);
-        assert!(back.can_comment);
-        let viewer = settle_status(&paths, "paper", Ok((true, true)), ProjectRole::Viewer);
+        assert!(back.can_comment && back.reactions);
+        let viewer = settle_status(
+            &paths,
+            "paper",
+            Ok(switches(true, true, true)),
+            ProjectRole::Viewer,
+        );
         assert!(!viewer.can_comment);
-        assert!(viewer.server_allowed && viewer.project_enabled);
+        assert!(viewer.server_allowed && viewer.project_enabled && viewer.reactions);
+        let off = settle_status(
+            &paths,
+            "paper",
+            Ok(switches(false, true, true)),
+            ProjectRole::Editor,
+        );
+        assert!(!off.reactions);
+        let older = settle_status(
+            &paths,
+            "paper",
+            Ok(switches(true, true, false)),
+            ProjectRole::Editor,
+        );
+        assert!(older.can_comment && !older.reactions);
+        std::fs::write(
+            paths.project_dir("paper").unwrap().join(SWITCHES_FILE),
+            br#"{"server":true,"project":true}"#,
+        )
+        .unwrap();
+        assert_eq!(load_switches(&paths, "paper"), switches(true, true, false));
         assert_eq!(load_switches(&paths, "other"), CommentSwitches::default());
         assert_eq!(
             load_switches(&paths, "../escape"),
@@ -1351,8 +1581,9 @@ mod tests {
 
     #[test]
     fn comments_are_counted_per_file_across_the_project_with_open_and_resolved_apart() {
-        let doc = commented_project(AccountId::new_v7());
-        let counts = counts_in(&doc).unwrap();
+        let author = AccountId::new_v7();
+        let mut live = LiveProject::new(commented_project(author), 0, ProjectRole::Owner);
+        let counts = counts_in(&live).unwrap();
         assert_eq!(
             counts,
             vec![
@@ -1360,21 +1591,39 @@ mod tests {
                     path: "chapters/intro.tex".to_owned(),
                     open: 1,
                     resolved: 1,
+                    waiting: 0,
                 },
                 CommentCount {
                     path: "refs.tex".to_owned(),
                     open: 2,
                     resolved: 0,
+                    waiting: 0,
                 },
             ]
         );
         assert_eq!(
             serde_json::to_value(&counts[0]).unwrap(),
-            serde_json::json!({ "path": "chapters/intro.tex", "open": 1, "resolved": 1 })
+            serde_json::json!({ "path": "chapters/intro.tex", "open": 1, "resolved": 1, "waiting": 0 })
         );
-        assert!(counts_in(&ProjectDoc::create().unwrap())
+        let refs = file_at(live.doc(), "refs.tex").unwrap();
+        let first = live.doc().comment_threads(&refs).unwrap()[0].id;
+        live.comment_doc()
+            .reply_to_comment(&refs, first, author, 3, "Offline", &[])
+            .unwrap();
+        let waiting: Vec<usize> = counts_in(&live)
             .unwrap()
-            .is_empty());
+            .iter()
+            .map(|count| count.waiting)
+            .collect();
+        assert_eq!(waiting, vec![0, 1]);
+        let outgoing = live.next_outgoing().unwrap().unwrap();
+        live.acknowledged(outgoing.batch, 1);
+        assert!(counts_in(&live)
+            .unwrap()
+            .iter()
+            .all(|count| count.waiting == 0));
+        let empty = LiveProject::new(ProjectDoc::create().unwrap(), 0, ProjectRole::Owner);
+        assert!(counts_in(&empty).unwrap().is_empty());
     }
 
     #[test]
@@ -1613,7 +1862,7 @@ mod tests {
         }
         deliver(&alice, &bob, 1);
         let heard = HeardComments::default();
-        announce("paper", &bob.live, bob.who.account, &heard);
+        announce("paper", &bob.live, bob.who.account, &heard, false);
         let told = heard.taken();
         assert_eq!(told.len(), 1);
         assert!(!told[0].local);
@@ -1749,16 +1998,27 @@ mod tests {
         let (alice, _bob, intro) = sides();
         let heard = HeardComments::default();
         let thread = CommentId::new_v7();
+        let (first, second) = (CommentId::new_v7(), CommentId::new_v7());
         let unsent = vec![
             UnsentComment {
                 file_id: intro.clone(),
                 thread_id: thread,
+                message_id: first,
+                at: 5,
+                edited_at: None,
+                new_thread: true,
+                edit: false,
                 quote: "quick".to_owned(),
                 body: "written while comments were off".to_owned(),
             },
             UnsentComment {
                 file_id: "no-such-file".to_owned(),
                 thread_id: thread,
+                message_id: second,
+                at: 6,
+                edited_at: Some(6),
+                new_thread: false,
+                edit: true,
                 quote: "lost".to_owned(),
                 body: "on a file that is gone".to_owned(),
             },
@@ -1773,6 +2033,11 @@ mod tests {
                         file_id: intro,
                         path: Some("chapters/intro.tex".to_owned()),
                         thread_id: thread,
+                        message_id: first,
+                        at: 5,
+                        edited_at: None,
+                        new_thread: true,
+                        edit: false,
                         quote: "quick".to_owned(),
                         body: "written while comments were off".to_owned(),
                     },
@@ -1780,6 +2045,11 @@ mod tests {
                         file_id: "no-such-file".to_owned(),
                         path: None,
                         thread_id: thread,
+                        message_id: second,
+                        at: 6,
+                        edited_at: Some(6),
+                        new_thread: false,
+                        edit: true,
                         quote: "lost".to_owned(),
                         body: "on a file that is gone".to_owned(),
                     },
@@ -1787,6 +2057,88 @@ mod tests {
             }]
         );
         assert!(heard.taken().is_empty());
+        let wire = serde_json::to_value(&heard.1.lock().unwrap()[0].comments[0]).unwrap();
+        for key in ["messageId", "at", "editedAt", "newThread", "edit"] {
+            assert!(wire.get(key).is_some(), "{key} in {wire}");
+        }
+    }
+
+    #[test]
+    fn only_an_owner_removes_someone_elses_comment_from_the_app() {
+        let (alice, bob, intro) = sides();
+        let thread = {
+            let mut live = bob.live.lock().unwrap();
+            create_at(
+                &mut live,
+                &bob.who,
+                "chapters/intro.tex",
+                4,
+                9,
+                None,
+                "Bob's note",
+                &[],
+                1,
+            )
+            .unwrap()
+        };
+        deliver(&bob, &alice, 1);
+        let message = thread.messages[0].id;
+        {
+            let mut live = bob.live.lock().unwrap();
+            for role in [ProjectRole::Editor, ProjectRole::Commenter] {
+                let who = Commenter {
+                    account: AccountId::new_v7(),
+                    role,
+                    switches: CommentSwitches::default(),
+                };
+                let refused = remove_in(&mut live, &who, &intro, thread.id, message).unwrap_err();
+                assert_eq!(command_error(refused).code, "comment_not_yours", "{role:?}");
+            }
+        }
+        let mut live = alice.live.lock().unwrap();
+        remove_in(&mut live, &alice.who, &intro, thread.id, message).unwrap();
+        let listed = thread_list_at(&live, "chapters/intro.tex").unwrap();
+        let removed = &listed.threads[0].messages[0];
+        assert!(removed.removed && removed.deleted && removed.pending);
+        assert_eq!(removed.author, bob.who.account);
+    }
+
+    #[test]
+    fn a_comment_reads_as_waiting_until_the_server_takes_it() {
+        let (alice, bob, _intro) = sides();
+        let created = {
+            let mut live = alice.live.lock().unwrap();
+            create_at(
+                &mut live,
+                &alice.who,
+                "chapters/intro.tex",
+                4,
+                9,
+                None,
+                "Waiting",
+                &[],
+                1,
+            )
+            .unwrap()
+        };
+        assert!(created.messages[0].pending);
+        let listed = |side: &Side| {
+            thread_list_at(&side.live.lock().unwrap(), "chapters/intro.tex")
+                .unwrap()
+                .threads[0]
+                .messages[0]
+                .pending
+        };
+        assert!(listed(&alice));
+        deliver(&alice, &bob, 1);
+        assert!(!listed(&alice));
+        assert!(!listed(&bob));
+        let heard = HeardComments::default();
+        announce("paper", &alice.live, alice.who.account, &heard, true);
+        let told = heard.taken();
+        assert_eq!(told.len(), 1);
+        assert!(told[0].local);
+        assert_eq!(told[0].paths, vec!["chapters/intro.tex".to_owned()]);
     }
 
     #[test]

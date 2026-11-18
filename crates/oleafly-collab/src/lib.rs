@@ -14,6 +14,7 @@ pub mod materialize;
 pub mod merge;
 pub mod ot;
 pub mod paths;
+mod reactions;
 pub mod review;
 pub mod secret_port;
 pub mod settings;

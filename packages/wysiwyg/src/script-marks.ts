@@ -1,9 +1,14 @@
 import { Mark, mergeAttributes } from "@tiptap/core";
+import { pandocSyntaxAttribute, scriptSyntax } from "./markdown/pandoc-inline";
 
-function scriptMark(name: string, tag: "sup" | "sub", align: "super" | "sub", other: string, shortcut: string) {
+function scriptMark(name: string, tag: "sup" | "sub", align: "super" | "sub", other: string, shortcut: string, marker: string) {
   return Mark.create({
     name,
     excludes: `${name} ${other}`,
+
+    addAttributes() {
+      return pandocSyntaxAttribute;
+    },
 
     parseHTML() {
       return [
@@ -17,7 +22,7 @@ function scriptMark(name: string, tag: "sup" | "sub", align: "super" | "sub", ot
     },
 
     addStorage() {
-      return { markdown: { serialize: { open: `<${tag}>`, close: `</${tag}>` }, parse: {} } };
+      return { markdown: { serialize: scriptSyntax(tag, marker), parse: {} } };
     },
 
     addKeyboardShortcuts() {
@@ -26,5 +31,5 @@ function scriptMark(name: string, tag: "sup" | "sub", align: "super" | "sub", ot
   });
 }
 
-export const Superscript = scriptMark("superscript", "sup", "super", "subscript", "Mod-.");
-export const Subscript = scriptMark("subscript", "sub", "sub", "superscript", "Mod-Shift-,");
+export const Superscript = scriptMark("superscript", "sup", "super", "subscript", "Mod-.", "^");
+export const Subscript = scriptMark("subscript", "sub", "sub", "superscript", "Mod-Shift-,", "~");

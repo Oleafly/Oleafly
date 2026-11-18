@@ -10,6 +10,7 @@ import {
   scopesAtLine,
   type StickyScope,
   type StickySource,
+  typstStickySource,
 } from "./sticky-structure";
 
 const MAX_STICKY_ROWS = 6;
@@ -312,6 +313,10 @@ class StickyScrollPlugin {
     }
     append(cursor, to);
   }
+}
+
+export function stickyScrollFor(kind: "latex" | "typst"): Extension {
+  return stickyScroll(kind === "typst" ? typstStickySource : latexStickySource);
 }
 
 export function stickyScroll(source: StickySource = latexStickySource): Extension {

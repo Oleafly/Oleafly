@@ -444,6 +444,7 @@ async fn simulate(
                         file_id: Some(path.clone()),
                         cursor: u32::try_from(editor.cursor).ok(),
                         anchor: None,
+                        activity: None,
                     });
                 }
             }

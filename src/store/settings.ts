@@ -12,6 +12,7 @@ import {
   type EditorThemeId,
 } from "@/lib/editor-themes";
 import type { Theme } from "@/lib/theme";
+import { COMMENT_COLOR_STORAGE_KEY, type CommentColor, readCommentColor } from "@/lib/comment-color";
 import { sanitizeLintRuleNames } from "@/lib/proofreading/lint-profile";
 import { forgetRuleSuppressedHere } from "@/lib/proofreading/ignored";
 import {
@@ -1095,6 +1096,8 @@ interface SettingsState {
   removeHiddenFilePattern: (pattern: string) => void;
   accentColor: string;
   setAccentColor: (v: string) => void;
+  commentColor: CommentColor;
+  setCommentColor: (v: CommentColor) => void;
   showTree: boolean;
   toggleTree: () => void;
   setShowTree: (v: boolean) => void;
@@ -1315,6 +1318,7 @@ const PREF_DEFAULTS = {
   terminalScrollback: 5_000 as number,
   terminalConfirmClose: true,
   accentColor: "#2563eb",
+  commentColor: "indigo" as CommentColor,
   dockPlacement: "left" as DockPlacement,
   bgPattern: "dots" as BackgroundPattern,
   appIcon: "classic" as AppIconId,
@@ -1413,6 +1417,7 @@ export const SECTION_SETTINGS = {
     openInTree: "oleafly.openInTree",
     hoverPreview: "oleafly.hoverPreview",
     accentColor: "oleafly.accent",
+    commentColor: COMMENT_COLOR_STORAGE_KEY,
     dockPlacement: "oleafly.dockPlacement",
     bgPattern: "oleafly.bgPattern",
     appIcon: "oleafly.appIcon",
@@ -2107,6 +2112,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   setAccentColor: (v) => {
     saveLs("oleafly.accent", v);
     set({ accentColor: v });
+  },
+  commentColor: readCommentColor(ls(COMMENT_COLOR_STORAGE_KEY, "indigo")),
+  setCommentColor: (v) => {
+    const color = readCommentColor(v);
+    saveLs(COMMENT_COLOR_STORAGE_KEY, color);
+    set({ commentColor: color });
   },
   dockPlacement: (ls("oleafly.dockPlacement", "left") as DockPlacement) || "left",
   setDockPlacement: (v) => {

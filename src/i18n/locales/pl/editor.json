@@ -116,6 +116,7 @@
     "superscript": "Indeks górny",
     "subscript": "Indeks dolny",
     "inlineCode": "Kod w wierszu",
+    "clearFormatting": "Wyczyść formatowanie",
     "insertLink": "Wstaw odsyłacz",
     "insertCrossReference": "Wstaw odwołanie",
     "insertFootnote": "Wstaw przypis",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Przejdź do PDF",
     "linkUrl": "Adres URL odsyłacza",
     "removeLink": "Usuń odsyłacz",
+    "alignment": "Wyrównanie",
+    "align": {
+      "left": "Wyrównaj do lewej",
+      "center": "Wyśrodkuj",
+      "right": "Wyrównaj do prawej",
+      "justify": "Wyjustuj"
+    },
+    "emoji": "Emoji",
+    "textColor": "Kolor tekstu",
+    "removeTextColor": "Usuń kolor",
+    "textColors": {
+      "gray": "Szary",
+      "red": "Czerwony",
+      "orange": "Pomarańczowy",
+      "green": "Zielony",
+      "teal": "Morski",
+      "blue": "Niebieski",
+      "purple": "Fioletowy"
+    },
     "imageFile": "Plik obrazu",
     "apply": "Zastosuj",
     "linkPlaceholder": "https://",
@@ -1716,6 +1736,12 @@
       "duplicateArg": "Zduplikowany argument",
       "unknownKind": "Nieznany rodzaj pola"
     }
+  },
+  "emoji": {
+    "search": "Szukaj emoji",
+    "skinTone": "Odcień skóry",
+    "loading": "Wczytywanie emoji",
+    "empty": "Nie znaleziono emoji"
   },
   "bibList": {
     "count_one": "{{count}} pozycja",
