@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::agent::web::WEB_USER_AGENT;
 
-const OEMBED: &str = "https://publish.twitter.com/oembed";
+const OEMBED: &str = "https://publish.x.com/oembed";
 const TIMEOUT: Duration = Duration::from_secs(15);
 const MAX_BYTES: usize = 256 * 1024;
 const MAX_TEXT: usize = 4_000;
@@ -260,11 +260,11 @@ mod tests {
     fn reads_the_text_date_author_and_handle_from_the_oembed_blockquote() {
         let embed = OEmbed {
             author_name: "Jack &amp; Co".into(),
-            author_url: "https://twitter.com/jack".into(),
+            author_url: "https://x.com/jack".into(),
             html: concat!(
                 "<blockquote class=\"twitter-tweet\" data-dnt=\"true\"><p lang=\"en\" dir=\"ltr\">just setting up my ",
                 "<a href=\"https://t.co/x\">twttr</a> &amp; more<br>second   line &#x1F600;</p>",
-                "&mdash; jack (@jack) <a href=\"https://twitter.com/jack/status/20?ref_src=twsrc%5Etfw\">March 21, 2006</a>",
+                "&mdash; jack (@jack) <a href=\"https://x.com/jack/status/20?ref_src=twsrc%5Etfw\">March 21, 2006</a>",
                 "</blockquote>\n"
             )
             .into(),
