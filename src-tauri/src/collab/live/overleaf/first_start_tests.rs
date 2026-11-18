@@ -65,7 +65,10 @@ fn a_local_edit_with_no_base_and_a_changed_server_waits_for_review() {
         assert_eq!(rig.read(MAIN), LOCAL);
         assert_eq!(tab.text, LOCAL);
         assert_eq!(rig.mock.doc_text(&rig.doc(MAIN)), "Hello world");
-        assert_eq!(reviews(&rig), vec![review("Hello world")]);
+        eventually("the review is announced", || {
+            reviews(&rig) == vec![review("Hello world")]
+        })
+        .await;
         rig.finish().await;
     });
 }
@@ -80,7 +83,10 @@ fn a_local_edit_with_no_base_waits_for_review_even_when_the_server_kept_the_impo
         assert_eq!(rig.read(MAIN), LOCAL);
         assert_eq!(tab.text, LOCAL);
         assert_eq!(rig.mock.doc_text(&rig.doc(MAIN)), IMPORTED);
-        assert_eq!(reviews(&rig), vec![review(IMPORTED)]);
+        eventually("the review is announced", || {
+            reviews(&rig) == vec![review(IMPORTED)]
+        })
+        .await;
         rig.finish().await;
     });
 }
@@ -187,14 +193,15 @@ fn a_git_linked_first_start_merges_with_a_coauthors_edit() {
         tab.catch_up();
         assert_eq!(tab.text, "Oh, Hello world");
         assert!(reviews(&rig).is_empty());
-        let merged = rig
-            .host
-            .notices
-            .lock()
-            .unwrap()
-            .iter()
-            .any(|payload| matches!(payload.notice, OverleafNotice::Merged { .. }));
-        assert!(merged);
+        eventually("the merge is announced", || {
+            rig.host
+                .notices
+                .lock()
+                .unwrap()
+                .iter()
+                .any(|payload| matches!(payload.notice, OverleafNotice::Merged { .. }))
+        })
+        .await;
         rig.finish().await;
     });
 }
