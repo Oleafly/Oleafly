@@ -9,6 +9,8 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { isImeEnter } from "@/components/ai/composer/ime";
 import { QuoteOrBoldKey } from "@/components/editor/rich-text-controls";
+import { useCommentsRail } from "@/components/collab/comments-rail";
+import { noteCommentSurface, requestNoteComments, useCollabLiveNote } from "@/lib/collab-live-bridge";
 import { Button } from "@/components/ui/button";
 import { useDelegatedTooltips } from "@/components/ui/delegated-tooltip";
 import { Spinner } from "@/components/ui/spinner";
@@ -73,6 +75,7 @@ import { NoteToolbar } from "./NoteToolbar";
 import { NoteFind } from "./note-find";
 import { NoteFindBar } from "./NoteFindBar";
 import { isRemoteTransaction, noteSourceOf, parseSharedNote, type SharedNote, sharedNoteSnapshot, showNoteDoc } from "./note-live-doc";
+import { NoteCommentMarks } from "./note-comment-marks";
 import { NotePeerMarks } from "./note-presence-decorations";
 import { noteClipboardText, NoteSelection, type WholeNoteText } from "./note-selection";
 import { frontMatterChange, frontMatterSteps } from "./note-front-matter-step";
@@ -186,6 +189,26 @@ function keepUndo(editor: Editor, noteId: string): Promise<void> {
 
 function sameNoteDoc(left: ProseMirrorNode, right: ProseMirrorNode): boolean {
   return left.eq(right) || serializeNoteMarkdown(left.toJSON()) === serializeNoteMarkdown(right.toJSON());
+}
+
+/** Starts a comment on the selection of a shared note that is live, for roles that can comment. */
+function NoteCommentButton({ noteId }: Readonly<{ noteId: string }>) {
+  const { t } = useTranslation(["notes"]);
+  const canCompose = useCommentsRail((rail) => rail.visible && rail.canCompose);
+  const live = useCollabLiveNote((state) => state.noteId === noteId);
+  if (!canCompose || !live) return null;
+  const comment = () => {
+    const surface = noteCommentSurface(noteId);
+    const target = surface?.target();
+    if (!surface || !target) return;
+    useCommentsRail.setState({ request: { path: surface.path, ...target } });
+    requestNoteComments();
+  };
+  return (
+    <Button variant="ghost" size="xs" onClick={comment}>
+      {t(($) => $.notes.document.addComment)}
+    </Button>
+  );
 }
 
 export function NoteDocument(props: Readonly<NoteDocumentProps>) {
@@ -317,6 +340,7 @@ function NoteEditor({
         .map((extension) => withNoteEmbeds(extension, knowledge.embeds)),
       NoteSuggestions,
       NotePeerMarks,
+      NoteCommentMarks,
       NoteSelection.configure({ wholeNote: (doc) => serializeNoteMarkdown(doc.toJSON(), snapshotRef.current) }),
       NoteSlash,
       QuoteOrBoldKey,
@@ -1135,6 +1159,7 @@ function NoteEditor({
         </article>
         {bubble && (
           <NoteSelectionMenu editor={editor} anchor={bubble} onHold={(held) => (bubbleHeldRef.current = held)}>
+            <NoteCommentButton noteId={note.id} />
             <Button
               variant="ghost"
               size="xs"

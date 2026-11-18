@@ -164,6 +164,8 @@
     "writtenByAgent": "{{agent}}이(가) 작성",
     "writtenByYou": "내가 작성",
     "askAgent": "에이전트에게 요청",
+    "addComment": "댓글 추가",
+    "comments": "댓글",
     "addIcon": "아이콘 추가",
     "sendToPaper": "논문으로 보내기",
     "selectionMenu": "선택 영역 서식",

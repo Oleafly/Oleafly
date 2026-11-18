@@ -8,6 +8,7 @@ import {
   type NoteLiveHandle,
   type NotePeerCaret,
   type NotePeerMark,
+  registerNoteCommentSurface,
   showNoteLiveNotice,
   useCollabLiveNote,
 } from "@/lib/collab-live-bridge";
@@ -247,6 +248,8 @@ export function bindNoteLive(request: NoteLiveBindRequest, deps: NoteLiveDeps = 
     bound.delete(entry);
     releaseHold();
     refreshMarks = () => {};
+    releaseComments();
+    editor.setComments?.({ spans: [], selected: null, draft: null });
     presence.dispose(!boundElsewhere(entry) && useCollabLiveNote.getState().session?.projectId === noteId);
     const { unsent } = binding.detach();
     let base: string;
@@ -281,6 +284,20 @@ export function bindNoteLive(request: NoteLiveBindRequest, deps: NoteLiveDeps = 
     },
   });
   binding.start();
+  const releaseComments = registerNoteCommentSurface({
+    projectId: request.session.projectId,
+    path,
+    session,
+    flush: () => {
+      if (!ended) binding.flush();
+    },
+    show: (view) => {
+      if (!ended) editor.setComments?.(view);
+    },
+    draft: () => (ended ? null : (editor.commentDraft?.() ?? null)),
+    target: () => (ended ? null : (editor.commentTarget?.() ?? null)),
+    reveal: (threadId) => !ended && (editor.revealComment?.(threadId) ?? false),
+  });
   const presence = presenceFor(noteId, path, editor, deps.presence ?? tauriPresence);
   refreshMarks = presence.refresh;
   void session.open();

@@ -8,7 +8,17 @@ import {
 } from "@/components/collab/comments-rail";
 import { setCommentsEditorExtension } from "@/components/editor/cm/comments-slot";
 import { type CommentFilter, keepsThread } from "@/components/ui/comments/comment-filter";
-import { collabDocumentSession } from "@/lib/collab-live-bridge";
+import {
+  collabDocumentSession,
+  installNoteCommentOpener,
+  type NoteCommentSurface,
+  type NoteCommentView,
+  noteCommentSurface,
+  onNoteCommentSurfaces,
+  requestNoteComments,
+  useCollabLiveNote,
+} from "@/lib/collab-live-bridge";
+import { NOTE_FILE } from "@/lib/project-notes";
 import { logError } from "@/lib/log";
 import type {
   CollabCommentCount,
@@ -209,8 +219,16 @@ function revisioned(session: unknown): session is Revisioned {
   );
 }
 
+function noteSurface(path: string | null): NoteCommentSurface | null {
+  return noteCommentSurface(useComments.getState().projectId, path);
+}
+
+function documentSession(path: string): unknown {
+  return noteSurface(path)?.session ?? collabDocumentSession(path);
+}
+
 export function openSession(path: string): Revisioned | null {
-  const session = collabDocumentSession(path);
+  const session = documentSession(path);
   return revisioned(session) && session.phase === "open" ? session : null;
 }
 
@@ -238,7 +256,8 @@ export async function catchUp(path: string, session: Revisioned, verdict: Freshn
 }
 
 async function settled(path: string): Promise<void> {
-  const session = collabDocumentSession(path);
+  noteSurface(path)?.flush();
+  const session = documentSession(path);
   if (!settles(session)) return;
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -263,8 +282,10 @@ function noteUnseen(): void {
 }
 
 function revealInEditor(id: string): boolean {
-  const view = getEditorView();
   const { path } = useComments.getState();
+  const note = noteSurface(path);
+  if (note) return note.reveal(id);
+  const view = getEditorView();
   if (!view || !path || getEditorDocumentPath() !== path) return false;
   return revealComment(view, id);
 }
@@ -494,9 +515,19 @@ function othersWrote(before: readonly CollabCommentThread[], after: readonly Col
   });
 }
 
+/** The file a shared note keeps its text in, while that note is the live project. */
+function notePath(projectId: string): string | null {
+  if (useCollabLiveNote.getState().noteId !== projectId) return null;
+  return useFilesStore.getState().projects.find((project) => project.id === projectId)?.main_doc ?? NOTE_FILE;
+}
+
 function currentPath(): string | null {
+  const projectId = useComments.getState().projectId;
+  if (projectId === null) return null;
+  const note = notePath(projectId);
+  if (note !== null) return note;
   const files = useFilesStore.getState();
-  return files.projectId !== null && files.projectId === useComments.getState().projectId ? files.activePath : null;
+  return files.projectId === projectId ? files.activePath : null;
 }
 
 export function reloadThreads(): void {
@@ -576,6 +607,8 @@ function withMessage(thread: CollabCommentThread, message: CollabCommentMessage)
 }
 
 function draftRangeInEditor(draft: CommentRequest): CommentDraftRange {
+  const note = noteSurface(draft.path);
+  if (note) return note.draft() ?? draft;
   const view = getEditorView();
   if (!view || getEditorDocumentPath() !== draft.path) return draft;
   return commentDraftIn(view.state) ?? draft;
@@ -718,6 +751,40 @@ function noteMentions(payload: CollabCommentsChanged): void {
 
 let anchorListener: ((change: AnchorChange) => void) | null = null;
 
+const NO_NOTE_COMMENTS: NoteCommentView = { spans: [], selected: null, draft: null };
+
+function noteViewOf(state: CommentsState): NoteCommentView {
+  return {
+    spans: spansOf(state.threads),
+    selected: state.selectedId,
+    draft: state.draft && state.draft.path === state.path ? draftRangeOf(state.draft) : null,
+  };
+}
+
+function sameNoteView(left: NoteCommentView, right: NoteCommentView): boolean {
+  return left.spans === right.spans && left.selected === right.selected && left.draft === right.draft;
+}
+
+/** Draws the open thread list in the shared note that is live, and clears the note it leaves. */
+function noteMarks(): { sync: () => void; clear: () => void } {
+  let shown: { surface: NoteCommentSurface; view: NoteCommentView } | null = null;
+  const clear = () => {
+    shown?.surface.show(NO_NOTE_COMMENTS);
+    shown = null;
+  };
+  const sync = () => {
+    const state = useComments.getState();
+    const surface = commentsShown(state.status) ? noteSurface(state.path) : null;
+    if (shown && shown.surface !== surface) clear();
+    if (!surface) return;
+    const view = noteViewOf(state);
+    if (shown && sameNoteView(shown.view, view)) return;
+    surface.show(view);
+    shown = { surface, view };
+  };
+  return { sync, clear };
+}
+
 function sameIds(left: readonly string[], right: readonly string[]): boolean {
   return left.length === right.length && left.every((id, index) => id === right[index]);
 }
@@ -848,6 +915,14 @@ export function startComments(): () => void {
     if (!local && after && othersWrote(before, after, commentSelf())) noteUnseen();
   };
 
+  const marks = noteMarks();
+  const stopNoteMarks = useComments.subscribe(() => marks.sync());
+  const stopNoteSurfaces = onNoteCommentSurfaces(() => marks.sync());
+  const stopNoteOpener = installNoteCommentOpener((id) => {
+    selectThread(id, { focus: true });
+    requestNoteComments();
+  });
+
   anchorListener = ({ emptied, edited }) => {
     const state = useComments.getState();
     if (!commentsShown(state.status) || state.path === null) return;
@@ -939,6 +1014,10 @@ export function startComments(): () => void {
 
   return () => {
     anchorListener = null;
+    stopNoteMarks();
+    stopNoteSurfaces();
+    stopNoteOpener();
+    marks.clear();
     stopLive();
     stopFiles();
     stopRail();

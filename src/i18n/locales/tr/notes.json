@@ -165,6 +165,8 @@
     "writtenByAgent": "Yazan: {{agent}}",
     "writtenByYou": "Yazan: siz",
     "askAgent": "Ajana sor",
+    "addComment": "Yorum ekle",
+    "comments": "Yorumlar",
     "addIcon": "Simge ekle",
     "sendToPaper": "Makaleye gönder",
     "selectionMenu": "Seçimi biçimlendir",

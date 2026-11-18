@@ -165,6 +165,8 @@
     "writtenByAgent": "Skriven av {{agent}}",
     "writtenByYou": "Skriven av dig",
     "askAgent": "Fråga agenten",
+    "addComment": "Lägg till kommentar",
+    "comments": "Kommentarer",
     "addIcon": "Lägg till ikon",
     "sendToPaper": "Skicka till artikel",
     "selectionMenu": "Formatering av markering",

@@ -165,6 +165,8 @@
     "writtenByAgent": "Kirjoittaja: {{agent}}",
     "writtenByYou": "Kirjoittaja: sinä",
     "askAgent": "Kysy agentilta",
+    "addComment": "Lisää kommentti",
+    "comments": "Kommentit",
     "addIcon": "Lisää kuvake",
     "sendToPaper": "Lähetä artikkeliin",
     "selectionMenu": "Valinnan muotoilu",

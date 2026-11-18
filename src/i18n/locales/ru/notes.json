@@ -167,6 +167,8 @@
     "writtenByAgent": "Автор: {{agent}}",
     "writtenByYou": "Автор: вы",
     "askAgent": "Спросить агента",
+    "addComment": "Добавить комментарий",
+    "comments": "Комментарии",
     "addIcon": "Добавить значок",
     "sendToPaper": "Отправить в статью",
     "selectionMenu": "Форматирование выделения",

@@ -165,6 +165,8 @@
     "writtenByAgent": "Geschreven door {{agent}}",
     "writtenByYou": "Door jou geschreven",
     "askAgent": "Agent vragen",
+    "addComment": "Opmerking toevoegen",
+    "comments": "Opmerkingen",
     "addIcon": "Pictogram toevoegen",
     "sendToPaper": "Naar artikel sturen",
     "selectionMenu": "Opmaak van selectie",

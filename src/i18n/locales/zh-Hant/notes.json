@@ -164,6 +164,8 @@
     "writtenByAgent": "由 {{agent}} 撰寫",
     "writtenByYou": "由你撰寫",
     "askAgent": "詢問代理程式",
+    "addComment": "新增評論",
+    "comments": "評論",
     "addIcon": "新增圖示",
     "sendToPaper": "傳送到論文",
     "selectionMenu": "選取範圍格式",

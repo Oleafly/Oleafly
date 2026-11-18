@@ -31,6 +31,7 @@ import {
   showNoteDoc,
   type SharedNote,
 } from "./note-live-doc";
+import { noteCommentsOf, revealNoteComment, setNoteComments } from "./note-comment-marks";
 import { setNotePeerCarets, setNotePeerMarks } from "./note-presence-decorations";
 import { docWithPending, hasPending, showSuggestions } from "./note-suggestions";
 import { useOptionalNotesData } from "./notes-data";
@@ -240,6 +241,46 @@ export function createNoteLiveEditor(
       return { head, anchor: selection.empty ? head : sourceOffsetAt(note, doc, selection.anchor) };
     },
     blockAt: (offset) => blockAtOffset(local().starts, offset),
+    setComments: (view) => {
+      if (editor.isDestroyed) return;
+      const into = pending();
+      const note = local();
+      const doc = docNow();
+      const place = (from: number, to: number) => {
+        const start = docPosAt(note, doc, from);
+        return { from: start, to: to === from ? start : docPosAt(note, doc, to) };
+      };
+      marked(
+        setNoteComments(
+          editor,
+          {
+            spans: view.spans.map((span) => ({ id: span.id, resolved: span.resolved, ...place(span.from, span.to) })),
+            selected: view.selected,
+            draft: view.draft ? place(view.draft.from, view.draft.to) : null,
+          },
+          into,
+        ),
+      );
+    },
+    commentDraft: () => {
+      if (editor.isDestroyed || batched) return null;
+      const draft = noteCommentsOf(editor.state).draft;
+      if (!draft) return null;
+      const note = local();
+      const { doc } = editor.state;
+      return { from: sourceOffsetAt(note, doc, draft.from), to: sourceOffsetAt(note, doc, draft.to) };
+    },
+    commentTarget: () => {
+      const { doc, selection } = batched ?? editor.state;
+      if (selection.empty) return null;
+      const note = local();
+      const from = sourceOffsetAt(note, doc, selection.from);
+      const to = sourceOffsetAt(note, doc, selection.to);
+      if (to <= from) return null;
+      const quote = host().sourceOf(doc).slice(from, to);
+      return quote.trim() ? { from, to, quote } : null;
+    },
+    revealComment: (threadId) => revealNoteComment(editor, threadId),
     setPeerMarks: (marks) => {
       if (!editor.isDestroyed) marked(setNotePeerMarks(editor, marks, pending()));
     },

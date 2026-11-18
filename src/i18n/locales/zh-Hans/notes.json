@@ -164,6 +164,8 @@
     "writtenByAgent": "由 {{agent}} 撰写",
     "writtenByYou": "由你撰写",
     "askAgent": "询问代理",
+    "addComment": "添加评论",
+    "comments": "评论",
     "addIcon": "添加图标",
     "sendToPaper": "发送到论文",
     "selectionMenu": "所选内容格式",

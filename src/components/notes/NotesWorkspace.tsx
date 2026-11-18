@@ -21,6 +21,7 @@ import {
   House,
   Info,
   Link2Off,
+  MessageSquare,
   MoreHorizontal,
   PanelLeft,
   PanelRight,
@@ -63,6 +64,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/compon
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Tooltip } from "@/components/ui/tooltip";
 import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
+import { useCommentsRail } from "@/components/collab/comments-rail";
+import { useCollabLiveNote, useNoteCommentsRequest } from "@/lib/collab-live-bridge";
 import { flushOpenNotes } from "@/lib/open-note-editors";
 import { useFullscreen } from "@/lib/use-fullscreen";
 import { cn, isMac } from "@/lib/utils";
@@ -86,6 +89,7 @@ import { NotesDataProvider, useNotesData } from "./notes-data";
 import {
   ARTIFACTS_SHARE,
   ARTIFACTS_VIEW,
+  COMMENTS_VIEW,
   DEAD_LINKS_VIEW,
   GRAPH_VIEW,
   HOME_VIEW,
@@ -98,6 +102,7 @@ import {
   openDeadLinksIn,
   openGraphIn,
   openNoteFrom,
+  showSideView,
   toggleSideView,
   newHomeViewId,
   noteIdOf,
@@ -227,6 +232,9 @@ const ActionsContext = createContext<WorkspaceActions | null>(null);
 const NoteActionsContext = createContext<NoteViewActions | null>(null);
 const SideContext = createContext<SideActions | null>(null);
 const ShownContext = createContext<ReadonlySet<string>>(new Set());
+const LazyCommentsPanel = lazy(() =>
+  import("@/components/collab/CollabSlots").then((module) => ({ default: module.CommentsPanel })),
+);
 const LazyNoteGraph = lazy(() => import("./NoteGraph").then((module) => ({ default: module.NoteGraph })), { warm: true });
 const WINDOW_DRAG: Readonly<Record<string, string>> = { "data-tauri-drag-region": "" };
 const SAVE_DELAY_MS = 150;
@@ -278,9 +286,21 @@ function SideToggles() {
   const outline = side.sideOpen(OUTLINE_VIEW);
   const local = side.sideOpen(LOCAL_GRAPH_VIEW);
   const info = side.sideOpen(INFO_VIEW);
+  const comments = side.sideOpen(COMMENTS_VIEW);
   const infoInPanel = useInfoInPanel();
+  const commentable = useNoteComments(useActions().focusedNoteId);
   return (
     <>
+      {(commentable || comments) && (
+        <TooltipIconButton
+          label={t(($) => $.notes.document.comments)}
+          aria-pressed={comments}
+          className={cn(comments && "bg-accent")}
+          onClick={() => side.toggleSide(COMMENTS_VIEW)}
+        >
+          <MessageSquare aria-hidden className="size-4" />
+        </TooltipIconButton>
+      )}
       <ShortcutButton
         label={outline ? t(($) => $.notes.graph.hideOutline) : t(($) => $.notes.graph.showOutline)}
         shortcut="notesOutline"
@@ -374,6 +394,21 @@ function DeadLinksView() {
 function OutlineView() {
   const actions = useActions();
   return <NoteOutline noteId={actions.focusedNoteId} onOpenHeading={actions.openNoteHeading} />;
+}
+
+/** Whether a note is the shared note that is live, in a project whose comments are on. */
+function useNoteComments(noteId: string | null): boolean {
+  const live = useCollabLiveNote((state) => noteId !== null && state.noteId === noteId);
+  const shown = useCommentsRail((rail) => rail.visible);
+  return live && shown;
+}
+
+function CommentsView() {
+  return (
+    <Suspense fallback={null}>
+      <LazyCommentsPanel />
+    </Suspense>
+  );
 }
 
 function InfoView() {
@@ -665,6 +700,7 @@ function viewContent(id: string, view: ViewState): ReactNode {
   if (view.type === "outline") return <OutlineView />;
   if (view.type === "dead-links") return <DeadLinksView />;
   if (view.type === "info") return <InfoView />;
+  if (view.type === "comments") return <CommentsView />;
   const noteId = noteIdOf(id);
   return noteId ? <NoteViewBody noteId={noteId} /> : null;
 }
@@ -931,6 +967,13 @@ export function NotesWorkspace({
     (viewId: string) => setLayout((current) => toggleSideView(current, viewId, focusedNoteView)),
     [focusedNoteView],
   );
+  const commentsAsked = useNoteCommentsRequest((state) => state.count);
+  const commentsSeen = useRef(commentsAsked);
+  useEffect(() => {
+    if (commentsSeen.current === commentsAsked) return;
+    commentsSeen.current = commentsAsked;
+    setLayout((current) => showSideView(current, COMMENTS_VIEW, focusedNoteView));
+  }, [commentsAsked, focusedNoteView]);
   const openGraph = useCallback(() => {
     setLayout((current) => openGraphIn(current, focusedNoteView));
     setFocused(GRAPH_VIEW);
@@ -1049,6 +1092,9 @@ export function NotesWorkspace({
         return { title: t(($) => $.notes.linksSearch.dead.title), icon: <Link2Off aria-hidden className="size-3.5 shrink-0" /> };
       }
       if (view.type === "info") return { title: t(($) => $.notes.info.title), icon: <Info aria-hidden className="size-3.5 shrink-0" /> };
+      if (view.type === "comments") {
+        return { title: t(($) => $.notes.document.comments), icon: <MessageSquare aria-hidden className="size-3.5 shrink-0" /> };
+      }
       const note = tabNotes.find((candidate) => candidate.id === noteIdOf(id));
       return {
         title: note?.title ?? t(($) => $.notes.document.untitled),

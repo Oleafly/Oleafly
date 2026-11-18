@@ -164,6 +164,8 @@
     "writtenByAgent": "{{agent}} が作成",
     "writtenByYou": "自分が作成",
     "askAgent": "エージェントに依頼",
+    "addComment": "コメントを追加",
+    "comments": "コメント",
     "addIcon": "アイコンを追加",
     "sendToPaper": "論文に送る",
     "selectionMenu": "選択範囲の書式",

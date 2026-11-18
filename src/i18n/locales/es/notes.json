@@ -166,6 +166,8 @@
     "writtenByAgent": "Escrita por {{agent}}",
     "writtenByYou": "Escrita por ti",
     "askAgent": "Preguntar al agente",
+    "addComment": "Añadir comentario",
+    "comments": "Comentarios",
     "addIcon": "Añadir un icono",
     "sendToPaper": "Enviar a un artículo",
     "selectionMenu": "Formato de la selección",

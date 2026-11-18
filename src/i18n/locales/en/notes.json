@@ -165,6 +165,8 @@
     "writtenByAgent": "Written by {{agent}}",
     "writtenByYou": "Written by you",
     "askAgent": "Ask agent",
+    "addComment": "Add comment",
+    "comments": "Comments",
     "addIcon": "Add icon",
     "sendToPaper": "Send to paper",
     "selectionMenu": "Selection formatting",

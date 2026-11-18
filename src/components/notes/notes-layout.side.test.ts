@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   ARTIFACTS_VIEW,
   cleanNotesLayout,
+  COMMENTS_VIEW,
   GRAPH_VIEW,
   HOME_VIEW,
   INFO_VIEW,
@@ -13,6 +14,7 @@ import {
   openGraphIn,
   openNoteFrom,
   OUTLINE_VIEW,
+  showSideView,
   sideView,
   stageGroup,
   toggleSideView,
@@ -37,6 +39,16 @@ describe("graph and outline views", () => {
     expect(sideView(OUTLINE_VIEW)).toEqual({ type: "outline" });
     expect(sideView(INFO_VIEW)).toEqual({ type: "info" });
     expect(sideView(GRAPH_VIEW)).toBeNull();
+  });
+
+  it("opens the comments panel beside the note, keeps it when asked again and keeps it in a stored layout", () => {
+    expect(isSideView(COMMENTS_VIEW)).toBe(true);
+    expect(sideView(COMMENTS_VIEW)).toEqual({ type: "comments" });
+    const start = layoutOf(group("g1", [HOME_VIEW, "note:n1"], "note:n1"), { [HOME_VIEW]: home, "note:n1": noteView("n1") });
+    const shown = showSideView(start, COMMENTS_VIEW, "note:n1");
+    expect(views(shown)).toEqual([[HOME_VIEW, "note:n1"], [COMMENTS_VIEW]]);
+    expect(showSideView(shown, COMMENTS_VIEW, "note:n1")).toBe(shown);
+    expect(views(cleanNotesLayout(shown))).toEqual([[HOME_VIEW, "note:n1"], [COMMENTS_VIEW]]);
   });
 
   it("keeps graph and outline views when cleaning a saved layout", () => {
