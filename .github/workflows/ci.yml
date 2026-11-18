@@ -21,6 +21,9 @@ on:
   # nightly hid a total macOS failure for days.
   schedule:
     - cron: "0 9 * * *"
+  # Dependabot's own pull request events skip every job except cargo-deny. To
+  # check a bump before merging, re-run that skipped run or start this workflow
+  # by hand on the dependabot branch.
   workflow_dispatch:
 
 # No job here writes to the repo, comments on PRs, or creates releases, so a
@@ -36,6 +39,7 @@ concurrency:
 jobs:
   markdown-platform-smoke:
     name: Markdown smoke (${{ matrix.target }})
+    if: github.triggering_actor != 'dependabot[bot]'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
@@ -94,6 +98,7 @@ jobs:
 
   frontend:
     name: Frontend (typecheck + build)
+    if: github.triggering_actor != 'dependabot[bot]'
     runs-on: ubuntu-22.04
     timeout-minutes: 55
     env:
@@ -227,6 +232,7 @@ jobs:
   # whole tree); `unit-coverage` merges the three and checks them there.
   unit:
     name: Unit tests (shard ${{ matrix.shard }}/3)
+    if: github.triggering_actor != 'dependabot[bot]'
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     strategy:
@@ -311,6 +317,7 @@ jobs:
 
   frontend-windows:
     name: Frontend (Windows)
+    if: github.triggering_actor != 'dependabot[bot]'
     runs-on: windows-2022
     # The unit tests alone took 30 to 43 minutes on main in Nov 2026, and the
     # job spends about 15 more installing and building, so 55 cut the test
@@ -348,6 +355,7 @@ jobs:
 
   rust:
     name: Rust (test + clippy)
+    if: github.triggering_actor != 'dependabot[bot]'
     runs-on: ubuntu-22.04
     # The work takes 28 to 44 minutes (tests with coverage alone are 20 to 26)
     # and keeps growing. At 45 the limit cut off five runs in two days, one of
@@ -542,6 +550,7 @@ jobs:
 
   server-web:
     name: Server with browser access
+    if: github.triggering_actor != 'dependabot[bot]'
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
@@ -578,6 +587,7 @@ jobs:
 
   rust-windows:
     name: Rust checks (Windows)
+    if: github.triggering_actor != 'dependabot[bot]'
     runs-on: windows-2022
     # Green runs take 33 to 46 minutes; at 50 the limit cut one off.
     timeout-minutes: 70
@@ -640,6 +650,7 @@ jobs:
 
   latexmk-windows:
     name: Real latexmk (Windows TinyTeX)
+    if: github.triggering_actor != 'dependabot[bot]'
     runs-on: windows-2022
     timeout-minutes: 90
     env:

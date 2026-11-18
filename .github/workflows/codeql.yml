@@ -11,6 +11,7 @@ on:
 jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
+    if: github.triggering_actor != 'dependabot[bot]'
     runs-on: ubuntu-22.04
     timeout-minutes: 60
     permissions:

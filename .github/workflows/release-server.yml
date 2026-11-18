@@ -39,9 +39,11 @@ env:
 jobs:
   # Pull requests run this job only, with a read-only token. The jobs that can
   # push images or write releases run for server tags and manual runs.
+  # Dependabot's own pull request events skip it; re-run the skipped run to
+  # check a bump.
   build:
     name: Image and static binaries
-    if: github.event_name != 'release'
+    if: github.event_name != 'release' && github.triggering_actor != 'dependabot[bot]'
     runs-on: ubuntu-24.04
     # The end-to-end installer test adds about ten minutes on pull requests.
     timeout-minutes: 75
