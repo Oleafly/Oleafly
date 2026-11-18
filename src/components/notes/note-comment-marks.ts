@@ -25,9 +25,13 @@ const NONE: PlacedComments = { spans: [], selected: null, draft: null };
 const commentKey = new PluginKey<CommentState>("noteCommentMarks");
 const SVG = "http://www.w3.org/2000/svg";
 
+function kebab(key: string): string {
+  return key.replace(/[A-Z]/gu, (letter) => `-${letter.toLowerCase()}`);
+}
+
 function css(style: Record<string, string>): string {
   return Object.entries(style)
-    .map(([key, value]) => `${key.replace(/[A-Z]/gu, (letter) => `-${letter.toLowerCase()}`)}: ${value}`)
+    .map(([key, value]) => `${kebab(key)}: ${value}`)
     .join("; ");
 }
 
@@ -100,30 +104,33 @@ function markerElement(ids: readonly string[], active: boolean): HTMLElement {
   return root;
 }
 
-function decorationsFor(doc: ProseMirrorNode, value: PlacedComments): DecorationSet {
-  const decorations: Decoration[] = [];
+/** The open threads' ranges, and the threads that start in each top-level block. */
+function rangeDecorations(doc: ProseMirrorNode, value: PlacedComments): { ranges: Decoration[]; byBlock: Map<number, string[]> } {
+  const ranges: Decoration[] = [];
   const byBlock = new Map<number, string[]>();
-  for (const span of value.spans) {
-    if (span.resolved) continue;
+  for (const span of value.spans.filter((entry) => !entry.resolved)) {
     const { from, to } = ordered(doc, span);
-    const active = span.id === value.selected;
-    if (from < to) {
-      decorations.push(
-        Decoration.inline(from, to, { style: active ? ACTIVE_STYLE : RANGE_STYLE, "data-note-comment": span.id }, { id: span.id }),
-      );
-    }
+    const style = span.id === value.selected ? ACTIVE_STYLE : RANGE_STYLE;
+    if (from < to) ranges.push(Decoration.inline(from, to, { style, "data-note-comment": span.id }, { id: span.id }));
     const block = topStart(doc, from);
     if (block !== null) byBlock.set(block, [...(byBlock.get(block) ?? []), span.id]);
   }
-  if (value.draft) {
-    const { from, to } = ordered(doc, value.draft);
-    if (from < to) decorations.push(Decoration.inline(from, to, { style: ACTIVE_STYLE, "data-note-comment-draft": "true" }));
-  }
+  return { ranges, byBlock };
+}
+
+function draftDecoration(doc: ProseMirrorNode, draft: NoteCommentRange | null): Decoration[] {
+  if (!draft) return [];
+  const { from, to } = ordered(doc, draft);
+  return from < to ? [Decoration.inline(from, to, { style: ACTIVE_STYLE, "data-note-comment-draft": "true" })] : [];
+}
+
+function markerDecorations(doc: ProseMirrorNode, byBlock: ReadonlyMap<number, string[]>, selected: string | null): Decoration[] {
+  const markers: Decoration[] = [];
   for (const [pos, ids] of byBlock) {
     const node = doc.nodeAt(pos);
     if (!node || node.isLeaf) continue;
-    const active = value.selected !== null && ids.includes(value.selected);
-    decorations.push(
+    const active = selected !== null && ids.includes(selected);
+    markers.push(
       Decoration.node(pos, pos + node.nodeSize, { class: "relative" }),
       Decoration.widget(pos + 1, () => markerElement(ids, active), {
         key: `comments:${ids.join(",")}:${active ? 1 : 0}`,
@@ -133,6 +140,12 @@ function decorationsFor(doc: ProseMirrorNode, value: PlacedComments): Decoration
       }),
     );
   }
+  return markers;
+}
+
+function decorationsFor(doc: ProseMirrorNode, value: PlacedComments): DecorationSet {
+  const { ranges, byBlock } = rangeDecorations(doc, value);
+  const decorations = [...ranges, ...draftDecoration(doc, value.draft), ...markerDecorations(doc, byBlock, value.selected)];
   return decorations.length === 0 ? DecorationSet.empty : DecorationSet.create(doc, decorations);
 }
 

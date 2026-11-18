@@ -757,7 +757,7 @@ function noteViewOf(state: CommentsState): NoteCommentView {
   return {
     spans: spansOf(state.threads),
     selected: state.selectedId,
-    draft: state.draft && state.draft.path === state.path ? draftRangeOf(state.draft) : null,
+    draft: state.draft?.path === state.path && state.draft ? draftRangeOf(state.draft) : null,
   };
 }
 
