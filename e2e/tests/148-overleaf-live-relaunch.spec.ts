@@ -26,6 +26,7 @@ const ONLINE = "SENT-WHILE-ONLINE";
 const OFFLINE = "TYPED-WHILE-OFFLINE";
 const BOOT_SEED = JSON.stringify({
   "oleafly.tours": JSON.stringify({ state: { schemaVersion: 1, enabled: false, tours: {} }, version: 1 }),
+  "oleafly.overleafLive": "1",
 });
 
 // Ignored on purpose outside CI without the mock server and a packaged app, because the test kills the app and starts the same binary again.
