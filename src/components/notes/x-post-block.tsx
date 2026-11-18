@@ -18,7 +18,7 @@ export const X_POST_INFO = "x-post";
 const FIELDS = ["url", "author", "handle", "date"] as const;
 const FIELD_NAMES: ReadonlySet<string> = new Set(FIELDS);
 const FRAME_ORIGIN = /^http:\/\/127\.0\.0\.1:\d{1,5}$/u;
-const POST_PATH = /^\/([A-Za-z0-9_]{1,15})\/status(?:es)?\/(\d{1,20})(?:\/|$)/u;
+const POST_PATH = /^\/(\w{1,15})\/status(?:es)?\/(\d{1,20})(?:\/|$)/u;
 
 /** A post on X as a note keeps it: enough to read it offline and in other Markdown apps. */
 export interface XPost {
