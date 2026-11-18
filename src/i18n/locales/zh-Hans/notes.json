@@ -288,7 +288,8 @@
       "molecule": "先写选项行，例如 format: pdb 和 style: cartoon。\n然后是文件文本，或 path: assets/1abc.pdb",
       "sequence": "FASTA 记录或原始序列：\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "第一行写笔记本的路径：\nassets/analysis.ipynb\n然后可以加上 cells: 2-5 和 code: hide 之类的可选行。",
-      "bookmark": "每行一个字段，以网址开头：\nurl: https://example.com/article\n然后是可选的 title:、description:、image:、site: 和 favicon: 行。"
+      "bookmark": "每行一个字段，以网址开头：\nurl: https://example.com/article\n然后是可选的 title:、description:、image:、site: 和 favicon: 行。",
+      "x-post": "每行一个字段，先写帖子地址：\nurl: https://x.com/jack/status/20\n然后是可选的 author:、handle: 和 date: 行，一个空行，再写帖子正文。"
     },
     "newChart": {
       "title": "新统计图",
@@ -564,6 +565,18 @@
       "ask": "为网页添加书签",
       "loading": "正在加载页面预览",
       "noUrl": "请添加一行 url:，并填写以 https:// 或 http:// 开头的网址。"
+    },
+    "xPost": {
+      "label": "X 上的帖子",
+      "pasteChoice": "如何显示这条帖子",
+      "embedChoice": "嵌入帖子",
+      "loading": "正在从 X 加载帖子",
+      "noUrl": "添加一行 url:，写上 x.com 上帖子的链接。",
+      "failed": "无法从 X 加载这条帖子。请在 X 上打开。",
+      "showLive": "显示实时帖子",
+      "showSaved": "显示已保存的帖子",
+      "open": "在 X 上打开",
+      "liveTitle": "来自 X 的实时帖子"
     }
   },
   "notebook": {
@@ -1530,6 +1543,10 @@
       "keepUndo": {
         "label": "关闭后保留撤销记录",
         "description": "关闭笔记或退出应用后，仍可撤销笔记中的操作。历史记录保存在这台电脑上，关闭此项会删除它。"
+      },
+      "xPostsLive": {
+        "label": "自动加载 X 帖子",
+        "description": "用 X 的实时帖子代替已保存的卡片。X 会因此知道帖子被打开了。"
       },
       "code": {
         "title": "代码"

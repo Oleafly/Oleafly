@@ -290,7 +290,8 @@
       "molecule": "Zuerst Optionszeilen, etwa format: pdb und style: cartoon.\nDann der Text der Datei oder path: assets/1abc.pdb",
       "sequence": "FASTA-Einträge oder eine reine Sequenz:\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "Der Pfad des Notebooks in der ersten Zeile:\nassets/analysis.ipynb\nDanach optionale Zeilen wie cells: 2-5 und code: hide.",
-      "bookmark": "Ein Feld pro Zeile, beginnend mit der Webadresse:\nurl: https://example.com/article\nDanach optional Zeilen mit title:, description:, image:, site: und favicon:."
+      "bookmark": "Ein Feld pro Zeile, beginnend mit der Webadresse:\nurl: https://example.com/article\nDanach optional Zeilen mit title:, description:, image:, site: und favicon:.",
+      "x-post": "Ein Feld pro Zeile, beginnend mit der Adresse des Beitrags:\nurl: https://x.com/jack/status/20\nDanach optionale Zeilen author:, handle: und date:, eine Leerzeile und der Text des Beitrags."
     },
     "newChart": {
       "title": "Neues Diagramm",
@@ -571,6 +572,18 @@
       "ask": "Lesezeichen für eine Webseite setzen",
       "loading": "Seitenvorschau wird geladen",
       "noUrl": "Fügen Sie eine Zeile url: mit einer Webadresse hinzu, die mit https:// oder http:// beginnt."
+    },
+    "xPost": {
+      "label": "Beitrag auf X",
+      "pasteChoice": "Wie dieser Beitrag angezeigt wird",
+      "embedChoice": "Beitrag einbetten",
+      "loading": "Beitrag wird von X geladen",
+      "noUrl": "Füge eine url:-Zeile mit einem Link zu einem Beitrag auf x.com hinzu.",
+      "failed": "Der Beitrag konnte nicht von X geladen werden. Öffne ihn stattdessen auf X.",
+      "showLive": "Live-Beitrag anzeigen",
+      "showSaved": "Gespeicherten Beitrag anzeigen",
+      "open": "Auf X öffnen",
+      "liveTitle": "Live-Beitrag von X"
     }
   },
   "notebook": {
@@ -1559,6 +1572,10 @@
       "keepUndo": {
         "label": "Rückgängig nach dem Schließen behalten",
         "description": "Rückgängig funktioniert bei einer Notiz auch, nachdem Sie sie geschlossen oder die App beendet haben. Der Verlauf bleibt auf diesem Computer, und das Ausschalten löscht ihn."
+      },
+      "xPostsLive": {
+        "label": "X-Beiträge automatisch laden",
+        "description": "Zeigt statt der gespeicherten Karte den Live-Beitrag von X. X erfährt dann, dass der Beitrag geöffnet wurde."
       },
       "code": {
         "title": "Code"

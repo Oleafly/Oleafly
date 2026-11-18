@@ -290,7 +290,8 @@
       "molecule": "Først alternativlinjer, for eksempel format: pdb og style: cartoon.\nDeretter tekstinnholdet i filen, eller path: assets/1abc.pdb",
       "sequence": "FASTA-poster eller en rå sekvens:\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "Stien til notatboken på første linje:\nassets/analysis.ipynb\nDeretter valgfrie linjer som cells: 2-5 og code: hide.",
-      "bookmark": "Ett felt per linje, og nettadressen først:\nurl: https://example.com/article\nDeretter valgfrie linjer med title:, description:, image:, site: og favicon:."
+      "bookmark": "Ett felt per linje, og nettadressen først:\nurl: https://example.com/article\nDeretter valgfrie linjer med title:, description:, image:, site: og favicon:.",
+      "x-post": "Ett felt per linje, begynn med innleggets adresse:\nurl: https://x.com/jack/status/20\nDeretter valgfrie linjer med author:, handle: og date:, en tom linje og innleggets tekst."
     },
     "newChart": {
       "title": "Nytt diagram",
@@ -571,6 +572,18 @@
       "ask": "Legg til bokmerke for en nettside",
       "loading": "Laster forhåndsvisningen av siden",
       "noUrl": "Legg til en linje med url: og en nettadresse som starter med https:// eller http://."
+    },
+    "xPost": {
+      "label": "Innlegg på X",
+      "pasteChoice": "Hvordan dette innlegget skal vises",
+      "embedChoice": "Bygg inn innlegg",
+      "loading": "Laster inn innlegget fra X",
+      "noUrl": "Legg til en url:-linje med en lenke til et innlegg på x.com.",
+      "failed": "Kunne ikke laste inn innlegget fra X. Åpne det på X i stedet.",
+      "showLive": "Vis direkteinnlegg",
+      "showSaved": "Vis lagret innlegg",
+      "open": "Åpne på X",
+      "liveTitle": "Direkteinnlegg fra X"
     }
   },
   "notebook": {
@@ -1559,6 +1572,10 @@
       "keepUndo": {
         "label": "Behold angrehistorikken etter lukking",
         "description": "Angre virker fortsatt i et notat etter at du har lukket det eller avsluttet appen. Historikken blir liggende på denne datamaskinen, og slår du av dette, slettes den."
+      },
+      "xPostsLive": {
+        "label": "Last inn X-innlegg automatisk",
+        "description": "Viser direkteinnlegget fra X i stedet for det lagrede kortet. X får da vite at innlegget ble åpnet."
       },
       "code": {
         "title": "Kode"

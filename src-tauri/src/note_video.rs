@@ -11,9 +11,10 @@ use base64::Engine as _;
 use sha2::{Digest, Sha256};
 use tokio::sync::OnceCell;
 
-pub(crate) const PLAYERS: [(&str, &str); 2] = [
+pub(crate) const PLAYERS: [(&str, &str); 3] = [
     ("https://www.youtube-nocookie.com", "/embed/"),
     ("https://player.vimeo.com", "/video/"),
+    ("https://platform.twitter.com", "/embed/Tweet.html"),
 ];
 const PAGE_PATH: &str = "/video";
 const SCRIPT: &str = include_str!("note_video_page.js");
@@ -129,7 +130,7 @@ mod tests {
     }
 
     #[test]
-    fn the_page_runs_only_its_own_script_and_frames_only_the_two_players() {
+    fn the_page_runs_only_its_own_script_and_frames_only_the_three_players() {
         let page = &*PAGE;
         let hash = STANDARD.encode(Sha256::digest(SCRIPT.as_bytes()));
         assert!(page
@@ -138,7 +139,7 @@ mod tests {
         assert_eq!(page.html.matches("<script").count(), 1);
         assert_eq!(
             page.policy,
-            format!("default-src 'none'; script-src 'sha256-{hash}'; frame-src https://www.youtube-nocookie.com https://player.vimeo.com; base-uri 'none'; form-action 'none'")
+            format!("default-src 'none'; script-src 'sha256-{hash}'; frame-src https://www.youtube-nocookie.com https://player.vimeo.com https://platform.twitter.com; base-uri 'none'; form-action 'none'")
         );
         assert!(!page.policy.contains("unsafe"));
         for (origin, path) in PLAYERS {

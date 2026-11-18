@@ -292,7 +292,8 @@
       "molecule": "Prima le righe di opzioni, come format: pdb e style: cartoon.\nPoi il testo del file, oppure path: assets/1abc.pdb",
       "sequence": "Record FASTA o una sequenza semplice:\n>campione 1\nATGGCCATTGTAATG",
       "notebook": "Il percorso del notebook sulla prima riga:\nassets/analysis.ipynb\nPoi righe facoltative come cells: 2-5 e code: hide.",
-      "bookmark": "Un campo per riga, a partire dall'indirizzo web:\nurl: https://example.com/article\nPoi, se vuoi, le righe title:, description:, image:, site: e favicon:."
+      "bookmark": "Un campo per riga, a partire dall'indirizzo web:\nurl: https://example.com/article\nPoi, se vuoi, le righe title:, description:, image:, site: e favicon:.",
+      "x-post": "Un campo per riga, iniziando dall'indirizzo del post:\nurl: https://x.com/jack/status/20\nPoi righe facoltative author:, handle: e date:, una riga vuota e il testo del post."
     },
     "newChart": {
       "title": "Nuovo grafico",
@@ -578,6 +579,18 @@
       "ask": "Aggiungi una pagina web come segnalibro",
       "loading": "Caricamento dell'anteprima della pagina",
       "noUrl": "Aggiungi una riga url: con un indirizzo web che inizia con https:// o http://."
+    },
+    "xPost": {
+      "label": "Post su X",
+      "pasteChoice": "Come mostrare questo post",
+      "embedChoice": "Incorpora post",
+      "loading": "Caricamento del post da X",
+      "noUrl": "Aggiungi una riga url: con un link a un post su x.com.",
+      "failed": "Impossibile caricare il post da X. Aprilo su X.",
+      "showLive": "Mostra post dal vivo",
+      "showSaved": "Mostra post salvato",
+      "open": "Apri su X",
+      "liveTitle": "Post dal vivo da X"
     }
   },
   "notebook": {
@@ -1588,6 +1601,10 @@
       "keepUndo": {
         "label": "Mantieni l'annullamento dopo la chiusura",
         "description": "Puoi ancora annullare le modifiche a una nota dopo averla chiusa o essere uscito dall'app. La cronologia resta su questo computer, e disattivare l'opzione la elimina."
+      },
+      "xPostsLive": {
+        "label": "Carica automaticamente i post di X",
+        "description": "Mostra il post dal vivo di X al posto della scheda salvata. X saprà così che il post è stato aperto."
       },
       "code": {
         "title": "Codice"

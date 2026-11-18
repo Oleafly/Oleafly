@@ -1,7 +1,7 @@
 import { i18n } from "@/i18n";
 
 const FENCE = "```";
-const SYNTAX_KINDS = ["chart", "plot", "csv", "latex", "typst", "mermaid", "d2", "tikz", "circuitikz", "svg", "html", "jsx", "smiles", "molecule", "sequence", "notebook", "bookmark"] as const;
+const SYNTAX_KINDS = ["chart", "plot", "csv", "latex", "typst", "mermaid", "d2", "tikz", "circuitikz", "svg", "html", "jsx", "smiles", "molecule", "sequence", "notebook", "bookmark", "x-post"] as const;
 type SyntaxKind = (typeof SYNTAX_KINDS)[number];
 
 function hasSyntax(kind: string): kind is SyntaxKind {
@@ -35,6 +35,7 @@ const SECTIONS: readonly string[] = [
   `Sequence: ${FENCE}sequence (or fasta) with FASTA records (>header lines followed by residues) or a raw sequence. Whitespace and digits are ignored, ; lines are comments, - and . are gaps. DNA, RNA and protein are detected; people can show the reverse complement and translation of DNA.`,
   `Notebook: ${FENCE}notebook with the .ipynb path on the first line, then optional cells: 2-5 and code: hide.`,
   `Bookmark: ${FENCE}bookmark is a link card with one field per line: url: https://... first, then optional title:, description:, image:, site: and favicon:, each on one line. Write only fields you know; people see the title, description and site as a card that opens the page.`,
+  `Post on X: ${FENCE}x-post keeps a post from X: url: https://x.com/<user>/status/<id> first, then optional author:, handle: and date: lines, a blank line and the post's text. People see the saved post as a card and can show the live post from X.`,
   `Code: a fence with a language (python, r, julia, matlab, octave, javascript, typescript, rust, c, cpp, java, go, sql, bash, shell, json, yaml, toml, latex, fortran, and more) is highlighted and stays editable. It does not run.`,
 ];
 

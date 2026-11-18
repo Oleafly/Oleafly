@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { blockSyntax } from "./block-guide";
 import { BLOCK_GROUPS, type BlockGroupId, NEW_BLOCKS } from "./block-templates";
 import { bookmarkBlock } from "./bookmark-block";
+import { xPostBlock } from "./x-post-block";
 import { chartBlock } from "./chart-block";
 import { codeHighlightPlugin, codeLanguage } from "./code-highlight";
 import { d2Block } from "./d2-block";
@@ -203,6 +204,7 @@ export const BUILT_IN_BLOCKS: readonly NoteBlockKind[] = [
   sequenceBlock,
   notebookBlock,
   bookmarkBlock,
+  xPostBlock,
 ];
 
 for (const kind of BUILT_IN_BLOCKS) registerNoteBlock(kind);

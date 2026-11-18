@@ -288,7 +288,8 @@
       "molecule": "Các dòng tuỳ chọn trước, như format: pdb và style: cartoon.\nSau đó là nội dung tệp, hoặc path: assets/1abc.pdb",
       "sequence": "Bản ghi FASTA hoặc một trình tự thô:\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "Đường dẫn của notebook ở dòng đầu:\nassets/analysis.ipynb\nSau đó là các dòng tuỳ chọn như cells: 2-5 và code: hide.",
-      "bookmark": "Mỗi dòng một trường, bắt đầu bằng địa chỉ web:\nurl: https://example.com/article\nSau đó là các dòng tuỳ chọn title:, description:, image:, site: và favicon:."
+      "bookmark": "Mỗi dòng một trường, bắt đầu bằng địa chỉ web:\nurl: https://example.com/article\nSau đó là các dòng tuỳ chọn title:, description:, image:, site: và favicon:.",
+      "x-post": "Mỗi dòng một trường, bắt đầu bằng địa chỉ bài đăng:\nurl: https://x.com/jack/status/20\nSau đó là các dòng tùy chọn author:, handle: và date:, một dòng trống và nội dung bài đăng."
     },
     "newChart": {
       "title": "Biểu đồ mới",
@@ -564,6 +565,18 @@
       "ask": "Đánh dấu một trang web",
       "loading": "Đang tải bản xem trước của trang",
       "noUrl": "Hãy thêm một dòng url: với địa chỉ web bắt đầu bằng https:// hoặc http://."
+    },
+    "xPost": {
+      "label": "Bài đăng trên X",
+      "pasteChoice": "Cách hiển thị bài đăng này",
+      "embedChoice": "Nhúng bài đăng",
+      "loading": "Đang tải bài đăng từ X",
+      "noUrl": "Thêm một dòng url: có liên kết đến một bài đăng trên x.com.",
+      "failed": "Không tải được bài đăng từ X. Hãy mở nó trên X.",
+      "showLive": "Hiện bài đăng trực tiếp",
+      "showSaved": "Hiện bài đăng đã lưu",
+      "open": "Mở trên X",
+      "liveTitle": "Bài đăng trực tiếp từ X"
     }
   },
   "notebook": {
@@ -1530,6 +1543,10 @@
       "keepUndo": {
         "label": "Giữ lịch sử hoàn tác sau khi đóng",
         "description": "Hoàn tác vẫn hoạt động trên ghi chú sau khi bạn đóng nó hoặc thoát ứng dụng. Lịch sử được lưu trên máy tính này, và tắt mục này sẽ xoá lịch sử."
+      },
+      "xPostsLive": {
+        "label": "Tự động tải bài đăng X",
+        "description": "Hiện bài đăng trực tiếp từ X thay cho thẻ đã lưu. Khi đó X biết rằng bài đăng đã được mở."
       },
       "code": {
         "title": "Mã"

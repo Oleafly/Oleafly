@@ -290,7 +290,8 @@
       "molecule": "Først indstillingslinjer, for eksempel format: pdb og style: cartoon.\nDerefter filens tekst eller path: assets/1abc.pdb",
       "sequence": "FASTA-poster eller en rå sekvens:\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "Notebookens sti på første linje:\nassets/analysis.ipynb\nDerefter valgfrie linjer som cells: 2-5 og code: hide.",
-      "bookmark": "Ét felt pr. linje, først webadressen:\nurl: https://example.com/article\nDerefter valgfrie linjer med title:, description:, image:, site: og favicon:."
+      "bookmark": "Ét felt pr. linje, først webadressen:\nurl: https://example.com/article\nDerefter valgfrie linjer med title:, description:, image:, site: og favicon:.",
+      "x-post": "Ét felt pr. linje, begynd med opslagets adresse:\nurl: https://x.com/jack/status/20\nDerefter valgfrie linjer med author:, handle: og date:, en tom linje og opslagets tekst."
     },
     "newChart": {
       "title": "Nyt diagram",
@@ -571,6 +572,18 @@
       "ask": "Opret et bogmærke til en webside",
       "loading": "Indlæser forhåndsvisning af siden",
       "noUrl": "Tilføj en linje med url: og en webadresse, der starter med https:// eller http://."
+    },
+    "xPost": {
+      "label": "Opslag på X",
+      "pasteChoice": "Hvordan dette opslag skal vises",
+      "embedChoice": "Indlejr opslag",
+      "loading": "Indlæser opslaget fra X",
+      "noUrl": "Tilføj en url:-linje med et link til et opslag på x.com.",
+      "failed": "Opslaget kunne ikke hentes fra X. Åbn det på X i stedet.",
+      "showLive": "Vis live-opslag",
+      "showSaved": "Vis gemt opslag",
+      "open": "Åbn på X",
+      "liveTitle": "Live-opslag fra X"
     }
   },
   "notebook": {
@@ -1559,6 +1572,10 @@
       "keepUndo": {
         "label": "Behold fortryd efter lukning",
         "description": "Fortryd virker stadig i en note, efter du har lukket den eller afsluttet appen. Historikken bliver på denne computer, og hvis du slår dette fra, slettes den."
+      },
+      "xPostsLive": {
+        "label": "Indlæs opslag fra X automatisk",
+        "description": "Viser live-opslaget fra X i stedet for det gemte kort. X får så at vide, at opslaget blev åbnet."
       },
       "code": {
         "title": "Kode"

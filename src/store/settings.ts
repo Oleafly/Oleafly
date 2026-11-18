@@ -1143,6 +1143,7 @@ interface SettingsState {
   notesTextReplace: boolean;
   notesTextReplacements: NotesAppearance["notesTextReplacements"];
   notesKeepUndo: boolean;
+  notesXPostsLive: boolean;
   notesTikzPreamble: string;
   setNotesAppearance: <K extends NotesAppearanceKey>(key: K, value: NotesAppearance[K]) => void;
   notesPeriodic: NotesPeriodic;

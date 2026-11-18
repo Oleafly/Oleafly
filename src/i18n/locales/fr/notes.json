@@ -292,7 +292,8 @@
       "molecule": "D'abord les lignes d'options, comme format: pdb et style: cartoon.\nPuis le texte du fichier, ou path: assets/1abc.pdb",
       "sequence": "Des enregistrements FASTA ou une séquence brute :\n>échantillon 1\nATGGCCATTGTAATG",
       "notebook": "Le chemin du notebook sur la première ligne :\nassets/analysis.ipynb\nPuis des lignes facultatives comme cells: 2-5 et code: hide.",
-      "bookmark": "Un champ par ligne, en commençant par l'adresse web :\nurl: https://example.com/article\nPuis, si vous le souhaitez, des lignes title:, description:, image:, site: et favicon:."
+      "bookmark": "Un champ par ligne, en commençant par l'adresse web :\nurl: https://example.com/article\nPuis, si vous le souhaitez, des lignes title:, description:, image:, site: et favicon:.",
+      "x-post": "Un champ par ligne, en commençant par l'adresse de la publication :\nurl: https://x.com/jack/status/20\nPuis des lignes facultatives author:, handle: et date:, une ligne vide et le texte de la publication."
     },
     "newChart": {
       "title": "Nouveau graphique",
@@ -578,6 +579,18 @@
       "ask": "Ajouter une page web en signet",
       "loading": "Chargement de l'aperçu de la page",
       "noUrl": "Ajoutez une ligne url: avec une adresse web qui commence par https:// ou http://."
+    },
+    "xPost": {
+      "label": "Publication sur X",
+      "pasteChoice": "Comment afficher cette publication",
+      "embedChoice": "Intégrer la publication",
+      "loading": "Chargement de la publication depuis X",
+      "noUrl": "Ajoutez une ligne url: avec un lien vers une publication sur x.com.",
+      "failed": "Impossible de charger cette publication depuis X. Ouvrez-la sur X.",
+      "showLive": "Afficher la publication en direct",
+      "showSaved": "Afficher la publication enregistrée",
+      "open": "Ouvrir sur X",
+      "liveTitle": "Publication en direct depuis X"
     }
   },
   "notebook": {
@@ -1588,6 +1601,10 @@
       "keepUndo": {
         "label": "Conserver l'annulation après fermeture",
         "description": "Vous pouvez encore annuler vos modifications dans une note après l'avoir fermée ou avoir quitté l'application. L'historique reste sur cet ordinateur, et désactiver cette option le supprime."
+      },
+      "xPostsLive": {
+        "label": "Charger automatiquement les publications X",
+        "description": "Affiche la publication en direct de X à la place de la carte enregistrée. X sait alors que la publication a été ouverte."
       },
       "code": {
         "title": "Code"

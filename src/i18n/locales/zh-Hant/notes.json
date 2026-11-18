@@ -288,7 +288,8 @@
       "molecule": "先寫選項行，例如 format: pdb 和 style: cartoon。\n然後是檔案文字，或 path: assets/1abc.pdb",
       "sequence": "FASTA 記錄或原始序列：\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "第一行寫筆記本的路徑：\nassets/analysis.ipynb\n然後可以加上 cells: 2-5 和 code: hide 之類的選用行。",
-      "bookmark": "每行一個欄位，以網址開頭：\nurl: https://example.com/article\n接著是可選的 title:、description:、image:、site: 和 favicon: 行。"
+      "bookmark": "每行一個欄位，以網址開頭：\nurl: https://example.com/article\n接著是可選的 title:、description:、image:、site: 和 favicon: 行。",
+      "x-post": "每行一個欄位，先寫貼文網址：\nurl: https://x.com/jack/status/20\n接著是選填的 author:、handle: 和 date: 行，一個空行，再寫貼文內容。"
     },
     "newChart": {
       "title": "新統計圖",
@@ -564,6 +565,18 @@
       "ask": "為網頁加上書籤",
       "loading": "正在載入頁面預覽",
       "noUrl": "請加入一行 url:，並填入以 https:// 或 http:// 開頭的網址。"
+    },
+    "xPost": {
+      "label": "X 上的貼文",
+      "pasteChoice": "如何顯示這則貼文",
+      "embedChoice": "嵌入貼文",
+      "loading": "正在從 X 載入貼文",
+      "noUrl": "新增一行 url:，寫上 x.com 上貼文的連結。",
+      "failed": "無法從 X 載入這則貼文。請在 X 上開啟。",
+      "showLive": "顯示即時貼文",
+      "showSaved": "顯示已儲存的貼文",
+      "open": "在 X 上開啟",
+      "liveTitle": "來自 X 的即時貼文"
     }
   },
   "notebook": {
@@ -1530,6 +1543,10 @@
       "keepUndo": {
         "label": "關閉後保留復原記錄",
         "description": "關閉筆記或結束應用程式後，仍可復原筆記中的操作。歷史記錄會保留在這台電腦上，關閉這個選項會刪除它。"
+      },
+      "xPostsLive": {
+        "label": "自動載入 X 貼文",
+        "description": "以 X 的即時貼文取代已儲存的卡片。X 會因此得知貼文已被開啟。"
       },
       "code": {
         "title": "程式碼"

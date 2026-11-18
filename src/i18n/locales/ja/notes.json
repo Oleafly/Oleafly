@@ -288,7 +288,8 @@
       "molecule": "先にオプションの行を書きます。format: pdb や style: cartoon など。\n次にファイルのテキスト、または path: assets/1abc.pdb",
       "sequence": "FASTA レコードまたは生の配列:\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "1 行目にノートブックのパス:\nassets/analysis.ipynb\n続けて cells: 2-5 や code: hide などの行を、必要に応じて追加できます。",
-      "bookmark": "1 行に 1 つのフィールドを書き、最初は Web アドレスです:\nurl: https://example.com/article\n続けて、必要に応じて title:、description:、image:、site:、favicon: の行を追加できます。"
+      "bookmark": "1 行に 1 つのフィールドを書き、最初は Web アドレスです:\nurl: https://example.com/article\n続けて、必要に応じて title:、description:、image:、site:、favicon: の行を追加できます。",
+      "x-post": "1 行に 1 項目。最初に投稿のアドレスを書きます:\nurl: https://x.com/jack/status/20\n続けて任意の author:、handle:、date: の行、空行、投稿の本文を書きます。"
     },
     "newChart": {
       "title": "新しいグラフ",
@@ -564,6 +565,18 @@
       "ask": "Web ページをブックマーク",
       "loading": "ページのプレビューを読み込んでいます",
       "noUrl": "https:// または http:// で始まる Web アドレスを書いた url: の行を追加してください。"
+    },
+    "xPost": {
+      "label": "X の投稿",
+      "pasteChoice": "この投稿の表示方法",
+      "embedChoice": "投稿を埋め込む",
+      "loading": "X から投稿を読み込んでいます",
+      "noUrl": "x.com の投稿へのリンクを含む url: 行を追加してください。",
+      "failed": "X から投稿を読み込めませんでした。X で開いてください。",
+      "showLive": "ライブの投稿を表示",
+      "showSaved": "保存した投稿を表示",
+      "open": "X で開く",
+      "liveTitle": "X のライブ投稿"
     }
   },
   "notebook": {
@@ -1530,6 +1543,10 @@
       "keepUndo": {
         "label": "閉じた後も元に戻す履歴を保持",
         "description": "ノートを閉じたりアプリを終了したりした後でも、元に戻す操作が使えます。履歴はこのコンピュータに保存され、オフにすると削除されます。"
+      },
+      "xPostsLive": {
+        "label": "X の投稿を自動で読み込む",
+        "description": "保存したカードの代わりに X のライブ投稿を表示します。投稿を開いたことが X に伝わります。"
       },
       "code": {
         "title": "コード"

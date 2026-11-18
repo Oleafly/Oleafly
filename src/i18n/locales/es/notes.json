@@ -292,7 +292,8 @@
       "molecule": "Primero las líneas de opciones, como format: pdb y style: cartoon.\nDespués el texto del archivo, o path: assets/1abc.pdb",
       "sequence": "Registros FASTA o una secuencia sin formato:\n>muestra 1\nATGGCCATTGTAATG",
       "notebook": "La ruta del cuaderno en la primera línea:\nassets/analysis.ipynb\nDespués, líneas opcionales como cells: 2-5 y code: hide.",
-      "bookmark": "Un campo por línea, empezando por la dirección web:\nurl: https://example.com/article\nDespués, si quieres, las líneas title:, description:, image:, site: y favicon:."
+      "bookmark": "Un campo por línea, empezando por la dirección web:\nurl: https://example.com/article\nDespués, si quieres, las líneas title:, description:, image:, site: y favicon:.",
+      "x-post": "Un campo por línea, empezando por la dirección de la publicación:\nurl: https://x.com/jack/status/20\nDespués, líneas opcionales author:, handle: y date:, una línea en blanco y el texto de la publicación."
     },
     "newChart": {
       "title": "Gráfico nuevo",
@@ -578,6 +579,18 @@
       "ask": "Guardar una página web como marcador",
       "loading": "Cargando la vista previa de la página",
       "noUrl": "Añade una línea url: con una dirección web que empiece por https:// o http://."
+    },
+    "xPost": {
+      "label": "Publicación en X",
+      "pasteChoice": "Cómo mostrar esta publicación",
+      "embedChoice": "Insertar publicación",
+      "loading": "Cargando la publicación de X",
+      "noUrl": "Añade una línea url: con un enlace a una publicación de x.com.",
+      "failed": "No se pudo cargar esta publicación de X. Ábrela en X.",
+      "showLive": "Mostrar publicación en vivo",
+      "showSaved": "Mostrar publicación guardada",
+      "open": "Abrir en X",
+      "liveTitle": "Publicación en vivo de X"
     }
   },
   "notebook": {
@@ -1588,6 +1601,10 @@
       "keepUndo": {
         "label": "Conservar el deshacer al cerrar",
         "description": "Puedes seguir deshaciendo cambios en una nota después de cerrarla o de salir de la aplicación. El historial se queda en este equipo y desactivar esta opción lo borra."
+      },
+      "xPostsLive": {
+        "label": "Cargar publicaciones de X automáticamente",
+        "description": "Muestra la publicación en vivo de X en lugar de la tarjeta guardada. X sabrá entonces que se abrió la publicación."
       },
       "code": {
         "title": "Código"

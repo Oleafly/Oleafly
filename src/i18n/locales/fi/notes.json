@@ -290,7 +290,8 @@
       "molecule": "Ensin asetusrivit, kuten format: pdb ja style: cartoon.\nSitten tiedoston teksti tai path: assets/1abc.pdb",
       "sequence": "FASTA-tietueita tai pelkkä sekvenssi:\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "Muistikirjan polku ensimmäisellä rivillä:\nassets/analysis.ipynb\nSen jälkeen valinnaisia rivejä, kuten cells: 2-5 ja code: hide.",
-      "bookmark": "Yksi kenttä riviä kohden, ensin verkko-osoite:\nurl: https://example.com/article\nSitten valinnaiset rivit title:, description:, image:, site: ja favicon:."
+      "bookmark": "Yksi kenttä riviä kohden, ensin verkko-osoite:\nurl: https://example.com/article\nSitten valinnaiset rivit title:, description:, image:, site: ja favicon:.",
+      "x-post": "Yksi kenttä riviä kohden, aloita julkaisun osoitteella:\nurl: https://x.com/jack/status/20\nSitten valinnaiset rivit author:, handle: ja date:, tyhjä rivi ja julkaisun teksti."
     },
     "newChart": {
       "title": "Uusi diagrammi",
@@ -571,6 +572,18 @@
       "ask": "Tee kirjanmerkki verkkosivusta",
       "loading": "Ladataan sivun esikatselua",
       "noUrl": "Lisää rivi url: ja verkko-osoite, joka alkaa https:// tai http://."
+    },
+    "xPost": {
+      "label": "Julkaisu X:ssä",
+      "pasteChoice": "Miten tämä julkaisu näytetään",
+      "embedChoice": "Upota julkaisu",
+      "loading": "Ladataan julkaisua X:stä",
+      "noUrl": "Lisää url:-rivi, jossa on linkki x.com-julkaisuun.",
+      "failed": "Julkaisua ei voitu ladata X:stä. Avaa se X:ssä.",
+      "showLive": "Näytä live-julkaisu",
+      "showSaved": "Näytä tallennettu julkaisu",
+      "open": "Avaa X:ssä",
+      "liveTitle": "Live-julkaisu X:stä"
     }
   },
   "notebook": {
@@ -1559,6 +1572,10 @@
       "keepUndo": {
         "label": "Säilytä kumoushistoria sulkemisen jälkeen",
         "description": "Kumoaminen toimii muistiinpanossa vielä, kun olet sulkenut sen tai lopettanut sovelluksen. Historia säilyy tällä tietokoneella, ja tämän poistaminen käytöstä poistaa sen."
+      },
+      "xPostsLive": {
+        "label": "Lataa X-julkaisut automaattisesti",
+        "description": "Näyttää live-julkaisun X:stä tallennetun kortin sijaan. X saa silloin tietää, että julkaisu avattiin."
       },
       "code": {
         "title": "Koodi"
