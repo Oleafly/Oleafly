@@ -563,7 +563,7 @@
       },
       "glossaries-index": {
         "title": "Herramienta de glosario o de índice",
-        "detail": "glossaries y makeindex necesitan una ejecución adicional de makeindex o xindy, que el motor incluido no hace."
+        "detail": "glossaries y makeindex necesitan una ejecución adicional de makeindex, xindy o bib2gls, que el motor incluido no hace."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref está configurado con el controlador de pdfTeX",
@@ -1104,7 +1104,8 @@
       "help": "Ayuda y Acerca de",
       "integrations": "Integraciones",
       "shortcuts": "Atajos de teclado",
-      "research": "Investigación"
+      "research": "Investigación",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Ningún ajuste coincide",
@@ -1121,7 +1122,8 @@
         "help": "acerca de, versión, actualizaciones, registro de cambios, novedades, documentación, soporte, ayuda, comunidad, Discord, licencia, informe de fallos",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, alojamiento Git, Computer Use, aplicaciones de escritorio, Cua, MCP, citas, cuentas, conexiones",
         "shortcuts": "atajos de teclado, atajos, combinaciones de teclas, teclas, teclado",
-        "research": "investigación tareas presupuesto notificaciones mantener despierto experimentos ejecuciones research tasks"
+        "research": "investigación tareas presupuesto notificaciones mantener despierto experimentos ejecuciones research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Buscar en ajustes",
       "results_one": "{{count}} sección coincide",
@@ -1709,5 +1711,9 @@
   "stuckWindow": {
     "reloaded": "Oleafly recargó esta ventana porque dejó de responder durante 30 segundos. Puede que los cambios hechos justo antes no se hayan guardado.",
     "reloadedAgain": "Oleafly volvió a recargar esta ventana porque dejó de responder otra vez. No volvió a abrir tu proyecto, por si algo en él causó el problema."
+  },
+  "zoomIndicator": {
+    "label": "Zoom",
+    "reset": "Restablecer"
   }
 }

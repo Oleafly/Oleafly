@@ -109,7 +109,7 @@ export class NotesPage {
   }
 
   get toolbar(): Locator {
-    return this.page.getByRole("toolbar", { name: "Formatting" }).filter({ visible: true });
+    return this.page.getByRole("toolbar", { name: "Formatting", exact: true }).filter({ visible: true });
   }
 
   get composer(): Locator {
@@ -182,22 +182,34 @@ export class NotesPage {
     await expect(menu).toHaveCount(0);
   }
 
-  menuEntry(label: string): Locator {
-    const name = new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}(?:$|\\s*[^\\p{L}\\s]|\\s+(?:Ctrl|Alt|Shift)\\+)`, "u");
+  menuEntry(label: string | RegExp): Locator {
+    const name =
+      typeof label === "string"
+        ? new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&")}(?:$|\\s*[^\\p{L}\\s]|\\s+(?:Ctrl|Alt|Shift)\\+)`, "u")
+        : label;
     return this.page
       .getByRole("menuitem", { name })
       .or(this.page.getByRole("menuitemcheckbox", { name }))
       .or(this.page.getByRole("menuitemradio", { name }));
   }
 
-  async tool(name: string, item?: string): Promise<void> {
+  // Clicks a toolbar control, or the entry under it, wherever the bar's width put it: on the bar, or
+  // in More. More's submenus open to the left at the bar's right edge, and a pointer that jumps
+  // there in one move leaves the submenu's trigger heading away from it, which closes the submenu;
+  // the keyboard reaches the entry as a person would.
+  async tool(name: string, item?: string | RegExp): Promise<void> {
+    const itemOnBar = typeof item === "string" ? this.toolbar.getByRole("button", { name: item, exact: true }) : null;
+    if (itemOnBar && (await itemOnBar.isVisible())) {
+      await itemOnBar.click();
+      return;
+    }
     const onBar = this.toolbar.getByRole("button", { name, exact: true });
     if (await onBar.isVisible()) {
       await onBar.click();
       if (item) await this.menuEntry(item).click();
       return;
     }
-    await this.toolbar.getByRole("button", { name: "More", exact: true }).click();
+    await this.toolbar.getByRole("button", { name: "More formatting", exact: true }).click();
     if (!item) {
       await this.menuEntry(name).click();
       return;

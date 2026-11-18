@@ -1,5 +1,7 @@
 mod people;
 
+use std::sync::Arc;
+
 use loro::{ExportMode, LoroDoc, LoroMap};
 use oleafly_collab_protocol::admin::{
     Page, RuntimeSettingsPatch, SecurityEvent, SecurityEventKind,
@@ -9,13 +11,16 @@ use oleafly_collab_protocol::capabilities::PROTOCOL_VERSION;
 use oleafly_collab_protocol::console::{AdminOverview, HealthIssue};
 use oleafly_collab_protocol::frames::ClientFrame;
 use oleafly_collab_protocol::frames::{FrameErrorCode, ServerFrame};
-use oleafly_collab_protocol::ids::SharedProjectId;
+use oleafly_collab_protocol::ids::{AccountId, SharedProjectId};
 use oleafly_collab_protocol::poll::{
     understands_header, PollBatch, PollFrames, PollReplies, DEVICE_HEADER, NONCE_HEADER,
     POLL_KEY_HEADER, PROTOCOL_HEADER, SIGNATURE_HEADER, UNDERSTANDS_HEADER,
 };
 use oleafly_collab_protocol::projects::ProjectRole;
+use oleafly_server::clock::Clock;
+use oleafly_server::comment_guard;
 use oleafly_server::snapshots::{read_cost, Budget, Keep};
+use oleafly_server::state::AppState;
 use oleafly_server::test_support::challenge_nonce;
 use people::{
     call, connect, connect_understanding, first_snapshot, grant, next_frame, raw_envelope,
@@ -25,6 +30,7 @@ use reqwest::{Method, StatusCode};
 use serde_json::json;
 
 const COMMENTS_OFF: &str = "Comments are turned off for this project.";
+const CHAT_ID: &str = "01920000-0000-7000-8000-00000000c001";
 
 struct Writer {
     doc: LoroDoc,
@@ -507,7 +513,7 @@ async fn a_document_kept_for_mention_scans_never_lets_a_comment_through_unchecke
     assert!(refused_for_comments(&refused), "{refused:?}");
 }
 
-async fn comment_changes_logged(stage: &Stage) -> Vec<SecurityEvent> {
+async fn logged(stage: &Stage, kind: SecurityEventKind) -> Vec<SecurityEvent> {
     let page: Page<SecurityEvent> = call(
         &stage.server,
         Method::GET,
@@ -521,7 +527,7 @@ async fn comment_changes_logged(stage: &Stage) -> Vec<SecurityEvent> {
     .expect("the security log");
     page.items
         .into_iter()
-        .filter(|event| event.kind == SecurityEventKind::CommentsChangedWhileOff)
+        .filter(|event| event.kind == kind)
         .collect()
 }
 
@@ -547,7 +553,9 @@ async fn a_comment_stored_unchecked_is_checked_once_the_budget_allows_and_report
         "{typed:?}"
     );
     state.comment_guard.rechecks_settled().await;
-    assert!(comment_changes_logged(&stage).await.is_empty());
+    assert!(logged(&stage, SecurityEventKind::CommentsChangedWhileOff)
+        .await
+        .is_empty());
 
     state.snapshots.set_budget(Budget::default());
     let checked = writer.send(&stage.alice, project, type_text).await;
@@ -556,7 +564,7 @@ async fn a_comment_stored_unchecked_is_checked_once_the_budget_allows_and_report
         "{checked:?}"
     );
     state.comment_guard.rechecks_settled().await;
-    let logged = comment_changes_logged(&stage).await;
+    let logged = logged(&stage, SecurityEventKind::CommentsChangedWhileOff).await;
     assert_eq!(logged.len(), 1, "only the new thread changed comments");
     assert_eq!(logged[0].actor, Some(stage.alice.tokens.account_id));
     assert_eq!(logged[0].target, Some(project.to_string()));
@@ -594,4 +602,249 @@ async fn a_comment_stored_unchecked_is_checked_once_the_budget_allows_and_report
         .await
         .expect("the queue");
     assert_eq!(waiting, 0);
+}
+
+async fn rechecks_waiting(stage: &Stage) -> i64 {
+    stage
+        .server
+        .state()
+        .db
+        .call(|conn| {
+            Ok(
+                conn.query_row("SELECT COUNT(*) FROM comment_rechecks", [], |row| {
+                    row.get(0)
+                })?,
+            )
+        })
+        .await
+        .expect("the queue")
+}
+
+#[tokio::test]
+async fn with_comments_on_an_editor_comment_the_server_could_not_read_is_checked_later() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    let state = stage.server.state();
+    state.snapshots.set_budget(Budget {
+        memory_bytes: 1,
+        ..Budget::default()
+    });
+    let mut writer = Writer::open(&stage, &stage.alice, project, 46).await;
+    let thread = writer.send(&stage.alice, project, add_thread).await;
+    assert!(
+        matches!(thread, ServerFrame::Ack { seq: 1, .. }),
+        "{thread:?}"
+    );
+    state.comment_guard.rechecks_settled().await;
+    assert_eq!(rechecks_waiting(&stage).await, 1);
+    state.snapshots.set_budget(Budget::default());
+    let typed = writer.send(&stage.alice, project, type_text).await;
+    assert!(
+        matches!(typed, ServerFrame::Ack { seq: 2, .. }),
+        "{typed:?}"
+    );
+    state.comment_guard.rechecks_settled().await;
+    assert_eq!(rechecks_waiting(&stage).await, 0);
+    assert!(
+        logged(&stage, SecurityEventKind::CommentsChangedWhileOff)
+            .await
+            .is_empty(),
+        "comments were on, so the thread is judged by the editor's rules"
+    );
+}
+
+fn chat_with_a_reaction(doc: &LoroDoc, author: AccountId) {
+    let message = doc
+        .get_list("chat")
+        .push_container(LoroMap::new())
+        .expect("message");
+    message.insert("id", CHAT_ID).expect("id");
+    message
+        .insert("author", author.to_string())
+        .expect("author");
+    message.insert("at", 1_i64).expect("at");
+    message.insert("body", "Morning").expect("body");
+    doc.get_map("chat_reactions")
+        .insert(&format!("{CHAT_ID}|👍|{author}"), 2_i64)
+        .expect("reaction");
+}
+
+async fn taken_back_while_unreadable(
+    stage: &Stage,
+    project: SharedProjectId,
+    typed_meanwhile: usize,
+) {
+    let state = stage.server.state();
+    let bob = stage.bob.tokens.account_id;
+    let mut owner = Writer::open(stage, &stage.bob, project, 47).await;
+    let posted = owner
+        .send(&stage.bob, project, |doc| chat_with_a_reaction(doc, bob))
+        .await;
+    assert!(matches!(posted, ServerFrame::Ack { .. }), "{posted:?}");
+    state.snapshots.set_budget(Budget {
+        memory_bytes: 1,
+        ..Budget::default()
+    });
+    let mut editor = Writer::open(stage, &stage.alice, project, 48).await;
+    editor.doc.import(&owner.last).expect("the chat");
+    let taken = editor
+        .send(&stage.alice, project, |doc| {
+            doc.get_map("chat_reactions")
+                .delete(&format!("{CHAT_ID}|👍|{bob}"))
+                .expect("take back");
+        })
+        .await;
+    assert!(matches!(taken, ServerFrame::Ack { .. }), "{taken:?}");
+    state.comment_guard.rechecks_settled().await;
+    assert_eq!(rechecks_waiting(stage).await, 1);
+    for _ in 0..typed_meanwhile {
+        let typed = editor.send(&stage.alice, project, type_text).await;
+        assert!(matches!(typed, ServerFrame::Ack { .. }), "{typed:?}");
+        state.comment_guard.rechecks_settled().await;
+    }
+    state.snapshots.set_budget(Budget::default());
+    let typed = editor.send(&stage.alice, project, type_text).await;
+    assert!(matches!(typed, ServerFrame::Ack { .. }), "{typed:?}");
+    state.comment_guard.rechecks_settled().await;
+    assert_eq!(rechecks_waiting(stage).await, 0);
+}
+
+#[tokio::test]
+async fn an_editor_change_stored_unchecked_that_breaks_their_role_is_reported_once_checked() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    taken_back_while_unreadable(&stage, project, 0).await;
+    let broke = logged(&stage, SecurityEventKind::ChangeBrokeRole).await;
+    assert_eq!(broke.len(), 1, "{broke:?}");
+    assert_eq!(broke[0].actor, Some(stage.alice.tokens.account_id));
+    assert_eq!(broke[0].target, Some(project.to_string()));
+    assert_eq!(broke[0].detail["seq"], 2);
+    assert!(logged(&stage, SecurityEventKind::CommentsChangedWhileOff)
+        .await
+        .is_empty());
+}
+
+#[tokio::test]
+async fn with_comments_off_an_editor_change_to_the_chat_stored_unchecked_is_judged_by_role() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    set_project_comments(&stage, project, false).await;
+    taken_back_while_unreadable(&stage, project, 0).await;
+    let broke = logged(&stage, SecurityEventKind::ChangeBrokeRole).await;
+    assert_eq!(broke.len(), 1, "{broke:?}");
+    assert_eq!(broke[0].actor, Some(stage.alice.tokens.account_id));
+    assert!(logged(&stage, SecurityEventKind::CommentsChangedWhileOff)
+        .await
+        .is_empty());
+}
+
+#[tokio::test]
+async fn a_role_break_stored_unchecked_is_still_judged_after_typing_while_the_project_is_too_large()
+{
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    taken_back_while_unreadable(&stage, project, 6).await;
+    let broke = logged(&stage, SecurityEventKind::ChangeBrokeRole).await;
+    assert_eq!(broke.len(), 1, "{broke:?}");
+    assert_eq!(broke[0].detail["seq"], 2);
+}
+
+async fn attempts(stage: &Stage) -> Vec<i64> {
+    stage
+        .server
+        .state()
+        .db
+        .call(|conn| {
+            Ok(conn
+                .prepare("SELECT attempts FROM comment_rechecks ORDER BY seq")?
+                .query_map([], |row| row.get(0))?
+                .collect::<Result<Vec<i64>, _>>()?)
+        })
+        .await
+        .expect("the queue")
+}
+
+#[tokio::test]
+async fn a_change_stored_unchecked_on_a_project_too_large_to_read_is_given_up_after_five_tries() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    let state = stage.server.state();
+    state.snapshots.set_budget(Budget {
+        memory_bytes: 1,
+        ..Budget::default()
+    });
+    let mut writer = Writer::open(&stage, &stage.alice, project, 49).await;
+    let thread = writer.send(&stage.alice, project, add_thread).await;
+    assert!(
+        matches!(thread, ServerFrame::Ack { seq: 1, .. }),
+        "{thread:?}"
+    );
+    state.comment_guard.rechecks_settled().await;
+    assert_eq!(attempts(&stage).await, [1]);
+    state.comment_guard.recheck(state, project);
+    state.comment_guard.rechecks_settled().await;
+    assert_eq!(
+        attempts(&stage).await,
+        [1],
+        "a try within the minute counts once"
+    );
+    for tries in 2..=4 {
+        stage.server.clock().advance(60_000);
+        state.comment_guard.recheck(state, project);
+        state.comment_guard.rechecks_settled().await;
+        assert_eq!(attempts(&stage).await, [tries]);
+    }
+    stage.server.clock().advance(60_000);
+    state.comment_guard.recheck(state, project);
+    state.comment_guard.rechecks_settled().await;
+    assert_eq!(rechecks_waiting(&stage).await, 0);
+}
+
+#[tokio::test]
+async fn a_restart_counts_no_try_until_the_minute_after_it() {
+    let stage = stage().await;
+    let project = shared_with_alice(&stage).await;
+    let state = stage.server.state();
+    let unreadable = Budget {
+        memory_bytes: 1,
+        ..Budget::default()
+    };
+    state.snapshots.set_budget(unreadable);
+    let mut writer = Writer::open(&stage, &stage.alice, project, 50).await;
+    let thread = writer.send(&stage.alice, project, add_thread).await;
+    assert!(
+        matches!(thread, ServerFrame::Ack { seq: 1, .. }),
+        "{thread:?}"
+    );
+    state.comment_guard.rechecks_settled().await;
+    assert_eq!(attempts(&stage).await, [1]);
+    let clock: Arc<dyn Clock> = stage.server.clock();
+    let mut restarted = None;
+    for _ in 0..5 {
+        let again = AppState::with_db(
+            (*state.config).clone(),
+            Arc::clone(&clock),
+            state.db.clone(),
+        )
+        .await
+        .expect("the server starts again");
+        again.snapshots.set_budget(unreadable);
+        comment_guard::resume(&again).await;
+        again.comment_guard.rechecks_settled().await;
+        assert_eq!(
+            attempts(&stage).await,
+            [1],
+            "a restart counts no try at once"
+        );
+        restarted = Some(again);
+    }
+    let restarted = restarted.expect("the server restarted");
+    stage.server.clock().advance(60_000);
+    restarted.comment_guard.recheck(&restarted, project);
+    restarted.comment_guard.rechecks_settled().await;
+    assert_eq!(
+        attempts(&stage).await,
+        [2],
+        "the minute after a restart counts"
+    );
 }

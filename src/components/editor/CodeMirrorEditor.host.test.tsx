@@ -2,6 +2,8 @@
 import { cleanup, render } from "@testing-library/react";
 import { EditorState, type Extension, Facet } from "@codemirror/state";
 import { LocalDocumentSession } from "@oleafly/editor/document-session";
+import { emacsModeExtension } from "@oleafly/editor/emacs-mode";
+import { stickyScrollFor } from "@oleafly/editor/sticky-scroll";
 import { EditorView, type KeyBinding } from "@codemirror/view";
 import type { EditorHost, VisualPorts } from "@oleafly/editor/CodeMirrorEditor";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -136,6 +138,18 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   useInlineEditStore.getState().reset();
+});
+
+describe("features only the desktop host supplies", () => {
+  it("gives LaTeX and Typst files their sticky section headers", () => {
+    const { host } = mountProps();
+    expect(host.stickyScroll).toBe(stickyScrollFor);
+    for (const kind of ["latex", "typst"] as const) expect([host.stickyScroll?.(kind)].flat(4).length).toBeGreaterThan(0);
+  });
+
+  it("supplies Emacs mode", () => {
+    expect(mountProps().host.emacs).toBe(emacsModeExtension);
+  });
 });
 
 describe("the proofreading host", () => {

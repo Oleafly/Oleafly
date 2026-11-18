@@ -83,6 +83,8 @@ import { CustomNumberInput } from "@/components/settings/CustomNumberInput";
 import { FontSizeControl } from "@/components/settings/FontSizeControl";
 import { LoadingState } from "@/components/ui/empty";
 import { SettingsOptionCards } from "@/components/settings/SettingsOptionCards";
+import { commentMarkStyle } from "@/components/ui/comments/comment-mark-styles";
+import { COMMENT_COLORS, type CommentColor } from "@/lib/comment-color";
 
 const NotesAppearanceTab = lazy(
   () =>
@@ -134,6 +136,45 @@ function ZenModeSettings() {
         onChange={setShowPdf}
       />
     </section>
+  );
+}
+
+function CommentColorPreview({ color, sample }: Readonly<{ color: CommentColor; sample: string }>) {
+  return (
+    <div data-comment-color={color} className="flex h-14 w-full items-center justify-center rounded bg-background">
+      <span style={commentMarkStyle(true)} className="rounded-t-sm px-1 text-sm text-foreground">
+        {sample}
+      </span>
+    </div>
+  );
+}
+
+function CommentColorSetting() {
+  const { t } = useTranslation(["settings"]);
+  const commentColor = useSettingsStore((state) => state.commentColor);
+  const setCommentColor = useSettingsStore((state) => state.setCommentColor);
+  const names: Record<CommentColor, string> = {
+    indigo: t(($) => $.settings.appearance.app.commentColor.indigo),
+    graphite: t(($) => $.settings.appearance.app.commentColor.graphite),
+    leaf: t(($) => $.settings.appearance.app.commentColor.leaf),
+    accent: t(($) => $.settings.appearance.app.commentColor.accent),
+  };
+  const sample = t(($) => $.settings.appearance.app.commentColor.sample);
+  return (
+    <SettingsOptionCards
+      testId="settings-row-comment-color"
+      label={t(($) => $.settings.appearance.app.commentColor.label)}
+      description={t(($) => $.settings.appearance.app.commentColor.description)}
+      value={commentColor}
+      onChange={setCommentColor}
+      columns={4}
+      optionTestId={(id) => `settings-comment-color-${id}`}
+      options={COMMENT_COLORS.map((id) => ({
+        id,
+        label: names[id],
+        preview: <CommentColorPreview color={id} sample={sample} />,
+      }))}
+    />
   );
 }
 
@@ -260,6 +301,8 @@ function AppAppearanceTab() {
           </div>
         }
       />
+
+      <CommentColorSetting />
 
       <div
         data-testid="settings-row-appearance"
@@ -559,6 +602,12 @@ function EditorAppearanceTab() {
   );
   const setEditorAutoCloseMath = useSettingsStore(
     (state) => state.setEditorAutoCloseMath,
+  );
+  const editorGroupScripts = useSettingsStore(
+    (state) => state.editorGroupScripts,
+  );
+  const setEditorGroupScripts = useSettingsStore(
+    (state) => state.setEditorGroupScripts,
   );
   const editorAutoCloseEnvironments = useSettingsStore(
     (state) => state.editorAutoCloseEnvironments,
@@ -877,6 +926,12 @@ function EditorAppearanceTab() {
         description={t(($) => $.settings.appearance.editor.autoCloseMath.description)}
         checked={editorAutoCloseMath}
         onChange={setEditorAutoCloseMath}
+      />
+      <SettingsToggleRow
+        label={t(($) => $.settings.appearance.editor.groupScripts.label)}
+        description={t(($) => $.settings.appearance.editor.groupScripts.description)}
+        checked={editorGroupScripts}
+        onChange={setEditorGroupScripts}
       />
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.editor.autoCloseEnvironments.label)}
@@ -1363,6 +1418,8 @@ function FileManagementTab() {
   const setDefaultView = useSettingsStore((state) => state.setDefaultView);
   const openInTree = useSettingsStore((state) => state.openInTree);
   const setOpenInTree = useSettingsStore((state) => state.setOpenInTree);
+  const fileMarkers = useSettingsStore((state) => state.fileMarkers);
+  const setFileMarkers = useSettingsStore((state) => state.setFileMarkers);
   const hiddenFilePatterns = useSettingsStore((state) => state.hiddenFilePatterns);
   const addHiddenFilePattern = useSettingsStore(
     (state) => state.addHiddenFilePattern,
@@ -1440,6 +1497,23 @@ function FileManagementTab() {
         description={t(($) => $.settings.appearance.files.showTree.description)}
         checked={openInTree}
         onChange={setOpenInTree}
+      />
+
+      <SettingsRow
+        testId="settings-row-file-markers"
+        label={t(($) => $.settings.appearance.files.markers.label)}
+        description={t(($) => $.settings.appearance.files.markers.description)}
+        control={
+          <Select value={fileMarkers} onValueChange={(value) => setFileMarkers(value as typeof fileMarkers)}>
+            <SelectTrigger className="w-[140px]" aria-label={t(($) => $.settings.appearance.files.markers.label)}>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="z-[100]">
+              <SelectItem value="icons">{t(($) => $.settings.appearance.files.markers.icons)}</SelectItem>
+              <SelectItem value="badges">{t(($) => $.settings.appearance.files.markers.badges)}</SelectItem>
+            </SelectContent>
+          </Select>
+        }
       />
 
       <ZenModeSettings />

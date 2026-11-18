@@ -660,16 +660,20 @@ mod tests {
             platform: "macos".to_string(),
             setup_code: None,
         };
-        let result = sign_in(
-            request,
-            &device_key(),
-            &recording_browser(Arc::clone(&pages)),
-            Duration::from_secs(3),
-        )
-        .await;
+        let key = device_key();
+        let browser = recording_browser(Arc::clone(&pages));
+        let signing_in = sign_in(request, &key, &browser, LONG);
+        tokio::pin!(signing_in);
+        let page = tokio::select! {
+            result = &mut signing_in => panic!("the sign-in ended before the browser got a page: {result:?}"),
+            page = last_page(&pages) => page,
+        };
+        assert!(page.contains("<h1>Sign-in stopped</h1>"), "{page}");
         assert!(
-            matches!(result, Err(CollabError::SignInTimedOut)),
-            "{result:?}"
+            tokio::time::timeout(Duration::from_millis(300), &mut signing_in)
+                .await
+                .is_err(),
+            "the sign-in ended on the bounced callback"
         );
         assert_eq!(
             mallory
@@ -678,8 +682,6 @@ mod tests {
             0,
             "the app sent something to the server that bounced the sign-in"
         );
-        let page = last_page(&pages).await;
-        assert!(page.contains("<h1>Sign-in stopped</h1>"), "{page}");
     }
 
     #[test]

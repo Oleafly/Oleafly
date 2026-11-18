@@ -564,7 +564,7 @@
       },
       "glossaries-index": {
         "title": "Narzędzie do glosariusza lub indeksu",
-        "detail": "glossaries i makeindex wymagają dodatkowego uruchomienia makeindex lub xindy, czego wbudowany silnik nie robi."
+        "detail": "glossaries i makeindex wymagają dodatkowego uruchomienia makeindex, xindy lub bib2gls, czego wbudowany silnik nie robi."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref ma ustawiony sterownik pdfTeX",
@@ -1120,7 +1120,8 @@
       "help": "Pomoc i informacje",
       "integrations": "Integracje",
       "shortcuts": "Skróty klawiaturowe",
-      "research": "Badania"
+      "research": "Badania",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Brak pasujących ustawień",
@@ -1137,7 +1138,8 @@
         "help": "o programie, wersja, aktualizacje, lista zmian, co nowego, dokumentacja, pomoc, wsparcie, społeczność, Discord, licencja, raport o awarii",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hosting Git, Computer Use, aplikacje na komputerze, Cua, MCP, cytowania, konta, połączenia",
         "shortcuts": "skróty klawiszowe, skróty, klawisze, klawiatura",
-        "research": "badania zadania budżet powiadomienia nie usypiaj eksperymenty uruchomienia research tasks"
+        "research": "badania zadania budżet powiadomienia nie usypiaj eksperymenty uruchomienia research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Szukaj w ustawieniach",
       "results_one": "{{count}} sekcja pasuje",
@@ -1744,5 +1746,9 @@
   "stuckWindow": {
     "reloaded": "Oleafly ponownie wczytało to okno, ponieważ nie odpowiadało przez 30 sekund. Zmiany wprowadzone tuż przedtem mogły nie zostać zapisane.",
     "reloadedAgain": "Oleafly ponownie wczytało to okno, ponieważ znowu przestało odpowiadać. Tym razem Twój projekt nie został otwarty, na wypadek gdyby problem powodowało coś w nim."
+  },
+  "zoomIndicator": {
+    "label": "Powiększenie",
+    "reset": "Resetuj"
   }
 }

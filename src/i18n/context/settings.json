@@ -233,6 +233,10 @@
       "homeView": {
         "grid": "Library layout that arranges projects as a grid of cards.",
         "list": "Library layout that arranges projects as rows in a list."
+      },
+      "markers": {
+        "badges": "Option: mark each file in the project tree with a short coloured label of its type, such as TEX or PDF.",
+        "icons": "Option: mark each file in the project tree with a coloured icon for its kind."
       }
     },
     "sectionName": "Name of the Appearance settings section, used inside the reset confirmation sentence.",

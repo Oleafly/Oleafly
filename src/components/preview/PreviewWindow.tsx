@@ -1,4 +1,4 @@
-import { PdfToolbarControls } from "./PdfToolbarControls";
+import { PdfShowToolbarButton, PdfToolbarControls } from "./PdfToolbarControls";
 import { present } from "@/features/presentation/launch";
 import { CompileLogControls } from "./CompileLogControls";
 import { SavePreviewDialog } from "./SavePreviewDialog";
@@ -6,7 +6,12 @@ import { currentOutputId, usePdfSync } from "./use-pdf-sync";
 import { PdfOutlinePanel } from "./PdfOutlinePanel";
 import { PdfSearchBar } from "./PdfSearchBar";
 import { PdfViewerOverlay } from "./PdfViewerOverlay";
-import { usePdfKeyboardShortcuts } from "./use-pdf-keyboard-shortcuts";
+import {
+  INITIAL_PDF_LOAD_STATE,
+  INITIAL_PDF_OUTLINE_STATE,
+  INITIAL_PDF_SEARCH_STATE,
+  usePdfReader,
+} from "./use-pdf-reader";
 import { CompileControlsView } from "@/components/layout/CompileControls";
 import { LogPane } from "@/components/editor/LogPane";
 import { sendPreviewCommand, type PreviewWorkspaceCommand } from "@/lib/preview-workspace";
@@ -17,15 +22,12 @@ import { logError } from "@/lib/log";
 import { downloadBytes } from "@/lib/download-blob";
 import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError } from "@/lib/app-error";
-import { usePdfPosition } from "@/lib/use-pdf-position";
-import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
 import { usePreviewGeometry } from "@/lib/preview-geometry";
 import type { PreviewWorkspaceSnapshot } from "@/lib/preview-workspace";
 import { HtmlOutputPanel } from "./HtmlOutputPanel";
 import { openHtmlInBrowser } from "./open-compiled-html";
 import {
   useCallback,
-  useDeferredValue,
   useEffect,
   useRef,
   useState,
@@ -36,23 +38,13 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangle,
-  PanelTopOpen,
   Sparkles,
   FileText,
 } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { i18n, onLocaleApplied } from "@/i18n";
-import {
-  PdfViewer,
-  type PdfLayout,
-  type PdfLoadState,
-  type PdfOutlineState,
-  type PdfRotation,
-  type PdfSearchState,
-  type PdfViewerHandle,
-} from "@/components/pdf/PdfViewer";
+import { PdfViewer, type PdfLoadState } from "@/components/pdf/PdfViewer";
 import { Button } from "@/components/ui/button";
-import { Tooltip } from "@/components/ui/tooltip";
 import {
   fingerprintCompileOutput,
   sameCompileOutput,
@@ -72,35 +64,8 @@ import {
   writeBytesFile,
 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
-import { useSettingsStore } from "@/store/settings";
 import { useTypstToolchainFor, useTypstToolchainStore } from "@/store/typst-toolchain";
-import {
-  attachPreviewZoom,
-  MAX_PREVIEW_SCALE,
-  MIN_PREVIEW_SCALE,
-} from "./preview-zoom";
 import { Spinner } from "@/components/ui/spinner";
-
-const PDF_SCROLL_AXES = ["y", "x"] as const;
-
-const INITIAL_LOAD_STATE: PdfLoadState = {
-  status: "idle",
-  documentIdentity: "",
-};
-
-const INITIAL_SEARCH_STATE: PdfSearchState = {
-  status: "idle",
-  query: "",
-  current: 0,
-  total: 0,
-  scannedPages: 0,
-  totalPages: 0,
-};
-
-const INITIAL_OUTLINE_STATE: PdfOutlineState = {
-  status: "idle",
-  items: [],
-};
 
 interface DetachedPreviewDocument {
   bytes: Uint8Array;
@@ -293,9 +258,6 @@ export function PreviewWindow({
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveName, setSaveName] = useState("");
   const [saving, setSaving] = useState(false);
-  const [isFs, setIsFs] = useState(false);
-  const [fsToolbarHidden, setFsToolbarHidden] = useState(false);
-  const [rotationPending, setRotationPending] = useState(false);
   const command = (request: PreviewWorkspaceCommand) => sendPreviewCommand(projectId, request);
   const typstToolchain = useTypstToolchainFor(disableNativeBridge ? null : workspace?.engine);
   const refreshTypstToolchain = useTypstToolchainStore((s) => s.refresh);
@@ -308,67 +270,72 @@ export function PreviewWindow({
   const [artifactFailure, setArtifactFailure] = useState<string | null>(null);
   const [artifactRetry, setArtifactRetry] = useState(0);
   const [viewerReload, setViewerReload] = useState(0);
-  const [pdfLoadState, setPdfLoadState] = useState<PdfLoadState>(
-    harnessDocument
-      ? {
-          status: "loading",
-          documentIdentity: harnessDocument.identity,
-        }
-      : INITIAL_LOAD_STATE,
-  );
-  const [scale, setScale] = useState(1);
-  const [fitMode, setFitMode] = useState<"width" | "height" | null>(null);
-  const [layout, setLayout] = useState<PdfLayout>("single");
-  const [rotation, setRotation] = useState<PdfRotation>(0);
-  const inverted = useSettingsStore((state) => state.pdfDarkMode);
-  const setInverted = useSettingsStore((state) => state.setPdfDarkMode);
-  const [screenReaderMode, setScreenReaderMode] = useState(false);
-  const [page, setPage] = useState(1);
-  const [numPages, setNumPages] = useState(0);
-  const [pageInput, setPageInput] = useState("1");
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [searchInput, setSearchInput] = useState("");
-  const deferredSearch = useDeferredValue(searchInput);
-  const [searchState, setSearchState] = useState<PdfSearchState>(
-    INITIAL_SEARCH_STATE,
-  );
-  const [outlineOpen, setOutlineOpen] = useState(false);
-  const [outlineState, setOutlineState] = useState<PdfOutlineState>(
-    INITIAL_OUTLINE_STATE,
-  );
-  const [passwordDraft, setPasswordDraft] = useState("");
-  const [pdfPassword, setPdfPassword] = useState("");
+  const {
+    rootRef,
+    pdfRef,
+    scrollBoxRef,
+    searchInputRef,
+    userAdjustedZoomRef,
+    scale,
+    setScale,
+    setClampedScale,
+    fitPreview,
+    userZoom,
+    layout,
+    setLayout,
+    rotation,
+    setRotation,
+    rotationPending,
+    setRotationPending,
+    rotateClockwise,
+    inverted,
+    setInverted,
+    screenReaderMode,
+    setScreenReaderMode,
+    page,
+    setPage,
+    numPages,
+    setNumPages,
+    pageInput,
+    setPageInput,
+    jumpToPage,
+    searchOpen,
+    setSearchOpen,
+    searchInput,
+    setSearchInput,
+    deferredSearch,
+    searchState,
+    setSearchState,
+    outlineOpen,
+    setOutlineOpen,
+    outlineState,
+    setOutlineState,
+    pdfLoadState,
+    setPdfLoadState,
+    pdfPassword,
+    setPdfPassword,
+    passwordDraft,
+    setPasswordDraft,
+    submitPassword: unlockPdf,
+    markLoadState,
+    markPage,
+    isFs,
+    fsToolbarHidden,
+    setFsToolbarHidden,
+    toggleFullscreen,
+  } = usePdfReader({
+    positionKey: projectId,
+    hasDocument: previewDocument !== null,
+    initialLoadState: harnessDocument
+      ? { status: "loading", documentIdentity: harnessDocument.identity }
+      : INITIAL_PDF_LOAD_STATE,
+  });
   const [retainedLoadFailure, setRetainedLoadFailure] = useState<string | null>(
     null,
   );
   const [exporting, setExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState("");
 
-  const rootRef = useRef<HTMLDivElement>(null);
-  const pdfRef = useRef<PdfViewerHandle>(null);
-  const scrollBoxRef = useRef<HTMLDivElement>(null);
-  const readyRotationRef = useRef(rotation);
-  const pdfPosition = usePdfPosition(
-    projectId,
-    pdfRef,
-    scrollBoxRef,
-    rotation === readyRotationRef.current,
-  );
-  useOverlayScrollbar(scrollBoxRef, PDF_SCROLL_AXES);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    const onChange = () => {
-      const fullscreen = document.fullscreenElement === rootRef.current;
-      setIsFs(fullscreen);
-      if (!fullscreen) setFsToolbarHidden(false);
-    };
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, []);
-  const toggleFullscreen = () => {
-    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
-    else void rootRef.current?.requestFullscreen?.().catch(() => {});
-  };
   const submitSavePdf = async () => {
     if (!projectId || !previewDocument || saving) return;
     setSaving(true);
@@ -400,12 +367,9 @@ export function PreviewWindow({
   const projectStateRevisionRef = useRef(
     initialContext.state?.projectStateRevision ?? 0,
   );
-  const scaleRef = useRef(scale);
-  const userAdjustedZoomRef = useRef(false);
   projectIdRef.current = projectId;
   compileStateRef.current = compileState;
   previewDocumentRef.current = previewDocument;
-  scaleRef.current = scale;
 
   useEffect(() => {
     if (disableNativeBridge || !isTauri() || usesNativeDockMenu()) return;
@@ -418,29 +382,6 @@ export function PreviewWindow({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [disableNativeBridge]);
-
-  const setClampedScale = useCallback((next: number) => {
-    setScale(
-      Math.min(MAX_PREVIEW_SCALE, Math.max(MIN_PREVIEW_SCALE, next)),
-    );
-  }, []);
-
-  const fitPreview = useCallback(
-    (mode: "width" | "height") => {
-      const next = pdfRef.current?.getFitScale(mode);
-      if (next !== null && next !== undefined) {
-        setFitMode(mode);
-        setClampedScale(next);
-      }
-    },
-    [setClampedScale],
-  );
-
-  const userZoom = useCallback((mutate: () => void) => {
-    userAdjustedZoomRef.current = true;
-    setFitMode(null);
-    mutate();
-  }, []);
 
   const retargetProject = useCallback((nextProjectId: string) => {
     const normalized = nextProjectId.trim();
@@ -461,9 +402,9 @@ export function PreviewWindow({
       previewDocumentRef.current = null;
       lastReadyDocumentRef.current = null;
       setPreviewDocument(null);
-      setPdfLoadState(INITIAL_LOAD_STATE);
-      setSearchState(INITIAL_SEARCH_STATE);
-      setOutlineState(INITIAL_OUTLINE_STATE);
+      setPdfLoadState(INITIAL_PDF_LOAD_STATE);
+      setSearchState(INITIAL_PDF_SEARCH_STATE);
+      setOutlineState(INITIAL_PDF_OUTLINE_STATE);
       setSearchInput("");
       setPdfPassword("");
       setPasswordDraft("");
@@ -472,7 +413,7 @@ export function PreviewWindow({
       setRotation(0);
       setScreenReaderMode(false);
     }
-  }, []);
+  }, [setRotationPending, setPdfLoadState, setOutlineState, setPdfPassword, setSearchState, setScreenReaderMode, setPage, setSearchInput, setPasswordDraft, setRotation, setNumPages]);
 
   const acceptCompileState = useCallback(
     (candidate: unknown) => {
@@ -572,9 +513,9 @@ export function PreviewWindow({
         setArtifactLoading(false);
         setArtifactFailure(null);
         setRetainedLoadFailure(null);
-        setPdfLoadState(INITIAL_LOAD_STATE);
-        setSearchState(INITIAL_SEARCH_STATE);
-        setOutlineState(INITIAL_OUTLINE_STATE);
+        setPdfLoadState(INITIAL_PDF_LOAD_STATE);
+        setSearchState(INITIAL_PDF_SEARCH_STATE);
+        setOutlineState(INITIAL_PDF_OUTLINE_STATE);
       },
     );
     return () => {
@@ -583,7 +524,7 @@ export function PreviewWindow({
       projectListener.then((unlisten) => unlisten());
       projectStateListener.then((unlisten) => unlisten());
     };
-  }, [acceptCompileState, disableNativeBridge, retargetProject]);
+  }, [acceptCompileState, disableNativeBridge, retargetProject, setOutlineState, setPdfLoadState, setSearchState]);
 
   useEffect(() => {
     if (disableNativeBridge) return;
@@ -641,7 +582,7 @@ export function PreviewWindow({
           documentIdentity: nextDocument.identity,
           message: i18n.t(($) => $.preview.window.loadingVerified),
         });
-        setSearchState(INITIAL_SEARCH_STATE);
+        setSearchState(INITIAL_PDF_SEARCH_STATE);
         setOutlineState({ status: "loading", items: [] });
         setSearchInput("");
         setPdfPassword("");
@@ -672,54 +613,11 @@ export function PreviewWindow({
       }
     };
   }, [
-    artifactRetry,
-    compileState,
-    disableNativeBridge,
-    projectId,
+    artifactRetry, 
+    compileState, 
+    disableNativeBridge, 
+    projectId, setRotation, userAdjustedZoomRef, setPdfPassword, setPage, setPasswordDraft, setOutlineState, setSearchState, setSearchInput, setNumPages, setPdfLoadState
   ]);
-
-  useEffect(() => {
-    setPageInput(String(page));
-  }, [page]);
-
-  useEffect(() => {
-    if (numPages <= 1 && layout === "double") setLayout("single");
-  }, [layout, numPages]);
-
-  useEffect(() => {
-    const element = scrollBoxRef.current;
-    if (!element) return;
-    return attachPreviewZoom(
-      element,
-      () => scaleRef.current,
-      (updater) => {
-        userAdjustedZoomRef.current = true;
-        setFitMode(null);
-        setScale(updater);
-      },
-    );
-  }, []);
-
-  useEffect(() => {
-    const element = scrollBoxRef.current;
-    if (!element || !fitMode || !previewDocument) return;
-    let frame = 0;
-    const observer = new ResizeObserver(() => {
-      if (frame) cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        frame = 0;
-        const next = pdfRef.current?.getFitScale(fitMode);
-        if (next !== null && next !== undefined) {
-          setClampedScale(next);
-        }
-      });
-    });
-    observer.observe(element);
-    return () => {
-      observer.disconnect();
-      if (frame) cancelAnimationFrame(frame);
-    };
-  }, [fitMode, previewDocument, setClampedScale]);
 
   const autoFitIdentityRef = useRef("");
   useEffect(() => {
@@ -736,18 +634,7 @@ export function PreviewWindow({
       if (!userAdjustedZoomRef.current) fitPreview("height");
     });
     return () => cancelAnimationFrame(frame);
-  }, [fitPreview, numPages, previewDocument]);
-
-  usePdfKeyboardShortcuts({
-    rootRef,
-    searchOpen,
-    outlineOpen,
-    searchInputRef,
-    setSearchOpen,
-    setSearchInput,
-    setOutlineOpen,
-    setRotation,
-  });
+  }, [fitPreview, numPages, previewDocument, userAdjustedZoomRef]);
 
   useEffect(() => {
     if (!isTauri()) return;
@@ -772,28 +659,12 @@ export function PreviewWindow({
     };
   }, []);
 
-  const jumpToPage = () => {
-    const requested = Number.parseInt(pageInput, 10);
-    if (
-      Number.isNaN(requested) ||
-      requested < 1 ||
-      requested > numPages
-    ) {
-      setPageInput(String(page));
-      return;
-    }
-    if (requested !== page) pdfRef.current?.gotoPage(requested);
-  };
-
   const handlePdfLoadState = (next: PdfLoadState) => {
     const current = previewDocumentRef.current;
     if (!current || current.identity !== next.documentIdentity) return;
-    pdfPosition.onLoad(next);
-    setPdfLoadState(next);
-    if (next.status !== "loading") setRotationPending(false);
+    markLoadState(next);
     if (next.status === "ready") {
       lastReadyDocumentRef.current = current;
-      readyRotationRef.current = rotation;
       setRetainedLoadFailure(null);
       return;
     }
@@ -842,13 +713,7 @@ export function PreviewWindow({
   };
 
   const submitPassword = () => {
-    if (!passwordDraft || !previewDocument) return;
-    setPdfLoadState({
-      status: "loading",
-      documentIdentity: previewDocument.identity,
-      message: t(($) => $.preview.window.unlocking),
-    });
-    setPdfPassword(passwordDraft);
+    if (previewDocument) unlockPdf(previewDocument.identity, t(($) => $.preview.window.unlocking));
   };
 
   const downloadDisplayedPdf = async () => {
@@ -937,14 +802,6 @@ export function PreviewWindow({
   const staleExplanation =
     retainedLoadFailure ?? artifactFailure ?? staleCompileExplanation();
 
-  const rotateClockwise = () => {
-    if (!previewDocument) return;
-    setRotationPending(true);
-    setRotation(
-      (current) => ((current + 90) % 360) as PdfRotation,
-    );
-  };
-
   const renderPreviewScrollArea = () => (
     <section
       ref={scrollBoxRef}
@@ -988,9 +845,7 @@ export function PreviewWindow({
             onSearchStateChange={setSearchState}
             onOutlineStateChange={setOutlineState}
             onPageChange={(current, total) => {
-              pdfPosition.onPage(current);
-              setPage(current);
-              setNumPages(total);
+              markPage(current, total);
               if (!disableNativeBridge) void command({ action: "preview-page", page: current }).catch(() => {});
             }}
           />
@@ -1105,13 +960,7 @@ export function PreviewWindow({
       data-preview-page={page}
       className="flex h-screen flex-col bg-background text-foreground"
     >
-      {isFs && fsToolbarHidden && <Tooltip label={t(($) => $.preview.actions.showToolbar)}>
-        <button type="button" onClick={() => setFsToolbarHidden(false)}
-          aria-label={t(($) => $.preview.actions.showToolbar)}
-          className="absolute right-3 top-3 z-20 flex size-8 items-center justify-center rounded-full bg-black/40 text-white/80 backdrop-blur transition-colors hover:bg-black/60 hover:text-white">
-          <PanelTopOpen className="size-4" />
-        </button>
-      </Tooltip>}
+      {isFs && fsToolbarHidden && <PdfShowToolbarButton onShow={() => setFsToolbarHidden(false)} />}
       {!disableNativeBridge && <div className={cn("flex min-h-12 shrink-0 items-center gap-2 border-b px-2 py-1", isFs && fsToolbarHidden && "hidden")}>
         <CompileControlsView
           engine={workspace?.engine ?? LATEX_ENGINE} engineLoaded={workspace?.engineLoaded ?? false}

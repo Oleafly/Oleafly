@@ -12,7 +12,7 @@ describe("ProviderLogo", () => {
   });
 
   it("draws the brand mark for each common custom provider", () => {
-    for (const providerId of ["qwen", "kimi", "zhipu", "siliconflow", "volcengine-ark"]) {
+    for (const providerId of ["llamacpp", "qwen", "kimi", "zhipu", "siliconflow", "volcengine-ark"]) {
       const { container, unmount } = render(<ProviderLogo providerId={providerId} />);
       expect(container.querySelector("span")).toBeNull();
       unmount();

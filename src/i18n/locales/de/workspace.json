@@ -126,6 +126,8 @@
     "entryCount_other": "{{count}} Gliederungseinträge",
     "expandHeading": "{{title}} aufklappen",
     "expandAll": "Alle Überschriften aufklappen",
+    "onPage": "{{heading}}, Seite {{page}}",
+    "page": "S.{{page}}",
     "title": "Gliederung"
   },
   "panelError": {

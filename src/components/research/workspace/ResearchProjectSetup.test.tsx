@@ -1,6 +1,10 @@
 import { JSDOM } from "jsdom";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ResearchProjectPreview, ResearchProjectRequest } from "@/lib/research-workspace";
+import type {
+  ResearchDocumentEngine,
+  ResearchProjectPreview,
+  ResearchProjectRequest,
+} from "@/lib/research-workspace";
 import enResearchTools from "@/i18n/locales/en/researchTools.json" with { type: "json" };
 
 let ResearchProjectSetup: typeof import("./ResearchProjectSetup").ResearchProjectSetup;
@@ -60,8 +64,16 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
+const MAIN_EXTENSIONS: Record<ResearchDocumentEngine, string> = {
+  latex: "tex",
+  typst: "typ",
+  markdown: "md",
+  quarto: "qmd",
+  calepin: "typ",
+};
+
 function preview(request: ResearchProjectRequest): ResearchProjectPreview {
-  const mainDocument = `main.${request.engine === "latex" ? "tex" : request.engine === "typst" ? "typ" : "md"}`;
+  const mainDocument = `main.${MAIN_EXTENSIONS[request.engine]}`;
   return {
     ...request,
     mainDocument,
@@ -150,6 +162,37 @@ describe("ResearchProjectSetup preview admission", () => {
     expect(input.onCreated).toHaveBeenCalledExactlyOnceWith("new-project");
     expect(input.onClose).toHaveBeenCalledOnce();
   }, 15_000);
+
+  it.each([
+    ["Quarto", "quarto"],
+    ["Calepin", "calepin"],
+  ] as const)("creates a %s project when that engine is chosen", async (label, engine) => {
+    native.invoke.mockImplementation((command: string, args: { request: ResearchProjectRequest }) => {
+      if (command === "preview_research_project") return Promise.resolve(preview(args.request));
+      if (command === "create_research_project") return Promise.resolve("notebook-project");
+      throw new Error(`Unexpected command: ${command}`);
+    });
+    const input = props();
+    render(<ResearchProjectSetup {...input} />);
+    fireEvent.keyDown(page().getByLabelText(enResearchTools.setup.engineLabel), { key: "ArrowDown" });
+    expect(page().getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "LaTeX",
+      "Typst",
+      "Markdown",
+      "Quarto",
+      "Calepin",
+    ]);
+    fireEvent.click(page().getByRole("option", { name: label }));
+    await fill(enResearchTools.setup.nameLabel, "Study");
+    expect(await page().findByText(`Plan Study as article in ${engine}`)).toBeInTheDocument();
+
+    fireEvent.click(page().getByRole("button", { name: enResearchTools.setup.create }));
+
+    await waitFor(() => expect(input.onCreated).toHaveBeenCalledExactlyOnceWith("notebook-project"));
+    expect(native.invoke).toHaveBeenCalledWith("create_research_project", {
+      request: { name: "Study", engine, starter: "article" },
+    });
+  });
 
   it("does not reuse the old preview when a renamed request fails validation", async () => {
     native.invoke.mockImplementation((command: string, args: { request: ResearchProjectRequest }) => {

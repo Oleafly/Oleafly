@@ -10,8 +10,13 @@ export default defineConfig({
   define: {
     "process.env.NODE_ENV": JSON.stringify("production"),
   },
+  esbuild: { jsx: "automatic" },
   resolve: {
-    alias: { "@": path.resolve(import.meta.dirname, "src") },
+    alias: {
+      "@": path.resolve(import.meta.dirname, "src"),
+      "@oleafly/deck/stage": path.resolve(import.meta.dirname, "packages/deck/src/stage.tsx"),
+      "@oleafly/deck": path.resolve(import.meta.dirname, "packages/deck/src/index.ts"),
+    },
   },
   build: {
     outDir: ARTIFACT_RUNTIME_DIR,

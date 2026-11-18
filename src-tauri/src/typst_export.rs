@@ -360,17 +360,10 @@ pub(crate) async fn render_html(
 
 pub(crate) fn pandoc_html_args(
     format: &str,
-    html: &Path,
-    root: &Path,
+    source: &crate::conversion::ExportSource,
     output: &str,
 ) -> Option<Vec<String>> {
-    let source = crate::conversion::ExportSource {
-        file_name: html.to_string_lossy().into_owned(),
-        resource_path: crate::project_availability::without_verbatim_prefix(root)
-            .to_string_lossy()
-            .into_owned(),
-    };
-    let mut args = crate::conversion::export_args(format, &source, output, None)?;
+    let mut args = crate::conversion::export_args(format, source, output, None)?;
     args.insert(0, HTML_READER.to_owned());
     Some(args)
 }
@@ -383,16 +376,30 @@ pub(crate) async fn pandoc_from_html(
     output: &str,
     media_folder: Option<&str>,
 ) -> Result<(), String> {
-    let mut args = pandoc_html_args(format, html, root, output)
+    let working = html.parent().unwrap_or(root);
+    let root_folder = crate::project_availability::without_verbatim_prefix(root);
+    let source = crate::conversion::ExportSource {
+        file_name: html.to_string_lossy().into_owned(),
+        resources: oleafly_core::pandoc_search_path(
+            working,
+            &root_folder,
+            std::slice::from_ref(&root_folder),
+        )
+        .map_err(|error| export_error("typst_export.failed", error))?,
+    };
+    let mut args = pandoc_html_args(format, &source, output)
         .ok_or_else(|| format!("unsupported export format: {format}"))?;
     if let Some(folder) = media_folder {
         add_media_args(&mut args, folder);
     }
     prepare_html(html).map_err(|error| export_error("typst_export.failed", error))?;
-    let working = html.parent().unwrap_or(root);
-    let (log, code) =
-        crate::document_engine::run_supervised_external_with_variables(pandoc, &args, working, &[])
-            .await?;
+    let (log, code) = crate::document_engine::run_supervised_external_with_variables(
+        pandoc,
+        &args,
+        working,
+        &source.variables(),
+    )
+    .await?;
     if code != Some(0) {
         return Err(crate::pandoc_citations::export_failure(&log, root));
     }

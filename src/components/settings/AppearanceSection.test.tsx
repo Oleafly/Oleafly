@@ -70,6 +70,7 @@ describe("Appearance settings tabs", () => {
       editorLineHeight: "normal",
       editorAutocomplete: false,
       editorAutoCloseBrackets: false,
+      editorGroupScripts: false,
       editorGhostCompletion: false,
       editorCursorBlinking: "blink",
       editorStickyScroll: false,
@@ -216,6 +217,7 @@ describe("Appearance settings tabs", () => {
       appearance.editor.lineWrap.label,
       appearance.editor.autocomplete.label,
       appearance.editor.autoCloseBrackets.label,
+      appearance.editor.groupScripts.label,
       appearance.editor.ghostCompletion.label,
       appearance.editor.stickyScroll.label,
     ]) {
@@ -225,6 +227,7 @@ describe("Appearance settings tabs", () => {
       editorLineWrap: true,
       editorAutocomplete: true,
       editorAutoCloseBrackets: true,
+      editorGroupScripts: true,
       editorGhostCompletion: true,
       editorStickyScroll: true,
     });
@@ -657,6 +660,12 @@ describe("Appearance settings tabs", () => {
       screen.getByRole("switch", { name: appearance.files.showTree.label }),
     );
     expect(useSettingsStore.getState().openInTree).toBe(true);
+
+    const markers = screen.getByLabelText(appearance.files.markers.label);
+    expect(markers).toHaveTextContent(appearance.files.markers.icons);
+    await user.click(markers);
+    await user.click(await screen.findByRole("option", { name: appearance.files.markers.badges }));
+    expect(useSettingsStore.getState().fileMarkers).toBe("badges");
 
     const hiddenFiles = screen.getByTestId("hidden-files-toggle");
     expect(hiddenFiles).toHaveAttribute("aria-expanded", "false");

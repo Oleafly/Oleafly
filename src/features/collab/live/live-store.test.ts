@@ -639,17 +639,39 @@ describe("collab live store", () => {
     openProject(PROJECT);
     stop = startCollabLive();
     await settle();
-    const first = { fileId: "f1", path: "main.tex", threadId: "t1", quote: "quick", body: "written while off" };
-    const second = { fileId: "f1", path: "main.tex", threadId: "t2", quote: "fox", body: "and another" };
+    const first = {
+      fileId: "f1",
+      path: "main.tex",
+      threadId: "t1",
+      messageId: "m1",
+      at: 1,
+      newThread: true,
+      edit: false,
+      editedAt: null,
+      quote: "quick",
+      body: "written while off",
+    };
+    const second = {
+      fileId: "f1",
+      path: "main.tex",
+      threadId: "t2",
+      messageId: "m2",
+      at: 2,
+      newThread: true,
+      edit: false,
+      editedAt: null,
+      quote: "fox",
+      body: "and another",
+    };
     emit<CollabCommentsNotSent>("notSent", { projectId: PROJECT, comments: [first] });
     emit<CollabCommentsNotSent>("notSent", { projectId: OTHER, comments: [second] });
     expect(useCollabLiveStore.getState().commentsNotSent).toEqual([first]);
     emit<CollabCommentsNotSent>("notSent", { projectId: PROJECT, comments: [second] });
     expect(useCollabLiveStore.getState().commentsNotSent).toEqual([first, second]);
     useCollabLiveStore.getState().dismissCommentsNotSent();
-    expect(useCollabLiveStore.getState().commentsNotSent).toBeNull();
+    expect(useCollabLiveStore.getState()).toMatchObject({ commentsNotSent: [first, second], notSentBannerHidden: true });
     emit<CollabCommentsNotSent>("notSent", { projectId: PROJECT, comments: [] });
-    expect(useCollabLiveStore.getState().commentsNotSent).toEqual([]);
+    expect(useCollabLiveStore.getState()).toMatchObject({ commentsNotSent: [first, second], notSentBannerHidden: false });
     openProject(OTHER);
     await settle();
     expect(useCollabLiveStore.getState().commentsNotSent).toBeNull();
@@ -667,6 +689,7 @@ describe("collab live store", () => {
       cursor: 1,
       anchor: null,
       person: { name: "Dana Ruiz", email: "dana@example.test" },
+      activity: null,
     } satisfies CollabPresence);
     const dana = useCollabLiveStore.getState().peers["P.dana"];
     expect(dana?.person?.display_name).toBe("Dana Ruiz");
@@ -685,6 +708,7 @@ describe("collab live store", () => {
       cursor: 4,
       anchor: 2,
       person: null,
+      activity: null,
     };
     emit("presence", bob);
     emit("presence", { ...bob, deviceId: "device-me", accountId: ALICE });
@@ -784,6 +808,7 @@ describe("collab live store", () => {
       cursor: 4,
       anchor: 4,
       person: null,
+      activity: null,
     };
     emit("presence", bob);
     const places = peerPlaces(useCollabLiveStore.getState().peers);
@@ -832,6 +857,7 @@ describe("collab live store", () => {
       cursor: 1,
       anchor: null,
       person: null,
+      activity: null,
     };
     emit("presence", bob);
     emit("presence", { ...bob, cursor: 2 });

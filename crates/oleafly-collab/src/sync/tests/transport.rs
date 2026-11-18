@@ -136,6 +136,7 @@ async fn presence_and_leaving_cross_between_socket_and_long_poll() {
         file_id: Some(main.clone()),
         cursor: Some(1),
         anchor: None,
+        activity: None,
     });
     handle.leave_presence();
     let device = pair.alice.tokens.device_id;
@@ -144,6 +145,7 @@ async fn presence_and_leaving_cross_between_socket_and_long_poll() {
         file_id: Some(main.clone()),
         cursor: Some(2),
         anchor: None,
+        activity: None,
     };
     bob.handle.as_ref().unwrap().presence(here.clone());
     let seen = until_event(&mut alice, |event| {
@@ -516,6 +518,7 @@ async fn a_long_poll_editor_keeps_reading_while_its_own_posts_cross_a_slow_link(
             file_id: Some(main.clone()),
             cursor: Some(cursor),
             anchor: None,
+            activity: None,
         });
     }
     for round in 0..40 {

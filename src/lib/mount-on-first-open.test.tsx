@@ -8,14 +8,14 @@ import { mountOnFirstOpen } from "./mount-on-first-open";
 import { lazy } from "./preloadable";
 
 const toastError = vi.fn();
-const appendAppLog = vi.fn(async (_detail: string) => {});
+const logError = vi.fn(async (_scope: string, _detail: unknown) => {});
 
 vi.mock("@/lib/toast", () => ({
   toast: { error: (message: string) => toastError(message) },
 }));
 
-vi.mock("@/lib/tauri", () => ({
-  appendAppLog: (detail: string) => appendAppLog(detail),
+vi.mock("@/lib/log", () => ({
+  logError: (scope: string, detail: unknown) => logError(scope, detail),
 }));
 
 const useSurfaceStore = create<{ open: boolean }>(() => ({ open: false }));
@@ -23,7 +23,7 @@ const useSurfaceStore = create<{ open: boolean }>(() => ({ open: false }));
 afterEach(() => {
   useSurfaceStore.setState({ open: false });
   toastError.mockClear();
-  appendAppLog.mockClear();
+  logError.mockClear();
 });
 
 function gatedSurface(onMount: () => void) {
@@ -98,7 +98,7 @@ describe("mountOnFirstOpen", () => {
     expect(close).toHaveBeenCalledTimes(1);
     expect(useSurfaceStore.getState().open).toBe(false);
     expect(toastError).toHaveBeenCalledWith(enShell.errorBoundary.surfaceClosed);
-    expect(appendAppLog).toHaveBeenCalledWith(expect.stringContaining("UI crash: Error: surface broke"));
+    expect(logError).toHaveBeenCalledWith("UI crash", expect.stringContaining("Error: surface broke"));
     expect(screen.getByText("rest of the app")).toBeInTheDocument();
 
     broken = false;

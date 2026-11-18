@@ -12,6 +12,7 @@ pub mod loro_text;
 pub mod mass_change;
 pub mod materialize;
 pub mod paths;
+mod reactions;
 pub mod review;
 pub mod secret_port;
 pub mod settings;

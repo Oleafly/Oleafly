@@ -7,6 +7,7 @@ import type {
   CollabLiveUploads,
   CollabLocalCopyOffer,
   CollabUploadFile,
+  CollabDownloadProgress,
   CollabUploadProgress,
 } from "@/lib/tauri";
 import {
@@ -30,11 +31,16 @@ export interface UploadProgress {
   total: number;
 }
 
+export interface DownloadProgress {
+  done: number;
+  total: number | null;
+}
+
 export interface FileNoticesState {
   projectId: string | null;
   uploads: readonly CollabUploadFile[];
   progress: Readonly<Record<string, UploadProgress>>;
-  downloads: Readonly<Record<string, UploadProgress>>;
+  downloads: Readonly<Record<string, DownloadProgress>>;
   kept: readonly CollabLiveKeptFile[];
   retrying: boolean;
   offer: CollabLocalCopyOffer | null;
@@ -155,14 +161,15 @@ function uploaded(payload: CollabLiveUploads): void {
   });
 }
 
-function withProgress(
-  known: Readonly<Record<string, UploadProgress>>,
-  payload: CollabUploadProgress,
-): Readonly<Record<string, UploadProgress>> {
-  if (payload.total > 0 && payload.done < payload.total) {
-    return { ...known, [payload.path]: { done: payload.done, total: payload.total } };
+function withProgress<T extends DownloadProgress>(
+  known: Readonly<Record<string, T>>,
+  path: string,
+  next: T,
+): Readonly<Record<string, T>> {
+  if (next.total === null || (next.total > 0 && next.done < next.total)) {
+    return { ...known, [path]: next };
   }
-  const { [payload.path]: _finished, ...rest } = known;
+  const { [path]: _finished, ...rest } = known;
   return rest;
 }
 
@@ -170,15 +177,21 @@ function progressed(payload: CollabUploadProgress): void {
   if (useFilesStore.getState().projectId !== payload.projectId) return;
   useFileNotices.setState((state) => ({
     projectId: payload.projectId,
-    progress: withProgress(state.projectId === payload.projectId ? state.progress : NO_PROGRESS, payload),
+    progress: withProgress(state.projectId === payload.projectId ? state.progress : NO_PROGRESS, payload.path, {
+      done: payload.done,
+      total: payload.total,
+    }),
   }));
 }
 
-function downloaded(payload: CollabUploadProgress): void {
+function downloaded(payload: CollabDownloadProgress): void {
   if (useFilesStore.getState().projectId !== payload.projectId) return;
   useFileNotices.setState((state) => ({
     projectId: payload.projectId,
-    downloads: withProgress(state.projectId === payload.projectId ? state.downloads : NO_PROGRESS, payload),
+    downloads: withProgress(state.projectId === payload.projectId ? state.downloads : NO_PROGRESS, payload.path, {
+      done: payload.done,
+      total: payload.total,
+    }),
   }));
 }
 

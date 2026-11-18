@@ -79,7 +79,7 @@ describe("scanMathExpressions for Typst", () => {
   });
 });
 
-function sources(source: string, format: "latex" | "markdown" | "typst", options: { from?: number; to?: number; excluded?: { from: number; to: number }[] } = {}) {
+function sources(source: string, format: "latex" | "markdown" | "typst", options: { from?: number; to?: number; excluded?: { from: number; to: number }[]; pandoc?: boolean } = {}) {
   return scanMathExpressions(source, { format, ...options }).map((expression) =>
     expression.status === "complete" ? expression.source : `${expression.source}…`,
   );
@@ -145,6 +145,18 @@ describe("scanMathExpressions for Markdown", () => {
       "$c$",
     ]);
     expect(sources("$a + b$", "markdown", { excluded: [{ from: 6, to: 7 }] })).toEqual(["$a + b$…"]);
+  });
+});
+
+describe("scanMathExpressions for Pandoc Markdown", () => {
+  it("reads only dollar delimiters, like Pandoc's tex_math_dollars", () => {
+    expect(sources("$a$ $$b$$ \\(c\\) \\[d\\] see \\[1\\] here", "markdown", { pandoc: true })).toEqual(["$a$", "$$b$$"]);
+  });
+
+  it("never reads math across a blank line", () => {
+    expect(sources("see $a here\n\nmiddle\n\nand b$ end", "markdown", { pandoc: true })).toEqual(["$a here…"]);
+    expect(sources("$$a\n \t\nb and $c$", "markdown", { pandoc: true })).toEqual(["$$a…", "$c$"]);
+    expect(sources("$a\nb$ and $$c\nd$$", "markdown", { pandoc: true })).toEqual(["$a\nb$", "$$c\nd$$"]);
   });
 });
 

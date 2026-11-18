@@ -50,7 +50,7 @@ test.describe("Notes notebooks", () => {
     const { page } = await notes.open();
     await notes.openNote("Abstract draft");
     await page.locator(".ProseMirror:visible > p").first().click();
-    await page.getByRole("toolbar", { name: "Formatting" }).getByRole("button", { name: "Attach file" }).click();
+    await notes.tool("Attach file");
     const block = notebookBlock(page);
     await expect(block.getByRole("img", { name: "Output of cell 2" })).toBeVisible();
     await expect(block.locator("[data-notebook-cell]")).toHaveCount(5);

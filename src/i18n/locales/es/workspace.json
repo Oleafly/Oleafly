@@ -129,6 +129,8 @@
     "entryCount_other": "{{count}} entradas del esquema",
     "expandHeading": "Expandir {{title}}",
     "expandAll": "Expandir todos los títulos",
+    "onPage": "{{heading}}, página {{page}}",
+    "page": "p. {{page}}",
     "title": "Esquema"
   },
   "panelError": {

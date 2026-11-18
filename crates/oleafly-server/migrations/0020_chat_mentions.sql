@@ -1,0 +1,1 @@
+ALTER TABLE mention_emails ADD COLUMN chat INTEGER NOT NULL DEFAULT 0 CHECK (chat IN (0, 1));

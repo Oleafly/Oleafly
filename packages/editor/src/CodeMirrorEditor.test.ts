@@ -17,6 +17,7 @@ import {
   type EditorHost,
 } from "./CodeMirrorEditor";
 import { getEditorView } from "./controller";
+import { emacsModeExtension } from "./emacs-mode";
 import {
   englishEditorMessage,
   installEnglishEditorMessages,
@@ -327,6 +328,7 @@ describe("CodeMirrorEditor keybinding modes and layout preferences", () => {
       getContent: () => "alpha beta\nsecond line\n",
       setContent: vi.fn(),
       saveActive,
+      emacs: emacsModeExtension,
       useSettings: () => ({
         keymap: "default",
         tabSize: 4,

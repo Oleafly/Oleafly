@@ -116,6 +116,7 @@
     "superscript": "Exponent",
     "subscript": "Indice",
     "inlineCode": "Cod în text",
+    "clearFormatting": "Șterge formatarea",
     "insertLink": "Inserează o legătură",
     "insertCrossReference": "Inserează o referință încrucișată",
     "insertFootnote": "Inserează o notă de subsol",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Mergi la PDF",
     "linkUrl": "URL-ul legăturii",
     "removeLink": "Elimină legătura",
+    "alignment": "Aliniere",
+    "align": {
+      "left": "Aliniază la stânga",
+      "center": "Centrează",
+      "right": "Aliniază la dreapta",
+      "justify": "Aliniere stânga-dreapta"
+    },
+    "emoji": "Emoji",
+    "textColor": "Culoarea textului",
+    "removeTextColor": "Elimină culoarea",
+    "textColors": {
+      "gray": "Gri",
+      "red": "Roșu",
+      "orange": "Portocaliu",
+      "green": "Verde",
+      "teal": "Verde-albăstrui",
+      "blue": "Albastru",
+      "purple": "Mov"
+    },
     "imageFile": "Fișier imagine",
     "apply": "Aplică",
     "linkPlaceholder": "https://",
@@ -159,7 +179,8 @@
     "imageToTypst": "Din imagine în Typst",
     "imageToTypstTooltip": "Din imagine în Typst (transcriere cu AI)",
     "typstPackages": "Pachete Typst",
-    "latexPackages": "Pachete LaTeX"
+    "latexPackages": "Pachete LaTeX",
+    "preview": "Previzualizare"
   },
   "contextMenu": {
     "engineUnavailable": "Acțiunile motorului de documente nu sunt disponibile",
@@ -209,6 +230,8 @@
     "pdfLoadFailed": "PDF-ul nu a putut fi încărcat: {{detail}}",
     "imageLoadFailed": "Imaginea nu a putut fi încărcată: {{detail}}",
     "imageUnreadable": "Acest fișier nu poate fi afișat ca imagine. Poate fi deteriorat sau poate nu este o imagine.",
+    "imageFit": "Potrivește în fereastră",
+    "htmlPreviewFailed": "Pagina nu a putut fi previzualizată: {{detail}}",
     "binaryFile": "Fișier binar. Nu există previzualizare.",
     "managedFileReadOnly": "{{file}} este gestionat de Oleafly și nu poate fi modificat aici. Setările proiectului se schimbă din Oleafly, nu prin editarea acestui fișier.",
     "noFileOpen": "Niciun fișier deschis.",
@@ -1696,5 +1719,26 @@
       "duplicateArg": "Argument duplicat",
       "unknownKind": "Tip de câmp necunoscut"
     }
+  },
+  "emoji": {
+    "search": "Caută emoji",
+    "skinTone": "Nuanța pielii",
+    "loading": "Se încarcă emoji",
+    "empty": "Nu s-a găsit niciun emoji"
+  },
+  "bibList": {
+    "count_one": "{{count}} referință",
+    "count_few": "{{count}} referințe",
+    "count_other": "{{count}} de referințe",
+    "empty": "Acest fișier nu are încă referințe.",
+    "etAl": "{{author}} et al.",
+    "noMatch": "Nicio referință nu corespunde căutării.",
+    "search": "Caută în referințe"
+  },
+  "deck": {
+    "noSlides": "Această prezentare nu are încă diapozitive. Exportă o listă de componente de diapozitiv ca export implicit."
+  },
+  "board": {
+    "unreadable": "Această tablă nu a putut fi citită. Fișierul poate fi deteriorat sau nu este un desen Excalidraw."
   }
 }

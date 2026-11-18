@@ -17,6 +17,7 @@ export { Theorem, theoremLabel } from "./theorem";
 export { TextColor, ColorBox } from "./color";
 export { latexColorToCss, LATEX_BASE_COLOR_NAMES, LATEX_DVIPS_COLOR_NAMES } from "./latex-color";
 export { LatexHeadingAttributes } from "./heading";
+export { TEXT_ALIGNS, textAlignOf, type TextAlign } from "./markdown/text-align";
 export {
   Figure,
   FigureCaption,
@@ -72,6 +73,8 @@ export {
 export { htmlToLatex, type HtmlToLatexOptions } from "./paste/html-to-latex";
 export {
   markdownBlockAt,
+  markdownUnits,
+  type MarkdownUnits,
   parseMarkdownBody,
   splitMarkdownFrontMatter,
   type MarkdownFrontMatterSplit,

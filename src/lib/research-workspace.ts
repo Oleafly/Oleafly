@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 export type ResearchRootRole = "references" | "data" | "analysis" | "manuscript";
 export type ResearchRootAccess = "read_only" | "read_write";
 export type ResearchRootConsumer = "native" | "acp" | "task";
-export type ResearchDocumentEngine = "latex" | "typst" | "markdown";
+export type ResearchDocumentEngine = "latex" | "typst" | "markdown" | "quarto" | "calepin";
 export type ResearchStarter =
   | "article"
   | "literature_review"

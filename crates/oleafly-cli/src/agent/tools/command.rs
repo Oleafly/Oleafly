@@ -94,20 +94,24 @@ pub(crate) struct ShellInvocation {
     pub raw_tail: Option<String>,
 }
 
-pub(crate) fn shell_invocation(platform: Platform, command: &str) -> ShellInvocation {
-    match platform {
+pub(crate) fn shell_invocation(
+    platform: Platform,
+    command: &str,
+) -> Result<ShellInvocation, String> {
+    Ok(match platform {
         Platform::Windows => ShellInvocation {
             program: PathBuf::from("cmd.exe"),
-            args: vec!["/d".into(), "/s".into(), "/c".into()],
-            // With /s, cmd.exe strips the first and last quote and runs the rest.
-            raw_tail: Some(format!("\"{command}\"")),
+            args: oleafly_sandbox::cmdline::CMD_SWITCHES
+                .map(String::from)
+                .into(),
+            raw_tail: Some(oleafly_sandbox::cmdline::cmd_tail(command)?),
         },
         Platform::MacOs | Platform::Linux => ShellInvocation {
             program: PathBuf::from("/bin/sh"),
             args: vec!["-c".into(), command.into()],
             raw_tail: None,
         },
-    }
+    })
 }
 
 /// The inherited environment without any provider key (names compared
@@ -158,8 +162,12 @@ async fn read_capped<R: AsyncRead + Unpin>(mut stream: R) -> Vec<u8> {
     }
 }
 
-fn plain_command(ctx: &ToolContext, text: &str, temp: &std::path::Path) -> std::process::Command {
-    let shell = shell_invocation(Platform::current(), text);
+fn plain_command(
+    ctx: &ToolContext,
+    text: &str,
+    temp: &std::path::Path,
+) -> Result<std::process::Command, String> {
+    let shell = shell_invocation(Platform::current(), text)?;
     let mut command = std::process::Command::new(&shell.program);
     command.args(&shell.args);
     #[cfg(windows)]
@@ -173,7 +181,7 @@ fn plain_command(ctx: &ToolContext, text: &str, temp: &std::path::Path) -> std::
         command.env(name, temp);
     }
     command.current_dir(ctx.workspace.work_root());
-    command
+    Ok(command)
 }
 
 pub(crate) async fn run_command(
@@ -214,7 +222,7 @@ pub(crate) async fn run_command(
             "agent.unsandboxed",
             &format!("{UNSANDBOXED} {reason}"),
         );
-        plain_command(ctx, text, temp.path())
+        plain_command(ctx, text, temp.path())?
     };
     let mut command = tokio::process::Command::from(command);
     command
@@ -362,16 +370,21 @@ pub(crate) mod tests {
 
     #[test]
     fn windows_commands_reach_cmd_verbatim() {
-        let windows = shell_invocation(Platform::Windows, r#"echo "a b" & dir"#);
+        let windows = shell_invocation(Platform::Windows, r#"echo "a b" & dir"#).unwrap();
         assert_eq!(
             (windows.program, windows.args),
             (
                 PathBuf::from("cmd.exe"),
-                vec!["/d".to_string(), "/s".into(), "/c".into()]
+                vec!["/D".to_string(), "/S".into(), "/C".into()]
             )
         );
         assert_eq!(windows.raw_tail.as_deref(), Some(r#""echo "a b" & dir""#));
-        let linux = shell_invocation(Platform::Linux, "echo hi");
+        let long = "a".repeat(8_001);
+        assert!(shell_invocation(Platform::Windows, &long)
+            .unwrap_err()
+            .contains("8,000 characters"));
+        assert!(shell_invocation(Platform::Linux, &long).is_ok());
+        let linux = shell_invocation(Platform::Linux, "echo hi").unwrap();
         assert_eq!(
             (linux.program, linux.args, linux.raw_tail),
             (
@@ -380,7 +393,7 @@ pub(crate) mod tests {
                 None
             )
         );
-        let mac = shell_invocation(Platform::MacOs, "ls 'Zoë Müller'");
+        let mac = shell_invocation(Platform::MacOs, "ls 'Zoë Müller'").unwrap();
         assert_eq!(mac.args[1], "ls 'Zoë Müller'");
     }
 

@@ -6,3 +6,7 @@ Version 3 or later (see LICENSE).
 
 Anyone redistributing Oleafly or a derivative work must retain the attribution
 and license notices required by the AGPL-3.0-or-later license.
+
+The rich-text toolbar and Notes selection menu adapt patterns from editorcn
+(https://github.com/shadcn-labs/editorcn), Copyright (c) 2026 Abdullah Mukadam,
+used under the MIT License. See THIRD_PARTY_LICENSES.md.

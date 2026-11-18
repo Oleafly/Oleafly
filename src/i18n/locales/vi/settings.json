@@ -660,6 +660,15 @@
         "grid": "Lưới",
         "label": "Họa tiết nền"
       },
+      "commentColor": {
+        "accent": "Màu nhấn",
+        "description": "Màu cho văn bản có bình luận trong trình biên tập và cho trích dẫn trong khung bình luận. Chỉ áp dụng trên thiết bị này.",
+        "graphite": "Xám than chì",
+        "indigo": "Xanh chàm",
+        "label": "Màu tô sáng bình luận",
+        "leaf": "Xanh lá",
+        "sample": "Văn bản có bình luận"
+      },
       "dock": {
         "bottom": "Dưới",
         "description": "Chọn vị trí của dock trên màn hình chính.",
@@ -754,6 +763,10 @@
       "autoCloseMath": {
         "description": "Ghép cặp $, \\( và \\[ khi bạn nhập.",
         "label": "Tự đóng công thức"
+      },
+      "groupScripts": {
+        "description": "Bọc chỉ số dưới hoặc chỉ số trên trong ngoặc nhọn khi nó dài hơn một ký tự, nên x^10 thành x^{10}. Trong Typst, x^-1 thành x^(-1).",
+        "label": "Thêm ngoặc nhọn cho chỉ số dưới và trên"
       },
       "autocomplete": {
         "description": "Hiện gợi ý mã khi bạn nhập. Ctrl+Space vẫn mở gợi ý khi tắt tuỳ chọn này.",
@@ -961,6 +974,12 @@
         "grid": "Lưới",
         "label": "Chế độ xem trang chủ mặc định",
         "list": "Danh sách"
+      },
+      "markers": {
+        "badges": "Nhãn loại",
+        "description": "Mỗi tệp trong cây dự án có một biểu tượng hoặc một nhãn loại ngắn như TEX hay PDF, cùng màu sắc.",
+        "icons": "Biểu tượng",
+        "label": "Hiển thị tệp dưới dạng"
       },
       "openIn": {
         "description": "Chọn bố cục dùng khi mở dự án.",
@@ -2608,5 +2627,63 @@
       "loadFailed": "Không thể đọc danh sách máy chủ MCP.",
       "missing": "{{name}} (không tìm thấy)"
     }
+  },
+  "logs": {
+    "searchLabel": "Search logs",
+    "searchPlaceholder": "Search logs",
+    "levels": {
+      "label": "Level",
+      "all": "All",
+      "warning": "Warnings",
+      "error": "Errors"
+    },
+    "level": {
+      "info": "Info",
+      "warning": "Warning",
+      "error": "Error"
+    },
+    "actions": {
+      "export": "Export",
+      "openFolder": "Open log folder",
+      "clear": "Clear"
+    },
+    "groups": {
+      "today": "Today",
+      "yesterday": "Yesterday"
+    },
+    "newestFirst": "Newest first",
+    "privateDetails": "Private, left out when you export",
+    "copyEntry": "Copy entry",
+    "copied": "Copied",
+    "loading": "Reading the logs",
+    "loadFailed": "Couldn't read the logs.",
+    "retry": "Try again",
+    "empty": {
+      "title": "No log entries",
+      "description": "Builds and errors show up here as they happen."
+    },
+    "noMatch": {
+      "title": "No entries match \"{{query}}\"",
+      "levelTitle": "No entries at this level",
+      "description": "Try another search or level.",
+      "clearSearch": "Clear search",
+      "showAll": "Show all levels"
+    },
+    "clear": {
+      "title": "Clear all logs?",
+      "confirm": "Clear logs",
+      "description_other": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them."
+    },
+    "toast": {
+      "exported": "Saved the logs to {{name}}.",
+      "exportFailed": "Couldn't export the logs.",
+      "clearFailed": "Couldn't clear the logs.",
+      "revealFailed": "Couldn't open the log folder."
+    },
+    "dialog": {
+      "filterName": "Zip archive"
+    },
+    "count_other": "{{count}} entries",
+    "filteredCount_other": "{{shown}} of {{count}} entries"
   }
 }

@@ -116,6 +116,7 @@
     "superscript": "Horní index",
     "subscript": "Dolní index",
     "inlineCode": "Kód v řádku",
+    "clearFormatting": "Vymazat formátování",
     "insertLink": "Vložit odkaz",
     "insertCrossReference": "Vložit křížový odkaz",
     "insertFootnote": "Vložit poznámku pod čarou",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Přejít do PDF",
     "linkUrl": "Adresa URL odkazu",
     "removeLink": "Odebrat odkaz",
+    "alignment": "Zarovnání",
+    "align": {
+      "left": "Zarovnat vlevo",
+      "center": "Zarovnat na střed",
+      "right": "Zarovnat vpravo",
+      "justify": "Zarovnat do bloku"
+    },
+    "emoji": "Emoji",
+    "textColor": "Barva textu",
+    "removeTextColor": "Odebrat barvu",
+    "textColors": {
+      "gray": "Šedá",
+      "red": "Červená",
+      "orange": "Oranžová",
+      "green": "Zelená",
+      "teal": "Modrozelená",
+      "blue": "Modrá",
+      "purple": "Fialová"
+    },
     "imageFile": "Soubor obrázku",
     "apply": "Použít",
     "linkPlaceholder": "https://",
@@ -159,7 +179,8 @@
     "imageToTypst": "Obrázek do formátu Typst",
     "imageToTypstTooltip": "Obrázek do formátu Typst (přepis pomocí AI)",
     "typstPackages": "Balíčky Typst",
-    "latexPackages": "Balíčky LaTeX"
+    "latexPackages": "Balíčky LaTeX",
+    "preview": "Náhled"
   },
   "contextMenu": {
     "engineUnavailable": "Akce dokumentového enginu nejsou k dispozici",
@@ -209,6 +230,8 @@
     "pdfLoadFailed": "Načtení PDF selhalo: {{detail}}",
     "imageLoadFailed": "Načtení obrázku selhalo: {{detail}}",
     "imageUnreadable": "Tento soubor nelze zobrazit jako obrázek. Může být poškozený, nebo to vůbec není obrázek.",
+    "imageFit": "Přizpůsobit oknu",
+    "htmlPreviewFailed": "Náhled stránky selhal: {{detail}}",
     "binaryFile": "Binární soubor. Náhled není k dispozici.",
     "managedFileReadOnly": "{{file}} spravuje Oleafly a je tu jen ke čtení. Nastavení projektu se mění přímo v Oleafly, ne úpravou tohoto souboru.",
     "noFileOpen": "Není otevřený žádný soubor.",
@@ -1717,5 +1740,27 @@
       "duplicateArg": "Duplicitní argument",
       "unknownKind": "Neznámý druh pole"
     }
+  },
+  "emoji": {
+    "search": "Hledat emoji",
+    "skinTone": "Odstín pleti",
+    "loading": "Načítají se emoji",
+    "empty": "Žádné emoji nenalezeny"
+  },
+  "bibList": {
+    "count_one": "{{count}} reference",
+    "count_few": "{{count}} reference",
+    "count_many": "{{count}} reference",
+    "count_other": "{{count}} referencí",
+    "empty": "Tento soubor zatím neobsahuje žádné citace.",
+    "etAl": "{{author}} a kol.",
+    "noMatch": "Hledání neodpovídá žádná citace.",
+    "search": "Hledat v citacích"
+  },
+  "deck": {
+    "noSlides": "Tato prezentace zatím nemá žádné snímky. Jako výchozí export uveďte pole komponent snímků."
+  },
+  "board": {
+    "unreadable": "Tuto tabuli nelze přečíst. Soubor může být poškozený, nebo nejde o kresbu Excalidraw."
   }
 }

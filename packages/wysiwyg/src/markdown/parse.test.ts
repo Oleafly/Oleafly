@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
-import { markdownBlockAt, parseMarkdownBody, splitMarkdownFrontMatter } from "./parse";
+import { markdownBlockAt, markdownUnits, parseMarkdownBody, splitMarkdownFrontMatter } from "./parse";
 
 describe("parseMarkdownBody", () => {
   it("splits YAML frontmatter from the body and parses the body", () => {
@@ -103,5 +103,47 @@ describe("markdownBlockAt", () => {
 
   it("gives nothing for an empty document", () => {
     expect(markdownBlockAt("", 0)).toBeNull();
+  });
+});
+
+describe("markdown unit spans", () => {
+  it("gives each top-level block's source range, after front matter, keeping a multi-paragraph fence whole", () => {
+    const source = "---\ntitle: x\n---\n\nIntro *a*.\n\n::: {.center}\nA\n\nB\n:::\n\n- one\n\n- two\n\n[r]: https://a.b\n";
+    const { spans } = markdownUnits(source);
+    expect(spans.map(({ from, to }) => source.slice(from, to))).toEqual([
+      "Intro *a*.",
+      "::: {.center}\nA\n\nB\n:::",
+      "- one\n\n- two",
+      "[r]: https://a.b",
+    ]);
+  });
+
+  it("gives each footnote definition its own span", () => {
+    const source = "Text[^a] and[^b].\n\n[^a]: one\n[^b]: two\nlazy";
+    const { spans } = markdownUnits(source);
+    expect(spans.map(({ from, to }) => source.slice(from, to))).toEqual(["Text[^a] and[^b].", "[^a]: one", "[^b]: two\nlazy"]);
+  });
+
+  it("measures spans in the original text when math is kept as it is", () => {
+    const source = "Area $x^2$ here.\n\nNext $$y$$.";
+    const { spans } = markdownUnits(source, { preservedInlineRanges: [{ from: 5, to: 10 }, { from: 23, to: 28 }] });
+    expect(spans.map(({ from, to }) => source.slice(from, to))).toEqual(["Area $x^2$ here.", "Next $$y$$."]);
+  });
+});
+
+describe("Pandoc inline syntax", () => {
+  const marksOf = (source: string) =>
+    (parseMarkdownBody(source).doc.content?.[0]?.content ?? []).map((node) => [node.text, (node.marks ?? []).map((mark) => mark.type).sort().join(" ")]);
+
+  it("reads Pandoc's underline, highlight, superscript and subscript as marks", () => {
+    expect(marksOf("A [und]{.underline} b.")).toEqual([["A ", ""], ["und", "underline"], [" b.", ""]]);
+    expect(marksOf("A [**hl**]{.mark} b.")).toEqual([["A ", ""], ["hl", "bold highlight"], [" b.", ""]]);
+    expect(marksOf("x^2^ and H~2~O")).toEqual([["x", ""], ["2", "superscript"], [" and H", ""], ["2", "subscript"], ["O", ""]]);
+  });
+
+  it("leaves strikethrough, spaced carets and other bracketed spans alone", () => {
+    expect(marksOf("A ~~gone~~ b.")).toEqual([["A ", ""], ["gone", "strike"], [" b.", ""]]);
+    expect(marksOf("2^3 and 4^5")).toEqual([["2^3 and 4^5", ""]]);
+    expect(marksOf("A [x]{.smallcaps} b.")).toEqual([["A [x]{.smallcaps} b.", ""]]);
   });
 });

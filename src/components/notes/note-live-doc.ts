@@ -10,7 +10,7 @@ import {
 import type { Editor, JSONContent } from "@tiptap/core";
 import { Fragment, type Node as ProseMirrorNode, type Schema } from "@tiptap/pm/model";
 import { type EditorState, TextSelection, type Selection, type Transaction } from "@tiptap/pm/state";
-import { markdownMathRanges } from "@/components/editor/wysiwyg/markdown-source";
+import { noteMathRanges } from "@/components/editor/wysiwyg/markdown-source";
 import { myersEditScript } from "@/lib/myers-diff";
 import { diffNoteDocs, type NoteChangeDraft } from "./note-diff";
 import { mergeSequences } from "./note-merge";
@@ -263,7 +263,7 @@ const protectedRanges = new WeakMap<SharedNote, ProtectedRanges>();
 
 function scanRanges(text: string): ProtectedRanges {
   const bodyOffset = text.length - splitMarkdownFrontMatter(text).body.length;
-  return { math: markdownMathRanges(text), preserved: markdownPreservedRanges(text, bodyOffset) };
+  return { math: noteMathRanges(text), preserved: markdownPreservedRanges(text, bodyOffset) };
 }
 
 function rangesOf(note: SharedNote): ProtectedRanges {
@@ -355,7 +355,7 @@ function rangesKeptAround(previous: SharedNote, text: string, span: ChangedRegio
   if (changesDocument(region) || changesDocument(previous.text.slice(regionStart, regionEnd))) return null;
   const was = rangesOf(previous);
   const now = scanRanges(text);
-  if (!sameRangesIn(now.math, regionStart, nextEnd, markdownMathRanges(region))) return null;
+  if (!sameRangesIn(now.math, regionStart, nextEnd, noteMathRanges(region))) return null;
   if (!sameRangesIn(now.preserved, regionStart, nextEnd, markdownPreservedRanges(region))) return null;
   if (!sameOutside(was.math, now.math, regionStart, regionEnd, nextEnd)) return null;
   if (!sameOutside(was.preserved, now.preserved, regionStart, regionEnd, nextEnd)) return null;

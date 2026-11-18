@@ -11,6 +11,7 @@ import * as ReactDOMClient from "react-dom/client";
 import * as JsxRuntime from "react/jsx-runtime";
 import * as Recharts from "recharts";
 import { transform } from "sucrase";
+import { createDeckRunner, DECK_MODULES } from "./deck-host";
 import { createArtifactRuntime, esm, type RuntimeModule, type TransformOptions } from "./runtime-core";
 
 const lodash = lodashNamespace.default;
@@ -70,6 +71,7 @@ export const RUNTIME_MODULES: Record<string, () => RuntimeModule> = {
   papaparse: () => esm(Papa, Papa),
   "chart.js": () => esm({ ...ChartModule, Chart: chart() }, chart()),
   "chart.js/auto": () => esm({ ...ChartModule, Chart: chart() }, chart()),
+  ...DECK_MODULES,
 };
 
 export function lodashSubpath(specifier: string): RuntimeModule | undefined {
@@ -107,5 +109,7 @@ export const artifactRuntime = createArtifactRuntime({
   transform: transformCode,
   tailwindSource,
 });
+
+Object.assign(artifactRuntime, { runDeck: createDeckRunner(artifactRuntime) });
 
 (globalThis as unknown as Record<string, unknown>).__oleaflyArtifact = artifactRuntime;

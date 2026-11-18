@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, renderHook } from "@testing-library/react";
+import { cleanup, render, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./live-editing", () => ({ startLiveEditing: vi.fn(() => () => undefined) }));
@@ -13,6 +13,7 @@ import { CollabBanners } from "./SyncPauseBanner";
 const SESSION = { projectId: "p1", role: "editor" as const, accountId: "alice", deviceId: "laptop" };
 
 afterEach(() => {
+  cleanup();
   useCollabLiveStore.setState({ projectId: null, backend: null, status: null, share: null, projectFull: false });
 });
 

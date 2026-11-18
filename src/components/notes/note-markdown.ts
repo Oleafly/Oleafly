@@ -7,7 +7,7 @@ import {
   type WysiwygExtensionOptions,
 } from "@oleafly/wysiwyg";
 import type { AnyExtension, JSONContent, NodeViewRenderer } from "@tiptap/core";
-import { markdownMathRanges } from "@/components/editor/wysiwyg/markdown-source";
+import { noteMathRanges } from "@/components/editor/wysiwyg/markdown-source";
 import { NoteCallout, NoteCalloutTitle } from "./note-callouts";
 import { NoteField } from "./note-fields";
 import { NoteHighlight } from "./note-highlight";
@@ -22,7 +22,7 @@ export interface NoteViews {
 
 export function noteBaseExtensions(options: WysiwygExtensionOptions = {}, views: NoteViews | null = null): AnyExtension[] {
   return [
-    ...createWysiwygExtensions({ ...options, markdownTyping: true }),
+    ...createWysiwygExtensions({ ...options, markdownTyping: true }).filter((extension) => extension.name !== "highlight"),
     NoteTaskList,
     NoteTaskItem.configure({ views: views !== null }),
     NoteHighlight,
@@ -43,7 +43,7 @@ export function noteMarkdownExtensions(): AnyExtension[] {
 
 export function parseNoteMarkdown(source: string) {
   return parseMarkdownBody(source, {
-    preservedInlineRanges: markdownMathRanges(source),
+    preservedInlineRanges: noteMathRanges(source),
     extensions: noteMarkdownExtensions(),
   });
 }

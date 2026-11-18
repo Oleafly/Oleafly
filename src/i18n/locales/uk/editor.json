@@ -116,6 +116,7 @@
     "superscript": "Верхній індекс",
     "subscript": "Нижній індекс",
     "inlineCode": "Код у рядку",
+    "clearFormatting": "Очистити форматування",
     "insertLink": "Вставити посилання",
     "insertCrossReference": "Вставити перехресне посилання",
     "insertFootnote": "Вставити виноску",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Перейти до PDF",
     "linkUrl": "URL посилання",
     "removeLink": "Вилучити посилання",
+    "alignment": "Вирівнювання",
+    "align": {
+      "left": "За лівим краєм",
+      "center": "По центру",
+      "right": "За правим краєм",
+      "justify": "За шириною"
+    },
+    "emoji": "Емодзі",
+    "textColor": "Колір тексту",
+    "removeTextColor": "Прибрати колір",
+    "textColors": {
+      "gray": "Сірий",
+      "red": "Червоний",
+      "orange": "Помаранчевий",
+      "green": "Зелений",
+      "teal": "Бірюзовий",
+      "blue": "Синій",
+      "purple": "Фіолетовий"
+    },
     "imageFile": "Файл зображення",
     "apply": "Застосувати",
     "linkPlaceholder": "https://",
@@ -159,7 +179,8 @@
     "imageToTypst": "Зображення в Typst",
     "imageToTypstTooltip": "Зображення в Typst (розшифрувати за допомогою ШІ)",
     "typstPackages": "Пакети Typst",
-    "latexPackages": "Пакети LaTeX"
+    "latexPackages": "Пакети LaTeX",
+    "preview": "Попередній перегляд"
   },
   "contextMenu": {
     "engineUnavailable": "Дії рушія документа недоступні",
@@ -209,6 +230,8 @@
     "pdfLoadFailed": "Не вдалося завантажити PDF: {{detail}}",
     "imageLoadFailed": "Не вдалося завантажити зображення: {{detail}}",
     "imageUnreadable": "Цей файл не можна показати як зображення. Можливо, він пошкоджений або взагалі не є зображенням.",
+    "imageFit": "За розміром вікна",
+    "htmlPreviewFailed": "Не вдалося показати сторінку: {{detail}}",
     "binaryFile": "Двійковий файл. Перегляд недоступний.",
     "managedFileReadOnly": "{{file}} керується Oleafly і тут доступний лише для читання. Налаштування проєкту змінюються через сам Oleafly, а не редагуванням цього файлу.",
     "noFileOpen": "Немає відкритих файлів.",
@@ -1717,5 +1740,27 @@
       "duplicateArg": "Дубльований аргумент",
       "unknownKind": "Невідомий вид поля"
     }
+  },
+  "emoji": {
+    "search": "Пошук емодзі",
+    "skinTone": "Відтінок шкіри",
+    "loading": "Завантаження емодзі",
+    "empty": "Емодзі не знайдено"
+  },
+  "bibList": {
+    "count_one": "{{count}} джерело",
+    "count_few": "{{count}} джерела",
+    "count_many": "{{count}} джерел",
+    "count_other": "{{count}} джерела",
+    "empty": "У цьому файлі ще немає джерел.",
+    "etAl": "{{author}} та ін.",
+    "noMatch": "Немає джерел, що відповідають пошуку.",
+    "search": "Пошук у джерелах"
+  },
+  "deck": {
+    "noSlides": "У цій презентації ще немає слайдів. Експортуйте масив компонентів слайдів як типовий експорт."
+  },
+  "board": {
+    "unreadable": "Не вдалося прочитати цю дошку. Можливо, файл пошкоджено або це не малюнок Excalidraw."
   }
 }

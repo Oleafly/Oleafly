@@ -116,6 +116,7 @@
     "superscript": "Exposant",
     "subscript": "Indice",
     "inlineCode": "Code en ligne",
+    "clearFormatting": "Effacer la mise en forme",
     "insertLink": "Insérer un lien",
     "insertCrossReference": "Insérer un renvoi",
     "insertFootnote": "Insérer une note de bas de page",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Aller au PDF",
     "linkUrl": "URL du lien",
     "removeLink": "Retirer le lien",
+    "alignment": "Alignement",
+    "align": {
+      "left": "Aligner à gauche",
+      "center": "Centrer",
+      "right": "Aligner à droite",
+      "justify": "Justifier"
+    },
+    "emoji": "Emoji",
+    "textColor": "Couleur du texte",
+    "removeTextColor": "Retirer la couleur",
+    "textColors": {
+      "gray": "Gris",
+      "red": "Rouge",
+      "orange": "Orange",
+      "green": "Vert",
+      "teal": "Bleu sarcelle",
+      "blue": "Bleu",
+      "purple": "Violet"
+    },
     "imageFile": "Fichier image",
     "apply": "Appliquer",
     "linkPlaceholder": "https://",
@@ -159,7 +179,8 @@
     "imageToTypst": "Image vers Typst",
     "imageToTypstTooltip": "Image vers Typst (transcrire avec l'IA)",
     "typstPackages": "Paquets Typst",
-    "latexPackages": "Paquets LaTeX"
+    "latexPackages": "Paquets LaTeX",
+    "preview": "Aperçu"
   },
   "contextMenu": {
     "engineUnavailable": "Actions du moteur de document indisponibles",
@@ -209,6 +230,8 @@
     "pdfLoadFailed": "Échec du chargement du PDF : {{detail}}",
     "imageLoadFailed": "Échec du chargement de l'image : {{detail}}",
     "imageUnreadable": "Ce fichier ne peut pas être affiché comme image. Il est peut-être endommagé, ou ce n'est pas une image.",
+    "imageFit": "Ajuster à la fenêtre",
+    "htmlPreviewFailed": "Échec de l'aperçu de la page : {{detail}}",
     "binaryFile": "Fichier binaire. Aucun aperçu disponible.",
     "managedFileReadOnly": "{{file}} est géré par Oleafly et reste en lecture seule ici. Les réglages du projet se modifient depuis Oleafly, pas en éditant ce fichier.",
     "noFileOpen": "Aucun fichier ouvert.",
@@ -1696,5 +1719,26 @@
       "duplicateArg": "Argument en double",
       "unknownKind": "Type de champ inconnu"
     }
+  },
+  "emoji": {
+    "search": "Rechercher des emoji",
+    "skinTone": "Teint de peau",
+    "loading": "Chargement des emoji",
+    "empty": "Aucun emoji trouvé"
+  },
+  "bibList": {
+    "count_one": "{{count}} référence",
+    "count_many": "{{count}} références",
+    "count_other": "{{count}} références",
+    "empty": "Ce fichier ne contient encore aucune référence.",
+    "etAl": "{{author}} et al.",
+    "noMatch": "Aucune référence ne correspond à votre recherche.",
+    "search": "Rechercher dans les références"
+  },
+  "deck": {
+    "noSlides": "Cette présentation n'a pas encore de diapositive. Exportez un tableau de composants de diapositive comme export par défaut."
+  },
+  "board": {
+    "unreadable": "Impossible de lire ce tableau blanc. Le fichier est peut-être endommagé, ou ce n'est pas un dessin Excalidraw."
   }
 }

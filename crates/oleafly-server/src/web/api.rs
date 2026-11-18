@@ -171,6 +171,7 @@ pub async fn project(
             "comments": comments,
             "suggestions": pending_core::SUGGESTIONS_READY,
             "chat": pending_core::CHAT_READY,
+            "reactions": pending_core::REACTIONS_READY,
         },
     })))
 }

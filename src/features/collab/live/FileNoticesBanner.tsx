@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import type { CollabLiveKeptFile, CollabLocalCopyOffer, CollabUploadFile } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { collabErrorMessage } from "../errors";
-import { type UploadProgress, useFileNotices } from "./file-notices";
+import { type DownloadProgress, useFileNotices } from "./file-notices";
 import { useCollabLiveStore } from "./live-store";
 import { type OverleafStopped, useOverleafNotices } from "./overleaf-notices";
 import { PathMessage } from "./PathMessage";
@@ -27,7 +27,7 @@ const NO_UPLOADS: readonly CollabUploadFile[] = [];
 const NO_KEPT: readonly CollabLiveKeptFile[] = [];
 const NO_STOPPED: readonly OverleafStopped[] = [];
 const NO_PATHS: readonly string[] = [];
-const NO_DOWNLOADS: Readonly<Record<string, UploadProgress>> = {};
+const NO_DOWNLOADS: Readonly<Record<string, DownloadProgress>> = {};
 const LIMITS: ReadonlySet<OverleafStopReason> = new Set(["too_long", "too_large", "too_many_ranges"]);
 const MAX_COMMENTS = 500;
 const MAX_TRACKED_CHANGES = 2000;
@@ -46,10 +46,16 @@ function TransferLine({
   progress,
   className,
   testId,
-}: Readonly<{ text: string; progress: UploadProgress; className?: string; testId: string }>) {
+}: Readonly<{ text: string; progress: DownloadProgress; className?: string; testId: string }>) {
+  const { done, total } = progress;
   return (
     <div className={cn("flex items-center gap-2", className)} data-testid={testId}>
-      <Progress value={(progress.done / progress.total) * 100} label={text} className="h-1 max-w-48" />
+      <Progress
+        value={total ? (done / total) * 100 : 0}
+        indeterminate={total === null}
+        label={text}
+        className="h-1 max-w-48"
+      />
       <span className="min-w-0 truncate tabular-nums">{text}</span>
     </div>
   );
@@ -67,13 +73,14 @@ function UploadProgressLine({ path }: Readonly<{ path: string }>) {
   return <TransferLine text={text} progress={progress} className="basis-full pl-5.5" testId="collab-upload-progress" />;
 }
 
-function DownloadRow({ path, progress }: Readonly<{ path: string; progress: UploadProgress }>) {
+function DownloadRow({ path, progress }: Readonly<{ path: string; progress: DownloadProgress }>) {
   const { t } = useTranslation(["collab"]);
-  const text = t(($) => $.collab.files.downloading, {
-    file: basename(path),
-    done: formatBytes(progress.done),
-    total: formatBytes(progress.total),
-  });
+  const file = basename(path);
+  const done = formatBytes(progress.done);
+  const text =
+    progress.total === null
+      ? t(($) => $.collab.files.downloadingSoFar, { file, done })
+      : t(($) => $.collab.files.downloading, { file, done, total: formatBytes(progress.total) });
   return (
     <WorkspaceBanner tone="primary">
       <CloudDownload aria-hidden className="size-3.5 shrink-0 text-primary" />
@@ -173,11 +180,12 @@ function ProjectTooLargeRow({ file }: Readonly<{ file: CollabUploadFile }>) {
 
 function KeptRow({ file, name }: Readonly<{ file: CollabLiveKeptFile; name: string }>) {
   const { t } = useTranslation(["collab"]);
-  const values = { name, file: basename(file.path), copy: basename(file.copy) };
+  const values = { name, file: basename(file.path), copy: file.copy ? basename(file.copy) : "" };
   let message: string;
   if (file.kind === "replaced") message = t(($) => $.collab.files.replaced, values);
   else if (file.kind === "beside") message = t(($) => $.collab.files.beside, values);
-  else if (file.kind === "unsent") message = t(($) => $.collab.files.unsent, values);
+  else if (file.kind === "unsent" && file.copy) message = t(($) => $.collab.files.unsent, values);
+  else if (file.kind === "unsent") message = t(($) => $.collab.files.unsentInFile, values);
   else if (file.kind === "differed") message = t(($) => $.collab.files.differed, values);
   else message = t(($) => $.collab.files.added, values);
   const unsent = file.kind === "unsent";
@@ -189,7 +197,7 @@ function KeptRow({ file, name }: Readonly<{ file: CollabLiveKeptFile; name: stri
       ) : (
         <Files aria-hidden className="size-3.5 shrink-0 text-primary" />
       )}
-      <PathMessage paths={[file.path, file.copy]}>{message}</PathMessage>
+      <PathMessage paths={file.copy ? [file.path, file.copy] : [file.path]}>{message}</PathMessage>
       <Dismiss tone={tone} onDismiss={() => useFileNotices.getState().dismissKept(file.id)} />
     </WorkspaceBanner>
   );

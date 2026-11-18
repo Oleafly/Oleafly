@@ -10,7 +10,8 @@
     ".": "./src/index.ts",
     "./block-id-marker": "./src/block-id-marker.ts",
     "./link-destination": "./src/link-destination.ts",
-    "./front-matter": "./src/front-matter.ts"
+    "./front-matter": "./src/front-matter.ts",
+    "./text-align-values": "./src/text-align-values.ts"
   },
   "sideEffects": false,
   "dependencies": {
@@ -18,8 +19,10 @@
     "@oleafly/latex": "workspace:*",
     "@tiptap/core": "*",
     "@tiptap/extension-code-block": "*",
+    "@tiptap/extension-heading": "*",
     "@tiptap/extension-image": "*",
     "@tiptap/extension-link": "*",
+    "@tiptap/extension-paragraph": "*",
     "@tiptap/extension-table": "*",
     "@tiptap/starter-kit": "*",
     "@unified-latex/unified-latex-types": "*",

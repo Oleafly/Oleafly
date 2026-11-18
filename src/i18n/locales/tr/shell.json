@@ -562,7 +562,7 @@
       },
       "glossaries-index": {
         "title": "Terimler sözlüğü veya dizin aracı",
-        "detail": "glossaries ve makeindex, yerleşik motorun yapmadığı ek bir makeindex veya xindy çalıştırması gerektirir."
+        "detail": "glossaries ve makeindex, yerleşik motorun yapmadığı ek bir makeindex, xindy veya bib2gls çalıştırması gerektirir."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref pdfTeX sürücüsüne ayarlı",
@@ -1088,7 +1088,8 @@
       "help": "Yardım ve Hakkında",
       "integrations": "Tümleştirmeler",
       "shortcuts": "Klavye Kısayolları",
-      "research": "Araştırma"
+      "research": "Araştırma",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Eşleşen ayar yok",
@@ -1105,7 +1106,8 @@
         "help": "hakkında, sürüm, güncellemeler, değişiklik günlüğü, yenilikler, belgeler, destek, topluluk, Discord, lisans, çökme raporu",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git barındırma, Computer Use, masaüstü uygulamaları, Cua, MCP, atıflar, hesaplar, bağlantılar",
         "shortcuts": "tuş atamaları, kısayol tuşları, kısayollar, tuşlar, klavye",
-        "research": "araştırma görevler bütçe bildirimler uyanık tut deneyler çalıştırmalar research tasks"
+        "research": "araştırma görevler bütçe bildirimler uyanık tut deneyler çalıştırmalar research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Ayarlarda ara",
       "results_one": "{{count}} bölüm eşleşiyor",
@@ -1674,5 +1676,9 @@
   "stuckWindow": {
     "reloaded": "Bu pencere 30 saniye yanıt vermediği için Oleafly onu yeniden yükledi. Hemen öncesinde yaptığınız değişiklikler kaydedilmemiş olabilir.",
     "reloadedAgain": "Bu pencere yine yanıt vermeyi bıraktığı için Oleafly onu tekrar yeniden yükledi. Sorunun nedeni projedeki bir şey olabileceğinden projeniz yeniden açılmadı."
+  },
+  "zoomIndicator": {
+    "label": "Yakınlaştırma",
+    "reset": "Sıfırla"
   }
 }

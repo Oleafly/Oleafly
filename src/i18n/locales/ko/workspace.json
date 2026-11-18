@@ -123,6 +123,8 @@
     "entryCount_other": "개요 항목 {{count}}개",
     "expandHeading": "{{title}} 펼치기",
     "expandAll": "모든 제목 펼치기",
+    "onPage": "{{heading}}, {{page}}쪽",
+    "page": "{{page}}쪽",
     "title": "개요"
   },
   "panelError": {

@@ -4,11 +4,13 @@ import type { RemoteSessionTransport } from "@/features/collab/live/remote-sessi
 import {
   type ClientFrame,
   type CollabChatMessage,
+  type CollabPresenceActivity,
   type CollabEditMode,
   type CollabOutputInfo,
   type CollabProjectRole,
   type CompileSettings,
   parseServerFrame,
+  presenceFrame,
   type RequestFrame,
   type ServerFrame,
   type SuggestionsFrame,
@@ -76,6 +78,7 @@ export const PROBE_AFTER_FAILURES = 2;
 export const MAX_CHANGE_BYTES = 10 * 1024 * 1024;
 
 const SIGNED_OUT_CODES = new Set(["unauthorized", "signed_out", "session_expired"]);
+const PRESENCE_KEEP_ALIVE_MS = 15_000;
 const NO_ACCESS_CODES = new Set(["forbidden", "not_found", "removed", "project_not_shared", "archived"]);
 
 export function reconnectDelay(attempt: number, random: () => number): number {
@@ -162,6 +165,7 @@ export class WebGateway {
   private attempt = 0;
   private failures = 0;
   private cancelRetry: (() => void) | null = null;
+  private cancelKeepAlive: (() => void) | null = null;
   private files: WebFile[] = [];
   private readonly channels = new Map<string, DocChannel>();
   private readonly held = new Map<string, DocChannel>();
@@ -237,6 +241,11 @@ export class WebGateway {
     return answer ?? null;
   }
 
+  ready(fileId: string): boolean {
+    const channel = this.channels.get(fileId);
+    return this.online && channel?.opened === true && !channel.resuming;
+  }
+
   holds(fileId: string): boolean {
     return this.held.has(fileId) || this.channels.get(fileId)?.resuming === true;
   }
@@ -263,7 +272,17 @@ export class WebGateway {
   }
 
   setPresence(fileId: string | null, anchor: number | null, head: number | null): void {
-    this.presence = { t: "presence", fileId, anchor, head };
+    this.presence = presenceFrame(fileId, anchor, head, this.presence?.activity);
+    this.send(this.presence);
+  }
+
+  announce(): void {
+    if (this.presence && this.current === "online") this.send(this.presence);
+  }
+
+  setActivity(activity: CollabPresenceActivity | null): void {
+    const current = this.presence ?? presenceFrame(null, null, null);
+    this.presence = presenceFrame(current.fileId, current.anchor, current.head, activity);
     this.send(this.presence);
   }
 
@@ -313,8 +332,20 @@ export class WebGateway {
     this.socket = socket;
   }
 
+  private keepAlive(): void {
+    this.cancelKeepAlive?.();
+    this.cancelKeepAlive = this.setTimer(() => {
+      this.cancelKeepAlive = null;
+      if (this.current !== "online") return;
+      if (this.presence) this.send(this.presence);
+      this.keepAlive();
+    }, PRESENCE_KEEP_ALIVE_MS);
+  }
+
   private lost(greeted: boolean): void {
     if (this.current === "ended") return;
+    this.cancelKeepAlive?.();
+    this.cancelKeepAlive = null;
     this.dropChannels();
     this.failRequests();
     if (greeted) {
@@ -356,6 +387,8 @@ export class WebGateway {
     this.generation += 1;
     this.cancelRetry?.();
     this.cancelRetry = null;
+    this.cancelKeepAlive?.();
+    this.cancelKeepAlive = null;
     const socket = this.socket;
     this.socket = null;
     try {
@@ -447,6 +480,7 @@ export class WebGateway {
     this.setState("online");
     if (this.mode && (frame.role === "owner" || frame.role === "editor")) this.send({ t: "mode", mode: this.mode });
     if (this.presence) this.send(this.presence);
+    this.keepAlive();
     this.options.listener.hello?.({
       fresh,
       role: frame.role,

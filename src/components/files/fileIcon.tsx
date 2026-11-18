@@ -1,73 +1,141 @@
 import {
+  BookMarked,
   File,
   FileArchive,
+  FileBraces,
   FileCode,
-  FileImage,
-  FileJson,
+  FileSliders,
   FileText,
   FileType,
+  Folder,
+  FolderOpen,
   Github,
-  Settings2,
+  Image,
+  Presentation,
+  Shapes,
+  Sheet,
   type LucideIcon,
 } from "lucide-react";
+import { isDeckPath } from "@/components/editor/deck/deck-path";
 import { cn } from "@/lib/utils";
 
-const BY_EXT: Record<string, { Icon: LucideIcon; cls: string }> = {
-  tex: { Icon: FileText, cls: "text-sky-500" },
-  sty: { Icon: FileText, cls: "text-sky-500" },
-  cls: { Icon: FileText, cls: "text-sky-500" },
-  ltx: { Icon: FileText, cls: "text-sky-500" },
-  typ: { Icon: FileType, cls: "text-emerald-500" },
-  bib: { Icon: FileText, cls: "text-amber-500" },
-  pdf: { Icon: FileText, cls: "text-red-500" },
-  json: { Icon: FileJson, cls: "text-yellow-500" },
-  md: { Icon: FileType, cls: "text-indigo-400" },
-  markdown: { Icon: FileType, cls: "text-indigo-400" },
-  qmd: { Icon: FileType, cls: "text-indigo-400" },
-  rmd: { Icon: FileType, cls: "text-indigo-400" },
-  css: { Icon: FileCode, cls: "text-primary" },
-  scss: { Icon: FileCode, cls: "text-pink-500" },
-  js: { Icon: FileCode, cls: "text-yellow-400" },
-  mjs: { Icon: FileCode, cls: "text-yellow-400" },
-  ts: { Icon: FileCode, cls: "text-primary" },
-  tsx: { Icon: FileCode, cls: "text-primary" },
-  html: { Icon: FileCode, cls: "text-orange-500" },
-  xml: { Icon: FileCode, cls: "text-orange-500" },
-  yml: { Icon: Settings2, cls: "text-rose-500" },
-  yaml: { Icon: Settings2, cls: "text-rose-500" },
-  toml: { Icon: Settings2, cls: "text-rose-500" },
-  png: { Icon: FileImage, cls: "text-pink-500" },
-  jpg: { Icon: FileImage, cls: "text-pink-500" },
-  jpeg: { Icon: FileImage, cls: "text-pink-500" },
-  gif: { Icon: FileImage, cls: "text-pink-500" },
-  webp: { Icon: FileImage, cls: "text-pink-500" },
-  svg: { Icon: FileImage, cls: "text-pink-500" },
-  eps: { Icon: FileImage, cls: "text-pink-500" },
-  zip: { Icon: FileArchive, cls: "text-amber-500" },
-  gz: { Icon: FileArchive, cls: "text-amber-500" },
-  tar: { Icon: FileArchive, cls: "text-amber-500" },
+const TINT_FIRST = "[&>:first-child]:fill-current/15 dark:[&>:first-child]:fill-current/20";
+const TINT_SECOND = "[&>:nth-child(2)]:fill-current/15 dark:[&>:nth-child(2)]:fill-current/20";
+const TINT_ALL = "[&>*]:fill-current/15 dark:[&>*]:fill-current/20";
+
+interface Glyph {
+  readonly Icon: LucideIcon;
+  readonly hue: string;
+  readonly tint?: string;
+}
+
+const GLYPHS = {
+  tex: { Icon: FileType, hue: "text-file-source" },
+  style: { Icon: FileSliders, hue: "text-file-source" },
+  typst: { Icon: FileType, hue: "text-file-typst" },
+  bib: { Icon: BookMarked, hue: "text-file-prose", tint: TINT_SECOND },
+  markdown: { Icon: FileText, hue: "text-file-prose" },
+  pdf: { Icon: FileText, hue: "text-file-pdf" },
+  image: { Icon: Image, hue: "text-file-image" },
+  sheet: { Icon: Sheet, hue: "text-file-sheet" },
+  board: { Icon: Shapes, hue: "text-file-image", tint: TINT_ALL },
+  slides: { Icon: Presentation, hue: "text-file-code", tint: TINT_SECOND },
+  code: { Icon: FileCode, hue: "text-file-code" },
+  config: { Icon: FileBraces, hue: "text-file-source" },
+  archive: { Icon: FileArchive, hue: "text-file-folder" },
+  git: { Icon: Github, hue: "text-file-source" },
+  text: { Icon: File, hue: "text-muted-foreground" },
+} satisfies Record<string, Glyph>;
+
+type GlyphKind = keyof typeof GLYPHS;
+
+const EXTENSIONS: readonly (readonly [GlyphKind, readonly string[]])[] = [
+  ["tex", ["tex", "ltx", "latex", "tikz", "dtx", "ins", "aux", "synctex", "synctex.gz"]],
+  ["style", ["sty", "cls", "clo", "bst", "bbx", "cbx", "lbx"]],
+  ["typst", ["typ"]],
+  ["bib", ["bib", "bbl", "bcf", "blg"]],
+  ["markdown", ["md", "markdown", "mdx", "qmd", "rmd"]],
+  ["pdf", ["pdf"]],
+  ["image", ["png", "jpg", "jpeg", "gif", "svg", "eps", "webp", "tif", "tiff", "bmp", "avif"]],
+  ["sheet", ["csv", "tsv", "xlsx", "xls", "ods"]],
+  ["board", ["excalidraw"]],
+  [
+    "code",
+    ["html", "htm", "js", "mjs", "cjs", "ts", "tsx", "jsx", "py", "r", "jl", "sh", "css", "scss", "lua", "sql", "ipynb"],
+  ],
+  ["config", ["json", "toml", "yaml", "yml", "ini", "cfg", "xml", "lock"]],
+  ["archive", ["zip", "gz", "tar", "tgz", "7z"]],
+];
+
+const KIND_BY_EXTENSION = new Map(
+  EXTENSIONS.flatMap(([kind, extensions]) => extensions.map((extension) => [extension, kind] as const)),
+);
+
+const KIND_BY_NAME: Readonly<Record<string, GlyphKind>> = {
+  ".gitignore": "git",
+  gitignore: "git",
+  ".gitattributes": "git",
+  ".env": "config",
+  dockerfile: "code",
+  makefile: "code",
 };
 
-const BY_NAME: Record<string, { Icon: LucideIcon; cls: string }> = {
-  ".gitignore": { Icon: Github, cls: "text-orange-500" },
-  "gitignore": { Icon: Github, cls: "text-orange-500" },
-  ".gitattributes": { Icon: Github, cls: "text-orange-500" },
-  ".env": { Icon: FileText, cls: "text-emerald-500" },
-  "license": { Icon: FileText, cls: "text-muted-foreground" },
-  "readme.md": { Icon: FileType, cls: "text-indigo-400" },
-  "dockerfile": { Icon: FileCode, cls: "text-primary" },
-  "makefile": { Icon: FileCode, cls: "text-green-500" },
-};
+export function fileGlyphKind(name: string): GlyphKind {
+  if (isDeckPath(name)) return "slides";
+  const base = (name.split("/").at(-1) ?? name).toLowerCase();
+  const named = KIND_BY_NAME[base];
+  if (named) return named;
+  const segments = base.split(".");
+  for (let index = 1; index < segments.length; index += 1) {
+    const kind = KIND_BY_EXTENSION.get(segments.slice(index).join("."));
+    if (kind) return kind;
+  }
+  return "text";
+}
 
 export function FileIcon({ name, className }: Readonly<{ name: string; className?: string }>) {
-  const lower = name.toLowerCase();
-  const dot = lower.lastIndexOf(".");
-  const ext = dot > 0 ? lower.slice(dot + 1) : "";
-  const base = lower.slice(lower.lastIndexOf("/") + 1);
+  const kind = fileGlyphKind(name);
+  const { Icon, hue, tint = TINT_FIRST }: Glyph = GLYPHS[kind];
+  return <Icon data-file-kind={kind} strokeWidth={1.75} className={cn(className, hue, tint)} />;
+}
 
-  const match =
-    BY_NAME[base] ?? BY_NAME[lower] ?? (ext ? BY_EXT[ext] : undefined);
+const BADGE_NAMES: Readonly<Record<string, string>> = { excalidraw: "draw", markdown: "md" };
 
-  const { Icon, cls } = match ?? { Icon: File, cls: "text-muted-foreground" };
-  return <Icon className={cn(className, cls)} />;
+export function fileBadgeLabel(name: string): string | null {
+  if (isDeckPath(name)) return "DECK";
+  const base = (name.split("/").at(-1) ?? name).toLowerCase();
+  const dot = base.lastIndexOf(".");
+  if (dot <= 0) return null;
+  const extension = base.slice(dot + 1);
+  const label = BADGE_NAMES[extension] ?? extension;
+  return label.length > 0 && label.length <= 5 ? label.toUpperCase() : null;
+}
+
+export function FileBadge({ name, className }: Readonly<{ name: string; className?: string }>) {
+  const label = fileBadgeLabel(name);
+  if (!label) {
+    return (
+      <span className={cn("flex w-8.5 shrink-0 justify-center", className)}>
+        <FileIcon name={name} className="size-4" />
+      </span>
+    );
+  }
+  const kind = fileGlyphKind(name);
+  return (
+    <span
+      data-file-kind={kind}
+      className={cn(
+        "inline-flex h-4 w-8.5 shrink-0 items-center justify-center rounded bg-current/15 text-[0.5625rem] font-bold leading-none tracking-wide dark:bg-current/20",
+        GLYPHS[kind].hue,
+        className,
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+export function FolderIcon({ open, className }: Readonly<{ open: boolean; className?: string }>) {
+  const Icon = open ? FolderOpen : Folder;
+  return <Icon strokeWidth={1.75} className={cn(className, "text-file-folder", TINT_FIRST)} />;
 }

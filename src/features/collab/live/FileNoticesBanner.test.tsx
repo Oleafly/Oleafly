@@ -273,6 +273,12 @@ describe("FileNoticesBanner", () => {
     show([], [kept({ id: "unsent-id", kind: "unsent", path: "main.tex", copy: "main (3f2a9c).tex", by: null })]);
     expect(screen.getByText(fill(copy.unsent, { file: "main.tex", copy: "main (3f2a9c).tex" }))).toBeTruthy();
   });
+
+  it("says text that never reached Overleaf is still in the file when no copy was needed", () => {
+    render(<FileNoticesBanner />);
+    show([], [kept({ id: "unsent-id", kind: "unsent", path: "main.tex", copy: null, by: null })]);
+    expect(screen.getByText(fill(copy.unsentInFile, { file: "main.tex" }))).toBeTruthy();
+  });
 });
 
 describe("FileNoticesBanner on an Overleaf project", () => {

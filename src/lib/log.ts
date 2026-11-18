@@ -15,7 +15,7 @@ export async function logError(scope: string, e: unknown): Promise<void> {
     }
   }
   try {
-    await invoke("append_app_log", { message: `${scope}: ${detail}` });
+    await invoke("log_frontend_error", { message: `${scope}: ${detail}` });
   } catch {
     /* logging must never throw */
   }

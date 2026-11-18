@@ -53,4 +53,14 @@ describe("FileNoticesBanner on Overleaf", () => {
     act(() => useFileNotices.setState({ downloads: {} }));
     expect(screen.queryByTestId("collab-download-progress")).not.toBeInTheDocument();
   });
+
+  it("shows how much arrived when the server does not say how big the file is", () => {
+    render(<FileNoticesBanner />);
+    act(() => useFileNotices.setState({ downloads: { "figures/scan.png": { done: 1_572_864, total: null } } }));
+    expect(screen.getByTestId("collab-download-progress")).toHaveTextContent(/^Downloading scan\.png: \S/);
+    expect(screen.getByTestId("collab-download-progress")).not.toHaveTextContent(" of ");
+    const bar = screen.getByRole("progressbar");
+    expect(bar).toHaveAttribute("data-state", "indeterminate");
+    expect(bar).not.toHaveAttribute("aria-valuenow");
+  });
 });

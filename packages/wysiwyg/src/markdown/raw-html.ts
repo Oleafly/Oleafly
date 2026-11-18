@@ -1,4 +1,4 @@
-import { parsingMarkdownSource } from "./engine";
+import { parsingMarkdownSource, parsingWithMarkTag } from "./engine";
 
 interface HtmlToken {
   type: string;
@@ -8,8 +8,15 @@ interface HtmlToken {
 const MODELED_INLINE = /^<\/?(?:a|b|br|code|del|em|i|s|strike|strong|u)(?=[\s/>])/iu;
 const TAG_START = /^<[a-z]/iu;
 const TABLE_START = /^<table\b/iu;
+const TABLE_OPEN = /<table\b/giu;
+const TABLE_CLOSE = /<\/table\s*>/giu;
 const EDITOR_ATTRIBUTE = /\sdata-(?:type|text-color|color-box)\b/iu;
 const SCRIPT_TAG = /^<\/?(sup|sub)>$/u;
+const MARK_TAG = /^<\/?mark>$/u;
+
+function plainTag(html: string): boolean {
+  return SCRIPT_TAG.test(html) || (parsingWithMarkTag() && MARK_TAG.test(html));
+}
 
 function tagName(html: string): string | null {
   return /^<\/?([a-z][\w-]*)/iu.exec(html)?.[1].toLowerCase() ?? null;
@@ -36,9 +43,9 @@ function partnerOf(tokens: readonly HtmlToken[], index: number): string | null {
 }
 
 function plainScriptPair(tokens: readonly HtmlToken[], index: number): boolean {
-  if (!SCRIPT_TAG.test(tokens[index].content)) return false;
+  if (!plainTag(tokens[index].content)) return false;
   const partner = partnerOf(tokens, index);
-  return partner !== null && SCRIPT_TAG.test(partner);
+  return partner !== null && plainTag(partner);
 }
 
 export function keepsInlineHtml(tokens: readonly HtmlToken[], index: number): boolean {
@@ -49,8 +56,12 @@ export function keepsInlineHtml(tokens: readonly HtmlToken[], index: number): bo
   return opener !== null && writtenByEditor(opener);
 }
 
+function wholeTable(html: string): boolean {
+  return TABLE_START.test(html) && html.match(TABLE_OPEN)?.length === html.match(TABLE_CLOSE)?.length;
+}
+
 export function keepsBlockHtml(source: string): boolean {
   if (!parsingMarkdownSource()) return true;
   const html = source.replace(/^[ \t]+/u, "");
-  return TABLE_START.test(html) || writtenByEditor(html);
+  return wholeTable(html) || writtenByEditor(html);
 }

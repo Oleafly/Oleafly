@@ -132,6 +132,8 @@
     "entryCount_other": "{{count}} pozycji konspektu",
     "expandHeading": "Rozwiń {{title}}",
     "expandAll": "Rozwiń wszystkie nagłówki",
+    "onPage": "{{heading}}, strona {{page}}",
+    "page": "s.{{page}}",
     "title": "Konspekt"
   },
   "panelError": {

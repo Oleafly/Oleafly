@@ -131,14 +131,14 @@ impl FigureHost for OverleafLive {
             let mut shown = false;
             let fetched = session
                 .download(&entity, &mut |done, total| {
-                    if let Some(total) = total.filter(|total| *total >= BIG_DOWNLOAD) {
+                    if total.unwrap_or(done) >= BIG_DOWNLOAD {
                         shown = true;
                         report(done, total);
                     }
                 })
                 .await;
             if shown {
-                report(0, 0);
+                report(0, Some(0));
             }
             fetched.ok()
         })
@@ -187,7 +187,7 @@ impl FigureHost for OverleafLive {
                 files: vec![KeptFile {
                     id,
                     path: path.clone(),
-                    copy: copy.clone(),
+                    copy: Some(copy.clone()),
                     kind: KeptKind::Replaced,
                     by: None,
                 }],

@@ -6,7 +6,9 @@ import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspac
 import type { CollabCommentNotSent } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useFilesStore } from "@/store/files";
-import { CommentQuote } from "../comments/CommentQuote";
+import { CommentQuote } from "@/components/ui/comments/comment-quote";
+import { useComments } from "../comments/comments-store";
+import { useCommentQuoteLabels } from "../comments/desktop-comment-kit";
 import { useCollabLiveStore } from "./live-store";
 
 export function notSentText(comments: readonly CollabCommentNotSent[]): string {
@@ -44,12 +46,18 @@ export function CommentsNotSentBanner() {
   const listId = useId();
   const [open, setOpen] = useState(false);
   const { status, copy } = useCopyStatus();
+  const quoteLabels = useCommentQuoteLabels();
   const projectId = useFilesStore((state) => state.projectId);
+  const serverOff = useComments((state) => state.status?.serverAllowed === false);
   const comments = useCollabLiveStore((state) =>
-    projectId !== null && state.projectId === projectId ? state.commentsNotSent : null,
+    projectId !== null && state.projectId === projectId && !state.notSentBannerHidden ? state.commentsNotSent : null,
   );
   if (!comments) return null;
   const written = comments.length > 0;
+  const message = (() => {
+    if (serverOff) return written ? t(($) => $.collab.comments.notSent.writtenServer) : t(($) => $.collab.comments.notSent.changedServer);
+    return written ? t(($) => $.collab.comments.notSent.written) : t(($) => $.collab.comments.notSent.changed);
+  })();
   let copyLabel = t(($) => $.collab.comments.notSent.copy);
   if (status === "copied") copyLabel = t(($) => $.common.actions.copied);
   if (status === "failed") copyLabel = t(($) => $.collab.comments.notSent.copyFailed);
@@ -58,27 +66,25 @@ export function CommentsNotSentBanner() {
     useCollabLiveStore.getState().dismissCommentsNotSent();
   };
   return (
-    <WorkspaceBanner tone="warning" role="status" data-testid="collab-comments-not-sent-banner">
+    <WorkspaceBanner tone="neutral" role="status" data-testid="collab-comments-not-sent-banner">
       <MessageSquareOff aria-hidden className="size-3.5 shrink-0" />
-      <p className="min-w-0 flex-1">
-        {written ? t(($) => $.collab.comments.notSent.written) : t(($) => $.collab.comments.notSent.changed)}
-      </p>
+      <p className="min-w-0 flex-1">{message}</p>
       {written ? (
         <span className="flex shrink-0 items-center gap-1">
           <WorkspaceBannerButton
-            tone="warning"
+            tone="neutral"
             aria-expanded={open}
             aria-controls={open ? listId : undefined}
             onClick={() => setOpen((value) => !value)}
           >
             {open ? t(($) => $.collab.comments.notSent.hide) : t(($) => $.collab.comments.notSent.show)}
           </WorkspaceBannerButton>
-          <WorkspaceBannerButton tone="warning" onClick={() => void copy(notSentText(comments))}>
+          <WorkspaceBannerButton tone="neutral" onClick={() => void copy(notSentText(comments))}>
             {copyLabel}
           </WorkspaceBannerButton>
         </span>
       ) : null}
-      <WorkspaceBannerButton tone="warning" aria-label={t(($) => $.common.actions.close)} onClick={dismiss}>
+      <WorkspaceBannerButton tone="neutral" aria-label={t(($) => $.common.actions.close)} onClick={dismiss}>
         <X aria-hidden className="size-3.5" />
       </WorkspaceBannerButton>
       {written && open ? (
@@ -88,11 +94,11 @@ export function CommentsNotSentBanner() {
           className="max-h-48 basis-full space-y-2 overflow-y-auto pb-1 text-foreground"
         >
           {shown(comments).map(({ key, comment, opensThread }) => (
-            <li key={key} className={cn("space-y-1", opensThread && "border-t border-amber-500/20 pt-2")}>
+            <li key={key} className={cn("space-y-1", opensThread && "border-t border-border pt-2")}>
               {opensThread && comment.path ? (
                 <p className="truncate font-mono text-[0.6875rem] text-muted-foreground">{comment.path}</p>
               ) : null}
-              {opensThread && comment.quote ? <CommentQuote quote={comment.quote} /> : null}
+              {opensThread && comment.quote ? <CommentQuote quote={comment.quote} labels={quoteLabels} /> : null}
               <p className="whitespace-pre-wrap break-words">{comment.body}</p>
             </li>
           ))}

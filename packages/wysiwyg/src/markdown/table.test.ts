@@ -1,17 +1,13 @@
 // @vitest-environment jsdom
 import { TextSelection } from "@tiptap/pm/state";
 import { afterEach, describe, expect, it } from "vitest";
-import { destroyOpenedEditors, openMarkdown, positionAfter, typeAtEndOf } from "../test-helpers";
+import { destroyOpenedEditors, mathRanges, openMarkdown, positionAfter, typeAtEndOf } from "../test-helpers";
 import { parseMarkdownBody } from "./parse";
 import { serializeMarkdownBody } from "./serialize";
 
 afterEach(destroyOpenedEditors);
 
 const ALIGNED = "| Condition | Value |\n|:--|--:|\n| P(A \\| B) | 0.3 |";
-
-function mathRanges(source: string) {
-  return [...source.matchAll(/\$[^$\n]+\$/gu)].map((match) => ({ from: match.index, to: match.index + match[0].length }));
-}
 
 describe("Markdown tables", () => {
   it.each([

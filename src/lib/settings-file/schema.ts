@@ -3,6 +3,7 @@ import { EDITOR_CURSOR_BLINKING } from "@oleafly/editor/cursor-blink";
 import { EDITOR_CURSOR_HEIGHTS } from "@oleafly/editor/cursor-height";
 import { SUPPORTED_LOCALES, type LocalePreference } from "@oleafly/i18n-contract";
 import { APP_FONT_SIZES } from "@/lib/app-font-sizes";
+import { COMMENT_COLORS } from "@/lib/comment-color";
 import { canStoreWord, normalizeDictionaryWord } from "@/lib/dictionary";
 import type { EditorColorSettings, EditorThemeId } from "@/lib/editor-themes";
 import { PERSONA_COLORS } from "@/lib/persona-colors";
@@ -496,6 +497,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
     plan.theme = value;
   }),
   pref("appearance.app.accentColor", "accentColor", hexColor),
+  pref("appearance.app.commentColor", "commentColor", oneOf(COMMENT_COLORS)),
   pref("appearance.app.fontSize", "appFontSize", numberOf(APP_FONT_SIZES)),
   pref("appearance.app.zoom", "appZoom", numberOf(APP_ZOOM_LEVELS)),
   pref("appearance.app.fontFamily", "appFontFamily", fontFamily),
@@ -550,6 +552,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.editor.ghostCompletion", "editorGhostCompletion", bool),
   pref("appearance.editor.autoCloseBrackets", "editorAutoCloseBrackets", bool),
   pref("appearance.editor.autoCloseMath", "editorAutoCloseMath", bool),
+  pref("appearance.editor.groupScripts", "editorGroupScripts", bool),
   pref("appearance.editor.autoCloseEnvironments", "editorAutoCloseEnvironments", bool),
   pref("appearance.editor.updateReferencesOnMove", "fileMoveReferences", oneOf(FILE_MOVE_REFERENCE_OPTIONS)),
   pref("appearance.editor.typst.formatOnSave", "typstFormatOnSave", bool),
@@ -588,6 +591,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.files.projectLayout", "homeProjectLayout", oneOf(["grid", "list"] as const)),
   pref("appearance.files.defaultLayout", "defaultView", oneOf(LAYOUT_PRESETS)),
   pref("appearance.files.openFileTree", "openInTree", bool),
+  pref("appearance.files.fileMarkers", "fileMarkers", oneOf(["icons", "badges"] as const)),
   pref("appearance.files.hiddenFiles", "hiddenFilePatterns", hiddenFiles),
   pref("appearance.files.zenMode.fullScreen", "zenFullScreen", bool),
   pref("appearance.files.zenMode.showPdfOnCompile", "zenShowPdfOnCompile", bool),

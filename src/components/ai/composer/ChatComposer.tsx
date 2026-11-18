@@ -556,7 +556,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
           </div>
           <div
             data-testid="ai-composer-controls-right"
-            className="ai-composer-controls-right ml-auto flex shrink-0 flex-nowrap items-center gap-1"
+            className="ai-composer-controls-right ml-auto flex min-w-0 shrink-100 flex-nowrap items-center gap-1"
           >
             {trailingControls}
             {busy && onStop ? (

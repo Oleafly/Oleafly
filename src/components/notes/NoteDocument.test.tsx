@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import type { Editor } from "@tiptap/core";
-import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode, RefObject } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
@@ -17,7 +17,7 @@ import { NOTE_WIDTH_KEY, saveNoteWidth } from "./note-prefs";
 import { type NotesData, NotesDataProvider } from "./notes-data";
 import { recordNoteWrite, resetNoteWritesForTest } from "./notes-service";
 import { type NoteColor, NoteConflictError, type NoteItem, type NoteSource } from "./types";
-import { deleteText as removeText, typeBefore as insertBefore, positionOf, selectText } from "./tests/kb-editor-fixtures";
+import { deleteText as removeText, typeBefore as insertBefore, kbMarkdown, positionOf, pressKey, selectText } from "./tests/kb-editor-fixtures";
 import { deferred, fakeNotesData } from "./tests/notes-data-fixture";
 import "./tests/setup";
 
@@ -346,10 +346,9 @@ describe("opening a note", () => {
     try {
       await openNote(fakeData({ text: "Body\n\n```html\n<script>go()</script>\n```\n" }), { note: { ...NOTE, shared } });
       await screen.findByRole("button", { name: enNotes.blocks.artifact.run });
-      for (let tick = 0; tick < 50 && !screen.queryByRole("checkbox"); tick += 1) {
-        await act(() => new Promise((resolve) => setImmediate(resolve)));
-      }
-      expect(screen.queryAllByRole("checkbox", { name: enNotes.blocks.artifact.alwaysRun })).toHaveLength(offered);
+      await waitFor(() =>
+        expect(screen.queryAllByRole("checkbox", { name: enNotes.blocks.artifact.alwaysRun })).toHaveLength(offered),
+      );
     } finally {
       Reflect.deleteProperty(globalThis, "isTauri");
     }
@@ -1985,13 +1984,13 @@ describe("a note that can't be edited right now", () => {
       expect(editor.isEditable).toBe(false);
       expect(title).toHaveAttribute("readonly");
       expect(screen.queryByTestId("pick-icon")).toBeNull();
-      expect(screen.queryByRole("button", { name: enNotes.toolbar.blockType })).toBeNull();
+      expect(screen.queryByRole("button", { name: enNotes.toolbar.moreFormatting })).toBeNull();
       expect(screen.getByRole("textbox", { name: "Value of status" })).toBeDisabled();
       requestInsert({ snippet: "![Loss](figs/loss.png)", id: 1 });
       expect(bodyText(editor)).not.toContain("Loss");
       act(() => useCollabEditorGate.setState({ connecting: false }));
       expect(editor.isEditable).toBe(true);
-      expect(screen.getByRole("button", { name: enNotes.toolbar.blockType })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: enNotes.toolbar.moreFormatting })).toBeInTheDocument();
       expect(screen.getByRole("textbox", { name: "Value of status" })).toBeEnabled();
     } finally {
       useCollabEditorGate.setState({ projectId: null, connecting: false });
@@ -2168,6 +2167,50 @@ describe("selection bubble", () => {
       fireEvent.blur(editor.view.dom);
     });
     expect(bubbleButton(enNotes.document.askAgent)).toBeNull();
+  });
+
+  it("formats the selection from labelled buttons that keep the selection, before the agent actions", async () => {
+    const { editor } = await openWithSelection(fakeData());
+    const bubble = screen.getByRole("toolbar", { name: enNotes.document.selectionMenu });
+    const names = within(bubble)
+      .getAllByRole("button")
+      .map((entry) => entry.getAttribute("aria-label") ?? entry.textContent);
+    expect(names.slice(0, 7)).toEqual([
+      enEditor.toolbar.bold,
+      enEditor.toolbar.italic,
+      enEditor.toolbar.underline,
+      enEditor.toolbar.strikethrough,
+      enEditor.toolbar.inlineCode,
+      enEditor.toolbar.textColor,
+      enNotes.toolbar.link,
+    ]);
+    expect(names[7]).toContain(enNotes.document.askAgent);
+    const bold = within(bubble).getByRole("button", { name: enEditor.toolbar.bold });
+    expect(bold).toHaveAttribute("aria-pressed", "false");
+    expect(fireEvent.mouseDown(bold)).toBe(false);
+    fireEvent.click(bold);
+    expect(editor.isActive("bold")).toBe(true);
+    expect(within(bubble).getByRole("button", { name: enEditor.toolbar.bold })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("keeps only the agent actions for a selection inside a code block", async () => {
+    const opened = await openNote(fakeData({ text: `${TEXT}\n\`\`\`\nmask code\n\`\`\`\n` }));
+    vi.spyOn(opened.editor.view, "coordsAtPos").mockReturnValue({ top: 200, bottom: 216, left: 48, right: 90 });
+    select(opened.editor, "mask code");
+    await frame();
+    expect(bubbleButton(enNotes.document.askAgent)).not.toBeNull();
+    expect(bubbleButton(enEditor.toolbar.bold)).toBeNull();
+  });
+
+  it("stays open while its colour menu has focus", async () => {
+    const { editor } = await openWithSelection(fakeData());
+    fireEvent.pointerDown(screen.getByRole("button", { name: enEditor.toolbar.textColor }), { button: 0, ctrlKey: false });
+    act(() => {
+      fireEvent.blur(editor.view.dom);
+    });
+    fireEvent.click(screen.getByRole("menuitemcheckbox", { name: enEditor.toolbar.textColors.green }));
+    expect(editor.getAttributes("textColor").color).toBe("green!60!black");
+    expect(bubbleButton(enNotes.document.askAgent)).not.toBeNull();
   });
 
   it("hides when the note scrolls", async () => {
@@ -2367,5 +2410,27 @@ describe("citations", () => {
   it("shows no References section for a note without known citations", async () => {
     await openNote(fakeData());
     expect(screen.queryByRole("region", { name: enNotes.citations.references })).toBeNull();
+  });
+});
+
+describe("the quote key", () => {
+  const quoteKey = (editor: Editor) => act(() => void pressKey(editor, "B", { code: "KeyB", keyCode: 66, ctrlKey: true, shiftKey: true }));
+
+  it("bolds in a table cell and takes a quoted list out of the quote, as the Quote button does", { timeout: 60_000 }, async () => {
+    const { editor } = await openNote(fakeData({ text: "---\ntitle: Keys\n---\n| a | b |\n| --- | --- |\n| c | word |\n\n> - item list\n" }));
+    select(editor, "word");
+    quoteKey(editor);
+    expect(kbMarkdown(editor)).toBe("| a | b |\n| --- | --- |\n| c | **word** |\n\n> - item list");
+    act(() => editor.commands.setTextSelection(positionOf(editor, "list")));
+    quoteKey(editor);
+    expect(kbMarkdown(editor)).toBe("| a | b |\n| --- | --- |\n| c | **word** |\n\n- item list");
+  });
+
+  it("writes no HTML table for a selection across two cells", { timeout: 60_000 }, async () => {
+    const { editor } = await openNote(fakeData({ text: "---\ntitle: Keys\n---\n| a | b |\n| --- | --- |\n| c | word |\n" }));
+    act(() => editor.commands.setTextSelection({ from: positionOf(editor, "c"), to: positionOf(editor, "word") + 4 }));
+    quoteKey(editor);
+    expect(kbMarkdown(editor)).not.toContain("<table");
+    expect(kbMarkdown(editor)).toMatch(/^\| a \| b \|\n\| --- \| --- \|\n\| [^|\n]*c[^|\n]* \| [^|\n]*word[^|\n]* \|$/u);
   });
 });

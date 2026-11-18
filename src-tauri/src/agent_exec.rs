@@ -707,15 +707,19 @@ fn path_restoring_script(shell: &Path, command: &str) -> String {
     )
 }
 
-fn shell_command(command: &str, cli: &crate::terminal::env::CliEnv) -> tokio::process::Command {
+fn shell_command(
+    command: &str,
+    cli: &crate::terminal::env::CliEnv,
+) -> Result<tokio::process::Command, String> {
     let tools = cli
         .dir
         .as_deref()
         .map(|dir| (dir, crate::terminal::env::shell_search_path(None)));
     #[cfg(windows)]
     let mut c = {
-        let mut c = tokio::process::Command::new("cmd");
-        c.arg("/C").arg(command);
+        let mut c = tokio::process::Command::new("cmd.exe");
+        c.args(["/S", "/C"])
+            .raw_arg(oleafly_sandbox::cmdline::cmd_tail(command)?);
         c
     };
     #[cfg(not(windows))]
@@ -744,7 +748,7 @@ fn shell_command(command: &str, cli: &crate::terminal::env::CliEnv) -> tokio::pr
     if let Some(exe) = &cli.exe {
         c.env("OLEAFLY_CLI", exe);
     }
-    c
+    Ok(c)
 }
 
 async fn execute_command_with_timeout(
@@ -778,7 +782,7 @@ async fn execute_command_with_timeout(
         return Err("run_command is denied for this project".to_string());
     }
 
-    let mut cmd = shell_command(command, &crate::terminal::env::CliEnv::current());
+    let mut cmd = shell_command(command, &crate::terminal::env::CliEnv::current())?;
     cmd.no_console()
         .current_dir(cwd)
         .stdin(Stdio::null())
@@ -933,6 +937,7 @@ mod tests {
         #[cfg(windows)]
         let script = "echo %OLEAFLY_CLI%& echo %PATH%";
         let output = shell_command(script, &cli)
+            .unwrap()
             .no_console()
             .stdin(Stdio::null())
             .output()
@@ -949,7 +954,7 @@ mod tests {
             "{path}"
         );
 
-        let plain = shell_command(script, &crate::terminal::env::CliEnv::default());
+        let plain = shell_command(script, &crate::terminal::env::CliEnv::default()).unwrap();
         let envs: Vec<_> = plain.as_std().get_envs().collect();
         assert!(envs.is_empty(), "{envs:?}");
     }
@@ -1026,17 +1031,23 @@ mod tests {
         std::fs::create_dir_all(&cwd).unwrap();
         let state = AgentExecState::default();
         #[cfg(unix)]
-        let command = "exec >/dev/null 2>&1; sleep 10; touch finished";
+        let (command, deadline) = (
+            "exec >/dev/null 2>&1; sleep 10; touch finished",
+            Duration::from_millis(250),
+        );
         #[cfg(windows)]
-        let command = "powershell -NoProfile -Command \"[Console]::Out.Close(); [Console]::Error.Close(); Start-Sleep -Seconds 10; New-Item finished\" >NUL 2>&1";
+        let (command, deadline) = (
+            "powershell -NoProfile -Command \"New-Item -ItemType File started; [Console]::Out.Close(); [Console]::Error.Close(); Start-Sleep -Seconds 120; New-Item -ItemType File finished\" >NUL 2>&1",
+            Duration::from_secs(10),
+        );
         let token = state.authorize("proj", command, "run-deadline").unwrap();
         let result = tokio::time::timeout(
-            Duration::from_secs(5),
+            deadline + Duration::from_secs(5),
             execute_command_with_timeout(
                 &state,
                 exec_request(root, &cwd, command, "run-deadline"),
                 &token,
-                Duration::from_millis(250),
+                deadline,
             ),
         )
         .await
@@ -1045,6 +1056,48 @@ mod tests {
         assert!(result.timed_out);
         assert_eq!(result.status, "Stopped: timed out");
         assert!(!cwd.join("finished").exists());
+        #[cfg(windows)]
+        assert!(
+            cwd.join("started").exists(),
+            "the command never ran: {}",
+            result.output
+        );
+    }
+
+    #[cfg(windows)]
+    async fn run_in_a_project(command: &str) -> Result<ExecResult, String> {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path();
+        let cwd = root.join("projects/proj");
+        std::fs::create_dir_all(&cwd).unwrap();
+        let state = AgentExecState::default();
+        let token = state.authorize("proj", command, "run-quotes").unwrap();
+        execute_command_with_timeout(
+            &state,
+            exec_request(root, &cwd, command, "run-quotes"),
+            &token,
+            test_wait::CHILD_PATIENCE,
+        )
+        .await
+    }
+
+    #[cfg(windows)]
+    #[tokio::test]
+    async fn windows_commands_reach_cmd_with_their_quotes() {
+        let echoed = run_in_a_project("echo \"a b\"").await.unwrap();
+        assert_eq!(echoed.exit_code, Some(0), "{}", echoed.output);
+        assert_eq!(echoed.output.trim_end(), "\"a b\"");
+
+        let exited = run_in_a_project("powershell -NoProfile -Command \"exit 3\"")
+            .await
+            .unwrap();
+        assert_eq!(exited.exit_code, Some(3), "{}", exited.output);
+
+        let refused = run_in_a_project(&"a".repeat(8_001))
+            .await
+            .err()
+            .unwrap_or_default();
+        assert!(refused.contains("8,000 characters"), "{refused}");
     }
 
     #[tokio::test(flavor = "current_thread")]
@@ -1802,6 +1855,43 @@ mod tests {
     }
 
     #[cfg(windows)]
+    fn command_with_a_background_job_child(outer_pings: u32) -> String {
+        format!("start \"\" /B cmd /D /S /C \"type nul > started-marker & ping -n 4 127.0.0.1 >NUL & type nul > completed-marker\" & ping -n {outer_pings} 127.0.0.1 >NUL")
+    }
+
+    #[cfg(windows)]
+    #[tokio::test(flavor = "current_thread")]
+    async fn a_windows_background_child_finishes_when_nobody_cancels() {
+        let root = test_root("uncancelled-windows-job");
+        let cwd = root.join("projects/proj");
+        let state = AgentExecState::default();
+        let command = command_with_a_background_job_child(8);
+        let token = state
+            .authorize("proj", &command, "run-uncancelled")
+            .unwrap();
+        let result = execute_command(
+            &state,
+            &root,
+            "proj",
+            &cwd,
+            command,
+            "run-uncancelled",
+            &token,
+        )
+        .await;
+        let completed_exists = cwd.join("completed-marker").exists();
+
+        std::fs::remove_dir_all(&root).ok();
+        let result = result.unwrap();
+        assert_eq!(result.exit_code, Some(0), "{}", result.output);
+        assert!(
+            completed_exists,
+            "the background child never finished: {}",
+            result.output
+        );
+    }
+
+    #[cfg(windows)]
     #[tokio::test(flavor = "current_thread")]
     async fn cancelling_a_run_kills_its_windows_job_descendants() {
         let root = test_root("cancel-windows-job");
@@ -1809,8 +1899,8 @@ mod tests {
         let started = cwd.join("started-marker");
         let completed = cwd.join("completed-marker");
         let state = std::sync::Arc::new(AgentExecState::default());
-        let command = "type nul > started-marker & start \"\" /B cmd /D /S /C \"ping -n 3 127.0.0.1 >NUL & type nul > completed-marker\" & ping -n 30 127.0.0.1 >NUL";
-        let token = state.authorize("proj", command, "run-cancel").unwrap();
+        let command = command_with_a_background_job_child(30);
+        let token = state.authorize("proj", &command, "run-cancel").unwrap();
         let task_state = std::sync::Arc::clone(&state);
         let task_root = root.clone();
         let task_cwd = cwd.clone();
@@ -1820,7 +1910,7 @@ mod tests {
                 &task_root,
                 "proj",
                 &task_cwd,
-                command.into(),
+                command,
                 "run-cancel",
                 &token,
             )
@@ -1835,13 +1925,16 @@ mod tests {
         let _ = tokio::time::timeout(Duration::from_secs(2), task)
             .await
             .expect("cancelled command did not stop");
-        tokio::time::sleep(Duration::from_secs(3)).await;
+        tokio::time::sleep(Duration::from_secs(5)).await;
         let started_exists = started.exists();
         let completed_exists = completed.exists();
 
         std::fs::remove_dir_all(&root).ok();
-        assert!(started_exists);
-        assert!(!completed_exists);
+        assert!(started_exists, "the background child never started");
+        assert!(
+            !completed_exists,
+            "the background child outlived the cancel"
+        );
     }
 
     #[test]

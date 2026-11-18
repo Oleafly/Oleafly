@@ -368,6 +368,7 @@ mod tests {
                 file_id: Some("f".to_owned()),
                 cursor: Some(cursor),
                 anchor: None,
+                activity: None,
             },
         }
     }

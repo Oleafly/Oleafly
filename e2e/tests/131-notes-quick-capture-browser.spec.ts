@@ -122,13 +122,13 @@ test("formats from the floating bar and fits the small window in both themes", a
     await page.mouse.move(220, 100);
     await page.mouse.move(230, 110);
     await page.getByRole("button", { name: "Show formatting" }).click();
-    const toolbar = page.getByRole("toolbar", { name: "Formatting" });
+    const toolbar = page.getByRole("toolbar", { name: "Formatting", exact: true });
     await expect(toolbar).toBeVisible();
     const bar = await toolbar.boundingBox();
     expect(bar && bar.x >= 0 && bar.x + bar.width <= SIZE.width && bar.y + bar.height <= SIZE.height).toBe(true);
-    await expect(toolbar.getByRole("button", { name: "Block type" })).toBeVisible();
-    await expect(toolbar.getByRole("button", { name: "Quote", exact: true })).toBeVisible();
-    await expect(toolbar.getByRole("button", { name: "Code block", exact: true })).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "Text style" })).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "Bold", exact: true })).toBeVisible();
+    await expect(toolbar.getByRole("button", { name: "Insert", exact: true })).toBeVisible();
     expect(await toolbar.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
     await page.getByRole("button", { name: "Hide formatting" }).click();
     await expect(toolbar).toBeHidden();
@@ -139,7 +139,7 @@ test("formats from the floating bar and fits the small window in both themes", a
   await page.mouse.move(220, 100);
   await page.mouse.move(230, 110);
   await page.getByRole("button", { name: "Show formatting" }).click();
-  await page.getByRole("toolbar", { name: "Formatting" }).getByRole("button", { name: "Bold" }).click();
+  await page.getByRole("toolbar", { name: "Formatting", exact: true }).getByRole("button", { name: "Bold" }).click();
   await page.keyboard.press("ControlOrMeta+Enter");
   await expect.poll(() => harness(page, "__captures")).toEqual([expect.objectContaining({ text: "**bold**" })]);
 });

@@ -1,0 +1,15 @@
+[profile.default]
+retries = 0
+
+[profile.ci]
+fail-fast = false
+# The slowest instrumented test in the 4-vCPU GitHub run took 112.5 s.
+# Report slow tests at 120 s and terminate them at 600 s (5x the reporting period).
+slow-timeout = { period = "120s", terminate-after = 5 }
+
+[test-groups]
+timing = { max-threads = 1 }
+
+[[profile.default.overrides]]
+filter = "binary_id(oleafly-server::stalls) | binary_id(oleafly-server::large_file_replay) | binary_id(oleafly-collab::remote_changes_keep_up) | binary_id(oleafly-collab::crowd)"
+test-group = "timing"

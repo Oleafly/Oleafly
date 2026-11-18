@@ -534,6 +534,7 @@ mod tests {
                 file_id: Some("main".to_owned()),
                 cursor: Some(1),
                 anchor: None,
+                activity: None,
             },
         };
         rooms.broadcast(project, None, &here);
@@ -550,6 +551,7 @@ mod tests {
                 file_id: Some("main".to_owned()),
                 cursor: Some(cursor),
                 anchor: None,
+                activity: None,
             },
         }
     }

@@ -123,6 +123,8 @@
     "entryCount_other": "{{count}} mục dàn ý",
     "expandHeading": "Mở rộng {{title}}",
     "expandAll": "Mở rộng tất cả tiêu đề",
+    "onPage": "{{heading}}, trang {{page}}",
+    "page": "tr.{{page}}",
     "title": "Dàn ý"
   },
   "panelError": {

@@ -48,7 +48,7 @@ describe("isReadOnlyProjectPath", () => {
 
 describe("isBinaryProjectPath", () => {
   it("names the files the editor shows in a binary viewer", () => {
-    for (const path of ["figures/fig1.PDF", "a.png", "b.jpeg", "c.svg", "fonts/x.woff2", "out.gz"]) {
+    for (const path of ["figures/fig1.PDF", "a.png", "b.jpeg", "c.svg", "scan.BMP", "fonts/x.woff2", "out.gz", "data/summary.xlsx", "old.xls", "sheet.ods"]) {
       expect(isBinaryProjectPath(path)).toBe(true);
     }
     for (const path of ["main.tex", "notes.md", "plot.py", "pdf", "figures/pdf.tex"]) {

@@ -68,6 +68,7 @@ fn here(cursor: u32) -> PresenceState {
         file_id: Some("main".to_owned()),
         cursor: Some(cursor),
         anchor: None,
+        activity: None,
     }
 }
 
@@ -318,6 +319,7 @@ async fn presence_and_leaving_travel_between_socket_and_long_poll() {
         file_id: Some("x".repeat(300)),
         cursor: None,
         anchor: None,
+        activity: None,
     };
     assert!(matches!(
         alice
@@ -1287,8 +1289,7 @@ fn config_with_hold(raw: Option<&str>) -> Result<ServerConfig, ConfigError> {
     );
     vars.insert(
         "OLEAFLY_DATA_DIR".to_owned(),
-        std::env::temp_dir()
-            .join("oleafly-server-test-data")
+        oleafly_server::test_support::test_data_dir()
             .display()
             .to_string(),
     );

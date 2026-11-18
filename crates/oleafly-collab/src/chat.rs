@@ -1,13 +1,19 @@
-use loro::event::ContainerDiff;
-use loro::{Container, ContainerID, LoroList, LoroMap, LoroValue, ValueOrContainer};
+use loro::event::{ContainerDiff, Diff};
+use loro::{Container, ContainerID, LoroDoc, LoroList, LoroMap, LoroValue, ValueOrContainer};
 use oleafly_collab_protocol::ids::{AccountId, ChatMessageId};
-use serde::Serialize;
+use oleafly_collab_protocol::reactions::Reaction;
+use serde::{Deserialize, Serialize};
 
-use crate::comments::{flag_of, number_of, parsed, string_of};
+use crate::comments::{
+    accounts_of, flag_of, loro_error, mention_value, number_of, parsed, refused, string_of, unique,
+    Judge,
+};
 use crate::doc::ProjectDoc;
+use crate::reactions::checked_emoji;
 use crate::CollabError;
 
 pub const CHAT: &str = "chat";
+pub const CHAT_REACTIONS: &str = "chat_reactions";
 pub const MAX_CHAT_CHARS: usize = 4_000;
 pub const MAX_CHAT_PAGE: usize = 200;
 const ID: &str = "id";
@@ -15,10 +21,11 @@ const AUTHOR: &str = "author";
 const AT: &str = "at";
 const BODY: &str = "body";
 const DELETED: &str = "deleted";
-const WRITTEN: [&str; 4] = [ID, AUTHOR, AT, BODY];
+const MENTIONS: &str = "mentions";
+const WRITTEN: [&str; 5] = [ID, AUTHOR, AT, BODY, MENTIONS];
 const STAMPED: [&str; 3] = [ID, AUTHOR, AT];
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChatMessage {
     pub id: ChatMessageId,
@@ -27,33 +34,80 @@ pub struct ChatMessage {
     pub body: String,
     pub deleted: bool,
     pub verified: bool,
+    #[serde(default)]
+    pub reactions: Vec<Reaction>,
+    #[serde(default)]
+    pub pending: bool,
+    #[serde(default)]
+    pub mentions: Vec<AccountId>,
 }
 
-fn loro_error<T: std::fmt::Debug>(error: T) -> CollabError {
-    CollabError::Corrupt(format!("{error:?}"))
-}
-
-fn refused(status: u16, code: &str, message: &str) -> CollabError {
-    CollabError::Api {
-        status,
-        code: code.to_owned(),
-        message: message.to_owned(),
-    }
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ChatMention {
+    pub message_id: ChatMessageId,
+    pub author: AccountId,
+    pub mentions: Vec<AccountId>,
 }
 
 pub(crate) fn chat_gone() -> CollabError {
     refused(404, "not_found", "this message is gone")
 }
 
-fn is_chat_root(id: &ContainerID) -> bool {
-    matches!(id, ContainerID::Root { name, .. } if name.as_str() == CHAT)
+pub(crate) fn is_chat_root(id: &ContainerID) -> bool {
+    matches!(id, ContainerID::Root { name, .. } if name.as_str() == CHAT || name.as_str() == CHAT_REACTIONS)
 }
 
-pub(crate) fn record(change: &ContainerDiff<'_>) -> bool {
-    match change.path.first() {
+pub(crate) fn in_chat(doc: &LoroDoc, container: &ContainerID) -> bool {
+    match container {
+        ContainerID::Root { .. } => is_chat_root(container),
+        ContainerID::Normal { .. } => doc
+            .get_path_to_container(container)
+            .and_then(|path| path.into_iter().next())
+            .is_some_and(|(root, _)| is_chat_root(&root)),
+    }
+}
+
+pub(crate) fn record(mentioned: &mut Vec<ContainerID>, change: &ContainerDiff<'_>) -> bool {
+    let rooted = match change.path.first() {
         Some((root, _)) => is_chat_root(root),
         None => is_chat_root(change.target),
+    };
+    if rooted {
+        if let Diff::Map(delta) = &change.diff {
+            if change.path.len() == 2 && delta.updated.contains_key(MENTIONS) {
+                mentioned.push(change.target.clone());
+            }
+        }
     }
+    rooted
+}
+
+fn chat_of(map: &LoroMap, judge: &Judge<'_>) -> Option<ChatMessage> {
+    let LoroValue::Map(fields) = map.get_deep_value() else {
+        return None;
+    };
+    let deleted = flag_of(fields.get(DELETED));
+    let author: AccountId = parsed(fields.get(AUTHOR))?;
+    let keys: &[&str] = if deleted { &STAMPED } else { &WRITTEN };
+    Some(ChatMessage {
+        id: parsed(fields.get(ID))?,
+        author,
+        at: number_of(fields.get(AT)).unwrap_or_default(),
+        body: if deleted {
+            String::new()
+        } else {
+            string_of(fields.get(BODY)).unwrap_or_default()
+        },
+        deleted,
+        verified: judge.wrote(map, keys, author),
+        reactions: Vec::new(),
+        pending: false,
+        mentions: if deleted {
+            Vec::new()
+        } else {
+            accounts_of(fields.get(MENTIONS))
+        },
+    })
 }
 
 fn checked_body(body: &str) -> Result<&str, CollabError> {
@@ -77,6 +131,10 @@ impl ProjectDoc {
         self.loro().get_list(CHAT)
     }
 
+    fn chat_reactions(&self) -> LoroMap {
+        self.loro().get_map(CHAT_REACTIONS)
+    }
+
     fn chat_entries(&self) -> Vec<Found> {
         let list = self.chat_list();
         let judge = self.judge();
@@ -85,36 +143,35 @@ impl ProjectDoc {
                 let Some(ValueOrContainer::Container(Container::Map(map))) = list.get(index) else {
                     return None;
                 };
-                let LoroValue::Map(fields) = map.get_deep_value() else {
-                    return None;
-                };
-                let deleted = flag_of(fields.get(DELETED));
-                let author: AccountId = parsed(fields.get(AUTHOR))?;
-                let keys: &[&str] = if deleted { &STAMPED } else { &WRITTEN };
                 Some(Found {
-                    message: ChatMessage {
-                        id: parsed(fields.get(ID))?,
-                        author,
-                        at: number_of(fields.get(AT)).unwrap_or_default(),
-                        body: if deleted {
-                            String::new()
-                        } else {
-                            string_of(fields.get(BODY)).unwrap_or_default()
-                        },
-                        deleted,
-                        verified: judge.wrote(&map, keys, author),
-                    },
+                    message: chat_of(&map, &judge)?,
                     map,
                 })
             })
             .collect()
     }
 
+    fn chat_entry(&self, id: ChatMessageId) -> Result<Found, CollabError> {
+        self.chat_entries()
+            .into_iter()
+            .find(|found| found.message.id == id)
+            .ok_or_else(chat_gone)
+    }
+
     pub fn chat_messages(&self, before: Option<ChatMessageId>, limit: usize) -> Vec<ChatMessage> {
+        let mut reactions = crate::reactions::read(&self.chat_reactions(), &self.judge());
         let messages: Vec<ChatMessage> = self
             .chat_entries()
             .into_iter()
-            .map(|found| found.message)
+            .map(|found| {
+                let mut message = found.message;
+                if !message.deleted {
+                    message.reactions = reactions
+                        .remove(&message.id.to_string())
+                        .unwrap_or_default();
+                }
+                message
+            })
             .collect();
         let end = before
             .and_then(|before| messages.iter().position(|message| message.id == before))
@@ -128,9 +185,11 @@ impl ProjectDoc {
         author: AccountId,
         at: i64,
         body: &str,
+        mentions: &[AccountId],
     ) -> Result<ChatMessage, CollabError> {
         self.writable()?;
         let body = checked_body(body)?;
+        let mentions = unique(mentions);
         let id = ChatMessageId::new_v7();
         let map = self
             .chat_list()
@@ -140,6 +199,8 @@ impl ProjectDoc {
         map.insert(AUTHOR, author.to_string()).map_err(loro_error)?;
         map.insert(AT, at).map_err(loro_error)?;
         map.insert(BODY, body).map_err(loro_error)?;
+        map.insert(MENTIONS, mention_value(&mentions))
+            .map_err(loro_error)?;
         self.loro().commit();
         Ok(ChatMessage {
             id,
@@ -148,24 +209,38 @@ impl ProjectDoc {
             body: body.to_owned(),
             deleted: false,
             verified: true,
+            reactions: Vec::new(),
+            pending: false,
+            mentions,
         })
     }
 
-    pub fn chat_author(&self, id: ChatMessageId) -> Result<AccountId, CollabError> {
-        self.chat_entries()
+    pub(crate) fn chat_mentions(&self, containers: Vec<ContainerID>) -> Vec<ChatMention> {
+        let judge = self.judge();
+        let mut seen = std::collections::HashSet::new();
+        containers
             .into_iter()
-            .find(|found| found.message.id == id)
-            .map(|found| found.message.author)
-            .ok_or_else(chat_gone)
+            .filter(|container| seen.insert(container.clone()))
+            .filter_map(|container| {
+                let message = chat_of(&self.loro().get_map(container), &judge)?;
+                (message.verified && !message.deleted && !message.mentions.is_empty()).then_some(
+                    ChatMention {
+                        message_id: message.id,
+                        author: message.author,
+                        mentions: message.mentions,
+                    },
+                )
+            })
+            .collect()
+    }
+
+    pub fn chat_author(&self, id: ChatMessageId) -> Result<AccountId, CollabError> {
+        self.chat_entry(id).map(|found| found.message.author)
     }
 
     pub fn delete_chat(&mut self, id: ChatMessageId, by: AccountId) -> Result<(), CollabError> {
         self.writable()?;
-        let found = self
-            .chat_entries()
-            .into_iter()
-            .find(|found| found.message.id == id)
-            .ok_or_else(chat_gone)?;
+        let found = self.chat_entry(id)?;
         if found.message.author != by {
             return Err(refused(
                 403,
@@ -182,6 +257,54 @@ impl ProjectDoc {
         Ok(())
     }
 
+    pub fn react_to_chat(
+        &mut self,
+        id: ChatMessageId,
+        emoji: &str,
+        by: AccountId,
+        at: i64,
+    ) -> Result<(), CollabError> {
+        self.writable()?;
+        let emoji = checked_emoji(emoji)?;
+        if self.chat_entry(id)?.message.deleted {
+            return Err(chat_gone());
+        }
+        let message = id.to_string();
+        if crate::reactions::set(
+            &self.chat_reactions(),
+            &self.judge(),
+            &message,
+            emoji,
+            by,
+            Some(at),
+        )? {
+            self.loro().commit();
+        }
+        Ok(())
+    }
+
+    pub fn unreact_to_chat(
+        &mut self,
+        id: ChatMessageId,
+        emoji: &str,
+        by: AccountId,
+    ) -> Result<(), CollabError> {
+        self.writable()?;
+        let emoji = checked_emoji(emoji)?;
+        let message = id.to_string();
+        if crate::reactions::set(
+            &self.chat_reactions(),
+            &self.judge(),
+            &message,
+            emoji,
+            by,
+            None,
+        )? {
+            self.loro().commit();
+        }
+        Ok(())
+    }
+
     pub fn clear_chat(&mut self) -> Result<usize, CollabError> {
         self.writable()?;
         let mut cleared = 0;
@@ -193,7 +316,12 @@ impl ProjectDoc {
             found.map.insert(BODY, "").map_err(loro_error)?;
             cleared += 1;
         }
-        if cleared > 0 {
+        let reactions = self.chat_reactions();
+        let keys: Vec<String> = reactions.keys().map(|key| key.to_string()).collect();
+        for key in &keys {
+            reactions.delete(key).map_err(loro_error)?;
+        }
+        if cleared > 0 || !keys.is_empty() {
             self.loro().commit();
         }
         Ok(cleared)
@@ -202,6 +330,8 @@ impl ProjectDoc {
 
 #[cfg(test)]
 mod tests {
+    use oleafly_collab_protocol::projects::ProjectRole;
+
     use super::*;
 
     fn account(seed: u8) -> AccountId {
@@ -235,11 +365,11 @@ mod tests {
         let (mut owner, mut member) = pair();
         for index in 0..5 {
             owner
-                .send_chat(account(1), index, &format!("note {index}"))
+                .send_chat(account(1), index, &format!("note {index}"), &[])
                 .unwrap();
         }
         sync(&owner, &mut member);
-        let sent = member.send_chat(account(2), 9, "  reply  ").unwrap();
+        let sent = member.send_chat(account(2), 9, "  reply  ", &[]).unwrap();
         assert_eq!(sent.body, "reply");
         sync(&member, &mut owner);
         let all = owner.chat_messages(None, 50);
@@ -267,9 +397,9 @@ mod tests {
     #[test]
     fn people_delete_only_their_own_messages_and_the_owner_can_clear_all() {
         let (mut owner, mut member) = pair();
-        let first = owner.send_chat(account(1), 1, "mine").unwrap();
+        let first = owner.send_chat(account(1), 1, "mine", &[]).unwrap();
         sync(&owner, &mut member);
-        let second = member.send_chat(account(2), 2, "theirs").unwrap();
+        let second = member.send_chat(account(2), 2, "theirs", &[]).unwrap();
         assert!(matches!(
             member.delete_chat(first.id, account(2)),
             Err(CollabError::Api { code, .. }) if code == "not_yours"
@@ -297,14 +427,165 @@ mod tests {
     fn an_empty_or_overlong_message_is_refused() {
         let (mut owner, _) = pair();
         assert!(matches!(
-            owner.send_chat(account(1), 1, "   "),
+            owner.send_chat(account(1), 1, "   ", &[]),
             Err(CollabError::Api { code, .. }) if code == "empty"
         ));
         assert!(matches!(
-            owner.send_chat(account(1), 1, &"x".repeat(MAX_CHAT_CHARS + 1)),
+            owner.send_chat(account(1), 1, &"x".repeat(MAX_CHAT_CHARS + 1), &[]),
             Err(CollabError::Api { code, .. }) if code == "too_large"
         ));
         assert!(owner.chat_messages(None, 50).is_empty());
+    }
+
+    fn reaction(emoji: &str, by: &[AccountId]) -> Reaction {
+        Reaction {
+            emoji: emoji.to_owned(),
+            by: by.to_vec(),
+        }
+    }
+
+    fn reactions_of(doc: &ProjectDoc) -> Vec<Vec<Reaction>> {
+        doc.chat_messages(None, 50)
+            .into_iter()
+            .map(|message| message.reactions)
+            .collect()
+    }
+
+    #[test]
+    fn reactions_from_two_people_merge_and_can_be_taken_back() {
+        let (mut owner, mut member) = pair();
+        let first = owner.send_chat(account(1), 1, "lunch?", &[]).unwrap();
+        sync(&owner, &mut member);
+        owner.react_to_chat(first.id, "👍", account(1), 10).unwrap();
+        member
+            .react_to_chat(first.id, "🍕", account(2), 15)
+            .unwrap();
+        member
+            .react_to_chat(first.id, "👍", account(2), 20)
+            .unwrap();
+        sync(&owner, &mut member);
+        sync(&member, &mut owner);
+        let expected = vec![vec![
+            reaction("👍", &[account(1), account(2)]),
+            reaction("🍕", &[account(2)]),
+        ]];
+        assert_eq!(reactions_of(&owner), expected);
+        assert_eq!(reactions_of(&member), expected);
+        member.unreact_to_chat(first.id, "👍", account(2)).unwrap();
+        member.unreact_to_chat(first.id, "👍", account(2)).unwrap();
+        sync(&member, &mut owner);
+        assert_eq!(
+            reactions_of(&owner),
+            vec![vec![
+                reaction("👍", &[account(1)]),
+                reaction("🍕", &[account(2)])
+            ]]
+        );
+        assert!(matches!(
+            owner.react_to_chat(first.id, "two words", account(1), 30),
+            Err(CollabError::Api { code, .. }) if code == "invalid"
+        ));
+    }
+
+    #[test]
+    fn a_deleted_message_drops_its_reactions_and_clearing_removes_them_all() {
+        let (mut owner, mut member) = pair();
+        let first = owner.send_chat(account(1), 1, "one", &[]).unwrap();
+        let second = owner.send_chat(account(1), 2, "two", &[]).unwrap();
+        sync(&owner, &mut member);
+        member.react_to_chat(first.id, "👀", account(2), 3).unwrap();
+        member
+            .react_to_chat(second.id, "🎉", account(2), 4)
+            .unwrap();
+        sync(&member, &mut owner);
+        owner.delete_chat(first.id, account(1)).unwrap();
+        assert_eq!(
+            reactions_of(&owner),
+            vec![Vec::new(), vec![reaction("🎉", &[account(2)])]]
+        );
+        assert!(matches!(
+            owner.react_to_chat(first.id, "👍", account(1), 5),
+            Err(CollabError::Api { code, .. }) if code == "not_found"
+        ));
+        owner.clear_chat().unwrap();
+        assert!(owner.loro().get_map(CHAT_REACTIONS).is_empty());
+        sync(&owner, &mut member);
+        assert!(reactions_of(&member).iter().all(Vec::is_empty));
+    }
+
+    #[test]
+    fn a_reaction_in_someone_elses_name_is_not_shown() {
+        let (mut owner, mut member) = pair();
+        let sent = owner.send_chat(account(1), 1, "hello", &[]).unwrap();
+        sync(&owner, &mut member);
+        member.react_to_chat(sent.id, "👍", account(1), 2).unwrap();
+        member.react_to_chat(sent.id, "👋", account(2), 3).unwrap();
+        let mut authors = crate::comments::Authorship::default();
+        authors.vouch([
+            (owner.peer_id(), account(1)),
+            (member.peer_id(), account(2)),
+        ]);
+        owner.set_authorship(authors);
+        sync(&member, &mut owner);
+        assert_eq!(
+            reactions_of(&owner),
+            vec![vec![reaction("👋", &[account(2)])]]
+        );
+    }
+
+    #[test]
+    fn a_chat_mention_is_kept_with_the_message_and_handed_out_once() {
+        let owner = ProjectDoc::create().unwrap();
+        let snapshot = owner.snapshot().unwrap();
+        let mut owner = crate::live::LiveProject::new(owner, 0, ProjectRole::Owner);
+        let mut member = crate::live::LiveProject::new(
+            ProjectDoc::load(&snapshot).unwrap(),
+            0,
+            ProjectRole::Editor,
+        );
+        let sent = member
+            .comment_doc()
+            .send_chat(account(2), 1, "@Owen look", &[account(1), account(1)])
+            .unwrap();
+        assert_eq!(sent.mentions, vec![account(1)]);
+        member
+            .comment_doc()
+            .send_chat(account(2), 2, "no one", &[])
+            .unwrap();
+        let outgoing = member.next_outgoing().unwrap().unwrap();
+        assert!(owner.import_update(1, &outgoing.payload).unwrap());
+        assert_eq!(
+            owner.take_chat_mentions(),
+            vec![ChatMention {
+                message_id: sent.id,
+                author: account(2),
+                mentions: vec![account(1)],
+            }]
+        );
+        assert!(owner.take_chat_mentions().is_empty());
+        let read = owner.doc().chat_messages(None, 10);
+        assert_eq!(read[0].mentions, vec![account(1)]);
+        assert!(read[1].mentions.is_empty());
+        member.acknowledged(outgoing.batch, 1);
+        member
+            .comment_doc()
+            .delete_chat(sent.id, account(2))
+            .unwrap();
+        assert!(member.doc().chat_messages(None, 10)[0].mentions.is_empty());
+    }
+
+    #[test]
+    fn a_message_from_before_reactions_existed_still_reads() {
+        let old = serde_json::json!({
+            "id": ChatMessageId::new_v7().to_string(),
+            "author": account(1).to_string(),
+            "at": 1,
+            "body": "hi",
+            "deleted": false,
+            "verified": true
+        });
+        let read: ChatMessage = serde_json::from_value(old).unwrap();
+        assert!(read.reactions.is_empty());
     }
 
     #[test]
@@ -312,7 +593,9 @@ mod tests {
         let (owner, mut member) = pair();
         let mut owner = owner;
         owner.set_authorship(crate::comments::Authorship::default());
-        let forged = member.send_chat(account(1), 1, "I am the owner").unwrap();
+        let forged = member
+            .send_chat(account(1), 1, "I am the owner", &[])
+            .unwrap();
         let mut authors = crate::comments::Authorship::default();
         authors.vouch([(member.peer_id(), account(2))]);
         owner.set_authorship(authors);

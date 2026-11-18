@@ -3,9 +3,9 @@ use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize;
 use oleafly_collab::CollabError;
 use oleafly_collab_protocol::ids::AccountId;
-use oleafly_collab_protocol::projects::PresenceState;
 use oleafly_ot::{DocOpened, DocSink, TextOperation};
 
+use super::payloads::ActivityPayload;
 use super::session::{active_for, live_for, lock, not_live, Live};
 use crate::collab::commands::CollabCommandError;
 
@@ -156,13 +156,21 @@ pub fn presence_set(
     anchor: Option<u32>,
 ) {
     match live_for(project_id) {
-        Some(Live::Server(active)) => active.handle.presence(PresenceState {
-            file_id: path.filter(|path| path.len() <= 256),
-            cursor,
-            anchor,
-        }),
+        Some(Live::Server(active)) => {
+            active
+                .handle
+                .place_presence(path.filter(|path| path.len() <= 256), cursor, anchor)
+        }
         Some(Live::Overleaf(live)) => live.presence(path.as_deref(), cursor),
         None => {}
+    }
+}
+
+pub fn presence_activity(project_id: &str, activity: Option<ActivityPayload>) {
+    if let Some(active) = active_for(project_id) {
+        active
+            .handle
+            .presence_activity(ActivityPayload::sent(activity));
     }
 }
 

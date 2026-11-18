@@ -218,6 +218,9 @@ export const readCompiledPdf = (projectId: string) =>
 export const readBuildArtifact = (projectId: string, name: string) =>
   invoke<string | null>("read_build_artifact", { projectId, name });
 
+export const projectHtmlPreviewUrl = (projectId: string, path: string) =>
+  invoke<string>("project_html_preview_url", { projectId, path });
+
 export const validateCompileFingerprint = (projectId: string, mainDoc: string) =>
   invoke<ValidatedCompileFingerprint | null>("validate_compile_fingerprint", {
     projectId,
@@ -737,6 +740,25 @@ export const readAppLogChunked = (maxBytes: number) =>
   receiveChunkedText((channel) =>
     invoke<void>("read_app_log_chunked", { maxBytes, channel }),
   );
+
+export type LogLevel = "info" | "warning" | "error";
+
+export interface LogEntry {
+  ts_ms: number;
+  level: LogLevel;
+  message: string;
+  safe: unknown;
+  sensitive: unknown;
+}
+
+export const readLogEntries = () => invoke<LogEntry[]>("read_log_entries");
+
+export const clearLogs = () => invoke<void>("clear_logs");
+
+export const revealAppLog = () => invoke<void>("reveal_app_log");
+
+export const exportLogArchive = (dest: string) =>
+  invoke<void>("export_log_archive", { dest, includeSensitive: false });
 
 export const projectCompileFolder = (projectId: string, mainDoc: string) =>
   invoke<string | null>("project_compile_folder", { projectId, mainDoc });

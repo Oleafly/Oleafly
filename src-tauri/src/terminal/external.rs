@@ -228,19 +228,10 @@ fn windows_terminal_word(word: &str) -> OsString {
     OsString::from(word.replace(';', "\\;"))
 }
 
-fn runs_through_cmd(program: &str) -> bool {
-    Path::new(program)
-        .extension()
-        .and_then(std::ffi::OsStr::to_str)
-        .is_some_and(|extension| {
-            extension.eq_ignore_ascii_case("cmd") || extension.eq_ignore_ascii_case("bat")
-        })
-}
-
 fn windows_words_pass_through(words: &[String]) -> bool {
-    let batch = words
-        .first()
-        .is_some_and(|program| runs_through_cmd(program));
+    let batch = words.first().is_some_and(|program| {
+        oleafly_core::engine_spec::is_windows_batch_script(Path::new(program))
+    });
     words.iter().all(|word| {
         !word.is_empty()
             && !word.contains('"')
@@ -253,20 +244,6 @@ fn windows_words_pass_through(words: &[String]) -> bool {
                     )
                 }))
     })
-}
-
-fn cmd_command_line(words: &[String]) -> Result<String, String> {
-    let unsafe_word = |word: &String| {
-        word.is_empty()
-            || word
-                .chars()
-                .any(|character| matches!(character, '"' | '%' | '\n' | '\r'))
-    };
-    if words.iter().any(unsafe_word) {
-        return Err(fallback_to_builtin());
-    }
-    let quoted: Vec<String> = words.iter().map(|word| format!("\"{word}\"")).collect();
-    Ok(format!("\"{}\"", quoted.join(" ")))
 }
 
 fn windows_plan(
@@ -324,7 +301,10 @@ fn windows_plan(
             plan.raw_args = vec!["/D".into(), "/V:OFF".into()];
             if let Some(words) = words {
                 plan.raw_args.push("/K".into());
-                plan.raw_args.push(cmd_command_line(&words)?);
+                plan.raw_args.push(
+                    oleafly_sandbox::cmdline::quoted_cmd_words(&words)
+                        .map_err(|_| fallback_to_builtin())?,
+                );
             }
         }
     }
@@ -877,7 +857,7 @@ mod tests {
                 r#"""C:\Program Files\agent.cmd" "login"""#.to_string(),
             ]
         );
-        for risky in ["100%", "say \"hi\"", ""] {
+        for risky in ["100%", "say \"hi\"", "", r"C:\Users\me\", "two\nlines"] {
             let command = ExternalCommand {
                 program: "agent".into(),
                 args: vec![risky.to_string()],

@@ -15,7 +15,7 @@ import { webEditorExtensions } from "../editor/extensions";
 import { type DiscussionTab, type PaneView, type SidePane, useWeb } from "../store";
 import { AppHeader } from "./AppHeader";
 import { ChatPane } from "./ChatPane";
-import { CommentsPane } from "./CommentsPane";
+import { CommentsPane, openThreadCount } from "./CommentsPane";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { ActionsContext } from "./context";
 import { errorKey } from "./errors";
@@ -76,7 +76,7 @@ function ConnectionDot() {
           aria-hidden
           className={cn(
             "size-2 rounded-full",
-            connection === "online" ? "bg-emerald-500" : connection === "offline" ? "bg-amber-500" : "bg-muted-foreground/50",
+            connection === "online" ? "bg-emerald-500" : connection === "offline" ? "bg-muted-foreground" : "bg-muted-foreground/50",
           )}
         />
       </span>
@@ -93,7 +93,7 @@ function Banners() {
   return (
     <>
       {connection === "offline" ? (
-        <WorkspaceBanner tone="warning" role="status">
+        <WorkspaceBanner tone="neutral" role="status">
           <WifiOff aria-hidden className="size-3.5" />
           {t(($) => $.web.connection.offlineBanner)}
         </WorkspaceBanner>
@@ -166,6 +166,21 @@ function Ended() {
   );
 }
 
+function CommentsTabLabel() {
+  const { t } = useTranslation(["web"]);
+  const open = useWeb((state) => openThreadCount(state.threads, state.suggestions));
+  return (
+    <>
+      {t(($) => $.web.views.comments)}
+      {open > 0 ? (
+        <Badge variant="muted" size="sm" className="tabular-nums">
+          {open}
+        </Badge>
+      ) : null}
+    </>
+  );
+}
+
 function SideSwitch() {
   const { t } = useTranslation(["web"]);
   const side = useWeb((state) => state.side);
@@ -174,7 +189,9 @@ function SideSwitch() {
       <Tabs value={side} onValueChange={(value) => useWeb.setState({ side: value as SidePane })}>
         <TabsList size="sm" aria-label={t(($) => $.web.views.label)}>
           <TabsTrigger value="pdf">{t(($) => $.web.views.pdf)}</TabsTrigger>
-          <TabsTrigger value="comments">{t(($) => $.web.views.comments)}</TabsTrigger>
+          <TabsTrigger value="comments">
+            <CommentsTabLabel />
+          </TabsTrigger>
         </TabsList>
       </Tabs>
     </div>
@@ -192,7 +209,9 @@ function Discussion() {
         <div className="flex border-b px-2 py-1">
           <Tabs value={tab} onValueChange={(value) => useWeb.setState({ discussion: value as DiscussionTab })}>
             <TabsList size="sm">
-              <TabsTrigger value="comments">{t(($) => $.web.views.comments)}</TabsTrigger>
+              <TabsTrigger value="comments">
+            <CommentsTabLabel />
+          </TabsTrigger>
               <TabsTrigger value="chat">{t(($) => $.web.views.chat)}</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -322,7 +341,7 @@ export function ProjectView({
             </TabsTrigger>
             <TabsTrigger value="comments">
               <MessageSquare aria-hidden className="hidden min-[400px]:block" />
-              {t(($) => $.web.views.comments)}
+              <CommentsTabLabel />
             </TabsTrigger>
           </TabsList>
         </Tabs>

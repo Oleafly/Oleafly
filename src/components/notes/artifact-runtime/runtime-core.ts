@@ -27,11 +27,22 @@ export interface RuntimeDeps {
   evaluate?: (code: string) => void;
 }
 
+export interface BoundaryProps {
+  readonly children?: ReactTypes.ReactNode;
+  readonly resetKey?: unknown;
+}
+
 export interface ArtifactRuntime {
+  boundary: (messages: RuntimeMessages) => ReactTypes.ComponentType<BoundaryProps>;
   expose: (names: readonly string[]) => void;
   tailwind: () => void;
   runReact: (code: string, messages: RuntimeMessages) => void;
   runScripts: (messages: RuntimeMessages) => void;
+  compileModule: (
+    code: string,
+    messages: RuntimeMessages,
+    extras?: Readonly<Record<string, RuntimeModule>>,
+  ) => RuntimeModule | { error: { title: string; detail: string } };
 }
 
 export class MissingImportError extends Error {
@@ -126,7 +137,10 @@ export function createArtifactRuntime(deps: RuntimeDeps): ArtifactRuntime {
   let banner: HTMLElement | null = null;
   let capture: ((error: unknown) => void) | null = null;
 
+  let extraModules: Readonly<Record<string, RuntimeModule>> = {};
+
   const requireModule = (specifier: string): RuntimeModule => {
+    if (Object.hasOwn(extraModules, specifier)) return extraModules[specifier];
     const cached = cache.get(specifier);
     if (cached) return cached;
     const factory = Object.hasOwn(deps.modules, specifier) ? deps.modules[specifier] : undefined;
@@ -209,11 +223,15 @@ export function createArtifactRuntime(deps: RuntimeDeps): ArtifactRuntime {
   };
 
   const makeBoundary = (messages: RuntimeMessages) =>
-    class Boundary extends React.Component<{ children?: ReactTypes.ReactNode }, { error: unknown }> {
+    class Boundary extends React.Component<BoundaryProps, { error: unknown }> {
       state = { error: null as unknown };
 
       static getDerivedStateFromError(error: unknown) {
         return { error };
+      }
+
+      componentDidUpdate(previous: BoundaryProps) {
+        if (previous.resetKey !== this.props.resetKey && this.state.error !== null) this.setState({ error: null });
       }
 
       render() {
@@ -263,6 +281,27 @@ export function createArtifactRuntime(deps: RuntimeDeps): ArtifactRuntime {
       .render(React.createElement(Boundary, null, React.createElement(component as ReactTypes.ComponentType)));
   };
 
+  const compileModule: ArtifactRuntime["compileModule"] = (code, messages, extras = {}) => {
+    let compiled: string;
+    try {
+      compiled = deps.transform(code.replaceAll("import.meta.url", '""'), {
+        jsx: "automatic",
+        typescript: true,
+        imports: true,
+      });
+    } catch (error) {
+      return { error: { title: messages.compileError, detail: errorText(error) } };
+    }
+    extraModules = extras;
+    try {
+      return loadModule(compiled);
+    } catch (error) {
+      return { error: describe(error, messages) };
+    } finally {
+      extraModules = {};
+    }
+  };
+
   const runScripts = (messages: RuntimeMessages) => {
     listen(messages);
     const scripts = document.querySelectorAll<HTMLScriptElement>(
@@ -284,5 +323,5 @@ export function createArtifactRuntime(deps: RuntimeDeps): ArtifactRuntime {
     }
   };
 
-  return { expose, tailwind, runReact, runScripts };
+  return { boundary: makeBoundary, expose, tailwind, runReact, runScripts, compileModule };
 }

@@ -6,12 +6,10 @@ const listTemplates = vi.fn(async () => [] as unknown[]);
 const notifyError = vi.fn();
 const logError = vi.fn();
 const finishHomeTourAfterProjectCreation = vi.fn();
-const appendAppLog = vi.fn(async (_detail: string) => {});
 let crashOnOpen = false;
 
 vi.mock("@/lib/tauri", () => ({
   listTemplates: () => listTemplates(),
-  appendAppLog: (detail: string) => appendAppLog(detail),
 }));
 
 vi.mock("@/lib/toast", () => ({
@@ -114,7 +112,6 @@ beforeEach(() => {
   notifyError.mockReset();
   logError.mockReset();
   finishHomeTourAfterProjectCreation.mockReset();
-  appendAppLog.mockClear();
   vi.mocked(toast.error).mockClear();
   crashOnOpen = false;
   createFromTemplate.mockReset();
@@ -140,7 +137,7 @@ describe("GlobalNewProject", () => {
     expect(screen.getByTestId("rest-of-app")).toBeInTheDocument();
     expect(screen.queryByTestId("new-project-dialog")).not.toBeInTheDocument();
     expect(toast.error).toHaveBeenCalledWith(enShell.errorBoundary.surfaceClosed);
-    expect(appendAppLog).toHaveBeenCalledWith(expect.stringContaining("UI crash: Error: dialog broke"));
+    expect(logError).toHaveBeenCalledWith("UI crash", expect.stringContaining("Error: dialog broke"));
 
     crashOnOpen = false;
     act(() => useSettingsStore.setState({ newProjectOpen: true }));

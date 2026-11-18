@@ -3,7 +3,9 @@ mod people;
 use oleafly_collab_protocol::frames::{
     ClientFrame, FrameErrorCode, MemberChange, MemberChangeKind, ServerFrame,
 };
-use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
+use oleafly_collab_protocol::projects::{
+    PresenceActivity, PresenceActivityKind, PresenceState, ProjectRole,
+};
 use oleafly_server::blobs::sha256_hex;
 use oleafly_server::test_support::{test_config, TestDevice};
 use people::{
@@ -128,6 +130,10 @@ async fn a_repeated_change_is_acknowledged_again_but_not_sent_twice() {
         file_id: Some("main".to_owned()),
         cursor: Some(4),
         anchor: None,
+        activity: Some(PresenceActivity {
+            kind: PresenceActivityKind::Reply,
+            thread_id: Some("thread-1".to_owned()),
+        }),
     };
     send_frame(
         &mut bob,
@@ -146,6 +152,27 @@ async fn a_repeated_change_is_acknowledged_again_but_not_sent_twice() {
             state: here
         })
     );
+    send_frame(
+        &mut bob,
+        &ClientFrame::Presence {
+            project_id: project,
+            state: PresenceState {
+                activity: Some(PresenceActivity {
+                    kind: PresenceActivityKind::Reply,
+                    thread_id: Some("t".repeat(300)),
+                }),
+                ..PresenceState::default()
+            },
+        },
+    )
+    .await;
+    assert!(matches!(
+        next_frame(&mut bob).await,
+        Some(ServerFrame::Error {
+            code: FrameErrorCode::BadFrame,
+            ..
+        })
+    ));
 }
 
 #[tokio::test]
@@ -367,6 +394,7 @@ async fn hiding_tells_the_room_the_person_left_and_keeps_them_subscribed() {
                 file_id: Some("main".to_owned()),
                 cursor: Some(1),
                 anchor: None,
+                activity: None,
             },
         },
     )
@@ -466,6 +494,7 @@ async fn a_flood_of_cursor_updates_is_thinned_and_never_pushes_anyone_off() {
                     file_id: Some("main".to_owned()),
                     cursor: Some(cursor),
                     anchor: None,
+                    activity: None,
                 },
             },
         )
@@ -600,6 +629,7 @@ async fn leaving_after_a_burst_of_cursor_updates_still_clears_the_cursor() {
                     file_id: Some("main".to_owned()),
                     cursor: Some(cursor),
                     anchor: None,
+                    activity: None,
                 },
             },
         )
@@ -638,6 +668,7 @@ async fn cursor_seen_by(
                 file_id: Some("main".to_owned()),
                 cursor: Some(1),
                 anchor: None,
+                activity: None,
             },
         },
     )

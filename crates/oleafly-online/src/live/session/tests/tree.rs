@@ -751,6 +751,7 @@ async fn rest_429_without_retry_after_waits_the_floor() {
 #[tokio::test]
 async fn binary_length_mismatch_refetches() {
     let rig = Rig::start(project().file("figure.png", PNG)).await;
+    rig.mock.configure(|config| config.download_length = true);
     let port = TreePort::new();
     let live = live_as(&rig, "alice", &port, quick()).await;
     let figure = EntityId(rig.mock.entity_id("figure.png").unwrap());
@@ -777,6 +778,26 @@ async fn binary_length_mismatch_refetches() {
     }
     let failed = live.download(&figure, &mut |_, _| {}).await;
     assert!(failed.is_err(), "{failed:?}");
+    live.stop().await;
+}
+
+#[tokio::test]
+async fn a_chunked_download_cut_short_is_fetched_again() {
+    let rig = Rig::start(project().file("figure.png", PNG)).await;
+    let port = TreePort::new();
+    let live = live_as(&rig, "alice", &port, quick()).await;
+    let figure = EntityId(rig.mock.entity_id("figure.png").unwrap());
+    let blob = format!("/project/{}/blob", rig.mock.project_id());
+    rig.mock.plan_fault(Some("GET"), &blob, Fault::Truncate(3));
+    let mut seen = Vec::new();
+    let bytes = live
+        .download(&figure, &mut |done, total| seen.push((done, total)))
+        .await
+        .unwrap();
+    assert_eq!(bytes, PNG);
+    assert_eq!(requests_under(&rig, "GET", "/blob"), 2);
+    assert!(seen.iter().all(|(_, total)| total.is_none()), "{seen:?}");
+    assert_eq!(seen.last(), Some(&(PNG.len() as u64, None)));
     live.stop().await;
 }
 

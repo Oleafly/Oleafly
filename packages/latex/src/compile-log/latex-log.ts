@@ -177,6 +177,10 @@ function collapseMissingCharacters(diagnostics: LogDiagnostic[]): LogDiagnostic[
   });
 }
 
+function isWrapperTrailer(line: string): boolean {
+  return line.includes("runscript.tlu:") && line.includes(": command failed with exit code ");
+}
+
 export function parseLatexLog(log: string, rootFile?: string): LogDiagnostic[] {
   const state: ParserState = {
     searchEmptyLine: false,
@@ -197,7 +201,16 @@ export function parseLatexLog(log: string, rootFile?: string): LogDiagnostic[] {
 
   const lines = log.slice(0, MAX_COMPILE_LOG_BYTES).split(/\r?\n/);
   try {
+    let afterWrapperTrailer = false;
     for (const line of lines) {
+      if (afterWrapperTrailer) {
+        afterWrapperTrailer = false;
+        continue;
+      }
+      if (isWrapperTrailer(line)) {
+        afterWrapperTrailer = true;
+        continue;
+      }
       parseLine(line, state);
     }
     if (state.current !== null && !state.current.text.startsWith(bibEmptyPrefix)) {

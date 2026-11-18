@@ -7,6 +7,7 @@ import {
   type CommentRequest,
 } from "@/components/collab/comments-rail";
 import { setCommentsEditorExtension } from "@/components/editor/cm/comments-slot";
+import { type CommentFilter, keepsThread } from "@/components/ui/comments/comment-filter";
 import { collabDocumentSession } from "@/lib/collab-live-bridge";
 import { logError } from "@/lib/log";
 import type {
@@ -26,6 +27,8 @@ import {
   collabCommentCreate,
   collabCommentDelete,
   collabCommentEdit,
+  collabCommentReact,
+  collabCommentRemove,
   collabCommentReopen,
   collabCommentReply,
   collabCommentResolve,
@@ -42,6 +45,7 @@ import { collabErrorCode } from "../errors";
 import { canCommentProjectRole } from "../roles";
 import { useCollabLiveStore } from "../live/live-store";
 import { useCollabActivity } from "../sharing/activity-store";
+import { commentFailure, refusedOutright } from "./refusals";
 import {
   commentDraftIn,
   editorComments,
@@ -61,6 +65,17 @@ export interface FileThreads {
   error: CollabErrorCode | null;
 }
 
+export interface RefusedComment {
+  key: string;
+  threadId: string;
+  fileId: string;
+  body: string;
+  at: number;
+  reason: string;
+  quote?: string;
+  path?: string;
+}
+
 export interface CommentsState {
   projectId: string | null;
   status: CollabCommentsStatus | null;
@@ -70,7 +85,8 @@ export interface CommentsState {
   error: CollabErrorCode | null;
   selectedId: string | null;
   focus: number;
-  showResolved: boolean;
+  filter: CommentFilter;
+  refused: readonly RefusedComment[];
   draft: CommentRequest | null;
   emptied: readonly string[];
   counts: readonly CollabCommentCount[] | null;
@@ -85,7 +101,7 @@ const CREATE_ATTEMPTS = 3;
 const CATCH_UP_MS = 250;
 const ANCHOR_RELOAD_MS = 800;
 
-function blank(projectId: string | null): Omit<CommentsState, "showResolved" | "focus"> {
+function blank(projectId: string | null): Omit<CommentsState, "filter" | "focus"> {
   return {
     projectId,
     status: null,
@@ -94,6 +110,7 @@ function blank(projectId: string | null): Omit<CommentsState, "showResolved" | "
     phase: "idle",
     error: null,
     selectedId: null,
+    refused: [],
     draft: null,
     emptied: [],
     counts: null,
@@ -101,7 +118,7 @@ function blank(projectId: string | null): Omit<CommentsState, "showResolved" | "
   };
 }
 
-export const useComments = create<CommentsState>(() => ({ ...blank(null), focus: 0, showResolved: false }));
+export const useComments = create<CommentsState>(() => ({ ...blank(null), focus: 0, filter: "open" }));
 
 export function commentsShown(status: CollabCommentsStatus | null): boolean {
   return status?.serverAllowed === true && status.projectEnabled;
@@ -490,12 +507,18 @@ export function cancelDraft(): void {
   useComments.setState({ draft: null });
 }
 
-export function setShowResolved(showResolved: boolean): void {
+export function setCommentFilter(filter: CommentFilter): void {
   useComments.setState((state) => {
     const selected = state.threads.find((thread) => thread.id === state.selectedId);
-    const hidden = !showResolved && selected?.resolved;
-    return { showResolved, selectedId: hidden ? null : state.selectedId };
+    const hidden = selected !== undefined && !keepsThread(filter, selected.resolved !== null);
+    return { filter, selectedId: hidden ? null : state.selectedId };
   });
+}
+
+let refusedKeys = 0;
+
+export function discardRefused(key: string): void {
+  useComments.setState((state) => ({ refused: state.refused.filter((entry) => entry.key !== key) }));
 }
 
 function requireProject(): string {
@@ -581,11 +604,25 @@ async function createAtEditor(
   return createAtEditor(projectId, draft, body, attempt + 1);
 }
 
+function refuse(entry: Omit<RefusedComment, "key" | "at">): void {
+  refusedKeys += 1;
+  const refused: RefusedComment = { ...entry, key: `refused-${refusedKeys}`, at: Date.now() };
+  useComments.setState((state) => ({ refused: [...state.refused, refused] }));
+}
+
 export async function createThread(body: string): Promise<void> {
   const projectId = requireProject();
   const draft = useComments.getState().draft;
   if (!draft) return;
-  const thread = await createAtEditor(projectId, draft, body);
+  let thread: CollabCommentThread;
+  try {
+    thread = await createAtEditor(projectId, draft, body);
+  } catch (error) {
+    if (!refusedOutright(error)) throw error;
+    refuse({ threadId: "", fileId: "", body, reason: commentFailure(error), quote: draft.quote, path: draft.path });
+    useComments.setState((state) => ({ draft: state.draft === draft ? null : state.draft }));
+    return;
+  }
   useComments.setState((state) => ({
     draft: state.draft === draft ? null : state.draft,
     selectedId: thread.id,
@@ -597,8 +634,13 @@ export async function createThread(body: string): Promise<void> {
 }
 
 export async function replyToThread(thread: CollabCommentThread, body: string): Promise<void> {
-  const message = await collabCommentReply(requireProject(), thread.fileId, thread.id, body, commentMembers());
-  patchThread(thread.id, (current) => withMessage(current, message));
+  try {
+    const message = await collabCommentReply(requireProject(), thread.fileId, thread.id, body, commentMembers());
+    patchThread(thread.id, (current) => withMessage(current, message));
+  } catch (error) {
+    if (!refusedOutright(error)) throw error;
+    refuse({ threadId: thread.id, fileId: thread.fileId, body, reason: commentFailure(error) });
+  }
 }
 
 export async function editMessage(thread: CollabCommentThread, messageId: string, body: string): Promise<void> {
@@ -614,8 +656,28 @@ export async function deleteMessage(thread: CollabCommentThread, messageId: stri
   }));
 }
 
+export async function removeMessage(thread: CollabCommentThread, messageId: string): Promise<void> {
+  await collabCommentRemove(requireProject(), thread.fileId, thread.id, messageId);
+  patchThread(thread.id, (current) => ({
+    ...current,
+    messages: current.messages.map((entry) =>
+      entry.id === messageId ? { ...entry, body: "", mentions: [], deleted: true, removed: true } : entry,
+    ),
+  }));
+}
+
 export async function resolveThread(thread: CollabCommentThread): Promise<void> {
   const next = await collabCommentResolve(requireProject(), thread.fileId, thread.id);
+  patchThread(thread.id, () => next);
+}
+
+export async function reactToComment(
+  thread: CollabCommentThread,
+  messageId: string,
+  emoji: string,
+  on: boolean,
+): Promise<void> {
+  const next = await collabCommentReact(requireProject(), thread.fileId, thread.id, messageId, emoji, on);
   patchThread(thread.id, () => next);
 }
 

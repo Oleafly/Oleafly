@@ -49,6 +49,7 @@ pub const COMMENTS_OFF: &str = "Comments are turned off for this project.";
 pub const REVIEWERS_SUGGEST: &str =
     "As a reviewer you can suggest changes and comment, but not edit directly.";
 pub const COMMENTERS_COMMENT: &str = "As a commenter you can comment, but not change the text.";
+pub const OWNERS_REMOVE: &str = "Only the project owner can remove someone else's comment.";
 const MOST_CHECKS: u32 = 3;
 const BRIEF_SEND: Duration = Duration::from_secs(5);
 pub const ASIDE_BYTES: usize = 256 * 1024;
@@ -654,7 +655,14 @@ enum Check {
     Role {
         role: ProjectRole,
         comments_off: bool,
+        comments: bool,
     },
+}
+
+impl Check {
+    fn touched_comments(self) -> bool {
+        matches!(self, Check::Role { comments: true, .. })
+    }
 }
 
 struct ReadChange {
@@ -911,13 +919,17 @@ impl Peer<'_> {
             Ok(Err(Unread::Failed)) | Err(_) => return stored_failed,
         };
         let batch = envelope.batch_id;
-        let mut check = Check::Pending;
+        let mut check = match self.checked_ahead(project, &envelope, &reach).await {
+            Ok(check) => check,
+            Err(refusal) => return *refusal,
+        };
+        let scan = |check: Check| mention || (mail && check.touched_comments());
         let mut waiting = (envelope, reach, stored);
         let mut checks = 0;
         let appended = loop {
             let (envelope, reach, stored) = waiting;
             let appended = self
-                .append(project, envelope, reach, stored, check, mention)
+                .append(project, envelope, reach, stored, check, scan(check))
                 .await;
             let needed = match appended {
                 Ok(Appendix::Stored(appended)) => {
@@ -961,7 +973,7 @@ impl Peer<'_> {
         };
         match appended {
             Ok(appended) => {
-                if mention && !appended.duplicate {
+                if scan(check) && !appended.duplicate {
                     self.state.mentions.wake(self.state, project);
                 }
                 ServerFrame::Ack {
@@ -1032,6 +1044,45 @@ impl Peer<'_> {
         }
     }
 
+    async fn checked_ahead(
+        &self,
+        project: SharedProjectId,
+        envelope: &Envelope,
+        reach: &peers::Reach,
+    ) -> Result<Check, Box<ServerFrame>> {
+        if !self.state.db.has_readers() {
+            return Ok(Check::Pending);
+        }
+        let (account, batch) = (self.account, envelope.batch_id);
+        let ahead = self
+            .state
+            .db
+            .read(move |conn| {
+                let Some(row) = projects::project_row(conn, project)? else {
+                    return Ok(None);
+                };
+                let Some(role) = projects::role_of(conn, project, account)? else {
+                    return Ok(None);
+                };
+                if projects::stored_batch(conn, project, batch)?.is_some() {
+                    return Ok(None);
+                }
+                Ok(Some((role, !comments_on(conn, &row)?)))
+            })
+            .await;
+        match ahead {
+            Ok(Some((role, comments_off))) if RoleRule::needed(role) => {
+                let rule = RoleRule {
+                    role,
+                    account,
+                    comments_off,
+                };
+                self.role_check(project, envelope, reach, rule).await
+            }
+            _ => Ok(Check::Pending),
+        }
+    }
+
     async fn role_check(
         &self,
         project: SharedProjectId,
@@ -1040,7 +1091,28 @@ impl Peer<'_> {
         rule: RoleRule,
     ) -> Result<Check, Box<ServerFrame>> {
         let guard = &self.state.comment_guard;
-        let verdict = guard
+        let judged = |comments| Check::Role {
+            role: rule.role,
+            comments_off: rule.comments_off,
+            comments,
+        };
+        if rule.role == ProjectRole::Editor
+            && !rule.comments_off
+            && guard
+                .spares_comments(
+                    &self.state.db,
+                    &self.state.snapshots,
+                    project,
+                    envelope.payload.clone(),
+                    reach,
+                )
+                .await
+                .unwrap_or(false)
+        {
+            guard.read_project(self.state, project);
+            return Ok(judged(false));
+        }
+        let checked = guard
             .check_role(
                 &self.state.db,
                 &self.state.snapshots,
@@ -1050,6 +1122,8 @@ impl Peer<'_> {
                 rule,
             )
             .await;
+        let comments = checked.as_ref().is_ok_and(|checked| checked.comments);
+        let verdict = checked.map(|checked| checked.verdict);
         if matches!(
             verdict,
             Ok(RoleVerdict::Allowed
@@ -1060,26 +1134,24 @@ impl Peer<'_> {
             guard.read_project(self.state, project);
         }
         match verdict {
-            Ok(RoleVerdict::Allowed) => Ok(Check::Role {
-                role: rule.role,
-                comments_off: rule.comments_off,
-            }),
+            Ok(RoleVerdict::Allowed) => Ok(judged(comments)),
             Ok(RoleVerdict::ChangesComments) => Err(Box::new(frame_error(
                 self.code_for(FrameErrorCode::CommentsOff, FrameErrorCode::Forbidden),
                 COMMENTS_OFF,
             ))),
             Ok(RoleVerdict::Refused) => Err(Box::new(frame_error(
                 FrameErrorCode::Forbidden,
-                if rule.role == ProjectRole::Reviewer {
-                    REVIEWERS_SUGGEST
-                } else {
-                    COMMENTERS_COMMENT
+                match rule.role {
+                    ProjectRole::Reviewer => REVIEWERS_SUGGEST,
+                    ProjectRole::Editor => OWNERS_REMOVE,
+                    _ => COMMENTERS_COMMENT,
                 },
             ))),
             Ok(RoleVerdict::Unreadable) => Err(Box::new(frame_error(
                 FrameErrorCode::BadFrame,
                 "This update is not valid.",
             ))),
+            Ok(RoleVerdict::Unchecked) if rule.role == ProjectRole::Editor => Ok(Check::Later),
             Ok(RoleVerdict::Unchecked) | Err(_) => Err(Box::new(frame_error(
                 FrameErrorCode::Internal,
                 "The server could not check this change. It goes again shortly.",
@@ -1127,12 +1199,21 @@ impl Peer<'_> {
                     Claim::Fresh(_) => {}
                 }
                 let comments_off = !comments_on(transaction, &row)?;
-                if RoleRule::needed(role) && check != (Check::Role { role, comments_off }) {
-                    let rule = RoleRule {
-                        role,
-                        account,
-                        comments_off,
-                    };
+                let rule = RoleRule {
+                    role,
+                    account,
+                    comments_off,
+                };
+                let judged = match check {
+                    Check::Role {
+                        role: judged_as,
+                        comments_off: judged_off,
+                        ..
+                    } => judged_as == role && judged_off == comments_off,
+                    Check::Later => role == ProjectRole::Editor,
+                    Check::Pending | Check::Passed => false,
+                };
+                if RoleRule::needed(role) && !judged {
                     return Ok(Written::now(Appendix::Unchecked(
                         Box::new((envelope, reach, stored)),
                         Needed::Role(rule),
@@ -1180,6 +1261,7 @@ impl Peer<'_> {
                         account,
                         device,
                         now,
+                        RoleRule::needed(role).then_some(rule),
                     )?;
                 }
                 let then: Option<Box<dyn FnOnce() + Send>> = if appended.duplicate {
@@ -1215,10 +1297,14 @@ impl Peer<'_> {
         if !self.state.rooms.is_member(project, self.connection) {
             return None;
         }
-        if state
-            .file_id
+        let thread = state
+            .activity
             .as_ref()
-            .is_some_and(|file| file.len() > MAX_PRESENCE_FILE_ID)
+            .and_then(|activity| activity.thread_id.as_ref());
+        if [state.file_id.as_ref(), thread]
+            .into_iter()
+            .flatten()
+            .any(|id| id.len() > MAX_PRESENCE_FILE_ID)
         {
             return Some(frame_error(
                 FrameErrorCode::BadFrame,

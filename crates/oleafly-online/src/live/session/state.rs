@@ -421,9 +421,13 @@ impl State {
             slot.buffer.clear();
             slot.dirty = true;
             let on_disk = path.and_then(|path| self.port.disk_text(&path));
-            if let Some(text) = unsent.filter(|text| on_disk.as_ref() != Some(text)) {
-                self.notices
-                    .push(Notice::Merged(doc.clone(), MergeReview::Kept { text }));
+            if let Some(text) = unsent {
+                let review = if on_disk.as_ref() == Some(&text) {
+                    MergeReview::InFile
+                } else {
+                    MergeReview::Kept { text }
+                };
+                self.notices.push(Notice::Merged(doc.clone(), review));
             }
         }
         self.forget_tree_queue();

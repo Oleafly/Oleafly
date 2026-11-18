@@ -129,6 +129,8 @@
     "entryCount_other": "{{count}} voci della struttura",
     "expandHeading": "Espandi {{title}}",
     "expandAll": "Espandi tutti i titoli",
+    "onPage": "{{heading}}, pagina {{page}}",
+    "page": "p.{{page}}",
     "title": "Struttura"
   },
   "panelError": {

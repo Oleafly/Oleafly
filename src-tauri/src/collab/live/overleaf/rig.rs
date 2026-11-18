@@ -20,7 +20,7 @@ use crate::collab::live::payloads::{
     RolePayload, StatusPayload,
 };
 use crate::collab::live::session::{guard, Live, ACTIVE};
-use crate::collab::live::uploads::{UploadProgress, UploadsPayload};
+use crate::collab::live::uploads::{DownloadProgress, UploadsPayload};
 use crate::folder_watch::FolderChange;
 use crate::overleaf::OverleafLink;
 
@@ -39,7 +39,7 @@ pub(crate) struct Quiet {
     pub(crate) changes: Mutex<Vec<FolderChange>>,
     pub(crate) removed: Mutex<Vec<RemovedPayload>>,
     pub(crate) uploads: Mutex<Vec<UploadsPayload>>,
-    pub(crate) downloads: Mutex<Vec<UploadProgress>>,
+    pub(crate) downloads: Mutex<Vec<DownloadProgress>>,
     pub(crate) tree: Mutex<Vec<TreeNotice>>,
 }
 
@@ -80,7 +80,7 @@ impl LiveHost for Quiet {
     fn uploads(&self, payload: UploadsPayload) {
         self.uploads.lock().unwrap().push(payload);
     }
-    fn download_progress(&self, payload: UploadProgress) {
+    fn download_progress(&self, payload: DownloadProgress) {
         self.downloads.lock().unwrap().push(payload);
     }
     fn overleaf_tree(&self, notice: TreeNotice) {

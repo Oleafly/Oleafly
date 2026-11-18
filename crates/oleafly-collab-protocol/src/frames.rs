@@ -677,6 +677,7 @@ mod tests {
                     file_id: Some("f1".to_string()),
                     cursor: Some(2),
                     anchor: None,
+                    activity: None,
                 },
             },
             json!({

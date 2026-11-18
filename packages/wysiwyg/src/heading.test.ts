@@ -23,12 +23,12 @@ describe("LatexHeadingAttributes", () => {
     expect(html).toContain('<h1 data-command="chapter" data-starred="true" data-short-title="Short">Long</h1>');
     const reparsed = new Editor({ element: document.createElement("div"), extensions: WYSIWYG_EXTENSIONS, content: html });
     editors.push(reparsed);
-    expect(reparsed.getJSON().content?.[0].attrs).toEqual({ level: 1, command: "chapter", starred: true, shortTitle: "Short" });
+    expect(reparsed.getJSON().content?.[0].attrs).toEqual({ level: 1, textAlign: null, command: "chapter", starred: true, shortTitle: "Short" });
   });
 
   it("leaves markdown headings untouched", () => {
     const { doc } = parseMarkdownBody("# Title\n\n#### Deep\n");
-    expect(doc.content?.[0].attrs).toEqual({ level: 1, command: null, starred: false, shortTitle: null });
+    expect(doc.content?.[0].attrs).toEqual({ level: 1, textAlign: null, command: null, starred: false, shortTitle: null });
     expect(doc.content?.[1].attrs?.level).toBe(4);
     expect(serializeMarkdownBody(doc)).toBe("# Title\n\n#### Deep");
   });
@@ -43,7 +43,7 @@ describe("LatexHeadingAttributes", () => {
     editor.commands.setTextSelection(1);
     editor.commands.toggleHeading({ level: 2 });
     const json = editor.getJSON() as JSONContent;
-    expect(json.content?.[0].attrs).toEqual({ level: 2, command: "chapter", starred: false, shortTitle: null });
+    expect(json.content?.[0].attrs).toEqual({ level: 2, textAlign: null, command: "chapter", starred: false, shortTitle: null });
     expect(serializeLatexBody(json)).toBe("\\subsection{C}\n");
   });
 });

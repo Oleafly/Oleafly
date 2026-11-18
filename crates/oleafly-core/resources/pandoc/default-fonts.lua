@@ -198,49 +198,75 @@ local function is_letter(code)
   return (code >= 0x41 and code <= 0x5A) or (code >= 0x61 and code <= 0x7A) or (code >= 0xC0 and code < 0x2000)
 end
 
-local function scan_text(text, seen)
+local function scan_text(text, codes)
   if not utf8.len(text) then
     return
   end
   for _, code in utf8.codes(text) do
     if code >= 0x80 or is_letter(code) then
-      seen.total[code] = (seen.total[code] or 0) + 1
+      codes[code] = (codes[code] or 0) + 1
     end
   end
 end
 
-local function scan_document(doc)
-  local seen = { total = {}, skip = false }
-  local function take(text)
-    scan_text(text, seen)
+local function without_markup(text)
+  return (
+    text:gsub("\\begin%s*{[^}]*}", "")
+      :gsub("\\end%s*{[^}]*}", "")
+      :gsub("\\csname.-\\endcsname", "")
+      :gsub("\\[%a@]+", "")
+  )
+end
+
+local function walker(codes)
+  local function take(element)
+    scan_text(element.text, codes)
   end
-  doc:walk({
-    Str = function(element)
-      take(element.text)
-    end,
-    Code = function(element)
-      take(element.text)
-    end,
-    CodeBlock = function(element)
-      take(element.text)
-    end,
-    RawInline = function(element)
-      if element.format:match("tex") then
-        take(element.text)
-      end
-    end,
-    RawBlock = function(element)
-      if element.format:match("tex") then
-        take(element.text)
-      end
-    end,
-  })
-  for key, value in pairs(doc.meta) do
-    if not SKIPPED_METADATA[key] then
-      take(pandoc.utils.stringify(value))
+  local function raw(element)
+    if element.format:match("tex") then
+      scan_text(without_markup(element.text), codes)
     end
   end
-  return seen.total
+  return {
+    Str = take,
+    Code = take,
+    CodeBlock = take,
+    RawInline = raw,
+    RawBlock = raw,
+  }
+end
+
+local function walk_user_header(meta, filter)
+  filter.traverse = "topdown"
+  filter.Div = function(div)
+    if div.classes:includes("oleafly-generated") then
+      return nil, false
+    end
+    return nil
+  end
+  pandoc.Pandoc({}, { probe = meta["header-includes"] }):walk(filter)
+end
+
+local function scan_document(doc)
+  local body = {}
+  local meta = {}
+  for key, value in pairs(doc.meta) do
+    if key ~= "header-includes" then
+      meta[key] = value
+    end
+  end
+  pandoc.Pandoc(doc.blocks, meta):walk(walker(body))
+  for key, value in pairs(doc.meta) do
+    if not SKIPPED_METADATA[key] then
+      scan_text(pandoc.utils.stringify(value), body)
+    end
+  end
+  local all = {}
+  walk_user_header(doc.meta, walker(all))
+  for code, count in pairs(body) do
+    all[code] = (all[code] or 0) + count
+  end
+  return body, all
 end
 
 local function tally(codes)
@@ -279,7 +305,7 @@ local function header_text(meta)
   local function collect(element)
     parts[#parts + 1] = element.text
   end
-  pandoc.Pandoc({}, { probe = value }):walk({ RawBlock = collect, RawInline = collect })
+  walk_user_header(meta, { RawBlock = collect, RawInline = collect })
   parts[#parts + 1] = pandoc.utils.stringify(value)
   return table.concat(parts, "\n")
 end
@@ -417,7 +443,7 @@ local function declare_script(script, header)
     open, close = "\\beginR ", "\\endR"
   end
   local linebreak = ""
-  if script.linebreak then
+  if script.linebreak and pandoc.system.os ~= "linux" then
     linebreak = '\\XeTeXlinebreaklocale "' .. script.linebreak .. '"\\XeTeXlinebreakskip=0pt plus 1pt\\relax '
   end
   local probe = string.format('"%X', script.probe)
@@ -503,12 +529,25 @@ local function run_class(code, skipped)
   return nil
 end
 
+local ZERO_WIDTH_JOINER = 0x200D
+
 local function split_text(text, skipped)
   local pieces = {}
   local current, current_class = {}, nil
   local started = false
+  local codes = {}
   for _, code in utf8.codes(text) do
+    codes[#codes + 1] = code
+  end
+  for index, code in ipairs(codes) do
     local class = run_class(code, skipped)
+    if code == ZERO_WIDTH_JOINER then
+      if started then
+        class = current_class
+      elseif codes[index + 1] then
+        class = run_class(codes[index + 1], skipped)
+      end
+    end
     if not started or class ~= current_class then
       if started then
         pieces[#pieces + 1] = { text = table.concat(current), class = current_class }
@@ -577,17 +616,20 @@ local function wrap_runs(inlines, skipped)
   return nil
 end
 
+local XMP_QUOTE = "\\providecommand{\\xmpquote}[1]{#1}"
+
 function Pandoc(doc)
-  if not FORMAT:match("latex") then
+  local beamer = FORMAT:match("beamer") ~= nil
+  if not beamer and not FORMAT:match("latex") then
     return nil
   end
-  local codes = scan_document(doc)
+  local body_codes, codes = scan_document(doc)
   local counts = tally(codes)
   local language = language_of(doc.meta)
   local header = {}
   local preamble = header_text(doc.meta)
   local fixed_family = doc.meta.fontfamily ~= nil or mentions(preamble, MAIN_FONT_MARKERS)
-  local dominant = dominant_script(counts, language)
+  local dominant = dominant_script(tally(body_codes), language)
   local uncovered = {}
 
   if not mentions(preamble, CJK_FONT_MARKERS) and not CJK_CLASSES[document_class(doc.meta)] then
@@ -605,6 +647,10 @@ function Pandoc(doc)
       local fonts = dominant.fonts
       doc.meta.mainfont = fonts[1]
       doc.meta.mainfontoptions = "BoldFont=" .. fonts[2] .. ",ItalicFont=" .. fonts[3] .. ",BoldItalicFont=" .. fonts[4]
+      if beamer and not doc.meta.sansfont then
+        doc.meta.sansfont = doc.meta.mainfont
+        doc.meta.sansfontoptions = doc.meta.mainfontoptions
+      end
       for code in pairs(codes) do
         if classify(code) == "wider" then
           uncovered[#uncovered + 1] = code
@@ -659,7 +705,7 @@ function Pandoc(doc)
   end
 
   if doc.meta.keywords then
-    add_header(doc.meta, "\\providecommand{\\xmpquote}[1]{#1}")
+    add_header(doc.meta, XMP_QUOTE)
   end
 
   if #header > 0 then

@@ -38,16 +38,27 @@ export function outlineSources(
   ]);
 }
 
-export function outlineFromIndex(
+export interface IncludeStep {
+  readonly file: string;
+  readonly from: number;
+}
+
+export interface OutlineWalk {
+  readonly items: OutlineItem[];
+  readonly trails: (readonly IncludeStep[])[];
+}
+
+export function outlineWalk(
   index: ProjectIndex,
-  activeFile: string,
+  rootFile: string,
   extraSections?: (file: string) => readonly ExtraOutlineSection[],
-): OutlineItem[] {
-  const out: OutlineItem[] = [];
+): OutlineWalk {
+  const items: OutlineItem[] = [];
+  const trails: (readonly IncludeStep[])[] = [];
   const visited = new Set<string>();
 
-  const walk = (file: string, depth: number) => {
-    if (depth > 8 || visited.has(file)) return;
+  const walk = (file: string, trail: readonly IncludeStep[]) => {
+    if (trail.length > 8 || visited.has(file)) return;
     visited.add(file);
 
     const extra: Sym[] = (extraSections?.(file) ?? []).map((section) => ({
@@ -69,7 +80,7 @@ export function outlineFromIndex(
 
     for (const s of syms) {
       if (s.kind === "section") {
-        out.push({
+        items.push({
           level: s.level ?? 2,
           title: s.name,
           line: s.line,
@@ -78,12 +89,14 @@ export function outlineFromIndex(
           from: s.from,
           to: s.to,
         });
+        trails.push(trail);
       } else {
         const target = s.target ?? s.name;
-        const before = out.length;
-        walk(target, depth + 1);
-        if (out.length === before) {
-          out.push({
+        const before = items.length;
+        const inner = [...trail, { file, from: s.from }];
+        walk(target, inner);
+        if (items.length === before) {
+          items.push({
             level: 2,
             title: basename(target),
             line: s.line,
@@ -92,13 +105,22 @@ export function outlineFromIndex(
             from: 0,
             to: 0,
           });
+          trails.push(inner);
         }
       }
     }
   };
 
-  walk(activeFile, 0);
-  return out;
+  walk(rootFile, []);
+  return { items, trails };
+}
+
+export function outlineFromIndex(
+  index: ProjectIndex,
+  activeFile: string,
+  extraSections?: (file: string) => readonly ExtraOutlineSection[],
+): OutlineItem[] {
+  return outlineWalk(index, activeFile, extraSections).items;
 }
 
 function headingBefore(headings: readonly { from: number; title: string }[], offset: number): string | undefined {

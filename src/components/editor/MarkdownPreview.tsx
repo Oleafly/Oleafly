@@ -10,8 +10,9 @@ import { useActiveContent, useFilesStore } from "@/store/files";
 import { loadAssetThumbnail } from "./cm/hover-asset";
 import { appUrlProjectPath, projectFileForHref } from "@/lib/file-links";
 import { openLinkedProjectFile } from "@/features/file-links";
+import { remarkToolbarMarkup } from "./markdown-preview-markup";
 
-const remarkPlugins = [remarkGfm, remarkMath];
+const remarkPlugins = [remarkGfm, remarkMath, remarkToolbarMarkup];
 const rehypePlugins = [rehypeKatex];
 
 // react-markdown blanks URLs with schemes it does not know, which hid links

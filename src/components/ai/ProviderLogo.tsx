@@ -17,6 +17,7 @@ import {
   Volcengine,
 } from "@lobehub/icons";
 import type { IconType } from "@lobehub/icons";
+import { LlamaCppBrandIcon } from "@/components/settings/IntegrationBrandIcons";
 
 // Provider id -> lobe icon. Brands that ship a distinct multi-color mark use
 // their `.Color` subcomponent; brands whose official mark is already a
@@ -54,6 +55,7 @@ function monoColor(id: string): string {
 export function ProviderLogo({ providerId, size = 18 }: Readonly<{ providerId: string; size?: number }>) {
   const Icon = ICONS[providerId];
   if (Icon) return <Icon size={size} />;
+  if (providerId === "llamacpp") return <LlamaCppBrandIcon size={size} className="shrink-0 text-foreground" />;
   const letter = (providerId.trim()[0] ?? "?").toUpperCase();
   return (
     <span

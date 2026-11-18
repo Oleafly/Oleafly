@@ -10,13 +10,14 @@ use super::{Budgeted, Snapshots};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Keep {
     CommentChecks,
+    EditorChecks,
     MentionScans,
 }
 
 impl Keep {
     fn idle_after(self) -> Duration {
         match self {
-            Keep::CommentChecks => Duration::from_secs(15 * 60),
+            Keep::CommentChecks | Keep::EditorChecks => Duration::from_secs(15 * 60),
             Keep::MentionScans => Duration::from_secs(5 * 60),
         }
     }
@@ -141,5 +142,14 @@ impl Snapshots {
 
     pub fn kept_bytes(&self) -> u64 {
         self.kept.bytes()
+    }
+
+    pub fn kept_bytes_for(&self, keep: Keep) -> u64 {
+        self.kept
+            .lock()
+            .iter()
+            .filter(|((kept_for, _), _)| *kept_for == keep)
+            .map(|(_, entry)| entry.replay.reserved_bytes())
+            .sum()
     }
 }

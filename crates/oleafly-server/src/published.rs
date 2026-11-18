@@ -115,11 +115,12 @@ const NOTE_STYLE: &str = concat!(
     "a{color:#2563eb;text-underline-offset:2px}",
     "img{max-width:100%;height:auto}",
     "figure{margin-left:0;margin-right:0;text-align:center}",
+    "div.left{text-align:left}div.center{text-align:center}div.right{text-align:right}div.justify{text-align:justify}",
     "figcaption{font-size:0.875rem;color:#52525b}",
     "blockquote{margin-left:0;padding-left:1rem;border-left:3px solid #d4d4d8;color:#3f3f46}",
     "code,kbd,samp{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:0.9em}",
     ":not(pre)>code{padding:0.1em 0.3em;border-radius:0.25rem;background:#f4f4f5}",
-    "pre{overflow-x:auto;padding:0.875rem 1rem;border-radius:0.5rem;background:#f4f4f5;line-height:1.5}",
+    "pre{overflow-x:auto;padding:1.75rem 2rem;border-radius:1rem;background:#f7f7f7;line-height:1.5}",
     "pre a{display:none}",
     "table{display:block;max-width:100%;overflow-x:auto;border-collapse:collapse}",
     "th,td{padding:0.375rem 0.75rem;border:1px solid #e4e4e7}",
@@ -278,8 +279,8 @@ pub fn public_url(base: &Url, slug: &str) -> String {
 }
 
 fn day(ms: i64) -> String {
-    chrono::DateTime::from_timestamp_millis(ms)
-        .map(|at| at.format("%Y-%m-%d").to_string())
+    jiff::Timestamp::from_millisecond(ms)
+        .map(|at| at.strftime("%Y-%m-%d").to_string())
         .unwrap_or_default()
 }
 

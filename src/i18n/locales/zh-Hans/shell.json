@@ -561,7 +561,7 @@
       },
       "glossaries-index": {
         "title": "术语表或索引工具",
-        "detail": "glossaries 和 makeindex 需要额外运行一次 makeindex 或 xindy，而内置引擎不会这样做。"
+        "detail": "glossaries 和 makeindex 需要额外运行一次 makeindex、xindy 或 bib2gls，而内置引擎不会这样做。"
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref 被设为 pdfTeX 驱动",
@@ -1072,7 +1072,8 @@
       "help": "帮助与关于",
       "integrations": "集成",
       "shortcuts": "键盘快捷键",
-      "research": "研究"
+      "research": "研究",
+      "logs": "Logs"
     },
     "search": {
       "empty": "没有匹配的设置",
@@ -1089,7 +1090,8 @@
         "help": "关于，版本，更新，更新日志，新功能，文档，支持，社区，Discord，许可证，崩溃报告",
         "integrations": "Zotero，GitHub，GitLab，Gitea，Forgejo，Codeberg，Git 托管，Computer Use，桌面应用，Cua，MCP，引用，账户，连接",
         "shortcuts": "按键绑定，快捷键，热键，按键，键盘",
-        "research": "研究 任务 预算 通知 保持唤醒 实验 运行 research tasks"
+        "research": "研究 任务 预算 通知 保持唤醒 实验 运行 research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "搜索设置",
       "results_other": "{{count}} 个分区匹配"
@@ -1639,5 +1641,9 @@
   "stuckWindow": {
     "reloaded": "此窗口 30 秒没有响应，Oleafly 已重新加载它。在此之前刚做的更改可能没有保存。",
     "reloadedAgain": "此窗口再次停止响应，Oleafly 又重新加载了它。由于问题可能出在你的项目里，这次没有重新打开项目。"
+  },
+  "zoomIndicator": {
+    "label": "缩放",
+    "reset": "重置"
   }
 }

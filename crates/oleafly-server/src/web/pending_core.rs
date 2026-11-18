@@ -12,6 +12,7 @@ use crate::web::Refusal;
 
 pub const SUGGESTIONS_READY: bool = true;
 pub const CHAT_READY: bool = true;
+pub const REACTIONS_READY: bool = true;
 
 pub fn may_comment(role: ProjectRole) -> bool {
     project_role_allows(role, ProjectAction::Comment)
@@ -194,8 +195,9 @@ pub fn send_chat(
     author: AccountId,
     at: i64,
     body: &str,
+    mentions: &[AccountId],
 ) -> Result<(), Refusal> {
-    doc.send_chat(author, at, body)
+    doc.send_chat(author, at, body, mentions)
         .map(drop)
         .map_err(|error| chat_refusal(&error))
 }
@@ -206,6 +208,25 @@ pub fn delete_chat(doc: &mut ProjectDoc, id: &str, by: AccountId) -> Result<(), 
         .map_err(|_| Refusal::new("not_found", "This message is gone."))?;
     doc.delete_chat(id, by)
         .map_err(|error| chat_refusal(&error))
+}
+
+pub fn react_chat(
+    doc: &mut ProjectDoc,
+    id: &str,
+    emoji: &str,
+    by: AccountId,
+    at: i64,
+    on: bool,
+) -> Result<(), Refusal> {
+    let id = id
+        .parse::<ChatMessageId>()
+        .map_err(|_| Refusal::new("not_found", "This message is gone."))?;
+    if on {
+        doc.react_to_chat(id, emoji, by, at)
+    } else {
+        doc.unreact_to_chat(id, emoji, by)
+    }
+    .map_err(|error| chat_refusal(&error))
 }
 
 pub fn clear_chat(doc: &mut ProjectDoc) -> Result<(), Refusal> {
@@ -351,7 +372,7 @@ mod tests {
     #[test]
     fn chat_messages_send_delete_and_clear() {
         let (mut doc, _) = project();
-        send_chat(&mut doc, account(1), 3, " Hi ").unwrap();
+        send_chat(&mut doc, account(1), 3, " Hi ", &[]).unwrap();
         let listed = chat_messages(&doc);
         assert_eq!(listed[0]["body"], "Hi");
         assert_eq!(listed[0]["at"], 3);
@@ -361,7 +382,9 @@ mod tests {
             "forbidden"
         );
         assert_eq!(
-            send_chat(&mut doc, account(1), 4, "  ").unwrap_err().code,
+            send_chat(&mut doc, account(1), 4, "  ", &[])
+                .unwrap_err()
+                .code,
             "comment_empty"
         );
         assert_eq!(
@@ -369,7 +392,7 @@ mod tests {
             "not_found"
         );
         delete_chat(&mut doc, &id, account(1)).unwrap();
-        send_chat(&mut doc, account(2), 5, "Bye").unwrap();
+        send_chat(&mut doc, account(2), 5, "Bye", &[]).unwrap();
         clear_chat(&mut doc).unwrap();
         assert!(chat_messages(&doc)
             .iter()

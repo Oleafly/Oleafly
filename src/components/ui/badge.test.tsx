@@ -14,7 +14,7 @@ describe("Badge", () => {
   });
 
   it.each([
-    ["muted", ["bg-muted", "text-muted-foreground", "border-transparent"]],
+    ["muted", ["bg-muted", "text-foreground/60", "border-transparent"]],
     ["success", ["bg-emerald-500/10", "text-emerald-700", "dark:text-emerald-300"]],
     ["warning", ["bg-amber-500/10", "text-amber-700", "dark:text-amber-300"]],
     ["destructive", ["bg-destructive/10", "text-destructive"]],

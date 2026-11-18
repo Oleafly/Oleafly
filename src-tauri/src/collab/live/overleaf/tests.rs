@@ -794,7 +794,7 @@ fn ended(rig: &OverleafRig) -> Option<EndReason> {
 }
 
 #[test]
-fn removal_keeps_unsent_text_as_a_copy_and_lets_the_project_go_local() {
+fn removal_says_unsent_text_stayed_in_the_file_and_lets_the_project_go_local() {
     let library = TempLibrary::new();
     run(async {
         let rig = OverleafRig::start_at(
@@ -810,25 +810,32 @@ fn removal_keeps_unsent_text_as_a_copy_and_lets_the_project_go_local() {
             !rig.mock.received("applyOtUpdate").is_empty()
         })
         .await;
+        eventually("the unsent text is in the file", || {
+            rig.read(MAIN) == "Hello\nunsent\n"
+        })
+        .await;
         rig.mock.emit_to_room("project:access:revoked", &[]);
         eventually("live ends as removed", || {
             ended(&rig) == Some(EndReason::Removed)
         })
         .await;
-        let kept: Vec<KeptFile> = rig
-            .host
-            .kept
-            .lock()
-            .unwrap()
-            .iter()
-            .flat_map(|payload| payload.files.clone())
-            .collect();
+        let kept = || -> Vec<KeptFile> {
+            rig.host
+                .kept
+                .lock()
+                .unwrap()
+                .iter()
+                .flat_map(|payload| payload.files.clone())
+                .collect()
+        };
+        eventually("the unsent change is announced", || !kept().is_empty()).await;
+        let kept = kept();
         assert_eq!(kept.len(), 1, "{kept:?}");
         assert_eq!(
-            (kept[0].path.as_str(), kept[0].kind),
-            (MAIN, KeptKind::Unsent)
+            (kept[0].path.as_str(), kept[0].kind, kept[0].copy.as_deref()),
+            (MAIN, KeptKind::Unsent, None)
         );
-        assert_eq!(rig.read(&kept[0].copy), "Hello\nunsent\n");
+        assert_eq!(rig.read(MAIN), "Hello\nunsent\n");
         let project_id = rig.project_id.clone();
         rig.finish().await;
         super::commands::unlink(&project_id).await.unwrap();

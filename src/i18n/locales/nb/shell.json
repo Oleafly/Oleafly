@@ -562,7 +562,7 @@
       },
       "glossaries-index": {
         "title": "Verktøy for ordliste eller stikkordregister",
-        "detail": "glossaries og makeindex trenger en ekstra kjøring av makeindex eller xindy, og det gjør ikke den innebygde motoren."
+        "detail": "glossaries og makeindex trenger en ekstra kjøring av makeindex, xindy eller bib2gls, og det gjør ikke den innebygde motoren."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref er satt til pdfTeX-driveren",
@@ -1088,7 +1088,8 @@
       "help": "Hjelp og om",
       "integrations": "Integrasjoner",
       "shortcuts": "Hurtigtaster",
-      "research": "Forskning"
+      "research": "Forskning",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Ingen innstillinger passer",
@@ -1105,7 +1106,8 @@
         "help": "om, versjon, oppdateringer, endringslogg, hva er nytt, dokumentasjon, støtte, hjelp, fellesskap, Discord, lisens, krasjrapport",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-hosting, Computer Use, skrivebordsapper, Cua, MCP, siteringer, kontoer, tilkoblinger",
         "shortcuts": "tastebindinger, hurtigtaster, taster, tastatur, snarveier",
-        "research": "forskning oppgaver budsjett varsler hold våken eksperimenter kjøringer"
+        "research": "forskning oppgaver budsjett varsler hold våken eksperimenter kjøringer",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Søk i innstillingene",
       "results_one": "{{count}} seksjon passer",
@@ -1674,5 +1676,9 @@
   "stuckWindow": {
     "reloaded": "Oleafly lastet inn dette vinduet på nytt fordi det ikke svarte på 30 sekunder. Endringer du gjorde rett før, er kanskje ikke lagret.",
     "reloadedAgain": "Oleafly lastet inn dette vinduet på nytt igjen fordi det sluttet å svare. Prosjektet ditt ble ikke åpnet igjen, i tilfelle noe i det var årsaken."
+  },
+  "zoomIndicator": {
+    "label": "Zoom",
+    "reset": "Tilbakestill"
   }
 }

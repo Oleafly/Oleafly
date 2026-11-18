@@ -8,6 +8,8 @@ import enCommon from "@/i18n/locales/en/common.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
 import type { CollabCommentNotSent } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
+import { useComments } from "../comments/comments-store";
+import { commentsStatus } from "../tests/comment-fixtures";
 import { useCollabLiveStore } from "./live-store";
 
 const toasts = vi.hoisted(() => ({ toast: Object.assign(vi.fn(), { error: vi.fn(), success: vi.fn(), info: vi.fn() }) }));
@@ -20,9 +22,42 @@ import { CollabBanners } from "./SyncPauseBanner";
 const copy = enCollab.comments.notSent;
 
 const written: CollabCommentNotSent[] = [
-  { fileId: "f1", path: "chapters/intro.tex", threadId: "t1", quote: "quick brown", body: "Cite the survey here." },
-  { fileId: "f1", path: "chapters/intro.tex", threadId: "t1", quote: "quick brown", body: "And the 2019 follow-up." },
-  { fileId: "f2", path: null, threadId: "t2", quote: "", body: "On a file that is gone." },
+  {
+    fileId: "f1",
+    path: "chapters/intro.tex",
+    threadId: "t1",
+    messageId: "m1",
+    at: 1,
+    newThread: true,
+    edit: false,
+    editedAt: null,
+    quote: "quick brown",
+    body: "Cite the survey here.",
+  },
+  {
+    fileId: "f1",
+    path: "chapters/intro.tex",
+    threadId: "t1",
+    messageId: "m2",
+    at: 2,
+    newThread: false,
+    edit: false,
+    editedAt: null,
+    quote: "quick brown",
+    body: "And the 2019 follow-up.",
+  },
+  {
+    fileId: "f2",
+    path: null,
+    threadId: "t2",
+    messageId: "m3",
+    at: 3,
+    newThread: true,
+    edit: false,
+    editedAt: null,
+    quote: "",
+    body: "On a file that is gone.",
+  },
 ];
 
 beforeAll(async () => {
@@ -31,7 +66,7 @@ beforeAll(async () => {
 
 beforeEach(() => {
   useFilesStore.setState({ projectId: "paper" });
-  useCollabLiveStore.setState({ projectId: "paper", commentsNotSent: null });
+  useCollabLiveStore.setState({ projectId: "paper", commentsNotSent: null, notSentBannerHidden: false });
 });
 
 afterEach(() => {
@@ -102,7 +137,11 @@ describe("CommentsNotSentBanner", () => {
   });
 
   it("quotes every line of a quote that spans lines", () => {
-    expect(notSentText([{ fileId: "f", path: "a.tex", threadId: "t", quote: "one\ntwo", body: "note" }])).toBe(
+    expect(
+      notSentText([
+        { fileId: "f", path: "a.tex", threadId: "t", messageId: "m", at: 1, newThread: true, edit: false, editedAt: null, quote: "one\ntwo", body: "note" },
+      ]),
+    ).toBe(
       "a.tex\n> one\n> two\nnote",
     );
   });
@@ -115,13 +154,25 @@ describe("CommentsNotSentBanner", () => {
     expect(screen.queryByRole("button", { name: copy.copy })).toBeNull();
   });
 
-  it("goes away for good when closed", async () => {
+  it("names the server when comments are off server-wide", () => {
+    useComments.setState({ status: { ...commentsStatus(), serverAllowed: false } });
+    useCollabLiveStore.setState({ commentsNotSent: written });
+    const view = render(<CommentsNotSentBanner />);
+    expect(screen.getByRole("status")).toHaveTextContent(copy.writtenServer);
+    view.unmount();
+    useCollabLiveStore.setState({ commentsNotSent: [] });
+    render(<CommentsNotSentBanner />);
+    expect(screen.getByRole("status")).toHaveTextContent(copy.changedServer);
+    useComments.setState({ status: null });
+  });
+
+  it("goes away when closed, while the comments stay listed in place", async () => {
     useCollabLiveStore.setState({ commentsNotSent: written });
     const user = userEvent.setup();
     render(<CommentsNotSentBanner />);
     await user.click(screen.getByRole("button", { name: enCommon.actions.close }));
     expect(screen.queryByRole("status")).toBeNull();
-    expect(useCollabLiveStore.getState().commentsNotSent).toBeNull();
+    expect(useCollabLiveStore.getState().commentsNotSent).toEqual(written);
   });
 
   it("belongs to the open project only", () => {

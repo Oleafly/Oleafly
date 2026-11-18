@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { SUPPORTED_LOCALES } from "@oleafly/i18n-contract";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { EMOJIBASE_LOCALES, EMOJIBASE_PATH, emojibaseLocale } from "../components/notes/emoji-locale";
+import { EMOJIBASE_LOCALES, EMOJIBASE_PATH, emojibaseLocale } from "../components/ui/emoji-locale";
 import {
   EMOJIBASE_DATA_DIR,
   emojibaseAssetFiles,

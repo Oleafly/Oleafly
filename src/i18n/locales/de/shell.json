@@ -562,7 +562,7 @@
       },
       "glossaries-index": {
         "title": "Glossar- oder Indexwerkzeug",
-        "detail": "glossaries und makeindex brauchen einen zusätzlichen Lauf von makeindex oder xindy, den die eingebaute Engine nicht ausführt."
+        "detail": "glossaries und makeindex brauchen einen zusätzlichen Lauf von makeindex, xindy oder bib2gls, den die eingebaute Engine nicht ausführt."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref ist auf den pdfTeX-Treiber eingestellt",
@@ -1088,7 +1088,8 @@
       "help": "Hilfe & Über",
       "integrations": "Integrationen",
       "shortcuts": "Tastenkürzel",
-      "research": "Forschung"
+      "research": "Forschung",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Keine passenden Einstellungen",
@@ -1105,7 +1106,8 @@
         "help": "Über, Version, Updates, Änderungsprotokoll, Was ist neu, Dokumentation, Support, Hilfe, Community, Discord, Lizenz, Absturzbericht",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-Hosting, Computer Use, Desktop-Apps, Cua, MCP, Zitationen, Zitate, Konten, Verbindungen",
         "shortcuts": "Tastenkürzel, Tastenkombinationen, Hotkeys, Tasten, Tastatur",
-        "research": "forschung aufgaben budget benachrichtigungen wach halten experimente läufe research tasks"
+        "research": "forschung aufgaben budget benachrichtigungen wach halten experimente läufe research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Einstellungen durchsuchen",
       "results_one": "{{count}} Bereich passt",
@@ -1674,5 +1676,9 @@
   "stuckWindow": {
     "reloaded": "Oleafly hat dieses Fenster neu geladen, weil es 30 Sekunden lang nicht reagiert hat. Änderungen kurz davor wurden möglicherweise nicht gespeichert.",
     "reloadedAgain": "Oleafly hat dieses Fenster erneut neu geladen, weil es wieder nicht reagiert hat. Ihr Projekt wurde nicht wieder geöffnet, falls etwas darin die Ursache ist."
+  },
+  "zoomIndicator": {
+    "label": "Zoom",
+    "reset": "Zurücksetzen"
   }
 }

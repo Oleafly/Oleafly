@@ -9,6 +9,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { applyCommentColor, COMMENT_COLOR_STORAGE_KEY } from "@/lib/comment-color";
 import {
   accentTokenDefaults,
   applyThemeCustomization,
@@ -95,6 +96,7 @@ export function applyTheme(theme: Theme): void {
   root.style.colorScheme = theme;
   applyThemeCustomization(theme);
   applyAccentColor(theme);
+  void applyCommentColor();
   const changed = appliedTheme !== theme;
   appliedTheme = theme;
   if (!changed) return;
@@ -149,7 +151,12 @@ export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
     const onStorage = (event: StorageEvent) => {
       if (event.storageArea !== window.localStorage) return;
       if (event.key === STORAGE_KEY || event.key === null) setPreference(getStoredPreference());
-      if (event.key === ACCENT_STORAGE_KEY || event.key === THEME_CUSTOMIZATION_STORAGE_KEY || event.key === null) {
+      if (
+        event.key === ACCENT_STORAGE_KEY ||
+        event.key === THEME_CUSTOMIZATION_STORAGE_KEY ||
+        event.key === COMMENT_COLOR_STORAGE_KEY ||
+        event.key === null
+      ) {
         applyTheme(resolveTheme(getStoredPreference()));
       }
     };

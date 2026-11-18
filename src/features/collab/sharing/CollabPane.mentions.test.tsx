@@ -4,6 +4,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import enCollab from "@/i18n/locales/en/collab.json" with { type: "json" };
 import { loadNamespace } from "@/i18n";
+import { useChatRail } from "@/components/collab/chat-rail";
 import { useCommentsRail } from "@/components/collab/comments-rail";
 import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
@@ -70,5 +71,17 @@ describe("mention entries in Activity", () => {
     expect(openFile).toHaveBeenCalledWith("chapters/intro.tex");
     expect(useCommentsRail.getState().reveal).toEqual({ path: "chapters/intro.tex", threadId: "t1" });
     expect(useSettingsStore.getState().railTab).toBe("comments");
+  });
+
+  it("opens the chat at the message a chat mention points to", () => {
+    useCollabActivity.setState({
+      projectId: "grant",
+      entries: [{ id: "chat-c9", count: 1, kind: "chatMentioned", at: 1, accountId: BOB_ID, name: "Bob Smith", messageId: "c9" }],
+      unread: false,
+    });
+    render(<CollabPane />);
+    fireEvent.click(screen.getByRole("button", { name: enCollab.activity.showMessage }));
+    expect(useSettingsStore.getState().railTab).toBe("chat");
+    expect(useChatRail.getState().reveal).toBe("c9");
   });
 });

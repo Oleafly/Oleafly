@@ -16,6 +16,8 @@ import {
   assertNoTauriStyleNonceTriggers,
 } from "./scripts/production-hook-audit.mjs";
 import { emojibaseAssets } from "./src/build/emojibase-assets";
+import { excalidrawAssets, excalidrawLocales } from "./src/build/excalidraw-assets";
+import { servedAssets } from "./src/build/served-assets";
 import { tailwindPropertiesFallbackPlugin } from "./src/build/tailwind-properties-fallback";
 
 // Tauri expects a fixed port; if that's not available it will attempt the next one.
@@ -123,25 +125,12 @@ export function pdfjsAssetFiles(distDir = PDFJS_DIST_DIR): Map<string, string> {
   return files;
 }
 
-export const pdfjsAssets = (distDir = PDFJS_DIST_DIR): Plugin => ({
-  name: "pdfjs-assets",
-  configureServer(server) {
-    const base = server.config.base;
-    const files = pdfjsAssetFiles(distDir);
-    server.middlewares.use((request, response, next) => {
-      const url = request.url?.split("?")[0] ?? "";
-      const source = url.startsWith(base) ? files.get(url.slice(base.length)) : undefined;
-      if (!source) return next();
-      response.setHeader("Content-Type", PDFJS_ASSET_TYPES[path.extname(source)] ?? "application/octet-stream");
-      response.end(readFileSync(source));
-    });
-  },
-  generateBundle() {
-    for (const [fileName, source] of pdfjsAssetFiles(distDir)) {
-      this.emitFile({ type: "asset", fileName, source: readFileSync(source) });
-    }
-  },
-});
+export const pdfjsAssets = (distDir = PDFJS_DIST_DIR): Plugin =>
+  servedAssets({
+    name: "pdfjs-assets",
+    files: () => new Map([...pdfjsAssetFiles(distDir)].map(([fileName, source]) => [fileName, () => readFileSync(source)])),
+    contentType: (fileName) => PDFJS_ASSET_TYPES[path.extname(fileName)] ?? "application/octet-stream",
+  });
 
 export const rejectProductionDevHooks = (): Plugin => ({
   name: "reject-production-dev-hooks",
@@ -191,6 +180,8 @@ export default defineConfig(async () => ({
     staticE2eClient(),
     pdfjsAssets(),
     emojibaseAssets(),
+    excalidrawAssets(),
+    excalidrawLocales(),
   ],
   optimizeDeps: {
     exclude: ["harper.js"],
@@ -271,6 +262,7 @@ export default defineConfig(async () => ({
       "@oleafly/backend-port": path.resolve(__dirname, "./packages/backend-port/src"),
       "@oleafly/compile-port/testing": path.resolve(__dirname, "./packages/compile-port/src/testing.ts"),
       "@oleafly/compile-port": path.resolve(__dirname, "./packages/compile-port/src"),
+      "@oleafly/deck": path.resolve(__dirname, "./packages/deck/src"),
       "@oleafly/diagram": path.resolve(__dirname, "./packages/diagram/src"),
       "@oleafly/editor": path.resolve(__dirname, "./packages/editor/src"),
       "@oleafly/ai-tools": path.resolve(__dirname, "./packages/ai-tools/src"),

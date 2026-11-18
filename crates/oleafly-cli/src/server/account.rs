@@ -750,6 +750,7 @@ mod pin_tests {
                 suggestions: false,
                 chat: false,
                 web: false,
+                reactions: false,
             },
             limits: Limits {
                 max_project_mb: 1,

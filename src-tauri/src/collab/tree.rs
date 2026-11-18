@@ -121,7 +121,7 @@ pub(super) fn sign(
                 .map(|account| account.display_name.clone())
         })
         .unwrap_or_default();
-    live.doc_mut().set_author(&account.to_string(), &name);
+    live.sign(account, &name);
 }
 
 pub(super) fn keep_beside(layout: &mut Layout, beside: Vec<(String, String, String)>) {

@@ -47,6 +47,11 @@ async fn a_comment_written_while_comments_are_off_is_dropped_and_every_edit_arou
         LiveEvent::CommentsNotSent(vec![crate::comments::UnsentComment {
             file_id: main.clone(),
             thread_id: thread.id,
+            message_id: thread.messages[0].id,
+            at: 1,
+            edited_at: None,
+            new_thread: true,
+            edit: false,
             quote: "abc".to_owned(),
             body: "written while comments were off".to_owned(),
         }])

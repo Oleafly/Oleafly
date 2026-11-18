@@ -116,6 +116,7 @@
     "superscript": "Hævet skrift",
     "subscript": "Sænket skrift",
     "inlineCode": "Kode i linjen",
+    "clearFormatting": "Ryd formatering",
     "insertLink": "Indsæt link",
     "insertCrossReference": "Indsæt krydsreference",
     "insertFootnote": "Indsæt fodnote",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Gå til PDF",
     "linkUrl": "URL til linket",
     "removeLink": "Fjern linket",
+    "alignment": "Justering",
+    "align": {
+      "left": "Venstrejuster",
+      "center": "Centrer",
+      "right": "Højrejuster",
+      "justify": "Lige margener"
+    },
+    "emoji": "Emoji",
+    "textColor": "Tekstfarve",
+    "removeTextColor": "Fjern farve",
+    "textColors": {
+      "gray": "Grå",
+      "red": "Rød",
+      "orange": "Orange",
+      "green": "Grøn",
+      "teal": "Blågrøn",
+      "blue": "Blå",
+      "purple": "Lilla"
+    },
     "imageFile": "Billedfil",
     "apply": "Anvend",
     "linkPlaceholder": "https://",
@@ -159,7 +179,8 @@
     "imageToTypst": "Billede til Typst",
     "imageToTypstTooltip": "Billede til Typst (transskriber med AI)",
     "typstPackages": "Typst-pakker",
-    "latexPackages": "LaTeX-pakker"
+    "latexPackages": "LaTeX-pakker",
+    "preview": "Forhåndsvisning"
   },
   "contextMenu": {
     "engineUnavailable": "Handlinger fra dokumentmotoren er ikke tilgængelige",
@@ -209,6 +230,8 @@
     "pdfLoadFailed": "Kunne ikke indlæse PDF'en: {{detail}}",
     "imageLoadFailed": "Kunne ikke indlæse billedet: {{detail}}",
     "imageUnreadable": "Filen kan ikke vises som billede. Den kan være beskadiget, eller den er måske ikke et billede.",
+    "imageFit": "Tilpas til vinduet",
+    "htmlPreviewFailed": "Kunne ikke vise siden: {{detail}}",
     "binaryFile": "Binær fil. Der er ingen forhåndsvisning.",
     "managedFileReadOnly": "{{file}} styres af Oleafly og er skrivebeskyttet her. Projektindstillinger ændres i Oleafly selv, ikke ved at redigere denne fil.",
     "noFileOpen": "Ingen fil er åben.",
@@ -1675,5 +1698,25 @@
       "duplicateArg": "Dubleret argument",
       "unknownKind": "Ukendt felttype"
     }
+  },
+  "emoji": {
+    "search": "Søg efter emoji",
+    "skinTone": "Hudfarve",
+    "loading": "Indlæser emoji",
+    "empty": "Ingen emoji fundet"
+  },
+  "bibList": {
+    "count_one": "{{count}} reference",
+    "count_other": "{{count}} referencer",
+    "empty": "Filen har ingen referencer endnu.",
+    "etAl": "{{author}} et al.",
+    "noMatch": "Ingen referencer matcher din søgning.",
+    "search": "Søg i referencer"
+  },
+  "deck": {
+    "noSlides": "Præsentationen har ingen slides endnu. Eksportér en liste af slide-komponenter som standardeksport."
+  },
+  "board": {
+    "unreadable": "Denne tavle kunne ikke læses. Filen kan være beskadiget, eller den er ikke en Excalidraw-tegning."
   }
 }

@@ -1,284 +1,174 @@
 import type { CollabCommentMessage, CollabCommentThread } from "@oleafly/backend-port";
-import { Check, CheckCircle2, MoreHorizontal, Pencil, Quote, RotateCcw, Trash2, Undo2, X } from "lucide-react";
-import { type CSSProperties, useMemo, useRef, useState } from "react";
+import { Check, Undo2, WifiOff, X } from "lucide-react";
+import { type CSSProperties, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { type CommentArrival, CommentScrollArea } from "@/components/ui/comments/comment-arrivals";
+import { CommentComposer } from "@/components/ui/comments/comment-composer";
+import { CommentKeys, CommentsEmpty, CommentsFootnote, withKeys } from "@/components/ui/comments/comment-empty";
+import { type CommentFilter, CommentFilterMenu, keepsThread } from "@/components/ui/comments/comment-filter";
+import { useCommentAction, useCommentKit } from "@/components/ui/comments/comment-kit";
+import { CommentQuote } from "@/components/ui/comments/comment-quote";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { EmptyState } from "@/components/ui/empty";
-import { Tooltip } from "@/components/ui/tooltip";
+  CommentByline,
+  type CommentEntry,
+  commentCardClass,
+  CommentThread,
+  type CommentThreadActions,
+  type CommentThreadModel,
+} from "@/components/ui/comments/comment-thread";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { WorkspaceBanner } from "@/components/ui/workspace-banner";
 import { peerHue } from "@/features/collab/live/peer-hue";
 import { cn } from "@/lib/utils";
+import type { OutboxItem } from "../outbox";
 import type { CollabSuggestion } from "../protocol";
 import { abilitiesFor, canWithdraw } from "../roles";
 import { useWeb } from "../store";
-import { Composer } from "./Composer";
+import { WebCommentKit } from "./comment-kit";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { useActions } from "./context";
-import { type ErrorKey, failureKey } from "./errors";
-import { dateTime, isoTime, relativeTime, useNow } from "./format";
+import { errorKey } from "./errors";
 import { PersonAvatar, usePersonName } from "./people";
 
-const COMMENT_LIMIT = 10_000;
+const COMMENT_LIMIT = 20_000;
 const NO_THREADS: readonly CollabCommentThread[] = [];
 const NO_SUGGESTIONS: readonly CollabSuggestion[] = [];
+const NO_OUTBOX: readonly OutboxItem[] = [];
 
-function useRun(): [ErrorKey | null, (action: () => Promise<void>) => void, boolean] {
-  const [error, setError] = useState<ErrorKey | null>(null);
-  const [busy, setBusy] = useState(false);
-  const running = useRef(false);
-  const run = (action: () => Promise<void>) => {
-    if (running.current) return;
-    running.current = true;
-    setBusy(true);
-    setError(null);
-    action()
-      .catch((failure: unknown) => setError(failureKey(failure)))
-      .finally(() => {
-        running.current = false;
-        setBusy(false);
-      });
-  };
-  return [error, run, busy];
-}
-
-function InlineError({ error }: Readonly<{ error: ErrorKey | null }>) {
-  const { t } = useTranslation(["web"]);
-  if (!error) return null;
-  return (
-    <p role="alert" className="text-[0.6875rem] text-destructive">
-      {t(($) => $.web.errors[error])}
-    </p>
-  );
-}
-
-function Stamp({ at, now }: Readonly<{ at: number; now: number }>) {
-  if (!at) return null;
-  return (
-    <Tooltip label={dateTime(at)} className="shrink-0">
-      <time dateTime={isoTime(at)} className="text-[0.6875rem] text-muted-foreground">
-        {relativeTime(at, now)}
-      </time>
-    </Tooltip>
-  );
-}
-
-function QuoteBlock({ quote, onJump, title }: Readonly<{ quote: string; onJump?: () => void; title: string }>) {
-  const text = <span className="line-clamp-3 block whitespace-pre-wrap break-words">{quote}</span>;
-  return (
-    <div className="flex min-w-0 flex-1 gap-1.5 rounded-md bg-amber-500/10 px-2 py-1.5 text-xs text-foreground/85 dark:bg-amber-400/10">
-      <Quote aria-hidden className="mt-0.5 size-3 shrink-0 text-amber-600 dark:text-amber-400" />
-      <div className="min-w-0 flex-1">
-        {onJump ? (
-          <button
-            type="button"
-            title={title}
-            onClick={onJump}
-            className="block w-full rounded-sm text-left transition-colors hover:text-foreground focus-visible:bg-amber-500/15"
-          >
-            {text}
-          </button>
-        ) : (
-          text
-        )}
-      </div>
-    </div>
-  );
-}
-
-function MessageRow({
-  thread,
-  message,
-  canWrite,
-  now,
-}: Readonly<{ thread: CollabCommentThread; message: CollabCommentMessage; canWrite: boolean; now: number }>) {
+export function useOutboxEntry(): (item: OutboxItem) => CommentEntry {
   const { t } = useTranslation(["web"]);
   const actions = useActions();
-  const nameOf = usePersonName();
-  const self = useWeb((state) => state.me?.accountId ?? null);
-  const [editing, setEditing] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [error, run] = useRun();
-  const name = nameOf(message.author, message.verified);
-  const own = message.verified && message.author === self;
+  const self = useWeb((state) => state.me?.accountId ?? "");
+  const imageUrl = useWeb((state) => state.people[self]?.avatarUrl ?? null);
+  return (item) => ({
+    id: item.id,
+    author: { id: self, name: t(($) => $.web.people.you), imageUrl, verified: true },
+    at: item.at,
+    editedAt: null,
+    deleted: false,
+    body: item.body,
+    mentions: [],
+    delivery:
+      item.state === "waiting"
+        ? { state: "waiting" }
+        : {
+            state: "failed",
+            reason: t(($) => $.web.errors[errorKey(item.reason ?? "generic")]),
+            retry: item.retry ? () => actions.retryOutbox(item.id) : undefined,
+            discard: () => actions.discardOutbox(item.id),
+          },
+  });
+}
+
+export function OutboxThread({ item }: Readonly<{ item: OutboxItem }>) {
+  const { t } = useTranslation(["web"]);
+  const entryOf = useOutboxEntry();
   return (
-    <li className="flex gap-2">
-      <PersonAvatar accountId={message.author} name={name} verified={message.verified} className="mt-0.5" />
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <div className="flex min-w-0 items-center gap-1.5 text-xs">
-          <span className={cn("truncate font-medium", !message.verified && "italic text-muted-foreground")}>{name}</span>
-          <Stamp at={message.at} now={now} />
-          {message.editedAt !== null && !message.deleted ? (
-            <span className="text-[0.6875rem] text-muted-foreground">{t(($) => $.web.comments.edited)}</span>
-          ) : null}
-          {own && canWrite && !message.deleted && !editing ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t(($) => $.web.comments.messageActions)}
-                  className="ml-auto size-5 shrink-0 text-muted-foreground hover:text-foreground"
-                >
-                  <MoreHorizontal aria-hidden className="size-3.5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => setEditing(true)}>
-                  <Pencil aria-hidden className="size-4" />
-                  {t(($) => $.web.comments.edit)}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setConfirming(true)}>
-                  <Trash2 aria-hidden className="size-4" />
-                  {t(($) => $.web.comments.delete)}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-        </div>
-        {editing ? (
-          <Composer
-            label={t(($) => $.web.comments.editLabel)}
-            submitLabel={t(($) => $.web.comments.save)}
-            initial={message.body}
-            autoFocus
-            maxLength={COMMENT_LIMIT}
-            onSubmit={async (body) => {
-              await actions.editComment(thread, message.id, body);
-              setEditing(false);
-            }}
-            onCancel={() => setEditing(false)}
-          />
-        ) : message.deleted ? (
-          <p className="text-xs italic text-muted-foreground">{t(($) => $.web.comments.deleted)}</p>
-        ) : (
-          <p className="select-text whitespace-pre-wrap break-words text-xs">{message.body}</p>
-        )}
-        <InlineError error={error} />
-      </div>
-      <ConfirmDialog
-        open={confirming}
-        title={t(($) => $.web.comments.deleteTitle)}
-        description={t(($) => $.web.comments.deleteDescription)}
-        confirmLabel={t(($) => $.web.comments.delete)}
-        onConfirm={() => {
-          setConfirming(false);
-          run(() => actions.deleteComment(thread, message.id));
+    <li>
+      <CommentThread
+        thread={{
+          id: item.id,
+          label: t(($) => $.web.comments.newComment),
+          quote: item.quote ?? "",
+          quoteState: "pending",
+          resolution: null,
+          messages: [entryOf(item)],
+          deletable: false,
         }}
-        onCancel={() => setConfirming(false)}
+        actions={NO_ACTIONS}
+        canWrite={false}
       />
     </li>
   );
 }
 
+const nothingToDo = () => Promise.resolve();
+const NO_ACTIONS: CommentThreadActions = {
+  reply: nothingToDo,
+  resolve: nothingToDo,
+  reopen: nothingToDo,
+  removeThread: nothingToDo,
+};
+
+function useEntryOf(): (message: CollabCommentMessage) => CommentEntry {
+  const nameOf = usePersonName();
+  const people = useWeb((state) => state.people);
+  return (message) => ({
+    id: message.id,
+    author: {
+      id: message.author,
+      name: nameOf(message.author, message.verified),
+      imageUrl: message.verified ? (people[message.author]?.avatarUrl ?? null) : null,
+      verified: message.verified,
+    },
+    at: message.at,
+    editedAt: message.editedAt,
+    deleted: message.deleted,
+    removed: message.removed === true,
+    body: message.body,
+    mentions: message.mentions,
+    reactions: message.reactions ?? [],
+  });
+}
+
 export function ThreadCard({
   thread,
   canWrite,
-  now,
   embedded = false,
-}: Readonly<{ thread: CollabCommentThread; canWrite: boolean; now: number; embedded?: boolean }>) {
+}: Readonly<{ thread: CollabCommentThread; canWrite: boolean; embedded?: boolean }>) {
   const { t } = useTranslation(["web"]);
   const actions = useActions();
   const nameOf = usePersonName();
+  const entryOf = useEntryOf();
+  const outboxEntry = useOutboxEntry();
+  const outbox = useWeb((state) => state.outbox);
+  const queued = useMemo(
+    () => outbox.filter((item) => item.kind === "reply" && item.threadId === thread.id),
+    [outbox, thread.id],
+  );
   const selected = useWeb((state) => state.selectedThreadId === thread.id);
-  const [error, run] = useRun();
-  const busy = useRef(false);
-  const toggle = (action: () => Promise<void>) => {
-    if (busy.current) return;
-    busy.current = true;
-    run(() =>
-      action().finally(() => {
-        busy.current = false;
-      }),
-    );
-  };
   const author = nameOf(thread.createdBy, thread.verified);
   const resolver = thread.resolved ? nameOf(thread.resolved.by, thread.resolved.verified) : null;
-  const content = (
-    <article
-      aria-label={t(($) => $.web.comments.thread, { name: author })}
-      aria-current={selected ? "true" : undefined}
-      className={cn(
-        "space-y-2 rounded-md border px-2 py-2 transition-colors",
-        selected ? "border-primary/30 bg-primary/5" : "border-transparent hover:bg-sidebar-accent/60",
-        thread.resolved && "opacity-80",
-        embedded && "px-0 hover:bg-transparent",
-      )}
+  const model: CommentThreadModel = {
+    id: thread.id,
+    label: t(($) => $.web.comments.thread, { name: author }),
+    quote: thread.anchor.quote,
+    quoteState: thread.anchor.range ? "anchored" : "detached",
+    resolution: resolver === null ? null : t(($) => $.web.comments.resolvedBy, { name: resolver }),
+    messages: [...thread.messages.map(entryOf), ...queued.map(outboxEntry)],
+    deletable: false,
+  };
+  const threadActions = useMemo<CommentThreadActions>(
+    () => ({
+      edit: (messageId, body) => actions.editComment(thread, messageId, body),
+      remove: (messageId) => actions.deleteComment(thread, messageId),
+      moderate: (messageId) => actions.deleteComment(thread, messageId),
+      reply: (body) => actions.replyComment(thread, body),
+      resolve: () => actions.resolveThread(thread),
+      reopen: () => actions.reopenThread(thread),
+      react: (messageId, emoji, on) => actions.reactComment(thread, messageId, emoji, on),
+      removeThread: async () => undefined,
+    }),
+    [actions, thread],
+  );
+  const card = (
+    <CommentThread
+      thread={model}
+      actions={threadActions}
+      canWrite={canWrite}
+      selected={selected}
+      embedded={embedded}
+      quoteTitle={t(($) => $.web.comments.showInSource)}
+      onJump={thread.anchor.range ? () => actions.revealThread(thread) : undefined}
     >
-      <div className="flex items-start gap-1">
-        {embedded ? null : (
-          <QuoteBlock
-            quote={thread.anchor.quote}
-            title={t(($) => $.web.comments.showInSource)}
-            onJump={thread.anchor.range ? () => actions.revealThread(thread) : undefined}
-          />
-        )}
-        {canWrite ? (
-          <div className="ml-auto flex shrink-0 items-center gap-0.5">
-            {thread.resolved ? (
-              <Tooltip label={t(($) => $.web.comments.reopen)}>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t(($) => $.web.comments.reopen)}
-                  className="size-6 text-muted-foreground hover:text-foreground"
-                  onClick={() => toggle(() => actions.reopenThread(thread))}
-                >
-                  <RotateCcw aria-hidden className="size-3.5" />
-                </Button>
-              </Tooltip>
-            ) : (
-              <Tooltip label={t(($) => $.web.comments.resolve)}>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t(($) => $.web.comments.resolve)}
-                  className="size-6 text-muted-foreground hover:text-foreground"
-                  onClick={() => toggle(() => actions.resolveThread(thread))}
-                >
-                  <Check aria-hidden className="size-3.5" />
-                </Button>
-              </Tooltip>
-            )}
-          </div>
-        ) : null}
-      </div>
       {!thread.anchor.range && !embedded ? (
         <p className="text-[0.6875rem] text-muted-foreground">{t(($) => $.web.comments.anchorLost)}</p>
       ) : null}
-      {resolver ? (
-        <p className="flex items-center gap-1 text-[0.6875rem] text-muted-foreground">
-          <CheckCircle2 aria-hidden className="size-3" />
-          {t(($) => $.web.comments.resolvedBy, { name: resolver })}
-        </p>
-      ) : null}
-      <ol className="space-y-2">
-        {thread.messages.map((message) => (
-          <MessageRow key={message.id} thread={thread} message={message} canWrite={canWrite} now={now} />
-        ))}
-      </ol>
-      <InlineError error={error} />
-      {canWrite && !thread.resolved ? (
-        <Composer
-          compact
-          label={t(($) => $.web.comments.replyLabel)}
-          placeholder={t(($) => $.web.comments.replyPlaceholder)}
-          submitLabel={t(($) => $.web.comments.reply)}
-          maxLength={COMMENT_LIMIT}
-          onSubmit={(body) => actions.replyComment(thread, body)}
-        />
-      ) : null}
-    </article>
+    </CommentThread>
   );
-  return embedded ? content : <li>{content}</li>;
+  return embedded ? card : <li>{card}</li>;
 }
 
 function SuggestionText({ suggestion, self }: Readonly<{ suggestion: CollabSuggestion; self: string | null }>) {
@@ -302,8 +192,7 @@ function SuggestionText({ suggestion, self }: Readonly<{ suggestion: CollabSugge
 export function SuggestionCard({
   suggestion,
   thread,
-  now,
-}: Readonly<{ suggestion: CollabSuggestion; thread: CollabCommentThread | null; now: number }>) {
+}: Readonly<{ suggestion: CollabSuggestion; thread: CollabCommentThread | null }>) {
   const { t } = useTranslation(["web"]);
   const actions = useActions();
   const nameOf = usePersonName();
@@ -313,25 +202,23 @@ export function SuggestionCard({
   const selected = useWeb((state) => state.selectedSuggestionId === suggestion.id);
   const abilities = abilitiesFor(role, features);
   const withdraw = !abilities.resolve && suggestion.verified && canWithdraw(role, suggestion.author, self);
-  const [error, run, busy] = useRun();
+  const { error, run, busy } = useCommentAction(useCommentKit().describeError);
   const name = nameOf(suggestion.author, suggestion.verified);
   return (
     <li>
       <article
         aria-label={t(($) => $.web.suggestions.card, { name })}
         aria-current={selected ? "true" : undefined}
-        className={cn(
-          "space-y-2 rounded-md border px-2 py-2 transition-colors",
-          selected ? "border-primary/30 bg-primary/5" : "border-transparent hover:bg-sidebar-accent/60",
-        )}
+        className={cn("space-y-3", commentCardClass(selected))}
       >
         <div className="flex min-w-0 items-center gap-1.5 text-xs">
           <PersonAvatar accountId={suggestion.author} name={name} verified={suggestion.verified} />
-          <span className={cn("truncate font-medium", !suggestion.verified && "italic text-muted-foreground")}>
-            {name}
-          </span>
-          <Stamp at={suggestion.createdAt} now={now} />
-          <Badge variant={suggestion.kind === "insert" ? "success" : "destructive"} size="sm" className="ml-auto">
+          <CommentByline
+            name={name}
+            nameClassName={cn("font-medium", !suggestion.verified && "italic text-muted-foreground")}
+            at={suggestion.createdAt}
+          />
+          <Badge variant={suggestion.kind === "insert" ? "success" : "destructive"} size="sm" className="ml-auto shrink-0">
             {suggestion.kind === "insert" ? t(($) => $.web.suggestions.inserted) : t(($) => $.web.suggestions.deleted)}
           </Badge>
         </div>
@@ -382,8 +269,8 @@ export function SuggestionCard({
             )}
           </div>
         ) : null}
-        <InlineError error={error} />
-        {thread ? <ThreadCard thread={thread} canWrite={abilities.comment} now={now} embedded /> : null}
+        {error ? <InlineAlert>{error}</InlineAlert> : null}
+        {thread ? <ThreadCard thread={thread} canWrite={abilities.comment} embedded /> : null}
       </article>
     </li>
   );
@@ -394,29 +281,28 @@ function FileGroup({
   path,
   threads,
   suggestions,
-  now,
+  filter,
+  queued,
 }: Readonly<{
   fileId: string;
   path: string;
   threads: readonly CollabCommentThread[];
   suggestions: readonly CollabSuggestion[];
-  now: number;
+  filter: CommentFilter;
+  queued: readonly OutboxItem[];
 }>) {
   const { t } = useTranslation(["web"]);
   const actions = useActions();
   const role = useWeb((state) => state.role);
   const features = useWeb((state) => state.features);
   const abilities = abilitiesFor(role, features);
-  const [showResolved, setShowResolved] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [error, run, busy] = useRun();
+  const { error, run, busy } = useCommentAction(useCommentKit().describeError);
   const linked = new Set(suggestions.map((suggestion) => suggestion.threadId).filter(Boolean));
   const byId = new Map(threads.map((thread) => [thread.id, thread]));
   const loose = threads.filter((thread) => !linked.has(thread.id));
-  const open = loose.filter((thread) => !thread.resolved);
-  const resolved = loose.filter((thread) => thread.resolved);
   const sortedSuggestions = [...suggestions].sort((a, b) => a.from - b.from || a.createdAt - b.createdAt);
-  const sortedThreads = [...open, ...(showResolved ? resolved : [])].sort(
+  const sortedThreads = loose.filter((thread) => keepsThread(filter, thread.resolved !== null)).sort(
     (a, b) => (a.anchor.range?.from ?? Number.MAX_SAFE_INTEGER) - (b.anchor.range?.from ?? Number.MAX_SAFE_INTEGER),
   );
   return (
@@ -441,7 +327,7 @@ function FileGroup({
           </div>
         ) : null}
       </header>
-      <InlineError error={error} />
+      {error ? <InlineAlert>{error}</InlineAlert> : null}
       <ConfirmDialog
         open={confirming}
         title={t(($) => $.web.suggestions.rejectAllConfirm.title, { file: path.split("/").at(-1) ?? path })}
@@ -453,32 +339,21 @@ function FileGroup({
         }}
         onCancel={() => setConfirming(false)}
       />
-      <ul className="space-y-1">
+      <ul className="space-y-3 px-2">
         {sortedSuggestions.map((suggestion) => (
           <SuggestionCard
             key={suggestion.id}
             suggestion={suggestion}
             thread={suggestion.threadId ? (byId.get(suggestion.threadId) ?? null) : null}
-            now={now}
           />
         ))}
+        {queued.map((item) => (
+          <OutboxThread key={item.id} item={item} />
+        ))}
         {sortedThreads.map((thread) => (
-          <ThreadCard key={thread.id} thread={thread} canWrite={abilities.comment} now={now} />
+          <ThreadCard key={thread.id} thread={thread} canWrite={abilities.comment} />
         ))}
       </ul>
-      {resolved.length > 0 ? (
-        <Button
-          type="button"
-          size="xs"
-          variant="link"
-          className="px-2 text-muted-foreground"
-          onClick={() => setShowResolved((value) => !value)}
-        >
-          {showResolved
-            ? t(($) => $.web.comments.hideResolved)
-            : t(($) => $.web.comments.resolvedCount, { count: resolved.length })}
-        </Button>
-      ) : null}
     </section>
   );
 }
@@ -486,19 +361,27 @@ function FileGroup({
 function DraftComposer() {
   const { t } = useTranslation(["web"]);
   const actions = useActions();
+  const kit = useCommentKit();
   const draft = useWeb((state) => state.draft);
   if (!draft) return null;
   return (
     <div className="space-y-2 border-b px-2 py-2">
       <p className="text-xs font-medium">{t(($) => $.web.comments.newComment)}</p>
-      <QuoteBlock quote={draft.quote} title={t(($) => $.web.comments.showInSource)} />
-      <Composer
+      <CommentQuote quote={draft.quote} labels={kit.labels} />
+      <CommentComposer
         key={`${draft.fileId}:${draft.from}:${draft.to}`}
         label={t(($) => $.web.comments.newComment)}
         placeholder={t(($) => $.web.comments.placeholder)}
-        submitLabel={t(($) => $.web.comments.submit)}
+        submitLabel={kit.labels.send}
+        labels={kit.labels}
+        describeError={kit.describeError}
+        canRetry={kit.canRetry}
+        mentionButton
         autoFocus
-        maxLength={COMMENT_LIMIT}
+        maxLength={kit.maxLength}
+        members={kit.members}
+        self={kit.self}
+        hue={kit.hue}
         onSubmit={(body) => actions.createComment(body)}
         onCancel={() => actions.cancelComment()}
       />
@@ -506,9 +389,39 @@ function DraftComposer() {
   );
 }
 
+function filterCounts(
+  threads: Readonly<Record<string, readonly CollabCommentThread[]>>,
+  suggestions: Readonly<Record<string, readonly CollabSuggestion[]>>,
+): Record<CommentFilter, number> {
+  const linked = new Set(Object.values(suggestions).flatMap((list) => list.map((suggestion) => suggestion.threadId)));
+  const all = Object.values(threads).flat().filter((thread) => !linked.has(thread.id));
+  const resolved = all.filter((thread) => thread.resolved).length;
+  return { open: all.length - resolved, resolved, all: all.length };
+}
+
+function arrivalsOf(threads: Readonly<Record<string, readonly CollabCommentThread[]>>, self: string | null): CommentArrival[] {
+  return Object.values(threads).flatMap((list) =>
+    list.flatMap((thread) =>
+      thread.messages.map((message) => ({ id: message.id, mine: message.author === self, at: message.at })),
+    ),
+  );
+}
+
+function OfflineQueue() {
+  const { t } = useTranslation(["web"]);
+  const offline = useWeb((state) => state.connection === "offline" || state.connection === "connecting");
+  const waiting = useWeb((state) => state.outbox.filter((item) => item.kind !== "chat" && item.state === "waiting").length);
+  if (!offline || waiting === 0) return null;
+  return (
+    <WorkspaceBanner tone="neutral" role="status" data-testid="comments-offline-queue">
+      <WifiOff aria-hidden className="size-3.5 shrink-0" />
+      <p className="min-w-0 flex-1">{t(($) => $.web.comments.offlineQueued, { count: waiting })}</p>
+    </WorkspaceBanner>
+  );
+}
+
 export function CommentsPane() {
   const { t } = useTranslation(["web"]);
-  const now = useNow();
   const threads = useWeb((state) => state.threads);
   const suggestions = useWeb((state) => state.suggestions);
   const files = useWeb((state) => state.files);
@@ -516,39 +429,99 @@ export function CommentsPane() {
   const role = useWeb((state) => state.role);
   const features = useWeb((state) => state.features);
   const draft = useWeb((state) => state.draft);
+  const self = useWeb((state) => state.me?.accountId ?? null);
+  const outbox = useWeb((state) => state.outbox);
+  const [filter, setFilter] = useState<CommentFilter>("open");
   const canComment = abilitiesFor(role, features).comment;
+  const created = useMemo(() => outbox.filter((item) => item.kind === "create"), [outbox]);
   const groups = useMemo(() => {
     const paths = new Map(files.map((file) => [file.fileId, file.path]));
-    const ids = new Set([...Object.keys(threads), ...Object.keys(suggestions)]);
+    const ids = new Set([
+      ...Object.keys(threads),
+      ...Object.keys(suggestions),
+      ...created.flatMap((item) => (item.fileId ? [item.fileId] : [])),
+    ]);
     return [...ids]
       .map((fileId) => ({
         fileId,
         path: paths.get(fileId) ?? fileId,
         threads: threads[fileId] ?? NO_THREADS,
         suggestions: suggestions[fileId] ?? NO_SUGGESTIONS,
+        queued: created.filter((item) => item.fileId === fileId),
       }))
-      .filter((group) => paths.has(group.fileId) && (group.threads.length > 0 || group.suggestions.length > 0))
+      .filter(
+        (group) =>
+          paths.has(group.fileId) &&
+          (group.threads.some((thread) => keepsThread(filter, thread.resolved !== null)) ||
+            group.suggestions.length > 0 ||
+            group.queued.length > 0),
+      )
+      .map((group) => ({ ...group, queued: group.queued.length > 0 ? group.queued : NO_OUTBOX }))
       .sort((a, b) =>
         a.fileId === activeFileId ? -1 : b.fileId === activeFileId ? 1 : a.path.localeCompare(b.path),
       );
-  }, [threads, suggestions, files, activeFileId]);
+  }, [threads, suggestions, files, activeFileId, created, filter]);
+  const counts = useMemo(() => filterCounts(threads, suggestions), [threads, suggestions]);
+  const arrivals = useMemo(() => arrivalsOf(threads, self), [threads, self]);
+  const labels = {
+    open: t(($) => $.web.comments.filterOpen),
+    resolved: t(($) => $.web.comments.filterResolved),
+    all: t(($) => $.web.comments.filterAll),
+  };
+  const viewer = role === "viewer" && features.comments;
+  const projectId = useWeb((state) => state.projectId);
+  const quiet = filter === "resolved" ? counts.all > 0 : filter === "open" && counts.resolved > 0;
+  const emptyTitle = quiet
+    ? filter === "open"
+      ? t(($) => $.web.comments.allResolved)
+      : t(($) => $.web.comments.noResolved)
+    : t(($) => $.web.comments.emptyTitle);
   return (
-    <div data-comments-pane className="flex min-h-0 flex-1 flex-col">
-      <DraftComposer />
-      {groups.length === 0 && !draft ? (
-        <EmptyState
-          size="compact"
-          className="flex-1 px-6 py-10"
-          title={t(($) => $.web.comments.emptyTitle)}
-          description={canComment ? t(($) => $.web.comments.emptyCanComment) : t(($) => $.web.comments.emptyReadOnly)}
-        />
-      ) : (
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-1 py-2">
-          {groups.map((group) => (
-            <FileGroup key={group.fileId} {...group} now={now} />
-          ))}
+    <WebCommentKit maxLength={COMMENT_LIMIT}>
+      <div data-comments-pane className="flex min-h-0 flex-1 flex-col">
+        <div className="flex items-center justify-end px-2 pt-1">
+          <CommentFilterMenu
+            value={filter}
+            counts={counts}
+            labels={labels}
+            ariaLabel={(value) => t(($) => $.web.comments.filter, { value })}
+            onChange={setFilter}
+          />
         </div>
-      )}
-    </div>
+        <OfflineQueue />
+        <DraftComposer />
+        <CommentScrollArea
+          items={arrivals}
+          ready
+          scope={projectId ?? ""}
+          className="flex min-h-full flex-col space-y-3 px-1 py-3"
+          label={(count) => t(($) => $.web.comments.newComments, { count })}
+        >
+          {groups.length === 0 && !draft ? (
+            <CommentsEmpty
+              className="flex-1 px-6 py-10"
+              title={emptyTitle}
+              description={
+                quiet
+                  ? undefined
+                  : canComment
+                    ? withKeys(t(($) => $.web.comments.emptyHint), <CommentKeys />)
+                    : t(($) => $.web.comments.emptyReadOnly)
+              }
+            />
+          ) : (
+            groups.map((group) => <FileGroup key={group.fileId} {...group} filter={filter} />)
+          )}
+        </CommentScrollArea>
+        {viewer ? <CommentsFootnote>{t(($) => $.web.comments.readOnlyNote)}</CommentsFootnote> : null}
+      </div>
+    </WebCommentKit>
   );
+}
+
+export function openThreadCount(
+  threads: Readonly<Record<string, readonly CollabCommentThread[]>>,
+  suggestions: Readonly<Record<string, readonly CollabSuggestion[]>>,
+): number {
+  return filterCounts(threads, suggestions).open;
 }

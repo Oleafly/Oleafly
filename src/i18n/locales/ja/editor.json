@@ -116,6 +116,7 @@
     "superscript": "上付き",
     "subscript": "下付き",
     "inlineCode": "インラインコード",
+    "clearFormatting": "書式をクリア",
     "insertLink": "リンクを挿入",
     "insertCrossReference": "相互参照を挿入",
     "insertFootnote": "脚注を挿入",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "PDF へ移動",
     "linkUrl": "リンクの URL",
     "removeLink": "リンクを削除",
+    "alignment": "配置",
+    "align": {
+      "left": "左揃え",
+      "center": "中央揃え",
+      "right": "右揃え",
+      "justify": "両端揃え"
+    },
+    "emoji": "絵文字",
+    "textColor": "文字の色",
+    "removeTextColor": "色を解除",
+    "textColors": {
+      "gray": "グレー",
+      "red": "赤",
+      "orange": "オレンジ",
+      "green": "緑",
+      "teal": "ティール",
+      "blue": "青",
+      "purple": "紫"
+    },
     "imageFile": "画像ファイル",
     "apply": "適用",
     "linkPlaceholder": "https://",
@@ -159,7 +179,8 @@
     "imageToTypst": "画像から Typst へ",
     "imageToTypstTooltip": "画像から Typst へ（AI で文字起こし）",
     "typstPackages": "Typst パッケージ",
-    "latexPackages": "LaTeX パッケージ"
+    "latexPackages": "LaTeX パッケージ",
+    "preview": "プレビュー"
   },
   "contextMenu": {
     "engineUnavailable": "ドキュメントエンジンの操作を利用できません",
@@ -209,6 +230,8 @@
     "pdfLoadFailed": "PDF を読み込めませんでした: {{detail}}",
     "imageLoadFailed": "画像を読み込めませんでした: {{detail}}",
     "imageUnreadable": "このファイルは画像として表示できません。破損しているか、画像ではない可能性があります。",
+    "imageFit": "ウィンドウに合わせる",
+    "htmlPreviewFailed": "ページをプレビューできませんでした: {{detail}}",
     "binaryFile": "バイナリファイルです。プレビューはできません。",
     "managedFileReadOnly": "{{file}} は Oleafly が管理しているため、ここでは読み取り専用です。プロジェクトの設定は、このファイルを編集するのではなく Oleafly 上で変更してください。",
     "noFileOpen": "ファイルが開かれていません。",
@@ -1654,5 +1677,24 @@
       "duplicateArg": "重複した引数",
       "unknownKind": "不明なフィールドの種類"
     }
+  },
+  "emoji": {
+    "search": "絵文字を検索",
+    "skinTone": "肌の色",
+    "loading": "絵文字を読み込んでいます",
+    "empty": "絵文字が見つかりません"
+  },
+  "bibList": {
+    "count_other": "{{count}} 件の文献",
+    "empty": "このファイルにはまだ参考文献がありません。",
+    "etAl": "{{author}} ほか",
+    "noMatch": "検索に一致する参考文献はありません。",
+    "search": "参考文献を検索"
+  },
+  "deck": {
+    "noSlides": "このスライドにはまだページがありません。スライドコンポーネントの配列をデフォルトエクスポートしてください。"
+  },
+  "board": {
+    "unreadable": "このホワイトボードを読み込めませんでした。ファイルが壊れているか、Excalidraw の図ではない可能性があります。"
   }
 }

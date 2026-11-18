@@ -563,7 +563,7 @@
       },
       "glossaries-index": {
         "title": "Strumento per glossari o indici",
-        "detail": "glossaries e makeindex richiedono un'esecuzione aggiuntiva di makeindex o xindy, che il motore integrato non fa."
+        "detail": "glossaries e makeindex richiedono un'esecuzione aggiuntiva di makeindex, xindy o bib2gls, che il motore integrato non fa."
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref è impostato sul driver pdfTeX",
@@ -1104,7 +1104,8 @@
       "help": "Aiuto e informazioni",
       "integrations": "Integrazioni",
       "shortcuts": "Scorciatoie da tastiera",
-      "research": "Ricerca"
+      "research": "Ricerca",
+      "logs": "Logs"
     },
     "search": {
       "empty": "Nessuna impostazione corrisponde",
@@ -1121,7 +1122,8 @@
         "help": "informazioni, versione, aggiornamenti, registro delle modifiche, novità, documentazione, assistenza, supporto, comunità, Discord, licenza, segnalazione di crash",
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hosting Git, Computer Use, app desktop, Cua, MCP, citazioni, account, connessioni",
         "shortcuts": "scorciatoie da tastiera, tasti di scelta rapida, tasti, tastiera",
-        "research": "ricerca attività budget notifiche tieni attivo esperimenti esecuzioni research tasks"
+        "research": "ricerca attività budget notifiche tieni attivo esperimenti esecuzioni research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "Cerca nelle impostazioni",
       "results_one": "{{count}} sezione corrisponde",
@@ -1709,5 +1711,9 @@
   "stuckWindow": {
     "reloaded": "Oleafly ha ricaricato questa finestra perché non rispondeva da 30 secondi. Le modifiche fatte poco prima potrebbero non essere state salvate.",
     "reloadedAgain": "Oleafly ha ricaricato di nuovo questa finestra perché ha smesso ancora di rispondere. Il tuo progetto non è stato riaperto, nel caso fosse qualcosa al suo interno a causare il problema."
+  },
+  "zoomIndicator": {
+    "label": "Zoom",
+    "reset": "Reimposta"
   }
 }

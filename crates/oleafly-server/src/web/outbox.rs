@@ -56,6 +56,7 @@ pub(crate) struct Queued {
     pub(crate) peer: u64,
     pub(crate) size: u64,
     pub(crate) change: Option<String>,
+    pub(crate) post: Option<String>,
     pub(crate) reply: Option<Reply>,
 }
 

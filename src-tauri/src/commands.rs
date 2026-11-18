@@ -178,6 +178,12 @@ pub async fn reveal_project(project_id: String, path: Option<String>) -> Result<
     .map_err(|error| format!("failed to reveal the project: {error}"))?
 }
 
+#[cfg(any(windows, test))]
+fn explorer_select_argument(path: &str) -> String {
+    let display = crate::project_availability::without_verbatim_prefix(std::path::Path::new(path));
+    format!("/select,\"{}\"", display.to_string_lossy())
+}
+
 pub(crate) fn reveal_canonical_path(canonical: &std::path::Path) -> Result<(), String> {
     let path = canonical.to_string_lossy().to_string();
     #[cfg(target_os = "macos")]
@@ -189,13 +195,11 @@ pub(crate) fn reveal_canonical_path(canonical: &std::path::Path) -> Result<(), S
     }
     #[cfg(target_os = "windows")]
     {
-        let display = path
-            .strip_prefix(r"\\?\UNC\")
-            .map(|rest| format!(r"\\{rest}"))
-            .or_else(|| path.strip_prefix(r"\\?\").map(str::to_string))
-            .unwrap_or_else(|| path.clone());
+        use std::os::windows::process::CommandExt;
         let mut command = std::process::Command::new("explorer");
-        command.no_console().arg(format!("/select,{display}"));
+        command
+            .no_console()
+            .raw_arg(explorer_select_argument(&path));
         crate::proc::spawn_contained(&mut command)
             .map_err(|e| format!("failed to open Explorer: {e}"))?;
     }
@@ -438,6 +442,7 @@ pub async fn compile_project(
         result
             .log
             .push_str(&format!("\nOleafly rejected the compile output: {error}"));
+        crate::logsafe::build_finished(&meta.engine, &result, &project_id, &main_doc);
         return Ok(result);
     }
     let stopped = cancel_scope.finish();
@@ -492,6 +497,7 @@ pub async fn compile_project(
             );
         }
     }
+    crate::logsafe::build_finished(&meta.engine, &result, &project_id, &main_doc);
     #[cfg(debug_assertions)]
     eprintln!(
         "compile: t{ticket} {project_id} done ok={} in {}ms",
@@ -1280,6 +1286,23 @@ mod tests {
         assert!(central.is_dir());
         assert!(!central.join("stale.aux").exists());
         std::env::remove_var("OLEAFLY_DATA_DIR");
+    }
+
+    #[test]
+    fn explorer_selects_the_whole_path_even_with_a_comma() {
+        for (canonical, argument) in [
+            (
+                r"\\?\C:\Papers\Smith,J\main.tex",
+                r#"/select,"C:\Papers\Smith,J\main.tex""#,
+            ),
+            (
+                r"\\?\UNC\server\share\Smith, Jones\main.tex",
+                r#"/select,"\\server\share\Smith, Jones\main.tex""#,
+            ),
+            (r"C:\Papers\main.tex", r#"/select,"C:\Papers\main.tex""#),
+        ] {
+            assert_eq!(explorer_select_argument(canonical), argument);
+        }
     }
 
     #[test]

@@ -101,6 +101,15 @@ describe("presentation parameters", () => {
     expect(read?.offline).toBeUndefined();
   });
 
+  it("carry a slide deck's source file", () => {
+    const deck: PresentationParams = { ...params, source: { kind: "deck", path: "slides/talk/index.tsx" }, main: null, typst: false };
+    const query = presentationQuery(deck, "present");
+    expect(query.get("source")).toBe("deck");
+    expect(query.get("path")).toBe("slides/talk/index.tsx");
+    expect(readPresentationParams(`?${query.toString()}`)).toEqual(deck);
+    expect(readPresentationParams("?project=a&session=s&source=deck")).toBeNull();
+  });
+
   it("reject addresses without a project or session", () => {
     expect(readPresentationParams("?view=present")).toBeNull();
     expect(readPresentationParams("?view=present&project=a")).toBeNull();

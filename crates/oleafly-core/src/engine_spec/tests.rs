@@ -573,9 +573,17 @@ fn latexmk_args_match_the_app_contract() {
         false,
         "texlive",
     );
-    assert_eq!(&args[..2], ["-norc", "-shell-restricted"]);
+    assert_eq!(
+        &args[..5],
+        [
+            "-norc",
+            "-shell-restricted",
+            "-lualatex",
+            "-r",
+            "./.oleafly/build/.oleafly-latexmkrc"
+        ]
+    );
     for expected in [
-        "-lualatex",
         "-interaction=nonstopmode",
         "-synctex=1",
         "-outdir=./.oleafly/build",
@@ -589,7 +597,55 @@ fn latexmk_args_match_the_app_contract() {
 }
 
 #[test]
-fn every_flavor_gets_the_glossary_and_nomenclature_rules_after_its_own_arguments() {
+fn no_perl_or_quoting_ever_reaches_the_latexmk_command_line() {
+    for flavor in TexFlavor::ALL {
+        for out_dir in [
+            "./.oleafly/build",
+            "../.oleafly/build",
+            "C:/Users/ana/AppData/Roaming/oleafly/linked/x/build",
+        ] {
+            for (shell_escape, halt_on_error, distribution) in [
+                (false, false, "texlive"),
+                (true, true, "texlive"),
+                (false, true, "tinytex"),
+                (false, false, "oleafly-tinytex"),
+                (false, false, "miktex"),
+                (true, false, "miktex"),
+                (false, false, "other"),
+            ] {
+                let args = latexmk_args(
+                    out_dir,
+                    "./main.tex",
+                    ENTRY_STEM,
+                    flavor,
+                    EngineFlags {
+                        halt_on_error,
+                        ..Default::default()
+                    },
+                    shell_escape,
+                    distribution,
+                );
+                for arg in &args {
+                    assert_ne!(arg, "-e", "{flavor:?} {args:?}");
+                    assert!(
+                        !arg.contains(['\\', '"', '$', '%', '\'', '\n', ';', '{', '}']),
+                        "{flavor:?} {arg}"
+                    );
+                }
+                let rc = args.iter().position(|arg| arg == "-r").unwrap();
+                assert_eq!(
+                    args[rc + 1],
+                    format!("{out_dir}/{}", latexmk_rc_file(flavor))
+                );
+                assert_eq!(args.iter().filter(|arg| *arg == "-r").count(), 1);
+                assert!(args.contains(&format!("-outdir={out_dir}")));
+            }
+        }
+    }
+}
+
+#[test]
+fn every_flavor_keeps_its_own_arguments_and_its_rc_settings() {
     for flavor in TexFlavor::ALL {
         let args = latexmk_args(
             "./.oleafly/build",
@@ -602,52 +658,149 @@ fn every_flavor_gets_the_glossary_and_nomenclature_rules_after_its_own_arguments
         );
         let flavor_args = flavor.latexmk_args();
         assert_eq!(&args[2..2 + flavor_args.len()], &flavor_args[..]);
+        let rc = latexmk_rc(flavor);
+        assert!(rc.starts_with(&flavor.latexmk_rc_settings()));
         for dependency in [
-            "add_cus_dep(q/glo/, q/gls/",
-            "add_cus_dep(q/acn/, q/acr/",
-            "add_cus_dep(q/nlo/, q/nls/",
+            "add_cus_dep(q/glo/, q/gls/, 0, q/oleafly_glo/);",
+            "add_cus_dep(q/acn/, q/acr/, 0, q/oleafly_acn/);",
+            "add_cus_dep(q/nlo/, q/nls/, 0, q/oleafly_nlo/);",
+            "add_cus_dep(q/slo/, q/sls/, 0, q/oleafly_slo/);",
+            "add_cus_dep(q/aux/, q/glstex/, 0, q/oleafly_bib2gls/);",
         ] {
-            let at = args
-                .iter()
-                .position(|arg| arg.contains(dependency))
-                .unwrap_or_else(|| panic!("{dependency} is missing for {flavor:?}"));
-            assert_eq!(args[at - 1], "-e");
+            assert!(
+                rc.lines().any(|line| line == dependency),
+                "{dependency} is missing for {flavor:?}"
+            );
         }
-        assert_eq!(args.last().unwrap(), "./main.tex");
-    }
-}
-
-#[test]
-fn the_symbols_list_and_its_makeindex_step_reach_every_flavor() {
-    for flavor in TexFlavor::ALL {
-        let args = latexmk_args(
-            "./.oleafly/build",
-            "./main.tex",
-            ENTRY_STEM,
-            flavor,
-            EngineFlags::default(),
-            false,
-            "texlive",
-        );
-        let at = args
-            .iter()
-            .position(|arg| arg.contains("add_cus_dep(q/slo/, q/sls/"))
-            .unwrap_or_else(|| panic!("the symbols rule is missing for {flavor:?}"));
-        assert_eq!(args[at - 1], "-e");
-        assert!(args[at].contains("oleafly_mi($_[0], undef, q/slg/, q/sls/, q/slo/)"));
+        assert!(!rc.contains("makeglossaries"));
     }
 }
 
 #[test]
 fn glossary_rules_read_the_style_file_the_document_named() {
-    let rules = crate::tex_outputs::LATEXMK_INDEX_RULES;
-    assert!(rules[0].contains(r"\\\@istfilename\{([^}]+\.ist)\}"));
-    let numbers = rules
-        .iter()
-        .find(|rule| rule.contains("add_cus_dep(q/nlo/"))
+    let rc = latexmk_rc(TexFlavor::Pdflatex);
+    assert!(rc.contains(r"/\\\@istfilename\{([^}]+\.ist)\}/"));
+    assert!(rc.contains(r"/\\\@glsorder\{letter\}/"));
+    assert!(rc.contains(r"/^\\glossaryentry/"));
+    assert!(rc.contains("$glossary ? undef : q/nomencl.ist/"));
+    assert!(rc.contains("oleafly_mi($_[0], undef, q/slg/, q/sls/, q/slo/)"));
+    assert!(rc.contains("split(q/ /, $makeindex"));
+}
+
+#[test]
+fn the_latexmk_rc_compiles_under_perl_for_every_flavor() {
+    let required =
+        std::env::var_os("CI").is_some() || std::env::var_os("OLEAFLY_REQUIRE_REAL_TEX").is_some();
+    let Some(perl) = std::env::var_os("PATH").and_then(|path| {
+        std::env::split_paths(&path)
+            .find_map(|dir| crate::tex_distro::find_tool_in_dir(&dir, "perl"))
+    }) else {
+        assert!(
+            !required,
+            "perl must be on PATH to check the latexmk rc file"
+        );
+        return;
+    };
+    let dir = tempfile::tempdir().unwrap();
+    for flavor in TexFlavor::ALL {
+        write_latexmk_rc(dir.path(), flavor).unwrap();
+        let rc = dir.path().join(latexmk_rc_file(flavor));
+        let output = std::process::Command::new(&perl)
+            .arg("-w")
+            .arg("-c")
+            .arg(&rc)
+            .output()
+            .unwrap();
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(output.status.success(), "{flavor:?}: {stderr}");
+        assert!(stderr.contains("syntax OK"), "{flavor:?}: {stderr}");
+        assert!(
+            !stderr.contains("Possible unintended interpolation"),
+            "{flavor:?}: {stderr}"
+        );
+        assert!(!stderr.contains("Unterminated"), "{flavor:?}: {stderr}");
+    }
+    let collapsed = dir.path().join("collapsed.rc");
+    std::fs::write(
+        &collapsed,
+        latexmk_rc(TexFlavor::Pdflatex).replace(r"\\", r"\"),
+    )
+    .unwrap();
+    let output = std::process::Command::new(&perl)
+        .arg("-w")
+        .arg("-c")
+        .arg(&collapsed)
+        .output()
         .unwrap();
-    assert!(numbers.contains(r"/^\\glossaryentry/"));
-    assert!(numbers.contains("$glossary ? undef : q/nomencl.ist/"));
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(!output.status.success(), "{stderr}");
+    assert!(stderr.contains("Unterminated \\g"), "{stderr}");
+}
+
+#[test]
+fn the_rc_file_replaces_a_planted_one_and_moves_with_the_out_dir() {
+    let dir = tempfile::tempdir().unwrap();
+    let rc = dir.path().join(latexmk_rc_file(TexFlavor::Uplatex));
+    std::fs::write(&rc, "system(q/rm -rf ~/)").unwrap();
+    write_latexmk_rc(dir.path(), TexFlavor::Uplatex).unwrap();
+    assert_eq!(
+        std::fs::read_to_string(&rc).unwrap(),
+        latexmk_rc(TexFlavor::Uplatex)
+    );
+    let mut args = latexmk_args(
+        "./.oleafly/build",
+        "./paper/main.tex",
+        ENTRY_STEM,
+        TexFlavor::Pdflatex,
+        EngineFlags::default(),
+        false,
+        "texlive",
+    );
+    assert!(set_latexmk_out_dir(
+        &mut args,
+        "/tmp/project/.oleafly/build"
+    ));
+    assert!(args.contains(&"-outdir=/tmp/project/.oleafly/build".to_string()));
+    let at = args.iter().position(|arg| arg == "-r").unwrap();
+    assert_eq!(
+        args[at + 1],
+        "/tmp/project/.oleafly/build/.oleafly-latexmkrc"
+    );
+    assert!(!set_latexmk_out_dir(&mut ["-norc".to_string()], "/x"));
+    let mut uplatex = latexmk_args(
+        "./.oleafly/build",
+        "./main.tex",
+        ENTRY_STEM,
+        TexFlavor::Uplatex,
+        EngineFlags::default(),
+        false,
+        "texlive",
+    );
+    assert!(set_latexmk_out_dir(&mut uplatex, "/tmp/p/.oleafly/build"));
+    assert!(uplatex.contains(&"/tmp/p/.oleafly/build/.oleafly-uplatex-latexmkrc".to_string()));
+}
+
+#[test]
+fn builds_sharing_a_folder_never_rewrite_each_others_rc_file() {
+    for first in TexFlavor::ALL {
+        for second in TexFlavor::ALL {
+            if latexmk_rc_file(first) == latexmk_rc_file(second) {
+                assert_eq!(
+                    latexmk_rc(first),
+                    latexmk_rc(second),
+                    "{first:?} {second:?}"
+                );
+            }
+        }
+    }
+    assert_ne!(
+        latexmk_rc_file(TexFlavor::Uplatex),
+        latexmk_rc_file(TexFlavor::Pdflatex)
+    );
+    assert_ne!(
+        latexmk_rc_file(TexFlavor::Platex),
+        latexmk_rc_file(TexFlavor::Uplatex)
+    );
 }
 
 #[test]
@@ -697,9 +850,11 @@ fn markdown_pdf_args_sandbox_filter_citeproc_and_bundle_pin() {
             "--sandbox",
             "--lua-filter=oleafly-mermaid-figures.lua",
             "--lua-filter=oleafly-image-compat.lua",
+            "--lua-filter=oleafly-markdown-marks.lua",
             "--lua-filter=oleafly-markdown-bibliography.lua",
             bibliography.as_str(),
             "--citeproc",
+            "--lua-filter=oleafly-citation-marks.lua",
             "--lua-filter=oleafly-default-fonts.lua",
             "--",
             "/p/main.md"
@@ -729,7 +884,7 @@ fn markdown_pdf_args_search_the_main_folder_before_the_project() {
 }
 
 #[test]
-fn the_bibliography_filter_runs_before_citeproc_and_fonts_after_it() {
+fn citeproc_sits_between_the_bibliography_filter_and_the_citation_marks() {
     let args = strings(markdown_pdf_args(&MarkdownPdfArgs {
         resource_argument: OsStr::new("--resource-path=/p"),
         tectonic: Path::new("/t/tectonic"),
@@ -744,6 +899,10 @@ fn the_bibliography_filter_runs_before_citeproc_and_fonts_after_it() {
     let position = |wanted: String| args.iter().position(|arg| *arg == wanted).unwrap();
     let citeproc = position("--citeproc".to_owned());
     assert!(position(format!("--lua-filter={MARKDOWN_BIBLIOGRAPHY_FILTER_NAME}")) < citeproc);
+    assert_eq!(
+        position(format!("--lua-filter={CITATION_MARKS_FILTER_NAME}")),
+        citeproc + 1
+    );
     assert!(position(format!("--lua-filter={DEFAULT_FONTS_FILTER_NAME}")) > citeproc);
 }
 
@@ -770,7 +929,11 @@ fn of_kind(kind: MarkdownKind) -> MarkdownLayout {
 
 fn after_citeproc(args: &[String]) -> Vec<&str> {
     let citeproc = args.iter().position(|arg| arg == "--citeproc").unwrap();
-    args[citeproc + 1..args.len() - 3]
+    assert_eq!(
+        args[citeproc + 1],
+        format!("--lua-filter={CITATION_MARKS_FILTER_NAME}")
+    );
+    args[citeproc + 2..args.len() - 3]
         .iter()
         .map(String::as_str)
         .collect()
@@ -933,9 +1096,1172 @@ fn every_markdown_filter_is_written_into_the_scratch_folder() {
     }
 }
 
+fn runs(candidate: &Path) -> bool {
+    std::process::Command::new(candidate)
+        .arg("--version")
+        .output()
+        .is_ok_and(|output| output.status.success())
+}
+
+fn sidecar(program: &str) -> Option<PathBuf> {
+    let binaries = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../src-tauri/binaries");
+    let prefix = format!("{program}-");
+    let bundled = std::fs::read_dir(binaries)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| {
+            path.file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| {
+                    name.strip_prefix(&prefix)
+                        .is_some_and(|target| !target.starts_with("biber"))
+                })
+        });
+    let executable = if cfg!(windows) {
+        format!("{program}.exe")
+    } else {
+        program.to_owned()
+    };
+    let on_path = std::env::var_os("PATH")
+        .into_iter()
+        .flat_map(|paths| std::env::split_paths(&paths).collect::<Vec<_>>())
+        .map(|folder| folder.join(&executable));
+    bundled.chain(on_path).find(|candidate| runs(candidate))
+}
+
+fn pandoc_for(test: &str) -> Option<PathBuf> {
+    let found = sidecar("pandoc");
+    if found.is_none() {
+        eprintln!("{test}: skipped, no pandoc in src-tauri/binaries or on PATH");
+    }
+    found
+}
+
+fn through_the_app_chain(pandoc: &Path, markdown: &str) -> String {
+    let dir = tempfile::tempdir().unwrap();
+    write_markdown_filters(dir.path()).unwrap();
+    let main = dir.path().join("main.md");
+    let output = dir.path().join("main.tex");
+    std::fs::write(&main, markdown).unwrap();
+    let resource = OsString::from(format!("--resource-path={}", dir.path().display()));
+    let args = markdown_pdf_args(&MarkdownPdfArgs {
+        resource_argument: &resource,
+        tectonic: Path::new("tectonic"),
+        project: dir.path(),
+        search_folders: &[],
+        output: &output,
+        main: &main,
+        bibliographies: &[],
+        bundle_url: None,
+        layout: layout_in(markdown),
+    });
+    let run = std::process::Command::new(pandoc)
+        .current_dir(dir.path())
+        .args(&args)
+        .output()
+        .unwrap();
+    assert!(
+        run.status.success(),
+        "{markdown}: {}",
+        String::from_utf8_lossy(&run.stderr)
+    );
+    // Pandoc writes native line ends, CRLF on Windows.
+    std::fs::read_to_string(output)
+        .unwrap()
+        .replace("\r\n", "\n")
+}
+
+fn assert_groups_nest(latex: &str) {
+    let (_, body) = preamble_and_body(latex);
+    let mut open = vec![String::from("document")];
+    let mut characters = body.char_indices();
+    while let Some((at, character)) = characters.next() {
+        match character {
+            '\\' => {
+                let rest = &body[at + 1..];
+                let name: String = rest.chars().take_while(char::is_ascii_alphabetic).collect();
+                if name.is_empty() {
+                    characters.next();
+                    continue;
+                }
+                let environment = rest[name.len()..]
+                    .strip_prefix('{')
+                    .and_then(|after| after.split_once('}'))
+                    .map(|(environment, _)| environment.to_owned());
+                match (name.as_str(), environment) {
+                    ("begin", Some(environment)) => open.push(environment),
+                    ("end", Some(environment)) => {
+                        assert_eq!(open.pop(), Some(environment), "{body}");
+                    }
+                    _ => {}
+                }
+                for _ in 0..name.len() {
+                    characters.next();
+                }
+                if name == "begin" || name == "end" {
+                    while characters.next().is_some_and(|(_, next)| next != '}') {}
+                }
+            }
+            '%' => while characters.next().is_some_and(|(_, next)| next != '\n') {},
+            '{' => open.push("{".into()),
+            '}' => assert_eq!(open.pop().as_deref(), Some("{"), "{body}"),
+            _ => {}
+        }
+    }
+    assert!(open.is_empty(), "{open:?} in {body}");
+}
+
+fn with_marks_filter(pandoc: &Path, args: &[&str], markdown: &str) -> String {
+    let dir = tempfile::tempdir().unwrap();
+    write_markdown_filters(dir.path()).unwrap();
+    std::fs::write(dir.path().join("in.md"), markdown).unwrap();
+    let output = std::process::Command::new(pandoc)
+        .current_dir(dir.path())
+        .args(["--from=markdown", "--standalone", "--wrap=none"])
+        .args(args)
+        .arg(format!("--lua-filter={MARKDOWN_MARKS_FILTER_NAME}"))
+        .args(["--", "in.md"])
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    String::from_utf8(output.stdout)
+        .unwrap()
+        .replace("\r\n", "\n")
+}
+
+fn preamble_and_body(latex: &str) -> (&str, &str) {
+    latex.split_once("\\begin{document}").unwrap()
+}
+
+fn arguments_of<'a>(latex: &'a str, command: &str) -> Vec<&'a str> {
+    let opening = format!("\\{command}{{");
+    latex
+        .match_indices(&opening)
+        .map(|(at, _)| {
+            let start = at + opening.len();
+            let mut depth = 1;
+            let end = latex[start..]
+                .char_indices()
+                .find_map(|(offset, character)| {
+                    match character {
+                        '{' => depth += 1,
+                        '}' => depth -= 1,
+                        _ => {}
+                    }
+                    (depth == 0).then_some(start + offset)
+                })
+                .unwrap();
+            &latex[start..end]
+        })
+        .collect()
+}
+
+fn lines_inside_alignment(body: &str) -> Vec<&str> {
+    let mut depth = 0_i32;
+    let mut inside = Vec::new();
+    for line in body.lines().map(str::trim) {
+        if ["center", "flushright", "justify"]
+            .iter()
+            .any(|environment| line == format!("\\end{{{environment}}}"))
+        {
+            depth -= 1;
+        }
+        if depth > 0 {
+            inside.push(line);
+        }
+        if ["center", "flushright", "justify"]
+            .iter()
+            .any(|environment| line == format!("\\begin{{{environment}}}"))
+        {
+            depth += 1;
+        }
+    }
+    assert_eq!(depth, 0, "{body}");
+    inside
+}
+
+#[test]
+fn html_marks_colours_and_alignment_reach_latex_like_pandoc_s_own_syntax() {
+    let Some(pandoc) = pandoc_for("html_marks_colours_and_alignment_reach_latex") else {
+        return;
+    };
+    let latex = with_marks_filter(
+        &pandoc,
+        &["--to=latex"],
+        "A <u>und</u> <mark>hl</mark> x<sup>2</sup> H<sub>2</sub>O \
+         <span data-text-color=\"red!85!black\" style=\"color: rgb(217, 0, 0);\">col</span> \
+         <span data-text-color=\"x}\\evil\">bad</span>.\n\n\
+         Old [und]{.underline} [hl]{.mark} x^2^ H~2~O.\n\n\
+         ::: {.center}\nMid\n:::\n\n::: right\nEnd\n:::\n",
+    );
+    for wanted in [
+        "A \\oleaflyul{und} \\oleaflyhl{hl} x\\textsuperscript{2}",
+        "H\\textsubscript{2}O",
+        "\\oleaflycolor{1}{col} {bad}.",
+        "Old \\oleaflyul{und} \\oleaflyhl{hl} x\\textsuperscript{2} H\\textsubscript{2}O.",
+        "\\begin{center}",
+        "\\begin{flushright}",
+    ] {
+        assert!(latex.contains(wanted), "{wanted} in {latex}");
+    }
+    assert!(!latex.contains("evil"), "{latex}");
+}
+
+#[test]
+fn visuals_html_fallbacks_for_bold_italic_and_strike_keep_their_formatting() {
+    let Some(pandoc) = pandoc_for("visuals_html_fallbacks_for_bold_italic_and_strike") else {
+        return;
+    };
+    let latex = with_marks_filter(
+        &pandoc,
+        &["--to=latex"],
+        "A <strong>strong <u>word</u></strong>s and <em>it</em>x and <del>gone</del>y.\n",
+    );
+    for wanted in [
+        "\\textbf{strong \\oleaflyul{word}}s",
+        "\\emph{it}x",
+        "\\oleaflyst{gone}y",
+    ] {
+        assert!(latex.contains(wanted), "{wanted} in {latex}");
+    }
+    assert!(!latex.contains("strong>"), "{latex}");
+}
+
+#[test]
+fn nested_marks_share_one_ulem_pass_with_colour_and_notes_outside() {
+    let Some(pandoc) = pandoc_for("nested_marks_share_one_ulem_pass") else {
+        return;
+    };
+    let latex = with_marks_filter(
+        &pandoc,
+        &["--to=latex"],
+        "A <u><mark>word</mark></u> ~~<u>s</u>~~ ~~<mark>m</mark>~~ \
+         <mark>big </mark><u><mark>w2</mark></u> <mark>big <u>w3</u></mark> \
+         <u><span data-text-color=\"red!85!black\" style=\"color: red\">c</span></u> \
+         <mark>note[^1] more</mark> [[um]{.mark}]{.underline} [H~2~O]{.mark} \
+         <u>**b** [l](https://e.com)</u> <u>中文</u>\n\n[^1]: The <u><mark>n</mark></u>.\n",
+    );
+    let (preamble, body) = preamble_and_body(&latex);
+    for wanted in [
+        "\\oleaflymarks{hu}{word}",
+        "\\oleaflymarks{us}{s}",
+        "\\oleaflymarks{hs}{m}",
+        "\\oleaflyhl{big }\\oleaflymarks{hu}{w2}",
+        "\\oleaflyhl{big }\\oleaflymarks{hu}{w3}",
+        "\\oleaflyul{\\oleaflycolor{1}{c}}",
+        "\\oleaflyhl{note}\\footnote{The \\oleaflymarks{hu}{n}.}",
+        "\\oleaflymarks{hu}{um}",
+        "\\textbf{\\oleaflyul{b}}",
+        "\\href{https://e.com}{\\oleaflyul{l}}",
+    ] {
+        assert!(body.contains(wanted), "{wanted} in {body}");
+    }
+    for command in ["oleaflyst", "oleaflyul", "oleaflyhl", "oleaflymarks"] {
+        for argument in arguments_of(body, command) {
+            for inner in [
+                "\\oleaflyst{",
+                "\\oleaflyul{",
+                "\\oleaflyhl{",
+                "\\oleaflymarks{",
+                "\\footnote",
+            ] {
+                assert!(!argument.contains(inner), "\\{command}{{{argument}}}");
+            }
+        }
+    }
+    for wanted in [
+        "\\usepackage[normalem]{ulem}",
+        "\\DeclareRobustCommand{\\oleaflyul}[1]{",
+        "\\DeclareRobustCommand{\\oleaflyst}[1]{",
+        "\\DeclareRobustCommand{\\oleaflyhl}[1]{",
+        "\\DeclareRobustCommand{\\oleaflymarks}[2]{",
+    ] {
+        assert!(preamble.contains(wanted), "{wanted} in {preamble}");
+    }
+    let plain = with_marks_filter(&pandoc, &["--to=latex"], "Plain *text*.\n");
+    assert!(!plain.contains("ulem"), "{plain}");
+}
+
+#[test]
+fn marks_over_text_without_spaces_keep_places_to_break_the_line() {
+    let Some(pandoc) = pandoc_for("marks_over_text_without_spaces_keep_places_to_break_the_line")
+    else {
+        return;
+    };
+    let latex = with_marks_filter(
+        &pandoc,
+        &["--to=latex"],
+        "<mark>ภาษาไทยเขียน</mark> <u>https://example.com/a/very/long/path/index.html</u> \
+         <mark>中文<span data-text-color=\"teal\">中文，测试</span></mark> \
+         <u><mark>long text with spaces</mark></u> <u>short/url</u>\n",
+    );
+    let (preamble, body) = preamble_and_body(&latex);
+    for wanted in [
+        "\\oleaflyhl{ภา\\allowbreak{}ษา\\allowbreak{}ไท\\allowbreak{}ย\\allowbreak{}เขี\\allowbreak{}ย\\allowbreak{}น}",
+        "\\oleaflyul{https://\\allowbreak{}example.\\allowbreak{}com/\\allowbreak{}a/\\allowbreak{}very/\\allowbreak{}long/\\allowbreak{}path/\\allowbreak{}index.\\allowbreak{}html}",
+        "\\oleaflyhl{中文}\\oleaflyhl{\\oleaflycolor{1}{中}\\allowbreak{}\\oleaflycolor{1}{文，}\\allowbreak{}\\oleaflycolor{1}{测}\\allowbreak{}\\oleaflycolor{1}{试}}",
+        "\\oleaflymarks{hu}{long text with spaces}",
+        "\\oleaflyul{short/url}",
+    ] {
+        assert!(body.contains(wanted), "{wanted} in {body}");
+    }
+    assert!(
+        preamble.contains(
+            "\\@ifpackageloaded{xeCJK}{\\@ifpackageloaded{xeCJKfntef}{}{\\usepackage{xeCJKfntef}}}{}"
+        ),
+        "{preamble}"
+    );
+    let chain = through_the_app_chain(&pandoc, "前文 <mark>中文段落</mark> 后文\n");
+    assert!(chain.contains("FandolSong-Regular.otf"), "{chain}");
+}
+
+#[test]
+fn script_detection_reads_the_body_and_not_the_preamble() {
+    let Some(pandoc) = pandoc_for("script_detection_reads_the_body_and_not_the_preamble") else {
+        return;
+    };
+    let hebrew = "מילה עברית ארוכה בתוך הגדרה של פקודה חדשה ".repeat(4);
+    let english = through_the_app_chain(
+        &pandoc,
+        &format!(
+            "---\nheader-includes: |\n  \\newcommand{{\\heb}}{{{hebrew}}}\n  \\usepackage{{amsmath}}\\usepackage{{booktabs}}\n---\n\n\
+             A short English note about the project status today.\n"
+        ),
+    );
+    assert!(!english.contains("pdflang={he}"), "{english}");
+    assert!(english.contains("\\oleaflyfonthebrew"), "{english}");
+    let hebrew_body = through_the_app_chain(
+        &pandoc,
+        "\\vspace{1em}\\noindent\\hfill\\relax\\centering\\small שלום עולם זה טקסט קצר\n",
+    );
+    assert!(hebrew_body.contains("pdflang={he}"), "{hebrew_body}");
+}
+
+#[test]
+fn a_mark_inside_an_arabic_word_keeps_the_letters_joined() {
+    let Some(pandoc) = pandoc_for("a_mark_inside_an_arabic_word_keeps_the_letters_joined") else {
+        return;
+    };
+    let latex = through_the_app_chain(
+        &pandoc,
+        "---\nlang: ar\n---\n\nكل<mark>مة</mark>ات كل<u>مة</u>ات \
+         كل<span data-text-color=\"teal\">مة</span>ات د<u>ر</u>س <mark>كلمة</mark> تامة.\n",
+    );
+    let (_, body) = preamble_and_body(&latex);
+    for wanted in [
+        "كل\u{200d}\\oleaflyhl{\u{200d}مة}ات",
+        "كل\u{200d}\\oleaflyul{\u{200d}مة}ات",
+        "كل\u{200d}\\oleaflycolor{1}{\u{200d}مة}ات",
+        "د\\oleaflyul{ر}س",
+        " \\oleaflyhl{كلمة} ",
+    ] {
+        assert!(body.contains(wanted), "{wanted} in {body}");
+    }
+}
+
+#[test]
+fn aligned_list_items_keep_their_marker_at_the_margin() {
+    let Some(pandoc) = pandoc_for("aligned_list_items_keep_their_marker_at_the_margin") else {
+        return;
+    };
+    let latex = through_the_app_chain(
+        &pandoc,
+        "- ::: {.center}\n  First\n  :::\n- Second\n\n\
+         ::: {.right}\n## H\n\n- a\n- b\n:::\n",
+    );
+    assert_groups_nest(&latex);
+    let (preamble, body) = preamble_and_body(&latex);
+    assert!(preamble.contains("\\def\\oleaflypinlabel{"), "{preamble}");
+    for wanted in [
+        "\\item\n  {\\centering\\let\\raggedright\\centering\\oleaflypinlabel{}First\\par}",
+        "\\tightlist\n\\item\n  {\\raggedleft\\let\\raggedright\\raggedleft\\oleaflypinlabel{}a\\par}",
+    ] {
+        assert!(body.contains(wanted), "{wanted} in {body}");
+    }
+    assert!(!body.contains("\\begin{center}"), "{body}");
+}
+
+#[test]
+fn a_tag_on_one_quote_mark_still_formats_it() {
+    let Some(pandoc) = pandoc_for("a_tag_on_one_quote_mark_still_formats_it") else {
+        return;
+    };
+    let latex = with_marks_filter(
+        &pandoc,
+        &["--to=latex"],
+        "Say <strong>\"</strong>fast\" now, \"<strong>fast\"</strong> and <u>\"x\"</u> and \"plain\".\n",
+    );
+    for wanted in [
+        "Say \\textbf{``}fast'' now",
+        "``\\textbf{fast''}",
+        "\\oleaflyul{``x''}",
+        "``plain''",
+    ] {
+        assert!(latex.contains(wanted), "{wanted} in {latex}");
+    }
+    assert!(!latex.contains("strong>"), "{latex}");
+}
+
+#[test]
+fn slides_get_fonts_for_the_scripts_they_use() {
+    let Some(pandoc) = pandoc_for("slides_get_fonts_for_the_scripts_they_use") else {
+        return;
+    };
+    let hebrew = through_the_app_chain(
+        &pandoc,
+        "---\ntype: slides\nlang: he\n---\n\n## שקופית\n\nטקסט <mark>מילה</mark> סוף.\n",
+    );
+    let (preamble, _) = preamble_and_body(&hebrew);
+    assert!(preamble.contains("\\setsansfont"), "{preamble}");
+    assert!(preamble.contains("FreeSerif.otf"), "{preamble}");
+    let chinese = through_the_app_chain(
+        &pandoc,
+        "---\ntype: slides\n---\n\n## 幻灯片\n\n前文 <mark>中文段落</mark> 后文\n",
+    );
+    assert!(chinese.contains("FandolSong-Regular.otf"), "{chinese}");
+}
+
+#[test]
+fn the_marks_preamble_keeps_every_shape_of_user_header_includes() {
+    let Some(pandoc) = pandoc_for("the_marks_preamble_keeps_every_shape_of_user_header_includes")
+    else {
+        return;
+    };
+    for front_matter in [
+        "header-includes: '\\usepackage{amsthm}'",
+        "header-includes:\n  - '\\usepackage{amsthm}'\n  - '\\newcommand{\\foo}{F}'",
+        "header-includes: |\n  ```{=latex}\n  \\usepackage{amsthm}\n  ```",
+    ] {
+        let latex = with_marks_filter(
+            &pandoc,
+            &["--to=latex"],
+            &format!("---\n{front_matter}\n---\n\nA <u><mark>w</mark></u>\n"),
+        );
+        let (preamble, _) = preamble_and_body(&latex);
+        for wanted in ["\\usepackage{amsthm}", "\\usepackage[normalem]{ulem}"] {
+            assert!(preamble.contains(wanted), "{front_matter}: {preamble}");
+        }
+    }
+}
+
+#[test]
+fn alignment_never_wraps_a_heading_or_a_slide_in_a_raw_environment() {
+    let Some(pandoc) = pandoc_for("alignment_never_wraps_a_heading_or_a_slide") else {
+        return;
+    };
+    let breaks = [
+        "\\section",
+        "\\subsection",
+        "\\chapter",
+        "\\paragraph",
+        "\\begin{frame}",
+        "\\end{frame}",
+        "\\begin{block}",
+        "\\end{block}",
+    ];
+    let article = with_marks_filter(
+        &pandoc,
+        &["--to=latex"],
+        "::: {.center}\n## One\n:::\n\nBody.\n\n::: {.right}\n# Two\n:::\n\n\
+         ::: {.center}\n#### Run in\n\nUnder it\n:::\n\n\
+         ::: {#sec .center .keep}\nTarget\n:::\n\nSee [here](#sec).\n",
+    );
+    let (_, body) = preamble_and_body(&article);
+    for line in lines_inside_alignment(body) {
+        assert!(
+            !breaks.iter().any(|start| line.starts_with(start)),
+            "{line} in {body}"
+        );
+    }
+    for wanted in [
+        "{\\centering",
+        "{\\raggedleft",
+        "\\label{sec}",
+        "\\begin{center}",
+    ] {
+        assert!(body.contains(wanted), "{wanted} in {body}");
+    }
+    for (level, markdown) in [
+        (
+            "--slide-level=2",
+            "::: {.center}\n## Title\n:::\n\nBody\n\n## Slide\n\n::: {.center}\n### Block\n:::\n\n\
+             ::: {.incremental .center}\n- a\n- b\n:::\n\n::: {.right}\nA\n\n---\n\nB\n:::\n\n\
+             ::: {.justify}\nJustified\n:::\n",
+        ),
+        (
+            "--slide-level=0",
+            "::: {.center}\n## Big\n:::\n\nBody\n\n::: {.right}\n## Two\n:::\n",
+        ),
+    ] {
+        let slides = with_marks_filter(&pandoc, &["--to=beamer", level], markdown);
+        let (preamble, body) = preamble_and_body(&slides);
+        for line in lines_inside_alignment(body) {
+            assert!(
+                !breaks.iter().any(|start| line.starts_with(start)),
+                "{level}: {line} in {body}"
+            );
+        }
+        if level == "--slide-level=2" {
+            assert!(body.contains("\\begin{itemize}[<+->]"), "{body}");
+            assert!(body.contains("\\begin{justify}"), "{body}");
+            assert!(preamble.contains("\\usepackage{ragged2e}"), "{preamble}");
+        }
+    }
+}
+
+#[test]
+fn colour_specs_compile_with_their_colour_or_without_it() {
+    let Some(pandoc) = pandoc_for("colour_specs_compile_with_their_colour_or_without_it") else {
+        return;
+    };
+    let latex = with_marks_filter(
+        &pandoc,
+        &["--to=latex"],
+        "A <span data-text-color=\"Emerald\">e</span> \
+         <span data-text-color=\"Emerald!50!black\">m</span> \
+         <span data-text-color=\"[HTML]{FF0000}\">h</span> \
+         <span data-text-color=\"[rgb]{0, 0.5, 1}\">r</span> \
+         <span data-text-color=\"[HTML]{GG0000}\">g</span> \
+         <span data-text-color=\"[rgb]{2,0,0}\">o</span> \
+         <span data-text-color=\"x}\\evil\">bad</span> \
+         <span data-text-color=\"teal\">t</span>\n",
+    );
+    let (preamble, body) = preamble_and_body(&latex);
+    for wanted in [
+        "\\oleaflycolor{1}{e}",
+        "\\oleaflycolor{2}{m}",
+        "\\oleaflycolor{3}{h}",
+        "\\oleaflycolor{4}{r}",
+        "{g}",
+        "{o}",
+        "{bad}",
+        "\\oleaflycolor{5}{t}",
+    ] {
+        assert!(body.contains(wanted), "{wanted} in {body}");
+    }
+    for unwanted in ["evil", "GG0000", "{2,0,0}"] {
+        assert!(!body.contains(unwanted), "{unwanted} in {body}");
+    }
+    assert!(preamble.contains("dvipsnames]{article}"), "{preamble}");
+    for wanted in [
+        "\\DeclareRobustCommand{\\oleaflycolor}",
+        "\\AtBeginDocument{\\oleafly@trycolor{1}{Emerald}{Emerald}}",
+        "\\AtBeginDocument{\\oleafly@trycolor{2}{Emerald,black}{Emerald!50!black}}",
+        "\\definecolor{oleafly@color@3}{HTML}{FF0000}",
+        "\\definecolor{oleafly@color@4}{rgb}{0,0.5,1}",
+        "\\colorlet{oleafly@color@5}{teal}",
+    ] {
+        assert!(preamble.contains(wanted), "{wanted} in {preamble}");
+    }
+}
+
+#[test]
+fn other_writers_get_the_tags_as_marks_and_nothing_latex() {
+    let Some(pandoc) = pandoc_for("other_writers_get_the_tags_as_marks_and_nothing_latex") else {
+        return;
+    };
+    let markdown = "A <u><mark>w</mark></u> ~~<mark>m</mark>~~ x<sup>2</sup> \
+                    <span data-text-color=\"red\">r</span>\n\n::: {.center}\nC\n:::\n";
+    let typst = with_marks_filter(
+        &pandoc,
+        &["--to=typst"],
+        &format!(
+            "{markdown}\n<span data-text-color=\"teal\" style=\"color: rgb(0, 128, 128);\">t</span>(x) \
+             <span data-text-color=\"red!85!black\">m</span>\n\n::: {{.right}}\n::: justify\nJ\n:::\n:::\n"
+        ),
+    );
+    for wanted in [
+        "#underline[#highlight[w]]",
+        "#strike[#highlight[m]]",
+        "#super[2]",
+        "#text(fill: rgb(\"#ff0000\"))[r];",
+        "#text(fill: rgb(\"#008080\"))[t];",
+        "#text(fill: rgb(\"#d90000\"))[m];",
+        "#block(width: 100%)[#align(center)[\nC\n\n]]",
+        "#block(width: 100%)[#align(right)[\n#block(width: 100%)[\n#set par(justify: true)\nJ\n\n]\n]]",
+    ] {
+        assert!(typst.contains(wanted), "{wanted} in {typst}");
+    }
+    let quoted = with_marks_filter(
+        &pandoc,
+        &["--to=typst"],
+        "> ::: {.right}\n> Right inside a quote\n> :::\n\n::: {#anchor .center}\nAnchored\n:::\n",
+    );
+    for wanted in [
+        "#quote(block: true)[\n#block(width: 100%)[#align(right)[",
+        "#block[\n#block(width: 100%)[#align(center)[\nAnchored\n\n]]\n] <anchor>",
+    ] {
+        assert!(quoted.contains(wanted), "{wanted} in {quoted}");
+    }
+    let html = with_marks_filter(&pandoc, &["--to=html"], markdown);
+    assert!(html.contains("<u><mark>w</mark></u>"), "{html}");
+    for output in [typst, html] {
+        for unwanted in ["textcolor", "ulem", "\\begin{center}"] {
+            assert!(!output.contains(unwanted), "{unwanted} in {output}");
+        }
+    }
+}
+
+fn docx_with_marks(pandoc: &Path, markdown: &str) -> (String, String) {
+    let dir = tempfile::tempdir().unwrap();
+    write_markdown_filters(dir.path()).unwrap();
+    std::fs::write(
+        dir.path().join("dump.lua"),
+        "function Pandoc(doc)\n  io.stderr:write(pandoc.write(doc, \"native\"))\nend\n",
+    )
+    .unwrap();
+    std::fs::write(dir.path().join("in.md"), markdown).unwrap();
+    let written = std::process::Command::new(pandoc)
+        .current_dir(dir.path())
+        .args(["--from=markdown", "--to=docx", "--output=out.docx"])
+        .arg(format!("--lua-filter={MARKDOWN_MARKS_FILTER_NAME}"))
+        .args(["--lua-filter=dump.lua", "--", "in.md"])
+        .output()
+        .unwrap();
+    assert!(
+        written.status.success(),
+        "{}",
+        String::from_utf8_lossy(&written.stderr)
+    );
+    let read = std::process::Command::new(pandoc)
+        .current_dir(dir.path())
+        .args(["--from=docx", "--to=commonmark", "--", "out.docx"])
+        .output()
+        .unwrap();
+    assert!(
+        read.status.success(),
+        "{}",
+        String::from_utf8_lossy(&read.stderr)
+    );
+    (
+        String::from_utf8_lossy(&written.stderr).into_owned(),
+        String::from_utf8(read.stdout)
+            .unwrap()
+            .replace("\r\n", "\n"),
+    )
+}
+
+#[test]
+fn docx_gets_text_colour_runs_and_aligned_paragraphs() {
+    let Some(pandoc) = pandoc_for("docx_gets_text_colour_runs_and_aligned_paragraphs") else {
+        return;
+    };
+    let (native, _) = docx_with_marks(
+        &pandoc,
+        "A **b <span data-text-color=\"teal\" style=\"color: rgb(0, 128, 128);\">t & u</span>** \
+         <u><span data-text-color=\"[HTML]{336699}\">h</span></u> \
+         <span data-text-color=\"teal\">[link](https://e.com)</span>\n\n\
+         ::: {.center}\nC <mark>m</mark>\n\n- item\n:::\n\n::: justify\nJ\n:::\n",
+    );
+    for wanted in [
+        "<w:r><w:rPr><w:b/><w:bCs/><w:color w:val=\\\"008080\\\"/></w:rPr><w:t xml:space=\\\"preserve\\\">t</w:t></w:r>",
+        "<w:t xml:space=\\\"preserve\\\">&amp;</w:t>",
+        "<w:color w:val=\\\"336699\\\"/><w:u w:val=\\\"single\\\"/>",
+        "<w:jc w:val=\\\"center\\\"/>",
+        "<w:jc w:val=\\\"both\\\"/>",
+        "<w:highlight w:val=\\\"yellow\\\"/></w:rPr><w:t xml:space=\\\"preserve\\\">m</w:t>",
+        "Link",
+        "BulletList",
+    ] {
+        assert!(native.contains(wanted), "{wanted} in {native}");
+    }
+}
+
+#[test]
+fn docx_aligned_paragraphs_keep_list_numbers_quote_style_direction_and_styles() {
+    let Some(pandoc) = pandoc_for("docx_aligned_paragraphs_keep_list_numbers_quote_style") else {
+        return;
+    };
+    let (native, read_back) = docx_with_marks(
+        &pandoc,
+        "Intro[^n].\n\n[^n]: Note:\n\n    1. note one\n\n\
+         - ::: {.center}\n  First item centred\n  :::\n- Second item\n\n\
+         1. ::: {.right}\n   Numbered one right\n   :::\n2. Numbered two\n\n\
+         - Plain\n  - ::: {.right}\n    Nested right item\n    :::\n\n\
+         > ::: {.center}\n> Centred quote line\n> :::\n\n\
+         ::: {.center}\nText [styled]{custom-style=\"Strong\"} end.\n:::\n",
+    );
+    for wanted in [
+        "- First item centred\n\n- Second item",
+        "1.  Numbered one right\n\n2.  Numbered two",
+        "- Plain\n  - Nested right item",
+        "> Centred quote line",
+    ] {
+        assert!(read_back.contains(wanted), "{wanted} in {read_back}");
+    }
+    for wanted in [
+        "<w:numPr><w:ilvl w:val=\\\"0\\\"/><w:numId w:val=\\\"1002\\\"/></w:numPr><w:jc w:val=\\\"center\\\"/>",
+        "<w:numPr><w:ilvl w:val=\\\"1\\\"/><w:numId w:val=\\\"1005\\\"/></w:numPr><w:jc w:val=\\\"right\\\"/>",
+        "<w:pStyle w:val=\\\"BlockText\\\"/><w:jc w:val=\\\"center\\\"/>",
+        "<w:rStyle w:val=\\\"Strong\\\"/>",
+    ] {
+        assert!(native.contains(wanted), "{wanted} in {native}");
+    }
+    let (rtl, _) = docx_with_marks(
+        &pandoc,
+        "---\nlang: he\ndir: rtl\n---\n\n\
+         פסקה <span data-text-color=\"teal\" style=\"color: rgb(0, 128, 128);\">צבע</span> סוף.\n\n\
+         ::: {.center}\nפסקה ממורכזת.\n:::\n",
+    );
+    for wanted in [
+        "<w:pStyle w:val=\\\"BodyText\\\"/><w:bidi/><w:jc w:val=\\\"center\\\"/></w:pPr><w:r><w:rPr><w:rtl/></w:rPr>",
+        "<w:color w:val=\\\"008080\\\"/><w:rtl/>",
+    ] {
+        assert!(rtl.contains(wanted), "{wanted} in {rtl}");
+    }
+}
+
+#[test]
+fn docx_colour_reaches_quotes_links_and_code_inside_a_coloured_span() {
+    let Some(pandoc) = pandoc_for("docx_colour_reaches_quotes_links_and_code") else {
+        return;
+    };
+    let (native, read_back) = docx_with_marks(
+        &pandoc,
+        "A <span data-text-color=\"teal\">[coloured link](https://e.com) \"quoted\" and `code` \
+         and $x^2$</span> end.\n",
+    );
+    for wanted in [
+        "<w:rStyle w:val=\\\"Hyperlink\\\"/><w:color w:val=\\\"008080\\\"/></w:rPr><w:t xml:space=\\\"preserve\\\">coloured</w:t>",
+        "<w:color w:val=\\\"008080\\\"/></w:rPr><w:t xml:space=\\\"preserve\\\">\\8220</w:t>",
+        "<w:rStyle w:val=\\\"VerbatimChar\\\"/><w:color w:val=\\\"008080\\\"/></w:rPr><w:t xml:space=\\\"preserve\\\">code</w:t>",
+    ] {
+        assert!(native.contains(wanted), "{wanted} in {native}");
+    }
+    assert!(
+        read_back.contains("[coloured link](https://e.com) \u{201c}quoted\u{201d} and `code`"),
+        "{read_back}"
+    );
+}
+
+#[test]
+fn nested_aligned_divs_keep_groups_and_environments_nested_in_the_app_chain() {
+    let Some(pandoc) = pandoc_for("nested_aligned_divs_keep_groups_and_environments_nested") else {
+        return;
+    };
+    let nested = "::: {.center}\n::: {.right}\n## H\n\nText\n:::\n:::\n";
+    let long = "Justified text long enough to wrap. ".repeat(12);
+    for (front_matter, markdown) in [
+        ("", nested.to_owned()),
+        ("", "::: center\n::: center\n# H\n:::\n:::\n\nBody.\n".to_owned()),
+        (
+            "",
+            "::: center\n::: right\n::: center\n## Deep\n\nDeep text\n:::\nRight\n:::\nCentre\n:::\n"
+                .to_owned(),
+        ),
+        ("", format!("> {}", nested.replace('\n', "\n> "))),
+        (
+            "",
+            "::: {.center}\n::: {.right}\n## One\n:::\n\n::: {.right}\n## Two\n:::\n:::\n".to_owned(),
+        ),
+        ("type: report\n", nested.replace("## H", "# Chapter")),
+        ("type: book\n", nested.replace("## H", "# Chapter\n\n## Section")),
+        ("type: cv\n", nested.replace("## H", "# Name")),
+        ("type: slides\n", format!("## S\n\n{}", nested.replace("## H", "### Block"))),
+        (
+            "",
+            format!("::: center\nCentred.\n\n::: justify\n## J\n\n{long}\n:::\n:::\n"),
+        ),
+    ] {
+        let latex = through_the_app_chain(
+            &pandoc,
+            &format!("---\ntitle: T\n{front_matter}---\n\n{markdown}"),
+        );
+        assert_groups_nest(&latex);
+    }
+    let report = through_the_app_chain(
+        &pandoc,
+        "---\ntype: report\n---\n\n::: {.center}\n# Chapter\n:::\n\n::: {.right}\n# Two\n:::\n",
+    );
+    for wanted in [
+        "\\centering\\let\\raggedright\\centering",
+        "\\raggedleft\\let\\raggedright\\raggedleft",
+    ] {
+        assert!(report.contains(wanted), "{wanted} in {report}");
+    }
+    let justified = through_the_app_chain(
+        &pandoc,
+        &format!("::: center\nCentred.\n\n::: justify\n{long}\n:::\n:::\n"),
+    );
+    let (preamble, body) = preamble_and_body(&justified);
+    assert!(preamble.contains("\\usepackage{ragged2e}"), "{preamble}");
+    let centre = body.find("\\begin{center}").unwrap();
+    let justify = body.find("\\begin{justify}").unwrap();
+    assert!(centre < justify, "{body}");
+}
+
+#[test]
+fn marks_in_right_to_left_text_avoid_the_colour_stack() {
+    let Some(pandoc) = pandoc_for("marks_in_right_to_left_text_avoid_the_colour_stack") else {
+        return;
+    };
+    let latex = through_the_app_chain(
+        &pandoc,
+        "---\nlang: he\n---\n\nשלום עולם <mark>מילה</mark> \
+         <span data-text-color=\"teal\" style=\"color: rgb(0, 128, 128);\">צבע</span> סוף.\n",
+    );
+    let (preamble, body) = preamble_and_body(&latex);
+    assert!(body.contains("\\oleaflyhl{מילה}"), "{body}");
+    assert!(body.contains("\\oleaflycolor{1}{צבע}"), "{body}");
+    for wanted in [
+        "\\bbl@thetextdir",
+        "\\beginL",
+        "\\endL",
+        "\\addfontfeatures{Color=",
+    ] {
+        assert!(preamble.contains(wanted), "{wanted} in {preamble}");
+    }
+}
+
+#[test]
+fn the_filter_s_own_latex_never_tips_script_detection() {
+    let Some(pandoc) = pandoc_for("the_filter_s_own_latex_never_tips_script_detection") else {
+        return;
+    };
+    let arabic = "مرحبا بالعالم هذا نص عربي";
+    for marked in [
+        format!("{arabic} <u>كلمة</u>."),
+        format!("{arabic} <mark>كلمة</mark> ~~أخرى~~."),
+        format!("{arabic} <span data-text-color=\"Emerald\">كلمة</span>."),
+        format!("::: {{.center}}\n{arabic} <span data-text-color=\"[HTML]{{336699}}\">كلمة</span>\n:::\n"),
+        format!("::: {{.right}}\n## {arabic}\n:::\n"),
+    ] {
+        let latex = through_the_app_chain(&pandoc, &format!("---\ntitle: ت\n---\n\n{marked}\n"));
+        assert!(latex.contains("pdflang={ar}"), "{marked}: {latex}");
+    }
+}
+
+#[test]
+fn marks_in_pdf_metadata_have_a_plain_text_form() {
+    let Some(pandoc) = pandoc_for("marks_in_pdf_metadata_have_a_plain_text_form") else {
+        return;
+    };
+    let latex = through_the_app_chain(
+        &pandoc,
+        "---\ntitle: T\nsubject: 'S <u><mark>x</mark></u> <span data-text-color=\"teal\">c</span>'\n\
+         keywords: ['k <mark>y</mark>']\n---\n\nBody.\n",
+    );
+    let (preamble, _) = preamble_and_body(&latex);
+    assert!(
+        preamble.contains("pdfsubject={S \\oleaflymarks{hu}{x} \\oleaflycolor{1}{c}}"),
+        "{preamble}"
+    );
+    assert!(
+        preamble.contains("\\def\\oleafly@pdf{\\ifdefined\\texorpdfstring"),
+        "{preamble}"
+    );
+    let slides = through_the_app_chain(
+        &pandoc,
+        "---\ntitle: T\ntype: slides\nsubject: 'S <mark>x</mark>'\nkeywords: ['k <u>y</u>']\n---\n\n## S\n\nBody.\n",
+    );
+    let (slides_preamble, _) = preamble_and_body(&slides);
+    assert!(
+        slides_preamble.contains("\\providecommand{\\xmpquote}[1]{#1}"),
+        "{slides_preamble}"
+    );
+    for command in [
+        "oleaflyul",
+        "oleaflyst",
+        "oleaflyhl",
+        "oleaflymarks",
+        "oleaflycolor",
+    ] {
+        let definition = preamble
+            .split_once(&format!("\\DeclareRobustCommand{{\\{command}}}"))
+            .map(|(_, rest)| rest.lines().next().unwrap_or_default())
+            .unwrap_or_else(|| panic!("{command} in {preamble}"));
+        assert!(
+            definition.contains("\\oleafly@pdf{"),
+            "{command}: {definition}"
+        );
+    }
+}
+
+#[test]
+fn toolbar_marks_leave_soul_names_to_the_user() {
+    let Some(pandoc) = pandoc_for("toolbar_marks_leave_soul_names_to_the_user") else {
+        return;
+    };
+    let own = through_the_app_chain(
+        &pandoc,
+        "---\nheader-includes: '\\newcommand{\\hl}[1]{\\colorbox{yellow}{#1}}'\n---\n\n\
+         A <mark>w</mark> <u>u</u> ~~s~~ \\hl{raw}\n",
+    );
+    let (preamble, body) = preamble_and_body(&own);
+    assert!(!preamble.contains("{soul}"), "{preamble}");
+    assert!(
+        body.contains("\\oleaflyhl{w} \\oleaflyul{u} \\oleaflyst{s}"),
+        "{body}"
+    );
+    for redefined in ["\\hl}", "\\ul}", "\\st}"] {
+        for definer in [
+            "\\DeclareRobustCommand{",
+            "\\newcommand{",
+            "\\renewcommand{",
+        ] {
+            let mentions = preamble.matches(&format!("{definer}{redefined}")).count();
+            let allowed = usize::from(definer == "\\newcommand{" && redefined == "\\hl}");
+            assert_eq!(mentions, allowed, "{definer}{redefined} in {preamble}");
+        }
+    }
+    let native =
+        through_the_app_chain(&pandoc, "A ~~s~~ [m]{.mark} \\sethlcolor{green}\\hl{raw}\n");
+    let (preamble, _) = preamble_and_body(&native);
+    assert_eq!(
+        preamble.matches("\\usepackage{soul}").count(),
+        1,
+        "{preamble}"
+    );
+    let user_soul = through_the_app_chain(
+        &pandoc,
+        "---\nheader-includes:\n  - '\\usepackage{soul}'\n  - '\\sethlcolor{green}'\n---\n\n\
+         A \\hl{green} and <mark>yellow</mark>\n",
+    );
+    let (preamble, body) = preamble_and_body(&user_soul);
+    assert_eq!(
+        preamble.matches("\\usepackage{soul}").count(),
+        1,
+        "{preamble}"
+    );
+    assert!(
+        body.contains("\\hl{green} and \\oleaflyhl{yellow}"),
+        "{body}"
+    );
+}
+
+#[test]
+fn colour_names_survive_upper_casing_in_running_heads() {
+    let Some(pandoc) = pandoc_for("colour_names_survive_upper_casing_in_running_heads") else {
+        return;
+    };
+    let latex = through_the_app_chain(
+        &pandoc,
+        "---\ntype: book\n---\n\n# Chapter <span data-text-color=\"teal\" style=\"color: x\">t</span>\n\n\
+         ## Section <span data-text-color=\"red!85!black\">r</span> \
+         <span data-text-color=\"Emerald\">e</span> <span data-text-color=\"[HTML]{336699}\">h</span>\n",
+    );
+    let (preamble, body) = preamble_and_body(&latex);
+    let names = arguments_of(body, "oleaflycolor");
+    assert_eq!(names.len(), 4, "{body}");
+    assert!(
+        names
+            .iter()
+            .all(|name| name.chars().all(|character| character.is_ascii_digit())),
+        "{names:?}"
+    );
+    for wanted in [
+        "\\colorlet{oleafly@color@1}{teal}",
+        "\\colorlet{oleafly@color@2}{red!85!black}",
+        "\\definecolor{oleafly@color@4}{HTML}{336699}",
+    ] {
+        assert!(preamble.contains(wanted), "{wanted} in {preamble}");
+    }
+    assert!(!body.contains("\\textcolor"), "{body}");
+}
+
+#[test]
+fn raw_footnotes_and_verbatim_inside_marks_still_compile() {
+    let Some(pandoc) = pandoc_for("raw_footnotes_and_verbatim_inside_marks_still_compile") else {
+        return;
+    };
+    let latex = through_the_app_chain(
+        &pandoc,
+        "A ~~text\\footnote{raw}~~ <u>\\verb|x_y|</u> <mark>t\\footnotemark</mark> b\n",
+    );
+    let (preamble, body) = preamble_and_body(&latex);
+    for command in ["oleaflyul", "oleaflyst", "oleaflyhl"] {
+        for argument in arguments_of(body, command) {
+            assert!(!argument.contains("\\verb"), "\\{command}{{{argument}}}");
+        }
+    }
+    assert!(body.contains("\\oleaflyst{text\\footnote{raw}}"), "{body}");
+    for wanted in ["\\let\\footnote\\oleafly@footnote", "\\footnotetext["] {
+        assert!(preamble.contains(wanted), "{wanted} in {preamble}");
+    }
+}
+
+#[test]
+fn marks_reach_citations_text_colour_and_scripts_like_visual() {
+    let Some(pandoc) = pandoc_for("marks_reach_citations_text_colour_and_scripts_like_visual")
+    else {
+        return;
+    };
+    let latex = through_the_app_chain(
+        &pandoc,
+        "---\nreferences:\n- id: doe\n  type: book\n  author:\n  - family: Doe\n    given: Jane\n  \
+         issued:\n    date-parts:\n    - [2020]\n---\n\n\
+         A <u>@doe</u> and <mark>[@doe]</mark>. \
+         <u><span data-text-color=\"teal\">two words</span></u> \
+         <span data-text-color=\"teal\"><u>outside</u></span> <u>x<sup>2</sup></u>\n",
+    );
+    let (_, body) = preamble_and_body(&latex);
+    for wanted in [
+        "\\oleaflyul{Doe (2020)}",
+        "\\oleaflyhl{(Doe 2020)}",
+        "\\oleaflyul{\\oleaflycolor{1}{two} \\oleaflycolor{1}{words}}",
+        "\\oleaflycolor{1}{\\oleaflyul{outside}}",
+        "\\oleaflyul{x\\textsuperscript{2}}",
+    ] {
+        assert!(body.contains(wanted), "{wanted} in {body}");
+    }
+}
+
+const DOE: &str =
+    "---\nreferences:\n- id: doe\n  type: book\n  author:\n  - family: Doe\n    given: Jane\n  \
+                   issued:\n    date-parts:\n    - [2020]\n---\n\n";
+
+#[test]
+fn citation_locators_keep_their_marks_after_citeproc() {
+    let Some(pandoc) = pandoc_for("citation_locators_keep_their_marks_after_citeproc") else {
+        return;
+    };
+    let latex = through_the_app_chain(
+        &pandoc,
+        &format!(
+            "{DOE}A [see <u>x</u> @doe, p. <u>3</u>] and [@doe, pp. <mark>12-15</mark>, <u>emphasis</u> added] \
+             and @doe [p. ~~7~~] and [@doe, p. <u>3</u>; @doe, p. <u>3</u>] and [@doe, p. 22].\n"
+        ),
+    );
+    let (_, body) = preamble_and_body(&latex);
+    let body = body.split_whitespace().collect::<Vec<_>>().join(" ");
+    for wanted in [
+        "(see \\oleaflyul{x} Doe 2020, \\oleaflyul{3})",
+        "(Doe 2020, \\oleaflyhl{12--15}, \\oleaflyul{emphasis} added)",
+        "Doe (2020, \\oleaflyst{7})",
+        "(Doe 2020, \\oleaflyul{3}; 2020, \\oleaflyul{3})",
+        "(Doe 2020, 22)",
+    ] {
+        assert!(body.contains(wanted), "{wanted} in {body}");
+    }
+    assert_eq!(body.matches("\\oleaflyul{emphasis}").count(), 1, "{body}");
+    let dir = tempfile::tempdir().unwrap();
+    write_markdown_filters(dir.path()).unwrap();
+    std::fs::write(
+        dir.path().join("in.md"),
+        format!("{DOE}A [see @doe, p. <u>3</u>] and [@doe, pp. <mark>12-15</mark>] and @doe [p. ~~7~~].\n"),
+    )
+    .unwrap();
+    let written = std::process::Command::new(&pandoc)
+        .current_dir(dir.path())
+        .args(["--from=markdown", "--to=docx", "--output=out.docx"])
+        .arg(format!("--lua-filter={MARKDOWN_MARKS_FILTER_NAME}"))
+        .arg("--citeproc")
+        .arg(format!("--lua-filter={CITATION_MARKS_FILTER_NAME}"))
+        .args(["--", "in.md"])
+        .output()
+        .unwrap();
+    assert!(
+        written.status.success(),
+        "{}",
+        String::from_utf8_lossy(&written.stderr)
+    );
+    let read = std::process::Command::new(&pandoc)
+        .current_dir(dir.path())
+        .args([
+            "--from=docx",
+            "--to=markdown",
+            "--wrap=none",
+            "--",
+            "out.docx",
+        ])
+        .output()
+        .unwrap();
+    let docx = String::from_utf8_lossy(&read.stdout).replace("\r\n", "\n");
+    for wanted in [
+        "(see Doe 2020, [3]{.underline})",
+        "(Doe 2020, [12--15]{.mark})",
+        "Doe (2020, ~~7~~)",
+    ] {
+        assert!(docx.contains(wanted), "{wanted} in {docx}");
+    }
+}
+
+#[test]
+fn toolbar_marks_compile_to_pdf_with_the_bundled_tectonic() {
+    let test = "toolbar_marks_compile_to_pdf_with_the_bundled_tectonic";
+    let Some(pandoc) = pandoc_for(test) else {
+        return;
+    };
+    let Some(bundled) = sidecar("tectonic") else {
+        eprintln!("{test}: skipped, no tectonic in src-tauri/binaries or on PATH");
+        return;
+    };
+    let bin = tempfile::tempdir().unwrap();
+    let tectonic = bin.path().join(if cfg!(windows) {
+        "tectonic.exe"
+    } else {
+        "tectonic"
+    });
+    std::fs::copy(bundled, &tectonic).unwrap();
+    let bundle = tex_bundle_url();
+    let filler = "Filler text that keeps the chapter going onto later pages. ".repeat(160);
+    for markdown in [
+        "::: {.center}\n::: {.right}\n## H\n\nText\n:::\n:::\n".to_owned(),
+        "---\nlang: he\n---\n\nשלום <mark>מילה</mark> <span data-text-color=\"teal\">צבע</span> סוף.\n"
+            .to_owned(),
+        "---\nsubject: 'S <u><mark>x</mark></u>'\nkeywords: ['k <mark>y</mark>']\n---\n\nBody.\n"
+            .to_owned(),
+        "---\nheader-includes: '\\newcommand{\\hl}[1]{\\colorbox{yellow}{#1}}'\n---\n\nA <mark>w</mark> \\hl{raw}\n"
+            .to_owned(),
+        format!("---\ntype: book\n---\n\n# Chapter <span data-text-color=\"teal\">t</span>\n\n{filler}\n"),
+        "A ~~text\\footnote{raw}~~ <u>t\\footnote{n}</u> <u>\\verb|x_y|</u> b\n".to_owned(),
+        format!(
+            "Start <u><mark>{}</mark></u> <u>https://example.com/{}index.html</u> \
+             <mark>ภาษาไทยเขียนติดกันโดยไม่มีช่องว่าง<span data-text-color=\"teal\">ระหว่างคำ</span></mark> end.\n",
+            "nested marks that have to wrap ".repeat(12),
+            "long/path/".repeat(12)
+        ),
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        write_markdown_filters(dir.path()).unwrap();
+        let main = dir.path().join("main.md");
+        let output = dir.path().join("main.pdf");
+        std::fs::write(&main, &markdown).unwrap();
+        let resource = OsString::from(format!("--resource-path={}", dir.path().display()));
+        let args = markdown_pdf_args(&MarkdownPdfArgs {
+            resource_argument: &resource,
+            tectonic: &tectonic,
+            project: dir.path(),
+            search_folders: &[dir.path().to_path_buf()],
+            output: &output,
+            main: &main,
+            bibliographies: &[],
+            bundle_url: Some(&bundle),
+            layout: layout_in(&markdown),
+        });
+        let compile = || {
+            std::process::Command::new(&pandoc)
+                .current_dir(dir.path())
+                .args(&args)
+                .output()
+                .unwrap()
+        };
+        let mut run = compile();
+        if !run.status.success() {
+            eprintln!(
+                "{test}: retrying once in case the bundle fetch failed: {}",
+                String::from_utf8_lossy(&run.stderr)
+            );
+            run = compile();
+        }
+        assert!(
+            run.status.success() && output.is_file(),
+            "{markdown}: {}",
+            String::from_utf8_lossy(&run.stderr)
+        );
+    }
+}
+
 #[test]
 fn markdown_filters_stay_free_of_lua_comments() {
     for (name, filter) in [
+        (MARKDOWN_MARKS_FILTER_NAME, MARKDOWN_MARKS_FILTER),
         (IMAGE_COMPAT_FILTER_NAME, IMAGE_COMPAT_FILTER),
         (
             MARKDOWN_BIBLIOGRAPHY_FILTER_NAME,
@@ -943,6 +2269,7 @@ fn markdown_filters_stay_free_of_lua_comments() {
         ),
         (DEFAULT_FONTS_FILTER_NAME, DEFAULT_FONTS_FILTER),
         (DOCUMENT_KIND_FILTER_NAME, DOCUMENT_KIND_FILTER),
+        (CITATION_MARKS_FILTER_NAME, CITATION_MARKS_FILTER),
     ] {
         assert!(
             !filter
@@ -1164,4 +2491,80 @@ fn a_switched_latexmk_forces_one_full_rebuild() {
     assert!(latexmk_binary_changed(&out, &latexmk));
     record_latexmk_binary(&out, &latexmk);
     assert!(!latexmk_binary_changed(&out, &latexmk));
+}
+
+#[test]
+fn a_non_ascii_owned_build_folder_reaches_latexmk_by_its_short_name() {
+    let build = Path::new("C:/Users/Jörg/.oleafly/linked/p/build");
+    let short = |path: &Path| {
+        (path == build).then(|| PathBuf::from("C:/Users/JRG~1/.oleafly/linked/p/build"))
+    };
+    assert_eq!(
+        latexmk_owned_path_text(build, true, &short).as_deref(),
+        Some("C:/Users/JRG~1/.oleafly/linked/p/build")
+    );
+    assert_eq!(
+        latexmk_owned_path_text(&build.join("_figure.tex"), true, &short).as_deref(),
+        Some("C:/Users/JRG~1/.oleafly/linked/p/build/_figure.tex")
+    );
+}
+
+#[test]
+fn a_non_ascii_owned_build_folder_without_a_short_name_is_refused() {
+    let build = Path::new("C:/Users/张三/.oleafly/linked/p/build");
+    assert_eq!(latexmk_owned_path_text(build, true, &|_| None), None);
+    let unchanged = |path: &Path| Some(path.to_path_buf());
+    assert_eq!(latexmk_owned_path_text(build, true, &unchanged), None);
+}
+
+#[test]
+fn an_ascii_owned_build_folder_keeps_its_own_name() {
+    let build = Path::new("C:/Users/ada/.oleafly/linked/p/build");
+    let never = |_: &Path| -> Option<PathBuf> { panic!("no short name needed") };
+    assert_eq!(
+        latexmk_owned_path_text(build, true, &never).as_deref(),
+        Some("C:/Users/ada/.oleafly/linked/p/build")
+    );
+    let unix = Path::new("/home/jörg/.oleafly/linked/p/build");
+    assert_eq!(
+        latexmk_owned_path_text(unix, false, &never).as_deref(),
+        Some("/home/jörg/.oleafly/linked/p/build")
+    );
+}
+
+#[test]
+fn a_bare_argument_a_script_wrapper_would_respell_is_quoted_on_windows() {
+    for (arg, quoted) in [
+        (
+            "-outdir=C:/Users/O'Brien/build",
+            "\"-outdir=C:/Users/O'Brien/build\"",
+        ),
+        ("./fig[1].tex", "\"./fig[1].tex\""),
+        ("-r", ""),
+        ("./main.tex", ""),
+        ("C:/a b/O'Brien.tex", ""),
+        ("say\"what'", ""),
+        ("C:\\it's\\", "\"C:\\it's\\\\\""),
+    ] {
+        assert_eq!(wrapper_safe_arg(arg).unwrap_or_default(), quoted, "{arg}");
+    }
+    assert!(is_windows_batch_script(Path::new("C:/tl/bin/tlmgr.BAT")));
+    assert!(is_windows_batch_script(Path::new("quarto.cmd")));
+    assert!(!is_windows_batch_script(Path::new("C:/tl/bin/latexmk.exe")));
+}
+
+#[test]
+fn wrapper_safe_args_keep_every_argument_in_order() {
+    let mut command = std::process::Command::new("latexmk");
+    add_wrapper_safe_args(
+        &mut command,
+        Path::new("latexmk"),
+        &["-norc", "./O'Neil.tex", "a b"],
+    );
+    let args: Vec<_> = command.get_args().collect();
+    if cfg!(windows) {
+        assert_eq!(args, ["-norc", "\"./O'Neil.tex\"", "a b"]);
+    } else {
+        assert_eq!(args, ["-norc", "./O'Neil.tex", "a b"]);
+    }
 }

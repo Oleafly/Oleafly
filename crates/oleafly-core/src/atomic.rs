@@ -177,6 +177,41 @@ pub fn write_atomic_private(path: &Path, bytes: &[u8]) -> io::Result<()> {
     commit_staged(staged, path)
 }
 
+pub fn write_owned_file(path: &Path, bytes: &[u8]) -> io::Result<()> {
+    match std::fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.file_type().is_symlink() => {
+            std::fs::remove_file(path).or_else(|_| std::fs::remove_dir(path))?;
+        }
+        Ok(metadata) if metadata.is_file() => {
+            if metadata.len() == bytes.len() as u64
+                && std::fs::read(path).is_ok_and(|current| current == bytes)
+            {
+                return Ok(());
+            }
+            if !owned_permissions(&metadata) {
+                match std::fs::remove_file(path) {
+                    Ok(()) => {}
+                    Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                    Err(error) => return Err(error),
+                }
+            }
+        }
+        _ => {}
+    }
+    write_atomic(path, bytes)
+}
+
+#[cfg(unix)]
+fn owned_permissions(metadata: &std::fs::Metadata) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    !metadata.permissions().readonly() && metadata.permissions().mode() & 0o022 == 0
+}
+
+#[cfg(not(unix))]
+fn owned_permissions(metadata: &std::fs::Metadata) -> bool {
+    !metadata.permissions().readonly()
+}
+
 pub fn copy_atomic(source: &Path, destination: &Path) -> io::Result<u64> {
     refuse_symlink(destination)?;
     let parent = parent_of(destination)?.to_path_buf();
@@ -232,6 +267,64 @@ mod tests {
             std::fs::metadata(&private).unwrap().permissions().mode() & 0o777,
             0o640
         );
+    }
+
+    #[test]
+    fn an_owned_file_replaces_a_planted_file_but_not_a_folder() {
+        let dir = tempfile::tempdir().unwrap();
+        let owned = dir.path().join(".owned");
+        std::fs::write(&owned, b"planted").unwrap();
+        let mut permissions = std::fs::metadata(&owned).unwrap().permissions();
+        permissions.set_readonly(true);
+        std::fs::set_permissions(&owned, permissions).unwrap();
+        write_owned_file(&owned, b"ours").unwrap();
+        assert!(!std::fs::metadata(&owned).unwrap().permissions().readonly());
+        assert_eq!(std::fs::read(&owned).unwrap(), b"ours");
+        let before = std::fs::metadata(&owned).unwrap().modified().unwrap();
+        write_owned_file(&owned, b"ours").unwrap();
+        assert_eq!(
+            std::fs::metadata(&owned).unwrap().modified().unwrap(),
+            before
+        );
+        let folder = dir.path().join("folder");
+        std::fs::create_dir(&folder).unwrap();
+        assert!(write_owned_file(&folder, b"ours").is_err());
+        assert!(folder.is_dir());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_owned_file_never_keeps_a_mode_others_can_write() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let owned = dir.path().join(".owned");
+        std::fs::write(&owned, b"planted").unwrap();
+        std::fs::set_permissions(&owned, std::fs::Permissions::from_mode(0o666)).unwrap();
+        write_owned_file(&owned, b"ours").unwrap();
+        assert_eq!(std::fs::read(&owned).unwrap(), b"ours");
+        let plain = dir.path().join("plain");
+        std::fs::File::create(&plain).unwrap();
+        assert_eq!(
+            std::fs::metadata(&owned).unwrap().permissions().mode() & 0o777,
+            std::fs::metadata(&plain).unwrap().permissions().mode() & 0o777
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn an_owned_file_never_writes_through_a_planted_link() {
+        let dir = tempfile::tempdir().unwrap();
+        let target = dir.path().join("target.pl");
+        std::fs::write(&target, b"system(1)").unwrap();
+        let owned = dir.path().join(".owned");
+        std::os::unix::fs::symlink(&target, &owned).unwrap();
+        write_owned_file(&owned, b"ours").unwrap();
+        assert!(!std::fs::symlink_metadata(&owned)
+            .unwrap()
+            .file_type()
+            .is_symlink());
+        assert_eq!(std::fs::read(&owned).unwrap(), b"ours");
+        assert_eq!(std::fs::read(&target).unwrap(), b"system(1)");
     }
 
     #[cfg(unix)]

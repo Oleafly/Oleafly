@@ -561,7 +561,7 @@
       },
       "glossaries-index": {
         "title": "詞彙表或索引工具",
-        "detail": "glossaries 與 makeindex 需要額外執行一次 makeindex 或 xindy，內建引擎不會這麼做。"
+        "detail": "glossaries 與 makeindex 需要額外執行一次 makeindex、xindy 或 bib2gls，內建引擎不會這麼做。"
       },
       "hyperref-pdftex-driver": {
         "title": "hyperref 設為 pdfTeX 驅動程式",
@@ -1072,7 +1072,8 @@
       "help": "說明與關於",
       "integrations": "整合",
       "shortcuts": "鍵盤快捷鍵",
-      "research": "研究"
+      "research": "研究",
+      "logs": "Logs"
     },
     "search": {
       "empty": "沒有相符的設定",
@@ -1089,7 +1090,8 @@
         "help": "關於，版本，更新，更新記錄，新功能，說明文件，支援，社群，Discord，授權條款，當機報告",
         "integrations": "Zotero，GitHub，GitLab，Gitea，Forgejo，Codeberg，Git 代管，Computer Use，桌面應用程式，Cua，MCP，引用，帳號，連線",
         "shortcuts": "按鍵綁定，快捷鍵，熱鍵，按鍵，鍵盤",
-        "research": "研究 任務 預算 通知 保持喚醒 實驗 執行 research tasks"
+        "research": "研究 任務 預算 通知 保持喚醒 實驗 執行 research tasks",
+        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
       },
       "label": "搜尋設定",
       "results_other": "{{count}} 個分區相符"
@@ -1639,5 +1641,9 @@
   "stuckWindow": {
     "reloaded": "此視窗 30 秒沒有回應，Oleafly 已重新載入它。在此之前剛做的變更可能沒有儲存。",
     "reloadedAgain": "此視窗再次停止回應，Oleafly 又重新載入了它。由於問題可能出在你的專案裡，這次沒有重新開啟專案。"
+  },
+  "zoomIndicator": {
+    "label": "縮放",
+    "reset": "重設"
   }
 }

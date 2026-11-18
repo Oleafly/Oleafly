@@ -865,6 +865,42 @@ test("Tauri resources and package scripts mirror the manifest without a Tinymist
   assert.equal(packageManifest.scripts.build, "node scripts/build-artifact-runtime.mjs && tsc -b && vite build");
 });
 
+function buildsOnlyTheCli(source, tauriActionPattern, e2eBuildPattern) {
+  if (tauriActionPattern.test(source) || e2eBuildPattern.test(source)) return false;
+  const cargoCommands = [...source.matchAll(/run:\s*(cargo [^\n]*)/g)].map((match) => match[1]);
+  return (
+    cargoCommands.length > 0 &&
+    cargoCommands.every((command) => {
+      const packages = [...command.matchAll(/(?:^|\s)(?:-p|--package)(?:\s+|=)(\S+)/g)].map((match) => match[1]);
+      return (
+        packages.length > 0 &&
+        packages.every((name) => name === "oleafly-cli") &&
+        !/(?:^|\s)--(?:workspace|all)(?=\s|$)/.test(command)
+      );
+    })
+  );
+}
+
+test("only a job whose every cargo command targets the CLI skips the Tinymist fetch", () => {
+  const tauri = /uses:\s*tauri-apps\/tauri-action@/;
+  const e2e = /run:\s*[^\n]*scripts\/e2e\.(?:sh|ps1)\b/;
+  assert.equal(buildsOnlyTheCli("run: cargo test -p oleafly-cli --test real_latexmk", tauri, e2e), true);
+  assert.equal(
+    buildsOnlyTheCli("run: cargo test -p oleafly-cli\nrun: cargo test --workspace", tauri, e2e),
+    false,
+  );
+  assert.equal(buildsOnlyTheCli("run: cargo test -p oleafly-cli --workspace", tauri, e2e), false);
+  assert.equal(buildsOnlyTheCli("run: cargo test -p oleafly-cli -p oleafly", tauri, e2e), false);
+  assert.equal(buildsOnlyTheCli("run: cargo test -p oleafly-cli --package=oleafly", tauri, e2e), false);
+  assert.equal(buildsOnlyTheCli("run: cargo test -p oleafly-cli --all", tauri, e2e), false);
+  assert.equal(buildsOnlyTheCli("run: cargo test -p oleafly-cli --all-targets", tauri, e2e), true);
+  assert.equal(buildsOnlyTheCli("run: cargo build -p oleafly", tauri, e2e), false);
+  assert.equal(
+    buildsOnlyTheCli("run: cargo test -p oleafly-cli\nuses: tauri-apps/tauri-action@v1", tauri, e2e),
+    false,
+  );
+});
+
 test("every clean CI and release Tauri build fetches only pinned Tinymist", async () => {
   const [releaseWorkflow, ciWorkflow] = await Promise.all([
     readFile(join(ROOT, ".github", "workflows", "release.yml"), "utf8"),
@@ -942,6 +978,7 @@ test("every clean CI and release Tauri build fetches only pinned Tinymist", asyn
       );
       if (buildIndex === -1) continue;
       if (job.source.includes("OLEAFLY_E2E_APP_BINARY")) continue;
+      if (buildsOnlyTheCli(job.source, tauriActionPattern, e2eBuildPattern)) continue;
       const fetchIndex = job.source.indexOf(
         "run: node scripts/fetch-language-servers.mjs --server tinymist",
       );

@@ -126,6 +126,8 @@
     "entryCount_other": "{{count}} outline entries",
     "expandHeading": "Expand {{title}}",
     "expandAll": "Expand all headings",
+    "onPage": "{{heading}}, page {{page}}",
+    "page": "p.{{page}}",
     "title": "Outline"
   },
   "panelError": {

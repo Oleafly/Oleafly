@@ -70,7 +70,7 @@ import {
   openThreadIn,
   replyToThread,
   selectThread,
-  setShowResolved,
+  setCommentFilter,
   startComments,
   useComments,
 } from "./comments-store";
@@ -162,7 +162,7 @@ afterEach(() => {
   useCollabActivity.getState().open(null);
   useCollabLiveStore.setState({ projectId: null, share: null, role: null, status: null, members: [] });
   useCommentsRail.setState({ visible: false, unread: false, canCompose: false, request: null, reveal: null });
-  useComments.setState({ showResolved: false });
+  useComments.setState({ filter: "open" });
 });
 
 describe("ordering and identity helpers", () => {
@@ -505,12 +505,12 @@ describe("selection and visibility", () => {
     );
     start();
     await waitFor(() => expect(useComments.getState().threads).toHaveLength(2));
-    act(() => setShowResolved(true));
+    act(() => setCommentFilter("all"));
     act(() => selectThread("done"));
-    act(() => setShowResolved(false));
-    expect(useComments.getState()).toMatchObject({ showResolved: false, selectedId: null });
+    act(() => setCommentFilter("open"));
+    expect(useComments.getState()).toMatchObject({ filter: "open", selectedId: null });
     act(() => selectThread("open"));
-    act(() => setShowResolved(false));
+    act(() => setCommentFilter("open"));
     expect(useComments.getState().selectedId).toBe("open");
   });
 

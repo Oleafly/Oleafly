@@ -1,7 +1,7 @@
-use std::fmt::Display;
-
-use chrono::{DateTime, Local, TimeZone};
+use jiff::tz::TimeZone;
+use jiff::{Timestamp, ZonedDateTime};
 use oleafly_collab_protocol::ids::SharedProjectId;
+use oleafly_collab_protocol::markup::plain_text;
 use oleafly_collab_protocol::roles::{ProjectRole, ServerRole};
 use url::Url;
 
@@ -23,6 +23,7 @@ pub struct Mention {
     pub path: Option<String>,
     pub quote: String,
     pub body: String,
+    pub chat: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -86,23 +87,20 @@ pub fn platform_label(platform: &str) -> String {
     }
 }
 
-pub fn format_time<Tz: TimeZone>(at: &DateTime<Tz>) -> String
-where
-    Tz::Offset: Display,
-{
-    let offset = at.format("%:z").to_string();
+pub fn format_time(at: &ZonedDateTime) -> String {
+    let offset = at.strftime("%:z").to_string();
     let zone = if offset == "+00:00" {
         "UTC".to_string()
     } else {
         format!("UTC{offset}")
     };
-    format!("{} ({zone})", at.format("%A %-d %B %Y at %H:%M"))
+    format!("{} ({zone})", at.strftime("%A %-d %B %Y at %H:%M"))
 }
 
 pub fn local_time(at_ms: i64) -> String {
-    match Local.timestamp_millis_opt(at_ms).single() {
-        Some(at) => format_time(&at),
-        None => format!("{at_ms} ms after 1970 (UTC)"),
+    match Timestamp::from_millisecond(at_ms) {
+        Ok(at) => format_time(&at.to_zoned_datetime(TimeZone::system())),
+        Err(_) => format!("{at_ms} ms after 1970 (UTC)"),
     }
 }
 
@@ -386,6 +384,10 @@ pub fn sign_in_link(server_name: &str, link: &str, same_device: bool) -> Content
 }
 
 fn mention_details(mention: &Mention) -> Block {
+    let said = one_line(&plain_text(&mention.body), MAX_COMMENT);
+    if mention.chat {
+        return Block::Details(vec![("Chat message", said)]);
+    }
     let mut rows = Vec::new();
     if let Some(path) = mention
         .path
@@ -398,19 +400,23 @@ fn mention_details(mention: &Mention) -> Block {
     if !quote.is_empty() {
         rows.push(("Text", format!("\"{quote}\"")));
     }
-    rows.push(("Comment", one_line(&mention.body, MAX_COMMENT)));
+    rows.push(("Comment", said));
     Block::Details(rows)
 }
 
 fn mention_button(public_url: &Url, mention: &Mention) -> Block {
     Block::Button {
         label: "Open in Oleafly",
-        href: comment_link(
-            public_url,
-            mention.project,
-            &mention.file_id,
-            &mention.thread_id,
-        ),
+        href: if mention.chat {
+            open_link(public_url, mention.project)
+        } else {
+            comment_link(
+                public_url,
+                mention.project,
+                &mention.file_id,
+                &mention.thread_id,
+            )
+        },
     }
 }
 
@@ -423,11 +429,16 @@ pub fn mentioned_you(server_name: &str, public_url: &Url, mentions: &[Mention]) 
         let author = one_line(&mention.author, MAX_SUBJECT_PART);
         let title = one_line(&mention.title, MAX_SUBJECT_PART);
         let heading = format!("{author} mentioned you in \"{title}\"");
+        let place = if mention.chat {
+            "in the chat"
+        } else {
+            "in a comment"
+        };
         return content(
             heading.clone(),
             &[
                 Block::Heading(heading),
-                Block::Paragraph(format!("{author} mentioned you in a comment on {server}.")),
+                Block::Paragraph(format!("{author} mentioned you {place} on {server}.")),
                 mention_details(mention),
                 mention_button(public_url, mention),
                 Block::Paragraph(
@@ -439,12 +450,16 @@ pub fn mentioned_you(server_name: &str, public_url: &Url, mentions: &[Mention]) 
             ],
         );
     }
-    let heading = format!("{} comments mention you", mentions.len());
+    let chats = mentions.iter().filter(|mention| mention.chat).count();
+    let kind = match chats {
+        0 => "comments",
+        all if all == mentions.len() => "chat messages",
+        _ => "comments and chat messages",
+    };
+    let heading = format!("{} {kind} mention you", mentions.len());
     let mut blocks = vec![
         Block::Heading(heading.clone()),
-        Block::Paragraph(format!(
-            "People mentioned you in these comments on {server}."
-        )),
+        Block::Paragraph(format!("People mentioned you in these {kind} on {server}.")),
     ];
     for mention in mentions.iter().take(MAX_LISTED_MENTIONS) {
         blocks.push(Block::Paragraph(format!(
@@ -484,8 +499,6 @@ pub fn test_message(server_name: &str) -> Content {
 
 #[cfg(test)]
 mod tests {
-    use chrono::FixedOffset;
-
     use super::*;
 
     const PROJECT: &str = "01920000-0000-7000-8000-0000000000aa";
@@ -604,15 +617,14 @@ mod tests {
 
     #[test]
     fn times_name_their_offset_and_utc_is_written_as_utc() {
-        let pacific = FixedOffset::west_opt(7 * 3600).unwrap();
-        let at = pacific.timestamp_millis_opt(1_760_286_600_000).unwrap();
+        let instant = Timestamp::from_millisecond(1_760_286_600_000).unwrap();
+        let pacific = instant.to_zoned_datetime(TimeZone::fixed(jiff::tz::offset(-7)));
         assert_eq!(
-            format_time(&at),
+            format_time(&pacific),
             "Sunday 12 October 2025 at 09:30 (UTC-07:00)"
         );
-        let utc = FixedOffset::east_opt(0).unwrap();
-        let at = utc.timestamp_millis_opt(1_760_286_600_000).unwrap();
-        assert_eq!(format_time(&at), "Sunday 12 October 2025 at 16:30 (UTC)");
+        let utc = instant.to_zoned_datetime(TimeZone::UTC);
+        assert_eq!(format_time(&utc), "Sunday 12 October 2025 at 16:30 (UTC)");
         assert!(local_time(1_760_286_600_000).contains("2025"));
     }
 
@@ -699,6 +711,7 @@ mod tests {
             path: path.map(str::to_string),
             quote: "the brown fox".to_string(),
             body: body.to_string(),
+            chat: false,
         }
     }
 
@@ -735,6 +748,74 @@ mod tests {
         ));
         assert!(message.html.contains(">Open in Oleafly</a>"));
         assert!(!text.contains('\u{2014}') && !text.contains(';'), "{text}");
+    }
+
+    #[test]
+    fn a_chat_mention_names_the_chat_and_opens_the_project() {
+        let chat = Mention {
+            chat: true,
+            ..mention("Ada Lovelace", "Reef survey", None, "@Bob are you around?")
+        };
+        let message = mentioned_you("Smith Lab", &url(), std::slice::from_ref(&chat));
+        assert_eq!(
+            message.subject,
+            "Ada Lovelace mentioned you in \"Reef survey\""
+        );
+        let text = &message.text;
+        assert!(
+            text.contains("Ada Lovelace mentioned you in the chat on Smith Lab."),
+            "{text}"
+        );
+        assert!(
+            text.contains("Chat message: @Bob are you around?"),
+            "{text}"
+        );
+        assert!(
+            !text.contains("Text:") && !text.contains("&thread="),
+            "{text}"
+        );
+        assert!(
+            text.contains(&format!(
+                "oleafly://open?server=https%3A%2F%2Fwww.cs.uni.edu%2Foleafly&project={PROJECT}"
+            )),
+            "{text}"
+        );
+        assert!(!text.contains('\u{2014}') && !text.contains(';'), "{text}");
+        let chats = mentioned_you("Smith Lab", &url(), &[chat.clone(), chat.clone()]);
+        assert_eq!(chats.subject, "2 chat messages mention you");
+        assert!(chats
+            .text
+            .contains("People mentioned you in these chat messages on Smith Lab."));
+        let mixed = mentioned_you(
+            "Smith Lab",
+            &url(),
+            &[chat, mention("Carol Diaz", "Thesis", None, "@Bob two")],
+        );
+        assert_eq!(mixed.subject, "2 comments and chat messages mention you");
+        assert!(mixed
+            .text
+            .contains("People mentioned you in these comments and chat messages on Smith Lab."));
+    }
+
+    #[test]
+    fn a_formatted_comment_reads_as_plain_text_in_the_email() {
+        let message = mentioned_you(
+            "Smith Lab",
+            &url(),
+            &[mention(
+                "Ada Lovelace",
+                "Reef survey",
+                None,
+                "@Bob **please** check _this_ ~~now~~ `fig_2`\n- first\n1. second",
+            )],
+        );
+        for body in [&message.text, &message.html] {
+            assert!(
+                body.contains("@Bob please check this now fig_2 - first 1. second"),
+                "{body}"
+            );
+            assert!(!body.contains("**") && !body.contains('`'), "{body}");
+        }
     }
 
     #[test]

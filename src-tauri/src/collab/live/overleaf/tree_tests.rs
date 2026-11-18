@@ -14,6 +14,7 @@ use super::rig::{eventually, run, session_of, FirstStart, OverleafRig, Place};
 use super::TreeNoticeKind;
 use crate::collab::disk::sha256_hex;
 use crate::collab::live::kept::KeptKind;
+use crate::collab::live::uploads::DownloadProgress;
 
 const MAIN: &str = "main.tex";
 const NOTES: &str = "notes.tex";
@@ -405,7 +406,10 @@ fn a_replaced_doc_with_my_unsent_edits_keeps_a_copy_and_says_so() {
             })
         })
         .await;
-        let copy = rig.host.kept.lock().unwrap()[0].files[0].copy.clone();
+        let copy = rig.host.kept.lock().unwrap()[0].files[0]
+            .copy
+            .clone()
+            .unwrap();
         disk_matches(&rig, &copy, b"Notes and mine\n").await;
         settle(&rig).await;
         assert!(rig.host.removed.lock().unwrap().is_empty());
@@ -414,34 +418,63 @@ fn a_replaced_doc_with_my_unsent_edits_keeps_a_copy_and_says_so() {
     });
 }
 
+fn big_scan() -> Vec<u8> {
+    PNG.iter()
+        .copied()
+        .chain(std::iter::repeat_n(7u8, 1536 * 1024))
+        .collect()
+}
+
+async fn bob_uploads_scan(rig: &OverleafRig, big: &[u8]) -> Vec<DownloadProgress> {
+    let bob = bob(rig).await;
+    bob.rest
+        .upload(&bob.session, &bob.root, "scan.png", big)
+        .await
+        .unwrap();
+    disk_matches(rig, "scan.png", big).await;
+    eventually("the big download says it is done", || {
+        rig.host
+            .downloads
+            .lock()
+            .unwrap()
+            .last()
+            .is_some_and(|last| last.path == "scan.png" && last.total == Some(0))
+    })
+    .await;
+    let downloads = rig.host.downloads.lock().unwrap().clone();
+    assert!(downloads.iter().all(|progress| progress.path == "scan.png"));
+    downloads
+}
+
 #[test]
-fn a_big_download_shows_its_progress_and_clears_at_the_end() {
+fn a_big_download_with_a_known_length_shows_how_far_it_got() {
     run(async {
-        let big: Vec<u8> = PNG
-            .iter()
-            .copied()
-            .chain(std::iter::repeat_n(7u8, 1536 * 1024))
-            .collect();
-        let rig = ready(
-            OverleafRig::start(project().file("scan.png", &big).file("plot.png", PNG), DISK).await,
-        )
-        .await;
-        disk_matches(&rig, "scan.png", &big).await;
+        let rig = ready(OverleafRig::start(project().file("plot.png", PNG), DISK).await).await;
         disk_matches(&rig, "plot.png", PNG).await;
-        eventually("the big download says it is done", || {
-            rig.host
-                .downloads
-                .lock()
-                .unwrap()
-                .last()
-                .is_some_and(|last| last.path == "scan.png" && last.total == 0)
-        })
-        .await;
-        let downloads = rig.host.downloads.lock().unwrap().clone();
-        assert!(downloads.iter().all(|progress| progress.path == "scan.png"));
+        rig.mock.configure(|config| config.download_length = true);
+        let big = big_scan();
+        let downloads = bob_uploads_scan(&rig, &big).await;
+        let total = Some(big.len() as u64);
         assert!(downloads
             .iter()
-            .any(|progress| progress.total == big.len() as u64 && progress.done <= progress.total));
+            .any(|progress| progress.total == total && progress.done <= big.len() as u64));
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn a_big_download_without_a_length_shows_what_arrived_once_it_is_big() {
+    run(async {
+        let rig = ready(OverleafRig::start(project().file("plot.png", PNG), DISK).await).await;
+        disk_matches(&rig, "plot.png", PNG).await;
+        let big = big_scan();
+        let downloads = bob_uploads_scan(&rig, &big).await;
+        let (clear, progress) = downloads.split_last().unwrap();
+        assert_eq!((clear.done, clear.total), (0, Some(0)));
+        assert!(!progress.is_empty());
+        assert!(progress
+            .iter()
+            .all(|step| step.total.is_none() && step.done >= 1024 * 1024));
         rig.finish().await;
     });
 }
@@ -597,7 +630,7 @@ fn a_binary_that_differs_on_both_sides_keeps_theirs_and_mine_beside() {
             .iter()
             .flat_map(|payload| payload.files.clone())
             .find(|file| file.path == "plot.png")
-            .map(|file| file.copy)
+            .and_then(|file| file.copy)
             .unwrap();
         disk_matches(&rig, &copy, MINE).await;
         import(&rig, &["plot.png"]).await;
@@ -1136,7 +1169,7 @@ fn a_server_file_never_overwrites_a_local_text_file_of_the_same_name_at_first_st
                 .iter()
                 .flat_map(|payload| payload.files.iter())
                 .find(|file| file.path == "data.csv" && file.kind == KeptKind::Differed)
-                .map(|file| file.copy.clone())
+                .and_then(|file| file.copy.clone())
         };
         eventually("my text is kept beside the server's file", || {
             copy().is_some()

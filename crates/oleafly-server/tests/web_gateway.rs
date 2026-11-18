@@ -5,16 +5,20 @@ mod web_support;
 
 use oleafly_collab_protocol::frames::{ClientFrame, ServerFrame};
 use oleafly_collab_protocol::outputs::MAIN_FILE_HEADER;
-use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
+use oleafly_collab_protocol::projects::{
+    PresenceActivity, PresenceActivityKind, PresenceState, ProjectRole,
+};
 use oleafly_ot::TextOperation;
+use oleafly_server::mentions;
 use oleafly_server::snapshots::Budget;
-use people::{call, grant, send_frame};
+use oleafly_server::test_support::{mail_config, MockSmtp};
+use people::{call, grant, send_frame, stage_with};
 use reqwest::{Method, StatusCode};
 use serde_json::{json, Value};
 use web_support::{
     browser_sign_in, ends, insert_at, next_web, open_socket, open_text, send_web,
     share_doc_project, until, until_where, utf16, web_socket, web_stage, Desktop, Shared,
-    WebSocket, DESKTOP_PEER, MAIN_TEXT,
+    WebSocket, DESKTOP_PEER, MAIN_TEXT, WAIT,
 };
 
 async fn opened(socket: &mut WebSocket, file: &str) -> u64 {
@@ -96,7 +100,7 @@ async fn the_hello_names_the_role_features_files_and_people_then_chat_output_and
     assert_eq!(hello["role"], "editor");
     assert_eq!(
         hello["features"],
-        json!({ "comments": true, "suggestions": true, "chat": true })
+        json!({ "comments": true, "suggestions": true, "chat": true, "reactions": true })
     );
     let files = hello["files"].as_array().expect("files");
     assert!(files
@@ -115,6 +119,14 @@ async fn the_hello_names_the_role_features_files_and_people_then_chat_output_and
         names.contains(&"Bob Smith") && names.contains(&"Alice Chen"),
         "{names:?}"
     );
+    let roles: Vec<(&str, &str)> = hello["members"]
+        .as_array()
+        .expect("members")
+        .iter()
+        .filter_map(|member| Some((member["displayName"].as_str()?, member["role"].as_str()?)))
+        .collect();
+    assert!(roles.contains(&("Alice Chen", "editor")), "{roles:?}");
+    assert!(roles.contains(&("Bob Smith", "owner")), "{roles:?}");
     assert_eq!(
         hello["compile"],
         json!({ "main_doc": shared.main, "engine": "latex" })
@@ -270,6 +282,35 @@ async fn comments_written_in_the_browser_reach_everyone_and_follow_every_action(
     let edited = &last_threads(&frames)[0]["messages"][1];
     assert_eq!(edited["body"], "Second, edited");
     assert!(edited["editedAt"].as_i64().is_some());
+    assert_eq!(edited["reactions"], json!([]));
+    let (frames, done) = act(
+        &mut socket,
+        json!({ "t": "comment", "action": "react", "threadId": thread_id, "messageId": reply, "emoji": "👍", "on": true }),
+        "r1",
+    )
+    .await;
+    assert_eq!(done["t"], "done");
+    assert_eq!(
+        last_threads(&frames)[0]["messages"][1]["reactions"],
+        json!([{ "emoji": "👍", "by": [stage.alice.tokens.account_id.to_string()] }])
+    );
+    let (_, bad) = act(
+        &mut socket,
+        json!({ "t": "comment", "action": "react", "threadId": thread_id, "messageId": reply, "emoji": "two words", "on": true }),
+        "r2",
+    )
+    .await;
+    assert_eq!(bad["code"], "invalid");
+    let (frames, _) = act(
+        &mut socket,
+        json!({ "t": "comment", "action": "react", "threadId": thread_id, "messageId": reply, "emoji": "👍", "on": false }),
+        "r3",
+    )
+    .await;
+    assert_eq!(
+        last_threads(&frames)[0]["messages"][1]["reactions"],
+        json!([])
+    );
     let (frames, _) = act(
         &mut socket,
         json!({ "t": "comment", "action": "resolve", "threadId": thread_id }),
@@ -321,6 +362,245 @@ async fn comments_written_in_the_browser_reach_everyone_and_follow_every_action(
     assert_eq!(empty["code"], "comment_empty");
 }
 
+async fn only_the_owner_removes_someone_elses_comment(role: ProjectRole) {
+    let (stage, shared, mut alice, _browser) = alice_in(role).await;
+    let owner_browser = browser_sign_in(&stage.server, "github", "/web/").await;
+    let mut owner = web_socket(&stage.server, &owner_browser, shared.project).await;
+    until(&mut alice, "hello").await;
+    until(&mut owner, "hello").await;
+    let (frames, _) = act(
+        &mut alice,
+        json!({ "t": "comment", "action": "create", "fileId": shared.main, "path": "main.tex",
+                "from": 0, "to": 5, "rev": null, "body": "Mine", "members": [] }),
+        "a1",
+    )
+    .await;
+    let thread = last_threads(&frames)[0].clone();
+    let thread_id = thread["id"].clone();
+    let hers = thread["messages"][0]["id"].clone();
+    let (frames, _) = act(
+        &mut owner,
+        json!({ "t": "comment", "action": "reply", "threadId": thread_id, "body": "Owner reply", "members": [] }),
+        "o1",
+    )
+    .await;
+    let theirs = last_threads(&frames)[0]["messages"][1]["id"].clone();
+    let (_, refused) = act(
+        &mut alice,
+        json!({ "t": "comment", "action": "delete", "threadId": thread_id, "messageId": theirs }),
+        "a2",
+    )
+    .await;
+    assert_eq!(refused["code"], "comment_not_yours", "{role:?}");
+    let (frames, done) = act(
+        &mut owner,
+        json!({ "t": "comment", "action": "delete", "threadId": thread_id, "messageId": hers }),
+        "o2",
+    )
+    .await;
+    assert_eq!(done["t"], "done");
+    let messages = last_threads(&frames)[0]["messages"].clone();
+    assert_eq!(messages[0]["deleted"], true);
+    assert_eq!(messages[0]["removed"], true);
+    assert_eq!(messages[0]["body"], "");
+    assert_eq!(messages[0]["verified"], true);
+    assert_eq!(messages[1]["body"], "Owner reply");
+    let (frames, _) = act(
+        &mut owner,
+        json!({ "t": "comment", "action": "delete", "threadId": thread_id, "messageId": theirs }),
+        "o3",
+    )
+    .await;
+    let own = &last_threads(&frames)[0]["messages"][1];
+    assert_eq!(own["deleted"], true);
+    assert_eq!(own["removed"], false);
+}
+
+#[tokio::test]
+async fn an_owner_removes_an_editors_comment_and_the_editor_cannot_remove_the_owners() {
+    only_the_owner_removes_someone_elses_comment(ProjectRole::Editor).await;
+}
+
+#[tokio::test]
+async fn an_owner_removes_a_commenters_comment_and_the_commenter_cannot_remove_the_owners() {
+    only_the_owner_removes_someone_elses_comment(ProjectRole::Commenter).await;
+}
+
+#[tokio::test]
+async fn a_comment_or_chat_message_sent_twice_with_one_client_id_is_written_once() {
+    let (stage, shared, mut socket, _browser) = alice_in(ProjectRole::Editor).await;
+    until(&mut socket, "hello").await;
+    let create = json!({ "t": "comment", "action": "create", "fileId": shared.main, "path": "main.tex",
+                         "from": 0, "to": 5, "rev": null, "body": "Once", "members": [], "clientId": "outbox-1" });
+    let (frames, done) = act(&mut socket, create.clone(), "c1").await;
+    assert_eq!(done["t"], "done");
+    let thread_id = last_threads(&frames)[0]["id"].clone();
+    let (_, again) = act(&mut socket, create, "c2").await;
+    assert_eq!(again["t"], "done");
+    let reply = json!({ "t": "comment", "action": "reply", "threadId": thread_id, "body": "Also once",
+                        "members": [], "clientId": "outbox-2" });
+    for req in ["c3", "c4"] {
+        let (_, done) = act(&mut socket, reply.clone(), req).await;
+        assert_eq!(done["t"], "done");
+    }
+    let (frames, _) = act(
+        &mut socket,
+        json!({ "t": "comment", "action": "resolve", "threadId": thread_id }),
+        "c5",
+    )
+    .await;
+    let threads = last_threads(&frames);
+    assert_eq!(threads.len(), 1);
+    assert_eq!(threads[0]["messages"].as_array().map(Vec::len), Some(2));
+    let chat = json!({ "t": "chat", "action": "send", "body": "Hi once", "clientId": "outbox-3" });
+    for req in ["h1", "h2"] {
+        let (_, done) = act(&mut socket, chat.clone(), req).await;
+        assert_eq!(done["t"], "done");
+    }
+    let (frames, _) = act(
+        &mut socket,
+        json!({ "t": "chat", "action": "send", "body": "Then this, @Bob Smith", "members": [] }),
+        "h3",
+    )
+    .await;
+    let latest = frames
+        .iter()
+        .rev()
+        .find(|frame| frame["t"] == "chat")
+        .expect("the chat after sending");
+    let bodies: Vec<&str> = latest["messages"]
+        .as_array()
+        .expect("messages")
+        .iter()
+        .filter_map(|message| message["body"].as_str())
+        .collect();
+    assert_eq!(bodies, ["Hi once", "Then this, @Bob Smith"]);
+    assert_eq!(
+        latest["messages"][1]["mentions"],
+        json!([stage.bob.tokens.account_id.to_string()])
+    );
+    assert_eq!(latest["messages"][0]["mentions"], json!([]));
+}
+
+#[tokio::test]
+async fn a_chat_mention_sent_from_the_browser_emails_the_person_mentioned() {
+    let smtp = MockSmtp::start().await;
+    let mut config = mail_config(&smtp);
+    config.web = true;
+    let stage = stage_with(config).await;
+    let shared = share_doc_project(&stage, ProjectRole::Editor).await;
+    let browser = browser_sign_in(&stage.server, "github2", "/web/").await;
+    let mut socket = web_socket(&stage.server, &browser, shared.project).await;
+    until(&mut socket, "hello").await;
+    let (_, done) = act(
+        &mut socket,
+        json!({ "t": "chat", "action": "send", "body": "@Bob Smith are you around?", "members": [] }),
+        "m1",
+    )
+    .await;
+    assert_eq!(done["t"], "done", "{done}");
+    let state = stage.server.state();
+    tokio::time::timeout(WAIT, state.mentions.settled())
+        .await
+        .expect("looking for mentions finishes");
+    stage.server.clock().advance(mentions::WINDOW_MS);
+    mentions::deliver_due(state)
+        .await
+        .expect("due mentions go out");
+    tokio::time::timeout(WAIT, state.mailer.settled())
+        .await
+        .expect("the mail queue settles");
+    let sent: Vec<_> = smtp
+        .messages()
+        .into_iter()
+        .filter(|email| email.subject().contains("mention"))
+        .collect();
+    assert_eq!(sent.len(), 1, "{sent:?}");
+    assert_eq!(sent[0].rcpt_to, ["bob@uni.edu"]);
+    let text = sent[0].text();
+    assert!(
+        text.contains("Chat message: @Bob Smith are you around?"),
+        "{text}"
+    );
+}
+
+#[tokio::test]
+async fn two_copies_of_one_post_that_wait_for_the_document_together_are_written_once() {
+    let (stage, shared, socket, browser) = alice_in(ProjectRole::Editor).await;
+    let mut sockets = vec![socket];
+    for _ in 0..3 {
+        sockets.push(web_socket(&stage.server, &browser, shared.project).await);
+    }
+    for socket in &mut sockets {
+        until(socket, "hello").await;
+    }
+    let room = stage
+        .server
+        .state()
+        .web
+        .live(shared.project)
+        .expect("a live room");
+    let held = room.hold().await;
+    let create = json!({ "t": "comment", "action": "create", "fileId": shared.main, "path": "main.tex",
+                         "from": 0, "to": 5, "rev": null, "body": "Once", "members": [], "clientId": "outbox-7" });
+    let chat = json!({ "t": "chat", "action": "send", "body": "Hi once", "clientId": "outbox-8" });
+    let posts = [&create, &create, &chat, &chat];
+    for (index, (socket, post)) in sockets.iter_mut().zip(posts).enumerate() {
+        let mut frame = post.clone();
+        frame["reqId"] = json!(format!("r{index}"));
+        send_web(socket, frame).await;
+    }
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    drop(held);
+    for (index, socket) in sockets.iter_mut().enumerate() {
+        let done = until_where(socket, |frame| frame["reqId"] == format!("r{index}")).await;
+        assert_eq!(done["t"], "done", "{done}");
+    }
+    let mut fresh = web_socket(&stage.server, &browser, shared.project).await;
+    let mut seen = Vec::new();
+    let greeted = loop {
+        let frame = next_web(&mut fresh).await.expect("the greeting");
+        if frame["t"] == "chat" {
+            break frame;
+        }
+        seen.push(frame);
+    };
+    assert_eq!(last_threads(&seen).len(), 1, "{seen:?}");
+    let bodies: Vec<&str> = greeted["messages"]
+        .as_array()
+        .expect("messages")
+        .iter()
+        .filter_map(|message| message["body"].as_str())
+        .collect();
+    assert_eq!(bodies, ["Hi once"]);
+}
+
+#[tokio::test]
+async fn each_presence_a_peer_sends_reaches_the_browser_with_a_newer_seq() {
+    let (stage, shared, mut socket, _browser) = alice_in(ProjectRole::Editor).await;
+    let mut desktop = Desktop::open(&stage, &stage.bob, &shared, DESKTOP_PEER).await;
+    until(&mut socket, "hello").await;
+    let here = ClientFrame::Presence {
+        project_id: shared.project,
+        state: PresenceState {
+            file_id: Some(shared.main.clone()),
+            cursor: Some(1),
+            anchor: None,
+            activity: None,
+        },
+    };
+    let mut seqs = Vec::new();
+    for _ in 0..2 {
+        send_frame(&mut desktop.socket, &here).await;
+        let presence = until_where(&mut socket, |frame| {
+            frame["t"] == "presence" && !frame["peers"].as_array().is_some_and(Vec::is_empty)
+        })
+        .await;
+        seqs.push(presence["peers"][0]["seq"].as_u64().expect("a seq"));
+    }
+    assert!(seqs[1] > seqs[0], "{seqs:?}");
+}
+
 #[tokio::test]
 async fn a_viewer_reads_but_cannot_edit_comment_suggest_or_chat() {
     let (_stage, shared, mut socket, _browser) = alice_in(ProjectRole::Viewer).await;
@@ -342,6 +622,21 @@ async fn a_viewer_reads_but_cannot_edit_comment_suggest_or_chat() {
     )
     .await;
     assert_eq!(refused["code"], "comment_viewer");
+    let (_, refused) = act(
+        &mut socket,
+        json!({ "t": "comment", "action": "react", "threadId": "01920000-0000-7000-8000-0000000000c1",
+                "messageId": "01920000-0000-7000-8000-0000000000c2", "emoji": "👍", "on": true }),
+        "v5",
+    )
+    .await;
+    assert_eq!(refused["code"], "comment_viewer");
+    let (_, refused) = act(
+        &mut socket,
+        json!({ "t": "chat", "action": "react", "id": "01920000-0000-7000-8000-0000000000c3", "emoji": "👍", "on": true }),
+        "v6",
+    )
+    .await;
+    assert_eq!(refused["code"], "chat_role");
     let (_, refused) = act(
         &mut socket,
         json!({ "t": "suggestion", "action": "withdraw", "ids": ["s1"] }),
@@ -825,6 +1120,26 @@ async fn chat_is_sent_listed_deleted_and_cleared_by_the_owner() {
     assert_eq!(latest["messages"][0]["deleted"], true);
     assert_eq!(latest["messages"][0]["body"], "");
     assert_eq!(latest["messages"][1]["body"], "Second");
+    let second = latest["messages"][1]["id"].clone();
+    let (_, done) = act(
+        &mut bob,
+        json!({ "t": "chat", "action": "react", "id": second, "emoji": "🎉", "on": true }),
+        "5r",
+    )
+    .await;
+    assert_eq!(done["t"], "done");
+    let reacted = until(&mut alice, "chat").await;
+    assert_eq!(
+        reacted["messages"][1]["reactions"],
+        json!([{ "emoji": "🎉", "by": [stage.bob.tokens.account_id.to_string()] }])
+    );
+    let (_, gone) = act(
+        &mut bob,
+        json!({ "t": "chat", "action": "react", "id": first, "emoji": "🎉", "on": true }),
+        "5g",
+    )
+    .await;
+    assert_eq!(gone["code"], "not_found");
     let (_, refused) = act(&mut alice, json!({ "t": "chat", "action": "clear" }), "6").await;
     assert_eq!(refused["code"], "chat_role");
     let (_, done) = act(&mut bob, json!({ "t": "chat", "action": "clear" }), "7").await;
@@ -1037,6 +1352,10 @@ async fn cursors_travel_between_a_desktop_and_a_browser() {
                 file_id: Some(shared.main.clone()),
                 cursor: Some(3),
                 anchor: Some(1),
+                activity: Some(PresenceActivity {
+                    kind: PresenceActivityKind::Reply,
+                    thread_id: Some("thread-1".to_owned()),
+                }),
             },
         },
     )
@@ -1058,9 +1377,14 @@ async fn cursors_travel_between_a_desktop_and_a_browser() {
     assert_eq!(peer["fileId"], shared.main.as_str());
     assert_eq!(peer["anchor"], 1);
     assert_eq!(peer["head"], 3);
+    assert_eq!(
+        peer["activity"],
+        json!({ "kind": "reply", "threadId": "thread-1" })
+    );
     send_web(
         &mut socket,
-        json!({ "t": "presence", "fileId": shared.main, "anchor": 2, "head": 4 }),
+        json!({ "t": "presence", "fileId": shared.main, "anchor": 2, "head": 4,
+                "activity": { "kind": "chat", "threadId": null } }),
     )
     .await;
     let heard = desktop
@@ -1075,6 +1399,13 @@ async fn cursors_travel_between_a_desktop_and_a_browser() {
     assert_eq!(account_id, stage.alice.tokens.account_id);
     assert_eq!(state.cursor, Some(4));
     assert_eq!(state.anchor, Some(2));
+    assert_eq!(
+        state.activity,
+        Some(PresenceActivity {
+            kind: PresenceActivityKind::Chat,
+            thread_id: None,
+        })
+    );
     drop(desktop.socket);
     let left = until_where(&mut socket, |frame| {
         frame["t"] == "presence" && frame["peers"].as_array().is_some_and(Vec::is_empty)

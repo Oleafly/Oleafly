@@ -151,7 +151,7 @@ impl Active {
 pub struct KeptFile {
     pub id: String,
     pub path: String,
-    pub copy: String,
+    pub copy: Option<String>,
     pub kind: KeptKind,
     pub by: Option<String>,
 }
@@ -247,7 +247,7 @@ pub(super) fn notices(
         .filter_map(|figure| {
             Some(KeptFile {
                 path: next.get(&figure.original)?.path.clone(),
-                copy: next.get(&figure.copy)?.path.clone(),
+                copy: Some(next.get(&figure.copy)?.path.clone()),
                 id: figure.copy,
                 kind: KeptKind::Replaced,
                 by: figure.by,
@@ -272,7 +272,7 @@ pub(super) fn notices(
                 files.push(KeptFile {
                     id: clash.id.clone(),
                     path: now.path.clone(),
-                    copy: after.path.clone(),
+                    copy: Some(after.path.clone()),
                     kind: KeptKind::Beside,
                     by,
                 });
@@ -289,7 +289,7 @@ pub(super) fn notices(
         files.push(KeptFile {
             id: clash.id.clone(),
             path: before.path.clone(),
-            copy: after.path.clone(),
+            copy: Some(after.path.clone()),
             kind: KeptKind::Added,
             by: live.doc().author_of(&clash.other),
         });
@@ -487,7 +487,11 @@ mod tests {
             let file = &kept[0].files;
             assert_eq!(file.len(), 1);
             assert_eq!(
-                (file[0].path.as_str(), file[0].copy.as_str(), file[0].kind),
+                (
+                    file[0].path.as_str(),
+                    file[0].copy.as_deref().unwrap(),
+                    file[0].kind
+                ),
                 ("figs/plot.png", copy, KeptKind::Replaced)
             );
             assert_eq!(file[0].by.as_deref(), Some(ALICE));
@@ -655,7 +659,7 @@ mod tests {
             assert_eq!(kept.len(), 1, "{kept:?}");
             let file = &kept[0].files[0];
             assert_eq!(
-                (file.path.as_str(), file.copy.as_str(), file.kind),
+                (file.path.as_str(), file.copy.as_deref().unwrap(), file.kind),
                 ("chapters/plan.tex", copy, KeptKind::Added)
             );
             assert_eq!(file.by.as_deref(), Some(ALICE));
@@ -773,7 +777,11 @@ mod tests {
             let kept = arrived.kept();
             assert_eq!(kept.len(), 1, "{kept:?}");
             assert_eq!(
-                (kept[0].path.as_str(), kept[0].copy.as_str(), kept[0].kind),
+                (
+                    kept[0].path.as_str(),
+                    kept[0].copy.as_deref().unwrap(),
+                    kept[0].kind
+                ),
                 ("sections/plan.tex", copy, KeptKind::Added)
             );
             assert_eq!(kept[0].by.as_deref(), Some(ALICE));
@@ -815,7 +823,11 @@ mod tests {
                 .collect();
             assert_eq!(told.len(), 1, "{told:?}");
             assert_eq!(
-                (told[0].path.as_str(), told[0].copy.as_str(), told[0].kind),
+                (
+                    told[0].path.as_str(),
+                    told[0].copy.as_deref().unwrap(),
+                    told[0].kind
+                ),
                 ("sections/plan.tex", copy, KeptKind::Beside)
             );
             assert_eq!(told[0].by.as_deref(), Some(BOB));
@@ -991,7 +1003,7 @@ mod tests {
         assert!(
             told.iter().any(|file| file.kind == KeptKind::Replaced
                 && file.path == "figs/plot.png"
-                && file.copy == copy),
+                && file.copy.as_ref() == Some(&copy)),
             "{told:?}"
         );
     }

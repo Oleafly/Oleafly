@@ -281,6 +281,7 @@ impl Peer {
                 file_id: Some(self.path.clone()),
                 cursor: u32::try_from(self.editor.cursor).ok(),
                 anchor: None,
+                activity: None,
             });
         }
     }

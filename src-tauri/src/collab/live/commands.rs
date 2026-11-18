@@ -3,11 +3,13 @@ use std::sync::Arc;
 use oleafly_ot::{DocMessage, DocOpened, DocSink, TextOperation};
 use tauri::ipc::Channel;
 
-use super::editor::{doc_change, doc_close, doc_open, presence_leave, presence_set};
+use super::editor::{
+    doc_change, doc_close, doc_open, presence_activity, presence_leave, presence_set,
+};
 use super::host::{AppLiveHost, LiveHost};
 use super::lifecycle::{flush, reconnect_now, start, stop};
 use super::local_events::resume;
-use super::payloads::LiveInfo;
+use super::payloads::{ActivityPayload, LiveInfo};
 use super::sync_hold::{announce, SyncDecision};
 use crate::collab::commands::CollabCommandError;
 use crate::collab::state::CollabState;
@@ -102,6 +104,15 @@ pub async fn collab_presence_set(
     anchor: Option<u32>,
 ) -> Result<(), CollabCommandError> {
     presence_set(&project_id, path, cursor, anchor);
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn collab_presence_activity(
+    project_id: String,
+    activity: Option<ActivityPayload>,
+) -> Result<(), CollabCommandError> {
+    presence_activity(&project_id, activity);
     Ok(())
 }
 

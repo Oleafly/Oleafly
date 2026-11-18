@@ -15,7 +15,20 @@ export function commentMessage(
   body = "Is this right?",
   overrides: Partial<CollabCommentMessage> = {},
 ): CollabCommentMessage {
-  return { id, author, at: AT, body, editedAt: null, deleted: false, mentions: [], verified: true, ...overrides };
+  return {
+    id,
+    author,
+    at: AT,
+    body,
+    editedAt: null,
+    deleted: false,
+    mentions: [],
+    verified: true,
+    reactions: [],
+    removed: false,
+    pending: false,
+    ...overrides,
+  };
 }
 
 export function commentThread(
@@ -41,7 +54,7 @@ export function threadList(threads: CollabCommentThread[], rev: number | null = 
 }
 
 export function commentsStatus(overrides: Partial<CollabCommentsStatus> = {}): CollabCommentsStatus {
-  return { serverAllowed: true, projectEnabled: true, canComment: true, ...overrides };
+  return { serverAllowed: true, projectEnabled: true, canComment: true, reactions: false, ...overrides };
 }
 
 export const SELF = ALICE_ID;

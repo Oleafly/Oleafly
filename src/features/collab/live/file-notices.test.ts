@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
+  CollabDownloadProgress,
   CollabLiveKept,
   CollabLiveKeptFile,
   CollabLiveUploads,
@@ -17,7 +18,7 @@ const mocks = vi.hoisted(() => ({
   uploadsHandler: null as null | ((payload: CollabLiveUploads) => void),
   keptHandler: null as null | ((payload: CollabLiveKept) => void),
   progressHandler: null as null | ((payload: CollabUploadProgress) => void),
-  downloadHandler: null as null | ((payload: CollabUploadProgress) => void),
+  downloadHandler: null as null | ((payload: CollabDownloadProgress) => void),
 }));
 
 vi.mock("@/lib/tauri", () => ({}));
@@ -48,7 +49,7 @@ vi.mock("@/lib/tauri-collab", () => ({
       mocks.progressHandler = null;
     };
   }),
-  onCollabDownloadProgress: vi.fn(async (handler: (payload: CollabUploadProgress) => void) => {
+  onCollabDownloadProgress: vi.fn(async (handler: (payload: CollabDownloadProgress) => void) => {
     mocks.downloadHandler = handler;
     return () => {
       mocks.downloadHandler = null;
@@ -152,6 +153,11 @@ describe("file notices", () => {
     });
     mocks.downloadHandler?.({ projectId: "paper", path: "scan.png", done: 4096, total: 4096 });
     mocks.downloadHandler?.({ projectId: "paper", path: "map.png", done: 0, total: 0 });
+    expect(useFileNotices.getState().downloads).toEqual({});
+    mocks.downloadHandler?.({ projectId: "paper", path: "chunked.png", done: 2_000_000, total: null });
+    mocks.downloadHandler?.({ projectId: "paper", path: "chunked.png", done: 3_000_000, total: null });
+    expect(useFileNotices.getState().downloads).toEqual({ "chunked.png": { done: 3_000_000, total: null } });
+    mocks.downloadHandler?.({ projectId: "paper", path: "chunked.png", done: 0, total: 0 });
     expect(useFileNotices.getState().downloads).toEqual({});
     mocks.downloadHandler?.({ projectId: "paper", path: "late.png", done: 1, total: 2 });
     useFilesStore.setState({ projectId: "thesis" });

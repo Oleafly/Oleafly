@@ -672,6 +672,15 @@
         "grid": "Siatka",
         "label": "Wzór tła"
       },
+      "commentColor": {
+        "accent": "Kolor akcentu",
+        "description": "Kolor skomentowanego tekstu w edytorze i cytatów w panelu komentarzy. Dotyczy tego urządzenia.",
+        "graphite": "Grafit",
+        "indigo": "Indygo",
+        "label": "Kolor wyróżnienia komentarzy",
+        "leaf": "Zieleń liści",
+        "sample": "Skomentowany tekst"
+      },
       "dock": {
         "bottom": "Na dole",
         "description": "Wybierz, gdzie ma być dok ekranu głównego.",
@@ -772,6 +781,10 @@
       "autoCloseMath": {
         "description": "Paruj $, \\( i \\[ podczas pisania.",
         "label": "Automatyczne zamykanie wzorów"
+      },
+      "groupScripts": {
+        "description": "Obejmuje indeks dolny lub górny nawiasami klamrowymi, gdy ma więcej niż jeden znak, więc x^10 zmienia się w x^{10}. W Typst x^-1 zmienia się w x^(-1).",
+        "label": "Nawiasy klamrowe w indeksach"
       },
       "autocomplete": {
         "description": "Pokazuj uzupełnienia kodu podczas pisania. Ctrl+Space nadal je otwiera, gdy ta opcja jest wyłączona.",
@@ -979,6 +992,12 @@
         "grid": "Siatka",
         "label": "Domyślny widok biblioteki",
         "list": "Lista"
+      },
+      "markers": {
+        "badges": "Etykiety typu",
+        "description": "Każdy plik w drzewie projektu dostaje ikonę albo krótką etykietę typu, na przykład TEX lub PDF, w tych samych kolorach.",
+        "icons": "Ikony",
+        "label": "Pokazuj pliki jako"
       },
       "openIn": {
         "description": "Wybierz układ używany przy otwieraniu projektu.",
@@ -2677,5 +2696,72 @@
       "loadFailed": "Nie udało się odczytać listy serwerów MCP.",
       "missing": "{{name}} (nie znaleziono)"
     }
+  },
+  "logs": {
+    "searchLabel": "Search logs",
+    "searchPlaceholder": "Search logs",
+    "levels": {
+      "label": "Level",
+      "all": "All",
+      "warning": "Warnings",
+      "error": "Errors"
+    },
+    "level": {
+      "info": "Info",
+      "warning": "Warning",
+      "error": "Error"
+    },
+    "actions": {
+      "export": "Export",
+      "openFolder": "Open log folder",
+      "clear": "Clear"
+    },
+    "groups": {
+      "today": "Today",
+      "yesterday": "Yesterday"
+    },
+    "newestFirst": "Newest first",
+    "privateDetails": "Private, left out when you export",
+    "copyEntry": "Copy entry",
+    "copied": "Copied",
+    "loading": "Reading the logs",
+    "loadFailed": "Couldn't read the logs.",
+    "retry": "Try again",
+    "empty": {
+      "title": "No log entries",
+      "description": "Builds and errors show up here as they happen."
+    },
+    "noMatch": {
+      "title": "No entries match \"{{query}}\"",
+      "levelTitle": "No entries at this level",
+      "description": "Try another search or level.",
+      "clearSearch": "Clear search",
+      "showAll": "Show all levels"
+    },
+    "clear": {
+      "title": "Clear all logs?",
+      "confirm": "Clear logs",
+      "description_few": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them.",
+      "description_many": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them.",
+      "description_one": "This deletes {{count}} entry and the log file on this computer. Logs you already exported stay where you saved them.",
+      "description_other": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them."
+    },
+    "toast": {
+      "exported": "Saved the logs to {{name}}.",
+      "exportFailed": "Couldn't export the logs.",
+      "clearFailed": "Couldn't clear the logs.",
+      "revealFailed": "Couldn't open the log folder."
+    },
+    "dialog": {
+      "filterName": "Zip archive"
+    },
+    "count_few": "{{count}} entries",
+    "count_many": "{{count}} entries",
+    "count_one": "{{count}} entry",
+    "count_other": "{{count}} entries",
+    "filteredCount_few": "{{shown}} of {{count}} entries",
+    "filteredCount_many": "{{shown}} of {{count}} entries",
+    "filteredCount_one": "{{shown}} of {{count}} entry",
+    "filteredCount_other": "{{shown}} of {{count}} entries"
   }
 }

@@ -1482,23 +1482,6 @@ interface ProjectFileReconciliation {
   adopted: string[];
 }
 
-const BINARY_RELOAD_EXTENSIONS = new Set([
-  "pdf",
-  "png",
-  "jpg",
-  "jpeg",
-  "gif",
-  "webp",
-  "svg",
-  "eps",
-  "zip",
-  "gz",
-  "ttf",
-  "otf",
-  "woff",
-  "woff2",
-]);
-
 const projectStateApplications = new Map<string, Promise<boolean>>();
 let projectStateReloadFailure: { projectId: string; error: unknown } | null = null;
 
@@ -1544,11 +1527,6 @@ function projectRevisionIsCurrent(projectId: string, revision: number, get: File
   return get().projectId === projectId && lastProjectStateRevision === revision;
 }
 
-function isBinaryReloadPath(path: string): boolean {
-  const dot = path.lastIndexOf(".");
-  return dot >= 0 && BINARY_RELOAD_EXTENSIONS.has(path.slice(dot + 1).toLowerCase());
-}
-
 async function loadChangedProjectFiles(
   projectId: string,
   captured: Record<string, FileState>,
@@ -1559,7 +1537,7 @@ async function loadChangedProjectFiles(
   const attempted = new Set<string>();
   await Promise.all(
     Object.entries(captured).map(async ([path, file]) => {
-      if (file.dirty || !filePaths.has(path) || isBinaryReloadPath(path)) return;
+      if (file.dirty || !filePaths.has(path) || isBinaryProjectPath(path)) return;
       attempted.add(path);
       const read = await readDiskText(projectId, path).catch((error) => {
         if (isEditorMutationLocked(projectId)) throw error;

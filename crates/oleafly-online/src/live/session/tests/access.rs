@@ -154,6 +154,35 @@ async fn access_revoked_ends_live_and_keeps_text() {
 }
 
 #[tokio::test]
+async fn unsent_text_already_in_the_file_is_announced_without_a_copy() {
+    let rig = Rig::start(project()).await;
+    rig.seed("bob", 0).await;
+    let port = Port::new(&FILES);
+    let live = rig.live("bob", &port).await;
+    let main = rig.id(MAIN);
+    let mut tab = Tab::open(&live, MAIN);
+    eventually("the doc is joined", || rig.joined("bob").contains(&main.0)).await;
+    unsent_edit(&rig, &live, &mut tab, " unsent").await;
+    port.disk
+        .lock()
+        .unwrap()
+        .insert(MAIN.to_string(), "Hello unsent".to_string());
+    rig.mock.set_privilege("bob", None);
+    eventually("the session ends", || {
+        port.ended() == Some(LiveEnd::Removed)
+    })
+    .await;
+    assert!(kept(&port).is_empty());
+    assert!(port
+        .seen()
+        .merged
+        .contains(&(main.clone(), MergeReview::InFile)));
+    live.stop().await;
+    assert!(record_of(&live, &main).is_none());
+    assert!(unsent_on(&rig.data("bob"), &rig.mock.base).is_empty());
+}
+
+#[tokio::test]
 async fn access_revoked_after_link_sharing_off_ends_like_removal() {
     let rig = Rig::start(project().token_viewer(MockUser::named("tess"))).await;
     rig.seed("tess", 0).await;

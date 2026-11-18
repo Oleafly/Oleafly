@@ -26,6 +26,8 @@ pub const MERMAID_FIGURES_FILTER_NAME: &str = "oleafly-mermaid-figures.lua";
 pub const MERMAID_FIGURES_FILTER: &str = include_str!("../resources/pandoc/mermaid-figures.lua");
 pub const IMAGE_COMPAT_FILTER_NAME: &str = "oleafly-image-compat.lua";
 pub const IMAGE_COMPAT_FILTER: &str = include_str!("../resources/pandoc/image-compat.lua");
+pub const MARKDOWN_MARKS_FILTER_NAME: &str = "oleafly-markdown-marks.lua";
+pub const MARKDOWN_MARKS_FILTER: &str = include_str!("../resources/pandoc/markdown-marks.lua");
 pub const MARKDOWN_BIBLIOGRAPHY_FILTER_NAME: &str = "oleafly-markdown-bibliography.lua";
 pub const MARKDOWN_BIBLIOGRAPHY_FILTER: &str =
     include_str!("../resources/pandoc/markdown-bibliography.lua");
@@ -33,20 +35,25 @@ pub const DEFAULT_FONTS_FILTER_NAME: &str = "oleafly-default-fonts.lua";
 pub const DEFAULT_FONTS_FILTER: &str = include_str!("../resources/pandoc/default-fonts.lua");
 pub const DOCUMENT_KIND_FILTER_NAME: &str = "oleafly-document-kind.lua";
 pub const DOCUMENT_KIND_FILTER: &str = include_str!("../resources/pandoc/document-kind.lua");
+pub const CITATION_MARKS_FILTER_NAME: &str = "oleafly-citation-marks.lua";
+pub const CITATION_MARKS_FILTER: &str = include_str!("../resources/pandoc/citation-marks.lua");
 const DOCUMENT_KIND_METADATA: &str = "oleafly-document-kind";
-pub const MARKDOWN_FILTERS: [(&str, &str); 5] = [
+pub const MARKDOWN_FILTERS: [(&str, &str); 7] = [
     (MERMAID_FIGURES_FILTER_NAME, MERMAID_FIGURES_FILTER),
     (IMAGE_COMPAT_FILTER_NAME, IMAGE_COMPAT_FILTER),
+    (MARKDOWN_MARKS_FILTER_NAME, MARKDOWN_MARKS_FILTER),
     (
         MARKDOWN_BIBLIOGRAPHY_FILTER_NAME,
         MARKDOWN_BIBLIOGRAPHY_FILTER,
     ),
+    (CITATION_MARKS_FILTER_NAME, CITATION_MARKS_FILTER),
     (DEFAULT_FONTS_FILTER_NAME, DEFAULT_FONTS_FILTER),
     (DOCUMENT_KIND_FILTER_NAME, DOCUMENT_KIND_FILTER),
 ];
 pub const MARKDOWN_TYPST_VARIABLE: &str = "OLEAFLY_PANDOC_TYPST";
 const FALLBACK_BIBLIOGRAPHY_METADATA: &str = "oleafly-fallback-bibliography";
 pub const LATEXMK_BINARY_MARKER: &str = ".oleafly-latexmk";
+const LATEXMK_RULES: &str = include_str!("../resources/latexmk/oleafly.latexmkrc");
 pub const TEX_DEFAULTS_DIR: &str = "tex-defaults";
 pub const T1_KEPT_NOTE: &str = "[Oleafly] T1 font encoding kept";
 pub const T1_ENCODING_SHIM: &str = concat!(
@@ -235,13 +242,54 @@ pub fn write_tex_defaults(dir: &Path) -> crate::Result<()> {
     std::fs::create_dir_all(dir).map_err(|error| defaults_write_error(dir, &error))?;
     for (name, contents) in tex_default_files() {
         let path = dir.join(name);
-        if std::fs::read(&path).is_ok_and(|current| current == contents.as_bytes()) {
-            continue;
-        }
-        crate::atomic::write_atomic(&path, contents.as_bytes())
+        crate::atomic::write_owned_file(&path, contents.as_bytes())
             .map_err(|error| defaults_write_error(&path, &error))?;
     }
     Ok(())
+}
+
+pub fn latexmk_rc(flavor: TexFlavor) -> String {
+    let mut text = flavor.latexmk_rc_settings();
+    text.push_str(LATEXMK_RULES);
+    text
+}
+
+pub fn latexmk_rc_file(flavor: TexFlavor) -> &'static str {
+    match flavor {
+        TexFlavor::Uplatex => ".oleafly-uplatex-latexmkrc",
+        TexFlavor::Platex => ".oleafly-platex-latexmkrc",
+        TexFlavor::Pdflatex | TexFlavor::Xelatex | TexFlavor::Lualatex => ".oleafly-latexmkrc",
+    }
+}
+
+fn latexmk_rc_arg(out_dir_arg: &str, file: &str) -> String {
+    format!("{}/{file}", out_dir_arg.trim_end_matches('/'))
+}
+
+pub fn write_latexmk_rc(out_dir: &Path, flavor: TexFlavor) -> crate::Result<()> {
+    std::fs::create_dir_all(out_dir).map_err(|error| defaults_write_error(out_dir, &error))?;
+    let path = out_dir.join(latexmk_rc_file(flavor));
+    crate::atomic::write_owned_file(&path, latexmk_rc(flavor).as_bytes())
+        .map_err(|error| defaults_write_error(&path, &error))
+}
+
+pub fn set_latexmk_out_dir(args: &mut [String], out_dir_arg: &str) -> bool {
+    let Some(outdir) = args.iter().position(|arg| arg.starts_with("-outdir=")) else {
+        return false;
+    };
+    let Some(rc) = args.iter().position(|arg| arg == "-r").map(|at| at + 1) else {
+        return false;
+    };
+    let Some(file) = args
+        .get(rc)
+        .and_then(|value| value.rsplit('/').next())
+        .map(str::to_owned)
+    else {
+        return false;
+    };
+    args[outdir] = format!("-outdir={out_dir_arg}");
+    args[rc] = latexmk_rc_arg(out_dir_arg, &file);
+    true
 }
 
 fn defaults_write_error(path: &Path, error: &std::io::Error) -> Error {
@@ -321,9 +369,10 @@ pub fn latexmk_args(
         shell_escape_arg(allow_shell_escape, distribution_kind).into(),
     ];
     args.extend(flavor.latexmk_args());
-    for rule in crate::tex_outputs::LATEXMK_INDEX_RULES {
-        args.extend(["-e".into(), rule.into()]);
-    }
+    args.extend([
+        "-r".into(),
+        latexmk_rc_arg(out_dir_arg, latexmk_rc_file(flavor)),
+    ]);
     args.extend([
         "-interaction=nonstopmode".into(),
         "-synctex=1".into(),
@@ -342,6 +391,78 @@ pub fn latexmk_args(
     // run is latexmk's whole job.
     args.push(entry_arg.into());
     args
+}
+
+pub fn latexmk_owned_path_text(
+    path: &Path,
+    windows: bool,
+    short_spelling: &dyn Fn(&Path) -> Option<PathBuf>,
+) -> Option<String> {
+    let text = latexmk_absolute_path_text(path, windows)?;
+    if !windows || text.is_ascii() {
+        return Some(text);
+    }
+    let mut below = Vec::new();
+    let mut existing = path;
+    let short = loop {
+        if let Some(short) = short_spelling(existing) {
+            break short;
+        }
+        below.push(existing.file_name()?);
+        existing = existing.parent()?;
+    };
+    let shortened = below
+        .into_iter()
+        .rev()
+        .fold(short, |folder, name| folder.join(name));
+    latexmk_absolute_path_text(&shortened, windows).filter(|text| text.is_ascii())
+}
+
+pub fn wrapper_safe_arg(arg: &str) -> Option<String> {
+    const RESPELLED_BARE: [char; 7] = ['\'', '[', ']', '{', '}', '*', '?'];
+    let needs_quotes =
+        arg.contains(RESPELLED_BARE) && !arg.contains(['"', ' ', '\t', '\n', '\r', '\0']);
+    needs_quotes.then(|| {
+        let trailing = arg.len() - arg.trim_end_matches('\\').len();
+        format!("\"{arg}{}\"", "\\".repeat(trailing))
+    })
+}
+
+pub fn is_windows_batch_script(program: &Path) -> bool {
+    program
+        .extension()
+        .and_then(OsStr::to_str)
+        .is_some_and(|extension| {
+            extension.eq_ignore_ascii_case("bat") || extension.eq_ignore_ascii_case("cmd")
+        })
+}
+
+pub fn add_wrapper_safe_args<S: AsRef<OsStr>>(
+    command: &mut std::process::Command,
+    program: &Path,
+    args: &[S],
+) {
+    let quote = cfg!(windows) && !is_windows_batch_script(program);
+    for arg in args {
+        let arg = arg.as_ref();
+        match arg.to_str().and_then(wrapper_safe_arg).filter(|_| quote) {
+            Some(quoted) => push_raw_arg(command, quoted),
+            None => {
+                command.arg(arg);
+            }
+        }
+    }
+}
+
+#[cfg(windows)]
+fn push_raw_arg(command: &mut std::process::Command, text: String) {
+    use std::os::windows::process::CommandExt;
+    command.raw_arg(text);
+}
+
+#[cfg(not(windows))]
+fn push_raw_arg(command: &mut std::process::Command, text: String) {
+    command.arg(text);
 }
 
 pub fn validate_latexmk_path_characters(path: &str) -> crate::Result<()> {
@@ -448,12 +569,7 @@ pub fn record_latexmk_binary(out_dir: &Path, latexmk: &Path) {
     let resolved = std::fs::canonicalize(latexmk).unwrap_or_else(|_| latexmk.to_owned());
     if std::fs::create_dir_all(out_dir).is_ok() {
         let marker = out_dir.join(LATEXMK_BINARY_MARKER);
-        if std::fs::symlink_metadata(&marker)
-            .is_ok_and(|metadata| metadata.file_type().is_symlink())
-        {
-            let _ = std::fs::remove_file(&marker);
-        }
-        let _ = crate::atomic::write_atomic(&marker, resolved.to_string_lossy().as_bytes());
+        let _ = crate::atomic::write_owned_file(&marker, resolved.to_string_lossy().as_bytes());
     }
 }
 
@@ -676,6 +792,7 @@ pub fn markdown_pdf_args(spec: &MarkdownPdfArgs<'_>) -> Vec<OsString> {
     args.push("--sandbox".into());
     args.push(format!("--lua-filter={MERMAID_FIGURES_FILTER_NAME}").into());
     args.push(format!("--lua-filter={IMAGE_COMPAT_FILTER_NAME}").into());
+    args.push(format!("--lua-filter={MARKDOWN_MARKS_FILTER_NAME}").into());
     args.push(format!("--lua-filter={MARKDOWN_BIBLIOGRAPHY_FILTER_NAME}").into());
     for bibliography in spec.bibliographies {
         let mut path = spec.project.to_path_buf();
@@ -686,6 +803,7 @@ pub fn markdown_pdf_args(spec: &MarkdownPdfArgs<'_>) -> Vec<OsString> {
         ));
     }
     args.push("--citeproc".into());
+    args.push(format!("--lua-filter={CITATION_MARKS_FILTER_NAME}").into());
     args.extend(spec.layout.args(OsStr::new(DOCUMENT_KIND_FILTER_NAME)));
     args.push(format!("--lua-filter={DEFAULT_FONTS_FILTER_NAME}").into());
     args.push("--".into());

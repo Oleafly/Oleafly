@@ -323,6 +323,7 @@ pub struct MockConfig {
     pub permissions_override: Option<String>,
     pub doc_type_override: Option<String>,
     pub sign_in_as: Option<String>,
+    pub download_length: bool,
 }
 
 impl Default for MockConfig {
@@ -354,6 +355,7 @@ impl Default for MockConfig {
             permissions_override: None,
             doc_type_override: None,
             sign_in_as: None,
+            download_length: false,
         }
     }
 }
@@ -1637,8 +1639,11 @@ impl State {
             ("POST", ["doc"]) => self.create_doc(&json_body(), &user),
             ("POST", ["folder"]) => self.create_folder(&json_body(), &user),
             ("POST", ["upload"]) => self.upload(query, headers, body, &user),
-            ("GET", ["blob", hash]) => served(self.files.values().find(|file| file.hash == *hash)),
-            ("GET", ["file", id]) => served(self.files.get(*id)),
+            ("GET", ["blob", hash]) => served(
+                self.files.values().find(|file| file.hash == *hash),
+                self.config.download_length,
+            ),
+            ("GET", ["file", id]) => served(self.files.get(*id), self.config.download_length),
             ("POST", [_, id, "rename"]) => self.rename_entity(id, &json_body()),
             ("POST", [_, id, "move"]) => self.move_entity(id, &json_body()),
             ("DELETE", [_, id]) => self.delete_entity(id),
@@ -2174,11 +2179,29 @@ fn restricted() -> Reply {
     json_reply(&json!({ "message": "restricted" })).with_status(403)
 }
 
-fn served(file: Option<&Blob>) -> Reply {
+fn served(file: Option<&Blob>, length: bool) -> Reply {
     match file {
-        Some(file) => Reply::ok(file.bytes.clone()),
+        Some(file) if length => Reply::ok(file.bytes.clone()),
+        Some(file) => Reply::ok(file.bytes.clone()).header("Transfer-Encoding", "chunked"),
         None => Reply::status(404),
     }
+}
+
+fn is_chunked(reply: &Reply) -> bool {
+    reply.headers.iter().any(|(name, value)| {
+        name.eq_ignore_ascii_case("transfer-encoding") && value.eq_ignore_ascii_case("chunked")
+    })
+}
+
+fn chunked_body(body: &[u8]) -> Vec<u8> {
+    let mut framed = Vec::with_capacity(body.len() + 64);
+    for piece in body.chunks(16 * 1024) {
+        framed.extend_from_slice(format!("{:x}\r\n", piece.len()).as_bytes());
+        framed.extend_from_slice(piece);
+        framed.extend_from_slice(b"\r\n");
+    }
+    framed.extend_from_slice(b"0\r\n\r\n");
+    framed
 }
 
 fn uploaded_text(name: &str, bytes: &[u8]) -> Option<String> {
@@ -2416,20 +2439,37 @@ fn split_target(target: &str) -> (String, HashMap<String, String>) {
 }
 
 async fn write_reply(stream: &mut TcpStream, reply: Reply) {
-    let mut head = format!(
-        "HTTP/1.1 {} X\r\nContent-Length: {}\r\nConnection: close\r\n",
-        reply.status,
-        reply.body.len()
-    );
+    let chunked = is_chunked(&reply);
+    let mut head = format!("HTTP/1.1 {} X\r\n", reply.status);
+    if !chunked {
+        head.push_str(&format!("Content-Length: {}\r\n", reply.body.len()));
+    }
+    head.push_str("Connection: close\r\n");
     for (name, value) in &reply.headers {
         head.push_str(&format!("{name}: {value}\r\n"));
     }
     head.push_str("\r\n");
     let _ = stream.write_all(head.as_bytes()).await;
-    let _ = stream.write_all(&reply.body).await;
+    if chunked {
+        let _ = stream.write_all(&chunked_body(&reply.body)).await;
+    } else {
+        let _ = stream.write_all(&reply.body).await;
+    }
 }
 
 async fn write_short_reply(stream: &mut TcpStream, mut reply: Reply, keep: usize) {
+    if is_chunked(&reply) {
+        reply.body.truncate(keep);
+        let mut framed = chunked_body(&reply.body);
+        framed.truncate(framed.len() - b"0\r\n\r\n".len());
+        let head = format!(
+            "HTTP/1.1 {} X\r\nTransfer-Encoding: chunked\r\nConnection: close\r\n\r\n",
+            reply.status
+        );
+        let _ = stream.write_all(head.as_bytes()).await;
+        let _ = stream.write_all(&framed).await;
+        return;
+    }
     let head = format!(
         "HTTP/1.1 {} X\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
         reply.status,

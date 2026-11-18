@@ -274,7 +274,7 @@ impl OverleafLive {
                 Ok(copy) => kept.push(KeptFile {
                     id: id.clone(),
                     path: placed.path.clone(),
-                    copy,
+                    copy: Some(copy),
                     kind: KeptKind::Differed,
                     by: None,
                 }),
@@ -342,7 +342,7 @@ impl OverleafLive {
                 let copy = kept
                     .iter()
                     .find(|file| inside(&file.path, path))
-                    .map(|file| file.copy.clone());
+                    .and_then(|file| file.copy.clone());
                 files.push(RemovedFile {
                     path: path.clone(),
                     id: id.clone(),

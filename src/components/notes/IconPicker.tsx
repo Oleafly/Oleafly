@@ -1,20 +1,17 @@
-import { Suspense, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
-import { lazy } from "@/lib/preloadable";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { EmojiChooser } from "@/components/editor/emoji-chooser";
 import { useBookColorLabels } from "@/components/library/Book";
 import { Button } from "@/components/ui/button";
 import { ColorSwatch } from "@/components/ui/color-swatch";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverClose } from "@/components/ui/popover";
-import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { NOTE_COLORS } from "./note-file";
 import { LINE_ICON_PREFIX, LINE_ICONS, NOTE_COLOR_HEX, NOTE_COLOR_LABELS, noteColorStyle } from "./note-icons";
 import type { NoteColor } from "./types";
-
-const EmojiGrid = lazy(() => import("./EmojiGrid"), { warm: true });
 
 const CELL =
   "flex size-8 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:bg-accent";
@@ -185,15 +182,7 @@ export function IconPicker({
           </div>
         )}
         {tab === "emoji" ? (
-          <Suspense
-            fallback={
-              <div className="flex h-72 items-center justify-center">
-                <Spinner size="sm" />
-              </div>
-            }
-          >
-            <EmojiGrid selected={lineIcon ? undefined : selected} onSelect={choose} />
-          </Suspense>
+          <EmojiChooser selected={lineIcon ? undefined : selected} selectedClassName="note-chip" onSelect={choose} />
         ) : (
           <LineIconGrid selected={selected} onSelect={choose} />
         )}

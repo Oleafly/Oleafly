@@ -72,6 +72,18 @@ impl AppOverleafPort {
         }
     }
 
+    fn kept_in_file(&self, doc: &DocId) {
+        if let Some(path) = self.mirror.path_of(doc) {
+            guard(&self.mirror.kept).push(KeptFile {
+                id: doc.0.clone(),
+                path,
+                copy: None,
+                kind: KeptKind::Unsent,
+                by: None,
+            });
+        }
+    }
+
     fn keep(&self, doc: &DocId, text: &str) {
         let Some(path) = self.mirror.path_of(doc) else {
             return;
@@ -80,7 +92,7 @@ impl AppOverleafPort {
             Ok(copy) => guard(&self.mirror.kept).push(KeptFile {
                 id: doc.0.clone(),
                 path,
-                copy,
+                copy: Some(copy),
                 kind: KeptKind::Unsent,
                 by: None,
             }),
@@ -269,6 +281,7 @@ impl LivePort for AppOverleafPort {
                 name: peer.name,
                 email: peer.email,
             }),
+            activity: None,
         });
     }
 
@@ -356,6 +369,7 @@ impl LivePort for AppOverleafPort {
     fn merged(&self, doc: &DocId, review: MergeReview) {
         match review {
             MergeReview::Kept { text } => self.keep(doc, &text),
+            MergeReview::InFile => self.kept_in_file(doc),
             MergeReview::Merged { before, after } => {
                 self.notice_for(doc, |path| OverleafNotice::Merged {
                     path,

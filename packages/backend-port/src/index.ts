@@ -1192,6 +1192,7 @@ export type CollabSecurityEventKind =
     | "domain_rule_removed"
     | "settings_changed"
     | "comments_changed_while_off"
+    | "change_broke_role"
     | "unknown";
 export interface CollabSecurityEvent {
     id: number;
@@ -1394,6 +1395,10 @@ export interface CollabLiveRole {
     restricted: boolean;
     deletedExternally: boolean;
 }
+export interface CollabPresenceActivity {
+    kind: "reply" | "chat";
+    threadId: string | null;
+}
 export interface CollabPresence {
     projectId: string;
     deviceId: string;
@@ -1402,6 +1407,7 @@ export interface CollabPresence {
     cursor: number | null;
     anchor: number | null;
     person: { name: string | null; email: string | null } | null;
+    activity: CollabPresenceActivity | null;
 }
 export interface CollabPresenceLeft {
     projectId: string;
@@ -1762,6 +1768,7 @@ export interface BackendPort {
   collabDocChange: (projectId: string, fileId: string, rev: number, op: CollabTextOperation) => Promise<void>;
   collabDocClose: (projectId: string, fileId: string, session: number) => Promise<void>;
   collabPresenceSet: (projectId: string, path: string | null, cursor: number | null, anchor: number | null) => Promise<void>;
+  collabPresenceActivity: (projectId: string, activity: CollabPresenceActivity | null) => Promise<void>;
   collabPresenceLeave: (projectId: string) => Promise<void>;
   collabMergeReview: (projectId: string, before: string, after: string) => Promise<CollabMergeReviewFile[]>;
   collabWriteText: (projectId: string, path: string, base: string | null, text: string) => Promise<CollabWriteOutcome>;
@@ -1930,6 +1937,12 @@ export interface CollabUploadProgress {
   done: number;
   total: number;
 }
+export interface CollabDownloadProgress {
+  projectId: string;
+  path: string;
+  done: number;
+  total: number | null;
+}
 export interface CollabLiveUploads {
   projectId: string;
   files: CollabUploadFile[];
@@ -1937,7 +1950,7 @@ export interface CollabLiveUploads {
 export interface CollabLiveKeptFile {
   id: string;
   path: string;
-  copy: string;
+  copy: string | null;
   kind: "replaced" | "added" | "beside" | "unsent" | "differed";
   by: string | null;
 }
@@ -2148,6 +2161,10 @@ export interface CollabCommentResolution {
     by: string;
     at: number;
 }
+export interface CollabReaction {
+    emoji: string;
+    by: string[];
+}
 export interface CollabCommentMessage {
     id: string;
     author: string;
@@ -2156,6 +2173,9 @@ export interface CollabCommentMessage {
     editedAt: number | null;
     deleted: boolean;
     mentions: string[];
+    reactions: CollabReaction[];
+    removed: boolean;
+    pending: boolean;
 }
 export interface CollabCommentThread {
     id: string;
@@ -2175,6 +2195,7 @@ export interface CollabCommentsStatus {
     serverAllowed: boolean;
     projectEnabled: boolean;
     canComment: boolean;
+    reactions: boolean;
 }
 export interface CollabCommentsStatusChanged {
     projectId: string;
@@ -2184,6 +2205,11 @@ export interface CollabCommentNotSent {
     fileId: string;
     path: string | null;
     threadId: string;
+    messageId: string;
+    at: number;
+    editedAt: number | null;
+    newThread: boolean;
+    edit: boolean;
     quote: string;
     body: string;
 }
@@ -2212,6 +2238,8 @@ export interface BackendPort {
   collabCommentDelete: (projectId: string, fileId: string, threadId: string, messageId: string) => Promise<void>;
   collabCommentResolve: (projectId: string, fileId: string, threadId: string) => Promise<CollabCommentThread>;
   collabCommentReopen: (projectId: string, fileId: string, threadId: string) => Promise<CollabCommentThread>;
+  collabCommentReact: (projectId: string, fileId: string, threadId: string, messageId: string, emoji: string, on: boolean) => Promise<CollabCommentThread>;
+  collabCommentRemove: (projectId: string, fileId: string, threadId: string, messageId: string) => Promise<void>;
   collabCommentThreadDelete: (projectId: string, fileId: string, threadId: string) => Promise<void>;
 }
 
@@ -2323,6 +2351,7 @@ export interface CollabCommentCount {
     path: string;
     open: number;
     resolved: number;
+    waiting: number;
 }
 export type CollabCommentErrorCode =
     | "comment_not_live"
@@ -2426,10 +2455,18 @@ export interface CollabChatMessage {
     body: string;
     deleted: boolean;
     verified: boolean;
+    reactions: CollabReaction[];
+    pending: boolean;
+    mentions: string[];
+}
+export interface CollabChatMentioned {
+    messageId: string;
+    author: string;
 }
 export interface CollabChatChanged {
     projectId: string;
     local: boolean;
+    mentioned: CollabChatMentioned[];
 }
 export interface CollabHistoryEntry {
     id: string;
@@ -2467,8 +2504,9 @@ export interface BackendPort {
   collabSuggestionAcceptFile: (projectId: string, path: string) => Promise<void>;
   collabSuggestionRejectFile: (projectId: string, path: string) => Promise<void>;
   collabChatList: (projectId: string, before: string | null, limit: number) => Promise<CollabChatMessage[]>;
-  collabChatSend: (projectId: string, body: string) => Promise<CollabChatMessage>;
+  collabChatSend: (projectId: string, body: string, members?: CollabCommentMember[]) => Promise<CollabChatMessage>;
   collabChatDelete: (projectId: string, id: string) => Promise<void>;
+  collabChatReact: (projectId: string, messageId: string, emoji: string, on: boolean) => Promise<void>;
   collabChatClear: (projectId: string) => Promise<void>;
   collabHistoryList: (projectId: string, before: string | null, limit: number) => Promise<CollabHistoryPage>;
   collabHistoryFile: (projectId: string, versionId: string, path: string) => Promise<CollabFileAtVersion>;

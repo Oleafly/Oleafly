@@ -224,15 +224,102 @@ Context reference: \ref{sec:context-nav}.
   await expect(dialog).toBeHidden();
 });
 
+// Types at the caret the way CodeMirror's input handling does, so the Markdown engine's typing
+// handoff sees a keystroke. The menu's Markdown actions run once their module's import resolves,
+// so the key waits a turn of the event loop first, as a person's would.
+async function typeAtCaret(page: TauriPage, text: string) {
+  await page.evaluate(
+    `import("/src/components/editor/cm/controller.ts").then(async ({ getEditorView }) => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const view = getEditorView();
+      if (!view) throw new Error("editor is unavailable");
+      const at = view.state.selection.main.head;
+      view.dispatch({
+        changes: { from: at, insert: ${JSON.stringify(text)} },
+        selection: { anchor: at + ${text.length} },
+        userEvent: "input.type",
+      });
+    })`,
+  );
+}
+
+// Waits until the file is saved and the editor's document has stopped changing. Bold and Italic at
+// a caret hold their mark only while the document stays the same, so a save that comes back from
+// disk as a reload between the action and the key would drop it.
+async function settleEditor(page: TauriPage) {
+  await page.waitForFunction(
+    `import("/src/store/files.ts").then(({ useFilesStore }) =>
+      Object.values(useFilesStore.getState().files).every((file) => !file.dirty))`,
+    30_000,
+  );
+  await page.evaluate(
+    `import("/src/components/editor/cm/controller.ts").then(async ({ getEditorView }) => {
+      let last = null;
+      let quiet = 0;
+      for (let tick = 0; tick < 50 && quiet < 3; tick++) {
+        const doc = getEditorView()?.state.doc ?? null;
+        quiet = doc === last ? quiet + 1 : 0;
+        last = doc;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    })`,
+  );
+}
+
+// Records each editor transaction from now on, so a failure can say what came between the action
+// and the typed key.
+async function recordTransactions(page: TauriPage) {
+  await page.evaluate(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) return;
+      const log = [];
+      window.__e2eTransactions = log;
+      if (!view.__e2eDispatch) {
+        view.__e2eDispatch = view.dispatch.bind(view);
+        view.dispatch = (...specs) => {
+          const before = view.state;
+          view.__e2eDispatch(...specs);
+          if (window.__e2eTransactions) {
+            window.__e2eTransactions.push(JSON.stringify({
+              doc: before.doc !== view.state.doc,
+              text: before.doc.toString() !== view.state.doc.toString(),
+              selection: view.state.selection.main.head,
+              specs: specs.map((spec) => spec?.annotations ? "transaction" : Object.keys(spec ?? {}).join(",")),
+            }));
+          }
+        };
+      }
+    })`,
+  );
+}
+
+// [menu path, expected source, text typed after the action]. Markdown's formatting works as in
+// Visual: Bold and Italic at an empty caret write nothing and make the next typed text bold or
+// italic, and Heading and Bulleted list turn the caret's line into one.
 async function exerciseSimpleProfile(
   page: TauriPage,
-  expectations: readonly (readonly [readonly string[], string])[],
+  expectations: readonly (readonly [readonly string[], string, string?])[],
 ) {
-  for (const [path, expected] of expectations) {
+  for (const [path, expected, typed] of expectations) {
     await replaceEditorSource(page, "CONTEXTTARGET");
+    if (typed !== undefined) await settleEditor(page);
     await setEditorCaretAfter(page, "CONTEXTTARGET");
+    if (typed !== undefined) await recordTransactions(page);
     await clickContextAction(page, ...path);
-    expect(await editorSource(page)).toContain(expected);
+    if (typed !== undefined) {
+      // On Windows the bridge's click can reach the menu item after the next step runs, so the key
+      // would land before Bold: wait until the menu has closed, which it does as the item runs.
+      await page.waitForFunction(`!document.querySelector('[role="menu"][data-state="open"]')`, 10_000);
+      await typeAtCaret(page, typed);
+    }
+    try {
+      await expect.poll(() => editorSource(page)).toContain(expected);
+    } catch (error) {
+      if (typed === undefined) throw error;
+      const log = await page.evaluate<string>(`JSON.stringify(window.__e2eTransactions ?? [])`);
+      throw new Error(`${path.join(" > ")} then "${typed}": transactions after the action: ${log}`, { cause: error });
+    }
   }
 
   await replaceEditorSource(page, "CONTEXTTARGET");
@@ -271,11 +358,13 @@ test("Markdown context menu activates every profile-appropriate action", async (
     `E2E Context Markdown ${RUN}`,
   );
   await exerciseSimpleProfile(tauriPage, [
-    [["Format", "Bold"], "CONTEXTTARGET****"],
-    [["Format", "Italic"], "CONTEXTTARGET**"],
-    [["Insert", "Heading"], "# Heading\n"],
-    [["Insert", "Bulleted list"], "- Item\n"],
-    [["Insert", "Table"], "CONTEXTTARGET| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n"],
+    // The block actions come first: they change the text, so waiting for them also loads the
+    // Markdown engine before Bold and Italic, whose effect only shows in the next typed key.
+    [["Insert", "Heading"], "# CONTEXTTARGET"],
+    [["Insert", "Bulleted list"], "- CONTEXTTARGET"],
+    [["Insert", "Table"], "CONTEXTTARGET\n\n|  |  |  |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |"],
     [["Insert", "Equation"], "CONTEXTTARGET$$\n\n$$\n"],
+    [["Format", "Bold"], "CONTEXTTARGET**X**", "X"],
+    [["Format", "Italic"], "CONTEXTTARGET*X*", "X"],
   ]);
 });

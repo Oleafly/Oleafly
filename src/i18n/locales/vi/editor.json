@@ -116,6 +116,7 @@
     "superscript": "Chỉ số trên",
     "subscript": "Chỉ số dưới",
     "inlineCode": "Mã trong dòng",
+    "clearFormatting": "Xóa định dạng",
     "insertLink": "Chèn liên kết",
     "insertCrossReference": "Chèn tham chiếu chéo",
     "insertFootnote": "Chèn chú thích cuối trang",
@@ -145,6 +146,25 @@
     "goToPdfTypst": "Tới PDF",
     "linkUrl": "URL liên kết",
     "removeLink": "Gỡ liên kết",
+    "alignment": "Căn lề",
+    "align": {
+      "left": "Căn trái",
+      "center": "Căn giữa",
+      "right": "Căn phải",
+      "justify": "Căn đều hai bên"
+    },
+    "emoji": "Emoji",
+    "textColor": "Màu chữ",
+    "removeTextColor": "Bỏ màu",
+    "textColors": {
+      "gray": "Xám",
+      "red": "Đỏ",
+      "orange": "Cam",
+      "green": "Xanh lá",
+      "teal": "Xanh mòng két",
+      "blue": "Xanh dương",
+      "purple": "Tím"
+    },
     "imageFile": "Tệp ảnh",
     "apply": "Áp dụng",
     "linkPlaceholder": "https://",
@@ -159,7 +179,8 @@
     "imageToTypst": "Ảnh sang Typst",
     "imageToTypstTooltip": "Ảnh sang Typst (chép lại bằng AI)",
     "typstPackages": "Gói Typst",
-    "latexPackages": "Gói LaTeX"
+    "latexPackages": "Gói LaTeX",
+    "preview": "Xem trước"
   },
   "contextMenu": {
     "engineUnavailable": "Không dùng được thao tác engine tài liệu",
@@ -209,6 +230,8 @@
     "pdfLoadFailed": "Không tải được PDF: {{detail}}",
     "imageLoadFailed": "Không tải được ảnh: {{detail}}",
     "imageUnreadable": "Không thể hiển thị tệp này dưới dạng hình ảnh. Tệp có thể bị hỏng hoặc không phải là hình ảnh.",
+    "imageFit": "Vừa cửa sổ",
+    "htmlPreviewFailed": "Không xem trước được trang: {{detail}}",
     "binaryFile": "Tệp nhị phân. Không có bản xem trước.",
     "managedFileReadOnly": "{{file}} do Oleafly quản lý và chỉ đọc ở đây. Cài đặt dự án đổi qua chính Oleafly, không bằng sửa tệp này.",
     "noFileOpen": "Không có tệp đang mở.",
@@ -1654,5 +1677,24 @@
       "duplicateArg": "Đối số trùng",
       "unknownKind": "Kiểu trường không rõ"
     }
+  },
+  "emoji": {
+    "search": "Tìm emoji",
+    "skinTone": "Tông da",
+    "loading": "Đang tải emoji",
+    "empty": "Không tìm thấy emoji nào"
+  },
+  "bibList": {
+    "count_other": "{{count}} tài liệu tham khảo",
+    "empty": "Tệp này chưa có tài liệu tham khảo nào.",
+    "etAl": "{{author}} và cộng sự",
+    "noMatch": "Không có tài liệu nào khớp với tìm kiếm.",
+    "search": "Tìm tài liệu tham khảo"
+  },
+  "deck": {
+    "noSlides": "Bản trình chiếu này chưa có trang chiếu nào. Hãy xuất một mảng thành phần trang chiếu làm mục xuất mặc định."
+  },
+  "board": {
+    "unreadable": "Không đọc được bảng trắng này. Tệp có thể bị hỏng hoặc không phải bản vẽ Excalidraw."
   }
 }

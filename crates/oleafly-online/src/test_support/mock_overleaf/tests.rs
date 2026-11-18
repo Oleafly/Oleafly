@@ -1539,6 +1539,30 @@ async fn mock_rest_can_lose_a_reply_after_applying_it() {
 }
 
 #[tokio::test]
+async fn mock_serves_downloads_chunked_like_ce_unless_asked_for_a_length() {
+    let bytes = b"\x89PNG\r\n\x1a\nchunked";
+    let mock = MockOverleaf::start(project().file("plot.png", bytes)).await;
+    let id = mock.entity_id("plot.png").unwrap();
+    let fetch = || async {
+        http()
+            .get(url(&mock, &format!("/file/{id}")))
+            .header("Cookie", mock.user("alice").cookie())
+            .send()
+            .await
+            .unwrap()
+    };
+    let chunked = fetch().await;
+    assert_eq!(chunked.headers()["transfer-encoding"], "chunked");
+    assert!(chunked.content_length().is_none(), "CE sends no length");
+    assert_eq!(chunked.bytes().await.unwrap().as_ref(), bytes);
+    mock.configure(|config| config.download_length = true);
+    let measured = fetch().await;
+    assert_eq!(measured.content_length(), Some(bytes.len() as u64));
+    assert!(measured.headers().get("transfer-encoding").is_none());
+    assert_eq!(measured.bytes().await.unwrap().as_ref(), bytes);
+}
+
+#[tokio::test]
 async fn mock_can_hold_room_events_until_released() {
     let mock = MockOverleaf::start(project()).await;
     let mut watcher = mock.peer("bob");

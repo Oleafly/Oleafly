@@ -41,4 +41,5 @@ keychain = [
 ]
 
 [dev-dependencies]
+oleafly-core = { path = "../oleafly-core", features = ["test-support"] }
 tempfile = { workspace = true }

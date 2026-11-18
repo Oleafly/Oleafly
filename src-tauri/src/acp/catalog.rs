@@ -531,10 +531,7 @@ pub(crate) fn plan(root: &Path, definition: &AgentDefinition, program: Option<&P
                 .as_ref()
                 .and_then(|vendor| cli_handoff(vendor, cli.as_ref()))
                 .is_some_and(|(_, value)| {
-                    Path::new(&value).extension().is_some_and(|extension| {
-                        extension.eq_ignore_ascii_case("cmd")
-                            || extension.eq_ignore_ascii_case("bat")
-                    })
+                    oleafly_core::engine_spec::is_windows_batch_script(Path::new(&value))
                 });
             launch.needs_local_folder = launch.batch || script_handoff;
             launch.env = launch_env(vendor.as_ref(), node.as_deref(), cli.as_ref(), &launch);

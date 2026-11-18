@@ -50,7 +50,7 @@ export function HighlightMenu({
   );
   if (inMenu) {
     return (
-      <ToolbarSubMenu icon={Highlighter} label={label}>
+      <ToolbarSubMenu inset icon={Highlighter} label={label} active={color !== null}>
         {items}
       </ToolbarSubMenu>
     );

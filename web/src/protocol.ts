@@ -4,7 +4,9 @@ import type {
   CollabCommentThread,
   CollabEditMode,
   CollabOutputInfo,
+  CollabPresenceActivity,
   CollabProjectRole,
+  CollabReaction,
   CollabSuggestion,
   CollabTextOperation,
 } from "@oleafly/backend-port";
@@ -13,7 +15,9 @@ export type {
   CollabChatMessage,
   CollabEditMode,
   CollabOutputInfo,
+  CollabPresenceActivity,
   CollabProjectRole,
+  CollabReaction,
   CollabSuggestion,
   CollabSuggestionKind,
 } from "@oleafly/backend-port";
@@ -31,6 +35,7 @@ export interface WebFeatures {
   comments: boolean;
   suggestions: boolean;
   chat: boolean;
+  reactions: boolean;
 }
 
 export interface WebPeer {
@@ -40,6 +45,8 @@ export interface WebPeer {
   fileId: string | null;
   anchor: number | null;
   head: number | null;
+  activity: CollabPresenceActivity | null;
+  seq: number;
 }
 
 export type CompileSettings = Readonly<Record<string, string>>;
@@ -49,6 +56,7 @@ export interface WebPerson {
   name: string;
   avatarUrl: string | null;
   login: string | null;
+  role?: CollabProjectRole | null;
 }
 
 export type ServerFrame =
@@ -88,8 +96,16 @@ export type CommentFrame =
       rev: number | null;
       body: string;
       members: CollabCommentMember[];
+      clientId?: string;
     }
-  | { action: "reply"; fileId: string; threadId: string; body: string; members: CollabCommentMember[] }
+  | {
+      action: "reply";
+      fileId: string;
+      threadId: string;
+      body: string;
+      members: CollabCommentMember[];
+      clientId?: string;
+    }
   | {
       action: "edit";
       fileId: string;
@@ -100,13 +116,18 @@ export type CommentFrame =
     }
   | { action: "delete"; fileId: string; threadId: string; messageId: string }
   | { action: "resolve"; fileId: string; threadId: string }
-  | { action: "reopen"; fileId: string; threadId: string };
+  | { action: "reopen"; fileId: string; threadId: string }
+  | { action: "react"; fileId: string; threadId: string; messageId: string; emoji: string; on: boolean };
 
 export type SuggestionFrame =
   | { action: "accept" | "reject" | "withdraw"; ids: string[] }
   | { action: "accept_file" | "reject_file"; fileId: string };
 
-export type ChatFrame = { action: "send"; body: string } | { action: "delete"; id: string } | { action: "clear" };
+export type ChatFrame =
+  | { action: "send"; body: string; members?: CollabCommentMember[]; clientId?: string }
+  | { action: "delete"; id: string }
+  | { action: "react"; id: string; emoji: string; on: boolean }
+  | { action: "clear" };
 
 export type RequestFrame = ({ t: "comment" } & CommentFrame) | ({ t: "suggestion" } & SuggestionFrame) | ({ t: "chat" } & ChatFrame);
 
@@ -115,7 +136,13 @@ export type ClientFrame =
   | { t: "change"; fileId: string; rev: number; op: CollabTextOperation; id?: string }
   | { t: "close"; fileId: string }
   | { t: "mode"; mode: CollabEditMode }
-  | { t: "presence"; fileId: string | null; anchor: number | null; head: number | null }
+  | {
+      t: "presence";
+      fileId: string | null;
+      anchor: number | null;
+      head: number | null;
+      activity?: CollabPresenceActivity | null;
+    }
   | (RequestFrame & { reqId?: string });
 
 const ROLES = new Set<CollabProjectRole>(["owner", "editor", "reviewer", "commenter", "viewer"]);
@@ -153,6 +180,15 @@ function list<T>(value: unknown, parse: (item: unknown) => T | null): T[] {
   return parsed;
 }
 
+export function presenceFrame(
+  fileId: string | null,
+  anchor: number | null,
+  head: number | null,
+  activity?: CollabPresenceActivity | null,
+): Extract<ClientFrame, { t: "presence" }> {
+  return activity === undefined ? { t: "presence", fileId, anchor, head } : { t: "presence", fileId, anchor, head, activity };
+}
+
 export function parseRole(value: unknown): CollabProjectRole {
   return typeof value === "string" && ROLES.has(value as CollabProjectRole) ? (value as CollabProjectRole) : "unknown";
 }
@@ -160,7 +196,7 @@ export function parseRole(value: unknown): CollabProjectRole {
 export function parseFeatures(value: unknown): WebFeatures {
   const raw = isRecord(value) ? value : {};
   const flag = (key: string) => raw[key] !== false;
-  return { comments: flag("comments"), suggestions: flag("suggestions"), chat: flag("chat") };
+  return { comments: flag("comments"), suggestions: flag("suggestions"), chat: flag("chat"), reactions: raw.reactions === true };
 }
 
 export function parseCompileSettings(value: unknown): CompileSettings {
@@ -184,12 +220,19 @@ export function parsePerson(value: unknown): WebPerson | null {
   const accountId = text(value.accountId) ?? text(value.account_id) ?? text(value.id);
   if (!accountId) return null;
   const name = text(value.displayName) ?? text(value.display_name) ?? text(value.name) ?? "";
+  const role = parseRole(value.role);
   return {
     accountId,
     name,
     avatarUrl: text(value.avatarUrl) ?? text(value.avatar_url),
     login: text(value.login),
+    ...(role === "unknown" ? {} : { role }),
   };
+}
+
+function parseActivity(value: unknown): CollabPresenceActivity | null {
+  if (!isRecord(value) || (value.kind !== "reply" && value.kind !== "chat")) return null;
+  return { kind: value.kind, threadId: text(value.threadId) ?? text(value.thread_id) };
 }
 
 function parsePeer(value: unknown): WebPeer | null {
@@ -204,6 +247,8 @@ function parsePeer(value: unknown): WebPeer | null {
     fileId: text(value.fileId) ?? text(value.file_id),
     anchor: count(value.anchor),
     head: count(value.head) ?? count(value.cursor),
+    activity: parseActivity(value.activity),
+    seq: count(value.seq) ?? 0,
   };
 }
 
@@ -229,6 +274,13 @@ function parseSuggestion(value: unknown, frameFile: string): CollabSuggestion | 
   };
 }
 
+function parseReaction(value: unknown): CollabReaction | null {
+  if (!isRecord(value)) return null;
+  const emoji = text(value.emoji);
+  const by = list(value.by, text);
+  return emoji && by.length > 0 ? { emoji, by } : null;
+}
+
 function parseMessage(value: unknown): CollabCommentThread["messages"][number] | null {
   if (!isRecord(value)) return null;
   const id = text(value.id);
@@ -242,6 +294,9 @@ function parseMessage(value: unknown): CollabCommentThread["messages"][number] |
     deleted: value.deleted === true,
     mentions: list(value.mentions, text),
     verified: value.verified === true,
+    reactions: list(value.reactions, parseReaction),
+    removed: value.removed === true,
+    pending: value.pending === true,
   };
 }
 
@@ -283,6 +338,9 @@ function parseChatMessage(value: unknown): CollabChatMessage | null {
     body: text(value.body) ?? "",
     deleted: value.deleted === true,
     verified: value.verified === true,
+    reactions: list(value.reactions, parseReaction),
+    pending: value.pending === true,
+    mentions: list(value.mentions, text),
   };
 }
 

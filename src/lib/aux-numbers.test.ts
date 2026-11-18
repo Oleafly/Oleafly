@@ -205,25 +205,25 @@ describe("refreshAuxNumbers", () => {
   });
 });
 
-const tocLine = (kind: string, text: string, anchor = "x") =>
-  String.raw`\@writefile{toc}{\contentsline {${kind}}{${text}}{1}{${anchor}}\protected@file@percent }`;
+const tocLine = (kind: string, text: string, anchor = "x", page = "1") =>
+  String.raw`\@writefile{toc}{\contentsline {${kind}}{${text}}{${page}}{${anchor}}\protected@file@percent }`;
 
 describe("parseAuxToc", () => {
   it("reads numbered and unnumbered headings and ignores other lists", () => {
     const aux = [
       String.raw`\relax`,
       tocLine("section", String.raw`\numberline {1}Introduction`, "section.1"),
-      tocLine("section", "Acknowledgments", "section*.2"),
+      tocLine("section", "Acknowledgments", "section*.2", " xii "),
       String.raw`\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces A plot}}{3}{figure.1}}`,
       String.raw`\@writefile{toc}{\boolfalse {citerequest}}`,
-      tocLine("subsection", String.raw`\numberline {6.2}Results on a {\em small} dataset`),
+      tocLine("subsection", String.raw`\numberline {6.2}Results on a {\em small} dataset`, "x", ""),
       tocLine("theorem", String.raw`\numberline {3}Not a heading`),
       String.raw`\newlabel{sec:a}{{1}{1}}`,
     ].join("\n");
     expect(parseAuxToc(new Map([[ENTRY_AUX, aux]]))).toEqual([
-      { level: 2, number: "1", title: "Introduction" },
-      { level: 2, number: null, title: "Acknowledgments" },
-      { level: 3, number: "6.2", title: String.raw`Results on a {\em small} dataset` },
+      { level: 2, number: "1", title: "Introduction", page: "1" },
+      { level: 2, number: null, title: "Acknowledgments", page: "xii" },
+      { level: 3, number: "6.2", title: String.raw`Results on a {\em small} dataset`, page: null },
     ]);
   });
 
@@ -235,10 +235,10 @@ describe("parseAuxToc", () => {
       tocLine("chapter", String.raw`\numberline {}Preface`),
     ].join("\n");
     expect(parseAuxToc(new Map([[ENTRY_AUX, aux]]))).toEqual([
-      { level: 0, number: "II", title: "Applications" },
-      { level: 1, number: "3", title: "Flows" },
-      { level: 2, number: "A", title: "Proofs" },
-      { level: 1, number: null, title: "Preface" },
+      { level: 0, number: "II", title: "Applications", page: "1" },
+      { level: 1, number: "3", title: "Flows", page: "1" },
+      { level: 2, number: "A", title: "Proofs", page: "1" },
+      { level: 1, number: null, title: "Preface", page: "1" },
     ]);
   });
 
@@ -288,8 +288,8 @@ describe("currentAuxToc", () => {
       projectId: "p1",
       mainDocument: "main.tex",
       entries: [
-        { level: 2, number: "1", title: "Intro" },
-        { level: 2, number: "2", title: "Body" },
+        { level: 2, number: "1", title: "Intro", page: "1" },
+        { level: 2, number: "2", title: "Body", page: "1" },
       ],
     });
     expect(currentAuxToc()).toBe(toc);

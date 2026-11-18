@@ -19,7 +19,7 @@ import {
 } from "@codemirror/state";
 import { EditorView, keymap, type KeyBinding } from "@codemirror/view";
 import type { NodeSet, SyntaxNode } from "@lezer/common";
-import { vimOwnsInput } from "./latex-structure-commands";
+import { typedAtSelection, vimOwnsInput } from "./latex-structure-commands";
 import { typstAutolinkEnd, typstIdentifierEnd } from "./typst-syntax";
 
 export type TypstContext =
@@ -939,10 +939,7 @@ export function typstEditing(options: TypstEditingOptions): Extension {
     typing
       ? Prec.high(
           EditorView.inputHandler.of((view, from, to, text) => {
-            if (view.composing || view.compositionStarted) return false;
-            if (vimOwnsInput(view)) return false;
-            const main = view.state.selection.main;
-            if (from !== main.from || to !== main.to) return false;
+            if (!typedAtSelection(view, from, to)) return false;
             const spec = typstInputChange(view.state, text, options);
             if (!spec) return false;
             view.dispatch(spec);

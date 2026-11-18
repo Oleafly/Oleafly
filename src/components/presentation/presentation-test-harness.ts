@@ -65,6 +65,7 @@ export const windowModule = {
 };
 
 export const loadModule = {
+  loadPresentationDeck: () => Promise.resolve("export default [];"),
   loadPresentationPdf: () => {
     if (presentationHarness.failLoad) return Promise.reject(new Error("no compiled PDF"));
     return Promise.resolve(new Uint8Array([37, 80, 68, 70]));

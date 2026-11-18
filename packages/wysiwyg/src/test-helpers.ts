@@ -32,6 +32,10 @@ export function openMarkdown(
   };
 }
 
+export function mathRanges(source: string): { from: number; to: number }[] {
+  return [...source.matchAll(/\$[^$\n]+\$/gu)].map((match) => ({ from: match.index, to: match.index + match[0].length }));
+}
+
 export function destroyOpenedEditors(): void {
   for (const editor of opened.splice(0)) editor.destroy();
 }

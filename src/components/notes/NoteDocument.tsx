@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { isImeEnter } from "@/components/ai/composer/ime";
+import { QuoteOrBoldKey } from "@/components/editor/rich-text-controls";
 import { Button } from "@/components/ui/button";
 import { useDelegatedTooltips } from "@/components/ui/delegated-tooltip";
 import { Spinner } from "@/components/ui/spinner";
@@ -52,7 +53,8 @@ import { useNoteLinkExtensions } from "./use-note-links";
 import { NoteImageDrop, noteImageTarget } from "./note-image-drop";
 import { NoteUndoMemory, restoreUndo, startUndoMemory, undoRecord } from "./note-undo-memory";
 import { NoteLinkChoice } from "./note-link-choice";
-import { bubblePlace, type SelectionBubble } from "./note-bubble";
+import type { BubbleAnchor } from "./note-bubble";
+import { NoteSelectionMenu } from "./note-selection-menu";
 import { indexedUndoStore } from "./note-undo-store";
 import { useSettingsStore } from "@/store/settings";
 import {
@@ -317,6 +319,7 @@ function NoteEditor({
       NotePeerMarks,
       NoteSelection.configure({ wholeNote: (doc) => serializeNoteMarkdown(doc.toJSON(), snapshotRef.current) }),
       NoteSlash,
+      QuoteOrBoldKey,
       NoteImageDrop.configure({
         target: () => (readOnlyRef.current ? null : imageTargetRef.current),
         attach: () => attachRef.current,
@@ -365,7 +368,8 @@ function NoteEditor({
   const [title, setTitle] = useState(facts.title ?? note.title);
   const [review, setReview] = useState<ReviewSummary>({ count: 0, index: -1, activeId: null });
   const [canUndo, setCanUndo] = useState(false);
-  const [bubble, setBubble] = useState<SelectionBubble | null>(null);
+  const [bubble, setBubble] = useState<BubbleAnchor | null>(null);
+  const bubbleHeldRef = useRef(false);
   const askKeys = useShortcutStore((state) => shortcutLabel(state.bindings.notesAskAgent));
   const width = useNoteWidth();
   const editingTitle = useRef(false);
@@ -715,33 +719,38 @@ function NoteEditor({
         setBubble(null);
         return;
       }
-      const next = bubblePlace(editor.view.coordsAtPos(from), editor.view.coordsAtPos(to), { width: window.innerWidth });
-      setBubble((current) => (current?.top === next.top && current.left === next.left ? current : next));
-    };
-    const trackSelection = () => {
-      if (editor.state.selection.empty) {
-        if (frame) window.cancelAnimationFrame(frame);
-        frame = 0;
-        setBubble(null);
-        return;
-      }
-      if (!frame) frame = window.requestAnimationFrame(placeBubble);
+      const start = editor.view.coordsAtPos(from);
+      const end = editor.view.coordsAtPos(to);
+      setBubble((current) =>
+        current?.start.top === start.top && current.start.left === start.left && current.end.bottom === end.bottom ? current : { start, end },
+      );
     };
     const hide = () => {
       if (frame) window.cancelAnimationFrame(frame);
       frame = 0;
+      bubbleHeldRef.current = false;
       setBubble(null);
+    };
+    const trackSelection = () => {
+      if (editor.state.selection.empty) {
+        hide();
+        return;
+      }
+      if (!frame) frame = window.requestAnimationFrame(placeBubble);
+    };
+    const blur = () => {
+      if (!bubbleHeldRef.current) hide();
     };
     editor.on("transaction", onTransaction);
     editor.on("selectionUpdate", trackSelection);
-    editor.on("blur", hide);
+    editor.on("blur", blur);
     const scroller = scrollRef.current;
     scroller?.addEventListener("scroll", hide, { passive: true });
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
       editor.off("transaction", onTransaction);
       editor.off("selectionUpdate", trackSelection);
-      editor.off("blur", hide);
+      editor.off("blur", blur);
       scroller?.removeEventListener("scroll", hide);
     };
   }, [adoptFacts, editor, scheduleSave]);
@@ -1125,16 +1134,11 @@ function NoteEditor({
           {linkTooltips}
         </article>
         {bubble && (
-          <div
-            data-note-selection-bubble
-            style={{ top: bubble.top, left: bubble.left }}
-            className="fixed z-50 flex gap-0.5 rounded-md border bg-popover p-1 text-popover-foreground shadow-xl"
-          >
+          <NoteSelectionMenu editor={editor} anchor={bubble} onHold={(held) => (bubbleHeldRef.current = held)}>
             <Button
               variant="ghost"
               size="xs"
               aria-keyshortcuts={askKeys}
-              onMouseDown={(event) => event.preventDefault()}
               onClick={() => assistantRef.current?.quote(selectedText(editor, wholeNote))}
             >
               {t(($) => $.notes.document.askAgent)}
@@ -1143,16 +1147,11 @@ function NoteEditor({
               </span>
             </Button>
             {onSendToPaper && (
-              <Button
-                variant="ghost"
-                size="xs"
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={() => onSendToPaper(selectedText(editor, wholeNote))}
-              >
+              <Button variant="ghost" size="xs" onClick={() => onSendToPaper(selectedText(editor, wholeNote))}>
                 {t(($) => $.notes.document.sendToPaper)}
               </Button>
             )}
-          </div>
+          </NoteSelectionMenu>
         )}
         {(review.count > 0 || canUndo) && !collab.state.readOnly && (
           <FloatingReview

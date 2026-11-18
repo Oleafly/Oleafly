@@ -6,8 +6,16 @@ import type { EditorBridge, ProjectActions } from "../controller";
 import { useWeb, type WebState } from "../store";
 import { type OverlaySource, overlayDecorations } from "./decorations";
 
-export function webEditorKeymap(actions: Pick<ProjectActions, "compile" | "showInPdf">): KeyBinding[] {
+export function webEditorKeymap(actions: Pick<ProjectActions, "compile" | "showInPdf" | "startComment">): KeyBinding[] {
   return [
+    {
+      key: "Mod-Alt-m",
+      run: () => {
+        actions.startComment();
+        return true;
+      },
+      preventDefault: true,
+    },
     {
       key: "Mod-s",
       run: () => {

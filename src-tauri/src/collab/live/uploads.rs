@@ -60,13 +60,48 @@ pub struct UploadProgress {
     pub total: u64,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadProgress {
+    pub project_id: String,
+    pub path: String,
+    pub done: u64,
+    pub total: Option<u64>,
+}
+
+pub(super) type DownloadReport = Arc<dyn Fn(u64, Option<u64>) + Send + Sync>;
+
+#[derive(Default)]
+struct Pacer(Mutex<Option<Instant>>);
+
+impl Pacer {
+    fn due(&self, finished: bool) -> bool {
+        let now = Instant::now();
+        let mut told = guard(&self.0);
+        if !finished && told.is_some_and(|at| now.duration_since(at) < PROGRESS_EVERY) {
+            return false;
+        }
+        *told = Some(now);
+        true
+    }
+}
+
 pub(super) fn progress_for(
     host: Arc<dyn LiveHost>,
     project_id: &str,
     path: &str,
 ) -> TransferProgress {
-    transfer_progress(host, project_id, path, |host, payload| {
-        host.upload_progress(payload)
+    let (project_id, path) = (project_id.to_owned(), path.to_owned());
+    let pacer = Pacer::default();
+    Arc::new(move |done, total| {
+        if pacer.due(done >= total) {
+            host.upload_progress(UploadProgress {
+                project_id: project_id.clone(),
+                path: path.clone(),
+                done,
+                total,
+            });
+        }
     })
 }
 
@@ -74,39 +109,18 @@ pub(super) fn download_progress_for(
     host: Arc<dyn LiveHost>,
     project_id: &str,
     path: &str,
-) -> TransferProgress {
-    transfer_progress(host, project_id, path, |host, payload| {
-        host.download_progress(payload)
-    })
-}
-
-fn transfer_progress(
-    host: Arc<dyn LiveHost>,
-    project_id: &str,
-    path: &str,
-    send: fn(&dyn LiveHost, UploadProgress),
-) -> TransferProgress {
+) -> DownloadReport {
     let (project_id, path) = (project_id.to_owned(), path.to_owned());
-    let told: Mutex<Option<Instant>> = Mutex::new(None);
+    let pacer = Pacer::default();
     Arc::new(move |done, total| {
-        let now = Instant::now();
-        {
-            let mut told = guard(&told);
-            let due = told.is_none_or(|at| now.duration_since(at) >= PROGRESS_EVERY);
-            if !due && done < total {
-                return;
-            }
-            *told = Some(now);
-        }
-        send(
-            host.as_ref(),
-            UploadProgress {
+        if pacer.due(total.is_some_and(|total| done >= total)) {
+            host.download_progress(DownloadProgress {
                 project_id: project_id.clone(),
                 path: path.clone(),
                 done,
                 total,
-            },
-        );
+            });
+        }
     })
 }
 

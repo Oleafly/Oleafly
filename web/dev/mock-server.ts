@@ -6,7 +6,6 @@ import {
   type Account,
   canComment,
   type ChangeResult,
-  type ChatMessage,
   manages,
   MAX_OUTPUT_BYTES,
   minimalPdf,
@@ -95,10 +94,12 @@ class Peer {
   readonly project: MockProject;
   readonly open = new Set<string>();
   mode: Mode = "editing";
-  presence: { fileId: string | null; anchor: number | null; head: number | null } = {
+  presence: { fileId: string | null; anchor: number | null; head: number | null; activity: unknown; seq: number } = {
     fileId: null,
     anchor: null,
     head: null,
+    activity: null,
+    seq: 0,
   };
   private readonly socket: Duplex | null;
 
@@ -209,7 +210,12 @@ function people(project: MockProject) {
   return [...project.roles.keys()]
     .map((id) => ACCOUNTS.find((account) => account.accountId === id))
     .filter((account): account is Account => account !== undefined)
-    .map((account) => ({ accountId: account.accountId, displayName: account.name, login: account.login }));
+    .map((account) => ({
+      accountId: account.accountId,
+      displayName: account.name,
+      login: account.login,
+      role: project.roles.get(account.accountId),
+    }));
 }
 
 function filesOf(project: MockProject) {
@@ -236,16 +242,39 @@ function sendSuggestions(project: MockProject, fileId: string): void {
   for (const peer of viewersOf(project)) peer.send({ t: "suggestions", fileId, rev: file.rev, suggestions });
 }
 
+const reactions = new Map<string, Map<string, string[]>>();
+
+function react(messageId: string, emoji: string, account: string, on: boolean): void {
+  if (!emoji || [...emoji].length > 16 || /[\s|]/u.test(emoji)) throw new Refusal("invalid");
+  const byEmoji = reactions.get(messageId) ?? new Map<string, string[]>();
+  const people = (byEmoji.get(emoji) ?? []).filter((id) => id !== account);
+  if (on) people.push(account);
+  if (people.length > 0) byEmoji.set(emoji, people);
+  else byEmoji.delete(emoji);
+  reactions.set(messageId, byEmoji);
+}
+
+function withReactions<T extends { id: string; deleted: boolean }>(message: T) {
+  const byEmoji = message.deleted ? undefined : reactions.get(message.id);
+  return { ...message, reactions: [...(byEmoji ?? [])].map(([emoji, by]) => ({ emoji, by })) };
+}
+
+function chatPage(project: MockProject) {
+  return project.chatPage().map(withReactions);
+}
+
 function sendThreads(project: MockProject, fileId: string): void {
   const file = project.text(fileId);
-  const threads = project.fileThreads(fileId);
+  const threads = project
+    .fileThreads(fileId)
+    .map((thread) => ({ ...thread, messages: thread.messages.map(withReactions) }));
   for (const peer of viewersOf(project)) peer.send({ t: "threads", fileId, rev: file.rev, threads });
 }
 
 function sendPresence(project: MockProject): void {
   for (const peer of viewersOf(project)) {
     const others = viewersOf(project)
-      .filter((other) => other !== peer && other.presence.fileId)
+      .filter((other) => other !== peer && (other.presence.fileId || other.presence.activity))
       .map((other) => ({
         deviceId: other.deviceId,
         accountId: other.account.accountId,
@@ -253,6 +282,8 @@ function sendPresence(project: MockProject): void {
         fileId: other.presence.fileId,
         anchor: other.presence.anchor,
         head: other.presence.head,
+        activity: other.presence.activity,
+        seq: other.presence.seq,
       }));
     peer.send({ t: "presence", peers: others });
   }
@@ -301,6 +332,10 @@ function handleComment(peer: Peer, frame: Frame): void {
       thread.resolved = { by: peer.account.accountId, at: Date.now(), verified: true };
     } else if (action === "reopen") {
       thread.resolved = null;
+    } else if (action === "react") {
+      const message = thread.messages.find((entry) => entry.id === text(frame.messageId));
+      if (!message || message.deleted) throw new Refusal("not_found");
+      react(message.id, text(frame.emoji), peer.account.accountId, frame.on === true);
     } else {
       throw new Refusal("invalid");
     }
@@ -346,6 +381,10 @@ function handleChat(peer: Peer, frame: Frame): void {
     if (message.author !== peer.account.accountId) throw new Refusal("chat_role");
     message.deleted = true;
     message.body = "";
+  } else if (action === "react") {
+    const message = project.chat.find((entry) => entry.id === text(frame.id));
+    if (!message || message.deleted) throw new Refusal("not_found");
+    react(message.id, text(frame.emoji), peer.account.accountId, frame.on === true);
   } else if (action === "clear") {
     if (peer.role !== "owner") throw new Refusal("chat_role");
     for (const message of project.chat) {
@@ -355,7 +394,7 @@ function handleChat(peer: Peer, frame: Frame): void {
   } else {
     throw new Refusal("invalid");
   }
-  const page: ChatMessage[] = project.chatPage();
+  const page = chatPage(project);
   for (const other of viewersOf(project)) other.send({ t: "chat", messages: page });
 }
 
@@ -409,6 +448,8 @@ function handleFrame(peer: Peer, frame: Frame): void {
         fileId: typeof frame.fileId === "string" ? frame.fileId : null,
         anchor: whole(frame.anchor),
         head: whole(frame.head),
+        activity: frame.activity ?? null,
+        seq: peer.presence.seq + 1,
       };
       sendPresence(project);
       return;
@@ -492,7 +533,7 @@ function upgrade(request: IncomingMessage, socket: Duplex): void {
     people: people(project),
     compile: project.compile,
   });
-  peer.send({ t: "chat", messages: project.chatPage() });
+  peer.send({ t: "chat", messages: chatPage(project) });
   peer.send({ t: "output", items: project.outputItems() });
   sendPresence(project);
 }

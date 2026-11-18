@@ -622,6 +622,7 @@ mod tests {
             "chat::collab_chat_list",
             "chat::collab_chat_send",
             "chat::collab_chat_delete",
+            "chat::collab_chat_react",
             "chat::collab_chat_clear",
             "history::collab_history_list",
             "history::collab_history_file",

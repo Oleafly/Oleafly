@@ -126,6 +126,8 @@
     "entryCount_other": "{{count}} jäsennyskohtaa",
     "expandHeading": "Laajenna {{title}}",
     "expandAll": "Laajenna kaikki otsikot",
+    "onPage": "{{heading}}, sivu {{page}}",
+    "page": "s.{{page}}",
     "title": "Jäsennys"
   },
   "panelError": {

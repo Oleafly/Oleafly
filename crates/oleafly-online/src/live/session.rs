@@ -124,6 +124,7 @@ pub enum MergeReview {
     Merged { before: String, after: String },
     NeedsReview { mine: String, theirs: String },
     Kept { text: String },
+    InFile,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

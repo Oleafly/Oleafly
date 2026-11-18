@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
@@ -241,6 +241,7 @@ pub struct LiveProject {
     edit_mode: crate::suggestions::EditMode,
     suggested: BTreeSet<String>,
     chatted: bool,
+    chat_mentions: Vec<loro::ContainerID>,
     rewritten: bool,
     refusals: HashMap<String, CollabError>,
 }
@@ -474,6 +475,7 @@ impl LiveProject {
             edit_mode: crate::suggestions::EditMode::default(),
             suggested: BTreeSet::new(),
             chatted: false,
+            chat_mentions: Vec::new(),
             rewritten: false,
             refusals: HashMap::new(),
         }
@@ -742,6 +744,14 @@ impl LiveProject {
         std::mem::take(&mut self.chatted)
     }
 
+    pub fn take_chat_mentions(&mut self) -> Vec<crate::chat::ChatMention> {
+        let containers = std::mem::take(&mut self.chat_mentions);
+        if containers.is_empty() {
+            return Vec::new();
+        }
+        self.doc.chat_mentions(containers)
+    }
+
     pub fn received(&self) -> u64 {
         self.received
     }
@@ -802,6 +812,23 @@ impl LiveProject {
                 self.authors_dirty = true;
             }
         }
+    }
+
+    pub fn set_owner(&mut self, owner: AccountId) {
+        if self.doc.authors_mut().set_owner(owner) {
+            self.authors_dirty = true;
+        }
+    }
+
+    pub fn sign(&mut self, account: AccountId, name: &str) {
+        self.doc_mut().set_author(&account.to_string(), name);
+        if self.role == ProjectRole::Owner && self.owner().is_none() {
+            self.set_owner(account);
+        }
+    }
+
+    pub fn owner(&self) -> Option<AccountId> {
+        self.doc.authorship().owner()
     }
 
     pub fn await_writers(&mut self) {
@@ -993,6 +1020,7 @@ impl LiveProject {
         self.comments.extend(changes.comments);
         self.suggested.extend(changes.suggestions);
         self.chatted |= changes.chat;
+        self.chat_mentions.extend(changes.chat_mentions);
         if changes.tree {
             self.disk.tree = true;
         }
@@ -2012,6 +2040,7 @@ impl LiveProject {
             .is_some_and(|outgoing| outgoing.batch == batch)
         {
             if let Some(outgoing) = self.outgoing.take() {
+                self.note_acknowledged(&outgoing.version);
                 self.confirmed.merge(&outgoing.version);
             }
             self.rewritten = false;
@@ -2248,6 +2277,61 @@ impl LiveProject {
         &mut self.doc
     }
 
+    fn note_acknowledged(&mut self, version: &VersionVector) {
+        let loro = self.doc.loro();
+        for (peer, end) in version.iter() {
+            let from = self.confirmed.get(peer).copied().unwrap_or(0);
+            let Ok(length) = usize::try_from(end - from) else {
+                continue;
+            };
+            if length == 0 {
+                continue;
+            }
+            for container in loro.get_changed_containers_in(ID::new(*peer, from), length) {
+                crate::comments::note_thread(loro, &container, &mut self.comments);
+                self.chatted |= crate::chat::in_chat(loro, &container);
+            }
+        }
+    }
+
+    pub fn waiting_messages(&self) -> HashSet<String> {
+        let loro = self.doc.loro();
+        let mut waiting = HashSet::new();
+        for (peer, from, to) in self.unsent() {
+            let Ok(length) = usize::try_from(to - from) else {
+                continue;
+            };
+            for container in loro.get_changed_containers_in(ID::new(peer, from), length) {
+                waiting.extend(crate::comments::message_id_in(loro, &container));
+            }
+        }
+        waiting
+    }
+
+    pub fn mark_pending_threads(&self, threads: &mut [crate::comments::CommentThread]) {
+        let waiting = self.waiting_messages();
+        for message in threads
+            .iter_mut()
+            .flat_map(|thread| thread.messages.iter_mut())
+        {
+            message.pending = waiting.contains(&message.id.to_string());
+        }
+    }
+
+    pub fn mark_pending_messages(&self, messages: &mut [crate::comments::CommentMessage]) {
+        let waiting = self.waiting_messages();
+        for message in messages {
+            message.pending = waiting.contains(&message.id.to_string());
+        }
+    }
+
+    pub fn mark_pending_chat(&self, messages: &mut [crate::chat::ChatMessage]) {
+        let waiting = self.waiting_messages();
+        for message in messages {
+            message.pending = waiting.contains(&message.id.to_string());
+        }
+    }
+
     pub fn take_comment_changes(&mut self) -> crate::comments::CommentChanges {
         let events = std::mem::take(&mut self.comments);
         if events.is_empty() {
@@ -2286,7 +2370,7 @@ fn allowed_for(loro: &loro::LoroDoc, container: &loro::ContainerID, reviewer: bo
         return false;
     };
     match name.as_str() {
-        crate::comments::COMMENTS | crate::chat::CHAT => true,
+        crate::comments::COMMENTS | crate::chat::CHAT | crate::chat::CHAT_REACTIONS => true,
         crate::suggestions::SUGGESTIONS => reviewer,
         other => reviewer && other.starts_with("text:"),
     }
@@ -4205,14 +4289,20 @@ mod tests {
     fn unsent(
         file: &str,
         thread: oleafly_collab_protocol::ids::CommentId,
+        message: &crate::comments::CommentMessage,
+        (new_thread, edit): (bool, bool),
         quote: &str,
-        body: &str,
     ) -> crate::comments::UnsentComment {
         crate::comments::UnsentComment {
             file_id: file.to_owned(),
             thread_id: thread,
+            message_id: message.id,
+            at: message.at,
+            edited_at: message.edited_at,
+            new_thread,
+            edit,
             quote: quote.to_owned(),
-            body: body.to_owned(),
+            body: message.body.clone(),
         }
     }
 
@@ -4247,7 +4337,13 @@ mod tests {
             .expect("the comment is dropped");
         assert_eq!(
             dropped,
-            vec![unsent(&main, thread.id, "abc", "written while off")]
+            vec![unsent(
+                &main,
+                thread.id,
+                &thread.messages[0],
+                (true, false),
+                "abc"
+            )]
         );
         assert_eq!(alice.doc().text(&main).unwrap(), "abc one two");
         assert!(alice.doc().comment_threads(&main).unwrap().is_empty());
@@ -4280,7 +4376,7 @@ mod tests {
         let first = alice.next_outgoing().unwrap().unwrap();
         assert!(bob.import_update(1, &first.payload).unwrap());
         alice.acknowledged(first.batch, 1);
-        alice
+        let edited = alice
             .comment_doc()
             .edit_comment(
                 &main,
@@ -4292,7 +4388,7 @@ mod tests {
                 &[],
             )
             .unwrap();
-        alice
+        let reply = alice
             .comment_doc()
             .reply_to_comment(&main, kept.id, me, 3, "a reply while off", &[])
             .unwrap();
@@ -4306,11 +4402,12 @@ mod tests {
         assert_eq!(
             dropped,
             vec![
-                unsent(&main, kept.id, "ab", "sent earlier, then edited"),
-                unsent(&main, kept.id, "ab", "a reply while off"),
-                unsent(&main, fresh.id, "bc", "a new thread while off"),
+                unsent(&main, kept.id, &edited, (false, true), "ab"),
+                unsent(&main, kept.id, &reply, (false, false), "ab"),
+                unsent(&main, fresh.id, &fresh.messages[0], (true, false), "bc"),
             ]
         );
+        assert_eq!(dropped[0].edited_at, Some(2));
         deliver_without_comments(&mut alice, &mut bob);
         assert_eq!(bob.doc().text(&main).unwrap(), "abc typed");
         for live in [&alice, &bob] {
@@ -4560,7 +4657,7 @@ mod tests {
             .unwrap();
         commenter
             .comment_doc()
-            .send_chat(account, 11, "Ready for review?")
+            .send_chat(account, 11, "Ready for review?", &[])
             .unwrap();
         let outgoing = commenter.next_outgoing().unwrap().expect("a batch to send");
         assert_eq!(
@@ -4728,7 +4825,9 @@ mod tests {
         rae.editor_change(&main, 0, insert(6, "brave ", 11))
             .unwrap();
         rae.set_role(ProjectRole::Reviewer);
-        rae.comment_doc().send_chat(account, 11, "Ready?").unwrap();
+        rae.comment_doc()
+            .send_chat(account, 11, "Ready?", &[])
+            .unwrap();
         let outgoing = rae.next_outgoing().unwrap().unwrap();
         assert_eq!(
             judged_by_server(&owner, &outgoing.payload, ProjectRole::Reviewer, account),

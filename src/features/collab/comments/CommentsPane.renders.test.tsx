@@ -77,7 +77,8 @@ function renderPane(list: CollabCommentThread[]) {
     phase: "ready",
     error: null,
     selectedId: null,
-    showResolved: false,
+    filter: "open",
+    refused: [],
     draft: null,
   });
   const screen = render(
@@ -143,10 +144,10 @@ describe("Comments tab redraws", () => {
     await reload(next);
     const after = useComments.getState().threads;
     expect(commits).toBe(1);
-    expect(mocks.rows).toBe(MESSAGES + 1);
+    expect(mocks.rows).toBe(2);
     expect(after[3]).not.toBe(first[3]);
     expect(after.filter((thread, index) => thread === first[index])).toHaveLength(THREADS - 1);
-    expect(screen.getByText("Fixed it")).toBeInTheDocument();
+    expect(screen.getByText(`Replies: ${MESSAGES}`)).toBeInTheDocument();
     screen.unmount();
   });
 });

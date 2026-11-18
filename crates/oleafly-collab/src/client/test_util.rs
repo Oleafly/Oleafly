@@ -305,7 +305,7 @@ pub(crate) fn recording_browser(
 }
 
 pub(crate) async fn last_page(pages: &Pages) -> String {
-    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+    let deadline = tokio::time::Instant::now() + LONG;
     loop {
         if let Some(page) = pages.lock().expect("pages").last().cloned() {
             return page;
@@ -382,6 +382,7 @@ pub(crate) fn sample_manifest(protocol: ProtocolRange) -> CapabilityManifest {
             suggestions: false,
             chat: false,
             web: false,
+            reactions: false,
         },
         limits: Limits {
             max_project_mb: 200,
