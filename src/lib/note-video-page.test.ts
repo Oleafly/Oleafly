@@ -21,6 +21,9 @@ describe("loopback video page script", () => {
     ["#vimeo/76979871", "https://player.vimeo.com/video/76979871?autoplay=1&dnt=1"],
     ["#vimeo/76979871?h=0a1b2c", "https://player.vimeo.com/video/76979871?autoplay=1&dnt=1&h=0a1b2c"],
     ["#vimeo/76979871&h=0a1b2c", "https://player.vimeo.com/video/76979871?autoplay=1&dnt=1&h=0a1b2c"],
+    ["#x/20", "https://platform.twitter.com/embed/Tweet.html?id=20&dnt=true"],
+    ["#x/20?theme=dark", "https://platform.twitter.com/embed/Tweet.html?id=20&dnt=true&theme=dark"],
+    ["#x/1234567890123456789?theme=light", "https://platform.twitter.com/embed/Tweet.html?id=1234567890123456789&dnt=true&theme=light"],
   ])("frames %s as %s", (hash, src) => {
     const frame = frameFor(hash);
     expect(frame?.src).toBe(src);
@@ -48,10 +51,26 @@ describe("loopback video page script", () => {
     "#vimeo/123?h=ABC",
     "#vimeo/123?h=",
     "#vimeo/123/456",
+    "#x/",
+    "#x/abc",
+    "#x/123456789012345678901",
+    "#x/20?theme=blue",
+    "#x/20?theme=",
+    "#x/20/extra",
+    "#X/20",
     "#dailymotion/x7abc",
     "#YouTube/dQw4w9WgXcQ",
     "#javascript:alert(1)",
   ])("frames nothing for %s", (hash) => {
     expect(frameFor(hash)).toBeNull();
+  });
+
+  it.each([
+    ["#youtube/dQw4w9WgXcQ", "YouTube", "rgb(0, 0, 0)"],
+    ["#vimeo/76979871", "Vimeo", "rgb(0, 0, 0)"],
+    ["#x/20", "X", "transparent"],
+  ])("names the player for %s and sets the page background", (hash, title, background) => {
+    expect(frameFor(hash)?.title).toBe(title);
+    expect(document.documentElement.style.background).toBe(background);
   });
 });

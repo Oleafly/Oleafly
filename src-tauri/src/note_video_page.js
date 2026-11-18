@@ -24,15 +24,23 @@
   if (start !== null && !/^\d{1,9}$/u.test(start)) return;
   if (hash !== null && !/^[0-9a-f]{1,64}$/u.test(hash)) return;
   if (theme !== null && theme !== "light" && theme !== "dark") return;
-  const sources = { youtube: () => youtubeSource(id, start), vimeo: () => vimeoSource(id, hash), x: () => xSource(id, theme) };
-  const src = sources[provider]();
+  let src = null;
+  let title = "X";
+  if (provider === "youtube") {
+    src = youtubeSource(id, start);
+    title = "YouTube";
+  } else if (provider === "vimeo") {
+    src = vimeoSource(id, hash);
+    title = "Vimeo";
+  } else if (provider === "x") {
+    src = xSource(id, theme);
+  }
   if (src === null) return;
-  const titles = { youtube: "YouTube", vimeo: "Vimeo", x: "X" };
   const background = provider === "x" ? "transparent" : "#000";
   Object.assign(document.documentElement.style, { height: "100%", background });
   Object.assign(document.body.style, { margin: "0", height: "100%", overflow: "hidden" });
   const frame = document.createElement("iframe");
-  frame.title = titles[provider];
+  frame.title = title;
   frame.setAttribute("allow", "autoplay; encrypted-media; picture-in-picture; fullscreen");
   frame.setAttribute("allowfullscreen", "");
   frame.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
