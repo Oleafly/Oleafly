@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Local images in Markdown's visual editor now resolve from the project again after the document is reopened.
+- Local images in Markdown's visual editor now resolve from the project again after the document is reopened. If an image isn't in the project, its place shows "Image not found" instead of staying blank.
 - In a narrow chat panel, the approval mode button no longer spills over the button next to it.
 - A long model name in a dropdown ends in an ellipsis instead of pushing the dropdown out of its card. A model that a server lists by its file path, as llama.cpp does for a model started with `-m`, shows the file name instead of the whole path.
 - When cloud sync left two versions of a note and you kept one, the other was
@@ -42,6 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show matched LaTeX outline headings with numbers from the last successful
   compile. Starred headings remain unnumbered; edits may leave numbers stale
   or missing until recompilation.
+
+### Security
+
+- The collaboration server now sends email with lettre 0.11.24. Version 0.11.23 had six security advisories (RUSTSEC-2026-0560 to RUSTSEC-2026-0565). An attacker on the network could forge the mail server's replies over STARTTLS or an unencrypted connection, and a bare line break in a message let a sender inject SMTP commands. Mail to an address with a quoted local part could reach someone else, and a malformed reply or display name made the mail code panic or buffer a reply without limit.
 
 ## [0.4.12] - 2026-11-12
 

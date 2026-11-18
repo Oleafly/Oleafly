@@ -1,6 +1,7 @@
 import { Image, type ImageOptions } from "@tiptap/extension-image";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { NodeViewRenderer } from "@tiptap/core";
+import { assetImage } from "../asset-image";
 import { isUrlWithScheme, markdownLinkDestination, readableLinkHref } from "../link-destination";
 import { rawInlineMarkup } from "../raw-inline";
 import type { AssetUrlResolver } from "../options";
@@ -177,6 +178,43 @@ function readWidths(state: CoreState): boolean {
   return true;
 }
 
+function markdownImagePath(source: string): string | null {
+  return isUrlWithScheme(source) ? null : readableLinkHref(source);
+}
+
+function imageNodeView(resolveAssetUrl: AssetUrlResolver): NodeViewRenderer {
+  return ({ node: initialNode }) => {
+    let node = initialNode;
+    const dom = document.createElement("div");
+    dom.dataset.type = "image";
+    const asset = assetImage(resolveAssetUrl, markdownImagePath);
+    const { image } = asset;
+    dom.append(image, asset.placeholder);
+
+    const present = () => {
+      image.alt = String(node.attrs.alt ?? "");
+      if (node.attrs.title) image.title = String(node.attrs.title);
+      else image.removeAttribute("title");
+      const width = imageWidthPercent(node.attrs.widthPercent);
+      image.style.width = width === null ? "" : `${width}%`;
+      asset.show(String(node.attrs.src ?? ""));
+    };
+
+    present();
+    return {
+      dom,
+      update(nextNode) {
+        if (nextNode.type !== node.type) return false;
+        node = nextNode;
+        present();
+        return true;
+      },
+      ignoreMutation: () => true,
+      destroy: () => asset.destroy(),
+    };
+  };
+}
+
 /**
  * Images write their path the way links do: readable, in angle brackets when
  * Markdown needs them. markdown-it percent-encodes every image path it reads,
@@ -187,62 +225,9 @@ function readWidths(state: CoreState): boolean {
  * images on lines of their own, or an image and the paragraph after it, were
  * saved run together on one line.
  */
-function imageNodeView(resolveAssetUrl: AssetUrlResolver): NodeViewRenderer {
-  return ({ node: initialNode }) => {
-    let node = initialNode;
-    let generation = 0;
-    let destroyed = false;
-    const image = document.createElement("img");
-
-    const updateImage = () => {
-      const request = ++generation;
-      const source = String(node.attrs.src ?? "");
-      image.alt = String(node.attrs.alt ?? "");
-      if (node.attrs.title) image.title = String(node.attrs.title);
-      else image.removeAttribute("title");
-      const width = imageWidthPercent(node.attrs.widthPercent);
-      image.style.width = width === null ? "" : `${width}%`;
-
-      if (source === "" || isUrlWithScheme(source)) {
-        if (source) image.setAttribute("src", source);
-        else image.removeAttribute("src");
-        return;
-      }
-
-      image.removeAttribute("src");
-      void resolveAssetUrl(readableLinkHref(source)).then((url) => {
-        if (destroyed || request !== generation) return;
-        if (url) image.setAttribute("src", url);
-      }, () => undefined);
-    };
-
-    updateImage();
-    return {
-      dom: image,
-      update(nextNode) {
-        if (nextNode.type !== node.type) return false;
-        node = nextNode;
-        updateImage();
-        return true;
-      },
-      ignoreMutation: () => true,
-      destroy() {
-        destroyed = true;
-      },
-    };
-  };
-}
-
 export const MarkdownImage = Image.extend<MarkdownImageOptions>({
   addOptions() {
-    return {
-      ...this.parent?.(),
-      inline: this.parent?.().inline ?? false,
-      allowBase64: this.parent?.().allowBase64 ?? false,
-      HTMLAttributes: this.parent?.().HTMLAttributes ?? {},
-      resize: this.parent?.().resize ?? false,
-      resolveAssetUrl: null,
-    };
+    return { ...(this.parent?.() as ImageOptions), resolveAssetUrl: null };
   },
 
   addAttributes() {
