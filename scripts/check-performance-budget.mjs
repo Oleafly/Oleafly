@@ -209,7 +209,13 @@ const limits = {
   // words, and comment threads, reactions, mentions and chat drafts are one
   // kit with the web app. The entry measures 5,037,657 bytes. The combined graph
   // measures 27,156,173 bytes on macOS.
-  totalJavaScript: 27_170_000,
+  // +10 KB, on top of 27,170,000, for Notes phase 5. Comments in shared notes
+  // add 9.4 KB (comment ranges and margin markers in the note, Add comment and
+  // the Comments side view) and posts from X add 6.1 KB (the x-post block, its
+  // paste choice, paper export and the live-post setting). Main measured
+  // 27,156,604 bytes in CI. The entry measures 5,039,201 bytes, and the
+  // combined graph 27,172,184 bytes, on macOS and in CI.
+  totalJavaScript: 27_180_000,
   // Russian is the largest catalog. Main measures 983,290 bytes, and the
   // translated Notes settings, shortcuts, errors and agent strings add 13,383.
   // The Notes namespace itself is its own lazy chunk. This gate is here to
