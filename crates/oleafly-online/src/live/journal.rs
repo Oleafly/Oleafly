@@ -24,6 +24,7 @@ const TREE: &str = "tree-queue.json";
 const LOCK: &str = "lock";
 const KEPT: &str = "kept";
 const FOLDER_LOCK: [&str; 3] = [".oleafly", "online", "live.lock"];
+const LOCK_PATIENCE: Duration = Duration::from_secs(5);
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProjectManifest {
@@ -186,7 +187,7 @@ fn take_lock(path: &Path) -> Result<File, JournalError> {
         .write(true)
         .truncate(false)
         .open(path)?;
-    match oleafly_core::locking::lock_file(&file, true, Duration::ZERO) {
+    match oleafly_core::locking::lock_file(&file, true, LOCK_PATIENCE) {
         Ok(()) => Ok(file),
         Err(error) if error.kind() == io::ErrorKind::TimedOut => Err(JournalError::Busy),
         Err(error) => Err(error.into()),

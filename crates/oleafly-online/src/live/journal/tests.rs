@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::time::Duration;
 
 use oleafly_ot::TextOperation;
 use serde_json::json;
@@ -119,6 +120,20 @@ fn a_second_process_cannot_go_live_on_the_same_project() {
     assert_eq!(error.kind.as_str(), "live_elsewhere");
     drop(first);
     open(data.path(), None).unwrap();
+}
+
+#[test]
+fn a_lock_freed_soon_after_a_crash_is_taken_instead_of_refused() {
+    let data = tempfile::tempdir().unwrap();
+    let first = open(data.path(), None).unwrap();
+    let freed = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(500));
+        drop(first);
+    });
+    let started = std::time::Instant::now();
+    open(data.path(), None).unwrap();
+    assert!(started.elapsed() >= Duration::from_millis(400));
+    freed.join().unwrap();
 }
 
 #[test]

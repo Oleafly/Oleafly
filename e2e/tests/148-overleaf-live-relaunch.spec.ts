@@ -287,7 +287,12 @@ test("after a relaunch Overleaf gets every change exactly once", async ({ tauriP
   test.setTimeout(180_000);
   await openProject(page, PROJECT);
   await waitEditorShowsFile(page, MAIN, 45_000);
-  const text = await serverTextShows(OFFLINE, 90_000);
+  const text = await serverTextShows(OFFLINE, 90_000).catch(async (error: unknown) => {
+    const shown = await page.evaluate<string>(
+      `JSON.stringify({ sync: document.querySelector('[data-testid="overleaf-live-button"]')?.dataset.syncState ?? null, live: localStorage.getItem("oleafly.overleafLive"), server: localStorage.getItem("oleafly.overleaf.server"), banners: [...document.querySelectorAll('[role="alert"], [role="status"], output')].map((node) => node.textContent?.trim()).filter(Boolean).slice(0, 8) })`,
+    );
+    throw new Error(`${String(error)}\n--- the relaunched app shows ---\n${shown}\n--- mock server ---\n${stack.log.slice(-20).join("\n")}`);
+  });
   await liveState(page, ["upToDate"], 60_000);
   expect(occurrences(text, ONLINE)).toBe(1);
   expect(occurrences(text, OFFLINE)).toBe(1);

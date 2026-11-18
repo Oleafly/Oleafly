@@ -808,7 +808,10 @@ async fn a_coauthor_delete_hands_over_unsent_text_before_the_tree_change() {
     let live = live_as(&rig, "alice", &port, quick()).await;
     let mut tab = Tab::open(&live, NOTES);
     let notes = tab.doc.clone();
-    eventually("notes is joined", || rig.joined("alice").contains(&notes.0)).await;
+    eventually("the tab shows the joined text", || {
+        tab.text(&live) == "Notes"
+    })
+    .await;
     rig.mock.hold_updates();
     tab.type_at(&live, 5, " mine");
     let (bob_rest, bob) = as_bob(&rig).await;
@@ -846,7 +849,10 @@ async fn restore_on_overleaf_recreates_from_kept_copy() {
     let live = live_as(&rig, "alice", &port, quick()).await;
     let mut tab = Tab::open(&live, NOTES);
     let notes = tab.doc.clone();
-    eventually("notes is joined", || rig.joined("alice").contains(&notes.0)).await;
+    eventually("the tab shows the joined text", || {
+        tab.text(&live) == "Notes"
+    })
+    .await;
     rig.mock.hold_updates();
     tab.type_at(&live, 5, " mine");
     let (bob_rest, bob) = as_bob(&rig).await;
