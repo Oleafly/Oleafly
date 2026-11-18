@@ -225,10 +225,12 @@ Context reference: \ref{sec:context-nav}.
 });
 
 // Types at the caret the way CodeMirror's input handling does, so the Markdown engine's typing
-// handoff sees a keystroke.
+// handoff sees a keystroke. The menu's Markdown actions run once their module's import resolves,
+// so the key waits a turn of the event loop first, as a person's would.
 async function typeAtCaret(page: TauriPage, text: string) {
   await page.evaluate(
-    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+    `import("/src/components/editor/cm/controller.ts").then(async ({ getEditorView }) => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
       const view = getEditorView();
       if (!view) throw new Error("editor is unavailable");
       const at = view.state.selection.main.head;
@@ -292,11 +294,13 @@ test("Markdown context menu activates every profile-appropriate action", async (
     `E2E Context Markdown ${RUN}`,
   );
   await exerciseSimpleProfile(tauriPage, [
-    [["Format", "Bold"], "CONTEXTTARGET**X**", "X"],
-    [["Format", "Italic"], "CONTEXTTARGET*X*", "X"],
+    // The block actions come first: they change the text, so waiting for them also loads the
+    // Markdown engine before Bold and Italic, whose effect only shows in the next typed key.
     [["Insert", "Heading"], "# CONTEXTTARGET"],
     [["Insert", "Bulleted list"], "- CONTEXTTARGET"],
     [["Insert", "Table"], "CONTEXTTARGET\n\n|  |  |  |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |"],
     [["Insert", "Equation"], "CONTEXTTARGET$$\n\n$$\n"],
+    [["Format", "Bold"], "CONTEXTTARGET**X**", "X"],
+    [["Format", "Italic"], "CONTEXTTARGET*X*", "X"],
   ]);
 });
