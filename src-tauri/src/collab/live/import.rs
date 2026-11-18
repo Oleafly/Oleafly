@@ -8,6 +8,7 @@ use oleafly_collab::CollabError;
 
 use super::bases::{merged_onto, WrittenTexts};
 use super::kept;
+use super::live_tree::TreeRead;
 use super::session::io;
 use crate::collab::disk::{
     as_text, crlf_only, excluded_name, exists_exact, follow_layout, inside, moved_key, rekey_moved,
@@ -63,10 +64,10 @@ pub(super) struct Scanned {
 }
 
 impl Scanned {
-    pub(super) fn classify(self, live: &LiveProject) -> LocalImport {
+    pub(super) fn classify(self, read: &(impl TreeRead + ?Sized)) -> LocalImport {
         let mut import = self.import;
         for (path, id, text, hash) in self.known_texts {
-            if live.doc().text(&id).ok().as_deref() == Some(text.as_str()) {
+            if read.text(&id).ok().flatten().as_deref() == Some(text.as_str()) {
                 import.restamped.push((path, hash));
             } else {
                 import.texts.push((path, text, hash));
@@ -76,8 +77,8 @@ impl Scanned {
     }
 }
 
-pub(super) fn placed_now(live: &LiveProject) -> Result<Placed, CollabError> {
-    Ok(by_path(&materialize::layout(&live.doc().nodes()?)))
+pub(super) fn placed_now(read: &(impl TreeRead + ?Sized)) -> Result<Placed, CollabError> {
+    Ok(by_path(&materialize::layout(&read.nodes()?)))
 }
 
 pub(super) fn read_local_changes(
@@ -468,6 +469,33 @@ fn still_on_disk(root: &Path, path: &str, hash: &str) -> bool {
         .is_some_and(|bytes| sha256_hex(&bytes) == hash)
 }
 
+pub(super) fn arrival_of(
+    import: &mut LocalImport,
+    placed: &Placed,
+    disk: &DiskState,
+    root: &Path,
+    old: &str,
+) -> Option<String> {
+    let (_, kind, _) = placed.get(old)?;
+    let known = disk.hashes.get(old)?;
+    let arrived = |path: &str, hash: &str| {
+        hash == known && !placed.contains_key(path) && still_on_disk(root, path, hash)
+    };
+    match kind {
+        NodeKind::Text => import
+            .texts
+            .iter()
+            .position(|(path, _, hash)| arrived(path, hash))
+            .map(|index| import.texts.remove(index).0),
+        NodeKind::Blob => import
+            .blobs
+            .iter()
+            .position(|(path, hash, _)| arrived(path, hash))
+            .map(|index| import.blobs.remove(index).0),
+        NodeKind::Dir => None,
+    }
+}
+
 fn adopt_moved_files(
     live: &mut LiveProject,
     disk: &mut DiskState,
@@ -481,26 +509,7 @@ fn adopt_moved_files(
         let Some((id, kind, blob)) = placed.get(&old).cloned() else {
             continue;
         };
-        let Some(known) = disk.hashes.get(&old).cloned() else {
-            continue;
-        };
-        let arrived = |path: &str, hash: &str| {
-            hash == known && !placed.contains_key(path) && still_on_disk(root, path, hash)
-        };
-        let found = match kind {
-            NodeKind::Text => import
-                .texts
-                .iter()
-                .position(|(path, _, hash)| arrived(path, hash))
-                .map(|index| import.texts.remove(index).0),
-            NodeKind::Blob => import
-                .blobs
-                .iter()
-                .position(|(path, hash, _)| arrived(path, hash))
-                .map(|index| import.blobs.remove(index).0),
-            NodeKind::Dir => None,
-        };
-        let Some(new) = found else {
+        let Some(new) = arrival_of(import, placed, disk, root, &old) else {
             continue;
         };
         let parent = ensure_dir(live, placed, parent_of(&new))?;

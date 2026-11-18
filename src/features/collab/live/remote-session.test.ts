@@ -996,5 +996,34 @@ describe("RemoteDocumentSession recovery", () => {
     expect(channel.opens).toHaveLength(1);
     expect(session.phase).toBe("closed");
   });
-});
 
+  it("a detached message hands the document back with its unsent text", async () => {
+    const channel = new FakeChannel("abc");
+    const phases: string[] = [];
+    const session = new RemoteDocumentSession("main.tex", "abc", {
+      transport: channel.transport(),
+      onPhase: (phase) => phases.push(phase),
+    });
+    await session.open();
+    session.applyLocal([{ from: 3, to: 3, insert: "!" }], session.version());
+    const id = channel.opens.at(-1) ?? "";
+    channel.detach(id, "unknown_op");
+    channel.deliverOne(id);
+    expect(session.phase).toBe("detached");
+    expect(phases.at(-1)).toBe("detached");
+    expect(session.text()).toBe("abc!");
+    expect(session.unconfirmed).toBe(true);
+    expect(session.confirmed()).toBe("abc");
+  });
+
+  it("a detached message that arrives while the document opens still detaches it", async () => {
+    const channel = new FakeChannel("abc");
+    const session = new RemoteDocumentSession("main.tex", "abc", { transport: channel.transport() });
+    const opening = session.open();
+    const id = channel.opens.at(-1) ?? "";
+    channel.detach(id, "unknown_op");
+    channel.deliverOne(id);
+    await opening;
+    expect(session.phase).toBe("detached");
+  });
+});

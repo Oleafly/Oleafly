@@ -4,7 +4,6 @@ mod html;
 mod import;
 mod session;
 mod signin;
-mod socket;
 mod sync;
 pub(crate) mod template;
 
@@ -13,17 +12,23 @@ mod sync_tests;
 #[cfg(test)]
 mod tests;
 
+use oleafly_online::projects::ImportedFrom;
 use serde::Serialize;
 use tauri::ipc::Channel;
 use tauri::{AppHandle, Runtime};
 
 pub use import::{ImportEvent, ImportOutcome, RemoteProject};
+pub(crate) use signin::sweep_browser_profiles;
 pub(crate) use signin::LABEL_PREFIX as SIGN_IN_LABEL_PREFIX;
 pub use sync::Side;
 
 use std::collections::BTreeMap;
 
 use crate::app_error::AppError;
+use crate::collab::live::overleaf::account::{
+    overleaf_signed_in, overleaf_stop_live, overleaf_unsent,
+};
+use crate::collab::live::{UnsentProject, SIGN_OUT_WAIT};
 
 #[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -58,6 +63,16 @@ async fn blocking<T: Send + 'static>(
         .map_err(|error| error.to_string())?
 }
 
+async fn keep_session(base: String, signed_in: session::Session) -> Result<OverleafStatus, String> {
+    let status = status_for(&base, Some(&signed_in));
+    blocking(move || {
+        session::save(&base, &signed_in)?;
+        overleaf_signed_in(&base, &signed_in)
+    })
+    .await?;
+    Ok(status)
+}
+
 #[tauri::command]
 pub async fn overleaf_status(server: Option<String>) -> Result<OverleafStatus, String> {
     let base = session::normalize_server(server.as_deref())?;
@@ -76,10 +91,58 @@ pub async fn overleaf_sign_in<R: Runtime>(
 ) -> Result<OverleafStatus, String> {
     let base = session::normalize_server(server.as_deref())?;
     let signed_in = signin::sign_in_with_window(&app, &base, &title).await?;
-    let saved = signed_in.clone();
-    let save_base = base.clone();
-    blocking(move || session::save(&save_base, &saved)).await?;
-    Ok(status_for(&base, Some(&signed_in)))
+    keep_session(base, signed_in).await
+}
+
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct SignInBrowser {
+    pub key: String,
+    pub name: String,
+}
+
+fn main_window_only<R: Runtime>(webview: &tauri::Webview<R>) -> Result<(), String> {
+    if crate::caller::own_window_label(webview).as_deref() == Some("main") {
+        Ok(())
+    } else {
+        Err(AppError::new("overleaf.sign_in_failed").into())
+    }
+}
+
+#[tauri::command]
+pub async fn overleaf_sign_in_browsers<R: Runtime>(
+    webview: tauri::Webview<R>,
+) -> Result<Vec<SignInBrowser>, String> {
+    main_window_only(&webview)?;
+    blocking(|| {
+        Ok(signin::sign_in_browsers()
+            .iter()
+            .map(|browser| SignInBrowser {
+                key: browser.key(),
+                name: browser.name(),
+            })
+            .collect())
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn overleaf_sign_in_with_browser<R: Runtime>(
+    webview: tauri::Webview<R>,
+    server: Option<String>,
+    browser: String,
+) -> Result<OverleafStatus, String> {
+    main_window_only(&webview)?;
+    let base = session::normalize_server(server.as_deref())?;
+    let chosen = blocking(move || {
+        signin::sign_in_browsers()
+            .into_iter()
+            .find(|installed| installed.key() == browser)
+            .ok_or_else(|| AppError::new("overleaf.browser_missing").into())
+    })
+    .await?;
+    let signed_in = signin::sign_in_with_browser(&base, chosen).await?;
+    keep_session(base, signed_in).await
 }
 
 pub(crate) type AppCookie = (String, String, Option<String>, Option<String>, bool);
@@ -98,9 +161,7 @@ pub async fn overleaf_sign_in_with_app_cookies<R: Runtime>(
     webview: tauri::Webview<R>,
     server: Option<String>,
 ) -> Result<OverleafStatus, String> {
-    if crate::caller::own_window_label(&webview).as_deref() != Some("main") {
-        return Err(AppError::new("overleaf.sign_in_failed").into());
-    }
+    main_window_only(&webview)?;
     let base = session::normalize_server(server.as_deref())?;
     let stored = webview
         .cookies()
@@ -134,10 +195,7 @@ pub async fn overleaf_sign_in_with_app_cookies<R: Runtime>(
                 String::from(AppError::new("overleaf.browser_sign_in_failed"))
             }
         })?;
-    let saved = signed_in.clone();
-    let save_base = base.clone();
-    blocking(move || session::save(&save_base, &saved)).await?;
-    Ok(status_for(&base, Some(&signed_in)))
+    keep_session(base, signed_in).await
 }
 
 fn copied_cookies(cookies: &[AppCookie], base: &str) -> Vec<usize> {
@@ -175,12 +233,41 @@ fn app_cookie_header(cookies: &[AppCookie], base: &str) -> Result<String, String
     Ok(header)
 }
 
-#[tauri::command]
-pub async fn overleaf_sign_out(server: Option<String>) -> Result<OverleafStatus, String> {
-    let base = session::normalize_server(server.as_deref())?;
+#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct OverleafSignOut {
+    #[serde(flatten)]
+    pub status: OverleafStatus,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub unsent: Vec<UnsentProject>,
+}
+
+pub(crate) async fn sign_out_within(
+    base: String,
+    keep_local_copy: bool,
+    wait: std::time::Duration,
+) -> Result<OverleafSignOut, String> {
+    let unsent = overleaf_unsent(&base, wait).await?;
+    if !unsent.is_empty() && !keep_local_copy {
+        let status = overleaf_status(Some(base)).await?;
+        return Ok(OverleafSignOut { status, unsent });
+    }
+    overleaf_stop_live(&base).await;
     let forget_base = base.clone();
     blocking(move || session::forget(&forget_base)).await?;
-    Ok(status_for(&base, None))
+    Ok(OverleafSignOut {
+        status: status_for(&base, None),
+        unsent,
+    })
+}
+
+#[tauri::command]
+pub async fn overleaf_sign_out(
+    server: Option<String>,
+    keep_local_copy: Option<bool>,
+) -> Result<OverleafSignOut, String> {
+    let base = session::normalize_server(server.as_deref())?;
+    sign_out_within(base, keep_local_copy.unwrap_or(false), SIGN_OUT_WAIT).await
 }
 
 #[tauri::command]
@@ -216,13 +303,6 @@ pub async fn overleaf_import_projects<R: Runtime>(
 
 #[derive(Serialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
-pub struct ImportedFrom {
-    pub server: String,
-    pub project_id: String,
-}
-
-#[derive(Serialize, Clone, Debug, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
 pub struct SyncStatus {
     pub linked: bool,
     pub server: String,
@@ -247,11 +327,19 @@ pub struct SyncReport {
 
 fn imported_from(project_id: &str) -> Option<ImportedFrom> {
     let meta = crate::project::read_meta(project_id).ok()?;
-    let origin = oleafly_online::projects::imported_from(meta.extra.get("importedFrom")?)?;
-    Some(ImportedFrom {
-        server: origin.server,
-        project_id: origin.project_id,
-    })
+    oleafly_online::projects::imported_from(meta.extra.get("importedFrom")?)
+}
+
+pub(crate) fn unlink_project(project_id: &str) -> Result<(), String> {
+    let _guard = sync::claim(project_id)?;
+    if sync::read_link(project_id)?.is_some() {
+        sync::retire_mirror(project_id)?;
+    }
+    let mut meta = crate::project::read_meta(project_id)?;
+    if meta.extra.remove("importedFrom").is_some() {
+        crate::project::write_meta(project_id, &meta)?;
+    }
+    Ok(())
 }
 
 pub(crate) fn forget_sync_copy(project_id: &str) -> Result<(), String> {
@@ -266,6 +354,50 @@ fn current_link(project_id: &str) -> Result<Option<sync::SyncLink>, String> {
     Ok(owned.then_some(link))
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct OverleafLink {
+    pub(crate) server: String,
+    pub(crate) project_id: String,
+}
+
+pub(crate) fn overleaf_link_of(project_id: &str) -> Result<Option<OverleafLink>, String> {
+    if let Some(link) = current_link(project_id)? {
+        return Ok(Some(OverleafLink {
+            server: link.server,
+            project_id: link.remote_id,
+        }));
+    }
+    Ok(imported_from(project_id).map(|origin| OverleafLink {
+        server: origin.server,
+        project_id: origin.project_id,
+    }))
+}
+
+pub(crate) fn live_session(
+    base: &str,
+) -> Result<
+    Option<(
+        oleafly_online::client::Http,
+        oleafly_online::session::SessionHandle,
+    )>,
+    String,
+> {
+    let Some(stored) = session::load(base)? else {
+        return Ok(None);
+    };
+    let http = client::Http::new(base)?.online().clone();
+    let store = crate::secrets::store()?;
+    Ok(Some((
+        http,
+        oleafly_online::session::SessionHandle::new(base, stored, Some(store)),
+    )))
+}
+
+pub(crate) fn linked_mirror(project_id: &str) -> Option<std::path::PathBuf> {
+    sync::read_link(project_id).ok().flatten()?;
+    sync::repo_dir(project_id).ok()
+}
+
 fn linked(project_id: &str) -> Result<sync::SyncLink, String> {
     current_link(project_id)?.ok_or_else(|| AppError::new("overleaf.sync_not_linked").into())
 }
@@ -273,10 +405,8 @@ fn linked(project_id: &str) -> Result<sync::SyncLink, String> {
 fn sync_status(project_id: &str) -> Result<SyncStatus, String> {
     let link = current_link(project_id)?;
     let imported = imported_from(project_id);
-    let server = link
-        .as_ref()
-        .map(|link| link.server.clone())
-        .or_else(|| imported.as_ref().map(|origin| origin.server.clone()))
+    let server = overleaf_link_of(project_id)?
+        .map(|link| link.server)
         .unwrap_or_else(|| session::DEFAULT_SERVER.to_string());
     Ok(SyncStatus {
         token_saved: session::git_token(&server)?.is_some(),
@@ -505,8 +635,20 @@ fn quiet_report(outcome: &str, pushed: bool) -> SyncReport {
     }
 }
 
+fn live_stands_down(project_id: &str) -> Result<(), String> {
+    if crate::collab::live::overleaf::git_sync_waits(project_id)
+        .map_err(|error| error.to_string())?
+    {
+        return Err(errors::app_error(oleafly_online::error::OnlineError::new(
+            oleafly_online::error::OnlineErrorKind::SyncBusy,
+        )));
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn overleaf_sync_check(project_id: String) -> Result<SyncReport, String> {
+    live_stands_down(&project_id)?;
     let _guard = sync::claim(&project_id)?;
     let target = sync_target(&project_id).await?;
     let remote = fetch_remote(&target).await?;
@@ -650,6 +792,7 @@ pub async fn overleaf_sync_now<R: Runtime>(
     resolutions: Option<BTreeMap<String, Side>>,
     fetched: Option<bool>,
 ) -> Result<SyncReport, String> {
+    live_stands_down(&project_id)?;
     let _guard = sync::claim(&project_id)?;
     let target = sync_target(&project_id).await?;
     let mut progress = Progress {

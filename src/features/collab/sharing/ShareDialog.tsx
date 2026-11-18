@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CopyPlus, Eye, Share2, X } from "lucide-react";
+import { CopyPlus, Eye, Share2, Unlink, X } from "lucide-react";
 import { useShareDialog } from "@/components/collab/share-dialog";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/empty";
@@ -22,7 +22,9 @@ import {
   collabShareProject,
   onCollabShareProgress,
 } from "@/lib/tauri-collab";
+import { overleafLiveActions, useLiveBackend } from "@/lib/collab-live-bridge";
 import { useFilesStore } from "@/store/files";
+import { useSettingsStore } from "@/store/settings";
 import { AddServerDialog } from "../AddServerDialog";
 import { OLEAFLY_SERVER } from "../default-server";
 import { collabErrorCode, collabErrorText } from "../errors";
@@ -164,7 +166,7 @@ function ShareStep({
           setUpload({ kind: "sharing", done: progress.done, total: progress.total, reported: true });
         }
       });
-      shared = await collabShareProject(projectId, chosenId);
+      shared = await collabShareProject(projectId, chosenId, useSettingsStore.getState().overleafLive);
     } catch (error) {
       setUpload({
         kind: "failed",
@@ -276,6 +278,34 @@ function CopyStep({ projectId, name }: Readonly<{ projectId: string; name: strin
   );
 }
 
+function OverleafLinked({ projectId, onUnlinked }: Readonly<{ projectId: string; onUnlinked: () => void }>) {
+  const { t } = useTranslation(["collab"]);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const unlink = async () => {
+    setBusy(true);
+    setFailed(null);
+    try {
+      await overleafLiveActions()?.unlink(projectId);
+      onUnlinked();
+    } catch (error) {
+      setFailed(collabErrorText(error));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="space-y-3" data-testid="collab-share-overleaf-linked">
+      <p className="text-sm text-foreground">{t(($) => $.collab.errors.overleaf_linked)}</p>
+      {failed ? <InlineAlert>{failed}</InlineAlert> : null}
+      <Button type="button" variant="outline" disabled={busy} onClick={() => void unlink()}>
+        {busy ? <Spinner size="sm" /> : <Unlink aria-hidden />}
+        {t(($) => $.collab.share.unlinkOverleaf)}
+      </Button>
+    </div>
+  );
+}
+
 export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
   const { t } = useTranslation(["collab", "common"]);
   const titleId = useId();
@@ -292,6 +322,7 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
   const [shareRequest, setShareRequest] = useState(0);
   const [addingOleafly, setAddingOleafly] = useState(false);
   const name = project?.name ?? "";
+  const overleafLinked = useLiveBackend((live) => live.projectId === projectId && live.overleaf !== null);
 
   useEffect(() => {
     if (serversStatus === "idle") void loadServers();
@@ -341,6 +372,9 @@ export function ShareDialog({ projectId }: Readonly<{ projectId: string }>) {
           <ManageSharing projectId={projectId} name={name} share={share} />
         </>
       );
+    }
+    if (overleafLinked) {
+      return <OverleafLinked projectId={projectId} onUnlinked={() => setShareRequest((count) => count + 1)} />;
     }
     if (!serversKnown) return <LoadingState size="compact" label={t(($) => $.collab.share.loading)} />;
     if (signedIn.length === 0) {

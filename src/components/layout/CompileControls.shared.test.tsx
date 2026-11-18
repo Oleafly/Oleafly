@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enShell from "@/i18n/locales/en/shell.json" with { type: "json" };
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
+import { useCoauthorEdits } from "@/lib/live-file-mirror";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
 import { useCompileStore } from "@/store/compile";
 import { useFilesStore } from "@/store/files";
@@ -127,5 +128,30 @@ describe("shared compile settings in the compile menu", () => {
     }
     await user.click(screen.getByTestId("typst-project-fonts"));
     expect(setTypstOptions).not.toHaveBeenCalled();
+  });
+});
+
+describe("coauthor changes and the compile button", () => {
+  afterEach(() => {
+    useCoauthorEdits.setState({ projectId: null, path: null, text: null, at: null });
+    useCompileStore.setState({ lastCompiledAt: null });
+  });
+
+  it("shows a dot once coauthors changed the project after the last compile", () => {
+    useCompileStore.setState({ lastCompiledAt: 1_000 });
+    useCoauthorEdits.setState({ projectId: "p1", path: "main.tex", text: "theirs", at: 2_000 });
+    render(<CompileControls />);
+    expect(screen.getByTestId("compile-coauthors-dot")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["an edit before the last compile", { lastCompiledAt: 3_000, edit: { projectId: "p1", at: 2_000 } }],
+    ["another project's edit", { lastCompiledAt: 1_000, edit: { projectId: "p2", at: 2_000 } }],
+    ["no compile yet", { lastCompiledAt: null, edit: { projectId: "p1", at: 2_000 } }],
+  ] as const)("shows no dot for %s", (_label, { lastCompiledAt, edit }) => {
+    useCompileStore.setState({ lastCompiledAt });
+    useCoauthorEdits.setState({ ...edit, path: "main.tex", text: "theirs" });
+    render(<CompileControls />);
+    expect(screen.queryByTestId("compile-coauthors-dot")).toBeNull();
   });
 });

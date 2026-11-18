@@ -3,12 +3,12 @@
 mod people;
 mod web_support;
 
-use oleafly_collab::ot::TextOperation;
 use oleafly_collab_protocol::frames::{ClientFrame, ServerFrame};
 use oleafly_collab_protocol::outputs::MAIN_FILE_HEADER;
 use oleafly_collab_protocol::projects::{
     PresenceActivity, PresenceActivityKind, PresenceState, ProjectRole,
 };
+use oleafly_ot::TextOperation;
 use oleafly_server::mentions;
 use oleafly_server::snapshots::Budget;
 use oleafly_server::test_support::{mail_config, MockSmtp};

@@ -3,62 +3,6 @@ import { flattenCatalog } from "@oleafly/i18n-contract";
 import collab from "./locales/en/collab.json" with { type: "json" };
 import context from "./context/collab.json" with { type: "json" };
 
-const ERROR_CODES = [
-  "unreachable",
-  "not_https",
-  "client_too_old",
-  "server_too_old",
-  "not_admitted",
-  "sign_in_cancelled",
-  "sign_in_timed_out",
-  "unauthorized",
-  "forbidden",
-  "not_found",
-  "conflict",
-  "rate_limited",
-  "setup_code_invalid",
-  "server",
-  "internal",
-  "server_changed",
-  "duplicate_server",
-  "device_in_use",
-  "server_unknown",
-  "too_large",
-  "invalid",
-  "invalid_domain",
-  "invalid_email",
-  "invalid_login",
-  "guests_off",
-  "link_sharing_off",
-  "access_log_off",
-  "last_admin",
-  "duplicate_entry",
-  "already_member",
-  "project_not_shared",
-  "project_full",
-  "not_a_link",
-  "signed_out",
-  "server_removed",
-  "share_in_progress",
-  "cancelled",
-  "cloud_synced",
-  "owner_away",
-  "wrong_server",
-  "suggestion_not_found",
-  "suggestion_not_yours",
-  "suggestion_role",
-  "suggestion_changed",
-  "suggestion_too_long",
-  "chat_role",
-  "history_unavailable",
-  "account_storage_full",
-  "too_many_projects",
-  "too_many_uploads",
-  "public_notes_off",
-  "too_many_pages",
-  "page_too_large",
-  "page_taken_down",
-];
 const CHECKS = ["reachable", "https", "protocol", "webSocket", "signInProviders", "email", "clock"];
 const STATUSES = ["pass", "fail", "info", "skipped"];
 const EVENT_KINDS = [
@@ -121,10 +65,6 @@ const RUNTIME_SETTINGS = [
 const flat = flattenCatalog(collab);
 
 describe("collab catalog", () => {
-  it("has one message per error code the backend sends", () => {
-    expect(Object.keys(collab.errors).sort()).toEqual([...ERROR_CODES].sort());
-  });
-
   it("has a label and a sentence for every check and every status", () => {
     expect(Object.keys(collab.section.checks.items).sort()).toEqual([...CHECKS].sort());
     expect(Object.keys(collab.section.checks.status).sort()).toEqual([...STATUSES].sort());

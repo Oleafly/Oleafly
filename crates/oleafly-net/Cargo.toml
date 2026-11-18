@@ -1,0 +1,27 @@
+[package]
+name = "oleafly-net"
+version = "0.1.0"
+description = "Network connections shared by Oleafly's live editing backends: the proxy-aware WebSocket connector and the reconnect backoff"
+license = "AGPL-3.0-or-later"
+publish = false
+edition = "2021"
+rust-version = "1.89"
+
+[dependencies]
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+hyper-util = { version = "0.1.20", default-features = false, features = ["client-proxy", "client-proxy-system"] }
+ring = "0.17"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+rustls-native-certs = "0.8"
+thiserror = "2"
+tokio = { version = "1", features = ["io-util", "macros", "net", "time"] }
+tokio-tungstenite = { version = "0.30", default-features = false, features = ["rustls-tls-webpki-roots"] }
+url = "2.5"
+webpki-roots = "1"
+
+[features]
+e2e-hooks = []
+test-support = ["tokio/rt"]
+
+[dev-dependencies]
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

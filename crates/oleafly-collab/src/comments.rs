@@ -1412,7 +1412,7 @@ mod tests {
     use super::*;
     use crate::doc::NodeKind;
     use crate::live::LiveProject;
-    use crate::ot::TextOperation;
+    use oleafly_ot::TextOperation;
 
     const TEXT: &str = "The quick brown fox jumps over the lazy dog.\nSecond line 🦊 here.\n";
 

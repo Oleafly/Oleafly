@@ -1739,8 +1739,8 @@
         "notInstalled": "Kurulu değil"
       },
       "tryAgain": "Yeniden deneyin",
-      "label": "Tarayıcı oturumu",
-      "useBrowserSignIn": "Tarayıcımdaki oturumu kullan",
+      "label": "Bir tarayıcının oturumunu kopyala",
+      "useBrowserSignIn": "Tarayıcınızdaki oturumu kopyala",
       "signInDescription": "Yeniden oturum açmak zorunda kalmamak için {{server}} oturumunuzu bu bilgisayardaki bir tarayıcıdan kopyalayın.",
       "site": "Site: {{domain}}",
       "confirmCopy": "Oleafly, {{domain}} çerezlerini {{browser}} tarayıcısındaki {{profile}} profilinden okuyacak. Çerezler Oleafly içinde kalır ve yalnızca {{domain}} adresine gönderilir. Bir sistem iletişim kutusunda bir kez daha onaylayacaksınız.",
@@ -1815,7 +1815,33 @@
       "gitLabel": "Overleaf Git belirteci",
       "gitSave": "Kaydet",
       "gitRemove": "Kaldır",
-      "gitFailed": "Oleafly Git belirtecini kaydedemedi. Belirtecin tamamını yapıştırdığınızdan emin olun."
+      "gitFailed": "Oleafly Git belirtecini kaydedemedi. Belirtecin tamamını yapıştırdığınızdan emin olun.",
+      "browserLabel": "Tarayıcınızla oturum açın",
+      "browserDescription": "Google, kurum veya geçiş anahtarıyla oturum açmak için. Oleafly, {{server}} sunucusunu yeni bir tarayıcı penceresinde açar ve giriş yaptığınızda kapatır.",
+      "browserAction": "Oturum aç",
+      "browserPick": "Oturum açılacak tarayıcı",
+      "browserWaiting": "{{browser}} tarayıcısında {{server}} sunucusunda oturum açmayı tamamlayın. Pencereyi kapatmak işlemi iptal eder.",
+      "browserHint": "Google, kurum veya geçiş anahtarıyla oturum açmak için bunu kullanın.",
+      "windowLabel": "{{server}} sunucusunda oturum aç",
+      "windowDescription": "Oleafly bir oturum açma penceresi açar ve giriş yaptığınızda kapatır. Google, kurumunuz veya geçiş anahtarıyla oturum açmak için Chrome, Edge, Brave, Chromium veya Firefox yükleyin, sonra burada onunla oturum açın.",
+      "windowAction": "Oturum aç",
+      "windowWaiting": "{{server}} sunucusunda oturum açmayı açılan pencerede tamamlayın.",
+      "unsent": {
+        "title": "Bazı değişiklikler Overleaf'e gönderilmedi",
+        "description": "Şimdi oturumu kapatırsanız bu değişiklikler bu bilgisayarda kalır ve bu hesapla bir sonraki oturum açışınızda Overleaf'e gider. Farklı bir hesapla oturum açarsanız bunlar dosyalarının yanında kopya olarak geri gelir. Ya da oturumu açık tutup birazdan yeniden deneyin.",
+        "files": "Henüz gönderilmedi: {{files}}",
+        "signOut": "Yine de oturumu kapat",
+        "stay": "Oturumu açık tut"
+      },
+      "deletes": {
+        "title": "Canlı bir projede dosya sildiğinizde",
+        "description": "Oleafly'de bir dosyayı veya klasörü sildiğinizde Overleaf'te ne olacağını seçin.",
+        "options": {
+          "ask": "Her seferinde sor",
+          "always": "Overleaf'ten de sil",
+          "never": "Overleaf'te tut"
+        }
+      }
     },
     "desktopApps": {
       "tab": "Computer Use",

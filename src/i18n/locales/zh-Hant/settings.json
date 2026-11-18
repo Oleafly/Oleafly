@@ -1728,8 +1728,8 @@
         "notInstalled": "未安裝"
       },
       "tryAgain": "再試一次",
-      "label": "瀏覽器登入",
-      "useBrowserSignIn": "使用我瀏覽器中的登入資訊",
+      "label": "複製瀏覽器的登入資訊",
+      "useBrowserSignIn": "複製瀏覽器中的登入資訊",
       "signInDescription": "從這台電腦上的瀏覽器複製你在 {{server}} 的登入資訊，就不必重新登入。",
       "site": "網站：{{domain}}",
       "confirmCopy": "Oleafly 會從 {{browser}} 的 {{profile}} 設定檔讀取 {{domain}} 的 Cookie。它們會留在 Oleafly 中，而且只會傳送到 {{domain}}。你還需要在系統對話框中再確認一次。",
@@ -1800,7 +1800,33 @@
       "gitLabel": "Overleaf Git 權杖",
       "gitSave": "儲存",
       "gitRemove": "移除",
-      "gitFailed": "Oleafly 無法儲存 Git 權杖。請檢查是否貼上了完整的權杖。"
+      "gitFailed": "Oleafly 無法儲存 Git 權杖。請檢查是否貼上了完整的權杖。",
+      "browserLabel": "使用瀏覽器登入",
+      "browserDescription": "適用於 Google、機構或密碼金鑰登入。Oleafly 會在新的瀏覽器視窗中開啟 {{server}}，登入完成後自動關閉。",
+      "browserAction": "登入",
+      "browserPick": "用於登入的瀏覽器",
+      "browserWaiting": "請在 {{browser}} 中完成 {{server}} 的登入。關閉視窗會取消登入。",
+      "browserHint": "使用 Google、機構或密碼金鑰登入時，請選擇這個方式。",
+      "windowLabel": "登入 {{server}}",
+      "windowDescription": "Oleafly 會開啟登入視窗，登入完成後自動關閉。若要使用 Google、機構或密碼金鑰登入，請安裝 Chrome、Edge、Brave、Chromium 或 Firefox，然後在這裡透過它登入。",
+      "windowAction": "登入",
+      "windowWaiting": "請在開啟的視窗中完成 {{server}} 的登入。",
+      "unsent": {
+        "title": "部分變更尚未傳送到 Overleaf",
+        "description": "如果現在登出，這些變更會保留在這台電腦上，並在你下次用這個帳號登入時傳送到 Overleaf。如果改用其他帳號登入，它們會改為作為副本回到對應檔案旁邊。你也可以保持登入，稍後再試。",
+        "files": "尚未傳送：{{files}}",
+        "signOut": "仍要登出",
+        "stay": "保持登入"
+      },
+      "deletes": {
+        "title": "在即時專案中刪除檔案時",
+        "description": "選擇在 Oleafly 中刪除檔案或資料夾時，Overleaf 上會發生什麼。",
+        "options": {
+          "ask": "每次詢問",
+          "always": "也在 Overleaf 上刪除",
+          "never": "保留在 Overleaf 上"
+        }
+      }
     },
     "desktopApps": {
       "tab": "Computer Use",

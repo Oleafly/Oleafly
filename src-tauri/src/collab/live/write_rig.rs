@@ -14,8 +14,9 @@ use oleafly_collab_protocol::projects::ProjectRole;
 use tokio::sync::{mpsc, oneshot};
 
 use super::super::{
-    guard, initial_bases, lock, writer_loop, Active, LiveHost, MergedPayload, NewDevicePayload,
-    PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload, WriterSignal, ACTIVE,
+    guard, initial_bases, lock, writer_loop, Active, Live, LiveDisk, LiveHost, MergedPayload,
+    NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
+    WriterSignal, ACTIVE,
 };
 use super::SharedDocument;
 use crate::collab::disk::{sha256_hex, DiskState};
@@ -110,22 +111,24 @@ impl LiveRig {
             let (writer, writer_rx) = mpsc::unbounded_channel();
             let handle = spawn_live(link.clone(), Arc::clone(&shared), events);
             let active = Arc::new(Active {
-                project_id,
-                root,
+                local: LiveDisk {
+                    project_id,
+                    root,
+                    disk_file: collab.join("materializer-index.json"),
+                    disk: Mutex::new(disk),
+                    bases: Mutex::new(bases),
+                    host,
+                    writer,
+                    upkeep: Default::default(),
+                },
                 document_dir: collab.join("document"),
-                disk_file: collab.join("materializer-index.json"),
                 live: shared,
                 handle,
                 link,
-                disk: Mutex::new(disk),
-                host,
-                writer,
                 account_id: AccountId::new_v7(),
                 quiet_merge: AtomicBool::new(false),
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
-                bases: Mutex::new(bases),
-                upkeep: Default::default(),
             });
             tauri::async_runtime::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
             active
@@ -232,7 +235,7 @@ impl LiveRig {
 
     pub(crate) fn open(&self, path: &str) -> (String, u64) {
         let id = self.id_of(path).expect("the opened path is shared");
-        let sink: oleafly_collab::live::DocSink = Arc::new(|_| {});
+        let sink: oleafly_ot::DocSink = Arc::new(|_| {});
         let opened = lock(&self.active.live).open_file(&id, sink).unwrap();
         (id, opened.rev)
     }
@@ -240,14 +243,14 @@ impl LiveRig {
     pub(crate) fn typed(&self, id: &str, rev: u64, at_end: &str) {
         let mut live = lock(&self.active.live);
         let text = live.doc().text(id).unwrap();
-        let mut operation = oleafly_collab::ot::TextOperation::new();
+        let mut operation = oleafly_ot::TextOperation::new();
         operation.retain(text.encode_utf16().count()).insert(at_end);
         live.editor_change(id, rev, operation).unwrap();
     }
 
     pub(crate) fn go_live(&self) -> LiveNow {
         let turn = live_turn();
-        *guard(&ACTIVE) = Some(Arc::clone(&self.active));
+        *guard(&ACTIVE) = Some(Live::Server(Arc::clone(&self.active)));
         LiveNow { _turn: turn }
     }
 
@@ -267,7 +270,7 @@ impl LiveRig {
     }
 
     pub(in crate::collab::live) fn counted(&self) -> super::super::pacing::Counted {
-        self.active.counted()
+        self.active.local.counted()
     }
 
     pub(crate) fn shared_live(&self) -> SharedLive {
@@ -287,7 +290,7 @@ impl LiveRig {
 
     pub(crate) fn settle(&self) {
         let (done, wait) = oneshot::channel();
-        let _ = self.active.writer.send(WriterSignal::Flush(done));
+        let _ = self.active.local.writer.send(WriterSignal::Flush(done));
         tauri::async_runtime::block_on(async move {
             let _ = tokio::time::timeout(Duration::from_secs(10), wait).await;
         });

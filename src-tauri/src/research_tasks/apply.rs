@@ -217,13 +217,11 @@ fn roll_back(
     plan: &ApplyPlan,
     document: Option<&SharedDocument>,
 ) -> Result<(), String> {
-    let rolled_back = rollback(project_root, journal, plan);
-    if let Some(document) = document {
-        for change in &plan.changes[..plan.applied_count] {
-            document.wrote_on_disk(&change.path);
+    rollback(project_root, journal, plan, |path| {
+        if let Some(document) = document {
+            document.wrote_on_disk(path);
         }
-    }
-    rolled_back
+    })
 }
 
 struct SharedChange {
@@ -375,7 +373,7 @@ pub(crate) fn recover_pending_apply(
         retire_journal(&journal, "unused")?;
         return Ok(false);
     }
-    rollback(project_root, &journal, &plan)?;
+    rollback(project_root, &journal, &plan, |_| {})?;
     Ok(false)
 }
 
@@ -546,7 +544,12 @@ fn apply_one(
     Ok(())
 }
 
-fn rollback(project_root: &Path, journal: &Path, plan: &ApplyPlan) -> Result<(), String> {
+fn rollback(
+    project_root: &Path,
+    journal: &Path,
+    plan: &ApplyPlan,
+    mut restored: impl FnMut(&str),
+) -> Result<(), String> {
     let project_files = RootFiles::open(project_root)?;
     let mut backup_files = None;
     for change in plan.changes.iter().take(plan.applied_count).rev() {
@@ -570,10 +573,12 @@ fn rollback(project_root: &Path, journal: &Path, plan: &ApplyPlan) -> Result<(),
                     .as_ref()
                     .ok_or_else(|| "The task apply backup is unavailable.".to_string())?;
                 backup_files.copy_to(&relative, &project_files, &relative, Some(expected))?;
+                restored(&change.path);
             }
             None => {
                 if project_files.hash(&relative)?.is_some() {
                     project_files.remove(&relative)?;
+                    restored(&change.path);
                 }
             }
         }

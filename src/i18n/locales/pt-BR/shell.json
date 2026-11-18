@@ -493,7 +493,8 @@
       "off": "Desligado",
       "run": "Executar código neste computador"
     },
-    "sharedViewer": "Só proprietários e editores podem alterar essas configurações em um projeto compartilhado."
+    "sharedViewer": "Só proprietários e editores podem alterar essas configurações em um projeto compartilhado.",
+    "coauthorsChanged": "Alterado por coautores desde a sua última compilação"
   },
   "datePicker": {
     "placeholder": "Escolha uma data"
@@ -1006,6 +1007,10 @@
       "notes": {
         "description": "Adiciona Notas ao painel da tela inicial. Uma nota é um arquivo Markdown com diagramas, gráficos e matemática que você e seus agentes podem editar. As notas ficam fora da sua biblioteca de projetos, e cada nota pode ser vinculada a um projeto. Desligado por padrão enquanto está em beta.",
         "label": "Notas"
+      },
+      "overleafLive": {
+        "label": "Edição ao vivo com o Overleaf",
+        "description": "Edite projetos importados do Overleaf ao mesmo tempo que seus coautores. As alterações aparecem dos dois lados enquanto você digita. Desligado por padrão enquanto está em beta."
       },
       "researchTasks": {
         "description": "Um agente trabalha sozinho em uma cópia do projeto e deixa as alterações para você revisar. Muito instável: as execuções podem travar, falhar ou deixar alterações para resolver à mão, e usam a cota do seu provedor o tempo todo. Adiciona uma seção Pesquisa às Configurações. Ao desligar, todas as tarefas em andamento são interrompidas. Desligado por padrão. Ligue por sua conta e risco.",
@@ -1676,6 +1681,31 @@
       "allMine": "Manter todas as minhas",
       "allTheirs": "Usar todas as do Overleaf",
       "apply": "Aplicar e sincronizar"
+    }
+  },
+  "overleafLive": {
+    "title": "Edição ao vivo com o Overleaf",
+    "live": "Ao vivo com o Overleaf",
+    "connecting": "Conectando ao Overleaf…",
+    "sending": "Enviando alterações ao Overleaf…",
+    "reconnecting": "Reconectando ao Overleaf…",
+    "pausedBadge": "Edição ao vivo em pausa",
+    "pause": "Pausar a edição ao vivo",
+    "resume": "Retomar a edição ao vivo",
+    "reconnectNow": "Reconectar agora",
+    "open": "Abrir no Overleaf",
+    "share": "Compartilhar no Overleaf…",
+    "signIn": "Fazer login…",
+    "reconnectingIn": "Tentando de novo em {{seconds}} s.",
+    "notConfirmed": "Ainda não confirmado pelo Overleaf.",
+    "copyDetails": "Copiar os detalhes da conexão",
+    "detailsCopied": "Detalhes da conexão copiados",
+    "copyDetailsFailed": "Não foi possível copiar os detalhes da conexão",
+    "pauseDialog": {
+      "title": "Algumas alterações ainda não chegaram ao Overleaf",
+      "description": "Se você pausar agora, elas ficam neste computador e vão para o Overleaf quando você retomar. A sincronização do Git fica desligada até lá.",
+      "keepLive": "Continuar editando ao vivo",
+      "pauseAnyway": "Pausar mesmo assim"
     }
   },
   "stuckWindow": {

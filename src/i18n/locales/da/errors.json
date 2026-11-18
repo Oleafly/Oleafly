@@ -503,7 +503,9 @@
     "template_link_invalid": "Det link er ikke en skabelonside på Overleaf. Kopiér adressen på en side fra overleaf.com/latex/templates, og prøv igen.",
     "template_unavailable": "Oleafly kunne ikke åbne denne skabelon. Den er måske blevet fjernet fra Overleafs skabelongalleri.",
     "browser_sign_in_missing": "Oleafly fandt intet login til {{server}} i den browserprofil. Log ind i stedet.",
-    "browser_sign_in_failed": "Login fra din browser virkede ikke. Det er måske udløbet. Log ind i stedet."
+    "browser_sign_in_failed": "Login fra din browser virkede ikke. Det er måske udløbet. Log ind i stedet.",
+    "browser_unavailable": "Oleafly kunne ikke åbne {{browser}} til login. Prøv en anden browser.",
+    "browser_missing": "Den browser er ikke installeret længere. Vælg en anden."
   },
   "collab": {
     "suggestion_role": "Din rolle i dette projekt giver ikke lov til forslag."

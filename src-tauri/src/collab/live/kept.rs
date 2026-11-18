@@ -9,10 +9,9 @@ use oleafly_collab::materialize::{self, Layout, Placed};
 use oleafly_collab::CollabError;
 use serde::Serialize;
 
-use super::{guard, lock, name_of, parent_of, Active};
+use super::{guard, lock, name_of, parent_of, Active, LiveDisk};
 
 pub const LIVE_KEPT_EVENT: &str = "collab-live-kept";
-const SHORT_HASH: usize = 6;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
@@ -20,6 +19,8 @@ pub enum KeptKind {
     Replaced,
     Added,
     Beside,
+    Unsent,
+    Differed,
 }
 
 pub(super) const ARRIVAL_WINDOW: Duration = Duration::from_secs(10);
@@ -103,7 +104,7 @@ impl Active {
         if previous.is_empty() || written.is_empty() {
             return;
         }
-        let fresh: Vec<(String, String)> = guard(&self.disk)
+        let fresh: Vec<(String, String)> = guard(&self.local.disk)
             .layout
             .iter()
             .filter(|(id, placed)| {
@@ -127,7 +128,7 @@ impl Active {
             return;
         }
         let mut all = guard(&ARRIVALS);
-        let arrivals = all.entry(self.root.clone()).or_default();
+        let arrivals = all.entry(self.local.root.clone()).or_default();
         recent(arrivals);
         for (id, path) in theirs {
             if arrivals.get(&path).is_some_and(|known| known.id == id) {
@@ -150,7 +151,7 @@ impl Active {
 pub struct KeptFile {
     pub id: String,
     pub path: String,
-    pub copy: String,
+    pub copy: Option<String>,
     pub kind: KeptKind,
     pub by: Option<String>,
 }
@@ -166,31 +167,6 @@ pub(super) struct LostFigure {
     original: String,
     copy: String,
     by: Option<String>,
-}
-
-fn tagged(name: &str, tag: &str) -> String {
-    match name.rfind('.') {
-        Some(dot) if dot > 0 => format!("{} ({tag}){}", &name[..dot], &name[dot..]),
-        _ => format!("{name} ({tag})"),
-    }
-}
-
-pub(super) fn copy_name(
-    name: &str,
-    author: Option<&str>,
-    hash: &str,
-    taken: &mut BTreeSet<String>,
-) -> String {
-    let credited = author.and_then(|author| {
-        materialize::credited_name(name, author, hash, |named| {
-            taken.insert(named.to_lowercase())
-        })
-    });
-    credited.unwrap_or_else(|| {
-        let named = tagged(name, &hash[..hash.len().min(SHORT_HASH)]);
-        taken.insert(named.to_lowercase());
-        named
-    })
 }
 
 pub(super) fn keep_lost_figures(
@@ -230,7 +206,7 @@ pub(super) fn keep_lost_figures(
                 .map(|other| other.name.to_lowercase())
                 .collect()
         });
-        let name = copy_name(&node.name, doc.author_name(), &ours, siblings);
+        let name = LiveDisk::copy_name(&node.name, doc.author_name(), &ours, siblings);
         let parent = match &node.parent {
             NodeParent::Node(parent) => Some(parent.as_str()),
             _ => None,
@@ -271,7 +247,7 @@ pub(super) fn notices(
         .filter_map(|figure| {
             Some(KeptFile {
                 path: next.get(&figure.original)?.path.clone(),
-                copy: next.get(&figure.copy)?.path.clone(),
+                copy: Some(next.get(&figure.copy)?.path.clone()),
                 id: figure.copy,
                 kind: KeptKind::Replaced,
                 by: figure.by,
@@ -296,7 +272,7 @@ pub(super) fn notices(
                 files.push(KeptFile {
                     id: clash.id.clone(),
                     path: now.path.clone(),
-                    copy: after.path.clone(),
+                    copy: Some(after.path.clone()),
                     kind: KeptKind::Beside,
                     by,
                 });
@@ -313,7 +289,7 @@ pub(super) fn notices(
         files.push(KeptFile {
             id: clash.id.clone(),
             path: before.path.clone(),
-            copy: after.path.clone(),
+            copy: Some(after.path.clone()),
             kind: KeptKind::Added,
             by: live.doc().author_of(&clash.other),
         });
@@ -338,7 +314,7 @@ mod tests {
     use tokio::sync::mpsc;
 
     use super::super::{
-        initial_bases, lock, Active, LiveHost, MergedPayload, NewDevicePayload,
+        initial_bases, lock, Active, LiveDisk, LiveHost, MergedPayload, NewDevicePayload,
         PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
     };
     use super::*;
@@ -405,22 +381,24 @@ mod tests {
         let collab: PathBuf = dir.join("collab");
         std::fs::create_dir_all(&collab).unwrap();
         Arc::new(Active {
-            project_id: "kept".to_owned(),
-            root: root.to_path_buf(),
+            local: LiveDisk {
+                project_id: "kept".to_owned(),
+                root: root.to_path_buf(),
+                disk_file: collab.join("materializer-index.json"),
+                disk: Mutex::new(disk),
+                bases: Mutex::new(bases),
+                host,
+                writer,
+                upkeep: Default::default(),
+            },
             document_dir: collab.join("document"),
-            disk_file: collab.join("materializer-index.json"),
             live: shared,
             handle,
             link,
-            disk: Mutex::new(disk),
-            host,
-            writer,
             account_id: AccountId::new_v7(),
             quiet_merge: AtomicBool::new(false),
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
-            bases: Mutex::new(bases),
-            upkeep: Default::default(),
         })
     }
 
@@ -509,7 +487,11 @@ mod tests {
             let file = &kept[0].files;
             assert_eq!(file.len(), 1);
             assert_eq!(
-                (file[0].path.as_str(), file[0].copy.as_str(), file[0].kind),
+                (
+                    file[0].path.as_str(),
+                    file[0].copy.as_deref().unwrap(),
+                    file[0].kind
+                ),
                 ("figs/plot.png", copy, KeptKind::Replaced)
             );
             assert_eq!(file[0].by.as_deref(), Some(ALICE));
@@ -677,7 +659,7 @@ mod tests {
             assert_eq!(kept.len(), 1, "{kept:?}");
             let file = &kept[0].files[0];
             assert_eq!(
-                (file.path.as_str(), file.copy.as_str(), file.kind),
+                (file.path.as_str(), file.copy.as_deref().unwrap(), file.kind),
                 ("chapters/plan.tex", copy, KeptKind::Added)
             );
             assert_eq!(file.by.as_deref(), Some(ALICE));
@@ -795,7 +777,11 @@ mod tests {
             let kept = arrived.kept();
             assert_eq!(kept.len(), 1, "{kept:?}");
             assert_eq!(
-                (kept[0].path.as_str(), kept[0].copy.as_str(), kept[0].kind),
+                (
+                    kept[0].path.as_str(),
+                    kept[0].copy.as_deref().unwrap(),
+                    kept[0].kind
+                ),
                 ("sections/plan.tex", copy, KeptKind::Added)
             );
             assert_eq!(kept[0].by.as_deref(), Some(ALICE));
@@ -837,7 +823,11 @@ mod tests {
                 .collect();
             assert_eq!(told.len(), 1, "{told:?}");
             assert_eq!(
-                (told[0].path.as_str(), told[0].copy.as_str(), told[0].kind),
+                (
+                    told[0].path.as_str(),
+                    told[0].copy.as_deref().unwrap(),
+                    told[0].kind
+                ),
                 ("sections/plan.tex", copy, KeptKind::Beside)
             );
             assert_eq!(told[0].by.as_deref(), Some(BOB));
@@ -860,7 +850,7 @@ mod tests {
     fn replacing_a_file_that_is_open_here_stays_an_edit() {
         run(async {
             let arrived = plan_from(ALICE, "Alice Chen", "Third plan by alice.\n").await;
-            let sink: oleafly_collab::live::DocSink = Arc::new(|_| {});
+            let sink: oleafly_ot::DocSink = Arc::new(|_| {});
             lock(&arrived.active.live)
                 .open_file(&arrived.plan, sink)
                 .unwrap();
@@ -934,14 +924,14 @@ mod tests {
         fn replace_on_disk(&self) {
             std::fs::write(self.root.join("figs/plot.png"), self.bytes).unwrap();
             let only = ["figs/plot.png".to_owned()];
-            let snapshot = guard(&self.active.disk).clone();
+            let snapshot = guard(&self.active.local.disk).clone();
             let import = {
                 let live = lock(&self.active.live);
                 super::super::read_local_changes(&self.root, &snapshot, &live, Some(&only)).unwrap()
             };
-            let mut disk = guard(&self.active.disk);
+            let mut disk = guard(&self.active.local.disk);
             let mut live = lock(&self.active.live);
-            let mut bases = guard(&self.active.bases);
+            let mut bases = guard(&self.active.local.bases);
             assert!(super::super::apply_local_import(
                 &mut live, &mut disk, &mut bases, import, &self.root
             )
@@ -1013,7 +1003,7 @@ mod tests {
         assert!(
             told.iter().any(|file| file.kind == KeptKind::Replaced
                 && file.path == "figs/plot.png"
-                && file.copy == copy),
+                && file.copy.as_ref() == Some(&copy)),
             "{told:?}"
         );
     }

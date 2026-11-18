@@ -1,9 +1,9 @@
 use oleafly_collab::chat::MAX_CHAT_PAGE;
 use oleafly_collab::doc::{DocChanges, ProjectDoc};
-use oleafly_collab::ot::TextOperation;
 use oleafly_collab::CollabError;
 use oleafly_collab_protocol::ids::{AccountId, ChatMessageId, DeviceId, SuggestionId};
 use oleafly_collab_protocol::projects::{project_role_allows, ProjectAction, ProjectRole};
+use oleafly_ot::TextOperation;
 use serde::Serialize;
 use serde_json::Value;
 

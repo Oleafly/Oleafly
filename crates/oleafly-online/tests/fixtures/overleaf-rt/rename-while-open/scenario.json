@@ -1,0 +1,49 @@
+{
+  "scenario": "rename-while-open",
+  "description": "Bob renames the doc while both have it open and Alice keeps typing across the rename.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-15",
+  "project": {
+    "name": "sharejs-project",
+    "id": "6af963ebc9037022065bb53f"
+  },
+  "doc": {
+    "id": "6af9682e2fdfc01466e1ece0",
+    "name": "rename-while-open-20261115-080710.tex"
+  },
+  "format": "sharejs-text-ot",
+  "pageMeta": {
+    "ol-wsUrl": "",
+    "ol-wsRetryHandshake": "5",
+    "ol-maxDocLength": "2097152",
+    "ol-maxReconnectGracefullyIntervalMs": "30000",
+    "ol-useShareJsHash": "",
+    "ol-otMigrationStage": "0",
+    "ol-hasTrackChangesFeature": "",
+    "ol-user_id": "6af963e9c9037022065bb526"
+  },
+  "participants": [
+    {
+      "name": "alice",
+      "email": "alice@example.test",
+      "userId": "6af963e9c9037022065bb526",
+      "frames": "alice.frames.jsonl",
+      "har": "alice.har",
+      "joinDocType": "sharejs-text-ot"
+    },
+    {
+      "name": "bob",
+      "email": "bob@example.test",
+      "userId": "6af963eac9037022065bb52c",
+      "frames": "bob.frames.jsonl",
+      "har": "bob.har",
+      "joinDocType": "sharejs-text-ot"
+    }
+  ],
+  "converged": true,
+  "finalText": {
+    "alice": "final.txt",
+    "bob": "final.txt"
+  },
+  "notes": []
+}

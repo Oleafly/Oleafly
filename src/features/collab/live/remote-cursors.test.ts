@@ -91,6 +91,18 @@ describe("remote cursors", () => {
     expect(view.contentDOM.querySelector(".cm-remote-caret")).toBeNull();
   });
 
+  it("moves a caret past a coauthor's insert before it, and keeps it there when the same place is sent again", async () => {
+    const source = new Source();
+    source.list = [{ ...bob, head: 6, anchor: 6 }];
+    const view = editor(source);
+    await tick();
+    view.dispatch({ changes: { from: 2, insert: "remote " } });
+    expect(remoteCursorsIn(view.state)[0]).toMatchObject({ head: 13, anchor: 13 });
+    source.set([{ ...bob, head: 6, anchor: 6 }]);
+    await tick();
+    expect(remoteCursorsIn(view.state)[0]).toMatchObject({ head: 13, anchor: 13 });
+  });
+
   it("keeps other people's carets where local typing moved them when one person moves", async () => {
     const source = new Source();
     const carol: RemoteCursor = { id: "device-carol", name: "Carol Diaz", hue: 280, head: 8, anchor: 8 };

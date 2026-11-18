@@ -1267,6 +1267,10 @@
     "failed": "Oleafly kunne ikke oppdatere {{file}}. Prøv igjen.",
     "tabMark": "Endret på disken. Åpne fanen for å velge hvilken versjon du vil beholde."
   },
+  "liveTab": {
+    "notOnOverleafYet": "Ikke på Overleaf ennå",
+    "storedAsFile": "Overleaf lagrer dette som en fil, så endringene dine lastes opp når du lagrer."
+  },
   "labels": {
     "filterPlaceholder": "Etikettnavn",
     "filterLabel": "Filtrer prosjektets etiketter",

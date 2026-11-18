@@ -33,8 +33,11 @@ import { useFilesStore } from "@/store/files";
 import { FileNoticesBanner } from "./FileNoticesBanner";
 import { useFileNotices } from "./file-notices";
 import { useCollabLiveStore } from "./live-store";
+import { type OverleafStopped, useOverleafNotices } from "./overleaf-notices";
 
 const copy = enCollab.files;
+const banners = enCollab.overleafBanners;
+const overleafAtStart = useOverleafNotices.getState();
 
 function fill(template: string, values: Record<string, string>): string {
   return Object.entries(values).reduce((text, [key, value]) => text.replace(`{{${key}}}`, value), template);
@@ -90,7 +93,12 @@ afterEach(() => {
     broughtIn: null,
   });
   useCollabLiveStore.setState({ projectId: null, share: null, role: null, members: [] });
+  useOverleafNotices.setState(overleafAtStart, true);
 });
+
+function stop(stopped: OverleafStopped[], extra: Partial<ReturnType<typeof useOverleafNotices.getState>> = {}) {
+  act(() => useOverleafNotices.setState({ projectId: "paper", stopped, ...extra }));
+}
 
 describe("FileNoticesBanner", () => {
   it("shows nothing when every figure is shared and nothing was kept", () => {
@@ -258,5 +266,103 @@ describe("FileNoticesBanner", () => {
     expect(
       screen.getByText(fill(copy.beside, { name: "Bob Smith", file: "plan.tex", copy: "plan (from Bob Smith).tex" })),
     ).toBeTruthy();
+  });
+
+  it("says where text that never reached Overleaf was kept", () => {
+    render(<FileNoticesBanner />);
+    show([], [kept({ id: "unsent-id", kind: "unsent", path: "main.tex", copy: "main (3f2a9c).tex", by: null })]);
+    expect(screen.getByText(fill(copy.unsent, { file: "main.tex", copy: "main (3f2a9c).tex" }))).toBeTruthy();
+  });
+
+  it("says text that never reached Overleaf is still in the file when no copy was needed", () => {
+    render(<FileNoticesBanner />);
+    show([], [kept({ id: "unsent-id", kind: "unsent", path: "main.tex", copy: null, by: null })]);
+    expect(screen.getByText(fill(copy.unsentInFile, { file: "main.tex" }))).toBeTruthy();
+  });
+});
+
+describe("FileNoticesBanner on an Overleaf project", () => {
+  it("says Overleaf turned down a change and offers to try live again or keep a copy", async () => {
+    const tryLiveAgain = vi.fn(async () => {});
+    const keepCopy = vi.fn(async () => {});
+    render(<FileNoticesBanner />);
+    stop([{ path: "sections/intro.tex", reason: "bad_hash" }], { tryLiveAgain, keepCopy });
+    expect(screen.getByTestId("overleaf-fault-row")).toHaveTextContent(fill(banners.faultRefused, { file: "intro.tex" }));
+    await userEvent.click(screen.getByRole("button", { name: banners.tryLiveAgain }));
+    expect(tryLiveAgain).toHaveBeenCalledWith("sections/intro.tex");
+    await userEvent.click(screen.getByRole("button", { name: banners.keepMineAsCopy }));
+    expect(keepCopy).toHaveBeenCalledWith("sections/intro.tex");
+  });
+
+  it("says this version can't edit a file live and offers only to keep a copy", () => {
+    render(<FileNoticesBanner />);
+    stop([{ path: "main.tex", reason: "unsupported" }]);
+    expect(screen.getByTestId("overleaf-fault-row")).toHaveTextContent(
+      fill(banners.faultUnsupported, { file: "main.tex" }),
+    );
+    expect(screen.queryByRole("button", { name: banners.tryLiveAgain })).toBeNull();
+    expect(screen.getByRole("button", { name: banners.keepMineAsCopy })).toBeEnabled();
+  });
+
+  it("says Overleaf couldn't load a file and offers to try live again or keep a copy", () => {
+    render(<FileNoticesBanner />);
+    stop([{ path: "refs.bib", reason: "unavailable" }]);
+    expect(screen.getByTestId("overleaf-fault-row")).toHaveTextContent(
+      fill(banners.faultUnavailable, { file: "refs.bib" }),
+    );
+    expect(screen.getByRole("button", { name: banners.tryLiveAgain })).toBeEnabled();
+    expect(screen.getByRole("button", { name: banners.keepMineAsCopy })).toBeEnabled();
+  });
+
+  it("gives each of Overleaf's limits its own line", () => {
+    render(<FileNoticesBanner />);
+    stop([
+      { path: "main.tex", reason: "too_long" },
+      { path: "data.tex", reason: "too_large" },
+      { path: "notes.tex", reason: "too_many_ranges" },
+    ]);
+    const rows = screen.getAllByTestId("overleaf-limit-row");
+    expect(rows).toHaveLength(3);
+    expect(rows[0]).toHaveTextContent(fill(banners.limitTooLong, { file: "main.tex" }));
+    expect(rows[1]).toHaveTextContent(fill(banners.limitTooLarge, { file: "data.tex" }));
+    expect(rows[2]).toHaveTextContent(
+      fill(banners.limitTooManyRanges, { file: "notes.tex", comments: "500", changes: "2,000" }),
+    );
+    expect(screen.queryByTestId("overleaf-fault-row")).toBeNull();
+  });
+
+  it("turns the actions off while one runs, and says when one failed", () => {
+    render(<FileNoticesBanner />);
+    stop([{ path: "main.tex", reason: "refused" }], { resolving: "main.tex", failed: "main.tex" });
+    expect(screen.getByRole("button", { name: banners.tryLiveAgain })).toBeDisabled();
+    expect(screen.getByRole("button", { name: banners.keepMineAsCopy })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(fill(banners.stoppedActionFailed, { file: "main.tex" }));
+  });
+
+  it("notes a restore or sync from Overleaf and replaced characters, and lets both go", async () => {
+    render(<FileNoticesBanner />);
+    stop([], { external: ["sections/intro.tex"], replaced: "main.tex" });
+    expect(screen.getByTestId("overleaf-external-row")).toHaveTextContent(
+      fill(banners.externalChange, { file: "intro.tex" }),
+    );
+    expect(screen.getByTestId("overleaf-replaced-row")).toHaveTextContent(
+      fill(banners.charactersReplaced, { file: "main.tex" }),
+    );
+    for (const button of screen.getAllByRole("button", { name: copy.dismiss })) await userEvent.click(button);
+    expect(screen.queryByTestId("overleaf-external-row")).toBeNull();
+    expect(screen.queryByTestId("overleaf-replaced-row")).toBeNull();
+  });
+
+  it("shows nothing for another project's Overleaf notices", () => {
+    const { container } = render(<FileNoticesBanner />);
+    act(() =>
+      useOverleafNotices.setState({
+        projectId: "other",
+        stopped: [{ path: "main.tex", reason: "refused" }],
+        external: ["main.tex"],
+        replaced: "main.tex",
+      }),
+    );
+    expect(container).toBeEmptyDOMElement();
   });
 });

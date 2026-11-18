@@ -16,6 +16,7 @@ use super::super::disk::{
 use super::super::state::CollabState;
 use super::{
     active_for, by_path, checked, ensure_dir, guard, lock, name_of, not_live, parent_of, Active,
+    LiveDisk,
 };
 
 const LOCAL_COPY: &str = "collab.localCopy";
@@ -323,8 +324,8 @@ fn bring_text(
         if current == ours {
             return Ok(());
         }
-        if let Some(operation) = oleafly_collab::merge::rebase(base, ours, &current) {
-            live.local_operation(id, &operation)?;
+        if let Some(rebased) = oleafly_ot::rebase(base, ours, &current) {
+            live.local_operation(id, &rebased.operation)?;
             return Ok(());
         }
     }
@@ -382,7 +383,7 @@ fn figure_target(
         .filter(|placed| parent_of(&placed.path) == folder)
         .map(|placed| name_of(&placed.path).to_lowercase())
         .collect();
-    let name = super::kept::copy_name(name_of(path), live.doc().author_name(), hash, &mut siblings);
+    let name = LiveDisk::copy_name(name_of(path), live.doc().author_name(), hash, &mut siblings);
     Ok(Some(match folder {
         Some(folder) => format!("{folder}/{name}"),
         None => name,
@@ -392,7 +393,7 @@ fn figure_target(
 impl Active {
     async fn bring_in(&self, changes: Vec<Changed>) -> Result<(), CollabError> {
         let written = {
-            let disk = guard(&self.disk);
+            let disk = guard(&self.local.disk);
             let mut figures = Vec::new();
             {
                 let mut live = lock(&self.live);
@@ -408,7 +409,7 @@ impl Active {
                             let target = figure_target(
                                 &live,
                                 &disk,
-                                &self.root,
+                                &self.local.root,
                                 &change.path,
                                 change.base.as_ref(),
                                 &hash,
@@ -422,12 +423,12 @@ impl Active {
             }
             let mut written = Vec::new();
             for (path, bytes) in figures {
-                match write_file(&self.root, &path, &bytes) {
+                match write_file(&self.local.root, &path, &bytes) {
                     Ok(_) => written.push(path),
                     Err(error) => {
                         let _ = crate::project::append_app_log(format!(
                             "Live collaboration could not bring {path} into project {}: {error}",
-                            self.project_id
+                            self.local.project_id
                         ));
                     }
                 }
@@ -541,8 +542,9 @@ mod tests {
 
     use super::super::super::disk::{sha256_hex, DiskState};
     use super::super::{
-        guard, initial_bases, lock, pump, Active, LiveHost, MergedPayload, NewDevicePayload,
-        PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload, WrittenTexts,
+        guard, initial_bases, lock, pump, Active, LiveDisk, LiveHost, MergedPayload,
+        NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload,
+        WrittenTexts,
     };
     use super::*;
     use crate::collab::state::CollabState;
@@ -629,22 +631,24 @@ mod tests {
             let (writer, _writer) = mpsc::unbounded_channel();
             let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
             let active = Arc::new(Active {
-                project_id: "r3-paper".to_owned(),
-                root,
+                local: LiveDisk {
+                    project_id: "r3-paper".to_owned(),
+                    root,
+                    disk_file: dir.path().join("disk.json"),
+                    disk: Mutex::new(DiskState::default()),
+                    bases: Mutex::new(WrittenTexts::default()),
+                    host: Arc::new(Quiet),
+                    writer,
+                    upkeep: Default::default(),
+                },
                 document_dir: dir.path().join("document"),
-                disk_file: dir.path().join("disk.json"),
                 live: shared,
                 handle,
                 link,
-                disk: Mutex::new(DiskState::default()),
-                host: Arc::new(Quiet),
-                writer,
                 account_id: AccountId::new_v7(),
                 quiet_merge: AtomicBool::new(false),
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
-                bases: Mutex::new(WrittenTexts::default()),
-                upkeep: Default::default(),
             });
             let (events, receiver) = mpsc::unbounded_channel();
             let pumping = tokio::spawn(pump(Arc::downgrade(&active), receiver, paths));
@@ -738,22 +742,24 @@ mod tests {
         let collab = dir.join(project_id);
         std::fs::create_dir_all(&collab).unwrap();
         Arc::new(Active {
-            project_id: project_id.to_owned(),
-            root,
+            local: LiveDisk {
+                project_id: project_id.to_owned(),
+                root,
+                disk_file: collab.join("materializer-index.json"),
+                disk: Mutex::new(disk),
+                bases: Mutex::new(bases),
+                host: Arc::new(Quiet),
+                writer,
+                upkeep: Default::default(),
+            },
             document_dir: collab.join("document"),
-            disk_file: collab.join("materializer-index.json"),
             live: shared,
             handle,
             link,
-            disk: Mutex::new(disk),
-            host: Arc::new(Quiet),
-            writer,
             account_id: AccountId::new_v7(),
             quiet_merge: AtomicBool::new(false),
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
-            bases: Mutex::new(bases),
-            upkeep: Default::default(),
         })
     }
 
@@ -933,7 +939,7 @@ mod tests {
             removed.project,
         ));
         let turn = super::super::write::rig::live_turn();
-        *guard(&super::super::ACTIVE) = Some(Arc::clone(&active));
+        *guard(&super::super::ACTIVE) = Some(super::super::Live::Server(Arc::clone(&active)));
         let brought = removed
             .runtime
             .block_on(bring_in(&removed.paths, "r4-again", "r4-paper"));

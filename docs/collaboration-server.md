@@ -10,6 +10,8 @@ This page is for the person who runs the server for a lab, a course or a few coa
 
 A person can belong to several servers. Each shared project lives on one server.
 
+A project is also live in only one place at a time. Once live editing with an online LaTeX service is on (Settings › Experimentation), a project that came from that service can't be shared on an Oleafly Server until you unlink it from the service. It's the same the other way round: a project shared on a server doesn't go live with the online LaTeX service until you stop sharing it. With that switch off, a project you imported from the service shares as before, unless some of its changes are still waiting to reach the service.
+
 ## What the server keeps and who can read it
 
 The server keeps everything in one folder, set by `OLEAFLY_DATA_DIR`:

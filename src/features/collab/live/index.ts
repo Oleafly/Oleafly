@@ -1,10 +1,12 @@
 import { installNoteLive } from "../notes/note-live-port";
 import { watchServers } from "../store";
 import { startFileNotices } from "./file-notices";
-import { startCollabLive } from "./live-store";
+import { startCollabLive, useCollabLiveStore } from "./live-store";
 import { startLiveTarget } from "./note-slot";
+import { overleafDriver, startOverleafLive } from "./overleaf-driver";
 import { startReconnectNudges } from "./reconnect-nudges";
 import { startRemovedNotices } from "./removed-notices";
+import { serverDriver } from "./server-driver";
 import { startSyncPause } from "./sync-pause";
 
 export function startLive(): () => void {
@@ -12,13 +14,18 @@ export function startLive(): () => void {
   const stopRemoved = startRemovedNotices();
   const stopFiles = startFileNotices();
   const stopNotes = installNoteLive();
-  const stopLive = startCollabLive({ started: startLiveTarget });
+  const stopOverleaf = startOverleafLive();
+  const stopLive = startCollabLive({
+    started: startLiveTarget,
+    drivers: [serverDriver(() => useCollabLiveStore.getState().refreshShare()), overleafDriver()],
+  });
   const stopServers = watchServers();
-  const stopNudges = startReconnectNudges();
+  const stopNudges = startReconnectNudges(() => useCollabLiveStore.getState().status?.state === "offline");
   return () => {
     stopNudges();
     stopServers();
     stopLive();
+    stopOverleaf();
     stopNotes();
     stopFiles();
     stopRemoved();

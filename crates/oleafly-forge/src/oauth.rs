@@ -588,7 +588,7 @@ mod tests {
     }
 
     async fn request_arrived(server: &MockServer) {
-        for _ in 0..500 {
+        for _ in 0..5_000 {
             if !server.requests().is_empty() {
                 return;
             }

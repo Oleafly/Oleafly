@@ -7,11 +7,13 @@ use serde::Serialize;
 use serde_json::Value;
 
 pub use oleafly_online::projects::RemoteProject;
+use oleafly_online::realtime::project::{
+    fetch_project, flavor_for_compiler, settings_from_project, ProjectSettings,
+};
 
 use super::client::{self, Http};
 use super::errors::app_error;
 use super::session::{self, Session};
-use super::socket;
 use crate::app_error::AppError;
 
 const CONCURRENT_IMPORTS: usize = 2;
@@ -94,7 +96,7 @@ impl Drop for Staged {
 pub(crate) fn origin_record(
     base: &str,
     remote: &RemoteProject,
-    settings: &socket::ProjectSettings,
+    settings: &ProjectSettings,
 ) -> Value {
     oleafly_online::projects::origin_record(
         base,
@@ -108,16 +110,16 @@ pub(crate) fn import_archive(
     archive: &Path,
     base: &str,
     remote: &RemoteProject,
-    settings: &socket::ProjectSettings,
+    settings: &ProjectSettings,
 ) -> Result<String, String> {
     let origin = origin_record(base, remote, settings);
     let flavor = settings
         .compiler
         .as_deref()
-        .and_then(socket::flavor_for_compiler)
+        .and_then(flavor_for_compiler)
         .map(str::to_string);
     let main_doc = settings.main_doc.clone();
-    crate::project::import_online_project_archive_with(
+    let project_id = crate::project::import_online_project_archive_with(
         remote.name.clone(),
         archive,
         move |project_id| {
@@ -128,7 +130,32 @@ pub(crate) fn import_archive(
                 origin,
             )
         },
-    )
+    )?;
+    remember_import(base, &remote.id, &project_id);
+    Ok(project_id)
+}
+
+fn remember_import(base: &str, remote_id: &str, project_id: &str) {
+    let link = crate::overleaf::OverleafLink {
+        server: base.to_owned(),
+        project_id: remote_id.to_owned(),
+    };
+    let recorded = crate::paths::oleafly_root()
+        .map_err(|error| error.to_string())
+        .and_then(|data| {
+            crate::collab::live::overleaf::mirror_dir(&data, &link, project_id)
+                .map_err(|error| error.to_string())
+        })
+        .and_then(|mirror| {
+            let root = crate::paths::project_dir(project_id)?;
+            crate::collab::live::overleaf::record_import_bases(&mirror, &root)
+                .map_err(|error| error.to_string())
+        });
+    if let Err(error) = recorded {
+        let _ = crate::project::append_app_log(format!(
+            "Could not record the imported text of project {project_id} for live editing: {error}"
+        ));
+    }
 }
 
 async fn import_one(
@@ -136,10 +163,10 @@ async fn import_one(
     cookie: &str,
     remote: &RemoteProject,
     emit: &(dyn Fn(ImportEvent) + Send + Sync),
-) -> Result<(String, socket::ProjectSettings), String> {
-    let settings = socket::fetch_project(http, cookie, &remote.id)
+) -> Result<(String, ProjectSettings), String> {
+    let settings = fetch_project(http.online(), cookie, &remote.id)
         .await
-        .map(|project| socket::settings_from_project(&project))
+        .map(|project| settings_from_project(&project))
         .unwrap_or_default();
     let staged = Staged(staging_path()?);
     let remote_id = remote.id.clone();

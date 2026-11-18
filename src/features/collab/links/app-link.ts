@@ -1,3 +1,4 @@
+import { withoutTrailingSlashes } from "@/lib/path-utils";
 import { normalizeServerAddress } from "../AddServerDialog";
 
 export interface CommentTarget {
@@ -11,12 +12,6 @@ export type AppLink =
   | { kind: "malformed"; link: string };
 
 const PROJECT_ID = /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/iu;
-
-function withoutTrailingSlashes(value: string): string {
-  let end = value.length;
-  while (end > 0 && value[end - 1] === "/") end -= 1;
-  return value.slice(0, end);
-}
 
 function serverKey(address: string): string | null {
   const candidate = normalizeServerAddress(address);

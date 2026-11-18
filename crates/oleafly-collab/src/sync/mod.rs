@@ -47,6 +47,7 @@ impl LiveLink {
 #[serde(rename_all = "snake_case")]
 pub enum EndReason {
     Removed,
+    ProjectDeleted,
     Archived,
     SignedOut,
     Stopped,
@@ -73,6 +74,7 @@ impl EndReason {
             EndReason::AccountSuspended => Some(SessionEndReason::AccountSuspended),
             EndReason::AccessEnded => Some(SessionEndReason::AccessEnded),
             EndReason::Removed
+            | EndReason::ProjectDeleted
             | EndReason::Archived
             | EndReason::SignedOut
             | EndReason::Stopped
@@ -91,6 +93,8 @@ pub enum LiveStatus {
     Connecting,
     Online,
     Offline { retry_in_ms: u64 },
+    SignedOut,
+    Idle,
     Ended { reason: EndReason },
 }
 

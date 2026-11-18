@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -7,6 +7,9 @@ const api = vi.hoisted(() => ({
   overleafStatus: vi.fn(),
   overleafSignOut: vi.fn(),
   overleafSignInWithAppCookies: vi.fn(),
+  overleafSignInBrowsers: vi.fn(async () => [] as unknown[]),
+  overleafSignInWithBrowser: vi.fn(),
+  overleafListProjects: vi.fn(),
 }));
 const cookies = vi.hoisted(() => ({
   detectBrowserCookieSources: vi.fn(async () => [] as unknown[]),
@@ -35,6 +38,7 @@ const shell = vi.hoisted(() => ({ open: vi.fn(async () => undefined) }));
 vi.mock("@tauri-apps/plugin-shell", () => shell);
 
 import { useOverleafImportStore } from "@/store/overleaf-import";
+import { useSettingsStore } from "@/store/settings";
 import { OverleafSection } from "./OverleafSection";
 
 const SERVER = "https://www.overleaf.com";
@@ -43,11 +47,22 @@ beforeEach(() => {
   api.overleafStatus.mockReset();
   api.overleafSignOut.mockReset();
   api.overleafSignInWithAppCookies.mockReset();
+  api.overleafSignInBrowsers.mockReset().mockResolvedValue([]);
+  api.overleafSignInWithBrowser.mockReset();
+  api.overleafListProjects.mockReset();
+  localStorage.clear();
   cookies.detectBrowserCookieSources.mockReset().mockResolvedValue([]);
   cookies.importBrowserCookies.mockReset();
   Element.prototype.hasPointerCapture = vi.fn(() => false);
   Element.prototype.scrollIntoView = vi.fn();
-  useOverleafImportStore.setState({ server: SERVER, status: null, phase: "idle", error: null });
+  useOverleafImportStore.setState({
+    server: SERVER,
+    status: null,
+    unsent: null,
+    phase: "idle",
+    signingWith: null,
+    error: null,
+  });
 });
 
 describe("OverleafSection", () => {
@@ -73,6 +88,46 @@ describe("OverleafSection", () => {
     await waitFor(() =>
       expect(screen.getByRole("alert")).toHaveTextContent("Oleafly could not sign out of Overleaf."),
     );
+  });
+
+  it("asks before signing out with unsent changes, then signs out and keeps them", async () => {
+    const thesis = { project_id: "p1", name: "Thesis", changes: 2, paths: ["main.tex", "intro.tex"] };
+    api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: true, email: "ada@uni.edu" });
+    api.overleafSignOut
+      .mockResolvedValueOnce({ server: SERVER, signedIn: true, email: "ada@uni.edu", unsent: [thesis] })
+      .mockResolvedValueOnce({ server: SERVER, signedIn: false, email: null, unsent: [thesis] });
+    render(<OverleafSection />);
+    await screen.findByTestId("overleaf-connected");
+    fireEvent.click(screen.getByTestId("overleaf-settings-sign-out"));
+    const question = await screen.findByRole("alertdialog");
+    expect(question).toHaveTextContent("Some changes haven't been sent to Overleaf");
+    expect(within(question).getByTestId("overleaf-unsent-projects")).toHaveTextContent(
+      "ThesisNot sent yet: main.tex, intro.tex",
+    );
+    expect(screen.getByTestId("overleaf-connected")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    await userEvent.click(within(question).getByRole("button", { name: /^Sign out anyway/ }));
+    await waitFor(() => expect(screen.queryByTestId("overleaf-connected")).not.toBeInTheDocument());
+    expect(api.overleafSignOut.mock.calls).toEqual([
+      [SERVER, false],
+      [SERVER, true],
+    ]);
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  });
+
+  it("stays signed in when asked about unsent changes", async () => {
+    const thesis = { project_id: "p1", name: "Thesis", changes: 1, paths: ["main.tex"] };
+    api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: true, email: "ada@uni.edu" });
+    api.overleafSignOut.mockResolvedValue({ server: SERVER, signedIn: true, email: "ada@uni.edu", unsent: [thesis] });
+    render(<OverleafSection />);
+    await screen.findByTestId("overleaf-connected");
+    fireEvent.click(screen.getByTestId("overleaf-settings-sign-out"));
+    const question = await screen.findByRole("alertdialog");
+    await userEvent.click(within(question).getByRole("button", { name: /^Stay signed in/ }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    expect(screen.getByTestId("overleaf-connected")).toBeInTheDocument();
+    expect(api.overleafSignOut).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("saves, replaces and removes the Git token for sync", async () => {
@@ -134,5 +189,59 @@ describe("OverleafSection", () => {
     render(<OverleafSection />);
     expect(await screen.findByTestId("overleaf-connected")).toBeInTheDocument();
     expect(screen.queryByTestId("browser-sign-in-copy-row")).not.toBeInTheDocument();
+  });
+
+  it("signs in with an installed browser while signed out and shows the account", async () => {
+    const signedIn = { server: SERVER, signedIn: true, email: "ada@uni.edu" };
+    api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
+    api.overleafSignInBrowsers.mockResolvedValue([{ key: "edge", name: "Microsoft Edge" }]);
+    api.overleafSignInWithBrowser.mockResolvedValue(signedIn);
+    api.overleafListProjects.mockResolvedValue({ status: signedIn, projects: [] });
+    const user = userEvent.setup();
+    render(<OverleafSection />);
+    const row = await screen.findByTestId("browser-sign-in-row");
+    await user.click(within(row).getByRole("button", { name: "Sign in" }));
+    expect(api.overleafSignInWithBrowser).toHaveBeenCalledWith(SERVER, "edge");
+    expect(await screen.findByTestId("overleaf-connected")).toHaveTextContent("Signed in as ada@uni.edu on www.overleaf.com");
+    expect(screen.queryByTestId("browser-sign-in-row")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("overleaf-change-server")).not.toBeInTheDocument();
+  });
+
+  it("changes the server from Settings and checks the sign-in there", async () => {
+    const custom = "https://latex.uni.edu";
+    api.overleafStatus.mockImplementation(async (server: string) => ({ server, signedIn: false, email: null }));
+    api.overleafSignInBrowsers.mockResolvedValue([{ key: "chrome", name: "Google Chrome" }]);
+    render(<OverleafSection />);
+    expect(await screen.findByText("Server: www.overleaf.com")).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("overleaf-change-server"));
+    fireEvent.change(screen.getByTestId("overleaf-server-input"), { target: { value: custom } });
+    fireEvent.click(screen.getByRole("button", { name: "Use this server" }));
+    await waitFor(() => expect(api.overleafStatus).toHaveBeenLastCalledWith(custom));
+    expect(await screen.findByText("Server: latex.uni.edu")).toBeInTheDocument();
+    expect(await screen.findByTestId("browser-sign-in-row")).toHaveTextContent("Oleafly opens latex.uni.edu");
+    expect(localStorage.getItem("oleafly.overleaf.server")).toBe(custom);
+    fireEvent.click(screen.getByRole("button", { name: "Use overleaf.com" }));
+    expect(await screen.findByText("Server: www.overleaf.com")).toBeInTheDocument();
+    await waitFor(() => expect(api.overleafStatus).toHaveBeenLastCalledWith(SERVER));
+  });
+
+  it("offers the delete choice for live projects only, asking by default", async () => {
+    api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: true, email: "ada@uni.edu" });
+    useSettingsStore.setState({ overleafLive: false, overleafDeletes: "ask" });
+    const { rerender } = render(<OverleafSection />);
+    await screen.findByTestId("overleaf-connected");
+    expect(screen.queryByTestId("overleaf-live-deletes")).not.toBeInTheDocument();
+    useSettingsStore.setState({ overleafLive: true });
+    rerender(<OverleafSection />);
+    const field = screen.getByTestId("overleaf-live-deletes");
+    expect(field).toHaveTextContent("When you delete a file in a live project");
+    expect(within(field).getByRole("combobox", { name: "When you delete a file in a live project" })).toHaveTextContent(
+      "Ask each time",
+    );
+    const user = userEvent.setup();
+    await user.click(within(field).getByRole("combobox"));
+    await user.click(await screen.findByRole("option", { name: "Keep it on Overleaf" }));
+    expect(useSettingsStore.getState().overleafDeletes).toBe("never");
+    expect(localStorage.getItem("oleafly.overleafDeletes")).toBe("never");
   });
 });

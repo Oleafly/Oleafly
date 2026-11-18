@@ -492,7 +492,8 @@
       "off": "Aus",
       "run": "Code auf diesem Computer ausführen"
     },
-    "sharedViewer": "Nur Inhaber und Bearbeiter können diese Einstellungen in einem geteilten Projekt ändern."
+    "sharedViewer": "Nur Inhaber und Bearbeiter können diese Einstellungen in einem geteilten Projekt ändern.",
+    "coauthorsChanged": "Seit Ihrer letzten Kompilierung von Koautoren geändert"
   },
   "datePicker": {
     "placeholder": "Datum wählen"
@@ -992,6 +993,10 @@
       "notes": {
         "description": "Fügt Notizen zum Dock der Startseite hinzu. Eine Notiz ist eine Markdown-Datei mit Diagrammen, Grafiken und Formeln, die Sie und Ihre Agenten gemeinsam bearbeiten können. Notizen bleiben außerhalb Ihrer Projektbibliothek, und jede Notiz lässt sich mit einem Projekt verknüpfen. Standardmäßig aus, solange die Funktion in der Beta ist.",
         "label": "Notizen"
+      },
+      "overleafLive": {
+        "label": "Live-Bearbeitung mit Overleaf",
+        "description": "Bearbeiten Sie aus Overleaf importierte Projekte gleichzeitig mit Ihren Koautoren. Änderungen erscheinen beim Tippen auf beiden Seiten. Standardmäßig aus, solange es noch in der Beta ist."
       },
       "researchTasks": {
         "description": "Ein Agent arbeitet eigenständig in einer Kopie des Projekts und hinterlässt seine Änderungen, damit Sie sie prüfen können. Sehr instabil: Läufe können hängen bleiben, fehlschlagen oder Änderungen hinterlassen, die Sie von Hand bereinigen müssen, und sie verbrauchen während der gesamten Laufzeit das Kontingent Ihres Anbieters. Fügt den Einstellungen den Bereich Forschung hinzu. Beim Ausschalten werden alle laufenden Aufgaben beendet. Standardmäßig aus. Schalten Sie es auf eigenes Risiko ein.",
@@ -1641,6 +1646,31 @@
       "allMine": "Alle meine Versionen behalten",
       "allTheirs": "Alle Versionen von Overleaf verwenden",
       "apply": "Übernehmen und synchronisieren"
+    }
+  },
+  "overleafLive": {
+    "title": "Live-Bearbeitung mit Overleaf",
+    "live": "Live mit Overleaf",
+    "connecting": "Verbindung zu Overleaf wird hergestellt…",
+    "sending": "Änderungen werden an Overleaf gesendet…",
+    "reconnecting": "Verbindung zu Overleaf wird wiederhergestellt…",
+    "pausedBadge": "Live-Bearbeitung pausiert",
+    "pause": "Live-Bearbeitung pausieren",
+    "resume": "Live-Bearbeitung fortsetzen",
+    "reconnectNow": "Jetzt neu verbinden",
+    "open": "In Overleaf öffnen",
+    "share": "Bei Overleaf teilen…",
+    "signIn": "Anmelden…",
+    "reconnectingIn": "Neuer Versuch in {{seconds}} s.",
+    "notConfirmed": "Von Overleaf noch nicht bestätigt.",
+    "copyDetails": "Verbindungsdetails kopieren",
+    "detailsCopied": "Verbindungsdetails kopiert",
+    "copyDetailsFailed": "Die Verbindungsdetails konnten nicht kopiert werden",
+    "pauseDialog": {
+      "title": "Einige Änderungen sind noch nicht bei Overleaf angekommen",
+      "description": "Wenn Sie jetzt pausieren, bleiben sie auf diesem Computer und gehen an Overleaf, sobald Sie fortsetzen. Die Git-Synchronisierung bleibt bis dahin aus.",
+      "keepLive": "Weiter live bearbeiten",
+      "pauseAnyway": "Trotzdem pausieren"
     }
   },
   "stuckWindow": {

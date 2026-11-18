@@ -258,7 +258,9 @@ async function noteMissingTex(projectId: string): Promise<void> {
 
 function syncRail() {
   const live = useCollabLiveStore.getState();
-  const visible = live.projectId !== null && (live.share !== null || live.status?.state === "ended");
+  const visible =
+    live.projectId !== null &&
+    (live.share !== null || (live.status?.state === "ended" && live.backend !== "overleaf"));
   const unread = visible && useCollabActivity.getState().unread;
   const rail = useCollabRail.getState();
   if (rail.visible !== visible || rail.unread !== unread) useCollabRail.setState({ visible, unread });

@@ -35,6 +35,7 @@ export default function ConflictCopyDialog({ conflict, onClose }: Readonly<{ con
   const [versions, setVersions] = useState<Versions | "failed" | null>(null);
   const [busy, setBusy] = useState(false);
   const copy = remaining?.[0] ?? null;
+  const current = versions !== null && versions !== "failed" && versions.copy !== copy ? null : versions;
 
   useEffect(() => {
     let live = true;
@@ -84,30 +85,30 @@ export default function ConflictCopyDialog({ conflict, onClose }: Readonly<{ con
   }, [copy, readVersions]);
 
   const keep = async (theirs: boolean) => {
-    if (versions === null || versions === "failed" || busy) return;
+    if (current === null || current === "failed" || busy) return;
     setBusy(true);
     try {
       if (theirs) {
         const { writeProjectFile } = useFilesStore.getState();
         const { recordNoteWrite } = await import("@/components/notes/notes-service");
-        await recordNoteWrite(projectId, versions.theirs, () =>
-          writeProjectFile(projectId, mainDoc, versions.theirs, {
+        await recordNoteWrite(projectId, current.theirs, () =>
+          writeProjectFile(projectId, mainDoc, current.theirs, {
             closedProject: true,
-            crlf: versions.theirs.includes("\r\n"),
-            expectedHash: diskHash(versions.mine),
+            crlf: current.theirs.includes("\r\n"),
+            expectedHash: diskHash(current.mine),
           }),
         );
-        await writeProjectFile(projectId, versions.copy, versions.mine, { closedProject: true, crlf: versions.mine.includes("\r\n") });
+        await writeProjectFile(projectId, current.copy, current.mine, { closedProject: true, crlf: current.mine.includes("\r\n") });
       }
       const removed = await deleteAskingWithoutTrash(
-        versions.copy,
-        () => deleteFile(projectId, versions.copy, undefined, false),
-        () => deleteFile(projectId, versions.copy, undefined, true),
+        current.copy,
+        () => deleteFile(projectId, current.copy, undefined, false),
+        () => deleteFile(projectId, current.copy, undefined, true),
       );
       if (removed) {
-        setRemaining((list) => (list ?? []).filter((path) => path !== versions.copy));
+        setRemaining((list) => (list ?? []).filter((path) => path !== current.copy));
       } else {
-        readVersions(versions.copy, () => true);
+        readVersions(current.copy, () => true);
       }
     } catch (error) {
       notifyError(
@@ -115,18 +116,18 @@ export default function ConflictCopyDialog({ conflict, onClose }: Readonly<{ con
         error,
         decodeAppError(error) ? undefined : t(($) => $.cloud.conflictCopy.resolveFailed),
       );
-      readVersions(versions.copy, () => true);
+      readVersions(current.copy, () => true);
     } finally {
       setBusy(false);
     }
   };
 
-  const ready = versions !== null && versions !== "failed" && !busy;
+  const ready = current !== null && current !== "failed" && !busy;
   const body = () => {
-    if (versions === "failed") {
+    if (current === "failed") {
       return <p className="p-3 text-xs text-destructive">{t(($) => $.cloud.conflictCopy.readFailed)}</p>;
     }
-    if (versions === null) {
+    if (current === null) {
       return (
         <p className="flex items-center gap-2 p-3 text-xs text-muted-foreground">
           <Spinner size="sm" />
@@ -137,8 +138,8 @@ export default function ConflictCopyDialog({ conflict, onClose }: Readonly<{ con
     return (
       <InlineDiffPreview
         path={mainDoc}
-        oldText={versions.mine}
-        newText={versions.theirs}
+        oldText={current.mine}
+        newText={current.theirs}
         ariaLabel={t(($) => $.cloud.conflictCopy.diffLabel)}
         className="h-full"
       />

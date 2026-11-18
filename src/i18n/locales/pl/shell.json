@@ -494,7 +494,8 @@
       "off": "Wyłączony",
       "run": "Uruchamiaj kod na tym komputerze"
     },
-    "sharedViewer": "Tylko właściciele i edytujący mogą zmieniać te ustawienia we współdzielonym projekcie."
+    "sharedViewer": "Tylko właściciele i edytujący mogą zmieniać te ustawienia we współdzielonym projekcie.",
+    "coauthorsChanged": "Zmienione przez współautorów od ostatniej kompilacji"
   },
   "datePicker": {
     "placeholder": "Wybierz datę"
@@ -1020,6 +1021,10 @@
       "notes": {
         "description": "Dodaje Notatki do doku ekranu głównego. Notatka to plik Markdown z diagramami, wykresami i wzorami, który możesz edytować Ty i Twoi agenci. Notatki nie trafiają do biblioteki projektów, a każdą notatkę można powiązać z projektem. Domyślnie wyłączone, dopóki funkcja jest w wersji beta.",
         "label": "Notatki"
+      },
+      "overleafLive": {
+        "label": "Edycja na żywo z Overleaf",
+        "description": "Edytuj projekty zaimportowane z Overleaf jednocześnie ze współautorami. Zmiany pojawiają się po obu stronach w trakcie pisania. Domyślnie wyłączone, dopóki funkcja jest w wersji beta."
       },
       "researchTasks": {
         "description": "Agent pracuje samodzielnie w kopii projektu, a zmiany zostawia Tobie do przejrzenia. Bardzo niestabilne: uruchomienia mogą się zawiesić, zakończyć błędem albo zostawić zmiany do ręcznego uporządkowania, a przez cały czas zużywają limit Twojego dostawcy. Dodaje do Ustawień sekcję Badania. Wyłączenie zatrzymuje wszystkie trwające zadania. Domyślnie wyłączone. Włącz na własne ryzyko.",
@@ -1711,6 +1716,31 @@
       "allMine": "Zachowaj wszystkie moje",
       "allTheirs": "Użyj wszystkich z Overleaf",
       "apply": "Zastosuj i synchronizuj"
+    }
+  },
+  "overleafLive": {
+    "title": "Edycja na żywo z Overleaf",
+    "live": "Na żywo z Overleaf",
+    "connecting": "Łączenie z Overleaf…",
+    "sending": "Wysyłanie zmian do Overleaf…",
+    "reconnecting": "Ponowne łączenie z Overleaf…",
+    "pausedBadge": "Edycja na żywo wstrzymana",
+    "pause": "Wstrzymaj edycję na żywo",
+    "resume": "Wznów edycję na żywo",
+    "reconnectNow": "Połącz ponownie teraz",
+    "open": "Otwórz w Overleaf",
+    "share": "Udostępnij w Overleaf…",
+    "signIn": "Zaloguj się…",
+    "reconnectingIn": "Kolejna próba za {{seconds}} s.",
+    "notConfirmed": "Overleaf jeszcze nie potwierdził.",
+    "copyDetails": "Skopiuj dane połączenia",
+    "detailsCopied": "Skopiowano dane połączenia",
+    "copyDetailsFailed": "Nie udało się skopiować danych połączenia",
+    "pauseDialog": {
+      "title": "Część zmian nie dotarła jeszcze do Overleaf",
+      "description": "Jeśli wstrzymasz teraz, zmiany zostaną na tym komputerze i trafią do Overleaf po wznowieniu. Synchronizacja przez Git do tego czasu pozostaje wyłączona.",
+      "keepLive": "Edytuj dalej na żywo",
+      "pauseAnyway": "Wstrzymaj mimo to"
     }
   },
   "stuckWindow": {

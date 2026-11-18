@@ -29,7 +29,7 @@ use reqwest::header::{LOCATION, RETRY_AFTER};
 use reqwest::{RequestBuilder, Response, StatusCode};
 use serde::de::DeserializeOwned;
 
-use super::{ServerUrl, CONNECT_TIMEOUT};
+use super::ServerUrl;
 use crate::{CollabError, DeviceKey};
 
 pub const PEERS_PER_REQUEST: usize = 200;
@@ -885,7 +885,7 @@ pub(crate) fn build_http(
     let builder = reqwest::Client::builder()
         .user_agent(USER_AGENT)
         .redirect(reqwest::redirect::Policy::none())
-        .connect_timeout(CONNECT_TIMEOUT)
+        .connect_timeout(oleafly_net::CONNECT_TIMEOUT)
         .timeout(REQUEST_TIMEOUT)
         .tls_built_in_native_certs(os_roots);
     let builder = if url.is_loopback() {
@@ -895,7 +895,7 @@ pub(crate) fn build_http(
     };
     #[cfg(feature = "e2e-hooks")]
     let builder = match url.endpoint("").host_str().and_then(|host| {
-        super::e2e_route::route_for(host).map(|address| (host.to_owned(), address))
+        oleafly_net::e2e_route::route_for(host).map(|address| (host.to_owned(), address))
     }) {
         Some((host, address)) => builder.no_proxy().resolve(&host, address),
         None => builder,

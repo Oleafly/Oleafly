@@ -12,8 +12,8 @@ use tokio::sync::oneshot;
 
 use super::import::Renamed;
 use super::{
-    active_for, by_path, ensure_dir, guard, lock, merged_onto, name_of, nearest, parent_of, Active,
-    WriterSignal, WrittenTexts,
+    by_path, ensure_dir, guard, live_for, lock, merged_onto, name_of, nearest, parent_of, Active,
+    Live, WriterSignal, WrittenTexts,
 };
 use crate::collab::commands::CollabCommandError;
 use crate::collab::disk::{crlf_only, lf_text, safe_target, ShareRules};
@@ -120,7 +120,7 @@ fn write_renaming(
             match merged {
                 Some(operation) if suggested => live.suggested_operation(&id, &operation)?,
                 None if suggested => {
-                    live.suggested_operation(&id, &oleafly_collab::merge::diff(&current, &text))?
+                    live.suggested_operation(&id, &oleafly_ot::diff(&current, &text))?
                 }
                 Some(operation) => live.local_operation(&id, &operation)?,
                 None => live.local_text(&id, &text)?,
@@ -210,18 +210,18 @@ impl Active {
         let (handled, renamed, suggested) = {
             let reads = guard(&READS);
             let mut live = lock(&self.live);
-            if kept_from_a_viewer(&live, &self.root, path)? {
+            if kept_from_a_viewer(&live, &self.local.root, path)? {
                 return Ok(WriteOutcome {
                     handled: false,
                     reason: Some(READ_ONLY.to_owned()),
                 });
             }
-            let mut bases = guard(&self.bases);
+            let mut bases = guard(&self.local.bases);
             let (handled, renamed) = write_renaming(
                 &mut live,
                 &mut bases,
-                reads.get(&self.project_id),
-                &self.root,
+                reads.get(&self.local.project_id),
+                &self.local.root,
                 path,
                 base,
                 text,
@@ -238,12 +238,17 @@ impl Active {
             });
         }
         if let Some(path) = suggested {
-            crate::collab::suggesting::tell(self.host.as_ref(), &self.project_id, Some(path), true);
+            crate::collab::suggesting::tell(
+                self.local.host.as_ref(),
+                &self.local.project_id,
+                Some(path),
+                true,
+            );
         }
         self.handle.flush();
         self.refresh_pending();
         let (done, wait) = oneshot::channel();
-        let _ = self.writer.send(WriterSignal::Flush(done));
+        let _ = self.local.writer.send(WriterSignal::Flush(done));
         let _ = tokio::time::timeout(WRITE_SETTLE, wait).await;
         self.announce_new_names(renamed);
         Ok(WriteOutcome {
@@ -266,7 +271,7 @@ fn remember_read(project_id: &str, path: &str, text: &str) {
 }
 
 pub fn note_read(project_id: &str, path: &str, text: &str) {
-    if active_for(project_id).is_some() {
+    if live_for(project_id).is_some() {
         remember_read(project_id, path, text);
     }
 }
@@ -277,13 +282,16 @@ pub async fn write_text(
     base: Option<&str>,
     text: &str,
 ) -> Result<WriteOutcome, CollabError> {
-    let Some(active) = active_for(project_id) else {
+    let Some(live) = live_for(project_id) else {
         return Ok(WriteOutcome {
             handled: false,
             reason: None,
         });
     };
-    let outcome = active.write_text(path, base, text).await?;
+    let outcome = match live {
+        Live::Server(active) => active.write_text(path, base, text).await?,
+        Live::Overleaf(live) => live.write_text(path, base, text).await?,
+    };
     if outcome.handled {
         crate::agent_turns::note_app_write(project_id, path);
     }
@@ -388,7 +396,8 @@ fn write_all_shared(
 
 impl SharedDocument {
     pub(crate) fn of(project_id: &str) -> Option<SharedDocument> {
-        active_for(project_id)
+        live_for(project_id)
+            .and_then(|live| live.server().cloned())
             .map(SharedDocument)
             .filter(SharedDocument::can_edit)
     }
@@ -401,7 +410,7 @@ impl SharedDocument {
         let Some(path) = normalized(path) else {
             return false;
         };
-        if safe_target(&self.0.root, &path).is_none() {
+        if safe_target(&self.0.local.root, &path).is_none() {
             return false;
         }
         let live = lock(&self.0.live);
@@ -422,8 +431,8 @@ impl SharedDocument {
     pub(crate) fn write(&self, texts: &[SharedText<'_>]) -> Result<Option<String>, CollabError> {
         let written = {
             let mut live = lock(&self.0.live);
-            let mut bases = guard(&self.0.bases);
-            write_all_shared(&mut live, &mut bases, &self.0.root, texts)?
+            let mut bases = guard(&self.0.local.bases);
+            write_all_shared(&mut live, &mut bases, &self.0.local.root, texts)?
         };
         self.0.handle.flush();
         self.0.refresh_pending();
@@ -432,10 +441,10 @@ impl SharedDocument {
             Err(refused) => return Ok(Some(refused)),
         };
         for shared in texts {
-            crate::agent_turns::note_app_write(&self.0.project_id, shared.path);
+            crate::agent_turns::note_app_write(&self.0.local.project_id, shared.path);
         }
         let (done, wait) = oneshot::channel();
-        let _ = self.0.writer.send(WriterSignal::Flush(done));
+        let _ = self.0.local.writer.send(WriterSignal::Flush(done));
         tauri::async_runtime::block_on(async move {
             let _ = tokio::time::timeout(WRITE_SETTLE, wait).await;
         });
@@ -444,7 +453,7 @@ impl SharedDocument {
     }
 
     pub(crate) fn wrote_on_disk(&self, path: &str) {
-        let target = self.0.root.join(path);
+        let target = self.0.local.root.join(path);
         if std::fs::symlink_metadata(&target).is_ok() {
             crate::folder_watch::note_own_write(&target);
         } else {
@@ -486,17 +495,16 @@ mod tests {
     use std::time::Duration;
 
     use oleafly_collab::doc::{NodeKind, ProjectDoc};
-    use oleafly_collab::editor::DocMessage;
-    use oleafly_collab::live::{DocSink, OpenedFile};
+    use oleafly_collab::live::OpenedFile;
     use oleafly_collab::materialize;
-    use oleafly_collab::ot::TextOperation;
     use oleafly_collab::sync::{spawn_live, LiveLink, LiveStatus, SharedLive};
     use oleafly_collab::{ServerClient, ServerUrl};
     use oleafly_collab_protocol::ids::{AccountId, DeviceId};
     use oleafly_collab_protocol::projects::ProjectRole;
+    use oleafly_ot::{DocMessage, DocSink, TextOperation};
     use tokio::sync::mpsc;
 
-    use super::super::{writer_loop, LiveHost};
+    use super::super::{writer_loop, LiveDisk, LiveHost};
     use super::*;
     use crate::collab::disk::{sha256_hex, DiskState};
     use crate::collab::state::CollabState;
@@ -1049,22 +1057,24 @@ mod tests {
             let mut bases = WrittenTexts::default();
             bases.record("main.tex", "alpha\nbeta\n");
             let active = Arc::new(Active {
-                project_id: "written-live".to_owned(),
-                root: root.clone(),
+                local: LiveDisk {
+                    project_id: "written-live".to_owned(),
+                    root: root.clone(),
+                    disk_file: dir.path().join("disk.json"),
+                    disk: Mutex::new(disk),
+                    bases: Mutex::new(bases),
+                    host: Arc::new(QuietHost),
+                    writer,
+                    upkeep: Default::default(),
+                },
                 document_dir: dir.path().join("document"),
-                disk_file: dir.path().join("disk.json"),
                 live: Arc::clone(&shared_live),
                 handle,
                 link,
-                disk: Mutex::new(disk),
-                host: Arc::new(QuietHost),
-                writer,
                 account_id: AccountId::new_v7(),
                 quiet_merge: AtomicBool::new(false),
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
-                bases: Mutex::new(bases),
-                upkeep: Default::default(),
             });
             tokio::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
             let created = tokio::time::timeout(
@@ -1085,7 +1095,7 @@ mod tests {
                 .local_text(&main, "alpha\nbeta\ngamma\n")
                 .unwrap();
             {
-                let mut bases = active.bases.lock().unwrap();
+                let mut bases = active.local.bases.lock().unwrap();
                 for typed in ["g", "ga", "gam", "gamm"] {
                     bases.record("main.tex", &format!("alpha\nbeta\n{typed}"));
                 }

@@ -505,7 +505,9 @@
     "template_link_invalid": "Ese enlace no es una página de plantilla de Overleaf. Copia la dirección de una página de overleaf.com/latex/templates y vuelve a intentarlo.",
     "template_unavailable": "Oleafly no pudo abrir esta plantilla. Puede que se haya retirado de la galería de Overleaf.",
     "browser_sign_in_missing": "Oleafly no encontró ningún inicio de sesión de {{server}} en ese perfil del navegador. Inicia sesión directamente.",
-    "browser_sign_in_failed": "El inicio de sesión de tu navegador no funcionó. Puede que haya caducado. Inicia sesión directamente."
+    "browser_sign_in_failed": "El inicio de sesión de tu navegador no funcionó. Puede que haya caducado. Inicia sesión directamente.",
+    "browser_unavailable": "Oleafly no pudo abrir {{browser}} para iniciar sesión. Prueba con otro navegador.",
+    "browser_missing": "Ese navegador ya no está instalado. Elige otro."
   },
   "collab": {
     "suggestion_role": "Tu rol en este proyecto no permite sugerencias."

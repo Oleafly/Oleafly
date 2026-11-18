@@ -492,7 +492,8 @@
       "off": "Kapalı",
       "run": "Kodu bu bilgisayarda çalıştır"
     },
-    "sharedViewer": "Paylaşılan bir projede bu ayarları yalnızca sahipler ve düzenleyenler değiştirebilir."
+    "sharedViewer": "Paylaşılan bir projede bu ayarları yalnızca sahipler ve düzenleyenler değiştirebilir.",
+    "coauthorsChanged": "Son derlemenizden beri ortak yazarlar tarafından değiştirildi"
   },
   "datePicker": {
     "placeholder": "Bir tarih seçin"
@@ -992,6 +993,10 @@
       "notes": {
         "description": "Notlar'ı ana ekran yuvasına ekler. Bir not, sizin ve ajanlarınızın birlikte düzenleyebildiği, diyagram, grafik ve matematik içeren bir Markdown dosyasıdır. Notlar proje kitaplığınızın dışında durur ve her not bir projeye bağlanabilir. Hâlâ beta aşamasında olduğu için varsayılan olarak kapalıdır.",
         "label": "Notlar"
+      },
+      "overleafLive": {
+        "label": "Overleaf ile canlı düzenleme",
+        "description": "Overleaf'ten aktardığınız projeleri ortak yazarlarınızla aynı anda düzenleyin. Yazarken değişiklikler iki tarafta da görünür. Beta aşamasında olduğu için varsayılan olarak kapalıdır."
       },
       "researchTasks": {
         "description": "Bir ajan, projenin bir kopyasında kendi başına çalışır ve değişikliklerini sizin incelemeniz için bırakır. Çok kararsızdır: çalıştırmalar takılabilir, başarısız olabilir veya elle düzeltmeniz gereken değişiklikler bırakabilir, üstelik sağlayıcınızın kotasını baştan sona kullanır. Ayarlar'a bir Araştırma bölümü ekler. Kapatmak, çalışan tüm görevleri durdurur. Varsayılan olarak kapalıdır. Açarsanız sorumluluk size aittir.",
@@ -1641,6 +1646,31 @@
       "allMine": "Tümünde benimkini tut",
       "allTheirs": "Tümünde Overleaf'tekini kullan",
       "apply": "Uygula ve eşitle"
+    }
+  },
+  "overleafLive": {
+    "title": "Overleaf ile canlı düzenleme",
+    "live": "Overleaf ile canlı",
+    "connecting": "Overleaf'e bağlanılıyor…",
+    "sending": "Değişiklikler Overleaf'e gönderiliyor…",
+    "reconnecting": "Overleaf'e yeniden bağlanılıyor…",
+    "pausedBadge": "Canlı düzenleme duraklatıldı",
+    "pause": "Canlı düzenlemeyi duraklat",
+    "resume": "Canlı düzenlemeye devam et",
+    "reconnectNow": "Şimdi yeniden bağlan",
+    "open": "Overleaf'te aç",
+    "share": "Overleaf'te paylaş…",
+    "signIn": "Oturum aç…",
+    "reconnectingIn": "{{seconds}} sn sonra yeniden denenecek.",
+    "notConfirmed": "Overleaf henüz onaylamadı.",
+    "copyDetails": "Bağlantı ayrıntılarını kopyala",
+    "detailsCopied": "Bağlantı ayrıntıları kopyalandı",
+    "copyDetailsFailed": "Bağlantı ayrıntıları kopyalanamadı",
+    "pauseDialog": {
+      "title": "Bazı değişiklikler henüz Overleaf'e ulaşmadı",
+      "description": "Şimdi duraklatırsanız bunlar bu bilgisayarda kalır ve devam ettiğinizde Overleaf'e gider. Git eşitlemesi o zamana kadar kapalı kalır.",
+      "keepLive": "Canlı düzenlemeye devam et",
+      "pauseAnyway": "Yine de duraklat"
     }
   },
   "stuckWindow": {

@@ -206,6 +206,9 @@ fn on_window_event(window: &tauri::Window, event: &tauri::WindowEvent) {
     if let tauri::WindowEvent::Destroyed = event {
         folder_watch::release_window(window.label());
     }
+    if let tauri::WindowEvent::Focused(focused) = event {
+        collab::live::window_focused(*focused);
+    }
     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
         use tauri::{Emitter, Manager};
         if window.state::<updater::UpdateState>().installing() {
@@ -373,6 +376,7 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     tauri::async_runtime::spawn_blocking(crate::biber_toolchain::prune_stale_unpacks);
     tauri::async_runtime::spawn_blocking(crate::build_hygiene::evict_idle_linked_builds_at_startup);
     tauri::async_runtime::spawn_blocking(crate::linked_removal::purge_expired_removals_at_startup);
+    tauri::async_runtime::spawn_blocking(crate::overleaf::sweep_browser_profiles);
 
     let handle = app.handle().clone();
     tauri::async_runtime::spawn(async move {
@@ -862,6 +866,19 @@ pub fn run() {
             collab::share::collab_open_link,
             collab::share::collab_link_preview,
             collab::live::commands::collab_live_start,
+            collab::live::overleaf::commands::overleaf_live_start,
+            collab::live::overleaf::commands::overleaf_live_stop,
+            collab::live::overleaf::commands::overleaf_live_pause,
+            collab::live::overleaf::commands::overleaf_live_project,
+            collab::live::overleaf::commands::overleaf_live_resume,
+            collab::live::overleaf::commands::overleaf_live_unlink,
+            collab::live::overleaf::notices::overleaf_live_resolve,
+            collab::live::overleaf::notices::overleaf_live_retry,
+            collab::live::overleaf::notices::overleaf_live_keep_copy,
+            collab::live::overleaf::notices::overleaf_live_connection_details,
+            collab::live::overleaf::commands::overleaf_live_members,
+            collab::live::overleaf::commands::overleaf_live_delete,
+            collab::live::overleaf::commands::overleaf_live_restore,
             collab::live::commands::collab_live_stop,
             collab::live::commands::collab_live_flush,
             collab::live::commands::collab_live_reconnect_now,
@@ -1306,6 +1323,8 @@ pub fn run() {
             mathpix::mathpix_pdf_wait,
             mathpix::mathpix_pdf_cancel,
             overleaf::overleaf_sign_in_with_app_cookies,
+            overleaf::overleaf_sign_in_browsers,
+            overleaf::overleaf_sign_in_with_browser,
             cua_driver::commands::cua_driver_status,
             cua_driver::commands::cua_driver_settings_set,
             cua_driver::commands::cua_driver_installed_apps,

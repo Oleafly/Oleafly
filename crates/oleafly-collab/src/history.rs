@@ -514,7 +514,7 @@ impl ProjectDoc {
 mod tests {
     use super::*;
     use crate::doc::NodeKind;
-    use crate::ot::TextOperation;
+    use oleafly_ot::TextOperation;
 
     fn account(seed: u8) -> AccountId {
         format!("01920000-0000-7000-8000-0000000000{seed:02x}")

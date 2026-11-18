@@ -8,6 +8,7 @@ import { LoadingState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { formatDateTime } from "@/lib/intl";
+import { withoutTrailingSlashes } from "@/lib/path-utils";
 import type {
   CollabEmailStatus,
   CollabServer,
@@ -29,12 +30,6 @@ type TestState =
   | { state: "sent"; to: string[] }
   | { state: "refused"; detail: string | null }
   | { state: "failed"; message: string };
-
-function withoutTrailingSlashes(value: string): string {
-  let end = value.length;
-  while (end > 0 && value[end - 1] === "/") end -= 1;
-  return value.slice(0, end);
-}
 
 export function addServerLink(serverUrl: string): string {
   const address = withoutTrailingSlashes(serverUrl.trim());

@@ -14,6 +14,32 @@ pub const LIVE_MEMBERS_EVENT: &str = "collab-live-members";
 pub const CHANGE_SKIPPED_EVENT: &str = "collab-change-skipped";
 pub const PROJECT_FULL_EVENT: &str = "collab-live-project-full";
 pub const LIVE_WRITTEN_EVENT: &str = "collab-live-written";
+pub const ACCOUNT_CHANGED_EVENT: &str = "overleaf-live-account-changed";
+pub const DOC_PENDING_EVENT: &str = "collab-live-doc-pending";
+pub const OVERLEAF_MEMBERS_EVENT: &str = "overleaf-live-members";
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TypedAs {
+    pub user_id: String,
+    pub email: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DocPendingPayload {
+    pub project_id: String,
+    pub path: String,
+    pub pending: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AccountChangedPayload {
+    pub project_id: String,
+    pub typed_as: TypedAs,
+    pub files: Vec<super::kept::KeptFile>,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -53,6 +79,9 @@ pub struct StatusPayload {
 pub struct RolePayload {
     pub project_id: String,
     pub role: ProjectRole,
+    pub tracking: bool,
+    pub restricted: bool,
+    pub deleted_externally: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -118,12 +147,19 @@ pub struct ProjectFullPayload {
 #[serde(rename_all = "camelCase")]
 pub struct PresencePayload {
     pub project_id: String,
-    pub device_id: DeviceId,
-    pub account_id: AccountId,
+    pub device_id: String,
+    pub account_id: String,
     pub path: Option<String>,
     pub cursor: Option<u32>,
     pub anchor: Option<u32>,
+    pub person: Option<PresencePerson>,
     pub activity: Option<ActivityPayload>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct PresencePerson {
+    pub name: Option<String>,
+    pub email: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -156,22 +192,36 @@ impl ActivityPayload {
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct OverleafMembersPayload {
+    pub project_id: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct OverleafMember {
+    pub person: OverleafPerson,
+    pub role: ProjectRole,
+    pub granted_at: i64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct OverleafPerson {
+    pub account_id: String,
+    pub display_name: String,
+    pub avatar_url: Option<String>,
+    pub email: Option<String>,
+    pub login: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PresenceLeftPayload {
     pub project_id: String,
-    pub device_id: DeviceId,
+    pub device_id: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
 pub struct LiveInfo {
     pub role: ProjectRole,
-    pub account_id: AccountId,
-    pub device_id: DeviceId,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct DocOpened {
-    pub file_id: String,
-    pub rev: u64,
-    pub text: String,
-    pub session: u64,
+    pub account_id: String,
+    pub device_id: String,
 }

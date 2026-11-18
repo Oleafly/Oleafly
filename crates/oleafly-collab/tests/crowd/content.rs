@@ -1,4 +1,6 @@
-use crate::typist::{Rng, PHRASES, WORDS};
+use oleafly_ot::testing::Rng;
+
+use crate::typist::{PHRASES, WORDS};
 
 const TOPICS: &[&str] = &[
     "Introduction",

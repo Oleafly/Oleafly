@@ -33,7 +33,8 @@ export function startNoteLive(live: LiveSession): () => void {
 export function startLiveTarget(live: LiveSession): () => void {
   if (isNoteSession(live)) return startNoteLive(live);
   const stopEditing = startLiveEditing(live);
-  const unpublish = publishLiveProject(live);
+  const unpublish =
+    useCollabLiveStore.getState().backend === "overleaf" ? () => undefined : publishLiveProject(live);
   return () => {
     unpublish();
     stopEditing();

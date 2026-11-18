@@ -21,6 +21,7 @@ oleafly-agent = { path = "../crates/oleafly-agent" }
 oleafly-cli = { path = "../crates/oleafly-cli", features = ["proofread"] }
 oleafly-collab = { path = "../crates/oleafly-collab" }
 oleafly-collab-protocol = { path = "../crates/oleafly-collab-protocol" }
+oleafly-ot = { path = "../crates/oleafly-ot" }
 oleafly-core = { path = "../crates/oleafly-core" }
 oleafly-s3 = { path = "../crates/oleafly-s3" }
 oleafly-history = { path = "../crates/oleafly-history" }

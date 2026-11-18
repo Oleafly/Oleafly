@@ -9,7 +9,7 @@ use reqwest::header::DATE;
 use serde::{Deserialize, Serialize};
 
 use super::http::{check_status, network_error};
-use super::ws::{connect_tcp, open_socket};
+use super::ws::{net_error, open_socket};
 use super::{client_protocol, now_ms, ServerClient, ServerUrl};
 use crate::CollabError;
 
@@ -97,9 +97,13 @@ fn detail(error: &CollabError) -> String {
 }
 
 async fn reachable_check(url: &ServerUrl) -> ConnectionCheck {
-    match connect_tcp(&url.endpoint("")).await {
+    match oleafly_net::connect_tcp(&url.endpoint("")).await {
         Ok(_) => check(CheckId::Reachable, CheckStatus::Pass, None),
-        Err(error) => check(CheckId::Reachable, CheckStatus::Fail, Some(detail(&error))),
+        Err(error) => check(
+            CheckId::Reachable,
+            CheckStatus::Fail,
+            Some(detail(&net_error(error))),
+        ),
     }
 }
 

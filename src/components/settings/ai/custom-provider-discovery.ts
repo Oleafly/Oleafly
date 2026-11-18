@@ -1,5 +1,6 @@
 import { i18n } from "@/i18n";
 import { agentErrorKind } from "@/lib/agent-backend";
+import { withoutTrailingSlashes } from "@/lib/path-utils";
 import { agentListModels, type ProviderModel } from "@/lib/tauri";
 
 export type ModelListFailure = "auth" | "unreachable" | "rejected" | "unreadable" | "timeout";
@@ -11,10 +12,10 @@ export type CustomModelDiscovery =
 const ENDPOINT_PATHS = ["/chat/completions", "/completions", "/responses", "/models"];
 
 export function trimEndpointPath(url: string): string {
-  let base = url.trim().replace(/\/+$/, "");
+  let base = withoutTrailingSlashes(url.trim());
   for (const path of ENDPOINT_PATHS) {
     if (base.toLowerCase().endsWith(path)) {
-      base = base.slice(0, -path.length).replace(/\/+$/, "");
+      base = withoutTrailingSlashes(base.slice(0, -path.length));
       break;
     }
   }
@@ -31,8 +32,8 @@ export function withApiVersion(baseURL: string): string | null {
     return null;
   }
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return null;
-  if (/\/v\d+[a-z\d]*$/i.test(parsed.pathname.replace(/\/+$/, ""))) return null;
-  return `${baseURL.replace(/\/+$/, "")}/v1`;
+  if (/\/v\d+[a-z\d]*$/i.test(withoutTrailingSlashes(parsed.pathname))) return null;
+  return `${withoutTrailingSlashes(baseURL)}/v1`;
 }
 
 export function modelListFailureOf(error: unknown): ModelListFailure {

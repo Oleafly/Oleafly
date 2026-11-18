@@ -12,6 +12,12 @@ export function withoutVerbatimPrefix(path: string): string {
   return path;
 }
 
+export function withoutTrailingSlashes(value: string): string {
+  let end = value.length;
+  while (end > 0 && value[end - 1] === "/") end -= 1;
+  return value.slice(0, end);
+}
+
 function lastSeparator(path: string): number {
   return Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
 }

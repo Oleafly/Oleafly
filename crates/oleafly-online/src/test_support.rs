@@ -1,9 +1,16 @@
+pub mod history_ot_text;
+pub mod mock_overleaf;
+pub mod overleaf_rt;
+pub mod sharejs_text;
+
 use std::collections::HashMap;
 use std::io::Write as _;
 use std::sync::{Arc, Mutex};
 
 use serde_json::{json, Value};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+use crate::realtime::codec::{self, Frame};
 
 #[derive(Clone, Debug)]
 pub struct Request {
@@ -51,6 +58,18 @@ pub struct FixtureServer {
 }
 
 async fn read_request(stream: &mut tokio::net::TcpStream) -> Option<Request> {
+    let (method, path, headers, body) = read_message(stream).await?;
+    Some(Request {
+        method,
+        path,
+        headers,
+        body: String::from_utf8_lossy(&body).to_string(),
+    })
+}
+
+type Message = (String, String, HashMap<String, String>, Vec<u8>);
+
+async fn read_message(stream: &mut tokio::net::TcpStream) -> Option<Message> {
     let mut raw = Vec::new();
     let mut buffer = [0_u8; 4096];
     let head_end = loop {
@@ -84,12 +103,7 @@ async fn read_request(stream: &mut tokio::net::TcpStream) -> Option<Request> {
         }
         body.extend_from_slice(&buffer[..read]);
     }
-    Some(Request {
-        method,
-        path,
-        headers,
-        body: String::from_utf8_lossy(&body).to_string(),
-    })
+    Some((method, path, headers, body))
 }
 
 impl FixtureServer {
@@ -172,16 +186,16 @@ pub fn remote_project_json(id: &str, name: &str) -> Value {
 }
 
 pub fn project_reply(project: &Value) -> String {
-    let event = json!({ "name": "joinProjectResponse", "args": [{ "publicId": "p", "project": project, "permissionsLevel": "owner", "protocolVersion": 2 }] });
-    frame(&[&format!("5:::{event}")])
+    codec::encode(&Frame::event(
+        "joinProjectResponse",
+        &[
+            json!({ "publicId": "p", "project": project, "permissionsLevel": "owner", "protocolVersion": 2 }),
+        ],
+    ))
 }
 
-pub fn frame(packets: &[&str]) -> String {
-    let marker = char::REPLACEMENT_CHARACTER;
-    packets
-        .iter()
-        .map(|packet| format!("{marker}{}{marker}{packet}", packet.encode_utf16().count()))
-        .collect()
+pub fn payload(frames: &[&str]) -> String {
+    codec::encode_payload(&frames.iter().map(ToString::to_string).collect::<Vec<_>>())
 }
 
 /// A current Firefox `cookies.sqlite` schema.
@@ -220,14 +234,14 @@ pub fn write_firefox_cookie_store(path: &std::path::Path, rows: &[(&str, &str, &
     }
 }
 
-pub fn zip_bytes(files: &[(&str, &str)]) -> Vec<u8> {
+pub fn zip_bytes(files: &[(impl AsRef<str>, impl AsRef<[u8]>)]) -> Vec<u8> {
     let mut cursor = std::io::Cursor::new(Vec::new());
     {
         let mut writer = zip::ZipWriter::new(&mut cursor);
         let options = zip::write::SimpleFileOptions::default();
         for (name, body) in files {
-            writer.start_file(*name, options).unwrap();
-            writer.write_all(body.as_bytes()).unwrap();
+            writer.start_file(name.as_ref(), options).unwrap();
+            writer.write_all(body.as_ref()).unwrap();
         }
         writer.finish().unwrap();
     }
@@ -260,7 +274,7 @@ pub fn socket_handler(
             let mut count = polls.lock().unwrap();
             *count += 1;
             return Some(match *count {
-                1 => Reply::ok(frame(&["1::", "2::"])),
+                1 => Reply::ok(payload(&["1::", "2::"])),
                 _ => Reply::ok(project_reply(&project)),
             });
         }

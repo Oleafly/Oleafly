@@ -5,7 +5,8 @@ use std::time::{Duration, Instant};
 use oleafly_collab::materialize::Layout;
 use serde::Serialize;
 
-use super::session::{guard, lock, Active, Alarm};
+use super::live_tree::LiveTree;
+use super::session::{guard, Alarm, LiveDisk};
 use crate::collab::disk::safe_target;
 
 pub const LIVE_UNWRITTEN_EVENT: &str = "collab-live-unwritten";
@@ -131,8 +132,8 @@ pub(super) struct Settled {
     pub(super) conflicts: Vec<String>,
 }
 
-impl Active {
-    pub(super) fn settle_unwritten(&self, layout: &Layout, settled: Settled) {
+impl LiveDisk {
+    pub(super) fn settle_unwritten(&self, tree: &dyn LiveTree, layout: &Layout, settled: Settled) {
         let (retry, payload, delay, timer) = {
             let mut held = guard(&self.upkeep.failing);
             let failing = &mut *held;
@@ -186,12 +187,12 @@ impl Active {
             (retry, payload, most.map(backoff), failing.timer.clone())
         };
         if !retry.is_empty() {
-            let mut live = lock(&self.live);
-            for (id, placed) in layout {
-                if retry.contains(&placed.path) {
-                    live.mark_dirty(id);
-                }
-            }
+            let ids: Vec<String> = layout
+                .iter()
+                .filter(|(_, placed)| retry.contains(&placed.path))
+                .map(|(id, _)| id.clone())
+                .collect();
+            tree.mark_dirty(&ids);
         }
         if let Some(payload) = payload {
             for file in &payload.files {
@@ -214,6 +215,7 @@ impl Active {
     // files still held come back as failures of this pass.
     pub(super) fn hold_back_failing(
         &self,
+        tree: &dyn LiveTree,
         next: &Layout,
         texts: &mut Vec<(String, String)>,
         urgent: bool,
@@ -257,14 +259,12 @@ impl Active {
         if held.is_empty() {
             return still;
         }
-        {
-            let mut live = lock(&self.live);
-            for (id, placed) in next {
-                if held.contains(&placed.path) {
-                    live.mark_dirty(id);
-                }
-            }
-        }
+        let ids: Vec<String> = next
+            .iter()
+            .filter(|(_, placed)| held.contains(&placed.path))
+            .map(|(id, _)| id.clone())
+            .collect();
+        tree.mark_dirty(&ids);
         let soonest = waiting
             .iter()
             .filter(|(path, _)| held.contains(*path))

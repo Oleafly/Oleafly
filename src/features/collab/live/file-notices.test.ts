@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
+  CollabDownloadProgress,
   CollabLiveKept,
   CollabLiveKeptFile,
   CollabLiveUploads,
@@ -17,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   uploadsHandler: null as null | ((payload: CollabLiveUploads) => void),
   keptHandler: null as null | ((payload: CollabLiveKept) => void),
   progressHandler: null as null | ((payload: CollabUploadProgress) => void),
+  downloadHandler: null as null | ((payload: CollabDownloadProgress) => void),
 }));
 
 vi.mock("@/lib/tauri", () => ({}));
@@ -47,6 +49,12 @@ vi.mock("@/lib/tauri-collab", () => ({
       mocks.progressHandler = null;
     };
   }),
+  onCollabDownloadProgress: vi.fn(async (handler: (payload: CollabDownloadProgress) => void) => {
+    mocks.downloadHandler = handler;
+    return () => {
+      mocks.downloadHandler = null;
+    };
+  }),
   collabShareInfo: vi.fn(),
   collabLiveStart: vi.fn(),
   collabLiveStop: vi.fn(),
@@ -67,7 +75,7 @@ vi.mock("@/store/files", async () => {
 
 import { useFilesStore } from "@/store/files";
 import { deferred, person, projectMember } from "../tests/fixtures";
-import { startFileNotices, useFileNotices } from "./file-notices";
+import { startFileNotices, treeNoticed, useFileNotices } from "./file-notices";
 import { useCollabLiveStore } from "./live-store";
 
 function upload(overrides: Partial<CollabUploadFile> = {}): CollabUploadFile {
@@ -134,6 +142,29 @@ describe("file notices", () => {
     expect(useFileNotices.getState().progress).toEqual({});
   });
 
+  it("follows a big download in the open project until it is done or cut short", async () => {
+    mocks.downloadHandler?.({ projectId: "other", path: "scan.png", done: 1, total: 4 });
+    expect(useFileNotices.getState().downloads).toEqual({});
+    mocks.downloadHandler?.({ projectId: "paper", path: "scan.png", done: 1024, total: 4096 });
+    mocks.downloadHandler?.({ projectId: "paper", path: "map.png", done: 10, total: 20 });
+    expect(useFileNotices.getState().downloads).toEqual({
+      "scan.png": { done: 1024, total: 4096 },
+      "map.png": { done: 10, total: 20 },
+    });
+    mocks.downloadHandler?.({ projectId: "paper", path: "scan.png", done: 4096, total: 4096 });
+    mocks.downloadHandler?.({ projectId: "paper", path: "map.png", done: 0, total: 0 });
+    expect(useFileNotices.getState().downloads).toEqual({});
+    mocks.downloadHandler?.({ projectId: "paper", path: "chunked.png", done: 2_000_000, total: null });
+    mocks.downloadHandler?.({ projectId: "paper", path: "chunked.png", done: 3_000_000, total: null });
+    expect(useFileNotices.getState().downloads).toEqual({ "chunked.png": { done: 3_000_000, total: null } });
+    mocks.downloadHandler?.({ projectId: "paper", path: "chunked.png", done: 0, total: 0 });
+    expect(useFileNotices.getState().downloads).toEqual({});
+    mocks.downloadHandler?.({ projectId: "paper", path: "late.png", done: 1, total: 2 });
+    useFilesStore.setState({ projectId: "thesis" });
+    await settle();
+    expect(useFileNotices.getState().downloads).toEqual({});
+  });
+
   it("forgets upload progress when another project opens", async () => {
     mocks.uploadsHandler?.({ projectId: "paper", files: [upload()] });
     mocks.progressHandler?.({ projectId: "paper", path: "figures/plot.png", done: 1, total: 4 });
@@ -167,6 +198,34 @@ describe("file notices", () => {
     expect(useFileNotices.getState().kept.map((file) => file.id)).toEqual(["copy-id"]);
     mocks.keptHandler?.({ projectId: "other", files: [kept({ id: "elsewhere" })] });
     expect(useFileNotices.getState().kept.map((file) => file.id)).toEqual(["copy-id"]);
+  });
+
+  it("lists the paths kept off the service once each until dismissed or another project opens", async () => {
+    treeNoticed("paper", "not_allowed", ["mine.tex"]);
+    treeNoticed("paper", "not_allowed", ["mine.tex", "figures/plot.png"]);
+    treeNoticed("paper", "kept_away", ["notes.tex"]);
+    treeNoticed("other", "kept_away", ["elsewhere.tex"]);
+    expect(useFileNotices.getState()).toMatchObject({
+      notAllowed: ["mine.tex", "figures/plot.png"],
+      keptAway: ["notes.tex"],
+    });
+    useFileNotices.getState().dismissNotAllowed();
+    expect(useFileNotices.getState()).toMatchObject({ notAllowed: [], keptAway: ["notes.tex"] });
+    useFilesStore.setState({ projectId: "thesis" });
+    await settle();
+    expect(useFileNotices.getState()).toMatchObject({ projectId: "thesis", notAllowed: [], keptAway: [] });
+  });
+
+  it("starts the open project's lists afresh when the notices still belong to another project", () => {
+    useFileNotices.setState({ projectId: "thesis", uploads: [upload()], kept: [kept()], keptAway: ["old.tex"] });
+    treeNoticed("paper", "kept_away", ["notes.tex"]);
+    expect(useFileNotices.getState()).toMatchObject({
+      projectId: "paper",
+      uploads: [],
+      kept: [],
+      notAllowed: [],
+      keptAway: ["notes.tex"],
+    });
   });
 
   it("retries the waiting figures and forgets a figure the person dismisses", async () => {

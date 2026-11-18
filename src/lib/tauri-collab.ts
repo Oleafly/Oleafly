@@ -118,6 +118,10 @@ const COLLAB_ERROR_CODES = new Set<string>([
   "share_in_progress",
   "cancelled",
   "cloud_synced",
+  "overleaf_linked",
+  "collab_shared",
+  "live_elsewhere",
+  "overleaf_unsent",
   "owner_away",
   "wrong_server",
   "suggestion_not_found",
@@ -213,8 +217,8 @@ export const collabShareInfo = (projectId: string) =>
   invoke<CollabShareInfo | null>("collab_share_info", { projectId });
 export const collabShareCheck = (projectId: string, serverId: string) =>
   invoke<CollabShareCheck>("collab_share_check", { projectId, serverId });
-export const collabShareProject = (projectId: string, serverId: string) =>
-  invoke<CollabShareInfo>("collab_share_project", { projectId, serverId });
+export const collabShareProject = (projectId: string, serverId: string, overleafLive = false) =>
+  invoke<CollabShareInfo>("collab_share_project", { projectId, serverId, overleafLive });
 export const collabProjectSummary = (projectId: string) =>
   invoke<CollabProjectSummary>("collab_project_summary", { projectId });
 export const collabMembersList = (projectId: string) =>
@@ -340,7 +344,11 @@ export const COLLAB_CHANGE_SKIPPED_EVENT = "collab-change-skipped";
 export const COLLAB_OUTPUT_NOT_SHARED_EVENT = "collab-output-not-shared";
 export const COLLAB_LIVE_UNWRITTEN_EVENT = "collab-live-unwritten";
 export const COLLAB_LIVE_PROJECT_FULL_EVENT = "collab-live-project-full";
+export const COLLAB_LIVE_DOC_PENDING_EVENT = "collab-live-doc-pending";
+export const OVERLEAF_LIVE_ACCOUNT_CHANGED_EVENT = "overleaf-live-account-changed";
+export const OVERLEAF_LIVE_NOTICE_EVENT = "overleaf-live-notice";
 export const COLLAB_UPLOAD_PROGRESS_EVENT = "collab-upload-progress";
+export const COLLAB_DOWNLOAD_PROGRESS_EVENT = "collab-download-progress";
 
 export function onCollabUploadProgress(
   handler: (payload: import("@oleafly/backend-port").CollabUploadProgress) => void,
@@ -350,10 +358,43 @@ export function onCollabUploadProgress(
   );
 }
 
+export function onCollabDownloadProgress(
+  handler: (payload: import("@oleafly/backend-port").CollabDownloadProgress) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabDownloadProgress>(COLLAB_DOWNLOAD_PROGRESS_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
+
 export function onCollabLiveProjectFull(
   handler: (payload: import("@oleafly/backend-port").CollabLiveProjectFull) => void,
 ): Promise<UnlistenFn> {
   return listen<import("@oleafly/backend-port").CollabLiveProjectFull>(COLLAB_LIVE_PROJECT_FULL_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
+
+export function onOverleafLiveNotice(
+  handler: (payload: import("@oleafly/backend-port").OverleafLiveNotice) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").OverleafLiveNotice>(OVERLEAF_LIVE_NOTICE_EVENT, ({ payload }) =>
+    handler(payload),
+  );
+}
+
+export function onOverleafLiveAccountChanged(
+  handler: (payload: import("@oleafly/backend-port").OverleafLiveAccountChanged) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").OverleafLiveAccountChanged>(
+    OVERLEAF_LIVE_ACCOUNT_CHANGED_EVENT,
+    ({ payload }) => handler(payload),
+  );
+}
+
+export function onCollabLiveDocPending(
+  handler: (payload: import("@oleafly/backend-port").CollabLiveDocPending) => void,
+): Promise<UnlistenFn> {
+  return listen<import("@oleafly/backend-port").CollabLiveDocPending>(COLLAB_LIVE_DOC_PENDING_EVENT, ({ payload }) =>
     handler(payload),
   );
 }

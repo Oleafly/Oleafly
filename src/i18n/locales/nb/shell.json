@@ -492,7 +492,8 @@
       "off": "Av",
       "run": "Kjør kode på denne maskinen"
     },
-    "sharedViewer": "Bare eiere og redaktører kan endre disse innstillingene i et delt prosjekt."
+    "sharedViewer": "Bare eiere og redaktører kan endre disse innstillingene i et delt prosjekt.",
+    "coauthorsChanged": "Endret av medforfattere siden siste kompilering"
   },
   "datePicker": {
     "placeholder": "Velg en dato"
@@ -992,6 +993,10 @@
       "notes": {
         "description": "Legger til Notater i dokken under Hjem. Et notat er en Markdown-fil med diagrammer, grafer og matematikk som både du og agentene dine kan redigere. Notater holdes utenfor prosjektbiblioteket ditt, og hvert notat kan knyttes til et prosjekt. Av som standard mens funksjonen fortsatt er i beta.",
         "label": "Notater"
+      },
+      "overleafLive": {
+        "label": "Live-redigering med Overleaf",
+        "description": "Rediger prosjekter du har importert fra Overleaf samtidig som medforfatterne dine. Endringene vises på begge sider mens du skriver. Av som standard så lenge det fortsatt er i beta."
       },
       "researchTasks": {
         "description": "En agent jobber på egen hånd i en kopi av prosjektet og lar endringene stå klare til gjennomgang. Svært ustabilt: kjøringer kan stoppe opp, mislykkes eller etterlate endringer du må rydde opp i for hånd, og de bruker leverandørens kvote hele tiden. Legger til seksjonen Forskning i Innstillinger. Hvis du slår det av, stoppes alle oppgaver som kjører. Av som standard. Aktiver det på eget ansvar.",
@@ -1641,6 +1646,31 @@
       "allMine": "Behold alle mine",
       "allTheirs": "Bruk alle fra Overleaf",
       "apply": "Bruk og synkroniser"
+    }
+  },
+  "overleafLive": {
+    "title": "Live-redigering med Overleaf",
+    "live": "Live med Overleaf",
+    "connecting": "Kobler til Overleaf…",
+    "sending": "Sender endringer til Overleaf…",
+    "reconnecting": "Kobler til Overleaf på nytt…",
+    "pausedBadge": "Live-redigering satt på pause",
+    "pause": "Sett live-redigering på pause",
+    "resume": "Gjenoppta live-redigering",
+    "reconnectNow": "Koble til på nytt nå",
+    "open": "Åpne i Overleaf",
+    "share": "Del på Overleaf…",
+    "signIn": "Logg inn…",
+    "reconnectingIn": "Prøver igjen om {{seconds}} s.",
+    "notConfirmed": "Ikke bekreftet av Overleaf ennå.",
+    "copyDetails": "Kopier tilkoblingsdetaljer",
+    "detailsCopied": "Tilkoblingsdetaljene er kopiert",
+    "copyDetailsFailed": "Kunne ikke kopiere tilkoblingsdetaljene",
+    "pauseDialog": {
+      "title": "Noen endringer har ikke nådd Overleaf ennå",
+      "description": "Hvis du setter på pause nå, blir de på denne datamaskinen og sendes til Overleaf når du gjenopptar. Git-synkroniseringen er av til da.",
+      "keepLive": "Fortsett å redigere live",
+      "pauseAnyway": "Sett på pause likevel"
     }
   },
   "stuckWindow": {

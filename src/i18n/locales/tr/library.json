@@ -329,6 +329,7 @@
       "loadFailed": "Oleafly Overleaf projelerinizi yükleyemedi.",
       "signInPrompt": "Projelerinizi görmek için Overleaf'te oturum açın. Bir oturum açma penceresi açılır ve giriş yaptığınızda kendiliğinden kapanır.",
       "signingIn": "Açılan pencerede Overleaf oturum açma işlemini tamamlayın.",
+      "signingInBrowser": "{{browser}} tarayıcısında Overleaf oturum açma işlemini tamamlayın. Giriş yaptığınızda pencere kendiliğinden kapanır. Pencereyi kapatırsanız işlem iptal olur.",
       "passkeyHint": "Geçiş anahtarınız oturum açma penceresinde çalışmazsa orada şifreniz veya telefonunuzdaki bir onay gibi başka bir seçenek belirleyin.",
       "expired": "Overleaf oturumunuzun süresi doldu. Projelerinizi görmek için yeniden oturum açın.",
       "signIn": "Overleaf'te oturum aç",

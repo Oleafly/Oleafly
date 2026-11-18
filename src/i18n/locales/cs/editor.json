@@ -1295,6 +1295,10 @@
     "failed": "Oleafly nedokázal aktualizovat {{file}}. Zkuste to znovu.",
     "tabMark": "Změněno na disku. Otevřete tuto kartu a vyberte, kterou verzi ponechat."
   },
+  "liveTab": {
+    "notOnOverleafYet": "Zatím není v Overleafu",
+    "storedAsFile": "Overleaf to ukládá jako soubor, takže se vaše úpravy nahrají při uložení."
+  },
   "labels": {
     "filterPlaceholder": "Název návěští",
     "filterLabel": "Filtrovat návěští projektu",

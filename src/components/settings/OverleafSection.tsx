@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { ExternalLink } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   overleafGitTokenClear,
   overleafGitTokenSet,
@@ -17,15 +18,10 @@ import {
   IntegrationError,
 } from "@/components/settings/IntegrationCard";
 import { useOverleafImportStore } from "@/store/overleaf-import";
-import { BrowserSignInCopy } from "@/components/settings/BrowserSignInCopy";
-
-function serverHost(server: string): string {
-  try {
-    return new URL(server).host;
-  } catch {
-    return server;
-  }
-}
+import { type OverleafDeletes, useSettingsStore } from "@/store/settings";
+import { BrowserSignIn, BrowserSignInCopy, WindowSignIn } from "@/components/settings/BrowserSignInCopy";
+import { OverleafServerField, serverHost } from "@/components/library/overleaf/OverleafServerField";
+import { OverleafSignOutQuestion } from "@/components/library/overleaf/OverleafSignOutQuestion";
 
 export function OverleafSection() {
   const { t } = useTranslation("settings");
@@ -33,6 +29,7 @@ export function OverleafSection() {
   const server = useOverleafImportStore((state) => state.server);
   const refreshStatus = useOverleafImportStore((state) => state.refreshStatus);
   const signOut = useOverleafImportStore((state) => state.signOut);
+  const signing = useOverleafImportStore((state) => state.phase === "signing-in");
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
 
@@ -59,8 +56,8 @@ export function OverleafSection() {
               setBusy(true);
               setFailed(false);
               await signOut();
-              const after = useOverleafImportStore.getState().status;
-              setFailed(after?.signedIn === true);
+              const after = useOverleafImportStore.getState();
+              setFailed(after.status?.signedIn === true && after.unsent === null);
               setBusy(false);
             }}
           >
@@ -78,10 +75,49 @@ export function OverleafSection() {
       ) : null}
       {failed ? <IntegrationError>{t(($) => $.settings.integrations.overleaf.signOutFailed)}</IntegrationError> : null}
       {signedIn ? null : (
-        <BrowserSignInCopy server={status?.server ?? server} onSignedIn={() => void refreshStatus()} />
+        <>
+          <OverleafServerField
+            className="mt-1"
+            disabled={signing}
+            onChanged={() => void refreshStatus()}
+          />
+          <BrowserSignIn fallback={<WindowSignIn />} />
+          <BrowserSignInCopy server={status?.server ?? server} onSignedIn={() => void refreshStatus()} />
+        </>
       )}
       <GitTokenField server={status?.server ?? server} />
+      <LiveDeletesField />
+      <OverleafSignOutQuestion />
     </IntegrationCard>
+  );
+}
+
+const DELETE_CHOICES: readonly OverleafDeletes[] = ["ask", "always", "never"];
+
+function LiveDeletesField() {
+  const { t } = useTranslation("settings");
+  const live = useSettingsStore((state) => state.overleafLive);
+  const deletes = useSettingsStore((state) => state.overleafDeletes);
+  const setDeletes = useSettingsStore((state) => state.setOverleafDeletes);
+  if (!live) return null;
+  const label = t(($) => $.settings.integrations.overleaf.deletes.title);
+  return (
+    <div data-testid="overleaf-live-deletes" className="mt-4 space-y-2 border-t pt-3">
+      <p className="text-xs font-medium text-foreground">{label}</p>
+      <p className="text-xs text-muted-foreground">{t(($) => $.settings.integrations.overleaf.deletes.description)}</p>
+      <Select value={deletes} onValueChange={(value) => setDeletes(value as OverleafDeletes)}>
+        <SelectTrigger className="w-[220px]" aria-label={label} data-testid="overleaf-live-deletes-trigger">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="z-[100]">
+          {DELETE_CHOICES.map((choice) => (
+            <SelectItem key={choice} value={choice}>
+              {t(($) => $.settings.integrations.overleaf.deletes.options[choice])}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
 

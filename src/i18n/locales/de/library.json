@@ -329,6 +329,7 @@
       "loadFailed": "Oleafly konnte Ihre Overleaf-Projekte nicht laden.",
       "signInPrompt": "Melden Sie sich bei Overleaf an, um Ihre Projekte zu sehen. Ein Anmeldefenster öffnet sich und schließt sich von selbst, sobald Sie angemeldet sind.",
       "signingIn": "Schließen Sie die Anmeldung bei Overleaf im geöffneten Fenster ab.",
+      "signingInBrowser": "Schließen Sie die Anmeldung bei Overleaf in {{browser}} ab. Das Fenster schließt sich von selbst, sobald Sie angemeldet sind. Schließen Sie es vorher, wird abgebrochen.",
       "passkeyHint": "Wenn Ihr Passkey im Anmeldefenster nicht funktioniert, wählen Sie dort eine andere Option, etwa Ihr Passwort oder eine Bestätigung auf Ihrem Telefon.",
       "expired": "Ihre Overleaf-Anmeldung ist abgelaufen. Melden Sie sich erneut an, um Ihre Projekte zu sehen.",
       "signIn": "Bei Overleaf anmelden",

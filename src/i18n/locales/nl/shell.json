@@ -492,7 +492,8 @@
       "off": "Uit",
       "run": "Code uitvoeren op deze computer"
     },
-    "sharedViewer": "Alleen eigenaren en bewerkers kunnen deze instellingen in een gedeeld project wijzigen."
+    "sharedViewer": "Alleen eigenaren en bewerkers kunnen deze instellingen in een gedeeld project wijzigen.",
+    "coauthorsChanged": "Gewijzigd door medeauteurs sinds je laatste keer compileren"
   },
   "datePicker": {
     "placeholder": "Kies een datum"
@@ -992,6 +993,10 @@
       "notes": {
         "description": "Voegt Notities toe aan het dock op het startscherm. Een notitie is een Markdown-bestand met diagrammen, grafieken en wiskunde dat jij en je agents allebei kunnen bewerken. Notities blijven buiten je projectbibliotheek, en elke notitie kan aan een project worden gekoppeld. Staat standaard uit zolang de functie nog in bèta is.",
         "label": "Notities"
+      },
+      "overleafLive": {
+        "label": "Live bewerken met Overleaf",
+        "description": "Bewerk projecten die je uit Overleaf hebt geïmporteerd tegelijk met je medeauteurs. Wijzigingen verschijnen aan beide kanten terwijl je typt. Standaard uit zolang het nog in bèta is."
       },
       "researchTasks": {
         "description": "Een agent werkt zelfstandig in een kopie van het project en laat de wijzigingen voor jou achter om te beoordelen. Zeer onstabiel: runs kunnen vastlopen, mislukken of wijzigingen achterlaten die je met de hand moet opruimen, en ze gebruiken de hele tijd het quotum van je provider. Voegt de sectie Onderzoek toe aan Instellingen. Als je het uitzet, stoppen alle lopende taken. Staat standaard uit. Zet het op eigen risico aan.",
@@ -1641,6 +1646,31 @@
       "allMine": "Al mijn versies houden",
       "allTheirs": "Alle versies van Overleaf gebruiken",
       "apply": "Toepassen en synchroniseren"
+    }
+  },
+  "overleafLive": {
+    "title": "Live bewerken met Overleaf",
+    "live": "Live met Overleaf",
+    "connecting": "Verbinden met Overleaf…",
+    "sending": "Wijzigingen naar Overleaf versturen…",
+    "reconnecting": "Opnieuw verbinden met Overleaf…",
+    "pausedBadge": "Live bewerken gepauzeerd",
+    "pause": "Live bewerken pauzeren",
+    "resume": "Live bewerken hervatten",
+    "reconnectNow": "Nu opnieuw verbinden",
+    "open": "Openen in Overleaf",
+    "share": "Delen op Overleaf…",
+    "signIn": "Aanmelden…",
+    "reconnectingIn": "Opnieuw proberen over {{seconds}} s.",
+    "notConfirmed": "Nog niet bevestigd door Overleaf.",
+    "copyDetails": "Verbindingsgegevens kopiëren",
+    "detailsCopied": "Verbindingsgegevens gekopieerd",
+    "copyDetailsFailed": "De verbindingsgegevens konden niet worden gekopieerd",
+    "pauseDialog": {
+      "title": "Een deel van de wijzigingen is nog niet bij Overleaf aangekomen",
+      "description": "Als je nu pauzeert, blijven ze op deze computer en gaan ze naar Overleaf zodra je hervat. Git-synchronisatie blijft tot dan uit.",
+      "keepLive": "Live blijven bewerken",
+      "pauseAnyway": "Toch pauzeren"
     }
   },
   "stuckWindow": {

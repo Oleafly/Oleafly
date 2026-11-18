@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { basename, dirname, exportFileStem, isSeparator, numberedPath, relativeFilePath } from "./path-utils";
+import {
+  basename,
+  dirname,
+  exportFileStem,
+  isSeparator,
+  numberedPath,
+  relativeFilePath,
+  withoutTrailingSlashes,
+} from "./path-utils";
 
 describe("numberedPath", () => {
   const takenFrom = (paths: string[]) => {
@@ -104,5 +112,19 @@ describe("relativeFilePath", () => {
   it("keeps the file name when a folder shares the target's name", () => {
     expect(relativeFilePath("notes/notes.md", "notes")).toBe("../notes");
     expect(relativeFilePath("notes/a.md", "notes/a.md")).toBe("a.md");
+  });
+});
+
+describe("withoutTrailingSlashes", () => {
+  it.each([
+    ["", ""],
+    ["/", ""],
+    ["a//", "a"],
+    ["a/b/", "a/b"],
+    ["a", "a"],
+    ["https://example.org//", "https://example.org"],
+    ["a\\", "a\\"],
+  ])("trims %j to %j, forward slashes only", (value, expected) => {
+    expect(withoutTrailingSlashes(value)).toBe(expected);
   });
 });

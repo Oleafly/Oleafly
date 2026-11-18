@@ -1,5 +1,6 @@
 import type { PackageCatalog } from "@oleafly/latex-intelligence";
 import { isLatexGraphicsPath } from "@/lib/image-mime";
+import { withoutTrailingSlashes } from "@/lib/path-utils";
 
 export interface GlossaryKeyContext {
   readonly query: string;
@@ -89,12 +90,6 @@ export function recognizeKeyval(before: string): KeyvalContext | null {
 
 const IMPORT_PATH_RE =
   /\\(?:import|subimport|inputfrom|subinputfrom|includefrom|subincludefrom)\*?\s*\{([^{}]*)\}\s*\{([^{}]*)$/u;
-
-function withoutTrailingSlashes(value: string): string {
-  let end = value.length;
-  while (end > 0 && value[end - 1] === "/") end -= 1;
-  return value.slice(0, end);
-}
 
 export function recognizeImportPath(
   before: string,

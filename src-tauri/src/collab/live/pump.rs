@@ -8,12 +8,13 @@ use oleafly_collab::{load_binding, save_binding};
 use oleafly_collab_protocol::projects::ProjectRole;
 use tokio::sync::mpsc::UnboundedReceiver;
 
+use super::downloads::FigureHost;
 use super::payloads::{
     ActivityPayload, ChangeSkippedPayload, MembersPayload, MergeMarks, MergedAuthor, MergedFile,
     MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload, ProjectFullPayload,
     RolePayload,
 };
-use super::session::{guard, lock, Active, ACTIVE};
+use super::session::{guard, lock, Active, Live, ACTIVE};
 
 fn placed_files(
     layout: &Layout,
@@ -73,23 +74,24 @@ pub(super) async fn pump(
                 device_id,
                 account_id,
                 state,
-            } => active.host.presence(PresencePayload {
-                project_id: active.project_id.clone(),
-                device_id,
-                account_id,
+            } => active.local.host.presence(PresencePayload {
+                project_id: active.local.project_id.clone(),
+                device_id: device_id.to_string(),
+                account_id: account_id.to_string(),
                 path: state.file_id,
                 cursor: state.cursor,
                 anchor: state.anchor,
+                person: None,
                 activity: ActivityPayload::shown(state.activity),
             }),
             LiveEvent::PresenceLeft { device_id } => {
-                active.host.presence_left(PresenceLeftPayload {
-                    project_id: active.project_id.clone(),
-                    device_id,
+                active.local.host.presence_left(PresenceLeftPayload {
+                    project_id: active.local.project_id.clone(),
+                    device_id: device_id.to_string(),
                 })
             }
-            LiveEvent::Members(change) => active.host.members(MembersPayload {
-                project_id: active.project_id.clone(),
+            LiveEvent::Members(change) => active.local.host.members(MembersPayload {
+                project_id: active.local.project_id.clone(),
                 account_id: change.account_id,
                 by: change.by,
                 kind: change.kind,
@@ -98,15 +100,15 @@ pub(super) async fn pump(
             LiveEvent::NewDevice {
                 account_id,
                 device_id,
-            } => active.host.new_device(NewDevicePayload {
-                project_id: active.project_id.clone(),
+            } => active.local.host.new_device(NewDevicePayload {
+                project_id: active.local.project_id.clone(),
                 account_id,
                 device_id,
             }),
             LiveEvent::Untrusted { device_id, seq } => {
                 let _ = crate::project::append_app_log(format!(
                     "Live collaboration skipped change {seq} in project {}: device {device_id} did not sign it with a key this app knows",
-                    active.project_id
+                    active.local.project_id
                 ));
             }
             LiveEvent::Unreadable { seq, device_id } => {
@@ -116,10 +118,10 @@ pub(super) async fn pump(
                 );
                 let _ = crate::project::append_app_log(format!(
                     "Live collaboration skipped change {seq} from {from} in project {}: this app could not read it",
-                    active.project_id
+                    active.local.project_id
                 ));
-                active.host.change_skipped(ChangeSkippedPayload {
-                    project_id: active.project_id.clone(),
+                active.local.host.change_skipped(ChangeSkippedPayload {
+                    project_id: active.local.project_id.clone(),
                     seq,
                     device_id,
                 });
@@ -128,30 +130,30 @@ pub(super) async fn pump(
             LiveEvent::Unsendable => {
                 let _ = crate::project::append_app_log(format!(
                     "Live collaboration stopped sending changes in project {}: one edit is larger than the server accepts in a single change",
-                    active.project_id
+                    active.local.project_id
                 ));
             }
             LiveEvent::CommentsNotSent(unsent) => {
                 let _ = crate::project::append_app_log(format!(
                     "Live collaboration left {} comment change(s) out of project {}: comments are turned off there",
                     unsent.len(),
-                    active.project_id
+                    active.local.project_id
                 ));
                 crate::collab::comments::tell_not_sent(
-                    &active.project_id,
+                    &active.local.project_id,
                     &active.live,
                     unsent,
-                    active.host.as_ref(),
+                    active.local.host.as_ref(),
                 );
             }
             LiveEvent::Comments(switches) => {
                 let role = lock(&active.live).role();
                 crate::collab::comments::switched(
                     &paths,
-                    &active.project_id,
+                    &active.local.project_id,
                     switches,
                     role,
-                    active.host.as_ref(),
+                    active.local.host.as_ref(),
                 );
             }
         }
@@ -161,10 +163,10 @@ pub(super) async fn pump(
 pub(super) fn on_project_full(active: &Active) {
     let _ = crate::project::append_app_log(format!(
         "Live collaboration in project {} reached the server's size limit; changes stay on this computer for now",
-        active.project_id
+        active.local.project_id
     ));
-    active.host.project_full(ProjectFullPayload {
-        project_id: active.project_id.clone(),
+    active.local.host.project_full(ProjectFullPayload {
+        project_id: active.local.project_id.clone(),
     });
 }
 
@@ -177,7 +179,7 @@ async fn on_status(active: &Arc<Active>, status: LiveStatus, paths: &oleafly_col
         let _ = active.write_out().await;
         active.close_figures();
         active.save_now();
-        active.announce_written();
+        active.local.announce_written();
         if matches!(
             reason,
             EndReason::Removed | EndReason::Archived | EndReason::AccessEnded
@@ -185,11 +187,15 @@ async fn on_status(active: &Arc<Active>, status: LiveStatus, paths: &oleafly_col
             active.detach(paths);
         }
         if let Some(session) = reason.session() {
-            active.host.session_ended(active.link.server_id, session);
+            active
+                .local
+                .host
+                .session_ended(active.link.server_id, session);
         }
         let mut slot = guard(&ACTIVE);
         if slot
             .as_ref()
+            .and_then(Live::server)
             .is_some_and(|current| Arc::ptr_eq(current, active))
         {
             *slot = None;
@@ -203,58 +209,65 @@ async fn on_status(active: &Arc<Active>, status: LiveStatus, paths: &oleafly_col
 }
 
 fn on_role(active: &Active, role: ProjectRole, paths: &oleafly_collab::CollabPaths) {
-    if let Ok(Some(mut binding)) = load_binding(paths, &active.project_id) {
+    if let Ok(Some(mut binding)) = load_binding(paths, &active.local.project_id) {
         if binding.role != role {
             binding.role = role;
-            let _ = save_binding(paths, &active.project_id, &binding);
+            let _ = save_binding(paths, &active.local.project_id, &binding);
         }
     }
-    active.host.role(RolePayload {
-        project_id: active.project_id.clone(),
+    active.local.host.role(RolePayload {
+        project_id: active.local.project_id.clone(),
         role,
+        tracking: false,
+        restricted: false,
+        deleted_externally: false,
     });
 }
 
 fn on_acknowledged(active: &Active) {
     active.refresh_pending();
     crate::collab::comments::announce(
-        &active.project_id,
+        &active.local.project_id,
         &active.live,
         active.account_id,
-        active.host.as_ref(),
+        active.local.host.as_ref(),
         true,
     );
     crate::collab::chat::announce(
-        &active.project_id,
+        &active.local.project_id,
         &active.live,
         active.account_id,
-        active.host.as_ref(),
+        active.local.host.as_ref(),
         true,
     );
 }
 
 fn on_changed(active: &Active) {
-    let settled = crate::collab::tree::settle(&active.project_id, &active.live);
+    let settled = crate::collab::tree::settle(&active.local.project_id, &active.live);
     if settled.merged {
         active.handle.flush();
     }
     for renamed in settled.renamed {
-        active.host.renamed(renamed);
+        active.local.host.renamed(renamed);
     }
     active.kick();
     crate::collab::comments::announce(
-        &active.project_id,
+        &active.local.project_id,
         &active.live,
         active.account_id,
-        active.host.as_ref(),
+        active.local.host.as_ref(),
         false,
     );
-    crate::collab::suggesting::announce(&active.project_id, &active.live, active.host.as_ref());
+    crate::collab::suggesting::announce(
+        &active.local.project_id,
+        &active.live,
+        active.local.host.as_ref(),
+    );
     crate::collab::chat::announce(
-        &active.project_id,
+        &active.local.project_id,
         &active.live,
         active.account_id,
-        active.host.as_ref(),
+        active.local.host.as_ref(),
         false,
     );
 }
@@ -264,7 +277,7 @@ fn on_merged(active: &Active, report: MergeReport) {
         return;
     }
     let layout = materialize::layout(&lock(&active.live).doc().nodes().unwrap_or_default());
-    if let Some(payload) = merged_payload(&active.project_id, &layout, report) {
-        active.host.merged(payload);
+    if let Some(payload) = merged_payload(&active.local.project_id, &layout, report) {
+        active.local.host.merged(payload);
     }
 }

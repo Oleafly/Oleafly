@@ -1739,8 +1739,8 @@
         "notInstalled": "Ei asennettu"
       },
       "tryAgain": "Yritä uudelleen",
-      "label": "Selaimen kirjautuminen",
-      "useBrowserSignIn": "Käytä selaimeni kirjautumista",
+      "label": "Kopioi selaimen kirjautuminen",
+      "useBrowserSignIn": "Kopioi kirjautuminen selaimestasi",
       "signInDescription": "Kopioi palvelun {{server}} kirjautumisesi tämän koneen selaimesta, niin sinun ei tarvitse kirjautua uudelleen.",
       "site": "Sivusto: {{domain}}",
       "confirmCopy": "Oleafly lukee sivuston {{domain}} cookiet selaimen {{browser}} profiilista {{profile}}. Ne pysyvät Oleaflyssä ja menevät vain sivustolle {{domain}}. Vahvistat vielä kerran järjestelmän ikkunassa.",
@@ -1815,7 +1815,33 @@
       "gitLabel": "Overleafin Git-tokeni",
       "gitSave": "Tallenna",
       "gitRemove": "Poista",
-      "gitFailed": "Oleafly ei voinut tallentaa Git-tokenia. Tarkista, että liitit koko tokenin."
+      "gitFailed": "Oleafly ei voinut tallentaa Git-tokenia. Tarkista, että liitit koko tokenin.",
+      "browserLabel": "Kirjaudu selaimellasi",
+      "browserDescription": "Googlen, oppilaitoksen tai pääsyavaimen kirjautumista varten. Oleafly avaa palvelimen {{server}} uuteen selainikkunaan ja sulkee sen, kun olet kirjautunut.",
+      "browserAction": "Kirjaudu",
+      "browserPick": "Selain kirjautumiseen",
+      "browserWaiting": "Viimeistele kirjautuminen palvelimelle {{server}} selaimessa {{browser}}. Ikkunan sulkeminen peruu kirjautumisen.",
+      "browserHint": "Käytä tätä Googlen, oppilaitoksen tai pääsyavaimen kirjautumiseen.",
+      "windowLabel": "Kirjaudu palvelimelle {{server}}",
+      "windowDescription": "Oleafly avaa kirjautumisikkunan ja sulkee sen, kun olet kirjautunut. Jos haluat kirjautua Googlella, oppilaitoksesi tilillä tai pääsyavaimella, asenna Chrome, Edge, Brave, Chromium tai Firefox ja kirjaudu sillä täällä.",
+      "windowAction": "Kirjaudu",
+      "windowWaiting": "Viimeistele kirjautuminen palvelimelle {{server}} avautuneessa ikkunassa.",
+      "unsent": {
+        "title": "Joitakin muutoksia ei ole lähetetty Overleafiin",
+        "description": "Jos kirjaudut nyt ulos, nämä muutokset pysyvät tällä tietokoneella ja menevät Overleafiin, kun seuraavan kerran kirjaudut sisään tällä tilillä. Jos kirjaudut toisella tilillä, ne palaavat kopioina tiedostojensa viereen. Tai pysy kirjautuneena ja yritä hetken päästä uudelleen.",
+        "files": "Ei vielä lähetetty: {{files}}",
+        "signOut": "Kirjaudu silti ulos",
+        "stay": "Pysy kirjautuneena"
+      },
+      "deletes": {
+        "title": "Kun poistat tiedoston reaaliaikaisessa projektissa",
+        "description": "Valitse, mitä Overleafissa tapahtuu, kun poistat tiedoston tai kansion Oleaflyssä.",
+        "options": {
+          "ask": "Kysy joka kerta",
+          "always": "Poista myös Overleafista",
+          "never": "Säilytä Overleafissa"
+        }
+      }
     },
     "desktopApps": {
       "tab": "Computer Use",

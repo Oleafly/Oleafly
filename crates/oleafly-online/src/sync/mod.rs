@@ -743,6 +743,10 @@ impl Scope {
     }
 }
 
+pub fn never_online(project: &Path, rel: &str) -> bool {
+    Scope::Folder.skips(project, rel)
+}
+
 fn is_synced_pdf(project: &Path, rel: &str) -> bool {
     oleafly_core::pdf_sync::is_target_name(rel)
         && oleafly_core::pdf_sync::target_in_folder(project).is_some_and(|target| target == rel)

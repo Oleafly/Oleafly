@@ -9,10 +9,8 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 use oleafly_collab::doc::{NodeKind, ProjectDoc};
-use oleafly_collab::editor::DocMessage;
-use oleafly_collab::live::{DocSink, LiveProject};
+use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize;
-use oleafly_collab::ot::{Component, TextOperation};
 use oleafly_collab::sync::{
     spawn_live, EndReason, LiveEvent, LiveHandle, LiveLink, LiveStatus, SharedLive,
 };
@@ -28,6 +26,8 @@ use oleafly_collab_protocol::projects::{
     project_role_allows, PresenceState, ProjectAction, ProjectPatch, ProjectRole,
 };
 use oleafly_collab_protocol::roles::ServerRole;
+use oleafly_ot::testing::{unit_index, EditorDoc, Reaction, Rng};
+use oleafly_ot::{Component, DocMessage, DocSink, TextOperation};
 use oleafly_server::clock::SystemClock;
 use oleafly_server::config::ServerConfig;
 use oleafly_server::state::AppState;
@@ -37,7 +37,7 @@ use serde_json::{json, Value};
 use tokio::sync::{mpsc, watch, Semaphore};
 use url::Url;
 
-use crate::typist::{unit_index, EditorDoc, Reaction, Rng, WORDS};
+use crate::typist::WORDS;
 
 const USAGE: &str = "usage: load_peers --link LINK --mailpit URL --email-domain DOMAIN [--server URL] [--peers N] [--name-prefix TEXT] [--file PATH] [--rate EDITS_PER_SECOND] [--duration SECONDS] [--ramp SECONDS] [--churn PROBABILITY_PER_SECOND] [--settle SECONDS] [--report FILE] [--state-dir DIR] [--sign-in-concurrency N] [--sign-in-spacing SECONDS] [--sign-in-timeout SECONDS] [--sign-in-only] [--mail-timeout SECONDS] [--seed N] [--save-text DIR] [--local-stack SMTP_HOST:PORT [--local-data DIR]]";
 const STATUS_EVERY: Duration = Duration::from_secs(5);
@@ -1720,6 +1720,14 @@ impl Session {
             LiveStatus::Connecting => {
                 self.went_down();
                 self.peer.set_state("connecting");
+            }
+            LiveStatus::SignedOut => {
+                self.went_down();
+                self.peer.set_state("signed_out");
+            }
+            LiveStatus::Idle => {
+                self.went_down();
+                self.peer.set_state("idle");
             }
             LiveStatus::Offline { retry_in_ms } => {
                 self.went_down();
