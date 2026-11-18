@@ -3,7 +3,7 @@ import { FileX2, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
 import { Spinner } from "@/components/ui/spinner";
-import { WorkspaceBanner, WorkspaceBannerButton } from "@/components/ui/workspace-banner";
+import { WorkspaceBanner, WorkspaceBannerAlert, WorkspaceBannerButton } from "@/components/ui/workspace-banner";
 import { basename } from "@/lib/path-utils";
 import { useFilesStore } from "@/store/files";
 import { collabErrorMessage } from "../errors";
@@ -18,14 +18,17 @@ function NoticeRow({
   notice,
   name,
   canRestore,
-}: Readonly<{ notice: RemovedNotice; name: string; canRestore: boolean }>) {
+  online,
+}: Readonly<{ notice: RemovedNotice; name: string; canRestore: boolean; online: boolean }>) {
   const { t } = useTranslation(["collab"]);
   const restoring = useRemovedNotices((state) => state.restoring);
   const failure = useRemovedNotices((state) => (state.failure?.id === notice.id ? state.failure.code : null));
   const file = basename(notice.path);
-  const message = notice.yours
-    ? t(($) => $.collab.removed.yoursDeleted, { file, name })
-    : t(($) => $.collab.removed.deletedBy, { file, name });
+  let message: string;
+  if (notice.copy) message = t(($) => $.collab.removed.keptCopy, { file, name, copy: basename(notice.copy) });
+  else if (online) message = t(($) => $.collab.removed.deletedOnline, { file, name });
+  else if (notice.yours) message = t(($) => $.collab.removed.yoursDeleted, { file, name });
+  else message = t(($) => $.collab.removed.deletedBy, { file, name });
   return (
     <WorkspaceBanner tone="warning" data-testid="collab-removed-notice">
       <FileX2 aria-hidden className="size-3.5 shrink-0" />
@@ -35,11 +38,15 @@ function NoticeRow({
           <WorkspaceBannerButton
             tone="warning"
             disabled={restoring !== null}
-            aria-label={t(($) => $.collab.deleted.restoreLabel, { name: file })}
+            aria-label={
+              online
+                ? t(($) => $.collab.removed.restoreOnlineLabel, { name: file })
+                : t(($) => $.collab.deleted.restoreLabel, { name: file })
+            }
             onClick={() => void useRemovedNotices.getState().restore(notice.id)}
           >
             {restoring === notice.id ? <Spinner size="xs" /> : null}
-            {t(($) => $.collab.deleted.restore)}
+            {online ? t(($) => $.collab.removed.restoreOnline) : t(($) => $.collab.deleted.restore)}
           </WorkspaceBannerButton>
         ) : null}
         <WorkspaceBannerButton
@@ -51,9 +58,7 @@ function NoticeRow({
         </WorkspaceBannerButton>
       </span>
       {failure ? (
-        <p role="alert" className="w-full select-text text-destructive">
-          {collabErrorMessage(failure)}
-        </p>
+        <WorkspaceBannerAlert>{collabErrorMessage(failure)}</WorkspaceBannerAlert>
       ) : null}
     </WorkspaceBanner>
   );
@@ -64,7 +69,11 @@ export function RemovedFileBanner() {
   const projectId = useFilesStore((state) => state.projectId);
   const notices = useRemovedNotices((state) => (state.projectId === projectId ? state.notices : NONE));
   const people = useCollabLiveStore(
-    useShallow((state) => ({ members: state.members, role: state.role ?? state.share?.role ?? "viewer" })),
+    useShallow((state) => ({
+      members: state.members,
+      role: state.role ?? state.share?.role ?? "viewer",
+      online: state.backend === "overleaf",
+    })),
   );
   const names = useMemo(
     () => new Map(people.members.map((member) => [member.person.account_id, member.person.display_name])),
@@ -79,7 +88,8 @@ export function RemovedFileBanner() {
           key={notice.id}
           notice={notice}
           name={(notice.by ? names.get(notice.by) : undefined) || someone}
-          canRestore={canEditProjectRole(people.role)}
+          canRestore={canEditProjectRole(people.role) && (!people.online || Boolean(notice.copy))}
+          online={people.online}
         />
       ))}
     </div>

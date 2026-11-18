@@ -22,6 +22,7 @@ vi.mock("../notes/note-live-port", () => ({ installNoteLive: mocks.installNoteLi
 vi.mock("./sync-pause", () => ({ startSyncPause: mocks.startSyncPause }));
 vi.mock("./removed-notices", () => ({ startRemovedNotices: mocks.startRemovedNotices }));
 vi.mock("./file-notices", () => ({ startFileNotices: mocks.startFileNotices }));
+vi.mock("./overleaf-notices", () => ({ startOverleafNotices: () => () => {} }));
 vi.mock("./reconnect-nudges", () => ({ startReconnectNudges: mocks.startReconnectNudges }));
 
 import { startLive } from "./index";
@@ -29,7 +30,10 @@ import { startLive } from "./index";
 describe("live collaboration entry", () => {
   it("runs the live lifecycle with shared editing attached", () => {
     const stop = startLive();
-    expect(mocks.startCollabLive).toHaveBeenCalledWith({ started: mocks.startLiveTarget });
+    expect(mocks.startCollabLive).toHaveBeenCalledWith({
+      started: mocks.startLiveTarget,
+      drivers: [expect.objectContaining({ kind: "server" }), expect.objectContaining({ kind: "overleaf" })],
+    });
     expect(mocks.installNoteLive).toHaveBeenCalledTimes(1);
     expect(typeof stop).toBe("function");
   });

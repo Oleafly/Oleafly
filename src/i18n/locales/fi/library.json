@@ -329,6 +329,7 @@
       "loadFailed": "Oleafly ei voinut ladata Overleaf-projektejasi.",
       "signInPrompt": "Kirjaudu Overleafiin nähdäksesi projektisi. Kirjautumisikkuna avautuu ja sulkeutuu itsestään, kun olet kirjautunut.",
       "signingIn": "Viimeistele Overleaf-kirjautuminen avautuneessa ikkunassa.",
+      "signingInBrowser": "Viimeistele Overleaf-kirjautuminen selaimessa {{browser}}. Ikkuna sulkeutuu itsestään, kun olet kirjautunut. Ikkunan sulkeminen peruu kirjautumisen.",
       "passkeyHint": "Jos pääsyavaimesi ei toimi kirjautumisikkunassa, valitse siellä toinen tapa, kuten salasana tai vahvistus puhelimessa.",
       "expired": "Overleaf-kirjautumisesi on vanhentunut. Kirjaudu uudelleen nähdäksesi projektisi.",
       "signIn": "Kirjaudu Overleafiin",

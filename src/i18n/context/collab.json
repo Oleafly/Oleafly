@@ -208,7 +208,8 @@
   "sync": {
     "offline": "Status text. The number of local changes that have not reached the server yet comes after the colon, so no plural form is needed.",
     "suspended": "Short status of a shared project when an admin suspended this person's account.",
-    "accessEnded": "Short status of a shared project when this person no longer has access to the server."
+    "accessEnded": "Short status of a shared project when this person no longer has access to the server.",
+    "projectDeleted": "Short status of a project linked to Overleaf after it was deleted or moved to the trash there."
   },
   "tree": {
     "clash": "Tooltip on a small badge in the file tree. Two files in a shared project had the same name, so this one was saved on disk under a different name. {{other}} is the path of the file that kept the name, {{name}} is the shared name."
@@ -430,7 +431,8 @@
     "replaced": "Banner. {{name}} is another person, {{file}} a figure both of you replaced at the same moment, {{copy}} the new file name that keeps this person's version, like plot (from Bob Smith).png.",
     "added": "Banner. Two people added a file with the same name. {{file}} is the name, {{copy}} the new name this file got on this computer, {{name}} the other person.",
     "retry": "Button that tries again to send the files listed in the banner",
-    "dismiss": "Accessible label of the close button on one banner row"
+    "dismiss": "Accessible label of the close button on one banner row",
+    "unsent": "{{file}} is the file that was being edited. {{copy}} is a new file next to it that holds the changes Overleaf never received."
   },
   "projectRoleDescriptions": {
     "editor": "Short line under the role name in the role picker. Editors change text directly and accept or reject other people's suggestions.",
@@ -439,11 +441,14 @@
     "viewer": "Short line under the role name in the role picker. Keep it as short as the English."
   },
   "toolbar": {
-    "reviewing": "Tooltip on a collaborator's avatar when that person is a reviewer working in a file. {{path}} is the file. Same pattern as Editing {{path}}."
+    "reviewing": "Tooltip on a collaborator's avatar when that person is a reviewer working in a file. {{path}} is the file. Same pattern as Editing {{path}}.",
+    "youElsewhere": "Avatar name for this same person signed in elsewhere, such as Overleaf in a browser tab or Oleafly on another computer. The app can't tell which, so keep it general."
   },
   "access": {
     "reviewerBy": "Banner after the owner changes this person's role to Reviewer. {{name}} is the owner. Use the same words for suggestions as the Suggesting mode.",
-    "commenterBy": "Banner after the owner changes this person's role to Commenter. {{name}} is the owner."
+    "commenterBy": "Banner after the owner changes this person's role to Commenter. {{name}} is the owner.",
+    "askOnOverleaf": "Button on the view-only banner. Opens the project on Overleaf in the browser, where the person can ask the owner for edit access. Overleaf is a product name.",
+    "keepLocal": "Button that unlinks the project from Overleaf so it stays on this computer as an ordinary project. Nothing on Overleaf changes."
   },
   "suggestions": {
     "insertedBy": "Tooltip on suggested new text in the editor. {{name}} is the person who suggested it.",

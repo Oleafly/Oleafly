@@ -15,6 +15,8 @@ making document engines, filesystem policy, and external integrations explicit.
 | `crates/oleafly-forge/` | Git hosting accounts, tokens and server APIs, with no Tauri dependency so the CLI can share them |
 | `crates/oleafly-collab-protocol/` | Messages shared by the app and the collaboration server |
 | `crates/oleafly-collab/` | Live collaboration client: the shared project document, sync and comments |
+| `crates/oleafly-ot/` | Text operations, the editor's channel for live changes, and text diffs and merges, with no Loro, shared by the collaboration client, the server's browser gateway and the app |
+| `crates/oleafly-net/` | WebSocket connections through the system proxy, the TLS roots they trust and the reconnect backoff, used by the collaboration client |
 | `crates/oleafly-server/` | The collaboration server, built on Axum and SQLite |
 | `crates/oleafly-acp/` | Agent Client Protocol client for CLI agents, on the official Rust SDK |
 | `crates/oleafly-research/` | Research tasks: the store, scheduler, runs and their executors (local, SSH, Slurm, Cua Spaces), and the literature and citation tools |

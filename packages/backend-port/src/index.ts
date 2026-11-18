@@ -1260,6 +1260,10 @@ export type CollabErrorCode =
     | "share_in_progress"
     | "cancelled"
     | "cloud_synced"
+    | "overleaf_linked"
+    | "collab_shared"
+    | "live_elsewhere"
+    | "overleaf_unsent"
     | "owner_away"
     | "wrong_server"
     | "suggestion_not_found"
@@ -1337,6 +1341,7 @@ export interface CollabJoinProgress {
 }
 export type CollabLiveEndReason =
     | "removed"
+    | "project_deleted"
     | "archived"
     | "signed_out"
     | "stopped"
@@ -1349,6 +1354,8 @@ export type CollabLiveState =
     | { state: "connecting" }
     | { state: "online" }
     | { state: "offline"; retry_in_ms: number }
+    | { state: "signed_out" }
+    | { state: "idle" }
     | { state: "ended"; reason: CollabLiveEndReason | CollabSessionEnd };
 export interface CollabLiveStatus {
     projectId: string;
@@ -1384,6 +1391,9 @@ export interface CollabShareCheck {
 export interface CollabLiveRole {
     projectId: string;
     role: CollabProjectRole;
+    tracking: boolean;
+    restricted: boolean;
+    deletedExternally: boolean;
 }
 export interface CollabPresenceActivity {
     kind: "reply" | "chat";
@@ -1396,6 +1406,7 @@ export interface CollabPresence {
     path: string | null;
     cursor: number | null;
     anchor: number | null;
+    person: { name: string | null; email: string | null } | null;
     activity: CollabPresenceActivity | null;
 }
 export interface CollabPresenceLeft {
@@ -1411,7 +1422,8 @@ export type CollabTextOperation = (number | string)[];
 export type CollabDocMessage =
     | { kind: "ack"; rev: number; length: number }
     | { kind: "remote"; rev: number; op: CollabTextOperation; length: number }
-    | { kind: "reset"; rev: number; text: string };
+    | { kind: "reset"; rev: number; text: string }
+    | { kind: "detached"; reason: string };
 export interface CollabDocOpened {
     file_id: string;
     rev: number;
@@ -1851,6 +1863,11 @@ export interface CollabLiveUnwritten {
   projectId: string;
   files: { path: string; reason: CollabUnwrittenReason }[];
 }
+export interface CollabLiveDocPending {
+  projectId: string;
+  path: string;
+  pending: boolean;
+}
 export type CollabSettingNotice =
   | { kind: "mainDocument"; path: string }
   | { kind: "compiler"; engine: string; flavor: string | null }
@@ -1866,6 +1883,7 @@ export interface CollabUnsentProject {
   project_id: string;
   name: string;
   changes: number;
+  paths?: string[];
 }
 export interface CollabWriteOutcome {
   handled: boolean;
@@ -1886,6 +1904,7 @@ export interface CollabLiveRemovedFile {
   kind: "dir" | "text" | "blob";
   by: string | null;
   yours: boolean;
+  copy?: string;
 }
 export interface CollabLiveRemoved {
   projectId: string;
@@ -1918,6 +1937,12 @@ export interface CollabUploadProgress {
   done: number;
   total: number;
 }
+export interface CollabDownloadProgress {
+  projectId: string;
+  path: string;
+  done: number;
+  total: number | null;
+}
 export interface CollabLiveUploads {
   projectId: string;
   files: CollabUploadFile[];
@@ -1925,13 +1950,45 @@ export interface CollabLiveUploads {
 export interface CollabLiveKeptFile {
   id: string;
   path: string;
-  copy: string;
-  kind: "replaced" | "added" | "beside";
+  copy: string | null;
+  kind: "replaced" | "added" | "beside" | "unsent" | "differed";
   by: string | null;
+}
+export interface OverleafLiveAccountChanged {
+  projectId: string;
+  typedAs: { userId: string; email: string };
+  files: CollabLiveKeptFile[];
 }
 export interface CollabLiveKept {
   projectId: string;
   files: CollabLiveKeptFile[];
+}
+export type OverleafLiveNotice = { projectId: string } & (
+  | { kind: "merged"; path: string; before: string; after: string }
+  | { kind: "needs_review"; path: string; mine: string; theirs: string }
+  | { kind: "maintenance"; message: string; delayMs: number }
+  | { kind: "slow_ack"; waiting: boolean }
+  | { kind: "unsteady"; path: string }
+  | { kind: "fault"; path: string; reason: OverleafStopReason }
+  | { kind: "external"; path: string }
+  | { kind: "replaced"; path: string }
+);
+export type OverleafStopReason =
+  | "delete_mismatch"
+  | "bad_hash"
+  | "too_long"
+  | "too_large"
+  | "too_many_ranges"
+  | "type_mismatch"
+  | "unsupported"
+  | "unavailable"
+  | "refused";
+export interface OverleafConnectionDetails {
+  server: string;
+  transport: string | null;
+  publicId: string | null;
+  lastRejection: string | null;
+  pendingDocs: string[];
 }
 export interface CollabLocalCopyOffer {
   copyId: string;

@@ -1,0 +1,60 @@
+{
+  "probe": "connection-rejected-not-a-member",
+  "description": "Erin is signed in but has no access to the project.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-15",
+  "notes": [
+    "websocket: connectionRejected [{\"message\":\"not authorized\"}]",
+    "xhr-polling: connectionRejected [{\"message\":\"not authorized\"}]"
+  ],
+  "steps": [
+    {
+      "socket": {
+        "user": "erin",
+        "projectId": "6af963ebc9037022065bb53f",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 457,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 553,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"connectionRejected\",\"args\":[{\"message\":\"not authorized\"}]}"
+          },
+          {
+            "t": 553,
+            "dir": "in",
+            "frame": "0::"
+          }
+        ]
+      }
+    },
+    {
+      "socket": {
+        "user": "erin",
+        "projectId": "6af963ebc9037022065bb53f",
+        "transport": "xhr-polling",
+        "frames": [
+          {
+            "t": 1500,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 1521,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"connectionRejected\",\"args\":[{\"message\":\"not authorized\"}]}"
+          },
+          {
+            "t": 1523,
+            "dir": "in",
+            "frame": "7:::1+0"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -493,7 +493,8 @@
       "off": "Disattivato",
       "run": "Esegui il codice su questo computer"
     },
-    "sharedViewer": "Solo proprietari ed editor possono modificare queste impostazioni in un progetto condiviso."
+    "sharedViewer": "Solo proprietari ed editor possono modificare queste impostazioni in un progetto condiviso.",
+    "coauthorsChanged": "Modificato dai coautori dopo l'ultima compilazione"
   },
   "datePicker": {
     "placeholder": "Scegli una data"
@@ -1006,6 +1007,10 @@
       "notes": {
         "description": "Aggiunge Note alla barra della Home. Una nota è un file Markdown con diagrammi, grafici e formule che puoi modificare sia tu sia i tuoi agenti. Le note restano fuori dalla libreria dei progetti e ogni nota può essere collegata a un progetto. Disattivata per impostazione predefinita finché è in beta.",
         "label": "Note"
+      },
+      "overleafLive": {
+        "label": "Modifica dal vivo con Overleaf",
+        "description": "Modifica i progetti importati da Overleaf contemporaneamente ai tuoi coautori. Le modifiche compaiono su entrambi i lati mentre scrivi. Disattivata per impostazione predefinita finché è in beta."
       },
       "researchTasks": {
         "description": "Un agente lavora in autonomia su una copia del progetto e lascia a te le modifiche da rivedere. Molto instabile: le esecuzioni possono bloccarsi, fallire o lasciare modifiche da sistemare a mano, e consumano di continuo la quota del tuo provider. Aggiunge la sezione Ricerca alle Impostazioni. Disattivandola si interrompono tutte le attività in corso. Disattivata per impostazione predefinita, attivala a tuo rischio.",
@@ -1676,6 +1681,31 @@
       "allMine": "Tieni tutte le mie",
       "allTheirs": "Usa tutte quelle di Overleaf",
       "apply": "Applica e sincronizza"
+    }
+  },
+  "overleafLive": {
+    "title": "Modifica dal vivo con Overleaf",
+    "live": "Dal vivo con Overleaf",
+    "connecting": "Connessione a Overleaf…",
+    "sending": "Invio delle modifiche a Overleaf…",
+    "reconnecting": "Riconnessione a Overleaf…",
+    "pausedBadge": "Modifica dal vivo in pausa",
+    "pause": "Metti in pausa la modifica dal vivo",
+    "resume": "Riprendi la modifica dal vivo",
+    "reconnectNow": "Riconnetti ora",
+    "open": "Apri in Overleaf",
+    "share": "Condividi su Overleaf…",
+    "signIn": "Accedi…",
+    "reconnectingIn": "Nuovo tentativo tra {{seconds}} s.",
+    "notConfirmed": "Non ancora confermato da Overleaf.",
+    "copyDetails": "Copia i dettagli di connessione",
+    "detailsCopied": "Dettagli di connessione copiati",
+    "copyDetailsFailed": "Impossibile copiare i dettagli di connessione",
+    "pauseDialog": {
+      "title": "Alcune modifiche non sono ancora arrivate su Overleaf",
+      "description": "Se metti in pausa ora, restano su questo computer e vanno su Overleaf quando riprendi. La sincronizzazione Git resta disattivata fino ad allora.",
+      "keepLive": "Continua a modificare dal vivo",
+      "pauseAnyway": "Metti in pausa comunque"
     }
   },
   "stuckWindow": {

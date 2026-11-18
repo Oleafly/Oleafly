@@ -1267,6 +1267,10 @@
     "failed": "Oleafly ei voinut päivittää tiedostoa {{file}}. Yritä uudelleen.",
     "tabMark": "Muuttui levyllä. Avaa tämä välilehti ja valitse, kumman version pidät."
   },
+  "liveTab": {
+    "notOnOverleafYet": "Ei vielä Overleafissa",
+    "storedAsFile": "Overleaf tallentaa tämän tiedostona, joten muokkauksesi lähetetään, kun tallennat."
+  },
   "labels": {
     "filterPlaceholder": "Nimikkeen nimi",
     "filterLabel": "Suodata projektin nimikkeitä",

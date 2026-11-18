@@ -8,6 +8,8 @@ const api = vi.hoisted(() => ({
   overleafListProjects: vi.fn(),
   overleafSignIn: vi.fn(),
   overleafSignInWithAppCookies: vi.fn(),
+  overleafSignInBrowsers: vi.fn(),
+  overleafSignInWithBrowser: vi.fn(),
   overleafSignOut: vi.fn(),
   overleafImportProjects: vi.fn(),
 }));
@@ -62,6 +64,7 @@ function resetStore() {
     status: null,
     projects: [],
     phase: "idle",
+    signingWith: null,
     error: null,
     selected: [],
     progress: {},
@@ -72,6 +75,7 @@ function resetStore() {
 
 beforeEach(() => {
   for (const mock of Object.values(api)) mock.mockReset();
+  api.overleafSignInBrowsers.mockResolvedValue([]);
   cookies.detectBrowserCookieSources.mockReset().mockResolvedValue([]);
   cookies.importBrowserCookies.mockReset();
   files.refreshProjects.mockClear();
@@ -113,7 +117,7 @@ describe("OverleafImportView", () => {
     render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
 
     await screen.findByTestId("overleaf-sign-in-panel");
-    await user.click(await screen.findByRole("button", { name: "Use the sign-in from my browser" }));
+    await user.click(await screen.findByRole("button", { name: "Copy the sign-in from your browser" }));
     await user.click(await screen.findByLabelText(/Google Chrome/));
     await user.click(screen.getByRole("button", { name: "Review import" }));
     await user.click(screen.getByRole("button", { name: "Copy sign-in" }));
@@ -124,12 +128,37 @@ describe("OverleafImportView", () => {
     expect(api.overleafListProjects).toHaveBeenCalled();
   });
 
+  it("signs in with an installed browser, names it while waiting, then lists projects", async () => {
+    api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
+    api.overleafSignInBrowsers.mockResolvedValue([
+      { key: "firefox", name: "Firefox" },
+      { key: "chrome", name: "Google Chrome" },
+    ]);
+    let finish: (status: typeof signedIn) => void = () => {};
+    api.overleafSignInWithBrowser.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    api.overleafListProjects.mockResolvedValue({ status: signedIn, projects: PROJECTS });
+    const user = userEvent.setup();
+    render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
+    const panel = await screen.findByTestId("overleaf-sign-in-panel");
+    expect(within(panel).getByRole("combobox", { name: "Browser to sign in with" })).toHaveTextContent("Firefox");
+    await user.click(await within(panel).findByRole("button", { name: "Sign in with your browser" }));
+    expect(api.overleafSignInWithBrowser).toHaveBeenCalledWith(SERVER, "firefox");
+    expect(
+      await within(panel).findByText("Finish signing in to Overleaf in Firefox. The window closes by itself once you're in. Closing it cancels."),
+    ).toBeVisible();
+    expect(screen.getByTestId("overleaf-sign-in")).toBeDisabled();
+    expect(screen.getByTestId("overleaf-change-server")).toBeDisabled();
+    await act(async () => finish(signedIn));
+    expect(await screen.findByTestId("overleaf-import-view")).toBeInTheDocument();
+    expect(api.overleafSignIn).not.toHaveBeenCalled();
+  });
+
   it("offers no browser copy when no browser profile can be read", async () => {
     api.overleafStatus.mockResolvedValue({ server: SERVER, signedIn: false, email: null });
     render(<OverleafImportView onOpenProject={vi.fn()} onDone={vi.fn()} />);
     await screen.findByTestId("overleaf-sign-in-panel");
     await waitFor(() => expect(cookies.detectBrowserCookieSources).toHaveBeenCalled());
-    expect(screen.queryByRole("button", { name: "Use the sign-in from my browser" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Copy the sign-in from your browser" })).toBeNull();
   });
 
   it("switches to another server and back to overleaf.com", async () => {

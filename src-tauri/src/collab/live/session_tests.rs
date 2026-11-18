@@ -20,9 +20,9 @@ use super::import_tests::project;
 #[cfg(unix)]
 use super::WriterSignal;
 use super::{
-    guard, lock, pump, start, write, Active, ChangeSkippedPayload, LiveHost, MembersPayload,
-    MergeMarks, MergedAuthor, MergedFile, MergedPayload, NewDevicePayload, PresenceLeftPayload,
-    PresencePayload, RolePayload, StatusPayload, WrittenTexts, ACTIVE,
+    guard, lock, pump, start, write, Active, ChangeSkippedPayload, Live, LiveDisk, LiveHost,
+    MembersPayload, MergeMarks, MergedAuthor, MergedFile, MergedPayload, NewDevicePayload,
+    PresenceLeftPayload, PresencePayload, RolePayload, StatusPayload, WrittenTexts, ACTIVE,
 };
 use crate::collab::state::CollabState;
 use crate::folder_watch::FolderChange;
@@ -73,24 +73,26 @@ fn starting_live_again_for_a_live_project_answers() {
             let (writer, _writer) = mpsc::unbounded_channel();
             let handle = spawn_live(link.clone(), Arc::clone(&shared), events);
             let active = Arc::new(Active {
-                project_id: "already-live".to_owned(),
-                root,
+                local: LiveDisk {
+                    project_id: "already-live".to_owned(),
+                    root,
+                    disk_file: dir.path().join("disk.json"),
+                    disk: Mutex::new(disk),
+                    bases: Mutex::new(WrittenTexts::default()),
+                    host: Arc::new(SilentHost),
+                    writer,
+                    upkeep: Default::default(),
+                },
                 document_dir: dir.path().join("document"),
-                disk_file: dir.path().join("disk.json"),
                 live: shared,
                 handle,
                 link,
-                disk: Mutex::new(disk),
-                host: Arc::new(SilentHost),
-                writer,
                 account_id: AccountId::new_v7(),
                 quiet_merge: AtomicBool::new(false),
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
-                bases: Mutex::new(WrittenTexts::default()),
-                upkeep: Default::default(),
             });
-            *guard(&ACTIVE) = Some(Arc::clone(&active));
+            *guard(&ACTIVE) = Some(Live::Server(Arc::clone(&active)));
             let again = start(&state, Arc::new(SilentHost), "already-live").await;
             *guard(&ACTIVE) = None;
             active.handle.stop();
@@ -207,22 +209,24 @@ fn the_pump_forwards_people_changes_and_lets_go_when_access_ended() {
         let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
         let host = Arc::new(EndingHost::default());
         let active = Arc::new(Active {
-            project_id: "ending".to_owned(),
-            root,
+            local: LiveDisk {
+                project_id: "ending".to_owned(),
+                root,
+                disk_file: dir.path().join("disk.json"),
+                disk: Mutex::new(disk),
+                bases: Mutex::new(WrittenTexts::default()),
+                host: Arc::clone(&host) as Arc<dyn LiveHost>,
+                writer,
+                upkeep: Default::default(),
+            },
             document_dir: dir.path().join("document"),
-            disk_file: dir.path().join("disk.json"),
             live: shared,
             handle,
             link,
-            disk: Mutex::new(disk),
-            host: Arc::clone(&host) as Arc<dyn LiveHost>,
-            writer,
             account_id: AccountId::new_v7(),
             quiet_merge: AtomicBool::new(false),
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
-            bases: Mutex::new(WrittenTexts::default()),
-            upkeep: Default::default(),
         });
         let (events, receiver) = mpsc::unbounded_channel();
         let pumping = tokio::spawn(pump(Arc::downgrade(&active), receiver, paths.clone()));
@@ -296,24 +300,26 @@ fn a_session_the_spent_engine_ends_keeps_its_project_and_stays_stopped() {
         let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
         let host = Arc::new(EndingHost::default());
         let active = Arc::new(Active {
-            project_id: "spent".to_owned(),
-            root,
+            local: LiveDisk {
+                project_id: "spent".to_owned(),
+                root,
+                disk_file: dir.path().join("disk.json"),
+                disk: Mutex::new(disk),
+                bases: Mutex::new(WrittenTexts::default()),
+                host: Arc::clone(&host) as Arc<dyn LiveHost>,
+                writer,
+                upkeep: Default::default(),
+            },
             document_dir: dir.path().join("document"),
-            disk_file: dir.path().join("disk.json"),
             live: shared,
             handle,
             link,
-            disk: Mutex::new(disk),
-            host: Arc::clone(&host) as Arc<dyn LiveHost>,
-            writer,
             account_id: AccountId::new_v7(),
             quiet_merge: AtomicBool::new(false),
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
-            bases: Mutex::new(WrittenTexts::default()),
-            upkeep: Default::default(),
         });
-        *guard(&ACTIVE) = Some(Arc::clone(&active));
+        *guard(&ACTIVE) = Some(Live::Server(Arc::clone(&active)));
         let (events, receiver) = mpsc::unbounded_channel();
         let pumping = tokio::spawn(pump(Arc::downgrade(&active), receiver, paths.clone()));
         events
@@ -477,22 +483,24 @@ fn the_pump_forwards_new_devices_and_merges_with_their_authors_and_review_marks(
         let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
         let host = Arc::new(RecordingHost::default());
         let active = Arc::new(Active {
-            project_id: "reviewed".to_owned(),
-            root,
+            local: LiveDisk {
+                project_id: "reviewed".to_owned(),
+                root,
+                disk_file: dir.path().join("disk.json"),
+                disk: Mutex::new(disk),
+                bases: Mutex::new(WrittenTexts::default()),
+                host: Arc::clone(&host) as Arc<dyn LiveHost>,
+                writer,
+                upkeep: Default::default(),
+            },
             document_dir: dir.path().join("document"),
-            disk_file: dir.path().join("disk.json"),
             live: shared,
             handle,
             link,
-            disk: Mutex::new(disk),
-            host: Arc::clone(&host) as Arc<dyn LiveHost>,
-            writer,
             account_id: AccountId::new_v7(),
             quiet_merge: AtomicBool::new(false),
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
-            bases: Mutex::new(WrittenTexts::default()),
-            upkeep: Default::default(),
         });
         let (events, receiver) = mpsc::unbounded_channel();
         let pumping = tokio::spawn(pump(
@@ -584,22 +592,24 @@ fn the_pump_tells_the_window_about_a_change_it_had_to_skip() {
         let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
         let host = Arc::new(RecordingHost::default());
         let active = Arc::new(Active {
-            project_id: "skipping".to_owned(),
-            root,
+            local: LiveDisk {
+                project_id: "skipping".to_owned(),
+                root,
+                disk_file: dir.path().join("disk.json"),
+                disk: Mutex::new(disk),
+                bases: Mutex::new(WrittenTexts::default()),
+                host: Arc::clone(&host) as Arc<dyn LiveHost>,
+                writer,
+                upkeep: Default::default(),
+            },
             document_dir: dir.path().join("document"),
-            disk_file: dir.path().join("disk.json"),
             live: shared,
             handle,
             link,
-            disk: Mutex::new(disk),
-            host: Arc::clone(&host) as Arc<dyn LiveHost>,
-            writer,
             account_id: AccountId::new_v7(),
             quiet_merge: AtomicBool::new(false),
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
-            bases: Mutex::new(WrittenTexts::default()),
-            upkeep: Default::default(),
         });
         let (events, receiver) = mpsc::unbounded_channel();
         let pumping = tokio::spawn(pump(
@@ -714,22 +724,24 @@ fn the_pump_announces_comments_that_arrive_from_others() {
         let handle = spawn_live(link.clone(), Arc::clone(&shared), unused);
         let host = Arc::new(CommentHost::default());
         let active = Arc::new(Active {
-            project_id: "commented".to_owned(),
-            root,
+            local: LiveDisk {
+                project_id: "commented".to_owned(),
+                root,
+                disk_file: dir.path().join("disk.json"),
+                disk: Mutex::new(disk),
+                bases: Mutex::new(WrittenTexts::default()),
+                host: Arc::clone(&host) as Arc<dyn LiveHost>,
+                writer,
+                upkeep: Default::default(),
+            },
             document_dir: dir.path().join("document"),
-            disk_file: dir.path().join("disk.json"),
             live: shared,
             handle,
             link,
-            disk: Mutex::new(disk),
-            host: Arc::clone(&host) as Arc<dyn LiveHost>,
-            writer,
             account_id: AccountId::new_v7(),
             quiet_merge: AtomicBool::new(false),
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
-            bases: Mutex::new(WrittenTexts::default()),
-            upkeep: Default::default(),
         });
         let (events, receiver) = mpsc::unbounded_channel();
         let pumping = tokio::spawn(pump(
@@ -812,22 +824,24 @@ fn blocked_save() -> BlockedSave {
         let (writer, writer_rx) = mpsc::unbounded_channel();
         let handle = spawn_live(link.clone(), Arc::clone(&shared), events);
         let active = Arc::new(Active {
-            project_id: "saving".to_owned(),
-            root,
+            local: LiveDisk {
+                project_id: "saving".to_owned(),
+                root,
+                disk_file: dir.path().join("disk.json"),
+                disk: Mutex::new(disk),
+                bases: Mutex::new(WrittenTexts::default()),
+                host: Arc::new(SilentHost),
+                writer,
+                upkeep: Default::default(),
+            },
             document_dir,
-            disk_file: dir.path().join("disk.json"),
             live: shared,
             handle,
             link,
-            disk: Mutex::new(disk),
-            host: Arc::new(SilentHost),
-            writer,
             account_id: AccountId::new_v7(),
             quiet_merge: AtomicBool::new(false),
             waiting: AtomicBool::new(false),
             last_status: Mutex::new(LiveStatus::Connecting),
-            bases: Mutex::new(WrittenTexts::default()),
-            upkeep: Default::default(),
         });
         (active, (events_rx, writer_rx))
     });
@@ -1145,9 +1159,10 @@ fn a_new_file_the_app_writes_under_a_name_the_layout_changes_is_written_where_th
 
 fn fail_main(rig: &write::rig::LiveRig, times: usize) {
     let active = rig.active();
-    let layout = guard(&active.disk).layout.clone();
+    let layout = guard(&active.local.disk).layout.clone();
     for _ in 0..times {
-        active.settle_unwritten(
+        active.local.settle_unwritten(
+            &*active,
             &layout,
             super::unwritten::Settled {
                 failed: vec![(
@@ -1164,7 +1179,7 @@ fn fail_main(rig: &write::rig::LiveRig, times: usize) {
 fn a_file_that_keeps_failing_stays_marked_and_waits_longer_after_each_failure() {
     let (_dir, _root, _host, rig) = watched_rig("still-failing", &[("main.tex", "abc")]);
     let active = rig.active();
-    let main = guard(&active.disk)
+    let main = guard(&active.local.disk)
         .layout
         .iter()
         .find(|(_, placed)| placed.path == "main.tex")
@@ -1179,6 +1194,7 @@ fn a_file_that_keeps_failing_stays_marked_and_waits_longer_after_each_failure() 
             "attempt {attempt} was not kept for another try"
         );
         let wait = active
+            .local
             .next_try_in("main.tex")
             .expect("the file waits for its next try");
         let backoff = super::unwritten::backoff(attempt);
@@ -1209,7 +1225,7 @@ fn a_file_another_program_holds_costs_a_flush_one_quick_check() {
         "the held file cost the flush {:?}",
         started.elapsed()
     );
-    assert_eq!(active.tries_of("main.tex"), 2);
+    assert_eq!(active.local.tries_of("main.tex"), 2);
     drop(holder);
     tauri::async_runtime::block_on(active.write_out()).unwrap();
     assert_eq!(
@@ -1249,7 +1265,7 @@ fn a_file_that_cannot_be_written_waits_for_its_next_try_while_others_are_written
     rig.remote_new_in("figs", "a.tex", "A");
     let active = rig.active();
     tauri::async_runtime::block_on(active.write_out_paced(false)).unwrap();
-    assert_eq!(active.tries_of("figs/a.tex"), 1);
+    assert_eq!(active.local.tries_of("figs/a.tex"), 1);
     for round in 0..4 {
         let text = format!("abc {round}");
         rig.remote("main.tex", &text);
@@ -1260,12 +1276,16 @@ fn a_file_that_cannot_be_written_waits_for_its_next_try_while_others_are_written
         );
     }
     assert_eq!(
-        active.tries_of("figs/a.tex"),
+        active.local.tries_of("figs/a.tex"),
         1,
         "the file that cannot be written was tried on every pass"
     );
     tauri::async_runtime::block_on(active.write_out()).unwrap();
-    assert_eq!(active.tries_of("figs/a.tex"), 2, "a flush tries it once");
+    assert_eq!(
+        active.local.tries_of("figs/a.tex"),
+        2,
+        "a flush tries it once"
+    );
 }
 
 #[cfg(unix)]
@@ -1408,7 +1428,7 @@ fn a_viewer_write_is_refused_as_read_only_and_never_reaches_the_document() {
 fn closing_an_older_editor_channel_leaves_the_newer_one_open() {
     let (_dir, _root, _host, rig) = watched_rig("channels", &[("main.tex", "abc")]);
     let _live = rig.go_live();
-    let quiet: oleafly_collab::live::DocSink = Arc::new(|_| {});
+    let quiet: oleafly_ot::DocSink = Arc::new(|_| {});
     let first = super::editor::doc_open("channels", "main.tex", Arc::clone(&quiet))
         .unwrap()
         .expect("main.tex opens");
@@ -1476,7 +1496,7 @@ fn files_waiting_on_a_folder_move_are_written_once_the_folder_has_moved() {
     rig.settle();
     assert!(root.join("figs").is_dir());
     let active = rig.active();
-    let figs = guard(&active.disk)
+    let figs = guard(&active.local.disk)
         .layout
         .iter()
         .find(|(_, placed)| placed.path == "figs")
@@ -1497,7 +1517,7 @@ fn files_waiting_on_a_folder_move_are_written_once_the_folder_has_moved() {
         std::fs::read_to_string(root.join("figs/a.tex")).unwrap(),
         "A"
     );
-    assert!(guard(&active.disk).owed.is_empty());
+    assert!(guard(&active.local.disk).owed.is_empty());
 }
 
 #[test]
@@ -1509,7 +1529,7 @@ fn a_delete_and_a_rename_by_someone_else_wait_for_an_owed_move_and_then_apply() 
     rig.settle();
     assert!(root.join("figs/a.tex").is_file() && root.join("figs/b.tex").is_file());
     let active = rig.active();
-    let figs = guard(&active.disk)
+    let figs = guard(&active.local.disk)
         .layout
         .iter()
         .find(|(_, placed)| placed.path == "figs")
@@ -1517,7 +1537,7 @@ fn a_delete_and_a_rename_by_someone_else_wait_for_an_owed_move_and_then_apply() 
         .unwrap();
     std::fs::rename(root.join("figs"), root.join("old-figs")).unwrap();
     {
-        let mut disk = guard(&active.disk);
+        let mut disk = guard(&active.local.disk);
         for path in ["figs/a.tex", "figs/b.tex"] {
             let hash = disk.hashes.remove(path).unwrap();
             disk.hashes.insert(format!("old-{path}"), hash);
@@ -1547,7 +1567,7 @@ fn a_delete_and_a_rename_by_someone_else_wait_for_an_owed_move_and_then_apply() 
     let nodes = rig.paths().len();
     tauri::async_runtime::block_on(active.import_paths(None)).unwrap();
     assert_eq!(rig.paths().len(), nodes, "{:?}", rig.paths());
-    assert!(guard(&active.disk).owed.is_empty());
+    assert!(guard(&active.local.disk).owed.is_empty());
 }
 
 #[test]
@@ -1557,7 +1577,7 @@ fn an_edit_made_while_a_folder_move_was_owed_reaches_the_document_after_it() {
     rig.remote_new_in("figs", "a.tex", "A");
     rig.settle();
     let active = rig.active();
-    let figs = guard(&active.disk)
+    let figs = guard(&active.local.disk)
         .layout
         .iter()
         .find(|(_, placed)| placed.path == "figs")
@@ -1565,7 +1585,7 @@ fn an_edit_made_while_a_folder_move_was_owed_reaches_the_document_after_it() {
         .unwrap();
     std::fs::rename(root.join("figs"), root.join("old-figs")).unwrap();
     {
-        let mut disk = guard(&active.disk);
+        let mut disk = guard(&active.local.disk);
         let hash = disk.hashes.remove("figs/a.tex").unwrap();
         disk.hashes.insert("old-figs/a.tex".to_owned(), hash);
     }
@@ -1686,15 +1706,15 @@ fn an_index_saved_outside_a_pass_is_never_taken_for_the_one_a_pass_would_write()
     let active = rig.active();
     lock(&active.live).mark_all_dirty().unwrap();
     rig.settle();
-    let on_disk = || crate::collab::disk::DiskState::load(&active.disk_file).hashes;
-    let passed = guard(&active.disk).hashes.clone();
+    let on_disk = || crate::collab::disk::DiskState::load(&active.local.disk_file).hashes;
+    let passed = guard(&active.local.disk).hashes.clone();
     assert_eq!(on_disk(), passed);
-    guard(&active.disk)
+    guard(&active.local.disk)
         .hashes
         .insert("extra.tex".to_owned(), "1234".to_owned());
     active.save_now();
     assert!(on_disk().contains_key("extra.tex"));
-    guard(&active.disk).hashes.remove("extra.tex");
+    guard(&active.local.disk).hashes.remove("extra.tex");
     lock(&active.live).mark_all_dirty().unwrap();
     rig.settle();
     assert_eq!(on_disk(), passed);
@@ -1706,7 +1726,7 @@ fn quitting_while_a_stop_is_still_writing_waits_for_it() {
     let _live = rig.go_live();
     let (main, rev) = rig.open("main.tex");
     let active = rig.active();
-    let held = guard(&active.disk);
+    let held = guard(&active.local.disk);
     rig.typed(&main, rev, " typed as the session stops");
     let stopping = std::thread::spawn(|| {
         tauri::async_runtime::block_on(super::stop("quit-mid-stop"));
@@ -1843,4 +1863,25 @@ fn typing_saves_the_document_and_writes_the_file_about_once_a_second() {
     assert!(counted.writes <= bound, "{counted:?} in {elapsed:?}");
     assert!(counted.indexes <= bound, "{counted:?} in {elapsed:?}");
     assert_eq!(rig.saved_text("main.tex"), Some(format!("abc{typed}")));
+}
+
+#[test]
+fn live_for_returns_the_server_backend_only_for_its_project() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path().join("project");
+    std::fs::create_dir_all(&root).unwrap();
+    let rig = super::write::rig::LiveRig::start("slot-project", &root, &[("main.tex", "abc")]);
+    assert!(super::live_for("slot-project").is_none());
+    let live = rig.go_live();
+    let slot = super::live_for("slot-project").expect("the project is live");
+    assert_eq!(slot.project_id(), "slot-project");
+    let Live::Server(active) = slot else {
+        panic!("a shared project goes live on the server backend");
+    };
+    assert!(Arc::ptr_eq(&active, &rig.active()));
+    assert!(super::live_for("another-project").is_none());
+    assert!(super::active_for("slot-project").is_some_and(|found| Arc::ptr_eq(&found, &active)));
+    assert!(super::active_for("another-project").is_none());
+    drop(live);
+    assert!(super::live_for("slot-project").is_none());
 }

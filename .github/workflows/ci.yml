@@ -537,8 +537,8 @@ jobs:
         with:
           toolchain: 1.89.0
 
-      - name: Check the CLI, online import and research against their Rust 1.89 MSRV
-        run: cargo +1.89.0 check -p oleafly-cli -p oleafly-online -p oleafly-research --all-targets
+      - name: Check the CLI, online import, research and the shared OT and network crates against their Rust 1.89 MSRV
+        run: cargo +1.89.0 check -p oleafly-cli -p oleafly-online -p oleafly-research -p oleafly-ot -p oleafly-net --all-targets
 
   server-web:
     name: Server with browser access
@@ -982,9 +982,13 @@ jobs:
           VITE_E2E_HOOKS: "1"
         run: pnpm tauri build --debug --features e2e-testing --bundles app --config src-tauri/tauri.e2e.conf.json
 
+      - name: Build the mock Overleaf server
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        run: cargo build -p oleafly-online --features test-support --example e2e_overleaf
+
       - name: Pack the app bundle
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
-        run: tar -czf oleafly-e2e-macos.tar.gz -C src-tauri/target/debug/bundle/macos Oleafly.app
+        run: tar -czf oleafly-e2e-macos.tar.gz -C src-tauri/target/debug/bundle/macos Oleafly.app -C "$GITHUB_WORKSPACE/src-tauri/target/debug/examples" e2e_overleaf
 
       - name: Save the packed app to the cache
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
@@ -1052,7 +1056,9 @@ jobs:
         id: e2e-app-cache
         uses: actions/cache/restore@v6
         with:
-          path: oleafly-e2e-linux.deb
+          path: |
+            oleafly-e2e-linux.deb
+            e2e_overleaf
           key: ${{ steps.e2e-app-key.outputs.key }}
 
       # ubuntu-24.04 runners differ in disk size: some had 84 GB free, others
@@ -1162,6 +1168,12 @@ jobs:
           VITE_E2E_HOOKS: "1"
         run: pnpm tauri build --debug --features e2e-testing --bundles deb --config src-tauri/tauri.e2e.conf.json
 
+      - name: Build the mock Overleaf server
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        run: |
+          cargo build -p oleafly-online --features test-support --example e2e_overleaf
+          cp src-tauri/target/debug/examples/e2e_overleaf e2e_overleaf
+
       - name: Report disk use after the build
         if: ${{ !cancelled() && steps.e2e-app-cache.outputs.cache-hit != 'true' }}
         continue-on-error: true
@@ -1212,14 +1224,18 @@ jobs:
         if: steps.e2e-app-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v6
         with:
-          path: oleafly-e2e-linux.deb
+          path: |
+            oleafly-e2e-linux.deb
+            e2e_overleaf
           key: ${{ steps.e2e-app-key.outputs.key }}
 
       - name: Upload the app package
         uses: actions/upload-artifact@v7
         with:
           name: e2e-app-linux
-          path: oleafly-e2e-linux.deb
+          path: |
+            oleafly-e2e-linux.deb
+            e2e_overleaf
           retention-days: 1
 
   e2e:
@@ -1266,6 +1282,7 @@ jobs:
           mkdir -p e2e-app
           tar -xzf oleafly-e2e-macos.tar.gz -C e2e-app
           test -x "e2e-app/Oleafly.app/Contents/MacOS/Oleafly"
+          test -x "e2e-app/e2e_overleaf"
 
       # First compiles fetch LaTeX packages over the network, so the suite's
       # early compiles time out if the runner's Tectonic cache is cold. Restore
@@ -1321,6 +1338,7 @@ jobs:
         # bounds the complete suite to 50 minutes.
         env:
           OLEAFLY_E2E_APP_BINARY: ${{ github.workspace }}/e2e-app/Oleafly.app/Contents/MacOS/Oleafly
+          OLEAFLY_E2E_OVERLEAF_STACK: ${{ github.workspace }}/e2e-app/e2e_overleaf
           # Pinned so a failure is reproducible; blank on the nightly so the
           # random-seed exploration still happens off the blocking path. Written
           # in this order because an empty string is falsy in a GitHub
@@ -1427,6 +1445,11 @@ jobs:
           fi
           echo "app binary: $app_bin"
           echo "OLEAFLY_E2E_APP_BINARY=$app_bin" >> "$GITHUB_ENV"
+
+      - name: Point the suite at the mock Overleaf server
+        run: |
+          chmod +x e2e_overleaf
+          echo "OLEAFLY_E2E_OVERLEAF_STACK=$PWD/e2e_overleaf" >> "$GITHUB_ENV"
 
       # Pre-warm still uses the repo's own Tectonic sidecar rather than the one
       # inside the package: both fill the same ~/.cache/Tectonic, and this keeps
@@ -1562,6 +1585,9 @@ jobs:
       - name: Build the headless collaboration peer
         run: cargo build -p oleafly-collab --example e2e_peer
 
+      - name: Build the scripted sign-in browser
+        run: cargo build -p oleafly-online --example fake_browser
+
       - name: Cache Playwright browser
         uses: actions/cache@v6
         with:
@@ -1581,6 +1607,13 @@ jobs:
           OLEAFLY_E2E_COLLAB_STACK: ${{ github.workspace }}/src-tauri/target/debug/examples/e2e_peer
           OLEAFLY_E2E_BROWSER: ${{ github.workspace }}/scripts/e2e-collab-browser.sh
         run: xvfb-run -a ./scripts/e2e.sh e2e/tests/109-live-collaboration-peer.spec.ts
+
+      - name: Run the browser sign-in spec
+        env:
+          WEBKIT_DISABLE_COMPOSITING_MODE: "1"
+          WEBKIT_DISABLE_DMABUF_RENDERER: "1"
+          OLEAFLY_E2E_SIGN_IN_BROWSER: ${{ github.workspace }}/src-tauri/target/debug/examples/fake_browser
+        run: xvfb-run -a ./scripts/e2e.sh e2e/tests/146-online-browser-sign-in.spec.ts
 
       - name: Upload failure artifacts
         if: always()
@@ -1811,6 +1844,13 @@ jobs:
           VITE_E2E_HOOKS: "1"
         run: pnpm tauri build --debug --features e2e-testing --no-bundle --config src-tauri/tauri.e2e.conf.json
 
+      - name: Build the mock Overleaf server
+        if: steps.e2e-app-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          cargo build -p oleafly-online --features test-support --example e2e_overleaf
+          cp src-tauri/target/debug/examples/e2e_overleaf.exe src-tauri/target/debug/e2e_overleaf.exe
+
       # Pack everything the debug build placed beside the executable: the app,
       # the sidecar executables, any DLLs, and the resources directory. Cargo's
       # own directories and the debug symbols stay out. The listing is printed
@@ -1954,6 +1994,7 @@ jobs:
         # run instead of one per round.
         env:
           OLEAFLY_E2E_APP_BINARY: ${{ steps.unpack-app.outputs.binary }}
+          OLEAFLY_E2E_OVERLEAF_STACK: ${{ github.workspace }}/e2e-app/e2e_overleaf.exe
           E2E_INTERACTION_SEED: ${{ github.event_name != 'schedule' && '62024' || '' }}
         run: powershell -File scripts/e2e.ps1 --shard=${{ matrix.shard }}/8 --suite-max-failures=6 --max-failures=10 --global-timeout=3000000
 

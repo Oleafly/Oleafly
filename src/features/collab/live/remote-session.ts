@@ -43,6 +43,7 @@ export class RemoteDocumentSession implements DocumentSession {
   private holding = false;
   private generation = 0;
   private current: RemoteSessionPhase = "opening";
+  private detachReason: string | null = null;
   private readonly listeners = new Set<(change: RemoteChange) => void>();
   private readonly moveListeners = new Set<(path: string) => void>();
   private waiters: (() => void)[] = [];
@@ -187,7 +188,7 @@ export class RemoteDocumentSession implements DocumentSession {
     this.setPhase("open");
     for (const message of queued) {
       if (generation !== this.generation) return;
-      if (message.rev > opened.rev) this.receive(message);
+      if (message.kind === "detached" || message.rev > opened.rev) this.receive(message);
     }
     this.settle();
   }
@@ -276,10 +277,21 @@ export class RemoteDocumentSession implements DocumentSession {
     try {
       if (message.kind === "ack") this.acknowledge(message.rev, message.length);
       else if (message.kind === "remote") this.remote(message.rev, message.op, message.length);
+      else if (message.kind === "detached") this.detached(message.reason);
       else this.reset(message.rev, message.text);
     } catch {
       this.resync();
     }
+  }
+
+  private detached(reason: string): void {
+    this.detachReason = reason;
+    this.setPhase("detached");
+    this.settle();
+  }
+
+  get detachedBecause(): string | null {
+    return this.detachReason;
   }
 
   private acknowledge(rev: number, length: number): void {

@@ -104,7 +104,7 @@ export function Avatar({
       data-slot="avatar"
       aria-hidden
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-full font-bold text-white",
+        "flex shrink-0 items-center justify-center rounded-full font-bold whitespace-nowrap text-white",
         BOX[size],
         TEXT[size],
         "leading-none",

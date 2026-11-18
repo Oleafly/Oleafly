@@ -491,7 +491,8 @@
       "off": "關閉",
       "run": "在這台電腦上執行程式碼"
     },
-    "sharedViewer": "在共享專案中，只有擁有者和編輯者可以變更這些設定。"
+    "sharedViewer": "在共享專案中，只有擁有者和編輯者可以變更這些設定。",
+    "coauthorsChanged": "自上次編譯以來共同作者有變更"
   },
   "datePicker": {
     "placeholder": "選擇日期"
@@ -978,6 +979,10 @@
       "notes": {
         "description": "在首頁 Dock 中加入「筆記」。筆記是一個 Markdown 檔案，可以包含圖表、統計圖與數學式，你和你的代理程式都能編輯。筆記不會出現在專案庫中，每篇筆記都可以連結到一個專案。仍在 beta 階段，預設為關閉。",
         "label": "筆記"
+      },
+      "overleafLive": {
+        "label": "與 Overleaf 即時編輯",
+        "description": "與共同作者同時編輯從 Overleaf 匯入的專案。你輸入時，變更會在雙方同步顯示。目前仍處於測試階段，預設為關閉。"
       },
       "researchTasks": {
         "description": "代理程式會在專案的副本中自行運作，並把修改留給你審閱。極不穩定：執行可能卡住、失敗，或留下需要手動處理的修改，而且全程都會用掉你的供應商額度。會在「設定」中新增「研究」分區。關閉後會停止所有執行中的任務。預設為關閉，開啟後風險自負。",
@@ -1606,6 +1611,31 @@
       "allMine": "全部保留我的",
       "allTheirs": "全部使用 Overleaf 的",
       "apply": "套用並同步"
+    }
+  },
+  "overleafLive": {
+    "title": "與 Overleaf 即時編輯",
+    "live": "與 Overleaf 即時同步",
+    "connecting": "正在連線到 Overleaf…",
+    "sending": "正在向 Overleaf 傳送變更…",
+    "reconnecting": "正在重新連線到 Overleaf…",
+    "pausedBadge": "即時編輯已暫停",
+    "pause": "暫停即時編輯",
+    "resume": "恢復即時編輯",
+    "reconnectNow": "立即重新連線",
+    "open": "在 Overleaf 中開啟",
+    "share": "在 Overleaf 上分享…",
+    "signIn": "登入…",
+    "reconnectingIn": "{{seconds}} 秒後重試。",
+    "notConfirmed": "Overleaf 尚未確認。",
+    "copyDetails": "複製連線詳細資料",
+    "detailsCopied": "已複製連線詳細資料",
+    "copyDetailsFailed": "無法複製連線詳細資料",
+    "pauseDialog": {
+      "title": "部分變更尚未同步到 Overleaf",
+      "description": "如果現在暫停，這些變更會保留在這台電腦上，並在你恢復後傳送到 Overleaf。在此之前，Git 同步會保持關閉。",
+      "keepLive": "繼續即時編輯",
+      "pauseAnyway": "仍要暫停"
     }
   },
   "stuckWindow": {

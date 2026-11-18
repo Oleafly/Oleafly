@@ -9,12 +9,14 @@ use oleafly_collab_protocol::auth::SessionEndReason;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 
+use super::downloads::FigureHost;
 use super::host::LiveHost;
+use super::live_disk::writer_loop;
 use super::payloads::{LiveInfo, RolePayload, StatusPayload};
 use super::pump::pump;
 use super::session::{
-    active_for, guard, io, lock, not_live, writer_loop, Active, WriterSignal, ACTIVE, FRESH_JOINS,
-    LIFECYCLE,
+    active_for, guard, io, live_for, lock, not_live, Active, Live, LiveDisk, WriterSignal, ACTIVE,
+    FRESH_JOINS, LIFECYCLE,
 };
 use super::{local_copy, settings, sync_hold, uploads};
 use crate::collab::commands::signed_out;
@@ -48,14 +50,17 @@ async fn start_locked(
         let role = lock(&active.live).role();
         let status = guard(&active.last_status).clone();
         active.emit_status(status);
-        active.host.role(RolePayload {
+        active.local.host.role(RolePayload {
             project_id: project_id.to_owned(),
             role,
+            tracking: false,
+            restricted: false,
+            deleted_externally: false,
         });
         return Ok(LiveInfo {
             role,
-            account_id: active.account_id,
-            device_id: active.link.device_id,
+            account_id: active.account_id.to_string(),
+            device_id: active.link.device_id.to_string(),
         });
     }
     stop_any().await;
@@ -132,32 +137,37 @@ async fn start_locked(
     let handle = spawn_live(link.clone(), Arc::clone(&shared), events_tx);
     let fresh = guard(&FRESH_JOINS).remove(project_id);
     let active = Arc::new(Active {
-        project_id: project_id.to_owned(),
-        root,
+        local: LiveDisk {
+            project_id: project_id.to_owned(),
+            root,
+            disk_file,
+            disk: Mutex::new(disk),
+            bases: Mutex::new(bases),
+            host,
+            writer: writer_tx,
+            upkeep: Default::default(),
+        },
         document_dir,
-        disk_file,
         live: Arc::clone(&shared),
         handle,
         link,
-        disk: Mutex::new(disk),
-        host,
-        writer: writer_tx,
         account_id: tokens.account_id,
         quiet_merge: AtomicBool::new(fresh),
         waiting: AtomicBool::new(false),
         last_status: Mutex::new(LiveStatus::Connecting),
-        bases: Mutex::new(bases),
-        upkeep: Default::default(),
     });
     lock(&shared).mark_all_dirty()?;
     tauri::async_runtime::spawn(writer_loop(Arc::downgrade(&active), writer_rx));
     tauri::async_runtime::spawn(pump(Arc::downgrade(&active), events_rx, paths));
     active.kick();
-    *guard(&ACTIVE) = Some(Arc::clone(&active));
-    active.host.unwritten(super::unwritten::UnwrittenPayload {
-        project_id: project_id.to_owned(),
-        files: Vec::new(),
-    });
+    *guard(&ACTIVE) = Some(Live::Server(Arc::clone(&active)));
+    active
+        .local
+        .host
+        .unwritten(super::unwritten::UnwrittenPayload {
+            project_id: project_id.to_owned(),
+            files: Vec::new(),
+        });
     active.announce_new_names(renamed);
     settings::schedule(&active);
     uploads::attach(&active);
@@ -170,26 +180,30 @@ async fn start_locked(
     }
     Ok(LiveInfo {
         role,
-        account_id: tokens.account_id,
-        device_id: tokens.device_id,
+        account_id: tokens.account_id.to_string(),
+        device_id: tokens.device_id.to_string(),
     })
 }
 
-async fn finish(active: Arc<Active>) {
+async fn finish(live: Live) {
+    let active = match live {
+        Live::Server(active) => active,
+        Live::Overleaf(live) => return live.finish().await,
+    };
     let (done, wait) = oneshot::channel();
-    let _ = active.writer.send(WriterSignal::Flush(done));
+    let _ = active.local.writer.send(WriterSignal::Flush(done));
     let _ = tokio::time::timeout(Duration::from_secs(5), wait).await;
     active.close_figures();
     active.save_now();
-    active.announce_written();
+    active.local.announce_written();
     active.handle.stop();
-    crate::folder_watch::release_live(&active.project_id);
+    crate::folder_watch::release_live(&active.local.project_id);
 }
 
-async fn stop_any() {
+pub(super) async fn stop_any() {
     let previous = guard(&ACTIVE).take();
-    if let Some(active) = previous {
-        finish(active).await;
+    if let Some(live) = previous {
+        finish(live).await;
     }
 }
 
@@ -199,11 +213,19 @@ pub fn finish_for_quit(wait: Duration) {
     tauri::async_runtime::block_on(async move {
         let started = Instant::now();
         let _lifecycle = tokio::time::timeout(wait, LIFECYCLE.lock()).await.ok();
-        let Some(active) = guard(&ACTIVE).take() else {
+        let Some(live) = guard(&ACTIVE).take() else {
             return;
         };
+        let active = match live {
+            Live::Server(active) => active,
+            Live::Overleaf(live) => {
+                let left = wait.saturating_sub(started.elapsed());
+                let _ = tokio::time::timeout(left, live.quit(left)).await;
+                return;
+            }
+        };
         let (done, flushed) = oneshot::channel();
-        let _ = active.writer.send(WriterSignal::Flush(done));
+        let _ = active.local.writer.send(WriterSignal::Flush(done));
         let _ = tokio::time::timeout(wait.saturating_sub(started.elapsed()), flushed).await;
         active.close_figures();
         active.save_now();
@@ -217,15 +239,15 @@ pub async fn stop(project_id: &str) {
         let mut slot = guard(&ACTIVE);
         if slot
             .as_ref()
-            .is_some_and(|active| active.project_id == project_id)
+            .is_some_and(|live| live.project_id() == project_id)
         {
             slot.take()
         } else {
             None
         }
     };
-    if let Some(active) = previous {
-        finish(active).await;
+    if let Some(live) = previous {
+        finish(live).await;
     }
 }
 
@@ -235,7 +257,7 @@ pub async fn resumed_if_failed<T, E>(
     project_id: &str,
     work: impl std::future::Future<Output = Result<T, E>>,
 ) -> (Result<T, E>, bool) {
-    let was_live = active_for(project_id).is_some();
+    let was_live = live_for(project_id).is_some();
     let done = work.await;
     let restarted = done.is_err() && was_live && start_if_idle(state, host, project_id).await;
     (done, restarted)
@@ -259,20 +281,42 @@ async fn start_if_idle(state: &CollabState, host: Arc<dyn LiveHost>, project_id:
 
 pub fn reconnect_now() -> bool {
     let running = guard(&ACTIVE).clone();
-    running.is_some_and(|active| {
-        active.handle.reconnect_now();
-        true
+    running.is_some_and(|live| match live {
+        Live::Server(active) => {
+            active.handle.reconnect_now();
+            true
+        }
+        Live::Overleaf(live) => {
+            live.reconnect_now();
+            true
+        }
     })
+}
+
+pub fn window_focused(focused: bool) {
+    if let Some(Live::Overleaf(live)) = guard(&ACTIVE).clone() {
+        live.set_focused(focused);
+    }
 }
 
 const FIGURE_WAIT: Duration = Duration::from_secs(5);
 
 pub async fn flush(project_id: &str, figures: bool) {
-    let Some(active) = active_for(project_id) else {
+    let Some(live) = live_for(project_id) else {
         return;
     };
+    let active = match live {
+        Live::Server(active) => active,
+        Live::Overleaf(live) => {
+            live.flush().await;
+            if figures {
+                live.wait_for_figures(FIGURE_WAIT).await;
+            }
+            return;
+        }
+    };
     let (done, wait) = oneshot::channel();
-    let _ = active.writer.send(WriterSignal::Flush(done));
+    let _ = active.local.writer.send(WriterSignal::Flush(done));
     let _ = tokio::time::timeout(Duration::from_secs(10), wait).await;
     if figures {
         active.wait_for_figures(FIGURE_WAIT).await;

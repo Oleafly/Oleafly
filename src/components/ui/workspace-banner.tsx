@@ -34,6 +34,10 @@ export function WorkspaceBanner({
   );
 }
 
+export function WorkspaceBannerAlert({ className, ...props }: Readonly<HTMLAttributes<HTMLParagraphElement>>) {
+  return <p {...props} role="alert" className={cn("basis-full pb-1 pl-5.5 select-text text-destructive dark:text-red-400", className)} />;
+}
+
 export function WorkspaceBannerButton({
   tone,
   className,

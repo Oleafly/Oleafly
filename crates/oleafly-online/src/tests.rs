@@ -7,12 +7,12 @@ use crate::client::{self, Http};
 use crate::error::OnlineErrorKind;
 use crate::html;
 use crate::projects::{self, imported_from, list_projects, ImportedFrom, RemoteProject};
+use crate::realtime::project::{self, ProjectSettings};
 use crate::service::{DEFAULT_SERVER, SERVICE_ID, SESSIONS_ACCOUNT};
 use crate::session::{self, Session};
-use crate::socket::{self, Packet, ProjectSettings};
 use crate::test_support::{
-    dashboard_page, frame, remote_project_json as remote, socket_handler, zip_bytes, FixtureServer,
-    Reply, Request,
+    dashboard_page, payload, remote_project_json as remote, socket_handler, zip_bytes,
+    FixtureServer, Reply, Request,
 };
 
 const AGENT: &str = "Oleafly/test";
@@ -177,32 +177,6 @@ fn cookie_headers_dedupe_and_follow_set_cookie() {
 }
 
 #[test]
-fn socket_payloads_split_frames_by_utf16_length() {
-    let packets = frame(&["1::", "5:::{\"name\":\"x\",\"args\":[\"é😀\"]}"]);
-    let decoded = socket::decode_payload(&packets);
-    assert_eq!(decoded.len(), 2);
-    assert_eq!(decoded[0], "1::");
-    assert!(decoded[1].ends_with("😀\"]}"));
-    assert_eq!(socket::decode_payload("2::"), vec!["2::".to_string()]);
-    assert!(socket::decode_payload("").is_empty());
-    assert_eq!(socket::parse_packet("2::"), Packet::Heartbeat);
-    assert_eq!(socket::parse_packet("1::"), Packet::Connect);
-    assert_eq!(socket::parse_packet("0::"), Packet::Disconnect);
-    assert_eq!(
-        socket::parse_packet("7:::bad:origin"),
-        Packet::Error("bad:origin".into())
-    );
-    assert_eq!(
-        socket::parse_packet("5:::{\"name\":\"n\",\"args\":[1]}"),
-        Packet::Event {
-            name: "n".into(),
-            args: vec![json!(1)]
-        }
-    );
-    assert_eq!(socket::parse_packet("5:::nope"), Packet::Other);
-}
-
-#[test]
 fn project_settings_resolve_the_main_document_path() {
     let project = json!({
         "compiler": "xelatex",
@@ -215,7 +189,7 @@ fn project_settings_resolve_the_main_document_path() {
         }]
     });
     assert_eq!(
-        socket::settings_from_project(&project),
+        project::settings_from_project(&project),
         ProjectSettings {
             compiler: Some("xelatex".into()),
             main_doc: Some("thesis/main.tex".into()),
@@ -223,17 +197,17 @@ fn project_settings_resolve_the_main_document_path() {
         }
     );
     assert_eq!(
-        socket::settings_from_project(&json!({})),
+        project::settings_from_project(&json!({})),
         ProjectSettings::default()
     );
     assert_eq!(
-        socket::tex_live_year("texlive-full:2024.1"),
+        project::tex_live_year("texlive-full:2024.1"),
         Some("2024".into())
     );
-    assert_eq!(socket::tex_live_year("latest"), None);
-    assert_eq!(socket::flavor_for_compiler("PDFLaTeX"), Some("pdflatex"));
-    assert_eq!(socket::flavor_for_compiler("lualatex"), Some("lualatex"));
-    assert_eq!(socket::flavor_for_compiler("latex"), None);
+    assert_eq!(project::tex_live_year("latest"), None);
+    assert_eq!(project::flavor_for_compiler("PDFLaTeX"), Some("pdflatex"));
+    assert_eq!(project::flavor_for_compiler("lualatex"), Some("lualatex"));
+    assert_eq!(project::flavor_for_compiler("latex"), None);
 }
 
 #[test]
@@ -383,11 +357,11 @@ async fn the_settings_exchange_answers_heartbeats_and_returns_the_project() {
     }))
     .await;
     let http = Http::new(&fixture.base, AGENT).unwrap();
-    let fetched = socket::fetch_project(&http, "site_session=good", "a1")
+    let fetched = project::fetch_project(&http, "site_session=good", "a1")
         .await
         .unwrap();
     assert_eq!(
-        socket::settings_from_project(&fetched).main_doc.as_deref(),
+        project::settings_from_project(&fetched).main_doc.as_deref(),
         Some("paper.tex")
     );
     assert_eq!(*polls.lock().unwrap(), 2);
@@ -409,7 +383,7 @@ async fn the_settings_exchange_reports_a_rejected_connection() {
         } else if request.path.starts_with("/socket.io/1/xhr-polling/sid-1")
             && request.method == "GET"
         {
-            Reply::ok(frame(&[
+            Reply::ok(payload(&[
                 "5:::{\"name\":\"connectionRejected\",\"args\":[{\"message\":\"no\"}]}",
             ]))
         } else {
@@ -418,7 +392,10 @@ async fn the_settings_exchange_reports_a_rejected_connection() {
     }))
     .await;
     let http = Http::new(&fixture.base, AGENT).unwrap();
-    let error = socket::fetch_project(&http, "c", "a1").await.err().unwrap();
+    let error = project::fetch_project(&http, "c", "a1")
+        .await
+        .err()
+        .unwrap();
     assert_eq!(error.kind, OnlineErrorKind::Unreachable);
     assert!(error
         .detail

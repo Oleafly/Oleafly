@@ -22,20 +22,27 @@ function peerPerson(peer: PeerPlace, members: readonly CollabProjectMember[], un
   };
 }
 
+function ownName(peer: PeerPlace, selfId: string | null, ownLabel: string | null): string | null | undefined {
+  if (peer.accountId !== selfId) return undefined;
+  return ownLabel;
+}
+
 export function presentPeople(
   peers: PeerPlaces,
   members: readonly CollabProjectMember[],
   selfId: string | null,
   unknownName: string,
+  ownLabel: string | null = null,
 ): PresentPerson[] {
   const byAccount = new Map<string, PresentPerson>();
   for (const peer of Object.values(peers)) {
-    if (peer.accountId === selfId) continue;
+    const own = ownName(peer, selfId, ownLabel);
+    if (own === null) continue;
     const existing = byAccount.get(peer.accountId);
     const { person, role, guest } = peerPerson(peer, members, unknownName);
     byAccount.set(peer.accountId, {
       accountId: peer.accountId,
-      person: { ...person, hue: peer.hue },
+      person: { ...person, name: own ?? person.name, hue: peer.hue },
       role,
       path: existing?.path ?? peer.path,
       guest,
@@ -50,14 +57,16 @@ export function peerMarks(
   selfId: string | null,
   unknownName: string,
   label: (name: string) => string,
+  ownLabel: string | null = null,
 ): Map<string, PeerMark[]> {
   const byPath = new Map<string, PeerMark[]>();
   for (const peer of Object.values(peers)) {
-    if (!peer.path || peer.accountId === selfId) continue;
+    const own = ownName(peer, selfId, ownLabel);
+    if (!peer.path || own === null) continue;
     const marks = byPath.get(peer.path) ?? [];
     if (marks.some((mark) => mark.id === peer.accountId)) continue;
     const { person } = peerPerson(peer, members, unknownName);
-    marks.push({ id: peer.accountId, hue: peer.hue, label: label(person.name) });
+    marks.push({ id: peer.accountId, hue: peer.hue, label: label(own ?? person.name) });
     byPath.set(peer.path, marks);
   }
   return byPath;

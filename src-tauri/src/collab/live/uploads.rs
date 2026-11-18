@@ -8,12 +8,14 @@ use oleafly_collab::{CollabError, TransferProgress};
 use oleafly_collab_protocol::ids::{DeviceId, ServerId, SharedProjectId};
 use serde::Serialize;
 
+use super::session::{live_for, Live};
 use super::{active_for, guard, not_live, Active, LiveHost};
 use crate::collab::commands::{with_access, CollabCommandError};
 use crate::collab::disk::safe_target;
 
 pub const LIVE_UPLOADS_EVENT: &str = "collab-live-uploads";
 pub const UPLOAD_PROGRESS_EVENT: &str = "collab-upload-progress";
+pub const DOWNLOAD_PROGRESS_EVENT: &str = "collab-download-progress";
 const PROGRESS_EVERY: Duration = Duration::from_millis(250);
 const MEBIBYTE: u64 = 1024 * 1024;
 const CHECK_ABOVE: u64 = 4 * MEBIBYTE;
@@ -58,29 +60,67 @@ pub struct UploadProgress {
     pub total: u64,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DownloadProgress {
+    pub project_id: String,
+    pub path: String,
+    pub done: u64,
+    pub total: Option<u64>,
+}
+
+pub(super) type DownloadReport = Arc<dyn Fn(u64, Option<u64>) + Send + Sync>;
+
+#[derive(Default)]
+struct Pacer(Mutex<Option<Instant>>);
+
+impl Pacer {
+    fn due(&self, finished: bool) -> bool {
+        let now = Instant::now();
+        let mut told = guard(&self.0);
+        if !finished && told.is_some_and(|at| now.duration_since(at) < PROGRESS_EVERY) {
+            return false;
+        }
+        *told = Some(now);
+        true
+    }
+}
+
 pub(super) fn progress_for(
     host: Arc<dyn LiveHost>,
     project_id: &str,
     path: &str,
 ) -> TransferProgress {
     let (project_id, path) = (project_id.to_owned(), path.to_owned());
-    let told: Mutex<Option<Instant>> = Mutex::new(None);
+    let pacer = Pacer::default();
     Arc::new(move |done, total| {
-        let now = Instant::now();
-        {
-            let mut told = guard(&told);
-            let due = told.is_none_or(|at| now.duration_since(at) >= PROGRESS_EVERY);
-            if !due && done < total {
-                return;
-            }
-            *told = Some(now);
+        if pacer.due(done >= total) {
+            host.upload_progress(UploadProgress {
+                project_id: project_id.clone(),
+                path: path.clone(),
+                done,
+                total,
+            });
         }
-        host.upload_progress(UploadProgress {
-            project_id: project_id.clone(),
-            path: path.clone(),
-            done,
-            total,
-        });
+    })
+}
+
+pub(super) fn download_progress_for(
+    host: Arc<dyn LiveHost>,
+    project_id: &str,
+    path: &str,
+) -> DownloadReport {
+    let (project_id, path) = (project_id.to_owned(), path.to_owned());
+    let pacer = Pacer::default();
+    Arc::new(move |done, total| {
+        if pacer.due(total.is_some_and(|total| done >= total)) {
+            host.download_progress(DownloadProgress {
+                project_id: project_id.clone(),
+                path: path.clone(),
+                done,
+                total,
+            });
+        }
     })
 }
 
@@ -369,7 +409,7 @@ impl Active {
             };
             let files = listed(uploads);
             let payload = (uploads.told.as_ref() != Some(&files)).then(|| UploadsPayload {
-                project_id: self.project_id.clone(),
+                project_id: self.local.project_id.clone(),
                 files: files.clone(),
             });
             uploads.told = Some(files);
@@ -389,7 +429,7 @@ impl Active {
             (payload, timer)
         };
         if let Some(payload) = payload {
-            self.host.uploads(payload);
+            self.local.host.uploads(payload);
         }
         if let Some((wait, token, active)) = timer {
             let wait = wait.max(self.link.client.asked_wait().unwrap_or_default());
@@ -426,13 +466,13 @@ impl Active {
             None
         };
         let paths: Vec<String> = {
-            let hashes = guard(&self.disk).hashes.clone();
+            let hashes = guard(&self.local.disk).hashes.clone();
             let mut all = guard(&UPLOADS);
             let Some(uploads) = all.get_mut(&self.upload_key()) else {
                 return;
             };
             uploads.files.retain(|path, pending| {
-                safe_target(&self.root, path).is_some_and(|target| target.is_file())
+                safe_target(&self.local.root, path).is_some_and(|target| target.is_file())
                     && hashes.get(path) != Some(&pending.hash)
             });
             for pending in uploads.files.values_mut() {
@@ -491,6 +531,9 @@ impl Active {
 
 #[tauri::command]
 pub async fn collab_upload_list(project_id: String) -> Result<Vec<UploadFile>, CollabCommandError> {
+    if let Some(Live::Overleaf(live)) = live_for(&project_id) {
+        return Ok(live.upload_list());
+    }
     Ok(active_for(&project_id)
         .map(|active| active.upload_list())
         .unwrap_or_default())
@@ -498,6 +541,10 @@ pub async fn collab_upload_list(project_id: String) -> Result<Vec<UploadFile>, C
 
 #[tauri::command]
 pub async fn collab_upload_retry(project_id: String) -> Result<(), CollabCommandError> {
+    if let Some(Live::Overleaf(live)) = live_for(&project_id) {
+        live.retry_uploads();
+        return Ok(());
+    }
     let active = active_for(&project_id).ok_or_else(|| CollabCommandError::from(not_live()))?;
     active.retry_uploads(Retry::Asked).await;
     Ok(())
@@ -508,6 +555,10 @@ pub async fn collab_upload_dismiss(
     project_id: String,
     path: String,
 ) -> Result<(), CollabCommandError> {
+    if let Some(Live::Overleaf(live)) = live_for(&project_id) {
+        live.dismiss_upload(&path);
+        return Ok(());
+    }
     if let Some(active) = active_for(&project_id) {
         active.dismiss_upload(&path);
     }

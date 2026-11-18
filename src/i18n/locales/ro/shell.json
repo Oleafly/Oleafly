@@ -493,7 +493,8 @@
       "off": "Oprit",
       "run": "Rulează codul pe acest computer"
     },
-    "sharedViewer": "Doar proprietarii și editorii pot modifica aceste setări într-un proiect partajat."
+    "sharedViewer": "Doar proprietarii și editorii pot modifica aceste setări într-un proiect partajat.",
+    "coauthorsChanged": "Modificat de coautori de la ultima ta compilare"
   },
   "datePicker": {
     "placeholder": "Alege o dată"
@@ -1006,6 +1007,10 @@
       "notes": {
         "description": "Adaugă Notițele în bara de pe ecranul principal. O notiță este un fișier Markdown cu diagrame, grafice și formule matematice, pe care îl puteți edita atât tu, cât și agenții tăi. Notițele stau în afara bibliotecii de proiecte, iar fiecare notiță poate fi asociată cu un proiect. Dezactivată implicit, cât timp este în beta.",
         "label": "Notițe"
+      },
+      "overleafLive": {
+        "label": "Editare live cu Overleaf",
+        "description": "Editează proiectele importate din Overleaf în același timp cu coautorii tăi. Modificările apar pe ambele părți pe măsură ce scrii. Dezactivat implicit cât timp este în beta."
       },
       "researchTasks": {
         "description": "Un agent lucrează singur într-o copie a proiectului și îți lasă modificările spre revizuire. Foarte instabilă: rulările se pot bloca, pot eșua sau pot lăsa modificări de rezolvat manual și folosesc cota furnizorului tău pe toată durata lor. Adaugă secțiunea Cercetare în Setări. Dezactivarea oprește toate sarcinile în curs. Dezactivată implicit. Activeaz-o pe propria răspundere.",
@@ -1676,6 +1681,31 @@
       "allMine": "Păstrează toate versiunile mele",
       "allTheirs": "Folosește toate versiunile din Overleaf",
       "apply": "Aplică și sincronizează"
+    }
+  },
+  "overleafLive": {
+    "title": "Editare live cu Overleaf",
+    "live": "Live cu Overleaf",
+    "connecting": "Se conectează la Overleaf…",
+    "sending": "Se trimit modificările în Overleaf…",
+    "reconnecting": "Se reconectează la Overleaf…",
+    "pausedBadge": "Editare live întreruptă",
+    "pause": "Întrerupe editarea live",
+    "resume": "Reia editarea live",
+    "reconnectNow": "Reconectează acum",
+    "open": "Deschide în Overleaf",
+    "share": "Partajează în Overleaf…",
+    "signIn": "Autentifică-te…",
+    "reconnectingIn": "Se reîncearcă în {{seconds}} s.",
+    "notConfirmed": "Încă neconfirmat de Overleaf.",
+    "copyDetails": "Copiază detaliile conexiunii",
+    "detailsCopied": "Detaliile conexiunii au fost copiate",
+    "copyDetailsFailed": "Detaliile conexiunii nu au putut fi copiate",
+    "pauseDialog": {
+      "title": "Unele modificări nu au ajuns încă în Overleaf",
+      "description": "Dacă întrerupi acum, ele rămân pe acest computer și ajung în Overleaf când reiei. Sincronizarea Git rămâne oprită până atunci.",
+      "keepLive": "Continuă editarea live",
+      "pauseAnyway": "Întrerupe oricum"
     }
   },
   "stuckWindow": {

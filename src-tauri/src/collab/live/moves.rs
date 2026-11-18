@@ -11,8 +11,8 @@ use serde::{Deserialize, Serialize};
 use super::super::disk::{safe_target, DiskState};
 use super::super::state::CollabState;
 use super::{
-    active_for, by_path, ensure_dir, guard, lock, name_of, parent_of, writable, Active,
-    LocalImport, WrittenTexts,
+    active_for, by_path, ensure_dir, guard, live_for, lock, name_of, parent_of, writable, Active,
+    Live, LiveDisk, LocalImport, WrittenTexts,
 };
 
 pub const LIVE_REMOVED_EVENT: &str = "collab-live-removed";
@@ -29,6 +29,8 @@ pub struct RemovedFile {
     pub kind: NodeKind,
     pub by: Option<String>,
     pub yours: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub copy: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -184,48 +186,12 @@ pub(super) fn adopt_folder_moves(
         return Ok(false);
     }
     let placed = by_path(&materialize::layout(&live.doc().nodes()?));
-    let gone: Vec<String> = import
-        .removed
-        .iter()
-        .filter(|path| matches!(placed.get(*path), Some((_, NodeKind::Dir, _))))
-        .cloned()
-        .collect();
-    let outermost: Vec<String> = gone
-        .iter()
-        .filter(|dir| !gone.iter().any(|other| other != *dir && covers(other, dir)))
-        .cloned()
-        .collect();
-    let arrived: BTreeSet<String> = import
-        .texts
-        .iter()
-        .map(|(path, _, _)| path.clone())
-        .chain(import.blobs.iter().map(|(path, _, _)| path.clone()))
-        .collect();
+    let arrived = arrived_paths(import);
     let mut moved = false;
-    for old in outermost {
-        let inside: Vec<String> = disk
-            .hashes
-            .keys()
-            .filter(|path| covers(&old, path) && **path != old)
-            .map(|path| path[old.len() + 1..].to_owned())
-            .collect();
-        if inside.is_empty() {
-            continue;
-        }
-        let candidates: Vec<&String> = import
-            .dirs
-            .iter()
-            .filter(|new| {
-                !covers(&old, new)
-                    && inside
-                        .iter()
-                        .all(|relative| arrived.contains(&format!("{new}/{relative}")))
-            })
-            .collect();
-        let [new] = candidates.as_slice() else {
+    for old in outermost_gone_dirs(import, &placed) {
+        let Some(new) = folder_arrival(&import.dirs, &arrived, disk, &old) else {
             continue;
         };
-        let new = (*new).clone();
         let Some((id, _, _)) = placed.get(&old) else {
             continue;
         };
@@ -233,16 +199,7 @@ pub(super) fn adopt_folder_moves(
             continue;
         }
         import.moved_dirs.push((id.clone(), new.clone()));
-        import.removed.retain(|path| !covers(&old, path));
-        let unchanged = |path: &str, hash: &str| {
-            covers(&new, path) && disk.hashes.get(path).is_some_and(|known| known == hash)
-        };
-        import
-            .texts
-            .retain(|(path, _, hash)| !unchanged(path, hash));
-        import
-            .blobs
-            .retain(|(path, hash, _)| !unchanged(path, hash));
+        took_folder_move(import, disk, &old, &new);
         moved = true;
     }
     if moved {
@@ -252,6 +209,74 @@ pub(super) fn adopt_folder_moves(
         });
     }
     Ok(moved)
+}
+
+pub(super) fn arrived_paths(import: &LocalImport) -> BTreeSet<String> {
+    import
+        .texts
+        .iter()
+        .map(|(path, _, _)| path.clone())
+        .chain(import.blobs.iter().map(|(path, _, _)| path.clone()))
+        .collect()
+}
+
+pub(super) fn outermost_gone_dirs(
+    import: &LocalImport,
+    placed: &HashMap<String, (String, NodeKind, Option<String>)>,
+) -> Vec<String> {
+    let gone: Vec<String> = import
+        .removed
+        .iter()
+        .filter(|path| matches!(placed.get(*path), Some((_, NodeKind::Dir, _))))
+        .cloned()
+        .collect();
+    gone.iter()
+        .filter(|dir| !gone.iter().any(|other| other != *dir && covers(other, dir)))
+        .cloned()
+        .collect()
+}
+
+pub(super) fn folder_arrival(
+    dirs: &[String],
+    arrived: &BTreeSet<String>,
+    disk: &DiskState,
+    old: &str,
+) -> Option<String> {
+    let inside: Vec<String> = disk
+        .hashes
+        .keys()
+        .filter(|path| covers(old, path) && *path != old)
+        .map(|path| path[old.len() + 1..].to_owned())
+        .collect();
+    if inside.is_empty() {
+        return None;
+    }
+    let candidates: Vec<&String> = dirs
+        .iter()
+        .filter(|new| {
+            !covers(old, new)
+                && inside
+                    .iter()
+                    .all(|relative| arrived.contains(&format!("{new}/{relative}")))
+        })
+        .collect();
+    match candidates.as_slice() {
+        [new] => Some((*new).clone()),
+        _ => None,
+    }
+}
+
+pub(super) fn took_folder_move(import: &mut LocalImport, disk: &DiskState, old: &str, new: &str) {
+    import.removed.retain(|path| !covers(old, path));
+    let unchanged = |path: &str, hash: &str| {
+        covers(new, path) && disk.hashes.get(path).is_some_and(|known| known == hash)
+    };
+    import
+        .texts
+        .retain(|(path, _, hash)| !unchanged(path, hash));
+    import
+        .blobs
+        .retain(|(path, hash, _)| !unchanged(path, hash));
 }
 
 pub(super) fn deleted_here(root: &Path, disk: &DiskState, path: &str) -> bool {
@@ -331,6 +356,7 @@ pub(super) fn removed_notices(
             kind: placed.kind,
             by: item.deleted_by.clone(),
             yours,
+            copy: None,
         });
     }
     (!files.is_empty()).then(|| RemovedPayload {
@@ -414,11 +440,151 @@ pub(crate) fn dismiss_notice(
 
 pub(crate) fn restored(project_id: &str, id: &str) {
     if let Some(active) = active_for(project_id) {
-        forget_notice(&active.notices_file(), id);
+        forget_notice(&active.local.notices_file(), id);
     }
 }
 
 impl Active {
+    pub(super) fn announce_removed(&self, previous: &Layout, removed: &[String]) {
+        let told = if removed.is_empty() {
+            None
+        } else {
+            removed_notices(
+                &self.local.project_id,
+                &mut lock(&self.live),
+                previous,
+                removed,
+            )
+        };
+        let back = self.local.came_back(previous, told.as_ref());
+        if let Some(payload) = &told {
+            remember_lost(&self.local.notices_file(), payload);
+        }
+        if !back.is_empty() {
+            forget_notices(&self.local.notices_file(), &back);
+        }
+        let payload = match told {
+            Some(payload) => Some(payload),
+            None if !back.is_empty() => Some(RemovedPayload {
+                project_id: self.local.project_id.clone(),
+                files: Vec::new(),
+                restored: Vec::new(),
+            }),
+            None => None,
+        };
+        if let Some(mut payload) = payload {
+            payload.restored = back.into_iter().collect();
+            self.local.host.removed(payload);
+        }
+    }
+
+    fn settle_structure(&self) {
+        let _ = self.local.save_index(&guard(&self.local.disk));
+        self.handle.flush();
+        self.kick();
+        self.refresh_pending();
+    }
+
+    fn adopting<R>(
+        &self,
+        work: impl FnOnce() -> Result<R, String>,
+        adopt: impl FnOnce(
+            &R,
+            &mut LiveProject,
+            &mut DiskState,
+            &mut WrittenTexts,
+        ) -> Result<bool, CollabError>,
+    ) -> Result<R, String> {
+        if !lock(&self.live).can_edit() {
+            return work();
+        }
+        let (outcome, adopted) = {
+            let mut disk = guard(&self.local.disk);
+            let outcome = work()?;
+            let mut live = lock(&self.live);
+            let mut bases = guard(&self.local.bases);
+            let adopted = match adopt(&outcome, &mut live, &mut disk, &mut bases) {
+                Ok(adopted) => adopted,
+                Err(error) => {
+                    let _ = crate::project::append_app_log(format!(
+                        "Live collaboration could not apply a file move or delete in project {}: {error}",
+                        self.local.project_id
+                    ));
+                    false
+                }
+            };
+            (outcome, adopted)
+        };
+        if adopted {
+            self.settle_structure();
+        }
+        Ok(outcome)
+    }
+
+    pub(super) fn rename_with<R>(
+        &self,
+        from: &str,
+        work: impl FnOnce() -> Result<R, String>,
+        landed: impl FnOnce(&R) -> Option<String>,
+    ) -> Result<R, String> {
+        self.adopting(work, |outcome, live, disk, bases| {
+            let Some(to) = landed(outcome) else {
+                return Ok(false);
+            };
+            let inside = paths_under(disk, from);
+            let adopted = adopt_move(live, disk, bases, from, &to)?;
+            if adopted {
+                for path in inside {
+                    self.local.note_own(&path, false);
+                    self.local.note_own(&moved_to(from, &to, &path), true);
+                }
+            }
+            Ok(adopted)
+        })
+    }
+
+    pub(super) fn delete_with<R>(
+        &self,
+        path: &str,
+        work: impl FnOnce() -> Result<R, String>,
+    ) -> Result<R, String> {
+        self.adopting(work, |_, live, disk, bases| {
+            let inside = paths_under(disk, path);
+            let adopted = adopt_removal(live, disk, bases, path)?.is_some();
+            if adopted {
+                for gone in inside {
+                    self.local.note_own(&gone, false);
+                }
+            }
+            Ok(adopted)
+        })
+    }
+}
+
+pub(crate) fn renaming<R>(
+    project_id: &str,
+    from: &str,
+    work: impl FnOnce() -> Result<R, String>,
+    landed: impl FnOnce(&R) -> Option<String>,
+) -> Result<R, String> {
+    match live_for(project_id) {
+        Some(Live::Server(active)) => active.rename_with(from, work, landed),
+        Some(Live::Overleaf(_)) | None => work(),
+    }
+}
+
+pub(crate) fn deleting<R>(
+    project_id: &str,
+    path: &str,
+    work: impl FnOnce() -> Result<R, String>,
+) -> Result<R, String> {
+    match live_for(project_id) {
+        Some(Live::Server(active)) => active.delete_with(path, work),
+        Some(Live::Overleaf(_)) | None => work(),
+    }
+}
+
+impl LiveDisk {
     pub(super) fn notices_file(&self) -> PathBuf {
         self.disk_file.with_file_name(NOTICES_FILE)
     }
@@ -450,34 +616,6 @@ impl Active {
         back
     }
 
-    pub(super) fn announce_removed(&self, previous: &Layout, removed: &[String]) {
-        let told = if removed.is_empty() {
-            None
-        } else {
-            removed_notices(&self.project_id, &mut lock(&self.live), previous, removed)
-        };
-        let back = self.came_back(previous, told.as_ref());
-        if let Some(payload) = &told {
-            remember_lost(&self.notices_file(), payload);
-        }
-        if !back.is_empty() {
-            forget_notices(&self.notices_file(), &back);
-        }
-        let payload = match told {
-            Some(payload) => Some(payload),
-            None if !back.is_empty() => Some(RemovedPayload {
-                project_id: self.project_id.clone(),
-                files: Vec::new(),
-                restored: Vec::new(),
-            }),
-            None => None,
-        };
-        if let Some(mut payload) = payload {
-            payload.restored = back.into_iter().collect();
-            self.host.removed(payload);
-        }
-    }
-
     fn note_own(&self, path: &str, present: bool) {
         let Some(target) = safe_target(&self.root, path) else {
             return;
@@ -487,111 +625,6 @@ impl Active {
         } else {
             crate::folder_watch::note_own_removal(&target);
         }
-    }
-
-    fn settle_structure(&self) {
-        let _ = self.save_index(&guard(&self.disk));
-        self.handle.flush();
-        self.kick();
-        self.refresh_pending();
-    }
-
-    fn adopting<R>(
-        &self,
-        work: impl FnOnce() -> Result<R, String>,
-        adopt: impl FnOnce(
-            &R,
-            &mut LiveProject,
-            &mut DiskState,
-            &mut WrittenTexts,
-        ) -> Result<bool, CollabError>,
-    ) -> Result<R, String> {
-        if !lock(&self.live).can_edit() {
-            return work();
-        }
-        let (outcome, adopted) = {
-            let mut disk = guard(&self.disk);
-            let outcome = work()?;
-            let mut live = lock(&self.live);
-            let mut bases = guard(&self.bases);
-            let adopted = match adopt(&outcome, &mut live, &mut disk, &mut bases) {
-                Ok(adopted) => adopted,
-                Err(error) => {
-                    let _ = crate::project::append_app_log(format!(
-                        "Live collaboration could not apply a file move or delete in project {}: {error}",
-                        self.project_id
-                    ));
-                    false
-                }
-            };
-            (outcome, adopted)
-        };
-        if adopted {
-            self.settle_structure();
-        }
-        Ok(outcome)
-    }
-
-    pub(super) fn rename_with<R>(
-        &self,
-        from: &str,
-        work: impl FnOnce() -> Result<R, String>,
-        landed: impl FnOnce(&R) -> Option<String>,
-    ) -> Result<R, String> {
-        self.adopting(work, |outcome, live, disk, bases| {
-            let Some(to) = landed(outcome) else {
-                return Ok(false);
-            };
-            let inside = paths_under(disk, from);
-            let adopted = adopt_move(live, disk, bases, from, &to)?;
-            if adopted {
-                for path in inside {
-                    self.note_own(&path, false);
-                    self.note_own(&moved_to(from, &to, &path), true);
-                }
-            }
-            Ok(adopted)
-        })
-    }
-
-    pub(super) fn delete_with<R>(
-        &self,
-        path: &str,
-        work: impl FnOnce() -> Result<R, String>,
-    ) -> Result<R, String> {
-        self.adopting(work, |_, live, disk, bases| {
-            let inside = paths_under(disk, path);
-            let adopted = adopt_removal(live, disk, bases, path)?.is_some();
-            if adopted {
-                for gone in inside {
-                    self.note_own(&gone, false);
-                }
-            }
-            Ok(adopted)
-        })
-    }
-}
-
-pub(crate) fn renaming<R>(
-    project_id: &str,
-    from: &str,
-    work: impl FnOnce() -> Result<R, String>,
-    landed: impl FnOnce(&R) -> Option<String>,
-) -> Result<R, String> {
-    match active_for(project_id) {
-        Some(active) => active.rename_with(from, work, landed),
-        None => work(),
-    }
-}
-
-pub(crate) fn deleting<R>(
-    project_id: &str,
-    path: &str,
-    work: impl FnOnce() -> Result<R, String>,
-) -> Result<R, String> {
-    match active_for(project_id) {
-        Some(active) => active.delete_with(path, work),
-        None => work(),
     }
 }
 
@@ -603,20 +636,18 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use oleafly_collab::doc::ProjectDoc;
-    use oleafly_collab::editor::DocMessage;
-    use oleafly_collab::live::DocSink;
-    use oleafly_collab::ot::TextOperation;
     use oleafly_collab::sync::{spawn_live, LiveLink, LiveStatus, SharedLive};
     use oleafly_collab::{ServerClient, ServerUrl};
     use oleafly_collab_protocol::ids::{AccountId, DeviceId, ServerId, SharedProjectId};
     use oleafly_collab_protocol::projects::ProjectRole;
+    use oleafly_ot::{DocMessage, DocSink, TextOperation};
     use tokio::sync::mpsc;
 
     use super::super::super::disk::{exists_exact, move_path, sha256_hex};
     use super::super::{
-        apply_local_import, apply_to_disk, initial_bases, read_local_changes, DiskPass, LiveHost,
-        MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload, RolePayload,
-        StatusPayload,
+        apply_local_import, apply_to_disk, initial_bases, read_local_changes, DiskPass, LiveDisk,
+        LiveHost, MergedPayload, NewDevicePayload, PresenceLeftPayload, PresencePayload,
+        RolePayload, StatusPayload,
     };
     use super::*;
     use crate::collab::state::CollabState;
@@ -1187,6 +1218,7 @@ mod tests {
                     kind: NodeKind::Text,
                     by: Some("acct-bob".to_owned()),
                     yours: false,
+                    copy: None,
                 },
                 RemovedFile {
                     path: "plan.tex".to_owned(),
@@ -1194,6 +1226,7 @@ mod tests {
                     kind: NodeKind::Text,
                     by: Some("acct-bob".to_owned()),
                     yours: true,
+                    copy: None,
                 },
             ]
         );
@@ -1263,22 +1296,24 @@ mod tests {
             let (writer, _writer) = mpsc::unbounded_channel();
             let handle = spawn_live(link.clone(), Arc::clone(&shared), events);
             Arc::new(Active {
-                project_id: "moving".to_owned(),
-                root: root.clone(),
+                local: LiveDisk {
+                    project_id: "moving".to_owned(),
+                    root: root.clone(),
+                    disk_file: project_dir.join("materializer-index.json"),
+                    disk: Mutex::new(disk),
+                    bases: Mutex::new(bases),
+                    host: Arc::clone(&host) as Arc<dyn LiveHost>,
+                    writer,
+                    upkeep: Default::default(),
+                },
                 document_dir: dir.path().join("document"),
-                disk_file: project_dir.join("materializer-index.json"),
                 live: shared,
                 handle,
                 link,
-                disk: Mutex::new(disk),
-                host: Arc::clone(&host) as Arc<dyn LiveHost>,
-                writer,
                 account_id: AccountId::new_v7(),
                 quiet_merge: AtomicBool::new(false),
                 waiting: AtomicBool::new(false),
                 last_status: Mutex::new(LiveStatus::Connecting),
-                bases: Mutex::new(bases),
-                upkeep: Default::default(),
             })
         });
         Rig {
@@ -1357,6 +1392,7 @@ mod tests {
                 kind: NodeKind::Text,
                 by: Some("acct-bob".to_owned()),
                 yours: true,
+                copy: None,
             }]
         );
         dismiss_notice(&state, "moving", &plan).unwrap();
@@ -1369,7 +1405,7 @@ mod tests {
         let state = rig.state();
         assert_eq!(lost_notices(&state, "moving").unwrap().len(), 1);
         let turn = super::super::write::rig::live_turn();
-        *guard(&super::super::ACTIVE) = Some(Arc::clone(&rig.active));
+        *guard(&super::super::ACTIVE) = Some(super::super::Live::Server(Arc::clone(&rig.active)));
         let restored = rig
             .runtime
             .block_on(crate::collab::tree::collab_trash_restore(

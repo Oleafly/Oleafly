@@ -1295,6 +1295,10 @@
     "failed": "Oleafly nie mógł zaktualizować {{file}}. Spróbuj ponownie.",
     "tabMark": "Zmieniono na dysku. Otwórz tę kartę, aby wybrać, którą wersję zachować."
   },
+  "liveTab": {
+    "notOnOverleafYet": "Jeszcze nie w Overleaf",
+    "storedAsFile": "Overleaf przechowuje to jako plik, więc Twoje zmiany są przesyłane po zapisaniu."
+  },
   "labels": {
     "filterPlaceholder": "Nazwa etykiety",
     "filterLabel": "Filtruj etykiety projektu",

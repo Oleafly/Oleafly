@@ -28,7 +28,7 @@ if ! changed="$(git diff --name-only "$base" "$head" 2>/dev/null)"; then
   run true
 fi
 
-pattern='^(crates/oleafly-collab|crates/oleafly-server/|src-tauri/src/collab/|src/features/collab/|src/components/collab/|src/lib/collab-|src/lib/tauri\.ts$|src/lib/tauri-collab\.ts$|packages/editor/src/(collaboration|document-session)\.|src/components/editor/cm/collab-|src/components/layout/Collab|e2e/tests/[^/]*-peer\.spec\.ts$|scripts/e2e-collab-browser\.sh$|scripts/ci/collab-changes\.sh$|\.github/workflows/ci\.yml$)'
+pattern='^(crates/oleafly-collab|crates/oleafly-ot/|crates/oleafly-net/|crates/oleafly-server/|src-tauri/src/collab/|src/features/collab/|src/components/collab/|src/lib/collab-|src/lib/tauri\.ts$|src/lib/tauri-collab\.ts$|packages/editor/src/(collaboration|document-session)\.|src/components/editor/cm/collab-|src/components/layout/Collab|e2e/tests/[^/]*-peer\.spec\.ts$|crates/oleafly-online/src/browser_signin/|crates/oleafly-online/examples/fake_browser\.rs$|crates/oleafly-online/tests/browser_signin\.rs$|src-tauri/src/overleaf/signin\.rs$|src/components/settings/BrowserSignInCopy\.tsx$|e2e/tests/[^/]*-browser-sign-in\.spec\.ts$|scripts/e2e-collab-browser\.sh$|scripts/ci/collab-changes\.sh$|\.github/workflows/ci\.yml$)'
 
 if grep -Eq "$pattern" <<<"$changed"; then
   run true

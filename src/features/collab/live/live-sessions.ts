@@ -6,6 +6,7 @@ export interface LiveSessionsOptions {
   readOnly: () => boolean;
   initialText(path: string): string | null;
   mirror(path: string, text: string): void;
+  coauthorEdited?(path: string, text: string): void;
   detached(path: string, text: string, edited: boolean, shared: string): void;
   discarded?(path: string, reason: DiscardReason): void;
   shown?(path: string): boolean;
@@ -65,6 +66,7 @@ export class LiveSessions {
       },
       onDiscarded: (reason) => this.options.discarded?.(session.path, reason),
     });
+    session.subscribe(() => this.options.coauthorEdited?.(session.path, session.text()));
     this.sessions.set(path, session);
     void session.open();
     return session;
@@ -116,6 +118,10 @@ export class LiveSessions {
     }
   }
 
+  relive(path: string): void {
+    this.local.delete(path);
+  }
+
   release(path: string): void {
     const session = this.sessions.get(path);
     if (!session) return;
@@ -156,10 +162,12 @@ export class LiveSessions {
 
   private detach(path: string, session: RemoteDocumentSession): void {
     if (this.sessions.get(path) !== session) return;
-    const edited = session.unconfirmed;
+    const reason = session.detachedBecause;
+    const gone = reason === "removed" || reason === "replaced";
+    const edited = !gone && session.unconfirmed;
     const shared = sharedText(session);
     this.sessions.delete(path);
-    this.local.add(path);
+    if (reason !== "replaced") this.local.add(path);
     session.close();
     this.options.detached(path, session.text(), edited, shared);
   }

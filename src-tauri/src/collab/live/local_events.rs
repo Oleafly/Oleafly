@@ -1,17 +1,16 @@
 use std::path::Path;
-use std::sync::Arc;
 
 use oleafly_collab::doc::NodeKind;
 use oleafly_collab::materialize;
 use oleafly_collab::CollabError;
 
-use super::session::{active_for, guard, lock, not_live, Active};
+use super::session::{guard, live_for, lock, not_live, Live};
 use super::sync_hold::SyncDecision;
 use crate::collab::disk::{as_text, safe_target, sha256_hex, DiskState};
 use crate::folder_watch::FolderChange;
 
 pub(crate) struct KnownContent {
-    active: Option<Arc<Active>>,
+    live: Option<Live>,
     hashes: std::collections::BTreeMap<String, String>,
 }
 
@@ -28,15 +27,18 @@ fn saved_disk(project_id: &str) -> DiskState {
 }
 
 pub(crate) fn known_content(project_id: &str) -> KnownContent {
-    if let Some(active) = active_for(project_id) {
-        let hashes = guard(&active.disk).hashes.clone();
+    if let Some(live) = live_for(project_id) {
+        let hashes = match &live {
+            Live::Server(active) => guard(&active.local.disk).hashes.clone(),
+            Live::Overleaf(live) => live.with_disk(|disk| disk.hashes.clone()),
+        };
         return KnownContent {
-            active: Some(active),
+            live: Some(live),
             hashes,
         };
     }
     KnownContent {
-        active: None,
+        live: None,
         hashes: saved_disk(project_id).hashes,
     }
 }
@@ -64,8 +66,9 @@ pub(crate) fn shared_files(project_id: &str) -> std::collections::BTreeSet<Strin
             )
             .collect()
     };
-    match active_for(project_id) {
-        Some(active) => files(&guard(&active.disk)),
+    match live_for(project_id) {
+        Some(Live::Server(active)) => files(&guard(&active.local.disk)),
+        Some(Live::Overleaf(live)) => live.with_disk(files),
         None => files(&saved_disk(project_id)),
     }
 }
@@ -83,8 +86,12 @@ impl KnownContent {
         {
             return true;
         }
-        let (Some(active), Some(text)) = (&self.active, as_text(&bytes)) else {
+        let (Some(live), Some(text)) = (&self.live, as_text(&bytes)) else {
             return false;
+        };
+        let active = match live {
+            Live::Server(active) => active,
+            Live::Overleaf(live) => return live.text_at(path).is_some_and(|shared| shared == text),
         };
         let live = lock(&active.live);
         let Ok(nodes) = live.doc().nodes() else {
@@ -99,24 +106,42 @@ impl KnownContent {
 }
 
 pub fn app_wrote(project_id: &str, path: &str) {
-    if let Some(active) = active_for(project_id) {
-        let paths = vec![path.to_owned()];
-        tauri::async_runtime::spawn(async move {
-            let _ = active.import_paths(Some(paths)).await;
-        });
+    let paths = vec![path.to_owned()];
+    match live_for(project_id) {
+        Some(Live::Server(active)) => {
+            tauri::async_runtime::spawn(async move {
+                let _ = active.import_paths(Some(paths)).await;
+            });
+        }
+        Some(Live::Overleaf(live)) => {
+            tauri::async_runtime::spawn(async move {
+                let _ = live.import_paths(Some(paths)).await;
+            });
+        }
+        None => {}
     }
 }
 
 pub async fn resume(project_id: &str, decision: SyncDecision) -> Result<(), CollabError> {
-    let active = active_for(project_id).ok_or_else(not_live)?;
-    active.decide(decision).await
+    match live_for(project_id).ok_or_else(not_live)? {
+        Live::Server(active) => active.decide(decision).await,
+        Live::Overleaf(_) => Err(not_live()),
+    }
 }
 
 pub fn folder_changed(change: &FolderChange) {
-    if let Some(active) = active_for(&change.project_id) {
-        let only = (!change.rescan).then(|| change.paths.clone());
-        tauri::async_runtime::spawn(async move {
-            let _ = active.import_paths(only).await;
-        });
+    let only = (!change.rescan).then(|| change.paths.clone());
+    match live_for(&change.project_id) {
+        Some(Live::Server(active)) => {
+            tauri::async_runtime::spawn(async move {
+                let _ = active.import_paths(only).await;
+            });
+        }
+        Some(Live::Overleaf(live)) => {
+            tauri::async_runtime::spawn(async move {
+                let _ = live.import_paths(only).await;
+            });
+        }
+        None => {}
     }
 }

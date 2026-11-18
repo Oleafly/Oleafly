@@ -1,14 +1,18 @@
 import type { CollabLiveEndedReason, CollabLiveSyncState } from "@/lib/tauri";
 
+export const RECONNECTING_AFTER_MS = 1_000;
+
 export const SYNC_STATES = [
   "upToDate",
   "syncing",
   "offline",
   "reconnecting",
   "signedOut",
+  "idle",
   "suspended",
   "accessEnded",
   "removed",
+  "projectDeleted",
   "archived",
   "paused",
   "serverRemoved",
@@ -23,6 +27,7 @@ export type SyncState = (typeof SYNC_STATES)[number];
 
 const ENDED: Readonly<Record<CollabLiveEndedReason, SyncState>> = {
   removed: "removed",
+  project_deleted: "projectDeleted",
   archived: "archived",
   signed_out: "signedOut",
   stopped: "paused",
@@ -45,6 +50,10 @@ export function syncState(status: CollabLiveSyncState | null, pending: number): 
       return pending > 0 ? "syncing" : "upToDate";
     case "offline":
       return pending > 0 ? "offline" : "reconnecting";
+    case "signed_out":
+      return "signedOut";
+    case "idle":
+      return "idle";
     case "ended":
       return ENDED[status.reason];
   }

@@ -15,6 +15,8 @@ use crate::session;
 
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(15);
 const READ_TIMEOUT: Duration = Duration::from_secs(60);
+const UPLOAD_FLOOR: Duration = Duration::from_secs(60);
+const UPLOAD_BYTES_PER_SECOND: u64 = 32 * 1024;
 pub const MAX_ARCHIVE_BYTES: u64 = 2 * 1024 * 1024 * 1024;
 const PROGRESS_INTERVAL: Duration = Duration::from_millis(150);
 const API_PAGE_SIZE: u64 = 1_000;
@@ -44,16 +46,24 @@ impl std::fmt::Debug for Dashboard {
 #[derive(Clone)]
 pub struct Http {
     client: reqwest::Client,
+    uploads: reqwest::Client,
     pub base: String,
     pub origin: String,
+    pub user_agent: String,
 }
 
-fn build_client(user_agent: &str) -> Result<reqwest::Client, OnlineError> {
+fn build_client(
+    user_agent: &str,
+    read_timeout: Option<Duration>,
+) -> Result<reqwest::Client, OnlineError> {
     let builder = reqwest::Client::builder()
         .connect_timeout(CONNECT_TIMEOUT)
-        .read_timeout(READ_TIMEOUT)
         .user_agent(user_agent)
         .redirect(reqwest::redirect::Policy::none());
+    let builder = match read_timeout {
+        Some(timeout) => builder.read_timeout(timeout),
+        None => builder,
+    };
     #[cfg(any(test, feature = "test-support"))]
     let builder = builder.no_proxy();
     builder
@@ -66,8 +76,21 @@ fn shared_client(user_agent: &str) -> Result<reqwest::Client, OnlineError> {
     if let Some(client) = CLIENT.get() {
         return Ok(client.clone());
     }
-    let client = build_client(user_agent)?;
+    let client = build_client(user_agent, Some(READ_TIMEOUT))?;
     Ok(CLIENT.get_or_init(|| client).clone())
+}
+
+fn upload_client(user_agent: &str) -> Result<reqwest::Client, OnlineError> {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    if let Some(client) = CLIENT.get() {
+        return Ok(client.clone());
+    }
+    let client = build_client(user_agent, None)?;
+    Ok(CLIENT.get_or_init(|| client).clone())
+}
+
+pub fn upload_timeout(size: u64) -> Duration {
+    UPLOAD_FLOOR + Duration::from_secs(size / UPLOAD_BYTES_PER_SECOND)
 }
 
 pub(crate) fn expired() -> OnlineError {
@@ -80,7 +103,7 @@ fn unreachable(base: &str, detail: impl ToString) -> OnlineError {
         .detail(detail)
 }
 
-fn set_cookie_lines(headers: &HeaderMap) -> Vec<String> {
+pub(crate) fn set_cookie_lines(headers: &HeaderMap) -> Vec<String> {
     headers
         .get_all(SET_COOKIE)
         .iter()
@@ -92,8 +115,10 @@ impl Http {
     pub fn new(base: &str, user_agent: &str) -> Result<Self, OnlineError> {
         Ok(Self {
             client: shared_client(user_agent)?,
+            uploads: upload_client(user_agent)?,
             base: base.to_string(),
             origin: session::origin_of(base),
+            user_agent: user_agent.to_string(),
         })
     }
 
@@ -108,6 +133,20 @@ impl Http {
             .header(ORIGIN, &self.origin)
     }
 
+    pub fn get_at(&self, url: &str, cookie: &str) -> reqwest::RequestBuilder {
+        self.client
+            .get(url)
+            .header(COOKIE, cookie)
+            .header(ORIGIN, &self.origin)
+    }
+
+    pub fn post_at(&self, url: &str, cookie: &str) -> reqwest::RequestBuilder {
+        self.client
+            .post(url)
+            .header(COOKIE, cookie)
+            .header(ORIGIN, &self.origin)
+    }
+
     pub fn public_get(&self, path: &str) -> reqwest::RequestBuilder {
         self.client.get(self.url(path))
     }
@@ -117,6 +156,21 @@ impl Http {
         request: reqwest::RequestBuilder,
     ) -> Result<Response, OnlineError> {
         self.send(request).await
+    }
+
+    pub fn post_upload(&self, path: &str, cookie: &str, size: u64) -> reqwest::RequestBuilder {
+        self.uploads
+            .post(self.url(path))
+            .timeout(upload_timeout(size))
+            .header(COOKIE, cookie)
+            .header(ORIGIN, &self.origin)
+    }
+
+    pub fn delete(&self, path: &str, cookie: &str) -> reqwest::RequestBuilder {
+        self.client
+            .delete(self.url(path))
+            .header(COOKIE, cookie)
+            .header(ORIGIN, &self.origin)
     }
 
     pub fn post(&self, path: &str, cookie: &str) -> reqwest::RequestBuilder {
@@ -143,7 +197,7 @@ impl Http {
         target.origin() == base.origin() && target.path().trim_end_matches('/').ends_with("/login")
     }
 
-    fn classify(&self, response: &Response) -> Result<(), OnlineError> {
+    pub(crate) fn classify(&self, response: &Response) -> Result<(), OnlineError> {
         let status = response.status();
         if status.is_redirection() {
             let location = response

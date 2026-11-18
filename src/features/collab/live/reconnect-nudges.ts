@@ -4,7 +4,7 @@ import { collabLiveReconnectNow } from "@/lib/tauri-collab";
 export const HIDDEN_LONG_MS = 30_000;
 export const NUDGE_GAP_MS = 5_000;
 
-export function startReconnectNudges(): () => void {
+export function startReconnectNudges(offline: () => boolean = () => false): () => void {
   let last = Number.NEGATIVE_INFINITY;
   let hiddenSince: number | null = document.visibilityState === "hidden" ? Date.now() : null;
 
@@ -25,10 +25,16 @@ export function startReconnectNudges(): () => void {
     if (since !== null && Date.now() - since >= HIDDEN_LONG_MS) nudge();
   };
 
+  const onTyping = () => {
+    if (offline()) nudge();
+  };
+
   window.addEventListener("online", nudge);
+  window.addEventListener("keydown", onTyping, true);
   document.addEventListener("visibilitychange", onVisibility);
   return () => {
     window.removeEventListener("online", nudge);
+    window.removeEventListener("keydown", onTyping, true);
     document.removeEventListener("visibilitychange", onVisibility);
   };
 }

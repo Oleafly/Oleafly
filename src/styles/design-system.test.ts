@@ -62,7 +62,7 @@ const NATIVE_TITLE_BACKLOG: Record<string, number> = {
   "src/components/layout/ReleaseTimeline.tsx": 2,
   "src/components/layout/SettingsModal.tsx": 2,
   "src/components/layout/SourceControl.tsx": 1,
-  "src/components/layout/overleaf-sync/OverleafSyncButton.tsx": 2,
+  "src/components/layout/overleaf-sync/OverleafSyncButton.tsx": 1,
   "src/components/library/Book.tsx": 1,
   "src/components/library/BulkDeleteButton.tsx": 2,
   "src/components/library/Library.tsx": 2,

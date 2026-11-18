@@ -37,9 +37,15 @@ pub trait LiveHost: Send + Sync + 'static {
     fn kept(&self, _payload: kept::KeptPayload) {}
     fn uploads(&self, _payload: uploads::UploadsPayload) {}
     fn upload_progress(&self, _payload: uploads::UploadProgress) {}
+    fn download_progress(&self, _payload: uploads::DownloadProgress) {}
     fn unwritten(&self, _payload: unwritten::UnwrittenPayload) {}
     fn settings_changed(&self, _applied: crate::collab::settings::Applied) {}
     fn written(&self, _payload: WrittenPayload) {}
+    fn account_changed(&self, _payload: super::payloads::AccountChangedPayload) {}
+    fn doc_pending(&self, _payload: super::payloads::DocPendingPayload) {}
+    fn overleaf_notice(&self, _payload: super::overleaf::notices::OverleafNoticePayload) {}
+    fn overleaf_members(&self, _payload: super::payloads::OverleafMembersPayload) {}
+    fn overleaf_tree(&self, _notice: super::overleaf::TreeNotice) {}
     fn app(&self) -> Option<tauri::AppHandle> {
         None
     }
@@ -149,12 +155,42 @@ impl LiveHost for AppLiveHost {
         let _ = self.app.emit(kept::LIVE_KEPT_EVENT, payload);
     }
 
+    fn account_changed(&self, payload: super::payloads::AccountChangedPayload) {
+        let _ = self
+            .app
+            .emit(super::payloads::ACCOUNT_CHANGED_EVENT, payload);
+    }
+
+    fn overleaf_members(&self, payload: super::payloads::OverleafMembersPayload) {
+        let _ = self
+            .app
+            .emit(super::payloads::OVERLEAF_MEMBERS_EVENT, payload);
+    }
+
+    fn doc_pending(&self, payload: super::payloads::DocPendingPayload) {
+        let _ = self.app.emit(super::payloads::DOC_PENDING_EVENT, payload);
+    }
+
+    fn overleaf_notice(&self, payload: super::overleaf::notices::OverleafNoticePayload) {
+        let _ = self
+            .app
+            .emit(super::overleaf::notices::OVERLEAF_NOTICE_EVENT, payload);
+    }
+
+    fn overleaf_tree(&self, notice: super::overleaf::TreeNotice) {
+        let _ = self.app.emit(super::overleaf::TREE_EVENT, notice);
+    }
+
     fn uploads(&self, payload: uploads::UploadsPayload) {
         let _ = self.app.emit(uploads::LIVE_UPLOADS_EVENT, payload);
     }
 
     fn upload_progress(&self, payload: uploads::UploadProgress) {
         let _ = self.app.emit(uploads::UPLOAD_PROGRESS_EVENT, payload);
+    }
+
+    fn download_progress(&self, payload: uploads::DownloadProgress) {
+        let _ = self.app.emit(uploads::DOWNLOAD_PROGRESS_EVENT, payload);
     }
 
     fn unwritten(&self, payload: unwritten::UnwrittenPayload) {

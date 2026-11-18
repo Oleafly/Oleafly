@@ -17,6 +17,7 @@ use std::collections::BTreeSet;
 
 use oleafly_collab_protocol::envelope::{Envelope, EnvelopeMode};
 use oleafly_collab_protocol::frames::MemberChangeKind;
+use oleafly_ot::{DocMessage, DocSink, TextOperation};
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use super::online::refused_for;
@@ -26,9 +27,6 @@ use crate::client::test_util::{
     another_alice_device, canned, http_response, noise, two_people, Pair, Person,
 };
 use crate::doc::{NodeKind, ProjectDoc};
-use crate::editor::DocMessage;
-use crate::live::DocSink;
-use crate::ot::TextOperation;
 
 const WAIT: Duration = Duration::from_secs(10);
 

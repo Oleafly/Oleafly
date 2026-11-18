@@ -492,7 +492,8 @@
       "off": "Pois",
       "run": "Suorita koodi tällä koneella"
     },
-    "sharedViewer": "Vain omistajat ja muokkaajat voivat muuttaa näitä asetuksia jaetussa projektissa."
+    "sharedViewer": "Vain omistajat ja muokkaajat voivat muuttaa näitä asetuksia jaetussa projektissa.",
+    "coauthorsChanged": "Kanssakirjoittajat ovat muuttaneet edellisen käännöksesi jälkeen"
   },
   "datePicker": {
     "placeholder": "Valitse päivämäärä"
@@ -992,6 +993,10 @@
       "notes": {
         "description": "Lisää Muistiinpanot aloitusnäkymän telakkaan. Muistiinpano on Markdown-tiedosto, jossa voi olla kaavioita, diagrammeja ja matematiikkaa ja jota sekä sinä että agenttisi voitte muokata. Muistiinpanot eivät kuulu projektikirjastoon, ja jokaisen muistiinpanon voi linkittää projektiin. Oletuksena pois käytöstä beta-vaiheen ajan.",
         "label": "Muistiinpanot"
+      },
+      "overleafLive": {
+        "label": "Reaaliaikainen muokkaus Overleafin kanssa",
+        "description": "Muokkaa Overleafista tuomiasi projekteja samaan aikaan kanssakirjoittajiesi kanssa. Muutokset näkyvät molemmilla puolilla kirjoittaessasi. Oletuksena pois käytöstä beta-vaiheen ajan."
       },
       "researchTasks": {
         "description": "Agentti työskentelee itsenäisesti projektin kopiossa ja jättää muutokset sinun tarkistettavaksesi. Erittäin epävakaa: ajot voivat jumittua, epäonnistua tai jättää muutoksia, jotka pitää selvittää käsin, ja ne kuluttavat tekoälypalvelusi kiintiötä koko ajan. Lisää asetuksiin Tutkimus-osion. Kun kytket sen pois, kaikki käynnissä olevat tehtävät pysähtyvät. Oletuksena pois. Ota käyttöön omalla vastuullasi.",
@@ -1641,6 +1646,31 @@
       "allMine": "Pidä kaikki omat",
       "allTheirs": "Käytä kaikkia Overleafin",
       "apply": "Käytä ja synkronoi"
+    }
+  },
+  "overleafLive": {
+    "title": "Reaaliaikainen muokkaus Overleafin kanssa",
+    "live": "Reaaliaikainen Overleafin kanssa",
+    "connecting": "Yhdistetään Overleafiin…",
+    "sending": "Lähetetään muutoksia Overleafiin…",
+    "reconnecting": "Yhdistetään uudelleen Overleafiin…",
+    "pausedBadge": "Reaaliaikainen muokkaus tauolla",
+    "pause": "Keskeytä reaaliaikainen muokkaus",
+    "resume": "Jatka reaaliaikaista muokkausta",
+    "reconnectNow": "Yhdistä uudelleen nyt",
+    "open": "Avaa Overleafissa",
+    "share": "Jaa Overleafissa…",
+    "signIn": "Kirjaudu sisään…",
+    "reconnectingIn": "Yritetään uudelleen {{seconds}} s kuluttua.",
+    "notConfirmed": "Overleaf ei ole vielä vahvistanut.",
+    "copyDetails": "Kopioi yhteyden tiedot",
+    "detailsCopied": "Yhteyden tiedot kopioitu",
+    "copyDetailsFailed": "Yhteyden tietoja ei voitu kopioida",
+    "pauseDialog": {
+      "title": "Joitakin muutoksia ei ole vielä päätynyt Overleafiin",
+      "description": "Jos keskeytät nyt, ne pysyvät tällä tietokoneella ja menevät Overleafiin, kun jatkat. Git-synkronointi pysyy pois päältä siihen asti.",
+      "keepLive": "Jatka muokkausta reaaliaikaisesti",
+      "pauseAnyway": "Keskeytä silti"
     }
   },
   "stuckWindow": {

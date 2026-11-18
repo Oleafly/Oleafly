@@ -501,7 +501,9 @@
     "template_link_invalid": "이 링크는 Overleaf 템플릿 페이지가 아닙니다. overleaf.com/latex/templates에 있는 페이지의 주소를 복사한 뒤 다시 시도하세요.",
     "template_unavailable": "Oleafly가 이 템플릿을 열지 못했습니다. Overleaf 갤러리에서 삭제되었을 수 있습니다.",
     "browser_sign_in_missing": "Oleafly가 그 브라우저 프로필에서 {{server}} 로그인 정보를 찾지 못했습니다. 직접 로그인하세요.",
-    "browser_sign_in_failed": "브라우저에서 가져온 로그인 정보가 작동하지 않았습니다. 만료되었을 수 있습니다. 직접 로그인하세요."
+    "browser_sign_in_failed": "브라우저에서 가져온 로그인 정보가 작동하지 않았습니다. 만료되었을 수 있습니다. 직접 로그인하세요.",
+    "browser_unavailable": "Oleafly가 로그인을 위해 {{browser}}을(를) 열지 못했습니다. 다른 브라우저를 사용해 보세요.",
+    "browser_missing": "그 브라우저는 더 이상 설치되어 있지 않습니다. 다른 브라우저를 고르세요."
   },
   "collab": {
     "suggestion_role": "이 프로젝트에서 내 역할로는 제안할 수 없습니다."

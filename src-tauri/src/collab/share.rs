@@ -921,8 +921,16 @@ pub async fn collab_share_project(
     state: tauri::State<'_, CollabState>,
     project_id: String,
     server_id: String,
+    overleaf_live: Option<bool>,
 ) -> Result<ShareInfo, CollabCommandError> {
     let server = parse_id(&server_id, "server")?;
+    if share_info(state.inner(), &project_id)?.is_none() {
+        crate::collab::live::overleaf::refuse_overleaf_linked(
+            state.paths()?,
+            &project_id,
+            overleaf_live.unwrap_or(false),
+        )?;
+    }
     let host = AppHost::new(app.clone());
     let progress = |done: usize, total: usize| {
         let _ = app.emit(

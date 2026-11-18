@@ -158,6 +158,7 @@ beforeEach(() => {
 afterEach(() => {
   release?.();
   release = null;
+  useCollabLiveStore.setState({ backend: null });
   vi.useRealTimers();
 });
 
@@ -308,6 +309,14 @@ describe("live editing", () => {
     expect(collabSettingsLocked(PROJECT)).toBe(false);
   });
 
+  it("lets a reviewer type on Overleaf too, where the session sends suggestions", () => {
+    useCollabLiveStore.setState({ backend: "overleaf" });
+    start("reviewer");
+    expect(collabProjectReadOnly(PROJECT)).toBe(false);
+    useCollabLiveStore.setState({ role: "viewer" });
+    expect(collabProjectReadOnly(PROJECT)).toBe(true);
+  });
+
   it("keeps a commenter's editor read-only and locks files and settings", () => {
     start("commenter");
     expect(collabProjectReadOnly(PROJECT)).toBe(true);
@@ -399,6 +408,21 @@ describe("live editing edges", () => {
     expect(collabDocumentSession("missing.tex")).toBeNull();
     await settle();
     expect(mocks.collabDocOpen).not.toHaveBeenCalled();
+  });
+
+  it("hands a detached document's unsent typing to autosave and never says it was discarded", async () => {
+    start();
+    const session = collabDocumentSession("main.tex");
+    await settle();
+    session?.applyLocal([{ from: 6, to: 6, insert: "!" }], session.version());
+    channels.get("id-main.tex")?.({ kind: "detached", reason: "unknown_op" });
+    await settle();
+    expect(useFilesStore.getState().setContent).toHaveBeenCalledWith("main.tex", "shared!", {
+      unsaved: true,
+      base: "shared",
+    });
+    expect(mocks.toastInfo).not.toHaveBeenCalled();
+    expect(collabDocumentSession("main.tex")).toBeNull();
   });
 
   it("hands typing done before the server said no back to the files store", async () => {

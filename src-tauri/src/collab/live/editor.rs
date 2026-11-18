@@ -1,20 +1,25 @@
-use super::payloads::{ActivityPayload, DocOpened};
-use super::session::{active_for, lock, not_live};
-use crate::collab::commands::CollabCommandError;
 use oleafly_collab::doc::NodeKind;
-use oleafly_collab::live::{DocSink, LiveProject};
+use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize;
-use oleafly_collab::ot::TextOperation;
 use oleafly_collab::CollabError;
 use oleafly_collab_protocol::ids::AccountId;
+use oleafly_ot::{DocOpened, DocSink, TextOperation};
+
+use super::payloads::ActivityPayload;
+use super::session::{active_for, live_for, lock, not_live, Live};
+use crate::collab::commands::CollabCommandError;
 
 pub fn doc_open(
     project_id: &str,
     path: &str,
     sink: DocSink,
 ) -> Result<Option<DocOpened>, CollabError> {
-    let Some(active) = active_for(project_id) else {
+    let Some(slot) = live_for(project_id) else {
         return Ok(None);
+    };
+    let active = match slot {
+        Live::Server(active) => active,
+        Live::Overleaf(live) => return Ok(live.open(path, sink)),
     };
     let mut live = lock(&active.live);
     let layout = materialize::layout(&live.doc().nodes()?);
@@ -40,7 +45,10 @@ pub fn doc_change(
     rev: u64,
     operation: TextOperation,
 ) -> Result<(), CollabError> {
-    let active = active_for(project_id).ok_or_else(not_live)?;
+    let active = match live_for(project_id).ok_or_else(not_live)? {
+        Live::Server(active) => active,
+        Live::Overleaf(live) => return live.change(file_id, rev, operation),
+    };
     let (suggested, refused) = {
         let mut live = lock(&active.live);
         let reviewed = live.suggesting()
@@ -59,10 +67,11 @@ pub fn doc_change(
     active.kick();
     active.refresh_pending();
     if let Some(path) = suggested {
-        crate::collab::suggesting::tell(active.host.as_ref(), project_id, path, true);
+        crate::collab::suggesting::tell(active.local.host.as_ref(), project_id, path, true);
     }
     if let Some((code, path)) = refused {
         active
+            .local
             .host
             .suggestion_refused(crate::collab::suggesting::SuggestionRefusedPayload {
                 project_id: project_id.to_owned(),
@@ -74,7 +83,10 @@ pub fn doc_change(
 }
 
 pub fn document_snapshot(project_id: &str) -> Option<Result<Vec<u8>, CollabError>> {
-    active_for(project_id).map(|active| lock(&active.live).guarded(|live| live.doc().snapshot()))
+    live_for(project_id).and_then(|live| match live {
+        Live::Server(active) => Some(lock(&active.live).guarded(|live| live.doc().snapshot())),
+        Live::Overleaf(_) => None,
+    })
 }
 
 pub(in crate::collab) fn read_live<T>(
@@ -112,7 +124,7 @@ pub(in crate::collab) fn review_live<T>(
 }
 
 pub(in crate::collab) fn live_root(project_id: &str) -> Option<std::path::PathBuf> {
-    active_for(project_id).map(|active| active.root.clone())
+    active_for(project_id).map(|active| active.local.root.clone())
 }
 
 pub(in crate::collab) fn edit_live<T>(
@@ -128,8 +140,12 @@ pub(in crate::collab) fn edit_live<T>(
 }
 
 pub fn doc_close(project_id: &str, file_id: &str, session: u64) {
-    if let Some(active) = active_for(project_id) {
-        lock(&active.live).close_file(file_id, session);
+    match live_for(project_id) {
+        Some(Live::Server(active)) => {
+            lock(&active.live).close_file(file_id, session);
+        }
+        Some(Live::Overleaf(live)) => live.close(file_id, session),
+        None => {}
     }
 }
 
@@ -139,10 +155,14 @@ pub fn presence_set(
     cursor: Option<u32>,
     anchor: Option<u32>,
 ) {
-    if let Some(active) = active_for(project_id) {
-        active
-            .handle
-            .place_presence(path.filter(|path| path.len() <= 256), cursor, anchor);
+    match live_for(project_id) {
+        Some(Live::Server(active)) => {
+            active
+                .handle
+                .place_presence(path.filter(|path| path.len() <= 256), cursor, anchor)
+        }
+        Some(Live::Overleaf(live)) => live.presence(path.as_deref(), cursor),
+        None => {}
     }
 }
 
@@ -155,8 +175,10 @@ pub fn presence_activity(project_id: &str, activity: Option<ActivityPayload>) {
 }
 
 pub fn presence_leave(project_id: &str) {
-    if let Some(active) = active_for(project_id) {
-        active.handle.leave_presence();
+    match live_for(project_id) {
+        Some(Live::Server(active)) => active.handle.leave_presence(),
+        Some(Live::Overleaf(live)) => live.presence(None, None),
+        None => {}
     }
 }
 
@@ -164,8 +186,8 @@ pub fn presence_leave(project_id: &str) {
 mod tests {
     use std::sync::{Arc, Mutex};
 
-    use oleafly_collab::ot::TextOperation;
     use oleafly_collab_protocol::ids::AccountId;
+    use oleafly_ot::TextOperation;
 
     use super::*;
     use crate::collab::live::write::rig::LiveRig;

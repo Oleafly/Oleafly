@@ -194,6 +194,7 @@ async fn run_build(ctx: &Context, args: BuildArgs) -> Result<Outcome, CliError> 
 }
 
 async fn run_watch(ctx: &Context, args: BuildArgs) -> Result<Outcome, CliError> {
+    let mut stop = Box::pin(crate::stop_requested());
     let opened = open(ctx, &args)?;
     crate::engine::typst_variant(&opened.workspace, args.variant.as_deref())?;
     let root = opened.workspace.root().to_path_buf();
@@ -211,7 +212,6 @@ async fn run_watch(ctx: &Context, args: BuildArgs) -> Result<Outcome, CliError> 
     }
     let request = request_for(ctx, &args);
     let output = watched_output(&root, &args, &opened.workspace.manifest().main_doc);
-    let mut stop = Box::pin(crate::stop_requested());
     if !watch_build(ctx, &root, &args, &request, true, &mut stop).await? {
         return Ok(Outcome::printed());
     }

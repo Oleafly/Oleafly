@@ -390,7 +390,10 @@ fn ended(reason: EndReason, server: &str) -> CliError {
             format!("This command line isn't signed in to {server}."),
         )
         .hint(format!("Run oleafly server sign-in {server}.")),
-        EndReason::Removed | EndReason::AccessEnded | EndReason::AccountSuspended => CliError::new(
+        EndReason::Removed
+        | EndReason::ProjectDeleted
+        | EndReason::AccessEnded
+        | EndReason::AccountSuspended => CliError::new(
             ErrorKind::Auth,
             "server.forbidden",
             "You don't have access to that.".to_string(),

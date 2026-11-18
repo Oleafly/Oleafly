@@ -503,7 +503,9 @@
     "template_link_invalid": "That link isn't an Overleaf template page. Copy the address of a page from overleaf.com/latex/templates and try again.",
     "template_unavailable": "Oleafly couldn't open this template. It may have been removed from Overleaf's gallery.",
     "browser_sign_in_missing": "Oleafly found no sign-in for {{server}} in that browser profile. Sign in instead.",
-    "browser_sign_in_failed": "The sign-in from your browser didn't work. It may have expired. Sign in instead."
+    "browser_sign_in_failed": "The sign-in from your browser didn't work. It may have expired. Sign in instead.",
+    "browser_unavailable": "Oleafly couldn't open {{browser}} for sign-in. Try another browser.",
+    "browser_missing": "That browser isn't installed anymore. Pick another one."
   },
   "collab": {
     "suggestion_role": "Your role in this project doesn't allow suggestions."

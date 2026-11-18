@@ -190,6 +190,15 @@ describe("startCollabActivity", () => {
     expect(useCollabRail.getState().visible).toBe(true);
   });
 
+  it("keeps the rail hidden for a project live on Overleaf, even after its session ends", () => {
+    useCollabLiveStore.setState({ projectId: "grant", backend: "overleaf", share: null, status: { state: "online" } });
+    stop = startCollabActivity();
+    expect(useCollabRail.getState().visible).toBe(false);
+    useCollabLiveStore.setState({ status: { state: "ended", reason: "failed" }, ended: "failed" });
+    expect(useCollabRail.getState().visible).toBe(false);
+    useCollabLiveStore.setState({ backend: null });
+  });
+
   it("notes quietly, with a rail dot, when someone signs in on a new device", () => {
     joined("owner");
     stop = startCollabActivity();

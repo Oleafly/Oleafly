@@ -68,6 +68,8 @@ import { useFilesStore } from "@/store/files";
 import { useSettingsStore } from "@/store/settings";
 import { FileTree } from "./FileTree";
 
+const LAZY_LOAD_MS = 10_000;
+
 const TREE = [
   { path: "main.tex", is_dir: false },
   { path: "refs.bib", is_dir: false },
@@ -106,7 +108,9 @@ describe("FileTree collaboration presence", () => {
   it("puts a dot for each person on the file they have open", async () => {
     render(<FileTree />);
     const main = screen.getByRole("treeitem", { name: /^main\.tex/ });
-    expect(await within(main).findByRole("img", { name: "Alice Chen has this file open" })).toBeInTheDocument();
+    expect(
+      await within(main).findByRole("img", { name: "Alice Chen has this file open" }, { timeout: LAZY_LOAD_MS }),
+    ).toBeInTheDocument();
     const refs = screen.getByRole("treeitem", { name: /^refs\.bib/ });
     expect(within(refs).queryByRole("img")).toBeNull();
   });
@@ -116,7 +120,7 @@ describe("FileTree collaboration presence", () => {
     mocks.clashes.set("refs.bib", label);
     render(<FileTree />);
     const refs = screen.getByRole("treeitem", { name: /^refs\.bib/ });
-    expect(await within(refs).findByRole("img", { name: label })).toBeInTheDocument();
+    expect(await within(refs).findByRole("img", { name: label }, { timeout: LAZY_LOAD_MS })).toBeInTheDocument();
     const main = screen.getByRole("treeitem", { name: /^main\.tex/ });
     expect(within(main).queryByRole("img", { name: label })).toBeNull();
   });

@@ -50,6 +50,7 @@ import { activeTypstVariant, useTypstVariantStore } from "@/store/typst-variant"
 import { cn, shortcut } from "@/lib/utils";
 import { compileSettingsForEngine } from "@/lib/document-engine";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
+import { useCoauthorsChangedSince } from "@/lib/live-file-mirror";
 import { logError } from "@/lib/log";
 import { toast } from "@/lib/toast";
 import { decodeAppError, describeError } from "@/lib/app-error";
@@ -159,6 +160,8 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
   const grantTrust = useFolderAccessStore((s) => s.grant);
   const setTypstVersion = useFilesStore((s) => s.setTypstVersion);
   const sharedSettingsLocked = useCollabSettingsLocked(projectId);
+  const lastCompiledAt = useCompileStore((s) => s.lastCompiledAt);
+  const coauthorsChanged = useCoauthorsChangedSince(projectId, lastCompiledAt);
   const typstToolchain = useTypstToolchainFor(engine);
   const typstSelections = useTypstVariantStore((s) => s.selections);
   const refreshTypstToolchain = useTypstToolchainStore((s) => s.refresh);
@@ -177,6 +180,7 @@ export function CompileControls({ iconOnly = false }: Readonly<{ iconOnly?: bool
       blockedReason={noMainDocument ? t(($) => $.shell.openedFolder.noMain) : null}
       systemTexLocked={systemTexLocked}
       sharedSettingsLocked={sharedSettingsLocked}
+      coauthorsChanged={coauthorsChanged}
       onTrustForSystemTex={() => void grantTrust("folder")}
       engine={engine}
       engineLoaded={engineLoaded}
@@ -221,6 +225,7 @@ export type CompileControlsViewProps = Pick<FileState, "engine" | "engineLoaded"
       blockedReason?: string | null;
       systemTexLocked?: boolean;
       sharedSettingsLocked?: boolean;
+      coauthorsChanged?: boolean;
       onTrustForSystemTex?: () => void;
       recompile: (options?: { fromScratch?: boolean }) => unknown;
       typstToolchain?: TypstToolchainStatus | null;
@@ -686,7 +691,7 @@ function TypstVersionMenuGroup({
 
 export function CompileControlsView({
   engine, engineLoaded, setEngine, recompile, stopCompile, autoCompile, setAutoCompile, compileMode, setCompileMode, checkSyntaxBeforeCompile, setCheckSyntaxBeforeCompile, stopOnFirstError, setStopOnFirstError, status, compileRevision, iconOnly = false,
-  blockedReason = null, systemTexLocked = false, sharedSettingsLocked = false, onTrustForSystemTex,
+  blockedReason = null, systemTexLocked = false, sharedSettingsLocked = false, coauthorsChanged = false, onTrustForSystemTex,
   typstToolchain = null, setTypstVersion, onOptionsOpen,
   typstVariant = null, setTypstVariant, setTypstOptions, setCodeExecution, livePreview,
 }: Readonly<CompileControlsViewProps>) {
@@ -702,6 +707,11 @@ export function CompileControlsView({
   const compileLabel = hasCompileResult
     ? t(($) => $.shell.compile.recompile)
     : t(($) => $.shell.compile.compile);
+  const runTooltip = t(($) => $.shell.compile.runTooltip, {
+    action: compileLabel,
+    engine: engine.label,
+    shortcut: shortcut("⌘↵"),
+  });
   const renderCompileIcon = () => {
     if (compiling) return <Spinner size="sm" />;
     if (hasCompileResult) return <RefreshCw className="size-3.5" />;
@@ -713,11 +723,14 @@ export function CompileControlsView({
     <Tooltip
       label={
         blockedReason ??
-        t(($) => $.shell.compile.runTooltip, {
-          action: compileLabel,
-          engine: engine.label,
-          shortcut: shortcut("⌘↵"),
-        })
+        (coauthorsChanged ? (
+          <>
+            <span className="block">{t(($) => $.shell.compile.coauthorsChanged)}</span>
+            <span className="block">{runTooltip}</span>
+          </>
+        ) : (
+          runTooltip
+        ))
       }
     >
       <Button
@@ -732,7 +745,7 @@ export function CompileControlsView({
         size="sm"
         className={cn(
           "rounded-md bg-primary text-white shadow-sm hover:bg-primary hover:text-white",
-          "h-7 gap-1.5 px-2.5",
+          "relative h-7 gap-1.5 px-2.5",
           "rounded-r-none",
           blocked && "cursor-not-allowed opacity-50",
         )}
@@ -746,6 +759,13 @@ export function CompileControlsView({
         aria-label={compileLabel}
       >
         {renderCompileIcon()}
+        {coauthorsChanged ? (
+          <span
+            aria-hidden
+            data-testid="compile-coauthors-dot"
+            className="absolute right-1 top-1 size-1.5 rounded-full bg-amber-300"
+          />
+        ) : null}
         <span data-toolbar-part="compile-label" aria-hidden={iconOnly || undefined}
           className={cn("whitespace-nowrap text-xs font-medium", iconOnly && "invisible absolute")}>{compileLabel}</span>
       </Button>

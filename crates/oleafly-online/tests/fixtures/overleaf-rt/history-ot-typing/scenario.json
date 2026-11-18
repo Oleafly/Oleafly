@@ -1,0 +1,53 @@
+{
+  "scenario": "history-ot-typing",
+  "description": "The two-users-typing session on the history-ot project: concurrent typing at one spot, then free typing.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-15",
+  "project": {
+    "name": "history-ot-project",
+    "id": "6af96425fe06c8e771350e30"
+  },
+  "doc": {
+    "id": "6af9679c2fdfc01466e1ebe7",
+    "name": "history-ot-typing-20261115-080444.tex"
+  },
+  "format": "history-ot",
+  "pageMeta": {
+    "ol-wsUrl": "",
+    "ol-wsRetryHandshake": "5",
+    "ol-maxDocLength": "2097152",
+    "ol-maxReconnectGracefullyIntervalMs": "30000",
+    "ol-useShareJsHash": "",
+    "ol-otMigrationStage": "1",
+    "ol-hasTrackChangesFeature": "",
+    "ol-user_id": "6af963e9c9037022065bb526"
+  },
+  "participants": [
+    {
+      "name": "alice",
+      "email": "alice@example.test",
+      "userId": "6af963e9c9037022065bb526",
+      "frames": "alice.frames.jsonl",
+      "har": "alice.har",
+      "joinDocType": "history-ot"
+    },
+    {
+      "name": "bob",
+      "email": "bob@example.test",
+      "userId": "6af963eac9037022065bb52c",
+      "frames": "bob.frames.jsonl",
+      "har": "bob.har",
+      "joinDocType": "history-ot"
+    }
+  ],
+  "converged": false,
+  "finalText": {
+    "alice": "final.alice.txt",
+    "bob": "final.bob.txt"
+  },
+  "notes": [
+    "the editors did not converge at step 1",
+    "The first round is concurrent by construction; the second interleaves naturally.",
+    "the editors did not converge at step 2"
+  ]
+}

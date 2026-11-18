@@ -5,7 +5,7 @@ const api = vi.hoisted(() => ({
   overleafStatus: vi.fn(),
   overleafListProjects: vi.fn(),
   overleafSignIn: vi.fn(),
-  overleafSignInWithAppCookies: vi.fn(),
+  overleafSignInWithBrowser: vi.fn(),
   overleafSignOut: vi.fn(),
   overleafImportProjects: vi.fn(),
 }));
@@ -111,23 +111,34 @@ describe("overleaf import store", () => {
     expect(useOverleafImportStore.getState().error).toEqual(new Error("blocked"));
   });
 
-  it("signs in with copied browser cookies and loads the list", async () => {
-    api.overleafSignInWithAppCookies.mockResolvedValue(signedIn);
+  it("signs in with an installed browser, names it while waiting, then loads the list", async () => {
+    const chrome = { key: "chrome", name: "Google Chrome" };
+    let finish: (status: typeof signedIn) => void = () => {};
+    api.overleafSignInWithBrowser.mockReturnValueOnce(new Promise((resolve) => (finish = resolve)));
     api.overleafListProjects.mockResolvedValue({ status: signedIn, projects: [project("a")] });
-    await expect(useOverleafImportStore.getState().signInWithAppCookies()).resolves.toBe(true);
-    expect(api.overleafSignInWithAppCookies).toHaveBeenCalledWith(SERVER);
-    expect(useOverleafImportStore.getState()).toMatchObject({ phase: "ready", status: signedIn });
+    const signing = useOverleafImportStore.getState().signInWithBrowser(chrome);
+    expect(useOverleafImportStore.getState()).toMatchObject({ phase: "signing-in", signingWith: "Google Chrome" });
+    expect(api.overleafSignInWithBrowser).toHaveBeenCalledWith(SERVER, "chrome");
+    finish(signedIn);
+    await expect(signing).resolves.toBe(true);
+    expect(useOverleafImportStore.getState()).toMatchObject({ phase: "ready", status: signedIn, signingWith: null });
 
-    const failed = '@oleafly/error:{"code":"overleaf.browser_sign_in_failed","params":{}}';
-    api.overleafSignInWithAppCookies.mockRejectedValue(failed);
-    await expect(useOverleafImportStore.getState().signInWithAppCookies()).resolves.toBe(false);
-    expect(useOverleafImportStore.getState()).toMatchObject({ phase: "signed-out", error: failed });
+    api.overleafSignInWithBrowser.mockRejectedValueOnce(cancelled);
+    await expect(useOverleafImportStore.getState().signInWithBrowser(chrome)).resolves.toBe(false);
+    expect(useOverleafImportStore.getState()).toMatchObject({ phase: "signed-out", signingWith: null, error: null });
+
+    const failed = '@oleafly/error:{"code":"overleaf.browser_unavailable","params":{"browser":"Google Chrome"}}';
+    api.overleafSignInWithBrowser.mockRejectedValueOnce(failed);
+    await expect(useOverleafImportStore.getState().signInWithBrowser(chrome)).resolves.toBe(false);
+    expect(useOverleafImportStore.getState()).toMatchObject({ phase: "signed-out", signingWith: null, error: failed });
   });
 
   it("ignores a second sign-in while one is running", async () => {
     useOverleafImportStore.setState({ phase: "signing-in" });
     expect(await useOverleafImportStore.getState().signIn("t")).toBe(false);
     expect(api.overleafSignIn).not.toHaveBeenCalled();
+    expect(await useOverleafImportStore.getState().signInWithBrowser({ key: "edge", name: "Microsoft Edge" })).toBe(false);
+    expect(api.overleafSignInWithBrowser).not.toHaveBeenCalled();
   });
 
   it("signs out and clears the list", async () => {

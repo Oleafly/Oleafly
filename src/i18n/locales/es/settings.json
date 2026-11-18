@@ -1750,8 +1750,8 @@
         "notInstalled": "No instalado"
       },
       "tryAgain": "Volver a intentarlo",
-      "label": "Inicio de sesión del navegador",
-      "useBrowserSignIn": "Usar el inicio de sesión de mi navegador",
+      "label": "Copiar el inicio de sesión de un navegador",
+      "useBrowserSignIn": "Copiar el inicio de sesión de tu navegador",
       "signInDescription": "Copia tu inicio de sesión de {{server}} desde un navegador de este equipo para no tener que volver a iniciar sesión.",
       "site": "Sitio: {{domain}}",
       "confirmCopy": "Oleafly leerá las cookies de {{domain}} del perfil {{profile}} de {{browser}}. Se quedan en Oleafly y solo van a {{domain}}. Lo confirmarás una vez más en un diálogo del sistema.",
@@ -1830,7 +1830,33 @@
       "gitLabel": "Token de Git de Overleaf",
       "gitSave": "Guardar",
       "gitRemove": "Quitar",
-      "gitFailed": "Oleafly no pudo guardar el token de Git. Comprueba que pegaste el token completo."
+      "gitFailed": "Oleafly no pudo guardar el token de Git. Comprueba que pegaste el token completo.",
+      "browserLabel": "Iniciar sesión con tu navegador",
+      "browserDescription": "Para iniciar sesión con Google, tu institución o una llave de acceso. Oleafly abre {{server}} en una ventana nueva del navegador y la cierra cuando entras.",
+      "browserAction": "Iniciar sesión",
+      "browserPick": "Navegador para iniciar sesión",
+      "browserWaiting": "Termina de iniciar sesión en {{server}} en {{browser}}. Si cierras la ventana, se cancela.",
+      "browserHint": "Úsalo para iniciar sesión con Google, tu institución o una llave de acceso.",
+      "windowLabel": "Iniciar sesión en {{server}}",
+      "windowDescription": "Oleafly abre una ventana de inicio de sesión y la cierra cuando entras. Para iniciar sesión con Google, tu institución o una llave de acceso, instala Chrome, Edge, Brave, Chromium o Firefox y luego inicia sesión aquí con él.",
+      "windowAction": "Iniciar sesión",
+      "windowWaiting": "Termina de iniciar sesión en {{server}} en la ventana que se abrió.",
+      "unsent": {
+        "title": "Algunos cambios no se han enviado a Overleaf",
+        "description": "Si cierras sesión ahora, esos cambios se quedan en este equipo y pasan a Overleaf la próxima vez que inicies sesión con esta cuenta. Si inicias sesión con otra cuenta, vuelven como copias junto a sus archivos. O sigue con la sesión iniciada e inténtalo de nuevo en un momento.",
+        "files": "Aún sin enviar: {{files}}",
+        "signOut": "Cerrar sesión de todos modos",
+        "stay": "Mantener la sesión iniciada"
+      },
+      "deletes": {
+        "title": "Al eliminar un archivo en un proyecto en directo",
+        "description": "Elige qué pasa en Overleaf cuando eliminas un archivo o una carpeta en Oleafly.",
+        "options": {
+          "ask": "Preguntar cada vez",
+          "always": "Eliminarlo también en Overleaf",
+          "never": "Mantenerlo en Overleaf"
+        }
+      }
     },
     "desktopApps": {
       "tab": "Computer Use",

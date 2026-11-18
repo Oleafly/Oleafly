@@ -9,6 +9,8 @@ describe("syncState", () => {
     [{ state: "connecting" }, 0, "syncing"],
     [{ state: "offline", retry_in_ms: 2000 }, 47, "offline"],
     [{ state: "offline", retry_in_ms: 2000 }, 0, "reconnecting"],
+    [{ state: "signed_out" }, 3, "signedOut"],
+    [{ state: "idle" }, 0, "idle"],
     [{ state: "ended", reason: "signed_out" }, 0, "signedOut"],
     [{ state: "ended", reason: "removed" }, 2, "removed"],
     [{ state: "ended", reason: "archived" }, 0, "archived"],
@@ -27,6 +29,7 @@ describe("syncState", () => {
     ["server_changed", "serverChanged"],
     ["failed", "failed"],
     ["engine_spent", "engineSpent"],
+    ["project_deleted", "projectDeleted"],
   ])("reads a session that ended with %s as %s", (reason, expected) => {
     const status: CollabLiveSyncState = { state: "ended", reason };
     expect(syncState(status, 0)).toBe(expected);

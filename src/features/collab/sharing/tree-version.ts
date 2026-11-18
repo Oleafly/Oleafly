@@ -10,7 +10,7 @@ export interface LiveTree {
 }
 
 export function useLiveTree(): LiveTree | null {
-  const projectId = useCollabLiveStore((state) => (state.status ? state.projectId : null));
+  const projectId = useCollabLiveStore((state) => (state.status && state.backend !== "overleaf" ? state.projectId : null));
   const [version, setVersion] = useState(0);
   useTauriEvent<FolderChangePayload>(
     FOLDER_CHANGED_EVENT,

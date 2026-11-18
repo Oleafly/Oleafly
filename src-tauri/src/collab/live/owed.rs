@@ -5,7 +5,8 @@ use std::time::Instant;
 use oleafly_collab::materialize::Layout;
 
 use super::bases::WrittenTexts;
-use super::session::{guard, lock, Active, Alarm};
+use super::live_tree::LiveTree;
+use super::session::{guard, Active, Alarm, LiveDisk};
 use super::unwritten::backoff;
 use crate::collab::disk::{exists_exact, inside, move_path, rekey_moved, DiskState};
 
@@ -57,10 +58,10 @@ pub(super) fn retry_owed(
 
 #[cfg(test)]
 pub(super) fn owe(active: &Active, from: &str, id: &str, due_in: std::time::Duration) {
-    guard(&active.disk)
+    guard(&active.local.disk)
         .owed
         .insert(from.to_owned(), id.to_owned());
-    guard(&active.upkeep.owed)
+    guard(&active.local.upkeep.owed)
         .tries
         .insert(from.to_owned(), (1, Instant::now() + due_in));
 }
@@ -69,17 +70,18 @@ impl Active {
     pub(super) fn settle_owed_moves(&self) -> Vec<String> {
         let now = Instant::now();
         let (moved, ids, next, alarm) = {
-            let mut disk = guard(&self.disk);
+            let mut disk = guard(&self.local.disk);
             if disk.owed.is_empty() {
                 return Vec::new();
             }
             let owed = disk.owed.clone();
-            let mut tries = guard(&self.upkeep.owed);
-            let mut bases = guard(&self.bases);
+            let mut tries = guard(&self.local.upkeep.owed);
+            let mut bases = guard(&self.local.bases);
             let before = disk.owed.len();
-            let (moved, next) = retry_owed(&self.root, &mut disk, &mut bases, &mut tries, now);
+            let (moved, next) =
+                retry_owed(&self.local.root, &mut disk, &mut bases, &mut tries, now);
             if disk.owed.len() != before {
-                self.save_index_if_changed(&disk);
+                self.local.save_index_if_changed(&disk);
             }
             let ids = moved
                 .iter()
@@ -89,20 +91,23 @@ impl Active {
         };
         self.announce_new_names(moved);
         if let Some(next) = next {
-            alarm.ring_in(&self.writer, next.saturating_duration_since(now));
+            alarm.ring_in(&self.local.writer, next.saturating_duration_since(now));
         }
         ids
     }
 
     pub(super) fn written_at(&self, ids: &[String]) -> Vec<String> {
-        let disk = guard(&self.disk);
+        let disk = guard(&self.local.disk);
         ids.iter()
             .filter_map(|id| disk.layout.get(id).map(|placed| placed.path.clone()))
             .collect()
     }
+}
 
+impl LiveDisk {
     pub(super) fn hold_back_owed(
         &self,
+        tree: &dyn LiveTree,
         next: &Layout,
         texts: &mut Vec<(String, String)>,
         owed: &[String],
@@ -118,11 +123,11 @@ impl Active {
         if held.is_empty() {
             return;
         }
-        let mut live = lock(&self.live);
-        for (id, placed) in next {
-            if held.contains(&placed.path) {
-                live.mark_dirty(id);
-            }
-        }
+        let ids: Vec<String> = next
+            .iter()
+            .filter(|(_, placed)| held.contains(&placed.path))
+            .map(|(id, _)| id.clone())
+            .collect();
+        tree.mark_dirty(&ids);
     }
 }

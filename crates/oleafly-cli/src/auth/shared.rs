@@ -310,6 +310,8 @@ pub(crate) fn from_online(error: &OnlineError) -> CliError {
         Kind::WorktreeBusy => new(ErrorKind::Conflict, "remote.project_busy", "The Oleafly app is changing this project right now.".to_string())
             .hint("Try again in a moment.")
             .retryable(),
+        Kind::LiveElsewhere => new(ErrorKind::Conflict, "remote.live_elsewhere", "This project is live in another Oleafly window.".to_string())
+            .hint("Stop live editing there, then try again."),
         Kind::SyncNotLinked => new(ErrorKind::InvalidInput, "remote.not_linked", "This folder isn't linked to an online project.".to_string())
             .hint("Run oleafly remote link first."),
         Kind::SyncAlreadyLinked => new(ErrorKind::Conflict, "remote.already_linked", "This folder is linked to a different online project.".to_string())
@@ -607,6 +609,15 @@ mod tests {
         assert_eq!(
             (busy.code.as_ref(), busy.exit() as u8, busy.retryable),
             ("remote.busy", 8, true)
+        );
+        let elsewhere = online(Kind::LiveElsewhere);
+        assert_eq!(
+            (
+                elsewhere.code.as_ref(),
+                elsewhere.exit() as u8,
+                elsewhere.retryable
+            ),
+            ("remote.live_elsewhere", 8, false)
         );
         assert_eq!(online(Kind::GitNotInstalled).exit() as u8, 4);
         assert_eq!(online(Kind::ProjectUnavailable).exit() as u8, 3);

@@ -2,8 +2,6 @@ mod access_log;
 mod admin_console;
 mod code_sign_in;
 mod diagnostics;
-#[cfg(feature = "e2e-hooks")]
-pub mod e2e_route;
 mod guests;
 mod http;
 mod loopback;
@@ -35,9 +33,7 @@ pub use self::session::{session_account, SessionManager};
 pub use self::sign_in::{sign_in, sign_in_as, SignInRequest};
 pub use self::url::ServerUrl;
 pub use self::ws::{connect_socket, SocketConnection};
-pub(crate) use self::ws::{Heard, Socket};
 
-pub(crate) const CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
 const SLOWEST_UPLINK_BYTES_PER_SECOND: f64 = 16.0 * 1024.0;
 
 pub(crate) fn upload_allowance(bytes: usize) -> Duration {

@@ -61,6 +61,8 @@ for path in \
   crates/oleafly-collab/src/sync.rs \
   crates/oleafly-collab/examples/e2e_peer.rs \
   crates/oleafly-collab-protocol/src/frames.rs \
+  crates/oleafly-ot/src/editor.rs \
+  crates/oleafly-net/src/lib.rs \
   crates/oleafly-server/src/routes/ws.rs \
   crates/oleafly-server/Cargo.toml \
   src-tauri/src/collab/live.rs \
@@ -75,6 +77,12 @@ for path in \
   src/components/layout/CollabLiveKeeper.tsx \
   src/components/layout/CollabLinkKeeper.tsx \
   e2e/tests/109-live-collaboration-peer.spec.ts \
+  crates/oleafly-online/src/browser_signin/cdp.rs \
+  crates/oleafly-online/examples/fake_browser.rs \
+  crates/oleafly-online/tests/browser_signin.rs \
+  src-tauri/src/overleaf/signin.rs \
+  src/components/settings/BrowserSignInCopy.tsx \
+  e2e/tests/146-online-browser-sign-in.spec.ts \
   scripts/e2e-collab-browser.sh \
   scripts/ci/collab-changes.sh \
   .github/workflows/ci.yml; do
@@ -93,6 +101,8 @@ for path in \
   src-tauri/src/project.rs \
   src-tauri/src/collaboration.rs \
   crates/oleafly-core/src/lib.rs \
+  crates/oleafly-online/src/session.rs \
+  src-tauri/src/overleaf/mod.rs \
   e2e/tests/21-library.spec.ts \
   e2e/helpers.ts \
   scripts/e2e.sh \

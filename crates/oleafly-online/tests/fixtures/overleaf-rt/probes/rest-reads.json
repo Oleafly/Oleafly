@@ -1,0 +1,227 @@
+{
+  "probe": "rest-reads",
+  "description": "The read routes a live session uses: entities, members, history updates, the file-tree diff, threads and chat.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-15",
+  "notes": [],
+  "steps": [
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6af963ebc9037022065bb53f/entities"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "project_id": "6af963ebc9037022065bb53f",
+        "entities": [
+          {
+            "path": "/figure.png",
+            "type": "file"
+          },
+          {
+            "path": "/main.tex",
+            "type": "doc"
+          },
+          {
+            "path": "/refs.bib",
+            "type": "doc"
+          },
+          {
+            "path": "/sections/intro.tex",
+            "type": "doc"
+          },
+          {
+            "path": "/sections/method.tex",
+            "type": "doc"
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6af963ebc9037022065bb53f/members"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "members": [
+          {
+            "_id": "6af963eac9037022065bb52c",
+            "first_name": "Bob",
+            "last_name": "Editor",
+            "email": "bob@example.test",
+            "privileges": "readAndWrite",
+            "signUpDate": "2026-11-15T07:48:58.207Z"
+          },
+          {
+            "_id": "6af963eac9037022065bb532",
+            "first_name": "Carol",
+            "last_name": "Reviewer",
+            "email": "carol@example.test",
+            "privileges": "review",
+            "signUpDate": "2026-11-15T07:48:58.800Z"
+          },
+          {
+            "_id": "6af963ebc9037022065bb538",
+            "first_name": "Dave",
+            "last_name": "Viewer",
+            "email": "dave@example.test",
+            "privileges": "readOnly",
+            "signUpDate": "2026-11-15T07:48:59.321Z"
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6af963ebc9037022065bb53f/updates?min_count=3"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "updates": [
+          {
+            "fromV": 56,
+            "toV": 58,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Bob",
+                  "last_name": "Editor",
+                  "email": "bob@example.test",
+                  "id": "6af963eac9037022065bb52c"
+                },
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6af963e9c9037022065bb526"
+                }
+              ],
+              "start_ts": 1794731315976,
+              "end_ts": 1794731319718
+            },
+            "labels": [],
+            "pathnames": [
+              "project-room-broadcast-20261115-082825.tex"
+            ],
+            "project_ops": []
+          },
+          {
+            "fromV": 55,
+            "toV": 56,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Alice",
+                  "last_name": "Owner",
+                  "email": "alice@example.test",
+                  "id": "6af963e9c9037022065bb526"
+                }
+              ],
+              "start_ts": 1794731306487,
+              "end_ts": 1794731306487
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "add": {
+                  "pathname": "project-room-broadcast-20261115-082825.tex"
+                },
+                "atV": 55
+              }
+            ]
+          },
+          {
+            "fromV": 54,
+            "toV": 55,
+            "meta": {
+              "users": [
+                {
+                  "first_name": "Bob",
+                  "last_name": "Editor",
+                  "email": "bob@example.test",
+                  "id": "6af963eac9037022065bb52c"
+                }
+              ],
+              "start_ts": 1794730054555,
+              "end_ts": 1794730054555
+            },
+            "labels": [],
+            "pathnames": [],
+            "project_ops": [
+              {
+                "remove": {
+                  "pathname": "delete-open-file-20261115-080725.tex"
+                },
+                "atV": 54
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6af963ebc9037022065bb53f/filetree/diff?from=57&to=58"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "diff": [
+          {
+            "pathname": "main.tex",
+            "editable": true
+          },
+          {
+            "pathname": "refs.bib",
+            "editable": true
+          },
+          {
+            "pathname": "figure.png",
+            "editable": false
+          },
+          {
+            "pathname": "project-room-broadcast-20261115-082825.tex",
+            "operation": "edited"
+          }
+        ]
+      }
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6af963ebc9037022065bb53f/threads"
+      },
+      "status": 404,
+      "headers": {
+        "content-type": "text/html; charset=utf-8"
+      },
+      "body": "<!DOCTYPE html><html lang=\"en\"><head><title translate=\"no\">Page Not Found - Overleaf CE harness, Online LaTeX Editor</title><meta name=\"twitter:title\" content=\"Page Not Found\"><meta name=\"og:title\" content=\"Page Not Found\"><meta name=\"description\" content=\"An online LaTeX editor that’s easy to use. No installation, real-time collaboration, version control, hundreds of LaTeX templates, and more.\"><…"
+    },
+    {
+      "request": {
+        "method": "GET",
+        "route": "/project/6af963ebc9037022065bb53f/messages?limit=5"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": []
+    }
+  ]
+}

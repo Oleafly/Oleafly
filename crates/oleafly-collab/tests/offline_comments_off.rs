@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 
 use oleafly_collab::doc::{NodeKind, ProjectDoc};
-use oleafly_collab::live::{save_shared, DocSink, LiveProject};
+use oleafly_collab::live::{save_shared, LiveProject};
 use oleafly_collab::sync::{
     spawn_live_with, LiveEvent, LiveHandle, LiveLink, LiveStatus, SharedLive, TransportOptions,
 };
@@ -11,6 +11,7 @@ use oleafly_collab_protocol::auth::SessionTokens;
 use oleafly_collab_protocol::ids::{ServerId, SharedProjectId};
 use oleafly_collab_protocol::projects::{ProjectPatch, ProjectRole};
 use oleafly_collab_protocol::roles::ServerRole;
+use oleafly_ot::DocSink;
 use oleafly_server::test_support::{
     seed_person, test_config, BlockingProxy, PersonSeed, TestServer,
 };

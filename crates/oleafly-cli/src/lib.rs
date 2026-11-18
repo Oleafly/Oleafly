@@ -195,12 +195,12 @@ fn is_subcommand(argument: &OsStr) -> bool {
 /// and SIGHUP too (never, when the handlers can't be set). A process ended by
 /// a signal runs no destructors, so the compiler a build started would keep
 /// running and the outputs it was holding aside would not go back.
-pub(crate) async fn stop_requested() {
-    daemon::serve::termination().await;
+pub(crate) fn stop_requested() -> impl std::future::Future<Output = ()> {
+    daemon::serve::termination()
 }
 
-async fn interrupted() -> CliError {
-    stop_requested().await;
+async fn interrupted(stop: impl std::future::Future<Output = ()>) -> CliError {
+    stop.await;
     CliError::new(ErrorKind::Interrupted, "interrupted", "Stopped.")
 }
 
@@ -236,9 +236,10 @@ pub async fn run(cli: Cli, project_explicit: bool) -> u8 {
         if cli.command.handles_interrupt() {
             cli.command.run(&ctx).await
         } else {
+            let stop = stop_requested();
             tokio::select! {
                 result = cli.command.run(&ctx) => result,
-                error = interrupted() => Err(error),
+                error = interrupted(stop) => Err(error),
             }
         }
     })

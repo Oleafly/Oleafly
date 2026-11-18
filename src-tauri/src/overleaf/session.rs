@@ -1,6 +1,6 @@
 pub(crate) use oleafly_online::service::DEFAULT_SERVER;
 pub(crate) use oleafly_online::session::{
-    cookie_applies, cookie_header, merge_set_cookies, origin_of, Session,
+    cookie_applies, cookie_header, is_dashboard, merge_set_cookies, origin_of, Session,
 };
 
 use super::errors::app_error;

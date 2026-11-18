@@ -8,10 +8,8 @@ use std::time::{Duration, Instant};
 
 use loro::VersionVector;
 use oleafly_collab::doc::{NodeKind, ProjectDoc};
-use oleafly_collab::editor::DocMessage;
-use oleafly_collab::live::{DocSink, LiveProject};
+use oleafly_collab::live::LiveProject;
 use oleafly_collab::materialize;
-use oleafly_collab::ot::TextOperation;
 use oleafly_collab::sync::{spawn_live, LiveEvent, LiveLink, LiveStatus};
 use oleafly_collab::{
     CollabError, DeviceKey, MemorySecrets, SecretPort, ServerClient, ServerUrl, SessionManager,
@@ -21,6 +19,8 @@ use oleafly_collab_protocol::auth::SessionTokens;
 use oleafly_collab_protocol::ids::{ServerId, SharedProjectId};
 use oleafly_collab_protocol::projects::{PresenceState, ProjectRole};
 use oleafly_collab_protocol::roles::ServerRole;
+use oleafly_ot::testing::{EditorDoc, Reaction, Rng};
+use oleafly_ot::{DocMessage, DocSink, TextOperation};
 use oleafly_server::clock::SystemClock;
 use oleafly_server::config::ServerConfig;
 use oleafly_server::projects;
@@ -31,7 +31,7 @@ use oleafly_server::test_support::{
 };
 use tokio::sync::{mpsc, watch};
 
-use crate::typist::{keystroke, phrase, EditorDoc, Reaction, Rng, NAMES, WORDS};
+use crate::typist::{keystroke, phrase, NAMES, WORDS};
 
 const SERVER: &str = "127.0.0.1:8787";
 const GITHUB: &str = "127.0.0.1:8790";

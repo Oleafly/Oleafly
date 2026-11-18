@@ -10,7 +10,7 @@ use serde::Serialize;
 
 use super::super::commands::DetachedProject;
 use super::super::state::CollabState;
-use super::{guard, local_copy, lock, stop, Active, ACTIVE};
+use super::{guard, local_copy, lock, stop, Active, Live, ACTIVE};
 
 pub const SIGN_OUT_WAIT: Duration = Duration::from_secs(5);
 const POLL: Duration = Duration::from_millis(50);
@@ -20,11 +20,14 @@ pub struct UnsentProject {
     pub project_id: String,
     pub name: String,
     pub changes: u64,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub paths: Vec<String>,
 }
 
 fn live_on(server: ServerId) -> Option<Arc<Active>> {
     guard(&ACTIVE)
         .as_ref()
+        .and_then(Live::server)
         .filter(|active| active.link.server_id == server)
         .cloned()
 }
@@ -100,12 +103,13 @@ fn name_of(project_id: &str) -> Option<String> {
     })
 }
 
-fn named(project_id: String, changes: u64) -> Option<UnsentProject> {
+pub(super) fn named(project_id: String, changes: u64) -> Option<UnsentProject> {
     let name = name_of(&project_id)?;
     Some(UnsentProject {
         project_id,
         name,
         changes,
+        paths: Vec::new(),
     })
 }
 
@@ -127,7 +131,7 @@ pub(crate) async fn unsent_changes(
         .map(|tokens| tokens.device_id);
     let live = active.map(|active| {
         let changes = changes_in(&lock(&active.live));
-        (active.project_id.clone(), changes)
+        (active.local.project_id.clone(), changes)
     });
     tauri::async_runtime::spawn_blocking(move || {
         bound_to(&paths, server)
@@ -790,7 +794,7 @@ mod tests {
         let (failed, restarted): (Result<(), String>, bool) = tauri::async_runtime::block_on(
             crate::collab::live::resumed_if_failed(&lab.state, Arc::new(Quiet), PROJECT, async {
                 stop(PROJECT).await;
-                *guard(&super::super::ACTIVE) = Some(other.active());
+                *guard(&super::super::ACTIVE) = Some(Live::Server(other.active()));
                 Err("the recycle bin refused".to_owned())
             }),
         );

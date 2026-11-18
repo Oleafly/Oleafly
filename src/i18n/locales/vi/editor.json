@@ -1253,6 +1253,10 @@
     "failed": "Oleafly không thể cập nhật {{file}}. Hãy thử lại.",
     "tabMark": "Đã thay đổi trên đĩa. Mở tab này để chọn phiên bản cần giữ."
   },
+  "liveTab": {
+    "notOnOverleafYet": "Chưa có trên Overleaf",
+    "storedAsFile": "Overleaf lưu mục này dưới dạng tệp nên các chỉnh sửa của bạn được tải lên khi bạn lưu."
+  },
   "labels": {
     "filterPlaceholder": "Tên nhãn",
     "filterLabel": "Lọc nhãn dự án",

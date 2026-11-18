@@ -507,7 +507,9 @@
     "template_link_invalid": "Ten link nie prowadzi do strony szablonu w Overleaf. Skopiuj adres strony z overleaf.com/latex/templates i spróbuj ponownie.",
     "template_unavailable": "Oleafly nie mógł otworzyć tego szablonu. Mógł zostać usunięty z galerii Overleaf.",
     "browser_sign_in_missing": "Oleafly nie znalazł logowania do {{server}} w tym profilu przeglądarki. Zaloguj się bezpośrednio.",
-    "browser_sign_in_failed": "Logowanie z Twojej przeglądarki nie zadziałało. Mogło wygasnąć. Zaloguj się bezpośrednio."
+    "browser_sign_in_failed": "Logowanie z Twojej przeglądarki nie zadziałało. Mogło wygasnąć. Zaloguj się bezpośrednio.",
+    "browser_unavailable": "Oleafly nie mógł otworzyć przeglądarki {{browser}} do logowania. Spróbuj innej przeglądarki.",
+    "browser_missing": "Ta przeglądarka nie jest już zainstalowana. Wybierz inną."
   },
   "collab": {
     "suggestion_role": "Twoja rola w tym projekcie nie pozwala zgłaszać sugestii."

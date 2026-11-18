@@ -1,0 +1,176 @@
+{
+  "probe": "upload-replace-and-convert",
+  "description": "Alice uploads over existing entries while Bob watches: a binary over a binary (replace), a binary over a doc (convertDocToFile) and text over a binary (convertFileToDoc). Throwaway names, deleted afterwards.",
+  "server": "Overleaf Community Edition 6.3.3 (sharelatex/sharelatex:6.3.3@sha256:fcdae66d4b642537d4f5ca8c814b9b2c7771395de5d5c51d14b52c4f542e5712)",
+  "recordedAt": "2026-11-15",
+  "notes": [
+    "a new doc: reciveNewDoc([\"6af963ebc9037022065bb53e\",{\"name\":\"convert-probe-20261115-150957.tex\",\"_id\":\"6af9cb451dd46ac4250d77c2\"},\"editor\",\"6af963e9c9037022065bb526\"])",
+    "a binary over the doc: removeEntity([\"6af9cb451dd46ac4250d77c2\",\"convertDocToFile\"]), reciveNewFile([\"6af963ebc9037022065bb53e\",{\"name\":\"convert-probe-20261115-150957.tex\",\"rev\":0,\"linkedFileData\":null,\"hash\":\"62db0ea30b9a63acaaa0c432c81e40f964b934a5\",\"_id\":\"6af9cb451dd46ac4250d77d9\",\"created\":\"2026-11-15T15:09:57.670Z\"},\"upload\",null,\"6af963e9c9037022065bb526\"])",
+    "text over the binary: removeEntity([\"6af9cb451dd46ac4250d77d9\",\"convertFileToDoc\"]), reciveNewDoc([\"6af963ebc9037022065bb53e\",{\"name\":\"convert-probe-20261115-150957.tex\",\"_id\":\"6af9cb461dd46ac4250d77f0\"},\"upload\",\"6af963e9c9037022065bb526\"])",
+    "a new binary: reciveNewFile([\"6af963ebc9037022065bb53e\",{\"name\":\"convert-probe-20261115-150957.png\",\"rev\":0,\"linkedFileData\":null,\"hash\":\"09737244fea77d5cf6d535561007eff2aa043798\",\"_id\":\"6af9cb461dd46ac4250d7808\",\"created\":\"2026-11-15T15:09:58.794Z\"},\"upload\",null,\"6af963e9c9037022065bb526\"])",
+    "a binary over the binary: removeEntity([\"6af9cb461dd46ac4250d7808\",\"upload\"]), reciveNewFile([\"6af963ebc9037022065bb53e\",{\"name\":\"convert-probe-20261115-150957.png\",\"rev\":0,\"linkedFileData\":null,\"hash\":\"2e7ce0fcd83a6f28a98980b9158baa00dc7cabe0\",\"_id\":\"6af9cb471dd46ac4250d7820\",\"created\":\"2026-11-15T15:09:59.338Z\"},\"upload\",null,\"6af963e9c9037022065bb526\"])"
+  ],
+  "steps": [
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6af963ebc9037022065bb53f/doc"
+      },
+      "status": 200,
+      "headers": {
+        "content-type": "application/json; charset=utf-8"
+      },
+      "body": {
+        "name": "convert-probe-20261115-150957.tex",
+        "_id": "6af9cb451dd46ac4250d77c2"
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6af963ebc9037022065bb53f/upload?folder_id=6af963ebc9037022065bb53e",
+        "name": "convert-probe-20261115-150957.tex"
+      },
+      "status": 200,
+      "body": {
+        "success": true,
+        "entity_id": "6af9cb451dd46ac4250d77d9",
+        "entity_type": "file",
+        "hash": "62db0ea30b9a63acaaa0c432c81e40f964b934a5"
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6af963ebc9037022065bb53f/upload?folder_id=6af963ebc9037022065bb53e",
+        "name": "convert-probe-20261115-150957.tex"
+      },
+      "status": 200,
+      "body": {
+        "success": true,
+        "entity_id": "6af9cb461dd46ac4250d77f0",
+        "entity_type": "doc"
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6af963ebc9037022065bb53f/upload?folder_id=6af963ebc9037022065bb53e",
+        "name": "convert-probe-20261115-150957.png"
+      },
+      "status": 200,
+      "body": {
+        "success": true,
+        "entity_id": "6af9cb461dd46ac4250d7808",
+        "entity_type": "file",
+        "hash": "09737244fea77d5cf6d535561007eff2aa043798"
+      }
+    },
+    {
+      "request": {
+        "method": "POST",
+        "route": "/project/6af963ebc9037022065bb53f/upload?folder_id=6af963ebc9037022065bb53e",
+        "name": "convert-probe-20261115-150957.png"
+      },
+      "status": 200,
+      "body": {
+        "success": true,
+        "entity_id": "6af9cb471dd46ac4250d7820",
+        "entity_type": "file",
+        "hash": "2e7ce0fcd83a6f28a98980b9158baa00dc7cabe0"
+      }
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6af963ebc9037022065bb53f/doc/6af9cb461dd46ac4250d77f0"
+      },
+      "status": 204,
+      "headers": {},
+      "body": ""
+    },
+    {
+      "request": {
+        "method": "DELETE",
+        "route": "/project/6af963ebc9037022065bb53f/file/6af9cb471dd46ac4250d7820"
+      },
+      "status": 204,
+      "headers": {},
+      "body": ""
+    },
+    {
+      "socket": {
+        "user": "bob",
+        "projectId": "6af963ebc9037022065bb53f",
+        "transport": "websocket",
+        "frames": [
+          {
+            "t": 296,
+            "dir": "in",
+            "frame": "1::"
+          },
+          {
+            "t": 311,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"joinProjectResponse\",\"args\":[{\"publicId\":\"P.FqNfyjdyuchsOQxwAAAD\",\"project\":{\"_id\":\"6af963ebc9037022065bb53f\",\"name\":\"sharejs-project\",\"rootDoc_id\":\"6af963ecc9037022065bb543\",\"mainBibliographyDoc_id\":\"6af963edc9037022065bb55e\",\"rootFolder\":[{\"_id\":\"6af963ebc9037022065bb53e\",\"name\":\"rootFolder\",\"folders\":[{\"_id\":\"6af963edc9037022065bb549\",\"name\":\"sections\",\"folders\":[],\"fileRefs\":[],\"docs\":[{\"_id\":\"6af963edc9037022065bb54f\",\"name\":\"intro.tex\"},{\"_id\":\"6af963edc9037022065bb556\",\"name\":\"method.tex\"}]}],\"fileRefs\":[{\"_id\":\"6af963eec9037022065bb567\",\"name\":\"figure.png\",\"linkedFileData\":null,\"created\":\"2026-11-15T07:49:02.699Z\",\"hash\":\"487e7c6aa16bc66f79769355b2b998813b7f8f90\"}],\"docs\":[{\"_id\":\"6af963ecc9037022065bb543\",\"name\":\"main.tex\"},{\"_id\":\"6af963edc9037022065bb55e\",\"name\":\"refs.bib\"},{\"_id\":\"6af9651d2fdfc01466e1e88d\",\"name\":\"two-users-typing-20261115-075405.tex\"},{\"_id\":\"6af9655b2fdfc01466e1e8d9\",\"name\":\"two-users-typing-20261115-075507.tex\"},{\"_id\":\"6af965732fdfc01466e1e923\",\"name\":\"overlapping-deletes-20261115-075531.tex\"},{\"_id\":\"6af965892fdfc01466e1e96d\",\"name\":\"large-paste-20261115-075553.tex\"},{\"_id\":\"6af965a02fdfc01466e1e9ba\",\"name\":\"emoji-20261115-075616.tex\"},{\"_id\":\"6af967442fdfc01466e1eaa8\",\"name\":\"two-users-typing-20261115-080316.tex\"},{\"_id\":\"6af9675a2fdfc01466e1eaf6\",\"name\":\"overlapping-deletes-20261115-080338.tex\"},{\"_id\":\"6af967712fdfc01466e1eb45\",\"name\":\"large-paste-20261115-080401.tex\"},{\"_id\":\"6af967852fdfc01466e1eb96\",\"name\":\"emoji-20261115-080421.tex\"},{\"_id\":\"6af9682e2fdfc01466e1ece0\",\"name\":\"rename-while-open-20261115-080710-renamed.tex\"},{\"_id\":\"6af96d292fdfc01466e1eee6\",\"name\":\"project-room-broadcast-20261115-082825.tex\"},{\"_id\":\"6af97eb8176744c11ff62e18\",\"name\":\"missing-ops-20261115-094320.tex\"}]}],\"publicAccesLevel\":\"private\",\"dropboxEnabled\":false,\"compiler\":\"pdflatex\",\"description\":\"\",\"spellCheckLanguage\":\"en_US\",\"deletedByExternalDataSource\":false,\"owner\":{\"_id\":\"6af963e9c9037022065bb526\",\"first_name\":\"Alice\",\"last_name\":\"Owner\",\"email\":\"alice@example.test\",\"privileges\":\"owner\",\"signUpDate\":\"2026-11-15T07:48:57.611Z\"},\"members\":[{\"_id\":\"6af963eac9037022065bb52c\",\"first_name\":\"Bob\",\"last_name\":\"Editor\",\"email\":\"bob@example.test\",\"privileges\":\"readAndWrite\",\"signUpDate\":\"2026-11-15T07:48:58.207Z\"},{\"_id\":\"6af963eac9037022065bb532\",\"first_name\":\"Carol\",\"last_name\":\"Reviewer\",\"email\":\"carol@example.test\",\"privileges\":\"review\",\"signUpDate\":\"2026-11-15T07:48:58.800Z\"},{\"_id\":\"6af963ebc9037022065bb538\",\"first_name\":\"Dave\",\"last_name\":\"Viewer\",\"email\":\"dave@example.test\",\"privileges\":\"readOnly\",\"signUpDate\":\"2026-11-15T07:48:59.321Z\"}],\"invites\":[],\"myAccessRequest\":null,\"features\":{\"collaborators\":-1,\"versioning\":true,\"dropbox\":true,\"github\":true,\"gitBridge\":true,\"compileTimeout\":180,\"compileGroup\":\"standard\",\"references\":true,\"trackChanges\":true,\"aiUsageQuota\":\"basic\",\"offlineMode\":false,\"templates\":false,\"referencesSearch\":true,\"mendeley\":true,\"trackChangesVisible\":false,\"symbolPalette\":false},\"trackChangesState\":{\"6af963eac9037022065bb532\":true}},\"permissionsLevel\":\"readAndWrite\",\"protocolVersion\":2}]}"
+          },
+          {
+            "t": 748,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewDoc\",\"args\":[\"6af963ebc9037022065bb53e\",{\"name\":\"convert-probe-20261115-150957.tex\",\"_id\":\"6af9cb451dd46ac4250d77c2\"},\"editor\",\"6af963e9c9037022065bb526\"]}"
+          },
+          {
+            "t": 1347,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6af9cb451dd46ac4250d77c2\",\"convertDocToFile\"]}"
+          },
+          {
+            "t": 1347,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewFile\",\"args\":[\"6af963ebc9037022065bb53e\",{\"name\":\"convert-probe-20261115-150957.tex\",\"rev\":0,\"linkedFileData\":null,\"hash\":\"62db0ea30b9a63acaaa0c432c81e40f964b934a5\",\"_id\":\"6af9cb451dd46ac4250d77d9\",\"created\":\"2026-11-15T15:09:57.670Z\"},\"upload\",null,\"6af963e9c9037022065bb526\"]}"
+          },
+          {
+            "t": 1905,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6af9cb451dd46ac4250d77d9\",\"convertFileToDoc\"]}"
+          },
+          {
+            "t": 1905,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewDoc\",\"args\":[\"6af963ebc9037022065bb53e\",{\"name\":\"convert-probe-20261115-150957.tex\",\"_id\":\"6af9cb461dd46ac4250d77f0\"},\"upload\",\"6af963e9c9037022065bb526\"]}"
+          },
+          {
+            "t": 2466,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewFile\",\"args\":[\"6af963ebc9037022065bb53e\",{\"name\":\"convert-probe-20261115-150957.png\",\"rev\":0,\"linkedFileData\":null,\"hash\":\"09737244fea77d5cf6d535561007eff2aa043798\",\"_id\":\"6af9cb461dd46ac4250d7808\",\"created\":\"2026-11-15T15:09:58.794Z\"},\"upload\",null,\"6af963e9c9037022065bb526\"]}"
+          },
+          {
+            "t": 3016,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6af9cb461dd46ac4250d7808\",\"upload\"]}"
+          },
+          {
+            "t": 3016,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"reciveNewFile\",\"args\":[\"6af963ebc9037022065bb53e\",{\"name\":\"convert-probe-20261115-150957.png\",\"rev\":0,\"linkedFileData\":null,\"hash\":\"2e7ce0fcd83a6f28a98980b9158baa00dc7cabe0\",\"_id\":\"6af9cb471dd46ac4250d7820\",\"created\":\"2026-11-15T15:09:59.338Z\"},\"upload\",null,\"6af963e9c9037022065bb526\"]}"
+          },
+          {
+            "t": 3569,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6af9cb461dd46ac4250d77f0\",\"editor\"]}"
+          },
+          {
+            "t": 3590,
+            "dir": "in",
+            "frame": "5:::{\"name\":\"removeEntity\",\"args\":[\"6af9cb471dd46ac4250d7820\",\"editor\"]}"
+          },
+          {
+            "t": 4593,
+            "dir": "out",
+            "frame": "0::"
+          }
+        ]
+      }
+    }
+  ]
+}

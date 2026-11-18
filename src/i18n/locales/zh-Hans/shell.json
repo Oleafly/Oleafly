@@ -491,7 +491,8 @@
       "off": "关闭",
       "run": "在这台电脑上运行代码"
     },
-    "sharedViewer": "在共享项目中，只有所有者和编辑者可以更改这些设置。"
+    "sharedViewer": "在共享项目中，只有所有者和编辑者可以更改这些设置。",
+    "coauthorsChanged": "自上次编译以来合作者有更改"
   },
   "datePicker": {
     "placeholder": "选择日期"
@@ -978,6 +979,10 @@
       "notes": {
         "description": "在主页程序坞中添加“笔记”。笔记是一个 Markdown 文件，可以包含图表、统计图和公式，你和你的代理都能编辑。笔记不会出现在项目库中，每篇笔记都可以关联到一个项目。仍处于测试阶段，默认关闭。",
         "label": "笔记"
+      },
+      "overleafLive": {
+        "label": "与 Overleaf 实时编辑",
+        "description": "与合作者同时编辑从 Overleaf 导入的项目。你输入时，更改会在双方同步显示。目前仍处于测试阶段，默认关闭。"
       },
       "researchTasks": {
         "description": "代理会在项目的副本中自行工作，并把修改留给你审阅。极不稳定：运行可能卡住、失败，或留下需要手动处理的修改，而且全程都会占用你的提供商额度。会在设置中添加“研究”分区。关闭后会停止所有正在运行的任务。默认关闭，开启后风险自负。",
@@ -1606,6 +1611,31 @@
       "allMine": "全部保留我的",
       "allTheirs": "全部使用 Overleaf 的",
       "apply": "应用并同步"
+    }
+  },
+  "overleafLive": {
+    "title": "与 Overleaf 实时编辑",
+    "live": "与 Overleaf 实时同步",
+    "connecting": "正在连接 Overleaf…",
+    "sending": "正在向 Overleaf 发送更改…",
+    "reconnecting": "正在重新连接 Overleaf…",
+    "pausedBadge": "实时编辑已暂停",
+    "pause": "暂停实时编辑",
+    "resume": "恢复实时编辑",
+    "reconnectNow": "立即重新连接",
+    "open": "在 Overleaf 中打开",
+    "share": "在 Overleaf 上共享…",
+    "signIn": "登录…",
+    "reconnectingIn": "{{seconds}} 秒后重试。",
+    "notConfirmed": "Overleaf 尚未确认。",
+    "copyDetails": "复制连接详情",
+    "detailsCopied": "已复制连接详情",
+    "copyDetailsFailed": "无法复制连接详情",
+    "pauseDialog": {
+      "title": "部分更改尚未同步到 Overleaf",
+      "description": "如果现在暂停，这些更改会保留在这台电脑上，并在你恢复后发送到 Overleaf。在此之前，Git 同步会保持关闭。",
+      "keepLive": "继续实时编辑",
+      "pauseAnyway": "仍要暂停"
     }
   },
   "stuckWindow": {

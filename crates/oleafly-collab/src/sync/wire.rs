@@ -5,14 +5,14 @@ use std::time::Duration;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{SinkExt, StreamExt};
 use oleafly_collab_protocol::frames::{ClientFrame, ServerFrame};
+use oleafly_net::{Heard, WebSocket};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::Message;
 
 use super::LiveLink;
 use crate::client::{
-    connect_socket, keep_polling, post_outbox, Heard, Outbox, PollChannel, PollRequest, PollTiming,
-    Polled, Socket,
+    connect_socket, keep_polling, post_outbox, Outbox, PollChannel, PollRequest, PollTiming, Polled,
 };
 use crate::CollabError;
 
@@ -22,7 +22,7 @@ const CLOSE_WITHIN: Duration = Duration::from_secs(2);
 
 const MANIFEST_WITHIN: Duration = Duration::from_secs(10);
 
-pub(super) async fn connect(link: &LiveLink) -> Result<Socket, CollabError> {
+pub(super) async fn connect(link: &LiveLink) -> Result<WebSocket, CollabError> {
     let access = link
         .sessions
         .access_token(link.server_id, &link.client)
@@ -74,7 +74,7 @@ async fn renewed_after_refusal(link: &LiveLink, refused: &str) -> Result<String,
 
 pub(super) enum Wire {
     Socket {
-        stream: SplitStream<Socket>,
+        stream: SplitStream<WebSocket>,
         writing: mpsc::Sender<Message>,
         writer: Option<JoinHandle<()>>,
         heard: Option<Heard>,
@@ -86,7 +86,7 @@ fn connection_closed() -> CollabError {
     CollabError::Network("the server closed the connection".to_owned())
 }
 
-async fn write_out(mut sink: SplitSink<Socket, Message>, mut writing: mpsc::Receiver<Message>) {
+async fn write_out(mut sink: SplitSink<WebSocket, Message>, mut writing: mpsc::Receiver<Message>) {
     while let Some(message) = writing.recv().await {
         let closing = matches!(message, Message::Close(_));
         if sink.send(message).await.is_err() || closing {
@@ -97,7 +97,7 @@ async fn write_out(mut sink: SplitSink<Socket, Message>, mut writing: mpsc::Rece
 }
 
 impl Wire {
-    pub(super) fn socket(socket: Socket) -> Wire {
+    pub(super) fn socket(socket: WebSocket) -> Wire {
         let heard = Heard::of(&socket);
         let (sink, stream) = socket.split();
         let (writing, queued) = mpsc::channel(SOCKET_QUEUE);

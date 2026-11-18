@@ -1,4 +1,4 @@
-import type { ComponentType, SVGProps } from "react";
+import { type ComponentType, type SVGProps, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Archive,
@@ -10,6 +10,7 @@ import {
   CloudOff,
   CloudUpload,
   LogOut,
+  Moon,
   RefreshCw,
   Replace,
   RotateCcw,
@@ -20,7 +21,7 @@ import {
 } from "lucide-react";
 import { formatNumber } from "@/lib/intl";
 import { cn } from "@/lib/utils";
-import type { SyncState } from "./sync-state";
+import { RECONNECTING_AFTER_MS, type SyncState } from "./sync-state";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
 
@@ -30,9 +31,11 @@ const SYNC_ICONS: Readonly<Record<SyncState, Icon>> = {
   offline: CloudOff,
   reconnecting: RefreshCw,
   signedOut: LogOut,
+  idle: Moon,
   suspended: UserLock,
   accessEnded: Ban,
   removed: UserX,
+  projectDeleted: Ban,
   archived: Archive,
   paused: CirclePause,
   serverRemoved: ServerOff,
@@ -49,9 +52,11 @@ const SYNC_TONES: Readonly<Record<SyncState, string>> = {
   offline: "text-amber-600 dark:text-amber-400",
   reconnecting: "text-amber-600 dark:text-amber-400",
   signedOut: "text-destructive",
+  idle: "text-muted-foreground",
   suspended: "text-destructive",
   accessEnded: "text-destructive",
   removed: "text-destructive",
+  projectDeleted: "text-destructive",
   archived: "text-muted-foreground",
   paused: "text-muted-foreground",
   serverRemoved: "text-destructive",
@@ -73,3 +78,19 @@ export function useSyncWords(state: SyncState, pending: number): string {
   return t(($) => $.collab.sync[state]);
 }
 
+
+const DROPPED: ReadonlySet<SyncState> = new Set(["offline", "reconnecting"]);
+
+export function useQuietDrop(state: SyncState): SyncState {
+  const [shown, setShown] = useState(state);
+  const dropped = DROPPED.has(state);
+  useEffect(() => {
+    if (!dropped) {
+      setShown(state);
+      return;
+    }
+    const timer = window.setTimeout(() => setShown(state), RECONNECTING_AFTER_MS);
+    return () => window.clearTimeout(timer);
+  }, [state, dropped]);
+  return dropped && !DROPPED.has(shown) ? shown : state;
+}

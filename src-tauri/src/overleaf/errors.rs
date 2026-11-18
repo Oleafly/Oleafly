@@ -24,7 +24,7 @@ pub(crate) fn legacy_code(kind: OnlineErrorKind) -> &'static str {
         Kind::GitTokenRejected => "overleaf.git_token_rejected",
         Kind::GitUnavailable => "overleaf.git_unavailable",
         Kind::GitNotInstalled => "git.not_installed",
-        Kind::SyncBusy => "overleaf.sync_busy",
+        Kind::SyncBusy | Kind::LiveElsewhere => "overleaf.sync_busy",
         Kind::SyncNotLinked => "overleaf.sync_not_linked",
         Kind::SyncAlreadyLinked => "overleaf.sync_already_linked",
         Kind::SyncNeedsRelink => "overleaf.sync_needs_relink",
@@ -150,6 +150,7 @@ mod tests {
         for kind in ALL_KINDS.into_iter().chain([
             OnlineErrorKind::WorktreeBusy,
             OnlineErrorKind::GitNotInstalled,
+            OnlineErrorKind::LiveElsewhere,
         ]) {
             assert!(has(legacy_code(kind)), "{kind:?}");
         }

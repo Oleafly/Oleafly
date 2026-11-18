@@ -51,6 +51,9 @@ const surfaces = () => import("@/features/collab/sharing/surfaces");
 const CollabToolbarItem = lazy(() => surfaces().then((module) => ({ default: module.CollabToolbarItem })));
 const CollabShareButton = lazy(() => surfaces().then((module) => ({ default: module.CollabShareButton })));
 const ShareDialog = lazy(() => surfaces().then((module) => ({ default: module.ShareDialog })));
+const OverleafLiveButton = lazy(() =>
+  import("@/features/collab/sharing/OverleafLiveButton").then((module) => ({ default: module.OverleafLiveButton })),
+);
 const TreePresence = lazy(() => surfaces().then((module) => ({ default: module.TreePresence })));
 const TreeClashes = lazy(() => surfaces().then((module) => ({ default: module.TreeClashes })));
 const CollabActivityKeeper = lazy(() => surfaces().then((module) => ({ default: module.CollabActivityKeeper })));
@@ -112,6 +115,14 @@ export function CollabToolbarSlot() {
   return (
     <Gate>
       <CollabToolbarItem />
+    </Gate>
+  );
+}
+
+export function OverleafLiveSlot() {
+  return (
+    <Gate>
+      <OverleafLiveButton />
     </Gate>
   );
 }

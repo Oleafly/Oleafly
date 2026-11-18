@@ -661,4 +661,5 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
 
   pref("experimentation.latexTools", "latexTools", bool),
   pref("experimentation.notes", "notes", bool),
+  pref("experimentation.overleafLive", "overleafLive", bool),
 ];

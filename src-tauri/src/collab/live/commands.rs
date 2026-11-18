@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use oleafly_collab::editor::DocMessage;
-use oleafly_collab::live::DocSink;
-use oleafly_collab::ot::TextOperation;
+use oleafly_ot::{DocMessage, DocOpened, DocSink, TextOperation};
 use tauri::ipc::Channel;
 
 use super::editor::{
@@ -11,7 +9,7 @@ use super::editor::{
 use super::host::{AppLiveHost, LiveHost};
 use super::lifecycle::{flush, reconnect_now, start, stop};
 use super::local_events::resume;
-use super::payloads::{ActivityPayload, DocOpened, LiveInfo};
+use super::payloads::{ActivityPayload, LiveInfo};
 use super::sync_hold::{announce, SyncDecision};
 use crate::collab::commands::CollabCommandError;
 use crate::collab::state::CollabState;

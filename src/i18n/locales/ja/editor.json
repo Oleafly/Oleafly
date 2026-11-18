@@ -1253,6 +1253,10 @@
     "failed": "Oleafly は {{file}} を更新できませんでした。もう一度お試しください。",
     "tabMark": "ディスク上で変更されました。このタブを開いて、残す版を選んでください。"
   },
+  "liveTab": {
+    "notOnOverleafYet": "まだ Overleaf にありません",
+    "storedAsFile": "Overleaf ではこれがファイルとして保存されるため、編集内容は保存時にアップロードされます。"
+  },
   "labels": {
     "filterPlaceholder": "ラベル名",
     "filterLabel": "プロジェクトのラベルを絞り込む",

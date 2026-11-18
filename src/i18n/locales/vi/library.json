@@ -324,6 +324,7 @@
       "loadFailed": "Oleafly không thể tải dự án Overleaf của bạn.",
       "signInPrompt": "Đăng nhập Overleaf để xem dự án. Cửa sổ đăng nhập tự mở và đóng khi bạn đăng nhập xong.",
       "signingIn": "Hãy hoàn tất đăng nhập Overleaf trong cửa sổ vừa mở.",
+      "signingInBrowser": "Hãy hoàn tất đăng nhập Overleaf trong {{browser}}. Cửa sổ tự đóng khi bạn đăng nhập xong. Đóng cửa sổ sẽ huỷ đăng nhập.",
       "passkeyHint": "Nếu passkey không dùng được trong cửa sổ đăng nhập, hãy chọn cách khác ở đó, như mật khẩu hoặc lời nhắc trên điện thoại.",
       "expired": "Đăng nhập Overleaf của bạn đã hết hạn. Hãy đăng nhập lại để xem dự án.",
       "signIn": "Đăng nhập Overleaf",

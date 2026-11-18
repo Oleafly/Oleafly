@@ -513,9 +513,9 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use oleafly_collab::doc::{NodeKind, ProjectDoc};
-    use oleafly_collab::ot::TextOperation;
     use oleafly_collab::suggestions::SuggestionKind;
     use oleafly_collab_protocol::ids::AccountId;
+    use oleafly_ot::TextOperation;
 
     use super::*;
     use crate::collab::live::{

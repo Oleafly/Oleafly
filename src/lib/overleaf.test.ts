@@ -20,6 +20,8 @@ import {
   overleafListProjects,
   overleafSaveProjectAsTemplate,
   overleafSignIn,
+  overleafSignInBrowsers,
+  overleafSignInWithBrowser,
   overleafSignOut,
   overleafStatus,
   overleafTemplateDetails,
@@ -43,8 +45,20 @@ describe("overleaf bridge", () => {
       ["overleaf_status", { server: null }],
       ["overleaf_status", { server: "https://latex.uni.edu" }],
       ["overleaf_sign_in", { server: null, title: "Sign in" }],
-      ["overleaf_sign_out", { server: "https://www.overleaf.com" }],
+      ["overleaf_sign_out", { server: "https://www.overleaf.com", keepLocalCopy: false }],
       ["overleaf_list_projects", { server: null }],
+    ]);
+  });
+
+  it("lists the sign-in browsers and signs in with the one picked by its key", async () => {
+    mocks.invoke.mockResolvedValue([]);
+    await overleafSignInBrowsers();
+    await overleafSignInWithBrowser(" https://latex.uni.edu ", "firefox-snap");
+    await overleafSignInWithBrowser(undefined, "edge");
+    expect(mocks.invoke.mock.calls).toEqual([
+      ["overleaf_sign_in_browsers"],
+      ["overleaf_sign_in_with_browser", { server: "https://latex.uni.edu", browser: "firefox-snap" }],
+      ["overleaf_sign_in_with_browser", { server: null, browser: "edge" }],
     ]);
   });
 

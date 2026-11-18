@@ -11,9 +11,9 @@ static QUEUED: LazyLock<Mutex<BTreeMap<String, bool>>> = LazyLock::new(Mutex::de
 impl Active {
     pub(crate) fn follow_settings(&self) {
         let followed = follow_project(
-            &self.project_id,
+            &self.local.project_id,
             &self.live,
-            &self.root,
+            &self.local.root,
             &base_file_in(&self.hold_dir()),
             Some(self.account_id),
         );
@@ -25,13 +25,13 @@ impl Active {
                     self.refresh_pending();
                 }
                 if applied.meta.is_some() || !applied.notices.is_empty() {
-                    self.host.settings_changed(applied);
+                    self.local.host.settings_changed(applied);
                 }
             }
             Err(error) => {
                 let _ = crate::project::append_app_log(format!(
                     "Live collaboration could not follow the shared compile settings of {}: {error}",
-                    self.project_id
+                    self.local.project_id
                 ));
             }
         }
@@ -40,7 +40,7 @@ impl Active {
 
 async fn follow_between_compiles(active: Arc<Active>) {
     use tauri::Manager;
-    let app = active.host.app();
+    let app = active.local.host.app();
     let state = app
         .as_ref()
         .and_then(|app| app.try_state::<crate::state::AppState>());
@@ -53,18 +53,18 @@ async fn follow_between_compiles(active: Arc<Active>) {
 
 pub(super) fn schedule(active: &Arc<Active>) {
     #[cfg(test)]
-    if active.host.app().is_none() {
+    if active.local.host.app().is_none() {
         return;
     }
     {
         let mut queued = guard(&QUEUED);
-        if let Some(again) = queued.get_mut(&active.project_id) {
+        if let Some(again) = queued.get_mut(&active.local.project_id) {
             *again = true;
             return;
         }
-        queued.insert(active.project_id.clone(), false);
+        queued.insert(active.local.project_id.clone(), false);
     }
-    let project_id = active.project_id.clone();
+    let project_id = active.local.project_id.clone();
     let weak = Arc::downgrade(active);
     tauri::async_runtime::spawn(async move {
         loop {

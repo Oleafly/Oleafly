@@ -5702,6 +5702,22 @@ pub(crate) fn apply_imported_settings(
     let dir = paths::projects_root()?.join(project_id);
     let mut meta =
         read_import_meta(&dir).ok_or_else(|| "the imported project has no metadata".to_string())?;
+    adopt_online_settings(&dir, &mut meta, main_doc, flavor);
+    meta.extra.insert("importedFrom".to_string(), origin);
+    write_meta_at(&dir.join("project.json"), &meta)
+}
+
+pub(crate) fn adopt_online_settings(
+    dir: &Path,
+    meta: &mut ProjectMeta,
+    main_doc: Option<&str>,
+    flavor: Option<&str>,
+) -> bool {
+    let before = (
+        meta.main_doc.clone(),
+        meta.engine.clone(),
+        meta.tex_flavor.clone(),
+    );
     if let Some(main) = main_doc.map(str::trim).filter(|main| !main.is_empty()) {
         if dir.join(main).is_file() && engine_for_untrusted_project(main).is_ok() {
             meta.main_doc = main.to_string();
@@ -5713,8 +5729,11 @@ pub(crate) fn apply_imported_settings(
         meta.engine = crate::config::LATEXMK_ENGINE.to_string();
         meta.tex_flavor = validate_tex_flavor(&meta.engine, flavor).ok().flatten();
     }
-    meta.extra.insert("importedFrom".to_string(), origin);
-    write_meta_at(&dir.join("project.json"), &meta)
+    (
+        meta.main_doc.clone(),
+        meta.engine.clone(),
+        meta.tex_flavor.clone(),
+    ) != before
 }
 
 fn read_import_meta(dir: &Path) -> Option<ProjectMeta> {

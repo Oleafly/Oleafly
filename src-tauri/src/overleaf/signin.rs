@@ -1,6 +1,12 @@
+use std::collections::BTreeSet;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+
+use oleafly_online::browser_cookies::{BrowserId, HostPlatform};
+use oleafly_online::browser_signin::{
+    self, BrowserSignInError, Engine, InstalledBrowser, Packaging,
+};
 
 use tauri::webview::PageLoadEvent;
 use tauri::{
@@ -22,20 +28,6 @@ static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 pub(crate) fn cancelled() -> String {
     AppError::new("overleaf.sign_in_cancelled").into()
-}
-
-pub(crate) fn is_dashboard(url: &Url, base: &str) -> bool {
-    let Ok(base_url) = Url::parse(base) else {
-        return false;
-    };
-    if url.origin() != base_url.origin() {
-        return false;
-    }
-    let prefix = base_url.path().trim_end_matches('/');
-    let Some(rest) = url.path().strip_prefix(prefix) else {
-        return false;
-    };
-    matches!(rest, "/project" | "/project/")
 }
 
 pub(crate) async fn session_from_cookie(base: &str, cookie: String) -> Result<Session, String> {
@@ -148,7 +140,7 @@ pub(crate) async fn sign_in_with_window<R: Runtime>(
         .on_navigation(|url| matches!(url.scheme(), "https" | "http"))
         .on_page_load(move |window, payload| {
             if payload.event() != PageLoadEvent::Finished
-                || !is_dashboard(payload.url(), &load_base)
+                || !session::is_dashboard(payload.url(), &load_base)
             {
                 return;
             }
@@ -180,4 +172,89 @@ pub(crate) async fn sign_in_with_window<R: Runtime>(
             Err(cancelled())
         }
     }
+}
+
+static BROWSER_SIGN_IN: Mutex<Option<(u64, tokio::task::AbortHandle)>> = Mutex::new(None);
+
+pub(crate) const E2E_SIGN_IN_BROWSER_ENV: &str = "OLEAFLY_E2E_SIGN_IN_BROWSER";
+
+pub(crate) fn scripted_sign_in_browser(
+    e2e_build: bool,
+    configured: Option<std::ffi::OsString>,
+) -> Option<InstalledBrowser> {
+    let program = configured.filter(|program| e2e_build && !program.is_empty())?;
+    Some(InstalledBrowser {
+        id: BrowserId::Chrome,
+        path: program.into(),
+        engine: Engine::Chromium,
+        packaging: Packaging::Native,
+        profiles: std::env::temp_dir().join(browser_signin::PROFILES_DIR),
+    })
+}
+
+pub(crate) fn sign_in_browsers() -> Vec<InstalledBrowser> {
+    if let Some(scripted) = scripted_sign_in_browser(
+        cfg!(feature = "e2e-testing"),
+        std::env::var_os(E2E_SIGN_IN_BROWSER_ENV),
+    ) {
+        return vec![scripted];
+    }
+    browser_signin::installed(HostPlatform::current())
+}
+
+pub(crate) fn sweep_browser_profiles() {
+    let roots: BTreeSet<_> = sign_in_browsers()
+        .into_iter()
+        .map(|browser| browser.profiles)
+        .collect();
+    for root in roots {
+        browser_signin::sweep(&root);
+    }
+}
+
+pub(crate) fn browser_error(error: &BrowserSignInError, browser: &str) -> String {
+    match error {
+        BrowserSignInError::Cancelled | BrowserSignInError::TimedOut => cancelled(),
+        BrowserSignInError::Launch(detail) | BrowserSignInError::Protocol(detail) => {
+            AppError::new("overleaf.browser_unavailable")
+                .param("browser", browser)
+                .detail(detail)
+                .into()
+        }
+    }
+}
+
+fn running_slot() -> std::sync::MutexGuard<'static, Option<(u64, tokio::task::AbortHandle)>> {
+    BROWSER_SIGN_IN
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+pub(crate) async fn sign_in_with_browser(
+    base: &str,
+    browser: InstalledBrowser,
+) -> Result<Session, String> {
+    let name = browser.name();
+    let task_base = base.to_string();
+    let task =
+        tokio::spawn(
+            async move { browser_signin::sign_in(&browser, &task_base, SIGN_IN_LIMIT).await },
+        );
+    let ticket = SEQUENCE.fetch_add(1, Ordering::SeqCst);
+    if let Some((_, previous)) = running_slot().replace((ticket, task.abort_handle())) {
+        previous.abort();
+    }
+    let outcome = task.await;
+    {
+        let mut slot = running_slot();
+        if slot.as_ref().is_some_and(|(current, _)| *current == ticket) {
+            *slot = None;
+        }
+    }
+    let header = match outcome {
+        Ok(Ok(header)) => header,
+        Ok(Err(error)) => return Err(browser_error(&error, &name)),
+        Err(_) => return Err(cancelled()),
+    };
+    session_from_cookie(base, header).await
 }

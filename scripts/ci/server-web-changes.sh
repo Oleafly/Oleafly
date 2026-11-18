@@ -28,7 +28,7 @@ if ! changed="$(git diff --name-only "$base" "$head" 2>/dev/null)"; then
   run true
 fi
 
-pattern='^(crates/oleafly-server/|crates/oleafly-collab|crates/oleafly-s3/|web/|Cargo\.lock$|Cargo\.toml$|rust-toolchain\.toml$|scripts/ci/server-web-changes\.sh$|\.github/workflows/ci\.yml$)'
+pattern='^(crates/oleafly-server/|crates/oleafly-collab|crates/oleafly-ot/|crates/oleafly-net/|crates/oleafly-s3/|web/|Cargo\.lock$|Cargo\.toml$|rust-toolchain\.toml$|scripts/ci/server-web-changes\.sh$|\.github/workflows/ci\.yml$)'
 
 if grep -Eq "$pattern" <<<"$changed"; then
   run true

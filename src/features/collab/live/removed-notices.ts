@@ -13,6 +13,7 @@ import {
   collabTrashRestore,
   onCollabLiveRemoved,
 } from "@/lib/tauri-collab";
+import { overleafLiveRestore } from "@/lib/overleaf-live";
 import { useFilesStore } from "@/store/files";
 import { collabErrorCode } from "../errors";
 import { useCollabLiveStore } from "./live-store";
@@ -23,6 +24,7 @@ export interface RemovedNotice {
   kind: "dir" | "text" | "blob";
   by: string | null;
   yours: boolean;
+  copy?: string;
 }
 
 export interface RemovedNoticesState {
@@ -44,7 +46,8 @@ function covers(parent: string, path: string): boolean {
 }
 
 function notice(file: CollabLiveRemovedFile): RemovedNotice {
-  return { id: file.id, path: file.path, kind: file.kind, by: file.by, yours: file.yours };
+  const found = { id: file.id, path: file.path, kind: file.kind, by: file.by, yours: file.yours };
+  return file.copy ? { ...found, copy: file.copy } : found;
 }
 
 async function reopen(projectId: string, restored: RemovedNotice): Promise<void> {
@@ -88,7 +91,8 @@ export const useRemovedNotices = create<RemovedNoticesState>((set, get) => ({
     if (!projectId || !restored || restoring !== null) return;
     set({ restoring: id, failure: null });
     try {
-      await collabTrashRestore(projectId, id);
+      if (useCollabLiveStore.getState().backend === "overleaf") await overleafLiveRestore(projectId, restored.path);
+      else await collabTrashRestore(projectId, id);
     } catch (error) {
       set({ restoring: null, failure: { id, code: collabErrorCode(error) } });
       return;

@@ -501,7 +501,9 @@
     "template_link_invalid": "このリンクは Overleaf のテンプレートページではありません。overleaf.com/latex/templates にあるページのアドレスをコピーして、もう一度お試しください。",
     "template_unavailable": "Oleafly はこのテンプレートを開けませんでした。Overleaf のギャラリーから削除された可能性があります。",
     "browser_sign_in_missing": "Oleafly はそのブラウザのプロファイルで {{server}} のサインイン情報を見つけられませんでした。直接サインインしてください。",
-    "browser_sign_in_failed": "ブラウザから取り込んだサインイン情報は使えませんでした。期限が切れている可能性があります。直接サインインしてください。"
+    "browser_sign_in_failed": "ブラウザから取り込んだサインイン情報は使えませんでした。期限が切れている可能性があります。直接サインインしてください。",
+    "browser_unavailable": "Oleafly はサインイン用に {{browser}} を開けませんでした。別のブラウザをお試しください。",
+    "browser_missing": "そのブラウザはもうインストールされていません。別のブラウザを選んでください。"
   },
   "collab": {
     "suggestion_role": "このプロジェクトでのあなたの役割では、提案はできません。"

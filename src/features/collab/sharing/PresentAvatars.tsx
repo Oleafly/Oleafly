@@ -1,8 +1,10 @@
 import { type ComponentProps, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
+import { EyeOff } from "lucide-react";
 import { Avatar, AvatarStack, type AvatarAction, type AvatarPerson } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { GuestBadge } from "../GuestBadge";
 import { goToPerson } from "../live/go-to-person";
@@ -112,16 +114,29 @@ export function PresentAvatars({
   const peers = useCollabLiveStore((state) => peerPlaces(state.peers));
   const live = useCollabLiveStore(
     useShallow((state) => ({
-      shared: state.projectId === projectId && state.share !== null,
+      shared: state.projectId === projectId && (state.share !== null || state.backend === "overleaf"),
       members: state.members,
-      selfId: state.share?.account_id ?? null,
+      selfId: state.share?.account_id ?? state.selfId,
+      overleaf: state.backend === "overleaf",
+      hidden: state.backend === "overleaf" && state.restricted,
     })),
   );
   const unknownName = t(($) => $.collab.toolbar.unknownPerson);
+  const ownLabel = live.overleaf ? t(($) => $.collab.toolbar.youElsewhere) : null;
   const people = useMemo(
-    () => presentPeople(peers, live.members, live.selfId, unknownName),
-    [peers, live.members, live.selfId, unknownName],
+    () => presentPeople(peers, live.members, live.selfId, unknownName, ownLabel),
+    [peers, live.members, live.selfId, unknownName, ownLabel],
   );
+  if (live.shared && live.hidden) {
+    const why = t(($) => $.collab.toolbar.hiddenForViewLink);
+    return (
+      <div {...rest} className={cn("flex w-max shrink-0 items-center", className)}>
+        <Tooltip label={why} wide>
+          <EyeOff role="img" aria-label={why} className="size-4 text-muted-foreground" />
+        </Tooltip>
+      </div>
+    );
+  }
   if (!live.shared || people.length === 0) return null;
   const byId = new Map(people.map((entry) => [entry.accountId, entry]));
   const action = (person: AvatarPerson): AvatarAction | null => {

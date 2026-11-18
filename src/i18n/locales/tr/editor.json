@@ -1267,6 +1267,10 @@
     "failed": "Oleafly {{file}} dosyasını güncelleyemedi. Yeniden deneyin.",
     "tabMark": "Diskte değişti. Hangi sürümü tutacağınızı seçmek için bu sekmeyi açın."
   },
+  "liveTab": {
+    "notOnOverleafYet": "Henüz Overleaf'te değil",
+    "storedAsFile": "Overleaf bunu dosya olarak saklar, bu yüzden düzenlemeleriniz kaydettiğinizde yüklenir."
+  },
   "labels": {
     "filterPlaceholder": "Etiket adı",
     "filterLabel": "Proje etiketlerini filtrele",

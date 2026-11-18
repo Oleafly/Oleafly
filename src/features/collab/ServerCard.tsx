@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
+import { DetailList } from "@/components/ui/detail-list";
 import { LoadingState } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { formatNumber } from "@/lib/intl";
@@ -56,22 +57,14 @@ function SignedInSummary({ account, role }: Readonly<{ account: CollabAccount; r
 
 function UnsentProjects({ projects }: Readonly<{ projects: readonly CollabUnsentProject[] }>) {
   const { t } = useTranslation(["collab", "native"]);
-  return (
-    <ul className="mt-3 max-h-48 divide-y overflow-y-auto rounded-md border text-xs" data-testid="collab-unsent-projects">
-      {projects.map((project) => (
-        <li key={project.project_id} className="px-3 py-2">
-          <p className="truncate font-medium">{project.name}</p>
-          <p className="text-muted-foreground">
-            {t(($) => $.collab.section.server.unsent.changes, { changes: formatNumber(project.changes) })}
-            {" · "}
-            {t(($) => $.collab.section.server.unsent.staysAs, {
-              name: t(($) => $.native.collab.localCopy, { name: project.name }),
-            })}
-          </p>
-        </li>
-      ))}
-    </ul>
-  );
+  const items = projects.map((project) => {
+    const changes = t(($) => $.collab.section.server.unsent.changes, { changes: formatNumber(project.changes) });
+    const staysAs = t(($) => $.collab.section.server.unsent.staysAs, {
+      name: t(($) => $.native.collab.localCopy, { name: project.name }),
+    });
+    return { key: project.project_id, title: project.name, detail: `${changes} · ${staysAs}` };
+  });
+  return <DetailList items={items} testId="collab-unsent-projects" />;
 }
 
 function ConnectionTestResult({ test }: Readonly<{ test: ConnectionTest }>) {
