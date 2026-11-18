@@ -224,15 +224,36 @@ Context reference: \ref{sec:context-nav}.
   await expect(dialog).toBeHidden();
 });
 
+// Types at the caret the way CodeMirror's input handling does, so the Markdown engine's typing
+// handoff sees a keystroke.
+async function typeAtCaret(page: TauriPage, text: string) {
+  await page.evaluate(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) throw new Error("editor is unavailable");
+      const at = view.state.selection.main.head;
+      view.dispatch({
+        changes: { from: at, insert: ${JSON.stringify(text)} },
+        selection: { anchor: at + ${text.length} },
+        userEvent: "input.type",
+      });
+    })`,
+  );
+}
+
+// [menu path, expected source, text typed after the action]. Markdown's formatting works as in
+// Visual: Bold and Italic at an empty caret write nothing and make the next typed text bold or
+// italic, and Heading and Bulleted list turn the caret's line into one.
 async function exerciseSimpleProfile(
   page: TauriPage,
-  expectations: readonly (readonly [readonly string[], string])[],
+  expectations: readonly (readonly [readonly string[], string, string?])[],
 ) {
-  for (const [path, expected] of expectations) {
+  for (const [path, expected, typed] of expectations) {
     await replaceEditorSource(page, "CONTEXTTARGET");
     await setEditorCaretAfter(page, "CONTEXTTARGET");
     await clickContextAction(page, ...path);
-    expect(await editorSource(page)).toContain(expected);
+    if (typed !== undefined) await typeAtCaret(page, typed);
+    await expect.poll(() => editorSource(page)).toContain(expected);
   }
 
   await replaceEditorSource(page, "CONTEXTTARGET");
@@ -271,11 +292,11 @@ test("Markdown context menu activates every profile-appropriate action", async (
     `E2E Context Markdown ${RUN}`,
   );
   await exerciseSimpleProfile(tauriPage, [
-    [["Format", "Bold"], "CONTEXTTARGET****"],
-    [["Format", "Italic"], "CONTEXTTARGET**"],
-    [["Insert", "Heading"], "# Heading\n"],
-    [["Insert", "Bulleted list"], "- Item\n"],
-    [["Insert", "Table"], "CONTEXTTARGET| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n"],
+    [["Format", "Bold"], "CONTEXTTARGET**X**", "X"],
+    [["Format", "Italic"], "CONTEXTTARGET*X*", "X"],
+    [["Insert", "Heading"], "# CONTEXTTARGET"],
+    [["Insert", "Bulleted list"], "- CONTEXTTARGET"],
+    [["Insert", "Table"], "CONTEXTTARGET\n\n|  |  |  |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |"],
     [["Insert", "Equation"], "CONTEXTTARGET$$\n\n$$\n"],
   ]);
 });
