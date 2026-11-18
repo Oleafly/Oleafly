@@ -307,7 +307,12 @@ async function exerciseSimpleProfile(
     await setEditorCaretAfter(page, "CONTEXTTARGET");
     if (typed !== undefined) await recordTransactions(page);
     await clickContextAction(page, ...path);
-    if (typed !== undefined) await typeAtCaret(page, typed);
+    if (typed !== undefined) {
+      // On Windows the bridge's click can reach the menu item after the next step runs, so the key
+      // would land before Bold: wait until the menu has closed, which it does as the item runs.
+      await page.waitForFunction(`!document.querySelector('[role="menu"][data-state="open"]')`, 10_000);
+      await typeAtCaret(page, typed);
+    }
     try {
       await expect.poll(() => editorSource(page)).toContain(expected);
     } catch (error) {
