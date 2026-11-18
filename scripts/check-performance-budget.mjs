@@ -208,14 +208,16 @@ const limits = {
   // on a parsed slice of the source and hands typing over without moving
   // words, and comment threads, reactions, mentions and chat drafts are one
   // kit with the web app. The entry measures 5,037,657 bytes. The combined graph
-  // measures 27,156,173 bytes on macOS.
-  totalJavaScript: 27_170_000,
+  // measures 27,156,173 bytes on macOS. Live editing with an online LaTeX
+  // service adds 60,228 bytes, for 27,216,401 in all.
+  totalJavaScript: 27_230_000,
   // Russian is the largest catalog. Main measures 983,290 bytes, and the
   // translated Notes settings, shortcuts, errors and agent strings add 13,383.
+  // Live editing with an online LaTeX service adds 17,172 more, for 1,013,845.
   // The Notes namespace itself is its own lazy chunk. This gate is here to
   // catch a catalog bundled twice, which adds hundreds of KB, so real growth
   // raises it by a small step.
-  largestLocaleChunk: 1_010_000,
+  largestLocaleChunk: 1_025_000,
   largestCss: 400_000,
   artifactRuntime: 2_790_000,
   harperWasm: 19_000_000,
