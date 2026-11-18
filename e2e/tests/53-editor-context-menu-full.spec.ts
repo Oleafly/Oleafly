@@ -243,6 +243,57 @@ async function typeAtCaret(page: TauriPage, text: string) {
   );
 }
 
+// Waits until the file is saved and the editor's document has stopped changing. Bold and Italic at
+// a caret hold their mark only while the document stays the same, so a save that comes back from
+// disk as a reload between the action and the key would drop it.
+async function settleEditor(page: TauriPage) {
+  await page.waitForFunction(
+    `import("/src/store/files.ts").then(({ useFilesStore }) =>
+      Object.values(useFilesStore.getState().files).every((file) => !file.dirty))`,
+    30_000,
+  );
+  await page.evaluate(
+    `import("/src/components/editor/cm/controller.ts").then(async ({ getEditorView }) => {
+      let last = null;
+      let quiet = 0;
+      for (let tick = 0; tick < 50 && quiet < 3; tick++) {
+        const doc = getEditorView()?.state.doc ?? null;
+        quiet = doc === last ? quiet + 1 : 0;
+        last = doc;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+    })`,
+  );
+}
+
+// Records each editor transaction from now on, so a failure can say what came between the action
+// and the typed key.
+async function recordTransactions(page: TauriPage) {
+  await page.evaluate(
+    `import("/src/components/editor/cm/controller.ts").then(({ getEditorView }) => {
+      const view = getEditorView();
+      if (!view) return;
+      const log = [];
+      window.__e2eTransactions = log;
+      if (!view.__e2eDispatch) {
+        view.__e2eDispatch = view.dispatch.bind(view);
+        view.dispatch = (...specs) => {
+          const before = view.state;
+          view.__e2eDispatch(...specs);
+          if (window.__e2eTransactions) {
+            window.__e2eTransactions.push(JSON.stringify({
+              doc: before.doc !== view.state.doc,
+              text: before.doc.toString() !== view.state.doc.toString(),
+              selection: view.state.selection.main.head,
+              specs: specs.map((spec) => spec?.annotations ? "transaction" : Object.keys(spec ?? {}).join(",")),
+            }));
+          }
+        };
+      }
+    })`,
+  );
+}
+
 // [menu path, expected source, text typed after the action]. Markdown's formatting works as in
 // Visual: Bold and Italic at an empty caret write nothing and make the next typed text bold or
 // italic, and Heading and Bulleted list turn the caret's line into one.
@@ -252,10 +303,18 @@ async function exerciseSimpleProfile(
 ) {
   for (const [path, expected, typed] of expectations) {
     await replaceEditorSource(page, "CONTEXTTARGET");
+    if (typed !== undefined) await settleEditor(page);
     await setEditorCaretAfter(page, "CONTEXTTARGET");
+    if (typed !== undefined) await recordTransactions(page);
     await clickContextAction(page, ...path);
     if (typed !== undefined) await typeAtCaret(page, typed);
-    await expect.poll(() => editorSource(page)).toContain(expected);
+    try {
+      await expect.poll(() => editorSource(page)).toContain(expected);
+    } catch (error) {
+      if (typed === undefined) throw error;
+      const log = await page.evaluate<string>(`JSON.stringify(window.__e2eTransactions ?? [])`);
+      throw new Error(`${path.join(" > ")} then "${typed}": transactions after the action: ${log}`, { cause: error });
+    }
   }
 
   await replaceEditorSource(page, "CONTEXTTARGET");
