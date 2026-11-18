@@ -48,6 +48,12 @@ const FLUSH_WAIT: Duration = Duration::from_secs(10);
 const INDEX_FILE: &str = "materializer-index.json";
 pub(crate) const IMPORT_BASES: &str = "import-bases.json";
 
+/// Tests set this to store the started session late, the way a loaded machine does,
+/// so work the session reports while it joins has to wait for it.
+#[cfg(test)]
+pub(crate) static STORE_SESSION_LATE_MS: std::sync::atomic::AtomicU64 =
+    std::sync::atomic::AtomicU64::new(0);
+
 pub(crate) struct Mirror {
     pub(super) disk: LiveDisk,
     work: Mutex<DiskWork>,
@@ -64,6 +70,9 @@ pub(crate) struct Mirror {
     restorable: Mutex<BTreeMap<String, String>>,
     adopted: Mutex<BTreeSet<String>>,
     stored_as_files: Mutex<Vec<String>>,
+    /// Work for documents the mirror can't name yet, kept while the session starts
+    /// (`None` once it has started). See `AppOverleafPort::with_path`.
+    waiting: Mutex<Option<Vec<port::Waiting>>>,
 }
 
 #[derive(Default)]
@@ -98,6 +107,7 @@ impl Mirror {
             restorable: Mutex::new(BTreeMap::new()),
             adopted: Mutex::new(adopted),
             stored_as_files: Mutex::new(Vec::new()),
+            waiting: Mutex::new(Some(Vec::new())),
         }
     }
 
@@ -444,10 +454,18 @@ impl OverleafLive {
         let me = config.session.user_id().to_owned();
         let port = Arc::new(AppOverleafPort::new(Arc::clone(&mirror)));
         config.seeds = seeds;
-        let session = OverleafSession::start(config, port, journal)
+        let session = OverleafSession::start(config, Arc::clone(&port) as _, journal)
             .await
             .map_err(|error| port::online_error(&error))?;
+        #[cfg(test)]
+        {
+            let late = STORE_SESSION_LATE_MS.load(std::sync::atomic::Ordering::Relaxed);
+            if late > 0 {
+                tokio::time::sleep(Duration::from_millis(late)).await;
+            }
+        }
         let _ = mirror.session.set(Arc::downgrade(&session));
+        port.started();
         let live = Arc::new(OverleafLive {
             session,
             mirror,
