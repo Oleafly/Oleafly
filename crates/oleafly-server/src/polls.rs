@@ -184,6 +184,14 @@ impl PollHub {
         self.lock().len()
     }
 
+    #[cfg(any(test, feature = "test-support"))]
+    pub fn active_requests(&self) -> usize {
+        self.lock()
+            .values()
+            .map(|session| session.active.load(Ordering::SeqCst))
+            .sum()
+    }
+
     pub(crate) fn find(&self, key: &str) -> Option<Arc<PollSession>> {
         self.lock().get(&sha256_b64url(key.as_bytes())).cloned()
     }

@@ -101,6 +101,19 @@ pub fn fast_mail_retry(attempts: usize) -> RetryPolicy {
     }
 }
 
+pub async fn eventually(check: impl Fn() -> bool, within: std::time::Duration) -> bool {
+    let deadline = tokio::time::Instant::now() + within;
+    loop {
+        if check() {
+            return true;
+        }
+        if tokio::time::Instant::now() >= deadline {
+            return false;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+}
+
 pub fn mail_config(smtp: &MockSmtp) -> ServerConfig {
     let mut config = test_config();
     config.smtp_url = Some(smtp.url());

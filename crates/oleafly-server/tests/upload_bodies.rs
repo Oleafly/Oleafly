@@ -1,5 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::body::{Body, Bytes};
 use axum::http::{header, Method, Request, StatusCode};
@@ -7,7 +8,7 @@ use futures_util::stream::{self, StreamExt};
 use oleafly_collab_protocol::ids::AccountId;
 use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::blobs::sha256_hex;
-use oleafly_server::test_support::{seed_member, test_app_with, test_config, TestApp};
+use oleafly_server::test_support::{eventually, seed_member, test_app_with, test_config, TestApp};
 use tower::ServiceExt;
 
 const MIB: usize = 1024 * 1024;
@@ -200,7 +201,7 @@ async fn large_transfers_wait_for_room_in_the_transfer_budget() {
             .oneshot(request(Method::GET, Body::empty())),
     );
     assert!(
-        eventually(|| transfers.waiting_for_room() == 1).await,
+        eventually(|| transfers.waiting_for_room() == 1, Duration::from_secs(5)).await,
         "the download waits for room"
     );
     let other = seed_member(&app, ServerRole::Member).await;
@@ -216,7 +217,7 @@ async fn large_transfers_wait_for_room_in_the_transfer_budget() {
         .expect("request");
     let upload = tokio::spawn(app.router.clone().oneshot(upload_request));
     assert!(
-        eventually(|| transfers.waiting_for_room() == 2).await,
+        eventually(|| transfers.waiting_for_room() == 2, Duration::from_secs(5)).await,
         "the upload waits for room behind the download"
     );
     drop(spent);
@@ -234,7 +235,7 @@ async fn large_transfers_wait_for_room_in_the_transfer_budget() {
         .expect("the file");
     assert_eq!(bytes.len(), MIB);
     assert_eq!(transfers.under_way(owner.account_id), 0);
-    let uploaded = tokio::time::timeout(std::time::Duration::from_secs(5), upload)
+    let uploaded = tokio::time::timeout(Duration::from_secs(5), upload)
         .await
         .expect("the upload gets room once the download is sent")
         .expect("task")
@@ -242,19 +243,6 @@ async fn large_transfers_wait_for_room_in_the_transfer_budget() {
     assert_eq!(uploaded.status(), StatusCode::NO_CONTENT);
     assert_eq!(transfers.waiting_for_room(), 0);
     assert_eq!(transfers.room_left(), MIB as u64, "all the room comes back");
-}
-
-async fn eventually(check: impl Fn() -> bool) -> bool {
-    let deadline = tokio::time::Instant::now() + std::time::Duration::from_secs(5);
-    loop {
-        if check() {
-            return true;
-        }
-        if tokio::time::Instant::now() >= deadline {
-            return false;
-        }
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-    }
 }
 
 #[tokio::test]
@@ -266,9 +254,7 @@ async fn a_transfer_that_finds_no_room_for_a_while_hears_the_server_is_busy() {
     let (stored, _) = put_file(&app, &owner.access_token, &project, content.clone()).await;
     assert_eq!(stored, StatusCode::NO_CONTENT);
     app.state.transfers.set_budget(MIB as u64);
-    app.state
-        .transfers
-        .set_wait(std::time::Duration::from_millis(100));
+    app.state.transfers.set_wait(Duration::from_millis(100));
     let _spent = app
         .state
         .transfers
@@ -287,13 +273,10 @@ async fn a_transfer_that_finds_no_room_for_a_while_hears_the_server_is_busy() {
         )
         .body(Body::empty())
         .expect("request");
-    let busy = tokio::time::timeout(
-        std::time::Duration::from_secs(5),
-        app.router.clone().oneshot(request),
-    )
-    .await
-    .expect("the download is answered instead of waiting")
-    .expect("response");
+    let busy = tokio::time::timeout(Duration::from_secs(5), app.router.clone().oneshot(request))
+        .await
+        .expect("the download is answered instead of waiting")
+        .expect("response");
     assert_eq!(busy.status(), StatusCode::SERVICE_UNAVAILABLE);
     assert_eq!(
         busy.headers()
@@ -314,7 +297,7 @@ async fn a_download_whose_client_stops_reading_gives_its_room_back_at_its_deadli
     let transfers = &app.state.transfers;
     transfers.set_budget(MIB as u64);
     transfers.set_timing(oleafly_server::transfers::UploadTiming {
-        grace: std::time::Duration::from_secs(1),
+        grace: Duration::from_secs(1),
         min_rate: u64::MAX,
     });
     let request = Request::builder()
@@ -339,14 +322,14 @@ async fn a_download_whose_client_stops_reading_gives_its_room_back_at_its_deadli
     .expect("a first piece")
     .expect("on time");
     assert!(first.is_data());
-    transfers.set_wait(std::time::Duration::from_secs(5));
+    transfers.set_wait(Duration::from_secs(5));
     let started = std::time::Instant::now();
     let next = transfers
         .hold(AccountId::new_v7(), MIB as u64)
         .await
         .expect("room once the stalled download's deadline passes");
     assert!(
-        started.elapsed() < std::time::Duration::from_secs(4),
+        started.elapsed() < Duration::from_secs(4),
         "{:?}",
         started.elapsed()
     );

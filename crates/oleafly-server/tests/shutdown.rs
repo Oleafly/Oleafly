@@ -12,7 +12,7 @@ use oleafly_collab_protocol::poll::{
     PollBatch, DEVICE_HEADER, NONCE_HEADER, POLL_KEY_HEADER, PROTOCOL_HEADER, SIGNATURE_HEADER,
 };
 use oleafly_collab_protocol::projects::ProjectRole;
-use oleafly_server::test_support::{challenge_nonce, socket_request};
+use oleafly_server::test_support::{challenge_nonce, eventually, socket_request};
 use people::{grant, share_project, stage, Person, Stage};
 use reqwest::StatusCode;
 use tokio_tungstenite::tungstenite::protocol::frame::coding::CloseCode;
@@ -93,7 +93,14 @@ async fn stopping_the_server_answers_a_waiting_long_poll_at_once() {
             .await
             .map(|response| response.status())
     });
-    tokio::time::sleep(Duration::from_millis(500)).await;
+    assert!(
+        eventually(
+            || stage.server.state().polls.active_requests() == 1,
+            PROMPTLY
+        )
+        .await,
+        "the poll reaches the server"
+    );
     assert!(
         !waiting.is_finished(),
         "the poll should be waiting for news"
