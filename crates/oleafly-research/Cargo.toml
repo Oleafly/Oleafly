@@ -30,7 +30,7 @@ futures-util = "0.3"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json", "stream"] }
 base64 = "0.23"
 axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
-zeroize = "=1.9.0"
+zeroize = "=1.9.1"
 unicode-normalization = "0.1"
 dunce = "1.0"
 async-trait = "0.1"

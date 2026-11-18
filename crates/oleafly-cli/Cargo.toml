@@ -55,7 +55,7 @@ tokio = { version = "1", features = [
   "sync",
   "time",
 ] }
-zeroize = "=1.9.0"
+zeroize = "=1.9.1"
 # 0.4.8 F2: accounts, the online LaTeX service and collaboration servers
 # (`oleafly auth`, `oleafly remote`, `oleafly server`).
 oleafly-collab = { path = "../oleafly-collab" }
