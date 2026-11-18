@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Local images in Markdown's visual editor now resolve from the project again after the document is reopened.
 - In a narrow chat panel, the approval mode button no longer spills over the button next to it.
 - A long model name in a dropdown ends in an ellipsis instead of pushing the dropdown out of its card. A model that a server lists by its file path, as llama.cpp does for a model started with `-m`, shows the file name instead of the whole path.
 - When cloud sync left two versions of a note and you kept one, the other was

@@ -56,7 +56,7 @@ export function createWysiwygExtensions(options: WysiwygExtensionOptions = {}): 
         context.defaultValidate(url) || APP_ITEM_LINK.test(url) || (localizeHref !== null && localizeHref(url) !== null),
     }),
     LatexHeadingAttributes,
-    MarkdownImage.configure({ inline: false }),
+    MarkdownImage.configure({ inline: false, resolveAssetUrl: options.resolveAssetUrl ?? null }),
     MarkdownTable.configure({ resizable: false }),
     TableRow,
     TableHeader,

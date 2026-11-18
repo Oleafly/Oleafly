@@ -1,7 +1,9 @@
-import { Image } from "@tiptap/extension-image";
+import { Image, type ImageOptions } from "@tiptap/extension-image";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { markdownLinkDestination, readableLinkHref } from "../link-destination";
+import type { NodeViewRenderer } from "@tiptap/core";
+import { isUrlWithScheme, markdownLinkDestination, readableLinkHref } from "../link-destination";
 import { rawInlineMarkup } from "../raw-inline";
+import type { AssetUrlResolver } from "../options";
 import { parsingMarkdownSource } from "./engine";
 import { ATTRIBUTE_BLOCK } from "./pandoc-inline";
 
@@ -10,6 +12,10 @@ const WIDTH_DATA = "data-width-percent";
 const ATTRIBUTES_DATA = "data-pandoc-attributes";
 const WIDTH_SUFFIX = /^\{width=(\d{1,3})%\}/u;
 const WIDTH_IN_BLOCK = /(^\{|\s)width=(\d{1,3})%(?=[\s}])/u;
+
+interface MarkdownImageOptions extends ImageOptions {
+  resolveAssetUrl: AssetUrlResolver | null;
+}
 
 export const IMAGE_WIDTH_RANGE = { min: 10, max: 100 } as const;
 
@@ -181,7 +187,64 @@ function readWidths(state: CoreState): boolean {
  * images on lines of their own, or an image and the paragraph after it, were
  * saved run together on one line.
  */
-export const MarkdownImage = Image.extend({
+function imageNodeView(resolveAssetUrl: AssetUrlResolver): NodeViewRenderer {
+  return ({ node: initialNode }) => {
+    let node = initialNode;
+    let generation = 0;
+    let destroyed = false;
+    const image = document.createElement("img");
+
+    const updateImage = () => {
+      const request = ++generation;
+      const source = String(node.attrs.src ?? "");
+      image.alt = String(node.attrs.alt ?? "");
+      if (node.attrs.title) image.title = String(node.attrs.title);
+      else image.removeAttribute("title");
+      const width = imageWidthPercent(node.attrs.widthPercent);
+      image.style.width = width === null ? "" : `${width}%`;
+
+      if (source === "" || isUrlWithScheme(source)) {
+        if (source) image.setAttribute("src", source);
+        else image.removeAttribute("src");
+        return;
+      }
+
+      image.removeAttribute("src");
+      void resolveAssetUrl(readableLinkHref(source)).then((url) => {
+        if (destroyed || request !== generation) return;
+        if (url) image.setAttribute("src", url);
+      }, () => undefined);
+    };
+
+    updateImage();
+    return {
+      dom: image,
+      update(nextNode) {
+        if (nextNode.type !== node.type) return false;
+        node = nextNode;
+        updateImage();
+        return true;
+      },
+      ignoreMutation: () => true,
+      destroy() {
+        destroyed = true;
+      },
+    };
+  };
+}
+
+export const MarkdownImage = Image.extend<MarkdownImageOptions>({
+  addOptions() {
+    return {
+      ...this.parent?.(),
+      inline: this.parent?.().inline ?? false,
+      allowBase64: this.parent?.().allowBase64 ?? false,
+      HTMLAttributes: this.parent?.().HTMLAttributes ?? {},
+      resize: this.parent?.().resize ?? false,
+      resolveAssetUrl: null,
+    };
+  },
+
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -227,5 +290,9 @@ export const MarkdownImage = Image.extend({
         },
       },
     };
+  },
+
+  addNodeView() {
+    return this.options.resolveAssetUrl ? imageNodeView(this.options.resolveAssetUrl) : null;
   },
 });
