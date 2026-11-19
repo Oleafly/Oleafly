@@ -519,7 +519,9 @@
         "instructions": "Instruktioner",
         "instructionsHint": "Lämna tomt för att skapa ett minimalt instruktionsskelett.",
         "instructionsPlaceholder": "Beskriv när färdigheten ska användas och vilka steg assistenten ska följa.",
-        "namePlaceholder": "Påståendekontroll",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Sparad som {{name}}. Färdighetsnamn består av små bokstäver, siffror och bindestreck, så att andra agenter också kan läsa in dem.",
+        "nameNeedsLatin": "Lägg till några bokstäver från a till z eller siffror. Färdighetsnamn består av små bokstäver, siffror och bindestreck, så att andra agenter också kan läsa in dem.",
         "requiredAll": "Namn, beskrivning och instruktioner krävs.",
         "requiredBasics": "Namn och beskrivning krävs.",
         "submitCreate": "Skapa"
@@ -608,6 +610,8 @@
       "useInProjectAria": "Använd {{name}} i det här projektet",
       "validateAria": "Validera {{name}}",
       "shadowNote": "En nyare Oleafly-version av den här färdigheten finns.",
+      "nameNote": "Andra agenter läser bara in färdigheter vars namn består av små bokstäver, siffror och bindestreck.",
+      "renameAction": "Byt namn till {{name}}",
       "replaceAction": "Använd Oleaflys version",
       "replaceTitle": "Vill du ersätta din kopia av {{name}}?",
       "replaceBody": "Din kopia flyttas till en mapp för säkerhetskopior. Inget raderas.",
@@ -754,7 +758,9 @@
         "sidebarAccent": "Sidofältets accent",
         "sidebarAccentForeground": "Text på sidofältets accent",
         "sidebarBorder": "Sidofältets ram",
-        "sidebarForeground": "Sidofältets text"
+        "sidebarForeground": "Sidofältets text",
+        "pdfDarkPage": "Mörk PDF-sida",
+        "pdfDarkText": "Mörk PDF-text"
       }
     },
     "editor": {
@@ -1002,6 +1008,10 @@
       "darkMode": {
         "description": "Invertera PDF-färgerna som standard. Du kan fortfarande byta färger i förhandsvisningens verktygsfält.",
         "label": "Mörkt läge för PDF"
+      },
+      "darkColors": {
+        "label": "Färger för mörk sida",
+        "description": "Mörkt läge för PDF ritar sidorna i de här färgerna. De följer ditt tema tills du väljer egna, och de sparas tillsammans med det ljusa eller mörka tema du använder nu."
       },
       "hoverPreview": {
         "description": "Visa den senast kompilerade sidan när du håller muspekaren över ett projekt i biblioteket.",

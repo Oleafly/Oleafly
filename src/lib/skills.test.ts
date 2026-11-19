@@ -544,7 +544,7 @@ describe("recorded skill drafts", () => {
     });
 
     expect(draft).not.toBeNull();
-    expect(draft?.name).toMatch(/Review This Proof/u);
+    expect(draft?.name).toBe("review-this-proof");
     expect(draft?.description).toContain("Review this proof and find logical gaps");
     expect(draft?.instructions).toContain("1. Map every claim to its dependencies");
     expect(draft?.instructions).toContain("2. Check each dependency");
@@ -634,7 +634,7 @@ describe("recorded skill drafts", () => {
 
     expect(draft).not.toBeNull();
     if (!draft) return;
-    expect(Array.from(draft.name)).toHaveLength(100);
+    expect(draft.name).toBe("workflow");
     expect(Array.from(draft.description).length).toBeLessThanOrEqual(500);
     const rendered = `---\nname: ${draft.name}\ndescription: ${draft.description}\n---\n\n${draft.instructions}\n`;
     expect(new TextEncoder().encode(rendered).length).toBeLessThan(10_000);

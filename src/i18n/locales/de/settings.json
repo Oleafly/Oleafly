@@ -519,7 +519,9 @@
         "instructions": "Anweisungen",
         "instructionsHint": "Lassen Sie das leer, um ein minimales Gerüst für die Anweisungen anzulegen.",
         "instructionsPlaceholder": "Nennen Sie, wann dieser Skill zu nutzen ist, und die Schritte, denen der Assistent folgen soll.",
-        "namePlaceholder": "Aussagenprüfer",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Gespeichert als {{name}}. Skill-Namen bestehen aus Kleinbuchstaben, Ziffern und Bindestrichen, damit auch andere Agenten sie laden können.",
+        "nameNeedsLatin": "Fügen Sie Buchstaben von a bis z oder Ziffern hinzu. Skill-Namen bestehen aus Kleinbuchstaben, Ziffern und Bindestrichen, damit auch andere Agenten sie laden können.",
         "requiredAll": "Name, Beschreibung und Anweisungen sind erforderlich.",
         "requiredBasics": "Name und Beschreibung sind erforderlich.",
         "submitCreate": "Anlegen"
@@ -608,6 +610,8 @@
       "useInProjectAria": "{{name}} in diesem Projekt verwenden",
       "validateAria": "{{name}} prüfen",
       "shadowNote": "Eine neuere Oleafly-Version dieses Skills ist verfügbar.",
+      "nameNote": "Andere Agenten laden nur Skills, deren Namen aus Kleinbuchstaben, Ziffern und Bindestrichen bestehen.",
+      "renameAction": "In {{name}} umbenennen",
       "replaceAction": "Die Oleafly-Version verwenden",
       "replaceTitle": "Ihre Kopie von {{name}} ersetzen?",
       "replaceBody": "Ihre Kopie wird in einen Sicherungsordner verschoben. Nichts wird gelöscht.",
@@ -754,7 +758,9 @@
         "sidebarAccent": "Akzent der Seitenleiste",
         "sidebarAccentForeground": "Akzenttext der Seitenleiste",
         "sidebarBorder": "Rahmen der Seitenleiste",
-        "sidebarForeground": "Text der Seitenleiste"
+        "sidebarForeground": "Text der Seitenleiste",
+        "pdfDarkPage": "Dunkle PDF-Seite",
+        "pdfDarkText": "Dunkler PDF-Text"
       }
     },
     "editor": {
@@ -1002,6 +1008,10 @@
       "darkMode": {
         "description": "PDF-Farben standardmäßig umkehren. Sie können die Farben weiterhin über die Werkzeugleiste der Vorschau umschalten.",
         "label": "Dunkler Modus für PDFs"
+      },
+      "darkColors": {
+        "label": "Farben der dunklen Seite",
+        "description": "Der dunkle Modus für PDFs zeichnet Seiten in diesen Farben. Sie folgen Ihrem Design, bis Sie eigene wählen, und werden zusammen mit dem hellen oder dunklen Design gespeichert, das Sie gerade verwenden."
       },
       "hoverPreview": {
         "description": "Die zuletzt kompilierte Seite anzeigen, wenn Sie in der Bibliothek über ein Projekt fahren.",

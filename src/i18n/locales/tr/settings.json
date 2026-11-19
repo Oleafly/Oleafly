@@ -519,7 +519,9 @@
         "instructions": "Yönergeler",
         "instructionsHint": "En sade yönerge iskeletini oluşturmak için burayı boş bırakın.",
         "instructionsPlaceholder": "Bu becerinin ne zaman kullanılacağını ve asistanın izleyeceği adımları yazın.",
-        "namePlaceholder": "İddia Denetleyici",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Şu adla kaydedilecek: {{name}}. Beceri adlarında yalnızca a-z arası küçük İngilizce harfler, rakamlar ve kısa çizgiler kullanılır (ı, ş, ğ gibi harfler olmaz), böylece diğer ajanlar da yükleyebilir.",
+        "nameNeedsLatin": "a-z arası harfler ya da rakamlar ekleyin. Beceri adlarında yalnızca a-z arası küçük İngilizce harfler, rakamlar ve kısa çizgiler kullanılır (ı, ş, ğ gibi harfler olmaz), böylece diğer ajanlar da yükleyebilir.",
         "requiredAll": "Ad, açıklama ve yönergeler zorunludur.",
         "requiredBasics": "Ad ve açıklama zorunludur.",
         "submitCreate": "Oluştur"
@@ -608,6 +610,8 @@
       "useInProjectAria": "{{name}} becerisini bu projede kullan",
       "validateAria": "{{name}} becerisini doğrula",
       "shadowNote": "Bu becerinin daha yeni bir Oleafly sürümü var.",
+      "nameNote": "Diğer ajanlar yalnızca adı a-z arası küçük İngilizce harfler (ı, ş, ğ gibi harfler olmadan), rakamlar ve kısa çizgilerden oluşan becerileri yükler.",
+      "renameAction": "Yeniden adlandır: {{name}}",
       "replaceAction": "Oleafly sürümünü kullan",
       "replaceTitle": "{{name}} kopyanız değiştirilsin mi?",
       "replaceBody": "Kopyanız bir yedek klasörüne taşınır. Hiçbir şey silinmez.",
@@ -754,7 +758,9 @@
         "sidebarAccent": "Kenar çubuğu vurgusu",
         "sidebarAccentForeground": "Kenar çubuğu vurgu metni",
         "sidebarBorder": "Kenar çubuğu kenarlığı",
-        "sidebarForeground": "Kenar çubuğu metni"
+        "sidebarForeground": "Kenar çubuğu metni",
+        "pdfDarkPage": "Koyu PDF sayfası",
+        "pdfDarkText": "Koyu PDF metni"
       }
     },
     "editor": {
@@ -1002,6 +1008,10 @@
       "darkMode": {
         "description": "PDF renklerini varsayılan olarak tersine çevirir. Renkleri yine de önizleme araç çubuğundan değiştirebilirsiniz.",
         "label": "PDF koyu kip"
+      },
+      "darkColors": {
+        "label": "Koyu sayfa renkleri",
+        "description": "PDF koyu kip, sayfaları bu renklerle çizer. Kendi renklerinizi seçene kadar temanızı izlerler ve şu an kullandığınız açık ya da koyu temayla birlikte saklanırlar."
       },
       "hoverPreview": {
         "description": "Kitaplıkta bir projenin üzerine geldiğinizde en son derlenen sayfayı gösterir.",

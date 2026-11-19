@@ -3,7 +3,7 @@ name: oleafly-data-analysis
 description: Take data files that live in the project through to numbers, figures, and tables in the manuscript. Picks the method with the statistics skills, runs it as a saved script rather than an inline command, writes figures to figures/ and LaTeX tables to tables/, and reports effect sizes and confidence intervals in APA style.
 license: MIT
 compatibility: Needs python3 on the login shell PATH with the analysis packages the method requires. Scripts run through run_command in the project directory, with a 120 second timeout and a 200 KiB output cap.
-allowed-tools: run_command, read_file, write_file, create_file, replace_in_file, list_files, search_project, compile, get_log, update_todos, remember_note, load_skill, read_skill_file
+allowed-tools: run_command read_file write_file create_file replace_in_file list_files search_project compile get_log update_todos remember_note load_skill read_skill_file
 metadata:
   version: "1.0.1"
   skill-author: Oleafly

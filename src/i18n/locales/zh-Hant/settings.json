@@ -517,7 +517,9 @@
         "instructions": "指示",
         "instructionsHint": "留空即可建立最精簡的指示骨架。",
         "instructionsPlaceholder": "列出何時使用這項技能，以及助理應遵循的步驟。",
-        "namePlaceholder": "論點檢查器",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "已儲存為 {{name}}。技能名稱只能使用半形英文小寫字母、數字和連字號，這樣其他代理程式也能載入。",
+        "nameNeedsLatin": "請至少輸入一個半形英文字母（a 到 z）或數字。技能名稱只能使用半形英文小寫字母、數字和連字號，這樣其他代理程式也能載入。",
         "requiredAll": "名稱、說明與指示為必填。",
         "requiredBasics": "名稱與說明為必填。",
         "submitCreate": "建立"
@@ -604,6 +606,8 @@
       "useInProjectAria": "在此專案中使用 {{name}}",
       "validateAria": "驗證 {{name}}",
       "shadowNote": "這個技能有較新的 Oleafly 版本可用。",
+      "nameNote": "其他代理程式只會載入名稱僅由半形英文小寫字母、數字和連字號組成的技能。",
+      "renameAction": "重新命名為 {{name}}",
       "replaceAction": "使用 Oleafly 版本",
       "replaceTitle": "要取代你的 {{name}} 副本嗎？",
       "replaceBody": "你的副本會移到備份資料夾，不會刪除任何內容。",
@@ -748,7 +752,9 @@
         "sidebarAccent": "側邊欄強調",
         "sidebarAccentForeground": "側邊欄強調文字",
         "sidebarBorder": "側邊欄框線",
-        "sidebarForeground": "側邊欄文字"
+        "sidebarForeground": "側邊欄文字",
+        "pdfDarkPage": "PDF 深色模式頁面",
+        "pdfDarkText": "PDF 深色模式文字"
       }
     },
     "editor": {
@@ -996,6 +1002,10 @@
       "darkMode": {
         "description": "預設反轉 PDF 的顏色。你仍可從預覽工具列切換顏色。",
         "label": "PDF 深色模式"
+      },
+      "darkColors": {
+        "label": "深色頁面顏色",
+        "description": "PDF 深色模式會用這些顏色繪製頁面。在你自行選擇之前，它們會跟隨主題，並分別儲存在你目前使用的淺色或深色主題下。"
       },
       "hoverPreview": {
         "description": "在專案庫中把滑鼠停在專案上時，顯示上次編譯的頁面。",

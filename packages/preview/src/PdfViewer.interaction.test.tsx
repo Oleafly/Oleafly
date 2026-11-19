@@ -1178,6 +1178,27 @@ describe("PdfViewer screen reader mode", () => {
   });
 });
 
+describe("PdfViewer dark mode", () => {
+  it("marks the page colors on the document and drops them in the reading layer", async () => {
+    harness.pages = [page("First page")];
+    const { rerender } = renderViewer({ pageColors: "dark" });
+    await pageTextRendered(1);
+
+    expect(renderer()).toHaveAttribute("data-pdf-colors", "dark");
+    expect(renderer()).toHaveClass("group/pdf");
+    expect(pageWrap(1).parentElement).toBe(renderer());
+
+    rerender({ pageColors: "light" });
+    expect(renderer()).toHaveAttribute("data-pdf-colors", "light");
+
+    rerender({ pageColors: "dark", screenReaderMode: true });
+    expect(renderer()).not.toHaveAttribute("data-pdf-colors");
+
+    rerender({ pageColors: undefined });
+    expect(renderer()).not.toHaveAttribute("data-pdf-colors");
+  });
+});
+
 describe("PdfViewer screen reader toggling", () => {
   it("switches a loaded document into and out of the reading layer", async () => {
     harness.pages = [page("First page"), page("Second page")];

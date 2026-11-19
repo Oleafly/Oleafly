@@ -74,7 +74,7 @@ import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
 import { TerminalBehaviorRows } from "@/components/settings/TerminalBehaviorRows";
 import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
-import { ThemeCustomization } from "@/components/settings/ThemeCustomization";
+import { ThemeCustomization, ThemeTokenField, useThemeTokenEditor } from "@/components/settings/ThemeCustomization";
 import { EditorColors } from "@/components/settings/EditorColors";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
@@ -1383,6 +1383,27 @@ function TerminalAppearanceTab() {
   );
 }
 
+function PdfDarkColorsRow() {
+  const { t } = useTranslation(["common", "settings"]);
+  const editor = useThemeTokenEditor();
+  return (
+    <SettingsRow
+      testId="settings-row-pdf-dark-colors"
+      label={t(($) => $.settings.appearance.preview.darkColors.label)}
+      description={t(($) => $.settings.appearance.preview.darkColors.description)}
+      details={
+        <div className="mt-2 space-y-2">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <ThemeTokenField editor={editor} mode={editor.theme} token="pdf-dark-page" />
+            <ThemeTokenField editor={editor} mode={editor.theme} token="pdf-dark-text" />
+          </div>
+          {editor.message ? <output className="block text-xs text-muted-foreground">{editor.message}</output> : null}
+        </div>
+      }
+    />
+  );
+}
+
 function PdfPreviewTab() {
   const { t } = useTranslation(["common", "settings"]);
   const pdfDarkMode = useSettingsStore((state) => state.pdfDarkMode);
@@ -1398,6 +1419,7 @@ function PdfPreviewTab() {
         checked={pdfDarkMode}
         onChange={setPdfDarkMode}
       />
+      <PdfDarkColorsRow />
       <SettingsToggleRow
         label={t(($) => $.settings.appearance.preview.hoverPreview.label)}
         description={t(($) => $.settings.appearance.preview.hoverPreview.description)}

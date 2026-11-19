@@ -32,6 +32,8 @@ export const THEME_TOKEN_NAMES = [
   "sidebar-border",
   "sidebar-accent",
   "sidebar-accent-foreground",
+  "pdf-dark-page",
+  "pdf-dark-text",
 ] as const;
 
 export type ThemeTokenName = (typeof THEME_TOKEN_NAMES)[number];

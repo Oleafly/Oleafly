@@ -33,12 +33,15 @@ import { pickOpenPath } from "@/lib/native-file-dialog";
 import { useFilesStore } from "@/store/files";
 import {
   addSkill,
+  availableSkillName,
   createSkill,
+  followsSkillNameRules,
   isSkillAvailable,
   mergeToggledSkillRecord,
   removeSkill,
   setSkillEnabled,
   setSkillProjectEnabled,
+  skillNameFrom,
   SKILLS_QUERY_KEY,
   skillsQueryKey,
   replaceSkillWithBuiltin,
@@ -51,7 +54,6 @@ import {
   type SkillEntry,
   type SkillProjectOverride,
   type SkillToggleScope,
-  type UpdateSkillInput,
 } from "@/lib/skills";
 import { groupSkills, matchesSkillSearch } from "@/lib/skill-groups";
 import { cn } from "@/lib/utils";
@@ -102,10 +104,12 @@ function tierLine(skill: SkillEntry): string {
 
 function SkillEditorDialog({
   target,
+  takenNames,
   onOpenChange,
   onSubmit,
 }: Readonly<{
   target: EditorTarget;
+  takenNames: ReadonlySet<string>;
   onOpenChange: (open: boolean) => void;
   onSubmit: (form: EditorForm) => Promise<string | null>;
 }>) {
@@ -120,7 +124,7 @@ function SkillEditorDialog({
     setForm(
       editing
         ? {
-            name: editing.name,
+            name: editing.id,
             description: editing.description,
             instructions: editing.instructions,
           }
@@ -130,9 +134,20 @@ function SkillEditorDialog({
     setError("");
   }, [editing, target]);
 
+  const typedName = form.name.trim();
+  const nameHasLetters = editing !== null || skillNameFrom(typedName) !== "";
+  const savedName = editing ? editing.id : availableSkillName(typedName, takenNames);
+  const nameHint = !typedName
+    ? null
+    : !nameHasLetters
+      ? t(($) => $.settings.ai.skills.editor.nameNeedsLatin)
+      : (editing ? editing.name : typedName) !== savedName
+        ? t(($) => $.settings.ai.skills.editor.nameSavedAs, { name: savedName })
+        : null;
+
   const submit = async () => {
     const next = {
-      name: form.name.trim(),
+      name: typedName,
       description: form.description.trim(),
       instructions: form.instructions.trim(),
     };
@@ -142,6 +157,10 @@ function SkillEditorDialog({
           ? t(($) => $.settings.ai.skills.editor.requiredAll)
           : t(($) => $.settings.ai.skills.editor.requiredBasics),
       );
+      return;
+    }
+    if (!nameHasLetters) {
+      setError(t(($) => $.settings.ai.skills.editor.nameNeedsLatin));
       return;
     }
     setBusy(true);
@@ -181,9 +200,17 @@ function SkillEditorDialog({
             <Input
               id="skill-name"
               value={form.name}
+              disabled={editing !== null}
+              aria-describedby={nameHint ? "skill-name-hint" : undefined}
               onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
               placeholder={t(($) => $.settings.ai.skills.editor.namePlaceholder)}
+              className="font-mono"
             />
+            {nameHint ? (
+              <p id="skill-name-hint" className="text-xs text-muted-foreground">
+                {nameHint}
+              </p>
+            ) : null}
           </div>
           <div className="space-y-1">
             <label
@@ -325,6 +352,7 @@ function SkillCard({
   onToggleFiles,
   onUpdate,
   onReplace,
+  onRename,
   onValidate,
   onEdit,
   onRemove,
@@ -339,6 +367,7 @@ function SkillCard({
   onToggleFiles: (skillId: string) => void;
   onUpdate: (skill: SkillEntry) => void;
   onReplace: (skill: SkillEntry) => void;
+  onRename: (skill: SkillEntry) => void;
   onValidate: (skillId: string) => void;
   onEdit: (skill: SkillEntry) => void;
   onRemove: (skill: SkillEntry) => void;
@@ -353,6 +382,7 @@ function SkillCard({
     skill.phase ? phaseLabels[skill.phase] ?? skill.phase : null,
   ].filter((value): value is string => Boolean(value));
   const isUserSkill = skill.source === "user";
+  const needsRename = isUserSkill && !invalid && !followsSkillNameRules(skill.name, skill.id);
   const projectAvailable = isSkillAvailable(skill);
   const changedForProject = projectScope && projectAvailable !== skill.enabled;
   const renderSkillActions = () => (
@@ -372,6 +402,23 @@ function SkillCard({
           onClick={() => onReplace(skill)}
         >
           {t(($) => $.settings.ai.skills.replaceAction)}
+        </Button>
+      ) : null}
+      {needsRename ? (
+        <span className="mr-auto text-xs text-muted-foreground" data-testid={`skill-name-note-${skill.id}`}>
+          {t(($) => $.settings.ai.skills.nameNote)}
+        </span>
+      ) : null}
+      {needsRename ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          data-testid={`skill-rename-${skill.id}`}
+          disabled={busy}
+          onClick={() => onRename(skill)}
+        >
+          {t(($) => $.settings.ai.skills.renameAction, { name: skill.id })}
         </Button>
       ) : null}
       {skill.updateAvailable ? (
@@ -627,6 +674,15 @@ export function SkillsTab() {
     }
   };
 
+  const renameSkill = async (skill: SkillEntry) => {
+    const record = await runRecordMutation(skill.id, () =>
+      updateSkill(skill.id, { description: skill.description, instructions: skill.instructions }),
+    );
+    if (record) {
+      setMessage({ ok: true, text: t(($) => $.settings.ai.skills.messages.saved, { name: record.name }) });
+    }
+  };
+
   const runSkillValidation = (skillId: string) => {
     void runRecordMutation(skillId, () => validateSkill(skillId));
   };
@@ -675,8 +731,10 @@ export function SkillsTab() {
         };
         record = await createSkill(input);
       } else if (editor) {
-        const input: UpdateSkillInput = form;
-        record = await updateSkill(editor.id, input);
+        record = await updateSkill(editor.id, {
+          description: form.description,
+          instructions: form.instructions,
+        });
       } else {
         return t(($) => $.settings.ai.skills.messages.editorClosed);
       }
@@ -868,6 +926,7 @@ export function SkillsTab() {
                     onToggleFiles={toggleFiles}
                     onUpdate={setUpdateTarget}
                     onReplace={setReplaceTarget}
+                    onRename={(skill) => void renameSkill(skill)}
                     onValidate={runSkillValidation}
                     onEdit={setEditor}
                     onRemove={setRemoveTarget}
@@ -889,6 +948,7 @@ export function SkillsTab() {
 
       <SkillEditorDialog
         target={editor}
+        takenNames={new Set(skills.map((skill) => skill.id))}
         onOpenChange={(open) => {
           if (!open) setEditor(null);
         }}

@@ -33,10 +33,17 @@ test("detached preview one-page controls stay bounded and zoom/invert work", asy
   const scroll = page.getByTestId("detached-preview-scroll");
   await page.getByLabel("Invert PDF preview colors").click();
   await expect(page.getByLabel("Invert PDF preview colors")).toHaveAttribute("aria-pressed", "true");
-  await expect(scroll).toHaveCSS("filter", "invert(0.9) hue-rotate(180deg)");
+  const renderer = page.getByTestId("pdf-renderer");
+  await expect(renderer).toHaveAttribute("data-pdf-colors", "dark");
+  await expect(scroll).toHaveCSS("filter", "none");
+  await expect(renderer.locator("[data-page] canvas").first()).toHaveCSS(
+    "filter",
+    "invert(1) hue-rotate(180deg)",
+  );
   await page.getByLabel("Invert PDF preview colors").click();
   await expect(page.getByLabel("Invert PDF preview colors")).toHaveAttribute("aria-pressed", "false");
-  await expect(scroll).toHaveCSS("filter", "none");
+  await expect(renderer).not.toHaveAttribute("data-pdf-colors");
+  await expect(renderer.locator("[data-page] canvas").first()).toHaveCSS("filter", "none");
 });
 
 test("detached preview two-page layout, previous/input/next, and invalid bounds work", async ({

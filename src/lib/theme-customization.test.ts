@@ -100,9 +100,25 @@ describe("theme customization schema", () => {
       .toThrow("larger than 128 KiB");
   });
 
-  it("lets a theme set the PDF dark mode filter", () => {
-    expect(validateCustomCss("--oleafly-pdf-dark-filter: invert(0.85) hue-rotate(180deg)"))
-      .toBe("--oleafly-pdf-dark-filter: invert(0.85) hue-rotate(180deg)");
+  it("carries a theme's dark PDF page colors per mode", () => {
+    const imported = parseThemeCustomizationImport(
+      JSON.stringify({
+        cssVars: {
+          light: { "pdf-dark-page": "#1e1e1e" },
+          dark: { "pdf-dark-page": "#282c34", "pdf-dark-text": "#abb2bf" },
+        },
+      }),
+    );
+    expect(imported.skippedTokens).toEqual([]);
+    expect(imported.customization.light).toEqual({ "pdf-dark-page": "#1e1e1e" });
+    expect(imported.customization.dark).toEqual({ "pdf-dark-page": "#282c34", "pdf-dark-text": "#abb2bf" });
+    expect(JSON.parse(serializeThemeCustomization(imported.customization)).cssVars.dark).toEqual({
+      "pdf-dark-page": "#282c34",
+      "pdf-dark-text": "#abb2bf",
+    });
+    applyThemeCustomization("dark", imported.customization);
+    expect(document.documentElement.style.getPropertyValue("--pdf-dark-page")).toBe("#282c34");
+    expect(document.documentElement.style.getPropertyValue("--pdf-dark-text")).toBe("#abb2bf");
   });
 
   it("rejects unknown tokens and executable stylesheet features", () => {

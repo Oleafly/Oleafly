@@ -519,7 +519,9 @@
         "instructions": "Ohjeet",
         "instructionsHint": "Jätä tämä tyhjäksi, niin syntyy pelkistetty ohjerunko.",
         "instructionsPlaceholder": "Kerro, milloin tätä taitoa käytetään ja mitä vaiheita avustajan tulee noudattaa.",
-        "namePlaceholder": "Väitteiden tarkistaja",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Tallennetaan nimellä: {{name}}. Taidon nimessä käytetään pieniä englannin kirjaimia a-z, numeroita ja yhdysmerkkejä, jotta muut agentit voivat ladata sen.",
+        "nameNeedsLatin": "Lisää kirjaimia a-z tai numeroita. Taidon nimessä käytetään pieniä englannin kirjaimia a-z, numeroita ja yhdysmerkkejä (ei ä, ö tai å), jotta muut agentit voivat ladata sen.",
         "requiredAll": "Nimi, kuvaus ja ohjeet ovat pakollisia.",
         "requiredBasics": "Nimi ja kuvaus ovat pakollisia.",
         "submitCreate": "Luo"
@@ -608,6 +610,8 @@
       "useInProjectAria": "Käytä taitoa {{name}} tässä projektissa",
       "validateAria": "Tarkista {{name}}",
       "shadowNote": "Tästä taidosta on saatavilla uudempi Oleafly-versio.",
+      "nameNote": "Muut agentit lataavat vain taitoja, joiden nimessä on pieniä englannin kirjaimia a-z, numeroita ja yhdysmerkkejä.",
+      "renameAction": "Nimeä uudelleen: {{name}}",
       "replaceAction": "Käytä Oleaflyn versiota",
       "replaceTitle": "Korvataanko oma kopiosi taidosta {{name}}?",
       "replaceBody": "Kopiosi siirretään varmuuskopiokansioon. Mitään ei poisteta.",
@@ -754,7 +758,9 @@
         "sidebarAccent": "Sivupalkin korostus",
         "sidebarAccentForeground": "Sivupalkin korostuksen teksti",
         "sidebarBorder": "Sivupalkin reunus",
-        "sidebarForeground": "Sivupalkin teksti"
+        "sidebarForeground": "Sivupalkin teksti",
+        "pdfDarkPage": "PDF:n tumma sivu",
+        "pdfDarkText": "PDF:n tumma teksti"
       }
     },
     "editor": {
@@ -1002,6 +1008,10 @@
       "darkMode": {
         "description": "Käännä PDF:n värit oletuksena. Värit voi silti vaihtaa esikatselun työkalupalkista.",
         "label": "PDF:n tumma tila"
+      },
+      "darkColors": {
+        "label": "Tumman sivun värit",
+        "description": "PDF:n tumma tila piirtää sivut näillä väreillä. Ne seuraavat teemaasi, kunnes valitset omat, ja ne tallentuvat sille vaaleelle tai tummalle teemalle, jota käytät nyt."
       },
       "hoverPreview": {
         "description": "Näytä viimeisin käännetty sivu, kun viet osoittimen projektin päälle kirjastossa.",

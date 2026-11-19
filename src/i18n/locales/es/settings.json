@@ -521,7 +521,9 @@
         "instructions": "Instrucciones",
         "instructionsHint": "Déjalo en blanco para crear un esqueleto mínimo de instrucciones.",
         "instructionsPlaceholder": "Indica cuándo usar esta habilidad y los pasos que debe seguir el asistente.",
-        "namePlaceholder": "Verificador de afirmaciones",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Guardado como {{name}}. Los nombres de las habilidades usan letras minúsculas, números y guiones, para que otros agentes también puedan cargarlas.",
+        "nameNeedsLatin": "Añade algunas letras de la a a la z o números. Los nombres de las habilidades usan letras minúsculas, números y guiones, para que otros agentes también puedan cargarlas.",
         "requiredAll": "El nombre, la descripción y las instrucciones son obligatorios.",
         "requiredBasics": "El nombre y la descripción son obligatorios.",
         "submitCreate": "Crear"
@@ -612,6 +614,8 @@
       "useInProjectAria": "Usar {{name}} en este proyecto",
       "validateAria": "Validar {{name}}",
       "shadowNote": "Hay una versión más reciente de Oleafly de esta habilidad.",
+      "nameNote": "Otros agentes solo cargan habilidades cuyo nombre esté en letras minúsculas, números y guiones.",
+      "renameAction": "Renombrar a {{name}}",
       "replaceAction": "Usar la versión de Oleafly",
       "replaceTitle": "¿Sustituir tu copia de {{name}}?",
       "replaceBody": "Tu copia se mueve a una carpeta de copia de seguridad. No se elimina nada.",
@@ -760,7 +764,9 @@
         "sidebarAccent": "Acento de la barra lateral",
         "sidebarAccentForeground": "Texto de acento de la barra lateral",
         "sidebarBorder": "Borde de la barra lateral",
-        "sidebarForeground": "Texto de la barra lateral"
+        "sidebarForeground": "Texto de la barra lateral",
+        "pdfDarkPage": "Página del PDF oscuro",
+        "pdfDarkText": "Texto del PDF oscuro"
       }
     },
     "editor": {
@@ -1008,6 +1014,10 @@
       "darkMode": {
         "description": "Invierte los colores del PDF por omisión. Aun así puedes cambiarlos desde la barra de la vista previa.",
         "label": "Modo oscuro del PDF"
+      },
+      "darkColors": {
+        "label": "Colores de página oscuros",
+        "description": "El modo oscuro del PDF dibuja las páginas con estos colores. Siguen tu tema hasta que elijas los tuyos, y se guardan con el tema claro u oscuro que estás usando ahora."
       },
       "hoverPreview": {
         "description": "Muestra la última página compilada al pasar el cursor por un proyecto de la biblioteca.",

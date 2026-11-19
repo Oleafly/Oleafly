@@ -37,7 +37,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - File and folder icons now use the app's chart colours, one for each family of files, with a lightly tinted body. Folders and archives are amber, LaTeX, class and settings files blue, Typst green, Markdown and bibliographies purple, PDFs red, images and whiteboards pink, spreadsheets dark green, and code and slide decks orange. Files Oleafly doesn't recognise stay grey. If you'd rather read a file's type than its icon, switch to type badges in Settings > Appearance > Project: a short label such as TEX or PDF, in the same colour.
-- PDF dark mode turns the page dark gray instead of pure black, so it sits closer to the rest of the dark theme. To pick another shade, add a line such as `--oleafly-pdf-dark-filter: invert(0.85) hue-rotate(180deg)` to the scoped CSS in Settings > Appearance > Theme customization, or to a theme file you import.
+- PDF dark mode draws pages in your theme's colors instead of pure black. In the dark theme a page takes the theme's panel color and panel text color, so a theme like One Dark gets a page that matches it. Only the pages change now: the space around them, search highlights and messages keep the app's colors, and the light frame dark mode used to leave around each page is gone.
+- You can pick the dark page and text colors under the PDF dark mode switch in Settings > Appearance > PDF Preview. They're in Theme customization too, so a theme file can set them as `pdf-dark-page` and `pdf-dark-text`, and the light and dark themes each keep their own pair. A light page with dark text gives you a tinted page, such as sepia, instead of an inverted one.
 
 ### Fixed
 
@@ -52,6 +53,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - On Windows, a command the assistant runs keeps its quoted arguments together, so `git commit -m "fix"` no longer splits into separate words. Reveal in Explorer works for a path with a comma in it, and an export from a folder whose name contains `;` finds its images.
 - The built-in skills follow the Agent Skills naming rules, so tools such as Pi no longer warn about nine of them at startup. Those nine now show their short names in Settings, such as `oleafly-latex-build` for Build and fix.
 - Existing installs now get the latest Build and fix skill and the slides and posters skill. Before, only a new install had the updated versions.
+- A skill you create, add from a folder or record from a chat now gets a name other agents accept, made of lowercase letters, numbers and hyphens and matching its folder. Create skill shows that name under the field as you type. Oleafly links your skills into Claude Code, Codex and other agents on this computer, and they warn about or skip names like "Claim Checker", so a skill you made before this shows a note in Settings with a button that renames it.
+- If you had already fixed a built-in skill's name by hand, it now takes the new version on its own. Before, it offered an update that warned it would discard your edits.
+- `oleaflyc skills list` now says where each skill came from. It used to report every skill, built-in ones included, as your own.
 
 ### Security
 

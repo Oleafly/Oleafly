@@ -1,13 +1,16 @@
-import { type CSSProperties, useCallback, useDeferredValue, useEffect, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useRef, useState } from "react";
 import type {
   PdfLayout,
   PdfLoadState,
   PdfOutlineState,
+  PdfPageColors,
   PdfRotation,
   PdfSearchState,
   PdfViewerHandle,
 } from "@/components/pdf/PdfViewer";
 import { useOverlayScrollbar } from "@/hooks/use-overlay-scrollbar";
+import { cssColorToHex, readCssVariable } from "@/lib/css-color";
+import { hexLuminance } from "@/lib/peer-colors";
 import { usePdfPosition } from "@/lib/use-pdf-position";
 import { useSettingsStore } from "@/store/settings";
 import { attachPreviewZoom, MAX_PREVIEW_SCALE, MIN_PREVIEW_SCALE } from "./preview-zoom";
@@ -30,7 +33,29 @@ export const INITIAL_PDF_SEARCH_STATE: PdfSearchState = {
 
 export const INITIAL_PDF_OUTLINE_STATE: PdfOutlineState = { status: "idle", items: [] };
 
-const PDF_DARK_MODE_STYLE: CSSProperties = { filter: "var(--oleafly-pdf-dark-filter)" };
+function luminanceOf(variable: string): number | null {
+  const hex = cssColorToHex(readCssVariable(variable));
+  return hex ? hexLuminance(hex) : null;
+}
+
+export function readPdfPageColors(): PdfPageColors {
+  const page = luminanceOf("--pdf-dark-page");
+  const text = luminanceOf("--pdf-dark-text");
+  return page !== null && text !== null && page > text ? "light" : "dark";
+}
+
+function usePdfPageColors(active: boolean): PdfPageColors | undefined {
+  const [colors, setColors] = useState<PdfPageColors>("dark");
+  useEffect(() => {
+    if (!active) return;
+    const update = () => setColors(readPdfPageColors());
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class", "style"] });
+    return () => observer.disconnect();
+  }, [active]);
+  return active ? colors : undefined;
+}
 
 export interface PdfReaderOptions {
   readonly positionKey: string | null;
@@ -59,6 +84,7 @@ export function usePdfReader({
   const inverted = useSettingsStore((state) => state.pdfDarkMode);
   const setInverted = useSettingsStore((state) => state.setPdfDarkMode);
   const [screenReaderMode, setScreenReaderMode] = useState(false);
+  const pdfPageColors = usePdfPageColors(inverted && !screenReaderMode);
   const [page, setPage] = useState(1);
   const [numPages, setNumPages] = useState(0);
   const [pageInput, setPageInput] = useState("1");
@@ -229,7 +255,7 @@ export function usePdfReader({
     setInverted,
     screenReaderMode,
     setScreenReaderMode,
-    darkModeStyle: inverted && !screenReaderMode ? PDF_DARK_MODE_STYLE : undefined,
+    pdfPageColors,
     page,
     setPage,
     numPages,

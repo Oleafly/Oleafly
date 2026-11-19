@@ -519,7 +519,9 @@
         "instructions": "Instruktioner",
         "instructionsHint": "Lad feltet stå tomt for at oprette et minimalt skelet til instruktionerne.",
         "instructionsPlaceholder": "Beskriv, hvornår denne færdighed skal bruges, og hvilke trin assistenten skal følge.",
-        "namePlaceholder": "Påstandstjekker",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Gemt som {{name}}. Navne på færdigheder bruger små bogstaver, tal og bindestreger, så andre agenter også kan indlæse dem.",
+        "nameNeedsLatin": "Tilføj nogle bogstaver fra a til z eller tal. Navne på færdigheder bruger små bogstaver, tal og bindestreger, så andre agenter også kan indlæse dem.",
         "requiredAll": "Navn, beskrivelse og instruktioner er påkrævet.",
         "requiredBasics": "Navn og beskrivelse er påkrævet.",
         "submitCreate": "Opret"
@@ -608,6 +610,8 @@
       "useInProjectAria": "Brug {{name}} i dette projekt",
       "validateAria": "Valider {{name}}",
       "shadowNote": "En nyere Oleafly-version af denne færdighed er tilgængelig.",
+      "nameNote": "Andre agenter indlæser kun færdigheder med navne i små bogstaver, tal og bindestreger.",
+      "renameAction": "Omdøb til {{name}}",
       "replaceAction": "Brug Oleaflys version",
       "replaceTitle": "Vil du erstatte din kopi af {{name}}?",
       "replaceBody": "Din kopi flyttes til en mappe med sikkerhedskopier. Intet bliver slettet.",
@@ -754,7 +758,9 @@
         "sidebarAccent": "Sidepanelets accent",
         "sidebarAccentForeground": "Accenttekst i sidepanelet",
         "sidebarBorder": "Sidepanelets kant",
-        "sidebarForeground": "Sidepanelets tekst"
+        "sidebarForeground": "Sidepanelets tekst",
+        "pdfDarkPage": "Mørk PDF-side",
+        "pdfDarkText": "Mørk PDF-tekst"
       }
     },
     "editor": {
@@ -1002,6 +1008,10 @@
       "darkMode": {
         "description": "Vend PDF'ens farver om som udgangspunkt. Du kan stadig skifte farver på forhåndsvisningens værktøjslinje.",
         "label": "Mørk tilstand til PDF"
+      },
+      "darkColors": {
+        "label": "Farver til den mørke side",
+        "description": "Mørk tilstand til PDF tegner siderne i disse farver. De følger dit tema, indtil du vælger dine egne, og de gemmes sammen med det lyse eller mørke tema, du bruger nu."
       },
       "hoverPreview": {
         "description": "Vis den senest kompilerede side, når du holder musen over et projekt i biblioteket.",

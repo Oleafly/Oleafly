@@ -3,7 +3,7 @@ name: openresearch
 description: Search literature and drive OpenResearch experiments through the local orx CLI, then record every run in the project so the results reach the manuscript. Use when the user mentions orx, OpenResearch, an experiment tree, a run id, or wants an experiment launched, polled, or written up.
 license: MIT
 compatibility: Needs the orx CLI on the login shell PATH. Commands go through run_command, which runs one shell line in the project directory with a 120 second timeout and a 200 KiB output cap.
-allowed-tools: run_command, read_file, write_file, replace_in_file, create_file, list_files, search_project, get_todos, update_todos, remember_note, load_skill, read_skill_file
+allowed-tools: run_command read_file write_file replace_in_file create_file list_files search_project get_todos update_todos remember_note load_skill read_skill_file
 metadata:
   version: "1.1.0"
   skill-author: Oleafly

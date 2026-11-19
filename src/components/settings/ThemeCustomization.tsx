@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Palette, RotateCcw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -62,6 +62,8 @@ const TOKEN_LABELS: Record<ThemeTokenName, () => string> = {
     i18n.t(($) => $.settings.appearance.customTheme.tokens.sidebarAccent),
   "sidebar-accent-foreground": () =>
     i18n.t(($) => $.settings.appearance.customTheme.tokens.sidebarAccentForeground),
+  "pdf-dark-page": () => i18n.t(($) => $.settings.appearance.customTheme.tokens.pdfDarkPage),
+  "pdf-dark-text": () => i18n.t(($) => $.settings.appearance.customTheme.tokens.pdfDarkText),
 };
 
 function downloadTheme(customization: ThemeCustomizationState) {
@@ -73,26 +75,23 @@ function downloadTheme(customization: ThemeCustomizationState) {
   );
 }
 
-export function ThemeCustomization() {
-  const { t } = useTranslation(["common", "settings"]);
+type TokenDrafts = Record<Theme, Partial<Record<ThemeTokenName, string>>>;
+
+export function useThemeTokenEditor(onReset?: () => void) {
   const { theme } = useTheme();
   const accentColor = useSettingsStore((state) => state.accentColor);
   const [customization, setCustomization] = useState<ThemeCustomizationState>(() => readThemeCustomization());
-  const [editMode, setEditMode] = useState<Theme>(theme);
-  const [tokenDrafts, setTokenDrafts] = useState<Record<Theme, Partial<Record<ThemeTokenName, string>>>>({ light: {}, dark: {} });
-  const [radiusDraft, setRadiusDraft] = useState<string | null>(null);
-  const [customCssDraft, setCustomCssDraft] = useState<string | null>(null);
+  const [tokenDrafts, setTokenDrafts] = useState<TokenDrafts>({ light: {}, dark: {} });
   const [message, setMessage] = useState<string | null>(null);
-  const importInput = useRef<HTMLInputElement>(null);
-  const tokens = customization[editMode];
+  const reload = useEffectEvent(() => {
+    setCustomization(readThemeCustomization());
+    setTokenDrafts({ light: {}, dark: {} });
+    onReset?.();
+  });
 
   useEffect(() => {
     const onChange = (event: Event) => {
-      if (!(event instanceof CustomEvent) || event.detail?.reset !== true) return;
-      setCustomization(readThemeCustomization());
-      setTokenDrafts({ light: {}, dark: {} });
-      setRadiusDraft(null);
-      setCustomCssDraft(null);
+      if (event instanceof CustomEvent && event.detail?.reset === true) reload();
     };
     window.addEventListener(THEME_CUSTOMIZATION_CHANGED_EVENT, onChange);
     return () => window.removeEventListener(THEME_CUSTOMIZATION_CHANGED_EVENT, onChange);
@@ -105,17 +104,89 @@ export function ThemeCustomization() {
     setMessage(notice ?? null);
   };
 
-  const updateToken = (token: ThemeTokenName, value: string, reportError = false) => {
-    setTokenDrafts((current) => ({ ...current, [editMode]: { ...current[editMode], [token]: value } }));
-    const nextTokens = { ...tokens };
+  const updateToken = (mode: Theme, token: ThemeTokenName, value: string, reportError = false) => {
+    setTokenDrafts((current) => ({ ...current, [mode]: { ...current[mode], [token]: value } }));
+    const nextTokens = { ...customization[mode] };
     if (value.trim()) nextTokens[token] = value.trim();
     else delete nextTokens[token];
     try {
-      save({ ...customization, [editMode]: nextTokens });
+      save({ ...customization, [mode]: nextTokens });
     } catch (error) {
       if (reportError) setMessage(error instanceof Error ? error.message : String(error));
     }
   };
+
+  const otherMode: Theme = theme === "light" ? "dark" : "light";
+  const otherModeDefaults = useMemo(
+    () => ({
+      ...readClassVariables(otherMode, THEME_TOKEN_NAMES.map((token) => `--${token}`)),
+      ...accentTokenDefaults(otherMode, accentColor),
+    }),
+    [otherMode, accentColor],
+  );
+
+  const effectiveColor = (mode: Theme, token: ThemeTokenName): string => {
+    const override = (tokenDrafts[mode][token] ?? customization[mode][token] ?? "").trim();
+    if (override) return override;
+    return mode === theme ? readCssVariable(`--${token}`) : (otherModeDefaults[`--${token}`] ?? "");
+  };
+
+  return { theme, customization, tokenDrafts, setTokenDrafts, message, setMessage, save, updateToken, effectiveColor };
+}
+
+type ThemeTokenEditor = ReturnType<typeof useThemeTokenEditor>;
+
+export function ThemeTokenField({
+  editor,
+  mode,
+  token,
+}: {
+  editor: ThemeTokenEditor;
+  mode: Theme;
+  token: ThemeTokenName;
+}) {
+  const { t } = useTranslation(["common", "settings"]);
+  const current = editor.effectiveColor(mode, token);
+  const tokenLabel = TOKEN_LABELS[token]();
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1.4fr)] items-center gap-2 text-xs">
+      <span className="truncate text-muted-foreground" title={token}>{tokenLabel}</span>
+      <ColorPicker
+        ariaLabel={
+          mode === "light"
+            ? t(($) => $.settings.appearance.customTheme.pickColorLight, { token: tokenLabel })
+            : t(($) => $.settings.appearance.customTheme.pickColorDark, { token: tokenLabel })
+        }
+        value={cssColorToHex(current) ?? current}
+        onChange={(value) => editor.updateToken(mode, token, value, true)}
+      />
+      <Input
+        aria-label={
+          mode === "light"
+            ? t(($) => $.settings.appearance.customTheme.tokenInputLight, { token: tokenLabel })
+            : t(($) => $.settings.appearance.customTheme.tokenInputDark, { token: tokenLabel })
+        }
+        value={editor.tokenDrafts[mode][token] ?? editor.customization[mode][token] ?? ""}
+        onChange={(event) => editor.updateToken(mode, token, event.target.value)}
+        onBlur={(event) => editor.updateToken(mode, token, event.target.value, true)}
+        placeholder={t(($) => $.common.state.default)}
+        className="h-8 font-mono text-[0.6875rem]"
+      />
+    </div>
+  );
+}
+
+export function ThemeCustomization() {
+  const { t } = useTranslation(["common", "settings"]);
+  const [radiusDraft, setRadiusDraft] = useState<string | null>(null);
+  const [customCssDraft, setCustomCssDraft] = useState<string | null>(null);
+  const editor = useThemeTokenEditor(() => {
+    setRadiusDraft(null);
+    setCustomCssDraft(null);
+  });
+  const { theme, customization, save, message, setMessage, setTokenDrafts } = editor;
+  const [editMode, setEditMode] = useState<Theme>(theme);
+  const importInput = useRef<HTMLInputElement>(null);
 
   const resetMode = () => {
     setTokenDrafts((current) => ({ ...current, [editMode]: {} }));
@@ -128,12 +199,7 @@ export function ThemeCustomization() {
   };
 
   const resetAll = () => {
-    const restored = resetThemeCustomization();
-    setCustomization(restored);
-    setTokenDrafts({ light: {}, dark: {} });
-    setRadiusDraft(null);
-    setCustomCssDraft(null);
-    applyThemeCustomization(theme, restored);
+    applyThemeCustomization(theme, resetThemeCustomization());
     setMessage(t(($) => $.settings.appearance.customTheme.cleared));
   };
 
@@ -144,8 +210,8 @@ export function ThemeCustomization() {
       return;
     }
     try {
-      const { customization: imported, skippedTokens, editor } = parseThemeCustomizationImport(await file.text());
-      if (editor) useSettingsStore.getState().importEditorThemes(editor);
+      const { customization: imported, skippedTokens, editor: editorThemes } = parseThemeCustomizationImport(await file.text());
+      if (editorThemes) useSettingsStore.getState().importEditorThemes(editorThemes);
       const shownTokens = skippedTokens.slice(0, 6).join(", ");
       const skippedNotice =
         skippedTokens.length > 6
@@ -170,23 +236,6 @@ export function ThemeCustomization() {
     } finally {
       if (importInput.current) importInput.current.value = "";
     }
-  };
-
-  const otherModeDefaults = useMemo(
-    () =>
-      editMode === theme
-        ? {}
-        : {
-            ...readClassVariables(editMode, THEME_TOKEN_NAMES.map((token) => `--${token}`)),
-            ...accentTokenDefaults(editMode, accentColor),
-          },
-    [editMode, theme, accentColor],
-  );
-
-  const effectiveColor = (token: ThemeTokenName): string => {
-    const override = (tokenDrafts[editMode][token] ?? tokens[token] ?? "").trim();
-    if (override) return override;
-    return editMode === theme ? readCssVariable(`--${token}`) : (otherModeDefaults[`--${token}`] ?? "");
   };
 
   return (
@@ -221,47 +270,9 @@ export function ThemeCustomization() {
       </fieldset>
 
       <div className="grid gap-2 sm:grid-cols-2">
-        {THEME_TOKEN_NAMES.map((token) => {
-          const current = effectiveColor(token);
-          const tokenLabel = TOKEN_LABELS[token]();
-          return (
-            <div
-              key={token}
-              className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1.4fr)] items-center gap-2 text-xs"
-            >
-              <span className="truncate text-muted-foreground" title={token}>{tokenLabel}</span>
-              <ColorPicker
-                ariaLabel={
-                  editMode === "light"
-                    ? t(($) => $.settings.appearance.customTheme.pickColorLight, {
-                        token: tokenLabel,
-                      })
-                    : t(($) => $.settings.appearance.customTheme.pickColorDark, {
-                        token: tokenLabel,
-                      })
-                }
-                value={cssColorToHex(current) ?? current}
-                onChange={(value) => updateToken(token, value, true)}
-              />
-              <Input
-                aria-label={
-                  editMode === "light"
-                    ? t(($) => $.settings.appearance.customTheme.tokenInputLight, {
-                        token: tokenLabel,
-                      })
-                    : t(($) => $.settings.appearance.customTheme.tokenInputDark, {
-                        token: tokenLabel,
-                      })
-                }
-                value={tokenDrafts[editMode][token] ?? tokens[token] ?? ""}
-                onChange={(event) => updateToken(token, event.target.value)}
-                onBlur={(event) => updateToken(token, event.target.value, true)}
-                placeholder={t(($) => $.common.state.default)}
-                className="h-8 font-mono text-[0.6875rem]"
-              />
-            </div>
-          );
-        })}
+        {THEME_TOKEN_NAMES.map((token) => (
+          <ThemeTokenField key={token} editor={editor} mode={editMode} token={token} />
+        ))}
       </div>
 
       <div className="space-y-1 text-xs">

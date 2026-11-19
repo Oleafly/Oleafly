@@ -521,7 +521,9 @@
         "instructions": "Instruções",
         "instructionsHint": "Deixe em branco para criar um esqueleto mínimo de instruções.",
         "instructionsPlaceholder": "Diga quando usar esta habilidade e os passos que o assistente deve seguir.",
-        "namePlaceholder": "Conferidor de Afirmações",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Salva como {{name}}. Os nomes das habilidades usam letras minúsculas, números e hifens, para que outros agentes também possam carregá-las.",
+        "nameNeedsLatin": "Adicione algumas letras de a a z ou números. Os nomes das habilidades usam letras minúsculas, números e hifens, para que outros agentes também possam carregá-las.",
         "requiredAll": "Nome, descrição e instruções são obrigatórios.",
         "requiredBasics": "Nome e descrição são obrigatórios.",
         "submitCreate": "Criar"
@@ -612,6 +614,8 @@
       "useInProjectAria": "Usar {{name}} neste projeto",
       "validateAria": "Validar {{name}}",
       "shadowNote": "Há uma versão mais nova do Oleafly para esta habilidade.",
+      "nameNote": "Outros agentes só carregam habilidades com nome em letras minúsculas, números e hifens.",
+      "renameAction": "Renomear para {{name}}",
       "replaceAction": "Usar a versão do Oleafly",
       "replaceTitle": "Substituir sua cópia de {{name}}?",
       "replaceBody": "Sua cópia vai para uma pasta de backup. Nada é excluído.",
@@ -760,7 +764,9 @@
         "sidebarAccent": "Destaque da barra lateral",
         "sidebarAccentForeground": "Texto do destaque da barra lateral",
         "sidebarBorder": "Borda da barra lateral",
-        "sidebarForeground": "Texto da barra lateral"
+        "sidebarForeground": "Texto da barra lateral",
+        "pdfDarkPage": "Página do PDF escuro",
+        "pdfDarkText": "Texto do PDF escuro"
       }
     },
     "editor": {
@@ -1008,6 +1014,10 @@
       "darkMode": {
         "description": "Inverte as cores do PDF por padrão. Você ainda pode trocar as cores pela barra de ferramentas da visualização.",
         "label": "Modo escuro no PDF"
+      },
+      "darkColors": {
+        "label": "Cores escuras da página",
+        "description": "O modo escuro do PDF desenha as páginas com estas cores. Elas acompanham seu tema até você escolher as suas, e ficam salvas com o tema claro ou escuro que você está usando agora."
       },
       "hoverPreview": {
         "description": "Mostra a última página compilada quando você passa o mouse sobre um projeto na biblioteca.",

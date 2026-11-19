@@ -517,7 +517,9 @@
         "instructions": "指示",
         "instructionsHint": "空欄のままにすると、最小限の指示の雛形を作ります。",
         "instructionsPlaceholder": "このスキルを使う場面と、アシスタントがたどる手順を書いてください。",
-        "namePlaceholder": "主張チェッカー",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "{{name}} という名前で保存されます。スキル名には半角の英小文字、数字、ハイフンを使います。他のエージェントからも読み込めるようにするためです。",
+        "nameNeedsLatin": "半角の英字 a から z か数字を入れてください。スキル名には半角の英小文字、数字、ハイフンを使います。他のエージェントからも読み込めるようにするためです。",
         "requiredAll": "名前、説明、指示は必須です。",
         "requiredBasics": "名前と説明は必須です。",
         "submitCreate": "作成"
@@ -604,6 +606,8 @@
       "useInProjectAria": "このプロジェクトで {{name}} を使う",
       "validateAria": "{{name}} を検証",
       "shadowNote": "このスキルには、より新しい Oleafly 版があります。",
+      "nameNote": "他のエージェントが読み込めるのは、半角の英小文字、数字、ハイフンだけで名前を付けたスキルです。",
+      "renameAction": "{{name}} に名前を変更",
       "replaceAction": "Oleafly 版を使う",
       "replaceTitle": "{{name}} のあなたのコピーを置き換えますか？",
       "replaceBody": "あなたのコピーはバックアップ用のフォルダに移動します。削除されるものはありません。",
@@ -748,7 +752,9 @@
         "sidebarAccent": "サイドバーのアクセント",
         "sidebarAccentForeground": "サイドバーのアクセントの文字",
         "sidebarBorder": "サイドバーの枠線",
-        "sidebarForeground": "サイドバーの文字"
+        "sidebarForeground": "サイドバーの文字",
+        "pdfDarkPage": "PDF ダークモードの背景",
+        "pdfDarkText": "PDF ダークモードの文字"
       }
     },
     "editor": {
@@ -996,6 +1002,10 @@
       "darkMode": {
         "description": "既定で PDF の色を反転します。プレビューのツールバーからいつでも切り替えられます。",
         "label": "PDF のダークモード"
+      },
+      "darkColors": {
+        "label": "ダーク時のページの色",
+        "description": "PDF のダークモードでは、ページをこれらの色で描画します。自分で選ぶまではテーマに合わせ、現在使っているライトまたはダークのテーマごとに保存されます。"
       },
       "hoverPreview": {
         "description": "ライブラリでプロジェクトにカーソルを合わせると、最後にコンパイルしたページを表示します。",

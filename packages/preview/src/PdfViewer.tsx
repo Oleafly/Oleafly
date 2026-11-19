@@ -1102,6 +1102,18 @@ export interface PdfOutlineState {
   message?: string;
 }
 
+const PDF_PAGE_WRAP_CLASSES = [
+  "relative mx-auto shadow-md bg-white",
+  "data-[pdf-rendered=true]:after:pointer-events-none data-[pdf-rendered=true]:after:absolute data-[pdf-rendered=true]:after:inset-0 data-[pdf-rendered=true]:after:z-[1] data-[pdf-rendered=true]:after:border data-[pdf-rendered=true]:after:border-black/5 data-[pdf-rendered=true]:after:content-['']",
+  "group-data-[pdf-colors]/pdf:isolate",
+  "group-data-[pdf-colors]/pdf:before:pointer-events-none group-data-[pdf-colors]/pdf:before:absolute group-data-[pdf-colors]/pdf:before:inset-0 group-data-[pdf-colors]/pdf:before:z-[1] group-data-[pdf-colors]/pdf:before:bg-pdf-dark-text group-data-[pdf-colors]/pdf:before:content-['']",
+  "group-data-[pdf-colors]/pdf:after:pointer-events-none group-data-[pdf-colors]/pdf:after:absolute group-data-[pdf-colors]/pdf:after:inset-0 group-data-[pdf-colors]/pdf:after:z-[1] group-data-[pdf-colors]/pdf:after:bg-pdf-dark-page group-data-[pdf-colors]/pdf:after:content-['']",
+  "group-data-[pdf-colors=dark]/pdf:bg-black group-data-[pdf-colors=dark]/pdf:[&_canvas]:[filter:invert(1)_hue-rotate(180deg)] group-data-[pdf-colors=dark]/pdf:before:mix-blend-multiply group-data-[pdf-colors=dark]/pdf:after:mix-blend-screen group-data-[pdf-colors=dark]/pdf:after:border group-data-[pdf-colors=dark]/pdf:after:border-white/10!",
+  "group-data-[pdf-colors=light]/pdf:before:mix-blend-screen group-data-[pdf-colors=light]/pdf:after:mix-blend-multiply",
+].join(" ");
+
+export type PdfPageColors = "dark" | "light";
+
 export interface PdfViewerProps {
   data: Uint8Array | null;
   documentIdentity?: string;
@@ -1124,6 +1136,7 @@ export interface PdfViewerProps {
   rotation?: PdfRotation;
   expectText?: boolean;
   screenReaderMode?: boolean;
+  pageColors?: PdfPageColors;
   t?: PreviewTranslator;
 }
 
@@ -1160,6 +1173,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     rotation = 0,
     expectText = true,
     screenReaderMode = false,
+    pageColors,
     t = keyEchoTranslator,
   },
   ref
@@ -2717,8 +2731,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       };
       const createPageWrap = (p: number) => {
         const wrap = document.createElement("div");
-        wrap.className =
-          "relative mx-auto shadow-md bg-white data-[pdf-rendered=true]:after:pointer-events-none data-[pdf-rendered=true]:after:absolute data-[pdf-rendered=true]:after:inset-0 data-[pdf-rendered=true]:after:z-[1] data-[pdf-rendered=true]:after:border data-[pdf-rendered=true]:after:border-black/5 data-[pdf-rendered=true]:after:content-['']";
+        wrap.className = PDF_PAGE_WRAP_CLASSES;
         wrap.dataset.page = String(p);
         wrap.setAttribute("role", "group");
         wrap.setAttribute(
@@ -3485,6 +3498,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     <div
       ref={containerRef}
       data-testid="pdf-renderer"
+      data-pdf-colors={screenReaderMode ? undefined : pageColors}
       role="document"
       aria-label={t("a11y.document")}
       className={
@@ -3500,8 +3514,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             // safe center` was tried here previously, but that CSS Alignment
             // Level 3 keyword isn't reliably supported by every webview this
             // app runs in; margin-based centering is plain CSS1 and universal.
-            "grid w-max grid-cols-[auto_auto] content-start gap-4 p-4 mx-auto"
-          : "flex w-full flex-col gap-4 p-4"
+            "group/pdf grid w-max grid-cols-[auto_auto] content-start gap-4 p-4 mx-auto"
+          : "group/pdf flex w-full flex-col gap-4 p-4"
       }
     />
   );

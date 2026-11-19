@@ -521,7 +521,9 @@
         "instructions": "Instrucțiuni",
         "instructionsHint": "Lasă gol ca să se creeze un schelet minimal de instrucțiuni.",
         "instructionsPlaceholder": "Enumeră când se folosește această abilitate și pașii pe care ar trebui să îi urmeze asistentul.",
-        "namePlaceholder": "Verificator de afirmații",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Salvat ca {{name}}. Numele abilităților folosesc litere mici, cifre și cratime, ca să le poată încărca și alți agenți.",
+        "nameNeedsLatin": "Adaugă câteva litere de la a la z sau cifre. Numele abilităților folosesc litere mici, cifre și cratime, ca să le poată încărca și alți agenți.",
         "requiredAll": "Numele, descrierea și instrucțiunile sunt obligatorii.",
         "requiredBasics": "Numele și descrierea sunt obligatorii.",
         "submitCreate": "Creează"
@@ -612,6 +614,8 @@
       "useInProjectAria": "Folosește {{name}} în acest proiect",
       "validateAria": "Validează {{name}}",
       "shadowNote": "Este disponibilă o versiune Oleafly mai nouă a acestei abilități.",
+      "nameNote": "Ceilalți agenți încarcă doar abilitățile cu nume format din litere mici, cifre și cratime.",
+      "renameAction": "Redenumește în {{name}}",
       "replaceAction": "Folosește versiunea Oleafly",
       "replaceTitle": "Înlocuiești copia ta pentru {{name}}?",
       "replaceBody": "Copia ta se mută într-un folder de rezervă. Nu se șterge nimic.",
@@ -760,7 +764,9 @@
         "sidebarAccent": "Accentul barei laterale",
         "sidebarAccentForeground": "Text pe accentul barei laterale",
         "sidebarBorder": "Conturul barei laterale",
-        "sidebarForeground": "Text în bara laterală"
+        "sidebarForeground": "Text în bara laterală",
+        "pdfDarkPage": "Pagina PDF-ului întunecat",
+        "pdfDarkText": "Textul PDF-ului întunecat"
       }
     },
     "editor": {
@@ -1008,6 +1014,10 @@
       "darkMode": {
         "description": "Inversează implicit culorile PDF-ului. Poți schimba oricând culorile din bara previzualizării.",
         "label": "Mod întunecat pentru PDF"
+      },
+      "darkColors": {
+        "label": "Culorile întunecate ale paginii",
+        "description": "Modul întunecat pentru PDF desenează paginile în aceste culori. Ele urmează tema ta până alegi propriile culori și sunt păstrate împreună cu tema luminoasă sau întunecată pe care o folosești acum."
       },
       "hoverPreview": {
         "description": "Arată ultima pagină compilată atunci când treci cu mouse-ul peste un proiect din bibliotecă.",

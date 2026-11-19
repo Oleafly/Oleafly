@@ -517,7 +517,9 @@
         "instructions": "Hướng dẫn",
         "instructionsHint": "Để trống để tạo khung hướng dẫn tối thiểu.",
         "instructionsPlaceholder": "Liệt kê khi nào nên dùng kỹ năng này và các bước trợ lý cần làm theo.",
-        "namePlaceholder": "Trình kiểm tra khẳng định",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Sẽ lưu thành: {{name}}. Tên kỹ năng chỉ dùng chữ cái thường a-z không dấu (không có ă, ơ), chữ số và dấu gạch ngang, để các agent khác cũng tải được.",
+        "nameNeedsLatin": "Hãy thêm chữ cái a-z hoặc chữ số. Tên kỹ năng chỉ dùng chữ cái thường a-z không dấu (không có ă, ơ), chữ số và dấu gạch ngang, để các agent khác cũng tải được.",
         "requiredAll": "Cần có tên, mô tả và hướng dẫn.",
         "requiredBasics": "Cần có tên và mô tả.",
         "submitCreate": "Tạo"
@@ -604,6 +606,8 @@
       "useInProjectAria": "Dùng {{name}} trong dự án này",
       "validateAria": "Kiểm tra {{name}}",
       "shadowNote": "Đã có phiên bản Oleafly mới hơn của kỹ năng này.",
+      "nameNote": "Các agent khác chỉ tải những kỹ năng có tên gồm chữ cái thường a-z không dấu (không có ă, ơ), chữ số và dấu gạch ngang.",
+      "renameAction": "Đổi tên thành {{name}}",
       "replaceAction": "Dùng phiên bản Oleafly",
       "replaceTitle": "Thay bản sao {{name}} của bạn?",
       "replaceBody": "Bản sao của bạn được chuyển vào thư mục sao lưu. Không có gì bị xóa.",
@@ -748,7 +752,9 @@
         "sidebarAccent": "Màu nhấn thanh bên",
         "sidebarAccentForeground": "Chữ trên màu nhấn thanh bên",
         "sidebarBorder": "Viền thanh bên",
-        "sidebarForeground": "Chữ thanh bên"
+        "sidebarForeground": "Chữ thanh bên",
+        "pdfDarkPage": "Trang PDF tối",
+        "pdfDarkText": "Chữ PDF tối"
       }
     },
     "editor": {
@@ -996,6 +1002,10 @@
       "darkMode": {
         "description": "Đảo màu PDF theo mặc định. Bạn vẫn có thể đổi màu từ thanh công cụ xem trước.",
         "label": "Chế độ tối cho PDF"
+      },
+      "darkColors": {
+        "label": "Màu trang ở chế độ tối",
+        "description": "Chế độ tối cho PDF vẽ các trang bằng những màu này. Chúng theo giao diện của bạn cho đến khi bạn chọn màu riêng, và được lưu theo giao diện sáng hoặc tối bạn đang dùng."
       },
       "hoverPreview": {
         "description": "Hiện trang đã biên dịch gần nhất khi bạn rê chuột qua một dự án trong thư viện.",

@@ -521,7 +521,9 @@
         "instructions": "Instructions",
         "instructionsHint": "Laissez ce champ vide pour créer une trame d'instructions minimale.",
         "instructionsPlaceholder": "Indiquez quand utiliser cette compétence et les étapes que l'assistant doit suivre.",
-        "namePlaceholder": "Vérificateur d'affirmations",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Enregistré sous {{name}}. Les noms de compétences utilisent des lettres minuscules, des chiffres et des tirets, pour que d'autres agents puissent aussi les charger.",
+        "nameNeedsLatin": "Ajoutez quelques lettres de a à z ou des chiffres. Les noms de compétences utilisent des lettres minuscules, des chiffres et des tirets, pour que d'autres agents puissent aussi les charger.",
         "requiredAll": "Le nom, la description et les instructions sont obligatoires.",
         "requiredBasics": "Le nom et la description sont obligatoires.",
         "submitCreate": "Créer"
@@ -612,6 +614,8 @@
       "useInProjectAria": "Utiliser {{name}} dans ce projet",
       "validateAria": "Valider {{name}}",
       "shadowNote": "Une version Oleafly plus récente de cette compétence est disponible.",
+      "nameNote": "Les autres agents ne chargent que les compétences dont le nom est en lettres minuscules, chiffres et tirets.",
+      "renameAction": "Renommer en {{name}}",
       "replaceAction": "Utiliser la version Oleafly",
       "replaceTitle": "Remplacer votre copie de {{name}} ?",
       "replaceBody": "Votre copie est déplacée dans un dossier de sauvegarde. Rien n'est supprimé.",
@@ -760,7 +764,9 @@
         "sidebarAccent": "Accentuation de la barre latérale",
         "sidebarAccentForeground": "Texte d'accentuation de la barre latérale",
         "sidebarBorder": "Bordure de la barre latérale",
-        "sidebarForeground": "Texte de la barre latérale"
+        "sidebarForeground": "Texte de la barre latérale",
+        "pdfDarkPage": "Page du PDF sombre",
+        "pdfDarkText": "Texte du PDF sombre"
       }
     },
     "editor": {
@@ -1008,6 +1014,10 @@
       "darkMode": {
         "description": "Inverser les couleurs du PDF par défaut. Vous pouvez toujours changer les couleurs depuis la barre d'outils de l'aperçu.",
         "label": "Mode sombre du PDF"
+      },
+      "darkColors": {
+        "label": "Couleurs de page sombres",
+        "description": "Le mode sombre du PDF dessine les pages avec ces couleurs. Elles suivent votre thème tant que vous n'en choisissez pas d'autres, et elles sont conservées avec le thème clair ou sombre que vous utilisez actuellement."
       },
       "hoverPreview": {
         "description": "Afficher la dernière page compilée au survol d'un projet dans la bibliothèque.",

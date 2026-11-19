@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "pack": "research-core",
-  "version": "2026.10.19.721468a9",
+  "version": "2026.10.19.084bb10a",
   "skills": [
     {
       "id": "citation-management",
@@ -86,9 +86,9 @@
       "tier": "native",
       "phase": "tooling",
       "license": "MIT",
-      "treeSha256": "859ca7b5cedb78c25695f48e281003ab29c991078165ea3db260cf242f59827a",
+      "treeSha256": "ec995c7d1807b9016db7a1d2110cb88186bb21ab55aaf7bf729ff80520e36050",
       "files": 2,
-      "bytes": 26104,
+      "bytes": 26091,
       "version": "1.1.0"
     },
     {
@@ -126,9 +126,9 @@
       "tier": "native",
       "phase": "authoring",
       "license": "MIT",
-      "treeSha256": "be50807e2b55f82c85f44f5931d31b3b177cab5d13306e5518834732257aaf27",
+      "treeSha256": "825bb2063e1116a329d72532188bb67372fc289b6e0948496fd3469a3fd177ed",
       "files": 3,
-      "bytes": 27556,
+      "bytes": 27544,
       "version": "1.0.1"
     },
     {
@@ -282,9 +282,9 @@
       "tier": "native",
       "phase": "research",
       "license": "MIT",
-      "treeSha256": "9929346816c3a3baf5e8a99e15d5b377ab31ed1e2a018de84b0707b6d9e1c7e3",
+      "treeSha256": "bf60626ea8a95ec87e01a24de6a0fe58e0478d6b06ff5a879224e8380b6a4e31",
       "files": 3,
-      "bytes": 21631,
+      "bytes": 21620,
       "version": "1.1.0"
     },
     {
@@ -310,9 +310,9 @@
       "tier": "native",
       "phase": "tooling",
       "license": "MIT",
-      "treeSha256": "bc5f7e336f385c67aed50a6f7e1a46e9549541bc36d7964cfb0e3f150acd5075",
+      "treeSha256": "6a69d1a789ee6d184591b4625ebfcfaf30267dbecf88490ed0317c9e241635cb",
       "files": 3,
-      "bytes": 20996,
+      "bytes": 20979,
       "version": "1.0.0"
     },
     {

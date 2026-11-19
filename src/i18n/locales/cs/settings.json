@@ -523,7 +523,9 @@
         "instructions": "Instrukce",
         "instructionsHint": "Nechte prázdné a vytvoří se minimální kostra instrukcí.",
         "instructionsPlaceholder": "Uveďte, kdy tuto dovednost použít a jaké kroky má asistent provést.",
-        "namePlaceholder": "Kontrolor tvrzení",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Uloženo jako: {{name}}. Názvy dovedností smí obsahovat jen malá latinská písmena a až z, číslice a spojovníky, aby je mohli načíst i další agenti.",
+        "nameNeedsLatin": "Zadejte alespoň několik latinských písmen a až z nebo číslic. Názvy dovedností smí obsahovat jen malá latinská písmena, číslice a spojovníky, aby je mohli načíst i další agenti.",
         "requiredAll": "Název, popis a instrukce jsou povinné.",
         "requiredBasics": "Název a popis jsou povinné.",
         "submitCreate": "Vytvořit"
@@ -616,6 +618,8 @@
       "useInProjectAria": "Použít {{name}} v tomto projektu",
       "validateAria": "Ověřit {{name}}",
       "shadowNote": "K dispozici je novější verze této dovednosti od Oleafly.",
+      "nameNote": "Další agenti načtou jen dovednosti s názvem z malých latinských písmen a až z, číslic a spojovníků.",
+      "renameAction": "Přejmenovat na: {{name}}",
       "replaceAction": "Použít verzi Oleafly",
       "replaceTitle": "Nahradit vaši kopii {{name}}?",
       "replaceBody": "Vaše kopie se přesune do složky záloh. Nic se nesmaže.",
@@ -766,7 +770,9 @@
         "sidebarAccent": "Zvýraznění postranního panelu",
         "sidebarAccentForeground": "Text zvýraznění postranního panelu",
         "sidebarBorder": "Ohraničení postranního panelu",
-        "sidebarForeground": "Text postranního panelu"
+        "sidebarForeground": "Text postranního panelu",
+        "pdfDarkPage": "Tmavá stránka PDF",
+        "pdfDarkText": "Tmavý text PDF"
       }
     },
     "editor": {
@@ -1014,6 +1020,10 @@
       "darkMode": {
         "description": "Ve výchozím stavu invertovat barvy PDF. Barvy můžete stále přepnout v panelu nástrojů náhledu.",
         "label": "Tmavý režim PDF"
+      },
+      "darkColors": {
+        "label": "Barvy tmavé stránky",
+        "description": "Tmavý režim PDF kreslí stránky v těchto barvách. Dokud nevyberete vlastní, řídí se motivem a ukládají se ke světlému nebo tmavému motivu, který právě používáte."
       },
       "hoverPreview": {
         "description": "Zobrazit poslední zkompilovanou stránku, když v knihovně najedete na projekt.",

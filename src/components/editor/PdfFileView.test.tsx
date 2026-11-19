@@ -13,6 +13,7 @@ interface FakeViewerProps {
   rotation: number;
   password?: string;
   searchQuery: string;
+  pageColors?: string;
   onLoadStateChange: (state: { status: string; documentIdentity: string; message?: string }) => void;
   onPageChange: (page: number, total: number) => void;
 }
@@ -67,6 +68,7 @@ vi.mock("@/components/pdf/PdfViewer", () => ({
         data-identity={documentIdentity}
         data-password={props.password ?? ""}
         data-search={props.searchQuery}
+        data-page-colors={props.pageColors ?? "none"}
       />
     );
   }),
@@ -255,17 +257,18 @@ describe("PdfFileView", () => {
     await waitFor(() => expect(screen.getByTestId("pdf-viewer")).toHaveAttribute("data-search", ""));
   });
 
-  it("inverts the page colours, except in reader view", async () => {
+  it("draws dark pages without filtering the view around them, except in reader view", async () => {
     tauri.readFileBase64.mockResolvedValue(PDF);
     render(<PdfFileView projectId="p1" path="paper.pdf" />);
-    await screen.findByTestId("pdf-viewer");
-    expect(scrollArea().style.filter).toBe("");
+    const pdf = await screen.findByTestId("pdf-viewer");
+    expect(pdf).toHaveAttribute("data-page-colors", "none");
 
     fireEvent.click(screen.getByRole("button", { name: actions.invert }));
-    expect(scrollArea().style.filter).toBe("var(--oleafly-pdf-dark-filter)");
+    expect(pdf).toHaveAttribute("data-page-colors", "dark");
+    expect(scrollArea().style.filter).toBe("");
 
     fireEvent.click(screen.getByRole("button", { name: actions.readerView }));
-    expect(scrollArea().style.filter).toBe("");
+    expect(pdf).toHaveAttribute("data-page-colors", "none");
   });
 
   it("hides the toolbar in fullscreen until the reader asks for it back", async () => {

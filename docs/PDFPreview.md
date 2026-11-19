@@ -20,9 +20,15 @@ pending or has failed.
 - Present the PDF as slides, from the start or from the current page. An
   optional presenter view shows the next slide, a timer, and speaker notes.
 - Rotate clockwise by 90 degrees.
-- Invert preview colors and restore the normal palette. The inverted page is
-  dark gray rather than black. Set `--oleafly-pdf-dark-filter` in Theme
-  customization's scoped CSS, or in an imported theme, to change it.
+- Dark mode draws each page in dark colors: the theme's panel and panel text
+  colors in the dark theme, and a dark gray page with light gray text in the
+  light theme. The toolbar, search highlights and the space around the pages
+  keep the app's own colors. Pick other colors under the PDF dark mode switch in
+  Settings > Appearance > PDF Preview, or set the `pdf-dark-page` and
+  `pdf-dark-text` tokens in Theme customization or a theme file; each light
+  and dark theme keeps its own pair. A page color lighter than the text
+  color gives a tinted light page, such as sepia, instead of an inverted
+  one.
 - Download the displayed PDF with a chosen filename.
 - Document outline and in-document text search.
 - Compile-log and preview tabs in the same surface.

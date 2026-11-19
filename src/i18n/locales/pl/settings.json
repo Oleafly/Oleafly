@@ -523,7 +523,9 @@
         "instructions": "Instrukcje",
         "instructionsHint": "Zostaw to puste, aby utworzyć minimalny szkielet instrukcji.",
         "instructionsPlaceholder": "Wypisz, kiedy stosować tę umiejętność i jakie kroki ma wykonać asystent.",
-        "namePlaceholder": "Weryfikator twierdzeń",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Zapisano jako: {{name}}. Nazwy umiejętności mogą zawierać tylko małe litery łacińskie a-z, cyfry i myślniki, aby mogli je wczytać także inni agenci.",
+        "nameNeedsLatin": "Wpisz kilka liter łacińskich a-z lub cyfr. Nazwy umiejętności mogą zawierać tylko małe litery łacińskie, cyfry i myślniki, aby mogli je wczytać także inni agenci.",
         "requiredAll": "Nazwa, opis i instrukcje są wymagane.",
         "requiredBasics": "Nazwa i opis są wymagane.",
         "submitCreate": "Utwórz"
@@ -616,6 +618,8 @@
       "useInProjectAria": "Używaj {{name}} w tym projekcie",
       "validateAria": "Sprawdź {{name}}",
       "shadowNote": "Dostępna jest nowsza wersja tej umiejętności od Oleafly.",
+      "nameNote": "Inni agenci wczytują tylko umiejętności o nazwach z małych liter łacińskich a-z, cyfr i myślników.",
+      "renameAction": "Zmień nazwę na: {{name}}",
       "replaceAction": "Użyj wersji Oleafly",
       "replaceTitle": "Zastąpić Twoją kopię {{name}}?",
       "replaceBody": "Twoja kopia zostanie przeniesiona do folderu kopii zapasowych. Nic nie zostanie usunięte.",
@@ -766,7 +770,9 @@
         "sidebarAccent": "Akcent panelu bocznego",
         "sidebarAccentForeground": "Tekst akcentu panelu bocznego",
         "sidebarBorder": "Obramowanie panelu bocznego",
-        "sidebarForeground": "Tekst panelu bocznego"
+        "sidebarForeground": "Tekst panelu bocznego",
+        "pdfDarkPage": "Ciemna strona PDF",
+        "pdfDarkText": "Ciemny tekst PDF"
       }
     },
     "editor": {
@@ -1014,6 +1020,10 @@
       "darkMode": {
         "description": "Odwracaj kolory PDF domyślnie. Kolory nadal można przełączyć z paska narzędzi podglądu.",
         "label": "Tryb ciemny PDF"
+      },
+      "darkColors": {
+        "label": "Kolory ciemnej strony",
+        "description": "Tryb ciemny PDF rysuje strony w tych kolorach. Dopóki nie wybierzesz własnych, podążają za motywem i są zapamiętywane osobno dla jasnego lub ciemnego motywu, z którego teraz korzystasz."
       },
       "hoverPreview": {
         "description": "Pokazuj ostatnio skompilowaną stronę po najechaniu na projekt w bibliotece.",

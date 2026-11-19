@@ -519,7 +519,9 @@
         "instructions": "Instructies",
         "instructionsHint": "Laat dit leeg om een minimaal instructiegeraamte te maken.",
         "instructionsPlaceholder": "Beschrijf wanneer je deze vaardigheid gebruikt en welke stappen de assistent moet volgen.",
-        "namePlaceholder": "Beweringencontrole",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Opgeslagen als {{name}}. Namen van vaardigheden bestaan uit kleine letters, cijfers en koppeltekens, zodat ook andere agents ze kunnen laden.",
+        "nameNeedsLatin": "Voeg letters van a tot z of cijfers toe. Namen van vaardigheden bestaan uit kleine letters, cijfers en koppeltekens, zodat ook andere agents ze kunnen laden.",
         "requiredAll": "Naam, beschrijving en instructies zijn verplicht.",
         "requiredBasics": "Naam en beschrijving zijn verplicht.",
         "submitCreate": "Maken"
@@ -608,6 +610,8 @@
       "useInProjectAria": "{{name}} in dit project gebruiken",
       "validateAria": "{{name}} valideren",
       "shadowNote": "Er is een nieuwere versie van deze vaardigheid van Oleafly beschikbaar.",
+      "nameNote": "Andere agents laden alleen vaardigheden met een naam van kleine letters, cijfers en koppeltekens.",
+      "renameAction": "Hernoemen naar {{name}}",
       "replaceAction": "De versie van Oleafly gebruiken",
       "replaceTitle": "Jouw kopie van {{name}} vervangen?",
       "replaceBody": "Je kopie gaat naar een back-upmap. Er wordt niets verwijderd.",
@@ -754,7 +758,9 @@
         "sidebarAccent": "Accent van de zijbalk",
         "sidebarAccentForeground": "Accenttekst van de zijbalk",
         "sidebarBorder": "Rand van de zijbalk",
-        "sidebarForeground": "Tekst van de zijbalk"
+        "sidebarForeground": "Tekst van de zijbalk",
+        "pdfDarkPage": "Donkere PDF-pagina",
+        "pdfDarkText": "Donkere PDF-tekst"
       }
     },
     "editor": {
@@ -1002,6 +1008,10 @@
       "darkMode": {
         "description": "Keer de PDF-kleuren standaard om. Je kunt de kleuren nog altijd wisselen via de werkbalk van het voorbeeld.",
         "label": "Donkere modus voor PDF"
+      },
+      "darkColors": {
+        "label": "Kleuren van de donkere pagina",
+        "description": "De donkere modus voor PDF tekent pagina's in deze kleuren. Ze volgen je thema tot je zelf kleuren kiest, en ze worden bewaard bij het lichte of donkere thema dat je nu gebruikt."
       },
       "hoverPreview": {
         "description": "Toon de laatst gecompileerde pagina als je in de bibliotheek over een project beweegt.",

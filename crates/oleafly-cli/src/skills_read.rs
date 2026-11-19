@@ -22,6 +22,7 @@ pub struct SkillEntry {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct ManagedManifest {
     schema_version: u8,
     source: String,
@@ -213,7 +214,7 @@ mod tests {
         .unwrap();
         std::fs::write(
             bundled.join(MANAGED_MANIFEST_FILE),
-            r#"{"schema_version":1,"id":"latex-build","source":"bundled"}"#,
+            r#"{"schemaVersion":1,"id":"latex-build","source":"bundled"}"#,
         )
         .unwrap();
         std::fs::write(bundled.join(FIRST_PARTY_MARKER_FILE), FIRST_PARTY_MARKER).unwrap();

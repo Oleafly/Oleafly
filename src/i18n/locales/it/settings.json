@@ -521,7 +521,9 @@
         "instructions": "Istruzioni",
         "instructionsHint": "Lascia vuoto questo campo per creare uno scheletro minimo di istruzioni.",
         "instructionsPlaceholder": "Indica quando usare questa skill e i passaggi che l'assistente deve seguire.",
-        "namePlaceholder": "Verifica delle affermazioni",
+        "namePlaceholder": "claim-checker",
+        "nameSavedAs": "Salvata come {{name}}. I nomi delle skill usano lettere minuscole, numeri e trattini, così anche altri agenti possono caricarle.",
+        "nameNeedsLatin": "Aggiungi qualche lettera da a a z o dei numeri. I nomi delle skill usano lettere minuscole, numeri e trattini, così anche altri agenti possono caricarle.",
         "requiredAll": "Nome, descrizione e istruzioni sono obbligatori.",
         "requiredBasics": "Il nome e la descrizione sono obbligatori.",
         "submitCreate": "Crea"
@@ -612,6 +614,8 @@
       "useInProjectAria": "Usa {{name}} in questo progetto",
       "validateAria": "Convalida {{name}}",
       "shadowNote": "È disponibile una versione Oleafly più recente di questa skill.",
+      "nameNote": "Gli altri agenti caricano solo le skill con un nome in lettere minuscole, numeri e trattini.",
+      "renameAction": "Rinomina in {{name}}",
       "replaceAction": "Usa la versione Oleafly",
       "replaceTitle": "Sostituire la tua copia di {{name}}?",
       "replaceBody": "La tua copia viene spostata in una cartella di backup. Non viene eliminato nulla.",
@@ -760,7 +764,9 @@
         "sidebarAccent": "Accento della barra laterale",
         "sidebarAccentForeground": "Testo sull'accento della barra laterale",
         "sidebarBorder": "Bordo della barra laterale",
-        "sidebarForeground": "Testo della barra laterale"
+        "sidebarForeground": "Testo della barra laterale",
+        "pdfDarkPage": "Pagina del PDF scuro",
+        "pdfDarkText": "Testo del PDF scuro"
       }
     },
     "editor": {
@@ -1008,6 +1014,10 @@
       "darkMode": {
         "description": "Inverte i colori del PDF per impostazione predefinita. Puoi comunque cambiarli dalla barra dell'anteprima.",
         "label": "Modalità scura del PDF"
+      },
+      "darkColors": {
+        "label": "Colori scuri della pagina",
+        "description": "La modalità scura del PDF disegna le pagine con questi colori. Seguono il tuo tema finché non scegli i tuoi, e vengono salvati con il tema chiaro o scuro che stai usando ora."
       },
       "hoverPreview": {
         "description": "Mostra l'ultima pagina compilata quando passi sopra un progetto nella libreria.",

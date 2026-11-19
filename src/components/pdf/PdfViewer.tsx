@@ -14,6 +14,7 @@ export type {
   PdfSearchState,
   PdfOutlineState,
   PdfOutlineItem,
+  PdfPageColors,
 } from "@oleafly/preview";
 
 const PdfViewerCore = lazy(() =>

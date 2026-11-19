@@ -46,6 +46,15 @@ you were just having, pulling its steps from your completed to-dos when there
 were any, so you can review and enable it instead of writing the whole thing
 from scratch.
 
+A skill's name is its folder name: lowercase letters a to z, numbers and
+single hyphens, at most 64 characters, such as `claim-checker`. That is what
+the Agent Skills standard asks for, and other agents refuse or warn about
+anything else. Create skill turns whatever you type into such a name and
+shows it under the field before you save, and Add folder and Record a skill
+do the same. A skill made before these rules, with a name like "Claim
+Checker", shows a note in Settings and a **Rename to** button that sets its
+name to its folder name.
+
 ## The research loop
 
 `oleafly-research-loop` is the entry point for anything that spans more than
@@ -188,7 +197,9 @@ update has since moved past, gets an **Update** button instead: it appears
 whenever the pack version recorded when the skill was installed no longer
 matches the pack version shipping with this build. Update replaces the
 skill's files with the current bundled version and discards any local edits
-to them, which is why it asks you to confirm first.
+to them, which is why it asks you to confirm first. If your edits already
+match the new bundled version exactly, the skill takes the new version
+without asking.
 
 ## The domain shelf
 

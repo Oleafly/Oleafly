@@ -167,7 +167,6 @@ export function PdfFileView({ projectId, path }: Readonly<{ projectId: string; p
           data-select-all-scope
           aria-label={t(($) => $.preview.viewer.scrollArea)}
           className="isolate h-full overflow-auto focus-visible:bg-accent/20"
-          style={reader.darkModeStyle}
         >
           <PdfViewer
             key={pdf.identity}
@@ -179,6 +178,7 @@ export function PdfFileView({ projectId, path }: Readonly<{ projectId: string; p
             scale={reader.scale}
             layout={reader.layout}
             screenReaderMode={reader.screenReaderMode}
+            pageColors={reader.pdfPageColors}
             searchQuery={reader.searchOpen ? reader.deferredSearch : ""}
             onLoadStateChange={(next) => {
               if (next.documentIdentity === pdf.identity) reader.markLoadState(next);
