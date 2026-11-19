@@ -2629,61 +2629,61 @@
     }
   },
   "logs": {
-    "searchLabel": "Search logs",
-    "searchPlaceholder": "Search logs",
+    "searchLabel": "搜尋記錄檔",
+    "searchPlaceholder": "搜尋記錄檔",
     "levels": {
-      "label": "Level",
-      "all": "All",
-      "warning": "Warnings",
-      "error": "Errors"
+      "label": "層級",
+      "all": "全部",
+      "warning": "警告",
+      "error": "錯誤"
     },
     "level": {
-      "info": "Info",
-      "warning": "Warning",
-      "error": "Error"
+      "info": "資訊",
+      "warning": "警告",
+      "error": "錯誤"
     },
     "actions": {
-      "export": "Export",
-      "openFolder": "Open log folder",
-      "clear": "Clear"
+      "export": "匯出",
+      "openFolder": "開啟記錄檔資料夾",
+      "clear": "清除"
     },
     "groups": {
-      "today": "Today",
-      "yesterday": "Yesterday"
+      "today": "今天",
+      "yesterday": "昨天"
     },
-    "newestFirst": "Newest first",
-    "privateDetails": "Private, left out when you export",
-    "copyEntry": "Copy entry",
-    "copied": "Copied",
-    "loading": "Reading the logs",
-    "loadFailed": "Couldn't read the logs.",
-    "retry": "Try again",
+    "newestFirst": "最新的在前",
+    "privateDetails": "私密內容，匯出時不會包含",
+    "copyEntry": "複製條目",
+    "copied": "已複製",
+    "loading": "正在讀取記錄檔",
+    "loadFailed": "無法讀取記錄檔。",
+    "retry": "再試一次",
     "empty": {
-      "title": "No log entries",
-      "description": "Builds and errors show up here as they happen."
+      "title": "沒有記錄條目",
+      "description": "建置和錯誤發生時會顯示在這裡。"
     },
     "noMatch": {
-      "title": "No entries match \"{{query}}\"",
-      "levelTitle": "No entries at this level",
-      "description": "Try another search or level.",
-      "clearSearch": "Clear search",
-      "showAll": "Show all levels"
+      "title": "沒有符合「{{query}}」的條目",
+      "levelTitle": "此層級沒有條目",
+      "description": "試試其他搜尋詞或層級。",
+      "clearSearch": "清除搜尋",
+      "showAll": "顯示所有層級"
     },
     "clear": {
-      "title": "Clear all logs?",
-      "confirm": "Clear logs",
-      "description_other": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them."
+      "title": "要清除所有記錄檔嗎？",
+      "confirm": "清除記錄檔",
+      "description_other": "這會刪除這台電腦上的全部 {{count}} 筆條目和記錄檔。已匯出的記錄檔仍會保留在你儲存的位置。"
     },
     "toast": {
-      "exported": "Saved the logs to {{name}}.",
-      "exportFailed": "Couldn't export the logs.",
-      "clearFailed": "Couldn't clear the logs.",
-      "revealFailed": "Couldn't open the log folder."
+      "exported": "已將記錄檔儲存到 {{name}}。",
+      "exportFailed": "無法匯出記錄檔。",
+      "clearFailed": "無法清除記錄檔。",
+      "revealFailed": "無法開啟記錄檔資料夾。"
     },
     "dialog": {
-      "filterName": "Zip archive"
+      "filterName": "Zip 壓縮檔"
     },
-    "count_other": "{{count}} entries",
-    "filteredCount_other": "{{shown}} of {{count}} entries"
+    "count_other": "{{count}} 筆條目",
+    "filteredCount_other": "顯示 {{shown}} / {{count}} 筆條目"
   }
 }

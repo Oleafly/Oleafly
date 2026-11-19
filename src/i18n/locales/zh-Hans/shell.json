@@ -1073,7 +1073,7 @@
       "integrations": "集成",
       "shortcuts": "键盘快捷键",
       "research": "研究",
-      "logs": "Logs"
+      "logs": "日志"
     },
     "search": {
       "empty": "没有匹配的设置",
@@ -1091,7 +1091,7 @@
         "integrations": "Zotero，GitHub，GitLab，Gitea，Forgejo，Codeberg，Git 托管，Computer Use，桌面应用，Cua，MCP，引用，账户，连接",
         "shortcuts": "按键绑定，快捷键，热键，按键，键盘",
         "research": "研究 任务 预算 通知 保持唤醒 实验 运行 research tasks",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "日志，错误，警告，崩溃，构建，诊断，故障排查，导出日志，调试，log，logs，app.log"
       },
       "label": "搜索设置",
       "results_other": "{{count}} 个分区匹配"

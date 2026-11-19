@@ -1,5 +1,5 @@
 ---
-name: Manuscript scaffold
+name: oleafly-manuscript-scaffold
 description: Build a venue-shaped manuscript skeleton inside the open Oleafly project. Use when the user wants to start a paper, set up a NeurIPS, ICML, ICLR, ACL, CVPR or AAAI submission, an IEEE or ACM conference paper, an Elsevier or Springer journal article, a PLOS, Nature or medical manuscript, an arXiv preprint or a thesis chapter, or asks for main.tex plus sections and a bibliography, or wants an existing draft reshaped to a venue layout.
 license: MIT
 compatibility: Needs an open Oleafly project with a LaTeX or Typst engine. Nothing else is required. Verification with verify_pdf_pages needs PDF page capture enabled in Settings.

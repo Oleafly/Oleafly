@@ -3506,6 +3506,38 @@ mod tests {
     }
 
     #[test]
+    fn the_shipped_pack_matches_its_skills_and_names_them_by_the_spec() {
+        let pack_root = Path::new(env!("CARGO_MANIFEST_DIR")).join("resources/skills");
+        let manifest = crate::skills_pack::read_pack_manifest(&pack_root)
+            .unwrap()
+            .unwrap();
+        for entry in &manifest.skills {
+            let directory = pack_root.join(&entry.id);
+            let markdown = std::fs::read_to_string(directory.join("SKILL.md")).unwrap();
+            let name = parse_skill_markdown(&markdown).unwrap().name;
+            let follows_spec = name.len() <= 64
+                && name
+                    .bytes()
+                    .all(|byte| byte.is_ascii_lowercase() || byte.is_ascii_digit() || byte == b'-')
+                && !name.starts_with('-')
+                && !name.ends_with('-')
+                && !name.contains("--");
+            assert!(
+                follows_spec && name == entry.id,
+                "{}: name is {name:?}",
+                entry.id
+            );
+            assert_eq!(entry.name.as_deref(), Some(name.as_str()), "{}", entry.id);
+            assert_eq!(
+                tree_sha256(&directory).unwrap(),
+                entry.tree_sha256,
+                "{} changed without `pnpm skills:pack`",
+                entry.id
+            );
+        }
+    }
+
+    #[test]
     fn a_hand_made_folder_cannot_claim_bundled_provenance() {
         let root = tempfile::tempdir().unwrap();
         let directory = write_skill(

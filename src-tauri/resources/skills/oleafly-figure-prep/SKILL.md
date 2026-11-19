@@ -1,5 +1,5 @@
 ---
-name: Figure prep
+name: oleafly-figure-prep
 description: Build and place publication-quality figures in an Oleafly manuscript. Use when the user wants a TikZ or pgfplots figure, a CeTZ or fletcher figure in Typst, a diagram, an architecture or pipeline drawing, a matplotlib or seaborn plot, a chart from a CSV, a multi-panel figure, subfigures, a colorblind-safe palette, correct figure sizing for a journal column, or help with captions, labels, includegraphics and cross-references.
 license: MIT
 compatibility: Figure preview works in LaTeX projects on Tectonic or latexmk and in Typst projects. Markdown projects have no figure preview. Matplotlib work needs Python 3.11 or newer on PATH and runs through approval-gated shell commands.

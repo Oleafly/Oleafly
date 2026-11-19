@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.13] - 2026-11-18
+
 ### Added
 
 - Edit a project from your online LaTeX service live with your coauthors while they keep using its web editor. Typing, new files and renames reach both sides within a second or so, you can see where each person is working, and if the connection drops you keep typing and it all catches up when you're back. No Git token is needed. If your account signs in with Google, your institution or a passkey, use Sign in with your browser. It's experimental: turn it on in Settings › Experimentation.
@@ -23,6 +25,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A PDF you open from the file tree has the same toolbar as the compiled PDF preview: page numbers, zoom and fit, search, the PDF's outline, page layout, rotation, dark mode and full screen. It opens fitted to the width and remembers the page you were on.
 - Slide decks written in TSX open in the editor. A deck lives at `slides/<name>/index.tsx` in the Open Slide format, so decks you already have work unchanged. Preview or Split shows the slides as you type, with their steps, transitions and images from the project, and the speaker notes for the slide on screen sit underneath. Present a deck from the start, from the current slide or with the presenter view, as you would a PDF. The arrow keys play each step before moving on to the next slide.
 - Whiteboards. Name a file `something.excalidraw` and it opens in the editor as an Excalidraw canvas, where you can sketch diagrams and figures by hand. What you draw is saved to the file a moment after you stop, and changes made to the file from outside show up on the board. The board follows the app's theme and language, works offline with its handwriting fonts built in, and opens where you left it while the app is running.
+- The outline numbers LaTeX headings from the last successful compile. Starred headings stay unnumbered, and after an edit a number can be out of date or missing until you compile again.
+- Settings has a Logs section, between Experimentation and Help. It lists what the app recorded, newest first and grouped by day, with a search box and tabs for warnings and errors. Click an entry to see everything it recorded and copy it. You can export the logs to a zip, open the log folder or clear them. Entries now survive a restart, and project IDs, file names and prompts are never written to disk or included in an export.
+- In LaTeX math, typing a second letter or digit after `^` or `_` wraps the script in braces: `x^10` becomes `x^{10}` and `x_ij` becomes `x_{ij}`. More letters and digits go inside the braces, and anything else steps past the closing one. In Typst only a leading sign is grouped, so `x^-1` becomes `x^(-1)`. Turn it off in Settings > Appearance > Editor > Brace subscripts and superscripts.
+- The Markdown toolbar in Code mode has the same buttons as Visual mode and writes the same Markdown. When the pane is narrow, groups of buttons fold into a ⋯ menu.
+- Underline, strikethrough, highlight, text colour, superscript and subscript in Markdown now show up when you build a PDF.
+- Notes have a selection menu, an emoji picker and code blocks.
+- You can comment on a shared note while it's live, the way you comment on a project file. Select text and pick Add comment, or open Comments next to Outline and Info. Comments are never written into the note's Markdown.
+- Paste a link to a post on X into a note and pick Embed post. The note keeps the post as an `x-post` block with its author, date and text, so it reads the same offline and in other Markdown apps. The card shows the saved post, and Show live post loads the real one. Nothing is requested from X while a note is open unless you turn on Load X posts automatically in the Notes appearance settings.
 
 ### Changed
 
@@ -37,12 +47,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deleted for good, although the dialog said it went to the Recycle Bin. It
   now goes to this computer's trash, so you can still get it back.
 - New research project now offers Quarto and Calepin alongside LaTeX, Typst and Markdown. A Quarto project starts from a `main.qmd` that builds its PDF through Typst, so you don't need TeX installed. Names with `@`, `*` or `{{< >}}` also show up as typed in Markdown and Quarto titles. Before, an `@` became a citation, and in Quarto that could stop the build.
-
-### Added
-
-- Show matched LaTeX outline headings with numbers from the last successful
-  compile. Starred headings remain unnumbered; edits may leave numbers stale
-  or missing until recompilation.
+- On Windows with TeX Live, every latexmk build stopped before LaTeX ran, and the error card said the compiler stopped without naming a problem. Builds work again. Documents that use glossaries-extra with bib2gls, such as the novathesis template, now build as well, and when latexmk itself can't start, the card shows its message.
+- On Windows, a command the assistant runs keeps its quoted arguments together, so `git commit -m "fix"` no longer splits into separate words. Reveal in Explorer works for a path with a comma in it, and an export from a folder whose name contains `;` finds its images.
+- The built-in skills follow the Agent Skills naming rules, so tools such as Pi no longer warn about nine of them at startup. Those nine now show their short names in Settings, such as `oleafly-latex-build` for Build and fix.
+- Existing installs now get the latest Build and fix skill and the slides and posters skill. Before, only a new install had the updated versions.
 
 ### Security
 
@@ -4836,7 +4844,8 @@ safer update workflow in this release takes effect after 0.4.0 is installed.
   compilation, SyncTeX, Git integration, GitHub sync, and bring-your-own-key AI
   assistance.
 
-[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.12...HEAD
+[Unreleased]: https://github.com/Oleafly/Oleafly/compare/v0.4.13...HEAD
+[0.4.13]: https://github.com/Oleafly/Oleafly/compare/v0.4.12...v0.4.13
 [0.4.12]: https://github.com/Oleafly/Oleafly/compare/v0.4.11...v0.4.12
 [0.4.11]: https://github.com/Oleafly/Oleafly/compare/v0.4.10...v0.4.11
 [0.4.10]: https://github.com/Oleafly/Oleafly/compare/v0.4.9...v0.4.10

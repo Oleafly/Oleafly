@@ -1105,7 +1105,7 @@
       "integrations": "Intégrations",
       "shortcuts": "Raccourcis clavier",
       "research": "Recherche",
-      "logs": "Logs"
+      "logs": "Journaux"
     },
     "search": {
       "empty": "Aucun paramètre ne correspond",
@@ -1123,7 +1123,7 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, hébergement Git, Computer Use, applications de bureau, Cua, MCP, citations, comptes, connexions",
         "shortcuts": "raccourcis clavier, raccourcis, touches, clavier",
         "research": "recherche tâches budget notifications veille expériences exécutions research tasks",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "journal, journaux, logs, erreurs, avertissements, plantages, compilations, diagnostic, dépannage, exporter les journaux, app.log, débogage"
       },
       "label": "Rechercher dans les paramètres",
       "results_one": "{{count}} section correspond",

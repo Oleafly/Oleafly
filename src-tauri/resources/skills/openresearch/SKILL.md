@@ -1,5 +1,5 @@
 ---
-name: OpenResearch (orx)
+name: openresearch
 description: Search literature and drive OpenResearch experiments through the local orx CLI, then record every run in the project so the results reach the manuscript. Use when the user mentions orx, OpenResearch, an experiment tree, a run id, or wants an experiment launched, polled, or written up.
 license: MIT
 compatibility: Needs the orx CLI on the login shell PATH. Commands go through run_command, which runs one shell line in the project directory with a 120 second timeout and a 200 KiB output cap.

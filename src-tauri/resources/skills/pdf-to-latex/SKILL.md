@@ -1,5 +1,5 @@
 ---
-name: PDF to LaTeX
+name: pdf-to-latex
 description: Finish rebuilding a PDF as an editable LaTeX project after the app's importer has made its first pass. Reconstructs sectioning, math, tables, figures, and the bibliography one section at a time, verifying each against the original and keeping a progress log so the work survives across chats.
 license: MIT
 compatibility: For LaTeX projects created by the app's PDF importer. Layout checks need a vision model and the PDF page capture setting. The original PDF must be attached, or a text extractor on PATH.

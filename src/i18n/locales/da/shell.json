@@ -1089,7 +1089,7 @@
       "integrations": "Integrationer",
       "shortcuts": "Tastaturgenveje",
       "research": "Forskning",
-      "logs": "Logs"
+      "logs": "Logfiler"
     },
     "search": {
       "empty": "Ingen indstillinger matcher",
@@ -1107,7 +1107,7 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-hosting, Computer Use, skrivebordsapps, Cua, MCP, citationer, konti, forbindelser",
         "shortcuts": "tastaturgenveje, genvejstaster, genveje, taster, tastatur",
         "research": "forskning opgaver budget notifikationer hold vågen eksperimenter kørsler",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "log, logs, logfiler, fejl, advarsler, nedbrud, builds, diagnostik, fejlfinding, eksporter logfiler, app.log, debug"
       },
       "label": "Søg i indstillinger",
       "results_one": "{{count}} afsnit matcher",

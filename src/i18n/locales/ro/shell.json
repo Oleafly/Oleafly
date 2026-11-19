@@ -1105,7 +1105,7 @@
       "integrations": "Integrări",
       "shortcuts": "Scurtături de tastatură",
       "research": "Cercetare",
-      "logs": "Logs"
+      "logs": "Jurnale"
     },
     "search": {
       "empty": "Nicio setare nu se potrivește",
@@ -1123,7 +1123,7 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, găzduire Git, Computer Use, aplicații desktop, Cua, MCP, citări, conturi, conexiuni",
         "shortcuts": "scurtături de tastatură, scurtături, combinații de taste, taste, tastatură",
         "research": "cercetare sarcini buget notificări treaz experimente rulări research tasks",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "jurnal, jurnale, logs, erori, avertismente, blocări, compilări, diagnosticare, depanare, exportă jurnalele, app.log, debug"
       },
       "label": "Caută în setări",
       "results_one": "{{count}} secțiune se potrivește",

@@ -2652,64 +2652,64 @@
     }
   },
   "logs": {
-    "searchLabel": "Search logs",
-    "searchPlaceholder": "Search logs",
+    "searchLabel": "Søg i logfiler",
+    "searchPlaceholder": "Søg i logfiler",
     "levels": {
-      "label": "Level",
-      "all": "All",
-      "warning": "Warnings",
-      "error": "Errors"
+      "label": "Niveau",
+      "all": "Alle",
+      "warning": "Advarsler",
+      "error": "Fejl"
     },
     "level": {
       "info": "Info",
-      "warning": "Warning",
-      "error": "Error"
+      "warning": "Advarsel",
+      "error": "Fejl"
     },
     "actions": {
-      "export": "Export",
-      "openFolder": "Open log folder",
-      "clear": "Clear"
+      "export": "Eksporter",
+      "openFolder": "Åbn logmappen",
+      "clear": "Ryd"
     },
     "groups": {
-      "today": "Today",
-      "yesterday": "Yesterday"
+      "today": "I dag",
+      "yesterday": "I går"
     },
-    "newestFirst": "Newest first",
-    "privateDetails": "Private, left out when you export",
-    "copyEntry": "Copy entry",
-    "copied": "Copied",
-    "loading": "Reading the logs",
-    "loadFailed": "Couldn't read the logs.",
-    "retry": "Try again",
+    "newestFirst": "Nyeste først",
+    "privateDetails": "Privat, udelades ved eksport",
+    "copyEntry": "Kopiér post",
+    "copied": "Kopieret",
+    "loading": "Læser logfilerne",
+    "loadFailed": "Logfilerne kunne ikke læses.",
+    "retry": "Prøv igen",
     "empty": {
-      "title": "No log entries",
-      "description": "Builds and errors show up here as they happen."
+      "title": "Ingen logposter",
+      "description": "Builds og fejl vises her, efterhånden som de opstår."
     },
     "noMatch": {
-      "title": "No entries match \"{{query}}\"",
-      "levelTitle": "No entries at this level",
-      "description": "Try another search or level.",
-      "clearSearch": "Clear search",
-      "showAll": "Show all levels"
+      "title": "Ingen poster matcher \"{{query}}\"",
+      "levelTitle": "Ingen poster på dette niveau",
+      "description": "Prøv en anden søgning eller et andet niveau.",
+      "clearSearch": "Ryd søgningen",
+      "showAll": "Vis alle niveauer"
     },
     "clear": {
-      "title": "Clear all logs?",
-      "confirm": "Clear logs",
-      "description_one": "This deletes {{count}} entry and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_other": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them."
+      "title": "Ryd alle logfiler?",
+      "confirm": "Ryd logfiler",
+      "description_one": "Det sletter {{count}} post og logfilen på denne computer. Logfiler, du allerede har eksporteret, bliver liggende, hvor du gemte dem.",
+      "description_other": "Det sletter alle {{count}} poster og logfilen på denne computer. Logfiler, du allerede har eksporteret, bliver liggende, hvor du gemte dem."
     },
     "toast": {
-      "exported": "Saved the logs to {{name}}.",
-      "exportFailed": "Couldn't export the logs.",
-      "clearFailed": "Couldn't clear the logs.",
-      "revealFailed": "Couldn't open the log folder."
+      "exported": "Logfilerne er gemt i {{name}}.",
+      "exportFailed": "Logfilerne kunne ikke eksporteres.",
+      "clearFailed": "Logfilerne kunne ikke ryddes.",
+      "revealFailed": "Logmappen kunne ikke åbnes."
     },
     "dialog": {
-      "filterName": "Zip archive"
+      "filterName": "Zip-arkiv"
     },
-    "count_one": "{{count}} entry",
-    "count_other": "{{count}} entries",
-    "filteredCount_one": "{{shown}} of {{count}} entry",
-    "filteredCount_other": "{{shown}} of {{count}} entries"
+    "count_one": "{{count}} post",
+    "count_other": "{{count}} poster",
+    "filteredCount_one": "{{shown}} af {{count}} post",
+    "filteredCount_other": "{{shown}} af {{count}} poster"
   }
 }

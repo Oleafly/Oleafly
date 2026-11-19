@@ -2675,67 +2675,67 @@
     }
   },
   "logs": {
-    "searchLabel": "Search logs",
-    "searchPlaceholder": "Search logs",
+    "searchLabel": "Buscar registros",
+    "searchPlaceholder": "Buscar registros",
     "levels": {
-      "label": "Level",
-      "all": "All",
-      "warning": "Warnings",
-      "error": "Errors"
+      "label": "Nivel",
+      "all": "Todos",
+      "warning": "Advertencias",
+      "error": "Errores"
     },
     "level": {
-      "info": "Info",
-      "warning": "Warning",
+      "info": "Información",
+      "warning": "Advertencia",
       "error": "Error"
     },
     "actions": {
-      "export": "Export",
-      "openFolder": "Open log folder",
-      "clear": "Clear"
+      "export": "Exportar",
+      "openFolder": "Abrir carpeta de registros",
+      "clear": "Borrar"
     },
     "groups": {
-      "today": "Today",
-      "yesterday": "Yesterday"
+      "today": "Hoy",
+      "yesterday": "Ayer"
     },
-    "newestFirst": "Newest first",
-    "privateDetails": "Private, left out when you export",
-    "copyEntry": "Copy entry",
-    "copied": "Copied",
-    "loading": "Reading the logs",
-    "loadFailed": "Couldn't read the logs.",
-    "retry": "Try again",
+    "newestFirst": "Más recientes primero",
+    "privateDetails": "Privado, se omite al exportar",
+    "copyEntry": "Copiar entrada",
+    "copied": "Copiado",
+    "loading": "Leyendo los registros",
+    "loadFailed": "No se pudieron leer los registros.",
+    "retry": "Reintentar",
     "empty": {
-      "title": "No log entries",
-      "description": "Builds and errors show up here as they happen."
+      "title": "No hay entradas de registro",
+      "description": "Las compilaciones y los errores aparecen aquí a medida que ocurren."
     },
     "noMatch": {
-      "title": "No entries match \"{{query}}\"",
-      "levelTitle": "No entries at this level",
-      "description": "Try another search or level.",
-      "clearSearch": "Clear search",
-      "showAll": "Show all levels"
+      "title": "Ninguna entrada coincide con “{{query}}”",
+      "levelTitle": "Ninguna entrada en este nivel",
+      "description": "Prueba con otra búsqueda u otro nivel.",
+      "clearSearch": "Borrar la búsqueda",
+      "showAll": "Mostrar todos los niveles"
     },
     "clear": {
-      "title": "Clear all logs?",
-      "confirm": "Clear logs",
-      "description_many": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_one": "This deletes {{count}} entry and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_other": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them."
+      "title": "¿Borrar todos los registros?",
+      "confirm": "Borrar registros",
+      "description_many": "Se borran las {{count}} entradas y el archivo de registro de este equipo. Los registros que ya exportaste se quedan donde los guardaste.",
+      "description_one": "Se borran {{count}} entrada y el archivo de registro de este equipo. Los registros que ya exportaste se quedan donde los guardaste.",
+      "description_other": "Se borran las {{count}} entradas y el archivo de registro de este equipo. Los registros que ya exportaste se quedan donde los guardaste."
     },
     "toast": {
-      "exported": "Saved the logs to {{name}}.",
-      "exportFailed": "Couldn't export the logs.",
-      "clearFailed": "Couldn't clear the logs.",
-      "revealFailed": "Couldn't open the log folder."
+      "exported": "Registros guardados en {{name}}.",
+      "exportFailed": "No se pudieron exportar los registros.",
+      "clearFailed": "No se pudieron borrar los registros.",
+      "revealFailed": "No se pudo abrir la carpeta de registros."
     },
     "dialog": {
-      "filterName": "Zip archive"
+      "filterName": "Archivo ZIP"
     },
-    "count_many": "{{count}} entries",
-    "count_one": "{{count}} entry",
-    "count_other": "{{count}} entries",
-    "filteredCount_many": "{{shown}} of {{count}} entries",
-    "filteredCount_one": "{{shown}} of {{count}} entry",
-    "filteredCount_other": "{{shown}} of {{count}} entries"
+    "count_many": "{{count}} entradas",
+    "count_one": "{{count}} entrada",
+    "count_other": "{{count}} entradas",
+    "filteredCount_many": "{{shown}} de {{count}} entradas",
+    "filteredCount_one": "{{shown}} de {{count}} entrada",
+    "filteredCount_other": "{{shown}} de {{count}} entradas"
   }
 }

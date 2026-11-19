@@ -2698,70 +2698,70 @@
     }
   },
   "logs": {
-    "searchLabel": "Search logs",
-    "searchPlaceholder": "Search logs",
+    "searchLabel": "Пошук у журналах",
+    "searchPlaceholder": "Пошук у журналах",
     "levels": {
-      "label": "Level",
-      "all": "All",
-      "warning": "Warnings",
-      "error": "Errors"
+      "label": "Рівень",
+      "all": "Усі",
+      "warning": "Попередження",
+      "error": "Помилки"
     },
     "level": {
-      "info": "Info",
-      "warning": "Warning",
-      "error": "Error"
+      "info": "Інформація",
+      "warning": "Попередження",
+      "error": "Помилка"
     },
     "actions": {
-      "export": "Export",
-      "openFolder": "Open log folder",
-      "clear": "Clear"
+      "export": "Експортувати",
+      "openFolder": "Відкрити теку журналів",
+      "clear": "Очистити"
     },
     "groups": {
-      "today": "Today",
-      "yesterday": "Yesterday"
+      "today": "Сьогодні",
+      "yesterday": "Учора"
     },
-    "newestFirst": "Newest first",
-    "privateDetails": "Private, left out when you export",
-    "copyEntry": "Copy entry",
-    "copied": "Copied",
-    "loading": "Reading the logs",
-    "loadFailed": "Couldn't read the logs.",
-    "retry": "Try again",
+    "newestFirst": "Спочатку нові",
+    "privateDetails": "Приватні дані, під час експорту не включаються",
+    "copyEntry": "Копіювати запис",
+    "copied": "Скопійовано",
+    "loading": "Читання журналів",
+    "loadFailed": "Не вдалося прочитати журнали.",
+    "retry": "Спробувати знову",
     "empty": {
-      "title": "No log entries",
-      "description": "Builds and errors show up here as they happen."
+      "title": "Немає записів журналу",
+      "description": "Збірки та помилки з’являються тут одразу, як трапляються."
     },
     "noMatch": {
-      "title": "No entries match \"{{query}}\"",
-      "levelTitle": "No entries at this level",
-      "description": "Try another search or level.",
-      "clearSearch": "Clear search",
-      "showAll": "Show all levels"
+      "title": "Немає записів, що відповідають «{{query}}»",
+      "levelTitle": "На цьому рівні немає записів",
+      "description": "Спробуйте інший пошук або рівень.",
+      "clearSearch": "Очистити пошук",
+      "showAll": "Показати всі рівні"
     },
     "clear": {
-      "title": "Clear all logs?",
-      "confirm": "Clear logs",
-      "description_few": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_many": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_one": "This deletes {{count}} entry and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_other": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them."
+      "title": "Очистити всі журнали?",
+      "confirm": "Очистити журнали",
+      "description_few": "Буде видалено {{count}} записи і файл журналу на цьому комп’ютері. Уже експортовані журнали залишаться там, куди ви їх зберегли.",
+      "description_many": "Буде видалено {{count}} записів і файл журналу на цьому комп’ютері. Уже експортовані журнали залишаться там, куди ви їх зберегли.",
+      "description_one": "Буде видалено {{count}} запис і файл журналу на цьому комп’ютері. Уже експортовані журнали залишаться там, куди ви їх зберегли.",
+      "description_other": "Буде видалено всі {{count}} запису і файл журналу на цьому комп’ютері. Уже експортовані журнали залишаться там, куди ви їх зберегли."
     },
     "toast": {
-      "exported": "Saved the logs to {{name}}.",
-      "exportFailed": "Couldn't export the logs.",
-      "clearFailed": "Couldn't clear the logs.",
-      "revealFailed": "Couldn't open the log folder."
+      "exported": "Журнали збережено у файл {{name}}.",
+      "exportFailed": "Не вдалося експортувати журнали.",
+      "clearFailed": "Не вдалося очистити журнали.",
+      "revealFailed": "Не вдалося відкрити теку журналів."
     },
     "dialog": {
-      "filterName": "Zip archive"
+      "filterName": "Архів ZIP"
     },
-    "count_few": "{{count}} entries",
-    "count_many": "{{count}} entries",
-    "count_one": "{{count}} entry",
-    "count_other": "{{count}} entries",
-    "filteredCount_few": "{{shown}} of {{count}} entries",
-    "filteredCount_many": "{{shown}} of {{count}} entries",
-    "filteredCount_one": "{{shown}} of {{count}} entry",
-    "filteredCount_other": "{{shown}} of {{count}} entries"
+    "count_few": "{{count}} записи",
+    "count_many": "{{count}} записів",
+    "count_one": "{{count}} запис",
+    "count_other": "{{count}} запису",
+    "filteredCount_few": "{{shown}} із {{count}} записів",
+    "filteredCount_many": "{{shown}} із {{count}} записів",
+    "filteredCount_one": "{{shown}} із {{count}} запису",
+    "filteredCount_other": "{{shown}} із {{count}} запису"
   }
 }

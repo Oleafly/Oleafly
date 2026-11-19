@@ -1,5 +1,5 @@
 ---
-name: Data analysis
+name: oleafly-data-analysis
 description: Take data files that live in the project through to numbers, figures, and tables in the manuscript. Picks the method with the statistics skills, runs it as a saved script rather than an inline command, writes figures to figures/ and LaTeX tables to tables/, and reports effect sizes and confidence intervals in APA style.
 license: MIT
 compatibility: Needs python3 on the login shell PATH with the analysis packages the method requires. Scripts run through run_command in the project directory, with a 120 second timeout and a 200 KiB output cap.

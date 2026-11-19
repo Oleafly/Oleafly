@@ -1121,7 +1121,7 @@
       "integrations": "Интеграции",
       "shortcuts": "Сочетания клавиш",
       "research": "Исследования",
-      "logs": "Logs"
+      "logs": "Журнал"
     },
     "search": {
       "empty": "Нет подходящих настроек",
@@ -1139,7 +1139,7 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git-хостинг, Computer Use, приложения на компьютере, Cua, MCP, цитаты, цитирование, учётные записи, аккаунты, подключения",
         "shortcuts": "сочетания клавиш, горячие клавиши, клавиши, клавиатура",
         "research": "исследования задачи бюджет уведомления не засыпать эксперименты запуски research tasks",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "журнал, журналы, логи, ошибки, предупреждения, сбои, сборки, диагностика, устранение неполадок, экспорт журнала, app.log, отладка, log, logs"
       },
       "label": "Поиск по настройкам",
       "results_one": "{{count}} раздел подходит",

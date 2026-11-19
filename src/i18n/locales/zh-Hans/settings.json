@@ -2629,61 +2629,61 @@
     }
   },
   "logs": {
-    "searchLabel": "Search logs",
-    "searchPlaceholder": "Search logs",
+    "searchLabel": "搜索日志",
+    "searchPlaceholder": "搜索日志",
     "levels": {
-      "label": "Level",
-      "all": "All",
-      "warning": "Warnings",
-      "error": "Errors"
+      "label": "级别",
+      "all": "全部",
+      "warning": "警告",
+      "error": "错误"
     },
     "level": {
-      "info": "Info",
-      "warning": "Warning",
-      "error": "Error"
+      "info": "信息",
+      "warning": "警告",
+      "error": "错误"
     },
     "actions": {
-      "export": "Export",
-      "openFolder": "Open log folder",
-      "clear": "Clear"
+      "export": "导出",
+      "openFolder": "打开日志文件夹",
+      "clear": "清除"
     },
     "groups": {
-      "today": "Today",
-      "yesterday": "Yesterday"
+      "today": "今天",
+      "yesterday": "昨天"
     },
-    "newestFirst": "Newest first",
-    "privateDetails": "Private, left out when you export",
-    "copyEntry": "Copy entry",
-    "copied": "Copied",
-    "loading": "Reading the logs",
-    "loadFailed": "Couldn't read the logs.",
-    "retry": "Try again",
+    "newestFirst": "最新的在前",
+    "privateDetails": "私密内容，导出时不会包含",
+    "copyEntry": "复制条目",
+    "copied": "已复制",
+    "loading": "正在读取日志",
+    "loadFailed": "无法读取日志。",
+    "retry": "重试",
     "empty": {
-      "title": "No log entries",
-      "description": "Builds and errors show up here as they happen."
+      "title": "没有日志条目",
+      "description": "构建和错误发生时会显示在这里。"
     },
     "noMatch": {
-      "title": "No entries match \"{{query}}\"",
-      "levelTitle": "No entries at this level",
-      "description": "Try another search or level.",
-      "clearSearch": "Clear search",
-      "showAll": "Show all levels"
+      "title": "没有与“{{query}}”匹配的条目",
+      "levelTitle": "此级别没有条目",
+      "description": "试试其他搜索词或级别。",
+      "clearSearch": "清除搜索",
+      "showAll": "显示所有级别"
     },
     "clear": {
-      "title": "Clear all logs?",
-      "confirm": "Clear logs",
-      "description_other": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them."
+      "title": "要清除所有日志吗？",
+      "confirm": "清除日志",
+      "description_other": "这会删除这台电脑上的全部 {{count}} 个条目和日志文件。已导出的日志仍保留在你保存的位置。"
     },
     "toast": {
-      "exported": "Saved the logs to {{name}}.",
-      "exportFailed": "Couldn't export the logs.",
-      "clearFailed": "Couldn't clear the logs.",
-      "revealFailed": "Couldn't open the log folder."
+      "exported": "已将日志保存到 {{name}}。",
+      "exportFailed": "无法导出日志。",
+      "clearFailed": "无法清除日志。",
+      "revealFailed": "无法打开日志文件夹。"
     },
     "dialog": {
-      "filterName": "Zip archive"
+      "filterName": "Zip 压缩包"
     },
-    "count_other": "{{count}} entries",
-    "filteredCount_other": "{{shown}} of {{count}} entries"
+    "count_other": "{{count}} 个条目",
+    "filteredCount_other": "显示 {{shown}} / {{count}} 个条目"
   }
 }

@@ -1,5 +1,5 @@
 ---
-name: Computer Use
+name: desktop-apps
 description: Work in desktop apps and websites the user allowed, through the desktop_apps tool. Use when the user asks to do something inside an app such as Zotero, Excel, Word, SPSS, Stata or Prism, or on a website such as a journal submission site or a library database, and no Oleafly tool or connector can do it.
 license: MIT
 compatibility: Needs Cua Driver and Settings > Integrations > Computer Use turned on.

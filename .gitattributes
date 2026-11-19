@@ -9,6 +9,9 @@
 # the repo root, so `resources/licenses/**` silently misses the real location
 # under src-tauri/.
 **/resources/licenses/** -text
+
+# pack.json records a hash of each bundled skill's exact bytes.
+**/resources/skills/** -text
 *.tar.gz binary
 *.zip binary
 

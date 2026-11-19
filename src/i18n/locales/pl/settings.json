@@ -2698,70 +2698,70 @@
     }
   },
   "logs": {
-    "searchLabel": "Search logs",
-    "searchPlaceholder": "Search logs",
+    "searchLabel": "Szukaj w dziennikach",
+    "searchPlaceholder": "Szukaj w dziennikach",
     "levels": {
-      "label": "Level",
-      "all": "All",
-      "warning": "Warnings",
-      "error": "Errors"
+      "label": "Poziom",
+      "all": "Wszystkie",
+      "warning": "Ostrzeżenia",
+      "error": "Błędy"
     },
     "level": {
-      "info": "Info",
-      "warning": "Warning",
-      "error": "Error"
+      "info": "Informacja",
+      "warning": "Ostrzeżenie",
+      "error": "Błąd"
     },
     "actions": {
-      "export": "Export",
-      "openFolder": "Open log folder",
-      "clear": "Clear"
+      "export": "Eksportuj",
+      "openFolder": "Otwórz folder dzienników",
+      "clear": "Wyczyść"
     },
     "groups": {
-      "today": "Today",
-      "yesterday": "Yesterday"
+      "today": "Dzisiaj",
+      "yesterday": "Wczoraj"
     },
-    "newestFirst": "Newest first",
-    "privateDetails": "Private, left out when you export",
-    "copyEntry": "Copy entry",
-    "copied": "Copied",
-    "loading": "Reading the logs",
-    "loadFailed": "Couldn't read the logs.",
-    "retry": "Try again",
+    "newestFirst": "Najnowsze na górze",
+    "privateDetails": "Prywatne, pomijane przy eksporcie",
+    "copyEntry": "Skopiuj wpis",
+    "copied": "Skopiowano",
+    "loading": "Wczytywanie dzienników",
+    "loadFailed": "Nie udało się wczytać dzienników.",
+    "retry": "Spróbuj ponownie",
     "empty": {
-      "title": "No log entries",
-      "description": "Builds and errors show up here as they happen."
+      "title": "Brak wpisów w dzienniku",
+      "description": "Kompilacje i błędy pojawiają się tutaj na bieżąco."
     },
     "noMatch": {
-      "title": "No entries match \"{{query}}\"",
-      "levelTitle": "No entries at this level",
-      "description": "Try another search or level.",
-      "clearSearch": "Clear search",
-      "showAll": "Show all levels"
+      "title": "Brak wpisów pasujących do „{{query}}”",
+      "levelTitle": "Brak wpisów na tym poziomie",
+      "description": "Spróbuj innego wyszukiwania lub poziomu.",
+      "clearSearch": "Wyczyść wyszukiwanie",
+      "showAll": "Pokaż wszystkie poziomy"
     },
     "clear": {
-      "title": "Clear all logs?",
-      "confirm": "Clear logs",
-      "description_few": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_many": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_one": "This deletes {{count}} entry and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_other": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them."
+      "title": "Wyczyścić wszystkie dzienniki?",
+      "confirm": "Wyczyść dzienniki",
+      "description_few": "Spowoduje to usunięcie {{count}} wpisów i pliku dziennika na tym komputerze. Wcześniej wyeksportowane dzienniki zostają tam, gdzie je zapisano.",
+      "description_many": "Spowoduje to usunięcie {{count}} wpisów i pliku dziennika na tym komputerze. Wcześniej wyeksportowane dzienniki zostają tam, gdzie je zapisano.",
+      "description_one": "Spowoduje to usunięcie {{count}} wpisu i pliku dziennika na tym komputerze. Wcześniej wyeksportowane dzienniki zostają tam, gdzie je zapisano.",
+      "description_other": "Spowoduje to usunięcie wszystkich {{count}} wpisu i pliku dziennika na tym komputerze. Wcześniej wyeksportowane dzienniki zostają tam, gdzie je zapisano."
     },
     "toast": {
-      "exported": "Saved the logs to {{name}}.",
-      "exportFailed": "Couldn't export the logs.",
-      "clearFailed": "Couldn't clear the logs.",
-      "revealFailed": "Couldn't open the log folder."
+      "exported": "Zapisano dzienniki w pliku {{name}}.",
+      "exportFailed": "Nie udało się wyeksportować dzienników.",
+      "clearFailed": "Nie udało się wyczyścić dzienników.",
+      "revealFailed": "Nie udało się otworzyć folderu dzienników."
     },
     "dialog": {
-      "filterName": "Zip archive"
+      "filterName": "Archiwum ZIP"
     },
-    "count_few": "{{count}} entries",
-    "count_many": "{{count}} entries",
-    "count_one": "{{count}} entry",
-    "count_other": "{{count}} entries",
-    "filteredCount_few": "{{shown}} of {{count}} entries",
-    "filteredCount_many": "{{shown}} of {{count}} entries",
-    "filteredCount_one": "{{shown}} of {{count}} entry",
-    "filteredCount_other": "{{shown}} of {{count}} entries"
+    "count_few": "{{count}} wpisy",
+    "count_many": "{{count}} wpisów",
+    "count_one": "{{count}} wpis",
+    "count_other": "{{count}} wpisu",
+    "filteredCount_few": "{{shown}} z {{count}} wpisów",
+    "filteredCount_many": "{{shown}} z {{count}} wpisów",
+    "filteredCount_one": "{{shown}} z {{count}} wpisu",
+    "filteredCount_other": "{{shown}} z {{count}} wpisu"
   }
 }

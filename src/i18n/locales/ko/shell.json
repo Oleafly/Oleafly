@@ -1073,7 +1073,7 @@
       "integrations": "연동",
       "shortcuts": "키보드 단축키",
       "research": "연구",
-      "logs": "Logs"
+      "logs": "로그"
     },
     "search": {
       "empty": "일치하는 설정이 없습니다",
@@ -1091,7 +1091,7 @@
         "integrations": "Zotero, GitHub, GitLab, Gitea, Forgejo, Codeberg, Git 호스팅, Computer Use, 데스크톱 앱, Cua, MCP, 인용, 계정, 연결",
         "shortcuts": "키 바인딩, 단축키, 핫키, 키, 키보드",
         "research": "연구 작업 예산 알림 깨어 있음 실험 실행 research tasks",
-        "logs": "log, logs, errors, warnings, crashes, builds, diagnostics, troubleshooting, export logs, app.log, debug"
+        "logs": "로그, 오류, 경고, 충돌, 빌드, 진단, 문제 해결, 로그 내보내기, 디버그, log, logs, app.log"
       },
       "label": "설정 검색",
       "results_other": "섹션 {{count}}개가 일치합니다"

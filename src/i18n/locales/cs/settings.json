@@ -2698,70 +2698,70 @@
     }
   },
   "logs": {
-    "searchLabel": "Search logs",
-    "searchPlaceholder": "Search logs",
+    "searchLabel": "Hledat v protokolech",
+    "searchPlaceholder": "Hledat v protokolech",
     "levels": {
-      "label": "Level",
-      "all": "All",
-      "warning": "Warnings",
-      "error": "Errors"
+      "label": "Úroveň",
+      "all": "Vše",
+      "warning": "Varování",
+      "error": "Chyby"
     },
     "level": {
-      "info": "Info",
-      "warning": "Warning",
-      "error": "Error"
+      "info": "Informace",
+      "warning": "Varování",
+      "error": "Chyba"
     },
     "actions": {
-      "export": "Export",
-      "openFolder": "Open log folder",
-      "clear": "Clear"
+      "export": "Exportovat",
+      "openFolder": "Otevřít složku protokolů",
+      "clear": "Vymazat"
     },
     "groups": {
-      "today": "Today",
-      "yesterday": "Yesterday"
+      "today": "Dnes",
+      "yesterday": "Včera"
     },
-    "newestFirst": "Newest first",
-    "privateDetails": "Private, left out when you export",
-    "copyEntry": "Copy entry",
-    "copied": "Copied",
-    "loading": "Reading the logs",
-    "loadFailed": "Couldn't read the logs.",
-    "retry": "Try again",
+    "newestFirst": "Nejnovější první",
+    "privateDetails": "Soukromé, při exportu se vynechá",
+    "copyEntry": "Kopírovat záznam",
+    "copied": "Zkopírováno",
+    "loading": "Načítání protokolů",
+    "loadFailed": "Protokoly se nepodařilo načíst.",
+    "retry": "Zkusit znovu",
     "empty": {
-      "title": "No log entries",
-      "description": "Builds and errors show up here as they happen."
+      "title": "Žádné záznamy protokolu",
+      "description": "Sestavení a chyby se tu zobrazí, jakmile nastanou."
     },
     "noMatch": {
-      "title": "No entries match \"{{query}}\"",
-      "levelTitle": "No entries at this level",
-      "description": "Try another search or level.",
-      "clearSearch": "Clear search",
-      "showAll": "Show all levels"
+      "title": "Hledání „{{query}}“ neodpovídají žádné záznamy",
+      "levelTitle": "Na této úrovni nejsou žádné záznamy",
+      "description": "Zkuste jiné hledání nebo jinou úroveň.",
+      "clearSearch": "Vymazat hledání",
+      "showAll": "Zobrazit všechny úrovně"
     },
     "clear": {
-      "title": "Clear all logs?",
-      "confirm": "Clear logs",
-      "description_few": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_many": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_one": "This deletes {{count}} entry and the log file on this computer. Logs you already exported stay where you saved them.",
-      "description_other": "This deletes all {{count}} entries and the log file on this computer. Logs you already exported stay where you saved them."
+      "title": "Vymazat všechny protokoly?",
+      "confirm": "Vymazat protokoly",
+      "description_few": "Tím se v tomto počítači smažou {{count}} záznamy a soubor protokolu. Již exportované protokoly zůstanou tam, kam jste je uložili.",
+      "description_many": "Tím se v tomto počítači smaže {{count}} záznamu a soubor protokolu. Již exportované protokoly zůstanou tam, kam jste je uložili.",
+      "description_one": "Tím se v tomto počítači smaže {{count}} záznam a soubor protokolu. Již exportované protokoly zůstanou tam, kam jste je uložili.",
+      "description_other": "Tím se v tomto počítači smaže všech {{count}} záznamů a soubor protokolu. Již exportované protokoly zůstanou tam, kam jste je uložili."
     },
     "toast": {
-      "exported": "Saved the logs to {{name}}.",
-      "exportFailed": "Couldn't export the logs.",
-      "clearFailed": "Couldn't clear the logs.",
-      "revealFailed": "Couldn't open the log folder."
+      "exported": "Protokoly byly uloženy do souboru {{name}}.",
+      "exportFailed": "Protokoly se nepodařilo exportovat.",
+      "clearFailed": "Protokoly se nepodařilo vymazat.",
+      "revealFailed": "Složku protokolů se nepodařilo otevřít."
     },
     "dialog": {
-      "filterName": "Zip archive"
+      "filterName": "Archiv ZIP"
     },
-    "count_few": "{{count}} entries",
-    "count_many": "{{count}} entries",
-    "count_one": "{{count}} entry",
-    "count_other": "{{count}} entries",
-    "filteredCount_few": "{{shown}} of {{count}} entries",
-    "filteredCount_many": "{{shown}} of {{count}} entries",
-    "filteredCount_one": "{{shown}} of {{count}} entry",
-    "filteredCount_other": "{{shown}} of {{count}} entries"
+    "count_few": "{{count}} záznamy",
+    "count_many": "{{count}} záznamu",
+    "count_one": "{{count}} záznam",
+    "count_other": "{{count}} záznamů",
+    "filteredCount_few": "{{shown}} z {{count}} záznamů",
+    "filteredCount_many": "{{shown}} z {{count}} záznamu",
+    "filteredCount_one": "{{shown}} z {{count}} záznamu",
+    "filteredCount_other": "{{shown}} z {{count}} záznamů"
   }
 }
