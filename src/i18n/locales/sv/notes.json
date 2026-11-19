@@ -165,6 +165,8 @@
     "writtenByAgent": "Skriven av {{agent}}",
     "writtenByYou": "Skriven av dig",
     "askAgent": "Fråga agenten",
+    "addComment": "Lägg till kommentar",
+    "comments": "Kommentarer",
     "addIcon": "Lägg till ikon",
     "sendToPaper": "Skicka till artikel",
     "selectionMenu": "Formatering av markering",
@@ -288,7 +290,8 @@
       "molecule": "Först alternativrader, till exempel format: pdb och style: cartoon.\nSedan filens text, eller path: assets/1abc.pdb",
       "sequence": "FASTA-poster eller en rå sekvens:\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "Anteckningsbokens sökväg på första raden:\nassets/analysis.ipynb\nDärefter valfria rader som cells: 2-5 och code: hide.",
-      "bookmark": "Ett fält per rad, med webbadressen först:\nurl: https://example.com/article\nSedan valfria rader med title:, description:, image:, site: och favicon:."
+      "bookmark": "Ett fält per rad, med webbadressen först:\nurl: https://example.com/article\nSedan valfria rader med title:, description:, image:, site: och favicon:.",
+      "x-post": "Ett fält per rad, börja med inläggets adress:\nurl: https://x.com/jack/status/20\nSedan valfria rader med author:, handle: och date:, en tom rad och inläggets text."
     },
     "newChart": {
       "title": "Nytt diagram",
@@ -569,6 +572,18 @@
       "ask": "Bokmärk en webbsida",
       "loading": "Läser in förhandsvisningen av sidan",
       "noUrl": "Lägg till en rad url: med en webbadress som börjar med https:// eller http://."
+    },
+    "xPost": {
+      "label": "Inlägg på X",
+      "pasteChoice": "Hur det här inlägget visas",
+      "embedChoice": "Bädda in inlägg",
+      "loading": "Läser in inlägget från X",
+      "noUrl": "Lägg till en url:-rad med en länk till ett inlägg på x.com.",
+      "failed": "Det gick inte att läsa in inlägget från X. Öppna det på X i stället.",
+      "showLive": "Visa liveinlägg",
+      "showSaved": "Visa sparat inlägg",
+      "open": "Öppna på X",
+      "liveTitle": "Liveinlägg från X"
     }
   },
   "notebook": {
@@ -1557,6 +1572,10 @@
       "keepUndo": {
         "label": "Behåll ångra efter stängning",
         "description": "Ångra fungerar fortfarande i en anteckning efter att du har stängt den eller avslutat appen. Historiken stannar på den här datorn, och om du stänger av det här raderas den."
+      },
+      "xPostsLive": {
+        "label": "Läs in X-inlägg automatiskt",
+        "description": "Visar liveinlägget från X i stället för det sparade kortet. X får då veta att inlägget öppnades."
       },
       "code": {
         "title": "Kod"

@@ -355,8 +355,11 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["Date"] });
 });
 
-afterEach(() => {
+afterEach(async () => {
   vi.useRealTimers();
+  // App starts lazy imports (the preview window restore) on every render; let
+  // them land while the mocks are in place, not after the file is torn down.
+  await vi.dynamicImportSettled();
   document.documentElement.removeAttribute("style");
 });
 

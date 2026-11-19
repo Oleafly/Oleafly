@@ -34,6 +34,9 @@ pub(crate) struct AppOverleafPort {
     mirror: Arc<Mirror>,
 }
 
+/// Work for a document whose path the mirror doesn't know yet (see `with_path`).
+pub(crate) type Waiting = Box<dyn FnOnce(&AppOverleafPort) + Send>;
+
 impl AppOverleafPort {
     pub(crate) fn new(mirror: Arc<Mirror>) -> AppOverleafPort {
         AppOverleafPort { mirror }
@@ -66,31 +69,70 @@ impl AppOverleafPort {
             });
     }
 
-    fn notice_for(&self, doc: &DocId, notice: impl FnOnce(String) -> OverleafNotice) {
+    /// Runs `work` with the document's path. The session reports merges, reviews and
+    /// faults while it joins, before the mirror holds the session it would name a new
+    /// file from; such work waits for `started` instead of being dropped. After that, a
+    /// document with no path is gone and its work is skipped.
+    fn with_path(&self, doc: &DocId, work: impl FnOnce(&AppOverleafPort, String) + Send + 'static) {
         if let Some(path) = self.mirror.path_of(doc) {
-            self.notice(notice(path));
+            work(self, path);
+            return;
+        }
+        let mut waiting = guard(&self.mirror.waiting);
+        if let Some(queue) = waiting.as_mut() {
+            let doc = doc.clone();
+            queue.push(Box::new(move |port: &AppOverleafPort| {
+                if let Some(path) = port.mirror.path_of(&doc) {
+                    work(port, path);
+                }
+            }));
+            return;
+        }
+        drop(waiting);
+        // The session was stored between the first look and the lock.
+        if let Some(path) = self.mirror.path_of(doc) {
+            work(self, path);
         }
     }
 
+    /// The session is in place: run the work that waited for a document's path.
+    pub(crate) fn started(&self) {
+        let queue = guard(&self.mirror.waiting).take().unwrap_or_default();
+        for work in queue {
+            work(self);
+        }
+    }
+
+    fn notice_for(
+        &self,
+        doc: &DocId,
+        notice: impl FnOnce(String) -> OverleafNotice + Send + 'static,
+    ) {
+        self.with_path(doc, move |port, path| port.notice(notice(path)));
+    }
+
     fn kept_in_file(&self, doc: &DocId) {
-        if let Some(path) = self.mirror.path_of(doc) {
-            guard(&self.mirror.kept).push(KeptFile {
-                id: doc.0.clone(),
+        let id = doc.0.clone();
+        self.with_path(doc, move |port, path| {
+            guard(&port.mirror.kept).push(KeptFile {
+                id,
                 path,
                 copy: None,
                 kind: KeptKind::Unsent,
                 by: None,
             });
-        }
+        });
     }
 
-    fn keep(&self, doc: &DocId, text: &str) {
-        let Some(path) = self.mirror.path_of(doc) else {
-            return;
-        };
+    fn keep(&self, doc: &DocId, text: String) {
+        let id = doc.0.clone();
+        self.with_path(doc, move |port, path| port.keep_at(id, path, &text));
+    }
+
+    fn keep_at(&self, id: String, path: String, text: &str) {
         match self.mirror.disk.keep_copy(&path, text, None) {
             Ok(copy) => guard(&self.mirror.kept).push(KeptFile {
-                id: doc.0.clone(),
+                id,
                 path,
                 copy: Some(copy),
                 kind: KeptKind::Unsent,
@@ -368,7 +410,7 @@ impl LivePort for AppOverleafPort {
 
     fn merged(&self, doc: &DocId, review: MergeReview) {
         match review {
-            MergeReview::Kept { text } => self.keep(doc, &text),
+            MergeReview::Kept { text } => self.keep(doc, text),
             MergeReview::InFile => self.kept_in_file(doc),
             MergeReview::Merged { before, after } => {
                 self.notice_for(doc, |path| OverleafNotice::Merged {

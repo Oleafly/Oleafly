@@ -165,6 +165,8 @@
     "writtenByAgent": "Written by {{agent}}",
     "writtenByYou": "Written by you",
     "askAgent": "Ask agent",
+    "addComment": "Add comment",
+    "comments": "Comments",
     "addIcon": "Add icon",
     "sendToPaper": "Send to paper",
     "selectionMenu": "Selection formatting",
@@ -288,7 +290,8 @@
       "molecule": "Option lines first, such as format: pdb and style: cartoon.\nThen the file text, or path: assets/1abc.pdb",
       "sequence": "FASTA records or a raw sequence:\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "The notebook's path on the first line:\nassets/analysis.ipynb\nThen optional lines such as cells: 2-5 and code: hide.",
-      "bookmark": "One field per line, starting with the web address:\nurl: https://example.com/article\nThen optional title:, description:, image:, site: and favicon: lines."
+      "bookmark": "One field per line, starting with the web address:\nurl: https://example.com/article\nThen optional title:, description:, image:, site: and favicon: lines.",
+      "x-post": "One field per line, starting with the post's address:\nurl: https://x.com/jack/status/20\nThen optional author:, handle: and date: lines, a blank line and the post's text."
     },
     "newChart": {
       "title": "New chart",
@@ -569,6 +572,18 @@
       "ask": "Bookmark a web page",
       "loading": "Loading the page preview",
       "noUrl": "Add a url: line with a web address that starts with https:// or http://."
+    },
+    "xPost": {
+      "label": "Post on X",
+      "pasteChoice": "How to show this post",
+      "embedChoice": "Embed post",
+      "loading": "Loading the post from X",
+      "noUrl": "Add a url: line with a link to a post on x.com.",
+      "failed": "Couldn't load this post from X. Open it on X instead.",
+      "showLive": "Show live post",
+      "showSaved": "Show saved post",
+      "open": "Open on X",
+      "liveTitle": "Live post from X"
     }
   },
   "notebook": {
@@ -1557,6 +1572,10 @@
       "keepUndo": {
         "label": "Keep undo after closing",
         "description": "Undo still works on a note after you close it or quit the app. The history stays on this computer, and turning this off deletes it."
+      },
+      "xPostsLive": {
+        "label": "Load X posts automatically",
+        "description": "Shows the live post from X in place of the saved card. X then learns that the post was opened."
       },
       "code": {
         "title": "Code"

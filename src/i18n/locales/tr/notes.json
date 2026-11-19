@@ -165,6 +165,8 @@
     "writtenByAgent": "Yazan: {{agent}}",
     "writtenByYou": "Yazan: siz",
     "askAgent": "Ajana sor",
+    "addComment": "Yorum ekle",
+    "comments": "Yorumlar",
     "addIcon": "Simge ekle",
     "sendToPaper": "Makaleye gönder",
     "selectionMenu": "Seçimi biçimlendir",
@@ -288,7 +290,8 @@
       "molecule": "Önce seçenek satırları, örneğin format: pdb ve style: cartoon.\nSonra dosya metni veya path: assets/1abc.pdb",
       "sequence": "FASTA kayıtları veya ham bir dizi:\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "İlk satırda not defterinin yolu:\nassets/analysis.ipynb\nSonra cells: 2-5 ve code: hide gibi isteğe bağlı satırlar.",
-      "bookmark": "Her satıra bir alan, web adresiyle başlayarak:\nurl: https://example.com/article\nArdından isteğe bağlı title:, description:, image:, site: ve favicon: satırları."
+      "bookmark": "Her satıra bir alan, web adresiyle başlayarak:\nurl: https://example.com/article\nArdından isteğe bağlı title:, description:, image:, site: ve favicon: satırları.",
+      "x-post": "Her satıra bir alan, gönderinin adresiyle başlayın:\nurl: https://x.com/jack/status/20\nArdından isteğe bağlı author:, handle: ve date: satırları, boş bir satır ve gönderinin metni."
     },
     "newChart": {
       "title": "Yeni grafik",
@@ -569,6 +572,18 @@
       "ask": "Bir web sayfasına yer imi ekle",
       "loading": "Sayfa önizlemesi yükleniyor",
       "noUrl": "https:// veya http:// ile başlayan bir web adresi içeren bir url: satırı ekleyin."
+    },
+    "xPost": {
+      "label": "X'teki gönderi",
+      "pasteChoice": "Bu gönderi nasıl gösterilsin",
+      "embedChoice": "Gönderiyi yerleştir",
+      "loading": "Gönderi X'ten yükleniyor",
+      "noUrl": "x.com'daki bir gönderinin bağlantısını içeren bir url: satırı ekleyin.",
+      "failed": "Gönderi X'ten yüklenemedi. Bunun yerine X'te açın.",
+      "showLive": "Canlı gönderiyi göster",
+      "showSaved": "Kayıtlı gönderiyi göster",
+      "open": "X'te aç",
+      "liveTitle": "X'ten canlı gönderi"
     }
   },
   "notebook": {
@@ -1557,6 +1572,10 @@
       "keepUndo": {
         "label": "Kapattıktan sonra geri almayı koru",
         "description": "Bir notu kapattıktan veya uygulamadan çıktıktan sonra da geri alma çalışır. Geçmiş bu bilgisayarda kalır ve bunu kapatmak geçmişi siler."
+      },
+      "xPostsLive": {
+        "label": "X gönderilerini otomatik yükle",
+        "description": "Kayıtlı kart yerine X'teki canlı gönderiyi gösterir. Bu durumda X gönderinin açıldığını öğrenir."
       },
       "code": {
         "title": "Kod"

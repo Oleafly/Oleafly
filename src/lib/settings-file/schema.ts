@@ -621,6 +621,7 @@ export const SETTINGS_FIELDS: readonly SettingField[] = [
   pref("appearance.notes.textReplace", "notesTextReplace", bool),
   pref("appearance.notes.textReplacements", "notesTextReplacements", textReplacements),
   pref("appearance.notes.keepUndo", "notesKeepUndo", bool),
+  pref("appearance.notes.xPostsLive", "notesXPostsLive", bool),
   pref("appearance.notes.codeFontFamily", "notesCodeFontFamily", fontFamily),
   pref("appearance.notes.codeTheme", "notesCodeTheme", oneOf(NOTES_CODE_THEMES)),
   pref("appearance.notes.accentColor", "notesAccentColor", hexColorOrEmpty),

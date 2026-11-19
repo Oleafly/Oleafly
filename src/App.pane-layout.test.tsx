@@ -446,7 +446,10 @@ beforeEach(() => {
   });
 });
 
-afterEach(() => {
+afterEach(async () => {
+  // App starts lazy imports (the preview window restore) on every render; let
+  // them land while the mocks are in place, not after the file is torn down.
+  await vi.dynamicImportSettled();
   vi.restoreAllMocks();
   usePaneLayoutStore.setState({ layout: DEFAULT_PANE_LAYOUT });
   document.documentElement.removeAttribute("style");

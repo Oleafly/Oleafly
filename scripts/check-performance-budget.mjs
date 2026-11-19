@@ -210,7 +210,13 @@ const limits = {
   // kit with the web app. The entry measures 5,037,657 bytes. The combined graph
   // measures 27,156,173 bytes on macOS. Live editing with an online LaTeX
   // service adds 60,228 bytes, for 27,216,401 in all.
-  totalJavaScript: 27_230_000,
+  // +15 KB, on top of 27,230,000, for Notes phase 5. Comments in shared notes
+  // add 9.4 KB (comment ranges and margin markers in the note, Add comment and
+  // the Comments side view) and posts from X add 6.1 KB (the x-post block, its
+  // paste choice, paper export and the live-post setting), 15,569 bytes in all.
+  // The entry measures 4,994,041 bytes, and the combined graph 27,231,970
+  // bytes on macOS.
+  totalJavaScript: 27_245_000,
   // Russian is the largest catalog. Main measures 983,290 bytes, and the
   // translated Notes settings, shortcuts, errors and agent strings add 13,383.
   // Live editing with an online LaTeX service adds 17,172 more, for 1,013,845.

@@ -23,8 +23,9 @@ export const LOCAL_GRAPH_VIEW = "local-graph";
 export const OUTLINE_VIEW = "outline";
 export const DEAD_LINKS_VIEW = "dead-links";
 export const INFO_VIEW = "info";
+export const COMMENTS_VIEW = "comments";
 export const SIDE_SHARE = 0.3;
-const SIDE_VIEWS: ReadonlySet<string> = new Set([ARTIFACTS_VIEW, LOCAL_GRAPH_VIEW, OUTLINE_VIEW, INFO_VIEW]);
+const SIDE_VIEWS: ReadonlySet<string> = new Set([ARTIFACTS_VIEW, LOCAL_GRAPH_VIEW, OUTLINE_VIEW, INFO_VIEW, COMMENTS_VIEW]);
 const NOTE_PREFIX = "note:";
 const HOME_PREFIX = "home:";
 const EXTRA_HOME = /^home:([1-9]\d*)$/u;
@@ -42,6 +43,7 @@ export function sideView(viewId: string): ViewState | null {
   if (viewId === LOCAL_GRAPH_VIEW) return { type: "graph", params: { local: true } };
   if (viewId === OUTLINE_VIEW) return { type: "outline" };
   if (viewId === INFO_VIEW) return { type: "info" };
+  if (viewId === COMMENTS_VIEW) return { type: "comments" };
   return null;
 }
 
@@ -79,6 +81,7 @@ function knownView(id: string, view: ViewState): boolean {
   if (id === OUTLINE_VIEW) return view.type === "outline";
   if (id === DEAD_LINKS_VIEW) return view.type === "dead-links";
   if (id === INFO_VIEW) return view.type === "info";
+  if (id === COMMENTS_VIEW) return view.type === "comments";
   const noteId = noteIdOf(id);
   return noteId !== null && noteId !== "" && view.type === "note" && view.params?.noteId === noteId;
 }
@@ -165,6 +168,11 @@ export function toggleSideView(layout: WorkspaceLayout, viewId: string, focused:
   if (companion) return openView(layout, viewId, view, { groupId: companion.id, zone: "center" });
   const stage = stageGroup(layout, focused);
   return openView(layout, viewId, view, { groupId: stage.id, zone: "right" }, SIDE_SHARE);
+}
+
+/** Opens a side view if it is closed; an open one stays as it is. */
+export function showSideView(layout: WorkspaceLayout, viewId: string, focused: string | null): WorkspaceLayout {
+  return viewId in layout.views ? layout : toggleSideView(layout, viewId, focused);
 }
 
 export function openGraphIn(layout: WorkspaceLayout, focused: string | null): WorkspaceLayout {

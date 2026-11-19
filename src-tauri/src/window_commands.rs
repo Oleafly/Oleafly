@@ -49,6 +49,7 @@ const PRESENTATION: &[&str] = &[
 const QUICK_CAPTURE: &[&str] = &[
     "note_link_preview",
     "note_video_frame_origin",
+    "note_x_post",
     "notes_render_tikz",
     "notes_render_typst",
     "quick_capture_open_notes",
@@ -194,6 +195,7 @@ mod tests {
             "notes_render_tikz",
             "note_video_frame_origin",
             "note_link_preview",
+            "note_x_post",
         ] {
             assert!(allowed("quick-capture", "quick-capture", drawn), "{drawn}");
         }

@@ -166,6 +166,8 @@
     "writtenByAgent": "Scrisă de {{agent}}",
     "writtenByYou": "Scrisă de tine",
     "askAgent": "Întreabă agentul",
+    "addComment": "Adaugă comentariu",
+    "comments": "Comentarii",
     "addIcon": "Adaugă o pictogramă",
     "sendToPaper": "Trimite în lucrare",
     "selectionMenu": "Formatarea selecției",
@@ -290,7 +292,8 @@
       "molecule": "Mai întâi liniile de opțiuni, de exemplu format: pdb și style: cartoon.\nApoi textul fișierului sau path: assets/1abc.pdb",
       "sequence": "Înregistrări FASTA sau o secvență simplă:\n>eșantion 1\nATGGCCATTGTAATG",
       "notebook": "Calea notebookului pe prima linie:\nassets/analysis.ipynb\nApoi linii opționale, de exemplu cells: 2-5 și code: hide.",
-      "bookmark": "Un câmp pe linie, începând cu adresa web:\nurl: https://example.com/article\nApoi, opțional, liniile title:, description:, image:, site: și favicon:."
+      "bookmark": "Un câmp pe linie, începând cu adresa web:\nurl: https://example.com/article\nApoi, opțional, liniile title:, description:, image:, site: și favicon:.",
+      "x-post": "Un câmp pe linie, începând cu adresa postării:\nurl: https://x.com/jack/status/20\nApoi linii opționale author:, handle: și date:, o linie goală și textul postării."
     },
     "newChart": {
       "title": "Grafic nou",
@@ -576,6 +579,18 @@
       "ask": "Adaugă un semn de carte pentru o pagină web",
       "loading": "Se încarcă previzualizarea paginii",
       "noUrl": "Adaugă o linie url: cu o adresă web care începe cu https:// sau http://."
+    },
+    "xPost": {
+      "label": "Postare pe X",
+      "pasteChoice": "Cum se afișează această postare",
+      "embedChoice": "Încorporează postarea",
+      "loading": "Se încarcă postarea de pe X",
+      "noUrl": "Adaugă o linie url: cu un link către o postare de pe x.com.",
+      "failed": "Postarea nu a putut fi încărcată de pe X. Deschide-o pe X.",
+      "showLive": "Arată postarea live",
+      "showSaved": "Arată postarea salvată",
+      "open": "Deschide pe X",
+      "liveTitle": "Postare live de pe X"
     }
   },
   "notebook": {
@@ -1586,6 +1601,10 @@
       "keepUndo": {
         "label": "Păstrează istoricul de anulare după închidere",
         "description": "Anularea funcționează în continuare într-o notiță după ce o închizi sau ieși din aplicație. Istoricul rămâne pe acest computer, iar dezactivarea opțiunii îl șterge."
+      },
+      "xPostsLive": {
+        "label": "Încarcă automat postările de pe X",
+        "description": "Arată postarea live de pe X în locul cardului salvat. X află astfel că postarea a fost deschisă."
       },
       "code": {
         "title": "Cod"

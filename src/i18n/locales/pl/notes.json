@@ -167,6 +167,8 @@
     "writtenByAgent": "Autor: {{agent}}",
     "writtenByYou": "Autor: Ty",
     "askAgent": "Zapytaj agenta",
+    "addComment": "Dodaj komentarz",
+    "comments": "Komentarze",
     "addIcon": "Dodaj ikonę",
     "sendToPaper": "Wyślij do artykułu",
     "selectionMenu": "Formatowanie zaznaczenia",
@@ -292,7 +294,8 @@
       "molecule": "Najpierw wiersze opcji, na przykład format: pdb i style: cartoon.\nPotem tekst pliku albo path: assets/1abc.pdb",
       "sequence": "Rekordy FASTA albo sama sekwencja:\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "Ścieżka notatnika w pierwszym wierszu:\nassets/analysis.ipynb\nPotem opcjonalne wiersze, na przykład cells: 2-5 i code: hide.",
-      "bookmark": "Jedno pole w wierszu, zaczynając od adresu internetowego:\nurl: https://example.com/article\nPotem opcjonalne wiersze title:, description:, image:, site: i favicon:."
+      "bookmark": "Jedno pole w wierszu, zaczynając od adresu internetowego:\nurl: https://example.com/article\nPotem opcjonalne wiersze title:, description:, image:, site: i favicon:.",
+      "x-post": "Jedno pole w wierszu, zacznij od adresu wpisu:\nurl: https://x.com/jack/status/20\nPotem opcjonalne wiersze author:, handle: i date:, pusty wiersz i treść wpisu."
     },
     "newChart": {
       "title": "Nowy wykres",
@@ -583,6 +586,18 @@
       "ask": "Dodaj zakładkę do strony internetowej",
       "loading": "Wczytywanie podglądu strony",
       "noUrl": "Dodaj wiersz url: z adresem internetowym zaczynającym się od https:// lub http://."
+    },
+    "xPost": {
+      "label": "Wpis na X",
+      "pasteChoice": "Jak pokazać ten wpis",
+      "embedChoice": "Osadź wpis",
+      "loading": "Wczytywanie wpisu z X",
+      "noUrl": "Dodaj wiersz url: z linkiem do wpisu na x.com.",
+      "failed": "Nie udało się wczytać wpisu z X. Otwórz go na X.",
+      "showLive": "Pokaż wpis na żywo",
+      "showSaved": "Pokaż zapisany wpis",
+      "open": "Otwórz na X",
+      "liveTitle": "Wpis na żywo z X"
     }
   },
   "notebook": {
@@ -1615,6 +1630,10 @@
       "keepUndo": {
         "label": "Zachowuj historię cofania po zamknięciu",
         "description": "Cofanie działa w notatce także po jej zamknięciu lub wyjściu z aplikacji. Historia zostaje na tym komputerze, a wyłączenie tej opcji ją usuwa."
+      },
+      "xPostsLive": {
+        "label": "Wczytuj wpisy z X automatycznie",
+        "description": "Pokazuje wpis na żywo z X zamiast zapisanej karty. X dowie się wtedy, że wpis został otwarty."
       },
       "code": {
         "title": "Kod"

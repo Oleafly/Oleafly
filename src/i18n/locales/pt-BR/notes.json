@@ -166,6 +166,8 @@
     "writtenByAgent": "Escrita por {{agent}}",
     "writtenByYou": "Escrita por você",
     "askAgent": "Perguntar ao agente",
+    "addComment": "Adicionar comentário",
+    "comments": "Comentários",
     "addIcon": "Adicionar ícone",
     "sendToPaper": "Enviar para o artigo",
     "selectionMenu": "Formatação da seleção",
@@ -290,7 +292,8 @@
       "molecule": "Primeiro as linhas de opções, como format: pdb e style: cartoon.\nDepois o texto do arquivo, ou path: assets/1abc.pdb",
       "sequence": "Registros FASTA ou uma sequência simples:\n>amostra 1\nATGGCCATTGTAATG",
       "notebook": "O caminho do notebook na primeira linha:\nassets/analysis.ipynb\nDepois linhas opcionais, como cells: 2-5 e code: hide.",
-      "bookmark": "Um campo por linha, começando pelo endereço web:\nurl: https://example.com/article\nDepois, as linhas opcionais title:, description:, image:, site: e favicon:."
+      "bookmark": "Um campo por linha, começando pelo endereço web:\nurl: https://example.com/article\nDepois, as linhas opcionais title:, description:, image:, site: e favicon:.",
+      "x-post": "Um campo por linha, começando pelo endereço do post:\nurl: https://x.com/jack/status/20\nDepois, linhas opcionais author:, handle: e date:, uma linha em branco e o texto do post."
     },
     "newChart": {
       "title": "Novo gráfico",
@@ -576,6 +579,18 @@
       "ask": "Marcar uma página da web",
       "loading": "Carregando a prévia da página",
       "noUrl": "Adicione uma linha url: com um endereço web que comece com https:// ou http://."
+    },
+    "xPost": {
+      "label": "Post no X",
+      "pasteChoice": "Como mostrar este post",
+      "embedChoice": "Incorporar post",
+      "loading": "Carregando o post do X",
+      "noUrl": "Adicione uma linha url: com um link para um post no x.com.",
+      "failed": "Não foi possível carregar o post do X. Abra-o no X.",
+      "showLive": "Mostrar post ao vivo",
+      "showSaved": "Mostrar post salvo",
+      "open": "Abrir no X",
+      "liveTitle": "Post ao vivo do X"
     }
   },
   "notebook": {
@@ -1586,6 +1601,10 @@
       "keepUndo": {
         "label": "Manter o histórico de desfazer depois de fechar",
         "description": "Desfazer continua funcionando em uma nota depois que você a fecha ou sai do aplicativo. O histórico fica neste computador, e desativar esta opção o exclui."
+      },
+      "xPostsLive": {
+        "label": "Carregar posts do X automaticamente",
+        "description": "Mostra o post ao vivo do X no lugar do cartão salvo. O X fica sabendo que o post foi aberto."
       },
       "code": {
         "title": "Código"

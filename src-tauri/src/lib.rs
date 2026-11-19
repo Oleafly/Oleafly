@@ -83,6 +83,7 @@ mod note_search;
 mod note_tasks;
 mod note_vault;
 mod note_video;
+mod note_x_post;
 mod notebook_toolchain;
 mod notes_render;
 mod notes_tikz;
@@ -1122,6 +1123,7 @@ pub fn run() {
             note_index::notes_release_caches,
             note_video::note_video_frame_origin,
             note_link_preview::note_link_preview,
+            note_x_post::note_x_post,
             note_vault::notes_import_folder,
             note_vault::notes_import_cancel,
             note_vault::notes_export_folder,

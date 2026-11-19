@@ -164,6 +164,8 @@
     "writtenByAgent": "{{agent}}이(가) 작성",
     "writtenByYou": "내가 작성",
     "askAgent": "에이전트에게 요청",
+    "addComment": "댓글 추가",
+    "comments": "댓글",
     "addIcon": "아이콘 추가",
     "sendToPaper": "논문으로 보내기",
     "selectionMenu": "선택 영역 서식",
@@ -286,7 +288,8 @@
       "molecule": "옵션 줄을 먼저 쓰세요. 예: format: pdb, style: cartoon.\n그다음 파일 텍스트 또는 path: assets/1abc.pdb",
       "sequence": "FASTA 레코드나 원시 서열:\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "첫 줄에 노트북 경로:\nassets/analysis.ipynb\n그다음 cells: 2-5, code: hide 같은 줄을 선택적으로 추가할 수 있습니다.",
-      "bookmark": "한 줄에 필드 하나씩, 웹 주소부터 쓰세요:\nurl: https://example.com/article\n그다음 title:, description:, image:, site:, favicon: 줄을 선택적으로 추가할 수 있습니다."
+      "bookmark": "한 줄에 필드 하나씩, 웹 주소부터 쓰세요:\nurl: https://example.com/article\n그다음 title:, description:, image:, site:, favicon: 줄을 선택적으로 추가할 수 있습니다.",
+      "x-post": "한 줄에 한 항목씩, 게시물 주소부터 씁니다:\nurl: https://x.com/jack/status/20\n그다음 선택 사항인 author:, handle:, date: 줄, 빈 줄, 게시물 본문을 씁니다."
     },
     "newChart": {
       "title": "새 차트",
@@ -562,6 +565,18 @@
       "ask": "웹 페이지 북마크",
       "loading": "페이지 미리보기를 불러오는 중",
       "noUrl": "https:// 또는 http://로 시작하는 웹 주소를 담은 url: 줄을 추가하세요."
+    },
+    "xPost": {
+      "label": "X 게시물",
+      "pasteChoice": "이 게시물을 표시하는 방법",
+      "embedChoice": "게시물 삽입",
+      "loading": "X에서 게시물을 불러오는 중",
+      "noUrl": "x.com 게시물 링크가 있는 url: 줄을 추가하세요.",
+      "failed": "X에서 게시물을 불러오지 못했습니다. X에서 여세요.",
+      "showLive": "실시간 게시물 보기",
+      "showSaved": "저장된 게시물 보기",
+      "open": "X에서 열기",
+      "liveTitle": "X의 실시간 게시물"
     }
   },
   "notebook": {
@@ -1528,6 +1543,10 @@
       "keepUndo": {
         "label": "닫은 뒤에도 실행 취소 유지",
         "description": "노트를 닫거나 앱을 종료한 뒤에도 실행 취소를 쓸 수 있습니다. 기록은 이 컴퓨터에 남으며, 끄면 기록이 삭제됩니다."
+      },
+      "xPostsLive": {
+        "label": "X 게시물 자동으로 불러오기",
+        "description": "저장된 카드 대신 X의 실시간 게시물을 표시합니다. 이때 게시물을 열었다는 사실이 X에 전달됩니다."
       },
       "code": {
         "title": "코드"

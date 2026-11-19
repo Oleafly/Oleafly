@@ -11,9 +11,13 @@ import { chooseSlash, NoteSlash, visibleSlashItems } from "./note-slash";
 import { destroyKbEditors, kbEditor, kbMarkdown, placeCursor, positionOf, pressKey, typeInto } from "./tests/kb-editor-fixtures";
 import "./tests/setup";
 
-const bridge = vi.hoisted(() => ({ preview: vi.fn() }));
+const bridge = vi.hoisted(() => ({ preview: vi.fn(), xPost: vi.fn() }));
 
-vi.mock("@/lib/tauri", async (importOriginal) => ({ ...(await importOriginal<object>()), noteLinkPreview: bridge.preview }));
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  noteLinkPreview: bridge.preview,
+  noteXPost: bridge.xPost,
+}));
 vi.mock("@/lib/log", async (importOriginal) => ({ ...(await importOriginal<object>()), logError: vi.fn(async () => undefined) }));
 
 const media = enNotes.blocks.media;
@@ -23,6 +27,7 @@ const PAGE = "https://example.org/page";
 
 beforeEach(() => {
   bridge.preview.mockReset();
+  bridge.xPost.mockReset();
   resetRemoteImagesForTest();
 });
 
@@ -144,6 +149,39 @@ describe("pasting a video link", () => {
     expect(paste(editor, "https://youtu.be/dQw4w9WgXcQ")).toBe(false);
     expect(paste(editor, PAGE)).toBe(false);
     expect(screen.queryByRole("group")).not.toBeInTheDocument();
+  });
+});
+
+describe("pasting a link to a post on X", () => {
+  const POST = "https://x.com/jack/status/20";
+  const xPost = enNotes.blocks.xPost;
+
+  it("offers to embed the post and keeps the plain link when asked", () => {
+    const editor = onEmptyLine();
+    expect(paste(editor, "https://twitter.com/jack/status/20?s=46")).toBe(true);
+    expect(screen.getByRole("group", { name: xPost.pasteChoice })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: bookmark.cardChoice })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: media.linkChoice }));
+    expect(kbMarkdown(editor)).toBe("Intro\n\n<https://twitter.com/jack/status/20?s=46>");
+    expect(bridge.xPost).not.toHaveBeenCalled();
+  });
+
+  it("embeds the post as an x-post block and fills it from X", async () => {
+    const pending = deferred<object>();
+    bridge.xPost.mockReturnValue(pending.promise);
+    const editor = onEmptyLine();
+    paste(editor, POST);
+    fireEvent.click(screen.getByRole("button", { name: xPost.embedChoice }));
+    expect(screen.queryByRole("group", { name: xPost.pasteChoice })).not.toBeInTheDocument();
+    expect(bridge.xPost).toHaveBeenCalledWith(POST);
+    expect(kbMarkdown(editor)).toBe(`Intro\n\n${FENCE}x-post\nurl: ${POST}\n${FENCE}`);
+    await act(async () => {
+      pending.resolve({ url: POST, id: "20", author: "jack", handle: "jack", date: "March 21, 2006", text: "just setting up my twttr" });
+      await pending.promise;
+    });
+    expect(kbMarkdown(editor)).toBe(
+      `Intro\n\n${FENCE}x-post\nurl: ${POST}\nauthor: jack\nhandle: jack\ndate: March 21, 2006\n\njust setting up my twttr\n${FENCE}`,
+    );
   });
 });
 
