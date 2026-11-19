@@ -11,30 +11,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Thanks
 
-- Teng Qin ([@palmtenor](https://github.com/palmtenor)): asked for section
-  numbers in the LaTeX outline and wrote them (#427, #435), found the race
-  that made a collaboration test flaky and fixed it (#439, #463), and moved
-  the Rust tests to nextest so they run faster and fail less often (#464,
-  #469).
-- Jianx ([@Jianxinnn](https://github.com/Jianxinnn)): fixed local images in
-  Markdown's visual editor going missing after a document is reopened (#493).
-- Andre Farias ([@andrefarias1](https://github.com/andrefarias1)): traced
-  the Windows compile failure to the Perl code Oleafly passed to latexmk,
-  down to the pattern Perl rejected (#452).
-- ForbesHu ([@ForbesHu](https://github.com/ForbesHu)): asked for braces
-  around multi-character subscripts and superscripts as you type (#466).
-- gangaveg88-png ([@gangaveg88-png](https://github.com/gangaveg88-png)):
-  reported that Quarto was missing from New research project (#474).
-- Marlon Luís de Col ([@marlondecol](https://github.com/marlondecol)): asked
-  for a built-in llama.cpp provider (#437).
-- nahuelcostac ([@nahuelcostac](https://github.com/nahuelcostac)): asked to
-  edit projects from an online LaTeX service live with coauthors (#458).
-- Roberto Di Remigio Eikås ([@robertodr](https://github.com/robertodr)):
-  reported the bundled skill names that made Pi warn at startup, with the
-  right name for each one (#488).
-- Xavier S. Zhou ([@Xiao0219](https://github.com/Xiao0219)): asked for a PDF
-  dark mode that matches the theme, and found where the filter was set and
-  why a theme couldn't change it (#489).
+- Teng Qin ([@palmtenor](https://github.com/palmtenor)) for #435, "feat: number LaTeX headings in the outline", #463, "test(collab): isolate live pump tests", and #469, "test: run Rust tests with `nextest`".
+- Jianx ([@Jianxinnn](https://github.com/Jianxinnn)) for #493, "fix: resolve local images in Markdown visual editor".
+- Marlon Luís de Col ([@marlondecol](https://github.com/marlondecol)) for #437, "Add built-in llama.cpp provider support".
+- nahuelcostac ([@nahuelcostac](https://github.com/nahuelcostac)) for #458, "Add real-time co-editing with an online LaTeX service".
+- ForbesHu ([@ForbesHu](https://github.com/ForbesHu)) for #466, "Support auto curly brackets for super- and sub-scripts".
+- Xavier S. Zhou ([@Xiao0219](https://github.com/Xiao0219)) for #489, "PDF dark mode: pure-black inverted page is harsh, make it theme-aware (e.g. One Dark) or configurable".
+- Andre Farias ([@andrefarias1](https://github.com/andrefarias1)) for #452, "Compile fails on Windows before LaTeX starts: injected latexmk Perl code breaks on `/^\\glossaryentry/` ("Unterminated \g... pattern in regex")".
+- gangaveg88-png ([@gangaveg88-png](https://github.com/gangaveg88-png)) for #474, "Quarto engine not showing".
+- Roberto Di Remigio Eikås ([@robertodr](https://github.com/robertodr)) for #488, "Bundled skill names violate Agent Skills naming rules and trigger Pi startup warnings".
 
 ### Added
 
