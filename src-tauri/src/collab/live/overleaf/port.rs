@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 use oleafly_collab::doc::NodeKind;
@@ -9,7 +9,7 @@ use oleafly_collab_protocol::projects::ProjectRole;
 use oleafly_online::error::{OnlineError, OnlineErrorKind};
 use oleafly_online::live::doc::DocFault;
 use oleafly_online::live::session::{
-    Account, DocStopReason, LiveEnd, LivePeer, LivePort, LiveState, MergeReview,
+    Account, DocStopReason, LiveEnd, LivePeer, LivePort, LiveState, MergeReview, OverleafSession,
 };
 use oleafly_online::live::tree_queue::{LocalFile, QueueState, Queued, TreeChange, TreeFailure};
 use oleafly_online::realtime::events::{ProjectEvent, PublicId};
@@ -223,6 +223,10 @@ pub(super) fn announce_role(mirror: &Mirror, role: ProjectRole, tracking: bool) 
 }
 
 impl LivePort for AppOverleafPort {
+    fn session_started(&self, session: Weak<OverleafSession>) {
+        let _ = self.mirror.session.set(session);
+    }
+
     fn state(&self, state: LiveState) {
         self.announce_kept();
         let (status, pending) = status_of(&state);

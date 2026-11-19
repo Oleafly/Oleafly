@@ -447,7 +447,6 @@ impl OverleafLive {
         let session = OverleafSession::start(config, port, journal)
             .await
             .map_err(|error| port::online_error(&error))?;
-        let _ = mirror.session.set(Arc::downgrade(&session));
         let live = Arc::new(OverleafLive {
             session,
             mirror,
