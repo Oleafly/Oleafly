@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { AssetUrlResolver } from "../options";
+import { createWysiwygExtensions } from "../schema";
 import { destroyOpenedEditors, openMarkdown, typeAtEndOf } from "../test-helpers";
 import { IMAGE_WIDTH_RANGE, imageWidthPercent, imageWidthSuffix } from "./image";
 
@@ -12,6 +14,15 @@ function images(source: string): unknown[] {
     if (node.type.name === "image") found.push(node.attrs.widthPercent);
   });
   return found;
+}
+
+function setWidth(editor: ReturnType<typeof openMarkdown>["editor"], width: number | null) {
+  editor.commands.command(({ tr, state }) => {
+    state.doc.descendants((node, position) => {
+      if (node.type.name === "image") tr.setNodeMarkup(position, undefined, { ...node.attrs, widthPercent: width });
+    });
+    return true;
+  });
 }
 
 describe("image widths", () => {
@@ -50,26 +61,12 @@ describe("image widths", () => {
 
   it("writes a width set on the image node", () => {
     const { editor, save } = openMarkdown("![x](a.png)");
-    editor.commands.command(({ tr, state }) => {
-      state.doc.descendants((node, position) => {
-        if (node.type.name === "image") tr.setNodeMarkup(position, undefined, { ...node.attrs, widthPercent: 60 });
-      });
-      return true;
-    });
+    setWidth(editor, 60);
     expect(save()).toBe("![x](a.png){width=60%}");
   });
 });
 
 describe("figures with a Pandoc attribute block", () => {
-  function setWidth(editor: ReturnType<typeof openMarkdown>["editor"], width: number | null) {
-    editor.commands.command(({ tr, state }) => {
-      state.doc.descendants((node, position) => {
-        if (node.type.name === "image") tr.setNodeMarkup(position, undefined, { ...node.attrs, widthPercent: width });
-      });
-      return true;
-    });
-  }
-
   it("shows a cross-reference figure as an image and keeps its attributes", () => {
     const source = "Intro\n\n![Caption](fig.png){#fig-x}\n";
     const { editor, save } = openMarkdown(source);
@@ -103,5 +100,50 @@ describe("figures with a Pandoc attribute block", () => {
     const source = "![x](a.png){#fig-a width=5%}";
     expect(images(source)).toEqual([]);
     expect(openMarkdown(source).save()).toBe(source);
+  });
+});
+
+describe("images from the project", () => {
+  const IMAGE_URL = "data:image/png;base64,IMAGE";
+
+  function openWithAssets(source: string, resolveAssetUrl: AssetUrlResolver) {
+    const opened = openMarkdown(source, { extensions: createWysiwygExtensions({ resolveAssetUrl }) });
+    return { ...opened, dom: opened.editor.view.dom };
+  }
+
+  it("shows a project image from its resolved URL and saves its path", async () => {
+    const resolveAssetUrl = vi.fn(async (path: string) => (path === "../figures/my plot.png" ? IMAGE_URL : null));
+    const { editor, dom, save } = openWithAssets("![Plot](../figures/my%20plot.png)", resolveAssetUrl);
+    expect(dom.querySelector(".figure-placeholder")).toHaveTextContent("figure.imageLoading");
+    await vi.waitFor(() => expect(dom.querySelector("img")).toHaveAttribute("src", IMAGE_URL));
+    expect(dom.querySelector<HTMLElement>(".figure-placeholder")?.hidden).toBe(true);
+    expect(resolveAssetUrl).toHaveBeenCalledWith("../figures/my plot.png");
+    expect(editor.state.doc.firstChild?.attrs.src).toBe("../figures/my%20plot.png");
+    expect(save()).not.toContain("data:");
+  });
+
+  it("shows a placeholder for an image the project doesn't have", async () => {
+    const { dom } = openWithAssets("![](missing.png)", vi.fn(async () => null));
+    await vi.waitFor(() => expect(dom.querySelector(".figure-placeholder")).toHaveTextContent("figure.imageUnavailable"));
+    expect(dom.querySelector("img")?.hidden).toBe(true);
+    expect(dom.querySelector("img")).not.toHaveAttribute("src");
+  });
+
+  it("keeps the shown image when only its width changes", async () => {
+    const resolveAssetUrl = vi.fn(async () => IMAGE_URL);
+    const { editor, dom } = openWithAssets("![x](a.png)", resolveAssetUrl);
+    await vi.waitFor(() => expect(dom.querySelector("img")).toHaveAttribute("src", IMAGE_URL));
+    setWidth(editor, 40);
+    expect(dom.querySelector("img")).toHaveAttribute("src", IMAGE_URL);
+    expect(dom.querySelector("img")?.style.width).toBe("40%");
+    expect(resolveAssetUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it("loads a web image directly", () => {
+    const resolveAssetUrl = vi.fn(async () => null);
+    const { dom } = openWithAssets("![Logo](https://example.com/logo.png)", resolveAssetUrl);
+    expect(dom.querySelector("img")).toHaveAttribute("src", "https://example.com/logo.png");
+    expect(dom.querySelector<HTMLElement>(".figure-placeholder")?.hidden).toBe(true);
+    expect(resolveAssetUrl).not.toHaveBeenCalled();
   });
 });

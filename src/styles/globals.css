@@ -489,7 +489,8 @@
   height: auto;
   border-radius: 0.375rem;
 }
-.wysiwyg-content .ProseMirror img.ProseMirror-selectednode {
+.wysiwyg-content .ProseMirror img.ProseMirror-selectednode,
+.wysiwyg-content .ProseMirror [data-type="image"].ProseMirror-selectednode img {
   filter: brightness(0.94);
 }
 
@@ -2057,6 +2058,9 @@ body[data-tour-active] [data-tour-hide] {
   color: var(--muted-foreground);
   font-family: var(--font-sans);
   font-size: 0.8125rem;
+}
+.wysiwyg-content .ProseMirror [data-type="image"].ProseMirror-selectednode .figure-placeholder {
+  background: color-mix(in srgb, var(--ring) 12%, transparent);
 }
 .wysiwyg-content .ProseMirror .figure-controls,
 .wysiwyg-content .ProseMirror .table-float-controls {

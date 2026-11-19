@@ -12,7 +12,7 @@ use oleafly_collab_protocol::roles::ServerRole;
 use oleafly_server::rate_limit::DEVICE_RECONNECT_BURST;
 use oleafly_server::rooms::MAX_QUEUED_BYTES;
 use oleafly_server::sockets::{LinkTiming, SocketLimits, MAX_SOCKETS_PER_DEVICE};
-use oleafly_server::test_support::{seed_person, PersonSeed, TestDevice, TestServer};
+use oleafly_server::test_support::{eventually, seed_person, PersonSeed, TestDevice, TestServer};
 use people::{
     connect, envelope, grant, next_frame, send_frame, send_update, share_project, stage, subscribe,
     Socket, Stage,
@@ -39,19 +39,6 @@ async fn shared_with_alice(stage: &Stage) -> SharedProjectId {
         StatusCode::OK
     );
     project
-}
-
-async fn eventually(check: impl Fn() -> bool, within: Duration) -> bool {
-    let deadline = tokio::time::Instant::now() + within;
-    loop {
-        if check() {
-            return true;
-        }
-        if tokio::time::Instant::now() >= deadline {
-            return false;
-        }
-        tokio::time::sleep(Duration::from_millis(20)).await;
-    }
 }
 
 async fn acknowledged(socket: &mut Socket) {

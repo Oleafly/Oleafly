@@ -1,6 +1,7 @@
 import { Node, mergeAttributes, type JSONContent, type NodeViewRenderer } from "@tiptap/core";
 import { TextSelection } from "@tiptap/pm/state";
 import type { MarkdownNodeSpec } from "tiptap-markdown";
+import { assetImage } from "./asset-image";
 import { booleanAttribute, stringAttribute } from "./attribute-specs";
 import type { GraphicsCommand } from "./latex/parse-figure";
 import { wysiwygMessage } from "./messages";
@@ -126,20 +127,15 @@ function labelledControl(labelKey: "figure.width" | "figure.labelField", control
 function figureNodeView(options: FigureOptions): NodeViewRenderer {
   return ({ node: initialNode, view, getPos }) => {
     let currentNode = initialNode;
-    let generation = 0;
-    let destroyed = false;
 
     const dom = document.createElement("figure");
     dom.dataset.type = "figure";
     const frame = document.createElement("div");
     frame.className = "figure-frame";
     frame.setAttribute("contenteditable", "false");
-    const image = document.createElement("img");
+    const asset = assetImage(options.resolveAssetUrl);
+    const { image, placeholder } = asset;
     image.className = "figure-image";
-    image.hidden = true;
-    const placeholder = document.createElement("div");
-    placeholder.className = "figure-placeholder";
-    placeholder.textContent = wysiwygMessage("figure.imageLoading");
     const controls = document.createElement("div");
     controls.className = "figure-controls";
     const width = widthSelect();
@@ -158,37 +154,6 @@ function figureNodeView(options: FigureOptions): NodeViewRenderer {
     captionHost.className = "figure-caption-host";
     dom.append(frame, captionHost);
 
-    const showPlaceholder = (key: "figure.imageLoading" | "figure.imageUnavailable") => {
-      image.hidden = true;
-      image.removeAttribute("src");
-      placeholder.hidden = false;
-      placeholder.textContent = wysiwygMessage(key);
-    };
-    const resolveImage = (path: string) => {
-      const request = ++generation;
-      if (!options.resolveAssetUrl || path === "") {
-        showPlaceholder("figure.imageUnavailable");
-        return;
-      }
-      showPlaceholder("figure.imageLoading");
-      options.resolveAssetUrl(path).then(
-        (url) => {
-          if (destroyed || request !== generation) return;
-          if (!url) {
-            showPlaceholder("figure.imageUnavailable");
-            return;
-          }
-          image.src = url;
-          image.hidden = false;
-          placeholder.hidden = true;
-        },
-        () => {
-          if (!destroyed && request === generation) showPlaceholder("figure.imageUnavailable");
-        },
-      );
-    };
-
-    let currentPath: string | null = null;
     const updatePresentation = () => {
       const path = String(currentNode.attrs.path ?? "");
       const widthValue = typeof currentNode.attrs.width === "string" ? currentNode.attrs.width : null;
@@ -200,10 +165,7 @@ function figureNodeView(options: FigureOptions): NodeViewRenderer {
         label.value = typeof currentNode.attrs.label === "string" ? currentNode.attrs.label : "";
       }
       addCaption.hidden = currentNode.childCount > 0;
-      if (path !== currentPath) {
-        currentPath = path;
-        resolveImage(path);
-      }
+      asset.show(path);
     };
     updatePresentation();
 
@@ -259,7 +221,7 @@ function figureNodeView(options: FigureOptions): NodeViewRenderer {
         return mutation.type !== "selection" && frame.contains(mutation.target);
       },
       destroy() {
-        destroyed = true;
+        asset.destroy();
         width.removeEventListener("change", onWidthChange);
         label.removeEventListener("change", commitLabel);
         label.removeEventListener("keydown", onLabelKey);

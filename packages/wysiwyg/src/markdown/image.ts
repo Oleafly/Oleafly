@@ -1,7 +1,10 @@
-import { Image } from "@tiptap/extension-image";
+import { Image, type ImageOptions } from "@tiptap/extension-image";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
-import { markdownLinkDestination, readableLinkHref } from "../link-destination";
+import type { NodeViewRenderer } from "@tiptap/core";
+import { assetImage } from "../asset-image";
+import { isUrlWithScheme, markdownLinkDestination, readableLinkHref } from "../link-destination";
 import { rawInlineMarkup } from "../raw-inline";
+import type { AssetUrlResolver } from "../options";
 import { parsingMarkdownSource } from "./engine";
 import { ATTRIBUTE_BLOCK } from "./pandoc-inline";
 
@@ -10,6 +13,10 @@ const WIDTH_DATA = "data-width-percent";
 const ATTRIBUTES_DATA = "data-pandoc-attributes";
 const WIDTH_SUFFIX = /^\{width=(\d{1,3})%\}/u;
 const WIDTH_IN_BLOCK = /(^\{|\s)width=(\d{1,3})%(?=[\s}])/u;
+
+interface MarkdownImageOptions extends ImageOptions {
+  resolveAssetUrl: AssetUrlResolver | null;
+}
 
 export const IMAGE_WIDTH_RANGE = { min: 10, max: 100 } as const;
 
@@ -171,6 +178,43 @@ function readWidths(state: CoreState): boolean {
   return true;
 }
 
+function markdownImagePath(source: string): string | null {
+  return isUrlWithScheme(source) ? null : readableLinkHref(source);
+}
+
+function imageNodeView(resolveAssetUrl: AssetUrlResolver): NodeViewRenderer {
+  return ({ node: initialNode }) => {
+    let node = initialNode;
+    const dom = document.createElement("div");
+    dom.dataset.type = "image";
+    const asset = assetImage(resolveAssetUrl, markdownImagePath);
+    const { image } = asset;
+    dom.append(image, asset.placeholder);
+
+    const present = () => {
+      image.alt = String(node.attrs.alt ?? "");
+      if (node.attrs.title) image.title = String(node.attrs.title);
+      else image.removeAttribute("title");
+      const width = imageWidthPercent(node.attrs.widthPercent);
+      image.style.width = width === null ? "" : `${width}%`;
+      asset.show(String(node.attrs.src ?? ""));
+    };
+
+    present();
+    return {
+      dom,
+      update(nextNode) {
+        if (nextNode.type !== node.type) return false;
+        node = nextNode;
+        present();
+        return true;
+      },
+      ignoreMutation: () => true,
+      destroy: () => asset.destroy(),
+    };
+  };
+}
+
 /**
  * Images write their path the way links do: readable, in angle brackets when
  * Markdown needs them. markdown-it percent-encodes every image path it reads,
@@ -181,7 +225,11 @@ function readWidths(state: CoreState): boolean {
  * images on lines of their own, or an image and the paragraph after it, were
  * saved run together on one line.
  */
-export const MarkdownImage = Image.extend({
+export const MarkdownImage = Image.extend<MarkdownImageOptions>({
+  addOptions() {
+    return { ...(this.parent?.() as ImageOptions), resolveAssetUrl: null };
+  },
+
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -227,5 +275,9 @@ export const MarkdownImage = Image.extend({
         },
       },
     };
+  },
+
+  addNodeView() {
+    return this.options.resolveAssetUrl ? imageNodeView(this.options.resolveAssetUrl) : null;
   },
 });
