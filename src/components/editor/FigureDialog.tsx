@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { pickOpenPath } from "@/lib/native-file-dialog";
 import { logError } from "@/lib/log";
@@ -118,7 +118,7 @@ function Thumbnail({ path }: Readonly<{ path: string }>) {
     setUrl(null);
     resolveVisualAssetUrl(path).then(
       (value) => {
-        if (active) setUrl(value);
+        if (active) setUrl(typeof value === "string" ? value : null);
       },
       () => {
         if (active) setUrl(null);
@@ -251,6 +251,7 @@ function FigureOptions({
         </div>
         {form.width === "custom" && (
           <Input
+            {...LITERAL_INPUT}
             className="mt-2 font-mono"
             value={form.customWidth}
             aria-label={t(($) => $.editor.figureDialog.customWidthLabel)}
@@ -302,6 +303,7 @@ function FigureOptions({
         </div>
         {form.labelEnabled && (
           <Input
+            {...LITERAL_INPUT}
             className="font-mono"
             value={form.label}
             data-testid="figure-dialog-label"

@@ -6,7 +6,7 @@ import { GridPattern } from "@/components/ui/grid-pattern";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { ColorSwatch } from "@/components/ui/color-swatch";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -75,6 +75,7 @@ import { TerminalBehaviorRows } from "@/components/settings/TerminalBehaviorRows
 import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
 import { ThemeCustomization, ThemeTokenField, useThemeTokenEditor } from "@/components/settings/ThemeCustomization";
+import { useSettingsTab } from "@/components/settings/use-settings-tab";
 import { EditorColors } from "@/components/settings/EditorColors";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
@@ -1570,6 +1571,7 @@ function FileManagementTab() {
         <div id="hidden-files-panel" className="border-t p-4">
         <form onSubmit={submitPattern} className="flex gap-2">
           <Input
+            {...LITERAL_INPUT}
             value={pattern}
             onChange={(event) => setPattern(event.target.value)}
             placeholder={t(($) => $.settings.appearance.files.hidden.placeholder)}
@@ -1619,8 +1621,12 @@ function FileManagementTab() {
   );
 }
 
+function isAppearanceTabId(value: unknown): value is AppearanceTabId {
+  return APPEARANCE_TABS.some((tab) => tab.id === value);
+}
+
 function isAppearanceTab(value: unknown, notesEnabled: boolean): value is AppearanceTabId {
-  return APPEARANCE_TABS.some((tab) => tab.id === value && (tab.id !== "notes" || notesEnabled));
+  return isAppearanceTabId(value) && (value !== "notes" || notesEnabled);
 }
 
 export function AppearanceSection() {
@@ -1628,8 +1634,10 @@ export function AppearanceSection() {
   const requestedTab = useSettingsStore((state) => state.settingsInitialAppearanceTab);
   const setRequestedTab = useSettingsStore((state) => state.setSettingsInitialAppearanceTab);
   const notesEnabled = useSettingsStore((state) => state.notes);
-  const [chosenTab, setChosenTab] = useState<AppearanceTabId>(() =>
-    isAppearanceTab(requestedTab, notesEnabled) ? requestedTab : "app",
+  const [chosenTab, setChosenTab] = useSettingsTab<AppearanceTabId>(
+    "appearance",
+    () => (isAppearanceTab(requestedTab, notesEnabled) ? requestedTab : "app"),
+    isAppearanceTabId,
   );
   const activeTab = chosenTab === "notes" && !notesEnabled ? "app" : chosenTab;
   const tabs = APPEARANCE_TABS.filter((tab) => tab.id !== "notes" || notesEnabled);
@@ -1637,7 +1645,7 @@ export function AppearanceSection() {
     if (!isAppearanceTab(requestedTab, notesEnabled)) return;
     setChosenTab(requestedTab);
     setRequestedTab(null);
-  }, [notesEnabled, requestedTab, setRequestedTab]);
+  }, [notesEnabled, requestedTab, setRequestedTab, setChosenTab]);
   const resetAppearancePreferences = useSettingsStore(
     (state) => state.resetAppearancePreferences,
   );
@@ -1650,7 +1658,7 @@ export function AppearanceSection() {
     <div className="space-y-4">
       <Tabs
         value={activeTab}
-        onValueChange={(value) => setChosenTab(value as AppearanceTabId)}
+        onValueChange={setChosenTab}
         className="space-y-4"
       >
         <TabsList scrollable data-testid="appearance-tab-strip">

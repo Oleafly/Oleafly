@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
 import { ReadinessBadge } from "@/components/ai/acp/AgentReadiness";
@@ -833,6 +833,7 @@ export function AcpAgentsTab({
           </label>
           <div className="flex gap-2">
             <Input
+              {...SEARCH_INPUT}
               id="acp-registry-search"
               className="min-w-0 flex-1 text-xs"
               placeholder={t(($) => $.settings.ai.agents.registry.searchPlaceholder)}

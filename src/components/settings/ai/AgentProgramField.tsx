@@ -4,7 +4,7 @@ import { Check, Copy, Download, ExternalLink, FolderOpen, KeyRound, Play, Rotate
 import { open as openExternal } from "@tauri-apps/plugin-shell";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import { SettingsPath, SettingsPathText } from "@/components/settings/SettingsPath";
@@ -374,13 +374,13 @@ export function AgentProgramField({
             {t(($) => $.settings.ai.agents.program.inputLabel, { name })}
           </label>
           <Input
+            {...LITERAL_INPUT}
             id={inputId}
             data-testid={`acp-agent-program-input-${id}`}
             data-settings-path-field={typed ? "" : undefined}
             className="h-8 font-mono text-xs"
             value={typed}
             maxLength={4096}
-            spellCheck={false}
             autoComplete="off"
             placeholder={t(($) => $.settings.ai.agents.program.pathPlaceholder, { example })}
             disabled={locked}

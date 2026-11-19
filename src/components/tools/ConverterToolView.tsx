@@ -18,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { CodeField } from "@/components/tools/CodeField";
 import { ToolPageShell } from "@/components/tools/ToolPageShell";
 import {
@@ -232,6 +232,7 @@ function PageRangeField({
         {t(($) => $.researchTools.converter.pageRange)}
       </label>
       <Input
+        {...LITERAL_INPUT}
         id="converter-page-range"
         data-testid="converter-page-range"
         value={value}
@@ -766,6 +767,7 @@ function ConverterWorkspace({ id }: { id: keyof typeof AD_HOC_CONVERTERS }) {
                   {t(($) => $.researchTools.converter.arxivId)}
                 </label>
                 <Input
+                  {...LITERAL_INPUT}
                   id="arxiv-converter-id"
                   value={text}
                   onChange={(event) => {

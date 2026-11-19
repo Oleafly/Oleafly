@@ -4,7 +4,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDate } from "@/lib/intl";
 import type {
@@ -211,6 +211,7 @@ export function AllowlistTab({
           </Select>
         ) : null}
         <Input
+          {...LITERAL_INPUT}
           aria-label={
             kind === "email"
               ? t(($) => $.collab.admin.allowlist.match.email)
@@ -225,7 +226,6 @@ export function AllowlistTab({
               ? t(($) => $.collab.admin.allowlist.emailPlaceholder)
               : t(($) => $.collab.admin.allowlist.loginPlaceholder)
           }
-          spellCheck={false}
           autoComplete="off"
         />
         <RolePicker actor={actor} value={role} label={t(($) => $.collab.admin.allowlist.roleLabel)} onChange={setRole} />

@@ -22,6 +22,7 @@ import {
   type SettingsSearchPlatform,
   type SettingsSearchRowHit,
 } from "@/components/settings/settings-search";
+import { SEARCH_INPUT } from "@/components/ui/input";
 import { cn, isMac, isWindows } from "@/lib/utils";
 import { loadNamespace } from "@/i18n";
 import { logError } from "@/lib/log";
@@ -425,12 +426,11 @@ export function SettingsSearchField({
         aria-label={label}
         placeholder={label}
         aria-controls={controls}
-        autoComplete="off"
-        spellCheck={false}
+        {...SEARCH_INPUT}
         data-modal-initial-focus
         data-modal-escape-inner={value === "" ? undefined : ""}
         data-testid="settings-search"
-        className="h-8 w-full rounded-md border bg-background pl-7 pr-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground hover:border-foreground/20 focus:border-primary/60"
+        className="h-8 w-full rounded-md border bg-background pl-7 pr-2 text-sm text-foreground transition-colors placeholder:text-muted-foreground placeholder-shown:text-ellipsis hover:border-foreground/20 focus:border-primary/60"
       />
     </div>
   );

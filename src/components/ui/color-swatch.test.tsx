@@ -2,6 +2,7 @@
 
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { ColorPicker } from "./color-picker";
 import { ColorDot, ColorSwatch } from "./color-swatch";
 
 afterEach(() => {
@@ -27,6 +28,26 @@ describe("ColorSwatch", () => {
     fireEvent.mouseEnter(blue.parentElement as Element);
     act(() => vi.advanceTimersByTime(400));
     expect(screen.getByRole("tooltip")).toHaveTextContent("Blue");
+  });
+});
+
+describe("swatch edge", () => {
+  it("keeps an edge apart from the colour, so a swatch the colour of the card still shows", () => {
+    render(
+      <>
+        <ColorSwatch color="#171717" name="Card" pressed={false} onClick={() => {}} />
+        <ColorSwatch color="#171717" name="Chosen" pressed onClick={() => {}} />
+        <ColorPicker ariaLabel="Dark PDF page" value="#171717" onChange={() => {}} />
+      </>,
+    );
+    const idle = screen.getByRole("button", { name: "Card" });
+    expect(idle).toHaveClass("border", "border-foreground/30", "bg-clip-padding");
+    const chosen = screen.getByRole("button", { name: "Chosen" });
+    expect(chosen).toHaveClass("border-foreground");
+    expect(chosen).not.toHaveClass("border-foreground/30");
+    const picker = screen.getByLabelText("Dark PDF page").parentElement as HTMLElement;
+    expect(picker).toHaveClass("border", "border-foreground/30", "bg-clip-padding");
+    expect(picker.style.backgroundColor).toBe("rgb(23, 23, 23)");
   });
 });
 

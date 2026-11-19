@@ -8,7 +8,7 @@ import { useToastStore } from "@/store/toast";
 import { APP_ERROR_PREFIX } from "./app-error";
 import { createAppQueryClient, staleTimes } from "./query";
 
-const logs = vi.hoisted(() => ({ logError: vi.fn(async () => undefined) }));
+const logs = vi.hoisted(() => ({ logError: vi.fn(async () => undefined), logInfo: vi.fn(async () => undefined) }));
 vi.mock("@/lib/log", () => logs);
 
 function Background() {
@@ -30,6 +30,16 @@ function Notifying() {
   return <p>{"notifying rendered"}</p>;
 }
 
+function Expected({ expectedFailure }: Readonly<{ expectedFailure: (error: unknown) => boolean }>) {
+  useQuery({
+    queryKey: ["expected", expectedFailure.name],
+    queryFn: () => Promise.reject(new Error("service is not running")),
+    retry: false,
+    meta: { expectedFailure },
+  });
+  return <p>{"expected rendered"}</p>;
+}
+
 function wrapperFor(client: ReturnType<typeof createAppQueryClient>) {
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
@@ -42,6 +52,23 @@ describe("app query client", () => {
   beforeEach(() => {
     useToastStore.setState({ toasts: [] });
     logs.logError.mockClear();
+    logs.logInfo.mockClear();
+  });
+
+  it("logs a failure the query expects as information, and any other failure as an error", async () => {
+    const client = createAppQueryClient();
+    const notRunning = (error: unknown) => error instanceof Error && error.message === "service is not running";
+    const somethingElse = (error: unknown) => error instanceof Error && error.message === "disk full";
+    render(
+      <QueryClientProvider client={client}>
+        <Expected expectedFailure={notRunning} />
+        <Expected expectedFailure={somethingElse} />
+      </QueryClientProvider>,
+    );
+    await screen.findAllByText("expected rendered");
+    await expect.poll(() => logs.logInfo.mock.calls.length).toBe(1);
+    await expect.poll(() => logs.logError.mock.calls.length).toBe(1);
+    expect(logs.logInfo).toHaveBeenCalledWith("query", expect.objectContaining({ message: "service is not running" }));
   });
 
   it("declares per-family stale times", () => {

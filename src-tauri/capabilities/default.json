@@ -5,6 +5,7 @@
   "windows": ["main"],
   "permissions": [
     "core:default",
+    "notification:allow-is-permission-granted",
     "core:webview:allow-create-webview-window",
     "core:webview:allow-set-webview-zoom",
     "core:window:allow-close",

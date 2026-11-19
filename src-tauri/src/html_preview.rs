@@ -11,6 +11,10 @@ use percent_encoding::percent_decode_str;
 
 use crate::app_error::AppError;
 
+const LINKS_PATH: &str = "/oleafly-preview-links.js";
+const LINKS_SCRIPT: &str = include_str!("html_preview_links.js");
+const LINKS_TAG: &[u8] = b"<script src=\"/oleafly-preview-links.js\"></script>";
+
 fn roots() -> &'static Mutex<HashMap<String, PathBuf>> {
     static ROOTS: OnceLock<Mutex<HashMap<String, PathBuf>>> = OnceLock::new();
     ROOTS.get_or_init(Mutex::default)
@@ -45,6 +49,43 @@ fn resolve(roots: &HashMap<String, PathBuf>, path: &str) -> Option<PathBuf> {
     (file.starts_with(root) && file.is_file()).then_some(file)
 }
 
+fn after_tag(page: &[u8], name: &[u8]) -> Option<usize> {
+    let mut at = 0;
+    while at < page.len() {
+        let open = at + page[at..].iter().position(|&byte| byte == b'<')?;
+        let rest = &page[open + 1..];
+        if rest.starts_with(b"!--") {
+            let close = rest.windows(3).position(|window| window == b"-->")?;
+            at = open + 1 + close + 3;
+            continue;
+        }
+        let named = rest.len() > name.len()
+            && rest[..name.len()].eq_ignore_ascii_case(name)
+            && matches!(
+                rest[name.len()],
+                b'>' | b'/' | b' ' | b'\t' | b'\n' | b'\r' | b'\x0c'
+            );
+        if named {
+            let end = rest.iter().position(|&byte| byte == b'>')?;
+            return Some(open + 1 + end + 1);
+        }
+        at = open + 1;
+    }
+    None
+}
+
+fn with_link_script(page: &[u8]) -> Vec<u8> {
+    let at = after_tag(page, b"head")
+        .or_else(|| after_tag(page, b"html"))
+        .or_else(|| after_tag(page, b"!doctype"))
+        .unwrap_or(0);
+    let mut served = Vec::with_capacity(page.len() + LINKS_TAG.len());
+    served.extend_from_slice(&page[..at]);
+    served.extend_from_slice(LINKS_TAG);
+    served.extend_from_slice(&page[at..]);
+    served
+}
+
 fn refusal(status: StatusCode) -> Response {
     let mut response = Response::new(Body::empty());
     *response.status_mut() = status;
@@ -54,6 +95,12 @@ fn refusal(status: StatusCode) -> Response {
 async fn serve(request: Request) -> Response {
     if !matches!(*request.method(), Method::GET | Method::HEAD) {
         return refusal(StatusCode::METHOD_NOT_ALLOWED);
+    }
+    if request.uri().path() == LINKS_PATH {
+        return served(
+            "text/javascript; charset=utf-8",
+            LINKS_SCRIPT.as_bytes().to_vec(),
+        );
     }
     let found = {
         let roots = roots().lock().unwrap_or_else(PoisonError::into_inner);
@@ -65,7 +112,36 @@ async fn serve(request: Request) -> Response {
     let Ok(bytes) = tokio::fs::read(&file).await else {
         return refusal(StatusCode::NOT_FOUND);
     };
-    let media_type = crate::media_type::media_type(&file).unwrap_or("application/octet-stream");
+    let media_type = served_type(&file, &bytes);
+    let bytes = if media_type == "text/html" {
+        with_link_script(&bytes)
+    } else {
+        bytes
+    };
+    served(media_type, bytes)
+}
+
+const PLAIN_TEXT: &str = "text/plain; charset=utf-8";
+
+fn looks_like_text(bytes: &[u8]) -> bool {
+    let head = &bytes[..bytes.len().min(8192)];
+    !head.contains(&0)
+        && match std::str::from_utf8(head) {
+            Ok(_) => true,
+            Err(error) => error.error_len().is_none(),
+        }
+}
+
+fn served_type(file: &Path, bytes: &[u8]) -> &'static str {
+    match crate::media_type::media_type(file) {
+        Some("text/markdown" | "application/x-tex" | "text/csv" | "text/plain") => PLAIN_TEXT,
+        Some(known) => known,
+        None if looks_like_text(bytes) => PLAIN_TEXT,
+        None => "application/octet-stream",
+    }
+}
+
+fn served(media_type: &str, bytes: Vec<u8>) -> Response {
     Response::builder()
         .header(header::CONTENT_TYPE, media_type)
         .header(header::CACHE_CONTROL, "no-store")
@@ -87,8 +163,14 @@ fn start() -> std::io::Result<u16> {
     Ok(port)
 }
 
+static PORT: Mutex<Option<u16>> = Mutex::new(None);
+
+pub(crate) fn origin() -> Option<String> {
+    let port = *PORT.lock().unwrap_or_else(PoisonError::into_inner);
+    port.map(|port| format!("http://127.0.0.1:{port}"))
+}
+
 fn port() -> std::io::Result<u16> {
-    static PORT: Mutex<Option<u16>> = Mutex::new(None);
     let mut port = PORT.lock().unwrap_or_else(PoisonError::into_inner);
     if let Some(port) = *port {
         return Ok(port);
@@ -222,17 +304,68 @@ mod tests {
         assert_ne!(token_for(PathBuf::from("/builds/two")), first);
     }
 
+    #[test]
+    fn text_is_told_apart_from_binary_even_when_cut_mid_character() {
+        assert!(looks_like_text(b"plain words"));
+        assert!(looks_like_text("caf\u{e9}".as_bytes()));
+        let cut = "\u{e9}".repeat(4100);
+        assert!(looks_like_text(&cut.as_bytes()[..8191]));
+        assert!(!looks_like_text(b"PK\x03\x04\x00\x00"));
+        assert!(!looks_like_text(&[0xff, 0xfe, 0x41]));
+        assert!(looks_like_text(b""));
+    }
+
+    #[test]
+    fn the_link_script_goes_first_in_the_head_of_every_page() {
+        let served = |page: &str| String::from_utf8(with_link_script(page.as_bytes())).unwrap();
+        let tag = std::str::from_utf8(LINKS_TAG).unwrap();
+        assert_eq!(
+            served("<!doctype html><html lang=\"en\"><HEAD><title>T</title></HEAD></html>"),
+            format!("<!doctype html><html lang=\"en\"><HEAD>{tag}<title>T</title></HEAD></html>")
+        );
+        assert_eq!(
+            served("<!-- <head> --><head\n data-x=\"1\"><meta charset=\"utf-8\">"),
+            format!("<!-- <head> --><head\n data-x=\"1\">{tag}<meta charset=\"utf-8\">")
+        );
+        assert_eq!(
+            served("<html><header>Top</header></html>"),
+            format!("<html>{tag}<header>Top</header></html>")
+        );
+        assert_eq!(
+            served("<!DOCTYPE html>\n<p>Hi</p>"),
+            format!("<!DOCTYPE html>{tag}\n<p>Hi</p>")
+        );
+        assert_eq!(served("<p>Hi</p>"), format!("{tag}<p>Hi</p>"));
+        assert_eq!(served(""), tag);
+        assert_eq!(
+            served("<!-- never closed <head>"),
+            format!("{tag}<!-- never closed <head>")
+        );
+    }
+
     #[tokio::test]
     async fn the_page_and_its_parts_are_served_on_loopback_without_a_referrer() {
         let (_dir, root) = site();
         let url = preview_url(&root.join("talk.html")).unwrap();
         assert!(url.starts_with("http://127.0.0.1:"), "{url}");
+        let origin = origin().unwrap();
+        assert!(url.starts_with(&format!("{origin}/")), "{url} {origin}");
         let page = reqwest::get(&url).await.unwrap();
         assert_eq!(page.status(), 200);
         assert_eq!(page.headers()["content-type"], "text/html");
         assert_eq!(page.headers()["referrer-policy"], "no-referrer");
         assert_eq!(page.headers()["cache-control"], "no-store");
-        assert_eq!(page.text().await.unwrap(), "<h1>Talk</h1>");
+        assert_eq!(
+            page.text().await.unwrap(),
+            "<script src=\"/oleafly-preview-links.js\"></script><h1>Talk</h1>"
+        );
+        let links = reqwest::get(format!("{origin}{LINKS_PATH}")).await.unwrap();
+        assert_eq!(links.status(), 200);
+        assert_eq!(
+            links.headers()["content-type"],
+            "text/javascript; charset=utf-8"
+        );
+        assert_eq!(links.text().await.unwrap(), LINKS_SCRIPT);
         let script = url.replace("talk.html", "talk_files/libs/reveal.js");
         let script = reqwest::get(&script).await.unwrap();
         assert_eq!(script.headers()["content-type"], "text/javascript");
@@ -254,6 +387,13 @@ mod tests {
         )
         .unwrap();
         std::fs::write(project.join("figures/a.png"), [0x89, b'P', b'N', b'G']).unwrap();
+        std::fs::write(project.join("notes.md"), "# Notes").unwrap();
+        std::fs::write(
+            project.join("refs.bib"),
+            "@book{knuth, title={The {\\TeX}book}}",
+        )
+        .unwrap();
+        std::fs::write(project.join("data.bin"), [0x00, 0x9f, 0x92, 0x96]).unwrap();
         std::fs::write(dir.path().join("secret.txt"), "secret").unwrap();
 
         let url = project_page_url(&project, "demos/attention demo.html").unwrap();
@@ -262,6 +402,16 @@ mod tests {
         assert_eq!(page.headers()["content-type"], "text/html");
         let figure = url.replace("demos/attention%20demo.html", "figures/a.png");
         assert_eq!(reqwest::get(&figure).await.unwrap().status(), 200);
+        for (name, expected) in [
+            ("notes.md", "text/plain; charset=utf-8"),
+            ("refs.bib", "text/plain; charset=utf-8"),
+            ("data.bin", "application/octet-stream"),
+        ] {
+            let file = reqwest::get(url.replace("demos/attention%20demo.html", name))
+                .await
+                .unwrap();
+            assert_eq!(file.headers()["content-type"], expected, "{name}");
+        }
         let outside = url.replace("demos/attention%20demo.html", "..%2Fsecret.txt");
         assert_eq!(reqwest::get(&outside).await.unwrap().status(), 404);
 

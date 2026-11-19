@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { setWysiwygTranslator } from "../messages";
 import type { AssetUrlResolver } from "../options";
 import { createWysiwygExtensions } from "../schema";
 import { destroyOpenedEditors, openMarkdown, typeAtEndOf } from "../test-helpers";
@@ -16,13 +17,17 @@ function images(source: string): unknown[] {
   return found;
 }
 
-function setWidth(editor: ReturnType<typeof openMarkdown>["editor"], width: number | null) {
+function setImageAttributes(editor: ReturnType<typeof openMarkdown>["editor"], attributes: Record<string, unknown>) {
   editor.commands.command(({ tr, state }) => {
     state.doc.descendants((node, position) => {
-      if (node.type.name === "image") tr.setNodeMarkup(position, undefined, { ...node.attrs, widthPercent: width });
+      if (node.type.name === "image") tr.setNodeMarkup(position, undefined, { ...node.attrs, ...attributes });
     });
     return true;
   });
+}
+
+function setWidth(editor: ReturnType<typeof openMarkdown>["editor"], width: number | null) {
+  setImageAttributes(editor, { widthPercent: width });
 }
 
 describe("image widths", () => {
@@ -125,8 +130,66 @@ describe("images from the project", () => {
   it("shows a placeholder for an image the project doesn't have", async () => {
     const { dom } = openWithAssets("![](missing.png)", vi.fn(async () => null));
     await vi.waitFor(() => expect(dom.querySelector(".figure-placeholder")).toHaveTextContent("figure.imageUnavailable"));
+    expect(dom.querySelector(".figure-placeholder")).toHaveAttribute("data-state", "unavailable");
+    expect(dom.querySelector(".figure-placeholder-path")).toHaveAttribute("title", "missing.png");
+    expect(dom.querySelector(".figure-placeholder-folder")).toHaveTextContent("");
+    expect(dom.querySelector(".figure-placeholder-name")).toHaveTextContent("missing.png");
+    expect(dom.querySelector<HTMLElement>(".figure-placeholder-alt")?.hidden).toBe(true);
     expect(dom.querySelector("img")?.hidden).toBe(true);
     expect(dom.querySelector("img")).not.toHaveAttribute("src");
+  });
+
+  it("names the missing file and its alt text, and keeps the folder apart so a long path cuts before the name", async () => {
+    setWysiwygTranslator((key, params) => (params ? `${key} ${JSON.stringify(params)}` : key));
+    try {
+      const resolveAssetUrl = vi.fn(async () => null);
+      const { editor, dom } = openWithAssets("![Loss per epoch](<figures/run 3/loss.png>)", resolveAssetUrl);
+      expect(dom.querySelector(".figure-placeholder")).toHaveAttribute("data-state", "loading");
+      expect(dom.querySelector(".figure-placeholder-name")).toHaveTextContent("loss.png");
+      await vi.waitFor(() => expect(dom.querySelector(".figure-placeholder")).toHaveAttribute("data-state", "unavailable"));
+      expect(dom.querySelector(".figure-placeholder-message")).toHaveTextContent("figure.imageUnavailable");
+      expect(dom.querySelector(".figure-placeholder-path")).toHaveAttribute("title", "figures/run 3/loss.png");
+      expect(dom.querySelector(".figure-placeholder-folder")).toHaveTextContent("figures/run 3/");
+      expect(dom.querySelector(".figure-placeholder-name")).toHaveTextContent("loss.png");
+      const alt = dom.querySelector<HTMLElement>(".figure-placeholder-alt");
+      expect(alt?.hidden).toBe(false);
+      expect(alt).toHaveTextContent('figure.imageAltText {"alt":"Loss per epoch"}');
+      expect(alt).toHaveAttribute("title", "Loss per epoch");
+
+      setImageAttributes(editor, { alt: "Validation loss" });
+      expect(dom.querySelector(".figure-placeholder-alt")).toHaveTextContent('{"alt":"Validation loss"}');
+      setImageAttributes(editor, { alt: "   " });
+      expect(dom.querySelector<HTMLElement>(".figure-placeholder-alt")?.hidden).toBe(true);
+      expect(resolveAssetUrl).toHaveBeenCalledTimes(1);
+    } finally {
+      setWysiwygTranslator(null);
+    }
+  });
+
+  it("says an image outside the project is not shown on purpose, and one it can't read couldn't be shown", async () => {
+    const outside = openWithAssets("![](../../shared/logo.png)", vi.fn(async () => ({ reason: "outside" as const })));
+    await vi.waitFor(() => expect(outside.dom.querySelector(".figure-placeholder-message")).toHaveTextContent("figure.imageOutside"));
+    expect(outside.dom.querySelector(".figure-placeholder-path")).toHaveAttribute("title", "../../shared/logo.png");
+    const unreadable = openWithAssets("![](huge.png)", vi.fn(async () => ({ reason: "unreadable" as const })));
+    await vi.waitFor(() =>
+      expect(unreadable.dom.querySelector(".figure-placeholder-message")).toHaveTextContent("figure.imageUnreadable"),
+    );
+    const failing = openWithAssets("![](broken.png)", vi.fn(async () => Promise.reject(new Error("offline"))));
+    await vi.waitFor(() =>
+      expect(failing.dom.querySelector(".figure-placeholder-message")).toHaveTextContent("figure.imageUnreadable"),
+    );
+  });
+
+  it("asks the project about a drive path or a pasted file URL instead of loading it", async () => {
+    const resolveAssetUrl = vi.fn(async () => ({ reason: "outside" as const }));
+    const drive = openWithAssets("![](<C:/Users/me/my plot.png>)", resolveAssetUrl);
+    await vi.waitFor(() => expect(resolveAssetUrl).toHaveBeenCalledWith("C:/Users/me/my plot.png"));
+    expect(drive.dom.querySelector("img")).not.toHaveAttribute("src");
+    const pasted = openWithAssets("![](clip.png)", resolveAssetUrl);
+    setImageAttributes(pasted.editor, { src: "file:///C:/Users/me/clip%20image001.png" });
+    await vi.waitFor(() => expect(resolveAssetUrl).toHaveBeenCalledWith("file:///C:/Users/me/clip image001.png"));
+    await vi.waitFor(() => expect(pasted.dom.querySelector(".figure-placeholder-message")).toHaveTextContent("figure.imageOutside"));
+    expect(pasted.dom.querySelector("img")).not.toHaveAttribute("src");
   });
 
   it("keeps the shown image when only its width changes", async () => {

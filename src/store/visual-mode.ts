@@ -1,35 +1,60 @@
 import { create } from "zustand";
-import { getMarkdownSplitLayout, getMarkdownSplitMode, getWysiwygMode, setMarkdownSplitLayout, setMarkdownSplitMode, setWysiwygMode, type MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
+import {
+  type EditorMode,
+  getKindModes,
+  getMarkdownSplitLayout,
+  type KindModes,
+  kindMode,
+  type MarkdownSplitLayout,
+  saveKindModes,
+  setMarkdownSplitLayout,
+  viewKind,
+} from "@/lib/wysiwyg-mode";
+import { useFilesStore } from "@/store/files";
 
-interface VisualModeState {
+interface FileModes {
   projectId: string | null;
-  enabled: boolean;
-  markdownSplit: boolean;
+  kinds: KindModes;
+  files: Readonly<Record<string, EditorMode>>;
+}
+
+interface VisualModeState extends FileModes {
   markdownSplitLayout: MarkdownSplitLayout;
   loadProject: (projectId: string | null) => void;
-  setEnabled: (enabled: boolean) => void;
-  setMarkdownSplit: (enabled: boolean) => void;
+  remember: (path: string) => void;
+  setMode: (path: string, mode: EditorMode) => void;
   setMarkdownSplitLayout: (layout: MarkdownSplitLayout) => void;
+}
+
+const fileKey = (projectId: string | null, path: string) => `${projectId ?? ""}\n${path}`;
+
+export function fileMode(state: FileModes, path: string | null): EditorMode {
+  if (!path) return "code";
+  return state.files[fileKey(state.projectId, path)] ?? kindMode(state.kinds, path);
 }
 
 export const useVisualModeStore = create<VisualModeState>((set, get) => ({
   projectId: null,
-  enabled: false,
-  markdownSplit: false,
+  kinds: {},
+  files: {},
   markdownSplitLayout: "split",
   loadProject: (projectId) =>
-    set({ projectId, enabled: projectId ? getWysiwygMode(projectId) : false,
-      markdownSplit: projectId ? getMarkdownSplitMode(projectId) : false,
-      markdownSplitLayout: projectId ? getMarkdownSplitLayout(projectId) : "split" }),
-  setEnabled: (enabled) => {
-    const { projectId } = get();
-    if (projectId) setWysiwygMode(projectId, enabled);
-    set({ enabled });
+    set({
+      projectId,
+      kinds: projectId ? getKindModes(projectId) : {},
+      markdownSplitLayout: projectId ? getMarkdownSplitLayout(projectId) : "split",
+    }),
+  remember: (path) => {
+    const state = get();
+    const key = fileKey(state.projectId, path);
+    if (state.files[key] === undefined) set({ files: { ...state.files, [key]: kindMode(state.kinds, path) } });
   },
-  setMarkdownSplit: (markdownSplit) => {
-    const { projectId } = get();
-    if (projectId) setMarkdownSplitMode(projectId, markdownSplit);
-    set({ markdownSplit });
+  setMode: (path, mode) => {
+    const { projectId, kinds, files } = get();
+    const kind = viewKind(path);
+    const nextKinds = kinds[kind] === mode ? kinds : { ...kinds, [kind]: mode };
+    if (projectId && nextKinds !== kinds) saveKindModes(projectId, nextKinds);
+    set({ kinds: nextKinds, files: { ...files, [fileKey(projectId, path)]: mode } });
   },
   setMarkdownSplitLayout: (markdownSplitLayout) => {
     const { projectId } = get();
@@ -37,3 +62,12 @@ export const useVisualModeStore = create<VisualModeState>((set, get) => ({
     set({ markdownSplitLayout });
   },
 }));
+
+export function useFileMode(path: string | null): EditorMode {
+  return useVisualModeStore((state) => fileMode(state, path));
+}
+
+export function setActiveFileMode(mode: EditorMode): void {
+  const path = useFilesStore.getState().activePath;
+  if (path) useVisualModeStore.getState().setMode(path, mode);
+}

@@ -80,6 +80,12 @@ description and `icon` for a leading icon. `SettingsToggleRow` is a
 `SettingsRow` where the whole card is the switch, and it takes the same
 `details`. Notes go in `SettingsNote` and file paths in `SettingsPath`.
 
+A tab strip inside a Settings section remembers its tab through
+`useSettingsTab` from `settings/use-settings-tab.ts`. Open Settings without a
+destination and it comes back on the session's last section and tab. A link
+that names a section opens that section on its default tab, or on the tab the
+link asks for.
+
 Connected services in Settings, Integrations use `IntegrationCard` from
 `settings/IntegrationCard.tsx`. The default layout matches GitHub, Zotero and
 alphaXiv. With `framed` it becomes the bordered card the citation sources use,
@@ -179,6 +185,16 @@ Tab strips are a `TabsList` from `ui/tabs.tsx`. Pass `scrollable` when the
 triggers can grow wider than the strip, so it scrolls instead of clipping, and
 `fill` when the triggers should split the full width.
 
+The editor's file tabs, the skill chips above the assistant composer and any
+other strip that scrolls sideways with its scrollbar hidden but isn't a
+`TabsList` use `hooks/use-sideways-scroll.ts`. `useSidewaysScroll` makes a
+mouse wheel scroll the strip sideways and scrolls the active item into view
+when it changes or is added. `useScrollEdges`, which `useSidewaysScroll` also
+runs, marks the strip with `data-overflow-start` or `data-overflow-end` while
+items are hidden past an edge. Put `SIDEWAYS_FADE` on the strip to fade those
+edges out instead of cutting the last label off. A strip that fits gets no
+fade.
+
 A suggestion list that opens under or over a text field, such as the `@` and
 `/` menus in the assistant composer, is a `Listbox` of `ListboxOption`s from
 `ui/listbox.tsx`, with a `ListboxHeading` above each group. The options never
@@ -256,6 +272,18 @@ Matched parts of a result are marked with `Highlighted` from
 which is what the Rust searches return. `highlightParts` in the same file
 gives the pieces without the markup.
 
+Text fields are an `Input` from `ui/input.tsx`. When a field has to keep its
+text exactly as typed (an ID, a path, a URL, a command, code), spread
+`LITERAL_INPUT` on it: that turns off autocorrect, automatic capitals and
+spelling marks. Search and filter fields spread `SEARCH_INPUT`, which turns off
+autofill as well. An `Input` with `type="search"` picks up `SEARCH_INPUT` by
+itself, and one with `type="url"` or `type="email"` picks up `LITERAL_INPUT`,
+so the spread is only needed on plain text fields. `SearchField`,
+`QuerySearch`, `FindBar`, `CommandDialogShell` and the emoji search have it
+already. A placeholder too long for its field ends in an ellipsis
+(`placeholder-shown:text-ellipsis`) rather than stopping mid-word. German
+labels run long, so this comes up.
+
 A plain filter box at the top of a panel, with a search icon and a clear
 button, is a `SearchField` from `ui/search-field.tsx`. Clearing it puts focus
 back in the field. Pass `clearOnEscape` to let Escape empty it as well. Once
@@ -327,6 +355,10 @@ a `ColorDot` from the same file. A project's colour comes from
 `useProjectColorOf` in `store/project-colors.ts`, which applies the colour
 picked in the library, then the project's own, then the default.
 
+Every swatch has an edge from `SWATCH_EDGE`, including the `ColorPicker` in a
+theme field. It is a border in 30% foreground, drawn outside the colour, so a
+swatch that matches the card behind it still shows up in light and dark mode.
+
 A short list of named items, like the projects a dialog asks about, is a
 `DetailList` from `ui/detail-list.tsx`. Each item gets a `key`, a `title` and
 one line of `detail` under it. Past about four rows the list scrolls, which
@@ -346,10 +378,16 @@ needs its own layout uses `ModalShell` from `ui/modal-shell.tsx`, which brings
 the backdrop, the panel, and the same focus and Escape handling as the kit
 dialogs. Its `layer` prop picks one of three stacking levels: `dialog` for
 most dialogs, `raised` for one that opens over Settings, and `nested` for a
-dialog opened from inside another. Set `animateWidth` when the panel changes
-width while it is open. Settings uses it to widen for the Notes preview. The
-panel opens at its final width. A change after that eases over 200ms, or
-happens at once when the system asks for reduced motion.
+dialog opened from inside another.
+
+A `Dialog` is on the same modal stack as `ModalShell`. A dialog opened from
+Settings, or from another dialog, gets Escape, Tab and outside clicks to
+itself, and the one underneath stays open until its turn comes. When a
+`Dialog` closes, focus goes back to the control that opened it. Settings is the
+same size on every section and tab. A section that needs more room arranges
+itself by its own width with a container query. The Notes appearance preview
+does this: it sits beside the options when there is room and above them when
+there isn't.
 
 Comment threads and project chat, on the desktop and in the web client, come
 from `ui/comments/`. `CommentThread` draws a whole thread from a plain

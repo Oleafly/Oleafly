@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, Wrench, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
@@ -376,6 +376,7 @@ export function HotkeysModal() {
         <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3">
           <Search className="size-4 text-muted-foreground" />
           <Input
+            {...SEARCH_INPUT}
             data-modal-initial-focus
             aria-label={t(($) => $.editor.hotkeys.searchLabel)}
             value={q}

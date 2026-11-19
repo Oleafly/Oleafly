@@ -24,7 +24,7 @@ import { objectKey } from "@/lib/react-key";
 import { basename } from "@/lib/path-utils";
 import { cn } from "@/lib/utils";
 import { useInitialFocus } from "@/components/ui/use-initial-focus";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useSectionOrder } from "./section-order";
 import { PANE_BAR_CLASS, usePaneBar } from "./pane-reorder";
@@ -88,6 +88,7 @@ export function ProjectSearch() {
       <SidebarPanelHeader icon={Search} title={t(($) => $.shell.projectSearch.title)} />
       <div className="flex items-center gap-1 border-b border-sidebar-border p-2">
         <Input
+          {...SEARCH_INPUT}
           ref={searchInputRef}
           value={q}
           onChange={(e) => {

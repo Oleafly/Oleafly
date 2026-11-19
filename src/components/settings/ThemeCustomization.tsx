@@ -4,7 +4,7 @@ import { Download, Palette, RotateCcw, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
 import { ColorPicker } from "@/components/ui/color-picker";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { i18n } from "@/i18n";
 import { cssColorToHex, readClassVariables, readCssVariable } from "@/lib/css-color";
@@ -161,6 +161,7 @@ export function ThemeTokenField({
         onChange={(value) => editor.updateToken(mode, token, value, true)}
       />
       <Input
+        {...LITERAL_INPUT}
         aria-label={
           mode === "light"
             ? t(($) => $.settings.appearance.customTheme.tokenInputLight, { token: tokenLabel })
@@ -283,6 +284,7 @@ export function ThemeCustomization() {
           {t(($) => $.settings.appearance.customTheme.radius.description)}
         </span>
         <Input
+          {...LITERAL_INPUT}
           aria-label={t(($) => $.settings.appearance.customTheme.radius.label)}
           value={radiusDraft ?? customization.radius ?? ""}
           onChange={(event) => {

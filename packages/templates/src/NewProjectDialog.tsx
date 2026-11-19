@@ -757,6 +757,10 @@ export function NewProjectDialog({
             <Input
               ref={searchRef}
               data-testid="template-search"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("dialog.searchPlaceholder")}

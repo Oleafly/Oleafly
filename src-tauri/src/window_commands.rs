@@ -17,6 +17,7 @@ const EVERY_WINDOW: &[&str] = &[
     "append_app_log",
     "app_version",
     "display_homes",
+    "log_frontend_entry",
     "log_frontend_error",
     "read_app_log",
 ];
@@ -32,6 +33,9 @@ const PREVIEW: &[&str] = &[
     "compiled_html_preview_url",
     "grant_test_save_path",
     "open_compiled_html",
+    "pdf_sync_note_saved",
+    "pdf_sync_set",
+    "pdf_sync_status",
     "pick_save_path",
     "read_compiled_pdf",
     "save_file_base64",
@@ -239,6 +243,17 @@ mod tests {
     }
 
     #[test]
+    fn the_preview_window_can_sync_the_pdf_it_shows() {
+        for command in ["pdf_sync_status", "pdf_sync_set", "pdf_sync_note_saved"] {
+            assert!(allowed("preview", "preview", command), "{command}");
+            assert!(
+                !allowed("presentation", "presentation", command),
+                "{command}"
+            );
+        }
+    }
+
+    #[test]
     fn every_window_can_log_and_read_its_version() {
         for window in [
             "update",
@@ -249,6 +264,28 @@ mod tests {
         ] {
             assert!(allowed(window, window, "append_app_log"), "{window}");
             assert!(allowed(window, window, "app_version"), "{window}");
+        }
+    }
+
+    #[test]
+    fn every_window_lets_the_notification_script_read_its_permission() {
+        for capability in [
+            include_str!("../capabilities/default.json"),
+            include_str!("../capabilities/preview.json"),
+            include_str!("../capabilities/presentation.json"),
+            include_str!("../capabilities/quick-capture.json"),
+            include_str!("../capabilities/update.json"),
+            include_str!("../capabilities/admin-console.json"),
+        ] {
+            let parsed: serde_json::Value = serde_json::from_str(capability).unwrap();
+            let permissions = parsed["permissions"].as_array().unwrap();
+            assert!(
+                permissions.contains(&serde_json::json!(
+                    "notification:allow-is-permission-granted"
+                )),
+                "{}",
+                parsed["identifier"]
+            );
         }
     }
 

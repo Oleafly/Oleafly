@@ -61,7 +61,7 @@ function pressCommentChord(): KeyboardEvent {
 }
 
 beforeEach(() => {
-  useVisualModeStore.setState({ enabled: false });
+  useVisualModeStore.setState({ projectId: null, kinds: {}, files: {} });
   useSettingsStore.setState({ spellcheck: false, harper: false, railTab: "files" });
   useFilesStore.setState({ projectId: "project", manifestHome: "library", engine: LATEX_ENGINE, engineLoaded: true });
   useCommentsRail.setState({ visible: true, canCompose: true, request: null });

@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { normalizeRenameDestination, renameFromPrompt } from "@/lib/file-references/rename-at-cursor";
 import { cn } from "@/lib/utils";
@@ -58,11 +58,11 @@ function FileRenameForm({ target, onClose }: Readonly<{ target: FileRenameTarget
           : t(($) => $.shell.fileRenameDialog.title)}
       </p>
       <Input
+        {...LITERAL_INPUT}
         data-modal-initial-focus
         aria-label={t(($) => $.shell.fileRenameDialog.newPath)}
         aria-describedby={hintId}
         aria-invalid={message ? true : undefined}
-        spellCheck={false}
         value={value}
         disabled={busy}
         onFocus={(event) => {

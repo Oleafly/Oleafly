@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react";
 import { ChoiceCard } from "@/components/library/ChoiceCard";
 import { CHOICE_ART } from "@/components/library/choice-art";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { announceSavedTemplate, saveProjectTemplate } from "@/features/custom-templates";
@@ -335,6 +335,7 @@ export function ProjectImportDialog({
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Input
+                  {...LITERAL_INPUT}
                   aria-label={t(($) => $.library.import.arxivInputLabel)}
                   disabled={busy}
                   data-testid="project-import-arxiv-id"

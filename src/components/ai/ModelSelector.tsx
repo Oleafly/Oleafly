@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 
 import { ProviderLogo } from "@/components/ai/ProviderLogo";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
+import { SEARCH_INPUT } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { modelCapabilityChips } from "@/lib/ai-model-state";
 import type { ModelMetadata, ModelTrust } from "@/lib/tauri";
@@ -252,8 +253,9 @@ export function ModelSelector({
                 value={query}
                 onValueChange={setQuery}
                 autoFocus
+                {...SEARCH_INPUT}
                 placeholder={t(($) => $.ai.models.searchPlaceholder)}
-                className="min-w-0 flex-1 bg-transparent text-xs placeholder:text-muted-foreground"
+                className="min-w-0 flex-1 bg-transparent text-xs placeholder:text-muted-foreground placeholder-shown:text-ellipsis"
               />
             </div>
 

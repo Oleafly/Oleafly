@@ -86,7 +86,7 @@ import { useFavoritesStore } from "@/store/favorites";
 import { useProjectColorOf, useProjectColorsStore } from "@/store/project-colors";
 import { decodeAppError, PROJECT_NOT_FOUND } from "@/lib/app-error";
 import { useDisplayPath } from "@/lib/display-path";
-import { logError } from "@/lib/log";
+import { logError, logWarning } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { useFilesStore } from "@/store/files";
 import { useHomeViewStore } from "@/store/home-view";
@@ -95,6 +95,7 @@ import { cn, isLinux, isWindows } from "@/lib/utils";
 import {
   recycleProject,
   duplicateProject,
+  isMissingCompiledPdf,
   readCompiledPdf,
   removeLinkedProject,
   revealProject,
@@ -368,7 +369,7 @@ export function Library() {
       setPreviewBytes(bytes);
     } catch (error) {
       if (previewRequestRef.current !== request) return;
-      void logError("library PDF preview", error);
+      if (!isMissingCompiledPdf(error)) void logError("library PDF preview", error);
       setPreviewError(t(($) => $.library.projects.preview.failed));
     }
   };
@@ -534,7 +535,7 @@ export function Library() {
         setThumbs((t) => ({ ...t, [id]: png }));
       })
       .catch((error) => {
-        void logError("library thumbnail", error);
+        if (!isMissingCompiledPdf(error)) void logWarning("library thumbnail", error);
         setThumbs((t) => (t[id] === undefined ? t : { ...t, [id]: null }));
       })
       .finally(() => {

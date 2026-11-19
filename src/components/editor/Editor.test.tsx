@@ -11,8 +11,8 @@ import en from "@/i18n/locales/en/editor.json" with { type: "json" };
 import { LATEX_ENGINE } from "@/lib/document-engine";
 import { acquireEditorMutationLease } from "@/lib/editor-mutation-lease";
 import type { DocumentEngineDescriptor } from "@/lib/tauri";
-import { getWysiwygMode, setWysiwygMode } from "@/lib/wysiwyg-mode";
-import { useVisualModeStore } from "@/store/visual-mode";
+import { getKindModes, kindMode, saveKindModes } from "@/lib/wysiwyg-mode";
+import { fileMode, useVisualModeStore } from "@/store/visual-mode";
 import { useDiffStore } from "@/store/diff";
 import { navigateToProjectRange } from "@/lib/project-intelligence/navigation";
 import { useFilesStore } from "@/store/files";
@@ -138,6 +138,18 @@ import { Editor } from "./Editor";
 
 const shell = en.shell;
 
+function preferVisual() {
+  saveKindModes("project", { source: "visual", markdown: "visual" });
+}
+
+function savedMode(path: string) {
+  return kindMode(getKindModes("project"), path);
+}
+
+function showFile(path: string) {
+  act(() => useFilesStore.setState({ activePath: path }));
+}
+
 function engineWithProfile(profile: string, extensions: string[]): DocumentEngineDescriptor {
   return {
     ...LATEX_ENGINE,
@@ -165,7 +177,7 @@ describe("Editor shell", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
-    useVisualModeStore.setState({ projectId: null, enabled: false, markdownSplit: false, markdownSplitLayout: "split" });
+    useVisualModeStore.setState({ projectId: null, kinds: {}, files: {}, markdownSplitLayout: "split" });
     useDiffStore.setState({ diffs: [], activeKey: null });
     useSettingsStore.setState({ settingsOpen: false });
     useFilesStore.setState({
@@ -541,14 +553,13 @@ describe("Editor shell", () => {
   });
 
   it("renders LaTeX Visual mode inside the source editor without the rich-text surface", () => {
-    setWysiwygMode("project", true);
+    preferVisual();
     openFile("main.tex");
     render(<Editor />);
 
     expect(screen.getByTestId("codemirror")).toBeInTheDocument();
     expect(screen.queryByTestId("wysiwyg")).not.toBeInTheDocument();
     expect(screen.getByTestId("editor-breadcrumbs")).toBeInTheDocument();
-    setWysiwygMode("project", false);
   });
 
   it.each([
@@ -562,21 +573,22 @@ describe("Editor shell", () => {
     _name, path, projectKind, profile, extensions, toolbarId,
   ) => {
     localStorage.setItem("oleafly.visualEditor", "0");
-    setWysiwygMode("project", true);
+    localStorage.setItem("oleafly.wysiwyg.project", "1");
     openFile(path, { projectKind, mainDoc: path, engine: engineWithProfile(profile, [...extensions]) });
     const view = render(<Editor />);
 
     expect(screen.getByTestId(toolbarId)).toHaveAttribute("aria-pressed", "true");
     if (path.endsWith(".md")) expect(await screen.findByTestId("wysiwyg")).toBeVisible();
+    expect(localStorage.getItem("oleafly.wysiwyg.project")).toBeNull();
 
     fireEvent.click(screen.getByTestId(toolbarId));
-    expect(getWysiwygMode("project")).toBe(false);
+    expect(savedMode(path)).toBe("code");
     view.unmount();
     render(<Editor />);
     expect(screen.getByTestId(toolbarId)).toHaveAttribute("aria-pressed", "false");
 
     fireEvent.click(screen.getByTestId(toolbarId));
-    expect(getWysiwygMode("project")).toBe(true);
+    expect(savedMode(path)).toBe("visual");
   });
 
   it("keeps the Markdown visual surface mounted next to the source surface", async () => {
@@ -589,7 +601,7 @@ describe("Editor shell", () => {
   });
 
   it("arranges Markdown both ways, flushes Visual edits, and restores the choice after reopening", async () => {
-    setWysiwygMode("project", true);
+    preferVisual();
     openFile("notes.md");
     const view = render(<Editor />);
     const flush = vi.fn();
@@ -603,7 +615,7 @@ describe("Editor shell", () => {
     expect(await screen.findByTestId("markdown-preview")).toBeVisible();
     expect(screen.getByTestId("codemirror")).toBe(source);
     expect(source).toBeVisible();
-    expect(getWysiwygMode("project")).toBe(true);
+    expect(getKindModes("project")).toEqual({ source: "visual", markdown: "both" });
     const group = source.closest("[data-group]");
     expect(group).toHaveStyle({ flexDirection: "row" });
     fireEvent.click(screen.getByRole("button", { name: "Stacked" }));
@@ -635,33 +647,86 @@ describe("Editor shell", () => {
     expect(root).not.toHaveAttribute("aria-busy");
   });
 
-  it("returns to the source surface when navigation reveals it", async () => {
-    setWysiwygMode("project", true);
+  it("returns to the source surface when navigation reveals it, and leaves Both alone", async () => {
+    preferVisual();
     openFile("main.tex");
     const { revealSourceEditor } = await import("./wysiwyg/controller");
     render(<Editor />);
 
-    expect(useVisualModeStore.getState().enabled).toBe(true);
+    expect(fileMode(useVisualModeStore.getState(), "main.tex")).toBe("visual");
 
     act(() => revealSourceEditor());
 
-    expect(getWysiwygMode("project")).toBe(false);
-    expect(useVisualModeStore.getState().enabled).toBe(false);
+    expect(savedMode("main.tex")).toBe("code");
+    expect(fileMode(useVisualModeStore.getState(), "main.tex")).toBe("code");
+
+    showFile("site/page.html");
+    fireEvent.click(within(screen.getByTestId("mode-switch")).getByText(en.toolbar.split));
+    act(() => revealSourceEditor());
+    expect(screen.getByTestId("mode-switch")).toHaveAttribute("data-mode", "both");
   });
 
   it("edits the diagram main file on the canvas or in its source", async () => {
-    setWysiwygMode("project", false);
-    openFile("diagram.tex", { projectKind: "diagram", mainDoc: "diagram.tex" });
-    const source = render(<Editor />);
-    expect(screen.getByTestId("codemirror")).toBeInTheDocument();
-    source.unmount();
-
-    setWysiwygMode("project", true);
     openFile("diagram.tex", { projectKind: "diagram", mainDoc: "diagram.tex" });
     render(<Editor />);
+    expect(screen.getByTestId("codemirror")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId("latex-toolbar"));
 
     expect(await screen.findByTestId("diagram-main")).toBeInTheDocument();
-    setWysiwygMode("project", false);
+  });
+
+  it("opens a CSV or TSV as its table, with Code a click away", async () => {
+    openFile("data/results.csv");
+    render(<Editor />);
+    expect(screen.getByTestId("mode-switch")).toHaveAttribute("data-mode", "visual");
+    expect(await screen.findByTestId("sheet-preview")).toHaveTextContent("data/results.csv");
+
+    showFile("data/runs.tsv");
+    expect(screen.getByTestId("mode-switch")).toHaveAttribute("data-mode", "visual");
+    fireEvent.click(within(screen.getByTestId("mode-switch")).getByText(en.toolbar.code));
+    expect(screen.queryByTestId("sheet-preview")).toBeNull();
+  });
+
+  it("keeps each file in its own mode, and starts a new file in the mode last picked for its kind", async () => {
+    const files = ["slides/demo/index.tsx", "results.csv", "notes.md", "main.tex", "refs.bib", "draft.md", "more.csv"];
+    openFile(files[0], { openTabs: files, tabOrder: Object.fromEntries(files.map((path, index) => [path, index + 1])) });
+    render(<Editor />);
+    const mode = () => screen.getByTestId("mode-switch").getAttribute("data-mode");
+    const pick = (label: string) => fireEvent.click(within(screen.getByTestId("mode-switch")).getByText(label));
+
+    pick(en.toolbar.split);
+    expect(await screen.findByTestId("deck-preview")).toBeInTheDocument();
+
+    showFile("results.csv");
+    expect(mode()).toBe("visual");
+    pick(en.toolbar.code);
+
+    showFile("notes.md");
+    expect(screen.getByTestId("markdown-toolbar")).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByTestId("markdown-preview")).toBeNull();
+
+    showFile("main.tex");
+    expect(screen.getByTestId("latex-toolbar")).toHaveAttribute("aria-pressed", "false");
+
+    showFile("draft.md");
+    fireEvent.click(screen.getByTestId("markdown-toolbar"));
+    expect(screen.getByTestId("markdown-toolbar")).toHaveAttribute("aria-pressed", "true");
+
+    showFile("refs.bib");
+    expect(mode()).toBe("code");
+
+    showFile("main.tex");
+    expect(screen.getByTestId("latex-toolbar")).toHaveAttribute("aria-pressed", "false");
+    showFile("notes.md");
+    expect(screen.getByTestId("markdown-toolbar")).toHaveAttribute("aria-pressed", "false");
+    showFile("slides/demo/index.tsx");
+    expect(mode()).toBe("both");
+    showFile("results.csv");
+    expect(mode()).toBe("code");
+    showFile("more.csv");
+    expect(mode()).toBe("code");
+    expect(getKindModes("project")).toEqual({ deck: "both", sheet: "code", markdown: "visual" });
   });
 
   it("applies the engine bold and italic bindings only from a focused source editor", () => {
@@ -845,7 +910,7 @@ describe("Editor in Zen mode", () => {
   beforeEach(() => {
     controller.getEditorView.mockReturnValue(null);
     useZenStore.getState().end();
-    useVisualModeStore.setState({ projectId: null, enabled: false, markdownSplit: false, markdownSplitLayout: "split" });
+    useVisualModeStore.setState({ projectId: null, kinds: {}, files: {}, markdownSplitLayout: "split" });
     useDiffStore.setState({ diffs: [], activeKey: null });
   });
 

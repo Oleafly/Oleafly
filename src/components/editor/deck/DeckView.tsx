@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -7,7 +8,7 @@ import { PRESENT_MODES, type PresentMode } from "@/components/preview/PdfToolbar
 import { TooltipIconButton } from "@/components/ui/tooltip-icon-button";
 import { Spinner } from "@/components/ui/spinner";
 import { useFilesStore } from "@/store/files";
-import { useDeckFrame } from "./use-deck-frame";
+import { type DeckPosition, useDeckFrame } from "./use-deck-frame";
 
 export interface DeckViewProps {
   readonly projectId: string;
@@ -15,13 +16,29 @@ export interface DeckViewProps {
   readonly onPresent?: (mode: PresentMode, page: number) => void;
 }
 
+const positions = new Map<string, DeckPosition>();
+
 export function DeckView({ projectId, path, onPresent }: DeckViewProps) {
   const { t } = useTranslation(["common", "preview"]);
   const code = useFilesStore((state) => state.files[path]?.content ?? "");
-  const deck = useDeckFrame({ projectId, path, code, mode: "edit", startPage: 0 });
-  const total = deck.info?.pages ?? 0;
+  const key = `${projectId}\n${path}`;
+  const saved = positions.get(key);
+  const deck = useDeckFrame({
+    projectId,
+    path,
+    code,
+    mode: "edit",
+    startPage: saved?.page ?? 0,
+    startRevealed: saved?.revealed,
+  });
+  const shown = deck.error === null ? deck.info : null;
+  const total = shown?.pages ?? 0;
   const page = deck.position.page;
-  const notes = deck.info?.notes[page] ?? null;
+  const notes = shown?.notes[page] ?? null;
+
+  useEffect(() => {
+    if (deck.info) positions.set(key, deck.position);
+  }, [deck.info, deck.position, key]);
   const label = total > 0 ? t(($) => $.preview.presentation.slideLabel, { page: page + 1, total }) : "";
 
   return (

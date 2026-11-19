@@ -15,8 +15,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Tooltip } from "@/components/ui/tooltip";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
+import { useSettingsTab } from "@/components/settings/use-settings-tab";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -60,12 +61,12 @@ function AddWord({
   return (
     <form onSubmit={submit} className="flex items-center gap-2">
       <Input
+        {...LITERAL_INPUT}
         aria-label={label}
         autoComplete="off"
         maxLength={DICTIONARY_LIMITS.wordCharacters}
         onChange={(event) => setValue(event.target.value)}
         placeholder={t(($) => $.settings.proofreading.addWord.placeholder)}
-        spellCheck={false}
         value={value}
       />
       <Button
@@ -379,8 +380,13 @@ function TurnedOffFindings({
   );
 }
 
+function isDictionaryTab(value: string): value is "global" | "projects" {
+  return value === "global" || value === "projects";
+}
+
 export function ProofreadingDictionarySection() {
   const { t } = useTranslation(["common", "settings"]);
+  const [tab, setTab] = useSettingsTab("dictionary", "global", isDictionaryTab);
   const global = useDictionary((state) => state.global);
   const ignored = useDictionary((state) => state.ignored);
   const ignore = useDictionary((state) => state.ignore);
@@ -492,7 +498,7 @@ export function ProofreadingDictionarySection() {
           value={query}
         />
       </div>
-      <Tabs defaultValue="global" className="space-y-4">
+      <Tabs value={tab} onValueChange={setTab} className="space-y-4">
         <TabsList>
           <TabsTrigger
             value="global"

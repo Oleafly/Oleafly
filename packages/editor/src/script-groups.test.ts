@@ -16,16 +16,20 @@ import {
   type Extension,
 } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { latexLanguage } from "./latex";
 import { latexPairInputHandler, latexPairKeymap } from "./latex-pairs";
 import { latexScriptGroups } from "./latex-scripts";
 import { stubRangeGeometry } from "./test-geometry";
-import { typstLanguage } from "./typst";
+import { loadTypstParser, typstLanguage } from "./typst";
 import { typstEditing } from "./typst-editing";
 import { typstScriptGroups } from "./typst-scripts";
 
 stubRangeGeometry();
+
+beforeAll(async () => {
+  await loadTypstParser();
+});
 
 const views: EditorView[] = [];
 

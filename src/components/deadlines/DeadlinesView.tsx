@@ -31,7 +31,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -757,6 +757,7 @@ export function DeadlinesView() {
               <div className="mt-5 flex items-center gap-2 rounded-lg border bg-background p-2 shadow-sm">
                 <Search className="ml-2 size-5 shrink-0 text-muted-foreground" />
                 <Input
+                  {...SEARCH_INPUT}
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder={t(($) => $.library.deadlines.searchPlaceholder)}

@@ -28,6 +28,7 @@ import { logError } from "@/lib/log";
 import {
   listOllamaModels,
   ollamaInstalled,
+  ollamaUnreachable,
   startOllama,
   DEFAULT_OLLAMA_HOST,
 } from "@/lib/ollama";
@@ -65,10 +66,8 @@ import { MATHPIX_TOOLS_PROVIDER } from "@/features/tools-ai/tools-choice";
 import { editableKeys, mergeKeyChanges, withKey, withoutKey } from "./ai-keys";
 import { agentErrorKind } from "@/lib/agent-backend";
 import { ResetToDefaults } from "@/components/settings/ResetToDefaults";
-import {
-  aiSettingsDestination,
-  type AiSettingsTab,
-} from "./ai-settings-navigation";
+import { aiSettingsDestination, isAiSettingsTab } from "./ai-settings-navigation";
+import { useSettingsTab } from "./use-settings-tab";
 
 const AcpAgentsTab = lazy(() => import("./ai/AcpAgentsTab").then((module) => ({ default: module.AcpAgentsTab })), { warm: () => intended("settings") });
 const ToolsTab = lazy(() => import("./ai/ToolsTab").then((module) => ({ default: module.ToolsTab })), { warm: () => intended("settings") });
@@ -187,8 +186,8 @@ function resetProviderModelPreferences(
 
 export function AISection() {
   const { t, i18n } = useTranslation(["common", "settings"]);
-  const [tab, setTab] = useState<AiSettingsTab>("providers");
-  const [mcpMounted, setMcpMounted] = useState(false);
+  const [tab, setTab] = useSettingsTab("ai", "providers", isAiSettingsTab);
+  const [mcpMounted, setMcpMounted] = useState(tab === "mcp");
   const [cfg, setCfg] = useState<AppConfig>(DEFAULT_CFG);
   const [configLoaded, setConfigLoaded] = useState(false);
   const [keys, setKeys] = useState<Record<string, string>>({});
@@ -229,7 +228,7 @@ export function AISection() {
         document.getElementById(elementId)?.scrollIntoView({ block: "nearest" });
       });
     }
-  }, [scrollTarget, setScrollTarget]);
+  }, [scrollTarget, setScrollTarget, setTab]);
 
   useEffect(() => {
     void getConfig().then((c) => {
@@ -283,7 +282,7 @@ export function AISection() {
     queryFn: () => listOllamaModels(ollamaHost),
     retry: false,
     staleTime: 30_000,
-    meta: { silent: true },
+    meta: { silent: true, expectedFailure: ollamaUnreachable },
   });
   const ollamaInstalledQuery = useQuery({
     queryKey: ["ollama-installed"],
@@ -749,9 +748,8 @@ export function AISection() {
       <Tabs
         value={tab}
         onValueChange={(value) => {
-          const next = value as AiSettingsTab;
-          if (next === "mcp") setMcpMounted(true);
-          setTab(next);
+          if (value === "mcp") setMcpMounted(true);
+          setTab(value);
         }}
         className="space-y-4"
       >

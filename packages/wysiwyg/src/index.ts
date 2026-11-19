@@ -61,6 +61,7 @@ export type {
   WysiwygExtensionOptions,
   MathRenderPort,
   MathRenderResult,
+  AssetUnavailable,
   AssetUrlResolver,
   LinkHrefLocalizer,
   LinkHrefOpener,

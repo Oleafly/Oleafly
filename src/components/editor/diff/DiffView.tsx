@@ -1,4 +1,5 @@
 import { isEditorMutationLocked, registerEditorMutationOwner } from "@/lib/editor-mutation-lease";
+import { functionKeyTextInput } from "@/lib/function-key-text";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Compartment, EditorState, type Extension } from "@codemirror/state";
@@ -242,7 +243,7 @@ export function DiffView() {
             transaction.docChanged && (isEditorMutationLocked(projectId) || diffFileReadOnly(projectId, path))
               ? []
               : transaction),
-          ...(editable ? [onEdit] : readOnly),
+          ...(editable ? [onEdit, functionKeyTextInput] : readOnly),
         ];
 
         if (mode === "split") {

@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { isImeEnter } from "@/components/ai/composer/ime";
 import { Button } from "@/components/ui/button";
 import { DropdownMenuCheckboxItem, DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Popover } from "@/components/ui/popover";
 import { MENU_ICON, ToolbarMenuButton, ToolbarMenuHost, ToolbarSubMenu } from "@/components/ui/toolbar-overflow";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -234,6 +234,7 @@ export function FieldForm({
   return (
     <div className="flex flex-col gap-2">
       <Input
+        {...LITERAL_INPUT}
         aria-label={label}
         aria-invalid={invalid || undefined}
         aria-describedby={invalid ? errorId : undefined}

@@ -151,6 +151,7 @@ export function OutlineRail() {
       <Popover
         openOnHover
         side="left"
+        align="center"
         ariaLabel={label}
         contentAriaLabel={label}
         className="w-80 p-1"

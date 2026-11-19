@@ -14,7 +14,9 @@ export type DeckMode = "edit" | "present" | "page";
 export interface DeckOptions {
   readonly mode: DeckMode;
   readonly page: number;
+  readonly revealed?: number;
   readonly assets: Readonly<Record<string, string>>;
+  readonly file?: string;
 }
 
 export interface DeckMessages extends RuntimeMessages {
@@ -56,8 +58,15 @@ function DeckApp({
   deck,
   mode,
   page,
+  revealed,
   stageRef,
-}: Readonly<{ deck: DeckModule; mode: DeckMode; page: number; stageRef: { current: DeckStageHandle | null } }>) {
+}: Readonly<{
+  deck: DeckModule;
+  mode: DeckMode;
+  page: number;
+  revealed: number | undefined;
+  stageRef: { current: DeckStageHandle | null };
+}>) {
   const stage = useRef<DeckStageHandle>(null);
   stageRef.current = stage.current;
   useEffect(() => {
@@ -68,6 +77,7 @@ function DeckApp({
       ref={stage}
       deck={deck}
       page={page}
+      revealed={revealed}
       flat={mode !== "edit"}
       keyboard={mode === "edit"}
       onPositionChange={(position) => send({ type: "position", ...position })}
@@ -83,6 +93,7 @@ export function createDeckRunner(runtime: ArtifactRuntime) {
     const stageRef: { current: DeckStageHandle | null } = { current: null };
     let root: Root | null = null;
     let page = options.page;
+    let revealed = options.revealed;
     let revision = 0;
     let assets = options.assets;
 
@@ -94,7 +105,7 @@ export function createDeckRunner(runtime: ArtifactRuntime) {
     };
 
     const load = (source: string) => {
-      const result = runtime.compileModule(source, messages, assetModules(assets));
+      const result = runtime.compileModule(source, messages, assetModules(assets), options.file);
       if ("error" in result && typeof result.error === "object" && result.error !== null && "title" in result.error) {
         const { title, detail } = result.error as { title: string; detail: string };
         fail(title, detail);
@@ -118,14 +129,16 @@ export function createDeckRunner(runtime: ArtifactRuntime) {
       }
       root.render(
         <Boundary resetKey={revision}>
-          <DeckApp deck={deck} mode={options.mode} page={page} stageRef={stageRef} />
+          <DeckApp deck={deck} mode={options.mode} page={page} revealed={revealed} stageRef={stageRef} />
         </Boundary>,
       );
     };
 
     window.addEventListener(FRAME_EVENT, (event) => {
       const detail = (event as CustomEvent).detail as Record<string, unknown> | null;
-      if (detail?.type === "position" && typeof detail.page === "number") page = detail.page;
+      if (detail?.type !== "position" || typeof detail.page !== "number") return;
+      page = detail.page;
+      revealed = typeof detail.revealed === "number" ? detail.revealed : undefined;
     });
     window.addEventListener(HOST_EVENT, (event) => {
       const command = readCommand((event as CustomEvent).detail);

@@ -28,7 +28,8 @@ vi.mock("@/components/library/ProjectImportMenu", () => ({
   ProjectImportMenu: ({ trigger }: { trigger: (busy: boolean) => ReactNode }) =>
     trigger(false),
 }));
-vi.mock("@/lib/tauri", () => ({
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  isMissingCompiledPdf: (await importOriginal<typeof import("@/lib/tauri")>()).isMissingCompiledPdf,
   appendAppLog: vi.fn(async () => {}),
   recycleProject: (...args: unknown[]) => recycleProject(...(args as [])),
   duplicateProject: (...args: unknown[]) => duplicateProject(...(args as [])),

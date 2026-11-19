@@ -107,7 +107,7 @@ function CodeSample() {
   );
 }
 
-export function NotesAppearancePreview({ beside = false, className }: Readonly<{ beside?: boolean; className?: string }>) {
+export function NotesAppearancePreview({ className }: Readonly<{ className?: string }>) {
   const { t } = useTranslation(["notes"]);
   const appearanceRef = useNotesAppearanceRef<HTMLDivElement>();
   return (
@@ -115,20 +115,18 @@ export function NotesAppearancePreview({ beside = false, className }: Readonly<{
       aria-label={t(($) => $.notes.notesPreview.label)}
       data-testid="settings-notes-preview"
       className={cn(
-        beside ? "sticky top-0 self-start" : "sticky -top-5 isolate z-10 -mx-1 bg-background px-1 pb-2 pt-2 dark:bg-popover",
+        "sticky -top-5 isolate z-10 -mx-1 bg-background px-1 pb-2 pt-2 dark:bg-popover",
+        "@min-[52rem]:top-0 @min-[52rem]:isolation-auto @min-[52rem]:z-auto @min-[52rem]:mx-0 @min-[52rem]:self-start @min-[52rem]:bg-transparent @min-[52rem]:p-0 @min-[52rem]:dark:bg-transparent",
         className,
       )}
     >
-      {beside ? null : <span aria-hidden className="absolute inset-0 -z-10 bg-muted/30" />}
+      <span aria-hidden className="absolute inset-0 -z-10 bg-muted/30 @min-[52rem]:hidden" />
       <div
         ref={appearanceRef}
         data-testid="settings-notes-preview-root"
-        className={cn(
-          "overflow-y-auto rounded-lg border bg-background",
-          beside ? "max-h-[calc(var(--settings-height)-5.5625rem)] px-5 py-4" : "max-h-72 px-6 py-5",
-        )}
+        className="max-h-72 overflow-y-auto rounded-lg border bg-background px-6 py-5 @min-[52rem]:max-h-[calc(var(--settings-height)-5.5625rem)] @min-[52rem]:px-5 @min-[52rem]:py-4"
       >
-        <div aria-hidden inert className={cn("pointer-events-none select-none", beside && "[zoom:0.8]")}>
+        <div aria-hidden inert className="pointer-events-none select-none @min-[52rem]:[zoom:0.8]">
           <p className="note-title text-2xl font-bold">{t(($) => $.notes.notesPreview.title)}</p>
           <div className="wysiwyg-content note-body mt-4">
             <div className="ProseMirror">

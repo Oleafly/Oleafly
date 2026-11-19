@@ -125,6 +125,7 @@ import { isTerminalTarget } from "@/lib/terminal-keys";
 import { terminalOwnsKey } from "@/lib/terminal-shortcut-guard";
 import {
   historyCommand,
+  historyOwnerAt,
   inPlainField,
   inVisualForm,
   runFieldHistory,
@@ -394,9 +395,9 @@ function runDocumentMenuHistory(active: HTMLElement | null, redo: boolean): void
 
 function runMenuHistory(redo: boolean): void {
   const active = document.activeElement as HTMLElement | null;
-  const noteHistory = inPlainField(active) ? null : noteHistoryAt(active);
-  if (noteHistory) {
-    noteHistory(redo);
+  const ownHistory = inPlainField(active) ? null : (noteHistoryAt(active) ?? historyOwnerAt(active));
+  if (ownHistory) {
+    ownHistory(redo);
     return;
   }
   const richText = separateRichTextEditor(active);
@@ -811,11 +812,11 @@ function AppContent() {
       const isRedo = command === "redo";
       if (useTourStore.getState().activeTourId) return;
       const focused = document.activeElement;
-      const noteHistory = focused?.closest(".ProseMirror") || inPlainField(focused) ? null : noteHistoryAt(focused);
-      if (noteHistory) {
+      const ownHistory = focused?.closest(".ProseMirror") || inPlainField(focused) ? null : (noteHistoryAt(focused) ?? historyOwnerAt(focused));
+      if (ownHistory) {
         e.preventDefault();
         e.stopPropagation();
-        noteHistory(isRedo);
+        ownHistory(isRedo);
         return;
       }
       if (!useFilesStore.getState().projectId || projectCovered()) return;

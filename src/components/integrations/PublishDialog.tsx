@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { GitBranch, Lock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -398,6 +398,7 @@ export function PublishDialog({
             {t(($) => $.library.github.repositoryName)}
           </span>
           <Input
+            {...LITERAL_INPUT}
             id="publish-repository-name"
             value={repoName}
             onChange={(e) => setRepoName(e.target.value)}
@@ -470,12 +471,12 @@ export function PublishDialog({
       <label htmlFor="publish-url-input" className="block space-y-1.5">
         <span className="text-xs font-medium text-muted-foreground">{t(($) => $.library.github.urlLabel)}</span>
         <Input
+          {...LITERAL_INPUT}
           id="publish-url-input"
           data-testid="publish-url-input"
           value={urlInput}
           onChange={(e) => setUrlInput(e.target.value)}
           placeholder={t(($) => $.library.import.clonePlaceholder)}
-          spellCheck={false}
           autoComplete="off"
           className="w-full font-mono text-xs"
         />

@@ -1075,6 +1075,9 @@
       },
       "figure": {
         "imageUnavailable": "Bild nicht gefunden",
+        "imageOutside": "Bilder außerhalb des Projekts werden nicht angezeigt",
+        "imageUnreadable": "Dieses Bild konnte nicht angezeigt werden",
+        "imageAltText": "Alternativtext: {{alt}}",
         "imageLoading": "Bild wird geladen…",
         "imageAlt": "Bild der Abbildung {{path}}",
         "width": "Breite",
@@ -1708,6 +1711,9 @@
   "bibList": {
     "count_one": "{{count}} Literaturangabe",
     "count_other": "{{count}} Literaturangaben",
+    "matchCount_one": "{{shown}} von {{total}} Literaturangabe",
+    "matchCount_other": "{{shown}} von {{total}} Literaturangaben",
+    "clearSearch": "Suche löschen",
     "empty": "Diese Datei enthält noch keine Einträge.",
     "etAl": "{{author}} et al.",
     "noMatch": "Keine Einträge passen zur Suche.",

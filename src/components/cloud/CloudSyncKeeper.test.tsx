@@ -116,7 +116,7 @@ beforeEach(() => {
   useCloudStore.setState(initialCloud, true);
   useCloudStore.setState({ autoSync: true });
   useFilesStore.setState({ projectId: null, files: {}, refreshProjects: vi.fn(async () => undefined) });
-  useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: "general" });
+  useSettingsStore.setState({ settingsOpen: false, settingsInitialSection: null });
   useTourStore.setState({ activeTourId: null });
   delete document.documentElement.dataset.cloudAttention;
   mocks.cloud.cloudState.mockResolvedValue(cloudState());
@@ -404,11 +404,10 @@ describe("CloudSyncKeeper", () => {
     act(() => {
       useCloudStore.getState().requestNav(null);
       useSettingsStore.getState().setSettingsOpen(false);
-      useSettingsStore.getState().setSettingsInitialSection("general");
     });
     act(() => useSettingsStore.getState().setSettingsOpen(true));
     expect(useCloudStore.getState().navRequest).toBeNull();
-    expect(useSettingsStore.getState().settingsInitialSection).toBe("general");
+    expect(useSettingsStore.getState().settingsInitialSection).toBeNull();
     act(() => useSettingsStore.getState().setSettingsOpen(false));
     mocks.cloud.cloudState.mockResolvedValue(cloudState({ status: "revoked" }));
     await act(async () => {
@@ -421,7 +420,6 @@ describe("CloudSyncKeeper", () => {
     expect(useCloudStore.getState().navRequest).toBeNull();
     act(() => {
       useSettingsStore.getState().setSettingsOpen(false);
-      useSettingsStore.getState().setSettingsInitialSection("general");
       useTourStore.setState({ activeTourId: "settings" });
       useSettingsStore.getState().setSettingsOpen(true);
     });
@@ -438,7 +436,7 @@ describe("CloudSyncKeeper", () => {
     await mountKeeper();
     act(() => useSettingsStore.getState().setSettingsOpen(true));
     expect(useCloudStore.getState().navRequest).toBeNull();
-    expect(useSettingsStore.getState().settingsInitialSection).toBe("general");
+    expect(useSettingsStore.getState().settingsInitialSection).toBeNull();
   });
 
   it("clears every timer and listener when it unmounts", async () => {

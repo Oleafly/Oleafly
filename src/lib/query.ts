@@ -1,6 +1,6 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
 import { describeError } from "@/lib/app-error";
-import { logError } from "@/lib/log";
+import { logError, logInfo } from "@/lib/log";
 import { toast } from "@/lib/toast";
 
 export const staleTimes = {
@@ -21,7 +21,9 @@ export function createAppQueryClient(): QueryClient {
   return new QueryClient({
     queryCache: new QueryCache({
       onError: (error, query) => {
-        void logError("query", error);
+        const expected = query.meta?.expectedFailure;
+        if (typeof expected === "function" && expected(error) === true) void logInfo("query", error);
+        else void logError("query", error);
         if (query.meta?.notify !== true) return;
         toast.errorUnique(`query:${query.queryHash}`, describeError(error));
       },

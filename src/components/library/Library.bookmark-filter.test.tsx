@@ -30,7 +30,8 @@ vi.mock("@/components/library/Book", () => ({
   DEFAULT_BOOK_COLOR: "#287fd1",
   useBookColorLabels: () => ({}),
 }));
-vi.mock("@/lib/tauri", () => ({
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  isMissingCompiledPdf: (await importOriginal<typeof import("@/lib/tauri")>()).isMissingCompiledPdf,
   appendAppLog: vi.fn(async () => {}),
   recycleProject: vi.fn(),
   duplicateProject: vi.fn(),

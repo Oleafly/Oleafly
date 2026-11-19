@@ -1075,6 +1075,9 @@
       },
       "figure": {
         "imageUnavailable": "Afbeelding niet gevonden",
+        "imageOutside": "Afbeeldingen buiten het project worden niet getoond",
+        "imageUnreadable": "Deze afbeelding kon niet worden getoond",
+        "imageAltText": "Alternatieve tekst: {{alt}}",
         "imageLoading": "Afbeelding laden…",
         "imageAlt": "Figuurafbeelding {{path}}",
         "width": "Breedte",
@@ -1708,6 +1711,9 @@
   "bibList": {
     "count_one": "{{count}} referentie",
     "count_other": "{{count}} referenties",
+    "matchCount_one": "{{shown}} van {{total}} referentie",
+    "matchCount_other": "{{shown}} van {{total}} referenties",
+    "clearSearch": "Zoekopdracht wissen",
     "empty": "Dit bestand heeft nog geen referenties.",
     "etAl": "{{author}} e.a.",
     "noMatch": "Geen referenties komen overeen met je zoekopdracht.",

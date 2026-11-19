@@ -88,12 +88,17 @@ function VHandle({ id, onKeyDownCapture }: Readonly<{ id: string; onKeyDownCaptu
       style={{ cursor: "col-resize" }}
       className="resize-handle-col group relative flex w-1.5 shrink-0 select-none bg-background"
     >
-      <span className={cn("absolute inset-0 flex items-center justify-center", "transition-colors hover:bg-accent/40")}>
+      <span
+        className={cn(
+          "absolute inset-0 flex items-center justify-center transition-colors",
+          "group-hover:bg-accent/40 group-data-[separator=hover]:bg-accent/40 group-data-[separator=active]:bg-accent/40",
+        )}
+      >
         <span
           className={cn(
             "pointer-events-none h-10 w-1 rounded-full bg-border opacity-0 transition-[opacity,background-color]",
-            "group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[separator=active]:opacity-100",
-            "group-hover:bg-ring group-data-[separator=active]:bg-ring",
+            "group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[separator=hover]:opacity-100 group-data-[separator=active]:opacity-100",
+            "group-hover:bg-ring group-data-[separator=hover]:bg-ring group-data-[separator=active]:bg-ring",
           )}
         />
       </span>

@@ -1,7 +1,10 @@
 use serde::Serialize;
 
 use crate::caps::{ModelCaps, ReasoningCaps};
+use crate::error::AgentError;
 use crate::provider::{catalog_entry, CustomProvider, Resolved};
+
+pub const TURNED_DOWN_EFFORT_HINT: &str = "This provider is set to send reasoning_effort. If its server doesn't take that field, set the effort to Auto or turn off Send reasoning effort in the provider's settings.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -285,6 +288,45 @@ pub fn apply_custom_effort(resolved: &mut Resolved, custom: &[CustomProvider]) {
     resolved.caps.reasoning.efforts = sends_effort.then(|| CUSTOM_EFFORTS.to_vec());
 }
 
+pub fn sends_custom_effort(resolved: &Resolved, requested: Option<Effort>) -> bool {
+    catalog_entry(&resolved.provider_id).is_none()
+        && effective_effort(resolved, requested).is_some_and(|effort| effort != Effort::Off)
+}
+
+pub fn explain_turned_down_effort(
+    resolved: &Resolved,
+    requested: Option<Effort>,
+    error: AgentError,
+) -> AgentError {
+    if error.is_context_overflow() || !sends_custom_effort(resolved, requested) {
+        return error;
+    }
+    match error {
+        AgentError::Provider {
+            status: status @ (400 | 422),
+            message,
+            retry_after,
+        } => AgentError::Provider {
+            status,
+            message: if message.trim().is_empty() {
+                TURNED_DOWN_EFFORT_HINT.to_owned()
+            } else {
+                {
+                    let said = message.trim_end();
+                    let stop = if said.ends_with(['.', '!', '?']) {
+                        ""
+                    } else {
+                        "."
+                    };
+                    format!("{said}{stop} {TURNED_DOWN_EFFORT_HINT}")
+                }
+            },
+            retry_after,
+        },
+        other => other,
+    }
+}
+
 pub fn clamp_effort(requested: Effort, choices: &[Effort]) -> Option<Effort> {
     if choices.contains(&requested) {
         return Some(requested);
@@ -467,6 +509,76 @@ mod tests {
             }],
         );
         assert_eq!(openai.caps, before);
+    }
+
+    #[test]
+    fn a_custom_provider_that_turns_effort_down_gets_the_way_out() {
+        let gateway = CustomProvider {
+            id: "my-gateway".into(),
+            base_url: "https://gateway.test/v1".into(),
+            key_optional: false,
+            reasoning_effort: true,
+        };
+        let mut model = resolved(
+            "my-gateway",
+            "mock-model",
+            Wire::OpenAiChat {
+                base_url: "https://gateway.test/v1".into(),
+                reasoning_content: false,
+            },
+        );
+        apply_custom_effort(&mut model, &[gateway]);
+        let refused = AgentError::provider(
+            400,
+            "Unrecognized request argument supplied: reasoning_effort",
+        );
+
+        let explained = explain_turned_down_effort(&model, Some(High), refused.clone());
+        assert_eq!(explained.status(), Some(400));
+        assert_eq!(
+            explained.to_string(),
+            format!(
+                "The provider returned 400. Unrecognized request argument supplied: reasoning_effort. {TURNED_DOWN_EFFORT_HINT}"
+            )
+        );
+        assert_eq!(
+            explain_turned_down_effort(
+                &model,
+                Some(High),
+                AgentError::provider(400, "Bad request.")
+            ),
+            AgentError::provider(400, format!("Bad request. {TURNED_DOWN_EFFORT_HINT}"))
+        );
+        assert_eq!(
+            explain_turned_down_effort(&model, Some(High), AgentError::provider(422, "  ")),
+            AgentError::provider(422, TURNED_DOWN_EFFORT_HINT)
+        );
+
+        assert_eq!(
+            explain_turned_down_effort(&model, None, refused.clone()),
+            refused
+        );
+        let overflow = AgentError::provider(400, "maximum context length is 8192 tokens");
+        assert_eq!(
+            explain_turned_down_effort(&model, Some(High), overflow.clone()),
+            overflow
+        );
+        let busy = AgentError::provider(503, "overloaded");
+        assert_eq!(
+            explain_turned_down_effort(&model, Some(High), busy.clone()),
+            busy
+        );
+        let openai = resolved(
+            "openai",
+            "gpt-5",
+            Wire::OpenAiResponses {
+                base_url: "https://api.openai.com/v1".into(),
+            },
+        );
+        assert_eq!(
+            explain_turned_down_effort(&openai, Some(High), refused.clone()),
+            refused
+        );
     }
 
     #[test]

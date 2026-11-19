@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Cloud, Globe, Package, Server, type LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CheckBadge } from "@/components/ui/check-badge";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Spinner } from "@/components/ui/spinner";
 import { describeError } from "@/lib/app-error";
@@ -111,15 +111,13 @@ function AddressForm({
     >
       <div className="flex gap-2">
         <Input
+          {...LITERAL_INPUT}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           aria-label={label}
           aria-invalid={error ? true : undefined}
           data-testid={`${testId}-input`}
-          spellCheck={false}
-          autoCapitalize="off"
-          autoCorrect="off"
           maxLength={2048}
           disabled={disabled}
           className="min-w-0 flex-1 font-mono text-xs"

@@ -27,7 +27,8 @@ vi.mock("@/components/pdf/PdfViewer", () => ({ PdfViewer: () => null }));
 vi.mock("@/components/library/ProjectImportMenu", () => ({
   ProjectImportMenu: ({ trigger }: { trigger: (busy: boolean) => ReactNode }) => trigger(false),
 }));
-vi.mock("@/lib/tauri", () => ({
+vi.mock("@/lib/tauri", async (importOriginal) => ({
+  isMissingCompiledPdf: (await importOriginal<typeof import("@/lib/tauri")>()).isMissingCompiledPdf,
   appendAppLog: vi.fn(async () => {}),
   probeProjectAvailability: (ids: string[]) => probeProjectAvailability(ids),
   revealProject: (projectId: string, path?: string | null) => revealProject(projectId, path),

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { LoadingState } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
 import type {
   CollabCommentsStatus,
@@ -204,6 +204,7 @@ function AddPeople({
       </label>
       <div className="flex items-center gap-2">
         <Input
+          {...SEARCH_INPUT}
           id={inputId}
           value={query}
           autoComplete="off"

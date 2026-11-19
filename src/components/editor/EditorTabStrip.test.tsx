@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
 import { useDiffStore } from "@/store/diff";
 import { useFilesStore } from "@/store/files";
@@ -199,6 +199,63 @@ describe("reordering editor tabs", () => {
 
     expect(stripKeys()).toEqual(["f:methods.tex", "f:intro.tex", "d:staged:refs.bib", "f:results.tex"]);
     expect(screen.getByText("methods.tex")).toHaveFocus();
+  });
+});
+
+describe("a strip with more tabs than fit", () => {
+  let revealed: Element[] = [];
+
+  beforeEach(() => {
+    revealed = [];
+    Object.defineProperty(Element.prototype, "scrollIntoView", {
+      configurable: true,
+      writable: true,
+      value(this: Element) {
+        revealed.push(this);
+      },
+    });
+  });
+
+  afterEach(() => {
+    Reflect.deleteProperty(Element.prototype, "scrollIntoView");
+  });
+
+  async function settle() {
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+
+  it("brings the open tab into view when it opens or another tab is picked", async () => {
+    renderStrip();
+    expect(revealed.at(-1)).toBe(tabRow("intro.tex"));
+
+    act(() => useFilesStore.setState({ activePath: "results.tex" }));
+    await settle();
+    expect(revealed.at(-1)).toBe(tabRow("results.tex"));
+    expect(tabRow("results.tex")).toHaveAttribute("data-active-tab");
+    expect(tabRow("intro.tex")).not.toHaveAttribute("data-active-tab");
+
+    act(() =>
+      useFilesStore.setState((state) => ({
+        openTabs: [...state.openTabs, "appendix.tex"],
+        tabOrder: { ...state.tabOrder, "appendix.tex": 5 },
+        activePath: "appendix.tex",
+      })),
+    );
+    await settle();
+    expect(revealed.at(-1)).toBe(tabRow("appendix.tex"));
+  });
+
+  it("fades the edge past which tabs are hidden instead of cutting a name off", () => {
+    renderStrip();
+    const strip = tabRow("intro.tex").parentElement as HTMLElement;
+    Object.defineProperty(strip, "scrollWidth", { configurable: true, value: 900 });
+    Object.defineProperty(strip, "clientWidth", { configurable: true, value: 300 });
+    fireEvent.scroll(strip);
+    expect(strip).toHaveAttribute("data-overflow-end");
+    expect(strip).not.toHaveAttribute("data-overflow-start");
+    expect(strip.className).toContain("data-[overflow-end]:[mask-image:");
   });
 });
 

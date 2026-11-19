@@ -32,7 +32,7 @@ import {
   X,
 } from "lucide-react";
 import * as tauri from "@/lib/tauri";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty";
@@ -1728,6 +1728,7 @@ function Header({
       {branchFormOpen ? (
         <div className="flex gap-1.5 border-b border-sidebar-border p-2">
           <Input
+            {...LITERAL_INPUT}
             autoFocus
             value={branchDraft}
             onChange={(event) => onBranchDraft?.(event.target.value)}

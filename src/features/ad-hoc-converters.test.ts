@@ -31,7 +31,8 @@ vi.mock("@/lib/tauri", () => ({
 }));
 vi.mock("@/features/pandoc", () => ({ ensurePandoc: mocks.ensurePandoc }));
 vi.mock("@/lib/agent-backend", () => ({ completeViaBackend: mocks.completeViaBackend }));
-vi.mock("@/lib/ollama", () => ({
+vi.mock("@/lib/ollama", async (importOriginal) => ({
+  ollamaUnreachable: (await importOriginal<typeof import("@/lib/ollama")>()).ollamaUnreachable,
   DEFAULT_OLLAMA_HOST: "http://127.0.0.1:11434",
   listOllamaModelDetails: mocks.listOllamaModelDetails,
 }));

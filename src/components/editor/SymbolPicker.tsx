@@ -4,7 +4,7 @@ import * as PopoverPrimitive from "@radix-ui/react-popover";
 import { Omega } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Popover } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
@@ -488,6 +488,7 @@ export function SymbolPicker({
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="border-b p-2">
             <Input
+              {...SEARCH_INPUT}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t(($) => $.symbols.picker.searchPlaceholder)}

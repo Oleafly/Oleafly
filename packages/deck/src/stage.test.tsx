@@ -40,7 +40,7 @@ function canvas(): HTMLElement {
   return el;
 }
 
-function stageAt(deck: DeckModule, page = 0, props: { keyboard?: boolean; flat?: boolean } = {}) {
+function stageAt(deck: DeckModule, page = 0, props: { keyboard?: boolean; flat?: boolean; revealed?: number } = {}) {
   const ref = createRef<DeckStageHandle>();
   const positions: DeckPosition[] = [];
   const onPositionChange = (position: DeckPosition) => positions.push(position);
@@ -231,6 +231,26 @@ describe("DeckStage", () => {
 
     act(() => stage.ref.current?.goto(2));
     expect(shown()).toBe("Closing");
+  });
+
+  it("resumes partway through a slide's steps and plays on from there", () => {
+    const deck = deckOf([Intro, Listing, Closing]);
+    const steps = () => [...document.querySelectorAll("[data-osd-step]")].map((step) => step.getAttribute("data-osd-step"));
+    const stage = stageAt(deck, 1, { revealed: 1 });
+    expect(stage.last()).toEqual({ page: 1, revealed: 1, steps: 2 });
+    expect(steps()).toEqual(["revealed", "pending"]);
+
+    act(() => stage.ref.current?.next());
+    expect(stage.last()).toEqual({ page: 1, revealed: 2, steps: 2 });
+    act(() => stage.ref.current?.next());
+    expect(shown()).toBe("Closing");
+  });
+
+  it("starts a resumed slide with none or all of its steps, and ignores steps a slide no longer has", () => {
+    const deck = deckOf([Intro, Listing]);
+    expect(stageAt(deck, 1, { revealed: 0 }).last()).toEqual({ page: 1, revealed: 0, steps: 2 });
+    expect(stageAt(deck, 1, { revealed: 9 }).last()).toEqual({ page: 1, revealed: 2, steps: 2 });
+    expect(stageAt(deck, 0, { revealed: 3 }).last()).toEqual({ page: 0, revealed: 0, steps: 0 });
   });
 
   it("follows the page it is given, clamped to the deck, showing every step after a jump", () => {

@@ -6,7 +6,9 @@ export interface MathRenderResult {
 
 export type MathRenderPort = (body: string, display: boolean) => MathRenderResult;
 
-export type AssetUrlResolver = (path: string) => Promise<string | null>;
+export type AssetUnavailable = Readonly<{ reason: "outside" | "unreadable" }>;
+
+export type AssetUrlResolver = (path: string) => Promise<string | null | AssetUnavailable>;
 
 export type LinkHrefLocalizer = (href: string) => string | null;
 

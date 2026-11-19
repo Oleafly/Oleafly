@@ -35,7 +35,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import type { MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
+import type { EditorMode, MarkdownSplitLayout } from "@/lib/wysiwyg-mode";
 import { Tooltip } from "@/components/ui/tooltip";
 import { editorFind, editorRedo, editorUndo, getEditorView } from "./cm/controller";
 import { useEditorHistory } from "./history-signal";
@@ -135,8 +135,6 @@ export function IconBtn({
     </Tooltip>
   );
 }
-
-export type EditorMode = "code" | "visual" | "both";
 
 function modeSegment(selected: boolean, className?: string): string {
   return cn(

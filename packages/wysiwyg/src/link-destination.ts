@@ -15,11 +15,14 @@ export function linkHrefForPath(path: string, fragment = ""): string {
   return `${encodeURI(path).replaceAll("#", "%23").replaceAll("?", "%3F")}${encodeURI(fragment)}`;
 }
 
-export function readableLinkHref(href: string): string {
-  if (isUrlWithScheme(href)) return href;
+export function decodedHref(href: string): string {
   try {
     return decodeURI(href);
   } catch {
     return href;
   }
+}
+
+export function readableLinkHref(href: string): string {
+  return isUrlWithScheme(href) ? href : decodedHref(href);
 }

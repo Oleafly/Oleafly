@@ -1075,6 +1075,9 @@
       },
       "figure": {
         "imageUnavailable": "Bilden hittades inte",
+        "imageOutside": "Bilder utanför projektet visas inte",
+        "imageUnreadable": "Bilden kunde inte visas",
+        "imageAltText": "Alternativ text: {{alt}}",
         "imageLoading": "Läser in bilden…",
         "imageAlt": "Figurbild {{path}}",
         "width": "Bredd",
@@ -1708,6 +1711,9 @@
   "bibList": {
     "count_one": "{{count}} referens",
     "count_other": "{{count}} referenser",
+    "matchCount_one": "{{shown}} av {{total}} referens",
+    "matchCount_other": "{{shown}} av {{total}} referenser",
+    "clearSearch": "Rensa sökningen",
     "empty": "Filen har inga referenser än.",
     "etAl": "{{author}} m.fl.",
     "noMatch": "Inga referenser matchar sökningen.",

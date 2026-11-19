@@ -2,12 +2,23 @@
 import { act, fireEvent, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
+import { logError, logWarning } from "@/lib/log";
+import { applyTheme } from "@/lib/theme";
 import { useSettingsStore } from "@/store/settings";
 import { paintStillBlock } from "./block-views";
 import { noteBlockName } from "./note-blocks";
 import { notePaperText } from "./note-to-paper";
 import { destroyKbEditors, kbNote } from "./tests/kb-editor-fixtures";
-import { loadXPost, parseXPost, serializeXPost, X_POST_INFO, xPostBlock, xPostFromFetch, xPostLink } from "./x-post-block";
+import {
+  loadXPost,
+  parseXPost,
+  serializeXPost,
+  X_POST_INFO,
+  xPostBlock,
+  xPostFromFetch,
+  xPostGone,
+  xPostLink,
+} from "./x-post-block";
 import "./tests/setup";
 
 const bridge = vi.hoisted(() => ({
@@ -22,7 +33,11 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   noteVideoFrameOrigin: bridge.origin,
 }));
 vi.mock("@/lib/system-browser", async (importOriginal) => ({ ...(await importOriginal<object>()), openInSystemBrowser: bridge.open }));
-vi.mock("@/lib/log", async (importOriginal) => ({ ...(await importOriginal<object>()), logError: vi.fn(async () => undefined) }));
+vi.mock("@/lib/log", async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  logError: vi.fn(async () => undefined),
+  logWarning: vi.fn(async () => undefined),
+}));
 
 const copy = enNotes.blocks.xPost;
 const FENCE = "```";
@@ -35,6 +50,10 @@ const disposers: (() => void)[] = [];
 beforeEach(() => {
   bridge.post.mockReset();
   bridge.open.mockClear();
+  bridge.origin.mockClear();
+  vi.mocked(logError).mockClear();
+  vi.mocked(logWarning).mockClear();
+  applyTheme("light");
   useSettingsStore.setState({ notesXPostsLive: false });
 });
 
@@ -42,6 +61,7 @@ afterEach(() => {
   for (const dispose of disposers.splice(0)) dispose();
   for (const host of hosts.splice(0)) host.remove();
   destroyKbEditors();
+  applyTheme("light");
   useSettingsStore.setState({ notesXPostsLive: false });
 });
 
@@ -62,6 +82,14 @@ async function paint(source: string): Promise<HTMLElement> {
 }
 
 describe("the x-post block", () => {
+  it("tells a post X no longer has apart from other failures", () => {
+    expect(xPostGone("X could not show this post (404 Not Found).")).toBe(true);
+    expect(xPostGone("X could not show this post (410 Gone).")).toBe(true);
+    expect(xPostGone("X could not show this post (500 Internal Server Error).")).toBe(false);
+    expect(xPostGone("X did not answer: dns error")).toBe(false);
+    expect(xPostGone(new Error("X could not show this post (404 Not Found)."))).toBe(false);
+  });
+
   it("knows links to posts on X and Twitter and writes them as x.com", () => {
     expect(xPostLink("https://twitter.com/jack/status/20?s=46")).toEqual({ url: POST, id: "20" });
     expect(xPostLink("https://mobile.twitter.com/jack/statuses/20/photo/1")).toEqual({ url: POST, id: "20" });
@@ -120,13 +148,103 @@ describe("the x-post block", () => {
 
   it("starts with the live post when the setting asks for it, in the dark theme when the app is dark", async () => {
     useSettingsStore.setState({ notesXPostsLive: true });
-    document.documentElement.classList.add("dark");
+    applyTheme("dark");
+    const preview = await paint(SAVED);
+    expect(preview.querySelector("iframe")?.getAttribute("src")).toBe("http://127.0.0.1:4321/video#x/20?theme=dark");
+  });
+
+  it("reloads the live post in the new theme when the app's theme changes", async () => {
+    useSettingsStore.setState({ notesXPostsLive: true });
+    const preview = await paint(SAVED);
+    act(() => applyTheme("dark"));
+    await settle();
+    expect(preview.querySelector("iframe")?.getAttribute("src")).toBe("http://127.0.0.1:4321/video#x/20?theme=dark");
+  });
+
+  it("follows the setting in a note that is already open, until the card is switched by hand", async () => {
+    const preview = await paint(SAVED);
+    const touched = await paint(SAVED);
+    fireEvent.click(within(touched).getByRole("button", { name: copy.showLive }));
+    fireEvent.click(within(touched).getByRole("button", { name: copy.showSaved }));
+    act(() => useSettingsStore.setState({ notesXPostsLive: true }));
+    await settle();
+    expect(preview.querySelector("iframe[data-x-post-live]")).not.toBeNull();
+    expect(touched.querySelector("iframe")).toBeNull();
+    act(() => useSettingsStore.setState({ notesXPostsLive: false }));
+    await settle();
+    expect(preview.querySelector("iframe")).toBeNull();
+    expect(within(preview).getByRole("button", { name: copy.showLive })).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("sizes the live post to the height X reports and ignores reports it did not ask for", async () => {
+    useSettingsStore.setState({ notesXPostsLive: true });
+    const preview = await paint(SAVED);
+    const frame = preview.querySelector<HTMLIFrameElement>("iframe[data-x-post-live]") as HTMLIFrameElement;
+    expect(frame).toHaveClass("h-60");
+    expect(frame).toHaveAttribute("aria-busy", "true");
+    const report = (data: unknown, origin = "http://127.0.0.1:4321", source: Window | null = frame.contentWindow) =>
+      act(() => {
+        window.dispatchEvent(new MessageEvent("message", { data, origin, source }));
+      });
+    report({ source: "oleafly-x-post", height: 225 }, "http://127.0.0.1:9999");
+    report({ source: "oleafly-x-post", height: 225 }, "http://127.0.0.1:4321", window);
+    report({ height: 225 });
+    report({ source: "oleafly-x-post", height: "225" });
+    expect(frame.style.height).toBe("");
+    report({ source: "oleafly-x-post", height: 224.2 });
+    expect(frame.style.height).toBe("225px");
+    expect(frame).not.toHaveClass("h-60");
+    expect(frame).not.toHaveAttribute("aria-busy");
+    report({ source: "oleafly-x-post", height: 226 });
+    expect(frame.style.height).toBe("225px");
+    report({ source: "oleafly-x-post", height: 528 });
+    expect(frame.style.height).toBe("528px");
+    report({ source: "oleafly-x-post", height: 90000 });
+    expect(frame.style.height).toBe("4000px");
+    report({ source: "oleafly-x-post", height: 1 });
+    expect(frame.style.height).toBe("40px");
+  });
+
+  it("says it couldn't load a live post X has no copy of, and logs it", async () => {
+    useSettingsStore.setState({ notesXPostsLive: true });
+    const preview = await paint(SAVED);
+    const frame = preview.querySelector<HTMLIFrameElement>("iframe[data-x-post-live]") as HTMLIFrameElement;
+    act(() => {
+      window.dispatchEvent(new MessageEvent("message", { data: { source: "oleafly-x-post", missing: true }, origin: "http://127.0.0.1:4321", source: frame.contentWindow }));
+    });
+    expect(preview.querySelector("iframe")).toBeNull();
+    expect(within(preview).getByText(copy.failed)).toBeInTheDocument();
+    expect(logWarning).toHaveBeenCalledWith("show a live post from X", "X has no post 20 to show");
+  });
+
+  it("gives up on a live post X never answers for, and logs it", async () => {
+    vi.useFakeTimers();
     try {
-      const preview = await paint(SAVED);
-      expect(preview.querySelector("iframe")?.getAttribute("src")).toBe("http://127.0.0.1:4321/video#x/20?theme=dark");
+      useSettingsStore.setState({ notesXPostsLive: true });
+      const preview = document.createElement("div");
+      document.body.append(preview);
+      hosts.push(preview);
+      const dispose = xPostBlock.paint(preview, SAVED, { still: false });
+      if (dispose) disposers.push(dispose);
+      await act(() => vi.advanceTimersByTimeAsync(0));
+      expect(preview.querySelector("iframe[data-x-post-live]")).not.toBeNull();
+      await act(() => vi.advanceTimersByTimeAsync(14_999));
+      expect(preview.querySelector("iframe")).not.toBeNull();
+      await act(() => vi.advanceTimersByTimeAsync(1));
+      expect(preview.querySelector("iframe")).toBeNull();
+      expect(within(preview).getByText(copy.failed)).toBeInTheDocument();
+      expect(logWarning).toHaveBeenCalledWith("show a live post from X", "X sent nothing for post 20 in 15 s");
     } finally {
-      document.documentElement.classList.remove("dark");
+      vi.useRealTimers();
     }
+  });
+
+  it("says it couldn't load the live post when the local page has no address", async () => {
+    bridge.origin.mockRejectedValueOnce(new Error("no loopback"));
+    useSettingsStore.setState({ notesXPostsLive: true });
+    const preview = await paint(SAVED);
+    expect(within(preview).getByText(copy.failed)).toBeInTheDocument();
+    expect(logError).toHaveBeenCalledWith("open a live post from X", expect.objectContaining({ message: "no loopback" }));
   });
 
   it("says when X would not give the post, and keeps the card", async () => {

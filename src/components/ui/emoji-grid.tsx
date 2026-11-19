@@ -1,6 +1,6 @@
 import { EmojiPicker, type EmojiPickerListProps } from "frimousse";
 import { useMemo } from "react";
-import { INPUT_CLASS_NAME } from "@/components/ui/input";
+import { INPUT_CLASS_NAME, SEARCH_INPUT } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { EMOJIBASE_PATH, emojibaseLocale } from "./emoji-locale";
 
@@ -72,6 +72,7 @@ export default function EmojiGrid({
       <div className="flex items-center gap-1">
         <EmojiPicker.Search
           autoFocus
+          {...SEARCH_INPUT}
           aria-label={labels.search}
           placeholder={labels.search}
           className={cn(INPUT_CLASS_NAME, "h-8 [&::-webkit-search-cancel-button]:hidden")}

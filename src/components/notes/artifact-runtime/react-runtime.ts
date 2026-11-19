@@ -51,7 +51,7 @@ export function transformCode(code: string, options: TransformOptions): string {
     transforms,
     jsxRuntime: options.jsx,
     production: true,
-    filePath: options.typescript ? "Artifact.tsx" : "Artifact.jsx",
+    filePath: options.filePath ?? (options.typescript ? "Artifact.tsx" : "Artifact.jsx"),
   }).code;
 }
 

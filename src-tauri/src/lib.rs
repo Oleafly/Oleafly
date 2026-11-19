@@ -691,6 +691,7 @@ pub fn run() {
             logsafe::read_log_entries,
             logsafe::clear_logs,
             logsafe::reveal_app_log,
+            logsafe::log_frontend_entry,
             logsafe::log_frontend_error,
             approvals::approvals_list,
             approvals::approvals_set,

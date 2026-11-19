@@ -14,6 +14,7 @@ import { pdfPageToPng } from "@/lib/pdf-image";
 import {
   clearThumbnailCache,
   loadAssetThumbnail,
+  readAssetThumbnail,
 } from "./hover-asset";
 
 const mockRead = vi.mocked(readFileBase64);
@@ -115,5 +116,20 @@ describe("loadAssetThumbnail", () => {
     clearThumbnailCache();
     await loadAssetThumbnail("p1", "fig.png");
     expect(mockRead).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("readAssetThumbnail", () => {
+  it("keeps the read error apart from a file that is only too large, and caches both", async () => {
+    const failure = new Error("permission denied");
+    mockRead.mockRejectedValueOnce(failure);
+    const failed = await readAssetThumbnail("p1", "locked.png");
+    expect(failed).toEqual({ url: null, error: failure });
+    await expect(readAssetThumbnail("p1", "locked.png")).resolves.toBe(failed);
+
+    mockRead.mockResolvedValueOnce("a".repeat(8 * 1024 * 1024 + 1));
+    await expect(readAssetThumbnail("p1", "huge.png")).resolves.toEqual({ url: null });
+    await expect(readAssetThumbnail("p1", "fig.png")).resolves.toEqual({ url: "data:image/png;base64,QUJD" });
+    expect(mockRead).toHaveBeenCalledTimes(3);
   });
 });

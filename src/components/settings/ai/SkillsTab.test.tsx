@@ -684,6 +684,29 @@ describe("SkillsTab", () => {
     await waitFor(() => expect(screen.queryByTestId("skill-name-note-methods-coach")).toBeNull());
   });
 
+  it("stacks each note with its own action when a skill needs a rename and has a newer Oleafly version", async () => {
+    records = [{ ...METHODS_COACH, shadowsBundled: true }];
+    renderTab();
+    await screen.findByText("Methods Coach");
+
+    const shadow = screen.getByTestId("skill-shadow-note-methods-coach");
+    const name = screen.getByTestId("skill-name-note-methods-coach");
+    const replace = screen.getByRole("button", { name: copy.replaceAction });
+    const rename = screen.getByRole("button", { name: fill(copy.renameAction, { name: "methods-coach" }) });
+    const shadowRow = shadow.parentElement as HTMLElement;
+    const nameRow = name.parentElement as HTMLElement;
+
+    expect(shadowRow).not.toBe(nameRow);
+    expect(shadowRow).toContainElement(replace);
+    expect(shadowRow).not.toContainElement(rename);
+    expect(nameRow).toContainElement(rename);
+    expect(shadowRow.compareDocumentPosition(nameRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(shadowRow).toHaveClass("flex-wrap");
+    expect(nameRow).toHaveClass("flex-wrap");
+    expect(shadow).toHaveClass("grow", "min-w-0");
+    expect(nameRow).not.toContainElement(screen.getByRole("button", { name: fill(copy.editAria, { name: "Methods Coach" }) }));
+  });
+
   it("validates an invalid user skill and edits it in place", async () => {
     renderTab();
     await screen.findByText("broken");

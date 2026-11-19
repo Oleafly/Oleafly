@@ -1075,6 +1075,9 @@
       },
       "figure": {
         "imageUnavailable": "Image not found",
+        "imageOutside": "Images outside the project aren't shown",
+        "imageUnreadable": "This image couldn't be shown",
+        "imageAltText": "Alt text: {{alt}}",
         "imageLoading": "Loading image…",
         "imageAlt": "Figure image {{path}}",
         "width": "Width",
@@ -1708,6 +1711,9 @@
   "bibList": {
     "count_one": "{{count}} reference",
     "count_other": "{{count}} references",
+    "matchCount_one": "{{shown}} of {{total}} reference",
+    "matchCount_other": "{{shown}} of {{total}} references",
+    "clearSearch": "Clear search",
     "empty": "This file has no references yet.",
     "etAl": "{{author}} et al.",
     "noMatch": "No references match your search.",

@@ -1,23 +1,38 @@
 import { invoke } from "@tauri-apps/api/core";
 
-export async function logError(scope: string, e: unknown): Promise<void> {
-  let detail: string;
+function describe(e: unknown): string {
   if (e instanceof Error) {
-    detail = `${e.name}: ${e.message}`;
-    if (e.stack) detail += `\n${e.stack}`;
-  } else if (typeof e === "string") {
-    detail = e;
-  } else {
-    try {
-      detail = JSON.stringify(e);
-    } catch {
-      detail = String(e);
-    }
+    const detail = `${e.name}: ${e.message}`;
+    return e.stack ? `${detail}\n${e.stack}` : detail;
   }
+  if (typeof e === "string") return e;
   try {
-    await invoke("log_frontend_error", { message: `${scope}: ${detail}` });
+    return JSON.stringify(e);
   } catch {
-    /* logging must never throw */
+    return String(e);
   }
 }
 
+async function send(command: string, args: Record<string, unknown>): Promise<void> {
+  try {
+    await invoke(command, args);
+  } catch {
+    return;
+  }
+}
+
+export function logError(scope: string, e: unknown): Promise<void> {
+  return send("log_frontend_error", { message: `${scope}: ${describe(e)}` });
+}
+
+function logAt(level: "info" | "warning", scope: string, e: unknown): Promise<void> {
+  return send("log_frontend_entry", { level, message: `${scope}: ${describe(e)}` });
+}
+
+export function logWarning(scope: string, e: unknown): Promise<void> {
+  return logAt("warning", scope, e);
+}
+
+export function logInfo(scope: string, e: unknown): Promise<void> {
+  return logAt("info", scope, e);
+}

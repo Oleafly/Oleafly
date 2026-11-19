@@ -4,7 +4,13 @@ const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 
-import { DEFAULT_OLLAMA_HOST, listOllamaModelDetails, listOllamaModels, switchableThinkingModels } from "./ollama";
+import {
+  DEFAULT_OLLAMA_HOST,
+  listOllamaModelDetails,
+  listOllamaModels,
+  ollamaUnreachable,
+  switchableThinkingModels,
+} from "./ollama";
 
 beforeEach(() => {
   mocks.invoke.mockReset().mockResolvedValue([]);
@@ -27,6 +33,15 @@ describe("Ollama bridge", () => {
     expect(mocks.invoke).toHaveBeenCalledWith("ollama_list_model_details", {
       host: "http://192.168.1.9:11434",
     });
+  });
+
+  it("tells a server that isn't running apart from other failures", () => {
+    expect(ollamaUnreachable("Ollama not reachable at http://127.0.0.1:11434")).toBe(true);
+    expect(ollamaUnreachable(new Error("Ollama not reachable at http://192.168.1.9:11434"))).toBe(true);
+    expect(ollamaUnreachable("Ollama returned 500 Internal Server Error for /api/tags")).toBe(false);
+    expect(ollamaUnreachable("unexpected /api/tags response: missing field")).toBe(false);
+    expect(ollamaUnreachable(null)).toBe(false);
+    expect(ollamaUnreachable({ message: "Ollama not reachable at x" })).toBe(false);
   });
 
   it("picks out the thinking models Ollama can switch off", () => {

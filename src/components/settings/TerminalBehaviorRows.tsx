@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SettingsNote } from "@/components/settings/SettingsNote";
 import { SettingsRow } from "@/components/settings/SettingsRow";
@@ -226,10 +226,10 @@ export function TerminalBehaviorRows() {
           description={t(($) => $.settings.appearance.terminal.shell.path.description)}
           control={
             <Input
+              {...LITERAL_INPUT}
               aria-label={t(($) => $.settings.appearance.terminal.shell.path.ariaLabel)}
               value={pathDraft}
               maxLength={TERMINAL_SHELL_PATH_MAX_LENGTH}
-              spellCheck={false}
               onChange={(event) => setPathDraft(event.target.value)}
               onBlur={savePath}
               onKeyDown={(event) => {

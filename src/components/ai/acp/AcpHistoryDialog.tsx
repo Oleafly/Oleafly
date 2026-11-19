@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
@@ -317,6 +317,7 @@ export function AcpHistoryDialog({
         <div className="relative">
           <Search className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
+            {...SEARCH_INPUT}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t(($) => $.ai.acp.history.search)}

@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PdfStateMessage } from "@/components/preview/PdfStateMessage";
 import { LoadingState } from "@/components/ui/empty";
+import { ownHistory } from "@/lib/field-history";
 import { basename } from "@/lib/path-utils";
 import { useActiveFileReadOnly } from "@/lib/read-only-files";
 import { type Theme, useAppTheme } from "@/lib/theme";
@@ -39,6 +40,8 @@ const UI_OPTIONS: Partial<UIOptions> = {
 
 const HOST =
   "isolate size-full [&_.excalidraw]:[--focus-highlight-color:transparent]! [&_.excalidraw]:[--ui-font:var(--font-sans)]! [&_.default-sidebar-trigger]:hidden! [&_[data-testid=toolbar-frame]+[data-testid=toolbar-embeddable]]:hidden!";
+
+const HISTORY_BUTTONS = { undo: "[data-testid=button-undo]", redo: "[data-testid=button-redo]" } as const;
 
 interface Edit {
   readonly elements: readonly OrderedExcalidrawElement[];
@@ -112,6 +115,7 @@ function Board({ projectId, path, scene, readOnly, theme, langCode }: BoardProps
   const savedKey = useRef<string | null>(null);
   const pending = useRef<Edit | null>(null);
   const timer = useRef<number | null>(null);
+  const host = useRef<HTMLDivElement>(null);
   const content = useFilesStore((state) => state.files[path]?.content);
 
   const initialData = useMemo(() => {
@@ -180,8 +184,16 @@ function Board({ projectId, path, scene, readOnly, theme, langCode }: BoardProps
     api.current = value;
   }, []);
 
+  useEffect(() => {
+    const board = host.current;
+    if (!board) return;
+    return ownHistory(board, (redo) => {
+      board.querySelector<HTMLButtonElement>(redo ? HISTORY_BUTTONS.redo : HISTORY_BUTTONS.undo)?.click();
+    });
+  }, []);
+
   return (
-    <div data-testid="board-view" className={HOST}>
+    <div ref={host} data-testid="board-view" className={HOST}>
       <Excalidraw
         excalidrawAPI={setApi}
         initialData={initialData}

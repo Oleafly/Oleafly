@@ -2,7 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -99,6 +99,7 @@ function SlurmResources({
       <label className="grid gap-1 text-xs" htmlFor={`${id}-time`}>
         {t(($) => $.researchTools.compute.form.time)}
         <Input
+          {...LITERAL_INPUT}
           id={`${id}-time`}
           value={time}
           placeholder={t(($) => $.researchTools.compute.form.timeHint)}
@@ -113,6 +114,7 @@ function SlurmResources({
       <label className="grid gap-1 text-xs" htmlFor={`${id}-partition`}>
         {t(($) => $.researchTools.compute.form.partition)}
         <Input
+          {...LITERAL_INPUT}
           id={`${id}-partition`}
           value={partition}
           maxLength={64}
@@ -161,6 +163,7 @@ function SlurmResources({
       <label className="grid gap-1 text-xs" htmlFor={`${id}-mem`}>
         {t(($) => $.researchTools.compute.form.mem)}
         <Input
+          {...LITERAL_INPUT}
           id={`${id}-mem`}
           value={memory}
           maxLength={8}

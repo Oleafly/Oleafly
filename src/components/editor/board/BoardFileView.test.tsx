@@ -3,12 +3,14 @@ import { act, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
+import { historyOwnerAt } from "@/lib/field-history";
 import { useFilesStore } from "@/store/files";
 
 type Change = (elements: readonly { id: string; version: number }[], appState: Record<string, unknown>, files: Record<string, unknown>) => void;
 
 const excalidraw = vi.hoisted(() => ({
   props: [] as Record<string, unknown>[],
+  history: [] as string[],
   api: { updateScene: vi.fn(), addFiles: vi.fn(), getAppState: () => ({ viewBackgroundColor: "#fff", gridModeEnabled: false }) },
 }));
 
@@ -35,7 +37,13 @@ vi.mock("@excalidraw/excalidraw", () => {
     Excalidraw: (props: Record<string, unknown> & { excalidrawAPI: (api: unknown) => void; children: ReactNode }) => {
       excalidraw.props.push(props);
       props.excalidrawAPI(excalidraw.api);
-      return <div data-testid="excalidraw">{props.children}</div>;
+      return (
+        <div data-testid="excalidraw">
+          {props.children}
+          <button type="button" data-testid="button-undo" onClick={() => excalidraw.history.push("undo")} />
+          <button type="button" data-testid="button-redo" onClick={() => excalidraw.history.push("redo")} />
+        </div>
+      );
     },
   };
 });
@@ -64,6 +72,7 @@ function open(content: string | undefined) {
 beforeEach(() => {
   vi.useFakeTimers();
   excalidraw.props = [];
+  excalidraw.history = [];
   excalidraw.api.updateScene.mockReset();
   excalidraw.api.addFiles.mockReset();
 });
@@ -135,6 +144,21 @@ describe("BoardFileView", () => {
         appState: expect.objectContaining({ scrollX: 120, scrollY: -30, zoom: { value: 2 } }),
       }),
     );
+  });
+
+  it("owns undo and redo while focus is on the canvas, through the board's own history", () => {
+    open(DRAWING);
+    const { unmount } = render(<BoardFileView projectId="p1" path={PATH} />);
+    const canvas = screen.getByTestId("excalidraw");
+    canvas.tabIndex = 0;
+    canvas.focus();
+    const history = historyOwnerAt(document.activeElement);
+    history?.(false);
+    history?.(true);
+    expect(excalidraw.history).toEqual(["undo", "redo"]);
+    expect(historyOwnerAt(document.body)).toBeNull();
+    unmount();
+    expect(historyOwnerAt(canvas)).toBeNull();
   });
 
   it("shows a board it cannot read instead of replacing it", () => {

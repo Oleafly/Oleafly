@@ -215,6 +215,11 @@ export const getProjectEngine = (projectId: string) =>
 export const readCompiledPdf = (projectId: string) =>
   invoke<ArrayBuffer>("read_compiled_pdf", { projectId });
 
+export function isMissingCompiledPdf(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : error;
+  return typeof message === "string" && message.startsWith("no compiled PDF");
+}
+
 export const readBuildArtifact = (projectId: string, name: string) =>
   invoke<string | null>("read_build_artifact", { projectId, name });
 

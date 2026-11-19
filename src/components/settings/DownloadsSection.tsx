@@ -9,6 +9,7 @@ import { announceSavedTemplate } from "@/features/custom-templates";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { DictionaryDownloads } from "@/components/settings/DictionaryDownloads";
 import { DownloadSources } from "@/components/settings/DownloadSources";
+import { useSettingsTab } from "@/components/settings/use-settings-tab";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -51,6 +52,12 @@ function afterFontPackChange(id: string) {
 
 const ALL = "__all__";
 
+const DOWNLOADS_TABS = ["fonts", "templates", "dictionaries", "sources"] as const;
+
+function isDownloadsTab(value: string): value is (typeof DOWNLOADS_TABS)[number] {
+  return (DOWNLOADS_TABS as readonly string[]).includes(value);
+}
+
 // fontspec needs XeLaTeX or LuaLaTeX, so a pdfLaTeX-family project has no use for these fonts.
 const NO_FONTSPEC_FLAVORS: ReadonlySet<string> = new Set(["pdflatex", "uplatex", "platex"]);
 
@@ -89,9 +96,7 @@ export function DownloadsSection() {
   const progress = useDownloadActivity((s) => s.fontProgress);
 
   const templatesHeadingRef = useRef<HTMLHeadingElement>(null);
-  const [tab, setTab] = useState<"fonts" | "templates" | "dictionaries" | "sources">(
-    "fonts",
-  );
+  const [tab, setTab] = useSettingsTab("downloads", "fonts", isDownloadsTab);
   const [openPackId, setOpenPackId] = useState<string | null>(null);
   const [link, setLink] = useState<PendingTemplateLink | null>(null);
   const [packSearch, setPackSearch] = useState<{ text: string; serial: number } | null>(null);
@@ -117,7 +122,7 @@ export function DownloadsSection() {
     setTab("templates");
     setLink(taken);
     setOpenPackId(taken.packId);
-  }, [pendingLink]);
+  }, [pendingLink, setTab]);
   const [ownOpen, setOwnOpen] = useState(false);
   const [ownTemplates, setOwnTemplates] = useState<TemplateInfo[]>([]);
   const [ownPreviews, setOwnPreviews] = useState<Record<string, string>>({});
@@ -149,7 +154,7 @@ export function DownloadsSection() {
     if (scrollTarget !== "templates") return;
     setTab("templates");
     setScrollTarget(null);
-  }, [scrollTarget, setScrollTarget]);
+  }, [scrollTarget, setScrollTarget, setTab]);
 
   const refresh = useCallback(async () => {
     try {
@@ -325,9 +330,7 @@ export function DownloadsSection() {
   return (
     <Tabs
       value={tab}
-      onValueChange={(v) =>
-        setTab(v as "fonts" | "templates" | "dictionaries" | "sources")
-      }
+      onValueChange={setTab}
       className="flex flex-col gap-5"
     >
       <TabsList scrollable>

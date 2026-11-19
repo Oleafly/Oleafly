@@ -1004,8 +1004,12 @@ interface SettingsState {
   setSearchOpen: (v: boolean) => void;
   settingsOpen: boolean;
   setSettingsOpen: (v: boolean) => void;
-  settingsInitialSection: string;
-  setSettingsInitialSection: (v: string) => void;
+  settingsInitialSection: string | null;
+  setSettingsInitialSection: (v: string | null) => void;
+  settingsLastSection: string;
+  rememberSettingsSection: (section: string) => void;
+  settingsLastTabs: Readonly<Record<string, string>>;
+  rememberSettingsTab: (section: string, tab: string) => void;
   settingsInitialAppearanceTab: string | null;
   setSettingsInitialAppearanceTab: (v: string | null) => void;
   openSettingsAt: (section: string, appearanceTab?: string | null) => void;
@@ -1803,10 +1807,19 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setSearchOpen: (v) => set({ searchOpen: v }),
   settingsOpen: false,
-  setSettingsOpen: (v) => set({ settingsOpen: v }),
-  settingsInitialSection: "general",
+  setSettingsOpen: (v) => set(v ? { settingsOpen: true } : { settingsOpen: false, settingsInitialSection: null }),
+  settingsInitialSection: null,
   setSettingsInitialSection: (v) =>
-    set({ settingsInitialSection: SETTINGS_SECTIONS.has(v) ? v : "general" }),
+    set({ settingsInitialSection: v === null || SETTINGS_SECTIONS.has(v) ? v : "general" }),
+  settingsLastSection: "general",
+  rememberSettingsSection: (section) => {
+    if (get().settingsLastSection !== section) set({ settingsLastSection: section });
+  },
+  settingsLastTabs: {},
+  rememberSettingsTab: (section, tab) => {
+    const tabs = get().settingsLastTabs;
+    if (tabs[section] !== tab) set({ settingsLastTabs: { ...tabs, [section]: tab } });
+  },
   settingsInitialAppearanceTab: null,
   setSettingsInitialAppearanceTab: (v) => set({ settingsInitialAppearanceTab: v }),
   openSettingsAt: (section, appearanceTab = null) => {

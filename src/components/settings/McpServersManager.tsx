@@ -28,11 +28,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { describeError } from "@/lib/app-error";
 import { useDisplayText } from "@/lib/display-path";
 import { SettingsPathText } from "@/components/settings/SettingsPath";
@@ -219,6 +218,7 @@ function PairEditor({
       {rows.map((row, index) => (
         <div key={row.id} className="flex items-center gap-2">
           <Input
+            {...LITERAL_INPUT}
             aria-label={
               environment
                 ? t(($) => $.settings.mcp.servers.editor.pairs.environmentKeyLabel, {
@@ -361,15 +361,6 @@ function ServerEditor({
     setJsonError(null);
   }, [state]);
 
-  useEffect(() => {
-    if (!state) return;
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const modalId = appModalCoordinator.add(opener);
-    return () => {
-      appModalCoordinator.remove(modalId)?.focus({ preventScroll: true });
-    };
-  }, [state]);
-
   const formConfig = (): McpServerConfig =>
     config.transport === "stdio"
       ? {
@@ -419,6 +410,7 @@ function ServerEditor({
           {t(($) => $.settings.mcp.servers.editor.nameLabel)}
         </label>
         <Input
+          {...LITERAL_INPUT}
           ref={serverNameRef}
           id="mcp-server-name"
           autoComplete="off"
@@ -483,6 +475,7 @@ function ServerEditor({
               {t(($) => $.settings.mcp.servers.editor.commandLabel)}
             </label>
             <Input
+              {...LITERAL_INPUT}
               id="mcp-server-command"
               autoComplete="off"
               placeholder={COMMAND_PLACEHOLDER}

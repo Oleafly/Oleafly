@@ -13,7 +13,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import { Popover, PopoverItem } from "@/components/ui/popover";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { currentProjectIntelligence } from "@/lib/project-intelligence/current";
 import { citationCompletions } from "@/lib/project-intelligence/selectors";
@@ -200,6 +200,7 @@ function CitationPickerContent({
       <div className="flex items-center gap-2 border-b px-2.5 py-2">
         <Search className="size-3.5 shrink-0 text-muted-foreground" />
         <Input
+          {...SEARCH_INPUT}
           value={query}
           onChange={(event) => onQueryChange(event.target.value)}
           placeholder={t(($) => $.editor.citations.filterPlaceholder)}

@@ -4,7 +4,7 @@ import { Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState, LoadingState } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { formatDate } from "@/lib/intl";
 import type {
   CollabDomainRule,
@@ -154,12 +154,12 @@ export function DomainRulesTab({ serverId, actor }: Readonly<{ serverId: string;
         onSubmit={(event) => void addRule(event)}
       >
         <Input
+          {...LITERAL_INPUT}
           aria-label={t(($) => $.collab.admin.domains.domainLabel)}
           className="h-8 min-w-[12rem] flex-1 font-mono text-xs"
           value={domain}
           onChange={(event) => setDomain(event.target.value)}
           placeholder={t(($) => $.collab.admin.domains.domainPlaceholder)}
-          spellCheck={false}
           autoComplete="off"
         />
         <RolePicker

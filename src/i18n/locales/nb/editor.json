@@ -1075,6 +1075,9 @@
       },
       "figure": {
         "imageUnavailable": "Fant ikke bildet",
+        "imageOutside": "Bilder utenfor prosjektet vises ikke",
+        "imageUnreadable": "Kunne ikke vise bildet",
+        "imageAltText": "Alternativ tekst: {{alt}}",
         "imageLoading": "Laster bildet…",
         "imageAlt": "Figurbilde {{path}}",
         "width": "Bredde",
@@ -1708,6 +1711,9 @@
   "bibList": {
     "count_one": "{{count}} referanse",
     "count_other": "{{count}} referanser",
+    "matchCount_one": "{{shown}} av {{total}} referanse",
+    "matchCount_other": "{{shown}} av {{total}} referanser",
+    "clearSearch": "Tøm søket",
     "empty": "Filen har ingen referanser ennå.",
     "etAl": "{{author}} mfl.",
     "noMatch": "Ingen referanser samsvarer med søket.",

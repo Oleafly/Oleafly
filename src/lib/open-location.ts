@@ -4,7 +4,7 @@ import { isBinaryProjectPath } from "@/lib/project-paths";
 import { useFilesStore, type TabOpener } from "@/store/files";
 import { editsAsMarkdown, useNoteTabsStore } from "@/store/note-tabs";
 import { useSettingsStore } from "@/store/settings";
-import { useVisualModeStore } from "@/store/visual-mode";
+import { fileMode, useVisualModeStore } from "@/store/visual-mode";
 
 export interface ProjectLocation {
   path: string;
@@ -60,9 +60,9 @@ function reveal(editor: EditorController, view: ReadyView, target: ProjectLocati
  */
 export function keptVisualEditor(path: string): "codemirror" | "tiptap" | null {
   if (!useSettingsStore.getState().editorKeepVisualMode) return null;
-  const visual = useVisualModeStore.getState();
-  if (!visual.enabled) return null;
-  return MARKDOWN.test(path) && !visual.markdownSplit ? "tiptap" : "codemirror";
+  const mode = fileMode(useVisualModeStore.getState(), path);
+  if (mode === "code") return null;
+  return MARKDOWN.test(path) && mode === "visual" ? "tiptap" : "codemirror";
 }
 
 /** Runs `show`, cancelling it when the jump goes stale or the editor takes too long. */

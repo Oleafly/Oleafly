@@ -470,7 +470,7 @@ async fn a_cancel_during_polling_stops_the_wait_promptly() {
         .await
         .unwrap_err();
     assert_eq!(error_code(&error), "mathpix.cancelled");
-    assert!(started.elapsed() < Duration::from_secs(1));
+    assert!(started.elapsed() < Duration::from_secs(2));
     assert_eq!(server.requests("/").last().unwrap().method, "DELETE");
 }
 

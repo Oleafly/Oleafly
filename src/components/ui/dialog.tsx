@@ -1,10 +1,25 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
+import { useModalLayer } from "@/components/ui/use-modal-accessibility";
 import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 
-const Dialog = DialogPrimitive.Root;
+const DialogLayerContext = React.createContext<(() => boolean) | null>(null);
+
+function Dialog({
+  open,
+  modal = true,
+  ...props
+}: Readonly<React.ComponentProps<typeof DialogPrimitive.Root> & { open: boolean }>) {
+  const covered = useModalLayer(open && modal, true);
+  return (
+    <DialogLayerContext.Provider value={covered}>
+      <DialogPrimitive.Root open={open} modal={modal} {...props} />
+    </DialogLayerContext.Provider>
+  );
+}
+
 const DialogTrigger = DialogPrimitive.Trigger;
 const DialogPortal = DialogPrimitive.Portal;
 const DialogClose = DialogPrimitive.Close;
@@ -34,12 +49,21 @@ const DialogContent = React.forwardRef<
     overlayClassName?: string;
     closeDisabled?: boolean;
   }
->(({ className, overlayClassName, closeDisabled, children, ...props }, ref) => {
+>(({ className, overlayClassName, closeDisabled, children, onEscapeKeyDown, onInteractOutside, ...props }, ref) => {
+  const covered = React.useContext(DialogLayerContext);
   return (
     <DialogPortal>
       <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Content
         ref={ref}
+        onEscapeKeyDown={(event) => {
+          onEscapeKeyDown?.(event);
+          if (covered?.()) event.preventDefault();
+        }}
+        onInteractOutside={(event) => {
+          onInteractOutside?.(event);
+          if (covered?.()) event.preventDefault();
+        }}
         className={cn(
           "fixed left-1/2 top-1/2 z-50 grid w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl border bg-background p-6 text-foreground shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
           "data-[state=closed]:pointer-events-none",

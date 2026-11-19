@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -42,6 +43,7 @@ export interface DeckStageHandle {
 export interface DeckStageProps {
   readonly deck: DeckModule;
   readonly page: number;
+  readonly revealed?: number;
   readonly onPositionChange?: (position: DeckPosition) => void;
   readonly flat?: boolean;
   readonly keyboard?: boolean;
@@ -76,12 +78,13 @@ const FORWARD = new Set(["ArrowRight", "ArrowDown", " ", "PageDown", "Enter"]);
 const BACKWARD = new Set(["ArrowLeft", "ArrowUp", "PageUp", "Backspace"]);
 
 export const DeckStage = forwardRef<DeckStageHandle, DeckStageProps>(function DeckStage(
-  { deck, page, onPositionChange, flat = false, keyboard = false },
+  { deck, page, revealed, onPositionChange, flat = false, keyboard = false },
   ref,
 ) {
   const total = deck.pages.length;
   const [index, setIndex] = useState(() => clampPage(page, total));
-  const [entryDirection, setEntryDirection] = useState<EntryDirection>("jump");
+  const [entryDirection, setEntryDirection] = useState<EntryDirection>(revealed === undefined ? "jump" : "forward");
+  const resumeSteps = useRef(revealed ?? 0);
   const [aggregate, setAggregate] = useState<StepAggregate>({ revealed: 0, stepCount: 0 });
   const stepControllerRef = useRef<StepController | null>(null);
   const reducedMotion = usePrefersReducedMotion();
@@ -116,6 +119,11 @@ export const DeckStage = forwardRef<DeckStageHandle, DeckStageProps>(function De
     if (stepControllerRef.current?.retreat()) return;
     show(indexRef.current - 1);
   }, [show]);
+
+  useLayoutEffect(() => {
+    let remaining = resumeSteps.current;
+    while (remaining > 0 && stepControllerRef.current?.advance()) remaining -= 1;
+  }, []);
 
   useImperativeHandle(ref, () => ({ next, previous, goto: show }), [next, previous, show]);
 

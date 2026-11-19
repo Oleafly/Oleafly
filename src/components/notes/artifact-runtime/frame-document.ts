@@ -439,7 +439,9 @@ export type DeckFrameMode = "edit" | "present" | "page";
 export interface DeckFrameOptions {
   readonly mode: DeckFrameMode;
   readonly page: number;
+  readonly revealed?: number;
   readonly assets: Readonly<Record<string, string>>;
+  readonly file: string;
 }
 
 export function deckFrameDocument(code: string, options: FrameOptions, runtime: string, deck: DeckFrameOptions): string {

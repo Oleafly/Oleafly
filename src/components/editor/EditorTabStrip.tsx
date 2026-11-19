@@ -1,4 +1,15 @@
-import { memo, Suspense, useEffect, useMemo, useRef, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from "react";
+import {
+  memo,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from "react";
 import { lazy } from "@/lib/preloadable";
 import { useTranslation } from "react-i18next";
 import { useShallow } from "zustand/react/shallow";
@@ -12,6 +23,7 @@ import {
 } from "@/components/ui/context-menu";
 import { Tooltip } from "@/components/ui/tooltip";
 import { useStripReorder, type StripItemProps } from "@/components/layout/strip-reorder";
+import { SIDEWAYS_FADE, type SidewaysScrollActive, useSidewaysScroll } from "@/hooks/use-sideways-scroll";
 import { useFilesStore } from "@/store/files";
 import { useDiffStore, type DiffSide, type OpenDiff } from "@/store/diff";
 import { activeNoteTab, editsAsMarkdown, noteTabsFor, useNoteTabsStore } from "@/store/note-tabs";
@@ -40,6 +52,8 @@ const DIFF_TAB_SIDE_LABEL = {
 } as const satisfies Record<DiffSide, string>;
 
 const MIDDLE_BUTTON = 1;
+
+const ACTIVE_TAB: SidewaysScrollActive = { selector: "[data-active-tab]", attribute: "data-active-tab" };
 
 const NoteTabIcon = lazy(() => import("@/components/notes/note-tab-icon"), { warm: () => useSettingsStore.getState().notes });
 
@@ -203,6 +217,7 @@ function EditorTabItem({
         <div
           ref={rowRef}
           {...reorderItem(editorTabKey(tab))}
+          data-active-tab={active ? "" : undefined}
           className={cn(
             "group flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs",
             active || dragging
@@ -374,6 +389,16 @@ export function EditorTabStrip({ diffFocused }: Readonly<{ diffFocused: boolean 
   const fileFocused = !diffFocused && activeNote === null;
   const keys = useMemo(() => tabs.map(editorTabKey), [tabs]);
   const reorder = useStripReorder(keys, reorderEditorTabs);
+  const [strip, setStrip] = useState<HTMLDivElement | null>(null);
+  const stripRef = reorder.strip.ref;
+  const attachStrip = useCallback(
+    (node: HTMLDivElement | null) => {
+      stripRef.current = node;
+      setStrip(node);
+    },
+    [stripRef],
+  );
+  useSidewaysScroll(strip, ACTIVE_TAB);
   const drag = (tab: EditorTab): TabDrag => ({ reorderItem: reorder.item, dragging: reorder.dragging === editorTabKey(tab) });
   const renderTab = (tab: EditorTab) => {
     if (tab.kind === "file") {
@@ -406,7 +431,11 @@ export function EditorTabStrip({ diffFocused }: Readonly<{ diffFocused: boolean 
   };
 
   return (
-    <div {...reorder.strip} className="relative flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-2 no-scrollbar">
+    <div
+      {...reorder.strip}
+      ref={attachStrip}
+      className={cn("relative flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-2 no-scrollbar", SIDEWAYS_FADE)}
+    >
       {tabs.length === 0 && (
         <span className="px-2 text-xs text-muted-foreground">
           {t(($) => $.editor.shell.noFileOpenTab)}

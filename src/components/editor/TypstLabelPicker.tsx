@@ -1,7 +1,7 @@
 import { useDeferredValue, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { BookmarkPlus, Search, Tag } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Popover, PopoverItem } from "@/components/ui/popover";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { addTypstLabel, insertTypstReferenceTo } from "@/components/editor/typst-commands";
@@ -100,6 +100,7 @@ export function TypstLabelPicker({ variant }: Readonly<{ variant: "bar" | "menu"
       <div className="flex items-center gap-2 border-b px-2.5 py-2">
         <Search className="size-3.5 shrink-0 text-muted-foreground" />
         <Input
+          {...SEARCH_INPUT}
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={t(($) => $.editor.labels.filterPlaceholder)}

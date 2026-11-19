@@ -6,7 +6,7 @@ import { tlmgrSearch, type TexPackage } from "@/lib/tauri";
 import { packageErrorMessage, useEngineStore } from "@/store/engine";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { useScrollTopOnChange } from "@/hooks/use-scroll-top-on-change";
 import { describeError } from "@/lib/app-error";
 import { formatNumber } from "@/lib/intl";
@@ -114,6 +114,7 @@ export function TexPackagesSection() {
         }}
       >
         <Input
+          {...SEARCH_INPUT}
           value={query}
           onChange={(event) => {
             requestId.current += 1;

@@ -476,6 +476,26 @@ function widePanels() {
   });
 }
 
+describe("column dividers", () => {
+  it("show their grip and tint for the panel library's hover and drag states, not only CSS hover", async () => {
+    widePanels();
+    savedLayout({ showTree: true, assistantOpen: true });
+    await renderApp();
+    const divider = await waitFor(() => {
+      const element = document.getElementById("h-assistant");
+      expect(element).not.toBeNull();
+      return element as HTMLElement;
+    });
+    const tint = divider.firstElementChild as HTMLElement;
+    const grip = tint.firstElementChild as HTMLElement;
+    for (const state of ["hover", "active"]) {
+      expect(tint).toHaveClass(`group-data-[separator=${state}]:bg-accent/40`);
+      expect(grip).toHaveClass(`group-data-[separator=${state}]:opacity-100`, `group-data-[separator=${state}]:bg-ring`);
+    }
+    expect(grip).toHaveClass("group-focus-visible:opacity-100");
+  });
+});
+
 describe("released storage keys, panel ids and separator ids", () => {
   it("reads the sizes the released app saved and writes them back under the same keys", async () => {
     widePanels();

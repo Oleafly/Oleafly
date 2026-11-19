@@ -79,6 +79,29 @@ describe("DeckView", () => {
     ]);
   });
 
+  it("comes back to the slide and step it was on after the view closes", () => {
+    frame.current = deck({ position: { page: 2, revealed: 1, steps: 2 } });
+    const first = render(<DeckView projectId="p1" path="slides/demo/index.tsx" />);
+    first.unmount();
+    frame.current = deck();
+    render(<DeckView projectId="p1" path="slides/demo/index.tsx" />);
+    expect(frame.options.at(-1)).toMatchObject({ path: "slides/demo/index.tsx", startPage: 2, startRevealed: 1 });
+
+    render(<DeckView projectId="p2" path="slides/demo/index.tsx" />);
+    expect(frame.options.at(-1)).toMatchObject({ projectId: "p2", startPage: 0, startRevealed: undefined });
+  });
+
+  it("hides the slide counter, notes and controls while the deck has an error", () => {
+    frame.current = deck({ error: { title: "Syntax", detail: "Error transforming slides/talk/index.tsx: Unexpected token" } });
+    render(<DeckView projectId="p1" path="slides/talk/index.tsx" onPresent={vi.fn()} />);
+    expect(screen.queryByText(copy.slideLabel.replace("{{page}}", "2").replace("{{total}}", "3"))).toBeNull();
+    expect(screen.queryByRole("region", { name: copy.notes })).toBeNull();
+    expect(screen.getByRole("button", { name: copy.nextAction })).toBeDisabled();
+    expect(screen.getByRole("button", { name: copy.previousAction })).toBeDisabled();
+    expect(screen.getByRole("button", { name: copy.present })).toBeDisabled();
+    expect(screen.getByTitle(copy.windowTitle)).toBeInTheDocument();
+  });
+
   it("says why the deck could not open, and waits while it loads", () => {
     frame.current = deck({ url: null, failure: "The frame was refused", info: null });
     const { rerender } = render(<DeckView projectId="p1" path="slides/talk/index.tsx" onPresent={vi.fn()} />);

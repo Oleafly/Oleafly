@@ -7,7 +7,7 @@ import { useFilesStore } from "@/store/files";
 import { acquireEditorMutationLease } from "@/lib/editor-mutation-lease";
 import { useFolderAccessStore } from "@/store/folder-access";
 import { useCollabEditorGate } from "@/lib/collab-live-bridge";
-import { useVisualModeStore } from "@/store/visual-mode";
+import { fileMode, useVisualModeStore } from "@/store/visual-mode";
 import enEditor from "@/i18n/locales/en/editor.json" with { type: "json" };
 import {
   flushWysiwygPendingEdits,
@@ -624,13 +624,13 @@ describe("Visual Markdown in a live shared project", () => {
 
   it("says why it can't be edited and switches to the source view on request", () => {
     useCollabEditorGate.setState({ projectId: "shared-project", viewer: false });
-    useVisualModeStore.setState({ projectId: null, enabled: true });
+    useVisualModeStore.setState({ projectId: null, kinds: { markdown: "visual" }, files: {} });
     const mounted = render(<WysiwygEditor wysiwyg={true} />);
     try {
       const notice = screen.getByTestId("visual-shared-notice");
       expect(notice).toHaveTextContent(enEditor.visual.sharedReadOnly);
       fireEvent.click(screen.getByRole("button", { name: enEditor.toolbar.switchToSource }));
-      expect(useVisualModeStore.getState().enabled).toBe(false);
+      expect(fileMode(useVisualModeStore.getState(), "notes.md")).toBe("code");
       act(() => useCollabEditorGate.setState({ projectId: null, viewer: false }));
       expect(screen.queryByTestId("visual-shared-notice")).toBeNull();
     } finally {

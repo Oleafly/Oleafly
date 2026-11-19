@@ -1061,6 +1061,9 @@
       },
       "figure": {
         "imageUnavailable": "找不到影像",
+        "imageOutside": "不會顯示專案以外的影像",
+        "imageUnreadable": "無法顯示此影像",
+        "imageAltText": "替代文字：{{alt}}",
         "imageLoading": "載入影像中…",
         "imageAlt": "圖片 {{path}}",
         "width": "寬度",
@@ -1686,6 +1689,8 @@
   },
   "bibList": {
     "count_other": "{{count}} 筆參考文獻",
+    "matchCount_other": "{{shown}} / {{total}} 筆參考文獻",
+    "clearSearch": "清除搜尋",
     "empty": "此檔案還沒有參考文獻。",
     "etAl": "{{author}} 等",
     "noMatch": "沒有符合搜尋的參考文獻。",

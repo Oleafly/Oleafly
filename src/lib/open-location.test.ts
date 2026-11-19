@@ -82,7 +82,7 @@ beforeEach(() => {
   mocks.notes = false;
   mocks.revealVisualLocation.mockResolvedValue(true);
   mocks.revealNoteLocation.mockResolvedValue(true);
-  useVisualModeStore.setState({ enabled: false, markdownSplit: false });
+  useVisualModeStore.setState({ projectId: null, kinds: {}, files: {} });
   mocks.waitForEditorDocument.mockResolvedValue(view);
   useFilesStore.setState({ projectId: "proj", activePath: null, openFile });
   document.body.innerHTML = "";
@@ -293,7 +293,7 @@ describe("openProjectLocation", () => {
   describe("with Stay in Visual mode on", () => {
     beforeEach(() => {
       mocks.keepVisualMode = true;
-      useVisualModeStore.setState({ enabled: true });
+      useVisualModeStore.setState({ kinds: { source: "visual", markdown: "visual" } });
     });
 
     it("keeps a LaTeX file in Visual mode and moves the cursor there", async () => {
@@ -330,7 +330,7 @@ describe("openProjectLocation", () => {
     });
 
     it("uses the code pane for Markdown shown beside its preview", async () => {
-      useVisualModeStore.setState({ markdownSplit: true });
+      useVisualModeStore.setState({ kinds: { markdown: "both" } });
       expect(await openProjectLocation({ path: "notes/README.md", line: 2 })).toBe(true);
       expect(mocks.revealVisualLocation).not.toHaveBeenCalled();
       expect(mocks.revealSourceEditor).not.toHaveBeenCalled();
@@ -338,7 +338,7 @@ describe("openProjectLocation", () => {
     });
 
     it("switches to Code as before while the editor is already in Code", () => {
-      useVisualModeStore.setState({ enabled: false });
+      useVisualModeStore.setState({ kinds: {} });
       expect(keptVisualEditor("main.tex")).toBeNull();
     });
   });
@@ -394,7 +394,7 @@ describe("openProjectLocation", () => {
   });
 
   it("switches LaTeX to Code when Stay in Visual mode is off", async () => {
-    useVisualModeStore.setState({ enabled: true });
+    useVisualModeStore.setState({ kinds: { source: "visual" } });
     expect(keptVisualEditor("main.tex")).toBeNull();
     await openProjectLocation({ path: "main.tex", line: 1 });
     expect(mocks.revealSourceEditor).toHaveBeenCalledOnce();

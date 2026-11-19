@@ -2,7 +2,7 @@ import { Image, type ImageOptions } from "@tiptap/extension-image";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import type { NodeViewRenderer } from "@tiptap/core";
 import { assetImage } from "../asset-image";
-import { isUrlWithScheme, markdownLinkDestination, readableLinkHref } from "../link-destination";
+import { decodedHref, isUrlWithScheme, markdownLinkDestination, readableLinkHref } from "../link-destination";
 import { rawInlineMarkup } from "../raw-inline";
 import type { AssetUrlResolver } from "../options";
 import { parsingMarkdownSource } from "./engine";
@@ -178,7 +178,10 @@ function readWidths(state: CoreState): boolean {
   return true;
 }
 
+const LOCAL_FILE = /^(?:[a-z]:[\\/]|file:)/iu;
+
 function markdownImagePath(source: string): string | null {
+  if (LOCAL_FILE.test(source)) return decodedHref(source);
   return isUrlWithScheme(source) ? null : readableLinkHref(source);
 }
 
@@ -192,12 +195,13 @@ function imageNodeView(resolveAssetUrl: AssetUrlResolver): NodeViewRenderer {
     dom.append(image, asset.placeholder);
 
     const present = () => {
-      image.alt = String(node.attrs.alt ?? "");
+      const alt = String(node.attrs.alt ?? "");
+      image.alt = alt;
       if (node.attrs.title) image.title = String(node.attrs.title);
       else image.removeAttribute("title");
       const width = imageWidthPercent(node.attrs.widthPercent);
       image.style.width = width === null ? "" : `${width}%`;
-      asset.show(String(node.attrs.src ?? ""));
+      asset.show(String(node.attrs.src ?? ""), alt.trim());
     };
 
     present();

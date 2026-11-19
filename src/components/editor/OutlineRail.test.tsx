@@ -174,6 +174,7 @@ describe("OutlineRail", () => {
     fireEvent.click(screen.getByRole("button", { name: copy.title }));
 
     const outline = await screen.findByRole("dialog", { name: copy.title });
+    expect(outline).toHaveAttribute("data-align", "center");
     const current = within(outline).getByRole("button", { name: "1 Introduction, page 1" });
     await waitFor(() => expect(current).toHaveFocus());
     expect(within(outline).getByText("main.tex")).toBeInTheDocument();

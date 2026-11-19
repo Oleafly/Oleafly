@@ -5,6 +5,7 @@ import type { AnyExtension } from "@tiptap/core";
 import { ColorBox, TextColor } from "./color";
 import { Figure, FigureCaption } from "./figure";
 import { Footnote } from "./footnote";
+import { FunctionKeyTextGuard } from "./function-key-guard";
 import { Highlight } from "./highlight";
 import { LatexHeadingAttributes } from "./heading";
 import { MarkdownCodeBlock } from "./markdown/code-block";
@@ -30,6 +31,7 @@ export function createWysiwygExtensions(options: WysiwygExtensionOptions = {}): 
   const renderMath = options.renderMath ?? null;
   const localizeHref = options.localizeLinkHref ?? null;
   return [
+    FunctionKeyTextGuard,
     StarterKit.configure({
       codeBlock: false,
       heading: false,

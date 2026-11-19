@@ -4,8 +4,8 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TOUR_STORAGE_KEY, useTourStore } from "@/store/tours";
 import { useSettingsStore } from "@/store/settings";
-import { getWysiwygMode } from "@/lib/wysiwyg-mode";
-import { useVisualModeStore } from "@/store/visual-mode";
+import { getKindModes } from "@/lib/wysiwyg-mode";
+import { fileMode, useVisualModeStore } from "@/store/visual-mode";
 
 const mocks = vi.hoisted(() => ({
   libraryRoot: vi.fn(),
@@ -155,7 +155,7 @@ describe("Settings section resets", () => {
     const settings = useSettingsStore.getState();
     settings.setLatexTools(true);
     useVisualModeStore.getState().loadProject("visual-project");
-    useVisualModeStore.getState().setEnabled(true);
+    useVisualModeStore.getState().setMode("main.tex", "visual");
 
     settings.setGrammarDialect("british");
     settings.setAccentColor("#db2777");
@@ -196,8 +196,8 @@ describe("Settings section resets", () => {
       defaultLatexEngine: "latexmk",
     });
     expect(localStorage.getItem("oleafly.latexTools")).toBe("0");
-    expect(useVisualModeStore.getState().enabled).toBe(true);
-    expect(getWysiwygMode("visual-project")).toBe(true);
+    expect(fileMode(useVisualModeStore.getState(), "main.tex")).toBe("visual");
+    expect(getKindModes("visual-project")).toEqual({ source: "visual" });
     expect(localStorage.getItem("oleafly.harper.dialect")).toBe("british");
     expect(localStorage.getItem("oleafly.accent")).toBe("#db2777");
     expect(localStorage.getItem("oleafly.editorTheme.dark")).toBe("dracula");

@@ -25,11 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Edit a project from your online LaTeX service live with your coauthors while they keep using its web editor. Typing, new files and renames reach both sides within a second or so, you can see where each person is working, and if the connection drops you keep typing and it all catches up when you're back. No Git token is needed. If your account signs in with Google, your institution or a passkey, use Sign in with your browser. It's experimental: turn it on in Settings › Experimentation.
 - Double-click a `.tex`, `.typ` or `.md` file in Finder, File Explorer or a Linux file manager and it opens in Oleafly, in a tab inside a project for its folder. Oleafly also becomes the default app for these files, on macOS and Linux the first time it runs and on Windows when it's installed. If you already picked another app for one of them, that app stays the default.
-- You can now set the reasoning effort for a custom provider. Turn on Send reasoning effort when you add or edit it, and the effort menu in chat offers Low, Medium and High, which Oleafly sends as `reasoning_effort`. If the server rejects the field, testing the model tells you.
+- You can now set the reasoning effort for a custom provider. Turn on Send reasoning effort when you add or edit it, and the effort menu in chat offers Low, Medium and High, which Oleafly sends as `reasoning_effort`. If the server rejects the field, testing the model tells you, and so does the chat, along with how to turn it off.
 - **Add custom provider** in Settings > AI has a llama.cpp preset. Pick it and it fills in `http://localhost:9931/v1`, where `llama-server` listens by default. Leave the key empty unless you started the server with `--api-key`. When you click Add provider, Oleafly checks that the server is running and loads its models.
 - When you zoom the app with a shortcut or from the command palette, a small bar at the bottom of the window shows the new zoom level. Use its − and + buttons to zoom out or in, or Reset (Cmd+0 or Ctrl+0) to go back to 100%. It goes away after two seconds, unless the pointer is resting on it.
 - The source editor has an outline rail halfway down its right edge: a short mark for each heading, with the section you're reading highlighted. Hover over it or click it to see the outline, with section numbers and the PDF page of each heading from the last compile, and pick a heading to go there. In a project split across files, it shows the whole document from any file the main document includes.
-- HTML files have Code, Preview and Split modes, like Markdown. The preview shows the page as a browser would, with its images, styles and scripts from the project, and reloads each time you save.
+- HTML files have Code, Preview and Split modes, like Markdown. The preview shows the page as a browser would, with its images, styles and scripts from the project, and reloads each time you save. Links to other sites open in your browser.
 - The source editor highlights HTML, JavaScript, TypeScript, JSX, TSX, Python, R, Julia and SCSS files. Before, they showed as plain text.
 - `.bib` files have a Preview mode too: a searchable list of the references in the file, with title, authors, year and venue. Pick one to see its entry in the source beside the list.
 - CSV and TSV files open as a table in Preview, with filtering, sorting by column and a summary of each number column, and Excel or OpenDocument spreadsheets (`.xlsx`, `.xls`, `.ods`) open straight into that table instead of as unreadable text.
@@ -48,13 +48,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Settings opens where you left it: the last section and tab you looked at, until you quit. A link to a setting still opens that setting.
 - File and folder icons now use the app's chart colours, one for each family of files, with a lightly tinted body. Folders and archives are amber, LaTeX, class and settings files blue, Typst green, Markdown and bibliographies purple, PDFs red, images and whiteboards pink, spreadsheets dark green, and code and slide decks orange. Files Oleafly doesn't recognise stay grey. If you'd rather read a file's type than its icon, switch to type badges in Settings > Appearance > Project: a short label such as TEX or PDF, in the same colour.
 - PDF dark mode draws pages in your theme's colors instead of pure black. In the dark theme a page takes the theme's panel color and panel text color, so a theme like One Dark gets a page that matches it. Only the pages change now: the space around them, search highlights and messages keep the app's colors, and the light frame dark mode used to leave around each page is gone.
 - You can pick the dark page and text colors under the PDF dark mode switch in Settings > Appearance > PDF Preview. They're in Theme customization too, so a theme file can set them as `pdf-dark-page` and `pdf-dark-text`, and the light and dark themes each keep their own pair. A light page with dark text gives you a tinted page, such as sepia, instead of an inverted one.
 
 ### Fixed
 
-- Local images in Markdown's visual editor now resolve from the project again after the document is reopened. If an image isn't in the project, its place shows "Image not found" instead of staying blank.
+- The HTML output of a Quarto or Markdown document shows in the preview again. Since 0.4.12 the panel stayed blank.
+- Each file keeps its own view. Switching one file to Visual, Preview or Split no longer switches the next file you open.
+- On a Mac, pressing End, Home, Page Up, Page Down or a function key could leave a box character in a note, the chat box or a text field. It doesn't anymore, and any that got in are removed before a message is sent.
+- Pressing Escape in a dialog opened from Settings, such as Create skill or Add custom provider, closes that dialog and leaves Settings open.
+- Search, filter, name and address fields stop autocorrecting and capitalizing what you type on a Mac.
+- The editor's tab bar scrolls to the tab you open, and when tabs don't fit it fades at the edge instead of cutting a file name off.
+- The Ask AI button for a selection on the first line sits below the line instead of covering the bar above the editor.
+- Sync PDF on compiles works in the detached preview window. The window couldn't read or change the setting.
+- Settings keeps one size when you switch to Appearance > Notes instead of growing wider.
+- After you switch the app's language, the spelling dictionary shows its name in the new language straight away.
+- The app log no longer grows without limit. Past 8 MB it moves to `app.log.1` and starts again, and lines written at the same moment stay on their own lines.
+- Local images in Markdown's visual editor now resolve from the project again after the document is reopened. If an image is missing, its place says which file it looked for instead of staying blank, and an image outside the project says it isn't shown.
 - In a narrow chat panel, the approval mode button no longer spills over the button next to it.
 - A long model name in a dropdown ends in an ellipsis instead of pushing the dropdown out of its card. A model that a server lists by its file path, as llama.cpp does for a model started with `-m`, shows the file name instead of the whole path.
 - When cloud sync left two versions of a note and you kept one, the other was

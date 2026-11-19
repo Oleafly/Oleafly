@@ -3,6 +3,7 @@ import { useDeferredValue, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { parseDelimited, serializeCsv } from "@oleafly/conversion-registry/table";
 import { BLOCK_SURFACE } from "@/components/ui/block-frame";
+import { DELEGATED_TOOLTIP_ATTRIBUTE, useDelegatedTooltips } from "@/components/ui/delegated-tooltip";
 import { Input } from "@/components/ui/input";
 import { nextSort, SortableTableHead, type SortState, TableSpacerRow } from "@/components/ui/table";
 import { ROW_WINDOW_ITEM, useRowWindow } from "@/hooks/use-row-window";
@@ -24,12 +25,17 @@ import {
   buildTable,
   type ColumnSummary,
   columnKeyCache,
+  columnShape,
   filterRows,
+  formatTableNumber,
   loadTableFile,
+  type NumberShape,
+  numberShape,
   sortRows,
   summarizeColumn,
   TABLE_MAX_COLUMNS,
   TABLE_MAX_ROWS,
+  TABLE_NUMBER_DIGITS,
   type TableData,
   TableFileError,
   type TableResult,
@@ -46,7 +52,6 @@ export const OVERSCAN = 8;
 export const STILL_ROWS = 6;
 export const STILL_COLUMNS = 6;
 const FIRST_WINDOW = Math.ceil(VIEW_REM / ROW_REM) + OVERSCAN * 2;
-const MEAN_FORMAT: Intl.NumberFormatOptions = { maximumSignificantDigits: 6 };
 const TABLE_LINE = "border-(--note-table-line,var(--border))";
 const TABLE_HEAD = "bg-(--note-table-head,var(--muted))";
 
@@ -54,20 +59,41 @@ function columnName(name: string, index: number): string {
   return name.trim() || i18n.t(($) => $.notes.blocks.table.column, { number: index + 1 });
 }
 
-function SummaryCell({ summary }: Readonly<{ summary: ColumnSummary }>) {
+interface SummaryStat {
+  readonly label: string;
+  readonly value: string;
+  readonly exact?: string;
+}
+
+function boundStat(label: string, value: number, text: string, column: NumberShape): SummaryStat {
+  return { label, value: formatTableNumber(value, { ...numberShape(text), grouped: column.grouped }), exact: text };
+}
+
+function SummaryCell({ summary, shape }: Readonly<{ summary: ColumnSummary; shape: NumberShape }>) {
   const { t } = useTranslation(["notes"]);
-  const items: [string, string][] = [
-    [t(($) => $.notes.blocks.table.count), formatNumber(summary.count)],
-    [t(($) => $.notes.blocks.table.mean), formatNumber(summary.mean, MEAN_FORMAT)],
-    [t(($) => $.notes.blocks.table.min), summary.minText],
-    [t(($) => $.notes.blocks.table.max), summary.maxText],
+  const meanShape = { decimals: shape.decimals + 1, significant: shape.significant + 1, grouped: shape.grouped };
+  const exactShape = { decimals: TABLE_NUMBER_DIGITS, significant: TABLE_NUMBER_DIGITS, grouped: shape.grouped };
+  const stats: SummaryStat[] = [
+    { label: t(($) => $.notes.blocks.table.count), value: formatNumber(summary.count) },
+    {
+      label: t(($) => $.notes.blocks.table.mean),
+      value: formatTableNumber(summary.mean, meanShape, false),
+      exact: formatTableNumber(summary.mean, exactShape, false),
+    },
+    boundStat(t(($) => $.notes.blocks.table.min), summary.min, summary.minText, shape),
+    boundStat(t(($) => $.notes.blocks.table.max), summary.max, summary.maxText, shape),
   ];
   return (
-    <dl className="flex flex-wrap justify-end gap-x-3 gap-y-0.5 text-[0.6875rem]">
-      {items.map(([label, value]) => (
-        <div key={label} className="inline-flex gap-1 whitespace-nowrap">
-          <dt className="text-foreground/60">{label}</dt>
-          <dd className="tabular-nums">{value}</dd>
+    <dl className="grid grid-cols-[auto_1fr] gap-x-3 text-[0.6875rem] leading-4">
+      {stats.map(({ label, value, exact }) => (
+        <div key={label} className="contents">
+          <dt className="whitespace-nowrap text-foreground/60">{label}</dt>
+          <dd
+            className="whitespace-nowrap text-right tabular-nums"
+            {...(exact && exact !== value ? { [DELEGATED_TOOLTIP_ATTRIBUTE]: exact } : {})}
+          >
+            {value}
+          </dd>
         </div>
       ))}
     </dl>
@@ -88,6 +114,10 @@ export function TableView({ table, fill = false }: Readonly<{ table: TableData; 
     () => (sort ? sortRows(filtered, keys(sort.key), sort.direction, collator) : filtered),
     [filtered, sort, keys, collator],
   );
+  const shapes = useMemo(
+    () => table.types.map((type, column) => (type === "number" ? columnShape(table, column) : null)),
+    [table],
+  );
   const summaries = useMemo(
     () =>
       table.types.map((type, column) =>
@@ -95,6 +125,7 @@ export function TableView({ table, fill = false }: Readonly<{ table: TableData; 
       ),
     [table, filtered, keys],
   );
+  const tooltip = useDelegatedTooltips(scrollRef);
   const columns = useMemo(
     () =>
       table.header.map((name, index) => ({
@@ -207,9 +238,10 @@ export function TableView({ table, fill = false }: Readonly<{ table: TableData; 
               <tr aria-rowindex={order.length + 2}>
                 {columns.map(({ id, index: column }) => {
                   const summary = summaries[column];
+                  const shape = shapes[column];
                   return (
                     <td key={id} className={cn("sticky bottom-0 border-t bg-(--note-table-foot,var(--muted)) px-2 py-1 align-top", TABLE_LINE)}>
-                      {summary ? <SummaryCell summary={summary} /> : null}
+                      {summary && shape ? <SummaryCell summary={summary} shape={shape} /> : null}
                     </td>
                   );
                 })}
@@ -218,6 +250,7 @@ export function TableView({ table, fill = false }: Readonly<{ table: TableData; 
           ) : null}
         </table>
       </div>
+      {tooltip}
     </div>
   );
 }

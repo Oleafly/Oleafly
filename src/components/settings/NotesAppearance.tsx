@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/color-picker";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,7 +28,6 @@ import { PeriodicNotesSettings } from "@/components/settings/PeriodicNotesSettin
 import { SettingsOptionCards } from "@/components/settings/SettingsOptionCards";
 import { SettingsRow } from "@/components/settings/SettingsRow";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
-import { useWideSettings } from "@/components/settings/settings-width";
 import { SystemFontSettingsRow } from "@/components/settings/SystemFontPicker";
 import { DATE_KEY, DUE_KEY } from "@/components/notes/note-field-values";
 import { untrustRemoteImageHost, useTrustedRemoteImageHosts } from "@/lib/remote-image";
@@ -733,6 +732,7 @@ function TextReplacementPairs() {
       )}
       <form onSubmit={add} className="flex flex-wrap items-center gap-2">
         <Input
+          {...LITERAL_INPUT}
           ref={fromRef}
           aria-label={t(($) => $.notes.appearance.notes.replacements.type)}
           placeholder={t(($) => $.notes.appearance.notes.replacements.type)}
@@ -743,6 +743,7 @@ function TextReplacementPairs() {
         />
         <ArrowRight aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
         <Input
+          {...LITERAL_INPUT}
           aria-label={t(($) => $.notes.appearance.notes.replacements.becomes)}
           placeholder={t(($) => $.notes.appearance.notes.replacements.becomes)}
           value={to}
@@ -804,154 +805,154 @@ function RemoteImageHosts() {
 
 export function NotesAppearanceTab() {
   const { t } = useTranslation(["core", "settings", "notes"]);
-  const beside = useWideSettings();
   return (
-    <div
-      data-testid="settings-appearance-notes"
-      data-layout={beside ? "beside" : "stacked"}
-      className={beside ? "grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-x-5" : "space-y-3"}
-    >
-      <NotesAppearancePreview beside={beside} className={beside ? "col-start-2 row-start-1" : undefined} />
-      <div data-testid="settings-appearance-notes-options" className={cn("space-y-3", beside && "col-start-1 row-start-1")}>
-        <Group title={t(($) => $.notes.appearance.notes.text.title)}>
-          <TypefaceCards />
-          <FontRow
-            settingKey="notesFontFamily"
-            use="app"
-            testId="settings-row-notes-font"
-            label={t(($) => $.notes.appearance.notes.font.label)}
-            description={t(($) => $.notes.appearance.notes.font.description)}
-          />
-          <FontSizeRow />
-          <LineHeightRow />
-          <ChoiceRow
-            settingKey="notesParagraphSpacing"
-            testId="settings-row-notes-paragraph-spacing"
-            label={t(($) => $.notes.appearance.notes.paragraphSpacing.label)}
-            description={t(($) => $.notes.appearance.notes.paragraphSpacing.description)}
-            options={NOTES_PARAGRAPH_SPACING_OPTIONS}
-            optionLabel={(option) => t(($) => $.notes.appearance.notes.paragraphSpacing.options[option])}
-          />
-        </Group>
+    <div data-testid="settings-appearance-notes" className="@container">
+      <div
+        data-testid="settings-appearance-notes-layout"
+        className="space-y-3 @min-[52rem]:grid @min-[52rem]:grid-cols-[minmax(0,1fr)_20rem] @min-[52rem]:items-start @min-[52rem]:gap-x-5 @min-[52rem]:space-y-0"
+      >
+        <NotesAppearancePreview className="@min-[52rem]:col-start-2 @min-[52rem]:row-start-1" />
+        <div data-testid="settings-appearance-notes-options" className="space-y-3 @min-[52rem]:col-start-1 @min-[52rem]:row-start-1">
+          <Group title={t(($) => $.notes.appearance.notes.text.title)}>
+            <TypefaceCards />
+            <FontRow
+              settingKey="notesFontFamily"
+              use="app"
+              testId="settings-row-notes-font"
+              label={t(($) => $.notes.appearance.notes.font.label)}
+              description={t(($) => $.notes.appearance.notes.font.description)}
+            />
+            <FontSizeRow />
+            <LineHeightRow />
+            <ChoiceRow
+              settingKey="notesParagraphSpacing"
+              testId="settings-row-notes-paragraph-spacing"
+              label={t(($) => $.notes.appearance.notes.paragraphSpacing.label)}
+              description={t(($) => $.notes.appearance.notes.paragraphSpacing.description)}
+              options={NOTES_PARAGRAPH_SPACING_OPTIONS}
+              optionLabel={(option) => t(($) => $.notes.appearance.notes.paragraphSpacing.options[option])}
+            />
+          </Group>
 
-        <Group title={t(($) => $.notes.appearance.notes.headings.title)}>
-          <HeadingTypefaceCards />
-          <FontRow
-            settingKey="notesHeadingFontFamily"
-            use="app"
-            testId="settings-row-notes-heading-font"
-            label={t(($) => $.notes.appearance.notes.headingFont.label)}
-            description={t(($) => $.notes.appearance.notes.headingFont.description)}
-          />
-          <ChoiceRow
-            settingKey="notesHeadingSize"
-            testId="settings-row-notes-heading-size"
-            label={t(($) => $.notes.appearance.notes.headingSize.label)}
-            description={t(($) => $.notes.appearance.notes.headingSize.description)}
-            options={NOTES_HEADING_SIZES}
-            optionLabel={(option) => t(($) => $.notes.appearance.notes.headingSize.options[option])}
-          />
-          <ChoiceRow
-            settingKey="notesTitleSize"
-            testId="settings-row-notes-title-size"
-            label={t(($) => $.notes.appearance.notes.titleSize.label)}
-            description={t(($) => $.notes.appearance.notes.titleSize.description)}
-            options={NOTES_TITLE_SIZES}
-            optionLabel={(size) => t(($) => $.settings.appearance.fontSizeOption, { size })}
-            width="w-[112px]"
-          />
-        </Group>
+          <Group title={t(($) => $.notes.appearance.notes.headings.title)}>
+            <HeadingTypefaceCards />
+            <FontRow
+              settingKey="notesHeadingFontFamily"
+              use="app"
+              testId="settings-row-notes-heading-font"
+              label={t(($) => $.notes.appearance.notes.headingFont.label)}
+              description={t(($) => $.notes.appearance.notes.headingFont.description)}
+            />
+            <ChoiceRow
+              settingKey="notesHeadingSize"
+              testId="settings-row-notes-heading-size"
+              label={t(($) => $.notes.appearance.notes.headingSize.label)}
+              description={t(($) => $.notes.appearance.notes.headingSize.description)}
+              options={NOTES_HEADING_SIZES}
+              optionLabel={(option) => t(($) => $.notes.appearance.notes.headingSize.options[option])}
+            />
+            <ChoiceRow
+              settingKey="notesTitleSize"
+              testId="settings-row-notes-title-size"
+              label={t(($) => $.notes.appearance.notes.titleSize.label)}
+              description={t(($) => $.notes.appearance.notes.titleSize.description)}
+              options={NOTES_TITLE_SIZES}
+              optionLabel={(size) => t(($) => $.settings.appearance.fontSizeOption, { size })}
+              width="w-[112px]"
+            />
+          </Group>
 
-        <Group title={t(($) => $.notes.appearance.notes.layout.title)}>
-          <WidthCards />
-          <ChoiceRow
-            settingKey="notesInfo"
-            testId="settings-row-notes-info"
-            label={t(($) => $.notes.appearance.notes.info.label)}
-            description={t(($) => $.notes.appearance.notes.info.description)}
-            options={NOTES_INFO_PLACES}
-            optionLabel={(place) => t(($) => $.notes.appearance.notes.info.options[place])}
-          />
-          <ChipRow
-            settingKey="notesTaskBox"
-            testId="settings-row-notes-task-box"
-            optionTestId="settings-notes-task-box"
-            label={t(($) => $.notes.appearance.notes.taskBox.label)}
-            description={t(($) => $.notes.appearance.notes.taskBox.description)}
-            options={NOTES_TASK_BOXES}
-            optionLabel={(id) => t(($) => $.notes.appearance.notes.taskBox.options[id])}
-            sample={(id) => {
-              const Icon = TASK_BOX_ICONS[id];
-              return <Icon aria-hidden className="size-3.5 text-primary" />;
-            }}
-          />
-          <ToggleRow
-            settingKey="notesShowWordCount"
-            testId="settings-row-notes-word-count"
-            label={t(($) => $.notes.appearance.notes.wordCount.label)}
-            description={t(($) => $.notes.appearance.notes.wordCount.description)}
-          />
-          <ToggleRow
-            settingKey="notesSpellcheck"
-            testId="settings-row-notes-spellcheck"
-            label={t(($) => $.notes.appearance.notes.spellcheck.label)}
-            description={t(($) => $.notes.appearance.notes.spellcheck.description)}
-          />
-          <ToggleRow
-            settingKey="notesTextReplace"
-            testId="settings-row-notes-text-replace"
-            label={t(($) => $.notes.appearance.notes.replacements.label)}
-            description={t(($) => $.notes.appearance.notes.replacements.description)}
-          />
-          <TextReplacementPairs />
-          <ToggleRow
-            settingKey="notesKeepUndo"
-            testId="settings-row-notes-keep-undo"
-            label={t(($) => $.notes.appearance.notes.keepUndo.label)}
-            description={t(($) => $.notes.appearance.notes.keepUndo.description)}
-          />
-          <ToggleRow
-            settingKey="notesXPostsLive"
-            testId="settings-row-notes-x-posts-live"
-            label={t(($) => $.notes.appearance.notes.xPostsLive.label)}
-            description={t(($) => $.notes.appearance.notes.xPostsLive.description)}
-          />
-        </Group>
+          <Group title={t(($) => $.notes.appearance.notes.layout.title)}>
+            <WidthCards />
+            <ChoiceRow
+              settingKey="notesInfo"
+              testId="settings-row-notes-info"
+              label={t(($) => $.notes.appearance.notes.info.label)}
+              description={t(($) => $.notes.appearance.notes.info.description)}
+              options={NOTES_INFO_PLACES}
+              optionLabel={(place) => t(($) => $.notes.appearance.notes.info.options[place])}
+            />
+            <ChipRow
+              settingKey="notesTaskBox"
+              testId="settings-row-notes-task-box"
+              optionTestId="settings-notes-task-box"
+              label={t(($) => $.notes.appearance.notes.taskBox.label)}
+              description={t(($) => $.notes.appearance.notes.taskBox.description)}
+              options={NOTES_TASK_BOXES}
+              optionLabel={(id) => t(($) => $.notes.appearance.notes.taskBox.options[id])}
+              sample={(id) => {
+                const Icon = TASK_BOX_ICONS[id];
+                return <Icon aria-hidden className="size-3.5 text-primary" />;
+              }}
+            />
+            <ToggleRow
+              settingKey="notesShowWordCount"
+              testId="settings-row-notes-word-count"
+              label={t(($) => $.notes.appearance.notes.wordCount.label)}
+              description={t(($) => $.notes.appearance.notes.wordCount.description)}
+            />
+            <ToggleRow
+              settingKey="notesSpellcheck"
+              testId="settings-row-notes-spellcheck"
+              label={t(($) => $.notes.appearance.notes.spellcheck.label)}
+              description={t(($) => $.notes.appearance.notes.spellcheck.description)}
+            />
+            <ToggleRow
+              settingKey="notesTextReplace"
+              testId="settings-row-notes-text-replace"
+              label={t(($) => $.notes.appearance.notes.replacements.label)}
+              description={t(($) => $.notes.appearance.notes.replacements.description)}
+            />
+            <TextReplacementPairs />
+            <ToggleRow
+              settingKey="notesKeepUndo"
+              testId="settings-row-notes-keep-undo"
+              label={t(($) => $.notes.appearance.notes.keepUndo.label)}
+              description={t(($) => $.notes.appearance.notes.keepUndo.description)}
+            />
+            <ToggleRow
+              settingKey="notesXPostsLive"
+              testId="settings-row-notes-x-posts-live"
+              label={t(($) => $.notes.appearance.notes.xPostsLive.label)}
+              description={t(($) => $.notes.appearance.notes.xPostsLive.description)}
+            />
+          </Group>
 
-        <Group title={t(($) => $.notes.appearance.notes.code.title)}>
-          <FontRow
-            settingKey="notesCodeFontFamily"
-            use="editor"
-            testId="settings-row-notes-code-font"
-            label={t(($) => $.notes.appearance.notes.codeFont.label)}
-            description={t(($) => $.notes.appearance.notes.codeFont.description)}
-          />
-          <ChoiceRow
-            settingKey="notesCodeTheme"
-            testId="settings-row-notes-code-theme"
-            label={t(($) => $.notes.appearance.notes.codeTheme.label)}
-            description={t(($) => $.notes.appearance.notes.codeTheme.description)}
-            options={NOTES_CODE_THEMES}
-            optionLabel={(theme) => codeThemeLabel(theme, t(($) => $.notes.appearance.notes.codeTheme.options.editor))}
-            width="w-[168px]"
-          />
-        </Group>
+          <Group title={t(($) => $.notes.appearance.notes.code.title)}>
+            <FontRow
+              settingKey="notesCodeFontFamily"
+              use="editor"
+              testId="settings-row-notes-code-font"
+              label={t(($) => $.notes.appearance.notes.codeFont.label)}
+              description={t(($) => $.notes.appearance.notes.codeFont.description)}
+            />
+            <ChoiceRow
+              settingKey="notesCodeTheme"
+              testId="settings-row-notes-code-theme"
+              label={t(($) => $.notes.appearance.notes.codeTheme.label)}
+              description={t(($) => $.notes.appearance.notes.codeTheme.description)}
+              options={NOTES_CODE_THEMES}
+              optionLabel={(theme) => codeThemeLabel(theme, t(($) => $.notes.appearance.notes.codeTheme.options.editor))}
+              width="w-[168px]"
+            />
+          </Group>
 
-        <Group title={t(($) => $.notes.appearance.notes.drawings.title)}>
-          <TikzPreambleRow />
-        </Group>
+          <Group title={t(($) => $.notes.appearance.notes.drawings.title)}>
+            <TikzPreambleRow />
+          </Group>
 
-        <Group title={t(($) => $.notes.appearance.notes.colors.title)}>
-          <AccentRow />
-          <CalloutCards />
-          <FieldStyleCards />
-        </Group>
+          <Group title={t(($) => $.notes.appearance.notes.colors.title)}>
+            <AccentRow />
+            <CalloutCards />
+            <FieldStyleCards />
+          </Group>
 
-        <Group title={t(($) => $.notes.appearance.notes.remoteImages.title)}>
-          <RemoteImageHosts />
-        </Group>
+          <Group title={t(($) => $.notes.appearance.notes.remoteImages.title)}>
+            <RemoteImageHosts />
+          </Group>
 
-        <PeriodicNotesSettings />
+          <PeriodicNotesSettings />
+        </div>
       </div>
     </div>
   );

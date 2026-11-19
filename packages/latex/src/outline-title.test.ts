@@ -168,6 +168,29 @@ describe("renderLatexOutlineTitle", () => {
     expect(renderLatexOutlineTitle("100\\% \\& more")).toBe("100% & more");
     expect(renderLatexOutlineTitle("``quoted''")).toBe('"quoted"');
   });
+
+  it("drops the braces that protect a TeX logo or a capital", () => {
+    expect(renderLatexOutlineTitle(String.raw`The {\TeX}book`)).toBe("The TeXbook");
+    expect(renderLatexOutlineTitle(String.raw`{\LaTeX}: A Document Preparation System`)).toBe(
+      "LaTeX: A Document Preparation System",
+    );
+    expect(renderLatexOutlineTitle(String.raw`{The {\TeX}book}`)).toBe("The TeXbook");
+    expect(renderLatexOutlineTitle(String.raw`{\BibTeX}ing with \LaTeXe{} and {\XeTeX}`)).toBe(
+      "BibTeXing with LaTeX2ε and XeTeX",
+    );
+    expect(renderLatexOutlineTitle(String.raw`G{\"o}del, {Escher}, {\relax Bach}`)).toBe("Gödel, Escher, Bach");
+    expect(renderLatexOutlineTitle(String.raw`\TeXbook`)).toBe(String.raw`\TeXbook`);
+  });
+
+  it("writes dashes, dots and escaped characters as the typeset text", () => {
+    expect(renderLatexOutlineTitle("Pages 10--20, more---or less")).toBe("Pages 10–20, more—or less");
+    expect(renderLatexOutlineTitle(String.raw`Wait\ldots{} then \dots\ and \textendash`)).toBe("Wait… then … and –");
+    expect(renderLatexOutlineTitle(String.raw`Hyphen\-ation`)).toBe("Hyphenation");
+    expect(renderLatexOutlineTitle(String.raw`{Sets \{a\} and \$5}`)).toBe("Sets {a} and $5");
+    expect(renderLatexOutlineTitle(String.raw`\textbackslash{}x, \textasciitilde{}y and \textasciicircum z`)).toBe(
+      String.raw`\x, ~y and ^ z`,
+    );
+  });
 });
 
 describe("collectLatexOutlineMacros", () => {

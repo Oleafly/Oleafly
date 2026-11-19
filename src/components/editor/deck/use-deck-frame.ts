@@ -45,6 +45,7 @@ export interface DeckFrameOptions {
   readonly code: string;
   readonly mode: DeckFrameMode;
   readonly startPage: number;
+  readonly startRevealed?: number;
 }
 
 function tokenOf(url: string): string {
@@ -92,12 +93,12 @@ export function readDeckMessage(
   return null;
 }
 
-export function useDeckFrame({ projectId, path, code, mode, startPage }: DeckFrameOptions): DeckFrame {
+export function useDeckFrame({ projectId, path, code, mode, startPage, startRevealed }: DeckFrameOptions): DeckFrame {
   const [channel] = useState(frameChannel);
   const [url, setUrl] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   const [info, setInfo] = useState<DeckInfo | null>(null);
-  const [position, setPosition] = useState<DeckPosition>({ page: startPage, revealed: 0, steps: 0 });
+  const [position, setPosition] = useState<DeckPosition>({ page: startPage, revealed: startRevealed ?? 0, steps: 0 });
   const [error, setError] = useState<DeckError | null>(null);
   const [generation, setGeneration] = useState(0);
   const [connection, setConnection] = useState(0);
@@ -106,6 +107,7 @@ export function useDeckFrame({ projectId, path, code, mode, startPage }: DeckFra
   const codeRef = useRef(code);
   codeRef.current = code;
   const pageRef = useRef(startPage);
+  const revealedRef = useRef(startRevealed);
   const sentCode = useRef<string | null>(null);
   const sentAssets = useRef(new Set<string>());
   const loadedUrl = useRef<string | null>(null);
@@ -133,7 +135,7 @@ export function useDeckFrame({ projectId, path, code, mode, startPage }: DeckFra
           source,
           { theme: theme(), channel, parentOrigin: window.location.origin, messages },
           runtime,
-          { mode, page: pageRef.current, assets },
+          { mode, page: pageRef.current, revealed: revealedRef.current, assets, file: path },
         );
         const opened = await artifactFrameOpen(html);
         token = tokenOf(opened);
@@ -183,6 +185,7 @@ export function useDeckFrame({ projectId, path, code, mode, startPage }: DeckFra
           setError(null);
         } else if (read.type === "position") {
           pageRef.current = read.position.page;
+          revealedRef.current = read.position.revealed;
           setPosition(read.position);
         } else {
           setError(read.error);

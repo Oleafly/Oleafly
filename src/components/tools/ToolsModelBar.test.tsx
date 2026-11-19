@@ -21,7 +21,8 @@ vi.mock("@/lib/tauri", async (importOriginal) => ({
   getConfig: mocks.getConfig,
   setAiToolsModel: mocks.setAiToolsModel,
 }));
-vi.mock("@/lib/ollama", () => ({
+vi.mock("@/lib/ollama", async (importOriginal) => ({
+  ollamaUnreachable: (await importOriginal<typeof import("@/lib/ollama")>()).ollamaUnreachable,
   DEFAULT_OLLAMA_HOST: "http://127.0.0.1:11434",
   listOllamaModelDetails: mocks.listOllamaModelDetails,
 }));

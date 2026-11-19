@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { AlertCircle, ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { CheckBadge } from "@/components/ui/check-badge";
@@ -110,6 +110,7 @@ export function IntegrationKeyField({
   return (
     <div className="mt-4 flex gap-2">
       <Input
+        {...LITERAL_INPUT}
         type={type}
         data-testid={inputTestId}
         value={value}

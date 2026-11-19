@@ -3661,31 +3661,145 @@ fn read_picked_file_bytes(path: &Path, max_bytes: usize) -> Result<Vec<u8>, Stri
     Ok(bytes)
 }
 
+pub(crate) const APP_LOG_FILE: &str = "app.log";
+pub(crate) const PREVIOUS_APP_LOG_FILE: &str = "app.log.1";
+const APP_LOG_LIMIT_BYTES: u64 = 8 * 1024 * 1024;
+
 #[tauri::command(async)]
 pub fn append_app_log(message: String) -> Result<(), String> {
-    use std::io::Write;
-    let log_path = paths::oleafly_root()?.join("app.log");
+    let log_path = paths::oleafly_root()?.join(APP_LOG_FILE);
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
+    append_log_line(&log_path, secs, &message, APP_LOG_LIMIT_BYTES)
+}
+
+fn append_log_line(log_path: &Path, secs: u64, message: &str, limit: u64) -> Result<(), String> {
+    use std::io::Write;
+    static WRITING: Mutex<()> = Mutex::new(());
+    let line = format!("[{secs}] {message}\n");
+    let _writing = WRITING
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let mut file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
-        .open(&log_path)
+        .open(log_path)
         .map_err(|e| format!("failed to open app log: {e}"))?;
-    writeln!(file, "[{secs}] {message}").map_err(|e| format!("failed to write app log: {e}"))
+    file.write_all(line.as_bytes())
+        .map_err(|e| format!("failed to write app log: {e}"))?;
+    let full = file.metadata().is_ok_and(|meta| meta.len() > limit);
+    drop(file);
+    if full {
+        let _ = std::fs::rename(log_path, log_path.with_file_name(PREVIOUS_APP_LOG_FILE));
+    }
+    Ok(())
+}
+
+fn log_tail(path: &Path, max_bytes: usize) -> Result<Vec<u8>, String> {
+    use std::io::{Read, Seek, SeekFrom};
+    let mut file = match std::fs::File::open(path) {
+        Ok(file) => file,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(error) => return Err(format!("failed to read app log: {error}")),
+    };
+    let len = file
+        .metadata()
+        .map_err(|e| format!("failed to read app log: {e}"))?
+        .len();
+    let wanted = u64::try_from(max_bytes).unwrap_or(u64::MAX).min(len);
+    file.seek(SeekFrom::Start(len - wanted))
+        .map_err(|e| format!("failed to read app log: {e}"))?;
+    let mut tail = Vec::with_capacity(usize::try_from(wanted).unwrap_or(0));
+    file.take(wanted)
+        .read_to_end(&mut tail)
+        .map_err(|e| format!("failed to read app log: {e}"))?;
+    Ok(tail)
+}
+
+fn read_app_log_in(dir: &Path, max_bytes: usize) -> Result<String, String> {
+    let current = log_tail(&dir.join(APP_LOG_FILE), max_bytes)?;
+    let left = max_bytes.saturating_sub(current.len());
+    let mut text = if left > 0 {
+        log_tail(&dir.join(PREVIOUS_APP_LOG_FILE), left)?
+    } else {
+        Vec::new()
+    };
+    text.extend_from_slice(&current);
+    Ok(String::from_utf8_lossy(&text).into_owned())
+}
+
+#[cfg(test)]
+mod app_log_tests {
+    use super::{append_log_line, read_app_log_in, APP_LOG_FILE, PREVIOUS_APP_LOG_FILE};
+
+    #[test]
+    fn a_full_log_moves_aside_and_reading_joins_both_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join(APP_LOG_FILE);
+        for line in 0..10 {
+            append_log_line(&path, line, &format!("first {line}"), 60).unwrap();
+        }
+        let previous = std::fs::read_to_string(dir.path().join(PREVIOUS_APP_LOG_FILE)).unwrap();
+        let current = std::fs::read_to_string(&path).unwrap();
+        assert!(previous.ends_with("first 9\n") || current.ends_with("first 9\n"));
+        assert!(std::fs::metadata(&path).unwrap().len() <= 60 + 16);
+        assert!(previous.len() <= 60 + 16);
+
+        let everything = read_app_log_in(dir.path(), 10_000).unwrap();
+        assert_eq!(everything, format!("{previous}{current}"));
+        assert!(everything.ends_with("first 9\n"));
+        let tail = read_app_log_in(dir.path(), 12).unwrap();
+        assert_eq!(tail.len(), 12);
+        assert!(everything.ends_with(&tail));
+        assert_eq!(read_app_log_in(dir.path(), 0).unwrap(), "");
+        assert_eq!(
+            read_app_log_in(tempfile::tempdir().unwrap().path(), 100).unwrap(),
+            ""
+        );
+    }
+
+    #[test]
+    fn lines_logged_at_the_same_time_never_interleave() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("app.log");
+        let padding = "x".repeat(300);
+        let writers: Vec<_> = (0..12)
+            .map(|writer| {
+                let path = path.clone();
+                let padding = padding.clone();
+                std::thread::spawn(move || {
+                    for line in 0..150 {
+                        let message = format!("writer {writer} line {line} {padding}");
+                        append_log_line(&path, 1_795_000_000 + line, &message, u64::MAX).unwrap();
+                    }
+                })
+            })
+            .collect();
+        for writer in writers {
+            writer.join().unwrap();
+        }
+        let text = std::fs::read_to_string(&path).unwrap();
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines.len(), 12 * 150);
+        for line in lines {
+            let (stamp, message) = line.split_once("] ").unwrap();
+            assert!(
+                stamp.strip_prefix('[').unwrap().parse::<u64>().is_ok(),
+                "{line}"
+            );
+            let words: Vec<&str> = message.splitn(5, ' ').collect();
+            assert_eq!(words[0], "writer", "{line}");
+            assert_eq!(words[2], "line", "{line}");
+            assert_eq!(words[4], padding, "{line}");
+        }
+    }
 }
 
 #[tauri::command(async)]
 pub fn read_app_log(max_bytes: usize) -> Result<String, String> {
-    let log_path = paths::oleafly_root()?.join("app.log");
-    if !log_path.exists() {
-        return Ok(String::new());
-    }
-    let data = std::fs::read(&log_path).map_err(|e| format!("failed to read app log: {e}"))?;
-    let start = data.len().saturating_sub(max_bytes);
-    Ok(String::from_utf8_lossy(&data[start..]).to_string())
+    read_app_log_in(&paths::oleafly_root()?, max_bytes)
 }
 
 async fn set_main_doc_synchronized(

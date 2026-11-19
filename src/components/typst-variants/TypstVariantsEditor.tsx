@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Plus, Trash2, X } from "lucide-react";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/empty";
 import { describeError } from "@/lib/app-error";
@@ -171,6 +171,7 @@ function VariantCard({
           {variant.inputs.map((input) => (
             <div key={input.id} className="flex items-center gap-1.5">
               <Input
+                {...LITERAL_INPUT}
                 value={input.key}
                 onChange={(event) => update(input.id, "key", event.target.value)}
                 placeholder={t(($) => $.editor.typstVariants.key)}
@@ -182,6 +183,7 @@ function VariantCard({
                 =
               </span>
               <Input
+                {...LITERAL_INPUT}
                 value={input.value}
                 onChange={(event) => update(input.id, "value", event.target.value)}
                 placeholder={t(($) => $.editor.typstVariants.value)}

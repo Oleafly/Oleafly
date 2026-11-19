@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/locales/en/editor.json" with { type: "json" };
 
 const controller = vi.hoisted(() => ({ getEditorView: vi.fn<() => unknown>(() => null) }));
@@ -12,7 +12,7 @@ vi.mock("@/components/editor/cm/controller", () => controller);
 vi.mock("@/components/editor/cm/inline-ai/openSession", () => session);
 vi.mock("@/features/assistant-handoff", () => handoff);
 
-import { SelectionActionMenu } from "./SelectionActionMenu";
+import { SelectionActionMenu, selectionMenuPosition } from "./SelectionActionMenu";
 
 const actions = en.selectionActions;
 
@@ -30,6 +30,7 @@ function editorView(overrides: Record<string, unknown> = {}, readOnly = false) {
       sliceDoc: () => "selected",
     },
     coordsAtPos: () => ({ top: 120, left: 40, bottom: 136, right: 90 }),
+    scrollDOM: { getBoundingClientRect: () => ({ top: 30, bottom: 600, left: 0, right: 800 }) },
     ...overrides,
   };
 }
@@ -42,7 +43,46 @@ function openMenu() {
   fireEvent.click(screen.getByText(actions.askAi));
 }
 
+function sized(width: number, height: number) {
+  vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(width);
+  vi.spyOn(HTMLElement.prototype, "offsetHeight", "get").mockReturnValue(height);
+}
+
+function showPill() {
+  const view = render(<SelectionActionMenu />);
+  act(() => {
+    window.dispatchEvent(new Event("mouseup"));
+  });
+  return view.container.firstElementChild as HTMLElement;
+}
+
+describe("selectionMenuPosition", () => {
+  const bounds = { top: 30, bottom: 600, left: 0, right: 800 };
+  const line = (top: number, left = 40) => ({ top, bottom: top + 16, left, right: left + 50, bounds });
+
+  it("sits above the selection when there is room", () => {
+    expect(selectionMenuPosition(line(120), { width: 90, height: 24 })).toEqual({ top: 84, left: 40 });
+  });
+
+  it("drops below the line instead of covering what sits above the editor", () => {
+    expect(selectionMenuPosition(line(34), { width: 90, height: 24 })).toEqual({ top: 62, left: 40 });
+    expect(selectionMenuPosition(line(60), { width: 256, height: 240 })).toEqual({ top: 88, left: 40 });
+  });
+
+  it("stays inside the editor at its right and bottom edges and in a tiny editor", () => {
+    expect(selectionMenuPosition(line(120, 760), { width: 90, height: 24 })).toEqual({ top: 84, left: 710 });
+    expect(selectionMenuPosition(line(580), { width: 256, height: 600 })).toEqual({ top: 30, left: 40 });
+    expect(
+      selectionMenuPosition({ ...line(40), bounds: { top: 30, bottom: 70, left: 0, right: 60 } }, { width: 90, height: 24 }),
+    ).toEqual({ top: 46, left: 0 });
+  });
+});
+
 describe("SelectionActionMenu", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     controller.getEditorView.mockReturnValue(editorView());
@@ -70,6 +110,15 @@ describe("SelectionActionMenu", () => {
       window.dispatchEvent(new Event("mouseup"));
     });
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("places the pill above the selection, or below it on the editor's first line", () => {
+    sized(90, 24);
+    expect(showPill()).toHaveStyle({ top: "84px", left: "40px" });
+    cleanup();
+
+    controller.getEditorView.mockReturnValue(editorView({ coordsAtPos: () => ({ top: 34, left: 40, bottom: 50, right: 90 }) }));
+    expect(showPill()).toHaveStyle({ top: "62px", left: "40px" });
   });
 
   it("offers every rewrite once the pill is expanded", () => {

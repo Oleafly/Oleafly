@@ -9,6 +9,7 @@ import { formatUsd } from "@/lib/ai-pricing";
 import { formatNumber, formatRelativeTimeFrom } from "@/lib/intl";
 import { chatsSearch } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
+import { SEARCH_INPUT } from "@/components/ui/input";
 import { ModalShell } from "@/components/ui/modal-shell";
 import { Badge } from "@/components/ui/badge";
 
@@ -196,11 +197,12 @@ export function ChatHistoryModal({
         <div className="flex items-center gap-2 rounded-md border bg-background px-2 transition-colors">
           <Search className="size-3.5 shrink-0 text-muted-foreground" />
           <input
+            {...SEARCH_INPUT}
             aria-label={t(($) => $.ai.history.searchLabel)}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder={t(($) => $.ai.history.searchPlaceholder)}
-            className="h-8 min-w-0 flex-1 bg-transparent text-sm placeholder:text-muted-foreground/70"
+            className="h-8 min-w-0 flex-1 bg-transparent text-sm placeholder:text-muted-foreground/70 placeholder-shown:text-ellipsis"
           />
         </div>
       </div>

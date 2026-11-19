@@ -11,6 +11,25 @@ export function historyCommand(event: KeyboardEvent): HistoryCommand | null {
 const WIDGET_FIELDS = "input, textarea, select";
 const VISUAL_FORM = "[data-ofl-visual-form]";
 
+export type HistoryRun = (redo: boolean) => void;
+
+const historyOwners = new WeakMap<Element, HistoryRun>();
+
+export function ownHistory(host: Element, run: HistoryRun): () => void {
+  historyOwners.set(host, run);
+  return () => {
+    if (historyOwners.get(host) === run) historyOwners.delete(host);
+  };
+}
+
+export function historyOwnerAt(element: Element | null): HistoryRun | null {
+  for (let node = element; node; node = node.parentElement) {
+    const run = historyOwners.get(node);
+    if (run) return run;
+  }
+  return null;
+}
+
 export function inDocumentEditor(active: Element | null): boolean {
   if (!active) return false;
   if (active.closest(".ProseMirror")) return true;

@@ -11,7 +11,7 @@ import { OverleafSignOutQuestion } from "@/components/library/overleaf/OverleafS
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckBadge } from "@/components/ui/check-badge";
-import { Input } from "@/components/ui/input";
+import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import { describeError } from "@/lib/app-error";
@@ -195,6 +195,7 @@ function PickerToolbar({
       <div className="relative min-w-48 flex-1">
         <Search aria-hidden className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
+          {...SEARCH_INPUT}
           data-testid="overleaf-search"
           value={query}
           onChange={(event) => onQuery(event.target.value)}

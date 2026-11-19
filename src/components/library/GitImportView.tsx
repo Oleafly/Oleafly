@@ -5,7 +5,7 @@ import { ForgeAccountSelect } from "@/components/integrations/ForgeAccountSelect
 import { ForgeRepoList } from "@/components/integrations/ForgeRepoList";
 import { Button } from "@/components/ui/button";
 import { ErrorState, LoadingState } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { hasRemotePassword, hostLabel, isAllowedRemoteUrl } from "@/lib/forge";
 import { logError } from "@/lib/log";
@@ -137,11 +137,11 @@ export function GitImportView({
         </label>
         <div className="flex items-center gap-2">
           <Input
+            {...LITERAL_INPUT}
             id={urlId}
             data-testid="project-import-clone-url"
             value={url}
             disabled={busy}
-            spellCheck={false}
             autoComplete="off"
             placeholder={t(($) => $.library.import.clonePlaceholder)}
             onChange={(event) => setUrl(event.target.value)}

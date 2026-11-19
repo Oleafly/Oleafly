@@ -2,7 +2,7 @@ import { type ReactNode, useCallback, useEffect, useId, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { SettingsToggleRow } from "@/components/settings/SettingsToggleRow";
@@ -282,7 +282,7 @@ export function HermesSection({ projectId }: Readonly<{ projectId: string }>) {
       {settings.mode === "remote" && (
         <div className="grid gap-2 rounded-md border bg-background/40 p-2 sm:grid-cols-2">
           <RemoteInput id={host.props.id} label={fieldLabels.host} error={host.error}>
-            <Input {...host.props} value={remote.host} onChange={(event) => setRemote({ ...remote, host: event.target.value.trim() })} />
+            <Input {...LITERAL_INPUT} {...host.props} value={remote.host} onChange={(event) => setRemote({ ...remote, host: event.target.value.trim() })} />
           </RemoteInput>
           <RemoteInput id={port.props.id} label={fieldLabels.port} error={port.error}>
             <Input
@@ -301,13 +301,13 @@ export function HermesSection({ projectId }: Readonly<{ projectId: string }>) {
             hint={t(($) => $.settings.ai.agents.hermes.folderHint)}
             className="sm:col-span-2"
           >
-            <Input {...folder.props} value={remote.folder} onChange={(event) => setRemote({ ...remote, folder: event.target.value })} />
+            <Input {...LITERAL_INPUT} {...folder.props} value={remote.folder} onChange={(event) => setRemote({ ...remote, folder: event.target.value })} />
           </RemoteInput>
           <RemoteInput id={command.props.id} label={fieldLabels.command} error={command.error}>
-            <Input {...command.props} value={remote.command} onChange={(event) => setRemote({ ...remote, command: event.target.value.trim() })} />
+            <Input {...LITERAL_INPUT} {...command.props} value={remote.command} onChange={(event) => setRemote({ ...remote, command: event.target.value.trim() })} />
           </RemoteInput>
           <RemoteInput id={profile.props.id} label={fieldLabels.profile} error={profile.error}>
-            <Input {...profile.props} value={remote.profile ?? ""} onChange={(event) => setRemote({ ...remote, profile: event.target.value.trim() || null })} />
+            <Input {...LITERAL_INPUT} {...profile.props} value={remote.profile ?? ""} onChange={(event) => setRemote({ ...remote, profile: event.target.value.trim() || null })} />
           </RemoteInput>
           <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
             <Button type="button" size="sm" variant="outline" disabled={busy || invalidRemote} aria-describedby={invalidRemote ? needsId : undefined} onClick={test}>

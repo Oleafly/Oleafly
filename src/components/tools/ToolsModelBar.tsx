@@ -26,7 +26,7 @@ import { acpCatalog, acpCheckAgent, acpUsable, type AcpAgentStatus } from "@/lib
 import { describeError } from "@/lib/app-error";
 import { formatNumber } from "@/lib/intl";
 import { mathpixKeyStatus } from "@/lib/mathpix";
-import { listOllamaModelDetails } from "@/lib/ollama";
+import { listOllamaModelDetails, ollamaUnreachable } from "@/lib/ollama";
 import { getConfig, setAiToolsModel, type AppConfig, type ToolsModelChoice } from "@/lib/tauri";
 import { notifyError } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -68,7 +68,7 @@ function useOllamaModels(config: AppConfig | null, enabled = true) {
     enabled: enabled && host !== null,
     staleTime: 30_000,
     retry: false,
-    meta: { silent: true },
+    meta: { silent: true, expectedFailure: ollamaUnreachable },
   });
 }
 

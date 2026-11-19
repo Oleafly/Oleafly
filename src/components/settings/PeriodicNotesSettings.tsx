@@ -4,7 +4,7 @@ import { isTemplateNote, NOTE_TEMPLATES } from "@/components/notes/note-template
 import { useOptionalNotesData } from "@/components/notes/notes-data";
 import { SettingsNote } from "@/components/settings/SettingsNote";
 import { SettingsRow } from "@/components/settings/SettingsRow";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
@@ -63,10 +63,10 @@ function PeriodRow({ kind }: Readonly<{ kind: PeriodicKind }>) {
                 {t(($) => $.notes.periodic.format)}
               </label>
               <Input
+                {...LITERAL_INPUT}
                 id={ids.format}
                 value={shownFormat}
                 maxLength={FORMAT_LIMIT}
-                spellCheck={false}
                 aria-invalid={!valid}
                 aria-describedby={ids.error}
                 className="h-8 font-mono text-xs"
@@ -118,9 +118,9 @@ function PeriodRow({ kind }: Readonly<{ kind: PeriodicKind }>) {
                 {t(($) => $.notes.periodic.tag)}
               </label>
               <Input
+                {...LITERAL_INPUT}
                 id={ids.tag}
                 value={tag ?? settings.tag}
-                spellCheck={false}
                 placeholder={t(($) => $.notes.periodic.noTag)}
                 className="h-8 text-xs"
                 onChange={(event) => setTag(event.target.value)}

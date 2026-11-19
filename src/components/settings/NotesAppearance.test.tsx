@@ -2,7 +2,7 @@
 
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadNamespace } from "@/i18n";
 import enCore from "@/i18n/locales/en/core.json" with { type: "json" };
 import enNotes from "@/i18n/locales/en/notes.json" with { type: "json" };
@@ -30,7 +30,6 @@ import {
 } from "@/lib/notes-appearance-style";
 import { ACCENTS, useSettingsStore } from "@/store/settings";
 import { NotesAppearanceTab } from "./NotesAppearance";
-import { SettingsWidthContext, WIDE_SETTINGS_QUERY } from "./settings-width";
 
 const notes = enNotes.appearance.notes;
 const reset = (setting: string) => notes.resetAriaLabel.replace("{{setting}}", setting);
@@ -402,70 +401,24 @@ describe("Notes appearance tab", () => {
   });
 });
 
-function stubWindowWidth(roomy: boolean) {
-  const listeners = new Set<() => void>();
-  const list = {
-    matches: roomy,
-    addEventListener: (_type: string, listener: () => void) => listeners.add(listener),
-    removeEventListener: (_type: string, listener: () => void) => listeners.delete(listener),
-  };
-  vi.stubGlobal("matchMedia", (query: string) =>
-    query === WIDE_SETTINGS_QUERY ? list : { matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() },
-  );
-  return (next: boolean) => {
-    list.matches = next;
-    act(() => {
-      for (const listener of listeners) listener();
-    });
-  };
-}
-
-function renderInSettings() {
-  const setWide = vi.fn();
-  const view = render(
-    <SettingsWidthContext.Provider value={setWide}>
-      <NotesAppearanceTab />
-    </SettingsWidthContext.Provider>,
-  );
-  return { setWide, view };
-}
-
 describe("Notes appearance layout", () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it("puts the preview in a column beside the options and widens Settings while the tab is open", () => {
-    stubWindowWidth(true);
-    const { setWide, view } = renderInSettings();
+  it("puts the preview beside the options when its own width has room, and on top of them when it does not", () => {
+    render(<NotesAppearanceTab />);
     const tab = screen.getByTestId("settings-appearance-notes");
-    expect(tab).toHaveAttribute("data-layout", "beside");
-    expect(tab).toHaveClass("grid", "grid-cols-[minmax(0,1fr)_20rem]", "items-start");
-    expect(screen.getByTestId("settings-notes-preview")).toHaveClass("sticky", "top-0", "self-start", "col-start-2", "row-start-1");
-    expect(screen.getByTestId("settings-appearance-notes-options")).toHaveClass("col-start-1", "row-start-1");
-    expect(setWide).toHaveBeenLastCalledWith(true);
-
-    view.unmount();
-    expect(setWide).toHaveBeenLastCalledWith(false);
-  });
-
-  it("keeps one column with the preview on top in a narrow window and follows the window as it changes", () => {
-    const resize = stubWindowWidth(false);
-    const { setWide } = renderInSettings();
-    const tab = screen.getByTestId("settings-appearance-notes");
+    const layout = screen.getByTestId("settings-appearance-notes-layout");
     const preview = screen.getByTestId("settings-notes-preview");
-    expect(tab).toHaveAttribute("data-layout", "stacked");
-    expect(tab).not.toHaveClass("grid");
-    expect(preview).toHaveClass("-top-5");
-    expect(preview.compareDocumentPosition(screen.getByTestId("settings-appearance-notes-options"))).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(setWide).not.toHaveBeenCalled();
+    const options = screen.getByTestId("settings-appearance-notes-options");
 
-    resize(true);
-    expect(tab).toHaveAttribute("data-layout", "beside");
-    expect(setWide).toHaveBeenLastCalledWith(true);
-
-    resize(false);
-    expect(tab).toHaveAttribute("data-layout", "stacked");
-    expect(setWide).toHaveBeenLastCalledWith(false);
+    expect(tab).toHaveClass("@container");
+    expect(layout).toHaveClass(
+      "space-y-3",
+      "@min-[52rem]:grid",
+      "@min-[52rem]:grid-cols-[minmax(0,1fr)_20rem]",
+      "@min-[52rem]:items-start",
+      "@min-[52rem]:space-y-0",
+    );
+    expect(preview).toHaveClass("sticky", "-top-5", "@min-[52rem]:top-0", "@min-[52rem]:self-start", "@min-[52rem]:col-start-2", "@min-[52rem]:row-start-1");
+    expect(options).toHaveClass("@min-[52rem]:col-start-1", "@min-[52rem]:row-start-1");
+    expect(preview.compareDocumentPosition(options)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 });

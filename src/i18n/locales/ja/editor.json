@@ -1061,6 +1061,9 @@
       },
       "figure": {
         "imageUnavailable": "画像が見つかりません",
+        "imageOutside": "プロジェクト外の画像は表示されません",
+        "imageUnreadable": "この画像を表示できませんでした",
+        "imageAltText": "代替テキスト: {{alt}}",
         "imageLoading": "画像を読み込み中…",
         "imageAlt": "図の画像 {{path}}",
         "width": "幅",
@@ -1686,6 +1689,8 @@
   },
   "bibList": {
     "count_other": "{{count}} 件の文献",
+    "matchCount_other": "{{total}} 件中 {{shown}} 件の文献",
+    "clearSearch": "検索をクリア",
     "empty": "このファイルにはまだ参考文献がありません。",
     "etAl": "{{author}} ほか",
     "noMatch": "検索に一致する参考文献はありません。",

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
-import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { describeError } from "@/lib/app-error";
 import type { HostKeyPrompt } from "./compute-api";
 
@@ -28,14 +27,6 @@ export function ComputeHostKeyDialog({
   const { t } = useTranslation(["researchTools"]);
   const [trusting, setTrusting] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
-
-  useEffect(() => {
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const modalId = appModalCoordinator.add(opener);
-    return () => {
-      appModalCoordinator.remove(modalId)?.focus({ preventScroll: true });
-    };
-  }, []);
 
   const fingerprints = prompt.keys.map((key) => key.fingerprint);
   const listing = prompt.keys.map((key) => `${key.keyType} ${key.fingerprint}`).join("\n");

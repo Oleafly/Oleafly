@@ -84,22 +84,13 @@ describe("Notes appearance in Settings search", { timeout: SLOW_RUNNER_MS }, () 
   });
 });
 
-const NARROW = "w-[min(1040px,94vw)]";
-const WIDE = "w-[min(1380px,94vw)]";
-
-function stubWindow({ roomy }: { roomy: boolean }) {
-  vi.stubGlobal("matchMedia", (query: string) => ({
-    matches: roomy && query === "(min-width: 1200px)",
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-  }));
-}
+const SETTINGS_WIDTH = "w-[min(1180px,94vw)]";
 
 function settingsDialog() {
   return screen.getByRole("dialog", { name: enShell.settings.title });
 }
 
-describe("Settings width for the Notes appearance preview", { timeout: SLOW_RUNNER_MS }, () => {
+describe("Settings size", { timeout: SLOW_RUNNER_MS }, () => {
   beforeEach(async () => {
     await applyLocale("en");
     useTourStore.setState({ activeTourId: null });
@@ -112,52 +103,33 @@ describe("Settings width for the Notes appearance preview", { timeout: SLOW_RUNN
 
   afterEach(() => {
     cleanup();
-    vi.unstubAllGlobals();
     useSettingsStore.getState().setSettingsOpen(false);
     useSettingsStore.setState({ notes: false });
   });
 
-  it("widens Settings with an eased width only on the Notes tab of Appearance", async () => {
-    stubWindow({ roomy: true });
+  it("keeps one size on every section and tab, the Notes preview included", async () => {
     render(<SettingsModal />);
-    expect(settingsDialog()).toHaveClass(NARROW);
-    await waitFor(
-      () => expect(settingsDialog()).toHaveClass("transition-[width]", "duration-200", "ease-out"),
-      SLOW_RUNNER_WAIT,
-    );
+    const dialog = settingsDialog();
+    const sized = () => {
+      expect(settingsDialog()).toBe(dialog);
+      expect(dialog).toHaveClass(SETTINGS_WIDTH, "h-(--settings-height)");
+      expect(dialog.className).not.toMatch(/transition-\[width\]|1040px|1380px/u);
+    };
+    sized();
 
     fireEvent.mouseDown(screen.getByTestId("appearance-tab-notes"));
-    await waitFor(() => expect(settingsDialog()).toHaveClass(WIDE), SLOW_RUNNER_WAIT);
-    expect(settingsDialog()).not.toHaveClass(NARROW);
-    expect(screen.getByTestId("settings-appearance-notes")).toHaveAttribute("data-layout", "beside");
+    await screen.findByTestId("settings-appearance-notes-layout", {}, SLOW_RUNNER_WAIT);
+    sized();
 
     fireEvent.mouseDown(screen.getByTestId("appearance-tab-editor"));
-    await waitFor(() => expect(settingsDialog()).toHaveClass(NARROW), SLOW_RUNNER_WAIT);
+    await waitFor(() => expect(screen.queryByTestId("settings-appearance-notes-layout")).toBeNull(), SLOW_RUNNER_WAIT);
+    sized();
 
-    fireEvent.mouseDown(screen.getByTestId("appearance-tab-notes"));
-    await waitFor(() => expect(settingsDialog()).toHaveClass(WIDE), SLOW_RUNNER_WAIT);
     fireEvent.click(screen.getByTestId("settings-section-general"));
-    await waitFor(() => expect(settingsDialog()).toHaveClass(NARROW), SLOW_RUNNER_WAIT);
-    expect(screen.queryByTestId("settings-appearance-notes")).toBeNull();
-  });
-
-  it("turns the width transition off when the system asks for reduced motion", async () => {
-    stubWindow({ roomy: true });
-    render(<SettingsModal />);
     await waitFor(
-      () => expect(settingsDialog()).toHaveClass("transition-[width]", "motion-reduce:transition-none"),
+      () => expect(screen.getByTestId("settings-section-general")).toHaveAttribute("aria-current", "page"),
       SLOW_RUNNER_WAIT,
     );
-  });
-
-  it("stays narrow with the preview on top when the window has no room for two columns", async () => {
-    stubWindow({ roomy: false });
-    render(<SettingsModal />);
-    fireEvent.mouseDown(screen.getByTestId("appearance-tab-notes"));
-    const preview = await screen.findByTestId("settings-appearance-notes", {}, SLOW_RUNNER_WAIT);
-    expect(preview).toHaveAttribute("data-layout", "stacked");
-    expect(settingsDialog()).toHaveClass(NARROW);
-    expect(settingsDialog()).not.toHaveClass(WIDE);
-    expect(settingsDialog()).not.toHaveClass("transition-[width]");
+    sized();
   });
 });

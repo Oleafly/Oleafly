@@ -135,6 +135,12 @@ describe("CLI prompt attachments", () => {
     expect(input.selections).toEqual([{ path: null, text: "### A block of the note\nAccuracy rose" }]);
   });
 
+  it("sends the message without the characters macOS gives function keys", async () => {
+    const input = await toPromptInput(draft({ text: "Say hello in five words.\uF72B" }), session("s"), tree);
+    expect(input.text).toBe("Say hello in five words.");
+    expect(mocks.noteLinkSelections).toHaveBeenCalledWith("Say hello in five words.");
+  });
+
   it("refuses more than ten attachments", async () => {
     const files = Array.from({ length: MAX_ACP_ATTACHMENTS + 1 }, (_, index) => attachment(`paper-${index}.pdf`));
     expect(await rejection(toPromptInput(draft({ attachments: files }), session("s"), tree))).toBe("tooMany");

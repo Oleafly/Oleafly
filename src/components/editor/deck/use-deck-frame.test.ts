@@ -185,7 +185,9 @@ describe("useDeckFrame", () => {
     expect(html).toContain(RUNTIME_URL);
     expect(html).toContain(inlineJson(CODE));
     expect(html).toContain(inlineJson({ ...frameMessages(), noSlides: enEditor.deck.noSlides }));
-    expect(html).toContain(JSON.stringify({ mode: "present", page: 2, assets: { "./hero.png": dataUrl("slides/talk/hero.png") } }));
+    expect(html).toContain(
+      JSON.stringify({ mode: "present", page: 2, assets: { "./hero.png": dataUrl("slides/talk/hero.png") }, file: DECK }),
+    );
     expect(channelOf(html)).toMatch(/^[0-9a-f]{24}$/u);
   });
 
@@ -236,7 +238,9 @@ describe("useDeckFrame", () => {
     expect(result.current.url).toBeNull();
     await advance(0);
     expect(result.current.url).toBe(SECOND);
-    expect(htmlOf(1)).toContain(JSON.stringify({ mode: "page", page: 0, assets: { "./hero.png": dataUrl("slides/talk/hero.png") } }));
+    expect(htmlOf(1)).toContain(
+      JSON.stringify({ mode: "page", page: 0, assets: { "./hero.png": dataUrl("slides/talk/hero.png") }, file: DECK }),
+    );
 
     unmount();
     expect(tauri.close).toHaveBeenLastCalledWith("second-token");
@@ -308,7 +312,7 @@ describe("useDeckFrame", () => {
     expect(first.postMessage).toHaveBeenCalledOnce();
   });
 
-  it("follows the slides, position and errors the deck reports, and reopens on the slide it reached", async () => {
+  it("follows the slides, position and errors the deck reports, and reopens on the slide and step it reached", async () => {
     const { result } = openDeck();
     await advance(0);
     const channel = channelOf(htmlOf(0));
@@ -335,7 +339,18 @@ describe("useDeckFrame", () => {
     expect(port.close).toHaveBeenCalledOnce();
     expect(result.current.info).toBeNull();
     await advance(0);
-    expect(htmlOf(1)).toContain(JSON.stringify({ mode: "edit", page: 1, assets: { "./hero.png": dataUrl("slides/talk/hero.png") } }));
+    expect(htmlOf(1)).toContain(
+      JSON.stringify({ mode: "edit", page: 1, revealed: 1, assets: { "./hero.png": dataUrl("slides/talk/hero.png") }, file: DECK }),
+    );
+  });
+
+  it("starts partway through a slide when asked to", async () => {
+    const { result } = openDeck({ startPage: 2, startRevealed: 1 });
+    expect(result.current.position).toEqual({ page: 2, revealed: 1, steps: 0 });
+    await advance(0);
+    expect(htmlOf(0)).toContain(
+      JSON.stringify({ mode: "edit", page: 2, revealed: 1, assets: { "./hero.png": dataUrl("slides/talk/hero.png") }, file: DECK }),
+    );
   });
 
   it("closes the port and stops listening once the deck unmounts", async () => {

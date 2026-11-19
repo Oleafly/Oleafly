@@ -2,6 +2,7 @@ import { Search, X } from "lucide-react";
 import { type RefObject, useId, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { isImeEnter } from "@/components/ai/composer/ime";
+import { SEARCH_INPUT } from "@/components/ui/input";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +49,8 @@ export function SearchField({
           onChange("");
         }}
         placeholder={placeholder ?? t(($) => $.workspace.tree.filterPlaceholder)}
-        className="h-7 w-full rounded-md border border-input bg-background/70 pl-7 pr-7 text-xs text-foreground placeholder:text-muted-foreground/75 [&::-webkit-search-cancel-button]:hidden"
+        {...SEARCH_INPUT}
+        className="h-7 w-full rounded-md border border-input bg-background/70 pl-7 pr-7 text-xs text-foreground placeholder:text-muted-foreground/75 placeholder-shown:text-ellipsis [&::-webkit-search-cancel-button]:hidden"
       />
       {value ? (
         <Tooltip label={clear} side="bottom" className="absolute right-0 top-1/2 -translate-y-1/2">

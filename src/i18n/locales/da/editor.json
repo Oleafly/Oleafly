@@ -1075,6 +1075,9 @@
       },
       "figure": {
         "imageUnavailable": "Billedet blev ikke fundet",
+        "imageOutside": "Billeder uden for projektet vises ikke",
+        "imageUnreadable": "Billedet kunne ikke vises",
+        "imageAltText": "Alternativ tekst: {{alt}}",
         "imageLoading": "Indlæser billedet…",
         "imageAlt": "Figurbillede {{path}}",
         "width": "Bredde",
@@ -1708,6 +1711,9 @@
   "bibList": {
     "count_one": "{{count}} reference",
     "count_other": "{{count}} referencer",
+    "matchCount_one": "{{shown}} af {{total}} reference",
+    "matchCount_other": "{{shown}} af {{total}} referencer",
+    "clearSearch": "Ryd søgningen",
     "empty": "Filen har ingen referencer endnu.",
     "etAl": "{{author}} et al.",
     "noMatch": "Ingen referencer matcher din søgning.",

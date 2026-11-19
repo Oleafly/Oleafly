@@ -79,6 +79,8 @@ describe("Figure", () => {
     expect(resolveAssetUrl).toHaveBeenCalledWith("missing.png");
     expect(element.querySelector<HTMLImageElement>(".figure-image")?.hidden).toBe(true);
     expect(element.querySelector(".figure-placeholder")).toHaveTextContent("figure.imageUnavailable");
+    expect(element.querySelector(".figure-placeholder-path")).toHaveAttribute("title", "missing.png");
+    expect(element.querySelector<HTMLElement>(".figure-placeholder-alt")?.hidden).toBe(true);
   });
 
   it("shows the placeholder without a resolver", async () => {
@@ -143,7 +145,7 @@ describe("Figure controls", () => {
     });
     const { element } = mount(createFigure({ path: "x.png" }), { resolveAssetUrl });
     await settle();
-    expect(element.querySelector(".figure-placeholder")).toHaveTextContent("figure.imageUnavailable");
+    expect(element.querySelector(".figure-placeholder")).toHaveTextContent("figure.imageUnreadable");
     const label = element.querySelector<HTMLInputElement>("input.figure-label");
     if (!label) throw new Error("label missing");
     label.focus();

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -198,6 +198,7 @@ function SkillEditorDialog({
               {t(($) => $.common.labels.name)}
             </label>
             <Input
+              {...LITERAL_INPUT}
               id="skill-name"
               value={form.name}
               disabled={editing !== null}
@@ -385,42 +386,55 @@ function SkillCard({
   const needsRename = isUserSkill && !invalid && !followsSkillNameRules(skill.name, skill.id);
   const projectAvailable = isSkillAvailable(skill);
   const changedForProject = projectScope && projectAvailable !== skill.enabled;
+  const renderSkillNotice = (kind: "shadow" | "name", note: string, action: ReactNode) => (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+      <p className="min-w-0 grow basis-56 text-xs text-muted-foreground" data-testid={`skill-${kind}-note-${skill.id}`}>
+        {note}
+      </p>
+      <div className="ms-auto shrink-0">{action}</div>
+    </div>
+  );
+
+  const renderSkillNotices = () =>
+    skill.shadowsBundled || needsRename ? (
+      <div className="mt-2 space-y-2">
+        {skill.shadowsBundled
+          ? renderSkillNotice(
+              "shadow",
+              t(($) => $.settings.ai.skills.shadowNote),
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                data-testid={`skill-replace-${skill.id}`}
+                disabled={busy}
+                onClick={() => onReplace(skill)}
+              >
+                {t(($) => $.settings.ai.skills.replaceAction)}
+              </Button>,
+            )
+          : null}
+        {needsRename
+          ? renderSkillNotice(
+              "name",
+              t(($) => $.settings.ai.skills.nameNote),
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                data-testid={`skill-rename-${skill.id}`}
+                disabled={busy}
+                onClick={() => onRename(skill)}
+              >
+                {t(($) => $.settings.ai.skills.renameAction, { name: skill.id })}
+              </Button>,
+            )
+          : null}
+      </div>
+    ) : null;
+
   const renderSkillActions = () => (
     <div className="mt-2 flex items-center justify-end gap-1">
-      {skill.shadowsBundled ? (
-        <span className="mr-auto text-xs text-muted-foreground" data-testid={`skill-shadow-note-${skill.id}`}>
-          {t(($) => $.settings.ai.skills.shadowNote)}
-        </span>
-      ) : null}
-      {skill.shadowsBundled ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          data-testid={`skill-replace-${skill.id}`}
-          disabled={busy}
-          onClick={() => onReplace(skill)}
-        >
-          {t(($) => $.settings.ai.skills.replaceAction)}
-        </Button>
-      ) : null}
-      {needsRename ? (
-        <span className="mr-auto text-xs text-muted-foreground" data-testid={`skill-name-note-${skill.id}`}>
-          {t(($) => $.settings.ai.skills.nameNote)}
-        </span>
-      ) : null}
-      {needsRename ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          data-testid={`skill-rename-${skill.id}`}
-          disabled={busy}
-          onClick={() => onRename(skill)}
-        >
-          {t(($) => $.settings.ai.skills.renameAction, { name: skill.id })}
-        </Button>
-      ) : null}
       {skill.updateAvailable ? (
         <Button
           type="button"
@@ -607,6 +621,7 @@ function SkillCard({
         </p>
       ) : null}
 
+      {renderSkillNotices()}
       {renderSkillActions()}
     </div>
   );

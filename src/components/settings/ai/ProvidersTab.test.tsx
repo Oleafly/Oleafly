@@ -13,7 +13,8 @@ import { ProvidersTab, type ProvidersTabProps } from "./ProvidersTab";
 
 const shell = vi.hoisted(() => ({ open: vi.fn() }));
 vi.mock("@tauri-apps/plugin-shell", () => ({ open: shell.open }));
-vi.mock("@/lib/ollama", () => ({
+vi.mock("@/lib/ollama", async (importOriginal) => ({
+  ollamaUnreachable: (await importOriginal<typeof import("@/lib/ollama")>()).ollamaUnreachable,
   DEFAULT_OLLAMA_HOST: "http://127.0.0.1:11434",
   listOllamaModels: vi.fn().mockResolvedValue([]),
 }));

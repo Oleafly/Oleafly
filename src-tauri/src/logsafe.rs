@@ -6,9 +6,10 @@ use std::sync::Mutex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
+use crate::project::{APP_LOG_FILE, PREVIOUS_APP_LOG_FILE};
+
 const RING_CAPACITY: usize = 2000;
 const PERSISTED_FILE: &str = "logs.jsonl";
-const APP_LOG_FILE: &str = "app.log";
 const PERSISTED_TRIM_BYTES: u64 = 1_048_576;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -215,12 +216,21 @@ fn truncate_if_present(path: &Path) -> Result<(), String> {
     }
 }
 
+fn remove_if_present(path: &Path) -> Result<(), String> {
+    match std::fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(format!("failed to clear {}: {error}", path.display())),
+    }
+}
+
 fn clear_entries(ring: &mut VecDeque<LogEntry>, dir: Option<&Path>) -> Result<(), String> {
     ring.clear();
     match dir {
         Some(dir) => {
             truncate_if_present(&dir.join(PERSISTED_FILE))?;
-            truncate_if_present(&dir.join(APP_LOG_FILE))
+            truncate_if_present(&dir.join(APP_LOG_FILE))?;
+            remove_if_present(&dir.join(PREVIOUS_APP_LOG_FILE))
         }
         None => Ok(()),
     }
@@ -330,6 +340,11 @@ pub fn reveal_app_log() -> Result<(), String> {
 #[tauri::command(async)]
 pub fn log_frontend_error(message: String) {
     error(&message, Value::Null, Value::Null);
+}
+
+#[tauri::command(async)]
+pub fn log_frontend_entry(level: Level, message: String) {
+    log(level, &message, Value::Null, Value::Null);
 }
 
 #[cfg(test)]
@@ -461,8 +476,11 @@ mod tests {
             entry(1, Level::Info, "kept until cleared"),
         );
         std::fs::write(dir.path().join(APP_LOG_FILE), "[1] something\n").unwrap();
+        let previous = dir.path().join(PREVIOUS_APP_LOG_FILE);
+        std::fs::write(&previous, "[0] older\n").unwrap();
 
         clear_entries(&mut ring, Some(dir.path())).unwrap();
+        assert!(!previous.exists());
 
         assert!(ring.is_empty());
         assert_eq!(
@@ -566,6 +584,30 @@ mod tests {
         assert!(read_log_entries()
             .iter()
             .any(|entry| entry.message == "sidecar exited"));
+    }
+
+    #[test]
+    fn the_page_can_log_a_note_or_a_warning() {
+        log_frontend_entry(
+            Level::Warning,
+            "library thumbnail: Invalid PDF structure".into(),
+        );
+        log_frontend_entry(Level::Info, "query: Ollama not reachable".into());
+        let entries = read_log_entries();
+        let level_of = |message: &str| {
+            entries
+                .iter()
+                .rev()
+                .find(|entry| entry.message == message)
+                .map(|entry| entry.level)
+        };
+        assert_eq!(
+            level_of("library thumbnail: Invalid PDF structure"),
+            Some(Level::Warning)
+        );
+        assert_eq!(level_of("query: Ollama not reachable"), Some(Level::Info));
+        let parsed: Level = serde_json::from_value(json!("warning")).unwrap();
+        assert_eq!(parsed, Level::Warning);
     }
 
     #[test]

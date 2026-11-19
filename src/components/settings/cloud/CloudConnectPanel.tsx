@@ -1,7 +1,7 @@
 import { IntegrationBusyButton, IntegrationError } from "@/components/settings/IntegrationCard";
 import { Button } from "@/components/ui/button";
 import { CollapsibleSection } from "@/components/ui/collapsible-section";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { describeError } from "@/lib/app-error";
 import { logError } from "@/lib/log";
@@ -99,12 +99,12 @@ export function CloudConnectPanel() {
               }}
             >
               <Input
+                {...LITERAL_INPUT}
                 id="cloud-paste-input"
                 value={code}
                 disabled={!pasteReady}
                 onChange={(event) => setCode(event.target.value)}
                 autoComplete="off"
-                spellCheck={false}
                 className="h-8 max-w-sm"
               />
               <IntegrationBusyButton

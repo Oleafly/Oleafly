@@ -13,10 +13,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { LoadingState } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
+import { Input, LITERAL_INPUT } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { useCopyStatus } from "@/components/ui/use-copy-status";
-import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import type {
   CollabCapabilities,
   CollabProvider,
@@ -349,15 +348,6 @@ export function AddServerDialog({
     return () => clearTimeout(timer);
   }, [waiting]);
 
-  useEffect(() => {
-    if (!open) return;
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const modalId = appModalCoordinator.add(opener);
-    return () => {
-      appModalCoordinator.remove(modalId)?.focus({ preventScroll: true });
-    };
-  }, [open]);
-
   const renderAddress = () => (
     <form
       className="space-y-4"
@@ -392,12 +382,12 @@ export function AddServerDialog({
           {t(($) => $.collab.addServer.addressLabel)}
         </label>
         <Input
+          {...LITERAL_INPUT}
           id={addressId}
           value={address}
           onChange={(event) => setAddress(event.target.value)}
           placeholder={t(($) => $.collab.addServer.addressPlaceholder)}
           autoComplete="url"
-          spellCheck={false}
           disabled={step.kind === "checking"}
         />
       </div>
@@ -441,11 +431,11 @@ export function AddServerDialog({
               {t(($) => $.collab.addServer.setupCodeLabel)}
             </label>
             <Input
+              {...LITERAL_INPUT}
               id={setupId}
               value={setupCode}
               onChange={(event) => setSetupCode(event.target.value)}
               autoComplete="one-time-code"
-              spellCheck={false}
               className="font-mono"
             />
           </div>

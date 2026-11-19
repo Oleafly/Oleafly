@@ -1061,6 +1061,9 @@
       },
       "figure": {
         "imageUnavailable": "Không tìm thấy ảnh",
+        "imageOutside": "Ảnh nằm ngoài dự án không được hiển thị",
+        "imageUnreadable": "Không thể hiển thị ảnh này",
+        "imageAltText": "Văn bản thay thế: {{alt}}",
         "imageLoading": "Đang tải ảnh…",
         "imageAlt": "Ảnh hình {{path}}",
         "width": "Chiều rộng",
@@ -1686,6 +1689,8 @@
   },
   "bibList": {
     "count_other": "{{count}} tài liệu tham khảo",
+    "matchCount_other": "{{shown}}/{{total}} tài liệu tham khảo",
+    "clearSearch": "Xoá tìm kiếm",
     "empty": "Tệp này chưa có tài liệu tham khảo nào.",
     "etAl": "{{author}} và cộng sự",
     "noMatch": "Không có tài liệu nào khớp với tìm kiếm.",

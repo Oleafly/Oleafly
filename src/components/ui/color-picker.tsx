@@ -1,3 +1,4 @@
+import { SWATCH_EDGE } from "@/components/ui/color-swatch";
 import { cn } from "@/lib/utils";
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -16,10 +17,11 @@ export function ColorPicker({
   return (
     <span
       className={cn(
-        "relative block size-4 shrink-0 overflow-hidden rounded-full border border-input transition-colors",
+        "relative block size-4 shrink-0 overflow-hidden rounded-full transition-colors",
+        SWATCH_EDGE,
         disabled
           ? "opacity-40"
-          : "focus-within:border-foreground/60 hover:border-foreground/40",
+          : "focus-within:border-foreground/70 hover:border-foreground/50",
         !value &&
           "bg-[length:4px_4px] bg-[linear-gradient(45deg,#ccc_25%,transparent_25%,transparent_75%,#ccc_75%,#ccc),linear-gradient(45deg,#ccc_25%,#fff_25%,#fff_75%,#ccc_75%,#ccc)] bg-[position:0_0,2px_2px]",
       )}
