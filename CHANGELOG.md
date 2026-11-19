@@ -9,6 +9,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.13] - 2026-11-18
 
+### Thanks
+
+- Teng Qin ([@palmtenor](https://github.com/palmtenor)): asked for section
+  numbers in the LaTeX outline and wrote them (#427, #435), found the race
+  that made a collaboration test flaky and fixed it (#439, #463), and moved
+  the Rust tests to nextest so they run faster and fail less often (#464,
+  #469).
+- Jianx ([@Jianxinnn](https://github.com/Jianxinnn)): fixed local images in
+  Markdown's visual editor going missing after a document is reopened (#493).
+- Andre Farias ([@andrefarias1](https://github.com/andrefarias1)): traced
+  the Windows compile failure to the Perl code Oleafly passed to latexmk,
+  down to the pattern Perl rejected (#452).
+- ForbesHu ([@ForbesHu](https://github.com/ForbesHu)): asked for braces
+  around multi-character subscripts and superscripts as you type (#466).
+- gangaveg88-png ([@gangaveg88-png](https://github.com/gangaveg88-png)):
+  reported that Quarto was missing from New research project (#474).
+- Marlon Luís de Col ([@marlondecol](https://github.com/marlondecol)): asked
+  for a built-in llama.cpp provider (#437).
+- nahuelcostac ([@nahuelcostac](https://github.com/nahuelcostac)): asked to
+  edit projects from an online LaTeX service live with coauthors (#458).
+- Roberto Di Remigio Eikås ([@robertodr](https://github.com/robertodr)):
+  reported the bundled skill names that made Pi warn at startup, with the
+  right name for each one (#488).
+- Xavier S. Zhou ([@Xiao0219](https://github.com/Xiao0219)): asked for a PDF
+  dark mode that matches the theme, and found where the filter was set and
+  why a theme couldn't change it (#489).
+
 ### Added
 
 - Edit a project from your online LaTeX service live with your coauthors while they keep using its web editor. Typing, new files and renames reach both sides within a second or so, you can see where each person is working, and if the connection drops you keep typing and it all catches up when you're back. No Git token is needed. If your account signs in with Google, your institution or a passkey, use Sign in with your browser. It's experimental: turn it on in Settings › Experimentation.
