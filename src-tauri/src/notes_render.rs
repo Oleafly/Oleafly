@@ -182,11 +182,11 @@ fn disk_write(dir: &Path, key: &str, svg: &str, entries: usize, bytes: u64) -> R
     let path = disk_path(dir, key).ok_or("This render cache key is not valid.")?;
     std::fs::create_dir_all(dir).map_err(|error| error.to_string())?;
     crate::sandbox::atomic_write(&path, svg.as_bytes())?;
-    prune(dir, entries, bytes);
+    prune(dir, &path, entries, bytes);
     Ok(())
 }
 
-fn prune(dir: &Path, entries: usize, bytes: u64) {
+fn prune(dir: &Path, written: &Path, entries: usize, bytes: u64) {
     let Ok(listing) = std::fs::read_dir(dir) else {
         return;
     };
@@ -208,7 +208,7 @@ fn prune(dir: &Path, entries: usize, bytes: u64) {
         if count <= entries && total <= bytes {
             break;
         }
-        if std::fs::remove_file(&path).is_ok() {
+        if path != written && std::fs::remove_file(&path).is_ok() {
             count -= 1;
             total = total.saturating_sub(len);
         }
@@ -232,6 +232,14 @@ mod tests {
         calls.fetch_add(1, Ordering::SeqCst);
         tokio::time::sleep(Duration::from_millis(20)).await;
         result.map(str::to_string).map_err(str::to_string)
+    }
+
+    fn touch(path: &Path, modified: SystemTime) {
+        std::fs::File::options()
+            .write(true)
+            .open(path)
+            .and_then(|file| file.set_modified(modified))
+            .unwrap();
     }
 
     #[test]
@@ -346,12 +354,10 @@ mod tests {
         let start = SystemTime::now() - Duration::from_secs(600);
         for (index, key) in keys.iter().enumerate() {
             disk_write(dir.path(), key, "0123456789", 100, 1_000).unwrap();
-            let file = std::fs::File::options()
-                .write(true)
-                .open(dir.path().join(format!("{key}.svg")))
-                .unwrap();
-            file.set_modified(start + Duration::from_secs(index as u64 * 10))
-                .unwrap();
+            touch(
+                &dir.path().join(format!("{key}.svg")),
+                start + Duration::from_secs(index as u64 * 10),
+            );
         }
         assert!(disk_read(dir.path(), &keys[0]).is_some());
         disk_write(dir.path(), &key("prune-new"), "0123456789", 4, 1_000).unwrap();
@@ -359,6 +365,10 @@ mod tests {
         assert!(left(&keys[0]), "a cache hit counts as recent");
         assert!(!left(&keys[1]) && !left(&keys[2]));
         assert!(left(&keys[3]) && left(&keys[4]) && left(&key("prune-new")));
+        let later = SystemTime::now() + Duration::from_secs(600);
+        for entry in std::fs::read_dir(dir.path()).unwrap() {
+            touch(&entry.unwrap().path(), later);
+        }
         disk_write(dir.path(), &key("prune-big"), "0123456789", 100, 25).unwrap();
         let svgs = std::fs::read_dir(dir.path())
             .unwrap()
@@ -369,7 +379,10 @@ mod tests {
             })
             .count();
         assert_eq!(svgs, 2);
-        assert!(left(&key("prune-big")));
+        assert!(
+            left(&key("prune-big")),
+            "a write keeps the entry it wrote even when its clock is behind"
+        );
     }
 
     #[test]
