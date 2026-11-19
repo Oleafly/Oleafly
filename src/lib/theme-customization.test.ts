@@ -100,6 +100,11 @@ describe("theme customization schema", () => {
       .toThrow("larger than 128 KiB");
   });
 
+  it("lets a theme set the PDF dark mode filter", () => {
+    expect(validateCustomCss("--oleafly-pdf-dark-filter: invert(0.85) hue-rotate(180deg)"))
+      .toBe("--oleafly-pdf-dark-filter: invert(0.85) hue-rotate(180deg)");
+  });
+
   it("rejects unknown tokens and executable stylesheet features", () => {
     expect(() => validateThemeCustomization({ light: { injected: "#fff" }, dark: {} })).toThrow("Unsupported theme token");
     expect(() => validateCustomCss("@import url(https://example.test/theme.css)"))

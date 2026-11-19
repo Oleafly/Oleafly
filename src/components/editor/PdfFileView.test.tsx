@@ -262,7 +262,7 @@ describe("PdfFileView", () => {
     expect(scrollArea().style.filter).toBe("");
 
     fireEvent.click(screen.getByRole("button", { name: actions.invert }));
-    expect(scrollArea().style.filter).toBe("invert(1) hue-rotate(180deg)");
+    expect(scrollArea().style.filter).toBe("var(--oleafly-pdf-dark-filter)");
 
     fireEvent.click(screen.getByRole("button", { name: actions.readerView }));
     expect(scrollArea().style.filter).toBe("");

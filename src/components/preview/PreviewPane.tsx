@@ -732,6 +732,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
     setInverted,
     screenReaderMode,
     setScreenReaderMode,
+    darkModeStyle,
     page,
     setPage,
     numPages,
@@ -1278,11 +1279,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
       data-select-all-scope
       aria-label={t(($) => $.preview.viewer.scrollArea)}
       className="isolate h-full overflow-auto bg-sidebar focus-visible:bg-sidebar-accent/40"
-      style={
-        inverted && !screenReaderMode
-          ? { filter: "invert(1) hue-rotate(180deg)" }
-          : undefined
-      }
+      style={darkModeStyle}
     >
       <ErrorBoundary
         resetKey={`${viewer.identity}:${pdfReloadGeneration}`}

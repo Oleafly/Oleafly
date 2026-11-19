@@ -167,7 +167,7 @@ export function PdfFileView({ projectId, path }: Readonly<{ projectId: string; p
           data-select-all-scope
           aria-label={t(($) => $.preview.viewer.scrollArea)}
           className="isolate h-full overflow-auto focus-visible:bg-accent/20"
-          style={reader.inverted && !reader.screenReaderMode ? { filter: "invert(1) hue-rotate(180deg)" } : undefined}
+          style={reader.darkModeStyle}
         >
           <PdfViewer
             key={pdf.identity}

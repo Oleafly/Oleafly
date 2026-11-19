@@ -37,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - File and folder icons now use the app's chart colours, one for each family of files, with a lightly tinted body. Folders and archives are amber, LaTeX, class and settings files blue, Typst green, Markdown and bibliographies purple, PDFs red, images and whiteboards pink, spreadsheets dark green, and code and slide decks orange. Files Oleafly doesn't recognise stay grey. If you'd rather read a file's type than its icon, switch to type badges in Settings > Appearance > Project: a short label such as TEX or PDF, in the same colour.
+- PDF dark mode turns the page dark gray instead of pure black, so it sits closer to the rest of the dark theme. To pick another shade, add a line such as `--oleafly-pdf-dark-filter: invert(0.85) hue-rotate(180deg)` to the scoped CSS in Settings > Appearance > Theme customization, or to a theme file you import.
 
 ### Fixed
 

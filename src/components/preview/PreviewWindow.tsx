@@ -292,6 +292,7 @@ export function PreviewWindow({
     setInverted,
     screenReaderMode,
     setScreenReaderMode,
+    darkModeStyle,
     page,
     setPage,
     numPages,
@@ -810,11 +811,7 @@ export function PreviewWindow({
       data-select-all-scope
       aria-label={t(($) => $.preview.viewer.scrollArea)}
       className="isolate h-full overflow-auto focus-visible:bg-accent/20"
-      style={
-        inverted && !screenReaderMode
-          ? { filter: "invert(1) hue-rotate(180deg)" }
-          : undefined
-      }
+      style={darkModeStyle}
     >
       {htmlBuiltAt !== null && <HtmlOutputPanel projectId={projectId} builtAt={htmlBuiltAt} />}
       {htmlBuiltAt === null && (previewDocument ? (

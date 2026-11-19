@@ -8,6 +8,7 @@
 :root,
 .light {
   --radius: 0.625rem;
+  --oleafly-pdf-dark-filter: invert(0.9) hue-rotate(180deg);
   --neutral-900: #171717;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);

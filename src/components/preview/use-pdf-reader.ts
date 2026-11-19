@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useDeferredValue, useEffect, useRef, useState } from "react";
 import type {
   PdfLayout,
   PdfLoadState,
@@ -29,6 +29,8 @@ export const INITIAL_PDF_SEARCH_STATE: PdfSearchState = {
 };
 
 export const INITIAL_PDF_OUTLINE_STATE: PdfOutlineState = { status: "idle", items: [] };
+
+const PDF_DARK_MODE_STYLE: CSSProperties = { filter: "var(--oleafly-pdf-dark-filter)" };
 
 export interface PdfReaderOptions {
   readonly positionKey: string | null;
@@ -227,6 +229,7 @@ export function usePdfReader({
     setInverted,
     screenReaderMode,
     setScreenReaderMode,
+    darkModeStyle: inverted && !screenReaderMode ? PDF_DARK_MODE_STYLE : undefined,
     page,
     setPage,
     numPages,

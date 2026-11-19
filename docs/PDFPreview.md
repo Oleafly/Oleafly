@@ -20,7 +20,9 @@ pending or has failed.
 - Present the PDF as slides, from the start or from the current page. An
   optional presenter view shows the next slide, a timer, and speaker notes.
 - Rotate clockwise by 90 degrees.
-- Invert preview colors and restore the normal palette.
+- Invert preview colors and restore the normal palette. The inverted page is
+  dark gray rather than black. Set `--oleafly-pdf-dark-filter` in Theme
+  customization's scoped CSS, or in an imported theme, to change it.
 - Download the displayed PDF with a chosen filename.
 - Document outline and in-document text search.
 - Compile-log and preview tabs in the same surface.
