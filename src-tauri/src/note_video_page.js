@@ -9,20 +9,38 @@
     const hashParam = hash === null ? "" : `&h=${hash}`;
     return `https://player.vimeo.com/video/${id}?autoplay=1&dnt=1${hashParam}`;
   };
-  const match = /^#(youtube|vimeo)\/([^?&]*)(?:[?&](.*))?$/u.exec(location.hash);
+  const xSource = (id, theme) => {
+    if (!/^\d{1,20}$/u.test(id)) return null;
+    const themeParam = theme === null ? "" : `&theme=${theme}`;
+    return `https://platform.twitter.com/embed/Tweet.html?id=${id}&dnt=true${themeParam}`;
+  };
+  const match = /^#(youtube|vimeo|x)\/([^?&]*)(?:[?&](.*))?$/u.exec(location.hash);
   if (!match) return;
   const [, provider, id, query = ""] = match;
   const params = new URLSearchParams(query);
   const start = params.get("start");
   const hash = params.get("h");
+  const theme = params.get("theme");
   if (start !== null && !/^\d{1,9}$/u.test(start)) return;
   if (hash !== null && !/^[0-9a-f]{1,64}$/u.test(hash)) return;
-  const src = provider === "youtube" ? youtubeSource(id, start) : vimeoSource(id, hash);
+  if (theme !== null && theme !== "light" && theme !== "dark") return;
+  let src = null;
+  let title = "X";
+  if (provider === "youtube") {
+    src = youtubeSource(id, start);
+    title = "YouTube";
+  } else if (provider === "vimeo") {
+    src = vimeoSource(id, hash);
+    title = "Vimeo";
+  } else if (provider === "x") {
+    src = xSource(id, theme);
+  }
   if (src === null) return;
-  Object.assign(document.documentElement.style, { height: "100%", background: "#000" });
+  const background = provider === "x" ? "transparent" : "#000";
+  Object.assign(document.documentElement.style, { height: "100%", background });
   Object.assign(document.body.style, { margin: "0", height: "100%", overflow: "hidden" });
   const frame = document.createElement("iframe");
-  frame.title = provider === "youtube" ? "YouTube" : "Vimeo";
+  frame.title = title;
   frame.setAttribute("allow", "autoplay; encrypted-media; picture-in-picture; fullscreen");
   frame.setAttribute("allowfullscreen", "");
   frame.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");

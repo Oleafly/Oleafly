@@ -165,6 +165,8 @@
     "writtenByAgent": "Geschreven door {{agent}}",
     "writtenByYou": "Door jou geschreven",
     "askAgent": "Agent vragen",
+    "addComment": "Opmerking toevoegen",
+    "comments": "Opmerkingen",
     "addIcon": "Pictogram toevoegen",
     "sendToPaper": "Naar artikel sturen",
     "selectionMenu": "Opmaak van selectie",
@@ -288,7 +290,8 @@
       "molecule": "Eerst optieregels, zoals format: pdb en style: cartoon.\nDaarna de tekst van het bestand, of path: assets/1abc.pdb",
       "sequence": "FASTA-records of een kale sequentie:\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "Het pad van het notebook op de eerste regel:\nassets/analysis.ipynb\nDaarna optionele regels zoals cells: 2-5 en code: hide.",
-      "bookmark": "Eén veld per regel, te beginnen met het webadres:\nurl: https://example.com/article\nDaarna optioneel regels met title:, description:, image:, site: en favicon:."
+      "bookmark": "Eén veld per regel, te beginnen met het webadres:\nurl: https://example.com/article\nDaarna optioneel regels met title:, description:, image:, site: en favicon:.",
+      "x-post": "Eén veld per regel, te beginnen met het adres van de post:\nurl: https://x.com/jack/status/20\nDaarna optionele regels author:, handle: en date:, een lege regel en de tekst van de post."
     },
     "newChart": {
       "title": "Nieuwe grafiek",
@@ -569,6 +572,18 @@
       "ask": "Bladwijzer voor een webpagina maken",
       "loading": "Paginavoorbeeld laden",
       "noUrl": "Voeg een regel url: toe met een webadres dat begint met https:// of http://."
+    },
+    "xPost": {
+      "label": "Post op X",
+      "pasteChoice": "Hoe deze post wordt weergegeven",
+      "embedChoice": "Post insluiten",
+      "loading": "Post laden van X",
+      "noUrl": "Voeg een url:-regel toe met een link naar een post op x.com.",
+      "failed": "De post kon niet van X worden geladen. Open hem op X.",
+      "showLive": "Live post tonen",
+      "showSaved": "Opgeslagen post tonen",
+      "open": "Openen op X",
+      "liveTitle": "Live post van X"
     }
   },
   "notebook": {
@@ -1557,6 +1572,10 @@
       "keepUndo": {
         "label": "Ongedaan maken bewaren na sluiten",
         "description": "Ongedaan maken werkt nog voor een notitie nadat je die hebt gesloten of de app hebt afgesloten. De geschiedenis blijft op deze computer, en als je dit uitzet, wordt hij verwijderd."
+      },
+      "xPostsLive": {
+        "label": "X-posts automatisch laden",
+        "description": "Toont de live post van X in plaats van de opgeslagen kaart. X weet dan dat de post is geopend."
       },
       "code": {
         "title": "Code"

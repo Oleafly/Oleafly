@@ -444,7 +444,7 @@ function ToggleRow({
   label,
   description,
 }: Readonly<{
-  settingKey: "notesShowWordCount" | "notesSpellcheck" | "notesTextReplace" | "notesKeepUndo";
+  settingKey: "notesShowWordCount" | "notesSpellcheck" | "notesTextReplace" | "notesKeepUndo" | "notesXPostsLive";
   testId: string;
   label: string;
   description: string;
@@ -909,6 +909,12 @@ export function NotesAppearanceTab() {
             testId="settings-row-notes-keep-undo"
             label={t(($) => $.notes.appearance.notes.keepUndo.label)}
             description={t(($) => $.notes.appearance.notes.keepUndo.description)}
+          />
+          <ToggleRow
+            settingKey="notesXPostsLive"
+            testId="settings-row-notes-x-posts-live"
+            label={t(($) => $.notes.appearance.notes.xPostsLive.label)}
+            description={t(($) => $.notes.appearance.notes.xPostsLive.description)}
           />
         </Group>
 

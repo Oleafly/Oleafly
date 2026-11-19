@@ -696,6 +696,18 @@ export interface NoteLinkPreview {
 
 export const noteLinkPreview = (url: string) => invoke<NoteLinkPreview>("note_link_preview", { url });
 
+/** A post on X read through X's public oEmbed endpoint, for a note's static card. */
+export interface NoteXPost {
+  url: string;
+  id: string;
+  author: string;
+  handle: string;
+  date: string;
+  text: string;
+}
+
+export const noteXPost = (url: string) => invoke<NoteXPost>("note_x_post", { url });
+
 export interface ArxivSourceRequest {
   arxivId?: string;
   dataBase64?: string;

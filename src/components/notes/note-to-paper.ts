@@ -9,6 +9,7 @@ import { basename, numberedPath, relativeFilePath } from "@/lib/path-utils";
 import { foldPath } from "@/lib/project-notes";
 import { blockLabel, paintStillBlock } from "./block-views";
 import { BOOKMARK_INFO, parseBookmark } from "./bookmark-block";
+import { parseXPost, X_POST_INFO } from "./x-post-block";
 import { CHART_LEGEND_CLASS } from "./chart-block";
 import { renderD2 } from "./d2-render";
 import { noteBlockName } from "./note-blocks";
@@ -297,6 +298,17 @@ class PaperDraft {
     if (kind === "typst" && this.place.format === "typst") return [rawBlock("typst", [source.trimEnd()])];
     const bookmark = kind === BOOKMARK_INFO ? parseBookmark(source) : null;
     if (bookmark) return [paragraph([text(bookmark.title ?? bookmark.url, [{ type: "link", attrs: { href: bookmark.url } }])])];
+    const post = kind === X_POST_INFO ? parseXPost(source) : null;
+    if (post) {
+      const who = [post.author, post.handle ? `@${post.handle}` : "", post.date].filter(Boolean).join(", ") || post.url;
+      const lines = post.text.split(/\n+/u).filter((line) => line.trim() !== "");
+      return [
+        {
+          type: "blockquote",
+          content: [...lines.map((line) => paragraph([text(line)])), paragraph([text(who, [{ type: "link", attrs: { href: post.url } }])])],
+        },
+      ];
+    }
     const figures = await drawnFigures(kind, source, fence, this.read, this.place.shared === true).catch(() => null);
     if (!figures?.length) return [leftOut(blockLabel(kind))];
     return this.figureBlocks(kind, figures, 0, []);

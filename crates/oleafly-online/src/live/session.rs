@@ -8,7 +8,7 @@ mod tree_worker;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError, Weak};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::{Duration, Instant};
 
 use oleafly_ot::{DocOpened, DocSink, OtError, TextOperation};
@@ -62,7 +62,6 @@ pub trait LivePort: Send + Sync + 'static {
     }
     fn external_update(&self, _doc: &DocId) {}
     fn characters_replaced(&self, _doc: &DocId) {}
-    fn session_started(&self, _session: Weak<OverleafSession>) {}
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -486,19 +485,14 @@ impl OverleafSession {
             config.tuning.clone(),
         );
         let driver = driver::Driver::new(Arc::clone(&shared), connection, page, config);
-        let session = Arc::new(OverleafSession {
+        let handle = tokio::spawn(driver.run());
+        let tree = tokio::spawn(worker.run());
+        Ok(Arc::new(OverleafSession {
             shared,
-            driver: Mutex::new(None),
-            tree: Mutex::new(None),
+            driver: Mutex::new(Some(handle)),
+            tree: Mutex::new(Some(tree)),
             rest,
-        });
-        session
-            .shared
-            .port
-            .session_started(Arc::downgrade(&session));
-        *locked(&session.driver) = Some(tokio::spawn(driver.run()));
-        *locked(&session.tree) = Some(tokio::spawn(worker.run()));
-        Ok(session)
+        }))
     }
 
     fn poke(&self) {

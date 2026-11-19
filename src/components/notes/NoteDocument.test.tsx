@@ -11,7 +11,15 @@ import { NOTE_COLOR_HEX } from "./note-icons";
 import { flushOpenNotes, noteEditorBusy, noteHistoryAt } from "@/lib/open-note-editors";
 import { useShortcutStore } from "@/store/shortcuts";
 import { addPendingBatch, pendingBatches, resetPendingSuggestionsForTest } from "./note-pending-suggestions";
-import { dismissNoteLiveNotice, showNoteLiveNotice, useCollabEditorGate } from "@/lib/collab-live-bridge";
+import {
+  dismissNoteLiveNotice,
+  registerNoteCommentSurface,
+  showNoteLiveNotice,
+  useCollabEditorGate,
+  useCollabLiveNote,
+  useNoteCommentsRequest,
+} from "@/lib/collab-live-bridge";
+import { useCommentsRail } from "@/components/collab/comments-rail";
 import { editsAsMarkdown, useNoteTabsStore } from "@/store/note-tabs";
 import { NOTE_WIDTH_KEY, saveNoteWidth } from "./note-prefs";
 import { type NotesData, NotesDataProvider } from "./notes-data";
@@ -2114,6 +2122,39 @@ describe("selection bubble", () => {
       editor.view.dom.dispatchEvent(command);
     });
     expect(assistant.quote).toHaveBeenCalledWith("mask ratio");
+  });
+
+  it("offers Add comment only on the shared note that is live, to a person who may comment, and starts a draft there", async () => {
+    await openWithSelection(fakeData());
+    expect(bubbleButton(enNotes.document.addComment)).toBeNull();
+    const target = vi.fn(() => ({ from: 4, to: 14, quote: "mask ratio" }));
+    const release = registerNoteCommentSurface({
+      projectId: NOTE.id,
+      path: "note.md",
+      session: {} as never,
+      flush: vi.fn(),
+      show: vi.fn(),
+      draft: vi.fn(() => null),
+      target,
+      reveal: vi.fn(() => false),
+    });
+    try {
+      act(() => useCommentsRail.setState({ visible: true, canCompose: true }));
+      expect(bubbleButton(enNotes.document.addComment)).toBeNull();
+      act(() => useCollabLiveNote.setState({ noteId: NOTE.id }));
+      const asked = useNoteCommentsRequest.getState().count;
+      fireEvent.click(bubbleButton(enNotes.document.addComment) as HTMLElement);
+      expect(useCommentsRail.getState().request).toEqual({ path: "note.md", from: 4, to: 14, quote: "mask ratio" });
+      expect(useNoteCommentsRequest.getState().count).toBe(asked + 1);
+      act(() => useCommentsRail.setState({ canCompose: false }));
+      expect(bubbleButton(enNotes.document.addComment)).toBeNull();
+    } finally {
+      release();
+      act(() => {
+        useCommentsRail.setState({ visible: false, canCompose: false, request: null });
+        useCollabLiveNote.setState({ noteId: null });
+      });
+    }
   });
 
   it("appears above a selection and sends it to the paper", async () => {

@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, MutexGuard, Weak};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
 use oleafly_ot::testing::{insertion, EditorDoc, Reaction};
@@ -78,14 +78,12 @@ struct Seen {
     external: Vec<DocId>,
     replaced: Vec<DocId>,
     flags: Vec<(bool, bool)>,
-    texts_reach_the_session: Vec<bool>,
 }
 
 #[derive(Default)]
 struct Port {
     disk: Mutex<BTreeMap<String, String>>,
     seen: Mutex<Seen>,
-    session: Mutex<Option<Weak<OverleafSession>>>,
 }
 
 impl Port {
@@ -136,19 +134,7 @@ impl LivePort for Port {
         self.seen().roles.push((role, tracking));
     }
 
-    fn texts_changed(&self, _docs: Vec<DocId>) {
-        let reached = self
-            .session
-            .lock()
-            .unwrap()
-            .as_ref()
-            .is_some_and(|session| session.upgrade().is_some());
-        self.seen().texts_reach_the_session.push(reached);
-    }
-
-    fn session_started(&self, session: Weak<OverleafSession>) {
-        *self.session.lock().unwrap() = Some(session);
-    }
+    fn texts_changed(&self, _docs: Vec<DocId>) {}
 
     fn tree_changed(&self, _changes: Vec<PathChange>) {}
 
@@ -474,25 +460,6 @@ async fn every_open_tab_and_every_unopened_doc_stays_current() {
     assert!(tab.editor.synchronized());
     live.stop().await;
     assert_eq!(port.ended(), Some(LiveEnd::Stopped));
-}
-
-#[tokio::test]
-async fn the_port_reaches_the_session_from_the_first_doc_it_hears_about() {
-    let rig = Rig::start(project()).await;
-    rig.seed("alice", 0).await;
-    let port = Port::new(&FILES);
-    let live = rig.live("alice", &port).await;
-    let _tab = Tab::open(&live, MAIN);
-    eventually("a doc is joined", || {
-        !port.seen().texts_reach_the_session.is_empty()
-    })
-    .await;
-    assert!(port
-        .seen()
-        .texts_reach_the_session
-        .iter()
-        .all(|reached| *reached));
-    live.stop().await;
 }
 
 #[tokio::test]

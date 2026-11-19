@@ -125,6 +125,7 @@ export const NOTES_APPEARANCE_DEFAULTS = {
   notesTextReplace: true,
   notesTextReplacements: NOTES_TEXT_REPLACEMENTS,
   notesKeepUndo: true,
+  notesXPostsLive: false,
   notesTikzPreamble: "",
 };
 
@@ -157,6 +158,7 @@ export const NOTES_APPEARANCE_STORAGE_KEYS: Readonly<Record<NotesAppearanceKey, 
   notesTextReplace: "oleafly.notes.textReplace",
   notesTextReplacements: "oleafly.notes.textReplacements",
   notesKeepUndo: "oleafly.notes.keepUndo",
+  notesXPostsLive: "oleafly.notes.xPostsLive",
   notesTikzPreamble: "oleafly.notes.tikzPreamble",
 };
 
@@ -233,6 +235,7 @@ const NORMALIZERS: { readonly [K in NotesAppearanceKey]: Normalizer<K> } = {
   notesTextReplace: toggle(NOTES_APPEARANCE_DEFAULTS.notesTextReplace),
   notesTextReplacements: normalizeTextReplacements,
   notesKeepUndo: toggle(NOTES_APPEARANCE_DEFAULTS.notesKeepUndo),
+  notesXPostsLive: toggle(NOTES_APPEARANCE_DEFAULTS.notesXPostsLive),
   notesTikzPreamble: preamble,
 };
 

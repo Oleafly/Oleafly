@@ -52,6 +52,27 @@ export interface NoteSelectionOffsets {
   anchor: number;
 }
 
+export interface NoteCommentRange {
+  from: number;
+  to: number;
+}
+
+export interface NoteCommentSpan extends NoteCommentRange {
+  id: string;
+  resolved: boolean;
+}
+
+/** Comment threads to draw in a shared note, in offsets into the note's Markdown. */
+export interface NoteCommentView {
+  spans: readonly NoteCommentSpan[];
+  selected: string | null;
+  draft: NoteCommentRange | null;
+}
+
+export interface NoteCommentTarget extends NoteCommentRange {
+  quote: string;
+}
+
 export interface NoteLiveEditor {
   serialize(): string;
   show(previous: string, next: string, keepLocal: boolean): void;
@@ -64,6 +85,73 @@ export interface NoteLiveEditor {
   onCaret(listener: () => void): () => void;
   batch(run: () => void): void;
   shown?(): boolean;
+  setComments?(view: NoteCommentView): void;
+  commentDraft?(): NoteCommentRange | null;
+  commentTarget?(): NoteCommentTarget | null;
+  revealComment?(threadId: string): boolean;
+}
+
+export type NoteCommentOpenedFrom = "marker" | "text";
+
+/**
+ * A shared note that is live in an editor, as the comments store sees it: its document session
+ * (revisioned like a project file's), and the editor that draws its threads.
+ */
+export interface NoteCommentSurface {
+  readonly projectId: string;
+  readonly path: string;
+  readonly session: DocumentSession;
+  flush(): void;
+  show(view: NoteCommentView): void;
+  draft(): NoteCommentRange | null;
+  target(): NoteCommentTarget | null;
+  reveal(threadId: string): boolean;
+}
+
+const noteCommentSurfaces = new Set<NoteCommentSurface>();
+const noteCommentListeners = new Set<() => void>();
+let noteCommentOpener: ((threadId: string, from: NoteCommentOpenedFrom) => void) | null = null;
+
+export function registerNoteCommentSurface(surface: NoteCommentSurface): () => void {
+  noteCommentSurfaces.add(surface);
+  for (const listener of noteCommentListeners) listener();
+  return () => {
+    if (!noteCommentSurfaces.delete(surface)) return;
+    for (const listener of noteCommentListeners) listener();
+  };
+}
+
+export function noteCommentSurface(projectId: string | null, path?: string | null): NoteCommentSurface | null {
+  if (projectId === null) return null;
+  for (const surface of noteCommentSurfaces) {
+    if (surface.projectId === projectId && (path === undefined || surface.path === path)) return surface;
+  }
+  return null;
+}
+
+export function onNoteCommentSurfaces(listener: () => void): () => void {
+  noteCommentListeners.add(listener);
+  return () => {
+    noteCommentListeners.delete(listener);
+  };
+}
+
+export function installNoteCommentOpener(open: (threadId: string, from: NoteCommentOpenedFrom) => void): () => void {
+  noteCommentOpener = open;
+  return () => {
+    if (noteCommentOpener === open) noteCommentOpener = null;
+  };
+}
+
+export function openNoteComment(threadId: string, from: NoteCommentOpenedFrom): void {
+  noteCommentOpener?.(threadId, from);
+}
+
+/** Asks the Notes workspace to show its comments panel; the count changes on every request. */
+export const useNoteCommentsRequest = create<{ count: number }>(() => ({ count: 0 }));
+
+export function requestNoteComments(): void {
+  useNoteCommentsRequest.setState((state) => ({ count: state.count + 1 }));
 }
 
 export type NoteLiveEndReason = "released" | "dropped";

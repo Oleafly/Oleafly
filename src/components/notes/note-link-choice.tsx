@@ -3,7 +3,7 @@ import type { NodeType, ResolvedPos } from "@tiptap/pm/model";
 import { type EditorState, Plugin, PluginKey, TextSelection } from "@tiptap/pm/state";
 import type { EditorView } from "@tiptap/pm/view";
 import { useEditorState } from "@tiptap/react";
-import { Globe, Link2, Play } from "lucide-react";
+import { AtSign, Globe, Link2, Play } from "lucide-react";
 import { type KeyboardEvent, useEffect, useId, useReducer, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { isImeEnter } from "@/components/ai/composer/ime";
@@ -16,12 +16,13 @@ import { BOOKMARK_INFO, loadBookmark, serializeBookmark } from "./bookmark-block
 import { noteBlockName } from "./note-blocks";
 import { bubblePlace } from "./note-bubble";
 import { videoEmbed } from "./note-path";
+import { loadXPost, serializeXPost, X_POST_INFO, xPostLink } from "./x-post-block";
 
 interface LinkChoice {
   from: number;
   to: number;
   link: string;
-  kind: "video" | "web" | "ask";
+  kind: "video" | "web" | "x" | "ask";
 }
 
 const linkChoiceKey = new PluginKey<LinkChoice | null>("noteLinkChoice");
@@ -60,7 +61,9 @@ export function pasteLink(view: EditorView, text: string): boolean {
   const $from = emptyParagraph(view.state);
   const mark = schema.marks.link;
   if (!$from || !mark || !webLink(link)) return false;
-  const kind = videoEmbed(link) ? "video" : "web";
+  let kind: LinkChoice["kind"] = "web";
+  if (videoEmbed(link)) kind = "video";
+  else if (xPostLink(link)) kind = "x";
   if (!holds($from, kind === "video" ? schema.nodes.image : schema.nodes.codeBlock)) return false;
   const from = $from.pos;
   const tr = view.state.tr.insertText(link, from).addMark(from, from + link.length, mark.create({ href: link }));
@@ -116,12 +119,12 @@ function embed(editor: Editor, choice: LinkChoice): void {
   editor.commands.focus();
 }
 
-function fillBookmarks(editor: Editor, placeholder: string, source: string): void {
+function fillBlocks(editor: Editor, kind: string, placeholder: string, source: string): void {
   if (editor.isDestroyed || !editor.isEditable || source === placeholder) return;
   const { tr } = editor.state;
   editor.state.doc.descendants((node, position) => {
-    const bookmark = node.type.name === "codeBlock" && noteBlockName(String(node.attrs.language ?? "")) === BOOKMARK_INFO;
-    if (bookmark && node.textContent === placeholder) {
+    const block = node.type.name === "codeBlock" && noteBlockName(String(node.attrs.language ?? "")) === kind;
+    if (block && node.textContent === placeholder) {
       tr.insertText(source, tr.mapping.map(position + 1), tr.mapping.map(position + 1 + node.content.size));
     }
     return !node.isTextblock;
@@ -129,19 +132,18 @@ function fillBookmarks(editor: Editor, placeholder: string, source: string): voi
   if (tr.docChanged) editor.view.dispatch(tr);
 }
 
-function bookmarkCard(editor: Editor, choice: LinkChoice, url: string): void {
+function cardBlock(editor: Editor, choice: LinkChoice, kind: string, placeholder: string): boolean {
   const codeBlock = editor.schema.nodes.codeBlock;
   const range = paragraphOf(editor, choice);
   if (!codeBlock || !range) {
     dismiss(editor);
-    return;
+    return false;
   }
-  const placeholder = serializeBookmark({ url });
   editor
     .chain()
     .focus()
     .command(({ tr }) => {
-      tr.replaceWith(range.from, range.to, codeBlock.create({ language: BOOKMARK_INFO }, editor.schema.text(placeholder)));
+      tr.replaceWith(range.from, range.to, codeBlock.create({ language: kind }, editor.schema.text(placeholder)));
       tr.setSelection(TextSelection.create(tr.doc, range.from + 1));
       return true;
     })
@@ -149,7 +151,21 @@ function bookmarkCard(editor: Editor, choice: LinkChoice, url: string): void {
     .setMeta(linkChoiceKey, null)
     .scrollIntoView()
     .run();
-  void loadBookmark(url, (source) => fillBookmarks(editor, placeholder, source));
+  return true;
+}
+
+function bookmarkCard(editor: Editor, choice: LinkChoice, url: string): void {
+  const placeholder = serializeBookmark({ url });
+  if (!cardBlock(editor, choice, BOOKMARK_INFO, placeholder)) return;
+  void loadBookmark(url, (source) => fillBlocks(editor, BOOKMARK_INFO, placeholder, source));
+}
+
+function xPostCard(editor: Editor, choice: LinkChoice): void {
+  const post = xPostLink(choice.link);
+  if (!post) return;
+  const placeholder = serializeXPost({ url: post.url });
+  if (!cardBlock(editor, choice, X_POST_INFO, placeholder)) return;
+  void loadXPost(post.url, (source) => fillBlocks(editor, X_POST_INFO, placeholder, source));
 }
 
 function BookmarkAddress({ editor, choice }: Readonly<{ editor: Editor; choice: LinkChoice }>) {
@@ -202,6 +218,33 @@ function BookmarkAddress({ editor, choice }: Readonly<{ editor: Editor; choice: 
   );
 }
 
+function ChoiceButton({ editor, choice }: Readonly<{ editor: Editor; choice: LinkChoice }>) {
+  const { t } = useTranslation(["notes"]);
+  const keep = (event: { preventDefault(): void }) => event.preventDefault();
+  if (choice.kind === "video") {
+    return (
+      <Button variant="ghost" size="xs" onMouseDown={keep} onClick={() => embed(editor, choice)}>
+        <Play aria-hidden />
+        {t(($) => $.notes.blocks.media.embedChoice)}
+      </Button>
+    );
+  }
+  if (choice.kind === "x") {
+    return (
+      <Button variant="ghost" size="xs" onMouseDown={keep} onClick={() => xPostCard(editor, choice)}>
+        <AtSign aria-hidden />
+        {t(($) => $.notes.blocks.xPost.embedChoice)}
+      </Button>
+    );
+  }
+  return (
+    <Button variant="ghost" size="xs" onMouseDown={keep} onClick={() => bookmarkCard(editor, choice, choice.link)}>
+      <Globe aria-hidden />
+      {t(($) => $.notes.blocks.bookmark.cardChoice)}
+    </Button>
+  );
+}
+
 export function NoteLinkChoice({ editor }: Readonly<{ editor: Editor }>) {
   const { t } = useTranslation(["notes"]);
   const choice = useEditorState({ editor, selector: ({ editor: current }) => (current.isDestroyed ? null : (linkChoiceKey.getState(current.state) ?? null)) });
@@ -227,6 +270,7 @@ export function NoteLinkChoice({ editor }: Readonly<{ editor: Editor }>) {
   let label: string;
   if (choice.kind === "video") label = t(($) => $.notes.blocks.media.pasteChoice);
   else if (choice.kind === "web") label = t(($) => $.notes.blocks.bookmark.pasteChoice);
+  else if (choice.kind === "x") label = t(($) => $.notes.blocks.xPost.pasteChoice);
   else label = t(($) => $.notes.blocks.bookmark.ask);
   return (
     <fieldset
@@ -239,15 +283,7 @@ export function NoteLinkChoice({ editor }: Readonly<{ editor: Editor }>) {
         <BookmarkAddress editor={editor} choice={choice} />
       ) : (
         <>
-          <Button
-            variant="ghost"
-            size="xs"
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={() => (choice.kind === "video" ? embed(editor, choice) : bookmarkCard(editor, choice, choice.link))}
-          >
-            {choice.kind === "video" ? <Play aria-hidden /> : <Globe aria-hidden />}
-            {choice.kind === "video" ? t(($) => $.notes.blocks.media.embedChoice) : t(($) => $.notes.blocks.bookmark.cardChoice)}
-          </Button>
+          <ChoiceButton editor={editor} choice={choice} />
           <Button variant="ghost" size="xs" onMouseDown={(event) => event.preventDefault()} onClick={() => dismiss(editor)}>
             <Link2 aria-hidden />
             {t(($) => $.notes.blocks.media.linkChoice)}

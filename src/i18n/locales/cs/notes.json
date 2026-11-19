@@ -167,6 +167,8 @@
     "writtenByAgent": "Autor: {{agent}}",
     "writtenByYou": "Autor: vy",
     "askAgent": "Zeptat se agenta",
+    "addComment": "Přidat komentář",
+    "comments": "Komentáře",
     "addIcon": "Přidat ikonu",
     "sendToPaper": "Odeslat do článku",
     "selectionMenu": "Formátování výběru",
@@ -292,7 +294,8 @@
       "molecule": "Nejprve řádky voleb, například format: pdb a style: cartoon.\nPotom text souboru nebo path: assets/1abc.pdb",
       "sequence": "Záznamy FASTA nebo samotná sekvence:\n>sample 1\nATGGCCATTGTAATG",
       "notebook": "Cesta k poznámkovému bloku na prvním řádku:\nassets/analysis.ipynb\nPotom volitelné řádky, například cells: 2-5 a code: hide.",
-      "bookmark": "Jedno pole na řádek, začněte webovou adresou:\nurl: https://example.com/article\nPotom volitelné řádky title:, description:, image:, site: a favicon:."
+      "bookmark": "Jedno pole na řádek, začněte webovou adresou:\nurl: https://example.com/article\nPotom volitelné řádky title:, description:, image:, site: a favicon:.",
+      "x-post": "Jedno pole na řádek, začněte adresou příspěvku:\nurl: https://x.com/jack/status/20\nPak volitelné řádky author:, handle: a date:, prázdný řádek a text příspěvku."
     },
     "newChart": {
       "title": "Nový graf",
@@ -583,6 +586,18 @@
       "ask": "Přidat záložku webové stránky",
       "loading": "Načítá se náhled stránky",
       "noUrl": "Přidejte řádek url: s webovou adresou, která začíná na https:// nebo http://."
+    },
+    "xPost": {
+      "label": "Příspěvek na X",
+      "pasteChoice": "Jak zobrazit tento příspěvek",
+      "embedChoice": "Vložit příspěvek",
+      "loading": "Načítání příspěvku z X",
+      "noUrl": "Přidejte řádek url: s odkazem na příspěvek na x.com.",
+      "failed": "Příspěvek z X se nepodařilo načíst. Otevřete ho na X.",
+      "showLive": "Zobrazit živý příspěvek",
+      "showSaved": "Zobrazit uložený příspěvek",
+      "open": "Otevřít na X",
+      "liveTitle": "Živý příspěvek z X"
     }
   },
   "notebook": {
@@ -1615,6 +1630,10 @@
       "keepUndo": {
         "label": "Zachovat historii vrácení po zavření",
         "description": "Vracení změn v poznámce funguje i po jejím zavření nebo ukončení aplikace. Historie zůstává na tomto počítači a vypnutím této volby se smaže."
+      },
+      "xPostsLive": {
+        "label": "Načítat příspěvky z X automaticky",
+        "description": "Místo uložené karty zobrazí živý příspěvek z X. X se tak dozví, že byl příspěvek otevřen."
       },
       "code": {
         "title": "Kód"

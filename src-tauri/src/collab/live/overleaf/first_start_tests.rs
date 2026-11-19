@@ -206,6 +206,69 @@ fn a_git_linked_first_start_merges_with_a_coauthors_edit() {
     });
 }
 
+/// Stores the started session late for one test, and back on time after it.
+struct LateSession;
+
+impl LateSession {
+    fn by(delay: Duration) -> LateSession {
+        let millis = u64::try_from(delay.as_millis()).unwrap_or(u64::MAX);
+        super::STORE_SESSION_LATE_MS.store(millis, std::sync::atomic::Ordering::Relaxed);
+        LateSession
+    }
+}
+
+impl Drop for LateSession {
+    fn drop(&mut self) {
+        super::STORE_SESSION_LATE_MS.store(0, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+fn announced_merge(rig: &OverleafRig) -> bool {
+    rig.host
+        .notices
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|payload| matches!(payload.notice, OverleafNotice::Merged { .. }))
+}
+
+#[test]
+fn a_merge_reported_while_the_session_joins_is_announced_once_it_has_started() {
+    run(async {
+        let _late = LateSession::by(Duration::from_millis(500));
+        let rig = linked("Hello world").await;
+        let mut tab = rig.open(MAIN);
+        joined(&rig).await;
+        eventually("the merge reaches the server and the disk", || {
+            rig.mock.doc_text(&rig.doc(MAIN)) == "Oh, Hello world"
+                && rig.read(MAIN) == "Oh, Hello world"
+        })
+        .await;
+        tab.catch_up();
+        assert_eq!(tab.text, "Oh, Hello world");
+        eventually("the merge is announced", || announced_merge(&rig)).await;
+        rig.finish().await;
+    });
+}
+
+#[test]
+fn a_review_reported_while_the_session_joins_is_still_asked_for() {
+    run(async {
+        let _late = LateSession::by(Duration::from_millis(500));
+        let rig = unbased("Hello world").await;
+        let mut tab = rig.open(MAIN);
+        joined(&rig).await;
+        tab.catch_up();
+        assert_eq!(rig.read(MAIN), LOCAL);
+        assert_eq!(rig.mock.doc_text(&rig.doc(MAIN)), "Hello world");
+        eventually("the review is announced", || {
+            reviews(&rig) == vec![review("Hello world")]
+        })
+        .await;
+        rig.finish().await;
+    });
+}
+
 #[test]
 fn an_import_records_the_imported_text_outside_the_project() {
     let dir = tempfile::tempdir().unwrap();

@@ -5,6 +5,7 @@ use std::time::{Duration, Instant};
 use oleafly_online::client::Http;
 use oleafly_online::live::journal::{Journal, ProjectManifest};
 use oleafly_online::live::session::{SessionConfig, SessionTuning};
+use oleafly_online::realtime::connection::Tuning;
 use oleafly_online::realtime::Carrier;
 use oleafly_online::session::{Session, SessionHandle};
 use oleafly_online::test_support::mock_overleaf::{MockOverleaf, MockProject, MockUser};
@@ -197,8 +198,13 @@ pub(crate) fn session_of(user: &MockUser) -> Session {
     }
 }
 
-fn tuning() -> SessionTuning {
+fn tuning(stalled: bool) -> SessionTuning {
+    let mut connection = Tuning::default();
+    if stalled {
+        connection.join_timeout = Duration::from_secs(1);
+    }
     SessionTuning {
+        connection,
         tick: Duration::from_millis(20),
         trickle_every: Duration::from_millis(20),
         legacy_check: Duration::from_millis(400),
@@ -314,7 +320,7 @@ impl OverleafRig {
                 session,
                 project_id: mock.project_id(),
                 carriers: vec![Carrier::WebSocket, Carrier::XhrPolling],
-                tuning: tuning(),
+                tuning: tuning(first.stalled),
                 seeds: Vec::new(),
             },
             journal,
