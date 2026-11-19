@@ -1,5 +1,6 @@
 (() => {
   const X_ORIGIN = "https://platform.twitter.com";
+  const APP_ORIGIN = "__OLEAFLY_APP_ORIGIN__";
   const youtubeSource = (id, start) => {
     if (!/^[A-Za-z0-9_-]{11}$/u.test(id)) return null;
     const startParam = start === null ? "" : `&start=${start}`;
@@ -72,7 +73,7 @@
       if (event.origin !== X_ORIGIN || event.source !== frame.contentWindow) return;
       const call = xEmbedCall(event.data);
       const report = call === null ? null : xReport(call);
-      if (report !== null) window.parent.postMessage(report, "*");
+      if (report !== null) window.parent.postMessage(report, APP_ORIGIN);
     });
   }
   frame.src = src;

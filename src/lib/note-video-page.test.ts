@@ -1,6 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import script from "../../src-tauri/src/note_video_page.js?raw";
+import page from "../../src-tauri/src/note_video_page.js?raw";
+
+const APP_ORIGIN = "tauri://localhost";
+const script = page.replace('"__OLEAFLY_APP_ORIGIN__"', JSON.stringify(APP_ORIGIN));
 
 function frameFor(hash: string): HTMLIFrameElement | null {
   window.location.hash = hash;
@@ -104,9 +107,9 @@ describe("loopback video page script", () => {
     fromX(frame, JSON.stringify(call("twttr.private.resize", [{ height: 528 }])));
     fromX(frame, call("twttr.private.no_results"));
     expect(sent.mock.calls).toEqual([
-      [{ source: "oleafly-x-post", height: 225 }, "*"],
-      [{ source: "oleafly-x-post", height: 528 }, "*"],
-      [{ source: "oleafly-x-post", missing: true }, "*"],
+      [{ source: "oleafly-x-post", height: 225 }, APP_ORIGIN],
+      [{ source: "oleafly-x-post", height: 528 }, APP_ORIGIN],
+      [{ source: "oleafly-x-post", missing: true }, APP_ORIGIN],
     ]);
   });
 

@@ -39,7 +39,8 @@ fn page(script: &str) -> Page {
     }
 }
 
-static PAGE: LazyLock<Page> = LazyLock::new(|| page(SCRIPT));
+static PAGE: LazyLock<Page> =
+    LazyLock::new(|| page(&crate::navigation_guard::with_app_page_origin(SCRIPT)));
 
 static ORIGIN: OnceCell<String> = OnceCell::const_new();
 
@@ -132,10 +133,12 @@ mod tests {
     #[test]
     fn the_page_runs_only_its_own_script_and_frames_only_the_three_players() {
         let page = &*PAGE;
-        let hash = STANDARD.encode(Sha256::digest(SCRIPT.as_bytes()));
+        let script = crate::navigation_guard::with_app_page_origin(SCRIPT);
+        assert!(!script.contains("__OLEAFLY_APP_ORIGIN__"));
+        let hash = STANDARD.encode(Sha256::digest(script.as_bytes()));
         assert!(page
             .html
-            .contains(&format!("<script>{SCRIPT}</script></body>")));
+            .contains(&format!("<script>{script}</script></body>")));
         assert_eq!(page.html.matches("<script").count(), 1);
         assert_eq!(
             page.policy,

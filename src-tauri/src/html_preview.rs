@@ -99,7 +99,7 @@ async fn serve(request: Request) -> Response {
     if request.uri().path() == LINKS_PATH {
         return served(
             "text/javascript; charset=utf-8",
-            LINKS_SCRIPT.as_bytes().to_vec(),
+            crate::navigation_guard::with_app_page_origin(LINKS_SCRIPT).into_bytes(),
         );
     }
     let found = {
@@ -365,7 +365,12 @@ mod tests {
             links.headers()["content-type"],
             "text/javascript; charset=utf-8"
         );
-        assert_eq!(links.text().await.unwrap(), LINKS_SCRIPT);
+        let served = links.text().await.unwrap();
+        assert_eq!(
+            served,
+            crate::navigation_guard::with_app_page_origin(LINKS_SCRIPT)
+        );
+        assert!(!served.contains("__OLEAFLY_APP_ORIGIN__"));
         let script = url.replace("talk.html", "talk_files/libs/reveal.js");
         let script = reqwest::get(&script).await.unwrap();
         assert_eq!(script.headers()["content-type"], "text/javascript");

@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::sync::{Mutex, PoisonError};
+use std::sync::{Mutex, OnceLock, PoisonError};
 
 use tauri::plugin::{Builder, TauriPlugin};
 use tauri::{Manager, Runtime, Url, Webview};
@@ -34,13 +34,8 @@ impl Origins {
     }
 
     fn new(dev: Option<Url>, video_page: Option<&str>, html_preview: Option<&str>) -> Self {
-        let app = if cfg!(any(windows, target_os = "android")) {
-            "http://tauri.localhost"
-        } else {
-            "tauri://localhost"
-        };
         Self {
-            app: Url::parse(app).ok().into_iter().chain(dev).collect(),
+            app: packaged_app().into_iter().chain(dev).collect(),
             artifact: Url::parse(&crate::artifact_frame::frame_origin()).ok(),
             video_page: video_page.and_then(|origin| Url::parse(origin).ok()),
             html_preview: html_preview.and_then(|origin| Url::parse(origin).ok()),
@@ -72,6 +67,34 @@ impl Origins {
                     .iter()
                     .any(|(origin, path)| same_origin(url, origin) && url.path().starts_with(path)))
     }
+}
+
+fn packaged_app() -> Option<Url> {
+    let app = if cfg!(any(windows, target_os = "android")) {
+        "http://tauri.localhost"
+    } else {
+        "tauri://localhost"
+    };
+    Url::parse(app).ok()
+}
+
+fn page_origin(dev: Option<Url>) -> String {
+    let Some(page) = dev.or_else(packaged_app) else {
+        return String::new();
+    };
+    let host = page.host_str().unwrap_or_default();
+    match page.port() {
+        Some(port) => format!("{}://{host}:{port}", page.scheme()),
+        None => format!("{}://{host}", page.scheme()),
+    }
+}
+
+static APP_PAGE_ORIGIN: OnceLock<String> = OnceLock::new();
+
+pub(crate) fn with_app_page_origin(script: &str) -> String {
+    let origin = APP_PAGE_ORIGIN.get_or_init(|| page_origin(None));
+    let literal = serde_json::to_string(origin).unwrap_or_else(|_| "\"\"".to_owned());
+    script.replace("\"__OLEAFLY_APP_ORIGIN__\"", &literal)
 }
 
 fn same_origin(url: &Url, origin: &Url) -> bool {
@@ -129,16 +152,24 @@ fn log(line: String) {
 }
 
 pub(crate) fn plugin<R: Runtime>() -> TauriPlugin<R> {
-    let builder = Builder::new("oleafly-navigation-guard").on_navigation(|webview, url| {
-        let label = webview.label();
-        let allow = !guards(label) || allowed(url, &Origins::of(webview));
-        if !allow {
-            if let Some(line) = first_block(label, url) {
-                log(line);
+    let builder = Builder::new("oleafly-navigation-guard")
+        .setup(|app, _| {
+            let dev = tauri::is_dev()
+                .then(|| app.config().build.dev_url.clone())
+                .flatten();
+            let _ = APP_PAGE_ORIGIN.set(page_origin(dev));
+            Ok(())
+        })
+        .on_navigation(|webview, url| {
+            let label = webview.label();
+            let allow = !guards(label) || allowed(url, &Origins::of(webview));
+            if !allow {
+                if let Some(line) = first_block(label, url) {
+                    log(line);
+                }
             }
-        }
-        allow
-    });
+            allow
+        });
     #[cfg(windows)]
     let builder = builder.on_webview_ready(|webview| frames::guard(&webview));
     #[cfg(target_os = "macos")]
@@ -411,6 +442,26 @@ mod tests {
         assert_eq!(
             first_block("main", &url("data:text/html,secret")).as_deref(),
             Some("Navigation guard kept the main webview from loading a data: address")
+        );
+    }
+
+    #[test]
+    fn frames_post_only_to_the_origin_the_app_page_loads_from() {
+        let packaged = if cfg!(any(windows, target_os = "android")) {
+            "http://tauri.localhost"
+        } else {
+            "tauri://localhost"
+        };
+        assert_eq!(page_origin(None), packaged);
+        assert_eq!(
+            page_origin(Some(url("http://localhost:1420/"))),
+            "http://localhost:1420"
+        );
+        let script =
+            with_app_page_origin(r#"parent.postMessage(message, "__OLEAFLY_APP_ORIGIN__");"#);
+        assert_eq!(
+            script,
+            format!(r#"parent.postMessage(message, "{packaged}");"#)
         );
     }
 

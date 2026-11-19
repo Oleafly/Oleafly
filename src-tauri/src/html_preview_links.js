@@ -1,5 +1,6 @@
 (() => {
   if (window.parent === window) return;
+  const appOrigin = "__OLEAFLY_APP_ORIGIN__";
   const sameFrameTargets = new Set(["", "_self"]);
   addEventListener("click", (event) => {
     if (event.defaultPrevented || event.button !== 0) return;
@@ -19,6 +20,6 @@
     }
     if (url.protocol !== "http:" && url.protocol !== "https:") return;
     event.preventDefault();
-    parent.postMessage({ type: "oleafly-preview-open-link", url: url.href }, "*");
+    parent.postMessage({ type: "oleafly-preview-open-link", url: url.href }, appOrigin);
   });
 })();
