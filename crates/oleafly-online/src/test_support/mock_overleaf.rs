@@ -2904,13 +2904,17 @@ impl MockOverleaf {
             .collect()
     }
 
-    pub fn has_joined(&self, user_id: &str, doc_id: &str) -> bool {
+    pub fn has_joined_and_listed_users(&self, user_id: &str, doc_id: &str) -> bool {
         let state = self.state();
         state.live().iter().any(|sid| {
             let client = &state.clients[sid];
             client.user.as_deref() == Some(user_id)
                 && client.joined.contains(doc_id)
                 && client.outbox.is_empty()
+                && state.received.iter().any(|call| {
+                    call.public_id == client.public_id
+                        && call.name == "clientTracking.getConnectedUsers"
+                })
         })
     }
 

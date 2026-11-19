@@ -18,7 +18,7 @@ import { sendPreviewCommand, type PreviewWorkspaceCommand } from "@/lib/preview-
 import { usesNativeDockMenu } from "@/lib/native-dock-shortcuts";
 import { matchesShortcut, useShortcutStore } from "@/store/shortcuts";
 import { LATEX_ENGINE } from "@/lib/document-engine";
-import { logError } from "@/lib/log";
+import { logError, logWarning } from "@/lib/log";
 import { downloadBytes } from "@/lib/download-blob";
 import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError } from "@/lib/app-error";
@@ -837,6 +837,7 @@ export function PreviewWindow({
             layout={layout}
             screenReaderMode={screenReaderMode}
             pageColors={pdfPageColors}
+            reportWarning={logWarning}
             searchQuery={searchOpen ? deferredSearch : ""}
             onLoadStateChange={handlePdfLoadState}
             onSearchStateChange={setSearchState}

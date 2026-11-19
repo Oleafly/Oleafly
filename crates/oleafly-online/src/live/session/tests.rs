@@ -329,7 +329,8 @@ impl Rig {
     }
 
     fn has_joined(&self, name: &str, doc: &DocId) -> bool {
-        self.mock.has_joined(&self.user_id(name), &doc.0)
+        self.mock
+            .has_joined_and_listed_users(&self.user_id(name), &doc.0)
     }
 
     fn joins_except(&self, peers: &[&str]) -> Vec<String> {

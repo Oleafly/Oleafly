@@ -33,6 +33,7 @@ const harness = vi.hoisted(() => ({
   observerCallbacks: [] as IntersectionObserverCallback[],
   linkServices: [] as Array<{ viewer: PdfLinkViewerAdapter | null }>,
   renderCalls: [] as Array<{ pageNumber: number; rotation: number; optionalContentConfigPromise: unknown }>,
+  imagePasses: [] as number[],
   pageCleanup: [] as number[],
   getPageCalls: [] as number[],
   textLayerGate: null as Gate | null,
@@ -63,6 +64,7 @@ const harness = vi.hoisted(() => ({
     this.observerCallbacks = [];
     this.linkServices = [];
     this.renderCalls = [];
+    this.imagePasses = [];
     this.pageCleanup = [];
     this.getPageCalls = [];
     this.textLayerGate = null;
@@ -140,11 +142,14 @@ vi.mock("pdfjs-dist", () => {
     readonly convertToViewportPoint = harness.noViewportConversion
       ? undefined
       : (x: number, y: number) => [x * this.scale, (this.spec.height - y) * this.scale];
+
+    readonly convertToPdfPoint = (x: number, y: number) => [x / this.scale, this.spec.height - y / this.scale];
   }
 
   const makePage = (pageNumber: number) => {
     const spec = harness.pages[pageNumber - 1];
-    return {
+    const pdfPage = {
+      imageCoordinates: null as Float32Array | null,
       rotate: 0,
       getViewport: ({ scale, rotation = 0 }: { scale: number; rotation?: number }) =>
         new MockViewport(spec, scale, rotation),
@@ -153,10 +158,16 @@ vi.mock("pdfjs-dist", () => {
       render: ({
         viewport,
         optionalContentConfigPromise,
+        recordImages,
       }: {
         viewport: MockViewport;
         optionalContentConfigPromise: unknown;
+        recordImages?: boolean;
       }) => {
+        if (recordImages) {
+          harness.imagePasses.push(pageNumber);
+          pdfPage.imageCoordinates ??= new Float32Array(0);
+        }
         harness.renderCalls.push({
           pageNumber,
           rotation: viewport.rotation,
@@ -176,6 +187,7 @@ vi.mock("pdfjs-dist", () => {
         harness.pageCleanup.push(pageNumber);
       },
     };
+    return pdfPage;
   };
 
   return {
@@ -1196,6 +1208,22 @@ describe("PdfViewer dark mode", () => {
 
     rerender({ pageColors: undefined });
     expect(renderer()).not.toHaveAttribute("data-pdf-colors");
+  });
+
+  it("asks pdf.js where the figures are only while the page colors are on", async () => {
+    harness.pages = [page("First page"), page("Second page")];
+    const { rerender } = renderViewer();
+    await pageTextRendered(1);
+    expect(harness.imagePasses).toEqual([]);
+
+    rerender({ pageColors: "dark" });
+    await waitFor(() => expect(harness.imagePasses).toContain(1));
+    const passes = harness.imagePasses.length;
+
+    rerender({ pageColors: "light" });
+    rerender({ pageColors: "dark" });
+    await pageTextRendered(1);
+    expect(harness.imagePasses.filter((pageNumber) => pageNumber === 1).length).toBeLessThanOrEqual(passes);
   });
 });
 

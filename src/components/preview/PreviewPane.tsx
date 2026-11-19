@@ -79,7 +79,7 @@ import {
   type AnalysisReasonKey,
 } from "@/lib/analysis/reason";
 import { i18n } from "@/i18n";
-import { logError } from "@/lib/log";
+import { logError, logWarning } from "@/lib/log";
 import { notifyError, toast } from "@/lib/toast";
 import { decodeAppError, describeError } from "@/lib/app-error";
 import { cn, shortcut } from "@/lib/utils";
@@ -1303,6 +1303,7 @@ export function PreviewPane({ active = true }: { active?: boolean } = {}) {
           expectText={!isImage}
           screenReaderMode={screenReaderMode && !isImage}
           pageColors={pdfPageColors}
+          reportWarning={logWarning}
           searchQuery={searchOpen ? deferredSearch : ""}
           onLoadStateChange={handlePdfLoadState}
           onSearchStateChange={setSearchState}

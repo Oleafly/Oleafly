@@ -12,6 +12,7 @@ import { useTauriEvent } from "@/hooks/use-tauri-event";
 import { base64ToUint8Array, readFileBase64 } from "@/lib/tauri";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/store/settings";
+import { logWarning } from "@/lib/log";
 
 interface LoadedPdf {
   readonly bytes: Uint8Array;
@@ -179,6 +180,7 @@ export function PdfFileView({ projectId, path }: Readonly<{ projectId: string; p
             layout={reader.layout}
             screenReaderMode={reader.screenReaderMode}
             pageColors={reader.pdfPageColors}
+            reportWarning={logWarning}
             searchQuery={reader.searchOpen ? reader.deferredSearch : ""}
             onLoadStateChange={(next) => {
               if (next.documentIdentity === pdf.identity) reader.markLoadState(next);

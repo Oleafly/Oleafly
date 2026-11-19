@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-async function openHarness(page: import("@playwright/test").Page, pages: 1 | 2 | 3) {
+async function openHarness(page: import("@playwright/test").Page, pages: 1 | 2 | 3, figure = false) {
   await page.goto(
-    `${process.env.OLEAFLY_BROWSER_TEST_URL ?? "http://localhost:1420"}/e2e/preview-window-harness.html?pages=${pages}`,
+    `${process.env.OLEAFLY_BROWSER_TEST_URL ?? "http://localhost:1420"}/e2e/preview-window-harness.html?pages=${pages}${figure ? "&figure=1" : ""}`,
   );
   await expect(page.locator("body")).toHaveAttribute("data-fixture-state", "mounted");
   await expect(page.getByTestId("pdf-renderer")).toHaveAttribute(
@@ -44,6 +44,49 @@ test("detached preview one-page controls stay bounded and zoom/invert work", asy
   await expect(page.getByLabel("Invert PDF preview colors")).toHaveAttribute("aria-pressed", "false");
   await expect(renderer).not.toHaveAttribute("data-pdf-colors");
   await expect(renderer.locator("[data-page] canvas").first()).toHaveCSS("filter", "none");
+});
+
+test("inverted pages keep a figure in its own colours, edge to edge", async ({ page }) => {
+  await openHarness(page, 1, true);
+  const renderer = page.getByTestId("pdf-renderer");
+  await page.getByLabel("Invert PDF preview colors").click();
+  await expect(renderer).toHaveAttribute("data-pdf-colors", "dark");
+  const figure = renderer.locator("[data-page] canvas.pdf-figure");
+  await expect(figure).toHaveCount(1);
+  await expect(figure).toHaveCSS("filter", "none");
+  await expect(renderer.locator("[data-page] canvas.pdf-canvas")).toHaveCSS(
+    "filter",
+    "invert(1) hue-rotate(180deg)",
+  );
+  const corners = await figure.evaluate((canvas: HTMLCanvasElement) => {
+    const context = canvas.getContext("2d");
+    if (!context) return [];
+    const at = (x: number, y: number) => Array.from(context.getImageData(x, y, 1, 1).data.slice(0, 3));
+    return [at(0, 0), at(canvas.width - 1, 0), at(0, canvas.height - 1), at(canvas.width - 1, canvas.height - 1)];
+  });
+  expect(corners).toEqual([
+    [214, 40, 40],
+    [42, 157, 143],
+    [38, 77, 228],
+    [244, 162, 97],
+  ]);
+  const placed = await figure.evaluate((canvas) => {
+    const wrap = canvas.parentElement?.getBoundingClientRect();
+    const box = canvas.getBoundingClientRect();
+    if (!wrap) return null;
+    return {
+      left: (box.left - wrap.left) / wrap.width,
+      top: (box.top - wrap.top) / wrap.height,
+      width: box.width / wrap.width,
+      height: box.height / wrap.height,
+    };
+  });
+  expect(placed?.left).toBeCloseTo(156 / 612, 2);
+  expect(placed?.top).toBeCloseTo(196 / 792, 2);
+  expect(placed?.width).toBeCloseTo(300 / 612, 2);
+  expect(placed?.height).toBeCloseTo(200 / 792, 2);
+  await page.getByLabel("Invert PDF preview colors").click();
+  await expect(figure).toBeHidden();
 });
 
 test("detached preview two-page layout, previous/input/next, and invalid bounds work", async ({

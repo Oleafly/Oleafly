@@ -74,7 +74,7 @@ vi.mock("@/features/ask-ai-compile-errors", () => ({
 }));
 const openPreviewWindow = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => {}));
 const logError = vi.hoisted(() => vi.fn(async (..._args: unknown[]) => {}));
-vi.mock("@/lib/log", () => ({ logError }));
+vi.mock("@/lib/log", () => ({ logError, logWarning: vi.fn() }));
 const toolbarMeasurement = vi.hoisted(() => ({ width: Number.POSITIVE_INFINITY }));
 vi.mock("@/lib/preview-window", () => ({ openPreviewWindow }));
 vi.mock("@/components/ui/toolbar-overflow", async (importOriginal) => ({

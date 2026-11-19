@@ -1276,6 +1276,22 @@ async fn mock_peers_converge_on_concurrent_edits_in_both_formats() {
 }
 
 #[tokio::test]
+async fn mock_counts_a_join_as_settled_once_the_users_list_went_out() {
+    let mock = MockOverleaf::start(project()).await;
+    let doc = mock.doc_id("main.tex");
+    let alice = mock.user("alice").id;
+    let mut peer = mock.peer("alice");
+    peer.join(&doc);
+    assert!(
+        !mock.has_joined_and_listed_users(&alice, &doc),
+        "joined, but the connected users were never asked for"
+    );
+    peer.emit("clientTracking.getConnectedUsers", vec![]);
+    assert!(mock.has_joined_and_listed_users(&alice, &doc));
+    assert!(!mock.has_joined_and_listed_users(&alice, &mock.doc_id("sections/other.tex")));
+}
+
+#[tokio::test]
 async fn mock_presence_broadcasts_positions_and_lists_connected_users() {
     let mock = MockOverleaf::start(project()).await;
     let doc = mock.doc_id("main.tex");

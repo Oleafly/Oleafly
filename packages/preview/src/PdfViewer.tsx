@@ -60,6 +60,13 @@ import {
 import { safePdfExternalUrl } from "./pdfSecurity";
 import { createPdfScreenReaderLayer } from "./pdfScreenReader";
 import {
+  knowsPdfFigures,
+  paintPdfFigures,
+  pdfFigureBoxes,
+  pdfFigureProbeScale,
+  rememberPdfFigures,
+} from "./pdfFigureLayer";
+import {
   closestMatchingElement,
   measuredTextOffset,
   textAroundWord,
@@ -329,6 +336,7 @@ interface PdfDetailState {
   canvas: HTMLCanvasElement | null;
   area: PdfDetailArea | null;
   pending: PdfPendingDetail | null;
+  figures: HTMLCanvasElement[];
 }
 
 interface RenderState {
@@ -354,6 +362,8 @@ interface RenderState {
   removeTextSelection: (() => void) | null;
   nodes: HTMLElement[];
   searchNodes: HTMLElement[];
+  figures: HTMLCanvasElement[];
+  probingFigures: boolean;
 }
 
 function setPdfScreenReaderWrapStyle(
@@ -392,6 +402,15 @@ function releaseCanvas(canvas: HTMLCanvasElement): void {
   canvas.remove();
 }
 
+function releaseDetailFigures(state: RenderState, detail: PdfDetailState): void {
+  for (const figure of detail.figures) {
+    const index = state.nodes.indexOf(figure);
+    if (index >= 0) state.nodes.splice(index, 1);
+    releaseCanvas(figure);
+  }
+  detail.figures = [];
+}
+
 function cancelPendingDetail(state: RenderState): void {
   const detail = state.detail;
   if (!detail?.pending) return;
@@ -408,12 +427,43 @@ function releasePdfDetail(state: RenderState): void {
   if (!detail) return;
   cancelPendingDetail(state);
   state.detail = null;
+  releaseDetailFigures(state, detail);
   if (detail.canvas) {
     const index = state.nodes.indexOf(detail.canvas);
     if (index >= 0) state.nodes.splice(index, 1);
     releaseCanvas(detail.canvas);
   }
   delete detail.wrap.dataset.pdfDetail;
+}
+
+function paintBaseFigures(state: RenderState, active: boolean): void {
+  const { page, viewport, canvas } = state;
+  if (!active || !page || !viewport || !canvas || state.figures.length > 0) return;
+  const boxes = pdfFigureBoxes(page, viewport);
+  if (boxes.length === 0) return;
+  state.figures = paintPdfFigures(boxes, { canvas, left: 0, top: 0, width: 1, height: 1 }, canvas);
+  state.nodes.push(...state.figures);
+}
+
+function paintDetailFigures(state: RenderState, detail: PdfDetailState, active: boolean): void {
+  const { page, viewport, layoutWidth, layoutHeight } = state;
+  const { canvas, area } = detail;
+  if (!active || !page || !viewport || !canvas || !area || detail.figures.length > 0) return;
+  if (layoutWidth <= 0 || layoutHeight <= 0) return;
+  const boxes = pdfFigureBoxes(page, viewport);
+  if (boxes.length === 0) return;
+  detail.figures = paintPdfFigures(
+    boxes,
+    {
+      canvas,
+      left: area.minX / layoutWidth,
+      top: area.minY / layoutHeight,
+      width: area.width / layoutWidth,
+      height: area.height / layoutHeight,
+    },
+    state.figures.at(-1) ?? canvas,
+  );
+  state.nodes.push(...detail.figures);
 }
 
 function cancelRenderState(state: RenderState): void {
@@ -1108,7 +1158,7 @@ const PDF_PAGE_WRAP_CLASSES = [
   "group-data-[pdf-colors]/pdf:isolate",
   "group-data-[pdf-colors]/pdf:before:pointer-events-none group-data-[pdf-colors]/pdf:before:absolute group-data-[pdf-colors]/pdf:before:inset-0 group-data-[pdf-colors]/pdf:before:z-[1] group-data-[pdf-colors]/pdf:before:bg-pdf-dark-text group-data-[pdf-colors]/pdf:before:content-['']",
   "group-data-[pdf-colors]/pdf:after:pointer-events-none group-data-[pdf-colors]/pdf:after:absolute group-data-[pdf-colors]/pdf:after:inset-0 group-data-[pdf-colors]/pdf:after:z-[1] group-data-[pdf-colors]/pdf:after:bg-pdf-dark-page group-data-[pdf-colors]/pdf:after:content-['']",
-  "group-data-[pdf-colors=dark]/pdf:bg-black group-data-[pdf-colors=dark]/pdf:[&_canvas]:[filter:invert(1)_hue-rotate(180deg)] group-data-[pdf-colors=dark]/pdf:before:mix-blend-multiply group-data-[pdf-colors=dark]/pdf:after:mix-blend-screen group-data-[pdf-colors=dark]/pdf:after:border group-data-[pdf-colors=dark]/pdf:after:border-white/10!",
+  "group-data-[pdf-colors=dark]/pdf:bg-black group-data-[pdf-colors=dark]/pdf:[&_canvas:not(.pdf-figure)]:[filter:invert(1)_hue-rotate(180deg)] group-data-[pdf-colors=dark]/pdf:before:mix-blend-multiply group-data-[pdf-colors=dark]/pdf:after:mix-blend-screen group-data-[pdf-colors=dark]/pdf:after:border group-data-[pdf-colors=dark]/pdf:after:border-white/10!",
   "group-data-[pdf-colors=light]/pdf:before:mix-blend-screen group-data-[pdf-colors=light]/pdf:after:mix-blend-multiply",
 ].join(" ");
 
@@ -1137,6 +1187,7 @@ export interface PdfViewerProps {
   expectText?: boolean;
   screenReaderMode?: boolean;
   pageColors?: PdfPageColors;
+  reportWarning?: (scope: string, error: unknown) => void;
   t?: PreviewTranslator;
 }
 
@@ -1174,6 +1225,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     expectText = true,
     screenReaderMode = false,
     pageColors,
+    reportWarning,
     t = keyEchoTranslator,
   },
   ref
@@ -1203,6 +1255,10 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
   rotationRef.current = normalizeRotation(rotation);
   const screenReaderModeRef = useRef(screenReaderMode);
   screenReaderModeRef.current = screenReaderMode;
+  const pageColorsRef = useRef(pageColors);
+  pageColorsRef.current = pageColors;
+  const reportWarningRef = useRef(reportWarning);
+  reportWarningRef.current = reportWarning;
   const currentPageRef = useRef(1);
 
   const loadSeqRef = useRef(0);
@@ -1623,6 +1679,53 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
     [],
   );
 
+  const showFigures = useCallback(async (state: RenderState) => {
+    const { page, viewport } = state;
+    if (!page || !viewport || !state.baseRendered || state.probingFigures) return;
+    if (!knowsPdfFigures(page)) {
+      const probeViewport = page.getViewport({
+        scale: pdfFigureProbeScale(page.getViewport({ scale: 1, rotation: viewport.rotation })),
+        rotation: viewport.rotation,
+      });
+      const probe = document.createElement("canvas");
+      const context = probe.getContext("2d");
+      if (!context) return;
+      probe.width = Math.max(1, Math.round(probeViewport.width));
+      probe.height = Math.max(1, Math.round(probeViewport.height));
+      state.probingFigures = true;
+      const task = page.render({
+        canvas: probe,
+        canvasContext: context,
+        viewport: probeViewport,
+        optionalContentConfigPromise: optionalContentConfigPromiseRef.current ?? undefined,
+        recordImages: true,
+      });
+      state.tasks.push(task);
+      try {
+        await task.promise;
+        rememberPdfFigures(page, probeViewport, { width: probe.width, height: probe.height });
+      } catch (error) {
+        if (!String(error).includes("RenderingCancelled")) {
+          reportWarningRef.current?.(`PDF figure colors on page ${state.pageNumber}`, error);
+        }
+      } finally {
+        state.probingFigures = false;
+        const index = state.tasks.indexOf(task);
+        if (index >= 0) state.tasks.splice(index, 1);
+        releaseCanvas(probe);
+      }
+    }
+    if (renderedRef.current.get(state.pageNumber) !== state) return;
+    const active = pageColorsRef.current !== undefined;
+    paintBaseFigures(state, active);
+    if (state.detail) paintDetailFigures(state, state.detail, active);
+  }, []);
+
+  useEffect(() => {
+    if (pageColors === undefined) return;
+    for (const state of renderedRef.current.values()) void showFigures(state);
+  }, [pageColors, showFigures]);
+
   const detailFrameRef = useRef(0);
   const scrollSettlingRef = useRef(false);
   const scrollSettleTimerRef = useRef<number | null>(null);
@@ -1634,7 +1737,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       const base = state.canvas;
       if (!page || !viewport || !base) return;
       cancelPendingDetail(state);
-      const detail = state.detail ?? { wrap, canvas: null, area: null, pending: null };
+      const detail = state.detail ?? { wrap, canvas: null, area: null, pending: null, figures: [] };
       state.detail = detail;
       const canvas = document.createElement("canvas");
       canvas.className = "pdf-canvas-detail";
@@ -1672,6 +1775,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
             return;
           }
           detail.pending = null;
+          releaseDetailFigures(state, detail);
           if (detail.canvas) {
             const index = state.nodes.indexOf(detail.canvas);
             if (index >= 0) state.nodes.splice(index, 1);
@@ -1681,6 +1785,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
           state.nodes.push(canvas);
           detail.canvas = canvas;
           detail.area = area;
+          paintDetailFigures(state, detail, pageColorsRef.current !== undefined);
           wrap.dataset.pdfDetail = "ready";
         },
         () => {
@@ -1834,6 +1939,8 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       removeTextSelection: null,
       nodes: [],
       searchNodes: [],
+      figures: [],
+      probingFigures: false,
     };
     renderedRef.current.set(pageNo, state);
     wrap.dataset.pdfRendered = "true";
@@ -1935,12 +2042,14 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
 
       const optionalContentConfigPromise =
         optionalContentConfigPromiseRef.current ?? undefined;
+      const recordFigures = pageColorsRef.current !== undefined && !knowsPdfFigures(page);
       const renderTask = page.render({
         canvas,
         canvasContext: ctx,
         viewport,
         transform,
         optionalContentConfigPromise,
+        recordImages: recordFigures,
       });
       state.tasks.push(renderTask);
       schedulerRef.current?.add(renderTask, pageNo, "base");
@@ -1951,6 +2060,12 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       } catch (err) {
         if (!String(err).includes("RenderingCancelled")) throw err;
         painted = false;
+      }
+      if (painted && recordFigures) {
+        rememberPdfFigures(page, viewport, {
+          width: canvas.width / geometry.outputScaleX,
+          height: canvas.height / geometry.outputScaleY,
+        });
       }
       if (!isCurrent()) return;
 
@@ -1967,6 +2082,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         state.baseRendered = painted;
         if (painted) {
           storePreview(pageNo, canvas);
+          paintBaseFigures(state, pageColorsRef.current !== undefined);
           scheduleDetailUpdate();
         }
       };

@@ -176,10 +176,15 @@ fn build_entry(
         "duration_ms": result.compile_time_ms,
         "errors": result.errors.len(),
     });
+    let reported = !result.errors.is_empty();
     if result.stopped {
         (Level::Info, "build stopped", safe)
+    } else if result.ok && reported {
+        (Level::Warning, "build succeeded with errors", safe)
     } else if result.ok {
         (Level::Info, "build succeeded", safe)
+    } else if reported {
+        (Level::Warning, "build failed", safe)
     } else {
         (Level::Error, "build failed", safe)
     }
@@ -543,7 +548,22 @@ mod tests {
             json!({ "engine": "tectonic", "duration_ms": 1812, "errors": 0 })
         );
 
+        result.errors.push(oleafly_core::tex_errors::CompileError {
+            message: "Undefined control sequence".into(),
+            ..Default::default()
+        });
+        let (level, message, safe) = build_entry("quarto", &result);
+        assert_eq!(
+            (level, message),
+            (Level::Warning, "build succeeded with errors")
+        );
+        assert_eq!(safe["errors"], 1);
+
         result.ok = false;
+        let (level, message, _) = build_entry("tectonic", &result);
+        assert_eq!((level, message), (Level::Warning, "build failed"));
+
+        result.errors.clear();
         let (level, message, _) = build_entry("tectonic", &result);
         assert_eq!((level, message), (Level::Error, "build failed"));
 
