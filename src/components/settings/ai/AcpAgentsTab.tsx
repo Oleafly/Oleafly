@@ -21,7 +21,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Empty, EmptyDescription, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { appModalCoordinator } from "@/components/ui/use-modal-accessibility";
 import { Input, SEARCH_INPUT } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { AgentLogo } from "@/components/ai/acp/AgentLogo";
@@ -610,11 +609,6 @@ export function AcpAgentsTab({
     focusAgent(focusAgentId);
     onFocusHandledRef.current?.(focusToken);
   }, [focusAgent, focusAgentId, focusToken]);
-  useEffect(() => {
-    if (!reviewing) return;
-    const id = appModalCoordinator.add(reviewOpener.current);
-    return () => { appModalCoordinator.remove(id)?.focus({ preventScroll: true }); };
-  }, [reviewing]);
 
   const checkInstalledAgents = useCallback(async (userInitiated = false) => {
     const request = ++catalogCheckRequest.current;
@@ -927,7 +921,10 @@ export function AcpAgentsTab({
           className="z-[120] max-w-md"
           overlayClassName="z-[120]"
           closeDisabled={!!busy}
-          onCloseAutoFocus={(event) => event.preventDefault()}
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            reviewOpener.current?.focus({ preventScroll: true });
+          }}
           onEscapeKeyDown={(event) => { if (busy) event.preventDefault(); }}
           onPointerDownOutside={(event) => { if (busy) event.preventDefault(); }}
         >
