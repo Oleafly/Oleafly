@@ -317,6 +317,7 @@ interface LiveRun {
   deviceId: string | null;
   release: (() => void) | null;
   retry: ReturnType<typeof setTimeout> | null;
+  heardRole: boolean;
 }
 
 const START_RETRY_MS = [1_000, 2_000, 5_000, 10_000, 30_000];
@@ -399,7 +400,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
   };
 
   const goLive = async (projectId: string, driver: LiveBackendDriver, attempt = 0) => {
-    const run: LiveRun = { projectId, driver, ready: false, deviceId: null, release: null, retry: null };
+    const run: LiveRun = { projectId, driver, ready: false, deviceId: null, release: null, retry: null, heardRole: false };
     live = run;
     resumable = false;
     holdEditors(projectId);
@@ -452,12 +453,13 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
     }
     run.deviceId = info.device_id;
     releaseEditors(run.projectId);
-    store.setState({ role: info.role, selfId: info.account_id });
+    const role = run.heardRole ? (store.getState().role ?? info.role) : info.role;
+    store.setState({ role, selfId: info.account_id });
     void store.getState().refreshMembers();
     run.release =
       hooks.started?.({
         projectId: run.projectId,
-        role: info.role,
+        role,
         accountId: info.account_id,
         deviceId: info.device_id,
       }) ?? null;
@@ -529,6 +531,7 @@ export function startCollabLive(hooks: LiveHooks = {}): () => void {
 
   const onRole = (payload: CollabLiveRole) => {
     if (payload.projectId !== current()) return;
+    if (live?.projectId === payload.projectId) live.heardRole = true;
     const state = store.getState();
     const before = state.role;
     const changed = before !== payload.role;

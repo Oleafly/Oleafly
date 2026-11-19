@@ -2620,10 +2620,44 @@ async fn verify_compile_output(
             .as_ref()
             .filter(|path| artifact_is_fresh(path, &retained_stale))?;
         let bytes = std::fs::read(path).ok()?;
-        Some(fingerprint_compile_output(&bytes))
+        complete_pdf(&bytes).then(|| fingerprint_compile_output(&bytes))
     })
     .await
     .map_err(|error| format!("failed to verify compiler output: {error}"))
+}
+
+const PDF_HEADER: &[u8] = b"%PDF-";
+const PDF_TAIL_BYTES: u64 = 1024;
+
+fn ends_with_pdf_eof(bytes: &[u8]) -> bool {
+    let trimmed = bytes
+        .iter()
+        .rposition(|byte| !byte.is_ascii_whitespace())
+        .map_or(&[][..], |end| &bytes[..=end]);
+    trimmed.ends_with(b"%%EOF")
+}
+
+pub(crate) fn complete_pdf(bytes: &[u8]) -> bool {
+    bytes.starts_with(PDF_HEADER) && ends_with_pdf_eof(bytes)
+}
+
+pub(crate) fn complete_pdf_file(path: &Path) -> bool {
+    use std::io::{Read, Seek, SeekFrom};
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return false;
+    };
+    let mut header = [0_u8; 5];
+    if file.read_exact(&mut header).is_err() || header != PDF_HEADER {
+        return false;
+    }
+    let Ok(length) = file.metadata().map(|metadata| metadata.len()) else {
+        return false;
+    };
+    let tail_length = length.min(PDF_TAIL_BYTES);
+    let mut tail = Vec::new();
+    file.seek(SeekFrom::Start(length - tail_length)).is_ok()
+        && file.read_to_end(&mut tail).is_ok()
+        && ends_with_pdf_eof(&tail)
 }
 
 fn append_pythontex_error(errors: &mut Vec<CompileError>, stopped: bool, failure: Option<String>) {
@@ -4130,6 +4164,26 @@ pub fn existing_compiled_pdf_path(
 mod tests {
     use super::*;
     use oleafly_core::engine_spec::{MERMAID_FIGURES_FILTER, MERMAID_FIGURES_FILTER_NAME};
+
+    #[test]
+    fn only_a_pdf_that_was_written_to_the_end_counts_as_output() {
+        let dir = tempfile::tempdir().unwrap();
+        let complete = dir.path().join("complete.pdf");
+        let stopped = dir.path().join("stopped.pdf");
+        let other = dir.path().join("other.pdf");
+        let mut body = b"%PDF-1.5\n".to_vec();
+        body.extend(std::iter::repeat_n(b'x', 4096));
+        body.extend_from_slice(b"\nstartxref\n12\n%%EOF\n");
+        std::fs::write(&complete, &body).unwrap();
+        std::fs::write(&stopped, &body[..556]).unwrap();
+        std::fs::write(&other, b"not a pdf at all %%EOF").unwrap();
+        assert!(complete_pdf(&body));
+        assert!(!complete_pdf(&body[..556]));
+        assert!(complete_pdf_file(&complete));
+        assert!(!complete_pdf_file(&stopped));
+        assert!(!complete_pdf_file(&other));
+        assert!(!complete_pdf_file(&dir.path().join("missing.pdf")));
+    }
 
     #[test]
     fn a_timed_out_compile_gets_its_own_card_even_after_a_tex_error() {

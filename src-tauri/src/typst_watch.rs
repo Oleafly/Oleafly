@@ -322,14 +322,6 @@ pub(crate) struct PublishPaths {
     pub(crate) build_deps: Option<PathBuf>,
 }
 
-fn complete_pdf(bytes: &[u8]) -> bool {
-    let trimmed = bytes
-        .iter()
-        .rposition(|byte| !byte.is_ascii_whitespace())
-        .map_or(&[][..], |end| &bytes[..=end]);
-    bytes.starts_with(b"%PDF-") && trimmed.ends_with(b"%%EOF")
-}
-
 fn replace_file(destination: &Path, bytes: &[u8]) -> Result<(), String> {
     let parent = destination
         .parent()
@@ -352,7 +344,7 @@ fn replace_file(destination: &Path, bytes: &[u8]) -> Result<(), String> {
 pub(crate) fn publish_files(paths: &PublishPaths) -> Result<String, String> {
     let bytes = std::fs::read(&paths.staged_pdf)
         .map_err(|error| format!("failed to read the live preview PDF: {error}"))?;
-    if !complete_pdf(&bytes) {
+    if !crate::document_engine::complete_pdf(&bytes) {
         return Err("the live preview PDF was still being written".into());
     }
     replace_file(&paths.build_pdf, &bytes)?;

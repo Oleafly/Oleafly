@@ -1120,6 +1120,11 @@ pub async fn read_compiled_pdf(project_id: String) -> Result<Response, String> {
             &meta.main_doc,
         )?
         .ok_or_else(|| "no compiled PDF: this project has not been compiled".to_string())?;
+        if pdf.exists() && !crate::document_engine::complete_pdf_file(&pdf) {
+            return Err(
+                "no compiled PDF: the last build stopped before it finished writing the PDF".into(),
+            );
+        }
         std::fs::read(&pdf).map_err(|e| format!("no compiled PDF: {e}"))
     })
     .await

@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { CiteOleaflyDialog } from "@/components/layout/CiteOleaflyDialog";
 import { memo, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { lazy, preloadIntent, startWarming, warmDeferred } from "@/lib/preloadable";
-import { logError } from "@/lib/log";
+import { logWarning } from "@/lib/log";
 import { createPortal } from "react-dom";
 import { RefreshCw } from "lucide-react";
 import { EditorView } from "@codemirror/view";
@@ -1303,7 +1303,7 @@ function leaveNotes(): void {
 
 export default function App() {
   const projectId = useFilesStore((state) => state.projectId);
-  useEffect(() => startWarming((error) => void logError("load a view ahead of time", error)), []);
+  useEffect(() => startWarming((error) => void logWarning("load a view ahead of time", error)), []);
   useEffect(() => {
     const stopSettings = useSettingsStore.subscribe((state, previous) => {
       if (state.settingsOpen && !previous.settingsOpen) preloadIntent("settings");

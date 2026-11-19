@@ -137,6 +137,18 @@ describe("live editing with Overleaf", () => {
     expect(useLiveBackend.getState()).toMatchObject({ projectId: PROJECT, backend: "overleaf", overleaf: link() });
   });
 
+  it("keeps the role Overleaf sent while the start was still answering", async () => {
+    let answer: (info: { role: "viewer"; account_id: string; device_id: string }) => void = () => undefined;
+    mocks.start.mockImplementation(() => new Promise((resolve) => (answer = resolve)));
+    begin();
+    await settle();
+    expect(mocks.start).toHaveBeenCalledWith(PROJECT);
+    mocks.handlers.role?.({ projectId: PROJECT, role: "owner", tracking: false, restricted: false, deletedExternally: false });
+    answer({ ...INFO, role: "viewer" });
+    await settle();
+    expect(useCollabLiveStore.getState().role).toBe("owner");
+  });
+
   it("stays local for an Overleaf project with no session, and goes live once you sign in", async () => {
     mocks.project.mockResolvedValue(link({ signedIn: false }));
     begin();

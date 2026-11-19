@@ -393,7 +393,8 @@ async fn publish_once<R: tauri::Runtime>(
     emit_publication_phase(app, request, PublicationPhase::Started);
     trace_lane(&request.project_id, "lane started");
     let mut started = std::time::Instant::now();
-    let result = if wait_for_lane_start(cancel, PUBLICATION_START_DELAY).await {
+    let lane_started = wait_for_lane_start(cancel, PUBLICATION_START_DELAY).await;
+    let result = if lane_started {
         sync_compiled_pdf(app, request).await;
         started = std::time::Instant::now();
         attempt_publication(request, Some(cancel)).await
@@ -404,6 +405,7 @@ async fn publish_once<R: tauri::Runtime>(
     };
     let elapsed_ms = started.elapsed().as_millis();
     let summary = match &result {
+        Err(_) if !lane_started => "was cancelled before it started".to_owned(),
         Err(failure) => format!("failed after {elapsed_ms} ms: {}", failure.detail),
         Ok(CheckpointPublicationOutcome::Published { snapshot_root, .. }) => {
             format!("published {snapshot_root} after {elapsed_ms} ms")

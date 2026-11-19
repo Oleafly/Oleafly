@@ -2,9 +2,16 @@ import { invoke } from "@tauri-apps/api/core";
 
 const REPEAT_WINDOW_MS = 10_000;
 
+export const IMPORT_FAILURE_GRACE_MS = 1_500;
+
 const RESIZE_OBSERVER_NOTICE = /^ResizeObserver loop (?:completed with undelivered notifications|limit exceeded)/u;
 
+const IMPORT_FAILED =
+  /^(?:Importing a module script failed|Failed to fetch dynamically imported module|error loading dynamically imported module)/u;
+
 const repeats = new Map<string, { count: number }>();
+
+let leaving = false;
 
 function describe(e: unknown): string {
   if (e instanceof Error) {
@@ -55,7 +62,13 @@ function send(command: string, message: string, level?: "info" | "warning"): Pro
 }
 
 export function logError(scope: string, e: unknown): Promise<void> {
-  return send("log_frontend_error", `${scope}: ${describe(e)}`);
+  const message = `${scope}: ${describe(e)}`;
+  if (!(e instanceof Error && IMPORT_FAILED.test(e.message))) return send("log_frontend_error", message);
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      void (leaving ? send("log_frontend_entry", message, "info") : send("log_frontend_error", message)).then(resolve);
+    }, IMPORT_FAILURE_GRACE_MS);
+  });
 }
 
 export function logWarning(scope: string, e: unknown): Promise<void> {
@@ -67,6 +80,12 @@ export function logInfo(scope: string, e: unknown): Promise<void> {
 }
 
 export function installErrorLogging(target: Window = window): void {
+  target.addEventListener("pagehide", () => {
+    leaving = true;
+  });
+  target.addEventListener("pageshow", () => {
+    leaving = false;
+  });
   target.addEventListener("unhandledrejection", (event) => {
     void logError("Unhandled promise rejection", event.reason);
   });

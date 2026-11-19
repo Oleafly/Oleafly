@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ invoke: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: mocks.invoke }));
 
-import { installErrorLogging, logError, logInfo, logWarning } from "./log";
+import { IMPORT_FAILURE_GRACE_MS, installErrorLogging, logError, logInfo, logWarning } from "./log";
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -121,4 +121,34 @@ describe("app log", () => {
       message: "Unhandled promise rejection: no answer",
     });
   });
+
+  it("holds back an import a page reload cut off, and keeps a real one an error", async () => {
+    const target = new EventTarget() as Window;
+    installErrorLogging(target);
+    const cutOff = new TypeError("Importing a module script failed.");
+    const settled = async (logged: Promise<void>) => {
+      await vi.advanceTimersByTimeAsync(IMPORT_FAILURE_GRACE_MS);
+      await logged;
+    };
+    await settled(logError("start the MCP bridge", cutOff));
+    const leaving = logError("collab live", cutOff);
+    target.dispatchEvent(Object.assign(new Event("unhandledrejection"), { reason: cutOff }));
+    target.dispatchEvent(new Event("pagehide"));
+    await settled(leaving);
+    await logError("save file", new Error("disk full"));
+    target.dispatchEvent(new Event("pageshow"));
+    await settled(logError("load a view", cutOff));
+    const written = mocks.invoke.mock.calls.map(([command, args]) => [command, headline(args.message)]);
+    expect(written).toEqual([
+      ["log_frontend_error", "start the MCP bridge: TypeError: Importing a module script failed."],
+      ["log_frontend_entry", "collab live: TypeError: Importing a module script failed."],
+      ["log_frontend_entry", "Unhandled promise rejection: TypeError: Importing a module script failed."],
+      ["log_frontend_error", "save file: Error: disk full"],
+      ["log_frontend_error", "load a view: TypeError: Importing a module script failed."],
+    ]);
+  });
 });
+
+function headline(message: string): string {
+  return message.split("\n")[0];
+}
