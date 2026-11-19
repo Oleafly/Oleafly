@@ -844,7 +844,8 @@
     "search": "Hae projektista",
     "sourceControl": "Versionhallinta",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Muistiinpanot"
+    "notes": "Muistiinpanot",
+    "more": "Lisää näkymiä"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} palvelussa {{host}}",

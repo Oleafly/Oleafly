@@ -844,7 +844,8 @@
     "search": "Project doorzoeken",
     "sourceControl": "Versiebeheer",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Notities"
+    "notes": "Notities",
+    "more": "Meer weergaven"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} op {{host}}",

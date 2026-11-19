@@ -841,7 +841,8 @@
     "search": "프로젝트 검색",
     "sourceControl": "소스 관리",
     "withShortcut": "{{label}}({{shortcut}})",
-    "notes": "노트"
+    "notes": "노트",
+    "more": "더 많은 보기"
   },
   "remoteMenu": {
     "accountLabel": "{{host}}의 {{login}}",

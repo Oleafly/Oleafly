@@ -1,7 +1,12 @@
 const BASE_APP_FONT_SIZE = 16;
 export const ASSISTANT_MIN_WIDTH = 480;
-export const FILE_SIDEBAR_MIN_WIDTH = 250;
 const SIDEBAR_HANDLE_WIDTH_REM = 0.75;
+const RAIL_SLOTS = 7;
+const RAIL_BAR_PADDING_REM = 0.75;
+const RAIL_ICON_REM = 1.75;
+const RAIL_SLOT_SPACING_REM = 0.5;
+const RAIL_DIVIDER_PX = 1;
+const RAIL_SLACK_PX = 4;
 
 function normalizedFontSize(appFontSize: number): number {
   return Number.isFinite(appFontSize) && appFontSize > 0
@@ -15,6 +20,13 @@ export function assistantMinimumWidth(appFontSize: number): number {
     ASSISTANT_MIN_WIDTH,
     Math.ceil((ASSISTANT_MIN_WIDTH * fontSize) / BASE_APP_FONT_SIZE),
   );
+}
+
+export function fileSidebarWidth(appFontSize: number): number {
+  const rem = normalizedFontSize(appFontSize);
+  const extraSlots = RAIL_SLOTS - 1;
+  const width = rem * (RAIL_BAR_PADDING_REM + RAIL_ICON_REM + extraSlots * (RAIL_SLOT_SPACING_REM + RAIL_ICON_REM));
+  return Math.ceil(width + extraSlots * RAIL_DIVIDER_PX + RAIL_SLACK_PX);
 }
 
 export function sidebarPanelGroupWidth(
@@ -35,6 +47,6 @@ export function sidebarMinimumPercent(
   if (panelGroupWidth <= 0) return 15;
   const pixels = assistant
     ? assistantMinimumWidth(appFontSize)
-    : FILE_SIDEBAR_MIN_WIDTH;
+    : fileSidebarWidth(appFontSize);
   return Math.min(65, (pixels / panelGroupWidth) * 100);
 }

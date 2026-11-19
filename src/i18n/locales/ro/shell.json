@@ -847,7 +847,8 @@
     "search": "Caută în proiect",
     "sourceControl": "Control al versiunilor",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Notițe"
+    "notes": "Notițe",
+    "more": "Mai multe vizualizări"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} pe {{host}}",

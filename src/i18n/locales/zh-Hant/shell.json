@@ -841,7 +841,8 @@
     "search": "搜尋專案",
     "sourceControl": "原始檔控制",
     "withShortcut": "{{label}}（{{shortcut}}）",
-    "notes": "筆記"
+    "notes": "筆記",
+    "more": "更多檢視"
   },
   "remoteMenu": {
     "accountLabel": "{{host}} 上的 {{login}}",

@@ -14,7 +14,6 @@ import {
   afterPanelLayout,
   collapsePanel,
   expandPanel,
-  hasStoredPanelLayout,
   keyboardResizeLayout,
   migrateLegacyPanelLayout,
   panelExpandSizesKey,
@@ -26,7 +25,7 @@ import {
   useDismissiblePanelLayout,
   usePersistentPanelLayout,
   useSeparatorKeyboard,
-  useSteadyPanelWidth,
+  useOpenAtDefaultWidth,
   type PanelLimits,
 } from "./panel-layout";
 
@@ -123,14 +122,6 @@ describe("legacy layout migration", () => {
     );
   });
 
-  it("reports a stored layout in either format", () => {
-    expect(hasStoredPanelLayout("stored-probe")).toBe(false);
-    localStorage.setItem(panelLayoutKey("stored-probe", ["a"]), "{\"a\":100}");
-    expect(hasStoredPanelLayout("stored-probe")).toBe(true);
-    localStorage.clear();
-    localStorage.setItem("react-resizable-panels:stored-probe", "{}");
-    expect(hasStoredPanelLayout("stored-probe")).toBe(true);
-  });
 });
 
 const PERSISTENT_PANELS = ["b-first", "a-second"];
@@ -730,6 +721,7 @@ describe("dismissible assistant panel", () => {
 });
 
 const SHOW_LABEL = "show";
+const HIDE_LABEL = "hide";
 const NARROW_LABEL = "narrow";
 
 describe("panels that mount after their group", () => {
@@ -765,25 +757,25 @@ describe("panels that mount after their group", () => {
     expect(sizes[0]).toBeCloseTo(20, 1);
   });
 
-  function SteadySidebar({ panelRef }: Readonly<{ panelRef: React.RefObject<PanelImperativeHandle | null> }>) {
+  function OpeningSidebar({
+    panelRef,
+    firstOpening,
+  }: Readonly<{ panelRef: React.RefObject<PanelImperativeHandle | null>; firstOpening: () => boolean }>) {
     const [shown, setShown] = useState(false);
     const [width, setWidth] = useState(1000);
-    useSteadyPanelWidth({
-      panelRef,
-      active: shown,
-      groupWidth: width,
-      defaultSize: 30,
-      applyDefault: true,
-    });
+    useOpenAtDefaultWidth({ panelRef, open: shown, groupWidth: width, defaultSize: 30, firstOpening });
     return (
       <>
         <button type="button" onClick={() => setShown(true)}>
           {SHOW_LABEL}
         </button>
+        <button type="button" onClick={() => setShown(false)}>
+          {HIDE_LABEL}
+        </button>
         <button type="button" onClick={() => setWidth(500)}>
           {NARROW_LABEL}
         </button>
-        <Group orientation="horizontal" id="steady">
+        <Group orientation="horizontal" id="opening">
           {shown && <Panel id="sidebar" panelRef={panelRef} defaultSize="20%" minSize="5%" />}
           {shown && <Separator />}
           <Panel id="main" minSize="10%" />
@@ -792,14 +784,40 @@ describe("panels that mount after their group", () => {
     );
   }
 
-  it("leaves a sidebar shown after the width is known at the size the group gave it", async () => {
+  const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+
+  it("opens a project's sidebar at its default width once, and leaves later resizes alone", async () => {
     const panelRef = { current: null as PanelImperativeHandle | null };
-    render(<SteadySidebar panelRef={panelRef} />);
+    const firstOpening = vi.fn(() => true);
+    render(<OpeningSidebar panelRef={panelRef} firstOpening={firstOpening} />);
     act(() => screen.getByRole("button", { name: SHOW_LABEL }).click());
-    await waitFor(() => expect(panelRef.current?.getSize().asPercentage).toBeCloseTo(20, 1));
+    await waitFor(() => expect(panelRef.current?.getSize().asPercentage).toBeCloseTo(30, 1));
+    act(() => panelRef.current?.resize("40%"));
     act(() => screen.getByRole("button", { name: NARROW_LABEL }).click());
-    await new Promise((resolve) => requestAnimationFrame(resolve));
+    await nextFrame();
+    expect(panelRef.current?.getSize().asPercentage).toBeCloseTo(40, 1);
+    expect(firstOpening).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the size a remount brings back once the project has opened its sidebar", async () => {
+    const panelRef = { current: null as PanelImperativeHandle | null };
+    render(<OpeningSidebar panelRef={panelRef} firstOpening={() => false} />);
+    act(() => screen.getByRole("button", { name: SHOW_LABEL }).click());
+    await nextFrame();
+    await nextFrame();
     expect(panelRef.current?.getSize().asPercentage).toBeCloseTo(20, 1);
+  });
+
+  it("opens a sidebar shown again at its default width", async () => {
+    const panelRef = { current: null as PanelImperativeHandle | null };
+    const firstOpening = vi.fn(() => false);
+    render(<OpeningSidebar panelRef={panelRef} firstOpening={firstOpening} />);
+    act(() => screen.getByRole("button", { name: SHOW_LABEL }).click());
+    await nextFrame();
+    act(() => screen.getByRole("button", { name: HIDE_LABEL }).click());
+    act(() => screen.getByRole("button", { name: SHOW_LABEL }).click());
+    await waitFor(() => expect(panelRef.current?.getSize().asPercentage).toBeCloseTo(30, 1));
+    expect(firstOpening).toHaveBeenCalledTimes(1);
   });
 
   it("gives up after its attempts and cancels a pending retry on cleanup", () => {

@@ -91,20 +91,6 @@ export function panelExpandSizesKey(groupId: string): string {
   return `${EXPAND_SIZES_PREFIX}${groupId}`;
 }
 
-export function hasStoredPanelLayout(groupId: string): boolean {
-  const legacyKey = `${LAYOUT_PREFIX}${groupId}`;
-  const layoutKeyPrefix = `${legacyKey}:`;
-  try {
-    for (let index = 0; index < localStorage.length; index += 1) {
-      const key = localStorage.key(index);
-      if (key === legacyKey || key?.startsWith(layoutKeyPrefix)) return true;
-    }
-  } catch {
-    return false;
-  }
-  return false;
-}
-
 type LegacyGroupEntry = {
   expandToSizes?: Record<string, unknown>;
   layout: unknown[];
@@ -304,29 +290,41 @@ export function afterPanelLayout(
   };
 }
 
-export function useSteadyPanelWidth({
+export function useOpenAtDefaultWidth({
   panelRef,
-  active,
+  open,
   groupWidth,
   defaultSize,
-  applyDefault,
+  firstOpening,
 }: Readonly<{
   panelRef: RefObject<PanelImperativeHandle | null>;
-  active: boolean;
+  open: boolean;
   groupWidth: number;
   defaultSize: number;
-  applyDefault: boolean;
+  firstOpening: () => boolean;
 }>): void {
-  const knownWidthRef = useRef(0);
+  const step = useRef<"waiting" | "sizing" | "sized">("waiting");
+  const seen = useRef(false);
   useEffect(() => {
-    const knownWidth = knownWidthRef.current;
-    knownWidthRef.current = groupWidth;
-    if (!active || groupWidth <= 0 || knownWidth > 0 || !applyDefault) return;
+    if (!open) {
+      if (seen.current) step.current = "waiting";
+      return;
+    }
+    if (groupWidth <= 0 || step.current === "sized") return;
+    if (step.current === "waiting") {
+      const resize = seen.current || firstOpening();
+      seen.current = true;
+      step.current = resize ? "sizing" : "sized";
+      if (!resize) return;
+    }
     return afterPanelLayout(
       () => panelRef.current,
-      (panel) => panel.resize(percent(defaultSize)),
+      (panel) => {
+        step.current = "sized";
+        panel.resize(percent(defaultSize));
+      },
     );
-  }, [active, groupWidth, defaultSize, applyDefault, panelRef]);
+  }, [open, groupWidth, defaultSize, firstOpening, panelRef]);
 }
 
 export type CollapseWatch = Readonly<{

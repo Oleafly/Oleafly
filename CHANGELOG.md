@@ -49,6 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Settings opens where you left it: the last section and tab you looked at, until you quit. A link to a setting still opens that setting.
+- A project opens with the sidebar just wide enough for seven view icons, and the sidebar comes back at that width each time you show it. When more views are turned on than fit, the last spot holds a More button with the rest, in the order you arranged them, and widening the sidebar brings them back onto the rail.
 - File and folder icons now use the app's chart colours, one for each family of files, with a lightly tinted body. Folders and archives are amber, LaTeX, class and settings files blue, Typst green, Markdown and bibliographies purple, PDFs red, images and whiteboards pink, spreadsheets dark green, and code and slide decks orange. Files Oleafly doesn't recognise stay grey. If you'd rather read a file's type than its icon, switch to type badges in Settings > Appearance > Project: a short label such as TEX or PDF, in the same colour.
 - PDF dark mode draws pages in your theme's colors instead of pure black. In the dark theme a page takes the theme's panel color and panel text color, so a theme like One Dark gets a page that matches it. Only the pages change now: the space around them, search highlights and messages keep the app's colors, and the light frame dark mode used to leave around each page is gone.
 - In PDF dark mode, photos, screenshots and other pictures on a page keep their own colors instead of turning into negatives. Text and charts drawn as lines and shapes still follow the dark page. A scanned page, which is one big picture, goes dark as before.
@@ -57,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - The HTML output of a Quarto or Markdown document shows in the preview again. Since 0.4.12 the panel stayed blank.
+- Opening a project with the preview closed no longer stretches the sidebar across most of the window.
 - Each file keeps its own view. Switching one file to Visual, Preview or Split no longer switches the next file you open.
 - On a Mac, pressing End, Home, Page Up, Page Down or a function key could leave a box character in a note, the chat box or a text field. It doesn't anymore, and any that got in are removed before a message is sent.
 - Pressing Escape in a dialog opened from Settings, such as Create skill or Add custom provider, closes that dialog and leaves Settings open.

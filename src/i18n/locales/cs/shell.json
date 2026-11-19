@@ -850,7 +850,8 @@
     "search": "Hledat v projektu",
     "sourceControl": "Správa verzí",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Poznámky"
+    "notes": "Poznámky",
+    "more": "Další zobrazení"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} na {{host}}",

@@ -841,7 +841,8 @@
     "search": "Tìm trong dự án",
     "sourceControl": "Quản lý mã nguồn",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Ghi chú"
+    "notes": "Ghi chú",
+    "more": "Thêm chế độ xem"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} trên {{host}}",

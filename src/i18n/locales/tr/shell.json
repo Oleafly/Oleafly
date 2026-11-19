@@ -844,7 +844,8 @@
     "search": "Projede Ara",
     "sourceControl": "Kaynak Denetimi",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Notlar"
+    "notes": "Notlar",
+    "more": "Diğer görünümler"
   },
   "remoteMenu": {
     "accountLabel": "{{host}} üzerinde {{login}}",

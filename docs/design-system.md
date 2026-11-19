@@ -133,6 +133,11 @@ folded group can sit before groups that still show; the Notes and Markdown
 toolbars fold H1 to H6 into one Text style menu this way. The fit is the pure
 `fitToolbar(items, width)` (`fitSteps` lists every state from all shown to
 none), so a bar's behaviour at a given width can be tested without a DOM.
+A bar with no width yet folds everything into More; pass `showAllUntilMeasured`
+to show every control until the first measurement instead. The project
+sidebar's view icons use it, so opening a project never flashes a lone More
+button, and their More menu lists the views that don't fit in the order the
+person arranged them.
 
 The rich-text pieces both of those toolbars share live in
 `components/editor/rich-text-controls.tsx`: `TextColorMenu` (LaTeX colour

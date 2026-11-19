@@ -850,7 +850,8 @@
     "search": "Пошук у проєкті",
     "sourceControl": "Контроль версій",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Нотатки"
+    "notes": "Нотатки",
+    "more": "Інші подання"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} на {{host}}",

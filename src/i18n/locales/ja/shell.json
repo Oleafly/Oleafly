@@ -841,7 +841,8 @@
     "search": "プロジェクトを検索",
     "sourceControl": "ソース管理",
     "withShortcut": "{{label}}（{{shortcut}}）",
-    "notes": "ノート"
+    "notes": "ノート",
+    "more": "その他のビュー"
   },
   "remoteMenu": {
     "accountLabel": "{{host}} の {{login}}",

@@ -155,7 +155,7 @@ function scaledWidth(width: number): number {
   return (width * 16) / rootFontSize();
 }
 
-export function useFittedCount(controls: readonly ToolbarControl[]) {
+export function useFittedCount(controls: readonly ToolbarControl[], showAllUntilMeasured = false) {
   const [availableWidth, setAvailableWidth] = useState(Number.POSITIVE_INFINITY);
   const observerRef = useRef<ResizeObserver | null>(null);
   const elementRef = useRef<HTMLDivElement | null>(null);
@@ -167,7 +167,7 @@ export function useFittedCount(controls: readonly ToolbarControl[]) {
     elementRef.current = element;
     if (!element) return;
     const recompute = () => {
-      const width = element.clientWidth;
+      const width = showAllUntilMeasured && element.clientWidth === 0 ? Number.POSITIVE_INFINITY : element.clientWidth;
       const current = fitted.current;
       const ladder = fitSteps(current.controls);
       const unchanged =
@@ -183,7 +183,7 @@ export function useFittedCount(controls: readonly ToolbarControl[]) {
     const observer = new ResizeObserver(() => flushSync(recompute));
     observer.observe(element);
     observerRef.current = observer;
-  }, []);
+  }, [showAllUntilMeasured]);
   const signature = `${availableWidth}|${controls.map((control) => control.id).join(" ")}`;
   const [trim, setTrim] = useState({ signature, count: 0 });
   const trimmed = trim.signature === signature ? trim.count : 0;
@@ -194,6 +194,7 @@ export function useFittedCount(controls: readonly ToolbarControl[]) {
   useLayoutEffect(() => {
     const element = elementRef.current;
     if (!element || index === steps.length - 1) return;
+    if (showAllUntilMeasured && element.clientWidth === 0) return;
     if (element.scrollWidth > element.clientWidth + 1) {
       setTrim({ signature, count: trimmed + 1 });
     }
@@ -481,6 +482,7 @@ export function ToolbarOverflow({
   onOpenChange,
   onCloseAutoFocus,
   pushMenu,
+  showAllUntilMeasured,
   className,
   ...rest
 }: Readonly<
@@ -492,9 +494,10 @@ export function ToolbarOverflow({
     onOpenChange?: (open: boolean) => void;
     onCloseAutoFocus?: (event: Event) => void;
     pushMenu?: (shown: readonly ToolbarControl[]) => boolean;
+    showAllUntilMeasured?: boolean;
   } & Omit<ComponentProps<"div">, "ref" | "children">
 >) {
-  const { containerRef, visibleCount, collapsed } = useFittedCount(controls);
+  const { containerRef, visibleCount, collapsed } = useFittedCount(controls, showAllUntilMeasured);
   const shown = controls.slice(0, visibleCount);
   const hidden = controls.slice(visibleCount);
   return (

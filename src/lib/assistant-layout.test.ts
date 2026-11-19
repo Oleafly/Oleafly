@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   assistantMinimumWidth,
+  fileSidebarWidth,
   sidebarPanelGroupWidth,
   sidebarMinimumPercent,
 } from "./assistant-layout";
@@ -15,7 +16,13 @@ describe("assistant layout minimums", () => {
   it("keeps the docked assistant wide enough for the one-line footer", () => {
     expect(sidebarMinimumPercent(840, true, 16)).toBeCloseTo((480 / 840) * 100);
     expect(sidebarMinimumPercent(1000, true, 20)).toBeCloseTo((600 / 1000) * 100);
-    expect(sidebarMinimumPercent(825, false, 20)).toBeCloseTo((250 / 825) * 100);
+    expect(sidebarMinimumPercent(825, false, 20)).toBeCloseTo((fileSidebarWidth(20) / 825) * 100);
+  });
+
+  it("fits seven rail buttons in the file sidebar at every app font size", () => {
+    expect(fileSidebarWidth(16)).toBe(266);
+    expect(fileSidebarWidth(20)).toBe(330);
+    expect(fileSidebarWidth(Number.NaN)).toBe(266);
   });
 
   it("subtracts the resize handle at the active app font size", () => {

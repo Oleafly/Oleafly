@@ -850,7 +850,8 @@
     "search": "Поиск по проекту",
     "sourceControl": "Контроль версий",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Заметки"
+    "notes": "Заметки",
+    "more": "Другие представления"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} на {{host}}",

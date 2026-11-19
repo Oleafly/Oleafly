@@ -40,8 +40,8 @@ function controls(count: number): ToolbarControl[] {
   }));
 }
 
-function Bar({ items }: Readonly<{ items: readonly ToolbarControl[] }>) {
-  const { containerRef, visibleCount } = useFittedCount(items);
+function Bar({ items, showAll }: Readonly<{ items: readonly ToolbarControl[]; showAll?: boolean }>) {
+  const { containerRef, visibleCount } = useFittedCount(items, showAll);
   return (
     <div ref={containerRef} data-testid="bar">
       {items.slice(0, visibleCount).map((control) => (
@@ -52,6 +52,18 @@ function Bar({ items }: Readonly<{ items: readonly ToolbarControl[] }>) {
 }
 
 describe("useFittedCount", () => {
+  it("folds everything into the menu while the bar has no width", () => {
+    layout(0);
+    render(<Bar items={controls(3)} />);
+    expect(screen.queryAllByTestId("shown")).toHaveLength(0);
+  });
+
+  it("shows every control until a bar that asks for it is measured", () => {
+    layout(0);
+    render(<Bar items={controls(3)} showAll />);
+    expect(screen.getAllByTestId("shown")).toHaveLength(3);
+  });
+
   it("moves controls out until the rendered ones really fit", () => {
     layout(130);
     render(<Bar items={controls(6)} />);

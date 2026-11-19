@@ -847,7 +847,8 @@
     "search": "Rechercher dans le projet",
     "sourceControl": "Contrôle de version",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Notes"
+    "notes": "Notes",
+    "more": "Autres vues"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} sur {{host}}",

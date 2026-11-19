@@ -850,7 +850,8 @@
     "search": "Szukaj w projekcie",
     "sourceControl": "Kontrola wersji",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Notatki"
+    "notes": "Notatki",
+    "more": "Więcej widoków"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} na {{host}}",

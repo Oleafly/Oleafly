@@ -844,7 +844,8 @@
     "search": "Søk i prosjektet",
     "sourceControl": "Versjonskontroll",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "Notater"
+    "notes": "Notater",
+    "more": "Flere visninger"
   },
   "remoteMenu": {
     "accountLabel": "{{login}} på {{host}}",

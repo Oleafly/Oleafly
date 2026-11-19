@@ -448,6 +448,9 @@ interface PaneLayoutState {
   swap: (a: PaneId, b: PaneId) => void;
   reset: () => void;
   remount: () => void;
+  sidebarOpenedIn: string | null;
+  takeSidebarOpening: (projectId: string) => boolean;
+  forgetSidebarOpening: () => void;
 }
 
 export const usePaneLayoutStore = create<PaneLayoutState>((set, get) => ({
@@ -466,6 +469,13 @@ export const usePaneLayoutStore = create<PaneLayoutState>((set, get) => ({
   swap: (a, b) => get().setLayout(swapPanes(get().layout, a, b)),
   reset: () => get().setLayout(DEFAULT_PANE_LAYOUT),
   remount: () => set((state) => ({ epoch: state.epoch + 1 })),
+  sidebarOpenedIn: null,
+  takeSidebarOpening: (projectId) => {
+    if (get().sidebarOpenedIn === projectId) return false;
+    set({ sidebarOpenedIn: projectId });
+    return true;
+  },
+  forgetSidebarOpening: () => set({ sidebarOpenedIn: null }),
 }));
 
 export function paneLayoutIsDefault(): boolean {

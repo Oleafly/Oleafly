@@ -841,7 +841,8 @@
     "search": "搜索项目",
     "sourceControl": "源代码管理",
     "withShortcut": "{{label}} ({{shortcut}})",
-    "notes": "笔记"
+    "notes": "笔记",
+    "more": "更多视图"
   },
   "remoteMenu": {
     "accountLabel": "{{host}} 上的 {{login}}",
