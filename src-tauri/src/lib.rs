@@ -96,6 +96,7 @@ mod overleaf;
 mod pandoc_citations;
 mod path_grants;
 mod paths;
+mod pdf_annotations;
 mod pdf_sync;
 mod proc;
 mod process_identity;
@@ -1161,6 +1162,10 @@ pub fn run() {
             deadlines::read_deadlines,
             deadlines::refresh_deadlines,
             project::export_pdf,
+            pdf_annotations::pdf_annotations_list,
+            pdf_annotations::pdf_annotations_add,
+            pdf_annotations::pdf_annotations_update,
+            pdf_annotations::pdf_annotations_delete,
             pdf_sync::pdf_sync_status,
             pdf_sync::pdf_sync_set,
             pdf_sync::pdf_sync_note_saved,

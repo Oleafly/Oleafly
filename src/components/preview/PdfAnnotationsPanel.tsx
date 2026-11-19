@@ -1,0 +1,236 @@
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Check, Crosshair, MessageSquareText, RotateCcw, Send, Trash2 } from "lucide-react";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FloatingSidePanel } from "@/components/ui/floating-side-panel";
+import { InlineAlert } from "@/components/ui/inline-alert";
+import { CommentComposer } from "@/components/ui/comments/comment-composer";
+import { CommentQuote } from "@/components/ui/comments/comment-quote";
+import { lineSpan } from "@/features/pdf-annotations/model";
+import { describeError } from "@/lib/app-error";
+import type { PdfAnnotation, PdfAnnotationStatus } from "@/lib/tauri";
+import { cn } from "@/lib/utils";
+import { confirmAction } from "@/store/confirm-dialog";
+import { usePdfAnnotationsStore } from "@/store/pdf-annotations";
+import { useAnnotationComposerLabels, useAnnotationQuoteLabels } from "./annotation-comment-labels";
+
+const STATUS_VARIANT: Record<PdfAnnotationStatus, BadgeVariant> = {
+  draft: "muted",
+  sent: "info",
+  addressed: "success",
+  resolved: "success",
+  needsPlacing: "warning",
+};
+
+const OPEN_STATUSES: ReadonlySet<PdfAnnotationStatus> = new Set(["draft", "needsPlacing"]);
+
+function sourceLabel(annotation: PdfAnnotation): string | null {
+  const source = annotation.source;
+  return source ? `${source.path}:${lineSpan(source)}` : null;
+}
+
+export function PdfAnnotationsPanel({
+  id,
+  open,
+  placingId,
+  onClose,
+  onShow,
+  onPlaceAgain,
+  onSend,
+}: Readonly<{
+  id: string;
+  open: boolean;
+  placingId: string | null;
+  onClose: () => void;
+  onShow: (annotation: PdfAnnotation) => void;
+  onPlaceAgain: (annotation: PdfAnnotation | null) => void;
+  onSend: (annotations: PdfAnnotation[]) => void;
+}>) {
+  const { t } = useTranslation(["preview"]);
+  const composerLabels = useAnnotationComposerLabels();
+  const quoteLabels = useAnnotationQuoteLabels();
+  const items = usePdfAnnotationsStore((state) => state.items);
+  const activeId = usePdfAnnotationsStore((state) => state.activeId);
+  const error = usePdfAnnotationsStore((state) => state.error);
+  const [picked, setPicked] = useState<Readonly<Record<string, boolean>>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const activeRef = useRef<HTMLLIElement>(null);
+  const isPicked = (item: PdfAnnotation) => picked[item.id] ?? OPEN_STATUSES.has(item.status);
+  const included = items.filter(isPicked);
+  const store = () => usePdfAnnotationsStore.getState();
+
+  useEffect(() => {
+    if (open && activeId) activeRef.current?.scrollIntoView?.({ block: "nearest" });
+  }, [open, activeId]);
+
+  const clearAll = async () => {
+    const confirmed = await confirmAction({
+      message: t(($) => $.preview.annotations.panel.clearConfirm),
+      confirmLabel: t(($) => $.preview.annotations.panel.clear),
+      destructive: true,
+    });
+    if (confirmed) await store().remove(items.map((item) => item.id));
+  };
+
+  return (
+    <FloatingSidePanel
+      id={id}
+      open={open}
+      side="right"
+      width="20rem"
+      title={t(($) => $.preview.annotations.panel.title)}
+      icon={<MessageSquareText />}
+      closeLabel={t(($) => $.preview.annotations.panel.close)}
+      onClose={onClose}
+      bodyClassName="px-2 pb-2 pt-0"
+    >
+      {error ? (
+        <div className="mb-2">
+          <InlineAlert>{t(($) => $.preview.annotations.panel.failed, { error })}</InlineAlert>
+        </div>
+      ) : null}
+      {items.length === 0 ? (
+        <p className="px-2 py-3 text-xs text-muted-foreground">{t(($) => $.preview.annotations.panel.empty)}</p>
+      ) : (
+        <ul className="space-y-1">
+          {items.map((item) => {
+            const location = sourceLabel(item);
+            const resolved = item.status === "resolved";
+            const placing = placingId === item.id;
+            return (
+              <li
+                key={item.id}
+                ref={item.id === activeId ? activeRef : undefined}
+                data-annotation-id={item.id}
+                className={cn(
+                  "space-y-1.5 rounded-md border border-transparent p-2 text-xs",
+                  item.id === activeId ? "border-primary/40 bg-primary/10" : "hover:bg-accent/60",
+                )}
+              >
+                <div className="flex items-start gap-2">
+                  <Checkbox
+                    className="mt-0.5"
+                    checked={isPicked(item)}
+                    onCheckedChange={(checked) => setPicked((current) => ({ ...current, [item.id]: checked === true }))}
+                    aria-label={t(($) => $.preview.annotations.panel.include, { number: item.number })}
+                  />
+                  <button
+                    type="button"
+                    className="flex min-w-0 flex-1 flex-col items-start gap-0.5 text-left"
+                    onClick={() => onShow(item)}
+                  >
+                    <span className="flex w-full flex-wrap items-center gap-1.5">
+                      <Badge size="sm">{item.number}</Badge>
+                      <span className="font-medium">{t(($) => $.preview.annotations.kind[item.kind])}</span>
+                      <Badge size="sm" variant={STATUS_VARIANT[item.status]}>
+                        {t(($) => $.preview.annotations.status[item.status])}
+                      </Badge>
+                    </span>
+                    <span className="flex w-full gap-1.5 text-muted-foreground">
+                      <span className="min-w-0 flex-1 break-all">
+                        {location ?? t(($) => $.preview.annotations.panel.noSource)}
+                      </span>
+                      <span className="shrink-0">{t(($) => $.preview.annotations.panel.page, { page: item.page })}</span>
+                    </span>
+                  </button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 shrink-0"
+                    onClick={() => void store().update([{ id: item.id, status: resolved ? "draft" : "resolved" }])}
+                    aria-label={
+                      resolved
+                        ? t(($) => $.preview.annotations.panel.reopen, { number: item.number })
+                        : t(($) => $.preview.annotations.panel.resolve, { number: item.number })
+                    }
+                  >
+                    {resolved ? <RotateCcw className="size-3.5" /> : <Check className="size-3.5" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-6 shrink-0"
+                    onClick={() => void store().remove([item.id])}
+                    aria-label={t(($) => $.preview.annotations.panel.delete, { number: item.number })}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </div>
+                <div className="space-y-1.5 pl-6">
+                  {item.quote.text ? <CommentQuote quote={item.quote.text} labels={quoteLabels} onJump={() => onShow(item)} /> : null}
+                  {editingId === item.id ? (
+                    <CommentComposer
+                      label={t(($) => $.preview.annotations.panel.editComment, { number: item.number })}
+                      submitLabel={t(($) => $.preview.annotations.composer.save)}
+                      labels={composerLabels}
+                      describeError={describeError}
+                      initial={item.comment}
+                      autoFocus
+                      compact
+                      members={[]}
+                      self={null}
+                      onSubmit={async (comment) => {
+                        if (await store().update([{ id: item.id, comment }])) setEditingId(null);
+                      }}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      className={cn(
+                        "w-full whitespace-pre-wrap rounded px-1 py-0.5 text-left hover:bg-accent",
+                        !item.comment && "text-muted-foreground italic",
+                      )}
+                      onClick={() => setEditingId(item.id)}
+                      aria-label={t(($) => $.preview.annotations.panel.editComment, { number: item.number })}
+                    >
+                      {item.comment || t(($) => $.preview.annotations.panel.addComment)}
+                    </button>
+                  )}
+                  {item.status === "needsPlacing" ? (
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground">
+                        {placing
+                          ? t(($) => $.preview.annotations.panel.placing)
+                          : t(($) => $.preview.annotations.panel.notFound)}
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        className="gap-1"
+                        onClick={() => onPlaceAgain(placing ? null : item)}
+                      >
+                        <Crosshair className="size-3" />
+                        {placing
+                          ? t(($) => $.preview.annotations.composer.cancel)
+                          : t(($) => $.preview.annotations.panel.placeAgain)}
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {items.length > 0 ? (
+        <div className="sticky bottom-0 mt-2 flex items-center justify-between gap-2 border-t bg-popover px-1 pt-2">
+          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => void clearAll()}>
+            {t(($) => $.preview.annotations.panel.clear)}
+          </Button>
+          <Button
+            size="sm"
+            className="h-7 gap-1.5 px-2 text-xs"
+            disabled={included.length === 0}
+            onClick={() => onSend(included)}
+          >
+            <Send className="size-3.5" />
+            {t(($) => $.preview.annotations.panel.send, { n: included.length })}
+          </Button>
+        </div>
+      ) : null}
+    </FloatingSidePanel>
+  );
+}

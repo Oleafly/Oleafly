@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { ComposerContextItem } from "@/lib/composer-context";
 import { E2E_HOOKS } from "@/lib/e2e-flags";
 import { i18n } from "@/i18n";
 import { toast } from "@/lib/toast";
@@ -14,10 +15,19 @@ interface AgentHandoffState {
   pendingPrompt: string | null;
   autoSend: boolean;
   pendingImages: string[];
+  pendingContext: readonly ComposerContextItem[];
   /** The assistant that takes the pending prompt. */
   target: HandoffTarget;
-  handoff: (prompt: string, opts?: { autoSend?: boolean; images?: string[] }) => void;
-  consume: () => { prompt: string; autoSend: boolean; images: string[] } | null;
+  handoff: (
+    prompt: string,
+    opts?: { autoSend?: boolean; images?: string[]; context?: readonly ComposerContextItem[] },
+  ) => void;
+  consume: () => {
+    prompt: string;
+    autoSend: boolean;
+    images: string[];
+    context: readonly ComposerContextItem[];
+  } | null;
   /** Sends the pending prompt to the CLI assistant, for when Oleafly's has no provider. */
   redirectToCli: () => void;
 }
@@ -26,6 +36,7 @@ export const useAgentHandoffStore = create<AgentHandoffState>((set, get) => ({
   pendingPrompt: null,
   autoSend: false,
   pendingImages: [],
+  pendingContext: [],
   target: "built-in",
   handoff: (prompt, opts) => {
     const images = opts?.images ?? [];
@@ -40,20 +51,21 @@ export const useAgentHandoffStore = create<AgentHandoffState>((set, get) => ({
       pendingPrompt: prompt,
       autoSend: opts?.autoSend ?? true,
       pendingImages: images,
+      pendingContext: opts?.context ?? [],
       target,
     });
   },
   redirectToCli: () => {
-    if (!get().pendingPrompt) return;
+    if (get().pendingPrompt === null) return;
     useAssistantRuntimeStore.getState().showCliForHandoff();
     set({ target: "acp" });
     toast.infoUnique("assistant-handoff-runtime", i18n.t(($) => $.core.assistant.handoffToCli));
   },
   consume: () => {
-    const { pendingPrompt, autoSend, pendingImages } = get();
-    if (!pendingPrompt) return null;
-    set({ pendingPrompt: null, autoSend: false, pendingImages: [], target: "built-in" });
-    return { prompt: pendingPrompt, autoSend, images: pendingImages };
+    const { pendingPrompt, autoSend, pendingImages, pendingContext } = get();
+    if (pendingPrompt === null) return null;
+    set({ pendingPrompt: null, autoSend: false, pendingImages: [], pendingContext: [], target: "built-in" });
+    return { prompt: pendingPrompt, autoSend, images: pendingImages, context: pendingContext };
   },
 }));
 

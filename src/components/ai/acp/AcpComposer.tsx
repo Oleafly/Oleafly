@@ -12,7 +12,7 @@ import { mentionInsertText } from "@/lib/composer-tokens";
 import { logError } from "@/lib/log";
 import { isSkillAvailable, useSkills } from "@/lib/skills";
 import { acpComposerId, useAcpSessionsStore, type AcpPromptDraft, type AcpSelection } from "@/store/acp-sessions";
-import { EMPTY_ATTACHMENTS, useComposerDrafts } from "@/store/composer-drafts";
+import { EMPTY_ATTACHMENTS, EMPTY_CONTEXT, useComposerDrafts } from "@/store/composer-drafts";
 import type { FileEntry } from "@/lib/tauri";
 import { useFilesStore } from "@/store/files";
 import { acpAttachmentKinds, acpMentionItems, acpSlashItems, composerMode } from "./acp-composer";
@@ -33,6 +33,7 @@ function takeDraft(projectId: string, composerId: string, tree: readonly FileEnt
     mentions: promptMentions(text, tree),
     selections: [...(composer?.selections ?? [])],
     skill: composer?.skill ?? null,
+    context: [...(draft?.context ?? EMPTY_CONTEXT)],
   };
 }
 
@@ -40,6 +41,7 @@ function clearDraft(projectId: string, composerId: string): void {
   const drafts = useComposerDrafts.getState();
   drafts.setText(composerId, "");
   drafts.setAttachments(composerId, []);
+  drafts.clearContext(composerId);
   settleSelectionQuotes(projectId, useAcpSessionsStore.getState().composers[projectId]?.selections ?? []);
   useAcpSessionsStore.getState().setComposer(projectId, { skill: null, selections: [] });
 }
@@ -51,6 +53,7 @@ export function restoreDraft(projectId: string, composerId: string, draft: AcpPr
   else if (draft.text) drafts.setText(composerId, `${draft.text}\n\n${current?.text ?? ""}`);
   const known = new Set((current?.attachments ?? EMPTY_ATTACHMENTS).map((item) => item.id));
   drafts.addAttachments(composerId, draft.attachments.filter((item) => !known.has(item.id)));
+  drafts.addContext(composerId, draft.context ?? EMPTY_CONTEXT);
   const composer = useAcpSessionsStore.getState().composers[projectId];
   if (!composer?.selections?.length && draft.selections.length > 0) unsettleSelectionQuote(projectId);
   useAcpSessionsStore.getState().setComposer(projectId, {
@@ -65,7 +68,11 @@ function withContext(draft: AcpPromptDraft, extra?: () => readonly AcpSelection[
 }
 
 function isEmpty(draft: AcpPromptDraft): boolean {
-  return !draft.text.trim() && draft.attachments.length === 0 && draft.selections.length === 0 && !draft.skill;
+  return !draft.text.trim()
+    && draft.attachments.length === 0
+    && draft.selections.length === 0
+    && !draft.skill
+    && !draft.context?.length;
 }
 
 export interface AcpComposerProps {
@@ -114,6 +121,7 @@ export const AcpComposer = forwardRef<ChatComposerHandle, AcpComposerProps>(func
   const composerId = acpDraftId(key, agentId, session);
   const text = useComposerDrafts((state) => state.drafts[composerId]?.text ?? "");
   const attachments = useComposerDrafts((state) => state.drafts[composerId]?.attachments ?? EMPTY_ATTACHMENTS);
+  const context = useComposerDrafts((state) => state.drafts[composerId]?.context ?? EMPTY_CONTEXT);
   const workspaceTree = useFilesStore((state) => state.tree);
   const tree = scopedTree ?? workspaceTree;
   const skillsQuery = useSkills(projectId);
@@ -197,6 +205,11 @@ export const AcpComposer = forwardRef<ChatComposerHandle, AcpComposerProps>(func
     [composerId],
   );
 
+  const removeContext = useCallback(
+    (id: string) => useComposerDrafts.getState().removeContext(composerId, [id]),
+    [composerId],
+  );
+
   const dropProjectPaths = useCallback((paths: string[]) => {
     const dirs = new Set(tree.filter((entry) => entry.is_dir).map((entry) => entry.path));
     for (const path of paths) inner.current?.insertText(mentionInsertText(path, dirs.has(path)));
@@ -253,6 +266,8 @@ export const AcpComposer = forwardRef<ChatComposerHandle, AcpComposerProps>(func
       attachments={attachments}
       onAddFiles={addFiles}
       onRemoveAttachment={removeAttachment}
+      context={context}
+      onRemoveContext={removeContext}
       onDropProjectPaths={dropProjectPaths}
       slashItems={slashItems}
       onSlashSelect={onSlashSelect}

@@ -1012,6 +1012,10 @@
         "label": "Editare live cu Overleaf",
         "description": "Editează proiectele importate din Overleaf în același timp cu coautorii tăi. Modificările apar pe ambele părți pe măsură ce scrii. Dezactivat implicit cât timp este în beta."
       },
+      "pdfReview": {
+        "description": "Adnotați PDF-ul compilat: selectați text sau trageți un chenar în jurul unei ecuații ori figuri și scrieți un comentariu. Trimiteți adnotările asistentului împreună cu liniile din sursă la care se referă. Adnotările rămân pe acest computer. Dezactivat implicit cât timp funcția este în beta.",
+        "label": "Revizuirea PDF-ului"
+      },
       "researchTasks": {
         "description": "Un agent lucrează singur într-o copie a proiectului și îți lasă modificările spre revizuire. Foarte instabilă: rulările se pot bloca, pot eșua sau pot lăsa modificări de rezolvat manual și folosesc cota furnizorului tău pe toată durata lor. Adaugă secțiunea Cercetare în Setări. Dezactivarea oprește toate sarcinile în curs. Dezactivată implicit. Activeaz-o pe propria răspundere.",
         "label": "Sarcini de cercetare",

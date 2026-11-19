@@ -256,7 +256,9 @@
     "send": "Wyślij",
     "checkAgain": "Sprawdź ponownie",
     "resizeHandle": "Zmień rozmiar pola wiadomości",
-    "resizeHint": "Przeciągnij, aby zmienić rozmiar. Kliknij dwukrotnie, aby przywrócić."
+    "resizeHint": "Przeciągnij, aby zmienić rozmiar. Kliknij dwukrotnie, aby przywrócić.",
+    "removeContext": "Usuń {{label}}",
+    "contextFailed": "Nie udało się odczytać dołączonego kontekstu. Wiadomość nie została wysłana."
   },
   "commands": {
     "groups": {

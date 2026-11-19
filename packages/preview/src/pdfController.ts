@@ -1,3 +1,5 @@
+import { shownBox } from "./pdfShownBox";
+
 export interface SynctexRect {
   page: number;
   x: number;
@@ -98,14 +100,10 @@ export function pdfPageText(pageNo: number): Promise<PdfTextRun[] | null> {
  * as a box on the shown page at scale 1. The page's own `/Rotate` and the
  * viewer's rotate control both turn the shown page; SyncTeX knows neither.
  */
-function shownBox(rect: SynctexRect, minHeight: number) {
-  const height = Math.max(rect.height, minHeight);
+function shownRect(rect: SynctexRect, minHeight: number) {
   const geometry = pageGeometry?.(rect.page);
-  if (!geometry) return { left: rect.x, top: rect.y, width: rect.width, height };
-  const [left, , , top] = geometry.viewBox;
-  const [a, b] = geometry.convertToViewportPoint(left + rect.x, top - rect.y);
-  const [c, d] = geometry.convertToViewportPoint(left + rect.x + rect.width, top - rect.y - height);
-  return { left: Math.min(a, c), top: Math.min(b, d), width: Math.abs(c - a), height: Math.abs(d - b) };
+  if (!geometry) return { left: rect.x, top: rect.y, width: rect.width, height: Math.max(rect.height, minHeight) };
+  return shownBox(rect, geometry, minHeight);
 }
 
 export function gotoRect(rect: SynctexRect, attempt = 0) {
@@ -131,7 +129,7 @@ export function gotoRect(rect: SynctexRect, attempt = 0) {
 
   const hl = document.createElement("div");
   hl.className = "ll-synctex-hl";
-  const box = shownBox(rect, 8);
+  const box = shownRect(rect, 8);
   Object.assign(hl.style, {
     position: "absolute",
     left: `${box.left * scale}px`,

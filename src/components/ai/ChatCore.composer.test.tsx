@@ -406,6 +406,7 @@ let useChatGoalStore: typeof import("@/store/chat-goal").useChatGoalStore;
 let useAiToolSettingsStore: typeof import("@/store/ai-tool-settings").useAiToolSettingsStore;
 let useAssistantRuntimeStore: typeof import("@/store/assistant-runtime").useAssistantRuntimeStore;
 let useAgentHandoffStore: typeof import("@/store/agent-handoff").useAgentHandoffStore;
+let registerComposerContextKind: typeof import("@/lib/composer-context").registerComposerContextKind;
 let activeChatRun: typeof import("./chat-run-registry").activeChatRun;
 let endChatRun: typeof import("./chat-run-registry").endChatRun;
 let act: typeof import("@testing-library/react").act;
@@ -489,6 +490,7 @@ beforeAll(async () => {
   ({ useAiToolSettingsStore } = await import("@/store/ai-tool-settings"));
   ({ useAssistantRuntimeStore } = await import("@/store/assistant-runtime"));
   ({ useAgentHandoffStore } = await import("@/store/agent-handoff"));
+  ({ registerComposerContextKind } = await import("@/lib/composer-context"));
   ({ activeChatRun, endChatRun } = await import("./chat-run-registry"));
   await import("@/components/usage/UsageReport");
   await import("./usage/UsagePopover");
@@ -915,6 +917,7 @@ describe("ChatCore composer, drafts and attachments", () => {
     expect(useComposerDrafts.getState().drafts["composer-project-other:builtin"]).toEqual({
       text: "Draft for the other project",
       attachments: [],
+      context: [],
     });
   });
 
@@ -2920,5 +2923,126 @@ describe("ChatCore key-less custom providers", () => {
     await waitFor(() => expect(mocks.runs).toHaveLength(1));
     expect(override(0)).toEqual({ provider_id: "lemonade", model_id: "" });
     await completeRun(0, "Done.");
+  });
+});
+
+describe("ChatCore context chips", () => {
+  const note = { id: "note:n1", kind: "test-note", refId: "n1", label: "Note on page 2" };
+  const expand = vi.fn();
+  const sent = vi.fn();
+  let unregister: () => void = () => {};
+
+  beforeEach(() => {
+    expand.mockReset().mockImplementation(async (_projectId: string, refIds: readonly string[]) =>
+      refIds.map((refId) => ({ refId, path: "main.tex", text: `Fix the sign in ${refId}` })),
+    );
+    sent.mockReset();
+    unregister = registerComposerContextKind("test-note", { expand, sent });
+  });
+
+  afterEach(() => unregister());
+
+  function addNote() {
+    const { projectId, activeId } = { ...useFilesStore.getState(), ...useChatsStore.getState() };
+    act(() => useComposerDrafts.getState().addContext(builtinComposerId(projectId, activeId), [note]));
+  }
+
+  it("sends a chip-only draft with the expanded text and keeps only the ids on the message", async () => {
+    const rendered = await renderChat();
+    addNote();
+    const chip = await rendered.findByTestId("composer-context-chip");
+    expect(chip).toHaveTextContent("Note on page 2");
+    expect(composerBox()).toHaveValue("");
+
+    fireEvent.click(rendered.getByRole("button", { name: enAi.composer.send }));
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+
+    const projectId = useFilesStore.getState().projectId;
+    expect(expand).toHaveBeenCalledExactlyOnceWith(projectId, ["n1"]);
+    expect(lastUserContent(0)).toBe("Note on page 2 (main.tex):\n```\nFix the sign in n1\n```");
+    expect(savedMessages()[0]).toMatchObject({ role: "user", content: "", context: [note] });
+    expect(sent).toHaveBeenCalledExactlyOnceWith(projectId, ["n1"]);
+    await waitFor(() => expect(rendered.queryByTestId("composer-context-chip")).toBeNull());
+    expect(composerDraft()).toBeUndefined();
+    await completeRun(0, "Fixed.");
+  });
+
+  it("appends the context after the typed text and lets a chip be removed before sending", async () => {
+    const rendered = await renderChat();
+    addNote();
+    fireEvent.click(await rendered.findByRole("button", { name: "Remove Note on page 2" }));
+    expect(rendered.queryByTestId("composer-context-chip")).toBeNull();
+    addNote();
+    await rendered.findByTestId("composer-context-chip");
+
+    sendFromComposer("Please address this");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(lastUserContent(0)).toBe("Please address this\n\nNote on page 2 (main.tex):\n```\nFix the sign in n1\n```");
+    expect(savedMessages()[0]).toMatchObject({ content: "Please address this", context: [note] });
+    await completeRun(0, "Done.");
+  });
+
+  it("keeps the draft and does not mark the context sent when it cannot be read", async () => {
+    expand.mockRejectedValue(new Error("source missing"));
+    const rendered = await renderChat();
+    addNote();
+    sendFromComposer("Please address this");
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(enAi.composer.contextFailed));
+    expect(mocks.runs).toHaveLength(0);
+    expect(sent).not.toHaveBeenCalled();
+    expect(composerBox()).toHaveValue("Please address this");
+    expect(rendered.getByTestId("composer-context-chip")).toHaveTextContent("Note on page 2");
+    expect(composerDraft()?.context).toEqual([note]);
+  });
+
+  it("marks a queued follow-up's context sent only once its run starts", async () => {
+    const rendered = await renderChat();
+    sendFromComposer("First question");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    addNote();
+    sendFromComposer("Then this");
+
+    await waitFor(() => expect(rendered.queryByTestId("composer-context-chip")).toBeNull());
+    expect(rendered.getByTestId("agent-follow-up-chip")).toBeInTheDocument();
+    expect(rendered.queryByTestId("agent-follow-up-steer")).toBeNull();
+    expect(sent).not.toHaveBeenCalled();
+
+    await act(async () => {
+      mocks.runs[0].options.handlers.onText("First answer.");
+      mocks.runs[0].resolve({ text: "First answer.", usage: { input: 0, output: 0 }, steps: 1, stopped_at_cap: false, error: null });
+    });
+    await waitFor(() => expect(mocks.runs).toHaveLength(2));
+    expect(lastUserContent(1)).toBe("Then this\n\nNote on page 2 (main.tex):\n```\nFix the sign in n1\n```");
+    expect(sent).toHaveBeenCalledExactlyOnceWith(useFilesStore.getState().projectId, ["n1"]);
+    await completeRun(1, "Second answer.");
+    expect(savedMessages().filter((message) => message.role === "user").map((message) => message.context)).toEqual([
+      undefined,
+      [note],
+    ]);
+  });
+
+  it("puts handed-off context in the composer with an empty box", async () => {
+    const rendered = await renderChat();
+    act(() => useAgentHandoffStore.getState().handoff("", { autoSend: false, context: [note] }));
+
+    expect(await rendered.findByTestId("composer-context-chip")).toHaveTextContent("Note on page 2");
+    expect(useAgentHandoffStore.getState().pendingPrompt).toBeNull();
+    expect(composerBox()).toHaveValue("");
+    expect(mocks.runs).toHaveLength(0);
+    expect(sent).not.toHaveBeenCalled();
+  });
+
+  it("sends the context again when its message is regenerated", async () => {
+    seedChat([
+      { id: "u1", role: "user", content: "", context: [note], createdAt: 1, turnId: "turn-1" },
+      { id: "a1", role: "assistant", content: "Fixed.", createdAt: 1 },
+    ]);
+    await renderChat();
+    await messageAction("regenerate", "a1");
+    await waitFor(() => expect(mocks.runs).toHaveLength(1));
+    expect(lastUserContent(0)).toBe("Note on page 2 (main.tex):\n```\nFix the sign in n1\n```");
+    expect(savedMessages()[0]).toMatchObject({ content: "", context: [note] });
+    await completeRun(0, "Fixed again.");
   });
 });

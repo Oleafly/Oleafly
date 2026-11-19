@@ -258,6 +258,74 @@
     "downloadSaved": "PDF bylo úspěšně uloženo.",
     "downloadFailed": "Zobrazené PDF se nepodařilo uložit."
   },
+  "annotations": {
+    "toolbar": {
+      "region": "Anotovat oblast",
+      "list": "Anotace ({{n}})"
+    },
+    "composer": {
+      "title": "Nová anotace",
+      "action": {
+        "comment": "Komentovat",
+        "delete": "Smazat",
+        "replace": "Nahradit",
+        "insert": "Vložit"
+      },
+      "label": {
+        "comment": "Komentář",
+        "delete": "Smazat",
+        "replace": "Nový text",
+        "insert": "Text k vložení",
+        "region": "Komentář k oblasti"
+      },
+      "placeholder": {
+        "comment": "Komentář k této pasáži…",
+        "delete": "Proč smazat? (nepovinné)",
+        "replace": "Nahradit textem…",
+        "insert": "Vložit za výběr…",
+        "region": "Komentář k této oblasti…"
+      },
+      "placeHere": "Umístit sem",
+      "cancel": "Zrušit",
+      "save": "Přidat",
+      "saving": "Ukládání",
+      "notSaved": "Neuloženo."
+    },
+    "kind": {
+      "comment": "Komentář",
+      "delete": "Smazání",
+      "replace": "Nahrazení",
+      "insert": "Vložení",
+      "region": "Oblast"
+    },
+    "status": {
+      "draft": "Koncept",
+      "sent": "Odesláno",
+      "addressed": "Zpracováno",
+      "resolved": "Vyřešeno",
+      "needsPlacing": "Čeká na umístění"
+    },
+    "panel": {
+      "title": "Anotace",
+      "close": "Zavřít anotace",
+      "empty": "Vyberte text v PDF a zvolte Komentovat, Smazat, Nahradit nebo Vložit. Nebo zapněte Anotovat oblast a přetáhněte rámeček kolem rovnice či obrázku.",
+      "failed": "Anotace se nepodařilo uložit. {{error}}",
+      "noSource": "Bez umístění ve zdroji",
+      "page": "s. {{page}}",
+      "notFound": "Tato pasáž se v novém PDF nenašla.",
+      "placing": "Vyberte pasáž v PDF a pak zvolte Umístit sem.",
+      "placeAgain": "Umístit znovu",
+      "include": "Zahrnout anotaci {{number}}",
+      "resolve": "Označit anotaci {{number}} jako vyřešenou",
+      "reopen": "Znovu otevřít anotaci {{number}}",
+      "delete": "Smazat anotaci {{number}}",
+      "editComment": "Upravit komentář k anotaci {{number}}",
+      "addComment": "Přidat komentář",
+      "clear": "Smazat vše",
+      "clearConfirm": "Smazat všechny anotace v tomto projektu? Tuto akci nelze vrátit.",
+      "send": "Odeslat asistentovi ({{n}})"
+    }
+  },
   "package": {
     "error": {
       "passwordIncorrect": "Heslo k PDF nebylo přijato.",
@@ -295,6 +363,9 @@
       "title": "Režim čtečky obrazovky",
       "pageLabel": "Stránka {{page}} z {{total}}",
       "empty": "Na této stránce nebyl nalezen žádný čitelný text."
+    },
+    "mark": {
+      "badge": "Anotace {{label}}"
     }
   },
   "presentation": {

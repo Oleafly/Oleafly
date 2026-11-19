@@ -16,6 +16,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowUp, Slash, Square } from "lucide-react";
 import { AttachmentChips } from "@/components/ai/AttachmentChips";
 import { ComposerHighlight } from "@/components/ai/ComposerHighlight";
+import { ComposerContextChips } from "@/components/ai/composer/ComposerContextChips";
 import {
   MentionMenu,
   type MentionAgent,
@@ -35,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip } from "@/components/ui/tooltip";
 import { ATTACHMENT_ACCEPT } from "@/lib/attachments";
+import type { ComposerContextItem } from "@/lib/composer-context";
 import { activeMentionQuery, mentionTokenEnd } from "@/lib/composer-tokens";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/store/settings";
@@ -74,6 +76,8 @@ export interface ChatComposerProps {
   attachments: readonly ComposerAttachment[];
   onAddFiles?(files: File[]): void;
   onRemoveAttachment?(id: string): void;
+  context?: readonly ComposerContextItem[];
+  onRemoveContext?(id: string): void;
   onDropProjectPaths?(paths: string[]): void;
   slashItems?: readonly SlashItem[];
   onSlashSelect?(item: SlashItem): void;
@@ -99,6 +103,7 @@ export interface ChatComposerHandle {
 }
 
 const EMPTY_SKILLS: readonly string[] = [];
+const EMPTY_CONTEXT: readonly ComposerContextItem[] = [];
 const EMPTY_PATHS: Iterable<string> = [];
 
 function rootFontPx(): number {
@@ -136,6 +141,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
     attachments,
     onAddFiles,
     onRemoveAttachment,
+    context = EMPTY_CONTEXT,
+    onRemoveContext,
     onDropProjectPaths,
     slashItems,
     onSlashSelect,
@@ -297,7 +304,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
 
   const processing = attachments.some((item) => item.status === "processing");
   const ready = attachments.some((item) => item.status === "ready");
-  const hasContent = value.trim() !== "" || ready;
+  const hasContent = value.trim() !== "" || ready || context.length > 0;
   const canSubmit = !disabled && hasContent && !processing;
   const canQueue = Boolean(onQueue) && hasContent && !processing;
 
@@ -436,6 +443,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, ChatComposerProps>(fu
       onDragLeave={drop.onDragLeave}
       onDrop={drop.onDrop}
     >
+      <ComposerContextChips items={context} onRemove={onRemoveContext} />
       <AttachmentChips items={attachments} onRemove={onRemoveAttachment} />
       <div
         ref={shellRef}

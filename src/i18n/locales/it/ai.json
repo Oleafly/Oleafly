@@ -248,7 +248,9 @@
     "send": "Invia",
     "checkAgain": "Controlla di nuovo",
     "resizeHandle": "Ridimensiona la casella del messaggio",
-    "resizeHint": "Trascina per ridimensionare. Fai doppio clic per ripristinare."
+    "resizeHint": "Trascina per ridimensionare. Fai doppio clic per ripristinare.",
+    "removeContext": "Rimuovi {{label}}",
+    "contextFailed": "Impossibile leggere il contesto allegato. Il messaggio non è stato inviato."
   },
   "commands": {
     "groups": {

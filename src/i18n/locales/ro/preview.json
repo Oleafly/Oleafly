@@ -257,6 +257,74 @@
     "downloadSaved": "PDF-ul a fost salvat cu succes.",
     "downloadFailed": "PDF-ul afișat nu a putut fi salvat."
   },
+  "annotations": {
+    "toolbar": {
+      "region": "Adnotează o zonă",
+      "list": "Adnotări ({{n}})"
+    },
+    "composer": {
+      "title": "Adnotare nouă",
+      "action": {
+        "comment": "Comentează",
+        "delete": "Șterge",
+        "replace": "Înlocuiește",
+        "insert": "Inserează"
+      },
+      "label": {
+        "comment": "Comentariu",
+        "delete": "Șterge",
+        "replace": "Text nou",
+        "insert": "Text de inserat",
+        "region": "Comentariu despre zonă"
+      },
+      "placeholder": {
+        "comment": "Comentați acest pasaj…",
+        "delete": "De ce ștergeți? (opțional)",
+        "replace": "Înlocuiți cu…",
+        "insert": "Inserați după selecție…",
+        "region": "Comentați această zonă…"
+      },
+      "placeHere": "Plasează aici",
+      "cancel": "Anulează",
+      "save": "Adaugă",
+      "saving": "Se salvează",
+      "notSaved": "Nu a fost salvată."
+    },
+    "kind": {
+      "comment": "Comentariu",
+      "delete": "Ștergere",
+      "replace": "Înlocuire",
+      "insert": "Inserare",
+      "region": "Zonă"
+    },
+    "status": {
+      "draft": "Ciornă",
+      "sent": "Trimisă",
+      "addressed": "Tratată",
+      "resolved": "Rezolvată",
+      "needsPlacing": "De plasat"
+    },
+    "panel": {
+      "title": "Adnotări",
+      "close": "Închide adnotările",
+      "empty": "Selectați text în PDF și alegeți Comentează, Șterge, Înlocuiește sau Inserează. Sau activați Adnotează o zonă și trageți un chenar în jurul unei ecuații ori figuri.",
+      "failed": "Adnotările nu au putut fi salvate. {{error}}",
+      "noSource": "Nicio poziție în sursă",
+      "page": "p. {{page}}",
+      "notFound": "Acest pasaj nu a fost găsit în noul PDF.",
+      "placing": "Selectați pasajul în PDF, apoi alegeți Plasează aici.",
+      "placeAgain": "Plasează din nou",
+      "include": "Include adnotarea {{number}}",
+      "resolve": "Marchează adnotarea {{number}} ca rezolvată",
+      "reopen": "Redeschide adnotarea {{number}}",
+      "delete": "Șterge adnotarea {{number}}",
+      "editComment": "Editează comentariul adnotării {{number}}",
+      "addComment": "Adaugă un comentariu",
+      "clear": "Șterge tot",
+      "clearConfirm": "Ștergeți toate adnotările din acest proiect? Acțiunea nu poate fi anulată.",
+      "send": "Trimite asistentului ({{n}})"
+    }
+  },
   "package": {
     "error": {
       "passwordIncorrect": "Parola PDF-ului nu a fost acceptată.",
@@ -294,6 +362,9 @@
       "title": "Mod pentru cititor de ecran",
       "pageLabel": "Pagina {{page}} din {{total}}",
       "empty": "Pe această pagină nu s-a găsit text lizibil."
+    },
+    "mark": {
+      "badge": "Adnotarea {{label}}"
     }
   },
   "presentation": {

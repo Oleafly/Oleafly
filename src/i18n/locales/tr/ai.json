@@ -240,7 +240,9 @@
     "send": "Gönder",
     "checkAgain": "Yeniden denetle",
     "resizeHandle": "İleti kutusunu yeniden boyutlandır",
-    "resizeHint": "Yeniden boyutlandırmak için sürükleyin. Sıfırlamak için çift tıklayın."
+    "resizeHint": "Yeniden boyutlandırmak için sürükleyin. Sıfırlamak için çift tıklayın.",
+    "removeContext": "{{label}} öğesini kaldır",
+    "contextFailed": "Eklenen bağlam okunamadı. Mesaj gönderilmedi."
   },
   "commands": {
     "groups": {

@@ -11,6 +11,7 @@ import {
   Globe,
   ListTree,
   Maximize,
+  MessageSquareText,
   Minimize,
   MoreHorizontal,
   PanelTopClose,
@@ -23,6 +24,7 @@ import {
   Search,
   Settings2,
   SquareArrowOutUpRight,
+  SquareDashedMousePointer,
   ZoomIn,
   ZoomOut,
 } from "lucide-react";
@@ -42,6 +44,7 @@ import { i18n } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { MAX_PREVIEW_SCALE, MIN_PREVIEW_SCALE } from "./preview-zoom";
 import type { PdfSyncToggle } from "./use-pdf-sync";
+import type { PdfAnnotationsToolbar } from "./use-pdf-annotations";
 import { Spinner } from "@/components/ui/spinner";
 
 type Setter<T> = Dispatch<SetStateAction<T>>;
@@ -87,6 +90,7 @@ export interface PdfToolbarControlsProps {
   onSettings?: () => void;
   onPresent?: (mode: PresentMode) => void;
   onOpenInBrowser?: () => void;
+  annotations?: PdfAnnotationsToolbar | null;
 }
 
 export type PresentMode = "start" | "page" | "presenter";
@@ -117,7 +121,7 @@ const PAGE_LAYOUTS: readonly {
 ];
 
 export function PdfToolbarControls({
-  isImage, hasDocument, numPages, page, pageInput, setPageInput, jumpToPage, pdfRef, layout, setLayout, outlineOpen, setOutlineOpen, searchOpen, setSearchOpen, searchInputRef, setSearchInput, scale, setScale, setClampedScale, userZoom, fitPreview, exporting = false, exportDisplayedPreview, downloadActionLabel, onSave, pdfSync = null, inverted, setInverted, screenReaderMode, setScreenReaderMode, rotation, rotationPending, onRotate, isFs, setFsToolbarHidden, toggleFullscreen, detached = false, onWindow, onSettings, onPresent, onOpenInBrowser
+  isImage, hasDocument, numPages, page, pageInput, setPageInput, jumpToPage, pdfRef, layout, setLayout, outlineOpen, setOutlineOpen, searchOpen, setSearchOpen, searchInputRef, setSearchInput, scale, setScale, setClampedScale, userZoom, fitPreview, exporting = false, exportDisplayedPreview, downloadActionLabel, onSave, pdfSync = null, inverted, setInverted, screenReaderMode, setScreenReaderMode, rotation, rotationPending, onRotate, isFs, setFsToolbarHidden, toggleFullscreen, detached = false, onWindow, onSettings, onPresent, onOpenInBrowser, annotations = null
 }: Readonly<PdfToolbarControlsProps>) {
   const { t } = useTranslation(["preview", "ai"]);
   const [zoomMenuOpen, setZoomMenuOpen] = useState(false);
@@ -457,6 +461,24 @@ export function PdfToolbarControls({
           });
         }, { active: searchOpen }),
       );
+      if (annotations) {
+        viewGroup.push(
+          iconControl(
+            "annotate-region",
+            SquareDashedMousePointer,
+            t(($) => $.preview.annotations.toolbar.region),
+            annotations.toggleRegionMode,
+            { active: annotations.regionMode },
+          ),
+          iconControl(
+            "annotations",
+            MessageSquareText,
+            t(($) => $.preview.annotations.toolbar.list, { n: annotations.count }),
+            annotations.togglePanel,
+            { active: annotations.panelOpen },
+          ),
+        );
+      }
     }
     zoomGroup.push({
       id: "zoom",
