@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.4.13] - 2026-11-18
 
+If you use Oleafly for your research, a thesis or a course, add a line to [Who's using Oleafly?](https://github.com/Oleafly/Oleafly/discussions/502) with where you use it and what for.
+
 ### Thanks
 
 - Teng Qin ([@palmtenor](https://github.com/palmtenor)) for #435, "feat: number LaTeX headings in the outline", #463, "test(collab): isolate live pump tests", and #469, "test: run Rust tests with `nextest`".
