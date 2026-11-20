@@ -10,7 +10,7 @@ rust-version = "1.89"
 [dependencies]
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 httpdate = "1"
-loro = "=1.16.2"
+loro = "=1.17.1"
 oleafly-collab-protocol = { path = "../oleafly-collab-protocol" }
 oleafly-net = { path = "../oleafly-net" }
 oleafly-ot = { path = "../oleafly-ot" }
