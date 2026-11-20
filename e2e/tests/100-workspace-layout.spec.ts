@@ -141,10 +141,11 @@ test("detached preview shares compilation and keeps logs in its window", async (
 });
 
 
-test("sidebar width and document split survive a new session", async ({ tauriPage: page }) => {
+test("a new session keeps the document split and opens the sidebar at its default width", async ({ tauriPage: page }) => {
   await createBlankProject(page, "Pane sizes");
   await page.evaluate(`import("/src/store/settings.ts").then(({useSettingsStore})=>{ const s=useSettingsStore.getState(); s.setViewMode('split'); s.setShowTree(true); })`);
   await waitLong(page, `!!document.getElementById('h-mid') && !!document.getElementById('h-tree')`, 15_000);
+  const opened = await page.evaluate<number>(`${PANEL_SIZE_SCRIPT}('sidebar')`);
   await page.evaluate(`(() => {
     for (const id of ['h-tree','h-mid']) {
       const handle = document.getElementById(id);
@@ -153,6 +154,7 @@ test("sidebar width and document split survive a new session", async ({ tauriPag
     }
   })()`);
   const sizes = await page.evaluate<number[]>(`['sidebar','editor'].map(id=>${PANEL_SIZE_SCRIPT}(id))`);
+  expect(sizes[0]).toBeGreaterThan(opened);
   const projectId = await page.evaluate<string>(`import("/src/store/files.ts").then(m=>m.useFilesStore.getState().projectId)`);
   const documentLayoutKey = panelLayoutStorageKey(`oleafly.workspace.${projectId}.document`, ["editor", "pdf"]);
   await expect.poll(async () => page.evaluate(`!!localStorage.getItem(${JSON.stringify(documentLayoutKey)})`)).toBe(true);
@@ -160,7 +162,7 @@ test("sidebar width and document split survive a new session", async ({ tauriPag
   await waitLong(page, `!!document.querySelector('[data-testid="library"]')`, 15_000);
   await reloadNativePage(page);
   await page.evaluate(`import("/src/store/files.ts").then(m=>m.useFilesStore.getState().openProject(${scriptValue(projectId)}))`);
-  await expect.poll(async () => page.evaluate(`['sidebar','editor'].map(id=>${PANEL_SIZE_SCRIPT}(id))`)).toEqual(sizes);
+  await expect.poll(async () => page.evaluate(`['sidebar','editor'].map(id=>${PANEL_SIZE_SCRIPT}(id))`)).toEqual([opened, sizes[1]]);
 });
 
 test("the file tree keeps its width while the window is resized", async ({ tauriPage: page }) => {
