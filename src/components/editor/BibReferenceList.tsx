@@ -8,6 +8,7 @@ import { EmptyMedia, EmptyState } from "@/components/ui/empty";
 import { SearchField } from "@/components/ui/search-field";
 import { ROW_WINDOW_ITEM, useRowWindow } from "@/hooks/use-row-window";
 import { i18n } from "@/i18n";
+import { andSeparator, commaSeparator, splitFirstVonLast, splitTopLevel } from "@/lib/citation/bibtex-names";
 import { formatList, formatNumber } from "@/lib/intl";
 import { parseBib } from "@/lib/latex-tools";
 import { cn } from "@/lib/utils";
@@ -30,9 +31,6 @@ interface BibListView {
 
 const NOT_REFERENCES = new Set(["string", "preamble", "comment"]);
 const ENTRY_HEAD = /@\s*([A-Za-z]+)\s*[{(]\s*([^,\s{}()]+)\s*,/gu;
-const NAME_SEPARATOR = /\s+and\s+/iuy;
-const NAME_PARTS = /,/uy;
-const WORDS = /\s+/uy;
 const NO_VIEW: BibListView = { search: "", selected: null };
 const views = new Map<string, BibListView>();
 
@@ -40,40 +38,14 @@ function plain(value: string | undefined): string {
   return value ? renderLatexOutlineTitle(value).replace(/\s+/gu, " ").trim() : "";
 }
 
-function splitTopLevel(text: string, separator: RegExp): string[] {
-  const parts: string[] = [];
-  let depth = 0;
-  let start = 0;
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index];
-    if (char === "\\") {
-      index += 1;
-      continue;
-    }
-    if (char === "{") depth += 1;
-    else if (char === "}") depth = Math.max(0, depth - 1);
-    if (depth > 0 || char === "{" || char === "}") continue;
-    separator.lastIndex = index;
-    const match = separator.exec(text);
-    if (!match) continue;
-    parts.push(text.slice(start, index));
-    start = index + match[0].length;
-    index = start - 1;
-  }
-  parts.push(text.slice(start));
-  return parts;
-}
-
 function surname(name: string): string {
-  const [family, ...given] = splitTopLevel(name, NAME_PARTS);
-  if (given.length > 0) return family;
-  return splitTopLevel(name, WORDS).at(-1) ?? "";
+  const parts = splitTopLevel(name, commaSeparator).filter(Boolean);
+  if (parts.length > 1) return parts[0];
+  return splitFirstVonLast(parts[0] ?? "").family;
 }
 
 export function authorLine(field: string | undefined): string {
-  const names = splitTopLevel(field?.trim() ?? "", NAME_SEPARATOR)
-    .map((name) => name.trim())
-    .filter(Boolean);
+  const names = splitTopLevel(field ?? "", andSeparator).filter(Boolean);
   const others = names.length > 1 && names.at(-1)?.toLowerCase() === "others";
   const surnames = (others ? names.slice(0, -1) : names).map((name) => plain(surname(name))).filter(Boolean);
   if (surnames.length === 0) return "";

@@ -283,7 +283,7 @@ export function createArtifactRuntime(deps: RuntimeDeps): ArtifactRuntime {
       .render(React.createElement(Boundary, null, React.createElement(component as ReactTypes.ComponentType)));
   };
 
-  const compileModule: ArtifactRuntime["compileModule"] = (code, messages, extras = {}, filePath) => {
+  const compileModule: ArtifactRuntime["compileModule"] = (code, messages, extras, filePath) => {
     let compiled: string;
     try {
       compiled = deps.transform(code.replaceAll("import.meta.url", '""'), {
@@ -295,7 +295,7 @@ export function createArtifactRuntime(deps: RuntimeDeps): ArtifactRuntime {
     } catch (error) {
       return { error: { title: messages.compileError, detail: errorText(error) } };
     }
-    extraModules = extras;
+    extraModules = extras ?? {};
     try {
       return loadModule(compiled);
     } catch (error) {

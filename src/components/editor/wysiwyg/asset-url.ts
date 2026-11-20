@@ -45,6 +45,13 @@ function normalizeSegments(path: string): string[] | null {
   return segments;
 }
 
+function addCandidates(paths: string[], segments: readonly string[], extensions: readonly string[]): void {
+  for (const extension of extensions) {
+    const candidate = `${segments.join("/")}${extension}`;
+    if (!paths.includes(candidate)) paths.push(candidate);
+  }
+}
+
 export function assetCandidates(rawPath: string, context: AssetLookupContext): AssetCandidates {
   const path = rawPath.trim().replace(/^["']|["']$/gu, "").replaceAll("\\", "/");
   if (path === "") return { paths: [], outside: false };
@@ -56,11 +63,7 @@ export function assetCandidates(rawPath: string, context: AssetLookupContext): A
   for (const base of bases) {
     const segments = normalizeSegments(base === "" ? path : `${base}/${path}`);
     if (segments === null) escapes = true;
-    if (!segments?.length) continue;
-    for (const extension of extensions) {
-      const candidate = `${segments.join("/")}${extension}`;
-      if (!paths.includes(candidate)) paths.push(candidate);
-    }
+    if (segments?.length) addCandidates(paths, segments, extensions);
   }
   return { paths, outside: path.startsWith("/") || (escapes && paths.length === 0) };
 }

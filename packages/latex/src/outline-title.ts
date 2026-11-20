@@ -328,7 +328,7 @@ function replaceTextSymbols(text: string): string {
   return text
     .replace(TEXT_SYMBOL, (whole, name: string) => TEXT_SYMBOLS[name] ?? whole)
     .replace(/\\(?:centering|protect|relax|xspace)\b/gu, "")
-    .replace(/\\(?:,|;|:|!|\s|-)/gu, (control) => (control === "\\-" ? "" : " "))
+    .replace(/\\(?:,|;|:|!|\s|-)/gu, (control) => (control === String.raw`\-` ? "" : " "))
     .replace(/\\pm\b/gu, "±")
     .replace(/\\times\b/gu, "×")
     .replace(/\\to\b/gu, "→");

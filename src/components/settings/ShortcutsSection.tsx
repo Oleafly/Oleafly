@@ -506,7 +506,7 @@ export function ShortcutsSection() {
   const categories = [...new Set(BUILT_IN_SHORTCUTS.map(({ category }) => category))].filter(
     (category) => notesEnabled || category !== "notes",
   );
-  const tab = categories.some((category) => category === chosenTab) ? chosenTab : "application";
+  const tab = categories.find((category) => category === chosenTab) ?? "application";
   const shown = shortcutDefinitionsInEffect(notesEnabled);
   const appShortcuts = shown.filter((definition) => definition.scope !== "notes");
   const noteShortcuts = shown.filter((definition) => definition.scope === "notes");

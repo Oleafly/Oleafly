@@ -29,7 +29,7 @@ export function PreviewFrame({ src, title }: Readonly<{ src: string; title: stri
     let lastOpened = Number.NEGATIVE_INFINITY;
     const onMessage = (event: MessageEvent) => {
       const own = frame.current;
-      if (!own || event.source !== own.contentWindow || event.origin !== origin) return;
+      if (event.source !== own?.contentWindow || event.origin !== origin) return;
       const url = clickedLink(event.data);
       if (!url || document.activeElement !== own) return;
       const now = performance.now();

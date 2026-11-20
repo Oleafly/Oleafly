@@ -88,21 +88,29 @@ export interface UpdateSkillInput {
 const SKILL_NAME_MAX = 64;
 
 export function skillNameFrom(text: string): string {
-  return text
+  const name = text
     .split(/[^A-Za-z0-9]+/u)
     .filter(Boolean)
     .join("-")
     .toLowerCase()
-    .slice(0, SKILL_NAME_MAX)
-    .replace(/-+$/u, "");
+    .slice(0, SKILL_NAME_MAX);
+  return withoutTrailingDashes(name);
+}
+
+function withoutTrailingDashes(text: string): string {
+  let end = text.length;
+  while (end > 0 && text[end - 1] === "-") end -= 1;
+  return text.slice(0, end);
 }
 
 export function availableSkillName(text: string, taken: ReadonlySet<string>): string {
   const base = skillNameFrom(text) || "skill";
   let name = base;
-  for (let number = 2; taken.has(name); number += 1) {
+  let number = 2;
+  while (taken.has(name)) {
     const suffix = `-${number}`;
-    name = `${base.slice(0, SKILL_NAME_MAX - suffix.length).replace(/-+$/u, "")}${suffix}`;
+    name = `${withoutTrailingDashes(base.slice(0, SKILL_NAME_MAX - suffix.length))}${suffix}`;
+    number += 1;
   }
   return name;
 }

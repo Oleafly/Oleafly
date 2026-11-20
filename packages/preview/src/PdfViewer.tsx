@@ -108,6 +108,20 @@ class PdfPasswordRequiredError extends Error {
 
 const ignoreRejection = () => {};
 
+function renderingCancelled(error: unknown): boolean {
+  return String(error).includes("RenderingCancelled");
+}
+
+async function finishedPainting(task: { promise: Promise<unknown> }): Promise<boolean> {
+  try {
+    await task.promise;
+    return true;
+  } catch (error) {
+    if (!renderingCancelled(error)) throw error;
+    return false;
+  }
+}
+
 function errorName(error: unknown): string {
   if (error instanceof Error) return error.name;
   if (typeof error === "object" && error && "name" in error) return String(error.name);
@@ -1705,7 +1719,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
         await task.promise;
         rememberPdfFigures(page, probeViewport, { width: probe.width, height: probe.height });
       } catch (error) {
-        if (!String(error).includes("RenderingCancelled")) {
+        if (!renderingCancelled(error)) {
           reportWarningRef.current?.(`PDF figure colors on page ${state.pageNumber}`, error);
         }
       } finally {
@@ -1950,7 +1964,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       wrapsRef.current.get(pageNo) === wrap &&
       renderedRef.current.get(pageNo) === state;
     const reportRenderFailure = (err: unknown) => {
-      if (!String(err).includes("RenderingCancelled")) {
+      if (!renderingCancelled(err)) {
         const container = containerRef.current;
         if (container && isCurrent() && renderedRef.current.size === 1) {
           container.dataset.pdfRenderError = String(err);
@@ -2054,13 +2068,7 @@ export const PdfViewer = forwardRef<PdfViewerHandle, PdfViewerProps>(function Pd
       state.tasks.push(renderTask);
       schedulerRef.current?.add(renderTask, pageNo, "base");
 
-      let painted = true;
-      try {
-        await renderTask.promise;
-      } catch (err) {
-        if (!String(err).includes("RenderingCancelled")) throw err;
-        painted = false;
-      }
+      const painted = await finishedPainting(renderTask);
       if (painted && recordFigures) {
         rememberPdfFigures(page, viewport, {
           width: canvas.width / geometry.outputScaleX,

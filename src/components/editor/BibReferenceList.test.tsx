@@ -136,6 +136,7 @@ describe("authorLine", () => {
     expect(authorLine("{World Health Organization}")).toBe("World Health Organization");
     expect(authorLine("Smith, John and others")).toBe("Smith et al.");
     expect(authorLine("von Neumann, John and Oskar Morgenstern")).toBe("von Neumann and Morgenstern");
+    expect(authorLine("Ludwig van Beethoven and Johann Sebastian Bach")).toBe("van Beethoven and Bach");
     expect(authorLine(String.raw`{\"O}zt{\"u}rk, Ay{\c{s}}e AND Jane Doe`)).toBe("Öztürk and Doe");
   });
 });

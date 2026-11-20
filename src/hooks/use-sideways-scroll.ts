@@ -40,8 +40,8 @@ export function useScrollEdges(strip: HTMLElement | null, enabled = true) {
       changes.disconnect();
       resizes.disconnect();
       strip.removeEventListener("scroll", mark);
-      strip.removeAttribute("data-overflow-start");
-      strip.removeAttribute("data-overflow-end");
+      delete strip.dataset.overflowStart;
+      delete strip.dataset.overflowEnd;
     };
   }, [strip, enabled]);
 }

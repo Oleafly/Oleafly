@@ -102,6 +102,13 @@ function tierLine(skill: SkillEntry): string {
   return i18n.t(($) => $.settings.ai.skills.tier.user);
 }
 
+function savedNameHint(typed: string, shown: string, saved: string, hasLetters: boolean): string | null {
+  if (!typed) return null;
+  if (!hasLetters) return i18n.t(($) => $.settings.ai.skills.editor.nameNeedsLatin);
+  if (shown === saved) return null;
+  return i18n.t(($) => $.settings.ai.skills.editor.nameSavedAs, { name: saved });
+}
+
 function SkillEditorDialog({
   target,
   takenNames,
@@ -137,13 +144,7 @@ function SkillEditorDialog({
   const typedName = form.name.trim();
   const nameHasLetters = editing !== null || skillNameFrom(typedName) !== "";
   const savedName = editing ? editing.id : availableSkillName(typedName, takenNames);
-  const nameHint = !typedName
-    ? null
-    : !nameHasLetters
-      ? t(($) => $.settings.ai.skills.editor.nameNeedsLatin)
-      : (editing ? editing.name : typedName) !== savedName
-        ? t(($) => $.settings.ai.skills.editor.nameSavedAs, { name: savedName })
-        : null;
+  const nameHint = savedNameHint(typedName, editing?.name ?? typedName, savedName, nameHasLetters);
 
   const submit = async () => {
     const next = {

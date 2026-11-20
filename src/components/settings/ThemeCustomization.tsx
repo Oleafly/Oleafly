@@ -140,11 +140,11 @@ export function ThemeTokenField({
   editor,
   mode,
   token,
-}: {
+}: Readonly<{
   editor: ThemeTokenEditor;
   mode: Theme;
   token: ThemeTokenName;
-}) {
+}>) {
   const { t } = useTranslation(["common", "settings"]);
   const current = editor.effectiveColor(mode, token);
   const tokenLabel = TOKEN_LABELS[token]();
