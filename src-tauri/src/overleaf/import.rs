@@ -158,16 +158,39 @@ fn remember_import(base: &str, remote_id: &str, project_id: &str) {
     }
 }
 
+pub(super) fn names_a_main_file(project: &Value) -> bool {
+    project
+        .get("rootDoc_id")
+        .and_then(Value::as_str)
+        .is_some_and(|id| !id.trim().is_empty())
+}
+
+async fn project_settings(http: &Http, cookie: &str, remote_id: &str) -> ProjectSettings {
+    let project = match fetch_project(http.online(), cookie, remote_id).await {
+        Ok(project) => project,
+        Err(error) => {
+            let _ = crate::project::append_app_log(format!(
+                "Could not read the settings of project {remote_id} before importing it, so its main file and compiler are guessed: {error}"
+            ));
+            return ProjectSettings::default();
+        }
+    };
+    let settings = settings_from_project(&project);
+    if settings.main_doc.is_none() && names_a_main_file(&project) {
+        let _ = crate::project::append_app_log(format!(
+            "The main file the service names for project {remote_id} is not in its file list, so the main file is guessed"
+        ));
+    }
+    settings
+}
+
 async fn import_one(
     http: &Http,
     cookie: &str,
     remote: &RemoteProject,
     emit: &(dyn Fn(ImportEvent) + Send + Sync),
 ) -> Result<(String, ProjectSettings), String> {
-    let settings = fetch_project(http.online(), cookie, &remote.id)
-        .await
-        .map(|project| settings_from_project(&project))
-        .unwrap_or_default();
+    let settings = project_settings(http, cookie, &remote.id).await;
     let staged = Staged(staging_path()?);
     let remote_id = remote.id.clone();
     http.download_zip(cookie, &remote.id, &staged.0, |received, total| {

@@ -1,4 +1,4 @@
-import { isBackslashEscaped } from "@oleafly/latex";
+export { isBackslashEscaped as isTypstEscaped } from "@oleafly/latex";
 
 const IDENTIFIER_START = /[\p{L}\p{Nl}_]/u;
 const IDENTIFIER_CONTINUE = /[\p{L}\p{M}\p{N}\p{Pc}-]|\u200C|\u200D/u;
@@ -56,8 +56,6 @@ export function typstReferenceEnd(text: string, from: number): number {
   const end = runEnd(text, from, LABEL_START, LABEL_CONTINUE);
   return from + trimTypstReference(text.slice(from, end)).length;
 }
-
-export const isTypstEscaped = isBackslashEscaped;
 
 function closesAutolinkBracket(character: string, brackets: string[]): boolean {
   if (character !== "]" && character !== ")") return false;

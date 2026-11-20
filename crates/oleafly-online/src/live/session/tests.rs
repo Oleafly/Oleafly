@@ -2006,7 +2006,7 @@ async fn opening_a_doc_reads_the_disk_without_holding_the_session() {
         let live = Arc::clone(&live);
         std::thread::spawn(move || live.open(NOTES, Arc::new(|_| {})))
     };
-    std::thread::sleep(SLOW_DISK / 4);
+    tokio::time::sleep(SLOW_DISK / 4).await;
     let asked = Instant::now();
     let _ = live.text(&notes);
     let waited = asked.elapsed();

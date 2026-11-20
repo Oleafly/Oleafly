@@ -156,7 +156,10 @@ function scaledWidth(width: number): number {
 
 function fitKey(items: readonly ToolbarFitItem[]): string {
   return items
-    .map((item) => `${item.width}/${item.tools ?? 1}/${item.collapsed ? `${item.collapsed.width}/${item.collapsed.tools ?? 1}` : "-"}`)
+    .map((item) => {
+      const collapsed = item.collapsed ? `${item.collapsed.width}/${item.collapsed.tools ?? 1}` : "-";
+      return `${item.width}/${item.tools ?? 1}/${collapsed}`;
+    })
     .join(" ");
 }
 

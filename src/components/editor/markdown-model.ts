@@ -31,7 +31,7 @@ import {
   textColorOf,
   toggleQuote,
 } from "@/components/editor/rich-text-controls";
-import { ALIGN_FENCE_OPEN } from "@/components/editor/markdown-preview-markup";
+import { alignFenceOpen } from "@/components/editor/markdown-preview-markup";
 import { markdownMathRanges } from "@/components/editor/wysiwyg/markdown-source";
 import type { MarkdownIt, MdToken } from "@/components/notes/note-markdown-it";
 
@@ -247,7 +247,7 @@ const DIV_CLOSE = /\r?\n {0,3}:{3,}[ \t]*(?:\r?\n)?$/u;
 function divBody(source: string, span: Span): Span | null {
   const text = source.slice(span.from, span.to);
   const open = DIV_OPEN.exec(text);
-  if (!open || ALIGN_FENCE_OPEN.test(text)) return null;
+  if (!open || alignFenceOpen(text)) return null;
   const close = DIV_CLOSE.exec(text);
   if (!close || close.index <= open[0].length) return null;
   return { from: span.from + open[0].length, to: span.from + close.index };

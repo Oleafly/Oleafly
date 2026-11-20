@@ -46,7 +46,7 @@ function computeWarmupOrder(total: number, index: number, warmup: SlideWarmup): 
     }
     return result;
 }
-export function SlidePreloadLayer({ pages, index, design, warmup = 'all' }: Props) {
+export function SlidePreloadLayer({ pages, index, design, warmup = 'all' }: Readonly<Props>) {
     const [deck, setDeck] = useState(pages);
     const [order, setOrder] = useState<number[]>(() => computeWarmupOrder(pages.length, index, warmup));
     const [mountedCount, setMountedCount] = useState(0);

@@ -4,7 +4,7 @@ let observer: ResizeObserver | null = null;
 export function watchSize(element: Element, onResize: () => void): () => void {
   if (typeof ResizeObserver === "undefined") return () => undefined;
   observer ??= new ResizeObserver((entries) => {
-    for (const entry of entries) for (const listener of [...(listeners.get(entry.target) ?? [])]) listener();
+    for (const entry of entries) for (const listener of listeners.get(entry.target) ?? []) listener();
   });
   const watching = observer;
   const known = listeners.get(element);

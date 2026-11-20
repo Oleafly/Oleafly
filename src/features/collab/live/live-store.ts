@@ -338,7 +338,7 @@ const START_RETRY_MS = [1_000, 2_000, 5_000, 10_000, 30_000];
 const TOLD_ELSEWHERE: ReadonlySet<CollabLiveEndedReason> = new Set(["signed_out", "server_removed"]);
 
 function sameShown(previous: CollabLiveSyncState | null, next: CollabLiveSyncState): boolean {
-  if (previous === null || previous.state !== next.state || next.state === "offline") return false;
+  if (previous?.state !== next.state || next.state === "offline") return false;
   return next.state !== "ended" || (previous.state === "ended" && previous.reason === next.reason);
 }
 

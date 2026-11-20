@@ -1,4 +1,4 @@
-import { type ReactNode, useRef, useState } from "react";
+import { type ReactNode, type Ref, useRef, useState } from "react";
 import { Check, Link2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -146,6 +146,301 @@ function MessageHeader({
   );
 }
 
+type Confirming = "delete" | "remove" | null;
+
+type Arrival = ReturnType<typeof useArrival>;
+
+function rights(entry: CommentEntry, kit: CommentKit, canWrite: boolean, actions: CommentMessageActions, editing: boolean) {
+  const settled = !entry.deleted && !entry.delivery;
+  const own = entry.author.verified && entry.author.id === kit.self;
+  const mine = own && canWrite && settled && !editing;
+  const moderator = Boolean(kit.moderate && actions.moderate && kit.labels.remove && kit.labels.removeConfirm);
+  return {
+    settled,
+    own,
+    edits: mine && actions.edit !== undefined,
+    removes: mine && actions.remove !== undefined,
+    moderates: canWrite && !own && settled && moderator,
+  };
+}
+
+function itemMenu(
+  kit: CommentKit,
+  may: ReturnType<typeof rights>,
+  thread: ThreadMenu | undefined,
+  edit: () => void,
+  confirm: (kind: "delete" | "remove") => void,
+): MenuEntries | null {
+  return menuEntries(kit.labels, {
+    onEdit: may.edits ? edit : undefined,
+    onDelete: may.removes ? () => confirm("delete") : undefined,
+    onRemove: may.moderates ? () => confirm("remove") : undefined,
+    thread: may.settled ? thread : undefined,
+  });
+}
+
+function showsReactions(entry: CommentEntry, kit: CommentKit, canReact: boolean, react: CommentMessageActions["react"]): boolean {
+  if (entry.deleted) return false;
+  if ((entry.reactions ?? []).length > 0) return true;
+  return Boolean(!entry.delivery && canReact && react !== undefined && kit.reactions);
+}
+
+function confirmCopy(confirming: Confirming, labels: CommentKit["labels"], actions: CommentMessageActions) {
+  if (confirming === "remove" && labels.removeConfirm && labels.remove) {
+    return { ...labels.removeConfirm, confirmLabel: labels.removeConfirm.confirm ?? labels.remove, action: actions.moderate };
+  }
+  return { ...labels.deleteMessageConfirm, confirmLabel: labels.delete, action: actions.remove };
+}
+
+function ItemEditor({
+  entry,
+  save,
+  onDone,
+}: Readonly<{ entry: CommentEntry; save: NonNullable<CommentMessageActions["edit"]>; onDone: () => void }>) {
+  const { labels } = useCommentKit();
+  return (
+    <CommentComposer
+      label={labels.editLabel}
+      submitLabel={labels.save}
+      submitIcon={Check}
+      initial={entry.body}
+      autoFocus
+      onSubmit={async (body) => {
+        await save(entry.id, body);
+        onDone();
+      }}
+      onCancel={onDone}
+    />
+  );
+}
+
+function ItemConfirm({
+  entry,
+  confirming,
+  actions,
+  run,
+  onClose,
+}: Readonly<{
+  entry: CommentEntry;
+  confirming: Confirming;
+  actions: CommentMessageActions;
+  run: (action: () => Promise<void>) => void;
+  onClose: () => void;
+}>) {
+  const { labels, Confirm } = useCommentKit();
+  const confirm = confirmCopy(confirming, labels, actions);
+  return (
+    <Confirm
+      open={confirming !== null}
+      title={confirm.title}
+      description={confirm.description}
+      confirmLabel={confirm.confirmLabel}
+      onConfirm={() => {
+        onClose();
+        const action = confirm.action;
+        if (action) run(() => action(entry.id));
+      }}
+      onCancel={onClose}
+    />
+  );
+}
+
+function BubbleRow({
+  entry,
+  own,
+  continued,
+  arrival,
+  canReact,
+  react,
+  entries,
+  editor,
+  children,
+}: Readonly<{
+  entry: CommentEntry;
+  own: boolean;
+  continued: boolean;
+  arrival: Arrival;
+  canReact: boolean;
+  react: CommentMessageActions["react"];
+  entries: MenuEntries | null;
+  editor: ReactNode;
+  children: ReactNode;
+}>) {
+  return (
+    <li
+      ref={arrival.ref}
+      data-comment-entry={entry.id}
+      data-fresh={arrival.fresh || undefined}
+      data-delivery={entry.delivery?.state}
+      data-own={own || undefined}
+      className={cn(
+        "group/item -mx-1 rounded-md px-1 transition-colors duration-700",
+        continued ? "mt-1" : "mt-3 first:mt-0",
+        arrival.fresh && "bg-comment-highlight",
+      )}
+    >
+      <ChatBubble
+        entry={entry}
+        own={own}
+        continued={continued}
+        fresh={arrival.fresh}
+        canReact={canReact}
+        react={react}
+        menu={entries ? <MessageMenu entries={entries} /> : null}
+        editor={editor}
+      />
+      {children}
+    </li>
+  );
+}
+
+function ItemError({ error }: Readonly<{ error: string | null }>) {
+  return error ? <InlineAlert className="mt-1">{error}</InlineAlert> : null;
+}
+
+function CardRow({
+  entry,
+  root,
+  arrival,
+  dialog,
+  children,
+}: Readonly<{ entry: CommentEntry; root: boolean; arrival: Arrival; dialog: ReactNode; children: ReactNode }>) {
+  return (
+    <li
+      ref={arrival.ref}
+      data-comment-entry={entry.id}
+      data-fresh={arrival.fresh || undefined}
+      data-delivery={entry.delivery?.state}
+      className={cn(
+        "group/item -mx-1 flex gap-2.5 rounded-md px-1 transition-colors duration-700",
+        arrival.fresh && "bg-comment-highlight",
+      )}
+    >
+      <CardAvatar entry={entry} root={root} />
+      <div className="min-w-0 flex-1">{children}</div>
+      {dialog}
+    </li>
+  );
+}
+
+function CardAvatar({ entry, root }: Readonly<{ entry: CommentEntry; root: boolean }>) {
+  const kit = useCommentKit();
+  const size = root ? "base" : "sm";
+  if (entry.deleted && entry.author.verified) return <DeletedAvatar size={size} />;
+  return <AuthorAvatar author={entry.author} size={size} kit={kit} />;
+}
+
+function GoneRow({
+  entry,
+  headerAction,
+  row,
+  above,
+}: Readonly<{ entry: CommentEntry; headerAction: ReactNode; row: Ref<HTMLDivElement>; above: boolean }>) {
+  const { labels } = useCommentKit();
+  const gone = <p className="min-w-0 text-[0.8125rem] italic text-muted-foreground">{entry.removed ? labels.removed : labels.deleted}</p>;
+  return (
+    <div ref={row} className="flex min-h-6 min-w-0 flex-wrap items-center gap-x-1.5">
+      {entry.author.verified ? (
+        withActions(gone, headerAction, false)
+      ) : (
+        <>
+          {gone}
+          {withActions(<span className="min-w-0 truncate text-[0.6875rem] italic text-muted-foreground">{entry.author.name}</span>, headerAction, false, above ? "mt-1" : undefined)}
+        </>
+      )}
+    </div>
+  );
+}
+
+function CardHeader({
+  entry,
+  fresh,
+  headerAction,
+  entries,
+  row,
+  above,
+}: Readonly<{
+  entry: CommentEntry;
+  fresh: boolean;
+  headerAction: ReactNode;
+  entries: MenuEntries | null;
+  row: Ref<HTMLDivElement>;
+  above: boolean;
+}>) {
+  if (entry.deleted) return <GoneRow entry={entry} headerAction={headerAction} row={row} above={above} />;
+  const menu =
+    headerAction || entries ? (
+      <>
+        {headerAction}
+        {entries ? <MessageMenu entries={entries} className={HEADER_BUTTON} /> : null}
+      </>
+    ) : null;
+  return <MessageHeader entry={entry} fresh={fresh} menu={menu} wide={Boolean(headerAction && entries)} />;
+}
+
+function CardBody({
+  entry,
+  editor,
+  mentioned,
+}: Readonly<{ entry: CommentEntry; editor: ReactNode; mentioned: CommentKit["members"] }>) {
+  const note = entry.delivery ? <DeliveryNote entry={entry} delivery={entry.delivery} /> : null;
+  if (editor) {
+    return (
+      <>
+        <div className="mt-1">{editor}</div>
+        {note}
+      </>
+    );
+  }
+  if (entry.deleted) return note;
+  return (
+    <>
+      <CommentBody body={entry.body} members={mentioned} className={entry.delivery ? "text-muted-foreground" : undefined} />
+      {note}
+    </>
+  );
+}
+
+function CardActions({
+  entry,
+  canReact,
+  react,
+  onReply,
+}: Readonly<{
+  entry: CommentEntry;
+  canReact: boolean;
+  react: CommentMessageActions["react"];
+  onReply: ((entry: CommentEntry) => void) | undefined;
+}>) {
+  const kit = useCommentKit();
+  const settled = !entry.deleted && !entry.delivery;
+  const reactions = showsReactions(entry, kit, canReact, react);
+  const reply = settled ? onReply : undefined;
+  if (!reactions && !reply) return null;
+  return (
+    <div data-comment-actions className="mt-2.5 flex flex-wrap items-center gap-1">
+      {reactions ? (
+        <ReactionBar
+          reactions={entry.reactions ?? []}
+          canReact={canReact && settled}
+          onToggle={react ? (emoji, on) => react(entry.id, emoji, on) : undefined}
+        />
+      ) : null}
+      {reply ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="h-6 px-1.5 text-[0.6875rem] font-medium text-muted-foreground hover:text-foreground"
+          onClick={() => reply(entry)}
+        >
+          {kit.labels.reply}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
 export function CommentItem({
   entry,
   root = false,
@@ -170,168 +465,52 @@ export function CommentItem({
   headerAction?: ReactNode;
 }>) {
   const kit = useCommentKit();
-  const { labels } = kit;
   const arrival = useArrival(entry.id);
   const mentioned = useMentioned(kit.members, entry.mentions);
   const [editing, setEditing] = useState(false);
-  const [confirming, setConfirming] = useState<"delete" | "remove" | null>(null);
+  const [confirming, setConfirming] = useState<Confirming>(null);
   const { error, run } = useCommentAction(kit.describeError);
   const { ref: goneRow, room: goneRoom } = usePillRoom<HTMLDivElement>(
     entry.deleted && !entry.author.verified && Boolean(headerAction),
     `${entry.author.name}\u0000${entry.removed === true}`,
   );
-  const delivery = entry.delivery;
-  const settled = !entry.deleted && !delivery;
-  const own = entry.author.verified && entry.author.id === kit.self;
-  const mine = own && canWrite && settled && !editing;
-  const edit = mine && actions.edit ? () => setEditing(true) : undefined;
-  const remove = mine && actions.remove ? () => setConfirming("delete") : undefined;
-  const moderate =
-    canWrite && !own && settled && kit.moderate && actions.moderate && labels.remove && labels.removeConfirm
-      ? () => setConfirming("remove")
-      : undefined;
-  const react = actions.react;
-  const Confirm = kit.Confirm;
-  const reactions = entry.reactions ?? [];
-  const showReactions = !entry.deleted && (reactions.length > 0 || (settled && canReact && react !== undefined && kit.reactions));
-  const editMessage = actions.edit;
-  const entries = editing ? null : menuEntries(labels, { onEdit: edit, onDelete: remove, onRemove: moderate, thread: settled ? thread : undefined });
-  const confirm =
-    confirming === "remove" && labels.removeConfirm && labels.remove
-      ? { ...labels.removeConfirm, confirmLabel: labels.removeConfirm.confirm ?? labels.remove, action: actions.moderate }
-      : { ...labels.deleteMessageConfirm, confirmLabel: labels.delete, action: actions.remove };
+  const may = rights(entry, kit, canWrite, actions, editing);
+  const entries = editing ? null : itemMenu(kit, may, thread, () => setEditing(true), setConfirming);
   const editor =
-    editing && editMessage ? (
-      <CommentComposer
-        label={labels.editLabel}
-        submitLabel={labels.save}
-        submitIcon={Check}
-        initial={entry.body}
-        autoFocus
-        onSubmit={async (body) => {
-          await editMessage(entry.id, body);
-          setEditing(false);
-        }}
-        onCancel={() => setEditing(false)}
-      />
-    ) : null;
+    editing && actions.edit ? <ItemEditor entry={entry} save={actions.edit} onDone={() => setEditing(false)} /> : null;
   const dialog = (
-    <Confirm
-      open={confirming !== null}
-      title={confirm.title}
-      description={confirm.description}
-      confirmLabel={confirm.confirmLabel}
-      onConfirm={() => {
-        setConfirming(null);
-        const action = confirm.action;
-        if (action) run(() => action(entry.id));
-      }}
-      onCancel={() => setConfirming(null)}
-    />
+    <ItemConfirm entry={entry} confirming={confirming} actions={actions} run={run} onClose={() => setConfirming(null)} />
   );
   if (variant === "bubble") {
     return (
-      <li
-        ref={arrival.ref}
-        data-comment-entry={entry.id}
-        data-fresh={arrival.fresh || undefined}
-        data-delivery={delivery?.state}
-        data-own={own || undefined}
-        className={cn(
-          "group/item -mx-1 rounded-md px-1 transition-colors duration-700",
-          continued ? "mt-1" : "mt-3 first:mt-0",
-          arrival.fresh && "bg-comment-highlight",
-        )}
+      <BubbleRow
+        entry={entry}
+        own={may.own}
+        continued={continued}
+        arrival={arrival}
+        canReact={canReact}
+        react={actions.react}
+        entries={entries}
+        editor={editor}
       >
-        <ChatBubble
-          entry={entry}
-          own={own}
-          continued={continued}
-          fresh={arrival.fresh}
-          canReact={canReact}
-          react={react}
-          menu={entries ? <MessageMenu entries={entries} /> : null}
-          editor={editor}
-        />
-        {error ? <InlineAlert className="mt-1">{error}</InlineAlert> : null}
+        <ItemError error={error} />
         {dialog}
-      </li>
+      </BubbleRow>
     );
   }
-  const gone = <p className="min-w-0 text-[0.8125rem] italic text-muted-foreground">{entry.removed ? labels.removed : labels.deleted}</p>;
-  const menu =
-    headerAction || entries ? (
-      <>
-        {headerAction}
-        {entries ? <MessageMenu entries={entries} className={HEADER_BUTTON} /> : null}
-      </>
-    ) : null;
   return (
-    <li
-      ref={arrival.ref}
-      data-comment-entry={entry.id}
-      data-fresh={arrival.fresh || undefined}
-      data-delivery={delivery?.state}
-      className={cn(
-        "group/item -mx-1 flex gap-2.5 rounded-md px-1 transition-colors duration-700",
-        arrival.fresh && "bg-comment-highlight",
-      )}
-    >
-      {entry.deleted && entry.author.verified ? (
-        <DeletedAvatar size={root ? "base" : "sm"} />
-      ) : (
-        <AuthorAvatar author={entry.author} size={root ? "base" : "sm"} kit={kit} />
-      )}
-      <div className="min-w-0 flex-1">
-        {entry.deleted ? (
-          <div ref={goneRow} className="flex min-h-6 min-w-0 flex-wrap items-center gap-x-1.5">
-            {entry.author.verified ? (
-              withActions(gone, headerAction, false)
-            ) : (
-              <>
-                {gone}
-                {withActions(<span className="min-w-0 truncate text-[0.6875rem] italic text-muted-foreground">{entry.author.name}</span>, headerAction, false, goneRoom.above ? "mt-1" : undefined)}
-              </>
-            )}
-          </div>
-        ) : (
-          <MessageHeader entry={entry} fresh={arrival.fresh} menu={menu} wide={Boolean(headerAction && entries)} />
-        )}
-        {editor ? (
-          <div className="mt-1">{editor}</div>
-        ) : entry.deleted ? null : (
-          <CommentBody
-            body={entry.body}
-            members={mentioned}
-            className={delivery ? "text-muted-foreground" : undefined}
-          />
-        )}
-        {delivery ? <DeliveryNote entry={entry} delivery={delivery} /> : null}
-        {!editing && (showReactions || (onReply && settled)) ? (
-          <div data-comment-actions className="mt-2.5 flex flex-wrap items-center gap-1">
-            {showReactions ? (
-              <ReactionBar
-                reactions={reactions}
-                canReact={canReact && settled}
-                onToggle={react ? (emoji, on) => react(entry.id, emoji, on) : undefined}
-              />
-            ) : null}
-            {onReply && settled ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                className="h-6 px-1.5 text-[0.6875rem] font-medium text-muted-foreground hover:text-foreground"
-                onClick={() => onReply(entry)}
-              >
-                {labels.reply}
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-        {error ? <InlineAlert className="mt-1">{error}</InlineAlert> : null}
-      </div>
-      {dialog}
-    </li>
+    <CardRow entry={entry} root={root} arrival={arrival} dialog={dialog}>
+      <CardHeader
+        entry={entry}
+        fresh={arrival.fresh}
+        headerAction={headerAction}
+        entries={entries}
+        row={goneRow}
+        above={goneRoom.above}
+      />
+      <CardBody entry={entry} editor={editor} mentioned={mentioned} />
+      {editing ? null : <CardActions entry={entry} canReact={canReact} react={actions.react} onReply={onReply} />}
+      <ItemError error={error} />
+    </CardRow>
   );
 }

@@ -14,7 +14,7 @@ type FixtureProject = {
   files: Record<string, string>;
 };
 
-type FixtureFolder = { name: string; docs: { _id: string; name: string }[]; folders: FixtureFolder[] };
+type FixtureFolder = { _id: string; name: string; docs: { _id: string; name: string }[]; folders: FixtureFolder[] };
 
 export const OVERLEAF_FIXTURE_PROJECTS: FixtureProject[] = [
   {
@@ -22,10 +22,17 @@ export const OVERLEAF_FIXTURE_PROJECTS: FixtureProject[] = [
     name: "Fixture Thesis",
     owned: true,
     compiler: "xelatex",
-    rootDocId: "doc-thesis-main",
+    rootDocId: "6f1e2d3c4b5a69788796a501",
     folder: {
-      docs: [{ _id: "doc-notes", name: "notes.tex" }],
-      folders: [{ name: "thesis", docs: [{ _id: "doc-thesis-main", name: "main.tex" }], folders: [] }],
+      docs: [{ _id: "6f1e2d3c4b5a69788796a502", name: "notes.tex" }],
+      folders: [
+        {
+          _id: "6f1e2d3c4b5a69788796a503",
+          name: "thesis",
+          docs: [{ _id: "6f1e2d3c4b5a69788796a501", name: "main.tex" }],
+          folders: [],
+        },
+      ],
     },
     files: {
       "thesis/main.tex": "\\documentclass{report}\n\\begin{document}\nFixture thesis body.\n\\end{document}\n",
@@ -37,8 +44,8 @@ export const OVERLEAF_FIXTURE_PROJECTS: FixtureProject[] = [
     name: "Fixture Shared Paper",
     owned: false,
     compiler: "pdflatex",
-    rootDocId: "doc-paper",
-    folder: { docs: [{ _id: "doc-paper", name: "paper.tex" }], folders: [] },
+    rootDocId: "6f1e2d3c4b5a69788796a504",
+    folder: { docs: [{ _id: "6f1e2d3c4b5a69788796a504", name: "paper.tex" }], folders: [] },
     files: {
       "paper.tex": "\\documentclass{article}\n\\begin{document}\nFixture shared paper.\n\\end{document}\n",
     },
@@ -124,7 +131,7 @@ function joinReply(project: FixtureProject): string {
           compiler: project.compiler,
           imageName: "texlive-full:2025.1",
           rootDoc_id: project.rootDocId,
-          rootFolder: [{ _id: "root", name: "rootFolder", ...project.folder }],
+          rootFolder: [{ _id: "6f1e2d3c4b5a69788796a500", name: "rootFolder", ...project.folder }],
         },
       },
     ],

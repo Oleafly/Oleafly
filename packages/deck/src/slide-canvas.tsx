@@ -8,7 +8,7 @@ type Props = {
   design?: DesignSystem;
 };
 
-export function SlideCanvas({ children, flat = false, design }: Props) {
+export function SlideCanvas({ children, flat = false, design }: Readonly<Props>) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [measured, setMeasured] = useState<number | null>(null);
 

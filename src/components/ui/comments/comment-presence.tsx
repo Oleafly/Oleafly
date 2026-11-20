@@ -88,7 +88,7 @@ export function createPresenceFeed(): CommentPresenceFeed {
       const chat = kept(view.chat, next.chat);
       if (!changed && chat === view.chat) return;
       view = { replying, chat };
-      for (const listener of [...listeners]) listener();
+      for (const listener of listeners) listener();
     },
   };
 }

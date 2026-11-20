@@ -117,14 +117,7 @@ export function drainOpenRequests(): Promise<void> {
   }
   draining = (async () => {
     try {
-      do {
-        drainAgain = false;
-        const fresh = (await pendingOpenRequests()).filter(
-          (request) => !handledTokens.has(request.token),
-        );
-        for (const request of fresh) handledTokens.add(request.token);
-        await openInOrder(fresh);
-      } while (drainAgain);
+      await drainPending();
     } catch (error) {
       void logError("open requested folders", error);
     } finally {
@@ -135,18 +128,27 @@ export function drainOpenRequests(): Promise<void> {
   return draining;
 }
 
+async function drainPending(): Promise<void> {
+  drainAgain = false;
+  const fresh = (await pendingOpenRequests()).filter((request) => !handledTokens.has(request.token));
+  for (const request of fresh) handledTokens.add(request.token);
+  await openInOrder(fresh);
+  if (drainAgain) await drainPending();
+}
+
 const STOPS_A_BATCH: ReadonlySet<OpenFolderOutcome> = new Set(["declined", "blocked", "failed"]);
 
-async function openInOrder(batch: readonly PendingOpenRequest[]): Promise<void> {
-  for (const [index, request] of batch.entries()) {
-    if (!STOPS_A_BATCH.has(await openPendingRequest(request))) continue;
-    for (const skipped of batch.slice(index + 1)) {
-      await discardOpenRequest(skipped.token, session).catch((error) => {
+async function openInOrder(batch: readonly PendingOpenRequest[], from = 0): Promise<void> {
+  const request = batch.at(from);
+  if (!request) return;
+  if (!STOPS_A_BATCH.has(await openPendingRequest(request))) return openInOrder(batch, from + 1);
+  await Promise.all(
+    batch.slice(from + 1).map((skipped) =>
+      discardOpenRequest(skipped.token, session).catch((error) => {
         void logError("drop a folder request", error);
-      });
-    }
-    return;
-  }
+      }),
+    ),
+  );
 }
 
 function startOpenSession(): Promise<void> {

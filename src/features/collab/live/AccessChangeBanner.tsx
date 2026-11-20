@@ -122,11 +122,12 @@ export function AccessChangeBanner() {
     else useCollabLiveStore.getState().dismissAccessNotice();
   };
   const keeps = kind === "removedOnline" || kind === "projectDeleted";
+  const onlineName = notice === "removedOnline" ? "removed" : notice;
   return (
     <WorkspaceBanner
       tone={tone}
       role="status"
-      data-testid={online ? `overleaf-access-banner-${notice === "removedOnline" ? "removed" : notice}` : "collab-access-banner"}
+      data-testid={online ? `overleaf-access-banner-${onlineName}` : "collab-access-banner"}
     >
       <Icon aria-hidden className={ended ? "size-3.5 shrink-0" : "size-3.5 shrink-0 text-primary"} />
       <p className="min-w-0 flex-1">{noticeText(notice, t)}</p>

@@ -1,5 +1,6 @@
 use std::sync::{Arc, Mutex};
 
+use oleafly_online::realtime::project::settings_from_project;
 use oleafly_online::test_support::{
     dashboard_page, remote_project_json as remote, socket_handler, zip_bytes, FixtureServer,
     Handler, Reply, Request,
@@ -144,6 +145,26 @@ fn browser_sign_in_answers_only_the_main_window() {
         tauri::async_runtime::block_on(super::overleaf_sign_in_browsers(main.as_ref().clone()))
             .is_ok()
     );
+}
+
+#[test]
+fn a_main_file_the_file_list_does_not_hold_is_noticed_and_one_it_holds_is_used() {
+    let project = |id: &str| {
+        json!({
+            "rootDoc_id": id,
+            "rootFolder": [{ "_id": "root", "docs": [{ "_id": id, "name": "main.tex" }], "folders": [] }],
+        })
+    };
+    let refused = project("doc-main");
+    assert!(import::names_a_main_file(&refused));
+    assert_eq!(settings_from_project(&refused).main_doc, None);
+    let kept = project("6f1e2d3c4b5a69788796a501");
+    assert_eq!(
+        settings_from_project(&kept).main_doc.as_deref(),
+        Some("main.tex")
+    );
+    assert!(!import::names_a_main_file(&json!({ "rootDoc_id": null })));
+    assert!(!import::names_a_main_file(&json!({ "rootDoc_id": " " })));
 }
 
 #[test]

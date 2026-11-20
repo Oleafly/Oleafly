@@ -51,21 +51,24 @@ export function DeckSlide({ projectId, path, code, page, mode, label, className,
     if (ready.current && shownPage.current !== page - 1) send({ type: "goto", page: page - 1 });
   }, [page, send]);
 
+  const frame = deck.url ? (
+    <SandboxedFrame
+      ref={deck.frameRef}
+      src={deck.url}
+      onLoad={deck.onLoad}
+      title={label}
+      className="pointer-events-none size-full border-0 bg-transparent"
+    />
+  ) : null;
   return (
     <div className={cn("relative min-h-0 min-w-0", className)}>
       {deck.failure ? (
         <div className="flex size-full items-center justify-center p-6">
           <InlineAlert className="max-w-md text-center">{t(($) => $.preview.presentation.failed)}</InlineAlert>
         </div>
-      ) : deck.url ? (
-        <SandboxedFrame
-          ref={deck.frameRef}
-          src={deck.url}
-          onLoad={deck.onLoad}
-          title={label}
-          className="pointer-events-none size-full border-0 bg-transparent"
-        />
-      ) : null}
+      ) : (
+        frame
+      )}
     </div>
   );
 }

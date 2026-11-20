@@ -283,8 +283,7 @@ export interface OverleafLiveActions {
 
 let overleafActions: OverleafLiveActions | null = null;
 
-const notRunning = () =>
-  Promise.reject<never>({ code: "internal", message: "live editing with the online service isn't running" });
+const notRunning = () => Promise.reject<never>(new Error("live editing with the online service isn't running"));
 
 const NOT_RUNNING: OverleafLiveActions = { pause: notRunning, resume: notRunning, unlink: notRunning };
 
